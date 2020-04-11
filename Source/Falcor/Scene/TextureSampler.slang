@@ -59,6 +59,55 @@ struct ExplicitLodTextureSampler : ITextureSampler
     }
 };
 
+/** Texture sampling using an explicit scalar level of detail using ray cones (with texture dimensions
+    "subtracted" from the LOD value, and added back in before SampleLevel()).
+*/
+struct ExplicitRayConesLodTextureSampler : ITextureSampler
+{
+    float rayconesLODWithoutTexDims;    ///< this is \Delta_t, which is texture independent, plus the rest of the terms, except the texture size, which is added below
+
+    float4 sampleTexture(Texture2D t, SamplerState s, float2 uv)
+    {
+        uint txw, txh;
+        t.GetDimensions(txw, txh);
+        float lambda = 0.5 * log2(txw * txh) + rayconesLODWithoutTexDims;
+        return t.SampleLevel(s, uv, lambda);
+    }
+};
+
+
+/** Texture sampling using an explicit scalar level of detail using ray diffs,
+    with the final LOD computations done below, since they are dependent on texture dimensions.
+*/
+enum class RayDiffsLODComputationMode { OpenGLStyle, PBRTStyle };
+static const RayDiffsLODComputationMode rayDiffsLODComputationMode = RayDiffsLODComputationMode::OpenGLStyle;
+
+struct ExplicitRayDiffsLodTextureSampler : ITextureSampler
+{
+    float2 dUVdx;               ///< derivatives in x over uv
+    float2 dUVdy;               ///< derivatives in y over uv
+
+    float4 sampleTexture(Texture2D t, SamplerState s, float2 uv)
+    {
+        uint txw, txh;
+        float lambda;
+        t.GetDimensions(txw, txh);
+        if (rayDiffsLODComputationMode == RayDiffsLODComputationMode::OpenGLStyle)  // sharper, but alias sometimes for sharp edges textures, for example
+        {
+            const float2 duvdx = dUVdx * txw;
+            const float2 duvdy = dUVdy * txh;
+            lambda = 0.5 * log2(max(dot(duvdx, duvdx), dot(duvdy, duvdy)));
+        }
+        else // RayDiffsLODComputationMode::PBRTStyle
+        {
+            float filterWidth = 2.0 * max(txw * max(abs(dUVdx.x), abs(dUVdy.x)), txh * max(abs(dUVdx.y), abs(dUVdy.y)));    // PBRT style (much blurrier, but never (?) aliases)
+            lambda = log2(filterWidth);
+        }
+        return t.SampleLevel(s, uv, lambda);
+    }
+};
+
+
 /** Texture sampling using explicit screen-space gradients
 */
 struct ExplicitGradientTextureSampler : ITextureSampler

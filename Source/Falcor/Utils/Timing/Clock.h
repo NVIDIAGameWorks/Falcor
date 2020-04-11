@@ -50,17 +50,26 @@ namespace Falcor
             \param[in] seconds The time in seconds
             \param[in] deferToNextTick Apply the change on the next tick. No changes will be made to the clock until the next tick
         */
-        Clock& now(double seconds, bool deferToNextTick = false);
+        Clock& setTime(double seconds, bool deferToNextTick = false);
+
+        deprecate("4.0.1", "Use setTime() instead.")
+        Clock& now(double seconds, bool deferToNextTick = false) { return setTime(seconds, deferToNextTick); }
 
         /** Get the time of the last `tick()` call
         */
-        double now() const { return mTime.now; }
+        double getTime() const { return mTime.now; }
+
+        deprecate("4.0.1", "Use getTime() instead.")
+        double now() const { return getTime(); }
 
         /** Get the time delta between the 2 previous ticks. This function respects the FPS simulation setting
             Note that due to floating-point precision, this function won't necessarily return exactly (1/FPS) when simulating framerate.
             This function will potentially return a negative number, for example when resetting the time to zero
         */
-        double delta() const { return mTime.delta; }
+        double getDelta() const { return mTime.delta; }
+
+        deprecate("4.0.1", "Use getDelta() instead.")
+        double delta() const { return getDelta(); }
 
         /** Set the current frame ID. Calling this will cause the next `tick()` call to be skipped
             When running in real-time mode, it will only change the frame number without affecting the time
@@ -68,21 +77,48 @@ namespace Falcor
             \param[in] seconds The frame ID
             \param[in] deferToNextTick Apply the change on the next tick. No changes will be made to the clock until the next tick
         */
-        Clock& frame(uint64_t f, bool deferToNextTick = false);
+        Clock& setFrame(uint64_t f, bool deferToNextTick = false);
+
+        deprecate("4.0.1", "Use setFame() instead.")
+        Clock& frame(uint64_t f, bool deferToNextTick = false) { return setFrame(f, deferToNextTick); }
 
         /** Get the current frame ID.
             When running in real-time mode, this is the number of frames since the last time the time was set.
             When simulating FPS, the number of frames according to the time
         */
-        uint64_t frame() const { return mFrames; }
+        uint64_t getFrame() const { return mFrames; }
+
+        deprecate("4.0.1", "Use getFrame() instead.")
+        uint64_t frame() const { return getFrame(); }
 
         /** Get the real-time delta between the 2 previous ticks.
             This function returns the actual time that passed between the 2 `tick()` calls. It doesn't any time-manipulation setting like time-scaling and FPS simulation
         */
-        double realTimeDelta() const { return mRealtime.delta; }
+        double getRealTimeDelta() const { return mRealtime.delta; }
 
-        /** Get the real-time time in seconds.
+        deprecate("4.0.1", "Use getRealTimeDelta() instead.")
+        double realTimeDelta() const { return getRealTimeDelta(); }
+
+        /** Set the time at which to terminate the application.
         */
+        Clock& setExitTime(double seconds);
+
+        /** Get the time at which to terminate the application.
+        */
+        double getExitTime() const { return mExitTime; }
+
+        /** Set the frame at which to terminate the application.
+        */
+        Clock& setExitFrame(uint64_t frame);
+
+        /** Get the frame at which to terminate the application.
+        */
+        uint64_t getExitFrame() const { return mExitFrame; }
+
+        /** Check if the application should be terminated.
+        */
+        bool shouldExit() const;
+
         /** Tick the clock. Calling this function has no effect if the clock is paused
         */
         Clock& tick();
@@ -91,11 +127,17 @@ namespace Falcor
             When enabling FPS simulation, calls to tick() will change the time by `1/FPS` seconds.
             If FPS simulation is disabled, calling `tick()` will add the actual time that passed since the previous `tick()` call
         */
-        Clock& framerate(uint32_t fps);
+        Clock& setFramerate(uint32_t fps);
+
+        deprecate("4.0.1", "Use setFramerate() instead.")
+        Clock& framerate(uint32_t fps) { return setFramerate(fps); }
 
         /** Get the requested FPS value
         */
-        uint32_t framerate() const { return mFramerate; }
+        uint32_t getFramerate() const { return mFramerate; }
+
+        deprecate("4.0.1", "Use getFramerate() instead.")
+        uint32_t framerate() const { return getFramerate(); }
 
         /** Pause the clock
         */
@@ -107,7 +149,7 @@ namespace Falcor
 
         /** Stop the clock (pause + reset)
         */
-        Clock& stop() { now(0); return pause(); }
+        Clock& stop() { setTime(0); return pause(); }
 
         /** Step forward or backward. Ignored if the Clock is running or not in FPS simulation mode
             \param[in] frames The number of frames to step. Can be negative
@@ -117,11 +159,17 @@ namespace Falcor
 
         /** Set the time scale. This value is ignored when simulating FPS
         */
-        Clock& timeScale(double scale) { mScale = scale; return *this; }
+        Clock& setTimeScale(double scale) { mScale = scale; return *this; }
+
+        deprecate("4.0.1", "Use setTimeScale() instead.")
+        Clock& timeScale(double scale) { return setTimeScale(scale); }
 
         /** Get the scale
         */
-        double timeScale() const { return mScale; }
+        double getTimeScale() const { return mScale; }
+
+        deprecate("4.0.1", "Use getTimeScale() instead.")
+        double timeScale() const { return getTimeScale(); }
 
         /** Check if the clock is paused
         */
@@ -129,7 +177,10 @@ namespace Falcor
 
         /** Check if the clock is in real-time mode
         */
-        bool simulatingFps() const { return mFramerate != 0; }
+        bool isSimulatingFps() const { return mFramerate != 0; }
+
+        deprecate("4.0.1", "Use isSimulatingFps() instead.")
+        bool simulatingFps() const { return isSimulatingFps(); }
 
         /** Render the UI
         */
@@ -159,6 +210,9 @@ namespace Falcor
         double mScale = 1;
         std::optional<double> mDeferredTime;
         std::optional<uint64_t> mDeferredFrameID;
+
+        double mExitTime = 0.0;
+        uint64_t mExitFrame = 0;
 
         void updateTimer();
         void resetDeferredObjects();

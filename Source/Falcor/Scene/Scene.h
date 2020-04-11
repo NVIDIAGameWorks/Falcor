@@ -66,12 +66,9 @@ namespace Falcor
         |                      | one BLAS              | per mesh        | of a mesh          |
         --------------------------------------------------------------------------------------|
 
-        - updateAsToInstanceDataMapping() creates a lookup table that translates "InstanceID() + GeometryIndex()" to the Global Hit ID, which is an index into MeshInstanceData.
-            - Mesh instance ID = LookupTable[InstanceID() + GeometryIndex()]
+        - "InstanceID() + GeometryIndex()" is used for indexing into MeshInstanceData.
         - This is wrapped in getGlobalHitID() in Raytracing.slang.
     */
-
-    constexpr char kScene[] = "s";
 
     class dlldecl Scene : public std::enable_shared_from_this<Scene>
     {
@@ -165,17 +162,27 @@ namespace Falcor
         */
         float getCameraSpeed() const { return mCameraSpeed; }
 
-        /** Save the current camera viewpoint and returns a reference to it.
+        /** Add the current camera's viewpoint to the list of viewpoints.
         */
-        void saveNewViewpoint();
+        void addViewpoint();
+
+        deprecate("4.0.1", "Use addViewpoint() instead.")
+        void saveNewViewpoint() { addViewpoint(); }
+
+        /** Add a new viewpoint to the list of viewpoints.
+        */
+        void addViewpoint(const float3& position, const float3& target, const float3& up);
 
         /** Remove the currently active viewpoint.
         */
         void removeViewpoint();
 
-        /** Load a selected camera viewpoint and returns a reference to it.
+        /** Select a viewpoint and move the camera to it.
         */
-        void gotoViewpoint(uint32_t index);
+        void selectViewpoint(uint32_t index);
+
+        deprecate("4.0.1", "Use selectViewpoint() instead.")
+        void gotoViewpoint(uint32_t index) { selectViewpoint(index); }
 
         /** Returns true if there are saved viewpoints (used for dumping to config)
         */
@@ -274,7 +281,7 @@ namespace Falcor
 
         /** Render the scene using raytracing
         */
-        void raytrace(RenderContext* pContext, RtProgram* pProgram, const std::shared_ptr<RtProgramVars>& pVars, uvec3 dispatchDims);
+        void raytrace(RenderContext* pContext, RtProgram* pProgram, const std::shared_ptr<RtProgramVars>& pVars, uint3 dispatchDims);
 
         /** Render the UI
         */
@@ -292,6 +299,11 @@ namespace Falcor
             \param[in] pEnvMap Texture to use as environment map. Can be nullptr.
         */
         void setEnvironmentMap(Texture::ConstSharedPtrRef pEnvMap);
+
+        /** Load an environment from an image.
+            \param[in] filename Texture filename.
+        */
+        void loadEnvironmentMap(const std::string& filename);
 
         /** Get the environment map
         */
@@ -335,14 +347,15 @@ namespace Falcor
         */
         void setRaytracingShaderData(RenderContext* pContext, const ShaderVar& var, uint32_t rayTypeCount = 1);
 
-        std::string getConfig();
+        std::string getScript(const std::string& sceneVar);
 
     private:
         friend class SceneBuilder;
         friend class AnimationController;
 
         static constexpr uint32_t kStaticDataBufferIndex = 0;
-        static constexpr uint32_t kDrawIdBufferIndex = kStaticDataBufferIndex + 1;
+        static constexpr uint32_t kPrevVertexBufferIndex = kStaticDataBufferIndex + 1;
+        static constexpr uint32_t kDrawIdBufferIndex = kPrevVertexBufferIndex + 1;
         static constexpr uint32_t kVertexBufferCount = kDrawIdBufferIndex + 1;
 
         static SharedPtr create();
@@ -358,10 +371,6 @@ namespace Falcor
         /** Uploads a single material.
         */
         void uploadMaterial(uint32_t materialID);
-
-        /** Verify variable offsets in GPU buffers are consistent with CPU data.
-        */
-        void checkOffsets();
 
         /** Update the scene's global bounding box.
         */
@@ -379,9 +388,9 @@ namespace Falcor
         */
         void createDrawList();
 
-        /** Sort what meshes go in what BLAS. Results stored in mBlasBuckets.
+        /** Sort meshes into groups by transform. Updates mMeshInstances and mMeshGroups.
         */
-        void sortBlasMeshes();
+        void sortMeshes();
 
         /** Initialize geometry descs for each BLAS
         */
@@ -400,11 +409,6 @@ namespace Falcor
             \param[in] rayCount Number of ray types in the shader. Required to setup how instances index into the Shader Table
         */
         void buildTlas(RenderContext* pContext, uint32_t rayCount, bool perMeshHitEntry);
-
-        /** Create the buffer that maps Acceleration Structure indices to their location in mMeshInstanceData
-            mMeshInstanceData should be indexed with [InstanceID() + GeometryIndex]
-        */
-        void updateAsToInstanceDataMapping();
 
         UpdateFlags updateCamera(bool forceUpdate);
         UpdateFlags updateLights(bool forceUpdate);
@@ -425,10 +429,10 @@ namespace Falcor
         {
             typename Object::SharedPtr pObject;
             bool animate = true;
-            size_t nodeID = kInvalidNode;
+            uint32_t nodeID = kInvalidNode;
             bool update(const AnimationController* pAnimCtrl, bool force);
             bool hasGlobalTransform() const { return nodeID != kInvalidNode; }
-            void setIntoObject(const vec3& pos, const vec3& up, const vec3& lookAt);
+            void setIntoObject(const float3& pos, const float3& up, const float3& lookAt);
             bool enabled(bool force) const;
         };
 
@@ -447,16 +451,22 @@ namespace Falcor
         struct Node
         {
             Node() = default;
-            Node(const std::string& n, uint32_t p, const mat4& t, const mat4& l2b) : parent(p), name(n), transform(t), localToBindSpace(l2b) {};
+            Node(const std::string& n, uint32_t p, const glm::mat4& t, const glm::mat4& l2b) : parent(p), name(n), transform(t), localToBindSpace(l2b) {};
             std::string name;
             uint32_t parent = kInvalidNode;
-            mat4 transform;  // The node's transformation matrix
-            mat4 localToBindSpace; // Local to bind space transformation
+            glm::mat4 transform;  // The node's transformation matrix
+            glm::mat4 localToBindSpace; // Local to bind space transformation
+        };
+
+        struct MeshGroup
+        {
+            std::vector<uint32_t> meshList;     ///< List of meshId's that are part of the group.
         };
 
         // #SCENE We don't need those vectors on the host
         std::vector<MeshDesc> mMeshDesc;                    ///< Copy of GPU buffer (mpMeshes)
         std::vector<MeshInstanceData> mMeshInstanceData;    ///< Copy of GPU buffer (mpMeshInstances)
+        std::vector<MeshGroup> mMeshGroups;                 ///< Groups of meshes with identical transforms. Each group maps to a BLAS for ray tracing.
         std::vector<Node> mSceneGraph;                      ///< For each index i, the array element indicates the parent node. Indices are in relation to mLocalToWorldMatrices
 
         std::vector<Material::SharedPtr> mMaterials;        ///< Bound to parameter block
@@ -488,9 +498,9 @@ namespace Falcor
         // Saved Camera Viewpoints
         struct Viewpoint
         {
-            glm::vec3 position;
-            glm::vec3 target;
-            glm::vec3 up;
+            float3 position;
+            float3 target;
+            float3 up;
         };
         std::vector<Viewpoint> mViewpoints;
         uint32_t mCurrentViewpoint = 0;
@@ -521,14 +531,11 @@ namespace Falcor
 
         struct BlasData
         {
-            BlasData(const std::vector<uint32_t>& meshList) : meshList(meshList) {}
-
             Buffer::SharedPtr pBlas;
             Buffer::SharedPtr pScratchBuffer;
 
             D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuildInfo;
             std::vector<D3D12_RAYTRACING_GEOMETRY_DESC> geomDescs;
-            std::vector<uint32_t> meshList;             ///< List of meshId's that are part of each BLAS
             bool hasSkinnedMesh = false;                ///< Whether the BLAS contains a skinned mesh, which means the BLAS may need to be updated
             UpdateMode updateMode = UpdateMode::Refit;  ///< Update mode this BLAS was created with.
         };
@@ -536,7 +543,6 @@ namespace Falcor
         std::vector<BlasData> mBlasData;    ///< All data related to the scene's BLASes
         bool mHasSkinnedMesh = false;       ///< Whether the scene has a skinned mesh at all.
 
-        Buffer::SharedPtr mpAsToInstanceMapping;            ///< Lookup table from [InstanceID() + GeometryIndex()] to mMeshInstanceData index
         std::string mFilename;
     };
 

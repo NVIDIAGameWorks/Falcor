@@ -90,7 +90,7 @@ void FXAA::execute(RenderContext* pContext, const RenderData& renderData)
     mpFbo->attachColorTarget(pDst, 0);
 
     mpPass["gSrc"] = pSrc;
-    vec2 rcpFrame = 1.0f / vec2(pSrc->getWidth(), pSrc->getHeight());
+    float2 rcpFrame = 1.0f / float2(pSrc->getWidth(), pSrc->getHeight());
 
     auto pCB = mpPass["PerFrameCB"];
     pCB["rcpTexDim"] = rcpFrame;

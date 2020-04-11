@@ -48,7 +48,7 @@ namespace Falcor
         void reset()
         {
             mFrameCount = 0;
-            mClock.now(0).tick();
+            mClock.setTime(0).tick();
         }
 
         /** Tick the timer.
@@ -57,15 +57,15 @@ namespace Falcor
         void newFrame()
         {
             mFrameCount++;
-            mFrameTimes[mFrameCount % sFrameWindow] = mClock.tick().realTimeDelta();
-            mClock.now(0).tick();
+            mFrameTimes[mFrameCount % sFrameWindow] = mClock.tick().getRealTimeDelta();
+            mClock.setTime(0).tick();
         }
 
         /** Get the time in ms it took to render a frame
         */
         double getAverageFrameTime() const
         {
-            uint64_t frames = min(mFrameCount, sFrameWindow);
+            uint64_t frames = std::min(mFrameCount, sFrameWindow);
             double elapsedTime = 0;
             for(uint64_t i = 0; i < frames; i++) elapsedTime += mFrameTimes[i];
             double time = elapsedTime / double(frames) * 1000;

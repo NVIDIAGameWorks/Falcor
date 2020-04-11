@@ -64,7 +64,7 @@ namespace Falcor
         }
         return flags;
     }
-    
+
     VkDescriptorSetLayout createDescriptorSetLayout(const DescriptorSet::Layout& layout)
     {
         std::vector<VkDescriptorSetLayoutBinding> bindings(layout.getRangeCount());
@@ -98,7 +98,7 @@ namespace Falcor
         uint32_t maxIndex = 0;
         for (const auto& set : mDesc.mSets)
         {
-            maxIndex = max(set.getRange(0).regSpace, maxIndex);
+            maxIndex = std::max(set.getRange(0).regSpace, maxIndex);
         }
 
         static VkDescriptorSetLayout emptyLayout = createDescriptorSetLayout({});   // #VKTODO This gets deleted multiple times on exit

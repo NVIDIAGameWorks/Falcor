@@ -39,6 +39,7 @@ namespace Mogwai
         const std::string kBitrate = "bitrate";
         const std::string kGopSize = "gopSize";
         const std::string kRanges = "ranges";
+        const std::string kAddRanges = "addRanges";
         const std::string kPrint = "print";
         const std::string kOutputs = "outputs";
 
@@ -138,36 +139,35 @@ namespace Mogwai
         bindings.addGlobalObject(kScriptVar, this, "Video Capture Helpers");
 
         // UI
-        auto showUI = [](VideoCapture* pFC, bool show) { pFC->mShowUI = show; };
-        vc.func_(kUI.c_str(), showUI, "show"_a = true);
+        auto getUI = [](VideoCapture* pVC) { return pVC->mShowUI; };
+        auto setUI = [](VideoCapture* pVC, bool show) { pVC->mShowUI = show; };
+        vc.property(kUI.c_str(), getUI, setUI);
 
         // Settings
         auto getCodec = [](VideoCapture* pVC) {return pVC->mpEncoderUI->getCodec(); };
         auto setCodec = [](VideoCapture* pVC, VideoEncoder::Codec c) {pVC->mpEncoderUI->setCodec(c); return pVC; };
-        vc.func_(kCodec.c_str(), getCodec);
-        vc.func_(kCodec.c_str(), setCodec);
+        vc.property(kCodec.c_str(), getCodec, setCodec);
 
         auto getFPS = [](VideoCapture* pVC) {return pVC->mpEncoderUI->getFPS(); };
         auto setFPS = [](VideoCapture* pVC, uint32_t fps) {pVC->mpEncoderUI->setFPS(fps); return pVC; };
-        vc.func_(kFps.c_str(), getFPS);
-        vc.func_(kFps.c_str(), setFPS);
+        vc.property(kFps.c_str(), getFPS, setFPS);
 
         auto getBitrate = [](VideoCapture* pVC) {return pVC->mpEncoderUI->getBitrate(); };
         auto setBitrate = [](VideoCapture* pVC, float bitrate) {pVC->mpEncoderUI->setBitrate(bitrate); return pVC; };
-        vc.func_(kBitrate.c_str(), getBitrate);
-        vc.func_(kBitrate.c_str(), setBitrate);
+        vc.property(kBitrate.c_str(), getBitrate, setBitrate);
 
         auto getGopSize = [](VideoCapture* pVC) {return pVC->mpEncoderUI->getGopSize(); };
         auto setGopSize = [](VideoCapture* pVC, uint32_t gop) {pVC->mpEncoderUI->setGopSize(gop); return pVC; };
-        vc.func_(kGopSize.c_str(), getGopSize);
-        vc.func_(kGopSize.c_str(), setGopSize);
+        vc.property(kGopSize.c_str(), getGopSize, setGopSize);
 
         // Ranges
-        vc.func_(kRanges.c_str(), ScriptBindings::overload_cast<const RenderGraph*, const range_vec&>(&VideoCapture::ranges));
-        vc.func_(kRanges.c_str(), ScriptBindings::overload_cast<const std::string&, const range_vec&>(&VideoCapture::ranges));
+        vc.func_(kRanges.c_str(), ScriptBindings::overload_cast<const RenderGraph*, const range_vec&>(&VideoCapture::addRanges)); // PYTHONDEPRECATED
+        vc.func_(kRanges.c_str(), ScriptBindings::overload_cast<const std::string&, const range_vec&>(&VideoCapture::addRanges)); // PYTHONDEPRECATED
+        vc.func_(kAddRanges.c_str(), ScriptBindings::overload_cast<const RenderGraph*, const range_vec&>(&VideoCapture::addRanges), "graph"_a, "ranges"_a);
+        vc.func_(kAddRanges.c_str(), ScriptBindings::overload_cast<const std::string&, const range_vec&>(&VideoCapture::addRanges), "name"_a, "ranges"_a);
 
         auto printGraph = [](VideoCapture* pVC, RenderGraph* pGraph) { pybind11::print(pVC->graphRangesStr(pGraph)); };
-        vc.func_(kPrint.c_str(), printGraph);
+        vc.func_(kPrint.c_str(), printGraph, "graph"_a);
 
         auto printAllGraphs = [](VideoCapture* pVC)
         {
@@ -184,28 +184,28 @@ namespace Mogwai
 
         std::string s("# Video Capture\n");
         s += CaptureTrigger::getScript(kScriptVar);
-        s += Scripting::makeMemberFunc(kScriptVar, kCodec, mpEncoderUI->getCodec());
-        s += Scripting::makeMemberFunc(kScriptVar, kFps, mpEncoderUI->getFPS());
-        s += Scripting::makeMemberFunc(kScriptVar, kBitrate, mpEncoderUI->getBitrate());
-        s += Scripting::makeMemberFunc(kScriptVar, kGopSize, mpEncoderUI->getGopSize());
+        s += Scripting::makeSetProperty(kScriptVar, kCodec, mpEncoderUI->getCodec());
+        s += Scripting::makeSetProperty(kScriptVar, kFps, mpEncoderUI->getFPS());
+        s += Scripting::makeSetProperty(kScriptVar, kBitrate, mpEncoderUI->getBitrate());
+        s += Scripting::makeSetProperty(kScriptVar, kGopSize, mpEncoderUI->getGopSize());
 
         for (const auto& g : mGraphRanges)
         {
-            s += Scripting::makeMemberFunc(kScriptVar, kRanges, g.first->getName(), g.second);
+            s += Scripting::makeMemberFunc(kScriptVar, kAddRanges, g.first->getName(), g.second);
         }
         return s;
     }
 
-    void VideoCapture::ranges(const RenderGraph* pGraph, const range_vec& ranges)
+    void VideoCapture::addRanges(const RenderGraph* pGraph, const range_vec& ranges)
     {
         for (auto r : ranges) addRange(pGraph, r.first, r.second);
     }
 
-    void VideoCapture::ranges(const std::string& graphName, const range_vec& ranges)
+    void VideoCapture::addRanges(const std::string& graphName, const range_vec& ranges)
     {
         auto pGraph = mpRenderer->getGraph(graphName).get();
         if (!pGraph) throw std::runtime_error("Can't find a graph named `" + graphName + "`");
-        this->ranges(pGraph, ranges);
+        this->addRanges(pGraph, ranges);
     }
 
     std::string VideoCapture::graphRangesStr(const RenderGraph* pGraph)

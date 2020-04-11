@@ -37,7 +37,7 @@ namespace Falcor
         return SharedPtr(new PixelStats());
     }
 
-    void PixelStats::beginFrame(RenderContext* pRenderContext, const glm::uvec2& frameDim)
+    void PixelStats::beginFrame(RenderContext* pRenderContext, const uint2& frameDim)
     {
         // Prepare state.
         assert(!mRunning);
@@ -67,8 +67,8 @@ namespace Falcor
             }
 
             assert(mpStatsRayCount && mpStatsPathLength);
-            pRenderContext->clearUAV(mpStatsRayCount->getUAV().get(), uvec4(0, 0, 0, 0));
-            pRenderContext->clearUAV(mpStatsPathLength->getUAV().get(), uvec4(0, 0, 0, 0));
+            pRenderContext->clearUAV(mpStatsRayCount->getUAV().get(), uint4(0, 0, 0, 0));
+            pRenderContext->clearUAV(mpStatsPathLength->getUAV().get(), uint4(0, 0, 0, 0));
         }
     }
 
@@ -99,12 +99,15 @@ namespace Falcor
     {
         assert(mRunning);
 
-        pProgram->addDefine("_PIXEL_STATS_ENABLED", mStatsEnabled ? "1" : "0");
-
         if (mStatsEnabled)
         {
+            pProgram->addDefine("_PIXEL_STATS_ENABLED");
             var["gStatsRayCount"] = mpStatsRayCount;
             var["gStatsPathLength"] = mpStatsPathLength;
+        }
+        else
+        {
+            pProgram->removeDefine("_PIXEL_STATS_ENABLED");
         }
     }
 

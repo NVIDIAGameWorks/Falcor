@@ -26,7 +26,6 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Falcor.h"
-#include "RenderPasses/Shared/HitInfo.h"
 #include "RenderGraph/RenderPassStandardFlags.h"
 #include "GBufferRaster.h"
 #include "../RenderPasses/DepthPass/DepthPass.h"
@@ -42,11 +41,15 @@ namespace
     // TODO: Some are RG32 floats now. I'm sure that all of these could be fp16.
     const ChannelList kGBufferExtraChannels =
     {
-        { "vbuffer",        "gVBuffer",         "Visibility buffer",                true /* optional */, ResourceFormat::RG32Uint    },
-        { "mvec",           "gMotionVectors",   "Motion vectors",                   true /* optional */, ResourceFormat::RG32Float   },
-        { "faceNormalW",    "gFaceNormalW",     "Face normal in world space",       true /* optional */, ResourceFormat::RGBA32Float },
-        { "pnFwidth",       "gPosNormalFwidth", "position and normal filter width", true /* optional */, ResourceFormat::RG32Float   },
-        { "linearZ",        "gLinearZAndDeriv", "linear z (and derivative)",        true /* optional */, ResourceFormat::RG32Float   },
+        { "vbuffer",          "gVBuffer",            "Visibility buffer",                true /* optional */, ResourceFormat::RG32Uint    },
+        { "mvec",             "gMotionVectors",      "Motion vectors",                   true /* optional */, ResourceFormat::RG32Float   },
+        { "faceNormalW",      "gFaceNormalW",        "Face normal in world space",       true /* optional */, ResourceFormat::RGBA32Float },
+        { "pnFwidth",         "gPosNormalFwidth",    "position and normal filter width", true /* optional */, ResourceFormat::RG32Float   },
+        { "linearZ",          "gLinearZAndDeriv",    "linear z (and derivative)",        true /* optional */, ResourceFormat::RG32Float   },
+        { "surfSpreadAngle",  "gSurfaceSpreadAngle", "surface spread angle (texlod)",    true /* optional */, ResourceFormat::R32Float    },
+        { "rayDifferentialX", "gRayDifferentialX",   "ray differental X",                true /* optional */, ResourceFormat::RGBA32Float },
+        { "rayDifferentialY", "gRayDifferentialY",   "ray differental Y",                true /* optional */, ResourceFormat::RGBA32Float },
+        { "rayDifferentialZ", "gRayDifferentialZ",   "ray differental Z",                true /* optional */, ResourceFormat::RGBA32Float },
     };
 
     const std::string kDepthName = "depth";
@@ -126,7 +129,6 @@ void GBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedP
         }
 
         mRaster.pProgram->addDefines(pScene->getSceneDefines());
-        mRaster.pProgram->addDefines(HitInfo::getDefines(pScene));
     }
 
     if (mpDepthPrePassGraph) mpDepthPrePassGraph->setScene(pScene);
@@ -158,7 +160,7 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
         Texture::SharedPtr pTex = renderData[kGBufferChannels[i].name]->asTexture();
         mpFbo->attachColorTarget(pTex, uint32_t(i));
     }
-    pRenderContext->clearFbo(mpFbo.get(), vec4(0), 1.f, 0, FboAttachmentType::Color);
+    pRenderContext->clearFbo(mpFbo.get(), float4(0), 1.f, 0, FboAttachmentType::Color);
 
     // If there is no scene, clear the outputs and return.
     if (mpScene == nullptr)
@@ -166,7 +168,7 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
         auto clear = [&](const ChannelDesc& channel)
         {
             auto pTex = renderData[channel.name]->asTexture();
-            if (pTex) pRenderContext->clearUAV(pTex->getUAV().get(), glm::vec4(0.f));
+            if (pTex) pRenderContext->clearUAV(pTex->getUAV().get(), float4(0.f));
         };
         for (const auto& channel : kGBufferExtraChannels) clear(channel);
         auto pDepth = renderData[kDepthName]->asTexture();
@@ -197,7 +199,7 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     for (const auto& channel : kGBufferExtraChannels)
     {
         Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
-        if (pTex) pRenderContext->clearUAV(pTex->getUAV().get(), glm::vec4(0, 0, 0, 0));
+        if (pTex) pRenderContext->clearUAV(pTex->getUAV().get(), float4(0, 0, 0, 0));
         mRaster.pVars[channel.texname] = pTex;
     }
 

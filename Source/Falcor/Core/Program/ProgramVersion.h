@@ -159,7 +159,7 @@ namespace Falcor
             const ProgramVersion* pVersion,
             const ProgramReflection::SharedPtr& pReflector,
             const UniqueEntryPointGroups& uniqueEntryPointGroups,
-            std::string& log, 
+            std::string& log,
             const std::string& name = "");
 
         virtual ~ProgramKernels() = default;
@@ -239,15 +239,14 @@ namespace Falcor
         friend class Program;
         friend class RtProgram;
 
-        static SharedPtr createEmpty(Program* pProgram);
+        static SharedPtr createEmpty(Program* pProgram, slang::IComponentType* pSlangGlobalScope);
 
-        ProgramVersion(Program* pProgram);
+        ProgramVersion(Program* pProgram, slang::IComponentType* pSlangGlobalScope);
 
         void init(
             const DefineList&                                   defineList,
             const ProgramReflection::SharedPtr&                 pReflector,
             const std::string&                                  name,
-            slang::IComponentType*                              pSlangGlobalScope,
             std::vector<ComPtr<slang::IComponentType>> const&   pSlangEntryPoints);
 
         std::shared_ptr<Program>        mpProgram;

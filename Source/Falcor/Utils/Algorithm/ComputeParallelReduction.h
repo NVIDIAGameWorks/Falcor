@@ -61,9 +61,9 @@ namespace Falcor
 
         /** Perform parallel reduction.
             The computations are performed in type T, which must be compatible with the texture format:
-            - glm::vec4 for floating-point texture formats (float, snorm, unorm).
-            - glm::uvec4 for unsigned integer texture formats.
-            - glm::ivec4 for signed integer texture formats.
+            - float4 for floating-point texture formats (float, snorm, unorm).
+            - uint4 for unsigned integer texture formats.
+            - int4 for signed integer texture formats.
             Note that unused components are set to zero if texture format has < 4 components.
             For performance reasons, it is advisable to store the result in a buffer on the GPU,
             and then issue an asynchronous readback in user code to avoid a full GPU flush.

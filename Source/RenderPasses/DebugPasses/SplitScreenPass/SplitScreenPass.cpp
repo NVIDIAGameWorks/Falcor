@@ -30,8 +30,8 @@
 namespace
 {
     // Divider colors
-    const vec4 kColorUnselected = vec4(0, 0, 0, 1);
-    const vec4 kColorSelected = vec4(1, 1, 1, 1);
+    const float4 kColorUnselected = float4(0, 0, 0, 1);
+    const float4 kColorSelected = float4(1, 1, 1, 1);
 
     // A simple character array representing a 16x16 grayscale arrow
     const unsigned char kArrowArray[256] = {
@@ -53,7 +53,7 @@ namespace
         0, 0, 0, 0,  0, 0, 0, 0,   87, 12, 0, 0,        0, 0, 0, 0
     };
 
-    // Where is our shader located? 
+    // Where is our shader located?
     const std::string kSplitShader = "RenderPasses/DebugPasses/SplitScreenPass/SplitScreen.ps.slang";
 }
 
@@ -99,10 +99,10 @@ bool SplitScreenPass::onMouseEvent(const MouseEvent& mouseEvent)
     bool handled = mDividerGrabbed;
 
     // Find out where on the screen we are
-    mMousePos = ivec2(mouseEvent.screenPos.x, mouseEvent.screenPos.y);
+    mMousePos = int2(mouseEvent.screenPos.x, mouseEvent.screenPos.y);
 
     // If we're outside the window, stop.
-    mMousePos = glm::clamp(mMousePos, ivec2(0, 0), ivec2(pDstFbo->getWidth() - 1, pDstFbo->getHeight() - 1));
+    mMousePos = glm::clamp(mMousePos, int2(0, 0), int2(pDstFbo->getWidth() - 1, pDstFbo->getHeight() - 1));
 
     // Actually process our events
     if (mMouseOverDivider && mouseEvent.type == MouseEvent::Type::LeftButtonDown)
@@ -110,8 +110,8 @@ bool SplitScreenPass::onMouseEvent(const MouseEvent& mouseEvent)
         mDividerGrabbed = true;
         handled = true;
 
-        if (mClock.now() - mTimeOfLastClick < 0.1f) mSplitLoc = 0.5f;
-        else mTimeOfLastClick = mClock.now();
+        if (mClock.getTime() - mTimeOfLastClick < 0.1f) mSplitLoc = 0.5f;
+        else mTimeOfLastClick = mClock.getTime();
     }
     else if (mDividerGrabbed)
     {

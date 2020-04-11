@@ -49,7 +49,7 @@ namespace Falcor
         /** Dispatch a compute task
             \param[in] dispatchSize 3D dispatch group size
         */
-        void dispatch(ComputeState* pState, ComputeVars* pVars, const uvec3& dispatchSize);
+        void dispatch(ComputeState* pState, ComputeVars* pVars, const uint3& dispatchSize);
 
         /** Executes a dispatch call. Args to the dispatch call are contained in pArgBuffer
         */
@@ -59,20 +59,20 @@ namespace Falcor
             \param[in] pUav The UAV to clear
             \param[in] value The clear value
         */
-        void clearUAV(const UnorderedAccessView* pUav, const vec4& value);
+        void clearUAV(const UnorderedAccessView* pUav, const float4& value);
 
         /** Clear an unordered-access view
             \param[in] pUav The UAV to clear
             \param[in] value The clear value
         */
-        void clearUAV(const UnorderedAccessView* pUav, const uvec4& value);
+        void clearUAV(const UnorderedAccessView* pUav, const uint4& value);
 
         /** Clear a structured buffer's UAV counter
             \param[in] pBuffer Structured Buffer containing UAV counter
             \param[in] value Value to clear counter to
         */
         void clearUAVCounter(Buffer::ConstSharedPtrRef& pBuffer, uint32_t value);
-        
+
         /** Submit the command list
         */
         virtual void flush(bool wait = false) override;

@@ -93,7 +93,7 @@ private:
     ResourceFormat mOutputFormat;       // Output format (uses default when set to ResourceFormat::Unknown).
 
     float mExposureCompensation = 0.f;  // Exposure compensation (in F-stops).
-    bool mAutoExposure = true;          // Enable auto exposure.
+    bool mAutoExposure = false;         // Enable auto exposure.
     float mExposureValue = 0.0f;        // Exposure value (EV), only used when auto exposure is disabled.
     float mFilmSpeed = 100.f;           // Film speed (ISO), only used when auto exposure is disabled.
 

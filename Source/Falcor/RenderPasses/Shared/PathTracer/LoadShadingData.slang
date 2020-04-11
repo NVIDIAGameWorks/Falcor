@@ -36,8 +36,8 @@
 
 import Scene.Scene;
 import Scene.ShadingData;
+import Scene.HitInfo;
 import Utils.Math.MathHelpers;
-import RenderPasses.Shared.HitInfo;
 
 #if USE_VBUFFER
 
@@ -101,16 +101,13 @@ bool loadShadingData(uint2 pixel, uint2 frameDim, const Camera camera, out Shadi
     if (hit.decode(gVBuffer[pixel]))
     {
         // Evaluate Falcor's material parameters at the hit point.
-        // Note we pass hitPos-rayDir as "camera position" to avoid zero-length rays causing NaNs
-        // in the view direction. It'd been cleaner if prepareShadingData() took ray dir directly.
         // TODO: Implement texLOD to enable texture filtering in prepareShadingData().
-        float3 barycentrics = float3(1.f - hit.barycentrics.x - hit.barycentrics.y, hit.barycentrics.x, hit.barycentrics.y);
-        VertexData v = gScene.getVertexData(hit.meshInstanceID, hit.primitiveIndex, barycentrics);
+        VertexData v = gScene.getVertexData(hit);
         const uint materialID = gScene.getMaterialID(hit.meshInstanceID);
         sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -rayDir, 0.f);
 
         // Compute tangent space if it is invalid.
-        // This is a workaround for assets having incorrect tangent spaces. See issue #25
+        // This is a workaround for assets having incorrect tangent spaces. See Art issue #25
         if (!(dot(sd.B, sd.B) > 0.f))   // Note: Comparison written so that NaNs trigger
         {
             sd.B = perp_stark(sd.N);

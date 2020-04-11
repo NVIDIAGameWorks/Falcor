@@ -286,13 +286,13 @@ void SVGFPass::allocateFbos(uint2 dim, RenderContext* pRenderContext)
 
 void SVGFPass::clearBuffers(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    pRenderContext->clearFbo(mpPingPongFbo[0].get(), glm::vec4(0), 1.0f, 0, FboAttachmentType::All);
-    pRenderContext->clearFbo(mpPingPongFbo[1].get(), glm::vec4(0), 1.0f, 0, FboAttachmentType::All);
-    pRenderContext->clearFbo(mpLinearZAndNormalFbo.get(), glm::vec4(0), 1.0f, 0, FboAttachmentType::All);
-    pRenderContext->clearFbo(mpFilteredPastFbo.get(), glm::vec4(0), 1.0f, 0, FboAttachmentType::All);
-    pRenderContext->clearFbo(mpCurReprojFbo.get(), glm::vec4(0), 1.0f, 0, FboAttachmentType::All);
-    pRenderContext->clearFbo(mpPrevReprojFbo.get(), glm::vec4(0), 1.0f, 0, FboAttachmentType::All);
-    pRenderContext->clearFbo(mpFilteredIlluminationFbo.get(), glm::vec4(0), 1.0f, 0, FboAttachmentType::All);
+    pRenderContext->clearFbo(mpPingPongFbo[0].get(), float4(0), 1.0f, 0, FboAttachmentType::All);
+    pRenderContext->clearFbo(mpPingPongFbo[1].get(), float4(0), 1.0f, 0, FboAttachmentType::All);
+    pRenderContext->clearFbo(mpLinearZAndNormalFbo.get(), float4(0), 1.0f, 0, FboAttachmentType::All);
+    pRenderContext->clearFbo(mpFilteredPastFbo.get(), float4(0), 1.0f, 0, FboAttachmentType::All);
+    pRenderContext->clearFbo(mpCurReprojFbo.get(), float4(0), 1.0f, 0, FboAttachmentType::All);
+    pRenderContext->clearFbo(mpPrevReprojFbo.get(), float4(0), 1.0f, 0, FboAttachmentType::All);
+    pRenderContext->clearFbo(mpFilteredIlluminationFbo.get(), float4(0), 1.0f, 0, FboAttachmentType::All);
 
     pRenderContext->clearTexture(renderData[kInternalBufferPreviousLinearZAndNormal]->asTexture().get());
     pRenderContext->clearTexture(renderData[kInternalBufferPreviousLighting]->asTexture().get());

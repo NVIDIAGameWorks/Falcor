@@ -30,7 +30,7 @@
 
 namespace Falcor
 {
-    const vec2 DxSamplePattern::kPattern[] = { { 1.0f / 16.0f, -3.0f / 16.0f },
+    const float2 DxSamplePattern::kPattern[] = { { 1.0f / 16.0f, -3.0f / 16.0f },
     { -1.0f / 16.0f, 3.0f / 16.0f },
     { 5.0f / 16.0f, 1.0f / 16.0f },
     { -3.0f / 16.0f, -5.0f / 16.0f },

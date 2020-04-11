@@ -186,7 +186,7 @@ namespace Falcor
         infoOut.info.attachmentCount = (uint32_t)infoOut.attachmentStates.size();
         infoOut.info.pAttachments = infoOut.attachmentStates.data();
 
-        const vec4 blendColor = pState->getBlendFactor();
+        const float4 blendColor = pState->getBlendFactor();
         infoOut.info.blendConstants[0] = blendColor.r;
         infoOut.info.blendConstants[1] = blendColor.g;
         infoOut.info.blendConstants[2] = blendColor.b;
@@ -445,11 +445,11 @@ namespace Falcor
         }
     }
 
-    VkBorderColor getVkBorderColor(const glm::vec4& color)
+    VkBorderColor getVkBorderColor(const float4& color)
     {
-        if (color == vec4(0)) return VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
-        if (color == vec4(0, 0, 0, 1)) return VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
-        if (color == vec4(1)) return VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+        if (color == float4(0)) return VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+        if (color == float4(0, 0, 0, 1)) return VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+        if (color == float4(1)) return VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
         logWarning("Unsupported Vulkan border color. Vulkan only supports transparent black, opaque black or opaque white. Defaulting to opaque black");
         return VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
     }

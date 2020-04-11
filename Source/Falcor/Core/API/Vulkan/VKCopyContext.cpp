@@ -165,7 +165,7 @@ namespace Falcor
     {
     }
 
-    static void initTexAccessParams(const Texture* pTexture, uint32_t subresourceIndex, VkBufferImageCopy& vkCopy, Buffer::SharedPtr& pStaging, const void* pSrcData, const uvec3& offset, const uvec3& size, size_t& dataSize)
+    static void initTexAccessParams(const Texture* pTexture, uint32_t subresourceIndex, VkBufferImageCopy& vkCopy, Buffer::SharedPtr& pStaging, const void* pSrcData, const uint3& offset, const uint3& size, size_t& dataSize)
     {
         assert(isDepthStencilFormat(pTexture->getFormat()) == false); // #VKTODO Nothing complicated here, just that Vulkan doesn't support writing to both depth and stencil, which may be confusing to the user
         uint32_t mipLevel = pTexture->getSubresourceMipLevel(subresourceIndex);
@@ -189,7 +189,7 @@ namespace Falcor
         vkCopy.bufferOffset = pStaging->getGpuAddressOffset();
     }
 
-    static void updateTextureSubresource(CopyContext* pCtx, const Texture* pTexture, uint32_t subresourceIndex, const void* pData, const uvec3& offset, const uvec3& size)
+    static void updateTextureSubresource(CopyContext* pCtx, const Texture* pTexture, uint32_t subresourceIndex, const void* pData, const uint3& offset, const uint3& size)
     {
         VkBufferImageCopy vkCopy;
         Buffer::SharedPtr pStaging;
@@ -202,9 +202,9 @@ namespace Falcor
         vkCmdCopyBufferToImage(pCtx->getLowLevelData()->getCommandList(), pStaging->getApiHandle(), pTexture->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &vkCopy);
     }
 
-    void CopyContext::updateTextureSubresources(const Texture* pTexture, uint32_t firstSubresource, uint32_t subresourceCount, const void* pData, const uvec3& offset, const uvec3& size)
+    void CopyContext::updateTextureSubresources(const Texture* pTexture, uint32_t firstSubresource, uint32_t subresourceCount, const void* pData, const uint3& offset, const uint3& size)
     {
-        bool copyRegion = (offset != uvec3(0)) || (size != uvec3(-1));
+        bool copyRegion = (offset != uint3(0)) || (size != uint3(-1));
         assert(subresourceCount == 1 || (copyRegion == false));
 
         mCommandsPending = true;
@@ -225,7 +225,7 @@ namespace Falcor
         pThis->mpContext = pCtx;
 
         VkBufferImageCopy vkCopy;
-        initTexAccessParams(pTexture, subresourceIndex, vkCopy, pThis->mpBuffer, nullptr, {}, uvec3(-1, -1, -1), pThis->mDataSize);
+        initTexAccessParams(pTexture, subresourceIndex, vkCopy, pThis->mpBuffer, nullptr, {}, uint3(-1, -1, -1), pThis->mDataSize);
 
         // Execute the copy
         pCtx->resourceBarrier(pTexture, Resource::State::CopySource);
@@ -415,7 +415,7 @@ namespace Falcor
         mCommandsPending = true;
     }
 
-    void CopyContext::copySubresourceRegion(const Texture* pDst, uint32_t dstSubresource, const Texture* pSrc, uint32_t srcSubresource, const uvec3& dstOffset, const uvec3& srcOffset, const uvec3& size)
+    void CopyContext::copySubresourceRegion(const Texture* pDst, uint32_t dstSubresource, const Texture* pSrc, uint32_t srcSubresource, const uint3& dstOffset, const uint3& srcOffset, const uint3& size)
     {
         resourceBarrier(pDst, Resource::State::CopyDest);
         resourceBarrier(pSrc, Resource::State::CopySource);

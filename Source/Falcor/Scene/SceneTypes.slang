@@ -27,6 +27,9 @@
  **************************************************************************/
 #pragma once
 #include "Utils/HostDeviceShared.slangh"
+#ifdef HOST_CODE
+#include "glm/packing.hpp"
+#endif
 
 BEGIN_NAMESPACE_FALCOR
 
@@ -45,12 +48,16 @@ enum MeshInstanceFlags
     Flipped = 0x1
 };
 
+// TODO: Pack into 16B by encoding IDs and flags with fewer bits. See #795.
 struct MeshInstanceData
 {
     uint globalMatrixID;
     uint materialID;
     uint meshID;
     uint flags; ///< MeshInstanceFlags
+    uint vbOffset;
+    uint ibOffset;
+    uint pad[2];
 };
 
 struct StaticVertexData
@@ -59,7 +66,71 @@ struct StaticVertexData
     float3 normal;
     float3 bitangent;
     float2 texCrd;
-    float3 prevPosition;
+};
+
+/** Vertex data packed into 32B for aligned access.
+*/
+struct PackedStaticVertexData
+{
+    float3 position;
+    float3 packedNormalBitangent; // 3xfp16 each
+    float2 texCrd;
+
+#ifdef HOST_CODE
+    PackedStaticVertexData(const StaticVertexData& v) { pack(v); }
+    void pack(const StaticVertexData& v)
+    {
+        position = v.position;
+        texCrd = v.texCrd;
+
+        auto asfloat = [](uint32_t v) { return *reinterpret_cast<float*>(&v); };
+        //auto asfloat = [](uint32_t v) { return std::bit_cast<float>(v); }; // TODO: Not yet available in VS2019
+
+        packedNormalBitangent.x = asfloat(glm::packHalf2x16({ v.normal.x, v.normal.y }));
+        packedNormalBitangent.y = asfloat(glm::packHalf2x16({ v.normal.z, v.bitangent.x }));
+        packedNormalBitangent.z = asfloat(glm::packHalf2x16({ v.bitangent.y, v.bitangent.z }));
+    }
+
+#else // !HOST_CODE
+    [mutating] void pack(const StaticVertexData v)
+    {
+        position = v.position;
+        texCrd = v.texCrd;
+
+        uint3 n = f32tof16(v.normal);
+        uint3 b = f32tof16(v.bitangent);
+
+        packedNormalBitangent.x = asfloat((n.y << 16) | n.x);
+        packedNormalBitangent.y = asfloat((b.x << 16) | n.z);
+        packedNormalBitangent.z = asfloat((b.z << 16) | b.y);
+    }
+
+    StaticVertexData unpack()
+    {
+        StaticVertexData v;
+        v.position = position;
+        v.texCrd = texCrd;
+
+        float3 n;
+        n.x = f16tof32(asuint(packedNormalBitangent.x) & 0xffff);
+        n.y = f16tof32(asuint(packedNormalBitangent.x) >> 16);
+        n.z = f16tof32(asuint(packedNormalBitangent.y) & 0xffff);
+        v.normal = normalize(n);
+
+        float3 b;
+        b.x = f16tof32(asuint(packedNormalBitangent.y) >> 16);
+        b.y = f16tof32(asuint(packedNormalBitangent.z) & 0xffff);
+        b.z = f16tof32(asuint(packedNormalBitangent.z) >> 16);
+        v.bitangent = normalize(b);
+
+        return v;
+    }
+#endif
+};
+
+struct PrevVertexData
+{
+    float3 position;
 };
 
 struct DynamicVertexData
@@ -77,6 +148,7 @@ struct VertexData
     float3 bitangentW;      ///< Shading bitangent in world space.
     float2 texC;            ///< Texture coordinate.
     float3 faceNormalW;     ///< Face normal in world space.
+    float  coneTexLODValue; ///< Texture LOD data for cone tracing. This is zero, unless getVertexDataRayCones() is used
 };
 
 END_NAMESPACE_FALCOR

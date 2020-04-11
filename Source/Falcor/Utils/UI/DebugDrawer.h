@@ -48,7 +48,7 @@ namespace Falcor
         static const uint32_t kMaxVertices = 10000;     ///< Default max number of vertices per DebugDrawer instance
         static const uint32_t kPathDetail = 10;         ///< Segments between keyframes
 
-        using Quad = std::array<glm::vec3, 4>;
+        using Quad = std::array<float3, 4>;
 
         /** Create a new object for drawing debug geometry.
             \param[in] maxVertices Maximum number of vertices that will be drawn.
@@ -58,11 +58,11 @@ namespace Falcor
 
         /** Sets the color for following geometry
         */
-        void setColor(const glm::vec3& color) { mCurrentColor = color; }
+        void setColor(const float3& color) { mCurrentColor = color; }
 
         /** Adds a line segment
         */
-        void addLine(const glm::vec3& a, const glm::vec3& b);
+        void addLine(const float3& a, const float3& b);
 
         /** Adds a quad described by four corner points
         */
@@ -94,12 +94,12 @@ namespace Falcor
 
         DebugDrawer(uint32_t maxVertices);
 
-        glm::vec3 mCurrentColor;
+        float3 mCurrentColor;
 
         struct LineVertex
         {
-            glm::vec3 position;
-            glm::vec3 color;
+            float3 position;
+            float3 color;
         };
 
         Vao::SharedPtr mpVao;

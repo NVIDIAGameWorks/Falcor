@@ -51,7 +51,7 @@ namespace Falcor
         */
         static UniquePtr create(Type reductionType, uint32_t readbackLatency, uint32_t width, uint32_t height, uint32_t sampleCount = 1);
 
-        glm::vec4 reduce(RenderContext* pRenderCtx, Texture::SharedPtr pInput);
+        float4 reduce(RenderContext* pRenderCtx, Texture::SharedPtr pInput);
 
     private:
         ParallelReduction(Type reductionType, uint32_t readbackLatency, uint32_t width, uint32_t height, uint32_t sampleCount);

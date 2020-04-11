@@ -49,7 +49,7 @@ namespace Falcor
         /** Return the next two-dimensional sample.
             \return Sample in the range [-0.5, 0.5) in each dimension.
         */
-        virtual glm::vec2 next() = 0;
+        virtual float2 next() = 0;
 
     protected:
         CPUSampleGenerator() = default;

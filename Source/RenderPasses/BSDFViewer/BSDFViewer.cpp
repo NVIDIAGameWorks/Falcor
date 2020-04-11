@@ -72,6 +72,8 @@ BSDFViewer::BSDFViewer(const Dictionary& dict)
 
     // Create readback buffer.
     mPixelDataBuffer = Buffer::createStructured(mpViewerPass->getProgram().get(), "gPixelData", 1u, ResourceBindFlags::UnorderedAccess);
+
+    mpPixelDebug = PixelDebug::create();
 }
 
 Dictionary BSDFViewer::getScriptingDictionary()
@@ -122,13 +124,11 @@ void BSDFViewer::setScene(RenderContext* pRenderContext, const Scene::SharedPtr&
         mpViewerPass["gScene"] = mpScene->getParameterBlock();
 
         // Load and bind environment map.
-        // We're getting the file name from the scene's LightProbe because that was used in the fscene files.
-        // TODO: Switch to use Scene::getEnvironmentMap() when the assets have been updated.
-        auto pLightProbe = mpScene->getLightProbe();
-        if (pLightProbe != nullptr)
+        Texture::SharedPtr pEnvMap = mpScene->getEnvironmentMap();
+        if (pEnvMap != nullptr)
         {
-            std::string fn = pLightProbe->getOrigTexture()->getSourceFilename();
-            loadEnvMap(pRenderContext, fn);
+            std::string filename = pEnvMap->getSourceFilename();
+            loadEnvMap(pRenderContext, filename);
         }
         if (!mpEnvProbe) mParams.useEnvMap = false;
 
@@ -172,8 +172,13 @@ void BSDFViewer::execute(RenderContext* pRenderContext, const RenderData& render
     mpViewerPass["gPixelData"] = mPixelDataBuffer;
     mpViewerPass["PerFrameCB"]["gParams"].setBlob(mParams);
 
+    mpPixelDebug->beginFrame(pRenderContext, renderData.getDefaultTextureDims());
+    mpPixelDebug->prepareProgram(mpViewerPass->getProgram(), mpViewerPass->getRootVar());
+
     // Execute pass.
-    mpViewerPass->execute(pRenderContext, uvec3(mParams.frameDim, 1));
+    mpViewerPass->execute(pRenderContext, uint3(mParams.frameDim, 1));
+
+    mpPixelDebug->endFrame(pRenderContext);
 
     mPixelDataValid = false;
     if (mParams.readback)
@@ -260,7 +265,7 @@ void BSDFViewer::renderUI(Gui::Widgets& widget)
 
         if (mParams.sliceViewer)
         {
-            bsdfGroup.dummy("#space1", vec2(1, 8));
+            bsdfGroup.dummy("#space1", float2(1, 8));
             bsdfGroup.text("Slice viewer settings:");
 
             dirty |= bsdfGroup.checkbox("Enable diffuse", mParams.enableDiffuse);
@@ -315,12 +320,12 @@ void BSDFViewer::renderUI(Gui::Widgets& widget)
             auto filters = Bitmap::getFileDialogFilters();
             filters.push_back({ "dds", "DDS textures" });
 
-            std::string fn;
-            if (openFileDialog(filters, fn))
+            std::string filename;
+            if (openFileDialog(filters, filename))
             {
                 // TODO: RenderContext* should maybe be a parameter to renderUI()?
                 auto pRenderContext = gpFramework->getRenderContext();
-                if (loadEnvMap(pRenderContext, fn))
+                if (loadEnvMap(pRenderContext, filename))
                 {
                     mParams.useDirectionalLight = false;
                     mParams.useEnvMap = true;
@@ -381,7 +386,15 @@ void BSDFViewer::renderUI(Gui::Widgets& widget)
         pixelGroup.release();
     }
 
-    //widget.dummy("#space3", vec2(1, 16));
+    auto loggingGroup = Gui::Group(widget, "Logging", false);
+    if (loggingGroup.open())
+    {
+        mpPixelDebug->renderUI(widget);
+
+        loggingGroup.release();
+    }
+
+    //widget.dummy("#space3", float2(1, 16));
     //dirty |= widget.checkbox("Debug switch", mParams.debugSwitch0);
 
     if (dirty)
@@ -394,9 +407,10 @@ bool BSDFViewer::onMouseEvent(const MouseEvent& mouseEvent)
 {
     if (mouseEvent.type == MouseEvent::Type::LeftButtonDown)
     {
-        mParams.selectedPixel = glm::clamp((glm::ivec2)(mouseEvent.pos * (glm::vec2)mParams.frameDim), { 0,0 }, (glm::ivec2)mParams.frameDim - 1);
+        mParams.selectedPixel = glm::clamp((int2)(mouseEvent.pos * (float2)mParams.frameDim), { 0,0 }, (int2)mParams.frameDim - 1);
     }
-    return false;
+
+    return mpPixelDebug->onMouseEvent(mouseEvent);
 }
 
 bool BSDFViewer::onKeyEvent(const KeyboardEvent& keyEvent)

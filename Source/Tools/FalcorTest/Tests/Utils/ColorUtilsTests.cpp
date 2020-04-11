@@ -36,9 +36,9 @@ namespace Falcor
     {
         const float kMaxError = 1e-5f;
 
-        auto maxAbsDiff = [](glm::vec3 a, glm::vec3 b) -> float
+        auto maxAbsDiff = [](float3 a, float3 b) -> float
         {
-            glm::vec3 d = abs(a - b);
+            float3 d = abs(a - b);
             return std::max(std::max(d.x, d.y), d.z);
         };
     }
@@ -58,28 +58,28 @@ namespace Falcor
         // Run test code that transforms random colors between different spaces.
         for (uint32_t i = 0; i < n; i++)
         {
-            const glm::vec3 c = { u(), u(), u() };
+            const float3 c = { u(), u(), u() };
 
             // Test RGB<->XYZ by transforming random colors back and forth.
-            glm::vec3 res1 = XYZtoRGB_Rec709(RGBtoXYZ_Rec709(c));
+            float3 res1 = XYZtoRGB_Rec709(RGBtoXYZ_Rec709(c));
             EXPECT_LE(maxAbsDiff(res1, c), kMaxError);
 
             // Test XYZ<->LMS using the CAT02 transform.
-            glm::vec3 res2 = LMS_CAT02 * c;
+            float3 res2 = LMS_CAT02 * c;
             EXPECT_LE(maxAbsDiff(res2, c), kMaxError);
 
-            // Test XYZ<->LMS using the Bradford transform 
-            glm::vec3 res3 = LMS_Bradford * c;
+            // Test XYZ<->LMS using the Bradford transform
+            float3 res3 = LMS_Bradford * c;
             EXPECT_LE(maxAbsDiff(res3, c), kMaxError);
         }
     }
 
     CPU_TEST(WhiteBalance)
     {
-        const glm::vec3 white = { 1, 1, 1 };
+        const float3 white = { 1, 1, 1 };
 
         // The white point should be 6500K. Verify that we get pure white back.
-        glm::vec3 wbWhite = calculateWhiteBalanceTransformRGB_Rec709(6500.f) * white;
+        float3 wbWhite = calculateWhiteBalanceTransformRGB_Rec709(6500.f) * white;
         EXPECT_LE(maxAbsDiff(wbWhite, white), kMaxError);
 
         // Test white balance transform at a few different color temperatures.
@@ -89,9 +89,9 @@ namespace Falcor
         // - Cloudy (7000K) => yellowish tint (r > g > b)
         // - Sunny  (5500K) => blueish tint (r < g < b)
         // - Indoor (3000K) => stronger bluish tint (r < g < b)
-        glm::vec3 wbCloudy = calculateWhiteBalanceTransformRGB_Rec709(7000.f) * white;
-        glm::vec3 wbSunny = calculateWhiteBalanceTransformRGB_Rec709(5500.f) * white;
-        glm::vec3 wbIndoor = calculateWhiteBalanceTransformRGB_Rec709(3000.f) * white;
+        float3 wbCloudy = calculateWhiteBalanceTransformRGB_Rec709(7000.f) * white;
+        float3 wbSunny = calculateWhiteBalanceTransformRGB_Rec709(5500.f) * white;
+        float3 wbIndoor = calculateWhiteBalanceTransformRGB_Rec709(3000.f) * white;
 
         EXPECT_GE(wbCloudy.r, wbCloudy.g);
         EXPECT_GE(wbCloudy.g, wbCloudy.b);

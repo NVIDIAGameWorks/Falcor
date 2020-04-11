@@ -154,7 +154,7 @@ void ForwardLightingPass::initFbo(RenderContext* pContext, const RenderData& ren
     for (uint32_t i = 1; i < 3; i++)
     {
         const auto& pRtv = mpFbo->getRenderTargetView(i).get();
-        if (pRtv->getResource() != nullptr) pContext->clearRtv(pRtv, vec4(0));
+        if (pRtv->getResource() != nullptr) pContext->clearRtv(pRtv, float4(0));
     }
 
     // TODO Matt (not really matt, just need to fix that since if depth is not bound the pass crashes
@@ -168,7 +168,7 @@ void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& ren
 
     if (mpScene)
     {
-        mpVars["PerFrameCB"]["gRenderTargetDim"] = vec2(mpFbo->getWidth(), mpFbo->getHeight());
+        mpVars["PerFrameCB"]["gRenderTargetDim"] = float2(mpFbo->getWidth(), mpFbo->getHeight());
         mpVars->setTexture(kVisBuffer, renderData[kVisBuffer]->asTexture());
 
         mpState->setFbo(mpFbo);

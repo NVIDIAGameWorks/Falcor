@@ -37,27 +37,27 @@
 RWTexture2D<uint> gStatsRayCount;            // Per-pixel ray count stats.
 RWTexture2D<uint> gStatsPathLength;          // Per-pixel path length.
 
-#if _PIXEL_STATS_ENABLED
+#ifdef _PIXEL_STATS_ENABLED
 static uint2 gPixelStatsPixel;
 #endif
 
 void logSetPixel(uint2 pixel)
 {
-#if _PIXEL_STATS_ENABLED
+#ifdef _PIXEL_STATS_ENABLED
     gPixelStatsPixel = pixel;
 #endif
 }
 
 void logTraceRay()
 {
-#if _PIXEL_STATS_ENABLED
+#ifdef _PIXEL_STATS_ENABLED
     InterlockedAdd(gStatsRayCount[gPixelStatsPixel], 1);
 #endif
 }
 
 void logPathLength(uint pathLength)
 {
-#if _PIXEL_STATS_ENABLED
+#ifdef _PIXEL_STATS_ENABLED
     gStatsPathLength[gPixelStatsPixel] = pathLength;
 #endif
 }

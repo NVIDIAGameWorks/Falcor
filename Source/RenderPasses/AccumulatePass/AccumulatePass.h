@@ -76,7 +76,7 @@ protected:
     ComputeState::SharedPtr     mpState;
 
     uint32_t                    mFrameCount = 0;                ///< Number of accumulated frames. This is reset upon changes.
-    glm::uvec2                  mFrameDim = { 0, 0 };           ///< Current frame dimension in pixels.
+    uint2                       mFrameDim = { 0, 0 };           ///< Current frame dimension in pixels.
     Texture::SharedPtr          mpLastFrameSum;                 ///< Last frame running sum. Used in Single and SingleKahan mode.
     Texture::SharedPtr          mpLastFrameCorr;                ///< Last frame running compensation term. Used in SingleKahan mode.
     Texture::SharedPtr          mpLastFrameSumLo;               ///< Last frame running sum (lo bits). Used in Double mode.

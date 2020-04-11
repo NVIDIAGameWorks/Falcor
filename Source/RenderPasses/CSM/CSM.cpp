@@ -215,35 +215,35 @@ protected:
 };
 #endif
 
-static void createShadowMatrix(const DirectionalLight* pLight, const glm::vec3& center, float radius, glm::mat4& shadowVP)
+static void createShadowMatrix(const DirectionalLight* pLight, const float3& center, float radius, glm::mat4& shadowVP)
 {
-    glm::mat4 view = glm::lookAt(center, center + pLight->getWorldDirection(), glm::vec3(0, 1, 0));
+    glm::mat4 view = glm::lookAt(center, center + pLight->getWorldDirection(), float3(0, 1, 0));
     glm::mat4 proj = glm::ortho(-radius, radius, -radius, radius, -radius, radius);
 
     shadowVP = proj * view;
 }
 
-static void createShadowMatrix(const PointLight* pLight, const glm::vec3& center, float radius, float fboAspectRatio, glm::mat4& shadowVP)
+static void createShadowMatrix(const PointLight* pLight, const float3& center, float radius, float fboAspectRatio, glm::mat4& shadowVP)
 {
-    const glm::vec3 lightPos = pLight->getWorldPosition();
-    const glm::vec3 lookat = pLight->getWorldDirection() + lightPos;
-    glm::vec3 up(0, 1, 0);
+    const float3 lightPos = pLight->getWorldPosition();
+    const float3 lookat = pLight->getWorldDirection() + lightPos;
+    float3 up(0, 1, 0);
     if (abs(glm::dot(up, pLight->getWorldDirection())) >= 0.95f)
     {
-        up = glm::vec3(1, 0, 0);
+        up = float3(1, 0, 0);
     }
 
     glm::mat4 view = glm::lookAt(lightPos, lookat, up);
     float distFromCenter = glm::length(lightPos - center);
-    float nearZ = max(0.1f, distFromCenter - radius);
-    float maxZ = min(radius * 2, distFromCenter + radius);
+    float nearZ = std::max(0.1f, distFromCenter - radius);
+    float maxZ = std::min(radius * 2, distFromCenter + radius);
     float angle = pLight->getOpeningAngle() * 2;
     glm::mat4 proj = glm::perspective(angle, fboAspectRatio, nearZ, maxZ);
 
     shadowVP = proj * view;
 }
 
-static void createShadowMatrix(const Light* pLight, const glm::vec3& center, float radius, float fboAspectRatio, glm::mat4& shadowVP)
+static void createShadowMatrix(const Light* pLight, const float3& center, float radius, float fboAspectRatio, glm::mat4& shadowVP)
 {
     switch (pLight->getType())
     {
@@ -340,7 +340,7 @@ CSM::CSM()
     mpLightCamera = Camera::create();
 
     Sampler::Desc samplerDesc;
-    samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Border, Sampler::AddressMode::Border, Sampler::AddressMode::Border).setBorderColor(glm::vec4(1.0f));
+    samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Border, Sampler::AddressMode::Border, Sampler::AddressMode::Border).setBorderColor(float4(1.0f));
     samplerDesc.setLodParams(0.f, 0.f, 0.f);
     samplerDesc.setComparisonMode(Sampler::ComparisonMode::LessEqual);
     mShadowPass.pPointCmpSampler = Sampler::create(samplerDesc);
@@ -358,8 +358,8 @@ CSM::SharedPtr CSM::create(RenderContext* pRenderContext, const Dictionary& dict
     auto pCSM = SharedPtr(new CSM());
     for (const auto& v : dict)
     {
-        if (v.key() == kMapSize) pCSM->mMapSize = (uvec2)v.val();
-        else if (v.key() == kVisBufferSize) pCSM->mVisibilityPassData.screenDim = (uvec2)v.val();
+        if (v.key() == kMapSize) pCSM->mMapSize = (uint2)v.val();
+        else if (v.key() == kVisBufferSize) pCSM->mVisibilityPassData.screenDim = (uint2)v.val();
         else if (v.key() == kCascadeCount) pCSM->setCascadeCount(v.val());
         else if (v.key() == kVisMapBitsPerChannel) pCSM->setVisibilityBufferBitsPerChannel(v.val());
         else if (v.key() == kSdsmReadbackLatency) pCSM->setSdsmReadbackLatency(v.val());
@@ -422,27 +422,27 @@ void CSM::compile(RenderContext* pContext, const CompileData& compileData)
     mVisibilityPass.pFbo->attachColorTarget(nullptr, 0);
 }
 
-void camClipSpaceToWorldSpace(const Camera* pCamera, glm::vec3 viewFrustum[8], glm::vec3& center, float& radius)
+void camClipSpaceToWorldSpace(const Camera* pCamera, float3 viewFrustum[8], float3& center, float& radius)
 {
-    glm::vec3 clipSpace[8] =
+    float3 clipSpace[8] =
     {
-        glm::vec3(-1.0f, 1.0f, 0),
-        glm::vec3(1.0f, 1.0f, 0),
-        glm::vec3(1.0f, -1.0f, 0),
-        glm::vec3(-1.0f, -1.0f, 0),
-        glm::vec3(-1.0f, 1.0f, 1.0f),
-        glm::vec3(1.0f, 1.0f, 1.0f),
-        glm::vec3(1.0f, -1.0f, 1.0f),
-        glm::vec3(-1.0f, -1.0f, 1.0f),
+        float3(-1.0f, 1.0f, 0),
+        float3(1.0f, 1.0f, 0),
+        float3(1.0f, -1.0f, 0),
+        float3(-1.0f, -1.0f, 0),
+        float3(-1.0f, 1.0f, 1.0f),
+        float3(1.0f, 1.0f, 1.0f),
+        float3(1.0f, -1.0f, 1.0f),
+        float3(-1.0f, -1.0f, 1.0f),
     };
 
     glm::mat4 invViewProj = pCamera->getInvViewProjMatrix();
-    center = glm::vec3(0, 0, 0);
+    center = float3(0, 0, 0);
 
     for (uint32_t i = 0; i < 8; i++)
     {
-        glm::vec4 crd = invViewProj * glm::vec4(clipSpace[i], 1);
-        viewFrustum[i] = glm::vec3(crd) / crd.w;
+        float4 crd = invViewProj * float4(clipSpace[i], 1);
+        viewFrustum[i] = float3(crd) / crd.w;
         center += viewFrustum[i];
     }
 
@@ -453,11 +453,11 @@ void camClipSpaceToWorldSpace(const Camera* pCamera, glm::vec3 viewFrustum[8], g
     for (uint32_t i = 0; i < 8; i++)
     {
         float d = glm::length(center - viewFrustum[i]);
-        radius = max(d, radius);
+        radius = std::max(d, radius);
     }
 }
 
-forceinline float calcPssmPartitionEnd(float nearPlane, float camDepthRange, const glm::vec2& distanceRange, float linearBlend, uint32_t cascade, uint32_t cascadeCount)
+forceinline float calcPssmPartitionEnd(float nearPlane, float camDepthRange, const float2& distanceRange, float linearBlend, uint32_t cascade, uint32_t cascadeCount)
 {
     // Convert to camera space
     float minDepth = nearPlane + distanceRange.x * camDepthRange;
@@ -477,21 +477,21 @@ forceinline float calcPssmPartitionEnd(float nearPlane, float camDepthRange, con
     return distance;
 }
 
-void getCascadeCropParams(const glm::vec3 crd[8], const glm::mat4& lightVP, glm::vec4& scale, glm::vec4& offset)
+void getCascadeCropParams(const float3 crd[8], const glm::mat4& lightVP, float4& scale, float4& offset)
 {
     // Transform the frustum into light clip-space and calculate min-max
-    glm::vec4 maxCS(-1, -1, 0, 1);
-    glm::vec4 minCS(1, 1, 1, 1);
+    float4 maxCS(-1, -1, 0, 1);
+    float4 minCS(1, 1, 1, 1);
     for (uint32_t i = 0; i < 8; i++)
     {
-        glm::vec4 c = lightVP * glm::vec4(crd[i], 1.0f);
+        float4 c = lightVP * float4(crd[i], 1.0f);
         c /= c.w;
-        maxCS = max(maxCS, c);
-        minCS = min(minCS, c);
+        maxCS = glm::max(maxCS, c);
+        minCS = glm::min(minCS, c);
     }
 
-    glm::vec4 delta = maxCS - minCS;
-    scale = glm::vec4(2, 2, 1, 1) / delta;
+    float4 delta = maxCS - minCS;
+    scale = float4(2, 2, 1, 1) / delta;
 
     offset.x = -0.5f * (maxCS.x + minCS.x) * scale.x;
     offset.y = -0.5f * (maxCS.y + minCS.y) * scale.y;
@@ -501,12 +501,12 @@ void getCascadeCropParams(const glm::vec3 crd[8], const glm::mat4& lightVP, glm:
     offset.w = 0;
 }
 
-void CSM::partitionCascades(const Camera* pCamera, const glm::vec2& distanceRange)
+void CSM::partitionCascades(const Camera* pCamera, const float2& distanceRange)
 {
     struct
     {
-        glm::vec3 crd[8];
-        glm::vec3 center;
+        float3 crd[8];
+        float3 center;
         float radius;
     } camFrustum;
 
@@ -517,8 +517,8 @@ void CSM::partitionCascades(const Camera* pCamera, const glm::vec2& distanceRang
 
     if (mCsmData.cascadeCount == 1)
     {
-        mCsmData.cascadeScale[0] = glm::vec4(1);
-        mCsmData.cascadeOffset[0] = glm::vec4(0);
+        mCsmData.cascadeScale[0] = float4(1);
+        mCsmData.cascadeOffset[0] = float4(0);
         mCsmData.cascadeRange[0].x = 0;
         mCsmData.cascadeRange[0].y = 1;
         return;
@@ -555,8 +555,8 @@ void CSM::partitionCascades(const Camera* pCamera, const glm::vec2& distanceRang
         nextCascadeStart -= blendCorrection;
 
         // Calculate the cascade distance in camera-clip space(Where the clip-space range is [0, farPlane])
-        float camClipSpaceCascadeStart = lerp(nearPlane, farPlane, cascadeStart);
-        float camClipSpaceCascadeEnd = lerp(nearPlane, farPlane, cascadeEnd);
+        float camClipSpaceCascadeStart = glm::lerp(nearPlane, farPlane, cascadeStart);
+        float camClipSpaceCascadeEnd = glm::lerp(nearPlane, farPlane, cascadeEnd);
 
         //Convert to ndc space [0, 1]
         float projTermA = farPlane / (nearPlane - farPlane);
@@ -567,12 +567,12 @@ void CSM::partitionCascades(const Camera* pCamera, const glm::vec2& distanceRang
         mCsmData.cascadeRange[c].y = ndcSpaceCascadeEnd - ndcSpaceCascadeStart;
 
         // Calculate the cascade frustum
-        glm::vec3 cascadeFrust[8];
+        float3 cascadeFrust[8];
         for (uint32_t i = 0; i < 4; i++)
         {
-            glm::vec3 edge = camFrustum.crd[i + 4] - camFrustum.crd[i];
-            glm::vec3 start = edge * cascadeStart;
-            glm::vec3 end = edge * cascadeEnd;
+            float3 edge = camFrustum.crd[i + 4] - camFrustum.crd[i];
+            float3 start = edge * cascadeStart;
+            float3 end = edge * cascadeEnd;
             cascadeFrust[i] = camFrustum.crd[i] + start;
             cascadeFrust[i + 4] = camFrustum.crd[i] + end;
         }
@@ -633,7 +633,7 @@ void CSM::executeDepthPass(RenderContext* pCtx, const Camera* pCamera)
         mDepthPass.pState->setFbo(Fbo::create2D(width, height, desc));
     }
 
-    pCtx->clearFbo(pFbo.get(), glm::vec4(), 1, 0, FboAttachmentType::Depth);
+    pCtx->clearFbo(pFbo.get(), float4(), 1, 0, FboAttachmentType::Depth);
     //        mpCsmSceneRenderer->renderScene(pCtx, mDepthPass.pState.get(), mDepthPass.pVars.get(), pCamera);
 }
 
@@ -656,25 +656,25 @@ void CSM::reduceDepthSdsmMinMax(RenderContext* pRenderCtx, const Camera* pCamera
     }
 
     createSdsmData(pDepthBuffer);
-    vec2 distanceRange = glm::vec2(mSdsmData.minMaxReduction->reduce(pRenderCtx, pDepthBuffer));
+    float2 distanceRange = float2(mSdsmData.minMaxReduction->reduce(pRenderCtx, pDepthBuffer));
 
     // Convert to linear
     glm::mat4 camProj = pCamera->getProjMatrix();
     distanceRange = camProj[2][2] - distanceRange * camProj[2][3];
     distanceRange = camProj[3][2] / distanceRange;
     distanceRange = (distanceRange - pCamera->getNearPlane()) / (pCamera->getFarPlane() - pCamera->getNearPlane());
-    distanceRange = glm::clamp(distanceRange, glm::vec2(0), glm::vec2(1));
+    distanceRange = glm::clamp(distanceRange, float2(0), float2(1));
     mSdsmData.sdsmResult = distanceRange;
 
     if (mControls.stabilizeCascades)
     {
         // Ignore minor changes that can result in swimming
         distanceRange = round(distanceRange * 16.0f) / 16.0f;
-        distanceRange.y = max(distanceRange.y, 0.005f);
+        distanceRange.y = std::max(distanceRange.y, 0.005f);
     }
 }
 
-vec2 CSM::calcDistanceRange(RenderContext* pRenderCtx, const Camera* pCamera, const Texture::SharedPtr& pDepthBuffer)
+float2 CSM::calcDistanceRange(RenderContext* pRenderCtx, const Camera* pCamera, const Texture::SharedPtr& pDepthBuffer)
 {
     if (mControls.useMinMaxSdsm)
     {
@@ -742,11 +742,11 @@ void CSM::execute(RenderContext* pContext, const RenderData& renderData)
     const auto pCamera = mpScene->getCamera().get();
     //const auto pCamera = mpCsmSceneRenderer->getScene()->getActiveCamera().get();
 
-    const glm::vec4 clearColor(0);
+    const float4 clearColor(0);
     pContext->clearFbo(mShadowPass.pFbo.get(), clearColor, 1, 0, FboAttachmentType::All);
 
     // Calc the bounds
-    glm::vec2 distanceRange = calcDistanceRange(pContext, pCamera, pDepth);
+    float2 distanceRange = calcDistanceRange(pContext, pCamera, pDepth);
 
     GraphicsState::Viewport VP;
     VP.originX = 0;
@@ -771,7 +771,7 @@ void CSM::execute(RenderContext* pContext, const RenderData& renderData)
     }
 
     // Clear visibility buffer
-    pContext->clearFbo(mVisibilityPass.pFbo.get(), glm::vec4(1, 0, 0, 0), 1, 0, FboAttachmentType::All);
+    pContext->clearFbo(mVisibilityPass.pFbo.get(), float4(1, 0, 0, 0), 1, 0, FboAttachmentType::All);
 
     // Update Vars
     mVisibilityPass.pPass["gDepth"] = pDepth ? pDepth : mDepthPass.pState->getFbo()->getDepthStencilTexture();
@@ -780,7 +780,7 @@ void CSM::execute(RenderContext* pContext, const RenderData& renderData)
     auto visibilityVars = mVisibilityPass.pPass->getVars().getRootVar();
     setDataIntoVars(visibilityVars, visibilityVars["PerFrameCB"]["gCsmData"]);
     mVisibilityPassData.camInvViewProj = pCamera->getInvViewProjMatrix();
-    mVisibilityPassData.screenDim = glm::uvec2(mVisibilityPass.pFbo->getWidth(), mVisibilityPass.pFbo->getHeight());
+    mVisibilityPassData.screenDim = uint2(mVisibilityPass.pFbo->getWidth(), mVisibilityPass.pFbo->getHeight());
     mVisibilityPass.pPass["PerFrameCB"][mVisibilityPass.mPassDataOffset].setBlob(mVisibilityPassData);
 
     // Render visibility buffer
@@ -841,7 +841,7 @@ void CSM::renderUI(Gui::Widgets& widget)
     }
 
     // Shadow-map size
-    ivec2 smDims = ivec2(mShadowPass.pFbo->getWidth(), mShadowPass.pFbo->getHeight());
+    int2 smDims = int2(mShadowPass.pFbo->getWidth(), mShadowPass.pFbo->getHeight());
     if (widget.var("Shadow-Map Size", smDims, 0, 8192)) resizeShadowMap(smDims);
 
     // Visibility buffer bits-per channel
@@ -910,7 +910,7 @@ void CSM::renderUI(Gui::Widgets& widget)
 
     if ((CsmFilter)mCsmData.filterMode == CsmFilter::FixedPcf || (CsmFilter)mCsmData.filterMode == CsmFilter::StochasticPcf)
     {
-        i32 kernelWidth = mCsmData.pcfKernelWidth;
+        int32_t kernelWidth = mCsmData.pcfKernelWidth;
         if (widget.var("Kernel Width", kernelWidth, 1, 15, 2))
         {
             setPcfKernelWidth(kernelWidth);
@@ -1019,7 +1019,7 @@ void CSM::setVisibilityBufferBitsPerChannel(uint32_t bitsPerChannel)
     mPassChangedCB();
 }
 
-void CSM::resizeShadowMap(const uvec2& smDims)
+void CSM::resizeShadowMap(const uint2& smDims)
 {
     mMapSize = smDims;
     createShadowPassResources();

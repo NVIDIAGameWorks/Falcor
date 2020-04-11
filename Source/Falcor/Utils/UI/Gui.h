@@ -118,15 +118,15 @@ namespace Falcor
                 \param[in] size. size in pixels of the item.
                 \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
             */
-            void dummy(const char label[], const glm::vec2& size, bool sameLine = false);
+            void dummy(const char label[], const float2& size, bool sameLine = false);
 
             /** Display rectangle with specified color
                 \param[in] size size in pixels of rectangle
-                \param[in] color Optional. color as an rgba vec4
+                \param[in] color Optional. color as an rgba float4
                 \param[in] filled Optional. If set to true, rectangle will be filled
                 \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
             */
-            void rect(const glm::vec2& size, const glm::vec4& color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), bool filled = false, bool sameLine = false);
+            void rect(const float2& size, const float4& color = float4(1.0f, 1.0f, 1.0f, 1.0f), bool filled = false, bool sameLine = false);
 
             /** Adds a dropdown menu. This will update a user variable directly, so the user has to keep track of that for changes.
                 If you want notifications whenever the select option changed, use Gui#addDropdownWithCallback().
@@ -156,7 +156,7 @@ namespace Falcor
                 \param[in] direction A reference for the direction variable
                 \return true if the value changed, otherwise false
             */
-            bool direction(const char label[], glm::vec3& direction);
+            bool direction(const char label[], float3& direction);
 
             /** Adds a UI widget for multiple checkboxes.
                 \param[in] label The name of the widget.
@@ -223,7 +223,7 @@ namespace Falcor
                 \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
                 \return true if the value changed, otherwise false
             */
-            bool rgbColor(const char label[], glm::vec3& var, bool sameLine = false);
+            bool rgbColor(const char label[], float3& var, bool sameLine = false);
 
             /** Adds an RGBA color UI widget.
                 \param[in] label The name of the widget.
@@ -231,7 +231,7 @@ namespace Falcor
                 \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
                 \return true if the value changed, otherwise false
             */
-            bool rgbaColor(const char label[], glm::vec4& var, bool sameLine = false);
+            bool rgbaColor(const char label[], float4& var, bool sameLine = false);
 
             // Images
             /** Display image within imgui
@@ -240,8 +240,8 @@ namespace Falcor
                 \param[in] size. Size in pixels of the image to draw. 0 means fit to window
                 \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
             */
-            void image(const char label[], const Texture::SharedPtr& pTex, glm::vec2 size = vec2(0), bool maintainRatio = true, bool sameLine = false);
-            bool imageButton(const char label[], const Texture::SharedPtr& pTex, glm::vec2 size, bool maintainRatio = true, bool sameLine = false);
+            void image(const char label[], const Texture::SharedPtr& pTex, float2 size = float2(0), bool maintainRatio = true, bool sameLine = false);
+            bool imageButton(const char label[], const Texture::SharedPtr& pTex, float2 size, bool maintainRatio = true, bool sameLine = false);
 
             // Scalars
             /** Adds a UI element for setting scalar values.
@@ -424,8 +424,8 @@ namespace Falcor
                 \param[in] pos position in pixels of the window
                 \param[in] flags Window flags to apply
             */
-            Window(Gui* pGui, const char* name, uvec2 size = { 0, 0 }, uvec2 pos = { 0, 0 }, Gui::WindowFlags flags = Gui::WindowFlags::Default);
-            Window(Gui* pGui, const char* name, bool& open, uvec2 size = { 0, 0 }, uvec2 pos = { 0, 0 }, Gui::WindowFlags flags = Gui::WindowFlags::Default);
+            Window(Gui* pGui, const char* name, uint2 size = { 0, 0 }, uint2 pos = { 0, 0 }, Gui::WindowFlags flags = Gui::WindowFlags::Default);
+            Window(Gui* pGui, const char* name, bool& open, uint2 size = { 0, 0 }, uint2 pos = { 0, 0 }, Gui::WindowFlags flags = Gui::WindowFlags::Default);
 
             /** Create a new window
                 \param[in] w a reference to a Widgets object
@@ -433,8 +433,8 @@ namespace Falcor
                 \param[in] pos position in pixels of the window
                 \param[in] flags Window flags to apply
             */
-            Window(const Widgets& w, const char* name, uvec2 size = { 0, 0 }, uvec2 pos = { 0, 0 }, Gui::WindowFlags flags = Gui::WindowFlags::Default) : Window(w.gui(), name, size, pos, flags) {}
-            Window(const Widgets& w, const char* name, bool& open, uvec2 size = { 0, 0 }, uvec2 pos = { 0, 0 }, Gui::WindowFlags flags = Gui::WindowFlags::Default) : Window(w.gui(), name, open, size, pos, flags) {}
+            Window(const Widgets& w, const char* name, uint2 size = { 0, 0 }, uint2 pos = { 0, 0 }, Gui::WindowFlags flags = Gui::WindowFlags::Default) : Window(w.gui(), name, size, pos, flags) {}
+            Window(const Widgets& w, const char* name, bool& open, uint2 size = { 0, 0 }, uint2 pos = { 0, 0 }, Gui::WindowFlags flags = Gui::WindowFlags::Default) : Window(w.gui(), name, open, size, pos, flags) {}
 
             ~Window();
 
@@ -491,7 +491,7 @@ namespace Falcor
 
         ~Gui();
 
-        static glm::vec4 pickUniqueColor(const std::string& key);
+        static float4 pickUniqueColor(const std::string& key);
 
         /** Add a font
         */

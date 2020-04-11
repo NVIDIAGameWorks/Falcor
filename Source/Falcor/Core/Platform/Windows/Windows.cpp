@@ -30,6 +30,7 @@
 #include <Psapi.h>
 #include <commdlg.h>
 #include <ShlObj_core.h>
+#include <comutil.h>
 
 // Always run in Optimus mode on laptops
 extern "C"
@@ -224,6 +225,18 @@ namespace Falcor
         CHAR curDir[MAX_PATH];
         GetCurrentDirectoryA(MAX_PATH, curDir);
         return std::string(curDir);
+    }
+
+    const std::string getAppDataDirectory()
+    {
+        PWSTR wpath;
+        HRESULT result = SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, NULL, &wpath);
+        if (SUCCEEDED(result))
+        {
+            _bstr_t path(wpath);
+            return std::string((char*) path);
+        }
+        return std::string();
     }
 
     const std::string& getExecutableName()

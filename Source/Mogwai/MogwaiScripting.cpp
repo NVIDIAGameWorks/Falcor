@@ -31,19 +31,19 @@ namespace Mogwai
 {
     namespace
     {
-        constexpr char kScene[] = "s";
-
         const std::string kRunScript = "script";
         const std::string kLoadScene = "loadScene";
-        const std::string kSetEnvMap = "envMap";
         const std::string kSaveConfig = "saveConfig";
         const std::string kAddGraph = "addGraph";
         const std::string kRemoveGraph = "removeGraph";
-        const std::string kToggleUI = "ui";
+        const std::string kGetGraph = "getGraph";
+        const std::string kUI = "ui";
         const std::string kResizeSwapChain = "resizeSwapChain";
         const std::string kActiveGraph = "activeGraph";
-        const std::string kGetGraph = "graph";
-        const std::string kGetScene = "scene";
+        const std::string kScene = "scene";
+
+        const std::string kRendererVar = "m";
+        const std::string kTimeVar = "t";
 
         template<typename T>
         std::string prepareHelpMessage(const T& g)
@@ -70,50 +70,49 @@ namespace Mogwai
             SampleConfig c = gpFramework->getConfig();
             s += "# Window Configuration\n";
             s += Scripting::makeMemberFunc(kRendererVar, kResizeSwapChain, c.windowDesc.width, c.windowDesc.height);
-            s += Scripting::makeMemberFunc(kRendererVar, kToggleUI, c.showUI);
+            s += Scripting::makeSetProperty(kRendererVar, kUI, c.showUI);
             return s;
         }
     }
 
     void Renderer::dumpConfig(std::string filename) const
     {
-        if(filename.empty())
+        if (filename.empty())
         {
             if (!saveFileDialog(Scripting::kFileExtensionFilters, filename)) return;
         }
 
         std::string s;
 
+        if (!mGraphs.empty())
+        {
+            s += "# Graphs\n";
+            for (const auto& g : mGraphs)
+            {
+                s += RenderGraphExporter::getIR(g.pGraph);
+                s += kRendererVar + "." + kAddGraph + "(" + RenderGraphIR::getFuncName(g.pGraph->getName()) + "())\n";
+            }
+            s += "\n";
+        }
+
         if (mpScene)
         {
             s += "# Scene\n";
-            s += Scripting::makeMemberFunc(kRendererVar, kLoadScene, filenameString(mpScene->getFilename()));
-            if (mpScene->getEnvironmentMap() != nullptr)
-            {
-                s += Scripting::makeMemberFunc(kRendererVar, kSetEnvMap, filenameString(mpScene->getEnvironmentMap()->getSourceFilename()));
-            }
+            s += Scripting::makeMemberFunc(kRendererVar, kLoadScene, Scripting::getFilenameString(mpScene->getFilename()));
+            const std::string sceneVar = kRendererVar + "." + kScene;
+            s += mpScene->getScript(sceneVar);
+            s += "\n";
         }
 
-        if(mGraphs.size()) s += "\n# Graphs\n";
-        for (auto& g : mGraphs)
-        {
-            s += RenderGraphExporter::getIR(g.pGraph);
-            s += std::string(kRendererVar) + "." + kAddGraph + "(" + RenderGraphIR::getFuncName(g.pGraph->getName()) + "())\n";
-        }
+        s += windowConfig() + "\n";
 
-        s += "\n" + windowConfig() + "\n";
+        s += "# Time Settings\n";
+        s += gpFramework->getGlobalClock().getScript(kTimeVar) + "\n";
 
         for (auto& pe : mpExtensions)
         {
             auto eStr = pe->getScript();
             if (eStr.size()) s += eStr + "\n";
-        }
-
-        if (mpScene->hasSavedViewpoints())
-        {
-            s += "# Saved Viewpoints\n";
-            s += std::string(kScene) + " = " + Scripting::makeMemberFunc(kRendererVar, kGetScene);
-            s += mpScene->getConfig() + "\n";
         }
 
         std::ofstream(filename) << s;
@@ -125,16 +124,25 @@ namespace Mogwai
 
         c.func_(kRunScript.c_str(), &Renderer::loadScript, "filename"_a = std::string());
         c.func_(kLoadScene.c_str(), &Renderer::loadScene, "filename"_a = std::string(), "buildFlags"_a = SceneBuilder::Flags::Default);
-        c.func_(kSetEnvMap.c_str(), &Renderer::setEnvMap);
         c.func_(kSaveConfig.c_str(), &Renderer::dumpConfig, "filename"_a = std::string());
-        c.func_(kAddGraph.c_str(), &Renderer::addGraph);
-        c.func_(kRemoveGraph.c_str(), ScriptBindings::overload_cast<const std::string&>(&Renderer::removeGraph));
-        c.func_(kRemoveGraph.c_str(), ScriptBindings::overload_cast<const RenderGraph::SharedPtr&>(&Renderer::removeGraph));
-        c.func_(kGetGraph.c_str(), &Renderer::getGraph);
-        c.func_(kGetScene.c_str(), &Renderer::getScene);
+        c.func_(kAddGraph.c_str(), &Renderer::addGraph, "graph"_a);
+        c.func_(kRemoveGraph.c_str(), ScriptBindings::overload_cast<const std::string&>(&Renderer::removeGraph), "name"_a);
+        c.func_(kRemoveGraph.c_str(), ScriptBindings::overload_cast<const RenderGraph::SharedPtr&>(&Renderer::removeGraph), "graph"_a);
+        c.func_(kGetGraph.c_str(), &Renderer::getGraph, "name"_a);
+        c.func_("graph", &Renderer::getGraph); // PYTHONDEPRECATED
+        auto envMap = [](Renderer* pRenderer, const std::string& filename) { if (pRenderer->getScene()) pRenderer->getScene()->loadEnvironmentMap(filename); };
+        c.func_("envMap", envMap, "filename"_a); // PYTHONDEPRECATED
+
+        c.roProperty(kScene.c_str(), &Renderer::getScene);
+        c.roProperty(kActiveGraph.c_str(), &Renderer::getActiveGraph);
+
+        auto getUI = [](Renderer* pRenderer) { return gpFramework->isUiEnabled(); };
+        auto setUI = [](Renderer* pRenderer, bool show) { gpFramework->toggleUI(show); };
+        c.property(kUI.c_str(), getUI, setUI);
 
         Extension::Bindings b(m, c);
         b.addGlobalObject(kRendererVar, this, "The engine");
+        b.addGlobalObject(kTimeVar, &gpFramework->getGlobalClock(), "Time Utilities");
         for (auto& pe : mpExtensions) pe->scriptBindings(b);
         mGlobalHelpMessage = prepareHelpMessage(b.mGlobalObjects);
 
@@ -148,13 +156,10 @@ namespace Mogwai
             auto h = b.attr("help");
             h(o);
         };
-        m.func_("help", objectHelp);
+        m.func_("help", objectHelp, "object"_a);
 
+        // PYTHONDEPRECATED Use the global function defined in the script bindings in Sample.cpp when resizing from a Python script.
         auto resize = [](Renderer* pRenderer, uint32_t width, uint32_t height) {gpFramework->resizeSwapChain(width, height); };
         c.func_(kResizeSwapChain.c_str(), resize);
-
-        auto toggleUI = [](Renderer* pRenderer, bool show) {gpFramework->toggleUI(show); };
-        c.func_(kToggleUI.c_str(), toggleUI, "show"_a = true);
-        c.func_(kActiveGraph.c_str(), &Renderer::getActiveGraph);
     }
 }

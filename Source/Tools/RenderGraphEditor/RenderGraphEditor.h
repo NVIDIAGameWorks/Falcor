@@ -54,7 +54,7 @@ private:
     std::vector<RenderGraphUI> mRenderGraphUIs;
     std::unordered_map<std::string, uint32_t> mGraphNamesToIndex;
     size_t mCurrentGraphIndex;
-    glm::uvec2 mWindowSize;
+    uint2 mWindowSize;
     std::string mCurrentLog;
     std::string mNextGraphString;
     std::string mCurrentGraphOutput;

@@ -26,7 +26,6 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "VBufferRT.h"
-#include "RenderPasses/Shared/HitInfo.h"
 #include "RenderGraph/RenderPassStandardFlags.h"
 
 const char* VBufferRT::kDesc = "Ray traced V-buffer generation pass";
@@ -85,7 +84,6 @@ void VBufferRT::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& 
     if (pScene)
     {
         mRaytrace.pProgram->addDefines(pScene->getSceneDefines());
-        mRaytrace.pProgram->addDefines(HitInfo::getDefines(pScene));
     }
 }
 
@@ -104,7 +102,7 @@ void VBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
     if (mpScene == nullptr)
     {
         auto pOutput = renderData[kOutputName]->asTexture();
-        pRenderContext->clearUAV(pOutput->getUAV().get(), glm::uvec4(kInvalidIndex));
+        pRenderContext->clearUAV(pOutput->getUAV().get(), uint4(kInvalidIndex));
         return;
     }
 
@@ -133,5 +131,5 @@ void VBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
     var["gVBuffer"] = renderData[kOutputName]->asTexture();
 
     // Dispatch the rays.
-    mpScene->raytrace(pRenderContext, mRaytrace.pProgram.get(), mRaytrace.pVars, uvec3(mFrameDim, 1));
+    mpScene->raytrace(pRenderContext, mRaytrace.pProgram.get(), mRaytrace.pVars, uint3(mFrameDim, 1));
 }

@@ -25,6 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+import Utils.Attributes;
 import ParamBlockDefinition;
 
 // Global scope root and non-root resources
@@ -32,9 +33,9 @@ RWStructuredBuffer<float> result;
 Buffer<uint> globalBufA;
 
 #if USE_UAV
-RWByteAddressBuffer __root__globalTestBuffer;   // Buffer bound to root descriptor (UAV)
+[root] RWByteAddressBuffer globalTestBuffer;    // Buffer bound to root descriptor (UAV)
 #else
-ByteAddressBuffer __root__globalTestBuffer;     // Buffer bound to root descriptor (SRV)
+[root] ByteAddressBuffer globalTestBuffer;      // Buffer bound to root descriptor (SRV)
 #endif
 
 // Parameter block containing both root and non-root resources
@@ -58,11 +59,11 @@ void main(uint3 threadId : SV_DispatchThreadID)
     r += gParamBlock.bufC[1][i] * 7;
     r += gParamBlock.bufC[2][i] * 8;
     r += gParamBlock.bufC[3][i] * 9;
-    r += gParamBlock.__root__testBuffer.Load(i * 4) * 10;
+    r += gParamBlock.testBuffer.Load(i * 4) * 10;
 
     // Add data read from buffers bound at the global scope.
     r += globalBufA[i] * 11;
-    r += __root__globalTestBuffer.Load(i * 4) * 12;
+    r += globalTestBuffer.Load(i * 4) * 12;
 
     result[i] = r;
 }

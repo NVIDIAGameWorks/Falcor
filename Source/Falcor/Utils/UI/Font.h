@@ -50,8 +50,8 @@ namespace Falcor
         */
         struct CharTexCrdDesc
         {
-            glm::vec2 topLeft; ///< Non-normalized origin of the character in the texture
-            glm::vec2 size;    ///< Size in pixels of the character. This should be used to initialize the texture-coordinate when rendering.
+            float2 topLeft; ///< Non-normalized origin of the character in the texture
+            float2 size;    ///< Size in pixels of the character. This should be used to initialize the texture-coordinate when rendering.
         };
 
         /** Get the texture containing the characters

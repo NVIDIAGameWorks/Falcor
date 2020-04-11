@@ -246,7 +246,7 @@ namespace Falcor
             return false;
         }
     }
-    
+
     ParameterBlock::~ParameterBlock() = default;
 
     ParameterBlock::SharedPtr ParameterBlock::create(const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ReflectionType::SharedConstPtr& pElementType)
@@ -888,24 +888,24 @@ namespace Falcor
     {
 #define c_to_prog(cType, progType) if(typeid(VarType) == typeid(cType)) return ReflectionBasicType::Type::progType;
         c_to_prog(bool,  Bool);
-        c_to_prog(bvec2, Bool2);
-        c_to_prog(bvec3, Bool3);
-        c_to_prog(bvec4, Bool4);
+        c_to_prog(bool2, Bool2);
+        c_to_prog(bool3, Bool3);
+        c_to_prog(bool4, Bool4);
 
         c_to_prog(int32_t, Int);
-        c_to_prog(ivec2, Int2);
-        c_to_prog(ivec3, Int3);
-        c_to_prog(ivec4, Int4);
+        c_to_prog(int2,    Int2);
+        c_to_prog(int3,    Int3);
+        c_to_prog(int4,    Int4);
 
         c_to_prog(uint32_t, Uint);
-        c_to_prog(uvec2, Uint2);
-        c_to_prog(uvec3, Uint3);
-        c_to_prog(uvec4, Uint4);
+        c_to_prog(uint2,    Uint2);
+        c_to_prog(uint3,    Uint3);
+        c_to_prog(uint4,    Uint4);
 
-        c_to_prog(float,     Float);
-        c_to_prog(glm::vec2, Float2);
-        c_to_prog(glm::vec3, Float3);
-        c_to_prog(glm::vec4, Float4);
+        c_to_prog(float,  Float);
+        c_to_prog(float2, Float2);
+        c_to_prog(float3, Float3);
+        c_to_prog(float4, Float4);
 
         c_to_prog(glm::mat2,   Float2x2);
         c_to_prog(glm::mat2x3, Float2x3);
@@ -915,7 +915,7 @@ namespace Falcor
         c_to_prog(glm::mat3x2, Float3x2);
         c_to_prog(glm::mat3x4, Float3x4);
 
-        c_to_prog(glm::mat4, Float4x4);
+        c_to_prog(glm::mat4,   Float4x4);
         c_to_prog(glm::mat4x2, Float4x2);
         c_to_prog(glm::mat4x3, Float4x3);
 
@@ -1198,24 +1198,24 @@ namespace Falcor
 #define set_constant_by_offset(_t) template dlldecl bool ParameterBlock::setVariable(UniformShaderVarOffset offset, const _t& value)
 
     set_constant_by_offset(bool);
-    set_constant_by_offset(glm::bvec2);
-    set_constant_by_offset(glm::bvec3);
-    set_constant_by_offset(glm::bvec4);
+    set_constant_by_offset(bool2);
+    set_constant_by_offset(bool3);
+    set_constant_by_offset(bool4);
 
     set_constant_by_offset(uint32_t);
-    set_constant_by_offset(glm::uvec2);
-    set_constant_by_offset(glm::uvec3);
-    set_constant_by_offset(glm::uvec4);
+    set_constant_by_offset(uint2);
+    set_constant_by_offset(uint3);
+    set_constant_by_offset(uint4);
 
     set_constant_by_offset(int32_t);
-    set_constant_by_offset(glm::ivec2);
-    set_constant_by_offset(glm::ivec3);
-    set_constant_by_offset(glm::ivec4);
+    set_constant_by_offset(int2);
+    set_constant_by_offset(int3);
+    set_constant_by_offset(int4);
 
     set_constant_by_offset(float);
-    set_constant_by_offset(glm::vec2);
-    set_constant_by_offset(glm::vec3);
-    set_constant_by_offset(glm::vec4);
+    set_constant_by_offset(float2);
+    set_constant_by_offset(float3);
+    set_constant_by_offset(float4);
 
     set_constant_by_offset(glm::mat2);
     set_constant_by_offset(glm::mat2x3);
@@ -1276,7 +1276,7 @@ namespace Falcor
             pContext->resourceBarrier(pBuffer->getUAVCounter().get(), Resource::State::UnorderedAccess);
             pContext->uavBarrier(pBuffer->getUAVCounter().get());
         }
-        
+
         bool insertBarrier = true;
 #ifdef FALCOR_D3D12
         insertBarrier = (is_set(pResource->getBindFlags(), Resource::BindFlags::AccelerationStructure) == false);

@@ -25,6 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+import Utils.Attributes;
 
 /** Unit tests for binding buffers using root descriptors.
 */
@@ -48,9 +49,9 @@ ByteAddressBuffer rawBuffer;
 StructuredBuffer<S> structBuffer;
 
 #if USE_UAV
-RWByteAddressBuffer __root__testBuffer;     // Buffer bound to root descriptor (UAV)
+[root] RWByteAddressBuffer testBuffer;      // Buffer bound to root descriptor (UAV)
 #else
-ByteAddressBuffer __root__testBuffer;       // Buffer bound to root descriptor (SRV)
+[root] ByteAddressBuffer testBuffer;        // Buffer bound to root descriptor (SRV)
 #endif
 
 RWBuffer<uint> typedBufferUint;
@@ -71,7 +72,7 @@ void main(uint3 threadId : SV_DispatchThreadID)
     r += typedBufferFloat4[i].z * 3;
     r += structBuffer[i].a * 4;
     r += structBuffer[i].b * 5;
-    r += __root__testBuffer.Load(i * 4) * 6;
+    r += testBuffer.Load(i * 4) * 6;
 
     result[i] = r;
 }

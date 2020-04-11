@@ -26,7 +26,6 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "VBufferRaster.h"
-#include "RenderPasses/Shared/HitInfo.h"
 #include "RenderGraph/RenderPassStandardFlags.h"
 
 const char* VBufferRaster::kDesc = "Rasterized V-buffer generation pass";
@@ -95,7 +94,6 @@ void VBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedP
         }
 
         mRaster.pProgram->addDefines(pScene->getSceneDefines());
-        mRaster.pProgram->addDefines(HitInfo::getDefines(pScene));
     }
 }
 
@@ -113,7 +111,7 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     // Clear depth and output buffer.
     auto pDepth = renderData[kDepthName]->asTexture();
     auto pOutput = renderData[kOutputName]->asTexture();
-    pRenderContext->clearUAV(pOutput->getUAV().get(), glm::uvec4(kInvalidIndex)); // Clear as UAV for integer clear value
+    pRenderContext->clearUAV(pOutput->getUAV().get(), uint4(kInvalidIndex)); // Clear as UAV for integer clear value
     pRenderContext->clearDsv(pDepth->getDSV().get(), 1.f, 0);
 
     // If there is no scene, we're done.

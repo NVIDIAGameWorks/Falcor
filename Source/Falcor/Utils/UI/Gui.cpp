@@ -90,7 +90,7 @@ namespace Falcor
         bool addMenuItem(const char label[], bool& var, const char shortcut[] = nullptr);
         bool addMenuItem(const char label[], const char shortcut[] = nullptr);
 
-        bool pushWindow(const char label[], bool& open, uvec2 size = { 250, 200 }, uvec2 pos = { 20, 40 }, Gui::WindowFlags flags = Gui::WindowFlags::Default);
+        bool pushWindow(const char label[], bool& open, uint2 size = { 250, 200 }, uint2 pos = { 20, 40 }, Gui::WindowFlags flags = Gui::WindowFlags::Default);
         void popWindow();
         void setCurrentWindowPos(uint32_t x, uint32_t y);
         void setCurrentWindowSize(uint32_t width, uint32_t height);
@@ -103,31 +103,31 @@ namespace Falcor
 
         void indent(float i);
         void addSeparator(uint32_t count = 1);
-        void addDummyItem(const char label[], const glm::vec2& size, bool sameLine = false);
-        void addRect(const glm::vec2& size, const glm::vec4& color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), bool filled = false, bool sameLine = false);
+        void addDummyItem(const char label[], const float2& size, bool sameLine = false);
+        void addRect(const float2& size, const float4& color = float4(1.0f, 1.0f, 1.0f, 1.0f), bool filled = false, bool sameLine = false);
         bool addDropdown(const char label[], const Gui::DropdownList& values, uint32_t& var, bool sameLine = false);
         bool addButton(const char label[], bool sameLine = false);
         bool addRadioButtons(const Gui::RadioButtonGroup& buttons, uint32_t& activeID);
-        bool addDirectionWidget(const char label[], glm::vec3& direction);
+        bool addDirectionWidget(const char label[], float3& direction);
         bool addCheckbox(const char label[], bool& var, bool sameLine = false);
         bool addCheckbox(const char label[], int& var, bool sameLine = false);
         template<typename T>
         bool addBoolVecVar(const char label[], T& var, bool sameLine = false);
         bool addDragDropSource(const char label[], const char dataLabel[], const std::string& payloadString);
         bool addDragDropDest(const char dataLabel[], std::string& payloadString);
-        
+
         void addText(const char text[], bool sameLine = false);
         bool addTextbox(const char label[], std::string& text, uint32_t lineCount = 1, Gui::TextFlags flags = Gui::TextFlags::Empty);
         bool addTextbox(const char label[], char buf[], size_t bufSize, uint32_t lineCount = 1, Gui::TextFlags flags = Gui::TextFlags::Empty);
         bool addMultiTextbox(const char label[], const std::vector<std::string>& textLabels, std::vector<std::string>& textEntries);
         void addTooltip(const char tip[], bool sameLine = true);
 
-        bool addRgbColor(const char label[], glm::vec3& var, bool sameLine = false);
-        bool addRgbaColor(const char label[], glm::vec4& var, bool sameLine = false);
+        bool addRgbColor(const char label[], float3& var, bool sameLine = false);
+        bool addRgbaColor(const char label[], float4& var, bool sameLine = false);
 
-        void addImage(const char label[], const Texture::SharedPtr& pTex, glm::vec2 size = vec2(0), bool maintainRatio = true, bool sameLine = false);
-        bool addImageButton(const char label[], const Texture::SharedPtr& pTex, glm::vec2 size, bool maintainRatio = true, bool sameLine = false);
- 
+        void addImage(const char label[], const Texture::SharedPtr& pTex, float2 size = float2(0), bool maintainRatio = true, bool sameLine = false);
+        bool addImageButton(const char label[], const Texture::SharedPtr& pTex, float2 size, bool maintainRatio = true, bool sameLine = false);
+
         template<typename T>
         bool addScalarVar(const char label[], T& var, T minVal = std::numeric_limits<T>::lowest(), T maxVal = std::numeric_limits<T>::max(), float step = 1.0f, bool sameLine = false, const char* displayFormat = nullptr);
         template<typename T>
@@ -330,7 +330,7 @@ namespace Falcor
         return ImGui::MenuItem(label, shortcut, &var);
     }
 
-    bool GuiImpl::pushWindow(const char label[], bool& open, uvec2 size, uvec2 pos, Gui::WindowFlags flags)
+    bool GuiImpl::pushWindow(const char label[], bool& open, uint2 size, uint2 pos, Gui::WindowFlags flags)
     {
         bool allowClose = is_set(flags, Gui::WindowFlags::CloseButton);
         if (allowClose)
@@ -342,7 +342,7 @@ namespace Falcor
             }
         }
 
-        vec2 posFloat(pos);
+        float2 posFloat(pos);
         posFloat *= mScaleFactor;
         ImVec2 fPos(posFloat.x, posFloat.y);
         ImVec2 fSize(float(size.x), float(size.y));
@@ -425,7 +425,7 @@ namespace Falcor
         for (uint32_t i = 0; i < count; i++) ImGui::Separator();
     }
 
-    void GuiImpl::addDummyItem(const char label[], const glm::vec2& size, bool sameLine)
+    void GuiImpl::addDummyItem(const char label[], const float2& size, bool sameLine)
     {
         if (sameLine) ImGui::SameLine();
         ImGui::PushID(label);
@@ -433,7 +433,7 @@ namespace Falcor
         ImGui::PopID();
     }
 
-    void GuiImpl::addRect(const glm::vec2& size, const glm::vec4& color, bool filled, bool sameLine)
+    void GuiImpl::addRect(const float2& size, const float4& color, bool filled, bool sameLine)
     {
         if (sameLine) ImGui::SameLine();
 
@@ -510,9 +510,9 @@ namespace Falcor
         return oldValue != activeID;
     }
 
-    bool GuiImpl::addDirectionWidget(const char label[], glm::vec3& direction)
+    bool GuiImpl::addDirectionWidget(const char label[], float3& direction)
     {
-        glm::vec3 dir = direction;
+        float3 dir = direction;
         bool b = addVecVar(label, dir, -1.f, 1.f, 0.001f, false, "%.3f");
         direction = glm::normalize(dir);
         return b;
@@ -632,22 +632,22 @@ namespace Falcor
         }
     }
 
-    bool GuiImpl::addRgbColor(const char label[], glm::vec3& var, bool sameLine)
+    bool GuiImpl::addRgbColor(const char label[], float3& var, bool sameLine)
     {
         if (sameLine) ImGui::SameLine();
         return ImGui::ColorEdit3(label, glm::value_ptr(var));
     }
 
-    bool GuiImpl::addRgbaColor(const char label[], glm::vec4& var, bool sameLine)
+    bool GuiImpl::addRgbaColor(const char label[], float4& var, bool sameLine)
     {
         if (sameLine) ImGui::SameLine();
         return ImGui::ColorEdit4(label, glm::value_ptr(var));
     }
 
-    void GuiImpl::addImage(const char label[], const Texture::SharedPtr& pTex, glm::vec2 size, bool maintainRatio, bool sameLine)
+    void GuiImpl::addImage(const char label[], const Texture::SharedPtr& pTex, float2 size, bool maintainRatio, bool sameLine)
     {
         assert(pTex);
-        if (size == vec2(0))
+        if (size == float2(0))
         {
             ImVec2 windowSize = ImGui::GetWindowSize();
             size = { windowSize.x, windowSize.y };
@@ -661,7 +661,7 @@ namespace Falcor
         ImGui::PopID();
     }
 
-    bool GuiImpl::addImageButton(const char label[], const Texture::SharedPtr& pTex, glm::vec2 size, bool maintainRatio, bool sameLine)
+    bool GuiImpl::addImageButton(const char label[], const Texture::SharedPtr& pTex, float2 size, bool maintainRatio, bool sameLine)
     {
         assert(pTex);
         mpImages.push_back(pTex);
@@ -879,7 +879,7 @@ namespace Falcor
         return pGui;
     }
 
-    glm::vec4 Gui::pickUniqueColor(const std::string& key)
+    float4 Gui::pickUniqueColor(const std::string& key)
     {
         union hashedValue
         {
@@ -889,7 +889,7 @@ namespace Falcor
         hashedValue color;
         color.st = std::hash<std::string>()(key);
 
-        return glm::vec4(color.i32[0] % 1000 / 2000.0f, color.i32[1] % 1000 / 2000.0f, (color.i32[0] * color.i32[1]) % 1000 / 2000.0f, 1.0f);
+        return float4(color.i32[0] % 1000 / 2000.0f, color.i32[1] % 1000 / 2000.0f, (color.i32[0] * color.i32[1]) % 1000 / 2000.0f, 1.0f);
     }
 
     void Gui::addFont(const std::string& name, const std::string& filename)
@@ -1019,11 +1019,11 @@ namespace Falcor
         io.DisplaySize.x = (float)width;
         io.DisplaySize.y = (float)height;
 #ifdef FALCOR_VK
-        mpWrapper->mpProgramVars["PerFrameCB"]["scale"] = 2.0f / vec2(io.DisplaySize.x, io.DisplaySize.y);
-        mpWrapper->mpProgramVars["PerFrameCB"]["offset"] = vec2(-1.0f);
+        mpWrapper->mpProgramVars["PerFrameCB"]["scale"] = 2.0f / float2(io.DisplaySize.x, io.DisplaySize.y);
+        mpWrapper->mpProgramVars["PerFrameCB"]["offset"] = float2(-1.0f);
 #else
-        mpWrapper->mpProgramVars["PerFrameCB"]["scale"] = 2.0f / vec2(io.DisplaySize.x, -io.DisplaySize.y);
-        mpWrapper->mpProgramVars["PerFrameCB"]["offset"] = vec2(-1.0f, 1.0f);
+        mpWrapper->mpProgramVars["PerFrameCB"]["scale"] = 2.0f / float2(io.DisplaySize.x, -io.DisplaySize.y);
+        mpWrapper->mpProgramVars["PerFrameCB"]["offset"] = float2(-1.0f, 1.0f);
 #endif
     }
 
@@ -1108,12 +1108,12 @@ namespace Falcor
         if (mpGui) mpGui->mpWrapper->addSeparator(count);
     }
 
-    void Gui::Widgets::dummy(const char label[], const glm::vec2& size, bool sameLine)
+    void Gui::Widgets::dummy(const char label[], const float2& size, bool sameLine)
     {
         if (mpGui) mpGui->mpWrapper->addDummyItem(label, size, sameLine);
     }
 
-    void Gui::Widgets::rect(const glm::vec2& size, const glm::vec4& color, bool filled, bool sameLine)
+    void Gui::Widgets::rect(const float2& size, const float4& color, bool filled, bool sameLine)
     {
         if (mpGui) mpGui->mpWrapper->addRect(size, color, filled, sameLine);
     }
@@ -1133,7 +1133,7 @@ namespace Falcor
         return mpGui ? mpGui->mpWrapper->addRadioButtons(buttons, activeID) : false;
     }
 
-    bool Gui::Widgets::direction(const char label[], glm::vec3& direction)
+    bool Gui::Widgets::direction(const char label[], float3& direction)
     {
         return mpGui ? mpGui->mpWrapper->addDirectionWidget(label, direction) : false;
     }
@@ -1158,9 +1158,9 @@ namespace Falcor
 
 #define add_bool_vec_type(TypeName)  template dlldecl bool Gui::Widgets::checkbox<TypeName>(const char[], TypeName&, bool)
 
-    add_bool_vec_type(glm::bvec2);
-    add_bool_vec_type(glm::bvec3);
-    add_bool_vec_type(glm::bvec4);
+    add_bool_vec_type(bool2);
+    add_bool_vec_type(bool3);
+    add_bool_vec_type(bool4);
 
 #undef add_bool_vec_type
 
@@ -1214,15 +1214,15 @@ namespace Falcor
 
 #define add_vecVar_type(TypeName) template dlldecl bool Gui::Widgets::var<TypeName>(const char[], TypeName&, typename TypeName::value_type, typename TypeName::value_type, float, bool, const char*)
 
-    add_vecVar_type(ivec2);
-    add_vecVar_type(ivec3);
-    add_vecVar_type(ivec4);
-    add_vecVar_type(uvec2);
-    add_vecVar_type(uvec3);
-    add_vecVar_type(uvec4);
-    add_vecVar_type(vec2);
-    add_vecVar_type(vec3);
-    add_vecVar_type(vec4);
+    add_vecVar_type(int2);
+    add_vecVar_type(int3);
+    add_vecVar_type(int4);
+    add_vecVar_type(uint2);
+    add_vecVar_type(uint3);
+    add_vecVar_type(uint4);
+    add_vecVar_type(float2);
+    add_vecVar_type(float3);
+    add_vecVar_type(float4);
 
 #undef add_vecVar_type
 
@@ -1236,15 +1236,15 @@ namespace Falcor
 
 #define add_vecSlider_type(TypeName) template dlldecl bool Gui::Widgets::slider<TypeName>(const char[], TypeName&, typename TypeName::value_type, typename TypeName::value_type, bool, const char*)
 
-    add_vecSlider_type(ivec2);
-    add_vecSlider_type(ivec3);
-    add_vecSlider_type(ivec4);
-    add_vecSlider_type(uvec2);
-    add_vecSlider_type(uvec3);
-    add_vecSlider_type(uvec4);
-    add_vecSlider_type(vec2);
-    add_vecSlider_type(vec3);
-    add_vecSlider_type(vec4);
+    add_vecSlider_type(int2);
+    add_vecSlider_type(int3);
+    add_vecSlider_type(int4);
+    add_vecSlider_type(uint2);
+    add_vecSlider_type(uint3);
+    add_vecSlider_type(uint4);
+    add_vecSlider_type(float2);
+    add_vecSlider_type(float3);
+    add_vecSlider_type(float4);
 
 #undef add_vecSlider_type
 
@@ -1273,22 +1273,22 @@ namespace Falcor
         if (mpGui) mpGui->mpWrapper->addTooltip(text.c_str(), sameLine);
     }
 
-    bool Gui::Widgets::rgbColor(const char label[], glm::vec3& var, bool sameLine)
+    bool Gui::Widgets::rgbColor(const char label[], float3& var, bool sameLine)
     {
         return mpGui ? mpGui->mpWrapper->addRgbColor(label, var, sameLine) : false;
     }
 
-    bool Gui::Widgets::rgbaColor(const char label[], glm::vec4& var, bool sameLine)
+    bool Gui::Widgets::rgbaColor(const char label[], float4& var, bool sameLine)
     {
         return mpGui ? mpGui->mpWrapper->addRgbaColor(label, var, sameLine) : false;
     }
 
-    bool Gui::Widgets::imageButton(const char label[], const Texture::SharedPtr& pTex, glm::vec2 size, bool maintainRatio, bool sameLine)
+    bool Gui::Widgets::imageButton(const char label[], const Texture::SharedPtr& pTex, float2 size, bool maintainRatio, bool sameLine)
     {
         return mpGui ? mpGui->mpWrapper->addImageButton(label, pTex, size, maintainRatio, sameLine) : false;
     }
 
-    void Gui::Widgets::image(const char label[], const Texture::SharedPtr& pTex, glm::vec2 size, bool maintainRatio, bool sameLine)
+    void Gui::Widgets::image(const char label[], const Texture::SharedPtr& pTex, float2 size, bool maintainRatio, bool sameLine)
     {
         if (mpGui) mpGui->mpWrapper->addImage(label, pTex, size, maintainRatio, sameLine);
     }
@@ -1397,14 +1397,14 @@ namespace Falcor
     {
         if (mpGui) mpGui->mpWrapper->endGroup(); mpGui = nullptr;
     }
-    
-    Gui::Window::Window(Gui* pGui, const char* name, uvec2 size, uvec2 pos, Gui::WindowFlags flags)
+
+    Gui::Window::Window(Gui* pGui, const char* name, uint2 size, uint2 pos, Gui::WindowFlags flags)
     {
         bool open = true;
         if (pGui->mpWrapper->pushWindow(name, open, size, pos, flags)) mpGui = pGui;
     }
 
-    Gui::Window::Window(Gui* pGui, const char* name, bool& open, uvec2 size, uvec2 pos, Gui::WindowFlags flags)
+    Gui::Window::Window(Gui* pGui, const char* name, bool& open, uint2 size, uint2 pos, Gui::WindowFlags flags)
     {
         if (pGui->mpWrapper->pushWindow(name, open, size, pos, flags)) mpGui = pGui;
     }

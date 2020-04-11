@@ -162,19 +162,19 @@ namespace Falcor
 
         /** Set the base color
         */
-        void setBaseColor(const vec4& color);
+        void setBaseColor(const float4& color);
 
         /** Get the base color
         */
-        const vec4& getBaseColor() const { return mData.baseColor; }
+        const float4& getBaseColor() const { return mData.baseColor; }
 
         /** Set the specular parameters
         */
-        void setSpecularParams(const vec4& color);
+        void setSpecularParams(const float4& color);
 
         /** Get the specular parameters
         */
-        const vec4& getSpecularParams() const { return mData.specular; }
+        const float4& getSpecularParams() const { return mData.specular; }
 
         /** Set the specular transmission
         */
@@ -186,15 +186,15 @@ namespace Falcor
 
         /** Set the volume absorption (absorption coefficient).
         */
-        void setVolumeAbsorption(const vec3& volumeAbsorption);
+        void setVolumeAbsorption(const float3& volumeAbsorption);
 
         /** Get the volume absorption (absorption coefficient).
         */
-        const vec3& getVolumeAbsorption() const { return mData.volumeAbsorption; }
+        const float3& getVolumeAbsorption() const { return mData.volumeAbsorption; }
 
         /** Set the emissive color
         */
-        void setEmissiveColor(const vec3& color);
+        void setEmissiveColor(const float3& color);
 
         /** Set the emissive factor
         */
@@ -202,7 +202,7 @@ namespace Falcor
 
         /** Get the emissive color
         */
-        const vec3& getEmissiveColor() const { return mData.emissive; }
+        const float3& getEmissiveColor() const { return mData.emissive; }
 
         /** Get the emissive factor
         */

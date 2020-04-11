@@ -49,18 +49,18 @@ cbuffer PixelDebugCB
 RWStructuredBuffer<PixelLogValue> gPixelLog;
 RWStructuredBuffer<AssertLogValue> gAssertLog;
 
-#if _PIXEL_DEBUG_ENABLED
+#ifdef _PIXEL_DEBUG_ENABLED
 static uint2 gPixelDebugPixel;
 #endif
 
 void printSetPixel(uint2 pixel)
 {
-#if _PIXEL_DEBUG_ENABLED
+#ifdef _PIXEL_DEBUG_ENABLED
     gPixelDebugPixel = pixel;
 #endif
 }
 
-#if _PIXEL_DEBUG_ENABLED
+#ifdef _PIXEL_DEBUG_ENABLED
 
     /** Define overloaded 'void print(Type x)' functions. Each takes a different
         basic type as parameter and appends it in encoded form to the log.
@@ -68,7 +68,7 @@ void printSetPixel(uint2 pixel)
     #define PRINT_FUNC(Type, Count, ValueType)                  \
     void print(vector<Type, Count> v)                           \
     {                                                           \
-        if (all(gPixelDebugPixel == gPixelLogSelected))   \
+        if (all(gPixelDebugPixel == gPixelLogSelected))         \
         {                                                       \
             uint i = gPixelLog.IncrementCounter();              \
             if (i < gPixelLogSize)                              \

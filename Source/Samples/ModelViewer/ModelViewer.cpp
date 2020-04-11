@@ -161,13 +161,13 @@ void ModelViewer::onLoad(RenderContext* pRenderContext)
 
 void ModelViewer::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
-    const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
+    const float4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
     mpGraphicsState->setFbo(pTargetFbo);
 
     if(mpScene)
     {
-        mpScene->update(pRenderContext, gpFramework->getGlobalClock().now());
+        mpScene->update(pRenderContext, gpFramework->getGlobalClock().getTime());
 
         // Set render state
         Scene::RenderFlags renderFlags = Scene::RenderFlags::None;
@@ -193,7 +193,7 @@ void ModelViewer::onFrameRender(RenderContext* pRenderContext, const Fbo::Shared
         mpScene->render(pRenderContext, mpGraphicsState.get(), mpProgramVars.get(), renderFlags);
     }
 
-    TextRenderer::render(pRenderContext, mModelString, pTargetFbo, glm::vec2(10, 30));
+    TextRenderer::render(pRenderContext, mModelString, pTargetFbo, float2(10, 30));
 }
 
 bool ModelViewer::onKeyEvent(const KeyboardEvent& keyEvent)

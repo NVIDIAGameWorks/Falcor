@@ -563,7 +563,7 @@ struct FalcorBSDF : IBxDF
             if (pSpecularReflection > 0) pdf += pSpecularReflection * specularReflection.evalPdf(wo, wi);
             if (pSpecularReflectionTransmission > 0) pdf += pSpecularReflectionTransmission * specularReflectionTransmission.evalPdf(wo, wi);
         }
-        else if (uSelect < pDiffuseReflection + pSpecularReflection)
+        else if (pSpecularReflectionTransmission == 0.f || uSelect < pDiffuseReflection + pSpecularReflection)
         {
             if (!specularReflection.sample(wo, wi, pdf, weight, lobe, sg)) return false;
             weight /= pSpecularReflection;

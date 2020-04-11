@@ -48,7 +48,7 @@ namespace Falcor
 
         /** Creates a new particle system
             \params[in] pCtx The render context
-            \params[in] maxParticles The max number of particles allowed at once, emits will be blocked if the system is maxxed out 
+            \params[in] maxParticles The max number of particles allowed at once, emits will be blocked if the system is maxxed out
             \params[in] drawPixelShader The pixel shader used to draw the particles
             \params[in] simulateComputeShader The compute shader used to update the particles
             \params[in] sorted Whether or not the particles should be sorted by depth before render
@@ -58,7 +58,7 @@ namespace Falcor
             std::string simulateComputeShader = kDefaultSimulateShader,
             bool sorted = true);
 
-        /** Updates the particle system, emitting if it's time to do so and simulating particles 
+        /** Updates the particle system, emitting if it's time to do so and simulating particles
         */
         void update(RenderContext* pCtx, float dt, glm::mat4 view);
 
@@ -84,7 +84,7 @@ namespace Falcor
         ComputeVars::SharedPtr getSimulateVars() { return mSimulateResources.pVars; }
 
         /** Sets how long a particle will remain alive after spawning.
-            \params[in] dur The new base duration 
+            \params[in] dur The new base duration
             \params[in] offset The new random offset to be applied. final value is base + randRange(-offset, offset)
         */
         void setParticleDuration(float dur, float offset);
@@ -104,19 +104,19 @@ namespace Falcor
             \params[in] spawnPos The new base spawn position
             \params[in] offset The new random offset to be applied. final value is base + randRange(-offset, offset)
         */
-        void setSpawnPos(vec3 spawnPos, vec3 offset);
+        void setSpawnPos(float3 spawnPos, float3 offset);
 
         /** Sets the velocity particles spawn with.
             \params[in] velocity The new base velocity
             \params[in] offset The new random offset to be applied. final value is base + randRange(-offset, offset)
         */
-        void setVelocity(vec3 velocity, vec3 offset);
+        void setVelocity(float3 velocity, float3 offset);
 
         /** Sets the acceleration particles spawn with.
             \params[in] accel The new base acceleration
             \params[in] offset The new random offset to be applied. final value is base + randRange(-offset, offset)
         */
-        void setAcceleration(vec3 accel, vec3 offset);
+        void setAcceleration(float3 accel, float3 offset);
 
         /** Sets the scale particles spawn with.
             \params[in] scale The new base scale
@@ -156,16 +156,16 @@ namespace Falcor
                 scale(0.2f), scaleOffset(0.f), growth(-0.05f), growthOffset(0.f), billboardRotation(0.f),
                 billboardRotationOffset(0.25f), billboardRotationVel(0.f), billboardRotationVelOffset(0.f) {}
             float duration;
-            float durationOffset; 
+            float durationOffset;
             float emitFrequency;
             int32_t emitCount;
             int32_t emitCountOffset;
-            vec3 spawnPos;
-            vec3 spawnPosOffset;
-            vec3 vel;
-            vec3 velOffset;
-            vec3 accel;
-            vec3 accelOffset;
+            float3 spawnPos;
+            float3 spawnPosOffset;
+            float3 vel;
+            float3 velOffset;
+            float3 accel;
+            float3 accelOffset;
             float scale;
             float scaleOffset;
             float growth;
@@ -212,7 +212,7 @@ namespace Falcor
         Buffer::SharedPtr mpEmitList;
         Buffer::SharedPtr mpDeadList;
         Buffer::SharedPtr mpAliveList;
-        //for draw (0 - Verts Per Instance, 1 - Instance Count, 
+        //for draw (0 - Verts Per Instance, 1 - Instance Count,
         //2 - start vertex offset, 3 - start instance offset)
         Buffer::SharedPtr mpIndirectArgs;
 

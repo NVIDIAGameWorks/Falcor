@@ -505,8 +505,8 @@ namespace Falcor
 
             for (uint32_t mipCounter = 0; mipCounter < mipDepth; ++mipCounter)
             {
-                uint32_t heightPitch = max(width >> mipCounter, 1U) * getFormatBytesPerBlock(format);
-                uint32_t currentMipHeight = max(height >> mipCounter, 1U);
+                uint32_t heightPitch = std::max(width >> mipCounter, 1U) * getFormatBytesPerBlock(format);
+                uint32_t currentMipHeight = std::max(height >> mipCounter, 1U);
                 uint32_t depthPitch = currentMipHeight * heightPitch;
 
                 for (uint32_t depthCounter = 0; depthCounter < depth; ++depthCounter)
@@ -540,14 +540,7 @@ namespace Falcor
 
     bool loadDDSDataFromFile(const std::string filename, DdsData& ddsData)
     {
-        std::string fullpath;
-        if (findFileInDataDirectories(filename, fullpath) == false)
-        {
-            logError("Error when loading DDS file. Can't find texture file " + filename);
-            return false;
-        }
-
-        BinaryFileStream stream(fullpath, BinaryFileStream::Mode::Read);
+        BinaryFileStream stream(filename, BinaryFileStream::Mode::Read);
 
         // Check the dds identifier
         uint32_t ddsIdentifier;
@@ -680,7 +673,7 @@ namespace Falcor
         uint32_t mipLevels;
         if (generateMips == false || isCompressedFormat(format))
         {
-            mipLevels = (ddsData.header.flags & DdsHeader::kMipCountMask) ? max(ddsData.header.mipCount, 1U) : 1;
+            mipLevels = (ddsData.header.flags & DdsHeader::kMipCountMask) ? std::max(ddsData.header.mipCount, 1U) : 1;
         }
         else
         {
@@ -699,14 +692,21 @@ namespace Falcor
 
     Texture::SharedPtr Texture::createFromFile(const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags)
     {
+        std::string fullpath;
+        if (findFileInDataDirectories(filename, fullpath) == false)
+        {
+            logError("Error when loading image file. Can't find image file " + filename);
+            return nullptr;
+        }
+
         Texture::SharedPtr pTex;
         if (hasSuffix(filename, ".dds"))
         {
-            pTex = createTextureFromDDSFile(filename, generateMipLevels, loadAsSrgb, bindFlags);
+            pTex = createTextureFromDDSFile(fullpath, generateMipLevels, loadAsSrgb, bindFlags);
         }
         else
         {
-            Bitmap::UniqueConstPtr pBitmap = Bitmap::createFromFile(filename, kTopDown);
+            Bitmap::UniqueConstPtr pBitmap = Bitmap::createFromFile(fullpath, kTopDown);
             if (pBitmap)
             {
                 ResourceFormat texFormat = pBitmap->getFormat();
@@ -721,7 +721,7 @@ namespace Falcor
 
         if (pTex != nullptr)
         {
-            pTex->setSourceFilename(stripDataDirectories(filename));
+            pTex->setSourceFilename(fullpath);
         }
 
         return pTex;

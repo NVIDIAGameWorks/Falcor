@@ -41,17 +41,16 @@ __exported import Experimental.Scene.Lights.MeshLightData;
 */
 struct LightCollection
 {
-    uint                triangleCount;                      ///< Total number of triangles in all mesh lights.
-    uint                meshCount;                          ///< Total number of mesh lights.
-    uint                _pad[2];
+    uint                                triangleCount;          ///< Total number of triangles in all mesh lights.
+    uint                                meshCount;              ///< Total number of mesh lights.
+    uint                                _pad[2];
 
-    ByteAddressBuffer   meshLightsVertexPos;                ///< Vertex positions in world space for all mesh light triangles. Size: triangleCount * 3 * sizeof(float3).
-    ByteAddressBuffer   meshLightsTexCoords;                ///< Texture coordinates for all mesh light triangles. Size: triangleCount * 3 * sizeof(float2).
-    Buffer<uint>        perMeshInstanceOffset;              ///< Per-mesh instance offset into emissive triangles array. Size: meshInstanceCount * sizeof(uint).
-    StructuredBuffer<EmissiveTriangle>  triangleData;       ///< Per-triangle data for emissive triangles. Size: triangleCount * sizeof(EmissiveTriangle).
-    StructuredBuffer<MeshLightData>     meshData;           ///< Per-mesh data for emissive meshes. Size: meshCount * sizeof(MeshLightData).
+    ByteAddressBuffer                   meshLightsVertexPos;    ///< Vertex positions in world space for all mesh light triangles. Size: triangleCount * 3 * sizeof(float3).
+    ByteAddressBuffer                   meshLightsTexCoords;    ///< Texture coordinates for all mesh light triangles. Size: triangleCount * 3 * sizeof(float2).
+    StructuredBuffer<uint>              perMeshInstanceOffset;  ///< Per-mesh instance offset into emissive triangles array. Size: meshInstanceCount * sizeof(uint).
+    StructuredBuffer<EmissiveTriangle>  triangleData;           ///< Per-triangle data for emissive triangles. Size: triangleCount * sizeof(EmissiveTriangle).
+    StructuredBuffer<MeshLightData>     meshData;               ///< Per-mesh data for emissive meshes. Size: meshCount * sizeof(MeshLightData).
 
-    // Accessors
 
     /** Returns the total number of emissive triangles.
     */

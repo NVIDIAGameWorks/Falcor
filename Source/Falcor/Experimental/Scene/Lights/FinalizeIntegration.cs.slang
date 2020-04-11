@@ -53,7 +53,7 @@ void finalizeIntegration(uint3 DTid : SV_DispatchThreadID)
 
     // Compute the triangle's average emitted radiance (RGB).
     const MeshLightData lightData = gMeshData[gTriangleData[triIdx].lightIdx];
-    const MaterialData materialData = gScene.materials[lightData.materialID];
+    const MaterialData materialData = gScene.getMaterial(lightData.materialID);
     float3 averageEmissiveColor = materialData.emissive;
 
     if (gScene.isEmissiveTextured(lightData.materialID))

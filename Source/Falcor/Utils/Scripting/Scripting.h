@@ -129,6 +129,25 @@ namespace Falcor
                 s += std::string(".") + makeFunc(func, first, args...);
                 return s;
             }
+
+            static std::string makeGetProperty(const std::string& var, const std::string& property)
+            {
+                return var + "." + property + "\n";
+            }
+
+            template<typename Arg>
+            static std::string makeSetProperty(const std::string& var, const std::string& property, Arg arg)
+            {
+                return var + "." + property + " = " + getArgString(arg) + "\n";
+            }
+
+            static std::string getFilenameString(const std::string& s, bool stripDataDirs = true)
+            {
+                std::string filename = stripDataDirs ? stripDataDirectories(s) : s;
+                std::replace(filename.begin(), filename.end(), '\\', '/');
+                return filename;
+            }
+
     private:
         static bool sRunning;
     };

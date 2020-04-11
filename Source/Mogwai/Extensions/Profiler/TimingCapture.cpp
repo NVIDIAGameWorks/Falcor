@@ -50,7 +50,7 @@ namespace Mogwai
         bindings.addGlobalObject(kScriptVar, this, "Timing Capture Helpers");
 
         // Members
-        c.func_(kCaptureFrameTime.c_str(), &TimingCapture::captureFrameTime);
+        c.func_(kCaptureFrameTime.c_str(), &TimingCapture::captureFrameTime, "filename"_a);
     }
 
     void TimingCapture::beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)

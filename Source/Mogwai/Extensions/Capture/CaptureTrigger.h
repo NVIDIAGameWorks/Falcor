@@ -51,7 +51,13 @@ namespace Mogwai
         void addRange(const RenderGraph* pGraph, uint64_t startFrame, uint64_t count);
         void reset(const RenderGraph* pGraph = nullptr);
         void renderUI(Gui::Window& w);
+
         void setOutputDirectory(const std::string& outDir);
+        const std::string& getOutputDirectory() const { return mOutputDir; }
+
+        void setBaseFilename(const std::string& baseFilename);
+        const std::string& getBaseFilename() const { return mBaseFilename; }
+
         std::string getScript(const std::string& var);
         std::string getOutputNamePrefix(const std::string& output) const;
 
@@ -63,7 +69,7 @@ namespace Mogwai
         bool mAbsolutePath = false;
         bool mShowUI = false;
 
-        struct  
+        struct
         {
             RenderGraph* pGraph = nullptr;
             Range range;

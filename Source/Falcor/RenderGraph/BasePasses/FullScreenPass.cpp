@@ -53,8 +53,8 @@ namespace Falcor
         }
         struct Vertex
         {
-            glm::vec2 screenPos;
-            glm::vec2 texCoord;
+            float2 screenPos;
+            float2 texCoord;
         };
 
 #ifdef FALCOR_VK
@@ -65,10 +65,10 @@ namespace Falcor
 
         const Vertex kVertices[] =
         {
-            {glm::vec2(-1, ADJUST_Y(1)), glm::vec2(0, 0)},
-            {glm::vec2(-1, ADJUST_Y(-1)), glm::vec2(0, 1)},
-            {glm::vec2(1, ADJUST_Y(1)), glm::vec2(1, 0)},
-            {glm::vec2(1, ADJUST_Y(-1)), glm::vec2(1, 1)},
+            {float2(-1, ADJUST_Y(1)), float2(0, 0)},
+            {float2(-1, ADJUST_Y(-1)), float2(0, 1)},
+            {float2(1, ADJUST_Y(1)), float2(1, 0)},
+            {float2(1, ADJUST_Y(-1)), float2(1, 1)},
         };
 #undef ADJUST_Y
 

@@ -73,7 +73,7 @@ namespace Falcor
         return CopyContext::ReadTextureTask::create(this, pTexture, subresourceIndex);
     }
 
-    std::vector<uint8> CopyContext::readTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex)
+    std::vector<uint8_t> CopyContext::readTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex)
     {
         CopyContext::ReadTextureTask::SharedPtr pTask = asyncReadTextureSubresource(pTexture, subresourceIndex);
         return pTask->getData();
@@ -154,7 +154,7 @@ namespace Falcor
         updateTextureSubresources(pTexture, 0, subresourceCount, pData);
     }
 
-    void CopyContext::updateSubresourceData(const Texture* pDst, uint32_t subresource, const void* pData, const uvec3& offset, const uvec3& size)
+    void CopyContext::updateSubresourceData(const Texture* pDst, uint32_t subresource, const void* pData, const uint3& offset, const uint3& size)
     {
         mCommandsPending = true;
         updateTextureSubresources(pDst, subresource, 1, pData, offset, size);

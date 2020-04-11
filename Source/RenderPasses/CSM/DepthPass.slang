@@ -55,7 +55,7 @@ ShadowPassVSOut vsMain(VSIn vIn)
 {
     ShadowPassVSOut vOut;
     float4x4 worldMat = gScene.getWorldMatrix(vIn.meshInstanceID);
-    vOut.pos = mul(vIn.pos, worldMat);
+    vOut.pos = mul(float4(vIn.pos, 1.f), worldMat);
 #ifdef _APPLY_PROJECTION
     vOut.pos = mul(vOut.pos, gScene.camera.getViewProj());
 #endif

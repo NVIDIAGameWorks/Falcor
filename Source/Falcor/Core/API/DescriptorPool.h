@@ -63,7 +63,7 @@ namespace Falcor
             Count
         };
 
-        static const uint32_t kTypeCount = uint32(Type::Count);
+        static const uint32_t kTypeCount = uint32_t(Type::Count);
 
         class dlldecl Desc
         {

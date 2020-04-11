@@ -65,7 +65,7 @@ private:
     std::unordered_map<std::string, bool> mIsInputInBounds;
 
     // UI variables
-    uvec2                                 mSelectedPixel = uvec2(0u);
+    uint2                                 mSelectedPixel = uint2(0u);
     bool                                  mScaleInputsToWindow = false;
     bool                                  mUseContinuousPicking = false;
 };

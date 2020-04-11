@@ -49,7 +49,7 @@ private:
 
     // Mouse parameters
     bool mMouseOverDivider = false; ///< Is the mouse over the divider?
-    ivec2 mMousePos = ivec2(0, 0); ///< Where was mouse in last mouse event processed
+    int2 mMousePos = int2(0, 0); ///< Where was mouse in last mouse event processed
     bool mDividerGrabbed = false; ///< Are we grabbing the divider?
 
     bool mDrawArrows = false; ///< When hovering over divider, show arrows?

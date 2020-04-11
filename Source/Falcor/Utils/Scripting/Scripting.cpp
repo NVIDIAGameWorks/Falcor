@@ -63,11 +63,11 @@ namespace Falcor
             case 1:
                 falcorDict[name] = floatVec[0]; break;
             case 2:
-                falcorDict[name] = vec2(floatVec[0], floatVec[1]); break;
+                falcorDict[name] = float2(floatVec[0], floatVec[1]); break;
             case 3:
-                falcorDict[name] = vec3(floatVec[0], floatVec[1], floatVec[2]); break;
+                falcorDict[name] = float3(floatVec[0], floatVec[1], floatVec[2]); break;
             case 4:
-                falcorDict[name] = vec4(floatVec[0], floatVec[1], floatVec[2], floatVec[3]); break;
+                falcorDict[name] = float4(floatVec[0], floatVec[1], floatVec[2], floatVec[3]); break;
             default:
                 falcorDict[name] = floatVec;
             }

@@ -51,7 +51,7 @@ private:
     Composite(const Dictionary& dict);
     bool parseDictionary(const Dictionary& dict);
 
-    glm::uvec2                  mFrameDim = { 0, 0 };
+    uint2                       mFrameDim = { 0, 0 };
     float                       mScaleA = 1.f;
     float                       mScaleB = 1.f;
 

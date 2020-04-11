@@ -36,7 +36,7 @@ namespace Falcor
 {
     namespace
     {
-        const std::string kRootDescriptorPrefix = "__root__";
+        const char* kRootDescriptorAttribute = "root";
     }
 
     TypedShaderVarOffset::TypedShaderVarOffset(
@@ -594,12 +594,13 @@ namespace Falcor
         ReflectionResourceType::ReturnType retType = getReturnType(pSlangType->getType());
         ReflectionResourceType::StructuredType structuredType = getStructuredBufferType(pSlangType->getType());
 
-        // Check if resource type represents a root descriptor.
-        // This is currently encoded using a magic prefix on the variable name.
-        // TODO: Replace this hack by an annotation of the type itself.
         assert(pPath->pPrimary && pPath->pPrimary->pVar);
         std::string name = pPath->pPrimary->pVar->getName();
-        bool isRootDescriptor = (name.substr(0, kRootDescriptorPrefix.length()) == kRootDescriptorPrefix);
+
+        // Check if resource type represents a root descriptor.
+        // In the shader we use a custom [root] attribute to flag resources to map to root descriptors.
+        auto pVar = pPath->pPrimary->pVar->getVariable();
+        bool isRootDescriptor = pVar->findUserAttributeByName(pProgramVersion->getSlangSession()->getGlobalSession(), kRootDescriptorAttribute) != nullptr;
 
         // Check that the root descriptor type is supported.
         if (isRootDescriptor)
@@ -967,7 +968,7 @@ namespace Falcor
         var.type = getVariableType(pTypeLayout->getScalarType(), pTypeLayout->getRowCount(), pTypeLayout->getColumnCount());
 
         uint32_t baseIndex = (uint32_t)getRegisterIndexFromPath(path.pPrimary, category);
-        for(uint32_t i = 0 ; i < max(count, 1u) ; i++)
+        for(uint32_t i = 0 ; i < std::max(count, 1u) ; i++)
         {
             var.bindLocation = baseIndex + (i*stride);
             var.semanticName = pVar->getSemanticName();

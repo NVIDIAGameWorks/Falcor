@@ -14,7 +14,7 @@ def render_graph_forward_renderer():
     forward_renderer.addPass(RenderPass("ForwardLightingPass"), "LightingPass")
     forward_renderer.addPass(RenderPass("CSM"), "ShadowPass")
     forward_renderer.addPass(RenderPass("BlitPass"), "BlitPass")
-    forward_renderer.addPass(RenderPass("ToneMapper"), "ToneMapping")
+    forward_renderer.addPass(RenderPass("ToneMapper", {'autoExposure': True}), "ToneMapping")
     forward_renderer.addPass(RenderPass("SSAO"), "SSAO")
     forward_renderer.addPass(RenderPass("FXAA"), "FXAA")
 

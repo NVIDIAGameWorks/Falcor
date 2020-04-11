@@ -750,19 +750,20 @@ namespace Falcor
 
     SCRIPT_BINDING(RenderGraph)
     {
-        void(RenderGraph::*renderGraphRemoveEdge)(const std::string&, const std::string&)(&RenderGraph::removeEdge);
         auto graphClass = m.regClass(RenderGraph);
         graphClass.ctor(&RenderGraph::create);
-        graphClass.func_(RenderGraphIR::kAddPass, &RenderGraph::addPass, "renderPass"_a, "passName"_a).func_(RenderGraphIR::kRemovePass, &RenderGraph::removePass);
-        graphClass.func_(RenderGraphIR::kAddEdge, &RenderGraph::addEdge).func_(RenderGraphIR::kRemoveEdge, renderGraphRemoveEdge);
-        graphClass.func_(RenderGraphIR::kMarkOutput, &RenderGraph::markOutput).func_(RenderGraphIR::kUnmarkOutput, &RenderGraph::unmarkOutput);
-        graphClass.func_(RenderGraphIR::kAutoGenEdges, &RenderGraph::autoGenEdges);
-        graphClass.func_("name", &RenderGraph::setName);
-        graphClass.func_("name", &RenderGraph::getName);
-        graphClass.func_("getPass", &RenderGraph::getPass);
+        graphClass.property("name", &RenderGraph::getName, &RenderGraph::setName);
+        graphClass.func_(RenderGraphIR::kAddPass, &RenderGraph::addPass, "pass"_a, "name"_a);
+        graphClass.func_(RenderGraphIR::kRemovePass, &RenderGraph::removePass, "name"_a);
+        graphClass.func_(RenderGraphIR::kAddEdge, &RenderGraph::addEdge, "src"_a, "dst"_a);
+        graphClass.func_(RenderGraphIR::kRemoveEdge, ScriptBindings::overload_cast<const std::string&, const std::string&>(&RenderGraph::removeEdge), "src"_a, "src"_a);
+        graphClass.func_(RenderGraphIR::kMarkOutput, &RenderGraph::markOutput, "name"_a);
+        graphClass.func_(RenderGraphIR::kUnmarkOutput, &RenderGraph::unmarkOutput, "name"_a);
+        graphClass.func_(RenderGraphIR::kAutoGenEdges, &RenderGraph::autoGenEdges, "executionOrder"_a);
+        graphClass.func_("getPass", &RenderGraph::getPass, "name"_a);
+        graphClass.func_("getOutput", ScriptBindings::overload_cast<const std::string&>(&RenderGraph::getOutput), "name"_a);
         auto printGraph = [](RenderGraph::SharedPtr pGraph) { pybind11::print(RenderGraphExporter::getIR(pGraph)); };
         graphClass.func_("print", printGraph);
-        graphClass.func_("getOutput", ScriptBindings::overload_cast<const std::string&>(&RenderGraph::getOutput));
 
         // RenderPass
         auto passClass = m.regClass(RenderPass);
@@ -774,18 +775,18 @@ namespace Falcor
             if (!pPass) throw std::exception(("Can't create a render pass named `" + passName + "`. Make sure the required DLL was loaded.").c_str());
             return pPass;
         };
-        passClass.ctor(createRenderPass, "passName"_a, "dict"_a = pybind11::dict());
+        passClass.ctor(createRenderPass, "name"_a, "dict"_a = pybind11::dict());
 
         const auto& loadPassLibrary = [](const std::string& library)
         {
             return RenderPassLibrary::instance().loadLibrary(library);
         };
-        m.func_(RenderGraphIR::kLoadPassLibrary, loadPassLibrary);
+        m.func_(RenderGraphIR::kLoadPassLibrary, loadPassLibrary, "name"_a);
 
         const auto& updateRenderPass = [](const RenderGraph::SharedPtr& pGraph, const std::string& passName, pybind11::dict d)
         {
             pGraph->updatePass(gpDevice->getRenderContext(), passName, Dictionary(d));
         };
-        graphClass.func_(RenderGraphIR::kUpdatePass, updateRenderPass);
+        graphClass.func_(RenderGraphIR::kUpdatePass, updateRenderPass, "name"_a, "dict"_a);
     }
 }

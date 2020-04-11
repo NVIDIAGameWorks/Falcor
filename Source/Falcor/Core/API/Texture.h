@@ -52,15 +52,15 @@ namespace Falcor
 
         /** Get a mip-level width
         */
-        uint32_t getWidth(uint32_t mipLevel = 0) const { return (mipLevel == 0) || (mipLevel < mMipLevels) ? max(1U, mWidth >> mipLevel) : 0; }
+        uint32_t getWidth(uint32_t mipLevel = 0) const { return (mipLevel == 0) || (mipLevel < mMipLevels) ? std::max(1U, mWidth >> mipLevel) : 0; }
 
         /** Get a mip-level height
         */
-        uint32_t getHeight(uint32_t mipLevel = 0) const { return (mipLevel == 0) || (mipLevel < mMipLevels) ? max(1U, mHeight >> mipLevel) : 0; }
+        uint32_t getHeight(uint32_t mipLevel = 0) const { return (mipLevel == 0) || (mipLevel < mMipLevels) ? std::max(1U, mHeight >> mipLevel) : 0; }
 
         /** Get a mip-level depth
         */
-        uint32_t getDepth(uint32_t mipLevel = 0) const { return (mipLevel == 0) || (mipLevel < mMipLevels) ? max(1U, mDepth >> mipLevel) : 0; }
+        uint32_t getDepth(uint32_t mipLevel = 0) const { return (mipLevel == 0) || (mipLevel < mMipLevels) ? std::max(1U, mDepth >> mipLevel) : 0; }
 
         /** Get the number of mip-levels
         */
@@ -164,7 +164,7 @@ namespace Falcor
             \return A pointer to a new texture, or throws an exception if creation failed.
         */
         static SharedPtr create2DMS(uint32_t width, uint32_t height, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize = 1, BindFlags bindFlags = BindFlags::ShaderResource);
-        
+
         /** Create a new texture object from a file.
             \param[in] filename Filename of the image. Can also include a full path or relative path from a data directory.
             \param[in] generateMipLevels Whether the mip-chain should be generated.
@@ -224,11 +224,11 @@ namespace Falcor
         */
         void generateMips(RenderContext* pContext);
 
-        /** In case the texture was loaded from a file, use this to set the filename
+        /** In case the texture was loaded from a file, use this to set the file path
         */
         void setSourceFilename(const std::string& filename) { mSourceFilename = filename; }
 
-        /** In case the texture was loaded from a file, get the source filename
+        /** In case the texture was loaded from a file, get the source file path
         */
         const std::string& getSourceFilename() const { return mSourceFilename; }
 
@@ -252,7 +252,7 @@ namespace Falcor
         uint32_t mArraySize = 0;
         ResourceFormat mFormat = ResourceFormat::Unknown;
         bool mIsSparse = false;
-        glm::i32vec3 mSparsePageRes = glm::i32vec3(0);
+        int3 mSparsePageRes = int3(0);
 
         friend class Device;
     };

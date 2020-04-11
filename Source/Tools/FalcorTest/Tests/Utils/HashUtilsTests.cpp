@@ -55,7 +55,7 @@ namespace Falcor
     {
         // Allocate results buffer (64k dwords).
         Buffer::SharedPtr pResultBuffer = Buffer::createTyped<uint32_t>(1 << 16, ResourceBindFlags::UnorderedAccess);
-        ctx.getRenderContext()->clearUAV(pResultBuffer->getUAV().get(), glm::uvec4(0));
+        ctx.getRenderContext()->clearUAV(pResultBuffer->getUAV().get(), uint4(0));
 
         // Setup and run GPU test.
         ctx.createProgram("Tests/Utils/HashUtilsTests.cs.slang", "testJenkinsHash");
@@ -98,7 +98,7 @@ namespace Falcor
     {
         // Allocate results buffer (2^27 dwords).
         Buffer::SharedPtr pResultBuffer = Buffer::createTyped<uint32_t>(1 << 27, ResourceBindFlags::UnorderedAccess);
-        ctx.getRenderContext()->clearUAV(pResultBuffer->getUAV().get(), glm::uvec4(0));
+        ctx.getRenderContext()->clearUAV(pResultBuffer->getUAV().get(), uint4(0));
 
         // Setup and run GPU test.
         ctx.createProgram("Tests/Utils/HashUtilsTests.cs.slang", "testJenkinsHash_PerfectHash");

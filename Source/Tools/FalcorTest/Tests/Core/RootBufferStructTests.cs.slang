@@ -25,6 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+import Utils.Attributes;
 
 /** Unit tests for testing a buffer bound as root descriptor inside a struct,
     where the struct is placed in a constant buffer.
@@ -42,9 +43,9 @@ struct S
     Buffer<uint> buf;
     RWBuffer<uint> rwBuf;
 #if USE_UAV
-    RWStructuredBuffer<T> __root__buf; // Buffer bound to root descriptor (UAV)
+    [root] RWStructuredBuffer<T> rootBuf;   // Buffer bound to root descriptor (UAV)
 #else
-    StructuredBuffer<T> __root__buf;   // Buffer bound to root descriptor (SRV)
+    [root] StructuredBuffer<T> rootBuf;     // Buffer bound to root descriptor (SRV)
 #endif
 };
 
@@ -63,7 +64,7 @@ void main(uint3 threadId : SV_DispatchThreadID)
     uint r = 0;
     r += data.buf[i];
     r += data.rwBuf[i] * 2;
-    r += data.__root__buf[i].value * 3;
+    r += data.rootBuf[i].value * 3;
 
     result[i] = r;
 }

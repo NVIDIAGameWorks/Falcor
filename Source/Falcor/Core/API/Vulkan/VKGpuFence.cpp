@@ -148,7 +148,7 @@ namespace Falcor
         pFence->mCpuValue = 1;
         return pFence;
     }
-    
+
     uint64_t GpuFence::gpuSignal(CommandQueueHandle pQueue)
     {
         assert(pQueue);
@@ -203,7 +203,7 @@ namespace Falcor
         vk_call(vkQueueSubmit(pQueue, 1, &submit, nullptr));
         mpApiData->semaphoreWaitList.clear();
     }
-    
+
     void releaseSemaphores(FenceApiData* pApiData)
     {
         size_t sems = pApiData->semaphoreQueue.getActiveObjects().size();
@@ -214,7 +214,7 @@ namespace Falcor
         size_t wait = pApiData->semaphoreWaitList.size();
         assert(wait <= sems);
         size_t waitDelta = sems - wait;
-        size_t count = min(waitDelta, fenceDelta);
+        size_t count = std::minwaitDelta, fenceDelta);
         pApiData->semaphoreQueue.popFront(count);
     }
 

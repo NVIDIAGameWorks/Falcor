@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 import Scene.Raster;
-import RenderPasses.Shared.HitInfo;
+import Scene.HitInfo;
 
 struct VBufferPSOut
 {
@@ -49,7 +49,7 @@ VBufferVSOut vsMain(VSIn vsIn)
     VBufferVSOut vsOut;
 
     float4x4 worldMat = gScene.getWorldMatrix(vsIn.meshInstanceID);
-    float4 posW = mul(vsIn.pos, worldMat);
+    float4 posW = mul(float4(vsIn.pos, 1.f), worldMat);
     vsOut.posH = mul(posW, gScene.camera.getViewProj());
 
     vsOut.texC = vsIn.texC;

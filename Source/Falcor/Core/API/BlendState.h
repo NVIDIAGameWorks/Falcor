@@ -82,9 +82,9 @@ namespace Falcor
             /** Set the constant blend factor
                 \param[in] factor Blend factor
             */
-            Desc& setBlendFactor(const glm::vec4& factor) { mBlendFactor = factor; return *this; }
+            Desc& setBlendFactor(const float4& factor) { mBlendFactor = factor; return *this; }
 
-            /** Enable/disable independent blend modes for different render target. Only used when multiple render-targets are bound. 
+            /** Enable/disable independent blend modes for different render target. Only used when multiple render-targets are bound.
                 \param[in] enabled True If false, will use RenderTargetDesc[0] for all the bound render-targets. Otherwise, will use the entire RenderTargetDesc[] array.
             */
             Desc& setIndependentBlend(bool enabled) { mEnableIndependentBlend = enabled; return *this; }
@@ -136,7 +136,7 @@ namespace Falcor
             std::vector<RenderTargetDesc> mRtDesc;
             bool mEnableIndependentBlend = false;
             bool mAlphaToCoverageEnabled = false;
-            glm::vec4 mBlendFactor       = glm::vec4(0, 0, 0, 0);
+            float4 mBlendFactor          = float4(0, 0, 0, 0);
         };
 
         ~BlendState();
@@ -149,7 +149,7 @@ namespace Falcor
 
         /** Get the constant blend factor color
         */
-        const glm::vec4& getBlendFactor() const { return mDesc.mBlendFactor; }
+        const float4& getBlendFactor() const { return mDesc.mBlendFactor; }
 
         /** Get the RGB blend operation
         */

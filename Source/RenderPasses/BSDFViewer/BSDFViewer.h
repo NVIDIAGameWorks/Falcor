@@ -30,6 +30,7 @@
 #include "FalcorExperimental.h"
 #include "BSDFViewerParams.slang"
 #include "Utils/Sampling/SampleGenerator.h"
+#include "Utils/Debug/PixelDebug.h"
 #include "Experimental/Scene/Lights/EnvProbe.h"
 
 using namespace Falcor;
@@ -71,6 +72,8 @@ private:
     Buffer::SharedPtr               mPixelDataBuffer;       ///< Buffer for read back of data for the selected pixel.
     PixelData                       mPixelData;             ///< Pixel data for the selected pixel (if valid).
     bool                            mPixelDataValid = false;
+
+    PixelDebug::SharedPtr           mpPixelDebug;           ///< Utility class for pixel debugging (print in shaders).
 
     ComputePass::SharedPtr          mpViewerPass;
 

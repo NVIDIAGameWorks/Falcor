@@ -58,17 +58,17 @@ namespace Falcor
             \param[in] pDstFbo The target FBO
             \param[in] pos Text position
         */
-        static void render(RenderContext* pRenderContext, const std::string& text, const Fbo::SharedPtr& pDstFbo, vec2 pos);
-                
+        static void render(RenderContext* pRenderContext, const std::string& text, const Fbo::SharedPtr& pDstFbo, float2 pos);
+
         /** Returns the color of the text being rendered
             \return current color The text color
         */
-        static const glm::vec3& getColor();
+        static const float3& getColor();
 
         /** Set the color of the text being rendered
             \param[in] color The text color
         */
-        static void setColor(const glm::vec3& color);
+        static void setColor(const float3& color);
 
         /** Get the active flags
         */

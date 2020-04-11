@@ -74,8 +74,8 @@ namespace Falcor
                 width = (width + kTileSize - 1) / kTileSize;;
                 height = (height + kTileSize - 1) / kTileSize;;
 
-                width = max(width, 1u);
-                height = max(height, 1u);
+                width = std::max(width, 1u);
+                height = std::max(height, 1u);
 
                 Fbo::Desc fboDesc;
                 fboDesc.setColorTarget(0, texFormat);
@@ -96,7 +96,7 @@ namespace Falcor
         pPass->execute(pRenderCtx, pDst);
      }
 
-    glm::vec4 ParallelReduction::reduce(RenderContext* pRenderCtx, Texture::SharedPtr pInput)
+    float4 ParallelReduction::reduce(RenderContext* pRenderCtx, Texture::SharedPtr pInput)
     {
         FullScreenPass::SharedPtr pPass = mpFirstIterProg;
 
@@ -111,7 +111,7 @@ namespace Falcor
         mResultData[mCurFbo].pReadTask = pRenderCtx->asyncReadTextureSubresource(mResultData[mCurFbo].pFbo->getColorTexture(0).get(), 0);
         // Read back the results
         mCurFbo = (mCurFbo + 1) % mResultData.size();
-        glm::vec4 result(0);
+        float4 result(0);
         if(mResultData[mCurFbo].pReadTask)
         {
             auto texData = mResultData[mCurFbo].pReadTask->getData();
@@ -120,7 +120,7 @@ namespace Falcor
             switch (mReductionType)
             {
             case Type::MinMax:
-                result = vec4(*reinterpret_cast<vec2*>(texData.data()), 0, 0);
+                result = float4(*reinterpret_cast<float2*>(texData.data()), 0, 0);
                 break;
             default:
                 should_not_get_here();

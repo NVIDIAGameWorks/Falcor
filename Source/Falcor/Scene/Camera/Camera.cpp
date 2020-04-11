@@ -34,7 +34,7 @@
 
 namespace Falcor
 {
-    static_assert(sizeof(CameraData) % (sizeof(vec4)) == 0, "CameraData size should be a multiple of 16");
+    static_assert(sizeof(CameraData) % (sizeof(float4)) == 0, "CameraData size should be a multiple of 16");
 
     // Default dimensions of full frame cameras and 35mm film
     const float Camera::kDefaultFrameHeight = 24.0f;
@@ -55,7 +55,7 @@ namespace Falcor
     {
         if (mJitterPattern.pGenerator)
         {
-            vec2 jitter = mJitterPattern.pGenerator->next();
+            float2 jitter = mJitterPattern.pGenerator->next();
             jitter *= mJitterPattern.scale;
             setJitterInternal(jitter.x, jitter.y);
         }
@@ -147,13 +147,13 @@ namespace Falcor
             glm::mat4 tempMat = glm::transpose(mData.viewProjMat);
             for (int i = 0; i < 6; i++)
             {
-                glm::vec4 plane = (i & 1) ? tempMat[i >> 1] : -tempMat[i >> 1];
+                float4 plane = (i & 1) ? tempMat[i >> 1] : -tempMat[i >> 1];
                 if(i != 5) // Z range is [0, w]. For the 0 <= z plane we don't need to add w
                 {
                     plane += tempMat[3];
                 }
 
-                mFrustumPlanes[i].xyz = glm::vec3(plane);
+                mFrustumPlanes[i].xyz = float3(plane);
                 mFrustumPlanes[i].sign = glm::sign(mFrustumPlanes[i].xyz);
                 mFrustumPlanes[i].negW = -plane.w;
             }
@@ -228,7 +228,7 @@ namespace Falcor
         // See method 4b: https://fgiesen.wordpress.com/2010/10/17/view-frustum-culling/
         for (int plane = 0; plane < 6; plane++)
         {
-            glm::vec3 signedExtent = box.extent * mFrustumPlanes[plane].sign;
+            float3 signedExtent = box.extent * mFrustumPlanes[plane].sign;
             float dr = glm::dot(box.center + signedExtent, mFrustumPlanes[plane].xyz);
             isInside = isInside && (dr > mFrustumPlanes[plane].negW);
         }
@@ -242,7 +242,7 @@ namespace Falcor
         var["data"].setBlob(mData);
     }
 
-    void Camera::setPatternGenerator(const CPUSampleGenerator::SharedPtr& pGenerator, const vec2& scale)
+    void Camera::setPatternGenerator(const CPUSampleGenerator::SharedPtr& pGenerator, const float2& scale)
     {
         mJitterPattern.pGenerator = pGenerator;
         mJitterPattern.scale = scale;
@@ -267,6 +267,13 @@ namespace Falcor
         mData.jitterX = jitterX;
         mData.jitterY = jitterY;
         mDirty = true;
+    }
+
+    float Camera::computeScreenSpacePixelSpreadAngle(const uint32_t winHeightPixels) const
+    {
+        const float FOVrad = focalLengthToFovY(getFocalLength(), Camera::kDefaultFrameHeight);
+        const float angle = atanf(2.0f * tanf(FOVrad * 0.5f) / winHeightPixels);
+        return angle;
     }
 
     void Camera::renderUI(Gui* pGui, const char* uiGroup)
@@ -294,7 +301,7 @@ namespace Falcor
             float ISOSpeed = getISOSpeed();
             if (g.var("ISO Speed", ISOSpeed, 0.8f, FLT_MAX, 0.25f)) setISOSpeed(ISOSpeed);
 
-            float2 depth = glm::vec2(mData.nearZ, mData.farZ);
+            float2 depth = float2(mData.nearZ, mData.farZ);
             if (g.var("Depth Range", depth, 0.f, FLT_MAX, 0.1f)) setDepthRange(depth.x, depth.y);
 
             float3 pos = getPosition();

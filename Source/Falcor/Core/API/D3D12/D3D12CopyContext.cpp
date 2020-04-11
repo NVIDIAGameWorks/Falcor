@@ -71,9 +71,9 @@ namespace Falcor
         }
     }
 
-    void CopyContext::updateTextureSubresources(const Texture* pTexture, uint32_t firstSubresource, uint32_t subresourceCount, const void* pData, const uvec3& offset, const uvec3& size)
+    void CopyContext::updateTextureSubresources(const Texture* pTexture, uint32_t firstSubresource, uint32_t subresourceCount, const void* pData, const uint3& offset, const uint3& size)
     {
-        bool copyRegion = (offset != uvec3(0)) || (size != uvec3(-1));
+        bool copyRegion = (offset != uint3(0)) || (size != uint3(-1));
         assert(subresourceCount == 1 || (copyRegion == false));
 
         mCommandsPending = true;
@@ -154,7 +154,7 @@ namespace Falcor
         ID3D12Device* pDevice = gpDevice->getApiHandle();
         pDevice->GetCopyableFootprints(&texDesc, subresourceIndex, 1, 0, &footprint, &pThis->mRowCount, &rowSize, &size);
 
-        //Create buffer 
+        //Create buffer
         pThis->mpBuffer = Buffer::create(size, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
 
         //Copy from texture to buffer
@@ -178,10 +178,10 @@ namespace Falcor
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT& footprint = mFootprint;
 
         //Get buffer data
-        std::vector<uint8> result;
+        std::vector<uint8_t> result;
         uint32_t actualRowSize = footprint.Footprint.Width * getFormatBytesPerBlock(mTextureFormat);
         result.resize(mRowCount * actualRowSize);
-        uint8* pData = reinterpret_cast<uint8*>(mpBuffer->map(Buffer::MapType::Read));
+        uint8_t* pData = reinterpret_cast<uint8_t*>(mpBuffer->map(Buffer::MapType::Read));
 
         for (uint32_t z = 0; z < footprint.Footprint.Depth; z++)
         {
@@ -312,7 +312,7 @@ namespace Falcor
         mCommandsPending = true;
     }
 
-    void CopyContext::copySubresourceRegion(const Texture* pDst, uint32_t dstSubresource, const Texture* pSrc, uint32_t srcSubresource, const uvec3& dstOffset, const uvec3& srcOffset, const uvec3& size)
+    void CopyContext::copySubresourceRegion(const Texture* pDst, uint32_t dstSubresource, const Texture* pSrc, uint32_t srcSubresource, const uint3& dstOffset, const uint3& srcOffset, const uint3& size)
     {
         resourceBarrier(pDst, Resource::State::CopyDest);
         resourceBarrier(pSrc, Resource::State::CopySource);

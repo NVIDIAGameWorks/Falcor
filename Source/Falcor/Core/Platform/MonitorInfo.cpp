@@ -33,13 +33,13 @@
 #include "Utils/StringUtils.h"
 
 #pragma comment(lib, "setupapi.lib")
- 
-// With some inspiration from: 
+
+// With some inspiration from:
 //     http://ofekshilon.com/2011/11/13/reading-monitor-physical-dimensions-or-getting-the-edid-the-right-way/
 //     http://ofekshilon.com/2014/06/19/reading-specific-monitor-dimensions/
 
 #define NAME_SIZE 128
- 
+
 namespace Falcor
 {
     // Assumes hDevRegKey is valid
@@ -129,38 +129,38 @@ namespace Falcor
         MONITORINFOEX mi;
         mi.cbSize = sizeof(MONITORINFOEX);
         GetMonitorInfo(hMonitor, &mi);
-     
+
         DISPLAY_DEVICE dd;
         dd.cb = sizeof(dd);
         DWORD devIdx = 0; // device index
-     
+
         bool bFoundDevice = false;
         while (EnumDisplayDevices(0, devIdx, &dd, 0))
         {
             devIdx++;
             if (0 != wcscmp(dd.DeviceName, mi.szDevice))
                 continue;
-     
+
             DISPLAY_DEVICE ddMon;
             ZeroMemory(&ddMon, sizeof(ddMon));
             ddMon.cb = sizeof(ddMon);
             DWORD MonIdx = 0;
-     
+
             while (EnumDisplayDevices(dd.DeviceName, MonIdx, &ddMon, 0))
             {
                 MonIdx++;
-     
+
                 ddMonOut = ddMon;
                 return TRUE;
-     
+
                 ZeroMemory(&ddMon, sizeof(ddMon));
                 ddMon.cb = sizeof(ddMon);
             }
-     
+
             ZeroMemory(&dd, sizeof(dd));
             dd.cb = sizeof(dd);
         }
-     
+
         return FALSE;
     }
 
@@ -191,12 +191,12 @@ namespace Falcor
 
             MonitorInfo::MonitorDesc desc;
             desc.mIdentifier = wstring_2_string(DeviceID);
-            desc.mResolution = glm::vec2(
-                abs(info.rcMonitor.left - info.rcMonitor.right), 
+            desc.mResolution = float2(
+                abs(info.rcMonitor.left - info.rcMonitor.right),
                 abs(info.rcMonitor.top  - info.rcMonitor.bottom));
 
             //printf("%fx%f mm\n", WidthMm, HeightMm );
-            desc.mPhysicalSize = glm::vec2(wInch, hInch);
+            desc.mPhysicalSize = float2(wInch, hInch);
             auto vPpi = desc.mResolution / desc.mPhysicalSize;
             desc.mPpi = (vPpi.x + vPpi.y) * 0.5f;
             desc.mIsPrimary = (info.dwFlags & MONITORINFOF_PRIMARY);

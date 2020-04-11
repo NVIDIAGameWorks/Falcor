@@ -27,10 +27,10 @@
  **************************************************************************/
 #include "HelloDXR.h"
 
-static const glm::vec4 kClearColor(0.38f, 0.52f, 0.10f, 1);
+static const float4 kClearColor(0.38f, 0.52f, 0.10f, 1);
 static const std::string kDefaultScene = "Arcade/Arcade.fscene";
 
-std::string to_string(const vec3& v)
+std::string to_string(const float3& v)
 {
     std::string s;
     s += "(" + std::to_string(v.x) + ", " + std::to_string(v.y) + ", " + std::to_string(v.z) + ")";
@@ -99,7 +99,7 @@ void HelloDXR::setPerFrameVars(const Fbo* pTargetFbo)
     PROFILE("setPerFrameVars");
     auto cb = mpRtVars["PerFrameCB"];
     cb["invView"] = glm::inverse(mpCamera->getViewMatrix());
-    cb["viewportDims"] = vec2(pTargetFbo->getWidth(), pTargetFbo->getHeight());
+    cb["viewportDims"] = float2(pTargetFbo->getWidth(), pTargetFbo->getHeight());
     float fovY = focalLengthToFovY(mpCamera->getFocalLength(), Camera::kDefaultFrameHeight);
     cb["tanHalfFovY"] = tanf(fovY * 0.5f);
     cb["sampleIndex"] = mSampleIndex++;
@@ -113,7 +113,7 @@ void HelloDXR::renderRT(RenderContext* pContext, const Fbo* pTargetFbo)
     setPerFrameVars(pTargetFbo);
 
     pContext->clearUAV(mpRtOut->getUAV().get(), kClearColor);
-    mpScene->raytrace(pContext, mpRaytraceProgram.get(), mpRtVars, uvec3(pTargetFbo->getWidth(), pTargetFbo->getHeight(), 1));
+    mpScene->raytrace(pContext, mpRaytraceProgram.get(), mpRtVars, uint3(pTargetFbo->getWidth(), pTargetFbo->getHeight(), 1));
     pContext->blit(mpRtOut->getSRV(), pTargetFbo->getRenderTargetView(0));
 }
 
@@ -123,7 +123,7 @@ void HelloDXR::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr
 
     if(mpScene)
     {
-        mpScene->update(pRenderContext, gpFramework->getGlobalClock().now());
+        mpScene->update(pRenderContext, gpFramework->getGlobalClock().getTime());
         if (mRayTrace) renderRT(pRenderContext, pTargetFbo.get());
         else mpRasterPass->renderScene(pRenderContext, pTargetFbo);
     }

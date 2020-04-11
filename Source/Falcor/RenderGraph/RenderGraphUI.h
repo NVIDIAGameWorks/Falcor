@@ -39,7 +39,7 @@ namespace Falcor
     public:
 
         // wrapper around inserting new pin for a given pass
-        void addUIPin(const std::string& fieldName, uint32_t guiPinID, bool isInput, const std::string& connectedPinName = "", const std::string& connectedNodeName = "", bool isGraphOutput = false);        
+        void addUIPin(const std::string& fieldName, uint32_t guiPinID, bool isInput, const std::string& connectedPinName = "", const std::string& connectedNodeName = "", bool isGraphOutput = false);
         void renderPinUI(const std::string& passName, RenderGraphUI* pGraphUI, uint32_t index = 0, bool input = false);
 
         friend class RenderGraphUI;
@@ -91,7 +91,7 @@ namespace Falcor
         */
         void setToRebuild() { mRebuildDisplayData = true; }
 
-        /** Writes out all the changes made to the graph 
+        /** Writes out all the changes made to the graph
         */
         void writeUpdateScriptToFile(RenderContext* pContext, const std::string& filePath, float lastFrameTimes);
 
@@ -155,14 +155,14 @@ namespace Falcor
         /** Updates structure for drawing the GUI graph
         */
         void updateDisplayData(RenderContext* pContext);
-        
+
         /** Updates information about pin connections and graph output.
         */
         void updatePins(bool addLinks = true);
 
         /** Helper function to calculate position of the next node in execution order
         */
-        glm::vec2 getNextNodePosition(uint32_t nodeID);
+        float2 getNextNodePosition(uint32_t nodeID);
 
         /** Renders specialized pop up menu.
         */
@@ -181,7 +181,7 @@ namespace Falcor
 
         RenderGraphIR::SharedPtr mpIr;
 
-        glm::vec2 mNewNodeStartPosition{ -40.0f, 100.0f };
+        float2 mNewNodeStartPosition{ -40.0f, 100.0f };
         float mMaxNodePositionX = 0.0f;
 
         std::unordered_set<std::string> mAllNodeTypeStrings;

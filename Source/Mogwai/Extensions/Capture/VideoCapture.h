@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "../../Mogwai.h"
 #include "CaptureTrigger.h"
 #include "Utils/Video/VideoEncoderUI.h"
 #include "Utils/Video/VideoEncoder.h"
@@ -46,8 +47,8 @@ namespace Mogwai
     private:
         VideoCapture(Renderer* pRenderer);
 
-        void ranges(const RenderGraph* pGraph, const range_vec& ranges);
-        void ranges(const std::string& graphName, const range_vec& ranges);
+        void addRanges(const RenderGraph* pGraph, const range_vec& ranges);
+        void addRanges(const std::string& graphName, const range_vec& ranges);
         std::string graphRangesStr(const RenderGraph* pGraph);
 
         bool mShowUI = false;

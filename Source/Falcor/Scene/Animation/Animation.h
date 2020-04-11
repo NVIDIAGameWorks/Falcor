@@ -41,9 +41,9 @@ namespace Falcor
         struct Keyframe
         {
             double time = 0;
-            vec3 translation = vec3(0, 0, 0);
-            vec3 scaling = vec3(1, 1, 1);
-            quat rotation = quat(1, 0, 0, 0);
+            float3 translation = float3(0, 0, 0);
+            float3 scaling = float3(1, 1, 1);
+            glm::quat rotation = glm::quat(1, 0, 0, 0);
         };
 
         /** Create a new object
@@ -80,11 +80,12 @@ namespace Falcor
             \param currentTime The current time in seconds. This can be larger then the animation time, in which case the animation will loop
             \param matrices The array of global matrices to update
         */
-        void animate(double currentTime, std::vector<mat4>& matrices);
+        void animate(double currentTime, std::vector<glm::mat4>& matrices);
 
         /** Get the matrixID affected by a channel
         */
         size_t getChannelMatrixID(size_t channel) const { return mChannels[channel].matrixID; }
+
     private:
         Animation(const std::string& name, double durationInSeconds);
 
@@ -101,8 +102,8 @@ namespace Falcor
         const std::string mName;
         double mDurationInSeconds = 0;
 
-        mat4 animateChannel(Channel& c, double time);
+        glm::mat4 animateChannel(Channel& c, double time);
         size_t findChannelFrame(const Channel& c, double time) const;
-        mat4 interpolate(const Keyframe& start, const Keyframe& end, double curTime) const;
+        glm::mat4 interpolate(const Keyframe& start, const Keyframe& end, double curTime) const;
     };
 }
