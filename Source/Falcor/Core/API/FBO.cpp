@@ -299,9 +299,9 @@ namespace Falcor
                 mIsLayered = (attachment.arraySize > 1);
             }
 
-            mWidth = min(mWidth, pTexture->getWidth(attachment.mipLevel));
-            mHeight = min(mHeight, pTexture->getHeight(attachment.mipLevel));
-            mDepth = min(mDepth, pTexture->getDepth(attachment.mipLevel));
+            mWidth = std::min(mWidth, pTexture->getWidth(attachment.mipLevel));
+            mHeight = std::min(mHeight, pTexture->getHeight(attachment.mipLevel));
+            mDepth = std::min(mDepth, pTexture->getDepth(attachment.mipLevel));
 
             {
                 if ( (pTexture->getSampleCount() > mTempDesc.getSampleCount()) && isDepthStencilFormat(pTexture->getFormat()) )

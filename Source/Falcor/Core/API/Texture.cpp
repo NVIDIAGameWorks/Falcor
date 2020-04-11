@@ -253,7 +253,7 @@ namespace Falcor
         // Handle the special case where we have an HDR texture with less then 3 channels
         FormatType type = getFormatType(mFormat);
         uint32_t channels = getFormatChannelCount(mFormat);
-        std::vector<uint8> textureData;
+        std::vector<uint8_t> textureData;
         ResourceFormat resourceFormat = mFormat;
 
         if (type == FormatType::Float && channels < 3)
@@ -364,6 +364,6 @@ namespace Falcor
         {
             return gpDevice->getRenderContext()->readTextureSubresource(pTexture, subresource);
         };
-        c.func_("data", data);
+        c.func_("data", data, "subresource"_a);
     }
 }

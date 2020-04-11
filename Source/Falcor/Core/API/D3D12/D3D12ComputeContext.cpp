@@ -85,7 +85,7 @@ namespace Falcor
 
         auto pCSO = pState->getCSO(pVars);
 
-        // Apply the vars. Must be first because applyComputeVars() might cause a flush        
+        // Apply the vars. Must be first because applyComputeVars() might cause a flush
         if (pVars)
         {
             if (applyComputeVars(pVars, pCSO->getDesc().getProgramKernels()->getRootSignature().get()) == false) return false;
@@ -98,7 +98,7 @@ namespace Falcor
         return true;
     }
 
-    void ComputeContext::dispatch(ComputeState* pState, ComputeVars* pVars, const uvec3& dispatchSize)
+    void ComputeContext::dispatch(ComputeState* pState, ComputeVars* pVars, const uint3& dispatchSize)
     {
         // Check dispatch dimensions. TODO: Should be moved into Falcor.
         if (dispatchSize.x > D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION ||
@@ -119,11 +119,11 @@ namespace Falcor
     {
         pContext->resourceBarrier(pUav->getResource(), Resource::State::UnorderedAccess);
         UavHandle uav = pUav->getApiHandle();
-        if (typeid(ClearType) == typeid(vec4))
+        if (typeid(ClearType) == typeid(float4))
         {
             pList->ClearUnorderedAccessViewFloat(uav->getGpuHandle(0), uav->getCpuHandle(0), pUav->getResource()->getApiHandle(), (float*)value_ptr(clear), 0, nullptr);
         }
-        else if (typeid(ClearType) == typeid(uvec4))
+        else if (typeid(ClearType) == typeid(uint4))
         {
             pList->ClearUnorderedAccessViewUint(uav->getGpuHandle(0), uav->getCpuHandle(0), pUav->getResource()->getApiHandle(), (uint32_t*)value_ptr(clear), 0, nullptr);
         }
@@ -133,13 +133,13 @@ namespace Falcor
         }
     }
 
-    void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const vec4& value)
+    void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const float4& value)
     {
         clearUavCommon(this, pUav, value, mpLowLevelData->getCommandList().GetInterfacePtr());
         mCommandsPending = true;
     }
 
-    void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const uvec4& value)
+    void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const uint4& value)
     {
         clearUavCommon(this, pUav, value, mpLowLevelData->getCommandList().GetInterfacePtr());
         mCommandsPending = true;
@@ -149,7 +149,7 @@ namespace Falcor
     {
         if (pBuffer->getUAVCounter())
         {
-            clearUAV(pBuffer->getUAVCounter()->getUAV().get(), uvec4(value));
+            clearUAV(pBuffer->getUAVCounter()->getUAV().get(), uint4(value));
         }
     }
 

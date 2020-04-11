@@ -33,6 +33,9 @@
 
 namespace Falcor
 {
+    static_assert(sizeof(MeshLightData) % 16 == 0, "MeshLightData size should be a multiple of 16");
+    static_assert(sizeof(EmissiveTriangle) % 16 == 0, "EmissiveTriangle size should be a multiple of 16");
+
     namespace
     {
         const char kEmissiveIntegratorFile[] = "Experimental/Scene/Lights/EmissiveIntegrator.ps.slang";
@@ -272,8 +275,8 @@ namespace Falcor
     {
         // Create GPU buffers.
         assert(mTriangleCount > 0);
-        const size_t bufSize = mTriangleCount * 3 * sizeof(glm::vec3);
-        const size_t uvBufSize = mTriangleCount * 3 * sizeof(glm::vec2);
+        const size_t bufSize = mTriangleCount * 3 * sizeof(float3);
+        const size_t uvBufSize = mTriangleCount * 3 * sizeof(float2);
 
         mpMeshLightsVertexPos = Buffer::create(bufSize, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
         mpMeshLightsVertexPos->setName("LightCollection_MeshLightsVertexPos");
@@ -316,7 +319,7 @@ namespace Falcor
         }
 
         // Create the GPU buffer.
-        mpPerMeshInstanceOffset = Buffer::createTyped<uint32_t>(instanceCount, Resource::BindFlags::ShaderResource);
+        mpPerMeshInstanceOffset = Buffer::createStructured(sizeof(uint32_t), instanceCount, Resource::BindFlags::ShaderResource);
         mpPerMeshInstanceOffset->setName("LightCollection_PerMeshInstanceOffset");
 
         const size_t sizeInBytes = triangleOffsets.size() * sizeof(triangleOffsets[0]);
@@ -332,7 +335,7 @@ namespace Falcor
         // 1st pass: Rasterize emissive triangles in texture space to sum up their texels.
         {
             // Re-allocate result buffer if needed.
-            const uint32_t bufSize = mTriangleCount * sizeof(glm::vec4);
+            const uint32_t bufSize = mTriangleCount * sizeof(float4);
             if (!mIntegrator.pResultBuffer || mIntegrator.pResultBuffer->getSize() < bufSize)
             {
                 mIntegrator.pResultBuffer = Buffer::create(bufSize, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
@@ -341,7 +344,7 @@ namespace Falcor
             }
 
             // Clear to zero before we start.
-            pRenderContext->clearUAV(mIntegrator.pResultBuffer->getUAV().get(), glm::vec4(0.f));
+            pRenderContext->clearUAV(mIntegrator.pResultBuffer->getUAV().get(), float4(0.f));
 
             // Specialize the program and re-create the vars.
             mIntegrator.pVars = GraphicsVars::create(mIntegrator.pProgram.get());
@@ -388,7 +391,7 @@ namespace Falcor
         // Stats on input data.
         MeshLightStats stats;
         stats.meshLightCount = (uint32_t)mMeshLights.size();
-        stats.triangleCount = (uint32)mMeshLightTriangles.size();
+        stats.triangleCount = (uint32_t)mMeshLightTriangles.size();
 
         uint32_t trianglesTotal = 0;
         for (const auto& meshLight : mMeshLights)
@@ -571,8 +574,8 @@ namespace Falcor
 
         assert(mStagingBufferValid);
         const void* mappedData = mpStagingBuffer->map(Buffer::MapType::Read);
-        const glm::vec3* vertexPos = reinterpret_cast<const glm::vec3*>(mappedData);
-        const glm::vec2* vertexTexCrd = reinterpret_cast<const glm::vec2*>(reinterpret_cast<uintptr_t>(mappedData) + mpMeshLightsVertexPos->getSize());
+        const float3* vertexPos = reinterpret_cast<const float3*>(mappedData);
+        const float2* vertexTexCrd = reinterpret_cast<const float2*>(reinterpret_cast<uintptr_t>(mappedData) + mpMeshLightsVertexPos->getSize());
         assert(mpTriangleData);
         if (mpTriangleData->getStructSize() != sizeof(EmissiveTriangle)) throw std::exception("Struct EmissiveTriangle size mismatch between CPU/GPU");
         const EmissiveTriangle* triangleData = reinterpret_cast<const EmissiveTriangle*>(reinterpret_cast<uintptr_t>(mappedData) + mpMeshLightsVertexPos->getSize() + mpMeshLightsTexCoords->getSize());

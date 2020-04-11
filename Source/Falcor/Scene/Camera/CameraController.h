@@ -91,7 +91,7 @@ namespace Falcor
             \param[in] Radius The model's radius. Used to determin the speed of movement when zooming in/out.
             \param[in] InitialDistanceInRadius The initial distance of the camera from the model, measured in the model's radius.
         */
-        void setModelParams(const glm::vec3& center, float radius, float initialDistanceInRadius);
+        void setModelParams(const float3& center, float radius, float initialDistanceInRadius);
 
         /** Update the camera position and orientation.
             \return Whether the camera was updated/changed
@@ -99,13 +99,13 @@ namespace Falcor
         bool update() override;
 
     private:
-        glm::vec3 mModelCenter;
+        float3 mModelCenter;
         float mModelRadius;
         float mCameraDistance;
         bool mbDirty;
 
         glm::mat3x3 mRotation;
-        glm::vec3 mLastVector;
+        float3 mLastVector;
         bool mIsLeftButtonDown = false;
         bool mShouldRotate = false;
     };
@@ -150,8 +150,8 @@ namespace Falcor
         bool mIsRightButtonDown = false;
         bool mShouldRotate = false;
 
-        glm::vec2 mLastMousePos;
-        glm::vec2 mMouseDelta;
+        float2 mLastMousePos;
+        float2 mMouseDelta;
 
         CpuTimer mTimer;
 

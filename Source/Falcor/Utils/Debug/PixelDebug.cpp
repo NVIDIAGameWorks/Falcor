@@ -41,7 +41,7 @@ namespace Falcor
         return SharedPtr(new PixelDebug(logSize));
     }
 
-    void PixelDebug::beginFrame(RenderContext* pRenderContext, const glm::uvec2& frameDim)
+    void PixelDebug::beginFrame(RenderContext* pRenderContext, const uint2& frameDim)
     {
         mFrameDim = frameDim;
         if (mRunning)
@@ -114,16 +114,18 @@ namespace Falcor
     {
         assert(mRunning);
 
-        // Configure program.
-        pProgram->addDefine("_PIXEL_DEBUG_ENABLED", mEnabled ? "1" : "0");
-
         if (mEnabled)
         {
+            pProgram->addDefine("_PIXEL_DEBUG_ENABLED");
             var["gPixelLog"] = mpPixelLog;
             var["gAssertLog"] = mpAssertLog;
             var["PixelDebugCB"]["gPixelLogSelected"] = mSelectedPixel;
             var["PixelDebugCB"]["gPixelLogSize"] = mLogSize;
             var["PixelDebugCB"]["gAssertLogSize"] = mLogSize;
+        }
+        else
+        {
+            pProgram->removeDefine("_PIXEL_DEBUG_ENABLED");
         }
     }
 
@@ -207,7 +209,7 @@ namespace Falcor
         {
             if (mouseEvent.type == MouseEvent::Type::LeftButtonDown)
             {
-                mSelectedPixel = glm::uvec2(mouseEvent.pos * glm::vec2(mFrameDim));
+                mSelectedPixel = uint2(mouseEvent.pos * float2(mFrameDim));
                 return true;
             }
         }

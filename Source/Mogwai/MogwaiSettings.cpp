@@ -34,15 +34,11 @@ namespace Mogwai
 {
     namespace
     {
-        bool vsync = false;
-        constexpr char kTime[] = "t";
-        constexpr char kExitTime[] = "exitTime";
-        constexpr char kExitFrame[] = "exitFrame";
-
         void shortcuts()
         {
             std::string s;
             s += " 'F1'   - Show the help message\n";
+            s += " 'F9'   - Show/Hide the time\n";
             s += " 'F10'  - Show/Hide the FPS\n";
             s += " 'F11'  - Toggle Main Menu Auto-Hide\n";
             s += "\n" + gpFramework->getKeyboardShortcutsStr();
@@ -66,7 +62,7 @@ namespace Mogwai
 
         void winSizeUI(Gui::Window& w)
         {
-            static const uvec2 resolutions[] =
+            static const uint2 resolutions[] =
             {
                 {1280, 720},
                 {1920, 1080},
@@ -77,7 +73,7 @@ namespace Mogwai
 
             constexpr uint32_t kCustomIndex = uint32_t(-1);
 
-            static const auto initDropDown = [=](const uvec2 resolutions[], uint32_t count) -> Gui::DropdownList
+            static const auto initDropDown = [=](const uint2 resolutions[], uint32_t count) -> Gui::DropdownList
             {
                 Gui::DropdownList list;
                 for (uint32_t i = 0; i < count; i++)
@@ -88,7 +84,7 @@ namespace Mogwai
                 return list;
             };
 
-            auto initDropDownVal = [=](const uvec2 resolutions[], uint32_t count, uvec2 screenDims)
+            auto initDropDownVal = [=](const uint2 resolutions[], uint32_t count, uint2 screenDims)
             {
                 for (uint32_t i = 0; i < count; i++)
                 {
@@ -97,14 +93,14 @@ namespace Mogwai
                 return kCustomIndex;
             };
 
-            uvec2 currentRes = gpFramework->getWindow()->getClientAreaSize();
+            uint2 currentRes = gpFramework->getWindow()->getClientAreaSize();
             static const Gui::DropdownList dropdownList = initDropDown(resolutions, arraysize(resolutions));
             uint32_t currentVal = initDropDownVal(resolutions, arraysize(resolutions), currentRes);
             w.text("Window Size");
             w.tooltip("The Window Size refers to the renderable area size (Swap-Chain dimensions)");
 
             bool dropdownChanged = w.dropdown("##resdd", dropdownList, currentVal);
-            static uvec2 customSize;
+            static uint2 customSize;
             static bool forceCustom = false;
 
             if (dropdownChanged)
@@ -153,12 +149,15 @@ namespace Mogwai
         clock.renderUI(w);
         w.separator(2);
 
-        if (mExitTime || mExitFrame)
+        double exitTime = clock.getExitTime();
+        uint64_t exitFrame = clock.getExitFrame();
+
+        if (exitTime || exitTime)
         {
             std::stringstream s;
             s << "Exiting in ";
-            if(mExitTime)  s << std::fixed << std::setprecision(2) << (mExitTime - clock.now()) << " seconds";
-            if(mExitFrame) s << (mExitFrame - clock.frame()) << " frames";
+            if (exitTime)  s << std::fixed << std::setprecision(2) << (exitTime - clock.getTime()) << " seconds";
+            if (exitFrame) s << (exitFrame - clock.getFrame()) << " frames";
             w.text(s.str());
         }
     }
@@ -212,6 +211,23 @@ namespace Mogwai
             // if (file.item("Reset Scene")) mpRenderer->setScene(nullptr);
             file.separator();
             if (file.item("Reload Render-Passes", "F5")) RenderPassLibrary::instance().reloadLibraries(gpFramework->getRenderContext());
+            file.separator();
+
+            {
+                auto recentScripts = file.menu("Recent Scripts");
+                for (const auto& path : mpRenderer->getAppData().getRecentScripts())
+                {
+                    if (recentScripts.item(path)) mpRenderer->loadScriptDeferred(path);
+                }
+            }
+
+            {
+                auto recentScenes = file.menu("Recent Scenes");
+                for (const auto& path : mpRenderer->getAppData().getRecentScenes())
+                {
+                    if (recentScenes.item(path)) mpRenderer->loadScene(path);
+                }
+            }
         }
 
         {
@@ -241,18 +257,6 @@ namespace Mogwai
         if (mShowTime) timeSettings(pGui);
         if (mShowWinSize) windowSettings(pGui);
         if (mShowConsole) Console::render(pGui__);
-    }
-
-    void MogwaiSettings::exitIfNeeded()
-    {
-        auto& clock = gpFramework->getGlobalClock();
-        if (mExitTime && (clock.now() >= mExitTime)) postQuitMessage(0);
-        if (mExitFrame && (clock.frame() >= mExitFrame)) postQuitMessage(0);
-    }
-
-    void MogwaiSettings::beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
-    {
-        exitIfNeeded();
     }
 
     bool MogwaiSettings::mouseEvent(const MouseEvent& e)
@@ -320,35 +324,5 @@ namespace Mogwai
     MogwaiSettings::UniquePtr MogwaiSettings::create(Renderer* pRenderer)
     {
         return UniquePtr(new MogwaiSettings(pRenderer));
-    }
-
-    void MogwaiSettings::scriptBindings(Bindings& bindings)
-    {
-        auto& m = bindings.getModule();
-
-        auto mm = pybind11::module::import("falcor");
-        auto t = mm.attr("Clock").cast<pybind11::class_<Clock>>();
-
-        bindings.addGlobalObject(kTime, &gpFramework->getGlobalClock(), "Time Utilities");
-
-        auto setExitTime = [this](Clock*, double exitTime) {mExitTime = exitTime; mExitFrame = 0; };
-        t.def(kExitTime, setExitTime);
-
-        auto setExitFrame = [this](Clock*, uint64_t exitFrame) {mExitFrame = exitFrame; mExitTime = 0; };
-        t.def(kExitFrame, setExitFrame);
-
-        auto showUI = [this](Clock*, bool show) { mShowTime = show; };
-        t.def("ui", showUI ,"show"_a = true);
-    }
-
-    std::string MogwaiSettings::getScript()
-    {
-        std::string s;
-
-        s += "# Global Settings\n";
-        s += gpFramework->getGlobalClock().getScript(kTime) + "\n";
-        if(mExitTime)   s += Scripting::makeMemberFunc(kTime, kExitTime, mExitTime);
-        if(mExitFrame)  s += Scripting::makeMemberFunc(kTime, kExitFrame, mExitFrame);
-        return s;
     }
 }

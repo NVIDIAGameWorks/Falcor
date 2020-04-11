@@ -42,7 +42,7 @@ namespace Falcor
         {
             RenderContext* pRenderContext;
             Dictionary::SharedPtr pGraphDictionary;
-            uvec2 defaultTexDims;
+            uint2 defaultTexDims;
             ResourceFormat defaultTexFormat;
         };
 

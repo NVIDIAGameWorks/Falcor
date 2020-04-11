@@ -54,8 +54,8 @@ namespace Falcor
                 Sampler::SharedPtr pPointSampler;
 
                 ParameterBlock::SharedPtr pSrcRectBuffer;
-                vec2 prevSrcRectOffset = vec2(0, 0);
-                vec2 prevSrcReftScale = vec2(0, 0);
+                float2 prevSrcRectOffset = float2(0, 0);
+                float2 prevSrcReftScale = float2(0, 0);
 
                 // Variable offsets in constant buffer
                 UniformShaderVarOffset offsetVarOffset;
@@ -85,8 +85,8 @@ namespace Falcor
                 blitData.pSrcRectBuffer = blitData.pPass->getVars()->getParameterBlock("SrcRectCB");
                 blitData.offsetVarOffset = blitData.pSrcRectBuffer->getVariableOffset("gOffset");
                 blitData.scaleVarOffset = blitData.pSrcRectBuffer->getVariableOffset("gScale");
-                blitData.prevSrcRectOffset = vec2(-1.0f);
-                blitData.prevSrcReftScale = vec2(-1.0f);
+                blitData.prevSrcRectOffset = float2(-1.0f);
+                blitData.prevSrcReftScale = float2(-1.0f);
 
                 Sampler::Desc desc;
                 desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
@@ -137,7 +137,7 @@ namespace Falcor
         RenderContextApiData::release();
     }
 
-    void RenderContext::clearRtv(const RenderTargetView* pRtv, const glm::vec4& color)
+    void RenderContext::clearRtv(const RenderTargetView* pRtv, const float4& color)
     {
         resourceBarrier(pRtv->getResource(), Resource::State::RenderTarget);
         mpLowLevelData->getCommandList()->ClearRenderTargetView(pRtv->getApiHandle()->getCpuHandle(0), glm::value_ptr(color), 0, nullptr);
@@ -415,7 +415,7 @@ namespace Falcor
         pList4->DispatchRays(&raytraceDesc);
     }
 
-    void RenderContext::blit(ShaderResourceView::SharedPtr pSrc, RenderTargetView::SharedPtr pDst, const uvec4& srcRect, const uvec4& dstRect, Sampler::Filter filter)
+    void RenderContext::blit(ShaderResourceView::SharedPtr pSrc, RenderTargetView::SharedPtr pDst, const uint4& srcRect, const uint4& dstRect, Sampler::Filter filter)
     {
         auto& blitData = sApiData.blitData;
         blitData.pPass->getVars()->setSampler("gSampler", (filter == Sampler::Filter::Linear) ? blitData.pLinearSampler : blitData.pPointSampler);
@@ -427,8 +427,8 @@ namespace Falcor
         const Texture* pDstTexture = dynamic_cast<const Texture*>(pDst->getResource());
         assert(pSrcTexture != nullptr && pDstTexture != nullptr);
 
-        vec2 srcRectOffset(0.0f);
-        vec2 srcRectScale(1.0f);
+        float2 srcRectOffset(0.0f);
+        float2 srcRectScale(1.0f);
         uint32_t srcMipLevel = pSrc->getViewInfo().mostDetailedMip;
         uint32_t dstMipLevel = pDst->getViewInfo().mostDetailedMip;
         GraphicsState::Viewport dstViewport(0.0f, 0.0f, (float)pDstTexture->getWidth(dstMipLevel), (float)pDstTexture->getHeight(dstMipLevel), 0.0f, 1.0f);
@@ -436,9 +436,9 @@ namespace Falcor
         // If src rect specified
         if (srcRect.x != (uint32_t)-1)
         {
-            const vec2 srcSize(pSrcTexture->getWidth(srcMipLevel), pSrcTexture->getHeight(srcMipLevel));
-            srcRectOffset = vec2(srcRect.x, srcRect.y) / srcSize;
-            srcRectScale = vec2(srcRect.z - srcRect.x, srcRect.w - srcRect.y) / srcSize;
+            const float2 srcSize(pSrcTexture->getWidth(srcMipLevel), pSrcTexture->getHeight(srcMipLevel));
+            srcRectOffset = float2(srcRect.x, srcRect.y) / srcSize;
+            srcRectScale = float2(srcRect.z - srcRect.x, srcRect.w - srcRect.y) / srcSize;
         }
 
         // If dest rect specified

@@ -66,9 +66,9 @@ namespace Falcor
         }
         //compute cs
         ComputeProgram::SharedPtr pSimulateCs = ComputeProgram::createFromFile(simulateComputeShader, "main", defineList);
-  
+
         //get num sim threads, required as a define for emit cs
-        uvec3 simThreads;
+        uint3 simThreads;
 
         simThreads = pSimulateCs->getReflector()->getThreadGroupSize();
         mSimulateThreads = simThreads.x * simThreads.y * simThreads.z;
@@ -146,7 +146,7 @@ namespace Falcor
         mDrawResources.pState = GraphicsState::create();
         mDrawResources.pState->setProgram(pDrawProgram);
 
-        //Create empty vbo for draw 
+        //Create empty vbo for draw
         Vao::BufferVec bufferVec;
         VertexLayout::SharedPtr pLayout = VertexLayout::create();
         Vao::Topology topology = Vao::Topology::TriangleStrip;
@@ -164,11 +164,11 @@ namespace Falcor
         emittedParticles.resize(num);
         for (uint32_t i = 0; i < num; ++i)
         {
-            Particle p;  
+            Particle p;
             p.pos = mEmitter.spawnPos + glm::linearRand(-mEmitter.spawnPosOffset, mEmitter.spawnPosOffset);
             p.vel = mEmitter.vel + glm::linearRand(-mEmitter.velOffset, mEmitter.velOffset);
             p.accel = mEmitter.accel + glm::linearRand(-mEmitter.accelOffset, mEmitter.accelOffset);
-            //total scale of the billboard, so the amount to actually move to billboard corners is half scale. 
+            //total scale of the billboard, so the amount to actually move to billboard corners is half scale.
             p.scale = 0.5f * mEmitter.scale + glm::linearRand(-mEmitter.scaleOffset, mEmitter.scaleOffset);
             p.growth = 0.5f * mEmitter.growth + glm::linearRand(-mEmitter.growthOffset, mEmitter.growthOffset);
             p.life = mEmitter.duration + glm::linearRand(-mEmitter.growthOffset, mEmitter.growthOffset);
@@ -196,7 +196,7 @@ namespace Falcor
         if (mEmitTimer >= mEmitter.emitFrequency)
         {
             mEmitTimer -= mEmitter.emitFrequency;
-            emit(pCtx, max(mEmitter.emitCount + glm::linearRand(-mEmitter.emitCountOffset, mEmitter.emitCountOffset), 0));
+            emit(pCtx, std::max(mEmitter.emitCount + glm::linearRand(-mEmitter.emitCountOffset, mEmitter.emitCountOffset), 0));
         }
 
         //Simulate
@@ -220,7 +220,7 @@ namespace Falcor
         //reset alive list counter to 0
         uint32_t zero = 0;
         mpAliveList->getUAVCounter()->setBlob(&zero, 0, sizeof(uint32_t));
-        pCtx->dispatch(mSimulateResources.pState.get(), mSimulateResources.pVars.get(), {max(mMaxParticles / mSimulateThreads, 1u), 1, 1});
+        pCtx->dispatch(mSimulateResources.pState.get(), mSimulateResources.pVars.get(), {std::max(mMaxParticles / mSimulateThreads, 1u), 1, 1});
     }
 
     void ParticleSystem::render(RenderContext* pCtx, const Fbo::SharedPtr& pDst, glm::mat4 view, glm::mat4 proj)
@@ -234,7 +234,7 @@ namespace Falcor
         cbuf.proj = proj;
         mDrawResources.pVars->getParameterBlock(mBindLocations.drawCB)->setBlob(&cbuf, 0, sizeof(cbuf));
 
-        //particle draw uses many of render context's existing state's properties 
+        //particle draw uses many of render context's existing state's properties
         mDrawResources.pState->setFbo(pDst);
         pCtx->drawIndirect(mDrawResources.pState.get(), mDrawResources.pVars.get(), 1, mpIndirectArgs.get(), 0, nullptr, 0);
     }
@@ -292,9 +292,9 @@ namespace Falcor
     }
 
     void ParticleSystem::setParticleDuration(float dur, float offset)
-    { 
-        mEmitter.duration = dur; 
-        mEmitter.durationOffset = offset; 
+    {
+        mEmitter.duration = dur;
+        mEmitter.durationOffset = offset;
     }
 
     void ParticleSystem::setEmitData(uint32_t emitCount, uint32_t emitCountOffset, float emitFrequency)
@@ -304,19 +304,19 @@ namespace Falcor
         mEmitter.emitFrequency = emitFrequency;
     }
 
-    void ParticleSystem::setSpawnPos(vec3 spawnPos, vec3 offset)
+    void ParticleSystem::setSpawnPos(float3 spawnPos, float3 offset)
     {
         mEmitter.spawnPos = spawnPos;
         mEmitter.spawnPosOffset = offset;
     }
 
-    void ParticleSystem::setVelocity(vec3 velocity, vec3 offset)
+    void ParticleSystem::setVelocity(float3 velocity, float3 offset)
     {
         mEmitter.vel = velocity;
         mEmitter.velOffset = offset;
     }
 
-    void ParticleSystem::setAcceleration(vec3 accel, vec3 offset)
+    void ParticleSystem::setAcceleration(float3 accel, float3 offset)
     {
         mEmitter.accel = accel;
         mEmitter.accelOffset = offset;
@@ -339,7 +339,7 @@ namespace Falcor
         mEmitter.billboardRotation = rot;
         mEmitter.billboardRotationOffset = offset;
     }
-    
+
     void ParticleSystem::setBillboardRotationVelocity(float rotVel, float offset)
     {
         mEmitter.billboardRotationVel = rotVel;

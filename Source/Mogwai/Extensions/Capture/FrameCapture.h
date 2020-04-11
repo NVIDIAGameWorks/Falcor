@@ -44,8 +44,8 @@ namespace Mogwai
         FrameCapture(Renderer* pRenderer) : CaptureTrigger(pRenderer) {}
         bool mShowUI = false;
         using uint64_vec = std::vector<uint64_t>;
-        void frames(const RenderGraph* pGraph, const uint64_vec& frames);
-        void frames(const std::string& graphName, const uint64_vec& frames);
+        void addFrames(const RenderGraph* pGraph, const uint64_vec& frames);
+        void addFrames(const std::string& graphName, const uint64_vec& frames);
         std::string graphFramesStr(const RenderGraph* pGraph);
     };
 }

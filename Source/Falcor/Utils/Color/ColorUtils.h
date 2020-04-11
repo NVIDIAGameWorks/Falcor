@@ -111,23 +111,23 @@ namespace Falcor
 
     /** Transforms an RGB color in Rec.709 to CIE XYZ.
     */
-    static glm::float3 RGBtoXYZ_Rec709(glm::float3 c)
+    static float3 RGBtoXYZ_Rec709(float3 c)
     {
         return kColorTransform_RGBtoXYZ_Rec709 * c;
     }
 
     /** Transforms an XYZ color to RGB in Rec.709.
     */
-    static glm::float3 XYZtoRGB_Rec709(glm::float3 c)
+    static float3 XYZtoRGB_Rec709(float3 c)
     {
         return kColorTransform_XYZtoRGB_Rec709 * c;
     }
 
     /** Converts (chromaticities, luminance) to XYZ color.
     */
-    static glm::float3 xyYtoXYZ(float x, float y, float Y)
+    static float3 xyYtoXYZ(float x, float y, float Y)
     {
-        return glm::float3(x * Y / y, Y, (1.f - x - y) * Y / y);
+        return float3(x * Y / y, Y, (1.f - x - y) * Y / y);
     }
 
     /** Transforms color temperature of a blackbody emitter to color in CIE XYZ.
@@ -139,12 +139,12 @@ namespace Falcor
         \param[in] Y Luminance.
         \return CIE XYZ color.
     */
-    static glm::float3 colorTemperatureToXYZ(float T, float Y = 1.f)
+    static float3 colorTemperatureToXYZ(float T, float Y = 1.f)
     {
         if (T < 1667.f || T > 25000.f)
         {
             logError("colorTemperatureToXYZ() - T is out of range");
-            return glm::float3(0, 0, 0);
+            return float3(0, 0, 0);
         }
 
         // We do the computations in double
@@ -203,13 +203,13 @@ namespace Falcor
         static const glm::float3x3 invMA = kColorTransform_XYZtoRGB_Rec709 * kColorTransform_LMStoXYZ_CAT02; // LMS -> RGB
 
         // Compute destination reference white in LMS space.
-        static const glm::float3 wd = kColorTransform_XYZtoLMS_CAT02 * colorTemperatureToXYZ(6500.f);
+        static const float3 wd = kColorTransform_XYZtoLMS_CAT02 * colorTemperatureToXYZ(6500.f);
 
         // Compute source reference white in LMS space.
-        const glm::float3 ws = kColorTransform_XYZtoLMS_CAT02 * colorTemperatureToXYZ(T);
+        const float3 ws = kColorTransform_XYZtoLMS_CAT02 * colorTemperatureToXYZ(T);
 
         // Derive final 3x3 transform in RGB space.
-        glm::float3 scale = wd / ws;
+        float3 scale = wd / ws;
         glm::float3x3 D = glm::diagonal3x3(scale);
 
         return invMA * D * MA;

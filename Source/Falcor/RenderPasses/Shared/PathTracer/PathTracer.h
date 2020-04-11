@@ -68,7 +68,8 @@ namespace Falcor
         bool renderSamplingUI(Gui::Widgets& widget);
         bool renderLightsUI(Gui::Widgets& widget);
         void renderLoggingUI(Gui::Widgets& widget);
-        void setStaticParams(Program* pProgram) const;
+
+        virtual void setStaticParams(Program* pProgram) const;
 
         // Internal state
         Scene::SharedPtr                    mpScene;                        ///< Current scene.

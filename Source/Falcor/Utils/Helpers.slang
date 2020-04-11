@@ -156,6 +156,8 @@ float4 applyAmbientOcclusion(float4 color, Texture2D aoTex, SamplerState s, floa
     return float4(color.rgb * aoFactor, color.a);
 }
 
+// TODO: this function is broken an may return negative values.
+// Issue #780
 float getMetallic(float3 diffuse, float3 spec)
 {
     // This is based on the way that UE4 and Substance Painter 2 converts base+metallic+specular level to diffuse/spec colors
@@ -163,6 +165,7 @@ float getMetallic(float3 diffuse, float3 spec)
     // Note that I'm using the luminance here instead of the actual colors. The reason is that there's no guaraentee that all RGB channels will end up with the same metallic value
     float d = luminance(diffuse);
     float s = luminance(spec);
+    if (s == 0) return 0;
     float a = 0.04;
     float b = s + d - 0.08;
     float c = 0.04 - s;

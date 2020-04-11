@@ -149,7 +149,7 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
 
     assert(pSrc && pDst);
     assert(pSrc->getWidth() == pDst->getWidth() && pSrc->getHeight() == pDst->getHeight());
-    const glm::uvec2 resolution = glm::uvec2(pSrc->getWidth(), pSrc->getHeight());
+    const uint2 resolution = uint2(pSrc->getWidth(), pSrc->getHeight());
 
     // If accumulation is disabled, just blit the source to the destination and return.
     if (!mEnableAccumulation)
@@ -177,7 +177,7 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
     // Run the accumulation program.
     auto pProgram = mpProgram[mPrecisionMode];
     assert(pProgram);
-    glm::uvec3 numGroups = div_round_up(glm::uvec3(resolution.x, resolution.y, 1u), pProgram->getReflector()->getThreadGroupSize());
+    uint3 numGroups = div_round_up(uint3(resolution.x, resolution.y, 1u), pProgram->getReflector()->getThreadGroupSize());
     mpState->setProgram(pProgram);
     pRenderContext->dispatch(mpState.get(), mpVars.get(), numGroups);
 }
@@ -238,7 +238,7 @@ void AccumulatePass::prepareAccumulation(RenderContext* pRenderContext, uint32_t
         if (mFrameCount == 0)
         {
             if (getFormatType(format) == FormatType::Float) pRenderContext->clearUAV(pBuf->getUAV().get(), float4(0.f));
-            else pRenderContext->clearUAV(pBuf->getUAV().get(), glm::uvec4(0));
+            else pRenderContext->clearUAV(pBuf->getUAV().get(), uint4(0));
         }
     };
 

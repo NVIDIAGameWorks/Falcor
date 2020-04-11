@@ -62,7 +62,7 @@ namespace Falcor
             Write,          ///< Map the buffer for write access. Buffer had to be created with CpuAccess::Write flag.
             WriteDiscard,   ///< Map the buffer for write access, discarding the previous content of the entire buffer. Buffer had to be created with CpuAccess::Write flag.
         };
-        
+
         ~Buffer();
 
         /** Create a new buffer.
@@ -314,9 +314,9 @@ namespace Falcor
         CASE(int32_t,   ResourceFormat::R32Int);
 
         // Optionally supported formats as a set on D3D12. If one is supported all are supported.
-        CASE(vec4,      ResourceFormat::RGBA32Float);
-        CASE(uvec4,     ResourceFormat::RGBA32Uint);
-        CASE(ivec4,     ResourceFormat::RGBA32Int);
+        CASE(float4,    ResourceFormat::RGBA32Float);
+        CASE(uint4,     ResourceFormat::RGBA32Uint);
+        CASE(int4,      ResourceFormat::RGBA32Int);
         //R16G16B16A16_FLOAT
         //R16G16B16A16_UINT
         //R16G16B16A16_SINT
@@ -333,9 +333,9 @@ namespace Falcor
         // Optionally and individually supported formats on D3D12. Query for support individually.
         //R16G16B16A16_UNORM
         //R16G16B16A16_SNORM
-        CASE(vec2,      ResourceFormat::RG32Float);
-        CASE(uvec2,     ResourceFormat::RG32Uint);
-        CASE(ivec2,     ResourceFormat::RG32Int);
+        CASE(float2,    ResourceFormat::RG32Float);
+        CASE(uint2,     ResourceFormat::RG32Uint);
+        CASE(int2,      ResourceFormat::RG32Int);
         //R10G10B10A2_UNORM
         //R10G10B10A2_UINT
         //R11G11B10_FLOAT
@@ -358,7 +358,7 @@ namespace Falcor
         //B4G4R4A4_UNORM
 
         // Additional formats that may be supported on some hardware.
-        CASE(vec3,      ResourceFormat::RGB32Float);
+        CASE(float3,    ResourceFormat::RGB32Float);
 
 #undef CASE
     };

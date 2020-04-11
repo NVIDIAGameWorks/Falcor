@@ -117,7 +117,7 @@ namespace Falcor
                     mVsyncOn = !mVsyncOn;
                     gpDevice->toggleVSync(mVsyncOn);
                     mFrameRate.reset();
-                    mClock.now(0);
+                    mClock.setTime(0);
                     break;
                 case KeyboardEvent::Key::F2:
                     toggleUI(!mShowUI);
@@ -243,7 +243,7 @@ namespace Falcor
 
         mSuppressInput = config.suppressInput;
         mShowUI = config.showUI;
-        mClock.timeScale(config.timeScale);
+        mClock.setTimeScale(config.timeScale);
         if (config.pauseTime) mClock.pause();
         mVsyncOn = config.deviceDesc.enableVsync;
 
@@ -303,9 +303,9 @@ namespace Falcor
         mpRenderer = nullptr;
     }
 
-    void screenSizeUI(Gui::Widgets& widget, uvec2 screenDims)
+    void screenSizeUI(Gui::Widgets& widget, uint2 screenDims)
     {
-        static const uvec2 resolutions[] =
+        static const uint2 resolutions[] =
         {
             {0, 0},
             {1280, 720},
@@ -315,7 +315,7 @@ namespace Falcor
             {3840, 2160},
         };
 
-        static const auto initDropDown = [](const uvec2 resolutions[], uint32_t count) -> Gui::DropdownList
+        static const auto initDropDown = [](const uint2 resolutions[], uint32_t count) -> Gui::DropdownList
         {
             Gui::DropdownList list;
             for (uint32_t i = 0 ; i < count; i++)
@@ -326,7 +326,7 @@ namespace Falcor
             return list;
         };
 
-        auto initDropDownVal = [](const uvec2 resolutions[], uint32_t count, uvec2 screenDims)
+        auto initDropDownVal = [](const uint2 resolutions[], uint32_t count, uint2 screenDims)
         {
             for (uint32_t i = 0; i < count; i++)
             {
@@ -381,15 +381,15 @@ namespace Falcor
         auto controlsGroup = Gui::Group(pGui, "Global Controls");
         if (controlsGroup.open())
         {
-            float t = (float)mClock.now();
-            if (controlsGroup.var("Time", t, 0.f, FLT_MAX)) mClock.now(double(t));
-            if (controlsGroup.button("Reset")) mClock.now(0.0);
+            float t = (float)mClock.getTime();
+            if (controlsGroup.var("Time", t, 0.f, FLT_MAX)) mClock.setTime(double(t));
+            if (controlsGroup.button("Reset")) mClock.setTime(0.0);
             bool timePaused = mClock.isPaused();
             if (controlsGroup.button(timePaused ? "Play" : "Pause", true)) timePaused ? mClock.pause() : mClock.play();
             if (controlsGroup.button("Stop", true)) mClock.stop();
 
-            float scale = (float)mClock.timeScale();
-            if (controlsGroup.var("Scale", scale, 0.f, FLT_MAX)) mClock.timeScale(scale);
+            float scale = (float)mClock.getTimeScale();
+            if (controlsGroup.var("Scale", scale, 0.f, FLT_MAX)) mClock.setTimeScale(scale);
             controlsGroup.separator();
 
             if (controlsGroup.button(mRendererPaused ? "Resume Rendering" : "Pause Rendering")) mRendererPaused = !mRendererPaused;
@@ -449,9 +449,12 @@ namespace Falcor
     {
         if (gpDevice && gpDevice->isWindowOccluded()) return;
 
+        // Check clock exit condition
+        if (mClock.shouldExit()) postQuitMessage(0);
+
         mClock.tick();
         mFrameRate.newFrame();
-        if (mVideoCapture.fixedTimeDelta) { mClock.now(mVideoCapture.currentTime); }
+        if (mVideoCapture.fixedTimeDelta) { mClock.setTime(mVideoCapture.currentTime); }
 
         {
             PROFILE("onFrameRender");
@@ -617,7 +620,7 @@ namespace Falcor
         c.deviceDesc = gpDevice->getDesc();
         c.windowDesc = mpWindow->getDesc();
         c.showMessageBoxOnError = Logger::isBoxShownOnError();
-        c.timeScale = (float)mClock.timeScale();
+        c.timeScale = (float)mClock.getTimeScale();
         c.pauseTime = mClock.isPaused();
         c.showUI = mShowUI;
         return c;
@@ -648,10 +651,16 @@ namespace Falcor
         sampleDesc.field(windowDesc).field(deviceDesc).field(showMessageBoxOnError).field(timeScale);
         sampleDesc.field(pauseTime).field(showUI);
 #undef field
-        auto exit = [](int32_t errorCode) {postQuitMessage(errorCode); };
+        auto exit = [](int32_t errorCode) { postQuitMessage(errorCode); };
         m.func_("exit", exit, "errorCode"_a = 0);
 
         auto renderFrame = [this]() {ProgressBar::close(); this->renderFrame(); };
         m.func_("renderFrame", renderFrame);
+
+        auto setWindowPos = [this](int32_t x, int32_t y) {getWindow()->setWindowPos(x, y); };
+        m.func_("setWindowPos", setWindowPos, "x"_a, "y"_a);
+
+        auto resize = [this](uint32_t width, uint32_t height) {resizeSwapChain(width, height); };
+        m.func_("resizeSwapChain", resize, "width"_a, "height"_a);
     }
 }

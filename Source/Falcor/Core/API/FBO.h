@@ -219,8 +219,8 @@ namespace Falcor
 
         struct SamplePosition
         {
-            int8 xOffset = 0;
-            int8 yOffset = 0;
+            int8_t xOffset = 0;
+            int8_t yOffset = 0;
         };
 
         /**  Configure the sample positions used by multi-sampled buffers.

@@ -44,7 +44,7 @@ namespace Falcor
         public:
             using SharedPtr = std::shared_ptr<ReadTextureTask>;
             static SharedPtr create(CopyContext* pCtx, const Texture* pTexture, uint32_t subresourceIndex);
-            std::vector<uint8> getData();
+            std::vector<uint8_t> getData();
         private:
             ReadTextureTask() = default;
             GpuFence::SharedPtr mpFence;
@@ -105,13 +105,13 @@ namespace Falcor
         /** Copy a region of a subresource from one texture to another
             `srcOffset`, `dstOffset` and `size` describe the source and destination regions. For any channel of `extent` that is -1, the source texture dimension will be used
         */
-        void copySubresourceRegion(const Texture* pDst, uint32_t dstSubresource, const Texture* pSrc, uint32_t srcSubresource, const uvec3& dstOffset = uvec3(0), const uvec3& srcOffset = uvec3(0), const uvec3& size = uvec3(-1));
+        void copySubresourceRegion(const Texture* pDst, uint32_t dstSubresource, const Texture* pSrc, uint32_t srcSubresource, const uint3& dstOffset = uint3(0), const uint3& srcOffset = uint3(0), const uint3& size = uint3(-1));
 
         /** Update a texture's subresource data
             `offset` and `size` describe a region to update. For any channel of `extent` that is -1, the texture dimension will be used.
             pData can't be null. The size of the pointed buffer must be equal to a single texel size times the size of the region we are updating
         */
-        void updateSubresourceData(const Texture* pDst, uint32_t subresource, const void* pData, const uvec3& offset = uvec3(0), const uvec3& size = uvec3(-1));
+        void updateSubresourceData(const Texture* pDst, uint32_t subresource, const void* pData, const uint3& offset = uint3(0), const uint3& size = uint3(-1));
 
         /** Update an entire texture
         */
@@ -123,7 +123,7 @@ namespace Falcor
 
         /** Read texture data synchronously. Calling this command will flush the pipeline and wait for the GPU to finish execution
         */
-        std::vector<uint8> readTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex);
+        std::vector<uint8_t> readTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex);
 
         /** Read texture data Asynchronously
         */
@@ -148,7 +148,7 @@ namespace Falcor
         bool bufferBarrier(const Buffer* pBuffer, Resource::State newState);
         bool subresourceBarriers(const Texture* pTexture, Resource::State newState, const ResourceViewInfo* pViewInfo);
         void apiSubresourceBarrier(const Texture* pTexture, Resource::State newState, Resource::State oldState, uint32_t arraySlice, uint32_t mipLevel);
-        void updateTextureSubresources(const Texture* pTexture, uint32_t firstSubresource, uint32_t subresourceCount, const void* pData, const uvec3& offset = uvec3(0), const uvec3& size = uvec3(-1));
+        void updateTextureSubresources(const Texture* pTexture, uint32_t firstSubresource, uint32_t subresourceCount, const void* pData, const uint3& offset = uint3(0), const uint3& size = uint3(-1));
 
         bool mCommandsPending = false;
         LowLevelContextData::SharedPtr mpLowLevelData;

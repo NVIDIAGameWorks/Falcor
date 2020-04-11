@@ -32,10 +32,10 @@
 
 namespace Falcor
 {
-    static void clampToEdge(vec2& pix, uint32_t width, uint32_t height, uint32_t offset)
+    static void clampToEdge(float2& pix, uint32_t width, uint32_t height, uint32_t offset)
     {
-        vec2 posOffset = pix + vec2(offset, offset);
-        vec2 negOffset = pix - vec2(offset, offset);
+        float2 posOffset = pix + float2(offset, offset);
+        float2 negOffset = pix - float2(offset, offset);
 
         //x
         if (posOffset.x > width)
@@ -88,17 +88,17 @@ namespace Falcor
 
             //blit src blit fbo into dst blit fbo
             uint32_t offset = mSrcZoomSize / 2;
-            vec2 srcPix = vec2(mMousePos.x * backBuffer->getWidth(), mMousePos.y * backBuffer->getHeight());
+            float2 srcPix = float2(mMousePos.x * backBuffer->getWidth(), mMousePos.y * backBuffer->getHeight());
             clampToEdge(srcPix, backBuffer->getWidth(), backBuffer->getHeight(), offset);
-            vec4 srcRect = vec4(srcPix.x - offset, srcPix.y - offset, srcPix.x + offset, srcPix.y + offset);
-            vec4 dstRect = vec4(0, 0, mDstZoomSize, mDstZoomSize);
+            float4 srcRect = float4(srcPix.x - offset, srcPix.y - offset, srcPix.x + offset, srcPix.y + offset);
+            float4 dstRect = float4(0, 0, mDstZoomSize, mDstZoomSize);
             pCtx->blit(mpSrcBlitFbo->getColorTexture(0)->getSRV(), mpDstBlitFbo->getColorTexture(0)->getRTV(), srcRect, dstRect, Sampler::Filter::Point);
 
             //blit dst blt fbo into back buffer
             offset = mDstZoomSize / 2;
             clampToEdge(srcPix, backBuffer->getWidth(), backBuffer->getHeight(), offset);
             srcRect = dstRect;
-            dstRect = vec4(srcPix.x - offset, srcPix.y - offset, srcPix.x + offset, srcPix.y + offset);
+            dstRect = float4(srcPix.x - offset, srcPix.y - offset, srcPix.x + offset, srcPix.y + offset);
             pCtx->blit(mpDstBlitFbo->getColorTexture(0)->getSRV(), backBuffer->getColorTexture(0)->getRTV(), srcRect, dstRect, Sampler::Filter::Point);
         }
     }
@@ -110,7 +110,7 @@ namespace Falcor
             mMousePos = me.pos;
             //negative to swap scroll up to zoom in and scroll down to zoom out
             int32_t zoomDelta = -1 * mZoomCoefficient * (int32_t)me.wheelDelta.y;
-            mSrcZoomSize = max(mSrcZoomSize + zoomDelta, 3);
+            mSrcZoomSize = std::max(mSrcZoomSize + zoomDelta, 3);
             return me.type != MouseEvent::Type::Move; // Do not inhibit other passes from receiving mouse movement events.
         }
         return false;

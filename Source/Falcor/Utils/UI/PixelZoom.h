@@ -76,7 +76,7 @@ namespace Falcor
 
         Fbo::SharedPtr mpSrcBlitFbo;
         Fbo::SharedPtr mpDstBlitFbo;
-        glm::vec2 mMousePos = {};
+        float2 mMousePos = {};
         bool mShouldZoom = false;
     };
 }

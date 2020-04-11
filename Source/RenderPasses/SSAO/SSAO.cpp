@@ -105,9 +105,9 @@ SSAO::SharedPtr SSAO::create(RenderContext* pRenderContext, const Dictionary& di
     Dictionary blurDict;
     for (const auto& v : dict)
     {
-        if (v.key() == kAoMapSize) pSSAO->mAoMapSize = (uvec2)v.val();
+        if (v.key() == kAoMapSize) pSSAO->mAoMapSize = (uint2)v.val();
         else if (v.key() == kKernelSize) pSSAO->mData.kernelSize = v.val();
-        else if (v.key() == kNoiseSize) pSSAO->mNoiseSize = (uvec2)v.val();
+        else if (v.key() == kNoiseSize) pSSAO->mNoiseSize = (uint2)v.val();
         else if (v.key() == kDistribution) pSSAO->mHemisphereDistribution = (SampleDistribution)v.val();
         else if (v.key() == kRadius) pSSAO->mData.radius = v.val();
         else if (v.key() == kBlurKernelWidth) pSSAO->mBlurDict["kernelWidth"] = (uint32_t)v.val();
@@ -258,11 +258,11 @@ void SSAO::setKernel()
     for (uint32_t i = 0; i < mData.kernelSize; i++)
     {
         // Hemisphere in the Z+ direction
-        glm::vec3 p;
+        float3 p;
         switch (mHemisphereDistribution)
         {
         case SampleDistribution::Random:
-            p = glm::normalize(glm::linearRand(glm::vec3(-1.0f, -1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)));
+            p = glm::normalize(glm::linearRand(float3(-1.0f, -1.0f, 0.0f), float3(1.0f, 1.0f, 1.0f)));
             break;
 
         case SampleDistribution::UniformHammersley:
@@ -274,7 +274,7 @@ void SSAO::setKernel()
             break;
         }
 
-        mData.sampleKernel[i] = glm::vec4(p, 0.0f);
+        mData.sampleKernel[i] = float4(p, 0.0f);
 
         // Skew sample point distance on a curve so more cluster around the origin
         float dist = (float)i / (float)mData.kernelSize;
@@ -293,13 +293,13 @@ void SSAO::setNoiseTexture(uint32_t width, uint32_t height)
     for (uint32_t i = 0; i < width * height; i++)
     {
         // Random directions on the XY plane
-        glm::vec2 dir = glm::normalize(glm::linearRand(glm::vec2(-1), glm::vec2(1))) * 0.5f + 0.5f;
-        data[i] = glm::packUnorm4x8(glm::vec4(dir, 0.0f, 1.0f));
+        float2 dir = glm::normalize(glm::linearRand(float2(-1), float2(1))) * 0.5f + 0.5f;
+        data[i] = glm::packUnorm4x8(float4(dir, 0.0f, 1.0f));
     }
 
     mpNoiseTexture = Texture::create2D(width, height, ResourceFormat::RGBA8Unorm, 1, Texture::kMaxPossible, data.data());
 
-    mData.noiseScale = glm::vec2(mpAOFbo->getWidth(), mpAOFbo->getHeight()) / glm::vec2(width, height);
+    mData.noiseScale = float2(mpAOFbo->getWidth(), mpAOFbo->getHeight()) / float2(width, height);
 
     mDirty = true;
 }

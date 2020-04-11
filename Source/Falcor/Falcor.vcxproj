@@ -142,18 +142,18 @@
     <ClInclude Include="Raytracing\ShaderTable.h" />
     <ClInclude Include="RenderGraph\RenderPassHelpers.h" />
     <ClInclude Include="RenderPasses\ResolvePass.h" />
-    <ClInclude Include="RenderPasses\Shared\HitInfo.h" />
     <ClInclude Include="RenderPasses\Shared\PathTracer\PixelStats.h" />
     <ClInclude Include="RenderPasses\Shared\PathTracer\PathTracer.h" />
     <ClInclude Include="Scene\Animation\Animation.h" />
     <ClInclude Include="Scene\Animation\AnimationController.h" />
+    <ClInclude Include="Scene\HitInfo.h" />
     <ClInclude Include="Scene\Importers\AssimpImporter.h" />
     <ClInclude Include="Scene\Importers\PythonImporter.h" />
     <ClInclude Include="Scene\Importers\SceneImporter.h" />
     <ShaderSource Include="Experimental\Scene\Lights\MeshLightData.slang" />
     <ShaderSource Include="Experimental\Scene\Lights\UpdateTriangleVertices.cs.slang" />
     <ShaderSource Include="Experimental\Scene\Material\BxDFConfig.slangh" />
-    <ShaderSource Include="RenderPasses\Shared\HitInfo.slang" />
+    <ShaderSource Include="Experimental\Scene\Material\TexLODTypes.slang" />
     <ShaderSource Include="RenderPasses\Shared\PathTracer\InteriorList.slang" />
     <ShaderSource Include="RenderPasses\Shared\PathTracer\InteriorListHelpers.slang" />
     <ShaderSource Include="RenderPasses\Shared\PathTracer\LoadShadingData.slang" />
@@ -165,6 +165,7 @@
     <ShaderSource Include="Scene\Animation\Skinning.slang" />
     <ShaderSource Include="Scene\Camera\Camera.slang" />
     <ShaderSource Include="Scene\Camera\CameraData.slang" />
+    <ShaderSource Include="Scene\HitInfo.slang" />
     <ShaderSource Include="Scene\Lights\LightData.slang" />
     <ShaderSource Include="Scene\Lights\LightProbeData.slang" />
     <ShaderSource Include="Scene\Lights\Lights.slang" />
@@ -237,6 +238,7 @@
     <ClInclude Include="Utils\Debug\DebugConsole.h" />
     <ClInclude Include="Utils\Debug\PixelDebug.h" />
     <ShaderSource Include="Utils\Algorithm\ParallelReductionType.slangh" />
+    <ShaderSource Include="Utils\Attributes.slang" />
     <ShaderSource Include="Utils\Color\ColorHelpers.slang" />
     <ClInclude Include="Utils\Image\Bitmap.h" />
     <ClInclude Include="Utils\Image\DDSHeader.h" />

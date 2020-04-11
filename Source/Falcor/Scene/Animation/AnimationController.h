@@ -57,7 +57,7 @@ namespace Falcor
         static const uint32_t kInvalidBoneID = -1;
         ~AnimationController() = default;
 
-        using StaticVertexVector = std::vector<StaticVertexData>;
+        using StaticVertexVector = std::vector<PackedStaticVertexData>;
         using DynamicVertexVector = std::vector<DynamicVertexData>;
 
         /** Create a new object
@@ -92,8 +92,8 @@ namespace Falcor
         */
         bool setActiveAnimation(uint32_t meshID, uint32_t animID);
 
-        /** Get a mesh's active animation
-            If no animations exist for the mesh, will return kBindPoseAnimationId
+        /** Get a mesh's active animation.
+            \return Active animation ID, or kBindPoseAnimationId if no animations exist for the mesh.
         */
         uint32_t getActiveAnimation(uint32_t meshID) const;
 
@@ -107,11 +107,12 @@ namespace Falcor
 
         /** Get the global matrices
         */
-        const std::vector<mat4>& getGlobalMatrices() const { return mGlobalMatrices; }
+        const std::vector<glm::mat4>& getGlobalMatrices() const { return mGlobalMatrices; }
 
         /** Check if a matrix changed
         */
         bool didMatrixChanged(size_t matrixID) const { return mMatricesChanged[matrixID]; }
+
     private:
         friend class SceneBuilder;
         AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const DynamicVertexVector& dynamicVertexData);
@@ -128,9 +129,9 @@ namespace Falcor
         };
 
         std::map<uint32_t, MeshAnimation> mMeshes;
-        std::vector<mat4> mLocalMatrices;
-        std::vector<mat4> mGlobalMatrices;
-        std::vector<mat4> mInvTransposeGlobalMatrices;
+        std::vector<glm::mat4> mLocalMatrices;
+        std::vector<glm::mat4> mGlobalMatrices;
+        std::vector<glm::mat4> mInvTransposeGlobalMatrices;
         std::vector<bool> mMatricesChanged;
 
         bool mHasAnimations = false;
@@ -145,10 +146,10 @@ namespace Falcor
 
         // Skinning
         ComputePass::SharedPtr mpSkinningPass;
-        std::vector<mat4> mSkinningMatrices;
-        std::vector<mat4> mInvTransposeSkinningMatrices;
+        std::vector<glm::mat4> mSkinningMatrices;
+        std::vector<glm::mat4> mInvTransposeSkinningMatrices;
         uint32_t mSkinningDispatchSize = 0;
-        void createSkinningPass(const std::vector<StaticVertexData>& staticVertexData, const std::vector<DynamicVertexData>& dynamicVertexData);
+        void createSkinningPass(const std::vector<PackedStaticVertexData>& staticVertexData, const std::vector<DynamicVertexData>& dynamicVertexData);
         void executeSkinningPass(RenderContext* pContext);
 
         Buffer::SharedPtr mpSkinningMatricesBuffer;

@@ -69,9 +69,11 @@ namespace Falcor
             {
                 return error("Script file is missing header with reference to scene file.");
             }
-            const std::string sceneFile = directory + '/' + script.substr(2, endOfFirstLine - 2);
+
+            addDataDirectory(directory);
 
             // Load referenced scene
+            const std::string sceneFile = script.substr(2, endOfFirstLine - 2);
             mBuilder.import(sceneFile.c_str());
 
             // Execute scene script
@@ -79,6 +81,7 @@ namespace Falcor
             context.setObject("scene", mBuilder.getScene());
             Scripting::runScriptFromFile(fullpath, context);
 
+            removeDataDirectory(directory);
             return true;
         }
         else

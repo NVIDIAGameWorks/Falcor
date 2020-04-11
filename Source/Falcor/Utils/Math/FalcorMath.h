@@ -43,11 +43,11 @@ namespace Falcor
         \param[in] from The source vector
         \param[in] to The destination vector
     */
-    inline glm::quat createQuaternionFromVectors(const glm::vec3& from, const glm::vec3& to)
+    inline glm::quat createQuaternionFromVectors(const float3& from, const float3& to)
     {
         glm::quat quat;
-        glm::vec3 nFrom = glm::normalize(from);
-        glm::vec3 nTo = glm::normalize(to);
+        float3 nFrom = glm::normalize(from);
+        float3 nTo = glm::normalize(to);
 
         float dot = glm::dot(nFrom, nTo);
         dot = clamp(dot, -1.0f, 1.0f);
@@ -55,8 +55,8 @@ namespace Falcor
         {
             float angle = acosf(dot);
 
-            glm::vec3 cross = glm::cross(nFrom, nTo);
-            glm::vec3 axis = glm::normalize(cross);
+            float3 cross = glm::cross(nFrom, nTo);
+            float3 axis = glm::normalize(cross);
 
             quat = glm::angleAxis(angle, axis);
         }
@@ -70,22 +70,22 @@ namespace Falcor
         \param[in] projMat Projection matrix from the camera.
         \return World space ray direction coming from the camera position in the direction of the mouse position
     */
-    inline glm::vec3 mousePosToWorldRay(const glm::vec2& mousePos, const glm::mat4& viewMat, const glm::mat4& projMat)
+    inline float3 mousePosToWorldRay(const float2& mousePos, const glm::mat4& viewMat, const glm::mat4& projMat)
     {
         // Convert from [0, 1] to [-1, 1] range
         const float x = mousePos.x * 2.0f - 1.0f;
 
         // Vulkan has flipped Y in clip space. Otherwise Y has to be flipped
-        const float y = 
+        const float y =
 #ifdef FALCOR_VK
             mousePos.y
 #else
-            (1.0f - mousePos.y) 
+            (1.0f - mousePos.y)
 #endif
             * 2.0f - 1.0f;
 
         // NDC/Clip
-        glm::vec4 ray(x, y, -1.0f, 1.0f);
+        float4 ray(x, y, -1.0f, 1.0f);
 
         // View
         ray = glm::inverse(projMat) * ray;
@@ -101,11 +101,11 @@ namespace Falcor
         \param[in] up Up vector.
         \return 3x3 rotation matrix.
     */
-    inline glm::mat3 createMatrixFromBasis(const glm::vec3& forward, const glm::vec3& up)
+    inline glm::mat3 createMatrixFromBasis(const float3& forward, const float3& up)
     {
-        glm::vec3 f = glm::normalize(forward);
-        glm::vec3 s = glm::normalize(glm::cross(up, forward));
-        glm::vec3 u = glm::cross(f, s);
+        float3 f = glm::normalize(forward);
+        float3 s = glm::normalize(glm::cross(up, forward));
+        float3 u = glm::cross(f, s);
 
         return glm::mat3(s, u, f);
     }
@@ -116,7 +116,7 @@ namespace Falcor
         \param[in] up Object's up vector.
         \return 3x3 rotation matrix.
     */
-    inline glm::mat3 createMatrixFromLookAt(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up)
+    inline glm::mat3 createMatrixFromLookAt(const float3& position, const float3& target, const float3& up)
     {
         return createMatrixFromBasis(target - position, up);
     }
@@ -124,7 +124,7 @@ namespace Falcor
     /** Projects a 2D coordinate onto a unit sphere
         \param xy The 2D coordinate. if x and y are in the [0,1) range, then a z value can be calculate. Otherwise, xy is normalized and z is zero.
     */
-    inline glm::vec3 project2DCrdToUnitSphere(glm::vec2 xy)
+    inline float3 project2DCrdToUnitSphere(float2 xy)
     {
         float xyLengthSquared = glm::dot(xy, xy);
 
@@ -137,7 +137,7 @@ namespace Falcor
         {
             xy = glm::normalize(xy);
         }
-        return glm::vec3(xy.x, xy.y, z);
+        return float3(xy.x, xy.y, z);
     }
 
     /** Calculates vertical FOV in radians from camera parameters.
@@ -193,26 +193,26 @@ namespace Falcor
         return float(i) * 2.3283064365386963e-10f;
     }
 
-    inline vec3 hammersleyUniform(uint32_t i, uint32_t n)
+    inline float3 hammersleyUniform(uint32_t i, uint32_t n)
     {
-        vec2 uv((float)i / (float)n, radicalInverse(i));
+        float2 uv((float)i / (float)n, radicalInverse(i));
 
         // Map to radius 1 hemisphere
         float phi = uv.y * 2.0f * (float)M_PI;
         float t = 1.0f - uv.x;
         float s = sqrt(1.0f - t * t);
-        return vec3(s * cos(phi), s * sin(phi), t);
+        return float3(s * cos(phi), s * sin(phi), t);
     }
 
-    inline vec3 hammersleyCosine(uint32_t i, uint32_t n)
+    inline float3 hammersleyCosine(uint32_t i, uint32_t n)
     {
-        vec2 uv((float)i / (float)n, radicalInverse(i));
+        float2 uv((float)i / (float)n, radicalInverse(i));
 
         // Map to radius 1 hemisphere
         float phi = uv.y * 2.0f * (float)M_PI;
         float t = sqrt(1.0f - uv.x);
         float s = sqrt(1.0f - t * t);
-        return vec3(s * cos(phi), s * sin(phi), t);
+        return float3(s * cos(phi), s * sin(phi), t);
     }
 
 #ifndef GLM_CLIP_SPACE_Y_TOPDOWN

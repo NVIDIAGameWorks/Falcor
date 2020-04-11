@@ -31,15 +31,23 @@ __exported import Scene.ShadingData;
 
 struct VSIn
 {
-    float4 pos          : POSITION;
-    float3 normal       : NORMAL;
-    float3 bitangent    : BITANGENT;
-    float2 texC         : TEXCOORD;
-    uint meshInstanceID : DRAW_ID;
-    float4 prevPos      : PREV_POSITION;
-//#ifdef HAS_LIGHTMAP_UV
-//    float2 lightmapC    : LIGHTMAP_UV;
-//#endif
+    // Packed vertex attributes, see PackedStaticVertexData
+    float3 pos                      : POSITION;
+    float3 packedNormalBitangent    : PACKED_NORMAL_BITANGENT;
+    float2 texC                     : TEXCOORD;
+
+    // Other vertex attributes
+    uint meshInstanceID             : DRAW_ID;
+    float3 prevPos                  : PREV_POSITION;
+
+    StaticVertexData unpack()
+    {
+        PackedStaticVertexData v;
+        v.position = pos;
+        v.packedNormalBitangent = packedNormalBitangent;
+        v.texCrd = texC;
+        return v.unpack();
+    }
 };
 
 #ifndef INTERPOLATION_MODE
@@ -66,7 +74,7 @@ VSOut defaultVS(VSIn vIn)
 {
     VSOut vOut;
     float4x4 worldMat = gScene.getWorldMatrix(vIn.meshInstanceID);
-    float4 posW = mul(vIn.pos, worldMat);
+    float4 posW = mul(float4(vIn.pos, 1.f), worldMat);
     vOut.posW = posW.xyz;
     vOut.posH = mul(posW, gScene.camera.getViewProj());
 
@@ -74,10 +82,10 @@ VSOut defaultVS(VSIn vIn)
     vOut.materialID = gScene.getMaterialID(vIn.meshInstanceID);
 
     vOut.texC = vIn.texC;
-    vOut.normalW = mul(vIn.normal, (float3x3)gScene.getInverseTransposeWorldMatrix(vIn.meshInstanceID)).xyz;
-    vOut.bitangentW = mul(vIn.bitangent,(float3x3) gScene.getWorldMatrix(vIn.meshInstanceID));
+    vOut.normalW = mul(vIn.unpack().normal, gScene.getInverseTransposeWorldMatrix(vIn.meshInstanceID));
+    vOut.bitangentW = mul(vIn.unpack().bitangent, (float3x3)gScene.getWorldMatrix(vIn.meshInstanceID));
 
-    float4 prevPosW = mul(vIn.prevPos, gScene.getPrevWorldMatrix(vIn.meshInstanceID));
+    float4 prevPosW = mul(float4(vIn.prevPos, 1.f), gScene.getPrevWorldMatrix(vIn.meshInstanceID));
     vOut.prevPosH = mul(prevPosW, gScene.camera.data.prevViewProjMatNoJitter);
 
   return vOut;

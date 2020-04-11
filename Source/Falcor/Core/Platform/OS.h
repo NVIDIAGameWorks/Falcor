@@ -250,6 +250,10 @@ namespace Falcor
     */
     dlldecl const std::string getWorkingDirectory();
 
+    /** Get the application data directory.
+    */
+    dlldecl const std::string getAppDataDirectory();
+
     /** Get the content of a system environment variable.
         \param[in] varName Name of the environment variable
         \param[out] value On success, will hold the value of the environment variable.

@@ -40,6 +40,12 @@
 /*******************************************************************
                     CPU declarations
 *******************************************************************/
+
+using uint = uint32_t;
+using float3x3 = glm::float3x3;
+using float3x4 = glm::float3x4;
+using float4x4 = glm::float4x4;
+
 #define BEGIN_NAMESPACE_FALCOR namespace Falcor{
 #define END_NAMESPACE_FALCOR }
 #define SETTER_DECL
@@ -49,7 +55,7 @@
 /*******************************************************************
                     HLSL declarations
 *******************************************************************/
-#define inline 
+#define inline
 #define SETTER_DECL [mutating]
 #define BEGIN_NAMESPACE_FALCOR
 #define END_NAMESPACE_FALCOR

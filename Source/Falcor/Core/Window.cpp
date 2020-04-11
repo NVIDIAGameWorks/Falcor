@@ -105,7 +105,7 @@ namespace Falcor
                 event.type = MouseEvent::Type::Move;
                 event.pos = calcMousePos(mouseX, mouseY, pWindow->getMouseScale());
                 event.screenPos = { mouseX, mouseY };
-                event.wheelDelta = glm::vec2(0, 0);
+                event.wheelDelta = float2(0, 0);
 
                 pWindow->mpCallbacks->handleMouseEvent(event);
             }
@@ -154,7 +154,7 @@ namespace Falcor
                 double x, y;
                 glfwGetCursorPos(pGlfwWindow, &x, &y);
                 event.pos = calcMousePos(x, y, pWindow->getMouseScale());
-                event.wheelDelta = (glm::vec2(float(scrollX), float(scrollY)));
+                event.wheelDelta = (float2(float(scrollX), float(scrollY)));
 
                 pWindow->mpCallbacks->handleMouseEvent(event);
             }
@@ -320,9 +320,9 @@ namespace Falcor
             return mods;
         }
 
-        static inline glm::vec2 calcMousePos(double xPos, double yPos, const glm::vec2& mouseScale)
+        static inline float2 calcMousePos(double xPos, double yPos, const float2& mouseScale)
         {
-            glm::vec2 pos = glm::vec2(float(xPos), float(yPos));
+            float2 pos = float2(float(xPos), float(yPos));
             pos *= mouseScale;
             return pos;
         }
@@ -494,6 +494,11 @@ namespace Falcor
         }
     }
 
+    void Window::setWindowPos(int32_t x, int32_t y)
+    {
+        glfwSetWindowPos(mpGLFWWindow, x, y);
+    }
+
     void Window::setWindowTitle(const std::string& title)
     {
         glfwSetWindowTitle(mpGLFWWindow, title.c_str());
@@ -506,6 +511,9 @@ namespace Falcor
 
     SCRIPT_BINDING(Window)
     {
+        auto w = m.class_<Window>("Window");
+        w.func_("setWindowPos", &Window::setWindowPos);
+
         auto windowMode = m.enum_<Window::WindowMode>("WindowMode");
         windowMode.regEnumVal(Window::WindowMode::Normal);
         windowMode.regEnumVal(Window::WindowMode::Fullscreen);

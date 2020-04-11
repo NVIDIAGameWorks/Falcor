@@ -81,13 +81,13 @@ namespace Falcor
         }
 
         // Compute number of thread groups in the first pass. Each thread operates on two elements.
-        const uint32_t numPrefixGroups = max(1u, div_round_up(elementCount, kGroupSize * 2));
+        const uint32_t numPrefixGroups = std::max(1u, div_round_up(elementCount, kGroupSize * 2));
         assert(numPrefixGroups > 0 && numPrefixGroups < kGroupSize);
 
         // Pass 1: compute per-thread group prefix sums.
         {
             // Clear group sums to zero.
-            pRenderContext->clearUAV(mpPrefixGroupSums->getUAV().get(), glm::uvec4(0));
+            pRenderContext->clearUAV(mpPrefixGroupSums->getUAV().get(), uint4(0));
 
             // Set constants and data.
             mpPrefixSumGroupVars["CB"]["gNumGroups"] = numPrefixGroups;

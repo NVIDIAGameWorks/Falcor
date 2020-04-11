@@ -110,7 +110,7 @@ namespace Falcor
             }
 
             auto& info = mSubTables[uint32_t(subTableType)];
-            info.recordSize = max(pEntryPointGroup->getLocalRootSignature()->getSizeInBytes(), info.recordSize);
+            info.recordSize = std::max(pEntryPointGroup->getLocalRootSignature()->getSizeInBytes(), info.recordSize);
         }
 
         uint32_t subTableOffset = 0;

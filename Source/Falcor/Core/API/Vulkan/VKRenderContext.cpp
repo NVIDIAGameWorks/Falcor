@@ -47,7 +47,7 @@ namespace Falcor
     template<typename ViewType, typename ClearType>
     void clearColorImageCommon(CopyContext* pCtx, const ViewType* pView, const ClearType& clearVal);
 
-    void RenderContext::clearRtv(const RenderTargetView* pRtv, const glm::vec4& color)
+    void RenderContext::clearRtv(const RenderTargetView* pRtv, const float4& color)
     {
         clearColorImageCommon(this, pRtv, color);
         mCommandsPending = true;
@@ -262,7 +262,7 @@ namespace Falcor
     }
 
     template<uint32_t offsetCount, typename ViewType>
-    void initBlitData(const ViewType* pView, const uvec4& rect, VkImageSubresourceLayers& layer, VkOffset3D offset[offsetCount])
+    void initBlitData(const ViewType* pView, const uint4& rect, VkImageSubresourceLayers& layer, VkOffset3D offset[offsetCount])
     {
         const Texture* pTex = dynamic_cast<const Texture*>(pView->getResource());
 
@@ -285,7 +285,7 @@ namespace Falcor
         }
     }
 
-    void RenderContext::blit(ShaderResourceView::SharedPtr pSrc, RenderTargetView::SharedPtr pDst, const uvec4& srcRect, const uvec4& dstRect, Sampler::Filter filter)
+    void RenderContext::blit(ShaderResourceView::SharedPtr pSrc, RenderTargetView::SharedPtr pDst, const uint4& srcRect, const uint4& dstRect, Sampler::Filter filter)
     {
         const Texture* pTexture = dynamic_cast<const Texture*>(pSrc->getResource());
         resourceBarrier(pSrc->getResource(), Resource::State::CopySource, &pSrc->getViewInfo());
@@ -301,7 +301,7 @@ namespace Falcor
             resolve.extent.width = pTexture->getWidth(viewInfo.mostDetailedMip);
             resolve.extent.height = pTexture->getHeight(viewInfo.mostDetailedMip);
             resolve.extent.depth = 1;
-            
+
             vkCmdResolveImage(mpLowLevelData->getCommandList(), pSrc->getResource()->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, pDst->getResource()->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &resolve);
         }
         else

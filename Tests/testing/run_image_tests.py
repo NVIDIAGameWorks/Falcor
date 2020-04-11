@@ -20,16 +20,36 @@ from core import Environment, helpers, config
 from core.termcolor import colored
 
 
-def has_skip_message(script_file):
+def read_header(script_file):
     '''
-    Check if script file has a skip message.
+    Check if script has a IMAGE_TEST dictionary defined at the top and return it's content.
     '''
     with open(script_file) as f:
-        line = f.readline()
-        match = re.match(r'^#\s+SKIPPED\s+(.*)$', line)
-        if match:
-            return True, match.group(1)
-        return False, ''
+        script = f.read()
+        # Find IMAGE_TEST={} at the top of the script
+        m = re.match(r'IMAGE_TEST\s*=\s*({.*})', script, re.DOTALL)
+        if m:
+            header = None
+            # Match curly braces
+            depth = 0
+            for i, c in enumerate(m.group(1)):
+                if c == '{':
+                    depth += 1
+                if c == '}':
+                    depth -= 1
+                    if depth == 0:
+                        header = m.group(1)[0:i+1]
+                        break
+            if depth != 0:
+                raise Exception(f'Failed to parse script header in {script_file} (curly braces do not match)')
+            # Evaluate dictionary
+            if header:
+                try:
+                    return eval(header)
+                except Exception as e:
+                    raise Exception(f'Failed to parse script header in {script_file} ({e})')
+
+    return {}
 
 class Test:
     '''
@@ -62,8 +82,19 @@ class Test:
         # Test name derived from test directory.
         self.name = str(self.test_dir.as_posix())
 
-        # Check if script is skipped.
-        self.skipped, self.skip_message = has_skip_message(script_file)
+        # Read script header.
+        try:
+            self.header = read_header(script_file)
+        except Exception as e:
+            print(e)
+            sys.exit(1)
+
+        # Get skipped tests.
+        self.skip_message = self.header.get('skipped', None)
+        self.skipped = self.skip_message != None
+
+        # Get tolerance.
+        self.tolerance = self.header.get('tolerance', config.TOLERANCE)
 
     def __repr__(self):
         return f'Test(name={self.name},script_file={self.script_file})'
@@ -103,7 +134,7 @@ class Test:
         # Write helper script to run test.
         generate_file = output_dir / 'generate.py'
         with open(generate_file, 'w') as f:
-            f.write(f'fc.outputDir(r"{output_dir}")\n')
+            f.write(f'fc.outputDir = r"{output_dir}"\n')
             f.write(f'm.script(r"{relative_to_cwd(self.script_file)}")\n')
 
         # Run Mogwai to generate images.
@@ -181,8 +212,7 @@ class Test:
             ref_file = ref_dir / image
             result_file = result_dir / image
             error_file = result_dir / (str(image) + config.ERROR_IMAGE_SUFFIX)
-            tolerance = config.TOLERANCE
-            compare_success, compare_error = self.compare_image(ref_file, result_file, error_file, tolerance, image_compare_exe)
+            compare_success, compare_error = self.compare_image(ref_file, result_file, error_file, self.tolerance, image_compare_exe)
             if not compare_success:
                 result = Test.Result.FAILED
                 messages.append(f'Test image "{image}" failed with error {compare_error}.')
@@ -191,7 +221,7 @@ class Test:
                 'name': str(image),
                 'success': compare_success,
                 'error': compare_error,
-                'tolerance': tolerance
+                'tolerance': self.tolerance
             })
 
         # Report missing result images for existing reference images.

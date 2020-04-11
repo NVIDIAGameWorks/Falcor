@@ -178,11 +178,11 @@ void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData&
     for (auto channel : kOutputChannels) bind(channel);
 
     // Get dimensions of ray dispatch.
-    const uvec2 targetDim = renderData.getDefaultTextureDims();
+    const uint2 targetDim = renderData.getDefaultTextureDims();
     assert(targetDim.x > 0 && targetDim.y > 0);
 
     // Spawn the rays.
-    mpScene->raytrace(pRenderContext, mTracer.pProgram.get(), mTracer.pVars, uvec3(targetDim, 1));
+    mpScene->raytrace(pRenderContext, mTracer.pProgram.get(), mTracer.pVars, uint3(targetDim, 1));
 
     mFrameCount++;
 }
@@ -238,14 +238,12 @@ void MinimalPathTracer::setScene(RenderContext* pRenderContext, const Scene::Sha
         mTracer.pProgram->addDefines(pScene->getSceneDefines());
 
         // Load environment map if scene uses one.
-        // We're getting the file name from the scene's LightProbe because that was used in the fscene files.
-        // TODO: Switch to use Scene::getEnvironmentMap() when the assets have been updated.
-        auto pLightProbe = mpScene->getLightProbe();
-        if (pLightProbe != nullptr)
+        Texture::SharedPtr pEnvMap = mpScene->getEnvironmentMap();
+        if (pEnvMap != nullptr)
         {
-            std::string fn = pLightProbe->getOrigTexture()->getSourceFilename();
-            mpEnvProbe = EnvProbe::create(pRenderContext, fn);
-            mEnvProbeFilename = mpEnvProbe ? getFilenameFromPath(mpEnvProbe->getEnvMap()->getSourceFilename()) : "";
+            std::string filename = pEnvMap->getSourceFilename();
+            mpEnvProbe = EnvProbe::create(pRenderContext, filename);
+            mEnvProbeFilename = mpEnvProbe ? getFilenameFromPath(filename) : "";
         }
     }
 }

@@ -77,7 +77,7 @@ This function will need to perform several operations: create and bind an FBO fo
 We can create and bind an FBO for our renderer to render to by first calling `Fbo::create()` on our output texture, clearing it to remove any data from previous executions (preventing it from leaving permanent trails if you try to move the camera), and calling `GraphicsState::setFbo()` to bind it. This step looks like this:
 ```c++
 auto pTargetFbo = Fbo::create({ renderData["output"]->asTexture() });
-const glm::vec4 clearColor(0, 0, 0, 1);
+const float4 clearColor(0, 0, 0, 1);
 pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
 mpGraphicsState->setFbo(pTargetFbo);
 ```
@@ -86,7 +86,7 @@ mpGraphicsState->setFbo(pTargetFbo);
 We need to perform two operations here: indicate that we want to use a custom `RasterizerState` and bind all necessary values to our shader. We can indicate that we're using a custom `RasterizerState` by creating a `Scene::Renderflags` object and setting the flag `Scene::RenderFlags::UserRasterizerState`. Binding shader values is also fairly straightforward as Falcor allows you to set shader values in the `GraphicsVars` object in the same way as you would set values in an array. Our shader requires a single color value, `gColor`, which is located inside the `perFrameCB` constant buffer. This step should look like this:
 ```c++
 Scene::RenderFlags renderFlags = Scene::RenderFlags::UserRasterizerState;
-mpVars["perFrameCB"]["gColor"] = vec4(0, 1, 0, 1);
+mpVars["perFrameCB"]["gColor"] = float4(0, 1, 0, 1);
 ```
 
 #### Rendering a Scene Using the Shader
@@ -99,13 +99,13 @@ Your `execute()` function should now look like this:
 void WireframePass::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
     auto pTargetFbo = Fbo::create({ renderData["output"]->asTexture() });
-    const glm::vec4 clearColor(0, 0, 0, 1);
+    const float4 clearColor(0, 0, 0, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
     mpGraphicsState->setFbo(pTargetFbo);
 
     // Set render state
     Scene::RenderFlags renderFlags = Scene::RenderFlags::UserRasterizerState;
-    mpVars["PerFrameCB"]["gColor"] = vec4(0, 1, 0, 1);
+    mpVars["PerFrameCB"]["gColor"] = float4(0, 1, 0, 1);
 
     mpScene->render(pRenderContext, mpGraphicsState.get(), mpVars.get(), renderFlags);
 }

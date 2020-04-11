@@ -118,7 +118,7 @@ void GBufferBase::renderUI(Gui::Widgets& widget)
 void GBufferBase::compile(RenderContext* pContext, const CompileData& compileData)
 {
     mFrameDim = compileData.defaultTexDims;
-    mInvFrameDim = 1.f / glm::vec2(mFrameDim);
+    mInvFrameDim = 1.f / float2(mFrameDim);
 
     if (mpScene)
     {

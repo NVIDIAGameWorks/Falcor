@@ -38,7 +38,7 @@ namespace Falcor
         return SharedPtr(new DebugDrawer(maxVertices));
     }
 
-    void DebugDrawer::addLine(const glm::vec3& a, const glm::vec3& b)
+    void DebugDrawer::addLine(const float3& a, const float3& b)
     {
         if (mVertexData.capacity() - mVertexData.size() >= 2)
         {
@@ -58,13 +58,13 @@ namespace Falcor
 
     void DebugDrawer::addBoundingBox(const BoundingBox& aabb)
     {
-        glm::vec3 min = aabb.center - aabb.extent;
-        glm::vec3 max = aabb.center + aabb.extent;
+        float3 min = aabb.center - aabb.extent;
+        float3 max = aabb.center + aabb.extent;
 
-        Quad bottomFace = { min, glm::vec3(max.x, min.y, min.z), glm::vec3(max.x, min.y, max.z), glm::vec3(min.x, min.y, max.z) };
+        Quad bottomFace = { min, float3(max.x, min.y, min.z), float3(max.x, min.y, max.z), float3(min.x, min.y, max.z) };
         addQuad(bottomFace);
 
-        Quad topFace = { glm::vec3(min.x, max.y, min.z), glm::vec3(max.x, max.y, min.z), max, glm::vec3(min.x, max.y, max.z) };
+        Quad topFace = { float3(min.x, max.y, min.z), float3(max.x, max.y, min.z), max, float3(min.x, max.y, max.z) };
         addQuad(topFace);
 
         addLine(bottomFace[0], topFace[0]);
@@ -73,14 +73,14 @@ namespace Falcor
         addLine(bottomFace[3], topFace[3]);
     }
 
-    DebugDrawer::Quad buildQuad(const glm::vec3& center, const glm::vec3& up, const glm::vec3& right)
+    DebugDrawer::Quad buildQuad(const float3& center, const float3& up, const float3& right)
     {
         // Length of each quad side
         static const float size = 0.08f;
 
         // Half widths based on size constant
-        glm::vec3 upOffset = glm::normalize(up) * size / 2.0f;
-        glm::vec3 rightOffset = glm::normalize(right) * size / 2.0f;
+        float3 upOffset = glm::normalize(up) * size / 2.0f;
+        float3 rightOffset = glm::normalize(right) * size / 2.0f;
 
         // CCW from top left
         DebugDrawer::Quad quad;
@@ -94,35 +94,35 @@ namespace Falcor
     // Generates a quad centered at currFrame's position facing nextFrame's position
 //     DebugDrawer::Quad createQuadForFrame(const ObjectPath::Frame& currFrame, const ObjectPath::Frame& nextFrame)
 //     {
-//         glm::vec3 forward = nextFrame.position - currFrame.position;
-//         glm::vec3 right = glm::cross(forward, currFrame.up);
-//         glm::vec3 up = glm::cross(right, forward);
-// 
+//         float3 forward = nextFrame.position - currFrame.position;
+//         float3 right = glm::cross(forward, currFrame.up);
+//         float3 up = glm::cross(right, forward);
+//
 //         return buildQuad(currFrame.position, up, right);
 //     }
 
 //     // Generates a quad centered at currFrame's position oriented halfway between direction to prevFrame and direction to nextFrame
 //     DebugDrawer::Quad createQuadForFrame(const ObjectPath::Frame& prevFrame, const ObjectPath::Frame& currFrame, const ObjectPath::Frame& nextFrame)
 //     {
-//         glm::vec3 lastToCurrFoward = currFrame.position - prevFrame.position;
-//         glm::vec3 lastToCurrRight = glm::normalize(glm::cross(lastToCurrFoward, prevFrame.up));
-//         glm::vec3 lastToCurrUp = glm::normalize(glm::cross(lastToCurrRight, lastToCurrFoward));
-// 
-//         glm::vec3 currToNextFoward = nextFrame.position - currFrame.position;
-// 
+//         float3 lastToCurrFoward = currFrame.position - prevFrame.position;
+//         float3 lastToCurrRight = glm::normalize(glm::cross(lastToCurrFoward, prevFrame.up));
+//         float3 lastToCurrUp = glm::normalize(glm::cross(lastToCurrRight, lastToCurrFoward));
+//
+//         float3 currToNextFoward = nextFrame.position - currFrame.position;
+//
 //         // If curr and next are the same, use the direction from prev to curr
 //         if (glm::length(currToNextFoward) < 0.001f)
 //         {
 //             currToNextFoward = lastToCurrFoward;
 //         }
-// 
-//         glm::vec3 currToNextRight = glm::normalize(glm::cross(currToNextFoward, currFrame.up));
-//         glm::vec3 currToNextUp = glm::normalize(glm::cross(currToNextRight, currToNextFoward));
-// 
+//
+//         float3 currToNextRight = glm::normalize(glm::cross(currToNextFoward, currFrame.up));
+//         float3 currToNextUp = glm::normalize(glm::cross(currToNextRight, currToNextFoward));
+//
 //         // Half vector between two direction normals
-//         glm::vec3 midUp = (lastToCurrUp + currToNextUp) / 2.0f;
-//         glm::vec3 midRight = (lastToCurrRight + currToNextRight) / 2.0f;
-// 
+//         float3 midUp = (lastToCurrUp + currToNextUp) / 2.0f;
+//         float3 midRight = (lastToCurrRight + currToNextRight) / 2.0f;
+//
 //         return buildQuad(currFrame.position, midUp, midRight);
 //     }
 
@@ -133,49 +133,49 @@ namespace Falcor
 //         {
 //             return;
 //         }
-// 
+//
 //         const float step = 1.0f / (float)kPathDetail;
 //         const float epsilon = 1.0e-6f; // A bit more than glm::epsilon
-// 
+//
 //         ObjectPath::Frame prevFrame;
 //         pPath->getFrameAt(0, 0.0f, prevFrame);
-// 
+//
 //         ObjectPath::Frame currFrame;
 //         pPath->getFrameAt(0, step, currFrame);
-// 
+//
 //         Quad lastQuad = createQuadForFrame(prevFrame, currFrame);
 //         Quad currQuad;
-// 
+//
 //         // Draw quad to cap path beginning
 //         addQuad(lastQuad);
-// 
+//
 //         const float maxFrameIndex = (float)(pPath->getKeyFrameCount() - 1);
-// 
+//
 //         // Add epsilon so loop's <= works properly
 //         const float pathEnd = maxFrameIndex + epsilon;
-// 
+//
 //         for (float frame = step; frame <= pathEnd; frame += step)
 //         {
 //             // Loop can overshoot the max index
 //             // Clamp frame to right below max index so interpolation on the path will work
 //             frame = std::min(frame, maxFrameIndex - epsilon);
-// 
+//
 //             uint32_t frameID = (uint32_t)(glm::floor(frame));
 //             float t = frame - (float)frameID;
-// 
+//
 //             ObjectPath::Frame nextFrame;
 //             pPath->getFrameAt(frameID, t + step, nextFrame);
 //             currQuad = createQuadForFrame(prevFrame, currFrame, nextFrame);
-// 
+//
 //             // Draw current quad
 //             addQuad(currQuad);
-// 
+//
 //             // Connect last quad to current
 //             addLine(lastQuad[0], currQuad[0]);
 //             addLine(lastQuad[1], currQuad[1]);
 //             addLine(lastQuad[2], currQuad[2]);
 //             addLine(lastQuad[3], currQuad[3]);
-// 
+//
 //             prevFrame = currFrame;
 //             lastQuad = currQuad;
 //             currFrame = nextFrame;
@@ -208,7 +208,7 @@ namespace Falcor
 
         VertexBufferLayout::SharedPtr pBufferLayout = VertexBufferLayout::create();
         pBufferLayout->addElement("POSITION", 0, ResourceFormat::RGB32Float, 1, 0);
-        pBufferLayout->addElement("COLOR", sizeof(glm::vec3), ResourceFormat::RGB32Float, 1, 1);
+        pBufferLayout->addElement("COLOR", sizeof(float3), ResourceFormat::RGB32Float, 1, 1);
 
         VertexLayout::SharedPtr pVertexLayout = VertexLayout::create();
         pVertexLayout->addBufferLayout(0, pBufferLayout);

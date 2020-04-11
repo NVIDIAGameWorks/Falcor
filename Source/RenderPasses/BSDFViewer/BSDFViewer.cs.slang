@@ -33,6 +33,7 @@ import Scene.TextureSampler;
 import Experimental.Scene.Material.MaterialShading;
 import Experimental.Scene.Lights.EnvProbe;
 import Utils.Sampling.SampleGenerator;
+import Utils.Debug.PixelDebug;
 import Utils.Math.BitTricks;
 import Utils.Math.MathHelpers;
 import BSDFViewerParams;
@@ -212,7 +213,7 @@ SurfaceData prepareMaterial(VertexData v, float3 viewDir)
         data.sd = _prepareShadingData(v, gParams.materialID, gScene.materials[gParams.materialID], gScene.materialResources[gParams.materialID], viewDir, lod, gParams.useNormalMapping);
 
         // Setup additional fields not currently available in ShadingData.
-        MaterialData md = gScene.materials[gParams.materialID];
+        MaterialData md = gScene.getMaterial(gParams.materialID);
         MaterialResources mr = gScene.materialResources[gParams.materialID];
         data.baseColor = sampleTexture(mr.baseColor, mr.samplerState, v.texC, md.baseColor, EXTRACT_DIFFUSE_TYPE(md.flags), lod).rgb;
     }
@@ -392,6 +393,8 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
     const uint2 pixel = dispatchThreadID.xy;
     if (any(pixel >= gParams.frameDim)) return;
+
+    printSetPixel(pixel);
 
     SurfaceData data = {};
     float3 output = 0;

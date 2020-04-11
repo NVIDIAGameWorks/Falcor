@@ -481,9 +481,6 @@
     <ClInclude Include="Scene\Importers\PythonImporter.h">
       <Filter>Scene\Importers</Filter>
     </ClInclude>
-    <ClInclude Include="RenderPasses\Shared\HitInfo.h">
-      <Filter>RenderPasses\Shared</Filter>
-    </ClInclude>
     <ClInclude Include="Utils\TermColor.h">
       <Filter>Utils</Filter>
     </ClInclude>
@@ -492,6 +489,9 @@
     </ClInclude>
     <ClInclude Include="RenderPasses\Shared\PathTracer\PathTracer.h">
       <Filter>RenderPasses\Shared\PathTracer</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\HitInfo.h">
+      <Filter>Scene</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -1433,9 +1433,6 @@
     <ShaderSource Include="Experimental\Scene\Material\BxDFConfig.slangh">
       <Filter>Experimental\Scene\Material</Filter>
     </ShaderSource>
-    <ShaderSource Include="RenderPasses\Shared\HitInfo.slang">
-      <Filter>RenderPasses\Shared</Filter>
-    </ShaderSource>
     <ShaderSource Include="RenderPasses\Shared\PathTracer\InteriorList.slang">
       <Filter>RenderPasses\Shared\PathTracer</Filter>
     </ShaderSource>
@@ -1468,6 +1465,15 @@
     </ShaderSource>
     <ShaderSource Include="Utils\Debug\ReflectPixelDebugTypes.cs.slang">
       <Filter>Utils\Debug</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Experimental\Scene\Material\TexLODTypes.slang">
+      <Filter>Experimental\Scene\Material</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Utils\Attributes.slang">
+      <Filter>Utils</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\HitInfo.slang">
+      <Filter>Scene</Filter>
     </ShaderSource>
   </ItemGroup>
 </Project>

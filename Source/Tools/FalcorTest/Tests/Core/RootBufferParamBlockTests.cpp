@@ -36,8 +36,8 @@ namespace Falcor
         const std::string kTestProgram = "Tests/Core/RootBufferParamBlockTests.cs.slang";
 
         const uint32_t kNumElems = 256;
-        const std::string kRootBufferName = "__root__testBuffer";
-        const std::string kGlobalRootBufferName = "__root__globalTestBuffer";
+        const std::string kRootBufferName = "testBuffer";
+        const std::string kGlobalRootBufferName = "globalTestBuffer";
 
         std::mt19937 rng;
         auto dist = std::uniform_int_distribution<uint32_t>(0, 100);

@@ -112,12 +112,12 @@ void ComparisonPass::execute(RenderContext* pContext, const RenderData& renderDa
 
         // Draw text labeling the right side image
         std::string rightSide = mSwapSides ? mLeftLabel : mRightLabel;
-        TextRenderer::render(pContext, rightSide.c_str(), pDstFbo, vec2(screenLoc + 16, 16));
+        TextRenderer::render(pContext, rightSide.c_str(), pDstFbo, float2(screenLoc + 16, 16));
 
         // Draw text labeling the left side image
         std::string leftSide = mSwapSides ? mRightLabel : mLeftLabel;
         uint32_t leftLength = uint32_t(leftSide.length()) * 9;
-        TextRenderer::render(pContext, leftSide.c_str(), pDstFbo, vec2(screenLoc - 16 - leftLength, 16));
+        TextRenderer::render(pContext, leftSide.c_str(), pDstFbo, float2(screenLoc - 16 - leftLength, 16));
     }
 }
 

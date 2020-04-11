@@ -44,9 +44,9 @@ namespace Falcor
         assert(mLocalMatrices.size() * 4 <= UINT32_MAX);
         uint32_t float4Count = (uint32_t)mLocalMatrices.size() * 4;
 
-        mpWorldMatricesBuffer = Buffer::createTyped(ResourceFormat::RGBA32Float, float4Count, Resource::BindFlags::ShaderResource);
+        mpWorldMatricesBuffer = Buffer::createStructured(sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
         mpPrevWorldMatricesBuffer = mpWorldMatricesBuffer;
-        mpInvTransposeWorldMatricesBuffer = Buffer::createTyped(ResourceFormat::RGBA32Float, float4Count, Resource::BindFlags::ShaderResource);
+        mpInvTransposeWorldMatricesBuffer = Buffer::createStructured(sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
         createSkinningPass(staticVertexData, dynamicVertexData);
     }
 
@@ -215,20 +215,30 @@ namespace Falcor
     {
         if (mActiveAnimationCount)
         {
-            if(mpWorldMatricesBuffer == mpPrevWorldMatricesBuffer)
+            if (mpWorldMatricesBuffer == mpPrevWorldMatricesBuffer)
             {
-                mpPrevWorldMatricesBuffer = Buffer::createTyped(ResourceFormat::RGBA32Float, mpWorldMatricesBuffer->getElementCount(), ResourceBindFlags::ShaderResource);
+                mpPrevWorldMatricesBuffer = Buffer::createStructured(sizeof(float4), mpWorldMatricesBuffer->getElementCount(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
             }
         }
         else mpPrevWorldMatricesBuffer = mpWorldMatricesBuffer;
     }
 
-    void AnimationController::createSkinningPass(const std::vector<StaticVertexData>& staticVertexData, const std::vector<DynamicVertexData>& dynamicVertexData)
+    void AnimationController::createSkinningPass(const std::vector<PackedStaticVertexData>& staticVertexData, const std::vector<DynamicVertexData>& dynamicVertexData)
     {
+        // We always copy the static data, to initialize the non-skinned vertices
         Buffer::ConstSharedPtrRef pVB = mpScene->mpVao->getVertexBuffer(Scene::kStaticDataBufferIndex);
         assert(pVB->getSize() == staticVertexData.size() * sizeof(staticVertexData[0]));
-        // We always copy the static data, to initialize the non-skinned vertices
         pVB->setBlob(staticVertexData.data(), 0, pVB->getSize());
+
+        // Initialize the previous positions for non-skinned vertices.
+        std::vector<PrevVertexData> prevVertexData(staticVertexData.size());
+        for (size_t i = 0; i < staticVertexData.size(); i++)
+        {
+            prevVertexData[i].position = staticVertexData[i].position;
+        }
+        Buffer::ConstSharedPtrRef pPrevVB = mpScene->mpVao->getVertexBuffer(Scene::kPrevVertexBufferIndex);
+        assert(pPrevVB->getSize() == prevVertexData.size() * sizeof(prevVertexData[0]));
+        pPrevVB->setBlob(prevVertexData.data(), 0, pPrevVB->getSize());
 
         if (dynamicVertexData.size())
         {
@@ -238,10 +248,11 @@ namespace Falcor
             mpSkinningPass = ComputePass::create("Scene/Animation/Skinning.slang");
             auto block = mpSkinningPass->getVars()["gData"];
             block["skinnedVertices"] = pVB;
+            block["prevSkinnedVertices"] = pPrevVB;
 
             auto createBuffer = [&](const std::string& name, const auto& initData)
             {
-                auto pBuffer = Buffer::createStructured(block[name], (uint32_t)initData.size(), ResourceBindFlags::ShaderResource);
+                auto pBuffer = Buffer::createStructured(block[name], (uint32_t)initData.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
                 pBuffer->setBlob(initData.data(), 0, pBuffer->getSize());
                 block[name] = pBuffer;
             };
@@ -251,13 +262,13 @@ namespace Falcor
 
             assert(mSkinningMatrices.size() * 4 < UINT32_MAX);
             uint32_t float4Count = (uint32_t)mSkinningMatrices.size() * 4;
-            mpSkinningMatricesBuffer = Buffer::createTyped(ResourceFormat::RGBA32Float, float4Count, ResourceBindFlags::ShaderResource);
-            mpInvTransposeSkinningMatricesBuffer = Buffer::createTyped(ResourceFormat::RGBA32Float, float4Count, ResourceBindFlags::ShaderResource);
+            mpSkinningMatricesBuffer = Buffer::createStructured(sizeof(float4), float4Count, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+            mpInvTransposeSkinningMatricesBuffer = Buffer::createStructured(sizeof(float4), float4Count, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
             block["boneMatrices"].setBuffer(mpSkinningMatricesBuffer);
             block["inverseTransposeBoneMatrices"].setBuffer(mpInvTransposeSkinningMatricesBuffer);
             block["inverseTransposeWorldMatrices"].setBuffer(mpInvTransposeWorldMatricesBuffer);
             block["worldMatrices"].setBuffer(mpWorldMatricesBuffer);
-            
+
             mSkinningDispatchSize = (uint32_t)dynamicVertexData.size();
         }
     }

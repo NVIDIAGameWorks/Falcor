@@ -293,6 +293,36 @@ ShadingData prepareShadingData(VertexData v, uint materialID, MaterialData md, M
     return _prepareShadingData(v, materialID, md, mr, viewDir, explicitLOD, true);
 }
 
+/** Prepare the hit-point data when using ray cones for texture LOD.
+    \param[in] v Vertex data.
+    \param[in] materialID Material identifier.
+    \param[in] md Material data.
+    \param[in] mr Material resources.
+    \param[in] camPosW Position of camera in world space.
+    \param[in] lodMinusTexDim Texture level-of-details for ray cones with the texture dimensions subtracted out. See TextureSampler and TexLODHelpers.
+*/
+ShadingData prepareShadingDataUsingRayConesLOD(VertexData v, uint materialID, MaterialData md, MaterialResources mr, float3 camPosW, float lodMinusTexDim)
+{
+    ExplicitRayConesLodTextureSampler explicitRayConesLOD = { lodMinusTexDim };
+    return _prepareShadingData(v, materialID, md, mr, camPosW, explicitRayConesLOD, true);
+}
+
+/** Prepare the hit-point data when using ray differentials for texture LOD.
+    \param[in] v Vertex data.
+    \param[in] materialID Material identifier.
+    \param[in] md Material data.
+    \param[in] mr Material resources.
+    \param[in] camPosW Position of camera in world space.
+    \param[in] dUVdx Differential texture coordinates in x.
+    \param[in] dUVdy Differential texture coordinates in y.
+*/
+ShadingData prepareShadingDataUsingRayDiffsLOD(VertexData v, uint materialID, MaterialData md, MaterialResources mr, float3 camPosW, float2 dUVdx, float2 dUVdy)
+{
+    ExplicitRayDiffsLodTextureSampler explicitRayDiffsLOD = { dUVdx, dUVdy };
+    return _prepareShadingData(v, materialID, md, mr, camPosW, explicitRayDiffsLOD, true);
+}
+
+
 /** Prepare the hit-point data
 
     The `gradX` and `gradY` parameters should be the screen-space gradients of

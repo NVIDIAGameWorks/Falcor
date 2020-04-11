@@ -54,9 +54,15 @@ namespace Falcor
     void ComputePass::execute(ComputeContext* pContext, uint32_t nThreadX, uint32_t nThreadY, uint32_t nThreadZ)
     {
         assert(mpVars);
-        uvec3 threadGroupSize = mpState->getProgram()->getReflector()->getThreadGroupSize();
-        uvec3 groups = div_round_up(glm::uvec3(nThreadX, nThreadY, nThreadZ), threadGroupSize);
+        uint3 threadGroupSize = mpState->getProgram()->getReflector()->getThreadGroupSize();
+        uint3 groups = div_round_up(uint3(nThreadX, nThreadY, nThreadZ), threadGroupSize);
         pContext->dispatch(mpState.get(), mpVars.get(), groups);
+    }
+
+    void ComputePass::executeIndirect(ComputeContext* pContext, const Buffer* pArgBuffer, uint64_t argBufferOffset)
+    {
+        assert(mpVars);
+        pContext->dispatchIndirect(mpState.get(), mpVars.get(), pArgBuffer, argBufferOffset);
     }
 
     void ComputePass::addDefine(const std::string& name, const std::string& value, bool updateVars)

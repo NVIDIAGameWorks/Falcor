@@ -59,13 +59,13 @@ namespace Falcor
         if (mpBuffers[0] == nullptr || mpBuffers[0]->getElementCount() < elementCount)
         {
             // Buffer 0 has one element per tile.
-            mpBuffers[0] = Buffer::createTyped<glm::uvec4>(elementCount);
+            mpBuffers[0] = Buffer::createTyped<uint4>(elementCount);
 
             // Buffer 1 has one element per N elements in buffer 0.
             const uint32_t numElem1 = div_round_up(elementCount, mpFinalProgram->getReflector()->getThreadGroupSize().x);
             if (mpBuffers[1] == nullptr || mpBuffers[1]->getElementCount() < numElem1)
             {
-                mpBuffers[1] = Buffer::createTyped<glm::uvec4>(numElem1);
+                mpBuffers[1] = Buffer::createTyped<uint4>(numElem1);
             }
         }
     }
@@ -113,10 +113,10 @@ namespace Falcor
         }
 
         // Allocate intermediate buffers if needed.
-        const glm::uvec2 resolution = glm::uvec2(pInput->getWidth(), pInput->getHeight());
+        const uint2 resolution = uint2(pInput->getWidth(), pInput->getHeight());
         assert(resolution.x > 0 && resolution.y > 0);
 
-        const glm::uvec2 numTiles = div_round_up(resolution, glm::uvec2(mpInitialProgram->getReflector()->getThreadGroupSize()));
+        const uint2 numTiles = div_round_up(resolution, uint2(mpInitialProgram->getReflector()->getThreadGroupSize()));
         allocate(numTiles.x * numTiles.y);
         assert(mpBuffers[0]);
         assert(mpBuffers[1]);
@@ -137,7 +137,7 @@ namespace Falcor
         mpVars->setBuffer("gResult", mpBuffers[0]);
 
         mpState->setProgram(mpInitialProgram);
-        glm::uvec3 numGroups = div_round_up(glm::uvec3(resolution.x, resolution.y, 1), mpInitialProgram->getReflector()->getThreadGroupSize());
+        uint3 numGroups = div_round_up(uint3(resolution.x, resolution.y, 1), mpInitialProgram->getReflector()->getThreadGroupSize());
         pRenderContext->dispatch(mpState.get(), mpVars.get(), numGroups);
 
         // Final pass(es): Reduction by a factor N for each pass.
@@ -183,7 +183,7 @@ namespace Falcor
     }
 
     // Explicit template instantiation of the supported types.
-    template dlldecl bool ComputeParallelReduction::execute<glm::vec4>(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, glm::vec4* pResult, Buffer::SharedPtr pResultBuffer, uint64_t resultOffset);
-    template dlldecl bool ComputeParallelReduction::execute<glm::ivec4>(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, glm::ivec4* pResult, Buffer::SharedPtr pResultBuffer, uint64_t resultOffset);
-    template dlldecl bool ComputeParallelReduction::execute<glm::uvec4>(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, glm::uvec4* pResult, Buffer::SharedPtr pResultBuffer, uint64_t resultOffset);
+    template dlldecl bool ComputeParallelReduction::execute<float4>(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, float4* pResult, Buffer::SharedPtr pResultBuffer, uint64_t resultOffset);
+    template dlldecl bool ComputeParallelReduction::execute<int4>(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, int4* pResult, Buffer::SharedPtr pResultBuffer, uint64_t resultOffset);
+    template dlldecl bool ComputeParallelReduction::execute<uint4>(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, uint4* pResult, Buffer::SharedPtr pResultBuffer, uint64_t resultOffset);
 }

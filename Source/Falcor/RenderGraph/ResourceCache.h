@@ -30,7 +30,7 @@
 #include "Core/API/Resource.h"
 
 namespace Falcor
-{    
+{
     class dlldecl ResourceCache : public std::enable_shared_from_this<ResourceCache>
     {
     public:
@@ -41,11 +41,11 @@ namespace Falcor
         */
         static SharedPtr create();
 
-        /** Properties to use during resource creation when its property has not been fully specified. 
+        /** Properties to use during resource creation when its property has not been fully specified.
         */
         struct DefaultProperties
         {
-            uvec2 dims;                                         ///< Width, height of the swap chain
+            uint2 dims;                                         ///< Width, height of the swap chain
             ResourceFormat format = ResourceFormat::Unknown;    ///< Format to use for texture creation
         };
 
@@ -54,7 +54,7 @@ namespace Falcor
             \param[in] pResource The resource to register. If this is null, will unregister the resource
         */
         void registerExternalResource(const std::string& name, const Resource::SharedPtr& pResource);
-    
+
         /** Register a field that requires resources to be allocated.
             \param[in] name String in the format of PassName.FieldName
             \param[in] field Reflection data for the field
@@ -72,7 +72,7 @@ namespace Falcor
         */
         const RenderPassReflection::Field& getResourceReflection(const std::string& name) const;
 
-        /** Allocate all resources that need to be created/updated. 
+        /** Allocate all resources that need to be created/updated.
             This includes new resources, resources whose properties have been updated since last allocation call.
         */
         void allocateResources(const DefaultProperties& params);
@@ -92,7 +92,7 @@ namespace Falcor
             bool resolveBindFlags;                  // Whether or not we should resolve the field's bind-flags before creating the resource
             std::string name;                       // Full name of the resource, including the pass name
         };
-        
+
         // Resources and properties for fields within (and therefore owned by) a render graph
         std::unordered_map<std::string, uint32_t> mNameToIndex;
         std::vector<ResourceData> mResourceData;

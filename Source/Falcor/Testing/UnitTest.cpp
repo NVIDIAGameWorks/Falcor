@@ -123,7 +123,7 @@ namespace Falcor
         result.messages = test.cpuFunc ? cpuCtx.getFailureMessages() : gpuCtx.getFailureMessages();
 
         if (!result.messages.empty()) result.status = TestResult::Status::Failed;
-        
+
         if (!extraMessage.empty()) result.messages.push_back(extraMessage);
 
         auto endTime = std::chrono::steady_clock::now();
@@ -224,7 +224,7 @@ namespace Falcor
         }
     }
 
-    void GPUUnitTestContext::runProgram(const glm::uvec3& dimensions)
+    void GPUUnitTestContext::runProgram(const uint3& dimensions)
     {
         assert(mpVars);
         for (const auto& buffer : mStructuredBuffers)
@@ -232,7 +232,7 @@ namespace Falcor
             mpVars->setBuffer(buffer.first, buffer.second.pBuffer);
         }
 
-        uvec3 groups = div_round_up(dimensions, mThreadGroupSize);
+        uint3 groups = div_round_up(dimensions, mThreadGroupSize);
 
 #ifdef FALCOR_D3D12
         // Check dispatch dimensions. TODO: Should be moved into Falcor.

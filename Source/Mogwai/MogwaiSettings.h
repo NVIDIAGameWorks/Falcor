@@ -41,9 +41,6 @@ namespace Mogwai
         void renderUI(Gui* pGui) override;
         bool mouseEvent(const MouseEvent& e) override;
         bool keyboardEvent(const KeyboardEvent& e) override;
-        void scriptBindings(Bindings& bindings) override;
-        std::string getScript() override;
-        void beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
 
     private:
         MogwaiSettings(Renderer* pRenderer);
@@ -61,8 +58,6 @@ namespace Mogwai
         bool mShowConsole = false;
         bool mShowTime = false;
         bool mShowWinSize = false;
-        uvec2 mMousePosition;
-        double mExitTime = 0;
-        uint64_t mExitFrame = 0;
+        uint2 mMousePosition;
     };
 }

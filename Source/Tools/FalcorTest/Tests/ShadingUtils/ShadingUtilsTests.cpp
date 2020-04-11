@@ -32,7 +32,7 @@ namespace Falcor
 {
     namespace
     {
-        using float3 = glm::vec3;
+        using float3 = float3;
 
         enum class RayOriginLocation
         {
@@ -48,7 +48,7 @@ namespace Falcor
             auto r = [&]() -> float { return dist(rng); };
 
             float x1, x2;
-            do 
+            do
             {
                 x1 = r();
                 x2 = r();
@@ -203,15 +203,15 @@ namespace Falcor
         auto dist = std::uniform_real_distribution<float>(-10.f, 10.f);
         auto r = [&]() -> float { return dist(rng); };
 
-        std::vector<glm::vec3> testSphereCenters(12);
+        std::vector<float3> testSphereCenters(12);
         std::vector<float> testSphereRadii(12);
-        std::vector<glm::vec3> refIsects(12);
-        std::vector<glm::vec3> testRayOrigins(12);
-        std::vector<glm::vec3> testRayDirs(12);
+        std::vector<float3> refIsects(12);
+        std::vector<float3> testRayOrigins(12);
+        std::vector<float3> testRayDirs(12);
 
         for (int32_t i = 0; i < 12; i++)
         {
-            testSphereCenters[i] = glm::vec3(r(), r(), r());
+            testSphereCenters[i] = float3(r(), r(), r());
             testSphereRadii[i] = abs(r());
             refIsects[i] = getHitPoint(testSphereRadii[i], testSphereCenters[i]);
             switch (i)
@@ -250,18 +250,18 @@ namespace Falcor
         }
 
         ctx.createProgram("Tests/ShadingUtils/ShadingUtilsTests.cs.slang", "testRaySphereIntersection");
-        ctx.allocateStructuredBuffer("sphereCenter", 12, testSphereCenters.data(), testSphereCenters.size() * sizeof(glm::vec3));
+        ctx.allocateStructuredBuffer("sphereCenter", 12, testSphereCenters.data(), testSphereCenters.size() * sizeof(float3));
         ctx.allocateStructuredBuffer("sphereRadius", 12, testSphereRadii.data());
-        ctx.allocateStructuredBuffer("rayOrigin", 12, testRayOrigins.data(), testRayOrigins.size() * sizeof(glm::vec3));
-        ctx.allocateStructuredBuffer("rayDir", 12, testRayDirs.data(), testRayDirs.size() * sizeof(glm::vec3));
+        ctx.allocateStructuredBuffer("rayOrigin", 12, testRayOrigins.data(), testRayOrigins.size() * sizeof(float3));
+        ctx.allocateStructuredBuffer("rayDir", 12, testRayDirs.data(), testRayDirs.size() * sizeof(float3));
         ctx.allocateStructuredBuffer("isectResult", 12);
         ctx.allocateStructuredBuffer("isectLoc", 12);
         ctx["TestCB"]["resultSize"] = 12;
-        
+
         ctx.runProgram();
 
         const uint32_t* result = ctx.mapBuffer<const uint32_t>("isectResult");
-        const glm::vec3* isectLoc = ctx.mapBuffer<const glm::vec3>("isectLoc");
+        const float3* isectLoc = ctx.mapBuffer<const float3>("isectLoc");
         for (int32_t i = 0; i < 12; i++)
         {
             switch (i)

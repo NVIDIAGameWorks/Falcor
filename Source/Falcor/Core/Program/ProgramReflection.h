@@ -605,12 +605,6 @@ namespace Falcor
         */
         Kind getKind() const { return mKind; }
 
-        deprecate("4.0", "Use 'Kind' instead.")
-        typedef Kind Type;
-
-        deprecate("4.0", "Use the 'getKind()' method instead.")
-        Kind getType() const { return mKind; }
-
         /** Dynamic-cast the current object to ReflectionResourceType
         */
         const ReflectionResourceType* asResourceType() const;
@@ -645,9 +639,6 @@ namespace Falcor
         */
         uint32_t getTotalArrayElementCount() const;
 
-        deprecate("4.0", "Use the 'getTotalArrayElementCount()' method instead.")
-        uint32_t getTotalArraySize() const { return getTotalArrayElementCount(); }
-
         /** Type to represent the byte size of a shader type.
         */
         typedef size_t ByteSize;
@@ -657,9 +648,6 @@ namespace Falcor
         This function only counts uniform/ordinary data, and not resources like textures/buffers/samplers.
         */
         ByteSize getByteSize() const { return mByteSize; }
-
-        deprecate("4.0", "Use the 'getByteSize()' method instead.")
-        ByteSize getSize() const { return getByteSize(); }
 
         /** Find a field/member of this type with the given `name`.
 
@@ -673,9 +661,6 @@ namespace Falcor
         then logs an error and returns an invalid offset.
         */
         TypedShaderVarOffset getMemberOffset(const std::string& name) const;
-
-        deprecate("4.0", "Use the 'getMemberOffset()' method instead.")
-        TypedShaderVarOffset getResourceBinding(const std::string& name) const { return getMemberOffset(name); }
 
         /** Find a typed member/element offset corresponding to the given byte offset.
         */
@@ -789,9 +774,6 @@ namespace Falcor
         */
         uint32_t getElementCount() const { return mElementCount; }
 
-        deprecate("4.0", "Use 'getElementCount()' instead.")
-        uint32_t getArraySize() const { return mElementCount; }
-
         /** Get the "stride" in bytes of the array.
 
         The stride is the number of bytes between consecutive
@@ -802,15 +784,9 @@ namespace Falcor
         */
         uint32_t getElementByteStride() const { return mElementByteStride; }
 
-        deprecate("4.0", "Use 'getElementByteStride()' instead.")
-        uint32_t getArrayStride() const { return mElementByteStride; }
-
         /** Get the type of the array elements.
         */
         const ReflectionType::SharedConstPtr& getElementType() const { return mpElementType; }
-
-        deprecate("4.0", "Use 'getElementType()' instead.")
-        const ReflectionType::SharedConstPtr& getType() const { return mpElementType; }
 
         bool operator==(const ReflectionArrayType& other) const;
         bool operator==(const ReflectionType& other) const override;
@@ -1476,7 +1452,7 @@ namespace Falcor
 
         /** For compute-shaders, return the required thread-group size
         */
-        uvec3 getThreadGroupSize() const { return mThreadGroupSize; }
+        uint3 getThreadGroupSize() const { return mThreadGroupSize; }
 
         /** For pixel-shaders, check if we need to run the shader at sample frequency
         */
@@ -1522,7 +1498,7 @@ namespace Falcor
         ProgramVersion const* mpProgramVersion;
 
         ParameterBlockReflection::SharedPtr mpDefaultBlock;
-        uvec3 mThreadGroupSize;
+        uint3 mThreadGroupSize;
         bool mIsSampleFrequency = false;
 
         VariableMap mPsOut;

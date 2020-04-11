@@ -36,7 +36,7 @@
 
 namespace Falcor
 {
-    class dlldecl RenderGraph
+    class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph>
     {
     public:
         using SharedPtr = std::shared_ptr<RenderGraph>;

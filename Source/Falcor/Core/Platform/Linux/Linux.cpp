@@ -240,6 +240,12 @@ namespace Falcor
         return std::string();
     }
 
+    const std::string getAppDataDirectory()
+    {
+        assert(0);
+        return std::string();
+    }
+
     const std::string& getExecutableName()
     {
         static std::string filename = std::filesystem::path(program_invocation_name).filename();
@@ -431,7 +437,7 @@ namespace Falcor
         cpu_set_t cpuMask;
         CPU_ZERO(&cpuMask);
 
-        uint32_t bitCount = min(sizeof(cpu_set_t), sizeof(uint32_t)) * 8;
+        uint32_t bitCount = std::min(sizeof(cpu_set_t), sizeof(uint32_t)) * 8;
         for (uint32_t i = 0; i < bitCount; i++)
         {
             if ((affinityMask & (1 << i)) > 0)

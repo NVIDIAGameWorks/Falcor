@@ -49,7 +49,7 @@ namespace Falcor
 
         virtual void reset(uint32_t startID = 0) override { mCurSample = 0; }
 
-        virtual vec2 next() override
+        virtual float2 next() override
         {
             return kPattern[(mCurSample++) % kSampleCount];
         }
@@ -58,6 +58,6 @@ namespace Falcor
 
         uint32_t mCurSample = 0;
         static const uint32_t kSampleCount = 8;
-        static const vec2 kPattern[kSampleCount];
+        static const float2 kPattern[kSampleCount];
     };
 }

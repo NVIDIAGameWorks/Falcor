@@ -32,7 +32,7 @@
 
 namespace Falcor
 {
-    bool checkOffset(const std::string& structName, UniformShaderVarOffset cbOffset, size_t cppOffset, const char* field)
+    static bool checkOffset(const std::string& structName, UniformShaderVarOffset cbOffset, size_t cppOffset, const char* field)
     {
         if (cbOffset.getByteOffset() != cppOffset)
         {
@@ -42,7 +42,7 @@ namespace Falcor
         return true;
     }
 
-    void Light::setIntensity(const glm::vec3& intensity)
+    void Light::setIntensity(const float3& intensity)
     {
         mData.intensity = intensity;
     }
@@ -79,11 +79,11 @@ namespace Falcor
         var.setBlob(mData);
     }
 
-    glm::vec3 Light::getColorForUI()
+    float3 Light::getColorForUI()
     {
         if ((mUiLightIntensityColor * mUiLightIntensityScale) != mData.intensity)
         {
-            float mag = max(mData.intensity.x, max(mData.intensity.y, mData.intensity.z));
+            float mag = std::max(mData.intensity.x, std::max(mData.intensity.y, mData.intensity.z));
             if (mag <= 1.f)
             {
                 mUiLightIntensityColor = mData.intensity;
@@ -99,7 +99,7 @@ namespace Falcor
         return mUiLightIntensityColor;
     }
 
-    void Light::setColorFromUI(const glm::vec3& uiColor)
+    void Light::setColorFromUI(const float3& uiColor)
     {
         mUiLightIntensityColor = uiColor;
         setIntensity(mUiLightIntensityColor * mUiLightIntensityScale);
@@ -109,7 +109,7 @@ namespace Falcor
     {
         if ((mUiLightIntensityColor * mUiLightIntensityScale) != mData.intensity)
         {
-            float mag = max(mData.intensity.x, max(mData.intensity.y, mData.intensity.z));
+            float mag = std::max(mData.intensity.x, std::max(mData.intensity.y, mData.intensity.z));
             if (mag <= 1.f)
             {
                 mUiLightIntensityColor = mData.intensity;
@@ -137,7 +137,7 @@ namespace Falcor
         Gui::Group g(pGui, group);
         if (g.open())
         {
-            glm::vec3 color = getColorForUI();
+            float3 color = getColorForUI();
             if (g.rgbColor("Color", color))
             {
                 setColorFromUI(color);
@@ -180,13 +180,18 @@ namespace Falcor
         }
     }
 
-    void DirectionalLight::setWorldDirection(const glm::vec3& dir)
+    void DirectionalLight::setWorldDirection(const float3& dir)
     {
+        if (!(glm::length(dir) > 0.f)) // NaNs propagate
+        {
+            logWarning("Can't set light direction to zero length vector. Ignoring call.");
+            return;
+        }
         mData.dirW = normalize(dir);
         mData.posW = mCenter - mData.dirW * mDistance; // Move light's position sufficiently far away
     }
 
-    void DirectionalLight::setWorldParams(const glm::vec3& center, float radius)
+    void DirectionalLight::setWorldParams(const float3& center, float radius)
     {
         mDistance = radius;
         mCenter = center;
@@ -212,12 +217,17 @@ namespace Falcor
 
     PointLight::~PointLight() = default;
 
-    void PointLight::setWorldDirection(const glm::vec3& dir)
+    void PointLight::setWorldDirection(const float3& dir)
     {
+        if (!(glm::length(dir) > 0.f)) // NaNs propagate
+        {
+            logWarning("Can't set light direction to zero length vector. Ignoring call.");
+            return;
+        }
         mData.dirW = normalize(dir);
     }
 
-    void PointLight::setWorldPosition(const glm::vec3& pos)
+    void PointLight::setWorldPosition(const float3& pos)
     {
         mData.posW = pos;
     }
@@ -281,7 +291,7 @@ namespace Falcor
         mData.bitangent = float3(0, 1, 0);
         mData.surfaceArea = 4.0f;
 
-        mScaling = vec3(1, 1, 1);
+        mScaling = float3(1, 1, 1);
         update();
     }
 
@@ -315,17 +325,17 @@ namespace Falcor
 
         case LightType::Rect:
         {
-            float rx = glm::length(mData.transMat * vec4(1.0f, 0.0f, 0.0f, 0.0f));
-            float ry = glm::length(mData.transMat * vec4(0.0f, 1.0f, 0.0f, 0.0f));
+            float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
+            float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
             mData.surfaceArea = 4.0f * rx * ry;
         }
         break;
 
         case LightType::Sphere:
         {
-            float rx = glm::length(mData.transMat * vec4(1.0f, 0.0f, 0.0f, 0.0f));
-            float ry = glm::length(mData.transMat * vec4(0.0f, 1.0f, 0.0f, 0.0f));
-            float rz = glm::length(mData.transMat * vec4(0.0f, 0.0f, 1.0f, 0.0f));
+            float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
+            float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
+            float rz = glm::length(mData.transMat * float4(0.0f, 0.0f, 1.0f, 0.0f));
 
             mData.surfaceArea = 4.0f * (float)M_PI * pow(pow(rx * ry, 1.6f) + pow(ry * rz, 1.6f) + pow(rx * rz, 1.6f) / 3.0f, 1.0f / 1.6f);
         }
@@ -333,8 +343,8 @@ namespace Falcor
 
         case LightType::Disc:
         {
-            float rx = glm::length(mData.transMat * vec4(1.0f, 0.0f, 0.0f, 0.0f));
-            float ry = glm::length(mData.transMat * vec4(0.0f, 1.0f, 0.0f, 0.0f));
+            float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
+            float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
 
             mData.surfaceArea = (float)M_PI * rx * ry;
         }

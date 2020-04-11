@@ -45,7 +45,7 @@ namespace Falcor
         pGraph->execute(pRenderContext);
         Resource::SharedPtr pOutput = pGraph->getOutput("InvalidPixelDetectionPass.dst");
         std::vector<uint8_t> color = pRenderContext->readTextureSubresource(pOutput->asTexture().get(), 0);
-        uint32* output = (uint32_t*)color.data();
+        uint32_t* output = (uint32_t*)color.data();
 
         for (uint32_t i = 0; i < 8; ++i)
         {

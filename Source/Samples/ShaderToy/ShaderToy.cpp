@@ -60,8 +60,8 @@ void ShaderToy::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPt
     // iResolution
     float width = (float)pTargetFbo->getWidth();
     float height = (float)pTargetFbo->getHeight();
-    mpMainPass["ToyCB"]["iResolution"] = glm::vec2(width, height);
-    mpMainPass["ToyCB"]["iGlobalTime"] = (float)gpFramework->getGlobalClock().now();
+    mpMainPass["ToyCB"]["iResolution"] = float2(width, height);
+    mpMainPass["ToyCB"]["iGlobalTime"] = (float)gpFramework->getGlobalClock().getTime();
 
     // run final pass
     mpMainPass->execute(pRenderContext, pTargetFbo);

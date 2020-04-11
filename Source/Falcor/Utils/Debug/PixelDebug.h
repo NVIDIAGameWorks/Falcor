@@ -65,7 +65,7 @@ namespace Falcor
         */
         static SharedPtr create(uint32_t logSize = 100);
 
-        void beginFrame(RenderContext* pRenderContext, const glm::uvec2& frameDim);
+        void beginFrame(RenderContext* pRenderContext, const uint2& frameDim);
         void endFrame(RenderContext* pRenderContext);
 
         void prepareProgram(const Program::SharedPtr& pProgram, const ShaderVar& var);
@@ -87,10 +87,10 @@ namespace Falcor
 
         // Configuration
         bool                        mEnabled = false;               ///< Enables debugging features.
-        glm::uvec2                  mSelectedPixel = { 0, 0 };      ///< Currently selected pixel.
+        uint2                       mSelectedPixel = { 0, 0 };      ///< Currently selected pixel.
 
         // Runtime data
-        glm::uvec2                  mFrameDim = { 0, 0 };
+        uint2                       mFrameDim = { 0, 0 };
 
         bool                        mRunning = false;               ///< True when data collection is running (inbetween begin()/end() calls).
         bool                        mWaitingForData = false;        ///< True if we are waiting for data to become available on the GPU.

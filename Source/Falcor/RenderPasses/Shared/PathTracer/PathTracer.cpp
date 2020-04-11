@@ -359,14 +359,12 @@ namespace Falcor
         if (mpScene == nullptr) return true;
 
         // Load environment map if scene uses one.
-        // We're getting the file name from the scene's LightProbe because that was used in the fscene files.
-        // TODO: Switch to use Scene::getEnvironmentMap() when the assets have been updated.
-        auto pLightProbe = mpScene->getLightProbe();
-        if (pLightProbe != nullptr)
+        Texture::SharedPtr pEnvMap = mpScene->getEnvironmentMap();
+        if (pEnvMap != nullptr)
         {
-            std::string fn = pLightProbe->getOrigTexture()->getSourceFilename();
-            mpEnvProbe = EnvProbe::create(pRenderContext, fn);
-            mEnvProbeFilename = mpEnvProbe ? getFilenameFromPath(mpEnvProbe->getEnvMap()->getSourceFilename()) : "";
+            std::string filename = pEnvMap->getSourceFilename();
+            mpEnvProbe = EnvProbe::create(pRenderContext, filename);
+            mEnvProbeFilename = mpEnvProbe ? getFilenameFromPath(filename) : "";
         }
 
         // Setup for analytic lights.
@@ -553,7 +551,7 @@ namespace Falcor
             Texture* pSrcRayCount = mpPixelStats->getRayCountBuffer().get();
             if (pSrcRayCount == nullptr)
             {
-                pRenderContext->clearUAV(pDstRayCount->getUAV().get(), uvec4(0, 0, 0, 0));
+                pRenderContext->clearUAV(pDstRayCount->getUAV().get(), uint4(0, 0, 0, 0));
             }
             else
             {

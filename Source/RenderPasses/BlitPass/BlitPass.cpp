@@ -94,7 +94,7 @@ void BlitPass::execute(RenderContext* pContext, const RenderData& renderData)
 
     if (pSrcTex && pDstTex)
     {
-        pContext->blit(pSrcTex->getSRV(), pDstTex->getRTV(), uvec4(-1), uvec4(-1), mFilter);
+        pContext->blit(pSrcTex->getSRV(), pDstTex->getRTV(), uint4(-1), uint4(-1), mFilter);
     }
     else
     {

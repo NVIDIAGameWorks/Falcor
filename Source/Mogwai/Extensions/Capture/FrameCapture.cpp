@@ -33,9 +33,10 @@ namespace Mogwai
 {
     namespace
     {
+        const std::string kScriptVar = "fc";
         const std::string kPrintFrames = "print";
         const std::string kFrames = "frames";
-        const std::string kScriptVar = "fc";
+        const std::string kAddFrames = "addFrames";
         const std::string kUI = "ui";
         const std::string kOutputs = "outputs";
         const std::string kCapture = "capture";
@@ -74,11 +75,13 @@ namespace Mogwai
         bindings.addGlobalObject(kScriptVar, this, "Frame Capture Helpers");
 
         // Members
-        fc.func_(kFrames.c_str(), ScriptBindings::overload_cast<const RenderGraph*, const uint64_vec&>(&FrameCapture::frames));
-        fc.func_(kFrames.c_str(), ScriptBindings::overload_cast<const std::string&, const uint64_vec&>(&FrameCapture::frames));
+        fc.func_(kFrames.c_str(), ScriptBindings::overload_cast<const RenderGraph*, const uint64_vec&>(&FrameCapture::addFrames)); // PYTHONDEPRECATED
+        fc.func_(kFrames.c_str(), ScriptBindings::overload_cast<const std::string&, const uint64_vec&>(&FrameCapture::addFrames)); // PYTHONDEPRECATED
+        fc.func_(kAddFrames.c_str(), ScriptBindings::overload_cast<const RenderGraph*, const uint64_vec&>(&FrameCapture::addFrames), "graph"_a, "frames"_a);
+        fc.func_(kAddFrames.c_str(), ScriptBindings::overload_cast<const std::string&, const uint64_vec&>(&FrameCapture::addFrames), "name"_a, "frames"_a);
 
         auto printGraph = [](FrameCapture* pFC, RenderGraph* pGraph) { pybind11::print(pFC->graphFramesStr(pGraph)); };
-        fc.func_(kPrintFrames.c_str(), printGraph);
+        fc.func_(kPrintFrames.c_str(), printGraph, "graph"_a);
         fc.func_(kCapture.c_str(), &FrameCapture::capture);
         auto printAllGraphs = [](FrameCapture* pFC)
         {
@@ -89,8 +92,9 @@ namespace Mogwai
         fc.func_(kPrintFrames.c_str(), printAllGraphs);
 
         // Settings
-        auto showUI = [](FrameCapture* pFC, bool show) { pFC->mShowUI = show; };
-        fc.func_(kUI.c_str(), showUI, "show"_a = true);
+        auto getUI = [](FrameCapture* pFC) { return pFC->mShowUI; };
+        auto setUI = [](FrameCapture* pFC, bool show) { pFC->mShowUI = show; };
+        fc.property(kUI.c_str(), getUI, setUI);
     }
 
     std::string FrameCapture::getScript()
@@ -102,7 +106,7 @@ namespace Mogwai
 
         for (const auto& g : mGraphRanges)
         {
-            s += Scripting::makeMemberFunc(kScriptVar, kFrames, g.first->getName(), getFirstOfPair(g.second));
+            s += Scripting::makeMemberFunc(kScriptVar, kAddFrames, g.first->getName(), getFirstOfPair(g.second));
         }
         return s;
     }
@@ -113,7 +117,7 @@ namespace Mogwai
         {
             Texture* pTex = pGraph->getOutput(i)->asTexture().get();
             assert(pTex);
-            std::string filename = getOutputNamePrefix(pGraph->getOutputName(i)) + to_string(gpFramework->getGlobalClock().frame()) + ".";;
+            std::string filename = getOutputNamePrefix(pGraph->getOutputName(i)) + to_string(gpFramework->getGlobalClock().getFrame()) + ".";;
             auto ext = Bitmap::getFileExtFromResourceFormat(pTex->getFormat());
             filename += ext;
             auto format = Bitmap::getFormatFromFileExtension(ext);
@@ -121,16 +125,16 @@ namespace Mogwai
         }
     }
 
-    void FrameCapture::frames(const RenderGraph* pGraph, const uint64_vec& frames)
+    void FrameCapture::addFrames(const RenderGraph* pGraph, const uint64_vec& frames)
     {
         for (auto f : frames) addRange(pGraph, f, 1);
     }
 
-    void FrameCapture::frames(const std::string& graphName, const uint64_vec& frames)
+    void FrameCapture::addFrames(const std::string& graphName, const uint64_vec& frames)
     {
         auto pGraph = mpRenderer->getGraph(graphName).get();
         if (!pGraph) throw std::runtime_error("Can't find a graph named `" + graphName + "`");
-        this->frames(pGraph, frames);
+        this->addFrames(pGraph, frames);
     }
 
     std::string FrameCapture::graphFramesStr(const RenderGraph* pGraph)
@@ -145,7 +149,7 @@ namespace Mogwai
     {
         auto pGraph = mpRenderer->getActiveGraph();
         if (!pGraph) return;
-        uint64_t frameID = gpFramework->getGlobalClock().frame();
+        uint64_t frameID = gpFramework->getGlobalClock().getFrame();
         triggerFrame(gpDevice->getRenderContext(), pGraph, frameID);
     }
 }

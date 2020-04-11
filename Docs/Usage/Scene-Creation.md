@@ -20,8 +20,8 @@ Scene::SharedPtr pScene = pBuilder->getScene();
 Model loading functions also provide an optional parameter for creating multiple instances of a model from file. The following example loads a model from file and creates two instances at positions [-5, 0, 0] and [5, 0, 0].
 ```c++
 SceneBuilder::InstanceMatrices instances = {
-    glm::translate(vec3(-5.0f, 0.0f, 0.0f)), 
-    glm::translate(vec3(5.0f, 0.0f, 0.0f))
+    glm::translate(float3(-5.0f, 0.0f, 0.0f)),
+    glm::translate(float3(5.0f, 0.0f, 0.0f))
 };
 
 SceneBuilder::SharedPtr pBuilder = SceneBuilder::create("path/to/model.file", SceneBuilder::Flags::Default. instances);

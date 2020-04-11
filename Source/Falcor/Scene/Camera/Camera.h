@@ -119,27 +119,27 @@ namespace Falcor
 
         /** Get the camera's world space position.
         */
-        const glm::vec3& getPosition() const { return mData.posW; }
+        const float3& getPosition() const { return mData.posW; }
 
         /** Get the camera's world space up vector.
         */
-        const glm::vec3& getUpVector() const {return mData.up;}
+        const float3& getUpVector() const {return mData.up;}
 
         /** Get the camera's world space target position.
         */
-        const glm::vec3& getTarget() const { return mData.target; }
+        const float3& getTarget() const { return mData.target; }
 
         /** Set the camera's world space position.
         */
-        void setPosition(const glm::vec3& posW) { mData.posW = posW; mDirty = true; }
+        void setPosition(const float3& posW) { mData.posW = posW; mDirty = true; }
 
         /** Set the camera's world space up vector.
         */
-        void setUpVector(const glm::vec3& up) { mData.up = up; mDirty = true; }
+        void setUpVector(const float3& up) { mData.up = up; mDirty = true; }
 
         /** Set the camera's world space target position.
         */
-        void setTarget(const glm::vec3& target) { mData.target = target; mDirty = true; }
+        void setTarget(const float3& target) { mData.target = target; mDirty = true; }
 
         /** Set the camera's depth range.
         */
@@ -163,7 +163,7 @@ namespace Falcor
 
         /** Set a pattern generator. If a generator is set, then a jitter will be set every frame based on the generator
         */
-        void setPatternGenerator(const CPUSampleGenerator::SharedPtr& pGenerator, const vec2& scale = vec2(1));
+        void setPatternGenerator(const CPUSampleGenerator::SharedPtr& pGenerator, const float2& scale = float2(1));
 
         /** Get the bound pattern generator
         */
@@ -176,6 +176,12 @@ namespace Falcor
         void setJitter(float jitterX, float jitterY);
         float getJitterX() const { return mData.jitterX; }
         float getJitterY() const { return mData.jitterY; }
+
+        /** Compute pixel spread in screen space -- to be used with RayCones for texture level-of-detail.
+            \param[in] winHeightPixels Window height in pixels
+            \return the pixel spread angle in screen space
+        */
+        float computeScreenSpacePixelSpreadAngle(const uint32_t winHeightPixels) const;
 
         /** Get the view matrix.
         */
@@ -271,15 +277,15 @@ namespace Falcor
 
         struct
         {
-            glm::vec3   xyz;    ///< Camera frustum plane position
-            float       negW;   ///< Camera frustum plane, sign of the coordinates
-            glm::vec3   sign;   ///< Camera frustum plane position
+            float3 xyz;     ///< Camera frustum plane position
+            float negW;     ///< Camera frustum plane, sign of the coordinates
+            float3 sign;    ///< Camera frustum plane position
         } mutable mFrustumPlanes[6];
 
         struct
         {
             CPUSampleGenerator::SharedPtr pGenerator;
-            vec2 scale;
+            float2 scale;
         } mJitterPattern;
 
         void setJitterInternal(float jitterX, float jitterY);

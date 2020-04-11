@@ -56,7 +56,7 @@ namespace
         TODO: Move to utility header and add unit test.
         \return The cosine of the spread angle for the new cone.
     */
-    float computeCosConeAngle(const glm::vec3& coneDir, const float cosTheta, const glm::vec3& otherConeDir, const float cosOtherTheta)
+    float computeCosConeAngle(const float3& coneDir, const float cosTheta, const float3& otherConeDir, const float cosOtherTheta)
     {
         float cosResult = kInvalidCosConeAngle;
         if (cosTheta != kInvalidCosConeAngle && cosOtherTheta != kInvalidCosConeAngle)
@@ -84,13 +84,13 @@ namespace
         is what was used previously; the cones it returns aren't as tight as
         those given by coneUnion().
     */
-    glm::vec3 coneUnionOld(glm::vec3 aDir, float aCosTheta, glm::vec3 bDir, float bCosTheta, float& cosResult)
+    float3 coneUnionOld(float3 aDir, float aCosTheta, float3 bDir, float bCosTheta, float& cosResult)
     {
-        glm::vec3 dir = aDir + bDir;
-        if (aCosTheta == kInvalidCosConeAngle || bCosTheta == kInvalidCosConeAngle || dir == glm::vec3(0.0f))
+        float3 dir = aDir + bDir;
+        if (aCosTheta == kInvalidCosConeAngle || bCosTheta == kInvalidCosConeAngle || dir == float3(0.0f))
         {
             cosResult = kInvalidCosConeAngle;
-            return glm::vec3(0.0f);
+            return float3(0.0f);
         }
 
         dir = glm::normalize(dir);
@@ -105,12 +105,12 @@ namespace
         their spread angles, returns a cone that bounds both of
         them. Algorithm 1 in the 2018 Sony EGSR light sampling paper.
     */
-    glm::vec3 coneUnion(glm::vec3 aDir, float aCosTheta, glm::vec3 bDir, float bCosTheta, float& cosResult)
+    float3 coneUnion(float3 aDir, float aCosTheta, float3 bDir, float bCosTheta, float& cosResult)
     {
         if (aCosTheta == kInvalidCosConeAngle || bCosTheta == kInvalidCosConeAngle)
         {
             cosResult = kInvalidCosConeAngle;
-            return glm::vec3(0.0f);
+            return float3(0.0f);
         }
 
         // Swap if necessary so that aTheta > bTheta. Note that the test is
@@ -137,14 +137,14 @@ namespace
         if (oTheta > glm::pi<float>())
         {
             cosResult = kInvalidCosConeAngle;
-            return glm::vec3(0.0f);
+            return float3(0.0f);
         }
 
         // Rotate a's axis toward b just enough so that that oTheta covers
         // both cones.
         const float rTheta = oTheta - aTheta;
-        const glm::vec3 rDir = glm::cross(aDir, bDir);
-        glm::vec3 dir;
+        const float3 rDir = glm::cross(aDir, bDir);
+        float3 dir;
         if (glm::dot(rDir, rDir) < 1e-8)
         {
             // The two vectors are effectively pointing in opposite directions.
@@ -154,7 +154,7 @@ namespace
             const float sign = aDir.z > 0 ? 1.f : -1.f;
             const float a = -1.f / (sign + aDir.z);
             const float b = aDir.x * aDir.y * a;
-            dir = glm::vec3(1.f + sign * aDir.x * aDir.x * a, sign * b, -sign * aDir.x);
+            dir = float3(1.f + sign * aDir.x * aDir.x * a, sign * b, -sign * aDir.x);
             // The spread angle needs to be pi/2 to encompass aDir and
             // bDir, then aTheta / 2 more on top of that. (Recall that
             // aTheta > bTheta, so we don't need to worry about bTheta).
@@ -169,13 +169,13 @@ namespace
         {
             // Rotate aDir by an angle of rTheta around the axis rDir.
             const glm::mat4 rotationMatrix = glm::rotate(glm::mat4(), rTheta, rDir);
-            dir = rotationMatrix * glm::vec4(aDir, 0);
+            dir = rotationMatrix * float4(aDir, 0);
             cosResult = std::cos(oTheta);
         }
 
         // TODO: write a unit test.
         // Testing code: make sure both a and b are inside the result.
-        auto checkInside = [&](glm::vec3 d, float theta) {
+        auto checkInside = [&](float3 d, float theta) {
                                // Make sure that sum of the angle between
                                // the two cone vectors and the spread angle
                                // of the given cone is still within the
@@ -415,7 +415,7 @@ namespace Falcor
         }
     }
 
-    glm::vec3 LightBVHBuilder::computeLightingConesInternal(uint32_t nodesCurrentByteOffset, AlignedAllocator& alignedAllocator, float& cosConeAngle)
+    float3 LightBVHBuilder::computeLightingConesInternal(uint32_t nodesCurrentByteOffset, AlignedAllocator& alignedAllocator, float& cosConeAngle)
     {
         const uintptr_t currentNodeBytePointer = reinterpret_cast<uintptr_t>(alignedAllocator.getStartPointer()) + nodesCurrentByteOffset;
 
@@ -426,13 +426,13 @@ namespace Falcor
             assert(currentNode->leftNodeOffset > nodesCurrentByteOffset);
 
             float leftNodeCosConeAngle = kInvalidCosConeAngle;
-            glm::vec3 leftNodeConeDirection = computeLightingConesInternal(currentNode->leftNodeOffset, alignedAllocator, leftNodeCosConeAngle);
+            float3 leftNodeConeDirection = computeLightingConesInternal(currentNode->leftNodeOffset, alignedAllocator, leftNodeCosConeAngle);
             float rightNodeCosConeAngle = kInvalidCosConeAngle;
-            glm::vec3 rightNodeConeDirection = computeLightingConesInternal(currentNode->rightNodeOffset, alignedAllocator, rightNodeCosConeAngle);
+            float3 rightNodeConeDirection = computeLightingConesInternal(currentNode->rightNodeOffset, alignedAllocator, rightNodeCosConeAngle);
 
             // TODO: Asserts in coneUnion
-    //            glm::vec3 coneDirection = coneUnion(leftNodeConeDirection, leftNodeCosConeAngle,
-            glm::vec3 coneDirection = coneUnionOld(leftNodeConeDirection, leftNodeCosConeAngle,
+    //            float3 coneDirection = coneUnion(leftNodeConeDirection, leftNodeCosConeAngle,
+            float3 coneDirection = coneUnionOld(leftNodeConeDirection, leftNodeCosConeAngle,
                 rightNodeConeDirection, rightNodeCosConeAngle, cosConeAngle);
             currentNode->cosConeAngle = cosConeAngle;
             currentNode->coneDirection = coneDirection;
@@ -447,14 +447,14 @@ namespace Falcor
         }
     }
 
-    glm::vec3 LightBVHBuilder::computeLightingCone(const Range& triangleRange, const BuildingData& data, float& cosTheta)
+    float3 LightBVHBuilder::computeLightingCone(const Range& triangleRange, const BuildingData& data, float& cosTheta)
     {
-        glm::vec3 coneDirection = glm::vec3(0.0f);
+        float3 coneDirection = float3(0.0f);
         cosTheta = kInvalidCosConeAngle;
 
         // We use the average normal as cone direction and grow the cone to include all light normals.
         // TODO: Switch to a more sophisticated algorithm to compute tighter bounding cones.
-        glm::vec3 coneDirectionSum = glm::vec3(0.0f);
+        float3 coneDirectionSum = float3(0.0f);
         for (uint32_t triangleIdx = triangleRange.begin; triangleIdx < triangleRange.end; ++triangleIdx)
         {
             coneDirectionSum += data.trianglesData[triangleIdx].coneDirection;
@@ -475,7 +475,7 @@ namespace Falcor
     LightBVHBuilder::SplitResult LightBVHBuilder::computeSplitWithEqual(const BuildingData& /*data*/, const Range& triangleRange, const BBox& nodeBounds, const Options& /*parameters*/)
     {
         // Find the largest dimension.
-        const glm::vec3 dimensions = nodeBounds.dimensions();
+        const float3 dimensions = nodeBounds.dimensions();
         const uint32_t dimension = dimensions[2u] >= dimensions[0u] && dimensions[2u] >= dimensions[1u] ?
             2u : (dimensions[1u] >= dimensions[0u] ? 1u : 0u);
 
@@ -593,7 +593,7 @@ namespace Falcor
         if (parameters.splitAlongLargest)
         {
             // Find the largest dimension.
-            const glm::vec3 dimensions = nodeBounds.dimensions();
+            const float3 dimensions = nodeBounds.dimensions();
             const uint32_t largestDimension = dimensions[2u] >= dimensions[0u] && dimensions[2u] >= dimensions[1u] ?
                 2u : (dimensions[1u] >= dimensions[0u] && dimensions[1u] >= dimensions[2u] ? 1u : 0u);
 
@@ -660,7 +660,7 @@ namespace Falcor
         assert(!overallBestSplit.second.isValid());
 
         // Find the largest dimension.
-        const glm::vec3 dimensions = nodeBounds.dimensions();
+        const float3 dimensions = nodeBounds.dimensions();
         const uint32_t largestDimension = dimensions[2u] >= dimensions[0u] && dimensions[2u] >= dimensions[1u] ?
             2u : (dimensions[1u] >= dimensions[0u] && dimensions[1u] >= dimensions[2u] ? 1u : 0u);
 
@@ -669,7 +669,7 @@ namespace Falcor
             BBox bounds = BBox();
             uint32_t triangleCount = 0u;
             float flux = 0.0f;
-            glm::vec3 coneDirection = glm::vec3(0.0f);
+            float3 coneDirection = float3(0.0f);
             float cosConeAngle = 1.0f;
 
             Bin() = default;
@@ -748,7 +748,7 @@ namespace Falcor
                 if (glm::length(total.coneDirection) >= FLT_MIN)
                 {
                     cosTheta = 1.f;
-                    const glm::vec3 coneDir = glm::normalize(total.coneDirection);
+                    const float3 coneDir = glm::normalize(total.coneDirection);
                     for (std::size_t j = 0u; j <= i; ++j)
                     {
                         cosTheta = computeCosConeAngle(coneDir, cosTheta, bins[j].coneDirection, bins[j].cosConeAngle);
@@ -769,7 +769,7 @@ namespace Falcor
                 if (glm::length(total.coneDirection) >= FLT_MIN)
                 {
                     cosTheta = 1.f;
-                    const glm::vec3 coneDir = glm::normalize(total.coneDirection);
+                    const float3 coneDir = glm::normalize(total.coneDirection);
                     for (std::size_t j = i; j <= costs.size(); ++j)
                     {
                         cosTheta = computeCosConeAngle(coneDir, cosTheta, bins[j].coneDirection, bins[j].cosConeAngle);

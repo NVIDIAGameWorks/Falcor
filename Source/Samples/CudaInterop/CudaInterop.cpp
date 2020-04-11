@@ -57,7 +57,7 @@ void CudaInterop::onLoad(RenderContext* pRenderContext)
 
 void CudaInterop::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
-    const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
+    const float4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
 
     // Call the CUDA kernel

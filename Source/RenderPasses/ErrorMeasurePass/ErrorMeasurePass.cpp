@@ -188,7 +188,7 @@ void ErrorMeasurePass::runDifferencePass(RenderContext* pRenderContext, const Re
     mpErrorMeasurerPass["gResult"] = mpDifferenceTexture;
 
     // Set constant buffer parameters.
-    const glm::uvec2 resolution = glm::uvec2(pSourceTexture->getWidth(), pSourceTexture->getHeight());
+    const uint2 resolution = uint2(pSourceTexture->getWidth(), pSourceTexture->getHeight());
     mpErrorMeasurerPass[kConstantBufferName]["gResolution"] = resolution;
     // If the world position texture is unbound, then don't do the background pixel check.
     mpErrorMeasurerPass[kConstantBufferName]["gIgnoreBackground"] = (uint32_t)(mIgnoreBackground && pWorldPositionTexture);
@@ -200,7 +200,7 @@ void ErrorMeasurePass::runDifferencePass(RenderContext* pRenderContext, const Re
 
 void ErrorMeasurePass::runReductionPasses(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    glm::vec4 error;
+    float4 error;
     if (!mpParallelReduction->execute(pRenderContext, mpDifferenceTexture, ComputeParallelReduction::Type::Sum, &error))
     {
         throw std::exception("Error running parallel reduction in ErrorMeasurePass");

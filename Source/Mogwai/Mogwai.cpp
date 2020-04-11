@@ -43,9 +43,15 @@ namespace Mogwai
         const char* kScriptSwitch = "script";
         const char* kGraphFileSwitch = "graphFile";
         const char* kGraphNameSwitch = "graphName";
+
+        const std::string kAppDataPath = getAppDataDirectory() + "/NVIDIA/Falcor/Mogwai.json";
     }
 
     size_t Renderer::DebugWindow::index = 0;
+
+    Renderer::Renderer()
+        : mAppData(kAppDataPath)
+    {}
 
     void Renderer::extend(Extension::CreateFunc func, const std::string& name)
     {
@@ -163,15 +169,15 @@ namespace Mogwai
         }
     }
 
-    bool Renderer::renderDebugWindow(Gui::Widgets& widget, const Gui::DropdownList& dropdown, DebugWindow& data, const uvec2& winSize)
+    bool Renderer::renderDebugWindow(Gui::Widgets& widget, const Gui::DropdownList& dropdown, DebugWindow& data, const uint2& winSize)
     {
         // Get the current output, in case `renderOutputUI()` unmarks it
         Texture::SharedPtr pTex = std::dynamic_pointer_cast<Texture>(mGraphs[mActiveGraph].pGraph->getOutput(data.currentOutput));
         std::string label = data.currentOutput + "##" + mGraphs[mActiveGraph].pGraph->getName();
         if (!pTex) { logError("Invalid output resource. Is not a texture."); }
 
-        uvec2 debugSize = (uvec2)(vec2(winSize) * vec2(0.4f, 0.55f));
-        uvec2 debugPos = winSize - debugSize;
+        uint2 debugSize = (uint2)(float2(winSize) * float2(0.4f, 0.55f));
+        uint2 debugPos = winSize - debugSize;
         debugPos -= 10;
 
         // Display the dropdown
@@ -208,7 +214,7 @@ namespace Mogwai
 
         if (graphOuts.size())
         {
-            uvec2 dims(gpFramework->getTargetFbo()->getWidth(), gpFramework->getTargetFbo()->getHeight());
+            uint2 dims(gpFramework->getTargetFbo()->getWidth(), gpFramework->getTargetFbo()->getHeight());
 
             for (size_t i = 0; i < mGraphs[mActiveGraph].debugWindows.size();)
             {
@@ -236,9 +242,20 @@ namespace Mogwai
     void Renderer::onDroppedFile(const std::string& filename)
     {
         std::string ext = getExtensionFromFile(filename);
-        if (std::any_of(Scene::kFileExtensionFilters.begin(), Scene::kFileExtensionFilters.end(), [&ext](FileDialogFilter f) {return f.ext == ext; })) loadScene(filename);
-        else if (ext == "py") loadScript(filename);
-        else logWarning("RenderGraphViewer::onDroppedFile() - Unknown file extension `" + ext + "`");
+        if (ext == "py")
+        {
+            loadScript(filename);
+            mAppData.addRecentScript(filename);
+        }
+        else if (std::any_of(Scene::kFileExtensionFilters.begin(), Scene::kFileExtensionFilters.end(), [&ext](FileDialogFilter f) {return f.ext == ext; }))
+        {
+            loadScene(filename);
+            mAppData.addRecentScene(filename);
+        }
+        else
+        {
+            logWarning("RenderGraphViewer::onDroppedFile() - Unknown file extension `" + ext + "`");
+        }
     }
 
     void Renderer::editorFileChangeCB()
@@ -355,7 +372,17 @@ namespace Mogwai
 
     void Renderer::loadScriptDialog()
     {
-        openFileDialog(Scripting::kFileExtensionFilters, mScriptFilename);
+        std::string filename;
+        if (openFileDialog(Scripting::kFileExtensionFilters, filename))
+        {
+            mAppData.addRecentScript(filename);
+            loadScriptDeferred(filename);
+        }
+    }
+
+    void Renderer::loadScriptDeferred(const std::string& filename)
+    {
+        mScriptFilename = filename;
     }
 
     void Renderer::loadScript(const std::string& filename)
@@ -401,6 +428,7 @@ namespace Mogwai
         std::string filename;
         if (openFileDialog(Scene::kFileExtensionFilters, filename))
         {
+            mAppData.addRecentScene(filename);
             loadScene(filename);
         }
     }
@@ -408,16 +436,6 @@ namespace Mogwai
     void Renderer::loadScene(std::string filename, SceneBuilder::Flags buildFlags)
     {
         setScene(SceneBuilder::create(filename, buildFlags)->getScene());
-    }
-
-    // Temporary workaround for setting environment maps for non-fscenes, remove when all scene files support environment maps
-    void Renderer::setEnvMap(std::string filename)
-    {
-        if (mpScene)
-        {
-            Texture::SharedPtr pEnvMap = Texture::createFromFile(filename, false, true);
-            mpScene->setEnvironmentMap(pEnvMap);
-        }
     }
 
     void Renderer::setScene(Scene::ConstSharedPtrRef pScene)
@@ -442,7 +460,7 @@ namespace Mogwai
         }
 
         for (auto& g : mGraphs) g.pGraph->setScene(mpScene);
-        gpFramework->getGlobalClock().now(0);
+        gpFramework->getGlobalClock().setTime(0);
     }
 
     Scene::SharedPtr Renderer::getScene() const
@@ -517,7 +535,7 @@ namespace Mogwai
         applyEditorChanges();
 
         // Clear frame buffer.
-        const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
+        const float4 clearColor(0.38f, 0.52f, 0.10f, 1);
         pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
 
         if (mGraphs.size())
@@ -527,7 +545,7 @@ namespace Mogwai
             // Update scene and camera.
             if (mpScene)
             {
-                mpScene->update(pRenderContext, gpFramework->getGlobalClock().now());
+                mpScene->update(pRenderContext, gpFramework->getGlobalClock().getTime());
             }
 
             executeActiveGraph(pRenderContext);

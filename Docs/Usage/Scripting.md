@@ -8,12 +8,14 @@
 
 #### Global functions
 
-| Function                      | Description                                                              |
-|-------------------------------|--------------------------------------------------------------------------|
-| `loadRenderPassLibrary(name)` | Load a render pass library.                                              |
-| `renderFrame()`               | Render a frame. If the clock is not paused, it will advance by one tick. |
-| `exit()`                      | Terminate the application.                                               |
-| `cls()`                       | Clear the console.                                                       |
+| Function                         | Description                                                              |
+|----------------------------------|--------------------------------------------------------------------------|
+| `loadRenderPassLibrary(name)`    | Load a render pass library.                                              |
+| `renderFrame()`                  | Render a frame. If the clock is not paused, it will advance by one tick. |
+| `setWindowPos(x, y)`             | Set the window's position in pixels.                                     |
+| `resizeSwapChain(width, height)` | Resize the window/swapchain.                                             |
+| `exit(errorCode=0)`              | Terminate the application with the given error code.                     |
+| `cls()`                          | Clear the console.                                                       |
 
 #### Global variables
 
@@ -43,38 +45,43 @@
 
 class falcor.**Renderer**
 
+| Property      | Type          | Description                     |
+|---------------|---------------|---------------------------------|
+| `scene`       | `Scene`       | Active scene (readonly).        |
+| `activeGraph` | `RenderGraph` | Active render graph (readonly). |
+| `ui`          | `bool`        | Show/hide the UI.               |
+
 | Method                           | Description                                                     |
 |----------------------------------|-----------------------------------------------------------------|
 | `script(filename)`               | Run a script.                                                   |
 | `loadScene(filename)`            | Load a scene.                                                   |
-| `scene()`                        | Get the scene.                                                  |
-| `envMap(filename)`               | Load an environment map (temporary workaround).                 |
 | `saveConfig(filename)`           | Save the current state to a config file.                        |
 | `addGraph(graph)`                | Add a render graph.                                             |
 | `removeGraph(graph)`             | Remove a render graph. `graph` can be a render graph or a name. |
-| `graph(name)`                    | Get a render graph by name.                                     |
-| `activeGraph()`                  | Get the currently active render graph.                          |
-| `resizeSwapChain(width, height)` | Resize the window/swapchain.                                    |
-| `ui(show)`                       | Show/hide the UI.                                               |
+| `getGraph(name)`                 | Get a render graph by name.                                     |
+| `graph(name)`                    | **DEPRECATED:** Use `getGraph` instead.                         |
+| `resizeSwapChain(width, height)` | **DEPRECATED:** Use global `resizeSwapChain` instead.           |
+| `envMap(filename)`               | **DEPRECATED:** Use `setEnvMap` on `Scene`.                     |
 
 #### Clock
 
 class falcor.**Clock**
 
-| Method                 | Description                        |
-|------------------------|------------------------------------|
-| `now()`                | Get the current time in _seconds_. |
-| `now(seconds)`         | Set the current time in _seconds_. |
-| `frame()`              | Get the current frame number.      |
-| `frame(frameID)`       | Set the current frame number.      |
-| `pause()`              | Pause the clock.                   |
-| `play()`               | Resume the clock.                  |
-| `stop()`               | Stop the clock (pause and reset)   |
-| `step(frames = 1)`     | Stop forward or backward in time.  |
-| `framerate()`          | Get the framerate.                 |
-| `framerate(framerate)` | Set the framerate.                 |
-| `exitTime(seconds)`    | Exit at specific time.             |
-| `exitFrame(n)`	     | Exit at specific frame.            |
+| Property    | Type    | Description                                                                     |
+|-------------|---------|---------------------------------------------------------------------------------|
+| `time`      | `float` | Current time in _seconds_.                                                      |
+| `frame`     | `int`   | Current frame number.                                                           |
+| `framerate` | `int`   | Frame rate in _frames per second_.                                              |
+| `timeScale` | `float` | Time scale factor.                                                              |
+| `exitTime`  | `float` | Time in _seconds_ at which to terminate the application. Set to `0` to disable. |
+| `exitFrame` | `int`   | Frame at which to terminate the application. Set to `0` to disable.             |
+
+| Method           | Description                       |
+|------------------|-----------------------------------|
+| `pause()`        | Pause the clock.                  |
+| `play()`         | Resume the clock.                 |
+| `stop()`         | Stop the clock (pause and reset)  |
+| `step(frames=1)` | Step forward or backward in time. |
 
 #### FrameCapture
 
@@ -82,41 +89,45 @@ The frame capture will always dump the marked graph output. You can use `graph.m
 
 The frame counter starts at zero in Falcor (it starts by default at one in Maya, so the frame numbers may be offset by one frame).
 
-By default, the captures frames are stored to the executable directory. This can be changed by `fc.outputDir()`.
+By default, the captures frames are stored to the executable directory. This can be changed by setting `fc.outputDir`.
 
 **Note:** The frame counter is not advanced when time is paused. If you capture with time paused, the captured frame will be overwritten for every rendered frame. The workaround is to change the base filename between captures with `fc.capture()`, see example below.
 
-
 class falcor.**FrameCapture**
 
-| Method                  | Description                                                                |
-|-------------------------|----------------------------------------------------------------------------|
-| `outputDir(dir)`        | Set the output directory.                                                  |
-| `baseFilename(name)`    | Set the base filename. The frameID and output name will be appended to it. |
-| `capture()`             | Capture the current frame.                                                 |
-| `frames(graph, frames)` | Set a list of frames to capture for the given graph.                       |
-| `print()`               | Print the requested frames to capture for all available graphs.            |
-| `print(graph)`          | Print the requested frames to capture for the specified graph.             |
-| `ui(show)`              | Show/hide the UI.                                                          |
+| Property       | Type     | Description                                                                  |
+|----------------|----------|------------------------------------------------------------------------------|
+| `outputDir`    | `string` | Capture output directory.                                                    |
+| `baseFilename` | `string` | Capture base filename. The frameID and output name will be appended to this. |
+| `ui`           | `bool`   | Show/hide the UI.                                                            |
+
+| Method                     | Description                                                                 |
+|----------------------------|-----------------------------------------------------------------------------|
+| `reset(graph)`             | Reset frame capturing for the given graph (or all graphs if set to `None`). |
+| `capture()`                | Capture the current frame.                                                  |
+| `addFrames(graph, frames)` | Add a list of frames to capture for the given graph.                        |
+| `print()`                  | Print the requested frames to capture for all available graphs.             |
+| `print(graph)`             | Print the requested frames to capture for the specified graph.              |
+| `frames(graph, frames)`    | **DEPRECATED:** Use `addFrames` instead.                                    |
 
 **Example:** *Capture list of frames with clock running and then exit*
 ```python
 t.exitFrame(101)
-fc.outputDir("../../../Output")
-fc.baseFilename("Mogwai")
-fc.frames(m.activeGraph(), [20, 50, 100])
+fc.outputDir = "../../../Output"
+fc.baseFilename = "Mogwai"
+fc.addFrames(m.activeGraph, [20, 50, 100])
 ```
 
 **Example:** *Capture frames with clock paused and then exit*
 ```python
 t.pause()
-fc.outputDir("../../../Output")
+fc.outputDir = "../../../Output"
 
 frames = [20, 50, 100]
 for i in range(101):
     renderFrame()
     if i in frames:
-        fc.baseFilename(f"Mogwai-{i:04d}")
+        fc.baseFilename = f"Mogwai-{i:04d}"
         fc.capture()
 exit()
 ```
@@ -131,34 +142,34 @@ enum falcor.**Codec**
 
 class falcor.**VideoCapture**
 
-| Method                  | Description                                                                                           |
-|-------------------------|-------------------------------------------------------------------------------------------------------|
-| `outputDir(dir)`        | Set the output directory.                                                                             |
-| `baseFilename(name)`    | Set the base filename. The output name will be appended to it.                                        |
-| `codec(codec)`          | Set the codec (`Raw`, `H264`, `HVEC`, `MPEG2`, `MPEG4`).                                              |
-| `codec()`               | Get the codec.                                                                                        |
-| `fps(fps)`              | Set tha framerate.                                                                                    |
-| `fps()`                 | Get the framerate.                                                                                    |
-| `bitrate(bitrate)`      | Set the bitrate in Mpbs.                                                                              |
-| `bitrate()`             | Get the bitrate.                                                                                      |
-| `gopSize(size)`         | Set the GOP size.                                                                                     |
-| `gopSize()`             | Get the GOP size.                                                                                     |
-| `ranges(graph, ranges)` | Set a list of frame ranges to capture for a given graph. `ranges` is a list of `(start, end)` tuples. |
-| `print()`               | Print the requested frames to capture for all available graphs.                                       |
-| `print(graph)`          | Print the requested frames to capture for the specified graph.                                        |
-| `ui(show)`              | Show/hide the UI.                                                                                     |
+| Property       | Type     | Description                                                      |
+|----------------|----------|------------------------------------------------------------------|
+| `outputDir`    | `string` | Capture output directory.                                        |
+| `baseFilename` | `string` | Capture base filename. The output name will be appended to this. |
+| `ui`           | `bool`   | Show/hide the UI.                                                |
+| `codec`        | `Codec`  | Video codec (`Raw`, `H264`, `HVEC`, `MPEG2`, `MPEG4`).           |
+| `fps`          | `int`    | Video frame rate.                                                |
+| `bitrate`      | `float`  | Video bitrate in Mpbs.                                           |
+| `gopSize`      | `int`    | Video GOP size.                                                  |
+
+| Method                     | Description                                                                                           |
+|----------------------------|-------------------------------------------------------------------------------------------------------|
+| `reset(graph)`             | Reset video capturing for the given graph (or all graphs if set to `None`).                           |
+| `addRanges(graph, ranges)` | Add a list of frame ranges to capture for a given graph. `ranges` is a list of `(start, end)` tuples. |
+| `print()`                  | Print the requested ranges to capture for all available graphs.                                       |
+| `print(graph)`             | Print the requested ranges to capture for the specified graph.                                        |
+| `ranges(graph, ranges)`    | **DEPRECATED:** Use `addRanges` instead.                                                              |
 
 Example:
 ```python
 # Video Capture
-vc.outputDir(".")
-vc.baseFilename("Mogwai")
-vc.codec(Codec.H264)
-vc.fps(60)
-vc.bitrate(4.0)
-vc.gopSize(10)
-g = m.activeGraph()
-vc.ranges(g, [[30, 300]])
+vc.outputDir = "."
+vc.baseFilename = "Mogwai"
+vc.codec = Codec.H264
+vc.fps = 60
+vc.bitrate = 4.0
+vc.gopSize = 10
+vc.addRanges(m.activeGraph, [[30, 300]])
 ```
 
 #### TimingCapture
@@ -168,6 +179,12 @@ class falcor.**TimingCapture**
 | Method                       | Description                                      |
 |------------------------------|--------------------------------------------------|
 | `captureFrameTime(filename)` | Start writing frame times to the given filename. |
+
+Example:
+```python
+# Timing Capture
+tc.captureFrameTime("timecapture.csv")
+```
 
 ### Core API
 
@@ -190,11 +207,13 @@ enum falcor.**ResourceFormat**
 
 class falcor.**RenderGraph**
 
+| Property | Type     | Description               |
+|----------|----------|---------------------------|
+| `name`   | `string` | Name of the render graph. |
+
 | Method                         | Description                                                                        |
 |--------------------------------|------------------------------------------------------------------------------------|
 | `RenderGraph(name)`            | Create a new render graph.                                                         |
-| `name()`                       | Get the name.                                                                      |
-| `name(name)`                   | Set the name.                                                                      |
 | `addPass(pass, name)`          | Add a render pass to the graph.                                                    |
 | `removePass(name)`             | Remove a render pass from the graph.                                               |
 | `updatePass(name, dict)`       | Update a render pass with new configuration options in `dict`.                     |
@@ -239,96 +258,107 @@ class falcor.**Texture**
 
 class falcor.**Scene**
 
-| Method                         | Description                       |
-|--------------------------------|-----------------------------------|
-| `animate(enable)`              | Enable/disable scene animations.  |
-| `animateCamera(enabled)`       | Enable/disable camera animations. |
-| `animateLight(index, enabled)` | Enable/disable light animations.  |
-| `camera()`                     | Return the camera.                |
-| `light(index)`                 | Return a light by index.          |
-| `light(name)`                  | Return a light by name.           |
-| `material(index)`              | Return a material by index.       |
-| `material(name)`               | Return a material by name.        |
-| `removeViewpoint(index)`       | Remove a viewpoint.               |
-| `viewpoint()`                  | Create a new viewpoint.           |
-| `viewpoint(index)`             | Load a viewpoint.                 |
+| Property | Type     | Description |
+|----------|----------|-------------|
+| `camera` | `Camera` | Camera.     |
+
+| Method                               | Description                                            |
+|--------------------------------------|--------------------------------------------------------|
+| `animate(enable)`                    | Enable/disable scene animations.                       |
+| `animateCamera(enabled)`             | Enable/disable camera animations.                      |
+| `animateLight(index, enabled)`       | Enable/disable light animations.                       |
+| `setEnvMap(filename)`                | Load an environment map from an image.                 |
+| `getLight(index)`                    | Return a light by index.                               |
+| `getLight(name)`                     | Return a light by name.                                |
+| `light(index)`                       | **DEPRECATED:** Use `getLight` instead.                |
+| `light(name)`                        | **DEPRECATED:** Use `getLight` instead.                |
+| `getMaterial(index)`                 | Return a material by index.                            |
+| `getMaterial(name)`                  | Return a material by name.                             |
+| `material(index)`                    | **DEPRECATED:** Use `getMaterial` instead.             |
+| `material(name)`                     | **DEPRECATED:** Use `getMaterial` instead.             |
+| `addViewpoint()`                     | Add current camera's viewpoint to the viewpoint list.  |
+| `addViewpoint(position, target, up)` | Add a viewpoint to the viewpoint list.                 |
+| `removeViewpoint()`                  | Remove selected viewpoint.                             |
+| `selectViewpoint(index)`             | Select a specific viewpoint and move the camera to it. |
+| `viewpoint()`                        | **DEPRECATED:** Use `addViewpoint` instead.            |
+| `viewpoint(index)`                   | **DEPRECATED:** Use `selectViewpoint` instead.         |
 
 #### Camera
 
 class falcor.**Camera**
 
-| Property         | Type    | Description                                  |
-|------------------|---------|----------------------------------------------|
-| `name`           | `str`   | Name of the camera (readonly).               |
-| `aspectRatio`    | `float` | Image aspect ratio.                          |
-| `focalLength`    | `float` | Focal length in millimeters.                 |
-| `frameHeight`    | `float` | Frame height in millimeters.                 |
-| `focalDistance`  | `float` | Focal distance in scene units.               |
-| `apertureRadius` | `float` | Apeture radius in scene units.               |
-| `shutterSpeed`   | `float` | Shutter speed  in seconds (not implemented). |
-| `ISOSpeed`       | `float` | Film speed (not implemented).                |
-| `nearPlane`      | `float` | Near plane distance in scene units.          |
-| `farPlane`       | `float` | Far plane distance in scene units.           |
-| `position`       | `vec3`  | Camera position in world space.              |
-| `target`         | `vec3`  | Camera target in world space.                |
-| `up`             | `vec`   | Camera up vector in world space.             |
+| Property         | Type     | Description                                  |
+|------------------|----------|----------------------------------------------|
+| `name`           | `str`    | Name of the camera (readonly).               |
+| `aspectRatio`    | `float`  | Image aspect ratio.                          |
+| `focalLength`    | `float`  | Focal length in millimeters.                 |
+| `frameHeight`    | `float`  | Frame height in millimeters.                 |
+| `focalDistance`  | `float`  | Focal distance in scene units.               |
+| `apertureRadius` | `float`  | Apeture radius in scene units.               |
+| `shutterSpeed`   | `float`  | Shutter speed  in seconds (not implemented). |
+| `ISOSpeed`       | `float`  | Film speed (not implemented).                |
+| `nearPlane`      | `float`  | Near plane distance in scene units.          |
+| `farPlane`       | `float`  | Far plane distance in scene units.           |
+| `position`       | `float3` | Camera position in world space.              |
+| `target`         | `float3` | Camera target in world space.                |
+| `up`             | `float3` | Camera up vector in world space.             |
 
 #### Material
 
 class falcor.**Material**
 
-| Property               | Type    | Description                                           |
-|------------------------|---------|-------------------------------------------------------|
-| `name`                 | `str`   | Name of the material (readonly).                      |
-| `baseColor`            | `vec4`  | Base color (linear RGB) and opacity.                  |
-| `specularParams`       | `vec4`  | Specular parameters (occlusion, roughness, metallic). |
-| `specularTransmission` | `float` | Specular transmission (0 = opaque, 1 = transparent).  |
-| `indexOfRefraction`    | `float` | Index of refraction.                                  |
-| `emissiveColor`        | `vec3`  | Emissive color (linear RGB).                          |
-| `emissiveFactor`       | `float` | Multiplier for emissive color.                        |
-| `alphaMode`            | `int`   | Alpha mode (0 = opaque, 1 = masked).                  |
-| `alphaThreshold`       | `float` | Alpha masking threshold (0-1).                        |
-| `doubleSided`          | `bool`  | Enable double sided rendering.                        |
-| `nestedPriority`       | `int`   | Nested priority for nested dielectrics.               |
+| Property               | Type     | Description                                           |
+|------------------------|----------|-------------------------------------------------------|
+| `name`                 | `str`    | Name of the material (readonly).                      |
+| `baseColor`            | `float4` | Base color (linear RGB) and opacity.                  |
+| `specularParams`       | `float4` | Specular parameters (occlusion, roughness, metallic). |
+| `specularTransmission` | `float`  | Specular transmission (0 = opaque, 1 = transparent).  |
+| `indexOfRefraction`    | `float`  | Index of refraction.                                  |
+| `emissiveColor`        | `float3` | Emissive color (linear RGB).                          |
+| `emissiveFactor`       | `float`  | Multiplier for emissive color.                        |
+| `alphaMode`            | `int`    | Alpha mode (0 = opaque, 1 = masked).                  |
+| `alphaThreshold`       | `float`  | Alpha masking threshold (0-1).                        |
+| `doubleSided`          | `bool`   | Enable double sided rendering.                        |
+| `nestedPriority`       | `int`    | Nested priority for nested dielectrics.               |
 
 #### Light
 
 class falcor.**Light**
 
-| Property    | Type    | Description                   |
-|-------------|---------|-------------------------------|
-| `name`      | `str`   | Name of the light (readonly). |
-| `color`     | `vec3`  | Color of the light.           |
-| `intensity` | `float` | Intensity of the light.       |
+| Property    | Type     | Description                   |
+|-------------|----------|-------------------------------|
+| `name`      | `str`    | Name of the light (readonly). |
+| `color`     | `float3` | Color of the light.           |
+| `intensity` | `float`  | Intensity of the light.       |
 
 class falcor.**DirectionalLight**
 
-| Property    | Type    | Description                            |
-|-------------|---------|----------------------------------------|
-| `name`      | `str`   | Name of the light (readonly).          |
-| `color`     | `vec3`  | Color of the light.                    |
-| `intensity` | `float` | Intensity of the light.                |
-| `direction` | `vec3`  | Direction of the light in world space. |
+| Property    | Type     | Description                            |
+|-------------|----------|----------------------------------------|
+| `name`      | `str`    | Name of the light (readonly).          |
+| `color`     | `float3` | Color of the light.                    |
+| `intensity` | `float`  | Intensity of the light.                |
+| `direction` | `float3` | Direction of the light in world space. |
 
 class falcor.**PointLight**
 
-| Property        | Type    | Description                            |
-|-----------------|---------|----------------------------------------|
-| `name`          | `str`   | Name of the light (readonly).          |
-| `color`         | `vec3`  | Color of the light.                    |
-| `intensity`     | `float` | Intensity of the light.                |
-| `position`      | `vec3`  | Position of the light in world space.  |
-| `direction`     | `vec3`  | Direction of the light in world space. |
-| `openingAngle`  | `float` | Opening half-angle in radians.         |
-| `penumbraAngle` | `float` | Penumbra half-angle in radians.        |
+| Property        | Type     | Description                            |
+|-----------------|----------|----------------------------------------|
+| `name`          | `str`    | Name of the light (readonly).          |
+| `color`         | `float3` | Color of the light.                    |
+| `intensity`     | `float`  | Intensity of the light.                |
+| `position`      | `float3` | Position of the light in world space.  |
+| `direction`     | `float3` | Direction of the light in world space. |
+| `openingAngle`  | `float`  | Opening half-angle in radians.         |
+| `penumbraAngle` | `float`  | Penumbra half-angle in radians.        |
 
 class falcor.**AnalyticAreaLight**
 
-| Property    | Type    | Description                   |
-|-------------|---------|-------------------------------|
-| `name`      | `str`   | Name of the light (readonly). |
-| `color`     | `vec3`  | Color of the light.           |
-| `intensity` | `float` | Intensity of the light.       |
+| Property    | Type     | Description                   |
+|-------------|----------|-------------------------------|
+| `name`      | `str`    | Name of the light (readonly). |
+| `color`     | `float3` | Color of the light.           |
+| `intensity` | `float`  | Intensity of the light.       |
 
 ### Render Passes
 
@@ -386,7 +416,7 @@ class falcor.**CSM**
 | Property             | Type    | Description |
 |----------------------|---------|-------------|
 | `cascadeCount`       | `int`   |             |
-| `mapSize`            | `uvec2` |             |
+| `mapSize`            | `uint2` |             |
 | `visibilityBitCount` | `int`   |             |
 | `filter`             | `int`   |             |
 | `sdsmLatency`        | `int`   |             |

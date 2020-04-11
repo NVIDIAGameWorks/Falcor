@@ -26,8 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 import Scene.Raytracing;
+import Scene.HitInfo;
 import Utils.Sampling.SampleGenerator;
-import RenderPasses.Shared.HitInfo;
 import GBufferHelpers;
 
 // GBuffer channels

@@ -27,18 +27,22 @@
  **************************************************************************/
 #include "stdafx.h"
 #include "Scene.h"
+#include "HitInfo.h"
 #include "Raytracing/RtProgram/RtProgram.h"
 #include "Raytracing/RtProgramVars.h"
 #include <sstream>
 
 namespace Falcor
 {
+    static_assert(sizeof(MeshInstanceData) % 16 == 0, "MeshInstanceData size should be a multiple of 16");
+    static_assert(sizeof(PackedStaticVertexData) % 16 == 0, "PackedStaticVertexData size should be a multiple of 16");
+
     namespace
     {
         // Checks if the transform flips the coordinate system handedness (its determinant is negative).
-        bool doesTransformFlip(const mat4& m)
+        bool doesTransformFlip(const glm::mat4& m)
         {
-            return determinant((mat3)m) < 0.f;
+            return glm::determinant((glm::mat3)m) < 0.f;
         }
 
         const std::string kParameterBlockName = "gScene";
@@ -46,20 +50,23 @@ namespace Falcor
         const std::string kMeshInstanceBufferName = "meshInstances";
         const std::string kIndexBufferName = "indices";
         const std::string kVertexBufferName = "vertices";
+        const std::string kPrevVertexBufferName = "prevVertices";
         const std::string kMaterialsBufferName = "materials";
         const std::string kLightsBufferName = "lights";
-        const std::string kCameraVarName = "camera";
 
-        const std::string kCamera = "c";
-        const std::string kViewpoint = "viewpoint";
-        const std::string kPosition = "position";
-        const std::string kTarget = "target";
-        const std::string kUp = "up";
+        const std::string kCamera = "camera";
+        const std::string kGetLight = "getLight";
+        const std::string kGetMaterial = "getMaterial";
+        const std::string kSetEnvMap = "setEnvMap";
+        const std::string kAddViewpoint = "addViewpoint";
+        const std::string kRemoveViewpoint = "kRemoveViewpoint";
+        const std::string kSelectViewpoint = "selectViewpoint";
     }
 
     const FileDialogFilterVec Scene::kFileExtensionFilters =
     {
         {"fscene"},
+        {"py"},
         {"fbx"},
         {"gltf"},
         {"obj"},
@@ -114,6 +121,7 @@ namespace Falcor
     {
         Shader::DefineList defines;
         defines.add("MATERIAL_COUNT", std::to_string(mMaterials.size()));
+        defines.add(HitInfo::getDefines(this));
         return defines;
     }
 
@@ -152,7 +160,7 @@ namespace Falcor
         if (overrideRS) pState->setRasterizerState(pCurrentRS);
     }
 
-    void Scene::raytrace(RenderContext* pContext, RtProgram* pProgram, const std::shared_ptr<RtProgramVars>& pVars, uvec3 dispatchDims)
+    void Scene::raytrace(RenderContext* pContext, RtProgram* pProgram, const std::shared_ptr<RtProgramVars>& pVars, uint3 dispatchDims)
     {
         PROFILE("raytraceScene");
 
@@ -180,21 +188,20 @@ namespace Falcor
         assert(pReflection);
 
         mpSceneBlock = ParameterBlock::create(pReflection);
-        mpMeshesBuffer = Buffer::createStructured(mpSceneBlock[kMeshBufferName], (uint32_t)mMeshDesc.size(), Resource::BindFlags::ShaderResource);
-        mpMeshInstancesBuffer = Buffer::createStructured(mpSceneBlock[kMeshInstanceBufferName], (uint32_t)mMeshInstanceData.size(), Resource::BindFlags::ShaderResource);
+        mpMeshesBuffer = Buffer::createStructured(mpSceneBlock[kMeshBufferName], (uint32_t)mMeshDesc.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpMeshInstancesBuffer = Buffer::createStructured(mpSceneBlock[kMeshInstanceBufferName], (uint32_t)mMeshInstanceData.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
 
-        mpMaterialsBuffer = Buffer::createStructured(mpSceneBlock[kMaterialsBufferName], (uint32_t)mMaterials.size(), Resource::BindFlags::ShaderResource);
+        mpMaterialsBuffer = Buffer::createStructured(mpSceneBlock[kMaterialsBufferName], (uint32_t)mMaterials.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
 
         if (mLights.size())
         {
-            mpLightsBuffer = Buffer::createStructured(mpSceneBlock[kLightsBufferName], (uint32_t)mLights.size(), Resource::BindFlags::ShaderResource);
+            mpLightsBuffer = Buffer::createStructured(mpSceneBlock[kLightsBufferName], (uint32_t)mLights.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
         }
     }
 
     void Scene::uploadResources()
     {
         // Upload geometry
-        checkOffsets();
         mpMeshesBuffer->setBlob(mMeshDesc.data(), 0, sizeof(MeshDesc) * mMeshDesc.size());
         mpMeshInstancesBuffer->setBlob(mMeshInstanceData.data(), 0, sizeof(MeshInstanceData) * mMeshInstanceData.size());
 
@@ -204,6 +211,7 @@ namespace Falcor
         mpSceneBlock->setBuffer(kMaterialsBufferName, mpMaterialsBuffer);
         mpSceneBlock->setBuffer(kIndexBufferName, mpVao->getIndexBuffer());
         mpSceneBlock->setBuffer(kVertexBufferName, mpVao->getVertexBuffer(Scene::kStaticDataBufferIndex));
+        mpSceneBlock->setBuffer(kPrevVertexBufferName, mpVao->getVertexBuffer(Scene::kPrevVertexBufferIndex));
 
         if (mpLightProbe)
         {
@@ -236,29 +244,6 @@ namespace Falcor
         var["samplerState"] = resources.samplerState;
     }
 
-    void Scene::checkOffsets()
-    {
-#if 0 // #SHADER_VAR fix this after we get rid of StructuredBuffer
-        // Reflector, Struct type, Member
-#define assert_offset(_r, _s, _m) assert(_r->getOffsetDesc(offsetof(_s, _m)).type != ReflectionBasicType::Type::Unknown)
-
-        // MeshDesc
-        auto pMeshReflector = mpMeshesBuffer->getBufferReflector();
-        assert_offset(pMeshReflector, MeshDesc, vbOffset);
-        assert_offset(pMeshReflector, MeshDesc, ibOffset);
-        assert_offset(pMeshReflector, MeshDesc, vertexCount);
-        assert_offset(pMeshReflector, MeshDesc, indexCount);
-        assert_offset(pMeshReflector, MeshDesc, materialID);
-
-        // MeshInstanceData
-        auto pInstanceReflector = mpMeshInstancesBuffer->getBufferReflector();
-        assert_offset(pInstanceReflector, MeshInstanceData, meshID);
-        assert_offset(pInstanceReflector, MeshInstanceData, globalMatrixID);
-
-#undef assert_offset
-#endif
-    }
-
     void Scene::updateBounds()
     {
         const auto& globalMatrices = mpAnimationController->getGlobalMatrices();
@@ -268,7 +253,7 @@ namespace Falcor
         for (const auto& inst : mMeshInstanceData)
         {
             const BoundingBox& meshBB = mMeshBBs[inst.meshID];
-            const mat4& transform = globalMatrices[inst.globalMatrixID];
+            const glm::mat4& transform = globalMatrices[inst.globalMatrixID];
             instanceBBs.push_back(meshBB.transform(transform));
         }
 
@@ -285,21 +270,14 @@ namespace Falcor
         {
             inst.flags = MeshInstanceFlags::None;
 
-            const mat4& transform = mpAnimationController->getGlobalMatrices()[inst.globalMatrixID];
+            const glm::mat4& transform = mpAnimationController->getGlobalMatrices()[inst.globalMatrixID];
             if (doesTransformFlip(transform)) inst.flags |= MeshInstanceFlags::Flipped;
         }
     }
 
     void Scene::finalize()
     {
-        // Create mapping of meshes to their instances.
-        mMeshIdToInstanceIds.clear();
-        mMeshIdToInstanceIds.resize(mMeshDesc.size());
-        for (uint32_t i = 0; i < (uint32_t)mMeshInstanceData.size(); i++)
-        {
-            mMeshIdToInstanceIds[mMeshInstanceData[i].meshID].push_back(i);
-        }
-
+        sortMeshes();
         initResources();
         mpAnimationController->animate(gpDevice->getRenderContext(), 0); // Requires Scene block to exist
         updateMeshInstanceFlags();
@@ -312,7 +290,7 @@ namespace Falcor
         }
         setCameraController(mCamCtrlType);
         updateCamera(true);
-        saveNewViewpoint();
+        addViewpoint();
         updateLights(true);
         updateMaterials(true);
         uploadResources(); // Upload data after initialization is complete
@@ -342,7 +320,7 @@ namespace Falcor
     }
 
     template<>
-    void Scene::AnimatedObject<Camera>::setIntoObject(const vec3& pos, const vec3& up, const vec3& lookAt)
+    void Scene::AnimatedObject<Camera>::setIntoObject(const float3& pos, const float3& up, const float3& lookAt)
     {
         pObject->setUpVector(up);
         pObject->setPosition(pos);
@@ -350,7 +328,7 @@ namespace Falcor
     }
 
     template<>
-    void Scene::AnimatedObject<Light>::setIntoObject(const vec3& pos, const vec3& up, const vec3& lookAt)
+    void Scene::AnimatedObject<Light>::setIntoObject(const float3& pos, const float3& up, const float3& lookAt)
     {
         DirectionalLight* pDirLight = dynamic_cast<DirectionalLight*>(pObject.get());
         if (pDirLight)
@@ -380,10 +358,10 @@ namespace Falcor
         {
             if (!pAnimCtrl->didMatrixChanged(nodeID) && !force) return false;
 
-            mat4 camMat = pAnimCtrl->getGlobalMatrices()[nodeID];
-            vec3 pos = vec3(camMat[3]);
-            vec3 up = vec3(camMat[1]);
-            vec3 lookAt = vec3(camMat[2]);
+            glm::mat4 camMat = pAnimCtrl->getGlobalMatrices()[nodeID];
+            float3 pos = float3(camMat[3]);
+            float3 up = float3(camMat[1]);
+            float3 lookAt = float3(camMat[2]);
             setIntoObject(pos, up, lookAt);
             return true;
         }
@@ -397,7 +375,7 @@ namespace Falcor
         auto cameraChanges = mCamera.pObject->beginFrame();
         if (cameraChanges != Camera::Changes::None)
         {
-            mCamera.pObject->setShaderData(mpSceneBlock[kCameraVarName]);
+            mCamera.pObject->setShaderData(mpSceneBlock[kCamera]);
             if (is_set(cameraChanges, Camera::Changes::Movement)) flags |= UpdateFlags::CameraMoved;
             if ((cameraChanges & (~Camera::Changes::Movement)) != Camera::Changes::None) flags |= UpdateFlags::CameraPropertiesChanged;
         }
@@ -408,16 +386,16 @@ namespace Falcor
     {
         UpdateFlags flags = UpdateFlags::None;
 
-        for (size_t i = 0 ; i < mLights.size() ; i++)
+        for (size_t i = 0; i < mLights.size(); i++)
         {
-            auto& l = mLights[i];
-            l.update(mpAnimationController.get(), forceUpdate);
-            auto lightChanges = l.pObject->beginFrame();
+            auto& light = mLights[i];
+            light.update(mpAnimationController.get(), forceUpdate);
+            auto lightChanges = light.pObject->beginFrame();
 
             if (lightChanges != Light::Changes::None)
             {
                 // TODO: This is slow since the buffer is not CPU writable. Copy into CPU buffer and upload once instead.
-                mpLightsBuffer->setBlob(&l.pObject->getData(), sizeof(LightData) * i, sizeof(LightData));
+                mpLightsBuffer->setBlob(&light.pObject->getData(), sizeof(LightData) * i, sizeof(LightData));
                 if (is_set(lightChanges, Light::Changes::Intensity)) flags |= UpdateFlags::LightIntensityChanged;
                 if (is_set(lightChanges, Light::Changes::Position)) flags |= UpdateFlags::LightsMoved;
                 if (is_set(lightChanges, Light::Changes::Direction)) flags |= UpdateFlags::LightsMoved;
@@ -435,14 +413,14 @@ namespace Falcor
         // Early out if no materials have changed
         if (!forceUpdate && Material::getGlobalUpdates() == Material::UpdateFlags::None) return flags;
 
-        for (uint32_t i = 0; i < (uint32_t)mMaterials.size(); ++i)
+        for (uint32_t materialId = 0; materialId < (uint32_t)mMaterials.size(); ++materialId)
         {
-            auto& material = mMaterials[i];
+            auto& material = mMaterials[materialId];
             auto materialUpdates = material->getUpdates();
             if (forceUpdate || materialUpdates != Material::UpdateFlags::None)
             {
                 material->clearUpdates();
-                uploadMaterial(i);
+                uploadMaterial(materialId);
                 flags |= UpdateFlags::MaterialsChanged;
             }
         }
@@ -498,15 +476,15 @@ namespace Falcor
         auto cameraGroup = Gui::Group(widget, "Camera");
         if (cameraGroup.open())
         {
-            if (cameraGroup.button("Save New Viewpoint")) saveNewViewpoint();
+            if (cameraGroup.button("Save New Viewpoint")) addViewpoint();
             Gui::DropdownList viewpoints;
             viewpoints.push_back({ 0, "Default Viewpoint" });
-            for (uint32_t i = 1; i < mViewpoints.size(); i++)
+            for (uint32_t viewId = 1; viewId < (uint32_t)mViewpoints.size(); viewId++)
             {
-                viewpoints.push_back({ i, "Saved Viewpoint " + to_string(i) });
+                viewpoints.push_back({ viewId, "Saved Viewpoint " + to_string(viewId) });
             }
             uint32_t index = mCurrentViewpoint;
-            if (cameraGroup.dropdown("Saved Viewpoints", viewpoints, index)) gotoViewpoint(index);
+            if (cameraGroup.dropdown("Saved Viewpoints", viewpoints, index)) selectViewpoint(index);
             if (cameraGroup.button("Remove Current Viewpoint")) removeViewpoint();
 
             if (cameraGroup.var("Camera Speed", mCameraSpeed, 0.f, FLT_MAX, 0.01f))
@@ -598,8 +576,8 @@ namespace Falcor
     {
         float radius = length(mSceneBB.extent);
         mCamera.pObject->setPosition(mSceneBB.center);
-        mCamera.pObject->setTarget(mSceneBB.center + vec3(0, 0, -1));
-        mCamera.pObject->setUpVector(glm::vec3(0, 1, 0));
+        mCamera.pObject->setTarget(mSceneBB.center + float3(0, 0, -1));
+        mCamera.pObject->setUpVector(float3(0, 1, 0));
 
         if(resetDepthRange)
         {
@@ -609,15 +587,17 @@ namespace Falcor
         }
     }
 
-    void Scene::saveNewViewpoint()
+    void Scene::addViewpoint()
     {
         auto camera = getCamera();
-        auto position = camera->getPosition();
-        auto target = camera->getTarget();
-        auto up = camera->getUpVector();
+        addViewpoint(camera->getPosition(), camera->getTarget(), camera->getUpVector());
+    }
 
-        Viewpoint v = { position, target, up };
-        mViewpoints.push_back(v);
+    void Scene::addViewpoint(const float3& position, const float3& target, const float3& up)
+    {
+        Viewpoint viewpoint = { position, target, up };
+        mViewpoints.push_back(viewpoint);
+        selectViewpoint(uint32_t(mViewpoints.size() - 1));
     }
 
     void Scene::removeViewpoint()
@@ -628,11 +608,17 @@ namespace Falcor
             return;
         }
         mViewpoints.erase(mViewpoints.begin() + mCurrentViewpoint);
-        mCurrentViewpoint = 0;
+        selectViewpoint(0);
     }
 
-    void Scene::gotoViewpoint(uint32_t index)
+    void Scene::selectViewpoint(uint32_t index)
     {
+        if (index >= mViewpoints.size())
+        {
+            logWarning("Viewpoint does not exist");
+            return;
+        }
+
         auto camera = getCamera();
         camera->setPosition(mViewpoints[index].position);
         camera->setTarget(mViewpoints[index].target);
@@ -674,7 +660,7 @@ namespace Falcor
     {
         std::vector<D3D12_DRAW_INDEXED_ARGUMENTS> drawClockwiseMeshes, drawCounterClockwiseMeshes;
         auto pMatricesBuffer = mpSceneBlock->getBuffer("worldMatrices");
-        const mat4* matrices = (mat4*)pMatricesBuffer->map(Buffer::MapType::Read); // #SCENEV2 This will cause the pipeline to flush and sync, but it's probably not too bad as this only happens once
+        const glm::mat4* matrices = (glm::mat4*)pMatricesBuffer->map(Buffer::MapType::Read); // #SCENEV2 This will cause the pipeline to flush and sync, but it's probably not too bad as this only happens once
 
         for (const auto& instance : mMeshInstanceData)
         {
@@ -708,52 +694,109 @@ namespace Falcor
         assert(drawCount <= UINT32_MAX);
     }
 
-    void Scene::sortBlasMeshes()
+    void Scene::sortMeshes()
     {
-        // Of the non-instanced meshes, group based on what global matrix ID their transform is.
-        std::unordered_map<uint32_t, std::vector<uint32_t>> nodeToMeshList;
-        for (uint32_t meshId = 0; meshId < (uint32_t)mMeshIdToInstanceIds.size(); meshId++)
+        // We first sort meshes into groups with the same transform.
+        // The mesh instances list is then reordered to match this order.
+        //
+        // For ray tracing, we create one BLAS per mesh group and the mesh instances
+        // can therefore be directly indexed by [InstanceID() + GeometryIndex()].
+        // This avoids the need to have a lookup table from hit IDs to mesh instance.
+
+        // Build a list of mesh instance indices per mesh.
+        std::vector<std::vector<size_t>> instanceLists(mMeshDesc.size());
+        for (size_t i = 0; i < mMeshInstanceData.size(); i++)
         {
-            auto& instanceList = mMeshIdToInstanceIds[meshId];
+            assert(mMeshInstanceData[i].meshID < instanceLists.size());
+            instanceLists[mMeshInstanceData[i].meshID].push_back(i);
+        }
+
+        // The non-instanced meshes are grouped based on what global matrix ID their transform is.
+        std::unordered_map<uint32_t, std::vector<uint32_t>> nodeToMeshList;
+        for (uint32_t meshId = 0; meshId < (uint32_t)instanceLists.size(); meshId++)
+        {
+            const auto& instanceList = instanceLists[meshId];
             if (instanceList.size() > 1) continue; // Only processing non-instanced meshes here
 
+            assert(instanceList.size() == 1);
             uint32_t globalMatrixId = mMeshInstanceData[instanceList[0]].globalMatrixID;
             nodeToMeshList[globalMatrixId].push_back(meshId);
         }
 
-        // This should currently only be run on scene initialization
-        assert(mBlasData.empty());
+        // Build final result. Format is a list of Mesh ID's per mesh group.
 
-        // Build final result. Format is a list of Mesh ID's per BLAS
+        // This should currently only be run on scene initialization.
+        assert(mMeshGroups.empty());
 
-        // Non-instanced meshes were sorted above so just copy each list
-        for (auto& it : nodeToMeshList) mBlasData.push_back(it.second);
+        // Non-instanced meshes were sorted above so just copy each list.
+        for (const auto& it : nodeToMeshList) mMeshGroups.push_back({ it.second });
 
-        // Meshes that have multiple instances go in their own BLAS
-        for (uint32_t meshId = 0; meshId < (uint32_t)mMeshIdToInstanceIds.size(); meshId++)
+        // Meshes that have multiple instances go in their own groups.
+        for (uint32_t meshId = 0; meshId < (uint32_t)instanceLists.size(); meshId++)
         {
-            auto& instanceList = mMeshIdToInstanceIds[meshId];
+            const auto& instanceList = instanceLists[meshId];
             if (instanceList.size() == 1) continue; // Only processing instanced meshes here
-            mBlasData.push_back(std::vector<uint32_t>({ meshId }));
+            mMeshGroups.push_back({ std::vector<uint32_t>({ meshId }) });
+        }
+
+        // Calculate mapping from new mesh instance ID to existing instance index.
+        // Here, just append existing instance ID's in order they appear in the mesh groups.
+        std::vector<size_t> instanceMapping;
+        for (const auto& meshGroup : mMeshGroups)
+        {
+            for (const uint32_t meshId : meshGroup.meshList)
+            {
+                const auto& instanceList = instanceLists[meshId];
+                for (size_t idx : instanceList)
+                {
+                    instanceMapping.push_back(idx);
+                }
+            }
+        }
+        assert(instanceMapping.size() == mMeshInstanceData.size());
+        {
+            // Check that all indices exist
+            std::set<size_t> instanceIndices(instanceMapping.begin(), instanceMapping.end());
+            assert(instanceIndices.size() == mMeshInstanceData.size());
+        }
+
+        // Now reorder mMeshInstanceData based on the new mapping.
+        // We'll make a copy of the existing data first, and the populate the array.
+        std::vector<MeshInstanceData> prevInstanceData = mMeshInstanceData;
+        for (size_t i = 0; i < mMeshInstanceData.size(); i++)
+        {
+            assert(instanceMapping[i] < prevInstanceData.size());
+            mMeshInstanceData[i] = prevInstanceData[instanceMapping[i]];
+        }
+
+        // Create mapping of meshes to their instances.
+        mMeshIdToInstanceIds.clear();
+        mMeshIdToInstanceIds.resize(mMeshDesc.size());
+        for (uint32_t instId = 0; instId < (uint32_t)mMeshInstanceData.size(); instId++)
+        {
+            mMeshIdToInstanceIds[mMeshInstanceData[instId].meshID].push_back(instId);
         }
     }
 
     void Scene::initGeomDesc()
     {
-        sortBlasMeshes();
+        assert(mBlasData.empty());
 
         const VertexBufferLayout::SharedConstPtr& pVbLayout = mpVao->getVertexLayout()->getBufferLayout(kStaticDataBufferIndex);
         const Buffer::SharedPtr& pVb = mpVao->getVertexBuffer(kStaticDataBufferIndex);
         const Buffer::SharedPtr& pIb = mpVao->getIndexBuffer();
 
-        for (uint32_t i = 0; i < (uint32_t)mBlasData.size(); i++)
+        assert(mMeshGroups.size() > 0);
+        mBlasData.resize(mMeshGroups.size());
+
+        for (size_t i = 0; i < mBlasData.size(); i++)
         {
+            const auto& meshList = mMeshGroups[i].meshList;
             auto& blas = mBlasData[i];
-            auto& meshList = blas.meshList;
             auto& geomDescs = blas.geomDescs;
             geomDescs.resize(meshList.size());
 
-            for (uint32_t j = 0; j < (uint32_t)meshList.size(); j++)
+            for (size_t j = 0; j < meshList.size(); j++)
             {
                 const MeshDesc& mesh = mMeshDesc[meshList[j]];
                 blas.hasSkinnedMesh |= mMeshHasDynamicData[meshList[j]];
@@ -761,6 +804,7 @@ namespace Falcor
                 D3D12_RAYTRACING_GEOMETRY_DESC& desc = geomDescs[j];
                 desc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
                 desc.Triangles.Transform3x4 = 0;
+
                 // If this is an opaque mesh, set the opaque flag
                 const auto& material = mMaterials[mesh.materialID];
                 bool opaque = (material->getAlphaMode() == AlphaModeOpaque) && material->getSpecularTransmission() == 0.f;
@@ -794,11 +838,8 @@ namespace Falcor
         pContext->resourceBarrier(pIb.get(), Resource::State::NonPixelShader);
 
         // For each BLAS
-        for (uint32_t i = 0; i < (uint32_t)mBlasData.size(); i++)
+        for (auto& blas : mBlasData)
         {
-            auto& blas = mBlasData[i];
-            auto& meshList = blas.meshList;
-
             if (blas.pBlas != nullptr && !blas.hasSkinnedMesh) continue; // Skip updating BLASes not containing skinned meshes
 
             // Setup build parameters and get prebuild info
@@ -857,8 +898,6 @@ namespace Falcor
             if (!blas.hasSkinnedMesh) blas.pScratchBuffer.reset(); // Release
             else blas.updateMode = mBlasUpdateMode;
         }
-
-        updateAsToInstanceDataMapping();
     }
 
     void Scene::fillInstanceDesc(std::vector<D3D12_RAYTRACING_INSTANCE_DESC>& instanceDescs, uint32_t rayCount, bool perMeshHitEntry)
@@ -866,9 +905,11 @@ namespace Falcor
         instanceDescs.clear();
         uint32_t instanceContributionToHitGroupIndex = 0;
         uint32_t instanceId = 0;
-        for (uint32_t i = 0; i < (uint32_t)mBlasData.size(); i++)
+
+        for (size_t i = 0; i < mBlasData.size(); i++)
         {
-            auto& meshList = mBlasData[i].meshList;
+            const auto& meshList = mMeshGroups[i].meshList;
+
             D3D12_RAYTRACING_INSTANCE_DESC desc = {};
             desc.AccelerationStructure = mBlasData[i].pBlas->getGpuAddress();
             desc.InstanceMask = 0xFF;
@@ -877,16 +918,17 @@ namespace Falcor
 
             // If multiple meshes are in a BLAS:
             // - Their global matrix is the same.
-            // - From sortBlasMeshes(), each mesh in the BLAS is guaranteed to be non-instanced, so only one INSTANCE_DESC is needed
+            // - From sortMeshes(), each mesh in the BLAS is guaranteed to be non-instanced, so only one INSTANCE_DESC is needed
             if (meshList.size() > 1)
             {
+                assert(mMeshIdToInstanceIds[meshList[0]].size() == 1);
+                assert(mMeshIdToInstanceIds[meshList[0]][0] == instanceId); // Mesh instances are sorted by instanceId
                 desc.InstanceID = instanceId;
                 instanceId += (uint32_t)meshList.size();
 
                 // Any instances of the mesh will get you the correct matrix, so just pick the first mesh then the first instance.
-                uint32_t firstInstanceId = mMeshIdToInstanceIds[meshList[0]][0];
-                uint32_t matrixId = mMeshInstanceData[firstInstanceId].globalMatrixID;
-                mat4 transform4x4 = transpose(mpAnimationController->getGlobalMatrices()[matrixId]);
+                uint32_t matrixId = mMeshInstanceData[desc.InstanceID].globalMatrixID;
+                glm::mat4 transform4x4 = transpose(mpAnimationController->getGlobalMatrices()[matrixId]);
                 std::memcpy(desc.Transform, &transform4x4, sizeof(desc.Transform));
                 instanceDescs.push_back(desc);
             }
@@ -895,13 +937,16 @@ namespace Falcor
             // - A mesh with multiple instances
             else
             {
+                assert(meshList.size() == 1);
+                const auto& instanceList = mMeshIdToInstanceIds[meshList[0]];
+
                 // For every instance of the mesh, create an INSTANCE_DESC
-                auto& instanceList = mMeshIdToInstanceIds[meshList[0]];
                 for (uint32_t instId : instanceList)
                 {
+                    assert(instId == instanceId); // Mesh instances are sorted by instanceId
                     desc.InstanceID = instanceId++;
-                    uint32_t matrixId = mMeshInstanceData[instId].globalMatrixID;
-                    mat4 transform4x4 = transpose(mpAnimationController->getGlobalMatrices()[matrixId]);
+                    uint32_t matrixId = mMeshInstanceData[desc.InstanceID].globalMatrixID;
+                    glm::mat4 transform4x4 = transpose(mpAnimationController->getGlobalMatrices()[matrixId]);
                     std::memcpy(desc.Transform, &transform4x4, sizeof(desc.Transform));
                     instanceDescs.push_back(desc);
                 }
@@ -1004,42 +1049,26 @@ namespace Falcor
         mTlasCache[rayCount] = tlas;
     }
 
-    void Scene::updateAsToInstanceDataMapping()
-    {
-        // Calculate acceleration structure indexing to mMeshInstanceData index
-        // Essentially: mMeshInstanceData[ buffer[TLAS InstanceID() + GeometryIndex] ]
-        // Here, just append mesh instance ID's in order they'd appear in the TLAS.
-        std::vector<uint32_t> asToInstanceMapping;
-        for (uint32_t blasIndex = 0; blasIndex < (uint32_t)mBlasData.size(); blasIndex++)
-        {
-            for (const uint32_t meshId : mBlasData[blasIndex].meshList)
-            {
-                auto& instList = mMeshIdToInstanceIds[meshId];
-                for (const uint32_t instId : instList)
-                {
-                    asToInstanceMapping.push_back(instId);
-                }
-            }
-        }
-
-        mpAsToInstanceMapping = Buffer::createTyped<uint32_t>((uint32_t)asToInstanceMapping.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, asToInstanceMapping.data());
-    }
-
     void Scene::setGeometryIndexIntoRtVars(const std::shared_ptr<RtProgramVars>& pVars)
     {
+        // Sets the 'geometryIndex' hit shader variable for each mesh.
+        // This is the local index of which mesh in the BLAS was hit.
+        // In DXR 1.0 we have to pass it via a constant buffer to the shader,
+        // in DXR 1.1 it is available through the GeometryIndex() system value.
+        //
         assert(!mBlasData.empty());
-        auto meshCount = getMeshCount();
+        uint32_t meshCount = getMeshCount();
         uint32_t descHitCount = pVars->getDescHitGroupCount();
 
         uint32_t blasIndex = 0;
         uint32_t geometryIndex = 0;
-        for (uint32_t i = 0; i < meshCount; i++)
+        for (uint32_t meshId = 0; meshId < meshCount; meshId++)
         {
             for (uint32_t hit = 0; hit < descHitCount; hit++)
             {
-                auto pHitVars = pVars->getHitVars(hit, i);
+                auto pHitVars = pVars->getHitVars(hit, meshId);
                 auto var = pHitVars->findMember(0).findMember("geometryIndex");
-                if( var.isValid() )
+                if (var.isValid())
                 {
                     var = geometryIndex;
                 }
@@ -1048,7 +1077,7 @@ namespace Falcor
             geometryIndex++;
 
             // If at the end of this BLAS, reset counters and start checking next BLAS
-            uint32_t geomCount = (uint32_t)mBlasData[blasIndex].meshList.size();
+            uint32_t geomCount = (uint32_t)mMeshGroups[blasIndex].meshList.size();
             if (geometryIndex == geomCount)
             {
                 geometryIndex = 0;
@@ -1064,12 +1093,11 @@ namespace Falcor
         {
             initGeomDesc();
             buildBlas(pContext);
-            updateAsToInstanceDataMapping();
         }
 
         // On first execution, when meshes have moved, when there's a new ray count, or when a BLAS has changed, create/update the TLAS
         //
-        // TODO: The notion of "ray count" is being treated as fundamental here, and intrinsicly
+        // TODO: The notion of "ray count" is being treated as fundamental here, and intrinsically
         // linked to the number of hit groups in the program, without checking if this matches
         // other things like the number of miss shaders. If/when we support meshes with custom
         // intersection shaders, then the assumption that number of ray types and number of
@@ -1088,14 +1116,11 @@ namespace Falcor
         }
 
         // Bind Scene parameter block.
-        mCamera.pObject->setShaderData(mpSceneBlock[kCameraVarName]);
+        mCamera.pObject->setShaderData(mpSceneBlock[kCamera]);
         var["gScene"] = mpSceneBlock;
 
         // Bind TLAS.
         var["gRtScene"].setSrv(tlasIt->second.pSrv);
-
-        // Bind lookup table for mesh instance ID.
-        var["gAsToInstance"] = mpAsToInstanceMapping;
     }
 
     void Scene::setEnvironmentMap(Texture::ConstSharedPtrRef pEnvMap)
@@ -1103,6 +1128,12 @@ namespace Falcor
         if (mpEnvMap == pEnvMap) return;
         mpEnvMap = pEnvMap;
         mpSceneBlock["envMap"] = mpEnvMap;
+    }
+
+    void Scene::loadEnvironmentMap(const std::string& filename)
+    {
+        Texture::SharedPtr pEnvMap = Texture::createFromFile(filename, false, true);
+        setEnvironmentMap(pEnvMap);
     }
 
     void Scene::setCameraAspectRatio(float ratio)
@@ -1153,7 +1184,7 @@ namespace Falcor
             {
                 if (keyEvent.key == KeyboardEvent::Key::F3)
                 {
-                    saveNewViewpoint();
+                    addViewpoint();
                     return true;
                 }
             }
@@ -1161,36 +1192,56 @@ namespace Falcor
         return mpCamCtrl->onKeyEvent(keyEvent);
     }
 
-    std::string Scene::getConfig()
+    std::string Scene::getScript(const std::string& sceneVar)
     {
         std::string c;
-        c += std::string(kCamera) + " = " + Scripting::makeMemberFunc(kScene, kCameraVarName);
-        for (int i = 0; i < mViewpoints.size(); i++)
+
+        // Environment map.
+        if (getEnvironmentMap() != nullptr)
         {
-            if (i == 0) continue;
-            auto v = mViewpoints[i];
-            c += std::string(kCamera) + "." + kPosition + "=" + to_string(v.position) + "\n";
-            c += std::string(kCamera) + "." + kTarget + "=" + to_string(v.target) + "\n";
-            c += std::string(kCamera) + "." + kUp + "=" + to_string(v.up) + "\n";
-            c += Scripting::makeMemberFunc(kScene, kViewpoint);
+            c += Scripting::makeMemberFunc(sceneVar, kSetEnvMap, Scripting::getFilenameString(getEnvironmentMap()->getSourceFilename()));
         }
-        c += Scripting::makeMemberFunc(kScene, kViewpoint, 0);
+
+        // Viewpoints.
+        if (hasSavedViewpoints())
+        {
+            for (size_t i = 1; i < mViewpoints.size(); i++)
+            {
+                auto v = mViewpoints[i];
+                c += Scripting::makeMemberFunc(sceneVar, kAddViewpoint, v.position, v.target, v.up);
+            }
+            c += Scripting::makeMemberFunc(sceneVar, kSelectViewpoint, mCurrentViewpoint);
+        }
+
         return c;
     }
 
     SCRIPT_BINDING(Scene)
     {
         auto s = m.regClass(Scene);
-        s.func_("animate", &Scene::toggleAnimations); // toggle animations on or off
-        s.func_("light", &Scene::getLight); // get specific light
-        s.func_("light", &Scene::getLightByName); // get specific light
-        s.func_("animateLight", &Scene::toggleLightAnimation); // toggle animation for a specific light on or off
-        s.func_("material", &Scene::getMaterial); // get specific material
-        s.func_("material", &Scene::getMaterialByName); // get specific material
-        s.func_("camera", &Scene::getCamera); // get camera
-        s.func_("animateCamera", &Scene::toggleCameraAnimation); // toggle camera animation on or off
-        s.func_("viewpoint", &Scene::saveNewViewpoint); // save the current camera position etc.
-        s.func_("viewpoint", &Scene::gotoViewpoint); // select a previously saved camera viewpoint
-        s.func_("removeViewpoint", &Scene::removeViewpoint); // remove the current camera viewpoint
+        s.roProperty(kCamera.c_str(), &Scene::getCamera);
+
+        s.func_("animate", &Scene::toggleAnimations, "animate"_a); // toggle animations on or off
+        s.func_("animateCamera", &Scene::toggleCameraAnimation, "animate"_a); // toggle camera animation on or off
+        s.func_("animateLight", &Scene::toggleLightAnimation, "index"_a, "animate"_a); // toggle animation for a specific light on or off
+
+        s.func_(kSetEnvMap.c_str(), &Scene::loadEnvironmentMap, "filename"_a);
+        s.func_(kGetLight.c_str(), &Scene::getLight, "index"_a);
+        s.func_(kGetLight.c_str(), &Scene::getLightByName, "name"_a);
+        s.func_("light", &Scene::getLight); // PYTHONDEPRECATED
+        s.func_("light", &Scene::getLightByName); // PYTHONDEPRECATED
+        s.func_(kGetMaterial.c_str(), &Scene::getMaterial, "index"_a);
+        s.func_(kGetMaterial.c_str(), &Scene::getMaterialByName, "name"_a);
+        s.func_("material", &Scene::getMaterial); // PYTHONDEPRECATED
+        s.func_("material", &Scene::getMaterialByName); // PYTHONDEPRECATED
+
+        // Viewpoints
+        s.func_(kAddViewpoint.c_str(), ScriptBindings::overload_cast<>(&Scene::addViewpoint)); // add current camera as viewpoint
+        s.func_(kAddViewpoint.c_str(), ScriptBindings::overload_cast<const float3&, const float3&, const float3&>(&Scene::addViewpoint), "position"_a, "target"_a, "up"_a); // add specified viewpoint
+        s.func_(kRemoveViewpoint.c_str(), &Scene::removeViewpoint); // remove the selected viewpoint
+        s.func_(kSelectViewpoint.c_str(), &Scene::selectViewpoint, "index"_a); // select a viewpoint by index
+
+        s.func_("viewpoint", ScriptBindings::overload_cast<>(&Scene::addViewpoint)); // PYTHONDEPRECATED save the current camera position etc.
+        s.func_("viewpoint", ScriptBindings::overload_cast<uint32_t>(&Scene::selectViewpoint)); // PYTHONDEPRECATED select a previously saved camera viewpoint
     }
 }

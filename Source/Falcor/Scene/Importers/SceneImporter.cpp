@@ -134,7 +134,7 @@ namespace Falcor
 
         bool loadIncludeFile(const std::string& Include);
 
-        std::vector<mat4> parseModelInstances(const rapidjson::Value& jsonVal);
+        std::vector<glm::mat4> parseModelInstances(const rapidjson::Value& jsonVal);
         bool createModel(const rapidjson::Value& jsonModel);
         bool createPointLight(const rapidjson::Value& jsonLight);
         bool createDirLight(const rapidjson::Value& jsonLight);
@@ -214,13 +214,13 @@ namespace Falcor
         return true;
     }
 
-    std::vector<mat4> SceneImporterImpl::parseModelInstances(const rapidjson::Value& jsonVal)
+    std::vector<glm::mat4> SceneImporterImpl::parseModelInstances(const rapidjson::Value& jsonVal)
     {
         struct ModelInstance
         {
-            vec3 scaling = vec3(1, 1, 1);
-            vec3 position = vec3(0, 0, 0);
-            vec3 rotation = vec3(0, 0, 0);
+            float3 scaling = float3(1, 1, 1);
+            float3 position = float3(0, 0, 0);
+            float3 rotation = float3(0, 0, 0);
         };
 
         std::vector<ModelInstance> instances;
@@ -255,13 +255,13 @@ namespace Falcor
             instances.push_back(instance);
         }
 
-        std::vector<mat4> matrices(instances.size());
+        std::vector<glm::mat4> matrices(instances.size());
         for (size_t i = 0; i < matrices.size(); i++)
         {
-            mat4 T;
-            T[3] = vec4(instances[i].position, 1);
-            mat4 S = scale(instances[i].scaling);
-            mat4 R = yawPitchRoll(instances[i].rotation[0], instances[i].rotation[1], instances[i].rotation[2]);
+            glm::mat4 T;
+            T[3] = float4(instances[i].position, 1);
+            glm::mat4 S = glm::scale(instances[i].scaling);
+            glm::mat4 R = glm::yawPitchRoll(instances[i].rotation[0], instances[i].rotation[1], instances[i].rotation[2]);
             matrices[i] = T * R * S;
         }
 
@@ -319,7 +319,7 @@ namespace Falcor
             }
         }
 
-        std::vector<mat4> instances;
+        std::vector<glm::mat4> instances;
 
         // Loop over the other members
         for (auto jval = jsonModel.MemberBegin(); jval != jsonModel.MemberEnd(); jval++)
@@ -420,7 +420,7 @@ namespace Falcor
             }
             else if (key == SceneKeys::kLightIntensity)
             {
-                glm::vec3 intensity;
+                float3 intensity;
                 if (getFloatVec<3>(value, "Directional light intensity", &intensity[0]) == false)
                 {
                     return false;
@@ -429,8 +429,8 @@ namespace Falcor
             }
             else if (key == SceneKeys::kLightDirection)
             {
-                glm::vec3 direction;
-                if (getFloatVec<3>(value, "Directional light intensity", &direction[0]) == false)
+                float3 direction;
+                if (getFloatVec<3>(value, "Directional light direction", &direction[0]) == false)
                 {
                     return false;
                 }
@@ -495,7 +495,7 @@ namespace Falcor
             }
             else if (key == SceneKeys::kLightIntensity)
             {
-                glm::vec3 intensity;
+                float3 intensity;
                 if (getFloatVec<3>(value, "Point light intensity", &intensity[0]) == false)
                 {
                     return false;
@@ -504,7 +504,7 @@ namespace Falcor
             }
             else if (key == SceneKeys::kLightPos)
             {
-                glm::vec3 position;
+                float3 position;
                 if (getFloatVec<3>(value, "Point light position", &position[0]) == false)
                 {
                     return false;
@@ -513,7 +513,7 @@ namespace Falcor
             }
             else if (key == SceneKeys::kLightDirection)
             {
-                glm::vec3 dir;
+                float3 dir;
                 if (getFloatVec<3>(value, "Point light direction", &dir[0]) == false)
                 {
                     return false;
@@ -547,9 +547,9 @@ namespace Falcor
         // Create the light.
         auto pAreaLight = AnalyticAreaLight::create(type);
 
-        glm::vec3 scaling(1, 1, 1);
-        glm::vec3 translation(0, 0, 0);
-        glm::vec3 rotation(0, 0, 0);
+        float3 scaling(1, 1, 1);
+        float3 translation(0, 0, 0);
+        float3 rotation(0, 0, 0);
 
         for (auto it = jsonLight.MemberBegin(); it != jsonLight.MemberEnd(); it++)
         {
@@ -574,7 +574,7 @@ namespace Falcor
             }
             else if (key == SceneKeys::kLightIntensity)
             {
-                glm::vec3 intensity;
+                float3 intensity;
                 if (getFloatVec<3>(value, "Area light intensity", &intensity[0]) == false)
                 {
                     return false;
@@ -696,8 +696,8 @@ namespace Falcor
                 actualPath = imagePath;
             }
 
-            vec3 position;
-            glm::vec3 intensity(1.0f);
+            float3 position;
+            float3 intensity(1.0f);
             float radius = -1;
             uint32_t diffuseSamples = LightProbe::kDefaultDiffSamples;
             uint32_t specSamples = LightProbe::kDefaultSpecSamples;
@@ -806,7 +806,7 @@ namespace Falcor
             }
             else if (key == SceneKeys::kCamPosition)
             {
-                glm::vec3 pos;
+                float3 pos;
                 if (getFloatVec<3>(value, "Camera's position", &pos[0]) == false)
                 {
                     return false;
@@ -815,7 +815,7 @@ namespace Falcor
             }
             else if (key == SceneKeys::kCamTarget)
             {
-                glm::vec3 target;
+                float3 target;
                 if (getFloatVec<3>(value, "Camera's target", &target[0]) == false)
                 {
                     return false;
@@ -824,7 +824,7 @@ namespace Falcor
             }
             else if (key == SceneKeys::kCamUp)
             {
-                glm::vec3 up;
+                float3 up;
                 if (getFloatVec<3>(value, "Camera's up vector", &up[0]) == false)
                 {
                     return false;
@@ -1131,6 +1131,7 @@ namespace Falcor
 
     bool SceneImporter::import(const std::string& filename, SceneBuilder& builder)
     {
+        logWarning("fscene files are no longer supported in Falcor 4.0. Some properties may not be loaded.");
         SceneImporterImpl importer(builder);
         return importer.load(filename);
     }

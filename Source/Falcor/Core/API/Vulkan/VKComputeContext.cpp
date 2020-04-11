@@ -76,15 +76,15 @@ namespace Falcor
         vkCmdClearColorImage(pCtx->getLowLevelData()->getCommandList(), pView->getResource()->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &colVal, 1, &range);
     }
 
-    template void clearColorImageCommon(CopyContext* pCtx, const RenderTargetView* pView, const vec4& clearVal);
+    template void clearColorImageCommon(CopyContext* pCtx, const RenderTargetView* pView, const float4& clearVal);
 
-    void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const vec4& value)
+    void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const float4& value)
     {
         clearColorImageCommon(this, pUav, value);
         mCommandsPending = true;
     }
 
-    void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const uvec4& value)
+    void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const uint4& value)
     {
         if(pUav->getApiHandle().getType() == VkResourceType::Buffer)
         {
@@ -106,7 +106,7 @@ namespace Falcor
     {
         if (pBuffer->hasUAVCounter())
         {
-            clearUAV(pBuffer->getUAVCounter()->getUAV().get(), uvec4(value));
+            clearUAV(pBuffer->getUAVCounter()->getUAV().get(), uint4(value));
         }
     }
 

@@ -139,7 +139,7 @@ namespace Falcor
         imageInfo.format = getVkFormat(mFormat);
         imageInfo.imageType = getVkImageType(mType);
         imageInfo.initialLayout = pData ? VK_IMAGE_LAYOUT_PREINITIALIZED : VK_IMAGE_LAYOUT_UNDEFINED;
-        imageInfo.mipLevels = min(mMipLevels, getMaxMipCount(imageInfo.extent));
+        imageInfo.mipLevels = std::min(mMipLevels, getMaxMipCount(imageInfo.extent));
         imageInfo.pQueueFamilyIndices = nullptr;
         imageInfo.queueFamilyIndexCount = 0;
         imageInfo.samples = (VkSampleCountFlagBits)mSampleCount;
@@ -162,7 +162,7 @@ namespace Falcor
             throw std::exception("Failed to create texture.");
         }
 
-        // Allocate the GPU memory                
+        // Allocate the GPU memory
         VkMemoryRequirements memRequirements;
         vkGetImageMemoryRequirements(gpDevice->getApiHandle(), image, &memRequirements);
         VkDeviceMemory deviceMem = allocateDeviceMemory(Device::MemoryType::Default, memRequirements.memoryTypeBits, memRequirements.size);

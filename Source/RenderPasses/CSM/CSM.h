@@ -61,7 +61,7 @@ public:
 
     // Scripting functions
     void setCascadeCount(uint32_t cascadeCount);
-    void setMapSize(const uvec2& size) { resizeShadowMap(size); }
+    void setMapSize(const uint2& size) { resizeShadowMap(size); }
     void setVisibilityBufferBitsPerChannel(uint32_t bitsPerChannel);
     void setFilterMode(uint32_t filterMode);
     void setSdsmReadbackLatency(uint32_t latency);
@@ -70,14 +70,14 @@ public:
     void setMinDistanceRange(float min) { mControls.distanceRange.x = glm::clamp(min, 0.f, 1.f); }
     void setMaxDistanceRange(float max) { mControls.distanceRange.y = glm::clamp(max, 0.f, 1.f); }
     void setCascadeBlendThreshold(float threshold) { mCsmData.cascadeBlendThreshold = glm::clamp(threshold, 0.f, 1.0f); }
-    void setDepthBias(float bias) { mCsmData.depthBias = max(0.f, bias); }
+    void setDepthBias(float bias) { mCsmData.depthBias = std::max(0.f, bias); }
     void setPcfKernelWidth(uint32_t width) { mCsmData.pcfKernelWidth = width | 1; }
     void setVsmMaxAnisotropy(uint32_t maxAniso) { createVsmSampleState(maxAniso); }
     void setVsmLightBleedReduction(float reduction) { mCsmData.lightBleedingReduction = glm::clamp(reduction, 0.f, 1.0f); }
     void setEvsmPositiveExponent(float exp) { mCsmData.evsmExponents.x = glm::clamp(exp, 0.f, 5.54f); }
     void setEvsmNegativeExponent(float exp) { mCsmData.evsmExponents.y = glm::clamp(exp, 0.f, 5.54f); }
     uint32_t getCascadeCount() { return mCsmData.cascadeCount; }
-    const uvec2& getMapSize() { return mMapSize; }
+    const uint2& getMapSize() { return mMapSize; }
     uint32_t getVisibilityBufferBitsPerChannel() { return mVisibilityPassData.mapBitsPerChannel; }
     uint32_t getFilterMode() { return (uint32_t)mCsmData.filterMode; }
     uint32_t getSdsmReadbackLatency() { return mSdsmData.readbackLatency; }
@@ -95,7 +95,7 @@ public:
 
 private:
     CSM();
-    uvec2 mMapSize = uvec2(2048, 2048);
+    uint2 mMapSize = uint2(2048, 2048);
     Light::SharedConstPtr mpLight;
     Camera::SharedPtr mpLightCamera;
     //std::shared_ptr<CsmSceneRenderer> mpCsmSceneRenderer;
@@ -107,8 +107,8 @@ private:
 
     // Set shadow map generation parameters into a program.
     void setDataIntoVars(ShaderVar const& globalVars, ShaderVar const& csmDataVar);
-    vec2 calcDistanceRange(RenderContext* pRenderCtx, const Camera* pCamera, const Texture::SharedPtr& pDepthBuffer);
-    void partitionCascades(const Camera* pCamera, const glm::vec2& distanceRange);
+    float2 calcDistanceRange(RenderContext* pRenderCtx, const Camera* pCamera, const Texture::SharedPtr& pDepthBuffer);
+    void partitionCascades(const Camera* pCamera, const float2& distanceRange);
     void renderScene(RenderContext* pCtx);
 
     // Shadow-pass
@@ -122,14 +122,14 @@ private:
         GraphicsProgram::SharedPtr pProgram;
         GraphicsVars::SharedPtr pVars;
         GraphicsState::SharedPtr pState;
-        glm::vec2 mapSize;
+        float2 mapSize;
     } mShadowPass;
 
     // SDSM
     struct SdsmData
     {
         ParallelReduction::UniquePtr minMaxReduction;
-        vec2 sdsmResult;   // Used for displaying the range in the UI
+        float2 sdsmResult;   // Used for displaying the range in the UI
         uint32_t width = 0;
         uint32_t height = 0;
         uint32_t sampleCount = 0;
@@ -166,7 +166,7 @@ private:
         uint32_t shouldVisualizeCascades = 0u;
         int3 padding;
         glm::mat4 camInvViewProj;
-        glm::uvec2 screenDim = { 0, 0 };
+        uint2 screenDim = { 0, 0 };
         uint32_t mapBitsPerChannel = 32;
     } mVisibilityPassData;
 
@@ -174,7 +174,7 @@ private:
     {
         bool depthClamp = true;
         bool useMinMaxSdsm = true;
-        glm::vec2 distanceRange = glm::vec2(0, 1);
+        float2 distanceRange = float2(0, 1);
         float pssmLambda = 0.5f;
         PartitionMode partitionMode = PartitionMode::Logarithmic;
         bool stabilizeCascades = false;
@@ -190,7 +190,7 @@ private:
     void setupVisibilityPassFbo(const Texture::SharedPtr& pVisBuffer);
     ProgramReflection::BindLocation mPerLightCbLoc;
 
-    void resizeShadowMap(const uvec2& smDims);
+    void resizeShadowMap(const uint2& smDims);
     void setLight(const Light::SharedConstPtr& pLight);
 };
 

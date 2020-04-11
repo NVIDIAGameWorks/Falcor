@@ -25,54 +25,47 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-import Utils.Math.FormatConversion;
 
-static const uint kInvalidIndex = 0xffffffff;
-
-/** Ray hit information.
-
-    The fields in this struct uniquely identifies a hit point in terms
-    of mesh instance ID and primitive index, together with barycentrics.
-
-    If the host sets the following defines, the struct includes helpers
-    for packing/unpacking the hit information into a 64-bit value.
-
-    - HIT_INSTANCE_INDEX_BITS   Bits needed to encode the mesh instance ID of the hit
-    - HIT_TRIANGLE_INDEX_BITS   Bits needed to encode the primitive index of the hit
-
-    Together the bit allocations must be 32 or less.
-
+/** enum for texture level-of-detail -- see TexLODHelpers.slang
 */
-struct HitInfo
+
+#pragma once
+#include "Utils/HostDeviceShared.slangh"
+
+BEGIN_NAMESPACE_FALCOR
+
+/** This enum is shared between CPU/GPU.
+    It enumerates the different the different texture LOD modes.
+*/
+enum class TexLODMode
+    // TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
+#ifdef HOST_CODE
+    : uint32_t
+#endif
 {
-    uint    meshInstanceID;     ///< Mesh instance ID at hit.
-    uint    primitiveIndex;     ///< Primitive index at hit.
-    float2  barycentrics;       ///< Barycentric coordinates at ray hit, always in [0,1].
-
-#if defined(HIT_INSTANCE_INDEX_BITS) && defined(HIT_TRIANGLE_INDEX_BITS)
-#if ((HIT_INSTANCE_INDEX_BITS) + (HIT_TRIANGLE_INDEX_BITS)) > 32
-    #error HitInfo instance/primitive index bits exceed 32 bits
-#endif
-
-    /** Encode hit information to packed format.
-    */
-    uint2 encode()
-    {
-        uint2 packed;
-        packed.x = (meshInstanceID << (HIT_TRIANGLE_INDEX_BITS)) | primitiveIndex;
-        packed.y = packUnorm2x16_unsafe(barycentrics);
-        return packed;
-    }
-
-    /** Decode hit information from packed format.
-        \return True if the hit information is valid.
-    */
-    [mutating] bool decode(uint2 packed)
-    {
-        meshInstanceID = packed.x >> (HIT_TRIANGLE_INDEX_BITS);
-        primitiveIndex = packed.x & ((1 << (HIT_TRIANGLE_INDEX_BITS)) - 1);
-        barycentrics = unpackUnorm2x16(packed.y);
-        return packed.x != kInvalidIndex;
-    }
-#endif
+    Mip0 = 0,
+    RayCones = 1,
+    RayDiffsIsotropic = 2,
+    RayDiffsAnisotropic = 3,
 };
+
+// Define to_string() for TexLODMode for use in serialization.
+#ifdef HOST_CODE
+#define str(a) case TexLODMode::a: return #a
+inline std::string to_string(TexLODMode type)
+{
+    switch (type)
+    {
+        str(Mip0);
+        str(RayCones);
+        str(RayDiffsIsotropic);
+        str(RayDiffsAnisotropic);
+    default:
+        should_not_get_here();
+        return "";
+    }
+}
+#undef str
+#endif
+
+END_NAMESPACE_FALCOR

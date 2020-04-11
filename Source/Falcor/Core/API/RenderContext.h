@@ -83,13 +83,13 @@ namespace Falcor
             \param[in] flags Optional. Which components of the FBO to clear. By default will clear all attached resource.
             If you'd like to clear a specific color target, you can use RenderContext#clearFboColorTarget().
         */
-        void clearFbo(const Fbo* pFbo, const glm::vec4& color, float depth, uint8_t stencil, FboAttachmentType flags = FboAttachmentType::All);
+        void clearFbo(const Fbo* pFbo, const float4& color, float depth, uint8_t stencil, FboAttachmentType flags = FboAttachmentType::All);
 
         /** Clear a render-target view.
             \param[in] pRtv The RTV to clear
             \param[in] color The clear color
         */
-        void clearRtv(const RenderTargetView* pRtv, const glm::vec4& color);
+        void clearRtv(const RenderTargetView* pRtv, const float4& color);
 
         /** Clear a depth-stencil view.
             \param[in] pDsv The DSV to clear
@@ -105,7 +105,7 @@ namespace Falcor
             \param[in] clearColor The clear color
             The function only support floating-point and normalized color-formats and depth. For depth buffers, `clearColor.x` will be used. If there's a stencil-channel, `clearColor.y` must be zero
         */
-        void clearTexture(Texture* pTexture, const vec4& clearColor = vec4(0, 0, 0, 1));
+        void clearTexture(Texture* pTexture, const float4& clearColor = float4(0, 0, 0, 1));
 
         /** Ordered draw call.
             \param[in] vertexCount Number of vertices to draw
@@ -161,7 +161,7 @@ namespace Falcor
             \param[in] srcRect Source rectangle to blit from, specified by [left, up, right, down]
             \param[in] dstRect Target rectangle to blit to, specified by [left, up, right, down]
         */
-        void blit(ShaderResourceView::SharedPtr pSrc, RenderTargetView::SharedPtr pDst, const uvec4& srcRect = uvec4(-1), const uvec4& dstRect = uvec4(-1), Sampler::Filter = Sampler::Filter::Linear);
+        void blit(ShaderResourceView::SharedPtr pSrc, RenderTargetView::SharedPtr pDst, const uint4& srcRect = uint4(-1), const uint4& dstRect = uint4(-1), Sampler::Filter = Sampler::Filter::Linear);
 
         /** Submit the command list
         */

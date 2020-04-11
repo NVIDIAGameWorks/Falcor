@@ -1,4 +1,7 @@
-# SKIPPED Skipped due to random generation of NaNs.
+IMAGE_TEST = {
+    'skipped': 'Skipped due to random generation of NaNs.'
+}
+
 from helpers import render_frames
 from graphs.CSM import CSM as g
 from falcor import *
