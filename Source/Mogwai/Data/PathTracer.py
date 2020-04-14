@@ -10,7 +10,7 @@ def render_graph_PathTracerGraph():
     g.addPass(ToneMappingPass, "ToneMappingPass")
     GBufferRT = RenderPass("GBufferRT", {'forceCullMode': False, 'cull': CullMode.CullBack, 'samplePattern': SamplePattern.Stratified, 'sampleCount': 16})
     g.addPass(GBufferRT, "GBufferRT")
-    MegakernelPathTracer = RenderPass("MegakernelPathTracer", {'mSharedParams': PathTracerParams(useVBuffer=0)})
+    MegakernelPathTracer = RenderPass("MegakernelPathTracer", {'mSharedParams': PathTracerParams(useVBuffer=0, useAnalyticLights=0)})
     g.addPass(MegakernelPathTracer, "MegakernelPathTracer")
     g.addEdge("GBufferRT.posW", "MegakernelPathTracer.posW")
     g.addEdge("GBufferRT.normW", "MegakernelPathTracer.normalW")
