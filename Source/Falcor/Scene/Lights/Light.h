@@ -79,7 +79,7 @@ namespace Falcor
 
         /** Set the light intensity.
         */
-        virtual void setIntensity(const glm::vec3& intensity);
+        virtual void setIntensity(const float3& intensity);
 
         enum class Changes
         {
@@ -101,9 +101,9 @@ namespace Falcor
         /** Scripting helper functions for getting/setting intensity and color.
         */
         void setIntensityFromScript(float intensity) { setIntensityFromUI(intensity); }
-        void setColorFromScript(glm::vec3 color) { setColorFromUI(color); }
+        void setColorFromScript(float3 color) { setColorFromUI(color); }
         float getIntensityForScript() { return getIntensityForUI(); }
-        glm::vec3 getColorForScript() { return getColorForUI(); }
+        float3 getColorForScript() { return getColorForUI(); }
 
     protected:
         Light() = default;
@@ -111,15 +111,15 @@ namespace Falcor
         static const size_t kDataSize = sizeof(LightData);
 
         /* UI callbacks for keeping the intensity in-sync */
-        glm::vec3 getColorForUI();
-        void setColorFromUI(const glm::vec3& uiColor);
+        float3 getColorForUI();
+        void setColorFromUI(const float3& uiColor);
         float getIntensityForUI();
         void setIntensityFromUI(float intensity);
 
         std::string mName;
 
         /* These two variables track mData values for consistent UI operation.*/
-        glm::vec3 mUiLightIntensityColor = glm::vec3(0.5f, 0.5f, 0.5f);
+        float3 mUiLightIntensityColor = float3(0.5f, 0.5f, 0.5f);
         float     mUiLightIntensityScale = 1.0f;
         LightData mData, mPrevData;
         Changes mChanges = Changes::None;
@@ -143,16 +143,17 @@ namespace Falcor
         void renderUI(Gui* pGui, const char* group = nullptr) override;
 
         /** Set the light's world-space direction.
+            \param[in] dir Light direction. Does not have to be normalized.
         */
-        void setWorldDirection(const glm::vec3& dir);
+        void setWorldDirection(const float3& dir);
 
         /** Set the scene parameters
         */
-        void setWorldParams(const glm::vec3& center, float radius);
+        void setWorldParams(const float3& center, float radius);
 
         /** Get the light's world-space direction.
         */
-        const glm::vec3& getWorldDirection() const { return mData.dirW; }
+        const float3& getWorldDirection() const { return mData.dirW; }
 
         /** Get total light power (needed for light picking)
         */
@@ -161,7 +162,7 @@ namespace Falcor
     private:
         DirectionalLight();
         float mDistance = 1e3f; ///< Scene bounding radius is required to move the light position sufficiently far away
-        vec3 mCenter;
+        float3 mCenter;
     };
 
     /** Simple infinitely-small point light with quadratic attenuation
@@ -187,11 +188,12 @@ namespace Falcor
 
         /** Set the light's world-space position
         */
-        void setWorldPosition(const glm::vec3& pos);
+        void setWorldPosition(const float3& pos);
 
         /** Set the light's world-space direction.
+            \param[in] dir Light direction. Does not have to be normalized.
         */
-        void setWorldDirection(const glm::vec3& dir);
+        void setWorldDirection(const float3& dir);
 
         /** Set the cone opening half-angle for use as a spot light
             \param[in] openingAngle Angle in radians.
@@ -200,15 +202,15 @@ namespace Falcor
 
         /** Get the light's world-space position
         */
-        const glm::vec3& getWorldPosition() const { return mData.posW; }
+        const float3& getWorldPosition() const { return mData.posW; }
 
         /** Get the light's world-space direction
         */
-        const glm::vec3& getWorldDirection() const { return mData.dirW; }
+        const float3& getWorldDirection() const { return mData.dirW; }
 
         /** Get the light intensity.
         */
-        const glm::vec3& getIntensity() const { return mData.intensity; }
+        const float3& getIntensity() const { return mData.intensity; }
 
         /** Get the penumbra half-angle
         */
@@ -246,11 +248,11 @@ namespace Falcor
         /** Set light source scaling
             \param[in] scale x,y,z scaling factors
         */
-        void setScaling(vec3 scale) { mScaling = scale; }
+        void setScaling(float3 scale) { mScaling = scale; }
 
         /** Set light source scale
           */
-        vec3 getScaling() const { return mScaling; }
+        float3 getScaling() const { return mScaling; }
 
         /** Get total light power (needed for light picking)
         */
@@ -276,8 +278,8 @@ namespace Falcor
         void update();
 
         bool mDirty = true;
-        glm::vec3 mScaling;              ///< Scaling, controls the size of the light
-        glm::mat4 mTransformMatrix;      ///< Transform matrix minus scaling component
+        float3 mScaling;                ///< Scaling, controls the size of the light
+        glm::mat4 mTransformMatrix;     ///< Transform matrix minus scaling component
     };
 
     // TODO: Remove this? It's not used anywhere

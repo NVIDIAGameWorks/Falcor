@@ -11,6 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="AppData.cpp" />
     <ClCompile Include="Extensions\Capture\FrameCapture.cpp" />
     <ClCompile Include="Extensions\Capture\CaptureTrigger.cpp" />
     <ClCompile Include="Extensions\Capture\VideoCapture.cpp" />
@@ -23,6 +24,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AppData.h" />
     <ClInclude Include="Extensions\Capture\FrameCapture.h" />
     <ClInclude Include="Extensions\Capture\CaptureTrigger.h" />
     <ClInclude Include="Extensions\Capture\VideoCapture.h" />

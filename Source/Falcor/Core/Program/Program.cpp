@@ -865,7 +865,7 @@ namespace Falcor
         // and `ProgramReflection`: they are one-to-one. Ideally in a future version
         // of Falcor they could be the same object.
         //
-        ProgramVersion::SharedPtr pVersion = ProgramVersion::createEmpty(const_cast<Program*>(this));
+        ProgramVersion::SharedPtr pVersion = ProgramVersion::createEmpty(const_cast<Program*>(this), pSlangGlobalScope);
 
         // Note: Because of interactions between how `SV_Target` outputs
         // and `u` register bindings work in Slang today (as a compatibility
@@ -892,7 +892,6 @@ namespace Falcor
             mDefineList,
             pReflector,
             getProgramDescString(),
-            pSlangGlobalScope,
             pSlangEntryPoints);
 
         return pVersion;

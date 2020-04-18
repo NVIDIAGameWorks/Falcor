@@ -39,7 +39,7 @@ namespace Falcor
 
         // The shader uses the first two dispatch dimensions as spatial seed and the last as instance index.
         // For each sample generator instance, it generates kDimensions samples.
-        const glm::uvec3 kDispatchDim = { 64, 64, 16 };
+        const uint3 kDispatchDim = { 64, 64, 16 };
         const uint32_t kDimensions = 32;
 
         /** Estimates the population Pearson correlation between pairs of

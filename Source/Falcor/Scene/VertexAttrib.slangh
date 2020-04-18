@@ -30,39 +30,21 @@
 
 BEGIN_NAMESPACE_FALCOR
 
-enum class VertexElement
-{
-    Position,
-    Normal,
-    Bitangent,
-    TexCoord,
-    LightmapUV,
-    PrevPosition,
-    DrawID,
-    // Many places in code iterate based on VertexElement, or check element index directly, so instance data isn't part of this enum
+#define VERTEX_POSITION_LOC                 0
+#define VERTEX_PACKED_NORMAL_BITANGENT_LOC  1
+#define VERTEX_TEXCOORD_LOC                 2
+#define VERTEX_PREV_POSITION_LOC            3
+#define INSTANCE_DRAW_ID_LOC                4
 
-    Count // Must be last
-};
+#define VERTEX_LOCATION_COUNT               5
 
-#define VERTEX_POSITION_LOC         0
-#define VERTEX_NORMAL_LOC           1
-#define VERTEX_BITANGENT_LOC        2
-#define VERTEX_TEXCOORD_LOC         3
-#define VERTEX_LIGHTMAP_UV_LOC      4
-#define VERTEX_PREV_POSITION_LOC    6
-#define INSTANCE_DRAW_ID_LOC        7
+#define VERTEX_USER_ELEM_COUNT              4
+#define VERTEX_USER0_LOC                    (VERTEX_LOCATION_COUNT)
 
-#define VERTEX_LOCATION_COUNT       8
-
-#define VERTEX_USER_ELEM_COUNT      4
-#define VERTEX_USER0_LOC            (VERTEX_LOCATION_COUNT)
-
-#define VERTEX_POSITION_NAME        "POSITION"
-#define VERTEX_NORMAL_NAME          "NORMAL"
-#define VERTEX_BITANGENT_NAME       "BITANGENT"
-#define VERTEX_TEXCOORD_NAME        "TEXCOORD"
-#define VERTEX_LIGHTMAP_UV_NAME     "LIGHTMAP_UV"
-#define VERTEX_PREV_POSITION_NAME   "PREV_POSITION"
-#define INSTANCE_DRAW_ID_NAME       "DRAW_ID"
+#define VERTEX_POSITION_NAME                "POSITION"
+#define VERTEX_PACKED_NORMAL_BITANGENT_NAME "PACKED_NORMAL_BITANGENT"
+#define VERTEX_TEXCOORD_NAME                "TEXCOORD"
+#define VERTEX_PREV_POSITION_NAME           "PREV_POSITION"
+#define INSTANCE_DRAW_ID_NAME               "DRAW_ID"
 
 END_NAMESPACE_FALCOR

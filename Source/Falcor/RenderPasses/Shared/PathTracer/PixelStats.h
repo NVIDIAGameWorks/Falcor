@@ -53,7 +53,7 @@ namespace Falcor
 
         static SharedPtr create();
 
-        void beginFrame(RenderContext* pRenderContext, const glm::uvec2& frameDim);
+        void beginFrame(RenderContext* pRenderContext, const uint2& frameDim);
         void endFrame(RenderContext* pRenderContext);
 
         void prepareProgram(const Program::SharedPtr& pProgram, const ShaderVar& var);
@@ -86,7 +86,7 @@ namespace Falcor
         // Runtime data
         bool                                mRunning = false;               ///< True inbetween begin() / end() calls.
         bool                                mWaitingForData = false;        ///< True if we are waiting for data to become available on the GPU.
-        glm::uvec2                          mFrameDim = { 0, 0 };           ///< Frame dimensions at last call to begin().
+        uint2                               mFrameDim = { 0, 0 };           ///< Frame dimensions at last call to begin().
 
         bool                                mStatsValid = false;            ///< True if stats have been read back and are valid.
         Stats                               mStats;                         ///< Traversal stats.

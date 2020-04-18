@@ -124,7 +124,7 @@ namespace Falcor
             mCharDesc[i].topLeft.y = CharData.TopLeftY;
             mCharDesc[i].size.x = CharData.Width;
             mCharDesc[i].size.y = CharData.Height;
-            mLetterSpacing = max(mLetterSpacing, CharData.Width);
+            mLetterSpacing = std::max(mLetterSpacing, CharData.Width);
         }
 
         // Load the texture

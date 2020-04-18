@@ -41,7 +41,7 @@ namespace Falcor
     {
         gSamplerData.objectCount++;
     }
-    
+
     Sampler::~Sampler()
     {
         gSamplerData.objectCount--;
@@ -75,7 +75,7 @@ namespace Falcor
         mComparisonMode = mode;
         return *this;
     }
-    
+
     Sampler::Desc& Sampler::Desc::setAddressingMode(AddressMode modeU, AddressMode modeV, AddressMode modeW)
     {
         mModeU = modeU;
@@ -84,7 +84,7 @@ namespace Falcor
         return *this;
     }
 
-    Sampler::Desc& Sampler::Desc::setBorderColor(const glm::vec4& borderColor)
+    Sampler::Desc& Sampler::Desc::setBorderColor(const float4& borderColor)
     {
         mBorderColor = borderColor;
         return *this;

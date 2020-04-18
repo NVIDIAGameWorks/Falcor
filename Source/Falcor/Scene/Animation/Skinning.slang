@@ -29,13 +29,14 @@ import Scene.SceneTypes;
 
 struct SkinningData
 {
-    StructuredBuffer<StaticVertexData> staticData;
+    StructuredBuffer<PackedStaticVertexData> staticData;
     StructuredBuffer<DynamicVertexData> dynamicData;
-    RWStructuredBuffer<StaticVertexData> skinnedVertices;
-    Buffer<float4> boneMatrices;
-    Buffer<float4> inverseTransposeBoneMatrices;
-    Buffer<float4> worldMatrices;
-    Buffer<float4> inverseTransposeWorldMatrices;
+    RWStructuredBuffer<PackedStaticVertexData> skinnedVertices;
+    RWStructuredBuffer<PrevVertexData> prevSkinnedVertices;
+    StructuredBuffer<float4> boneMatrices;
+    StructuredBuffer<float4> inverseTransposeBoneMatrices;
+    StructuredBuffer<float4> worldMatrices;
+    StructuredBuffer<float4> inverseTransposeWorldMatrices;
 
     float4x4 getTransposeWorldMatrix(uint matrixID)
     {
@@ -106,12 +107,13 @@ struct SkinningData
 
     StaticVertexData getStaticVertexData(uint vertexId)
     {
-        return staticData[getStaticVertexID(vertexId)];
+        return staticData[getStaticVertexID(vertexId)].unpack();
     }
 
-    void storeStaticData(uint vertexId, StaticVertexData data)
+    void storeSkinnedVertexData(uint vertexId, StaticVertexData data, PrevVertexData prevData)
     {
-        gData.skinnedVertices[getStaticVertexID(vertexId)] = data;
+        gData.skinnedVertices[getStaticVertexID(vertexId)].pack(data);
+        gData.prevSkinnedVertices[getStaticVertexID(vertexId)] = prevData;
     }
 
     float3 getCurrentPosition(uint vertexId)
@@ -131,16 +133,19 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
     gData.dynamicData.GetDimensions(vertexCount, stride);
     if (vertexId >= vertexCount) return;
 
+    // Copy the previous skinned data
+    PrevVertexData prev;
+    prev.position = gData.getCurrentPosition(vertexId);
+
     // Blend the vertices
     StaticVertexData s = gData.getStaticVertexData(vertexId);
     float4x4 boneMat = gData.getBlendedMatrix(vertexId);
     float4x4 invTransposeMat = gData.getInverseTransposeBlendedMatrix(vertexId);
 
-    s.prevPosition = gData.getCurrentPosition(vertexId);
     s.position = mul(float4(s.position, 1.f), boneMat).xyz;
     s.bitangent = mul(s.bitangent, (float3x3) boneMat);
     s.normal = mul(s.normal, (float3x3) transpose(invTransposeMat));
 
     // Store the result
-    gData.storeStaticData(vertexId, s);
+    gData.storeSkinnedVertexData(vertexId, s, prev);
 }

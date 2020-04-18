@@ -53,6 +53,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <algorithm>
 #include "Utils/Logger.h"
 #include "Utils/Math/Vector.h"
 
@@ -193,7 +194,7 @@ namespace Falcor
     template<typename T>
     inline T clamp(const T& val, const T& minVal, const T& maxVal)
     {
-        return min(max(val, minVal), maxVal);
+        return std::min(std::max(val, minVal), maxVal);
     }
 
     /** Returns whether an integer number is a power of two.
@@ -320,7 +321,8 @@ namespace Falcor
     // Required to_string functions
     using std::to_string;
     inline std::string to_string(const std::string& s) { return '"' + s + '"'; } // Here for completeness
-    inline std::string to_string(bool b) { return b ? "true" : "false"; }
+    // Use upper case True/False for compatibility with Python
+    inline std::string to_string(bool b) { return b ? "True" : "False"; }
 
     template<typename A, typename B>
     std::string to_string(const std::pair<typename A, typename B>& p)
@@ -355,12 +357,12 @@ namespace Falcor
 #if defined(_MSC_VER)
 // Enable Windows visual styles
 #pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
-#define deprecate(_ver_, _msg_) __declspec(deprecated("This function is deprecated and will be removed in Falcor " ##  _ver_ ## ". " ## _msg_))
+#define deprecate(_ver_, _msg_) __declspec(deprecated("This function has been deprecated in " ##  _ver_ ## ". " ## _msg_))
 #define forceinline __forceinline
 using DllHandle = HMODULE;
 #define suppress_deprecation __pragma(warning(suppress : 4996));
 #elif defined(__GNUC__)
-#define deprecate(_ver_, _msg_) __attribute__ ((deprecated("This function is deprecated and will be removed in Falcor " _ver_ ". " _msg_)))
+#define deprecate(_ver_, _msg_) __attribute__ ((deprecated("This function has been deprecated in " _ver_ ". " _msg_)))
 #define forceinline __attribute__((always_inline))
 using DllHandle = void*;
 #define suppress_deprecation _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")

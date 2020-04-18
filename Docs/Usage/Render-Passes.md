@@ -123,6 +123,7 @@ static void regExampleClass(ScriptBindings::Module& m)
 {
     auto c = m.regClass(SomeClass);
     c.property("property", &SomeClass::getProperty, &SomeClass::setProperty);
+    c.roProperty("readOnlyProperty", &SomeClass::getReadOnlyProperty);
 }
 ```
 This allows you to access the bound properties of your pass the same way you would access properties for any given instance of a Python class.

@@ -35,8 +35,6 @@ namespace Falcor
     {
         int float_as_int(float f) { return *reinterpret_cast<int*>(&f); }
         float int_as_float(int i) { return *reinterpret_cast<float*>(&i); }
-        using float3 = glm::vec3;
-        using int3 = glm::int3;
 
         /** Unmodified reference code from Ray Tracing Gems, Chapter 6.
         */
@@ -69,36 +67,36 @@ namespace Falcor
         auto r = [&]() -> float { return dist(rng); };
 
         // Create random test data.
-        std::vector<glm::vec3> testPositions(n);
-        std::vector<glm::vec3> testNormals(n);
+        std::vector<float3> testPositions(n);
+        std::vector<float3> testNormals(n);
         for (uint32_t i = 0; i < n; i++)
         {
             float scale = std::pow(10.f, (float)i / n * 60.f - 30.f); // 1e-30..1e30
-            testPositions[i] = glm::vec3(r(), r(), r()) * scale;
-            testNormals[i] = glm::normalize(glm::vec3(r(), r(), r()));
+            testPositions[i] = float3(r(), r(), r()) * scale;
+            testNormals[i] = glm::normalize(float3(r(), r(), r()));
         }
 
         // Setup and run GPU test.
         ctx.createProgram("Tests/ShadingUtils/RaytracingTests.cs.slang", "testComputeRayOrigin", {{"MATERIAL_COUNT", "1"}});
         ctx.allocateStructuredBuffer("result", n);
         // TODO: Cleanup when !122 is merged
-        //ctx.allocateStructuredBuffer("pos", n, testPositions, testPositions.size() * sizeof(glm::vec3));
-        //ctx.allocateStructuredBuffer("normal", n, testNormals.size() * sizeof(glm::vec3));
+        //ctx.allocateStructuredBuffer("pos", n, testPositions, testPositions.size() * sizeof(float3));
+        //ctx.allocateStructuredBuffer("normal", n, testNormals.size() * sizeof(float3));
         auto pPos = Buffer::createStructured(ctx.getProgram(), "pos", n);
-        pPos->setBlob(testPositions.data(), 0, testPositions.size() * sizeof(glm::vec3));
+        pPos->setBlob(testPositions.data(), 0, testPositions.size() * sizeof(float3));
         ctx["pos"] = pPos;
         auto pNormal = Buffer::createStructured(ctx.getProgram(), "normal", n);
-        pNormal->setBlob(testNormals.data(), 0, testNormals.size() * sizeof(glm::vec3));
+        pNormal->setBlob(testNormals.data(), 0, testNormals.size() * sizeof(float3));
         ctx["normal"] = pNormal;
 
         ctx["CB"]["n"] = n;
         ctx.runProgram(n);
 
         // Verify results.
-        const glm::vec3* result = ctx.mapBuffer<const glm::vec3>("result");
+        const float3* result = ctx.mapBuffer<const float3>("result");
         for (uint32_t i = 0; i < n; i++)
         {
-            glm::vec3 ref = offset_ray(testPositions[i], testNormals[i]);
+            float3 ref = offset_ray(testPositions[i], testNormals[i]);
             EXPECT_EQ(result[i], ref) << "i = " << i;
         }
         ctx.unmapBuffer("result");

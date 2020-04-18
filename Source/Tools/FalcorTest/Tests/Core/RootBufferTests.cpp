@@ -33,7 +33,7 @@ namespace Falcor
     namespace
     {
         const uint32_t kNumElems = 256;
-        const std::string kRootBufferName = "__root__testBuffer";
+        const std::string kRootBufferName = "testBuffer";
 
         std::mt19937 rng;
         auto dist = std::uniform_int_distribution<uint32_t>(0, 100);
@@ -79,10 +79,10 @@ namespace Falcor
                 var["typedBufferUint"] = Buffer::createTyped<uint32_t>(kNumElems, ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, typedBufferUint.data());
             }
 
-            std::vector<glm::vec4> typedBufferFloat4(kNumElems);
+            std::vector<float4> typedBufferFloat4(kNumElems);
             {
                 for (uint32_t i = 0; i < kNumElems; i++) typedBufferFloat4[i] = { r() * 0.25f, r() * 0.5f, r() * 0.75f, r() };
-                var["typedBufferFloat4"] = Buffer::createTyped<glm::vec4>(kNumElems, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, typedBufferFloat4.data());
+                var["typedBufferFloat4"] = Buffer::createTyped<float4>(kNumElems, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, typedBufferFloat4.data());
             }
 
             // Test binding buffer to root descriptor.
@@ -122,7 +122,7 @@ namespace Falcor
             for (uint32_t i = 0; i < kNumElems; i++) rawBuffer[i] = r();
             var["rawBuffer"] = Buffer::create(kNumElems * sizeof(uint32_t), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, rawBuffer.data());
             for (uint32_t i = 0; i < kNumElems; i++) typedBufferFloat4[i] = { r() * 0.25f, r() * 0.5f, r() * 0.75f, r() };
-            var["typedBufferFloat4"] = Buffer::createTyped<glm::vec4>(kNumElems, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, typedBufferFloat4.data());
+            var["typedBufferFloat4"] = Buffer::createTyped<float4>(kNumElems, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, typedBufferFloat4.data());
             var["CB"]["c0"] = ++c0;
 
             ctx.runProgram(kNumElems, 1, 1);

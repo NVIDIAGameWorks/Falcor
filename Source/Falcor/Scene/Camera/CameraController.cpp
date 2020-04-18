@@ -33,16 +33,16 @@
 
 namespace Falcor
 {
-    glm::vec2 convertCamPosRange(const glm::vec2 pos)
+    float2 convertCamPosRange(const float2 pos)
     {
         // Convert [0,1] range to [-1, 1], and inverse the Y (screen-space y==0 is top)
-        const glm::vec2 scale(2, -2);
-        const glm::vec2 offset(-1, 1);
-        glm::vec2 res = (pos * scale) + offset;
+        const float2 scale(2, -2);
+        const float2 offset(-1, 1);
+        float2 res = (pos * scale) + offset;
         return res;
     }
 
-    void OrbiterCameraController::setModelParams(const glm::vec3& center, float radius, float distanceInRadius)
+    void OrbiterCameraController::setModelParams(const float3& center, float radius, float distanceInRadius)
     {
         mModelCenter = center;
         mModelRadius = radius;
@@ -73,7 +73,7 @@ namespace Falcor
         case MouseEvent::Type::Move:
             if(mIsLeftButtonDown)
             {
-                glm::vec3 curVec = project2DCrdToUnitSphere(convertCamPosRange(mouseEvent.pos));
+                float3 curVec = project2DCrdToUnitSphere(convertCamPosRange(mouseEvent.pos));
                 glm::quat q = createQuaternionFromVectors(mLastVector, curVec);
                 glm::mat3x3 rot = (glm::mat3x3)q;
                 mRotation = rot * mRotation;
@@ -98,11 +98,11 @@ namespace Falcor
             mShouldRotate = false;
             mpCamera->setTarget(mModelCenter);
 
-            glm::vec3 camPos = mModelCenter;
-            camPos += (glm::vec3(0,0,1) * mRotation) * mModelRadius * mCameraDistance;
+            float3 camPos = mModelCenter;
+            camPos += (float3(0,0,1) * mRotation) * mModelRadius * mCameraDistance;
             mpCamera->setPosition(camPos);
 
-            glm::vec3 up(0, 1, 0);
+            float3 up(0, 1, 0);
             up = up * mRotation;
             mpCamera->setUpVector(up);
             return true;
@@ -173,14 +173,14 @@ namespace Falcor
         {
             if(mShouldRotate)
             {
-                glm::vec3 camPos = mpCamera->getPosition();
-                glm::vec3 camTarget = mpCamera->getTarget();
-                glm::vec3 camUp = b6DoF ? mpCamera->getUpVector() : glm::vec3(0, 1, 0);;
+                float3 camPos = mpCamera->getPosition();
+                float3 camTarget = mpCamera->getTarget();
+                float3 camUp = b6DoF ? mpCamera->getUpVector() : float3(0, 1, 0);;
 
-                glm::vec3 viewDir = glm::normalize(camTarget - camPos);
+                float3 viewDir = glm::normalize(camTarget - camPos);
                 if(mIsLeftButtonDown)
                 {
-                    glm::vec3 sideway = glm::cross(viewDir, normalize(camUp));
+                    float3 sideway = glm::cross(viewDir, normalize(camUp));
 
                     // Rotate around x-axis
                     glm::quat qy = glm::angleAxis(mMouseDelta.y * mSpeedModifier, sideway);
@@ -213,7 +213,7 @@ namespace Falcor
 
             if(mMovement.any())
             {
-                glm::vec3 movement(0, 0, 0);
+                float3 movement(0, 0, 0);
                 movement.z += mMovement.test(Direction::Forward) ? 1 : 0;
                 movement.z += mMovement.test(Direction::Backward) ? -1 : 0;
                 movement.x += mMovement.test(Direction::Left) ? 1 : 0;
@@ -221,12 +221,12 @@ namespace Falcor
                 movement.y += mMovement.test(Direction::Up) ? 1 : 0;
                 movement.y += mMovement.test(Direction::Down) ? -1 : 0;
 
-                glm::vec3 camPos = mpCamera->getPosition();
-                glm::vec3 camTarget = mpCamera->getTarget();
-                glm::vec3 camUp = mpCamera->getUpVector();
+                float3 camPos = mpCamera->getPosition();
+                float3 camTarget = mpCamera->getTarget();
+                float3 camUp = mpCamera->getUpVector();
 
-                glm::vec3 viewDir = normalize(camTarget - camPos);
-                glm::vec3 sideway = glm::cross(viewDir, normalize(camUp));
+                float3 viewDir = normalize(camTarget - camPos);
+                float3 sideway = glm::cross(viewDir, normalize(camUp));
 
                 float elapsedTime = (float)mTimer.delta();
 

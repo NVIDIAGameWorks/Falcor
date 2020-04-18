@@ -58,8 +58,8 @@ protected:
     // Internal state
     Scene::SharedPtr                mpScene;
 
-    glm::uvec2                      mFrameDim = {};
-    glm::vec2                       mInvFrameDim = {};
+    uint2                           mFrameDim = {};
+    float2                          mInvFrameDim = {};
 
     // UI variables
     SamplePattern                   mSamplePattern = SamplePattern::Center;     ///< Which camera jitter sample pattern to use.

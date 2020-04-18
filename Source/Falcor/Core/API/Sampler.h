@@ -54,7 +54,7 @@ namespace Falcor
             Wrap,               ///< Wrap around
             Mirror,             ///< Wrap around and mirror on every integer junction
             Clamp,              ///< Clamp the normalized coordinates to [0, 1]
-            Border,             ///< If out-of-bound, use the sampler's border color 
+            Border,             ///< If out-of-bound, use the sampler's border color
             MirrorOnce          ///< Same as Mirror, but mirrors only once around 0
         };
 
@@ -100,7 +100,7 @@ namespace Falcor
 
             /** Set the border color. Only applies when the addressing mode is ClampToBorder
             */
-            Desc& setBorderColor(const glm::vec4& borderColor);
+            Desc& setBorderColor(const float4& borderColor);
 
         protected:
             Filter mMagFilter = Filter::Linear;
@@ -114,7 +114,7 @@ namespace Falcor
             AddressMode mModeU = AddressMode::Wrap;
             AddressMode mModeV = AddressMode::Wrap;
             AddressMode mModeW = AddressMode::Wrap;
-            glm::vec4 mBorderColor = glm::vec4(0, 0, 0, 0);
+            float4 mBorderColor = float4(0, 0, 0, 0);
         };
 
         ~Sampler();
@@ -175,7 +175,7 @@ namespace Falcor
 
         /** Get the border color
         */
-        const glm::vec4& getBorderColor() const { return mDesc.mBorderColor; }
+        const float4& getBorderColor() const { return mDesc.mBorderColor; }
 
         /** Get the descriptor that was used to create the sampler.
         */

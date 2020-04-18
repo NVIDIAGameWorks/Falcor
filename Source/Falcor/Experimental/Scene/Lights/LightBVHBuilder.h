@@ -116,8 +116,8 @@ namespace Falcor
         struct TriangleSortData
         {
             BBox bounds;                                ///< World-space bounding box for the light source(s).
-            glm::vec3 center = {};                      ///< Center point.
-            glm::vec3 coneDirection = {};               ///< Light emission normal direction.
+            float3 center = {};                         ///< Center point.
+            float3 coneDirection = {};                  ///< Light emission normal direction.
             float cosConeAngle = 1.f;                   ///< Cosine normal bounding cone (half) angle.
             float flux = 0.f;                           ///< Precomputed triangle flux (note, this takes doublesidedness into account).
             uint32_t triangleIndex = kInvalidIndex;     ///< Index into global triangle list.
@@ -162,7 +162,7 @@ namespace Falcor
             \param[out] cosConeAngle Cosine of the angle value of the lighting cone for the node located at nodesCurrentByteOffset, or kInvalidCosConeAngle if the cone is invalid.
             \return  direction of the lighting cone for the node loacted at nodesCurrentByteOffset.
         */
-        glm::vec3 computeLightingConesInternal(uint32_t nodesCurrentByteOffset, AlignedAllocator& alignedAllocator, float& cosConeAngle);
+        float3 computeLightingConesInternal(uint32_t nodesCurrentByteOffset, AlignedAllocator& alignedAllocator, float& cosConeAngle);
 
         /** Compute lighting cone for a range of triangles.
             \param[in] triangleRange Range of triangles to process.
@@ -170,7 +170,7 @@ namespace Falcor
             \param[out] cosTheta Cosine of the cone angle.
             \return Direction of the lighting cone.
         */
-        static glm::vec3 computeLightingCone(const Range& triangleRange, const BuildingData& data, float& cosTheta);
+        static float3 computeLightingCone(const Range& triangleRange, const BuildingData& data, float& cosTheta);
 
         // See the documentation of SplitHeuristicFunction.
         static SplitResult computeSplitWithEqual(const BuildingData& /*data*/, const Range& triangleRange, const BBox& nodeBounds, const Options& /*parameters*/);

@@ -34,8 +34,8 @@ namespace Falcor
     */
     struct BoundingBox
     {
-        glm::vec3 center; ///< Center position of the bounding box
-        glm::vec3 extent; ///< Half length of each side. Essentially the coordinates to the max corner relative to the center.
+        float3 center; ///< Center position of the bounding box
+        float3 extent; ///< Half length of each side. Essentially the coordinates to the max corner relative to the center.
 
         /** Checks whether two bounding boxes are equivalent in position and size
         */
@@ -50,27 +50,27 @@ namespace Falcor
         */
         BoundingBox transform(const glm::mat4& mat) const
         {
-            glm::vec3 min = center - extent;
-            glm::vec3 max = center + extent;
+            float3 min = center - extent;
+            float3 max = center + extent;
 
-            glm::vec3 xa = glm::vec3(mat[0] * min.x);
-            glm::vec3 xb = glm::vec3(mat[0] * max.x);
-            glm::vec3 xMin = glm::min(xa, xb);
-            glm::vec3 xMax = glm::max(xa, xb);
+            float3 xa = float3(mat[0] * min.x);
+            float3 xb = float3(mat[0] * max.x);
+            float3 xMin = glm::min(xa, xb);
+            float3 xMax = glm::max(xa, xb);
 
-            glm::vec3 ya = glm::vec3(mat[1] * min.y);
-            glm::vec3 yb = glm::vec3(mat[1] * max.y);
-            glm::vec3 yMin = glm::min(ya, yb);
-            glm::vec3 yMax = glm::max(ya, yb);
+            float3 ya = float3(mat[1] * min.y);
+            float3 yb = float3(mat[1] * max.y);
+            float3 yMin = glm::min(ya, yb);
+            float3 yMax = glm::max(ya, yb);
 
-            glm::vec3 za = glm::vec3(mat[2] * min.z);
-            glm::vec3 zb = glm::vec3(mat[2] * max.z);
-            glm::vec3 zMin = glm::min(za, zb);
-            glm::vec3 zMax = glm::max(za, zb);
+            float3 za = float3(mat[2] * min.z);
+            float3 zb = float3(mat[2] * max.z);
+            float3 zMin = glm::min(za, zb);
+            float3 zMax = glm::max(za, zb);
 
 
-            glm::vec3 newMin = xMin + yMin + zMin + glm::vec3(mat[3]);
-            glm::vec3 newMax = xMax + yMax + zMax + glm::vec3(mat[3]);
+            float3 newMin = xMin + yMin + zMin + float3(mat[3]);
+            float3 newMax = xMax + yMax + zMax + float3(mat[3]);
 
             return BoundingBox::fromMinMax(newMin, newMax);
         }
@@ -78,7 +78,7 @@ namespace Falcor
         /** Gets the minimum position of the bounding box
             \return Minimum position
         */
-        glm::vec3 getMinPos() const
+        float3 getMinPos() const
         {
             return center - extent;
         }
@@ -86,7 +86,7 @@ namespace Falcor
         /** Gets the maximum position of the bounding box
             \return Maximum position
         */
-        glm::vec3 getMaxPos() const
+        float3 getMaxPos() const
         {
             return center + extent;
         }
@@ -94,7 +94,7 @@ namespace Falcor
         /** Gets the size of each dimension of the bounding box.
             \return X,Y and Z lengths of the bounding box
         */
-        glm::vec3 getSize() const
+        float3 getSize() const
         {
             return extent * 2.0f;
         }
@@ -104,11 +104,11 @@ namespace Falcor
             \param[in] max Maximum point
             \return A bounding box
         */
-        static BoundingBox fromMinMax(const glm::vec3& min, const glm::vec3& max)
+        static BoundingBox fromMinMax(const float3& min, const float3& max)
         {
             BoundingBox box;
-            box.center = (max + min) * glm::vec3(0.5f);
-            box.extent = (max - min) * glm::vec3(0.5f);
+            box.center = (max + min) * float3(0.5f);
+            box.extent = (max - min) * float3(0.5f);
             return box;
         }
 

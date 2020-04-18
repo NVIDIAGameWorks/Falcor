@@ -28,6 +28,7 @@
 #pragma once
 #include "Falcor.h"
 #include "FalcorExperimental.h"
+#include "AppData.h"
 
 using namespace Falcor;
 
@@ -78,7 +79,7 @@ namespace Mogwai
     class Renderer : public IRenderer
     {
     public:
-        Renderer() = default;
+        Renderer();
         void onLoad(RenderContext* pRenderContext) override;
         void onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
         void onResizeSwapChain(uint32_t width, uint32_t height) override;
@@ -89,6 +90,7 @@ namespace Mogwai
         void onShutdown() override;
         void onDroppedFile(const std::string& filename) override;
         void loadScriptDialog();
+        void loadScriptDeferred(const std::string& filename);
         void loadScript(const std::string& filename);
         void dumpConfig(std::string filename = {}) const;
         static std::string getVersionString();
@@ -98,7 +100,10 @@ namespace Mogwai
         static constexpr uint32_t kMajorVersion = 0;
         static constexpr uint32_t kMinorVersion = 1;
 
+        const AppData& getAppData() const { return mAppData; }
+
         RenderGraph* getActiveGraph() const;
+
 //    private: // MOGWAI
         friend class Extension;
         std::vector<Extension::UniquePtr> mpExtensions;
@@ -131,7 +136,6 @@ namespace Mogwai
         void removeActiveGraph();
         void loadSceneDialog();
         void loadScene(std::string filename, SceneBuilder::Flags buildFlags = SceneBuilder::Flags::Default);
-        void setEnvMap(std::string filename);
         void setScene(Scene::ConstSharedPtrRef pScene);
         Scene::SharedPtr getScene() const;
         void executeActiveGraph(RenderContext* pRenderContext);
@@ -140,13 +144,15 @@ namespace Mogwai
 
         std::vector<std::string> getGraphOutputs(const RenderGraph::SharedPtr& pGraph);
         void graphOutputsGui(Gui::Widgets& widget);
-        bool renderDebugWindow(Gui::Widgets& widget, const Gui::DropdownList& dropdown, DebugWindow& data, const uvec2& winSize); // Returns false if the window was closed
+        bool renderDebugWindow(Gui::Widgets& widget, const Gui::DropdownList& dropdown, DebugWindow& data, const uint2& winSize); // Returns false if the window was closed
         void renderOutputUI(Gui::Widgets& widget, const Gui::DropdownList& dropdown, std::string& selectedOutput);
         void addDebugWindow();
         void eraseDebugWindow(size_t id);
         void unmarkOutput(const std::string& name);
         void markOutput(const std::string& name);
         size_t findGraph(std::string_view name);
+
+        AppData mAppData;
 
         std::vector<GraphData> mGraphs;
         uint32_t mActiveGraph = 0;
@@ -177,13 +183,4 @@ namespace Mogwai
             Renderer::extend(Name::create, #Name);     \
         }                                              \
     } gRendererExtensions##Name;
-
-    constexpr char kRendererVar[] = "m"; // MOGWAI do we want to expose it to all the extensions?
-
-    inline std::string filenameString(const std::string& s, bool stripDataDirs = true)
-    {
-        std::string filename = stripDataDirs ? stripDataDirectories(s) : s;
-        std::replace(filename.begin(), filename.end(), '\\', '/');
-        return filename;
-    }
 }

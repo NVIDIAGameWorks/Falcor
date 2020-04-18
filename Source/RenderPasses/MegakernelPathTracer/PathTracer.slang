@@ -38,7 +38,7 @@
 
 __exported import Scene.Scene;
 __exported import Scene.Raytracing;
-__exported import RenderPasses.Shared.HitInfo;
+__exported import Scene.HitInfo;
 __exported import RenderPasses.Shared.PathTracer.PixelStats;
 __exported import RenderPasses.Shared.PathTracer.PathTracerHelpers;
 __exported import RenderPasses.Shared.PathTracer.InteriorListHelpers;
@@ -150,8 +150,7 @@ void handleHit(const PathTracerData pt, inout ShadingData sd, inout PathData pat
 {
     // Evaluate Falcor's material parameters at the hit point.
     // TODO: Implement texLOD to enable texture filtering in prepareShadingData().
-    float3 barycentrics = float3(1.f - path.hit.barycentrics.x - path.hit.barycentrics.y, path.hit.barycentrics.x, path.hit.barycentrics.y);
-    VertexData v = gScene.getVertexData(path.hit.meshInstanceID, path.hit.primitiveIndex, barycentrics);
+    VertexData v = gScene.getVertexData(path.hit);
     const uint materialID = gScene.getMaterialID(path.hit.meshInstanceID);
     sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -path.dir, 0.f);
 

@@ -97,20 +97,25 @@ namespace Falcor::ScriptBindings
 
     PYBIND11_EMBEDDED_MODULE(falcor, m)
     {
-        // Alias python's True/False to true/false
-        m.attr("true") = true;
-        m.attr("false") = false;
+        // bool2, bool3, bool4
+        addVecType<bool2, bool, bool>(m, "bool2");
+        addVecType<bool3, bool, bool, bool>(m, "bool3");
+        addVecType<bool4, bool, bool, bool, bool>(m, "bool4");
 
-        // Bind glm vectors to Python
-        addVecType<glm::vec2, float, float>(m, "vec2");
-        addVecType<glm::vec3, float, float, float>(m, "vec3");
-        addVecType<glm::vec4, float, float, float, float>(m, "vec4");
-        addVecType<glm::uvec2, uint32_t, uint32_t>(m, "uvec2");
-        addVecType<glm::uvec3, uint32_t, uint32_t, uint32_t>(m, "uvec3");
-        addVecType<glm::uvec4, uint32_t, uint32_t, uint32_t, uint32_t>(m, "uvec4");
-        addVecType<glm::ivec2, int32_t, int32_t>(m, "ivec2");
-        addVecType<glm::ivec3, int32_t, int32_t, int32_t>(m, "ivec3");
-        addVecType<glm::ivec4, int32_t, int32_t, int32_t, int32_t>(m, "ivec4");
+        // float2, float3, float4
+        addVecType<float2, float, float>(m, "float2");
+        addVecType<float3, float, float, float>(m, "float3");
+        addVecType<float4, float, float, float, float>(m, "float4");
+
+        // int2, int3, int4
+        addVecType<int2, int32_t, int32_t>(m, "int2");
+        addVecType<int3, int32_t, int32_t, int32_t>(m, "int3");
+        addVecType<int4, int32_t, int32_t, int32_t, int32_t>(m, "int4");
+
+        // uint2, uint3, uint4
+        addVecType<uint2, uint32_t, uint32_t>(m, "uint2");
+        addVecType<uint3, uint32_t, uint32_t, uint32_t>(m, "uint3");
+        addVecType<uint4, uint32_t, uint32_t, uint32_t, uint32_t>(m, "uint4");
 
         if (gBindFuncs)
         {

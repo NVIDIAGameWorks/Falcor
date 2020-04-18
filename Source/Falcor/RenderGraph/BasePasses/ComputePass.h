@@ -65,7 +65,14 @@ namespace Falcor
             \param[in] pContext The compute context
             \param[in] nThreads The number of threads to dispatch in the XYZ dimensions (note that this is not the number of thread groups)
         */
-        virtual void execute(ComputeContext* pContext, const glm::uvec3& nThreads) { execute(pContext, nThreads.x, nThreads.y, nThreads.z); }
+        virtual void execute(ComputeContext* pContext, const uint3& nThreads) { execute(pContext, nThreads.x, nThreads.y, nThreads.z); }
+
+        /** Execute the pass using indirect dispatch given the compute-context and argument buffer
+            \param[in] pContext The compute context
+            \param[in] pArgBuffer Argument buffer
+            \param[in] argBufferOffset Offset in argument buffer
+        */
+        virtual void executeIndirect(ComputeContext* context, const Buffer* pArgBuffer, uint64_t argBufferOffset = 0);
 
         /** Get the vars
         */
@@ -88,12 +95,12 @@ namespace Falcor
         /** Set a vars object. Allows the user to override the internal vars, for example when one wants to share a vars object between different passes.
             The function throws an exception on error.
             \param[in] pVars The new GraphicsVars object. If this is nullptr, then the pass will automatically create a new vars object.
-        */  
+        */
         void setVars(const ComputeVars::SharedPtr& pVars);
 
         /** Get the thread group size from the program
         */
-        uvec3 getThreadGroupSize() const { return mpState->getProgram()->getReflector()->getThreadGroupSize(); }
+        uint3 getThreadGroupSize() const { return mpState->getProgram()->getReflector()->getThreadGroupSize(); }
 
     protected:
         ComputePass(const Program::Desc& desc, const Program::DefineList& defines, bool createVars);

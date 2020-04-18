@@ -28,7 +28,7 @@
 #pragma once
 
 namespace Falcor
-{    
+{
     /** Input modifiers used with some events
     */
     struct InputModifiers
@@ -57,9 +57,9 @@ namespace Falcor
         };
 
         Type type;              ///< Event Type.
-        glm::vec2 pos;          ///< Normalized coordinates x,y in range [0, 1]. (0,0) is the top-left corner of the window.
-        glm::vec2 screenPos;    ///< Screen-space coordinates in range [0, clientSize]. (0,0) is the top-left corner of the window.
-        glm::vec2 wheelDelta;   ///< If the current event is CMouseEvent#Type#Wheel, the change in wheel scroll. Otherwise zero.
+        float2 pos;             ///< Normalized coordinates x,y in range [0, 1]. (0,0) is the top-left corner of the window.
+        float2 screenPos;       ///< Screen-space coordinates in range [0, clientSize]. (0,0) is the top-left corner of the window.
+        float2 wheelDelta;      ///< If the current event is CMouseEvent#Type#Wheel, the change in wheel scroll. Otherwise zero.
         InputModifiers mods;    ///< Keyboard modifiers. Only valid if the event Type is one the button events
     };
 
@@ -73,7 +73,7 @@ namespace Falcor
             KeyReleased,    ///< Key was released.
             Input           ///< Character input
         };
-        
+
         /** Use this enum to find out which key was pressed. Alpha-numeric keys use their uppercase ASCII code, so you can use that as well.
         */
         enum class Key : uint32_t

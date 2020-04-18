@@ -125,8 +125,8 @@ void PixelInspectorPass::execute(RenderContext* pRenderContext, const RenderData
     }
 
     const float2 cursorPosition = mUseContinuousPicking ? mCursorPosition : mSelectedCursorPosition;
-    const uvec2 resolution = renderData.getDefaultTextureDims();
-    mSelectedPixel = glm::min((uvec2)(cursorPosition * ((float2)resolution)), resolution - 1u);
+    const uint2 resolution = renderData.getDefaultTextureDims();
+    mSelectedPixel = glm::min((uint2)(cursorPosition * ((float2)resolution)), resolution - 1u);
 
     // Fill in the constant buffer.
     mpVars["PerFrameCB"]["gResolution"] = resolution;
@@ -141,9 +141,9 @@ void PixelInspectorPass::execute(RenderContext* pRenderContext, const RenderData
             mpVars[it.texname] = pSrc;
 
             // If the texture has a different resolution, we need to scale the sampling coordinates accordingly.
-            const uvec2 srcResolution = uvec2(pSrc->getWidth(), pSrc->getHeight());
+            const uint2 srcResolution = uint2(pSrc->getWidth(), pSrc->getHeight());
             const bool needsScaling = mScaleInputsToWindow && srcResolution != resolution;
-            const uvec2 scaledCoord = (uvec2)(((float2)(srcResolution * mSelectedPixel)) / ((float2)resolution));
+            const uint2 scaledCoord = (uint2)(((float2)(srcResolution * mSelectedPixel)) / ((float2)resolution));
             mpVars["PerFrameCB"][std::string(it.texname) + "Coord"] = needsScaling ? scaledCoord : mSelectedPixel;
 
             mIsInputInBounds[it.name] = glm::all(glm::lessThanEqual(mSelectedPixel, srcResolution));

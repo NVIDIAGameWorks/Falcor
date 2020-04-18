@@ -58,14 +58,9 @@ struct Camera
     {
         CameraRay ray;
 
-        // Sample position in screen space in [0,1] with origin at the top-left corner.
-        // The camera jitter offsets the sample by +-0.5 pixels from the pixel center.
-        float2 p = (pixel + float2(0.5f, 0.5f)) / frameDim + float2(-data.jitterX, data.jitterY);
-        float2 ndc = float2(2, -2) * p + float2(-1, 1);
-
         // Compute the normalized ray direction assuming a pinhole camera.
         ray.origin = data.posW;
-        ray.dir = normalize(ndc.x * data.cameraU + ndc.y * data.cameraV + data.cameraW);
+        ray.dir = normalize(computeNonNormalizedRayDirPinhole(pixel, frameDim));
 
         float invCos = 1.f / dot(normalize(data.cameraW), ray.dir);
         ray.tMin = data.nearZ * invCos;
@@ -73,6 +68,24 @@ struct Camera
 
         return ray;
     }
+
+    /** Computes the primary ray's direction, non-normalized assuming pinhole camera model.
+        The camera jitter is taken into account to compute the sample position on the image plane.
+        \param[in] pixel Pixel coordinates with origin in top-left.
+        \param[in] frameDim Image plane dimensions in pixels.
+        \return Returns the non-normalized ray direction
+    */
+    float3 computeNonNormalizedRayDirPinhole(uint2 pixel, uint2 frameDim)
+    {
+        // Compute sample position in screen space in [0,1] with origin at the top-left corner.
+        // The camera jitter offsets the sample by +-0.5 pixels from the pixel center.
+        float2 p = (pixel + float2(0.5f, 0.5f)) / frameDim + float2(-data.jitterX, data.jitterY);
+        float2 ndc = float2(2, -2) * p + float2(-1, 1);
+
+        // Compute the non-normalized ray direction assuming a pinhole camera.
+        return ndc.x * data.cameraU + ndc.y * data.cameraV + data.cameraW;
+    }
+
 
     /** Computes a camera ray for a given pixel assuming a thin-lens camera model.
         The camera jitter is taken into account to compute the sample position on the image plane.

@@ -51,26 +51,26 @@ namespace Falcor
         return frameID;
     }
 
-    mat4 Animation::interpolate(const Keyframe& start, const Keyframe& end, double curTime) const
+    glm::mat4 Animation::interpolate(const Keyframe& start, const Keyframe& end, double curTime) const
     {
         double localTime = curTime - start.time;
         double keyframeDuration = end.time - start.time;
         if (keyframeDuration < 0) keyframeDuration += mDurationInSeconds;
         float factor = keyframeDuration != 0 ? (float)(localTime / keyframeDuration) : 1;
 
-        vec3 translation = lerp(start.translation, end.translation, factor);
-        vec3 scaling = lerp(start.scaling, end.scaling, factor);
-        quat rotation = slerp(start.rotation, end.rotation, factor);
+        float3 translation = lerp(start.translation, end.translation, factor);
+        float3 scaling = lerp(start.scaling, end.scaling, factor);
+        glm::quat rotation = slerp(start.rotation, end.rotation, factor);
 
-        mat4 T;
-        T[3] = vec4(translation, 1);
-        mat4 R = mat4_cast(rotation);
-        mat4 S = scale(scaling);
-        mat4 transform = T * R * S;
+        glm::mat4 T;
+        T[3] = float4(translation, 1);
+        glm::mat4 R = glm::mat4_cast(rotation);
+        glm::mat4 S = scale(scaling);
+        glm::mat4 transform = T * R * S;
         return transform;
     }
 
-    mat4 Animation::animateChannel(Channel& c, double time)
+    glm::mat4 Animation::animateChannel(Channel& c, double time)
     {
         size_t curKeyIndex = findChannelFrame(c, time);
         size_t nextKeyIndex = curKeyIndex + 1;
@@ -82,7 +82,7 @@ namespace Falcor
         return interpolate(c.keyframes[curKeyIndex], c.keyframes[nextKeyIndex], time);
     }
 
-    void Animation::animate(double totalTime, std::vector<mat4>& matrices)
+    void Animation::animate(double totalTime, std::vector<glm::mat4>& matrices)
     {
         // Calculate the relative time
         double modTime = fmod(totalTime, mDurationInSeconds);

@@ -33,16 +33,11 @@ __exported import Scene.Lights.LightData;
 __exported import Scene.Lights.LightProbeData;
 __exported import Scene.Material.MaterialData;
 
+import HitInfo;
 import TextureSampler;
+import Utils.Attributes;
 import Experimental.Scene.Lights.LightCollection;
-
-// Local stuff
-struct LocalMesh
-{
-    uint meshID;
-    uint meshInstanceID;
-    uint materialID;
-};
+import Experimental.Scene.Material.TexLODHelpers;
 
 #ifndef MATERIAL_COUNT
 // This error occurs when a shader imports Scene.slang without setting the defines
@@ -54,27 +49,32 @@ struct LocalMesh
 */
 struct Scene
 {
-    StructuredBuffer<MeshInstanceData> meshInstances;
+    // Geometry
+    [root] StructuredBuffer<MeshInstanceData> meshInstances;
     StructuredBuffer<MeshDesc> meshes;
-    StructuredBuffer<MaterialData> materials;
-    StructuredBuffer<LightData> lights;
 
-    Buffer<float4> worldMatrices;
-    Buffer<float4> inverseTransposeWorldMatrices; // #SCENEV2 Should this be 3x3?
-    Buffer<float4> previousFrameWorldMatrices;
+    [root] StructuredBuffer<float4> worldMatrices;
+    [root] StructuredBuffer<float4> inverseTransposeWorldMatrices; // TODO: Make this 3x3 matrices (stored as 4x3). See #795.
+    StructuredBuffer<float4> previousFrameWorldMatrices;
+
+    [root] StructuredBuffer<PackedStaticVertexData> vertices;       ///< Vertex data for this frame.
+    StructuredBuffer<PrevVertexData> prevVertices;                  ///< Vertex data for the previous frame, to handle skinned meshes.
+    [root] ByteAddressBuffer indices;                               ///< Vertex indices, three 32-bit indices per triangle packed tightly.
+
+    // Materials
+    StructuredBuffer<MaterialData> materials;
     MaterialResources materialResources[MATERIAL_COUNT];
+
+    // Lights and camera
+    StructuredBuffer<LightData> lights;
     LightCollection lightCollection;
     LightProbeData lightProbe;
-    Camera camera;
     Texture2D envMap;
+    Camera camera;
 
-    StructuredBuffer<StaticVertexData> vertices;
-    ByteAddressBuffer indices;
 
-    float4x4 getWorldMatrix(uint meshInstanceID)
+    float4x4 loadWorldMatrix(uint matrixID)
     {
-        uint matrixID = meshInstances[meshInstanceID].globalMatrixID;
-
         float4x4 m =
         {
             worldMatrices[matrixID * 4 + 0],
@@ -83,21 +83,29 @@ struct Scene
             worldMatrices[matrixID * 4 + 3]
         };
         return m;
-    };
+    }
 
-    float4x4 getInverseTransposeWorldMatrix(uint meshInstanceID)
+    float4x4 getWorldMatrix(uint meshInstanceID)
     {
         uint matrixID = meshInstances[meshInstanceID].globalMatrixID;
+        return loadWorldMatrix(matrixID);
+    };
 
-        float4x4 m =
+    float3x3 loadInverseTransposeWorldMatrix(uint matrixID)
+    {
+        float3x3 m =
         {
-            inverseTransposeWorldMatrices[matrixID * 4 + 0],
-            inverseTransposeWorldMatrices[matrixID * 4 + 1],
-            inverseTransposeWorldMatrices[matrixID * 4 + 2],
-            inverseTransposeWorldMatrices[matrixID * 4 + 3]
+            inverseTransposeWorldMatrices[matrixID * 4 + 0].xyz,
+            inverseTransposeWorldMatrices[matrixID * 4 + 1].xyz,
+            inverseTransposeWorldMatrices[matrixID * 4 + 2].xyz
         };
-
         return m;
+    }
+
+    float3x3 getInverseTransposeWorldMatrix(uint meshInstanceID)
+    {
+        uint matrixID = meshInstances[meshInstanceID].globalMatrixID;
+        return loadInverseTransposeWorldMatrix(matrixID);
     };
 
     float4x4 getPrevWorldMatrix(uint meshInstanceID)
@@ -122,6 +130,16 @@ struct Scene
     uint getMaterialCount()
     {
         return MATERIAL_COUNT;
+    }
+
+    MaterialData getMaterial(uint materialID)
+    {
+        return materials[materialID];
+    }
+
+    MeshInstanceData getMeshInstance(uint meshInstanceID)
+    {
+        return meshInstances[meshInstanceID];
     }
 
     MeshDesc getMeshDesc(uint meshInstanceID)
@@ -156,10 +174,19 @@ struct Scene
     */
     uint3 getIndices(uint meshInstanceID, uint triangleIndex)
     {
-        uint baseIndex = getMeshDesc(meshInstanceID).ibOffset + (triangleIndex * 3);
+        uint baseIndex = meshInstances[meshInstanceID].ibOffset + (triangleIndex * 3);
         uint3 vtxIndices = indices.Load3(baseIndex * 4);
-        vtxIndices += getMeshDesc(meshInstanceID).vbOffset;
+        vtxIndices += meshInstances[meshInstanceID].vbOffset;
         return vtxIndices;
+    }
+
+    /** Returns vertex data for a vertex.
+        \param[in] index Global vertex index.
+        \return Vertex data.
+    */
+    StaticVertexData getVertex(uint index)
+    {
+        return vertices[index].unpack();
     }
 
     /** Returns a triangle's face normal in object space.
@@ -186,7 +213,7 @@ struct Scene
         float3 p1 = vertices[vtxIndices[1]].position;
         float3 p2 = vertices[vtxIndices[2]].position;
         float3 N = cross(p1 - p0, p2 - p0);
-        float3x3 worldInvTransposeMat = (float3x3) getInverseTransposeWorldMatrix(meshInstanceID);
+        float3x3 worldInvTransposeMat = getInverseTransposeWorldMatrix(meshInstanceID);
         return normalize(mul(N, worldInvTransposeMat));
     }
 
@@ -259,46 +286,121 @@ struct Scene
         const uint3 vtxIndices = getIndices(meshInstanceID, triangleIndex);
         VertexData v = {};
 
-        // Note: dxcompiler.dll version 10.0.18362.1 gives validation errors when [unroll] is specified.
-        // We'll unroll it manually below instead. TODO: Clean this up when unroll works as expected.
-        //[unroll]
-        //for (int i = 0; i < 3; i++)
-        //{
-        //    v.posW       += vertices[vtxIndices[i]].position  * barycentrics[i];
-        //    v.normalW    += vertices[vtxIndices[i]].normal    * barycentrics[i];
-        //    v.bitangentW += vertices[vtxIndices[i]].bitangent * barycentrics[i];
-        //    v.texC       += vertices[vtxIndices[i]].texCrd    * barycentrics[i];
-        //}
-        v.posW += vertices[vtxIndices[0]].position * barycentrics[0];
-        v.posW += vertices[vtxIndices[1]].position * barycentrics[1];
-        v.posW += vertices[vtxIndices[2]].position * barycentrics[2];
+        StaticVertexData vtx[3] = { gScene.getVertex(vtxIndices[0]), gScene.getVertex(vtxIndices[1]), gScene.getVertex(vtxIndices[2]) };
 
-        v.normalW += vertices[vtxIndices[0]].normal * barycentrics[0];
-        v.normalW += vertices[vtxIndices[1]].normal * barycentrics[1];
-        v.normalW += vertices[vtxIndices[2]].normal * barycentrics[2];
+        v.posW += vtx[0].position * barycentrics[0];
+        v.posW += vtx[1].position * barycentrics[1];
+        v.posW += vtx[2].position * barycentrics[2];
 
-        v.bitangentW += vertices[vtxIndices[0]].bitangent * barycentrics[0];
-        v.bitangentW += vertices[vtxIndices[1]].bitangent * barycentrics[1];
-        v.bitangentW += vertices[vtxIndices[2]].bitangent * barycentrics[2];
+        v.normalW += vtx[0].normal * barycentrics[0];
+        v.normalW += vtx[1].normal * barycentrics[1];
+        v.normalW += vtx[2].normal * barycentrics[2];
 
-        v.texC += vertices[vtxIndices[0]].texCrd * barycentrics[0];
-        v.texC += vertices[vtxIndices[1]].texCrd * barycentrics[1];
-        v.texC += vertices[vtxIndices[2]].texCrd * barycentrics[2];
+        v.bitangentW += vtx[0].bitangent * barycentrics[0];
+        v.bitangentW += vtx[1].bitangent * barycentrics[1];
+        v.bitangentW += vtx[2].bitangent * barycentrics[2];
+
+        v.texC += vtx[0].texCrd * barycentrics[0];
+        v.texC += vtx[1].texCrd * barycentrics[1];
+        v.texC += vtx[2].texCrd * barycentrics[2];
 
         v.faceNormalW = getFaceNormalInObjectSpace(vtxIndices);
 
         float4x4 worldMat = getWorldMatrix(meshInstanceID);
-        float3x3 worldInvTransposeMat = (float3x3) getInverseTransposeWorldMatrix(meshInstanceID);
+        float3x3 worldInvTransposeMat = getInverseTransposeWorldMatrix(meshInstanceID);
 
         v.posW = mul(float4(v.posW, 1.f), worldMat).xyz;
-        v.normalW = mul(v.normalW, worldInvTransposeMat).xyz;
-        v.faceNormalW = mul(v.faceNormalW, worldInvTransposeMat).xyz;
-        v.bitangentW = mul(v.bitangentW, (float3x3)worldMat).xyz;
+        v.normalW = mul(v.normalW, worldInvTransposeMat);
+        v.faceNormalW = mul(v.faceNormalW, worldInvTransposeMat);
+        v.bitangentW = mul(v.bitangentW, (float3x3)worldMat);
 
         v.normalW = normalize(v.normalW);
         v.faceNormalW = normalize(v.faceNormalW);
         // Handle invalid bitangents gracefully (avoid NaN from normalization).
         v.bitangentW = dot(v.bitangentW, v.bitangentW) > 0.f ? normalize(v.bitangentW) : float3(0, 0, 0);
+        return v;
+    }
+
+    /** Returns the interpolated vertex attributes for a given hitpoint.
+        \param[in] hit Hit info.
+        \return Interpolated vertex attributes.
+    */
+    VertexData getVertexData(HitInfo hit)
+    {
+        return getVertexData(hit.meshInstanceID, hit.primitiveIndex, hit.getBarycentricWeights());
+    }
+
+    /** Returns interpolated vertex attributes in a ray tracing hit program when ray cones are used for texture LOD.
+        \param[in] meshInstanceID The mesh instance ID.
+        \param[in] triangleIndex Index of the triangle in the given mesh.
+        \param[in] barycentrics Barycentric coordinates in the triangle.
+        \return Interpolated vertex attributes.
+    */
+    VertexData getVertexDataRayCones(uint meshInstanceID, uint triangleIndex, float3 barycentrics)
+    {
+        const uint3 vtxIndices = getIndices(meshInstanceID, triangleIndex);
+        VertexData v = getVertexData(meshInstanceID, triangleIndex, barycentrics);
+
+        float2 txcoords[3];
+        float3 vtxs[3];
+        txcoords[0] = vertices[vtxIndices[0]].texCrd;
+        txcoords[1] = vertices[vtxIndices[1]].texCrd;
+        txcoords[2] = vertices[vtxIndices[2]].texCrd;
+        vtxs[0] = vertices[vtxIndices[0]].position;
+        vtxs[1] = vertices[vtxIndices[1]].position;
+        vtxs[2] = vertices[vtxIndices[2]].position;
+
+        float4x4 worldMat = getWorldMatrix(meshInstanceID);
+        v.coneTexLODValue = computeRayConeTriangleLODValue(vtxs, txcoords, float3x3(worldMat), v.faceNormalW);
+
+        return v;
+    }
+
+    /** Returns interpolated vertex attributes in a ray tracing hit program when ray differentials are used for texture LOD.
+        \param[in] meshInstanceID The mesh instance ID.
+        \param[in] triangleIndex Index of the triangle in the given mesh.
+        \param[in] barycentrics Barycentric coordinates in the triangle.
+        \param[in] rayDir Ray direction.
+        \param[in] hitT Distance to hit point.
+        \param[in,out] rayDiff The ray differential used as input and output.
+        \param[out] dUVdx The differential of the texture coordinates in pixel coordinate x.
+        \param[out] dUVdy The differential of the texture coordinates in pixel coordinate y.
+        \return Interpolated vertex attributes.
+    */
+    VertexData getVertexDataRayDiff(uint meshInstanceID, uint triangleIndex, float3 barycentrics, in float3 rayDir, in float hitT,
+        inout RayDiff rayDiff, out float2 dUVdx, out float2 dUVdy)
+    {
+        const uint3 vtxIndices = getIndices(meshInstanceID, triangleIndex);
+        VertexData v = getVertexData(meshInstanceID, triangleIndex, barycentrics);
+
+        float3 unnormalizedN;
+        float3 vtxs[3];
+        float3 normals[3];
+        float2 txcoords[3];
+        float2 dBarydx, dBarydy;
+        float4x4 worldMat = getWorldMatrix(meshInstanceID);
+        float3x3 worldInvTransposeMat = getInverseTransposeWorldMatrix(meshInstanceID);
+
+        StaticVertexData vtx[3] = { gScene.getVertex(vtxIndices[0]), gScene.getVertex(vtxIndices[1]), gScene.getVertex(vtxIndices[2]) };
+
+        vtxs[0] = mul(float4(vtx[0].position, 1.0), worldMat).xyz;
+        vtxs[1] = mul(float4(vtx[1].position, 1.0), worldMat).xyz;
+        vtxs[2] = mul(float4(vtx[2].position, 1.0), worldMat).xyz;
+        normals[0] = normalize(mul(vtx[0].normal, worldInvTransposeMat));
+        normals[1] = normalize(mul(vtx[1].normal, worldInvTransposeMat));
+        normals[2] = normalize(mul(vtx[2].normal, worldInvTransposeMat));
+        txcoords[0] = vtx[0].texCrd;
+        txcoords[1] = vtx[1].texCrd;
+        txcoords[2] = vtx[2].texCrd;
+
+        unnormalizedN = normals[0] * barycentrics[0];
+        unnormalizedN += normals[1] * barycentrics[1];
+        unnormalizedN += normals[2] * barycentrics[2];
+
+        float3 e1 = vtxs[1] - vtxs[0];
+        float3 e2 = vtxs[2] - vtxs[0];
+        computeDifferentialsBarysAndUVs(rayDiff, rayDir, vtxs, txcoords, e1, e2, v.faceNormalW, hitT, dBarydx, dBarydy, dUVdx, dUVdy);
+        reflectRayDifferential(rayDiff, rayDir, unnormalizedN, v.normalW, dBarydx, dBarydy, e1, e2, normals);
 
         return v;
     }
@@ -317,7 +419,7 @@ struct Scene
         [unroll]
         for (int i = 0; i < 3; i++)
         {
-            prevPos += vertices[vtxIndices[i]].prevPosition * barycentrics[i];
+            prevPos += prevVertices[vtxIndices[i]].position * barycentrics[i];
         }
 
         float4x4 prevWorldMat = getPrevWorldMatrix(meshInstanceID);

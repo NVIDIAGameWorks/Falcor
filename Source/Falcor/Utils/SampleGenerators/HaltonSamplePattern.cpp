@@ -30,7 +30,7 @@
 
 namespace Falcor
 {
-    const vec2 HaltonSamplePattern::kPattern[8] = { { 1.0f / 2.0f - 0.5f, 1.0f / 3.0f - 0.5f },
+    const float2 HaltonSamplePattern::kPattern[8] = { { 1.0f / 2.0f - 0.5f, 1.0f / 3.0f - 0.5f },
     { 1.0f / 4.0f - 0.5f, 2.0f / 3.0f - 0.5f },
     { 3.0f / 4.0f - 0.5f, 1.0f / 9.0f - 0.5f },
     { 1.0f / 8.0f - 0.5f, 4.0f / 9.0f - 0.5f },

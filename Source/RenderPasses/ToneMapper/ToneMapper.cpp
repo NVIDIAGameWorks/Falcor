@@ -300,7 +300,7 @@ void ToneMapper::renderUI(Gui::Widgets& widget)
 
             // Display color widget for the currently chosen white point.
             // We normalize the color so that max(RGB) = 1 for display purposes.
-            glm::float3 w = mSourceWhite;
+            float3 w = mSourceWhite;
             w = w / std::max(std::max(w.r, w.g), w.b);
             colorgradingGroup.rgbColor("", w);
         }
@@ -394,7 +394,7 @@ void ToneMapper::setWhiteMaxLuminance(float maxLuminance)
 
 void ToneMapper::setWhiteScale(float whiteScale)
 {
-    mWhiteScale = max(0.001f, whiteScale);
+    mWhiteScale = std::max(0.001f, whiteScale);
     mUpdateToneMapPass = true;
 }
 
@@ -418,7 +418,7 @@ void ToneMapper::updateWhiteBalanceTransform()
     // Calculate color transform for the current white point.
     mWhiteBalanceTransform = mWhiteBalance ? calculateWhiteBalanceTransformRGB_Rec709(mWhitePoint) : glm::identity<float3x3>();
     // Calculate source illuminant, i.e. the color that transforms to a pure white (1, 1, 1) output at the current color settings.
-    mSourceWhite = inverse(mWhiteBalanceTransform) * glm::float3(1, 1, 1);
+    mSourceWhite = inverse(mWhiteBalanceTransform) * float3(1, 1, 1);
 }
 
 void ToneMapper::updateColorTransform()

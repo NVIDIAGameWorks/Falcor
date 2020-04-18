@@ -37,13 +37,13 @@ namespace Falcor
 
         /** Returns defines needed packing/unpacking a HitInfo struct.
         */
-        static Shader::DefineList getDefines(const Scene::SharedPtr& pScene)
+        static Shader::DefineList getDefines(const Scene* pScene)
         {
             // Setup bit allocations for encoding the meshInstanceID and primitive indices.
+
             uint32_t meshInstanceCount = pScene->getMeshInstanceCount();
-            assert(meshInstanceCount > 0);
-            uint32_t maxInstanceID = meshInstanceCount - 1;
-            uint32_t instanceIndexBits = bitScanReverse(maxInstanceID) + 1;
+            uint32_t maxInstanceID = meshInstanceCount > 0 ? meshInstanceCount - 1 : 0;
+            uint32_t instanceIndexBits = maxInstanceID > 0 ? bitScanReverse(maxInstanceID) + 1 : 0;
 
             uint32_t maxTriangleCount = 0;
             for (uint32_t meshID = 0; meshID < pScene->getMeshCount(); meshID++)
@@ -51,9 +51,8 @@ namespace Falcor
                 uint32_t triangleCount = pScene->getMesh(meshID).indexCount / 3;
                 maxTriangleCount = std::max(triangleCount, maxTriangleCount);
             }
-            assert(maxTriangleCount > 0);
-            uint32_t maxTriangleID = maxTriangleCount - 1;
-            uint32_t triangleIndexBits = bitScanReverse(maxTriangleID) + 1;
+            uint32_t maxTriangleID = maxTriangleCount > 0 ? maxTriangleCount - 1 : 0;
+            uint32_t triangleIndexBits = maxTriangleID > 0 ? bitScanReverse(maxTriangleID) + 1 : 0;
 
             assert(instanceIndexBits > 0 && triangleIndexBits > 0);
             if (instanceIndexBits + triangleIndexBits > 32 ||

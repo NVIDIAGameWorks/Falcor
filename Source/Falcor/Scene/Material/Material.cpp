@@ -69,7 +69,7 @@ namespace Falcor
         }
         else
         {
-            glm::vec4 baseColor = getBaseColor();
+            float4 baseColor = getBaseColor();
             if (widget.var("Base color", baseColor, 0.f, 1.f, 0.01f))
                 setBaseColor(baseColor);
         }
@@ -82,7 +82,7 @@ namespace Falcor
         }
         else
         {
-            glm::vec4 specularParams = getSpecularParams();
+            float4 specularParams = getSpecularParams();
             if (widget.var("Specular params", specularParams, 0.f, 1.f, 0.01f))
                 setSpecularParams(specularParams);
             widget.tooltip("The encoding depends on the shading model:\n\n"
@@ -100,7 +100,7 @@ namespace Falcor
         }
         else
         {
-            glm::vec3 emissiveColor = getEmissiveColor();
+            float3 emissiveColor = getEmissiveColor();
             if (widget.var("Emissive color", emissiveColor, 0.f, 1.f, 0.01f))
                 setEmissiveColor(emissiveColor);
         }
@@ -213,7 +213,7 @@ namespace Falcor
         }
     }
 
-    void Material::setBaseColor(const vec4& color)
+    void Material::setBaseColor(const float4& color)
     {
         if (mData.baseColor != color)
         {
@@ -223,7 +223,7 @@ namespace Falcor
         }
     }
 
-    void Material::setSpecularParams(const vec4& color)
+    void Material::setSpecularParams(const float4& color)
     {
         if (mData.specular != color)
         {
@@ -242,7 +242,7 @@ namespace Falcor
         }
     }
 
-    void Material::setVolumeAbsorption(const vec3& volumeAbsorption)
+    void Material::setVolumeAbsorption(const float3& volumeAbsorption)
     {
         if (mData.volumeAbsorption != volumeAbsorption)
         {
@@ -251,7 +251,7 @@ namespace Falcor
         }
     }
 
-    void Material::setEmissiveColor(const vec3& color)
+    void Material::setEmissiveColor(const float3& color)
     {
         if (mData.emissive != color)
         {

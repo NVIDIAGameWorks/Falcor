@@ -43,7 +43,7 @@ namespace Falcor
     void GpuTimer::apiResolve(uint64_t result[2])
     {
         mpLowLevelData->getCommandList()->ResolveQueryData(spHeap.lock()->getApiHandle(), D3D12_QUERY_TYPE_TIMESTAMP, mStart, 2, mpResolveBuffer->getApiHandle(), 0);
-        uint64_t* pRes = (uint64*)mpResolveBuffer->map(Buffer::MapType::Read);
+        uint64_t* pRes = (uint64_t*)mpResolveBuffer->map(Buffer::MapType::Read);
         result[0] = pRes[0];
         result[1] = pRes[1];
         mpResolveBuffer->unmap();

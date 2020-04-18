@@ -17,6 +17,7 @@
     <ClCompile Include="Extensions\Profiler\TimingCapture.cpp">
       <Filter>Extensions\Profiler</Filter>
     </ClCompile>
+    <ClCompile Include="AppData.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Mogwai.h" />
@@ -34,6 +35,7 @@
     <ClInclude Include="Extensions\Profiler\TimingCapture.h">
       <Filter>Extensions\Profiler</Filter>
     </ClInclude>
+    <ClInclude Include="AppData.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Data">

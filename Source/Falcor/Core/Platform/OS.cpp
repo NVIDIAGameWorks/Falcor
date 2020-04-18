@@ -150,10 +150,10 @@ namespace Falcor
     bool findFileInDataDirectories(const std::string& filename, std::string& fullPath)
     {
         // Check if this is an absolute path
-        if (doesFileExist(filename))
+        if (fs::path(filename).is_absolute())
         {
             fullPath = canonicalizeFilename(filename);
-            return true;
+            return !fullPath.empty(); // Empty fullPath means path doesn't exist
         }
 
         for (const auto& dir : gDataDirectories)

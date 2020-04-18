@@ -152,13 +152,13 @@ namespace Falcor
             given by the product of the three provided dimensions.
             \param[in] dimensions Number of threads to dispatch in each dimension.
         */
-        void runProgram(const glm::uvec3& dimensions);
+        void runProgram(const uint3& dimensions);
 
         /** runProgram runs the compute program that was specified in
             |createProgram|, where the total number of threads that runs is
             given by the product of the three provided dimensions.
         */
-        void runProgram(uint32_t width = 1, uint32_t height = 1, uint32_t depth = 1) { runProgram(glm::uvec3(width, height, depth)); }
+        void runProgram(uint32_t width = 1, uint32_t height = 1, uint32_t depth = 1) { runProgram(uint3(width, height, depth)); }
 
         /** mapBuffer returns a pointer to the named structured buffer.
             Returns nullptr if no such buffer exists.  SFINAE is used to
@@ -191,7 +191,7 @@ namespace Falcor
         ComputeState::SharedPtr mpState;
         ComputeProgram::SharedPtr mpProgram;
         ComputeVars::SharedPtr mpVars;
-        glm::uvec3 mThreadGroupSize = { 0, 0, 0 };
+        uint3 mThreadGroupSize = { 0, 0, 0 };
 
         struct ParameterBuffer
         {

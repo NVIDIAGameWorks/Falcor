@@ -194,27 +194,6 @@ namespace Falcor
         */
         size_t getBufferCount() const { return mpBufferLayouts.size(); }
 
-        /** Add defines to notify a shader program about vertex what input properties have associated buffer data
-        */
-        void addVertexAttribDclToProg(Program* pProg) const
-        {
-            pProg->removeDefine("HAS_LIGHTMAP_UV");
-
-            for (const auto& l : mpBufferLayouts)
-            {
-                if(l)
-                {
-                    for (uint32_t i = 0; i < l->getElementCount(); i++)
-                    {
-                        if (l->getElementShaderLocation(i) == VERTEX_LIGHTMAP_UV_LOC)
-                        {
-                            pProg->addDefine("HAS_LIGHTMAP_UV");
-                        }
-                    }
-                }
-            }
-        }
-
     private:
         VertexLayout() { mpBufferLayouts.reserve(16); }
         std::vector<VertexBufferLayout::SharedConstPtr> mpBufferLayouts;

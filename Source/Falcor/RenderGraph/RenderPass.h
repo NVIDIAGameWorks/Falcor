@@ -60,18 +60,18 @@ namespace Falcor
 
         /** Get the default dimensions used for Texture2Ds (when `0` is specified as the dimensions in `RenderPassReflection`)
         */
-        const uvec2& getDefaultTextureDims() const { return mDefaultTexDims; }
+        const uint2& getDefaultTextureDims() const { return mDefaultTexDims; }
 
         /** Get the default format used for Texture2Ds (when `Unknown` is specified as the format in `RenderPassReflection`)
         */
         ResourceFormat getDefaultTextureFormat() const { return mDefaultTexFormat; }
     protected:
         friend class RenderGraphExe;
-        RenderData(const std::string& passName, const ResourceCache::SharedPtr& pResourceCache, const Dictionary::SharedPtr& pDict, const uvec2& defaultTexDims, ResourceFormat defaultTexFormat);
+        RenderData(const std::string& passName, const ResourceCache::SharedPtr& pResourceCache, const Dictionary::SharedPtr& pDict, const uint2& defaultTexDims, ResourceFormat defaultTexFormat);
         const std::string& mName;
         ResourceCache::SharedPtr mpResources;
         Dictionary::SharedPtr mpDictionary;
-        uvec2 mDefaultTexDims;
+        uint2 mDefaultTexDims;
         ResourceFormat mDefaultTexFormat;
     };
 
@@ -95,7 +95,7 @@ namespace Falcor
         struct CompileData
         {
             RenderPassReflection connectedResources;
-            uvec2 defaultTexDims;
+            uint2 defaultTexDims;
             ResourceFormat defaultTexFormat;
         };
 

@@ -35,7 +35,7 @@ namespace Falcor
     namespace
     {
         // Utility classes for compact data types on the GPU.
-        // TODO: Make types like these part of new math library. 
+        // TODO: Make types like these part of new math library.
 
         // Unsigned normalized integer.
         template<typename T, int bits>
@@ -210,9 +210,9 @@ namespace Falcor
         void testReduction(GPUUnitTestContext& ctx, const ComputeParallelReduction::SharedPtr& pReduction, ResourceFormat format, uint32_t width, uint32_t height)
         {
             const FormatType type = getFormatType(format);
-            if (type == FormatType::Uint) testReduction<glm::uvec4, uint32_t>(ctx, pReduction, format, width, height);
-            else if (type == FormatType::Sint) testReduction<glm::ivec4, int32_t>(ctx, pReduction, format, width, height);
-            else testReduction<glm::vec4, double>(ctx, pReduction, format, width, height);
+            if (type == FormatType::Uint) testReduction<uint4, uint32_t>(ctx, pReduction, format, width, height);
+            else if (type == FormatType::Sint) testReduction<int4, int32_t>(ctx, pReduction, format, width, height);
+            else testReduction<float4, double>(ctx, pReduction, format, width, height);
         }
     }
 

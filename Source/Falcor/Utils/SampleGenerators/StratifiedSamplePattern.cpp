@@ -65,7 +65,7 @@ namespace Falcor
         mRng = std::mt19937();
     }
 
-    glm::vec2 StratifiedSamplePattern::next()
+    float2 StratifiedSamplePattern::next()
     {
         auto dist = std::uniform_real_distribution<float>();
         auto u = [&]() { return dist(mRng); };
@@ -82,6 +82,6 @@ namespace Falcor
         assert(i < mBinsX && j < mBinsY);
         float x = ((float)i + u()) / mBinsX;
         float y = ((float)j + u()) / mBinsY;
-        return glm::vec2(x, y) - 0.5f;
+        return float2(x, y) - 0.5f;
     }
 }

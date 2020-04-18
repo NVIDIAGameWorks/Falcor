@@ -27,6 +27,8 @@
  **************************************************************************/
 #pragma once
 #include <string>
+#include <sstream>
+#include <iomanip>
 #include <algorithm>
 #include <locale>
 #include <codecvt>
@@ -252,9 +254,30 @@ namespace Falcor
     */
     inline void copyStringToBuffer(char* buffer, uint32_t bufferSize, const std::string& s)
     {
-        const uint32_t length = min(bufferSize - 1, (uint32_t)s.length());
+        const uint32_t length = std::min(bufferSize - 1, (uint32_t)s.length());
         s.copy(buffer, length);
         buffer[length] = '\0';
+    }
+
+    /** Converts a size in bytes to a human readable string:
+        - prints bytes (B) if size < 512 bytes
+        - prints kilobytes (KB) if size < 512 kilobytes
+        - prints megabytes (MB) if size < 512 megabytes
+        - otherwise prints gigabytes (GB)
+        \param[in] size Size in bytes
+        \return Returns a human readable string.
+    */
+    inline std::string formatByteSize(size_t size)
+    {
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(1);
+
+        if (size < 512) oss << size << "B";
+        else if (size < 512 * 1024) oss << (size / 1024.0) << "KB";
+        else if (size < 512 * 1024 * 1024) oss << (size / (1024.0 * 1024.0)) << "MB";
+        else oss << (size / (1024.0 * 1024.0 * 1024.0)) << "GB";
+
+        return oss.str();
     }
 
     /** Convert an ASCII string to a UTF-8 wstring

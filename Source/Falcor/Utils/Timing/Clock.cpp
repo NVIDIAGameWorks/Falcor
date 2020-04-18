@@ -32,14 +32,16 @@ namespace Falcor
 {
     namespace
     {
-        constexpr char kNow[] = "now";
+        constexpr char kTime[] = "time";
+        constexpr char kFrame[] = "frame";
+        constexpr char kFramerate[] = "framerate";
+        constexpr char kTimeScale[] = "timeScale";
+        constexpr char kExitTime[] = "exitTime";
+        constexpr char kExitFrame[] = "exitFrame";
         constexpr char kPause[] = "pause";
         constexpr char kPlay[] = "play";
         constexpr char kStop[] = "stop";
-        constexpr char kSimFps[] = "fpsSim";
-        constexpr char kFrame[] = "frame";
         constexpr char kStep[] = "step";
-        constexpr char kFramerate[] = "framerate";
 
         std::optional<uint32_t> fpsDropdown(Gui::Window& w, uint32_t curVal)
         {
@@ -93,26 +95,45 @@ namespace Falcor
         }
     }
 
-    Clock::Clock() { now(0); }
+    Clock::Clock() { setTime(0); }
 
-    Clock& Clock::framerate(uint32_t fps)
+    Clock& Clock::setFramerate(uint32_t fps)
     {
         mFramerate = fps;
         mTicksPerFrame = 0;
         if(fps)
         {
-            if (kTicksPerSecond % fps) logWarning("Clock::framerate() - requesetd FPS can't be accurately representated. Expect roudning errors");
+            if (kTicksPerSecond % fps) logWarning("Clock::setFramerate() - requested FPS can't be accurately representated. Expect roudning errors");
             mTicksPerFrame = kTicksPerSecond / fps;
         }
 
-        if(!mDeferredFrameID && !mDeferredTime) now(mTime.now);
+        if(!mDeferredFrameID && !mDeferredTime) setTime(mTime.now);
         return *this;
+    }
+
+    Clock& Clock::setExitTime(double seconds)
+    {
+        mExitTime = seconds;
+        mExitFrame = 0;
+        return *this;
+    }
+
+    Clock& Clock::setExitFrame(uint64_t frame)
+    {
+        mExitFrame = frame;
+        mExitTime = 0.0;
+        return *this;
+    }
+
+    bool Clock::shouldExit() const
+    {
+        return ((mExitTime && getTime() >= mExitTime) || (mExitFrame && getFrame() >= mExitFrame));
     }
 
     Clock& Clock::tick()
     {
-        if (mDeferredFrameID) frame(mDeferredFrameID.value());
-        else if (mDeferredTime) now(mDeferredTime.value());
+        if (mDeferredFrameID) setFrame(mDeferredFrameID.value());
+        else if (mDeferredTime) setTime(mDeferredTime.value());
         else if(!mPaused) step();
         return *this;
     }
@@ -129,7 +150,7 @@ namespace Falcor
         mDeferredFrameID = std::nullopt;
     }
 
-    Clock& Clock::now(double seconds, bool deferToNextTick)
+    Clock& Clock::setTime(double seconds, bool deferToNextTick)
     {
         resetDeferredObjects();
 
@@ -153,7 +174,7 @@ namespace Falcor
         return *this;
     }
 
-    Clock& Clock::frame(uint64_t f, bool deferToNextTick)
+    Clock& Clock::setFrame(uint64_t f, bool deferToNextTick)
     {
         resetDeferredObjects();
 
@@ -188,7 +209,7 @@ namespace Falcor
         else mFrames += frames;
 
         updateTimer();
-        double t = simulatingFps() ? timeFromFrame(mFrames, mTicksPerFrame) : ((mTimer.delta() * mScale) + mTime.now);
+        double t = isSimulatingFps() ? timeFromFrame(mFrames, mTicksPerFrame) : ((mTimer.delta() * mScale) + mTime.now);
         mTime.update(t);
         return *this;
     }
@@ -197,16 +218,16 @@ namespace Falcor
     {
         const auto& tex = gClockTextures;
 
-        float time = (float)now();
-        float scale = (float)timeScale();
-        if (w.var("Time##Cur", time, 0.f, FLT_MAX, 0.001f, false, "%.3f")) now(time);
-        if (!simulatingFps() && w.var("Scale", scale)) timeScale(scale);
-        bool showStep = mPaused && simulatingFps();
+        float time = (float)getTime();
+        float scale = (float)getTimeScale();
+        if (w.var("Time##Cur", time, 0.f, FLT_MAX, 0.001f, false, "%.3f")) setTime(time);
+        if (!isSimulatingFps() && w.var("Scale", scale)) setTimeScale(scale);
+        bool showStep = mPaused && isSimulatingFps();
 
         float indent = showStep ? 10.0f : 60.0f;
         w.indent(indent);
-        static const uvec2 iconSize = { 25, 25 };
-        if (w.imageButton("Rewind", tex.pRewind, iconSize)) now(0);
+        static const uint2 iconSize = { 25, 25 };
+        if (w.imageButton("Rewind", tex.pRewind, iconSize)) setTime(0);
         if (showStep && w.imageButton("PrevFrame", tex.pPrevFrame, iconSize, true, true)) step(-1);
         if (w.imageButton("Stop", tex.pStop, iconSize, true, true)) stop();
         auto pTex = mPaused ? tex.pPlay : tex.pPause;
@@ -220,34 +241,33 @@ namespace Falcor
         w.tooltip("Simulate a constant frame rate. The time will advance by 1/FPS each frame, regardless of the actual frame rendering time");
 
         auto fps = fpsDropdown(w, mFramerate);
-        if (fps) framerate(fps.value());
+        if (fps) setFramerate(fps.value());
 
-        if (simulatingFps())
+        if (isSimulatingFps())
         {
-            uint64_t curFrame = frame();
-            if (w.var("Frame ID", curFrame)) frame(curFrame);
+            uint64_t curFrame = getFrame();
+            if (w.var("Frame ID", curFrame)) setFrame(curFrame);
         }
     }
 
     SCRIPT_BINDING(Clock)
     {
         auto c = m.regClass(Clock);
-        c.func_(kNow, ScriptBindings::overload_cast<>(&Clock::now, ScriptBindings::const_));
-
-        auto now = [](Clock* pClock, double secs) {pClock->now(secs, true); };
-        c.func_(kNow, now, "seconds"_a);
-
-        c.func_(kFrame, ScriptBindings::overload_cast<>(&Clock::frame, ScriptBindings::const_));
-        auto frame = [](Clock* pClock, uint64_t f) {pClock->frame(f, true); };
-        c.func_(kFrame, frame, "frameID"_a);
+        
+        auto setTime = [](Clock* pClock, double t) {pClock->setTime(t, true); };
+        c.property(kTime, &Clock::getTime, setTime);
+        auto setFrame = [](Clock* pClock, uint64_t f) {pClock->setFrame(f, true); };
+        c.property(kFrame, &Clock::getFrame, setFrame);
+        c.property(kFramerate, &Clock::getFramerate, &Clock::setFramerate);
+        c.property(kTimeScale, &Clock::getTimeScale, &Clock::setTimeScale);
+        c.property(kExitTime, &Clock::getExitTime, &Clock::setExitTime);
+        c.property(kExitFrame, &Clock::getExitFrame, &Clock::setExitFrame);
 
         c.func_(kPause, &Clock::pause);
         c.func_(kPlay, &Clock::play);
         c.func_(kStop, &Clock::stop);
-        c.func_(kPause, &Clock::pause);
         c.func_(kStep, &Clock::step, "frames"_a = 1);
-        c.func_(kFramerate, ScriptBindings::overload_cast<uint32_t>(&Clock::framerate));
-        c.func_(kFramerate, ScriptBindings::overload_cast<>(&Clock::framerate, ScriptBindings::const_));
+
     }
 
     void Clock::start()
@@ -274,10 +294,12 @@ namespace Falcor
     std::string Clock::getScript(const std::string& var) const
     {
         std::string s;
-        s += Scripting::makeMemberFunc(var, kNow, 0);
-        s += Scripting::makeMemberFunc(var, kFramerate, mFramerate);
-        s += std::string("# If ") + kFramerate + "() is not zero, you can use the following function to set the start frame\n";
-        s += "# " + Scripting::makeMemberFunc(var, kFrame, 0);
+        s += Scripting::makeSetProperty(var, kTime, 0);
+        s += Scripting::makeSetProperty(var, kFramerate, mFramerate);
+        if (mExitTime) s += Scripting::makeSetProperty(var, kExitTime, mExitTime);
+        if (mExitFrame) s += Scripting::makeSetProperty(var, kExitFrame, mExitFrame);
+        s += std::string("# If ") + kFramerate + " is not zero, you can use the frame property to set the start frame\n";
+        s += "# " + Scripting::makeSetProperty(var, kFrame, 0);
         if (mPaused) s += Scripting::makeMemberFunc(var, kPause);
         return s;
     }

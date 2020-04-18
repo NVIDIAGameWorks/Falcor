@@ -26,7 +26,6 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Falcor.h"
-#include "RenderPasses/Shared/HitInfo.h"
 #include "RenderGraph/RenderPassStandardFlags.h"
 #include "GBufferRT.h"
 
@@ -133,7 +132,6 @@ void GBufferRT::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& 
     if (pScene)
     {
         mRaytrace.pProgram->addDefines(pScene->getSceneDefines());
-        mRaytrace.pProgram->addDefines(HitInfo::getDefines(pScene));
     }
 }
 
@@ -154,7 +152,7 @@ void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
         auto clear = [&](const ChannelDesc& channel)
         {
             auto pTex = renderData[channel.name]->asTexture();
-            if (pTex) pRenderContext->clearUAV(pTex->getUAV().get(), glm::vec4(0.f));
+            if (pTex) pRenderContext->clearUAV(pTex->getUAV().get(), float4(0.f));
         };
         for (const auto& channel : kGBufferChannels) clear(channel);
         for (const auto& channel : kGBufferExtraChannels) clear(channel);
@@ -204,14 +202,14 @@ void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
     auto bind = [&](const ChannelDesc& channel)
     {
         Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
-        if (pTex) pRenderContext->clearUAV(pTex->getUAV().get(), glm::vec4(0, 0, 0, 0));
+        if (pTex) pRenderContext->clearUAV(pTex->getUAV().get(), float4(0, 0, 0, 0));
         pGlobalVars[channel.texname] = pTex;
     };
     for (const auto& channel : kGBufferChannels) bind(channel);
     for (const auto& channel : kGBufferExtraChannels) bind(channel);
 
     // Launch the rays.
-    uvec3 targetDim = uvec3((int)mGBufferParams.frameSize.x, (int)mGBufferParams.frameSize.y, 1u);
+    uint3 targetDim = uint3((int)mGBufferParams.frameSize.x, (int)mGBufferParams.frameSize.y, 1u);
     mpScene->raytrace(pRenderContext, mRaytrace.pProgram.get(), mRaytrace.pVars, targetDim);
 
     mGBufferParams.frameCount++;

@@ -35,19 +35,19 @@ namespace Falcor
     {
         struct Vertex
         {
-            glm::vec2 screenPos;
-            glm::vec2 texCoord;
+            float2 screenPos;
+            float2 texCoord;
         };
 
-        const glm::vec2 kVertexPos[] =
+        const float2 kVertexPos[] =
         {
-            glm::vec2(0, 0),
-            glm::vec2(0, 1),
-            glm::vec2(1, 0),
+            float2(0, 0),
+            float2(0, 1),
+            float2(1, 0),
 
-            glm::vec2(1, 0),
-            glm::vec2(0, 1),
-            glm::vec2(1, 1),
+            float2(1, 0),
+            float2(0, 1),
+            float2(1, 1),
         };
 
         const uint32_t kMaxCharCount = 1000;
@@ -68,7 +68,7 @@ namespace Falcor
         {
             bool init = false;
             TextRenderer::Flags flags = TextRenderer::Flags::Shadowed;
-            vec3 color = vec3(1, 1, 1);
+            float3 color = float3(1, 1, 1);
             Buffer::SharedPtr pVb;
             RasterPass::SharedPtr pPass;
             Font::UniquePtr pFont;
@@ -95,7 +95,7 @@ namespace Falcor
             gTextData.pPass["PerFrameCB"]["gFontColor"] = gTextData.color;
         }
 
-        void renderText(RenderContext* pRenderContext, const std::string& text, const Fbo::SharedPtr& pDstFbo, vec2 pos)
+        void renderText(RenderContext* pRenderContext, const std::string& text, const Fbo::SharedPtr& pDstFbo, float2 pos)
         {
             // Make sure we enough space for the next char
             assert(text.size() < kMaxCharCount);
@@ -121,8 +121,8 @@ namespace Falcor
                     const Font::CharTexCrdDesc& desc = gTextData.pFont->getCharDesc(c);
                     for (uint32_t i = 0; i < arraysize(kVertexPos); i++, vertexCount++)
                     {
-                        vec2 posScale = kVertexPos[i];
-                        vec2 charPos = desc.size * posScale;
+                        float2 posScale = kVertexPos[i];
+                        float2 charPos = desc.size * posScale;
                         charPos += pos;
                         verts[vertexCount].screenPos = charPos;
                         verts[vertexCount].texCoord = desc.topLeft + desc.size * kVertexPos[i];
@@ -138,8 +138,8 @@ namespace Falcor
         }
     }
 
-    const vec3& TextRenderer::getColor() { return gTextData.color; }
-    void TextRenderer::setColor(const glm::vec3& color) { gTextData.color = color; }
+    const float3& TextRenderer::getColor() { return gTextData.color; }
+    void TextRenderer::setColor(const float3& color) { gTextData.color = color; }
     TextRenderer::Flags TextRenderer::getFlags() { return gTextData.flags; }
     void TextRenderer::setFlags(Flags f) { gTextData.flags = f; }
 
@@ -162,7 +162,7 @@ namespace Falcor
         DepthStencilState::Desc dsDesc;
         dsDesc.setDepthEnabled(false);
         pState->setDepthStencilState(DepthStencilState::create(dsDesc));
-        
+
         // Rasterizer state
         RasterizerState::Desc rsState;
         rsState.setCullMode(RasterizerState::CullMode::None);
@@ -190,13 +190,13 @@ namespace Falcor
         gTextData = {};
     }
 
-    void TextRenderer::render(RenderContext* pRenderContext, const std::string& text, const Fbo::SharedPtr& pDstFbo, vec2 pos)
+    void TextRenderer::render(RenderContext* pRenderContext, const std::string& text, const Fbo::SharedPtr& pDstFbo, float2 pos)
     {
         if (is_set(gTextData.flags, TextRenderer::Flags::Shadowed))
         {
-            vec3 oldColor = getColor();
-            setColor(vec3(0));
-            renderText(pRenderContext, text, pDstFbo, pos + vec2(1));
+            float3 oldColor = getColor();
+            setColor(float3(0));
+            renderText(pRenderContext, text, pDstFbo, pos + float2(1));
             setColor(oldColor);
         }
         renderText(pRenderContext, text, pDstFbo, pos);

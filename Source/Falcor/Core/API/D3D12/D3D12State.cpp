@@ -362,7 +362,7 @@ namespace Falcor
         desc.MinLOD = pSampler->getMinLod();
         desc.MaxLOD = pSampler->getMaxLod();
 
-        const glm::vec4& borderColor = pSampler->getBorderColor();
+        const float4& borderColor = pSampler->getBorderColor();
         memcpy(desc.BorderColor, glm::value_ptr(borderColor), sizeof(borderColor));
     }
 

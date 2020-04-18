@@ -84,11 +84,11 @@ namespace Falcor
 
         /** Set the light probe's world-space position
         */
-        void setPosW(const vec3& posW) { mData.posW = posW; }
+        void setPosW(const float3& posW) { mData.posW = posW; }
 
         /** Get the light probe's world-space position
         */
-        const vec3& getPosW() const { return mData.posW; }
+        const float3& getPosW() const { return mData.posW; }
 
         /** Set the spherical radius the light probe encompasses. Set radius to negative to sample as an infinite-distance global light probe.
         */
@@ -108,11 +108,11 @@ namespace Falcor
 
         /** Set the light probe's light intensity
         */
-        void setIntensity(const vec3& intensity) { mData.intensity = intensity; }
+        void setIntensity(const float3& intensity) { mData.intensity = intensity; }
 
         /** Get the light probe's light intensity
         */
-        const vec3& getIntensity() const { return mData.intensity; }
+        const float3& getIntensity() const { return mData.intensity; }
 
         /** Attach a sampler to the light probe
         */

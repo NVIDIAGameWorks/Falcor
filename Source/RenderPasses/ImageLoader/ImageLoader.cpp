@@ -104,7 +104,7 @@ void ImageLoader::execute(RenderContext* pContext, const RenderData& renderData)
     const auto& pDstTex = renderData[kDst]->asTexture();
     if (!mpTex)
     {
-        pContext->clearRtv(pDstTex->getRTV().get(), glm::vec4(0, 0, 0, 0));
+        pContext->clearRtv(pDstTex->getRTV().get(), float4(0, 0, 0, 0));
         return;
     }
     pContext->blit(mpTex->getSRV(mMipLevel, 1, mArraySlice, 1), pDstTex->getRTV());

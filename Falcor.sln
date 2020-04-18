@@ -82,6 +82,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ImageCompare", "Source\Tool
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MegakernelPathTracer", "Source\RenderPasses\MegakernelPathTracer\MegakernelPathTracer.vcxproj", "{873F13CA-A9C7-47BA-857D-8848C5E7F07E}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WhittedRayTracer", "Source\RenderPasses\WhittedRayTracer\WhittedRayTracer.vcxproj", "{431C3127-E613-424C-B964-FB53DAA87789}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		DebugD3D12|x64 = DebugD3D12|x64
@@ -208,6 +210,10 @@ Global
 		{873F13CA-A9C7-47BA-857D-8848C5E7F07E}.DebugD3D12|x64.Build.0 = Debug|x64
 		{873F13CA-A9C7-47BA-857D-8848C5E7F07E}.ReleaseD3D12|x64.ActiveCfg = Release|x64
 		{873F13CA-A9C7-47BA-857D-8848C5E7F07E}.ReleaseD3D12|x64.Build.0 = Release|x64
+		{431C3127-E613-424C-B964-FB53DAA87789}.DebugD3D12|x64.ActiveCfg = Debug|x64
+		{431C3127-E613-424C-B964-FB53DAA87789}.DebugD3D12|x64.Build.0 = Debug|x64
+		{431C3127-E613-424C-B964-FB53DAA87789}.ReleaseD3D12|x64.ActiveCfg = Release|x64
+		{431C3127-E613-424C-B964-FB53DAA87789}.ReleaseD3D12|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -242,6 +248,7 @@ Global
 		{E484AEEC-ED88-408E-ADA5-66DF6301D75B} = {D16038A7-B031-4181-B4A1-2C416C02330C}
 		{8F6B5FAB-30FA-45C6-B5EA-BCD1D26781C0} = {935D7586-B55D-431A-A0ED-338383DE1A1E}
 		{873F13CA-A9C7-47BA-857D-8848C5E7F07E} = {D16038A7-B031-4181-B4A1-2C416C02330C}
+		{431C3127-E613-424C-B964-FB53DAA87789} = {D16038A7-B031-4181-B4A1-2C416C02330C}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {357B2AE0-FE30-4AC6-8D41-B580232BC0DE}

@@ -74,11 +74,11 @@ private:
     bool mDirty = false;
 
     Fbo::SharedPtr mpAOFbo;
-    uvec2 mAoMapSize = uvec2(1024);
+    uint2 mAoMapSize = uint2(1024);
 
     Sampler::SharedPtr mpNoiseSampler;
     Texture::SharedPtr mpNoiseTexture;
-    uvec2 mNoiseSize = uvec2(16);
+    uint2 mNoiseSize = uint2(16);
 
     Sampler::SharedPtr mpTextureSampler;
     SampleDistribution mHemisphereDistribution = SampleDistribution::CosineHammersley;

@@ -127,8 +127,9 @@ namespace Falcor
     }
 
 
-    ProgramVersion::ProgramVersion(Program* pProgram)
+    ProgramVersion::ProgramVersion(Program* pProgram, slang::IComponentType* pSlangGlobalScope)
         : mpProgram(pProgram->shared_from_this())
+        , mpSlangGlobalScope(pSlangGlobalScope)
     {
         assert(pProgram);
     }
@@ -137,20 +138,18 @@ namespace Falcor
         const DefineList&                                   defineList,
         const ProgramReflection::SharedPtr&                 pReflector,
         const std::string&                                  name,
-        slang::IComponentType*                              pSlangGlobalScope,
         std::vector<ComPtr<slang::IComponentType>> const&   pSlangEntryPoints)
     {
         assert(pReflector);
         mDefines = defineList,
         mpReflector = pReflector;
         mName = name;
-        mpSlangGlobalScope = pSlangGlobalScope;
         mpSlangEntryPoints = pSlangEntryPoints;
     }
 
-    ProgramVersion::SharedPtr ProgramVersion::createEmpty(Program* pProgram)
+    ProgramVersion::SharedPtr ProgramVersion::createEmpty(Program* pProgram, slang::IComponentType* pSlangGlobalScope)
     {
-        return SharedPtr(new ProgramVersion(pProgram));
+        return SharedPtr(new ProgramVersion(pProgram, pSlangGlobalScope));
     }
 
     ProgramKernels::SharedConstPtr ProgramVersion::getKernels(ProgramVars const* pVars) const

@@ -69,11 +69,6 @@ namespace Falcor
 
     GraphicsStateObject::SharedPtr GraphicsState::getGSO(const GraphicsVars* pVars)
     {
-        assert(mpVao);
-        if (mpProgram && mpVao->getVertexLayout() != nullptr)
-        {
-            mpVao->getVertexLayout()->addVertexAttribDclToProg(mpProgram.get());
-        }
         auto pProgramKernels = mpProgram ? mpProgram->getActiveVersion()->getKernels(pVars) : nullptr;
         bool newProgVersion = pProgramKernels.get() != mCachedData.pProgramKernels;
         if (newProgVersion)

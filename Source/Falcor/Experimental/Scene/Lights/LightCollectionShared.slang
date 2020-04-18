@@ -35,11 +35,12 @@ BEGIN_NAMESPACE_FALCOR
 */
 struct EmissiveTriangle
 {
-    uint    lightIdx;           ///< Index into global mesh lights array.
     float3  normal;             ///< Face normal in world space.
     float   area;               ///< Triangle area in world space.
     float3  averageRadiance;    ///< Average emitted radiance over the triangle.
     float   flux;               ///< Pre-integrated luminous flux for triangle in lumens.
+    uint    lightIdx;           ///< Index into global mesh lights array.
+    uint3   _pad;
 };
 
 END_NAMESPACE_FALCOR

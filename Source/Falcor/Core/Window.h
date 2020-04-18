@@ -102,6 +102,10 @@ namespace Falcor
         */
         void pollForEvents();
 
+        /** Change the window's position
+        */
+        void setWindowPos(int32_t x, int32_t y);
+
         /** Change the window's title
         */
         void setWindowTitle(const std::string& title);
@@ -112,7 +116,7 @@ namespace Falcor
 
         /** Get the width of the window's client area
         */
-        uvec2 getClientAreaSize() const { return { mDesc.width, mDesc.height }; }
+        uint2 getClientAreaSize() const { return { mDesc.width, mDesc.height }; }
 
         /** Get the descriptor
         */
@@ -127,8 +131,8 @@ namespace Falcor
         Desc mDesc;
         GLFWwindow* mpGLFWWindow;
         ApiHandle mApiHandle;
-        glm::vec2 mMouseScale;
-        const glm::vec2& getMouseScale() const { return mMouseScale; }
+        float2 mMouseScale;
+        const float2& getMouseScale() const { return mMouseScale; }
         ICallbacks* mpCallbacks = nullptr;
     };
 

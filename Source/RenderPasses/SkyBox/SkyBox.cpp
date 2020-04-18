@@ -142,7 +142,7 @@ void SkyBox::execute(RenderContext* pRenderContext, const RenderData& renderData
     mpFbo->attachColorTarget(renderData[kTarget]->asTexture(), 0);
     mpFbo->attachDepthStencilTarget(renderData[kDepth]->asTexture());
 
-    pRenderContext->clearRtv(mpFbo->getRenderTargetView(0).get(), vec4(0));
+    pRenderContext->clearRtv(mpFbo->getRenderTargetView(0).get(), float4(0));
 
     if (!mpScene) return;
 

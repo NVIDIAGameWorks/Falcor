@@ -46,16 +46,16 @@ namespace Falcor
             return data;
         }
 
-        std::vector<glm::uvec4> computeMatchResult(const std::vector<uint32_t>& data, uint32_t laneCount)
+        std::vector<uint4> computeMatchResult(const std::vector<uint32_t>& data, uint32_t laneCount)
         {
             assert(laneCount >= 4 && laneCount <= 128);
-            std::vector<glm::uvec4> masks(data.size(), glm::uvec4(0));
+            std::vector<uint4> masks(data.size(), uint4(0));
 
             for (size_t i = 0; i < data.size(); i++)
             {
                 size_t firstLane = (i / laneCount) * laneCount;
                 uint32_t currentLaneValue = data[i];
-                glm::uvec4& mask = masks[i];
+                uint4& mask = masks[i];
 
                 for (uint32_t j = 0; j < laneCount; j++)
                 {
@@ -109,10 +109,10 @@ namespace Falcor
         if (laneCount < 4 || laneCount > 128) throw std::exception("Unsupported wave lane count");
 
         // Verify results of wave match.
-        std::vector<glm::uvec4> expectedResult = computeMatchResult(matchData, laneCount);
+        std::vector<uint4> expectedResult = computeMatchResult(matchData, laneCount);
         assert(expectedResult.size() == matchData.size());
 
-        const glm::uvec4* result = ctx.mapBuffer<const glm::uvec4>("result");
+        const uint4* result = ctx.mapBuffer<const uint4>("result");
         for (size_t i = 0; i < matchData.size(); i++)
         {
             EXPECT_EQ(result[i].x, expectedResult[i].x) << "i = " << i;

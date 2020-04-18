@@ -33,7 +33,7 @@ namespace Falcor
     namespace
     {
         const uint32_t kNumElems = 256;
-        const std::string kRootBufferName = "__root__buf";
+        const std::string kRootBufferName = "rootBuf";
 
         std::mt19937 rng;
         auto dist = std::uniform_int_distribution<uint32_t>(0, 100);

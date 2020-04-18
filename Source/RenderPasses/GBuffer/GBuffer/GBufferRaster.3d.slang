@@ -28,16 +28,21 @@
 #include "Scene/VertexAttrib.slangh"
 
 import Scene.Raster;
-import RenderPasses.Shared.HitInfo;
+import Scene.HitInfo;
 import Utils.Helpers;
 import GBufferHelpers;
+import Experimental.Scene.Material.TexLODHelpers;
 
 // UAV output channels
-RWTexture2D<uint2> gVBuffer;
+RWTexture2D<uint2>  gVBuffer;
 RWTexture2D<float2> gMotionVectors;
 RWTexture2D<float4> gFaceNormalW;
 RWTexture2D<float2> gPosNormalFwidth;
 RWTexture2D<float2> gLinearZAndDeriv;
+RWTexture2D<float>  gSurfaceSpreadAngle;
+RWTexture2D<float4> gRayDifferentialX;
+RWTexture2D<float4> gRayDifferentialY;
+RWTexture2D<float4> gRayDifferentialZ;
 
 #define isValid(name) (is_valid_##name != 0)
 
@@ -135,6 +140,33 @@ GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 bar
         hit.barycentrics = barycentrics.yz;
         gVBuffer[ipos] = hit.encode();
     }
+
+    // Store surface spread angle for texture LOD using ray cones.
+    if (isValid(gSurfaceSpreadAngle))
+    {
+        gSurfaceSpreadAngle[ipos] = computeScreenSpaceSurfaceSpreadAngle(sd.posW, sd.N);
+    }
+
+    if (isValid(gRayDifferentialX) && isValid(gRayDifferentialY) && isValid(gRayDifferentialZ))
+    {
+        const float3 dOdx = ddx(sd.posW);
+        const float3 dOdy = ddy(sd.posW);
+        const float3 dNdx = ddx(sd.N);
+        const float3 dNdy = ddy(sd.N);
+        const float3 Nx = normalize(sd.N + dNdx);
+        const float3 Ny = normalize(sd.N + dNdy);
+        const float3 tmp = sd.posW - gScene.camera.getPosition();
+        const float3 Dx = normalize(tmp + dOdx);
+        const float3 Dy = normalize(tmp + dOdy);
+        const float3 R = reflect(-sd.V, sd.N);
+        const float3 dRdx = reflect(Dx, Nx) - R;
+        const float3 dRdy = reflect(Dy, Ny) - R;
+
+        gRayDifferentialX[ipos] = float4(dOdx.x, dOdy.x, dRdx.x, dRdy.x);
+        gRayDifferentialY[ipos] = float4(dOdx.y, dOdy.y, dRdx.y, dRdy.y);
+        gRayDifferentialZ[ipos] = float4(dOdx.z, dOdy.z, dRdx.z, dRdy.z);
+    }
+
 
     return psOut;
 }

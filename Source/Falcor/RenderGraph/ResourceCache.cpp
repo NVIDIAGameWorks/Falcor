@@ -82,8 +82,8 @@ namespace Falcor
 
     void mergeTimePoint(std::pair<uint32_t, uint32_t>& range, uint32_t newTime)
     {
-        range.first = min(range.first, newTime);
-        range.second = max(range.second, newTime);
+        range.first = std::min(range.first, newTime);
+        range.second = std::max(range.second, newTime);
     }
 
     void ResourceCache::registerField(const std::string& name, const RenderPassReflection::Field& field, uint32_t timePoint, const std::string& alias)

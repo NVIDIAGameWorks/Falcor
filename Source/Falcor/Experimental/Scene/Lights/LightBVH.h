@@ -74,13 +74,13 @@ namespace Falcor
         struct InternalNode
         {
             NodeType nodeType = NodeType::Internal;
-            glm::vec3 aabbMin;
+            float3 aabbMin;
 
             float luminousFlux = 0.f;
-            glm::vec3 aabbMax;
+            float3 aabbMax;
 
             float cosConeAngle = kInvalidCosConeAngle; // If cosConeAngle == kInvalidCosConeAngle, the cone should not be used.
-            glm::vec3 coneDirection = { 0.f, 0.f, 0.f };
+            float3 coneDirection = { 0.f, 0.f, 0.f };
 
             uint32_t leftNodeOffset = kInvalidOffset;
             uint32_t rightNodeOffset = kInvalidOffset;
@@ -89,13 +89,13 @@ namespace Falcor
         struct LeafNode
         {
             NodeType nodeType = NodeType::Leaf;
-            glm::vec3 aabbMin;
+            float3 aabbMin;
 
             float luminousFlux = 0.f;
-            glm::vec3 aabbMax;
+            float3 aabbMax;
 
             float cosConeAngle = kInvalidCosConeAngle;  // If cosConeAngle == kInvalidCosConeAngle, the cone should not be used.
-            glm::vec3 coneDirection = { 0.f, 0.f, 0.f };
+            float3 coneDirection = { 0.f, 0.f, 0.f };
 
             uint32_t triangleCount = 0;
             // The allocator allocates extra space after LeafNodes as needed to allow a larger

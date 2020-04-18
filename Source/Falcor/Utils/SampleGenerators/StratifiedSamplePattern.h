@@ -56,7 +56,7 @@ namespace Falcor
 
         virtual uint32_t getSampleCount() const override { return mBinsX * mBinsY; }
         virtual void reset(uint32_t startID = 0) override;
-        virtual vec2 next() override;
+        virtual float2 next() override;
 
     protected:
         StratifiedSamplePattern(uint32_t sampleCount);

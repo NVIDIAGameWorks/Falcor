@@ -201,7 +201,7 @@ namespace Falcor
             float intensity = mData.intensity.r;
             if (g.var("Intensity", intensity, 0.0f))
             {
-                mData.intensity = vec3(intensity);
+                mData.intensity = float3(intensity);
             }
 
             g.var("Radius", mData.radius, -1.0f);
@@ -232,7 +232,7 @@ namespace Falcor
         // Set the data into the constant buffer
         check_offset(posW);
         check_offset(intensity);
-        static_assert(kDataSize % sizeof(vec4) == 0, "LightProbeData size should be a multiple of 16");
+        static_assert(kDataSize % sizeof(float4) == 0, "LightProbeData size should be a multiple of 16");
 
         if(!var.isValid()) return;
 

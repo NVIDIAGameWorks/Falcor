@@ -25,8 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+__exported import Scene.HitInfo;
 __exported import Utils.Sampling.SampleGenerator;
-__exported import RenderPasses.Shared.HitInfo;
 __exported import RenderPasses.Shared.PathTracer.StaticParams;
 __exported import RenderPasses.Shared.PathTracer.InteriorList;
 
@@ -88,6 +88,7 @@ struct PathData
     bool hasScatterRay() { return (flags & uint(PathFlags::scatterRay)) != 0; }
     bool hasShadowRay(uint i) { return (flags & (uint(PathFlags::shadowRay) << i)) != 0; }
     bool hasRays() { return (flags & uint(PathFlags::anyRays)) != 0; }
+    bool isShadowRayOccluded(uint i) { return (flags & ((uint)PathFlags::shadowRay << i)) == 0; }
 
     [mutating] void clearTransmission() { flags &= ~(uint(PathFlags::transmission)); }
     [mutating] void clearScatterRay() { flags &= ~(uint(PathFlags::scatterRay) | uint(PathFlags::scatterHit)); }

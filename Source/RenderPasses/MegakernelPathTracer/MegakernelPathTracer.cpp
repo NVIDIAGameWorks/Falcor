@@ -26,7 +26,6 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "MegakernelPathTracer.h"
-#include "RenderPasses/Shared/HitInfo.h"
 #include "RenderGraph/RenderPassHelpers.h"
 #include <sstream>
 
@@ -94,7 +93,6 @@ void MegakernelPathTracer::setScene(RenderContext* pRenderContext, const Scene::
     if (pScene)
     {
         mTracer.pProgram->addDefines(pScene->getSceneDefines());
-        mTracer.pProgram->addDefines(HitInfo::getDefines(pScene));
     }
 }
 
@@ -140,7 +138,7 @@ void MegakernelPathTracer::execute(RenderContext* pRenderContext, const RenderDa
     for (auto channel : mOutputChannels) bind(channel);
 
     // Get dimensions of ray dispatch.
-    const uvec2 targetDim = renderData.getDefaultTextureDims();
+    const uint2 targetDim = renderData.getDefaultTextureDims();
     assert(targetDim.x > 0 && targetDim.y > 0);
 
     mpPixelDebug->prepareProgram(pProgram, mTracer.pVars->getRootVar());
@@ -149,7 +147,7 @@ void MegakernelPathTracer::execute(RenderContext* pRenderContext, const RenderDa
     // Spawn the rays.
     {
         PROFILE("MegakernelPathTracer::execute()_RayTrace");
-        mpScene->raytrace(pRenderContext, mTracer.pProgram.get(), mTracer.pVars, uvec3(targetDim, 1));
+        mpScene->raytrace(pRenderContext, mTracer.pProgram.get(), mTracer.pVars, uint3(targetDim, 1));
     }
 
     // Call shared post-render code.

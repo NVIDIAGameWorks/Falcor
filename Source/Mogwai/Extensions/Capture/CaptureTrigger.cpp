@@ -96,7 +96,7 @@ namespace Mogwai
     {
         RenderGraph* pGraph = mpRenderer->getActiveGraph();
         if (!pGraph) return;
-        uint64_t frameId = gpFramework->getGlobalClock().frame();
+        uint64_t frameId = gpFramework->getGlobalClock().getFrame();
         if (mGraphRanges.find(pGraph) == mGraphRanges.end()) return;
         const auto& ranges = mGraphRanges.at(pGraph);
 
@@ -118,11 +118,11 @@ namespace Mogwai
             }
         }
     }
-    
+
     void CaptureTrigger::endFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
     {
         if (!mCurrent.pGraph) return;
-        uint64_t frameId = gpFramework->getGlobalClock().frame();
+        uint64_t frameId = gpFramework->getGlobalClock().getFrame();
         const auto& ranges = mGraphRanges.at(mCurrent.pGraph);
 
         triggerFrame(pRenderContext, mCurrent.pGraph, frameId);
@@ -163,6 +163,11 @@ namespace Mogwai
         else mOutputDir = outDir;
     }
 
+    void CaptureTrigger::setBaseFilename(const std::string& baseFilename)
+    {
+        mBaseFilename = baseFilename;
+    }
+
     void CaptureTrigger::scriptBindings(Bindings& bindings)
     {
         auto& m = bindings.getModule();
@@ -170,25 +175,18 @@ namespace Mogwai
         auto ct = m.class_<CaptureTrigger>("CaptureTrigger");
 
         // Members
-        ct.func_(kReset.c_str(), &CaptureTrigger::reset, "renderGraph"_a = nullptr);
+        ct.func_(kReset.c_str(), &CaptureTrigger::reset, "graph"_a = nullptr);
 
-        // Output dir
-        ct.func_(kOutputDir.c_str(), &CaptureTrigger::setOutputDirectory);
-        auto printOutDir = [](CaptureTrigger* pCT) {pybind11::print(pCT->mOutputDir); };
-        ct.func_(kOutputDir.c_str(), printOutDir);
-
-        // Base filename
-        auto setBase = [](CaptureTrigger* pCT, const std::string& name) { pCT->mBaseFilename = name; };
-        ct.func_(kBaseFilename.c_str(), setBase);
-        auto printBase = [](CaptureTrigger* pCT) {pybind11::print(pCT->mBaseFilename); };
-        ct.func_(kBaseFilename.c_str(), printBase);
+        // Properties
+        ct.property(kOutputDir.c_str(), &CaptureTrigger::getOutputDirectory, &CaptureTrigger::setOutputDirectory);
+        ct.property(kBaseFilename.c_str(), &CaptureTrigger::getBaseFilename, &CaptureTrigger::setBaseFilename);
     }
 
     std::string CaptureTrigger::getScript(const std::string& var)
     {
         std::string s;
-        s += Scripting::makeMemberFunc(var, kOutputDir, filenameString(mOutputDir, false));
-        s += Scripting::makeMemberFunc(var, kBaseFilename, mBaseFilename);
+        s += Scripting::makeSetProperty(var, kOutputDir, Scripting::getFilenameString(mOutputDir, false));
+        s += Scripting::makeSetProperty(var, kBaseFilename, mBaseFilename);
         return s;
     }
 

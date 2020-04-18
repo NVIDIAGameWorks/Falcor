@@ -35,8 +35,8 @@ namespace Falcor
         ctx.allocateStructuredBuffer("result", 1);
 
         ShaderVar var = ctx.vars().getRootVar();
-        glm::uvec4 v = { 11, 22, 33, 44 };
-        var["buffer"] = Buffer::createTyped<glm::uvec4>(1, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, &v);
+        uint4 v = { 11, 22, 33, 44 };
+        var["buffer"] = Buffer::createTyped<uint4>(1, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, &v);
 
         ctx.runProgram();
 

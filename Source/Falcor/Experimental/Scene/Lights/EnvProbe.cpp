@@ -54,8 +54,9 @@ namespace Falcor
         assert(var.isValid());
 
         // Set variables.
+        float2 invDim = 1.f / float2(mpImportanceMap->getWidth(), mpImportanceMap->getHeight());
         if (!var["importanceBaseMip"].set(mpImportanceMap->getMipCount() - 1)) return false;   // The base mip is 1x1 texels
-        if (!var["importanceInvDim"].set(glm::vec2(1.f / mpImportanceMap->getWidth(), 1.f / mpImportanceMap->getHeight()))) return false;
+        if (!var["importanceInvDim"].set(invDim)) return false;
 
         // Bind resources.
         if (!var["envMap"].setTexture(mpEnvMap) ||
@@ -124,9 +125,9 @@ namespace Falcor
         uint32_t samplesY = samples / samplesX;
         assert(samples == samplesX * samplesY);
 
-        mpSetupPass["CB"]["outputDim"] = glm::uvec2(dimension);
-        mpSetupPass["CB"]["outputDimInSamples"] = glm::uvec2(dimension * samplesX, dimension * samplesY);
-        mpSetupPass["CB"]["numSamples"] = glm::uvec2(samplesX, samplesY);
+        mpSetupPass["CB"]["outputDim"] = uint2(dimension);
+        mpSetupPass["CB"]["outputDimInSamples"] = uint2(dimension * samplesX, dimension * samplesY);
+        mpSetupPass["CB"]["numSamples"] = uint2(samplesX, samplesY);
         mpSetupPass["CB"]["invSamples"] = 1.f / (samplesX * samplesY);
 
         // Execute setup pass to compute the square importance map (base mip).

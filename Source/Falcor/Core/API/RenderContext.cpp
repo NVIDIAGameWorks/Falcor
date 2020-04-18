@@ -37,7 +37,7 @@ namespace Falcor
         return SharedPtr(new RenderContext(queue));
     }
 
-    void RenderContext::clearFbo(const Fbo* pFbo, const glm::vec4& color, float depth, uint8_t stencil, FboAttachmentType flags)
+    void RenderContext::clearFbo(const Fbo* pFbo, const float4& color, float depth, uint8_t stencil, FboAttachmentType flags)
     {
         bool hasDepthStencilTexture = pFbo->getDepthStencilTexture() != nullptr;
         ResourceFormat depthStencilFormat = hasDepthStencilTexture ? pFbo->getDepthStencilTexture()->getFormat() : ResourceFormat::Unknown;
@@ -64,7 +64,7 @@ namespace Falcor
     }
 
 
-    void RenderContext::clearTexture(Texture* pTexture, const vec4& clearColor)
+    void RenderContext::clearTexture(Texture* pTexture, const float4& clearColor)
     {
         assert(pTexture);
 

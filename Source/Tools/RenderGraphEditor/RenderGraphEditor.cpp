@@ -511,7 +511,7 @@ void RenderGraphEditor::createNewGraph(const std::string& renderGraphName)
 
 void RenderGraphEditor::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
-    const glm::vec4 clearColor(0.25, 0.25, 0.25 , 1);
+    const float4 clearColor(0.25, 0.25, 0.25 , 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
     mRenderGraphUIs[mCurrentGraphIndex].updateGraph(pRenderContext);
 }

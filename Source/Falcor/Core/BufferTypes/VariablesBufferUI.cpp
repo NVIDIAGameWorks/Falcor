@@ -55,13 +55,13 @@ namespace Falcor
         switch (type)
         {
         case ReflectionBasicType::Type::Bool4:
-            to_gui_widget_bvec(checkbox, glm::bvec4);
+            to_gui_widget_bvec(checkbox, bool4);
             break;
         case ReflectionBasicType::Type::Bool3:
-            to_gui_widget_bvec(checkbox, glm::bvec3);
+            to_gui_widget_bvec(checkbox, bool3);
             break;
         case ReflectionBasicType::Type::Bool2:
-            to_gui_widget_bvec(checkbox, glm::bvec2);
+            to_gui_widget_bvec(checkbox, bool2);
             break;
         case ReflectionBasicType::Type::Bool:
             to_gui_widget(checkbox, bool);
@@ -70,19 +70,19 @@ namespace Falcor
         case ReflectionBasicType::Type::Uint64_4:
         case ReflectionBasicType::Type::Int4:
         case ReflectionBasicType::Type::Int64_4:
-            to_gui_widget(var, glm::ivec4);
+            to_gui_widget(var, int4);
             break;
         case ReflectionBasicType::Type::Uint3:
         case ReflectionBasicType::Type::Uint64_3:
         case ReflectionBasicType::Type::Int3:
         case ReflectionBasicType::Type::Int64_3:
-            to_gui_widget(var, glm::ivec3);
+            to_gui_widget(var, int3);
             break;
         case ReflectionBasicType::Type::Uint2:
         case ReflectionBasicType::Type::Uint64_2:
         case ReflectionBasicType::Type::Int2:
         case ReflectionBasicType::Type::Int64_2:
-            to_gui_widget(var, glm::ivec2);
+            to_gui_widget(var, int2);
             break;
         case ReflectionBasicType::Type::Uint:
         case ReflectionBasicType::Type::Uint64:
@@ -94,13 +94,13 @@ namespace Falcor
             to_gui_widget(var, float);
             break;
         case ReflectionBasicType::Type::Float2:
-            to_gui_widget(var, glm::vec2);
+            to_gui_widget(var, float2);
             break;
         case ReflectionBasicType::Type::Float3:
-            to_gui_widget(var, glm::vec3);
+            to_gui_widget(var, float3);
             break;
         case ReflectionBasicType::Type::Float4:
-            to_gui_widget(var, glm::vec4);
+            to_gui_widget(var, float4);
             break;
         case ReflectionBasicType::Type::Float2x2:
             to_gui_widget_matrix(matrix, glm::mat2x2);

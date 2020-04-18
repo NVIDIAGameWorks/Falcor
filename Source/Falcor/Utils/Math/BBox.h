@@ -37,8 +37,8 @@ namespace Falcor
     */
     struct BBox
     {
-        glm::float3 minPoint = glm::float3(std::numeric_limits<float>::infinity());     // +inf
-        glm::float3 maxPoint = glm::float3(-std::numeric_limits<float>::infinity());    // -inf
+        float3 minPoint = float3(std::numeric_limits<float>::infinity());     // +inf
+        float3 maxPoint = float3(-std::numeric_limits<float>::infinity());    // -inf
 
         BBox() {}
         BBox(const glm::float3& p) : minPoint(p), maxPoint(p) {}
@@ -47,15 +47,15 @@ namespace Falcor
         bool valid() const { return maxPoint.x >= minPoint.x && maxPoint.y >= minPoint.y && maxPoint.z >= minPoint.z; }
 
         /** Returns the dimensions of the bounding box. */
-        glm::float3 dimensions() const { return maxPoint - minPoint; }
+        float3 dimensions() const { return maxPoint - minPoint; }
 
         /** Returns the centroid of the bounding box. */
-        glm::float3 centroid() const { return (minPoint + maxPoint) * 0.5f; }
+        float3 centroid() const { return (minPoint + maxPoint) * 0.5f; }
 
         /** Returns the surface area of the bounding box. */
         float surfaceArea() const
         {
-            const glm::float3 dims = dimensions();
+            const float3 dims = dimensions();
             return 2.0f * (dims.x * dims.y + dims.y * dims.z + dims.x * dims.z);
         }
 
@@ -70,7 +70,7 @@ namespace Falcor
                 return -std::numeric_limits<float>::infinity();
             }
 
-            const glm::float3 dims = glm::max(glm::vec3(epsilon), dimensions());
+            const float3 dims = glm::max(float3(epsilon), dimensions());
             return dims.x * dims.y * dims.z;
         }
 

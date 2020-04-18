@@ -78,8 +78,8 @@ namespace Falcor
         */
         struct MeshLightVertex
         {
-            glm::vec3 pos;      ///< World-space position.
-            glm::vec2 uv;       ///< Texture coordinates in emissive texture (if textured).
+            float3 pos;     ///< World-space position.
+            float2 uv;      ///< Texture coordinates in emissive texture (if textured).
         };
 
         /** Represents one mesh light triangle.
@@ -91,14 +91,14 @@ namespace Falcor
             uint32_t        lightIdx = kInvalidIndex;           ///< Per-triangle index into mesh lights array.
 
             // Pre-computed quantities.
-            glm::vec3       normal = glm::vec3(0);              ///< Triangle's face normal in world space.
-            glm::vec3       averageRadiance = glm::vec3(0);     ///< Average radiance emitted over triangle. For textured emissive the radiance varies over the surface.
+            float3          normal = float3(0);                 ///< Triangle's face normal in world space.
+            float3          averageRadiance = float3(0);        ///< Average radiance emitted over triangle. For textured emissive the radiance varies over the surface.
             float           luminousFlux = 0.f;                 ///< Pre-integrated luminous flux (lumens) emitted per side of the triangle for double-sided emitters (total flux is 2x this value).
             float           area = 0.f;                         ///< Triangle area in world space units.
 
             /** Returns the center of the triangle in world space.
             */
-            glm::vec3 getCenter() const
+            float3 getCenter() const
             {
                 return (vtx[0].pos + vtx[1].pos + vtx[2].pos) / 3.0f;
             }

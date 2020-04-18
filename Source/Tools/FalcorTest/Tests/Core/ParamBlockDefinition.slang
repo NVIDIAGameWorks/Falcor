@@ -25,6 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+import Utils.Attributes;
 
 /** Parameter block for testing root descriptors.
 
@@ -38,9 +39,9 @@ struct TestBlock
     RWBuffer<float> bufB[3];
 
 #if USE_UAV
-    RWByteAddressBuffer __root__testBuffer;     // Buffer bound to root descriptor (UAV)
+    [root] RWByteAddressBuffer testBuffer;  // Buffer bound to root descriptor (UAV)
 #else
-    ByteAddressBuffer __root__testBuffer;       // Buffer bound to root descriptor (SRV)
+    [root] ByteAddressBuffer testBuffer;    // Buffer bound to root descriptor (SRV)
 #endif
 
     Buffer<uint> bufC[4];
