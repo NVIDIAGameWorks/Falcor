@@ -114,16 +114,18 @@ float computeRelativeIoR(InteriorList interiorList, uint materialID, bool enteri
     if (entering)
     {
         float toIoR = gScene.materials[materialID].IoR;
+        float fromIoR = 1.f;
         uint topMaterialID = interiorList.getTopMaterialID();
-        float fromIoR = topMaterialID == kNoMaterial ? 1.f : gScene.materials[topMaterialID].IoR;
+        if (topMaterialID != kNoMaterial) fromIoR = gScene.materials[topMaterialID].IoR;
         return fromIoR / toIoR;
     }
     else
     {
         float fromIoR = gScene.materials[materialID].IoR;
+        float toIoR = 1.f;
         uint topMaterialID = interiorList.getTopMaterialID();
         if (topMaterialID == materialID) topMaterialID = interiorList.getNextMaterialID();
-        float toIoR = topMaterialID == kNoMaterial ? 1.f : gScene.materials[topMaterialID].IoR;
+        if (topMaterialID != kNoMaterial) toIoR = gScene.materials[topMaterialID].IoR;
         return fromIoR / toIoR;
     }
 }
