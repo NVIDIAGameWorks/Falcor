@@ -77,7 +77,7 @@ namespace Falcor
 
         if (pData->pBlob == nullptr)
         {
-            return nullptr;
+            return false;
         }
 
         mApiHandle = { pData->pBlob->GetBufferPointer(), pData->pBlob->GetBufferSize() };

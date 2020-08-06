@@ -345,7 +345,7 @@ namespace Falcor
                 if (FAILED(mApiHandle->CreateCommandQueue(&cqDesc, IID_PPV_ARGS(&pQueue))))
                 {
                     logError("Failed to create command queue");
-                    return nullptr;
+                    return false;
                 }
 
                 mCmdQueues[i].push_back(pQueue);
