@@ -209,6 +209,8 @@ float3 evalDirectAnalytic(const ShadingData sd, float3 rayOrigin, inout SampleGe
 {
     // Pick one of the analytic light sources randomly with equal probability.
     const uint lightCount = gScene.getLightCount();
+    if (lightCount == 0) return float3(0);
+
     const uint lightIndex = min(uint(sampleNext1D(sg) * lightCount), lightCount - 1);
     float invPdf = lightCount; // Light selection pdf = 1.0 / lightCount.
 
