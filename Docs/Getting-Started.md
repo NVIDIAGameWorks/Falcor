@@ -24,7 +24,7 @@ The `RenderPasses` folder contains a number of components ("Render Passes") that
 There are two main workflows when using Falcor:
 
 ### Render Graphs
-The recommended workflow when prototyping or implementing rendering techniques is to create render passes, render graphs, then render them with Mogwai. The [tutorials](../Tutorials/index.md) focus on this workflow.
+The recommended workflow when prototyping or implementing rendering techniques is to create render passes, render graphs, then render them with Mogwai. The [tutorials](./Tutorials/index.md) focus on this workflow.
 
 #### To run a sample Render Graph:
 1. Build the Falcor Solution

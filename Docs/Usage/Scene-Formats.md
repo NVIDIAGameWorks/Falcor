@@ -45,7 +45,7 @@ The first line must be a Python comment containing only a path to the base asset
 # BistroInterior.fbx
 ```
 
-The asset will be loaded and will be bound to an object called `scene`. Through this object, you have access to any script bindings accessible through Scenes. See the [scripting documentation](./Scripting) for a full list of functions and properties.
+The asset will be loaded and will be bound to an object called `scene`. Through this object, you have access to any script bindings accessible through Scenes. See the [scripting documentation](./Scripting.md) for a full list of functions and properties.
 
 Example:
 

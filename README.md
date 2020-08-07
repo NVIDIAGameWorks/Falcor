@@ -41,7 +41,7 @@ Refer to the README located in the `Source/Samples/CudaInterop/` for instruction
 ## Resources
 - [Falcor](https://github.com/NVIDIAGameWorks/Falcor): Falcor's GitHub page.
 - [Documentation](./Docs/index.md): Additional information and tutorials.
-    - [Getting Started](./Docs/Usage/Getting-Started.md)
+    - [Getting Started](./Docs/Getting-Started.md)
     - [Render Graph Tutorials](./Docs/Tutorials/index.md)
 - [ORCA](https://developer.nvidia.com/orca): A collection of high quality scenes and assets optimized for Falcor.
 - [Slang](https://github.com/shader-slang/slang): Falcor's shading language and compiler.

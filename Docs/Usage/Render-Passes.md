@@ -2,7 +2,7 @@
 
 --------
 
-Note: This page will cover more complex elements of render passes. Basic elements are covered in the tutorial [here](../Tutorials/03-Implementing-a-Render-Pass.md).
+Note: This page will cover more complex elements of render passes. Basic elements are covered in the tutorial [here](../Tutorials/02-Implementing-a-Render-Pass.md).
 
 ## Exporting as a DLL
 Falcor will look for a function called `getPasses()` in your DLL. The signature is as follows:
