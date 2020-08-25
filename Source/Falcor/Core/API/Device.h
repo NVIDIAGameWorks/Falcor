@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -54,7 +54,7 @@ namespace Falcor
 
         /** Device configuration
         */
-        struct Desc : ScriptBindings::enable_to_string
+        struct Desc
         {
             ResourceFormat colorFormat = ResourceFormat::BGRA8UnormSrgb;    ///< The color buffer format
             ResourceFormat depthFormat = ResourceFormat::D32Float;          ///< The depth buffer format

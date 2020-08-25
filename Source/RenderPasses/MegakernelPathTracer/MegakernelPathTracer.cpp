@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -36,21 +36,22 @@ namespace
 
     // Ray tracing settings that affect the traversal stack size.
     // These should be set as small as possible.
-    // The payload for the scatter rays is currently 8B without and 20B with nested dielectrics enabled.
+    // The payload for the scatter rays is 8B.
     // The payload for the shadow rays is 4B.
-    const uint32_t kMaxPayloadSizeBytes = 20;
+    const uint32_t kMaxPayloadSizeBytes = 8;
     const uint32_t kMaxAttributesSizeBytes = 8;
     const uint32_t kMaxRecursionDepth = 1;
 
     // Render pass output channels.
     const std::string kColorOutput = "color";
     const std::string kAlbedoOutput = "albedo";
+    const std::string kTimeOutput = "time";
 
     const Falcor::ChannelList kOutputChannels =
     {
-        { kColorOutput,     "gOutputColor",               "Output color (linear)", true /* optional */                           },
-        { kAlbedoOutput,    "gOutputAlbedo",              "Surface albedo (base color) or background color", true /* optional */ },
-        { "rayCount",       "",                           "Per-pixel ray count", true /* optional */, ResourceFormat::R32Uint    },
+        { kColorOutput,     "gOutputColor",               "Output color (linear)", true /* optional */                              },
+        { kAlbedoOutput,    "gOutputAlbedo",              "Surface albedo (base color) or background color", true /* optional */    },
+        { kTimeOutput,      "gOutputTime",                "Per-pixel execution time", true /* optional */, ResourceFormat::R32Uint  },
     };
 };
 
@@ -160,7 +161,7 @@ void MegakernelPathTracer::prepareVars()
     assert(mTracer.pProgram);
 
     // Configure program.
-    mpSampleGenerator->prepareProgram(mTracer.pProgram.get());
+    mTracer.pProgram->addDefines(mpSampleGenerator->getDefines());
 
     // Create program variables for the current program/scene.
     // This may trigger shader compilation. If it fails, throw an exception to abort rendering.
@@ -180,11 +181,7 @@ void MegakernelPathTracer::prepareVars()
 
     // Bind static resources to the parameter block here. No need to rebind them every frame if they don't change.
     // Bind the light probe if one is loaded.
-    if (mpEnvProbe)
-    {
-        bool success = mpEnvProbe->setShaderData(mTracer.pParameterBlock["envProbe"]);
-        if (!success) throw std::exception("Failed to bind environment map");
-    }
+    if (mpEnvMapSampler) mpEnvMapSampler->setShaderData(mTracer.pParameterBlock["envMapSampler"]);
 
     // Bind the parameter block to the global program variables.
     mTracer.pVars->setParameterBlock(kParameterBlockName, mTracer.pParameterBlock);

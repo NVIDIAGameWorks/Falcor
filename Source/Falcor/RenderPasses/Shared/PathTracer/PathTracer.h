@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -30,7 +30,7 @@
 #include "FalcorExperimental.h"
 #include "Utils/Sampling/SampleGenerator.h"
 #include "Utils/Debug/PixelDebug.h"
-#include "Experimental/Scene/Lights/EnvProbe.h"
+#include "Experimental/Scene/Lights/EnvMapSampler.h"
 #include "Experimental/Scene/Lights/EmissiveUniformSampler.h"
 #include "Experimental/Scene/Lights/LightBVHSampler.h"
 #include "RenderGraph/RenderPassHelpers.h"
@@ -41,7 +41,7 @@ namespace Falcor
 {
     /** Base class for path tracers.
     */
-    class dlldecl PathTracer : public RenderPass, public inherit_shared_from_this<RenderPass, PathTracer>
+    class dlldecl PathTracer : public RenderPass
     {
     public:
         using SharedPtr = std::shared_ptr<PathTracer>;
@@ -66,7 +66,6 @@ namespace Falcor
         bool beginFrame(RenderContext* pRenderContext, const RenderData& renderData);
         void endFrame(RenderContext* pRenderContext, const RenderData& renderData);
         bool renderSamplingUI(Gui::Widgets& widget);
-        bool renderLightsUI(Gui::Widgets& widget);
         void renderLoggingUI(Gui::Widgets& widget);
 
         virtual void setStaticParams(Program* pProgram) const;
@@ -76,8 +75,7 @@ namespace Falcor
 
         SampleGenerator::SharedPtr          mpSampleGenerator;              ///< GPU sample generator.
         EmissiveLightSampler::SharedPtr     mpEmissiveSampler;              ///< Emissive light sampler or nullptr if disabled.
-        EnvProbe::SharedPtr                 mpEnvProbe;                     ///< Environment map sampling (if used).
-        std::string                         mEnvProbeFilename;              ///< Name of loaded environment map (stripped of full path).
+        EnvMapSampler::SharedPtr            mpEnvMapSampler;                ///< Environment map sampler or nullptr if disabled.
 
         PixelStats::SharedPtr               mpPixelStats;                    ///< Utility class for collecting pixel stats.
         PixelDebug::SharedPtr               mpPixelDebug;                    ///< Utility class for pixel debugging (print in shaders).
@@ -100,6 +98,7 @@ namespace Falcor
         bool                                mUseEmissiveLights = false;     ///< True if emissive lights should be taken into account. See compile-time constant in StaticParams.slang.
         bool                                mUseEmissiveSampler = false;    ///< True if emissive light sampler should be used for the current frame. See compile-time constant in StaticParams.slang.
         uint32_t                            mMaxRaysPerPixel = 0;           ///< Maximum number of rays per pixel that will be traced. This is computed based on the current configuration.
+        bool                                mIsRayFootprintSupported = true;       ///< Globally enable/disable ray footprint. Requires v-buffer. Set to false if any requirement is not met.
 
         // Scripting
     #define serialize(var) \
@@ -120,9 +119,9 @@ namespace Falcor
 
             if constexpr (loadFromDict)
             {
-                for (const auto& v : dict)
+                for (const auto& [key, value] : dict)
                 {
-                    if (vars.find(v.key()) == vars.end()) logWarning("Unknown field `" + v.key() + "` in a PathTracer dictionary");
+                    if (vars.find(key) == vars.end()) logWarning("Unknown field '" + key + "' in a PathTracer dictionary");
                 }
             }
         }

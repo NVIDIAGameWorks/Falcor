@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -34,6 +34,14 @@
 
 namespace Falcor
 {
+    namespace
+    {
+        const std::string kAnimated = "animated";
+        const std::string kPosition = "position";
+        const std::string kTarget = "target";
+        const std::string kUp = "up";
+    }
+
     static_assert(sizeof(CameraData) % (sizeof(float4)) == 0, "CameraData size should be a multiple of 16");
 
     // Default dimensions of full frame cameras and 35mm film
@@ -83,6 +91,7 @@ namespace Falcor
         if (mPrevData.nearZ != mData.nearZ)             mChanges |= Changes::Frustum;
         if (mPrevData.farZ != mData.farZ)               mChanges |= Changes::Frustum;
         if (mPrevData.frameHeight != mData.frameHeight) mChanges |= Changes::Frustum;
+        if (mPrevData.frameWidth != mData.frameWidth)   mChanges |= Changes::Frustum;
 
         // Jitter
         if (mPrevData.jitterX != mData.jitterX) mChanges |= Changes::Jitter;
@@ -97,6 +106,17 @@ namespace Falcor
     {
         if (mDirty)
         {
+            if (mPreserveHeight)
+            {
+                // Set frame width based on height and aspect ratio
+                mData.frameWidth = mData.frameHeight * mData.aspectRatio;
+            }
+            else
+            {
+                // Set frame height based on width and aspect ratio
+                mData.frameHeight = mData.frameWidth / mData.aspectRatio;
+            }
+
             // Interpret focal length of 0 as 0 FOV. Technically 0 FOV should be focal length of infinity.
             const float fovY = mData.focalLength == 0.0f ? 0.0f : focalLengthToFovY(mData.focalLength, mData.frameHeight);
 
@@ -162,9 +182,9 @@ namespace Falcor
             mData.cameraW = glm::normalize(mData.target - mData.posW) * mData.focalDistance;
             mData.cameraU = glm::normalize(glm::cross(mData.cameraW, mData.up));
             mData.cameraV = glm::normalize(glm::cross(mData.cameraU, mData.cameraW));
-            const float ulen = mData.focalDistance * tanf(fovY * 0.5f) * mData.aspectRatio;
+            const float ulen = mData.focalDistance * std::tan(fovY * 0.5f) * mData.aspectRatio;
             mData.cameraU *= ulen;
-            const float vlen = mData.focalDistance * tanf(fovY * 0.5f);
+            const float vlen = mData.focalDistance * std::tan(fovY * 0.5f);
             mData.cameraV *= vlen;
 
             mDirty = false;
@@ -272,66 +292,90 @@ namespace Falcor
     float Camera::computeScreenSpacePixelSpreadAngle(const uint32_t winHeightPixels) const
     {
         const float FOVrad = focalLengthToFovY(getFocalLength(), Camera::kDefaultFrameHeight);
-        const float angle = atanf(2.0f * tanf(FOVrad * 0.5f) / winHeightPixels);
+        const float angle = std::atan(2.0f * std::tan(FOVrad * 0.5f) / winHeightPixels);
         return angle;
     }
 
-    void Camera::renderUI(Gui* pGui, const char* uiGroup)
+    void Camera::updateFromAnimation(const glm::mat4& transform)
     {
-        if (!uiGroup) uiGroup = "Camera Settings";
+        float3 up = float3(transform[1]);
+        float3 fwd = float3(transform[2]);
+        float3 pos = float3(transform[3]);
+        setUpVector(up);
+        setPosition(pos);
+        setTarget(pos + fwd);
+    }
 
-        auto g = Gui::Group(pGui, uiGroup);
-        if (g.open())
+    void Camera::renderUI(Gui::Widgets& widget)
+    {
+        if (mHasAnimation) widget.checkbox("Animated", mIsAnimated);
+
+        float focalLength = getFocalLength();
+        if (widget.var("Focal Length", focalLength, 0.0f, FLT_MAX, 0.25f)) setFocalLength(focalLength);
+
+        float aspectRatio = getAspectRatio();
+        if (widget.var("Aspect Ratio", aspectRatio, 0.f, FLT_MAX, 0.001f)) setAspectRatio(aspectRatio);
+
+        float focalDistance = getFocalDistance();
+        if (widget.var("Focal Distance", focalDistance, 0.f, FLT_MAX, 0.05f)) setFocalDistance(focalDistance);
+
+        float apertureRadius = getApertureRadius();
+        if (widget.var("Aperture Radius", apertureRadius, 0.f, FLT_MAX, 0.001f)) setApertureRadius(apertureRadius);
+
+        float shutterSpeed = getShutterSpeed();
+        if (widget.var("Shutter Speed", shutterSpeed, 0.f, FLT_MAX, 0.001f)) setShutterSpeed(shutterSpeed);
+
+        float ISOSpeed = getISOSpeed();
+        if (widget.var("ISO Speed", ISOSpeed, 0.8f, FLT_MAX, 0.25f)) setISOSpeed(ISOSpeed);
+
+        float2 depth = float2(mData.nearZ, mData.farZ);
+        if (widget.var("Depth Range", depth, 0.f, FLT_MAX, 0.1f)) setDepthRange(depth.x, depth.y);
+
+        float3 pos = getPosition();
+        if (widget.var("Position", pos, -FLT_MAX, FLT_MAX, 0.001f)) setPosition(pos);
+
+        float3 target = getTarget();
+        if (widget.var("Target", target, -FLT_MAX, FLT_MAX, 0.001f)) setTarget(target);
+
+        float3 up = getUpVector();
+        if (widget.var("Up", up, -FLT_MAX, FLT_MAX, 0.001f)) setUpVector(up);
+    }
+
+    std::string Camera::getScript(const std::string& cameraVar)
+    {
+        std::string c;
+
+        if (hasAnimation() && !isAnimated())
         {
-            float focalLength = getFocalLength();
-            if (g.var("Focal Length", focalLength, 0.0f, FLT_MAX, 0.25f)) setFocalLength(focalLength);
-
-            float aspectRatio = getAspectRatio();
-            if (g.var("Aspect Ratio", aspectRatio, 0.f, FLT_MAX, 0.001f)) setAspectRatio(aspectRatio);
-
-            float focalDistance = getFocalDistance();
-            if (g.var("Focal Distance", focalDistance, 0.f, FLT_MAX, 0.05f)) setFocalDistance(focalDistance);
-
-            float apertureRadius = getApertureRadius();
-            if (g.var("Aperture Radius", apertureRadius, 0.f, FLT_MAX, 0.001f)) setApertureRadius(apertureRadius);
-
-            float shutterSpeed = getShutterSpeed();
-            if (g.var("Shutter Speed", shutterSpeed, 0.f, FLT_MAX, 0.001f)) setShutterSpeed(shutterSpeed);
-
-            float ISOSpeed = getISOSpeed();
-            if (g.var("ISO Speed", ISOSpeed, 0.8f, FLT_MAX, 0.25f)) setISOSpeed(ISOSpeed);
-
-            float2 depth = float2(mData.nearZ, mData.farZ);
-            if (g.var("Depth Range", depth, 0.f, FLT_MAX, 0.1f)) setDepthRange(depth.x, depth.y);
-
-            float3 pos = getPosition();
-            if (g.var("Position", pos, -FLT_MAX, FLT_MAX, 0.001f)) setPosition(pos);
-
-            float3 target = getTarget();
-            if (g.var("Target", target, -FLT_MAX, FLT_MAX, 0.001f)) setTarget(target);
-
-            float3 up = getUpVector();
-            if (g.var("Up", up, -FLT_MAX, FLT_MAX, 0.001f)) setUpVector(up);
-
-            g.release();
+            c += Scripting::makeSetProperty(cameraVar, kAnimated, false);
         }
+
+        if (!hasAnimation() || !isAnimated())
+        {
+            c += Scripting::makeSetProperty(cameraVar, kPosition, getPosition());
+            c += Scripting::makeSetProperty(cameraVar, kTarget, getTarget());
+            c += Scripting::makeSetProperty(cameraVar, kUp, getUpVector());
+        }
+
+        return c;
     }
 
     SCRIPT_BINDING(Camera)
     {
-        auto camera = m.regClass(Camera);
-        camera.roProperty("name", &Camera::getName);
-        camera.property("aspectRatio", &Camera::getAspectRatio, &Camera::setAspectRatio);
-        camera.property("focalLength", &Camera::getFocalLength, &Camera::setFocalLength);
-        camera.property("frameHeight", &Camera::getFrameHeight, &Camera::setFrameHeight);
-        camera.property("focalDistance", &Camera::getFocalDistance, &Camera::setFocalDistance);
-        camera.property("apertureRadius", &Camera::getApertureRadius, &Camera::setApertureRadius);
-        camera.property("shutterSpeed", &Camera::getShutterSpeed, &Camera::setShutterSpeed);
-        camera.property("ISOSpeed", &Camera::getISOSpeed, &Camera::setISOSpeed);
-        camera.property("nearPlane", &Camera::getNearPlane, &Camera::setNearPlane);
-        camera.property("farPlane", &Camera::getFarPlane, &Camera::setFarPlane);
-        camera.property("position", &Camera::getPosition, &Camera::setPosition);
-        camera.property("target", &Camera::getTarget, &Camera::setTarget);
-        camera.property("up", &Camera::getUpVector, &Camera::setUpVector);
+        pybind11::class_<Camera, Animatable, Camera::SharedPtr> camera(m, "Camera");
+        camera.def_property_readonly("name", &Camera::getName);
+        camera.def_property("aspectRatio", &Camera::getAspectRatio, &Camera::setAspectRatio);
+        camera.def_property("focalLength", &Camera::getFocalLength, &Camera::setFocalLength);
+        camera.def_property("frameHeight", &Camera::getFrameHeight, &Camera::setFrameHeight);
+        camera.def_property("frameWidth", &Camera::getFrameWidth, &Camera::setFrameWidth);
+        camera.def_property("focalDistance", &Camera::getFocalDistance, &Camera::setFocalDistance);
+        camera.def_property("apertureRadius", &Camera::getApertureRadius, &Camera::setApertureRadius);
+        camera.def_property("shutterSpeed", &Camera::getShutterSpeed, &Camera::setShutterSpeed);
+        camera.def_property("ISOSpeed", &Camera::getISOSpeed, &Camera::setISOSpeed);
+        camera.def_property("nearPlane", &Camera::getNearPlane, &Camera::setNearPlane);
+        camera.def_property("farPlane", &Camera::getFarPlane, &Camera::setFarPlane);
+        camera.def_property(kPosition.c_str(), &Camera::getPosition, &Camera::setPosition);
+        camera.def_property(kTarget.c_str(), &Camera::getTarget, &Camera::setTarget);
+        camera.def_property(kUp.c_str(), &Camera::getUpVector, &Camera::setUpVector);
     }
 }

@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -26,8 +26,6 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 import Utils.Math.FormatConversion;
-
-static const uint kInvalidIndex = 0xffffffff;
 
 /** Ray hit information.
 
@@ -48,6 +46,8 @@ struct HitInfo
     uint    meshInstanceID;     ///< Mesh instance ID at hit.
     uint    primitiveIndex;     ///< Primitive index at hit.
     float2  barycentrics;       ///< Barycentric coordinates at ray hit, always in [0,1].
+
+    static const uint kInvalidIndex = 0xffffffff;
 
     /** Return the barycentric weights.
     */

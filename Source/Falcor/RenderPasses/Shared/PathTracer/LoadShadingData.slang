@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -35,7 +35,7 @@
 */
 
 import Scene.Scene;
-import Scene.ShadingData;
+import Scene.Shading;
 import Scene.HitInfo;
 import Utils.Math.MathHelpers;
 
@@ -49,7 +49,7 @@ import Experimental.Scene.Material.MaterialHelpers;
 // G-buffer inputs
 Texture2D<float4> gWorldPosition;
 Texture2D<float4> gWorldShadingNormal;
-Texture2D<float4> gWorldShadingBitangent;    // Optional
+Texture2D<float4> gWorldShadingTangent;      // Optional
 Texture2D<float4> gWorldView;                // Optional
 Texture2D<float4> gWorldFaceNormal;
 Texture2D<float4> gMaterialDiffuseOpacity;
@@ -87,9 +87,10 @@ float3 getPrimaryRayDir(uint2 pixel, uint2 frameDim, const Camera camera)
     \param[in] frameDim Frame dimensions in pixel.
     \param[in] camera Current camera.
     \param[out] sd ShadingData struct.
+    \param[out] hit HitInfo struct returned with geometry fetched from vbuffer if available.
     \return True if the pixel has valid data (not a background pixel). Note sd.V is always valid.
 */
-bool loadShadingData(uint2 pixel, uint2 frameDim, const Camera camera, out ShadingData sd)
+bool loadShadingData(uint2 pixel, uint2 frameDim, const Camera camera, out ShadingData sd, out HitInfo hit)
 {
     sd = {};
 
@@ -97,7 +98,6 @@ bool loadShadingData(uint2 pixel, uint2 frameDim, const Camera camera, out Shadi
     bool valid = false;
 
 #if USE_VBUFFER
-    HitInfo hit;
     if (hit.decode(gVBuffer[pixel]))
     {
         // Evaluate Falcor's material parameters at the hit point.
@@ -107,11 +107,10 @@ bool loadShadingData(uint2 pixel, uint2 frameDim, const Camera camera, out Shadi
         sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -rayDir, 0.f);
 
         // Compute tangent space if it is invalid.
-        // This is a workaround for assets having incorrect tangent spaces. See Art issue #25
-        if (!(dot(sd.B, sd.B) > 0.f))   // Note: Comparison written so that NaNs trigger
+        if (!(dot(sd.T, sd.T) > 0.f))   // Note: Comparison written so that NaNs trigger
         {
-            sd.B = perp_stark(sd.N);
-            sd.T = cross(sd.B, sd.N);
+            sd.T = perp_stark(sd.N);
+            sd.B = cross(sd.N, sd.T);
         }
 
         valid = true;
@@ -122,9 +121,9 @@ bool loadShadingData(uint2 pixel, uint2 frameDim, const Camera camera, out Shadi
     {
         // Load geometry and material parameters from G-buffer.
         float3 normal = gWorldShadingNormal[pixel].xyz;
-        float3 bitangent = isValid(gWorldShadingBitangent) ? gWorldShadingBitangent[pixel].xyz : perp_stark(normal);
+        float4 tangent = isValid(gWorldShadingTangent) ? gWorldShadingTangent[pixel] : float4(perp_stark(normal), 1.f);
         float3 faceNormal = gWorldFaceNormal[pixel].xyz;
-        GeometryParams geoParams = prepareGeometryParams(worldPos.xyz, -rayDir, normal, bitangent, faceNormal);
+        GeometryParams geoParams = prepareGeometryParams(worldPos.xyz, -rayDir, normal, tangent, faceNormal);
 
         MaterialParams matParams;
         matParams.diffuseOpacity = gMaterialDiffuseOpacity[pixel];
@@ -135,14 +134,29 @@ bool loadShadingData(uint2 pixel, uint2 frameDim, const Camera camera, out Shadi
         sd = prepareShadingData(geoParams, matParams);
         if (isValid(gVBuffer))
         {
-            HitInfo hit;
             if (hit.decode(gVBuffer[pixel])) sd.materialID = gScene.getMaterialID(hit.meshInstanceID);
         }
-
+        else
+        {
+            hit = { HitInfo::kInvalidIndex };
+        }
         valid = true;
     }
 #endif
 
     sd.V = -rayDir;
     return valid;
+}
+
+/** Helper for setting up the ShadingData struct based on loaded data.
+    \param[in] pixel Current pixel coordinates.
+    \param[in] frameDim Frame dimensions in pixel.
+    \param[in] camera Current camera.
+    \param[out] sd ShadingData struct.
+    \return True if the pixel has valid data (not a background pixel). Note sd.V is always valid.
+*/
+bool loadShadingData(uint2 pixel, uint2 frameDim, const Camera camera, out ShadingData sd)
+{
+    HitInfo hit;
+    return loadShadingData(pixel, frameDim, camera, sd, hit);
 }

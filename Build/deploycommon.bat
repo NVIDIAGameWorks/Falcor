@@ -18,14 +18,12 @@ IF not exist %OutDir%\Data\ mkdir %OutDir%\Data >nul
 call %~dp0\deployproject.bat %FalcorDir% %OutDir%
 
 rem Copy externals
-robocopy %ExtDir%\Python\ %OutDir% Python37*.dll /r:0 >nul
+robocopy %ExtDir%\Python\ %OutDir% Python36*.dll /r:0 >nul
 robocopy %ExtDir%\Python %OutDir%\Python /E /r:0 >nul
 robocopy %ExtDir%\AntTweakBar\lib %OutDir% AntTweakBar64.dll /r:0 >nul
 robocopy %ExtDir%\FreeImage %OutDir%  freeimage.dll /r:0 >nul
 robocopy %ExtDir%\assimp\bin\%2 %OutDir%  *.dll /r:0 >nul
 robocopy %ExtDir%\FFMpeg\bin\%2 %OutDir%  *.dll /r:0 >nul
-rem robocopy %ExtDir%\dxcompiler\%2 %OutDir%  dxcompiler.dll /r:0 >nul
-robocopy %ExtDir%\openvr\bin\win64 %OutDir%  openvr_api.dll /r:0 >nul
 robocopy %ExtDir%\Slang\bin\windows-x64\release %OutDir%  *.dll /r:0 >nul
 robocopy %ExtDir%\GLFW\lib %OutDir%  *.dll /r:0 >nul
 robocopy %ExtDir%\WinPixEventRuntime\bin\x64 %OutDir% WinPixEventRuntime.dll /r:0 >nul

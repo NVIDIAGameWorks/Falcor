@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -138,7 +138,7 @@ namespace Falcor
 
         /** Check if a name is marked as output
         */
-        bool isGraphOutput(const std::string& name);
+        bool isGraphOutput(const std::string& name) const;
 
         /** Call this when the swap-chain was resized
         */
@@ -159,6 +159,10 @@ namespace Falcor
         /** Get all output names for the render graph
         */
         std::vector<std::string> getAvailableOutputs() const;
+
+        /** Get all output names for the render graph that are currently unmarked.
+        */
+        std::vector<std::string> getUnmarkedOutputs() const;
 
         /** Attempts to auto generate edges for render passes.
             \param[in] executionOrder Optional. Ordered list of node ID's as an override of pass search order to use when generating edges.
@@ -186,7 +190,7 @@ namespace Falcor
 
         /** Get the dictionary objects used to communicate app data to the render-passes
         */
-        const Dictionary::SharedPtr& getPassesDictionary() const { return mpPassDictionary; }
+        const InternalDictionary::SharedPtr& getPassesDictionary() const { return mpPassDictionary; }
 
         /** Get the name
         */
@@ -251,7 +255,7 @@ namespace Falcor
         std::vector<GraphOut> mOutputs; // GRAPH_TODO should this be an unordered set?
         bool isGraphOutput(const GraphOut& graphOut) const;
 
-        Dictionary::SharedPtr mpPassDictionary;
+        InternalDictionary::SharedPtr mpPassDictionary;
         RenderGraphExe::SharedPtr mpExe;
         bool mRecompile = false;
         RenderGraphCompiler::Dependencies mCompilerDeps;

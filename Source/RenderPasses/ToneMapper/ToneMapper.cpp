@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -40,6 +40,12 @@ namespace
         { (uint32_t)ToneMapper::Operator::Aces, "ACES" },
     };
 
+    const Gui::DropdownList kExposureModeList =
+    {
+        { (uint32_t)ToneMapper::ExposureMode::AperturePriority, "Aperture priority" },
+        { (uint32_t)ToneMapper::ExposureMode::ShutterPriority, "Shutter priority" },
+    };
+
     const char kSrc[] = "src";
     const char kDst[] = "dst";
 
@@ -49,6 +55,9 @@ namespace
     const char kAutoExposure[] = "autoExposure";
     const char kExposureValue[] = "exposureValue";
     const char kFilmSpeed[] = "filmSpeed";
+    const char kFNumber[] = "fNumber";
+    const char kShutter[] = "shutter";
+    const char kExposureMode[] = "exposureMode";
 
     const char kWhiteBalance[] = "whiteBalance";
     const char kWhitePoint[] = "whitePoint";
@@ -64,11 +73,18 @@ namespace
     const float kExposureCompensationMin = -12.f;
     const float kExposureCompensationMax = 12.f;
 
-    const float kExposureValueMin = -24.f;
-    const float kExposureValueMax = 24.f;
-
     const float kFilmSpeedMin = 1.f;
     const float kFilmSpeedMax = 6400.f;
+
+    const float kFNumberMin = 0.1f;          // Minimum fNumber, > 0 to avoid numerical issues (i.e., non-physical values are allowed)
+    const float kFNumberMax = 100.f;
+
+    const float kShutterMin = 0.1f;          // Min reciprocal shutter time
+    const float kShutterMax = 10000.f;       // Max reciprocal shutter time
+
+    // EV is ultimately derived from shutter and fNumber; set its range based on that of its inputs
+    const float kExposureValueMin = std::log2(kShutterMin * kFNumberMin * kFNumberMin);
+    const float kExposureValueMax = std::log2(kShutterMax * kFNumberMax * kFNumberMax);
 
     // Note: Color temperatures < ~1905K are out-of-gamut in Rec.709.
     const float kWhitePointMin = 1905.f;
@@ -81,27 +97,34 @@ extern "C" __declspec(dllexport) const char* getProjDir()
     return PROJECT_DIR;
 }
 
-static void regToneMapper(ScriptBindings::Module& m)
+static void regToneMapper(pybind11::module& m)
 {
-    auto c = m.regClass(ToneMapper);
-    c.property(kExposureCompensation, &ToneMapper::getExposureCompensation, &ToneMapper::setExposureCompensation);
-    c.property(kAutoExposure, &ToneMapper::getAutoExposure, &ToneMapper::setAutoExposure);
-    c.property(kExposureValue, &ToneMapper::getExposureValue, &ToneMapper::setExposureValue);
-    c.property(kFilmSpeed, &ToneMapper::getFilmSpeed, &ToneMapper::setFilmSpeed);
-    c.property(kWhiteBalance, &ToneMapper::getWhiteBalance, &ToneMapper::setWhiteBalance);
-    c.property(kWhitePoint, &ToneMapper::getWhitePoint, &ToneMapper::setWhitePoint);
-    c.property(kOperator, &ToneMapper::getOperator, &ToneMapper::setOperator);
-    c.property(kClamp, &ToneMapper::getClamp, &ToneMapper::setClamp);
-    c.property(kWhiteMaxLuminance, &ToneMapper::getWhiteMaxLuminance, &ToneMapper::setWhiteMaxLuminance);
-    c.property(kWhiteScale, &ToneMapper::getWhiteScale, &ToneMapper::setWhiteScale);
+    pybind11::class_<ToneMapper, RenderPass, ToneMapper::SharedPtr> pass(m, "ToneMapper");
+    pass.def_property(kExposureCompensation, &ToneMapper::getExposureCompensation, &ToneMapper::setExposureCompensation);
+    pass.def_property(kAutoExposure, &ToneMapper::getAutoExposure, &ToneMapper::setAutoExposure);
+    pass.def_property(kExposureValue, &ToneMapper::getExposureValue, &ToneMapper::setExposureValue);
+    pass.def_property(kFilmSpeed, &ToneMapper::getFilmSpeed, &ToneMapper::setFilmSpeed);
+    pass.def_property(kWhiteBalance, &ToneMapper::getWhiteBalance, &ToneMapper::setWhiteBalance);
+    pass.def_property(kWhitePoint, &ToneMapper::getWhitePoint, &ToneMapper::setWhitePoint);
+    pass.def_property(kOperator, &ToneMapper::getOperator, &ToneMapper::setOperator);
+    pass.def_property(kClamp, &ToneMapper::getClamp, &ToneMapper::setClamp);
+    pass.def_property(kWhiteMaxLuminance, &ToneMapper::getWhiteMaxLuminance, &ToneMapper::setWhiteMaxLuminance);
+    pass.def_property(kWhiteScale, &ToneMapper::getWhiteScale, &ToneMapper::setWhiteScale);
+    pass.def_property(kFNumber, &ToneMapper::getFNumber, &ToneMapper::setFNumber);
+    pass.def_property(kShutter, &ToneMapper::getShutter, &ToneMapper::setShutter);
+    pass.def_property(kExposureMode, &ToneMapper::getExposureMode, &ToneMapper::setExposureMode);
 
-    auto op = m.enum_<ToneMapper::Operator>("ToneMapOp");
-    op.regEnumVal(ToneMapper::Operator::Linear);
-    op.regEnumVal(ToneMapper::Operator::Reinhard);;
-    op.regEnumVal(ToneMapper::Operator::ReinhardModified);
-    op.regEnumVal(ToneMapper::Operator::HejiHableAlu);;
-    op.regEnumVal(ToneMapper::Operator::HableUc2);
-    op.regEnumVal(ToneMapper::Operator::Aces);
+    pybind11::enum_<ToneMapper::Operator> op(m, "ToneMapOp");
+    op.value("Linear", ToneMapper::Operator::Linear);
+    op.value("Reinhard", ToneMapper::Operator::Reinhard);
+    op.value("ReinhardModified", ToneMapper::Operator::ReinhardModified);
+    op.value("HejiHableAlu", ToneMapper::Operator::HejiHableAlu);
+    op.value("HableUc2", ToneMapper::Operator::HableUc2);
+    op.value("Aces", ToneMapper::Operator::Aces);
+
+    pybind11::enum_<ToneMapper::ExposureMode> exposureMode(m, "ExposureMode");
+    exposureMode.value("AperturePriority", ToneMapper::ExposureMode::AperturePriority);
+    exposureMode.value("ShutterPriority", ToneMapper::ExposureMode::ShutterPriority);
 }
 
 extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
@@ -134,26 +157,22 @@ ToneMapper::SharedPtr ToneMapper::create(RenderContext* pRenderContext, const Di
 
     ToneMapper* pTM = new ToneMapper(Operator::Aces, outputFormat);
 
-    try
+    for (const auto& [key, value] : dict)
     {
-        for (const auto& v : dict)
-        {
-            if (v.key() == kExposureCompensation) pTM->setExposureCompensation(v.val());
-            else if (v.key() == kAutoExposure) pTM->setAutoExposure(v.val());
-            else if (v.key() == kExposureValue) pTM->setExposureValue(v.val());
-            else if (v.key() == kFilmSpeed) pTM->setFilmSpeed(v.val());
-            else if (v.key() == kWhiteBalance) pTM->setWhiteBalance(v.val());
-            else if (v.key() == kWhitePoint) pTM->setWhitePoint(v.val());
-            else if (v.key() == kOperator) pTM->setOperator(v.val());
-            else if (v.key() == kClamp) pTM->setClamp(v.val());
-            else if (v.key() == kWhiteMaxLuminance) pTM->setWhiteMaxLuminance(v.val());
-            else if (v.key() == kWhiteScale) pTM->setWhiteScale(v.val());
-            else logWarning("Unknown field `" + v.key() + "` in a ToneMapping dictionary");
-        }
-    }
-    catch (const std::exception& e)
-    {
-        logWarning("Unable to convert dictionary to expected type: " + std::string(e.what()));
+        if (key == kExposureCompensation) pTM->setExposureCompensation(value);
+        else if (key == kAutoExposure) pTM->setAutoExposure(value);
+        else if (key == kExposureValue) pTM->setExposureValue(value);
+        else if (key == kFilmSpeed) pTM->setFilmSpeed(value);
+        else if (key == kWhiteBalance) pTM->setWhiteBalance(value);
+        else if (key == kWhitePoint) pTM->setWhitePoint(value);
+        else if (key == kOperator) pTM->setOperator(value);
+        else if (key == kClamp) pTM->setClamp(value);
+        else if (key == kWhiteMaxLuminance) pTM->setWhiteMaxLuminance(value);
+        else if (key == kWhiteScale) pTM->setWhiteScale(value);
+        else if (key == kFNumber) pTM->setFNumber(value);
+        else if (key == kShutter) pTM->setShutter(value);
+        else if (key == kExposureMode) pTM->setExposureMode(value);
+        else logWarning("Unknown field '" + key + "' in a ToneMapping dictionary");
     }
 
     return ToneMapper::SharedPtr(pTM);
@@ -173,6 +192,9 @@ Dictionary ToneMapper::getScriptingDictionary()
     d[kClamp] = mClamp;
     d[kWhiteMaxLuminance] = mWhiteMaxLuminance;
     d[kWhiteScale] = mWhiteScale;
+    d[kFNumber] = mFNumber;
+    d[kShutter] = mShutter;
+    d[kExposureMode] = mExposureMode;
     return d;
 }
 
@@ -267,10 +289,42 @@ void ToneMapper::createLuminanceFbo(const Texture::SharedPtr& pSrc)
     }
 }
 
+// Update camera settings based on EV and exposure mode
+void ToneMapper::updateCameraSettings()
+{
+    if (mExposureMode == ExposureMode::AperturePriority)
+    {
+        // Set shutter based on EV and aperture
+        mShutter = std::pow(2.f, mExposureValue) / (mFNumber * mFNumber);
+        // Clamp to plausible value
+        mShutter = glm::clamp(mShutter, kShutterMin, kShutterMax);
+        // Recompute EV based on clamped shutter
+        updateExposureValue();
+    }
+    else if (mExposureMode == ExposureMode::ShutterPriority)
+    {
+        // Set aperture based on EV and shutter
+        mFNumber = std::sqrt(std::pow(2.f, mExposureValue) / mShutter);
+        // Clamp to plausible value
+        mFNumber = glm::clamp(mFNumber, kFNumberMin, kFNumberMax);
+        // Recompute EV based on clamped aperture
+        updateExposureValue();
+    }
+    else
+    {
+        should_not_get_here();
+    }
+}
+
+// Set EV based on fNumber and shutter
+void ToneMapper::updateExposureValue()
+{
+    mExposureValue = std::log2(mShutter * mFNumber * mFNumber);
+}
+
 void ToneMapper::renderUI(Gui::Widgets& widget)
 {
-    auto exposureGroup = Gui::Group(widget, "Exposure", true);
-    if (exposureGroup.open())
+    if (auto exposureGroup = widget.group("Exposure", true))
     {
         mUpdateToneMapPass |= exposureGroup.var("Exposure Compensation", mExposureCompensation, kExposureCompensationMin, kExposureCompensationMax, 0.1f, false, "%.1f");
 
@@ -278,15 +332,32 @@ void ToneMapper::renderUI(Gui::Widgets& widget)
 
         if (!mAutoExposure)
         {
-            mUpdateToneMapPass |= exposureGroup.var("Exposure Value (EV)", mExposureValue, kExposureValueMin, kExposureValueMax, 0.1f, false, "%.1f");
-            mUpdateToneMapPass |= exposureGroup.var("Film Speed (ISO)", mFilmSpeed, kFilmSpeedMin, kFilmSpeedMax, 0.1f, false, "%.1f");
-        }
+            uint32_t emIndex = static_cast<uint32_t>(mExposureMode);
+            if (exposureGroup.dropdown("Exposure mode", kExposureModeList, emIndex))
+            {
+                setExposureMode(ExposureMode(emIndex));
+            }
 
-        exposureGroup.release();
+            if (exposureGroup.var("Exposure Value (EV)", mExposureValue, kExposureValueMin, kExposureValueMax, 0.1f, false, "%.1f"))
+            {
+                setExposureValue(mExposureValue);
+            }
+
+            mUpdateToneMapPass |= exposureGroup.var("Film Speed (ISO)", mFilmSpeed, kFilmSpeedMin, kFilmSpeedMax, 0.1f, false, "%.1f");
+
+            if (exposureGroup.var("f-Number", mFNumber, kFNumberMin, kFNumberMax, 0.1f, false, "%.1f"))
+            {
+                setFNumber(mFNumber);
+            }
+
+            if (exposureGroup.var("Shutter", mShutter, kShutterMin, kShutterMax, 0.1f, false, "%.1f"))
+            {
+                setShutter(mShutter);
+            }
+        }
     }
 
-    auto colorgradingGroup = Gui::Group(widget, "Color Grading", true);
-    if (colorgradingGroup.open())
+    if (auto colorgradingGroup = widget.group("Color Grading", true))
     {
         mUpdateToneMapPass |= colorgradingGroup.checkbox("White Balance", mWhiteBalance);
 
@@ -304,12 +375,9 @@ void ToneMapper::renderUI(Gui::Widgets& widget)
             w = w / std::max(std::max(w.r, w.g), w.b);
             colorgradingGroup.rgbColor("", w);
         }
-
-        colorgradingGroup.release();
     }
 
-    auto tonemappingGroup = Gui::Group(widget, "Tonemapping", true);
-    if (tonemappingGroup.open())
+    if (auto tonemappingGroup = widget.group("Tonemapping", true))
     {
         uint32_t opIndex = static_cast<uint32_t>(mOperator);
         if (tonemappingGroup.dropdown("Operator", kOperatorList, opIndex))
@@ -327,8 +395,6 @@ void ToneMapper::renderUI(Gui::Widgets& widget)
         }
 
         mRecreateToneMapPass |= tonemappingGroup.checkbox("Clamp Output", mClamp);
-
-        tonemappingGroup.release();
     }
 }
 
@@ -347,6 +413,7 @@ void ToneMapper::setAutoExposure(bool autoExposure)
 void ToneMapper::setExposureValue(float exposureValue)
 {
     mExposureValue = glm::clamp(exposureValue, kExposureValueMin, kExposureValueMax);
+    updateCameraSettings();
     mUpdateToneMapPass = true;
 }
 
@@ -398,6 +465,25 @@ void ToneMapper::setWhiteScale(float whiteScale)
     mUpdateToneMapPass = true;
 }
 
+void ToneMapper::setFNumber(float fNumber)
+{
+    mFNumber = glm::clamp(fNumber, kFNumberMin, kFNumberMax);
+    updateExposureValue();
+    mUpdateToneMapPass = true;
+}
+
+void ToneMapper::setShutter(float shutter)
+{
+    mShutter = glm::clamp(shutter, kShutterMin, kShutterMax);
+    updateExposureValue();
+    mUpdateToneMapPass = true;
+}
+
+void ToneMapper::setExposureMode(ExposureMode mode)
+{
+    mExposureMode = mode;
+}
+
 void ToneMapper::createLuminancePass()
 {
     mpLuminancePass = FullScreenPass::create(kLuminanceFile);
@@ -425,8 +511,12 @@ void ToneMapper::updateColorTransform()
 {
     // Exposure scale due to exposure compensation.
     float exposureScale = pow(2.f, mExposureCompensation);
-    // Exposure scale due to manual exposure (only if auto exposure is disabled).
-    float manualExposureScale = mAutoExposure ? 1.f : pow(2.f, -mExposureValue) * mFilmSpeed / 100.f;
+    float manualExposureScale = 1.f;
+    if (!mAutoExposure)
+    {
+        float normConstant = 1.f / 100.f;
+        manualExposureScale = (normConstant * mFilmSpeed) / (mShutter * mFNumber * mFNumber);
+    }
     // Calculate final transform.
     mColorTransform = mWhiteBalanceTransform * exposureScale * manualExposureScale;
 }

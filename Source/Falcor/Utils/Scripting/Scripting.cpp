@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -35,50 +35,6 @@ namespace Falcor
     const FileDialogFilterVec Scripting::kFileExtensionFilters = { { "py", "Script Files"} };
     bool Scripting::sRunning = false;
 
-    template<typename CppType>
-    static bool insertNewValue(const std::pair<pybind11::handle, pybind11::handle>& pyVar, Dictionary& falcorDict)
-    {
-        try
-        {
-            CppType cppVal = pyVar.second.cast<CppType>();
-            std::string name = pyVar.first.cast<std::string>();
-            falcorDict[name] = cppVal;
-        }
-        catch (const std::runtime_error&)
-        {
-            return false;
-        }
-        return true;
-    }
-
-    static bool insertNewFloatVec(const std::pair<pybind11::handle, pybind11::handle>& pyVar, Dictionary& falcorDict)
-    {
-        try
-        {
-            std::vector<float> floatVec = pyVar.second.cast<std::vector<float>>();
-            std::string name = pyVar.first.cast<std::string>();
-
-            switch (floatVec.size())
-            {
-            case 1:
-                falcorDict[name] = floatVec[0]; break;
-            case 2:
-                falcorDict[name] = float2(floatVec[0], floatVec[1]); break;
-            case 3:
-                falcorDict[name] = float3(floatVec[0], floatVec[1], floatVec[2]); break;
-            case 4:
-                falcorDict[name] = float4(floatVec[0], floatVec[1], floatVec[2], floatVec[3]); break;
-            default:
-                falcorDict[name] = floatVec;
-            }
-        }
-        catch (const std::runtime_error&)
-        {
-            return false;
-        }
-        return true;
-    }
-
     bool Scripting::start()
     {
         if (!sRunning)
@@ -86,7 +42,9 @@ namespace Falcor
             sRunning = true;
 #ifdef _WIN32
             static std::wstring pythonHome = string_2_wstring(getExecutableDirectory() + "/Python");
-            Py_SetPythonHome(pythonHome.c_str());
+            // Py_SetPythonHome in Python < 3.7 takes a non-const wstr*, but guarantees that the contents
+            // will not be modified by Python. As such, casting away the const should be safe.
+            Py_SetPythonHome(const_cast<wchar_t*>(pythonHome.c_str()));
 #endif
 
             try
@@ -110,24 +68,24 @@ namespace Falcor
         {
             sRunning = false;
             pybind11::finalize_interpreter();
-            ScriptBindings::sClasses.clear();
         }
     }
 
-    class RedirectStdout
+    class RedirectStream
     {
     public:
-        RedirectStdout()
+        RedirectStream(const std::string& stream = "stdout")
+            : mStream(stream)
         {
             auto m = pybind11::module::import("sys");
-            mOrigOut = m.attr("stdout");
+            mOrigStream = m.attr(mStream.c_str());
             mBuffer = pybind11::module::import("io").attr("StringIO")();
-            m.attr("stdout") = mBuffer;
+            m.attr(mStream.c_str()) = mBuffer;
         }
 
-        ~RedirectStdout()
+        ~RedirectStream()
         {
-            pybind11::module::import("sys").attr("stdout") = mOrigOut;
+            pybind11::module::import("sys").attr(mStream.c_str()) = mOrigStream;
         }
 
         operator std::string() const
@@ -137,13 +95,14 @@ namespace Falcor
         }
 
     private:
-        pybind11::object mOrigOut;
+        std::string mStream;
+        pybind11::object mOrigStream;
         pybind11::object mBuffer;
     };
 
     static std::string runScript(const std::string& script, pybind11::dict& locals)
     {
-        RedirectStdout rs;
+        RedirectStream rs;
         pybind11::exec(script.c_str(), pybind11::globals(), locals);
         return rs;
     }
@@ -169,6 +128,19 @@ namespace Falcor
     std::string Scripting::runScriptFromFile(const std::string& filename, Context& context)
     {
         if (std::filesystem::exists(filename)) return Scripting::runScript(readFile(filename), context);
-        throw std::exception(std::string("Failed to run script. Can't find the file `" + filename + "`.").c_str());
+        throw std::exception(std::string("Failed to run script. Can't find the file '" + filename + "'.").c_str());
+    }
+
+    std::string Scripting::interpretScript(const std::string& script)
+    {
+        pybind11::module code = pybind11::module::import("code");
+        pybind11::object InteractiveInterpreter = code.attr("InteractiveInterpreter");
+        auto interpreter = InteractiveInterpreter(pybind11::globals());
+        auto runsource = interpreter.attr("runsource");
+
+        RedirectStream rstdout("stdout");
+        RedirectStream rstderr("stderr");
+        runsource(script);
+        return std::string(rstdout) + std::string(rstderr);
     }
 }

@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -34,14 +34,14 @@ namespace Falcor
     class RtStateObject;
 
     /* We are using the following layout for the shader-table:
-      
+
        +------------+---------+---------+-----+--------+---------+--------+-----+--------+--------+-----+--------+-----+--------+--------+-----+--------+
-       |            |         |         | ... |        |         |        | ... |        |        | ... |        | ... |        |        | ... |        | 
-       |   RayGen   |   Ray0  |   Ray1  | ... |  RayN  |   Ray0  |  Ray1  | ... |  RayN  |  Ray0  | ... |  RayN  | ... |  Ray0  |  Ray0  | ... |  RayN  |   
+       |            |         |         | ... |        |         |        | ... |        |        | ... |        | ... |        |        | ... |        |
+       |   RayGen   |   Ray0  |   Ray1  | ... |  RayN  |   Ray0  |  Ray1  | ... |  RayN  |  Ray0  | ... |  RayN  | ... |  Ray0  |  Ray0  | ... |  RayN  |
        |   Entry    |   Miss  |   Miss  | ... |  Miss  |   Hit   |   Hit  | ... |  Hit   |  Hit   | ... |  Hit   | ... |  Hit   |  Hit   | ... |  Hit   |
        |            |         |         | ... |        |  Mesh0  |  Mesh0 | ... |  Mesh0 |  Mesh1 | ... |  Mesh1 | ... | MeshN  |  MeshN | ... |  MeshN |
        +------------+---------+---------+-----+--------+---------+--------+-----+--------+--------+-----+--------+-----+--------+--------+-----+--------+
-      
+
        The first record is the ray gen, followed by the miss records, followed by the meshes records.
        For each mesh we have N hit records, N == number of ray types in the program
        The size of each record is varying based on the type. RayGen and miss entries contain only the program identifier. Hit entries contain the program identifier and the geometry index as a shader constant
@@ -54,12 +54,10 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<ShaderTable>;
-        using ConstSharedPtrRef = const SharedPtr&;
-        ~ShaderTable();
 
         /** Create a new object
         */
-        static SharedPtr create();//RtProgram* pProgram, const Scene* pScene);
+        static SharedPtr create();
 
         /** Update the shader table.
             This function doesn't do any early out. If it's called, it will always update the table.
@@ -68,8 +66,7 @@ namespace Falcor
         void update(
             RenderContext*          pCtx,
             RtStateObject*          pRtso,
-            RtProgramVars const*    pVars,
-            Scene*                  pScene);
+            RtProgramVars const*    pVars);
 
         void flushBuffer(
             RenderContext*          pCtx);
@@ -98,7 +95,7 @@ namespace Falcor
 
         /** Get the buffer
         */
-        Buffer::ConstSharedPtrRef getBuffer() const { return mpBuffer; }
+        const Buffer::SharedPtr& getBuffer() const { return mpBuffer; }
 
         /** Get the size of the RayGen record
         */
@@ -135,7 +132,7 @@ namespace Falcor
         RtStateObject* getRtso() const { return mpRtso; }
 
     private:
-        ShaderTable();
+        ShaderTable() = default;
 
         SubTableInfo mSubTables[int(SubTableType::Count)];
 

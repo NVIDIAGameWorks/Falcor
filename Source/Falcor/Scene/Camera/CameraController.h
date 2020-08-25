@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -61,7 +61,7 @@ namespace Falcor
         void setCameraSpeed(float speed) { mSpeed = speed; }
 
     protected:
-        CameraController(Camera::ConstSharedPtrRef pCamera) : mpCamera(pCamera) {}
+        CameraController(const Camera::SharedPtr& pCamera) : mpCamera(pCamera) {}
         Camera::SharedPtr mpCamera = nullptr;
         float mSpeed = 1;
     };
@@ -75,12 +75,11 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<OrbiterCameraController>;
-        using ConstSharedPtrRef = const SharedPtr&;
-        OrbiterCameraController(Camera::ConstSharedPtrRef pCamera) : CameraController(pCamera) {}
+        OrbiterCameraController(const Camera::SharedPtr& pCamera) : CameraController(pCamera) {}
 
         /** Create a new object
         */
-        static SharedPtr create(Camera::ConstSharedPtrRef pCamera) { return SharedPtr(new OrbiterCameraController(pCamera)); }
+        static SharedPtr create(const Camera::SharedPtr& pCamera) { return SharedPtr(new OrbiterCameraController(pCamera)); }
 
         /** Handle mouse events
         */
@@ -124,13 +123,12 @@ namespace Falcor
     class dlldecl FirstPersonCameraControllerCommon : public CameraController
     {
     public:
-        FirstPersonCameraControllerCommon(Camera::ConstSharedPtrRef pCamera);
+        FirstPersonCameraControllerCommon(const Camera::SharedPtr& pCamera);
         using SharedPtr = std::shared_ptr<FirstPersonCameraControllerCommon>;
-        using ConstSharedPtrRef = const SharedPtr&;
 
         /** Create a new object
         */
-        static SharedPtr create(Camera::ConstSharedPtrRef pCamera) { return SharedPtr(new FirstPersonCameraControllerCommon(pCamera)); }
+        static SharedPtr create(const Camera::SharedPtr& pCamera) { return SharedPtr(new FirstPersonCameraControllerCommon(pCamera)); }
 
         /** Handle mouse events
         */

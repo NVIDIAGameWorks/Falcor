@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -39,10 +39,11 @@ using namespace Falcor;
     is not always sufficient. The pass supports higher precision modes using
     either error compensation (Kahan summation) or double precision math.
 */
-class AccumulatePass : public RenderPass, public inherit_shared_from_this<RenderPass, AccumulatePass>
+class AccumulatePass : public RenderPass
 {
 public:
     using SharedPtr = std::shared_ptr<AccumulatePass>;
+
     virtual ~AccumulatePass() = default;
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
@@ -57,6 +58,9 @@ public:
     virtual bool onMouseEvent(const MouseEvent& mouseEvent) override { return false; }
     virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
     virtual void onHotReload(HotReloadFlags reloaded) override;
+
+    // Scripting functions
+    void reset() { mFrameCount = 0; }
 
     enum class Precision : uint32_t
     {
@@ -84,20 +88,7 @@ protected:
 
     // UI variables
     bool                        mEnableAccumulation = true;     ///< UI control if accumulation is enabled.
+    bool                        mAutoReset = true;              ///< Reset accumulation automatically upon scene changes, refresh flags, and/or subframe count.
     Precision                   mPrecisionMode = Precision::Single;
+    uint32_t                    mSubFrameCount = 0;             ///< Number of frames to accumulate before reset. Useful for generating references.
 };
-
-#define enum2str(a) case  AccumulatePass::Precision::a: return #a
-inline std::string to_string(AccumulatePass::Precision mode)
-{
-    switch (mode)
-    {
-        enum2str(Double);
-        enum2str(Single);
-        enum2str(SingleCompensated);
-    default:
-        should_not_get_here();
-        return "";
-    }
-}
-#undef enum2str

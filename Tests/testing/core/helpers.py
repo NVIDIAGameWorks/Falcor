@@ -52,28 +52,6 @@ def get_vcs_root(path):
     print("Error. Unknown VCS root `" + url[0] + "`")
     return url[0].lower()
 
-def run_with_timeout(args, cwd=None, stdout=None, stderr=None, timeout=180):
-    '''
-    Run a process with a given timeout.
-    Raises a TimeoutError when process is terminated due to the timeout.
-    Returns the process handle.
-    '''
-    # Convert all arguments to strings.
-    args = list(map(lambda a: str(a), args))
-
-    p = subprocess.Popen(args, cwd=cwd, stdout=stdout, stderr=stderr)
-    start_time = time.time()
-
-    while p.returncode is None:
-        p.poll()
-
-        elapsed_time = time.time() - start_time
-        if elapsed_time >= timeout:
-            p.kill()
-            raise TimeoutError(f'Process killed due to timeout ({timeout} s)')
-
-    return p
-
 def mirror_folders(src_dir, dst_dir):
     '''
     Mirror contents from src_dir to dst_dir.

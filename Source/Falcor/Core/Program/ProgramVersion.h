@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -225,7 +225,7 @@ namespace Falcor
         /** Get the reflection object.
             \return A program reflection object.
         */
-        ProgramReflection::ConstSharedPtrRef getReflector() const { assert(mpReflector); return mpReflector; }
+        const ProgramReflection::SharedPtr& getReflector() const { assert(mpReflector); return mpReflector; }
 
         /** Get executable kernels based on state in a `ProgramVars`
         */

@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -29,6 +29,7 @@
 #include "ScriptBindings.h"
 #include <functional>
 #include "Utils/StringUtils.h"
+#include "Utils/Scripting/Dictionary.h"
 
 using namespace pybind11::literals;
 
@@ -82,6 +83,12 @@ namespace Falcor
                 {
                     return mLocals[name.c_str()].cast<T>();
                 }
+
+                bool containsObject(const std::string& name) const
+                {
+                    return mLocals.contains(name.c_str());
+                }
+
             private:
                 friend class Scripting;
                 pybind11::dict mLocals;
@@ -92,6 +99,7 @@ namespace Falcor
             static std::string runScript(const std::string& script);
             static std::string runScript(const std::string& script, Context& context);
             static std::string runScriptFromFile(const std::string& filename, Context& context);
+            static std::string interpretScript(const std::string& script);
             static Context getGlobalContext();
             static bool isRunning() { return sRunning; }
 
@@ -103,9 +111,13 @@ namespace Falcor
             template<typename T>
             static std::string getArgString(const T& arg)
             {
-                std::string a;
-                if (std::is_enum_v<T>) a += getEnumTypeName(arg) + ".";
-                return a + to_string(arg);
+                return ScriptBindings::repr(arg);
+            }
+
+            template<>
+            static std::string getArgString(const Dictionary& dictionary)
+            {
+                return dictionary.toString();
             }
 
             template<typename Arg, typename...Args>

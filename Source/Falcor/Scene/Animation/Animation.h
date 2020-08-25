@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -36,7 +36,14 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<Animation>;
-        using ConstSharedPtrRef = const SharedPtr&;
+
+        static const uint32_t kInvalidChannel = -1;
+
+        enum class InterpolationMode
+        {
+            Linear,
+            Hermite,
+        };
 
         struct Keyframe
         {
@@ -56,7 +63,11 @@ namespace Falcor
 
         /** Add a new channel
         */
-        size_t addChannel(size_t matrixID);
+        uint32_t addChannel(uint32_t matrixID);
+
+        /** Get the channel for a given matrix ID or kInvalidChannel if not available
+        */
+        uint32_t getChannel(uint32_t matrixID) const;
 
         /** Get the channel count
         */
@@ -65,16 +76,20 @@ namespace Falcor
         /** Add a keyframe.
             If there's already a keyframe at the requested time, this call will override the existing frame
         */
-        void addKeyframe(size_t channelID, const Keyframe& keyframe);
+        void addKeyframe(uint32_t channelID, const Keyframe& keyframe);
 
         /** Get the keyframe from a specific time.
             If the keyframe doesn't exists, the function will throw an exception. If you don't want to handle exceptions, call doesKeyframeExist() first
         */
-        const Keyframe& getKeyframe(size_t channelID, double time) const;
+        const Keyframe& getKeyframe(uint32_t channelID, double time) const;
 
         /** Check if a keyframe exists in a specific time
         */
-        bool doesKeyframeExists(size_t channelID, double time) const;
+        bool doesKeyframeExists(uint32_t channelID, double time) const;
+
+        /** Set the interpolation mode and enable/disable warping for a given channel.
+        */
+        void setInterpolationMode(uint32_t channelID, InterpolationMode mode, bool enableWarping);
 
         /** Run the animation
             \param currentTime The current time in seconds. This can be larger then the animation time, in which case the animation will loop
@@ -84,25 +99,32 @@ namespace Falcor
 
         /** Get the matrixID affected by a channel
         */
-        size_t getChannelMatrixID(size_t channel) const { return mChannels[channel].matrixID; }
+        uint32_t getChannelMatrixID(uint32_t channel) const { return mChannels[channel].matrixID; }
 
     private:
         Animation(const std::string& name, double durationInSeconds);
 
         struct Channel
         {
-            Channel(size_t matID) : matrixID(matID) {};
-            size_t matrixID;
+            Channel(uint32_t matrixID, InterpolationMode interpolationMode = InterpolationMode::Linear, bool enableWarping = true)
+                : matrixID(matrixID)
+                , interpolationMode(interpolationMode)
+                , enableWarping(enableWarping)
+            {};
+
+            uint32_t matrixID;
+            InterpolationMode interpolationMode;
+            bool enableWarping;
             std::vector<Keyframe> keyframes;
-            size_t lastKeyframeUsed = 0;
-            double lastUpdateTime = 0;
+            mutable size_t lastKeyframeUsed = 0;
+            mutable double lastUpdateTime = 0;
         };
 
         std::vector<Channel> mChannels;
         const std::string mName;
         double mDurationInSeconds = 0;
 
-        glm::mat4 animateChannel(Channel& c, double time);
+        glm::mat4 animateChannel(const Channel& c, double time) const;
         size_t findChannelFrame(const Channel& c, double time) const;
         glm::mat4 interpolate(const Keyframe& start, const Keyframe& end, double curTime) const;
     };

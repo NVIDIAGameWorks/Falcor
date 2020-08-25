@@ -40,6 +40,7 @@
   </ItemGroup>
   <ItemGroup>
     <ShaderSource Include="Composite\Composite.cs.slang" />
+    <ShaderSource Include="Composite\CompositeMode.slangh" />
     <ShaderSource Include="GaussianBlur\GaussianBlur.ps.slang" />
   </ItemGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">

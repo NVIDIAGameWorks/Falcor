@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -27,6 +27,7 @@
  **************************************************************************/
 #include "FalcorTest.h"
 #include "Testing/UnitTest.h"
+#include "args.h"
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -51,32 +52,50 @@ void FalcorTest::onLoad(RenderContext* pRenderContext)
 
 void FalcorTest::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
-    const char* kTestFilterSwitch = "test_filter";
-    ArgList argList = gpFramework->getArgList();
-    std::string testFilterRegex;
-    if (argList.argExists(kTestFilterSwitch))
-    {
-        testFilterRegex = argList[kTestFilterSwitch].asString();
-        std::cout << "No test_filter regex provided." << std::endl;
-        sReturnCode = 1;
-    }
-    if (argList.argExists("h") || argList.argExists("help"))
-    {
-        std::cout << R"(usage: FalcorTest [-test_filter filter]
-            Where, if |filter| is provided, only tests whose source filename or test name
-            have |filter| as a substring are executed.
-            )";
-    }
-    else
-    {
-        sReturnCode = runTests(std::cout, pRenderContext, testFilterRegex);
-    }
+    sReturnCode = runTests(std::cout, pRenderContext, mOptions.filter);
     gpFramework->shutdown();
 }
 
 int main(int argc, char** argv)
 {
-    FalcorTest::UniquePtr pRenderer = std::make_unique<FalcorTest>();
+    args::ArgumentParser parser("Falcor unit tests.");
+    parser.helpParams.programName = "FalcorTest";
+    args::HelpFlag helpFlag(parser, "help", "Display this help menu.", {'h', "help"});
+    args::ValueFlag<std::string> filterFlag(parser, "filter", "Regular expression for filtering tests to run.", {'f', "filter"});
+    args::CompletionFlag completionFlag(parser, {"complete"});
+
+    try
+    {
+        parser.ParseCLI(argc, argv);
+    }
+    catch (const args::Completion& e)
+    {
+        std::cout << e.what();
+        return 0;
+    }
+    catch (const args::Help&)
+    {
+        std::cout << parser;
+        return 0;
+    }
+    catch (const args::ParseError& e)
+    {
+        std::cerr << e.what() << std::endl;
+        std::cerr << parser;
+        return 1;
+    }
+    catch (const args::RequiredError& e)
+    {
+        std::cerr << e.what() << std::endl;
+        std::cerr << parser;
+        return 1;
+    }
+
+    FalcorTest::Options options;
+
+    if (filterFlag) options.filter = args::get(filterFlag);
+
+    FalcorTest::UniquePtr pRenderer = std::make_unique<FalcorTest>(options);
     SampleConfig config;
     config.windowDesc.title = "FalcorTest";
     config.windowDesc.mode = Window::WindowMode::Minimized;

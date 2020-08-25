@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -102,7 +102,6 @@ namespace Falcor
     public:
         using SharedPtr = ParameterBlockSharedPtr<ParameterBlock>;
         using SharedConstPtr = std::shared_ptr<const ParameterBlock>;
-        using ConstSharedPtrRef = const SharedPtr&;
         ~ParameterBlock();
 
         using BindLocation = ParameterBlockReflection::BindLocation;
@@ -160,15 +159,15 @@ namespace Falcor
             \param[in] pBuffer The buffer object
             \return false is the call failed, otherwise true
         */
-        bool setBuffer(const std::string& name, Buffer::ConstSharedPtrRef pBuffer);
+        bool setBuffer(const std::string& name, const Buffer::SharedPtr& pBuffer);
 
         /** Bind a buffer object by index
-            If the no buffer exists in the specified index or the bind flags don't match the shader requirements or the size doesn't match the required size, the call will fail.  
+            If the no buffer exists in the specified index or the bind flags don't match the shader requirements or the size doesn't match the required size, the call will fail.
             \param[in] bindLocation The bind-location in the block
             \param[in] pBuffer The buffer object
             \return false is the call failed, otherwise true
         */
-        bool setBuffer(const BindLocation& bindLocation, Buffer::ConstSharedPtrRef pBuffer);
+        bool setBuffer(const BindLocation& bindLocation, const Buffer::SharedPtr& pBuffer);
 
         /** Get a buffer
             \param[in] name The name of the buffer
@@ -320,7 +319,7 @@ namespace Falcor
         std::pair<Resource::SharedPtr, bool> getRootDescriptor(uint32_t resourceRangeIndex, uint32_t arrayIndex) const;
 
         void renderUI(Gui::Widgets& widget);
-        ParameterBlock::ConstSharedPtrRef getParameterBlock(uint32_t resourceRangeIndex, uint32_t arrayIndex) const;
+        const ParameterBlock::SharedPtr& getParameterBlock(uint32_t resourceRangeIndex, uint32_t arrayIndex) const;
 
         // Delete some functions. If they are not deleted, the compiler will try to convert the uints to string, resulting in runtime error
         Sampler::SharedPtr getSampler(uint32_t) = delete;
@@ -337,7 +336,7 @@ namespace Falcor
             Be cautious with the returned buffer as it can be invalidated any time you set/bind something
             to the parameter block (or one if its internal sub-blocks).
         */
-        Buffer::ConstSharedPtrRef getUnderlyingConstantBuffer() const;
+        const Buffer::SharedPtr& getUnderlyingConstantBuffer() const;
 
         typedef uint64_t ChangeEpoch;
 

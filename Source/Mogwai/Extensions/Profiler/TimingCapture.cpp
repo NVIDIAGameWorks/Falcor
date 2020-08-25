@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -40,17 +40,19 @@ namespace Mogwai
 
     TimingCapture::UniquePtr TimingCapture::create(Renderer* pRenderer)
     {
-        return UniquePtr(new TimingCapture());
+        return UniquePtr(new TimingCapture(pRenderer));
     }
 
     void TimingCapture::scriptBindings(Bindings& bindings)
     {
         auto& m = bindings.getModule();
-        auto c = m.class_<TimingCapture>("TimingCapture");
+
+        pybind11::class_<TimingCapture> timingCapture(m, "TimingCapture");
+
         bindings.addGlobalObject(kScriptVar, this, "Timing Capture Helpers");
 
         // Members
-        c.func_(kCaptureFrameTime.c_str(), &TimingCapture::captureFrameTime, "filename"_a);
+        timingCapture.def(kCaptureFrameTime.c_str(), &TimingCapture::captureFrameTime, "filename"_a);
     }
 
     void TimingCapture::beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)

@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -94,7 +94,7 @@ namespace Falcor
     {
         if (mStatus != Status::Begin)
         {
-            logWarning("GpuTimer::end() was called without a preciding GpuTimer::begin(). Ignoring call.");
+            logWarning("GpuTimer::end() was called without a preceding GpuTimer::begin(). Ignoring call.");
             return;
         }
         mStatus = Status::End;
@@ -126,6 +126,6 @@ namespace Falcor
 
     SCRIPT_BINDING(GpuTimer)
     {
-        m.regClass(GpuTimer);
+        pybind11::class_<GpuTimer, GpuTimer::SharedPtr>(m, "GpuTimer");
     }
 }

@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -192,7 +192,7 @@ namespace Falcor
         }
 
         // These "storage" fields are used in the constructor
-        // when it needs to allocate aditional links. By pre-allocating
+        // when it needs to allocate additional links. By pre-allocating
         // them here in the body of the type we avoid having to do
         // heap allocation when constructing an extended path.
         //
@@ -330,117 +330,150 @@ namespace Falcor
             assert(rows == 1);
             switch (columns)
             {
-            case 1:
-                return ReflectionBasicType::Type::Bool;
-            case 2:
-                return ReflectionBasicType::Type::Bool2;
-            case 3:
-                return ReflectionBasicType::Type::Bool3;
-            case 4:
-                return ReflectionBasicType::Type::Bool4;
+            case 1: return ReflectionBasicType::Type::Bool;
+            case 2: return ReflectionBasicType::Type::Bool2;
+            case 3: return ReflectionBasicType::Type::Bool3;
+            case 4: return ReflectionBasicType::Type::Bool4;
             }
+            break;
+        case TypeReflection::ScalarType::UInt8:
+            assert(rows == 1);
+            switch (columns)
+            {
+            case 1: return ReflectionBasicType::Type::Uint8;
+            case 2: return ReflectionBasicType::Type::Uint8_2;
+            case 3: return ReflectionBasicType::Type::Uint8_3;
+            case 4: return ReflectionBasicType::Type::Uint8_4;
+            }
+            break;
+        case TypeReflection::ScalarType::UInt16:
+            assert(rows == 1);
+            switch (columns)
+            {
+            case 1: return ReflectionBasicType::Type::Uint16;
+            case 2: return ReflectionBasicType::Type::Uint16_2;
+            case 3: return ReflectionBasicType::Type::Uint16_3;
+            case 4: return ReflectionBasicType::Type::Uint16_4;
+            }
+            break;
         case TypeReflection::ScalarType::UInt32:
             assert(rows == 1);
             switch (columns)
             {
-            case 1:
-                return ReflectionBasicType::Type::Uint;
-            case 2:
-                return ReflectionBasicType::Type::Uint2;
-            case 3:
-                return ReflectionBasicType::Type::Uint3;
-            case 4:
-                return ReflectionBasicType::Type::Uint4;
+            case 1: return ReflectionBasicType::Type::Uint;
+            case 2: return ReflectionBasicType::Type::Uint2;
+            case 3: return ReflectionBasicType::Type::Uint3;
+            case 4: return ReflectionBasicType::Type::Uint4;
             }
+            break;
         case TypeReflection::ScalarType::UInt64:
             assert(rows == 1);
             switch (columns)
             {
-            case 1:
-                return ReflectionBasicType::Type::Uint64;
-            case 2:
-                return ReflectionBasicType::Type::Uint64_2;
-            case 3:
-                return ReflectionBasicType::Type::Uint64_3;
-            case 4:
-                return ReflectionBasicType::Type::Uint64_4;
+            case 1: return ReflectionBasicType::Type::Uint64;
+            case 2: return ReflectionBasicType::Type::Uint64_2;
+            case 3: return ReflectionBasicType::Type::Uint64_3;
+            case 4: return ReflectionBasicType::Type::Uint64_4;
             }
+            break;
+        case TypeReflection::ScalarType::Int8:
+            assert(rows == 1);
+            switch (columns)
+            {
+            case 1: return ReflectionBasicType::Type::Int8;
+            case 2: return ReflectionBasicType::Type::Int8_2;
+            case 3: return ReflectionBasicType::Type::Int8_3;
+            case 4: return ReflectionBasicType::Type::Int8_4;
+            }
+            break;
+        case TypeReflection::ScalarType::Int16:
+            assert(rows == 1);
+            switch (columns)
+            {
+            case 1: return ReflectionBasicType::Type::Int16;
+            case 2: return ReflectionBasicType::Type::Int16_2;
+            case 3: return ReflectionBasicType::Type::Int16_3;
+            case 4: return ReflectionBasicType::Type::Int16_4;
+            }
+            break;
         case TypeReflection::ScalarType::Int32:
             assert(rows == 1);
             switch (columns)
             {
-            case 1:
-                return ReflectionBasicType::Type::Int;
-            case 2:
-                return ReflectionBasicType::Type::Int2;
-            case 3:
-                return ReflectionBasicType::Type::Int3;
-            case 4:
-                return ReflectionBasicType::Type::Int4;
+            case 1: return ReflectionBasicType::Type::Int;
+            case 2: return ReflectionBasicType::Type::Int2;
+            case 3: return ReflectionBasicType::Type::Int3;
+            case 4: return ReflectionBasicType::Type::Int4;
             }
+            break;
         case TypeReflection::ScalarType::Int64:
             assert(rows == 1);
             switch (columns)
             {
-            case 1:
-                return ReflectionBasicType::Type::Int64;
-            case 2:
-                return ReflectionBasicType::Type::Int64_2;
-            case 3:
-                return ReflectionBasicType::Type::Int64_3;
-            case 4:
-                return ReflectionBasicType::Type::Int64_4;
+            case 1: return ReflectionBasicType::Type::Int64;
+            case 2: return ReflectionBasicType::Type::Int64_2;
+            case 3: return ReflectionBasicType::Type::Int64_3;
+            case 4: return ReflectionBasicType::Type::Int64_4;
             }
+            break;
+        case TypeReflection::ScalarType::Float16:
+            assert(rows == 1);
+            switch (columns)
+            {
+            case 1: return ReflectionBasicType::Type::Float16;
+            case 2: return ReflectionBasicType::Type::Float16_2;
+            case 3: return ReflectionBasicType::Type::Float16_3;
+            case 4: return ReflectionBasicType::Type::Float16_4;
+            }
+            break;
         case TypeReflection::ScalarType::Float32:
             switch (rows)
             {
             case 1:
                 switch (columns)
                 {
-                case 1:
-                    return ReflectionBasicType::Type::Float;
-                case 2:
-                    return ReflectionBasicType::Type::Float2;
-                case 3:
-                    return ReflectionBasicType::Type::Float3;
-                case 4:
-                    return ReflectionBasicType::Type::Float4;
+                case 1: return ReflectionBasicType::Type::Float;
+                case 2: return ReflectionBasicType::Type::Float2;
+                case 3: return ReflectionBasicType::Type::Float3;
+                case 4: return ReflectionBasicType::Type::Float4;
                 }
                 break;
             case 2:
                 switch (columns)
                 {
-                case 2:
-                    return ReflectionBasicType::Type::Float2x2;
-                case 3:
-                    return ReflectionBasicType::Type::Float2x3;
-                case 4:
-                    return ReflectionBasicType::Type::Float2x4;
+                case 2: return ReflectionBasicType::Type::Float2x2;
+                case 3: return ReflectionBasicType::Type::Float2x3;
+                case 4: return ReflectionBasicType::Type::Float2x4;
                 }
                 break;
             case 3:
                 switch (columns)
                 {
-                case 2:
-                    return ReflectionBasicType::Type::Float3x2;
-                case 3:
-                    return ReflectionBasicType::Type::Float3x3;
-                case 4:
-                    return ReflectionBasicType::Type::Float3x4;
+                case 2: return ReflectionBasicType::Type::Float3x2;
+                case 3: return ReflectionBasicType::Type::Float3x3;
+                case 4: return ReflectionBasicType::Type::Float3x4;
                 }
                 break;
             case 4:
                 switch (columns)
                 {
-                case 2:
-                    return ReflectionBasicType::Type::Float4x2;
-                case 3:
-                    return ReflectionBasicType::Type::Float4x3;
-                case 4:
-                    return ReflectionBasicType::Type::Float4x4;
+                case 2: return ReflectionBasicType::Type::Float4x2;
+                case 3: return ReflectionBasicType::Type::Float4x3;
+                case 4: return ReflectionBasicType::Type::Float4x4;
                 }
                 break;
             }
+            break;
+        case TypeReflection::ScalarType::Float64:
+            assert(rows == 1);
+            switch (columns)
+            {
+            case 1: return ReflectionBasicType::Type::Float64;
+            case 2: return ReflectionBasicType::Type::Float64_2;
+            case 3: return ReflectionBasicType::Type::Float64_3;
+            case 4: return ReflectionBasicType::Type::Float64_4;
+            }
+            break;
         }
 
         should_not_get_here();
@@ -518,7 +551,7 @@ namespace Falcor
                 // If along the way we run into a parameter block,
                 // *and* that parameter block has been allocated
                 // into its own register space, then we should stop
-                // ading contributions to the register/binding of
+                // adding contributions to the register/binding of
                 // the leaf parameter, since any register offsets
                 // coming from "above" this point shouldn't affect
                 // the register/binding of a parameter inside of
@@ -688,7 +721,7 @@ namespace Falcor
             pType->setParameterBlockReflector(pSubBlock);
 
             // TODO: `pSubBlock` should probably get stored on the
-            // `ReflectionResourceType` somwhere, so that we can
+            // `ReflectionResourceType` somewhere, so that we can
             // retrieve it later without having to use a parent
             // `ParameterBlockReflection` to look it up.
 
@@ -869,7 +902,6 @@ namespace Falcor
         switch (kind)
         {
         case TypeReflection::Kind::ParameterBlock:
-            kind = kind;
         case TypeReflection::Kind::Resource:
         case TypeReflection::Kind::SamplerState:
         case TypeReflection::Kind::ConstantBuffer:
@@ -1233,7 +1265,7 @@ namespace Falcor
         : mpProgramVersion(pProgramVersion)
         , mpSlangReflector(pSlangReflector)
     {
-        // For the most part the program scope needs to be refelcted like a struct type
+        // For the most part the program scope needs to be reflected like a struct type
         ReflectionStructType::SharedPtr pGlobalStruct = ReflectionStructType::create(0, "", nullptr);
         ParameterBlockReflection::SharedPtr pDefaultBlock = ParameterBlockReflection::createEmpty(pProgramVersion);
         pDefaultBlock->setElementType(pGlobalStruct);
@@ -1368,7 +1400,7 @@ namespace Falcor
             int32_t index = mNameToIndex[pVar->getName()];
             if (*pVar != *mMembers[index])
             {
-                logError("Mismatch in variable declarations between different shader stages. Variable name is `" + pVar->getName() + "', struct name is '" + mName);
+                logError("Mismatch in variable declarations between different shader stages. Variable name is '" + pVar->getName() + "', struct name is '" + mName + "'");
             }
             return -1;
         }

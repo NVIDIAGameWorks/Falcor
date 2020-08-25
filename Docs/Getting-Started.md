@@ -24,7 +24,7 @@ The `RenderPasses` folder contains a number of components ("Render Passes") that
 There are two main workflows when using Falcor:
 
 ### Render Graphs
-The recommended workflow when prototyping or implementing rendering techniques is to create render passes, render graphs, then render them with Mogwai. The [tutorials](../Tutorials/index.md) focus on this workflow.
+The recommended workflow when prototyping or implementing rendering techniques is to create render passes, render graphs, then render them with Mogwai. The [tutorials](./Tutorials/index.md) focus on this workflow.
 
 #### To run a sample Render Graph:
 1. Build the Falcor Solution
@@ -65,9 +65,9 @@ When running from Visual Studio:
     - Any directory that was added to the data directories list by calling `addDataDirectory()`.
 - Falcor looks for Shader files relative to your project folder.
 
-Upon building, a project's `Data` folders and shader files will be automatically deployed to the `Data` and `Shader` folders in the executable directory while preserving folder hierarchy. When running an application from its executable, Falcor will search in these folders instead. This allows the build output folder to be self-contained for easy sharing.
+Upon building, a project's `Data` folder and shader files will be automatically deployed to the `Data` and `Shaders` folders in the executable directory while preserving folder hierarchy. When running an application from its executable, Falcor will search in these folders instead. This allows the build output folder to be self-contained for easy sharing.
 
-The best practice is to create a directory called `Data/` next to your **project** file and place all your data files there. Your shader files should also have a `.slang`, `.slangh`, `.hlsl`, or `.hlsli` extension. Files with these extensions will be marked with the `Shader Source` item type in Visual Studio, and only these files will be deployed. Headers with a `.h` should be used for host-only files. Headers that will be shared between host and shader files should use the `.slangh` extension.
+The best practice is to create a directory called `Data` next to your **project** file and place all your data files there. Your shader files should also have a `.slang`, `.slangh`, `.hlsl`, or `.hlsli` extension. Files with these extensions will be marked with the `Shader Source` item type in Visual Studio, and only these files will be deployed. Headers with a `.h` should be used for host-only files. Headers that will be shared between host and shader files should use the `.slang` or `.slangh` extension.
 
 To search for a data or shader file, call `findFileInDataDirectories()` or `findFileInShaderDirectories()` respectively.
 

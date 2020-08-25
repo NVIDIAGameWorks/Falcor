@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -55,8 +55,8 @@ namespace Falcor
             } while (x1 * x1 + x2 * x2 >= 1);
 
             float3 point;
-            point.x = radius * 2 * x1 * sqrt(1 - x1 * x1 - x2 * x2) + center.x;
-            point.y = radius * 2 * x2 * sqrt(1 - x1 * x1 - x2 * x2) + center.y;
+            point.x = radius * 2 * x1 * std::sqrt(1 - x1 * x1 - x2 * x2) + center.x;
+            point.y = radius * 2 * x2 * std::sqrt(1 - x1 * x1 - x2 * x2) + center.y;
             point.z = radius * (1 - 2 * (x1 * x1 + x2 * x2)) + center.z;
             return point;
         }

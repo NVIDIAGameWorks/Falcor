@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -28,7 +28,6 @@
 #pragma once
 #include "Falcor.h"
 #include "Utils/Sampling/SampleGenerator.h"
-#include "Experimental/Scene/Lights/EnvProbe.h"
 
 using namespace Falcor;
 
@@ -38,8 +37,10 @@ using namespace Falcor;
     not use any importance sampling or other variance reduction techniques.
     The output is unbiased/consistent ground truth images, against which other
     renderers can be validated.
+
+    Note that transmission and nested dielectrics are not yet supported.
 */
-class MinimalPathTracer : public RenderPass, public inherit_shared_from_this<RenderPass, MinimalPathTracer>
+class MinimalPathTracer : public RenderPass
 {
 public:
     using SharedPtr = std::shared_ptr<MinimalPathTracer>;
@@ -62,16 +63,10 @@ private:
     // Internal state
     Scene::SharedPtr            mpScene;                    ///< Current scene.
     SampleGenerator::SharedPtr  mpSampleGenerator;          ///< GPU sample generator.
-    EnvProbe::SharedPtr         mpEnvProbe;                 ///< Environment map sampling (if used).
-    std::string                 mEnvProbeFilename;          ///< Name of loaded environment map (stripped of full path).
 
     // Configuration
     uint                        mMaxBounces = 3;            ///< Max number of indirect bounces (0 = none).
     bool                        mComputeDirect = true;      ///< Compute direct illumination (otherwise indirect only).
-    int                         mUseAnalyticLights = true;  ///< Use built-in analytic lights.
-    int                         mUseEmissiveLights = true;  ///< Use emissive geometry as light sources.
-    int                         mUseEnvLight = true;        ///< Use environment map as light source (if loaded).
-    int                         mUseEnvBackground = true;   ///< Use environment map as background (if loaded).
 
     // Runtime data
     uint                        mFrameCount = 0;            ///< Frame count since scene was loaded.
@@ -97,16 +92,12 @@ private:
         // Add variables here that should be serialized to/from the dictionary.
         serialize(mMaxBounces);
         serialize(mComputeDirect);
-        serialize(mUseAnalyticLights);
-        serialize(mUseEmissiveLights);
-        serialize(mUseEnvLight);
-        serialize(mUseEnvBackground);
 
         if constexpr (loadFromDict)
         {
-            for (const auto& v : dict)
+            for (const auto& [key, value] : dict)
             {
-                if (vars.find(v.key()) == vars.end()) logWarning("Unknown field `" + v.key() + "` in a PathTracer dictionary");
+                if (vars.find(key) == vars.end()) logWarning("Unknown field '" + key + "' in a PathTracer dictionary");
             }
         }
     }

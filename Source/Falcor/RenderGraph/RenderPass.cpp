@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -30,14 +30,14 @@
 
 namespace Falcor
 {
-    RenderData::RenderData(const std::string& passName, const ResourceCache::SharedPtr& pResourceCache, const Dictionary::SharedPtr& pDict, const uint2& defaultTexDims, ResourceFormat defaultTexFormat)
+    RenderData::RenderData(const std::string& passName, const ResourceCache::SharedPtr& pResourceCache, const InternalDictionary::SharedPtr& pDict, const uint2& defaultTexDims, ResourceFormat defaultTexFormat)
         : mName(passName)
         , mpResources(pResourceCache)
         , mpDictionary(pDict)
         , mDefaultTexDims(defaultTexDims)
         , mDefaultTexFormat(defaultTexFormat)
     {
-        if (!mpDictionary) mpDictionary = Dictionary::create();
+        if (!mpDictionary) mpDictionary = InternalDictionary::create();
     }
 
     const Resource::SharedPtr& RenderData::getResource(const std::string& name) const

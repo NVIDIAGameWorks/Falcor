@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -198,7 +198,7 @@ namespace Falcor
 
     Please note that the concepts of resource "ranges" are largely an implementation detail of
     the `ParameterBlock` type, and most user code should not attempt to explicitly work with
-    or reason about resource ranges. In particular, there is *no* correspondance between resource
+    or reason about resource ranges. In particular, there is *no* correspondence between resource
     range indices and the `register`s or `binding`s assigned to shader parameters.
     */
     struct ResourceShaderVarOffset
@@ -754,12 +754,11 @@ namespace Falcor
 
     /** Represents an array type in shader code.
     */
-    class dlldecl ReflectionArrayType : public ReflectionType, public inherit_shared_from_this<ReflectionType, ReflectionArrayType>
+    class dlldecl ReflectionArrayType : public ReflectionType
     {
     public:
         using SharedPtr = std::shared_ptr<ReflectionArrayType>;
         using SharedConstPtr = std::shared_ptr<const ReflectionArrayType>;
-        using inherit_shared_from_this<ReflectionType, ReflectionArrayType>::shared_from_this;
 
         /** Create a new object
         */
@@ -806,12 +805,11 @@ namespace Falcor
 
     /** Represents a `struct` type in shader code.
     */
-    class dlldecl ReflectionStructType : public ReflectionType, public inherit_shared_from_this<ReflectionType, ReflectionStructType>
+    class dlldecl ReflectionStructType : public ReflectionType
     {
     public:
         using SharedPtr = std::shared_ptr<ReflectionStructType>;
         using SharedConstPtr = std::shared_ptr<const ReflectionStructType>;
-        using inherit_shared_from_this<ReflectionType, ReflectionStructType>::shared_from_this;
 
         /** Get the name of the struct type
         */
@@ -883,12 +881,11 @@ namespace Falcor
 
     /** Reflection object for scalars, vectors and matrices
     */
-    class dlldecl ReflectionBasicType : public ReflectionType, public inherit_shared_from_this<ReflectionType, ReflectionBasicType>
+    class dlldecl ReflectionBasicType : public ReflectionType
     {
     public:
         using SharedPtr = std::shared_ptr<ReflectionBasicType>;
         using SharedConstPtr = std::shared_ptr<const ReflectionBasicType>;
-        using inherit_shared_from_this<ReflectionType, ReflectionBasicType>::shared_from_this;
 
         /** The type of the object
         */
@@ -898,26 +895,57 @@ namespace Falcor
             Bool2,
             Bool3,
             Bool4,
+
+            Uint8,
+            Uint8_2,
+            Uint8_3,
+            Uint8_4,
+
+            Uint16,
+            Uint16_2,
+            Uint16_3,
+            Uint16_4,
+
             Uint,
             Uint2,
             Uint3,
             Uint4,
+
             Uint64,
             Uint64_2,
             Uint64_3,
             Uint64_4,
+
+            Int8,
+            Int8_2,
+            Int8_3,
+            Int8_4,
+
+            Int16,
+            Int16_2,
+            Int16_3,
+            Int16_4,
+
             Int,
             Int2,
             Int3,
             Int4,
+
             Int64,
             Int64_2,
             Int64_3,
             Int64_4,
+
+            Float16,
+            Float16_2,
+            Float16_3,
+            Float16_4,
+
             Float,
             Float2,
             Float3,
             Float4,
+
             Float2x2,
             Float2x3,
             Float2x4,
@@ -927,6 +955,11 @@ namespace Falcor
             Float4x2,
             Float4x3,
             Float4x4,
+
+            Float64,
+            Float64_2,
+            Float64_3,
+            Float64_4,
 
             Unknown = -1
         };
@@ -963,12 +996,11 @@ namespace Falcor
 
     /** Reflection object for resources
     */
-    class dlldecl ReflectionResourceType : public ReflectionType, public inherit_shared_from_this<ReflectionType, ReflectionResourceType>
+    class dlldecl ReflectionResourceType : public ReflectionType
     {
     public:
         using SharedPtr = std::shared_ptr<ReflectionResourceType>;
         using SharedConstPtr = std::shared_ptr<const ReflectionResourceType>;
-        using inherit_shared_from_this<ReflectionType, ReflectionResourceType>::shared_from_this;
 
         /** Describes how the shader will access the resource
         */
@@ -1091,12 +1123,11 @@ namespace Falcor
 
     /** Reflection object for resources
     */
-    class dlldecl ReflectionInterfaceType : public ReflectionType, public inherit_shared_from_this<ReflectionType, ReflectionInterfaceType>
+    class dlldecl ReflectionInterfaceType : public ReflectionType
     {
     public:
         using SharedPtr = std::shared_ptr<ReflectionInterfaceType>;
         using SharedConstPtr = std::shared_ptr<const ReflectionInterfaceType>;
-        using inherit_shared_from_this<ReflectionType, ReflectionInterfaceType>::shared_from_this;
 
         static SharedPtr create(
             slang::TypeLayoutReflection*    pSlangTypeLayout);
@@ -1388,13 +1419,11 @@ namespace Falcor
 
     typedef ParameterBlockReflection ParameterBlockReflection;
 
-    class dlldecl EntryPointGroupReflection : public ParameterBlockReflection, public inherit_shared_from_this<ParameterBlockReflection, EntryPointGroupReflection>
+    class dlldecl EntryPointGroupReflection : public ParameterBlockReflection
     {
     public:
         using SharedPtr = std::shared_ptr<EntryPointGroupReflection>;
         using SharedConstPtr = std::shared_ptr<const EntryPointGroupReflection>;
-
-        using inherit_shared_from_this<ParameterBlockReflection, EntryPointGroupReflection>::shared_from_this;
 
         static SharedPtr create(
             ProgramVersion const*   pProgramVersion,
@@ -1414,7 +1443,6 @@ namespace Falcor
     public:
         using SharedPtr = std::shared_ptr<ProgramReflection>;
         using SharedConstPtr = std::shared_ptr<const ProgramReflection>;
-        using ConstSharedPtrRef = const SharedPtr&;
         static const uint32_t kInvalidLocation = -1;
 
         /** Data structured describing a shader input/output variable. Used mostly to communicate VS inputs and PS outputs

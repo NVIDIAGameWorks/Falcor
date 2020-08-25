@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -49,15 +49,12 @@ namespace Falcor
         {
             const auto& pPass = p.pPass;
 
-            auto passGroup = Gui::Group(widget, p.name);
-            if (passGroup.open())
+            if (auto passGroup = widget.group(p.name))
             {
                 // If you are thinking about displaying the profiler results next to the group label, it won't work. Since the times change every frame, IMGUI thinks it's a different group and will not expand it
                 const auto& desc = pPass->getDesc();
                 if (desc.size()) passGroup.tooltip(desc.c_str());
                 pPass->renderUI(passGroup);
-
-                passGroup.release();
             }
         }
     }

@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -26,7 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "VBufferRT.h"
+#include "Scene/HitInfo.h"
 #include "RenderGraph/RenderPassStandardFlags.h"
+#include "RenderGraph/RenderPassHelpers.h"
 
 const char* VBufferRT::kDesc = "Ray traced V-buffer generation pass";
 
@@ -41,6 +43,12 @@ namespace
 
     const std::string kOutputName = "vbuffer";
     const std::string kOutputDesc = "V-buffer packed into 64 bits (indices + barys)";
+
+    // Additional output channels.
+    const ChannelList kVBufferExtraChannels =
+    {
+        { "time",           "gTime",            "Per-pixel execution time",         true /* optional */, ResourceFormat::R32Uint     },
+    };
 };
 
 RenderPassReflection VBufferRT::reflect(const CompileData& compileData)
@@ -48,6 +56,7 @@ RenderPassReflection VBufferRT::reflect(const CompileData& compileData)
     RenderPassReflection reflector;
 
     reflector.addOutput(kOutputName, kOutputDesc).bindFlags(Resource::BindFlags::UnorderedAccess).format(ResourceFormat::RG32Uint);
+    addRenderPassOutputs(reflector, kVBufferExtraChannels);
 
     return reflector;
 }
@@ -62,16 +71,16 @@ VBufferRT::VBufferRT(const Dictionary& dict)
 {
     parseDictionary(dict);
 
+    // Create sample generator
+    mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_DEFAULT);
+
     // Create ray tracing program
     RtProgram::Desc desc;
     desc.addShaderLibrary(kProgramFile).setRayGen("rayGen");
     desc.addHitGroup(0, "closestHit", "anyHit").addMiss(0, "miss");
     desc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
+    desc.addDefines(mpSampleGenerator->getDefines());
     mRaytrace.pProgram = RtProgram::create(desc, kMaxPayloadSizeBytes, kMaxAttributesSizeBytes);
-
-    // Create sample generator
-    mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_DEFAULT);
-    mpSampleGenerator->prepareProgram(mRaytrace.pProgram.get());
 }
 
 void VBufferRT::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
@@ -89,31 +98,36 @@ void VBufferRT::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& 
 
 void VBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    // Update refresh flag if options that affect the output have changed.
-    Dictionary& dict = renderData.getDictionary();
-    if (mOptionsChanged)
-    {
-        auto prevFlags = (Falcor::RenderPassRefreshFlags)(dict.keyExists(kRenderPassRefreshFlags) ? dict[Falcor::kRenderPassRefreshFlags] : 0u);
-        dict[Falcor::kRenderPassRefreshFlags] = (uint32_t)(prevFlags | Falcor::RenderPassRefreshFlags::RenderOptionsChanged);
-        mOptionsChanged = false;
-    }
+    GBufferBase::execute(pRenderContext, renderData);
 
     // If there is no scene, clear the output and return.
     if (mpScene == nullptr)
     {
         auto pOutput = renderData[kOutputName]->asTexture();
-        pRenderContext->clearUAV(pOutput->getUAV().get(), uint4(kInvalidIndex));
+        pRenderContext->clearUAV(pOutput->getUAV().get(), uint4(HitInfo::kInvalidIndex));
+
+        auto clear = [&](const ChannelDesc& channel)
+        {
+            auto pTex = renderData[channel.name]->asTexture();
+            if (pTex) pRenderContext->clearUAV(pTex->getUAV().get(), float4(0.f));
+        };
+        for (const auto& channel : kVBufferExtraChannels) clear(channel);
+
         return;
     }
 
     // Configure depth-of-field.
     // When DOF is enabled, two PRNG dimensions are used. Pass this info to subsequent passes via the dictionary.
     const bool useDOF = mpScene->getCamera()->getApertureRadius() > 0.f;
-    if (useDOF) dict[Falcor::kRenderPassPRNGDimension] = useDOF ? 2u : 0u;
+    if (useDOF) renderData.getDictionary()[Falcor::kRenderPassPRNGDimension] = useDOF ? 2u : 0u;
 
     // Set program defines.
     mRaytrace.pProgram->addDefine("USE_DEPTH_OF_FIELD", useDOF ? "1" : "0");
     mRaytrace.pProgram->addDefine("DISABLE_ALPHA_TEST", mDisableAlphaTest ? "1" : "0");
+
+    // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
+    // TODO: This should be moved to a more general mechanism using Slang.
+    mRaytrace.pProgram->addDefines(getValidResourceDefines(kVBufferExtraChannels, renderData));
 
     // Create program vars.
     if (!mRaytrace.pVars)
@@ -129,6 +143,14 @@ void VBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
     ShaderVar var = mRaytrace.pVars->getRootVar();
     var["PerFrameCB"]["frameCount"] = mFrameCount++;
     var["gVBuffer"] = renderData[kOutputName]->asTexture();
+
+    // Bind output channels as UAV buffers.
+    auto bind = [&](const ChannelDesc& channel)
+    {
+        Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
+        var[channel.texname] = pTex;
+    };
+    for (const auto& channel : kVBufferExtraChannels) bind(channel);
 
     // Dispatch the rays.
     mpScene->raytrace(pRenderContext, mRaytrace.pProgram.get(), mRaytrace.pVars, uint3(mFrameDim, 1));

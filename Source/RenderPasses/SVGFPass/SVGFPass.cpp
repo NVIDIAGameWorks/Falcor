@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -91,20 +91,17 @@ SVGFPass::SharedPtr SVGFPass::create(RenderContext* pRenderContext, const Dictio
 
 SVGFPass::SVGFPass(const Dictionary& dict)
 {
-    for (const auto& v : dict)
+    for (const auto& [key, value] : dict)
     {
-        if (v.key() == kEnabled) mFilterEnabled = v.val();
-        else if (v.key() == kIterations) mFilterIterations = v.val();
-        else if (v.key() == kFeedbackTap) mFeedbackTap = v.val();
-        else if (v.key() == kVarianceEpsilon) mVarainceEpsilon = v.val();
-        else if (v.key() == kPhiColor) mPhiColor = v.val();
-        else if (v.key() == kPhiNormal) mPhiNormal = v.val();
-        else if (v.key() == kAlpha) mAlpha = v.val();
-        else if (v.key() == kMomentsAlpha) mMomentsAlpha = v.val();
-        else
-        {
-            logWarning("Unknown field `" + v.key() + "` in SVGFPass dictionary");
-        }
+        if (key == kEnabled) mFilterEnabled = value;
+        else if (key == kIterations) mFilterIterations = value;
+        else if (key == kFeedbackTap) mFeedbackTap = value;
+        else if (key == kVarianceEpsilon) mVarainceEpsilon = value;
+        else if (key == kPhiColor) mPhiColor = value;
+        else if (key == kPhiNormal) mPhiNormal = value;
+        else if (key == kAlpha) mAlpha = value;
+        else if (key == kMomentsAlpha) mMomentsAlpha = value;
+        else logWarning("Unknown field '" + key + "' in SVGFPass dictionary");
     }
 
     mpPackLinearZAndNormal = FullScreenPass::create(kPackLinearZAndNormalShader);

@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -39,15 +39,14 @@ using namespace Falcor;
 
 extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib);
 
-class dllpassdecl GaussianBlur : public RenderPass, public inherit_shared_from_this<RenderPass, GaussianBlur>
+class dllpassdecl GaussianBlur : public RenderPass
 {
 public:
     using SharedPtr = std::shared_ptr<GaussianBlur>;
-    using inherit_shared_from_this::shared_from_this;
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
-    std::string getDesc() { return kDesc; }
+    std::string getDesc() override { return kDesc; }
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
@@ -74,6 +73,6 @@ private:
     Sampler::SharedPtr mpSampler;
 
     static const char* kDesc;
-    static void registerBindings(ScriptBindings::Module& m);
+    static void registerBindings(pybind11::module& m);
     friend void getPasses(Falcor::RenderPassLibrary& lib);
 };

@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -30,7 +30,7 @@
 
 namespace Falcor
 {
-    const FormatDesc kFormatDesc[] = 
+    const FormatDesc kFormatDesc[] =
     {
         // Format                           Name,           BytesPerBlock ChannelCount  Type          {bDepth,   bStencil, bCompressed},   {CompressionRatio.Width,     CompressionRatio.Height}    {numChannelBits.x, numChannelBits.y, numChannelBits.z, numChannelBits.w}
         {ResourceFormat::Unknown,            "Unknown",         0,              0,  FormatType::Unknown,    {false,  false, false,},        {1, 1},                                                  {0, 0, 0, 0    }},
@@ -121,10 +121,10 @@ namespace Falcor
     SCRIPT_BINDING(ResourceFormat)
     {
         // Resource formats
-        auto formats = m.enum_<ResourceFormat>("ResourceFormat");
+        pybind11::enum_<ResourceFormat> resourceFormat(m, "ResourceFormat");
         for (uint32_t i = 0; i < (uint32_t)ResourceFormat::Count; i++)
         {
-            formats.regEnumVal(ResourceFormat(i));
+            resourceFormat.value(to_string(ResourceFormat(i)).c_str(), ResourceFormat(i));
         }
     }
 }

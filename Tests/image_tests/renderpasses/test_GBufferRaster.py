@@ -9,4 +9,9 @@ ctx = locals()
 # default
 render_frames(ctx, 'default', frames=[1,16,64])
 
+# re-load scene with non-indexed vertices
+m.loadScene('Arcade/Arcade.fscene', buildFlags=SceneBuilderFlags.NonIndexedVertices)
+
+render_frames(ctx, 'non-indexed', frames=[1,16,64])
+
 exit()

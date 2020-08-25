@@ -25,11 +25,11 @@
         <package name="rapidjson" version="1.1.0" />
     </dependency>
     <dependency name="slang" linkPath="../Externals/.packman/Slang">
-        <package name="slang" version="0.14.3" remotes="github-slang" />
-        <package name="slang" version="0.14.3" remotes="github-slang-linux" platforms="linux" />
+        <package name="slang" version="0.16.3" remotes="github-slang" />
+        <package name="slang" version="0.16.3" remotes="github-slang-linux" platforms="linux" />
     </dependency>
     <dependency name="glfw" linkPath="../Externals/.packman/GLFW">
-        <package name="glfw" version="3.2.1" platforms="win" />
+        <package name="glfw" version="3.3.2" platforms="win" />
     </dependency>
     <dependency name="winpixeventruntime" linkPath="../Externals/.packman/WinPixEventRuntime">
         <package name="WinPixEventRuntime" version="1.0.190604001" platforms="win" />
@@ -38,7 +38,7 @@
         <package name="falcor_media" version="2.2.1" />
     </dependency>
     <dependency name="python" linkPath="../Externals/.packman/Python">
-        <package name="python" version="3.7.0-windows-x64" platforms="win" />
+        <package name="python" version="3.6.7-windows-x86_64" platforms="win" />
     </dependency>
     <dependency name="pybind11" linkPath="../Externals/.packman/pybind11">
         <package name="pybind11" version="2.2.4" />

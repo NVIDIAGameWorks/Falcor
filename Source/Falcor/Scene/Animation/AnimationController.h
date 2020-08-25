@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -53,7 +53,6 @@ namespace Falcor
     public:
         using UniquePtr = std::unique_ptr<AnimationController>;
         using UniqueConstPtr = std::unique_ptr<const AnimationController>;
-        static const uint32_t kBindPoseAnimationId = -1;
         static const uint32_t kInvalidBoneID = -1;
         ~AnimationController() = default;
 
@@ -63,80 +62,51 @@ namespace Falcor
         /** Create a new object
         */
         static UniquePtr create(Scene* pScene, const StaticVertexVector& staticVertexData, const DynamicVertexVector& dynamicVertexData);
-        
-        /** Add an animation for a mesh
-        */
-        void addAnimation(uint32_t meshID, Animation::ConstSharedPtrRef pAnimation);
 
-        /** Toggle all mesh animations on or off.
+        /** Add an animation
         */
-        void toggleAnimations(bool animate);
+        void addAnimation(const Animation::SharedPtr& pAnimation);
+
+        /** Returns true if controller contains animations.
+        */
+        bool hasAnimations() const { return mAnimations.size() > 0; }
+
+        /** Enable/disable animations.
+        */
+        void setEnabled(bool enabled);
+
+        /** Returns true if animations are enabled.
+        */
+        bool isEnabled() const { return mEnabled; };
 
         /** Run the animation
             \return true if a change occurred, otherwise false
         */
         bool animate(RenderContext* pContext, double currentTime);
 
-        /** Get number of animations for a mesh
+        /** Check if a matrix changed
         */
-        uint32_t getMeshAnimationCount(uint32_t meshID) const;
-
-        /** Get the name of a mesh's animation
-            If the animation doesn't exist it will return an empty string.
-            Don't use this function to detect if an animation exists or not. Use `getMeshAnimationCount()` instead
-        */
-        const std::string& getAnimationName(uint32_t meshID, uint32_t animID) const;
-
-        /** Set a mesh active animation. Use kBindPoseAnimationId to disable animations for the mesh
-            \If the mesh/animation exists, will return true. Otherwise returns false
-        */
-        bool setActiveAnimation(uint32_t meshID, uint32_t animID);
-
-        /** Get a mesh's active animation.
-            \return Active animation ID, or kBindPoseAnimationId if no animations exist for the mesh.
-        */
-        uint32_t getActiveAnimation(uint32_t meshID) const;
-
-        /** Whether the controller is handling any animations.
-        */
-        bool hasAnimations() const { return mHasAnimations; }
-
-        /** Render the UI
-        */
-        void renderUI(Gui::Widgets& widget);
+        bool didMatrixChanged(size_t matrixID) const { return mMatricesChanged[matrixID]; }
 
         /** Get the global matrices
         */
         const std::vector<glm::mat4>& getGlobalMatrices() const { return mGlobalMatrices; }
 
-        /** Check if a matrix changed
-        */
-        bool didMatrixChanged(size_t matrixID) const { return mMatricesChanged[matrixID]; }
-
     private:
         friend class SceneBuilder;
         AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const DynamicVertexVector& dynamicVertexData);
 
-        void allocatePrevWorldMatrixBuffer();
         void bindBuffers();
         void updateMatrices();
-        bool validateIndices(uint32_t meshID, uint32_t animID, const std::string& warningPrefix) const;
 
-        struct MeshAnimation
-        {
-            std::vector<Animation::SharedPtr> pAnimations;
-            uint32_t activeAnimation = kBindPoseAnimationId;
-        };
-
-        std::map<uint32_t, MeshAnimation> mMeshes;
+        std::vector<Animation::SharedPtr> mAnimations;
         std::vector<glm::mat4> mLocalMatrices;
         std::vector<glm::mat4> mGlobalMatrices;
         std::vector<glm::mat4> mInvTransposeGlobalMatrices;
         std::vector<bool> mMatricesChanged;
 
-        bool mHasAnimations = false;
+        bool mEnabled = true;
         bool mAnimationChanged = true;
-        uint32_t mActiveAnimationCount = 0;
         double mLastAnimationTime = 0;
         Scene* mpScene = nullptr;
 

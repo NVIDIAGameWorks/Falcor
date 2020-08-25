@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -51,11 +51,10 @@ namespace Falcor
         */
         static SharedPtr create(uint32_t type);
 
-        /** Prepares a program for use of this sample generator.
-            Note that the ProgramVars object has to be created _after_ this call.
-            \param[in] pProgram Program to configure.
+        /** Get macro definitions for this sample generator.
+            \return Macro definitions that must be set on the shader program that uses this sampler.
         */
-        virtual void prepareProgram(Program* pProgram) const;
+        virtual Shader::DefineList getDefines() const;
 
         /** Binds the data to a program vars object.
             \param[in] pVars ProgramVars of the program to set data into.

@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -36,18 +36,19 @@ namespace Falcor
     public:
         using SharedPtr = std::shared_ptr<SceneBuilder>;
 
-        /** Flags that control how the scene will be built. They can be combined together
+        /** Flags that control how the scene will be built. They can be combined together.
         */
         enum class Flags
         {
             None                        = 0x0,    ///< None
-            RemoveDuplicateMaterials    = 0x1,    ///< Deduplicate materials that have the same properties. The material name is ignored during the search
-            UseOriginalTangentSpace     = 0x2,    ///< Use the original bitangents that were loaded with the mesh. By default, we will ignore them and use MikkTSpace to generate the tangent space. We will always generate bitangents if they are missing
+            RemoveDuplicateMaterials    = 0x1,    ///< Deduplicate materials that have the same properties. The material name is ignored during the search.
+            UseOriginalTangentSpace     = 0x2,    ///< Use the original tangent space that was loaded with the mesh. By default, we will ignore it and use MikkTSpace to generate the tangent space. We will always generate tangent space if it is missing.
             AssumeLinearSpaceTextures   = 0x4,    ///< By default, textures representing colors (diffuse/specular) are interpreted as sRGB data. Use this flag to force linear space for color textures.
-            DontMergeMeshes             = 0x8,    ///< Preserve the original list of meshes in the scene, don't merge meshes with the same material
-            BuffersAsShaderResource     = 0x10,   ///< Generate the VBs and IB with the shader-resource-view bind flag
-            UseSpecGlossMaterials       = 0x20,   ///< Set materials to use Spec-Gloss shading model. Otherwise default is Spec-Gloss for OBJ, Metal-Rough for everything else
-            UseMetalRoughMaterials      = 0x40,   ///< Set materials to use Metal-Rough shading model. Otherwise default is Spec-Gloss for OBJ, Metal-Rough for everything else
+            DontMergeMeshes             = 0x8,    ///< Preserve the original list of meshes in the scene, don't merge meshes with the same material.
+            BuffersAsShaderResource     = 0x10,   ///< Generate the VBs and IB with the shader-resource-view bind flag.
+            UseSpecGlossMaterials       = 0x20,   ///< Set materials to use Spec-Gloss shading model. Otherwise default is Spec-Gloss for OBJ, Metal-Rough for everything else.
+            UseMetalRoughMaterials      = 0x40,   ///< Set materials to use Metal-Rough shading model. Otherwise default is Spec-Gloss for OBJ, Metal-Rough for everything else.
+            NonIndexedVertices          = 0x80,   ///< Convert meshes to use non-indexed vertices. This requires more memory but may increase performance.
 
             Default = None
         };
@@ -56,18 +57,90 @@ namespace Falcor
         */
         struct Mesh
         {
-            std::string name;                           // The mesh's name
-            uint32_t vertexCount = 0;                   // The number of vertices the mesh has
-            uint32_t indexCount = 0;                    // The number of indices the mesh has. Can't be zero - the scene doesn't support non-indexed meshes. If you'd like us to support non-indexed meshes, please open an issue
-            const uint32_t* pIndices = nullptr;         // Array of indices. The element count must match `indexCount`
-            const float3* pPositions = nullptr;         // Array of vertex positions. The element count must match `vertexCount`. This field is required
-            const float3* pNormals = nullptr;           // Array of vertex normals. The element count must match `vertexCount`.   This field is required
-            const float3* pBitangents = nullptr;        // Array of vertex bitangent. The element count must match `vertexCount`. Optional. If set to nullptr, or if BuildFlags::UseOriginalTangentSpace is not set, the tangents will be generated using MikkTSpace
-            const float2* pTexCrd = nullptr;            // Array of vertex texture coordinates. The element count must match `vertexCount`. This field is required
-            const uint4* pBoneIDs = nullptr;            // Array of bone IDs. The element count must match `vertexCount`. This field is optional. If it's set, that means that the mesh is animated, in which case pBoneWeights can't be nullptr
-            const float4*  pBoneWeights = nullptr;      // Array of bone weights. The element count must match `vertexCount`. This field is optional. If it's set, that means that the mesh is animated, in which case pBoneIDs can't be nullptr
-            Vao::Topology topology = Vao::Topology::Undefined; // The primitive topology of the mesh
-            Material::SharedPtr pMaterial;              // The mesh's material. Can't be nullptr
+            enum class AttributeFrequency
+            {
+                None,
+                Constant,       ///< Constant value for mesh. The element count must be 1.
+                Uniform,        ///< One value per face. The element count must match `faceCount`.
+                Vertex,         ///< One value per vertex. The element count must match `vertexCount`.
+                FaceVarying,    ///< One value per vertex per face. The element count must match `indexCount`.
+            };
+
+            template<typename T>
+            struct Attribute
+            {
+                const T* pData = nullptr;
+                AttributeFrequency frequency = AttributeFrequency::None;
+            };
+
+            std::string name;                           ///< The mesh's name.
+            uint32_t faceCount = 0;                     ///< The number of primitives the mesh has.
+            uint32_t vertexCount = 0;                   ///< The number of vertices the mesh has.
+            uint32_t indexCount = 0;                    ///< The number of indices the mesh has.
+            const uint32_t* pIndices = nullptr;         ///< Array of indices. The element count must match `indexCount`. This field is required.
+            Vao::Topology topology = Vao::Topology::Undefined; ///< The primitive topology of the mesh
+            Material::SharedPtr pMaterial;              ///< The mesh's material. Can't be nullptr.
+
+            Attribute<float3> positions;                ///< Array of vertex positions. This field is required.
+            Attribute<float3> normals;                  ///< Array of vertex normals. This field is required.
+            Attribute<float4> tangents;                 ///< Array of vertex tangents. This field is optional. If set to nullptr, or if BuildFlags::UseOriginalTangentSpace is not set, the tangent space will be generated using MikkTSpace.
+            Attribute<float2> texCrds;                  ///< Array of vertex texture coordinates. This field is optional. If set to nullptr, all texCrds will be set to (0,0).
+            Attribute<uint4> boneIDs;                   ///< Array of bone IDs. This field is optional. If it's set, that means that the mesh is animated, in which case boneWeights is required.
+            Attribute<float4> boneWeights;              ///< Array of bone weights. This field is optional. If it's set, that means that the mesh is animated, in which case boneIDs is required.
+
+            template<typename T>
+            T get(const Attribute<T>& attribute, uint32_t face, uint32_t vert) const
+            {
+                if (attribute.pData)
+                {
+                    switch (attribute.frequency)
+                    {
+                    case AttributeFrequency::Constant:
+                        return attribute.pData[0];
+                    case AttributeFrequency::Uniform:
+                        return attribute.pData[face];
+                    case AttributeFrequency::Vertex:
+                        return attribute.pData[pIndices[face * 3 + vert]];
+                    case AttributeFrequency::FaceVarying:
+                        return attribute.pData[face * 3 + vert];
+                    default:
+                        should_not_get_here();
+                    }
+                }
+                return T{};
+            }
+
+            float3 getPosition(uint32_t face, uint32_t vert) const { return get(positions, face, vert); }
+            float3 getNormal(uint32_t face, uint32_t vert) const { return get(normals, face, vert); }
+            float4 getTangent(uint32_t face, uint32_t vert) const { return get(tangents, face, vert); }
+            float2 getTexCrd(uint32_t face, uint32_t vert) const { return get(texCrds, face, vert); }
+
+            struct Vertex
+            {
+                float3 position;
+                float3 normal;
+                float4 tangent;
+                float2 texCrd;
+                uint4 boneIDs;
+                float4 boneWeights;
+            };
+
+            Vertex getVertex(uint32_t face, uint32_t vert) const
+            {
+                Vertex v = {};
+                v.position = get(positions, face, vert);
+                v.normal = get(normals, face, vert);
+                v.tangent = get(tangents, face, vert);
+                v.texCrd = get(texCrds, face, vert);
+                v.boneIDs = get(boneIDs, face, vert);
+                v.boneWeights = get(boneWeights, face, vert);
+                return v;
+            }
+
+            bool hasBones() const
+            {
+                return boneWeights.pData || boneIDs.pData;
+            }
         };
 
         static const uint32_t kInvalidNode = Scene::kInvalidNode;
@@ -81,10 +154,6 @@ namespace Falcor
         };
 
         using InstanceMatrices = std::vector<glm::mat4>;
-
-        /** Construct a new object
-        */
-        SceneBuilder(Flags buildFlags = Flags::Default);
 
         /** Create a new object
         */
@@ -103,7 +172,7 @@ namespace Falcor
             \param instances A list of instance matrices to load. This is optional, by default a single instance will be load
             \return true if the import succeeded, otherwise false
         */
-        bool import(const std::string& filename, const InstanceMatrices& instances = InstanceMatrices());
+        bool import(const std::string& filename, const InstanceMatrices& instances = InstanceMatrices(), const Dictionary& dict = Dictionary());
 
         /** Get the scene. Make sure to add all the objects before calling this function
             \return nullptr if something went wrong, otherwise a new Scene object
@@ -116,23 +185,30 @@ namespace Falcor
         */
         uint32_t addNode(const Node& node);
 
+        /** Check if a scene node is animated. This check is done recursively through parent nodes.
+            \return Returns true if node is animated.
+        */
+        bool isNodeAnimated(uint32_t nodeID) const;
+
+        /** Set the animation interpolation mode for a given scene node. This sets the mode recursively for all parent nodes.
+        */
+        void setNodeInterpolationMode(uint32_t nodeID, Animation::InterpolationMode interpolationMode, bool enableWarping);
+
         /** Add a mesh instance to a node
         */
         void addMeshInstance(uint32_t nodeID, uint32_t meshID);
 
-        /** Add a mesh. This function will throw an exception if something went wrong
-            \param mesh The mesh's desc
-            \param flags The build flags
+        /** Add a mesh. This function will throw an exception if something went wrong.
+            \param meshDesc The mesh's description.
             \return The ID of the mesh in the scene. Note that all of the instances share the same mesh ID.
         */
-        uint32_t addMesh(const Mesh& mesh);
+        uint32_t addMesh(const Mesh& meshDesc);
 
         /** Add a light source
-            \param pLight The light object. Can't be nullptr
-            \param nodeID The node ID of the light.
+            \param pLight The light object.
             \return The light ID
         */
-        uint32_t addLight(const Light::SharedPtr& pLight, uint32_t nodeID = kInvalidNode);
+        uint32_t addLight(const Light::SharedPtr& pLight);
 
         /** Get the number of attached lights
         */
@@ -141,37 +217,44 @@ namespace Falcor
         /** Set a light-probe
             \param pProbe The environment map. You can set it to null to disable environment mapping
         */
-        void setLightProbe(LightProbe::ConstSharedPtrRef pProbe) { mpLightProbe = pProbe; }
+        void setLightProbe(const LightProbe::SharedPtr& pProbe) { mpLightProbe = pProbe; }
 
         /** Set an environment map.
-            \param[in] pEnvMap Texture to use as environment map. Can be nullptr.
+            \param[in] pEnvMap Environment map. Can be nullptr.
         */
-        void setEnvironmentMap(Texture::ConstSharedPtrRef pEnvMap) { mpEnvMap = pEnvMap; }
+        void setEnvMap(EnvMap::SharedPtr pEnvMap) { mpEnvMap = pEnvMap; }
 
-        /** Set the camera
+        /** Add a camera.
+            \param pCamera Camera to be added.
+            \return The camera ID
         */
-        void setCamera(const Camera::SharedPtr& pCamera, uint32_t nodeID = kInvalidNode);
+        uint32_t addCamera(const Camera::SharedPtr& pCamera);
+
+        /** Get the number of attached cameras
+        */
+        size_t getCameraCount() const { return mCameras.size(); }
+
+        /** Select a camera.
+            \param name The name of the camera to select.
+        */
+        void setCamera(const std::string name);
 
         /** Get the build flags
         */
         Flags getFlags() const { return mFlags; }
 
         /** Add an animation
-            \param meshID The mesh ID the animation should be applied to
             \param animation The animation
-            \return The ID of the animation. The ID is relative to number of animations which are associated with the specified mesh, it's not a global ID
         */
-        uint32_t addAnimation(uint32_t meshID, Animation::ConstSharedPtrRef pAnimation);
+        void addAnimation(const Animation::SharedPtr& pAnimation);
 
         /** Set the camera's speed
         */
         void setCameraSpeed(float speed) { mCameraSpeed = speed; }
 
-        /** Check if a camera exists
-        */
-        bool hasCamera() const { return mCamera.pObject != nullptr; }
-
     private:
+        SceneBuilder(Flags buildFlags);
+
         struct InternalNode : Node
         {
             InternalNode() = default;
@@ -192,7 +275,6 @@ namespace Falcor
             uint32_t vertexCount = 0;
             bool hasDynamicData = false;
             std::vector<uint32_t> instances; // Node IDs
-            std::vector<Animation::SharedPtr> animations;
         };
 
         // Geometry data
@@ -210,16 +292,18 @@ namespace Falcor
         Scene::SharedPtr mpScene;
 
         SceneGraph mSceneGraph;
-        Flags mFlags;
+        const Flags mFlags;
 
         MeshList mMeshes;
         std::vector<Material::SharedPtr> mMaterials;
         std::unordered_map<const Material*, uint32_t> mMaterialToId;
 
-        Scene::AnimatedObject<Camera> mCamera;
-        std::vector<Scene::AnimatedObject<Light>> mLights;
+        std::vector<Camera::SharedPtr> mCameras;
+        std::vector<Light::SharedPtr> mLights;
         LightProbe::SharedPtr mpLightProbe;
-        Texture::SharedPtr mpEnvMap;
+        EnvMap::SharedPtr mpEnvMap;
+        std::vector<Animation::SharedPtr> mAnimations;
+        uint32_t mSelectedCamera = 0;
         float mCameraSpeed = 1.0f;
 
         uint32_t addMaterial(const Material::SharedPtr& pMaterial, bool removeDuplicate);
@@ -231,26 +315,6 @@ namespace Falcor
         void createAnimationController(Scene* pScene);
         std::string mFilename;
     };
-
-    inline std::string to_string(SceneBuilder::Flags flags)
-    {
-#define t2s(t_) case SceneBuilder::Flags::t_: return #t_;
-        switch (flags)
-        {
-            t2s(None);
-            t2s(RemoveDuplicateMaterials);
-            t2s(UseOriginalTangentSpace);
-            t2s(AssumeLinearSpaceTextures);
-            t2s(DontMergeMeshes);
-            t2s(BuffersAsShaderResource);
-            t2s(UseSpecGlossMaterials);
-            t2s(UseMetalRoughMaterials);
-        default:
-            should_not_get_here();
-            return "";
-        }
-#undef t2s
-    }
 
     enum_class_operators(SceneBuilder::Flags);
 }

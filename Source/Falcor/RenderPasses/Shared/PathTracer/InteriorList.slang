@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -34,24 +34,26 @@
     We put the nestedPriority in the highest value bits in order to simplify sorting the list.
 */
 
-static const uint kNoMaterial = 0xffffffff;
-
+#ifndef INTERIOR_LIST_SLOT_COUNT
 #define INTERIOR_LIST_SLOT_COUNT 2
-
-static const uint kInteriorListMaterialBits         = 27;
-static const uint kInteriorListActiveBits           = 1;
-static const uint kInteriorListNestedPriorityBits   = 4;
-
-static const uint kInteriorListMaterialOffset       = 0;
-static const uint kInteriorListActiveOffset         = kInteriorListMaterialOffset + kInteriorListMaterialBits;
-static const uint kInteriorListNestedPriorityOffset = kInteriorListActiveOffset + kInteriorListActiveBits;
-
-static const uint kInteriorListMaterialMask         = ((1 << kInteriorListMaterialBits) - 1) << kInteriorListMaterialOffset;
-static const uint kInteriorListActiveMask           = ((1 << kInteriorListActiveBits) - 1) << kInteriorListActiveOffset;
-static const uint kInteriorListNestedPriorityMask   = ((1 << kInteriorListNestedPriorityBits) - 1) << kInteriorListNestedPriorityOffset;
+#endif
 
 struct InteriorList
 {
+    static const uint kNoMaterial           = 0xffffffff;
+
+    static const uint kMaterialBits         = 27;
+    static const uint kActiveBits           = 1;
+    static const uint kNestedPriorityBits   = 4;
+
+    static const uint kMaterialOffset       = 0;
+    static const uint kActiveOffset         = kMaterialOffset + kMaterialBits;
+    static const uint kNestedPriorityOffset = kActiveOffset + kActiveBits;
+
+    static const uint kMaterialMask         = ((1 << kMaterialBits) - 1) << kMaterialOffset;
+    static const uint kActiveMask           = ((1 << kActiveBits) - 1) << kActiveOffset;
+    static const uint kNestedPriorityMask   = ((1 << kNestedPriorityBits) - 1) << kNestedPriorityOffset;
+
     uint slots[INTERIOR_LIST_SLOT_COUNT];
 
     /** Make an active material slot given the material.
@@ -62,7 +64,7 @@ struct InteriorList
     uint makeSlot(uint materialID, uint nestedPriority)
     {
         // Get nested priority of given material.
-        return (nestedPriority << kInteriorListNestedPriorityOffset) | kInteriorListActiveMask | (materialID & kInteriorListMaterialMask);
+        return (nestedPriority << kNestedPriorityOffset) | kActiveMask | (materialID & kMaterialMask);
     }
 
     /** Check if a slot is active.
@@ -71,7 +73,7 @@ struct InteriorList
     */
     bool isSlotActive(uint slot)
     {
-        return slot & kInteriorListActiveMask;
+        return slot & kActiveMask;
     }
 
     /** Check if the interior list is empty.
@@ -88,7 +90,7 @@ struct InteriorList
     */
     uint getSlotNestedPriority(uint slot)
     {
-        return slot >> kInteriorListNestedPriorityOffset;
+        return slot >> kNestedPriorityOffset;
     }
 
     /** Get the material ID from a slot.
@@ -97,7 +99,7 @@ struct InteriorList
     */
     uint getSlotMaterialID(uint slot)
     {
-        return slot & kInteriorListMaterialMask;
+        return slot & kMaterialMask;
     }
 
     /** Return current highest nested priority on interior list.

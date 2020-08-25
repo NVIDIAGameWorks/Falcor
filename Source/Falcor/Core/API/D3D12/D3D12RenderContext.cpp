@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -424,7 +424,7 @@ namespace Falcor
         assert(pDst->getViewInfo().arraySize == 1 && pDst->getViewInfo().mipCount == 1);
 
         const Texture* pSrcTexture = dynamic_cast<const Texture*>(pSrc->getResource());
-        const Texture* pDstTexture = dynamic_cast<const Texture*>(pDst->getResource());
+        Texture* pDstTexture = dynamic_cast<Texture*>(pDst->getResource());
         assert(pSrcTexture != nullptr && pDstTexture != nullptr);
 
         float2 srcRectOffset(0.0f);
@@ -469,7 +469,7 @@ namespace Falcor
             blitData.pPass->removeDefine("SAMPLE_COUNT");
         }
 
-        Texture::SharedPtr pSharedTex = std::const_pointer_cast<Texture>(pDstTexture->shared_from_this());
+        Texture::SharedPtr pSharedTex = std::static_pointer_cast<Texture>(pDstTexture->shared_from_this());
         blitData.pFbo->attachColorTarget(pSharedTex, 0, pDst->getViewInfo().mostDetailedMip, pDst->getViewInfo().firstArraySlice, pDst->getViewInfo().arraySize);
         blitData.pPass->getVars()->setSrv(blitData.texBindLoc, pSrc);
         blitData.pPass->getState()->setViewport(0, dstViewport);

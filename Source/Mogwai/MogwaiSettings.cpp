@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -78,7 +78,7 @@ namespace Mogwai
                 Gui::DropdownList list;
                 for (uint32_t i = 0; i < count; i++)
                 {
-                    list.push_back({ i, to_string(resolutions[i].x) + "x" + to_string(resolutions[i].y) });
+                    list.push_back({ i, std::to_string(resolutions[i].x) + "x" + std::to_string(resolutions[i].y) });
                 }
                 list.push_back({ kCustomIndex, "Custom" });
                 return list;
@@ -206,7 +206,7 @@ namespace Mogwai
         {
             auto file = m.dropdown("File");
             if (file.item("Load Script", "Ctrl+O")) mpRenderer->loadScriptDialog();
-            if (file.item("Save Config")) mpRenderer->dumpConfig();
+            if (file.item("Save Config")) mpRenderer->saveConfigDialog();
             if (file.item("Load Scene", "Ctrl+Shift+O")) mpRenderer->loadSceneDialog();
             // if (file.item("Reset Scene")) mpRenderer->setScene(nullptr);
             file.separator();
@@ -214,18 +214,28 @@ namespace Mogwai
             file.separator();
 
             {
+                auto &appData = mpRenderer->getAppData();
                 auto recentScripts = file.menu("Recent Scripts");
-                for (const auto& path : mpRenderer->getAppData().getRecentScripts())
+                for (auto path : appData.getRecentScripts())
                 {
-                    if (recentScripts.item(path)) mpRenderer->loadScriptDeferred(path);
+                    if (recentScripts.item(path))
+                    {
+                        mpRenderer->loadScriptDeferred(path);
+                        appData.addRecentScript(path);
+                    }
                 }
             }
 
             {
+                auto &appData = mpRenderer->getAppData();
                 auto recentScenes = file.menu("Recent Scenes");
-                for (const auto& path : mpRenderer->getAppData().getRecentScenes())
+                for (auto path : appData.getRecentScenes())
                 {
-                    if (recentScenes.item(path)) mpRenderer->loadScene(path);
+                    if (recentScenes.item(path))
+                    {
+                        mpRenderer->loadScene(path);
+                        appData.addRecentScene(path);
+                    }
                 }
             }
         }
@@ -237,6 +247,15 @@ namespace Mogwai
             view.item("FPS", mShowFps, "F10");
             view.item("Time", mShowTime, "F9");
             view.item("Window Size", mShowWinSize);
+            view.separator();
+            for (const auto& ext : mpRenderer->getExtensions())
+            {
+                bool show = ext->isWindowShown();
+                if (ext->hasWindow() && view.item(ext->getName(), show))
+                {
+                    ext->toggleWindow();
+                }
+            }
             view.separator();
             view.item("Console", mShowConsole, "`");
         }
@@ -256,7 +275,7 @@ namespace Mogwai
         if (mShowFps) showFps(pGui);
         if (mShowTime) timeSettings(pGui);
         if (mShowWinSize) windowSettings(pGui);
-        if (mShowConsole) Console::render(pGui__);
+        Console::instance().render(pGui__, mShowConsole);
     }
 
     bool MogwaiSettings::mouseEvent(const MouseEvent& e)
@@ -296,9 +315,6 @@ namespace Mogwai
                 case KeyboardEvent::Key::F9:
                     mShowTime = !mShowTime;
                     break;
-                case KeyboardEvent::Key::GraveAccent:
-                    mShowConsole = !mShowConsole;
-                    break;
                 default:
                     return false;
                 }
@@ -315,10 +331,6 @@ namespace Mogwai
             }
         }
         return false;
-    }
-
-    MogwaiSettings::MogwaiSettings(Renderer* pRenderer) : mpRenderer(pRenderer)
-    {
     }
 
     MogwaiSettings::UniquePtr MogwaiSettings::create(Renderer* pRenderer)

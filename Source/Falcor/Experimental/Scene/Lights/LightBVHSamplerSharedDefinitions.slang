@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -40,22 +40,5 @@ enum class SolidAngleBoundMethod
     BoxToAverage,
     Sphere,
 };
-
-#ifdef HOST_CODE
-#define str(a) case SolidAngleBoundMethod::a: return #a
-inline std::string to_string(SolidAngleBoundMethod method)
-{
-    switch (method)
-    {
-        str(BoxToCenter);
-        str(BoxToAverage);
-        str(Sphere);
-    default:
-        should_not_get_here();
-        return "";
-    }
-}
-#undef str
-#endif
 
 END_NAMESPACE_FALCOR

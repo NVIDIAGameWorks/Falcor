@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -26,84 +26,61 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "EnvProbe.h"
+#include "EnvMapSampler.h"
 #include "glm/gtc/integer.hpp"
 
 namespace Falcor
 {
     namespace
     {
-        const char kShaderFilenameSetup[] = "Experimental/Scene/Lights/EnvProbeSetup.cs.slang";
+        const char kShaderFilenameSetup[] = "Experimental/Scene/Lights/EnvMapSamplerSetup.cs.slang";
 
         // The defaults are 512x512 @ 64spp in the resampling step.
         const uint32_t kDefaultDimension = 512;
         const uint32_t kDefaultSpp = 64;
-
-        // Default variable name used by setShaderData().
-        const char kDefaultCbVar[] = "gEnvProbe";
     }
 
-    EnvProbe::SharedPtr EnvProbe::create(RenderContext* pRenderContext, const std::string& filename)
+    EnvMapSampler::SharedPtr EnvMapSampler::create(RenderContext* pRenderContext, EnvMap::SharedPtr pEnvMap)
     {
-        SharedPtr ptr = SharedPtr(new EnvProbe());
-        return ptr->init(pRenderContext, filename) ? ptr : nullptr;
+        return SharedPtr(new EnvMapSampler(pRenderContext, pEnvMap));
     }
 
-    bool EnvProbe::setShaderData(const ShaderVar& var) const
+    void EnvMapSampler::setShaderData(const ShaderVar& var) const
     {
         assert(var.isValid());
 
         // Set variables.
         float2 invDim = 1.f / float2(mpImportanceMap->getWidth(), mpImportanceMap->getHeight());
-        if (!var["importanceBaseMip"].set(mpImportanceMap->getMipCount() - 1)) return false;   // The base mip is 1x1 texels
-        if (!var["importanceInvDim"].set(invDim)) return false;
+        var["importanceBaseMip"] = mpImportanceMap->getMipCount() - 1; // The base mip is 1x1 texels
+        var["importanceInvDim"] = invDim;
 
         // Bind resources.
-        if (!var["envMap"].setTexture(mpEnvMap) ||
-            !var["importanceMap"].setTexture(mpImportanceMap) ||
-            !var["envSampler"].setSampler(mpEnvSampler) ||
-            !var["importanceSampler"].setSampler(mpImportanceSampler))
-        {
-            return false;
-        }
-
-        return true;
+        var["importanceMap"] = mpImportanceMap;
+        var["importanceSampler"] = mpImportanceSampler;
     }
 
-    bool EnvProbe::init(RenderContext* pRenderContext, const std::string& filename)
+    EnvMapSampler::EnvMapSampler(RenderContext* pRenderContext, EnvMap::SharedPtr pEnvMap)
+        : mpEnvMap(pEnvMap)
     {
+        assert(pEnvMap);
+
         // Create compute program for the setup phase.
         mpSetupPass = ComputePass::create(kShaderFilenameSetup, "main");
 
         // Create sampler.
-        // The lat-long map wraps around horizontally, but not vertically. Set the sampler to only wrap in U.
         Sampler::Desc samplerDesc;
-        samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-        samplerDesc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
-        mpEnvSampler = Sampler::create(samplerDesc);
         samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
         samplerDesc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
         mpImportanceSampler = Sampler::create(samplerDesc);
 
-        // Load environment map from file. Set it to generate mips and use linear color.
-        mpEnvMap = Texture::createFromFile(filename, true, false);
-        if (!mpEnvMap)
-        {
-            logError("EnvProbe::init() - Failed to load texture " + filename);
-            return false;
-        }
-
         // Create hierarchical importance map for sampling.
         if (!createImportanceMap(pRenderContext, kDefaultDimension, kDefaultSpp))
         {
-            logError("EnvProbe::init() - Failed to create importance map" + filename);
-            return false;
+            throw std::exception("Failed to create importance map");
         }
-
-        return true;
     }
 
-    bool EnvProbe::createImportanceMap(RenderContext* pRenderContext, uint32_t dimension, uint32_t samples)
+    bool EnvMapSampler::createImportanceMap(RenderContext* pRenderContext, uint32_t dimension, uint32_t samples)
     {
         assert(isPowerOf2(dimension));
         assert(isPowerOf2(samples));
@@ -117,9 +94,8 @@ namespace Falcor
         mpImportanceMap = Texture::create2D(dimension, dimension, ResourceFormat::R32Float, 1, mips, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess);
         assert(mpImportanceMap);
 
-        mpSetupPass["gEnvMap"] = mpEnvMap;
+        mpSetupPass["gEnvMap"] = mpEnvMap->getEnvMap();
         mpSetupPass["gImportanceMap"] = mpImportanceMap;
-        mpSetupPass["gEnvSampler"] = mpEnvSampler;
 
         uint32_t samplesX = std::max(1u, (uint32_t)std::sqrt(samples));
         uint32_t samplesY = samples / samplesX;

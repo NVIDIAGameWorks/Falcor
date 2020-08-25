@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -68,10 +68,11 @@ namespace Mogwai
 
     void AppData::addRecentFile(std::vector<std::string>& recentFiles, const std::string& filename)
     {
-        if (!doesFileExist(filename)) return;
-        std::string path = canonicalizeFilename(filename);
-        recentFiles.erase(std::remove(recentFiles.begin(), recentFiles.end(), path), recentFiles.end());
-        recentFiles.insert(recentFiles.begin(), path);
+        std::filesystem::path path = std::filesystem::absolute(filename);
+        if (!std::filesystem::exists(path)) return;
+        std::string entry = canonicalizeFilename(path.string());
+        recentFiles.erase(std::remove(recentFiles.begin(), recentFiles.end(), entry), recentFiles.end());
+        recentFiles.insert(recentFiles.begin(), entry);
         if (recentFiles.size() > kMaxRecentFiles) recentFiles.resize(kMaxRecentFiles);
         save();
     }

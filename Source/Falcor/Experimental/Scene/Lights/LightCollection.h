@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -44,14 +44,12 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<LightCollection>;
-        using ConstSharedPtrRef = const std::shared_ptr<LightCollection>&;
         using SharedConstPtr = std::shared_ptr<const LightCollection>;
 
         enum class UpdateFlags : uint32_t
         {
             None                = 0u,   ///< Nothing was changed.
             MatrixChanged       = 1u,   ///< Mesh instance transform changed.
-            AnimationChanged    = 2u,   ///< Vertices changed due to animation.
         };
 
         struct UpdateStatus
@@ -88,12 +86,12 @@ namespace Falcor
         {
             // TODO: Perf of indexed vs non-indexed on GPU. We avoid level of indirection, but have more bandwidth non-indexed.
             MeshLightVertex vtx[3];                             ///< Vertices. These are non-indexed for now.
-            uint32_t        lightIdx = kInvalidIndex;           ///< Per-triangle index into mesh lights array.
+            uint32_t        lightIdx = MeshLightData::kInvalidIndex; ///< Per-triangle index into mesh lights array.
 
             // Pre-computed quantities.
             float3          normal = float3(0);                 ///< Triangle's face normal in world space.
             float3          averageRadiance = float3(0);        ///< Average radiance emitted over triangle. For textured emissive the radiance varies over the surface.
-            float           luminousFlux = 0.f;                 ///< Pre-integrated luminous flux (lumens) emitted per side of the triangle for double-sided emitters (total flux is 2x this value).
+            float           flux = 0.f;                         ///< Pre-integrated flux emitted by the triangle. Note that emitters are single-sided.
             float           area = 0.f;                         ///< Triangle area in world space units.
 
             /** Returns the center of the triangle in world space.
@@ -121,10 +119,6 @@ namespace Falcor
             \return True if the lighting in the scene has changed since the last frame.
         */
         bool update(RenderContext* pRenderContext, UpdateStatus* pUpdateStatus = nullptr);
-
-        /** Render the GUI.
-        */
-        void renderUI(Gui::Widgets& widgets);
 
         /** Bind the light collection data to a given shader var
             Note that prepareProgram() must have been called before this function.
@@ -166,11 +160,11 @@ namespace Falcor
         // Internal update flags. This only public for enum_class_operators() to work.
         enum class CPUOutOfDateFlags : uint32_t
         {
-            None = 0u,
-            Positions = 1u << 0,
-            TexCoords = 1u << 1,
-            TriangleData = 1u << 2,
-            All = (1u << 3) - 1
+            None         = 0,
+            TriangleData = 0x1,
+            FluxData     = 0x2,
+
+            All          = TriangleData | FluxData
         };
 
     protected:
@@ -185,6 +179,7 @@ namespace Falcor
         void integrateEmissive(RenderContext* pRenderContext);
         void computeStats() const;
         void buildTriangleList(RenderContext* pRenderContext);
+        void updateActiveTriangleList();
         void updateTrianglePositions(RenderContext* pRenderContext, const std::vector<uint32_t>& updatedLights);
 
         void copyDataToStagingBuffer(RenderContext* pRenderContext) const;
@@ -197,15 +192,14 @@ namespace Falcor
         uint32_t                                mTriangleCount = 0;     ///< Total number of triangles in all mesh lights (= mMeshLightTriangles.size()). This may include culled triangles.
 
         mutable std::vector<MeshLightTriangle>  mMeshLightTriangles;    ///< List of all pre-processed mesh light triangles.
+        mutable std::vector<uint32_t>           mActiveTriangleList;    ///< List of active (non-culled) emissive triangles.
         mutable MeshLightStats                  mMeshLightStats;        ///< Stats before/after pre-processing of mesh lights. Do not access this directly, use getStats() which ensures the stats are up-to-date.
         mutable bool                            mStatsValid = false;    ///< True when stats are valid.
 
-        // GPU resources for the mesh light vertex/triangle data.
-        // TODO: Perf of individual buffers vs StructuredBuffer<vertex>?
-        // We should profile. The code would be simpler with StructuredBuffer.
-        Buffer::SharedPtr                       mpMeshLightsVertexPos;  ///< Vertex positions in world space for all mesh light triangles (3 * mTriangleCount elements).
-        Buffer::SharedPtr                       mpMeshLightsTexCoords;  ///< Texture coordinates for all mesh light triangles (3 * mTriangleCount elements).
-        Buffer::SharedPtr                       mpTriangleData;         ///< Per-triangle data for emissive triangles (mTriangleCount elements).
+        // GPU resources for the mesh lights and emissive triangles.
+        Buffer::SharedPtr                       mpTriangleData;         ///< Per-triangle geometry data for emissive triangles (mTriangleCount elements).
+        Buffer::SharedPtr                       mpActiveTriangleList;   ///< List of active (non-culled) emissive triangle.
+        Buffer::SharedPtr                       mpFluxData;             ///< Per-triangle flux data for emissive triangles (mTriangleCount elements).
         Buffer::SharedPtr                       mpMeshData;             ///< Per-mesh data for emissive meshes (mMeshLights.size() elements).
         Buffer::SharedPtr                       mpPerMeshInstanceOffset; ///< Per-mesh instance offset into emissive triangles array (Scene::getMeshInstanceCount() elements).
 

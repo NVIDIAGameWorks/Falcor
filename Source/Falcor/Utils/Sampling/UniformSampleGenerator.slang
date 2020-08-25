@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -39,6 +39,11 @@ import Utils.Sampling.SampleGeneratorInterface;
 */
 struct UniformSampleGenerator : ISampleGenerator
 {
+    struct Padded
+    {
+        UniformSampleGenerator internal;
+    }
+
     /** Create sample generator.
     */
     static UniformSampleGenerator create(uint2 pixel, uint sampleNumber)
@@ -50,7 +55,7 @@ struct UniformSampleGenerator : ISampleGenerator
         // The sample number is expected to be practically max ~28 bits, e.g. 16spp x 16M samples.
         // As long as both stay <= 32 bits, we will always have a unique initial seed.
         // This is however no guarantee that the generated sequences will never overlap,
-        // but it is very unlikely. For example, with these most extreme parameters of 
+        // but it is very unlikely. For example, with these most extreme parameters of
         // 2^56 sequences of length L, the probability of overlap is P(overlap) = L*2^-16.
         SplitMix64 rng = createSplitMix64(interleave_32bit(pixel), sampleNumber);
         uint64_t s0 = nextRandom64(rng);

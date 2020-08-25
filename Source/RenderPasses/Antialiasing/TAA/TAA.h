@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -33,11 +33,11 @@ using namespace Falcor;
 
 /** Temporal AA class
 */
-class TAA : public RenderPass, public inherit_shared_from_this<RenderPass, TAA>
+class TAA : public RenderPass
 {
 public:
     using SharedPtr = std::shared_ptr<TAA>;
-    using inherit_shared_from_this::shared_from_this;
+
     static const char* kDesc;
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});

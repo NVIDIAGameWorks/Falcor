@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -33,11 +33,11 @@
 
 using namespace Falcor;
 
-class CSM : public RenderPass, public inherit_shared_from_this<RenderPass, CSM>
+class CSM : public RenderPass
 {
 public:
     using SharedPtr = std::shared_ptr<CSM>;
-    using inherit_shared_from_this::shared_from_this;
+
     static const char* kDesc;
 
     enum class PartitionMode
@@ -180,7 +180,6 @@ private:
         bool stabilizeCascades = false;
     } mControls;
 
-    int32_t renderCascade = 0;
     CsmData mCsmData;
     bool mCullMeshes = true;
 
@@ -193,18 +192,3 @@ private:
     void resizeShadowMap(const uint2& smDims);
     void setLight(const Light::SharedConstPtr& pLight);
 };
-
-#define str(a) case CSM::PartitionMode::a: return #a
-inline std::string to_string(CSM::PartitionMode type)
-{
-    switch (type)
-    {
-        str(Linear);
-        str(Logarithmic);
-        str(PSSM);
-    default:
-        should_not_get_here();
-        return "";
-    }
-}
-#undef str

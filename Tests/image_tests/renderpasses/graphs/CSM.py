@@ -2,8 +2,8 @@ from falcor import *
 
 def render_graph_CSM():
     g = RenderGraph("Cascaded Shadow Maps")
-    g.addPass(RenderPass("DepthPass"), "DepthPrePass")
-    g.addPass(RenderPass("CSM"), "ShadowPass")
+    g.addPass(createPass("DepthPass"), "DepthPrePass")
+    g.addPass(createPass("CSM"), "ShadowPass")
 
     g.addEdge("DepthPrePass.depth", "ShadowPass.depth")
 

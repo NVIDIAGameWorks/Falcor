@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -42,11 +42,11 @@ namespace
     const char kShaderFilename[] = "RenderPasses/Utils/GaussianBlur/GaussianBlur.ps.slang";
 }
 
-void GaussianBlur::registerBindings(ScriptBindings::Module& m)
+void GaussianBlur::registerBindings(pybind11::module& m)
 {
-    auto c = m.regClass(GaussianBlur);
-    c.property(kKernelWidth, &GaussianBlur::getKernelWidth, &GaussianBlur::setKernelWidth);
-    c.property(kSigma, &GaussianBlur::getSigma, &GaussianBlur::setSigma);
+    pybind11::class_<GaussianBlur, RenderPass, GaussianBlur::SharedPtr> pass(m, "GaussianBlur");
+    pass.def_property(kKernelWidth, &GaussianBlur::getKernelWidth, &GaussianBlur::setKernelWidth);
+    pass.def_property(kSigma, &GaussianBlur::getSigma, &GaussianBlur::setSigma);
 }
 
 GaussianBlur::GaussianBlur()
@@ -60,11 +60,11 @@ GaussianBlur::GaussianBlur()
 GaussianBlur::SharedPtr GaussianBlur::create(RenderContext* pRenderContext, const Dictionary& dict)
 {
     SharedPtr pBlur = SharedPtr(new GaussianBlur);
-    for (const auto& v : dict)
+    for (const auto& [key, value] : dict)
     {
-        if (v.key() == kKernelWidth) pBlur->mKernelWidth = v.val();
-        else if (v.key() == kSigma) pBlur->mSigma = v.val();
-        else logWarning("Unknown field '" + v.key() + "' in a GaussianBlur dictionary");
+        if (key == kKernelWidth) pBlur->mKernelWidth = value;
+        else if (key == kSigma) pBlur->mSigma = value;
+        else logWarning("Unknown field '" + key + "' in a GaussianBlur dictionary");
     }
     return pBlur;
 }
@@ -190,7 +190,7 @@ float getCoefficient(float sigma, float kernelWidth, float x)
 {
     float sigmaSquared = sigma * sigma;
     float p = -(x*x) / (2 * sigmaSquared);
-    float e = exp(p);
+    float e = std::exp(p);
 
     float a = 2 * (float)M_PI * sigmaSquared;
     return e / a;

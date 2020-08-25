@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -33,13 +33,18 @@ BEGIN_NAMESPACE_FALCOR
 
 /** Types of light sources. Used in LightData structure.
 */
-enum LightType
+enum class LightType
+// TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
+#ifdef HOST_CODE
+    : uint32_t
+#endif
 {
     Point,          ///< Point light source, can be a spot light if its opening angle is < 2pi
     Directional,    ///< Directional light source
     Rect,           ///< Quad shaped area light source
     Sphere,         ///< Spherical area light source
     Disc,           ///< Disc shaped area light source
+    Distant,        ///< Distant light that subtends a non-zero solid angle
 };
 
 /** This is a host/device structure that describes analytic light sources.
@@ -52,7 +57,8 @@ struct LightData
     float    openingAngle       = float(M_PI);      ///< For point (spot) light: Opening half-angle of a spot light cut-off, pi by default (full sphere).
     float3   intensity          = float3(1, 1, 1);  ///< Emitted radiance of th light source
     float    cosOpeningAngle    = -1.f;             ///< For point (spot) light: cos(openingAngle), -1 by default because openingAngle is pi by default
-    float3   pad;
+    float    cosSubtendedAngle  = 0.9999893f;       ///< For distant light; cosine of the half-angle subtended by the light. Default corresponds to the sun as viewed from earth
+    float2   pad;
     float    penumbraAngle      = 0.f;              ///< For point (spot) light: Opening half-angle of penumbra region in radians, usually does not exceed openingAngle. 0.f by default, meaning a spot light with hard cut-off
 
     // Extra parameters for analytic area lights

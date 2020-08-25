@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -54,13 +54,13 @@ FXAA::FXAA()
 FXAA::SharedPtr FXAA::create(RenderContext* pRenderContext, const Dictionary& dict)
 {
     SharedPtr pFXAA = SharedPtr(new FXAA);
-    for (const auto& v : dict)
+    for (const auto& [key, value] : dict)
     {
-        if (v.key() == kQualitySubPix) pFXAA->mQualitySubPix = v.val();
-        else if (v.key() == kQualityEdgeThreshold) pFXAA->mQualityEdgeThreshold = v.val();
-        else if (v.key() == kQualityEdgeThresholdMin) pFXAA->mQualityEdgeThresholdMin = v.val();
-        else if (v.key() == kEarlyOut) pFXAA->mEarlyOut = v.val();
-        else logWarning("Unknown field `" + v.key() + "` in an FXAA dictionary");
+        if (key == kQualitySubPix) pFXAA->mQualitySubPix = value;
+        else if (key == kQualityEdgeThreshold) pFXAA->mQualityEdgeThreshold = value;
+        else if (key == kQualityEdgeThresholdMin) pFXAA->mQualityEdgeThresholdMin = value;
+        else if (key == kEarlyOut) pFXAA->mEarlyOut = value;
+        else logWarning("Unknown field '" + key + "' in an FXAA dictionary");
     }
     return pFXAA;
 }

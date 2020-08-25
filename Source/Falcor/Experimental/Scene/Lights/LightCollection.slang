@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -27,6 +27,7 @@
  **************************************************************************/
 #include "Scene/Material/MaterialDefines.slangh"
 
+import Utils.Attributes;
 import Scene.ShadingData;
 __exported import Experimental.Scene.Lights.LightCollectionShared;
 __exported import Experimental.Scene.Lights.MeshLightData;
@@ -41,47 +42,66 @@ __exported import Experimental.Scene.Lights.MeshLightData;
 */
 struct LightCollection
 {
-    uint                                triangleCount;          ///< Total number of triangles in all mesh lights.
-    uint                                meshCount;              ///< Total number of mesh lights.
-    uint                                _pad[2];
+    uint                                        triangleCount;          ///< Total number of emissive triangles in all mesh lights.
+    uint                                        activeTriangleCount;    ///< Total number of active (non-culled) emissive triangles in all mesh lights.
+    uint                                        meshCount;              ///< Total number of mesh lights.
+    uint                                        _pad;
 
-    ByteAddressBuffer                   meshLightsVertexPos;    ///< Vertex positions in world space for all mesh light triangles. Size: triangleCount * 3 * sizeof(float3).
-    ByteAddressBuffer                   meshLightsTexCoords;    ///< Texture coordinates for all mesh light triangles. Size: triangleCount * 3 * sizeof(float2).
-    StructuredBuffer<uint>              perMeshInstanceOffset;  ///< Per-mesh instance offset into emissive triangles array. Size: meshInstanceCount * sizeof(uint).
-    StructuredBuffer<EmissiveTriangle>  triangleData;           ///< Per-triangle data for emissive triangles. Size: triangleCount * sizeof(EmissiveTriangle).
-    StructuredBuffer<MeshLightData>     meshData;               ///< Per-mesh data for emissive meshes. Size: meshCount * sizeof(MeshLightData).
+    // These buffers are only valid if triangleCount > 0.
+    [root] StructuredBuffer<PackedEmissiveTriangle> triangleData;       ///< Per-triangle geometry data for emissive triangles.
 
+    StructuredBuffer<uint>                      activeTriangles;        ///< Indices of all active (non-culled) emissive triangles. This is only valid if activeTriangleCount > 0.
+    StructuredBuffer<EmissiveFlux>              fluxData;               ///< Per-triangle flux data for emissive triangles.
+    StructuredBuffer<MeshLightData>             meshData;               ///< Per-mesh data for emissive meshes.
+    StructuredBuffer<uint>                      perMeshInstanceOffset;  ///< Per-mesh instance offset into emissive triangles array, or kInvalidIndex if mesh has no emissive triangles.
+
+    static const uint kInvalidIndex = 0xffffffff;
 
     /** Returns the total number of emissive triangles.
+        \return Emissive triangle count.
     */
     uint getTriangleCount() { return triangleCount; }
 
-    /** Returns true if light collection contains no emissive triangles.
+    /** Returns the number of active (non-culled) emissive triangles.
+        \return Active emissive triangle count.
+    */
+    uint getActiveTriangleCount() { return activeTriangleCount; }
+
+    /** Checks if the light collection is empty.
+        \return True if there are no emissive triangles.
     */
     bool isEmpty() { return triangleCount == 0; }
 
     /** Returns the data for a given triangle.
+        \param[in] triIdx Emissive triangle index.
+        \return Emissive triangle data.
     */
-    EmissiveTriangle getTriangleData(uint triIdx)
+    EmissiveTriangle getTriangle(uint triIdx)
     {
-        return triangleData[triIdx];
+        return triangleData[triIdx].unpack();
     }
 
     /** Returns a triangle index given the mesh instance ID and primitive index.
+        \param[in] meshInstanceID Global mesh instance ID.
+        \param[in] primitiveIndex Primitive index in the given mesh.
+        \return Emissive triangle index, or kInvalidIndex if not an emissive triangle.
     */
     uint getTriangleIndex(uint meshInstanceID, uint primitiveIndex)
     {
-        return perMeshInstanceOffset[meshInstanceID] + primitiveIndex;
+        uint offset = perMeshInstanceOffset[meshInstanceID];
+        return offset != kInvalidIndex ? offset + primitiveIndex : kInvalidIndex;
     }
 
     /** Returns the mesh light index for a given triangle.
+        \param[in] triIdx Emissive triangle index.
+        \return Mesh light index.
     */
     uint getLightIdx(uint triIdx)
     {
-        return triangleData[triIdx].lightIdx;
+        return getTriangle(triIdx).lightIdx;
     }
 
-    /** Returns the mesh light data for a given emissive triangle.
+    /** Returns the mesh light data for a given triangle.
         \param[in] triIdx Emissive triangle index.
         \return Mesh light data.
     */
@@ -89,67 +109,4 @@ struct LightCollection
     {
         return meshData[getLightIdx(triIdx)];
     }
-
-    /** Returns world space vertex position based on global vertex index.
-        Note that the vertex buffer is non-indexed.
-    */
-    float3 getVtxPos(uint vtxIdx)
-    {
-        uint address = (vtxIdx * 3) * 4;    // The data is float3 (3*4B per vertex).
-        return asfloat(meshLightsVertexPos.Load3(address));
-    }
-
-    /** Returns texture coordinate based on global vertex index.
-        Note that the vertex buffer is non-indexed.
-    */
-    float2 getVtxTexCoord(uint vtxIdx)
-    {
-        int address = (vtxIdx * 2) * 4;     // The data is float2 (2*4B per vertex).
-        return asfloat(meshLightsTexCoords.Load2(address));
-    }
-
-    /** Returns a triangle's vertex positions in world space.
-        \param[in] triIdx Emissive triangle index.
-        \param[out] p Position of vertex 0,1,2 in world space.
-    */
-    void getVtxPositions(uint triIdx, out float3 p[3])
-    {
-        p[0] = getVtxPos(triIdx * 3 + 0);
-        p[1] = getVtxPos(triIdx * 3 + 1);
-        p[2] = getVtxPos(triIdx * 3 + 2);
-    }
-
-    /** Returns interpolated position on a given triangle.
-        \param[in] triIdx Emissive triangle index.
-        \param[in] barycentrics Barycentric coordinates.
-        \return Interpolated position in world space.
-    */
-    float3 getPosition(uint triIdx, float3 barycentrics)
-    {
-        return getVtxPos(triIdx * 3 + 0) * barycentrics[0] +
-               getVtxPos(triIdx * 3 + 1) * barycentrics[1] +
-               getVtxPos(triIdx * 3 + 2) * barycentrics[2];
-    }
-
-    /** Returns interpolated texture coordinate on a given triangle.
-        \param[in] triIdx Emissive triangle index.
-        \param[in] barycentrics Barycentric coordinates.
-        \return Interpolated texture coordinate.
-    */
-    float2 getTexCoord(uint triIdx, float3 barycentrics)
-    {
-        return getVtxTexCoord(triIdx * 3 + 0) * barycentrics[0] +
-               getVtxTexCoord(triIdx * 3 + 1) * barycentrics[1] +
-               getVtxTexCoord(triIdx * 3 + 2) * barycentrics[2];
-    }
-
-    /** Returns the material ID for a given triangle.
-        \param[in] triIdx Emissive triangle index.
-        \return Material ID.
-    */
-    uint getMaterialID(uint triIdx)
-    {
-        return meshData[getLightIdx(triIdx)].materialID;
-    }
-
 };

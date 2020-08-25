@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -861,7 +861,7 @@ namespace Falcor
         ImGui::PopStyleVar();
     }
 
-    void RenderGraphUI::renderUI(RenderContext* pContext, Gui *pGui)
+    void RenderGraphUI::renderUI(RenderContext* pContext, Gui* pGui)
     {
         static std::string dragAndDropText;
         ImGui::GetIO().FontAllowUserScaling = true; // FIXME
@@ -901,8 +901,7 @@ namespace Falcor
         {
             std::string renderUIName = selectedNodes.Data[i]->getName();
 
-            auto renderGroup = Gui::Group(pGui, renderUIName, true);
-            if (renderGroup.open())
+            if (auto renderGroup = renderWindow.group(renderUIName, true))
             {
                 auto pPass = mpRenderGraph->getPass(renderUIName);
                 bool internalResources = false;
@@ -937,8 +936,6 @@ namespace Falcor
                     mpIr->updatePass(renderUIName, pPass->getScriptingDictionary());
                 }
                 mShouldUpdate = true;
-
-                renderGroup.release();
             }
         }
 

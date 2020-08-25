@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -28,14 +28,13 @@
 #include "stdafx.h"
 #include "BitonicSort.h"
 
-#ifdef _ENABLE_NVAPI
 namespace Falcor
 {
     static const char kShaderFilename[] = "Utils/Algorithm/BitonicSort.cs.slang";
 
     BitonicSort::BitonicSort()
     {
-#if !(_ENABLE_NVAPI == true)
+#if !_ENABLE_NVAPI
         throw std::exception("BitonicSort requires NVAPI. Set _ENABLE_NVAPI to true in FalcorConfig.h.");
 #endif
         mSort.pState = ComputeState::create();
@@ -92,4 +91,3 @@ namespace Falcor
         return true;
     }
 }
-#endif

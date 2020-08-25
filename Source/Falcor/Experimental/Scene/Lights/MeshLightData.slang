@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -30,8 +30,6 @@
 
 BEGIN_NAMESPACE_FALCOR
 
-static const uint kInvalidIndex = 0xffffffff;
-
 /** Describes a mesh area light.
 
     Note that due to mesh merging etc. it's not guaranteed that a mesh light
@@ -44,6 +42,8 @@ struct MeshLightData
     uint        triangleOffset      = kInvalidIndex;    ///< Offset into LightCollection's global list of emissive triangles.
     uint        triangleCount       = 0;                ///< Number of triangles in mesh light.
     uint        materialID          = kInvalidIndex;    ///< Material ID (index into scene.materials array).
+
+    static const uint kInvalidIndex = 0xffffffff;
 };
 
 END_NAMESPACE_FALCOR

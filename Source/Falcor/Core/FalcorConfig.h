@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -33,4 +33,4 @@
 #define _PROFILING_LOG 0                    // Set this to 1 to dump profiling data while profiler is active.
 #define _PROFILING_LOG_BATCH_SIZE 1024 * 1  // This can be used to control how many samples are accumulated before they are dumped to file.
 
-#define _ENABLE_NVAPI false // Controls NVIDIA specific DX extensions. If it is set to true, make sure you have the NVAPI package in your 'Externals' directory. View the readme for more information.
+#define _ENABLE_NVAPI 0 // Set this to 1 to enable NVIDIA specific DX extensions. Make sure you have the NVAPI package in your 'Externals' directory. View the readme for more information.

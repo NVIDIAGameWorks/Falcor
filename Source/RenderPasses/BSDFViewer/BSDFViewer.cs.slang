@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -29,9 +29,10 @@
 #include "Scene/Material/MaterialDefines.slangh"
 
 import Scene.Scene;
+import Scene.Shading;
 import Scene.TextureSampler;
 import Experimental.Scene.Material.MaterialShading;
-import Experimental.Scene.Lights.EnvProbe;
+import Experimental.Scene.Lights.EnvMap;
 import Utils.Sampling.SampleGenerator;
 import Utils.Debug.PixelDebug;
 import Utils.Math.BitTricks;
@@ -41,7 +42,7 @@ import BSDFViewerParams;
 cbuffer PerFrameCB
 {
     BSDFViewerParams gParams;
-    EnvProbe gEnvProbe;
+    EnvMap gEnvMap;
 }
 
 RWTexture2D<float4> gOutput;
@@ -78,10 +79,10 @@ float2 getViewportCoord(uint2 pixel)
 */
 float3 calculateSliceGeometry(float2 uv, out VertexData v, out float3 viewDir)
 {
-    // Setup local surface frame as T,B,N (right-handed).
+    // Setup local surface frame as T,B,N.
     v.posW = float3(0, 0, 0);
     v.normalW = float3(0, 0, 1);
-    v.bitangentW = float3(0, 1, 0);
+    v.tangentW = float4(1, 0, 0, 1);
     v.texC = gParams.texCoords;
     v.faceNormalW = v.normalW;
 
@@ -179,7 +180,7 @@ bool calculateSphereGeometry(float2 uv, out VertexData v, out float3 rayDir)
 
     // Setup surface attributes for the unit sphere.
     v.normalW = v.posW;
-    v.bitangentW = perp_stark(v.normalW); // Make up a bitangent
+    v.tangentW = float4(perp_stark(v.normalW), 1.f); // Make up a tangent
     v.faceNormalW = v.normalW;
 
     if (gParams.useFixedTexCoords)
@@ -226,8 +227,8 @@ SurfaceData prepareMaterial(VertexData v, float3 viewDir)
         sd.uv = v.texC;
         sd.V = normalize(viewDir);
         sd.N = normalize(v.normalW);
-        sd.B = normalize(v.bitangentW - sd.N * (dot(v.bitangentW, sd.N)));
-        sd.T = normalize(cross(sd.B, sd.N));
+        sd.T = normalize(v.tangentW.xyz - sd.N * (dot(v.tangentW.xyz, sd.N)));
+        sd.B = normalize(cross(sd.N, sd.T) * v.tangentW.w);
         sd.NdotV = dot(sd.N, sd.V);
         sd.faceN = v.faceNormalW;
         sd.frontFacing = dot(sd.V, sd.faceN) >= 0.f;
@@ -253,6 +254,8 @@ SurfaceData prepareMaterial(VertexData v, float3 viewDir)
         data.baseColor = gParams.baseColor;
     }
 
+    data.sd.setActiveLobes(getActiveLobes());
+
     return data;
 }
 
@@ -269,7 +272,7 @@ float3 evalBackground(float2 uv, float3 dir)
     }
     if (gParams.useDirectionalLight) return float3(0);
 
-    float3 L = gParams.useEnvMap ? evalEnvProbe(gEnvProbe, dir) : gParams.lightColor;
+    float3 L = gParams.useEnvMap ? gEnvMap.eval(dir) : gParams.lightColor;
     return L * gParams.lightIntensity;
 }
 
@@ -283,7 +286,7 @@ float3 evalLighting(float3 dir)
         return float3(0.f);
     }
 
-    float3 L = gParams.useEnvMap ? evalEnvProbe(gEnvProbe, dir) : gParams.lightColor;
+    float3 L = gParams.useEnvMap ? gEnvMap.eval(dir) : gParams.lightColor;
     return L * gParams.lightIntensity;
 }
 
@@ -313,7 +316,7 @@ float3 evalBSDFSlice(float2 uv, inout SurfaceData data)
     data.wi = lightDir;
 
     // Evaluate BRDF at this point.
-    float3 f = evalBSDFCosine(data.sd, data.wi, getActiveLobes());
+    float3 f = evalBSDFCosine(data.sd, data.wi);
 
     // Remove cosine term if it's disabled in the viewer.
     if (!gParams.applyNdotL)

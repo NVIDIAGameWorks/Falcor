@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -33,8 +33,9 @@ namespace Falcor
     namespace
     {
         std::string sLogFilePath;
+        bool sLogToConsole = false;
         bool sShowBoxOnError = true;
-        Logger::Level sVerbosity = Logger::Level::Warning;
+        Logger::Level sVerbosity = Logger::Level::Info;
 
 #if _LOG_ENABLED
         bool sInitialized = false;
@@ -124,24 +125,27 @@ namespace Falcor
         return c;
     }
 
-    void Logger::log(Level L, const std::string& msg, MsgBox mbox)
+    void Logger::log(Level L, const std::string& msg, MsgBox mbox, bool terminateOnError)
     {
 #if _LOG_ENABLED
-        if(L >= sVerbosity)
+        if (L >= sVerbosity)
         {
             std::string s = getLogLevelString(L) + std::string("\t") + msg + "\n";
+
+            // Write to log file.
             printToLogFile(s);
-            if (isDebuggerPresent())
+
+            // Write to debug window if debugger is attached.
+            if (isDebuggerPresent()) printToDebugWindow(s);
+
+            // Write errors to stderr unconditionally, other messages to stdout if enabled.
+            if (L < Logger::Level::Error)
             {
-                printToDebugWindow(s);
+                if (sLogToConsole) std::cout << s;
             }
             else
             {
-                // Log errors to stderr if no debugger is attached.
-                if (L >= Logger::Level::Error)
-                {
-                    std::cerr << s;
-                }
+                std::cerr << s;
             }
         }
 #endif
@@ -179,8 +183,8 @@ namespace Falcor
             }
         }
 
-        // Terminate on errors if showBoxOnError is not set
-        if (L == Level::Error && sShowBoxOnError == false) exit(1);
+        // Terminate on errors if not displaying message box and terminateOnError is enabled
+        if (L == Level::Error && !sShowBoxOnError && terminateOnError) exit(1);
 
         // Always terminate on fatal errors
         if (L == Level::Fatal) exit(1);
@@ -204,6 +208,8 @@ namespace Falcor
     }
 
     const std::string& Logger::getLogFilePath() { return sLogFilePath; }
+    void Logger::logToConsole(bool enable) { sLogToConsole = enable; }
+    bool Logger::shouldLogToConsole() { return sLogToConsole; }
     void Logger::showBoxOnError(bool showBox) { sShowBoxOnError = showBox; }
     bool Logger::isBoxShownOnError() { return sShowBoxOnError; }
     void Logger::setVerbosity(Level level) { sVerbosity = level; }

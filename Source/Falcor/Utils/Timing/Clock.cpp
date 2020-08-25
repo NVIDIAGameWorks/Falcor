@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -51,7 +51,7 @@ namespace Falcor
             static auto dropdown = []()
             {
                 Gui::DropdownList d;
-                for (auto f : commonFps) d.push_back({ f, f == 0 ? "Disabled" : to_string(f) });
+                for (auto f : commonFps) d.push_back({ f, f == 0 ? "Disabled" : std::to_string(f) });
                 d.push_back({ kCustom, "Custom" });
                 return d;
             }();
@@ -65,7 +65,7 @@ namespace Falcor
             bool changed = w.dropdown("FPS", dropdown, index);
             if (index == kCustom)
             {
-                changed = w.var<uint32_t>("Custom##fps", curVal, 0u, UINT32_MAX, 1u, false, nullptr);
+                changed = w.var<uint32_t>("Custom##fps", curVal, 0u, std::numeric_limits<uint32_t>::max(), 1u, false, nullptr);
             }
             else curVal = index;
 
@@ -103,7 +103,7 @@ namespace Falcor
         mTicksPerFrame = 0;
         if(fps)
         {
-            if (kTicksPerSecond % fps) logWarning("Clock::setFramerate() - requested FPS can't be accurately representated. Expect roudning errors");
+            if (kTicksPerSecond % fps) logWarning("Clock::setFramerate() - requested FPS can't be accurately represented. Expect rounding errors");
             mTicksPerFrame = kTicksPerSecond / fps;
         }
 
@@ -252,22 +252,21 @@ namespace Falcor
 
     SCRIPT_BINDING(Clock)
     {
-        auto c = m.regClass(Clock);
-        
+        pybind11::class_<Clock> clock(m, "Clock");
+
         auto setTime = [](Clock* pClock, double t) {pClock->setTime(t, true); };
-        c.property(kTime, &Clock::getTime, setTime);
+        clock.def_property(kTime, &Clock::getTime, setTime);
         auto setFrame = [](Clock* pClock, uint64_t f) {pClock->setFrame(f, true); };
-        c.property(kFrame, &Clock::getFrame, setFrame);
-        c.property(kFramerate, &Clock::getFramerate, &Clock::setFramerate);
-        c.property(kTimeScale, &Clock::getTimeScale, &Clock::setTimeScale);
-        c.property(kExitTime, &Clock::getExitTime, &Clock::setExitTime);
-        c.property(kExitFrame, &Clock::getExitFrame, &Clock::setExitFrame);
+        clock.def_property(kFrame, &Clock::getFrame, setFrame);
+        clock.def_property(kFramerate, &Clock::getFramerate, &Clock::setFramerate);
+        clock.def_property(kTimeScale, &Clock::getTimeScale, &Clock::setTimeScale);
+        clock.def_property(kExitTime, &Clock::getExitTime, &Clock::setExitTime);
+        clock.def_property(kExitFrame, &Clock::getExitFrame, &Clock::setExitFrame);
 
-        c.func_(kPause, &Clock::pause);
-        c.func_(kPlay, &Clock::play);
-        c.func_(kStop, &Clock::stop);
-        c.func_(kStep, &Clock::step, "frames"_a = 1);
-
+        clock.def(kPause, &Clock::pause);
+        clock.def(kPlay, &Clock::play);
+        clock.def(kStop, &Clock::stop);
+        clock.def(kStep, &Clock::step, "frames"_a = 1);
     }
 
     void Clock::start()

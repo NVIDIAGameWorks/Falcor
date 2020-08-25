@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -82,6 +82,7 @@ namespace Falcor
         static const char* kLights = "lights";
         static const char* kType = "type";
         static const char* kDirLight = "dir_light";
+        static const char* kDistantLight = "distant_light";
         static const char* kPointLight = "point_light";
         static const char* kAreaLightRect = "area_light_rect";
         static const char* kAreaLightSphere = "area_light_sphere";
@@ -138,6 +139,7 @@ namespace Falcor
         bool createModel(const rapidjson::Value& jsonModel);
         bool createPointLight(const rapidjson::Value& jsonLight);
         bool createDirLight(const rapidjson::Value& jsonLight);
+        bool createDistantLight(const rapidjson::Value& jsonLight);
         bool createAnalyticAreaLight(const rapidjson::Value& jsonLight);
 
         bool error(const std::string& msg);
@@ -164,7 +166,7 @@ namespace Falcor
 
     bool SceneImporterImpl::error(const std::string& msg)
     {
-        logError("Error when parsing scene file \"" + mFilename + "\".\n" + msg);
+        logError("Error when parsing scene file '" + mFilename + "'.\n" + msg);
         return false;
     }
 
@@ -249,7 +251,7 @@ namespace Falcor
                         instance.rotation = glm::radians(instance.rotation);
                     }
                 }
-                else logError("Unknown key \"" + key + "\" when parsing model instance");
+                else logError("Unknown key '" + key + "' when parsing model instance");
             }
 
             instances.push_back(instance);
@@ -296,25 +298,14 @@ namespace Falcor
             const auto& materialSettings = jsonModel[SceneKeys::kMaterial];
             if (materialSettings.IsObject() == false)
             {
-                return error("Material properties for \"" + file + "\" must be a JSON object");
+                return error("Material properties for '" + file + "' must be a JSON object");
             }
 
             for (auto m = materialSettings.MemberBegin(); m != materialSettings.MemberEnd(); m++)
             {
                 if (m->name == SceneKeys::kShadingModel)
                 {
-                    if (m->value == SceneKeys::kShadingSpecGloss)
-                    {
-                        buildFlags |= SceneBuilder::Flags::UseSpecGlossMaterials;
-                    }
-                    else if (m->value == SceneKeys::kShadingMetalRough)
-                    {
-                        buildFlags |= SceneBuilder::Flags::UseMetalRoughMaterials;
-                    }
-                    else
-                    {
-                        return error("Invalid value found in " + std::string(SceneKeys::kShadingModel) + ". Value == " + std::string(m->value.GetString()) + ".");
-                    }
+                    logWarning("Model material key '" + std::string(SceneKeys::kShadingModel) + "' is not supported. Use the scene build flags.");
                 }
             }
         }
@@ -342,6 +333,7 @@ namespace Falcor
             }
             else if (keyName == SceneKeys::kActiveAnimation)
             {
+                logWarning("Model key '" + std::string(SceneKeys::kActiveAnimation) + "' is not supported.");
 // #SCENEV2
 //                 if (jval->value.IsUint() == false)
 //                 {
@@ -350,7 +342,7 @@ namespace Falcor
 //                 uint32_t activeAnimation = jval->value.GetUint();
 //                 if (activeAnimation >= pModel->getAnimationsCount())
 //                 {
-//                     std::string msg = "Warning when parsing scene file \"" + mFilename + "\".\nModel " + pModel->getName() + " was specified with active animation " + std::to_string(activeAnimation);
+//                     std::string msg = "Warning when parsing scene file '" + mFilename + "'.\nModel " + pModel->getName() + " was specified with active animation " + std::to_string(activeAnimation);
 //                     msg += ", but model only has " + std::to_string(pModel->getAnimationsCount()) + " animations. Ignoring field";
 //                     logWarning(msg);
 //                 }
@@ -379,7 +371,7 @@ namespace Falcor
     {
         if (jsonVal.IsArray() == false)
         {
-            return error("models section should be an array of objects.");
+            return error("Models section should be an array of objects.");
         }
 
         // Loop over the array
@@ -443,6 +435,59 @@ namespace Falcor
         }
 
         mBuilder.addLight(pDirLight);
+        return true;
+    }
+
+    bool SceneImporterImpl::createDistantLight(const rapidjson::Value& jsonLight)
+    {
+        auto pDistLight = DistantLight::create();
+
+        for (auto it = jsonLight.MemberBegin(); it != jsonLight.MemberEnd(); it++)
+        {
+            std::string key(it->name.GetString());
+            const auto& value = it->value;
+            if (key == SceneKeys::kName)
+            {
+                if (value.IsString() == false)
+                {
+                    return error("Distant light name should be a string");
+                }
+                std::string name = value.GetString();
+                if (name.find(' ') != std::string::npos)
+                {
+                    return error("Distant light name can't have spaces");
+                }
+                pDistLight->setName(name);
+            }
+            else if (key == SceneKeys::kType)
+            {
+                // Don't care
+            }
+            else if (key == SceneKeys::kLightIntensity)
+            {
+                float3 intensity;
+                if (getFloatVec<3>(value, "Distant light intensity", &intensity[0]) == false)
+                {
+                    return false;
+                }
+                pDistLight->setIntensity(intensity);
+            }
+            else if (key == SceneKeys::kLightDirection)
+            {
+                float3 direction;
+                if (getFloatVec<3>(value, "Distant light direction", &direction[0]) == false)
+                {
+                    return false;
+                }
+                pDistLight->setWorldDirection(direction);
+            }
+            else
+            {
+                return error("Invalid key found in distant light object. Key == " + key + ".");
+            }
+        }
+
+        mBuilder.addLight(pDistLight);
         return true;
     }
 
@@ -650,6 +695,10 @@ namespace Falcor
             {
                 b = createDirLight(light);
             }
+            else if (lightType == SceneKeys::kDistantLight)
+            {
+                b = createDistantLight(light);
+            }
             else if (lightType == SceneKeys::kPointLight)
             {
                 b = createPointLight(light);
@@ -660,7 +709,7 @@ namespace Falcor
             }
             else
             {
-                return error("Unrecognized light Type \"" + lightType + "\"");
+                return error("Unrecognized light Type '" + lightType + "'");
             }
 
             if (b == false)
@@ -879,7 +928,7 @@ namespace Falcor
             }
         }
 
-        mBuilder.setCamera(pCamera);
+        mBuilder.addCamera(pCamera);
         return true;
     }
 
@@ -887,13 +936,15 @@ namespace Falcor
     {
         if (jsonVal.IsArray() == false)
         {
-            return error("Cameras section should be an array. If you want to use a single camera you can rename the section to `camera`");
+            return error("Cameras section should be an array. If you want to use a single camera you can rename the section to 'camera'");
         }
-        if(jsonVal.Size() > 1)
+
+        bool success = true;
+        for (uint i = 0; i < jsonVal.Size(); i++)
         {
-            logWarning("The scene file contains multiple cameras. The first camera in the array will be used");
+            success = parseCamera(jsonVal[0]) && success;
         }
-        return parseCamera(jsonVal[0]);
+        return success;
     }
 
     bool SceneImporterImpl::load(const std::string& filename)
@@ -965,7 +1016,13 @@ namespace Falcor
 
     bool SceneImporterImpl::parseActiveCamera(const rapidjson::Value& jsonVal)
     {
-        logWarning(SceneKeys::kActiveCamera + std::string(" is not supported anymore. Using the first camera found"));
+        if (jsonVal.IsString() == false)
+        {
+            return error("Selected camera should be a name.");
+        }
+
+        std::string s = (std::string)(jsonVal.GetString());
+        mBuilder.setCamera(s);
         return true;
     }
 
@@ -1002,8 +1059,7 @@ namespace Falcor
             }
         }
 
-        auto pTex = Texture::createFromFile(filename, false, true);
-        mBuilder.setEnvironmentMap(pTex);
+        mBuilder.setEnvMap(EnvMap::create(filename));
         return true;
     }
 
@@ -1128,11 +1184,19 @@ namespace Falcor
         return true;
     }
 
-
-    bool SceneImporter::import(const std::string& filename, SceneBuilder& builder)
+    bool SceneImporter::import(const std::string& filename, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict)
     {
         logWarning("fscene files are no longer supported in Falcor 4.0. Some properties may not be loaded.");
+        if (!instances.empty()) logWarning("Scene importer does not support instancing.");
+
         SceneImporterImpl importer(builder);
         return importer.load(filename);
     }
+
+    REGISTER_IMPORTER(
+        SceneImporter,
+        Importer::ExtensionList({
+            "fscene"
+        })
+    )
 }

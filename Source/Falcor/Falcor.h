@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -107,7 +107,7 @@
 
 // Scene
 #include "Scene/Scene.h"
-#include "Scene/Importers/SceneImporter.h"
+#include "Scene/Importer.h"
 #include "Scene/Camera/Camera.h"
 #include "Scene/Camera/CameraController.h"
 #include "Scene/Lights/Light.h"
@@ -115,13 +115,10 @@
 #include "Scene/Material/Material.h"
 #include "Scene/Animation/Animation.h"
 #include "Scene/Animation/AnimationController.h"
-#include "Scene/Importers/AssimpImporter.h"
-#include "Scene/Importers/PythonImporter.h"
 #include "Scene/ParticleSystem/ParticleSystem.h"
 
 // Utils
 #include "Utils/Math/AABB.h"
-#include "Utils/ArgList.h"
 #include "Utils/BinaryFileStream.h"
 #include "Utils/Logger.h"
 #include "Utils/StringUtils.h"
@@ -146,6 +143,7 @@
 #include "Utils/Timing/Clock.h"
 #include "Utils/Timing/FrameRate.h"
 #include "Utils/Timing/Profiler.h"
+#include "Utils/Timing/TimeReport.h"
 #include "Utils/UI/Font.h"
 #include "Utils/UI/Gui.h"
 #include "Utils/UI/DebugDrawer.h"
@@ -164,5 +162,5 @@
 #endif
 
 #define FALCOR_MAJOR_VERSION 4
-#define FALCOR_REVISION 1
-#define FALCOR_VERSION_STRING "4.1"
+#define FALCOR_REVISION 2
+#define FALCOR_VERSION_STRING "4.2"

@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -30,8 +30,6 @@
 
 BEGIN_NAMESPACE_FALCOR
 
-static const uint32_t kCSMMaxCascades = 8;
-
 enum class CsmFilter
 {
     Point,
@@ -45,18 +43,20 @@ enum class CsmFilter
 
 struct CsmData
 {
+    static const uint32_t kMaxCascades = 8;
+
     float4x4 globalMat;
-    float4 cascadeScale[kCSMMaxCascades];
-    float4 cascadeOffset[kCSMMaxCascades];
+    float4 cascadeScale[kMaxCascades];
+    float4 cascadeOffset[kMaxCascades];
 
     //Only uses xy
-    float4 cascadeRange[kCSMMaxCascades];  // In camera clip-space
+    float4 cascadeRange[kMaxCascades];  // In camera clip-space
 
     float depthBias = 0.005f;
-    int cascadeCount = 4;
+    uint32_t cascadeCount = 4;
     uint32_t filterMode = (uint32_t)CsmFilter::HwPcf; // TODO: Make the field an enum when that works in Slang
     int32_t pcfKernelWidth = 5;
-    
+
     float3 lightDir;
     float lightBleedingReduction = 0;
 

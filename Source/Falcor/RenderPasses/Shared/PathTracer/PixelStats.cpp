@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -32,9 +32,19 @@
 
 namespace Falcor
 {
+    namespace
+    {
+        const char kComputeRayCountFilename[] = "RenderPasses/Shared/PathTracer/PixelStats.cs.slang";
+    }
+
     PixelStats::SharedPtr PixelStats::create()
     {
         return SharedPtr(new PixelStats());
+    }
+
+    PixelStats::PixelStats()
+    {
+        mpComputeRayCount = ComputePass::create(kComputeRayCountFilename, "main");
     }
 
     void PixelStats::beginFrame(RenderContext* pRenderContext, const uint2& frameDim)
@@ -49,6 +59,7 @@ namespace Falcor
         mStats = Stats();
         mStatsValid = false;
         mStatsBuffersValid = false;
+        mRayCountTextureValid = false;
 
         if (mStatsEnabled)
         {
@@ -56,18 +67,23 @@ namespace Falcor
             if (!mpParallelReduction)
             {
                 mpParallelReduction = ComputeParallelReduction::create();
-                mpReductionResult = Buffer::create(32, ResourceBindFlags::None, Buffer::CpuAccess::Read);
+                mpReductionResult = Buffer::create((kRayTypeCount + 1) * sizeof(uint4), ResourceBindFlags::None, Buffer::CpuAccess::Read);
             }
 
-            // Prepare stats buffer.
-            if (!mpStatsRayCount || mpStatsRayCount->getWidth() != frameDim.x || mpStatsRayCount->getHeight() != frameDim.y)
+            // Prepare stats buffers.
+            if (!mpStatsPathLength || mpStatsPathLength->getWidth() != frameDim.x || mpStatsPathLength->getHeight() != frameDim.y)
             {
-                mpStatsRayCount = Texture::create2D(frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+                for (uint32_t i = 0; i < kRayTypeCount; i++)
+                {
+                    mpStatsRayCount[i] = Texture::create2D(frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+                }
                 mpStatsPathLength = Texture::create2D(frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
             }
 
-            assert(mpStatsRayCount && mpStatsPathLength);
-            pRenderContext->clearUAV(mpStatsRayCount->getUAV().get(), uint4(0, 0, 0, 0));
+            for (uint32_t i = 0; i < kRayTypeCount; i++)
+            {
+                pRenderContext->clearUAV(mpStatsRayCount[i]->getUAV().get(), uint4(0, 0, 0, 0));
+            }
             pRenderContext->clearUAV(mpStatsPathLength->getUAV().get(), uint4(0, 0, 0, 0));
         }
     }
@@ -83,8 +99,11 @@ namespace Falcor
             if (!mpFence) mpFence = GpuFence::create();
 
             // Sum of the per-pixel counters. The results are copied to a GPU buffer.
-            mpParallelReduction->execute<uint4>(pRenderContext, mpStatsRayCount, ComputeParallelReduction::Type::Sum, nullptr, mpReductionResult, 0);
-            mpParallelReduction->execute<uint4>(pRenderContext, mpStatsPathLength, ComputeParallelReduction::Type::Sum, nullptr, mpReductionResult, 16);
+            for (uint32_t i = 0; i < kRayTypeCount; i++)
+            {
+                mpParallelReduction->execute<uint4>(pRenderContext, mpStatsRayCount[i], ComputeParallelReduction::Type::Sum, nullptr, mpReductionResult, i * sizeof(uint4));
+            }
+            mpParallelReduction->execute<uint4>(pRenderContext, mpStatsPathLength, ComputeParallelReduction::Type::Sum, nullptr, mpReductionResult, kRayTypeCount * sizeof(uint4));
 
             // Submit command list and insert signal.
             pRenderContext->flush(false);
@@ -102,7 +121,10 @@ namespace Falcor
         if (mStatsEnabled)
         {
             pProgram->addDefine("_PIXEL_STATS_ENABLED");
-            var["gStatsRayCount"] = mpStatsRayCount;
+            for (uint32_t i = 0; i < kRayTypeCount; i++)
+            {
+                var["gStatsRayCount"][i] = mpStatsRayCount[i];
+            }
             var["gStatsPathLength"] = mpStatsPathLength;
         }
         else
@@ -122,9 +144,13 @@ namespace Falcor
         if (mStatsValid)
         {
             std::ostringstream oss;
-            oss << "Path length (avg): " << std::fixed << std::setprecision(3) << mStats.avgPathLength << "\n";
-            oss << "Traced rays (avg): " << std::fixed << std::setprecision(3) << mStats.avgRaysPerPixel << "\n";
-            oss << "Traced rays (total): " << mStats.totalRays << "\n";
+            oss << "Path length (avg): " << std::fixed << std::setprecision(3) << mStats.avgPathLength << "\n"
+                << "Total rays (avg): " << std::fixed << std::setprecision(3) << mStats.avgTotalRaysPerPixel << "\n"
+                << "Shadow rays (avg): " << std::fixed << std::setprecision(3) << mStats.avgShadowRaysPerPixel << "\n"
+                << "ClosestHit rays (avg): " << std::fixed << std::setprecision(3) << mStats.avgClosestHitRaysPerPixel << "\n"
+                << "Total rays: " << mStats.totalRays << "\n"
+                << "Shadow rays: " << mStats.shadowRays << "\n"
+                << "ClosestHit rays: " << mStats.closestHitRays << "\n";
             widget.text(oss.str().c_str());
         }
     }
@@ -141,10 +167,44 @@ namespace Falcor
         return true;
     }
 
-    const Texture::SharedPtr PixelStats::getRayCountBuffer() const
+    const Texture::SharedPtr PixelStats::getRayCountTexture(RenderContext* pRenderContext)
     {
         assert(!mRunning);
-        return mStatsBuffersValid ? mpStatsRayCount : nullptr;
+        if (!mStatsBuffersValid) return nullptr;
+
+        if (!mRayCountTextureValid)
+        {
+            computeRayCountTexture(pRenderContext);
+        }
+
+        assert(mRayCountTextureValid);
+        return mpStatsRayCountTotal;
+    }
+
+    void PixelStats::computeRayCountTexture(RenderContext* pRenderContext)
+    {
+        assert(mStatsBuffersValid);
+        if (!mpStatsRayCountTotal || mpStatsRayCountTotal->getWidth() != mFrameDim.x || mpStatsRayCountTotal->getHeight() != mFrameDim.y)
+        {
+            mpStatsRayCountTotal = Texture::create2D(mFrameDim.x, mFrameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+        }
+
+        auto var = mpComputeRayCount->getRootVar();
+        for (uint32_t i = 0; i < kRayTypeCount; i++)
+        {
+            var["gStatsRayCount"][i] = mpStatsRayCount[i];
+        }
+        var["gStatsRayCountTotal"] = mpStatsRayCountTotal;
+        var["CB"]["gFrameDim"] = mFrameDim;
+
+        mpComputeRayCount->execute(pRenderContext, mFrameDim.x, mFrameDim.y);
+        mRayCountTextureValid = true;
+    }
+
+    const Texture::SharedPtr PixelStats::getPathLengthTexture() const
+    {
+        assert(!mRunning);
+        return mStatsBuffersValid ? mpStatsPathLength : nullptr;
     }
 
     void PixelStats::copyStatsToCPU()
@@ -159,23 +219,24 @@ namespace Falcor
             if (mStatsEnabled)
             {
                 // Map the stats buffer.
-                const uint4* data = static_cast<const uint4*>(mpReductionResult->map(Buffer::MapType::Read));
-                assert(data);
-                const uint32_t totalRayCount = data[0].x;
-                const uint32_t totalPathLength = data[1].x;
-                mpReductionResult->unmap();
+                const uint4* result = static_cast<const uint4*>(mpReductionResult->map(Buffer::MapType::Read));
+                assert(result);
 
-                // Store stats locally.
+                const uint32_t totalPathLength = result[kRayTypeCount].x;
                 const uint32_t numPixels = mFrameDim.x * mFrameDim.y;
                 assert(numPixels > 0);
 
-                mStats.totalRays = totalRayCount;
-                mStats.avgRaysPerPixel = (float)totalRayCount / numPixels;
+                mStats.shadowRays = result[(uint32_t)PixelStatsRayType::Shadow].x;
+                mStats.closestHitRays = result[(uint32_t)PixelStatsRayType::ClosestHit].x;
+                mStats.totalRays = mStats.shadowRays + mStats.closestHitRays;
+                mStats.avgShadowRaysPerPixel = (float)mStats.shadowRays / numPixels;
+                mStats.avgClosestHitRaysPerPixel = (float)mStats.closestHitRays / numPixels;
+                mStats.avgTotalRaysPerPixel = (float)mStats.totalRays / numPixels;
                 mStats.avgPathLength = (float)totalPathLength / numPixels;
 
+                mpReductionResult->unmap();
                 mStatsValid = true;
             }
         }
     }
-
 }

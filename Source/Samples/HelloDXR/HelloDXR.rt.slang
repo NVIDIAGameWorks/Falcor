@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -25,8 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+import Scene.Lights.Lights;
 import Scene.Shading;
 import Scene.Raytracing;
+import Utils.Helpers;
 
 cbuffer PerFrameCB
 {
@@ -70,13 +72,10 @@ void primaryMiss(inout PrimaryRayData hitData)
 
 bool checkLightHit(uint lightIndex, float3 origin)
 {
-    float3 direction = gScene.lights[lightIndex].posW - origin;
-    RayDesc ray;
-    ray.Origin = origin;
-    ray.Direction = normalize(direction);
-    ray.TMin = 0.001;
-    ray.TMax = max(0.01, length(direction));
-
+    LightData light = gScene.lights[lightIndex];
+    RayDesc ray = getShadowRay(light, origin);
+    ray.TMin = max(ray.TMin, 0.001);
+    
     ShadowRayData rayData;
     rayData.hit = true;
     TraceRay(gRtScene, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xFF, 1 /* ray index */, hitProgramCount, 1, ray, rayData);
@@ -128,7 +127,7 @@ void primaryClosestHit(
     {
         if (checkLightHit(i, posW) == false)
         {
-            color += evalMaterial(sd, gScene.getLight(i), 1).color.xyz;
+            color += evalMaterial(sd, gScene.getLight(i), 1).color;
         }
     }
 

@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -224,7 +224,7 @@ namespace Falcor
 
         auto& activeFences = mpApiData->fenceQueue.getActiveObjects();
         std::vector<VkFence> fenceVec(activeFences.begin(), activeFences.end());
-        vk_call(vkWaitForFences(gpDevice->getApiHandle(), (uint32_t)fenceVec.size(), fenceVec.data(), true, UINT64_MAX));
+        vk_call(vkWaitForFences(gpDevice->getApiHandle(), (uint32_t)fenceVec.size(), fenceVec.data(), true, std::numeric_limits<uint64_t>::max()));
         mpApiData->gpuValue += fenceVec.size();
         mpApiData->fenceQueue.popAllObjects();
         releaseSemaphores(mpApiData);  // Call this after popping the fences

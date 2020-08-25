@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -29,7 +29,6 @@
 #include "Window.h"
 #include "API/Device.h"
 #include "Renderer.h"
-#include "Utils/ArgList.h"
 #include "Utils/Timing/FrameRate.h"
 #include "Utils/UI/Gui.h"
 #include "Utils/UI/TextRenderer.h"
@@ -79,7 +78,6 @@ namespace Falcor
         bool isKeyPressed(const KeyboardEvent::Key& key) override;
         void toggleUI(bool showUI) override { mShowUI = showUI; }
         bool isUiEnabled() override { return mShowUI; }
-        ArgList getArgList() override { return mArgList; }
         void pauseRenderer(bool pause) override { mRendererPaused = pause; }
         bool isRendererPaused() override { return mRendererPaused; }
         std::string captureScreen(const std::string explicitFilename = "", const std::string explicitOutputDirectory = "") override;
@@ -95,7 +93,6 @@ namespace Falcor
         Gui::UniquePtr mpGui;                               ///< Main sample GUI
         Fbo::SharedPtr mpTargetFBO;                         ///< The FBO available to renderers
         bool mRendererPaused = false;                       ///< Freezes the renderer
-        ArgList mArgList;                                   ///< Arguments passed in by command line
         Window::SharedPtr mpWindow;                         ///< The application's window
 
         void renderFrame() override;
@@ -118,7 +115,7 @@ namespace Falcor
         void runInternal(const SampleConfig& config, uint32_t argc, char** argv);
 
         void startScripting();
-        void registerScriptBindings(ScriptBindings::Module& m);
+        void registerScriptBindings(pybind11::module& m);
 
         bool mSuppressInput = false;
         bool mVsyncOn = false;

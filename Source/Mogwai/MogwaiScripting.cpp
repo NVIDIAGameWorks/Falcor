@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -52,14 +52,14 @@ namespace Mogwai
             static const size_t kMaxSpace = 8;
             for (auto n : g)
             {
-                s += "\t`" + n.first + "`";
+                s += "\t'" + n.first + "'";
                 s += (n.first.size() >= kMaxSpace) ? " " : std::string(kMaxSpace - n.first.size(), ' ');
                 s += n.second;
                 s += "\n";
             }
 
             s += "\nGlobal functions\n";
-            s += "\trenderFrame()      Render a frame. If the clock is not paused, it will advance by one tick. You can use it inside `For loops`, for example to loop over a specific time-range\n";
+            s += "\trenderFrame()      Render a frame. If the clock is not paused, it will advance by one tick. You can use it inside for loops, for example to loop over a specific time-range\n";
             s += "\texit()             Exit Mogwai\n";
             return s;
         }
@@ -75,13 +75,8 @@ namespace Mogwai
         }
     }
 
-    void Renderer::dumpConfig(std::string filename) const
+    void Renderer::saveConfig(const std::string& filename) const
     {
-        if (filename.empty())
-        {
-            if (!saveFileDialog(Scripting::kFileExtensionFilters, filename)) return;
-        }
-
         std::string s;
 
         if (!mGraphs.empty())
@@ -118,29 +113,32 @@ namespace Mogwai
         std::ofstream(filename) << s;
     }
 
-    void Renderer::registerScriptBindings(ScriptBindings::Module& m)
+    void Renderer::registerScriptBindings(pybind11::module& m)
     {
-        auto c = m.class_<Renderer>("Renderer");
+        pybind11::class_<Renderer> renderer(m, "Renderer");
+        renderer.def(kRunScript.c_str(), &Renderer::loadScript, "filename"_a = std::string());
+        renderer.def(kLoadScene.c_str(), &Renderer::loadScene, "filename"_a = std::string(), "buildFlags"_a = SceneBuilder::Flags::Default);
+        renderer.def(kSaveConfig.c_str(), &Renderer::saveConfig, "filename"_a);
+        renderer.def(kAddGraph.c_str(), &Renderer::addGraph, "graph"_a);
+        renderer.def(kRemoveGraph.c_str(), pybind11::overload_cast<const std::string&>(&Renderer::removeGraph), "name"_a);
+        renderer.def(kRemoveGraph.c_str(), pybind11::overload_cast<const RenderGraph::SharedPtr&>(&Renderer::removeGraph), "graph"_a);
+        renderer.def(kGetGraph.c_str(), &Renderer::getGraph, "name"_a);
+        renderer.def("graph", &Renderer::getGraph); // PYTHONDEPRECATED
+        auto envMap = [](Renderer* pRenderer, const std::string& filename) { if (pRenderer->getScene()) pRenderer->getScene()->loadEnvMap(filename); };
+        renderer.def("envMap", envMap, "filename"_a); // PYTHONDEPRECATED
 
-        c.func_(kRunScript.c_str(), &Renderer::loadScript, "filename"_a = std::string());
-        c.func_(kLoadScene.c_str(), &Renderer::loadScene, "filename"_a = std::string(), "buildFlags"_a = SceneBuilder::Flags::Default);
-        c.func_(kSaveConfig.c_str(), &Renderer::dumpConfig, "filename"_a = std::string());
-        c.func_(kAddGraph.c_str(), &Renderer::addGraph, "graph"_a);
-        c.func_(kRemoveGraph.c_str(), ScriptBindings::overload_cast<const std::string&>(&Renderer::removeGraph), "name"_a);
-        c.func_(kRemoveGraph.c_str(), ScriptBindings::overload_cast<const RenderGraph::SharedPtr&>(&Renderer::removeGraph), "graph"_a);
-        c.func_(kGetGraph.c_str(), &Renderer::getGraph, "name"_a);
-        c.func_("graph", &Renderer::getGraph); // PYTHONDEPRECATED
-        auto envMap = [](Renderer* pRenderer, const std::string& filename) { if (pRenderer->getScene()) pRenderer->getScene()->loadEnvironmentMap(filename); };
-        c.func_("envMap", envMap, "filename"_a); // PYTHONDEPRECATED
+        // PYTHONDEPRECATED Use the global function defined in the script bindings in Sample.cpp when resizing from a Python script.
+        auto resize = [](Renderer* pRenderer, uint32_t width, uint32_t height) {gpFramework->resizeSwapChain(width, height); };
+        renderer.def(kResizeSwapChain.c_str(), resize);
 
-        c.roProperty(kScene.c_str(), &Renderer::getScene);
-        c.roProperty(kActiveGraph.c_str(), &Renderer::getActiveGraph);
+        renderer.def_property_readonly(kScene.c_str(), &Renderer::getScene);
+        renderer.def_property_readonly(kActiveGraph.c_str(), &Renderer::getActiveGraph);
 
         auto getUI = [](Renderer* pRenderer) { return gpFramework->isUiEnabled(); };
         auto setUI = [](Renderer* pRenderer, bool show) { gpFramework->toggleUI(show); };
-        c.property(kUI.c_str(), getUI, setUI);
+        renderer.def_property(kUI.c_str(), getUI, setUI);
 
-        Extension::Bindings b(m, c);
+        Extension::Bindings b(m, renderer);
         b.addGlobalObject(kRendererVar, this, "The engine");
         b.addGlobalObject(kTimeVar, &gpFramework->getGlobalClock(), "Time Utilities");
         for (auto& pe : mpExtensions) pe->scriptBindings(b);
@@ -148,7 +146,7 @@ namespace Mogwai
 
         // Replace the `help` function
         auto globalHelp = [this]() { pybind11::print(mGlobalHelpMessage);};
-        m.func_("help", globalHelp);
+        m.def("help", globalHelp);
 
         auto objectHelp = [](pybind11::object o)
         {
@@ -156,10 +154,6 @@ namespace Mogwai
             auto h = b.attr("help");
             h(o);
         };
-        m.func_("help", objectHelp, "object"_a);
-
-        // PYTHONDEPRECATED Use the global function defined in the script bindings in Sample.cpp when resizing from a Python script.
-        auto resize = [](Renderer* pRenderer, uint32_t width, uint32_t height) {gpFramework->resizeSwapChain(width, height); };
-        c.func_(kResizeSwapChain.c_str(), resize);
+        m.def("help", objectHelp, "object"_a);
     }
 }

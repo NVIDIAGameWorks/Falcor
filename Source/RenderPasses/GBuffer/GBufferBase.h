@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -34,7 +34,7 @@ extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib);
 
 /** Base class for the different types of G-buffer passes (including V-buffer).
 */
-class GBufferBase : public RenderPass, public inherit_shared_from_this<RenderPass, GBufferBase>
+class GBufferBase : public RenderPass
 {
 public:
     enum class SamplePattern : uint32_t
@@ -47,6 +47,7 @@ public:
 
     virtual void renderUI(Gui::Widgets& widget) override;
     virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
+    virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual Dictionary getScriptingDictionary() override;
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
 
@@ -57,6 +58,7 @@ protected:
 
     // Internal state
     Scene::SharedPtr                mpScene;
+    CPUSampleGenerator::SharedPtr   mpSampleGenerator;
 
     uint2                           mFrameDim = {};
     float2                          mInvFrameDim = {};
@@ -67,22 +69,6 @@ protected:
     bool                            mDisableAlphaTest = false;                  ///< Disable alpha test.
     bool                            mOptionsChanged = false;
 
-    static void registerBindings(ScriptBindings::Module& m);
+    static void registerBindings(pybind11::module& m);
     friend void getPasses(Falcor::RenderPassLibrary& lib);
 };
-
-#define str(a) case GBufferBase::SamplePattern::a: return #a
-inline std::string to_string(GBufferBase::SamplePattern type)
-{
-    switch (type)
-    {
-        str(Center);
-        str(DirectX);
-        str(Halton);
-        str(Stratified);
-    default:
-        should_not_get_here();
-        return "";
-    }
-}
-#undef str

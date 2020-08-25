@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -227,6 +227,19 @@ float2 sample_disk(float2 u)
     p.x = r * cos(phi);
     p.y = r * sin(phi);
     return p;
+}
+
+/** Uniform sampling of direction within a cone
+    \param[in] u Uniform random number in [0,1)^2.
+    \param[in] cosTheta Cosine of the cone half-angle
+    \return Sampled direction within the cone with (0,0,1) axis
+*/
+float3 sample_cone(float2 u, float cosTheta)
+{
+    float z = u.x * (1.f - cosTheta) + cosTheta;
+    float r = sqrt(1.f - z*z);
+    float phi = M_2PI * u.y;
+    return float3(r * cos(phi), r * sin(phi), z);
 }
 
 /** Uniform sampling of the unit sphere using spherical coordinates.
@@ -482,21 +495,21 @@ void boundBoxSubtendedConeAngleAverage(float3 origin, float3 aabbMin, float3 aab
 }
 
 /** Computes the sine and cosine of the angle of the cone that encompasses
-    a sphere of given radius and center subtend as seen from a point at the
-    origin.
+    a sphere of given radius and center subtend as seen from a point at the origin.
 
     \param[in] center Sphere's center.
-    \param[in] radius Sphere's radius.
-    \param[out] sinTheta sine of the angle between a vector from the origin to |center| and a
+    \param[in] sqrRadius Square of sphere's radius.
+    \param[out] sinTheta Sine of the angle between a vector from the origin to |center| and a
                 vector from the origin that is tangent to the sphere.
-    \param[out] cosTheta cosine of that angle.
+    \param[out] cosTheta Cosine of that angle.
 */
-void boundSphereSubtendedConeAngle(float3 center, float radius, out float sinTheta, out float cosTheta)
+void boundSphereSubtendedConeAngle(float3 center, float sqrRadius, out float sinTheta, out float cosTheta)
 {
-    const float centerDistance2 = dot(center, center);
     // Is the point inside the bounding sphere?
-    if (centerDistance2 < radius * radius)
+    float centerDistance2 = dot(center, center);
+    if (centerDistance2 < sqrRadius)
     {
+        // We're inside. Return the full cone.
         sinTheta = 0.f;
         cosTheta = -1.f;
     }
@@ -504,8 +517,8 @@ void boundSphereSubtendedConeAngle(float3 center, float radius, out float sinThe
     {
         // Compute the sine and then the cosine of the spread angle of a
         // cone that bounds the sphere as seen from |center|.
-        const float sin2Theta = radius * radius / centerDistance2;
-        cosTheta = sqrt(max(0.f, 1.f - sin2Theta));
+        float sin2Theta = sqrRadius / centerDistance2;
+        cosTheta = sqrt(1.f - sin2Theta);
         sinTheta = sqrt(sin2Theta);
     }
 }

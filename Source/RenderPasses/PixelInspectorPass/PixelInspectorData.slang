@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -30,14 +30,12 @@
 
 BEGIN_NAMESPACE_FALCOR
 
-#ifndef HOST_CODE
-static const uint kInvalidIndex = 0xffffffff;
-#endif
-
 /** Pixel data read out by the InspectorPass.
 */
 struct PixelData
 {
+    static const uint kInvalidIndex = 0xffffffff;
+
     // Geometry data
     float3 posW;
     float texCoordU;

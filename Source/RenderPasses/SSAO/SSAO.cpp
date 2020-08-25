@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -34,17 +34,17 @@ extern "C" __declspec(dllexport) const char* getProjDir()
     return PROJECT_DIR;
 }
 
-static void regSSAO(ScriptBindings::Module& m)
+static void regSSAO(pybind11::module& m)
 {
-    auto c = m.regClass(SSAO);
-    c.property("kernelRadius", &SSAO::getKernelSize, &SSAO::setKernelSize);
-    c.property("distribution", &SSAO::getDistribution, &SSAO::setDistribution);
-    c.property("sampleRadius", &SSAO::getSampleRadius, &SSAO::setSampleRadius);
+    pybind11::class_<SSAO, RenderPass, SSAO::SharedPtr> pass(m, "SSAO");
+    pass.def_property("kernelRadius", &SSAO::getKernelSize, &SSAO::setKernelSize);
+    pass.def_property("distribution", &SSAO::getDistribution, &SSAO::setDistribution);
+    pass.def_property("sampleRadius", &SSAO::getSampleRadius, &SSAO::setSampleRadius);
 
-    auto sampleDistEnum = m.enum_<SSAO::SampleDistribution>("SampleDistribution");
-    sampleDistEnum.regEnumVal(SSAO::SampleDistribution::Random);
-    sampleDistEnum.regEnumVal(SSAO::SampleDistribution::UniformHammersley);
-    sampleDistEnum.regEnumVal(SSAO::SampleDistribution::CosineHammersley);
+    pybind11::enum_<SSAO::SampleDistribution> sampleDistribution(m, "SampleDistribution");
+    sampleDistribution.value("Random", SSAO::SampleDistribution::Random);
+    sampleDistribution.value("UniformHammersley", SSAO::SampleDistribution::UniformHammersley);
+    sampleDistribution.value("CosineHammersley", SSAO::SampleDistribution::CosineHammersley);
 }
 
 extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
@@ -103,16 +103,16 @@ SSAO::SharedPtr SSAO::create(RenderContext* pRenderContext, const Dictionary& di
 {
     SharedPtr pSSAO = SharedPtr(new SSAO);
     Dictionary blurDict;
-    for (const auto& v : dict)
+    for (const auto& [key, value] : dict)
     {
-        if (v.key() == kAoMapSize) pSSAO->mAoMapSize = (uint2)v.val();
-        else if (v.key() == kKernelSize) pSSAO->mData.kernelSize = v.val();
-        else if (v.key() == kNoiseSize) pSSAO->mNoiseSize = (uint2)v.val();
-        else if (v.key() == kDistribution) pSSAO->mHemisphereDistribution = (SampleDistribution)v.val();
-        else if (v.key() == kRadius) pSSAO->mData.radius = v.val();
-        else if (v.key() == kBlurKernelWidth) pSSAO->mBlurDict["kernelWidth"] = (uint32_t)v.val();
-        else if (v.key() == kBlurSigma) pSSAO->mBlurDict["sigma"] = (float)v.val();
-        else logWarning("Unknown field '" + v.key() + "' in a SSAO dictionary");
+        if (key == kAoMapSize) pSSAO->mAoMapSize = value;
+        else if (key == kKernelSize) pSSAO->mData.kernelSize = value;
+        else if (key == kNoiseSize) pSSAO->mNoiseSize = value;
+        else if (key == kDistribution) pSSAO->mHemisphereDistribution = value;
+        else if (key == kRadius) pSSAO->mData.radius = value;
+        else if (key == kBlurKernelWidth) pSSAO->mBlurDict["kernelWidth"] = (uint32_t)value;
+        else if (key == kBlurSigma) pSSAO->mBlurDict["sigma"] = (float)value;
+        else logWarning("Unknown field '" + key + "' in a SSAO dictionary");
     }
     return pSSAO;
 }
@@ -217,7 +217,7 @@ void SSAO::renderUI(Gui::Widgets& widget)
     if (widget.dropdown("Kernel Distribution", kDistributionDropdown, distribution)) setDistribution(distribution);
 
     uint32_t size = mData.kernelSize;
-    if (widget.var("Kernel Size", size, 1u, kMaxSamples)) setKernelSize(size);
+    if (widget.var("Kernel Size", size, 1u, SSAOData::kMaxSamples)) setKernelSize(size);
 
     float radius = mData.radius;
     if (widget.var("Sample Radius", radius, 0.001f, FLT_MAX, 0.001f)) setSampleRadius(radius);
@@ -225,11 +225,9 @@ void SSAO::renderUI(Gui::Widgets& widget)
     widget.checkbox("Apply Blur", mApplyBlur);
     if (mApplyBlur)
     {
-        auto blurGroup = Gui::Group(widget, "Blur Settings");
-        if (blurGroup.open())
+        if (auto blurGroup = widget.group("Blur Settings"))
         {
             mpBlurGraph->getPass("GaussianBlur")->renderUI(blurGroup);
-            blurGroup.release();
         }
     }
 }
@@ -242,7 +240,7 @@ void SSAO::setSampleRadius(float radius)
 
 void SSAO::setKernelSize(uint32_t kernelSize)
 {
-    kernelSize = glm::clamp(kernelSize, 1u, kMaxSamples);
+    kernelSize = glm::clamp(kernelSize, 1u, SSAOData::kMaxSamples);
     mData.kernelSize = kernelSize;
     setKernel();
 }

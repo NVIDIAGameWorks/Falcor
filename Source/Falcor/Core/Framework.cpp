@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -31,9 +31,15 @@ namespace Falcor
 {
     SCRIPT_BINDING(ComparisonFunc)
     {
-        auto comparison = m.enum_<ComparisonFunc>("Comparison");
-        comparison.regEnumVal(ComparisonFunc::Disabled).regEnumVal(ComparisonFunc::LessEqual).regEnumVal(ComparisonFunc::GreaterEqual);
-        comparison.regEnumVal(ComparisonFunc::Less).regEnumVal(ComparisonFunc::Greater).regEnumVal(ComparisonFunc::Equal);
-        comparison.regEnumVal(ComparisonFunc::NotEqual).regEnumVal(ComparisonFunc::Always).regEnumVal(ComparisonFunc::Never);
+        pybind11::enum_<ComparisonFunc> comparisonFunc(m, "ComparisonFunc");
+        comparisonFunc.value("Disabled", ComparisonFunc::Disabled);
+        comparisonFunc.value("LessEqual", ComparisonFunc::LessEqual);
+        comparisonFunc.value("GreaterEqual", ComparisonFunc::GreaterEqual);
+        comparisonFunc.value("Less", ComparisonFunc::Less);
+        comparisonFunc.value("Greater", ComparisonFunc::Greater);
+        comparisonFunc.value("Equal", ComparisonFunc::Equal);
+        comparisonFunc.value("NotEqual", ComparisonFunc::NotEqual);
+        comparisonFunc.value("Always", ComparisonFunc::Always);
+        comparisonFunc.value("Never", ComparisonFunc::Never);
     }
 }

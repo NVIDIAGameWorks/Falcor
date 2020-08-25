@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -41,7 +41,8 @@ struct GBufferParams
     float2  invFrameSize;       ///< 1.0 / frameSize.
     uint    frameCount;
     uint    rayFlags;           ///< Ray flags for TraceRay(). See D3D12_RAY_FLAG_* in d3d12.h.
-    int2   _pad0;
+    float   screenSpacePixelSpreadAngle; ///< For anisotropic lookups with GBufferRT and ray cones.
+    int     _pad0;
 };
 
 END_NAMESPACE_FALCOR

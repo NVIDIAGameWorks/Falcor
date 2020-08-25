@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -29,12 +29,49 @@
 #include "ScriptBindings.h"
 #include <functional>
 
+// Forward declaration.
+struct ImGuiInputTextCallbackData;
+
 namespace Falcor
 {
     class dlldecl Console
     {
     public:
-        static void render(Gui* pGui);
-        static bool flush();
+        /** Clears the console.
+        */
+        void clear();
+
+        /** Renders the console and handles important keyboard input events:
+            - The "`" key is used to open/close the console.
+            - The ESC key is used to close the console if currently open.
+            - The UP/DOWN keys are used to browse through the history.
+            \param[in] pGui GUI.
+            \param[in/out] show Flag to indicate if console is shown.
+        */
+        void render(Gui* pGui, bool& show);
+
+        /** Processes console input. Should be called once at the end of every frame.
+            \return Returns true if some processing occured.
+        */
+        bool flush();
+
+        /** Global console instance.
+            \return Returns the global console instance.
+        */
+        static Console& instance();
+
+    private:
+        Console() = default;
+
+        void enterCommand();
+        std::optional<std::string> browseHistory(bool upOrDown);
+        static int inputTextCallback(ImGuiInputTextCallbackData* data);
+
+        std::string mLog;
+        char mCmdBuffer[2048] = {};
+        std::string mCmdPending;
+        std::vector<std::string> mHistory;
+        int32_t mHistoryIndex = -1;
+        bool mScrollToBottom = true;
     };
 }

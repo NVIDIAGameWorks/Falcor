@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -30,7 +30,6 @@
 #include "FalcorExperimental.h"
 #include "RenderGraph/RenderPassHelpers.h"
 #include "Utils/Sampling/SampleGenerator.h"
-#include "Experimental/Scene/Lights/EnvProbe.h"
 #include "Experimental/Scene/Material/TexLODTypes.slang"  // Using the enum with Mip0, RayCones, etc
 
 using namespace Falcor;
@@ -39,12 +38,10 @@ using namespace Falcor;
 
     This pass implements the simplest possible Whitted ray tracer.
 */
-class WhittedRayTracer : public RenderPass, public inherit_shared_from_this<RenderPass, WhittedRayTracer>
+class WhittedRayTracer : public RenderPass
 {
 public:
     using SharedPtr = std::shared_ptr<WhittedRayTracer>;
-    using inherit_shared_from_this::shared_from_this;
-
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
@@ -57,8 +54,11 @@ public:
     virtual bool onMouseEvent(const MouseEvent& mouseEvent) override { return false; }
     virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
 
-    void setTexLODMode(const TexLODMode mode)   { mTexLODMode = mode; }
-    TexLODMode getTexLODMode() const            { return mTexLODMode; }
+    void setTexLODMode(const TexLODMode mode) { mTexLODMode = mode; }
+    TexLODMode getTexLODMode() const { return mTexLODMode; }
+
+    void setRayConeMode(const RayConeMode mode) { mRayConeMode = mode; }
+    RayConeMode getRayConeMode() const { return mRayConeMode; }
 
 private:
     WhittedRayTracer(const Dictionary& dict);
@@ -69,19 +69,17 @@ private:
     // Internal state
     Scene::SharedPtr            mpScene;                                    ///< Current scene.
     SampleGenerator::SharedPtr  mpSampleGenerator;                          ///< GPU sample generator.
-    EnvProbe::SharedPtr         mpEnvProbe;                                 ///< Environment map sampling (if used).
-    std::string                 mEnvProbeFilename;                          ///< Name of loaded environment map (stripped of full path).
 
     ChannelList                 mInputChannels;
     Gui::DropdownList           mTexLODModes;
+    Gui::DropdownList           mRayConeModes;
 
     uint                        mMaxBounces = 3;                            ///< Max number of indirect bounces (0 = none).
-    int                         mUseAnalyticLights = true;                  ///< Use built-in analytic lights.
-    int                         mUseEmissiveLights = true;                  ///< Use emissive geometry as light sources.
-    int                         mUseEnvLight = false;                       ///< Use environment map as light source (if loaded).
-    int                         mUseEnvBackground = true;                   ///< Use environment map as background (if loaded).
-    TexLODMode                  mTexLODMode = TexLODMode::Mip0;             ///< Which texture LOD mode to use
-    bool                        mUsingRasterizedGBuffer = true;             ///< Set by the Python file (whether rasterized GBUffer or ray traced GBuffer is used)
+    TexLODMode                  mTexLODMode = TexLODMode::Mip0;             ///< Which texture LOD mode to use.
+    RayConeMode                 mRayConeMode = RayConeMode::Combo;          ///< Which variant of ray cones to use.
+    bool                        mVisualizeSurfaceSpread = false;            ///< Visualize surface spread angle at the first hit for the ray cones methods.
+    bool                        mUsingRasterizedGBuffer = true;             ///< Set by the Python file (whether rasterized GBUffer or ray traced GBuffer is used).
+    bool                        mUseRoughnessToVariance = false;            ///< Use roughness to variance to grow ray cones based on BDSF roughness.
     // Runtime data
     uint                        mFrameCount = 0;                            ///< Frame count since scene was loaded.
     bool                        mOptionsChanged = false;
@@ -105,23 +103,18 @@ private:
 
         // Add variables here that should be serialized to/from the dictionary.
         serialize(mMaxBounces);
-        serialize(mUseAnalyticLights);
-        serialize(mUseEmissiveLights);
-        serialize(mUseEnvLight);
-        serialize(mUseEnvBackground);
         serialize(mTexLODMode);
+        serialize(mRayConeMode);
         serialize(mUsingRasterizedGBuffer);
+        serialize(mUseRoughnessToVariance);
 
         if constexpr (loadFromDict)
         {
-            for (const auto& v : dict)
+            for (const auto& [key, value] : dict)
             {
-                auto k = v.key();
-                if (vars.find(v.key()) == vars.end())
-                    logWarning("Unknown field `" + v.key() + "` in a WhittedRayTracer dictionary");
+                if (vars.find(key) == vars.end()) logWarning("Unknown field '" + key + "' in a WhittedRayTracer dictionary");
             }
         }
     }
 #undef serialize
-
 };

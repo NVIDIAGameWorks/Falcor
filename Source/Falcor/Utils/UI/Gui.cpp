@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -481,7 +481,7 @@ namespace Falcor
             comboStr += v.label + '\0';
         }
         comboStr += '\0';
-        uint32_t prevItem = curItem;
+        auto prevItem = curItem;
         //This returns true if the combo is interacted with at all
         bool b = ImGui::Combo(label, &curItem, comboStr.c_str());
         mDropDownValues[label].currentItem = curItem;
@@ -499,7 +499,7 @@ namespace Falcor
 
     bool GuiImpl::addRadioButtons(const Gui::RadioButtonGroup& buttons, uint32_t& activeID)
     {
-        int32_t oldValue = activeID;
+        auto oldValue = activeID;
 
         for (const auto& button : buttons)
         {
@@ -897,7 +897,7 @@ namespace Falcor
         std::string fullpath;
         if (findFileInDataDirectories(filename, fullpath) == false)
         {
-            logWarning("Can't find font file `" + filename + "`");
+            logWarning("Can't find font file '" + filename + "'");
             return;
         }
 
@@ -912,7 +912,7 @@ namespace Falcor
         const auto& it = mpWrapper->mFontMap.find(font);
         if (it == mpWrapper->mFontMap.end())
         {
-            logWarning("Can't find a font named `" + font + "`");
+            logWarning("Can't find a font named '" + font + "'");
             mpWrapper->mpActiveFont = nullptr;
         }
         mpWrapper->mpActiveFont = it->second;
@@ -1096,6 +1096,11 @@ namespace Falcor
             io.KeySuper = false;
             return io.WantCaptureKeyboard;
         }
+    }
+
+    Gui::Group Gui::Widgets::group(const std::string& label, bool beginExpanded)
+    {
+        return Group(mpGui, label, beginExpanded);
     }
 
     void Gui::Widgets::indent(float i)
@@ -1383,7 +1388,7 @@ namespace Falcor
         if (pGui && pGui->mpWrapper->beginGroup(label, beginExpanded)) mpGui = pGui;
     }
 
-    bool Gui::Group::open()
+    bool Gui::Group::open() const
     {
         return mpGui != nullptr;
     }
@@ -1418,11 +1423,6 @@ namespace Falcor
     {
         if (mpGui) mpGui->mpWrapper->popWindow();
         mpGui = nullptr;
-    }
-
-    Gui::Group Gui::Window::group(const std::string& label, bool beginExpanded)
-    {
-        return Group(mpGui, label, beginExpanded);
     }
 
     void Gui::Window::columns(uint32_t numColumns)

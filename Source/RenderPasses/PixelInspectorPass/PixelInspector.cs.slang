@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -37,7 +37,7 @@ cbuffer PerFrameCB
     uint2 gSelectedPixel;
     uint2 gWorldPositionCoord;
     uint2 gWorldShadingNormalCoord;
-    uint2 gWorldBitangentCoord;
+    uint2 gWorldTangentCoord;
     uint2 gWorldFaceNormalCoord;
     uint2 gTextureCoordinateCoord;
     uint2 gMaterialDiffuseOpacityCoord;
@@ -53,7 +53,7 @@ cbuffer PerFrameCB
 
 Texture2D<float4> gWorldPosition;
 Texture2D<float4> gWorldShadingNormal;
-Texture2D<float4> gWorldBitangent;
+Texture2D<float4> gWorldTangent;
 Texture2D<float4> gWorldFaceNormal;
 Texture2D<float4> gTextureCoordinate;
 Texture2D<float4> gMaterialDiffuseOpacity;
@@ -91,7 +91,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
     // Read material data
     const float4 worldPos = gWorldPosition[gWorldPositionCoord];
     const float3 normal = gWorldShadingNormal[gWorldShadingNormalCoord].xyz;
-    const float3 bitangent = gWorldBitangent[gWorldBitangentCoord].xyz;
+    const float4 tangent = gWorldTangent[gWorldTangentCoord];
     const float3 faceNormal = gWorldFaceNormal[gWorldFaceNormalCoord].xyz;
 
     // Compute the view vector. This must exactly match what the G-buffer pass is doing (jitter etc.).
@@ -99,7 +99,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
     // sample generator between the passes, which is error prone. The host side will issue a warning instead.
     const float3 viewDir = -gCamera.computeRayPinhole(pixelPos, gResolution).dir;
 
-    const GeometryParams geoParams = prepareGeometryParams(worldPos.xyz, viewDir, normal, bitangent, faceNormal, gTextureCoordinate[gTextureCoordinateCoord].xy);
+    const GeometryParams geoParams = prepareGeometryParams(worldPos.xyz, viewDir, normal, tangent, faceNormal, gTextureCoordinate[gTextureCoordinateCoord].xy);
     const MaterialParams matParams = loadMaterialParams();
     const ShadingData sd = prepareShadingData(geoParams, matParams);
 

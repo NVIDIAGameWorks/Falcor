@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -29,6 +29,8 @@
 /** This file contains legacy light evaluation functions used by rasterization.
     It should be merged/replaced with the BSDF code for ray tracing.
 */
+
+#include "Utils/Math/MathConstants.slangh"
 
 import Utils.Helpers;
 import Scene.ShadingData;
@@ -61,6 +63,26 @@ float getDistanceFalloff(float distSquared)
     return falloff;
 }
 
+RayDesc getShadowRay(LightData light, float3 origin)
+{
+    RayDesc ray;
+    ray.Origin = origin;
+    ray.TMin = 0.f;
+    ray.TMax = 0.f;
+    if (light.type == uint(LightType::Directional))
+    {
+        ray.Direction = -light.dirW;
+        ray.TMax = FLT_MAX;
+    }
+    else if (light.type == uint(LightType::Point))
+    {
+        float3 direction = light.posW - origin;
+        ray.Direction = normalize(direction);
+        ray.TMax = FLT_MAX;
+    }
+    return ray;
+}
+
 /** Evaluate a directional light source intensity/direction at a shading point
 */
 LightSample evalDirectionalLight(in LightData light, in float3 surfacePosW)
@@ -69,8 +91,8 @@ LightSample evalDirectionalLight(in LightData light, in float3 surfacePosW)
     ls.diffuse = light.intensity;
     ls.specular = light.intensity;
     ls.L = -normalize(light.dirW);
-    float dist = length(surfacePosW - light.posW);
-    ls.posW = surfacePosW - light.dirW * dist;
+    ls.posW = float3(0.f);
+    ls.distance = FLT_MAX;
     return ls;
 }
 
@@ -114,9 +136,19 @@ float linearRoughnessToLod(float linearRoughness, float mipCount)
 */
 LightSample evalLight(LightData light, ShadingData sd)
 {
-    LightSample ls;
-    if (light.type == uint(LightType::Directional)) ls = evalDirectionalLight(light, sd.posW);
-    else if (light.type == uint(LightType::Point)) ls = evalPointLight(light, sd.posW);
+    LightSample ls = {};
+    if (light.type == uint(LightType::Directional))
+    {
+        ls = evalDirectionalLight(light, sd.posW);
+    }
+    else if (light.type == uint(LightType::Point))
+    {
+        ls = evalPointLight(light, sd.posW);
+    }
+    else
+    {
+        return ls;
+    }
     calcCommonLightProperties(sd, ls);
     return ls;
 };

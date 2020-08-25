@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -38,14 +38,15 @@ namespace Mogwai
         virtual void renderUI(Gui* pGui) override;
         virtual void scriptBindings(Bindings& bindings) override;
         virtual std::string getScript() override;
-        virtual void triggerFrame(RenderContext* pCtx, RenderGraph* pGraph, uint64_t frameID);
+        virtual void triggerFrame(RenderContext* pCtx, RenderGraph* pGraph, uint64_t frameID) override;
         void capture();
     private:
-        FrameCapture(Renderer* pRenderer) : CaptureTrigger(pRenderer) {}
-        bool mShowUI = false;
+        FrameCapture(Renderer* pRenderer) : CaptureTrigger(pRenderer, "Frame Capture") {}
         using uint64_vec = std::vector<uint64_t>;
         void addFrames(const RenderGraph* pGraph, const uint64_vec& frames);
         void addFrames(const std::string& graphName, const uint64_vec& frames);
         std::string graphFramesStr(const RenderGraph* pGraph);
+
+        bool mCaptureAllOutputs = false;
     };
 }

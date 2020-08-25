@@ -32,9 +32,6 @@
     <ClCompile Include="Tests\Sampling\SampleGeneratorTests.cpp">
       <Filter>Tests\Sampling</Filter>
     </ClCompile>
-    <ClCompile Include="Tests\Scene\EnvProbeTests.cpp">
-      <Filter>Tests\Scene</Filter>
-    </ClCompile>
     <ClCompile Include="Tests\Utils\MathHelpersTests.cpp">
       <Filter>Tests\Utils</Filter>
     </ClCompile>
@@ -91,6 +88,18 @@
     </ClCompile>
     <ClCompile Include="Tests\Slang\TraceRayFlags.cpp">
       <Filter>Tests\Slang</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Utils\PackedFormatsTests.cpp">
+      <Filter>Tests\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Slang\Float16Tests.cpp">
+      <Filter>Tests\Slang</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Slang\Float64Tests.cpp">
+      <Filter>Tests\Slang</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Scene\EnvMapTests.cpp">
+      <Filter>Tests\Scene</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -199,6 +208,15 @@
       <Filter>Tests\Slang</Filter>
     </ShaderSource>
     <ShaderSource Include="Tests\Slang\TraceRayFlags.cs.slang">
+      <Filter>Tests\Slang</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Utils\PackedFormatsTests.cs.slang">
+      <Filter>Tests\Utils</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Slang\Float16Tests.cs.slang">
+      <Filter>Tests\Slang</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Slang\Float64Tests.cs.slang">
       <Filter>Tests\Slang</Filter>
     </ShaderSource>
   </ItemGroup>

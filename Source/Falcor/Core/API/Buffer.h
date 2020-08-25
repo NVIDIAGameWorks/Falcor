@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -37,14 +37,12 @@ namespace Falcor
     /** Low-level buffer object
         This class abstracts the API's buffer creation and management
     */
-    class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource, Buffer>
+    class dlldecl Buffer : public Resource
     {
     public:
         using SharedPtr = std::shared_ptr<Buffer>;
         using WeakPtr = std::weak_ptr<Buffer>;
         using SharedConstPtr = std::shared_ptr<const Buffer>;
-        using ConstSharedPtrRef = const SharedPtr&;
-        using inherit_shared_from_this<Resource, Buffer>::shared_from_this;
 
         /** Buffer access flags.
             These flags are hints the driver how the buffer will be used.
@@ -222,7 +220,7 @@ namespace Falcor
         */
         uint32_t getElementCount() const { return mElementCount; }
 
-        /** Get the size of a single struct. This call is only valid for structued-buffer. For other buffer types, it will return 0
+        /** Get the size of a single struct. This call is only valid for structured-buffer. For other buffer types, it will return 0
         */
         uint32_t getStructSize() const { return mStructSize; }
 
@@ -232,7 +230,7 @@ namespace Falcor
 
         /** Get the UAV counter buffer
         */
-        Buffer::ConstSharedPtrRef getUAVCounter() const { return mpUAVCounter; }
+        const Buffer::SharedPtr& getUAVCounter() const { return mpUAVCounter; }
 
         /** Map the buffer.
 

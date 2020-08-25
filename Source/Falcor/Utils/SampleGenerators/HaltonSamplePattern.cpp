@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -30,19 +30,46 @@
 
 namespace Falcor
 {
-    const float2 HaltonSamplePattern::kPattern[8] = { { 1.0f / 2.0f - 0.5f, 1.0f / 3.0f - 0.5f },
-    { 1.0f / 4.0f - 0.5f, 2.0f / 3.0f - 0.5f },
-    { 3.0f / 4.0f - 0.5f, 1.0f / 9.0f - 0.5f },
-    { 1.0f / 8.0f - 0.5f, 4.0f / 9.0f - 0.5f },
-    { 5.0f / 8.0f - 0.5f, 7.0f / 9.0f - 0.5f },
-    { 3.0f / 8.0f - 0.5f, 2.0f / 9.0f - 0.5f },
-    { 7.0f / 8.0f - 0.5f, 5.0f / 9.0f - 0.5f },
-    { 0.5f / 8.0f - 0.5f, 8.0f / 9.0f - 0.5f } };
+    namespace
+    {
+        /** Returns elements of the Halton low-discrepancy sequence.
+            \param[in] index Index of the queried element, starting from 0.
+            \param[in] base Base for the digit inversion. Should be the next unused prime number.
+        */
+        float halton(uint32_t index, uint32_t base)
+        {
+            // Reversing digit order in the given base in floating point.
+            float result = 0.0f;
+            float factor = 1.0f;
+
+            for (; index > 0; index /= base)
+            {
+                factor /= base;
+                result += factor * (index % base);
+            }
+
+            return result;
+        }
+    }
 
     HaltonSamplePattern::HaltonSamplePattern(uint32_t sampleCount)
     {
-        // FIXME: Support arbitrary sample counts by computing the sequence instead of using a table
-        if (sampleCount < 1 || sampleCount > 8) logWarning("HaltonSamplePattern() requires sampleCount in the range [1,8]. Clamping to that range.");
-        mSampleCount = std::max(1u, std::min(8u, sampleCount));
+        mSampleCount = sampleCount;
+        mCurSample = 0;
+    }
+
+    float2 HaltonSamplePattern::next()
+    {
+        float2 value = {halton(mCurSample, 2), halton(mCurSample, 3)};
+
+        // Modular increment.
+        ++mCurSample;
+        if (mSampleCount != 0)
+        {
+            mCurSample = mCurSample % mSampleCount;
+        }
+
+        // Map the result so that [0, 1) maps to [-0.5, 0.5) and 0 maps to the origin.
+        return glm::fract(value + 0.5f) - 0.5f;
     }
 }

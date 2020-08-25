@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -48,13 +48,13 @@ extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
     Falcor::ScriptBindings::registerBinding(GBufferRT::registerBindings);
 }
 
-void GBufferBase::registerBindings(ScriptBindings::Module& m)
+void GBufferBase::registerBindings(pybind11::module& m)
 {
-    auto e = m.enum_<GBufferBase::SamplePattern>("SamplePattern");
-    e.regEnumVal(GBufferBase::SamplePattern::Center);
-    e.regEnumVal(GBufferBase::SamplePattern::DirectX);
-    e.regEnumVal(GBufferBase::SamplePattern::Halton);
-    e.regEnumVal(GBufferBase::SamplePattern::Stratified);
+    pybind11::enum_<GBufferBase::SamplePattern> samplePattern(m, "SamplePattern");
+    samplePattern.value("Center", GBufferBase::SamplePattern::Center);
+    samplePattern.value("DirectX", GBufferBase::SamplePattern::DirectX);
+    samplePattern.value("Halton", GBufferBase::SamplePattern::Halton);
+    samplePattern.value("Stratified", GBufferBase::SamplePattern::Stratified);
 }
 
 namespace
@@ -76,11 +76,11 @@ namespace
 
 void GBufferBase::parseDictionary(const Dictionary& dict)
 {
-    for (const auto& v : dict)
+    for (const auto& [key, value] : dict)
     {
-        if (v.key() == kSamplePattern) mSamplePattern = (SamplePattern)v.val();
-        else if (v.key() == kSampleCount) mSampleCount = v.val();
-        else if (v.key() == kDisableAlphaTest) mDisableAlphaTest = v.val();
+        if (key == kSamplePattern) mSamplePattern = value;
+        else if (key == kSampleCount) mSampleCount = value;
+        else if (key == kDisableAlphaTest) mDisableAlphaTest = value;
         // TODO: Check for unparsed fields, including those parsed in derived classes.
     }
 }
@@ -127,6 +127,21 @@ void GBufferBase::compile(RenderContext* pContext, const CompileData& compileDat
     }
 }
 
+void GBufferBase::execute(RenderContext* pRenderContext, const RenderData& renderData)
+{
+    // Update refresh flag if options that affect the output have changed.
+    auto& dict = renderData.getDictionary();
+    if (mOptionsChanged)
+    {
+        auto flags = dict.getValue(kRenderPassRefreshFlags, RenderPassRefreshFlags::None);
+        dict[Falcor::kRenderPassRefreshFlags] = flags | Falcor::RenderPassRefreshFlags::RenderOptionsChanged;
+        mOptionsChanged = false;
+    }
+
+    // Setup camera with sample generator.
+    if (mpScene) mpScene->getCamera()->setPatternGenerator(mpSampleGenerator, mInvFrameDim);
+}
+
 void GBufferBase::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
 {
     mpScene = pScene;
@@ -153,10 +168,6 @@ static CPUSampleGenerator::SharedPtr createSamplePattern(GBufferBase::SamplePatt
 
 void GBufferBase::updateSamplePattern()
 {
-    if (mpScene)
-    {
-        auto pGen = createSamplePattern(mSamplePattern, mSampleCount);
-        if (pGen) mSampleCount = pGen->getSampleCount();
-        mpScene->getCamera()->setPatternGenerator(pGen, mInvFrameDim);
-    }
+    mpSampleGenerator = createSamplePattern(mSamplePattern, mSampleCount);
+    if (mpSampleGenerator) mSampleCount = mpSampleGenerator->getSampleCount();
 }

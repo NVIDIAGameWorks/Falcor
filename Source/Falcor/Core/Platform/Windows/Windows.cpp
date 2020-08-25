@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -121,7 +121,7 @@ namespace Falcor
         auto wideMsg = toWideString(msg);
 
         // We need to map button ids to a range beyond IDCANCEL, which is used to indicate when the dialog was canceled/closed.
-        auto mapButtonId = [](uint32_t id) { return id + IDCANCEL + 1; };
+        auto mapButtonId = [](uint32_t id) -> int { return id + IDCANCEL + 1; };
 
         // Highlight the first button by default.
         int defaultId = mapButtonId(buttons.front().id);
@@ -142,7 +142,7 @@ namespace Falcor
         UINT dialogWidth = (computeTextWidth(msg) * 4) / horizontalBaseUnit;
 
         // We add a margin of 16 units (and another 32 if using an icon) to make sure the text fits the dialog size.
-        dialogWidth += 16 + (icon != MsgBoxIcon::None) ? 32 : 0;
+        dialogWidth += 16 + (icon != MsgBoxIcon::None ? 32 : 0);
 
         // Set up dialog config
         TASKDIALOGCONFIG config = {};
@@ -623,7 +623,7 @@ namespace Falcor
             FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
                 NULL, dwError, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, NULL);
             std::wstring err((LPTSTR)lpMsgBuf);
-            logWarning("setThreadAffinity failed with error: " + to_string(err));
+            logWarning("setThreadAffinity failed with error: " + wstring_2_string(err));
             LocalFree(lpMsgBuf);
         }
     }
@@ -645,7 +645,7 @@ namespace Falcor
             FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
                 NULL, dwError, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, NULL);
             std::wstring err((LPTSTR)lpMsgBuf);
-            logWarning("setThreadPriority failed with error: " + to_string(err));
+            logWarning("setThreadPriority failed with error: " + wstring_2_string(err));
             LocalFree(lpMsgBuf);
         }
     }

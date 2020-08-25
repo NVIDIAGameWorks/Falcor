@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -33,15 +33,18 @@ namespace Mogwai
     class CaptureTrigger : public Extension
     {
     public:
-        virtual ~CaptureTrigger() = 0 {}
+        virtual ~CaptureTrigger() {};
 
         virtual void beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override final;
         virtual void endFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override final;
+        virtual bool hasWindow() const override { return true; }
+        virtual bool isWindowShown() const override { return mShowUI; }
+        virtual void toggleWindow() override { mShowUI = !mShowUI; }
         virtual void scriptBindings(Bindings& bindings) override;
         virtual void activeGraphChanged(RenderGraph* pNewGraph, RenderGraph* pPrevGraph) override;
     protected:
-        CaptureTrigger(Renderer* pRenderer);
-        const Renderer* mpRenderer;
+        CaptureTrigger(Renderer* pRenderer, const std::string& name) : Extension(pRenderer, name) {}
+
         using Range = std::pair<uint64_t, uint64_t>; // Start frame and count
 
         virtual void beginRange(RenderGraph* pGraph, const Range& r) {};
@@ -59,6 +62,7 @@ namespace Mogwai
         const std::string& getBaseFilename() const { return mBaseFilename; }
 
         std::string getScript(const std::string& var);
+        std::filesystem::path getOutputPath() const;
         std::string getOutputNamePrefix(const std::string& output) const;
 
         using range_vec = std::vector<Range>;
@@ -66,7 +70,6 @@ namespace Mogwai
 
         std::string mBaseFilename = "Mogwai";
         std::string mOutputDir = ".";
-        bool mAbsolutePath = false;
         bool mShowUI = false;
 
         struct

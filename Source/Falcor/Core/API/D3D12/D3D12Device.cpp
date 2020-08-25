@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -30,6 +30,11 @@
 
 namespace Falcor
 {
+    namespace
+    {
+        const uint32_t kDefaultVendorId = 0x10DE; ///< NVIDIA GPUs
+    }
+
     struct DeviceApiData
     {
         IDXGIFactory4Ptr pDxgiFactory = nullptr;
@@ -138,25 +143,26 @@ namespace Falcor
             D3D_FEATURE_LEVEL_9_1
         };
 
-        // Find the HW adapter
-        IDXGIAdapter1Ptr pAdapter;
-        DeviceHandle pDevice;
-        D3D_FEATURE_LEVEL deviceFeatureLevel;
+        const static uint32_t kUnspecified = uint32_t(-1);
 
-        // Read FALCOR_GPU_DEVICE_ID environment variable or select first GPU device
-        const uint32_t selectedGpuDeviceId = ([] ()
-        {
-            std::string str;
-            return getEnvironmentVariable("FALCOR_GPU_DEVICE_ID", str) ? std::stoi(str) : 0;
-        })();
-
-        // Read FALCOR_GPU_VENDOR_ID environment variable or return 0
-        const uint32_t selectedGpuVendorId = ([] ()
+        // Read FALCOR_GPU_VENDOR_ID environment variable.
+        const uint32_t preferredGpuVendorId = ([]()
         {
             std::string str;
             // Use base = 0 in stoi to autodetect octal/hex/decimal strings
-            return getEnvironmentVariable("FALCOR_GPU_VENDOR_ID", str) ? std::stoi(str, nullptr, 0) : 0;
+            return getEnvironmentVariable("FALCOR_GPU_VENDOR_ID", str) ? std::stoi(str, nullptr, 0) : kUnspecified;
         })();
+
+        // Read FALCOR_GPU_DEVICE_ID environment variable.
+        const uint32_t preferredGpuIndex = ([] ()
+        {
+            std::string str;
+            return getEnvironmentVariable("FALCOR_GPU_DEVICE_ID", str) ? std::stoi(str) : kUnspecified;
+        })();
+
+        IDXGIAdapter1Ptr pAdapter;
+        DeviceHandle pDevice;
+        D3D_FEATURE_LEVEL selectedFeatureLevel;
 
         auto createMaxFeatureLevel = [&](const D3D_FEATURE_LEVEL* pFeatureLevels, uint32_t featureLevelCount) -> bool
         {
@@ -164,7 +170,7 @@ namespace Falcor
             {
                 if (SUCCEEDED(D3D12CreateDevice(pAdapter, pFeatureLevels[i], IID_PPV_ARGS(&pDevice))))
                 {
-                    deviceFeatureLevel = pFeatureLevels[i];
+                    selectedFeatureLevel = pFeatureLevels[i];
                     return true;
                 }
             }
@@ -172,7 +178,13 @@ namespace Falcor
             return false;
         };
 
-        uint32_t gpuDeviceId = 0;
+        // Properties to search for
+        const uint32_t vendorId = (preferredGpuVendorId != kUnspecified) ? preferredGpuVendorId : kDefaultVendorId;
+        const uint32_t gpuIdx = (preferredGpuIndex != kUnspecified) ? preferredGpuIndex : 0;
+
+        // Select adapter
+        uint32_t vendorDeviceIndex = 0; // Tracks device index within adapters matching a specific vendor ID
+        uint32_t selectedAdapterIndex = uint32_t(-1); // The final adapter chosen to create the device object from
         for (uint32_t i = 0; DXGI_ERROR_NOT_FOUND != pFactory->EnumAdapters1(i, &pAdapter); i++)
         {
             DXGI_ADAPTER_DESC1 desc;
@@ -182,19 +194,40 @@ namespace Falcor
             if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) continue;
 
             // Skip if vendorId doesn't match requested
-            if (selectedGpuVendorId != 0 && desc.VendorId != selectedGpuVendorId) continue;
+            if (desc.VendorId != vendorId) continue;
 
-            // Skip to selected device id
-            if (gpuDeviceId++ < selectedGpuDeviceId) continue;
+            // When a vendor match is found above, count to the specified device index of that vendor (e.g. the i-th NVIDIA GPU)
+            if(vendorDeviceIndex++ < gpuIdx) continue;
 
-            if (requestedFeatureLevel == 0) createMaxFeatureLevel(kFeatureLevels, arraysize(kFeatureLevels));
-            else createMaxFeatureLevel(&requestedFeatureLevel, 1);
+            // Select the first adapter satisfying the conditions
+            selectedAdapterIndex = i;
+            break;
+        }
 
-            if (pDevice != nullptr)
+        if (selectedAdapterIndex == uint32_t(-1))
+        {
+            // If no GPU was found, just select the first
+            selectedAdapterIndex = 0;
+
+            // Log a warning if an adapter matching user specifications wasn't found.
+            // Selection could have failed based on the default settings, but that isn't an error.
+            if (preferredGpuVendorId != kUnspecified || preferredGpuIndex != kUnspecified)
             {
-                logInfo("Successfully created device with feature level: " + to_string(deviceFeatureLevel));
-                return pDevice;
+                logWarning("Could not find a GPU matching conditions specified in environment variables.");
             }
+        }
+
+        // Retrieve the adapter that's been selected
+        HRESULT result = pFactory->EnumAdapters1(selectedAdapterIndex, &pAdapter);
+        assert(SUCCEEDED(result));
+
+        if (requestedFeatureLevel == 0) createMaxFeatureLevel(kFeatureLevels, arraysize(kFeatureLevels));
+        else createMaxFeatureLevel(&requestedFeatureLevel, 1);
+
+        if (pDevice != nullptr)
+        {
+            logInfo("Successfully created device with feature level: " + to_string(selectedFeatureLevel));
+            return pDevice;
         }
 
         logFatal("Could not find a GPU that supports D3D12 device");
@@ -345,7 +378,7 @@ namespace Falcor
                 if (FAILED(mApiHandle->CreateCommandQueue(&cqDesc, IID_PPV_ARGS(&pQueue))))
                 {
                     logError("Failed to create command queue");
-                    return nullptr;
+                    return false;
                 }
 
                 mCmdQueues[i].push_back(pQueue);

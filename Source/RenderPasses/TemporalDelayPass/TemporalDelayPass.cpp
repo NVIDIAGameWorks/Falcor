@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -32,10 +32,10 @@ extern "C" __declspec(dllexport) const char* getProjDir()
     return PROJECT_DIR;
 }
 
-void regTemporalDelayPass(ScriptBindings::Module& m)
+void regTemporalDelayPass(pybind11::module& m)
 {
-    auto c = m.class_<TemporalDelayPass, RenderPass>("TemporalDelayPass");
-    c.property("delay", &TemporalDelayPass::getDelay, &TemporalDelayPass::setDelay);
+    pybind11::class_<TemporalDelayPass, RenderPass, TemporalDelayPass::SharedPtr> pass(m, "TemporalDelayPass");
+    pass.def_property("delay", &TemporalDelayPass::getDelay, &TemporalDelayPass::setDelay);
 }
 
 extern "C" __declspec(dllexport) void getPasses(RenderPassLibrary& lib)
@@ -57,10 +57,10 @@ TemporalDelayPass::TemporalDelayPass() {}
 TemporalDelayPass::SharedPtr TemporalDelayPass::create(RenderContext* pRenderContext, const Dictionary& dict)
 {
     SharedPtr pPass = SharedPtr(new TemporalDelayPass());
-    for (const auto& v : dict)
+    for (const auto& [key, value] : dict)
     {
-        if (v.key() == kDelay) pPass->mDelay = (uint32_t) v.val();
-        else logWarning("Unknown field `" + v.key() + "` in a TemporalDelayPass dictionary");
+        if (key == kDelay) pPass->mDelay = value;
+        else logWarning("Unknown field '" + key + "' in a TemporalDelayPass dictionary");
     }
     return pPass;
 }
@@ -86,22 +86,22 @@ RenderPassReflection TemporalDelayPass::reflect(const CompileData& compileData)
         };
 
         formatField(r.addInput(kSrc, "Current frame"));
-        formatField(r.addOutput(kMaxDelay, to_string(mDelay) + " frame(s) delayed"));
+        formatField(r.addOutput(kMaxDelay, std::to_string(mDelay) + " frame(s) delayed"));
         if (mDelay > 0)
         {
-            for (uint32_t i = mDelay - 1; i > 0; --i) formatField(r.addOutput(kMaxDelay + "-" + to_string(i), to_string(mDelay - i) + " frame(s) delayed"));
-            formatField(r.addInternal(kMaxDelay + "-" + to_string(mDelay), "Internal copy of the current frame"));
+            for (uint32_t i = mDelay - 1; i > 0; --i) formatField(r.addOutput(kMaxDelay + "-" + std::to_string(i), std::to_string(mDelay - i) + " frame(s) delayed"));
+            formatField(r.addInternal(kMaxDelay + "-" + std::to_string(mDelay), "Internal copy of the current frame"));
         }
         mReady = true;
     }
     else
     {
         r.addInput(kSrc, "Current frame");
-        r.addOutput(kMaxDelay, to_string(mDelay) + " frame(s) delayed");
+        r.addOutput(kMaxDelay, std::to_string(mDelay) + " frame(s) delayed");
         if (mDelay > 0)
         {
-            for (uint32_t i = mDelay - 1; i > 0; --i) r.addOutput(kMaxDelay + "-" + to_string(i), to_string(mDelay - i) + " frame(s) delayed");
-            r.addInternal(kMaxDelay + "-" + to_string(mDelay), "Internal copy of the current frame");
+            for (uint32_t i = mDelay - 1; i > 0; --i) r.addOutput(kMaxDelay + "-" + std::to_string(i), std::to_string(mDelay - i) + " frame(s) delayed");
+            r.addInternal(kMaxDelay + "-" + std::to_string(mDelay), "Internal copy of the current frame");
         }
     }
     return r;
@@ -122,9 +122,9 @@ void TemporalDelayPass::execute(RenderContext* pRenderContext, const RenderData&
     for (uint32_t copyDst = 0; copyDst <= mDelay; ++copyDst)
     {
         uint32_t copySrc = copyDst + 1;
-        if (copyDst == 0) pRenderContext->copyResource(renderData[kMaxDelay].get(), renderData[kMaxDelay + "-" + to_string(copySrc)].get());
-        else if (copyDst == mDelay) pRenderContext->copyResource(renderData[kMaxDelay + "-" + to_string(copyDst)].get(), renderData[kSrc].get());
-        else pRenderContext->copyResource(renderData[kMaxDelay + "-" + to_string(copyDst)].get(), renderData[kMaxDelay + "-" + to_string(copySrc)].get());
+        if (copyDst == 0) pRenderContext->copyResource(renderData[kMaxDelay].get(), renderData[kMaxDelay + "-" + std::to_string(copySrc)].get());
+        else if (copyDst == mDelay) pRenderContext->copyResource(renderData[kMaxDelay + "-" + std::to_string(copyDst)].get(), renderData[kSrc].get());
+        else pRenderContext->copyResource(renderData[kMaxDelay + "-" + std::to_string(copyDst)].get(), renderData[kMaxDelay + "-" + std::to_string(copySrc)].get());
     }
 }
 

@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -55,7 +55,7 @@ namespace
     {
         { "posW",           "gWorldPosition",             "World-space position (xyz) and foreground flag (w)"       },
         { "normalW",        "gWorldShadingNormal",        "World-space shading normal (xyz)"                         },
-        { "bitangentW",     "gWorldShadingBitangent",     "World-space shading bitangent (xyz)", true /* optional */ },
+        { "tangentW",       "gWorldShadingTangent",       "World-space shading tangent (xyz) and sign (w)", true /* optional */ },
         { "faceNormalW",    "gWorldFaceNormal",           "Face normal in world space (xyz)",                        },
         { kViewDirInput,    "gWorldView",                 "World-space view direction (xyz)", true /* optional */    },
         { "mtlDiffOpacity", "gMaterialDiffuseOpacity",    "Material diffuse color (xyz) and opacity (w)"             },
@@ -115,11 +115,11 @@ RenderPassReflection MinimalPathTracer::reflect(const CompileData& compileData)
 void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
     // Update refresh flag if options that affect the output have changed.
-    Dictionary& dict = renderData.getDictionary();
+    auto& dict = renderData.getDictionary();
     if (mOptionsChanged)
     {
-        auto prevFlags = (Falcor::RenderPassRefreshFlags)(dict.keyExists(kRenderPassRefreshFlags) ? dict[Falcor::kRenderPassRefreshFlags] : 0u);
-        dict[Falcor::kRenderPassRefreshFlags] = (uint32_t)(prevFlags | Falcor::RenderPassRefreshFlags::RenderOptionsChanged);
+        auto flags = dict.getValue(kRenderPassRefreshFlags, RenderPassRefreshFlags::None);
+        dict[Falcor::kRenderPassRefreshFlags] = flags | Falcor::RenderPassRefreshFlags::RenderOptionsChanged;
         mOptionsChanged = false;
     }
 
@@ -134,6 +134,12 @@ void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData&
         return;
     }
 
+    // Request the light collection if emissive lights are enabled.
+    if (mpScene->getRenderSettings().useEmissiveLights)
+    {
+        mpScene->getLightCollection(pRenderContext);
+    }
+
     // Configure depth-of-field.
     const bool useDOF = mpScene->getCamera()->getApertureRadius() > 0.f;
     if (useDOF && renderData[kViewDirInput] == nullptr)
@@ -145,10 +151,10 @@ void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData&
     // These defines should not modify the program vars. Do not trigger program vars re-creation.
     mTracer.pProgram->addDefine("MAX_BOUNCES", std::to_string(mMaxBounces));
     mTracer.pProgram->addDefine("COMPUTE_DIRECT", mComputeDirect ? "1" : "0");
-    mTracer.pProgram->addDefine("USE_ANALYTIC_LIGHTS", mUseAnalyticLights ? "1" : "0");
-    mTracer.pProgram->addDefine("USE_EMISSIVE_LIGHTS", mUseEmissiveLights ? "1" : "0");
-    mTracer.pProgram->addDefine("USE_ENV_LIGHT", (mpEnvProbe && mUseEnvLight) ? "1" : "0");
-    mTracer.pProgram->addDefine("USE_ENV_BACKGROUND", (mpEnvProbe && mUseEnvBackground) ? "1" : "0");
+    mTracer.pProgram->addDefine("USE_ANALYTIC_LIGHTS", mpScene->useAnalyticLights() ? "1" : "0");
+    mTracer.pProgram->addDefine("USE_EMISSIVE_LIGHTS", mpScene->useEmissiveLights() ? "1" : "0");
+    mTracer.pProgram->addDefine("USE_ENV_LIGHT", mpScene->useEnvLight() ? "1" : "0");
+    mTracer.pProgram->addDefine("USE_ENV_BACKGROUND", mpScene->useEnvBackground() ? "1" : "0");
 
     // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
     // TODO: This should be moved to a more general mechanism using Slang.
@@ -197,22 +203,6 @@ void MinimalPathTracer::renderUI(Gui::Widgets& widget)
     dirty |= widget.checkbox("Evaluate direct illumination", mComputeDirect);
     widget.tooltip("Compute direct illumination.\nIf disabled only indirect is computed (when max bounces > 0).", true);
 
-    // Lighting controls.
-    auto lightsGroup = Gui::Group(widget, "Lights", true);
-    if (lightsGroup.open())
-    {
-        dirty |= lightsGroup.checkbox("Use analytic lights", mUseAnalyticLights);
-        lightsGroup.tooltip("This enables Falcor's built-in analytic lights.\nThese are specified in the scene description (.fscene).", true);
-        dirty |= lightsGroup.checkbox("Use emissive lights", mUseEmissiveLights);
-        lightsGroup.tooltip("This enables using emissive triangles as light sources.", true);
-        dirty |= lightsGroup.checkbox("Use env map as light", mUseEnvLight);
-        lightsGroup.tooltip("This enables using the environment map as a distant light source", true);
-        dirty |= lightsGroup.checkbox("Use env map as background", mUseEnvBackground);
-        lightsGroup.text(("Env map: " + (mpEnvProbe ? mEnvProbeFilename : "N/A")).c_str());
-
-        lightsGroup.release();
-    }
-
     // If rendering options that modify the output have changed, set flag to indicate that.
     // In execute() we will pass the flag to other passes for reset of temporal data etc.
     if (dirty)
@@ -226,8 +216,6 @@ void MinimalPathTracer::setScene(RenderContext* pRenderContext, const Scene::Sha
     // Clear data for previous scene.
     // After changing scene, the program vars should to be recreated.
     mTracer.pVars = nullptr;
-    mpEnvProbe = nullptr;
-    mEnvProbeFilename = "";
     mFrameCount = 0;
 
     // Set new scene.
@@ -236,15 +224,6 @@ void MinimalPathTracer::setScene(RenderContext* pRenderContext, const Scene::Sha
     if (pScene)
     {
         mTracer.pProgram->addDefines(pScene->getSceneDefines());
-
-        // Load environment map if scene uses one.
-        Texture::SharedPtr pEnvMap = mpScene->getEnvironmentMap();
-        if (pEnvMap != nullptr)
-        {
-            std::string filename = pEnvMap->getSourceFilename();
-            mpEnvProbe = EnvProbe::create(pRenderContext, filename);
-            mEnvProbeFilename = mpEnvProbe ? getFilenameFromPath(filename) : "";
-        }
     }
 }
 
@@ -254,7 +233,7 @@ void MinimalPathTracer::prepareVars()
     assert(mTracer.pProgram);
 
     // Configure program.
-    mpSampleGenerator->prepareProgram(mTracer.pProgram.get());
+    mTracer.pProgram->addDefines(mpSampleGenerator->getDefines());
 
     // Create program variables for the current program/scene.
     // This may trigger shader compilation. If it fails, throw an exception to abort rendering.
@@ -264,11 +243,4 @@ void MinimalPathTracer::prepareVars()
     auto pGlobalVars = mTracer.pVars->getRootVar();
     bool success = mpSampleGenerator->setShaderData(pGlobalVars);
     if (!success) throw std::exception("Failed to bind sample generator");
-
-    // Bind the light probe if one is loaded.
-    if (mpEnvProbe)
-    {
-        bool success = mpEnvProbe->setShaderData(pGlobalVars["CB"]["gEnvProbe"]);
-        if (!success) throw std::exception("Failed to bind environment map");
-    }
 }

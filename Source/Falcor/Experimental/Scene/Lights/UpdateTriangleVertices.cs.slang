@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -35,11 +35,8 @@ cbuffer CB
     uint gTriangleCount;                    ///< Total number of triangles.
 }
 
-RWByteAddressBuffer gVertexPosOutput;       ///< Vertex positions in world space for all mesh light triangles. Size: triangleCount * 3 * sizeof(float3).
-StructuredBuffer<MeshLightData> gMeshData;  ///< Per-mesh data for emissive meshes. Size: meshCount * sizeof(MeshLightData).
-
-// Resources used by all passes.
-RWStructuredBuffer<EmissiveTriangle> gTriangleData;     ///< Per-triangle data for emissive triangles. Size: triangleCount * sizeof(EmissiveTriangle).
+StructuredBuffer<MeshLightData> gMeshData;                  ///< Per-mesh data for emissive meshes.
+RWStructuredBuffer<PackedEmissiveTriangle> gTriangleData;   ///< Per-triangle geometry data for emissive triangles.
 
 /** Kernel updating the emissive triangles for all mesh lights.
     Single dispatch with one thread per triangle.
@@ -59,20 +56,11 @@ void updateTriangleVertices(uint3 DTid : SV_DispatchThreadID)
     uint meshInstanceID = meshData.meshInstanceID;
     uint triangleIndex = triIdx - meshData.triangleOffset; // Local triangle index in the mesh
 
-    // Update vertex data.
-    float3 p[3];
-    gScene.getVertexPositionsW(meshInstanceID, triangleIndex, p);
-
-    [unroll]
-    for (int i = 0; i < 3; i++)
-    {
-        gVertexPosOutput.Store3((vtxIdx + i) * 12, asuint(p[i]));
-    }
+    // Load triangle data.
+    EmissiveTriangle tri = gTriangleData[triIdx].unpack();
 
     // Update triangle data.
-    float triangleArea;
-    float3 faceNormal = gScene.computeFaceNormalAndAreaW(meshInstanceID, p, triangleArea);
-
-    gTriangleData[triIdx].normal = faceNormal;
-    gTriangleData[triIdx].area = triangleArea;
+    gScene.getVertexPositionsW(meshInstanceID, triangleIndex, tri.posW);
+    tri.normal = gScene.computeFaceNormalAndAreaW(meshInstanceID, tri.posW, tri.area);
+    gTriangleData[triIdx].pack(tri);
 }

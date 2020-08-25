@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -51,7 +51,7 @@ namespace Falcor
 
         /** Window configuration configuration
         */
-        struct Desc : ScriptBindings::enable_to_string
+        struct Desc
         {
             uint32_t width = 1920;                  ///< The width of the client area size.
             uint32_t height = 1080;                 ///< The height of the client area size.
@@ -135,19 +135,4 @@ namespace Falcor
         const float2& getMouseScale() const { return mMouseScale; }
         ICallbacks* mpCallbacks = nullptr;
     };
-
-    inline std::string to_string(Window::WindowMode wm)
-    {
-#define t2s(t_) case Window::WindowMode::t_: return #t_;
-        switch (wm)
-        {
-            t2s(Normal);
-            t2s(Minimized);
-            t2s(Fullscreen);
-        default:
-            should_not_get_here();
-            return "";
-        }
-#undef t2s
-    }
 }

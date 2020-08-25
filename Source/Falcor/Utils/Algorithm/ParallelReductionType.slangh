@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -28,7 +28,12 @@
 #pragma once
 
 // Type defines shared between host and device.
+
 #define FORMAT_TYPE_UNKNOWN 0
 #define FORMAT_TYPE_FLOAT   1
 #define FORMAT_TYPE_SINT    2
 #define FORMAT_TYPE_UINT    3
+
+#define REDUCTION_TYPE_UNKNOWN  0
+#define REDUCTION_TYPE_SUM      1
+#define REDUCTION_TYPE_MINMAX   2

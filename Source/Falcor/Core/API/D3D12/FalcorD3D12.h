@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -60,14 +60,26 @@ namespace Falcor
         DXGI_FORMAT dxgiFormat;
     };
 
-    extern const DxgiFormatDesc kDxgiFormatDesc[];
+    extern const dlldecl DxgiFormatDesc kDxgiFormatDesc[];
 
-    /** Get the DXGI format
+    /** Convert from Falcor to DXGI format
     */
     inline DXGI_FORMAT getDxgiFormat(ResourceFormat format)
     {
         assert(kDxgiFormatDesc[(uint32_t)format].falcorFormat == format);
         return kDxgiFormatDesc[(uint32_t)format].dxgiFormat;
+    }
+
+    /** Convert from DXGI to Falcor format
+    */
+    inline ResourceFormat getResourceFormat(DXGI_FORMAT format)
+    {
+        for (size_t i = 0; i < (size_t)ResourceFormat::Count; ++i)
+        {
+            const auto& desc = kDxgiFormatDesc[i];
+            if (desc.dxgiFormat == format) return desc.falcorFormat;
+        }
+        return ResourceFormat::Unknown;
     }
 
     inline DXGI_FORMAT getTypelessFormatFromDepthFormat(ResourceFormat format)

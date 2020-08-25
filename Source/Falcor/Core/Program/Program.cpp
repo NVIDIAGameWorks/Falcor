@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -139,7 +139,7 @@ namespace Falcor
 
         if (b == false)
         {
-            std::string warn = "Unsupported shader-model `" + sm + "` requested. Supported shader-models are ";
+            std::string warn = "Unsupported shader-model '" + sm + "' requested. Supported shader-models are ";
             for (size_t i = 0; i < arraysize(kSupportedShaderModels); i++)
             {
                 warn += kSupportedShaderModels[i];
@@ -1017,6 +1017,6 @@ namespace Falcor
 
     SCRIPT_BINDING(Program)
     {
-        m.regClass(Program);
+        pybind11::class_<Program, Program::SharedPtr>(m, "Program");
     }
 }

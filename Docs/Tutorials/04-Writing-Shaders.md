@@ -2,6 +2,8 @@
 
 --------
 
+# Writing Shaders
+
 Now that we've written a basic render pass and render graph, let's look at writing more complex passes that use shaders. Falcor uses the Slang shading language and compiler, and files should use one of the following extensions: `.slang`, `.slangh`, `.hlsl`, `.hlsli`. For more information on best practices for working with shaders in Falcor, please refer to the *Using Shaders and Data Files* section of the [Getting Started](../Getting-Started.md) page.
 
 For this tutorial, we'll create a pass that renders a scene as a wireframe of a particular color.
@@ -60,15 +62,17 @@ WireframePass::WireframePass()
 ```
 
 ### `setScene()`
-Our first render pass had no need for a `Scene` object; however, this pass does and will need this function to set `mpScene`. We will also need to add all scene macro definitions to `mpProgram` and create our `GraphicsVars` so that we can bind shader values later in `execute()`. These are done like so:
+Our first render pass had no need for a `Scene` object; however, this pass does and will need this function to set `mpScene`. We first need to set `mpScene` to the scene that's passed in then add all scene defines to `mpProgram`. We then create our `GraphicsVars` so that we can bind shader variables later in `execute()`. These are done like so:
 ```c++
 void WireframePass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
 {
     mpScene = pScene;
-    mpProgram->addDefines(mpScene->getSceneDefines());
+    if (mpScene) mpProgram->addDefines(mpScene->getSceneDefines());
     mpVars = GraphicsVars::create(mpProgram->getReflector());
 }
 ```
+#### Why scene defines?
+We need some way to tell Slang/HLSL exactly how many resources the scene needs to bind and need to ensure that this scene data is portable between shaders. However, there's currently no way to do this automatically, so we use scene defines to communicate this information.
 
 ### `execute()`
 This function will need to perform several operations: create and bind an FBO for our output to the `GraphicsState`, set the render state, and render our scene by calling `Scene::render()`.
@@ -94,7 +98,7 @@ With our scene, shader, and both the `GraphicsState` and `RasterizerState` set u
 ```c++
 mpScene->render(pRenderContext, mpGraphicsState.get(), mpGraphicsVars.get(), renderFlags);
 ```
-Your `execute()` function should now look like this:
+Your `execute()` function should now look like this, with a check for `mpScene` so we avoid accessing the scene when it isn't set:
 ```c++
 void WireframePass::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
@@ -103,14 +107,17 @@ void WireframePass::execute(RenderContext* pRenderContext, const RenderData& ren
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
     mpGraphicsState->setFbo(pTargetFbo);
 
-    // Set render state
-    Scene::RenderFlags renderFlags = Scene::RenderFlags::UserRasterizerState;
-    mpVars["PerFrameCB"]["gColor"] = float4(0, 1, 0, 1);
+    if (mpScene)
+    {
+        // Set render state
+        Scene::RenderFlags renderFlags = Scene::RenderFlags::UserRasterizerState;
+        mpVars["PerFrameCB"]["gColor"] = float4(0, 1, 0, 1);
 
-    mpScene->render(pRenderContext, mpGraphicsState.get(), mpVars.get(), renderFlags);
+        mpScene->render(pRenderContext, mpGraphicsState.get(), mpVars.get(), renderFlags);
+    }
 }
 ```
 
-Using the Render Graph Editor, create a graph solely containing this pass then launch it in Mogwai. Don't worry about needing to load a scene; Mogwai will load the Arcade scene by default. You should see something similar to this:
+Using the Render Graph Editor, create a graph solely containing this pass then launch it in Mogwai. You should see a black screen as there is no scene currently loaded. Load a scene by going to `File -> Load Scene`, and you should now see the wireframe for the scene you selected. We used Arcade.fscene (located in the `Media` folder), which looks like this:
 
 ![WireframePass](./images/WireframePass.png)

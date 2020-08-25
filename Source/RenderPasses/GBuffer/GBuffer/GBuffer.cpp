@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -34,7 +34,7 @@ const ChannelList GBuffer::kGBufferChannels =
 {
     { "posW",           "gPosW",            "world space position",         true /* optional */, ResourceFormat::RGBA32Float },
     { "normW",          "gNormW",           "world space normal",           true /* optional */, ResourceFormat::RGBA32Float },
-    { "bitangentW",     "gBitangentW",      "world space bitangent",        true /* optional */, ResourceFormat::RGBA32Float },
+    { "tangentW",       "gTangentW",        "world space tangent",          true /* optional */, ResourceFormat::RGBA32Float },
     { "texC",           "gTexC",            "texture coordinates",          true /* optional */, ResourceFormat::RGBA32Float },
     { "diffuseOpacity", "gDiffuseOpacity",  "diffuse color and opacity",    true /* optional */, ResourceFormat::RGBA32Float },
     { "specRough",      "gSpecRough",       "specular color and roughness", true /* optional */, ResourceFormat::RGBA32Float },
@@ -47,7 +47,6 @@ namespace
     // Scripting options.
     const char kForceCullMode[] = "forceCullMode";
     const char kCullMode[] = "cull";
-    const char kUseBentShadingNormals[] = "useBentShadingNormals";
 
     // UI variables.
     const Gui::DropdownList kCullModeList =
@@ -67,11 +66,10 @@ void GBuffer::parseDictionary(const Dictionary& dict)
 {
     GBufferBase::parseDictionary(dict);
 
-    for (const auto& v : dict)
+    for (const auto& [key, value] : dict)
     {
-        if (v.key() == kForceCullMode) mForceCullMode = v.val();
-        else if (v.key() == kCullMode) mCullMode = (RasterizerState::CullMode)v.val();
-        else if (v.key() == kUseBentShadingNormals) mUseBentShadingNormals = v.val();
+        if (key == kForceCullMode) mForceCullMode = value;
+        else if (key == kCullMode) mCullMode = value;
         // TODO: Check for unparsed fields, including those parsed in base classes.
     }
 }
@@ -81,7 +79,6 @@ Dictionary GBuffer::getScriptingDictionary()
     Dictionary dict = GBufferBase::getScriptingDictionary();
     dict[kForceCullMode] = mForceCullMode;
     dict[kCullMode] = mCullMode;
-    dict[kUseBentShadingNormals] = mUseBentShadingNormals;
     return dict;
 }
 
@@ -104,10 +101,6 @@ void GBuffer::renderUI(Gui::Widgets& widget)
             mOptionsChanged = true;
         }
     }
-
-    // Bent normals control.
-    mOptionsChanged |= widget.checkbox("Use bent normals", mUseBentShadingNormals);
-    widget.tooltip("Enables adjustment of the shading normals to reduce the risk of black pixels due to back-facing vectors.", true);
 }
 
 void GBuffer::compile(RenderContext* pContext, const CompileData& compileData)

@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -101,12 +101,14 @@
 
 namespace Falcor
 {
-#define enum_class_operators(e_) inline e_ operator& (e_ a, e_ b){return static_cast<e_>(static_cast<int>(a)& static_cast<int>(b));}  \
-    inline e_ operator| (e_ a, e_ b){return static_cast<e_>(static_cast<int>(a)| static_cast<int>(b));} \
-    inline e_& operator|= (e_& a, e_ b){a = a | b; return a;};  \
-    inline e_& operator&= (e_& a, e_ b) { a = a & b; return a; };   \
-    inline e_  operator~ (e_ a) { return static_cast<e_>(~static_cast<int>(a));}   \
-    inline bool is_set(e_ val, e_ flag) { return (val & flag) != (e_)0;}
+#define enum_class_operators(e_) \
+    inline e_ operator& (e_ a, e_ b) { return static_cast<e_>(static_cast<int>(a)& static_cast<int>(b)); } \
+    inline e_ operator| (e_ a, e_ b) { return static_cast<e_>(static_cast<int>(a)| static_cast<int>(b)); } \
+    inline e_& operator|= (e_& a, e_ b) { a = a | b; return a; }; \
+    inline e_& operator&= (e_& a, e_ b) { a = a & b; return a; }; \
+    inline e_  operator~ (e_ a) { return static_cast<e_>(~static_cast<int>(a)); } \
+    inline bool is_set(e_ val, e_ flag) { return (val & flag) != static_cast<e_>(0); } \
+    inline void flip_bit(e_& val, e_ flag) { val = is_set(val, flag) ? (val & (~flag)) : (val | flag); }
 
     /*!
     *  \addtogroup Falcor
@@ -224,28 +226,6 @@ namespace Falcor
     };
 
     /*! @} */
-
-
-    // This is a helper class which should be used in case a class derives from a base class which derives from enable_shared_from_this
-    // If Derived will also inherit enable_shared_from_this, it will cause multiple inheritance from enable_shared_from_this, which results in a runtime errors because we have 2 copies of the WeakPtr inside shared_ptr
-    template<typename Base, typename Derived>
-    class inherit_shared_from_this
-    {
-    public:
-        typename std::shared_ptr<Derived> shared_from_this()
-        {
-            Base* pBase = static_cast<Derived*>(this);
-            std::shared_ptr<Base> pShared = pBase->shared_from_this();
-            return std::static_pointer_cast<Derived>(pShared);
-        }
-
-        typename std::shared_ptr<const Derived> shared_from_this() const
-        {
-            const Base* pBase = static_cast<const Derived*>(this);
-            std::shared_ptr<const Base> pShared = pBase->shared_from_this();
-            return std::static_pointer_cast<const Derived>(pShared);
-        }
-    };
 }
 
 #if defined(FALCOR_D3D12)
@@ -297,61 +277,6 @@ namespace Falcor
             return "";
         }
     }
-
-
-#define compare_str(a) case ComparisonFunc::a: return #a
-    inline std::string to_string(ComparisonFunc f)
-    {
-        switch (f)
-        {
-            compare_str(Disabled);
-            compare_str(LessEqual);
-            compare_str(GreaterEqual);
-            compare_str(Less);
-            compare_str(Greater);
-            compare_str(Equal);
-            compare_str(NotEqual);
-            compare_str(Always);
-            compare_str(Never);
-        default: should_not_get_here(); return "";
-        }
-    }
-#undef compare_str
-
-    // Required to_string functions
-    using std::to_string;
-    inline std::string to_string(const std::string& s) { return '"' + s + '"'; } // Here for completeness
-    // Use upper case True/False for compatibility with Python
-    inline std::string to_string(bool b) { return b ? "True" : "False"; }
-
-    template<typename A, typename B>
-    std::string to_string(const std::pair<typename A, typename B>& p)
-    {
-        return "[" + to_string(p.first) + ", " + to_string(p.second) + "]";
-    }
-
-    inline std::string to_string(const std::wstring& wstr)
-    {
-        return std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(wstr);
-    }
-
-    // Helper to check if a type has an iterator
-    template<typename T, typename = void>   struct has_iterator : std::false_type {};
-    template<typename T>                    struct has_iterator<T, std::void_t<typename T::const_iterator>> : std::true_type {};
-
-    template<typename T>
-    std::enable_if_t<has_iterator<T>::value, std::string> to_string(const T& t)
-    {
-        std::string s = "[";
-        bool first = true;
-        for (const auto i : t)
-        {
-            if (!first) s += ", ";
-            first = false;
-            s += to_string(i);
-        }
-        return s + "]";
-    }
 }
 
 #if defined(_MSC_VER)
@@ -372,7 +297,7 @@ using DllHandle = void*;
 #include "Utils/Timing/Profiler.h"
 #include "Utils/Scripting/Scripting.h"
 
-#if (_ENABLE_NVAPI == true)
+#if _ENABLE_NVAPI
 #include "nvapi.h"
 #pragma comment(lib, "nvapi64.lib")
 #endif

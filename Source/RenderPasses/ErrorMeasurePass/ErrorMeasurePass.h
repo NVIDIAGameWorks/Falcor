@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -31,7 +31,7 @@
 
 using namespace Falcor;
 
-class ErrorMeasurePass : public RenderPass, public inherit_shared_from_this<RenderPass, ErrorMeasurePass>
+class ErrorMeasurePass : public RenderPass
 {
 public:
     using SharedPtr = std::shared_ptr<ErrorMeasurePass>;
@@ -78,24 +78,25 @@ private:
     std::ofstream           mMeasurementsFile;
 
     // UI variables
-    std::string             mReferenceImagePath;            ///< Path to the reference used in the comparison.
-    std::string             mMeasurementsFilePath;          ///< Path to the output file where measurements are stored (.csv).
+    std::string             mReferenceImagePath;                ///< Path to the reference used in the comparison.
+    std::string             mMeasurementsFilePath;              ///< Path to the output file where measurements are stored (.csv).
 
-    bool                    mIgnoreBackground = true;       ///< If true, do not measure error on pixels that belong to the background.
-    bool                    mComputeSquaredDifference = true;
-    bool                    mUseLoadedReference = false;    ///< If true, use loaded reference image instead of input.
-    bool                    mReportRunningError = true;
-    float                   mRunningErrorSigma = 0.995f;
+    bool                    mIgnoreBackground = true;           ///< If true, do not measure error on pixels that belong to the background.
+    bool                    mComputeSquaredDifference = true;   ///< Compute the square difference when creating the difference image.
+    bool                    mComputeAverage = false;            ///< Compute the average of the RGB components when creating the difference image.
+    bool                    mUseLoadedReference = false;        ///< If true, use loaded reference image instead of input.
+    bool                    mReportRunningError = true;         ///< Use exponetial moving average (EMA) for the computed error.
+    float                   mRunningErrorSigma = 0.995f;        ///< Coefficient used for the exponential moving average. Larger values mean slower response.
 
-    enum OutputId
+    enum class OutputId
     {
-        source = 0,
-        reference,
-        difference,
-        NUM_OUTPUTS
+        Source,
+        Reference,
+        Difference,
+        Count
     };
 
-    uint32_t                mSelectedOutputId = OutputId::source;
+    OutputId                mSelectedOutputId = OutputId::Source;
 
     static const Gui::RadioButtonGroup sOutputSelectionButtons;
     static const Gui::RadioButtonGroup sOutputSelectionButtonsSourceOnly;

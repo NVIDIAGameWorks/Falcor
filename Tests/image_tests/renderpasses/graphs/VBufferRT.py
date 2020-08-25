@@ -4,7 +4,7 @@ def render_graph_VBufferRT():
     loadRenderPassLibrary("GBuffer.dll")
 
     g = RenderGraph("VBufferRT")
-    g.addPass(RenderPass("VBufferRT"), "VBufferRT")
+    g.addPass(createPass("VBufferRT"), "VBufferRT")
 
     g.markOutput("VBufferRT.vbuffer")
 

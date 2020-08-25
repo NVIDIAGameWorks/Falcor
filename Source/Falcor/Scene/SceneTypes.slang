@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -27,45 +27,103 @@
  **************************************************************************/
 #pragma once
 #include "Utils/HostDeviceShared.slangh"
+
 #ifdef HOST_CODE
-#include "glm/packing.hpp"
+#include "Utils/Math/PackedFormats.h"
+#else
+import Utils.Math.PackedFormats;
 #endif
 
 BEGIN_NAMESPACE_FALCOR
 
 struct MeshDesc
 {
-    uint vbOffset;
-    uint ibOffset;
-    uint vertexCount; // #SCENE This is probably only needed on the CPU
-    uint indexCount; // #SCENE This is probably only needed on the CPU
+    uint vbOffset;      ///< Offset into global vertex buffer.
+    uint ibOffset;      ///< Offset into global index buffer, or zero if non-indexed.
+    uint vertexCount;   ///< Vertex count.
+    uint indexCount;    ///< Index count, or zero if non-indexed.
     uint materialID;
+
+    uint getTriangleCount() CONST_FUNCTION
+    {
+        return (indexCount > 0 ? indexCount : vertexCount) / 3;
+    }
 };
 
-enum MeshInstanceFlags
+enum class MeshInstanceFlags
+// TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
+#ifdef HOST_CODE
+    : uint32_t
+#endif
 {
     None = 0x0,
     Flipped = 0x1
 };
 
-// TODO: Pack into 16B by encoding IDs and flags with fewer bits. See #795.
 struct MeshInstanceData
 {
     uint globalMatrixID;
     uint materialID;
     uint meshID;
-    uint flags; ///< MeshInstanceFlags
-    uint vbOffset;
-    uint ibOffset;
-    uint pad[2];
+    uint flags;         ///< MeshInstanceFlags.
+    uint vbOffset;      ///< Offset into global vertex buffer.
+    uint ibOffset;      ///< Offset into global index buffer, or zero if non-indexed.
+};
+
+/** Mesh instance data packed into 16B.
+*/
+struct PackedMeshInstanceData
+{
+    uint materialID;
+    uint packedIDs;     ///< Packed meshID, globalMatrixID, and flags packed into 32 bits.
+    uint vbOffset;      ///< Offset into global vertex buffer.
+    uint ibOffset;      ///< Offset into global index buffer, or zero if non-indexed.
+
+    // Packed representation
+
+    static const uint kMatrixBits = 16;
+    static const uint kMeshBits = 15;
+    static const uint kFlagsBits = 1;
+
+    static const uint kMatrixOffset = 0;
+    static const uint kMeshOffset = kMatrixOffset + kMatrixBits;
+    static const uint kFlagsOffset = kMeshOffset + kMeshBits;
+
+#ifdef HOST_CODE
+    void pack(const MeshInstanceData& d)
+    {
+        materialID = d.materialID;
+        vbOffset = d.vbOffset;
+        ibOffset = d.ibOffset;
+
+        assert(d.flags < (1 << kFlagsBits));
+        assert(d.meshID < (1 << kMeshBits));
+        assert(d.globalMatrixID < (1 << kMatrixBits));
+        packedIDs = (d.flags << kFlagsOffset) | (d.meshID << kMeshOffset) | (d.globalMatrixID << kMatrixOffset);
+    }
+#endif
+
+    MeshInstanceData unpack()
+    {
+        MeshInstanceData d;
+        d.materialID = materialID;
+        d.vbOffset = vbOffset;
+        d.ibOffset = ibOffset;
+
+        d.globalMatrixID = (packedIDs >> kMatrixOffset) & ((1 << kMatrixBits) - 1);
+        d.meshID = (packedIDs >> kMeshOffset) & ((1 << kMeshBits) - 1);
+        d.flags = (packedIDs >> kFlagsOffset) & ((1 << kFlagsBits) - 1);
+
+        return d;
+    }
 };
 
 struct StaticVertexData
 {
-    float3 position;
-    float3 normal;
-    float3 bitangent;
-    float2 texCrd;
+    float3 position;    ///< Position.
+    float3 normal;      ///< Shading normal.
+    float4 tangent;     ///< Shading tangent. The bitangent is computed: cross(normal, tangent.xyz) * tangent.w.
+    float2 texCrd;      ///< Texture coordinates.
 };
 
 /** Vertex data packed into 32B for aligned access.
@@ -73,7 +131,7 @@ struct StaticVertexData
 struct PackedStaticVertexData
 {
     float3 position;
-    float3 packedNormalBitangent; // 3xfp16 each
+    float3 packedNormalTangent;
     float2 texCrd;
 
 #ifdef HOST_CODE
@@ -83,12 +141,9 @@ struct PackedStaticVertexData
         position = v.position;
         texCrd = v.texCrd;
 
-        auto asfloat = [](uint32_t v) { return *reinterpret_cast<float*>(&v); };
-        //auto asfloat = [](uint32_t v) { return std::bit_cast<float>(v); }; // TODO: Not yet available in VS2019
-
-        packedNormalBitangent.x = asfloat(glm::packHalf2x16({ v.normal.x, v.normal.y }));
-        packedNormalBitangent.y = asfloat(glm::packHalf2x16({ v.normal.z, v.bitangent.x }));
-        packedNormalBitangent.z = asfloat(glm::packHalf2x16({ v.bitangent.y, v.bitangent.z }));
+        packedNormalTangent.x = asfloat(glm::packHalf2x16({ v.normal.x, v.normal.y }));
+        packedNormalTangent.y = asfloat(glm::packHalf2x16({ v.normal.z, v.tangent.w }));
+        packedNormalTangent.z = asfloat(encodeNormal2x16(v.tangent.xyz));
     }
 
 #else // !HOST_CODE
@@ -98,11 +153,11 @@ struct PackedStaticVertexData
         texCrd = v.texCrd;
 
         uint3 n = f32tof16(v.normal);
-        uint3 b = f32tof16(v.bitangent);
+        uint t_w = f32tof16(v.tangent.w);
 
-        packedNormalBitangent.x = asfloat((n.y << 16) | n.x);
-        packedNormalBitangent.y = asfloat((b.x << 16) | n.z);
-        packedNormalBitangent.z = asfloat((b.z << 16) | b.y);
+        packedNormalTangent.x = asfloat((n.y << 16) | n.x);
+        packedNormalTangent.y = asfloat((t_w << 16) | n.z);
+        packedNormalTangent.z = asfloat(encodeNormal2x16(v.tangent.xyz));
     }
 
     StaticVertexData unpack()
@@ -111,17 +166,13 @@ struct PackedStaticVertexData
         v.position = position;
         v.texCrd = texCrd;
 
-        float3 n;
-        n.x = f16tof32(asuint(packedNormalBitangent.x) & 0xffff);
-        n.y = f16tof32(asuint(packedNormalBitangent.x) >> 16);
-        n.z = f16tof32(asuint(packedNormalBitangent.y) & 0xffff);
-        v.normal = normalize(n);
-
-        float3 b;
-        b.x = f16tof32(asuint(packedNormalBitangent.y) >> 16);
-        b.y = f16tof32(asuint(packedNormalBitangent.z) & 0xffff);
-        b.z = f16tof32(asuint(packedNormalBitangent.z) >> 16);
-        v.bitangent = normalize(b);
+        v.normal.x = f16tof32(asuint(packedNormalTangent.x) & 0xffff);
+        v.normal.y = f16tof32(asuint(packedNormalTangent.x) >> 16);
+        v.normal.z = f16tof32(asuint(packedNormalTangent.y) & 0xffff);
+        v.normal = normalize(v.normal);
+       
+        v.tangent.xyz = decodeNormal2x16(asuint(packedNormalTangent.z));
+        v.tangent.w = f16tof32(asuint(packedNormalTangent.y) >> 16);
 
         return v;
     }
@@ -137,18 +188,23 @@ struct DynamicVertexData
 {
     uint4 boneID;
     float4 boneWeight;
-    uint staticIndex;   // The index in the static vertex buffer
+    uint staticIndex;       ///< The index in the static vertex buffer.
     uint globalMatrixID;
 };
 
+/** Struct representing interpolated vertex attributes in world space.
+    Note the tangent is not guaranteed to be orthogonal to the normal.
+    The bitangent should be computed: cross(normal, tangent.xyz) * tangent.w.
+    The tangent space is orthogonalized in prepareShadingData().
+*/
 struct VertexData
 {
     float3 posW;            ///< Position in world space.
-    float3 normalW;         ///< Shading normal in world space.
-    float3 bitangentW;      ///< Shading bitangent in world space.
+    float3 normalW;         ///< Shading normal in world space (normalized).
+    float4 tangentW;        ///< Shading tangent in world space (normalized). The last component is guaranteed to be +-1.0 or zero if tangents are missing.
     float2 texC;            ///< Texture coordinate.
-    float3 faceNormalW;     ///< Face normal in world space.
-    float  coneTexLODValue; ///< Texture LOD data for cone tracing. This is zero, unless getVertexDataRayCones() is used
+    float3 faceNormalW;     ///< Face normal in world space (normalized).
+    float  coneTexLODValue; ///< Texture LOD data for cone tracing. This is zero, unless getVertexDataRayCones() is used.
 };
 
 END_NAMESPACE_FALCOR

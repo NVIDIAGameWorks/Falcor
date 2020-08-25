@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -201,54 +201,3 @@ float evalMaskingSmithGGXCorrelated(float alpha, float cosThetaI, float cosTheta
     float lambdaO = evalLambdaGGX(alphaSqr, cosThetaO);
     return 1 / (1 + lambdaI + lambdaO);
 }
-
-
-#if 0
-// --------------------------------------------------
-// TODO: Experiment with interfaces
-// --------------------------------------------------
-
-/** Interface for masking-shadowing functions for the GGX normal distribution.
-*/
-interface IMaskingShadowingGGX
-{
-    /** Evaluates the masking-shadowing function.
-        \param[in] alpha GGX width parameter (should be clamped to small epsilon beforehand).
-        \param[in] cosThetaI Dot product between shading normal and incident direction, in positive hemisphere.
-        \param[in] cosThetaO Dot product between shading normal and outgoing direction, in positive hemisphere.
-        \return G(cosThetaI, cosThetaO)
-    */
-    float eval(float alpha, float cosThetaI, float cosThetaO);
-};
-
-/** The separable form of the masking-shadowing function for the GGX normal distribution, using Smith's approximation.
-    See Eq 98 in http://jcgt.org/published/0003/02/03/paper.pdf
-*/
-struct MaskingShadowingGGXSmithSeparable : IMaskingShadowingGGX
-{
-    float eval(float alpha, float cosThetaI, float cosThetaO)
-    {
-        float alphaSqr = alpha * alpha;
-        float lambdaI = evalLambdaGGX(alphaSqr, cosThetaI);
-        float lambdaO = evalLambdaGGX(alphaSqr, cosThetaO);
-        return 1 / ((1 + lambdaI) * (1 + lambdaO));
-    }
-};
-
-/** The height-correlated form of the masking-shadowing function for the GGX normal distribution, using Smith's approximation.
-    See Eq 99 in http://jcgt.org/published/0003/02/03/paper.pdf
-
-    Eric Heitz recommends using it in favor of the separable form as it is more accurate and of similar complexity.
-    The function is only valid for cosThetaI > 0 and cosThetaO > 0  and should be clamped to 0 otherwise.
-*/
-struct MaskingShadowingGGXSmithCorrelated : IMaskingShadowingGGX
-{
-    float eval(float alpha, float cosThetaI, float cosThetaO)
-    {
-        float alphaSqr = alpha * alpha;
-        float lambdaI = evalLambdaGGX(alphaSqr, cosThetaI);
-        float lambdaO = evalLambdaGGX(alphaSqr, cosThetaO);
-        return 1 / (1 + lambdaI + lambdaO);
-    }
-};
-#endif

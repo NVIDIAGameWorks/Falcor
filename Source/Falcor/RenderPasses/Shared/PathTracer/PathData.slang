@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -29,6 +29,7 @@ __exported import Scene.HitInfo;
 __exported import Utils.Sampling.SampleGenerator;
 __exported import RenderPasses.Shared.PathTracer.StaticParams;
 __exported import RenderPasses.Shared.PathTracer.InteriorList;
+__exported import RenderPasses.Shared.PathTracer.RayFootprintData;
 
 struct ShadowRay
 {
@@ -38,20 +39,25 @@ struct ShadowRay
 };
 
 // TODO: Move enum to host/device shared header so that we can add validation.
-/** The path flags are currently stored in 11 bits. See `kMaxPathFlagsBits`.
+/** The path flags are stored in `kMaxPathFlagsBits` bits.
     If all ray bits are zero the path is inactive/terminated.
 */
 enum class PathFlags
 {
+    // Bits 0-7 path flags (8 bits)
     scatterRay      = 0x0001,   ///< Scatter ray is active.
     scatterHit      = 0x0002,   ///< Result of the scatter ray (0 = miss, 1 = hit).
     transmission    = 0x0004,   ///< Scatter ray went through a transmission event.
+    specular        = 0x0008,   ///< Scatter ray went through a specular event.
+    delta           = 0x0010,   ///< Scatter ray went through a delta event.
+    insideVolume    = 0x0020,   ///< Path vertex is inside a volume.
+    // Bits 6-7 reserved
 
-    // Bits 3-10 shadow ray active (8 bits)
-    shadowRay       = 0x0008,   ///< Shadow ray is active (0 = inactive/occluded, 1 = active/visible)
+    // Bits 8-15 shadow ray active (8 bits)
+    shadowRay       = 0x0100,   ///< Shadow ray is active (0 = inactive/occluded, 1 = active/visible)
 
-    anyShadowRays   = 0x07f8,   ///< Bit mask to test if there are any active shadow rays.
-    anyRays         = 0x07f9,   ///< Bit mask to test if there are any active rays (scatter and/or shadow).
+    anyShadowRays   = 0xff00,   ///< Bit mask to test if there are any active shadow rays.
+    anyRays         = 0xff01,   ///< Bit mask to test if there are any active rays (scatter and/or shadow).
 };
 
 /** Working data for the path tracer.
@@ -63,6 +69,7 @@ struct PathData
 {
     uint    flags;              ///< Flags indicating the current status. This can be multiple PathFlags flags OR'ed together.
     uint    length;             ///< Path length (0 at origin, 1 at first secondary hit, etc.).
+    uint    nonSpecularBounces; ///< Number of non-specular bounces along the path.
 
     // Scatter ray
     float3  origin;             ///< Origin of the shadow/scatter rays. Note: This field is only loaded if MIS is enabled.
@@ -74,26 +81,44 @@ struct PathData
     HitInfo hit;                ///< Hit information for the scatter ray. This is populated by the tracing pass. Only valid if the flag 'scatterHit' is set.
 
     // Common data
-    float3  L;                  ///< Accumulated path contribution. Note: This field is only used in the wavefront code. TODO: Move it out or make sure it's used by megakernel.
+    float3  L;                  ///< Accumulated path contribution.
 
     InteriorList interiorList;  ///< Interior list. Keeping track of a stack of materials with medium properties.
 
     SampleGenerator sg;         ///< Sample generator state. Note: This is only valid when path.length < kMaxBounces.
 
+    RayFootprint rayFootprint;  ///< Ray footprint for TexLOD. Actual data depends on the footprint mode.
 
     // Utility functions
 
-    bool isTerminated() { return (flags & uint(PathFlags::anyRays)) == 0; }
-    bool isTransmission() { return (flags & uint(PathFlags::transmission)) != 0; }
-    bool hasScatterRay() { return (flags & uint(PathFlags::scatterRay)) != 0; }
+    bool isTerminated() { return !hasFlag(PathFlags::anyRays); }
+    bool isTransmission() { return hasFlag(PathFlags::transmission); }
+    bool isSpecular() { return hasFlag(PathFlags::specular); }
+    bool isDelta() { return hasFlag(PathFlags::delta); }
+    bool isInsideVolume() { return hasFlag(PathFlags::insideVolume); }
+
+    // Check if the scatter event is samplable by the light sampling technique.
+    bool isLightSamplable() { return !(isDelta() || isTransmission()); }
+
+    bool hasRays() { return hasFlag(PathFlags::anyRays); }
+    bool hasScatterRay() { return hasFlag(PathFlags::scatterRay); }
     bool hasShadowRay(uint i) { return (flags & (uint(PathFlags::shadowRay) << i)) != 0; }
-    bool hasRays() { return (flags & uint(PathFlags::anyRays)) != 0; }
     bool isShadowRayOccluded(uint i) { return (flags & ((uint)PathFlags::shadowRay << i)) == 0; }
 
-    [mutating] void clearTransmission() { flags &= ~(uint(PathFlags::transmission)); }
     [mutating] void clearScatterRay() { flags &= ~(uint(PathFlags::scatterRay) | uint(PathFlags::scatterHit)); }
     [mutating] void clearShadowRay(uint i) { flags &= ~(uint(PathFlags::shadowRay) << i); }
     [mutating] void clearShadowRays() { flags &= ~(uint(PathFlags::anyShadowRays)); }
 
-    [mutating] void setTransmission() { flags |= uint(PathFlags::transmission); }
+    [mutating] void clearEventFlags() { flags &= ~(uint(PathFlags::transmission) | uint(PathFlags::specular) | uint(PathFlags::delta)); }
+    [mutating] void setTransmission(bool value = true) { setFlag(PathFlags::transmission, value); }
+    [mutating] void setSpecular(bool value = true) { setFlag(PathFlags::specular, value); }
+    [mutating] void setDelta(bool value = true) { setFlag(PathFlags::delta, value); }
+    [mutating] void setInsideVolume(bool value = true) { setFlag(PathFlags::insideVolume, value); }
+
+    bool hasFlag(PathFlags flag) { return (flags & uint(flag)) != 0; }
+    [mutating] void setFlag(PathFlags flag, bool value = true)
+    {
+        if (value) flags |= uint(flag);
+        else flags &= ~uint(flag);
+    }
 };

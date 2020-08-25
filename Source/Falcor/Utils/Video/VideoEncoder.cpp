@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -307,7 +307,7 @@ namespace Falcor
         while(true)
         {
             // Initialize the packet
-            AVPacket packet = {0};
+            AVPacket packet = {};
             av_init_packet(&packet);
 
             int r = avcodec_receive_packet(pCodecContext, &packet);
@@ -427,7 +427,11 @@ namespace Falcor
 
     SCRIPT_BINDING(VideoEncoder)
     {
-        auto codec = m.enum_<VideoEncoder::Codec>("Codec").regEnumVal(VideoEncoder::Codec::Raw).regEnumVal(VideoEncoder::Codec::MPEG4).regEnumVal(VideoEncoder::Codec::MPEG2);
-        codec.regEnumVal(VideoEncoder::Codec::H264).regEnumVal(VideoEncoder::Codec::HEVC);
+        pybind11::enum_<VideoEncoder::Codec> codec(m, "Codec");
+        codec.value("Raw", VideoEncoder::Codec::Raw);
+        codec.value("MPEG4", VideoEncoder::Codec::MPEG4);
+        codec.value("MPEG2", VideoEncoder::Codec::MPEG2);
+        codec.value("H264", VideoEncoder::Codec::H264);
+        codec.value("HEVC", VideoEncoder::Codec::HEVC);
     }
 }

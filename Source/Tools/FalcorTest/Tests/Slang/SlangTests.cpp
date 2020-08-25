@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -34,9 +34,6 @@
 
 #include "Testing/UnitTest.h"
 #include "SlangShared.slang"
-#include <DirectXPackedVector.h>
-
-using half = DirectX::PackedVector::HALF;
 
 namespace Falcor
 {
@@ -69,10 +66,6 @@ namespace Falcor
             ctx.unmapBuffer("result");
         }
 
-        half f32tof16(float fval) { return DirectX::PackedVector::XMConvertFloatToHalf(fval); }
-        float f16tof32(half hval) { return DirectX::PackedVector::XMConvertHalfToFloat(hval); }
-
-        uint32_t asuint(float a) { return *reinterpret_cast<uint32_t*>(&a); }
         uint64_t asuint64(double a) { return *reinterpret_cast<uint64_t*>(&a); }
     }
 

@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -32,9 +32,12 @@ namespace Falcor
 {
     SCRIPT_BINDING(RasterizerState)
     {
-        m.regClass(RasterizerState)
-        auto rasterizerStateBinding = m.enum_<RasterizerState::CullMode>("CullMode");
-        rasterizerStateBinding.regEnumVal(RasterizerState::CullMode::Back).regEnumVal(RasterizerState::CullMode::Front).regEnumVal(RasterizerState::CullMode::None);
+        pybind11::class_<RasterizerState, RasterizerState::SharedPtr>(m, "RasterizerState");
+
+        pybind11::enum_<RasterizerState::CullMode> cullMode(m, "CullMode");
+        cullMode.value("CullBack", RasterizerState::CullMode::Back);
+        cullMode.value("CullFront", RasterizerState::CullMode::Front);
+        cullMode.value("CullNone", RasterizerState::CullMode::None);
     }
 
     RasterizerState::SharedPtr RasterizerState::create(const Desc& desc)

@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -25,38 +25,18 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Testing/UnitTest.h"
-#include "Experimental/Scene/Lights/EnvProbe.h"
+import Utils.Math.PackedFormats;
 
-namespace Falcor
+StructuredBuffer<float3> testData;
+RWStructuredBuffer<float3> result;
+
+[numthreads(256, 1, 1)]
+void testLogLuvHDR(uint3 threadId : SV_DispatchThreadID)
 {
-    namespace
-    {
-        // This file is located in the Media/ directory fetched by packman.
-        const char kLightProbeFile[] = "LightProbes/20050806-03_hd.hdr";
-    }
+    const uint idx = threadId.x;
 
-    GPU_TEST(EnvProbe)
-    {
-        // Test loading a light probe.
-        // This call runs setup code on the GPU to precompute the importance map.
-        // If it succeeds, we at least know the code compiles and run.
-        EnvProbe::SharedPtr pEnvProbe = EnvProbe::create(ctx.getRenderContext(), kLightProbeFile);
-        EXPECT_NE(pEnvProbe, nullptr);
-        if (pEnvProbe == nullptr) return;
+    float3 color = testData[idx];
 
-        // Check that the importance map exists and is a square power-of-two
-        // texture with a full mip map hierarchy.
-        auto pImportanceMap = pEnvProbe->getImportanceMap();
-        EXPECT_NE(pImportanceMap, nullptr);
-        if (pImportanceMap == nullptr) return;
-
-        uint32_t w = pImportanceMap->getWidth();
-        uint32_t h = pImportanceMap->getHeight();
-        uint32_t mipCount = pImportanceMap->getMipCount();
-
-        EXPECT(isPowerOf2(w) && w > 0);
-        EXPECT_EQ(w, h);
-        EXPECT_EQ(w, 1 << (mipCount - 1));
-    }
+    uint packed = encodeLogLuvHDR(color);
+    result[idx] = decodeLogLuvHDR(packed);
 }

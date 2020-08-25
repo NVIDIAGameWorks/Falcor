@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -41,11 +41,11 @@ namespace Falcor
         The order in which samples are generated is randomly permuted to avoid
         correlation artefacts with low-discrepancy sample generators.
     */
-    class dlldecl StratifiedSamplePattern : public CPUSampleGenerator, public inherit_shared_from_this<CPUSampleGenerator, StratifiedSamplePattern>
+    class dlldecl StratifiedSamplePattern : public CPUSampleGenerator
     {
     public:
         using SharedPtr = std::shared_ptr<StratifiedSamplePattern>;
-        using inherit_shared_from_this<CPUSampleGenerator, StratifiedSamplePattern>::shared_from_this;
+
         virtual ~StratifiedSamplePattern() = default;
 
         /** Create stratified random sample pattern generator.

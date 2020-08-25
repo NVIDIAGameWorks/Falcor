@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -37,6 +37,7 @@
     is_valid_<name> is 1 if buffer with this name is bound, 0 otherwise.
 */
 import PathTracer;
+import Utils.Timing.GpuTimer;
 import RenderPasses.Shared.PathTracer.LoadShadingData;
 
 ParameterBlock<PathTracerData> gData;
@@ -44,6 +45,7 @@ ParameterBlock<PathTracerData> gData;
 // Outputs (optional)
 RWTexture2D<float4> gOutputColor;
 RWTexture2D<float4> gOutputAlbedo;
+RWTexture2D<uint> gOutputTime;
 
 // Static configuration based on which buffers are bound.
 #define isValid(name) (is_valid_##name != 0)
@@ -61,13 +63,11 @@ void scatterAnyHit(
     uniform HitShaderParams hitParams,
     inout ScatterRayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
 {
+#if USE_ALPHA_TEST
     // Alpha test for non-opaque geometry.
     VertexData v = getVertexData(hitParams, PrimitiveIndex(), attribs);
     const uint materialID = gScene.getMaterialID(hitParams.getGlobalHitID());
     if (alphaTest(v, gScene.materials[materialID], gScene.materialResources[materialID], 0.f)) IgnoreHit();
-
-#if USE_NESTED_DIELECTRICS
-    if (rayData.nestedData.handleAnyHit(materialID, v.faceNormalW)) IgnoreHit();
 #endif
 }
 
@@ -82,10 +82,6 @@ void scatterClosestHit(
     hit.primitiveIndex = PrimitiveIndex();
     hit.barycentrics = attribs.barycentrics;
     rayData.packedHitInfo = hit.encode();
-
-#if USE_NESTED_DIELECTRICS
-    rayData.nestedData.handleClosestHit();
-#endif
 }
 
 /************************** Ray index 1: Shadow ray ************************ */
@@ -102,10 +98,12 @@ void shadowAnyHit(
     uniform HitShaderParams hitParams,
     inout ShadowRayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
 {
+#if USE_ALPHA_TEST
     // Alpha test for non-opaque geometry.
     VertexData v = getVertexData(hitParams, PrimitiveIndex(), attribs);
     const uint materialID = gScene.getMaterialID(hitParams.getGlobalHitID());
     if (alphaTest(v, gScene.materials[materialID], gScene.materialResources[materialID], 0.f)) IgnoreHit();
+#endif
 }
 
 /** ******************************** RayGen ******************************** */
@@ -131,12 +129,16 @@ void rayGen()
     logSetPixel(launchIndex);
     printSetPixel(launchIndex);
 
+    GpuTimer timer;
+    if (isValid(gOutputTime)) timer.start();
+
     float3 outColor = float3(0, 0, 0);
     float3 outAlbedo = float3(0, 0, 0);
     float outAlpha = 0.f;
 
+    HitInfo hit;
     ShadingData sd;
-    if (loadShadingData(launchIndex, launchDim, gScene.camera, sd))
+    if (loadShadingData(launchIndex, launchDim, gScene.camera, sd, hit))
     {
         // Pixel represents a primary hit. Compute its contribution.
 
@@ -160,6 +162,13 @@ void rayGen()
             // TODO: This is potentially expensive. We may want to store/restore the state from memory if it becomes a problem.
             for (uint i = 0; i < gData.params.prngDimension; i++) sampleNext1D(path.sg);
 
+            // TODO: Use (kRayFootprintMode != TexLODMode::Mip0) when slang is fixed.
+            if (!(kRayFootprintMode == TexLODMode::Mip0))
+            {
+                // Create the ray footprint data for TexLOD.
+                path.rayFootprint = RayFootprint.create(hit, launchIndex, launchDim, rayOrigin, gScene.camera.getPosition(), sd.faceN, sd.N, gData.params.screenSpacePixelSpreadAngle, sd.linearRoughness, path.isSpecular());
+            }
+
             // Trace the path.
             tracePath(gData, sd, path);
 
@@ -180,7 +189,7 @@ void rayGen()
     else
     {
         // Background pixel.
-        outColor = evalBackground(gData.envProbe, -sd.V);
+        outColor = evalBackground(-sd.V);
         outAlbedo = outColor.rgb;
         outAlpha = kForceAlphaOne ? 1.f : 0.f;
     }
@@ -192,4 +201,7 @@ void rayGen()
     // These are all optional so using compile-time checks to decide which ones to write.
     if (isValid(gOutputColor)) gOutputColor[launchIndex] = float4(outColor, outAlpha);
     if (isValid(gOutputAlbedo)) gOutputAlbedo[launchIndex] = float4(outAlbedo, 1);
+
+    // Write time.
+    if (isValid(gOutputTime)) gOutputTime[launchIndex] = timer.getElapsed();
 }

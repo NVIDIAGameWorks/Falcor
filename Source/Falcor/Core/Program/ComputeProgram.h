@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -32,12 +32,11 @@ namespace Falcor
 {
     /** Compute program. See GraphicsProgram to manage graphics programs.
     */
-    class dlldecl ComputeProgram : public Program, public inherit_shared_from_this<Program, ComputeProgram>
+    class dlldecl ComputeProgram : public Program
     {
     public:
         using SharedPtr = std::shared_ptr<ComputeProgram>;
         using SharedConstPtr = std::shared_ptr<const ComputeProgram>;
-        using inherit_shared_from_this<Program, ComputeProgram>::shared_from_this;
 
         ~ComputeProgram() = default;
 
@@ -47,7 +46,7 @@ namespace Falcor
             \param[in] csEntry Name of the entry point in the program.
             \param[in] programDefines Optional list of macro definitions to set into the program.
             \param[in] flags Optional program compilation flags.
-            \param[in] shaderModel Optional string desribing which shader model to use.
+            \param[in] shaderModel Optional string describing which shader model to use.
             \return A new object, or an exception is thrown if creation failed.
         */
         static SharedPtr createFromFile(const std::string& filename, const std::string& csEntry, const DefineList& programDefines = DefineList(), Shader::CompilerFlags flags = Shader::CompilerFlags::None, const std::string& shaderModel = "");

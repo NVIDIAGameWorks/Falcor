@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -39,6 +39,7 @@
 */
 
 __exported import Scene.ShadingData;
+import Experimental.Scene.Material.BxDFTypes;
 
 /** Struct representing the material parameters at a hit point.
 */
@@ -63,8 +64,8 @@ struct GeometryParams
     float2 uv;                  ///< Texture coordinate at hit point, or 0 if not available.
     float3 faceN;               ///< Face normal in world space.
 
-    // Surface frame in world space. The axes (T,B,N) form a right-handed orthonormal basis.
-    // The normal and bitangent are normally provided by the framework, while tangent is computed based on those.
+    // Surface frame in world space. The axes (T,B,N) form an orthonormal basis.
+    // The normal and tangent are normally provided by the framework, while bitangent is computed based on those.
     float3 N;                   ///< Shading normal (z-axis in local frame).
     float3 B;                   ///< Shading bitangent (y-axis in local frame).
     float3 T;                   ///< Shading tangent (x-axis in local frame).
@@ -78,12 +79,12 @@ struct GeometryParams
 */
 MaterialParams getMaterialParams(ShadingData sd)
 {
-    MaterialParams matParams;
-    matParams.diffuseOpacity = float4(sd.diffuse, sd.opacity);
-    matParams.specularRoughness = float4(sd.specular, sd.linearRoughness);
-    matParams.emissive = float4(sd.emissive, 0.f);
-    matParams.extraParams = float4(sd.IoR, sd.doubleSided ? 1.f : 0.f, sd.specularTransmission, sd.metallic);
-    return matParams;
+    MaterialParams m;
+    m.diffuseOpacity = float4(sd.diffuse, sd.opacity);
+    m.specularRoughness = float4(sd.specular, sd.linearRoughness);
+    m.emissive = float4(sd.emissive, 0.f);
+    m.extraParams = float4(sd.IoR, sd.doubleSided ? 1.f : 0.f, sd.specularTransmission, sd.metallic);
+    return m;
 }
 
 /******************************************************************************
@@ -95,37 +96,37 @@ MaterialParams getMaterialParams(ShadingData sd)
     \param[in] worldPos World space position.
     \param[in] viewDir View direction (unnormalized).
     \param[in] normal Shading normal (unnormalized).
-    \param[in] bitangent Shading bitangent (unnormalized).
+    \param[in] tangent Shading tangent (xyz) and sign (w) (unnormalized).
     \param[in] faceNormal Face normal (normalized).
     \param[in] texCrd Texture uv coordinate, or (0,0) if not available.
     \return GeometryParams struct.
 */
-GeometryParams prepareGeometryParams(float3 worldPos, float3 viewDir, float3 normal, float3 bitangent, float3 faceNormal, float2 texCrd = float2(0, 0))
+GeometryParams prepareGeometryParams(float3 worldPos, float3 viewDir, float3 normal, float4 tangent, float3 faceNormal, float2 texCrd = float2(0, 0))
 {
-    GeometryParams geoParams;
-    geoParams.posW = worldPos;
-    geoParams.V = normalize(viewDir);
-    geoParams.N = normalize(normal);
-    geoParams.B = normalize(bitangent - geoParams.N * dot(bitangent, geoParams.N));
-    geoParams.T = cross(geoParams.B, geoParams.N);
-    geoParams.uv = texCrd;
-    geoParams.faceN = faceNormal;
-    return geoParams;
+    GeometryParams p;
+    p.posW = worldPos;
+    p.V = normalize(viewDir);
+    p.N = normalize(normal);
+    p.T = normalize(tangent.xyz - p.N * dot(tangent.xyz, p.N));
+    p.B = cross(p.N, p.T) * tangent.w;
+    p.uv = texCrd;
+    p.faceN = faceNormal;
+    return p;
 }
 
 /** Extract geometry params from ShadingData struct.
 */
 GeometryParams getGeometryParams(ShadingData sd)
 {
-    GeometryParams geoParams;
-    geoParams.posW = sd.posW;
-    geoParams.V = sd.V;
-    geoParams.N = sd.N;
-    geoParams.T = sd.T;
-    geoParams.B = sd.B;
-    geoParams.uv = sd.uv;
-    geoParams.faceN = sd.faceN;
-    return geoParams;
+    GeometryParams p;
+    p.posW = sd.posW;
+    p.V = sd.V;
+    p.N = sd.N;
+    p.T = sd.T;
+    p.B = sd.B;
+    p.uv = sd.uv;
+    p.faceN = sd.faceN;
+    return p;
 }
 
 /** Helper function for populating the geometry and material parameters of a ShadingData struct.
@@ -150,7 +151,9 @@ ShadingData prepareShadingData(GeometryParams geoParams, MaterialParams matParam
     sd.opacity = matParams.diffuseOpacity.a;
     sd.specular = matParams.specularRoughness.rgb;
     sd.linearRoughness = matParams.specularRoughness.a;
-    sd.ggxAlpha = sd.linearRoughness * sd.linearRoughness;
+    // TODO: ggxAlpha should be removed and computed where it's needed.
+    // The threshold of 0.0064 is because in previous versions we used to clamp linearRoughness to 0.08.
+    sd.ggxAlpha = max(0.0064, sd.linearRoughness * sd.linearRoughness);
     sd.emissive = matParams.emissive.rgb;
     sd.IoR = matParams.extraParams.x;
     sd.eta = sd.frontFacing ? 1.f / sd.IoR : sd.IoR;
@@ -158,12 +161,9 @@ ShadingData prepareShadingData(GeometryParams geoParams, MaterialParams matParam
     sd.specularTransmission = matParams.extraParams.z;
     sd.metallic = matParams.extraParams.w;
 
-    // Flip the shading normal for back-facing hits on double-sided materials.
-    if (!sd.frontFacing && sd.doubleSided)
-    {
-        sd.N = -sd.N;
-        sd.NdotV = -sd.NdotV;
-    }
+    sd.occlusion = 1.f;
+
+    sd.activeLobes = (uint)LobeType::All;
 
     return sd;
 }

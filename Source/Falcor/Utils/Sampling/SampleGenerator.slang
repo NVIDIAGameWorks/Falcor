@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -35,29 +35,16 @@
 
     If SAMPLE_GENERATOR_TYPE is not defined, a compile-time error is printed.
 
-    The 'SampleGeneratorPadded' type holds a SampleGenerator plus additional
+    The 'SampleGenerator.Padded' type holds a SampleGenerator plus additional
     padding to make the struct a multiple of 16B.
 */
 
 #if defined(SAMPLE_GENERATOR_TYPE) && SAMPLE_GENERATOR_TYPE == SAMPLE_GENERATOR_TINY_UNIFORM
     import Utils.Sampling.TinyUniformSampleGenerator;
     typedef TinyUniformSampleGenerator SampleGenerator;
-
-    struct SampleGeneratorPadded
-    {
-        SampleGenerator internal;
-        uint3 _pad;
-    };
-
 #elif defined(SAMPLE_GENERATOR_TYPE) && SAMPLE_GENERATOR_TYPE == SAMPLE_GENERATOR_UNIFORM
     import Utils.Sampling.UniformSampleGenerator;
     typedef UniformSampleGenerator SampleGenerator;
-
-    struct SampleGeneratorPadded
-    {
-        SampleGenerator internal;
-    };
-
 #endif
 
 /** Convenience functions for generating 1D/2D/3D values in the range [0,1).

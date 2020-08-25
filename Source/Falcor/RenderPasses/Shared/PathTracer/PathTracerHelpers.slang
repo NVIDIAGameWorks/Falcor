@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -32,7 +32,7 @@ import Scene.Scene;
 import Scene.ShadingData;
 __exported import Utils.Helpers; // For computeRayOrigin()
 __exported import Utils.Math.MathHelpers;
-__exported import Experimental.Scene.Lights.EnvProbe;
+__exported import Experimental.Scene.Lights.EnvMapSampler;
 __exported import Experimental.Scene.Material.MaterialShading;
 __exported import Experimental.Scene.Lights.EmissiveLightSampler;
 __exported import Experimental.Scene.Lights.LightHelpers;
@@ -41,14 +41,6 @@ __exported import RenderPasses.Shared.PathTracer.PathTracerParams;
 
 static const float3 kDefaultBackgroundColor = float3(0, 0, 0);
 static const float kRayTMax = FLT_MAX;
-
-// Logic for determining if we need to trace a scatter ray from the last path vertex.
-// This is needed to account for direct illumination when NEE with MIS is enabled, or NEE is disabled.
-// Note that these decisions are all static, no dynamic code is generated.
-static const bool kTraceScatterRayFromLastPathVertex =
-    (kUseEnvLight && kUseMIS) ||
-    (kUseEmissiveLights && (!kUseEmissiveSampler || kUseMIS));
-
 
 /** A light sample for any of the scene lights (analytic, envmap, and emissive).
     The Li field is nonzero only if the sample is valid (no need to check the pdf).
@@ -69,13 +61,12 @@ struct SceneLightSample
 /** Evaluates the background in a particular direction.
     This function should be called for screen-space samples that missed the scene.
     The result should not be used as lighting, use evalDistantLight() instead.
-    \param[in] envProbe EnvProbe data.
     \param[in] dir World-space direction (unnormalized).
     \return Color (rgb).
 */
-float3 evalBackground(const EnvProbe envProbe, float3 dir)
+float3 evalBackground(float3 dir)
 {
-    return kUseEnvBackground ? evalEnvProbe(envProbe, dir) : kDefaultBackgroundColor;
+    return kUseEnvBackground ? gScene.envMap.eval(dir) : kDefaultBackgroundColor;
 }
 
 /** Evaluates the currently configured heuristic for multiple importance sampling (MIS).
@@ -143,7 +134,7 @@ float getEnvLightSelectionPdf()
 {
     float p0 = kUseEnvLight ? 1.f : 0.f;
     float p1 = kUseAnalyticLights ? 1.f : 0.f;
-    float p2 = kUseEmissiveSampler ? 1.f : 0.f;
+    float p2 = kUseEmissiveLights ? 1.f : 0.f;
     return p0 / (p0 + p1 + p2);
 }
 
@@ -153,7 +144,7 @@ float getEmissiveLightSelectionPdf()
 {
     float p0 = kUseEnvLight ? 1.f : 0.f;
     float p1 = kUseAnalyticLights ? 1.f : 0.f;
-    float p2 = kUseEmissiveSampler ? 1.f : 0.f;
+    float p2 = kUseEmissiveLights ? 1.f : 0.f;
     return p2 / (p0 + p1 + p2);
 }
 
@@ -182,7 +173,7 @@ float evalPdfScatter(const ShadingData sd, const float3 dir)
     This function first stochastically selects a type of light source to sample,
     and then calls that the sampling function for the chosen light type.
     \param[in] params PathTracer parameters.
-    \param[in] envProbe EnvProbe data.
+    \param[in] envMapSampler Environment map sampler.
     \param[in] emissiveSampler Emissive light sampler.
     \param[in] sd Shading data.
     \param[in] rayOrigin Ray origin for the shadow ray.
@@ -191,7 +182,7 @@ float evalPdfScatter(const ShadingData sd, const float3 dir)
     \param[out] ls Generated light sample. Only valid if true is returned.
     \return True if a sample was generated, false otherwise.
 */
-bool sampleSceneLights(const PathTracerParams params, const EnvProbe envProbe, const EmissiveLightSampler emissiveSampler, const ShadingData sd, const float3 rayOrigin, const uint numSamples, inout SampleGenerator sg, out SceneLightSample ls)
+bool sampleSceneLights(const PathTracerParams params, const EnvMapSampler envMapSampler, const EmissiveLightSampler emissiveSampler, const ShadingData sd, const float3 rayOrigin, const uint numSamples, inout SampleGenerator sg, out SceneLightSample ls)
 {
     // Set relative probabilities of the different sampling techniques.
     // TODO: These should use estimated irradiance from each light type. Using equal probabilities for now.
@@ -199,7 +190,7 @@ bool sampleSceneLights(const PathTracerParams params, const EnvProbe envProbe, c
     float p[3];
     p[0] = kUseEnvLight ? 1.f : 0.f;
     p[1] = kUseAnalyticLights ? 1.f : 0.f;
-    p[2] = kUseEmissiveSampler ? 1.f : 0.f;
+    p[2] = kUseEmissiveLights ? 1.f : 0.f;
 
     // Normalize probabilities. Early out if zero.
     float sum = p[0] + p[1] + p[2];
@@ -223,30 +214,26 @@ bool sampleSceneLights(const PathTracerParams params, const EnvProbe envProbe, c
             float selectionPdf = p[0];
 
             // Sample environment map.
-            EnvProbeSamplingResult lightSample;
-            sampleEnvProbe(envProbe, sampleNext2D(sg), lightSample);
+            EnvMapSample lightSample;
+            envMapSampler.sample(sampleNext2D(sg), lightSample);
 
             // Reject sample if lower hemisphere.
-            if (dot(sd.N, lightSample.wi) < kMinCosTheta) return false;
-
-            // Evaluate emitted radiance from the sampled direction.
-            // TODO: Move this into EnvProbe.slang
-            float3 Le = evalEnvProbe(envProbe, lightSample.wi);
+            if (dot(sd.N, lightSample.dir) < kMinCosTheta) return false;
 
             // Evaluate MIS with BRDF sampling as the other sampling strategy.
             float pdf = selectionPdf * lightSample.pdf;
             float misWeight = 1.f;
             if (kUseMIS && pdf > 0.f)
             {
-                float brdfPdf = evalPdfScatter(sd, lightSample.wi);
+                float brdfPdf = evalPdfScatter(sd, lightSample.dir);
                 misWeight = evalMIS(params, numSamples, pdf, 1, brdfPdf);
             }
 
             // Setup returned sample.
-            ls.rayDir = ls.dir = lightSample.wi;
+            ls.rayDir = ls.dir = lightSample.dir;
             ls.rayDistance = ls.distance = kRayTMax;
             ls.pdf = pdf;
-            ls.Li = pdf > 0.f ? Le * misWeight / (pdf * numSamples) : float3(0);
+            ls.Li = pdf > 0.f ? lightSample.Le * misWeight / (pdf * numSamples) : float3(0);
 
             return true;
         }
@@ -284,7 +271,7 @@ bool sampleSceneLights(const PathTracerParams params, const EnvProbe envProbe, c
         u -= p[1];
     }
 
-    if (kUseEmissiveSampler)
+    if (kUseEmissiveLights)
     {
         //if (u < p[2]) // Always true
         {
@@ -331,7 +318,7 @@ bool sampleSceneLights(const PathTracerParams params, const EnvProbe envProbe, c
     The function assumes path.origin is the ray origin for the shadow ray, and that the PathData
     flags for the shadow ray have already been cleared.
     \param[in] params Path tracer parameters.
-    \param[in] envProbe Environment map sampler.
+    \param[in] envMapSampler Environment map sampler.
     \param[in] emissiveSampler Emissive light sampler.
     \param[in] sd Shading data.
     \param[in] i The sample index in the range [0, kLightSamplesPerVertex).
@@ -339,11 +326,11 @@ bool sampleSceneLights(const PathTracerParams params, const EnvProbe envProbe, c
     \param[in,out] shadowRay Shadow ray parameters and unoccluded contribution for the generated sample.
     \return True if a sample was generated, false otherwise.
 */
-bool generateShadowRay(const PathTracerParams params, const EnvProbe envProbe, const EmissiveLightSampler emissiveSampler, const ShadingData sd, const uint i, inout PathData path, inout ShadowRay shadowRay)
+bool generateShadowRay(const PathTracerParams params, const EnvMapSampler envMapSampler, const EmissiveLightSampler emissiveSampler, const ShadingData sd, const uint i, inout PathData path, inout ShadowRay shadowRay)
 {
     // Sample the scene lights.
     SceneLightSample ls;
-    bool valid = sampleSceneLights(params, envProbe, emissiveSampler, sd, path.origin, kLightSamplesPerVertex, path.sg, ls);
+    bool valid = sampleSceneLights(params, envMapSampler, emissiveSampler, sd, path.origin, kLightSamplesPerVertex, path.sg, ls);
 
     if (valid && any(ls.Li > 0.f))
     {
@@ -364,15 +351,13 @@ bool generateShadowRay(const PathTracerParams params, const EnvProbe envProbe, c
 /** Generates a scatter ray or terminates the path.
     The function uses BRDF sampling to generate ray parameters for the scatter ray.
     The function assumes path.origin is the ray origin for the new ray.
+    \param[in] params Path tracer parameters.
     \param[in] sd Shading data.
     \param[in,out] path Path data.
     \return True if a sample was generated and path should continue, false otherwise.
 */
-bool generateScatterRay(const ShadingData sd, inout PathData path)
+bool generateScatterRay(const PathTracerParams params, const ShadingData sd, inout PathData path)
 {
-    // Early out if we're at the last path vertex and the ray is not needed.
-    if (!kTraceScatterRayFromLastPathVertex && path.length == kMaxBounces) return false;
-
     // Generate next path segment.
     BSDFSample result;
     bool valid;
@@ -385,12 +370,42 @@ bool generateScatterRay(const ShadingData sd, inout PathData path)
         path.thp *= result.weight;
         path.pdf = result.pdf;
 
-        // If this was a transmission event, compute ray origin for next ray segment.
-        path.clearTransmission();
-        if (result.lobe & (uint)LobeType.Transmission)
+        path.clearEventFlags();
+
+        // Handle specular events.
+        if (result.isLobe(LobeType::SpecularTransmission) ||
+            (result.isLobe(LobeType::SpecularReflection) && sd.linearRoughness <= params.specularRoughnessThreshold) ||
+            result.isLobe(LobeType::Delta))
+        {
+            path.setSpecular();
+        }
+        else
+        {
+            // Count non-specular bounces.
+            path.nonSpecularBounces++;
+        }
+
+        // Handle delta events.
+        if (result.isLobe(LobeType::Delta))
+        {
+            path.setDelta();
+        }
+
+        // Handle transmission events.
+        if (result.isLobe(LobeType::Transmission))
         {
             path.setTransmission();
+
+            // Compute ray origin for next ray segment.
             path.transmissionOrigin = sd.computeNewRayOrigin(false);
+
+            // Update interior list and inside volume flag.
+            if (kUseNestedDielectrics)
+            {
+                uint nestedPriority = gScene.materials[sd.materialID].getNestedPriority();
+                path.interiorList.handleIntersection(sd.materialID, nestedPriority, sd.frontFacing);
+                path.setInsideVolume(!path.interiorList.isEmpty());
+            }
         }
 
         // assert(!any(isnan(path.thp)));

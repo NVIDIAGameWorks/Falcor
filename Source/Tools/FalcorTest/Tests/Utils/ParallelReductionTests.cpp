@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -111,6 +111,10 @@ namespace Falcor
 
             RefType refSum[4] = {};
             RefType absSum[4] = {};
+            RefType minValue = std::numeric_limits<RefType>::lowest();
+            RefType maxValue = std::numeric_limits<RefType>::max();
+            RefType refMin[4] = { maxValue, maxValue, maxValue, maxValue };
+            RefType refMax[4] = { minValue, minValue, minValue, minValue };
 
             for (size_t i = 0; i < elems; i++)
             {
@@ -159,50 +163,90 @@ namespace Falcor
                 // Compute reference sum (per channel).
                 refSum[i % channels] += (RefType)value;
                 absSum[i % channels] += (RefType)std::abs(value);
+                refMin[i % channels] = std::min(refMin[i % channels], (RefType)value);
+                refMax[i % channels] = std::max(refMax[i % channels], (RefType)value);
             }
 
             // Create a texture with test data.
             Texture::SharedPtr pTexture = Texture::create2D(width, height, format, 1, 1, pInitData.get());
 
-            // Allocate buffer for the result on the GPU.
-            DataType nullValue = {};
-            Buffer::SharedPtr pResultBuffer = Buffer::create(16, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, &nullValue);
-
-            // Perform reduction operation.
-            DataType result;
-            bool success = pReduction->execute(ctx.getRenderContext(), pTexture, ComputeParallelReduction::Type::Sum, &result, pResultBuffer, 0);
-            EXPECT_EQ(success, true);
-
-            // Verify that returned result is identical to result stored to GPU buffer.
-            DataType* resultBuffer = (DataType*)pResultBuffer->map(Buffer::MapType::Read);
-            assert(resultBuffer);
-            for (uint32_t i = 0; i < 4; i++)
+            // Test Sum operation.
             {
-                EXPECT_EQ((*resultBuffer)[i], result[i]) << "i = " << i;
-            }
-            pResultBuffer->unmap();
+                // Allocate buffer for the result on the GPU.
+                DataType nullValue = {};
+                Buffer::SharedPtr pResultBuffer = Buffer::create(16, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, &nullValue);
 
-            // Compare result to reference value computed on the CPU.
-            for (uint32_t i = 0; i < 4; i++)
-            {
-                if (i < channels)
+                // Perform reduction operation.
+                DataType result;
+                bool success = pReduction->execute(ctx.getRenderContext(), pTexture, ComputeParallelReduction::Type::Sum, &result, pResultBuffer, 0);
+                EXPECT_EQ(success, true);
+
+                // Verify that returned result is identical to result stored to GPU buffer.
+                DataType* resultBuffer = (DataType*)pResultBuffer->map(Buffer::MapType::Read);
+                assert(resultBuffer);
+                for (uint32_t i = 0; i < 4; i++)
                 {
-                    if constexpr (std::is_floating_point<RefType>::value)
+                    EXPECT_EQ((*resultBuffer)[i], result[i % 4]) << "i = " << i;
+                }
+                pResultBuffer->unmap();
+
+                // Compare result to reference value computed on the CPU.
+                for (uint32_t i = 0; i < 4; i++)
+                {
+                    if (i < channels)
                     {
-                        // For floating-point formats, calculate relative error with respect to the sum of absolute values.
-                        double e = std::abs((RefType)result[i] - refSum[i]);
-                        double relError = (double)e / absSum[i];
-                        EXPECT_LE(relError, 1e-6) << "i = " << i;
+                        if constexpr (std::is_floating_point<RefType>::value)
+                        {
+                            // For floating-point formats, calculate relative error with respect to the sum of absolute values.
+                            double e = std::abs((RefType)result[i] - refSum[i]);
+                            double relError = (double)e / absSum[i];
+                            EXPECT_LE(relError, 1e-6) << "i = " << i;
+                        }
+                        else
+                        {
+                            // For integer formats, we expect the exact result.
+                            EXPECT_EQ(result[i], refSum[i]) << "i = " << i;
+                        }
                     }
                     else
                     {
-                        // For integer formats, we expect the exact result.
-                        EXPECT_EQ(result[i], refSum[i]) << "i = " << i;
+                        EXPECT_EQ(result[i], 0) << "i = " << i;
                     }
                 }
-                else
+            }
+
+            // Test MinMax operation
+            {
+                // Allocate buffer for the result on the GPU.
+                DataType nullValues[2] = {{}, {}};
+                Buffer::SharedPtr pResultBuffer = Buffer::create(32, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullValues);
+
+                // Perform reduction operation.
+                DataType result[2];
+                bool success = pReduction->execute(ctx.getRenderContext(), pTexture, ComputeParallelReduction::Type::MinMax, result, pResultBuffer, 0);
+                EXPECT_EQ(success, true);
+
+                // Verify that returned result is identical to result stored to GPU buffer.
+                DataType* resultBuffer = (DataType*)pResultBuffer->map(Buffer::MapType::Read);
+                assert(resultBuffer);
+                for (uint32_t i = 0; i < 2; i++)
                 {
-                    EXPECT_EQ(result[i], 0) << "i = " << i;
+                    for (uint32_t j = 0; j < 4; j++)
+                    {
+                        EXPECT_EQ(resultBuffer[i][j], result[i][j]) << "i = " << i << " j = " << j;
+                    }
+                }
+                pResultBuffer->unmap();
+
+                // Compare result to reference value computed on the CPU.
+                for (uint32_t i = 0; i < 4; i++)
+                {
+                    if (i < channels)
+                    {
+                        // For integer formats, we expect the exact result.
+                        EXPECT_EQ(result[0][i], refMin[i]) << "i = " << i;
+                        EXPECT_EQ(result[1][i], refMax[i]) << "i = " << i;
+                    }
                 }
             }
         }
