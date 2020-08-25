@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -215,7 +215,7 @@ namespace Falcor
     */
     dlldecl void closeSharedFile(const std::string& filePath);
 
-    /** Creates a file in the temperary directory and returns the path.
+    /** Creates a file in the temporary directory and returns the path.
         \return pathName Absolute path to unique temp file.
     */
     dlldecl std::string getTempFilename();
@@ -265,7 +265,7 @@ namespace Falcor
     */
     dlldecl const std::vector<std::string>& getDataDirectoriesList();
 
-    /** Adds a folder into the search directory. Once added, calls to FindFileInCommonDirs() will seach that directory as well
+    /** Adds a folder into the search directory. Once added, calls to FindFileInCommonDirs() will search that directory as well
         \param[in] dir The new directory to add to the common directories.
     */
     dlldecl void addDataDirectory(const std::string& dir);

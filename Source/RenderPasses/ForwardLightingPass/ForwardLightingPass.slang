@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -74,13 +74,13 @@ PsOut ps(VSOut vOut, uint triangleIndex : SV_PrimitiveID)
             shadowFactor = visibilityBuffer.Load(int3(vOut.posH.xy, 0)).r;
             shadowFactor *= sd.opacity;
         }
-        finalColor.rgb += evalMaterial(sd, gScene.getLight(l), shadowFactor).color.rgb;
+        finalColor.rgb += evalMaterial(sd, gScene.getLight(l), shadowFactor).color;
     }
 
     // Add the emissive component
     finalColor.rgb += sd.emissive;
     finalColor.a = sd.opacity;
-    finalColor.rgb += evalMaterial(sd, gScene.lightProbe).color.rgb;
+    finalColor.rgb += evalMaterial(sd, gScene.lightProbe).color;
 
     psOut.color = finalColor;
     psOut.normal = float4(vOut.normalW * 0.5f + 0.5f, 1.0f);

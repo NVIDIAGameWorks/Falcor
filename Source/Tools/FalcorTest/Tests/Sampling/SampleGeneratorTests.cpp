@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -67,7 +67,7 @@ namespace Falcor
             }
             assert(n > 0);
             double r_xy = ((double)n * sum_xy - sum_x * sum_y) /
-                (sqrt(n * sum_xx - sum_x * sum_x) * sqrt(n * sum_yy - sum_y * sum_y));
+                (std::sqrt(n * sum_xx - sum_x * sum_x) * std::sqrt(n * sum_yy - sum_y * sum_y));
             return r_xy;
         }
 
@@ -78,10 +78,9 @@ namespace Falcor
 
             // Setup GPU test.
             // We defer the creation of the vars until after shader specialization.
-            ctx.createProgram(kShaderFile, "test", Program::DefineList(), Shader::CompilerFlags::None, "6_0", false);
-            pSampleGenerator->prepareProgram(ctx.getProgram());
+            auto defines = pSampleGenerator->getDefines();
+            ctx.createProgram(kShaderFile, "test", defines, Shader::CompilerFlags::None, "6_2");
 
-            ctx.createVars();
             pSampleGenerator->setShaderData(ctx.vars().getRootVar());
 
             const size_t numSamples = kDispatchDim.x * kDispatchDim.y * kDispatchDim.z * kDimensions;

@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -28,8 +28,8 @@
 
 /** GPU side implementation of pixel debugging utils.
 
-    Note that the print() functions must be called from a ray tracing
-    program as they use DispatchRaysIndex() to identify the current pixel.
+    Call the function printSetPixel() in the shader program to set the
+    current pixel before the first print() or assert() calls.
 
     The host sets the following defines:
 
@@ -85,8 +85,8 @@ void printSetPixel(uint2 pixel)
         }                                                       \
     }
 
-    /** Ray tracing shader 'assert(bool condition)' function.
-        If condition is false, the launch index of the assert is recorded in the log.
+    /** Shader assert.
+        \param[in] condition If false, the current pixel is recorded in the log.
     */
     void assert(bool condition)
     {
@@ -96,7 +96,7 @@ void printSetPixel(uint2 pixel)
             if (i < gAssertLogSize)
             {
                 AssertLogValue val;
-                val.launchIndex = DispatchRaysIndex();
+                val.launchIndex = uint3(gPixelDebugPixel, 0);
                 gAssertLog[i] = val;
             }
         }

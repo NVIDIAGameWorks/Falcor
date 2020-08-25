@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -35,7 +35,7 @@ namespace Falcor
 
         This class wraps a LightCollection object, which holds the set of lights to sample.
     */
-    class dlldecl EmissiveUniformSampler : public EmissiveLightSampler, public inherit_shared_from_this<EmissiveLightSampler, EmissiveUniformSampler>
+    class dlldecl EmissiveUniformSampler : public EmissiveLightSampler
     {
     public:
         using SharedPtr = std::shared_ptr<EmissiveUniformSampler>;
@@ -44,7 +44,7 @@ namespace Falcor
         /** EmissiveUniformSampler configuration.
             Note if you change options, please update SCRIPT_BINDING in EmissiveUniformSampler.cpp
         */
-        struct Options : Falcor::ScriptBindings::enable_to_string
+        struct Options
         {
             // TODO
             //bool        usePreintegration = true;           ///< Use pre-integrated flux per triangle to guide BVH build/sampling. Only relevant if mUseBVHTree == true.

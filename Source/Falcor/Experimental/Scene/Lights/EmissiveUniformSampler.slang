@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -53,13 +53,14 @@ struct EmissiveUniformSampler : IEmissiveLightSampler
     */
     bool sampleLight(const float3 posW, const float3 normalW, inout SampleGenerator sg, out TriangleLightSample ls)
     {
-        if (gScene.lightCollection.isEmpty()) return false;
+        if (gScene.lightCollection.getActiveTriangleCount() == 0) return false;
 
-        // Randomly pick a triangle out of the global list with uniform probability.
+        // Randomly pick a triangle out of the global list of active triangles with uniform probability.
         float uLight = sampleNext1D(sg);
-        uint triangleCount = gScene.lightCollection.triangleCount;
-        uint triangleIndex = min((uint)(uLight * triangleCount), triangleCount - 1); // Safety precaution as the result of the multiplication may be rounded to triangleCount even if uLight < 1.0 when triangleCount is large.
-        float triangleSelectionPdf = 1.0f / ((float)triangleCount);
+        uint triangleCount = gScene.lightCollection.getActiveTriangleCount();
+        uint idx = min((uint)(uLight * triangleCount), triangleCount - 1); // Safety precaution as the result of the multiplication may be rounded to triangleCount even if uLight < 1.0 when triangleCount is large.
+        uint triangleIndex = gScene.lightCollection.activeTriangles[idx];
+        float triangleSelectionPdf = 1.f / (float)triangleCount;
 
         // Sample the triangle uniformly.
         float2 u = sampleNext2D(sg);
@@ -78,10 +79,10 @@ struct EmissiveUniformSampler : IEmissiveLightSampler
     */
     float evalPdf(float3 posW, float3 normalW, const TriangleHit hit)
     {
-        if (gScene.lightCollection.isEmpty()) return 0;
+        if (hit.triangleIndex == LightCollection::kInvalidIndex) return 0;
 
         // Lights are chosen uniformly so the selection probability is just one over the number of lights.
-        float triangleSelectionPdf = 1.0f / ((float)gScene.lightCollection.triangleCount);
+        float triangleSelectionPdf = gScene.lightCollection.getActiveTriangleCount() > 0 ? 1.f / (float)gScene.lightCollection.getActiveTriangleCount() : 0.f;
 
         // Compute triangle sampling probability with respect to solid angle from the shading point.
         float trianglePdf = evalTrianglePdf(posW, hit);

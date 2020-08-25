@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -25,10 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
 #include "SplitScreenPass/SplitScreenPass.h"
 #include "InvalidPixelDetectionPass/InvalidPixelDetectionPass.h"
 #include "SideBySidePass/SideBySidePass.h"
+#include "ColorMapPass/ColorMapPass.h"
 
 extern "C" __declspec(dllexport) const char* getProjDir()
 {
@@ -37,7 +37,10 @@ extern "C" __declspec(dllexport) const char* getProjDir()
 
 extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
 {
-    lib.registerClass("SplitScreenPass", "Allows the user to split the screen between two inputs.", SplitScreenPass::create);
-    lib.registerClass("InvalidPixelDetectionPass", "Pass that marks all NaN pixels red and Inf pixels green in an image", InvalidPixelDetectionPass::create);
-    lib.registerClass("SideBySidePass", "Allows the user to compare two images side-by-side", SideBySidePass::create);
+    lib.registerClass("SplitScreenPass", SplitScreenPass::kDesc, SplitScreenPass::create);
+    lib.registerClass("InvalidPixelDetectionPass", InvalidPixelDetectionPass::kDesc, InvalidPixelDetectionPass::create);
+    lib.registerClass("SideBySidePass", SideBySidePass::kDesc, SideBySidePass::create);
+    lib.registerClass("ColorMapPass", ColorMapPass::kDesc, ColorMapPass::create);
+
+    ScriptBindings::registerBinding(ColorMapPass::registerScriptBindings);
 }

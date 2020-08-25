@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -26,6 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "SplitScreenPass.h"
+
+const char* SplitScreenPass::kDesc = "Allows the user to split the screen between two inputs.";
 
 namespace
 {
@@ -67,11 +69,11 @@ SplitScreenPass::SplitScreenPass()
 SplitScreenPass::SharedPtr SplitScreenPass::create(RenderContext* pRenderContext, const Dictionary& dict)
 {
     SharedPtr pPass = SharedPtr(new SplitScreenPass());
-    for (const auto& v : dict)
+    for (const auto& [key, value] : dict)
     {
-        if (!pPass->parseKeyValuePair(v.key(), v.val()))
+        if (!pPass->parseKeyValuePair(key, value))
         {
-            logWarning("Unknown field `" + v.key() + "` in a SplitScreenPass dictionary");
+            logWarning("Unknown field '" + key + "' in a SplitScreenPass dictionary");
         }
     }
     return pPass;

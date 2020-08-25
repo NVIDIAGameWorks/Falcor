@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -34,7 +34,7 @@ using namespace Falcor;
 /** Ray traced G-buffer pass.
     This pass renders a fixed set of G-buffer channels using ray tracing.
 */
-class GBufferRT : public GBuffer, public inherit_shared_from_this<GBuffer, GBufferRT>
+class GBufferRT : public GBuffer
 {
 public:
     using SharedPtr = std::shared_ptr<GBufferRT>;
@@ -52,7 +52,7 @@ public:
     {
         UseMip0          = 0,       // Don't compute LOD (default)
         RayDifferentials = 1,       // Use ray differentials
-        TexLODCone       = 2,       // Cone based LOD computation (not implemented yet)
+        RayCones         = 2,       // Cone based LOD computation (not implemented yet)
     };
 
 private:
@@ -73,21 +73,6 @@ private:
     } mRaytrace;
 
     static const char* kDesc;
-    static void registerBindings(ScriptBindings::Module& m);
+    static void registerBindings(pybind11::module& m);
     friend void getPasses(Falcor::RenderPassLibrary& lib);
 };
-
-#define lod_mode_cm(a) case GBufferRT::LODMode::a: return #a
-inline std::string to_string(GBufferRT::LODMode st)
-{
-    switch (st)
-    {
-        lod_mode_cm(UseMip0);
-        lod_mode_cm(RayDifferentials);
-        lod_mode_cm(TexLODCone);
-    default:
-        should_not_get_here();
-        return "";
-    }
-}
-#undef lod_mode_cm

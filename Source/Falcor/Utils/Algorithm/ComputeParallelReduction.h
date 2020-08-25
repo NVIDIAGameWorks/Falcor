@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -52,6 +52,7 @@ namespace Falcor
         enum class Type
         {
             Sum,
+            MinMax,
         };
 
         /** Create parallel reduction helper.
@@ -64,15 +65,21 @@ namespace Falcor
             - float4 for floating-point texture formats (float, snorm, unorm).
             - uint4 for unsigned integer texture formats.
             - int4 for signed integer texture formats.
-            Note that unused components are set to zero if texture format has < 4 components.
+
+            For the Sum operation, unused components are set to zero if texture format has < 4 components.
+
             For performance reasons, it is advisable to store the result in a buffer on the GPU,
             and then issue an asynchronous readback in user code to avoid a full GPU flush.
+
+            The size of the result buffer depends on the executed operation:
+            - Sum needs 16B
+            - MinMax needs 32B
 
             \param[in] pRenderContext The render context.
             \param[in] pInput Input texture.
             \param[in] operation Reduction operation.
             \param[out] pResult (Optional) The result of the reduction operation is stored here if non-nullptr. Note that this requires a GPU flush!
-            \param[out] pResultBuffer (Optional) Buffer on the GPU to which the result is copied (16B).
+            \param[out] pResultBuffer (Optional) Buffer on the GPU to which the result is copied (16B or 32B).
             \param[out] resultOffset (Optional) Byte offset into pResultBuffer to where the result should be stored.
             \return True if successful, false if an error occured.
         */
@@ -81,7 +88,7 @@ namespace Falcor
 
     private:
         ComputeParallelReduction();
-        void allocate(uint32_t elementCount);
+        void allocate(uint32_t elementCount, uint32_t elementSize);
 
         ComputeState::SharedPtr             mpState;
         ComputeProgram::SharedPtr           mpInitialProgram;

@@ -5,10 +5,11 @@ Most of the work is delegated to FalcorTest.
 
 import sys
 import argparse
+import subprocess
 
 from build_falcor import build_falcor
 
-from core import Environment, helpers, config
+from core import Environment, config
 from core.termcolor import colored
 
 def run_unit_tests(env, filter_regex):
@@ -16,16 +17,18 @@ def run_unit_tests(env, filter_regex):
     Run unit tests by running FalcorTest.
     The optional filter_regex is used to select specific tests to run.
     '''
-    args = [env.falcor_test_exe]
+    args = [str(env.falcor_test_exe)]
     if filter_regex:
-        args += ['-test_filter', filter_regex]
+        args += ['--filter', str(filter_regex)]
 
+    p = subprocess.Popen(args)
     try:
-        process = helpers.run_with_timeout(args, timeout=600)
-        success = process.returncode == 0
-    except Exception as e:
-        print(f'\n\nError running {env.falcor_test_exe}: {e}')
-        success = False
+        p.communicate(timeout=600)
+    except subprocess.TimeoutExpired:
+        p.kill()
+        print('\n\nProcess killed due to timeout')
+
+    success = p.returncode == 0
     status = colored('PASSED', 'green') if success else colored('FAILED', 'red')
     print(f'\nUnit tests {status}.')
 

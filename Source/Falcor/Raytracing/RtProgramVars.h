@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -49,25 +49,21 @@ namespace Falcor
 
         const EntryPointGroupVars::SharedPtr& getRayGenVars(uint32_t index = 0) { return mRayGenVars[index].pVars; }
         const EntryPointGroupVars::SharedPtr& getMissVars(uint32_t rayID) { return mMissVars[rayID].pVars; }
-        const EntryPointGroupVars::SharedPtr& getHitVars(uint32_t rayID, uint32_t meshID) { return mHitVars[meshID*mDescHitGroupCount + rayID].pVars; }
+        const EntryPointGroupVars::SharedPtr& getHitVars(uint32_t rayID, uint32_t meshID) { return mHitVars[meshID * mDescHitGroupCount + rayID].pVars; }
 
-        bool apply(
-            RenderContext*  pCtx,
-            RtStateObject*  pRtso);
+        bool apply(RenderContext* pCtx, RtStateObject* pRtso);
 
         ShaderTable::SharedPtr getShaderTable() const { return mpShaderTable; }
 
-        uint32_t getTotalHitVarsCount() const { return uint32_t(mHitVars.size()); }
-        uint32_t getDescHitGroupCount() const { return mDescHitGroupCount; }
         uint32_t getRayGenVarsCount() const { return uint32_t(mRayGenVars.size()); }
         uint32_t getMissVarsCount() const { return uint32_t(mMissVars.size()); }
+        uint32_t getTotalHitVarsCount() const { return uint32_t(mHitVars.size()); }
+        uint32_t getDescHitGroupCount() const { return mDescHitGroupCount; }
 
         Scene::SharedPtr getSceneForGeometryIndices() const { return mpSceneForGeometryIndices.lock(); }
-        void setSceneForGeometryIndices(Scene::ConstSharedPtrRef scene) { mpSceneForGeometryIndices = scene; }
+        void setSceneForGeometryIndices(const Scene::SharedPtr& scene) { mpSceneForGeometryIndices = scene; }
 
     private:
-        void updateShaderTable(RenderContext* pCtx, RtStateObject* pRtso) const;
-
         struct EntryPointGroupInfo
         {
             EntryPointGroupVars::SharedPtr  pVars;
@@ -81,6 +77,7 @@ namespace Falcor
             const Scene::SharedPtr& pScene);
 
         void init();
+        bool applyVarsToTable(ShaderTable::SubTableType type, uint32_t tableOffset, VarsVector& varsVec, const RtStateObject* pRtso);
 
         Scene::SharedPtr mpScene;
         uint32_t mDescHitGroupCount = 0;

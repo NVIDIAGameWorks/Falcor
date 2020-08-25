@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -25,128 +25,82 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-__exported import LightBVHStaticParams;
+import Utils.Attributes;
+__exported import LightBVHTypes;
 
+/** Light BVH data structure.
+*/
 struct LightBVH
 {
-    ByteAddressBuffer nodes;                        ///< Buffer containing all the nodes from the BVH, with the root node located at offset 0.
+    [root] StructuredBuffer<PackedNode> nodes;      ///< Buffer containing all the nodes from the BVH, with the root node located at index 0.
+    StructuredBuffer<uint> triangleIndices;         ///< Buffer containing the indices of all emissive triangles. Each leaf node refers to a contiguous range of indices.
     StructuredBuffer<uint2> triangleBitmasks;       ///< Buffer containing for each emissive triangle, a bit mask of the traversal to follow in order to reach that triangle. Size: lights.triangleCount * sizeof(uint64_t).
 
-    // IMPORTANT: these functions must be kept in sync with the definitions of
-    // InternalNode and LeafNode in Experimental/Scene/Lights/LightBVH.h.
-    uint getNodeType(uint offset)
+    bool isLeaf(uint nodeIndex)
     {
-        return nodes.Load(offset + kNodeTypeOffset);
+        return nodes[nodeIndex].isLeaf();
     }
 
-    float getNodeCosConeAngle(uint offset)
+    LeafNode getLeafNode(uint nodeIndex)
     {
-        return asfloat(nodes.Load(offset + kNodeCosConeAngleOffset));
+        return nodes[nodeIndex].getLeafNode();
     }
 
-    float3 getNodeConeDirection(uint offset)
+    InternalNode getInternalNode(uint nodeIndex)
     {
-        return asfloat(nodes.Load3(offset + kNodeConeDirectionOffset));
+        return nodes[nodeIndex].getInternalNode();
     }
 
-    float getNodeFlux(uint offset)
+    SharedNodeAttributes getNodeAttributes(uint nodeIndex)
     {
-        return asfloat(nodes.Load(offset + kNodeFluxOffset));
+        return nodes[nodeIndex].getNodeAttributes();
     }
 
-    void getNodeAABB(uint offset, out float3 aabbMin, out float3 aabbMax)
+    uint getNodeTriangleIndex(const LeafNode node, uint index)
     {
-        aabbMin = asfloat(nodes.Load3(offset + kNodeAABBMinOffset));
-        aabbMax = asfloat(nodes.Load3(offset + kNodeAABBMaxOffset));
-    }
-
-    uint getNodeLeftByteOffset(uint offset)
-    {
-        return nodes.Load(offset + kNodeLeftByteOffsetOffset);
-    }
-
-    uint getNodeTriangleCount(uint offset)
-    {
-        return nodes.Load(offset + kNodeTriangleCountOffset);
-    }
-
-    uint getNodeRightByteOffset(uint offset)
-    {
-        return nodes.Load(offset + kNodeRightByteOffsetOffset);
-    }
-
-    uint getNodeTriangleIndex(uint offset, uint tri)
-    {
-        return nodes.Load(offset + kNodeTriangleIndicesOffset + kNodeTriangleIndexByteSize * tri);
+        return triangleIndices[node.triangleOffset + index];
     }
 };
 
+/** Variant of the Light BVH data structure where the nodes are writable.
+    This is used for BVH refit.
+    TODO: Refactor to avoid code duplication using future Slang features.
+*/
 struct RWLightBVH
 {
-    RWByteAddressBuffer nodes;                      ///< Buffer containing all the nodes from the BVH, with the root node located at offset 0.
+    [root] RWStructuredBuffer<PackedNode> nodes;    ///< Buffer containing all the nodes from the BVH, with the root node located at index 0.
+    StructuredBuffer<uint> triangleIndices;         ///< Buffer containing the indices of all emissive triangles. Each leaf node refers to a contiguous range of indices.
     StructuredBuffer<uint2> triangleBitmasks;       ///< Buffer containing for each emissive triangle, a bit mask of the traversal to follow in order to reach that triangle. Size: lights.triangleCount * sizeof(uint64_t).
 
-    // IMPORTANT: these functions must be kept in sync with the definitions of
-    // InternalNode and LeafNode in Experimental/Scene/Lights/LightBVH.h.
-    uint getNodeType(uint offset)
+    bool isLeaf(uint nodeIndex)
     {
-        return nodes.Load(offset + kNodeTypeOffset);
+        return nodes[nodeIndex].isLeaf();
     }
 
-    float getNodeCosConeAngle(uint offset)
+    LeafNode getLeafNode(uint nodeIndex)
     {
-        return asfloat(nodes.Load(offset + kNodeCosConeAngleOffset));
+        return nodes[nodeIndex].getLeafNode();
     }
 
-    void setNodeCosConeAngle(uint offset, float cosCone)
+    InternalNode getInternalNode(uint nodeIndex)
     {
-        nodes.Store(offset + kNodeCosConeAngleOffset, asuint(cosCone));
+        return nodes[nodeIndex].getInternalNode();
     }
 
-    float3 getNodeConeDirection(uint offset)
+    uint getNodeTriangleIndex(const LeafNode node, uint index)
     {
-        return asfloat(nodes.Load3(offset + kNodeConeDirectionOffset));
+        return triangleIndices[node.triangleOffset + index];
     }
 
-    void setNodeConeDirection(uint offset, float3 dir)
+    // Setters
+
+    void setLeafNode(uint nodeIndex, LeafNode node)
     {
-        nodes.Store3(offset + kNodeConeDirectionOffset, asuint(dir));
+        nodes[nodeIndex].setLeafNode(node);
     }
 
-    float getNodeFlux(uint offset)
+    void setInternalNode(uint nodeIndex, InternalNode node)
     {
-        return asfloat(nodes.Load(offset + kNodeFluxOffset));
-    }
-
-    void getNodeAABB(uint offset, out float3 aabbMin, out float3 aabbMax)
-    {
-        aabbMin = asfloat(nodes.Load3(offset + kNodeAABBMinOffset));
-        aabbMax = asfloat(nodes.Load3(offset + kNodeAABBMaxOffset));
-    }
-
-    void setNodeAABB(uint offset, float3 aabbMin, float3 aabbMax)
-    {
-        nodes.Store3(offset + kNodeAABBMinOffset, asuint(aabbMin));
-        nodes.Store3(offset + kNodeAABBMaxOffset, asuint(aabbMax));
-    }
-
-    uint getNodeLeftByteOffset(uint offset)
-    {
-        return nodes.Load(offset + kNodeLeftByteOffsetOffset);
-    }
-
-    uint getNodeTriangleCount(uint offset)
-    {
-        return nodes.Load(offset + kNodeTriangleCountOffset);
-    }
-
-    uint getNodeRightByteOffset(uint offset)
-    {
-        return nodes.Load(offset + kNodeRightByteOffsetOffset);
-    }
-
-    uint getNodeTriangleIndex(uint offset, uint tri)
-    {
-        return nodes.Load(offset + kNodeTriangleIndicesOffset + kNodeTriangleIndexByteSize * tri);
+        nodes[nodeIndex].setInternalNode(node);
     }
 };

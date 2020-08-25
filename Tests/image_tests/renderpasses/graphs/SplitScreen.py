@@ -2,9 +2,9 @@ from falcor import *
 
 def test_SplitScreen():
     loadRenderPassLibrary("DebugPasses.dll")
-    imageLoaderA = RenderPass("ImageLoader", {'filename': 'Cubemaps\\Sorsele3\\posz.jpg', 'mips': False, 'srgb': False})
-    imageLoaderB = RenderPass("ImageLoader", {'filename': 'Cubemaps\\Sorsele3\\posz.jpg', 'mips': False, 'srgb': True})
-    splitScreen = RenderPass("SplitScreenPass")
+    imageLoaderA = createPass("ImageLoader", {'filename': 'Cubemaps\\Sorsele3\\posz.jpg', 'mips': False, 'srgb': False})
+    imageLoaderB = createPass("ImageLoader", {'filename': 'Cubemaps\\Sorsele3\\posz.jpg', 'mips': False, 'srgb': True})
+    splitScreen = createPass("SplitScreenPass")
 
     graph = RenderGraph("Split Screen Graph")
     graph.addPass(imageLoaderA, "ImageLoaderA")

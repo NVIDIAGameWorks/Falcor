@@ -172,9 +172,6 @@
     <ClInclude Include="Utils\StringUtils.h">
       <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\ArgList.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
     <ClInclude Include="Utils\BinaryFileStream.h">
       <Filter>Utils</Filter>
     </ClInclude>
@@ -454,9 +451,6 @@
     <ClInclude Include="Utils\AlignedAllocator.h">
       <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="Experimental\Scene\Lights\EnvProbe.h">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ClInclude>
     <ClInclude Include="Experimental\Scene\Lights\EmissiveUniformSampler.h">
       <Filter>Experimental\Scene\Lights</Filter>
     </ClInclude>
@@ -491,6 +485,27 @@
       <Filter>RenderPasses\Shared\PathTracer</Filter>
     </ClInclude>
     <ClInclude Include="Scene\HitInfo.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Math\PackedFormats.h">
+      <Filter>Utils\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\args\args.h">
+      <Filter>Externals\args</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\Scene\Lights\EnvMap.h">
+      <Filter>Experimental\Scene\Lights</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\Scene\Lights\EnvMapSampler.h">
+      <Filter>Experimental\Scene\Lights</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Timing\TimeReport.h">
+      <Filter>Utils\Timing</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Animation\Animatable.h">
+      <Filter>Scene\Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Importer.h">
       <Filter>Scene</Filter>
     </ClInclude>
   </ItemGroup>
@@ -635,6 +650,9 @@
     </Filter>
     <Filter Include="RenderPasses\Shared\PathTracer">
       <UniqueIdentifier>{dbf6e13a-7331-4de3-9123-6119e75c31d6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\args">
+      <UniqueIdentifier>{5cbaba11-d15e-4d2c-8f4b-abaedd57c5c6}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -896,9 +914,6 @@
     <ClCompile Include="Testing\UnitTest.cpp">
       <Filter>Testing</Filter>
     </ClCompile>
-    <ClCompile Include="Utils\ArgList.cpp">
-      <Filter>Utils</Filter>
-    </ClCompile>
     <ClCompile Include="Utils\Scripting\Scripting.cpp">
       <Filter>Utils\Scripting</Filter>
     </ClCompile>
@@ -1131,9 +1146,6 @@
     <ClCompile Include="Utils\Sampling\SampleGenerator.cpp">
       <Filter>Utils\Sampling</Filter>
     </ClCompile>
-    <ClCompile Include="Experimental\Scene\Lights\EnvProbe.cpp">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ClCompile>
     <ClCompile Include="Experimental\Scene\Lights\EmissiveUniformSampler.cpp">
       <Filter>Experimental\Scene\Lights</Filter>
     </ClCompile>
@@ -1170,6 +1182,21 @@
     <ClCompile Include="RenderPasses\Shared\PathTracer\PathTracer.cpp">
       <Filter>RenderPasses\Shared\PathTracer</Filter>
     </ClCompile>
+    <ClCompile Include="Experimental\Scene\Lights\EnvMap.cpp">
+      <Filter>Experimental\Scene\Lights</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\Scene\Lights\EnvMapSampler.cpp">
+      <Filter>Experimental\Scene\Lights</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Timing\TimeReport.cpp">
+      <Filter>Utils\Timing</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Animation\Animatable.cpp">
+      <Filter>Scene\Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Importer.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Xml Include="dependencies.xml" />
@@ -1200,12 +1227,6 @@
       <Filter>Experimental\Scene\Lights</Filter>
     </ShaderSource>
     <ShaderSource Include="Experimental\Scene\Lights\EmissiveUniformSampler.slang">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Lights\EnvProbeSetup.cs.slang">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Lights\EnvProbe.slang">
       <Filter>Experimental\Scene\Lights</Filter>
     </ShaderSource>
     <ShaderSource Include="Utils\Math\FormatConversion.slang">
@@ -1394,9 +1415,6 @@
     <ShaderSource Include="Utils\Math\MathConstants.slangh">
       <Filter>Utils\Math</Filter>
     </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Lights\LightBVHStaticParams.slang">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ShaderSource>
     <ShaderSource Include="Experimental\Scene\Lights\LightCollectionShared.slang">
       <Filter>Experimental\Scene\Lights</Filter>
     </ShaderSource>
@@ -1474,6 +1492,45 @@
     </ShaderSource>
     <ShaderSource Include="Scene\HitInfo.slang">
       <Filter>Scene</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Experimental\Scene\Material\BxDFTypes.slang">
+      <Filter>Experimental\Scene\Material</Filter>
+    </ShaderSource>
+    <ShaderSource Include="RenderPasses\Shared\PathTracer\RayFootprint.slang">
+      <Filter>RenderPasses\Shared\PathTracer</Filter>
+    </ShaderSource>
+    <ShaderSource Include="RenderPasses\Shared\PathTracer\RayFootprintData.slang">
+      <Filter>RenderPasses\Shared\PathTracer</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Utils\Sampling\Pseudorandom\Xorshift32.slang">
+      <Filter>Utils\Sampling\Pseudorandom</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Experimental\Scene\Lights\LightBVHTypes.slang">
+      <Filter>Experimental\Scene\Lights</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Experimental\Scene\Lights\EnvMap.slang">
+      <Filter>Experimental\Scene\Lights</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Experimental\Scene\Lights\EnvMapSampler.slang">
+      <Filter>Experimental\Scene\Lights</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Experimental\Scene\Lights\EnvMapSamplerSetup.cs.slang">
+      <Filter>Experimental\Scene\Lights</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Experimental\Scene\Lights\EnvMapData.slang">
+      <Filter>Experimental\Scene\Lights</Filter>
+    </ShaderSource>
+    <ShaderSource Include="RenderPasses\Shared\PathTracer\RayFootprintModes.slangh">
+      <Filter>RenderPasses\Shared\PathTracer</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Utils\Timing\GpuTimer.slang">
+      <Filter>Utils\Timing</Filter>
+    </ShaderSource>
+    <ShaderSource Include="RenderPasses\Shared\PathTracer\PixelStatsShared.slang">
+      <Filter>RenderPasses\Shared\PathTracer</Filter>
+    </ShaderSource>
+    <ShaderSource Include="RenderPasses\Shared\PathTracer\PixelStats.cs.slang">
+      <Filter>RenderPasses\Shared\PathTracer</Filter>
     </ShaderSource>
   </ItemGroup>
 </Project>

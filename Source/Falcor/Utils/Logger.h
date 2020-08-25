@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -73,6 +73,16 @@ namespace Falcor
         */
         static const std::string& getLogFilePath();
 
+        /** Enable/disable logging to the console (stdout).
+            \param[in] enable True to enable logging to stdout.
+        */
+        static void logToConsole(bool enable);
+
+        /** Returns true if logging to console (stdout) is enabled.
+            \return Returns true if logging to stdout is enabled.
+        */
+        static bool shouldLogToConsole();
+
         /** Controls weather or not to show a message box on error messages.
             If this is disabled, logging an error will immediately terminate the application.
             \param[in] showBox true to show a message box, false to disable it.
@@ -95,15 +105,15 @@ namespace Falcor
     private:
         friend void logInfo(const std::string& msg, MsgBox mbox);
         friend void logWarning(const std::string& msg, MsgBox mbox);
-        friend void logError(const std::string& msg, MsgBox mbox);
+        friend void logError(const std::string& msg, MsgBox mbox, bool terminate);
         friend void logFatal(const std::string& msg, MsgBox mbox);
 
-        static void log(Level L, const std::string& msg, MsgBox mbox = Logger::MsgBox::Auto);
+        static void log(Level L, const std::string& msg, MsgBox mbox = Logger::MsgBox::Auto, bool terminateOnError = true);
         Logger() = delete;
     };
 
     inline void logInfo(const std::string& msg, Logger::MsgBox mbox = Logger::MsgBox::Auto) { Logger::log(Logger::Level::Info, msg, mbox); }
     inline void logWarning(const std::string& msg, Logger::MsgBox mbox = Logger::MsgBox::Auto) { Logger::log(Logger::Level::Warning, msg, mbox); }
-    inline void logError(const std::string& msg, Logger::MsgBox mbox = Logger::MsgBox::Auto) { Logger::log(Logger::Level::Error, msg, mbox); }
+    inline void logError(const std::string& msg, Logger::MsgBox mbox = Logger::MsgBox::Auto, bool terminate = true) { Logger::log(Logger::Level::Error, msg, mbox, terminate); }
     inline void logFatal(const std::string& msg, Logger::MsgBox mbox = Logger::MsgBox::Auto) { Logger::log(Logger::Level::Fatal, msg, mbox); }
 }

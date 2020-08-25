@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -27,12 +27,9 @@
  **************************************************************************/
 #pragma once
 #include "LightBVH.h"
-
-#include "Utils/AlignedAllocator.h"
 #include "Utils/Math/BBox.h"
 #include "Utils/Math/Vector.h"
 #include "Utils/UI/Gui.h"
-
 #include <limits>
 #include <vector>
 
@@ -61,11 +58,11 @@ namespace Falcor
         /** Light BVH builder configuration options.
             Note if you change options, please update SCRIPT_BINDING in LightBVHBuilder.cpp
         */
-        struct Options : Falcor::ScriptBindings::enable_to_string
+        struct Options
         {
             SplitHeuristic splitHeuristicSelection = SplitHeuristic::BinnedSAOH; ///< Which splitting heuristic to use when building.
-            uint32_t       maxTriangleCountPerLeaf = 10u;                        ///< How many triangles to store at most per leaf node.
-            uint32_t       binCount = 16u;                                       ///< How many bins to use when building the BVH.
+            uint32_t       maxTriangleCountPerLeaf = 10;                         ///< How many triangles to store at most per leaf node.
+            uint32_t       binCount = 16;                                        ///< How many bins to use when building the BVH.
             float          volumeEpsilon = 1e-3f;                                ///< If a node has an AABB which is 0 along one (or more) of its dimensions, use this epsilon instead for that dimension. Only used when 'useVolumeOverSA' is enabled.
             bool           splitAlongLargest = false;                            ///< Rather than computing a split along each of the 3 dimensions and selecting the best one, only compute the split along the largest dimension.
             bool           useVolumeOverSA = false;                              ///< Use the volume rather than the surface area of the AABB, when computing a split cost.
@@ -97,7 +94,7 @@ namespace Falcor
             uint32_t end;
 
             Range(uint32_t _begin, uint32_t _end) : begin(_begin), end(_end) { assert(begin <= end); }
-            constexpr uint32_t middle() const noexcept { return (begin + end) / 2u; }
+            constexpr uint32_t middle() const noexcept { return (begin + end) / 2; }
             constexpr uint32_t length() const noexcept { return end - begin; }
         };
 
@@ -115,22 +112,23 @@ namespace Falcor
 
         struct TriangleSortData
         {
-            BBox bounds;                                ///< World-space bounding box for the light source(s).
-            float3 center = {};                         ///< Center point.
-            float3 coneDirection = {};                  ///< Light emission normal direction.
-            float cosConeAngle = 1.f;                   ///< Cosine normal bounding cone (half) angle.
-            float flux = 0.f;                           ///< Precomputed triangle flux (note, this takes doublesidedness into account).
-            uint32_t triangleIndex = kInvalidIndex;     ///< Index into global triangle list.
+            BBox bounds;                                    ///< World-space bounding box for the light source(s).
+            float3 center = {};                             ///< Center point.
+            float3 coneDirection = {};                      ///< Light emission normal direction.
+            float cosConeAngle = 1.f;                       ///< Cosine normal bounding cone (half) angle.
+            float flux = 0.f;                               ///< Precomputed triangle flux (note, this takes doublesidedness into account).
+            uint32_t triangleIndex = MeshLightData::kInvalidIndex; ///< Index into global triangle list.
         };
 
         struct BuildingData
         {
-            AlignedAllocator& alignedAllocator;                                 ///< Allocator used for allocating the BVH nodes.
-            std::vector<TriangleSortData> trianglesData;                        ///< Compact list of triangles to include in build.
-            std::vector<uint64_t> triangleBitmasks;                             ///< Array containing the per triangle bit pattern retracing the tree traversal to reach the triangle: 0=left child, 1=right child; this array gets filled in during the build process. Indexed by global triangle index.
-            float currentNodeFlux = 0.f;                                        ///< Used by computeSAOHSplit() as the leaf creation cost.
+            std::vector<PackedNode>& nodes;                 ///< BVH nodes generated by the builder.
+            std::vector<TriangleSortData> trianglesData;    ///< Compact list of triangles to include in build.
+            std::vector<uint32_t> triangleIndices;          ///< Triangle indices sorted by leaf node. Each leaf node refers to a contiguous array of triangle indices.
+            std::vector<uint64_t> triangleBitmasks;         ///< Array containing the per triangle bit pattern retracing the tree traversal to reach the triangle: 0=left child, 1=right child; this array gets filled in during the build process. Indexed by global triangle index.
+            float currentNodeFlux = 0.f;                    ///< Used by computeSAOHSplit() as the leaf creation cost.
 
-            BuildingData(AlignedAllocator& _allocator) : alignedAllocator(_allocator) {}
+            BuildingData(std::vector<PackedNode>& bvhNodes) : nodes(bvhNodes) {}
         };
 
         /** Compute the split according to a specified heuristic.
@@ -153,16 +151,17 @@ namespace Falcor
             \param[in] depth Depth of the node to be built
             \param[in] triangleRange Range of triangles to process.
             \param[in,out] data Prepared light data.
-            \return pointer to the allocated node.
+            \return Index of the allocated node.
         */
-        static void* buildInternal(const Options& options, const SplitHeuristicFunction& splitHeuristic, uint64_t bitmask, uint32_t depth, const Range& triangleRange, BuildingData& data);
+        uint32_t buildInternal(const Options& options, const SplitHeuristicFunction& splitHeuristic, uint64_t bitmask, uint32_t depth, const Range& triangleRange, BuildingData& data);
 
         /** Recursive computation of lighting cones for all internal nodes.
-            \param[in] nodesCurrentByteOffset Current offset to the start of the next free node (= size of current node data).
-            \param[out] cosConeAngle Cosine of the angle value of the lighting cone for the node located at nodesCurrentByteOffset, or kInvalidCosConeAngle if the cone is invalid.
-            \return  direction of the lighting cone for the node loacted at nodesCurrentByteOffset.
+            \param[in] nodeIndex Index of the current node.
+            \param[in,out] data Updated node data.
+            \param[out] cosConeAngle Cosine of the cone angle of the lighting cone for the current node, or kInvalidCosConeAngle if the cone is invalid.
+            \return direction of the lighting cone for the current node.
         */
-        float3 computeLightingConesInternal(uint32_t nodesCurrentByteOffset, AlignedAllocator& alignedAllocator, float& cosConeAngle);
+        float3 computeLightingConesInternal(const uint32_t nodeIndex, BuildingData& data, float& cosConeAngle);
 
         /** Compute lighting cone for a range of triangles.
             \param[in] triangleRange Range of triangles to process.
@@ -182,19 +181,4 @@ namespace Falcor
         // Configuration
         Options mOptions;
     };
-
-#define str(a) case LightBVHBuilder::SplitHeuristic::a: return #a
-    inline std::string to_string(LightBVHBuilder::SplitHeuristic a)
-    {
-        switch (a)
-        {
-            str(Equal);
-            str(BinnedSAH);
-            str(BinnedSAOH);
-        default:
-            should_not_get_here();
-            return "";
-        }
-    }
-#undef str
 }

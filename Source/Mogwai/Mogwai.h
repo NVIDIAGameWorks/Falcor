@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -41,22 +41,22 @@ namespace Mogwai
         class Bindings
         {
         public:
-            ScriptBindings::Module& getModule() { return mModule; }
-            ScriptBindings::Class<Renderer>& getMogwaiClass() { return mMogwai; }
+            pybind11::module& getModule() { return mModule; }
+            pybind11::class_<Renderer>& getMogwaiClass() { return mMogwai; }
             template<typename T>
             void addGlobalObject(const std::string& name, const T& obj, const std::string& desc)
             {
-                if (mGlobalObjects.find(name) != mGlobalObjects.end()) throw std::exception(("Object `" + name + "` already exists").c_str());
+                if (mGlobalObjects.find(name) != mGlobalObjects.end()) throw std::exception(("Object '" + name + "' already exists").c_str());
                 Scripting::getGlobalContext().setObject(name, obj);
                 mGlobalObjects[name] = desc;
             }
 
         private:
-            Bindings(ScriptBindings::Module& m, ScriptBindings::Class<Renderer>& c) : mModule(m), mMogwai(c) {}
+            Bindings(pybind11::module& m, pybind11::class_<Renderer>& c) : mModule(m), mMogwai(c) {}
             friend class Renderer;
             std::unordered_map<std::string, std::string> mGlobalObjects;
-            ScriptBindings::Module& mModule;
-            ScriptBindings::Class<Renderer>& mMogwai;
+            pybind11::module& mModule;
+            pybind11::class_<Renderer>& mMogwai;
         };
 
         using UniquePtr = std::unique_ptr<Extension>;
@@ -64,8 +64,12 @@ namespace Mogwai
 
         using CreateFunc = UniquePtr(*)(Renderer* pRenderer);
 
+        virtual const std::string& getName() const { return mName; }
         virtual void beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) {};
         virtual void endFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) {};
+        virtual bool hasWindow() const { return false; }
+        virtual bool isWindowShown() const { return false; }
+        virtual void toggleWindow() {}
         virtual void renderUI(Gui* pGui) {};
         virtual bool mouseEvent(const MouseEvent& e) { return false; }
         virtual bool keyboardEvent(const KeyboardEvent& e) { return false; }
@@ -74,12 +78,25 @@ namespace Mogwai
         virtual void addGraph(RenderGraph* pGraph) {};
         virtual void removeGraph(RenderGraph* pGraph) {};
         virtual void activeGraphChanged(RenderGraph* pNewGraph, RenderGraph* pPrevGraph) {};
+
+    protected:
+        Extension(Renderer* pRenderer, const std::string& name) : mpRenderer(pRenderer), mName(name) {}
+
+        Renderer* mpRenderer;
+        std::string mName;
     };
 
     class Renderer : public IRenderer
     {
     public:
-        Renderer();
+        struct Options
+        {
+            std::string scriptFile;
+            bool silentMode = false;
+        };
+
+        Renderer(const Options& options);
+
         void onLoad(RenderContext* pRenderContext) override;
         void onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
         void onResizeSwapChain(uint32_t width, uint32_t height) override;
@@ -92,20 +109,25 @@ namespace Mogwai
         void loadScriptDialog();
         void loadScriptDeferred(const std::string& filename);
         void loadScript(const std::string& filename);
-        void dumpConfig(std::string filename = {}) const;
+        void saveConfigDialog();
+        void saveConfig(const std::string& filename) const;
         static std::string getVersionString();
 
         static void extend(Extension::CreateFunc func, const std::string& name);
+        const std::vector<Extension::UniquePtr>& getExtensions() const { return mpExtensions; }
 
         static constexpr uint32_t kMajorVersion = 0;
         static constexpr uint32_t kMinorVersion = 1;
 
-        const AppData& getAppData() const { return mAppData; }
+        AppData& getAppData() { return mAppData; }
 
         RenderGraph* getActiveGraph() const;
 
 //    private: // MOGWAI
         friend class Extension;
+
+        Options mOptions;
+
         std::vector<Extension::UniquePtr> mpExtensions;
 
         struct DebugWindow
@@ -136,7 +158,7 @@ namespace Mogwai
         void removeActiveGraph();
         void loadSceneDialog();
         void loadScene(std::string filename, SceneBuilder::Flags buildFlags = SceneBuilder::Flags::Default);
-        void setScene(Scene::ConstSharedPtrRef pScene);
+        void setScene(const Scene::SharedPtr& pScene);
         Scene::SharedPtr getScene() const;
         void executeActiveGraph(RenderContext* pRenderContext);
         void beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo);
@@ -172,7 +194,7 @@ namespace Mogwai
         std::string mEditorScript;
 
         // Scripting
-        void registerScriptBindings(ScriptBindings::Module& m);
+        void registerScriptBindings(pybind11::module& m);
         std::string mGlobalHelpMessage;
     };
 

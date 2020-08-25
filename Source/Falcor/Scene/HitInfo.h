@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -48,13 +48,12 @@ namespace Falcor
             uint32_t maxTriangleCount = 0;
             for (uint32_t meshID = 0; meshID < pScene->getMeshCount(); meshID++)
             {
-                uint32_t triangleCount = pScene->getMesh(meshID).indexCount / 3;
+                uint32_t triangleCount = pScene->getMesh(meshID).getTriangleCount();
                 maxTriangleCount = std::max(triangleCount, maxTriangleCount);
             }
             uint32_t maxTriangleID = maxTriangleCount > 0 ? maxTriangleCount - 1 : 0;
             uint32_t triangleIndexBits = maxTriangleID > 0 ? bitScanReverse(maxTriangleID) + 1 : 0;
 
-            assert(instanceIndexBits > 0 && triangleIndexBits > 0);
             if (instanceIndexBits + triangleIndexBits > 32 ||
                 (instanceIndexBits + triangleIndexBits == 32 && ((maxInstanceID << triangleIndexBits) | maxTriangleID) == kInvalidIndex))
             {

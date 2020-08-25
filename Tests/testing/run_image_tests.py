@@ -138,18 +138,24 @@ class Test:
             f.write(f'm.script(r"{relative_to_cwd(self.script_file)}")\n')
 
         # Run Mogwai to generate images.
+        args = [
+            str(mogwai_exe),
+            '--script', str(relative_to_cwd(generate_file)),
+            '--logfile', str(output_dir / 'log.txt'),
+            '--silent'
+        ]
+        p = subprocess.Popen(args, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         try:
-            process = helpers.run_with_timeout([
-                mogwai_exe,
-                '-script', relative_to_cwd(generate_file),
-                '-logfile', output_dir / 'log.txt',
-                '-silent'
-            ], cwd=cwd, stderr=subprocess.PIPE, timeout=600)
-            if process.returncode != 0:
-                errors = list(map(lambda l: l.decode('utf-8').rstrip(), process.stderr.readlines()))
-                return Test.Result.FAILED, errors + [f'{mogwai_exe} exited with return code {process.returncode}']
-        except Exception as e:
-            return Test.Result.FAILED, [f'Error running {mogwai_exe}: {e}']
+            outs, errs = p.communicate(timeout=600)
+        except subprocess.TimeoutExpired:
+            p.kill()
+            return Test.Result.FAILED, ['Process killed due to timeout']
+
+        # Check for success.
+        if p.returncode != 0:
+            # Generate list of errors from stderr.
+            errors = list(map(lambda l: l.rstrip(), errs.decode('utf-8').splitlines()))
+            return Test.Result.FAILED, errors + [f'{mogwai_exe} exited with return code {p.returncode}']
 
         # Bail out if no images have been generated.
         if len(self.collect_images(output_dir)) == 0:

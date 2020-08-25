@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -157,7 +157,7 @@ namespace Falcor
 #ifdef FALCOR_VK
             std::string mShaderModel = "450";
 #elif defined FALCOR_D3D12
-            std::string mShaderModel = "6_0";
+            std::string mShaderModel = "6_2";
 #endif
         };
 
@@ -230,7 +230,7 @@ namespace Falcor
         /** Get the program reflection for the active program.
             \return Program reflection object, or an exception is thrown on failure.
         */
-        ProgramReflection::ConstSharedPtrRef getReflector() const { return getActiveVersion()->getReflector(); }
+        const ProgramReflection::SharedPtr& getReflector() const { return getActiveVersion()->getReflector(); }
 
         uint32_t getEntryPointGroupCount() const { return uint32_t(mDesc.mGroups.size()); }
         uint32_t getGroupEntryPointCount(uint32_t groupIndex) const { return mDesc.mGroups[groupIndex].entryPointCount; }

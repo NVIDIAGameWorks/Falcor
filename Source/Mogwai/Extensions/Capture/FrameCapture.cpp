@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -62,8 +62,14 @@ namespace Mogwai
     {
         if (mShowUI)
         {
-            auto w = Gui::Window(pGui, "Frame Capture", mShowUI, {}, { 400, 400 });
+            auto w = Gui::Window(pGui, mName.c_str(), mShowUI, {}, { 800, 400 });
+
             CaptureTrigger::renderUI(w);
+
+            w.checkbox("Capture All Outputs", mCaptureAllOutputs);
+            w.tooltip("Capture all available outputs instead of the marked ones only.");
+
+            if (w.button("Capture Current Frame")) capture();
         }
     }
 
@@ -71,30 +77,32 @@ namespace Mogwai
     {
         CaptureTrigger::scriptBindings(bindings);
         auto& m = bindings.getModule();
-        auto fc = m.class_<FrameCapture, CaptureTrigger>("FrameCapture");
+
+        pybind11::class_<FrameCapture, CaptureTrigger> frameCapture(m, "FrameCapture");
+
         bindings.addGlobalObject(kScriptVar, this, "Frame Capture Helpers");
 
         // Members
-        fc.func_(kFrames.c_str(), ScriptBindings::overload_cast<const RenderGraph*, const uint64_vec&>(&FrameCapture::addFrames)); // PYTHONDEPRECATED
-        fc.func_(kFrames.c_str(), ScriptBindings::overload_cast<const std::string&, const uint64_vec&>(&FrameCapture::addFrames)); // PYTHONDEPRECATED
-        fc.func_(kAddFrames.c_str(), ScriptBindings::overload_cast<const RenderGraph*, const uint64_vec&>(&FrameCapture::addFrames), "graph"_a, "frames"_a);
-        fc.func_(kAddFrames.c_str(), ScriptBindings::overload_cast<const std::string&, const uint64_vec&>(&FrameCapture::addFrames), "name"_a, "frames"_a);
+        frameCapture.def(kFrames.c_str(), pybind11::overload_cast<const RenderGraph*, const uint64_vec&>(&FrameCapture::addFrames)); // PYTHONDEPRECATED
+        frameCapture.def(kFrames.c_str(), pybind11::overload_cast<const std::string&, const uint64_vec&>(&FrameCapture::addFrames)); // PYTHONDEPRECATED
+        frameCapture.def(kAddFrames.c_str(), pybind11::overload_cast<const RenderGraph*, const uint64_vec&>(&FrameCapture::addFrames), "graph"_a, "frames"_a);
+        frameCapture.def(kAddFrames.c_str(), pybind11::overload_cast<const std::string&, const uint64_vec&>(&FrameCapture::addFrames), "name"_a, "frames"_a);
 
         auto printGraph = [](FrameCapture* pFC, RenderGraph* pGraph) { pybind11::print(pFC->graphFramesStr(pGraph)); };
-        fc.func_(kPrintFrames.c_str(), printGraph, "graph"_a);
-        fc.func_(kCapture.c_str(), &FrameCapture::capture);
+        frameCapture.def(kPrintFrames.c_str(), printGraph, "graph"_a);
+        frameCapture.def(kCapture.c_str(), &FrameCapture::capture);
         auto printAllGraphs = [](FrameCapture* pFC)
         {
             std::string s;
-            for (const auto& g : pFC->mGraphRanges) {s += "`" + g.first->getName() + "`:\n" + pFC->graphFramesStr(g.first) + "\n";}
+            for (const auto& g : pFC->mGraphRanges) {s += "'" + g.first->getName() + "':\n" + pFC->graphFramesStr(g.first) + "\n";}
             pybind11::print(s.empty() ? "Empty" : s);
         };
-        fc.func_(kPrintFrames.c_str(), printAllGraphs);
+        frameCapture.def(kPrintFrames.c_str(), printAllGraphs);
 
         // Settings
         auto getUI = [](FrameCapture* pFC) { return pFC->mShowUI; };
         auto setUI = [](FrameCapture* pFC, bool show) { pFC->mShowUI = show; };
-        fc.property(kUI.c_str(), getUI, setUI);
+        frameCapture.def_property(kUI.c_str(), getUI, setUI);
     }
 
     std::string FrameCapture::getScript()
@@ -113,15 +121,30 @@ namespace Mogwai
 
     void FrameCapture::triggerFrame(RenderContext* pCtx, RenderGraph* pGraph, uint64_t frameID)
     {
+        std::vector<std::string> unmarkedOutputs;
+
+        if (mCaptureAllOutputs)
+        {
+            // Mark all outputs and (re)execute the graph.
+            unmarkedOutputs = pGraph->getUnmarkedOutputs();
+            for (const auto& output : unmarkedOutputs) pGraph->markOutput(output);
+            pGraph->execute(pCtx);
+        }
+
         for (uint32_t i = 0 ; i < pGraph->getOutputCount() ; i++)
         {
             Texture* pTex = pGraph->getOutput(i)->asTexture().get();
             assert(pTex);
-            std::string filename = getOutputNamePrefix(pGraph->getOutputName(i)) + to_string(gpFramework->getGlobalClock().getFrame()) + ".";;
             auto ext = Bitmap::getFileExtFromResourceFormat(pTex->getFormat());
-            filename += ext;
             auto format = Bitmap::getFormatFromFileExtension(ext);
+            std::string filename = getOutputNamePrefix(pGraph->getOutputName(i)) + std::to_string(gpFramework->getGlobalClock().getFrame()) + "." + ext;
             pTex->captureToFile(0, 0, filename, format);
+        }
+
+        if (mCaptureAllOutputs && !unmarkedOutputs.empty())
+        {
+            for (const auto& output : unmarkedOutputs) pGraph->unmarkOutput(output);
+            pGraph->compile(pCtx);
         }
     }
 
@@ -133,7 +156,7 @@ namespace Mogwai
     void FrameCapture::addFrames(const std::string& graphName, const uint64_vec& frames)
     {
         auto pGraph = mpRenderer->getGraph(graphName).get();
-        if (!pGraph) throw std::runtime_error("Can't find a graph named `" + graphName + "`");
+        if (!pGraph) throw std::runtime_error("Can't find a graph named '" + graphName + "'");
         this->addFrames(pGraph, frames);
     }
 
@@ -141,7 +164,7 @@ namespace Mogwai
     {
         const auto& ranges = mGraphRanges[pGraph];
         std::string s("\t");
-        s += kFrames + " = " + to_string(getFirstOfPair(ranges));
+        s += kFrames + " = " + ScriptBindings::repr(getFirstOfPair(ranges));
         return s;
     }
 

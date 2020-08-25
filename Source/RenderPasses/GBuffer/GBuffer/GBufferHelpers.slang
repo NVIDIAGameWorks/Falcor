@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -30,6 +30,7 @@
 */
 
 import GBufferParams;
+import Scene.SceneTypes;
 import Utils.Math.MathHelpers;
 __exported import Experimental.Scene.Material.MaterialHelpers;
 
@@ -37,7 +38,7 @@ struct GBuffer
 {
     float4 posW;
     float4 normW;
-    float4 bitangentW;
+    float4 tangentW;
     float4 texC;
     float4 diffuseOpacity;
     float4 specRough;
@@ -52,17 +53,17 @@ cbuffer PerFrameCB
 
 /** Helper function to store G-buffer channels.
 */
-GBuffer storeGBufferOutput(ShadingData sd)
+GBuffer storeGBufferOutput(ShadingData sd, VertexData v)
 {
     GBuffer gbuf;
 
     // Check that tangent space exists, otherwise create one based on the normal.
     // Note that this check also catches NaNs, should they occur.
-    float3 bitangent = dot(sd.B, sd.B) > 0.f ? sd.B : perp_stark(sd.N);
+    float4 tangent = v.tangentW.w != 0.f ? v.tangentW : float4(perp_stark(sd.N), 1.f);
 
     gbuf.posW           = float4(sd.posW, 1.f);
     gbuf.normW          = float4(sd.N, 0.f);
-    gbuf.bitangentW     = float4(bitangent, 0.f);
+    gbuf.tangentW       = tangent;
     gbuf.texC           = float4(sd.uv, 0.f, 0.f);
 
     MaterialParams matParams = getMaterialParams(sd);

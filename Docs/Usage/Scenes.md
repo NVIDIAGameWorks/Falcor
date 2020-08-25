@@ -2,13 +2,13 @@
 
 --------
 
-# Scene
+# Scenes
 
 The Scene class manages all of the data required to describe a scene. This includes:
 - Scene Graph
 - Meshes
 - Lights
-- One camera
+- Cameras
 - Animations (Skinned and Paths)
 - Environment Map
 - Acceleration Structures (DirectX Raytracing only)
@@ -17,7 +17,7 @@ Once a Scene instance has been created, no objects may be added or removed, but 
 
 ## Cameras
 
-Scenes only contain one active camera. The first camera loaded from a model file will become the active camera. If no cameras are loaded, a default camera will be created automatically.
+Scenes can contain multiple cameras but only one is active. The first camera loaded from a model file will become the active camera. If no cameras are loaded, a default camera will be created automatically.
 
 Scenes also provide functionality for controlling cameras with keyboard/mouse in the following modes:
 - First Person
@@ -98,7 +98,7 @@ void Scene::raytrace(RenderContext* pContext, const std::shared_ptr<RtState>& pS
 
 ## Shaders
 
-The GPU data structure for each scene is described in `Scene/Scene.slang`, and is accessed through the global `gScene`. There are also a few helper functions to simplify data lookup. 
+The GPU data structure for each scene is described in `Scene/Scene.slang`, and is accessed through the global `gScene`. There are also a few helper functions to simplify data lookup.
 
 To access the scene in your shaders, you must import `Scene/Scene.slang` at the top of your file:
 ```
@@ -110,7 +110,7 @@ import Scene.Scene;
 SceneBuilder::SharedPtr pBuilder = SceneBuilder::create(filename, flags);
 Scene::SharedPtr pScene = pBuilder->getScene();
 
-GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("pixel_shader.hlsl", "", "main");
+GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("pixel_shader.slang", "", "main");
 pProgram->addDefines(pScene->getSceneDefines()); // First add defines from the scene
 GraphicsVars::SharedPtr pProgramVars = GraphicsVars::create(pProgram->getReflector()); // Then use
 ```
@@ -130,7 +130,8 @@ import Scene.Raster;
 
 float4 main(VSOut vertexOut, float4 pixelCrd : SV_POSITION, uint triangleIndex : SV_PrimitiveID) : SV_TARGET
 {
-    ShadingData sd = prepareShadingData(vertexOut, triangleIndex, gScene.camera.posW);
+    float3 viewDir = normalize(gScene.camera.getPosition() - vOut.posW);
+    ShadingData sd = prepareShadingData(vertexOut, triangleIndex, viewDir);
     ...
 }
 ```
@@ -143,11 +144,11 @@ Use the helper function in `Scene/Raytracing.slang` called `uint getGlobalHitID(
 import Scene.Raytracing;
 
 [shader("closesthit")]
-void primaryClosestHit(inout PrimaryRayData hitData, in BuiltInTriangleIntersectionAttributes attribs)
+void primaryClosestHit(uniform HitShaderParams hitParams, inout PrimaryRayData hitData, in BuiltInTriangleIntersectionAttributes attribs)
 {
-    VertexData v = getVertexData(PrimitiveIndex(), attribs);
-    ShadingData sd = prepareShadingData(v, gScene.materials[gScene.getMaterialID(getGlobalHitID())], WorldRayOrigin(), 0);
-
+    VertexData v = getVertexData(hitParams, PrimitiveIndex(), attribs);
+    uint materialID = gScene.getMaterialID(hitParams.getGlobalHitID());
+    ShadingData sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -WorldRayDirection(), 0);
     ...
 }
 ```

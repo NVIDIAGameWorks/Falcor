@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -45,10 +45,10 @@ namespace Falcor
             const ReflectionResourceType* pResourceType = pType->unwrapArray()->asResourceType();
             if (!pResourceType || pResourceType->getType() != ReflectionResourceType::Type::StructuredBuffer)
             {
-                throw std::exception(("Can't create a structured buffer from the variable `" + varName + "`. The variable is not a structured buffer.").c_str());
+                throw std::exception(("Can't create a structured buffer from the variable '" + varName + "'. The variable is not a structured buffer.").c_str());
             }
 
-            assert(pResourceType->getSize() <= UINT32_MAX);
+            assert(pResourceType->getSize() <= std::numeric_limits<uint32_t>::max());
             return Buffer::createStructured((uint32_t)pResourceType->getSize(), elementCount, bindFlags, cpuAccess, pInitData, createCounter);
         }
     }
@@ -127,7 +127,7 @@ namespace Falcor
         const ReflectionVar* pVar = pDefaultBlock ? pDefaultBlock->getResource(name).get() : nullptr;
         if (pVar == nullptr)
         {
-            throw std::exception(("Can't find a structured buffer named `" + name + "` in the program").c_str());
+            throw std::exception(("Can't find a structured buffer named '" + name + "' in the program").c_str());
         }
         return createStructuredFromType(pVar->getType().get(), name, elementCount, bindFlags, cpuAccess, pInitData, createCounter);
     }
@@ -150,8 +150,8 @@ namespace Falcor
 
         if (offset >= pBaseResource->getSize() || (offset + size) >= pBaseResource->getSize())
         {
-            logError("Buffer::aliasResource() - requested offset and size don't fit inside the alias resource dimensions. Requesed size = " +
-                to_string(size) + ", offset = " + to_string(offset) + ". Aliased resource size = " + to_string(pBaseResource->getSize()));
+            logError("Buffer::aliasResource() - requested offset and size don't fit inside the alias resource dimensions. Requested size = " +
+                std::to_string(size) + ", offset = " + std::to_string(offset) + ". Aliased resource size = " + std::to_string(pBaseResource->getSize()));
             return nullptr;
         }
 
@@ -204,7 +204,7 @@ namespace Falcor
     {
         auto createFunc = [](Buffer* pBuffer, uint32_t firstElement, uint32_t elementCount)
         {
-            return ShaderResourceView::create(pBuffer->shared_from_this(), firstElement, elementCount);
+            return ShaderResourceView::create(std::static_pointer_cast<Buffer>(pBuffer->shared_from_this()), firstElement, elementCount);
         };
 
         return findViewCommon<ShaderResourceView>(this, firstElement, elementCount, mSrvs, createFunc);
@@ -219,7 +219,7 @@ namespace Falcor
     {
         auto createFunc = [](Buffer* pBuffer, uint32_t firstElement, uint32_t elementCount)
         {
-            return UnorderedAccessView::create(pBuffer->shared_from_this(), firstElement, elementCount);
+            return UnorderedAccessView::create(std::static_pointer_cast<Buffer>(pBuffer->shared_from_this()), firstElement, elementCount);
         };
 
         return findViewCommon<UnorderedAccessView>(this, firstElement, elementCount, mUavs, createFunc);
@@ -318,12 +318,12 @@ namespace Falcor
 
     ConstantBufferView::SharedPtr Buffer::getCBV()
     {
-        if (!mpCBV) mpCBV = ConstantBufferView::create(shared_from_this());
+        if (!mpCBV) mpCBV = ConstantBufferView::create(std::static_pointer_cast<Buffer>(shared_from_this()));
         return mpCBV;
     }
 
     SCRIPT_BINDING(Buffer)
     {
-        m.regClass(Buffer);
+        pybind11::class_<Buffer, Buffer::SharedPtr>(m, "Buffer");
     }
 }

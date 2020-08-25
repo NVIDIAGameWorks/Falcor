@@ -22,9 +22,11 @@
     <ClCompile Include="Tests\DebugPasses\InvalidPixelDetectionTests.cpp" />
     <ClCompile Include="Tests\Sampling\PseudorandomTests.cpp" />
     <ClCompile Include="Tests\Sampling\SampleGeneratorTests.cpp" />
-    <ClCompile Include="Tests\Scene\EnvProbeTests.cpp" />
+    <ClCompile Include="Tests\Scene\EnvMapTests.cpp" />
     <ClCompile Include="Tests\ShadingUtils\RaytracingTests.cpp" />
     <ClCompile Include="Tests\ShadingUtils\ShadingUtilsTests.cpp" />
+    <ClCompile Include="Tests\Slang\Float16Tests.cpp" />
+    <ClCompile Include="Tests\Slang\Float64Tests.cpp" />
     <ClCompile Include="Tests\Slang\Int64Tests.cpp" />
     <ClCompile Include="Tests\Slang\ShaderModel.cpp" />
     <ClCompile Include="Tests\Slang\SlangMutatingTests.cpp" />
@@ -40,6 +42,7 @@
     <ClCompile Include="Tests\Utils\HalfUtilsTests.cpp" />
     <ClCompile Include="Tests\Utils\HashUtilsTests.cpp" />
     <ClCompile Include="Tests\Utils\MathHelpersTests.cpp" />
+    <ClCompile Include="Tests\Utils\PackedFormatsTests.cpp" />
     <ClCompile Include="Tests\Utils\ParallelReductionTests.cpp" />
     <ClCompile Include="Tests\Utils\PrefixSumTests.cpp" />
   </ItemGroup>
@@ -60,6 +63,8 @@
     <ShaderSource Include="Tests\Sampling\SampleGeneratorTests.cs.slang" />
     <ShaderSource Include="Tests\ShadingUtils\RaytracingTests.cs.slang" />
     <ShaderSource Include="Tests\ShadingUtils\ShadingUtilsTests.cs.slang" />
+    <ShaderSource Include="Tests\Slang\Float16Tests.cs.slang" />
+    <ShaderSource Include="Tests\Slang\Float64Tests.cs.slang" />
     <ShaderSource Include="Tests\Slang\Int64Tests.cs.slang" />
     <ShaderSource Include="Tests\Slang\ShaderModel.cs.slang" />
     <ShaderSource Include="Tests\Slang\SlangMutatingTests.cs.slang" />
@@ -73,6 +78,7 @@
     <ShaderSource Include="Tests\Utils\HalfUtilsTests.cs.slang" />
     <ShaderSource Include="Tests\Utils\HashUtilsTests.cs.slang" />
     <ShaderSource Include="Tests\Utils\MathHelpersTests.cs.slang" />
+    <ShaderSource Include="Tests\Utils\PackedFormatsTests.cs.slang" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Falcor\Falcor.vcxproj">

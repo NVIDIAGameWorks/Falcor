@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -27,19 +27,11 @@
  **************************************************************************/
 #include "stdafx.h"
 #include "ShaderTable.h"
-#include "Scene/Scene.h"
 #include "RtProgram/RtProgram.h"
 #include "RtProgramVars.h"
 
 namespace Falcor
 {
-    ShaderTable::ShaderTable()
-    {}
-
-    ShaderTable::~ShaderTable()
-    {
-    }
-
     ShaderTable::SharedPtr ShaderTable::create()
     {
         return SharedPtr(new ShaderTable());
@@ -49,41 +41,36 @@ namespace Falcor
     {
         auto info = getSubTableInfo(type);
         assert(index < info.recordCount);
-        return &mData[0] + info.offset + index*info.recordSize;
+        return &mData[0] + info.offset + index * info.recordSize;
     }
 
     static RtEntryPointGroupKernels* getUniqueRtEntryPointGroup(const ProgramKernels::SharedConstPtr& pKernels, int32_t index)
     {
-        if(index < 0) return nullptr;
+        if (index < 0) return nullptr;
         auto pEntryPointGroup = pKernels->getUniqueEntryPointGroup(index);
         assert(dynamic_cast<RtEntryPointGroupKernels*>(pEntryPointGroup.get()));
         return static_cast<RtEntryPointGroupKernels*>(pEntryPointGroup.get());
     }
 
-    void ShaderTable::update(
-        RenderContext*          pCtx,
-        RtStateObject*          pRtso,
-        RtProgramVars const*    pVars,
-        Scene*                  pScene)
+    void ShaderTable::update(RenderContext* pCtx, RtStateObject* pRtso, RtProgramVars const* pVars)
     {
         mpRtso = pRtso;
-        auto meshInstanceCount = pScene->getMeshInstanceCount();
 
         auto pKernels = pRtso->getKernels();
         auto pProgram = static_cast<RtProgram*>(pKernels->getProgramVersion()->getProgram().get());
 
-        for( uint32_t i = 0; i < uint32_t(SubTableType::Count); ++i )
+        for (uint32_t i = 0; i < uint32_t(SubTableType::Count); ++i)
         {
             mSubTables[i].offset = 0;
             mSubTables[i].recordCount = 0;
             mSubTables[i].recordSize = 0;
         }
 
-        mSubTables[uint32_t(SubTableType::Hit)].recordCount = pVars->getTotalHitVarsCount();
-        mSubTables[uint32_t(SubTableType::Miss)].recordCount = pVars->getMissVarsCount();
         mSubTables[uint32_t(SubTableType::RayGen)].recordCount = pVars->getRayGenVarsCount();
+        mSubTables[uint32_t(SubTableType::Miss)].recordCount = pVars->getMissVarsCount();
+        mSubTables[uint32_t(SubTableType::Hit)].recordCount = pVars->getTotalHitVarsCount();
 
-        for( auto pUniqueEntryPointGroup : pKernels->getUniqueEntryPointGroups() )
+        for (auto pUniqueEntryPointGroup : pKernels->getUniqueEntryPointGroups())
         {
             auto pEntryPointGroup = static_cast<RtEntryPointGroupKernels*>(pUniqueEntryPointGroup.get());
 
@@ -114,7 +101,7 @@ namespace Falcor
         }
 
         uint32_t subTableOffset = 0;
-        for( uint32_t i = 0; i < uint32_t(SubTableType::Count); ++i )
+        for (uint32_t i = 0; i < uint32_t(SubTableType::Count); ++i)
         {
             auto& info = mSubTables[i];
 
@@ -131,7 +118,7 @@ namespace Falcor
         mData.resize(shaderTableBufferSize);
 
         // Create a buffer
-        if( !mpBuffer || mpBuffer->getSize() < shaderTableBufferSize )
+        if (!mpBuffer || mpBuffer->getSize() < shaderTableBufferSize)
         {
             mpBuffer = Buffer::create(shaderTableBufferSize, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None);
         }
@@ -139,8 +126,7 @@ namespace Falcor
         pCtx->updateBuffer(mpBuffer.get(), mData.data());
     }
 
-    void ShaderTable::flushBuffer(
-        RenderContext*          pCtx)
+    void ShaderTable::flushBuffer(RenderContext* pCtx)
     {
         pCtx->updateBuffer(mpBuffer.get(), mData.data());
     }

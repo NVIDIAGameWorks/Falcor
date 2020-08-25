@@ -13,9 +13,6 @@
   <ItemGroup>
     <ClCompile Include="ImageCompare.cpp" />
   </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="args.h" />
-  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{8F6B5FAB-30FA-45C6-B5EA-BCD1D26781C0}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>

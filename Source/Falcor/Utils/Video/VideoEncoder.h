@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -92,21 +92,4 @@ namespace Falcor
         uint32_t mRowPitch = 0;
         uint8_t* mpFlippedImage = nullptr; // Used in case the image memory layout if bottom->top
     };
-
-    inline std::string to_string(VideoEncoder::Codec c)
-    {
-#define c2s(c_) case VideoEncoder::Codec::c_: return #c_
-        switch (c)
-        {
-            c2s(Raw);
-            c2s(H264);
-            c2s(HEVC);
-            c2s(MPEG2);
-            c2s(MPEG4);
-        default:
-            should_not_get_here();
-            return "";
-        }
-#undef c2s
-    }
 }

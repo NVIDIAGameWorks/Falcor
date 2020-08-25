@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 
-/** enum for texture level-of-detail -- see TexLODHelpers.slang
+/** Enums for texture level-of-detail -- see TexLODHelpers.slang
 */
 
 #pragma once
@@ -49,23 +49,20 @@ enum class TexLODMode
     RayDiffsAnisotropic = 3,
 };
 
-// Define to_string() for TexLODMode for use in serialization.
+/** This enum is shared between CPU/GPU.
+    It enumerates the different the ray cone modes. RayTracingGems1 uses the G-buffer to store the surface spread angle. Combo and Unified avoid the G-buffer.
+    Combo uses ray differntials to compute the spread at the first hit and then average edge curvature for all hits after that.
+    Unified uses interpolated edge curvatures for the first hit and then average edge curvatures for all hits after that.
+*/
+enum class RayConeMode
+    // TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
 #ifdef HOST_CODE
-#define str(a) case TexLODMode::a: return #a
-inline std::string to_string(TexLODMode type)
-{
-    switch (type)
-    {
-        str(Mip0);
-        str(RayCones);
-        str(RayDiffsIsotropic);
-        str(RayDiffsAnisotropic);
-    default:
-        should_not_get_here();
-        return "";
-    }
-}
-#undef str
+    : uint32_t
 #endif
+{
+    RayTracingGems1 = 0,
+    Combo = 1,
+    Unified = 2,
+};
 
 END_NAMESPACE_FALCOR

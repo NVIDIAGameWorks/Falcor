@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -105,7 +105,7 @@ namespace Falcor
         */
         TypedShaderVarOffset getOffset() const { return mOffset; }
 
-        /** Get the byte offset that this shader variable points to inside the parameter block.   
+        /** Get the byte offset that this shader variable points to inside the parameter block.
             Note: If the type of the value being pointed at includes anything other than ordinary/uniform data, then this byte offset will not provide
             complete enough information to re-create the same `ShaderVar` later.
         */
@@ -182,7 +182,7 @@ namespace Falcor
         /** Set a buffer into this variable
             Logs an error and returns `false` if this variable doesn't point at a buffer
         */
-        bool setBuffer(Buffer::ConstSharedPtrRef pBuffer) const;
+        bool setBuffer(const Buffer::SharedPtr& pBuffer) const;
 
         /** Set the texture that this variable points to.
             Logs an error and returns `false` if this variable doesn't point at a texture.
@@ -379,7 +379,7 @@ namespace Falcor
         bool setImpl(const Sampler::SharedPtr& pSampler) const;
         bool setImpl(const Buffer::SharedPtr& pBuffer) const;
         bool setImpl(const std::shared_ptr<ParameterBlock>& pBlock) const;
-            
+
         template<typename T>
         bool setImpl(const ParameterBlockSharedPtr<T>& pBlock) const
         {

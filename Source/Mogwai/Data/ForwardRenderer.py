@@ -7,16 +7,16 @@ def render_graph_forward_renderer():
     loadRenderPassLibrary("SSAO.dll")
     loadRenderPassLibrary("ToneMapper.dll")
 
-    skyBox = RenderPass("SkyBox")
+    skyBox = createPass("SkyBox")
 
     forward_renderer = RenderGraph("ForwardRenderer")
-    forward_renderer.addPass(RenderPass("DepthPass"), "DepthPrePass")
-    forward_renderer.addPass(RenderPass("ForwardLightingPass"), "LightingPass")
-    forward_renderer.addPass(RenderPass("CSM"), "ShadowPass")
-    forward_renderer.addPass(RenderPass("BlitPass"), "BlitPass")
-    forward_renderer.addPass(RenderPass("ToneMapper", {'autoExposure': True}), "ToneMapping")
-    forward_renderer.addPass(RenderPass("SSAO"), "SSAO")
-    forward_renderer.addPass(RenderPass("FXAA"), "FXAA")
+    forward_renderer.addPass(createPass("DepthPass"), "DepthPrePass")
+    forward_renderer.addPass(createPass("ForwardLightingPass"), "LightingPass")
+    forward_renderer.addPass(createPass("CSM"), "ShadowPass")
+    forward_renderer.addPass(createPass("BlitPass"), "BlitPass")
+    forward_renderer.addPass(createPass("ToneMapper", {'autoExposure': True}), "ToneMapping")
+    forward_renderer.addPass(createPass("SSAO"), "SSAO")
+    forward_renderer.addPass(createPass("FXAA"), "FXAA")
 
     forward_renderer.addPass(skyBox, "SkyBox")
 

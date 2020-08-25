@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -37,6 +37,7 @@ import HitInfo;
 import TextureSampler;
 import Utils.Attributes;
 import Experimental.Scene.Lights.LightCollection;
+import Experimental.Scene.Lights.EnvMap;
 import Experimental.Scene.Material.TexLODHelpers;
 
 #ifndef MATERIAL_COUNT
@@ -50,7 +51,7 @@ import Experimental.Scene.Material.TexLODHelpers;
 struct Scene
 {
     // Geometry
-    [root] StructuredBuffer<MeshInstanceData> meshInstances;
+    [root] StructuredBuffer<PackedMeshInstanceData> meshInstances;
     StructuredBuffer<MeshDesc> meshes;
 
     [root] StructuredBuffer<float4> worldMatrices;
@@ -59,19 +60,21 @@ struct Scene
 
     [root] StructuredBuffer<PackedStaticVertexData> vertices;       ///< Vertex data for this frame.
     StructuredBuffer<PrevVertexData> prevVertices;                  ///< Vertex data for the previous frame, to handle skinned meshes.
+#if INDEXED_VERTICES
     [root] ByteAddressBuffer indices;                               ///< Vertex indices, three 32-bit indices per triangle packed tightly.
+#endif
 
     // Materials
     StructuredBuffer<MaterialData> materials;
     MaterialResources materialResources[MATERIAL_COUNT];
 
     // Lights and camera
+    uint lightCount;
     StructuredBuffer<LightData> lights;
     LightCollection lightCollection;
     LightProbeData lightProbe;
-    Texture2D envMap;
+    EnvMap envMap;
     Camera camera;
-
 
     float4x4 loadWorldMatrix(uint matrixID)
     {
@@ -87,7 +90,7 @@ struct Scene
 
     float4x4 getWorldMatrix(uint meshInstanceID)
     {
-        uint matrixID = meshInstances[meshInstanceID].globalMatrixID;
+        uint matrixID = meshInstances[meshInstanceID].unpack().globalMatrixID;
         return loadWorldMatrix(matrixID);
     };
 
@@ -104,13 +107,13 @@ struct Scene
 
     float3x3 getInverseTransposeWorldMatrix(uint meshInstanceID)
     {
-        uint matrixID = meshInstances[meshInstanceID].globalMatrixID;
+        uint matrixID = meshInstances[meshInstanceID].unpack().globalMatrixID;
         return loadInverseTransposeWorldMatrix(matrixID);
     };
 
     float4x4 getPrevWorldMatrix(uint meshInstanceID)
     {
-        uint matrixID = meshInstances[meshInstanceID].globalMatrixID;
+        uint matrixID = meshInstances[meshInstanceID].unpack().globalMatrixID;
 
         float4x4 m =
         {
@@ -139,19 +142,17 @@ struct Scene
 
     MeshInstanceData getMeshInstance(uint meshInstanceID)
     {
-        return meshInstances[meshInstanceID];
+        return meshInstances[meshInstanceID].unpack();
     }
 
     MeshDesc getMeshDesc(uint meshInstanceID)
     {
-        return meshes[meshInstances[meshInstanceID].meshID];
+        return meshes[meshInstances[meshInstanceID].unpack().meshID];
     }
 
     uint getLightCount()
     {
-        uint count, stride;
-        lights.GetDimensions(count, stride);
-        return count;
+        return lightCount;
     }
 
     LightData getLight(uint lightIndex)
@@ -161,7 +162,7 @@ struct Scene
 
     bool isWorldMatrixFlippedWinding(uint meshInstanceID)
     {
-        return (meshInstances[meshInstanceID].flags & uint(MeshInstanceFlags::Flipped)) != 0;
+        return (meshInstances[meshInstanceID].unpack().flags & uint(MeshInstanceFlags::Flipped)) != 0;
     }
 
 
@@ -174,8 +175,13 @@ struct Scene
     */
     uint3 getIndices(uint meshInstanceID, uint triangleIndex)
     {
+#if INDEXED_VERTICES
         uint baseIndex = meshInstances[meshInstanceID].ibOffset + (triangleIndex * 3);
         uint3 vtxIndices = indices.Load3(baseIndex * 4);
+#else
+        uint baseIndex = triangleIndex * 3;
+        uint3 vtxIndices = { baseIndex, baseIndex + 1, baseIndex + 2 };
+#endif
         vtxIndices += meshInstances[meshInstanceID].vbOffset;
         return vtxIndices;
     }
@@ -279,30 +285,32 @@ struct Scene
         \param[in] meshInstanceID The mesh instance ID.
         \param[in] triangleIndex Index of the triangle in the given mesh.
         \param[in] barycentrics Barycentric coordinates in the triangle.
+        \param[out] Unpacked fetched vertices which can be used for further computations involving individual vertices.
         \return Interpolated vertex attributes.
     */
-    VertexData getVertexData(uint meshInstanceID, uint triangleIndex, float3 barycentrics)
+    VertexData getVertexData(uint meshInstanceID, uint triangleIndex, float3 barycentrics, out StaticVertexData vertices[3])
     {
         const uint3 vtxIndices = getIndices(meshInstanceID, triangleIndex);
         VertexData v = {};
 
-        StaticVertexData vtx[3] = { gScene.getVertex(vtxIndices[0]), gScene.getVertex(vtxIndices[1]), gScene.getVertex(vtxIndices[2]) };
+        vertices = { gScene.getVertex(vtxIndices[0]), gScene.getVertex(vtxIndices[1]), gScene.getVertex(vtxIndices[2]) };
 
-        v.posW += vtx[0].position * barycentrics[0];
-        v.posW += vtx[1].position * barycentrics[1];
-        v.posW += vtx[2].position * barycentrics[2];
+        v.posW += vertices[0].position * barycentrics[0];
+        v.posW += vertices[1].position * barycentrics[1];
+        v.posW += vertices[2].position * barycentrics[2];
 
-        v.normalW += vtx[0].normal * barycentrics[0];
-        v.normalW += vtx[1].normal * barycentrics[1];
-        v.normalW += vtx[2].normal * barycentrics[2];
+        v.normalW += vertices[0].normal * barycentrics[0];
+        v.normalW += vertices[1].normal * barycentrics[1];
+        v.normalW += vertices[2].normal * barycentrics[2];
 
-        v.bitangentW += vtx[0].bitangent * barycentrics[0];
-        v.bitangentW += vtx[1].bitangent * barycentrics[1];
-        v.bitangentW += vtx[2].bitangent * barycentrics[2];
+        v.tangentW += vertices[0].tangent * barycentrics[0];
+        v.tangentW += vertices[1].tangent * barycentrics[1];
+        v.tangentW += vertices[2].tangent * barycentrics[2];
+        v.tangentW.w = sign(v.tangentW.w); // Preserve zero to indicate invalid tangent.
 
-        v.texC += vtx[0].texCrd * barycentrics[0];
-        v.texC += vtx[1].texCrd * barycentrics[1];
-        v.texC += vtx[2].texCrd * barycentrics[2];
+        v.texC += vertices[0].texCrd * barycentrics[0];
+        v.texC += vertices[1].texCrd * barycentrics[1];
+        v.texC += vertices[2].texCrd * barycentrics[2];
 
         v.faceNormalW = getFaceNormalInObjectSpace(vtxIndices);
 
@@ -312,13 +320,25 @@ struct Scene
         v.posW = mul(float4(v.posW, 1.f), worldMat).xyz;
         v.normalW = mul(v.normalW, worldInvTransposeMat);
         v.faceNormalW = mul(v.faceNormalW, worldInvTransposeMat);
-        v.bitangentW = mul(v.bitangentW, (float3x3)worldMat);
+        v.tangentW.xyz = mul(v.tangentW.xyz, (float3x3)worldMat);
 
         v.normalW = normalize(v.normalW);
         v.faceNormalW = normalize(v.faceNormalW);
-        // Handle invalid bitangents gracefully (avoid NaN from normalization).
-        v.bitangentW = dot(v.bitangentW, v.bitangentW) > 0.f ? normalize(v.bitangentW) : float3(0, 0, 0);
+        // Handle invalid tangents gracefully (avoid NaN from normalization).
+        v.tangentW.xyz = v.tangentW.w != 0.f ? normalize(v.tangentW.xyz) : float3(0, 0, 0);
         return v;
+    }
+
+    /** Returns the interpolated vertex attributes for a given triangle.
+        \param[in] meshInstanceID The mesh instance ID.
+        \param[in] triangleIndex Index of the triangle in the given mesh.
+        \param[in] barycentrics Barycentric coordinates in the triangle.
+        \return Interpolated vertex attributes.
+    */
+    VertexData getVertexData(uint meshInstanceID, uint triangleIndex, float3 barycentrics)
+    {
+        StaticVertexData vertices[3];
+        return getVertexData(meshInstanceID, triangleIndex, barycentrics, vertices);
     }
 
     /** Returns the interpolated vertex attributes for a given hitpoint.
@@ -330,78 +350,27 @@ struct Scene
         return getVertexData(hit.meshInstanceID, hit.primitiveIndex, hit.getBarycentricWeights());
     }
 
-    /** Returns interpolated vertex attributes in a ray tracing hit program when ray cones are used for texture LOD.
-        \param[in] meshInstanceID The mesh instance ID.
-        \param[in] triangleIndex Index of the triangle in the given mesh.
-        \param[in] barycentrics Barycentric coordinates in the triangle.
+    /** Returns the interpolated vertex attributes for a given hitpoint.
+        \param[in] hit Hit info.
+        \param[out] Unpacked fetched vertices which can be used for further computations involving individual vertices.
         \return Interpolated vertex attributes.
     */
-    VertexData getVertexDataRayCones(uint meshInstanceID, uint triangleIndex, float3 barycentrics)
+    VertexData getVertexData(HitInfo hit, out StaticVertexData vertices[3])
     {
-        const uint3 vtxIndices = getIndices(meshInstanceID, triangleIndex);
-        VertexData v = getVertexData(meshInstanceID, triangleIndex, barycentrics);
-
-        float2 txcoords[3];
-        float3 vtxs[3];
-        txcoords[0] = vertices[vtxIndices[0]].texCrd;
-        txcoords[1] = vertices[vtxIndices[1]].texCrd;
-        txcoords[2] = vertices[vtxIndices[2]].texCrd;
-        vtxs[0] = vertices[vtxIndices[0]].position;
-        vtxs[1] = vertices[vtxIndices[1]].position;
-        vtxs[2] = vertices[vtxIndices[2]].position;
-
-        float4x4 worldMat = getWorldMatrix(meshInstanceID);
-        v.coneTexLODValue = computeRayConeTriangleLODValue(vtxs, txcoords, float3x3(worldMat), v.faceNormalW);
-
-        return v;
+        return getVertexData(hit.meshInstanceID, hit.primitiveIndex, hit.getBarycentricWeights(), vertices);
     }
 
-    /** Returns interpolated vertex attributes in a ray tracing hit program when ray differentials are used for texture LOD.
-        \param[in] meshInstanceID The mesh instance ID.
-        \param[in] triangleIndex Index of the triangle in the given mesh.
-        \param[in] barycentrics Barycentric coordinates in the triangle.
-        \param[in] rayDir Ray direction.
-        \param[in] hitT Distance to hit point.
-        \param[in,out] rayDiff The ray differential used as input and output.
-        \param[out] dUVdx The differential of the texture coordinates in pixel coordinate x.
-        \param[out] dUVdy The differential of the texture coordinates in pixel coordinate y.
-        \return Interpolated vertex attributes.
-    */
-    VertexData getVertexDataRayDiff(uint meshInstanceID, uint triangleIndex, float3 barycentrics, in float3 rayDir, in float hitT,
-        inout RayDiff rayDiff, out float2 dUVdx, out float2 dUVdy)
+    /** Returns interpolated vertex attributes in a ray tracing hit program when ray cones are used for texture LOD.
+       \param[in] meshInstanceID The mesh instance ID.
+       \param[in] triangleIndex Index of the triangle in the given mesh.
+       \param[in] barycentrics Barycentric coordinates in the triangle.
+       \return Interpolated vertex attributes.
+   */
+    VertexData getVertexDataRayCones(uint meshInstanceID, uint triangleIndex, float3 barycentrics)
     {
-        const uint3 vtxIndices = getIndices(meshInstanceID, triangleIndex);
-        VertexData v = getVertexData(meshInstanceID, triangleIndex, barycentrics);
-
-        float3 unnormalizedN;
-        float3 vtxs[3];
-        float3 normals[3];
-        float2 txcoords[3];
-        float2 dBarydx, dBarydy;
-        float4x4 worldMat = getWorldMatrix(meshInstanceID);
-        float3x3 worldInvTransposeMat = getInverseTransposeWorldMatrix(meshInstanceID);
-
-        StaticVertexData vtx[3] = { gScene.getVertex(vtxIndices[0]), gScene.getVertex(vtxIndices[1]), gScene.getVertex(vtxIndices[2]) };
-
-        vtxs[0] = mul(float4(vtx[0].position, 1.0), worldMat).xyz;
-        vtxs[1] = mul(float4(vtx[1].position, 1.0), worldMat).xyz;
-        vtxs[2] = mul(float4(vtx[2].position, 1.0), worldMat).xyz;
-        normals[0] = normalize(mul(vtx[0].normal, worldInvTransposeMat));
-        normals[1] = normalize(mul(vtx[1].normal, worldInvTransposeMat));
-        normals[2] = normalize(mul(vtx[2].normal, worldInvTransposeMat));
-        txcoords[0] = vtx[0].texCrd;
-        txcoords[1] = vtx[1].texCrd;
-        txcoords[2] = vtx[2].texCrd;
-
-        unnormalizedN = normals[0] * barycentrics[0];
-        unnormalizedN += normals[1] * barycentrics[1];
-        unnormalizedN += normals[2] * barycentrics[2];
-
-        float3 e1 = vtxs[1] - vtxs[0];
-        float3 e2 = vtxs[2] - vtxs[0];
-        computeDifferentialsBarysAndUVs(rayDiff, rayDir, vtxs, txcoords, e1, e2, v.faceNormalW, hitT, dBarydx, dBarydy, dUVdx, dUVdy);
-        reflectRayDifferential(rayDiff, rayDir, unnormalizedN, v.normalW, dBarydx, dBarydy, e1, e2, normals);
-
+        StaticVertexData triangleVertices[3];
+        VertexData v = getVertexData(meshInstanceID, triangleIndex, barycentrics, triangleVertices);
+        v.coneTexLODValue = computeRayConeTriangleLODValue(triangleVertices, meshInstanceID, float3x3(getWorldMatrix(meshInstanceID)));
         return v;
     }
 
@@ -484,6 +453,69 @@ struct Scene
         MaterialData m = materials[materialID];
         ExplicitLodTextureSampler lod = { 0.0 };
         return sampleTexture(mr.emissive, mr.samplerState, uv, float4(m.emissive, 1.0), EXTRACT_EMISSIVE_TYPE(m.flags), lod).rgb * m.emissiveFactor;
+    }
+
+    /** Returns the estimated curvature from a triangle vertex attributes for ray tracing using the provided estimator.
+        \param[in] meshInstanceID The mesh instance ID.
+        \param[in] triangleIndex Index of the triangle in the given mesh.
+        \param[in] curvatureEstimator Generic triangle curvature estimator to use.
+        \return Estimated curvature.
+    */
+    float computeCurvatureGeneric<TCE : ITriangleCurvatureEstimator>(uint meshInstanceID, uint triangleIndex, TCE curvatureEstimator)
+    {
+        const uint3 vtxIndices = getIndices(meshInstanceID, triangleIndex);
+        StaticVertexData vertices[3] = { getVertex(vtxIndices[0]), getVertex(vtxIndices[1]), getVertex(vtxIndices[2]) };
+        float3 normals[3];
+        float3 pos[3];
+        normals[0] = vertices[0].normal;
+        normals[1] = vertices[1].normal;
+        normals[2] = vertices[2].normal;
+        pos[0] = vertices[0].position;
+        pos[1] = vertices[1].position;
+        pos[2] = vertices[2].position;
+        float3 edge01 = pos[1] - pos[0];
+        float3 edge02 = pos[2] - pos[0];
+        float3 edge12 = pos[2] - pos[1];
+        float curvature01 = dot(normals[1] - normals[0], edge01) / dot(edge01, edge01);
+        float curvature02 = dot(normals[2] - normals[0], edge02) / dot(edge02, edge02);
+        float curvature12 = dot(normals[2] - normals[1], edge12) / dot(edge12, edge12);
+
+        return curvatureEstimator.eval(edge01, edge02, edge12, curvature01, curvature02, curvature12);
+    }
+
+    /** Returns the estimated isoctropic curvature from vertex attributes for ray tracing.
+        \param[in] meshInstanceID The mesh instance ID.
+        \param[in] triangleIndex Index of the triangle in the given mesh.
+        \return Estimated curvature.
+    */
+    float computeCurvatureIsotropic(uint meshInstanceID, uint triangleIndex)
+    {
+        TriangleCurvature_Average tce = { };
+        //TriangleCurvature_Max tce = { };          // Over-estimates curvature using max of the 3 edges.
+        return computeCurvatureGeneric(meshInstanceID, triangleIndex, tce);
+    }
+
+    /** Returns the estimated visible curvature from vertex attributes for ray tracing using the ellipse intersection of a cone with the surface.
+        \param[in] meshInstanceID The mesh instance ID.
+        \param[in] triangleIndex Index of the triangle in the given mesh.
+        \return Estimated curvature.
+    */
+    float computeCurvatureVisibleEllipse(uint meshInstanceID, uint triangleIndex, float3 rayDir, float rayConeWidth, float rayConeAngle)
+    {
+        TriangleCurvature_EllipseVis tce = { rayDir, rayConeWidth, rayConeAngle };
+        return computeCurvatureGeneric(meshInstanceID, triangleIndex, tce);
+    }
+
+    /** Returns the estimated isoctropic curvature from vertex attributes for ray tracing at the first hit point.
+        \param[in] meshInstanceID The mesh instance ID.
+        \param[in] triangleIndex Index of the triangle in the given mesh.
+        \param[in] rayDir Ray direction.
+        \return Estimated curvature.
+    */
+    float computeCurvatureIsotropicFirstHit(uint meshInstanceID, uint triangleIndex, float3 rayDir)
+    {
+        TriangleCurvature_DirClosestDP tce = { rayDir };
+        return computeCurvatureGeneric(meshInstanceID, triangleIndex, tce);
     }
 };
 

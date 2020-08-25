@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -27,6 +27,7 @@
  **************************************************************************/
 import Scene.Raytracing;
 import Scene.HitInfo;
+import Utils.Timing.GpuTimer;
 import Utils.Sampling.SampleGenerator;
 
 cbuffer PerFrameCB
@@ -35,7 +36,9 @@ cbuffer PerFrameCB
 };
 
 RWTexture2D<uint2> gVBuffer;
+RWTexture2D<uint> gTime;
 
+#define isValid(name) (is_valid_##name != 0)
 
 /** ***************************** Ray index 0 ****************************** */
 
@@ -49,7 +52,7 @@ void miss(inout RayData rayData)
 {
     // Write invalid hit to output buffer.
     uint2 launchIndex = DispatchRaysIndex().xy;
-    gVBuffer[launchIndex] = uint2(kInvalidIndex);
+    gVBuffer[launchIndex] = uint2(HitInfo::kInvalidIndex);
 }
 
 [shader("anyhit")]
@@ -93,9 +96,12 @@ void rayGen()
     uint2 launchIndex = DispatchRaysIndex().xy;
     uint2 launchDim = DispatchRaysDimensions().xy;
 
+    GpuTimer timer;
+    if (isValid(gTime)) timer.start();
+
     // Sample ray
 #if USE_DEPTH_OF_FIELD
-    SampleGenerator sg = SampleGenerator.create(launchIndex, gParams.frameCount);
+    SampleGenerator sg = SampleGenerator.create(launchIndex, frameCount);
     RayDesc ray = gScene.camera.computeRayThinlens(launchIndex, launchDim, sampleNext2D(sg)).toRayDesc();
 #else
     RayDesc ray = gScene.camera.computeRayPinhole(launchIndex, launchDim).toRayDesc();
@@ -104,4 +110,7 @@ void rayGen()
     // Trace ray
     RayData rayData;
     TraceRay(gRtScene, RAY_FLAG_NONE, 0xff /* instanceInclusionMask */, 0 /* hitIdx */, hitProgramCount, 0 /* missIdx */, ray, rayData);
+
+    // Write time.
+    if (isValid(gTime)) gTime[launchIndex] = timer.getElapsed();
 }

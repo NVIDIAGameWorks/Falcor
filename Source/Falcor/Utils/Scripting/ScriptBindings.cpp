@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -32,25 +32,21 @@
 
 namespace Falcor::ScriptBindings
 {
-    ClassesMap sClasses;
-    std::unordered_map<std::type_index, std::string> sEnumNames;
-
     namespace
     {
-        /** `gBindFuncs` is declared as pointer so that we can ensure it can be explicitly
-         allocated when registerBinding() is called.  (The C++ static objectinitialization fiasco.)
-         */
-        std::vector<BindComponentFunc>* gBindFuncs = nullptr;
+        /** `gRegisterFuncs` is declared as pointer so that we can ensure it can be explicitly
+            allocated when registerBinding() is called. (The C++ static objectinitialization fiasco.)
+        */
+        std::unique_ptr<std::vector<RegisterBindingFunc>> gRegisterFuncs;
     }
 
-    void registerBinding(BindComponentFunc f)
+    void registerBinding(RegisterBindingFunc f)
     {
-        if(Scripting::isRunning())
+        if (Scripting::isRunning())
         {
             try
             {
-                auto pymod = pybind11::module::import("falcor");
-                Module m(pymod);
+                auto m = pybind11::module::import("falcor");
                 f(m);
                 // Re-import falcor
                 pybind11::exec("from falcor import *");
@@ -64,8 +60,8 @@ namespace Falcor::ScriptBindings
         }
         else
         {
-            if (!gBindFuncs) gBindFuncs = new std::vector<BindComponentFunc>();
-            gBindFuncs->push_back(f);
+            if (!gRegisterFuncs) gRegisterFuncs.reset(new std::vector<RegisterBindingFunc>());
+            gRegisterFuncs->push_back(f);
         }
     }
 
@@ -79,12 +75,12 @@ namespace Falcor::ScriptBindings
     void addVecType(pybind11::module& m, const std::string name)
     {
         auto ctor = [](Args...components) { return makeVec<VecT>(components...); };
-        auto repr = [](const VecT& v) { return to_string(v); };
+        auto repr = [](const VecT& v) { return Falcor::to_string(v); };
         auto vecStr = [](const VecT& v) {
-            std::string vec = "[" + to_string(v[0]);
+            std::string vec = "[" + std::to_string(v[0]);
             for (int i = 1; i < v.length(); i++)
             {
-                vec += ", " + to_string(v[i]);
+                vec += ", " + std::to_string(v[i]);
             }
             vec += "]";
             return vec;
@@ -117,10 +113,9 @@ namespace Falcor::ScriptBindings
         addVecType<uint3, uint32_t, uint32_t, uint32_t>(m, "uint3");
         addVecType<uint4, uint32_t, uint32_t, uint32_t, uint32_t>(m, "uint4");
 
-        if (gBindFuncs)
+        if (gRegisterFuncs)
         {
-            ScriptBindings::Module fm(m);
-            for (auto f : *gBindFuncs) f(fm);
+            for (auto f : *gRegisterFuncs) f(m);
         }
     }
 }

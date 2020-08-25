@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -58,8 +58,6 @@ namespace Mogwai
             return std::nullopt;
         }
     }
-
-    CaptureTrigger::CaptureTrigger(Renderer* pRenderer) : mpRenderer(pRenderer) {}
 
     void CaptureTrigger::addRange(const RenderGraph* pGraph, uint64_t startFrame, uint64_t count)
     {
@@ -148,19 +146,21 @@ namespace Mogwai
     {
         w.textbox("Base Filename", mBaseFilename);
         w.text("Output Directory\n" + mOutputDir);
+        w.tooltip("Relative paths are treated as relative to the executable directory (" + getExecutableDirectory() + ").");
         std::string folder;
-        bool changed = w.button("Change Folder") && chooseFolderDialog(mOutputDir);
-        changed = w.checkbox("Absolute Path", mAbsolutePath, true) || changed; // Avoid short-circuit
-        if (changed) setOutputDirectory(mOutputDir);
-        w.tooltip("If checked, will use an absolute path. Otherwise, the path will be relative to the executable directory");
+        if (w.button("Change Folder") && chooseFolderDialog(folder)) setOutputDirectory(folder);
     }
 
     void CaptureTrigger::setOutputDirectory(const std::string& outDir)
     {
-        bool absolute = std::filesystem::path(outDir).is_absolute();
-        if (absolute && !mAbsolutePath) mOutputDir = std::filesystem::relative(outDir, getExecutableDirectory()).string();
-        else if (!absolute && mAbsolutePath) mOutputDir = std::filesystem::absolute(getExecutableDirectory() + "/" + outDir).string();
-        else mOutputDir = outDir;
+        std::filesystem::path path(outDir);
+        if (path.is_absolute())
+        {
+            // Use relative path to executable directory if possible.
+            auto relativePath = path.lexically_relative(getExecutableDirectory());
+            if (!relativePath.empty() && relativePath.string().find("..") == std::string::npos) path = relativePath;
+        }
+        mOutputDir = path.string();
     }
 
     void CaptureTrigger::setBaseFilename(const std::string& baseFilename)
@@ -171,15 +171,16 @@ namespace Mogwai
     void CaptureTrigger::scriptBindings(Bindings& bindings)
     {
         auto& m = bindings.getModule();
-        if (m.classExists<CaptureTrigger>()) return;
-        auto ct = m.class_<CaptureTrigger>("CaptureTrigger");
+        if (pybind11::hasattr(m, "CaptureTrigger")) return;
+
+        pybind11::class_<CaptureTrigger> captureTrigger(m, "CaptureTrigger");
 
         // Members
-        ct.func_(kReset.c_str(), &CaptureTrigger::reset, "graph"_a = nullptr);
+        captureTrigger.def(kReset.c_str(), &CaptureTrigger::reset, "graph"_a = nullptr);
 
         // Properties
-        ct.property(kOutputDir.c_str(), &CaptureTrigger::getOutputDirectory, &CaptureTrigger::setOutputDirectory);
-        ct.property(kBaseFilename.c_str(), &CaptureTrigger::getBaseFilename, &CaptureTrigger::setBaseFilename);
+        captureTrigger.def_property(kOutputDir.c_str(), &CaptureTrigger::getOutputDirectory, &CaptureTrigger::setOutputDirectory);
+        captureTrigger.def_property(kBaseFilename.c_str(), &CaptureTrigger::getBaseFilename, &CaptureTrigger::setBaseFilename);
     }
 
     std::string CaptureTrigger::getScript(const std::string& var)
@@ -190,12 +191,17 @@ namespace Mogwai
         return s;
     }
 
+    std::filesystem::path CaptureTrigger::getOutputPath() const
+    {
+        auto path = std::filesystem::path(mOutputDir);
+        if (!path.is_absolute()) path = std::filesystem::absolute(std::filesystem::path(getExecutableDirectory()) / path);
+        return path;
+    }
+
     std::string CaptureTrigger::getOutputNamePrefix(const std::string& output) const
     {
-        auto outDir = std::filesystem::path(mOutputDir);
-        if (outDir.is_absolute() == false) outDir = std::filesystem::absolute(getExecutableDirectory() + "/" + outDir.string());
-        std::string absPath = outDir.string();
-        std::string filename = absPath + "/" + mBaseFilename + "." + output + ".";
-        return filename;
+        auto path = getOutputPath();
+        path /= mBaseFilename + "." + output + ".";
+        return path.string();
     }
 }

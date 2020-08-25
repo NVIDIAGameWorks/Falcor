@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -200,7 +200,7 @@ namespace Falcor
     {
         auto createFunc = [](Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
         {
-            return DepthStencilView::create(pTexture->shared_from_this(), mostDetailedMip, firstArraySlice, arraySize);
+            return DepthStencilView::create(std::static_pointer_cast<Texture>(pTexture->shared_from_this()), mostDetailedMip, firstArraySlice, arraySize);
         };
 
         return findViewCommon<DepthStencilView>(this, mipLevel, 1, firstArraySlice, arraySize, mDsvs, createFunc);
@@ -210,7 +210,7 @@ namespace Falcor
     {
         auto createFunc = [](Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
         {
-            return UnorderedAccessView::create(pTexture->shared_from_this(), mostDetailedMip, firstArraySlice, arraySize);
+            return UnorderedAccessView::create(std::static_pointer_cast<Texture>(pTexture->shared_from_this()), mostDetailedMip, firstArraySlice, arraySize);
         };
 
         return findViewCommon<UnorderedAccessView>(this, mipLevel, 1, firstArraySlice, arraySize, mUavs, createFunc);
@@ -230,7 +230,7 @@ namespace Falcor
     {
         auto createFunc = [](Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
         {
-            return RenderTargetView::create(pTexture->shared_from_this(), mostDetailedMip, firstArraySlice, arraySize);
+            return RenderTargetView::create(std::static_pointer_cast<Texture>(pTexture->shared_from_this()), mostDetailedMip, firstArraySlice, arraySize);
         };
 
         return findViewCommon<RenderTargetView>(this, mipLevel, 1, firstArraySlice, arraySize, mRtvs, createFunc);
@@ -240,7 +240,7 @@ namespace Falcor
     {
         auto createFunc = [](Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
         {
-            return ShaderResourceView::create(pTexture->shared_from_this(), mostDetailedMip, mipCount, firstArraySlice, arraySize);
+            return ShaderResourceView::create(std::static_pointer_cast<Texture>(pTexture->shared_from_this()), mostDetailedMip, mipCount, firstArraySlice, arraySize);
         };
 
         return findViewCommon<ShaderResourceView>(this, mostDetailedMip, mipCount, firstArraySlice, arraySize, mSrvs, createFunc);
@@ -269,9 +269,11 @@ namespace Falcor
             textureData = pContext->readTextureSubresource(this, subresource);
         }
 
+        uint32_t width = getWidth(mipLevel);
+        uint32_t height = getHeight(mipLevel);
         auto func = [=]()
         {
-            Bitmap::saveImage(filename, getWidth(mipLevel), getHeight(mipLevel), format, exportFlags, resourceFormat, true, (void*)textureData.data());
+            Bitmap::saveImage(filename, width, height, format, exportFlags, resourceFormat, true, (void*)textureData.data());
         };
 
         Threading::dispatchTask(func);
@@ -326,7 +328,7 @@ namespace Falcor
         if (mReleaseRtvsAfterGenMips)
         {
             // Releasing RTVs to free space on the heap.
-            // We only do it once to handle the case that generateMips() was called during load. 
+            // We only do it once to handle the case that generateMips() was called during load.
             // If it was called more then once, the texture is probably dynamic and it's better to keep the RTVs around
             mRtvs.clear();
             mReleaseRtvsAfterGenMips = false;
@@ -351,19 +353,19 @@ namespace Falcor
 
     SCRIPT_BINDING(Texture)
     {
-        auto c = m.regClass(Texture);
-        c.roProperty("width", &Texture::getWidth);
-        c.roProperty("height", &Texture::getHeight);
-        c.roProperty("depth", &Texture::getDepth);
-        c.roProperty("mipCount", &Texture::getMipCount);
-        c.roProperty("arraySize", &Texture::getArraySize);
-        c.roProperty("samples", &Texture::getSampleCount);
-        c.roProperty("format", &Texture::getFormat);
+        pybind11::class_<Texture, Texture::SharedPtr> texture(m, "Texture");
+        texture.def_property_readonly("width", &Texture::getWidth);
+        texture.def_property_readonly("height", &Texture::getHeight);
+        texture.def_property_readonly("depth", &Texture::getDepth);
+        texture.def_property_readonly("mipCount", &Texture::getMipCount);
+        texture.def_property_readonly("arraySize", &Texture::getArraySize);
+        texture.def_property_readonly("samples", &Texture::getSampleCount);
+        texture.def_property_readonly("format", &Texture::getFormat);
 
         auto data = [](Texture* pTexture, uint32_t subresource)
         {
             return gpDevice->getRenderContext()->readTextureSubresource(pTexture, subresource);
         };
-        c.func_("data", data, "subresource"_a);
+        texture.def("data", data, "subresource"_a);
     }
 }

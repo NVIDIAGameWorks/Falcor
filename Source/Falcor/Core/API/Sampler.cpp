@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -101,13 +101,17 @@ namespace Falcor
 
     SCRIPT_BINDING(Sampler)
     {
-        m.regClass(Sampler);
+        pybind11::class_<Sampler, Sampler::SharedPtr>(m, "Sampler");
 
-        auto filter = m.enum_<Sampler::Filter>("SamplerFilter");
-        filter.regEnumVal(Sampler::Filter::Linear).regEnumVal(Sampler::Filter::Point);
+        pybind11::enum_<Sampler::Filter> filter(m, "SamplerFilter");
+        filter.value("Linear", Sampler::Filter::Linear);
+        filter.value("Point", Sampler::Filter::Point);
 
-        auto addressing = m.enum_<Sampler::AddressMode>("AddressMode");
-        addressing.regEnumVal(Sampler::AddressMode::Wrap).regEnumVal(Sampler::AddressMode::Mirror).regEnumVal(Sampler::AddressMode::Clamp);
-        addressing.regEnumVal(Sampler::AddressMode::Border).regEnumVal(Sampler::AddressMode::MirrorOnce);
+        pybind11::enum_<Sampler::AddressMode> addressMode(m, "AddressMode");
+        addressMode.value("Wrap", Sampler::AddressMode::Wrap);
+        addressMode.value("Mirror", Sampler::AddressMode::Mirror);
+        addressMode.value("Clamp", Sampler::AddressMode::Clamp);
+        addressMode.value("Border", Sampler::AddressMode::Border);
+        addressMode.value("MirrorOnce", Sampler::AddressMode::MirrorOnce);
     }
 }

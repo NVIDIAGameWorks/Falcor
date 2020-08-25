@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -27,13 +27,16 @@
  **************************************************************************/
 import Scene.Raytracing;
 import Scene.HitInfo;
+import Utils.Helpers;
+import Utils.Timing.GpuTimer;
 import Utils.Sampling.SampleGenerator;
+import Experimental.Scene.Material.TexLODHelpers;
 import GBufferHelpers;
 
 // GBuffer channels
 RWTexture2D<float4> gPosW;
 RWTexture2D<float4> gNormW;
-RWTexture2D<float4> gBitangentW;
+RWTexture2D<float4> gTangentW;
 RWTexture2D<float4> gTexC;
 RWTexture2D<float4> gDiffuseOpacity;
 RWTexture2D<float4> gSpecRough;
@@ -45,6 +48,7 @@ RWTexture2D<uint2> gVBuffer;
 RWTexture2D<float2> gMotionVectors;
 RWTexture2D<float4> gFaceNormalW;
 RWTexture2D<float4> gViewW;
+RWTexture2D<uint> gTime;
 
 #define isValid(name) (is_valid_##name != 0)
 
@@ -62,7 +66,7 @@ struct RayData
 void miss(inout RayData rayData)
 {
     uint2 launchIndex = DispatchRaysIndex().xy;
-    gVBuffer[launchIndex] = uint2(kInvalidIndex);
+    gVBuffer[launchIndex] = uint2(HitInfo::kInvalidIndex);
 }
 
 [shader("anyhit")]
@@ -115,6 +119,19 @@ void computeRayDifferentials(uint meshInstanceID, uint triangleIndex, float3 ray
     ddy = float2(dsdy, dtdy);
 }
 
+void computeAnisotropicAxesRayCones(uint meshInstanceID, uint triangleIndex, VertexData v, out float2 ddx, out float2 ddy)
+{
+    float3 positions[3];
+    float2 txcoords[3];
+    gScene.getVertexPositionsW(meshInstanceID, triangleIndex, positions);
+    gScene.getVertexTexCoords(meshInstanceID, triangleIndex, txcoords);
+
+    float pixelAngle = gParams.screenSpacePixelSpreadAngle;
+    float coneRadiusAtHitPoint = RayTCurrent() * tan(pixelAngle);
+    // Using faceNormal, since it is needed for the barycentric computations inside computeAnisotropicEllipseAxes().
+    computeAnisotropicEllipseAxes(v.posW, v.faceNormalW, WorldRayDirection(), coneRadiusAtHitPoint, positions, txcoords, v.texC, ddx, ddy);
+}
+
 /** Closest hit shader for primary rays.
 */
 [shader("closesthit")]
@@ -134,20 +151,20 @@ void closestHit(
     float2 ddx, ddy;
     computeRayDifferentials(meshInstanceID, triangleIndex, WorldRayDirection(), RayTCurrent(), ddx, ddy, gScene.camera);
     ShadingData sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -WorldRayDirection(), ddx, ddy);
+#elif USE_RAY_CONES
+    float2 ddx, ddy;
+    computeAnisotropicAxesRayCones(meshInstanceID, triangleIndex, v, ddx, ddy);
+    ShadingData sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -WorldRayDirection(), ddx, ddy);
 #else
     ShadingData sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -WorldRayDirection(), 0.f);
 #endif
 
-#if USE_IRAY_BENT_NORMALS
-    applyIrayBentNormals(sd, v);
-#endif
-
     // Write the outputs.
-    GBuffer gbuf = storeGBufferOutput(sd);
+    GBuffer gbuf = storeGBufferOutput(sd, v);
 
     gPosW[launchIndex]              = gbuf.posW;
     gNormW[launchIndex]             = gbuf.normW;
-    gBitangentW[launchIndex]        = gbuf.bitangentW;
+    gTangentW[launchIndex]          = gbuf.tangentW;
     gTexC[launchIndex]              = gbuf.texC;
     gDiffuseOpacity[launchIndex]    = gbuf.diffuseOpacity;
     gSpecRough[launchIndex]         = gbuf.specRough;
@@ -189,6 +206,9 @@ void rayGen()
     uint2 launchIndex = DispatchRaysIndex().xy;
     uint2 launchDim = DispatchRaysDimensions().xy;
 
+    GpuTimer timer;
+    if (isValid(gTime)) timer.start();
+
     // Sample ray
 #if USE_DEPTH_OF_FIELD
     SampleGenerator sg = SampleGenerator.create(launchIndex, gParams.frameCount);
@@ -206,4 +226,7 @@ void rayGen()
     {
         gViewW[launchIndex] = float4(-ray.Direction, 0.f);
     }
+
+    // Write time.
+    if (isValid(gTime)) gTime[launchIndex] = timer.getElapsed();
 }

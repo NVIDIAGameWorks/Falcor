@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -30,13 +30,6 @@
 static const float4 kClearColor(0.38f, 0.52f, 0.10f, 1);
 static const std::string kDefaultScene = "Arcade/Arcade.fscene";
 
-std::string to_string(const float3& v)
-{
-    std::string s;
-    s += "(" + std::to_string(v.x) + ", " + std::to_string(v.y) + ", " + std::to_string(v.z) + ")";
-    return s;
-}
-
 void HelloDXR::onGuiRender(Gui* pGui)
 {
     Gui::Window w(pGui, "Hello DXR Settings", { 300, 400 }, { 10, 80 });
@@ -46,7 +39,7 @@ void HelloDXR::onGuiRender(Gui* pGui)
     if (w.button("Load Scene"))
     {
         std::string filename;
-        if (openFileDialog(Scene::kFileExtensionFilters, filename))
+        if (openFileDialog(Scene::getFileExtensionFilters(), filename))
         {
             loadScene(filename, gpFramework->getTargetFbo().get());
         }
@@ -101,7 +94,7 @@ void HelloDXR::setPerFrameVars(const Fbo* pTargetFbo)
     cb["invView"] = glm::inverse(mpCamera->getViewMatrix());
     cb["viewportDims"] = float2(pTargetFbo->getWidth(), pTargetFbo->getHeight());
     float fovY = focalLengthToFovY(mpCamera->getFocalLength(), Camera::kDefaultFrameHeight);
-    cb["tanHalfFovY"] = tanf(fovY * 0.5f);
+    cb["tanHalfFovY"] = std::tan(fovY * 0.5f);
     cb["sampleIndex"] = mSampleIndex++;
     cb["useDOF"] = mUseDOF;
     mpRtVars->getRayGenVars()["gOutput"] = mpRtOut;

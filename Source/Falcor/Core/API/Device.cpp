@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -275,10 +275,15 @@ namespace Falcor
 
     SCRIPT_BINDING(Device)
     {
-        auto deviceDesc = m.class_<Device::Desc>("DeviceDesc");
-#define desc_field(f_) rwField(#f_, &Device::Desc::f_)
-        deviceDesc.desc_field(colorFormat).desc_field(depthFormat).desc_field(apiMajorVersion).desc_field(apiMinorVersion);
-        deviceDesc.desc_field(enableVsync).desc_field(enableDebugLayer).desc_field(cmdQueues);
-#undef desc_field
+        ScriptBindings::SerializableStruct<Device::Desc> deviceDesc(m, "DeviceDesc");
+#define field(f_) field(#f_, &Device::Desc::f_)
+        deviceDesc.field(colorFormat);
+        deviceDesc.field(depthFormat);
+        deviceDesc.field(apiMajorVersion);
+        deviceDesc.field(apiMinorVersion);
+        deviceDesc.field(enableVsync);
+        deviceDesc.field(enableDebugLayer);
+        deviceDesc.field(cmdQueues);
+#undef field
     }
 }

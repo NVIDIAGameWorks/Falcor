@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -25,31 +25,20 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "Utils/HostDeviceShared.slangh"
+RWStructuredBuffer<uint16_t> result;
 
-BEGIN_NAMESPACE_FALCOR
+#if USE_UAV
+RWStructuredBuffer<float16_t> data;
+#else
+StructuredBuffer<float16_t> data;
+#endif
 
-static const float kInvalidCosConeAngle = -1.0f;
+[numthreads(16, 1, 1)]
+void testFloat16(uint3 threadID : SV_DispatchThreadID)
+{
+    uint i = threadID.x;
 
-// IMPORTANT: these constants must be kept in sync with the definitions of
-// InternalNode and LeafNode in Experimental/Scene/Lights/LightBVH.h.
+    float16_t value = data[i]; // 16-bit load
 
-// Common internal and leaf nodes' members offset
-static const uint32_t kNodeTypeOffset            =  0u;
-static const uint32_t kNodeAABBMinOffset         =  4u;
-static const uint32_t kNodeFluxOffset            = 16u;
-static const uint32_t kNodeAABBMaxOffset         = 20u;
-static const uint32_t kNodeCosConeAngleOffset    = 32u;
-static const uint32_t kNodeConeDirectionOffset   = 36u;
-
-// Internal nodes' specific members offset
-static const uint32_t kNodeLeftByteOffsetOffset  = 48u;
-static const uint32_t kNodeRightByteOffsetOffset = 52u;
-
-// Leaf nodes' specific members offset
-static const uint32_t kNodeTriangleCountOffset   = 48u;
-static const uint32_t kNodeTriangleIndicesOffset = 52u;
-static const uint32_t kNodeTriangleIndexByteSize =  4u;
-
-END_NAMESPACE_FALCOR
+    result[i] = f32tof16(value);
+}

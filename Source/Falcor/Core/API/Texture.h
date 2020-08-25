@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -38,15 +38,13 @@ namespace Falcor
 
     /** Abstracts the API texture objects
     */
-    class dlldecl Texture : public Resource, public inherit_shared_from_this<Resource, Texture>
+    class dlldecl Texture : public Resource
     {
     public:
         using SharedPtr = std::shared_ptr<Texture>;
         using SharedConstPtr = std::shared_ptr<const Texture>;
-        using ConstSharedPtrRef = const SharedPtr&;
         using WeakPtr = std::weak_ptr<Texture>;
         using WeakConstPtr = std::weak_ptr<const Texture>;
-        using inherit_shared_from_this<Resource, Texture>::shared_from_this;
 
         ~Texture();
 

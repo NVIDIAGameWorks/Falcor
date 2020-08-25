@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -37,11 +37,11 @@ using namespace Falcor;
 #define dllpassdecl __declspec(dllimport)
 #endif
 
-class dllpassdecl DepthPass : public RenderPass, public inherit_shared_from_this<RenderPass, DepthPass>
+class dllpassdecl DepthPass : public RenderPass
 {
 public:
     using SharedPtr = std::shared_ptr<DepthPass>;
-    using inherit_shared_from_this<RenderPass, DepthPass>::shared_from_this;
+
     static const char* kDesc;
 
     /** Create a new object
@@ -53,10 +53,11 @@ public:
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     virtual void renderUI(Gui::Widgets& widget) override;
     virtual Dictionary getScriptingDictionary() override;
-    virtual std::string getDesc() { return kDesc; }
+    virtual std::string getDesc() override { return kDesc; }
 
     DepthPass& setDepthBufferFormat(ResourceFormat format);
     DepthPass& setDepthStencilState(const DepthStencilState::SharedPtr& pDsState);
+    DepthPass& setRasterizerState(const RasterizerState::SharedPtr& pRsState);
 
 private:
     DepthPass(const Dictionary& dict);
@@ -65,6 +66,7 @@ private:
     Fbo::SharedPtr mpFbo;
     GraphicsState::SharedPtr mpState;
     GraphicsVars::SharedPtr mpVars;
+    RasterizerState::SharedPtr mpRsState;
     ResourceFormat mDepthFormat = ResourceFormat::D32Float;
     Scene::SharedPtr mpScene;
 };

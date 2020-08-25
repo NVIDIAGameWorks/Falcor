@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -90,7 +90,7 @@ namespace Falcor
         {
             if ((value.x != value.y) || ((value.x != value.z) && (value.x != value.w)))
             {
-                logWarning("Vulkan buffer clears only support a single element. A vector was supplied which has different elements per channel. only `x` will be used'");
+                logWarning("Vulkan buffer clears only support a single element. A vector was supplied which has different elements per channel. only 'x' will be used'");
             }
             const Buffer* pBuffer = dynamic_cast<const Buffer*>(pUav->getResource());
             vkCmdFillBuffer(getLowLevelData()->getCommandList(), pBuffer->getApiHandle(), pBuffer->getGpuAddressOffset(), pBuffer->getSize(), value.x);
@@ -102,7 +102,7 @@ namespace Falcor
         mCommandsPending = true;
     }
 
-    void ComputeContext::clearUAVCounter(Buffer::ConstSharedPtrRef pBuffer, uint32_t value)
+    void ComputeContext::clearUAVCounter(const Buffer::SharedPtr& pBuffer, uint32_t value)
     {
         if (pBuffer->hasUAVCounter())
         {

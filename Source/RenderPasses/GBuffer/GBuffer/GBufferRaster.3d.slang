@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -40,9 +40,6 @@ RWTexture2D<float4> gFaceNormalW;
 RWTexture2D<float2> gPosNormalFwidth;
 RWTexture2D<float2> gLinearZAndDeriv;
 RWTexture2D<float>  gSurfaceSpreadAngle;
-RWTexture2D<float4> gRayDifferentialX;
-RWTexture2D<float4> gRayDifferentialY;
-RWTexture2D<float4> gRayDifferentialZ;
 
 #define isValid(name) (is_valid_##name != 0)
 
@@ -50,7 +47,7 @@ struct GBufferPSOut
 {
     float4 posW             : SV_TARGET0;
     float4 normW            : SV_TARGET1;
-    float4 bitangentW       : SV_TARGET2;
+    float4 tangentW         : SV_TARGET2;
     float4 texC             : SV_TARGET3;
     float4 diffuseOpacity   : SV_TARGET4;
     float4 specRough        : SV_TARGET5;
@@ -80,16 +77,12 @@ GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 bar
     float3 viewDir = normalize(gScene.camera.getPosition() - v.posW);
     ShadingData sd = prepareShadingData(v, vsOut.materialID, gScene.materials[vsOut.materialID], gScene.materialResources[vsOut.materialID], viewDir);
 
-#if USE_IRAY_BENT_NORMALS
-    applyIrayBentNormals(sd, v);
-#endif
-
-    GBuffer gbuf = storeGBufferOutput(sd);
+    GBuffer gbuf = storeGBufferOutput(sd, v);
 
     // Store render target outputs.
     psOut.posW           = gbuf.posW;
     psOut.normW          = gbuf.normW;
-    psOut.bitangentW     = gbuf.bitangentW;
+    psOut.tangentW       = gbuf.tangentW;
     psOut.texC           = gbuf.texC;
     psOut.diffuseOpacity = gbuf.diffuseOpacity;
     psOut.specRough      = gbuf.specRough;
@@ -140,33 +133,10 @@ GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 bar
         hit.barycentrics = barycentrics.yz;
         gVBuffer[ipos] = hit.encode();
     }
-
     // Store surface spread angle for texture LOD using ray cones.
     if (isValid(gSurfaceSpreadAngle))
     {
-        gSurfaceSpreadAngle[ipos] = computeScreenSpaceSurfaceSpreadAngle(sd.posW, sd.N);
+        gSurfaceSpreadAngle[ipos] = computeScreenSpaceSurfaceSpreadAngle(sd.posW, sd.N) * sign(dot(viewDir, sd.N));
     }
-
-    if (isValid(gRayDifferentialX) && isValid(gRayDifferentialY) && isValid(gRayDifferentialZ))
-    {
-        const float3 dOdx = ddx(sd.posW);
-        const float3 dOdy = ddy(sd.posW);
-        const float3 dNdx = ddx(sd.N);
-        const float3 dNdy = ddy(sd.N);
-        const float3 Nx = normalize(sd.N + dNdx);
-        const float3 Ny = normalize(sd.N + dNdy);
-        const float3 tmp = sd.posW - gScene.camera.getPosition();
-        const float3 Dx = normalize(tmp + dOdx);
-        const float3 Dy = normalize(tmp + dOdy);
-        const float3 R = reflect(-sd.V, sd.N);
-        const float3 dRdx = reflect(Dx, Nx) - R;
-        const float3 dRdy = reflect(Dy, Ny) - R;
-
-        gRayDifferentialX[ipos] = float4(dOdx.x, dOdy.x, dRdx.x, dRdy.x);
-        gRayDifferentialY[ipos] = float4(dOdx.y, dOdy.y, dRdx.y, dRdy.y);
-        gRayDifferentialZ[ipos] = float4(dOdx.z, dOdy.z, dRdx.z, dRdy.z);
-    }
-
-
     return psOut;
 }

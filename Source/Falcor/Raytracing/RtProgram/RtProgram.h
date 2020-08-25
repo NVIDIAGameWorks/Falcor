@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -36,12 +36,11 @@ namespace Falcor
 {
     /** Ray tracing program. See GraphicsProgram and ComputeProgram to manage other types of programs.
     */
-    class dlldecl RtProgram : public Program, public inherit_shared_from_this<Program, RtProgram>
+    class dlldecl RtProgram : public Program
     {
     public:
         using SharedPtr = std::shared_ptr<RtProgram>;
         using SharedConstPtr = std::shared_ptr<const RtProgram>;
-        using inherit_shared_from_this<Program, RtProgram>::shared_from_this;
 
         using DefineList = Program::DefineList;
 
@@ -120,7 +119,7 @@ namespace Falcor
 
         /** Set the scene
         */
-        void setScene(Scene::ConstSharedPtrRef pScene);
+        void setScene(const Scene::SharedPtr& pScene);
 
         DescExtra const& getDescExtra() const { return mDescExtra; }
 

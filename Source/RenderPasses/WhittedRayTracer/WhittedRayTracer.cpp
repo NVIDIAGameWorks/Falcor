@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -52,16 +52,16 @@ namespace
     };
 };
 
-static void regTextureLOD(ScriptBindings::Module& m)
+static void regTextureLOD(pybind11::module& m)
 {
-    auto c = m.regClass(WhittedRayTracer);
-    c.property(kTextureLODMode, &WhittedRayTracer::getTexLODMode, &WhittedRayTracer::setTexLODMode);
+    pybind11::class_<WhittedRayTracer, RenderPass, WhittedRayTracer::SharedPtr> pass(m, "WhittedRayTracer");
+    pass.def_property(kTextureLODMode, &WhittedRayTracer::getTexLODMode, &WhittedRayTracer::setTexLODMode);
 
-    auto op = m.enum_<TexLODMode>("TextureLODMode");
-    op.regEnumVal(TexLODMode::Mip0);
-    op.regEnumVal(TexLODMode::RayCones);;
-    op.regEnumVal(TexLODMode::RayDiffsIsotropic);
-    op.regEnumVal(TexLODMode::RayDiffsAnisotropic);
+    pybind11::enum_<TexLODMode> texLODMode(m, "TextureLODMode");
+    texLODMode.value("Mip0", TexLODMode::Mip0);
+    texLODMode.value("RayCones", TexLODMode::RayCones);
+    texLODMode.value("RayDiffsIsotropic", TexLODMode::RayDiffsIsotropic);
+    texLODMode.value("RayDiffsAnisotropic", TexLODMode::RayDiffsAnisotropic);
 }
 
 extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary & lib)
@@ -69,7 +69,6 @@ extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary & lib)
     lib.registerClass("WhittedRayTracer", "Simple Whitted ray tracer", WhittedRayTracer::create);
     ScriptBindings::registerBinding(regTextureLOD);
 }
-
 
 WhittedRayTracer::SharedPtr WhittedRayTracer::create(RenderContext* pRenderContext, const Dictionary& dict)
 {
@@ -84,7 +83,6 @@ WhittedRayTracer::WhittedRayTracer(const Dictionary& dict)
     // Create ray tracing program.
     RtProgram::Desc progDesc;
     progDesc.addShaderLibrary(kShaderFile).setRayGen("rayGen");
-
     progDesc.addHitGroup(0, "scatterClosestHit", "scatterAnyHit").addMiss(0, "scatterMiss");
     progDesc.addHitGroup(1, "", "shadowAnyHit").addMiss(1, "shadowMiss");
     progDesc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
@@ -95,6 +93,14 @@ WhittedRayTracer::WhittedRayTracer(const Dictionary& dict)
     mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
     assert(mpSampleGenerator);
 
+    mTexLODModes =
+    {
+        { uint(TexLODMode::Mip0), "Mip0" },
+        { uint(TexLODMode::RayCones), "Ray cones" },
+        { uint(TexLODMode::RayDiffsIsotropic), "Ray diffs (isotropic)" },
+        { uint(TexLODMode::RayDiffsAnisotropic), "Ray diffs (anisotropic)" },
+    };
+
     // Adjust input channels and dropdown to whether we use a rasterized G-buffer or a ray traced G-buffer
     if (mUsingRasterizedGBuffer)
     {
@@ -102,24 +108,20 @@ WhittedRayTracer::WhittedRayTracer(const Dictionary& dict)
         {
             { "posW",             "gWorldPosition",             "World-space position (xyz) and foreground flag (w)"            },
             { "normalW",          "gWorldShadingNormal",        "World-space shading normal (xyz)"                              },
-            { "bitangentW",       "gWorldShadingBitangent",     "World-space shading bitangent (xyz)", true /* optional */      },
+            { "tangentW",         "gWorldShadingTangent",       "World-space shading tangent (xyz) and sign (w)", true /* optional */ },
             { "faceNormalW",      "gWorldFaceNormal",           "Face normal in world space (xyz)",                             },
             { "mtlDiffOpacity",   "gMaterialDiffuseOpacity",    "Material diffuse color (xyz) and opacity (w)"                  },
             { "mtlSpecRough",     "gMaterialSpecularRoughness", "Material specular color (xyz) and roughness (w)"               },
             { "mtlEmissive",      "gMaterialEmissive",          "Material emissive color (xyz)"                                 },
             { "mtlParams",        "gMaterialExtraParams",       "Material parameters (IoR, flags etc)"                          },
-            { "surfSpreadAngle",  "gSurfaceSpreadAngle",        "surface spread angle (texlod)", true, ResourceFormat::R32Float},
-            { "rayDifferentialX", "gRayDifferentialX",          "ray differental X", true, ResourceFormat::RGBA32Float },
-            { "rayDifferentialY", "gRayDifferentialY",          "ray differental Y", true, ResourceFormat::RGBA32Float },
-            { "rayDifferentialZ", "gRayDifferentialZ",          "ray differental Z", true, ResourceFormat::RGBA32Float },
+            { "surfSpreadAngle",  "gSurfaceSpreadAngle",        "surface spread angle (texlod)", true, ResourceFormat::R16Float },
+            { "vbuffer",          "gVBuffer",                   "Visibility buffer in packed 64-bit format", true, ResourceFormat::RG32Uint },
         };
-
-        mTexLODModes =
+        mRayConeModes =
         {
-            { uint(TexLODMode::Mip0), "Mip0" },
-            { uint(TexLODMode::RayCones), "Ray cones" },
-            { uint(TexLODMode::RayDiffsIsotropic), "Ray diffs (isotropic)" },
-            { uint(TexLODMode::RayDiffsAnisotropic), "Ray diffs (anisotropic)" },
+            { uint(RayConeMode::RayTracingGems1), "Ray Tracing Gems (G-buffer)" },
+            { uint(RayConeMode::Combo), "Combo" },
+            { uint(RayConeMode::Unified), "Unified" },
         };
     }
     else
@@ -128,7 +130,7 @@ WhittedRayTracer::WhittedRayTracer(const Dictionary& dict)
         {
             { "posW",             "gWorldPosition",             "World-space position (xyz) and foreground flag (w)"            },
             { "normalW",          "gWorldShadingNormal",        "World-space shading normal (xyz)"                              },
-            { "bitangentW",       "gWorldShadingBitangent",     "World-space shading bitangent (xyz)", true /* optional */      },
+            { "tangentW",         "gWorldShadingTangent",       "World-space shading tangent (xyz) and sign (w)", true /* optional */ },
             { "faceNormalW",      "gWorldFaceNormal",           "Face normal in world space (xyz)",                             },
             { "mtlDiffOpacity",   "gMaterialDiffuseOpacity",    "Material diffuse color (xyz) and opacity (w)"                  },
             { "mtlSpecRough",     "gMaterialSpecularRoughness", "Material specular color (xyz) and roughness (w)"               },
@@ -136,12 +138,10 @@ WhittedRayTracer::WhittedRayTracer(const Dictionary& dict)
             { "mtlParams",        "gMaterialExtraParams",       "Material parameters (IoR, flags etc)"                          },
             { "vbuffer",          "gVBuffer",                   "Visibility buffer in packed 64-bit format", true, ResourceFormat::RG32Uint },
         };
-
-        mTexLODModes =
+        mRayConeModes =
         {
-            { uint(TexLODMode::Mip0), "Mip0" },
-            { uint(TexLODMode::RayDiffsIsotropic), "Ray diffs (isotropic)" },
-            { uint(TexLODMode::RayDiffsAnisotropic), "Ray diffs (anisotropic)" },
+            { uint(RayConeMode::Combo), "Combo" },
+            { uint(RayConeMode::Unified), "Unified" },
         };
     }
 }
@@ -166,11 +166,11 @@ RenderPassReflection WhittedRayTracer::reflect(const CompileData& compileData)
 void WhittedRayTracer::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
     // Update refresh flag if options that affect the output have changed.
-    Dictionary& dict = renderData.getDictionary();
+    auto& dict = renderData.getDictionary();
     if (mOptionsChanged)
     {
-        auto prevFlags = (Falcor::RenderPassRefreshFlags)(dict.keyExists(kRenderPassRefreshFlags) ? dict[Falcor::kRenderPassRefreshFlags] : 0u);
-        dict[Falcor::kRenderPassRefreshFlags] = (uint32_t)(prevFlags | Falcor::RenderPassRefreshFlags::RenderOptionsChanged);
+        auto flags = dict.getValue(kRenderPassRefreshFlags, RenderPassRefreshFlags::None);
+        dict[Falcor::kRenderPassRefreshFlags] = flags | Falcor::RenderPassRefreshFlags::RenderOptionsChanged;
         mOptionsChanged = false;
     }
 
@@ -242,21 +242,21 @@ void WhittedRayTracer::renderUI(Gui::Widgets& widget)
         dirty = true;
     }
     widget.tooltip("The texture level-of-detail mode to use.");
-
-    // Lighting controls.
-    auto lightsGroup = Gui::Group(widget, "Lights", true);
-    if (lightsGroup.open())
+    if (mTexLODMode == TexLODMode::RayCones)
     {
-        dirty |= lightsGroup.checkbox("Use analytic lights", mUseAnalyticLights);
-        lightsGroup.tooltip("This enables Falcor's built-in analytic lights.\nThese are specified in the scene description (.fscene).", true);
-        dirty |= lightsGroup.checkbox("Use emissive lights", mUseEmissiveLights);
-        lightsGroup.tooltip("This enables using emissive triangles as light sources.", true);
-        dirty |= lightsGroup.checkbox("Use env map as light", mUseEnvLight);
-        lightsGroup.tooltip("This enables using the environment map as a distant light source", true);
-        dirty |= lightsGroup.checkbox("Use env map as background", mUseEnvBackground);
-        lightsGroup.text(("Env map: " + (mpEnvProbe ? mEnvProbeFilename : "N/A")).c_str());
+        uint32_t modeIndex = static_cast<uint32_t>(mRayConeMode);
+        if (widget.dropdown("Ray cone mode", mRayConeModes, modeIndex))
+        {
+            setRayConeMode(RayConeMode(modeIndex));
+            dirty = true;
+        }
+        widget.tooltip("The variant of ray cones to use.");
 
-        lightsGroup.release();
+        dirty |= widget.checkbox("Use BDSF roughness", mUseRoughnessToVariance);
+        widget.tooltip("Grow ray cones based on BDSF roughness.");
+
+        dirty |= widget.checkbox("Visualize surface spread", mVisualizeSurfaceSpread);
+        widget.tooltip("Visualize the surface spread angle for the ray cones methods times 10.");
     }
 
     // If rendering options that modify the output have changed, set flag to indicate that.
@@ -272,8 +272,6 @@ void WhittedRayTracer::setScene(RenderContext* pRenderContext, const Scene::Shar
     // Clear data for previous scene.
     // After changing scene, the program vars should to be recreated.
     mTracer.pVars = nullptr;
-    mpEnvProbe = nullptr;
-    mEnvProbeFilename = "";
     mFrameCount = 0;
 
     // Set new scene.
@@ -282,17 +280,7 @@ void WhittedRayTracer::setScene(RenderContext* pRenderContext, const Scene::Shar
     if (pScene)
     {
         mTracer.pProgram->addDefines(pScene->getSceneDefines());
-
-        // Load environment map if scene uses one.
-        Texture::SharedPtr pEnvMap = mpScene->getEnvironmentMap();
-        if (pEnvMap != nullptr)
-        {
-            std::string filename = pEnvMap->getSourceFilename();
-            mpEnvProbe = EnvProbe::create(pRenderContext, filename);
-            mEnvProbeFilename = mpEnvProbe ? getFilenameFromPath(filename) : "";
-        }
     }
-
 }
 
 void WhittedRayTracer::prepareVars()
@@ -301,7 +289,7 @@ void WhittedRayTracer::prepareVars()
     assert(mTracer.pProgram);
 
     // Configure program.
-    mpSampleGenerator->prepareProgram(mTracer.pProgram.get());
+    mTracer.pProgram->addDefines(mpSampleGenerator->getDefines());
 
     // Create program variables for the current program/scene.
     // This may trigger shader compilation. If it fails, throw an exception to abort rendering.
@@ -312,13 +300,6 @@ void WhittedRayTracer::prepareVars()
     auto pGlobalVars = mTracer.pVars->getRootVar();
     bool success = mpSampleGenerator->setShaderData(pGlobalVars);
     if (!success) throw std::exception("Failed to bind sample generator");
-
-    // Bind the light probe if one is loaded.
-    if (mpEnvProbe)
-    {
-        bool success = mpEnvProbe->setShaderData(pGlobalVars["CB"]["gEnvProbe"]);
-        if (!success) throw std::exception("Failed to bind environment map");
-    }
 }
 
 void WhittedRayTracer::setStaticParams(RtProgram* pProgram) const
@@ -326,10 +307,13 @@ void WhittedRayTracer::setStaticParams(RtProgram* pProgram) const
     Program::DefineList defines;
     defines.add("MAX_BOUNCES", std::to_string(mMaxBounces));
     defines.add("TEXLOD_MODE", std::to_string(static_cast<uint32_t>(mTexLODMode)));
+    defines.add("RAY_CONE_MODE", std::to_string(static_cast<uint32_t>(mRayConeMode)));
+    defines.add("VISUALIZE_SURFACE_SPREAD", mVisualizeSurfaceSpread ? "1" : "0");
     defines.add("USE_RASTERIZED_GBUFFER", mUsingRasterizedGBuffer ? "1" : "0");
-    defines.add("USE_ANALYTIC_LIGHTS", mUseAnalyticLights ? "1" : "0");
-    defines.add("USE_EMISSIVE_LIGHTS", mUseEmissiveLights ? "1" : "0");
-    defines.add("USE_ENV_LIGHT", (mpEnvProbe && mUseEnvLight) ? "1" : "0");
-    defines.add("USE_ENV_BACKGROUND", (mpEnvProbe && mUseEnvBackground) ? "1" : "0");
+    defines.add("USE_ANALYTIC_LIGHTS", mpScene->useAnalyticLights() ? "1" : "0");
+    defines.add("USE_EMISSIVE_LIGHTS", mpScene->useEmissiveLights() ? "1" : "0");
+    defines.add("USE_ENV_LIGHT", mpScene->useEnvLight() ? "1" : "0");
+    defines.add("USE_ENV_BACKGROUND", mpScene->useEnvBackground() ? "1" : "0");
+    defines.add("USE_ROUGHNESS_TO_VARIANCE", mUseRoughnessToVariance ? "1" : "0");
     pProgram->addDefines(defines);
 }

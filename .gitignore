@@ -12,6 +12,7 @@ Bin/*
 *.pyc
 *.o
 *slang-dump-*
+*.mp4
 Source/Externals/.packman/*
 Media
 Tools/.packman

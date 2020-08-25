@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -37,7 +37,7 @@ namespace Falcor
     };
 
     template<typename ApiHandle>
-    class VkHandle : public VkBaseApiHandle, public inherit_shared_from_this<VkBaseApiHandle, VkHandle<ApiHandle>>
+    class VkHandle : public VkBaseApiHandle
     {
     public:
         class SharedPtr : public std::shared_ptr<VkHandle<ApiHandle>>
@@ -54,7 +54,7 @@ namespace Falcor
         ~VkHandle()
         {
 #ifdef _WIN32
-            static_assert(false, "VkHandle missing destructor specialization"); 
+            static_assert(false, "VkHandle missing destructor specialization");
 #endif
         }
     private:
@@ -63,7 +63,7 @@ namespace Falcor
         ApiHandle mApiHandle;
     };
 
-    class VkRootSignature : public VkBaseApiHandle, public inherit_shared_from_this<VkBaseApiHandle, VkRootSignature>
+    class VkRootSignature : public VkBaseApiHandle
     {
     public:
         class SharedPtr : public std::shared_ptr<VkRootSignature>
@@ -84,8 +84,8 @@ namespace Falcor
         VkPipelineLayout mApiHandle;
         std::vector<VkDescriptorSetLayout> mSets;
     };
-    
-    class VkDeviceData : public VkBaseApiHandle, public inherit_shared_from_this<VkBaseApiHandle, VkDeviceData>
+
+    class VkDeviceData : public VkBaseApiHandle
     {
     public:
         class SharedPtr : public std::shared_ptr<VkDeviceData>
@@ -126,7 +126,7 @@ namespace Falcor
     };
 
     template<typename ImageType, typename BufferType>
-    class VkResource : public VkBaseApiHandle, public inherit_shared_from_this<VkBaseApiHandle, VkResource<ImageType, BufferType>>
+    class VkResource : public VkBaseApiHandle
     {
     public:
         class SharedPtr : public std::shared_ptr<VkResource<ImageType, BufferType>>
@@ -148,7 +148,7 @@ namespace Falcor
         ~VkResource()
         {
 #ifdef _WIN32
-            static_assert(false, "VkResource missing destructor specialization"); 
+            static_assert(false, "VkResource missing destructor specialization");
 #endif
         }
     private:

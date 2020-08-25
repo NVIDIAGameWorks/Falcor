@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -25,8 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
 #include "SideBySidePass.h"
+
+const char* SideBySidePass::kDesc = "Allows the user to compare two inputs side-by-side.";
 
 namespace
 {
@@ -44,12 +45,12 @@ SideBySidePass::SideBySidePass()
 SideBySidePass::SharedPtr SideBySidePass::create(RenderContext* pRenderContext, const Dictionary& dict)
 {
     SharedPtr pPass = SharedPtr(new SideBySidePass());
-    for (const auto& v : dict)
+    for (const auto& [key, value] : dict)
     {
-        if (v.key() == kImageLeftBound) pPass->mImageLeftBound = v.val();
-        else if (!pPass->parseKeyValuePair(v.key(), v.val()))
+        if (key == kImageLeftBound) pPass->mImageLeftBound = value;
+        else if (!pPass->parseKeyValuePair(key, value))
         {
-            logWarning("Unknown field `" + v.key() + "` in a SideBySidePass dictionary");
+            logWarning("Unknown field '" + key + "' in a SideBySidePass dictionary");
         }
     }
     return pPass;

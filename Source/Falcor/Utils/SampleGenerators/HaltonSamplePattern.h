@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -30,32 +30,29 @@
 
 namespace Falcor
 {
-    class dlldecl HaltonSamplePattern : public CPUSampleGenerator, public inherit_shared_from_this<CPUSampleGenerator, HaltonSamplePattern>
+    class dlldecl HaltonSamplePattern : public CPUSampleGenerator
     {
     public:
         using SharedPtr = std::shared_ptr<HaltonSamplePattern>;
-        using inherit_shared_from_this<CPUSampleGenerator, HaltonSamplePattern>::shared_from_this;
+
         virtual ~HaltonSamplePattern() = default;
 
         /** Create Halton sample pattern generator.
-            \param[in] sampleCount The sample count. This must in the range 1..8 currently.
+            \param[in] sampleCount The pattern repeats every 'sampleCount' samples. Zero means no repeating.
             \return New object, or throws an exception on error.
         */
-        static SharedPtr create(uint32_t sampleCount = 8) { return SharedPtr(new HaltonSamplePattern(sampleCount)); }
+        static SharedPtr create(uint32_t sampleCount = 0) { return SharedPtr(new HaltonSamplePattern(sampleCount)); }
 
         virtual uint32_t getSampleCount() const override { return mSampleCount; }
 
         virtual void reset(uint32_t startID = 0) override { mCurSample = 0; }
 
-        virtual float2 next() override
-        {
-            return kPattern[(mCurSample++) % mSampleCount];
-        }
+        virtual float2 next() override;
+
     protected:
         HaltonSamplePattern(uint32_t sampleCount);
 
         uint32_t mCurSample = 0;
-        uint32_t mSampleCount = 0;
-        static const float2 kPattern[];
+        uint32_t mSampleCount;
     };
 }

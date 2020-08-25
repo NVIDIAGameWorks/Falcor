@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -40,16 +40,48 @@
 /*******************************************************************
                     CPU declarations
 *******************************************************************/
-
-using uint = uint32_t;
-using float3x3 = glm::float3x3;
-using float3x4 = glm::float3x4;
-using float4x4 = glm::float4x4;
+#include "Utils/Math/Vector.h"
+#include "glm/packing.hpp"
 
 #define BEGIN_NAMESPACE_FALCOR namespace Falcor{
 #define END_NAMESPACE_FALCOR }
 #define SETTER_DECL
 #define CONST_FUNCTION const
+
+namespace Falcor
+{
+    using uint = uint32_t;
+    using float3x3 = glm::float3x3;
+    using float3x4 = glm::float3x4;
+    using float4x4 = glm::float4x4;
+
+    inline float f16tof32(uint v) { return glm::unpackHalf2x16(v).x; }
+    inline float2 f16tof32(uint2 v) { return { f16tof32(v.x), f16tof32(v.y) }; };
+    inline float3 f16tof32(uint3 v) { return { f16tof32(v.x), f16tof32(v.y), f16tof32(v.z) }; };
+    inline float4 f16tof32(uint4 v) { return { f16tof32(v.x), f16tof32(v.y), f16tof32(v.z), f16tof32(v.w) }; };
+
+    inline uint f32tof16(float v) { return glm::packHalf2x16({ v, 0.f }); }
+    inline uint2 f32tof16(float2 v) { return { f32tof16(v.x), f32tof16(v.y) }; }
+    inline uint3 f32tof16(float3 v) { return { f32tof16(v.x), f32tof16(v.y), f32tof16(v.z) }; }
+    inline uint4 f32tof16(float4 v) { return { f32tof16(v.x), f32tof16(v.y), f32tof16(v.z), f32tof16(v.w) }; }
+
+    /** Generic reinterpret/bit cast.
+        TODO: Replace by std::bit_cast<T> when it is available in Visual Studio.
+    */
+    template<typename T, typename F>
+    const T bit_cast(const F& from) noexcept
+    {
+        static_assert(sizeof(T) == sizeof(F));
+        T result;
+        memcpy(&result, &from, sizeof(from));
+        return result;
+    }
+
+    inline float asfloat(uint32_t i) { return bit_cast<float>(i); }
+    inline float asfloat(int32_t i) { return bit_cast<float>(i); }
+    inline uint32_t asuint(float i) { return bit_cast<uint32_t>(i); }
+    inline int32_t asint(float i) { return bit_cast<int32_t>(i); }
+}
 
 #else
 /*******************************************************************

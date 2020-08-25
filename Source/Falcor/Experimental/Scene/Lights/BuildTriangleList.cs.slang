@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -34,16 +34,13 @@ import Experimental.Scene.Lights.LightCollection;
 cbuffer CB
 {
     uint gLightIdx;                         ///< The mesh light index.
+    uint gMaterialID;                       ///< The material ID of the mesh light.
     uint gMeshInstanceID;                   ///< Mesh light's global mesh instance ID. We use this to find its data in the scene.
     uint gTriangleCount;                    ///< Number of triangles in current mesh light.
     uint gTriangleOffset;                   ///< Current offset into global list of emissive triangles.
 }
 
-RWByteAddressBuffer gVertexPosOutput;       ///< Vertex positions in world space for all mesh light triangles. Size: triangleCount * 3 * sizeof(float3).
-RWByteAddressBuffer gTexCoordsOutput;       ///< Texture coordinates for all mesh light triangles. Size: triangleCount * 3 * sizeof(float2).
-
-RWStructuredBuffer<EmissiveTriangle> gTriangleData;     ///< Per-triangle data for emissive triangles. Size: triangleCount * sizeof(EmissiveTriangle).
-
+RWStructuredBuffer<PackedEmissiveTriangle> gTriangleData;   ///< Per-triangle data for emissive triangles.
 
 /** Kernel building the emissive triangles list for all mesh lights.
     One dispatch per mesh light with one thread per triangle.
@@ -57,24 +54,14 @@ void buildTriangleList(uint3 DTid : SV_DispatchThreadID)
     const uint triIdx = gTriangleOffset + triangleIndex;
     const uint vtxIdx = triIdx * 3; // The emissive triangle list is non-indexed.
 
-    // Store vertex data.
-    float3 p[3];
-    float2 texC[3];
-    gScene.getVertexPositionsW(gMeshInstanceID, triangleIndex, p);
-    gScene.getVertexTexCoords(gMeshInstanceID, triangleIndex, texC);
-
-    [unroll]
-    for (int i = 0; i < 3; i++)
-    {
-        gVertexPosOutput.Store3((vtxIdx + i) * 12, asuint(p[i]));
-        gTexCoordsOutput.Store2((vtxIdx + i) * 8, asuint(texC[i]));
-    }
+    // Fetch vertex data.
+    EmissiveTriangle tri;
+    gScene.getVertexPositionsW(gMeshInstanceID, triangleIndex, tri.posW);
+    gScene.getVertexTexCoords(gMeshInstanceID, triangleIndex, tri.texCoords);
+    tri.normal = gScene.computeFaceNormalAndAreaW(gMeshInstanceID, tri.posW, tri.area);;
+    tri.materialID = gMaterialID;
+    tri.lightIdx = gLightIdx;
 
     // Store triangle data.
-    float triangleArea;
-    float3 faceNormal = gScene.computeFaceNormalAndAreaW(gMeshInstanceID, p, triangleArea);
-
-    gTriangleData[triIdx].lightIdx = gLightIdx;
-    gTriangleData[triIdx].normal = faceNormal;
-    gTriangleData[triIdx].area = triangleArea;
+    gTriangleData[triIdx].pack(tri);
 }

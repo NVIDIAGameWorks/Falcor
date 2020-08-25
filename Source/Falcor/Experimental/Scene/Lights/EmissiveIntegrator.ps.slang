@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -50,7 +50,7 @@ SamplerState        gPointSampler;      ///< Sampler for fetching individual tex
 struct VsOut
 {
     float2 uv                       : TexCoord;
-    nointerpolation uint lightIdx   : LightIdx;
+    nointerpolation uint materialID : MaterialID;
     float4 posH                     : SV_Position;
 };
 
@@ -64,34 +64,29 @@ VsOut vsMain(uint vtxIdx : SV_VertexID)
 {
     // Fetch light index
     const uint triIdx = vtxIdx / 3;
-    const uint id = gLightCollection.getLightIdx(triIdx);
+    const EmissiveTriangle tri = gLightCollection.getTriangle(triIdx);
 
     VsOut vsOut;
     vsOut.uv = float2(0, 0);
     vsOut.posH = float4(0, 0, 0, 1);
-    vsOut.lightIdx = id;
+    vsOut.materialID = tri.materialID;
 
     // Check if triangle is textured.
-    if (gScene.isEmissiveTextured(gLightCollection.getMaterialID(triIdx)))
+    if (gScene.isEmissiveTextured(tri.materialID))
     {
         // TODO: We could do these computations in a geometry shader once per triangle,
         // instead of duplicated per-vertex. Which is faster? This code is not performance critical.
 
         // Get triangle's bounding box in texture coordinates.
-        float2 uv[3];
-        for (uint j = 0; j < 3; j++)
-        {
-            uv[j] = gLightCollection.getVtxTexCoord(triIdx + j);
-        }
-        const float2 uvMin = min(min(uv[0], uv[1]), uv[2]);
-        const float2 uvMax = max(max(uv[0], uv[1]), uv[2]);
+        const float2 uvMin = min(min(tri.texCoords[0], tri.texCoords[1]), tri.texCoords[2]);
+        const float2 uvMax = max(max(tri.texCoords[0], tri.texCoords[1]), tri.texCoords[2]);
 
         // Pass on texture coordinate unmodified for pixel to use.
-        vsOut.uv = gLightCollection.getVtxTexCoord(vtxIdx);                 // Normalized (u,v) coordinate.
+        vsOut.uv = tri.texCoords[vtxIdx % 3];
 
         // Query texture dimensions.
         float width = 0, height = 0, mips = 0;
-        gScene.materialResources[gLightCollection.meshData[id].materialID].emissive.GetDimensions(0, width, height, mips);
+        gScene.materialResources[tri.materialID].emissive.GetDimensions(0, width, height, mips);
 
         // Compute raster position in texture space.
         // We do this by offsetting UV so that it's always positive, scaled by texture dimension.
@@ -122,9 +117,7 @@ void psMain(VsOut vsIn, uint triIdx : SV_PrimitiveID)
     // We could alternatively use MSAA to reduce errors, but we still have the problem with missed primitives.
 
     // Fetch texel using nearest-neighbor sampling.
-    const float2 uv = vsIn.uv;        // Interpolated texture coordinate.
-    const uint lightIdx = vsIn.lightIdx;
-    float3 color = gScene.materialResources[gLightCollection.meshData[lightIdx].materialID].emissive.SampleLevel(gPointSampler, uv, 0.f).rgb;  // Sampler at mip 0
+    float3 color = gScene.materialResources[vsIn.materialID].emissive.SampleLevel(gPointSampler, vsIn.uv, 0.f).rgb;  // Sampler at mip 0
 
     // Compute weighted color. TODO: For now assume full coverage (= 1.0 in weight).
     float weight = 1.f;

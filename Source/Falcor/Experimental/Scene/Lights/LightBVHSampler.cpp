@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -39,8 +39,8 @@ namespace Falcor
         const Gui::DropdownList kSolidAngleBoundList =
         {
             { (uint32_t)SolidAngleBoundMethod::Sphere, "Sphere" },
-            { (uint32_t)SolidAngleBoundMethod::BoxToAverage, "Cone around average dir." },
-            { (uint32_t)SolidAngleBoundMethod::BoxToCenter, "Cone around vec. to center" },
+            { (uint32_t)SolidAngleBoundMethod::BoxToCenter, "Cone around center dir" },
+            { (uint32_t)SolidAngleBoundMethod::BoxToAverage, "Cone around average dir" },
         };
     }
 
@@ -98,17 +98,8 @@ namespace Falcor
     bool LightBVHSampler::setShaderData(const ShaderVar& var) const
     {
         assert(var.isValid());
-
-        // In the following we validate that the struct has the correct fields and set the data.
-
-        // Bind the BVH resources.
         assert(mpBVH);
-        if (!mpBVH->setShaderData(var["_lightBVH"]))
-        {
-            logError("LightBVHSampler::setShaderData() - Failed to bind the light BVH");
-            return false;
-        }
-
+        mpBVH->setShaderData(var["_lightBVH"]);
         return true;
     }
 
@@ -116,20 +107,16 @@ namespace Falcor
     {
         bool optionsChanged = false;
 
-        auto buildGroup = Gui::Group(widgets, "BVH building options");
-        if (buildGroup.open())
+        if (auto buildGroup = widgets.group("BVH building options"))
         {
             if (mpBVHBuilder->renderUI(buildGroup))
             {
                 mOptions.buildOptions = mpBVHBuilder->getOptions();
                 mNeedsRebuild = optionsChanged = true;
             }
-
-            buildGroup.release();
         }
 
-        auto traversalGroup = Gui::Group(widgets, "BVH traversal options");
-        if (traversalGroup.open())
+        if (auto traversalGroup = widgets.group("BVH traversal options"))
         {
             optionsChanged |= traversalGroup.checkbox("Use bounding cone (NdotL)", mOptions.useBoundingCone);
             if (traversalGroup.checkbox("Use lighting cone", mOptions.useLightingCone))
@@ -143,15 +130,16 @@ namespace Falcor
             {
                 mNeedsRebuild = optionsChanged = true;
             }
-
-            traversalGroup.release();
+            traversalGroup.tooltip("Selects the bounding method for the dot(N,L) term:\n\n"
+                "Sphere - Use a bounding sphere around the AABB. This is the fastest, but least conservative method.\n"
+                "Cone around center dir - Compute a bounding cone around the direction to the center of the AABB. This is more expensive, but gives tighter bounds.\n"
+                "Cone around average dir - Computes a bounding cone to the average direction of all AABB corners. This is the most expensive, but gives the tightest bounds.");
         }
 
-        auto statGroup = Gui::Group(widgets, "BVH statistics");
-        if (statGroup.open())
+
+        if (auto statGroup = widgets.group("BVH statistics"))
         {
             mpBVH->renderUI(statGroup);
-            statGroup.release();
         }
 
         return optionsChanged;
@@ -176,14 +164,14 @@ namespace Falcor
 
     SCRIPT_BINDING(LightBVHSampler)
     {
-        auto e = m.enum_<SolidAngleBoundMethod>("SolidAngleBoundMethod");
-        e.regEnumVal(SolidAngleBoundMethod::BoxToAverage);
-        e.regEnumVal(SolidAngleBoundMethod::BoxToCenter);
-        e.regEnumVal(SolidAngleBoundMethod::Sphere);
+        pybind11::enum_<SolidAngleBoundMethod> solidAngleBoundMethod(m, "SolidAngleBoundMethod");
+        solidAngleBoundMethod.value("BoxToAverage", SolidAngleBoundMethod::BoxToAverage);
+        solidAngleBoundMethod.value("BoxToCenter", SolidAngleBoundMethod::BoxToCenter);
+        solidAngleBoundMethod.value("Sphere", SolidAngleBoundMethod::Sphere);
 
         // TODO use a nested class in the bindings when supported.
-        auto options = m.class_<LightBVHSampler::Options>("LightBVHSamplerOptions");
-#define field(f_) rwField(#f_, &LightBVHSampler::Options::f_)
+        ScriptBindings::SerializableStruct<LightBVHSampler::Options> options(m, "LightBVHSamplerOptions");
+#define field(f_) field(#f_, &LightBVHSampler::Options::f_)
         options.field(buildOptions);
         options.field(useBoundingCone);
         options.field(useLightingCone);

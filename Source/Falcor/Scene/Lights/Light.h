@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "LightData.slang"
+#include "Scene/Animation/Animatable.h"
 
 namespace Falcor
 {
@@ -34,12 +35,11 @@ namespace Falcor
 
     /** Base class for light sources. All light sources should inherit from this.
     */
-    class dlldecl Light
+    class dlldecl Light : public Animatable
     {
     public:
         using SharedPtr = std::shared_ptr<Light>;
         using SharedConstPtr = std::shared_ptr<const Light>;
-        using ConstSharedPtrRef = const SharedPtr&;
 
         virtual ~Light() = default;
 
@@ -48,10 +48,8 @@ namespace Falcor
         virtual void setShaderData(const ShaderVar& var);
 
         /** Render UI elements for this light.
-            \param[in] pGui The GUI to create the elements with
-            \param[in] group Optional. If specified, creates a UI group to display elements within
         */
-        virtual void renderUI(Gui* pGui, const char* group = nullptr);
+        virtual void renderUI(Gui::Widgets& widget);
 
         /** Get total light power
         */
@@ -61,17 +59,25 @@ namespace Falcor
         */
         LightType getType() const { return (LightType)mData.type; }
 
-        /** Get the light Type
+        /** Get the light data
         */
         inline const LightData& getData() const { return mData; }
 
         /** Name the light
         */
-        const void setName(const std::string& Name) { mName = Name; }
+        void setName(const std::string& Name) { mName = Name; }
 
         /** Get the light's name
         */
         const std::string& getName() const { return mName; }
+
+        /** Activate/deactivate the light
+        */
+        void setActive(bool active);
+
+        /** Check if light is active
+        */
+        bool isActive() const { return mActive; }
 
         /** Gets the size of a single light data struct in bytes
         */
@@ -84,10 +90,11 @@ namespace Falcor
         enum class Changes
         {
             None = 0x0,
-            Position = 0x1,
-            Direction = 0x2,
-            Intensity = 0x4,
-            SurfaceArea = 0x8,
+            Active = 0x1,
+            Position = 0x2,
+            Direction = 0x4,
+            Intensity = 0x8,
+            SurfaceArea = 0x10,
         };
 
         /** Begin a new frame. Returns the changes from the previous frame
@@ -105,8 +112,10 @@ namespace Falcor
         float getIntensityForScript() { return getIntensityForUI(); }
         float3 getColorForScript() { return getColorForUI(); }
 
+        void updateFromAnimation(const glm::mat4& transform) override {}
+
     protected:
-        Light() = default;
+        Light(LightType type);
 
         static const size_t kDataSize = sizeof(LightData);
 
@@ -117,10 +126,12 @@ namespace Falcor
         void setIntensityFromUI(float intensity);
 
         std::string mName;
+        bool mActive = true;
+        bool mActiveChanged = false;
 
         /* These two variables track mData values for consistent UI operation.*/
         float3 mUiLightIntensityColor = float3(0.5f, 0.5f, 0.5f);
-        float     mUiLightIntensityScale = 1.0f;
+        float mUiLightIntensityScale = 1.0f;
         LightData mData, mPrevData;
         Changes mChanges = Changes::None;
     };
@@ -137,10 +148,8 @@ namespace Falcor
         ~DirectionalLight();
 
         /** Render UI elements for this light.
-        \param[in] pGui The GUI to create the elements with
-        \param[in] group Optional. If specified, creates a UI group to display elements within
         */
-        void renderUI(Gui* pGui, const char* group = nullptr) override;
+        void renderUI(Gui::Widgets& widget) override;
 
         /** Set the light's world-space direction.
             \param[in] dir Light direction. Does not have to be normalized.
@@ -157,12 +166,12 @@ namespace Falcor
 
         /** Get total light power (needed for light picking)
         */
-        float getPower() const override;
+        float getPower() const override { return 0.f; }
+
+        void updateFromAnimation(const glm::mat4& transform) override;
 
     private:
         DirectionalLight();
-        float mDistance = 1e3f; ///< Scene bounding radius is required to move the light position sufficiently far away
-        float3 mCenter;
     };
 
     /** Simple infinitely-small point light with quadratic attenuation
@@ -177,10 +186,8 @@ namespace Falcor
         ~PointLight();
 
         /** Render UI elements for this light.
-            \param[in] pGui The GUI to create the elements with
-            \param[in] group Optional. If specified, creates a UI group to display elements within
         */
-        void renderUI(Gui* pGui, const char* group = nullptr) override;
+        void renderUI(Gui::Widgets& widget) override;
 
         /** Get total light power (needed for light picking)
         */
@@ -225,6 +232,8 @@ namespace Falcor
         */
         float getOpeningAngle() const { return mData.openingAngle; }
 
+        void updateFromAnimation(const glm::mat4& transform) override;
+
     private:
         PointLight();
     };
@@ -261,42 +270,60 @@ namespace Falcor
         /** Set transform matrix
             \param[in] mtx object to world space transform matrix
         */
-        void setTransformMatrix(const glm::mat4 &mtx) { mTransformMatrix = mtx; }
+        void setTransformMatrix(const glm::mat4& mtx) { mTransformMatrix = mtx; update();  }
 
         /** Get transform matrix
         */
         glm::mat4 getTransformMatrix() const { return mTransformMatrix; }
 
-        /** Render UI elements for this light.
-            \param[in] pGui The GUI to create the elements with
-            \param[in] group Optional. If specified, creates a UI group to display elements within
-        */
-        void renderUI(Gui* pGui, const char* group = nullptr) override;
-
     private:
         AnalyticAreaLight(LightType type);
         void update();
 
-        bool mDirty = true;
         float3 mScaling;                ///< Scaling, controls the size of the light
         glm::mat4 mTransformMatrix;     ///< Transform matrix minus scaling component
     };
 
-    // TODO: Remove this? It's not used anywhere
-    inline std::string light_type_string(LightType type)
+    class dlldecl DistantLight : public Light
     {
-        switch (type)
-        {
-        case LightType::Point: return "Point Light";
-        case LightType::Directional: return "Directional Light";
-        case LightType::Rect: return "Rectangular Light";
-        case LightType::Sphere: return "Spherical Light";
-        case LightType::Disc: return "Disc Light";
-        default:
-            should_not_get_here();
-            return "";
-        }
-    }
+    public:
+        using SharedPtr = std::shared_ptr<DistantLight>;
+        using SharedConstPtr = std::shared_ptr<const DistantLight>;
+
+        static SharedPtr create();
+        ~DistantLight();
+
+        /** Render UI elements for this light.
+        */
+        void renderUI(Gui::Widgets& widget) override;
+
+        /** Set the half-angle subtended by the light
+            \param[in] theta Light angle
+        */
+        void setAngle(float theta);
+
+        /** Get the half-angle subtended by the light
+        */
+        float getAngle() const { return mAngle; }
+
+        /** Set the light's world-space direction.
+            \param[in] dir Light direction. Does not have to be normalized.
+        */
+        void setWorldDirection(const float3& dir);
+
+        /** Get the light's world-space direction.
+        */
+        const float3& getWorldDirection() const { return mData.dirW; }
+
+        /** Get total light power
+        */
+        float getPower() const override { return 0.f; }
+
+    private:
+        DistantLight();
+        void update();
+        float mAngle;       ///<< Half-angle subtended by the source.
+    };
 
     enum_class_operators(Light::Changes);
 }

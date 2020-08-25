@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -26,21 +26,23 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "RenderGraphEditor.h"
+#include "args.h"
 #include <fstream>
 #include <filesystem>
 #include "RenderGraphEditor.h"
 #include "dear_imgui/imgui.h"
 #include "dear_imgui/imgui_internal.h"
 
-const char* kViewerExecutableName = "Mogwai";
-const char* kScriptSwitch = "script";
-const char* kGraphFileSwitch = "graphFile";
-const char* kGraphNameSwitch = "graphName";
-const char* kEditorSwitch = "editor";
-const char* kDefaultPassIcon = "DefaultPassIcon.png";
+namespace
+{
+    const std::string kViewerExecutableName = "Mogwai";
+    const std::string kScriptSwitch = "--script";
+    const std::string kDefaultPassIcon = "DefaultPassIcon.png";
+}
 
-RenderGraphEditor::RenderGraphEditor()
-    : mCurrentGraphIndex(0)
+RenderGraphEditor::RenderGraphEditor(const Options& options)
+    : mOptions(options)
+    , mCurrentGraphIndex(0)
 {
     mNextGraphString.resize(255, 0);
     mCurrentGraphOutput = "";
@@ -59,27 +61,17 @@ RenderGraphEditor::~RenderGraphEditor()
 
 void RenderGraphEditor::onLoad(RenderContext* pRenderContext)
 {
-    const auto& argList = gpFramework->getArgList();
-    std::string filePath;
-    if (argList.argExists(kGraphFileSwitch))
-    {
-        filePath = argList[kGraphFileSwitch].asString();
-    }
-
     mpDefaultIconTex = Texture::createFromFile(kDefaultPassIcon, false, false);
     if (!mpDefaultIconTex) throw std::exception("Failed to load icon");
 
     loadAllPassLibraries();
 
-    if (filePath.size())
+    if (!mOptions.graphFile.empty())
     {
-        std::string graphName;
-        if (argList.argExists(kGraphNameSwitch)) graphName = argList[kGraphNameSwitch].asString();
-
         mViewerRunning = true;
-        loadGraphsFromFile(filePath, graphName);
+        loadGraphsFromFile(mOptions.graphFile, mOptions.graphName);
 
-        if (argList.argExists(kEditorSwitch)) mUpdateFilePath = filePath;
+        if (mOptions.runFromMogwai) mUpdateFilePath = mOptions.graphFile;
     }
     else createNewGraph("DefaultRenderGraph");
 }
@@ -347,7 +339,7 @@ void RenderGraphEditor::onGuiRender(Gui* pGui)
             RenderGraphExporter::save(mpGraphs[mCurrentGraphIndex], mUpdateFilePath);
 
             // load application for the editor given it the name of the mapped file
-            std::string commandLineArgs = "-" + std::string(kEditorSwitch) + " -" + std::string(kScriptSwitch) + ' ' + mUpdateFilePath;
+            std::string commandLineArgs = kScriptSwitch + " " + mUpdateFilePath;
             mViewerProcess = executeProcess(kViewerExecutableName, commandLineArgs);
             assert(mViewerProcess);
             mViewerRunning = true;
@@ -529,12 +521,53 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 int main(int argc, char** argv)
 #endif
 {
-    RenderGraphEditor::UniquePtr pEditor = std::make_unique<RenderGraphEditor>();
-    SampleConfig config;
-#ifndef _WIN32
-    config.argv = argv;
-    config.argc = (uint32_t)argc;
+    args::ArgumentParser parser("Render graph editor.");
+    parser.helpParams.programName = "RenderGraphEditor";
+    args::HelpFlag helpFlag(parser, "help", "Display this help menu.", {'h', "help"});
+    args::ValueFlag<std::string> graphFileFlag(parser, "path", "Graph file to edit.", {"graph-file"});
+    args::ValueFlag<std::string> graphNameFlag(parser, "name", "Graph name to edit.", {"graph-name"});
+    args::Flag editorFlag(parser, "", "Run in editor mode (started from Mogwai).", {"editor"});
+    args::CompletionFlag completionFlag(parser, {"complete"});
+
+    try
+    {
+#ifdef _WIN32
+        parser.ParseCLI(__argc, __argv);
+#else
+        parser.ParseCLI(argc, argv);
 #endif
+    }
+    catch (const args::Completion& e)
+    {
+        std::cout << e.what();
+        return 0;
+    }
+    catch (const args::Help&)
+    {
+        std::cout << parser;
+        return 0;
+    }
+    catch (const args::ParseError& e)
+    {
+        std::cerr << e.what() << std::endl;
+        std::cerr << parser;
+        return 1;
+    }
+    catch (const args::RequiredError& e)
+    {
+        std::cerr << e.what() << std::endl;
+        std::cerr << parser;
+        return 1;
+    }
+
+    RenderGraphEditor::Options options;
+
+    if (graphFileFlag) options.graphFile = args::get(graphFileFlag);
+    if (graphNameFlag) options.graphName = args::get(graphNameFlag);
+    if (editorFlag) options.runFromMogwai = true;
+
+    RenderGraphEditor::UniquePtr pEditor = std::make_unique<RenderGraphEditor>(options);
+    SampleConfig config;
     config.windowDesc.title = "Render Graph Editor";
     config.windowDesc.resizableWindow = true;
     Sample::run(config, pEditor);

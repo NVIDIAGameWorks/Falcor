@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -43,6 +43,8 @@ const char* ImageLoader::kDesc = "Load an image into a texture";
 namespace
 {
     const std::string kDst = "dst";
+
+    const std::string kOutputFormat = "outputFormat";
     const std::string kImage = "filename";
     const std::string kMips = "mips";
     const std::string kSrgb = "srgb";
@@ -53,7 +55,7 @@ namespace
 RenderPassReflection ImageLoader::reflect(const CompileData& compileData)
 {
     RenderPassReflection reflector;
-    reflector.addOutput(kDst, "Destination texture");
+    reflector.addOutput(kDst, "Destination texture").format(mOutputFormat);
     return reflector;
 }
 
@@ -61,14 +63,15 @@ ImageLoader::SharedPtr ImageLoader::create(RenderContext* pRenderContext, const 
 {
     SharedPtr pPass = SharedPtr(new ImageLoader);
 
-    for (const auto& v : dict)
+    for (const auto& [key, value] : dict)
     {
-        if (v.key() == kImage) pPass->mImageName = v.val().operator std::string();
-        else if (v.key() == kSrgb) pPass->mLoadSRGB = v.val();
-        else if (v.key() == kMips) pPass->mGenerateMips = v.val();
-        else if (v.key() == kArraySlice) pPass->mArraySlice = v.val();
-        else if (v.key() == kMipLevel) pPass->mMipLevel = v.val();
-        else logWarning("Unknown field `" + v.key() + "` in a ImageLoader dictionary");
+        if (key == kOutputFormat) pPass->mOutputFormat = value;
+        else if (key == kImage) pPass->mImageName = value.operator std::string();
+        else if (key == kSrgb) pPass->mLoadSRGB = value;
+        else if (key == kMips) pPass->mGenerateMips = value;
+        else if (key == kArraySlice) pPass->mArraySlice = value;
+        else if (key == kMipLevel) pPass->mMipLevel = value;
+        else logWarning("Unknown field '" + key + "' in a ImageLoader dictionary");
     }
 
     if (pPass->mImageName.size())
@@ -82,6 +85,7 @@ ImageLoader::SharedPtr ImageLoader::create(RenderContext* pRenderContext, const 
 Dictionary ImageLoader::getScriptingDictionary()
 {
     Dictionary dict;
+    if (mOutputFormat != ResourceFormat::Unknown) dict[kOutputFormat] = mOutputFormat;
     dict[kImage] = mImageName;
     dict[kMips] = mGenerateMips;
     dict[kSrgb] = mLoadSRGB;

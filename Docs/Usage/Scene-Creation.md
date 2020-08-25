@@ -6,7 +6,7 @@
 
 Scenes are created using the `SceneBuilder` class. Falcor uses Assimp as its core model loading functionality and therefore supports all formats that Assimp does. For a full list, please see refer to the Assimp project documentation: https://github.com/assimp/assimp.
 
-In additional to mesh geometry, Falcor also supports loading skinned animations, lights (TODO what kind of lights), and animations paths from model files.
+In additional to mesh geometry, Falcor also supports loading skinned animations, animations paths, cameras, and lights (point/directional/emissives) from model files.
 
 For details on how to use a `Scene` after creation, see the [Scenes](./Scenes.md) page.
 

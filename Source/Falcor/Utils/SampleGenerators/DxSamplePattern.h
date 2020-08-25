@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -32,11 +32,10 @@ namespace Falcor
 {
     /** Sample pattern generator for the Direct3D 8x MSAA/SSAA pattern.
     */
-    class dlldecl DxSamplePattern : public CPUSampleGenerator, public inherit_shared_from_this<CPUSampleGenerator, DxSamplePattern>
+    class dlldecl DxSamplePattern : public CPUSampleGenerator
     {
     public:
         using SharedPtr = std::shared_ptr<DxSamplePattern>;
-        using inherit_shared_from_this<CPUSampleGenerator, DxSamplePattern>::shared_from_this;
         virtual ~DxSamplePattern() = default;
 
         /** Create DirectX MSAA sample pattern generator.

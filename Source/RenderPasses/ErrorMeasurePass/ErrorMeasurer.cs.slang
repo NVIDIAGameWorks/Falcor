@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -35,6 +35,7 @@ cbuffer PerFrameCB
     uint2   gResolution;
     uint    gIgnoreBackground;
     uint    gComputeDiffSqr;
+    uint    gComputeAverage;
 };
 
 [numthreads(16, 16, 1)]
@@ -52,6 +53,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
     // Compute error based on the current options.
     float3 diff = isPixelValid ? abs(gSource[pixel].rgb - gReference[pixel].rgb) : float3(0.0f);
     if (gComputeDiffSqr) diff *= diff;
+    if (gComputeAverage) diff.rgb = (diff.r + diff.g + diff.b) / 3.f;
 
     gResult[pixel] = float4(diff, 0.0f);
 }

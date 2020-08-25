@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "VBufferRaster.h"
+#include "Scene/HitInfo.h"
 #include "RenderGraph/RenderPassStandardFlags.h"
 
 const char* VBufferRaster::kDesc = "Rasterized V-buffer generation pass";
@@ -99,19 +100,12 @@ void VBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedP
 
 void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    // Update refresh flag if options that affect the output have changed.
-    if (mOptionsChanged)
-    {
-        Dictionary& dict = renderData.getDictionary();
-        auto prevFlags = (Falcor::RenderPassRefreshFlags)(dict.keyExists(kRenderPassRefreshFlags) ? dict[Falcor::kRenderPassRefreshFlags] : 0u);
-        dict[Falcor::kRenderPassRefreshFlags] = (uint32_t)(prevFlags | Falcor::RenderPassRefreshFlags::RenderOptionsChanged);
-        mOptionsChanged = false;
-    }
+    GBufferBase::execute(pRenderContext, renderData);
 
     // Clear depth and output buffer.
     auto pDepth = renderData[kDepthName]->asTexture();
     auto pOutput = renderData[kOutputName]->asTexture();
-    pRenderContext->clearUAV(pOutput->getUAV().get(), uint4(kInvalidIndex)); // Clear as UAV for integer clear value
+    pRenderContext->clearUAV(pOutput->getUAV().get(), uint4(HitInfo::kInvalidIndex)); // Clear as UAV for integer clear value
     pRenderContext->clearDsv(pDepth->getDSV().get(), 1.f, 0);
 
     // If there is no scene, we're done.

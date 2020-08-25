@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -47,7 +47,7 @@ namespace
     {
         { (uint32_t)GBufferRT::LODMode::UseMip0, "Mip0" },
         { (uint32_t)GBufferRT::LODMode::RayDifferentials, "Ray Diff" },
-        //{ (uint32_t)GBufferRT::LODMode::TexLODCone, "Tex LOD cone" }, // Not implemented
+        { (uint32_t)GBufferRT::LODMode::RayCones, "Ray Cones" },
     };
 
     // Additional output channels.
@@ -57,15 +57,16 @@ namespace
         { "mvec",           "gMotionVectors",   "Motion vectors",                   true /* optional */, ResourceFormat::RG32Float   },
         { "faceNormalW",    "gFaceNormalW",     "Face normal in world space",       true /* optional */, ResourceFormat::RGBA32Float },
         { "viewW",          "gViewW",           "View direction in world space",    true /* optional */, ResourceFormat::RGBA32Float }, // TODO: Switch to packed 2x16-bit snorm format.
+        { "time",           "gTime",            "Per-pixel execution time",         true /* optional */, ResourceFormat::R32Uint     },
     };
 };
 
-void GBufferRT::registerBindings(ScriptBindings::Module& m)
+void GBufferRT::registerBindings(pybind11::module& m)
 {
-    auto e = m.enum_<GBufferRT::LODMode>("LODMode");
-    e.regEnumVal(GBufferRT::LODMode::UseMip0);
-    e.regEnumVal(GBufferRT::LODMode::RayDifferentials);
-    //e.regEnumVal(GBufferRT::LODMode::TexLODCone) not implemented
+    pybind11::enum_<GBufferRT::LODMode> lodMode(m, "LODMode");
+    lodMode.value("UseMip0", GBufferRT::LODMode::UseMip0);
+    lodMode.value("RayDifferentials", GBufferRT::LODMode::RayDifferentials);
+    lodMode.value("RayCones", GBufferRT::LODMode::RayCones);
 }
 
 RenderPassReflection GBufferRT::reflect(const CompileData& compileData)
@@ -84,9 +85,9 @@ void GBufferRT::parseDictionary(const Dictionary& dict)
     // Call the base class first.
     GBuffer::parseDictionary(dict);
 
-    for (const auto& v : dict)
+    for (const auto& [key, value] : dict)
     {
-        if (v.key() == kLOD) mLODMode = v.val();
+        if (key == kLOD) mLODMode = value;
         // TODO: Check for unparsed fields, including those parsed in base classes.
     }
 }
@@ -108,16 +109,16 @@ GBufferRT::GBufferRT(const Dictionary& dict)
 {
     parseDictionary(dict);
 
+    // Create random engine
+    mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_DEFAULT);
+
     // Create ray tracing program
     RtProgram::Desc desc;
     desc.addShaderLibrary(kProgramFile).setRayGen("rayGen");
     desc.addHitGroup(0, "closestHit", "anyHit").addMiss(0, "miss");
     desc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
+    desc.addDefines(mpSampleGenerator->getDefines());
     mRaytrace.pProgram = RtProgram::create(desc, kMaxPayloadSizeBytes, kMaxAttributesSizeBytes);
-
-    // Create random engine
-    mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_DEFAULT);
-    mpSampleGenerator->prepareProgram(mRaytrace.pProgram.get());
 
     // Set default cull mode
     setCullMode(mCullMode);
@@ -137,14 +138,7 @@ void GBufferRT::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& 
 
 void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    // Update refresh flag if options that affect the output have changed.
-    Dictionary& dict = renderData.getDictionary();
-    if (mOptionsChanged)
-    {
-        auto prevFlags = (Falcor::RenderPassRefreshFlags)(dict.keyExists(kRenderPassRefreshFlags) ? dict[Falcor::kRenderPassRefreshFlags] : 0u);
-        dict[Falcor::kRenderPassRefreshFlags] = (uint32_t)(prevFlags | Falcor::RenderPassRefreshFlags::RenderOptionsChanged);
-        mOptionsChanged = false;
-    }
+    GBuffer::execute(pRenderContext, renderData);
 
     // If there is no scene, clear the output and return.
     if (mpScene == nullptr)
@@ -162,12 +156,12 @@ void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
     // Configure depth-of-field.
     // When DOF is enabled, two PRNG dimensions are used. Pass this info to subsequent passes via the dictionary.
     const bool useDOF = mpScene->getCamera()->getApertureRadius() > 0.f;
-    if (useDOF) dict[Falcor::kRenderPassPRNGDimension] = useDOF ? 2u : 0u;
+    if (useDOF) renderData.getDictionary()[Falcor::kRenderPassPRNGDimension] = useDOF ? 2u : 0u;
 
     // Set program defines.
     mRaytrace.pProgram->addDefine("USE_DEPTH_OF_FIELD", useDOF ? "1" : "0");
     mRaytrace.pProgram->addDefine("USE_RAY_DIFFERENTIALS", mLODMode == LODMode::RayDifferentials ? "1" : "0");
-    mRaytrace.pProgram->addDefine("USE_IRAY_BENT_NORMALS", mUseBentShadingNormals ? "1" : "0");
+    mRaytrace.pProgram->addDefine("USE_RAY_CONES", mLODMode == LODMode::RayCones ? "1" : "0");
     mRaytrace.pProgram->addDefine("DISABLE_ALPHA_TEST", mDisableAlphaTest ? "1" : "0");
 
     // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
@@ -190,6 +184,8 @@ void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
         // TODO: Remove this warning when the TexLOD code has been fixed.
         logWarning("GBufferRT::execute() - Ray differentials are not tested for instance transforms that flip the coordinate system handedness. The results may be incorrect.");
     }
+
+    mGBufferParams.screenSpacePixelSpreadAngle = mpScene->getCamera()->computeScreenSpacePixelSpreadAngle(uint32_t(mGBufferParams.frameSize.y));
 
     ShaderVar pGlobalVars = mRaytrace.pVars->getRootVar();
     pGlobalVars["PerFrameCB"]["gParams"].setBlob(mGBufferParams);

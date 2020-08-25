@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -143,7 +143,7 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
     float4x4 invTransposeMat = gData.getInverseTransposeBlendedMatrix(vertexId);
 
     s.position = mul(float4(s.position, 1.f), boneMat).xyz;
-    s.bitangent = mul(s.bitangent, (float3x3) boneMat);
+    s.tangent.xyz = mul(s.tangent.xyz, (float3x3) boneMat);
     s.normal = mul(s.normal, (float3x3) transpose(invTransposeMat));
 
     // Store the result

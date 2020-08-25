@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -26,11 +26,6 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Testing/UnitTest.h"
-
-// TODO: Replace DirectXPackedVector.h by a platform-independent alternative that
-// allows configuring the rounding modes to match what we detect on the GPU.
-#include <DirectXPackedVector.h>
-using half = DirectX::PackedVector::HALF;
 
 /** Notes on IEEE 754 fp16 floating-point representation:
 
@@ -49,30 +44,18 @@ using half = DirectX::PackedVector::HALF;
     See also https://en.wikipedia.org/wiki/Half-precision_floating-point_format
 */
 
+// TODO: Replace float/half conversion with platform-independent alternative that
+// allows configuring the rounding modes to match what we detect on the GPU.
+
 namespace Falcor
 {
     namespace
     {
-        /** Converts a fp32 number to f16 using the default rounding mode.
-            TODO: Analyze what the default is on the GPU, make sure the CPU lib matches.
-        */
-        half f32tof16(float fval)
-        {
-            return DirectX::PackedVector::XMConvertFloatToHalf(fval);
-        }
-
-        /** Converts a fp16 number to f32.
-        */
-        float f16tof32(half hval)
-        {
-            return DirectX::PackedVector::XMConvertHalfToFloat(hval);
-        }
-
         /** Converts a finite fp32 number to fp16, rounding down to the nearest representable number.
         */
-        half f32tof16_roundDown(float value)
+        uint16_t f32tof16_roundDown(float value)
         {
-            half h = f32tof16(value);
+            uint16_t h = f32tof16(value);
             float res = f16tof32(h);
             if (res > value)
             {
@@ -90,9 +73,9 @@ namespace Falcor
 
         /** Converts a finite fp32 number to fp16, rounding up to the nearest representable number.
         */
-        half f32tof16_roundUp(float value)
+        uint16_t f32tof16_roundUp(float value)
         {
-            half h = f32tof16(value);
+            uint16_t h = f32tof16(value);
             float res = f16tof32(h);
             if (res < value)
             {

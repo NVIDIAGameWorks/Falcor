@@ -12,6 +12,9 @@
     <ClCompile Include="SideBySidePass\SideBySidePass.cpp">
       <Filter>SideBySidePass</Filter>
     </ClCompile>
+    <ClCompile Include="ColorMapPass\ColorMapPass.cpp">
+      <Filter>ColorMapPass</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ComparisonPass.h" />
@@ -24,6 +27,9 @@
     <ClInclude Include="SideBySidePass\SideBySidePass.h">
       <Filter>SideBySidePass</Filter>
     </ClInclude>
+    <ClInclude Include="ColorMapPass\ColorMapPass.h">
+      <Filter>ColorMapPass</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="InvalidPixelDetectionPass">
@@ -34,6 +40,9 @@
     </Filter>
     <Filter Include="SplitScreenPass">
       <UniqueIdentifier>{6a60f294-d8de-4760-a5d8-e2112c7178b5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ColorMapPass">
+      <UniqueIdentifier>{2fbea7ee-dafe-4ac3-840d-f2eb533e79d2}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -46,6 +55,12 @@
     </ShaderSource>
     <ShaderSource Include="SideBySidePass\SideBySide.ps.slang">
       <Filter>SideBySidePass</Filter>
+    </ShaderSource>
+    <ShaderSource Include="ColorMapPass\ColorMapPass.ps.slang">
+      <Filter>ColorMapPass</Filter>
+    </ShaderSource>
+    <ShaderSource Include="ColorMapPass\ColorMapParams.slang">
+      <Filter>ColorMapPass</Filter>
     </ShaderSource>
   </ItemGroup>
 </Project>

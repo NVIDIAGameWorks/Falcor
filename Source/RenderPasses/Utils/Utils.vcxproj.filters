@@ -32,5 +32,8 @@
     <ShaderSource Include="Composite\Composite.cs.slang">
       <Filter>Composite</Filter>
     </ShaderSource>
+    <ShaderSource Include="Composite\CompositeMode.slangh">
+      <Filter>Composite</Filter>
+    </ShaderSource>
   </ItemGroup>
 </Project>

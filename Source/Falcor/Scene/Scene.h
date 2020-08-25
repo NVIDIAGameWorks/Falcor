@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -36,6 +36,7 @@
 #include "Animation/AnimationController.h"
 #include "Camera/CameraController.h"
 #include "Experimental/Scene/Lights/LightCollection.h"
+#include "Experimental/Scene/Lights/EnvMap.h"
 #include "SceneTypes.slang"
 
 namespace Falcor
@@ -74,15 +75,34 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<Scene>;
-        using ConstSharedPtrRef = const SharedPtr&;
         using LightList = std::vector<Light::SharedPtr>;
         static const uint32_t kMaxBonesPerVertex = 4;
-        static const FileDialogFilterVec kFileExtensionFilters;
+
+        static const FileDialogFilterVec& getFileExtensionFilters();
 
         static SharedPtr create(const std::string& filename);
 
         // #SCENE: we should get rid of this. We can't right now because we can't create a structured-buffer of materials (MaterialData contains textures)
         Shader::DefineList getSceneDefines() const;
+
+        /** Render settings determining how the scene is rendered.
+            This is used primarily by the path tracer renderers.
+        */
+        struct RenderSettings
+        {
+            bool useEnvLight = true;        ///< Enable distant lighting from environment map.
+            bool useAnalyticLights = true;  ///< Enable lighting from analytic lights.
+            bool useEmissiveLights = true;  ///< Enable lighting from emissive lights.
+
+            bool operator==(const RenderSettings& other) const
+            {
+                return (useEnvLight == other.useEnvLight) &&
+                    (useAnalyticLights == other.useAnalyticLights) &&
+                    (useEmissiveLights == other.useEmissiveLights);
+            }
+
+            bool operator!=(const RenderSettings& other) const { return !(*this == other); }
+        };
 
         enum class RenderFlags
         {
@@ -96,16 +116,20 @@ namespace Falcor
         */
         enum class UpdateFlags
         {
-            None                        = 0x0,  ///< Nothing happened
-            MeshesMoved                 = 0x1,  ///< Meshes moved
-            CameraMoved                 = 0x2,  ///< The camera moved
-            CameraPropertiesChanged     = 0x4,  ///< Some camera properties changed, excluding position
-            LightsMoved                 = 0x8,  ///< Lights were moved
-            LightIntensityChanged       = 0x10, ///< Light intensity changed
-            LightPropertiesChanged      = 0x20, ///< Other light changes not included in LightIntensityChanged and LightsMoved
-            SceneGraphChanged           = 0x40, ///< Any transform in the scene graph changed.
-            LightCollectionChanged      = 0x80, ///< Light collection changed (mesh lights)
-            MaterialsChanged            = 0x100,///< Materials changed
+            None                        = 0x0,   ///< Nothing happened
+            MeshesMoved                 = 0x1,   ///< Meshes moved
+            CameraMoved                 = 0x2,   ///< The camera moved
+            CameraPropertiesChanged     = 0x4,   ///< Some camera properties changed, excluding position
+            CameraSwitched              = 0x8,   ///< Selected a different camera
+            LightsMoved                 = 0x10,  ///< Lights were moved
+            LightIntensityChanged       = 0x20,  ///< Light intensity changed
+            LightPropertiesChanged      = 0x40,  ///< Other light changes not included in LightIntensityChanged and LightsMoved
+            SceneGraphChanged           = 0x80,  ///< Any transform in the scene graph changed.
+            LightCollectionChanged      = 0x100, ///< Light collection changed (mesh lights)
+            MaterialsChanged            = 0x200, ///< Materials changed
+            EnvMapChanged               = 0x400, ///< Environment map changed (check EnvMap::getChanges() for more specific information)
+            LightCountChanged           = 0x800, ///< Number of active lights changed
+            RenderSettingsChanged       = 0x1000,///< Render settings changed
 
             All                         = -1
         };
@@ -125,19 +149,51 @@ namespace Falcor
             SixDOF
         };
 
-        /** Access the scene's camera to change properties, or use elsewhere.
+        /** Get the render settings.
         */
-        const Camera::SharedPtr& getCamera() { return mCamera.pObject; }
+        const RenderSettings& getRenderSettings() const { return mRenderSettings; }
 
-        /** Attach a new camera to the scene
+        /** Get the render settings.
         */
-        void setCamera(const Camera::SharedPtr& pCamera) { mCamera.pObject = pCamera; }
+        RenderSettings& getRenderSettings() { return mRenderSettings; }
 
-        /** Set the camera's aspect ratio
+        /** Set the render settings.
+        */
+        void setRenderSettings(const RenderSettings& renderSettings) { mRenderSettings = renderSettings; }
+
+        /** Returns true if environment map is available and should be used as the background.
+        */
+        bool useEnvBackground() const;
+
+        /** Returns true if environment map is available and should be used as a distant light.
+        */
+        bool useEnvLight() const;
+
+        /** Returns true if there are active analytic lights and they should be used for lighting.
+        */
+        bool useAnalyticLights() const;
+
+        /** Returns true if there are active emissive lights and they should be used for lighting.
+        */
+        bool useEmissiveLights() const;
+
+        /** Access the scene's currently selected camera to change properties or to use elsewhere.
+        */
+        const Camera::SharedPtr& getCamera() { return mCameras[mSelectedCamera]; }
+
+        /** Get a list of all cameras in the scene.
+        */
+        const std::vector<Camera::SharedPtr>& getCameras() { return mCameras; };
+
+        /** Select a different camera to use. The camera must already exist in the scene.
+        */
+        void setCamera(const Camera::SharedPtr& pCamera);
+
+        /** Set the currently selected camera's aspect ratio
         */
         void setCameraAspectRatio(float ratio);
 
-        /** Set a camera controller type
+        /** Set the camera controller type
         */
         void setCameraController(CameraControllerType type);
 
@@ -145,33 +201,42 @@ namespace Falcor
         */
         CameraControllerType getCameraControllerType() const { return mCamCtrlType; }
 
-        /** Toggle whether the camera is animated.
+        /** Toggle whether the currently selected camera is animated.
         */
-        void toggleCameraAnimation(bool animate) { mCamera.animate = animate; }
+        deprecate("4.0.2", "Use Camera::setIsAnimated() instead.")
+        void toggleCameraAnimation(bool active) { mCameras[mSelectedCamera]->setIsAnimated(active); }
 
-        /** Reset the camera.
+        /** Reset the currently selected camera.
             This function will place the camera at the center of scene and optionally set the depth range to some reasonable pre-determined values
         */
         void resetCamera(bool resetDepthRange = true);
 
         /** Set the camera's speed
         */
-        void setCameraSpeed(float speed) { mCameraSpeed = speed; }
+        void setCameraSpeed(float speed);
 
         /** Get the camera's speed
         */
         float getCameraSpeed() const { return mCameraSpeed; }
 
-        /** Add the current camera's viewpoint to the list of viewpoints.
+        /** Add the currently selected camera's viewpoint to the list of viewpoints.
         */
         void addViewpoint();
+
+        /** Select a camera to be used by index.
+        */
+        void selectCamera(uint32_t index);
+
+        /** Select a camera to be used by name.
+        */
+        void selectCamera(std::string name);
 
         deprecate("4.0.1", "Use addViewpoint() instead.")
         void saveNewViewpoint() { addViewpoint(); }
 
         /** Add a new viewpoint to the list of viewpoints.
         */
-        void addViewpoint(const float3& position, const float3& target, const float3& up);
+        void addViewpoint(const float3& position, const float3& target, const float3& up, uint32_t cameraIndex = 0);
 
         /** Remove the currently active viewpoint.
         */
@@ -204,17 +269,21 @@ namespace Falcor
         */
         const MeshInstanceData& getMeshInstance(uint32_t instanceID) const { return mMeshInstanceData[instanceID]; }
 
+        /** Get a list of all materials in the scene.
+        */
+        const std::vector<Material::SharedPtr>& getMaterials() const { return mMaterials; }
+
         /** Get the number of materials in the scene
         */
         uint32_t getMaterialCount() const { return (uint32_t)mMaterials.size(); }
 
         /** Get a material
         */
-        Material::ConstSharedPtrRef getMaterial(uint32_t materialID) const { return mMaterials[materialID]; }
+        const Material::SharedPtr& getMaterial(uint32_t materialID) const { return mMaterials[materialID]; }
 
         /** Get a material by name
         */
-        Material::SharedPtr getMaterialByName(const std::string &name) const;
+        Material::SharedPtr getMaterialByName(const std::string& name) const;
 
         /** Get the scene bounds
         */
@@ -230,11 +299,11 @@ namespace Falcor
 
         /** Get a light
         */
-        Light::ConstSharedPtrRef getLight(uint32_t lightID) const { return mLights[lightID].pObject; }
+        const Light::SharedPtr& getLight(uint32_t lightID) const { return mLights[lightID]; }
 
         /** Get a light by name
         */
-        Light::SharedPtr getLightByName(const std::string &name) const;
+        Light::SharedPtr getLightByName(const std::string& name) const;
 
         /** Get the light collection representing all the mesh lights in the scene.
             The light collection is created lazily on the first call. It needs a render context.
@@ -242,7 +311,11 @@ namespace Falcor
             \param[in] pContext Render context.
             \return Returns the light collection.
         */
-        LightCollection::ConstSharedPtrRef getLightCollection(RenderContext* pContext);
+        const LightCollection::SharedPtr& getLightCollection(RenderContext* pContext);
+
+        /** Get the environment map or nullptr if it doesn't exist.
+        */
+        const EnvMap::SharedPtr& getEnvMap() const { return mpEnvMap; }
 
         /** Get the light probe or nullptr if it doesn't exist.
         */
@@ -250,18 +323,25 @@ namespace Falcor
 
         /** Toggle whether the specified light is animated.
         */
-        void toggleLightAnimation(int index, bool animate) { mLights[index].animate = animate; }
+        deprecate("4.0.2", "Use Light::setIsAnimated() instead.")
+        void toggleLightAnimation(int index, bool active) { mLights[index]->setIsAnimated(active); }
 
-        /** Get/Set how the scene's TLASes are updated when raytracing.
+        /** Set how the scene's TLASes are updated when raytracing.
             TLASes are REBUILT by default
         */
         void setTlasUpdateMode(UpdateMode mode) { mTlasUpdateMode = mode; }
+
+        /** Get the scene's TLAS update mode when raytracing.
+        */
         UpdateMode getTlasUpdateMode() { return mTlasUpdateMode; }
 
-        /** Get/Set how the scene's BLASes are updated when raytracing.
+        /** Set how the scene's BLASes are updated when raytracing.
             BLASes are REFIT by default
         */
-        void setBlasUpdateMode(UpdateMode mode) { mBlasUpdateMode = mode; }
+        void setBlasUpdateMode(UpdateMode mode);
+
+        /** Get the scene's BLAS update mode when raytracing.
+        */
         UpdateMode getBlasUpdateMode() { return mBlasUpdateMode; }
 
         /** Update the scene. Call this once per frame to update the camera location, animations, etc.
@@ -289,25 +369,21 @@ namespace Falcor
 
         /** Bind a sampler to the materials
         */
-        void bindSamplerToMaterials(Sampler::ConstSharedPtrRef pSampler);
+        void bindSamplerToMaterials(const Sampler::SharedPtr& pSampler);
 
         /** Get the scene's VAO
         */
         const Vao::SharedPtr& getVao() const { return mpVao; }
 
         /** Set an environment map.
-            \param[in] pEnvMap Texture to use as environment map. Can be nullptr.
+            \param[in] pEnvMap Environment map. Can be nullptr.
         */
-        void setEnvironmentMap(Texture::ConstSharedPtrRef pEnvMap);
+        void setEnvMap(EnvMap::SharedPtr pEnvMap);
 
         /** Load an environment from an image.
             \param[in] filename Texture filename.
         */
-        void loadEnvironmentMap(const std::string& filename);
-
-        /** Get the environment map
-        */
-        Texture::ConstSharedPtrRef getEnvironmentMap() const { return mpEnvMap; }
+        void loadEnvMap(const std::string& filename);
 
         /** Handle mouse events
         */
@@ -325,6 +401,18 @@ namespace Falcor
         */
         const AnimationController* getAnimationController() const { return mpAnimationController.get(); }
 
+        /** Returns true if scene has animation data.
+        */
+        bool hasAnimation() const { return mpAnimationController->hasAnimations(); }
+
+        /** Enable/disable scene animation.
+        */
+        void setIsAnimated(bool isAnimated) { mpAnimationController->setEnabled(isAnimated); }
+
+        /** Returns true if scene animation is enabled.
+        */
+        bool isAnimated() const { return mpAnimationController->isEnabled(); };
+
         /** Toggle all animations on or off.
         */
         void toggleAnimations(bool animate);
@@ -332,7 +420,7 @@ namespace Falcor
         /** Get the parameter block with all scene resources.
             Note that the camera is not bound automatically.
         */
-        ParameterBlock::ConstSharedPtrRef getParameterBlock() const { return mpSceneBlock; }
+        const ParameterBlock::SharedPtr& getParameterBlock() const { return mpSceneBlock; }
 
         /** Set the BLAS geometry index into the local vars for each geometry.
             This is a workaround before GeometryIndex() is supported in shaders.
@@ -343,7 +431,7 @@ namespace Falcor
             The acceleration structure is created lazily, which requires the render context.
             \param[in] pContext Render context.
             \param[in] var Shader variable to set data into, usually the root var.
-            \param[in] rayTypeCount Number of ray types in raygen program. Not needed for inline raytracing.
+            \param[in] rayTypeCount Number of ray types in raygen program. Not needed for DXR 1.1.
         */
         void setRaytracingShaderData(RenderContext* pContext, const ShaderVar& var, uint32_t rayTypeCount = 1);
 
@@ -372,13 +460,17 @@ namespace Falcor
         */
         void uploadMaterial(uint32_t materialID);
 
+        /** Uploads the currently selected camera.
+        */
+        void uploadSelectedCamera();
+
         /** Update the scene's global bounding box.
         */
         void updateBounds();
 
-        /** Update mesh instance flags
+        /** Update mesh instances.
         */
-        void updateMeshInstanceFlags();
+        void updateMeshInstances(bool forceUpdate);
 
         /** Do any additional initialization required after scene data is set and draw lists are determined.
         */
@@ -403,37 +495,59 @@ namespace Falcor
         /** Generate data for creating a TLAS.
             #SCENE TODO: Add argument to build descs based off a draw list
         */
-        void fillInstanceDesc(std::vector<D3D12_RAYTRACING_INSTANCE_DESC>& instanceDescs, uint32_t rayCount, bool perMeshHitEntry);
+        void fillInstanceDesc(std::vector<D3D12_RAYTRACING_INSTANCE_DESC>& instanceDescs, uint32_t rayCount, bool perMeshHitEntry) const;
 
         /** Generate top level acceleration structure for the scene. Automatically determines whether to build or refit.
             \param[in] rayCount Number of ray types in the shader. Required to setup how instances index into the Shader Table
         */
         void buildTlas(RenderContext* pContext, uint32_t rayCount, bool perMeshHitEntry);
 
-        UpdateFlags updateCamera(bool forceUpdate);
+        /** Check whether scene has an index buffer.
+        */
+        bool hasIndexBuffer() const { return mpVao->getIndexBuffer() != nullptr; }
+
+        /** Initialize all cameras in the scene through the animation controller using their corresponding scene graph nodes.
+        */
+        void initializeCameras();
+
+        /** Prepare all UI-related objects that do not change over the course of execution.
+        */
+        void prepareUI();
+
+        /** Update an animatable object.
+        */
+        bool updateAnimatable(Animatable& animatable, const AnimationController& controller, bool force = false);
+
+        UpdateFlags updateSelectedCamera(bool forceUpdate);
         UpdateFlags updateLights(bool forceUpdate);
+        UpdateFlags updateEnvMap(bool forceUpdate);
         UpdateFlags updateMaterials(bool forceUpdate);
 
         void updateGeometryStats();
+        void updateRaytracingStats();
+        void updateLightStats();
 
-        struct GeometryStats
+        struct SceneStats
         {
+            // Geometry stats
             size_t uniqueTriangleCount = 0;     ///< Number of unique triangles. A triangle can exist in multiple instances.
             size_t uniqueVertexCount = 0;       ///< Number of unique vertices. A vertex can be referenced by multiple triangles/instances.
             size_t instancedTriangleCount = 0;  ///< Number of instanced triangles. This is the total number of rendered triangles.
             size_t instancedVertexCount = 0;    ///< Number of instanced vertices. This is the total number of vertices in the rendered triangles.
-        };
 
-        template<typename Object>
-        struct AnimatedObject
-        {
-            typename Object::SharedPtr pObject;
-            bool animate = true;
-            uint32_t nodeID = kInvalidNode;
-            bool update(const AnimationController* pAnimCtrl, bool force);
-            bool hasGlobalTransform() const { return nodeID != kInvalidNode; }
-            void setIntoObject(const float3& pos, const float3& up, const float3& lookAt);
-            bool enabled(bool force) const;
+            // Raytracing stats
+            size_t blasCount = 0;               ///< Number of BLASes.
+            size_t blasCompactedCount = 0;      ///< Number of compacted BLASes.
+            size_t blasMemoryInBytes = 0;       ///< Total memory in bytes used by the BLASes.
+
+            // Light stats
+            size_t activeLightCount = 0;        ///< Number of active lights.
+            size_t totalLightCount = 0;         ///< Number of lights in the scene.
+            size_t pointLightCount = 0;         ///< Number of point lights.
+            size_t directionalLightCount = 0;   ///< Number of directional lights.
+            size_t rectLightCount = 0;          ///< Number of rect lights.
+            size_t sphereLightCount = 0;        ///< Number of sphere lights.
+            size_t distantLightCount = 0;       ///< Number of distant lights.
         };
 
         Scene();
@@ -464,23 +578,26 @@ namespace Falcor
         };
 
         // #SCENE We don't need those vectors on the host
-        std::vector<MeshDesc> mMeshDesc;                    ///< Copy of GPU buffer (mpMeshes)
-        std::vector<MeshInstanceData> mMeshInstanceData;    ///< Copy of GPU buffer (mpMeshInstances)
-        std::vector<MeshGroup> mMeshGroups;                 ///< Groups of meshes with identical transforms. Each group maps to a BLAS for ray tracing.
-        std::vector<Node> mSceneGraph;                      ///< For each index i, the array element indicates the parent node. Indices are in relation to mLocalToWorldMatrices
+        std::vector<MeshDesc> mMeshDesc;                            ///< Copy of mesh data GPU buffer (mpMeshes)
+        std::vector<MeshInstanceData> mMeshInstanceData;            ///< Mesh instance data.
+        std::vector<PackedMeshInstanceData> mPackedMeshInstanceData;///< Copy of packed mesh instance data GPU buffer (mpMeshInstances)
+        std::vector<MeshGroup> mMeshGroups;                         ///< Groups of meshes with identical transforms. Each group maps to a BLAS for ray tracing.
+        std::vector<Node> mSceneGraph;                              ///< For each index i, the array element indicates the parent node. Indices are in relation to mLocalToWorldMatrices
 
-        std::vector<Material::SharedPtr> mMaterials;        ///< Bound to parameter block
-        std::vector<AnimatedObject<Light>> mLights;         ///< Bound to parameter block
-        LightCollection::SharedPtr mpLightCollection;       ///< Bound to parameter block
-        LightProbe::SharedPtr mpLightProbe;                 ///< Bound to parameter block
-        Texture::SharedPtr mpEnvMap;                        ///< Not bound to anything, not rendered automatically. Can be used to render a skybox
+        std::vector<Material::SharedPtr> mMaterials;                ///< Bound to parameter block
+        std::vector<Light::SharedPtr> mLights;                      ///< Bound to parameter block
+        LightCollection::SharedPtr mpLightCollection;               ///< Bound to parameter block
+        LightProbe::SharedPtr mpLightProbe;                         ///< Bound to parameter block
+        EnvMap::SharedPtr mpEnvMap;                                 ///< Bound to parameter block
 
         // Scene Metadata (CPU Only)
         std::vector<BoundingBox> mMeshBBs;                          ///< Bounding boxes for meshes (not instances)
         std::vector<std::vector<uint32_t>> mMeshIdToInstanceIds;    ///< Mapping of what instances belong to which mesh
         BoundingBox mSceneBB;                                       ///< Bounding boxes of the entire scene
         std::vector<bool> mMeshHasDynamicData;                      ///< Whether a Mesh has dynamic data, meaning it is skinned
-        GeometryStats mGeometryStats;                               ///< Geometry statistics for the scene.
+        SceneStats mSceneStats;                                     ///< Scene statistics.
+        RenderSettings mRenderSettings;                             ///< Render settings.
+        RenderSettings mPrevRenderSettings;
 
         // Resources
         Buffer::SharedPtr mpMeshesBuffer;
@@ -492,12 +609,17 @@ namespace Falcor
         // Camera
         CameraControllerType mCamCtrlType = CameraControllerType::FirstPerson;
         CameraController::SharedPtr mpCamCtrl;
-        AnimatedObject<Camera> mCamera;
+        std::vector<Camera::SharedPtr> mCameras;
+        uint32_t mSelectedCamera = 0;
         float mCameraSpeed = 1.0f;
+        bool mCameraSwitched = false;
+
+        Gui::DropdownList mCameraList;
 
         // Saved Camera Viewpoints
         struct Viewpoint
         {
+            uint32_t index;
             float3 position;
             float3 target;
             float3 up;
@@ -519,9 +641,9 @@ namespace Falcor
         struct TlasData
         {
             Buffer::SharedPtr pTlas;
-            ShaderResourceView::SharedPtr pSrv;         ///< Shader Resource View for binding the TLAS
-            Buffer::SharedPtr pInstanceDescs;           ///< Buffer holding instance descs for the TLAS
-            UpdateMode updateMode = UpdateMode::Rebuild; ///< Update mode this TLAS was created with.
+            ShaderResourceView::SharedPtr pSrv;             ///< Shader Resource View for binding the TLAS
+            Buffer::SharedPtr pInstanceDescs;               ///< Buffer holding instance descs for the TLAS
+            UpdateMode updateMode = UpdateMode::Rebuild;    ///< Update mode this TLAS was created with.
         };
 
         std::unordered_map<uint32_t, TlasData> mTlasCache;  ///< Top Level Acceleration Structure for scene data cached per shader ray count
@@ -531,16 +653,23 @@ namespace Falcor
 
         struct BlasData
         {
-            Buffer::SharedPtr pBlas;
-            Buffer::SharedPtr pScratchBuffer;
-
             D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuildInfo;
+            D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS buildInputs;
             std::vector<D3D12_RAYTRACING_GEOMETRY_DESC> geomDescs;
-            bool hasSkinnedMesh = false;                ///< Whether the BLAS contains a skinned mesh, which means the BLAS may need to be updated
-            UpdateMode updateMode = UpdateMode::Refit;  ///< Update mode this BLAS was created with.
+
+            uint64_t blasByteSize = 0;                      ///< Size of the final BLAS.
+            uint64_t blasByteOffset = 0;                    ///< Offset into the BLAS buffer to where it is stored.
+            uint64_t scratchByteOffset = 0;                 ///< Offset into the scratch buffer to use for updates/rebuilds.
+
+            bool hasSkinnedMesh = false;                    ///< Whether the BLAS contains a skinned mesh, which means the BLAS may need to be updated.
+            bool useCompaction = false;                     ///< Whether the BLAS should be compacted after build.
+            UpdateMode updateMode = UpdateMode::Refit;      ///< Update mode this BLAS was created with.
         };
 
-        std::vector<BlasData> mBlasData;    ///< All data related to the scene's BLASes
+        std::vector<BlasData> mBlasData;    ///< All data related to the scene's BLASes.
+        Buffer::SharedPtr mpBlas;           ///< Buffer containing all BLASes.
+        Buffer::SharedPtr mpBlasScratch;    ///< Scratch buffer used for BLAS builds.
+        bool mRebuildBlas = true;           ///< Flag to indicate BLASes need to be rebuilt.
         bool mHasSkinnedMesh = false;       ///< Whether the scene has a skinned mesh at all.
 
         std::string mFilename;

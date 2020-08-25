@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -73,7 +73,7 @@ namespace Falcor
             */
             Desc& setFrontCounterCW(bool isFrontCCW) { mIsFrontCcw = isFrontCCW; return *this; }
 
-            /** Set the depth-bias. The depth bias is calculated as 
+            /** Set the depth-bias. The depth bias is calculated as
                 \code
                 bias = (float)depthBias * r + slopeScaledBias * maxDepthSlope
                 \endcode
@@ -133,7 +133,7 @@ namespace Falcor
         /** Check what is the winding order for triangles to be considered front-facing
         */
         bool isFrontCounterCW() const{ return mDesc.mIsFrontCcw; }
-        /** Get the slope-scaled depth bias 
+        /** Get the slope-scaled depth bias
         */
         float getSlopeScaledDepthBias() const { return mDesc.mSlopeScaledDepthBias; }
         /** Get the depth bias
@@ -165,20 +165,4 @@ namespace Falcor
         RasterizerState(const Desc& Desc) : mDesc(Desc) {}
         Desc mDesc;
     };
-
-    // FIXME: Added "Cull" prefix to the enum values as we can't register "None"
-#define rasterizer_state_cm(a) case RasterizerState::CullMode::a: return "Cull" #a
-    inline std::string to_string(RasterizerState::CullMode st)
-    {
-        switch (st)
-        {
-            rasterizer_state_cm(None);
-            rasterizer_state_cm(Front);
-            rasterizer_state_cm(Back);
-        default:
-            should_not_get_here();
-            return "";
-        }
-    }
-#undef rasterizer_state_cm
 }

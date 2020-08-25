@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -25,6 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#include "CompositeMode.slangh"
 
 /** Simple composite pass that blends two buffers together.
 */
@@ -46,5 +47,9 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     const uint2 pixel = dispatchThreadId.xy;
     if (any(pixel >= frameDim)) return;
 
-    output[pixel] = scaleA * A[pixel] + scaleB * B[pixel];
+#if COMPOSITE_MODE == COMPOSITE_MODE_ADD
+    output[pixel] = (scaleA * A[pixel]) + (scaleB * B[pixel]);
+#elif COMPOSITE_MODE == COMPOSITE_MODE_MULTIPLY
+    output[pixel] = (scaleA * A[pixel]) * (scaleB * B[pixel]);
+#endif
 }

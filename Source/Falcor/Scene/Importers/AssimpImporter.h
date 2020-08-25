@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -33,10 +33,7 @@ namespace Falcor
     class dlldecl AssimpImporter
     {
     public:
-        using InstanceMatrices = SceneBuilder::InstanceMatrices;
-
-        static bool import(const std::string& filename, SceneBuilder& builder);
-        static bool import(const std::string& filename, SceneBuilder& builder, const InstanceMatrices& meshInstances);
+        static bool import(const std::string& filename, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict);
     private:
         AssimpImporter() = default;
         AssimpImporter(const AssimpImporter&) = delete;

@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -25,51 +25,22 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+RWStructuredBuffer<uint64_t> result;
 
-/** Compute shader for building a hierarchical importance map from an
-    environment map. The result is used by EnvProbe.slang for sampling.
-*/
+#if USE_UAV
+RWStructuredBuffer<float64_t> data;
+#else
+StructuredBuffer<float64_t> data;
+#endif
 
-import Utils.Math.MathHelpers;
-import Utils.Color.ColorHelpers;
-
-cbuffer CB
+[numthreads(16, 1, 1)]
+void testFloat64(uint3 threadID : SV_DispatchThreadID)
 {
-    uint2 outputDim;            // Resolution of the importance map in texels.
-    uint2 outputDimInSamples;   // Resolution of the importance map in samples.
-    uint2 numSamples;           // Per-texel subsamples s.xy at finest mip.
-    float invSamples;           // 1 / (s.x*s.y).
-};
+    uint i = threadID.x;
 
-SamplerState gEnvSampler;
-Texture2D<float4> gEnvMap;
-RWTexture2D<float> gImportanceMap;
+    float64_t value = data[i]; // 64-bit load
 
-[numthreads(16, 16, 1)]
-void main(uint3 dispatchThreadID : SV_DispatchThreadID)
-{
-    uint2 pixel = dispatchThreadID.xy;
-    if (any(pixel >= outputDim)) return;
-
-    float L = 0.f;
-    for (uint y = 0; y < numSamples.y; y++)
-    {
-        for (uint x = 0; x < numSamples.x; x++)
-        {
-            // Compute sample pos p in [0,1)^2 in octahedral map.
-            uint2 samplePos = pixel * numSamples + uint2(x, y);
-            float2 p = ((float2)samplePos + 0.5f) / outputDimInSamples;
-
-            // Convert p to (u,v) coordinate in latitude-longitude map.
-            float3 dir = oct_to_ndir_equal_area_unorm(p);
-            float2 uv = world_to_latlong_map(dir);          
-
-            // Accumulate the radiance from this sample.
-            float3 radiance = gEnvMap.SampleLevel(gEnvSampler, uv, 0).rgb;
-            L += luminance(radiance);
-        }
-    }
-
-    // Store average radiance for this texel.
-    gImportanceMap[pixel] = L * invSamples;
+    uint2 tmp;
+    asuint(value, tmp.x, tmp.y);
+    result[i] = uint64_t(tmp.x) | uint64_t(tmp.y) << 32;
 }

@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -30,6 +30,7 @@
 #include "RtStateObjectHelper.h"
 #include "Utils/StringUtils.h"
 #include "Core/API/Device.h"
+#include "Core/API/D3D12/D3D12NvApiExDesc.h"
 #include "ShaderTable.h"
 
 namespace Falcor
@@ -41,7 +42,7 @@ namespace Falcor
         b = b && (mpKernels == other.mpKernels);
         return b;
     }
-    
+
     RtStateObject::SharedPtr RtStateObject::create(const Desc& desc)
     {
         SharedPtr pState = SharedPtr(new RtStateObject(desc));
@@ -50,8 +51,19 @@ namespace Falcor
         // Pipeline config
         rtsoHelper.addPipelineConfig(desc.mMaxTraceRecursionDepth);
 
-        // Loop over the programs
         auto pKernels = pState->getKernels();
+
+#if _ENABLE_NVAPI
+        // Enable NVAPI extension if required
+        auto nvapiRegisterIndex = findNvApiShaderRegister(pKernels);
+        if (nvapiRegisterIndex)
+        {
+            if (NvAPI_Initialize() != NVAPI_OK) throw std::exception("Failed to initialize NvApi");
+            if (NvAPI_D3D12_SetNvShaderExtnSlotSpace(gpDevice->getApiHandle(), *nvapiRegisterIndex, 0) != NVAPI_OK) throw std::exception("Failed to set NvApi extension");
+        }
+#endif
+
+        // Loop over the programs
         for (const auto& pBaseEntryPointGroup : pKernels->getUniqueEntryPointGroups() )
         {
             assert(dynamic_cast<RtEntryPointGroupKernels*>(pBaseEntryPointGroup.get()));
@@ -133,6 +145,13 @@ namespace Falcor
             void const* pShaderIdentifier = pRtsoProps->GetShaderIdentifier(exportName.c_str());
             pState->mShaderIdentifiers.push_back(pShaderIdentifier);
         }
+
+#if _ENABLE_NVAPI
+        if (nvapiRegisterIndex)
+        {
+            if (NvAPI_D3D12_SetNvShaderExtnSlotSpace(gpDevice->getApiHandle(), 0xFFFFFFFF, 0) != NVAPI_OK) throw std::exception("Failed to unset NvApi extension");
+        }
+#endif
 
         return pState;
     }

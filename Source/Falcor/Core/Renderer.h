@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -27,7 +27,6 @@
  **************************************************************************/
 #pragma once
 #include "Utils/UI/UserInput.h"
-#include "Utils/ArgList.h"
 
 namespace Falcor
 {
@@ -36,7 +35,7 @@ namespace Falcor
 
     /** Sample configuration
     */
-    struct SampleConfig : ScriptBindings::enable_to_string
+    struct SampleConfig
     {
         Window::Desc windowDesc;                 ///< Controls window creation
         Device::Desc deviceDesc;                 ///< Controls device creation
@@ -78,9 +77,6 @@ namespace Falcor
 
         /** Show/hide the UI */
         virtual bool isUiEnabled() = 0;
-
-        /** Get the object storing command line arguments */
-        virtual ArgList getArgList() = 0;
 
         /** Takes and outputs a screenshot.
         */

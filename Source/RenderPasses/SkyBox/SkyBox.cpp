@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -34,11 +34,11 @@ extern "C" __declspec(dllexport) const char* getProjDir()
     return PROJECT_DIR;
 }
 
-static void regSkyBox(ScriptBindings::Module& m)
+static void regSkyBox(pybind11::module& m)
 {
-    auto c = m.regClass(SkyBox);
-    c.property("scale", &SkyBox::getScale, &SkyBox::setScale);
-    c.property("filter", &SkyBox::getFilter, &SkyBox::setFilter);
+    pybind11::class_<SkyBox, RenderPass, SkyBox::SharedPtr> pass(m, "SkyBox");
+    pass.def_property("scale", &SkyBox::getScale, &SkyBox::setScale);
+    pass.def_property("filter", &SkyBox::getFilter, &SkyBox::setFilter);
 }
 
 extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
@@ -98,16 +98,12 @@ SkyBox::SkyBox()
 SkyBox::SharedPtr SkyBox::create(RenderContext* pRenderContext, const Dictionary& dict)
 {
     SharedPtr pSkyBox = SharedPtr(new SkyBox());
-    for (const auto& v : dict)
+    for (const auto& [key, value] : dict)
     {
-        if (v.key() == kTexName)
-        {
-            std::string name = v.val();
-            pSkyBox->mTexName = name;
-        }
-        else if (v.key() == kLoadAsSrgb) pSkyBox->mLoadSrgb = v.val();
-        else if (v.key() == kFilter) pSkyBox->setFilter((uint32_t)v.val());
-        else logWarning("Unknown field '" + v.key() + "' in a SkyBox dictionary");
+        if (key == kTexName) pSkyBox->mTexName = value.operator std::string();
+        else if (key == kLoadAsSrgb) pSkyBox->mLoadSrgb = value;
+        else if (key == kFilter) pSkyBox->setFilter(value);
+        else logWarning("Unknown field '" + key + "' in a SkyBox dictionary");
     }
 
     std::shared_ptr<Texture> pTexture;
@@ -162,7 +158,7 @@ void SkyBox::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pSc
     if (mpScene)
     {
         mpCubeScene->setCamera(mpScene->getCamera());
-        if (mpScene->getEnvironmentMap()) setTexture(mpScene->getEnvironmentMap());
+        if (mpScene->getEnvMap()) setTexture(mpScene->getEnvMap()->getEnvMap());
     }
 }
 

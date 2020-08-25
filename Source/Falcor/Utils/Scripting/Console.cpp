@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -33,88 +33,164 @@ namespace Falcor
 {
     namespace
     {
-        static const uint32_t kLineCount = 16;
-        class GuiWindow
+        static const ImVec4 kBackgroundColor = ImVec4(0.f, 0.f, 0.f, 0.8f);
+        static const uint32_t kLineCount = 20;
+
+        class ConsoleWindow
         {
         public:
-            GuiWindow(Gui* pGui) : mpGui(pGui)
+            ConsoleWindow(Gui* pGui)
             {
-                ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+                ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4.f, 4.f));
+                ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.f);
+                ImGui::PushStyleColor(ImGuiCol_WindowBg, kBackgroundColor);
+                ImGui::PushStyleColor(ImGuiCol_ChildBg, kBackgroundColor);
                 height = (float)ImGui::GetTextLineHeight() * kLineCount;
                 ImGui::SetNextWindowSize({ ImGui::GetIO().DisplaySize.x, 0 }, ImGuiCond_Always);
-                ImGui::SetNextWindowPos({0, ImGui::GetIO().DisplaySize.y - height}, ImGuiCond_Always);
-                
+                ImGui::SetNextWindowPos({0, 0}, ImGuiCond_Always);
+
                 ImGui::Begin("##Console", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
-                ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+                ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.f, 0.f));
                 ImGui::PushFont(pGui->getFont("monospace"));
             }
 
-            ~GuiWindow()
+            ~ConsoleWindow()
             {
                 ImGui::PopFont();
                 ImGui::PopStyleVar();
                 ImGui::End();
-                ImGui::PopStyleVar();
+                ImGui::PopStyleColor(2);
+                ImGui::PopStyleVar(2);
             }
 
             float height = 0;
-        private:
-            Gui* mpGui;
         };
-
-        std::string sLog;
-        char sCmd[2048] = {};
-        bool sFlush = false;
-        bool scrollToBottom = true;
-
-        SCRIPT_BINDING(Console)
-        {
-            auto cls = []() {sLog = {}; };
-            m.func_("cls", cls);
-        }
     }
 
-    bool Console::flush()
+    void Console::clear()
     {
-        if (!sFlush) return false;
-        std::string cmd(sCmd); // We need to use a temporary copy so that we could reset `sCmd`, otherwise we will end up with an endless loop
-        sCmd[0] = 0;
-        sFlush = false;
-
-        try
-        {
-            sLog += Scripting::runScript(cmd);
-        }
-        catch (const std::exception& e)
-        {
-            sLog += std::string(e.what()) + "\n";
-        };
-        return true;
+        mLog.clear();
     }
 
-    void Console::render(Gui* pGui)
+    void Console::render(Gui* pGui, bool& show)
     {
-        GuiWindow w(pGui);
+        // Toggle console with "`" key.
+        if (ImGui::IsKeyPressed('`')) show = !show;
 
-        ImGui::BeginChild("log", {0, w.height - ImGui::GetTextLineHeight() - 5 });
-        ImGui::TextUnformatted(sLog.c_str());
-        if(scrollToBottom)
+        // Allow closing console with escape key.
+        if (show && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape))) show = false;
+
+        if (!show) return;
+
+        ConsoleWindow w(pGui);
+
+        ImGui::BeginChild("log", {0, w.height - ImGui::GetTextLineHeight() - 5});
+        ImGui::PushTextWrapPos();
+        ImGui::TextUnformatted(mLog.c_str());
+        ImGui::PopTextWrapPos();
+        if (mScrollToBottom)
         {
             ImGui::SetScrollHere(1.0f);
-            scrollToBottom = false;
+            mScrollToBottom = false;
         }
         ImGui::EndChild();
 
         ImGui::PushItemWidth(ImGui::GetWindowWidth());
-        if(ImGui::InputText("##console", sCmd, arraysize(sCmd), ImGuiInputTextFlags_EnterReturnsTrue))
+        if (ImGui::InputText("##console", mCmdBuffer, arraysize(mCmdBuffer), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory | ImGuiInputTextFlags_CallbackCharFilter, &inputTextCallback, this))
         {
-            sFlush = true;
-            sLog += std::string(sCmd) + "\n";
-            scrollToBottom = true;
-            ImGui::SetKeyboardFocusHere();
+            enterCommand();
             ImGui::GetIO().KeysDown[(uint32_t)KeyboardEvent::Key::Enter] = false;
         }
-        if(ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
+        // Stick focus to console text input.
+        ImGui::SetWindowFocus();
+        ImGui::SetKeyboardFocusHere();
         pGui->setActiveFont("");
+    }
+
+    bool Console::flush()
+    {
+        if (mCmdPending.empty()) return false;
+
+        try
+        {
+            mLog += Scripting::interpretScript(mCmdPending);
+        }
+        catch (const std::exception& e)
+        {
+            mLog += std::string(e.what()) + "\n";
+        };
+
+        mCmdPending.clear();
+
+        return true;
+    }
+
+    Console& Console::instance()
+    {
+        static std::unique_ptr<Console> pInstance;
+        if (!pInstance) pInstance = std::unique_ptr<Console>(new Console());
+        return *pInstance;
+    }
+
+    void Console::enterCommand()
+    {
+        auto cmd = std::string(mCmdBuffer);
+        mCmdBuffer[0] = '\0';
+        mLog += cmd + "\n";
+        mScrollToBottom = true;
+
+        // Push command to history.
+        if (!cmd.empty() && (mHistory.empty() || cmd != mHistory.back())) mHistory.push_back(cmd);
+        mHistoryIndex = -1;
+
+        std::swap(cmd, mCmdPending);
+    }
+
+    std::optional<std::string> Console::browseHistory(bool upOrDown)
+    {
+        if (upOrDown)
+        {
+            if (mHistoryIndex + 1 < (int32_t)mHistory.size())
+            {
+                mHistoryIndex++;
+                return mHistory[mHistory.size() - mHistoryIndex - 1];
+            }
+        }
+        else
+        {
+            if (mHistoryIndex >= 0)
+            {
+                mHistoryIndex--;
+                return mHistoryIndex >= 0 ? mHistory[mHistory.size() - mHistoryIndex - 1] : "";
+            }
+        }
+        return {};
+    }
+
+    int Console::inputTextCallback(ImGuiInputTextCallbackData* data)
+    {
+        assert(data->UserData != nullptr);
+        Console& console = *static_cast<Console*>(data->UserData);
+
+        if (data->EventFlag == ImGuiInputTextFlags_CallbackCharFilter)
+        {
+            if (data->EventChar == '`') return 1;
+        }
+        if (data->EventFlag == ImGuiInputTextFlags_CallbackHistory)
+        {
+            if (auto cmd = console.browseHistory(data->EventKey == ImGuiKey_UpArrow))
+            {
+                strncpy(data->Buf, cmd->c_str(), cmd->length() + 1);
+                data->BufTextLen = data->CursorPos = (int)cmd->length();
+                data->BufDirty = true;
+            }
+        }
+        return 0;
+    }
+
+    SCRIPT_BINDING(Console)
+    {
+        auto cls = []() { Console::instance().clear(); };
+        m.def("cls", cls);
     }
 }

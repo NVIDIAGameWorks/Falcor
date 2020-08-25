@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -40,7 +40,7 @@
 import Scene.Scene;
 import Scene.ShadingData;
 import Utils.Math.MathHelpers;
-import Experimental.Scene.Lights.LightCollection;
+__exported import Experimental.Scene.Lights.LightCollection;
 import Experimental.Scene.Lights.EmissiveLightSamplerInterface;
 
 /** Samples an emissive triangle uniformly by area and evaluates the probability density function.
@@ -52,14 +52,16 @@ import Experimental.Scene.Lights.EmissiveLightSamplerInterface;
     \param[out] ls Light sample. Only valid if true is returned.
     \return True if a sample was generated, false otherwise.
 */
-bool sampleTriangle(const float3 posW, uint triangleIndex, float2 u, out TriangleLightSample ls)
+bool sampleTriangle(const float3 posW, const uint triangleIndex, const float2 u, out TriangleLightSample ls)
 {
     ls = {};
     ls.triangleIndex = triangleIndex;
 
+    const EmissiveTriangle tri = gScene.lightCollection.getTriangle(triangleIndex);
+
     // Sample the triangle uniformly.
     const float3 barycentrics = sample_triangle(u);
-    ls.posW = gScene.lightCollection.getPosition(triangleIndex, barycentrics);
+    ls.posW = tri.getPosition(barycentrics);
 
     // Compute light vector and squared distance.
     float3 toLight = ls.posW - posW; // Unnormalized light vector
@@ -67,27 +69,24 @@ bool sampleTriangle(const float3 posW, uint triangleIndex, float2 u, out Triangl
     ls.distance = sqrt(distSqr);
     ls.dir = toLight / ls.distance; // Note: toLight can be zero.
 
-    // Get triangle normal and associated quantities.
-    ls.normalW = gScene.lightCollection.getTriangleData(triangleIndex).normal;
-    float triangleArea = gScene.lightCollection.getTriangleData(triangleIndex).area;
+    // Get triangle normal.
+    ls.normalW = tri.normal;
 
-    // Reject sample if back-facing.
+    // Reject sample if triangle is back-facing.
     float cosTheta = dot(ls.normalW, -ls.dir);
     if (cosTheta <= 0.f) return false;
 
     // Evaluate emitted radiance.
-    uint materialID = gScene.lightCollection.getMaterialID(triangleIndex);
-    float2 uv = gScene.lightCollection.getTexCoord(triangleIndex, barycentrics);
-    ls.Le = gScene.getEmissive(materialID, uv, gScene.materialResources[materialID]);
+    float2 uv = tri.getTexCoord(barycentrics);
+    ls.Le = gScene.getEmissive(tri.materialID, uv, gScene.materialResources[tri.materialID]);
 
     // Compute probability density with respect to solid angle from the shading point.
     // The farther away the light is and the larger the angle it is at, the larger the pdf becomes. The probability goes to infinity in the limit.
     // Note: Guard against div-by-zero here by clamping.
-    float denom = max(FLT_MIN, cosTheta * triangleArea);
+    float denom = max(FLT_MIN, cosTheta * tri.area);
     ls.pdf = distSqr / denom;
 
     // TODO: We can simplify the expressions by using the unnormalized quantities for computing the pdf.
-    // TODO: Look at SASS to understand the tradeoffs and instruction count for different varieties. What return values do we really need?
     //ls.pdf = -2.f * distSqr * ls.distance / (dot(N, L);    // Optimized (except N would have to be properly flipped above, before normalW is computed).
     return true;
 }
@@ -113,6 +112,6 @@ float evalTrianglePdf(const float3 posW, const TriangleHit hit)
     // The farther away the light is and the larger the angle it is at, the larger the pdf becomes. The probability goes to infinity in the limit.
     // Note: Guard against div-by-zero here by clamping.
     // TODO: Do we need the clamp here? distSqr is already clamped, so NaN should not be possible (but +inf is).
-    float denom = max(FLT_MIN, cosTheta * gScene.lightCollection.getTriangleData(hit.triangleIndex).area);
+    float denom = max(FLT_MIN, cosTheta * gScene.lightCollection.getTriangle(hit.triangleIndex).area);
     return distSqr / denom;
 }

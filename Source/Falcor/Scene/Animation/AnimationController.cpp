@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -33,20 +33,26 @@ namespace Falcor
 {
     namespace
     {
-        const static std::string kWorldMatricesBufferName = "worldMatrices";
+        const static std::string kWorldMatrices = "worldMatrices";
         const static std::string kInverseTransposeWorldMatrices = "inverseTransposeWorldMatrices";
-        const static std::string kPreviousWorldMatrices = "previousFrameWorldMatrices";
+        const static std::string kPreviousFrameWorldMatrices = "previousFrameWorldMatrices";
     }
 
-    AnimationController::AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const DynamicVertexVector& dynamicVertexData) :
-        mpScene(pScene), mLocalMatrices(pScene->mSceneGraph.size()), mInvTransposeGlobalMatrices(pScene->mSceneGraph.size()), mMatricesChanged(pScene->mSceneGraph.size())
+    AnimationController::AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const DynamicVertexVector& dynamicVertexData)
+        : mpScene(pScene)
+        , mLocalMatrices(pScene->mSceneGraph.size())
+        , mInvTransposeGlobalMatrices(pScene->mSceneGraph.size())
+        , mMatricesChanged(pScene->mSceneGraph.size())
     {
-        assert(mLocalMatrices.size() * 4 <= UINT32_MAX);
+        assert(mLocalMatrices.size() * 4 <= std::numeric_limits<uint32_t>::max());
         uint32_t float4Count = (uint32_t)mLocalMatrices.size() * 4;
 
         mpWorldMatricesBuffer = Buffer::createStructured(sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
-        mpPrevWorldMatricesBuffer = mpWorldMatricesBuffer;
+        mpWorldMatricesBuffer->setName("AnimationController::mpWorldMatricesBuffer");
+        mpPrevWorldMatricesBuffer = Buffer::createStructured(sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpPrevWorldMatricesBuffer->setName("AnimationController::mpPrevWorldMatricesBuffer");
         mpInvTransposeWorldMatricesBuffer = Buffer::createStructured(sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpInvTransposeWorldMatricesBuffer->setName("AnimationController::mpInvTransposeWorldMatricesBuffer");
         createSkinningPass(staticVertexData, dynamicVertexData);
     }
 
@@ -55,23 +61,25 @@ namespace Falcor
         return UniquePtr(new AnimationController(pScene, staticVertexData, dynamicVertexData));
     }
 
-    void AnimationController::addAnimation(uint32_t meshID, Animation::ConstSharedPtrRef pAnimation)
+    void AnimationController::addAnimation(const Animation::SharedPtr& pAnimation)
     {
-        mMeshes[meshID].pAnimations.push_back(pAnimation);
-        mHasAnimations = true;
+        mAnimations.push_back(pAnimation);
     }
 
-    void AnimationController::toggleAnimations(bool animate)
+    void AnimationController::setEnabled(bool enabled)
     {
-        for (int i = 0; i < mMeshes.size(); i++)
-        {
-            mMeshes[i].activeAnimation = animate ? 0 : kBindPoseAnimationId;
-        }
+        if (enabled == mEnabled) return;
+
+        mEnabled = enabled;
+        mAnimationChanged = true;
     }
 
     void AnimationController::initLocalMatrices()
     {
-        for (size_t i = 0; i < mLocalMatrices.size(); i++) mLocalMatrices[i] = mpScene->mSceneGraph[i].transform;
+        for (size_t i = 0; i < mLocalMatrices.size(); i++)
+        {
+            mLocalMatrices[i] = mpScene->mSceneGraph[i].transform;
+        }
     }
 
     bool AnimationController::animate(RenderContext* pContext, double currentTime)
@@ -82,7 +90,7 @@ namespace Falcor
 
         if (mAnimationChanged == false)
         {
-            if (mActiveAnimationCount == 0) return false;
+            if (!mEnabled || !hasAnimations()) return false;
             if (mLastAnimationTime == currentTime)
             {
                 // Copy the current matrices to the previous matrices. We can do that only once, but not sure if it we'll help perf (it only occures when the animation is paused)
@@ -95,15 +103,15 @@ namespace Falcor
         mAnimationChanged = false;
         mLastAnimationTime = currentTime;
 
-        for (const auto& a : mMeshes)
+        if (mEnabled)
         {
-            const auto& mesh = a.second;
-            if (mesh.activeAnimation == kBindPoseAnimationId) continue; // Bind pose was pre-computed
-            auto& pAnimation = mesh.pAnimations[mesh.activeAnimation];
-            pAnimation->animate(currentTime, mLocalMatrices);
-            for (size_t i = 0; i < pAnimation->getChannelCount(); i++)
+            for (auto& pAnimation : mAnimations)
             {
-                mMatricesChanged[pAnimation->getChannelMatrixID(i)] = true;
+                pAnimation->animate(currentTime, mLocalMatrices);
+                for (uint32_t i = 0; i < pAnimation->getChannelCount(); i++)
+                {
+                    mMatricesChanged[pAnimation->getChannelMatrixID(i)] = true;
+                }
             }
         }
 
@@ -113,69 +121,6 @@ namespace Falcor
         executeSkinningPass(pContext);
 
         return true;
-    }
-
-    bool AnimationController::validateIndices(uint32_t meshID, uint32_t animID, const std::string& warningPrefix) const
-    {
-        const auto& m = mMeshes.find(meshID);
-        if (m == mMeshes.end())
-        {
-            logWarning(warningPrefix + " - the mesh doesn't have animations");
-            return false;
-        }
-
-        if (animID >= m->second.pAnimations.size())
-        {
-            logWarning(warningPrefix + " - the animation ID doesn't exist");
-            return false;
-        }
-        return true;
-    }
-
-    uint32_t AnimationController::getMeshAnimationCount(uint32_t meshID) const
-    {
-        const auto& m = mMeshes.find(meshID);
-        return (m == mMeshes.end()) ? 0 : (uint32_t)m->second.pAnimations.size();
-    }
-
-    const std::string& AnimationController::getAnimationName(uint32_t meshID, uint32_t animID) const
-    {
-        static std::string s;
-        if (validateIndices(meshID, animID, "AnimationController::getAnimationName") == false) return s;
-        return mMeshes.at(meshID).pAnimations[animID]->getName();
-    }
-
-    bool AnimationController::setActiveAnimation(uint32_t meshID, uint32_t animID)
-    {
-        if (animID != kBindPoseAnimationId && validateIndices(meshID, animID, "AnimationController::setActiveAnimation") == false) return false;
-
-        if (mMeshes[meshID].activeAnimation != animID)
-        {
-            mAnimationChanged = true;
-            mMeshes[meshID].activeAnimation = animID;
-            (animID != kBindPoseAnimationId) ? mActiveAnimationCount++ : mActiveAnimationCount--;
-            assert(mActiveAnimationCount < UINT32_MAX);
-            allocatePrevWorldMatrixBuffer();
-        }
-        return true;
-    }
-
-    uint32_t AnimationController::getActiveAnimation(uint32_t meshID) const
-    {
-        if (validateIndices(meshID, 0, "AnimationController::getActiveAnimation") == false) return kBindPoseAnimationId;
-        return mMeshes.at(meshID).activeAnimation;
-    }
-
-    void AnimationController::renderUI(Gui::Widgets& widget)
-    {
-        if (mMeshes[0].pAnimations.size())
-        {
-            bool active = mMeshes[0].activeAnimation != kBindPoseAnimationId;
-            if (widget.checkbox("Animate Scene", active))
-            {
-                setActiveAnimation(0, active ? 0 : kBindPoseAnimationId);
-            }
-        }
     }
 
     void AnimationController::updateMatrices()
@@ -206,27 +151,16 @@ namespace Falcor
     void AnimationController::bindBuffers()
     {
         ParameterBlock* pBlock = mpScene->mpSceneBlock.get();
-        pBlock->setBuffer(kWorldMatricesBufferName, mpWorldMatricesBuffer);
-        pBlock->setBuffer(kPreviousWorldMatrices, mpPrevWorldMatricesBuffer);
+        pBlock->setBuffer(kWorldMatrices, mpWorldMatricesBuffer);
+        bool usePrev = mEnabled && hasAnimations();
+        pBlock->setBuffer(kPreviousFrameWorldMatrices, usePrev ? mpPrevWorldMatricesBuffer : mpWorldMatricesBuffer);
         pBlock->setBuffer(kInverseTransposeWorldMatrices, mpInvTransposeWorldMatricesBuffer);
-    }
-
-    void AnimationController::allocatePrevWorldMatrixBuffer()
-    {
-        if (mActiveAnimationCount)
-        {
-            if (mpWorldMatricesBuffer == mpPrevWorldMatricesBuffer)
-            {
-                mpPrevWorldMatricesBuffer = Buffer::createStructured(sizeof(float4), mpWorldMatricesBuffer->getElementCount(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
-            }
-        }
-        else mpPrevWorldMatricesBuffer = mpWorldMatricesBuffer;
     }
 
     void AnimationController::createSkinningPass(const std::vector<PackedStaticVertexData>& staticVertexData, const std::vector<DynamicVertexData>& dynamicVertexData)
     {
         // We always copy the static data, to initialize the non-skinned vertices
-        Buffer::ConstSharedPtrRef pVB = mpScene->mpVao->getVertexBuffer(Scene::kStaticDataBufferIndex);
+        const Buffer::SharedPtr& pVB = mpScene->mpVao->getVertexBuffer(Scene::kStaticDataBufferIndex);
         assert(pVB->getSize() == staticVertexData.size() * sizeof(staticVertexData[0]));
         pVB->setBlob(staticVertexData.data(), 0, pVB->getSize());
 
@@ -236,7 +170,7 @@ namespace Falcor
         {
             prevVertexData[i].position = staticVertexData[i].position;
         }
-        Buffer::ConstSharedPtrRef pPrevVB = mpScene->mpVao->getVertexBuffer(Scene::kPrevVertexBufferIndex);
+        const Buffer::SharedPtr& pPrevVB = mpScene->mpVao->getVertexBuffer(Scene::kPrevVertexBufferIndex);
         assert(pPrevVB->getSize() == prevVertexData.size() * sizeof(prevVertexData[0]));
         pPrevVB->setBlob(prevVertexData.data(), 0, pPrevVB->getSize());
 
@@ -253,6 +187,7 @@ namespace Falcor
             auto createBuffer = [&](const std::string& name, const auto& initData)
             {
                 auto pBuffer = Buffer::createStructured(block[name], (uint32_t)initData.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+                pBuffer->setName(name);
                 pBuffer->setBlob(initData.data(), 0, pBuffer->getSize());
                 block[name] = pBuffer;
             };
@@ -260,10 +195,12 @@ namespace Falcor
             createBuffer("staticData", staticVertexData);
             createBuffer("dynamicData", dynamicVertexData);
 
-            assert(mSkinningMatrices.size() * 4 < UINT32_MAX);
+            assert(mSkinningMatrices.size() * 4 < std::numeric_limits<uint32_t>::max());
             uint32_t float4Count = (uint32_t)mSkinningMatrices.size() * 4;
             mpSkinningMatricesBuffer = Buffer::createStructured(sizeof(float4), float4Count, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+            mpSkinningMatricesBuffer->setName("AnimationController::mpSkinningMatricesBuffer");
             mpInvTransposeSkinningMatricesBuffer = Buffer::createStructured(sizeof(float4), float4Count, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+            mpInvTransposeSkinningMatricesBuffer->setName("AnimationController::mpInvTransposeSkinningMatricesBuffer");
             block["boneMatrices"].setBuffer(mpSkinningMatricesBuffer);
             block["inverseTransposeBoneMatrices"].setBuffer(mpInvTransposeSkinningMatricesBuffer);
             block["inverseTransposeWorldMatrices"].setBuffer(mpInvTransposeWorldMatricesBuffer);

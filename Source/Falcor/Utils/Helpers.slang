@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -157,7 +157,6 @@ float4 applyAmbientOcclusion(float4 color, Texture2D aoTex, SamplerState s, floa
 }
 
 // TODO: this function is broken an may return negative values.
-// Issue #780
 float getMetallic(float3 diffuse, float3 spec)
 {
     // This is based on the way that UE4 and Substance Painter 2 converts base+metallic+specular level to diffuse/spec colors

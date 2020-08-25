@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -139,4 +139,33 @@ float unpackUnorm16(uint packed)
 float2 unpackUnorm2x16(uint packed)
 {
     return float2(packed & 0xffff, packed >> 16) * (1.f / 65535);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// 32-bit HDR color format
+///////////////////////////////////////////////////////////////////////////////
+
+/** Pack three positive floats into a dword.
+    https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/PixelPacking_R11G11B10.hlsli
+*/
+uint packR11G11B10(float3 v)
+{
+    // Clamp upper bound so that it doesn't accidentally round up to INF 
+    v = min(v, asfloat(0x477C0000));  
+    // Exponent=15, Mantissa=1.11111
+    uint r = ((f32tof16(v.x) + 8) >> 4) & 0x000007ff;
+    uint g = ((f32tof16(v.y) + 8) << 7) & 0x003ff800;
+    uint b = ((f32tof16(v.z) + 16) << 17) & 0xffc00000;
+    return r | g | b;
+}
+
+/** Unpack three positive floats from a dword.
+    https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/PixelPacking_R11G11B10.hlsli
+*/
+float3 unpackR11G11B10(uint packed)
+{
+    float r = f16tof32((packed << 4 ) & 0x7FF0);
+    float g = f16tof32((packed >> 7 ) & 0x7FF0);
+    float b = f16tof32((packed >> 17) & 0x7FE0);
+    return float3(r, g, b);
 }

@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -27,6 +27,7 @@
  **************************************************************************/
 #include "stdafx.h"
 #include "PathTracer.h"
+#include "Experimental/Scene/Material/TexLODTypes.slang"
 #include <sstream>
 
 namespace Falcor
@@ -37,11 +38,14 @@ namespace Falcor
         // TODO: Figure out a cleaner design for this. Should we have enums for all the channels?
         const std::string kViewDirInput = "viewW";
 
+        const std::string kRayCountOutput = "rayCount";
+        const std::string kPathLengthOutput = "pathLength";
+
         const Falcor::ChannelList kGBufferInputChannels =
         {
             { "posW",           "gWorldPosition",             "World-space position (xyz) and foreground flag (w)"       },
             { "normalW",        "gWorldShadingNormal",        "World-space shading normal (xyz)"                         },
-            { "bitangentW",     "gWorldShadingBitangent",     "World-space shading bitangent (xyz)", true /* optional */ },
+            { "tangentW",       "gWorldShadingTangent",       "World-space shading tangent (xyz) and sign (w)", true /* optional */ },
             { "faceNormalW",    "gWorldFaceNormal",           "Face normal in world space (xyz)",                        },
             { kViewDirInput,    "gWorldView",                 "World-space view direction (xyz)", true /* optional */    },
             { "mtlDiffOpacity", "gMaterialDiffuseOpacity",    "Material diffuse color (xyz) and opacity (w)"             },
@@ -54,6 +58,12 @@ namespace Falcor
         const Falcor::ChannelList kVBufferInputChannels =
         {
             { "vbuffer",        "gVBuffer",                   "Visibility buffer in packed 64-bit format", false, ResourceFormat::RG32Uint },
+        };
+
+        const Falcor::ChannelList kPixelStatsOutputChannels =
+        {
+            { kRayCountOutput,  "",                           "Per-pixel ray count", true /* optional */, ResourceFormat::R32Uint    },
+            { kPathLengthOutput,"",                           "Per-pixel path length", true /* optional */, ResourceFormat::R32Uint  },
         };
 
         // UI variables.
@@ -69,6 +79,21 @@ namespace Falcor
             { (uint32_t)EmissiveLightSamplerType::Uniform, "Uniform" },
             { (uint32_t)EmissiveLightSamplerType::LightBVH, "LightBVH" },
         };
+
+        const Gui::DropdownList kRayFootprintModeList =
+        {
+            { (uint32_t)TexLODMode::Mip0, "Disabled" },
+            { (uint32_t)TexLODMode::RayCones, "Ray Cones" },
+            { (uint32_t)TexLODMode::RayDiffsIsotropic, "Ray diffs (isotropic)" },
+            { (uint32_t)TexLODMode::RayDiffsAnisotropic, "Ray diffs (anisotropic)" },
+        };
+
+        const Gui::DropdownList kRayConeModeList =
+        {
+            { (uint32_t)RayConeMode::Combo, "Combo" },
+            { (uint32_t)RayConeMode::Unified, "Unified" },
+        };
+
     };
 
     static_assert(has_vtable<PathTracerParams>::value == false, "PathTracerParams must be non-virtual");
@@ -108,6 +133,7 @@ namespace Falcor
 
         addRenderPassInputs(reflector, mInputChannels);
         addRenderPassOutputs(reflector, mOutputChannels);
+        addRenderPassOutputs(reflector, kPixelStatsOutputChannels);
 
         return reflector;
     }
@@ -122,15 +148,20 @@ namespace Falcor
         bool dirty = false;
 
         dirty |= widget.var("Samples/pixel", mSharedParams.samplesPerPixel, 1u, 1u << 16, 1);
-        if (dirty |= widget.var("Light samples/vertex", mSharedParams.lightSamplesPerVertex, 1u, kMaxLightSamplesPerVertex)) recreateVars();  // Trigger recreation of the program vars.
+        if ((dirty |= widget.var("Light samples/vertex", mSharedParams.lightSamplesPerVertex, 1u, kMaxLightSamplesPerVertex))) recreateVars();  // Trigger recreation of the program vars.
         widget.tooltip("The number of shadow rays that will be traced at each path vertex.\n"
             "The supported range is [1," + std::to_string(kMaxLightSamplesPerVertex) + "].", true);
         dirty |= widget.var("Max bounces", mSharedParams.maxBounces, 0u, kMaxPathLength);
         widget.tooltip("Maximum path length.\n0 = direct only\n1 = one indirect bounce etc.", true);
+        dirty |= widget.var("Max non-specular bounces", mSharedParams.maxNonSpecularBounces, 0u, mSharedParams.maxBounces);
+        widget.tooltip("Maximum number of non-specular bounces.\n0 = direct only\n1 = one indirect bounce etc.", true);
 
         widget.text("Max rays/pixel: " + std::to_string(mMaxRaysPerPixel));
         widget.tooltip("This is the maximum number of rays that will be traced per pixel.\n"
             "The number depends on the scene's available light types and the current configuration.", true);
+
+        dirty |= widget.checkbox("Alpha test", mSharedParams.useAlphaTest);
+        widget.tooltip("Use alpha testing on non-opaque triangles.");
 
         // Clamping for basic firefly removal.
         dirty |= widget.checkbox("Clamp samples", mSharedParams.clampSamples);
@@ -150,9 +181,36 @@ namespace Falcor
 
         dirty |= widget.checkbox("Use legacy BSDF code", mSharedParams.useLegacyBSDF);
 
+        // Ray footprint Mode (Tex LOD).
+        if (mIsRayFootprintSupported)
+        {
+            if (widget.dropdown("Ray footprint mode", kRayFootprintModeList, mSharedParams.rayFootprintMode))
+            {
+                recreateVars();
+                dirty = true;
+            }
+            widget.tooltip("The ray footprint (texture LOD) mode to use.");
+
+            if (mSharedParams.rayFootprintMode == (uint32_t)TexLODMode::RayCones)
+            {
+                if (widget.dropdown("Ray cone mode", kRayConeModeList, mSharedParams.rayConeMode))
+                {
+                    recreateVars();
+                    dirty = true;
+                }
+                widget.tooltip("The ray cone sub-mode to use.");
+
+                if (widget.checkbox("Use Roughness", mSharedParams.rayFootprintUseRoughness))
+                {
+                    recreateVars();
+                    dirty = true;
+                }
+                widget.tooltip("Ray footprint integrates material roughness into calculation.");
+            }
+        }
+
         // Draw sub-groups for various options.
         dirty |= renderSamplingUI(widget);
-        dirty |= renderLightsUI(widget);
         renderLoggingUI(widget);
 
         // If rendering options that modify the output have changed, set flag to indicate that.
@@ -168,8 +226,7 @@ namespace Falcor
     {
         bool dirty = false;
 
-        auto samplingGroup = Gui::Group(widget, "Sampling", true);
-        if (samplingGroup.open())
+        if (auto samplingGroup = widget.group("Sampling", true))
         {
             // Importance sampling controls.
             dirty |= samplingGroup.checkbox("BRDF importance sampling", mSharedParams.useBRDFSampling);
@@ -177,21 +234,70 @@ namespace Falcor
                 "If disabled, cosine-weighted hemisphere sampling is used.\n"
                 "That can be useful for debugging but expect slow convergence.", true);
 
-            dirty |= samplingGroup.checkbox("Multiple importance sampling (MIS)", mSharedParams.useMIS);
-            samplingGroup.tooltip("MIS should normally be enabled.\n\n"
-                "BRDF sampling is combined with light sampling for the environment map and emissive lights.\n"
-                "Note that MIS has currently no effect on analytic lights.", true);
-            if (mSharedParams.useMIS)
+            dirty |= samplingGroup.checkbox("Next-event estimation (NEE)", mSharedParams.useNEE);
+            widget.tooltip("Use next-event estimation.\n"
+                "This option enables direct illumination sampling at each path vertex.\n"
+                "This does not apply to delta reflection/transmission lobes, which need to trace an extra scatter ray.");
+
+            if (mSharedParams.useNEE)
             {
-                dirty |= samplingGroup.dropdown("MIS heuristic", kMISHeuristicList, mSharedParams.misHeuristic);
-                if (mSharedParams.misHeuristic == (uint32_t)MISHeuristic::PowerExpHeuristic)
+                if (mpScene && mpScene->useEmissiveLights())
                 {
-                    dirty |= samplingGroup.var("MIS power exponent", mSharedParams.misPowerExponent, 0.01f, 10.f);
+                    widget.text("Emissive sampler:");
+                    widget.tooltip("Selects which light sampler to use for importance sampling of emissive geometry.", true);
+                    if (widget.dropdown("##EmissiveSampler", kEmissiveSamplerList, (uint32_t&)mSelectedEmissiveSampler, true))
+                    {
+                        mpEmissiveSampler = nullptr;
+                        dirty = true;
+                    }
+                }
+
+                if (mpEmissiveSampler)
+                {
+                    if (auto emissiveGroup = widget.group("Emissive sampler options"))
+                    {
+                        if (mpEmissiveSampler->renderUI(emissiveGroup))
+                        {
+                            // Get the latest options for the current sampler. We need these to re-create the sampler at scene changes and for pass serialization.
+                            switch (mSelectedEmissiveSampler)
+                            {
+                            case EmissiveLightSamplerType::Uniform:
+                                mUniformSamplerOptions = std::static_pointer_cast<EmissiveUniformSampler>(mpEmissiveSampler)->getOptions();
+                                break;
+                            case EmissiveLightSamplerType::LightBVH:
+                                mLightBVHSamplerOptions = std::static_pointer_cast<LightBVHSampler>(mpEmissiveSampler)->getOptions();
+                                break;
+                            default:
+                                should_not_get_here();
+                            }
+                            dirty = true;
+                        }
+                    }
+                }
+
+                dirty |= samplingGroup.checkbox("Multiple importance sampling (MIS)", mSharedParams.useMIS);
+                samplingGroup.tooltip("MIS should normally be enabled.\n\n"
+                    "BRDF sampling is combined with light sampling for the environment map and emissive lights.\n"
+                    "Note that MIS has currently no effect on analytic lights.", true);
+
+                if (mSharedParams.useMIS)
+                {
+                    dirty |= samplingGroup.dropdown("MIS heuristic", kMISHeuristicList, mSharedParams.misHeuristic);
+                    if (mSharedParams.misHeuristic == (uint32_t)MISHeuristic::PowerExpHeuristic)
+                    {
+                        dirty |= samplingGroup.var("MIS power exponent", mSharedParams.misPowerExponent, 0.01f, 10.f);
+                    }
                 }
             }
 
-            dirty |= samplingGroup.checkbox("Use light samples in volumes", mSharedParams.useLightSamplesInVolumes);
-            samplingGroup.tooltip("Use direct light sampling within volumes even though they typically are occluded.", true);
+            dirty |= samplingGroup.checkbox("Use lights in volumes", mSharedParams.useLightsInVolumes);
+            samplingGroup.tooltip("Use lights inside of volumes (transmissive materials). We typically don't want this because lights are occluded by the interface.", true);
+
+            dirty |= samplingGroup.checkbox("Disable caustics", mSharedParams.disableCaustics);
+            samplingGroup.tooltip("Disable sampling of caustic light paths (i.e. specular events after diffuse events).", true);
+
+            dirty |= samplingGroup.var("Specular roughness threshold", mSharedParams.specularRoughnessThreshold, 0.f, 1.f);
+            samplingGroup.tooltip("Specular reflection events are only classified as specular if the material's roughness value is equal or smaller than this threshold.", true);
 
             // Russian roulette.
             dirty |= samplingGroup.checkbox("Russian roulette", mSharedParams.useRussianRoulette);
@@ -214,84 +320,6 @@ namespace Falcor
             samplingGroup.checkbox("Use fixed seed", mSharedParams.useFixedSeed);
             samplingGroup.tooltip("Forces a fixed random seed for each frame.\n\n"
                 "This should produce exactly the same image each frame, which can be useful for debugging using print() and otherwise.", true);
-
-            samplingGroup.release();
-        }
-
-        return dirty;
-    }
-
-    bool PathTracer::renderLightsUI(Gui::Widgets& widget)
-    {
-        bool dirty = false;
-
-        auto lightsGroup = Gui::Group(widget, "Lights", true);
-        if (lightsGroup.open())
-        {
-            dirty |= lightsGroup.checkbox("Use analytic lights", mSharedParams.useAnalyticLights);
-            lightsGroup.tooltip("This enables Falcor's built-in analytic lights.\nThese are specified in the scene description (.fscene).", true);
-
-            dirty |= lightsGroup.checkbox("Use emissive lights", mSharedParams.useEmissiveLights);
-            lightsGroup.tooltip("This enables using emissive triangles as light sources.", true);
-            if (mSharedParams.useEmissiveLights)
-            {
-                dirty |= lightsGroup.checkbox("Use emissive light sampling", mSharedParams.useEmissiveLightSampling);
-                lightsGroup.tooltip("This option enables explicit sampling of emissive geometry by using an emissive sampler to pick samples "
-                    "on the emissive triangles and tracing shadow rays to evaluate their visibility. See options in separate tab.\n"
-                    "When disabled, the contribution from emissive lights is only accounted for when they are directly hit by a scatter ray.", true);
-
-                lightsGroup.text("Emissive sampler:");
-                lightsGroup.tooltip("Selects which light sampler to use for importance sampling of emissive geometry.", true);
-                if (lightsGroup.dropdown("##EmissiveSampler", kEmissiveSamplerList, (uint32_t&)mSelectedEmissiveSampler, true))
-                {
-                    mpEmissiveSampler = nullptr;
-                    dirty = true;
-                }
-            }
-
-            dirty |= lightsGroup.checkbox("Use env map as light", mSharedParams.useEnvLight);
-            lightsGroup.tooltip("This enables using the environment map as a distant light source", true);
-            dirty |= lightsGroup.checkbox("Use env map as background", mSharedParams.useEnvBackground);
-
-            // Print info about the lights.
-            std::ostringstream oss;
-            oss << "Analytic lights: "
-                << mSharedParams.lightCountPoint << " point, "
-                << mSharedParams.lightCountDirectional << " directional, "
-                << mSharedParams.lightCountAnalyticArea << " area\n"
-                << "Mesh lights: "
-                << mSharedParams.lightCountTriangle << " triangles";
-            lightsGroup.text(oss.str());
-
-            lightsGroup.text("Environment map: " + (mpEnvProbe ? mEnvProbeFilename : "N/A"));
-
-            lightsGroup.release();
-        }
-
-        if (mpEmissiveSampler)
-        {
-            auto emissiveGroup = Gui::Group(widget, "Emissive sampler options");
-            if (emissiveGroup.open())
-            {
-                if (mpEmissiveSampler->renderUI(emissiveGroup))
-                {
-                    // Get the latest options for the current sampler. We need these to re-create the sampler at scene changes and for pass serialization.
-                    switch (mSelectedEmissiveSampler)
-                    {
-                    case EmissiveLightSamplerType::Uniform:
-                        mUniformSamplerOptions = std::static_pointer_cast<EmissiveUniformSampler>(mpEmissiveSampler)->getOptions();
-                        break;
-                    case EmissiveLightSamplerType::LightBVH:
-                        mLightBVHSamplerOptions = std::static_pointer_cast<LightBVHSampler>(mpEmissiveSampler)->getOptions();
-                        break;
-                    default:
-                        should_not_get_here();
-                    }
-                    dirty = true;
-                }
-
-                emissiveGroup.release();
-            }
         }
 
         return dirty;
@@ -299,16 +327,13 @@ namespace Falcor
 
     void PathTracer::renderLoggingUI(Gui::Widgets& widget)
     {
-        auto logGroup = Gui::Group(widget, "Logging");
-        if (logGroup.open())
+        if (auto logGroup = widget.group("Logging"))
         {
             // Pixel stats.
             mpPixelStats->renderUI(logGroup);
 
             // Pixel debugger.
             mpPixelDebug->renderUI(logGroup);
-
-            logGroup.release();
         }
     }
 
@@ -342,51 +367,40 @@ namespace Falcor
             logError("'maxBounces' exceeds the maximum supported path length. Clamping to " + std::to_string(kMaxPathLength));
             mSharedParams.maxBounces = kMaxPathLength;
         }
+
+        if (mSharedParams.maxNonSpecularBounces > mSharedParams.maxBounces)
+        {
+            logWarning("'maxNonSpecularBounces' exceeds 'maxBounces'. Clamping to " + std::to_string(mSharedParams.maxBounces));
+            mSharedParams.maxNonSpecularBounces = mSharedParams.maxBounces;
+        }
+
+        if (mSharedParams.specularRoughnessThreshold < 0.f || mSharedParams.specularRoughnessThreshold > 1.f)
+        {
+            logError("'specularRoughnessThreshold' has invalid value. Clamping to the range [0,1].");
+            mSharedParams.specularRoughnessThreshold = std::clamp(mSharedParams.specularRoughnessThreshold, 0.f, 1.f);
+        }
+
+        if (mSharedParams.useLightsInVolumes == false)
+        {
+            logWarning("'useLightsInVolumes' can cause instability when disabled (todo fix). Forcing the value to true.");
+            mSharedParams.useLightsInVolumes = true;
+        }
     }
 
     bool PathTracer::initLights(RenderContext* pRenderContext)
     {
         // Clear lighting data for previous scene.
-        mpEnvProbe = nullptr;
-        mEnvProbeFilename = "";
+        mpEnvMapSampler = nullptr;
         mpEmissiveSampler = nullptr;
         mUseEmissiveLights = mUseEmissiveSampler = mUseAnalyticLights = mUseEnvLight = false;
-        mSharedParams.lightCountPoint = 0;
-        mSharedParams.lightCountDirectional = 0;
-        mSharedParams.lightCountAnalyticArea = 0;
 
         // If we have no scene, we're done.
         if (mpScene == nullptr) return true;
 
-        // Load environment map if scene uses one.
-        Texture::SharedPtr pEnvMap = mpScene->getEnvironmentMap();
-        if (pEnvMap != nullptr)
+        // Create environment map sampler if scene uses an environment map.
+        if (mpScene->getEnvMap())
         {
-            std::string filename = pEnvMap->getSourceFilename();
-            mpEnvProbe = EnvProbe::create(pRenderContext, filename);
-            mEnvProbeFilename = mpEnvProbe ? getFilenameFromPath(filename) : "";
-        }
-
-        // Setup for analytic lights.
-        for (uint32_t i = 0; i < mpScene->getLightCount(); i++)
-        {
-            switch (mpScene->getLight(i)->getType())
-            {
-            case LightType::Point:
-                mSharedParams.lightCountPoint++;
-                break;
-            case LightType::Directional:
-                mSharedParams.lightCountDirectional++;
-                break;
-            case LightType::Rect:
-            case LightType::Sphere:
-            case LightType::Disc:
-                mSharedParams.lightCountAnalyticArea++;
-                break;
-            default:
-                logError("Scene has invalid light types. Aborting.");
-                return false;
-            }
+            mpEnvMapSampler = EnvMapSampler::create(pRenderContext, mpScene->getEnvMap());
         }
 
         return true;
@@ -405,11 +419,17 @@ namespace Falcor
         }
 
         // Configure light sampling.
-        mUseAnalyticLights = mSharedParams.useAnalyticLights && mpScene->getLightCount() > 0;
-        mUseEnvLight = mSharedParams.useEnvLight && mpEnvProbe != nullptr;
+        mUseAnalyticLights = mpScene->useAnalyticLights();
+        mUseEnvLight = mpScene->useEnvLight() && mpEnvMapSampler != nullptr;
+
+        // Request the light collection if emissive lights are enabled.
+        if (mpScene->getRenderSettings().useEmissiveLights)
+        {
+            mpScene->getLightCollection(pRenderContext);
+        }
 
         bool lightingChanged = false;
-        if (!mSharedParams.useEmissiveLights)
+        if (!mpScene->useEmissiveLights())
         {
             mUseEmissiveLights = mUseEmissiveSampler = false;
             mpEmissiveSampler = nullptr;
@@ -417,14 +437,11 @@ namespace Falcor
         else
         {
             mUseEmissiveLights = true;
-            mUseEmissiveSampler = mSharedParams.useEmissiveLightSampling;
+            mUseEmissiveSampler = mSharedParams.useNEE;
 
             if (!mUseEmissiveSampler)
             {
                 mpEmissiveSampler = nullptr;
-
-                // Update shared parameters.
-                mSharedParams.lightCountTriangle = 0;
             }
             else
             {
@@ -450,17 +467,6 @@ namespace Falcor
                 // Update the emissive sampler to the current frame.
                 assert(mpEmissiveSampler);
                 lightingChanged = mpEmissiveSampler->update(pRenderContext);
-
-                const auto& lightCollection = mpScene->getLightCollection(pRenderContext);
-
-                // Update shared parameters.
-                mSharedParams.lightCountTriangle = lightCollection ? lightCollection->getActiveLightCount() : 0;
-
-                // Disable emissive for the current frame if there are no active lights.
-                if (!lightCollection || lightCollection->getActiveLightCount() == 0)
-                {
-                    mUseEmissiveLights = mUseEmissiveSampler = false;
-                }
             }
         }
 
@@ -477,7 +483,8 @@ namespace Falcor
         bool traceShadowRays = mUseAnalyticLights || mUseEnvLight || mUseEmissiveSampler;
         bool traceScatterRayFromLastPathVertex =
             (mUseEnvLight && mSharedParams.useMIS) ||
-            (mUseEmissiveLights && (!mUseEmissiveSampler || mSharedParams.useMIS));
+            (mUseEmissiveLights && (!mSharedParams.useNEE || mSharedParams.useMIS)) ||
+            (mSharedParams.useLegacyBSDF == false); // New BSDF supports delta and transmission events, requiring an extra scatter ray.
 
         uint32_t shadowRays = traceShadowRays ? mSharedParams.lightSamplesPerVertex * (mSharedParams.maxBounces + 1) : 0;
         uint32_t scatterRays = mSharedParams.maxBounces + (traceScatterRayFromLastPathVertex ? 1 : 0);
@@ -494,13 +501,13 @@ namespace Falcor
         mMaxRaysPerPixel = maxRaysPerPixel();
 
         // Update refresh flag if changes that affect the output have occured.
-        Dictionary& dict = renderData.getDictionary();
+        auto& dict = renderData.getDictionary();
         if (mOptionsChanged || lightingChanged)
         {
-            auto flags = (Falcor::RenderPassRefreshFlags)(dict.keyExists(kRenderPassRefreshFlags) ? dict[Falcor::kRenderPassRefreshFlags] : 0u);
+            auto flags = dict.getValue(kRenderPassRefreshFlags, Falcor::RenderPassRefreshFlags::None);
             if (mOptionsChanged) flags |= Falcor::RenderPassRefreshFlags::RenderOptionsChanged;
             if (lightingChanged) flags |= Falcor::RenderPassRefreshFlags::LightingChanged;
-            dict[Falcor::kRenderPassRefreshFlags] = (uint32_t)flags;
+            dict[Falcor::kRenderPassRefreshFlags] = flags;
             mOptionsChanged = false;
         }
 
@@ -533,6 +540,22 @@ namespace Falcor
         // Get the PRNG start dimension from the dictionary as preceeding passes may have used some dimensions for lens sampling.
         mSharedParams.prngDimension = dict.keyExists(kRenderPassPRNGDimension) ? dict[kRenderPassPRNGDimension] : 0u;
 
+        // Enable pixel stats if rayCount or pathLength outputs are connected.
+        if (renderData[kRayCountOutput] != nullptr || renderData[kPathLengthOutput] != nullptr) mpPixelStats->setEnabled(true);
+
+        // Check a vBuffer is attached for ray footprint.
+        if (mIsRayFootprintSupported && renderData["vbuffer"] == nullptr)
+        {
+            logWarning("Disabling ray footprint since it requires a vbuffer input.");
+            mIsRayFootprintSupported = false;
+            mSharedParams.rayFootprintMode = 0;
+        }
+
+        // Update the spread angle parameter for ray footprint.
+        const uint2 targetDim = renderData.getDefaultTextureDims();
+        assert(targetDim.x > 0 && targetDim.y > 0);
+        mSharedParams.screenSpacePixelSpreadAngle = mpScene->getCamera()->computeScreenSpacePixelSpreadAngle(targetDim.y);
+
         mpPixelDebug->beginFrame(pRenderContext, renderData.getDefaultTextureDims());
         mpPixelStats->beginFrame(pRenderContext, renderData.getDefaultTextureDims());
 
@@ -544,23 +567,24 @@ namespace Falcor
         mpPixelDebug->endFrame(pRenderContext);
         mpPixelStats->endFrame(pRenderContext);
 
-        // Generate ray count output if it is exists.
-        Texture* pDstRayCount = renderData["rayCount"]->asTexture().get();
-        if (pDstRayCount)
+        auto copyTexture = [pRenderContext](Texture* pDst, const Texture* pSrc)
         {
-            Texture* pSrcRayCount = mpPixelStats->getRayCountBuffer().get();
-            if (pSrcRayCount == nullptr)
+            if (pDst && pSrc)
             {
-                pRenderContext->clearUAV(pDstRayCount->getUAV().get(), uint4(0, 0, 0, 0));
+                assert(pDst && pSrc);
+                assert(pDst->getFormat() == pSrc->getFormat());
+                assert(pDst->getWidth() == pSrc->getWidth() && pDst->getHeight() == pSrc->getHeight());
+                pRenderContext->copyResource(pDst, pSrc);
             }
-            else
+            else if (pDst)
             {
-                assert(pDstRayCount && pSrcRayCount);
-                assert(pDstRayCount->getFormat() == pSrcRayCount->getFormat());
-                assert(pDstRayCount->getWidth() == pSrcRayCount->getWidth() && pDstRayCount->getHeight() == pSrcRayCount->getHeight());
-                pRenderContext->copyResource(pDstRayCount, pSrcRayCount);
+                pRenderContext->clearUAV(pDst->getUAV().get(), uint4(0, 0, 0, 0));
             }
-        }
+        };
+
+        // Copy pixel stats to outputs if available.
+        copyTexture(renderData[kRayCountOutput]->asTexture().get(), mpPixelStats->getRayCountTexture(pRenderContext).get());
+        copyTexture(renderData[kPathLengthOutput]->asTexture().get(), mpPixelStats->getPathLengthTexture().get());
 
         mSharedParams.frameCount++;
     }
@@ -573,22 +597,30 @@ namespace Falcor
         defines.add("SAMPLES_PER_PIXEL", std::to_string(mSharedParams.samplesPerPixel));
         defines.add("LIGHT_SAMPLES_PER_VERTEX", std::to_string(mSharedParams.lightSamplesPerVertex));
         defines.add("MAX_BOUNCES", std::to_string(mSharedParams.maxBounces));
+        defines.add("MAX_NON_SPECULAR_BOUNCES", std::to_string(mSharedParams.maxNonSpecularBounces));
+        defines.add("USE_ALPHA_TEST", mSharedParams.useAlphaTest ? "1" : "0");
         defines.add("FORCE_ALPHA_ONE", mSharedParams.forceAlphaOne ? "1" : "0");
         defines.add("USE_ANALYTIC_LIGHTS", mUseAnalyticLights ? "1" : "0");
         defines.add("USE_EMISSIVE_LIGHTS", mUseEmissiveLights ? "1" : "0");
-        defines.add("USE_EMISSIVE_SAMPLER", mUseEmissiveSampler ? "1" : "0");
         defines.add("USE_ENV_LIGHT", mUseEnvLight ? "1" : "0");
-        defines.add("USE_ENV_BACKGROUND", (mpEnvProbe && mSharedParams.useEnvBackground) ? "1" : "0");
+        defines.add("USE_ENV_BACKGROUND", mpScene->useEnvBackground() ? "1" : "0");
         defines.add("USE_BRDF_SAMPLING", mSharedParams.useBRDFSampling ? "1" : "0");
+        defines.add("USE_NEE", mSharedParams.useNEE ? "1" : "0");
         defines.add("USE_MIS", mSharedParams.useMIS ? "1" : "0");
         defines.add("MIS_HEURISTIC", std::to_string(mSharedParams.misHeuristic));
         defines.add("USE_RUSSIAN_ROULETTE", mSharedParams.useRussianRoulette ? "1" : "0");
         defines.add("USE_VBUFFER", mSharedParams.useVBuffer ? "1" : "0");
         defines.add("USE_NESTED_DIELECTRICS", mSharedParams.useNestedDielectrics ? "1" : "0");
-        defines.add("USE_LIGHT_SAMPLES_IN_VOLUMES", mSharedParams.useLightSamplesInVolumes ? "1" : "0");
+        defines.add("USE_LIGHTS_IN_VOLUMES", mSharedParams.useLightsInVolumes ? "1" : "0");
+        defines.add("DISABLE_CAUSTICS", mSharedParams.disableCaustics ? "1" : "0");
 
-        // Defines in MaterialShading.slang
+        // Defines in MaterialShading.slang.
         defines.add("_USE_LEGACY_SHADING_CODE", mSharedParams.useLegacyBSDF ? "1" : "0");
+
+        // Defines for ray footprint.
+        defines.add("RAY_FOOTPRINT_MODE", std::to_string(mSharedParams.rayFootprintMode));
+        defines.add("RAY_CONE_MODE", std::to_string(mSharedParams.rayConeMode));
+        defines.add("RAY_FOOTPRINT_USE_MATERIAL_ROUGHNESS", std::to_string(mSharedParams.rayFootprintUseRoughness));
 
         pProgram->addDefines(defines);
     }
@@ -596,38 +628,42 @@ namespace Falcor
     SCRIPT_BINDING(PathTracer)
     {
         // Register our parameters struct.
-        auto params = m.regClass(PathTracerParams);
-#define field(f_) rwField(#f_, &PathTracerParams::f_)
+        ScriptBindings::SerializableStruct<PathTracerParams> params(m, "PathTracerParams");
+#define field(f_) field(#f_, &PathTracerParams::f_)
         // General
         params.field(samplesPerPixel);
         params.field(lightSamplesPerVertex);
         params.field(maxBounces);
+        params.field(maxNonSpecularBounces);
+
         params.field(useVBuffer);
+        params.field(useAlphaTest);
         params.field(forceAlphaOne);
+
         params.field(clampSamples);
         params.field(clampThreshold);
-
-        // Lighting
-        params.field(useAnalyticLights);
-        params.field(useEmissiveLights);
-        params.field(useEnvLight);
-        params.field(useEnvBackground);
+        params.field(specularRoughnessThreshold);
 
         // Sampling
         params.field(useBRDFSampling);
+        params.field(useNEE);
         params.field(useMIS);
         params.field(misHeuristic);
-        params.field(misPowerExponent);
 
-        params.field(useEmissiveLightSampling);
+        params.field(misPowerExponent);
         params.field(useRussianRoulette);
         params.field(probabilityAbsorption);
         params.field(useFixedSeed);
 
         params.field(useLegacyBSDF);
         params.field(useNestedDielectrics);
-        params.field(useLightSamplesInVolumes);
+        params.field(useLightsInVolumes);
+        params.field(disableCaustics);
 
+        // Ray footprint
+        params.field(rayFootprintMode);
+        params.field(rayConeMode);
+        params.field(rayFootprintUseRoughness);
 #undef field
     }
 }

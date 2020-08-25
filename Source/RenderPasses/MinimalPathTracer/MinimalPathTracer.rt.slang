@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -58,20 +58,18 @@ import Scene.Raytracing;
 import Utils.Math.MathHelpers;
 import Utils.Sampling.SampleGenerator;
 import Experimental.Scene.Material.MaterialShading;
-import Experimental.Scene.Lights.EnvProbe;
 import Experimental.Scene.Lights.LightHelpers;
 
 cbuffer CB
 {
     uint        gFrameCount;        // Frame count since scene was loaded.
     uint        gPRNGDimension;     // First available PRNG dimension.
-    EnvProbe    gEnvProbe;          // Environment map sampling functions.
 }
 
 // Inputs
 Texture2D<float4> gWorldPosition;
 Texture2D<float4> gWorldShadingNormal;
-Texture2D<float4> gWorldShadingBitangent; // Optional
+Texture2D<float4> gWorldShadingTangent; // Optional
 Texture2D<float4> gWorldFaceNormal;
 Texture2D<float4> gWorldView; // Optional
 Texture2D<float4> gMaterialDiffuseOpacity;
@@ -207,10 +205,10 @@ void traceScatterRay(inout ScatterRayData rayData)
 */
 float3 evalDirectAnalytic(const ShadingData sd, float3 rayOrigin, inout SampleGenerator sg)
 {
-    // Pick one of the analytic light sources randomly with equal probability.
     const uint lightCount = gScene.getLightCount();
     if (lightCount == 0) return float3(0);
 
+    // Pick one of the analytic light sources randomly with equal probability.
     const uint lightIndex = min(uint(sampleNext1D(sg) * lightCount), lightCount - 1);
     float invPdf = lightCount; // Light selection pdf = 1.0 / lightCount.
 
@@ -256,7 +254,7 @@ void scatterMiss(inout ScatterRayData rayData : SV_RayPayload)
     // Add contribution from distant light (env map) in this direction.
     if (kUseEnvLight && (kComputeDirect || rayData.pathLength > 0))
     {
-        float3 Le = evalEnvProbe(gEnvProbe, WorldRayDirection());
+        float3 Le = gScene.envMap.eval(WorldRayDirection());
         rayData.radiance += rayData.thp * Le;
     }
 }
@@ -284,11 +282,10 @@ void scatterClosestHit(
     ShadingData sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -WorldRayDirection(), 0.f);
 
     // Compute tangent space if it is invalid.
-    // TODO: Remove this check when we're sure the tangent space is always valid.
-    if (!(dot(sd.B, sd.B) > 0.f))   // Note: Comparison written so that NaNs trigger
+    if (!(dot(sd.T, sd.T) > 0.f))   // Note: Comparison written so that NaNs trigger
     {
-        sd.B = perp_stark(sd.N);
-        sd.T = cross(sd.B, sd.N);
+        sd.T = perp_stark(sd.N);
+        sd.B = cross(sd.N, sd.T);
     }
 
     // Add emitted light.
@@ -370,9 +367,9 @@ void rayGen()
         // Load geometry parameters from G-buffer.
         // TODO: Load (u,v) channel if it exists.
         float3 normal = gWorldShadingNormal[launchIndex].xyz;
-        float3 bitangent = isValid(gWorldShadingBitangent) ? gWorldShadingBitangent[launchIndex].xyz : perp_stark(normal);
+        float4 tangent = isValid(gWorldShadingTangent) ? gWorldShadingTangent[launchIndex] : float4(perp_stark(normal), 1.f);
         float3 faceNormal = gWorldFaceNormal[launchIndex].xyz;
-        GeometryParams geoParams = prepareGeometryParams(worldPos.xyz, -rayDir, normal, bitangent, faceNormal);
+        GeometryParams geoParams = prepareGeometryParams(worldPos.xyz, -rayDir, normal, tangent, faceNormal);
 
         // Load material parameters from G-buffer.
         MaterialParams matParams = loadMaterialParams(launchIndex);
@@ -420,7 +417,7 @@ void rayGen()
     else
     {
         // Background pixel.
-        outColor = kUseEnvBackground ? evalEnvProbe(gEnvProbe, rayDir) : kDefaultBackgroundColor;
+        outColor = kUseEnvBackground ? gScene.envMap.eval(rayDir) : kDefaultBackgroundColor;
     }
 
     gOutputColor[launchIndex] = float4(outColor, 1);

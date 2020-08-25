@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -34,7 +34,8 @@ RWStructuredBuffer<float> sinTheta, cosTheta;
 void testBoundSphereAngle(uint3 threadId : SV_DispatchThreadID)
 {
     const uint index = threadId.x;
-    boundSphereSubtendedConeAngle(spheres[index].xyz, spheres[index].w,
+    float sqrRadius = spheres[index].w * spheres[index].w;
+    boundSphereSubtendedConeAngle(spheres[index].xyz, sqrRadius,
                                   sinTheta[index], cosTheta[index]);
 }
 

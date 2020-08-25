@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -30,26 +30,27 @@
 
 namespace
 {
-    const char kErrorComputationShaderFile[] = "RenderPasses/ErrorMeasurePass/ErrorMeasurer.cs.slang";
-    const char kConstantBufferName[] = "PerFrameCB";
+    const std::string kErrorComputationShaderFile = "RenderPasses/ErrorMeasurePass/ErrorMeasurer.cs.slang";
+    const std::string kConstantBufferName = "PerFrameCB";
 
     // Input channels
-    const char kInputChannelWorldPosition[] = "WorldPosition";
-    const char kInputChannelSourceImage[] = "Source";
-    const char kInputChannelReferenceImage[] = "Reference";
+    const std::string kInputChannelWorldPosition = "WorldPosition";
+    const std::string kInputChannelSourceImage = "Source";
+    const std::string kInputChannelReferenceImage = "Reference";
 
     // Output channel
-    const char kOutputChannelImage[] = "Output";
+    const std::string kOutputChannelImage = "Output";
 
     // Serialized parameters
-    const char kReferenceImagePath[] = "ReferenceImagePath";
-    const char kMeasurementsFilePath[] = "MeasurementsFilePath";
-    const char kIgnoreBackground[] = "IgnoreBackground";
-    const char kComputeSquaredDifference[] = "ComputeSquaredDifference";
-    const char kUseLoadedReference[] = "UseLoadedReference";
-    const char kReportRunningError[] = "ReportRunningError";
-    const char kRunningErrorSigma[] = "RunningErrorSigma";
-    const char kSelectedOutputId[] = "SelectedOutputId";
+    const std::string kReferenceImagePath = "ReferenceImagePath";
+    const std::string kMeasurementsFilePath = "MeasurementsFilePath";
+    const std::string kIgnoreBackground = "IgnoreBackground";
+    const std::string kComputeSquaredDifference = "ComputeSquaredDifference";
+    const std::string kComputeAverage = "ComputeAverage";
+    const std::string kUseLoadedReference = "UseLoadedReference";
+    const std::string kReportRunningError = "ReportRunningError";
+    const std::string kRunningErrorSigma = "RunningErrorSigma";
+    const std::string kSelectedOutputId = "SelectedOutputId";
 }
 
 // Don't remove this. it's required for hot-reload to function properly
@@ -65,13 +66,14 @@ extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
 
 const Gui::RadioButtonGroup ErrorMeasurePass::sOutputSelectionButtons =
 {
-    { OutputId::source, "source", true },
-    { OutputId::reference, "reference", true },
-    { OutputId::difference, "difference", true }
+    { (uint32_t)OutputId::Source, "Source", true },
+    { (uint32_t)OutputId::Reference, "Reference", true },
+    { (uint32_t)OutputId::Difference, "Difference", true }
 };
+
 const Gui::RadioButtonGroup ErrorMeasurePass::sOutputSelectionButtonsSourceOnly =
 {
-    { OutputId::source, "source", true }
+    { (uint32_t)OutputId::Source, "Source", true }
 };
 
 ErrorMeasurePass::SharedPtr ErrorMeasurePass::create(RenderContext* pRenderContext, const Dictionary& dict)
@@ -81,19 +83,20 @@ ErrorMeasurePass::SharedPtr ErrorMeasurePass::create(RenderContext* pRenderConte
 
 ErrorMeasurePass::ErrorMeasurePass(const Dictionary& dict)
 {
-    for (const auto& v : dict)
+    for (const auto& [key, value] : dict)
     {
-        if (v.key() == kReferenceImagePath) mReferenceImagePath = (const std::string &)v.val();
-        else if (v.key() == kMeasurementsFilePath) mMeasurementsFilePath = (const std::string &)v.val();
-        else if (v.key() == kIgnoreBackground) mIgnoreBackground = v.val();
-        else if (v.key() == kComputeSquaredDifference) mComputeSquaredDifference = v.val();
-        else if (v.key() == kUseLoadedReference) mUseLoadedReference = v.val();
-        else if (v.key() == kReportRunningError) mReportRunningError = v.val();
-        else if (v.key() == kRunningErrorSigma) mRunningErrorSigma = v.val();
-        else if (v.key() == kSelectedOutputId) mSelectedOutputId = v.val();
+        if (key == kReferenceImagePath) mReferenceImagePath = value.operator std::string();
+        else if (key == kMeasurementsFilePath) mMeasurementsFilePath = value.operator std::string();
+        else if (key == kIgnoreBackground) mIgnoreBackground = value;
+        else if (key == kComputeSquaredDifference) mComputeSquaredDifference = value;
+        else if (key == kComputeAverage) mComputeAverage = value;
+        else if (key == kUseLoadedReference) mUseLoadedReference = value;
+        else if (key == kReportRunningError) mReportRunningError = value;
+        else if (key == kRunningErrorSigma) mRunningErrorSigma = value;
+        else if (key == kSelectedOutputId) mSelectedOutputId = value;
         else
         {
-            logWarning("Unknown field `" + v.key() + "` in ErrorMeasurePass dictionary");
+            logWarning("Unknown field '" + key + "' in ErrorMeasurePass dictionary");
         }
     }
 
@@ -112,6 +115,7 @@ Dictionary ErrorMeasurePass::getScriptingDictionary()
     dict[kMeasurementsFilePath] = mMeasurementsFilePath;
     dict[kIgnoreBackground] = mIgnoreBackground;
     dict[kComputeSquaredDifference] = mComputeSquaredDifference;
+    dict[kComputeAverage] = mComputeAverage;
     dict[kUseLoadedReference] = mUseLoadedReference;
     dict[kReportRunningError] = mReportRunningError;
     dict[kRunningErrorSigma] = mRunningErrorSigma;
@@ -161,13 +165,13 @@ void ErrorMeasurePass::execute(RenderContext* pRenderContext, const RenderData& 
 
     switch (mSelectedOutputId)
     {
-    case OutputId::source:
+    case OutputId::Source:
         pRenderContext->blit(pSourceImageTexture->getSRV(), pOutputImageTexture->getRTV());
         break;
-    case OutputId::reference:
+    case OutputId::Reference:
         pRenderContext->blit(pReference->getSRV(), pOutputImageTexture->getRTV());
         break;
-    case OutputId::difference:
+    case OutputId::Difference:
         pRenderContext->blit(mpDifferenceTexture->getSRV(), pOutputImageTexture->getRTV());
         break;
     default:
@@ -193,6 +197,7 @@ void ErrorMeasurePass::runDifferencePass(RenderContext* pRenderContext, const Re
     // If the world position texture is unbound, then don't do the background pixel check.
     mpErrorMeasurerPass[kConstantBufferName]["gIgnoreBackground"] = (uint32_t)(mIgnoreBackground && pWorldPositionTexture);
     mpErrorMeasurerPass[kConstantBufferName]["gComputeDiffSqr"] = (uint32_t)mComputeSquaredDifference;
+    mpErrorMeasurerPass[kConstantBufferName]["gComputeAverage"] = (uint32_t)mComputeAverage;
 
     // Run the compute shader.
     mpErrorMeasurerPass->execute(pRenderContext, resolution.x, resolution.y);
@@ -262,7 +267,7 @@ void ErrorMeasurePass::renderUI(Gui::Widgets& widget)
     widget.text("Show:");
     if (mMeasurements.valid)
     {
-        widget.radioButtons(sOutputSelectionButtons, mSelectedOutputId);
+        widget.radioButtons(sOutputSelectionButtons, reinterpret_cast<uint32_t&>(mSelectedOutputId));
         widget.tooltip("Press 'O' to change output mode; hold 'Shift' to reverse the cycling.\n\n"
                          "Note: Difference is computed based on current - reference value.", true);
     }
@@ -276,6 +281,9 @@ void ErrorMeasurePass::renderUI(Gui::Widgets& widget)
     widget.tooltip(("Do not include background pixels in the error measurements.\n"
                       "This option requires the optional input '" + std::string(kInputChannelWorldPosition) + "' to be bound").c_str(), true);
     widget.checkbox("Compute L2 error (rather than L1)", mComputeSquaredDifference);
+    widget.checkbox("Compute RGB average", mComputeAverage);
+    widget.tooltip("When enabled, the average error over the RGB components is computed when creating the difference image.\n"
+        "The average is computed after squaring the differences when L2 error is selected.");
 
     widget.checkbox("Use loaded reference image", mUseLoadedReference);
     widget.tooltip("Take the reference from the loaded image instead or the input channel.\n\n"
@@ -326,14 +334,10 @@ bool ErrorMeasurePass::onKeyEvent(const KeyboardEvent& keyEvent)
 {
     if (keyEvent.type == KeyboardEvent::Type::KeyPressed && keyEvent.key == KeyboardEvent::Key::O)
     {
-        if (keyEvent.mods.isShiftDown)
-        {
-            mSelectedOutputId = (mSelectedOutputId - 1 + OutputId::NUM_OUTPUTS) % OutputId::NUM_OUTPUTS;
-        }
-        else
-        {
-            mSelectedOutputId = (mSelectedOutputId + 1) % OutputId::NUM_OUTPUTS;
-        }
+        int32_t ofs = keyEvent.mods.isShiftDown ? -1 : 1;
+        int32_t index = (int32_t)mSelectedOutputId;
+        index = (index + ofs + (int32_t)OutputId::Count) % (int32_t)OutputId::Count;
+        mSelectedOutputId = (OutputId)index;
         return true;
     }
 

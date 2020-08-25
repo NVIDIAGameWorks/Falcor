@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -40,6 +40,43 @@ inline float luminance(float3 rgb)
 {
     return dot(rgb, float3(0.2126f, 0.7152f, 0.0722f));
 }
+
+/** Returns pseudo-luminance of scalar value. Currently, only used by Material system to check
+    for zero-valued potentially-textured material parameters.
+*/
+inline float luminance(float val)
+{
+    return val;
+}
+
+#ifndef HOST_CODE
+// TODO: Unify this code with the host-side functions in ColorUtils.h when #175 is solved.
+/** Transforms an RGB color in Rec.709 to CIE XYZ.
+*/
+float3 RGBtoXYZ_Rec709(float3 c)
+{
+    static const float3x3 M =
+    {
+        0.4123907992659595, 0.3575843393838780, 0.1804807884018343,
+        0.2126390058715104, 0.7151686787677559, 0.0721923153607337,
+        0.0193308187155918, 0.1191947797946259, 0.9505321522496608
+    };
+    return mul(M, c);
+}
+
+/** Transforms an XYZ color to RGB in Rec.709.
+*/
+float3 XYZtoRGB_Rec709(float3 c)
+{
+    static const float3x3 M =
+    {
+        3.240969941904522, -1.537383177570094, -0.4986107602930032,
+        -0.9692436362808803, 1.875967501507721, 0.04155505740717569,
+        0.05563007969699373, -0.2039769588889765, 1.056971514242878
+    };
+    return mul(M, c);
+}
+#endif
 
 /** Converts color from RGB to YCgCo space
     \param RGBColor linear HDR RGB color

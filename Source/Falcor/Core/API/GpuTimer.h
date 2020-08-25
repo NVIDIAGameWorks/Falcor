@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -31,9 +31,9 @@
 #include "Core/API/Buffer.h"
 
 namespace Falcor
-{ 
+{
     /** Abstracts GPU timer queries. \n
-        This class provides mechanism to get elapsed time in miliseconds between a pair of Begin()/End() calls.
+        This class provides mechanism to get elapsed time in milliseconds between a pair of Begin()/End() calls.
     */
     class dlldecl GpuTimer : public std::enable_shared_from_this<GpuTimer>
     {
@@ -60,22 +60,24 @@ namespace Falcor
         */
         void end();
 
-        /** Get the elapsed time in miliseconds between a pair of Begin()/End() calls. \n
+        /** Get the elapsed time in milliseconds between a pair of Begin()/End() calls. \n
             If this function called not after a Begin()/End() pair, zero will be returned and a warning will be logged.
         */
         double getElapsedTime();
 
     private:
         GpuTimer();
-        enum Status
+
+        enum class Status
         {
             Begin,
             End,
             Idle
-        } mStatus = Idle;
+        };
 
         static std::weak_ptr<QueryHeap> spHeap;
         LowLevelContextData::SharedPtr mpLowLevelData;
+        Status mStatus = Status::Idle;
         uint32_t mStart;
         uint32_t mEnd;
         double mElapsedTime;

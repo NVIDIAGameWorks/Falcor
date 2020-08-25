@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -46,7 +46,7 @@ namespace Falcor
     {
         if (gpFramework == nullptr) throw std::exception("Can't construct RenderGraph - framework is not initialized");
         mpGraph = DirectedGraph::create();
-        mpPassDictionary = Dictionary::create();
+        mpPassDictionary = InternalDictionary::create();
         gRenderGraphs.push_back(this);
         onResize(gpFramework->getTargetFbo().get());
     }
@@ -82,7 +82,7 @@ namespace Falcor
         uint32_t passIndex = getPassIndex(passName);
         if (passIndex != kInvalidIndex)
         {
-            logError("Pass named `" + passName + "' already exists. Ignoring call");
+            logError("Pass named '" + passName + "' already exists. Ignoring call");
             return kInvalidIndex;
         }
         else
@@ -105,12 +105,12 @@ namespace Falcor
         uint32_t index = getPassIndex(name);
         if (index == kInvalidIndex)
         {
-            logWarning("Can't remove pass `" + name + "`. Pass doesn't exist");
+            logWarning("Can't remove pass '" + name + "'. Pass doesn't exist");
             return;
         }
 
         // Unmark graph outputs that belong to this pass
-        // Because the way std::vector works, we can't call umarkOutput() immediatly, so we store the outputs in a vector
+        // Because the way std::vector works, we can't call unmarkOutput() immediately, so we store the outputs in a vector
         std::vector<std::string> outputsToDelete;
         const std::string& outputPrefix = name + '.';
         for(auto& o : mOutputs)
@@ -156,7 +156,7 @@ namespace Falcor
         if (index == kInvalidIndex)
         {
             static RenderPass::SharedPtr pNull;
-            logError("RenderGraph::getRenderPass() - can't find a pass named `" + name + "`");
+            logError("RenderGraph::getRenderPass() - can't find a pass named '" + name + "'");
             return pNull;
         }
         return mNodeData.at(index).pPass;
@@ -211,7 +211,7 @@ namespace Falcor
 
         if (nameAndField.second.size() && checkRenderPassIoExist<input>(pPass, nameAndField.second) == false)
         {
-            logError(errorPrefix + "- can't find field named `" + nameAndField.second + "` in render-pass `" + nameAndField.first + "`");
+            logError(errorPrefix + "- can't find field named '" + nameAndField.second + "' in render-pass '" + nameAndField.first + "'");
             return nullptr;
         }
         return pPass;
@@ -262,7 +262,7 @@ namespace Falcor
                     }
                     else
                     {
-                        logError("RenderGraph::addEdge() - destination `" + dst + "` is already initialized. Please remove the existing connection before trying to add an edge");
+                        logError("RenderGraph::addEdge() - destination '" + dst + "' is already initialized. Please remove the existing connection before trying to add an edge");
                         return kInvalidIndex;
                     }
                 }
@@ -370,6 +370,18 @@ namespace Falcor
         return outputs;
     }
 
+    std::vector<std::string> RenderGraph::getUnmarkedOutputs() const
+    {
+        std::vector<std::string> outputs;
+
+        for (const auto& output : getAvailableOutputs())
+        {
+            if (!isGraphOutput(output)) outputs.push_back(output);
+        }
+
+        return outputs;
+    }
+
     bool RenderGraph::compile(RenderContext* pContext, std::string& log)
     {
         if (!mRecompile) return true;
@@ -474,7 +486,7 @@ namespace Falcor
         {
             if (mCompilerDeps.externalResources.find(name) == mCompilerDeps.externalResources.end())
             {
-                logWarning("RenderGraph::setInput() - Trying to remove an external resource named `" + name + "` but the resource wasn't registered before. Ignoring call");
+                logWarning("RenderGraph::setInput() - Trying to remove an external resource named '" + name + "' but the resource wasn't registered before. Ignoring call");
                 return;
             }
             mCompilerDeps.externalResources.erase(name);
@@ -531,7 +543,7 @@ namespace Falcor
         }
     }
 
-    bool RenderGraph::isGraphOutput(const std::string& name)
+    bool RenderGraph::isGraphOutput(const std::string& name) const
     {
         str_pair strPair;
         const auto& pPass = getRenderPassAndNamePair<false>(this, name, "RenderGraph::unmarkGraphOutput()", strPair);
@@ -558,7 +570,7 @@ namespace Falcor
         bool isOutput = isGraphOutput(thisOutput);
         if (!isOutput)
         {
-            logError("RenderGraph::getOutput() - can't fetch the output `" + name + "`. The resource is wasn't marked as an output");
+            logError("RenderGraph::getOutput() - can't fetch the output '" + name + "'. The resource is wasn't marked as an output");
             return nullptr;
         }
 
@@ -720,11 +732,9 @@ namespace Falcor
     {
         if (mpScene)
         {
-            auto sceneGroup = Gui::Group(widget, "Scene Settings");
-            if (sceneGroup.open())
+            if (auto sceneGroup = widget.group("Scene Settings"))
             {
                 mpScene->renderUI(sceneGroup);
-                sceneGroup.release();
             }
 
             widget.separator();
@@ -750,43 +760,45 @@ namespace Falcor
 
     SCRIPT_BINDING(RenderGraph)
     {
-        auto graphClass = m.regClass(RenderGraph);
-        graphClass.ctor(&RenderGraph::create);
-        graphClass.property("name", &RenderGraph::getName, &RenderGraph::setName);
-        graphClass.func_(RenderGraphIR::kAddPass, &RenderGraph::addPass, "pass"_a, "name"_a);
-        graphClass.func_(RenderGraphIR::kRemovePass, &RenderGraph::removePass, "name"_a);
-        graphClass.func_(RenderGraphIR::kAddEdge, &RenderGraph::addEdge, "src"_a, "dst"_a);
-        graphClass.func_(RenderGraphIR::kRemoveEdge, ScriptBindings::overload_cast<const std::string&, const std::string&>(&RenderGraph::removeEdge), "src"_a, "src"_a);
-        graphClass.func_(RenderGraphIR::kMarkOutput, &RenderGraph::markOutput, "name"_a);
-        graphClass.func_(RenderGraphIR::kUnmarkOutput, &RenderGraph::unmarkOutput, "name"_a);
-        graphClass.func_(RenderGraphIR::kAutoGenEdges, &RenderGraph::autoGenEdges, "executionOrder"_a);
-        graphClass.func_("getPass", &RenderGraph::getPass, "name"_a);
-        graphClass.func_("getOutput", ScriptBindings::overload_cast<const std::string&>(&RenderGraph::getOutput), "name"_a);
+        pybind11::class_<RenderGraph, RenderGraph::SharedPtr> renderGraph(m, "RenderGraph");
+        renderGraph.def(pybind11::init(&RenderGraph::create));
+        renderGraph.def_property("name", &RenderGraph::getName, &RenderGraph::setName);
+        renderGraph.def(RenderGraphIR::kAddPass, &RenderGraph::addPass, "pass"_a, "name"_a);
+        renderGraph.def(RenderGraphIR::kRemovePass, &RenderGraph::removePass, "name"_a);
+        renderGraph.def(RenderGraphIR::kAddEdge, &RenderGraph::addEdge, "src"_a, "dst"_a);
+        renderGraph.def(RenderGraphIR::kRemoveEdge, pybind11::overload_cast<const std::string&, const std::string&>(&RenderGraph::removeEdge), "src"_a, "src"_a);
+        renderGraph.def(RenderGraphIR::kMarkOutput, &RenderGraph::markOutput, "name"_a);
+        renderGraph.def(RenderGraphIR::kUnmarkOutput, &RenderGraph::unmarkOutput, "name"_a);
+        renderGraph.def(RenderGraphIR::kAutoGenEdges, &RenderGraph::autoGenEdges, "executionOrder"_a);
+        renderGraph.def("getPass", &RenderGraph::getPass, "name"_a);
+        renderGraph.def("getOutput", pybind11::overload_cast<const std::string&>(&RenderGraph::getOutput), "name"_a);
         auto printGraph = [](RenderGraph::SharedPtr pGraph) { pybind11::print(RenderGraphExporter::getIR(pGraph)); };
-        graphClass.func_("print", printGraph);
+        renderGraph.def("print", printGraph);
 
         // RenderPass
-        auto passClass = m.regClass(RenderPass);
+        pybind11::class_<RenderPass, RenderPass::SharedPtr> renderPass(m, "RenderPass");
 
         // RenderPassLibrary
         const auto& createRenderPass = [](const std::string& passName, pybind11::dict d = {})
         {
             auto pPass = RenderPassLibrary::instance().createPass(gpDevice->getRenderContext(), passName.c_str(), Dictionary(d));
-            if (!pPass) throw std::exception(("Can't create a render pass named `" + passName + "`. Make sure the required DLL was loaded.").c_str());
+            if (!pPass) throw std::exception(("Can't create a render pass named '" + passName + "'. Make sure the required DLL was loaded.").c_str());
             return pPass;
         };
-        passClass.ctor(createRenderPass, "name"_a, "dict"_a = pybind11::dict());
+        renderPass.def(pybind11::init(createRenderPass), "name"_a, "dict"_a = pybind11::dict()); // PYTHONDEPRECATED
+
+        m.def("createPass", createRenderPass, "name"_a, "dict"_a = pybind11::dict());
 
         const auto& loadPassLibrary = [](const std::string& library)
         {
             return RenderPassLibrary::instance().loadLibrary(library);
         };
-        m.func_(RenderGraphIR::kLoadPassLibrary, loadPassLibrary, "name"_a);
+        m.def(RenderGraphIR::kLoadPassLibrary, loadPassLibrary, "name"_a);
 
         const auto& updateRenderPass = [](const RenderGraph::SharedPtr& pGraph, const std::string& passName, pybind11::dict d)
         {
             pGraph->updatePass(gpDevice->getRenderContext(), passName, Dictionary(d));
         };
-        graphClass.func_(RenderGraphIR::kUpdatePass, updateRenderPass, "name"_a, "dict"_a);
+        renderGraph.def(RenderGraphIR::kUpdatePass, updateRenderPass, "name"_a, "dict"_a);
     }
 }

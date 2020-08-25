@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -53,7 +53,7 @@ namespace Falcor
         dot = clamp(dot, -1.0f, 1.0f);
         if(dot != 1)
         {
-            float angle = acosf(dot);
+            float angle = std::acos(dot);
 
             float3 cross = glm::cross(nFrom, nTo);
             float3 axis = glm::normalize(cross);
@@ -131,7 +131,7 @@ namespace Falcor
         float z = 0;
         if(xyLengthSquared < 1)
         {
-            z = sqrt(1 - xyLengthSquared);
+            z = std::sqrt(1 - xyLengthSquared);
         }
         else
         {
@@ -146,7 +146,7 @@ namespace Falcor
     */
     inline float focalLengthToFovY(float focalLength, float frameHeight)
     {
-        return 2.0f * atan(0.5f * frameHeight / focalLength);
+        return 2.0f * std::atan(0.5f * frameHeight / focalLength);
     }
 
     /** Calculates camera focal length from vertical FOV.
@@ -155,7 +155,7 @@ namespace Falcor
     */
     inline float fovYToFocalLength(float fovY, float frameHeight)
     {
-        return frameHeight / (2.0f * tan(0.5f * fovY));
+        return frameHeight / (2.0f * std::tan(0.5f * fovY));
     }
 
     /** Calculates camera aperture radius in scene units.
@@ -200,8 +200,8 @@ namespace Falcor
         // Map to radius 1 hemisphere
         float phi = uv.y * 2.0f * (float)M_PI;
         float t = 1.0f - uv.x;
-        float s = sqrt(1.0f - t * t);
-        return float3(s * cos(phi), s * sin(phi), t);
+        float s = std::sqrt(1.0f - t * t);
+        return float3(s * std::cos(phi), s * std::sin(phi), t);
     }
 
     inline float3 hammersleyCosine(uint32_t i, uint32_t n)
@@ -210,13 +210,13 @@ namespace Falcor
 
         // Map to radius 1 hemisphere
         float phi = uv.y * 2.0f * (float)M_PI;
-        float t = sqrt(1.0f - uv.x);
-        float s = sqrt(1.0f - t * t);
-        return float3(s * cos(phi), s * sin(phi), t);
+        float t = std::sqrt(1.0f - uv.x);
+        float s = std::sqrt(1.0f - t * t);
+        return float3(s * std::cos(phi), s * std::sin(phi), t);
     }
 
 #ifndef GLM_CLIP_SPACE_Y_TOPDOWN
-#error GLM_CLIP_SPACE_Y_TOPDOWN is undefined. It means the custom fix we did in GLM to support Vulkan NDC space is missing. Look at GLMs `setup.hpp` and `glm\etc\matrix_clip_space.inl`
+#error GLM_CLIP_SPACE_Y_TOPDOWN is undefined. It means the custom fix we did in GLM to support Vulkan NDC space is missing. Look at GLMs 'setup.hpp' and 'glm\etc\matrix_clip_space.inl'
 #endif
 
 /*! @} */

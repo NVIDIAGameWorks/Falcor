@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -28,6 +28,7 @@
 #pragma once
 #include "RenderPassReflection.h"
 #include "Utils/Scripting/Dictionary.h"
+#include "Utils/InternalDictionary.h"
 #include "ResourceCache.h"
 #include "Core/API/Texture.h"
 #include "Scene/Scene.h"
@@ -56,7 +57,7 @@ namespace Falcor
 
         /** Get the global dictionary. You can use it to pass data between different passes
         */
-        Dictionary& getDictionary() const { return (*mpDictionary); }
+        InternalDictionary& getDictionary() const { return (*mpDictionary); }
 
         /** Get the default dimensions used for Texture2Ds (when `0` is specified as the dimensions in `RenderPassReflection`)
         */
@@ -67,10 +68,10 @@ namespace Falcor
         ResourceFormat getDefaultTextureFormat() const { return mDefaultTexFormat; }
     protected:
         friend class RenderGraphExe;
-        RenderData(const std::string& passName, const ResourceCache::SharedPtr& pResourceCache, const Dictionary::SharedPtr& pDict, const uint2& defaultTexDims, ResourceFormat defaultTexFormat);
+        RenderData(const std::string& passName, const ResourceCache::SharedPtr& pResourceCache, const InternalDictionary::SharedPtr& pDict, const uint2& defaultTexDims, ResourceFormat defaultTexFormat);
         const std::string& mName;
         ResourceCache::SharedPtr mpResources;
-        Dictionary::SharedPtr mpDictionary;
+        InternalDictionary::SharedPtr mpDictionary;
         uint2 mDefaultTexDims;
         ResourceFormat mDefaultTexFormat;
     };

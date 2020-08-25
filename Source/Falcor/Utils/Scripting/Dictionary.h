@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -49,7 +49,7 @@ namespace Falcor
 
             template<typename T>
             operator T() const { return mContainer[mName.c_str()].cast<T>(); }
-            
+
         private:
             std::string mName;
             const Container& mContainer;
@@ -66,9 +66,11 @@ namespace Falcor
             IteratorT& operator++() { mIt++; return *this; }
             IteratorT operator++(int) { ++mIt; return *this; }
 
-            IteratorT& operator*() { return *this; }
-            std::string key() const { return mIt->first.cast<std::string>(); }
-            Value val() const { return Value(*mpContainer, key()); }
+            std::pair<std::string, Value> operator*()
+            {
+                std::string key = mIt->first.cast<std::string>();
+                return { key, Value(*mpContainer, key) };
+            }
         private:
             pybind11::detail::dict_iterator mIt;
             ContainerType* mpContainer;
@@ -89,16 +91,16 @@ namespace Falcor
         ConstIterator end() const { return ConstIterator(&mMap, mMap.end()); }
 
         Iterator begin() { return Iterator(&mMap, mMap.begin()); }
-        Iterator end() { return Iterator(&mMap, mMap.begin()); }
+        Iterator end() { return Iterator(&mMap, mMap.end()); }
 
         size_t size() const { return mMap.size(); }
 
-        bool keyExists(const std::string& key) const 
+        bool keyExists(const std::string& key) const
         {
             return mMap.contains(key.c_str());
         }
 
-        std::string toString() const 
+        std::string toString() const
         {
             return pybind11::str(static_cast<pybind11::dict>(mMap));
         }

@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -29,6 +29,7 @@
 #include "RenderGraphIR.h"
 #include "RenderGraph.h"
 #include "Utils/StringUtils.h"
+#include "Utils/Scripting/Scripting.h"
 
 namespace Falcor
 {
@@ -41,41 +42,9 @@ namespace Falcor
     const char* RenderGraphIR::kAutoGenEdges = "autoGenEdges";
     const char* RenderGraphIR::kUpdatePass = "updatePass";
     const char* RenderGraphIR::kLoadPassLibrary = "loadRenderPassLibrary";
-    const char* RenderGraphIR::kRenderPass = "RenderPass";
+    const char* RenderGraphIR::kCreatePass = "createPass";
+    const char* RenderGraphIR::kRenderPass = "RenderPass"; // PYTHONDEPRECATED
     const char* RenderGraphIR::kRenderGraph = "RenderGraph";
-
-    std::string addQuotes(const std::string& s)
-    {
-        return '"' + s + '"';
-    }
-
-    std::string getArgsString()
-    {
-        return "";
-    }
-
-    template <class T>
-    std::string getArgsString(const T& arg)
-    {
-        return arg;
-    }
-
-    template <class T, class... Ts>
-    std::string getArgsString(const T& first, const Ts&... args) 
-    {
-        std::string s = first + ", ";
-        s += getArgsString(args...);
-        return s;
-    }
-
-    template<typename... Ts>
-    std::string funcCall(const std::string& funcName, const Ts&... args)
-    {
-        std::string call = funcName + '(';
-        call += getArgsString(args...);
-        call += ")\n";
-        return call;
-    }
 
     std::string RenderGraphIR::getFuncName(const std::string& graphName)
     {
@@ -84,13 +53,13 @@ namespace Falcor
 
     RenderGraphIR::RenderGraphIR(const std::string& name, bool newGraph) : mName(name)
     {
-        if(newGraph)
+        if (newGraph)
         {
             mIR += "from falcor import *\n\n";
             mIR += "def " + getFuncName(mName) + "():\n";
             mIndentation = "    ";
             mGraphPrefix += mIndentation;
-            mIR += mIndentation + "g" + " = " + funcCall(kRenderGraph, addQuotes(mName));
+            mIR += mIndentation + "g" + " = " + Scripting::makeFunc(kRenderGraph, mName);
         }
         mGraphPrefix += "g.";
     };
@@ -103,55 +72,54 @@ namespace Falcor
     void RenderGraphIR::addPass(const std::string& passClass, const std::string& passName, const Dictionary& dictionary)
     {
         mIR += mIndentation + passName + " = ";
-        if(dictionary.size())
+        if (dictionary.size())
         {
-            std::string dictionaryStr = dictionary.toString();
-            mIR += funcCall(RenderGraphIR::kRenderPass, addQuotes(passClass), dictionaryStr);
+            mIR += Scripting::makeFunc(RenderGraphIR::kCreatePass, passClass, dictionary);
         }
         else
         {
-            mIR += funcCall(RenderGraphIR::kRenderPass, addQuotes(passClass));
+            mIR += Scripting::makeFunc(RenderGraphIR::kCreatePass, passClass);
         }
-        mIR += mGraphPrefix + funcCall(RenderGraphIR::kAddPass, passName, addQuotes(passName));
+        mIR += mGraphPrefix + RenderGraphIR::kAddPass + "(" + passName + ", " + Scripting::getArgString(passName) + ")\n";
     }
 
     void RenderGraphIR::updatePass(const std::string& passName, const Dictionary& dictionary)
     {
-        mIR += mGraphPrefix + funcCall(RenderGraphIR::kUpdatePass, addQuotes(passName), dictionary.toString());
+        mIR += mGraphPrefix + Scripting::makeFunc(RenderGraphIR::kUpdatePass, passName, dictionary);
     }
 
     void RenderGraphIR::removePass(const std::string& passName)
     {
-        mIR += mGraphPrefix + funcCall(RenderGraphIR::kRemovePass, addQuotes(passName));
+        mIR += mGraphPrefix + Scripting::makeFunc(RenderGraphIR::kRemovePass, passName);
     }
 
     void RenderGraphIR::addEdge(const std::string& src, const std::string& dst)
     {
-        mIR += mGraphPrefix + funcCall(RenderGraphIR::kAddEdge, addQuotes(src), addQuotes(dst));
+        mIR += mGraphPrefix + Scripting::makeFunc(RenderGraphIR::kAddEdge, src, dst);
     }
 
     void RenderGraphIR::removeEdge(const std::string& src, const std::string& dst)
     {
-        mIR += mGraphPrefix + funcCall(RenderGraphIR::kRemoveEdge, addQuotes(src), addQuotes(dst));
+        mIR += mGraphPrefix + Scripting::makeFunc(RenderGraphIR::kRemoveEdge, src, dst);
     }
 
     void RenderGraphIR::markOutput(const std::string& name)
     {
-        mIR += mGraphPrefix + funcCall(RenderGraphIR::kMarkOutput, addQuotes(name));
+        mIR += mGraphPrefix + Scripting::makeFunc(RenderGraphIR::kMarkOutput, name);
     }
 
     void RenderGraphIR::unmarkOutput(const std::string& name)
     {
-        mIR += mGraphPrefix + funcCall(RenderGraphIR::kUnmarkOutput, addQuotes(name));
+        mIR += mGraphPrefix + Scripting::makeFunc(RenderGraphIR::kUnmarkOutput, name);
     }
 
     void RenderGraphIR::loadPassLibrary(const std::string& name)
     {
-        mIR += mIndentation + funcCall(RenderGraphIR::kLoadPassLibrary, addQuotes(name));
+        mIR += mIndentation + Scripting::makeFunc(RenderGraphIR::kLoadPassLibrary, name);
     }
 
     void RenderGraphIR::autoGenEdges()
     {
-        mIR += mGraphPrefix + funcCall(RenderGraphIR::kAutoGenEdges);
+        mIR += mGraphPrefix + Scripting::makeFunc(RenderGraphIR::kAutoGenEdges);
     }
 }

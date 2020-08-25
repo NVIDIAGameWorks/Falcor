@@ -11,6 +11,7 @@
 | Function                         | Description                                                              |
 |----------------------------------|--------------------------------------------------------------------------|
 | `loadRenderPassLibrary(name)`    | Load a render pass library.                                              |
+| `createPass(name, dict)`         | Create a new render pass with configuration options in `dict`.           |
 | `renderFrame()`                  | Render a frame. If the clock is not paused, it will advance by one tick. |
 | `setWindowPos(x, y)`             | Set the window's position in pixels.                                     |
 | `resizeSwapChain(width, height)` | Resize the window/swapchain.                                             |
@@ -51,17 +52,31 @@ class falcor.**Renderer**
 | `activeGraph` | `RenderGraph` | Active render graph (readonly). |
 | `ui`          | `bool`        | Show/hide the UI.               |
 
-| Method                           | Description                                                     |
-|----------------------------------|-----------------------------------------------------------------|
-| `script(filename)`               | Run a script.                                                   |
-| `loadScene(filename)`            | Load a scene.                                                   |
-| `saveConfig(filename)`           | Save the current state to a config file.                        |
-| `addGraph(graph)`                | Add a render graph.                                             |
-| `removeGraph(graph)`             | Remove a render graph. `graph` can be a render graph or a name. |
-| `getGraph(name)`                 | Get a render graph by name.                                     |
-| `graph(name)`                    | **DEPRECATED:** Use `getGraph` instead.                         |
-| `resizeSwapChain(width, height)` | **DEPRECATED:** Use global `resizeSwapChain` instead.           |
-| `envMap(filename)`               | **DEPRECATED:** Use `setEnvMap` on `Scene`.                     |
+| Method                                                      | Description                                                     |
+|-------------------------------------------------------------|-----------------------------------------------------------------|
+| `script(filename)`                                          | Run a script.                                                   |
+| `loadScene(filename, buildFlags=SceneBuilderFlags.Default)` | Load a scene. See available build flags below.                  |
+| `saveConfig(filename)`                                      | Save the current state to a config file.                        |
+| `addGraph(graph)`                                           | Add a render graph.                                             |
+| `removeGraph(graph)`                                        | Remove a render graph. `graph` can be a render graph or a name. |
+| `getGraph(name)`                                            | Get a render graph by name.                                     |
+| `graph(name)`                                               | **DEPRECATED:** Use `getGraph` instead.                         |
+| `resizeSwapChain(width, height)`                            | **DEPRECATED:** Use global `resizeSwapChain` instead.           |
+
+enum falcor.**SceneBuilderFlags**
+
+| Enum                          | Description                                                                                                                                                                                           |
+|-------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Default`                     | Use the default flags (0).                                                                                                                                                                            |
+| `RemoveDuplicateMaterials`    | Deduplicate materials that have the same properties. The material name is ignored during the search.                                                                                                  |
+| `UseOriginalTangentSpace`     | Use the original bitangents that were loaded with the mesh. By default, we will ignore them and use MikkTSpace to generate the tangent space. We will always generate bitangents if they are missing. |
+| `AssumeLinearSpaceTextures`   | By default, textures representing colors (diffuse/specular) are interpreted as sRGB data. Use this flag to force linear space for color textures.                                                     |
+| `DontMergeMeshes`             | Preserve the original list of meshes in the scene, don't merge meshes with the same material.                                                                                                         |
+| `BuffersAsShaderResource`     | Generate the VBs and IB with the shader-resource-view bind flag.                                                                                                                                      |
+| `UseSpecGlossMaterials`       | Set materials to use Spec-Gloss shading model. Otherwise default is Spec-Gloss for OBJ, Metal-Rough for everything else.                                                                              |
+| `UseMetalRoughMaterials`      | Set materials to use Metal-Rough shading model. Otherwise default is Spec-Gloss for OBJ, Metal-Rough for everything else.                                                                             |
+| `NonIndexedVertices`          | Convert meshes to use non-indexed vertices. This requires more memory but may increase performance.                                                                                                   |
+
 
 #### Clock
 
@@ -230,9 +245,9 @@ class falcor.**RenderGraph**
 
 class falcor.**RenderPass**
 
-| Method                   | Description                                                    |
-|--------------------------|----------------------------------------------------------------|
-| `RenderPass(name, dict)` | Create a new render pass with configuration options in `dict`. |
+| Method                   | Description                                               |
+|--------------------------|-----------------------------------------------------------|
+| `RenderPass(name, dict)` | **DEPRECATED:** Use global `createPass` function instead. |
 
 #### Texture
 
@@ -254,19 +269,34 @@ class falcor.**Texture**
 
 ### Scene API
 
+#### SceneRenderSettings
+
+class falcor.**SceneRenderSettings**
+
+| Property            | Type   | Description                                           |
+|---------------------|--------|-------------------------------------------------------|
+| `useEnvLight`       | `bool` | Enable/disable distant lighting from environment map. |
+| `useAnalyticLights` | `bool` | Enable/disable lighting from analytic lights.         |
+| `useEmissiveLights` | `bool` | Enable/disable lighting from emissive lights.         |
+
 #### Scene
 
 class falcor.**Scene**
 
-| Property | Type     | Description |
-|----------|----------|-------------|
-| `camera` | `Camera` | Camera.     |
+| Property         | Type                  | Description                                      |
+|------------------|-----------------------|--------------------------------------------------|
+| `animated`       | `bool`                | Enable/disable scene animations.                 |
+| `renderSettings` | `SceneRenderSettings` | Settings to determine how the scene is rendered. |
+| `camera`         | `Camera`              | Camera.                                          |
+| `cameraSpeed`    | `float`               | Speed of the interactive camera.                 |
+| `envMap`         | `EnvMap`              | Environment map.                                 |
+| `materials`      | `list(Material)`      | List of materials                                |
 
 | Method                               | Description                                            |
 |--------------------------------------|--------------------------------------------------------|
-| `animate(enable)`                    | Enable/disable scene animations.                       |
-| `animateCamera(enabled)`             | Enable/disable camera animations.                      |
-| `animateLight(index, enabled)`       | Enable/disable light animations.                       |
+| `animate(enable)`                    | **DEPRECATED:** Use `animated` instead.                |
+| `animateCamera(enabled)`             | **DEPRECATED:** Use `animated` on `Camera` instead.    |
+| `animateLight(index, enabled)`       | **DEPRECATED:** Use `animated` on `Light` instead.     |
 | `setEnvMap(filename)`                | Load an environment map from an image.                 |
 | `getLight(index)`                    | Return a light by index.                               |
 | `getLight(name)`                     | Return a light by name.                                |
@@ -290,6 +320,7 @@ class falcor.**Camera**
 | Property         | Type     | Description                                  |
 |------------------|----------|----------------------------------------------|
 | `name`           | `str`    | Name of the camera (readonly).               |
+| `animated`       | `bool`   | Enable/disable camera animation.             |
 | `aspectRatio`    | `float`  | Image aspect ratio.                          |
 | `focalLength`    | `float`  | Focal length in millimeters.                 |
 | `frameHeight`    | `float`  | Frame height in millimeters.                 |
@@ -303,7 +334,21 @@ class falcor.**Camera**
 | `target`         | `float3` | Camera target in world space.                |
 | `up`             | `float3` | Camera up vector in world space.             |
 
+#### EnvMap
+
+class falcor.**EnvMap**
+
+| Property    | Type     | Description                                    |
+|-------------|----------|------------------------------------------------|
+| `filename`  | `str`    | Filename of loaded environment map (readonly). |
+| `rotation`  | `float3` | Rotation angles in degrees (XYZ).              |
+| `intensity` | `float`  | Intensity (scalar multiplier).                 |
+
 #### Material
+
+enum falcor.**MaterialTextureSlot**
+
+`BaseColor`, `Specular`, `Emissive`, `Normal`, `Occlusion`, `SpecularTransmission`
 
 class falcor.**Material**
 
@@ -312,6 +357,8 @@ class falcor.**Material**
 | `name`                 | `str`    | Name of the material (readonly).                      |
 | `baseColor`            | `float4` | Base color (linear RGB) and opacity.                  |
 | `specularParams`       | `float4` | Specular parameters (occlusion, roughness, metallic). |
+| `roughness`            | `float`  | Roughness (0 = smooth, 1 = rough).                    |
+| `metallic`             | `float`  | Metallic (0 = dielectric, 1 = conductive).            |
 | `specularTransmission` | `float`  | Specular transmission (0 = opaque, 1 = transparent).  |
 | `indexOfRefraction`    | `float`  | Index of refraction.                                  |
 | `emissiveColor`        | `float3` | Emissive color (linear RGB).                          |
@@ -321,15 +368,22 @@ class falcor.**Material**
 | `doubleSided`          | `bool`   | Enable double sided rendering.                        |
 | `nestedPriority`       | `int`    | Nested priority for nested dielectrics.               |
 
+| Method                                      | Description                                |
+|---------------------------------------------|--------------------------------------------|
+| `clearTexture(slot)`                        | Clears one of the texture slots.           |
+| `loadTexture(slot, filename, useSrgb=True)` | Load one of the texture slots from a file. |
+
 #### Light
 
 class falcor.**Light**
 
-| Property    | Type     | Description                   |
-|-------------|----------|-------------------------------|
-| `name`      | `str`    | Name of the light (readonly). |
-| `color`     | `float3` | Color of the light.           |
-| `intensity` | `float`  | Intensity of the light.       |
+| Property    | Type     | Description                     |
+|-------------|----------|---------------------------------|
+| `name`      | `str`    | Name of the light (readonly).   |
+| `active`    | `bool`   | Enable/disable light.           |
+| `animated`  | `bool`   | Enable/disable light animation. |
+| `color`     | `float3` | Color of the light.             |
+| `intensity` | `float`  | Intensity of the light.         |
 
 class falcor.**DirectionalLight**
 
@@ -339,6 +393,16 @@ class falcor.**DirectionalLight**
 | `color`     | `float3` | Color of the light.                    |
 | `intensity` | `float`  | Intensity of the light.                |
 | `direction` | `float3` | Direction of the light in world space. |
+
+class falcor.**DistantLight**
+
+| Property    | Type     | Description                                   |
+|-------------|----------|-----------------------------------------------|
+| `name`      | `str`    | Name of the light (readonly).                 |
+| `color`     | `float3` | Color of the light.                           |
+| `intensity` | `float`  | Intensity of the light.                       |
+| `direction` | `float3` | Direction of the light in world space.        |
+| `angle`     | `float`  | Half-angle subtended by the light in radians. |
 
 class falcor.**PointLight**
 
@@ -362,14 +426,17 @@ class falcor.**AnalyticAreaLight**
 
 ### Render Passes
 
-#### GaussianBlur
+#### AccumulatePass
 
-class falcor.**GaussianBlur**
+enum falcor.**AccumulatePrecision**
 
-| Property      | Type    | Description             |
-|---------------|---------|-------------------------|
-| `kernelWidth` | `int`   | Kernel width in pixels. |
-| `sigma`       | `float` | Sigma of gaussian.      |
+`Double`, `Single`, `SingleCompensated`
+
+class falcor.**AccumulatePass**
+
+| Method    | Description                                                                               |
+|-----------|-------------------------------------------------------------------------------------------|
+| `reset()` | Reset accumulation. This is useful when the pass has been created with 'autoReset': False |
 
 #### ToneMapper
 
@@ -381,7 +448,7 @@ class falcor.**ToneMapper**
 
 | Property                | Type        | Description                                                  |
 |-------------------------|-------------|--------------------------------------------------------------|
-| `exposureCompenstation` | `float`     | Exposure compensation (applies in manual and auto exposure). |
+| `exposureCompensation`  | `float`     | Exposure compensation (applies in manual and auto exposure). |
 | `autoExposure`          | `bool`      | Enable/disable auto exposure.                                |
 | `exposureValue`         | `float`     | Exposure value in manual mode.                               |
 | `filmSpeed`             | `float`     | ISO film speed in manual mode.                               |
@@ -389,6 +456,15 @@ class falcor.**ToneMapper**
 | `whitePoint`            | `float`     | White point in Kelvin.                                       |
 | `operator`              | `ToneMapOp` | Tone mapping operator.                                       |
 | `clamp`                 | `bool`      | Enable/disable clamping to [0..1] range.                     |
+
+#### GaussianBlur
+
+class falcor.**GaussianBlur**
+
+| Property      | Type    | Description             |
+|---------------|---------|-------------------------|
+| `kernelWidth` | `int`   | Kernel width in pixels. |
+| `sigma`       | `float` | Sigma of gaussian.      |
 
 #### SSAO
 

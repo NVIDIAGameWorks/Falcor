@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -267,7 +267,6 @@ namespace Falcor
         // Convert the image to RGBX image
         if (bpp == 24)
         {
-            logWarning("Converting 24-bit texture to 32-bit");
             bpp = 32;
             auto pNew = FreeImage_ConvertTo32Bits(pDib);
             FreeImage_Unload(pDib);
@@ -275,7 +274,6 @@ namespace Falcor
         }
         else if (bpp == 96 && (isRGB32fSupported() == false))
         {
-            logWarning("Converting 96-bit texture to 128-bit");
             bpp = 128;
             auto pNew = convertToRGBAF(pDib);
             FreeImage_Unload(pDib);
@@ -351,7 +349,7 @@ namespace Falcor
         {
             if (kExtensions[i] == ext) return Bitmap::FileFormat(i);
         }
-        logError("Can't find a matching format for file extension `" + ext + "`");
+        logError("Can't find a matching format for file extension '" + ext + "'");
         return Bitmap::FileFormat(-1);
     }
 
@@ -427,8 +425,7 @@ namespace Falcor
         FIBITMAP* pImage = nullptr;
         uint32_t bytesPerPixel = getFormatBytesPerBlock(resourceFormat);
 
-        //TODO replace this code for swapping channels. Can't use freeimage masks b/c they only care about 16 bpp images
-        //issue #74 in gitlab
+        // TODO: Replace this code for swapping channels. Can't use freeimage masks b/c they only care about 16 bpp images.
         if (resourceFormat == ResourceFormat::RGBA8Unorm || resourceFormat == ResourceFormat::RGBA8Snorm || resourceFormat == ResourceFormat::RGBA8UnormSrgb)
         {
             for (uint32_t a = 0; a < width*height; a++)
@@ -585,7 +582,10 @@ namespace Falcor
             }
         }
 
-        FreeImage_Save(toFreeImageFormat(fileFormat), pImage, filename.c_str(), flags);
+        if (!FreeImage_Save(toFreeImageFormat(fileFormat), pImage, filename.c_str(), flags))
+        {
+            logError("Bitmap::saveImage: FreeImage failed to save image");
+        }
         FreeImage_Unload(pImage);
     }
 }

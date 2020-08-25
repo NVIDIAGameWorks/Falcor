@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -48,7 +48,7 @@ namespace
     {
         { "posW",           "gWorldPosition",               "world space position",         true /* optional */ },
         { "normW",          "gWorldShadingNormal",          "world space normal",           true /* optional */ },
-        { "bitangentW",     "gWorldBitangent",              "world space bitangent",        true /* optional */ },
+        { "tangentW",       "gWorldTangent",                "world space tangent",          true /* optional */ },
         { "faceNormalW",    "gWorldFaceNormal",             "face normal in world space",   true /* optional */ },
         { "texC",           "gTextureCoordinate",           "texture coordinates",          true /* optional */ },
         { "diffuseOpacity", "gMaterialDiffuseOpacity",      "diffuse color and opacity",    true /* optional */ },
@@ -115,7 +115,7 @@ void PixelInspectorPass::execute(RenderContext* pRenderContext, const RenderData
     if (!mpScene) return;
 
     // Set the camera
-    Camera::ConstSharedPtrRef pCamera = mpScene->getCamera();
+    const Camera::SharedPtr& pCamera = mpScene->getCamera();
     pCamera->setShaderData(mpVars["PerFrameCB"]["gCamera"]);
 
     if (pCamera->getApertureRadius() > 0.f)
@@ -202,8 +202,7 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
     };
 
     // Display output data.
-    auto outputGroup = Gui::Group(widget, "Output data", true);
-    if (outputGroup.open())
+    if (auto outputGroup = widget.group("Output data", true))
     {
         bool displayedData = displayValues({ "linColor" }, { "Linear color", "Luminance (cd/m2)" }, [&outputGroup](PixelData& pixelData) {
             outputGroup.var("Linear color", pixelData.linearColor, 0.f, std::numeric_limits<float>::max(), 0.001f, false, "%.6f");
@@ -215,12 +214,9 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
         });
 
         if (displayedData == false) outputGroup.text("No input data");
-
-        outputGroup.release();
     }
 
-    auto geometryGroup = Gui::Group(widget, "Geometry data", true);
-    if (geometryGroup.open())
+    if (auto geometryGroup = widget.group("Geometry data", true))
     {
         // Display geometry data
         displayValues({ "posW" }, { "World position" }, [&geometryGroup](PixelData& pixelData) {
@@ -231,11 +227,11 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
             geometryGroup.var("Shading normal", pixelData.normal, -1.f, 1.f, 0.001f, false, "%.6f");
         });
 
-        displayValues({ "normW", "bitangentW" }, { "Shading tangent" }, [&geometryGroup](PixelData& pixelData) {
+        displayValues({ "tangentW" }, { "Shading tangent" }, [&geometryGroup](PixelData& pixelData) {
             geometryGroup.var("Shading tangent", pixelData.tangent, -1.f, 1.f, 0.001f, false, "%.6f");
         });
 
-        displayValues({ "bitangentW" }, { "Shading bitangent" }, [&geometryGroup](PixelData& pixelData) {
+        displayValues({ "normW", "tangentW" }, { "Shading bitangent" }, [&geometryGroup](PixelData& pixelData) {
             geometryGroup.var("Shading bitangent", pixelData.bitangent, -1.f, 1.f, 0.001f, false, "%.6f");
         });
 
@@ -253,12 +249,9 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
         displayValues({ "normW" }, { "NdotV" }, [&geometryGroup](PixelData& pixelData) {
             geometryGroup.var("NdotV", pixelData.NdotV, -1.f, 1.f, 0.001f, false, "%.6f");
         });
-
-        geometryGroup.release();
     }
 
-    auto materialGroup = Gui::Group(widget, "Material data", true);
-    if (materialGroup.open())
+    if (auto materialGroup = widget.group("Material data", true))
     {
         // Display material data
         bool displayedData = displayValues({ "diffuseOpacity" }, { "Diffuse color", "Opacity" }, [&materialGroup](PixelData& pixelData) {
@@ -282,13 +275,10 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
         });
 
         if (displayedData == false) materialGroup.text("No input data");
-
-        materialGroup.release();
     }
 
     // Display visibility data
-    auto visGroup = Gui::Group(widget, "Visibility data", true);
-    if (visGroup.open())
+    if (auto visGroup = widget.group("Visibility data", true))
     {
         if (mAvailableInputs["visBuffer"])
         {
@@ -296,7 +286,7 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
             visGroup.var("TriangleIndex", pixelData.triangleIndex);
             visGroup.var("Barycentrics", pixelData.barycentrics);
 
-            if (mpScene && pixelData.meshInstanceID != kInvalidIndex)
+            if (mpScene && pixelData.meshInstanceID != PixelData::kInvalidIndex)
             {
                 auto instanceData = mpScene->getMeshInstance(pixelData.meshInstanceID);
                 uint32_t matrixID = instanceData.globalMatrixID;
@@ -308,7 +298,7 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
                 visGroup.var("##col2", M[2]);
                 visGroup.var("##col3", M[3]);
 
-                bool flipped = (instanceData.flags & MeshInstanceFlags::Flipped) != MeshInstanceFlags::None;
+                bool flipped = instanceData.flags & (uint32_t)MeshInstanceFlags::Flipped;
                 visGroup.checkbox("Flipped winding", flipped);
             }
         }
@@ -316,8 +306,6 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
         {
             visGroup.text("No visibility data available");
         }
-
-        visGroup.release();
     }
 }
 

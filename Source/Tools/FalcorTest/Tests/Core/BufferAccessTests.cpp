@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -89,7 +89,6 @@ namespace Falcor
     }
 
     // This test is disabled due to bug in creation of SRV/UAVs for buffers on the upload heap.
-    // TODO: Enable the test after issue #638 is fixed.
 
     /** Test setBlob() into buffer with CPU write access.
     */
@@ -131,7 +130,6 @@ namespace Falcor
     }
 
     // This test is disabled due to bug in creation of SRV/UAVs for buffers on the upload heap.
-    // TODO: Enable the test after issue #638 is fixed.
 
     /** Test that GPU reads from buffer created with CPU write access works.
     */

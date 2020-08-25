@@ -22,11 +22,11 @@ From assets, Falcor will import:
             - B: Metallic
         - Spec-Gloss Shading Model (Default for OBJ only)
             - RGB: Specular Color
-            - A: Glossiness 
+            - A: Glossiness
     - Normals Texture
     - Occlusion Texture (Used for Spec-Gloss shading model only)
     - Emissive Color/Texture
-- The first camera
+- Cameras
 - Point lights
 - Directional lights
 - Keyframe animations
@@ -35,7 +35,7 @@ From assets, Falcor will import:
 
 ## Python Scene Files
 
-You can also leverage Falcor's scripting system to set values in the scene on load that are not supported by standard file formats. These are also written in Python, but are formatted differently than normal Falcor scripts. 
+You can also leverage Falcor's scripting system to set values in the scene on load that are not supported by standard file formats. These are also written in Python (using `.pyscene` file extension), but are formatted differently than normal Falcor scripts.
 
 ### Usage
 
@@ -45,7 +45,7 @@ The first line must be a Python comment containing only a path to the base asset
 # BistroInterior.fbx
 ```
 
-The asset will be loaded and will be bound to an object called `scene`. Through this object, you have access to any script bindings accessible through Scenes. See the [scripting documentation](./Scripting) for a full list of functions and properties.
+The asset will be loaded and will be bound to an object called `scene`. Through this object, you have access to any script bindings accessible through Scenes. See the [scripting documentation](./Scripting.md) for a full list of functions and properties.
 
 Example:
 

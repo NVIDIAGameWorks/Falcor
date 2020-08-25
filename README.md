@@ -1,4 +1,4 @@
-# Falcor 4.1
+# Falcor 4.2
 
 Falcor is a real-time rendering framework supporting DirectX 12. It aims to improve productivity of research and prototype projects.
 
@@ -25,10 +25,10 @@ Optional:
 - NVAPI (see below)
 
 ## NVAPI installation
-After cloning the repository, head over to https://developer.nvidia.com/nvapi and download the latest version of NVAPI (this build is tested against version R435).
-Extract the content of the zip file into `Source/Externals/.packman/` and rename `R435-developer` to `NVAPI`.
+After cloning the repository, head over to https://developer.nvidia.com/nvapi and download the latest version of NVAPI (this build is tested against version R440).
+Extract the content of the zip file into `Source/Externals/.packman/` and rename `R440-developer` to `NVAPI`.
 
-Finally, set `_ENABLE_NVAPI` to `true` in `Source/Falcor/Core/FalcorConfig.h`
+Finally, set `_ENABLE_NVAPI` to `1` in `Source/Falcor/Core/FalcorConfig.h`
 
 ## CUDA Support
 Refer to the README located in the `Source/Samples/CudaInterop/` for instructions on how to set up your environment to use CUDA with Falcor.
@@ -41,7 +41,7 @@ Refer to the README located in the `Source/Samples/CudaInterop/` for instruction
 ## Resources
 - [Falcor](https://github.com/NVIDIAGameWorks/Falcor): Falcor's GitHub page.
 - [Documentation](./Docs/index.md): Additional information and tutorials.
-    - [Getting Started](./Docs/Usage/Getting-Started.md)
+    - [Getting Started](./Docs/Getting-Started.md)
     - [Render Graph Tutorials](./Docs/Tutorials/index.md)
 - [ORCA](https://developer.nvidia.com/orca): A collection of high quality scenes and assets optimized for Falcor.
 - [Slang](https://github.com/shader-slang/slang): Falcor's shading language and compiler.
@@ -55,9 +55,8 @@ The BibTex entry is
    author =      {Nir Benty and Kai-Hwa Yao and Petrik Clarberg and Lucy Chen and Simon Kallweit and Tim Foley and Matthew Oakes and Conor Lavelle and Chris Wyman},
    title =       {The {Falcor} Rendering Framework},
    year =        {2020},
-   month =       {03},
+   month =       {08},
    url =         {https://github.com/NVIDIAGameWorks/Falcor},
    note=         {\url{https://github.com/NVIDIAGameWorks/Falcor}}
 }
 ```
-

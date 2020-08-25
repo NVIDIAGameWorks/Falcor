@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -42,7 +42,7 @@ namespace Falcor
     {
         // Create the programs.
         // Set defines to avoid compiler warnings about undefined macros. Proper values will be assigned at runtime.
-        Program::DefineList defines = { { "FORMAT_CHANNELS", "1" }, { "FORMAT_TYPE", "1" } };
+        Program::DefineList defines = { { "REDUCTION_TYPE", "1" }, { "FORMAT_CHANNELS", "1" }, { "FORMAT_TYPE", "1" } };
         mpInitialProgram = ComputeProgram::createFromFile(kShaderFile, "initialPass", defines, Shader::CompilerFlags::None);
         mpFinalProgram = ComputeProgram::createFromFile(kShaderFile, "finalPass", defines, Shader::CompilerFlags::None);
         mpVars = ComputeVars::create(mpInitialProgram.get());
@@ -54,18 +54,18 @@ namespace Falcor
         mpState = ComputeState::create();
     }
 
-    void ComputeParallelReduction::allocate(uint32_t elementCount)
+    void ComputeParallelReduction::allocate(uint32_t elementCount, uint32_t elementSize)
     {
-        if (mpBuffers[0] == nullptr || mpBuffers[0]->getElementCount() < elementCount)
+        if (mpBuffers[0] == nullptr || mpBuffers[0]->getElementCount() < elementCount * elementSize)
         {
             // Buffer 0 has one element per tile.
-            mpBuffers[0] = Buffer::createTyped<uint4>(elementCount);
+            mpBuffers[0] = Buffer::createTyped<uint4>(elementCount * elementSize);
 
             // Buffer 1 has one element per N elements in buffer 0.
             const uint32_t numElem1 = div_round_up(elementCount, mpFinalProgram->getReflector()->getThreadGroupSize().x);
-            if (mpBuffers[1] == nullptr || mpBuffers[1]->getElementCount() < numElem1)
+            if (mpBuffers[1] == nullptr || mpBuffers[1]->getElementCount() < numElem1 * elementSize)
             {
-                mpBuffers[1] = Buffer::createTyped<uint4>(numElem1);
+                mpBuffers[1] = Buffer::createTyped<uint4>(numElem1 * elementSize);
             }
         }
     }
@@ -103,7 +103,7 @@ namespace Falcor
         }
 
         // Check that reduction type T is compatible with the resource format.
-        if (sizeof(T::value_type) != 4 ||     // The shader is written for 32-bit types
+        if (sizeof(typename T::value_type) != 4 ||     // The shader is written for 32-bit types
             (formatType == FORMAT_TYPE_FLOAT && !std::is_floating_point<T::value_type>::value) ||
             (formatType == FORMAT_TYPE_SINT && (!std::is_integral<T::value_type>::value || !std::is_signed<T::value_type>::value)) ||
             (formatType == FORMAT_TYPE_UINT && (!std::is_integral<T::value_type>::value || !std::is_unsigned<T::value_type>::value)))
@@ -112,23 +112,44 @@ namespace Falcor
             return false;
         }
 
+        uint32_t reductionType = REDUCTION_TYPE_UNKNOWN;
+        uint32_t elementSize = 0;
+        switch (operation)
+        {
+        case Type::Sum:
+            reductionType = REDUCTION_TYPE_SUM;
+            elementSize = 1;
+            break;
+        case Type::MinMax:
+            reductionType = REDUCTION_TYPE_MINMAX;
+            elementSize = 2;
+            break;
+        default:
+            logError("ComputeParallelReduction::execute() - Unknown reduction type. Aborting.");
+            return false;
+        }
+
         // Allocate intermediate buffers if needed.
         const uint2 resolution = uint2(pInput->getWidth(), pInput->getHeight());
         assert(resolution.x > 0 && resolution.y > 0);
+        assert(elementSize > 0);
 
         const uint2 numTiles = div_round_up(resolution, uint2(mpInitialProgram->getReflector()->getThreadGroupSize()));
-        allocate(numTiles.x * numTiles.y);
+        allocate(numTiles.x * numTiles.y, elementSize);
         assert(mpBuffers[0]);
         assert(mpBuffers[1]);
 
         // Configure program.
         const uint32_t channelCount = getFormatChannelCount(pInput->getFormat());
         assert(channelCount >= 1 && channelCount <= 4);
-        mpInitialProgram->addDefine("FORMAT_CHANNELS", std::to_string(channelCount));
-        mpFinalProgram->addDefine("FORMAT_CHANNELS", std::to_string(channelCount));
 
-        mpInitialProgram->addDefine("FORMAT_TYPE", std::to_string(formatType));
-        mpFinalProgram->addDefine("FORMAT_TYPE", std::to_string(formatType));
+        Program::DefineList defines;
+        defines.add("REDUCTION_TYPE", std::to_string(reductionType));
+        defines.add("FORMAT_CHANNELS", std::to_string(channelCount));
+        defines.add("FORMAT_TYPE", std::to_string(formatType));
+
+        mpInitialProgram->addDefines(defines);
+        mpFinalProgram->addDefines(defines);
 
         // Initial pass: Reduction over tiles of pixels in input texture.
         mpVars["PerFrameCB"]["gResolution"] = resolution;
@@ -158,16 +179,18 @@ namespace Falcor
             elems = numGroups;
         }
 
+        size_t resultSize = elementSize * 16;
+
         // Copy the result to GPU buffer.
         if (pResultBuffer)
         {
-            if (resultOffset + 16 > pResultBuffer->getSize())
+            if (resultOffset + resultSize > pResultBuffer->getSize())
             {
                 logError("ComputeParallelReduction::execute() - Results buffer is too small. Aborting.");
                 return false;
             }
 
-            pRenderContext->copyBufferRegion(pResultBuffer.get(), resultOffset, mpBuffers[inputsBufferIndex].get(), 0, 16);
+            pRenderContext->copyBufferRegion(pResultBuffer.get(), resultOffset, mpBuffers[inputsBufferIndex].get(), 0, resultSize);
         }
 
         // Read back the result to the CPU.
@@ -175,7 +198,7 @@ namespace Falcor
         {
             const T* pBuf = static_cast<const T*>(mpBuffers[inputsBufferIndex]->map(Buffer::MapType::Read));
             assert(pBuf);
-            *pResult = *pBuf;
+            std::memcpy(pResult, pBuf, resultSize);
             mpBuffers[inputsBufferIndex]->unmap();
         }
 

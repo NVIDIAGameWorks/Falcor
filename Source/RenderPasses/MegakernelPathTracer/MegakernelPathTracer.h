@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -31,16 +31,16 @@
 
 using namespace Falcor;
 
-/** Forward path tracer using a megakernel in DXR.
+/** Forward path tracer using a megakernel in DXR 1.0.
 
-    The path tracer has a loop over the wavefronts in the raygen shader.
+    The path tracer has a loop over the path vertices in the raygen shader.
     The kernel terminates when all paths have terminated.
 
     This pass implements a forward path tracer with next-event estimation,
     Russian roulette, and multiple importance sampling (MIS) with sampling
     of BRDFs and light sources.
 */
-class MegakernelPathTracer : public PathTracer, public inherit_shared_from_this<PathTracer, MegakernelPathTracer>
+class MegakernelPathTracer : public PathTracer
 {
 public:
     using SharedPtr = std::shared_ptr<MegakernelPathTracer>;

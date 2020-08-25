@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -36,10 +36,9 @@ cbuffer CB
     uint gTriangleCount;                    ///< Total number of triangles.
 }
 
-ByteAddressBuffer gTexelSum;                ///< Sum over texels (RGB) + number of texels (A) in RGBA32Float format.
-
-StructuredBuffer<MeshLightData> gMeshData;  ///< Per-mesh data for emissive meshes. Size: meshCount * sizeof(MeshLightData).
-RWStructuredBuffer<EmissiveTriangle> gTriangleData;     ///< Per-triangle data for emissive triangles. Size: triangleCount * sizeof(EmissiveTriangle).
+ByteAddressBuffer gTexelSum;                            ///< Sum over texels (RGB) + number of texels (A) in RGBA32Float format.
+StructuredBuffer<PackedEmissiveTriangle> gTriangleData; ///< Per-triangle geometry data for emissive triangles.
+RWStructuredBuffer<EmissiveFlux> gFluxData;             ///< Per-triangle flux data for emissive triangles.
 
 
 /** Kernel computing the final pre-integrated triangle average radiance and flux.
@@ -52,11 +51,11 @@ void finalizeIntegration(uint3 DTid : SV_DispatchThreadID)
     if (triIdx >= gTriangleCount) return;
 
     // Compute the triangle's average emitted radiance (RGB).
-    const MeshLightData lightData = gMeshData[gTriangleData[triIdx].lightIdx];
-    const MaterialData materialData = gScene.getMaterial(lightData.materialID);
+    EmissiveTriangle tri = gTriangleData[triIdx].unpack();
+    const MaterialData materialData = gScene.getMaterial(tri.materialID);
     float3 averageEmissiveColor = materialData.emissive;
 
-    if (gScene.isEmissiveTextured(lightData.materialID))
+    if (gScene.isEmissiveTextured(tri.materialID))
     {
         // Compute the triangle's average textured emissive color based on the pre-integration results.
         // The alpha channel stores the texel count. If it is zero, the triangle didn't cover any samples
@@ -70,9 +69,9 @@ void finalizeIntegration(uint3 DTid : SV_DispatchThreadID)
 
     // Pre-compute the luminous flux emitted, which is what we use during sampling to set probabilities.
     // We assume diffuse emitters and integrate per side (hemisphere) => the scale factor is pi.
-    float area = gTriangleData[triIdx].area;                        // Triangle area in m^2 (the scene units are assumed to be in meters).
-    float flux = luminance(averageRadiance) * area * (float) M_PI;  // Flux in lumens.
+    // Triangle area in m^2 (the scene units are assumed to be in meters).
+    float flux = luminance(averageRadiance) * tri.area * (float) M_PI;  // Flux in lumens.
 
-    gTriangleData[triIdx].averageRadiance = averageRadiance;
-    gTriangleData[triIdx].flux = flux;
+    gFluxData[triIdx].flux = flux;
+    gFluxData[triIdx].averageRadiance = averageRadiance;
 }

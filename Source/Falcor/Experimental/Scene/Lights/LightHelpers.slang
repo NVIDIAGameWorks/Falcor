@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -157,6 +157,36 @@ bool sampleDiscAreaLight(const float3 shadingPosW, const LightData light, inout 
     return finalizeAreaLightSample(shadingPosW, light, ls);
 }
 
+/** Samples a distant light source.
+    \param[in] shadingPosW Shading point in world space.
+    \param[in] light Light data.
+    \param[in,out] sg Sample generator.
+    \param[out] ls Light sample struct.
+    \return True if a sample was generated, false otherwise.
+*/
+bool sampleDistantLight(const float3 shadingPosW, const LightData light, inout SampleGenerator sg, out AnalyticLightSample ls)
+{
+    // A distant light doesn't have a position. Just clear to zero.
+    ls.posW = float3(0.f, 0.f, 0.f);
+
+    float2 u = sampleNext2D(sg);
+    float3 dir = sample_cone(u, light.cosSubtendedAngle);
+
+    // Transform sampled direction to world space
+    ls.dir = normalize(mul(dir, (float3x3)light.transMat));
+    ls.normalW = -ls.dir;
+    ls.distance = kMaxLightDistance;
+
+    // Compute incident radiance at shading point.
+    // A DistantLight's angle defines the solid angle it subtends.
+    // But because the angle is intended to affect penumbra size, but not
+    // perceived brigthness, we treat intensity as radiance.
+    float solidAngle = (float)M_2PI * (1.f - light.cosSubtendedAngle);
+    ls.Li = light.intensity;
+    ls.pdf = 1.f / solidAngle;
+    return true;
+}
+
 /** Samples a directional light source.
     \param[in] shadingPosW Shading point in world space.
     \param[in] light Light data.
@@ -236,6 +266,8 @@ bool sampleLight(const float3 shadingPosW, const LightData light, inout SampleGe
         return sampleSphereAreaLight(shadingPosW, light, sg, ls);
     case LightType::Disc:
         return sampleDiscAreaLight(shadingPosW, light, sg, ls);
+    case LightType::Distant:
+        return sampleDistantLight(shadingPosW, light, sg, ls);
     default:
         return false; // Should not happen
     }

@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -33,12 +33,15 @@ extern "C" __declspec(dllexport) const char* getProjDir()
     return PROJECT_DIR;
 }
 
-static void regAccumulatePass(ScriptBindings::Module& m)
+static void regAccumulatePass(pybind11::module& m)
 {
-    auto e = m.enum_<AccumulatePass::Precision>("AccumulatePrecision");
-    e.regEnumVal(AccumulatePass::Precision::Double);
-    e.regEnumVal(AccumulatePass::Precision::Single);
-    e.regEnumVal(AccumulatePass::Precision::SingleCompensated);
+    pybind11::class_<AccumulatePass, RenderPass, AccumulatePass::SharedPtr> pass(m, "AccumulatePass");
+    pass.def("reset", &AccumulatePass::reset);
+
+    pybind11::enum_<AccumulatePass::Precision> precision(m, "AccumulatePrecision");
+    precision.value("Double", AccumulatePass::Precision::Double);
+    precision.value("Single", AccumulatePass::Precision::Single);
+    precision.value("SingleCompensated", AccumulatePass::Precision::SingleCompensated);
 }
 
 extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
@@ -56,7 +59,9 @@ namespace
 
     // Serialized parameters
     const char kEnableAccumulation[] = "enableAccumulation";
+    const char kAutoReset[] = "autoReset";
     const char kPrecisionMode[] = "precisionMode";
+    const char kSubFrameCount[] = "subFrameCount";
 
     const Gui::DropdownList kModeSelectorList =
     {
@@ -74,11 +79,13 @@ AccumulatePass::SharedPtr AccumulatePass::create(RenderContext* pRenderContext, 
 AccumulatePass::AccumulatePass(const Dictionary& dict)
 {
     // Deserialize pass from dictionary.
-    for (const auto& v : dict)
+    for (const auto& [key, value] : dict)
     {
-        if (v.key() == kEnableAccumulation) mEnableAccumulation = v.val();
-        else if (v.key() == kPrecisionMode) mPrecisionMode = v.val();
-        else logWarning("Unknown field `" + v.key() + "` in AccumulatePass dictionary");
+        if (key == kEnableAccumulation) mEnableAccumulation = value;
+        else if (key == kAutoReset) mAutoReset = value;
+        else if (key == kPrecisionMode) mPrecisionMode = value;
+        else if (key == kSubFrameCount) mSubFrameCount = value;
+        else logWarning("Unknown field '" + key + "' in AccumulatePass dictionary");
     }
 
     // Create accumulation programs.
@@ -95,7 +102,9 @@ Dictionary AccumulatePass::getScriptingDictionary()
 {
     Dictionary dict;
     dict[kEnableAccumulation] = mEnableAccumulation;
+    dict[kAutoReset] = mAutoReset;
     dict[kPrecisionMode] = mPrecisionMode;
+    dict[kSubFrameCount] = mSubFrameCount;
     return dict;
 }
 
@@ -119,27 +128,40 @@ void AccumulatePass::compile(RenderContext* pContext, const CompileData& compile
 
 void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    // Query refresh flags passed down from the application and other passes.
-    auto& dict = renderData.getDictionary();
-    RenderPassRefreshFlags refreshFlags = (RenderPassRefreshFlags)(dict.keyExists(kRenderPassRefreshFlags) ? dict[kRenderPassRefreshFlags] : 0u);
-
-    // If any refresh flag is set, we reset frame accumulation.
-    if (refreshFlags != RenderPassRefreshFlags::None) mFrameCount = 0;
-
-    // Reset accumulation upon all scene changes, except camera jitter and history changes.
-    // TODO: Add UI options to select which changes should trigger reset
-    if (mpScene)
+    if (mAutoReset)
     {
-        auto sceneUpdates = mpScene->getUpdates();
-        if ((sceneUpdates & ~Scene::UpdateFlags::CameraPropertiesChanged) != Scene::UpdateFlags::None)
+        if (mSubFrameCount > 0) // Option to accumulate N frames. Works also for motion blur. Overrides logic for automatic reset on scene changes.
         {
-            mFrameCount = 0;
+            if (mFrameCount == mSubFrameCount)
+            {
+                mFrameCount = 0;
+            }
         }
-        if (is_set(sceneUpdates, Scene::UpdateFlags::CameraPropertiesChanged))
+        else
         {
-            auto excluded = Camera::Changes::Jitter | Camera::Changes::History;
-            auto cameraChanges = mpScene->getCamera()->getChanges();
-            if ((cameraChanges & ~excluded) != Camera::Changes::None) mFrameCount = 0;
+            // Query refresh flags passed down from the application and other passes.
+            auto& dict = renderData.getDictionary();
+            auto refreshFlags = dict.getValue(kRenderPassRefreshFlags, RenderPassRefreshFlags::None);
+
+            // If any refresh flag is set, we reset frame accumulation.
+            if (refreshFlags != RenderPassRefreshFlags::None) mFrameCount = 0;
+
+            // Reset accumulation upon all scene changes, except camera jitter and history changes.
+            // TODO: Add UI options to select which changes should trigger reset
+            if (mpScene)
+            {
+                auto sceneUpdates = mpScene->getUpdates();
+                if ((sceneUpdates & ~Scene::UpdateFlags::CameraPropertiesChanged) != Scene::UpdateFlags::None)
+                {
+                    mFrameCount = 0;
+                }
+                if (is_set(sceneUpdates, Scene::UpdateFlags::CameraPropertiesChanged))
+                {
+                    auto excluded = Camera::Changes::Jitter | Camera::Changes::History;
+                    auto cameraChanges = mpScene->getCamera()->getChanges();
+                    if ((cameraChanges & ~excluded) != Camera::Changes::None) mFrameCount = 0;
+                }
+            }
         }
     }
 

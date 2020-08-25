@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -50,17 +50,10 @@ namespace
 
 void DepthPass::parseDictionary(const Dictionary& dict)
 {
-    for (const auto& v : dict)
+    for (const auto& [key, value] : dict)
     {
-        if (v.key() == kDepthFormat)
-        {
-            ResourceFormat f = (ResourceFormat)v.val();
-            setDepthBufferFormat(f);
-        }
-        else
-        {
-            logWarning("Unknown field `" + v.key() + "` in a DepthPass dictionary");
-        }
+        if (key == kDepthFormat) setDepthBufferFormat(value);
+        else logWarning("Unknown field '" + key + "' in a DepthPass dictionary");
     }
 }
 
@@ -110,7 +103,7 @@ void DepthPass::execute(RenderContext* pContext, const RenderData& renderData)
     mpState->setFbo(mpFbo);
     pContext->clearDsv(pDepth->getDSV().get(), 1, 0);
 
-    if (mpScene) mpScene->render(pContext, mpState.get(), mpVars.get());
+    if (mpScene) mpScene->render(pContext, mpState.get(), mpVars.get(), mpRsState ? Scene::RenderFlags::UserRasterizerState : Scene::RenderFlags::None);
 }
 
 DepthPass& DepthPass::setDepthBufferFormat(ResourceFormat format)
@@ -130,6 +123,13 @@ DepthPass& DepthPass::setDepthBufferFormat(ResourceFormat format)
 DepthPass& DepthPass::setDepthStencilState(const DepthStencilState::SharedPtr& pDsState)
 {
     mpState->setDepthStencilState(pDsState);
+    return *this;
+}
+
+DepthPass& DepthPass::setRasterizerState(const RasterizerState::SharedPtr& pRsState)
+{
+    mpRsState = pRsState;
+    mpState->setRasterizerState(mpRsState);
     return *this;
 }
 

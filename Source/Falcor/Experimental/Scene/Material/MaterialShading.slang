@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -60,7 +60,12 @@ struct BSDFSample
     float3  wi;             ///< Incident direction in world space (normalized).
     float   pdf;            ///< pdf with respect to solid angle for sampling incident direction wi.
     float3  weight;         ///< Sample weight f(wo, wi) * dot(wi, n) / pdf(wi).
-    uint    lobe;           ///< Sampled lobe. This is a combination of LobeType flags (see BxDF.slang).
+    uint    lobe;           ///< Sampled lobe. This is a combination of LobeType flags (see BxDFTypes.slang).
+
+    bool isLobe(LobeType type)
+    {
+        return (lobe & uint(type)) != 0;
+    }
 };
 
 
@@ -70,21 +75,29 @@ struct BSDFSample
 // Legacy interface wrapper
 // ----------------------------------------------------------------------------
 
+/** Returns the set of available BSDF lobes given some shading data.
+    \param[in] sd Shading data.
+    \return Returns a set of lobes (see LobeType in BxDFTypes.slang).
+*/
+uint getBSDFLobes(const ShadingData sd)
+{
+    return FalcorBSDF::getLobes(sd);
+}
+
 /** Evaluates the BSDF multiplied by NdotL for a given incident direction.
 
     \param[in] sd Shading point data.
     \param[in] L Normalized incident direction from shading point towards light source.
-    \param[in] lobes BSDF lobes to include in the evaluation. See LobeType in BxDF.slang.
     \return (f_d + f_r) * saturate(dot(N,L))
 */
-float3 evalBSDFCosine(const ShadingData sd, float3 L, uint lobes = (uint)LobeType::All)
+float3 evalBSDFCosine(const ShadingData sd, float3 L)
 {
     float3 wo = toLocal(sd.V, sd);
     float3 wi = toLocal(L, sd);
 
     FalcorBSDF bsdf;
     bsdf.setup(sd);
-    return bsdf.eval(wo, wi, lobes);
+    return bsdf.eval(wo, wi);
 }
 
 /** Importance sampling of the BSDF.
@@ -113,10 +126,9 @@ bool sampleBSDF(const ShadingData sd, inout SampleGenerator sg, out BSDFSample r
 /** Evaluates the probability density function for both the diffuse and specular sampling strategy.
     \param[in] sd Describes the shading point.
     \param[in] L The normalized incident direction for which to evaluate the pdf.
-    \param[in] lobes BSDF lobes to include in the evaluation.
     \return Probability density with respect to solid angle from the shading point.
 */
-float evalPdfBSDF(const ShadingData sd, const float3 L)
+float evalPdfBSDF(const ShadingData sd, float3 L)
 {
     float3 wo = toLocal(sd.V, sd);
     float3 wi = toLocal(L, sd);
@@ -145,7 +157,7 @@ bool sampleBSDF_Reference(const ShadingData sd, inout SampleGenerator sg, out BS
 
     result.wi = fromLocal(wi, sd);
     result.weight = bsdf.eval(wo, wi) / result.pdf;
-    result.lobe = (uint)LobeType.DiffuseReflection;
+    result.lobe = (uint)LobeType::DiffuseReflection;
 
     return true;
 }
@@ -160,6 +172,16 @@ bool sampleBSDF_Reference(const ShadingData sd, inout SampleGenerator sg, out BS
 import Experimental.Scene.Material.Fresnel;
 import Experimental.Scene.Material.Microfacet;
 
+/** Returns the set of available BSDF lobes given some shading data.
+    \param[in] sd Shading data.
+    \return Returns a set of lobes (see LobeType in BxDFTypes.slang).
+*/
+uint getBSDFLobes(const ShadingData sd)
+{
+    uint lobes = (uint)LobeType::SpecularReflection;
+    if (any(sd.diffuse > 0)) lobes |= (uint)LobeType::DiffuseReflection;
+    return lobes;
+}
 
 /*******************************************************************
                      BSDF evaluation functions
@@ -298,10 +320,9 @@ float3 evalSpecular(const ShadingData sd, float NdotL, float NdotV, float NdotH,
 
     \param[in] sd Shading point data.
     \param[in] L Normalized incident direction from shading point towards light source.
-    \param[in] lobes BSDF lobes to include in the evaluation. See LobeType in BxDF.slang.
     \return f_d + f_r
 */
-float3 evalBSDF(const ShadingData sd, float3 L, uint lobes = (uint)LobeType::All)
+float3 evalBSDFLobes(const ShadingData sd, float3 L, uint lobes)
 {
     // Check that L and V are in the positive hemisphere.
     // The G term on the correlated form is not robust for NdotL = NdotV = 0.0.
@@ -325,16 +346,20 @@ float3 evalBSDF(const ShadingData sd, float3 L, uint lobes = (uint)LobeType::All
     return thp;
 }
 
+float3 evalBSDF(const ShadingData sd, float3 L)
+{
+    return evalBSDFLobes(sd, L, sd.activeLobes);
+}
+
 /** Evaluates the BRDF multiplied by NdotL for a given incident direction.
 
     \param[in] sd Shading point data.
     \param[in] L Normalized incident direction from shading point towards light source.
-    \param[in] lobes BSDF lobes to include in the evaluation. See LobeType in BxDF.slang.
     \return (f_d + f_r) * saturate(dot(N,L))
 */
-float3 evalBSDFCosine(const ShadingData sd, float3 L, uint lobes = (uint)LobeType::All)
+float3 evalBSDFCosine(const ShadingData sd, float3 L)
 {
-    return evalBSDF(sd, L, lobes) * saturate(dot(sd.N, L));
+    return evalBSDF(sd, L) * saturate(dot(sd.N, L));
 }
 
 
@@ -437,8 +462,8 @@ void sampleDiffuse(const ShadingData sd, const float2 u, out BSDFSample result)
     }
 
     // Compute weight. Note that NdotL cancels out by the pdf.
-    result.weight = evalBSDF(sd, result.wi, (uint)LobeType::DiffuseReflection) * M_PI;
-    result.lobe = (uint)LobeType.DiffuseReflection;
+    result.weight = evalBSDFLobes(sd, result.wi, (uint)LobeType::DiffuseReflection) * M_PI;
+    result.lobe = (uint)LobeType::DiffuseReflection;
 }
 
 /** Evaluates the probability density function for the specular sampling strategy.
@@ -502,7 +527,15 @@ void sampleSpecular(const ShadingData sd, const float2 u, out BSDFSample result)
     float3 F = evalFresnelSchlick(sd.specular, 1, VdotH);
     result.weight = F * (G * NdotL * VdotH * 4.f) / NdotH;
     //result.weight = evalBSDFCosine(sd, result.wi, (uint)LobeType::SpecularReflection) / result.pdf;
-    result.lobe = (uint)LobeType.SpecularReflection;
+    result.lobe = (uint)LobeType::SpecularReflection;
+}
+
+float getDiffuseProbability(const ShadingData sd)
+{
+    float diffuseWeight = (sd.activeLobes & (uint)LobeType::DiffuseReflection) ? (1.f - sd.metallic) * luminance(sd.diffuse) : 0.f;
+    float specularWeight = (sd.activeLobes & (uint)LobeType::SpecularReflection) ? luminance(evalFresnelSchlick(sd.specular, 1.f, dot(sd.V, sd.N))) : 0.f;
+    float pDiffuse = (diffuseWeight + specularWeight) > 0.f ? diffuseWeight / (diffuseWeight + specularWeight) : 1.f;
+    return pDiffuse;
 }
 
 /** Evaluates the probability density function for both the diffuse and specular sampling strategy.
@@ -510,9 +543,9 @@ void sampleSpecular(const ShadingData sd, const float2 u, out BSDFSample result)
     \param[in] L The normalized incident direction for which to evaluate the pdf.
     \return Probability density with respect to solid angle from the shading point.
 */
-float evalPdfBSDF(const ShadingData sd, const float3 L)
+float evalPdfBSDF(const ShadingData sd, float3 L)
 {
-    float pDiffuse = 0.5f; // TODO: Better probabilities
+    float pDiffuse = getDiffuseProbability(sd);
 
     // Evaluate the pdf for the sample as a linear combination of the two sampling strategies' pdfs.
     return pDiffuse * evalPdfDiffuse(sd, L) + (1.0f - pDiffuse) * evalPdfSpecular(sd, L);
@@ -535,7 +568,7 @@ bool sampleBSDF(const ShadingData sd, inout SampleGenerator sg, out BSDFSample r
     const float2 u = sampleNext2D(sg);
     const float uSelect = sampleNext1D(sg);
 
-    float pDiffuse = 0.5f; // TODO: Better probabilities
+    float pDiffuse = getDiffuseProbability(sd);
 
     float pmfSelectedLobe;
     float pdfOther;
@@ -589,7 +622,7 @@ bool sampleBSDF_Reference(const ShadingData sd, inout SampleGenerator sg, out BS
     result.wi = dir;
     result.weight = evalBSDF(sd, dir) * M_PI; // dot(N,L) / pdf = pi
     result.pdf = pdf;
-    result.lobe = (uint)LobeType.DiffuseReflection;
+    result.lobe = (uint)LobeType::DiffuseReflection;
 
     return pdf > 0.f;
 }

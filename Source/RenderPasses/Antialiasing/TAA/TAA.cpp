@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -53,11 +53,11 @@ TAA::TAA()
 TAA::SharedPtr TAA::create(RenderContext* pRenderContext, const Dictionary& dict)
 {
     SharedPtr pTAA = SharedPtr(new TAA());
-    for (const auto& v : dict)
+    for (const auto& [key, value] : dict)
     {
-        if (v.key() == kAlpha) pTAA->mControls.alpha = v.val();
-        else if (v.key() == kColorBoxSigma) pTAA->mControls.colorBoxSigma = v.val();
-        else logWarning("Unknown field '" + v.key() + "' in a TemporalAA dictionary");
+        if (key == kAlpha) pTAA->mControls.alpha = value;
+        else if (key == kColorBoxSigma) pTAA->mControls.colorBoxSigma = value;
+        else logWarning("Unknown field '" + key + "' in a TemporalAA dictionary");
     }
     return pTAA;
 }

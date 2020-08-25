@@ -2,6 +2,8 @@
 
 --------
 
+# Creating and Editing Render Graphs
+
 Now that we've written a simple render pass, we turn our attention to creating and editing render graphs. There are two methods of doing this: using the Render Graph Editor and using Python scripting. We will cover both in this tutorial though using the editor is recommended.
 
 ## Render Graph Editor
@@ -71,9 +73,9 @@ The graph containing `ExampleBlitPass` we created using the editor above would l
 ```python
 def render_graph_ExampleBlitPass():
     g = RenderGraph("ExampleBlitPass Example")
-    ExampleBlitPass = RenderPass("ExampleBlitPass")
+    ExampleBlitPass = createPass("ExampleBlitPass")
     g.addPass(ExampleBlitPass, "MyBlitPass")
-    ImageLoader = RenderPass("ImageLoader", {'filename': 'Cubemaps\\Sorsele3\\posz.jpg',
+    ImageLoader = createPass("ImageLoader", {'filename': 'Cubemaps\\Sorsele3\\posz.jpg',
                              'mips': False, 'srgb': True, 'arrayIndex': 0, 'mipLevel': 0})
     g.addPass(ImageLoader, "ImageLoader")
     g.addEdge("ImageLoader.dst", "MyBlitPass.input")

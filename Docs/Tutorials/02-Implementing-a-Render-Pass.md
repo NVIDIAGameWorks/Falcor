@@ -2,6 +2,8 @@
 
 --------
 
+# Implementing a Render Pass
+
 Now that you've successfully loaded a render graph into Mogwai through a script, let's create one. A render graph is formed from a number of component render passes. This tutorial will focus on creating render passes through an example pass that blits a source texture into a destination texture; graph creation and editing will be the subject of the next.
 
 ## Creating a Render Pass Project

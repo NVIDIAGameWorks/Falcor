@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -30,7 +30,7 @@
 
 namespace Falcor
 {
-    const DxgiFormatDesc kDxgiFormatDesc[] = 
+    const DxgiFormatDesc kDxgiFormatDesc[] =
     {
         {ResourceFormat::Unknown,                       DXGI_FORMAT_UNKNOWN},
         {ResourceFormat::R8Unorm,                       DXGI_FORMAT_R8_UNORM},
@@ -111,7 +111,7 @@ namespace Falcor
         {ResourceFormat::BC7UnormSrgb,                  DXGI_FORMAT_BC7_UNORM_SRGB},
     };
 
-    static_assert(arraysize(kDxgiFormatDesc) == (uint32_t)ResourceFormat::BC7UnormSrgb + 1, "DXGI format desc table has a wrong size");
+    static_assert(arraysize(kDxgiFormatDesc) == (size_t)ResourceFormat::Count, "DXGI format desc table has a wrong size");
 
     ResourceBindFlags getFormatBindFlags(ResourceFormat format)
     {
@@ -137,7 +137,7 @@ namespace Falcor
         if (dxgi1 & D3D12_FORMAT_SUPPORT1_RENDER_TARGET) flags |= ResourceBindFlags::RenderTarget;
         if (dxgi1 & D3D12_FORMAT_SUPPORT1_DEPTH_STENCIL) flags |= ResourceBindFlags::DepthStencil;
         if (dxgi1 & D3D12_FORMAT_SUPPORT1_TYPED_UNORDERED_ACCESS_VIEW) flags |= ResourceBindFlags::UnorderedAccess;
-        
+
         return flags;
     }
 }

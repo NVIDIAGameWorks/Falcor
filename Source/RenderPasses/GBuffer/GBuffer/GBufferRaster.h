@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -27,13 +27,14 @@
  **************************************************************************/
 #pragma once
 #include "GBuffer.h"
+#include "../RenderPasses/DepthPass/DepthPass.h"
 
 using namespace Falcor;
 
 /** Raster G-buffer pass.
     This pass renders a fixed set of G-buffer channels using rasterization.
 */
-class GBufferRaster : public GBuffer, public inherit_shared_from_this<GBuffer, GBufferRaster>
+class GBufferRaster : public GBuffer
 {
 public:
     using SharedPtr = std::shared_ptr<GBufferRaster>;
@@ -51,12 +52,14 @@ private:
     void setCullMode(RasterizerState::CullMode mode) override;
 
     // Internal state
+    DepthPass::SharedPtr            mpDepthPrePass;
     RenderGraph::SharedPtr          mpDepthPrePassGraph;
     Fbo::SharedPtr                  mpFbo;
 
     // Rasterization resources
     struct
     {
+        RasterizerState::SharedPtr pRsState;
         GraphicsState::SharedPtr pState;
         GraphicsProgram::SharedPtr pProgram;
         GraphicsVars::SharedPtr pVars;

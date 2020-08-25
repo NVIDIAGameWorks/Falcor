@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -33,20 +33,20 @@ extern "C" __declspec(dllexport) const char* getProjDir()
     return PROJECT_DIR;
 }
 
-static void regFXAA(ScriptBindings::Module& m)
+static void regFXAA(pybind11::module& m)
 {
-    auto c = m.regClass(FXAA);
-    c.property("qualitySubPix", &FXAA::getQualitySubPix, &FXAA::setQualitySubPix);
-    c.property("edgeThreshold", &FXAA::getQualityEdgeThreshold, &FXAA::setQualityEdgeThreshold);
-    c.property("edgeThresholdMin", &FXAA::getQualityEdgeThresholdMin, &FXAA::setQualityEdgeThresholdMin);
-    c.property("earlyOut", &FXAA::getEarlyOut, &FXAA::setEarlyOut);
+    pybind11::class_<FXAA, RenderPass, FXAA::SharedPtr> pass(m, "FXAA");
+    pass.def_property("qualitySubPix", &FXAA::getQualitySubPix, &FXAA::setQualitySubPix);
+    pass.def_property("edgeThreshold", &FXAA::getQualityEdgeThreshold, &FXAA::setQualityEdgeThreshold);
+    pass.def_property("edgeThresholdMin", &FXAA::getQualityEdgeThresholdMin, &FXAA::setQualityEdgeThresholdMin);
+    pass.def_property("earlyOut", &FXAA::getEarlyOut, &FXAA::setEarlyOut);
 }
 
-static void regTAA(ScriptBindings::Module& m)
+static void regTAA(pybind11::module& m)
 {
-    auto c = m.regClass(TAA);
-    c.property("alpha", &TAA::getAlpha, &TAA::setAlpha);
-    c.property("sigma", &TAA::getColorBoxSigma, &TAA::setColorBoxSigma);
+    pybind11::class_<TAA, RenderPass, TAA::SharedPtr> pass(m, "TAA");
+    pass.def_property("alpha", &TAA::getAlpha, &TAA::setAlpha);
+    pass.def_property("sigma", &TAA::getColorBoxSigma, &TAA::setColorBoxSigma);
 }
 
 extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)

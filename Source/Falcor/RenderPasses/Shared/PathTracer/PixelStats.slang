@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -33,8 +33,9 @@
     _PIXEL_STATS_ENABLED       Nonzero if stats should be collected.
 
 */
+__exported import PixelStatsShared;
 
-RWTexture2D<uint> gStatsRayCount;            // Per-pixel ray count stats.
+RWTexture2D<uint> gStatsRayCount[(uint)PixelStatsRayType::Count]; // Per-pixel ray count stats.
 RWTexture2D<uint> gStatsPathLength;          // Per-pixel path length.
 
 #ifdef _PIXEL_STATS_ENABLED
@@ -48,10 +49,10 @@ void logSetPixel(uint2 pixel)
 #endif
 }
 
-void logTraceRay()
+void logTraceRay(PixelStatsRayType rayType)
 {
 #ifdef _PIXEL_STATS_ENABLED
-    InterlockedAdd(gStatsRayCount[gPixelStatsPixel], 1);
+    InterlockedAdd(gStatsRayCount[(uint)rayType][gPixelStatsPixel], 1);
 #endif
 }
 

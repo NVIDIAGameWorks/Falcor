@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -36,7 +36,6 @@ namespace Falcor
     public:
         using SharedPtr = std::shared_ptr<Sampler>;
         using SharedConstPtr = std::shared_ptr<const Sampler>;
-        using ConstSharedPtrRef = const SharedPtr&;
         using ApiHandle = SamplerHandle;
 
         /** Filter mode
@@ -191,31 +190,4 @@ namespace Falcor
         ApiHandle mApiHandle = {};
         static uint32_t getApiMaxAnisotropy();
     };
-
-#define filter_str(a) case Sampler::Filter::a: return #a
-    inline std::string to_string(Sampler::Filter f)
-    {
-        switch (f)
-        {
-            filter_str(Point);
-            filter_str(Linear);
-        default: should_not_get_here(); return "";
-        }
-    }
-#undef filter_str
-
-#define address_str(a) case Sampler::AddressMode::a: return #a
-    inline std::string to_string(Sampler::AddressMode a)
-    {
-        switch (a)
-        {
-            address_str(Wrap);
-            address_str(Mirror);
-            address_str(Clamp);
-            address_str(Border);
-            address_str(MirrorOnce);
-        default: should_not_get_here(); return "";
-        }
-    }
-#undef address_str
 }

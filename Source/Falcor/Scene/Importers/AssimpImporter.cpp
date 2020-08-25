@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -32,6 +32,7 @@
 #include "assimp/pbrmaterial.h"
 #include "AssimpImporter.h"
 #include "Utils/StringUtils.h"
+#include "Utils/Timing/TimeReport.h"
 #include "Core/API/Device.h"
 #include "Scene/SceneBuilder.h"
 
@@ -39,6 +40,11 @@ namespace Falcor
 {
     namespace
     {
+        // Global camera animation interpolation and warping configuration.
+        // Assimp does not provide enough information to determine this from data.
+        static const Animation::InterpolationMode kCameraInterpolationMode = Animation::InterpolationMode::Linear;
+        static const bool kCameraEnableWarping = true;
+
         using BoneMeshMap = std::map<std::string, std::vector<uint32_t>>;
         using MeshInstanceList = std::vector<std::vector<const aiNode*>>;
 
@@ -83,101 +89,47 @@ namespace Falcor
             return glm::quat(q.w, q.x, q.y, q.z);
         }
 
-        /** Texture types used in Falcor materials.
-        */
-        enum class TextureType
-        {
-            BaseColor,
-            Specular,
-            Emissive,
-            Normal,
-            Occlusion,
-        };
-
         /** Mapping from ASSIMP to Falcor texture type.
         */
         struct TextureMapping
         {
             aiTextureType aiType;
             unsigned int aiIndex;
-            TextureType targetType;
+            Material::TextureSlot targetType;
         };
 
         /** Mapping tables for different import modes.
         */
         static const std::vector<TextureMapping> kTextureMappings[3] =
         {
-            // Default mappings,
+            // Default mappings
             {
-                { aiTextureType_DIFFUSE, 0, TextureType::BaseColor },
-                { aiTextureType_SPECULAR, 0, TextureType::Specular },
-                { aiTextureType_EMISSIVE, 0, TextureType::Emissive },
-                { aiTextureType_NORMALS, 0, TextureType::Normal },
-                { aiTextureType_AMBIENT, 0, TextureType::Occlusion },
+                { aiTextureType_DIFFUSE, 0, Material::TextureSlot::BaseColor },
+                { aiTextureType_SPECULAR, 0, Material::TextureSlot::Specular },
+                { aiTextureType_EMISSIVE, 0, Material::TextureSlot::Emissive },
+                { aiTextureType_NORMALS, 0, Material::TextureSlot::Normal },
+                { aiTextureType_AMBIENT, 0, Material::TextureSlot::Occlusion },
             },
-            // OBJ mappings,
+            // OBJ mappings
             {
-                { aiTextureType_DIFFUSE, 0, TextureType::BaseColor },
-                { aiTextureType_SPECULAR, 0, TextureType::Specular },
-                { aiTextureType_EMISSIVE, 0, TextureType::Emissive },
-                { aiTextureType_AMBIENT, 0, TextureType::Occlusion },
+                { aiTextureType_DIFFUSE, 0, Material::TextureSlot::BaseColor },
+                { aiTextureType_SPECULAR, 0, Material::TextureSlot::Specular },
+                { aiTextureType_EMISSIVE, 0, Material::TextureSlot::Emissive },
+                { aiTextureType_AMBIENT, 0, Material::TextureSlot::Occlusion },
                 // OBJ does not offer a normal map, thus we use the bump map instead.
-                { aiTextureType_HEIGHT, 0, TextureType::Normal },
-                { aiTextureType_DISPLACEMENT, 0, TextureType::Normal },
+                { aiTextureType_HEIGHT, 0, Material::TextureSlot::Normal },
+                { aiTextureType_DISPLACEMENT, 0, Material::TextureSlot::Normal },
             },
-            // GLTF2 mapings,
+            // GLTF2 mappings
             {
-                { aiTextureType_DIFFUSE, 0, TextureType::BaseColor },
-                { aiTextureType_EMISSIVE, 0, TextureType::Emissive },
-                { aiTextureType_NORMALS, 0, TextureType::Normal },
-                { aiTextureType_AMBIENT, 0, TextureType::Occlusion },
+                { aiTextureType_DIFFUSE, 0, Material::TextureSlot::BaseColor },
+                { aiTextureType_EMISSIVE, 0, Material::TextureSlot::Emissive },
+                { aiTextureType_NORMALS, 0, Material::TextureSlot::Normal },
+                { aiTextureType_AMBIENT, 0, Material::TextureSlot::Occlusion },
                 // GLTF2 exposes metallic roughness texture.
-                { AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLICROUGHNESS_TEXTURE, TextureType::Specular },
+                { AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLICROUGHNESS_TEXTURE, Material::TextureSlot::Specular },
             }
         };
-
-        void setTexture(TextureType type, Material* pMaterial, Texture::SharedPtr pTexture)
-        {
-            switch (type)
-            {
-            case TextureType::BaseColor:
-                pMaterial->setBaseColorTexture(pTexture);
-                break;
-            case TextureType::Specular:
-                pMaterial->setSpecularTexture(pTexture);
-                break;
-            case TextureType::Emissive:
-                pMaterial->setEmissiveTexture(pTexture);
-                break;
-            case TextureType::Normal:
-                pMaterial->setNormalMap(pTexture);
-                break;
-            case TextureType::Occlusion:
-                pMaterial->setOcclusionMap(pTexture);
-                break;
-            default:
-                should_not_get_here();
-            }
-        }
-
-        bool isSrgbRequired(TextureType type, uint32_t shadingModel)
-        {
-            switch (type)
-            {
-            case TextureType::Specular:
-                assert(shadingModel == ShadingModelMetalRough || shadingModel == ShadingModelSpecGloss);
-                return (shadingModel == ShadingModelSpecGloss);
-            case TextureType::BaseColor:
-            case TextureType::Emissive:
-            case TextureType::Occlusion:
-                return true;
-            case TextureType::Normal:
-                return false;
-            default:
-                should_not_get_here();
-                return false;
-            }
-        }
 
         class ImporterData
         {
@@ -281,7 +233,7 @@ namespace Falcor
                 aiNodeAnim* pAiNode = pAiAnim->mChannels[i];
                 resetNegativeKeyframeTimes(pAiNode);
 
-                std::vector<size_t> channels;
+                std::vector<uint32_t> channels;
                 for (uint32_t i = 0; i < data.getNodeInstanceCount(pAiNode->mNodeName.C_Str()); i++)
                 {
                     channels.push_back(pAnimation->addChannel(data.getFalcorNodeID(pAiNode->mNodeName.C_Str(), i)));
@@ -318,53 +270,52 @@ namespace Falcor
             return pAnimation;
         }
 
-        bool createCamera(ImporterData& data, ImportMode importMode)
+        bool createCameras(ImporterData& data, ImportMode importMode)
         {
             if (data.pScene->mNumCameras == 0) return true;
-            if (data.pScene->mNumCameras > 1)
+
+            for (uint i = 0; i < data.pScene->mNumCameras; i++)
             {
-                logWarning("Model file contains more then a single camera. Falcor only supports one camera per scene, we will use the first camera");
+                const aiCamera* pAiCamera = data.pScene->mCameras[i];
+                Camera::SharedPtr pCamera = Camera::create();
+                pCamera->setName(pAiCamera->mName.C_Str());
+                pCamera->setPosition(aiCast(pAiCamera->mPosition));
+                pCamera->setUpVector(aiCast(pAiCamera->mUp));
+                pCamera->setTarget(aiCast(pAiCamera->mLookAt) + aiCast(pAiCamera->mPosition));
+                // Some importers don't provide the aspect ratio, use default for that case.
+                float aspectRatio = pAiCamera->mAspect != 0.f ? pAiCamera->mAspect : pCamera->getAspectRatio();
+                // Load focal length only when using GLTF2, use fixed 35mm for backwards compatibility with FBX files.
+                float focalLength = importMode == ImportMode::GLTF2 ? fovYToFocalLength(pAiCamera->mHorizontalFOV * 2 / aspectRatio, pCamera->getFrameHeight()) : 35.f;
+                pCamera->setFocalLength(focalLength);
+                pCamera->setAspectRatio(aspectRatio);
+                pCamera->setDepthRange(pAiCamera->mClipPlaneNear, pAiCamera->mClipPlaneFar);
+
+                uint32_t nodeID = data.getFalcorNodeID(pAiCamera->mName.C_Str(), 0);
+
+                if (nodeID != SceneBuilder::kInvalidNode)
+                {
+                    SceneBuilder::Node n;
+                    n.name = "Camera.BaseMatrix";
+                    n.parent = nodeID;
+                    n.transform = pCamera->getViewMatrix();
+                    // GLTF2 has the view direction reversed.
+                    if (importMode == ImportMode::GLTF2) n.transform[2] = -n.transform[2];
+                    nodeID = data.builder.addNode(n);
+                    if (data.builder.isNodeAnimated(nodeID))
+                    {
+                        pCamera->setNodeID(nodeID);
+                        pCamera->setHasAnimation(true);
+                        data.builder.setNodeInterpolationMode(nodeID, kCameraInterpolationMode, kCameraEnableWarping);
+                    }
+                }
+
+                data.builder.addCamera(pCamera);
             }
 
-            if (data.builder.hasCamera())
-            {
-                logWarning("Found cameras in model file, but the scene already contains a camera. Ignoring the new camera");
-                return true;
-            }
-
-            const aiCamera* pAiCamera = data.pScene->mCameras[0];
-            pAiCamera = pAiCamera;
-            Camera::SharedPtr pCamera = Camera::create();
-            pCamera->setPosition(aiCast(pAiCamera->mPosition));
-            pCamera->setUpVector(aiCast(pAiCamera->mUp));
-            pCamera->setTarget(aiCast(pAiCamera->mLookAt) + aiCast(pAiCamera->mPosition));
-            // Some importers don't provide the aspect ratio, use default for that case.
-            float aspectRatio = pAiCamera->mAspect != 0.f ? pAiCamera->mAspect : pCamera->getAspectRatio();
-            // Load focal length only when using GLTF2, use fixed 35mm for backwards compatibility with FBX files.
-            float focalLength = importMode == ImportMode::GLTF2 ? fovYToFocalLength(pAiCamera->mHorizontalFOV * 2 / aspectRatio, pCamera->getFrameHeight()) : 35.f;
-            pCamera->setFocalLength(focalLength);
-            pCamera->setAspectRatio(aspectRatio);
-            pCamera->setDepthRange(pAiCamera->mClipPlaneNear, pAiCamera->mClipPlaneFar);
-
-            uint32_t nodeID = data.getFalcorNodeID(pAiCamera->mName.C_Str(), 0);
-
-            if (nodeID != SceneBuilder::kInvalidNode)
-            {
-                SceneBuilder::Node n;
-                n.name = "Camera.BaseMatrix";
-                n.parent = nodeID;
-                n.transform = pCamera->getViewMatrix();
-                // GLTF2 has the view direction reversed.
-                if (importMode == ImportMode::GLTF2) n.transform[2] = -n.transform[2];
-                nodeID = data.builder.addNode(n);
-            }
-
-            // Find if the camera is affected by a node
-            data.builder.setCamera(pCamera, nodeID);
             return true;
         }
 
-        bool addLightCommon(Light::ConstSharedPtrRef pLight, const glm::mat4& baseMatrix, ImporterData& data, const aiLight* pAiLight)
+        bool addLightCommon(const Light::SharedPtr& pLight, const glm::mat4& baseMatrix, ImporterData& data, const aiLight* pAiLight)
         {
             pLight->setName(pAiLight->mName.C_Str());
             assert(pAiLight->mColorDiffuse == pAiLight->mColorSpecular);
@@ -379,8 +330,10 @@ namespace Falcor
                 n.parent = nodeID;
                 n.transform = baseMatrix;
                 nodeID = data.builder.addNode(n);
+                pLight->setHasAnimation(true);
+                pLight->setNodeID(nodeID);
             }
-            data.builder.addLight(pLight, nodeID);
+            data.builder.addLight(pLight);
 
             return true;
         }
@@ -431,7 +384,7 @@ namespace Falcor
                     if (!createPointLight(data, pAiLight)) return false;
                     break;
                 default:
-                    logWarning("Unsupported ASSIMP light type " + to_string(pAiLight->mType));
+                    logWarning("Unsupported ASSIMP light type " + std::to_string(pAiLight->mType));
                     continue;
                 }
             }
@@ -444,29 +397,42 @@ namespace Falcor
             for (uint32_t i = 0; i < data.pScene->mNumAnimations; i++)
             {
                 Animation::SharedPtr pAnimation = createAnimation(data, data.pScene->mAnimations[i]);
-                data.builder.addAnimation(0, pAnimation);
+                data.builder.addAnimation(pAnimation);
             }
             return true;
         }
 
-        std::vector<float2> createTexCrdList(const aiVector3D* pAiTexCrd, uint32_t count)
+        void createTexCrdList(const aiVector3D* pAiTexCrd, uint32_t count, std::vector<float2>& texCrds)
         {
-            std::vector<float2> v2(count);
+            texCrds.resize(count);
             for (uint32_t i = 0; i < count; i++)
             {
                 assert(pAiTexCrd[i].z == 0);
-                v2[i] = float2(pAiTexCrd[i].x, pAiTexCrd[i].y);
+                texCrds[i] = float2(pAiTexCrd[i].x, pAiTexCrd[i].y);
             }
-            return v2;
         }
 
-        std::vector<uint32_t> createIndexList(const aiMesh* pAiMesh)
+        void createTangentList(const aiVector3D* pAiTangent, const aiVector3D* pAiBitangent, const aiVector3D* pAiNormal, uint32_t count, std::vector<float4>& tangents)
+        {
+            tangents.resize(count);
+            for (uint32_t i = 0; i < count; i++)
+            {
+                // We compute the bitangent at runtime as defined by MikkTSpace: cross(N, tangent.xyz) * tangent.w.
+                // Compute the orientation of the loaded bitangent here to set the sign (w) correctly.
+                float3 T = float3(pAiTangent[i].x, pAiTangent[i].y, pAiTangent[i].z);
+                float3 B = float3(pAiBitangent[i].x, pAiBitangent[i].y, pAiBitangent[i].z);
+                float3 N = float3(pAiNormal[i].x, pAiNormal[i].y, pAiNormal[i].z);
+                float sign = dot(cross(N, T), B) >= 0.f ? 1.f : -1.f;
+                tangents[i] = float4(glm::normalize(T), sign);
+            }
+        }
+
+        void createIndexList(const aiMesh* pAiMesh, std::vector<uint32_t>& indices)
         {
             const uint32_t perFaceIndexCount = pAiMesh->mFaces[0].mNumIndices;
             const uint32_t indexCount = pAiMesh->mNumFaces * perFaceIndexCount;
 
-            std::vector<uint32_t> indices(indexCount);
-
+            indices.resize(indexCount);
             for (uint32_t i = 0; i < pAiMesh->mNumFaces; i++)
             {
                 assert(pAiMesh->mFaces[i].mNumIndices == perFaceIndexCount); // Mesh contains mixed primitive types, can be solved using aiProcess_SortByPType
@@ -475,7 +441,6 @@ namespace Falcor
                     indices[i * perFaceIndexCount + j] = (uint32_t)(pAiMesh->mFaces[i].mIndices[j]);
                 }
             }
-            return indices;
         }
 
         void loadBones(const aiMesh* pAiMesh, const ImporterData& data, std::vector<float4>& weights, std::vector<uint4>& ids)
@@ -523,21 +488,49 @@ namespace Falcor
             {
                 float4& w = weights[i];
                 float f = 0;
-                for (int j = 0; j < Scene::kMaxBonesPerVertex; j++) f += w[j];
+                for (uint32_t j = 0; j < Scene::kMaxBonesPerVertex; j++) f += w[j];
                 w /= f;
             }
         }
 
-        bool createMeshes(ImporterData& data)
+        void createMeshes(ImporterData& data)
         {
             const aiScene* pScene = data.pScene;
+            const bool loadTangents = is_set(data.builder.getFlags(), SceneBuilder::Flags::UseOriginalTangentSpace);
+
+            // Find the largest mesh.
+            uint64_t largestIndexCount = 0;
+            uint64_t largestVertexCount = 0;
+
             for (uint32_t i = 0; i < pScene->mNumMeshes; i++)
             {
-                SceneBuilder::Mesh mesh;
                 const aiMesh* pAiMesh = pScene->mMeshes[i];
+                uint64_t indexCount = pAiMesh->mNumFaces * pAiMesh->mFaces[0].mNumIndices;
+
+                largestIndexCount = std::max(largestIndexCount, indexCount);
+                largestVertexCount = std::max(largestVertexCount, (uint64_t)pAiMesh->mNumVertices);
+            }
+
+            // Reserve memory for the vertex and index data.
+            std::vector<uint32_t> indexList;
+            std::vector<float2> texCrds;
+            std::vector<float4> tangents;
+            indexList.reserve(largestIndexCount);
+            texCrds.reserve(largestVertexCount);
+            if (loadTangents) tangents.reserve(largestVertexCount);
+
+            // Add all the meshes.
+            for (uint32_t i = 0; i < pScene->mNumMeshes; i++)
+            {
+                const aiMesh* pAiMesh = pScene->mMeshes[i];
+                const uint32_t perFaceIndexCount = pAiMesh->mFaces[0].mNumIndices;
+
+                SceneBuilder::Mesh mesh;
+                mesh.name = pAiMesh->mName.C_Str();
+                mesh.faceCount = pAiMesh->mNumFaces;
 
                 // Indices
-                const auto indexList = createIndexList(pAiMesh);
+                createIndexList(pAiMesh, indexList);
                 assert(indexList.size() <= std::numeric_limits<uint32_t>::max());
                 mesh.indexCount = (uint32_t)indexList.size();
                 mesh.pIndices = indexList.data();
@@ -545,14 +538,28 @@ namespace Falcor
                 // Vertices
                 assert(pAiMesh->mVertices);
                 mesh.vertexCount = pAiMesh->mNumVertices;
-                static_assert(sizeof(pAiMesh->mVertices[0]) == sizeof(mesh.pPositions[0]));
-                static_assert(sizeof(pAiMesh->mNormals[0]) == sizeof(mesh.pNormals[0]));
-                static_assert(sizeof(pAiMesh->mBitangents[0]) == sizeof(mesh.pBitangents[0]));
-                mesh.pPositions = (float3*)pAiMesh->mVertices;
-                mesh.pNormals = (float3*)pAiMesh->mNormals;
-                mesh.pBitangents = (float3*)pAiMesh->mBitangents;
-                const auto& texCrd = pAiMesh->HasTextureCoords(0) ? createTexCrdList(pAiMesh->mTextureCoords[0], pAiMesh->mNumVertices) : std::vector<float2>();
-                mesh.pTexCrd = texCrd.size() ? texCrd.data() : nullptr;
+                static_assert(sizeof(pAiMesh->mVertices[0]) == sizeof(mesh.positions.pData[0]));
+                static_assert(sizeof(pAiMesh->mNormals[0]) == sizeof(mesh.normals.pData[0]));
+                mesh.positions.pData = reinterpret_cast<float3*>(pAiMesh->mVertices);
+                mesh.positions.frequency = SceneBuilder::Mesh::AttributeFrequency::Vertex;
+                mesh.normals.pData = reinterpret_cast<float3*>(pAiMesh->mNormals);
+                mesh.normals.frequency = SceneBuilder::Mesh::AttributeFrequency::Vertex;
+
+                if (pAiMesh->HasTextureCoords(0))
+                {
+                    createTexCrdList(pAiMesh->mTextureCoords[0], pAiMesh->mNumVertices, texCrds);
+                    assert(!texCrds.empty());
+                    mesh.texCrds.pData = texCrds.data();
+                    mesh.texCrds.frequency = SceneBuilder::Mesh::AttributeFrequency::Vertex;
+                }
+
+                if (loadTangents && pAiMesh->HasTangentsAndBitangents())
+                {
+                    createTangentList(pAiMesh->mTangents, pAiMesh->mBitangents, pAiMesh->mNormals, pAiMesh->mNumVertices, tangents);
+                    assert(!tangents.empty());
+                    mesh.tangents.pData = tangents.data();
+                    mesh.tangents.frequency = SceneBuilder::Mesh::AttributeFrequency::Vertex;
+                }
 
                 std::vector<uint4> boneIds;
                 std::vector<float4> boneWeights;
@@ -560,28 +567,27 @@ namespace Falcor
                 if (pAiMesh->HasBones())
                 {
                     loadBones(pAiMesh, data, boneWeights, boneIds);
-                    mesh.pBoneIDs = boneIds.data();
-                    mesh.pBoneWeights = boneWeights.data();
+                    mesh.boneIDs.pData = boneIds.data();
+                    mesh.boneIDs.frequency = SceneBuilder::Mesh::AttributeFrequency::Vertex;
+                    mesh.boneWeights.pData = boneWeights.data();
+                    mesh.boneWeights.frequency = SceneBuilder::Mesh::AttributeFrequency::Vertex;
                 }
 
-                switch (pAiMesh->mFaces[0].mNumIndices)
+                switch (perFaceIndexCount)
                 {
                 case 1: mesh.topology = Vao::Topology::PointList; break;
                 case 2: mesh.topology = Vao::Topology::LineList; break;
                 case 3: mesh.topology = Vao::Topology::TriangleList; break;
                 default:
-                    logError("Error when creating mesh. Unknown topology with " + std::to_string(pAiMesh->mFaces[0].mNumIndices) + " indices.");
+                    logError("Error when creating mesh. Unknown topology with " + std::to_string(perFaceIndexCount) + " indices per face.");
                     should_not_get_here();
                 }
 
                 mesh.pMaterial = data.materialMap.at(pAiMesh->mMaterialIndex);
                 assert(mesh.pMaterial);
                 uint32_t meshID = data.builder.addMesh(mesh);
-                if (meshID == SceneBuilder::kInvalidNode) return false;
                 data.meshMap[i] = meshID;
             }
-
-            return true;
         }
 
         bool isBone(ImporterData& data, const std::string& name)
@@ -608,10 +614,10 @@ namespace Falcor
                     const aiNode* pChild = pNode->mChildren[i];
                     std::string parent = pNode->mName.C_Str();
                     std::string parentType = getNodeType(data, pNode);
-                    std::string parentID = to_string(data.getFalcorNodeID(pNode));
+                    std::string parentID = std::to_string(data.getFalcorNodeID(pNode));
                     std::string me = pChild->mName.C_Str();
                     std::string myType = getNodeType(data, pChild);
-                    std::string myID = to_string(data.getFalcorNodeID(pChild));
+                    std::string myID = std::to_string(data.getFalcorNodeID(pChild));
                     std::replace(parent.begin(), parent.end(), '.', '_');
                     std::replace(me.begin(), me.end(), '.', '_');
                     std::replace(parent.begin(), parent.end(), '$', '_');
@@ -684,7 +690,7 @@ namespace Falcor
             return success;
         }
 
-        bool addMeshes(ImporterData& data, aiNode* pNode)
+        void addMeshInstances(ImporterData& data, aiNode* pNode)
         {
             uint32_t nodeID = data.getFalcorNodeID(pNode);
             for (uint32_t mesh = 0; mesh < pNode->mNumMeshes; mesh++)
@@ -700,7 +706,7 @@ namespace Falcor
                         {
                             // Add nodes
                             SceneBuilder::Node n;
-                            n.name = "Node" + to_string(nodeID) + ".instance" + to_string(instance);
+                            n.name = "Node" + std::to_string(nodeID) + ".instance" + std::to_string(instance);
                             n.parent = nodeID;
                             n.transform = data.modelInstances[instance];
                             instanceNodeID = data.builder.addNode(n);
@@ -711,13 +717,11 @@ namespace Falcor
                 else data.builder.addMeshInstance(nodeID, meshID);
             }
 
-            bool b = true;
-            // visit the children
+            // Visit the children
             for (uint32_t i = 0; i < pNode->mNumChildren; i++)
             {
-                b |= addMeshes(data, pNode->mChildren[i]);
+                addMeshInstances(data, pNode->mChildren[i]);
             }
-            return b;
         }
 
         void loadTextures(ImporterData& data, const aiMaterial* pAiMaterial, const std::string& folder, Material* pMaterial, ImportMode importMode, bool useSrgb)
@@ -751,7 +755,7 @@ namespace Falcor
                     // create a new texture
                     std::string fullpath = folder + '/' + path;
                     fullpath = replaceSubstring(fullpath, "\\", "/");
-                    pTex = Texture::createFromFile(fullpath, true, useSrgb && isSrgbRequired(source.targetType, pMaterial->getShadingModel()));
+                    pTex = Texture::createFromFile(fullpath, true, useSrgb && pMaterial->isSrgbTextureRequired(source.targetType));
                     if (pTex)
                     {
                         data.textureCache[path] = pTex;
@@ -759,7 +763,7 @@ namespace Falcor
                 }
 
                 assert(pTex != nullptr);
-                setTexture(source.targetType, pMaterial, pTex);
+                pMaterial->setTexture(source.targetType, pTex);
             }
 
             // Flush upload heap after every material so we don't accumulate a ton of memory usage when loading a model with a lot of textures
@@ -775,7 +779,7 @@ namespace Falcor
             std::string nameStr = std::string(name.C_Str());
             if (nameStr.empty())
             {
-                logWarning("Material with no name found -> renaming to `unnamed`");
+                logWarning("Material with no name found -> renaming to 'unnamed'");
                 nameStr = "unnamed";
             }
             Material::SharedPtr pMaterial = Material::create(nameStr);
@@ -892,7 +896,7 @@ namespace Falcor
                     std::string str = nameVec[i];
                     std::transform(str.begin(), str.end(), str.begin(), ::tolower);
                     if (str == "doublesided") pMaterial->setDoubleSided(true);
-                    else logWarning("Unknown material property found in the material's name - `" + nameVec[i] + "`");
+                    else logWarning("Unknown material property found in the material's name - '" + nameVec[i] + "'");
                 }
             }
 
@@ -935,16 +939,7 @@ namespace Falcor
                 const aiMesh* pMesh = pScene->mMeshes[meshID];
                 for (uint32_t boneID = 0; boneID < pMesh->mNumBones; boneID++)
                 {
-                    try
-                    {
-                        boneMap.at(pMesh->mBones[boneID]->mName.C_Str()).push_back(meshID);
-                    }
-                    catch (const std::out_of_range&)
-                    {
-                        std::vector<uint32_t> meshIDs;
-                        meshIDs.push_back(meshID);
-                        boneMap[pMesh->mBones[boneID]->mName.C_Str()] = meshIDs;
-                    }
+                    boneMap[pMesh->mBones[boneID]->mName.C_Str()].push_back(meshID);
                 }
             }
 
@@ -1017,44 +1012,57 @@ namespace Falcor
         }
     }
 
-    bool AssimpImporter::import(const std::string& filename, SceneBuilder& builder, const InstanceMatrices& meshInstances)
+    bool AssimpImporter::import(const std::string& filename, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict)
     {
+        TimeReport timeReport;
+
         std::string fullpath;
         if (findFileInDataDirectories(filename, fullpath) == false)
         {
-            logError("Can't find model file " + filename);
+            logError("Can't find file '" + filename + "'");
             return false;
         }
 
-        SceneBuilder::Flags builderFlags = builder.getFlags();
+        const SceneBuilder::Flags builderFlags = builder.getFlags();
         uint32_t assimpFlags = aiProcessPreset_TargetRealtime_MaxQuality |
             aiProcess_FlipUVs |
-            0;
+            aiProcess_RemoveComponent;
 
         assimpFlags &= ~(aiProcess_CalcTangentSpace); // Never use Assimp's tangent gen code
         assimpFlags &= ~(aiProcess_FindDegenerates); // Avoid converting degenerated triangles to lines
         assimpFlags &= ~(aiProcess_OptimizeGraph); // Never use as it doesn't handle transforms with negative determinants
         assimpFlags &= ~(aiProcess_RemoveRedundantMaterials); // Avoid merging materials
+        assimpFlags &= ~(aiProcess_SplitLargeMeshes); // Avoid splitting large meshes
         if (is_set(builderFlags, SceneBuilder::Flags::DontMergeMeshes)) assimpFlags &= ~aiProcess_OptimizeMeshes; // Avoid merging original meshes
 
+        // Configure importer to remove vertex components we don't support.
+        // It'll load faster and helps 'aiProcess_JoinIdenticalVertices' find identical vertices.
+        int removeFlags = aiComponent_COLORS;
+        for (uint32_t uvLayer = 1; uvLayer < AI_MAX_NUMBER_OF_TEXTURECOORDS; uvLayer++) removeFlags |= aiComponent_TEXCOORDSn(uvLayer);
+        if (!is_set(builderFlags, SceneBuilder::Flags::UseOriginalTangentSpace)) removeFlags |= aiComponent_TANGENTS_AND_BITANGENTS;
+
         Assimp::Importer importer;
+        importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, removeFlags);
+
         const aiScene* pScene = importer.ReadFile(fullpath, assimpFlags);
+        timeReport.measure("Loading asset file");
 
         if (pScene == nullptr)
         {
-            std::string str("Can't open model file '");
+            std::string str("Can't open file '");
             str = str + std::string(filename) + "'\n" + importer.GetErrorString();
             logError(str);
             return false;
         }
 
         verifyScene(pScene);
+        timeReport.measure("Verifying scene");
 
         // Extract the folder name
         auto last = fullpath.find_last_of("/\\");
         std::string modelFolder = fullpath.substr(0, last);
 
-        ImporterData data(pScene, builder, meshInstances);
+        ImporterData data(pScene, builder, instances);
 
         // Enable special treatment for obj and gltf files
         ImportMode importMode = ImportMode::Default;
@@ -1066,48 +1074,79 @@ namespace Falcor
             logError("Can't create materials for model " + filename);
             return false;
         }
+        timeReport.measure("Creating materials");
 
         if (createSceneGraph(data) == false)
         {
             logError("Can't create draw lists for model " + filename);
             return false;
         }
+        timeReport.measure("Creating scene graph");
 
-        if (createMeshes(data) == false)
-        {
-            logError("Can't create meshes for model " + filename);
-            return false;
-        }
-
-        if (addMeshes(data, data.pScene->mRootNode) == false)
-        {
-            logError("Can't add meshes for model " + filename);
-            return false;
-        }
+        createMeshes(data);
+        addMeshInstances(data, data.pScene->mRootNode);
+        timeReport.measure("Creating meshes");
 
         if (createAnimations(data) == false)
         {
             logError("Can't create animations for model " + filename);
             return false;
         }
+        timeReport.measure("Creating animations");
 
-        if (createCamera(data, importMode) == false)
+        if (createCameras(data, importMode) == false)
         {
             logError("Can't create a camera for model " + filename);
             return false;
         }
+        timeReport.measure("Creating cameras");
 
         if (createLights(data) == false)
         {
             logError("Can't create a lights for model " + filename);
             return false;
         }
+        timeReport.measure("Creating lights");
+
+        timeReport.printToLog();
+
         return true;
     }
 
-    bool AssimpImporter::import(const std::string& filename, SceneBuilder& builder)
-    {
-        InstanceMatrices meshInstances(1);
-        return import(filename, builder, meshInstances);
-    }
+    REGISTER_IMPORTER(
+        AssimpImporter,
+        Importer::ExtensionList({
+            "fbx",
+            "gltf",
+            "obj",
+            "dae",
+            "x",
+            "md5mesh",
+            "ply",
+            "3ds",
+            "blend",
+            "ase",
+            "ifc",
+            "xgl",
+            "zgl",
+            "dxf",
+            "lwo",
+            "lws",
+            "lxo",
+            "stl",
+            "ac",
+            "ms3d",
+            "cob",
+            "scn",
+            "3d",
+            "mdl",
+            "mdl2",
+            "pk3",
+            "smd",
+            "vta",
+            "raw",
+            "ter",
+            "glb"
+        })
+    )
 }

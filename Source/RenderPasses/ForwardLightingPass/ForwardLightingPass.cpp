@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -58,11 +58,11 @@ ForwardLightingPass::SharedPtr ForwardLightingPass::create(RenderContext* pRende
     auto pThis = SharedPtr(new ForwardLightingPass());
     pThis->setColorFormat(ResourceFormat::RGBA32Float).setMotionVecFormat(ResourceFormat::RG16Float).setNormalMapFormat(ResourceFormat::RGBA8Unorm).setSampleCount(1).usePreGeneratedDepthBuffer(true);
 
-    for (const auto& v : dict)
+    for (const auto& [key, value] : dict)
     {
-        if (v.key() == kSampleCount) pThis->setSampleCount(v.val());
-        else if (v.key() == kSuperSampling) pThis->setSuperSampling(v.val());
-        else logWarning("Unknown field `" + v.key() + "` in a ForwardLightingPass dictionary");
+        if (key == kSampleCount) pThis->setSampleCount(value);
+        else if (key == kSuperSampling) pThis->setSuperSampling(value);
+        else logWarning("Unknown field '" + key + "' in a ForwardLightingPass dictionary");
     }
 
     return pThis;

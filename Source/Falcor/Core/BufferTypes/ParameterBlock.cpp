@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -39,21 +39,21 @@ namespace Falcor
     {
         std::string getErrorPrefix(const char* funcName, const std::string& varName)
         {
-            return std::string(funcName) + " is trying to access the shader variable `" + varName + "`";
+            return std::string(funcName) + " is trying to access the shader variable '" + varName + "'";
         }
 
         const ReflectionResourceType* getResourceReflection(const ShaderVar& var, const Resource* pResource, const std::string& varName, const char* funcName)
         {
             if (!var.isValid())
             {
-                logError("\"" + varName + "\" was not found. Ignoring " + funcName + " call.");
+                logError("'" + varName + "' was not found. Ignoring '" + funcName + "' call.");
                 return nullptr;
             }
 
             const ReflectionResourceType* pType = var.getType()->unwrapArray()->asResourceType();
             if (!pType)
             {
-                logError(varName + " is not a resource. Ignoring " + funcName + " call.");
+                logError("'" + varName + "' is not a resource. Ignoring '" + funcName + "' call.");
                 return nullptr;
             }
 
@@ -140,7 +140,7 @@ namespace Falcor
                 }
                 break;
             default:
-                logError(getErrorPrefix(funcName, varName) + ", but the variable \"" + varName + "\" was declared in the shader as a " + to_string(pType->getType()) + " and not as a buffer");
+                logError(getErrorPrefix(funcName, varName) + ", but the variable '" + varName + "' was declared in the shader as a " + to_string(pType->getType()) + " and not as a buffer");
                 return false;
             }
 
@@ -528,7 +528,7 @@ namespace Falcor
         auto var = getBufferBindLocation(this, name, ReflectionResourceType::Type::ConstantBuffer);
         if(!var.isValid())
         {
-            logError("Parameter block \"" + name + "\" was not found. Ignoring setParameterBlock() call.");
+            logError("Parameter block '" + name + "' was not found. Ignoring setParameterBlock() call.");
             return false;
         }
         return var.setParameterBlock(pCB);
@@ -594,7 +594,7 @@ namespace Falcor
         auto var = getBufferBindLocation(this, name, ReflectionResourceType::Type::ConstantBuffer);
         if (!var.isValid())
         {
-            logError("Parameter block \"" + name + "\" was not found. Ignoring getParameterBlock() call.");
+            logError("Parameter block '" + name + "' was not found. Ignoring getParameterBlock() call.");
             return nullptr;
         }
         return var.getParameterBlock();
@@ -834,7 +834,7 @@ namespace Falcor
         return true;
     }
 
-    Buffer::ConstSharedPtrRef ParameterBlock::getUnderlyingConstantBuffer() const
+    const Buffer::SharedPtr& ParameterBlock::getUnderlyingConstantBuffer() const
     {
         updateSpecialization();
 
@@ -1153,8 +1153,8 @@ namespace Falcor
         // Check that the types match
         if(callType != shaderType)
         {
-            std::string msg("Error when setting variable \"");
-            msg += name + "\" to buffer \"" + bufferName + "\".\n";
+            std::string msg("Error when setting variable '");
+            msg += name + "' to buffer '" + bufferName + "'.\n";
             msg += "Type mismatch.\nsetVariable() was called with Type " + to_string(callType) + ".\nVariable was declared with Type " + to_string(shaderType) + ".\n\n";
             logError(msg);
             assert(0);

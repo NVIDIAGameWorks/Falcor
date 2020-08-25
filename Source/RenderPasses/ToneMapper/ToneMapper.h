@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -32,11 +32,17 @@
 
 using namespace Falcor;
 
-class ToneMapper : public RenderPass, public inherit_shared_from_this<RenderPass, ToneMapper>
+class ToneMapper : public RenderPass
 {
 public:
+    enum class ExposureMode
+    {
+        AperturePriority,       // Keep aperture constant when modifying EV
+        ShutterPriority,        // Keep shutter constant when modifying EV
+    };
+
     using SharedPtr = std::shared_ptr<ToneMapper>;
-    using inherit_shared_from_this::shared_from_this;
+
     static const char* kDesc;
 
     using Operator = ToneMapperOperator;
@@ -62,6 +68,9 @@ public:
     void setClamp(bool clamp);
     void setWhiteMaxLuminance(float maxLuminance);
     void setWhiteScale(float whiteScale);
+    void setFNumber(float fNumber);
+    void setShutter(float shutter);
+    void setExposureMode(ExposureMode mode);
 
     float getExposureCompensation() const { return mExposureCompensation; }
     bool getAutoExposure() const { return mAutoExposure; }
@@ -73,6 +82,9 @@ public:
     bool getClamp() const { return mClamp; }
     float getWhiteMaxLuminance() const { return mWhiteMaxLuminance; }
     float getWhiteScale() const { return mWhiteScale; }
+    float getFNumber() const { return mFNumber; }
+    float getShutter() const { return mShutter; }
+    ExposureMode getExposureMode() const { return mExposureMode; }
 
 private:
     ToneMapper(Operator op, ResourceFormat outputFormat);
@@ -84,6 +96,9 @@ private:
     void updateWhiteBalanceTransform();
     void updateColorTransform();
 
+    void updateCameraSettings();
+    void updateExposureValue();
+
     FullScreenPass::SharedPtr mpToneMapPass;
     FullScreenPass::SharedPtr mpLuminancePass;
     Fbo::SharedPtr mpLuminanceFbo;
@@ -94,8 +109,10 @@ private:
 
     float mExposureCompensation = 0.f;  // Exposure compensation (in F-stops).
     bool mAutoExposure = false;         // Enable auto exposure.
-    float mExposureValue = 0.0f;        // Exposure value (EV), only used when auto exposure is disabled.
+    float mExposureValue = 0.0f;        // Exposure value (EV), derived from fNumber, shutter, and film speed; only used when auto exposure is disabled.
     float mFilmSpeed = 100.f;           // Film speed (ISO), only used when auto exposure is disabled.
+    float mFNumber = 1.f;               // Lens speed
+    float mShutter = 1.f;               // Reciprocal of shutter time
 
     bool mWhiteBalance = false;         // Enable white balance.
     float mWhitePoint = 6500.0f;        // White point (K).
@@ -113,4 +130,6 @@ private:
 
     bool mRecreateToneMapPass = true;
     bool mUpdateToneMapPass = true;
+
+    ExposureMode mExposureMode = ExposureMode::AperturePriority;
 };

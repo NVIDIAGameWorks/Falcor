@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -33,11 +33,11 @@
 
 using namespace Falcor;
 
-class SSAO : public RenderPass, public inherit_shared_from_this<RenderPass, SSAO>
+class SSAO : public RenderPass
 {
 public:
     using SharedPtr = std::shared_ptr<SSAO>;
-    using inherit_shared_from_this::shared_from_this;
+
     static const char* kDesc;
 
     enum class SampleDistribution : uint32_t
@@ -96,18 +96,3 @@ private:
         Fbo::SharedPtr pFbo;
     } mComposeData;
 };
-
-#define str(a) case SSAO::SampleDistribution::a: return #a
-inline std::string to_string(SSAO::SampleDistribution type)
-{
-    switch (type)
-    {
-        str(Random);
-        str(UniformHammersley);
-        str(CosineHammersley);
-    default:
-        should_not_get_here();
-        return "";
-    }
-}
-#undef str

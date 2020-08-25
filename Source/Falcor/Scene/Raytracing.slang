@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -26,8 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 __exported import Scene.Scene;
-__exported import Scene.ShadingData;
-__exported import Utils.Helpers;
+__exported import Scene.Shading;
 
 import Experimental.Scene.Material.TexLODHelpers;
 
@@ -53,6 +52,7 @@ struct HitShaderParams
 };
 
 /** Returns interpolated vertex attributes in a ray tracing hit program.
+    \param[in] hitParams Parameters for hit shader.
     \param[in] triangleIndex Index of the triangle in the current mesh (= PrimitiveIndex()).
     \param[in] attribs Intersection attributes provided by DXR.
     \return Interpolated vertex attributes.
@@ -63,8 +63,22 @@ VertexData getVertexData(HitShaderParams hitParams, uint triangleIndex, BuiltInT
     return gScene.getVertexData(hitParams.getGlobalHitID(), triangleIndex, barycentrics);
 }
 
+/** Returns interpolated vertex attributes in a ray tracing hit program.
+    \param[in] hitParams Parameters for hit shader.
+    \param[in] triangleIndex Index of the triangle in the current mesh (= PrimitiveIndex()).
+    \param[in] attribs Intersection attributes provided by DXR.
+    \param[out] Unpacked fetched vertices which can be used for further computations involving individual vertices.
+    \return Interpolated vertex attributes.
+*/
+VertexData getVertexData(HitShaderParams hitParams, uint triangleIndex, BuiltInTriangleIntersectionAttributes attribs, out float3 barycentrics, out StaticVertexData vertices[3])
+{
+    barycentrics = float3(1.0 - attribs.barycentrics.x - attribs.barycentrics.y, attribs.barycentrics.x, attribs.barycentrics.y);
+    return gScene.getVertexData(hitParams.getGlobalHitID(), triangleIndex, barycentrics, vertices);
+}
+
+
 /** Returns interpolated vertex attributes in a ray tracing hit program when ray cones are used for texture LOD.
-    \param[in] hitParams Parmaters for hit shader
+    \param[in] hitParams Parameters for hit shader.
     \param[in] triangleIndex Index of the triangle in the current mesh (= PrimitiveIndex()).
     \param[in] attribs Intersection attributes provided by DXR.
     \return Interpolated vertex attributes.
@@ -73,24 +87,6 @@ VertexData getVertexDataRayCones(HitShaderParams hitParams, uint triangleIndex, 
 {
     float3 barycentrics = float3(1.0 - attribs.barycentrics.x - attribs.barycentrics.y, attribs.barycentrics.x, attribs.barycentrics.y);
     return gScene.getVertexDataRayCones(hitParams.getGlobalHitID(), triangleIndex, barycentrics);
-}
-
-/** Returns interpolated vertex attributes in a ray tracing hit program when ray differentials are used for texture LOD.
-    \param[in] hitParams Parmaters for hit shader
-    \param[in] triangleIndex Index of the triangle in the current mesh (= PrimitiveIndex()).
-    \param[in] attribs Intersection attributes provided by DXR.
-    \param[in] rayDir Ray direction.
-    \param[in] hitT Distance to hit point.
-    \param[in,out] rayDiff The ray differential used as input and output.
-    \param[out] dUVdx The differential of the texture coordinates in pixel coordinate x.
-    \param[out] dUVdy The differential of the texture coordinates in pixel coordinate y.
-    \return Interpolated vertex attributes.
-*/
-VertexData getVertexDataRayDiff(HitShaderParams hitParams, uint triangleIndex, BuiltInTriangleIntersectionAttributes attribs, in float3 rayDir, in float hitT,
-    inout RayDiff rayDiff, out float2 dUVdx, out float2 dUVdy)
-{
-    float3 barycentrics = float3(1.0 - attribs.barycentrics.x - attribs.barycentrics.y, attribs.barycentrics.x, attribs.barycentrics.y);
-    return gScene.getVertexDataRayDiff(hitParams.getGlobalHitID(), triangleIndex, barycentrics, rayDir, hitT, rayDiff, dUVdx, dUVdy);
 }
 
 /** Returns interpolated position on a triangle in world space for the previous frame.

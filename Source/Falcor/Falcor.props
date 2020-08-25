@@ -14,7 +14,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>$(FALCOR_CORE_DIRECTORY)\Falcor;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\nvapi;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\GLM;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\VulkanSDK\Include;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\RapidJson\include;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\pybind11\include;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\Python\include;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\WinPixEventRuntime\Include\WinPixEventRuntime;$(FALCOR_CORE_DIRECTORY)\Externals;$(FALCOR_CORE_DIRECTORY)\Externals\.packman;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(FALCOR_CORE_DIRECTORY)\Falcor;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\nvapi;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\GLM;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\VulkanSDK\Include;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\RapidJson\include;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\pybind11\include;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\Python\include;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\WinPixEventRuntime\Include\WinPixEventRuntime;$(FALCOR_CORE_DIRECTORY)\Externals;$(FALCOR_CORE_DIRECTORY)\Externals\.packman;$(FALCOR_CORE_DIRECTORY)\Externals\args;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_$(OutputType);_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;GLM_FORCE_DEPTH_ZERO_TO_ONE;$(FALCOR_BACKEND);_UNICODE;UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>

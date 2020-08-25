@@ -4,11 +4,11 @@ def render_graph_GBufferRaster():
     loadRenderPassLibrary("GBuffer.dll")
 
     g = RenderGraph("GBufferRaster")
-    g.addPass(RenderPass("GBufferRaster"), "GBufferRaster")
+    g.addPass(createPass("GBufferRaster"), "GBufferRaster")
 
     g.markOutput("GBufferRaster.posW")
     g.markOutput("GBufferRaster.normW")
-    g.markOutput("GBufferRaster.bitangentW")
+    g.markOutput("GBufferRaster.tangentW")
     g.markOutput("GBufferRaster.texC")
     g.markOutput("GBufferRaster.diffuseOpacity")
     g.markOutput("GBufferRaster.specRough")
