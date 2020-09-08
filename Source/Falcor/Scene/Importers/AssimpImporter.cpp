@@ -305,9 +305,9 @@ namespace Falcor
                     // GLTF2 already uses -Z view direction convention in Assimp, FBX does not
                     if (importMode != ImportMode::GLTF2) n.transform[2] = -n.transform[2];
                     nodeID = data.builder.addNode(n);
+                    pCamera->setNodeID(nodeID);
                     if (data.builder.isNodeAnimated(nodeID))
                     {
-                        pCamera->setNodeID(nodeID);
                         pCamera->setHasAnimation(true);
                         data.builder.setNodeInterpolationMode(nodeID, kCameraInterpolationMode, kCameraEnableWarping);
                     }
