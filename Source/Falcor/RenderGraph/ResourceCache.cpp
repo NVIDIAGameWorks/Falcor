@@ -143,6 +143,7 @@ namespace Falcor
         }
         else // *Buffer
         {
+            if (field.getType() == RenderPassReflection::Field::Type::TypedBuffer) format = field.getFormat() == ResourceFormat::Unknown ? params.format : field.getFormat();
             if (resolveBindFlags) bindFlags = Resource::BindFlags::UnorderedAccess | Resource::BindFlags::ShaderResource;
         }
         Resource::SharedPtr pResource;
@@ -151,6 +152,12 @@ namespace Falcor
         {
         case RenderPassReflection::Field::Type::RawBuffer:
             pResource = Buffer::create(width, bindFlags, Buffer::CpuAccess::None);
+            break;
+        case RenderPassReflection::Field::Type::StructuredBuffer:
+            pResource = Buffer::createStructured(height, width, bindFlags, Buffer::CpuAccess::None);
+            break;
+        case RenderPassReflection::Field::Type::TypedBuffer:
+            pResource = Buffer::createTyped(format, width, bindFlags, Buffer::CpuAccess::None);
             break;
         case RenderPassReflection::Field::Type::Texture1D:
             pResource = Texture::create1D(width, format, arraySize, mipLevels, nullptr, bindFlags);
