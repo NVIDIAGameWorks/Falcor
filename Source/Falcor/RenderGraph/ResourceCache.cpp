@@ -127,7 +127,7 @@ namespace Falcor
 
         ResourceFormat format = ResourceFormat::Unknown;
 
-        if (field.getType() != RenderPassReflection::Field::Type::RawBuffer)
+        if (!field.isBuffer())
         {
             format = field.getFormat() == ResourceFormat::Unknown ? params.format : field.getFormat();
             if (resolveBindFlags)
@@ -141,7 +141,7 @@ namespace Falcor
                 bindFlags |= mask;
             }
         }
-        else // RawBuffer
+        else // *Buffer
         {
             if (resolveBindFlags) bindFlags = Resource::BindFlags::UnorderedAccess | Resource::BindFlags::ShaderResource;
         }

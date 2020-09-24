@@ -102,6 +102,8 @@ namespace Falcor
             Type getType() const { return mType; }
             Visibility getVisibility() const { return mVisibility; }
 
+            bool isBuffer() const { return mType == Type::RawBuffer; }
+
             /** Overwrite previously unknown/unspecified fields with specified ones.
                 If a property is specified both in the current object, as well as the other field, an error will be logged and the current field will be undefined
             */
