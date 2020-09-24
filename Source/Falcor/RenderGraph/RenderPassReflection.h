@@ -170,6 +170,8 @@ namespace Falcor
     {
         switch (t)
         {
+        case Resource::Type::Buffer:
+            return RenderPassReflection::Field::Type::RawBuffer;
         case Resource::Type::Texture1D:
             return RenderPassReflection::Field::Type::Texture1D;
         case Resource::Type::Texture2D:
