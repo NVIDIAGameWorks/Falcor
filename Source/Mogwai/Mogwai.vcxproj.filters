@@ -52,7 +52,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Data\forward_renderer.py">
+    <None Include="Data\ForwardRenderer.py">
       <Filter>Data</Filter>
     </None>
     <None Include="Data\config.py">
