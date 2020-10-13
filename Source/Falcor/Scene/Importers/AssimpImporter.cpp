@@ -289,7 +289,7 @@ namespace Falcor
                 // Some importers don't provide the aspect ratio, use default for that case.
                 float aspectRatio = pAiCamera->mAspect != 0.f ? pAiCamera->mAspect : pCamera->getAspectRatio();
                 // Load focal length only when using GLTF2, use fixed 35mm for backwards compatibility with FBX files.
-                float focalLength = importMode == ImportMode::GLTF2 ? fovYToFocalLength(pAiCamera->mHorizontalFOV * 2 / aspectRatio, pCamera->getFrameHeight()) : 35.f;
+                float focalLength = importMode == ImportMode::GLTF2 ? fovYToFocalLength(pAiCamera->mHorizontalFOV / aspectRatio, pCamera->getFrameHeight()) : 35.f;
                 pCamera->setFocalLength(focalLength);
                 pCamera->setAspectRatio(aspectRatio);
                 pCamera->setDepthRange(pAiCamera->mClipPlaneNear, pAiCamera->mClipPlaneFar);
