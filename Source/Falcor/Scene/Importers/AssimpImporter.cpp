@@ -304,9 +304,9 @@ namespace Falcor
                     // GLTF2 has the view direction reversed.
                     if (importMode == ImportMode::GLTF2) n.transform[2] = -n.transform[2];
                     nodeID = data.builder.addNode(n);
+                    pCamera->setNodeID(nodeID);
                     if (data.builder.isNodeAnimated(nodeID))
                     {
-                        pCamera->setNodeID(nodeID);
                         pCamera->setHasAnimation(true);
                         data.builder.setNodeInterpolationMode(nodeID, kCameraInterpolationMode, kCameraEnableWarping);
                     }
