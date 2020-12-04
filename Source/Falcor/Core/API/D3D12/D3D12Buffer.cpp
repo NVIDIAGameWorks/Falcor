@@ -50,13 +50,14 @@ namespace Falcor
         bufDesc.SampleDesc.Count = 1;
         bufDesc.SampleDesc.Quality = 0;
         bufDesc.Width = size;
+        assert(bufDesc.Width > 0);
 
         D3D12_RESOURCE_STATES d3dState = getD3D12ResourceState(initState);
         ID3D12ResourcePtr pApiHandle;
         D3D12_HEAP_FLAGS heapFlags = is_set(bindFlags, ResourceBindFlags::Shared) ? D3D12_HEAP_FLAG_SHARED : D3D12_HEAP_FLAG_NONE;
         d3d_call(pDevice->CreateCommittedResource(&heapProps, heapFlags, &bufDesc, d3dState, nullptr, IID_PPV_ARGS(&pApiHandle)));
-        
-        // Map and upload data if needed
+        assert(pApiHandle);
+
         return pApiHandle;
     }
 

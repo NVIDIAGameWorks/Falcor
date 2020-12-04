@@ -27,6 +27,8 @@
  **************************************************************************/
 #include "Utils/Sampling/SampleGeneratorType.slangh"
 
+__exported import Utils.Sampling.SampleGeneratorInterface;
+
 /** The host sets the SAMPLE_GENERATOR_TYPE define to select sample generator.
 
     This code typedefs the chosen type to the type 'SampleGenerator'.
@@ -46,38 +48,3 @@
     import Utils.Sampling.UniformSampleGenerator;
     typedef UniformSampleGenerator SampleGenerator;
 #endif
-
-/** Convenience functions for generating 1D/2D/3D values in the range [0,1).
-
-    Note: These are global instead of member functions in the sample generator
-    interface, as there seems to be no way in Slang currently to specify default
-    implementations without duplicating the code into all classes that implement
-    the interace.
-*/
-
-float sampleNext1D(inout SampleGenerator sg)
-{
-    // Use upper 24 bits and divide by 2^24 to get a number u in [0,1).
-    // In floating-point precision this also ensures that 1.0-u != 0.0.
-    uint bits = sg.next();
-    return (bits >> 8) * 0x1p-24;
-}
-
-float2 sampleNext2D(inout SampleGenerator sg)
-{
-    float2 sample;
-    // Don't use the float2 initializer to ensure consistent order of evaluation.
-    sample.x = sampleNext1D(sg);
-    sample.y = sampleNext1D(sg);
-    return sample;
-}
-
-float3 sampleNext3D(inout SampleGenerator sg)
-{
-    float3 sample;
-    // Don't use the float3 initializer to ensure consistent order of evaluation.
-    sample.x = sampleNext1D(sg);
-    sample.y = sampleNext1D(sg);
-    sample.z = sampleNext1D(sg);
-    return sample;
-}

@@ -88,10 +88,10 @@ namespace Falcor
         bool mCaptureUI = false;
         bool mResetOnFirstFrame = false;
         float mStartTime = 0;
-        float mEndTime = FLT_MAX;
+        float mEndTime = 4.f;
 
         std::string mFilename;
-        float mBitrate = 4;
+        float mBitrate = 30.f;
         uint32_t mGopSize = 10;
     };
 }

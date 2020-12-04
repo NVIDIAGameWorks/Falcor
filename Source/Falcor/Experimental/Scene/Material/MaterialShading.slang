@@ -43,7 +43,7 @@
 import Scene.ShadingData;
 import Utils.Math.MathHelpers;
 import Utils.Color.ColorHelpers;
-__exported import Utils.Sampling.SampleGenerator;
+__exported import Utils.Sampling.SampleGeneratorInterface;
 __exported import Experimental.Scene.Material.BxDF;
 __exported import Experimental.Scene.Material.MaterialHelpers;
 
@@ -111,7 +111,7 @@ float3 evalBSDFCosine(const ShadingData sd, float3 L)
     \param[out] result Generated sample. Only valid if true is returned.
     \return True if a sample was generated, false otherwise.
 */
-bool sampleBSDF(const ShadingData sd, inout SampleGenerator sg, out BSDFSample result)
+bool sampleBSDF<S : ISampleGenerator>(const ShadingData sd, inout S sg, out BSDFSample result)
 {
     float3 wo = toLocal(sd.V, sd);
     float3 wi;
@@ -145,7 +145,7 @@ float evalPdfBSDF(const ShadingData sd, float3 L)
     \param[out] result Generated sample. Only valid if true is returned.
     \return True if a sample was generated, false otherwise.
 */
-bool sampleBSDF_Reference(const ShadingData sd, inout SampleGenerator sg, out BSDFSample result)
+bool sampleBSDF_Reference<S : ISampleGenerator>(const ShadingData sd, inout S sg, out BSDFSample result)
 {
     float3 wo = toLocal(sd.V, sd);
     float3 wi = sample_cosine_hemisphere_concentric(sampleNext2D(sg), result.pdf); // pdf = cos(theta) / pi
@@ -451,6 +451,7 @@ void sampleDiffuse(const ShadingData sd, const float2 u, out BSDFSample result)
     // The Disney diffuse is a Lambert times a Fresnel term to increase grazing retroreflection. The latter is not included in the pdf.
     // TODO: Derive sampling method that better approminates the Disney diffuse lobe.
     result.wi = sampleHemisphereCosine(sd, u, result.pdf);
+    result.lobe = (uint)LobeType::DiffuseReflection;
 
     // Check that L and V are in the positive hemisphere.
     float NdotL = dot(sd.N, result.wi);
@@ -463,7 +464,6 @@ void sampleDiffuse(const ShadingData sd, const float2 u, out BSDFSample result)
 
     // Compute weight. Note that NdotL cancels out by the pdf.
     result.weight = evalBSDFLobes(sd, result.wi, (uint)LobeType::DiffuseReflection) * M_PI;
-    result.lobe = (uint)LobeType::DiffuseReflection;
 }
 
 /** Evaluates the probability density function for the specular sampling strategy.
@@ -501,6 +501,7 @@ void sampleSpecular(const ShadingData sd, const float2 u, out BSDFSample result)
     float alpha = max(kMinGGXAlpha, sd.ggxAlpha);
     float VdotH, NdotH;
     result.wi = sampleNdfGGX_Walter(sd, u, alpha, result.pdf, VdotH, NdotH);
+    result.lobe = (uint)LobeType::SpecularReflection;
 
     // Check that L and V are in the positive hemisphere.
     float NdotL = dot(sd.N, result.wi);
@@ -527,7 +528,6 @@ void sampleSpecular(const ShadingData sd, const float2 u, out BSDFSample result)
     float3 F = evalFresnelSchlick(sd.specular, 1, VdotH);
     result.weight = F * (G * NdotL * VdotH * 4.f) / NdotH;
     //result.weight = evalBSDFCosine(sd, result.wi, (uint)LobeType::SpecularReflection) / result.pdf;
-    result.lobe = (uint)LobeType::SpecularReflection;
 }
 
 float getDiffuseProbability(const ShadingData sd)
@@ -562,7 +562,7 @@ float evalPdfBSDF(const ShadingData sd, float3 L)
     \param[out] result Generated sample. Only valid if true is returned.
     \return True if a sample was generated, false otherwise.
 */
-bool sampleBSDF(const ShadingData sd, inout SampleGenerator sg, out BSDFSample result)
+bool sampleBSDF<S : ISampleGenerator>(const ShadingData sd, inout S sg, out BSDFSample result)
 {
     // Draw uniform random numbers for lobe selection (1D) and sampling (2D).
     const float2 u = sampleNext2D(sg);
@@ -609,7 +609,7 @@ bool sampleBSDF(const ShadingData sd, inout SampleGenerator sg, out BSDFSample r
     \param[out] result Generated sample. Only valid if true is returned.
     \return True if a sample was generated, false otherwise.
 */
-bool sampleBSDF_Reference(const ShadingData sd, inout SampleGenerator sg, out BSDFSample result)
+bool sampleBSDF_Reference<S : ISampleGenerator>(const ShadingData sd, inout S sg, out BSDFSample result)
 {
     float pdf;
     float3 dir = sampleHemisphereCosine(sd, sampleNext2D(sg), pdf); // pdf = cos(theta) / pi

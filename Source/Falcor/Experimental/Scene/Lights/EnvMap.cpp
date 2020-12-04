@@ -43,6 +43,7 @@ namespace Falcor
         if (widgets.var("Rotation XYZ", rotation, -360.f, 360.f, 0.5f)) setRotation(rotation);
         widgets.var("Intensity", mData.intensity, 0.f, 1000000.f);
         widgets.var("Color tint", mData.tint, 0.f, 1.f);
+        widgets.text("EnvMap: " + mpEnvMap->getSourceFilename());
     }
 
     void EnvMap::setRotation(float3 degreesXYZ)
@@ -51,11 +52,7 @@ namespace Falcor
         {
             mRotation = degreesXYZ;
 
-            auto rotX = glm::eulerAngleX(glm::radians(mRotation.x));
-            auto rotY = glm::eulerAngleY(glm::radians(mRotation.y));
-            auto rotZ = glm::eulerAngleZ(glm::radians(mRotation.z));
-
-            auto transform = rotZ * rotY * rotX;
+            auto transform = glm::eulerAngleXYZ(glm::radians(mRotation.x), glm::radians(mRotation.y), glm::radians(mRotation.z));
 
             mData.transform = static_cast<float3x4>(transform);
             mData.invTransform = static_cast<float3x4>(glm::inverse(transform));
@@ -97,6 +94,11 @@ namespace Falcor
         return getChanges();
     }
 
+    uint64_t EnvMap::getMemoryUsageInBytes() const
+    {
+        return mpEnvMap ? mpEnvMap->getTextureSizeInBytes() : 0;
+    }
+
     EnvMap::EnvMap(const std::string& filename)
     {
         // Load environment map from file. Set it to generate mips and use linear color.
@@ -114,6 +116,7 @@ namespace Falcor
     SCRIPT_BINDING(EnvMap)
     {
         pybind11::class_<EnvMap, EnvMap::SharedPtr> envMap(m, "EnvMap");
+        envMap.def(pybind11::init(&EnvMap::create), "filename"_a);
         envMap.def_property_readonly("filename", &EnvMap::getFilename);
         envMap.def_property("rotation", &EnvMap::getRotation, &EnvMap::setRotation);
         envMap.def_property("intensity", &EnvMap::getIntensity, &EnvMap::setIntensity);

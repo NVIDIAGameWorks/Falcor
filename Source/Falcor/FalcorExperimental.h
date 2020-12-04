@@ -27,5 +27,6 @@
  **************************************************************************/
 #pragma once
 #include "Experimental/Scene/Lights/EnvMapSampler.h"
+#include "Experimental/Scene/Lights/EnvMapLighting.h"
 #include "Experimental/Scene/Lights/EmissiveLightSampler.h"
 #include "Experimental/Scene/Lights/EmissiveUniformSampler.h"

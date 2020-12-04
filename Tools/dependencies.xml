@@ -1,5 +1,5 @@
 <project toolsVersion="5.0">
-    <dependency name="python" linkPath=".packman/Python">
-        <package name="python" version="3.6.7-windows-x86_64" platforms="win" />
+    <dependency name="python" linkPath=".packman/python">
+        <package name="python" version="3.6.7-${platform}" platforms="windows-x86_64 linux-x86_64" />
     </dependency>
 </project>

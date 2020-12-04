@@ -60,6 +60,12 @@ namespace Falcor
         : Resource(Type::Buffer, bindFlags, size)
         , mCpuAccess(cpuAccess)
     {
+        // Check that buffer size is within 4GB limit. Larger buffers are currently not well supported in D3D12.
+        // TODO: Revisit this check in the future.
+        if (size > (1ull << 32))
+        {
+            logWarning("Creating GPU buffer of size " + std::to_string(size) + " bytes. Buffers above 4GB are not currently well supported.");
+        }
     }
 
     Buffer::SharedPtr Buffer::create(size_t size, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData)
@@ -67,12 +73,13 @@ namespace Falcor
         Buffer::SharedPtr pBuffer = SharedPtr(new Buffer(size, bindFlags, cpuAccess));
         pBuffer->apiInit(pInitData != nullptr);
         if (pInitData) pBuffer->setBlob(pInitData, 0, size);
+        pBuffer->mElementCount = uint32_t(size);
         return pBuffer;
     }
 
     Buffer::SharedPtr Buffer::createTyped(ResourceFormat format, uint32_t elementCount, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData)
     {
-        size_t size = elementCount * getFormatBytesPerBlock(format);
+        size_t size = (size_t)elementCount * getFormatBytesPerBlock(format);
         SharedPtr pBuffer = create(size, bindFlags, cpuAccess, pInitData);
         assert(pBuffer);
 
@@ -89,7 +96,7 @@ namespace Falcor
         const void* pInitData,
         bool createCounter)
     {
-        size_t size = structSize * elementCount;
+        size_t size = (size_t)structSize * elementCount;
         Buffer::SharedPtr pBuffer = create(size, bindFlags, cpuAccess, pInitData);
         assert(pBuffer);
 
@@ -320,6 +327,14 @@ namespace Falcor
     {
         if (!mpCBV) mpCBV = ConstantBufferView::create(std::static_pointer_cast<Buffer>(shared_from_this()));
         return mpCBV;
+    }
+
+    uint32_t Buffer::getElementSize() const
+    {
+        if (mStructSize != 0) return mStructSize;
+        if (mFormat == ResourceFormat::Unknown) return 1;
+
+        throw std::exception("Buffer::getElementSize() - inferring element size from resourec format is unimplemented");
     }
 
     SCRIPT_BINDING(Buffer)

@@ -71,9 +71,10 @@ namespace Falcor
                 updateGraphStrings(graphName, filename, funcName);
                 std::string custom;
                 if (funcName.size()) custom += "\n" + graphName + '=' + funcName + "()";
+                // TODO: Rendergraph scripts should be executed in an isolated scripting context.
                 runScriptFile(filename, custom);
 
-                auto pGraph = Scripting::getGlobalContext().getObject<RenderGraph::SharedPtr>(graphName);
+                auto pGraph = Scripting::getDefaultContext().getObject<RenderGraph::SharedPtr>(graphName);
                 if (!pGraph) throw("Unspecified error");
 
                 pGraph->setName(graphName);
@@ -92,8 +93,9 @@ namespace Falcor
         {
             try
             {
+                // TODO: Rendergraph scripts should be executed in an isolated scripting context.
                 runScriptFile(filename, {});
-                auto scriptObj = Scripting::getGlobalContext().getObjects<RenderGraph::SharedPtr>();
+                auto scriptObj = Scripting::getDefaultContext().getObjects<RenderGraph::SharedPtr>();
                 std::vector<RenderGraph::SharedPtr> res;
                 res.reserve(scriptObj.size());
 

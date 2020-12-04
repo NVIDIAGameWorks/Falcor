@@ -37,7 +37,8 @@ namespace Mogwai
         static UniquePtr create(Renderer* pRenderer);
 
         virtual void beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
-        virtual void scriptBindings(Bindings& bindings) override;
+        virtual void registerScriptBindings(pybind11::module& m) override;
+        virtual std::string getScriptVar() const override;
 
     protected:
         TimingCapture(Renderer *pRenderer) : Extension(pRenderer, "Timing Capture") {}

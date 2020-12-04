@@ -28,7 +28,7 @@
 #include "HelloDXR.h"
 
 static const float4 kClearColor(0.38f, 0.52f, 0.10f, 1);
-static const std::string kDefaultScene = "Arcade/Arcade.fscene";
+static const std::string kDefaultScene = "Arcade/Arcade.pyscene";
 
 void HelloDXR::onGuiRender(Gui* pGui)
 {
@@ -56,7 +56,7 @@ void HelloDXR::loadScene(const std::string& filename, const Fbo* pTargetFbo)
     mpCamera = mpScene->getCamera();
 
     // Update the controllers
-    float radius = length(mpScene->getSceneBounds().extent);
+    float radius = mpScene->getSceneBounds().radius();
     mpScene->setCameraSpeed(radius * 0.25f);
     float nearZ = std::max(0.1f, radius / 750.0f);
     float farZ = radius * 10;

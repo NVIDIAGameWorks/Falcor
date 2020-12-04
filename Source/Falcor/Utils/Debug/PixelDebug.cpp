@@ -146,6 +146,7 @@ namespace Falcor
         if (mEnabled)
         {
             widget.var("Selected pixel", mSelectedPixel);
+            widget.checkbox("Enable logging", mEnableLogging);
         }
 
         // Fetch stats and show log if available.
@@ -199,7 +200,10 @@ namespace Falcor
                 }
             }
 
-            widget.text(oss.str().c_str());
+            widget.text(oss.str());
+
+            bool isEmpty = mPixelLogData.empty() && mAssertLogData.empty();
+            if (mEnableLogging && !isEmpty) logInfo("\n" + oss.str());
         }
     }
 

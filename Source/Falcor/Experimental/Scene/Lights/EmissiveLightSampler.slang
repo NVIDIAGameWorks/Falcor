@@ -27,6 +27,7 @@
  **************************************************************************/
 #include "EmissiveLightSamplerType.slangh"
 __exported import Experimental.Scene.Lights.EmissiveLightSamplerInterface;
+__exported import Utils.Sampling.SampleGeneratorInterface;
 
 /** The host sets the _EMISSIVE_LIGHT_SAMPLER_TYPE define to select sampler.
 
@@ -35,29 +36,44 @@ __exported import Experimental.Scene.Lights.EmissiveLightSamplerInterface;
     size of the 'EmissiveLightSampler' type may vary depending on the type.
 */
 
-#if defined(_EMISSIVE_LIGHT_SAMPLER_TYPE) && _EMISSIVE_LIGHT_SAMPLER_TYPE == EMISSIVE_LIGHT_SAMPLER_UNIFORM
+// If _EMISSIVE_LIGHT_SAMPLER_TYPE is not defined, define it to the null sampler.
+// This case happens if the user imports EmissiveLightSampler.slang but doesn't use it.
+// This is a workaround to avoid compiler warnings since Slang warns on undefined
+// preprocessor defines even if they are inside #ifdef .. #endif blocks.
+#ifndef _EMISSIVE_LIGHT_SAMPLER_TYPE
+#define _EMISSIVE_LIGHT_SAMPLER_TYPE EMISSIVE_LIGHT_SAMPLER_NULL
+#endif
+
+#if _EMISSIVE_LIGHT_SAMPLER_TYPE == EMISSIVE_LIGHT_SAMPLER_UNIFORM
     import Experimental.Scene.Lights.EmissiveUniformSampler;
     typedef EmissiveUniformSampler EmissiveLightSampler;
 
-#elif defined(_EMISSIVE_LIGHT_SAMPLER_TYPE) && _EMISSIVE_LIGHT_SAMPLER_TYPE == EMISSIVE_LIGHT_SAMPLER_LIGHT_BVH
+#elif _EMISSIVE_LIGHT_SAMPLER_TYPE == EMISSIVE_LIGHT_SAMPLER_LIGHT_BVH
     import Experimental.Scene.Lights.LightBVHSampler;
     typedef LightBVHSampler EmissiveLightSampler;
 
-#elif defined(_EMISSIVE_LIGHT_SAMPLER_TYPE)
-    // Compile-time error if _EMISSIVE_LIGHT_SAMPLER_TYPE is an invalid type.
-    #error _EMISSIVE_LIGHT_SAMPLER_TYPE is not set to a supported type. See EmissiveLightSamplerType.slangh.
+#elif _EMISSIVE_LIGHT_SAMPLER_TYPE == EMISSIVE_LIGHT_SAMPLER_POWER
+    import Experimental.Scene.Lights.EmissivePowerSampler;
+    typedef EmissivePowerSampler EmissiveLightSampler;
 
-#else
-    // If _EMISSIVE_LIGHT_SAMPLER_TYPE is not defined, declare a null sampler.
-    // This case happens if the user imports EmissiveLightSampler.slang but doesn't use it.
+#elif _EMISSIVE_LIGHT_SAMPLER_TYPE == EMISSIVE_LIGHT_SAMPLER_NULL
+
+    /** Null sampler.
+        This is provided so that implementations always have a valid sampler struct.
+    */
     struct NullEmissiveSampler : IEmissiveLightSampler
     {
-        bool sampleLight(const float3 posW, const float3 normalW, inout SampleGenerator sg, out TriangleLightSample ls)
+        bool sampleLight<S : ISampleGenerator>(const float3 posW, const float3 normalW, const bool onSurface, inout S sg, out TriangleLightSample ls)
         {
             return false;
         }
 
-        float evalPdf(float3 posW, float3 normalW, const TriangleHit hit)
+        float evalTriangleSelectionPdf(const float3 posW, const float3 normalW, const bool onSurface, const uint triangleIndex)
+        {
+            return 0.f;
+        }
+
+        float evalPdf(const float3 posW, const float3 normalW, const bool onSurface, const TriangleHit hit)
         {
             return 0.f;
         }
@@ -65,5 +81,9 @@ __exported import Experimental.Scene.Lights.EmissiveLightSamplerInterface;
         int _dummy; // Dummy variable to make sure Slang doesn't remove the struct.
     };
     typedef NullEmissiveSampler EmissiveLightSampler;
+
+#else
+    // Compile-time error if _EMISSIVE_LIGHT_SAMPLER_TYPE is an invalid type.
+    #error _EMISSIVE_LIGHT_SAMPLER_TYPE is not set to a supported type. See EmissiveLightSamplerType.slangh.
 
 #endif

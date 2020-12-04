@@ -201,6 +201,20 @@ namespace
         return dir;
     }
 
+    /** Returns the volume of a bounding box.
+        \param[in] epsilon Replace dimensions that are zero by this value.
+        \return the volume of the bounding box if it is valid, -inf otherwise.
+    */
+    float aabbVolume(const AABB& bb, float epsilon)
+    {
+        if (bb.valid() == false)
+        {
+            return -std::numeric_limits<float>::infinity();
+        }
+        const float3 dims = glm::max(float3(epsilon), bb.extent());
+        return dims.x * dims.y * dims.z;
+    }
+
     const Gui::DropdownList kSplitHeuristicList =
     {
         { (uint32_t)LightBVHBuilder::SplitHeuristic::Equal, "Equal" },
@@ -315,8 +329,7 @@ namespace Falcor
         optionsChanged |= widget.var("Max triangle count per leaf", options.maxTriangleCountPerLeaf, 1u, kMaxLeafTriangleCount);
         optionsChanged |= widget.dropdown("Split heuristic", kSplitHeuristicList, (uint32_t&)options.splitHeuristicSelection);
 
-        Gui::Group splitGroup(widget, "Split Options", true);
-        if (splitGroup.open())
+        if (auto splitGroup = widget.group("Split Options", true))
         {
             optionsChanged |= splitGroup.var("Bin count", options.binCount);
             optionsChanged |= splitGroup.checkbox("Create leaves ASAP", options.createLeavesASAP);
@@ -338,8 +351,6 @@ namespace Falcor
                 optionsChanged |= splitGroup.checkbox("Use pre-integration", options.usePreintegration);
                 optionsChanged |= splitGroup.checkbox("Use lighting cones", options.useLightingCones);
             }
-
-            splitGroup.release();
         }
 
         return optionsChanged;
@@ -355,7 +366,7 @@ namespace Falcor
 
         // Compute the AABB and total flux of the node.
         float nodeFlux = 0.f;
-        BBox nodeBounds;
+        AABB nodeBounds;
         for (uint32_t dataIndex = triangleRange.begin; dataIndex < triangleRange.end; ++dataIndex)
         {
             nodeBounds |= data.trianglesData[dataIndex].bounds;
@@ -374,7 +385,7 @@ namespace Falcor
             assert(triangleRange.begin < splitResult.triangleIndex && splitResult.triangleIndex < triangleRange.end);
 
             // Sort the centroids and update the lists accordingly.
-            auto comp = [dim = splitResult.axis](const TriangleSortData& d1, const TriangleSortData& d2) { return d1.bounds.centroid()[dim] < d2.bounds.centroid()[dim]; };
+            auto comp = [dim = splitResult.axis](const TriangleSortData& d1, const TriangleSortData& d2) { return d1.bounds.center()[dim] < d2.bounds.center()[dim]; };
             std::nth_element(std::begin(data.trianglesData) + triangleRange.begin, std::begin(data.trianglesData) + splitResult.triangleIndex, std::begin(data.trianglesData) + triangleRange.end, comp);
 
             // Allocate internal node.
@@ -497,10 +508,10 @@ namespace Falcor
         return coneDirection;
     }
 
-    LightBVHBuilder::SplitResult LightBVHBuilder::computeSplitWithEqual(const BuildingData& /*data*/, const Range& triangleRange, const BBox& nodeBounds, const Options& /*parameters*/)
+    LightBVHBuilder::SplitResult LightBVHBuilder::computeSplitWithEqual(const BuildingData& /*data*/, const Range& triangleRange, const AABB& nodeBounds, const Options& /*parameters*/)
     {
         // Find the largest dimension.
-        float3 dimensions = nodeBounds.dimensions();
+        float3 dimensions = nodeBounds.extent();
         uint32_t dimension = dimensions[2] >= dimensions[0] && dimensions[2] >= dimensions[1] ?
             2 : (dimensions[1] >= dimensions[0] ? 1 : 0);
 
@@ -516,22 +527,22 @@ namespace Falcor
         If the node is empty (invalid bounds), the cost evaluates to zero.
         See Eqn 15 in Moreau and Clarberg, "Importance Sampling of Many Lights on the GPU", Ray Tracing Gems, Ch. 18, 2019.
     */
-    static float evalSAH(const BBox& bounds, const uint32_t triangleCount, const LightBVHBuilder::Options& parameters)
+    static float evalSAH(const AABB& bounds, const uint32_t triangleCount, const LightBVHBuilder::Options& parameters)
     {
-        float aabbCost = bounds.valid() ? (parameters.useVolumeOverSA ? bounds.volume(parameters.volumeEpsilon) : bounds.surfaceArea()) : 0.f;
+        float aabbCost = bounds.valid() ? (parameters.useVolumeOverSA ? aabbVolume(bounds, parameters.volumeEpsilon) : bounds.area()) : 0.f;
         float cost = aabbCost * (float)triangleCount;
         assert(cost >= 0.f && !std::isnan(cost) && !std::isinf(cost));
         return cost;
     }
 
-    LightBVHBuilder::SplitResult LightBVHBuilder::computeSplitWithBinnedSAH(const BuildingData& data, const Range& triangleRange, const BBox& nodeBounds, const Options& parameters)
+    LightBVHBuilder::SplitResult LightBVHBuilder::computeSplitWithBinnedSAH(const BuildingData& data, const Range& triangleRange, const AABB& nodeBounds, const Options& parameters)
     {
         std::pair<float, SplitResult> overallBestSplit = std::make_pair(std::numeric_limits<float>::infinity(), SplitResult());
         assert(!overallBestSplit.second.isValid());
 
         struct Bin
         {
-            BBox bounds = BBox();
+            AABB bounds;
             uint32_t triangleCount = 0;
 
             Bin() = default;
@@ -560,7 +571,7 @@ namespace Falcor
                 float bmin = nodeBounds.minPoint[dimension], bmax = nodeBounds.maxPoint[dimension];
                 assert(bmin < bmax);
                 float scale = (float)parameters.binCount / (bmax - bmin);
-                float p = td.bounds.centroid()[dimension];
+                float p = td.bounds.center()[dimension];
                 assert(bmin <= p && p <= bmax);
                 return std::min((uint32_t)((p - bmin) * scale), parameters.binCount - 1);
             };
@@ -618,7 +629,7 @@ namespace Falcor
         if (parameters.splitAlongLargest)
         {
             // Find the largest dimension.
-            float3 dimensions = nodeBounds.dimensions();
+            float3 dimensions = nodeBounds.extent();
             uint32_t largestDimension = dimensions[2] >= dimensions[0] && dimensions[2] >= dimensions[1] ?
                 2 : (dimensions[1] >= dimensions[0] && dimensions[1] >= dimensions[2] ? 1 : 0);
 
@@ -668,10 +679,10 @@ namespace Falcor
         If the node is empty (invalid bounds), the cost evaluates to zero.
         See Eqn 16 in Moreau and Clarberg, "Importance Sampling of Many Lights on the GPU", Ray Tracing Gems, Ch. 18, 2019.
     */
-    static float evalSAOH(const BBox& bounds, const float flux, const float cosTheta, const LightBVHBuilder::Options& parameters)
+    static float evalSAOH(const AABB& bounds, const float flux, const float cosTheta, const LightBVHBuilder::Options& parameters)
     {
         float fluxCost = parameters.usePreintegration ? flux : 1.0f;
-        float aabbCost = bounds.valid() ? (parameters.useVolumeOverSA ? bounds.volume(parameters.volumeEpsilon) : bounds.surfaceArea()) : 0.f;
+        float aabbCost = bounds.valid() ? (parameters.useVolumeOverSA ? aabbVolume(bounds, parameters.volumeEpsilon) : bounds.area()) : 0.f;
         float theta = cosTheta != kInvalidCosConeAngle ? safeACos(cosTheta) : glm::pi<float>();
         float orientationCost = parameters.useLightingCones ? computeOrientationCost(theta) : 1.0f;
         float cost = fluxCost * aabbCost * orientationCost;
@@ -679,19 +690,19 @@ namespace Falcor
         return cost;
     }
 
-    LightBVHBuilder::SplitResult LightBVHBuilder::computeSplitWithBinnedSAOH(const BuildingData& data, const Range& triangleRange, const BBox& nodeBounds, const Options& parameters)
+    LightBVHBuilder::SplitResult LightBVHBuilder::computeSplitWithBinnedSAOH(const BuildingData& data, const Range& triangleRange, const AABB& nodeBounds, const Options& parameters)
     {
         std::pair<float, SplitResult> overallBestSplit = std::make_pair(std::numeric_limits<float>::infinity(), SplitResult());
         assert(!overallBestSplit.second.isValid());
 
         // Find the largest dimension.
-        float3 dimensions = nodeBounds.dimensions();
+        float3 dimensions = nodeBounds.extent();
         uint32_t largestDimension = dimensions[2] >= dimensions[0] && dimensions[2] >= dimensions[1] ?
             2 : (dimensions[1] >= dimensions[0] && dimensions[1] >= dimensions[2] ? 1 : 0);
 
         struct Bin
         {
-            BBox bounds = BBox();
+            AABB bounds;
             uint32_t triangleCount = 0;
             float flux = 0.0f;
             float3 coneDirection = float3(0.0f);
@@ -730,7 +741,7 @@ namespace Falcor
                 float w = bmax - bmin;
                 assert(w >= 0.f); // The node bounds can be zero if all primitives are axis-aligned and coplanar
                 float scale = w > FLT_MIN ? (float)parameters.binCount / w : 0.f;
-                float p = td.bounds.centroid()[dimension];
+                float p = td.bounds.center()[dimension];
                 assert(bmin <= p && p <= bmax);
                 return std::min((uint32_t)((p - bmin) * scale), parameters.binCount - 1);
             };

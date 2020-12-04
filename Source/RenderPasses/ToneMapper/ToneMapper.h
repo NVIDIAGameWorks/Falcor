@@ -96,7 +96,6 @@ private:
     void updateWhiteBalanceTransform();
     void updateColorTransform();
 
-    void updateCameraSettings();
     void updateExposureValue();
 
     FullScreenPass::SharedPtr mpToneMapPass;

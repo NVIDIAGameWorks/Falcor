@@ -161,7 +161,6 @@ ToneMapper::SharedPtr ToneMapper::create(RenderContext* pRenderContext, const Di
     {
         if (key == kExposureCompensation) pTM->setExposureCompensation(value);
         else if (key == kAutoExposure) pTM->setAutoExposure(value);
-        else if (key == kExposureValue) pTM->setExposureValue(value);
         else if (key == kFilmSpeed) pTM->setFilmSpeed(value);
         else if (key == kWhiteBalance) pTM->setWhiteBalance(value);
         else if (key == kWhitePoint) pTM->setWhitePoint(value);
@@ -184,7 +183,6 @@ Dictionary ToneMapper::getScriptingDictionary()
     if (mOutputFormat != ResourceFormat::Unknown) d[kOutputFormat] = mOutputFormat;
     d[kExposureCompensation] = mExposureCompensation;
     d[kAutoExposure] = mAutoExposure;
-    d[kExposureValue] = mExposureValue;
     d[kFilmSpeed] = mFilmSpeed;
     d[kWhiteBalance] = mWhiteBalance;
     d[kWhitePoint] = mWhitePoint;
@@ -289,33 +287,6 @@ void ToneMapper::createLuminanceFbo(const Texture::SharedPtr& pSrc)
     }
 }
 
-// Update camera settings based on EV and exposure mode
-void ToneMapper::updateCameraSettings()
-{
-    if (mExposureMode == ExposureMode::AperturePriority)
-    {
-        // Set shutter based on EV and aperture
-        mShutter = std::pow(2.f, mExposureValue) / (mFNumber * mFNumber);
-        // Clamp to plausible value
-        mShutter = glm::clamp(mShutter, kShutterMin, kShutterMax);
-        // Recompute EV based on clamped shutter
-        updateExposureValue();
-    }
-    else if (mExposureMode == ExposureMode::ShutterPriority)
-    {
-        // Set aperture based on EV and shutter
-        mFNumber = std::sqrt(std::pow(2.f, mExposureValue) / mShutter);
-        // Clamp to plausible value
-        mFNumber = glm::clamp(mFNumber, kFNumberMin, kFNumberMax);
-        // Recompute EV based on clamped aperture
-        updateExposureValue();
-    }
-    else
-    {
-        should_not_get_here();
-    }
-}
-
 // Set EV based on fNumber and shutter
 void ToneMapper::updateExposureValue()
 {
@@ -413,7 +384,25 @@ void ToneMapper::setAutoExposure(bool autoExposure)
 void ToneMapper::setExposureValue(float exposureValue)
 {
     mExposureValue = glm::clamp(exposureValue, kExposureValueMin, kExposureValueMax);
-    updateCameraSettings();
+
+    switch (mExposureMode)
+    {
+    case ExposureMode::AperturePriority:
+        // Set shutter based on EV and aperture.
+        mShutter = std::pow(2.f, mExposureValue) / (mFNumber * mFNumber);
+        mShutter = glm::clamp(mShutter, kShutterMin, kShutterMax);
+        break;
+    case ExposureMode::ShutterPriority:
+        // Set aperture based on EV and shutter.
+        mFNumber = std::sqrt(std::pow(2.f, mExposureValue) / mShutter);
+        mFNumber = glm::clamp(mFNumber, kFNumberMin, kFNumberMax);
+        break;
+    default:
+        should_not_get_here();
+    }
+
+    updateExposureValue();
+
     mUpdateToneMapPass = true;
 }
 

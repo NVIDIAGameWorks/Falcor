@@ -86,13 +86,16 @@ struct PackedEmissiveTriangle
 
     uint encodeTexCoord(float2 t) CONST_FUNCTION
     {
-        uint2 c = f32tof16(t);
-        return (c.y << 16) | c.x;
+        uint x = f32tof16(t.x);
+        uint y = f32tof16(t.y);
+        return (y << 16) | x;
     }
 
     float2 decodeTexCoord(uint p) CONST_FUNCTION
     {
-        return f16tof32(uint2(p & 0xffff, p >> 16));
+        float x = f16tof32(p & 0xffff);
+        float y = f16tof32(p >> 16);
+        return float2(x, y);
     }
 
 #ifndef HOST_CODE

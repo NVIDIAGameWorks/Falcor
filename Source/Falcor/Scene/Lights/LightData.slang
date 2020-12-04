@@ -41,10 +41,10 @@ enum class LightType
 {
     Point,          ///< Point light source, can be a spot light if its opening angle is < 2pi
     Directional,    ///< Directional light source
-    Rect,           ///< Quad shaped area light source
-    Sphere,         ///< Spherical area light source
-    Disc,           ///< Disc shaped area light source
     Distant,        ///< Distant light that subtends a non-zero solid angle
+    Rect,           ///< Quad shaped area light source
+    Disc,           ///< Disc shaped area light source
+    Sphere,         ///< Spherical area light source
 };
 
 /** This is a host/device structure that describes analytic light sources.

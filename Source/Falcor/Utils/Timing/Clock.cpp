@@ -293,13 +293,13 @@ namespace Falcor
     std::string Clock::getScript(const std::string& var) const
     {
         std::string s;
-        s += Scripting::makeSetProperty(var, kTime, 0);
-        s += Scripting::makeSetProperty(var, kFramerate, mFramerate);
-        if (mExitTime) s += Scripting::makeSetProperty(var, kExitTime, mExitTime);
-        if (mExitFrame) s += Scripting::makeSetProperty(var, kExitFrame, mExitFrame);
+        s += ScriptWriter::makeSetProperty(var, kTime, 0);
+        s += ScriptWriter::makeSetProperty(var, kFramerate, mFramerate);
+        if (mExitTime) s += ScriptWriter::makeSetProperty(var, kExitTime, mExitTime);
+        if (mExitFrame) s += ScriptWriter::makeSetProperty(var, kExitFrame, mExitFrame);
         s += std::string("# If ") + kFramerate + " is not zero, you can use the frame property to set the start frame\n";
-        s += "# " + Scripting::makeSetProperty(var, kFrame, 0);
-        if (mPaused) s += Scripting::makeMemberFunc(var, kPause);
+        s += "# " + ScriptWriter::makeSetProperty(var, kFrame, 0);
+        if (mPaused) s += ScriptWriter::makeMemberFunc(var, kPause);
         return s;
     }
 }

@@ -31,7 +31,7 @@
 
 namespace Falcor
 {
-    static const Gui::DropdownList kCodecID = 
+    static const Gui::DropdownList kCodecID =
     {
         { (uint32_t)VideoEncoder::Codec::Raw, std::string("Uncompressed") },
         { (uint32_t)VideoEncoder::Codec::H264, std::string("H.264") },
@@ -73,16 +73,22 @@ namespace Falcor
 
         if (codecOnly) return;
 
-        w.checkbox("Capture UI", mCaptureUI);
-        w.tooltip("Check this box if you want the GUI recorded");
-        w.checkbox("Reset rendering", mResetOnFirstFrame);
-        w.tooltip("Check this box if you want the rendering to be reset for the first frame, for example to reset temporal accumulation");
-        w.checkbox("Use Time-Range", mUseTimeRange);
-        if (mUseTimeRange)
         {
-            auto g = w.group("Time Range");
-            g.var("Start Time", mStartTime, 0.f, FLT_MAX, 0.001f);
-            g.var("End Time", mEndTime, 0.f, FLT_MAX, 0.001f);
+            auto g = w.group("Capture Options", true);
+
+            g.checkbox("Capture UI", mCaptureUI);
+            g.tooltip("Check this box if you want the GUI recorded");
+
+            g.checkbox("Reset rendering", mResetOnFirstFrame);
+            g.tooltip("Check this box if you want the rendering to be reset for the first frame, for example to reset temporal accumulation");
+
+            g.checkbox("Use Time-Range", mUseTimeRange);
+            if (mUseTimeRange)
+            {
+                auto g = w.group("Time Range", true);
+                g.var("Start Time", mStartTime, 0.f, FLT_MAX, 0.001f);
+                g.var("End Time", mEndTime, 0.f, FLT_MAX, 0.001f);
+            }
         }
 
         if (mStartCB && w.button("Start Recording")) startCapture();

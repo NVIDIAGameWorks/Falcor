@@ -66,7 +66,7 @@ namespace Falcor
         {
         public:
             virtual void handleWindowSizeChange() = 0;
-            virtual void renderFrame() = 0;
+            virtual void handleRenderFrame() = 0;
             virtual void handleKeyboardEvent(const KeyboardEvent& keyEvent) = 0;
             virtual void handleMouseEvent(const MouseEvent& mouseEvent) = 0;
             virtual void handleDroppedFile(const std::string& filename) = 0;

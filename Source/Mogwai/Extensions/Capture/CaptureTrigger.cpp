@@ -168,9 +168,8 @@ namespace Mogwai
         mBaseFilename = baseFilename;
     }
 
-    void CaptureTrigger::scriptBindings(Bindings& bindings)
+    void CaptureTrigger::registerScriptBindings(pybind11::module& m)
     {
-        auto& m = bindings.getModule();
         if (pybind11::hasattr(m, "CaptureTrigger")) return;
 
         pybind11::class_<CaptureTrigger> captureTrigger(m, "CaptureTrigger");
@@ -183,11 +182,11 @@ namespace Mogwai
         captureTrigger.def_property(kBaseFilename.c_str(), &CaptureTrigger::getBaseFilename, &CaptureTrigger::setBaseFilename);
     }
 
-    std::string CaptureTrigger::getScript(const std::string& var)
+    std::string CaptureTrigger::getScript(const std::string& var) const
     {
         std::string s;
-        s += Scripting::makeSetProperty(var, kOutputDir, Scripting::getFilenameString(mOutputDir, false));
-        s += Scripting::makeSetProperty(var, kBaseFilename, mBaseFilename);
+        s += ScriptWriter::makeSetProperty(var, kOutputDir, ScriptWriter::getFilenameString(mOutputDir, false));
+        s += ScriptWriter::makeSetProperty(var, kBaseFilename, mBaseFilename);
         return s;
     }
 

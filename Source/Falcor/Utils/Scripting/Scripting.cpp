@@ -34,6 +34,7 @@ namespace Falcor
 {
     const FileDialogFilterVec Scripting::kFileExtensionFilters = { { "py", "Script Files"} };
     bool Scripting::sRunning = false;
+    std::unique_ptr<Scripting::Context> Scripting::sDefaultContext;
 
     bool Scripting::start()
     {
@@ -50,7 +51,9 @@ namespace Falcor
             try
             {
                 pybind11::initialize_interpreter();
-                pybind11::exec("from falcor import *");
+                sDefaultContext.reset(new Context());
+                // Import falcor into default scripting context.
+                Scripting::runScript("from falcor import *");
             }
             catch (const std::exception& e)
             {
@@ -67,8 +70,20 @@ namespace Falcor
         if (sRunning)
         {
             sRunning = false;
+            sDefaultContext.reset();
             pybind11::finalize_interpreter();
         }
+    }
+
+    Scripting::Context& Scripting::getDefaultContext()
+    {
+        assert(sDefaultContext);
+        return *sDefaultContext;
+    }
+
+    Scripting::Context Scripting::getCurrentContext()
+    {
+        return Context(pybind11::globals());
     }
 
     class RedirectStream
@@ -100,42 +115,42 @@ namespace Falcor
         pybind11::object mBuffer;
     };
 
-    static std::string runScript(const std::string& script, pybind11::dict& locals)
+    static Scripting::RunResult runScript(const std::string& script, pybind11::dict& globals, bool captureOutput)
     {
-        RedirectStream rs;
-        pybind11::exec(script.c_str(), pybind11::globals(), locals);
-        return rs;
+        Scripting::RunResult result;
+
+        if (captureOutput)
+        {
+            RedirectStream rstdout("stdout");
+            RedirectStream rstderr("stderr");
+            pybind11::exec(script.c_str(), globals);
+            result.out = rstdout;
+            result.err = rstderr;
+        }
+        else
+        {
+            pybind11::exec(script.c_str(), globals);
+        }
+
+        return result;
     }
 
-    std::string Scripting::runScript(const std::string& script)
+    Scripting::RunResult Scripting::runScript(const std::string& script, Context& context, bool captureOutput)
     {
-        auto ref = pybind11::globals();
-        return Falcor::runScript(script, ref);
+        return Falcor::runScript(script, context.mGlobals, captureOutput);
     }
 
-    std::string Scripting::runScript(const std::string& script, Context& context)
+    Scripting::RunResult Scripting::runScriptFromFile(const std::string& filename, Context& context, bool captureOutput)
     {
-        return Falcor::runScript(script, context.mLocals);
-    }
-
-    Scripting::Context Scripting::getGlobalContext()
-    {
-        Context c;
-        c.mLocals = pybind11::globals();
-        return c;
-    }
-
-    std::string Scripting::runScriptFromFile(const std::string& filename, Context& context)
-    {
-        if (std::filesystem::exists(filename)) return Scripting::runScript(readFile(filename), context);
+        if (std::filesystem::exists(filename)) return Scripting::runScript(readFile(filename), context, captureOutput);
         throw std::exception(std::string("Failed to run script. Can't find the file '" + filename + "'.").c_str());
     }
 
-    std::string Scripting::interpretScript(const std::string& script)
+    std::string Scripting::interpretScript(const std::string& script, Context& context)
     {
         pybind11::module code = pybind11::module::import("code");
         pybind11::object InteractiveInterpreter = code.attr("InteractiveInterpreter");
-        auto interpreter = InteractiveInterpreter(pybind11::globals());
+        auto interpreter = InteractiveInterpreter(context.mGlobals);
         auto runsource = interpreter.attr("runsource");
 
         RedirectStream rstdout("stdout");

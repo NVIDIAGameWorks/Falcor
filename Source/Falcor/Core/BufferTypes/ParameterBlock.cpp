@@ -158,11 +158,12 @@ namespace Falcor
             return pResource->shared_from_this();
         }
 
-        const std::array<DescriptorSet::Type, 3> kRootSrvDescriptorTypes =
+        const std::array<DescriptorSet::Type, 4> kRootSrvDescriptorTypes =
         {
             DescriptorSet::Type::RawBufferSrv,
             DescriptorSet::Type::TypedBufferSrv,
             DescriptorSet::Type::StructuredBufferSrv,
+            DescriptorSet::Type::AccelerationStructureSrv,
         };
 
         const std::array<DescriptorSet::Type, 3> kRootUavDescriptorTypes =
@@ -172,12 +173,13 @@ namespace Falcor
             DescriptorSet::Type::StructuredBufferUav,
         };
 
-        const std::array<DescriptorSet::Type, 4> kSrvDescriptorTypes =
+        const std::array<DescriptorSet::Type, 5> kSrvDescriptorTypes =
         {
             DescriptorSet::Type::TextureSrv,
             DescriptorSet::Type::RawBufferSrv,
             DescriptorSet::Type::TypedBufferSrv,
             DescriptorSet::Type::StructuredBufferSrv,
+            DescriptorSet::Type::AccelerationStructureSrv,
         };
 
         const std::array<DescriptorSet::Type, 4> kUavDescriptorTypes =
@@ -247,7 +249,18 @@ namespace Falcor
         }
     }
 
-    ParameterBlock::~ParameterBlock() = default;
+    ParameterBlock::~ParameterBlock()
+    {
+#if _ENABLE_CUDA
+        if (mUnderlyingCUDABuffer.kind == CUDABufferKind::Host)
+        {
+            if (auto pData = mUnderlyingCUDABuffer.pData)
+            {
+                free(pData);
+            }
+        }
+#endif
+    }
 
     ParameterBlock::SharedPtr ParameterBlock::create(const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ReflectionType::SharedConstPtr& pElementType)
     {
@@ -292,6 +305,7 @@ namespace Falcor
             case DescriptorSet::Type::RawBufferSrv:
             case DescriptorSet::Type::TypedBufferSrv:
             case DescriptorSet::Type::StructuredBufferSrv:
+            case DescriptorSet::Type::AccelerationStructureSrv:
                 state.srvCount += range.count;
                 break;
             case DescriptorSet::Type::TextureUav:
@@ -433,28 +447,26 @@ namespace Falcor
 
     bool ParameterBlock::checkDescriptorSrvUavCommon(
         const BindLocation& bindLocation,
+        const Resource::SharedPtr& pResource,
         const std::variant<ShaderResourceView::SharedPtr, UnorderedAccessView::SharedPtr>& pView,
         const char* funcName) const
     {
 #if _LOG_ENABLED
         if (!checkResourceIndices(bindLocation, funcName)) return false;
 
-        auto& bindingInfo = mpReflector->getResourceRangeBindingInfo(bindLocation.getResourceRangeIndex());
+        const auto& bindingInfo = mpReflector->getResourceRangeBindingInfo(bindLocation.getResourceRangeIndex());
         bool isUav = std::holds_alternative<UnorderedAccessView::SharedPtr>(pView);
 
         if (bindingInfo.isDescriptorSet())
         {
-            if (!checkDescriptorType(bindLocation, isUav ? kUavDescriptorTypes : kSrvDescriptorTypes, funcName)) return false;
+            if (!(isUav ? checkDescriptorType(bindLocation, kUavDescriptorTypes, funcName) : checkDescriptorType(bindLocation, kSrvDescriptorTypes, funcName))) return false;
             // TODO: Check that resource type/dimension matches the descriptor type.
         }
         else if (bindingInfo.isRootDescriptor())
         {
-            if (!checkDescriptorType(bindLocation, isUav ? kRootUavDescriptorTypes : kRootSrvDescriptorTypes, funcName)) return false;
+            if (!(isUav ? checkDescriptorType(bindLocation, kRootUavDescriptorTypes, funcName) : checkDescriptorType(bindLocation, kRootSrvDescriptorTypes, funcName))) return false;
 
             // For root descriptors, also check that the resource is compatible.
-            auto pResource = isUav
-                ? getResourceFromView(std::get<UnorderedAccessView::SharedPtr>(pView).get())
-                : getResourceFromView(std::get<ShaderResourceView::SharedPtr>(pView).get());
             if (!checkRootDescriptorResourceCompatibility(pResource, funcName)) return false;
 
             // TODO: Check that view points to the start of the buffer.
@@ -609,23 +621,30 @@ namespace Falcor
 
     bool ParameterBlock::setResourceSrvUavCommon(const BindLocation& bindLoc, const Resource::SharedPtr& pResource, const char* funcName)
     {
-        size_t flatIndex = getFlatIndex(bindLoc);
+        // Check if the bind location is a root descriptor or a descriptor set.
+        // If binding to a descriptor set, we'll create a default view for the resource. For root descriptors, we don't need a view.
+        const auto& bindingInfo = mpReflector->getResourceRangeBindingInfo(bindLoc.getResourceRangeIndex());
+        const bool isRoot = bindingInfo.isRootDescriptor();
+        const size_t flatIndex = getFlatIndex(bindLoc);
+
+        const ReflectionResourceType* pResouceReflection = bindLoc.getType()->asResourceType();
+        assert(pResouceReflection && pResouceReflection->getDimensions() == bindingInfo.dimension);
 
         if (isUavType(bindLoc.getType()))
         {
-            auto pUAV = pResource ? pResource->getUAV() : UnorderedAccessView::getNullView();
-            if (!checkDescriptorSrvUavCommon(bindLoc, pUAV, funcName)) return false;
+            auto pUAV = (pResource && !isRoot) ? pResource->getUAV() : UnorderedAccessView::getNullView(bindingInfo.dimension);
+            if (!checkDescriptorSrvUavCommon(bindLoc, pResource, pUAV, funcName)) return false;
             auto& assignedUAV = mUAVs[flatIndex];
-            if (assignedUAV.pView == pUAV) return true;
+            if (assignedUAV.pResource == pResource && assignedUAV.pView == pUAV) return true;
             assignedUAV.pView = pUAV;
             assignedUAV.pResource = pResource;
         }
         else if (isSrvType(bindLoc.getType()))
         {
-            auto pSRV = pResource ? pResource->getSRV() : ShaderResourceView::getNullView();
-            if (!checkDescriptorSrvUavCommon(bindLoc, pSRV, funcName)) return false;
+            auto pSRV = (pResource && !isRoot) ? pResource->getSRV() : ShaderResourceView::getNullView(bindingInfo.dimension);
+            if (!checkDescriptorSrvUavCommon(bindLoc, pResource, pSRV, funcName)) return false;
             auto& assignedSRV = mSRVs[flatIndex];
-            if (assignedSRV.pView == pSRV) return true;
+            if (assignedSRV.pResource == pResource && assignedSRV.pView == pSRV) return true;
             assignedSRV.pView = pSRV;
             assignedSRV.pResource = pResource;
         }
@@ -801,16 +820,21 @@ namespace Falcor
 
     bool ParameterBlock::setSrv(const BindLocation& bindLocation, const ShaderResourceView::SharedPtr& pSrv)
     {
-        if (!checkDescriptorSrvUavCommon(bindLocation, pSrv, "setSrv()")) return false;
+        auto pResource = getResourceFromView(pSrv.get());
+        if (!checkDescriptorSrvUavCommon(bindLocation, pResource, pSrv, "setSrv()")) return false;
 
         size_t flatIndex = getFlatIndex(bindLocation);
         auto& assignedSRV = mSRVs[flatIndex];
 
-        const ShaderResourceView::SharedPtr pView = pSrv ? pSrv : ShaderResourceView::getNullView();
-        if(assignedSRV.pView == pView) return true;
+        const auto& bindingInfo = mpReflector->getResourceRangeBindingInfo(bindLocation.getResourceRangeIndex());
+        const ReflectionResourceType* pResouceReflection = bindLocation.getType()->asResourceType();
+        assert(pResouceReflection && pResouceReflection->getDimensions() == bindingInfo.dimension);
+
+        const ShaderResourceView::SharedPtr pView = pSrv ? pSrv : ShaderResourceView::getNullView(bindingInfo.dimension);
+        if (assignedSRV.pResource == pResource && assignedSRV.pView == pView) return true;
 
         assignedSRV.pView = pView;
-        assignedSRV.pResource = getResourceFromView(pView.get());
+        assignedSRV.pResource = pResource;
 
         markDescriptorSetDirty(bindLocation);
         return true;
@@ -818,14 +842,18 @@ namespace Falcor
 
     bool ParameterBlock::setUav(const BindLocation& bindLocation, const UnorderedAccessView::SharedPtr& pUav)
     {
-        if (!checkDescriptorSrvUavCommon(bindLocation, pUav, "setUav()")) return false;
+        auto pResource = getResourceFromView(pUav.get());
+        if (!checkDescriptorSrvUavCommon(bindLocation, pResource, pUav, "setUav()")) return false;
 
         size_t flatIndex = getFlatIndex(bindLocation);
         auto& assignedUAV = mUAVs[flatIndex];
 
-        UnorderedAccessView::SharedPtr pView = pUav ? pUav : UnorderedAccessView::getNullView();
+        const auto& bindingInfo = mpReflector->getResourceRangeBindingInfo(bindLocation.getResourceRangeIndex());
+        const ReflectionResourceType* pResouceReflection = bindLocation.getType()->asResourceType();
+        assert(pResouceReflection && pResouceReflection->getDimensions() == bindingInfo.dimension);
 
-        if (assignedUAV.pView == pView) return true;
+        UnorderedAccessView::SharedPtr pView = pUav ? pUav : UnorderedAccessView::getNullView(bindingInfo.dimension);
+        if (assignedUAV.pResource == pResource && assignedUAV.pView == pView) return true;
 
         assignedUAV.pView = pView;
         assignedUAV.pResource = getResourceFromView(pView.get());
@@ -1334,7 +1362,9 @@ namespace Falcor
 
         for(auto resourceRangeIndex : setInfo.resourceRangeIndices)
         {
+            // TODO: Should this use the specialized reflector's element type instead?
             auto resourceRange = getElementType()->getResourceRange(resourceRangeIndex);
+            const auto& bindingInfo = pReflector->getResourceRangeBindingInfo(resourceRangeIndex);
 
             DescriptorSet::Type descriptorType = resourceRange.descriptorType;
             size_t descriptorCount = resourceRange.count;
@@ -1373,9 +1403,11 @@ namespace Falcor
                 case DescriptorSet::Type::RawBufferSrv:
                 case DescriptorSet::Type::TypedBufferSrv:
                 case DescriptorSet::Type::StructuredBufferSrv:
+                case DescriptorSet::Type::AccelerationStructureSrv:
                     {
                         auto pView = mSRVs[flatIndex].pView;
-                        if(!pView) pView = ShaderResourceView::getNullView();
+                        assert(bindingInfo.dimension != ReflectionResourceType::Dimensions::Unknown);
+                        if(!pView) pView = ShaderResourceView::getNullView(bindingInfo.dimension);
                         pDescSet->setSrv(destRangeIndex, descriptorIndex, pView.get());
                     }
                     break;
@@ -1385,7 +1417,8 @@ namespace Falcor
                 case DescriptorSet::Type::StructuredBufferUav:
                     {
                         auto pView = mUAVs[flatIndex].pView;
-                        if(!pView) pView = UnorderedAccessView::getNullView();
+                        assert(bindingInfo.dimension != ReflectionResourceType::Dimensions::Unknown);
+                        if(!pView) pView = UnorderedAccessView::getNullView(bindingInfo.dimension);
                         pDescSet->setUav(destRangeIndex, descriptorIndex, pView.get());
                     }
                     break;
@@ -1397,6 +1430,7 @@ namespace Falcor
             }
         }
 
+        // Recursively bind resources in sub-objects.
         for( auto subObjectRange : setInfo.subObjects )
         {
             auto resourceRangeIndex = subObjectRange.resourceRangeIndexOfSubObject;

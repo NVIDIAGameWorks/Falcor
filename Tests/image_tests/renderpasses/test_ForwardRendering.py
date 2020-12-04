@@ -1,12 +1,17 @@
+IMAGE_TEST = {
+    'tolerance': 1e-9
+}
+
+import sys
+sys.path.append('..')
 from helpers import render_frames
 from graphs.ForwardRendering import ForwardRendering as g
 from falcor import *
 
 m.addGraph(g)
-m.loadScene('Arcade/Arcade.fscene')
-ctx = locals()
+m.loadScene('Arcade/Arcade.pyscene')
 
 # default
-render_frames(ctx, 'default', frames=[1,16,64])
+render_frames(m, 'default', frames=[1,16,64])
 
 exit()

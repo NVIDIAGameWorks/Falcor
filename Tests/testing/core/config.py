@@ -7,8 +7,8 @@ import os
 # Default environment configuration file.
 DEFAULT_ENVIRONMENT="environment/default.json"
 
-# Image comparison tolerance.
-TOLERANCE = 0.00001
+# Default image comparison tolerance.
+DEFAULT_TOLERANCE = 1e-12
 
 IMAGE_TESTS_DIR = "Tests/image_tests"
 

@@ -145,7 +145,7 @@ namespace Falcor
     */
     GPU_TEST(SlangDefaultInitializers)
     {
-        const uint32_t maxTests = 100, usedTests = 35;
+        const uint32_t maxTests = 100, usedTests = 37;
         std::vector<uint32_t> initData(maxTests, -1);
 
         auto test = [&](const std::string& shaderModel)
@@ -159,6 +159,8 @@ namespace Falcor
             for (uint32_t i = 0; i < maxTests; i++)
             {
                 uint32_t expected = i < usedTests ? 0 : -1;
+                if (i == 36) expected = (uint32_t)Type3::C;
+
                 EXPECT_EQ(result[i], expected) << "i = " << i << " (sm" << shaderModel << ")";
             }
             ctx.unmapBuffer("result");
@@ -171,5 +173,6 @@ namespace Falcor
         test("6_1");
         test("6_2");
         test("6_3");
+        test("6_5");
     }
 }

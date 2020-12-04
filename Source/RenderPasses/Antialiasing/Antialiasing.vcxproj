@@ -14,7 +14,7 @@
     <ProjectGuid>{8ECC586D-1F5E-46D4-82BB-28044E6D67A2}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>Antialiasing</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
     <ProjectName>Antialiasing</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

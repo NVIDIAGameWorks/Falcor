@@ -40,8 +40,9 @@ namespace Mogwai
         virtual void renderUI(Gui* pGui) override;
         virtual void beginRange(RenderGraph* pGraph, const Range& r) override;
         virtual void endRange(RenderGraph* pGraph, const Range& r) override;
-        virtual void scriptBindings(Bindings& bindings) override;
-        virtual std::string getScript() override;
+        virtual void registerScriptBindings(pybind11::module& m) override;
+        virtual std::string getScriptVar() const override;
+        virtual std::string getScript(const std::string& var) const override;
         virtual void triggerFrame(RenderContext* pCtx, RenderGraph* pGraph, uint64_t frameID) override;
 
     private:

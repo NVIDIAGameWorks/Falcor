@@ -41,6 +41,7 @@ namespace
     const std::string kMode = "mode";
     const std::string kScaleA = "scaleA";
     const std::string kScaleB = "scaleB";
+    const std::string kOutputFormat = "outputFormat";
 
     const Gui::DropdownList kModeList =
     {
@@ -56,17 +57,18 @@ Composite::SharedPtr Composite::create(RenderContext* pRenderContext, const Dict
 
 Composite::Composite(const Dictionary& dict)
 {
-    // Set defines to avoid compiler warnings about undefined macros. Proper values will be assigned at runtime.
-    Program::DefineList defines = { { "COMPOSITE_MODE", "0" } };
-    mCompositePass = ComputePass::create(kShaderFile, "main", defines);
-
+    // Parse dictionary.
     for (const auto& [key, value] : dict)
     {
         if (key == kMode) mMode = value;
         else if (key == kScaleA) mScaleA = value;
         else if (key == kScaleB) mScaleB = value;
-        else logError("Unknown field '" + key + "' in Composite pass dictionary");
+        else if (key == kOutputFormat) mOutputFormat = value;
+        else logWarning("Unknown field '" + key + "' in Composite pass dictionary");
     }
+
+    // Create resources.
+    mCompositePass = ComputePass::create(kShaderFile, "main", Program::DefineList(), false);
 }
 
 Dictionary Composite::getScriptingDictionary()
@@ -75,25 +77,57 @@ Dictionary Composite::getScriptingDictionary()
     dict[kMode] = mMode;
     dict[kScaleA] = mScaleA;
     dict[kScaleB] = mScaleB;
+    if (mOutputFormat != ResourceFormat::Unknown) dict[kOutputFormat] = mOutputFormat;
     return dict;
 }
 
 RenderPassReflection Composite::reflect(const CompileData& compileData)
 {
     RenderPassReflection reflector;
-    reflector.addInput(kInputA, "Input A").bindFlags(ResourceBindFlags::ShaderResource);
-    reflector.addInput(kInputB, "Input B").bindFlags(ResourceBindFlags::ShaderResource);
-    reflector.addOutput(kOutput, "Output").bindFlags(ResourceBindFlags::UnorderedAccess).format(ResourceFormat::RGBA32Float); // TODO: Allow user to specify output format
+    reflector.addInput(kInputA, "Input A").bindFlags(ResourceBindFlags::ShaderResource).flags(RenderPassReflection::Field::Flags::Optional);
+    reflector.addInput(kInputB, "Input B").bindFlags(ResourceBindFlags::ShaderResource).flags(RenderPassReflection::Field::Flags::Optional);
+    reflector.addOutput(kOutput, "Output").bindFlags(ResourceBindFlags::UnorderedAccess).format(mOutputFormat);
     return reflector;
 }
 
 void Composite::compile(RenderContext* pContext, const CompileData& compileData)
 {
     mFrameDim = compileData.defaultTexDims;
-    mCompositePass["CB"]["frameDim"] = mFrameDim;
 }
 
 void Composite::execute(RenderContext* pRenderContext, const RenderData& renderData)
+{
+    // Prepare program.
+    const auto& pOutput = renderData[kOutput]->asTexture();
+    assert(pOutput);
+    mOutputFormat = pOutput->getFormat();
+
+    if (mCompositePass->getProgram()->addDefines(getDefines()))
+    {
+        mCompositePass->setVars(nullptr);
+    }
+
+    // Bind resources.
+    auto var = mCompositePass["CB"];
+    var["frameDim"] = mFrameDim;
+    var["scaleA"] = mScaleA;
+    var["scaleB"] = mScaleB;
+
+    mCompositePass["A"] = renderData[kInputA]->asTexture(); // Can be nullptr
+    mCompositePass["B"] = renderData[kInputB]->asTexture(); // Can be nullptr
+    mCompositePass["output"] = pOutput;
+    mCompositePass->execute(pRenderContext, mFrameDim.x, mFrameDim.y);
+}
+
+void Composite::renderUI(Gui::Widgets& widget)
+{
+    widget.text("This pass scales and composites inputs A and B together");
+    widget.dropdown("Mode", kModeList, reinterpret_cast<uint32_t&>(mMode));
+    widget.var("Scale A", mScaleA);
+    widget.var("Scale B", mScaleB);
+}
+
+Program::DefineList Composite::getDefines() const
 {
     uint32_t compositeMode = 0;
     switch (mMode)
@@ -108,24 +142,27 @@ void Composite::execute(RenderContext* pRenderContext, const RenderData& renderD
         should_not_get_here();
         break;
     }
-    mCompositePass->addDefine("COMPOSITE_MODE", std::to_string(compositeMode));
 
-    auto cb = mCompositePass["CB"];
-    cb["scaleA"] = mScaleA;
-    cb["scaleB"] = mScaleB;
+    assert(mOutputFormat != ResourceFormat::Unknown);
+    uint32_t outputFormat = 0;
+    switch (getFormatType(mOutputFormat))
+    {
+    case FormatType::Uint:
+        outputFormat = OUTPUT_FORMAT_UINT;
+        break;
+    case FormatType::Sint:
+        outputFormat = OUTPUT_FORMAT_SINT;
+        break;
+    default:
+        outputFormat = OUTPUT_FORMAT_FLOAT;
+        break;
+    }
 
-    mCompositePass["A"] = renderData[kInputA]->asTexture();
-    mCompositePass["B"] = renderData[kInputB]->asTexture();
-    mCompositePass["output"] = renderData[kOutput]->asTexture();
-    mCompositePass->execute(pRenderContext, mFrameDim.x, mFrameDim.y);
-}
+    Program::DefineList defines;
+    defines.add("COMPOSITE_MODE", std::to_string(compositeMode));
+    defines.add("OUTPUT_FORMAT", std::to_string(outputFormat));
 
-void Composite::renderUI(Gui::Widgets& widget)
-{
-    widget.text("This pass scales and composites inputs A and B together");
-    widget.dropdown("Mode", kModeList, reinterpret_cast<uint32_t&>(mMode));
-    widget.var("Scale A", mScaleA);
-    widget.var("Scale B", mScaleB);
+    return defines;
 }
 
 void Composite::registerBindings(pybind11::module& m)

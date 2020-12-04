@@ -328,4 +328,12 @@ namespace Falcor
     {
         return applyProgramVarsCommon<true>(this, pContext, bindRootSig, pRootSignature);
     }
+
+    void ComputeVars::dispatchCompute(ComputeContext* pContext, uint3 const& threadGroupCount)
+    {
+        auto pProgram = std::dynamic_pointer_cast<ComputeProgram>(getReflection()->getProgramVersion()->getProgram());
+        assert(pProgram);
+        pProgram->dispatchCompute(pContext, this, threadGroupCount);
+    }
+
 }

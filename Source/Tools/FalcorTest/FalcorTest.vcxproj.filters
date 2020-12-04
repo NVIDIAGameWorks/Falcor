@@ -101,6 +101,30 @@
     <ClCompile Include="Tests\Scene\EnvMapTests.cpp">
       <Filter>Tests\Scene</Filter>
     </ClCompile>
+    <ClCompile Include="Tests\Slang\CastFloat16.cpp">
+      <Filter>Tests\Slang</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Slang\TemplatedLoad.cpp">
+      <Filter>Tests\Slang</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Core\ParamBlockCB.cpp">
+      <Filter>Tests\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Core\LargeBuffer.cpp">
+      <Filter>Tests\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Core\TextureTests.cpp">
+      <Filter>Tests\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Slang\SlangToCUDA.cpp">
+      <Filter>Tests\Slang</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Scene\Material\HairChiang16Tests.cpp">
+      <Filter>Tests\Scene\Material</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Sampling\AliasTableTests.cpp">
+      <Filter>Tests\Sampling</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FalcorTest.h" />
@@ -129,6 +153,9 @@
     </Filter>
     <Filter Include="Tests\Core">
       <UniqueIdentifier>{ae20200a-382a-40ce-a8ab-40af7c9a512c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\Scene\Material">
+      <UniqueIdentifier>{cc3f40f3-77e7-4204-aa15-7c0919f3ae56}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -218,6 +245,30 @@
     </ShaderSource>
     <ShaderSource Include="Tests\Slang\Float64Tests.cs.slang">
       <Filter>Tests\Slang</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Slang\CastFloat16.cs.slang">
+      <Filter>Tests\Slang</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Slang\TemplatedLoad.cs.slang">
+      <Filter>Tests\Slang</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Core\ParamBlockCB.cs.slang">
+      <Filter>Tests\Core</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Core\LargeBuffer.cs.slang">
+      <Filter>Tests\Core</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Core\TextureTests.cs.slang">
+      <Filter>Tests\Core</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Slang\SlangToCUDA.slang">
+      <Filter>Tests\Slang</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Scene\Material\HairChiang16Tests.cs.slang">
+      <Filter>Tests\Scene\Material</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Sampling\AliasTableTests.cs.slang">
+      <Filter>Tests\Sampling</Filter>
     </ShaderSource>
   </ItemGroup>
 </Project>

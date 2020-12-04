@@ -129,6 +129,9 @@ namespace Falcor
         auto endTime = std::chrono::steady_clock::now();
         result.elapsedMS = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
 
+        // Release GPU resources.
+        if (test.gpuFunc) gpDevice->flushAndSync();
+
         return result;
     }
 

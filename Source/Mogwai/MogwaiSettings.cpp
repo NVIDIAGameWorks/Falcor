@@ -193,7 +193,7 @@ namespace Mogwai
 
         // Graph UI
         w.separator();
-        Gui::Group graphGroup(pGui, (mpRenderer->mGraphs[mpRenderer->mActiveGraph].pGraph->getName() + "##Graph").c_str());
+        Gui::Group graphGroup(pGui, mpRenderer->mGraphs[mpRenderer->mActiveGraph].pGraph->getName() + "##Graph");
         mpRenderer->mGraphs[mpRenderer->mActiveGraph].pGraph->renderUI(graphGroup);
     }
 

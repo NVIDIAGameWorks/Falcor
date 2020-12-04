@@ -30,6 +30,7 @@
 #include "Scene/Animation/Animatable.h"
 #include "Utils/SampleGenerators/CPUSampleGenerator.h"
 #include "Core/BufferTypes/ParameterBlock.h"
+#include "Utils/Math/AABB.h"
 
 namespace Falcor
 {
@@ -50,8 +51,8 @@ namespace Falcor
 
         /** Create a new camera object.
         */
-        static SharedPtr create();
-        ~Camera();
+        static SharedPtr create(const std::string& name = "");
+        ~Camera() = default;
 
         /** Name the camera.
         */
@@ -195,6 +196,10 @@ namespace Falcor
         */
         const glm::mat4& getViewMatrix() const;
 
+        /** Get the previous frame view matrix, which possibly includes the previous frame's camera jitter.
+        */
+        const glm::mat4& getPrevViewMatrix() const;
+
         /** Get the projection matrix.
         */
         const glm::mat4& getProjMatrix() const;
@@ -224,7 +229,7 @@ namespace Falcor
         /** Check if an object should be culled
             \param[in] box Bounding box of the object to check
         */
-        bool isObjectCulled(const BoundingBox& box) const;
+        bool isObjectCulled(const AABB& box) const;
 
         /** Set the camera into a shader var
         */
@@ -265,7 +270,7 @@ namespace Falcor
         std::string getScript(const std::string& cameraVar);
 
     private:
-        Camera();
+        Camera(const std::string& name);
         Changes mChanges = Changes::None;
 
         mutable bool mDirty = true;

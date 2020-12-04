@@ -42,7 +42,7 @@ namespace Falcor
         void testRootBufferInStruct(GPUUnitTestContext& ctx, const std::string& shaderModel, bool useUav)
         {
             Program::DefineList defines = { {"USE_UAV", useUav ? "1" : "0"} };
-            Shader::CompilerFlags compilerFlags = Shader::CompilerFlags::None; // Shader::CompilerFlags::DumpIntermediates;
+            Shader::CompilerFlags compilerFlags = Shader::CompilerFlags::None;
 
             ctx.createProgram("Tests/Core/RootBufferStructTests.cs.slang", "main", defines, compilerFlags, shaderModel);
             ctx.allocateStructuredBuffer("result", kNumElems);

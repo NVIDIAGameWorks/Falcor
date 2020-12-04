@@ -48,5 +48,9 @@ namespace Falcor
     */
     static const char kRenderPassPRNGDimension[] = "_prngDimension";
 
+    /** Adjust shading normals on primary hits.
+    */
+    static const char kRenderPassGBufferAdjustShadingNormals[] = "_gbufferAdjustShadingNormals";
+
     enum_class_operators(RenderPassRefreshFlags);
 }

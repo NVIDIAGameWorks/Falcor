@@ -42,21 +42,21 @@ import Utils.Math.MathHelpers;
 #if USE_VBUFFER
 
 // V-buffer inputs
-Texture2D<uint2> gVBuffer;
+Texture2D<PackedHitInfo> gVBuffer;
 #else
 import Experimental.Scene.Material.MaterialHelpers;
 
 // G-buffer inputs
 Texture2D<float4> gWorldPosition;
 Texture2D<float4> gWorldShadingNormal;
-Texture2D<float4> gWorldShadingTangent;      // Optional
-Texture2D<float4> gWorldView;                // Optional
+Texture2D<float4> gWorldShadingTangent;         // Optional
+Texture2D<float4> gWorldView;                   // Optional
 Texture2D<float4> gWorldFaceNormal;
 Texture2D<float4> gMaterialDiffuseOpacity;
 Texture2D<float4> gMaterialSpecularRoughness;
 Texture2D<float4> gMaterialEmissive;
 Texture2D<float4> gMaterialExtraParams;
-Texture2D<uint2>  gVBuffer;                  // Optional
+Texture2D<PackedHitInfo> gVBuffer;              // Optional
 #endif
 
 #define isValid(name) (is_valid_##name != 0)
@@ -87,7 +87,7 @@ float3 getPrimaryRayDir(uint2 pixel, uint2 frameDim, const Camera camera)
     \param[in] frameDim Frame dimensions in pixel.
     \param[in] camera Current camera.
     \param[out] sd ShadingData struct.
-    \param[out] hit HitInfo struct returned with geometry fetched from vbuffer if available.
+    \param[out] hit HitInfo struct returned with geometry fetched from vbuffer if available. Only valid if true is returned.
     \return True if the pixel has valid data (not a background pixel). Note sd.V is always valid.
 */
 bool loadShadingData(uint2 pixel, uint2 frameDim, const Camera camera, out ShadingData sd, out HitInfo hit)
@@ -103,16 +103,13 @@ bool loadShadingData(uint2 pixel, uint2 frameDim, const Camera camera, out Shadi
         // Evaluate Falcor's material parameters at the hit point.
         // TODO: Implement texLOD to enable texture filtering in prepareShadingData().
         VertexData v = gScene.getVertexData(hit);
-        const uint materialID = gScene.getMaterialID(hit.meshInstanceID);
+        const uint materialID = gScene.getMaterialID(hit.instanceID);
         sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -rayDir, 0.f);
 
-        // Compute tangent space if it is invalid.
-        if (!(dot(sd.T, sd.T) > 0.f))   // Note: Comparison written so that NaNs trigger
-        {
-            sd.T = perp_stark(sd.N);
-            sd.B = cross(sd.N, sd.T);
-        }
-
+        // Adjust shading normals if GBuffer pass has flag enabled.
+#if GBUFFER_ADJUST_SHADING_NORMALS
+        adjustShadingNormal(sd, v);
+#endif
         valid = true;
     }
 #else
@@ -132,15 +129,16 @@ bool loadShadingData(uint2 pixel, uint2 frameDim, const Camera camera, out Shadi
         matParams.extraParams = gMaterialExtraParams[pixel];
 
         sd = prepareShadingData(geoParams, matParams);
+        valid = true;
+
         if (isValid(gVBuffer))
         {
-            if (hit.decode(gVBuffer[pixel])) sd.materialID = gScene.getMaterialID(hit.meshInstanceID);
+            if (hit.decode(gVBuffer[pixel]))
+            {
+                sd.materialID = gScene.getMaterialID(hit.instanceID);
+            }
+            else valid = false; // Shouldn't happen
         }
-        else
-        {
-            hit = { HitInfo::kInvalidIndex };
-        }
-        valid = true;
     }
 #endif
 

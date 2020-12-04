@@ -35,18 +35,10 @@
 
 namespace Falcor
 {
-    bool gProfileEnabled = false;
-
-    std::unordered_map<std::string, Profiler::EventData*> Profiler::sProfilerEvents;
-    std::vector<Profiler::EventData*> Profiler::sRegisteredEvents;
-    std::string curEventName = "";
-    uint32_t Profiler::sCurrentLevel = 0;
-    uint32_t Profiler::sGpuTimerIndex = 0;
-
     void Profiler::initNewEvent(EventData *pEvent, const std::string& name)
     {
         pEvent->name = name;
-        sProfilerEvents[curEventName] = pEvent;
+        mEvents[mCurEventName] = pEvent;
     }
 
     Profiler::EventData* Profiler::createNewEvent(const std::string& name)
@@ -58,8 +50,8 @@ namespace Falcor
 
     Profiler::EventData* Profiler::isEventRegistered(const std::string& name)
     {
-        auto event = sProfilerEvents.find(name);
-        return (event == sProfilerEvents.end()) ? nullptr : event->second;
+        auto event = mEvents.find(name);
+        return (event == mEvents.end()) ? nullptr : event->second;
     }
 
     Profiler::EventData* Profiler::getEvent(const std::string& name)
@@ -70,10 +62,10 @@ namespace Falcor
 
     void Profiler::startEvent(const std::string& name, Flags flags, bool showInMsg)
     {
-        if (gProfileEnabled && is_set(flags, Flags::Internal))
+        if (mEnabled && is_set(flags, Flags::Internal))
         {
-            curEventName = curEventName + "#" + name;
-            EventData* pData = getEvent(curEventName);
+            mCurEventName = mCurEventName + "#" + name;
+            EventData* pData = getEvent(mCurEventName);
             pData->triggered++;
             if (pData->triggered > 1)
             {
@@ -82,9 +74,9 @@ namespace Falcor
             }
 
             pData->showInMsg = showInMsg;
-            pData->level = sCurrentLevel;
+            pData->level = mCurrentLevel;
             pData->cpuStart = CpuTimer::getCurrentTimePoint();
-            EventData::FrameData& frame = pData->frameData[sGpuTimerIndex];
+            EventData::FrameData& frame = pData->frameData[mGpuTimerIndex];
             if (frame.currentTimer >= frame.pTimers.size())
             {
                 frame.pTimers.push_back(GpuTimer::create());
@@ -92,11 +84,11 @@ namespace Falcor
             frame.pTimers[frame.currentTimer]->begin();
             pData->callStack.push(frame.currentTimer);
             frame.currentTimer++;
-            sCurrentLevel++;
+            mCurrentLevel++;
 
             if (!pData->registered)
             {
-                sRegisteredEvents.push_back(pData);
+                mRegisteredEvents.push_back(pData);
                 pData->registered = true;
             }
         }
@@ -108,21 +100,21 @@ namespace Falcor
 
     void Profiler::endEvent(const std::string& name, Flags flags)
     {
-        if (gProfileEnabled && is_set(flags, Flags::Internal))
+        if (mEnabled && is_set(flags, Flags::Internal))
         {
-            assert(isEventRegistered(curEventName));
-            EventData* pData = getEvent(curEventName);
+            assert(isEventRegistered(mCurEventName));
+            EventData* pData = getEvent(mCurEventName);
             pData->triggered--;
             if (pData->triggered != 0) return;
 
             pData->cpuEnd = CpuTimer::getCurrentTimePoint();
             pData->cpuTotal += CpuTimer::calcDuration(pData->cpuStart, pData->cpuEnd);
 
-            pData->frameData[sGpuTimerIndex].pTimers[pData->callStack.top()]->end();
+            pData->frameData[mGpuTimerIndex].pTimers[pData->callStack.top()]->end();
             pData->callStack.pop();
 
-            sCurrentLevel--;
-            curEventName.erase(curEventName.find_last_of("#"));
+            mCurrentLevel--;
+            mCurEventName.erase(mCurEventName.find_last_of("#"));
         }
         if (is_set(flags, Flags::Pix))
         {
@@ -145,9 +137,9 @@ namespace Falcor
     double Profiler::getGpuTime(const EventData* pData)
     {
         double gpuTime = 0;
-        for (size_t i = 0; i < pData->frameData[1 - sGpuTimerIndex].currentTimer; i++)
+        for (size_t i = 0; i < pData->frameData[1 - mGpuTimerIndex].currentTimer; i++)
         {
-            gpuTime += pData->frameData[1 - sGpuTimerIndex].pTimers[i]->getElapsedTime();
+            gpuTime += pData->frameData[1 - mGpuTimerIndex].pTimers[i]->getElapsedTime();
         }
         return gpuTime;
     }
@@ -159,9 +151,9 @@ namespace Falcor
 
     std::string Profiler::getEventsString()
     {
-        std::string results("Name\t\t\t\t\tCPU time(ms)\t\t  GPU time(ms)\n");
+        std::string results("Name                                    CPU time (ms)         GPU time (ms)\n");
 
-        for (EventData* pData : sRegisteredEvents)
+        for (EventData* pData : mRegisteredEvents)
         {
             assert(pData->triggered == 0);
             if(pData->showInMsg == false) continue;
@@ -170,9 +162,10 @@ namespace Falcor
             assert(pData->callStack.empty());
 
             char event[1000];
+            std::string name = pData->name.substr(pData->name.find_last_of("#") + 1);
             uint32_t nameIndent = pData->level * 2 + 1;
-            uint32_t cpuIndent = 30 - (nameIndent + (uint32_t)pData->name.substr(pData->name.find_last_of("#") + 1).size());
-            snprintf(event, 1000, "%*s%s %*.2f (%.2f) %14.2f (%.2f)\n", nameIndent, " ", pData->name.substr(pData->name.find_last_of("#") + 1).c_str(), cpuIndent, getCpuTime(pData),
+            uint32_t cpuIndent = 45 - (nameIndent + (uint32_t)name.size());
+            snprintf(event, 1000, "%*s%s %*.2f (%.2f) %14.2f (%.2f)\n", nameIndent, " ", name.c_str(), cpuIndent, getCpuTime(pData),
                      pData->cpuRunningAverageMS, gpuTime, pData->gpuRunningAverageMS);
 #if _PROFILING_LOG == 1
             pData->cpuMs[pData->stepNr] = (float)pData->cpuTotal;
@@ -200,7 +193,7 @@ namespace Falcor
 
     void Profiler::endFrame()
     {
-        for (EventData* pData : sRegisteredEvents)
+        for (EventData* pData : mRegisteredEvents)
         {
             // Update CPU/GPU time running averages.
             const double cpuTime = getCpuTime(pData);
@@ -217,17 +210,17 @@ namespace Falcor
             pData->showInMsg = false;
             pData->cpuTotal = 0;
             pData->triggered = 0;
-            pData->frameData[1 - sGpuTimerIndex].currentTimer = 0;
+            pData->frameData[1 - mGpuTimerIndex].currentTimer = 0;
             pData->registered = false;
         }
-        sRegisteredEvents.clear();
-        sGpuTimerIndex = 1 - sGpuTimerIndex;
+        mLastFrameEvents = std::move(mRegisteredEvents);
+        mGpuTimerIndex = 1 - mGpuTimerIndex;
     }
 
 #if _PROFILING_LOG == 1
     void Profiler::flushLog()
     {
-        for (EventData* pData : sRegisteredEvents)
+        for (EventData* pData : mRegisteredEvents)
         {
             std::ostringstream logOss, fileOss;
             logOss << "dumping " << "profile_" << pData->name << "_" << pData->filesWritten;
@@ -245,14 +238,50 @@ namespace Falcor
 
     void Profiler::clearEvents()
     {
-        for (EventData* pData : sRegisteredEvents)
-        {
-            delete pData;
-        }
-        sProfilerEvents.clear();
-        sRegisteredEvents.clear();
-        sCurrentLevel = 0;
-        sGpuTimerIndex = 0;
-        curEventName = "";
+        for (auto& [_, pData] : mEvents) delete pData;
+        mEvents.clear();
+        mRegisteredEvents.clear();
+        mLastFrameEvents.clear();
+        mCurrentLevel = 0;
+        mGpuTimerIndex = 0;
+        mCurEventName = "";
+    }
+
+    const Profiler::SharedPtr& Profiler::instancePtr()
+    {
+        static Profiler::SharedPtr pInstance;
+        if (!pInstance) pInstance = std::make_shared<Profiler>();
+        return pInstance;
+    }
+
+    pybind11::dict Profiler::EventData::toPython() const
+    {
+        pybind11::dict d;
+
+        d["name"] = name;
+        d["cpuTime"] = cpuRunningAverageMS / 1000.f;
+        d["gpuTime"] = gpuRunningAverageMS / 1000.f;
+
+        return d;
+    }
+
+    SCRIPT_BINDING(Profiler)
+    {
+        auto getEvents = [] (Profiler* pProfiler) {
+            pybind11::dict d;
+
+            for (const Profiler::EventData* pData : pProfiler->getLastFrameEvents())
+            {
+                auto name = pData->name;
+                d[name.c_str()] = pData->toPython();
+            }
+
+            return d;
+        };
+
+        pybind11::class_<Profiler, Profiler::SharedPtr> profiler(m, "Profiler");
+        profiler.def_property("enabled", &Profiler::isEnabled, &Profiler::setEnabled);
+        profiler.def_property_readonly("events", getEvents);
+        profiler.def("clearEvents", &Profiler::clearEvents);
     }
 }

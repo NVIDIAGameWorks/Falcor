@@ -18,12 +18,6 @@
 | `exit(errorCode=0)`              | Terminate the application with the given error code.                     |
 | `cls()`                          | Clear the console.                                                       |
 
-#### Global variables
-
-| Variable | Description             |
-|----------|-------------------------|
-| `m`      | Instance of `Renderer`. |
-
 ## Mogwai API
 
 #### Global functions
@@ -35,48 +29,39 @@
 
 #### Global variables
 
-| Variable | Description                  |
-|----------|------------------------------|
-| `t`      | Instance of `Clock`.         |
-| `fc`     | Instance of `FrameCapture`.  |
-| `vc`     | Instance of `VideoCapture`.  |
-| `tc`     | Instance of `TimingCapture`. |
+| Variable | Description                                                                 |
+|----------|-----------------------------------------------------------------------------|
+| `m`      | Instance of `Renderer`.                                                     |
+| `t`      | Instance of `Clock`. **DEPRECATED**: Use `m.clock` instead.                 |
+| `fc`     | Instance of `FrameCapture`. **DEPRECATED**: Use `m.frameCapture` instead.   |
+| `vc`     | Instance of `VideoCapture`. **DEPRECATED**: Use `m.videoCapture` instead.   |
+| `tc`     | Instance of `TimingCapture`. **DEPRECATED**: Use `m.timingCapture` instead. |
 
 #### Renderer
 
 class falcor.**Renderer**
 
-| Property      | Type          | Description                     |
-|---------------|---------------|---------------------------------|
-| `scene`       | `Scene`       | Active scene (readonly).        |
-| `activeGraph` | `RenderGraph` | Active render graph (readonly). |
-| `ui`          | `bool`        | Show/hide the UI.               |
+| Property        | Type            | Description                     |
+|-----------------|-----------------|---------------------------------|
+| `scene`         | `Scene`         | Active scene (readonly).        |
+| `activeGraph`   | `RenderGraph`   | Active render graph (readonly). |
+| `ui`            | `bool`          | Show/hide the UI.               |
+| `clock`         | `Clock`         | Clock.                          |
+| `profiler`      | `Profiler`      | Profiler.                       |
+| `frameCapture`  | `FrameCapture`  | Frame capture.                  |
+| `videoCapture`  | `VideoCapture`  | Video capture.                  |
+| `timingCapture` | `TimingCapture` | Timing capture.                 |
 
 | Method                                                      | Description                                                     |
 |-------------------------------------------------------------|-----------------------------------------------------------------|
 | `script(filename)`                                          | Run a script.                                                   |
 | `loadScene(filename, buildFlags=SceneBuilderFlags.Default)` | Load a scene. See available build flags below.                  |
+| `unloadScene()`                                             | Explicitly unload the scene to free memory.                     |
 | `saveConfig(filename)`                                      | Save the current state to a config file.                        |
 | `addGraph(graph)`                                           | Add a render graph.                                             |
 | `removeGraph(graph)`                                        | Remove a render graph. `graph` can be a render graph or a name. |
 | `getGraph(name)`                                            | Get a render graph by name.                                     |
-| `graph(name)`                                               | **DEPRECATED:** Use `getGraph` instead.                         |
-| `resizeSwapChain(width, height)`                            | **DEPRECATED:** Use global `resizeSwapChain` instead.           |
-
-enum falcor.**SceneBuilderFlags**
-
-| Enum                          | Description                                                                                                                                                                                           |
-|-------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `Default`                     | Use the default flags (0).                                                                                                                                                                            |
-| `RemoveDuplicateMaterials`    | Deduplicate materials that have the same properties. The material name is ignored during the search.                                                                                                  |
-| `UseOriginalTangentSpace`     | Use the original bitangents that were loaded with the mesh. By default, we will ignore them and use MikkTSpace to generate the tangent space. We will always generate bitangents if they are missing. |
-| `AssumeLinearSpaceTextures`   | By default, textures representing colors (diffuse/specular) are interpreted as sRGB data. Use this flag to force linear space for color textures.                                                     |
-| `DontMergeMeshes`             | Preserve the original list of meshes in the scene, don't merge meshes with the same material.                                                                                                         |
-| `BuffersAsShaderResource`     | Generate the VBs and IB with the shader-resource-view bind flag.                                                                                                                                      |
-| `UseSpecGlossMaterials`       | Set materials to use Spec-Gloss shading model. Otherwise default is Spec-Gloss for OBJ, Metal-Rough for everything else.                                                                              |
-| `UseMetalRoughMaterials`      | Set materials to use Metal-Rough shading model. Otherwise default is Spec-Gloss for OBJ, Metal-Rough for everything else.                                                                             |
-| `NonIndexedVertices`          | Convert meshes to use non-indexed vertices. This requires more memory but may increase performance.                                                                                                   |
-
+| `resizeSwapChain(width, height)`                            | Resize the window/swapchain.                                    |
 
 #### Clock
 
@@ -95,8 +80,21 @@ class falcor.**Clock**
 |------------------|-----------------------------------|
 | `pause()`        | Pause the clock.                  |
 | `play()`         | Resume the clock.                 |
-| `stop()`         | Stop the clock (pause and reset)  |
+| `stop()`         | Stop the clock (pause and reset). |
 | `step(frames=1)` | Step forward or backward in time. |
+
+#### Profiler
+
+class falcor.**Profiler**
+
+| Property  | Type   | Description                 |
+|-----------|--------|-----------------------------|
+| `enabled` | `bool` | Enable/disable profiler.    |
+| `events`  | `dict` | Profiler events (readonly). |
+
+| Method          | Description                |
+|-----------------|----------------------------|
+| `clearEvents()` | Clear the profiler events. |
 
 #### FrameCapture
 
@@ -104,17 +102,17 @@ The frame capture will always dump the marked graph output. You can use `graph.m
 
 The frame counter starts at zero in Falcor (it starts by default at one in Maya, so the frame numbers may be offset by one frame).
 
-By default, the captures frames are stored to the executable directory. This can be changed by setting `fc.outputDir`.
+By default, the captures frames are stored to the executable directory. This can be changed by setting `outputDir`.
 
 **Note:** The frame counter is not advanced when time is paused. If you capture with time paused, the captured frame will be overwritten for every rendered frame. The workaround is to change the base filename between captures with `fc.capture()`, see example below.
 
 class falcor.**FrameCapture**
 
-| Property       | Type     | Description                                                                  |
-|----------------|----------|------------------------------------------------------------------------------|
-| `outputDir`    | `string` | Capture output directory.                                                    |
-| `baseFilename` | `string` | Capture base filename. The frameID and output name will be appended to this. |
-| `ui`           | `bool`   | Show/hide the UI.                                                            |
+| Property       | Type   | Description                                                                  |
+|----------------|--------|------------------------------------------------------------------------------|
+| `outputDir`    | `str`  | Capture output directory.                                                    |
+| `baseFilename` | `str`  | Capture base filename. The frameID and output name will be appended to this. |
+| `ui`           | `bool` | Show/hide the UI.                                                            |
 
 | Method                     | Description                                                                 |
 |----------------------------|-----------------------------------------------------------------------------|
@@ -123,27 +121,26 @@ class falcor.**FrameCapture**
 | `addFrames(graph, frames)` | Add a list of frames to capture for the given graph.                        |
 | `print()`                  | Print the requested frames to capture for all available graphs.             |
 | `print(graph)`             | Print the requested frames to capture for the specified graph.              |
-| `frames(graph, frames)`    | **DEPRECATED:** Use `addFrames` instead.                                    |
 
 **Example:** *Capture list of frames with clock running and then exit*
 ```python
-t.exitFrame(101)
-fc.outputDir = "../../../Output"
-fc.baseFilename = "Mogwai"
-fc.addFrames(m.activeGraph, [20, 50, 100])
+m.clock.exitFrame = 101
+m.frameCapture.outputDir = "../../../Output"
+m.frameCapture.baseFilename = "Mogwai"
+m.frameCapture.addFrames(m.activeGraph, [20, 50, 100])
 ```
 
 **Example:** *Capture frames with clock paused and then exit*
 ```python
-t.pause()
-fc.outputDir = "../../../Output"
+m.clock.pause()
+m.frameCapture.outputDir = "../../../Output"
 
 frames = [20, 50, 100]
 for i in range(101):
     renderFrame()
     if i in frames:
-        fc.baseFilename = f"Mogwai-{i:04d}"
-        fc.capture()
+        m.frameCapture.baseFilename = f"Mogwai-{i:04d}"
+        m.frameCapture.capture()
 exit()
 ```
 
@@ -157,15 +154,15 @@ enum falcor.**Codec**
 
 class falcor.**VideoCapture**
 
-| Property       | Type     | Description                                                      |
-|----------------|----------|------------------------------------------------------------------|
-| `outputDir`    | `string` | Capture output directory.                                        |
-| `baseFilename` | `string` | Capture base filename. The output name will be appended to this. |
-| `ui`           | `bool`   | Show/hide the UI.                                                |
-| `codec`        | `Codec`  | Video codec (`Raw`, `H264`, `HVEC`, `MPEG2`, `MPEG4`).           |
-| `fps`          | `int`    | Video frame rate.                                                |
-| `bitrate`      | `float`  | Video bitrate in Mpbs.                                           |
-| `gopSize`      | `int`    | Video GOP size.                                                  |
+| Property       | Type    | Description                                                      |
+|----------------|---------|------------------------------------------------------------------|
+| `outputDir`    | `str`   | Capture output directory.                                        |
+| `baseFilename` | `str`   | Capture base filename. The output name will be appended to this. |
+| `ui`           | `bool`  | Show/hide the UI.                                                |
+| `codec`        | `Codec` | Video codec (`Raw`, `H264`, `HVEC`, `MPEG2`, `MPEG4`).           |
+| `fps`          | `int`   | Video frame rate.                                                |
+| `bitrate`      | `float` | Video bitrate in Mpbs.                                           |
+| `gopSize`      | `int`   | Video GOP size.                                                  |
 
 | Method                     | Description                                                                                           |
 |----------------------------|-------------------------------------------------------------------------------------------------------|
@@ -173,18 +170,17 @@ class falcor.**VideoCapture**
 | `addRanges(graph, ranges)` | Add a list of frame ranges to capture for a given graph. `ranges` is a list of `(start, end)` tuples. |
 | `print()`                  | Print the requested ranges to capture for all available graphs.                                       |
 | `print(graph)`             | Print the requested ranges to capture for the specified graph.                                        |
-| `ranges(graph, ranges)`    | **DEPRECATED:** Use `addRanges` instead.                                                              |
 
 Example:
 ```python
 # Video Capture
-vc.outputDir = "."
-vc.baseFilename = "Mogwai"
-vc.codec = Codec.H264
-vc.fps = 60
-vc.bitrate = 4.0
-vc.gopSize = 10
-vc.addRanges(m.activeGraph, [[30, 300]])
+m.videoCapture.outputDir = "."
+m.videoCapture.baseFilename = "Mogwai"
+m.videoCapture.codec = Codec.H264
+m.videoCapture.fps = 60
+m.videoCapture.bitrate = 4.0
+m.videoCapture.gopSize = 10
+m.videoCapture.addRanges(m.activeGraph, [[30, 300]])
 ```
 
 #### TimingCapture
@@ -198,7 +194,7 @@ class falcor.**TimingCapture**
 Example:
 ```python
 # Timing Capture
-tc.captureFrameTime("timecapture.csv")
+m.timingCapture.captureFrameTime("timecapture.csv")
 ```
 
 ### Core API
@@ -222,9 +218,9 @@ enum falcor.**ResourceFormat**
 
 class falcor.**RenderGraph**
 
-| Property | Type     | Description               |
-|----------|----------|---------------------------|
-| `name`   | `string` | Name of the render graph. |
+| Property | Type  | Description               |
+|----------|-------|---------------------------|
+| `name`   | `str` | Name of the render graph. |
 
 | Method                         | Description                                                                        |
 |--------------------------------|------------------------------------------------------------------------------------|
@@ -242,12 +238,6 @@ class falcor.**RenderGraph**
 | `getOutput(name)`              | Get an output by name.                                                             |
 
 #### RenderPass
-
-class falcor.**RenderPass**
-
-| Method                   | Description                                               |
-|--------------------------|-----------------------------------------------------------|
-| `RenderPass(name, dict)` | **DEPRECATED:** Use global `createPass` function instead. |
 
 #### Texture
 
@@ -267,51 +257,74 @@ class falcor.**Texture**
 |---------------|-----------------------------------------------|
 | `data(index)` | Returns raw data of given sub resource index. |
 
+#### AABB
+
+class falcor.**AABB**
+
+| Property   | Type     | Description                               |
+|------------|----------|-------------------------------------------|
+| `minPoint` | `float3` | Minimum point.                            |
+| `maxPoint` | `float3` | Maximum point.                            |
+| `valid`    | `bool`   | True if AABB is valid (readonly).         |
+| `center`   | `float3` | Center point (readonly).                  |
+| `extent`   | `float3` | Extents (readonly).                       |
+| `area`     | `float`  | Total area (readonly).                    |
+| `volume`   | `float`  | Total volume (readonly).                  |
+| `radius`   | `float`  | Radius of an enclosing sphere (readonly). |
+
+| Method            | Description                       |
+|-------------------|-----------------------------------|
+| `invalidate()`    | Invalidate the AABB.              |
+| `include(p)`      | Include a point in the AABB.      |
+| `include(b)`      | Include another AABB in the AABB. |
+| `intersection(b)` | Intersect with another AABB.      |
+
 ### Scene API
 
 #### SceneRenderSettings
 
 class falcor.**SceneRenderSettings**
 
-| Property            | Type   | Description                                           |
-|---------------------|--------|-------------------------------------------------------|
-| `useEnvLight`       | `bool` | Enable/disable distant lighting from environment map. |
-| `useAnalyticLights` | `bool` | Enable/disable lighting from analytic lights.         |
-| `useEmissiveLights` | `bool` | Enable/disable lighting from emissive lights.         |
+| Property            | Type   | Description                                        |
+|---------------------|--------|----------------------------------------------------|
+| `useEnvLight`       | `bool` | Enable/disable lighting from environment map.      |
+| `useAnalyticLights` | `bool` | Enable/disable lighting from analytic lights.      |
+| `useEmissiveLights` | `bool` | Enable/disable lighting from emissive lights.      |
+| `useVolumes`        | `bool` | Enable/disable rendering of heterogeneous volumes. |
 
 #### Scene
 
 class falcor.**Scene**
 
-| Property         | Type                  | Description                                      |
-|------------------|-----------------------|--------------------------------------------------|
-| `animated`       | `bool`                | Enable/disable scene animations.                 |
-| `renderSettings` | `SceneRenderSettings` | Settings to determine how the scene is rendered. |
-| `camera`         | `Camera`              | Camera.                                          |
-| `cameraSpeed`    | `float`               | Speed of the interactive camera.                 |
-| `envMap`         | `EnvMap`              | Environment map.                                 |
-| `materials`      | `list(Material)`      | List of materials                                |
+| Property         | Type                  | Description                                       |
+|------------------|-----------------------|---------------------------------------------------|
+| `stats`          | `dict`                | Dictionary containing scene stats.                |
+| `bounds`         | `AABB`                | World space scene bounds (readonly).              |
+| `animated`       | `bool`                | Enable/disable scene animations.                  |
+| `loopAnimations` | `bool`                | Enable/disable globally looping scene animations. |
+| `renderSettings` | `SceneRenderSettings` | Settings to determine how the scene is rendered.  |
+| `camera`         | `Camera`              | Camera.                                           |
+| `cameraSpeed`    | `float`               | Speed of the interactive camera.                  |
+| `envMap`         | `EnvMap`              | Environment map.                                  |
+| `animations`     | `list(Animation)`     | List of animations.                               |
+| `cameras`        | `list(Camera)`        | List of cameras.                                  |
+| `lights`         | `list(Light)`         | List of lights.                                   |
+| `materials`      | `list(Material)`      | List of materials.                                |
+| `volumes`        | `list(Volume)`        | List of volumes.                                  |
 
 | Method                               | Description                                            |
 |--------------------------------------|--------------------------------------------------------|
-| `animate(enable)`                    | **DEPRECATED:** Use `animated` instead.                |
-| `animateCamera(enabled)`             | **DEPRECATED:** Use `animated` on `Camera` instead.    |
-| `animateLight(index, enabled)`       | **DEPRECATED:** Use `animated` on `Light` instead.     |
 | `setEnvMap(filename)`                | Load an environment map from an image.                 |
 | `getLight(index)`                    | Return a light by index.                               |
 | `getLight(name)`                     | Return a light by name.                                |
-| `light(index)`                       | **DEPRECATED:** Use `getLight` instead.                |
-| `light(name)`                        | **DEPRECATED:** Use `getLight` instead.                |
 | `getMaterial(index)`                 | Return a material by index.                            |
 | `getMaterial(name)`                  | Return a material by name.                             |
-| `material(index)`                    | **DEPRECATED:** Use `getMaterial` instead.             |
-| `material(name)`                     | **DEPRECATED:** Use `getMaterial` instead.             |
+| `getVolume(index)`                   | Return a volume by index.                              |
+| `getVolume(name)`                    | Return a volume by name.                               |
 | `addViewpoint()`                     | Add current camera's viewpoint to the viewpoint list.  |
 | `addViewpoint(position, target, up)` | Add a viewpoint to the viewpoint list.                 |
 | `removeViewpoint()`                  | Remove selected viewpoint.                             |
 | `selectViewpoint(index)`             | Select a specific viewpoint and move the camera to it. |
-| `viewpoint()`                        | **DEPRECATED:** Use `addViewpoint` instead.            |
-| `viewpoint(index)`                   | **DEPRECATED:** Use `selectViewpoint` instead.         |
 
 #### Camera
 
@@ -319,7 +332,7 @@ class falcor.**Camera**
 
 | Property         | Type     | Description                                  |
 |------------------|----------|----------------------------------------------|
-| `name`           | `str`    | Name of the camera (readonly).               |
+| `name`           | `str`    | Name of the camera.                          |
 | `animated`       | `bool`   | Enable/disable camera animation.             |
 | `aspectRatio`    | `float`  | Image aspect ratio.                          |
 | `focalLength`    | `float`  | Focal length in millimeters.                 |
@@ -348,13 +361,13 @@ class falcor.**EnvMap**
 
 enum falcor.**MaterialTextureSlot**
 
-`BaseColor`, `Specular`, `Emissive`, `Normal`, `Occlusion`, `SpecularTransmission`
+`BaseColor`, `Specular`, `Emissive`, `Normal`, `Occlusion`, `SpecularTransmission`, `Displacement`
 
 class falcor.**Material**
 
 | Property               | Type     | Description                                           |
 |------------------------|----------|-------------------------------------------------------|
-| `name`                 | `str`    | Name of the material (readonly).                      |
+| `name`                 | `str`    | Name of the material.                                 |
 | `baseColor`            | `float4` | Base color (linear RGB) and opacity.                  |
 | `specularParams`       | `float4` | Specular parameters (occlusion, roughness, metallic). |
 | `roughness`            | `float`  | Roughness (0 = smooth, 1 = rough).                    |
@@ -373,56 +386,222 @@ class falcor.**Material**
 | `clearTexture(slot)`                        | Clears one of the texture slots.           |
 | `loadTexture(slot, filename, useSrgb=True)` | Load one of the texture slots from a file. |
 
+#### Grid
+
+class falcor.**Grid**
+
+| Property     | Type    | Description                                           |
+|--------------|---------|-------------------------------------------------------|
+| `voxelCount` | `int`   | Total number of active voxels in the grid (readonly). |
+| `minIndex`   | `int3`  | Minimum index stored in the grid (readonly).          |
+| `maxIndex`   | `int3`  | Maximum index stored in the grid (readonly).          |
+| `minValue`   | `float` | Minimum value stored in the grid (readonly).          |
+| `maxValue`   | `float` | Maximum value stored in the grid (readonly).          |
+
+| Method          | Description                                            |
+|-----------------|--------------------------------------------------------|
+| `getValue(ijk)` | Access the value of a voxel in the grid (index space). |
+
+| Static method                                                | Description                                 |
+|--------------------------------------------------------------|---------------------------------------------|
+| `createSphere(radius, voxelSize, blendRange=2.0)`            | Create a sphere grid.                       |
+| `createBox(width, height, depth, voxelSize, blendRange=2.0)` | Create a box grid.                          |
+| `createFromFile(filename, gridname)`                         | Create a grid from an OpenVDB/NanoVDB file. |
+
+#### Volume
+
+enum falcor.Volume.**GridSlot**
+
+`Density`, `Emission`
+
+enum falcor.Volume.**EmissionMode**
+
+`Direct`, `Blackbody`
+
+class falcor.**Volume**
+
+| Property              | Type           | Description                                             |
+|-----------------------|----------------|---------------------------------------------------------|
+| `name`                | `str`          | Name of the volume.                                     |
+| `gridFrame`           | `int`          | Current frame in the grid sequence.                     |
+| `gridFrameCount`      | `int`          | Total number of frames in the grid sequence (readonly). |
+| `densityGrid`         | `Grid`         | Density grid.                                           |
+| `densityScale`        | `float`        | Density scale factor.                                   |
+| `emissionGrid`        | `Grid`         | Emission grid.                                          |
+| `emissionScale`       | `float`        | Emission scale factor.                                  |
+| `albedo`              | `float3`       | Scattering albedo.                                      |
+| `anisotropy`          | `float`        | Phase function anisotropy (g).                          |
+| `emissionMode`        | `EmissionMode` | Emission mode (Direct, Blackbody).                      |
+| `emissionTemperature` | `float`        | Emission base temperature (K).                          |
+
+| Method                                        | Description                                                                         |
+|-----------------------------------------------|-------------------------------------------------------------------------------------|
+| `loadGrid(slot, filename, gridname)`          | Load a grid slot from an OpenVDB/NanoVDB file.                                      |
+| `loadGridSequence(slot, filenames, gridname)` | Load a grid slot from a sequence of OpenVDB/NanoVDB files.                          |
+| `loadGridSequence(slot, path, gridname)`      | Load a grid slot from a sequence of OpenVDB/NanoVDB files contained in a directory. |
+
 #### Light
 
 class falcor.**Light**
 
 | Property    | Type     | Description                     |
 |-------------|----------|---------------------------------|
-| `name`      | `str`    | Name of the light (readonly).   |
+| `name`      | `str`    | Name of the light.              |
 | `active`    | `bool`   | Enable/disable light.           |
 | `animated`  | `bool`   | Enable/disable light animation. |
-| `color`     | `float3` | Color of the light.             |
-| `intensity` | `float`  | Intensity of the light.         |
+| `intensity` | `float3` | Intensity of the light.         |
 
-class falcor.**DirectionalLight**
-
-| Property    | Type     | Description                            |
-|-------------|----------|----------------------------------------|
-| `name`      | `str`    | Name of the light (readonly).          |
-| `color`     | `float3` | Color of the light.                    |
-| `intensity` | `float`  | Intensity of the light.                |
-| `direction` | `float3` | Direction of the light in world space. |
-
-class falcor.**DistantLight**
-
-| Property    | Type     | Description                                   |
-|-------------|----------|-----------------------------------------------|
-| `name`      | `str`    | Name of the light (readonly).                 |
-| `color`     | `float3` | Color of the light.                           |
-| `intensity` | `float`  | Intensity of the light.                       |
-| `direction` | `float3` | Direction of the light in world space.        |
-| `angle`     | `float`  | Half-angle subtended by the light in radians. |
-
-class falcor.**PointLight**
+class falcor.**PointLight** : falcor.**Light**
 
 | Property        | Type     | Description                            |
 |-----------------|----------|----------------------------------------|
-| `name`          | `str`    | Name of the light (readonly).          |
-| `color`         | `float3` | Color of the light.                    |
-| `intensity`     | `float`  | Intensity of the light.                |
 | `position`      | `float3` | Position of the light in world space.  |
 | `direction`     | `float3` | Direction of the light in world space. |
 | `openingAngle`  | `float`  | Opening half-angle in radians.         |
 | `penumbraAngle` | `float`  | Penumbra half-angle in radians.        |
 
-class falcor.**AnalyticAreaLight**
+class falcor.**DirectionalLight** : falcor.**Light**
 
-| Property    | Type     | Description                   |
-|-------------|----------|-------------------------------|
-| `name`      | `str`    | Name of the light (readonly). |
-| `color`     | `float3` | Color of the light.           |
-| `intensity` | `float`  | Intensity of the light.       |
+| Property    | Type     | Description                            |
+|-------------|----------|----------------------------------------|
+| `direction` | `float3` | Direction of the light in world space. |
+
+class falcor.**DistantLight** : falcor.**Light**
+
+| Property    | Type     | Description                                   |
+|-------------|----------|-----------------------------------------------|
+| `direction` | `float3` | Direction of the light in world space.        |
+| `angle`     | `float`  | Half-angle subtended by the light in radians. |
+
+class falcor.**AnalyticAreaLight** : falcor.**Light**
+
+class falcor.**RectLight** : falcor.**AnalyticAreaLight**
+
+class falcor.**DiscLight** : falcor.**AnalyticAreaLight**
+
+class falcor.**SphereLight** : falcor.**AnalyticAreaLight**
+
+#### Transform
+
+class falcor.**Transform**
+
+| Property           | Type       | Description                                 |
+|--------------------|------------|---------------------------------------------|
+| `translation`      | `float3`   | Translation.                                |
+| `rotationEuler`    | `float3`   | Euler rotation angles around XYZ (radians). |
+| `rotationEulerDeg` | `float3`   | Euler rotation angles around XYZ (degrees). |
+| `scaling`          | `float3`   | Scaling.                                    |
+| `matrix`           | `float4x4` | Transformation matrix (readonly).           |
+
+| Method                         | Description                      |
+|--------------------------------|----------------------------------|
+| `lookAt(position, target, up)` | Set up a look-at transformation. |
+
+#### Animation
+
+enum falcor.Animation.**InterpolationMode**
+
+`Linear`, `Hermite`
+
+enum falcor.Animation.**Behavior**
+
+`Constant`, `Linear`, `Cycle`, `Oscillate`
+
+class falcor.**Animation**
+
+| Property               | Type                | Description                                                              |
+|------------------------|---------------------|--------------------------------------------------------------------------|
+| `name`                 | `str`               | Name of the animation (readonly).                                        |
+| `nodeID`               | `int`               | Animated scene graph node (readonly).                                    |
+| `duration`             | `float`             | Duration in seconds (readonly).                                          |
+| `interpolationMode`    | `InterpolationMode` | Interpolation mode (linear, hermite).                                    |
+| `preInfinityBehavior`  | `Behavior`          | Behavior before the first keyframe (constant, linear, cycle, oscillate). |
+| `postInfinityBehavior` | `Behavior`          | Behavior after the last keyframe (constant, linear, cycle, oscillate).   |
+| `enableWarping`        | `bool`              | Enable/disable warping, i.e. interpolating from last to first keyframe.  |
+
+| Method                         | Description                                  |
+|--------------------------------|----------------------------------------------|
+| `addKeyframe(time, transform)` | Add a transformation keyframe at given time. |
+
+#### TriangleMesh
+
+class falcor.TriangleMesh.**Vertex**
+
+| Field      | Type     | Description                |
+|------------|----------|----------------------------|
+| `position` | `float3` | Vertex position.           |
+| `normal`   | `float3` | Vertex normal.             |
+| `texCoord` | `float2` | Vertex texture coordinate. |
+
+class falcor.**TriangleMesh**
+
+| Property   | Type           | Description                  |
+|------------|----------------|------------------------------|
+| `name`     | `str`          | Name of the triangle mesh.   |
+| `vertices` | `list(Vertex)` | List of vertices (readonly). |
+| `indices`  | `list(int)`    | List of indices (readonly).  |
+
+| Method                                  | Description                                         |
+|-----------------------------------------|-----------------------------------------------------|
+| `addVertex(position, normal, texCoord)` | Add a vertex to the mesh. Returns the vertex index. |
+| `addTriangle(i0, i1, i2)`               | Add a triangle to the mesh.                         |
+
+| Class Method                                         | Description                                                                                                                                       |
+|------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
+| `createQuad(size=1)`                                 | Creates a quad mesh, centered at the origin with normal pointing in positive Y direction.                                                         |
+| `createCube(size=1)`                                 | Creates a cube mesh, centered at the origin.                                                                                                      |
+| `createSphere(radius=1, segmentsU=32, segmentsV=16)` | Creates a UV sphere mesh, centered at the origin with poles in positive/negative Y direction.                                                     |
+| `createFromFile(filename,smoothNormals=False)`       | Creates a triangle mesh from a file. If no normals are defined in the file, `smoothNormals` can be used generate smooth instead of facet normals. |
+
+#### SceneBuiler
+
+enum falcor.**SceneBuilderFlags**
+
+| Enum                        | Description                                                                                                                                                                                           |
+|-----------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Default`                   | Use the default flags (0).                                                                                                                                                                            |
+| `DontMergeMaterials`        | Don't merge materials that have the same properties. Use this option to preserve the original material names.                                                                                         |
+| `UseOriginalTangentSpace`   | Use the original bitangents that were loaded with the mesh. By default, we will ignore them and use MikkTSpace to generate the tangent space. We will always generate bitangents if they are missing. |
+| `AssumeLinearSpaceTextures` | By default, textures representing colors (diffuse/specular) are interpreted as sRGB data. Use this flag to force linear space for color textures.                                                     |
+| `DontMergeMeshes`           | Preserve the original list of meshes in the scene, don't merge meshes with the same material.                                                                                                         |
+| `UseSpecGlossMaterials`     | Set materials to use Spec-Gloss shading model. Otherwise default is Spec-Gloss for OBJ, Metal-Rough for everything else.                                                                              |
+| `UseMetalRoughMaterials`    | Set materials to use Metal-Rough shading model. Otherwise default is Spec-Gloss for OBJ, Metal-Rough for everything else.                                                                             |
+| `NonIndexedVertices`        | Convert meshes to use non-indexed vertices. This requires more memory but may increase performance.                                                                                                   |
+| `Force32BitIndices`         | Force 32-bit indices for all meshes. By default, 16-bit indices are used for small meshes.                                                                                                            |
+| `RTDontMergeStatic`         | For raytracing, don't merge all static meshes into single pre-transformed BLAS.                                                                                                                       |
+| `RTDontMergeDynamic`        | For raytracing, don't merge all dynamic meshes with identical transforms into single BLAS.                                                                                                            |
+
+class falcor.**SceneBuilder**
+
+| Property         | Type                  | Description                                      |
+|------------------|-----------------------|--------------------------------------------------|
+| `flags`          | `SceneBuilderFlags`   | Scene builder flags (readonly).                  |
+| `renderSettings` | `SceneRenderSettings` | Settings to determine how the scene is rendered. |
+| `materials`      | `list(Material)`      | List of materials (readonly).                    |
+| `volumes`        | `list(Volume)`        | List of volumes (readonly).                      |
+| `lights`         | `list(Light)`         | List of lights (readonly).                       |
+| `cameras`        | `list(Camera)`        | List of cameras (readonly).                      |
+| `animations`     | `list(Animation)`     | List of animations (readonly).                   |
+| `envMap`         | `EnvMap`              | Environment map.                                 |
+| `selectedCamera` | `Camera`              | Default selected camera.                         |
+| `cameraSpeed`    | `float`               | Speed of the interactive camera.                 |
+
+| Method                                          | Description                                                                                                     |
+|-------------------------------------------------|-----------------------------------------------------------------------------------------------------------------|
+| `importScene(filename, dict, instances)`        | Load a scene from an asset file. `dict` contains optional data. `instances` is an optional list of `Transform`. |
+| `addTriangleMesh(triangleMesh, material)`       | Add a triangle mesh to the scene and return its ID.                                                             |
+| `addMaterial(material)`                         | Add a material and return its ID.                                                                               |
+| `getMaterial(name)`                             | Return a material by name. The first material with matching name is returned or `None` if none was found.       |
+| `loadMaterialTexture(material, slot, filename)` | Request loading a material texture asynchronously. Use `Material.loadTexture` for synchronous loading.          |
+| `addVolume(volume)`                             | Add a volume and return its ID.                                                                                 |
+| `getVolume(name)`                               | Return a volume by name. The first volume with matching name is returned or `None` if none was found.           |
+| `addLight(light)`                               | Add a light and return its ID.                                                                                  |
+| `addCamera(camera)`                             | Add a camera and return its ID.                                                                                 |
+| `addAnimation(animation)`                       | Add an animation.                                                                                               |
+| `createAnimation(animatable, name, duration)`   | Create an animation for an animatable object. Returns the new animation or `None` if one already exists.        |
+| `addNode(name, transform, parent)`              | Add a node and return its ID.                                                                                   |
+| `addMeshInstance(nodeID, meshID)`               | Add a mesh instance.                                                                                            |
+
 
 ### Render Passes
 

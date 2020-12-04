@@ -180,6 +180,19 @@ namespace Falcor
         */
         virtual UnorderedAccessView::SharedPtr getUAV() override;
 
+#if _ENABLE_CUDA
+        /** Get the CUDA device address for this resource.
+            \return CUDA device address.
+            Throws an exception if the resource is not (or cannot be) shared with CUDA.
+        */
+        virtual void* getCUDADeviceAddress() const override;
+
+        /** Get the CUDA device address for a view of this resource.
+            Throws an exception if the resource is not (or cannot be) shared with CUDA.
+        */
+        virtual void* getCUDADeviceAddress(ResourceViewInfo const& viewInfo) const override;
+#endif
+
         /** Get a shader-resource view.
             \param[in] mostDetailedMip The most detailed mip level of the view
             \param[in] mipCount The number of mip-levels to bind. If this is equal to Texture#kMaxPossible, will create a view ranging from mostDetailedMip to the texture's mip levels count
@@ -230,9 +243,13 @@ namespace Falcor
         */
         const std::string& getSourceFilename() const { return mSourceFilename; }
 
+        /** Returns the total number of texels across all mip levels and array slices.
+        */
+        uint64_t getTexelCount() const;
+
         /** Returns the size of the texture in bytes as allocated in GPU memory.
         */
-        uint32_t getTextureSizeInBytes();
+        uint64_t getTextureSizeInBytes() const;
 
     protected:
         Texture(uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type Type, BindFlags bindFlags);

@@ -41,8 +41,8 @@ namespace
     const uint32_t kMaxAttributesSizeBytes = 8;
     const uint32_t kMaxRecursionDepth = 1;
 
-    const std::string kOutputName = "vbuffer";
-    const std::string kOutputDesc = "V-buffer packed into 64 bits (indices + barys)";
+    const std::string kVBufferName = "vbuffer";
+    const std::string kVBufferDesc = "V-buffer in packed format (indices + barycentrics)";
 
     // Additional output channels.
     const ChannelList kVBufferExtraChannels =
@@ -55,7 +55,7 @@ RenderPassReflection VBufferRT::reflect(const CompileData& compileData)
 {
     RenderPassReflection reflector;
 
-    reflector.addOutput(kOutputName, kOutputDesc).bindFlags(Resource::BindFlags::UnorderedAccess).format(ResourceFormat::RG32Uint);
+    reflector.addOutput(kVBufferName, kVBufferDesc).bindFlags(Resource::BindFlags::UnorderedAccess).format(mVBufferFormat);
     addRenderPassOutputs(reflector, kVBufferExtraChannels);
 
     return reflector;
@@ -103,7 +103,7 @@ void VBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
     // If there is no scene, clear the output and return.
     if (mpScene == nullptr)
     {
-        auto pOutput = renderData[kOutputName]->asTexture();
+        auto pOutput = renderData[kVBufferName]->asTexture();
         pRenderContext->clearUAV(pOutput->getUAV().get(), uint4(HitInfo::kInvalidIndex));
 
         auto clear = [&](const ChannelDesc& channel)
@@ -142,7 +142,7 @@ void VBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
     // Bind resources.
     ShaderVar var = mRaytrace.pVars->getRootVar();
     var["PerFrameCB"]["frameCount"] = mFrameCount++;
-    var["gVBuffer"] = renderData[kOutputName]->asTexture();
+    var["gVBuffer"] = renderData[kVBufferName]->asTexture();
 
     // Bind output channels as UAV buffers.
     auto bind = [&](const ChannelDesc& channel)

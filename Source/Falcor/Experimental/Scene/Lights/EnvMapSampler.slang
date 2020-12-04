@@ -59,7 +59,7 @@ struct EnvMapSampler
 
     /** Importance sampling of the environment map.
     */
-    bool sample(const float2 rnd, inout EnvMapSample result)
+    bool sample(const float2 rnd, out EnvMapSample result)
     {
         float2 p = rnd;     // Random sample in [0,1)^2.
         uint2 pos = 0;      // Top-left texel pos of current 2x2 region.

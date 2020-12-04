@@ -75,6 +75,7 @@ namespace Falcor
         Clock& getGlobalClock() override { return mClock; }
         FrameRate& getFrameRate() override { return mFrameRate; }
         void resizeSwapChain(uint32_t width, uint32_t height) override;
+        void renderFrame() override;
         bool isKeyPressed(const KeyboardEvent::Key& key) override;
         void toggleUI(bool showUI) override { mShowUI = showUI; }
         bool isUiEnabled() override { return mShowUI; }
@@ -95,8 +96,8 @@ namespace Falcor
         bool mRendererPaused = false;                       ///< Freezes the renderer
         Window::SharedPtr mpWindow;                         ///< The application's window
 
-        void renderFrame() override;
         void handleWindowSizeChange() override;
+        void handleRenderFrame() override;
         void handleKeyboardEvent(const KeyboardEvent& keyEvent) override;
         void handleMouseEvent(const MouseEvent& mouseEvent) override;
         void handleDroppedFile(const std::string& filename) override;

@@ -186,6 +186,10 @@ namespace Falcor
         func(lib);
 
         for (auto& p : lib.mPasses) registerInternal(p.second.className, p.second.desc, p.second.func, l);
+
+        // Re-import falcor package to current (executing) scripting context.
+        auto ctx = Scripting::getCurrentContext();
+        if (Scripting::isRunning()) Scripting::runScript("from falcor import *", ctx);
     }
 
     void RenderPassLibrary::releaseLibrary(const std::string& filename)

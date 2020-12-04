@@ -27,6 +27,7 @@
  **************************************************************************/
 import Scene.Raytracing;
 import Scene.HitInfo;
+import Scene.Intersection;
 import Utils.Helpers;
 import Utils.Timing.GpuTimer;
 import Utils.Sampling.SampleGenerator;
@@ -44,7 +45,9 @@ RWTexture2D<float4> gEmissive;
 RWTexture2D<float4> gMatlExtra;
 
 // GBufferRT channels
-RWTexture2D<uint2> gVBuffer;
+RWTexture2D<PackedHitInfo> gVBuffer;
+RWTexture2D<float2> gLinearZ;
+RWTexture2D<float>  gDeviceZ;
 RWTexture2D<float2> gMotionVectors;
 RWTexture2D<float4> gFaceNormalW;
 RWTexture2D<float4> gViewW;
@@ -66,7 +69,7 @@ struct RayData
 void miss(inout RayData rayData)
 {
     uint2 launchIndex = DispatchRaysIndex().xy;
-    gVBuffer[launchIndex] = uint2(HitInfo::kInvalidIndex);
+    gVBuffer[launchIndex] = { HitInfo::kInvalidIndex };
 }
 
 [shader("anyhit")]
@@ -132,6 +135,24 @@ void computeAnisotropicAxesRayCones(uint meshInstanceID, uint triangleIndex, Ver
     computeAnisotropicEllipseAxes(v.posW, v.faceNormalW, WorldRayDirection(), coneRadiusAtHitPoint, positions, txcoords, v.texC, ddx, ddy);
 }
 
+float3 computeDdxPosW(float3 posW, float3 normW)
+{
+    float3 projRight = normalize(cross(normW, cross(normW, gScene.camera.data.cameraV)));
+    float distanceToHit = length(posW - gScene.camera.data.posW);
+    float2 ddNdc = float2(2.f, -2.f) * (1.f / DispatchRaysDimensions().xy);
+    float distRight = distanceToHit * ddNdc.x / dot(normalize(gScene.camera.data.cameraV), projRight);
+    return distRight * projRight;
+}
+
+float3 computeDdyPosW(float3 posW, float3 normW)
+{
+    float3 projUp = normalize(cross(normW, cross(normW, gScene.camera.data.cameraU)));
+    float distanceToHit = length(posW - gScene.camera.data.posW);
+    float2 ddNdc = float2(2.f, -2.f) * (1.f / DispatchRaysDimensions().xy);
+    float distUp = distanceToHit * ddNdc.y / dot(normalize(gScene.camera.data.cameraU), projUp);
+    return distUp * projUp;
+}
+
 /** Closest hit shader for primary rays.
 */
 [shader("closesthit")]
@@ -159,6 +180,10 @@ void closestHit(
     ShadingData sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -WorldRayDirection(), 0.f);
 #endif
 
+#if ADJUST_SHADING_NORMALS
+    adjustShadingNormal(sd, v);
+#endif
+
     // Write the outputs.
     GBuffer gbuf = storeGBufferOutput(sd, v);
 
@@ -176,6 +201,29 @@ void closestHit(
         gFaceNormalW[launchIndex] = float4(v.faceNormalW, 0.f);
     }
 
+    if (isValid(gLinearZ))
+    {
+        float4 curPosH = mul(float4(sd.posW, 1.f), gScene.camera.data.viewProjMatNoJitter);
+        float curLinearZ = curPosH.w;
+
+        // TODO: Improve computation of derivatives:
+        float3 ddxPosW = computeDdxPosW(sd.posW, sd.faceN);
+        float3 ddyPosW = computeDdyPosW(sd.posW, sd.faceN);
+        float4 curPosH_dx = mul(float4(sd.posW + ddxPosW, 1.f), gScene.camera.data.viewProjMatNoJitter);
+        float4 curPosH_dy = mul(float4(sd.posW + ddxPosW, 1.f), gScene.camera.data.viewProjMatNoJitter);
+        float ddxLinearZ = abs(curPosH_dx.w - curLinearZ);
+        float ddyLinearZ = abs(curPosH_dy.w - curLinearZ);
+        float dLinearZ = max(ddxLinearZ, ddyLinearZ);
+        gLinearZ[launchIndex] = float2(curLinearZ, dLinearZ);
+    }
+
+    // Output a device Z-buffer similar to raster
+    if (isValid(gDeviceZ))
+    {
+        float4 curPosH = mul(float4(sd.posW, 1.f), gScene.camera.data.viewProjMatNoJitter);
+        gDeviceZ[launchIndex] = curPosH.z / curPosH.w;
+    }
+
     // Compute motion vectors.
     if (isValid(gMotionVectors))
     {
@@ -190,7 +238,8 @@ void closestHit(
     if (isValid(gVBuffer))
     {
         HitInfo hit;
-        hit.meshInstanceID = hitParams.getGlobalHitID();
+        hit.type = InstanceType::TriangleMesh;
+        hit.instanceID = hitParams.getGlobalHitID();
         hit.primitiveIndex = PrimitiveIndex();
         hit.barycentrics = attribs.barycentrics;
         gVBuffer[launchIndex] = hit.encode();
@@ -230,3 +279,109 @@ void rayGen()
     // Write time.
     if (isValid(gTime)) gTime[launchIndex] = timer.getElapsed();
 }
+
+
+#ifdef USE_CURVES
+/** ******************************** Curve intersection ******************************** */
+
+[shader("intersection")]
+void trivialIntersection(uniform HitShaderParams hitParams)
+{
+    BuiltInTriangleIntersectionAttributes attribs;
+    ReportHit(RayTCurrent(), 0, attribs);
+}
+
+[shader("intersection")]
+void linearSweptSphereIntersection(uniform HitShaderParams hitParams)
+{
+    BuiltInTriangleIntersectionAttributes attribs;
+
+    float3 rayDir = WorldRayDirection();
+    const float rayLength = length(rayDir);
+    const float invRayLength = 1.f / rayLength;
+    rayDir *= invRayLength;
+
+    const float tmax = RayTCurrent();
+
+    uint curveInstanceID = gScene.getCurveInstanceID(InstanceID(), hitParams.geometryIndex);
+    uint v0Index = gScene.getFirstCurveVertexIndex(curveInstanceID, PrimitiveIndex());
+    StaticCurveVertexData v0 = gScene.getCurveVertex(v0Index);
+    StaticCurveVertexData v1 = gScene.getCurveVertex(v0Index + 1);
+
+    float2 result;
+    bool isect = intersectLinearSweptSphere(WorldRayOrigin(), rayDir, float4(v0.position, v0.radius), float4(v1.position, v1.radius), result);
+    result.x *= invRayLength;
+
+    if (isect && result.x < RayTCurrent())
+    {
+        attribs.barycentrics = float2(result.y, 0.f);
+        ReportHit(result.x, 0, attribs);
+    }
+}
+
+// Functions mostly identical to primaryClosestHit()
+[shader("closesthit")]
+void curveClosestHit(uniform HitShaderParams hitParams, inout RayData hitData, in BuiltInTriangleIntersectionAttributes attribs)
+{
+    uint2 launchIndex = DispatchRaysIndex().xy;
+
+    const float3 posW = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
+    const uint curveInstanceID = gScene.getCurveInstanceID(InstanceID(), hitParams.geometryIndex);
+    const uint curveSegIndex = PrimitiveIndex();
+    const uint materialID = gScene.getCurveMaterialID(curveInstanceID);
+
+    float radius;
+    VertexData v = gScene.getVertexDataFromCurve(curveInstanceID, curveSegIndex, attribs.barycentrics.x, posW, radius);
+
+    ShadingData sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -WorldRayDirection(), 0.f);
+
+    GBuffer gbuf = storeGBufferOutput(sd, v);
+
+    gPosW[launchIndex] = float4(gbuf.posW.xyz, radius);
+    gNormW[launchIndex] = gbuf.normW;
+    gTangentW[launchIndex] = gbuf.tangentW;
+    gTexC[launchIndex] = gbuf.texC;
+    gDiffuseOpacity[launchIndex] = gbuf.diffuseOpacity;
+    gSpecRough[launchIndex] = gbuf.specRough;
+    gEmissive[launchIndex] = gbuf.emissive;
+    gMatlExtra[launchIndex] = gbuf.matlExtra;
+
+    if (isValid(gFaceNormalW))
+    {
+        gFaceNormalW[launchIndex] = float4(v.faceNormalW, 0.f);
+    }
+
+    if (isValid(gLinearZ))
+    {
+        float4 curPosH = mul(float4(sd.posW, 1.f), gScene.camera.data.viewProjMatNoJitter);
+        float curLinearZ = curPosH.w;
+
+        // TODO: Improve computation of derivatives:
+        float3 ddxPosW = computeDdxPosW(sd.posW, sd.faceN);
+        float3 ddyPosW = computeDdyPosW(sd.posW, sd.faceN);
+        float4 curPosH_dx = mul(float4(sd.posW + ddxPosW, 1.f), gScene.camera.data.viewProjMatNoJitter);
+        float4 curPosH_dy = mul(float4(sd.posW + ddxPosW, 1.f), gScene.camera.data.viewProjMatNoJitter);
+        float ddxLinearZ = abs(curPosH_dx.w - curLinearZ);
+        float ddyLinearZ = abs(curPosH_dy.w - curLinearZ);
+        float dLinearZ = max(ddxLinearZ, ddyLinearZ);
+        gLinearZ[launchIndex] = float2(curLinearZ, dLinearZ);
+    }
+
+    // TODO: Compute motion vectors for curves.
+    if (isValid(gMotionVectors))
+    {
+        gMotionVectors[launchIndex] = float2(0.f);
+    }
+
+    // Encode hit information.
+    if (isValid(gVBuffer))
+    {
+        HitInfo hit;
+        hit.type = InstanceType::Curve;
+        hit.instanceID = curveInstanceID;
+        hit.primitiveIndex = PrimitiveIndex();
+        hit.barycentrics = attribs.barycentrics;
+        gVBuffer[launchIndex] = hit.encode();
+    }
+}
+#endif

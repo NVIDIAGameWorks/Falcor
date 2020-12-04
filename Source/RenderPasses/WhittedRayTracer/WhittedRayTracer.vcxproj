@@ -14,7 +14,7 @@
     <ProjectGuid>{431C3127-E613-424C-B964-FB53DAA87789}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>WhittedRayTracer</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
     <ProjectName>WhittedRayTracer</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

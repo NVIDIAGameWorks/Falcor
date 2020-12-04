@@ -50,6 +50,7 @@ namespace Falcor
         const EntryPointGroupVars::SharedPtr& getRayGenVars(uint32_t index = 0) { return mRayGenVars[index].pVars; }
         const EntryPointGroupVars::SharedPtr& getMissVars(uint32_t rayID) { return mMissVars[rayID].pVars; }
         const EntryPointGroupVars::SharedPtr& getHitVars(uint32_t rayID, uint32_t meshID) { return mHitVars[meshID * mDescHitGroupCount + rayID].pVars; }
+        const EntryPointGroupVars::SharedPtr& getAABBHitVars(uint32_t rayID, uint32_t primitiveIndex) { return mAABBHitVars[primitiveIndex * mDescHitGroupCount + rayID].pVars; }
 
         bool apply(RenderContext* pCtx, RtStateObject* pRtso);
 
@@ -58,6 +59,7 @@ namespace Falcor
         uint32_t getRayGenVarsCount() const { return uint32_t(mRayGenVars.size()); }
         uint32_t getMissVarsCount() const { return uint32_t(mMissVars.size()); }
         uint32_t getTotalHitVarsCount() const { return uint32_t(mHitVars.size()); }
+        uint32_t getAABBHitVarsCount() const { return uint32_t(mAABBHitVars.size()); }
         uint32_t getDescHitGroupCount() const { return mDescHitGroupCount; }
 
         Scene::SharedPtr getSceneForGeometryIndices() const { return mpSceneForGeometryIndices.lock(); }
@@ -84,8 +86,9 @@ namespace Falcor
         mutable ShaderTable::SharedPtr mpShaderTable;
 
         VarsVector mRayGenVars;
-        VarsVector mHitVars;
         VarsVector mMissVars;
+        VarsVector mHitVars;
+        VarsVector mAABBHitVars;
 
         RtVarsContext::SharedPtr mpRtVarsHelper;
 

@@ -14,7 +14,7 @@
     <ProjectGuid>{CA155B01-7528-4D81-B5CD-E801B4AA4027}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>GBuffer</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
     <ProjectName>GBuffer</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -29,6 +29,7 @@
     <ClCompile Include="GBuffer\GBuffer.cpp" />
     <ClCompile Include="GBuffer\GBufferRaster.cpp" />
     <ClCompile Include="GBuffer\GBufferRT.cpp" />
+    <ClCompile Include="GBuffer\GBufferRTCurves.cpp" />
     <ClCompile Include="VBuffer\VBufferRaster.cpp" />
     <ClCompile Include="VBuffer\VBufferRT.cpp" />
   </ItemGroup>
@@ -45,6 +46,7 @@
     <ClInclude Include="GBuffer\GBuffer.h" />
     <ClInclude Include="GBuffer\GBufferRaster.h" />
     <ClInclude Include="GBuffer\GBufferRT.h" />
+    <ClInclude Include="GBuffer\GBufferRTCurves.h" />
     <ClInclude Include="VBuffer\VBufferRaster.h" />
     <ClInclude Include="VBuffer\VBufferRT.h" />
   </ItemGroup>

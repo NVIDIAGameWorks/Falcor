@@ -52,7 +52,7 @@ private:
     VBufferRaster(const Dictionary& dict);
 
     // Internal state
-    Fbo::SharedPtr                  mpFbo;
+    Fbo::SharedPtr mpFbo;
 
     struct
     {

@@ -28,7 +28,7 @@
 #pragma once
 #include "LightCollection.h"
 #include "LightBVHTypes.slang"
-#include "Utils/Math/BBox.h"
+#include "Utils/Math/AABB.h"
 #include "Utils/Math/Vector.h"
 #include "Utils/UI/Gui.h"
 #include <limits>

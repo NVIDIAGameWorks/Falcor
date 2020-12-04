@@ -25,8 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "args/args.h"
-#include "FreeImage.h"
+#include <FreeImage.h>
+#include <args.hxx>
 
 #include <iostream>
 #include <memory>

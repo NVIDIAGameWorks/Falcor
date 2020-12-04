@@ -118,9 +118,9 @@ extension RayFootprint
         float surfaceSpreadAngle;
         if (kRayConeMode == RayConeMode::Combo)
         {
-            const float4x4 worldMat = gScene.getWorldMatrix(hit.meshInstanceID);
-            const float3x3 worldInvTransposeMat = gScene.getInverseTransposeWorldMatrix(hit.meshInstanceID);
-            const uint3 vertexIndices = gScene.getIndices(hit.meshInstanceID, hit.primitiveIndex);
+            const float4x4 worldMat = gScene.getWorldMatrix(hit.instanceID);
+            const float3x3 worldInvTransposeMat = gScene.getInverseTransposeWorldMatrix(hit.instanceID);
+            const uint3 vertexIndices = gScene.getIndices(hit.instanceID, hit.primitiveIndex);
             const float3 barycentrics = hit.getBarycentricWeights();
             float3 unnormalizedN, normals[3], dNdx, dNdy, edge1, edge2;
             float2 txcoords[3], dBarydx, dBarydy, dUVdx, dUVdy;
@@ -143,7 +143,7 @@ extension RayFootprint
         {
             // Various curvature estimation modes are available. cf. RAY_FOOTPRINT_CURVATURE_ESTIMATOR_PRIMARY define at the top of the file.
             RAY_FOOTPRINT_CURVATURE_ESTIMATOR_PRIMARY(rayDir, rayConeWidth, screenSpacePixelSpreadAngle);      // Declares tce, the triangle curvature estimator to use.
-            float curvature = gScene.computeCurvatureGeneric(hit.meshInstanceID, hit.primitiveIndex, tce);
+            float curvature = gScene.computeCurvatureGeneric(hit.instanceID, hit.primitiveIndex, tce);
             surfaceSpreadAngle = computeSpreadAngleFromCurvatureIso(curvature, rayConeWidth, rayDir, normal);
         }
 
@@ -172,7 +172,7 @@ extension RayFootprint
     void hitSurface(inout VertexData v, StaticVertexData triangleVertices[3], HitInfo hit, float3 rayOrg, float3 rayDir)
     {
         // Adds Ray Cone data to previously fetched VertexData.
-        v.coneTexLODValue = computeRayConeTriangleLODValue(triangleVertices, hit.meshInstanceID, float3x3(gScene.getWorldMatrix(hit.meshInstanceID)));
+        v.coneTexLODValue = computeRayConeTriangleLODValue(triangleVertices, hit.instanceID, float3x3(gScene.getWorldMatrix(hit.instanceID)));
 
         float hitT = length(v.posW - rayOrg);
         // Propagate the cone to current surface.
@@ -184,7 +184,7 @@ extension RayFootprint
         // Compute texture LOD for prepareShadingData().
         float lambda = rayCone.computeLOD(v.coneTexLODValue, rayDir, v.normalW);
 
-        const uint materialID = gScene.getMaterialID(hit.meshInstanceID);
+        const uint materialID = gScene.getMaterialID(hit.instanceID);
         float3 viewDir = -rayDir;
         return prepareShadingDataUsingRayConesLOD(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], viewDir, lambda);
     }
@@ -202,7 +202,7 @@ extension RayFootprint
             float rayConeWidth = rayCone.getWidth();
             // Declares tce, the triangle curvature estimator to use.
             RAY_FOOTPRINT_CURVATURE_ESTIMATOR_SECONDARY(rayDir, rayConeWidth, rayCone.getSpreadAngle());
-            float curvature = gScene.computeCurvatureGeneric(hit.meshInstanceID, hit.primitiveIndex, tce);
+            float curvature = gScene.computeCurvatureGeneric(hit.instanceID, hit.primitiveIndex, tce);
             surfaceSpreadAngle = computeSpreadAngleFromCurvatureIso(curvature, rayConeWidth, rayDirIn, normal);
         }
 
@@ -249,9 +249,9 @@ extension RayFootprint
         res.rayDiff = res.rayDiff.propagate(worldPos.xyz, rayDir, hitT, faceNormal);    // Propagate the ray differential to the current hit point.
 
         // Bounce using primary hit geometry.
-        const float4x4 worldMat = gScene.getWorldMatrix(hit.meshInstanceID);
-        const float3x3 worldInvTransposeMat = gScene.getInverseTransposeWorldMatrix(hit.meshInstanceID);
-        const uint3 vertexIndices = gScene.getIndices(hit.meshInstanceID, hit.primitiveIndex);
+        const float4x4 worldMat = gScene.getWorldMatrix(hit.instanceID);
+        const float3x3 worldInvTransposeMat = gScene.getInverseTransposeWorldMatrix(hit.instanceID);
+        const uint3 vertexIndices = gScene.getIndices(hit.instanceID, hit.primitiveIndex);
         const float3 barycentrics = hit.getBarycentricWeights();
         float3 unnormalizedN, normals[3], dNdx, dNdy, edge1, edge2;
         float2 txcoords[3], dBarydx, dBarydy, dUVdx, dUVdy;
@@ -270,7 +270,7 @@ extension RayFootprint
     {
         // Propagate to hit point.
         float hitT = length(v.posW - rayOrg);
-        float3 geometricNormal = gScene.getFaceNormalW(hit.meshInstanceID, hit.primitiveIndex);
+        float3 geometricNormal = gScene.getFaceNormalW(hit.instanceID, hit.primitiveIndex);
         this.rayDiff = this.rayDiff.propagate(rayOrg, rayDir, hitT, geometricNormal);   // Propagate the ray differential to the current hit point.
     }
 
@@ -280,13 +280,13 @@ extension RayFootprint
 
         // Get hit point adapted parameters.
         float2 dUVdx, dUVdy;    // Ray differential variables for the texture lookup.
-        prepareRayDiffAtHitPoint(v, triangleVertices, hit.getBarycentricWeights(), rayDir, hitT, gScene.getWorldMatrix(hit.meshInstanceID), gScene.getInverseTransposeWorldMatrix(hit.meshInstanceID),
+        prepareRayDiffAtHitPoint(v, triangleVertices, hit.getBarycentricWeights(), rayDir, hitT, gScene.getWorldMatrix(hit.instanceID), gScene.getInverseTransposeWorldMatrix(hit.instanceID),
             this.rayDiff, dUVdx, dUVdy);
 
         // Compute shading data.
         float3 viewDir = -rayDir;
         ShadingData sd;
-        const uint materialID = gScene.getMaterialID(hit.meshInstanceID);
+        const uint materialID = gScene.getMaterialID(hit.instanceID);
         if (kRayFootprintMode == TexLODMode::RayDiffsIsotropic)
         {
             // When using prepareShadingDataUsingRayDiffsLOD(), the texture sampler will compute a single lambda for texture LOD
@@ -310,7 +310,7 @@ extension RayFootprint
 
         // TODO: Avoid recomputing everything (dUVdx, dUVdy and  dBarydx, dBarydy) by keeping intermediate variables live in registers.
         float2 dUVdx, dUVdy;    // Ray differential variables for the texture lookup.
-        reflectRayDiffUsingVertexData(v, triangleVertices, hit.getBarycentricWeights(), rayDirIn, gScene.getWorldMatrix(hit.meshInstanceID), gScene.getInverseTransposeWorldMatrix(hit.meshInstanceID),
+        reflectRayDiffUsingVertexData(v, triangleVertices, hit.getBarycentricWeights(), rayDirIn, gScene.getWorldMatrix(hit.instanceID), gScene.getInverseTransposeWorldMatrix(hit.instanceID),
                                         this.rayDiff, dUVdx, dUVdy);
     }
 };
@@ -340,7 +340,7 @@ extension RayFootprint
 
     ShadingData computeShadingData(VertexData v, StaticVertexData triangleVertices[3], HitInfo hit, float3 rayOrg, float3 rayDir)
     {
-        const uint materialID = gScene.getMaterialID(hit.meshInstanceID);
+        const uint materialID = gScene.getMaterialID(hit.instanceID);
         return prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -rayDir, 0.f);
     }
 };

@@ -14,7 +14,7 @@
     <ProjectGuid>{DAE949BD-2C44-40DA-A592-7CCAB00D4A7D}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>ErrorMeasurePass</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
     <ProjectName>ErrorMeasurePass</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

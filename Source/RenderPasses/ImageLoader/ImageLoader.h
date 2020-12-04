@@ -36,21 +36,19 @@ class ImageLoader : public RenderPass
 public:
     using SharedPtr = std::shared_ptr<ImageLoader>;
 
-    static const char* kDesc;
-
     /** Create a new object
     */
-    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+    static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
 
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
     virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
     virtual Dictionary getScriptingDictionary() override;
-    virtual std::string getDesc() override { return kDesc; }
+    virtual std::string getDesc() override;
 
 private:
-    ImageLoader();
+    ImageLoader(const Dictionary& dict);
 
     ResourceFormat mOutputFormat = ResourceFormat::Unknown;
     Texture::SharedPtr mpTex;

@@ -29,6 +29,22 @@ import Utils.Math.MathHelpers;
 import Utils.Math.FormatConversion;
 import Utils.Color.ColorHelpers;
 
+/** Encode a normal packed as 2x 8-bit snorms in the octahedral mapping. The high 16 bits are unused.
+*/
+uint encodeNormal2x8(float3 normal)
+{
+    float2 octNormal = ndir_to_oct_snorm(normal);
+    return packSnorm2x8(octNormal);
+}
+
+/** Decode a normal packed as 2x 8-bit snorms in the octahedral mapping.
+*/
+float3 decodeNormal2x8(uint packedNormal)
+{
+    float2 octNormal = unpackSnorm2x8(packedNormal);
+    return oct_to_ndir_snorm(octNormal);
+}
+
 /** Encode a normal packed as 2x 16-bit snorms in the octahedral mapping.
 */
 uint encodeNormal2x16(float3 normal)
@@ -107,7 +123,7 @@ uint encodeLogLuvHDR(float3 color)
 }
 
 /** Decode an RGB color stored in a 32-bit LogLuv HDR format.
-    See encodeLogLuvHDR() for details. 
+    See encodeLogLuvHDR() for details.
 */
 float3 decodeLogLuvHDR(uint packedColor)
 {

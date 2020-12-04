@@ -79,20 +79,20 @@ namespace Falcor
         return samplerChanged;
     }
 
-    bool LightBVHSampler::prepareProgram(Program* pProgram) const
+    Program::DefineList LightBVHSampler::getDefines() const
     {
         // Call the base class first.
-        bool varsChanged = EmissiveLightSampler::prepareProgram(pProgram);
+        auto defines = EmissiveLightSampler::getDefines();
 
         // Add our defines. None of these change the program vars.
-        pProgram->addDefine("_USE_BOUNDING_CONE", mOptions.useBoundingCone ? "1" : "0");
-        pProgram->addDefine("_USE_LIGHTING_CONE", mOptions.useLightingCone ? "1" : "0");
-        pProgram->addDefine("_DISABLE_NODE_FLUX", mOptions.disableNodeFlux ? "1" : "0");
-        pProgram->addDefine("_USE_UNIFORM_TRIANGLE_SAMPLING", mOptions.useUniformTriangleSampling ? "1" : "0");
-        pProgram->addDefine("_ACTUAL_MAX_TRIANGLES_PER_NODE", std::to_string(mOptions.buildOptions.maxTriangleCountPerLeaf));
-        pProgram->addDefine("_SOLID_ANGLE_BOUND_METHOD", std::to_string((uint32_t)mOptions.solidAngleBoundMethod));
+        defines.add("_USE_BOUNDING_CONE", mOptions.useBoundingCone ? "1" : "0");
+        defines.add("_USE_LIGHTING_CONE", mOptions.useLightingCone ? "1" : "0");
+        defines.add("_DISABLE_NODE_FLUX", mOptions.disableNodeFlux ? "1" : "0");
+        defines.add("_USE_UNIFORM_TRIANGLE_SAMPLING", mOptions.useUniformTriangleSampling ? "1" : "0");
+        defines.add("_ACTUAL_MAX_TRIANGLES_PER_NODE", std::to_string(mOptions.buildOptions.maxTriangleCountPerLeaf));
+        defines.add("_SOLID_ANGLE_BOUND_METHOD", std::to_string((uint32_t)mOptions.solidAngleBoundMethod));
 
-        return varsChanged;
+        return defines;
     }
 
     bool LightBVHSampler::setShaderData(const ShaderVar& var) const

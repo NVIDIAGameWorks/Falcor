@@ -74,8 +74,7 @@ Texture2D<float4> gMaterialSpecularRoughness;
 Texture2D<float4> gMaterialEmissive;
 Texture2D<float4> gMaterialExtraParams;
 Texture2D<float>  gSurfaceSpreadAngle;
-Texture2D<uint2>  gVBuffer;
-
+Texture2D<PackedHitInfo> gVBuffer;
 
 // Outputs
 RWTexture2D<float4> gOutputColor;
@@ -346,13 +345,6 @@ void scatterClosestHit(
         }
     }
 
-    // Compute tangent space if it is invalid.
-    if (!(dot(sd.T, sd.T) > 0.f))   // Note: Comparison written so that NaNs trigger.
-    {
-        sd.T = perp_stark(sd.N);
-        sd.B = cross(sd.N, sd.T);
-    }
-
     // Add emitted light.
     if (kUseEmissiveLights)
     {
@@ -475,9 +467,9 @@ void rayGen()
             HitInfo hit;
             if (hit.decode(gVBuffer[launchIndex]))
             {
-                const float4x4 worldMat = gScene.getWorldMatrix(hit.meshInstanceID);
-                const float3x3 worldInvTransposeMat = gScene.getInverseTransposeWorldMatrix(hit.meshInstanceID);
-                const uint3 vertexIndices = gScene.getIndices(hit.meshInstanceID, hit.primitiveIndex);
+                const float4x4 worldMat = gScene.getWorldMatrix(hit.instanceID);
+                const float3x3 worldInvTransposeMat = gScene.getInverseTransposeWorldMatrix(hit.instanceID);
+                const uint3 vertexIndices = gScene.getIndices(hit.instanceID, hit.primitiveIndex);
                 const float3 barycentrics = hit.getBarycentricWeights();
                 float2 txcoords[3], dBarydx, dBarydy, dUVdx, dUVdy;
 
@@ -503,7 +495,7 @@ void rayGen()
                 }
                 else // kRayConeMode == RayConeMode::Unified
                 {
-                    float curvature = gScene.computeCurvatureIsotropicFirstHit(hit.meshInstanceID, hit.primitiveIndex, rayDir);
+                    float curvature = gScene.computeCurvatureIsotropicFirstHit(hit.instanceID, hit.primitiveIndex, rayDir);
                     float rayConeWidth = hitT * gScreenSpacePixelSpreadAngle;
                     surfaceSpreadAngle = computeSpreadAngleFromCurvatureIso(curvature, hitT * gScreenSpacePixelSpreadAngle, rayDir, sd.N);
                 }
@@ -541,9 +533,9 @@ void rayGen()
 
             if (hit.decode(gVBuffer[launchIndex]))
             {
-                const float4x4 worldMat = gScene.getWorldMatrix(hit.meshInstanceID);
-                const float3x3 worldInvTransposeMat = gScene.getInverseTransposeWorldMatrix(hit.meshInstanceID);
-                const uint3 vertexIndices = gScene.getIndices(hit.meshInstanceID, hit.primitiveIndex);
+                const float4x4 worldMat = gScene.getWorldMatrix(hit.instanceID);
+                const float3x3 worldInvTransposeMat = gScene.getInverseTransposeWorldMatrix(hit.instanceID);
+                const uint3 vertexIndices = gScene.getIndices(hit.instanceID, hit.primitiveIndex);
                 const float3 barycentrics = hit.getBarycentricWeights();
                 float3 unnormalizedN, normals[3], dNdx, dNdy, edge1, edge2;
                 float2 txcoords[3], dBarydx, dBarydy, dUVdx, dUVdy;

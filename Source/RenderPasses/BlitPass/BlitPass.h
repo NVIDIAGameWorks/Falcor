@@ -31,23 +31,27 @@
 
 using namespace Falcor;
 
+/** Render pass that blits an input texture to an output texture.
+
+    This pass is useful for format conversion.
+*/
 class BlitPass : public RenderPass
 {
 public:
     using SharedPtr = std::shared_ptr<BlitPass>;
 
-    static const char* kDesc;
-
     /** Create a new object
     */
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
+    virtual std::string getDesc() override;
+    virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
-    virtual Dictionary getScriptingDictionary() override;
-    virtual std::string getDesc() override { return kDesc; }
 
+    // Scripting functions
+    Sampler::Filter getFilter() const { return mFilter; }
     void setFilter(Sampler::Filter filter) { mFilter = filter; }
 
 private:

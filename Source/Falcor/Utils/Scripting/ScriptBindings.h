@@ -33,10 +33,30 @@ namespace Falcor::ScriptBindings
     using RegisterBindingFunc = std::function<void(pybind11::module& m)>;
 
     /** Register a script binding function.
-        This function will be called when scripting is initialized.
-        \param[in] f Function to be called for registering script bindings.
+        The binding function will be called when scripting is initialized.
+        \param[in] f Function to be called for registering the binding.
     */
     dlldecl void registerBinding(RegisterBindingFunc f);
+
+    /** Register a deferred script binding function.
+        This is used to register a script binding function before scripting is initialized.
+        The execution of the binding function is deferred until scripting is finally initialized.
+        Note: This is called from `registerBinding()` if called before scripting is initialized
+        and from the SCRIPT_BINDING macro.
+        \param[in] name Name if the binding.
+        \param[in] f Function to be called for registering the binding.
+    */
+    dlldecl void registerDeferredBinding(const std::string& name, RegisterBindingFunc f);
+
+    /** Resolve a deferred script binding by name.
+        This immediately executes the deferred binding function registered to the given name
+        and can be used to control the order of execution of the binding functions.
+        Note: This is used by the SCRIPT_BINDING_DEPENDENCY macro to ensure dependent bindings
+        are registered ahead of time.
+        \param[in] name Name of the binding to resolve.
+        \param[in] m Python module.
+    */
+    dlldecl void resolveDeferredBinding(const std::string &name, pybind11::module& m);
 
     /************************************************************************/
     /* Helpers                                                              */
@@ -172,15 +192,17 @@ namespace Falcor::ScriptBindings
     };
 
 #ifndef _staticlibrary
-#define SCRIPT_BINDING(Name) \
-    static void ScriptBinding##Name(pybind11::module& m);           \
-    struct ScriptBindingRegisterer##Name {                          \
-        ScriptBindingRegisterer##Name()                             \
-        {                                                           \
-            ScriptBindings::registerBinding(ScriptBinding##Name);   \
-        }                                                           \
-    } gScriptBinding##Name;                                         \
+#define SCRIPT_BINDING(Name)                                                        \
+    static void ScriptBinding##Name(pybind11::module& m);                           \
+    struct ScriptBindingRegisterer##Name {                                          \
+        ScriptBindingRegisterer##Name()                                             \
+        {                                                                           \
+            ScriptBindings::registerDeferredBinding(#Name, ScriptBinding##Name);    \
+        }                                                                           \
+    } gScriptBinding##Name;                                                         \
     static void ScriptBinding##Name(pybind11::module& m) /* over to the user for the braces */
+#define SCRIPT_BINDING_DEPENDENCY(Name)                                             \
+    ScriptBindings::resolveDeferredBinding(#Name, m);
 #else
 #define SCRIPT_BINDING(Name) static_assert(false, "Using SCRIPT_BINDING() in a static-library is not supported. The C++ linker usually doesn't pull static-initializers into the EXE. " \
     "Call 'registerBinding()' yourself from a code that is guarenteed to run.");

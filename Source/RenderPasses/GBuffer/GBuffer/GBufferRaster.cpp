@@ -34,13 +34,14 @@ const char* GBufferRaster::kDesc = "Rasterized G-buffer generation pass";
 namespace
 {
     const std::string kProgramFile = "RenderPasses/GBuffer/GBuffer/GBufferRaster.3d.slang";
-    const std::string shaderModel = "6_1";
+    const std::string shaderModel = "6_2";
 
     // Additional output channels.
     // TODO: Some are RG32 floats now. I'm sure that all of these could be fp16.
+    const std::string kVBufferName = "vbuffer";
     const ChannelList kGBufferExtraChannels =
     {
-        { "vbuffer",          "gVBuffer",            "Visibility buffer",                true /* optional */, ResourceFormat::RG32Uint    },
+        { kVBufferName,       "gVBuffer",            "Visibility buffer",                true /* optional */, ResourceFormat::Unknown /* set at runtime */ },
         { "mvec",             "gMotionVectors",      "Motion vectors",                   true /* optional */, ResourceFormat::RG32Float   },
         { "faceNormalW",      "gFaceNormalW",        "Face normal in world space",       true /* optional */, ResourceFormat::RGBA32Float },
         { "pnFwidth",         "gPosNormalFwidth",    "position and normal filter width", true /* optional */, ResourceFormat::RG32Float   },
@@ -62,6 +63,7 @@ RenderPassReflection GBufferRaster::reflect(const CompileData& compileData)
     // The default channels are written as render targets, the rest as UAVs as there is way to assign/pack render targets yet.
     addRenderPassOutputs(reflector, kGBufferChannels, Resource::BindFlags::RenderTarget);
     addRenderPassOutputs(reflector, kGBufferExtraChannels, Resource::BindFlags::UnorderedAccess);
+    reflector.getField(kVBufferName)->format(mVBufferFormat);
 
     return reflector;
 }
@@ -74,6 +76,11 @@ GBufferRaster::SharedPtr GBufferRaster::create(RenderContext* pRenderContext, co
 GBufferRaster::GBufferRaster(const Dictionary& dict)
     : GBuffer()
 {
+    if (!gpDevice->isFeatureSupported(Device::SupportedFeatures::Barycentrics))
+    {
+        throw std::exception("Pixel shader barycentrics are not supported by the current device");
+    }
+
     parseDictionary(dict);
 
     // Create raster program
@@ -167,6 +174,7 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     }
 
     // Set program defines.
+    mRaster.pProgram->addDefine("ADJUST_SHADING_NORMALS", mAdjustShadingNormals ? "1" : "0");
     mRaster.pProgram->addDefine("DISABLE_ALPHA_TEST", mDisableAlphaTest ? "1" : "0");
 
     // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
@@ -199,7 +207,7 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     mRaster.pState->setFbo(mpFbo); // Sets the viewport
 
     Scene::RenderFlags flags = mForceCullMode ? Scene::RenderFlags::UserRasterizerState : Scene::RenderFlags::None;
-    mpScene->render(pRenderContext, mRaster.pState.get(), mRaster.pVars.get(), flags);
+    mpScene->rasterize(pRenderContext, mRaster.pState.get(), mRaster.pVars.get(), flags);
 
     mGBufferParams.frameCount++;
 }

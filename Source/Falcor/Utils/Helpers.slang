@@ -30,6 +30,8 @@
 
 __exported import Utils.Color.ColorHelpers;
 
+import Utils.Math.MathHelpers;
+
 /*******************************************************************
     Spherical map sampling
 *******************************************************************/
@@ -111,10 +113,10 @@ float3 computeRayOrigin(float3 pos, float3 normal)
     \param[in] rayDir Ray direction (does not have to be normalized).
     \param[in] center Sphere center.
     \param[in] radius Sphere radius.
-    \param[in] intersectionPos Position on the sphere for the closest intersection (if any).
+    \param[out] t Distance to the closest intersection.
     \return True if the ray intersects the sphere.
 */
-bool intersectRaySphere(float3 rayOrigin, float3 rayDir, float3 sphereCenter, float sphereRadius, out float3 intersectionPos)
+bool intersectRaySphere(float3 rayOrigin, float3 rayDir, float3 sphereCenter, float sphereRadius, out float t)
 {
     // Implementation is taken from Chapter 7 of Ray-Tracing Gems
     float3 f = rayOrigin - sphereCenter;
@@ -128,7 +130,7 @@ bool intersectRaySphere(float3 rayOrigin, float3 rayDir, float3 sphereCenter, fl
     // If b and discriminant are both 0, then the ray's origin lies on the sphere
     if (b == 0 && discriminant == 0)
     {
-        intersectionPos = rayOrigin;
+        t = 0.f;
         return true;
     }
 
@@ -142,19 +144,151 @@ bool intersectRaySphere(float3 rayOrigin, float3 rayDir, float3 sphereCenter, fl
     float tc = t0 < 0.f ? t1 : t0; // tc is the closest hit we care about
     if (tc < 0.f) return false;
 
-    intersectionPos = rayOrigin + tc * rayDir;
+    t = tc;
     return true;
+}
+
+/** Ray-AABB intersection.
+    \param[in] rayOrigin Ray origin.
+    \param[in] rayDir Ray direction (does not have to be normalized).
+    \param[in] aabbMin AABB minimum.
+    \param[in] aabbMax AABB maximum.
+    \param[out] nearFar Returns intersection interval along ray.
+    \return True if the ray intersects the AABB.
+*/
+bool intersectRayAABB(const float3 rayOrigin, const float3 rayDir, const float3 aabbMin, const float3 aabbMax, out float2 nearFar)
+{
+    const float3 invDir = 1.f / rayDir;
+    const float3 lo = (aabbMin - rayOrigin) * invDir;
+    const float3 hi = (aabbMax - rayOrigin) * invDir;
+    const float3 tmin = min(lo, hi), tmax = max(lo, hi);
+    nearFar.x = max(0.f, max(tmin.x, max(tmin.y, tmin.z)));
+    nearFar.y = min(tmax.x, min(tmax.y, tmax.z));
+    return nearFar.x <= nearFar.y;
+}
+
+/** Ray intersection against linear swept sphere based on [Han et al. 2019], Ray Tracing Generalized Tube Primitives: Method and Applications.
+    Paper link: http://www.sci.utah.edu/publications/Han2019a/tubes-final.pdf
+    \param[in] rayOrigin Ray origin position.
+    \param[in] rayDir Unit ray direction vector.
+    \param[in] sphereA Sphere (3D position + radius) at one end point.
+    \param[in] sphereB Sphere at the other end point.
+    \param[in] useSphereJoints Indicating whether we test ray-sphere intersection at curve joints or not.
+    \param[out] result The closest intersection distance t, and a parameter u for linear interpolation (between 0 and 1).
+    \return True if the ray intersects the linear swept sphere segment.
+*/
+bool intersectLinearSweptSphereHan19(float3 rayOrigin, float3 rayDir, float4 sphereA, float4 sphereB, bool useSphereJoints, out float2 result)
+{
+    result = float2(FLT_MAX);
+
+    bool reversed = false;
+    if (sphereA.w > sphereB.w)
+    {
+        float4 tmp = sphereA;
+        sphereA = sphereB;
+        sphereB = tmp;
+        reversed = true;
+    }
+
+    const float3 P1 = sphereA.xyz;
+    const float3 P2 = sphereB.xyz;
+    const float r1 = sphereA.w;
+    const float r2 = sphereB.w;
+
+    // Perpendicular distance to closest of (p0, p1) minus the max radius.
+    float t0 = min(dot(rayDir, P1 - rayOrigin), dot(rayDir, P2 - rayOrigin)) - max(r1, r2);
+    t0 = max(0.f, t0);
+    // For better numerical stability, push the ray to be as close as possible to the curve.
+    rayOrigin += t0 * rayDir;
+
+    if (useSphereJoints)
+    {
+        // Intersecting two sphere endcaps.
+        float t;
+        if (intersectRaySphere(rayOrigin, rayDir, P1, r1, t))
+        {
+            if (t < result.x)
+            {
+                result.x = t;
+                result.y = (reversed ? 1.f : 0.f);
+            }
+        }
+        if (intersectRaySphere(rayOrigin, rayDir, P2, r2, t))
+        {
+            if (t < result.x)
+            {
+                result.x = t;
+                result.y = (reversed ? 0.f : 1.f);
+            }
+        }
+    }
+
+    // Intersecting cone.
+    float3 C = P2 - P1;
+    const float lengthC = length(C);
+    C /= lengthC;
+
+    const float p1 = lengthC * r1 / (r2 - r1);
+    const float p2 = p1 * r2 / r1;
+    const float3 A = P1 - p1 * C;
+    const float z1 = p1 - r1 * r1 / p1;
+    const float z2 = p2 - r2 * r2 / p2;
+    const float w = p2 * r2 / sqrt(p2 * p2 - r2 * r2);
+
+    const float3 vz = C;
+    const float3 vx = perp_stark(vz);
+    const float3 vy = cross(vz, vx);
+
+    const float tmp1 = 1.f / z2;
+    const float tmp2 = p2 / w;
+
+    // Row-major matrix.
+    float4x4 M =
+    {
+        tmp1 * tmp2 * float4(vx, -dot(vx, A)),
+        tmp1 * tmp2 * float4(vy, -dot(vy, A)),
+        tmp1 * float4(vz, -dot(vz, A)),
+        float4(0, 0, 0, 1)
+    };
+
+    const float zCap = z1 * tmp1;
+    const float3 rayOriginXf = mul(M, float4(rayOrigin, 1.f)).xyz;
+    const float3 rayDirXf = mul((float3x3)M, rayDir);
+
+    const float a = rayDirXf.x * rayDirXf.x + rayDirXf.y * rayDirXf.y - rayDirXf.z * rayDirXf.z;
+    const float b = 2.f * (rayOriginXf.x * rayDirXf.x + rayOriginXf.y * rayDirXf.y - rayOriginXf.z * rayDirXf.z);
+    const float c = rayOriginXf.x * rayOriginXf.x + rayOriginXf.y * rayOriginXf.y - rayOriginXf.z * rayOriginXf.z;
+    const float disc = b * b - 4 * a * c;
+    if (disc >= 0)
+    {
+        const float sqrtDisc = sqrt(disc);
+        const float inv2a = 0.5f / a;
+
+        [unroll]
+        for (int i = 0; i < 2; i++)
+        {
+            float t = (-b + (i * 2.f - 1.f) * sqrtDisc) * inv2a;
+            if (t >= 0 && t < result.x)
+            {
+                // Check if z is in the valid range.
+                const float z = rayOriginXf.z + t * rayDirXf.z;
+                if (z >= zCap && z <= 1.f)
+                {
+                    const float u = (z - zCap) / (1.f - zCap);
+                    result.x = t;
+                    result.y = (reversed ? 1.f - u : u);
+                }
+            }
+        }
+    }
+
+    result.x += t0;
+    return (result.x < FLT_MAX);
 }
 
 /*******************************************************************
                     Shading
 *******************************************************************/
-
-float4 applyAmbientOcclusion(float4 color, Texture2D aoTex, SamplerState s, float2 texC)
-{
-    float aoFactor = aoTex.SampleLevel(s, texC, 0).r;
-    return float4(color.rgb * aoFactor, color.a);
-}
 
 // TODO: this function is broken an may return negative values.
 float getMetallic(float3 diffuse, float3 spec)

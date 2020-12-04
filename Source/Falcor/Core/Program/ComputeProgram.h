@@ -59,7 +59,14 @@ namespace Falcor
         */
         static SharedPtr create(const Program::Desc& desc, const DefineList& programDefines = DefineList());
 
-    private:
+        /** Dispatch the program using the argument values set in `pVars`.
+        */
+        virtual void dispatchCompute(
+            ComputeContext* pContext,
+            ComputeVars*    pVars,
+            uint3 const&    threadGroupCount);
+
+    protected:
         ComputeProgram() = default;
     };
 }

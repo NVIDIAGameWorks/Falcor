@@ -45,7 +45,7 @@ rem Call Update Dependencies - Runs packman.
 call %~dp0\update_dependencies.bat %1\Falcor\dependencies.xml
 if errorlevel 1 exit /b 1
 
-%1\Externals\.packman\Python\python.exe %~dp0\patchpropssheet.py %1 %2 %falcor_backend%
+%1\Externals\.packman\python\python.exe %~dp0\patchpropssheet.py %1 %2 %falcor_backend%
 if errorlevel 1 exit /b 1
 if exist %1\Internal\internal_dependencies.xml (call %~dp0\update_dependencies.bat %1\Internal\internal_dependencies.xml)
 if errorlevel 1 exit /b 1

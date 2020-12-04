@@ -163,7 +163,7 @@ namespace Falcor
         }
         toolTipString.append("\nType: " + memberTypeString);
 
-        widget.tooltip(toolTipString.c_str(), true);
+        widget.tooltip(toolTipString, true);
     }
 
     void VariablesBufferUI::renderUIVarInternal(Gui::Widgets& widget, const std::string& memberName, const ShaderVar& var)

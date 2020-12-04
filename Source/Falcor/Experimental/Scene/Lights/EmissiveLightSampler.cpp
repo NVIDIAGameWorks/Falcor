@@ -30,9 +30,9 @@
 
 namespace Falcor
 {
-    bool EmissiveLightSampler::prepareProgram(Program* pProgram) const
+    Program::DefineList EmissiveLightSampler::getDefines() const
     {
-        return pProgram->addDefine("_EMISSIVE_LIGHT_SAMPLER_TYPE", std::to_string((uint32_t)mType));
+        return {{ "_EMISSIVE_LIGHT_SAMPLER_TYPE", std::to_string((uint32_t)mType) }};
     }
 
     SCRIPT_BINDING(EmissiveLightSampler)
@@ -40,5 +40,7 @@ namespace Falcor
         pybind11::enum_<EmissiveLightSamplerType> type(m, "EmissiveLightSamplerType");
         type.value("Uniform", EmissiveLightSamplerType::Uniform);
         type.value("LightBVH", EmissiveLightSamplerType::LightBVH);
+        type.value("Power", EmissiveLightSamplerType::Power);
+        type.value("Null", EmissiveLightSamplerType::Null);
     }
 }

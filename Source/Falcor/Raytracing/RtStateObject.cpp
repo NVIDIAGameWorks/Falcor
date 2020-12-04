@@ -29,9 +29,7 @@
 #include "RtStateObject.h"
 #include "RtStateObjectHelper.h"
 #include "Utils/StringUtils.h"
-#include "Core/API/Device.h"
 #include "Core/API/D3D12/D3D12NvApiExDesc.h"
-#include "ShaderTable.h"
 
 namespace Falcor
 {
@@ -48,6 +46,19 @@ namespace Falcor
         SharedPtr pState = SharedPtr(new RtStateObject(desc));
 
         RtStateObjectHelper rtsoHelper;
+        std::set<std::wstring> configuredShaders;
+
+        auto configureShader = [&](ID3DBlobPtr pBlob, const std::wstring& shaderName, RtEntryPointGroupKernels* pEntryPointGroup)
+        {
+            if (pBlob && !shaderName.empty() && !configuredShaders.count(shaderName))
+            {
+                rtsoHelper.addProgramDesc(pBlob, shaderName);
+                rtsoHelper.addLocalRootSignature(&shaderName, 1, pEntryPointGroup->getLocalRootSignature()->getApiHandle().GetInterfacePtr());
+                rtsoHelper.addShaderConfig(&shaderName, 1, pEntryPointGroup->getMaxPayloadSize(), pEntryPointGroup->getMaxAttributesSize());
+                configuredShaders.insert(shaderName);
+            }
+        };
+
         // Pipeline config
         rtsoHelper.addPipelineConfig(desc.mMaxTraceRecursionDepth);
 
@@ -85,32 +96,17 @@ namespace Falcor
                     const std::wstring& ahsExport = pAhs ? string_2_wstring(pAhs->getEntryPoint()) : L"";
                     const std::wstring& chsExport = pChs ? string_2_wstring(pChs->getEntryPoint()) : L"";
 
-                    rtsoHelper.addHitProgramDesc(pAhsBlob, ahsExport, pChsBlob, chsExport, pIntersectionBlob, intersectionExport, exportName);
+                    configureShader(pIntersectionBlob, intersectionExport, pEntryPointGroup);
+                    configureShader(pAhsBlob, ahsExport, pEntryPointGroup);
+                    configureShader(pChsBlob, chsExport, pEntryPointGroup);
 
-                    if (intersectionExport.size())
-                    {
-                        rtsoHelper.addLocalRootSignature(&intersectionExport, 1, pEntryPointGroup->getLocalRootSignature()->getApiHandle().GetInterfacePtr());
-                        rtsoHelper.addShaderConfig(&intersectionExport, 1, pEntryPointGroup->getMaxPayloadSize(), pEntryPointGroup->getMaxAttributesSize());
-                    }
-
-                    if (ahsExport.size())
-                    {
-                        rtsoHelper.addLocalRootSignature(&ahsExport, 1, pEntryPointGroup->getLocalRootSignature()->getApiHandle().GetInterfacePtr());
-                        rtsoHelper.addShaderConfig(&ahsExport, 1, pEntryPointGroup->getMaxPayloadSize(), pEntryPointGroup->getMaxAttributesSize());
-                    }
-
-                    if (chsExport.size())
-                    {
-                        rtsoHelper.addLocalRootSignature(&chsExport, 1, pEntryPointGroup->getLocalRootSignature()->getApiHandle().GetInterfacePtr());
-                        rtsoHelper.addShaderConfig(&chsExport, 1, pEntryPointGroup->getMaxPayloadSize(), pEntryPointGroup->getMaxAttributesSize());
-                    }
+                    rtsoHelper.addHitGroupDesc(ahsExport, chsExport, intersectionExport, exportName);
                 }
                 break;
 
             default:
                 {
                     const std::wstring& exportName = string_2_wstring(pEntryPointGroup->getExportName());
-
 
                     const Shader* pShader = pEntryPointGroup->getShaderByIndex(0);
                     rtsoHelper.addProgramDesc(pShader->getD3DBlob(), exportName);
@@ -136,7 +132,7 @@ namespace Falcor
         MAKE_SMART_COM_PTR(ID3D12StateObjectProperties);
         ID3D12StateObjectPropertiesPtr pRtsoProps = pState->getApiHandle();
 
-        for( const auto& pBaseEntryPointGroup : pKernels->getUniqueEntryPointGroups() )
+        for (const auto& pBaseEntryPointGroup : pKernels->getUniqueEntryPointGroups())
         {
             assert(dynamic_cast<RtEntryPointGroupKernels*>(pBaseEntryPointGroup.get()));
             auto pEntryPointGroup = static_cast<RtEntryPointGroupKernels*>(pBaseEntryPointGroup.get());

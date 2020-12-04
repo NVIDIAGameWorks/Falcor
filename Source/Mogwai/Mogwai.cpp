@@ -28,7 +28,9 @@
 #include "stdafx.h"
 #include "Mogwai.h"
 #include "MogwaiSettings.h"
-#include "args.h"
+
+#include <args.hxx>
+
 #include <filesystem>
 #include <algorithm>
 
@@ -74,7 +76,7 @@ namespace Mogwai
     void Renderer::onLoad(RenderContext* pRenderContext)
     {
         mpExtensions.push_back(MogwaiSettings::create(this));
-        if(gExtensions)
+        if (gExtensions)
         {
             for (auto& f : (*gExtensions)) mpExtensions.push_back(f.second(this));
             safe_delete(gExtensions);
@@ -90,6 +92,8 @@ namespace Mogwai
             // Add script to recent files only if not in silent mode (which is used during image tests).
             if (!mOptions.silentMode) mAppData.addRecentScript(mOptions.scriptFile);
         }
+
+        Scene::nullTracePass(pRenderContext, uint2(1024));
     }
 
     RenderGraph* Renderer::getActiveGraph() const
@@ -287,7 +291,7 @@ namespace Mogwai
         mEditorProcess = executeProcess(kEditorExecutableName, commandLineArgs);
 
         // Mark the output if it's required
-       if (unmarkOut) mGraphs[mActiveGraph].pGraph->markOutput(mGraphs[mActiveGraph].mainOutput);
+        if (unmarkOut) mGraphs[mActiveGraph].pGraph->markOutput(mGraphs[mActiveGraph].mainOutput);
     }
 
     void Renderer::resetEditor()
@@ -396,8 +400,14 @@ namespace Mogwai
         try
         {
             if (ProgressBar::isActive()) ProgressBar::show("Loading Configuration");
-            auto c = Scripting::getGlobalContext();
-            Scripting::runScriptFromFile(filename, c);
+
+            // Add script directory to search paths (add it to the front to make it highest priority).
+            const std::string directory = getDirectoryFromFile(filename);
+            addDataDirectory(directory, true);
+
+            Scripting::runScriptFromFile(filename);
+
+            removeDataDirectory(directory);
         }
         catch (const std::exception& e)
         {
@@ -460,6 +470,11 @@ namespace Mogwai
         timeReport.printToLog();
     }
 
+    void Renderer::unloadScene()
+    {
+        setScene(nullptr);
+    }
+
     void Renderer::setScene(const Scene::SharedPtr& pScene)
     {
         mpScene = pScene;
@@ -504,7 +519,8 @@ namespace Mogwai
         if (hasUnmarkedOut) pActiveGraph->unmarkOutput(mGraphs[mActiveGraph].mainOutput);
 
         // Run the scripting
-        Scripting::getGlobalContext().setObject("g", pActiveGraph);
+        // TODO: Rendergraph scripts should be executed in an isolated scripting context.
+        Scripting::getDefaultContext().setObject("g", pActiveGraph);
         Scripting::runScript(mEditorScript);
 
         // Update the list of marked outputs
@@ -652,6 +668,7 @@ int main(int argc, char** argv)
     args::HelpFlag helpFlag(parser, "help", "Display this help menu.", {'h', "help"});
     args::ValueFlag<std::string> scriptFlag(parser, "path", "Python script file to run.", {'s', "script"});
     args::ValueFlag<std::string> logfileFlag(parser, "path", "File to write log into.", {'l', "logfile"});
+    args::ValueFlag<int32_t> verbosityFlag(parser, "verbosity", "Logging verbosity (0=disabled, 1=fatal errors, 2=errors, 3=warnings, 4=infos, 5=debugging)", { 'v', "verbosity" }, 4);
     args::Flag silentFlag(parser, "", "Starts Mogwai with a minimized window and disables mouse/keyboard input as well as error message dialogs.", {"silent"});
     args::ValueFlag<uint32_t> widthFlag(parser, "pixels", "Initial window width.", {"width"});
     args::ValueFlag<uint32_t> heightFlag(parser, "pixels", "Initial window height.", {"height"});
@@ -684,12 +701,27 @@ int main(int argc, char** argv)
         return 1;
     }
 
+    int32_t verbosity = args::get(verbosityFlag);
+
+    if (verbosity < 0 || verbosity >= (int32_t)Logger::Level::Count)
+    {
+        std::cerr << argv[0] << ": invalid verbosity level " << verbosity << std::endl;
+        return 1;
+    }
+
+    Logger::setVerbosity((Logger::Level)verbosity);
+    Logger::logToConsole(true);
+
+    if (logfileFlag)
+    {
+        std::string logfile = args::get(logfileFlag);
+        Logger::setLogFilePath(logfile);
+    }
+
     Mogwai::Renderer::Options options;
 
     if (scriptFlag) options.scriptFile = args::get(scriptFlag);
     if (silentFlag) options.silentMode = true;
-
-    Logger::logToConsole(true);
 
     try
     {
@@ -707,12 +739,6 @@ int main(int argc, char** argv)
 
             // Set early to not show message box on errors that occur before setting the sample configuration.
             Logger::showBoxOnError(false);
-        }
-
-        if (logfileFlag)
-        {
-            std::string logfile = args::get(logfileFlag);
-            Logger::setLogFilePath(logfile);
         }
 
         if (widthFlag) config.windowDesc.width = args::get(widthFlag);

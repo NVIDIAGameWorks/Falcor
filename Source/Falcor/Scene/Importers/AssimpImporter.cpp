@@ -36,6 +36,8 @@
 #include "Core/API/Device.h"
 #include "Scene/SceneBuilder.h"
 
+#include <execution>
+
 namespace Falcor
 {
     namespace
@@ -140,7 +142,6 @@ namespace Falcor
             SceneBuilder& builder;
             std::map<uint32_t, Material::SharedPtr> materialMap;
             std::map<uint32_t, uint32_t> meshMap; // Assimp mesh index to Falcor mesh ID
-            std::map<const std::string, Texture::SharedPtr> textureCache;
             const SceneBuilder::InstanceMatrices& modelInstances;
             std::map<std::string, glm::mat4> localToBindPoseMatrices;
 
@@ -219,24 +220,28 @@ namespace Falcor
             resetTime(pAiNode->mScalingKeys, pAiNode->mNumScalingKeys);
         }
 
-        Animation::SharedPtr createAnimation(ImporterData& data, const aiAnimation* pAiAnim)
+        void createAnimation(ImporterData& data, const aiAnimation* pAiAnim)
         {
             assert(pAiAnim->mNumMeshChannels == 0);
             double duration = pAiAnim->mDuration;
             double ticksPerSecond = pAiAnim->mTicksPerSecond ? pAiAnim->mTicksPerSecond : 25;
             double durationInSeconds = duration / ticksPerSecond;
 
-            Animation::SharedPtr pAnimation = Animation::create(pAiAnim->mName.C_Str(), durationInSeconds);
-
             for (uint32_t i = 0; i < pAiAnim->mNumChannels; i++)
             {
                 aiNodeAnim* pAiNode = pAiAnim->mChannels[i];
                 resetNegativeKeyframeTimes(pAiNode);
 
-                std::vector<uint32_t> channels;
+                std::vector<Animation::SharedPtr> animations;
                 for (uint32_t i = 0; i < data.getNodeInstanceCount(pAiNode->mNodeName.C_Str()); i++)
                 {
-                    channels.push_back(pAnimation->addChannel(data.getFalcorNodeID(pAiNode->mNodeName.C_Str(), i)));
+                    Animation::SharedPtr pAnimation = Animation::create(
+                        std::string(pAiNode->mNodeName.C_Str()) + "." + std::to_string(i),
+                        data.getFalcorNodeID(pAiNode->mNodeName.C_Str(), i),
+                        durationInSeconds
+                    );
+                    animations.push_back(pAnimation);
+                    data.builder.addAnimation(pAnimation);
                 }
 
                 uint32_t pos = 0, rot = 0, scale = 0;
@@ -263,11 +268,9 @@ namespace Falcor
                     done = parseAnimationChannel(pAiNode->mPositionKeys, pAiNode->mNumPositionKeys, time, pos, keyframe.translation);
                     done = parseAnimationChannel(pAiNode->mRotationKeys, pAiNode->mNumRotationKeys, time, rot, keyframe.rotation) && done;
                     done = parseAnimationChannel(pAiNode->mScalingKeys, pAiNode->mNumScalingKeys, time, scale, keyframe.scaling) && done;
-                    for(auto c : channels) pAnimation->addKeyframe(c, keyframe);
+                    for(auto pAnimation : animations) pAnimation->addKeyframe(keyframe);
                 }
             }
-
-            return pAnimation;
         }
 
         bool createCameras(ImporterData& data, ImportMode importMode)
@@ -317,7 +320,6 @@ namespace Falcor
 
         bool addLightCommon(const Light::SharedPtr& pLight, const glm::mat4& baseMatrix, ImporterData& data, const aiLight* pAiLight)
         {
-            pLight->setName(pAiLight->mName.C_Str());
             assert(pAiLight->mColorDiffuse == pAiLight->mColorSpecular);
             pLight->setIntensity(aiCast(pAiLight->mColorSpecular));
 
@@ -340,7 +342,7 @@ namespace Falcor
 
         bool createDirLight(ImporterData& data, const aiLight* pAiLight)
         {
-            DirectionalLight::SharedPtr pLight = DirectionalLight::create();
+            DirectionalLight::SharedPtr pLight = DirectionalLight::create(pAiLight->mName.C_Str());
             float3 direction = normalize(aiCast(pAiLight->mDirection));
             pLight->setWorldDirection(direction);
             glm::mat4 base;
@@ -350,7 +352,7 @@ namespace Falcor
 
         bool createPointLight(ImporterData& data, const aiLight* pAiLight)
         {
-            PointLight::SharedPtr pLight = PointLight::create();
+            PointLight::SharedPtr pLight = PointLight::create(pAiLight->mName.C_Str());
             float3 position = aiCast(pAiLight->mPosition);
             float3 lookAt = normalize(aiCast(pAiLight->mDirection));
             float3 up = normalize(aiCast(pAiLight->mUp));
@@ -396,8 +398,7 @@ namespace Falcor
         {
             for (uint32_t i = 0; i < data.pScene->mNumAnimations; i++)
             {
-                Animation::SharedPtr pAnimation = createAnimation(data, data.pScene->mAnimations[i]);
-                data.builder.addAnimation(pAnimation);
+                createAnimation(data, data.pScene->mAnimations[i]);
             }
             return true;
         }
@@ -446,8 +447,12 @@ namespace Falcor
         void loadBones(const aiMesh* pAiMesh, const ImporterData& data, std::vector<float4>& weights, std::vector<uint4>& ids)
         {
             const uint32_t vertexCount = pAiMesh->mNumVertices;
+
             weights.resize(vertexCount);
             ids.resize(vertexCount);
+
+            std::fill(weights.begin(), weights.end(), float4(0.f));
+            std::fill(ids.begin(), ids.end(), uint4(Scene::kInvalidBone));
 
             for (uint32_t bone = 0; bone < pAiMesh->mNumBones; bone++)
             {
@@ -462,6 +467,9 @@ namespace Falcor
                     // Get the vertex the current weight affects
                     const aiVertexWeight& aiWeight = pAiBone->mWeights[weightID];
 
+                    // Skip zero weights
+                    if (aiWeight.mWeight == 0.f) continue;
+
                     // Get the address of the Bone ID and weight for the current vertex
                     uint4& vertexIds = ids[aiWeight.mVertexId];
                     float4& vertexWeights = weights[aiWeight.mVertexId];
@@ -470,7 +478,7 @@ namespace Falcor
                     bool emptySlotFound = false;
                     for (uint32_t j = 0; j < Scene::kMaxBonesPerVertex; j++)
                     {
-                        if (vertexWeights[j] == 0)
+                        if (vertexIds[j] == Scene::kInvalidBone)
                         {
                             vertexIds[j] = aiBoneID;
                             vertexWeights[j] = aiWeight.mWeight;
@@ -498,36 +506,25 @@ namespace Falcor
             const aiScene* pScene = data.pScene;
             const bool loadTangents = is_set(data.builder.getFlags(), SceneBuilder::Flags::UseOriginalTangentSpace);
 
-            // Find the largest mesh.
-            uint64_t largestIndexCount = 0;
-            uint64_t largestVertexCount = 0;
+            uint32_t meshCount = pScene->mNumMeshes;
 
-            for (uint32_t i = 0; i < pScene->mNumMeshes; i++)
-            {
-                const aiMesh* pAiMesh = pScene->mMeshes[i];
-                uint64_t indexCount = pAiMesh->mNumFaces * pAiMesh->mFaces[0].mNumIndices;
-
-                largestIndexCount = std::max(largestIndexCount, indexCount);
-                largestVertexCount = std::max(largestVertexCount, (uint64_t)pAiMesh->mNumVertices);
-            }
-
-            // Reserve memory for the vertex and index data.
-            std::vector<uint32_t> indexList;
-            std::vector<float2> texCrds;
-            std::vector<float4> tangents;
-            indexList.reserve(largestIndexCount);
-            texCrds.reserve(largestVertexCount);
-            if (loadTangents) tangents.reserve(largestVertexCount);
-
-            // Add all the meshes.
-            for (uint32_t i = 0; i < pScene->mNumMeshes; i++)
-            {
+            // Pre-process meshes.
+            std::vector<SceneBuilder::ProcessedMesh> processedMeshes(meshCount);
+            auto range = NumericRange<uint32_t>(0, meshCount);
+            std::for_each(std::execution::par, range.begin(), range.end(), [&] (uint32_t i) {
                 const aiMesh* pAiMesh = pScene->mMeshes[i];
                 const uint32_t perFaceIndexCount = pAiMesh->mFaces[0].mNumIndices;
 
                 SceneBuilder::Mesh mesh;
                 mesh.name = pAiMesh->mName.C_Str();
                 mesh.faceCount = pAiMesh->mNumFaces;
+
+                // Temporary memory for the vertex and index data.
+                std::vector<uint32_t> indexList;
+                std::vector<float2> texCrds;
+                std::vector<float4> tangents;
+                std::vector<uint4> boneIds;
+                std::vector<float4> boneWeights;
 
                 // Indices
                 createIndexList(pAiMesh, indexList);
@@ -561,9 +558,6 @@ namespace Falcor
                     mesh.tangents.frequency = SceneBuilder::Mesh::AttributeFrequency::Vertex;
                 }
 
-                std::vector<uint4> boneIds;
-                std::vector<float4> boneWeights;
-
                 if (pAiMesh->HasBones())
                 {
                     loadBones(pAiMesh, data, boneWeights, boneIds);
@@ -584,9 +578,18 @@ namespace Falcor
                 }
 
                 mesh.pMaterial = data.materialMap.at(pAiMesh->mMaterialIndex);
-                assert(mesh.pMaterial);
-                uint32_t meshID = data.builder.addMesh(mesh);
-                data.meshMap[i] = meshID;
+
+                processedMeshes[i] = data.builder.processMesh(mesh);
+            });
+
+            // Add meshes to the scene.
+            // We retain a deterministic order of the meshes in the global scene buffer by adding
+            // them sequentially after being processed in parallel.
+            uint32_t i = 0;
+            for (const auto& mesh : processedMeshes)
+            {
+                uint32_t meshID = data.builder.addProcessedMesh(mesh);
+                data.meshMap[i++] = meshID;
             }
         }
 
@@ -724,7 +727,7 @@ namespace Falcor
             }
         }
 
-        void loadTextures(ImporterData& data, const aiMaterial* pAiMaterial, const std::string& folder, Material* pMaterial, ImportMode importMode, bool useSrgb)
+        void loadTextures(ImporterData& data, const aiMaterial* pAiMaterial, const std::string& folder, const Material::SharedPtr& pMaterial, ImportMode importMode)
         {
             const auto& textureMappings = kTextureMappings[int(importMode)];
 
@@ -743,34 +746,13 @@ namespace Falcor
                     continue;
                 }
 
-                // Check if the texture was already loaded
-                Texture::SharedPtr pTex;
-                const auto& cacheItem = data.textureCache.find(path);
-                if (cacheItem != data.textureCache.end())
-                {
-                    pTex = cacheItem->second;
-                }
-                else
-                {
-                    // create a new texture
-                    std::string fullpath = folder + '/' + path;
-                    fullpath = replaceSubstring(fullpath, "\\", "/");
-                    pTex = Texture::createFromFile(fullpath, true, useSrgb && pMaterial->isSrgbTextureRequired(source.targetType));
-                    if (pTex)
-                    {
-                        data.textureCache[path] = pTex;
-                    }
-                }
-
-                assert(pTex != nullptr);
-                pMaterial->setTexture(source.targetType, pTex);
+                // Load the texture
+                std::string filename = canonicalizeFilename(folder + '/' + path);
+                data.builder.loadMaterialTexture(pMaterial, source.targetType, filename);
             }
-
-            // Flush upload heap after every material so we don't accumulate a ton of memory usage when loading a model with a lot of textures
-            gpDevice->flushAndSync();
         }
 
-        Material::SharedPtr createMaterial(ImporterData& data, const aiMaterial* pAiMaterial, const std::string& folder, ImportMode importMode, bool useSrgb)
+        Material::SharedPtr createMaterial(ImporterData& data, const aiMaterial* pAiMaterial, const std::string& folder, ImportMode importMode)
         {
             aiString name;
             pAiMaterial->Get(AI_MATKEY_NAME, name);
@@ -794,7 +776,7 @@ namespace Falcor
             }
 
             // Load textures. Note that loading is affected by the current shading model.
-            loadTextures(data, pAiMaterial, folder, pMaterial.get(), importMode, useSrgb);
+            loadTextures(data, pAiMaterial, folder, pMaterial, importMode);
 
             // Opacity
             float opacity = 1.f;
@@ -913,12 +895,10 @@ namespace Falcor
 
         bool createAllMaterials(ImporterData& data, const std::string& modelFolder, ImportMode importMode)
         {
-            bool useSrgb = !is_set(data.builder.getFlags(), SceneBuilder::Flags::AssumeLinearSpaceTextures);
-
             for (uint32_t i = 0; i < data.pScene->mNumMaterials; i++)
             {
                 const aiMaterial* pAiMaterial = data.pScene->mMaterials[i];
-                auto pMaterial = createMaterial(data, pAiMaterial, modelFolder, importMode, useSrgb);
+                auto pMaterial = createMaterial(data, pAiMaterial, modelFolder, importMode);
                 if (pMaterial == nullptr)
                 {
                     logError("Can't allocate memory for material");
@@ -1031,7 +1011,7 @@ namespace Falcor
         assimpFlags &= ~(aiProcess_CalcTangentSpace); // Never use Assimp's tangent gen code
         assimpFlags &= ~(aiProcess_FindDegenerates); // Avoid converting degenerated triangles to lines
         assimpFlags &= ~(aiProcess_OptimizeGraph); // Never use as it doesn't handle transforms with negative determinants
-        assimpFlags &= ~(aiProcess_RemoveRedundantMaterials); // Avoid merging materials
+        assimpFlags &= ~(aiProcess_RemoveRedundantMaterials); // Avoid merging materials as it doesn't load all fields we care about, we merge in 'SceneBuilder' instead.
         assimpFlags &= ~(aiProcess_SplitLargeMeshes); // Avoid splitting large meshes
         if (is_set(builderFlags, SceneBuilder::Flags::DontMergeMeshes)) assimpFlags &= ~aiProcess_OptimizeMeshes; // Avoid merging original meshes
 

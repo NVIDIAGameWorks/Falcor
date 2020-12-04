@@ -29,7 +29,7 @@
 
 namespace Falcor
 {
-    GPU_TEST(testTraceRayInlineAPI, "Requires shader model 6.5")
+    GPU_TEST(testTraceRayInlineAPI)
     {
         // We don't actually run the program, just make sure it compiles.
         ctx.createProgram("Tests/Slang/TraceRayInline.cs.slang", "testTraceRayInlineAPI", Program::DefineList(), Shader::CompilerFlags::None, "6_5");

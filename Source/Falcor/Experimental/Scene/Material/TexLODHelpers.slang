@@ -27,7 +27,7 @@
  **************************************************************************/
 
 /** Helper functions for the texture level-of-detail (LOD) system.
-    
+
     Supports texture LOD both for ray differentials (Igehy, SIGGRAPH 1999) and a method based on ray cones,
     described in "Strategies for Texture Level-of-Detail for Real-Time Ray Tracing," by
     Tomas Akenine-Moller et al., Ray Tracing Gems, 2019 and
@@ -64,7 +64,7 @@ struct RayCone
 #else
     uint widthSpreadAngleFP16;
     float getWidth()            { return f16tof32(widthSpreadAngleFP16 >> 16); }
-    float getSpreadAngle()      { return f16tof32(widthSpreadAngleFP16); } 
+    float getSpreadAngle()      { return f16tof32(widthSpreadAngleFP16); }
 #endif
 
     /** Propagate the raycone to the next hit point (hitT distance away) and with the current spreadAngle + update ray cone angle with the surfaceSpreadAngle.
@@ -143,7 +143,7 @@ struct RayCone
     }
 
 };
-    
+
 /** Compute the triangle LOD value based on triangle vertices and texture coordinates, used by ray cones.
     \param[in] vertices Triangle vertices.
     \param[in] txcoords Texture coordinates at triangle vertices.
@@ -198,7 +198,7 @@ float computeScreenSpaceSurfaceSpreadAngle(float3 positionW, float3 normalW, flo
     float3 dNdy = ddy(normalW);
     float3 dPdx = ddx(positionW);
     float3 dPdy = ddy(positionW);
-    
+
     float beta = sqrt(dot(dNdx, dNdx) + dot(dNdy, dNdy)) * sign(dot(dNdx, dPdx) + dot(dNdy, dPdy));
 
     return 2.0f * beta * betaFactorK1 + betaFactorK2;
@@ -289,7 +289,7 @@ void computeAnisotropicEllipseAxes(float3 intersectionPoint, float3 faceNormal, 
     float oneOverAreaTriangle = 1.0f / dot(faceNormal, cross(edge01, edge02));
 
     // Compute barycentrics.
-    edgeP = d + ellipseAxis0; 
+    edgeP = d + ellipseAxis0;
     u = dot(faceNormal, cross(edgeP, edge02)) * oneOverAreaTriangle;
     v = dot(faceNormal, cross(edge01, edgeP)) * oneOverAreaTriangle;
     texGradientX = (1.0f - u - v) * txcoords[0] + u * txcoords[1] + v * txcoords[2] - interpolatedTexCoordsAtIntersection;

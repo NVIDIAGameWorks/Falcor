@@ -36,6 +36,57 @@
     propagation etc., as well as make the header shareable between the CPU/GPU.
 */
 
+///////////////////////////////////////////////////////////////////////////////
+//                              8-bit snorm
+///////////////////////////////////////////////////////////////////////////////
+
+/** Convert float value to 8-bit snorm value.
+    Values outside [-1,1] are clamped and NaN is encoded as zero.
+    \return 8-bit snorm value in low bits, high bits are all zeros or ones depending on sign.
+*/
+int floatToSnorm8(float v)
+{
+    v = isnan(v) ? 0.f : min(max(v, -1.f), 1.f);
+    return (int)trunc(v * 127.f + (v >= 0.f ? 0.5f : -0.5f));
+}
+
+/** Unpack a single 8-bit snorm from the lower bits of a dword.
+    \param[in] packed 8-bit snorm in low bits, high bits don't care.
+    \return Float value in [-1,1].
+*/
+float unpackSnorm8(uint packed)
+{
+    int bits = (int)(packed << 24) >> 24;
+    precise float unpacked = max((float)bits / 127.f, -1.0f);
+    return unpacked;
+}
+
+/** Pack single float into a 8-bit snorm in the lower bits of the returned dword.
+    \return 8-bit snorm in low bits, high bits all zero.
+*/
+uint packSnorm8(precise float v)
+{
+    return floatToSnorm8(v) & 0x000000ff;
+}
+
+/** Unpack two 8-bit snorm values from the lo bits of a dword.
+    \param[in] packed Two 8-bit snorm in low bits, high bits don't care.
+    \return Two float values in [-1,1].
+*/
+float2 unpackSnorm2x8(uint packed)
+{
+    int2 bits = int2((int)(packed << 24), (int)(packed << 16)) >> 24;
+    precise float2 unpacked = max((float2)bits / 127.f, -1.0f);
+    return unpacked;
+}
+
+/** Pack two floats into 8-bit snorm values in the lo bits of a dword.
+    \return Two 8-bit snorm in low bits, high bits all zero.
+*/
+uint packSnorm2x8(precise float2 v)
+{
+    return (floatToSnorm8(v.x) & 0x000000ff) | ((floatToSnorm8(v.y) << 8) & 0x0000ff00);
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 //                              16-bit snorm
@@ -71,6 +122,8 @@ uint packSnorm16(precise float v)
 }
 
 /** Unpack two 16-bit snorm values from the lo/hi bits of a dword.
+    \param[in] packed Two 16-bit snorm in low/high bits.
+    \return Two float values in [-1,1].
 */
 float2 unpackSnorm2x16(uint packed)
 {
@@ -80,6 +133,7 @@ float2 unpackSnorm2x16(uint packed)
 }
 
 /** Pack two floats into 16-bit snorm values in the lo/hi bits of a dword.
+    \return Two 16-bit snorm in low/high bits.
 */
 uint packSnorm2x16(precise float2 v)
 {
@@ -150,8 +204,8 @@ float2 unpackUnorm2x16(uint packed)
 */
 uint packR11G11B10(float3 v)
 {
-    // Clamp upper bound so that it doesn't accidentally round up to INF 
-    v = min(v, asfloat(0x477C0000));  
+    // Clamp upper bound so that it doesn't accidentally round up to INF
+    v = min(v, asfloat(0x477C0000));
     // Exponent=15, Mantissa=1.11111
     uint r = ((f32tof16(v.x) + 8) >> 4) & 0x000007ff;
     uint g = ((f32tof16(v.y) + 8) << 7) & 0x003ff800;

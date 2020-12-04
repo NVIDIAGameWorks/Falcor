@@ -1,5 +1,5 @@
 # Scene
-m.loadScene("Arcade/Arcade.fscene")
+m.loadScene("Arcade/Arcade.pyscene")
 
 # Graphs
 m.script("Data/ForwardRenderer.py")

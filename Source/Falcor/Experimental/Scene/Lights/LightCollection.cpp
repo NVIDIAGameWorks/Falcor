@@ -55,6 +55,9 @@ namespace Falcor
     {
         PROFILE("LightCollection::update()");
 
+        auto pScene = mpScene.lock();
+        if (!pScene) return false;
+
         if (pUpdateStatus)
         {
             pUpdateStatus->lightsUpdateInfo.clear();
@@ -68,11 +71,11 @@ namespace Falcor
 
         for (uint32_t lightIdx = 0; lightIdx < mMeshLights.size(); ++lightIdx)
         {
-            const MeshInstanceData& instanceData = mpScene->getMeshInstance(mMeshLights[lightIdx].meshInstanceID);
+            const MeshInstanceData& instanceData = pScene->getMeshInstance(mMeshLights[lightIdx].meshInstanceID);
             UpdateFlags updateFlags = UpdateFlags::None;
 
             // Check if instance transform changed.
-            if (mpScene->getAnimationController()->didMatrixChanged(instanceData.globalMatrixID)) updateFlags |= UpdateFlags::MatrixChanged;
+            if (pScene->getAnimationController()->isMatrixChanged(instanceData.globalMatrixID)) updateFlags |= UpdateFlags::MatrixChanged;
 
             // Store update status.
             if (updateFlags != UpdateFlags::None) updatedLights.push_back(lightIdx);
@@ -82,7 +85,7 @@ namespace Falcor
         // Update light data if needed.
         if (!updatedLights.empty())
         {
-            updateTrianglePositions(pRenderContext, updatedLights);
+            updateTrianglePositions(pRenderContext, *pScene, updatedLights);
             return true;
         }
 
@@ -95,14 +98,14 @@ namespace Falcor
         mpScene = pScene;
 
         // Setup the lights.
-        if (!setupMeshLights()) return false;
+        if (!setupMeshLights(*pScene)) return false;
 
         // Create program for integrating emissive textures.
         // This should be done after lights are setup, so that we know which sampler state etc. to use.
-        if (!initIntegrator()) return false;
+        if (!initIntegrator(*pScene)) return false;
 
         // Create programs for building/updating the mesh lights.
-        Shader::DefineList defines = mpScene->getSceneDefines();
+        Shader::DefineList defines = pScene->getSceneDefines();
         mpTriangleListBuilder = ComputePass::create(kBuildTriangleListFile, "buildTriangleList", defines);
         mpTrianglePositionUpdater = ComputePass::create(kUpdateTriangleVerticesFile, "updateTriangleVertices", defines);
         mpFinalizeIntegration = ComputePass::create(kFinalizeIntegrationFile, "finalizeIntegration", defines);
@@ -110,12 +113,12 @@ namespace Falcor
         mpStagingFence = GpuFence::create();
 
         // Now build the mesh light data.
-        build(pRenderContext);
+        build(pRenderContext, *pScene);
 
         return true;
     }
 
-    bool LightCollection::initIntegrator()
+    bool LightCollection::initIntegrator(const Scene& scene)
     {
         // The current algorithm rasterizes emissive triangles in texture space,
         // and uses atomic operations to sum up the contribution from all covered texels.
@@ -132,7 +135,7 @@ namespace Falcor
         // Create program.
         Program::Desc desc;
         desc.addShaderLibrary(kEmissiveIntegratorFile).vsEntry("vsMain").psEntry("psMain");
-        mIntegrator.pProgram = GraphicsProgram::create(desc, mpScene->getSceneDefines());
+        mIntegrator.pProgram = GraphicsProgram::create(desc, scene.getSceneDefines());
 
         // Create graphics state.
         mIntegrator.pState = GraphicsState::create();
@@ -166,18 +169,18 @@ namespace Falcor
         return true;
     }
 
-    bool LightCollection::setupMeshLights()
+    bool LightCollection::setupMeshLights(const Scene& scene)
     {
         mMeshLights.clear();
         mpSamplerState = nullptr;
         mTriangleCount = 0;
 
         // Create mesh lights for all emissive mesh instances.
-        for (uint32_t meshInstanceID = 0; meshInstanceID < mpScene->getMeshInstanceCount(); meshInstanceID++)
+        for (uint32_t meshInstanceID = 0; meshInstanceID < scene.getMeshInstanceCount(); meshInstanceID++)
         {
-            const MeshInstanceData& instanceData = mpScene->getMeshInstance(meshInstanceID);
-            const MeshDesc& meshData = mpScene->getMesh(instanceData.meshID);
-            const Material::SharedPtr& pMaterial = mpScene->getMaterial(instanceData.materialID);
+            const MeshInstanceData& instanceData = scene.getMeshInstance(meshInstanceID);
+            const MeshDesc& meshData = scene.getMesh(instanceData.meshID);
+            const Material::SharedPtr& pMaterial = scene.getMaterial(instanceData.materialID);
             assert(pMaterial);
 
             if (pMaterial->isEmissive())
@@ -212,9 +215,9 @@ namespace Falcor
         return true;
     }
 
-    void LightCollection::build(RenderContext* pRenderContext)
+    void LightCollection::build(RenderContext* pRenderContext, const Scene& scene)
     {
-        prepareMeshData();
+        prepareMeshData(scene);
 
         if (mTriangleCount == 0)
         {
@@ -229,11 +232,11 @@ namespace Falcor
         else
         {
             // Prepare GPU buffers.
-            prepareTriangleData(pRenderContext);
+            prepareTriangleData(pRenderContext, scene);
 
             // Pre-integrate emissive triangles.
             // TODO: We might want to redo this in update() for animated meshes or after scale changes as that affects the flux.
-            integrateEmissive(pRenderContext);
+            integrateEmissive(pRenderContext, scene);
 
             mCPUInvalidData = CPUOutOfDateFlags::All;
             mStagingBufferValid = false;
@@ -246,7 +249,7 @@ namespace Falcor
         }
     }
 
-    void LightCollection::prepareTriangleData(RenderContext* pRenderContext)
+    void LightCollection::prepareTriangleData(RenderContext* pRenderContext, const Scene& scene)
     {
         assert(mTriangleCount > 0);
 
@@ -260,10 +263,10 @@ namespace Falcor
         if (mpFluxData->getStructSize() != sizeof(EmissiveFlux)) throw std::exception("Struct EmissiveFlux size mismatch between CPU/GPU");
 
         // Compute triangle data (vertices, uv-coordinates, materialID) for all mesh lights.
-        buildTriangleList(pRenderContext);
+        buildTriangleList(pRenderContext, scene);
     }
 
-    void LightCollection::prepareMeshData()
+    void LightCollection::prepareMeshData(const Scene& scene)
     {
         // Create buffer for the mesh data if needed.
         if (!mMeshLights.empty())
@@ -285,7 +288,7 @@ namespace Falcor
 
         // Build a lookup table from mesh instance ID to emissive triangle offset.
         // This is useful in ray tracing for locating the emissive triangle that was hit for MIS computation etc.
-        uint32_t instanceCount = mpScene->getMeshInstanceCount();
+        uint32_t instanceCount = scene.getMeshInstanceCount();
         assert(instanceCount > 0);
         std::vector<uint32_t> triangleOffsets(instanceCount, MeshLightData::kInvalidIndex);
         for (const auto& it : mMeshLights)
@@ -299,7 +302,7 @@ namespace Falcor
         assert(mpPerMeshInstanceOffset->getSize() == triangleOffsets.size() * sizeof(triangleOffsets[0]));
     }
 
-    void LightCollection::integrateEmissive(RenderContext* pRenderContext)
+    void LightCollection::integrateEmissive(RenderContext* pRenderContext, const Scene& scene)
     {
         assert(mTriangleCount > 0);
         assert(mMeshLights.size() > 0);
@@ -321,7 +324,7 @@ namespace Falcor
             mIntegrator.pVars = GraphicsVars::create(mIntegrator.pProgram.get());
 
             // Bind scene.
-            mIntegrator.pVars["gScene"] = mpScene->getParameterBlock();
+            mIntegrator.pVars["gScene"] = scene.getParameterBlock();
 
             // Bind light collection.
             setShaderData(mIntegrator.pVars["gLightCollection"]);
@@ -337,7 +340,7 @@ namespace Falcor
         // 2nd pass: Finalize the per-triangle flux values.
         {
             // Bind scene.
-            mpFinalizeIntegration["gScene"] = mpScene->getParameterBlock();
+            mpFinalizeIntegration["gScene"] = scene.getParameterBlock();
 
             mpFinalizeIntegration["gTexelSum"] = mIntegrator.pResultBuffer;
             mpFinalizeIntegration["gTriangleData"] = mpTriangleData;
@@ -356,6 +359,9 @@ namespace Falcor
     {
         if (mStatsValid) return;
 
+        auto pScene = mpScene.lock();
+        assert(pScene);
+
         // Read back the current data. This is potentially expensive.
         syncCPUData();
 
@@ -367,7 +373,7 @@ namespace Falcor
         uint32_t trianglesTotal = 0;
         for (const auto& meshLight : mMeshLights)
         {
-            bool isTextured = mpScene->getMaterial(meshLight.materialID)->getEmissiveTexture() != nullptr;
+            bool isTextured = pScene->getMaterial(meshLight.materialID)->getEmissiveTexture() != nullptr;
 
             if (isTextured)
             {
@@ -390,7 +396,7 @@ namespace Falcor
             {
                 // TODO: Currently we don't detect uniform radiance for textured lights, so just look at whether the mesh light is textured or not.
                 // This code will change when we tag individual triangles as textured vs non-textured.
-                bool isTextured = mpScene->getMaterial(mMeshLights[tri.lightIdx].materialID)->getEmissiveTexture() != nullptr;
+                bool isTextured = pScene->getMaterial(mMeshLights[tri.lightIdx].materialID)->getEmissiveTexture() != nullptr;
 
                 if (isTextured) stats.trianglesActiveTextured++;
                 else stats.trianglesActiveUniform++;
@@ -402,12 +408,12 @@ namespace Falcor
         mStatsValid = true;
     }
 
-    void LightCollection::buildTriangleList(RenderContext* pRenderContext)
+    void LightCollection::buildTriangleList(RenderContext* pRenderContext, const Scene& scene)
     {
         assert(mMeshLights.size() > 0);
 
         // Bind scene.
-        mpTriangleListBuilder["gScene"] = mpScene->getParameterBlock();
+        mpTriangleListBuilder["gScene"] = scene.getParameterBlock();
 
         // Bind our output buffer.
         mpTriangleListBuilder["gTriangleData"] = mpTriangleData;
@@ -470,7 +476,7 @@ namespace Falcor
         }
     }
 
-    void LightCollection::updateTrianglePositions(RenderContext* pRenderContext, const std::vector<uint32_t>& updatedLights)
+    void LightCollection::updateTrianglePositions(RenderContext* pRenderContext, const Scene& scene, const std::vector<uint32_t>& updatedLights)
     {
         // This pass pre-transforms all emissive triangles into world space and updates their area and face normals.
         // It is executed if any geometry in the scene has moved, which is wasteful since it will update also things
@@ -480,7 +486,7 @@ namespace Falcor
         assert(!updatedLights.empty());
 
         // Bind scene.
-        mpTrianglePositionUpdater["gScene"] = mpScene->getParameterBlock();
+        mpTrianglePositionUpdater["gScene"] = scene.getParameterBlock();
 
         // Bind our resources.
         mpTrianglePositionUpdater["gTriangleData"] = mpTriangleData;
@@ -626,5 +632,18 @@ namespace Falcor
 
         mpStagingBuffer->unmap();
         mCPUInvalidData = CPUOutOfDateFlags::None;
+    }
+
+    uint64_t LightCollection::getMemoryUsageInBytes() const
+    {
+        uint64_t m = 0;
+        if (mpTriangleData) m += mpTriangleData->getSize();
+        if (mpActiveTriangleList) m += mpActiveTriangleList->getSize();
+        if (mpFluxData) m += mpFluxData->getSize();
+        if (mpMeshData) m += mpMeshData->getSize();
+        if (mpPerMeshInstanceOffset) m += mpPerMeshInstanceOffset->getSize();
+        if (mpStagingBuffer) m += mpStagingBuffer->getSize();
+        if (mIntegrator.pResultBuffer) m += mIntegrator.pResultBuffer->getSize();
+        return m;
     }
 }

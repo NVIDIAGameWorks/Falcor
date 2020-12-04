@@ -52,7 +52,9 @@ namespace Falcor
         void renderUI(Gui::Widgets& widgets);
 
         /** Set rotation angles.
-            Rotation is applied as rotation around X axis, followed by rotation around Y and Z axes.
+            Rotation is applied as rotation around Z, Y and X axes, in that order.
+            Note that glm::extractEulerAngleXYZ() may be used to extract these angles from
+            a transformation matrix.
             \param[in] degreesXYZ Rotation angles in degrees for XYZ.
         */
         void setRotation(float3 degreesXYZ);
@@ -103,6 +105,10 @@ namespace Falcor
         /** Get the environment map changes that happened in since the previous frame.
         */
         Changes getChanges() const { return mChanges; }
+
+        /** Get the total GPU memory usage in bytes.
+        */
+        uint64_t getMemoryUsageInBytes() const;
 
     protected:
         EnvMap(const std::string& filename);

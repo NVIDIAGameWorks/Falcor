@@ -250,6 +250,17 @@ namespace Falcor
             else if (features2.ProgrammableSamplePositionsTier == D3D12_PROGRAMMABLE_SAMPLE_POSITIONS_TIER_2) supported |= Device::SupportedFeatures::ProgrammableSamplePositionsFull;
         }
 
+        D3D12_FEATURE_DATA_D3D12_OPTIONS3 features3;
+        hr = pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS3, &features3, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS3));
+        if (FAILED(hr) || !features3.BarycentricsSupported)
+        {
+            logInfo("Barycentrics are not supported on this device.");
+        }
+        else
+        {
+            supported |= Device::SupportedFeatures::Barycentrics;
+        }
+
         D3D12_FEATURE_DATA_D3D12_OPTIONS5 features5;
         hr = pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &features5, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS5));
         if (FAILED(hr) || features5.RaytracingTier == D3D12_RAYTRACING_TIER_NOT_SUPPORTED)
@@ -259,6 +270,7 @@ namespace Falcor
         else
         {
             supported |= Device::SupportedFeatures::Raytracing;
+            if (features5.RaytracingTier == D3D12_RAYTRACING_TIER_1_1) supported |= Device::SupportedFeatures::RaytracingTier1_1;
         }
 
         return supported;

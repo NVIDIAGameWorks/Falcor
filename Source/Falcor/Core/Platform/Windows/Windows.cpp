@@ -695,15 +695,15 @@ namespace Falcor
     uint32_t bitScanReverse(uint32_t a)
     {
         unsigned long index;
-        _BitScanReverse(&index, a);
-        return (uint32_t)index;
+        auto ret = _BitScanReverse(&index, a);
+        return ret ? (uint32_t)index : 0;
     }
 
     uint32_t bitScanForward(uint32_t a)
     {
         unsigned long index;
-        _BitScanForward(&index, a);
-        return (uint32_t)index;
+        auto ret = _BitScanForward(&index, a);
+        return ret ? (uint32_t)index : 0;
     }
 
     uint32_t popcount(uint32_t a)

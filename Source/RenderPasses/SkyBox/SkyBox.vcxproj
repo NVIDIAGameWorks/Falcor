@@ -14,7 +14,7 @@
     <ProjectGuid>{C6EB0AC0-FF3B-474E-A453-44D84329D13A}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>SkyBox</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
     <ProjectName>SkyBox</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

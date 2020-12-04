@@ -34,7 +34,7 @@ import GBufferHelpers;
 import Experimental.Scene.Material.TexLODHelpers;
 
 // UAV output channels
-RWTexture2D<uint2>  gVBuffer;
+RWTexture2D<PackedHitInfo> gVBuffer;
 RWTexture2D<float2> gMotionVectors;
 RWTexture2D<float4> gFaceNormalW;
 RWTexture2D<float2> gPosNormalFwidth;
@@ -76,6 +76,10 @@ GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 bar
 #endif
     float3 viewDir = normalize(gScene.camera.getPosition() - v.posW);
     ShadingData sd = prepareShadingData(v, vsOut.materialID, gScene.materials[vsOut.materialID], gScene.materialResources[vsOut.materialID], viewDir);
+
+#if ADJUST_SHADING_NORMALS
+    adjustShadingNormal(sd, v);
+#endif
 
     GBuffer gbuf = storeGBufferOutput(sd, v);
 
@@ -128,7 +132,8 @@ GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 bar
     if (isValid(gVBuffer))
     {
         HitInfo hit;
-        hit.meshInstanceID = vsOut.meshInstanceID;
+        hit.type = InstanceType::TriangleMesh;
+        hit.instanceID = vsOut.meshInstanceID;
         hit.primitiveIndex = triangleIndex;
         hit.barycentrics = barycentrics.yz;
         gVBuffer[ipos] = hit.encode();

@@ -278,8 +278,8 @@ void ErrorMeasurePass::renderUI(Gui::Widgets& widget)
     }
 
     widget.checkbox("Ignore background", mIgnoreBackground);
-    widget.tooltip(("Do not include background pixels in the error measurements.\n"
-                      "This option requires the optional input '" + std::string(kInputChannelWorldPosition) + "' to be bound").c_str(), true);
+    widget.tooltip("Do not include background pixels in the error measurements.\n"
+                      "This option requires the optional input '" + std::string(kInputChannelWorldPosition) + "' to be bound", true);
     widget.checkbox("Compute L2 error (rather than L1)", mComputeSquaredDifference);
     widget.checkbox("Compute RGB average", mComputeAverage);
     widget.tooltip("When enabled, the average error over the RGB components is computed when creating the difference image.\n"
@@ -290,18 +290,18 @@ void ErrorMeasurePass::renderUI(Gui::Widgets& widget)
                      "If the chosen reference doesn't exist, the error measurements are disabled.", true);
     // Display the filename of the reference file.
     const std::string referenceText = "Reference: " + getFilename(mReferenceImagePath);
-    widget.text(referenceText.c_str());
+    widget.text(referenceText);
     if (!mReferenceImagePath.empty())
     {
-        widget.tooltip(mReferenceImagePath.c_str());
+        widget.tooltip(mReferenceImagePath);
     }
 
     // Display the filename of the measurement file.
     const std::string outputText = "Output: " + getFilename(mMeasurementsFilePath);
-    widget.text(outputText.c_str());
+    widget.text(outputText);
     if (!mMeasurementsFilePath.empty())
     {
-        widget.tooltip(mMeasurementsFilePath.c_str());
+        widget.tooltip(mMeasurementsFilePath);
     }
 
     // Print numerical error (scalar and RGB).
@@ -310,7 +310,7 @@ void ErrorMeasurePass::renderUI(Gui::Widgets& widget)
         // The checkbox was enabled; mark the running error values invalid so that they start fresh.
         mRunningAvgError = -1.f;
     }
-    widget.tooltip(("Exponential moving average, sigma = " + std::to_string(mRunningErrorSigma)).c_str());
+    widget.tooltip("Exponential moving average, sigma = " + std::to_string(mRunningErrorSigma));
     if (mMeasurements.valid)
     {
         // Use stream so we can control formatting.
@@ -322,7 +322,7 @@ void ErrorMeasurePass::renderUI(Gui::Widgets& widget)
           (mReportRunningError ? mRunningError.r : mMeasurements.error.r) << ", " <<
           (mReportRunningError ? mRunningError.g : mMeasurements.error.g) << ", " <<
           (mReportRunningError ? mRunningError.b : mMeasurements.error.b);
-        widget.text(oss.str().c_str());
+        widget.text(oss.str());
     }
     else
     {

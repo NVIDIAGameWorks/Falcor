@@ -109,11 +109,18 @@ namespace Falcor
         return gDataDirectories;
     }
 
-    void addDataDirectory(const std::string& dir)
+    void addDataDirectory(const std::string& dir, bool addToFront)
     {
         if (std::find(gDataDirectories.begin(), gDataDirectories.end(), dir) == gDataDirectories.end())
         {
-            gDataDirectories.push_back(dir);
+            if (addToFront)
+            {
+                gDataDirectories.insert(gDataDirectories.begin(), dir);
+            }
+            else
+            {
+                gDataDirectories.push_back(dir);
+            }
         }
     }
 
@@ -158,7 +165,7 @@ namespace Falcor
 
         for (const auto& dir : gDataDirectories)
         {
-            fullPath = canonicalizeFilename(dir + '/' + filename);
+            fullPath = canonicalizeFilename((fs::path(dir) / filename).string());
             if (doesFileExist(fullPath))
             {
                 return true;
@@ -177,7 +184,7 @@ namespace Falcor
     {
         for (const auto& dir : gShaderDirectories)
         {
-            fullPath = canonicalizeFilename(dir + '/' + filename);
+            fullPath = canonicalizeFilename((fs::path(dir) / filename).string());
             if (doesFileExist(fullPath))
             {
                 return true;
@@ -192,7 +199,7 @@ namespace Falcor
         for (uint32_t i = 0; i < (uint32_t)-1; i++)
         {
             std::string newPrefix = prefix + '.' + std::to_string(i);
-            filename = directory + '/' + newPrefix + "." + extension;
+            filename = (fs::path(directory) / newPrefix).string() + "." + extension;
 
             if (doesFileExist(filename) == false)
             {

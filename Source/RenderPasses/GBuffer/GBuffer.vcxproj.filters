@@ -17,6 +17,9 @@
     <ClCompile Include="VBuffer\VBufferRaster.cpp">
       <Filter>VBuffer</Filter>
     </ClCompile>
+    <ClCompile Include="GBuffer\GBufferRTCurves.cpp">
+      <Filter>GBuffer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GBuffer\GBufferRaster.h">
@@ -34,6 +37,9 @@
     </ClInclude>
     <ClInclude Include="VBuffer\VBufferRaster.h">
       <Filter>VBuffer</Filter>
+    </ClInclude>
+    <ClInclude Include="GBuffer\GBufferRTCurves.h">
+      <Filter>GBuffer</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

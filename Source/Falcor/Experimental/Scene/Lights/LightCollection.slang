@@ -81,6 +81,15 @@ struct LightCollection
         return triangleData[triIdx].unpack();
     }
 
+    /** Returns the average radiance for a given triangle.
+        \param[in] triIdx Emissive triangle index.
+        \return Average radiance.
+    */
+    float3 getAverageRadiance(uint triIdx)
+    {
+        return fluxData[triIdx].averageRadiance;
+    }
+
     /** Returns a triangle index given the mesh instance ID and primitive index.
         \param[in] meshInstanceID Global mesh instance ID.
         \param[in] primitiveIndex Primitive index in the given mesh.

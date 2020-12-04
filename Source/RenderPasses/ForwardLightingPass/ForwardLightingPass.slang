@@ -28,12 +28,14 @@
 import Scene.Raster;
 import Scene.Shading;
 import Utils.Helpers;
+import Experimental.Scene.Lights.EnvMapLighting;
 
 cbuffer PerFrameCB
 {
     float2 gRenderTargetDim;
 };
 
+EnvMapLighting gEnvMapLighting;
 SamplerState gSampler;
 Texture2D visibilityBuffer;
 static VSOut vsData;
@@ -80,10 +82,12 @@ PsOut ps(VSOut vOut, uint triangleIndex : SV_PrimitiveID)
     // Add the emissive component
     finalColor.rgb += sd.emissive;
     finalColor.a = sd.opacity;
-    finalColor.rgb += evalMaterial(sd, gScene.lightProbe).color;
+#ifdef _USE_ENV_MAP
+    finalColor.rgb += evalMaterial(sd, gEnvMapLighting).color;
+#endif
 
     psOut.color = finalColor;
-    psOut.normal = float4(vOut.normalW * 0.5f + 0.5f, 1.0f);
+    psOut.normal = float4(sd.N * 0.5f + 0.5f, 1.0f);
 
 #ifdef _OUTPUT_MOTION_VECTORS
     // Using vOut.posH.xy as pixel coordinate since it has the SV_Position semantic.

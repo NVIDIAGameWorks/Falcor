@@ -96,7 +96,7 @@ mpVars["perFrameCB"]["gColor"] = float4(0, 1, 0, 1);
 #### Rendering a Scene Using the Shader
 With our scene, shader, and both the `GraphicsState` and `RasterizerState` set up, we can finally render our scene at the end of `execute()`. This is done through the `render()` method of `mpScene`, like so:
 ```c++
-mpScene->render(pRenderContext, mpGraphicsState.get(), mpGraphicsVars.get(), renderFlags);
+mpScene->rasterize(pRenderContext, mpGraphicsState.get(), mpGraphicsVars.get(), renderFlags);
 ```
 Your `execute()` function should now look like this, with a check for `mpScene` so we avoid accessing the scene when it isn't set:
 ```c++
@@ -113,11 +113,11 @@ void WireframePass::execute(RenderContext* pRenderContext, const RenderData& ren
         Scene::RenderFlags renderFlags = Scene::RenderFlags::UserRasterizerState;
         mpVars["PerFrameCB"]["gColor"] = float4(0, 1, 0, 1);
 
-        mpScene->render(pRenderContext, mpGraphicsState.get(), mpVars.get(), renderFlags);
+        mpScene->rasterize(pRenderContext, mpGraphicsState.get(), mpVars.get(), renderFlags);
     }
 }
 ```
 
-Using the Render Graph Editor, create a graph solely containing this pass then launch it in Mogwai. You should see a black screen as there is no scene currently loaded. Load a scene by going to `File -> Load Scene`, and you should now see the wireframe for the scene you selected. We used Arcade.fscene (located in the `Media` folder), which looks like this:
+Using the Render Graph Editor, create a graph solely containing this pass then launch it in Mogwai. You should see a black screen as there is no scene currently loaded. Load a scene by going to `File -> Load Scene`, and you should now see the wireframe for the scene you selected. We used `Media/Arcade/Arcade.pyscene`, which looks like this:
 
 ![WireframePass](./images/WireframePass.png)

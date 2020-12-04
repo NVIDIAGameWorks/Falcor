@@ -143,14 +143,24 @@ namespace Falcor
     }
 
 
-    SharedResourceApiHandle Resource::createSharedApiHandle()
+    SharedResourceApiHandle Resource::getSharedApiHandle() const
     {
-        ID3D12DevicePtr pDevicePtr = gpDevice->getApiHandle();
-        auto s = string_2_wstring(mName);
-        SharedResourceApiHandle pHandle;
+        if (!mSharedApiHandle)
+        {
+            ID3D12DevicePtr pDevicePtr = gpDevice->getApiHandle();
+            auto s = string_2_wstring(mName);
+            SharedResourceApiHandle pHandle;
 
-        HRESULT res = pDevicePtr->CreateSharedHandle(mApiHandle, 0, GENERIC_ALL, s.c_str(), &pHandle);
-        if (res == S_OK) return pHandle;
-        else return nullptr;
+            HRESULT res = pDevicePtr->CreateSharedHandle(mApiHandle, 0, GENERIC_ALL, s.c_str(), &pHandle);
+            if (res == S_OK)
+            {
+                mSharedApiHandle = pHandle;
+            }
+            else
+            {
+                throw std::exception("Resource::getSharedApiHandle(): failed to create shared handle");
+            }
+        }
+        return mSharedApiHandle;
     }
 }

@@ -37,6 +37,8 @@ __exported import PixelStatsShared;
 
 RWTexture2D<uint> gStatsRayCount[(uint)PixelStatsRayType::Count]; // Per-pixel ray count stats.
 RWTexture2D<uint> gStatsPathLength;          // Per-pixel path length.
+RWTexture2D<uint> gStatsPathVertexCount;     // Per-pixel path vertex count.
+RWTexture2D<uint> gStatsVolumeLookupCount;   // Per-pixel volume lookup count.
 
 #ifdef _PIXEL_STATS_ENABLED
 static uint2 gPixelStatsPixel;
@@ -60,5 +62,19 @@ void logPathLength(uint pathLength)
 {
 #ifdef _PIXEL_STATS_ENABLED
     gStatsPathLength[gPixelStatsPixel] = pathLength;
+#endif
+}
+
+void logPathVertex()
+{
+#ifdef _PIXEL_STATS_ENABLED
+    InterlockedAdd(gStatsPathVertexCount[gPixelStatsPixel], 1);
+#endif
+}
+
+void logVolumeLookup()
+{
+#ifdef _PIXEL_STATS_ENABLED
+    InterlockedAdd(gStatsVolumeLookupCount[gPixelStatsPixel], 1);
 #endif
 }

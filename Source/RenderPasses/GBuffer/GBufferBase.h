@@ -62,11 +62,13 @@ protected:
 
     uint2                           mFrameDim = {};
     float2                          mInvFrameDim = {};
+    ResourceFormat                  mVBufferFormat = HitInfo::kDefaultFormat;
 
     // UI variables
     SamplePattern                   mSamplePattern = SamplePattern::Center;     ///< Which camera jitter sample pattern to use.
     uint32_t                        mSampleCount = 16;                          ///< Sample count for camera jitter.
     bool                            mDisableAlphaTest = false;                  ///< Disable alpha test.
+    bool                            mAdjustShadingNormals = true;               ///< Adjust shading normals.
     bool                            mOptionsChanged = false;
 
     static void registerBindings(pybind11::module& m);

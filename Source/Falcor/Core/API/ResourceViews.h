@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Core/Program/ProgramReflection.h"
 #include <vector>
 
 namespace Falcor
@@ -76,6 +77,7 @@ namespace Falcor
     {
     public:
         using ApiHandle = ApiHandleType;
+        using Dimension = ReflectionResourceType::Dimensions;
         static const uint32_t kMaxPossible = -1;
         virtual ~ResourceView();
 
@@ -84,6 +86,9 @@ namespace Falcor
 
         ResourceView(ResourceWeakPtr& pResource, ApiHandle handle, uint32_t firstElement, uint32_t elementCount)
             : mApiHandle(handle), mpResource(pResource), mViewInfo(firstElement, elementCount) {}
+
+        ResourceView(ResourceWeakPtr& pResource, ApiHandle handle)
+            : mApiHandle(handle), mpResource(pResource) {}
 
         /** Get the raw API handle.
         */
@@ -96,6 +101,16 @@ namespace Falcor
         /** Get the resource referenced by the view.
         */
         Resource* getResource() const { return mpResource.lock().get(); }
+
+#if _ENABLE_CUDA
+        /** Get the CUDA device address for this view.
+        */
+        void* getCUDADeviceAddress() const
+        {
+            return mpResource.lock()->getCUDADeviceAddress(mViewInfo);
+        }
+#endif
+
     protected:
         ApiHandle mApiHandle;
         ResourceViewInfo mViewInfo;
@@ -110,15 +125,18 @@ namespace Falcor
 
         static SharedPtr create(ConstTextureSharedPtrRef pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize);
         static SharedPtr create(ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount);
-        static SharedPtr getNullView();
+        static SharedPtr create(Dimension dimension);
+        static SharedPtr createViewForAccelerationStructure(ConstBufferSharedPtrRef pBuffer);
 
-        // This is currently used by RtScene to create an SRV for the TLAS, since the create() functions above assume texture or buffer types.
+        static SharedPtr getNullView(Dimension dimension);
+
+    private:
         ShaderResourceView(ResourceWeakPtr pResource, ApiHandle handle, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
             : ResourceView(pResource, handle, mostDetailedMip, mipCount, firstArraySlice, arraySize) {}
-    private:
-
         ShaderResourceView(ResourceWeakPtr pResource, ApiHandle handle, uint32_t firstElement, uint32_t elementCount)
             : ResourceView(pResource, handle, firstElement, elementCount) {}
+        ShaderResourceView(ResourceWeakPtr pResource, ApiHandle handle)
+            : ResourceView(pResource, handle) {}
     };
 
     class dlldecl DepthStencilView : public ResourceView<DsvHandle>
@@ -128,7 +146,10 @@ namespace Falcor
         using SharedConstPtr = std::shared_ptr<const DepthStencilView>;
 
         static SharedPtr create(ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
-        static SharedPtr getNullView();
+        static SharedPtr create(Dimension dimension);
+
+        static SharedPtr getNullView(Dimension dimension);
+
     private:
         DepthStencilView(ResourceWeakPtr pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
             ResourceView(pResource, handle, mipLevel, 1, firstArraySlice, arraySize) {}
@@ -142,7 +163,10 @@ namespace Falcor
 
         static SharedPtr create(ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
         static SharedPtr create(ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount);
-        static SharedPtr getNullView();
+        static SharedPtr create(Dimension dimension);
+
+        static SharedPtr getNullView(Dimension dimension);
+
     private:
         UnorderedAccessView(ResourceWeakPtr pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
             ResourceView(pResource, handle, mipLevel, 1, firstArraySlice, arraySize) {}
@@ -157,8 +181,12 @@ namespace Falcor
         using SharedPtr = std::shared_ptr<RenderTargetView>;
         using SharedConstPtr = std::shared_ptr<const RenderTargetView>;
         static SharedPtr create(ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
-        static SharedPtr getNullView();
+        static SharedPtr create(Dimension dimension);
+
+        static SharedPtr getNullView(Dimension dimension);
+
         ~RenderTargetView();
+
     private:
         RenderTargetView(ResourceWeakPtr pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
             ResourceView(pResource, handle, mipLevel, 1, firstArraySlice, arraySize) {}
@@ -170,19 +198,12 @@ namespace Falcor
         using SharedPtr = std::shared_ptr<ConstantBufferView>;
         using SharedConstPtr = std::shared_ptr<const ConstantBufferView>;
         static SharedPtr create(ConstBufferSharedPtrRef pBuffer);
+        static SharedPtr create();
+
         static SharedPtr getNullView();
 
     private:
         ConstantBufferView(ResourceWeakPtr pResource, ApiHandle handle) :
-            ResourceView(pResource, handle, 0, 1, 0, 1) {}        
-    };
-
-    struct NullResourceViews
-    {
-        ShaderResourceView::SharedPtr srv;
-        ConstantBufferView::SharedPtr cbv;
-        RenderTargetView::SharedPtr   rtv;
-        UnorderedAccessView::SharedPtr uav;
-        DepthStencilView::SharedPtr dsv;
+            ResourceView(pResource, handle, 0, 1, 0, 1) {}
     };
 }

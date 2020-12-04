@@ -42,6 +42,11 @@ float3 evalFresnelSchlick(float3 f0, float3 f90, float cosTheta)
     return f0 + (f90 - f0) * pow(max(1 - cosTheta, 0), 5); // Clamp to avoid NaN if cosTheta = 1+epsilon
 }
 
+float evalFresnelSchlick(float f0, float f90, float cosTheta)
+{
+    return f0 + (f90 - f0) * pow(max(1 - cosTheta, 0), 5); // Clamp to avoid NaN if cosTheta = 1+epsilon
+}
+
 /** Evaluates the Fresnel term using dieletric fresnel equations.
     Based on http://www.pbr-book.org/3ed-2018/Reflection_Models/Specular_Reflection_and_Transmission.html
 

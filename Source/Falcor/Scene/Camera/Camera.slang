@@ -39,6 +39,11 @@ struct CameraRay
     {
         return { origin, tMin, dir, tMax };
     }
+
+    float3 eval(float t)
+    {
+        return origin + t * dir;
+    }
 };
 
 struct Camera

@@ -34,6 +34,7 @@ namespace Falcor
     class Texture;
     class Buffer;
     class ParameterBlock;
+    struct ResourceViewInfo;
 
     class dlldecl Resource : public std::enable_shared_from_this<Resource>
     {
@@ -114,9 +115,13 @@ namespace Falcor
         */
         const ApiHandle& getApiHandle() const { return mApiHandle; }
 
-        /** Creates a shared resource API handle.
+        /** Get a shared resource API handle.
+
+            The handle will be created on-demand if it does not already exist.
+            Throws if a shared handle cannot be created for this resource.
         */
-        SharedResourceApiHandle createSharedApiHandle();
+        SharedResourceApiHandle getSharedApiHandle() const;
+
 
         struct ViewInfoHashFunc
         {
@@ -157,6 +162,18 @@ namespace Falcor
         std::shared_ptr<Texture> asTexture() { return this ? std::dynamic_pointer_cast<Texture>(shared_from_this()) : nullptr; }
         std::shared_ptr<Buffer> asBuffer() { return this ? std::dynamic_pointer_cast<Buffer>(shared_from_this()) : nullptr; }
 
+#if _ENABLE_CUDA
+        /** Get the CUDA device address for this resource.
+            \return CUDA device address.
+            Throws an exception if the resource is not shared.
+        */
+        virtual void* getCUDADeviceAddress() const = 0;
+
+        /** Get the CUDA device address for a view of this resource.
+        */
+        virtual void* getCUDADeviceAddress(ResourceViewInfo const& viewInfo) const = 0;
+#endif
+
     protected:
         friend class CopyContext;
 
@@ -179,6 +196,7 @@ namespace Falcor
         size_t mSize = 0;
         GpuAddress mGpuVaOffset = 0;
         std::string mName;
+        mutable SharedResourceApiHandle mSharedApiHandle = 0;
 
         mutable std::unordered_map<ResourceViewInfo, ShaderResourceView::SharedPtr, ViewInfoHashFunc> mSrvs;
         mutable std::unordered_map<ResourceViewInfo, RenderTargetView::SharedPtr, ViewInfoHashFunc> mRtvs;

@@ -142,13 +142,17 @@ void SkyBox::execute(RenderContext* pRenderContext, const RenderData& renderData
 
     if (!mpScene) return;
 
+    const auto& pEnvMap = mpScene->getEnvMap();
+    mpProgram->addDefine("_USE_ENV_MAP", pEnvMap ? "1" : "0");
+    if (pEnvMap) pEnvMap->setShaderData(mpVars["PerFrameCB"]["gEnvMap"]);
+
     glm::mat4 world = glm::translate(mpScene->getCamera()->getPosition());
     mpVars["PerFrameCB"]["gWorld"] = world;
     mpVars["PerFrameCB"]["gScale"] = mScale;
     mpVars["PerFrameCB"]["gViewMat"] = mpScene->getCamera()->getViewMatrix();
     mpVars["PerFrameCB"]["gProjMat"] = mpScene->getCamera()->getProjMatrix();
     mpState->setFbo(mpFbo);
-    mpCubeScene->render(pRenderContext, mpState.get(), mpVars.get(), Scene::RenderFlags::UserRasterizerState);
+    mpCubeScene->rasterize(pRenderContext, mpState.get(), mpVars.get(), Scene::RenderFlags::UserRasterizerState);
 }
 
 void SkyBox::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
@@ -190,7 +194,7 @@ void SkyBox::setTexture(const Texture::SharedPtr& pTexture)
     if (mpTexture)
     {
         assert(mpTexture->getType() == Texture::Type::TextureCube || mpTexture->getType() == Texture::Type::Texture2D);
-        (mpTexture->getType() == Texture::Type::Texture2D) ? mpProgram->addDefine("_SPHERICAL_MAP") : mpProgram->removeDefine("_SPHERICAL_MAP");
+        mpProgram->addDefine("_USE_SPHERICAL_MAP", mpTexture->getType() == Texture::Type::Texture2D ? "1" : "0");
     }
     mpVars["gTexture"] = mpTexture;
 }

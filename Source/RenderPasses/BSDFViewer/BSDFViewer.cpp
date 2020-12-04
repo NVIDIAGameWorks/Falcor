@@ -62,7 +62,8 @@ BSDFViewer::BSDFViewer(const Dictionary& dict)
     {
         {"_MS_DISABLE_ALPHA_TEST", ""},
         {"_DEFAULT_ALPHA_TEST", ""},
-        {"MATERIAL_COUNT", "1"},
+        {"SCENE_MATERIAL_COUNT", "1"},
+        {"SCENE_GRID_COUNT", "0"},
     };
 
     defines.add(mpSampleGenerator->getDefines());
@@ -303,12 +304,8 @@ void BSDFViewer::renderUI(Gui::Widgets& widget)
 
         if (lightGroup.button("Load environment map"))
         {
-            // Get file dialog filters.
-            auto filters = Bitmap::getFileDialogFilters();
-            filters.push_back({ "dds", "DDS textures" });
-
             std::string filename;
-            if (openFileDialog(filters, filename))
+            if (openFileDialog(Bitmap::getFileDialogFilters(), filename))
             {
                 // TODO: RenderContext* should maybe be a parameter to renderUI()?
                 if (loadEnvMap(filename))

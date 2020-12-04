@@ -26,12 +26,14 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "RenderGraphEditor.h"
-#include "args.h"
-#include <fstream>
-#include <filesystem>
 #include "RenderGraphEditor.h"
 #include "dear_imgui/imgui.h"
 #include "dear_imgui/imgui_internal.h"
+
+#include <args.hxx>
+
+#include <fstream>
+#include <filesystem>
 
 namespace
 {
@@ -215,7 +217,7 @@ void RenderGraphEditor::onGuiRender(Gui* pGui)
     {
         const auto& pass = renderPasses[i];
         passWindow.rect({ 148.0f, 64.0f }, pGui->pickUniqueColor(pass.className), false);
-        passWindow.image((std::string("RenderPass##") + std::to_string(i)).c_str(), mpDefaultIconTex, { 148.0f, 44.0f });
+        passWindow.image(("RenderPass##" + std::to_string(i)).c_str(), mpDefaultIconTex, { 148.0f, 44.0f });
         passWindow.dragDropSource(pass.className, "RenderPassType", pass.className);
         passWindow.text(pass.className);
         passWindow.tooltip(pass.desc, true);
@@ -413,7 +415,7 @@ void RenderGraphEditor::loadAllPassLibraries()
 void RenderGraphEditor::renderLogWindow(Gui::Widgets& widget)
 {
     // window for displaying log from render graph validation
-    widget.text(mCurrentLog.c_str());
+    widget.text(mCurrentLog);
 }
 
 void RenderGraphEditor::serializeRenderGraph(const std::string& fileName)

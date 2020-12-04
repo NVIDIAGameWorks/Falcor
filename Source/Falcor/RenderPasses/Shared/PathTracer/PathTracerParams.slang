@@ -37,6 +37,7 @@ static const uint kMaxPathFlagsBits = 16;
 static const uint kMaxPathLengthBits = 8;
 static const uint kMaxPathLength = (1 << kMaxPathLengthBits) - 1;
 static const uint kMaxLightSamplesPerVertex = 8;
+static const uint kMaxRejectedHits = 16; // Maximum number of rejected hits along a path. The path is terminated if the limit is reached to avoid getting stuck in pathological cases.
 
 // Define ray indices.
 static const uint32_t kRayTypeScatter = 0;
@@ -70,7 +71,7 @@ struct PathTracerParams
 
     int     useVBuffer = 1;                 ///< Use a V-buffer as input. Use compile-time constant kUseVBuffer (or preprocessor define USE_VBUFFER) in shader.
     int     useAlphaTest = 1;               ///< Use alpha testing on non-opaque triangles. Use compile-time constant kUseAlphaTest (or preprocessor define USE_ALPHA_TEST) in shader.
-    int     _removed;
+    int     adjustShadingNormals = false;   ///< Adjust shading normals on secondary hits. Use compile-time constant kAdjustShadingNormals in shader.
     int     forceAlphaOne = true;           ///< Force the alpha channel to 1.0. Otherwise background will have alpha 0.0 and covered samples 1.0 to allow compositing. Use compile-time constant kForceAlphaOne in shader.
 
     int     clampSamples = false;           ///< Clamp the per-path contribution to 'clampThreshold' to reduce fireflies.
@@ -91,7 +92,7 @@ struct PathTracerParams
 
     int     useLegacyBSDF = false;          ///< Use legacy BRDF sampling code (no support for specular transmission).
     int     useNestedDielectrics = true;    ///< Use algorithm to handle nested dielectric materials. Use compile-time constant kUseNestedDielectrics in shader.
-    int     useLightsInVolumes = false;     ///< Use lights inside of volumes (transmissive materials). We typically don't want this because lights are occluded by the interface. Use compile-time constant kUseLightsInVolumes in shader.
+    int     useLightsInDielectricVolumes = false; ///< Use lights inside of volumes (transmissive materials). We typically don't want this because lights are occluded by the interface. Use compile-time constant kUseLightsInDielectricVolumes in shader.
     int     disableCaustics = false;        ///< Disable sampling of caustics. Use compile-time constant kDisableCaustics in shader.
 
     // Ray footprint

@@ -30,3 +30,7 @@
 // Type defines shared between host and device.
 #define COMPOSITE_MODE_ADD      0
 #define COMPOSITE_MODE_MULTIPLY 1
+
+#define OUTPUT_FORMAT_FLOAT     0
+#define OUTPUT_FORMAT_UINT      1
+#define OUTPUT_FORMAT_SINT      2

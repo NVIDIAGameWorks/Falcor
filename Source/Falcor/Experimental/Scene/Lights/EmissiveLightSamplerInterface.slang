@@ -25,7 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-__exported import Utils.Sampling.SampleGenerator;
+__exported import Utils.Sampling.SampleGeneratorInterface;
 
 /** Slang interface and structs used by emissive light samplers.
 */
@@ -41,7 +41,8 @@ struct TriangleLightSample
     float3  dir;                ///< Normalized direction from the shading point to the sampled point on the light source in world space.
     float   distance;           ///< Distance from the shading point to the sampled point.
     float3  Le;                 ///< Emitted radiance. This is zero if the light is back-facing or sample is invalid.
-    float   pdf;                ///< Probability density with respect to solid angle from the shading point. The range is [0,inf] (inclusive), where pdf == 0.0 indicates an invalid sample.
+    float   pdf;                ///< Probability density with respect to solid angle from the shading point. The range is [0,inf] (inclusive), where pdf == 0.0 indicated an invalid sample.
+    float2  uv;                 ///< Light sample barycentric coords over the triangle
 };
 
 /** Describes a light sample at a hit point on an emissive triangle.
@@ -61,17 +62,28 @@ interface IEmissiveLightSampler
     /** Draw a single light sample.
         \param[in] posW Shading point in world space.
         \param[in] normalW Normal at the shading point in world space.
+        \param[in] onSurface True if only upper hemisphere should be considered.
         \param[in,out] sg Sample generator.
         \param[out] ls Light sample. Only valid if true is returned.
         \return True if a sample was generated, false otherwise.
     */
-    bool sampleLight(const float3 posW, const float3 normalW, inout SampleGenerator sg, out TriangleLightSample ls);
+    bool sampleLight<S : ISampleGenerator>(const float3 posW, const float3 normalW, const bool onSurface, inout S sg, out TriangleLightSample ls);
+
+    /** Evaluate the PDF associated with selecting an emissive triangle.
+        \param[in] posW Shading point in world space.
+        \param[in] normalW Normal at the shading point in world space.
+        \param[in] onSurface True if only upper hemisphere should be considered.
+        \param[in] triangleIndex index of selected triangle
+        \return Probability of selecting the input triangle
+    */
+    float evalTriangleSelectionPdf(const float3 posW, const float3 normalW, const bool onSurface, const uint triangleIndex);
 
     /** Evaluate the PDF at a shading point given a hit point on an emissive triangle.
         \param[in] posW Shading point in world space.
         \param[in] normalW Normal at the shading point in world space.
+        \param[in] onSurface True if only upper hemisphere should be considered.
         \param[in] hit Triangle hit data.
         \return Probability density with respect to solid angle at the shading point.
     */
-    float evalPdf(float3 posW, float3 normalW, const TriangleHit hit);
+    float evalPdf(const float3 posW, const float3 normalW, const bool onSurface, const TriangleHit hit);
 };

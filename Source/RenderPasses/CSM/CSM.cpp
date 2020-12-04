@@ -616,7 +616,7 @@ void CSM::renderScene(RenderContext* pCtx)
 
     pCB->setBlob(&mCsmData, 0, sizeof(mCsmData));
     mpLightCamera->setProjectionMatrix(mCsmData.globalMat);
-    mpScene->render(pCtx, mShadowPass.pState.get(), mShadowPass.pVars.get());
+    mpScene->rasterize(pCtx, mShadowPass.pState.get(), mShadowPass.pVars.get());
     //        mpCsmSceneRenderer->renderScene(pCtx, mShadowPass.pState.get(), mShadowPass.pVars.get(), mpLightCamera.get());
 }
 
@@ -900,7 +900,7 @@ void CSM::renderUI(Gui::Widgets& widget)
                 setSdsmReadbackLatency(latency);
             }
             std::string range = "SDSM Range=[" + std::to_string(mSdsmData.sdsmResult.x) + ", " + std::to_string(mSdsmData.sdsmResult.y) + ']';
-            sdsmGroup.text(range.c_str());
+            sdsmGroup.text(range);
         }
     }
 

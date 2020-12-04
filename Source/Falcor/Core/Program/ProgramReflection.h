@@ -27,8 +27,8 @@
  **************************************************************************/
 #pragma once
 #include "Core/API/DescriptorSet.h"
-
 #include <slang/slang.h>
+#include <map>
 
 namespace Falcor
 {
@@ -1036,7 +1036,10 @@ namespace Falcor
             Texture2DMS,
             Texture2DMSArray,
             TextureCubeArray,
+            AccelerationStructure,
             Buffer,
+
+            Count
         };
 
         /** For structured-buffers, describes the type of the buffer
@@ -1059,7 +1062,8 @@ namespace Falcor
             RawBuffer,
             TypedBuffer,
             Sampler,
-            ConstantBuffer
+            ConstantBuffer,
+            AccelerationStructure,
         };
 
         /** Create a new object
@@ -1305,6 +1309,7 @@ namespace Falcor
             };
 
             Flavor flavor = Flavor::Simple;
+            ReflectionResourceType::Dimensions dimension = ReflectionResourceType::Dimensions::Unknown;
 
             uint32_t regIndex = 0;          ///< The register index
             uint32_t regSpace = 0;          ///< The register space

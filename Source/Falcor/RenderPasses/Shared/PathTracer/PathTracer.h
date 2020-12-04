@@ -33,6 +33,7 @@
 #include "Experimental/Scene/Lights/EnvMapSampler.h"
 #include "Experimental/Scene/Lights/EmissiveUniformSampler.h"
 #include "Experimental/Scene/Lights/LightBVHSampler.h"
+#include "Experimental/Scene/Lights/EmissivePowerSampler.h"
 #include "RenderGraph/RenderPassHelpers.h"
 #include "PathTracerParams.slang"
 #include "PixelStats.h"
@@ -98,7 +99,8 @@ namespace Falcor
         bool                                mUseEmissiveLights = false;     ///< True if emissive lights should be taken into account. See compile-time constant in StaticParams.slang.
         bool                                mUseEmissiveSampler = false;    ///< True if emissive light sampler should be used for the current frame. See compile-time constant in StaticParams.slang.
         uint32_t                            mMaxRaysPerPixel = 0;           ///< Maximum number of rays per pixel that will be traced. This is computed based on the current configuration.
-        bool                                mIsRayFootprintSupported = true;       ///< Globally enable/disable ray footprint. Requires v-buffer. Set to false if any requirement is not met.
+        bool                                mGBufferAdjustShadingNormals = false; ///< True if GBuffer/VBuffer has adjusted shading normals enabled.
+        bool                                mIsRayFootprintSupported = true;///< Globally enable/disable ray footprint. Requires v-buffer. Set to false if any requirement is not met.
 
         // Scripting
     #define serialize(var) \

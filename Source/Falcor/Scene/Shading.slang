@@ -32,6 +32,8 @@ import Scene.SceneTypes;
 import Scene.TextureSampler;
 import Scene.Material.MaterialData;
 import Experimental.Scene.Material.BxDFTypes;
+import Experimental.Scene.Lights.EnvMapLighting;
+import Utils.Math.MathHelpers;
 import Utils.Helpers;
 
 /** Convert RGB to normal (unnormalized).
@@ -76,6 +78,10 @@ void applyNormalMap<L:ITextureSampler>(MaterialData md, MaterialResources mr, in
     default:
         return;
     }
+
+    // Note if the normal ends up being parallel to the tangent, the tangent frame cannot be orthonormalized.
+    // That case is rare enough that it is probably not worth the runtime cost to check for it here.
+    // If it occurs we should foremost fix the asset, or if problems persist add a check here.
 
     // Apply the transformation.
     sd.N = normalize(sd.T * mapN.x + sd.B * mapN.y + sd.N * mapN.z);
@@ -147,7 +153,7 @@ ShadingData _prepareShadingData<L:ITextureSampler>(VertexData v, uint materialID
     md.flags = _MS_STATIC_MATERIAL_FLAGS;
 #endif
 
-    // Sample the diffuse texture and apply the alpha test
+    // Sample the diffuse texture and apply the alpha test.
     float4 baseColor = sampleTexture(mr.baseColor, mr.samplerState, v.texC, md.baseColor, EXTRACT_DIFFUSE_TYPE(md.flags), lod);
     sd.opacity = baseColor.a;
     applyAlphaTest(md.flags, baseColor.a, md.alphaThreshold, v.posW);
@@ -160,25 +166,22 @@ ShadingData _prepareShadingData<L:ITextureSampler>(VertexData v, uint materialID
     sd.faceN = v.faceNormalW;
     sd.frontFacing = dot(sd.V, sd.faceN) >= 0.f;
     sd.doubleSided = EXTRACT_DOUBLE_SIDED(md.flags);
-
-    // Check that tangent exists, otherwise leave the vectors at zero to avoid NaNs.
-    const bool validTangentSpace = v.tangentW.w != 0.f;
-    if (validTangentSpace)
-    {
-        sd.T = normalize(v.tangentW.xyz - sd.N * dot(v.tangentW.xyz, sd.N));
-        sd.B = cross(sd.N, sd.T) * v.tangentW.w;
-    }
-
+    sd.activeLobes = (uint)LobeType::All;
     sd.materialID = materialID;
 
     sd.IoR = md.IoR;
     sd.specularTransmission = sampleTexture(mr.specularTransmission, mr.samplerState, v.texC, md.specularTransmission, EXTRACT_SPEC_TRANS_TYPE(md.flags), lod).r;
     sd.eta = sd.frontFacing ? (1 / sd.IoR) : sd.IoR;
 
-    // Sample the spec texture
+    // Setup tangent space.
+    bool validTangentSpace = computeTangentSpace(sd, v.tangentW);
+
+    // Sample the specular texture.
+    // Depending on the shading model this encodes the material parameters differently.
     sd.occlusion = 1.0f;
     bool sampleOcclusion = EXTRACT_OCCLUSION_MAP(md.flags) > 0;
     float4 spec = sampleTexture(mr.specular, mr.samplerState, v.texC, md.specular, EXTRACT_SPECULAR_TYPE(md.flags), lod);
+
     if (EXTRACT_SHADING_MODEL(md.flags) == ShadingModelMetalRough)
     {
         // R - Occlusion; G - Roughness; B - Metallic
@@ -218,6 +221,7 @@ ShadingData _prepareShadingData<L:ITextureSampler>(VertexData v, uint materialID
         sd.emissive = sampleTexture(mr.emissive, mr.samplerState, v.texC, float4(md.emissive, 1), EXTRACT_EMISSIVE_TYPE(md.flags), lod).rgb * md.emissiveFactor;
     }
 
+    // Apply normal mapping only if we have a valid tangent space.
     if (useNormalMap && validTangentSpace) applyNormalMap(md, mr, sd, v.tangentW, lod);
     sd.NdotV = dot(sd.N, sd.V);
 
@@ -227,8 +231,6 @@ ShadingData _prepareShadingData<L:ITextureSampler>(VertexData v, uint materialID
         sd.N = -sd.N;
         sd.NdotV = -sd.NdotV;
     }
-
-    sd.activeLobes = (uint)LobeType::All;
 
     return sd;
 }
@@ -293,6 +295,61 @@ ShadingData prepareShadingData(VertexData v, uint materialID, MaterialData md, M
     return _prepareShadingData(v, materialID, md, mr, viewDir, lod, true);
 }
 
+/** Computes an orthonormal tangent space based on the normal and given tangent.
+    \param[in,out] sd ShadingData struct that is updated.
+    \param[in] tangent Interpolated tangent in world space (xyz) and bitangent sign (w). The tangent is *only* valid when w is != 0.
+    \return True if a valid tangent space was computed based on the supplied tangent.
+*/
+bool computeTangentSpace(inout ShadingData sd, const float4 tangentW)
+{
+    // Check that tangent space exists and can be safely orthonormalized.
+    // Otherwise invent a tanget frame based on the normal.
+    // We check that:
+    //  - Tangent exists, this is indicated by a nonzero sign (w).
+    //  - It has nonzero length. Zeros can occur due to interpolation or bad assets.
+    //  - It is not parallel to the normal. This can occur due to normal mapping or bad assets.
+    //  - It does not have NaNs. These will propagate and trigger the fallback.
+
+    float NdotT = dot(tangentW.xyz, sd.N);
+    bool nonParallel = abs(NdotT) < 0.9999f;
+    bool nonZero = dot(tangentW.xyz, tangentW.xyz) > 0.f;
+
+    bool valid = tangentW.w != 0.f && nonZero && nonParallel;
+    if (valid)
+    {
+        sd.T = normalize(tangentW.xyz - sd.N * NdotT);
+        sd.B = cross(sd.N, sd.T) * tangentW.w;
+    }
+    else
+    {
+        sd.T = perp_stark(sd.N);
+        sd.B = cross(sd.N, sd.T);
+    }
+
+    return valid;
+}
+
+/** Helper function to adjust the shading normal for avoding black pixels due to back-facing view direction.
+    Note: This breaks the reciprocity of the BSDF!
+*/
+void adjustShadingNormal(inout ShadingData sd, VertexData v)
+{
+    float3 Ng = sd.frontFacing ? v.faceNormalW : -v.faceNormalW;
+    float3 Ns = sd.N;
+
+    // Blend the shading normal towards the geometric normal at grazing angles.
+    // This is to avoid the view vector from becoming back-facing.
+    const float kCosThetaThreshold = 0.1f;
+    float cosTheta = dot(sd.V, Ns);
+    if (cosTheta <= kCosThetaThreshold)
+    {
+        float t = saturate(cosTheta * (1.f / kCosThetaThreshold));
+        sd.N = normalize(lerp(Ng, Ns, t));
+        sd.NdotV = dot(sd.N, sd.V);
+        computeTangentSpace(sd, v.tangentW);
+    }
+}
+
 // ----------------------------------------------------------------------------
 // Legacy raster shading code
 // ----------------------------------------------------------------------------
@@ -336,14 +393,16 @@ ShadingResult evalMaterial(ShadingData sd, LightData light, float shadowFactor)
     return sr;
 };
 
-ShadingResult evalMaterial(ShadingData sd, LightProbeData probe)
+ShadingResult evalMaterial(ShadingData sd, EnvMapLighting envMapLighting)
 {
     ShadingResult sr = {};
-    LightSample ls = evalLightProbe(probe, sd);
 
-    sr.diffuse = ls.diffuse;
-    sr.color = sr.diffuse;
-    sr.specular = ls.specular;
-    sr.color += sr.specular;
+    // Calculate the reflection vector
+    float3 L = reflect(-sd.V, sd.N);
+
+    sr.diffuse = envMapLighting.evalDiffuse(sd);
+    sr.specular = envMapLighting.evalSpecular(sd, L);
+    sr.color = sr.diffuse + sr.specular;
+
     return sr;
 }

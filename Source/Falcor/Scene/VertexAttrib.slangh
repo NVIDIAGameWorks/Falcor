@@ -33,10 +33,9 @@ BEGIN_NAMESPACE_FALCOR
 #define VERTEX_POSITION_LOC                 0
 #define VERTEX_PACKED_NORMAL_TANGENT_LOC    1
 #define VERTEX_TEXCOORD_LOC                 2
-#define VERTEX_PREV_POSITION_LOC            3
-#define INSTANCE_DRAW_ID_LOC                4
+#define INSTANCE_DRAW_ID_LOC                3
 
-#define VERTEX_LOCATION_COUNT               5
+#define VERTEX_LOCATION_COUNT               4
 
 #define VERTEX_USER_ELEM_COUNT              4
 #define VERTEX_USER0_LOC                    (VERTEX_LOCATION_COUNT)
@@ -44,7 +43,20 @@ BEGIN_NAMESPACE_FALCOR
 #define VERTEX_POSITION_NAME                "POSITION"
 #define VERTEX_PACKED_NORMAL_TANGENT_NAME   "PACKED_NORMAL_TANGENT"
 #define VERTEX_TEXCOORD_NAME                "TEXCOORD"
-#define VERTEX_PREV_POSITION_NAME           "PREV_POSITION"
 #define INSTANCE_DRAW_ID_NAME               "DRAW_ID"
+
+#define CURVE_VERTEX_POSITION_LOC           0
+#define CURVE_VERTEX_RADIUS_LOC             1
+#define CURVE_VERTEX_TANGENT_LOC            2
+#define CURVE_VERTEX_NORMAL_LOC             3
+#define CURVE_VERTEX_TEXCOORD_LOC           4
+
+#define CURVE_VERTEX_LOCATION_COUNT         5
+
+#define CURVE_VERTEX_POSITION_NAME          "POSITION"
+#define CURVE_VERTEX_RADIUS_NAME            "RADIUS"
+#define CURVE_VERTEX_TANGENT_NAME           "TANGENT"
+#define CURVE_VERTEX_NORMAL_NAME            "NORMAL"
+#define CURVE_VERTEX_TEXCOORD_NAME          "TEXCOORD"
 
 END_NAMESPACE_FALCOR

@@ -59,17 +59,18 @@ namespace Falcor
         using StaticVertexVector = std::vector<PackedStaticVertexData>;
         using DynamicVertexVector = std::vector<DynamicVertexData>;
 
-        /** Create a new object
+        /** Create a new object.
+            \return A new object, or throws an exception if creation failed.
         */
-        static UniquePtr create(Scene* pScene, const StaticVertexVector& staticVertexData, const DynamicVertexVector& dynamicVertexData);
-
-        /** Add an animation
-        */
-        void addAnimation(const Animation::SharedPtr& pAnimation);
+        static UniquePtr create(Scene* pScene, const StaticVertexVector& staticVertexData, const DynamicVertexVector& dynamicVertexData, const std::vector<Animation::SharedPtr>& animations);
 
         /** Returns true if controller contains animations.
         */
         bool hasAnimations() const { return mAnimations.size() > 0; }
+
+        /** Returns a list of all animations.
+        */
+        std::vector<Animation::SharedPtr>& getAnimations() { return mAnimations; }
 
         /** Enable/disable animations.
         */
@@ -79,35 +80,70 @@ namespace Falcor
         */
         bool isEnabled() const { return mEnabled; };
 
+        /** Enable/disable globally looping animations.
+        */
+        void setIsLooped(bool looped) { mLoopAnimations = looped; }
+
+        /** Returns true if animations are currently globally looped.
+        */
+        bool isLooped() { return mLoopAnimations; }
+
         /** Run the animation
             \return true if a change occurred, otherwise false
         */
         bool animate(RenderContext* pContext, double currentTime);
 
-        /** Check if a matrix changed
+        /** Check if a matrix is animated.
         */
-        bool didMatrixChanged(size_t matrixID) const { return mMatricesChanged[matrixID]; }
+        bool isMatrixAnimated(size_t matrixID) const { return mMatricesAnimated[matrixID]; }
 
-        /** Get the global matrices
+        /** Check if a matrix changed since last frame.
+        */
+        bool isMatrixChanged(size_t matrixID) const { return mMatricesChanged[matrixID]; }
+
+        /** Get the global matrices.
         */
         const std::vector<glm::mat4>& getGlobalMatrices() const { return mGlobalMatrices; }
 
+        /** Render the UI.
+        */
+        void renderUI(Gui::Widgets& widget);
+
+
+        /** Get the previous vertex data buffer for dynamic meshes.
+            \return Buffer containing the previous vertex data, or nullptr if no dynamic meshes exist.
+        */
+        Buffer::SharedPtr getPrevVertexData() const { return mpPrevVertexData; }
+
+        /** Get the total GPU memory usage in bytes.
+        */
+        uint64_t getMemoryUsageInBytes() const;
+
     private:
         friend class SceneBuilder;
-        AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const DynamicVertexVector& dynamicVertexData);
+        AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const DynamicVertexVector& dynamicVertexData, const std::vector<Animation::SharedPtr>& animations);
 
+        void initFlags();
         void bindBuffers();
         void updateMatrices();
 
+        void createSkinningPass(const std::vector<PackedStaticVertexData>& staticVertexData, const std::vector<DynamicVertexData>& dynamicVertexData);
+        void executeSkinningPass(RenderContext* pContext);
+        void initLocalMatrices();
+
+        // Animation
         std::vector<Animation::SharedPtr> mAnimations;
         std::vector<glm::mat4> mLocalMatrices;
         std::vector<glm::mat4> mGlobalMatrices;
         std::vector<glm::mat4> mInvTransposeGlobalMatrices;
-        std::vector<bool> mMatricesChanged;
+        std::vector<bool> mMatricesAnimated;        ///< Flag per matrix, true if matrix is affected by animations.
+        std::vector<bool> mMatricesChanged;         ///< Flag per matrix, true if matrix changed since last frame.
 
         bool mEnabled = true;
         bool mAnimationChanged = true;
         double mLastAnimationTime = 0;
+        bool mLoopAnimations = true;
+        double mGlobalAnimationLength = 0;
         Scene* mpScene = nullptr;
 
         Buffer::SharedPtr mpWorldMatricesBuffer;
@@ -119,11 +155,11 @@ namespace Falcor
         std::vector<glm::mat4> mSkinningMatrices;
         std::vector<glm::mat4> mInvTransposeSkinningMatrices;
         uint32_t mSkinningDispatchSize = 0;
-        void createSkinningPass(const std::vector<PackedStaticVertexData>& staticVertexData, const std::vector<DynamicVertexData>& dynamicVertexData);
-        void executeSkinningPass(RenderContext* pContext);
 
         Buffer::SharedPtr mpSkinningMatricesBuffer;
         Buffer::SharedPtr mpInvTransposeSkinningMatricesBuffer;
-        void initLocalMatrices();
+        Buffer::SharedPtr mpSkinningStaticVertexData;
+        Buffer::SharedPtr mpSkinningDynamicVertexData;
+        Buffer::SharedPtr mpPrevVertexData;
     };
 }

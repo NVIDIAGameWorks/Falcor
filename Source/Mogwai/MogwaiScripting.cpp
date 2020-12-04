@@ -33,44 +33,36 @@ namespace Mogwai
     {
         const std::string kRunScript = "script";
         const std::string kLoadScene = "loadScene";
+        const std::string kUnloadScene = "unloadScene";
         const std::string kSaveConfig = "saveConfig";
         const std::string kAddGraph = "addGraph";
         const std::string kRemoveGraph = "removeGraph";
         const std::string kGetGraph = "getGraph";
         const std::string kUI = "ui";
         const std::string kResizeSwapChain = "resizeSwapChain";
+        const std::string kRenderFrame = "renderFrame";
         const std::string kActiveGraph = "activeGraph";
         const std::string kScene = "scene";
+        const std::string kClock = "clock";
+        const std::string kProfiler = "profiler";
 
         const std::string kRendererVar = "m";
-        const std::string kTimeVar = "t";
 
-        template<typename T>
-        std::string prepareHelpMessage(const T& g)
-        {
-            std::string s = Renderer::getVersionString() + "\nGlobal utility objects:\n";
-            static const size_t kMaxSpace = 8;
-            for (auto n : g)
-            {
-                s += "\t'" + n.first + "'";
-                s += (n.first.size() >= kMaxSpace) ? " " : std::string(kMaxSpace - n.first.size(), ' ');
-                s += n.second;
-                s += "\n";
-            }
-
-            s += "\nGlobal functions\n";
-            s += "\trenderFrame()      Render a frame. If the clock is not paused, it will advance by one tick. You can use it inside for loops, for example to loop over a specific time-range\n";
-            s += "\texit()             Exit Mogwai\n";
-            return s;
-        }
+        const std::string kGlobalHelp =
+            Renderer::getVersionString() +
+            "\nGlobal variables:\n" +
+            "\tm                  Mogwai instance.\n"
+            "\nGlobal functions\n" +
+            "\trenderFrame()      Render a frame. If the clock is not paused, it will advance by one tick. You can use it inside for loops, for example to loop over a specific time-range.\n" +
+            "\texit()             Terminate.\n";
 
         std::string windowConfig()
         {
             std::string s;
             SampleConfig c = gpFramework->getConfig();
             s += "# Window Configuration\n";
-            s += Scripting::makeMemberFunc(kRendererVar, kResizeSwapChain, c.windowDesc.width, c.windowDesc.height);
-            s += Scripting::makeSetProperty(kRendererVar, kUI, c.showUI);
+            s += ScriptWriter::makeMemberFunc(kRendererVar, kResizeSwapChain, c.windowDesc.width, c.windowDesc.height);
+            s += ScriptWriter::makeSetProperty(kRendererVar, kUI, c.showUI);
             return s;
         }
     }
@@ -93,7 +85,7 @@ namespace Mogwai
         if (mpScene)
         {
             s += "# Scene\n";
-            s += Scripting::makeMemberFunc(kRendererVar, kLoadScene, Scripting::getFilenameString(mpScene->getFilename()));
+            s += ScriptWriter::makeMemberFunc(kRendererVar, kLoadScene, ScriptWriter::getFilenameString(mpScene->getFilename()));
             const std::string sceneVar = kRendererVar + "." + kScene;
             s += mpScene->getScript(sceneVar);
             s += "\n";
@@ -101,13 +93,20 @@ namespace Mogwai
 
         s += windowConfig() + "\n";
 
-        s += "# Time Settings\n";
-        s += gpFramework->getGlobalClock().getScript(kTimeVar) + "\n";
+        {
+            s += "# Clock Settings\n";
+            const std::string clockVar = kRendererVar + "." + kClock;
+            s += gpFramework->getGlobalClock().getScript(clockVar) + "\n";
+        }
 
         for (auto& pe : mpExtensions)
         {
-            auto eStr = pe->getScript();
-            if (eStr.size()) s += eStr + "\n";
+            if (auto var = pe->getScriptVar(); !var.empty())
+            {
+                var = kRendererVar + "." + var;
+                auto eStr = pe->getScript(var);
+                if (eStr.size()) s += eStr + "\n";
+            }
         }
 
         std::ofstream(filename) << s;
@@ -118,34 +117,39 @@ namespace Mogwai
         pybind11::class_<Renderer> renderer(m, "Renderer");
         renderer.def(kRunScript.c_str(), &Renderer::loadScript, "filename"_a = std::string());
         renderer.def(kLoadScene.c_str(), &Renderer::loadScene, "filename"_a = std::string(), "buildFlags"_a = SceneBuilder::Flags::Default);
+        renderer.def(kUnloadScene.c_str(), &Renderer::unloadScene);
         renderer.def(kSaveConfig.c_str(), &Renderer::saveConfig, "filename"_a);
         renderer.def(kAddGraph.c_str(), &Renderer::addGraph, "graph"_a);
         renderer.def(kRemoveGraph.c_str(), pybind11::overload_cast<const std::string&>(&Renderer::removeGraph), "name"_a);
         renderer.def(kRemoveGraph.c_str(), pybind11::overload_cast<const RenderGraph::SharedPtr&>(&Renderer::removeGraph), "graph"_a);
         renderer.def(kGetGraph.c_str(), &Renderer::getGraph, "name"_a);
-        renderer.def("graph", &Renderer::getGraph); // PYTHONDEPRECATED
-        auto envMap = [](Renderer* pRenderer, const std::string& filename) { if (pRenderer->getScene()) pRenderer->getScene()->loadEnvMap(filename); };
-        renderer.def("envMap", envMap, "filename"_a); // PYTHONDEPRECATED
 
-        // PYTHONDEPRECATED Use the global function defined in the script bindings in Sample.cpp when resizing from a Python script.
-        auto resize = [](Renderer* pRenderer, uint32_t width, uint32_t height) {gpFramework->resizeSwapChain(width, height); };
-        renderer.def(kResizeSwapChain.c_str(), resize);
+        auto resizeSwapChain = [](Renderer* pRenderer, uint32_t width, uint32_t height) { gpFramework->resizeSwapChain(width, height); };
+        renderer.def(kResizeSwapChain.c_str(), resizeSwapChain);
+
+        auto renderFrame = [](Renderer* pRenderer) { ProgressBar::close(); gpFramework->renderFrame(); };
+        renderer.def(kRenderFrame.c_str(), renderFrame);
 
         renderer.def_property_readonly(kScene.c_str(), &Renderer::getScene);
         renderer.def_property_readonly(kActiveGraph.c_str(), &Renderer::getActiveGraph);
+        renderer.def_property_readonly(kClock.c_str(), [] (Renderer* pRenderer) { return &gpFramework->getGlobalClock(); });
+        renderer.def_property_readonly(kProfiler.c_str(), [] (Renderer* pRenderer) { return Profiler::instancePtr(); });
 
         auto getUI = [](Renderer* pRenderer) { return gpFramework->isUiEnabled(); };
         auto setUI = [](Renderer* pRenderer, bool show) { gpFramework->toggleUI(show); };
         renderer.def_property(kUI.c_str(), getUI, setUI);
 
-        Extension::Bindings b(m, renderer);
-        b.addGlobalObject(kRendererVar, this, "The engine");
-        b.addGlobalObject(kTimeVar, &gpFramework->getGlobalClock(), "Time Utilities");
-        for (auto& pe : mpExtensions) pe->scriptBindings(b);
-        mGlobalHelpMessage = prepareHelpMessage(b.mGlobalObjects);
+        for (auto& pe : mpExtensions)
+        {
+            pe->registerScriptBindings(m);
+            if (auto var = pe->getScriptVar(); !var.empty())
+            {
+                renderer.def_property_readonly(var.c_str(), [&pe] (Renderer* pRenderer) { return pe.get(); });
+            }
+        }
 
         // Replace the `help` function
-        auto globalHelp = [this]() { pybind11::print(mGlobalHelpMessage);};
+        auto globalHelp = [this]() { pybind11::print(kGlobalHelp); };
         m.def("help", globalHelp);
 
         auto objectHelp = [](pybind11::object o)
@@ -155,5 +159,25 @@ namespace Mogwai
             h(o);
         };
         m.def("help", objectHelp, "object"_a);
+
+        // Register global renderer variable.
+        Scripting::getDefaultContext().setObject(kRendererVar, this);
+
+        // Register deprecated global variables.
+        Scripting::getDefaultContext().setObject("t", &gpFramework->getGlobalClock()); // PYTHONDEPRECATED
+
+        auto findExtension = [this](const std::string& name)
+        {
+            for (auto& pe : mpExtensions)
+            {
+                if (pe->getName() == name) return pe.get();
+            }
+            assert(false);
+            return static_cast<Extension*>(nullptr);
+        };
+
+        Scripting::getDefaultContext().setObject("fc", findExtension("Frame Capture")); // PYTHONDEPRECATED
+        Scripting::getDefaultContext().setObject("vc", findExtension("Video Capture")); // PYTHONDEPRECATED
+        Scripting::getDefaultContext().setObject("tc", findExtension("Timing Capture")); // PYTHONDEPRECATED
     }
 }

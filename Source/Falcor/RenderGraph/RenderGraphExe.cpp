@@ -53,7 +53,7 @@ namespace Falcor
             {
                 // If you are thinking about displaying the profiler results next to the group label, it won't work. Since the times change every frame, IMGUI thinks it's a different group and will not expand it
                 const auto& desc = pPass->getDesc();
-                if (desc.size()) passGroup.tooltip(desc.c_str());
+                if (desc.size()) passGroup.tooltip(desc);
                 pPass->renderUI(passGroup);
             }
         }

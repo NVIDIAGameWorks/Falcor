@@ -86,8 +86,9 @@ namespace Falcor
         GpuFence::SharedPtr         mpFence;                        ///< GPU fence for sychronizing readback.
 
         // Configuration
-        bool                        mEnabled = false;               ///< Enables debugging features.
+        bool                        mEnabled = false;               ///< Enable debugging features.
         uint2                       mSelectedPixel = { 0, 0 };      ///< Currently selected pixel.
+        bool                        mEnableLogging = false;         ///< Enable printing to logfile.
 
         // Runtime data
         uint2                       mFrameDim = { 0, 0 };

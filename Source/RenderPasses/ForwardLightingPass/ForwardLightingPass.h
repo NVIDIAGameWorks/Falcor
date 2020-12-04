@@ -90,6 +90,7 @@ private:
     GraphicsState::SharedPtr mpState;
     DepthStencilState::SharedPtr mpDsNoDepthWrite;
     Scene::SharedPtr mpScene;
+    EnvMapLighting::SharedPtr mpEnvMapLighting;
     GraphicsVars::SharedPtr mpVars;
 
     ResourceFormat mColorFormat = ResourceFormat::Unknown;

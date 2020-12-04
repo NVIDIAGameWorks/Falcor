@@ -157,11 +157,11 @@ namespace Falcor
         return result;
     }
 
-    /** Remove leading whitespaces (space, tab, newline, carriage-return)
-        \param[in] str String to operate on
-        \return String with leading whitespaces removed.
+    /** Remove leading whitespace (space, tab, newline, carriage-return).
+        \param[in] str String to operate on.
+        \return String with leading whitespace removed.
     */
-    inline std::string removeLeadingWhitespaces(const std::string& str)
+    inline std::string removeLeadingWhitespace(const std::string& str)
     {
         size_t offset = str.find_first_not_of(" \n\r\t");
         std::string ret;
@@ -172,11 +172,11 @@ namespace Falcor
         return ret;
     }
 
-    /** Remove trailing whitespaces (space, tab, newline, carriage-return)
-        \param[in] str String to operate on
-
+    /** Remove trailing whitespace (space, tab, newline, carriage-return).
+        \param[in] str String to operate on.
+        \return String with trailing whitespace removed.
     */
-    inline std::string removeTrailingWhitespaces(const std::string& str)
+    inline std::string removeTrailingWhitespace(const std::string& str)
     {
         size_t offset = str.find_last_not_of(" \n\r\t");
         std::string ret;
@@ -187,11 +187,13 @@ namespace Falcor
         return ret;
     }
 
-    /** Remove trailing and leading whitespaces
+    /** Remove leading and trailing whitespace (space, tab, newline, carriage-return).
+        \param[in] str String to operate on.
+        \return String with leading and trailing whitespace removed.
     */
-    inline std::string removeLeadingTrailingWhitespaces(const std::string& str)
+    inline std::string removeLeadingTrailingWhitespace(const std::string& str)
     {
-        return removeTrailingWhitespaces(removeLeadingWhitespaces(str));
+        return removeTrailingWhitespace(removeLeadingWhitespace(str));
     }
 
     /** Pad string to minimum length.
@@ -260,22 +262,25 @@ namespace Falcor
     }
 
     /** Converts a size in bytes to a human readable string:
-        - prints bytes (B) if size < 512 bytes
-        - prints kilobytes (KB) if size < 512 kilobytes
-        - prints megabytes (MB) if size < 512 megabytes
-        - otherwise prints gigabytes (GB)
+        - prints bytes (B) if size < 1000 bytes
+        - prints kilobytes (KB) if size < 1000 kilobytes
+        - prints megabytes (MB) if size < 1000 megabytes
+        - prints gigabytes (GB) if size < 1000 gigabytes
+        - otherwise prints terabytes (TB)
         \param[in] size Size in bytes
         \return Returns a human readable string.
     */
     inline std::string formatByteSize(size_t size)
     {
         std::ostringstream oss;
-        oss << std::fixed << std::setprecision(1);
+        oss << std::fixed << std::setprecision(2);
 
-        if (size < 512) oss << size << "B";
-        else if (size < 512 * 1024) oss << (size / 1024.0) << "KB";
-        else if (size < 512 * 1024 * 1024) oss << (size / (1024.0 * 1024.0)) << "MB";
-        else oss << (size / (1024.0 * 1024.0 * 1024.0)) << "GB";
+        const size_t KB = 1000, MB = KB * KB, GB = MB * KB, TB = GB * KB;
+        if (size < KB) oss << size << " B";
+        else if (size < MB) oss << (size / (double)KB) << " KB";
+        else if (size < GB) oss << (size / (double)MB) << " MB";
+        else if (size < TB) oss << (size / (double)GB) << " GB";
+        else oss << (size / (double)TB) << " TB";
 
         return oss.str();
     }

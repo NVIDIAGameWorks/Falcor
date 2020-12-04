@@ -28,20 +28,22 @@
 import Scene.Scene;
 import Scene.ShadingData;
 import Utils.Helpers;
+import Experimental.Scene.Lights.EnvMap;
 
-#ifdef _SPHERICAL_MAP
+#if _USE_SPHERICAL_MAP
 Texture2D gTexture;
 #else
 TextureCube gTexture;
 #endif
 SamplerState gSampler;
 
-cbuffer PerFrameCB : register(b0)
+cbuffer PerFrameCB
 {
     float4x4 gWorld;
     float4x4 gViewMat;
     float4x4 gProjMat;
     float gScale;
+    EnvMap gEnvMap;
 };
 
 void vs(float4 posL : POSITION, out float3 dir : NORMAL, out float4 posH : SV_POSITION)
@@ -55,11 +57,15 @@ void vs(float4 posL : POSITION, out float3 dir : NORMAL, out float4 posH : SV_PO
 
 float4 ps(float3 dir : NORMAL) : SV_TARGET
 {
-#ifdef _SPHERICAL_MAP
+#if _USE_ENV_MAP
+    float3 color = gEnvMap.eval(dir);
+    return float4(color, 1.f);
+#else
+#if _USE_SPHERICAL_MAP
     float2 uv = dirToSphericalCrd(dir);
-float4 color = gTexture.Sample(gSampler, uv);
-return color;
+    return gTexture.Sample(gSampler, uv);
 #else
     return gTexture.SampleLevel(gSampler, normalize(dir), 0);
 #endif
+#endif // _USE_ENV_MAP
 }

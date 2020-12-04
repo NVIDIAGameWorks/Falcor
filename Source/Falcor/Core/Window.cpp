@@ -34,8 +34,8 @@
 
 #ifdef _WIN32
 #define GLFW_EXPOSE_NATIVE_WIN32
-#include "glfw3.h"
-#include "glfw3native.h"
+#include "GLFW/glfw3.h"
+#include "GLFW/glfw3native.h"
 #else // LINUX
 
 // Replace the defines we undef'd in FalcorVK.h, because glfw will need them when it includes Xlib
@@ -490,7 +490,7 @@ namespace Falcor
         while (glfwWindowShouldClose(mpGLFWWindow) == false)
         {
             glfwPollEvents();
-            mpCallbacks->renderFrame();
+            mpCallbacks->handleRenderFrame();
         }
     }
 

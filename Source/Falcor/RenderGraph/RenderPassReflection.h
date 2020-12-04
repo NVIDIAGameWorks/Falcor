@@ -135,6 +135,7 @@ namespace Falcor
         size_t getFieldCount() const { return mFields.size(); }
         const Field* getField(size_t f) const { return f <= mFields.size() ? &mFields[f] : nullptr; }
         const Field* getField(const std::string& name) const;
+        Field* getField(const std::string& name);
         Field& addField(const Field& field);
 
         bool operator==(const RenderPassReflection& other) const;

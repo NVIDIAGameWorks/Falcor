@@ -27,6 +27,21 @@
  **************************************************************************/
 #include "BlitPass.h"
 
+namespace
+{
+    const char kDesc[] = "Blit a texture into a different texture";
+
+    const char kDst[] = "dst";
+    const char kSrc[] = "src";
+    const char kFilter[] = "filter";
+
+    void regBlitPass(pybind11::module& m)
+    {
+        pybind11::class_<BlitPass, RenderPass, BlitPass::SharedPtr> pass(m, "BlitPass");
+        pass.def_property(kFilter, &BlitPass::getFilter, &BlitPass::setFilter);
+    }
+}
+
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" __declspec(dllexport) const char* getProjDir()
 {
@@ -35,23 +50,16 @@ extern "C" __declspec(dllexport) const char* getProjDir()
 
 extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
 {
-    lib.registerClass("BlitPass", "Blit a texture into a different texture", BlitPass::create);
+    lib.registerClass("BlitPass", kDesc, BlitPass::create);
+    ScriptBindings::registerBinding(regBlitPass);
 }
-
-const char* BlitPass::kDesc = "Blit a texture into a different texture";
-
-static const std::string kDst = "dst";
-static const std::string kSrc = "src";
-static const std::string kFilter = "filter";
 
 RenderPassReflection BlitPass::reflect(const CompileData& compileData)
 {
-    RenderPassReflection reflector;
-
-    reflector.addOutput(kDst, "The destination texture");
-    reflector.addInput(kSrc, "The source texture");
-
-    return reflector;
+    RenderPassReflection r;
+    r.addOutput(kDst, "The destination texture");
+    r.addInput(kSrc, "The source texture");
+    return r;
 }
 
 void BlitPass::parseDictionary(const Dictionary& dict)
@@ -73,11 +81,13 @@ BlitPass::BlitPass(const Dictionary& dict)
     parseDictionary(dict);
 }
 
+std::string BlitPass::getDesc() { return kDesc; }
+
 Dictionary BlitPass::getScriptingDictionary()
 {
-    Dictionary dict;
-    dict[kFilter] = mFilter;
-    return dict;
+    Dictionary d;
+    d[kFilter] = mFilter;
+    return d;
 }
 
 void BlitPass::execute(RenderContext* pContext, const RenderData& renderData)

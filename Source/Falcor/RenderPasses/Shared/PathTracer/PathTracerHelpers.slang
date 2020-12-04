@@ -38,6 +38,7 @@ __exported import Experimental.Scene.Lights.EmissiveLightSampler;
 __exported import Experimental.Scene.Lights.LightHelpers;
 __exported import RenderPasses.Shared.PathTracer.PathData;
 __exported import RenderPasses.Shared.PathTracer.PathTracerParams;
+__exported import Utils.Sampling.SampleGeneratorInterface;
 
 static const float3 kDefaultBackgroundColor = float3(0, 0, 0);
 static const float kRayTMax = FLT_MAX;
@@ -182,7 +183,7 @@ float evalPdfScatter(const ShadingData sd, const float3 dir)
     \param[out] ls Generated light sample. Only valid if true is returned.
     \return True if a sample was generated, false otherwise.
 */
-bool sampleSceneLights(const PathTracerParams params, const EnvMapSampler envMapSampler, const EmissiveLightSampler emissiveSampler, const ShadingData sd, const float3 rayOrigin, const uint numSamples, inout SampleGenerator sg, out SceneLightSample ls)
+bool sampleSceneLights<S : ISampleGenerator>(const PathTracerParams params, const EnvMapSampler envMapSampler, const EmissiveLightSampler emissiveSampler, const ShadingData sd, const float3 rayOrigin, const uint numSamples, inout S sg, out SceneLightSample ls)
 {
     // Set relative probabilities of the different sampling techniques.
     // TODO: These should use estimated irradiance from each light type. Using equal probabilities for now.
@@ -279,7 +280,7 @@ bool sampleSceneLights(const PathTracerParams params, const EnvMapSampler envMap
 
             // Sample emissive lights.
             TriangleLightSample lightSample;
-            bool valid = emissiveSampler.sampleLight(rayOrigin, sd.N, sg, lightSample);
+            bool valid = emissiveSampler.sampleLight(rayOrigin, sd.N, true, sg, lightSample);
 
             // Reject sample if lower hemisphere.
             if (!valid || dot(sd.N, lightSample.dir) < kMinCosTheta) return false;
@@ -323,14 +324,15 @@ bool sampleSceneLights(const PathTracerParams params, const EnvMapSampler envMap
     \param[in] sd Shading data.
     \param[in] i The sample index in the range [0, kLightSamplesPerVertex).
     \param[in,out] path Path data. The path flags will be updated to enable the i:th shadow ray if a sample was generated.
+    \param[in,out] sg Sample generator.
     \param[in,out] shadowRay Shadow ray parameters and unoccluded contribution for the generated sample.
     \return True if a sample was generated, false otherwise.
 */
-bool generateShadowRay(const PathTracerParams params, const EnvMapSampler envMapSampler, const EmissiveLightSampler emissiveSampler, const ShadingData sd, const uint i, inout PathData path, inout ShadowRay shadowRay)
+bool generateShadowRay<S : ISampleGenerator>(const PathTracerParams params, const EnvMapSampler envMapSampler, const EmissiveLightSampler emissiveSampler, const ShadingData sd, const uint i, inout PathData path, inout S sg, inout ShadowRay shadowRay)
 {
     // Sample the scene lights.
     SceneLightSample ls;
-    bool valid = sampleSceneLights(params, envMapSampler, emissiveSampler, sd, path.origin, kLightSamplesPerVertex, path.sg, ls);
+    bool valid = sampleSceneLights(params, envMapSampler, emissiveSampler, sd, path.origin, kLightSamplesPerVertex, sg, ls);
 
     if (valid && any(ls.Li > 0.f))
     {
@@ -354,15 +356,16 @@ bool generateShadowRay(const PathTracerParams params, const EnvMapSampler envMap
     \param[in] params Path tracer parameters.
     \param[in] sd Shading data.
     \param[in,out] path Path data.
+    \param[in,out] sg Sample generator.
     \return True if a sample was generated and path should continue, false otherwise.
 */
-bool generateScatterRay(const PathTracerParams params, const ShadingData sd, inout PathData path)
+bool generateScatterRay<S : ISampleGenerator>(const PathTracerParams params, const ShadingData sd, inout PathData path, inout S sg)
 {
     // Generate next path segment.
     BSDFSample result;
     bool valid;
-    if (kUseBRDFSampling) valid = sampleBSDF(sd, path.sg, result);
-    else valid = sampleBSDF_Reference(sd, path.sg, result);
+    if (kUseBRDFSampling) valid = sampleBSDF(sd, sg, result);
+    else valid = sampleBSDF_Reference(sd, sg, result);
 
     if (valid)
     {

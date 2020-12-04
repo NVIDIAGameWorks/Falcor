@@ -30,42 +30,43 @@
 
 namespace Falcor
 {
+    class Scene;
+
     class HitInfo
     {
     public:
         static const uint32_t kInvalidIndex = 0xffffffff;
+        static const uint32_t kMaxPackedSizeInBytes = 12;
+        static const ResourceFormat kDefaultFormat = ResourceFormat::RG32Uint;
 
         /** Returns defines needed packing/unpacking a HitInfo struct.
         */
-        static Shader::DefineList getDefines(const Scene* pScene)
+        Shader::DefineList getDefines() const
         {
-            // Setup bit allocations for encoding the meshInstanceID and primitive indices.
-
-            uint32_t meshInstanceCount = pScene->getMeshInstanceCount();
-            uint32_t maxInstanceID = meshInstanceCount > 0 ? meshInstanceCount - 1 : 0;
-            uint32_t instanceIndexBits = maxInstanceID > 0 ? bitScanReverse(maxInstanceID) + 1 : 0;
-
-            uint32_t maxTriangleCount = 0;
-            for (uint32_t meshID = 0; meshID < pScene->getMeshCount(); meshID++)
-            {
-                uint32_t triangleCount = pScene->getMesh(meshID).getTriangleCount();
-                maxTriangleCount = std::max(triangleCount, maxTriangleCount);
-            }
-            uint32_t maxTriangleID = maxTriangleCount > 0 ? maxTriangleCount - 1 : 0;
-            uint32_t triangleIndexBits = maxTriangleID > 0 ? bitScanReverse(maxTriangleID) + 1 : 0;
-
-            if (instanceIndexBits + triangleIndexBits > 32 ||
-                (instanceIndexBits + triangleIndexBits == 32 && ((maxInstanceID << triangleIndexBits) | maxTriangleID) == kInvalidIndex))
-            {
-                logError("Scene requires > 32 bits for encoding meshInstanceID/triangleIndex. This is currently not supported.");
-            }
-
-            // Setup defines for the shader program.
+            assert((mInstanceTypeBits + mInstanceIndexBits) <= 32 && mPrimitiveIndexBits <= 32);
             Shader::DefineList defines;
-            defines.add("HIT_INSTANCE_INDEX_BITS", std::to_string(instanceIndexBits));
-            defines.add("HIT_TRIANGLE_INDEX_BITS", std::to_string(triangleIndexBits));
-
+            defines.add("HIT_INSTANCE_TYPE_BITS", std::to_string(mInstanceTypeBits));
+            defines.add("HIT_INSTANCE_INDEX_BITS", std::to_string(mInstanceIndexBits));
+            defines.add("HIT_PRIMITIVE_INDEX_BITS", std::to_string(mPrimitiveIndexBits));
             return defines;
         }
+
+        /** Returns the resource format required for encoding packed hit information.
+        */
+        ResourceFormat getFormat() const
+        {
+            assert((mInstanceTypeBits + mInstanceIndexBits) <= 32 && mPrimitiveIndexBits <= 32);
+            if (mInstanceTypeBits + mInstanceIndexBits + mPrimitiveIndexBits <= 32) return ResourceFormat::RG32Uint;
+            else return ResourceFormat::RGBA32Uint; // RGB32Uint can't be used for UAV writes
+        }
+
+        HitInfo() = default;
+        HitInfo(const Scene & scene) { init(scene); }
+        void init(const Scene& scene);
+
+    private:
+        uint32_t mInstanceTypeBits = 0;
+        uint32_t mInstanceIndexBits = 0;
+        uint32_t mPrimitiveIndexBits = 0;
     };
 }

@@ -406,6 +406,7 @@ namespace Falcor
         case RootSignature::DescType::RawBufferSrv:
         case RootSignature::DescType::TypedBufferSrv:
         case RootSignature::DescType::StructuredBufferSrv:
+        case RootSignature::DescType::AccelerationStructureSrv:
             return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
         case RootSignature::DescType::TextureUav:
         case RootSignature::DescType::RawBufferUav:
@@ -464,6 +465,7 @@ namespace Falcor
         case RootSignature::DescType::RawBufferSrv:
         case RootSignature::DescType::TypedBufferSrv:
         case RootSignature::DescType::StructuredBufferSrv:
+        case RootSignature::DescType::AccelerationStructureSrv:
             desc.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
             break;
         case RootSignature::DescType::RawBufferUav:

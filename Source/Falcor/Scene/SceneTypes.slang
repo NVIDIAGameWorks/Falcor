@@ -36,17 +36,40 @@ import Utils.Math.PackedFormats;
 
 BEGIN_NAMESPACE_FALCOR
 
+enum class MeshFlags : uint32_t
+{
+    None = 0x0,
+    Use16BitIndices = 0x1,  ///< Indices are in 16-bit format. The default is 32-bit.
+    HasDynamicData = 0x2,   ///< Mesh has dynamic vertex data.
+    IsFrontFaceCW = 0x4,    ///< Front-facing side has clockwise winding in object space. Note that the winding in world space may be flipped due to the instance transform.
+};
+
+/** Mesh data stored in 64B.
+*/
 struct MeshDesc
 {
-    uint vbOffset;      ///< Offset into global vertex buffer.
-    uint ibOffset;      ///< Offset into global index buffer, or zero if non-indexed.
-    uint vertexCount;   ///< Vertex count.
-    uint indexCount;    ///< Index count, or zero if non-indexed.
-    uint materialID;
+    uint vbOffset;          ///< Offset into global vertex buffer.
+    uint ibOffset;          ///< Offset into global index buffer, or zero if non-indexed.
+    uint vertexCount;       ///< Vertex count.
+    uint indexCount;        ///< Index count, or zero if non-indexed.
+    uint dynamicVbOffset;   ///< Offset into dynamic vertex buffer, or zero if no dynamic data.
+    uint materialID;        ///< Material ID.
+    uint flags;             ///< See MeshFlags.
+    uint _pad;
 
     uint getTriangleCount() CONST_FUNCTION
     {
         return (indexCount > 0 ? indexCount : vertexCount) / 3;
+    }
+
+    bool use16BitIndices() CONST_FUNCTION
+    {
+        return (flags & (uint)MeshFlags::Use16BitIndices) != 0;
+    }
+
+    bool isFrontFaceCW() CONST_FUNCTION
+    {
+        return (flags & (uint)MeshFlags::IsFrontFaceCW) != 0;
     }
 };
 
@@ -57,7 +80,11 @@ enum class MeshInstanceFlags
 #endif
 {
     None = 0x0,
-    Flipped = 0x1
+    Use16BitIndices = 0x1,      ///< Indices are in 16-bit format. The default is 32-bit.
+    HasDynamicData = 0x2,       ///< Mesh has dynamic vertex data.
+    TransformFlipped = 0x4,     ///< Instance transform flips the coordinate system handedness. TODO: Deprecate this flag if we need an extra bit.
+    IsObjectFrontFaceCW = 0x8,  ///< Front-facing side has clockwise winding in object space. Note that the winding in world space may be flipped due to the instance transform.
+    IsWorldFrontFaceCW = 0x10,  ///< Front-facing side has clockwise winding in world space. This is the combination of the mesh winding and instance transform handedness.
 };
 
 struct MeshInstanceData
@@ -65,54 +92,69 @@ struct MeshInstanceData
     uint globalMatrixID;
     uint materialID;
     uint meshID;
-    uint flags;         ///< MeshInstanceFlags.
+    uint flags;         ///< See MeshInstanceFlags.
     uint vbOffset;      ///< Offset into global vertex buffer.
     uint ibOffset;      ///< Offset into global index buffer, or zero if non-indexed.
+
+    bool hasDynamicData() CONST_FUNCTION
+    {
+        return (flags & (uint)MeshInstanceFlags::HasDynamicData) != 0;
+    }
 };
 
 /** Mesh instance data packed into 16B.
 */
 struct PackedMeshInstanceData
 {
-    uint materialID;
-    uint packedIDs;     ///< Packed meshID, globalMatrixID, and flags packed into 32 bits.
+    uint packedIDs[2];  ///< Packed materialID, meshID, globalMatrixID, and flags packed into 64 bits.
     uint vbOffset;      ///< Offset into global vertex buffer.
     uint ibOffset;      ///< Offset into global index buffer, or zero if non-indexed.
 
     // Packed representation
+    // The pack/unpack logic assumes that meshID representation is split between packedIds[0] and packedIds[1]
+    // (i.e., kFlagBigs + kMatrixBits < 32, kFlagsBits + kMatrixBits + kMeshBits > 32)
+    // bit position  31.......................................0
+    // packedIds[1]   |    kMaterialBits   |    kMeshBitsHi   |
+    // packedIDs[0]   | kMeshBitsLo | kMatrixBits | kFlagBits |
 
-    static const uint kMatrixBits = 16;
-    static const uint kMeshBits = 15;
-    static const uint kFlagsBits = 1;
+    static const uint kMaterialBits = 17;
+    static const uint kMatrixBits = 21;
+    static const uint kMeshBits = 21;
+    static const uint kFlagsBits = 5;
 
-    static const uint kMatrixOffset = 0;
-    static const uint kMeshOffset = kMatrixOffset + kMatrixBits;
-    static const uint kFlagsOffset = kMeshOffset + kMeshBits;
+    static const uint kFlagsOffset = 0;
+    static const uint kMatrixOffset = kFlagsOffset + kFlagsBits;
+    static const uint kMeshOffsetLo = kMatrixOffset + kMatrixBits;
+    static const uint kMeshBitsLo = 32 - kMeshOffsetLo;
+    static const uint kMeshOffsetHi = 0;
+    static const uint kMeshBitsHi = kMeshBits - kMeshBitsLo;
+    static const uint kMaterialOffset = kMeshOffsetHi + kMeshBitsHi;
 
 #ifdef HOST_CODE
     void pack(const MeshInstanceData& d)
     {
-        materialID = d.materialID;
         vbOffset = d.vbOffset;
         ibOffset = d.ibOffset;
 
         assert(d.flags < (1 << kFlagsBits));
         assert(d.meshID < (1 << kMeshBits));
         assert(d.globalMatrixID < (1 << kMatrixBits));
-        packedIDs = (d.flags << kFlagsOffset) | (d.meshID << kMeshOffset) | (d.globalMatrixID << kMatrixOffset);
+        assert(d.materialID < (1 << kMaterialBits));
+        packedIDs[0] = (d.flags << kFlagsOffset) | (d.globalMatrixID << kMatrixOffset) | ((d.meshID & ((1 << kMeshBitsLo) -1)) << kMeshOffsetLo);
+        packedIDs[1] = (d.meshID >> kMeshBitsLo) | (d.materialID << kMaterialOffset);
     }
 #endif
 
     MeshInstanceData unpack()
     {
         MeshInstanceData d;
-        d.materialID = materialID;
         d.vbOffset = vbOffset;
         d.ibOffset = ibOffset;
 
-        d.globalMatrixID = (packedIDs >> kMatrixOffset) & ((1 << kMatrixBits) - 1);
-        d.meshID = (packedIDs >> kMeshOffset) & ((1 << kMeshBits) - 1);
-        d.flags = (packedIDs >> kFlagsOffset) & ((1 << kFlagsBits) - 1);
+        d.materialID = (packedIDs[1] >> kMaterialOffset) & ((1 << kMaterialBits) - 1);
+        d.meshID = ((packedIDs[0] >> kMeshOffsetLo) & ((1 << kMeshBitsLo) - 1)) | (((packedIDs[1] >> kMeshOffsetHi) & ((1 << kMeshBitsHi) -1)) << kMeshBitsLo);
+        d.globalMatrixID = (packedIDs[0] >> kMatrixOffset) & ((1 << kMatrixBits) - 1);
+        d.flags = (packedIDs[0] >> kFlagsOffset) & ((1 << kFlagsBits) - 1);
 
         return d;
     }
@@ -122,7 +164,7 @@ struct StaticVertexData
 {
     float3 position;    ///< Position.
     float3 normal;      ///< Shading normal.
-    float4 tangent;     ///< Shading tangent. The bitangent is computed: cross(normal, tangent.xyz) * tangent.w.
+    float4 tangent;     ///< Shading tangent. The bitangent is computed: cross(normal, tangent.xyz) * tangent.w. NOTE: The tangent is *only* valid when tangent.w != 0.
     float2 texCrd;      ///< Texture coordinates.
 };
 
@@ -205,6 +247,48 @@ struct VertexData
     float2 texC;            ///< Texture coordinate.
     float3 faceNormalW;     ///< Face normal in world space (normalized).
     float  coneTexLODValue; ///< Texture LOD data for cone tracing. This is zero, unless getVertexDataRayCones() is used.
+};
+
+struct ProceduralPrimitiveData
+{
+    uint typeID;        ///< Type ID corresponding to how it was defined during Scene creation.
+    uint instanceIdx;   ///< Of custom primitives of this type, what instance index it is, in the order of addition to the scene.
+
+    uint AABBOffset;    ///< Offset into global AABB buffer.
+    uint AABBCount;     ///< Number of AABBs within a custom primitive.
+};
+
+struct CurveDesc
+{
+    uint vbOffset;      ///< Offset into global curve vertex buffer.
+    uint ibOffset;      ///< Offset into global curve index buffer.
+    uint vertexCount;   ///< Vertex count.
+    uint indexCount;    ///< Index count.
+    uint degree;        ///< Polynomial degree of curve; linear (1) by default.
+    uint materialID;    ///< Material ID.
+
+    uint getSegmentCount() CONST_FUNCTION
+    {
+        return indexCount;
+    }
+};
+
+struct CurveInstanceData
+{
+    uint globalMatrixID;
+    uint materialID;
+    uint curveID;
+    uint vbOffset;      ///< Offset into global curve vertex buffer.
+    uint ibOffset;      ///< Offset into global curve index buffer.
+};
+
+struct StaticCurveVertexData
+{
+    float3 position;    ///< Position.
+    float radius;       ///< Radius of the sphere at curve ends.
+    float3 tangent;     ///< Shading tangent.
+    float3 normal;      ///< Shading normal.
+    float2 texCrd;      ///< Texture coordinates.
 };
 
 END_NAMESPACE_FALCOR

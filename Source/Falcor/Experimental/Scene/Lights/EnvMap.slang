@@ -37,13 +37,22 @@ struct EnvMap
 
     EnvMapData      data;           ///< Environment map data.
 
+    /** Returns the dimensions of the env map texture.
+    */
+    uint2 getDimensions()
+    {
+        uint2 dim;
+        envMap.GetDimensions(dim.x, dim.y);
+        return dim;
+    }
+
     /** Evaluates the radiance coming from world space direction 'dir'.
     */
     float3 eval(float3 dir, float lod = 0.f)
     {
         // Get (u,v) coord in latitude-longitude map format.
         float2 uv = world_to_latlong_map(toLocal(dir));
-        return data.intensity * data.tint * envMap.SampleLevel(envSampler, uv, lod).rgb;
+        return envMap.SampleLevel(envSampler, uv, lod).rgb * getIntensity();
     }
 
     /** Transform direction from local to world space.
@@ -60,5 +69,12 @@ struct EnvMap
     {
         // TODO: For identity transform we might want to skip this statically.
         return mul(dir, (float3x3)data.invTransform);
+    }
+
+    /** Get the intensity scaling factor (including tint).
+    */
+    float3 getIntensity()
+    {
+        return data.intensity * data.tint;
     }
 };

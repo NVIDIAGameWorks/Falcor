@@ -46,6 +46,7 @@ struct MaterialResources
     Texture2D emissive;
     Texture2D normalMap;
     Texture2D specularTransmission;
+    Texture2D displacementMap;
 
     // The following maps are not yet used by the material system
     Texture2D occlusionMap;     // Ambient occlusion map
@@ -70,6 +71,9 @@ struct MaterialData
     float3   volumeAbsorption       = float3(0, 0, 0);  ///< Volume absorption coefficient.
     float    _pad0                  = 0.f;
 
+    /** Get the nested priority used for nested dielectrics.
+        \return Nested priority, with 0 reserved for the highest possible priority.
+    */
     uint getNestedPriority() { return EXTRACT_NESTED_PRIORITY(flags); }
 };
 

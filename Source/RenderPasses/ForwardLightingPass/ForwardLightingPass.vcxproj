@@ -14,7 +14,7 @@
     <ProjectGuid>{C028BF86-8F34-42C2-84DA-4CBE1CF783FE}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>ForwardLightingPass</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
     <ProjectName>ForwardLightingPass</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

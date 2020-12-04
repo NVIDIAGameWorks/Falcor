@@ -32,7 +32,7 @@ namespace Mogwai
 {
     namespace
     {
-        const std::string kScriptVar = "vc";
+        const std::string kScriptVar = "videoCapture";
         const std::string kUI = "ui";
         const std::string kCodec = "codec";
         const std::string kFps = "fps";
@@ -131,14 +131,11 @@ namespace Mogwai
         }
     }
 
-    void VideoCapture::scriptBindings(Bindings& bindings)
+    void VideoCapture::registerScriptBindings(pybind11::module& m)
     {
-        CaptureTrigger::scriptBindings(bindings);
-        auto& m = bindings.getModule();
+        CaptureTrigger::registerScriptBindings(m);
 
         pybind11::class_<VideoCapture, CaptureTrigger> videoCapture(m, "VideoCapture");
-
-        bindings.addGlobalObject(kScriptVar, this, "Video Capture Helpers");
 
         // UI
         auto getUI = [](VideoCapture* pVC) { return pVC->mShowUI; };
@@ -163,8 +160,6 @@ namespace Mogwai
         videoCapture.def_property(kGopSize.c_str(), getGopSize, setGopSize);
 
         // Ranges
-        videoCapture.def(kRanges.c_str(), pybind11::overload_cast<const RenderGraph*, const range_vec&>(&VideoCapture::addRanges)); // PYTHONDEPRECATED
-        videoCapture.def(kRanges.c_str(), pybind11::overload_cast<const std::string&, const range_vec&>(&VideoCapture::addRanges)); // PYTHONDEPRECATED
         videoCapture.def(kAddRanges.c_str(), pybind11::overload_cast<const RenderGraph*, const range_vec&>(&VideoCapture::addRanges), "graph"_a, "ranges"_a);
         videoCapture.def(kAddRanges.c_str(), pybind11::overload_cast<const std::string&, const range_vec&>(&VideoCapture::addRanges), "name"_a, "ranges"_a);
 
@@ -180,20 +175,25 @@ namespace Mogwai
         videoCapture.def(kPrint.c_str(), printAllGraphs);
     }
 
-    std::string VideoCapture::getScript()
+    std::string VideoCapture::getScriptVar() const
+    {
+        return kScriptVar;
+    }
+
+    std::string VideoCapture::getScript(const std::string& var) const
     {
         if (mGraphRanges.empty()) return "";
 
         std::string s("# Video Capture\n");
-        s += CaptureTrigger::getScript(kScriptVar);
-        s += Scripting::makeSetProperty(kScriptVar, kCodec, mpEncoderUI->getCodec());
-        s += Scripting::makeSetProperty(kScriptVar, kFps, mpEncoderUI->getFPS());
-        s += Scripting::makeSetProperty(kScriptVar, kBitrate, mpEncoderUI->getBitrate());
-        s += Scripting::makeSetProperty(kScriptVar, kGopSize, mpEncoderUI->getGopSize());
+        s += CaptureTrigger::getScript(var);
+        s += ScriptWriter::makeSetProperty(var, kCodec, mpEncoderUI->getCodec());
+        s += ScriptWriter::makeSetProperty(var, kFps, mpEncoderUI->getFPS());
+        s += ScriptWriter::makeSetProperty(var, kBitrate, mpEncoderUI->getBitrate());
+        s += ScriptWriter::makeSetProperty(var, kGopSize, mpEncoderUI->getGopSize());
 
         for (const auto& g : mGraphRanges)
         {
-            s += Scripting::makeMemberFunc(kScriptVar, kAddRanges, g.first->getName(), g.second);
+            s += ScriptWriter::makeMemberFunc(var, kAddRanges, g.first->getName(), g.second);
         }
         return s;
     }

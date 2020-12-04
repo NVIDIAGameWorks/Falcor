@@ -37,6 +37,7 @@
     MAX_BOUNCES                     Maximum number of indirect bounces (0 means no indirect).
     MAX_NON_SPECULAR_BOUNCES        Maximum number of non-specular indirect bounces (0 means no indirect).
     USE_VBUFFER                     Use a V-buffer as input.
+    ADJUST_SHADING_NORMALS          Adjust shading normals on secondary hits.
     FORCE_ALPHA_ONE                 Force the alpha channel to 1.0.
     USE_ANALYTIC_LIGHTS             Enables Falcor's analytic lights (point, directional).
     USE_EMISSIVE_LIGHTS             Enables use of emissive geometry as light sources.
@@ -48,7 +49,7 @@
     USE_RUSSIAN_ROULETTE            Enables Russian roulette for path termination.
     MIS_HEURISTIC                   MIS heuristic enum value.
     USE_NESTED_DIELECTRICS          Enables nested dielectrics handling.
-    USE_LIGHTS_IN_VOLUMES           Enables lights in volumes.
+    USE_LIGHTS_IN_DIELECTRIC_VOLUMES Enables lights in dielectric volumes.
     DISABLE_CAUSTICS                Disables caustics.
 */
 
@@ -62,6 +63,7 @@ static const uint kMaxBounces = MAX_BOUNCES;
 static const uint kMaxNonSpecularBounces = MAX_NON_SPECULAR_BOUNCES;
 static const bool kUseVBuffer = USE_VBUFFER;
 static const bool kUseAlphaTest = USE_ALPHA_TEST;
+static const bool kAdjustShadingNormals = ADJUST_SHADING_NORMALS;
 static const bool kForceAlphaOne = FORCE_ALPHA_ONE;
 static const bool kUseAnalyticLights = USE_ANALYTIC_LIGHTS;
 static const bool kUseEmissiveLights = USE_EMISSIVE_LIGHTS;
@@ -74,6 +76,6 @@ static const bool kUseRussianRoulette = USE_RUSSIAN_ROULETTE;
 static const uint kMISHeuristic = MIS_HEURISTIC;
 //static const MISHeuristic kMISHeuristic = (MISHeuristic) MIS_HEURISTIC; // TODO: Use enum instead of uint when Slang supports it.
 static const bool kUseNestedDielectrics = USE_NESTED_DIELECTRICS;
-static const bool kUseLightsInVolumes = USE_LIGHTS_IN_VOLUMES;
+static const bool kUseLightsInDielectricVolumes = USE_LIGHTS_IN_DIELECTRIC_VOLUMES;
 
 static const bool kDisableCaustics = DISABLE_CAUSTICS;

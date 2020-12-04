@@ -87,7 +87,7 @@ namespace Falcor
         EXPECT_LE(laneCount, 128u);
     }
 
-    GPU_TEST(WaveMatch, "Requires shader model 6.5")
+    GPU_TEST(WaveMatch)
     {
         ctx.createProgram("Tests/Slang/WaveOps.cs.slang", "testWaveMatch", Program::DefineList(), Shader::CompilerFlags::None, "6_5");
         ctx.allocateStructuredBuffer("result", kNumElems);
