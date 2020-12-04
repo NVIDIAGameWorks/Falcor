@@ -52,12 +52,12 @@ namespace Falcor
             { "mtlSpecRough",   "gMaterialSpecularRoughness", "Material specular color (xyz) and roughness (w)"          },
             { "mtlEmissive",    "gMaterialEmissive",          "Material emissive color (xyz)"                            },
             { "mtlParams",      "gMaterialExtraParams",       "Material parameters (IoR, flags etc)"                     },
-            { "vbuffer",        "gVBuffer",                   "Visibility buffer in packed 64-bit format",  true /* optional */, ResourceFormat::RG32Uint },
+            { "vbuffer",        "gVBuffer",                   "Visibility buffer in packed format",  true /* optional */, ResourceFormat::Unknown },
         };
 
         const Falcor::ChannelList kVBufferInputChannels =
         {
-            { "vbuffer",        "gVBuffer",                   "Visibility buffer in packed 64-bit format", false, ResourceFormat::RG32Uint },
+            { "vbuffer",        "gVBuffer",                   "Visibility buffer in packed format", false, ResourceFormat::Unknown },
         };
 
         const Falcor::ChannelList kPixelStatsOutputChannels =
@@ -78,6 +78,7 @@ namespace Falcor
         {
             { (uint32_t)EmissiveLightSamplerType::Uniform, "Uniform" },
             { (uint32_t)EmissiveLightSamplerType::LightBVH, "LightBVH" },
+            { (uint32_t)EmissiveLightSamplerType::Power, "Power" },
         };
 
         const Gui::DropdownList kRayFootprintModeList =
@@ -173,6 +174,9 @@ namespace Falcor
             dirty |= widget.var("Threshold", mSharedParams.clampThreshold, 0.f, std::numeric_limits<float>::max(), mSharedParams.clampThreshold * 0.01f);
         }
 
+        dirty |= widget.checkbox("Adjust shading normals on secondary hits", mSharedParams.adjustShadingNormals);
+        widget.tooltip("Enables adjustment of the shading normals to reduce the risk of black pixels due to back-facing vectors.\nDoes not apply to primary hits which is configured in GBuffer.", true);
+
         dirty |= widget.checkbox("Force alpha to 1.0", mSharedParams.forceAlphaOne);
         widget.tooltip("Forces the output alpha channel to 1.0.\n"
             "Otherwise the background will be 0.0 and the foreground 1.0 to allow separate compositing.", true);
@@ -267,6 +271,8 @@ namespace Falcor
                             case EmissiveLightSamplerType::LightBVH:
                                 mLightBVHSamplerOptions = std::static_pointer_cast<LightBVHSampler>(mpEmissiveSampler)->getOptions();
                                 break;
+                            case EmissiveLightSamplerType::Power:
+                                break;
                             default:
                                 should_not_get_here();
                             }
@@ -290,7 +296,7 @@ namespace Falcor
                 }
             }
 
-            dirty |= samplingGroup.checkbox("Use lights in volumes", mSharedParams.useLightsInVolumes);
+            dirty |= samplingGroup.checkbox("Use lights in dielectric volumes", mSharedParams.useLightsInDielectricVolumes);
             samplingGroup.tooltip("Use lights inside of volumes (transmissive materials). We typically don't want this because lights are occluded by the interface.", true);
 
             dirty |= samplingGroup.checkbox("Disable caustics", mSharedParams.disableCaustics);
@@ -379,12 +385,6 @@ namespace Falcor
             logError("'specularRoughnessThreshold' has invalid value. Clamping to the range [0,1].");
             mSharedParams.specularRoughnessThreshold = std::clamp(mSharedParams.specularRoughnessThreshold, 0.f, 1.f);
         }
-
-        if (mSharedParams.useLightsInVolumes == false)
-        {
-            logWarning("'useLightsInVolumes' can cause instability when disabled (todo fix). Forcing the value to true.");
-            mSharedParams.useLightsInVolumes = true;
-        }
     }
 
     bool PathTracer::initLights(RenderContext* pRenderContext)
@@ -396,12 +396,6 @@ namespace Falcor
 
         // If we have no scene, we're done.
         if (mpScene == nullptr) return true;
-
-        // Create environment map sampler if scene uses an environment map.
-        if (mpScene->getEnvMap())
-        {
-            mpEnvMapSampler = EnvMapSampler::create(pRenderContext, mpScene->getEnvMap());
-        }
 
         return true;
     }
@@ -418,8 +412,34 @@ namespace Falcor
             return false;
         }
 
+        bool lightingChanged = false;
+
+        if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::EnvMapChanged))
+        {
+            mpEnvMapSampler = nullptr;
+            lightingChanged = true;
+        }
+
         // Configure light sampling.
         mUseAnalyticLights = mpScene->useAnalyticLights();
+
+        // Configure env map sampling.
+        if (mpScene->useEnvLight())
+        {
+            if (!mpEnvMapSampler)
+            {
+                mpEnvMapSampler = EnvMapSampler::create(pRenderContext, mpScene->getEnvMap());
+                lightingChanged = true;
+            }
+        }
+        else
+        {
+            if (mpEnvMapSampler)
+            {
+                mpEnvMapSampler = nullptr;
+                lightingChanged = true;
+            }
+        }
         mUseEnvLight = mpScene->useEnvLight() && mpEnvMapSampler != nullptr;
 
         // Request the light collection if emissive lights are enabled.
@@ -428,7 +448,6 @@ namespace Falcor
             mpScene->getLightCollection(pRenderContext);
         }
 
-        bool lightingChanged = false;
         if (!mpScene->useEmissiveLights())
         {
             mUseEmissiveLights = mUseEmissiveSampler = false;
@@ -455,6 +474,9 @@ namespace Falcor
                         break;
                     case EmissiveLightSamplerType::LightBVH:
                         mpEmissiveSampler = LightBVHSampler::create(pRenderContext, mpScene, mLightBVHSamplerOptions);
+                        break;
+                    case EmissiveLightSamplerType::Power:
+                        mpEmissiveSampler = EmissivePowerSampler::create(pRenderContext, mpScene);
                         break;
                     default:
                         logError("Unknown emissive light sampler type");
@@ -510,6 +532,9 @@ namespace Falcor
             dict[Falcor::kRenderPassRefreshFlags] = flags;
             mOptionsChanged = false;
         }
+
+        // Check if GBuffer has adjusted shading normals enabled.
+        mGBufferAdjustShadingNormals = dict.getValue(Falcor::kRenderPassGBufferAdjustShadingNormals, false);
 
         // If we have no scene, just clear the outputs and return.
         if (!mpScene)
@@ -599,6 +624,7 @@ namespace Falcor
         defines.add("MAX_BOUNCES", std::to_string(mSharedParams.maxBounces));
         defines.add("MAX_NON_SPECULAR_BOUNCES", std::to_string(mSharedParams.maxNonSpecularBounces));
         defines.add("USE_ALPHA_TEST", mSharedParams.useAlphaTest ? "1" : "0");
+        defines.add("ADJUST_SHADING_NORMALS", mSharedParams.adjustShadingNormals ? "1" : "0");
         defines.add("FORCE_ALPHA_ONE", mSharedParams.forceAlphaOne ? "1" : "0");
         defines.add("USE_ANALYTIC_LIGHTS", mUseAnalyticLights ? "1" : "0");
         defines.add("USE_EMISSIVE_LIGHTS", mUseEmissiveLights ? "1" : "0");
@@ -611,11 +637,13 @@ namespace Falcor
         defines.add("USE_RUSSIAN_ROULETTE", mSharedParams.useRussianRoulette ? "1" : "0");
         defines.add("USE_VBUFFER", mSharedParams.useVBuffer ? "1" : "0");
         defines.add("USE_NESTED_DIELECTRICS", mSharedParams.useNestedDielectrics ? "1" : "0");
-        defines.add("USE_LIGHTS_IN_VOLUMES", mSharedParams.useLightsInVolumes ? "1" : "0");
+        defines.add("USE_LIGHTS_IN_DIELECTRIC_VOLUMES", mSharedParams.useLightsInDielectricVolumes ? "1" : "0");
         defines.add("DISABLE_CAUSTICS", mSharedParams.disableCaustics ? "1" : "0");
 
         // Defines in MaterialShading.slang.
         defines.add("_USE_LEGACY_SHADING_CODE", mSharedParams.useLegacyBSDF ? "1" : "0");
+
+        defines.add("GBUFFER_ADJUST_SHADING_NORMALS", mGBufferAdjustShadingNormals ? "1" : "0");
 
         // Defines for ray footprint.
         defines.add("RAY_FOOTPRINT_MODE", std::to_string(mSharedParams.rayFootprintMode));
@@ -638,6 +666,7 @@ namespace Falcor
 
         params.field(useVBuffer);
         params.field(useAlphaTest);
+        params.field(adjustShadingNormals);
         params.field(forceAlphaOne);
 
         params.field(clampSamples);
@@ -657,7 +686,7 @@ namespace Falcor
 
         params.field(useLegacyBSDF);
         params.field(useNestedDielectrics);
-        params.field(useLightsInVolumes);
+        params.field(useLightsInDielectricVolumes);
         params.field(disableCaustics);
 
         // Ray footprint

@@ -77,7 +77,9 @@ namespace Falcor
             None = 0x0,
             ProgrammableSamplePositionsPartialOnly = 0x1, // On D3D12, this means tier 1 support. Allows one sample position to be set.
             ProgrammableSamplePositionsFull = 0x2,        // On D3D12, this means tier 2 support. Allows up to 4 sample positions to be set.
-            Raytracing = 0x4                              // On D3D12, DirectX Raytracing is supported. It is up to the user to not use raytracing functions when not supported.
+            Barycentrics = 0x4,                           // On D3D12, pixel shader barycentrics are supported.
+            Raytracing = 0x8,                             // On D3D12, DirectX Raytracing is supported. It is up to the user to not use raytracing functions when not supported.
+            RaytracingTier1_1 = 0x10,                     // On D3D12, DirectX Raytracing Tier 1.1 is supported.
         };
 
         /** Create a new device.

@@ -28,8 +28,8 @@
 #pragma once
 #include "Core/Program/Program.h"
 #include "Core/API/RootSignature.h"
-#include "../RtStateObject.h"
-#include "../ShaderTable.h"
+#include "Raytracing/RtStateObject.h"
+#include "Raytracing/ShaderTable.h"
 #include "Scene/Scene.h"
 
 namespace Falcor
@@ -56,9 +56,21 @@ namespace Falcor
             */
             void setMaxTraceRecursionDepth(uint32_t maxDepth) { mMaxTraceRecursionDepth = maxDepth; }
 
+            struct HitGroupEntryPoints
+            {
+                uint32_t closestHit = -1;
+                uint32_t anyHit = -1;
+            };
+
+            // Stored indices for entry points in the Desc. Used to generate groups right before program creation.
+            std::vector<HitGroupEntryPoints> mAABBHitGroupEntryPoints;
+            std::vector<uint32_t> mIntersectionEntryPoints;
+
+            // Entry points and hit groups they have been added to the Program::Desc and which entry point group they are
             std::vector<GroupInfo> mRayGenEntryPoints;
             std::vector<GroupInfo> mMissEntryPoints;
             std::vector<GroupInfo> mHitGroups;
+            std::vector<GroupInfo> mAABBHitGroups;
             uint32_t mMaxTraceRecursionDepth = 1;
         };
 
@@ -72,7 +84,10 @@ namespace Falcor
             Desc& setRayGen(const std::string& raygen);
             Desc& addRayGen(const std::string& raygen);
             Desc& addMiss(uint32_t missIndex, const std::string& miss);
-            Desc& addHitGroup(uint32_t hitIndex, const std::string& closestHit, const std::string& anyHit = "", const std::string& intersection = "");
+            Desc& addHitGroup(uint32_t hitIndex, const std::string& closestHit, const std::string& anyHit = "");
+
+            Desc& addAABBHitGroup(uint32_t hitIndex, const std::string& closestHit, const std::string& anyHit = "");
+            Desc& addIntersection(uint32_t typeIndex, const std::string& intersection);
             Desc& addDefine(const std::string& define, const std::string& value);
             Desc& addDefines(const DefineList& defines);
 
@@ -84,6 +99,7 @@ namespace Falcor
             friend class RtProgram;
 
             void init();
+            void resolveAABBHitGroups();
 
             Program::Desc mBaseDesc;
             DefineList mDefineList;
@@ -95,7 +111,7 @@ namespace Falcor
             \param[in] maxAttributesSize The maximum attributes size in bytes.
             \return A new object, or an exception is thrown if creation failed.
         */
-        static RtProgram::SharedPtr create(const Desc& desc, uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES, uint32_t maxAttributesSize = D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES);
+        static RtProgram::SharedPtr create(Desc desc, uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES, uint32_t maxAttributesSize = D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES);
 
         /** Get the max recursion depth
         */
@@ -112,6 +128,9 @@ namespace Falcor
         // Hit
         uint32_t getHitProgramCount() const { return (uint32_t) mDescExtra.mHitGroups.size(); }
         uint32_t getHitIndex(uint32_t index) const { return mDescExtra.mHitGroups[index].groupIndex; }
+
+        uint32_t getAABBHitProgramCount() const { return (uint32_t)mDescExtra.mAABBHitGroups.size(); }
+        uint32_t getAABBHitIndex(uint32_t index) const { return mDescExtra.mAABBHitGroups[index].groupIndex; }
 
         // Miss
         uint32_t getMissProgramCount() const { return (uint32_t) mDescExtra.mMissEntryPoints.size(); }
@@ -134,7 +153,7 @@ namespace Falcor
         RtProgram(RtProgram const&) = delete;
         RtProgram& operator=(RtProgram const&) = delete;
 
-        RtProgram(const Desc& desc, uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES, uint32_t maxAttributesSize = D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES);
+        RtProgram(uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES, uint32_t maxAttributesSize = D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES);
 
         DescExtra mDescExtra;
 

@@ -32,48 +32,6 @@
 
 namespace Falcor
 {
-    template<typename ViewType>
-    ViewType getViewDimension(Resource::Type type, bool isArray);
-
-    template<>
-    D3D12_UAV_DIMENSION getViewDimension<D3D12_UAV_DIMENSION>(Texture::Type type, bool isTextureArray)
-    {
-        switch (type)
-        {
-        case Texture::Type::Texture1D:
-            return (isTextureArray) ? D3D12_UAV_DIMENSION_TEXTURE1DARRAY : D3D12_UAV_DIMENSION_TEXTURE1D;
-        case Texture::Type::Texture2D:
-            return (isTextureArray) ? D3D12_UAV_DIMENSION_TEXTURE2DARRAY : D3D12_UAV_DIMENSION_TEXTURE2D;
-        case Texture::Type::TextureCube:
-            return D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
-        default:
-            should_not_get_here();
-            return D3D12_UAV_DIMENSION_UNKNOWN;
-        }
-    }
-
-    template<>
-    D3D12_SRV_DIMENSION getViewDimension<D3D12_SRV_DIMENSION>(Texture::Type type, bool isTextureArray)
-    {
-        switch(type)
-        {
-        case Texture::Type::Texture1D:
-            return (isTextureArray) ? D3D12_SRV_DIMENSION_TEXTURE1DARRAY : D3D12_SRV_DIMENSION_TEXTURE1D;
-        case Texture::Type::Texture2D:
-            return (isTextureArray) ? D3D12_SRV_DIMENSION_TEXTURE2DARRAY : D3D12_SRV_DIMENSION_TEXTURE2D;
-        case Texture::Type::Texture3D:
-            assert(isTextureArray == false);
-            return D3D12_SRV_DIMENSION_TEXTURE3D;
-        case Texture::Type::Texture2DMultisample:
-            return (isTextureArray) ? D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY : D3D12_SRV_DIMENSION_TEXTURE2DMS;
-        case Texture::Type::TextureCube:
-            return (isTextureArray) ? D3D12_SRV_DIMENSION_TEXTURECUBEARRAY : D3D12_SRV_DIMENSION_TEXTURECUBE;
-        default:
-            should_not_get_here();
-            return D3D12_SRV_DIMENSION_UNKNOWN;
-        }
-    }
-
     D3D12_RESOURCE_DIMENSION getResourceDimension(Texture::Type type)
     {
         switch (type)
@@ -121,6 +79,8 @@ namespace Falcor
         {
             desc.DepthOrArraySize = mArraySize;
         }
+        assert(desc.Width > 0 && desc.Height > 0);
+        assert(desc.MipLevels > 0 && desc.DepthOrArraySize > 0 && desc.SampleDesc.Count > 0);
 
         D3D12_CLEAR_VALUE clearValue = {};
         D3D12_CLEAR_VALUE* pClearVal = nullptr;
@@ -143,6 +103,7 @@ namespace Falcor
 
         D3D12_HEAP_FLAGS heapFlags = is_set(mBindFlags, ResourceBindFlags::Shared) ? D3D12_HEAP_FLAG_SHARED : D3D12_HEAP_FLAG_NONE;
         d3d_call(gpDevice->getApiHandle()->CreateCommittedResource(&kDefaultHeapProps, heapFlags, &desc, D3D12_RESOURCE_STATE_COMMON, pClearVal, IID_PPV_ARGS(&mApiHandle)));
+        assert(mApiHandle);
 
         if (pData)
         {

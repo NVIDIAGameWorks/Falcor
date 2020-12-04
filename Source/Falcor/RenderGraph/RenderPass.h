@@ -59,6 +59,10 @@ namespace Falcor
         */
         InternalDictionary& getDictionary() const { return (*mpDictionary); }
 
+        /** Get the global dictionary. You can use it to pass data between different passes
+        */
+        InternalDictionary::SharedPtr getDictionaryPtr() const { return mpDictionary; }
+
         /** Get the default dimensions used for Texture2Ds (when `0` is specified as the dimensions in `RenderPassReflection`)
         */
         const uint2& getDefaultTextureDims() const { return mDefaultTexDims; }

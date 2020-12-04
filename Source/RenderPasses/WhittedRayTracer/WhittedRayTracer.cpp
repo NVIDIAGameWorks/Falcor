@@ -115,7 +115,7 @@ WhittedRayTracer::WhittedRayTracer(const Dictionary& dict)
             { "mtlEmissive",      "gMaterialEmissive",          "Material emissive color (xyz)"                                 },
             { "mtlParams",        "gMaterialExtraParams",       "Material parameters (IoR, flags etc)"                          },
             { "surfSpreadAngle",  "gSurfaceSpreadAngle",        "surface spread angle (texlod)", true, ResourceFormat::R16Float },
-            { "vbuffer",          "gVBuffer",                   "Visibility buffer in packed 64-bit format", true, ResourceFormat::RG32Uint },
+            { "vbuffer",          "gVBuffer",                   "Visibility buffer in packed format", true, ResourceFormat::Unknown },
         };
         mRayConeModes =
         {
@@ -136,7 +136,7 @@ WhittedRayTracer::WhittedRayTracer(const Dictionary& dict)
             { "mtlSpecRough",     "gMaterialSpecularRoughness", "Material specular color (xyz) and roughness (w)"               },
             { "mtlEmissive",      "gMaterialEmissive",          "Material emissive color (xyz)"                                 },
             { "mtlParams",        "gMaterialExtraParams",       "Material parameters (IoR, flags etc)"                          },
-            { "vbuffer",          "gVBuffer",                   "Visibility buffer in packed 64-bit format", true, ResourceFormat::RG32Uint },
+            { "vbuffer",          "gVBuffer",                   "Visibility buffer in packed format", true, ResourceFormat::Unknown },
         };
         mRayConeModes =
         {

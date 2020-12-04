@@ -88,7 +88,7 @@ namespace Falcor
             Desc& dumpIntermediates(bool enable) { enable ? mShaderFlags |= Shader::CompilerFlags::DumpIntermediates : mShaderFlags &= ~(Shader::CompilerFlags::DumpIntermediates); return *this; }
 
             /** Set the shader model string. This depends on the API you are using.
-                For DirectX it should be `4_0`, `4_1`, `5_0`, `5_1`, `6_0`, `6_1`, `6_2`, or `6_3`. The default is `6_0`. Shader model `6.x` will use dxcompiler, previous shader models use fxc.
+                For DirectX it should be `4_0`, `4_1`, `5_0`, `5_1`, `6_0`, `6_1`, `6_2`, `6_3`, `6_4`, or `6_5`. The default is `6_2`. Shader model `6.x` will use dxcompiler, previous shader models use fxc.
                 For Vulkan, it should be `400`, `410`, `420`, `430`, `440` or `450`. The default is `450`
             */
             Desc& setShaderModel(const std::string& sm);
@@ -111,6 +111,7 @@ namespace Falcor
 
             Desc& beginEntryPointGroup();
             Desc& addDefaultVertexShaderIfNeeded();
+            uint32_t declareEntryPoint(ShaderType type, const std::string& name);
 
             struct Source
             {
@@ -127,24 +128,19 @@ namespace Falcor
                 ShaderLibrary::SharedPtr pLibrary;
                 std::string str;
 
-                uint32_t firstEntryPoint = 0;
-                uint32_t entryPointCount = 0;
+                std::vector<uint32_t> entryPoints;
             };
-
 
             struct EntryPointGroup
             {
-                uint32_t firstEntryPoint;
-                uint32_t entryPointCount;
+                std::vector<uint32_t> entryPoints;
             };
 
             struct EntryPoint
             {
                 std::string name;
                 ShaderType stage;
-
                 int32_t sourceIndex;
-                int32_t groupIndex;
             };
 
             std::vector<Source> mSources;
@@ -233,10 +229,10 @@ namespace Falcor
         const ProgramReflection::SharedPtr& getReflector() const { return getActiveVersion()->getReflector(); }
 
         uint32_t getEntryPointGroupCount() const { return uint32_t(mDesc.mGroups.size()); }
-        uint32_t getGroupEntryPointCount(uint32_t groupIndex) const { return mDesc.mGroups[groupIndex].entryPointCount; }
+        uint32_t getGroupEntryPointCount(uint32_t groupIndex) const { return (uint32_t)mDesc.mGroups[groupIndex].entryPoints.size(); }
         uint32_t getGroupEntryPointIndex(uint32_t groupIndex, uint32_t entryPointIndexInGroup) const
         {
-            return mDesc.mGroups[groupIndex].firstEntryPoint + entryPointIndexInGroup;
+            return mDesc.mGroups[groupIndex].entryPoints[entryPointIndexInGroup];
         }
 
     protected:
@@ -250,6 +246,10 @@ namespace Falcor
 
         SlangCompileRequest* createSlangCompileRequest(
             DefineList  const& defineList) const;
+
+        virtual void setUpSlangCompilationTarget(
+            slang::TargetDesc&  ioTargetDesc,
+            char const*&        ioTargetMacroName) const;
 
         bool doSlangReflection(
             ProgramVersion const*                       pVersion,
@@ -268,6 +268,13 @@ namespace Falcor
         virtual EntryPointGroupKernels::SharedPtr createEntryPointGroupKernels(
             const std::vector<Shader::SharedPtr>& shaders,
             EntryPointGroupReflection::SharedPtr const& pReflector) const;
+
+        virtual ProgramKernels::SharedPtr createProgramKernels(
+            const ProgramVersion* pVersion,
+            const ProgramReflection::SharedPtr& pReflector,
+            const ProgramKernels::UniqueEntryPointGroups& uniqueEntryPointGroups,
+            std::string& log,
+            const std::string& name = "") const;
 
         // The description used to create this program
         Desc mDesc;

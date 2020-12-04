@@ -14,17 +14,29 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>$(FALCOR_CORE_DIRECTORY)\Falcor;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\nvapi;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\GLM;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\VulkanSDK\Include;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\RapidJson\include;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\pybind11\include;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\Python\include;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\WinPixEventRuntime\Include\WinPixEventRuntime;$(FALCOR_CORE_DIRECTORY)\Externals;$(FALCOR_CORE_DIRECTORY)\Externals\.packman;$(FALCOR_CORE_DIRECTORY)\Externals\args;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(FALCOR_CORE_DIRECTORY)\Falcor;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\deps\include;$(FALCOR_CORE_DIRECTORY)\Externals\.packman;$(FALCOR_CORE_DIRECTORY)\Externals;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\nvapi;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\vulkansdk\Include;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\python\include;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\WinPixEventRuntime\Include\WinPixEventRuntime;$(FALCOR_CORE_DIRECTORY)\Externals;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\nanovdb\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_$(OutputType);_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;GLM_FORCE_DEPTH_ZERO_TO_ONE;$(FALCOR_BACKEND);_UNICODE;UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>$(FALCOR_CORE_DIRECTORY)\Externals\.packman\FreeImage;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\Assimp\lib\$(PlatformName);$(FALCOR_CORE_DIRECTORY)\Externals\.packman\FFMpeg\lib\$(PlatformName);$(FALCOR_CORE_DIRECTORY)\Externals\.packman\nvapi\amd64;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\VulkanSDK\Lib;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\Slang\bin\windows-x64\release;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\GLFW\lib;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\Python\libs;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\WinPixEventRuntime\bin\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>WinPixEventRuntime.lib;glfw3dll.lib;slang.lib;Comctl32.lib;Shlwapi.lib;assimp-vc141-mt.lib;freeimage.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;Shcore.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(FALCOR_CORE_DIRECTORY)\Externals\.packman\nvapi\amd64;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\vulkansdk\Lib;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\slang\bin\windows-x64\release;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\python\libs;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\WinPixEventRuntime\bin\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>WinPixEventRuntime.lib;slang.lib;Comctl32.lib;Shlwapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;Shcore.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>call $(FALCOR_CORE_DIRECTORY)\..\Build\deployproject.bat $(ProjectDir) $(OutDir)</Command>
     </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Link>
+      <AdditionalLibraryDirectories>$(FALCOR_CORE_DIRECTORY)\Externals\.packman\deps\debug\lib;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\deps\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3dll.lib;FreeImaged.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Link>
+      <AdditionalLibraryDirectories>$(FALCOR_CORE_DIRECTORY)\Externals\.packman\deps\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3dll.lib;FreeImage.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <PropertyPageSchema Include="$(FALCOR_CORE_DIRECTORY)\Falcor\ShaderSource.xml">

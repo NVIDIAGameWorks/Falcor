@@ -177,9 +177,12 @@ namespace Falcor
         mpFence->syncCpu();
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT& footprint = mFootprint;
 
-        //Get buffer data
+        // Calculate row size. GPU pitch can be different because it is aligned to D3D12_TEXTURE_DATA_PITCH_ALIGNMENT
+        assert(footprint.Footprint.Width % getFormatWidthCompressionRatio(mTextureFormat) == 0); // Should divide evenly
+        uint32_t actualRowSize = (footprint.Footprint.Width / getFormatWidthCompressionRatio(mTextureFormat)) * getFormatBytesPerBlock(mTextureFormat);
+
+        // Get buffer data
         std::vector<uint8_t> result;
-        uint32_t actualRowSize = footprint.Footprint.Width * getFormatBytesPerBlock(mTextureFormat);
         result.resize(mRowCount * actualRowSize);
         uint8_t* pData = reinterpret_cast<uint8_t*>(mpBuffer->map(Buffer::MapType::Read));
 

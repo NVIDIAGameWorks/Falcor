@@ -30,7 +30,7 @@ import Scene.HitInfo;
 
 struct VBufferPSOut
 {
-    uint2 packedHitInfo : SV_TARGET0;
+    PackedHitInfo packedHitInfo : SV_TARGET0;
 };
 
 struct VBufferVSOut
@@ -83,7 +83,8 @@ VBufferPSOut psMain(VBufferVSOut vsOut, uint triangleIndex : SV_PrimitiveID, flo
 
     // Store hit information.
     HitInfo hit;
-    hit.meshInstanceID = vsOut.meshInstanceID;
+    hit.type = InstanceType::TriangleMesh;
+    hit.instanceID = vsOut.meshInstanceID;
     hit.primitiveIndex = triangleIndex;
     hit.barycentrics = barycentrics.yz;
     psOut.packedHitInfo = hit.encode();

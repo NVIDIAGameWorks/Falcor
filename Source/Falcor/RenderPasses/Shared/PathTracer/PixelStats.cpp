@@ -61,13 +61,13 @@ namespace Falcor
         mStatsBuffersValid = false;
         mRayCountTextureValid = false;
 
-        if (mStatsEnabled)
+        if (mEnabled)
         {
             // Create parallel reduction helper.
             if (!mpParallelReduction)
             {
                 mpParallelReduction = ComputeParallelReduction::create();
-                mpReductionResult = Buffer::create((kRayTypeCount + 1) * sizeof(uint4), ResourceBindFlags::None, Buffer::CpuAccess::Read);
+                mpReductionResult = Buffer::create((kRayTypeCount + 3) * sizeof(uint4), ResourceBindFlags::None, Buffer::CpuAccess::Read);
             }
 
             // Prepare stats buffers.
@@ -78,6 +78,8 @@ namespace Falcor
                     mpStatsRayCount[i] = Texture::create2D(frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
                 }
                 mpStatsPathLength = Texture::create2D(frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+                mpStatsPathVertexCount = Texture::create2D(frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+                mpStatsVolumeLookupCount = Texture::create2D(frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
             }
 
             for (uint32_t i = 0; i < kRayTypeCount; i++)
@@ -85,6 +87,8 @@ namespace Falcor
                 pRenderContext->clearUAV(mpStatsRayCount[i]->getUAV().get(), uint4(0, 0, 0, 0));
             }
             pRenderContext->clearUAV(mpStatsPathLength->getUAV().get(), uint4(0, 0, 0, 0));
+            pRenderContext->clearUAV(mpStatsPathVertexCount->getUAV().get(), uint4(0, 0, 0, 0));
+            pRenderContext->clearUAV(mpStatsVolumeLookupCount->getUAV().get(), uint4(0, 0, 0, 0));
         }
     }
 
@@ -93,7 +97,7 @@ namespace Falcor
         assert(mRunning);
         mRunning = false;
 
-        if (mStatsEnabled)
+        if (mEnabled)
         {
             // Create fence first time we need it.
             if (!mpFence) mpFence = GpuFence::create();
@@ -104,6 +108,8 @@ namespace Falcor
                 mpParallelReduction->execute<uint4>(pRenderContext, mpStatsRayCount[i], ComputeParallelReduction::Type::Sum, nullptr, mpReductionResult, i * sizeof(uint4));
             }
             mpParallelReduction->execute<uint4>(pRenderContext, mpStatsPathLength, ComputeParallelReduction::Type::Sum, nullptr, mpReductionResult, kRayTypeCount * sizeof(uint4));
+            mpParallelReduction->execute<uint4>(pRenderContext, mpStatsPathVertexCount, ComputeParallelReduction::Type::Sum, nullptr, mpReductionResult, (kRayTypeCount + 1) * sizeof(uint4));
+            mpParallelReduction->execute<uint4>(pRenderContext, mpStatsVolumeLookupCount, ComputeParallelReduction::Type::Sum, nullptr, mpReductionResult, (kRayTypeCount + 2) * sizeof(uint4));
 
             // Submit command list and insert signal.
             pRenderContext->flush(false);
@@ -118,7 +124,7 @@ namespace Falcor
     {
         assert(mRunning);
 
-        if (mStatsEnabled)
+        if (mEnabled)
         {
             pProgram->addDefine("_PIXEL_STATS_ENABLED");
             for (uint32_t i = 0; i < kRayTypeCount; i++)
@@ -126,6 +132,8 @@ namespace Falcor
                 var["gStatsRayCount"][i] = mpStatsRayCount[i];
             }
             var["gStatsPathLength"] = mpStatsPathLength;
+            var["gStatsPathVertexCount"] = mpStatsPathVertexCount;
+            var["gStatsVolumeLookupCount"] = mpStatsVolumeLookupCount;
         }
         else
         {
@@ -136,22 +144,40 @@ namespace Falcor
     void PixelStats::renderUI(Gui::Widgets& widget)
     {
         // Configuration.
-        widget.checkbox("Pixel stats", mStatsEnabled);
+        widget.checkbox("Ray stats", mEnabled);
         widget.tooltip("Collects ray tracing traversal stats on the GPU.\nNote that this option slows down the performance.");
 
         // Fetch data and show stats if available.
         copyStatsToCPU();
         if (mStatsValid)
         {
+            widget.text("Stats:");
+            widget.tooltip("All averages are per pixel on screen.\n"
+                "\n"
+                "The path vertex count includes:\n"
+                " - Primary hits\n"
+                " - Secondary hits on geometry\n"
+                " - Secondary misses on envmap\n"
+                "\n"
+                "Note that the camera/sensor is not included, nor misses when there is no envmap (no-op miss shader).");
+
             std::ostringstream oss;
             oss << "Path length (avg): " << std::fixed << std::setprecision(3) << mStats.avgPathLength << "\n"
-                << "Total rays (avg): " << std::fixed << std::setprecision(3) << mStats.avgTotalRaysPerPixel << "\n"
-                << "Shadow rays (avg): " << std::fixed << std::setprecision(3) << mStats.avgShadowRaysPerPixel << "\n"
-                << "ClosestHit rays (avg): " << std::fixed << std::setprecision(3) << mStats.avgClosestHitRaysPerPixel << "\n"
+                << "Path vertices (avg): " << std::fixed << std::setprecision(3) << mStats.avgPathVertices << "\n"
+                << "Total rays (avg): " << std::fixed << std::setprecision(3) << mStats.avgTotalRays << "\n"
+                << "Shadow rays (avg): " << std::fixed << std::setprecision(3) << mStats.avgShadowRays << "\n"
+                << "ClosestHit rays (avg): " << std::fixed << std::setprecision(3) << mStats.avgClosestHitRays << "\n"
+                << "Path vertices: " << mStats.pathVertices << "\n"
                 << "Total rays: " << mStats.totalRays << "\n"
                 << "Shadow rays: " << mStats.shadowRays << "\n"
-                << "ClosestHit rays: " << mStats.closestHitRays << "\n";
-            widget.text(oss.str().c_str());
+                << "ClosestHit rays: " << mStats.closestHitRays << "\n"
+                << "Volume lookups: " << mStats.volumeLookups << "\n"
+                << "Volume lookups (avg): " << mStats.avgVolumeLookups << "\n";
+
+            widget.checkbox("Enable logging", mEnableLogging);
+            widget.text(oss.str());
+
+            if (mEnableLogging) logInfo("\n" + oss.str());
         }
     }
 
@@ -207,6 +233,18 @@ namespace Falcor
         return mStatsBuffersValid ? mpStatsPathLength : nullptr;
     }
 
+    const Texture::SharedPtr PixelStats::getPathVertexCountTexture() const
+    {
+        assert(!mRunning);
+        return mStatsBuffersValid ? mpStatsPathVertexCount : nullptr;
+    }
+
+    const Texture::SharedPtr PixelStats::getVolumeLookupCountTexture() const
+    {
+        assert(!mRunning);
+        return mStatsBuffersValid ? mpStatsVolumeLookupCount : nullptr;
+    }
+
     void PixelStats::copyStatsToCPU()
     {
         assert(!mRunning);
@@ -216,27 +254,63 @@ namespace Falcor
             mpFence->syncCpu();
             mWaitingForData = false;
 
-            if (mStatsEnabled)
+            if (mEnabled)
             {
                 // Map the stats buffer.
                 const uint4* result = static_cast<const uint4*>(mpReductionResult->map(Buffer::MapType::Read));
                 assert(result);
 
                 const uint32_t totalPathLength = result[kRayTypeCount].x;
+                const uint32_t totalPathVertices = result[kRayTypeCount + 1].x;
+                const uint32_t totalVolumeLookups = result[kRayTypeCount + 2].x;
                 const uint32_t numPixels = mFrameDim.x * mFrameDim.y;
                 assert(numPixels > 0);
 
                 mStats.shadowRays = result[(uint32_t)PixelStatsRayType::Shadow].x;
                 mStats.closestHitRays = result[(uint32_t)PixelStatsRayType::ClosestHit].x;
                 mStats.totalRays = mStats.shadowRays + mStats.closestHitRays;
-                mStats.avgShadowRaysPerPixel = (float)mStats.shadowRays / numPixels;
-                mStats.avgClosestHitRaysPerPixel = (float)mStats.closestHitRays / numPixels;
-                mStats.avgTotalRaysPerPixel = (float)mStats.totalRays / numPixels;
+                mStats.pathVertices = totalPathVertices;
+                mStats.volumeLookups = totalVolumeLookups;
+                mStats.avgShadowRays = (float)mStats.shadowRays / numPixels;
+                mStats.avgClosestHitRays = (float)mStats.closestHitRays / numPixels;
+                mStats.avgTotalRays = (float)mStats.totalRays / numPixels;
                 mStats.avgPathLength = (float)totalPathLength / numPixels;
+                mStats.avgPathVertices = (float)totalPathVertices / numPixels;
+                mStats.avgVolumeLookups = (float)totalVolumeLookups / numPixels;
 
                 mpReductionResult->unmap();
                 mStatsValid = true;
             }
         }
+    }
+
+    pybind11::dict PixelStats::Stats::toPython() const
+    {
+        pybind11::dict d;
+
+        d["shadowRays"] = shadowRays;
+        d["closestHitRays"] = closestHitRays;
+        d["totalRays"] = totalRays;
+        d["pathVertices"] = pathVertices;
+        d["volumeLookups"] = volumeLookups;
+        d["avgShadowRays"] = avgShadowRays;
+        d["avgClosestHitRays"] = avgClosestHitRays;
+        d["avgTotalRays"] = avgTotalRays;
+        d["avgPathLength"] = avgPathLength;
+        d["avgPathVertices"] = avgPathVertices;
+        d["avgVolumeLookups"] = avgVolumeLookups;
+
+        return d;
+    }
+
+    SCRIPT_BINDING(PixelStats)
+    {
+        pybind11::class_<PixelStats, PixelStats::SharedPtr> pixelStats(m, "PixelStats");
+        pixelStats.def_property("enabled", &PixelStats::isEnabled, &PixelStats::setEnabled);
+        pixelStats.def_property_readonly("stats", [](PixelStats* pPixelStats) {
+            PixelStats::Stats stats;
+            pPixelStats->getStats(stats);
+            return stats.toPython();
+        });
     }
 }

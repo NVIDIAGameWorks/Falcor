@@ -78,7 +78,8 @@ void scatterClosestHit(
 {
     // Store hit information. Note we don't access the materials here.
     HitInfo hit;
-    hit.meshInstanceID = hitParams.getGlobalHitID();
+    hit.type = InstanceType::TriangleMesh;
+    hit.instanceID = hitParams.getGlobalHitID();
     hit.primitiveIndex = PrimitiveIndex();
     hit.barycentrics = attribs.barycentrics;
     rayData.packedHitInfo = hit.encode();

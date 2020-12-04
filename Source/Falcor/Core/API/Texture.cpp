@@ -31,6 +31,8 @@
 #include "RenderContext.h"
 #include "Utils/Threading.h"
 
+#include <mutex>
+
 namespace Falcor
 {
     namespace
@@ -226,6 +228,18 @@ namespace Falcor
         return getUAV(0);
     }
 
+#if _ENABLE_CUDA
+    void* Texture::getCUDADeviceAddress() const
+    {
+        throw std::exception("Texture::getCUDADeviceAddress() - unimplemented");
+    }
+
+    void* Texture::getCUDADeviceAddress(ResourceViewInfo const& viewInfo) const
+    {
+        throw std::exception("Texture::getCUDADeviceAddress() - unimplemented");
+    }
+#endif
+
     RenderTargetView::SharedPtr Texture::getRTV(uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
     {
         auto createFunc = [](Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
@@ -248,6 +262,11 @@ namespace Falcor
 
     void Texture::captureToFile(uint32_t mipLevel, uint32_t arraySlice, const std::string& filename, Bitmap::FileFormat format, Bitmap::ExportFlags exportFlags)
     {
+        if (format == Bitmap::FileFormat::DdsFile)
+        {
+            throw std::exception("Texture::captureToFile does not yet support saving to DDS.");
+        }
+
         assert(mType == Type::Texture2D);
         RenderContext* pContext = gpDevice->getRenderContext();
         // Handle the special case where we have an HDR texture with less then 3 channels
@@ -281,6 +300,11 @@ namespace Falcor
 
     void Texture::uploadInitData(const void* pData, bool autoGenMips)
     {
+        // TODO: This is a hack to allow multi-threaded texture loading using AsyncTextureLoader.
+        // Replace with something better.
+        static std::mutex mutex;
+        std::lock_guard<std::mutex> lock(mutex);
+
         assert(gpDevice);
         auto pRenderContext = gpDevice->getRenderContext();
         if (autoGenMips)
@@ -335,7 +359,21 @@ namespace Falcor
         }
     }
 
-    uint32_t Texture::getTextureSizeInBytes()
+    uint64_t Texture::getTexelCount() const
+    {
+        uint64_t count = 0;
+        for (uint32_t i = 0; i < getMipCount(); i++)
+        {
+            uint64_t texelsInMip = (uint64_t)getWidth(i) * getHeight(i) * getDepth(i);
+            assert(texelsInMip > 0);
+            count += texelsInMip;
+        }
+        count *= getArraySize();
+        assert(count > 0);
+        return count;
+    }
+
+    uint64_t Texture::getTextureSizeInBytes() const
     {
         ID3D12DevicePtr pDevicePtr = gpDevice->getApiHandle();
         ID3D12ResourcePtr pTexResource = this->getApiHandle();
@@ -344,11 +382,10 @@ namespace Falcor
         D3D12_RESOURCE_DESC desc = pTexResource->GetDesc();
 
         assert(desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D);
-        assert(desc.Width == mWidth);
-        assert(desc.Height == mHeight);
 
         d3d12ResourceAllocationInfo = pDevicePtr->GetResourceAllocationInfo(0, 1, &desc);
-        return (uint32_t)d3d12ResourceAllocationInfo.SizeInBytes;
+        assert(d3d12ResourceAllocationInfo.SizeInBytes > 0);
+        return d3d12ResourceAllocationInfo.SizeInBytes;
     }
 
     SCRIPT_BINDING(Texture)

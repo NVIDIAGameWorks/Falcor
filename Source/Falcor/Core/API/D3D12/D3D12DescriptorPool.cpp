@@ -43,6 +43,7 @@ namespace Falcor
         case DescriptorPool::Type::TypedBufferUav:
         case DescriptorPool::Type::StructuredBufferSrv:
         case DescriptorPool::Type::StructuredBufferUav:
+        case DescriptorPool::Type::AccelerationStructureSrv:
         case DescriptorPool::Type::Cbv:
             return D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
         case DescriptorPool::Type::Dsv:
@@ -60,7 +61,7 @@ namespace Falcor
     void DescriptorPool::apiInit()
     {
         // Find out how many heaps we need
-        static_assert(DescriptorPool::kTypeCount == 12, "Unexpected desc count, make sure all desc types are supported");
+        static_assert(DescriptorPool::kTypeCount == 13, "Unexpected desc count, make sure all desc types are supported");
         uint32_t descCount[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES] = { 0 };
 
         descCount[D3D12_DESCRIPTOR_HEAP_TYPE_RTV] = mDesc.mDescCount[(uint32_t)Type::Rtv];
@@ -69,11 +70,12 @@ namespace Falcor
         descCount[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] = mDesc.mDescCount[(uint32_t)Type::Cbv];
         descCount[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] += mDesc.mDescCount[(uint32_t)Type::TextureSrv] + mDesc.mDescCount[(uint32_t)Type::RawBufferSrv] + mDesc.mDescCount[(uint32_t)Type::TypedBufferSrv] + mDesc.mDescCount[(uint32_t)Type::StructuredBufferSrv];
         descCount[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] += mDesc.mDescCount[(uint32_t)Type::TextureUav] + mDesc.mDescCount[(uint32_t)Type::RawBufferUav] + mDesc.mDescCount[(uint32_t)Type::TypedBufferUav] + mDesc.mDescCount[(uint32_t)Type::StructuredBufferUav];
+        descCount[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] += mDesc.mDescCount[(uint32_t)Type::AccelerationStructureSrv];
 
         mpApiData = std::make_shared<DescriptorPoolApiData>();
         for (uint32_t i = 0; i < arraysize(mpApiData->pHeaps); i++)
         {
-            if (descCount[i])
+            if (descCount[i] > 0)
             {
                 mpApiData->pHeaps[i] = D3D12DescriptorHeap::create(D3D12_DESCRIPTOR_HEAP_TYPE(i), descCount[i], mDesc.mShaderVisible);
             }

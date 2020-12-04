@@ -28,6 +28,7 @@
 #pragma once
 #include "MaterialData.slang"
 #include "MaterialDefines.slangh"
+#include "Scene/Transform.h"
 
 namespace Falcor
 {
@@ -51,6 +52,16 @@ namespace Falcor
             Specular
                 - RGB - Specular Color
                 - A   - Gloss
+
+        ShadingModelHairChiang16
+            BaseColor
+                - RGB - Absorption coefficient, sigmaA
+                - A   - Unused
+            Specular
+                - R   - Longitudinal roughness, betaM
+                - G   - Azimuthal roughness, betaN
+                - B   - The angle that the small scales on the surface of hair are offset from the base cylinder (in degrees).
+                - A   - Unused
 
         Common for all shading models
             Emissive
@@ -85,6 +96,7 @@ namespace Falcor
             Normal,
             Occlusion,
             SpecularTransmission,
+            Displacement,
 
             Count // Must be last
         };
@@ -152,35 +164,35 @@ namespace Falcor
 
         /** Set the base color texture
         */
-        void setBaseColorTexture(Texture::SharedPtr pBaseColor);
+        void setBaseColorTexture(Texture::SharedPtr pBaseColor) { setTexture(TextureSlot::BaseColor, pBaseColor); }
 
         /** Get the base color texture
         */
-        Texture::SharedPtr getBaseColorTexture() const { return mResources.baseColor; }
+        Texture::SharedPtr getBaseColorTexture() const { return getTexture(TextureSlot::BaseColor); }
 
         /** Set the specular texture
         */
-        void setSpecularTexture(Texture::SharedPtr pSpecular);
+        void setSpecularTexture(Texture::SharedPtr pSpecular) { setTexture(TextureSlot::Specular, pSpecular); }
 
         /** Get the specular texture
         */
-        Texture::SharedPtr getSpecularTexture() const { return mResources.specular; }
+        Texture::SharedPtr getSpecularTexture() const { return getTexture(TextureSlot::Specular); }
 
         /** Set the emissive texture
         */
-        void setEmissiveTexture(const Texture::SharedPtr& pEmissive);
+        void setEmissiveTexture(const Texture::SharedPtr& pEmissive) { setTexture(TextureSlot::Emissive, pEmissive); }
 
         /** Get the emissive texture
         */
-        Texture::SharedPtr getEmissiveTexture() const { return mResources.emissive; }
+        Texture::SharedPtr getEmissiveTexture() const { return getTexture(TextureSlot::Emissive); }
 
         /** Set the specular transmission texture
         */
-        void setSpecularTransmissionTexture(const Texture::SharedPtr& pTransmission);
+        void setSpecularTransmissionTexture(const Texture::SharedPtr& pTransmission) { setTexture(TextureSlot::SpecularTransmission, pTransmission); }
 
         /** Get the specular transmission texture
         */
-        Texture::SharedPtr getSpecularTransmissionTexture() const { return mResources.specularTransmission; }
+        Texture::SharedPtr getSpecularTransmissionTexture() const { return getTexture(TextureSlot::SpecularTransmission); }
 
         /** Set the shading model
         */
@@ -192,19 +204,27 @@ namespace Falcor
 
         /** Set the normal map
         */
-        void setNormalMap(Texture::SharedPtr pNormalMap);
+        void setNormalMap(Texture::SharedPtr pNormalMap) { setTexture(TextureSlot::Normal, pNormalMap); }
 
         /** Get the normal map
         */
-        Texture::SharedPtr getNormalMap() const { return mResources.normalMap; }
+        Texture::SharedPtr getNormalMap() const { return getTexture(TextureSlot::Normal); }
 
         /** Set the occlusion map
         */
-        void setOcclusionMap(Texture::SharedPtr pOcclusionMap);
+        void setOcclusionMap(Texture::SharedPtr pOcclusionMap) { setTexture(TextureSlot::Occlusion, pOcclusionMap); }
 
         /** Get the occlusion map
         */
-        Texture::SharedPtr getOcclusionMap() const { return mResources.occlusionMap; }
+        Texture::SharedPtr getOcclusionMap() const { return getTexture(TextureSlot::Occlusion); }
+
+        /** Set the displacement map
+        */
+        void setDisplacementMap(Texture::SharedPtr pDisplacementMap) { setTexture(TextureSlot::Displacement, pDisplacementMap); }
+
+        /** Get the displacement map
+        */
+        Texture::SharedPtr getDisplacementMap() const { return getTexture(TextureSlot::Displacement); }
 
         /** Set the base color
         */
@@ -314,7 +334,8 @@ namespace Falcor
         */
         void setNestedPriority(uint32_t priority);
 
-        /** Get the nested priority used for nested dielectrics
+        /** Get the nested priority used for nested dielectrics.
+            \return Nested priority, with 0 reserved for the highest possible priority.
         */
         uint32_t getNestedPriority() const { return EXTRACT_NESTED_PRIORITY(mData.flags); }
 
@@ -322,7 +343,8 @@ namespace Falcor
         */
         bool isEmissive() const { return EXTRACT_EMISSIVE_TYPE(mData.flags) != ChannelTypeUnused; }
 
-        /** Comparison operator
+        /** Comparison operator.
+            \return True if all materials properties *except* the name are identical.
         */
         bool operator==(const Material& other) const;
 
@@ -342,6 +364,18 @@ namespace Falcor
         */
         const MaterialResources& getResources() const { return mResources; }
 
+        /** Set the material texture transform.
+        */
+        void setTextureTransform(const Transform& texTransform);
+
+        /** Get a reference to the material texture transform.
+        */
+        Transform& getTextureTransform() { return mTextureTransform; }
+
+        /** Get the material texture transform.
+        */
+        const Transform& getTextureTransform() const { return mTextureTransform; }
+
     private:
         void markUpdates(UpdateFlags updates);
 
@@ -349,13 +383,17 @@ namespace Falcor
         void updateBaseColorType();
         void updateSpecularType();
         void updateEmissiveType();
-        void updateOcclusionFlag();
         void updateSpecularTransmissionType();
+        void updateAlphaMode();
+        void updateNormalMapMode();
+        void updateOcclusionFlag();
+        void updateDisplacementFlag();
 
         Material(const std::string& name);
         std::string mName;
         MaterialData mData;
         MaterialResources mResources;
+        Transform mTextureTransform;
         bool mOcclusionMapEnabled = false;
         mutable UpdateFlags mUpdates = UpdateFlags::None;
         static UpdateFlags sGlobalUpdates;

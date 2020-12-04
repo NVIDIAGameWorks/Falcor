@@ -227,12 +227,12 @@ SurfaceData prepareMaterial(VertexData v, float3 viewDir)
         sd.uv = v.texC;
         sd.V = normalize(viewDir);
         sd.N = normalize(v.normalW);
-        sd.T = normalize(v.tangentW.xyz - sd.N * (dot(v.tangentW.xyz, sd.N)));
-        sd.B = normalize(cross(sd.N, sd.T) * v.tangentW.w);
         sd.NdotV = dot(sd.N, sd.V);
         sd.faceN = v.faceNormalW;
         sd.frontFacing = dot(sd.V, sd.faceN) >= 0.f;
         sd.doubleSided = false;
+
+        computeTangentSpace(sd, v.tangentW);
 
         // Set material parameters.
         // Calculate the specular reflectance for dielectrics from the IoR.
@@ -296,7 +296,7 @@ uint getActiveLobes()
 {
     uint lobes = 0;
     if (gParams.enableDiffuse) lobes |= (uint)LobeType::DiffuseReflection;
-    if (gParams.enableSpecular) lobes |= (uint)LobeType::SpecularReflection;
+    if (gParams.enableSpecular) lobes |= (uint)LobeType::SpecularReflection | (uint)LobeType::DeltaReflection;
     // TODO: Viewer doesn't support transmission lobes yet
     return lobes;
 }

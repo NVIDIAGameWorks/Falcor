@@ -1,46 +1,27 @@
 <project toolsVersion="5.0">
-    <remote name="github-slang" type="https"
-            packageLocation="github.com/shader-slang/slang/releases/download/v${version}/slang-${version}-win64.zip"/>
-    <remote name="github-slang-linux" type="https"
-            packageLocation="github.com/shader-slang/slang/releases/download/v${version}/slang-${version}-linux-x86_64.zip"/>
-    <dependency name="assimp" linkPath="../Externals/.packman/ASSIMP">
-        <package name="assimp" version="5.0.0-falcor" platforms="win" />
+    <dependency name="falcor_dependencies" linkPath="../Externals/.packman/deps">
+        <package name="falcor_dependencies" version="6adad071-${platform}" platforms="windows-x86_64" />
+    </dependency>
+    <dependency name="falcor_media" linkPath="../../Media">
+        <package name="falcor_media" version="cb35a70a" />
     </dependency>
     <dependency name="dear_imgui" linkPath="../Externals/.packman/dear_imgui">
         <package name="dear_imgui" version="1.72WIP-docking-e5b9054" />
     </dependency>
-    <dependency name="glm" linkPath="../Externals/.packman/GLM">
-        <package name="glm" version="0.9.9.2" />
+    <dependency name="vulkansdk" linkPath="../Externals/.packman/vulkansdk">
+        <package name="vulkansdk" version="1.1.82.1" platforms="windows-x86_64" />
     </dependency>
-    <dependency name="ffmpeg" linkPath="../Externals/.packman/FFMPEG">
-        <package name="ffmpeg" version="3.4.2" platforms="win" />
+    <dependency name="slang" linkPath="../Externals/.packman/slang">
+        <package name="slang" version="v0.17.5-windows-x64-release" platforms="windows-x86_64" />
+        <package name="slang" version="v0.17.5-linux-x64-release" platforms="linux-x86_64" />
     </dependency>
-    <dependency name="freeimage" linkPath="../Externals/.packman/FreeImage">
-        <package name="freeimage" version="3.18.0" platforms="win" />
+    <dependency name="WinPixEventRuntime" linkPath="../Externals/.packman/WinPixEventRuntime">
+        <package name="WinPixEventRuntime" version="1.0.190604001" platforms="windows-x86_64" />
     </dependency>
-    <dependency name="vulkansdk" linkPath="../Externals/.packman/VulkanSDK">
-        <package name="vulkansdk" version="1.1.82.1" platforms="win"/>
+    <dependency name="python" linkPath="../Externals/.packman/python">
+        <package name="python" version="3.6.7-${platform}" platforms="windows-x86_64 linux-x86_64" />
     </dependency>
-    <dependency name="rapidjson" linkPath="../Externals/.packman/RapidJson">
-        <package name="rapidjson" version="1.1.0" />
-    </dependency>
-    <dependency name="slang" linkPath="../Externals/.packman/Slang">
-        <package name="slang" version="0.16.3" remotes="github-slang" />
-        <package name="slang" version="0.16.3" remotes="github-slang-linux" platforms="linux" />
-    </dependency>
-    <dependency name="glfw" linkPath="../Externals/.packman/GLFW">
-        <package name="glfw" version="3.3.2" platforms="win" />
-    </dependency>
-    <dependency name="winpixeventruntime" linkPath="../Externals/.packman/WinPixEventRuntime">
-        <package name="WinPixEventRuntime" version="1.0.190604001" platforms="win" />
-    </dependency>
-    <dependency name="falcor_media" linkPath="../../Media">
-        <package name="falcor_media" version="2.2.1" />
-    </dependency>
-    <dependency name="python" linkPath="../Externals/.packman/Python">
-        <package name="python" version="3.6.7-windows-x86_64" platforms="win" />
-    </dependency>
-    <dependency name="pybind11" linkPath="../Externals/.packman/pybind11">
-        <package name="pybind11" version="2.2.4" />
+    <dependency name="nanovdb" linkPath="../Externals/.packman/nanovdb">
+        <package name="nanovdb" version="pnanovdb-90289150" />
     </dependency>
 </project>

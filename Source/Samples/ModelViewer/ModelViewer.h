@@ -57,7 +57,7 @@ private:
 
     bool mDrawWireframe = false;
     bool mUseOriginalTangents = false;
-    bool mRemoveDuplicateMaterials = true;
+    bool mDontMergeMaterials = false;
     Scene::CameraControllerType mCameraType = Scene::CameraControllerType::FirstPerson;
 
     Scene::SharedPtr mpScene;

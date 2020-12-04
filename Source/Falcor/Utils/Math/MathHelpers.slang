@@ -98,6 +98,22 @@ float2 world_to_latlong_map(float3 dir)
     return uv;
 }
 
+/** Convert a coordinate in latitude-longitude map (unsigned normalized) to a world space direction.
+    The map is centered around the -z axis and wrapping around in clockwise order (left to right).
+    \param[in] latlong Position in latitude-longitude map in [0,1] for each component.
+    \return Normalized direction in world space.
+*/
+float3 latlong_map_to_world(float2 latlong)
+{
+    float phi = M_PI * (2.f * saturate(latlong.x) - 1.f);
+    float theta = M_PI * saturate(latlong.y);
+    float sinTheta = sin(theta);
+    float cosTheta = cos(theta);
+    float sinPhi = sin(phi);
+    float cosPhi = cos(phi);
+    return float3(sinTheta * sinPhi, cosTheta, -sinTheta * cosPhi);
+}
+
 /******************************************************************************
 
     Octahedral mapping
@@ -267,8 +283,8 @@ float2 sample_disk_concentric(float2 u)
     {
         r = u.x;
         phi = (u.y / u.x) * M_PI_4;
-    } 
-    else 
+    }
+    else
     {
         r = u.y;
         phi = M_PI_2 - (u.x / u.y) * M_PI_4;
@@ -352,7 +368,7 @@ float3x3 inverse(float3x3 M)
     return inv;
 }
 
-/** Gernerate a vector that is orthogonal to the input vector.
+/** Generate a vector that is orthogonal to the input vector.
     This can be used to invent a tangent frame for meshes that don't have real tangents/bitangents.
 */
 float3 perp_stark(float3 u)

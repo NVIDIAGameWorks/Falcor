@@ -108,29 +108,32 @@ namespace Falcor
 #endif
     }
 
-    const char* getLogLevelString(Logger::Level L)
+    const char* getLogLevelString(Logger::Level level)
     {
-        const char* c = nullptr;
-#define create_level_case(_l) case _l: c = "(" #_l ")" ;break;
-        switch(L)
+        switch (level)
         {
-            create_level_case(Logger::Level::Info);
-            create_level_case(Logger::Level::Warning);
-            create_level_case(Logger::Level::Error);
-            create_level_case(Logger::Level::Fatal);
+        case Logger::Level::Fatal:
+            return "(Fatal)";
+        case Logger::Level::Error:
+            return "(Error)";
+        case Logger::Level::Warning:
+            return "(Warning)";
+        case Logger::Level::Info:
+            return "(Info)";
+        case Logger::Level::Debug:
+            return "(Debug)";
         default:
             should_not_get_here();
+            return nullptr;
         }
-#undef create_level_case
-        return c;
     }
 
-    void Logger::log(Level L, const std::string& msg, MsgBox mbox, bool terminateOnError)
+    void Logger::log(Level level, const std::string& msg, MsgBox mbox, bool terminateOnError)
     {
 #if _LOG_ENABLED
-        if (L >= sVerbosity)
+        if (level <= sVerbosity)
         {
-            std::string s = getLogLevelString(L) + std::string("\t") + msg + "\n";
+            std::string s = getLogLevelString(level) + std::string(" ") + msg + "\n";
 
             // Write to log file.
             printToLogFile(s);
@@ -139,7 +142,7 @@ namespace Falcor
             if (isDebuggerPresent()) printToDebugWindow(s);
 
             // Write errors to stderr unconditionally, other messages to stdout if enabled.
-            if (L < Logger::Level::Error)
+            if (level > Logger::Level::Error)
             {
                 if (sLogToConsole) std::cout << s;
             }
@@ -154,7 +157,7 @@ namespace Falcor
         {
             if (mbox == MsgBox::Auto)
             {
-                mbox = (L >= Level::Error) ? MsgBox::ContinueAbort : MsgBox::None;
+                mbox = (level <= Level::Error) ? MsgBox::ContinueAbort : MsgBox::None;
             }
 
             if (mbox != MsgBox::None)
@@ -167,14 +170,14 @@ namespace Falcor
 
                 // Setup message box buttons
                 std::vector<MsgBoxCustomButton> buttons;
-                if (L != Level::Fatal) buttons.push_back({ContinueOrRetry, mbox == MsgBox::ContinueAbort ? "Continue" : "Retry"});
+                if (level != Level::Fatal) buttons.push_back({ContinueOrRetry, mbox == MsgBox::ContinueAbort ? "Continue" : "Retry"});
                 if (isDebuggerPresent()) buttons.push_back({Debug, "Debug"});
                 buttons.push_back({Abort, "Abort"});
 
                 // Setup icon
                 MsgBoxIcon icon = MsgBoxIcon::Info;
-                if (L == Level::Warning) icon = MsgBoxIcon::Warning;
-                else if (L >= Level::Error) icon = MsgBoxIcon::Error;
+                if (level == Level::Warning) icon = MsgBoxIcon::Warning;
+                else if (level <= Level::Error) icon = MsgBoxIcon::Error;
 
                 // Show message box
                 auto result = msgBox(msg, buttons, icon);
@@ -184,10 +187,10 @@ namespace Falcor
         }
 
         // Terminate on errors if not displaying message box and terminateOnError is enabled
-        if (L == Level::Error && !sShowBoxOnError && terminateOnError) exit(1);
+        if (level == Level::Error && !sShowBoxOnError && terminateOnError) exit(1);
 
         // Always terminate on fatal errors
-        if (L == Level::Fatal) exit(1);
+        if (level == Level::Fatal) exit(1);
     }
 
     bool Logger::setLogFilePath(const std::string& path)

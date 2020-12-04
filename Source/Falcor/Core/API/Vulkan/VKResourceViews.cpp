@@ -46,12 +46,6 @@ namespace Falcor
         return Texture::create2D(1, 1, ResourceFormat::RGBA8Unorm, 1, 1, blackPixel, Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess);
     }
 
-    ResourceWeakPtr getEmptyTexture()
-    {
-        static Texture::SharedPtr sBlackTexture = createBlackTexture();
-        return sBlackTexture;
-    }
-
     VkImageViewType getViewType(Resource::Type type, bool isArray)
     {
         switch (type)

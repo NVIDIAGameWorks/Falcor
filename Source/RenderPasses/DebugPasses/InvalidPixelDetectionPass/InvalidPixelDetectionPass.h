@@ -43,12 +43,15 @@ public:
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
+    virtual void renderUI(Gui::Widgets& widget) override;
 
     static const char* kDesc;
 
 private:
     InvalidPixelDetectionPass();
+
     FullScreenPass::SharedPtr mpInvalidPixelDetectPass;
     Fbo::SharedPtr mpFbo;
+    ResourceFormat mFormat = ResourceFormat::Unknown;
     bool mReady = false;
 };

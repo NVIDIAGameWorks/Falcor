@@ -84,9 +84,11 @@ void testRaySphereIntersection()
 {
     for (int i = 0; i < resultSize; ++i)
     {
-        if (intersectRaySphere(rayOrigin[i], rayDir[i], sphereCenter[i], sphereRadius[i], isectLoc[i]))
+        float t;
+        if (intersectRaySphere(rayOrigin[i], rayDir[i], sphereCenter[i], sphereRadius[i], t))
         {
             isectResult[i] = 1;
+            isectLoc[i] = rayOrigin[i] + t * rayDir[i];
         }
         else
         {

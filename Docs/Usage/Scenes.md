@@ -88,12 +88,12 @@ The scene can be rendered using functions from the `Scene` class. There is no lo
 
 To rasterize, use:
 ```c++
-void Scene::render(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, RenderFlags flags = RenderFlags::None);
+void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, RenderFlags flags = RenderFlags::None);
 ```
 
 To raytrace, use:
 ```c++
-void Scene::raytrace(RenderContext* pContext, const std::shared_ptr<RtState>& pState, const std::shared_ptr<RtProgramVars>& pVars, uvec3 dispatchDims);
+void Scene::raytrace(RenderContext* pContext, RtProgram* pProgram, const std::shared_ptr<RtProgramVars>& pVars, uint3 dispatchDims);
 ```
 
 ## Shaders

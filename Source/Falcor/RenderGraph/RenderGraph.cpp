@@ -785,8 +785,6 @@ namespace Falcor
             if (!pPass) throw std::exception(("Can't create a render pass named '" + passName + "'. Make sure the required DLL was loaded.").c_str());
             return pPass;
         };
-        renderPass.def(pybind11::init(createRenderPass), "name"_a, "dict"_a = pybind11::dict()); // PYTHONDEPRECATED
-
         m.def("createPass", createRenderPass, "name"_a, "dict"_a = pybind11::dict());
 
         const auto& loadPassLibrary = [](const std::string& library)

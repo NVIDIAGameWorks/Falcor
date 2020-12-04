@@ -570,7 +570,8 @@ namespace Falcor
         if (mRecordUpdates) mUpdateCommands += newCommands;
 
         // update reference graph to check if valid before sending to next
-        Scripting::getGlobalContext().setObject("g", mpRenderGraph);
+        // TODO: Rendergraph scripts should be executed in an isolated scripting context.
+        Scripting::getDefaultContext().setObject("g", mpRenderGraph);
         Scripting::runScript(newCommands);
         if(newCommands.size()) mLogString += newCommands;
 

@@ -27,6 +27,12 @@
  **************************************************************************/
 #include "PassLibraryTemplate.h"
 
+
+namespace
+{
+    const char kDesc[] = "Insert pass description here";    
+}
+
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" __declspec(dllexport) const char* getProjDir()
 {
@@ -35,7 +41,7 @@ extern "C" __declspec(dllexport) const char* getProjDir()
 
 extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
 {
-    lib.registerClass("RenderPassTemplate", "Render Pass Template", RenderPassTemplate::create);
+    lib.registerClass("RenderPassTemplate", kDesc, RenderPassTemplate::create);
 }
 
 RenderPassTemplate::SharedPtr RenderPassTemplate::create(RenderContext* pRenderContext, const Dictionary& dict)
@@ -43,6 +49,8 @@ RenderPassTemplate::SharedPtr RenderPassTemplate::create(RenderContext* pRenderC
     SharedPtr pPass = SharedPtr(new RenderPassTemplate);
     return pPass;
 }
+
+std::string RenderPassTemplate::getDesc() { return kDesc; }
 
 Dictionary RenderPassTemplate::getScriptingDictionary()
 {

@@ -46,10 +46,18 @@ namespace Falcor
             uint32_t shadowRays = 0;
             uint32_t closestHitRays = 0;
             uint32_t totalRays = 0;
-            float    avgShadowRaysPerPixel = 0.f;
-            float    avgClosestHitRaysPerPixel = 0.f;
-            float    avgTotalRaysPerPixel = 0.f;
+            uint32_t pathVertices = 0;
+            uint32_t volumeLookups = 0;
+            float    avgShadowRays = 0.f;
+            float    avgClosestHitRays = 0.f;
+            float    avgTotalRays = 0.f;
             float    avgPathLength = 0.f;
+            float    avgPathVertices = 0.f;
+            float    avgVolumeLookups = 0.f;
+
+            /** Convert to python dict.
+            */
+            pybind11::dict toPython() const;
         };
 
         using SharedPtr = std::shared_ptr<PixelStats>;
@@ -57,8 +65,8 @@ namespace Falcor
 
         static SharedPtr create();
 
-        void setEnabled(bool enabled) { mStatsEnabled = enabled; }
-        bool isEnabled() const { return mStatsEnabled; }
+        void setEnabled(bool enabled) { mEnabled = enabled; }
+        bool isEnabled() const { return mEnabled; }
 
         void beginFrame(RenderContext* pRenderContext, const uint2& frameDim);
         void endFrame(RenderContext* pRenderContext);
@@ -84,6 +92,16 @@ namespace Falcor
         */
         const Texture::SharedPtr getPathLengthTexture() const;
 
+        /** Returns the per-pixel path vertex count texture or nullptr if not available.
+            \return Texture in R32Uint format containing per-pixel path vertex counts, or nullptr if not available.
+        */
+        const Texture::SharedPtr getPathVertexCountTexture() const;
+
+        /** Returns the per-pixel volume lookup count texture or nullptr if not available.
+            \return Texture in R32Uint format containing per-pixel volume lookup counts, or nullptr if not available.
+        */
+        const Texture::SharedPtr getVolumeLookupCountTexture() const;
+
     protected:
         PixelStats();
         void copyStatsToCPU();
@@ -97,7 +115,8 @@ namespace Falcor
         GpuFence::SharedPtr                 mpFence;                        ///< GPU fence for sychronizing readback.
 
         // Configuration
-        bool                                mStatsEnabled = false;          ///< UI variable to turn logging on/off.
+        bool                                mEnabled = false;               ///< Enable pixel statistics.
+        bool                                mEnableLogging = false;         ///< Enable printing to logfile.
 
         // Runtime data
         bool                                mRunning = false;               ///< True inbetween begin() / end() calls.
@@ -111,6 +130,8 @@ namespace Falcor
         Texture::SharedPtr                  mpStatsRayCount[kRayTypeCount]; ///< Buffers for per-pixel ray count stats.
         Texture::SharedPtr                  mpStatsRayCountTotal;           ///< Buffer for per-pixel total ray count. Only generated if getRayCountTexture() is called.
         Texture::SharedPtr                  mpStatsPathLength;              ///< Buffer for per-pixel path length stats.
+        Texture::SharedPtr                  mpStatsPathVertexCount;         ///< Buffer for per-pixel path vertex count.
+        Texture::SharedPtr                  mpStatsVolumeLookupCount;       ///< Buffer for per-pixel volume lookup count.
         bool                                mStatsBuffersValid = false;     ///< True if per-pixel stats buffers contain valid data.
 
         ComputePass::SharedPtr              mpComputeRayCount;              ///< Pass for computing per-pixel total ray count.

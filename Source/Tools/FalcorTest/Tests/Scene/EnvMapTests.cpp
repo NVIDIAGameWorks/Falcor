@@ -34,7 +34,7 @@ namespace Falcor
     namespace
     {
         // This file is located in the Media/ directory fetched by packman.
-        const char kLightProbeFile[] = "LightProbes/20050806-03_hd.hdr";
+        const char kEnvMapFile[] = "LightProbes/20050806-03_hd.hdr";
     }
 
     GPU_TEST(EnvMap)
@@ -42,7 +42,7 @@ namespace Falcor
         // Test loading a light probe.
         // This call runs setup code on the GPU to precompute the importance map.
         // If it succeeds, we at least know the code compiles and run.
-        EnvMap::SharedPtr pEnvMap = EnvMap::create(kLightProbeFile);
+        EnvMap::SharedPtr pEnvMap = EnvMap::create(kEnvMapFile);
         EXPECT_NE(pEnvMap, nullptr);
         if (pEnvMap == nullptr) return;
 

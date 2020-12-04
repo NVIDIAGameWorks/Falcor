@@ -50,9 +50,9 @@ namespace Falcor
             mDirty = true;
         }
 
-        void addHitProgramDesc(ID3DBlobPtr pAhsBlob, const std::wstring& ahsExportName, ID3DBlobPtr pChsBlob, const std::wstring& chsExportName, ID3DBlobPtr pIntersectionBlob, const std::wstring& intersectionExportName, const std::wstring& name)
+        void addHitGroupDesc(const std::wstring& ahsExportName, const std::wstring& chsExportName, const std::wstring& intersectionExportName, const std::wstring& name)
         {
-            addSubobject<HitProgramDesc>(pAhsBlob, ahsExportName, pChsBlob, chsExportName, pIntersectionBlob, intersectionExportName, name);
+            addSubobject<HitGroupDesc>(ahsExportName, chsExportName, intersectionExportName, name);
             mDirty = true;
         }
 
@@ -121,7 +121,7 @@ namespace Falcor
                 subobject.pDesc = &config;
             }
             virtual ~PipelineConfig() = default;
-            D3D12_RAYTRACING_PIPELINE_CONFIG config = {};            
+            D3D12_RAYTRACING_PIPELINE_CONFIG config = {};
         };
 
         struct ProgramDesc : public RtStateSubobjectBase
@@ -154,40 +154,38 @@ namespace Falcor
             std::wstring exportName;
         };
 
-        struct HitProgramDesc : public RtStateSubobjectBase
+        struct HitGroupDesc : public RtStateSubobjectBase
         {
-            HitProgramDesc(
-                ID3DBlobPtr pAhsBlob, const std::wstring& ahsExportName,
-                ID3DBlobPtr pChsBlob, const std::wstring& chsExportName,
-                ID3DBlobPtr pIntersectionBlob, const std::wstring& intersectionExportName,
-                const std::wstring& name) :
-                anyHitShader(pAhsBlob, ahsExportName),
-                closestHitShader(pChsBlob, chsExportName),
-                intersectionShader(pIntersectionBlob, intersectionExportName),
-                exportName(name)
+            HitGroupDesc(
+                const std::wstring& ahsExportName,
+                const std::wstring& chsExportName,
+                const std::wstring& intersectionExportName,
+                const std::wstring& name)
+                : exportName(name)
+                , ahsName(ahsExportName)
+                , chsName(chsExportName)
+                , intersectionName(intersectionExportName)
             {
-                desc.IntersectionShaderImport = pIntersectionBlob ? intersectionShader.exportName.c_str() : nullptr;
-                desc.AnyHitShaderImport = pAhsBlob ? anyHitShader.exportName.c_str() : nullptr;
-                desc.ClosestHitShaderImport = pChsBlob ? closestHitShader.exportName.c_str() : nullptr;
+                desc.Type = intersectionName.empty() ? D3D12_HIT_GROUP_TYPE_TRIANGLES : D3D12_HIT_GROUP_TYPE_PROCEDURAL_PRIMITIVE;
+                desc.IntersectionShaderImport = intersectionName.empty() ? nullptr : intersectionName.c_str();
+                desc.AnyHitShaderImport = ahsName.empty() ? nullptr : ahsName.c_str();
+                desc.ClosestHitShaderImport = chsName.empty() ? nullptr : chsName.c_str();
                 desc.HitGroupExport = exportName.c_str();
 
                 subobject.Type = D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP;
                 subobject.pDesc = &desc;
             }
 
-            virtual ~HitProgramDesc() = default;
+            virtual ~HitGroupDesc() = default;
             std::wstring exportName;
-            ProgramDesc anyHitShader;
-            ProgramDesc closestHitShader;
-            ProgramDesc intersectionShader;
+            std::wstring ahsName;
+            std::wstring chsName;
+            std::wstring intersectionName;
 
             D3D12_HIT_GROUP_DESC desc = {};
 
             virtual void addToVector(SubobjectVector& vec) override
             {
-                if (desc.AnyHitShaderImport)        anyHitShader.addToVector(vec);
-                if (desc.ClosestHitShaderImport)    closestHitShader.addToVector(vec);
-                if (desc.IntersectionShaderImport)   intersectionShader.addToVector(vec);
                 vec.push_back(subobject);
             }
         };

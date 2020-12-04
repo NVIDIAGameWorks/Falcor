@@ -197,6 +197,11 @@ namespace Falcor
             */
             void text(const std::string& text, bool sameLine = false);
 
+            /** Static text wrapped to the window
+                \param[in] text The string to display
+            */
+            void textWrapped(const std::string& text);
+
             /** Adds a text box.
                 \param[in] label The name of the variable.
                 \param[in] text A string with the initialize text. The string will be updated if a text is entered.

@@ -43,7 +43,6 @@ namespace Falcor
     const char* RenderGraphIR::kUpdatePass = "updatePass";
     const char* RenderGraphIR::kLoadPassLibrary = "loadRenderPassLibrary";
     const char* RenderGraphIR::kCreatePass = "createPass";
-    const char* RenderGraphIR::kRenderPass = "RenderPass"; // PYTHONDEPRECATED
     const char* RenderGraphIR::kRenderGraph = "RenderGraph";
 
     std::string RenderGraphIR::getFuncName(const std::string& graphName)
@@ -59,7 +58,7 @@ namespace Falcor
             mIR += "def " + getFuncName(mName) + "():\n";
             mIndentation = "    ";
             mGraphPrefix += mIndentation;
-            mIR += mIndentation + "g" + " = " + Scripting::makeFunc(kRenderGraph, mName);
+            mIR += mIndentation + "g" + " = " + ScriptWriter::makeFunc(kRenderGraph, mName);
         }
         mGraphPrefix += "g.";
     };
@@ -74,52 +73,52 @@ namespace Falcor
         mIR += mIndentation + passName + " = ";
         if (dictionary.size())
         {
-            mIR += Scripting::makeFunc(RenderGraphIR::kCreatePass, passClass, dictionary);
+            mIR += ScriptWriter::makeFunc(RenderGraphIR::kCreatePass, passClass, dictionary);
         }
         else
         {
-            mIR += Scripting::makeFunc(RenderGraphIR::kCreatePass, passClass);
+            mIR += ScriptWriter::makeFunc(RenderGraphIR::kCreatePass, passClass);
         }
-        mIR += mGraphPrefix + RenderGraphIR::kAddPass + "(" + passName + ", " + Scripting::getArgString(passName) + ")\n";
+        mIR += mGraphPrefix + RenderGraphIR::kAddPass + "(" + passName + ", " + ScriptWriter::getArgString(passName) + ")\n";
     }
 
     void RenderGraphIR::updatePass(const std::string& passName, const Dictionary& dictionary)
     {
-        mIR += mGraphPrefix + Scripting::makeFunc(RenderGraphIR::kUpdatePass, passName, dictionary);
+        mIR += mGraphPrefix + ScriptWriter::makeFunc(RenderGraphIR::kUpdatePass, passName, dictionary);
     }
 
     void RenderGraphIR::removePass(const std::string& passName)
     {
-        mIR += mGraphPrefix + Scripting::makeFunc(RenderGraphIR::kRemovePass, passName);
+        mIR += mGraphPrefix + ScriptWriter::makeFunc(RenderGraphIR::kRemovePass, passName);
     }
 
     void RenderGraphIR::addEdge(const std::string& src, const std::string& dst)
     {
-        mIR += mGraphPrefix + Scripting::makeFunc(RenderGraphIR::kAddEdge, src, dst);
+        mIR += mGraphPrefix + ScriptWriter::makeFunc(RenderGraphIR::kAddEdge, src, dst);
     }
 
     void RenderGraphIR::removeEdge(const std::string& src, const std::string& dst)
     {
-        mIR += mGraphPrefix + Scripting::makeFunc(RenderGraphIR::kRemoveEdge, src, dst);
+        mIR += mGraphPrefix + ScriptWriter::makeFunc(RenderGraphIR::kRemoveEdge, src, dst);
     }
 
     void RenderGraphIR::markOutput(const std::string& name)
     {
-        mIR += mGraphPrefix + Scripting::makeFunc(RenderGraphIR::kMarkOutput, name);
+        mIR += mGraphPrefix + ScriptWriter::makeFunc(RenderGraphIR::kMarkOutput, name);
     }
 
     void RenderGraphIR::unmarkOutput(const std::string& name)
     {
-        mIR += mGraphPrefix + Scripting::makeFunc(RenderGraphIR::kUnmarkOutput, name);
+        mIR += mGraphPrefix + ScriptWriter::makeFunc(RenderGraphIR::kUnmarkOutput, name);
     }
 
     void RenderGraphIR::loadPassLibrary(const std::string& name)
     {
-        mIR += mIndentation + Scripting::makeFunc(RenderGraphIR::kLoadPassLibrary, name);
+        mIR += mIndentation + ScriptWriter::makeFunc(RenderGraphIR::kLoadPassLibrary, name);
     }
 
     void RenderGraphIR::autoGenEdges()
     {
-        mIR += mGraphPrefix + Scripting::makeFunc(RenderGraphIR::kAutoGenEdges);
+        mIR += mGraphPrefix + ScriptWriter::makeFunc(RenderGraphIR::kAutoGenEdges);
     }
 }

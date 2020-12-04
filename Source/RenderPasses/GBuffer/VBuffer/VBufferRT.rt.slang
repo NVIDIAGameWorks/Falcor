@@ -35,7 +35,7 @@ cbuffer PerFrameCB
     uint frameCount;
 };
 
-RWTexture2D<uint2> gVBuffer;
+RWTexture2D<PackedHitInfo> gVBuffer;
 RWTexture2D<uint> gTime;
 
 #define isValid(name) (is_valid_##name != 0)
@@ -52,7 +52,7 @@ void miss(inout RayData rayData)
 {
     // Write invalid hit to output buffer.
     uint2 launchIndex = DispatchRaysIndex().xy;
-    gVBuffer[launchIndex] = uint2(HitInfo::kInvalidIndex);
+    gVBuffer[launchIndex] = { HitInfo::kInvalidIndex };
 }
 
 [shader("anyhit")]
@@ -77,14 +77,14 @@ void closestHit(
 {
     // Store hit information. Note we don't access the materials here.
     HitInfo hit;
-    hit.meshInstanceID = hitParams.getGlobalHitID();
+    hit.type = InstanceType::TriangleMesh;
+    hit.instanceID = hitParams.getGlobalHitID();
     hit.primitiveIndex = PrimitiveIndex();
     hit.barycentrics = attribs.barycentrics;
-    uint2 packedHitInfo = hit.encode();
 
     // Write hit info to output buffer.
     uint2 launchIndex = DispatchRaysIndex().xy;
-    gVBuffer[launchIndex] = packedHitInfo;
+    gVBuffer[launchIndex] = hit.encode();
 }
 
 

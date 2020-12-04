@@ -51,9 +51,12 @@ namespace
     };
 
     // Additional output channels.
+    const std::string kVBufferName = "vbuffer";
     const ChannelList kGBufferExtraChannels =
     {
-        { "vbuffer",        "gVBuffer",         "Visibility buffer",                true /* optional */, ResourceFormat::RG32Uint    },
+        { kVBufferName,     "gVBuffer",         "Visibility buffer",                true /* optional */, ResourceFormat::Unknown /* set at runtime */ },
+        { "linearZ",        "gLinearZ",         "Linear Z and slope",               true /* optional */, ResourceFormat::RG32Float   },
+        { "deviceZ",        "gDeviceZ",         "Device (NDC) Z-buffer value",      true /* optional */, ResourceFormat::R32Float   },
         { "mvec",           "gMotionVectors",   "Motion vectors",                   true /* optional */, ResourceFormat::RG32Float   },
         { "faceNormalW",    "gFaceNormalW",     "Face normal in world space",       true /* optional */, ResourceFormat::RGBA32Float },
         { "viewW",          "gViewW",           "View direction in world space",    true /* optional */, ResourceFormat::RGBA32Float }, // TODO: Switch to packed 2x16-bit snorm format.
@@ -76,6 +79,7 @@ RenderPassReflection GBufferRT::reflect(const CompileData& compileData)
     // Add all outputs as UAVs.
     addRenderPassOutputs(reflector, kGBufferChannels);
     addRenderPassOutputs(reflector, kGBufferExtraChannels);
+    reflector.getField(kVBufferName)->format(mVBufferFormat);
 
     return reflector;
 }
@@ -162,6 +166,7 @@ void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
     mRaytrace.pProgram->addDefine("USE_DEPTH_OF_FIELD", useDOF ? "1" : "0");
     mRaytrace.pProgram->addDefine("USE_RAY_DIFFERENTIALS", mLODMode == LODMode::RayDifferentials ? "1" : "0");
     mRaytrace.pProgram->addDefine("USE_RAY_CONES", mLODMode == LODMode::RayCones ? "1" : "0");
+    mRaytrace.pProgram->addDefine("ADJUST_SHADING_NORMALS", mAdjustShadingNormals ? "1" : "0");
     mRaytrace.pProgram->addDefine("DISABLE_ALPHA_TEST", mDisableAlphaTest ? "1" : "0");
 
     // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.

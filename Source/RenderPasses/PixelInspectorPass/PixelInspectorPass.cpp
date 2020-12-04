@@ -193,7 +193,7 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
                 for (const std::string& value : values)
                 {
                     const std::string text = value + ": out of bounds";
-                    widget.text(text.c_str());
+                    widget.text(text);
                 }
             }
             return true;
@@ -298,7 +298,7 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
                 visGroup.var("##col2", M[2]);
                 visGroup.var("##col3", M[3]);
 
-                bool flipped = instanceData.flags & (uint32_t)MeshInstanceFlags::Flipped;
+                bool flipped = instanceData.flags & (uint32_t)MeshInstanceFlags::TransformFlipped;
                 visGroup.checkbox("Flipped winding", flipped);
             }
         }

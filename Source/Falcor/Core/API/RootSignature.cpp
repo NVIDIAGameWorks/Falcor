@@ -105,6 +105,7 @@ namespace Falcor
         case RootSignature::DescType::RawBufferSrv:
         case RootSignature::DescType::TypedBufferSrv:
         case RootSignature::DescType::StructuredBufferSrv:
+        case RootSignature::DescType::AccelerationStructureSrv:
         case RootSignature::DescType::Cbv:
         case RootSignature::DescType::Sampler:
             return ReflectionResourceType::ShaderAccess::Read;

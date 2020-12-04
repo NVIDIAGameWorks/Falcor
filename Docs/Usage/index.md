@@ -11,3 +11,4 @@
 - [Scripting](./Scripting.md)
 - [Render Passes](./Render-Passes.md)
 - [Path Tracer](./Path-Tracer.md)
+- [Custom Primitives](./Custom-Primitives.md)

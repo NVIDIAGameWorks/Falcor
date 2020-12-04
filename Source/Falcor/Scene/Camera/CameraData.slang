@@ -35,6 +35,7 @@ BEGIN_NAMESPACE_FALCOR
 struct CameraData
 {
     float4x4 viewMat;                   ///< Camera view matrix.
+    float4x4 prevViewMat;               ///< Camera view matrix associated to previous frame.
     float4x4 projMat;                   ///< Camera projection matrix.
     float4x4 viewProjMat;               ///< Camera view-projection matrix.
     float4x4 invViewProj;               ///< Camera inverse view-projection matrix.

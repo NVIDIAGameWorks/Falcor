@@ -58,5 +58,4 @@ namespace Falcor
         mRanges.push_back(r);
         return *this;
     }
-
 }

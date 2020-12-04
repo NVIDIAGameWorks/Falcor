@@ -56,7 +56,7 @@ namespace Falcor
     void RasterScenePass::renderScene(RenderContext* pContext, const Fbo::SharedPtr& pDstFbo)
     {
         mpState->setFbo(pDstFbo);
-        mpScene->render(pContext, mpState.get(), mpVars.get());
+        mpScene->rasterize(pContext, mpState.get(), mpVars.get());
     }
 
     bool RasterScenePass::onMouseEvent(const MouseEvent& mouseEvent)

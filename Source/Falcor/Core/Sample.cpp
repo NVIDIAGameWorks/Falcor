@@ -67,6 +67,11 @@ namespace Falcor
         if(mpRenderer) mpRenderer->onResizeSwapChain(width, height);
     }
 
+    void Sample::handleRenderFrame()
+    {
+        renderFrame();
+    }
+
     void Sample::handleKeyboardEvent(const KeyboardEvent& keyEvent)
     {
         if (mSuppressInput)
@@ -112,7 +117,7 @@ namespace Falcor
                     break;
 #if _PROFILING_ENABLED
                 case KeyboardEvent::Key::P:
-                    gProfileEnabled = !gProfileEnabled;
+                    Profiler::instance().setEnabled(!Profiler::instance().isEnabled());
                     break;
 #endif
                 case KeyboardEvent::Key::V:
@@ -193,7 +198,7 @@ namespace Falcor
         }
         catch (const std::exception & e)
         {
-            logError("Error:\n" + std::string(e.what()));
+            logError("Caught exception:\n\n" + std::string(e.what()) + "\n\nEnable breaking on exceptions in the debugger to get a full stack trace.");
         }
         Logger::shutdown();
     }
@@ -230,7 +235,7 @@ namespace Falcor
         }
         catch (const std::exception & e)
         {
-            logError("Error:\n" + std::string(e.what()));
+            logError("Caught exception:\n\n" + std::string(e.what()) + "\n\nEnable breaking on exceptions in the debugger to get a full stack trace.");
         }
         Logger::shutdown();
     }
@@ -407,7 +412,9 @@ namespace Falcor
     {
         PROFILE("renderUI");
 
-        if (mShowUI || gProfileEnabled)
+        auto& profiler = Profiler::instance();
+
+        if (mShowUI || profiler.isEnabled())
         {
             mpGui->beginFrame();
 
@@ -418,22 +425,26 @@ namespace Falcor
                 mVideoCapture.pUI->render(w);
             }
 
-            if (gProfileEnabled)
+            if (profiler.isEnabled())
             {
                 uint32_t y = gpDevice->getSwapChainFbo()->getHeight() - 360;
 
-                mpGui->setActiveFont(kMonospaceFont);
+                bool open = profiler.isEnabled();
+                Gui::Window profilerWindow(mpGui.get(), "Profiler", open, { 800, 350 }, { 10, y });
+                profiler.endEvent("renderUI"); // Stop the timer
 
-                Gui::Window profilerWindow(mpGui.get(), "Profiler", gProfileEnabled, { 800, 350 }, { 10, y });
-                Profiler::endEvent("renderUI"); // Stop the timer
-
-                if(gProfileEnabled)
+                if (open)
                 {
-                    profilerWindow.text(Profiler::getEventsString().c_str());
-                    Profiler::startEvent("renderUI");
+                    std::string text = profiler.getEventsString();
+                    if (profilerWindow.button("Print to log")) logInfo("\n" + text);
+                    ImGui::PushFont(mpGui->getFont(kMonospaceFont));
+                    profilerWindow.text(text);
+                    ImGui::PopFont();
+                    profiler.startEvent("renderUI");
                     profilerWindow.release();
                 }
-                mpGui->setActiveFont("");
+
+                profiler.setEnabled(open);
             }
 
             mpGui->render(getRenderContext(), gpDevice->getSwapChainFbo(), (float)mFrameRate.getLastFrameTime());
@@ -478,7 +489,7 @@ namespace Falcor
             if (mpPixelZoom) mpPixelZoom->render(pRenderContext, pSwapChainFbo.get());
 
 #if _PROFILING_ENABLED
-            Profiler::endFrame();
+            Profiler::instance().endFrame();
 #endif
             // Capture video frame after UI is rendered
             if (captureVideoUI) captureVideoFrame();

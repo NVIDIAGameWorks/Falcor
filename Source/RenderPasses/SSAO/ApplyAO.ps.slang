@@ -25,12 +25,16 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-import Utils.Helpers;
-
 SamplerState gSampler;
 
 Texture2D gColor;
 Texture2D gAOMap;
+
+float4 applyAmbientOcclusion(float4 color, Texture2D aoTex, SamplerState s, float2 texC)
+{
+    float aoFactor = aoTex.SampleLevel(s, texC, 0).r;
+    return float4(color.rgb * aoFactor, color.a);
+}
 
 float4 main(float2 texC : TEXCOORD) : SV_TARGET0
 {

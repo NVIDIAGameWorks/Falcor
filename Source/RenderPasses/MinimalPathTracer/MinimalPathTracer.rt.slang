@@ -281,13 +281,6 @@ void scatterClosestHit(
     const uint materialID = gScene.getMaterialID(hitParams.getGlobalHitID());
     ShadingData sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -WorldRayDirection(), 0.f);
 
-    // Compute tangent space if it is invalid.
-    if (!(dot(sd.T, sd.T) > 0.f))   // Note: Comparison written so that NaNs trigger
-    {
-        sd.T = perp_stark(sd.N);
-        sd.B = cross(sd.N, sd.T);
-    }
-
     // Add emitted light.
     if (kUseEmissiveLights && (kComputeDirect || rayData.pathLength > 0))
     {
@@ -342,7 +335,7 @@ void shadowAnyHit(
 
 /** This is the entry point for the minimal path tracer.
 
-    One path per pixel is generated, which  is traced into the scene.
+    One path per pixel is generated, which is traced into the scene.
     The path tracer is written as a for-loop over path segments.
 
     Built-in light sources (point, directional) are sampled explicitly at each

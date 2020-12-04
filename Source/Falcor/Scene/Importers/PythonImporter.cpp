@@ -28,110 +28,71 @@
 #include "stdafx.h"
 #include "PythonImporter.h"
 #include <filesystem>
+#include <regex>
 
 namespace Falcor
 {
-    class PythonImporterImpl
+    namespace
     {
-    public:
-        PythonImporterImpl(SceneBuilder& builder) : mBuilder(builder) {}
-        bool load(const std::string& filename);
-        bool importScene(std::string& filename, const pybind11::dict& dict);
-    private:
-        Scripting::Context mScriptingContext;
-        SceneBuilder& mBuilder;
-    };
-
-    bool PythonImporterImpl::importScene(std::string& filename, const pybind11::dict& dict)
-    {
-        bool success = true;
-
-        std::string extension = std::filesystem::path(filename).extension().string();
-        if (extension == ".pyscene")
+        /** Parse the legacy header on the first line of the script with the syntax:
+            # filename.extension
+        */
+        static std::optional<std::string> parseLegacyHeader(const std::string& script)
         {
-            logError("Python scene files cannot be imported from python scene files.");
-            success = false;
-        }
-        else
-        {
-            SceneBuilder::InstanceMatrices mats;
-            success = mBuilder.import(filename, mats, Dictionary(dict));
-
-            if (success)
+            if (size_t endOfFirstLine = script.find_first_of("\n\r"); endOfFirstLine != std::string::npos)
             {
-                if (mScriptingContext.containsObject("scene"))
-                {
-                    // Warn if a scene had previously been imported by this script
-                    logWarning("More than one scene loaded from python script. Discarding previously loaded scene.");
-                }
-                mScriptingContext.setObject("scene", mBuilder.getScene());
-            }
-        }
-        return success;
-    }
+                const std::regex headerRegex(R"""(#\s+([\w-]+\.[\w]{1,10}))""");
 
-    bool PythonImporterImpl::load(const std::string& filename)
-    {
-        std::string fullpath;
-
-        if (findFileInDataDirectories(filename, fullpath))
-        {
-            // Get the directory of the script file
-            const std::string directory = fullpath.substr(0, fullpath.find_last_of("/\\"));
-
-            // Load the script file
-            const std::string script = removeLeadingWhitespaces(readFile(fullpath));
-
-            addDataDirectory(directory);
-
-            bool success = true;
-
-            // Get filename of referenced scene from first line "# filename.{fbx,fscene}", if any
-            size_t endOfFirstLine = script.find_first_of("\r\n");
-            if (script.length() >= 2 && script[0] == '#' && script[1] == ' ' && endOfFirstLine != std::string::npos)
-            {
-                const std::string sceneFile = script.substr(2, endOfFirstLine - 2);
-                std::string extension = std::filesystem::path(sceneFile).extension().string();
-                if (extension != ".pyscene")
-                {
-                    // Load referenced scene
-                    success = mBuilder.import(sceneFile.c_str());
-                    if (success)
-                    {
-                        mScriptingContext.setObject("scene", mBuilder.getScene());
-                    }
+                std::smatch match;
+                if (std::regex_match(script.begin(), script.begin() + endOfFirstLine, match, headerRegex)) {
+                    if (match.size() > 1) return match[1].str();
                 }
             }
 
-            if (success)
-            {
-                // Execute scene script.
-                mScriptingContext.setObject("importer", this);
-                Scripting::runScriptFromFile(fullpath, mScriptingContext);
-            }
-
-            removeDataDirectory(directory);
-            return success;
-        }
-        else
-        {
-            logError("Error when loading scene file '" + filename + "'. File not found.");
-            return false;
+            return {};
         }
     }
 
     bool PythonImporter::import(const std::string& filename, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict)
     {
+        bool success = false;
+
         if (!instances.empty()) logWarning("Python importer does not support instancing.");
 
-        PythonImporterImpl importer(builder);
-        return importer.load(filename);
-    }
+        std::string fullpath;
 
-    SCRIPT_BINDING(PythonImporterImpl)
-    {
-        pybind11::class_<PythonImporterImpl> importer(m, "PythonImporterImpl");
-        importer.def("importScene", &PythonImporterImpl::importScene, "filename"_a, "dictionary"_a = pybind11::dict());
+        if (findFileInDataDirectories(filename, fullpath))
+        {
+            // Add script directory to search paths (add it to the front to make it highest priority).
+            const std::string directory = getDirectoryFromFile(fullpath);
+            addDataDirectory(directory, true);
+
+            // Load the script file
+            const std::string script = readFile(fullpath);
+
+            // Check for legacy .pyscene file format.
+            if (auto sceneFile = parseLegacyHeader(script))
+            {
+                logError("Python scene file '" + fullpath + "' is using old header comment syntax. Use the new 'sceneBuilder' object instead.");
+            }
+            else
+            {
+                Scripting::Context context;
+                context.setObject("sceneBuilder", &builder);
+                Scripting::runScript("from falcor import *", context);
+                Scripting::runScriptFromFile(fullpath, context);
+                success = true;
+            }
+
+            // Remove script directory from search path.
+            removeDataDirectory(directory);
+        }
+        else
+        {
+            logError("Error when loading scene file '" + filename + "'. File not found.");
+        }
+
+        return success;
     }
 
     REGISTER_IMPORTER(

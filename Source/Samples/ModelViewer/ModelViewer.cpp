@@ -49,7 +49,7 @@ void ModelViewer::loadModelFromFile(const std::string& filename, ResourceFormat 
 
     SceneBuilder::Flags flags = SceneBuilder::Flags::None;
     if (mUseOriginalTangents) flags |= SceneBuilder::Flags::UseOriginalTangentSpace;
-    if (mRemoveDuplicateMaterials) flags |= SceneBuilder::Flags::RemoveDuplicateMaterials;
+    if (mDontMergeMaterials) flags |= SceneBuilder::Flags::DontMergeMaterials;
     flags |= isSrgbFormat(fboFormat) ? SceneBuilder::Flags::None : SceneBuilder::Flags::AssumeLinearSpaceTextures;
 
     SceneBuilder::SharedPtr pBuilder = SceneBuilder::create(filename, flags);
@@ -93,8 +93,8 @@ void ModelViewer::onGuiRender(Gui* pGui)
         auto loadGroup = w.group("Load Options");
         loadGroup.checkbox("Use Original Tangents", mUseOriginalTangents);
         loadGroup.tooltip("If this is unchecked, we will ignore the tangents that were loaded from the model and calculate them internally. Check this box if you'd like to use the original tangents");
-        loadGroup.checkbox("Remove Duplicate Materials", mRemoveDuplicateMaterials);
-        loadGroup.tooltip("Deduplicate materials that have the same properties. The material name is ignored during the search");
+        loadGroup.checkbox("Don't Merge Materials", mDontMergeMaterials);
+        loadGroup.tooltip("Don't merge materials that have the same properties. Use this option to preserve the original material names.");
     }
 
     w.separator();
@@ -190,7 +190,7 @@ void ModelViewer::onFrameRender(RenderContext* pRenderContext, const Fbo::Shared
         }
 
         mpGraphicsState->setProgram(mpProgram);
-        mpScene->render(pRenderContext, mpGraphicsState.get(), mpProgramVars.get(), renderFlags);
+        mpScene->rasterize(pRenderContext, mpGraphicsState.get(), mpProgramVars.get(), renderFlags);
     }
 
     TextRenderer::render(pRenderContext, mModelString, pTargetFbo, float2(10, 30));

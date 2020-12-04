@@ -31,26 +31,26 @@
 #include <aclapi.h>
 #include "Core/API/Device.h"
 
-#define CU_CHECK_SUCCESS(x)                                             \
-    do {                                                                \
-        CUresult result = x;                                            \
-        if (result != CUDA_SUCCESS)                                     \
-        {                                                               \
-            const char *msg;                                            \
-            cuGetErrorName(result, &msg);                               \
-            logError("CUDA Error: " #x " failed with error " + msg);    \
-            return 0;                                                   \
-        }                                                               \
+#define CU_CHECK_SUCCESS(x)                                                         \
+    do {                                                                            \
+        CUresult result = x;                                                        \
+        if (result != CUDA_SUCCESS)                                                 \
+        {                                                                           \
+            const char* msg;                                                        \
+            cuGetErrorName(result, &msg);                                           \
+            logError("CUDA Error: " #x " failed with error " + std::string(msg));   \
+            return 0;                                                               \
+        }                                                                           \
     } while(0)
 
-#define CUDA_CHECK_SUCCESS(x)                                                               \
-    do {                                                                                    \
-        cudaError_t result = x;                                                             \
-        if (result != cudaSuccess)                                                          \
-        {                                                                                   \
-            logError("CUDA Error: " #x " failed with error " + cudaGetErrorString(result)); \
-            return 0;                                                                       \
-        }                                                                                   \
+#define CUDA_CHECK_SUCCESS(x)                                                                            \
+    do {                                                                                                 \
+        cudaError_t result = x;                                                                          \
+        if (result != cudaSuccess)                                                                       \
+        {                                                                                                \
+            logError("CUDA Error: " #x " failed with error " + std::string(cudaGetErrorString(result))); \
+            return 0;                                                                                    \
+        }                                                                                                \
     } while(0)
 
 using namespace Falcor;
@@ -66,11 +66,11 @@ namespace
     public:
         WindowsSecurityAttributes::WindowsSecurityAttributes()
         {
-            mWinPSecurityDescriptor = (PSECURITY_DESCRIPTOR) calloc(1, SECURITY_DESCRIPTOR_MIN_LENGTH + 2 * sizeof(void**));
-            assert(mWinPSecurityDescriptor != (PSECURITY_DESCRIPTOR) NULL);
+            mWinPSecurityDescriptor = (PSECURITY_DESCRIPTOR)calloc(1, SECURITY_DESCRIPTOR_MIN_LENGTH + 2 * sizeof(void**));
+            assert(mWinPSecurityDescriptor != (PSECURITY_DESCRIPTOR)NULL);
 
-            PSID* ppSID = (PSID*) ((PBYTE)mWinPSecurityDescriptor + SECURITY_DESCRIPTOR_MIN_LENGTH);
-            PACL* ppACL = (PACL*) ((PBYTE)ppSID + sizeof(PSID *));
+            PSID* ppSID = (PSID*)((PBYTE)mWinPSecurityDescriptor + SECURITY_DESCRIPTOR_MIN_LENGTH);
+            PACL* ppACL = (PACL*)((PBYTE)ppSID + sizeof(PSID*));
 
             InitializeSecurityDescriptor(mWinPSecurityDescriptor, SECURITY_DESCRIPTOR_REVISION);
 
@@ -104,7 +104,7 @@ namespace
             if (*ppACL) LocalFree(*ppACL);
             free(mWinPSecurityDescriptor);
         }
-        SECURITY_ATTRIBUTES * operator&() { return &mWinSecurityAttributes; }
+        SECURITY_ATTRIBUTES* operator&() { return &mWinSecurityAttributes; }
     };
 
     uint32_t gNodeMask;
@@ -147,9 +147,9 @@ namespace FalcorCUDA
         return true;
     }
 
-    bool importTextureToMipmappedArray(Falcor::Texture::SharedPtr pTex, cudaMipmappedArray_t & mipmappedArray, uint32_t cudaUsageFlags)
+    bool importTextureToMipmappedArray(Falcor::Texture::SharedPtr pTex, cudaMipmappedArray_t& mipmappedArray, uint32_t cudaUsageFlags)
     {
-        HANDLE sharedHandle = pTex->createSharedApiHandle();
+        HANDLE sharedHandle = pTex->getSharedApiHandle();
         if (sharedHandle == NULL)
         {
             logError("FalcorCUDA::importTextureToMipmappedArray - texture shared handle creation failed");

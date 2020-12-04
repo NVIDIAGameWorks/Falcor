@@ -52,10 +52,21 @@ namespace Falcor
             BmpFile,    //< BMP file for lossless uncompressed 8-bits images with optional alpha
             PfmFile,    //< PFM file for floating point HDR images with 32-bit float per channel
             ExrFile,    //< EXR file for floating point HDR images with 16-bit float per channel
+            DdsFile,    //< DDS file for storing GPU resource formats, including block compressed formats
+                        //< See ImageIO. TODO: Remove(?) Bitmap IO implementation when ImageIO supports other formats
         };
 
         using UniquePtr = std::unique_ptr<Bitmap>;
         using UniqueConstPtr = std::unique_ptr<const Bitmap>;
+
+        /** Create from memory.
+            \param[in] width Width in pixels.
+            \param[in] height Height in pixels
+            \param[in] format Resource format.
+            \param[in] pData Pointer to data. Data will be copied internally during creation and does not need to be managed by the caller.
+            \return A new bitmap object.
+        */
+        static UniqueConstPtr create(uint32_t width, uint32_t height, ResourceFormat format, const uint8_t* pData);
 
         /** Create a new object from file.
             \param[in] filename Filename, including a path. If the file can't be found relative to the current directory, Falcor will search for it in the common directories.
@@ -64,7 +75,7 @@ namespace Falcor
         */
         static UniqueConstPtr createFromFile(const std::string& filename, bool isTopDown);
 
-        /** Store a memory buffer to a PNG file.
+        /** Store a memory buffer to a file.
             \param[in] filename Output filename. Can include a path - absolute or relative to the executable directory.
             \param[in] width The width of the image.
             \param[in] height The height of the image.
@@ -78,15 +89,12 @@ namespace Falcor
 
         /**  Open dialog to save image to a file
             \param[in] pTexture Texture to save to file
-             
         */
         static void saveImageDialog(Texture* pTexture);
 
-        ~Bitmap();
-
         /** Get a pointer to the bitmap's data store
         */
-        uint8_t* getData() const { return mpData; }
+        uint8_t* getData() const { return mpData.get(); }
 
         /** Get the width of the bitmap
         */
@@ -96,9 +104,17 @@ namespace Falcor
         */
         uint32_t getHeight() const { return mHeight; }
 
-        /** Get the number of bytes per pixel
+        /** Get the data format
         */
         ResourceFormat getFormat() const { return mFormat; }
+
+        /** Get the row pitch in bytes. For compressed formats this corresponds to one row of blocks, not pixels.
+        */
+        uint32_t getRowPitch() const { return mRowPitch; }
+
+        /** Get the data size in bytes
+        */
+        uint32_t getSize() const { return mSize; }
 
         /** Get the file dialog filter vec for images.
             \param[in] format If set to ResourceFormat::Unknown, will return all the supported image file formats. If set to something else, will only return file types which support this format.
@@ -114,12 +130,17 @@ namespace Falcor
         */
         static FileFormat getFormatFromFileExtension(const std::string& ext);
 
-    private:
+    protected:
         Bitmap() = default;
-        uint8_t* mpData = nullptr;
+        Bitmap(uint32_t width, uint32_t height, ResourceFormat format);
+        Bitmap(uint32_t width, uint32_t height, ResourceFormat format, const uint8_t* pData);
+
+        std::unique_ptr<uint8_t[]> mpData;
         uint32_t mWidth = 0;
         uint32_t mHeight = 0;
-        ResourceFormat mFormat;
+        uint32_t mRowPitch = 0;
+        uint32_t mSize = 0;
+        ResourceFormat mFormat = ResourceFormat::Unknown;
     };
 
     enum_class_operators(Bitmap::ExportFlags);

@@ -77,7 +77,7 @@ namespace Falcor
         }
 
         // Setup and run GPU test.
-        ctx.createProgram("Tests/ShadingUtils/RaytracingTests.cs.slang", "testComputeRayOrigin", {{"MATERIAL_COUNT", "1"}});
+        ctx.createProgram("Tests/ShadingUtils/RaytracingTests.cs.slang", "testComputeRayOrigin", {{"SCENE_MATERIAL_COUNT", "1"}, {"SCENE_GRID_COUNT", "0"}});
         ctx.allocateStructuredBuffer("result", n);
         // TODO: Cleanup when !122 is merged
         //ctx.allocateStructuredBuffer("pos", n, testPositions, testPositions.size() * sizeof(float3));

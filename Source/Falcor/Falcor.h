@@ -111,7 +111,6 @@
 #include "Scene/Camera/Camera.h"
 #include "Scene/Camera/CameraController.h"
 #include "Scene/Lights/Light.h"
-#include "Scene/Lights/LightProbe.h"
 #include "Scene/Material/Material.h"
 #include "Scene/Animation/Animation.h"
 #include "Scene/Animation/AnimationController.h"
@@ -121,6 +120,7 @@
 #include "Utils/Math/AABB.h"
 #include "Utils/BinaryFileStream.h"
 #include "Utils/Logger.h"
+#include "Utils/NumericRange.h"
 #include "Utils/StringUtils.h"
 #include "Utils/TermColor.h"
 #include "Utils/Threading.h"
@@ -128,6 +128,7 @@
 #include "Utils/Algorithm/DirectedGraphTraversal.h"
 #include "Utils/Algorithm/ParallelReduction.h"
 #include "Utils/Image/Bitmap.h"
+#include "Utils/Image/ImageIO.h"
 #include "Utils/Math/CubicSpline.h"
 #include "Utils/Math/FalcorMath.h"
 #include "Utils/Scripting/Dictionary.h"
@@ -162,5 +163,5 @@
 #endif
 
 #define FALCOR_MAJOR_VERSION 4
-#define FALCOR_REVISION 2
-#define FALCOR_VERSION_STRING "4.2"
+#define FALCOR_REVISION 3
+#define FALCOR_VERSION_STRING "4.3"

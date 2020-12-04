@@ -40,11 +40,14 @@ namespace Falcor
         */
         enum class Level
         {
-            Info = 0,       ///< Informative messages.
-            Warning = 1,    ///< Warning messages.
-            Error = 2,      ///< Error messages. Application might be able to continue running, but incorrectly.
-            Fatal = 3,      ///< Unrecoverable error messages. Terminates application immediately.
-            Disabled = -1
+            Disabled,   ///< Disable log messages.
+            Fatal,      ///< Unrecoverable error messages. Terminates application immediately.
+            Error,      ///< Error messages. Application might be able to continue running, but incorrectly.
+            Warning,    ///< Warning messages.
+            Info,       ///< Informative messages.
+            Debug,      ///< Debugging messages.
+
+            Count,      ///< Keep this last.
         };
 
         /** Message box behavior
@@ -103,15 +106,17 @@ namespace Falcor
         static void setVerbosity(Level level);
 
     private:
+        friend void logDebug(const std::string& msg, MsgBox mbox);
         friend void logInfo(const std::string& msg, MsgBox mbox);
         friend void logWarning(const std::string& msg, MsgBox mbox);
         friend void logError(const std::string& msg, MsgBox mbox, bool terminate);
         friend void logFatal(const std::string& msg, MsgBox mbox);
 
-        static void log(Level L, const std::string& msg, MsgBox mbox = Logger::MsgBox::Auto, bool terminateOnError = true);
+        static void log(Level level, const std::string& msg, MsgBox mbox = Logger::MsgBox::Auto, bool terminateOnError = true);
         Logger() = delete;
     };
 
+    inline void logDebug(const std::string& msg, Logger::MsgBox mbox = Logger::MsgBox::Auto) { Logger::log(Logger::Level::Debug, msg, mbox); }
     inline void logInfo(const std::string& msg, Logger::MsgBox mbox = Logger::MsgBox::Auto) { Logger::log(Logger::Level::Info, msg, mbox); }
     inline void logWarning(const std::string& msg, Logger::MsgBox mbox = Logger::MsgBox::Auto) { Logger::log(Logger::Level::Warning, msg, mbox); }
     inline void logError(const std::string& msg, Logger::MsgBox mbox = Logger::MsgBox::Auto, bool terminate = true) { Logger::log(Logger::Level::Error, msg, mbox, terminate); }

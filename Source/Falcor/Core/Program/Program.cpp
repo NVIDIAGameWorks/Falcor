@@ -35,7 +35,7 @@ namespace Falcor
 #ifdef FALCOR_VK
     const std::string kSupportedShaderModels[] = { "400", "410", "420", "430", "440", "450" };
 #elif defined FALCOR_D3D12
-    const std::string kSupportedShaderModels[] = { "4_0", "4_1", "5_0", "5_1", "6_0", "6_1", "6_2", "6_3" };
+    const std::string kSupportedShaderModels[] = { "4_0", "4_1", "5_0", "5_1", "6_0", "6_1", "6_2", "6_3", "6_4", "6_5" };
 #endif
 
     static Program::DefineList sGlobalDefineList;
@@ -57,16 +57,15 @@ namespace Falcor
     Program::Desc& Program::Desc::addShaderLibrary(std::string const& path)
     {
         Source source(ShaderLibrary::create(path));
-        source.firstEntryPoint = uint32_t(mEntryPoints.size());
 
-        mActiveSource = (int32_t) mSources.size();
+        mActiveSource = (int32_t)mSources.size();
         mSources.emplace_back(std::move(source));
         return *this;
     }
 
     Program::Desc& Program::Desc::addShaderString(const std::string& shader)
     {
-        mActiveSource = (int32_t) mSources.size();
+        mActiveSource = (int32_t)mSources.size();
         mSources.emplace_back(shader);
 
         return *this;
@@ -74,54 +73,56 @@ namespace Falcor
 
     Program::Desc& Program::Desc::beginEntryPointGroup()
     {
-        EntryPointGroup group;
-        group.firstEntryPoint = uint32_t(mEntryPoints.size());
-        group.entryPointCount = 0;
-
-        mActiveGroup = (int32_t) mGroups.size();
-        mGroups.push_back(group);
+        mActiveGroup = (int32_t)mGroups.size();
+        mGroups.push_back(EntryPointGroup());
 
         return *this;
     }
 
     Program::Desc& Program::Desc::entryPoint(ShaderType shaderType, std::string const& name)
     {
-        if(name.size() == 0)
+        if (name.size() == 0)
             return *this;
 
-        if(mActiveSource < 0)
-        {
-            throw std::exception("Cannot add an entry point without first adding a source file/library");
-        }
-
-        if(mActiveGroup < 0)
+        if (mActiveGroup < 0)
         {
             beginEntryPointGroup();
         }
 
-        EntryPoint entryPoint;
-        entryPoint.stage = shaderType;
-        entryPoint.name = name;
-
-        entryPoint.sourceIndex = mActiveSource;
-        entryPoint.groupIndex = mActiveGroup;
-
-        mGroups[mActiveGroup].entryPointCount++;
-        mSources[mActiveSource].entryPointCount++;
-
-        mEntryPoints.push_back(entryPoint);
-
+        uint32_t entryPointIndex = declareEntryPoint(shaderType, name);
+        mGroups[mActiveGroup].entryPoints.push_back(entryPointIndex);
         return *this;
     }
 
     Program::Desc& Program::Desc::addDefaultVertexShaderIfNeeded()
     {
         // Don't set default vertex shader if one was set already.
-        if(hasEntryPoint(ShaderType::Vertex))
+        if (hasEntryPoint(ShaderType::Vertex))
         {
             return *this;
         }
         return addShaderLibrary("Scene/Raster.slang").entryPoint(ShaderType::Vertex, "defaultVS");
+    }
+
+    uint32_t Program::Desc::declareEntryPoint(ShaderType type, const std::string& name)
+    {
+        assert(!name.empty());
+
+        if (mActiveSource < 0)
+        {
+            throw std::exception("Cannot declare an entry point without first adding a source file/library");
+        }
+
+        EntryPoint entryPoint;
+        entryPoint.stage = type;
+        entryPoint.name = name;
+        entryPoint.sourceIndex = mActiveSource;
+
+        uint32_t index = (uint32_t)mEntryPoints.size();
+        mEntryPoints.push_back(entryPoint);
+        mSources[mActiveSource].entryPoints.push_back(index);
+
+        return index;
     }
 
     Program::Desc& Program::Desc::setShaderModel(const std::string& sm)
@@ -155,9 +156,9 @@ namespace Falcor
 
     bool Program::Desc::hasEntryPoint(ShaderType stage) const
     {
-        for(auto& entryPoint : mEntryPoints)
+        for (auto& entryPoint : mEntryPoints)
         {
-            if(entryPoint.stage == stage)
+            if (entryPoint.stage == stage)
             {
                 return true;
             }
@@ -184,9 +185,9 @@ namespace Falcor
     {
         std::string desc;
 
-        int32_t groupCount = (int32_t) mDesc.mGroups.size();
+        int32_t groupCount = (int32_t)mDesc.mGroups.size();
 
-        for(auto& src : mDesc.mSources)
+        for (auto& src : mDesc.mSources)
         {
             switch (src.type)
             {
@@ -200,13 +201,12 @@ namespace Falcor
                 should_not_get_here();
             }
 
-            uint32_t entryPointCount = src.entryPointCount;
             desc += "(";
-            for( uint32_t ee = 0; ee < entryPointCount; ++ee )
+            for (size_t ee = 0; ee < src.entryPoints.size(); ++ee)
             {
-                auto& entryPoint = mDesc.mEntryPoints[src.firstEntryPoint + ee];
+                auto& entryPoint = mDesc.mEntryPoints[src.entryPoints[ee]];
 
-                if(ee != 0) desc += ", ";
+                if (ee != 0) desc += ", ";
                 desc += entryPoint.name;
             }
             desc += ")";
@@ -218,9 +218,9 @@ namespace Falcor
     bool Program::addDefine(const std::string& name, const std::string& value)
     {
         // Make sure that it doesn't exist already
-        if(mDefineList.find(name) != mDefineList.end())
+        if (mDefineList.find(name) != mDefineList.end())
         {
-            if(mDefineList[name] == value)
+            if (mDefineList[name] == value)
             {
                 // Same define
                 return false;
@@ -246,7 +246,7 @@ namespace Falcor
 
     bool Program::removeDefine(const std::string& name)
     {
-        if(mDefineList.find(name) != mDefineList.end())
+        if (mDefineList.find(name) != mDefineList.end())
         {
             markDirty();
             mDefineList.erase(name);
@@ -300,19 +300,19 @@ namespace Falcor
 
     bool Program::checkIfFilesChanged()
     {
-        if(mpActiveVersion == nullptr)
+        if (mpActiveVersion == nullptr)
         {
             // We never linked, so nothing really changed
             return false;
         }
 
         // Have any of the files we depend on changed?
-        for(auto& entry : mFileTimeMap)
+        for (auto& entry : mFileTimeMap)
         {
             auto& path = entry.first;
             auto& modifiedTime = entry.second;
 
-            if( modifiedTime != getFileModifiedTime(path) )
+            if (modifiedTime != getFileModifiedTime(path))
             {
                 return true;
             }
@@ -364,7 +364,7 @@ namespace Falcor
     // Translation a Falcor `ShaderType` to the corresponding `SlangStage`
     SlangStage getSlangStage(ShaderType type)
     {
-        switch(type)
+        switch (type)
         {
         case ShaderType::Vertex:        return SLANG_STAGE_VERTEX;
         case ShaderType::Pixel:         return SLANG_STAGE_PIXEL;
@@ -397,8 +397,26 @@ namespace Falcor
 #endif
     }
 
+    void Program::setUpSlangCompilationTarget(
+        slang::TargetDesc&  ioTargetDesc,
+        char const*&        ioTargetMacroName) const
+    {
+#ifdef FALCOR_VK
+        ioTargetMacroName = "FALCOR_VK";
+        ioTargetDesc.format = SLANG_SPIRV;
+#elif defined FALCOR_D3D12
+        ioTargetMacroName = "FALCOR_D3D";
+
+        // If the profile string starts with a `4_` or a `5_`, use DXBC. Otherwise, use DXIL
+        if (hasPrefix(mDesc.mShaderModel, "4_") || hasPrefix(mDesc.mShaderModel, "5_")) ioTargetDesc.format = SLANG_DXBC;
+        else ioTargetDesc.format = SLANG_DXIL;
+#else
+#error unknown shader compilation target
+#endif
+    }
+
     SlangCompileRequest* Program::createSlangCompileRequest(
-        const DefineList&   defineList) const
+        const DefineList& defineList) const
     {
         slang::IGlobalSession* pSlangGlobalSession = getSlangGlobalSession();
         assert(pSlangGlobalSession);
@@ -417,7 +435,7 @@ namespace Falcor
             slangSearchPaths.push_back(path.c_str());
         }
         sessionDesc.searchPaths = slangSearchPaths.data();
-        sessionDesc.searchPathCount = (SlangInt) slangSearchPaths.size();
+        sessionDesc.searchPathCount = (SlangInt)slangSearchPaths.size();
 
         slang::TargetDesc targetDesc;
         targetDesc.format = SLANG_TARGET_UNKNOWN;
@@ -447,25 +465,13 @@ namespace Falcor
         const char* targetMacroName;
 
         // Pick the right target based on the current graphics API
-#ifdef FALCOR_VK
-        targetMacroName = "FALCOR_VK";
-        targetDesc.format = SLANG_SPIRV;
-#elif defined FALCOR_D3D12
-        targetMacroName = "FALCOR_D3D";
-
-        // If the profile string starts with a `4_` or a `5_`, use DXBC. Otherwise, use DXIL
-        if (hasPrefix(mDesc.mShaderModel, "4_") || hasPrefix(mDesc.mShaderModel, "5_")) targetDesc.format = SLANG_DXBC;
-        else                                                                            targetDesc.format = SLANG_DXIL;
-#else
-#error unknown shader compilation target
-#endif
-
+        setUpSlangCompilationTarget(targetDesc, targetMacroName);
 
         // Pass any `#define` flags along to Slang, since we aren't doing our
         // own preprocessing any more.
         //
         std::vector<slang::PreprocessorMacroDesc> slangDefines;
-        const auto addSlangDefine = [&slangDefines] (const char* name, const char* value)
+        const auto addSlangDefine = [&slangDefines](const char* name, const char* value)
         {
             slangDefines.push_back({ name, value });
         };
@@ -489,7 +495,7 @@ namespace Falcor
         addSlangDefine(sm.c_str(), "1");
 
         sessionDesc.preprocessorMacros = slangDefines.data();
-        sessionDesc.preprocessorMacroCount = (SlangInt) slangDefines.size();
+        sessionDesc.preprocessorMacroCount = (SlangInt)slangDefines.size();
 
         sessionDesc.targets = &targetDesc;
         sessionDesc.targetCount = 1;
@@ -541,7 +547,7 @@ namespace Falcor
         // translation unit for Slang (so that they can see and resolve
         // definitions).
         //
-        for(auto src : mDesc.mSources)
+        for (auto src : mDesc.mSources)
         {
             // Register the translation unit with Slang
             int translationUnitIndex = spAddTranslationUnit(pSlangRequest, SLANG_SOURCE_LANGUAGE_SLANG, nullptr);
@@ -576,10 +582,8 @@ namespace Falcor
         // Each entry point references the index of the source
         // it uses, and luckily, the Slang API can use these
         // indices directly.
-        for(auto& entryPoint : mDesc.mEntryPoints)
+        for (auto& entryPoint : mDesc.mEntryPoints)
         {
-            auto& group = mDesc.mGroups[entryPoint.groupIndex];
-
             spAddEntryPoint(
                 pSlangRequest,
                 entryPoint.sourceIndex,
@@ -633,7 +637,7 @@ namespace Falcor
 
         if (pSlangDiagnostics && pSlangDiagnostics->getBufferSize() > 0)
         {
-            log += (char const*) pSlangDiagnostics->getBufferPointer();
+            log += (char const*)pSlangDiagnostics->getBufferPointer();
         }
 
         return failed ? nullptr : pSpecializedSlangProgram;
@@ -669,11 +673,11 @@ namespace Falcor
         uint32_t allEntryPointCount = uint32_t(mDesc.mEntryPoints.size());
         std::vector<ComPtr<slang::IComponentType>> pLinkedEntryPoints;
 
-        for( uint32_t ee = 0; ee < allEntryPointCount; ++ee )
+        for (uint32_t ee = 0; ee < allEntryPointCount; ++ee)
         {
             auto pSlangEntryPoint = pVersion->getSlangEntryPoint(ee);
 
-            slang::IComponentType* componentTypes[] = {pSpecializedSlangGlobalScope, pSlangEntryPoint};
+            slang::IComponentType* componentTypes[] = { pSpecializedSlangGlobalScope, pSlangEntryPoint };
 
             ComPtr<slang::IComponentType> pLinkedSlangEntryPoint;
             ComPtr<slang::IBlob> pSlangDiagnostics;
@@ -731,7 +735,7 @@ namespace Falcor
             //
             std::vector<slang::IComponentType*> componentTypesForProgram;
             componentTypesForProgram.push_back(pSpecializedSlangGlobalScope);
-            for( uint32_t ee = 0; ee < allEntryPointCount; ++ee )
+            for (uint32_t ee = 0; ee < allEntryPointCount; ++ee)
             {
                 // TODO: Eventually this would need to use the specialized
                 // (but not linked) version of each entry point.
@@ -748,6 +752,34 @@ namespace Falcor
         ProgramReflection::SharedPtr pReflector;
         doSlangReflection(pVersion, pSpecializedSlangProgram, pLinkedEntryPoints, pReflector, log);
 
+        // Create Shader objects for each entry point and cache them here
+        std::vector<Shader::SharedPtr> allShaders;
+        for (uint32_t i = 0; i < allEntryPointCount; i++)
+        {
+            auto pLinkedEntryPoint = pLinkedEntryPoints[i];
+            auto entryPointDesc = mDesc.mEntryPoints[i];
+
+            Shader::Blob blob;
+            ComPtr<slang::IBlob> pSlangDiagnostics;
+            bool failed = SLANG_FAILED(pLinkedEntryPoint->getEntryPointCode(
+                /* entryPointIndex: */ 0,
+                /* targetIndex: */ 0,
+                blob.writeRef(),
+                pSlangDiagnostics.writeRef()));
+
+            if (pSlangDiagnostics && pSlangDiagnostics->getBufferSize() > 0)
+            {
+                log += (char const*)pSlangDiagnostics->getBufferPointer();
+            }
+
+            if (failed) return nullptr;
+
+            Shader::SharedPtr shader = createShaderFromBlob(blob, entryPointDesc.stage, entryPointDesc.name, mDesc.getCompilerFlags(), log);
+            if (!shader) return nullptr;
+
+            allShaders.push_back(std::move(shader));
+        }
+
         // In order to construct the `ProgramKernels` we need to extract
         // the kernels for each entry-point group.
         //
@@ -759,7 +791,7 @@ namespace Falcor
         // one-to-one with the entries in `pLinkedEntryPointGroups`.
         //
         uint32_t entryPointGroupCount = uint32_t(mDesc.mGroups.size());
-        for( uint32_t gg = 0; gg < entryPointGroupCount; ++gg )
+        for (uint32_t gg = 0; gg < entryPointGroupCount; ++gg)
         {
             auto entryPointGroupDesc = mDesc.mGroups[gg];
 
@@ -767,48 +799,38 @@ namespace Falcor
             // code for its constituent entry points, using the "linked"
             // version of the entry-point group.
             //
-            auto groupEntryPointCount = entryPointGroupDesc.entryPointCount;
             std::vector<Shader::SharedPtr> shaders;
-            for(uint32_t ee = 0; ee < groupEntryPointCount; ++ee)
+            for (auto entryPointIndex : entryPointGroupDesc.entryPoints)
             {
-                auto entryPointIndex = entryPointGroupDesc.firstEntryPoint + ee;
-
-                auto pLinkedEntryPoint = pLinkedEntryPoints[entryPointIndex];
-                auto entryPointDesc = mDesc.mEntryPoints[entryPointIndex];
-
-                Shader::Blob blob;
-                ComPtr<slang::IBlob> pSlangDiagnostics;
-                bool failed = SLANG_FAILED(pLinkedEntryPoint->getEntryPointCode(
-                    /* entryPointIndex: */ 0,
-                    /* targetIndex: */ 0,
-                    blob.writeRef(),
-                    pSlangDiagnostics.writeRef()));
-
-                if (pSlangDiagnostics && pSlangDiagnostics->getBufferSize() > 0)
-                {
-                    log += (char const*) pSlangDiagnostics->getBufferPointer();
-                }
-
-                if (failed) return nullptr;
-
-                Shader::SharedPtr shader = createShaderFromBlob(blob, entryPointDesc.stage, entryPointDesc.name, mDesc.getCompilerFlags(), log);
-                if (!shader) return nullptr;
-
-                shaders.emplace_back(std::move(shader));
+                shaders.push_back(allShaders[entryPointIndex]);
             }
 
             auto pGroupReflector = pReflector->getEntryPointGroup(gg);
-
             auto pEntryPointGroupKernels = createEntryPointGroupKernels(shaders, pGroupReflector);
             entryPointGroups.push_back(pEntryPointGroupKernels);
         }
 
+        return createProgramKernels(
+            pVersion,
+            pReflector,
+            entryPointGroups,
+            log,
+            getProgramDescString());
+    }
+
+    ProgramKernels::SharedPtr Program::createProgramKernels(
+        const ProgramVersion* pVersion,
+        const ProgramReflection::SharedPtr& pReflector,
+        const ProgramKernels::UniqueEntryPointGroups& uniqueEntryPointGroups,
+        std::string& log,
+        const std::string& name) const
+    {
         return ProgramKernels::create(
-                pVersion,
-                pReflector,
-                entryPointGroups,
-                log,
-                getProgramDescString());
+            pVersion,
+            pReflector,
+            uniqueEntryPointGroups,
+            log,
+            name);
     }
 
     ProgramVersion::SharedPtr Program::preprocessAndCreateProgramVersion(
@@ -819,7 +841,7 @@ namespace Falcor
 
         SlangResult slangResult = spCompile(pSlangRequest);
         log += spGetDiagnosticOutput(pSlangRequest);
-        if(SLANG_FAILED(slangResult))
+        if (SLANG_FAILED(slangResult))
         {
             spDestroyCompileRequest(pSlangRequest);
             return nullptr;
@@ -833,8 +855,8 @@ namespace Falcor
         ComPtr<slang::ISession> pSlangSession(pSlangGlobalScope->getSession());
 
         std::vector<ComPtr<slang::IComponentType>> pSlangEntryPoints;
-        uint32_t entryPointCount = (uint32_t) mDesc.mEntryPoints.size();
-        for( uint32_t ee = 0; ee < entryPointCount; ++ee )
+        uint32_t entryPointCount = (uint32_t)mDesc.mEntryPoints.size();
+        for (uint32_t ee = 0; ee < entryPointCount; ++ee)
         {
             auto entryPointDesc = mDesc.mEntryPoints[ee];
 
@@ -849,7 +871,7 @@ namespace Falcor
 
         // Extract list of files referenced, for dependency-tracking purposes
         int depFileCount = spGetDependencyFileCount(pSlangRequest);
-        for(int ii = 0; ii < depFileCount; ++ii)
+        for (int ii = 0; ii < depFileCount; ++ii)
         {
             std::string depFilePath = spGetDependencyFilePath(pSlangRequest, ii);
             mFileTimeMap[depFilePath] = getFileModifiedTime(depFilePath);
@@ -883,7 +905,7 @@ namespace Falcor
             pSlangProgram.writeRef());
 
         ProgramReflection::SharedPtr pReflector;
-        if( !doSlangReflection(pVersion.get(), pSlangGlobalScope, pSlangEntryPoints, pReflector, log) )
+        if (!doSlangReflection(pVersion.get(), pSlangGlobalScope, pSlangEntryPoints, pReflector, log))
         {
             return nullptr;
         }
@@ -906,7 +928,7 @@ namespace Falcor
 
     bool Program::link() const
     {
-        while(1)
+        while (1)
         {
             // Create the program
             std::string log;
@@ -960,14 +982,14 @@ namespace Falcor
         // The read iterator will be implicit in our loop over the
         // entire array of programs:
         //
-        for(auto& pWeakProgram : sPrograms)
+        for (auto& pWeakProgram : sPrograms)
         {
             // We will skip any programs where the weak pointer
             // has changed to `nullptr` because the object was
             // already deleted.
             //
             auto pProgram = pWeakProgram.lock();
-            if(!pProgram)
+            if (!pProgram)
                 continue;
 
             // Now we know that we have a valid (non-null) `Program`,
@@ -980,7 +1002,7 @@ namespace Falcor
             // we can skip further processing of this program
             // (unless forceReload flag is set).
             //
-            if(!(pProgram->checkIfFilesChanged() || forceReload))
+            if (!(pProgram->checkIfFilesChanged() || forceReload))
                 continue;
 
             // If any files have changed, then we need to reset

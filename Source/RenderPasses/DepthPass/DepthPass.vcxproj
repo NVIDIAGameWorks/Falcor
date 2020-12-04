@@ -14,7 +14,7 @@
     <ProjectGuid>{730AA5B9-7DDB-40AF-A882-EB39B9D3AC7C}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>DepthPass</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
     <ProjectName>DepthPass</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

@@ -99,10 +99,9 @@ namespace Falcor
             "  Internal node count: " + std::to_string(stats.internalNodeCount) + "\n" +
             "  Leaf node count:     " + std::to_string(stats.leafNodeCount) + "\n" +
             "  Triangle count:      " + std::to_string(stats.triangleCount) + "\n";
-        widget.text(statsStr.c_str());
+        widget.text(statsStr);
 
-        Gui::Group nodeGroup(widget.gui(), "Node count per level");
-        if (nodeGroup.open())
+        if (auto nodeGroup = widget.group("Node count per level"))
         {
             std::string countStr;
             for (uint32_t level = 0; level < stats.nodeCountPerLevel.size(); ++level)
@@ -110,13 +109,10 @@ namespace Falcor
                 countStr += "  Node count at level " + std::to_string(level) + ": " + std::to_string(stats.nodeCountPerLevel[level]) + "\n";
             }
             if (!countStr.empty()) countStr.pop_back();
-            nodeGroup.text(countStr.c_str());
-
-            nodeGroup.release();
+            nodeGroup.text(countStr);
         }
 
-        Gui::Group leafGroup(widget.gui(), "Leaf node count histogram for triangle counts");
-        if (leafGroup.open())
+        if (auto leafGroup = widget.group("Leaf node count histogram for triangle counts"))
         {
             std::string countStr;
             for (uint32_t triangleCount = 0; triangleCount < stats.leafCountPerTriangleCount.size(); ++triangleCount)
@@ -124,9 +120,7 @@ namespace Falcor
                 countStr += "  Leaf nodes with " + std::to_string(triangleCount) + " triangles: " + std::to_string(stats.leafCountPerTriangleCount[triangleCount]) + "\n";
             }
             if (!countStr.empty()) countStr.pop_back();
-            leafGroup.text(countStr.c_str());
-
-            leafGroup.release();
+            leafGroup.text(countStr);
         }
     }
 

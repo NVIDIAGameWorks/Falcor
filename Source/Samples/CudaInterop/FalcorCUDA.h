@@ -26,10 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "cuda_runtime.h"
 #include "Core/Framework.h"
 #include "Core/API/Texture.h"
 #include "Core/API/RenderContext.h"
+
+#include <cuda_runtime.h>
 
 namespace FalcorCUDA
 {
@@ -44,7 +45,7 @@ namespace FalcorCUDA
         \param usageFlags The requested flags to be bound to the mipmapped array
         \return True if successful, false otherwise
     */
-    bool importTextureToMipmappedArray(Falcor::Texture::SharedPtr pTex, cudaMipmappedArray_t & mipmappedArray, uint32_t cudaUsageFlags);
+    bool importTextureToMipmappedArray(Falcor::Texture::SharedPtr pTex, cudaMipmappedArray_t& mipmappedArray, uint32_t cudaUsageFlags);
 
     /** Maps a texture to a surface object which can be read and written within a CUDA kernel.
         This method should only be called once per texture on initial load. Store the returned surface object for repeated use.

@@ -14,7 +14,7 @@
     <ProjectGuid>{52CB6295-6163-49B8-B3B6-8A6140E0479D}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>CSM</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
     <ProjectName>CSM</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

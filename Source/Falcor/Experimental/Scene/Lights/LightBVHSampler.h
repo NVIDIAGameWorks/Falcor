@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Utils/Math/BBox.h"
+#include "Utils/Math/AABB.h"
 #include "EmissiveLightSampler.h"
 #include "LightBVH.h"
 #include "LightBVHBuilder.h"
@@ -84,13 +84,10 @@ namespace Falcor
         */
         virtual bool update(RenderContext* pRenderContext) override;
 
-        /** Add compile-time specialization to program to use this light sampler.
-            This function must be called every frame before the sampler is bound.
-            Note that ProgramVars may need to be re-created after this call, check the return value.
-            \param[in] pProgram The Program to add compile-time specialization to.
-            \return True if the ProgramVars needs to be re-created.
+        /** Return a list of shader defines to use this light sampler.
+        *   \return Returns a list of shader defines.
         */
-        virtual bool prepareProgram(Program* pProgram) const override;
+        virtual Program::DefineList getDefines() const override;
 
         /** Bind the light sampler data to a given shader variable.
             \param[in] var Shader variable.

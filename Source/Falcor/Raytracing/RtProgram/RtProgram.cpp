@@ -71,7 +71,6 @@ namespace Falcor
             logError("already have a miss shader at that index");
         }
 
-        auto entryPointIndex = int32_t(mBaseDesc.mEntryPoints.size());
         mBaseDesc.beginEntryPointGroup();
         mBaseDesc.entryPoint(ShaderType::Miss, miss);
 
@@ -80,35 +79,105 @@ namespace Falcor
         return *this;
     }
 
-    RtProgram::Desc& RtProgram::Desc::addHitGroup(uint32_t hitIndex, const std::string& closestHit, const std::string& anyHit, const std::string& intersection /* = "" */)
+    RtProgram::Desc& RtProgram::Desc::addHitGroup(uint32_t hitIndex, const std::string& closestHit, const std::string& anyHit)
     {
-        if(hitIndex >= mHitGroups.size())
+        if (hitIndex >= mHitGroups.size())
         {
-            mHitGroups.resize(hitIndex+1);
+            mHitGroups.resize(hitIndex + 1);
         }
-        else if(mHitGroups[hitIndex].groupIndex >= 0)
+        else if (mHitGroups[hitIndex].groupIndex >= 0)
         {
             logError("already have a hit group at that index");
         }
 
-        auto groupIndex = int32_t(mBaseDesc.mGroups.size());
         mBaseDesc.beginEntryPointGroup();
-        if(closestHit.length())
+        if (closestHit.length())
         {
             mBaseDesc.entryPoint(ShaderType::ClosestHit, closestHit);
         }
-        if(anyHit.length())
+        if (anyHit.length())
         {
             mBaseDesc.entryPoint(ShaderType::AnyHit, anyHit);
-        }
-        if(intersection.length())
-        {
-            mBaseDesc.entryPoint(ShaderType::Intersection, intersection);
         }
 
         DescExtra::GroupInfo info = { mBaseDesc.mActiveGroup };
         mHitGroups[hitIndex] = info;
         return *this;
+    }
+
+    RtProgram::Desc& RtProgram::Desc::addAABBHitGroup(uint32_t hitIndex, const std::string& closestHit, const std::string& anyHit /*= ""*/)
+    {
+        if (hitIndex >= mAABBHitGroupEntryPoints.size())
+        {
+            mAABBHitGroupEntryPoints.resize(hitIndex + 1);
+        }
+        else
+        {
+            auto& group = mAABBHitGroupEntryPoints[hitIndex];
+            if (group.closestHit != uint32_t(-1) || group.anyHit != uint32_t(-1))
+            {
+                throw std::exception(("There is already an AABB hit group defined at index " + std::to_string(hitIndex)).c_str());
+            }
+        }
+
+        auto& group = mAABBHitGroupEntryPoints[hitIndex];
+
+        if (!closestHit.empty())
+        {
+            group.closestHit = mBaseDesc.declareEntryPoint(ShaderType::ClosestHit, closestHit);
+        }
+
+        if (!anyHit.empty())
+        {
+            group.anyHit = mBaseDesc.declareEntryPoint(ShaderType::AnyHit, anyHit);
+        }
+
+        return *this;
+    }
+
+    RtProgram::Desc& RtProgram::Desc::addIntersection(uint32_t typeIndex, const std::string& intersection)
+    {
+        if (typeIndex >= mIntersectionEntryPoints.size())
+        {
+            mIntersectionEntryPoints.resize(typeIndex + 1);
+        }
+        else if (mIntersectionEntryPoints[typeIndex] != uint32_t(-1))
+        {
+            throw std::exception(("There is already an intersection shader defined at primitive type index " + std::to_string(typeIndex)).c_str());
+        }
+
+        assert(!intersection.empty());
+        mIntersectionEntryPoints[typeIndex] = mBaseDesc.declareEntryPoint(ShaderType::Intersection, intersection);
+
+        return *this;
+    }
+
+    void RtProgram::Desc::resolveAABBHitGroups()
+    {
+        // Every intersection shader defines a custom primitive type, so we need permutations where each CHS/AHS is paired
+        // with each intersection shader. This is required by state object creation time so we need to generate all groups up front.
+        for (auto& intersection : mIntersectionEntryPoints)
+        {
+            for (auto& hitGroup : mAABBHitGroupEntryPoints)
+            {
+                auto& closestHit = hitGroup.closestHit;
+                auto& anyHit = hitGroup.anyHit;
+
+                // Save index of the group being added
+                DescExtra::GroupInfo groupInfo;
+                groupInfo.groupIndex = (int32_t)mBaseDesc.mGroups.size();
+
+                // Add entry point group containing each shader in the hit group
+                Program::Desc::EntryPointGroup group;
+                if (closestHit != uint32_t(-1)) group.entryPoints.push_back(closestHit);
+                if (anyHit != uint32_t(-1)) group.entryPoints.push_back(anyHit);
+                group.entryPoints.push_back(intersection); // TODO: This has to go last. Why?
+                mBaseDesc.mGroups.push_back(group);
+
+                // Save association of hit group index -> program entry point group
+                mAABBHitGroups.push_back(groupInfo);
+            }
+        }
     }
 
     RtProgram::Desc& RtProgram::Desc::addDefine(const std::string& name, const std::string& value)
@@ -123,7 +192,7 @@ namespace Falcor
         return *this;
     }
 
-    RtProgram::SharedPtr RtProgram::create(const Desc& desc, uint32_t maxPayloadSize, uint32_t maxAttributesSize)
+    RtProgram::SharedPtr RtProgram::create(Desc desc, uint32_t maxPayloadSize, uint32_t maxAttributesSize)
     {
         size_t rayGenCount = desc.mRayGenEntryPoints.size();
         if (rayGenCount == 0)
@@ -135,7 +204,18 @@ namespace Falcor
             throw std::exception("Can't create an RtProgram with more than one ray generation shader");
         }
 
-        SharedPtr pProg = SharedPtr(new RtProgram(desc, maxPayloadSize, maxAttributesSize));
+        if (!desc.mAABBHitGroupEntryPoints.empty() && (desc.mHitGroups.size() != desc.mAABBHitGroupEntryPoints.size()))
+        {
+            logWarning("There are not corresponding hit shaders for each ray type defined for custom primitives.");
+        }
+
+        // Both intersection shaders and hit groups must be defined for custom primitives for it to be valid/complete
+        if (!desc.mIntersectionEntryPoints.empty() && !desc.mAABBHitGroupEntryPoints.empty())
+        {
+            desc.resolveAABBHitGroups();
+        }
+
+        SharedPtr pProg = SharedPtr(new RtProgram(maxPayloadSize, maxAttributesSize));
         pProg->init(desc);
         pProg->addDefine("_MS_DISABLE_ALPHA_TEST");
         pProg->addDefine("_DEFAULT_ALPHA_TEST");
@@ -149,7 +229,7 @@ namespace Falcor
         mDescExtra = desc;
     }
 
-    RtProgram::RtProgram(const Desc& desc, uint32_t maxPayloadSize, uint32_t maxAttributesSize)
+    RtProgram::RtProgram(uint32_t maxPayloadSize, uint32_t maxAttributesSize)
         : Program()
         , mMaxPayloadSize(maxPayloadSize)
         , mMaxAttributesSize(maxAttributesSize)

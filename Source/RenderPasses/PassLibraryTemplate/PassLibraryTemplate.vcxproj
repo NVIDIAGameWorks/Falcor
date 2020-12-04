@@ -14,7 +14,7 @@
     <ProjectGuid>{E484AEEC-ED88-408E-ADA5-66DF6301D75B}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>PassLibraryTemplate</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
     <ProjectName>PassLibraryTemplate</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

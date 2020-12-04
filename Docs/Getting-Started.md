@@ -7,7 +7,7 @@
 ## Solution and Project Layout
 
 ### Falcor
-All core framework features and code are contained within the `Falcor` project in the solution. This is a DLL project and is not executable on its own. 
+All core framework features and code are contained within the `Falcor` project in the solution. This is a DLL project and is not executable on its own.
 
 ### Samples
 Projects in the `Samples` folder (`HelloDXR`, `ModelViewer`, and `ShaderToy`) are applications using Falcor directly that demonstrate how to use some of the fundamental features and abstractions Falcor provides.
@@ -16,7 +16,7 @@ Projects in the `Samples` folder (`HelloDXR`, `ModelViewer`, and `ShaderToy`) ar
 The `Mogwai` project is an application created using Falcor that simplifies using render graphs and provides some useful utilities. Some sample render graphs are located under its project folder: `Source/Mogwai/Data/`.
 
 ### RenderPasses
-The `RenderPasses` folder contains a number of components ("Render Passes") that can be assembled to create render graphs. These components are required for some of the included sample render graphs, but will not build unless you select them manually (Right-Click -> `Build`), or use `Build Solution`. 
+The `RenderPasses` folder contains a number of components ("Render Passes") that can be assembled to create render graphs. These components are required for some of the included sample render graphs, but will not build unless you select them manually (Right-Click -> `Build`), or use `Build Solution`.
 
 -----------------------
 ## Workflows
@@ -32,7 +32,7 @@ The recommended workflow when prototyping or implementing rendering techniques i
 3. Press `Ctrl+O`, or from the top menu bar, select `File` -> `Load Script`
 4. Select a Render Graph (.py file) in `Source/Mogwai/Data/`. Such as `ForwardRenderer.py`.
 5. Press `Ctrl+Shift+O`, or from the top menu bar, select `File` -> `Load Scene`.
-6. Select a scene or model, such as `Media/Arcade/Arcade.fscene`
+6. Select a scene or model, such as `Media/Arcade/Arcade.pyscene`
 
 Scenes and Render Graphs can also be loaded through drag and drop.
 

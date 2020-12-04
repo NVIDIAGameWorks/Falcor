@@ -84,11 +84,26 @@ namespace Falcor
         // rebuild on parameter changes. It might make sense for ray-gen programs
         // to be more flexibly allocated.
         //
-        uint32_t rayGenProgCount = uint32_t(descExtra.mRayGenEntryPoints.size());
-        uint32_t missProgCount = uint32_t(descExtra.mMissEntryPoints.size());
 
+        uint32_t rayGenProgCount = uint32_t(descExtra.mRayGenEntryPoints.size());
         mRayGenVars.resize(rayGenProgCount);
+        for (uint32_t i = 0; i < rayGenProgCount; ++i)
+        {
+            auto& info = descExtra.mRayGenEntryPoints[i];
+            if (info.groupIndex < 0) continue;
+
+            mRayGenVars[i].pVars = EntryPointGroupVars::create(pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
+        }
+
+        uint32_t missProgCount  = uint32_t(descExtra.mMissEntryPoints.size());
         mMissVars.resize(missProgCount);
+        for (uint32_t i = 0; i < missProgCount; ++i)
+        {
+            auto& info = descExtra.mMissEntryPoints[i];
+            if (info.groupIndex < 0) continue;
+
+            mMissVars[i].pVars = EntryPointGroupVars::create(pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
+        }
 
         // Hit groups are more complicated than ray generation and miss shaders.
         // We typically want a distinct parameter block per declared hit group
@@ -99,20 +114,10 @@ namespace Falcor
         //
         uint32_t descHitGroupCount = uint32_t(descExtra.mHitGroups.size());
         uint32_t blockCountPerHitGroup = mpScene->getMeshCount();
-
         uint32_t totalHitBlockCount = descHitGroupCount * blockCountPerHitGroup;
-
-        mHitVars.resize(totalHitBlockCount);
         mDescHitGroupCount = descHitGroupCount;
 
-        for (uint32_t i = 0; i < rayGenProgCount; ++i)
-        {
-            auto& info = descExtra.mRayGenEntryPoints[i];
-            if (info.groupIndex < 0) continue;
-
-            mRayGenVars[i].pVars = EntryPointGroupVars::create(pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
-        }
-
+        mHitVars.resize(totalHitBlockCount);
         for (uint32_t i = 0; i < descHitGroupCount; ++i)
         {
             auto& info = descExtra.mHitGroups[i];
@@ -124,19 +129,48 @@ namespace Falcor
             }
         }
 
-        for (uint32_t i = 0; i < missProgCount; ++i)
+        // Hit Groups for procedural primitives are different than for triangles.
+        //
+        // There must be a set of vars for every geometry defined in the BLAS (i.e. every prim added to the scene).
+        // All intersection shader x hit-shader permutations are already generated in Program creation, so we look up entry points based on each
+        // each geometry's type index.
+        //
+        // Hit groups in the program are ordered in the following way:
+        //
+        // [  Intersection Shader 0   |  Intersection Shader 1   | ... |  Intersection Shader N   ]
+        // [          with            |           with           |     |          with            ]
+        // [ Ray0 | Ray1 | ... | RayN | Ray0 | Ray1 | ... | RayN | ... | Ray0 | Ray1 | ... | RayN ]
+        //
+        // So the index of any specific hit group is calculated using: (IntersectionShaderIdx * RayCount + RayIdx)
+        //
+        // For each primitive, the hit groups for the corresponding intersection shader are looked up and appended to the vars.
+        //
+        uint32_t intersectionShaderCount = (uint32_t)descExtra.mIntersectionEntryPoints.size();
+        uint32_t proceduralPrimHitVarCount = mpScene->getProceduralPrimitiveCount() * descHitGroupCount; // Total Var Count = Prim Count * Ray Count
+        mAABBHitVars.resize(proceduralPrimHitVarCount);
+        uint32_t currAABBHitVar = 0;
+        for (uint32_t i = 0; i < mpScene->getProceduralPrimitiveCount(); i++)
         {
-            auto& info = descExtra.mMissEntryPoints[i];
-            if (info.groupIndex < 0) continue;
+            uint32_t intersectionShaderId = mpScene->getProceduralPrimitive(i).typeID;
+            assert(intersectionShaderId < intersectionShaderCount);
 
-            mMissVars[i].pVars = EntryPointGroupVars::create(pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
+            // For this primitive's intersection shader group/type, get the hit vars for each ray type
+            for (uint32_t j = 0; j < descHitGroupCount; j++)
+            {
+                auto& info = descExtra.mAABBHitGroups[intersectionShaderId * descHitGroupCount + j];
+                if (info.groupIndex < 0) continue;
+
+                mAABBHitVars[currAABBHitVar++].pVars = EntryPointGroupVars::create(pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
+            }
         }
 
         for (auto entryPointGroupInfo : mRayGenVars)
             mpEntryPointGroupVars.push_back(entryPointGroupInfo.pVars);
+        for (auto entryPointGroupInfo : mMissVars)
+            mpEntryPointGroupVars.push_back(entryPointGroupInfo.pVars);
         for (auto entryPointGroupInfo : mHitVars)
             mpEntryPointGroupVars.push_back(entryPointGroupInfo.pVars);
-        for (auto entryPointGroupInfo : mMissVars)
+        for (auto entryPointGroupInfo : mAABBHitVars)
             mpEntryPointGroupVars.push_back(entryPointGroupInfo.pVars);
     }
 
@@ -244,6 +278,7 @@ namespace Falcor
             if (!applyVarsToTable(ShaderTable::SubTableType::RayGen, 0, mRayGenVars, pRtso)) return false;
             if (!applyVarsToTable(ShaderTable::SubTableType::Miss, 0, mMissVars, pRtso)) return false;
             if (!applyVarsToTable(ShaderTable::SubTableType::Hit, 0, mHitVars, pRtso)) return false;
+            if (!applyVarsToTable(ShaderTable::SubTableType::Hit, (uint32_t)mHitVars.size(), mAABBHitVars, pRtso)) return false;
 
             mpShaderTable->flushBuffer(pCtx);
         }

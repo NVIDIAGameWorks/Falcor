@@ -40,7 +40,7 @@ namespace Mogwai
         virtual bool hasWindow() const override { return true; }
         virtual bool isWindowShown() const override { return mShowUI; }
         virtual void toggleWindow() override { mShowUI = !mShowUI; }
-        virtual void scriptBindings(Bindings& bindings) override;
+        virtual void registerScriptBindings(pybind11::module& m) override;
         virtual void activeGraphChanged(RenderGraph* pNewGraph, RenderGraph* pPrevGraph) override;
     protected:
         CaptureTrigger(Renderer* pRenderer, const std::string& name) : Extension(pRenderer, name) {}
@@ -61,7 +61,7 @@ namespace Mogwai
         void setBaseFilename(const std::string& baseFilename);
         const std::string& getBaseFilename() const { return mBaseFilename; }
 
-        std::string getScript(const std::string& var);
+        std::string getScript(const std::string& var) const;
         std::filesystem::path getOutputPath() const;
         std::string getOutputNamePrefix(const std::string& output) const;
 

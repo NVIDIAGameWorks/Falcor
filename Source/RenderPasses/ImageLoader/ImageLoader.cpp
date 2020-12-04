@@ -27,21 +27,9 @@
  **************************************************************************/
 #include "ImageLoader.h"
 
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" __declspec(dllexport) const char* getProjDir()
-{
-    return PROJECT_DIR;
-}
-
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
-{
-    lib.registerClass("ImageLoader", "Load an image into a texture", ImageLoader::create);
-}
-
-const char* ImageLoader::kDesc = "Load an image into a texture";
-
 namespace
 {
+    const char kDesc[] = "Load an image into a texture";
     const std::string kDst = "dst";
 
     const std::string kOutputFormat = "outputFormat";
@@ -52,6 +40,19 @@ namespace
     const std::string kMipLevel = "mipLevel";
 }
 
+// Don't remove this. it's required for hot-reload to function properly
+extern "C" __declspec(dllexport) const char* getProjDir()
+{
+    return PROJECT_DIR;
+}
+
+extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+{
+    lib.registerClass("ImageLoader", kDesc, ImageLoader::create);
+}
+
+std::string ImageLoader::getDesc() { return kDesc; }
+
 RenderPassReflection ImageLoader::reflect(const CompileData& compileData)
 {
     RenderPassReflection reflector;
@@ -61,32 +62,41 @@ RenderPassReflection ImageLoader::reflect(const CompileData& compileData)
 
 ImageLoader::SharedPtr ImageLoader::create(RenderContext* pRenderContext, const Dictionary& dict)
 {
-    SharedPtr pPass = SharedPtr(new ImageLoader);
+    return SharedPtr(new ImageLoader(dict));
+}
 
+ImageLoader::ImageLoader(const Dictionary& dict)
+{
     for (const auto& [key, value] : dict)
     {
-        if (key == kOutputFormat) pPass->mOutputFormat = value;
-        else if (key == kImage) pPass->mImageName = value.operator std::string();
-        else if (key == kSrgb) pPass->mLoadSRGB = value;
-        else if (key == kMips) pPass->mGenerateMips = value;
-        else if (key == kArraySlice) pPass->mArraySlice = value;
-        else if (key == kMipLevel) pPass->mMipLevel = value;
+        if (key == kOutputFormat) mOutputFormat = value;
+        else if (key == kImage) mImageName = value.operator std::string();
+        else if (key == kSrgb) mLoadSRGB = value;
+        else if (key == kMips) mGenerateMips = value;
+        else if (key == kArraySlice) mArraySlice = value;
+        else if (key == kMipLevel) mMipLevel = value;
         else logWarning("Unknown field '" + key + "' in a ImageLoader dictionary");
     }
 
-    if (pPass->mImageName.size())
+    if (!mImageName.empty())
     {
-        pPass->mpTex = Texture::createFromFile(pPass->mImageName, pPass->mGenerateMips, pPass->mLoadSRGB);
+        // Find the full path of the specified image.
+        // We retain this for later as the search paths may change during execution.
+        std::string fullPath;
+        if (findFileInDataDirectories(mImageName, fullPath))
+        {
+            mImageName = fullPath;
+            mpTex = Texture::createFromFile(mImageName, mGenerateMips, mLoadSRGB);
+        }
+        if (!mpTex) throw std::runtime_error("ImageLoader() - Failed to load image file '" + mImageName + "'");
     }
-
-    return pPass;
 }
 
 Dictionary ImageLoader::getScriptingDictionary()
 {
     Dictionary dict;
     if (mOutputFormat != ResourceFormat::Unknown) dict[kOutputFormat] = mOutputFormat;
-    dict[kImage] = mImageName;
+    dict[kImage] = stripDataDirectories(mImageName);
     dict[kMips] = mGenerateMips;
     dict[kSrgb] = mLoadSRGB;
     dict[kArraySlice] = mArraySlice;
@@ -94,23 +104,25 @@ Dictionary ImageLoader::getScriptingDictionary()
     return dict;
 }
 
-ImageLoader::ImageLoader()
-{
-}
-
 void ImageLoader::compile(RenderContext* pContext, const CompileData& compileData)
 {
-    if (!mpTex) throw std::runtime_error("ImageLoader::compile - No image loaded!");
+    if (!mpTex) throw std::runtime_error("ImageLoader::compile() - No image loaded!");
 }
 
 void ImageLoader::execute(RenderContext* pContext, const RenderData& renderData)
 {
     const auto& pDstTex = renderData[kDst]->asTexture();
+    assert(pDstTex);
+    mOutputFormat = pDstTex->getFormat();
+
     if (!mpTex)
     {
         pContext->clearRtv(pDstTex->getRTV().get(), float4(0, 0, 0, 0));
         return;
     }
+
+    mMipLevel = std::min(mMipLevel, mpTex->getMipCount() - 1);
+    mArraySlice = std::min(mArraySlice, mpTex->getArraySize() - 1);
     pContext->blit(mpTex->getSRV(mMipLevel, 1, mArraySlice, 1), pDstTex->getRTV());
 }
 
@@ -119,20 +131,22 @@ void ImageLoader::renderUI(Gui::Widgets& widget)
     bool reloadImage = widget.textbox("Image File", mImageName);
     reloadImage |= widget.checkbox("Load As SRGB", mLoadSRGB);
     reloadImage |= widget.checkbox("Generate Mipmaps", mGenerateMips);
-    if (mGenerateMips)
-    {
-        reloadImage |= widget.slider("Mip Level", mMipLevel, 0u, mpTex ? mpTex->getMipCount() : 0u);
-    }
-    reloadImage |= widget.slider("Array Slice", mArraySlice, 0u, mpTex ? mpTex->getArraySize() : 0u);
 
-    if (widget.button("Load File")) { reloadImage |= openFileDialog({}, mImageName); }
+    if (widget.button("Load File"))
+    {
+        reloadImage |= openFileDialog({}, mImageName);
+    }
 
     if (mpTex)
     {
+        if (mpTex->getMipCount() > 1) widget.slider("Mip Level", mMipLevel, 0u, mpTex->getMipCount() - 1);
+        if (mpTex->getArraySize() > 1) widget.slider("Array Slice", mArraySlice, 0u, mpTex->getArraySize() - 1);
+
         widget.image(mImageName.c_str(), mpTex, { 320, 320 });
+        widget.text("Output format: " + to_string(mOutputFormat));
     }
 
-    if (reloadImage && mImageName.size())
+    if (reloadImage && !mImageName.empty())
     {
         mImageName = stripDataDirectories(mImageName);
         mpTex = Texture::createFromFile(mImageName, mGenerateMips, mLoadSRGB);

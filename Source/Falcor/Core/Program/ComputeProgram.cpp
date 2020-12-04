@@ -46,6 +46,16 @@ namespace Falcor
         return pProg;
     }
 
+    void ComputeProgram::dispatchCompute(
+        ComputeContext* pContext,
+        ComputeVars* pVars,
+        uint3 const& threadGroupCount)
+    {
+        auto pState = ComputeState::create();
+        pState->setProgram(std::static_pointer_cast<ComputeProgram>(shared_from_this()));
+        pContext->dispatch(pState.get(), pVars, threadGroupCount);
+    }
+
     SCRIPT_BINDING(ComputeProgram)
     {
         pybind11::class_<ComputeProgram, ComputeProgram::SharedPtr>(m, "ComputeProgram");

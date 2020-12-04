@@ -46,7 +46,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     uint totalRays = 0;
     for (uint i = 0; i < (uint)PixelStatsRayType::Count; i++)
     {
-        totalRays = gStatsRayCount[i][pixel];
+        totalRays += gStatsRayCount[i][pixel];
     }
     gStatsRayCountTotal[pixel] = totalRays;
 }

@@ -16,6 +16,7 @@ def render_graph_GBufferRT():
     g.markOutput("GBufferRT.matlExtra")
 
     g.markOutput("GBufferRT.vbuffer")
+    g.markOutput("GBufferRT.linearZ")
     g.markOutput("GBufferRT.mvec")
     g.markOutput("GBufferRT.faceNormalW")
     g.markOutput("GBufferRT.viewW")

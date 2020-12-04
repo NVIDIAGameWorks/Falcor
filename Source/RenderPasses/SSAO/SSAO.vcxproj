@@ -14,7 +14,7 @@
     <ProjectGuid>{6CC70B9F-CA56-4EF2-8075-A1BE0005DCF4}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>SSAO</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
     <ProjectName>SSAO</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

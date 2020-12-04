@@ -26,6 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "CopySurface.h"
+#include <device_launch_parameters.h>
 
 // The CUDA kernel. This sample simply copies the input surface.
 template<class T>

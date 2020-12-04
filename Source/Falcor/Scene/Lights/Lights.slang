@@ -35,7 +35,6 @@
 import Utils.Helpers;
 import Scene.ShadingData;
 __exported import Scene.Lights.LightData;
-__exported import Scene.Lights.LightProbeData;
 
 struct LightSample
 {
@@ -127,11 +126,6 @@ LightSample evalPointLight(in LightData light, in float3 surfacePosW)
     return ls;
 }
 
-float linearRoughnessToLod(float linearRoughness, float mipCount)
-{
-    return sqrt(linearRoughness) * (mipCount - 1);
-}
-
 /** Evaluate a light source intensity/direction at a shading point
 */
 LightSample evalLight(LightData light, ShadingData sd)
@@ -152,107 +146,3 @@ LightSample evalLight(LightData light, ShadingData sd)
     calcCommonLightProperties(sd, ls);
     return ls;
 };
-
-float3 getDiffuseDominantDir(float3 N, float3 V, float ggxAlpha)
-{
-    float a = 1.02341 * ggxAlpha - 1.51174;
-    float b = -0.511705 * ggxAlpha + 0.755868;
-    float factor = saturate((saturate(dot(N, V)) * a + b) * ggxAlpha);
-    return normalize(lerp(N, V, factor));
-}
-
-float3 getSpecularDominantDir(float3 N, float3 R, float ggxAlpha)
-{
-    float smoothness = 1 - ggxAlpha;
-    float factor = smoothness * (sqrt(smoothness) + ggxAlpha);
-    return normalize(lerp(N, R, factor));
-}
-
-float3 evalLightProbeDiffuse(LightProbeData probe, ShadingData sd)
-{
-    float3 N = getDiffuseDominantDir(sd.N, sd.V, sd.ggxAlpha);
-
-    // Interpret negative radius as global light probe with infinite distance
-    // Otherwise simulate the light probe as covering a finite spherical area
-    float2 uv;
-    if(probe.radius < 0.0f)
-    {
-        uv = dirToSphericalCrd(N);
-    }
-    else
-    {
-        float3 intersectPosW;
-        intersectRaySphere(sd.posW, N, probe.posW, probe.radius, intersectPosW);
-        uv = dirToSphericalCrd(normalize(intersectPosW - probe.posW));
-    }
-
-    float width, height, mipCount;
-    probe.resources.diffuseTexture.GetDimensions(0, width, height, mipCount);
-
-    float3 diffuseLighting = probe.resources.diffuseTexture.SampleLevel(probe.resources.sampler, uv, 0).rgb;
-    float preintegratedDisneyBRDF = probe.sharedResources.dfgTexture.SampleLevel(probe.sharedResources.dfgSampler, float2(sd.NdotV, sd.ggxAlpha), 0).z;
-
-    return diffuseLighting * preintegratedDisneyBRDF * sd.diffuse.rgb;
-}
-
-float3 evalLightProbeSpecular(LightProbeData probe, ShadingData sd, float3 L)
-{
-    float dfgWidth, dfgHeight;
-    probe.sharedResources.dfgTexture.GetDimensions(dfgWidth, dfgHeight);
-
-    float width, height, mipCount;
-    probe.resources.specularTexture.GetDimensions(0, width, height, mipCount);
-
-    float3 dominantDir = getSpecularDominantDir(sd.N, L, sd.ggxAlpha);
-    float mipLevel = linearRoughnessToLod(sd.ggxAlpha, mipCount);
-
-    float2 uv;
-    if (probe.radius < 0.0f)
-    {
-        uv = dirToSphericalCrd(dominantDir);
-    }
-    else
-    {
-        float3 intersectPosW;
-        intersectRaySphere(sd.posW, dominantDir, probe.posW, probe.radius, intersectPosW);
-        uv = dirToSphericalCrd(normalize(intersectPosW - probe.posW));
-    }
-
-    float3 ld = probe.resources.specularTexture.SampleLevel(probe.resources.sampler, uv, mipLevel).rgb;
-
-    float2 dfg = probe.sharedResources.dfgTexture.SampleLevel(probe.sharedResources.dfgSampler, float2(sd.NdotV, sd.ggxAlpha), 0).xy;
-
-    // ld * (f0 * Gv * (1 - Fc)) + (f90 * Gv * Fc)
-    return ld * (sd.specular * dfg.x + dfg.y);
-}
-
-/** Evaluate a 2D light-probe filtered using linear-filtering
-*/
-LightSample evalLightProbeLinear2D(LightProbeData probe, ShadingData sd)
-{
-    LightSample ls;
-
-    // Calculate the reflection vector
-    ls.L = reflect(-sd.V, sd.N);
-
-    // Evaluate diffuse component
-    ls.diffuse = evalLightProbeDiffuse(probe, sd);
-
-    // Get the specular component
-    ls.specular = evalLightProbeSpecular(probe, sd, ls.L);
-
-    ls.diffuse *= probe.intensity;
-    ls.specular *= probe.intensity;
-    ls.posW = probe.posW;
-    ls.distance = length(probe.posW - sd.posW);
-    calcCommonLightProperties(sd, ls);
-
-    return ls;
-}
-
-/** Evaluate the properties of a light-probe
-*/
-LightSample evalLightProbe(LightProbeData probe, ShadingData sd)
-{
-    return evalLightProbeLinear2D(probe, sd);
-}

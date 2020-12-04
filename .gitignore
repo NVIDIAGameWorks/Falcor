@@ -17,3 +17,4 @@ Source/Externals/.packman/*
 Media
 Tools/.packman
 Tests/data
+*.tlog

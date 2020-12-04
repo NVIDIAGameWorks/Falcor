@@ -35,7 +35,7 @@ namespace Falcor
     */
 
     /** These flags are hints the driver to what pipeline stages the resource will be bound to.
-*/
+    */
     enum class ResourceBindFlags : uint32_t
     {
         None = 0x0,             ///< The resource will not be bound the pipeline. Use this to create a staging resource
@@ -266,6 +266,14 @@ namespace Falcor
     inline uint32_t getNumChannelBits(ResourceFormat format, int channel)
     {
         return kFormatDesc[(uint32_t)format].numChannelBits[channel];
+    }
+
+    /** Get the number of bytes per row. If format is compressed, width should be evenly divisible by the compression ratio.
+    */
+    inline uint32_t getFormatRowPitch(ResourceFormat format, uint32_t width)
+    {
+        assert(width % getFormatWidthCompressionRatio(format) == 0);
+        return (width / getFormatWidthCompressionRatio(format)) * getFormatBytesPerBlock(format);
     }
 
     /** Check if a format represents sRGB color space

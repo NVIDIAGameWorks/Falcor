@@ -33,7 +33,7 @@ namespace Mogwai
 {
     namespace
     {
-        const std::string kScriptVar = "fc";
+        const std::string kScriptVar = "frameCapture";
         const std::string kPrintFrames = "print";
         const std::string kFrames = "frames";
         const std::string kAddFrames = "addFrames";
@@ -73,18 +73,13 @@ namespace Mogwai
         }
     }
 
-    void FrameCapture::scriptBindings(Bindings& bindings)
+    void FrameCapture::registerScriptBindings(pybind11::module& m)
     {
-        CaptureTrigger::scriptBindings(bindings);
-        auto& m = bindings.getModule();
+        CaptureTrigger::registerScriptBindings(m);
 
         pybind11::class_<FrameCapture, CaptureTrigger> frameCapture(m, "FrameCapture");
 
-        bindings.addGlobalObject(kScriptVar, this, "Frame Capture Helpers");
-
         // Members
-        frameCapture.def(kFrames.c_str(), pybind11::overload_cast<const RenderGraph*, const uint64_vec&>(&FrameCapture::addFrames)); // PYTHONDEPRECATED
-        frameCapture.def(kFrames.c_str(), pybind11::overload_cast<const std::string&, const uint64_vec&>(&FrameCapture::addFrames)); // PYTHONDEPRECATED
         frameCapture.def(kAddFrames.c_str(), pybind11::overload_cast<const RenderGraph*, const uint64_vec&>(&FrameCapture::addFrames), "graph"_a, "frames"_a);
         frameCapture.def(kAddFrames.c_str(), pybind11::overload_cast<const std::string&, const uint64_vec&>(&FrameCapture::addFrames), "name"_a, "frames"_a);
 
@@ -105,16 +100,21 @@ namespace Mogwai
         frameCapture.def_property(kUI.c_str(), getUI, setUI);
     }
 
-    std::string FrameCapture::getScript()
+    std::string FrameCapture::getScriptVar() const
+    {
+        return kScriptVar;
+    }
+
+    std::string FrameCapture::getScript(const std::string& var) const
     {
         std::string s;
 
         s += "# Frame Capture\n";
-        s += CaptureTrigger::getScript(kScriptVar);
+        s += CaptureTrigger::getScript(var);
 
         for (const auto& g : mGraphRanges)
         {
-            s += Scripting::makeMemberFunc(kScriptVar, kAddFrames, g.first->getName(), getFirstOfPair(g.second));
+            s += ScriptWriter::makeMemberFunc(var, kAddFrames, g.first->getName(), getFirstOfPair(g.second));
         }
         return s;
     }

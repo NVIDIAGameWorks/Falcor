@@ -221,7 +221,7 @@ void AccumulatePass::renderUI(Gui::Widgets& widget)
         }
 
         const std::string text = std::string("Frames accumulated ") + std::to_string(mFrameCount);
-        widget.text(text.c_str());
+        widget.text(text);
     }
 }
 

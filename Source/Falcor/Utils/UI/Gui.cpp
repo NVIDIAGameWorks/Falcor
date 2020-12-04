@@ -117,6 +117,7 @@ namespace Falcor
         bool addDragDropDest(const char dataLabel[], std::string& payloadString);
 
         void addText(const char text[], bool sameLine = false);
+        void addTextWrapped(const char text[]);
         bool addTextbox(const char label[], std::string& text, uint32_t lineCount = 1, Gui::TextFlags flags = Gui::TextFlags::Empty);
         bool addTextbox(const char label[], char buf[], size_t bufSize, uint32_t lineCount = 1, Gui::TextFlags flags = Gui::TextFlags::Empty);
         bool addMultiTextbox(const char label[], const std::vector<std::string>& textLabels, std::vector<std::string>& textEntries);
@@ -512,9 +513,9 @@ namespace Falcor
 
     bool GuiImpl::addDirectionWidget(const char label[], float3& direction)
     {
-        float3 dir = direction;
+        float3 dir = glm::normalize(direction);
         bool b = addVecVar(label, dir, -1.f, 1.f, 0.001f, false, "%.3f");
-        direction = glm::normalize(dir);
+        if (b) direction = glm::normalize(dir);
         return b;
     }
 
@@ -574,6 +575,11 @@ namespace Falcor
     {
         if (sameLine) ImGui::SameLine();
         ImGui::TextUnformatted(text);
+    }
+
+    void GuiImpl::addTextWrapped(const char text[])
+    {
+        ImGui::TextWrapped("%s", text);
     }
 
     bool GuiImpl::addTextbox(const char label[], char buf[], size_t bufSize, uint32_t lineCount, Gui::TextFlags flags)
@@ -700,6 +706,10 @@ namespace Falcor
         {
             return addScalarVarHelper(label, var, ImGuiDataType_U64, minVal, maxVal, step, sameLine, displayFormat);
         }
+        else if (std::is_same<T, double>::value)
+        {
+            return addScalarVarHelper(label, var, ImGuiDataType_Double, minVal, maxVal, step, sameLine, displayFormat);
+        }
         else
         {
             logError("Unsupported slider type");
@@ -731,6 +741,10 @@ namespace Falcor
         else if (std::is_same<T, float>::value)
         {
             return addScalarSliderHelper(label, var, ImGuiDataType_Float, minVal, maxVal, sameLine, displayFormat);
+        }
+        else if (std::is_same<T, double>::value)
+        {
+            return addScalarSliderHelper(label, var, ImGuiDataType_Double, minVal, maxVal, sameLine, displayFormat);
         }
         else
         {
@@ -1191,6 +1205,7 @@ namespace Falcor
     add_scalarVar_type(uint32_t);
     add_scalarVar_type(uint64_t);
     add_scalarVar_type(float);
+    add_scalarVar_type(double);
 
 #undef add_scalarVar_type
 
@@ -1208,6 +1223,7 @@ namespace Falcor
     add_scalarSlider_type(uint32_t);
     add_scalarSlider_type(uint64_t);
     add_scalarSlider_type(float);
+    add_scalarSlider_type(double);
 
 #undef add_scalarSlider_type
 
@@ -1256,6 +1272,11 @@ namespace Falcor
     void Gui::Widgets::text(const std::string& text, bool sameLine)
     {
         if (mpGui) mpGui->mpWrapper->addText(text.c_str(), sameLine);
+    }
+
+    void Gui::Widgets::textWrapped(const std::string& text)
+    {
+        if (mpGui) mpGui->mpWrapper->addTextWrapped(text.c_str());
     }
 
     bool Gui::Widgets::textbox(const std::string& label, std::string& text, TextFlags flags)

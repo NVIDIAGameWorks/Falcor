@@ -144,6 +144,10 @@ namespace Falcor
 
         virtual bool apply(ComputeContext* pContext, bool bindRootSig, RootSignature* pRootSignature);
 
+        /** Dispatch the program using the argument values set in this object.
+        */
+        void dispatchCompute(ComputeContext* pContext, uint3 const& threadGroupCount);
+
     protected:
         ComputeVars(const ProgramReflection::SharedConstPtr& pReflector);
     };

@@ -1,8 +1,24 @@
+<#
+Copyright 2019 NVIDIA CORPORATION
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+#>
+
 param(
 [Parameter(Mandatory=$true)][string]$sourceName=$null,
 [string]$output="out.exe"
 )
-$source = "http://packman-bootstrap.s3.amazonaws.com/" + $sourceName
+$source = "http://bootstrap.packman.nvidia.com/" + $sourceName
 $filename = $output
 
 $triesLeft = 3
@@ -15,7 +31,7 @@ do
 
     try
     {
-        Write-Host "Connecting to S3 ..."
+        Write-Host "Connecting to bootstrap.packman.nvidia.com ..."
         $res = $req.GetResponse()
         if($res.StatusCode -eq "OK") {
           Write-Host "Downloading ..."
@@ -35,13 +51,13 @@ do
                 Write-Progress "Downloading $url" "Saving $total bytes..." -id 0
             }
           } while ($count -gt 0)
-         
+
           $triesLeft = 0
         }
     }
     catch
     {
-        Write-Host "Error connecting to S3!"
+        Write-Host "Error downloading $source!"
         Write-Host $_.Exception|format-list -force
     }
     finally

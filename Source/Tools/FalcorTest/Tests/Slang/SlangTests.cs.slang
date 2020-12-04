@@ -131,6 +131,12 @@ struct Foo
     A f;
 };
 
+struct Foo2
+{
+    int a;
+    Type3 t = Type3::C;
+};
+
 [numthreads(1, 1, 1)]
 void testDefaultInitializers()
 {
@@ -226,5 +232,17 @@ void testDefaultInitializers()
         result[i++] = asuint(foo.f.b);
     }
 
-    // All done (i=35)
+    // Struct with enum (i=35)
+    {
+        Foo2 foo;
+        foo.a = 1;
+        foo.t = Type3::B;
+
+        foo = {};
+
+        result[i++] = (uint)foo.a;
+        result[i++] = (uint)foo.t; // Enum should be initialized to its default value specified in the struct declaration (i=36)
+    }
+
+    // All done (i=37)
 }

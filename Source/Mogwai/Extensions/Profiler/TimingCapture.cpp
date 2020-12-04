@@ -32,7 +32,7 @@ namespace Mogwai
 {
     namespace
     {
-        const std::string kScriptVar = "tc";
+        const std::string kScriptVar = "timingCapture";
         const std::string kCaptureFrameTime = "captureFrameTime";
     }
 
@@ -43,16 +43,17 @@ namespace Mogwai
         return UniquePtr(new TimingCapture(pRenderer));
     }
 
-    void TimingCapture::scriptBindings(Bindings& bindings)
+    void TimingCapture::registerScriptBindings(pybind11::module& m)
     {
-        auto& m = bindings.getModule();
-
         pybind11::class_<TimingCapture> timingCapture(m, "TimingCapture");
-
-        bindings.addGlobalObject(kScriptVar, this, "Timing Capture Helpers");
 
         // Members
         timingCapture.def(kCaptureFrameTime.c_str(), &TimingCapture::captureFrameTime, "filename"_a);
+    }
+
+    std::string TimingCapture::getScriptVar() const
+    {
+        return kScriptVar;
     }
 
     void TimingCapture::beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)

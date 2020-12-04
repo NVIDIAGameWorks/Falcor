@@ -68,7 +68,7 @@ namespace Falcor
 
         mSubTables[uint32_t(SubTableType::RayGen)].recordCount = pVars->getRayGenVarsCount();
         mSubTables[uint32_t(SubTableType::Miss)].recordCount = pVars->getMissVarsCount();
-        mSubTables[uint32_t(SubTableType::Hit)].recordCount = pVars->getTotalHitVarsCount();
+        mSubTables[uint32_t(SubTableType::Hit)].recordCount = pVars->getTotalHitVarsCount() + pVars->getAABBHitVarsCount();
 
         for (auto pUniqueEntryPointGroup : pKernels->getUniqueEntryPointGroups())
         {

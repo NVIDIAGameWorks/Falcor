@@ -57,13 +57,14 @@ GBuffer storeGBufferOutput(ShadingData sd, VertexData v)
 {
     GBuffer gbuf;
 
-    // Check that tangent space exists, otherwise create one based on the normal.
-    // Note that this check also catches NaNs, should they occur.
-    float4 tangent = v.tangentW.w != 0.f ? v.tangentW : float4(perp_stark(sd.N), 1.f);
+    // We store the final normal and tangent in the G-buffer.
+    // In order to reconstruct the bitangent later, we also need to store its handedness (sign).
+    float3 B = cross(sd.N, sd.T);
+    float tangentSign = dot(sd.B, B) >= 0.f ? 1.f : -1.f;
 
     gbuf.posW           = float4(sd.posW, 1.f);
     gbuf.normW          = float4(sd.N, 0.f);
-    gbuf.tangentW       = tangent;
+    gbuf.tangentW       = float4(sd.T, tangentSign);
     gbuf.texC           = float4(sd.uv, 0.f, 0.f);
 
     MaterialParams matParams = getMaterialParams(sd);

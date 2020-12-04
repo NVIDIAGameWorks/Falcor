@@ -27,16 +27,26 @@
  **************************************************************************/
 import Scene.SceneTypes;
 
+/** Compute pass for skinned vertex animation.
+
+    The dispatch size is one thread per dynamic vertex.
+*/
+
 struct SkinningData
 {
-    StructuredBuffer<PackedStaticVertexData> staticData;
-    StructuredBuffer<DynamicVertexData> dynamicData;
-    RWStructuredBuffer<PackedStaticVertexData> skinnedVertices;
-    RWStructuredBuffer<PrevVertexData> prevSkinnedVertices;
+    // Vertex data
+    StructuredBuffer<PackedStaticVertexData> staticData;            ///< Original global vertex buffer. This holds the unmodified input vertices.
+    StructuredBuffer<DynamicVertexData> dynamicData;                ///< Bone IDs and weights for all dynamic vertices.
+    RWStructuredBuffer<PackedStaticVertexData> skinnedVertices;     ///< Skinned global vertex buffer. We'll update the positions only for the dynamic meshes.
+    RWStructuredBuffer<PrevVertexData> prevSkinnedVertices;         ///< Previous frame vertex positions for dynamic meshes. Same size as 'dynamicData'.
+
+    // Transforms
     StructuredBuffer<float4> boneMatrices;
     StructuredBuffer<float4> inverseTransposeBoneMatrices;
     StructuredBuffer<float4> worldMatrices;
     StructuredBuffer<float4> inverseTransposeWorldMatrices;
+
+    // Accessors
 
     float4x4 getTransposeWorldMatrix(uint matrixID)
     {
@@ -113,7 +123,7 @@ struct SkinningData
     void storeSkinnedVertexData(uint vertexId, StaticVertexData data, PrevVertexData prevData)
     {
         gData.skinnedVertices[getStaticVertexID(vertexId)].pack(data);
-        gData.prevSkinnedVertices[getStaticVertexID(vertexId)] = prevData;
+        gData.prevSkinnedVertices[vertexId] = prevData;
     }
 
     float3 getCurrentPosition(uint vertexId)

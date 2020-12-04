@@ -190,11 +190,12 @@ namespace Falcor
 
     static void D3D12SetFbo(RenderContext* pCtx, const Fbo* pFbo)
     {
-        // We are setting the entire RTV array to make sure everything that was previously bound is detached
+        // We are setting the entire RTV array to make sure everything that was previously bound is detached.
+        // We're using 2D null views for any unused slots.
         uint32_t colorTargets = Fbo::getMaxColorTargetCount();
-        auto pNullRtv = RenderTargetView::getNullView();
+        auto pNullRtv = RenderTargetView::getNullView(RenderTargetView::Dimension::Texture2D);
         std::vector<HeapCpuHandle> pRTV(colorTargets, pNullRtv->getApiHandle()->getCpuHandle(0));
-        HeapCpuHandle pDSV = DepthStencilView::getNullView()->getApiHandle()->getCpuHandle(0);
+        HeapCpuHandle pDSV = DepthStencilView::getNullView(DepthStencilView::Dimension::Texture2D)->getApiHandle()->getCpuHandle(0);
 
         if (pFbo)
         {

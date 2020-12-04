@@ -50,7 +50,7 @@ namespace Falcor
         void printToLog();
 
         /** Records a time measurement.
-            Measures time since last call to reset() or reportTime(), whichever happened more recently.
+            Measures time since last call to reset() or measure(), whichever happened more recently.
             \param[in] name Name of the record.
         */
         void measure(const std::string& name);

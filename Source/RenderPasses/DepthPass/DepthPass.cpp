@@ -103,7 +103,7 @@ void DepthPass::execute(RenderContext* pContext, const RenderData& renderData)
     mpState->setFbo(mpFbo);
     pContext->clearDsv(pDepth->getDSV().get(), 1, 0);
 
-    if (mpScene) mpScene->render(pContext, mpState.get(), mpVars.get(), mpRsState ? Scene::RenderFlags::UserRasterizerState : Scene::RenderFlags::None);
+    if (mpScene) mpScene->rasterize(pContext, mpState.get(), mpVars.get(), mpRsState ? Scene::RenderFlags::UserRasterizerState : Scene::RenderFlags::None);
 }
 
 DepthPass& DepthPass::setDepthBufferFormat(ResourceFormat format)

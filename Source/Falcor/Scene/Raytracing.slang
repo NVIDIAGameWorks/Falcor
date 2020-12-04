@@ -25,12 +25,13 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+import Utils.Attributes;
 __exported import Scene.Scene;
 __exported import Scene.Shading;
 
 import Experimental.Scene.Material.TexLODHelpers;
 
-RaytracingAccelerationStructure gRtScene;
+[root] RaytracingAccelerationStructure gRtScene;
 
 cbuffer DxrPerFrame
 {

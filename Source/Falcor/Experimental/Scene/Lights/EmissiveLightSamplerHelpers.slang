@@ -56,7 +56,6 @@ bool sampleTriangle(const float3 posW, const uint triangleIndex, const float2 u,
 {
     ls = {};
     ls.triangleIndex = triangleIndex;
-
     const EmissiveTriangle tri = gScene.lightCollection.getTriangle(triangleIndex);
 
     // Sample the triangle uniformly.
@@ -85,6 +84,9 @@ bool sampleTriangle(const float3 posW, const uint triangleIndex, const float2 u,
     // Note: Guard against div-by-zero here by clamping.
     float denom = max(FLT_MIN, cosTheta * tri.area);
     ls.pdf = distSqr / denom;
+
+    // Save light sample triangle barycentric coordinates 
+    ls.uv = u;
 
     // TODO: We can simplify the expressions by using the unnormalized quantities for computing the pdf.
     //ls.pdf = -2.f * distSqr * ls.distance / (dot(N, L);    // Optimized (except N would have to be properly flipped above, before normalW is computed).

@@ -121,7 +121,6 @@ namespace Falcor
         bool update(RenderContext* pRenderContext, UpdateStatus* pUpdateStatus = nullptr);
 
         /** Bind the light collection data to a given shader var
-            Note that prepareProgram() must have been called before this function.
             \param[in] var The shader variable to set the data into.
             \return True if successful, false otherwise.
         */
@@ -157,6 +156,10 @@ namespace Falcor
         */
         void prepareSyncCPUData(RenderContext* pRenderContext) const { copyDataToStagingBuffer(pRenderContext); }
 
+        /** Get the total GPU memory usage in bytes.
+        */
+        uint64_t getMemoryUsageInBytes() const;
+
         // Internal update flags. This only public for enum_class_operators() to work.
         enum class CPUOutOfDateFlags : uint32_t
         {
@@ -171,22 +174,22 @@ namespace Falcor
         LightCollection() = default;
 
         bool init(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene);
-        bool initIntegrator();
-        bool setupMeshLights();
-        void build(RenderContext* pRenderContext);
-        void prepareTriangleData(RenderContext* pRenderContext);
-        void prepareMeshData();
-        void integrateEmissive(RenderContext* pRenderContext);
+        bool initIntegrator(const Scene& scene);
+        bool setupMeshLights(const Scene& scene);
+        void build(RenderContext* pRenderContext, const Scene& scene);
+        void prepareTriangleData(RenderContext* pRenderContext, const Scene& scene);
+        void prepareMeshData(const Scene& scene);
+        void integrateEmissive(RenderContext* pRenderContext, const Scene& scene);
         void computeStats() const;
-        void buildTriangleList(RenderContext* pRenderContext);
+        void buildTriangleList(RenderContext* pRenderContext, const Scene& scene);
         void updateActiveTriangleList();
-        void updateTrianglePositions(RenderContext* pRenderContext, const std::vector<uint32_t>& updatedLights);
+        void updateTrianglePositions(RenderContext* pRenderContext, const Scene& scene, const std::vector<uint32_t>& updatedLights);
 
         void copyDataToStagingBuffer(RenderContext* pRenderContext) const;
         void syncCPUData() const;
 
         // Internal state
-        std::shared_ptr<Scene>                  mpScene;
+        std::weak_ptr<Scene>                    mpScene;                ///< Weak pointer to scene (scene owns LightCollection).
 
         std::vector<MeshLightData>              mMeshLights;            ///< List of all mesh lights.
         uint32_t                                mTriangleCount = 0;     ///< Total number of triangles in all mesh lights (= mMeshLightTriangles.size()). This may include culled triangles.

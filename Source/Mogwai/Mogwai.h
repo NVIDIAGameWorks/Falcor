@@ -38,27 +38,6 @@ namespace Mogwai
     class Extension
     {
     public:
-        class Bindings
-        {
-        public:
-            pybind11::module& getModule() { return mModule; }
-            pybind11::class_<Renderer>& getMogwaiClass() { return mMogwai; }
-            template<typename T>
-            void addGlobalObject(const std::string& name, const T& obj, const std::string& desc)
-            {
-                if (mGlobalObjects.find(name) != mGlobalObjects.end()) throw std::exception(("Object '" + name + "' already exists").c_str());
-                Scripting::getGlobalContext().setObject(name, obj);
-                mGlobalObjects[name] = desc;
-            }
-
-        private:
-            Bindings(pybind11::module& m, pybind11::class_<Renderer>& c) : mModule(m), mMogwai(c) {}
-            friend class Renderer;
-            std::unordered_map<std::string, std::string> mGlobalObjects;
-            pybind11::module& mModule;
-            pybind11::class_<Renderer>& mMogwai;
-        };
-
         using UniquePtr = std::unique_ptr<Extension>;
         virtual ~Extension() = default;
 
@@ -73,8 +52,9 @@ namespace Mogwai
         virtual void renderUI(Gui* pGui) {};
         virtual bool mouseEvent(const MouseEvent& e) { return false; }
         virtual bool keyboardEvent(const KeyboardEvent& e) { return false; }
-        virtual void scriptBindings(Bindings& bindings) {};
-        virtual std::string getScript() { return {}; }
+        virtual void registerScriptBindings(pybind11::module& m) {};
+        virtual std::string getScriptVar() const { return {}; }
+        virtual std::string getScript(const std::string& var) const { return {}; }
         virtual void addGraph(RenderGraph* pGraph) {};
         virtual void removeGraph(RenderGraph* pGraph) {};
         virtual void activeGraphChanged(RenderGraph* pNewGraph, RenderGraph* pPrevGraph) {};
@@ -158,6 +138,7 @@ namespace Mogwai
         void removeActiveGraph();
         void loadSceneDialog();
         void loadScene(std::string filename, SceneBuilder::Flags buildFlags = SceneBuilder::Flags::Default);
+        void unloadScene();
         void setScene(const Scene::SharedPtr& pScene);
         Scene::SharedPtr getScene() const;
         void executeActiveGraph(RenderContext* pRenderContext);
@@ -195,7 +176,6 @@ namespace Mogwai
 
         // Scripting
         void registerScriptBindings(pybind11::module& m);
-        std::string mGlobalHelpMessage;
     };
 
 #define MOGWAI_EXTENSION(Name)                         \

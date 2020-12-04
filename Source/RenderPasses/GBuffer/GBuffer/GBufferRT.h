@@ -55,8 +55,8 @@ public:
         RayCones         = 2,       // Cone based LOD computation (not implemented yet)
     };
 
-private:
-    GBufferRT(const Dictionary& dict);
+protected:
+    GBufferRT() : GBuffer() {}
     void parseDictionary(const Dictionary& dict) override;
 
     // Internal state
@@ -75,4 +75,7 @@ private:
     static const char* kDesc;
     static void registerBindings(pybind11::module& m);
     friend void getPasses(Falcor::RenderPassLibrary& lib);
+
+private:
+    GBufferRT(const Dictionary& dict);
 };

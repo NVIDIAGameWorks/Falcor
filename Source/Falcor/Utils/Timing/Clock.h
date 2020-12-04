@@ -52,24 +52,15 @@ namespace Falcor
         */
         Clock& setTime(double seconds, bool deferToNextTick = false);
 
-        deprecate("4.0.1", "Use setTime() instead.")
-        Clock& now(double seconds, bool deferToNextTick = false) { return setTime(seconds, deferToNextTick); }
-
         /** Get the time of the last `tick()` call
         */
         double getTime() const { return mTime.now; }
-
-        deprecate("4.0.1", "Use getTime() instead.")
-        double now() const { return getTime(); }
 
         /** Get the time delta between the 2 previous ticks. This function respects the FPS simulation setting
             Note that due to floating-point precision, this function won't necessarily return exactly (1/FPS) when simulating framerate.
             This function will potentially return a negative number, for example when resetting the time to zero
         */
         double getDelta() const { return mTime.delta; }
-
-        deprecate("4.0.1", "Use getDelta() instead.")
-        double delta() const { return getDelta(); }
 
         /** Set the current frame ID. Calling this will cause the next `tick()` call to be skipped
             When running in real-time mode, it will only change the frame number without affecting the time
@@ -79,25 +70,16 @@ namespace Falcor
         */
         Clock& setFrame(uint64_t f, bool deferToNextTick = false);
 
-        deprecate("4.0.1", "Use setFrame() instead.")
-        Clock& frame(uint64_t f, bool deferToNextTick = false) { return setFrame(f, deferToNextTick); }
-
         /** Get the current frame ID.
             When running in real-time mode, this is the number of frames since the last time the time was set.
             When simulating FPS, the number of frames according to the time
         */
         uint64_t getFrame() const { return mFrames; }
 
-        deprecate("4.0.1", "Use getFrame() instead.")
-        uint64_t frame() const { return getFrame(); }
-
         /** Get the real-time delta between the 2 previous ticks.
             This function returns the actual time that passed between the 2 `tick()` calls. It doesn't any time-manipulation setting like time-scaling and FPS simulation
         */
         double getRealTimeDelta() const { return mRealtime.delta; }
-
-        deprecate("4.0.1", "Use getRealTimeDelta() instead.")
-        double realTimeDelta() const { return getRealTimeDelta(); }
 
         /** Set the time at which to terminate the application.
         */
@@ -129,15 +111,9 @@ namespace Falcor
         */
         Clock& setFramerate(uint32_t fps);
 
-        deprecate("4.0.1", "Use setFramerate() instead.")
-        Clock& framerate(uint32_t fps) { return setFramerate(fps); }
-
         /** Get the requested FPS value
         */
         uint32_t getFramerate() const { return mFramerate; }
-
-        deprecate("4.0.1", "Use getFramerate() instead.")
-        uint32_t framerate() const { return getFramerate(); }
 
         /** Pause the clock
         */
@@ -161,15 +137,9 @@ namespace Falcor
         */
         Clock& setTimeScale(double scale) { mScale = scale; return *this; }
 
-        deprecate("4.0.1", "Use setTimeScale() instead.")
-        Clock& timeScale(double scale) { return setTimeScale(scale); }
-
         /** Get the scale
         */
         double getTimeScale() const { return mScale; }
-
-        deprecate("4.0.1", "Use getTimeScale() instead.")
-        double timeScale() const { return getTimeScale(); }
 
         /** Check if the clock is paused
         */
@@ -178,9 +148,6 @@ namespace Falcor
         /** Check if the clock is in real-time mode
         */
         bool isSimulatingFps() const { return mFramerate != 0; }
-
-        deprecate("4.0.1", "Use isSimulatingFps() instead.")
-        bool simulatingFps() const { return isSimulatingFps(); }
 
         /** Render the UI
         */

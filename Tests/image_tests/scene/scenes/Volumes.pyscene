@@ -1,0 +1,24 @@
+# Create volumes
+
+sphereVolume = Volume('Sphere')
+sphereVolume.densityGrid = Grid.createSphere(1.0, 0.01)
+sphereVolume.densityScale = 0.5
+sceneBuilder.addVolume(sphereVolume)
+
+boxVolume = Volume('Box')
+boxVolume.densityGrid = Grid.createBox(1.0, 1.0, 1.0, 0.01)
+boxVolume.densityScale = 2.5
+sceneBuilder.addVolume(boxVolume)
+
+# Create camera
+
+camera = Camera()
+camera.position = float3(1, 1, 1)
+camera.target = float3(0, 0, 0)
+camera.up = float3(0, 1, 0)
+sceneBuilder.addCamera(camera)
+
+# Setup envmap
+
+sceneBuilder.envMap = EnvMap("Arcade/BlueSky.png")
+sceneBuilder.envMap.intensity = 1

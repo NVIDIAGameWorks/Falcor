@@ -9,7 +9,7 @@ def render_graph_WhittedRayTracer():
     g.addPass(WhittedRayTracer, "WhittedRayTracer")
     GBufferRaster = createPass("GBufferRaster", {'samplePattern': SamplePattern.Center, 'sampleCount': 1, 'forceCullMode': True, 'cull': CullMode.CullNone,})
     g.addPass(GBufferRaster, "GBufferRaster")
-    ToneMapper = createPass("ToneMapper", {'autoExposure': False, 'exposureValue': 1.0, 'exposureCompensation': 1.0, 'operator': ToneMapOp.Linear})
+    ToneMapper = createPass("ToneMapper", {'autoExposure': False, 'exposureCompensation': 0.0, 'operator': ToneMapOp.Linear})
     g.addPass(ToneMapper, "ToneMapper")
     g.addEdge("WhittedRayTracer.color", "ToneMapper.src")
     g.addEdge("GBufferRaster.posW", "WhittedRayTracer.posW")

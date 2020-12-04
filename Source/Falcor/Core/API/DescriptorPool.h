@@ -56,6 +56,7 @@ namespace Falcor
             Cbv,
             StructuredBufferUav,
             StructuredBufferSrv,
+            AccelerationStructureSrv,
             Dsv,
             Rtv,
             Sampler,

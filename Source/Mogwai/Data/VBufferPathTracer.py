@@ -6,7 +6,7 @@ def render_graph_VBufferPathTracerGraph():
     loadRenderPassLibrary("MegakernelPathTracer.dll")
     AccumulatePass = createPass("AccumulatePass", {'enableAccumulation': True})
     g.addPass(AccumulatePass, "AccumulatePass")
-    ToneMappingPass = createPass("ToneMapper", {'autoExposure': False, 'exposureValue': 0.0})
+    ToneMappingPass = createPass("ToneMapper", {'autoExposure': False, 'exposureCompensation': 0.0})
     g.addPass(ToneMappingPass, "ToneMappingPass")
     VBufferRT = createPass("VBufferRT", {'samplePattern': SamplePattern.Stratified, 'sampleCount': 16})
     g.addPass(VBufferRT, "VBufferRT")

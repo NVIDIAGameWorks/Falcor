@@ -41,16 +41,23 @@ enum class EmissiveLightSamplerType
 {
     Uniform     = 0,
     LightBVH    = 1,
+    Power       = 2,
+
+    Null        = 0xff,
 };
 
 // For shader specialization in EmissiveLightSampler.slang we can't use the enums.
 // TODO: Find a way to remove this workaround.
 #define EMISSIVE_LIGHT_SAMPLER_UNIFORM      0
 #define EMISSIVE_LIGHT_SAMPLER_LIGHT_BVH    1
+#define EMISSIVE_LIGHT_SAMPLER_POWER        2
+#define EMISSIVE_LIGHT_SAMPLER_NULL         0xff
 
 #ifdef HOST_CODE
 static_assert((uint32_t)EmissiveLightSamplerType::Uniform == EMISSIVE_LIGHT_SAMPLER_UNIFORM);
 static_assert((uint32_t)EmissiveLightSamplerType::LightBVH == EMISSIVE_LIGHT_SAMPLER_LIGHT_BVH);
+static_assert((uint32_t)EmissiveLightSamplerType::Power == EMISSIVE_LIGHT_SAMPLER_POWER);
+static_assert((uint32_t)EmissiveLightSamplerType::Null == EMISSIVE_LIGHT_SAMPLER_NULL);
 #endif
 
 END_NAMESPACE_FALCOR

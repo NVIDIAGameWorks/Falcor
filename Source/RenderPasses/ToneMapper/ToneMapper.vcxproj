@@ -14,7 +14,7 @@
     <ProjectGuid>{E58DB0ED-58CD-4724-91EA-99419084CB3A}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>ToneMapper</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
     <ProjectName>ToneMapper</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

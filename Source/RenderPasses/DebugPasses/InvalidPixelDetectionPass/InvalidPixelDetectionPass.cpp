@@ -33,6 +33,7 @@ namespace
 {
     const std::string kSrc = "src";
     const std::string kDst = "dst";
+    const std::string kFormatWarning = "Non-float format can't represent Inf/NaN values. Expect black output.";
 }
 
 InvalidPixelDetectionPass::InvalidPixelDetectionPass()
@@ -86,8 +87,34 @@ void InvalidPixelDetectionPass::compile(RenderContext* pContext, const CompileDa
 
 void InvalidPixelDetectionPass::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    mpInvalidPixelDetectPass["gTexture"] = renderData[kSrc]->asTexture();
+    const auto& pSrc = renderData[kSrc]->asTexture();
+    mFormat = ResourceFormat::Unknown;
+    if (pSrc)
+    {
+        mFormat = pSrc->getFormat();
+        if (getFormatType(mFormat) != FormatType::Float)
+        {
+            logWarning("InvalidPixelDetectionPass::execute() -  " + kFormatWarning);
+        }
+    }
+
+    mpInvalidPixelDetectPass["gTexture"] = pSrc;
     mpFbo->attachColorTarget(renderData[kDst]->asTexture(), 0);
     mpInvalidPixelDetectPass->getState()->setFbo(mpFbo);
     mpInvalidPixelDetectPass->execute(pRenderContext, mpFbo);
+}
+
+void InvalidPixelDetectionPass::renderUI(Gui::Widgets& widget)
+{
+    widget.textWrapped("Pixels are colored red if NaN, green if Inf, and black otherwise.");
+
+    if (mFormat != ResourceFormat::Unknown)
+    {
+        widget.dummy("#space", { 1, 10 });
+        widget.text("Input format: " + to_string(mFormat));
+        if (getFormatType(mFormat) != FormatType::Float)
+        {
+            widget.textWrapped("Warning: " + kFormatWarning);
+        }
+    }
 }

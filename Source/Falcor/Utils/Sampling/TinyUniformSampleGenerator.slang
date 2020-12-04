@@ -46,15 +46,26 @@ struct TinyUniformSampleGenerator : ISampleGenerator
     };
 
     /** Create sample generator.
+        \param[in] seed Seed value.
+        \return Return a new sample generator.
+    */
+    static TinyUniformSampleGenerator create(uint seed)
+    {
+        TinyUniformSampleGenerator sampleGenerator;
+        sampleGenerator.rng = createLCG(seed);
+        return sampleGenerator;
+    }
+
+    /** Create sample generator for a given pixel and sample number.
+        \param[in] pixel Pixel id.
+        \param[in] sampleNumber Sample number.
+        \return Return a new sample generator.
     */
     static TinyUniformSampleGenerator create(uint2 pixel, uint sampleNumber)
     {
-        TinyUniformSampleGenerator sampleGenerator;
-
         // Use block cipher to generate a pseudorandom initial seed.
         uint seed = blockCipherTEA(interleave_32bit(pixel), sampleNumber).x;
-        sampleGenerator.rng = createLCG(seed);
-        return sampleGenerator;
+        return create(seed);
     }
 
     /** Returns the next sample value. This function updates the state.

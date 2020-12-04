@@ -46,7 +46,7 @@ namespace Falcor
         */
         virtual bool onMouseEvent(const MouseEvent& mouseEvent) { return false; }
 
-        /* Handle keyboard events
+        /** Handle keyboard events
         */
         virtual bool onKeyEvent(const KeyboardEvent& keyboardEvent) { return false; }
 

@@ -211,20 +211,28 @@ namespace Falcor
             return ReflectionResourceType::Type::Sampler;
         case TypeReflection::Kind::ShaderStorageBuffer:
             return ReflectionResourceType::Type::StructuredBuffer;
+        case TypeReflection::Kind::TextureBuffer:
+            return ReflectionResourceType::Type::TypedBuffer;
         case TypeReflection::Kind::Resource:
             switch (pSlangType->getResourceShape() & SLANG_RESOURCE_BASE_SHAPE_MASK)
             {
             case SLANG_STRUCTURED_BUFFER:
                 return ReflectionResourceType::Type::StructuredBuffer;
-
             case SLANG_BYTE_ADDRESS_BUFFER:
                 return ReflectionResourceType::Type::RawBuffer;
             case SLANG_TEXTURE_BUFFER:
                 return ReflectionResourceType::Type::TypedBuffer;
-            default:
+            case SLANG_ACCELERATION_STRUCTURE:
+                return ReflectionResourceType::Type::AccelerationStructure;
+            case SLANG_TEXTURE_1D:
+            case SLANG_TEXTURE_2D:
+            case SLANG_TEXTURE_3D:
+            case SLANG_TEXTURE_CUBE:
                 return ReflectionResourceType::Type::Texture;
+            default:
+                should_not_get_here();
+                return ReflectionResourceType::Type(-1);
             }
-            break;
         default:
             should_not_get_here();
             return ReflectionResourceType::Type(-1);
@@ -311,6 +319,8 @@ namespace Falcor
             return ReflectionResourceType::Dimensions::TextureCube;
         case SLANG_TEXTURE_CUBE_ARRAY:
             return ReflectionResourceType::Dimensions::TextureCubeArray;
+        case SLANG_ACCELERATION_STRUCTURE:
+            return ReflectionResourceType::Dimensions::AccelerationStructure;
 
         case SLANG_TEXTURE_BUFFER:
         case SLANG_STRUCTURED_BUFFER:
@@ -638,9 +648,11 @@ namespace Falcor
         // Check that the root descriptor type is supported.
         if (isRootDescriptor)
         {
-            if (type != ReflectionResourceType::Type::RawBuffer && type != ReflectionResourceType::Type::StructuredBuffer)
+            // Check the resource type and shader access.
+            if (type != ReflectionResourceType::Type::RawBuffer && type != ReflectionResourceType::Type::StructuredBuffer &&
+                type != ReflectionResourceType::Type::AccelerationStructure)
             {
-                logError("Resource '" + name + "' cannot be bound as root descriptor. Only raw and structured buffers are supported.");
+                logError("Resource '" + name + "' cannot be bound as root descriptor. Only raw buffers, structured buffers, and acceleration structures are supported.");
                 return nullptr;
             }
             if (shaderAccess != ReflectionResourceType::ShaderAccess::Read &&
@@ -649,6 +661,8 @@ namespace Falcor
                 logError("Buffer '" + name + "' cannot be bound as root descriptor. Only SRV/UAVs are supported.");
                 return nullptr;
             }
+            assert(type != ReflectionResourceType::Type::AccelerationStructure || shaderAccess == ReflectionResourceType::ShaderAccess::Read);
+
             // Check that it's not an append/consume structured buffer, which is unsupported for root descriptors.
             // RWStructuredBuffer with counter is also not supported, but we cannot see that on the type declaration.
             // At bind time, we'll validate that the buffer has not been created with a UAV counter.
@@ -661,7 +675,7 @@ namespace Falcor
                     return nullptr;
                 }
             }
-            assert(dims == ReflectionResourceType::Dimensions::Buffer); // We shouldn't get here otherwise
+            assert(dims == ReflectionResourceType::Dimensions::Buffer || dims == ReflectionResourceType::Dimensions::AccelerationStructure); // We shouldn't get here otherwise
         }
 
         ReflectionResourceType::SharedPtr pType = ReflectionResourceType::create(type, dims, structuredType, retType, shaderAccess, pSlangType);
@@ -670,6 +684,7 @@ namespace Falcor
         ParameterBlockReflection::ResourceRangeBindingInfo bindingInfo;
         bindingInfo.regIndex = (uint32_t)getRegisterIndexFromPath(pPath->pPrimary, category);
         bindingInfo.regSpace = getRegisterSpaceFromPath(pPath->pPrimary, category);
+        bindingInfo.dimension = dims;
 
         if (isRootDescriptor) bindingInfo.flavor = ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::RootDescriptor;
 
@@ -707,12 +722,27 @@ namespace Falcor
                 pProgramVersion);
             pSubBlock->setElementType(pElementType);
 
-            if (pElementType->getByteSize() != 0)
+            auto pContainerLayout = pSlangType->getContainerVarLayout();
+            ExtendedReflectionPath containerPath(pPath, pContainerLayout);
+            int32_t containerCategoryCount = pContainerLayout->getCategoryCount();
+            for (int32_t containerCategoryIndex = 0; containerCategoryIndex < containerCategoryCount; ++containerCategoryIndex)
             {
-                ParameterBlockReflection::DefaultConstantBufferBindingInfo defaultConstantBufferInfo;
-                defaultConstantBufferInfo.regIndex = bindingInfo.regIndex;
-                defaultConstantBufferInfo.regSpace = bindingInfo.regSpace;
-                pSubBlock->setDefaultConstantBufferBindingInfo(defaultConstantBufferInfo);
+                auto containerCategory = pContainerLayout->getCategoryByIndex(containerCategoryIndex);
+                switch (containerCategory)
+                {
+                case slang::ParameterCategory::DescriptorTableSlot:
+                case slang::ParameterCategory::ConstantBuffer:
+                    {
+                        ParameterBlockReflection::DefaultConstantBufferBindingInfo defaultConstantBufferInfo;
+                        defaultConstantBufferInfo.regIndex = (uint32_t)getRegisterIndexFromPath(containerPath.pPrimary, containerCategory);
+                        defaultConstantBufferInfo.regSpace = getRegisterSpaceFromPath(containerPath.pPrimary, containerCategory);
+                        pSubBlock->setDefaultConstantBufferBindingInfo(defaultConstantBufferInfo);
+                    }
+                    break;
+
+                default:
+                    break;
+                }
             }
 
             pSubBlock->finalize();
@@ -1106,22 +1136,57 @@ namespace Falcor
 
     static bool isVaryingParameter(slang::VariableLayoutReflection* pSlangParam)
     {
+        // TODO: It is unfortunate that Falcor has to maintain this logic,
+        // since there is nearly identical logic already in Slang.
+        //
+        // The basic problem is that we want to know whether a parameter
+        // is logically "uniform" or logically "varying."
+        //
+        // In the common cases, we can tell by looking at the kind(s)
+        // of resources the parameter consumes; if it uses any
+        // kinds of resources that only make sense for varying
+        // parameters, then it is varying.
+        //
         unsigned int categoryCount = pSlangParam->getCategoryCount();
         for( unsigned int ii = 0; ii < categoryCount; ++ii )
         {
             switch(pSlangParam->getCategoryByIndex(ii))
             {
+            // Varying cross-stage input/output obviously marks
+            // a varying parameter, as do the special categories
+            // of input used for ray-tracing shaders.
+            //
             case slang::ParameterCategory::VaryingInput:
             case slang::ParameterCategory::VaryingOutput:
             case slang::ParameterCategory::RayPayload:
             case slang::ParameterCategory::HitAttributes:
                 return true;
 
+            // Everything else indicates a uniform parameter.
+            //
             default:
                 return false;
             }
         }
-        return false;
+
+        // If we get to the end of the loop above, then it
+        // means that there must have been *zero* categories
+        // of resources consumed by the parameter.
+        //
+        // There are two cases where that could have happened:
+        //
+        // 1. A parameter of a zero-size type (an empty `struct`
+        //   or a `void` parameter). In this case uniform-vs-varying
+        //   is a meaningless distinction.
+        //
+        // 2. A varying "system value" parameter, which doesn't
+        //   consume any application-bindable resources.
+        //
+        // Because case (1) is unimportant, we choose the default
+        // behavior based on (2). If a parameter doesn't appear
+        // to consume any resources, we assume it is varying.
+        //
+        return true;
     }
 
     static uint32_t getUniformParameterCount(
@@ -1198,7 +1263,7 @@ namespace Falcor
 
             auto pParam = reflectVariable(
                 pSlangParam,
-                0,
+                pElementType->getResourceRangeCount(),
                 pGroup.get(),
                 &path,
                 pProgramVersion);
@@ -1265,8 +1330,40 @@ namespace Falcor
         : mpProgramVersion(pProgramVersion)
         , mpSlangReflector(pSlangReflector)
     {
-        // For the most part the program scope needs to be reflected like a struct type
-        ReflectionStructType::SharedPtr pGlobalStruct = ReflectionStructType::create(0, "", nullptr);
+        // For Falcor's purposes, the global scope of a program can be treated
+        // much like a user-defined `struct` type, where the fields are the
+        // global shader parameters.
+        //
+        // Slang provides two ways to iterate over the parameters of a program:
+        //
+        // 1. We can directly query `getParameterCount()` and then `getParameterByIndex()`,
+        //    to enumerate all the global shader parameters.
+        //
+        // 2. We can query `getGlobalParamsTypeLayout()` which returns a type layout
+        //    that represents all of the global-scope parameters bundled together.
+        //
+        // Our code will mostly use option (1), but we will do a little bit of
+        // option (2) to be able to get the total size of the global parameters,
+        // for cases where a default constant buffer is needed for the global
+        // scope.
+        //
+        auto pSlangGlobalParamsTypeLayout = pSlangReflector->getGlobalParamsTypeLayout();
+
+        // The Slang type layout for the global scope either directly represents the
+        // parameters as a struct type `G`, or it represents those parameters wrapped
+        // up into a constant buffer like `ConstantBuffer<G>`. If we are in the latter
+        // case, then we want to get the element type (`G`) from the constant buffer
+        // type layout.
+        //
+        if (auto pElementTypeLayout = pSlangGlobalParamsTypeLayout->getElementTypeLayout())
+            pSlangGlobalParamsTypeLayout = pElementTypeLayout;
+
+        // Once we have the Slang type layout for the `struct` of global parameters,
+        // we can easily query its size in bytes.
+        //
+        size_t slangGlobalParamsSize = pSlangGlobalParamsTypeLayout->getSize(slang::ParameterCategory::Uniform);
+
+        ReflectionStructType::SharedPtr pGlobalStruct = ReflectionStructType::create(slangGlobalParamsSize, "", nullptr);
         ParameterBlockReflection::SharedPtr pDefaultBlock = ParameterBlockReflection::createEmpty(pProgramVersion);
         pDefaultBlock->setElementType(pGlobalStruct);
 
@@ -1359,6 +1456,7 @@ namespace Falcor
             case DescriptorSet::Type::RawBufferSrv:
             case DescriptorSet::Type::TypedBufferSrv:
             case DescriptorSet::Type::StructuredBufferSrv:
+            case DescriptorSet::Type::AccelerationStructureSrv:
                 fieldRange.baseIndex = ioBuildState.srvCount;
                 ioBuildState.srvCount += fieldRange.count;
                 break;
@@ -1488,6 +1586,7 @@ namespace Falcor
             case DescriptorSet::Type::RawBufferSrv:
             case DescriptorSet::Type::TypedBufferSrv:
             case DescriptorSet::Type::StructuredBufferSrv:
+            case DescriptorSet::Type::AccelerationStructureSrv:
                 regIndex += counters.srvCount;
                 counters.srvCount += rangeInfo.count;
                 break;
@@ -1579,6 +1678,10 @@ namespace Falcor
             return shaderAccess == ReflectionResourceType::ShaderAccess::Read
                 ? DescriptorSet::Type::TypedBufferSrv
                 : DescriptorSet::Type::TypedBufferUav;
+            break;
+        case ReflectionResourceType::Type::AccelerationStructure:
+            assert(shaderAccess == ReflectionResourceType::ShaderAccess::Read);
+            return DescriptorSet::Type::AccelerationStructureSrv;
             break;
         case ReflectionResourceType::Type::Sampler:
             return DescriptorSet::Type::Sampler;

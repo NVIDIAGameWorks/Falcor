@@ -30,50 +30,6 @@
 
 namespace Falcor
 {
-    template<typename ViewType>
-    ViewType getViewDimension(Resource::Type type, bool isArray);
-
-    template<>
-    D3D12_RTV_DIMENSION getViewDimension<D3D12_RTV_DIMENSION>(Resource::Type type, bool isTextureArray)
-    {
-        switch(type)
-        {
-        case Resource::Type::Texture1D:
-            return (isTextureArray) ? D3D12_RTV_DIMENSION_TEXTURE1DARRAY : D3D12_RTV_DIMENSION_TEXTURE1D;
-        case Resource::Type::Texture2D:
-            return (isTextureArray) ? D3D12_RTV_DIMENSION_TEXTURE2DARRAY : D3D12_RTV_DIMENSION_TEXTURE2D;
-        case Resource::Type::Texture3D:
-            assert(isTextureArray == false);
-            return D3D12_RTV_DIMENSION_TEXTURE3D;
-        case Resource::Type::Texture2DMultisample:
-            return (isTextureArray) ? D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY : D3D12_RTV_DIMENSION_TEXTURE2DMS;
-        case Resource::Type::TextureCube:
-            return D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
-        default:
-            should_not_get_here();
-            return D3D12_RTV_DIMENSION_UNKNOWN;
-        }
-    }
-
-    template<>
-    D3D12_DSV_DIMENSION getViewDimension<D3D12_DSV_DIMENSION>(Resource::Type type, bool isTextureArray)
-    {
-        switch(type)
-        {
-        case Resource::Type::Texture1D:
-            return (isTextureArray) ? D3D12_DSV_DIMENSION_TEXTURE1DARRAY : D3D12_DSV_DIMENSION_TEXTURE1D;
-        case Resource::Type::Texture2D:
-            return (isTextureArray) ? D3D12_DSV_DIMENSION_TEXTURE2DARRAY : D3D12_DSV_DIMENSION_TEXTURE2D;
-        case Resource::Type::Texture2DMultisample:
-            return (isTextureArray) ? D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY : D3D12_DSV_DIMENSION_TEXTURE2DMS;
-        case Resource::Type::TextureCube:
-            return D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
-        default:
-            should_not_get_here();
-            return D3D12_DSV_DIMENSION_UNKNOWN;
-        }
-    }
-
     Fbo::Fbo()
     {
         mColorAttachments.resize(getMaxColorTargetCount());
@@ -111,7 +67,9 @@ namespace Falcor
         }
         else
         {
-            return RenderTargetView::getNullView();
+            // TODO: mColorAttachments doesn't contain enough information to fully determine the view dimension. Assume 2D for now.
+            auto dimension = rt.arraySize > 1 ? RenderTargetView::Dimension::Texture2DArray : RenderTargetView::Dimension::Texture2D;
+            return RenderTargetView::getNullView(dimension);
         }
     }
 
@@ -123,7 +81,9 @@ namespace Falcor
         }
         else
         {
-            return DepthStencilView::getNullView();
+            // TODO: mDepthStencil doesn't contain enough information to fully determine the view dimension.  Assume 2D for now.
+            auto dimension = mDepthStencil.arraySize > 1 ? DepthStencilView::Dimension::Texture2DArray : DepthStencilView::Dimension::Texture2D;
+            return DepthStencilView::getNullView(dimension);
         }
     }
 }

@@ -59,6 +59,7 @@ namespace Falcor
         widget.text("Shading model:");
         if (getShadingModel() == ShadingModelMetalRough) widget.text("MetalRough", true);
         else if (getShadingModel() == ShadingModelSpecGloss) widget.text("SpecGloss", true);
+        else if (getShadingModel() == ShadingModelHairChiang16) widget.text("HairChiang16", true);
         else should_not_get_here();
 
         if (const auto& tex = getBaseColorTexture(); tex != nullptr)
@@ -107,6 +108,14 @@ namespace Falcor
             widget.text("Texture info: " + std::to_string(tex->getWidth()) + "x" + std::to_string(tex->getHeight()) + " (" + to_string(tex->getFormat()) + ")");
             widget.image("Normal map", tex, float2(100.f));
             if (widget.button("Remove texture##NormalMap")) setNormalMap(nullptr);
+        }
+
+        if (const auto& tex = getDisplacementMap(); tex != nullptr)
+        {
+            widget.text("Displacement map: " + tex->getSourceFilename());
+            widget.text("Texture info: " + std::to_string(tex->getWidth()) + "x" + std::to_string(tex->getHeight()) + " (" + to_string(tex->getFormat()) + ")");
+            widget.image("Displacement map", tex, float2(100.f));
+            if (widget.button("Remove texture##DisplacementMap")) setDisplacementMap(nullptr);
         }
 
         if (const auto& tex = getEmissiveTexture(); tex != nullptr)
@@ -206,29 +215,44 @@ namespace Falcor
 
     void Material::setTexture(TextureSlot slot, Texture::SharedPtr pTexture)
     {
+        if (pTexture == getTexture(slot)) return;
+
         switch (slot)
         {
         case TextureSlot::BaseColor:
-            setBaseColorTexture(pTexture);
+            mResources.baseColor = pTexture;
+            updateBaseColorType();
+            updateAlphaMode();
             break;
         case TextureSlot::Specular:
-            setSpecularTexture(pTexture);
+            mResources.specular = pTexture;
+            updateSpecularType();
             break;
         case TextureSlot::Emissive:
-            setEmissiveTexture(pTexture);
+            mResources.emissive = pTexture;
+            updateEmissiveType();
             break;
         case TextureSlot::Normal:
-            setNormalMap(pTexture);
+            mResources.normalMap = pTexture;
+            updateNormalMapMode();
             break;
         case TextureSlot::Occlusion:
-            setOcclusionMap(pTexture);
+            mResources.occlusionMap = pTexture;
+            updateOcclusionFlag();
+            break;
+        case TextureSlot::Displacement:
+            mResources.displacementMap = pTexture;
+            updateDisplacementFlag();
             break;
         case TextureSlot::SpecularTransmission:
-            setSpecularTransmissionTexture(pTexture);
+            mResources.specularTransmission = pTexture;
+            updateSpecularTransmissionType();
             break;
         default:
             should_not_get_here();
         }
+
+        markUpdates(UpdateFlags::ResourcesChanged);
     }
 
     Texture::SharedPtr Material::getTexture(TextureSlot slot) const
@@ -236,17 +260,19 @@ namespace Falcor
         switch (slot)
         {
         case TextureSlot::BaseColor:
-            return getBaseColorTexture();
+            return mResources.baseColor;
         case TextureSlot::Specular:
-            return getSpecularTexture();
+            return mResources.specular;
         case TextureSlot::Emissive:
-            return getEmissiveTexture();
+            return mResources.emissive;
         case TextureSlot::Normal:
-            return getNormalMap();
+            return mResources.normalMap;
         case TextureSlot::Occlusion:
-            return getOcclusionMap();
+            return mResources.occlusionMap;
+        case TextureSlot::Displacement:
+            return mResources.displacementMap;
         case TextureSlot::SpecularTransmission:
-            return getSpecularTransmissionTexture();
+            return mResources.specularTransmission;
         default:
             should_not_get_here();
         }
@@ -262,6 +288,11 @@ namespace Falcor
             if (t) dim = max(dim, uint2(t->getWidth(), t->getHeight()));
         }
         return dim;
+    }
+
+    void Material::setTextureTransform(const Transform& textureTransform)
+    {
+        mTextureTransform = textureTransform;
     }
 
     void Material::loadTexture(TextureSlot slot, const std::string& filename, bool useSrgb)
@@ -299,55 +330,13 @@ namespace Falcor
         case TextureSlot::Occlusion:
             return true;
         case TextureSlot::Normal:
+        case TextureSlot::Displacement:
             return false;
         default:
             should_not_get_here();
             return false;
         }
     }
-
-    void Material::setBaseColorTexture(Texture::SharedPtr pBaseColor)
-    {
-        if (mResources.baseColor != pBaseColor)
-        {
-            mResources.baseColor = pBaseColor;
-            markUpdates(UpdateFlags::ResourcesChanged);
-            updateBaseColorType();
-            bool hasAlpha = pBaseColor && doesFormatHasAlpha(pBaseColor->getFormat());
-            setAlphaMode(hasAlpha ? AlphaModeMask : AlphaModeOpaque);
-        }
-    }
-
-    void Material::setSpecularTexture(Texture::SharedPtr pSpecular)
-    {
-        if (mResources.specular != pSpecular)
-        {
-            mResources.specular = pSpecular;
-            markUpdates(UpdateFlags::ResourcesChanged);
-            updateSpecularType();
-        }
-    }
-
-    void Material::setEmissiveTexture(const Texture::SharedPtr& pEmissive)
-    {
-        if (mResources.emissive != pEmissive)
-        {
-            mResources.emissive = pEmissive;
-            markUpdates(UpdateFlags::ResourcesChanged);
-            updateEmissiveType();
-        }
-    }
-
-    void Material::setSpecularTransmissionTexture(const Texture::SharedPtr& pSpecularTransmission)
-    {
-        if (mResources.specularTransmission != pSpecularTransmission)
-        {
-            mResources.specularTransmission = pSpecularTransmission;
-            markUpdates(UpdateFlags::ResourcesChanged);
-            updateSpecularTransmissionType();
-        }
-    }
-
 
     void Material::setBaseColor(const float4& color)
     {
@@ -440,42 +429,6 @@ namespace Falcor
         }
     }
 
-    void Material::setNormalMap(Texture::SharedPtr pNormalMap)
-    {
-        if (mResources.normalMap != pNormalMap)
-        {
-            mResources.normalMap = pNormalMap;
-            markUpdates(UpdateFlags::ResourcesChanged);
-            uint32_t normalMode = NormalMapUnused;
-            if (pNormalMap)
-            {
-                switch(getFormatChannelCount(pNormalMap->getFormat()))
-                {
-                case 2:
-                    normalMode = NormalMapRG;
-                    break;
-                case 3:
-                case 4: // Some texture formats don't support RGB, only RGBA. We have no use for the alpha channel in the normal map.
-                    normalMode = NormalMapRGB;
-                    break;
-                default:
-                    should_not_get_here();
-                    logWarning("Unsupported normal map format for material " + mName);
-                }
-            }
-            setFlags(PACK_NORMAL_MAP_TYPE(mData.flags, normalMode));
-        }
-    }
-
-    void Material::setOcclusionMap(Texture::SharedPtr pOcclusionMap)
-    {
-        if (mResources.occlusionMap != pOcclusionMap)
-        {
-            mResources.occlusionMap = pOcclusionMap;
-            markUpdates(UpdateFlags::ResourcesChanged);
-            updateOcclusionFlag();
-        }
-    }
 
     bool Material::operator==(const Material& other) const
     {
@@ -498,8 +451,13 @@ namespace Falcor
         compare_texture(normalMap);
         compare_texture(occlusionMap);
         compare_texture(specularTransmission);
+        compare_texture(displacementMap);
 #undef compare_texture
+
         if (mResources.samplerState != other.mResources.samplerState) return false;
+        if (mTextureTransform.getMatrix() != other.mTextureTransform.getMatrix()) return false;
+        if (mOcclusionMapEnabled != other.mOcclusionMapEnabled) return false;
+
         return true;
     }
 
@@ -546,6 +504,34 @@ namespace Falcor
         setFlags(PACK_SPEC_TRANS_TYPE(mData.flags, getChannelMode(mResources.specularTransmission != nullptr, mData.specularTransmission)));
     }
 
+    void Material::updateAlphaMode()
+    {
+        bool hasAlpha = mResources.baseColor && doesFormatHasAlpha(mResources.baseColor->getFormat());
+        setAlphaMode(hasAlpha ? AlphaModeMask : AlphaModeOpaque);
+    }
+
+    void Material::updateNormalMapMode()
+    {
+        uint32_t normalMode = NormalMapUnused;
+        if (mResources.normalMap)
+        {
+            switch(getFormatChannelCount(mResources.normalMap->getFormat()))
+            {
+            case 2:
+                normalMode = NormalMapRG;
+                break;
+            case 3:
+            case 4: // Some texture formats don't support RGB, only RGBA. We have no use for the alpha channel in the normal map.
+                normalMode = NormalMapRGB;
+                break;
+            default:
+                should_not_get_here();
+                logWarning("Unsupported normal map format for material " + mName);
+            }
+        }
+        setFlags(PACK_NORMAL_MAP_TYPE(mData.flags, normalMode));
+    }
+
     void Material::updateOcclusionFlag()
     {
         bool hasMap = false;
@@ -564,6 +550,12 @@ namespace Falcor
         setFlags(PACK_OCCLUSION_MAP(mData.flags, shouldEnable ? 1 : 0));
     }
 
+    void Material::updateDisplacementFlag()
+    {
+        bool hasMap = (mResources.occlusionMap != nullptr);
+        setFlags(PACK_DISPLACEMENT_MAP(mData.flags, hasMap ? 1 : 0));
+    }
+
     SCRIPT_BINDING(Material)
     {
         pybind11::enum_<Material::TextureSlot> textureSlot(m, "MaterialTextureSlot");
@@ -573,9 +565,10 @@ namespace Falcor
         textureSlot.value("Normal", Material::TextureSlot::Normal);
         textureSlot.value("Occlusion", Material::TextureSlot::Occlusion);
         textureSlot.value("SpecularTransmission", Material::TextureSlot::SpecularTransmission);
+        textureSlot.value("Displacement", Material::TextureSlot::Displacement);
 
         pybind11::class_<Material, Material::SharedPtr> material(m, "Material");
-        material.def_property_readonly("name", &Material::getName);
+        material.def_property("name", &Material::getName, &Material::setName);
         material.def_property("baseColor", &Material::getBaseColor, &Material::setBaseColor);
         material.def_property("specularParams", &Material::getSpecularParams, &Material::setSpecularParams);
         material.def_property("roughness", &Material::getRoughness, &Material::setRoughness);
@@ -589,7 +582,9 @@ namespace Falcor
         material.def_property("alphaThreshold", &Material::getAlphaThreshold, &Material::setAlphaThreshold);
         material.def_property("doubleSided", &Material::isDoubleSided, &Material::setDoubleSided);
         material.def_property("nestedPriority", &Material::getNestedPriority, &Material::setNestedPriority);
+        material.def_property("textureTransform", pybind11::overload_cast<void>(&Material::getTextureTransform, pybind11::const_), &Material::setTextureTransform);
 
+        material.def(pybind11::init(&Material::create), "name"_a);
         material.def("loadTexture", &Material::loadTexture, "slot"_a, "filename"_a, "useSrgb"_a = true);
         material.def("clearTexture", &Material::clearTexture, "slot"_a);
     }

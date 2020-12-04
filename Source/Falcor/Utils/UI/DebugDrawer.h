@@ -70,7 +70,7 @@ namespace Falcor
 
         /** Adds a world space AABB
         */
-        void addBoundingBox(const BoundingBox& aabb);
+        void addBoundingBox(const AABB& aabb);
 
         /** Renders the contents of the debug drawer
         */

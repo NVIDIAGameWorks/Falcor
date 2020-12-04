@@ -27,6 +27,7 @@
  **************************************************************************/
 #include "MegakernelPathTracer.h"
 #include "RenderGraph/RenderPassHelpers.h"
+#include "Scene/HitInfo.h"
 #include <sstream>
 
 namespace
@@ -36,9 +37,9 @@ namespace
 
     // Ray tracing settings that affect the traversal stack size.
     // These should be set as small as possible.
-    // The payload for the scatter rays is 8B.
+    // The payload for the scatter rays is 8-12B.
     // The payload for the shadow rays is 4B.
-    const uint32_t kMaxPayloadSizeBytes = 8;
+    const uint32_t kMaxPayloadSizeBytes = HitInfo::kMaxPackedSizeInBytes;
     const uint32_t kMaxAttributesSizeBytes = 8;
     const uint32_t kMaxRecursionDepth = 1;
 
@@ -115,7 +116,7 @@ void MegakernelPathTracer::execute(RenderContext* pRenderContext, const RenderDa
     {
         // Specialize program for the current emissive light sampler options.
         assert(mpEmissiveSampler);
-        if (mpEmissiveSampler->prepareProgram(pProgram.get())) mTracer.pVars = nullptr;
+        if (pProgram->addDefines(mpEmissiveSampler->getDefines())) mTracer.pVars = nullptr;
     }
 
     // Prepare program vars. This may trigger shader compilation.

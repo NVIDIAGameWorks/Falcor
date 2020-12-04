@@ -166,14 +166,27 @@ void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& ren
     initDepth(renderData);
     initFbo(pContext, renderData);
 
-    if (mpScene)
-    {
-        mpVars["PerFrameCB"]["gRenderTargetDim"] = float2(mpFbo->getWidth(), mpFbo->getHeight());
-        mpVars->setTexture(kVisBuffer, renderData[kVisBuffer]->asTexture());
+    if (!mpScene) return;
 
-        mpState->setFbo(mpFbo);
-        mpScene->render(pContext, mpState.get(), mpVars.get());
+    // Update env map lighting
+    const auto& pEnvMap = mpScene->getEnvMap();
+    if (pEnvMap && (!mpEnvMapLighting || mpEnvMapLighting->getEnvMap() != pEnvMap))
+    {
+        mpEnvMapLighting = EnvMapLighting::create(pContext, pEnvMap);
+        mpEnvMapLighting->setShaderData(mpVars["gEnvMapLighting"]);
+        mpState->getProgram()->addDefine("_USE_ENV_MAP");
     }
+    else if (!pEnvMap)
+    {
+        mpEnvMapLighting = nullptr;
+        mpState->getProgram()->removeDefine("_USE_ENV_MAP");
+    }
+
+    mpVars["PerFrameCB"]["gRenderTargetDim"] = float2(mpFbo->getWidth(), mpFbo->getHeight());
+    mpVars->setTexture(kVisBuffer, renderData[kVisBuffer]->asTexture());
+
+    mpState->setFbo(mpFbo);
+    mpScene->rasterize(pContext, mpState.get(), mpVars.get());
 }
 
 void ForwardLightingPass::renderUI(Gui::Widgets& widget)

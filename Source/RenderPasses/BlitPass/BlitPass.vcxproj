@@ -14,7 +14,7 @@
     <ProjectGuid>{15770768-65FC-4889-A34B-3CC27CC452BC}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>BlitPass</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
     <ProjectName>BlitPass</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

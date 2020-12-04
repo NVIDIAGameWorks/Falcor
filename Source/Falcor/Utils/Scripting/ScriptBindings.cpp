@@ -28,16 +28,40 @@
 #include "stdafx.h"
 #include "ScriptBindings.h"
 #include "pybind11/embed.h"
+#include "pybind11/operators.h"
 #include <algorithm>
 
 namespace Falcor::ScriptBindings
 {
     namespace
     {
-        /** `gRegisterFuncs` is declared as pointer so that we can ensure it can be explicitly
-            allocated when registerBinding() is called. (The C++ static objectinitialization fiasco.)
+        struct DeferredBinding
+        {
+            std::string name;
+            RegisterBindingFunc bindingFunc;
+            bool isRegistered = false;
+
+            DeferredBinding(const std::string& name, RegisterBindingFunc bindingFunc)
+                : name(name)
+                , bindingFunc(bindingFunc)
+            {}
+
+            void bind(pybind11::module& m)
+            {
+                if (!isRegistered)
+                {
+                    isRegistered = true;
+                    bindingFunc(m);
+                }
+            }
+        };
+
+        /** `gDeferredBindings` is declared as pointer so that we can ensure it can be explicitly
+            allocated when registerDeferredBinding() is called. (The C++ static objectinitialization fiasco.)
         */
-        std::unique_ptr<std::vector<RegisterBindingFunc>> gRegisterFuncs;
+        std::unique_ptr<std::map<std::string, DeferredBinding>> gDeferredBindings;
+
+        uint32_t gDeferredBindingID = 0;
     }
 
     void registerBinding(RegisterBindingFunc f)
@@ -48,8 +72,8 @@ namespace Falcor::ScriptBindings
             {
                 auto m = pybind11::module::import("falcor");
                 f(m);
-                // Re-import falcor
-                pybind11::exec("from falcor import *");
+                // Re-import falcor into default scripting context.
+                Scripting::runScript("from falcor import *");
             }
             catch (const std::exception& e)
             {
@@ -60,62 +84,130 @@ namespace Falcor::ScriptBindings
         }
         else
         {
-            if (!gRegisterFuncs) gRegisterFuncs.reset(new std::vector<RegisterBindingFunc>());
-            gRegisterFuncs->push_back(f);
+            // Create unique name for deferred binding.
+            std::string name = "DeferredBinding" + std::to_string(gDeferredBindingID++);
+            registerDeferredBinding(name, f);
         }
     }
 
-    template<typename VecT, typename...Args>
-    VecT makeVec(Args...args)
+    void registerDeferredBinding(const std::string& name, RegisterBindingFunc f)
     {
-        return VecT(args...);
+        if (!gDeferredBindings) gDeferredBindings.reset(new std::map<std::string, DeferredBinding>());
+        if (gDeferredBindings->find(name) != gDeferredBindings->end())
+        {
+            throw std::exception(("A script binding with the name '" + name + "' already exists!").c_str());
+        }
+        gDeferredBindings->emplace(name, DeferredBinding(name, f));
     }
 
-    template<typename VecT, typename...Args>
+    void resolveDeferredBinding(const std::string &name, pybind11::module& m)
+    {
+        auto it = gDeferredBindings->find(name);
+        if (it != gDeferredBindings->end()) it->second.bind(m);
+    }
+
+    template<typename VecT, bool withOperators>
     void addVecType(pybind11::module& m, const std::string name)
     {
-        auto ctor = [](Args...components) { return makeVec<VecT>(components...); };
+        using ScalarT = typename VecT::value_type;
+
+        auto constexpr length = VecT::length();
+        static_assert(length >= 2 && length <= 4, "Unsupported number of components");
+
+        pybind11::class_<VecT> vec(m, name.c_str());
+
+        vec.def_readwrite("x", &VecT::x);
+        vec.def_readwrite("y", &VecT::y);
+        if constexpr (length >= 3) vec.def_readwrite("z", &VecT::z);
+        if constexpr (length >= 4) vec.def_readwrite("w", &VecT::w);
+
+        auto initEmpty = []() { return VecT(ScalarT(0)); };
+        vec.def(pybind11::init(initEmpty));
+
+        auto initScalar = [](ScalarT c) { return VecT(c); };
+        vec.def(pybind11::init(initScalar), "c"_a);
+
+        if constexpr (length == 2)
+        {
+            auto initVector = [](ScalarT x, ScalarT y) { return VecT(x, y); };
+            vec.def(pybind11::init(initVector), "x"_a, "y"_a);
+        }
+        else if constexpr (length == 3)
+        {
+            auto initVector = [](ScalarT x, ScalarT y, ScalarT z) { return VecT(x, y, z); };
+            vec.def(pybind11::init(initVector), "x"_a, "y"_a, "z"_a);
+        }
+        else if constexpr (length == 4)
+        {
+            auto initVector = [](ScalarT x, ScalarT y, ScalarT z, ScalarT w) { return VecT(x, y, z, w); };
+            vec.def(pybind11::init(initVector), "x"_a, "y"_a, "z"_a, "w"_a);
+        }
+
         auto repr = [](const VecT& v) { return Falcor::to_string(v); };
-        auto vecStr = [](const VecT& v) {
+        vec.def("__repr__", repr);
+
+        auto str = [](const VecT& v) {
             std::string vec = "[" + std::to_string(v[0]);
-            for (int i = 1; i < v.length(); i++)
+            for (int i = 1; i < VecT::length(); i++)
             {
                 vec += ", " + std::to_string(v[i]);
             }
             vec += "]";
             return vec;
         };
-        pybind11::class_<VecT>(m, name.c_str())
-            .def(pybind11::init(ctor))
-            .def("__repr__", repr)
-            .def("__str__", vecStr);
+        vec.def("__str__", str);
+
+        if constexpr (withOperators)
+        {
+            vec.def(pybind11::self + pybind11::self);
+            vec.def(pybind11::self += pybind11::self);
+            vec.def(pybind11::self - pybind11::self);
+            vec.def(pybind11::self -= pybind11::self);
+            vec.def(pybind11::self * pybind11::self);
+            vec.def(pybind11::self *= pybind11::self);
+            vec.def(pybind11::self / pybind11::self);
+            vec.def(pybind11::self /= pybind11::self);
+            vec.def(pybind11::self + ScalarT());
+            vec.def(pybind11::self += ScalarT());
+            vec.def(pybind11::self - ScalarT());
+            vec.def(pybind11::self -= ScalarT());
+            vec.def(pybind11::self * ScalarT());
+            vec.def(pybind11::self *= ScalarT());
+            vec.def(pybind11::self / ScalarT());
+            vec.def(pybind11::self /= ScalarT());
+        }
     }
 
     PYBIND11_EMBEDDED_MODULE(falcor, m)
     {
         // bool2, bool3, bool4
-        addVecType<bool2, bool, bool>(m, "bool2");
-        addVecType<bool3, bool, bool, bool>(m, "bool3");
-        addVecType<bool4, bool, bool, bool, bool>(m, "bool4");
+        addVecType<bool2, false>(m, "bool2");
+        addVecType<bool3, false>(m, "bool3");
+        addVecType<bool4, false>(m, "bool4");
 
         // float2, float3, float4
-        addVecType<float2, float, float>(m, "float2");
-        addVecType<float3, float, float, float>(m, "float3");
-        addVecType<float4, float, float, float, float>(m, "float4");
+        addVecType<float2, true>(m, "float2");
+        addVecType<float3, true>(m, "float3");
+        addVecType<float4, true>(m, "float4");
 
         // int2, int3, int4
-        addVecType<int2, int32_t, int32_t>(m, "int2");
-        addVecType<int3, int32_t, int32_t, int32_t>(m, "int3");
-        addVecType<int4, int32_t, int32_t, int32_t, int32_t>(m, "int4");
+        addVecType<int2, true>(m, "int2");
+        addVecType<int3, true>(m, "int3");
+        addVecType<int4, true>(m, "int4");
 
         // uint2, uint3, uint4
-        addVecType<uint2, uint32_t, uint32_t>(m, "uint2");
-        addVecType<uint3, uint32_t, uint32_t, uint32_t>(m, "uint3");
-        addVecType<uint4, uint32_t, uint32_t, uint32_t, uint32_t>(m, "uint4");
+        addVecType<uint2, true>(m, "uint2");
+        addVecType<uint3, true>(m, "uint3");
+        addVecType<uint4, true>(m, "uint4");
 
-        if (gRegisterFuncs)
+        // float3x3, float4x4
+        // Note: We register these as simple data types without any operations because semantics may change in the future.
+        pybind11::class_<glm::float3x3>(m, "float3x3");
+        pybind11::class_<glm::float4x4>(m, "float4x4");
+
+        if (gDeferredBindings)
         {
-            for (auto f : *gRegisterFuncs) f(m);
+            for (auto& [name, binding] : *gDeferredBindings) binding.bind(m);
         }
     }
 }

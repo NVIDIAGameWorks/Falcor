@@ -27,7 +27,9 @@
  **************************************************************************/
 #include "FalcorTest.h"
 #include "Testing/UnitTest.h"
-#include "args.h"
+
+#include <args.hxx>
+
 #include <cstdio>
 #include <string>
 #include <vector>
