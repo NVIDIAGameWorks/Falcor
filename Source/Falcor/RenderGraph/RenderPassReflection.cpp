@@ -42,6 +42,23 @@ namespace Falcor
         return *this;
     }
 
+    RenderPassReflection::Field& RenderPassReflection::Field::structuredBuffer(uint32_t elementCount, uint32_t structureSize)
+    {
+        mType = Type::StructuredBuffer;
+        mWidth = elementCount;
+        mHeight = structureSize;
+        mDepth = mArraySize = mMipCount = 0;
+        return *this;
+    }
+
+    RenderPassReflection::Field& RenderPassReflection::Field::typedBuffer(uint32_t elementCount)
+    {
+        mType = Type::TypedBuffer;
+        mWidth = elementCount;
+        mHeight = mDepth = mArraySize = mMipCount = 0;
+        return *this;
+    }
+
     RenderPassReflection::Field& RenderPassReflection::Field::texture1D(uint32_t width, uint32_t mipCount, uint32_t arraySize)
     {
         mType = Type::Texture1D;
@@ -93,6 +110,12 @@ namespace Falcor
         case RenderPassReflection::Field::Type::RawBuffer:
             if(height > 0 || depth > 0 || sampleCount > 0) logWarning("RenderPassReflection::Field::resourceType - height, depth, sampleCount for " + to_string(type) + " must be either 0");
             return rawBuffer(width);
+        case RenderPassReflection::Field::Type::StructuredBuffer:
+            if (depth > 0 || sampleCount > 0) logWarning("RenderPassReflection::Field::resourceType - depth, sampleCount for " + to_string(type) + " must be 0");
+            return structuredBuffer(width, height);
+        case RenderPassReflection::Field::Type::TypedBuffer:
+            if (height > 0 || depth > 0 || sampleCount > 0) logWarning("RenderPassReflection::Field::resourceType - height, depth, sampleCount for " + to_string(type) + " must be 0");
+            return typedBuffer(width);
         case RenderPassReflection::Field::Type::Texture1D:
             if (height > 1 || depth > 1 || sampleCount > 1) logWarning("RenderPassReflection::Field::resourceType - height, depth, sampleCount for " + to_string(type) + " must be either 0 or 1");
             return texture1D(width, mipCount, arraySize);
