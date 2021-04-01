@@ -95,6 +95,8 @@ namespace Falcor
             */
             Desc& setCompilerFlags(Shader::CompilerFlags flags) { mBaseDesc.setCompilerFlags(flags); return *this; }
 
+            Desc& setShaderModel(const std::string& sm) { mBaseDesc.setShaderModel(sm); return *this; }
+
         private:
             friend class RtProgram;
 
