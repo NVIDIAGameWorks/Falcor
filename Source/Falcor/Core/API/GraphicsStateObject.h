@@ -60,13 +60,13 @@ namespace Falcor
         class dlldecl Desc
         {
         public:
-            Desc& setRootSignature(RootSignature::SharedPtr pSignature) { mpRootSignature = pSignature; return *this; }
-            Desc& setVertexLayout(VertexLayout::SharedConstPtr pLayout) { mpLayout = pLayout; return *this; }
+            Desc& setRootSignature(RootSignature::SharedPtr pSignature) { mpRootSignature = std::move(pSignature); return *this; }
+            Desc& setVertexLayout(VertexLayout::SharedConstPtr pLayout) { mpLayout = std::move(pLayout); return *this; }
             Desc& setFboFormats(const Fbo::Desc& fboFormats) { mFboDesc = fboFormats; return *this; }
-            Desc& setProgramKernels(ProgramKernels::SharedConstPtr pProgram) { mpProgram = pProgram; return *this; }
-            Desc& setBlendState(BlendState::SharedPtr pBlendState) { mpBlendState = pBlendState; return *this; }
-            Desc& setRasterizerState(RasterizerState::SharedPtr pRasterizerState) { mpRasterizerState = pRasterizerState; return *this; }
-            Desc& setDepthStencilState(DepthStencilState::SharedPtr pDepthStencilState) { mpDepthStencilState = pDepthStencilState; return *this; }
+            Desc& setProgramKernels(ProgramKernels::SharedConstPtr pProgram) { mpProgram = std::move(pProgram); return *this; }
+            Desc& setBlendState(BlendState::SharedPtr pBlendState) { mpBlendState = std::move(pBlendState); return *this; }
+            Desc& setRasterizerState(RasterizerState::SharedPtr pRasterizerState) { mpRasterizerState = std::move(pRasterizerState); return *this; }
+            Desc& setDepthStencilState(DepthStencilState::SharedPtr pDepthStencilState) { mpDepthStencilState = std::move(pDepthStencilState); return *this; }
             Desc& setSampleMask(uint32_t sampleMask) { mSampleMask = sampleMask; return *this; }
             Desc& setPrimitiveType(PrimitiveType type) { mPrimType = type; return *this; }
 

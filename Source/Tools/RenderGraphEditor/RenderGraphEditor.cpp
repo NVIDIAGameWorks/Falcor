@@ -47,7 +47,7 @@ RenderGraphEditor::RenderGraphEditor(const Options& options)
     , mCurrentGraphIndex(0)
 {
     mNextGraphString.resize(255, 0);
-    mCurrentGraphOutput = "";
+    mCurrentGraphOutput.clear();
     mGraphOutputEditString = mCurrentGraphOutput;
     mGraphOutputEditString.resize(255, 0);
 }
@@ -165,8 +165,6 @@ void RenderGraphEditor::onGuiRender(Gui* pGui)
     if (fileMenu.item("Save To File"))
     {
         bool saveGraph = true;
-        std::string log;
-
         try
         {
             std::string s;
@@ -323,7 +321,6 @@ void RenderGraphEditor::onGuiRender(Gui* pGui)
     mRenderGraphUIs[mCurrentGraphIndex].setRecordUpdates(mViewerRunning);
     if (!mViewerRunning && settingsWindow.button("Open in Mogwai"))
     {
-        std::string log;
         bool openViewer = true;
         try
         {
@@ -484,13 +481,13 @@ void RenderGraphEditor::createNewGraph(const std::string& renderGraphName)
     auto nameToIndexIt = mGraphNamesToIndex.find(graphName);
     RenderGraph::SharedPtr newGraph = RenderGraph::create();
 
-    std::string tempGraphName = graphName;
+    std::string tempGraphName = std::move(graphName);
     while (mGraphNamesToIndex.find(tempGraphName) != mGraphNamesToIndex.end())
     {
         tempGraphName.append("_");
     }
     // Matt TODO can we put the GUI dropdown code in a shared function shared with 'loadFromFile'?
-    graphName = tempGraphName;
+    graphName = std::move(tempGraphName);
     newGraph->setName(graphName);
     mCurrentGraphIndex = mpGraphs.size();
     mpGraphs.push_back(newGraph);
@@ -499,7 +496,7 @@ void RenderGraphEditor::createNewGraph(const std::string& renderGraphName)
     Gui::DropdownValue nextGraphID;
     mGraphNamesToIndex.insert(std::make_pair(graphName, static_cast<uint32_t>(mCurrentGraphIndex) ));
     nextGraphID.value = static_cast<int32_t>(mOpenGraphNames.size());
-    nextGraphID.label = graphName;
+    nextGraphID.label = std::move(graphName);
     mOpenGraphNames.push_back(nextGraphID);
 }
 

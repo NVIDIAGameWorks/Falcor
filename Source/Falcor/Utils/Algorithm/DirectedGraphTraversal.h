@@ -104,6 +104,10 @@ namespace Falcor
 
             // Insert all the children
             const DirectedGraph::Node* pNode = mpGraph->getNode(curNode);
+            if (!pNode)
+            {
+                return DirectedGraph::kInvalidID;
+            }
             bool reverse = is_set(mFlags, Flags::Reverse);
             uint32_t edgeCount = reverse ? pNode->getIncomingEdgeCount() : pNode->getOutgoingEdgeCount();
 
@@ -111,6 +115,10 @@ namespace Falcor
             {
                 uint32_t e = reverse ? pNode->getIncomingEdge(i) : pNode->getOutgoingEdge(i);
                 const DirectedGraph::Edge* pEdge = mpGraph->getEdge(e);
+                if (!pEdge)
+                {
+                    return DirectedGraph::kInvalidID;
+                }
                 uint32_t child = reverse ? pEdge->getSourceNode() : pEdge->getDestNode();
                 mNodeList.push(child);
             }
@@ -196,16 +204,19 @@ namespace Falcor
         {
             mVisited[node] = true;
             const DirectedGraph::Node* pNode = mpGraph->getNode(node);
-            for (uint32_t e = 0; e < pNode->getOutgoingEdgeCount(); e++)
+            if (pNode)
             {
-                uint32_t nextNode = mpGraph->getEdge(pNode->getOutgoingEdge(e))->getDestNode();
-                if (!mVisited[nextNode])
+                for (uint32_t e = 0; e < pNode->getOutgoingEdgeCount(); e++)
                 {
-                    sortInternal(nextNode);
+                    uint32_t nextNode = mpGraph->getEdge(pNode->getOutgoingEdge(e))->getDestNode();
+                    if (!mVisited[nextNode])
+                    {
+                        sortInternal(nextNode);
+                    }
                 }
-            }
 
-            mStack.push(node);
+                mStack.push(node);
+            }
         }
     };
 

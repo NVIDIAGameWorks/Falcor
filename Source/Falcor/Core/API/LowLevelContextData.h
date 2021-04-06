@@ -65,7 +65,7 @@ namespace Falcor
 
 #ifdef FALCOR_D3D12
         // Used in DXR
-        void setCommandList(CommandListHandle pList) { mpList = pList; }
+        void setCommandList(CommandListHandle pList) { mpList = std::move(pList); }
 #endif
     protected:
         LowLevelContextData(CommandQueueType type, CommandQueueHandle queue);

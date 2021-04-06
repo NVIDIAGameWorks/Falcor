@@ -34,7 +34,7 @@ namespace Falcor
 {
     namespace
     {
-        void testAliasTable(GPUUnitTestContext& ctx, uint32_t N, std::vector<float> specificWeights = {})
+        void testAliasTable(GPUUnitTestContext& ctx, uint32_t N, const std::vector<float>& specificWeights = {})
         {
             std::mt19937 rng;
             std::uniform_real_distribution<float> uniform;

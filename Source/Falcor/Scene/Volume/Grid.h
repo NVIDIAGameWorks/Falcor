@@ -26,11 +26,12 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#pragma warning(push)
 #pragma warning(disable:4244 4267)
 #include <nanovdb/NanoVDB.h>
 #include <nanovdb/util/GridHandle.h>
 #include <nanovdb/util/HostBuffer.h>
-#pragma warning(default:4244 4267)
+#pragma warning(pop)
 
 namespace Falcor
 {

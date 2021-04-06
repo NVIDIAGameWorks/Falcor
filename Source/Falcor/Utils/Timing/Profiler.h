@@ -69,14 +69,14 @@ namespace Falcor
                 size_t currentTimer = 0;
             };
             FrameData frameData[2]; // Double-buffering, to avoid GPU flushes
-            bool showInMsg;
+            bool showInMsg = true;
             std::stack<size_t> callStack;
             CpuTimer::TimePoint cpuStart;
             CpuTimer::TimePoint cpuEnd;
             double cpuTotal = 0;
             double cpuRunningAverageMS = -1.f;   // Negative value to signify invalid
             double gpuRunningAverageMS = -1.f;
-            uint32_t level;
+            uint32_t level = 0;
             uint32_t triggered = 0;
             bool registered = false;
 #if _PROFILING_LOG == 1

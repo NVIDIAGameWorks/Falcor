@@ -49,7 +49,7 @@ namespace Falcor
         void SetGraphicsRootShaderResourceView(UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation);
         void SetGraphicsRootUnorderedAccessView(UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation);
 
-        void setRootParams(RootSignature::SharedPtr pRoot, uint8_t* pBase) { mpRootBase = pBase; mpRootSignature = pRoot; }
+        void setRootParams(RootSignature::SharedPtr pRoot, uint8_t* pBase) { mpRootBase = pBase; mpRootSignature = std::move(pRoot); }
 
         // The following functions should not be used
         HRESULT QueryInterface(REFIID riid, void **ppvObject);
