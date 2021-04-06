@@ -415,7 +415,7 @@ namespace Falcor
         /** Set the environment map.
             \param[in] pEnvMap Environment map. Can be nullptr.
         */
-        void setEnvMap(EnvMap::SharedPtr pEnvMap) { mpEnvMap = pEnvMap; }
+        void setEnvMap(EnvMap::SharedPtr pEnvMap) { mpEnvMap = std::move(pEnvMap); }
 
         // Cameras
 

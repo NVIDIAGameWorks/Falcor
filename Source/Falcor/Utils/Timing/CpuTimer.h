@@ -65,7 +65,7 @@ namespace Falcor
 
         /** Calculate the duration in milliseconds between 2 time points
         */
-        static double calcDuration(TimePoint start, TimePoint end)
+        static double calcDuration(const TimePoint& start, const TimePoint& end)
         {
             auto delta = end.time_since_epoch() - start.time_since_epoch();
             auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(delta);

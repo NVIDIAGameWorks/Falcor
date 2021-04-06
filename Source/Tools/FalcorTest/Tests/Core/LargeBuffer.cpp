@@ -54,26 +54,27 @@ namespace Falcor
 
             // Default initialize the end of the large buffer.
             const uint64_t dstOffset = pBuffer->getSize() - testSize;
-            ctx.getRenderContext()->copyBufferRegion(pBuffer.get(), dstOffset, pDefaultData.get(), 0ull, testSize);
-            ctx.getRenderContext()->flush(true); // For safety's sake
+            auto rContext = ctx.getRenderContext();
+            rContext->copyBufferRegion(pBuffer.get(), dstOffset, pDefaultData.get(), 0ull, testSize);
+            rContext->flush(true); // For safety's sake
 
             // Copy the test data into the end of the large buffer.
-            ctx.getRenderContext()->copyBufferRegion(pBuffer.get(), dstOffset, pTestData.get(), 0ull, testSize);
-            ctx.getRenderContext()->flush(true); // For safety's sake
+            rContext->copyBufferRegion(pBuffer.get(), dstOffset, pTestData.get(), 0ull, testSize);
+            rContext->flush(true); // For safety's sake
 
             // For >4GB buffers, also default initialize at the destination offset cast to 32-bit *after* the copy above.
             // This is to make sure that copyBufferRegion() aren't actually truncating the offset internally.
             if (dstOffset + testSize > (1ull << 32))
             {
-                ctx.getRenderContext()->copyBufferRegion(pBuffer.get(), (uint32_t)dstOffset, pDefaultData.get(), 0ull, testSize);
-                ctx.getRenderContext()->flush(true); // For safety's sake
+                rContext->copyBufferRegion(pBuffer.get(), (uint32_t)dstOffset, pDefaultData.get(), 0ull, testSize);
+                rContext->flush(true); // For safety's sake
             }
 
             // Copy the end of the large buffer into a readback buffer.
-            ctx.getRenderContext()->copyBufferRegion(pReadback.get(), 0ull, pBuffer.get(), dstOffset, testSize);
+            rContext->copyBufferRegion(pReadback.get(), 0ull, pBuffer.get(), dstOffset, testSize);
 
             // Flush and wait for the result.
-            ctx.getRenderContext()->flush(true);
+            rContext->flush(true);
 
             // Check the result.
             const uint32_t* result = static_cast<const uint32_t*>(pReadback->map(Buffer::MapType::Read));
@@ -108,14 +109,15 @@ namespace Falcor
 
             // Copy the test data into the end of the large buffer.
             const uint64_t dstOffset = pBuffer->getSize() - testSize;
-            ctx.getRenderContext()->copyBufferRegion(pBuffer.get(), dstOffset, pTestData.get(), 0ull, testSize);
-            ctx.getRenderContext()->flush(true); // For safety's sake
+            auto rContext = ctx.getRenderContext();
+            rContext->copyBufferRegion(pBuffer.get(), dstOffset, pTestData.get(), 0ull, testSize);
+            rContext->flush(true); // For safety's sake
 
             // For >4GB buffers, also default initialize at the destination offset cast to 32-bit *after* the copy above.
             if (dstOffset + testSize > (1ull << 32))
             {
-                ctx.getRenderContext()->copyBufferRegion(pBuffer.get(), (uint32_t)dstOffset, pDefaultData.get(), 0ull, testSize);
-                ctx.getRenderContext()->flush(true); // For safety's sake
+                rContext->copyBufferRegion(pBuffer.get(), (uint32_t)dstOffset, pDefaultData.get(), 0ull, testSize);
+                rContext->flush(true); // For safety's sake
             }
 
             // Run compute program to read from the large buffer.
@@ -159,14 +161,15 @@ namespace Falcor
 
             // Copy the test data into the end of the large buffer.
             const uint64_t dstOffset = pBuffer->getSize() - testSize;
-            ctx.getRenderContext()->copyBufferRegion(pBuffer.get(), dstOffset, pTestData.get(), 0ull, testSize);
-            ctx.getRenderContext()->flush(true); // For safety's sake
+            auto rContext = ctx.getRenderContext();
+            rContext->copyBufferRegion(pBuffer.get(), dstOffset, pTestData.get(), 0ull, testSize);
+            rContext->flush(true); // For safety's sake
 
             // For >4GB buffers, also default initialize at the destination offset cast to 32-bit *after* the copy above.
             if (dstOffset + testSize > (1ull << 32))
             {
-                ctx.getRenderContext()->copyBufferRegion(pBuffer.get(), (uint32_t)dstOffset, pDefaultData.get(), 0ull, testSize);
-                ctx.getRenderContext()->flush(true); // For safety's sake
+                rContext->copyBufferRegion(pBuffer.get(), (uint32_t)dstOffset, pDefaultData.get(), 0ull, testSize);
+                rContext->flush(true); // For safety's sake
             }
 
             // Run compute program to read from the large buffer.
@@ -210,14 +213,15 @@ namespace Falcor
 
             // Copy the test data into the end of the large buffer.
             const uint64_t dstOffset = pBuffer->getSize() - testSize;
-            ctx.getRenderContext()->copyBufferRegion(pBuffer.get(), dstOffset, pTestData.get(), 0ull, testSize);
-            ctx.getRenderContext()->flush(true); // For safety's sake
+            auto rContext = ctx.getRenderContext();
+            rContext->copyBufferRegion(pBuffer.get(), dstOffset, pTestData.get(), 0ull, testSize);
+            rContext->flush(true); // For safety's sake
 
             // For >4GB buffers, also default initialize at the destination offset cast to 32-bit *after* the copy above.
             if (dstOffset + testSize > (1ull << 32))
             {
-                ctx.getRenderContext()->copyBufferRegion(pBuffer.get(), (uint32_t)dstOffset, pDefaultData.get(), 0ull, testSize);
-                ctx.getRenderContext()->flush(true); // For safety's sake
+                rContext->copyBufferRegion(pBuffer.get(), (uint32_t)dstOffset, pDefaultData.get(), 0ull, testSize);
+                rContext->flush(true); // For safety's sake
             }
 
             // Run compute program to read from the large buffer.

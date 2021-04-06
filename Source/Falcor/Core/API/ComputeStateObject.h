@@ -41,7 +41,7 @@ namespace Falcor
         class dlldecl Desc
         {
         public:
-            Desc& setRootSignature(RootSignature::SharedPtr pSignature) { mpRootSignature = pSignature; return *this; }
+            Desc& setRootSignature(RootSignature::SharedPtr pSignature) { mpRootSignature = std::move(pSignature); return *this; }
             Desc& setProgramKernels(const ProgramKernels::SharedConstPtr& pProgram) { mpProgram = pProgram; return *this; }
             const ProgramKernels::SharedConstPtr getProgramKernels() const { return mpProgram; }
             ProgramVersion::SharedConstPtr getProgramVersion() const { return mpProgram->getProgramVersion(); }

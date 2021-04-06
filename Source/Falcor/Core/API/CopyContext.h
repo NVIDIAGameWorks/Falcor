@@ -135,7 +135,7 @@ namespace Falcor
 
         /** Override the low-level context data with a user provided object
         */
-        void setLowLevelContextData(LowLevelContextData::SharedPtr pLowLevelData) { mpLowLevelData = pLowLevelData; }
+        void setLowLevelContextData(LowLevelContextData::SharedPtr pLowLevelData) { mpLowLevelData = std::move(pLowLevelData); }
 
         /** Bind the descriptor heaps from the device into the command list.
         */
