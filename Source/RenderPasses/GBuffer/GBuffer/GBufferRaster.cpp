@@ -165,7 +165,10 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
         auto clear = [&](const ChannelDesc& channel)
         {
             auto pTex = renderData[channel.name]->asTexture();
-            if (pTex) pRenderContext->clearUAV(pTex->getUAV().get(), float4(0.f));
+            if (pTex) {
+                if (channel.name == kVBufferName) pRenderContext->clearUAV(pTex->getUAV().get(), uint4(std::numeric_limits<uint32_t>::max()));
+                else pRenderContext->clearUAV(pTex->getUAV().get(), float4(0.f));
+            }
         };
         for (const auto& channel : kGBufferExtraChannels) clear(channel);
         auto pDepth = renderData[kDepthName]->asTexture();
@@ -199,7 +202,10 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     for (const auto& channel : kGBufferExtraChannels)
     {
         Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
-        if (pTex) pRenderContext->clearUAV(pTex->getUAV().get(), float4(0, 0, 0, 0));
+        if (pTex) {
+            if (channel.name == kVBufferName) pRenderContext->clearUAV(pTex->getUAV().get(), uint4(std::numeric_limits<uint32_t>::max()));
+            else pRenderContext->clearUAV(pTex->getUAV().get(), float4(0.0f));
+        }
         mRaster.pVars[channel.texname] = pTex;
     }
 
