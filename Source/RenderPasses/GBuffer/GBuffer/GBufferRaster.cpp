@@ -44,6 +44,7 @@ namespace
         { kVBufferName,       "gVBuffer",            "Visibility buffer",                true /* optional */, ResourceFormat::Unknown /* set at runtime */ },
         { "mvec",             "gMotionVectors",      "Motion vectors",                   true /* optional */, ResourceFormat::RG32Float   },
         { "faceNormalW",      "gFaceNormalW",        "Face normal in world space",       true /* optional */, ResourceFormat::RGBA32Float },
+        { "viewW",            "gViewW",              "View direction in world space",    true /* optional */, ResourceFormat::RGBA32Float }, // TODO: Switch to packed 2x16-bit snorm format.
         { "pnFwidth",         "gPosNormalFwidth",    "position and normal filter width", true /* optional */, ResourceFormat::RG32Float   },
         { "linearZ",          "gLinearZAndDeriv",    "linear z (and derivative)",        true /* optional */, ResourceFormat::RG32Float   },
         { "surfSpreadAngle",  "gSurfaceSpreadAngle", "surface spread angle (texlod)",    true /* optional */, ResourceFormat::R16Float    },
