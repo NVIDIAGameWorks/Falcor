@@ -39,6 +39,7 @@ RasterizerOrderedTexture2D<float2> gMotionVectors;
 RasterizerOrderedTexture2D<float4> gRoughness;
 RasterizerOrderedTexture2D<float4> gMetallic;
 RasterizerOrderedTexture2D<float4> gFaceNormalW;
+RasterizerOrderedTexture2D<float4> gViewW;
 RasterizerOrderedTexture2D<float2> gPosNormalFwidth;
 RasterizerOrderedTexture2D<float2> gLinearZAndDeriv;
 
@@ -103,6 +104,11 @@ GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 bar
     if (is_valid(gFaceNormalW))
     {
         gFaceNormalW[ipos] = float4(sd.faceN, 0);
+    }
+
+    if (isValid(gViewW))
+    {
+        gViewW[ipos] = float4(sd.V, 0);
     }
 
     // Compute motion vectors.
