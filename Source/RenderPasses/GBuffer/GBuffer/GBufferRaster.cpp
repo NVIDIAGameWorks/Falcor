@@ -44,6 +44,7 @@ namespace
         { kVBufferName,       "gVBuffer",            "Visibility buffer",                true /* optional */, ResourceFormat::Unknown /* set at runtime */ },
         { "mvec",             "gMotionVectors",      "Motion vectors",                   true /* optional */, ResourceFormat::RG32Float   },
         { "faceNormalW",      "gFaceNormalW",        "Face normal in world space",       true /* optional */, ResourceFormat::RGBA32Float },
+        { "viewW",            "gViewW",              "View direction in world space",    true /* optional */, ResourceFormat::RGBA32Float }, // TODO: Switch to packed 2x16-bit snorm format.
         { "pnFwidth",         "gPosNormalFwidth",    "position and normal filter width", true /* optional */, ResourceFormat::RG32Float   },
         { "linearZ",          "gLinearZAndDeriv",    "linear z (and derivative)",        true /* optional */, ResourceFormat::RG32Float   },
         { "surfSpreadAngle",  "gSurfaceSpreadAngle", "surface spread angle (texlod)",    true /* optional */, ResourceFormat::R16Float    },
@@ -165,7 +166,10 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
         auto clear = [&](const ChannelDesc& channel)
         {
             auto pTex = renderData[channel.name]->asTexture();
-            if (pTex) pRenderContext->clearUAV(pTex->getUAV().get(), float4(0.f));
+            if (pTex) {
+                if (channel.name == kVBufferName) pRenderContext->clearUAV(pTex->getUAV().get(), uint4(std::numeric_limits<uint32_t>::max()));
+                else pRenderContext->clearUAV(pTex->getUAV().get(), float4(0.f));
+            }
         };
         for (const auto& channel : kGBufferExtraChannels) clear(channel);
         auto pDepth = renderData[kDepthName]->asTexture();
@@ -199,7 +203,10 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     for (const auto& channel : kGBufferExtraChannels)
     {
         Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
-        if (pTex) pRenderContext->clearUAV(pTex->getUAV().get(), float4(0, 0, 0, 0));
+        if (pTex) {
+            if (channel.name == kVBufferName) pRenderContext->clearUAV(pTex->getUAV().get(), uint4(std::numeric_limits<uint32_t>::max()));
+            else pRenderContext->clearUAV(pTex->getUAV().get(), float4(0.0f));
+        }
         mRaster.pVars[channel.texname] = pTex;
     }
 

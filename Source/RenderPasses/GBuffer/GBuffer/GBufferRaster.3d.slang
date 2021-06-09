@@ -37,6 +37,7 @@ import Experimental.Scene.Material.TexLODHelpers;
 RWTexture2D<PackedHitInfo> gVBuffer;
 RWTexture2D<float2> gMotionVectors;
 RWTexture2D<float4> gFaceNormalW;
+RWTexture2D<float4> gViewW;
 RWTexture2D<float2> gPosNormalFwidth;
 RWTexture2D<float2> gLinearZAndDeriv;
 RWTexture2D<float>  gSurfaceSpreadAngle;
@@ -97,6 +98,11 @@ GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 bar
     if (isValid(gFaceNormalW))
     {
         gFaceNormalW[ipos] = float4(sd.faceN, 0);
+    }
+
+    if (isValid(gViewW))
+    {
+        gViewW[ipos] = float4(sd.V, 0);
     }
 
     // Compute motion vectors.
