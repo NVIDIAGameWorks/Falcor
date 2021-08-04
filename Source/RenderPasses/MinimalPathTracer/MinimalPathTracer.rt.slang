@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -57,7 +57,8 @@
 import Scene.Raytracing;
 import Utils.Math.MathHelpers;
 import Utils.Sampling.SampleGenerator;
-import Experimental.Scene.Material.MaterialShading;
+import Experimental.Scene.Material.StandardMaterial;
+import Experimental.Scene.Material.MaterialHelpers;
 import Experimental.Scene.Lights.LightHelpers;
 
 cbuffer CB
@@ -65,6 +66,12 @@ cbuffer CB
     uint        gFrameCount;        // Frame count since scene was loaded.
     uint        gPRNGDimension;     // First available PRNG dimension.
 }
+
+static struct Data
+{
+    // Materials
+    StandardMaterial standardMaterial;
+} gData;
 
 // Inputs
 Texture2D<float4> gWorldPosition;
@@ -81,7 +88,7 @@ Texture2D<float4> gMaterialExtraParams;
 RWTexture2D<float4> gOutputColor;
 
 // Static configuration based on defines set from the host.
-#define isValid(name) (is_valid_##name != 0)
+#define is_valid(name) (is_valid_##name != 0)
 static const uint kMaxBounces = MAX_BOUNCES;
 static const bool kComputeDirect = COMPUTE_DIRECT;
 static const bool kUseAnalyticLights = USE_ANALYTIC_LIGHTS;
@@ -146,7 +153,7 @@ MaterialParams loadMaterialParams(uint2 pixelPos)
 */
 float3 getPrimaryRayDir(uint2 launchIndex, uint2 launchDim, const Camera camera)
 {
-    if (isValid(gWorldView))
+    if (is_valid(gWorldView))
     {
         // If we have the view vector bound as a buffer, just fetch it. No need to compute anything.
         return -gWorldView[launchIndex].xyz;
@@ -176,7 +183,7 @@ bool traceShadowRay(float3 origin, float3 dir, float distance)
 
     ShadowRayData rayData;
     rayData.visible = false;    // Set to true by miss shader if ray is not terminated before
-    TraceRay(gRtScene, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff /* instanceInclusionMask */, 1 /* hitIdx */, hitProgramCount, 1 /* missIdx */, ray, rayData);
+    TraceRay(gScene.rtAccel, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff /* instanceInclusionMask */, 1 /* hitIdx */, rayTypeCount, 1 /* missIdx */, ray, rayData);
 
     return rayData.visible;
 }
@@ -193,7 +200,7 @@ void traceScatterRay(inout ScatterRayData rayData)
     ray.TMax = kRayTMax;
 
     uint rayFlags = 0;      // TODO: Set cull mode from the app
-    TraceRay(gRtScene, rayFlags, 0xff /* instanceInclusionMask */, 0 /* hitIdx */, hitProgramCount, 0 /* missIdx */, ray, rayData);
+    TraceRay(gScene.rtAccel, rayFlags, 0xff /* instanceInclusionMask */, 0 /* hitIdx */, rayTypeCount, 0 /* missIdx */, ray, rayData);
 }
 
 /** Evaluates the direct illumination from analytic lights.
@@ -221,7 +228,7 @@ float3 evalDirectAnalytic(const ShadingData sd, float3 rayOrigin, inout SampleGe
 
     // Test visibility by tracing a shadow ray.
     bool V = traceShadowRay(rayOrigin, ls.dir, ls.distance);
-    return V ? evalBSDFCosine(sd, ls.dir) * ls.Li * invPdf : float3(0);
+    return V ? gData.standardMaterial.eval(sd, ls.dir) * ls.Li * invPdf : float3(0);
 }
 
 /** Processes a hit point to generate a scatter ray or terminate.
@@ -229,18 +236,20 @@ float3 evalDirectAnalytic(const ShadingData sd, float3 rayOrigin, inout SampleGe
     \param[in] sd Shading data.
     \param[in] rayOrigin Ray origin for the new ray.
     \param[in] rayData Ray payload.
+    \return True if the path continues.
 */
-void generateScatterRay(const ShadingData sd, float3 rayOrigin, inout ScatterRayData rayData)
+bool generateScatterRay(const ShadingData sd, float3 rayOrigin, inout ScatterRayData rayData)
 {
     // Generate scatter ray as cosine-weighted direction over the hemisphere.
     float pdf = 0.f;
     float2 u = sampleNext2D(rayData.sg);
     float3 wi = sample_cosine_hemisphere_concentric(u, pdf);
-    wi = fromLocal(wi, sd);
+    wi = sd.fromLocal(wi);
 
     rayData.origin = rayOrigin;
     rayData.direction = wi;
-    rayData.thp *= pdf > 0.f ? evalBSDFCosine(sd, wi) / pdf : float3(0);
+    rayData.thp *= pdf > 0.f ? gData.standardMaterial.eval(sd, wi) / pdf : float3(0);
+    return any(rayData.thp > 0.f);
 }
 
 /** ********************* Ray index 0: Scatter ray ************************ */
@@ -260,25 +269,23 @@ void scatterMiss(inout ScatterRayData rayData : SV_RayPayload)
 }
 
 [shader("anyhit")]
-void scatterAnyHit(
-    uniform HitShaderParams hitParams,
-    inout ScatterRayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
+void scatterAnyHit(inout ScatterRayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
 {
     // Alpha test for non-opaque geometry.
-    VertexData v = getVertexData(hitParams, PrimitiveIndex(), attribs);
-    const uint materialID = gScene.getMaterialID(hitParams.getGlobalHitID());
+    GeometryInstanceID instanceID = getGeometryInstanceID();
+    VertexData v = getVertexData(instanceID, PrimitiveIndex(), attribs);
+    const uint materialID = gScene.getMaterialID(instanceID);
     if (alphaTest(v, gScene.materials[materialID], gScene.materialResources[materialID], 0.f)) IgnoreHit();
 }
 
 [shader("closesthit")]
-void scatterClosestHit(
-    uniform HitShaderParams hitParams,
-    inout ScatterRayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
+void scatterClosestHit(inout ScatterRayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
 {
     // Evaluate Falcor's material parameters at the hit point.
     // TODO: Implement texLOD to enable texture filtering in prepareShadingData().
-    VertexData v = getVertexData(hitParams, PrimitiveIndex(), attribs);
-    const uint materialID = gScene.getMaterialID(hitParams.getGlobalHitID());
+    GeometryInstanceID instanceID = getGeometryInstanceID();
+    VertexData v = getVertexData(instanceID, PrimitiveIndex(), attribs);
+    const uint materialID = gScene.getMaterialID(instanceID);
     ShadingData sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -WorldRayDirection(), 0.f);
 
     // Add emitted light.
@@ -306,7 +313,11 @@ void scatterClosestHit(
 
     // Generate scatter ray for the next path segment.
     // The raygen shader will continue the path based on the returned payload.
-    generateScatterRay(sd, rayOrigin, rayData);
+    if (!generateScatterRay(sd, rayOrigin, rayData))
+    {
+        rayData.terminated = true;
+        return;
+    }
 
     rayData.pathLength++;
 }
@@ -321,13 +332,12 @@ void shadowMiss(inout ShadowRayData rayData : SV_RayPayload)
 }
 
 [shader("anyhit")]
-void shadowAnyHit(
-    uniform HitShaderParams hitParams,
-    inout ShadowRayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
+void shadowAnyHit(inout ShadowRayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
 {
     // Alpha test for non-opaque geometry.
-    VertexData v = getVertexData(hitParams, PrimitiveIndex(), attribs);
-    const uint materialID = gScene.getMaterialID(hitParams.getGlobalHitID());
+    GeometryInstanceID instanceID = getGeometryInstanceID();
+    VertexData v = getVertexData(instanceID, PrimitiveIndex(), attribs);
+    const uint materialID = gScene.getMaterialID(instanceID);
     if (alphaTest(v, gScene.materials[materialID], gScene.materialResources[materialID], 0.f)) IgnoreHit();
 }
 
@@ -360,7 +370,7 @@ void rayGen()
         // Load geometry parameters from G-buffer.
         // TODO: Load (u,v) channel if it exists.
         float3 normal = gWorldShadingNormal[launchIndex].xyz;
-        float4 tangent = isValid(gWorldShadingTangent) ? gWorldShadingTangent[launchIndex] : float4(perp_stark(normal), 1.f);
+        float4 tangent = is_valid(gWorldShadingTangent) ? gWorldShadingTangent[launchIndex] : float4(perp_stark(normal), 1.f);
         float3 faceNormal = gWorldFaceNormal[launchIndex].xyz;
         GeometryParams geoParams = prepareGeometryParams(worldPos.xyz, -rayDir, normal, tangent, faceNormal);
 
@@ -394,7 +404,7 @@ void rayGen()
         ScatterRayData rayData = ScatterRayData.create(sg);
 
         // Generate scatter ray.
-        generateScatterRay(sd, rayOrigin, rayData);
+        if (!generateScatterRay(sd, rayOrigin, rayData)) rayData.terminated = true;
 
         // Follow path into the scene and compute its total contribution.
         for (uint depth = 0; depth <= kMaxBounces && !rayData.terminated; depth++)

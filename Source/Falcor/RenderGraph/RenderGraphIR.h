@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -48,7 +48,6 @@ namespace Falcor
         void markOutput(const std::string& name);
         void unmarkOutput(const std::string& name);
         void loadPassLibrary(const std::string& name);
-        void autoGenEdges();
 
         std::string getIR() { return mIR + mIndentation + (mIndentation.size() ? "return g\n" : "\n"); }
 
@@ -58,7 +57,6 @@ namespace Falcor
         static const char* kRemoveEdge;
         static const char* kMarkOutput;
         static const char* kUnmarkOutput;
-        static const char* kAutoGenEdges;
         static const char* kRenderPass;
         static const char* kRenderGraph;
         static const char* kUpdatePass;

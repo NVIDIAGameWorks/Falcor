@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -41,6 +41,7 @@ namespace Falcor
         public:
             Desc& setKernels(const ProgramKernels::SharedConstPtr& pKernels) { mpKernels = pKernels; return *this; }
             Desc& setMaxTraceRecursionDepth(uint32_t maxDepth) { mMaxTraceRecursionDepth = maxDepth; return *this; }
+            Desc& setPipelineFlags(D3D12_RAYTRACING_PIPELINE_FLAGS flags) { mPipelineFlags = flags; return *this; }
 
             // TODO(tfoley): this is redundant with the kernels
             Desc& setGlobalRootSignature(const RootSignature::SharedPtr& pRootSig) { mpGlobalRootSignature = pRootSig; return *this; }
@@ -49,7 +50,8 @@ namespace Falcor
         private:
             ProgramKernels::SharedConstPtr mpKernels;
             RootSignature::SharedPtr mpGlobalRootSignature;
-            uint32_t mMaxTraceRecursionDepth = 1;
+            uint32_t mMaxTraceRecursionDepth = 0;
+            D3D12_RAYTRACING_PIPELINE_FLAGS mPipelineFlags = D3D12_RAYTRACING_PIPELINE_FLAG_NONE;
             friend RtStateObject;
         };
 

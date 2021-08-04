@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -310,10 +310,28 @@ namespace Falcor
         }
     }
 
-    D3D12_FILTER getD3D12Filter(Sampler::Filter minFilter, Sampler::Filter magFilter, Sampler::Filter mipFilter, bool isComparison, bool isAnisotropic)
+    D3D12_FILTER_REDUCTION_TYPE getReductionType(Sampler::ReductionMode reductionMode)
+    {
+        switch (reductionMode)
+        {
+        case Sampler::ReductionMode::Standard:
+            return D3D12_FILTER_REDUCTION_TYPE_STANDARD;
+        case Sampler::ReductionMode::Comparison:
+            return D3D12_FILTER_REDUCTION_TYPE_COMPARISON;
+        case Sampler::ReductionMode::Min:
+            return D3D12_FILTER_REDUCTION_TYPE_MINIMUM;
+        case Sampler::ReductionMode::Max:
+            return D3D12_FILTER_REDUCTION_TYPE_MAXIMUM;
+        default:
+            should_not_get_here();
+            return (D3D12_FILTER_REDUCTION_TYPE)-1;
+        }
+    }
+
+    D3D12_FILTER getD3D12Filter(Sampler::Filter minFilter, Sampler::Filter magFilter, Sampler::Filter mipFilter, Sampler::ReductionMode reductionMode, bool isAnisotropic)
     {
         D3D12_FILTER filter;
-        D3D12_FILTER_REDUCTION_TYPE reduction = isComparison ? D3D12_FILTER_REDUCTION_TYPE_COMPARISON : D3D12_FILTER_REDUCTION_TYPE_STANDARD;
+        D3D12_FILTER_REDUCTION_TYPE reduction = getReductionType(reductionMode);
 
         if (isAnisotropic)
         {
@@ -352,7 +370,10 @@ namespace Falcor
 
     void initD3D12SamplerDesc(const Sampler* pSampler, D3D12_SAMPLER_DESC& desc)
     {
-        desc.Filter = getD3D12Filter(pSampler->getMinFilter(), pSampler->getMagFilter(), pSampler->getMipFilter(), (pSampler->getComparisonMode() != Sampler::ComparisonMode::Disabled), (pSampler->getMaxAnisotropy() > 1));
+        // Force reduction mode to comparison if the comparison mode is set.
+        Sampler::ReductionMode redmode = (pSampler->getComparisonMode() != Sampler::ComparisonMode::Disabled) ? Sampler::ReductionMode::Comparison : pSampler->getReductionMode();
+
+        desc.Filter = getD3D12Filter(pSampler->getMinFilter(), pSampler->getMagFilter(), pSampler->getMipFilter(), redmode, (pSampler->getMaxAnisotropy() > 1));
         desc.AddressU = getD3D12AddressMode(pSampler->getAddressModeU());
         desc.AddressV = getD3D12AddressMode(pSampler->getAddressModeV());
         desc.AddressW = getD3D12AddressMode(pSampler->getAddressModeW());

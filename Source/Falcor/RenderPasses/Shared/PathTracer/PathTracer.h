@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -57,6 +57,7 @@ namespace Falcor
 
     protected:
         PathTracer(const Dictionary& dict, const ChannelList& outputs);
+        void parseDictionary(const Dictionary& dict);
 
         virtual void recreateVars() {}
 
@@ -101,33 +102,6 @@ namespace Falcor
         uint32_t                            mMaxRaysPerPixel = 0;           ///< Maximum number of rays per pixel that will be traced. This is computed based on the current configuration.
         bool                                mGBufferAdjustShadingNormals = false; ///< True if GBuffer/VBuffer has adjusted shading normals enabled.
         bool                                mIsRayFootprintSupported = true;///< Globally enable/disable ray footprint. Requires v-buffer. Set to false if any requirement is not met.
-
-        // Scripting
-    #define serialize(var) \
-        if constexpr (!loadFromDict) dict[#var] = var; \
-        else if (dict.keyExists(#var)) { if constexpr (std::is_same<decltype(var), std::string>::value) var = (const std::string &)dict[#var]; else var = dict[#var]; vars.emplace(#var); }
-
-        template<bool loadFromDict, typename DictType>
-        void serializePass(DictType& dict)
-        {
-            std::unordered_set<std::string> vars;
-
-            // Add variables here that should be serialized to/from the dictionary.
-            serialize(mSharedParams);
-            serialize(mSelectedSampleGenerator);
-            serialize(mSelectedEmissiveSampler);
-            serialize(mUniformSamplerOptions);
-            serialize(mLightBVHSamplerOptions);
-
-            if constexpr (loadFromDict)
-            {
-                for (const auto& [key, value] : dict)
-                {
-                    if (vars.find(key) == vars.end()) logWarning("Unknown field '" + key + "' in a PathTracer dictionary");
-                }
-            }
-        }
-    #undef serialize
     };
 
 }

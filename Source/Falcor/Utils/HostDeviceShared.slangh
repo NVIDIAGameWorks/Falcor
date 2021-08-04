@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -42,6 +42,7 @@
 *******************************************************************/
 #include "Utils/Math/Vector.h"
 #include "glm/packing.hpp"
+#include <algorithm>
 
 #define BEGIN_NAMESPACE_FALCOR namespace Falcor{
 #define END_NAMESPACE_FALCOR }
@@ -64,6 +65,11 @@ namespace Falcor
     inline uint2 f32tof16(float2 v) { return { f32tof16(v.x), f32tof16(v.y) }; }
     inline uint3 f32tof16(float3 v) { return { f32tof16(v.x), f32tof16(v.y), f32tof16(v.z) }; }
     inline uint4 f32tof16(float4 v) { return { f32tof16(v.x), f32tof16(v.y), f32tof16(v.z), f32tof16(v.w) }; }
+
+    inline float saturate(float v) { return std::max(0.0f, std::min(1.0f, v)); }
+    inline float2 saturate(float2 v) { return float2(saturate(v.x), saturate(v.y)); }
+    inline float3 saturate(float3 v) { return float3(saturate(v.x), saturate(v.y), saturate(v.z)); }
+    inline float4 saturate(float4 v) { return float4(saturate(v.x), saturate(v.y), saturate(v.z), saturate(v.w)); }
 
     /** Generic reinterpret/bit cast.
         TODO: Replace by std::bit_cast<T> when it is available in Visual Studio.

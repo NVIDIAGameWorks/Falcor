@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -163,6 +163,26 @@ namespace Falcor
         */
         uint32_t getGridFrameCount() const { return mGridFrameCount; }
 
+        /** Set the frame rate for grid playback.
+        */
+        void setFrameRate(double frameRate);
+
+        /** Get the frame rate for grid playback.
+        */
+        double getFrameRate() const { return mFrameRate; }
+
+        /** Enable/disable grid playback.
+        */
+        void setPlaybackEnabled(bool enabled);
+
+        /** Check if grid playback is enabled.
+        */
+        bool isPlaybackEnabled() const { return mPlaybackEnabled; }
+
+        /** Update the selected grid frame based on global time in seconds.
+        */
+        void updatePlayback(double curentTime);
+
         /** Set the density grid.
         */
         void setDensityGrid(const Grid::SharedPtr& densityGrid) { setGrid(GridSlot::Density, densityGrid); };
@@ -203,11 +223,11 @@ namespace Falcor
         */
         const float3& getAlbedo() const { return mData.albedo; }
 
-        /** Set the anisotropy (forward or backward scattering).
+        /** Set the phase function anisotropy (forward or backward scattering).
         */
         void setAnisotropy(float anisotropy);
 
-        /** Get the anisotropy.
+        /** Get the phase function anisotropy.
         */
         float getAnisotropy() const { return mData.anisotropy; }
 
@@ -250,9 +270,13 @@ namespace Falcor
         std::array<GridSequence, (size_t)GridSlot::Count> mGrids;
         uint32_t mGridFrame = 0;
         uint32_t mGridFrameCount = 1;
+        double mFrameRate = 30.f;
+        bool mPlaybackEnabled = false;
         AABB mBounds;
         VolumeData mData;
         mutable UpdateFlags mUpdates = UpdateFlags::None;
+
+        friend class SceneCache;
     };
 
     enum_class_operators(Volume::UpdateFlags);

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -53,7 +53,9 @@ namespace Mogwai
     Renderer::Renderer(const Options& options)
         : mOptions(options)
         , mAppData(kAppDataPath)
-    {}
+    {
+        Program::setGenerateDebugInfoEnabled(options.generateShaderDebugInfo);
+    }
 
     void Renderer::extend(Extension::CreateFunc func, const std::string& name)
     {
@@ -91,6 +93,14 @@ namespace Mogwai
             loadScript(mOptions.scriptFile);
             // Add script to recent files only if not in silent mode (which is used during image tests).
             if (!mOptions.silentMode) mAppData.addRecentScript(mOptions.scriptFile);
+        }
+
+        // Load pyscene provided via command line.
+        if (!mOptions.sceneFile.empty())
+        {
+            loadScene(mOptions.sceneFile);
+            // Add scene to recent files only if not in silent mode (which is used during image tests).
+            if (!mOptions.silentMode) mAppData.addRecentScene(mOptions.sceneFile);
         }
 
         Scene::nullTracePass(pRenderContext, uint2(1024));
@@ -461,6 +471,9 @@ namespace Mogwai
     {
         TimeReport timeReport;
 
+        if (mOptions.useSceneCache) buildFlags |= SceneBuilder::Flags::UseCache;
+        if (mOptions.rebuildSceneCache) buildFlags |= SceneBuilder::Flags::RebuildCache;
+
         SceneBuilder::SharedPtr pBuilder = SceneBuilder::create(filename, buildFlags);
         if (!pBuilder) return;
 
@@ -663,15 +676,21 @@ namespace Mogwai
 
 int main(int argc, char** argv)
 {
+
     args::ArgumentParser parser("Mogwai render application.");
     parser.helpParams.programName = "Mogwai";
     args::HelpFlag helpFlag(parser, "help", "Display this help menu.", {'h', "help"});
     args::ValueFlag<std::string> scriptFlag(parser, "path", "Python script file to run.", {'s', "script"});
+    args::ValueFlag<std::string> sceneFlag(parser, "path", "Scene file (for example, a .pyscene file) to open.", { 'S', "scene" });
     args::ValueFlag<std::string> logfileFlag(parser, "path", "File to write log into.", {'l', "logfile"});
     args::ValueFlag<int32_t> verbosityFlag(parser, "verbosity", "Logging verbosity (0=disabled, 1=fatal errors, 2=errors, 3=warnings, 4=infos, 5=debugging)", { 'v', "verbosity" }, 4);
     args::Flag silentFlag(parser, "", "Starts Mogwai with a minimized window and disables mouse/keyboard input as well as error message dialogs.", {"silent"});
     args::ValueFlag<uint32_t> widthFlag(parser, "pixels", "Initial window width.", {"width"});
     args::ValueFlag<uint32_t> heightFlag(parser, "pixels", "Initial window height.", {"height"});
+    args::Flag useSceneCacheFlag(parser, "", "Use scene cache to improve scene load times.", {'c', "use-cache"});
+    args::Flag rebuildSceneCacheFlag(parser, "", "Rebuild the scene cache.", {"rebuild-cache"});
+    args::Flag generateShaderDebugInfo(parser, "", "Generate shader debug info.", {'d', "debug-shaders"});
+
     args::CompletionFlag completionFlag(parser, {"complete"});
 
     try
@@ -721,7 +740,11 @@ int main(int argc, char** argv)
     Mogwai::Renderer::Options options;
 
     if (scriptFlag) options.scriptFile = args::get(scriptFlag);
+    if (sceneFlag) options.sceneFile = args::get(sceneFlag);
     if (silentFlag) options.silentMode = true;
+    if (useSceneCacheFlag) options.useSceneCache = true;
+    if (rebuildSceneCacheFlag) options.rebuildSceneCache = true;
+    if (generateShaderDebugInfo) options.generateShaderDebugInfo = true;
 
     try
     {

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 #pragma once
 #include "Falcor.h"
 #include "FalcorExperimental.h"
+#include "Scene/HitInfoType.slang"
 #include "SharedTypes.slang"
 
 using namespace Falcor;
@@ -52,6 +53,10 @@ public:
     void renderUI(Gui::Widgets& widget) override;
     bool onMouseEvent(const MouseEvent& mouseEvent) override;
     bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
+
+    // Scripting functions
+    SceneDebuggerMode getMode() const { return (SceneDebuggerMode)mParams.mode; }
+    void setMode(SceneDebuggerMode mode) { mParams.mode = (uint32_t)mode; }
 
 private:
     SceneDebugger(const Dictionary& dict);

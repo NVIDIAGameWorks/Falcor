@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 #include "ImageIO.h"
 #include "DirectXTex.h"
 #include <filesystem>
+
 
 namespace Falcor
 {
@@ -76,6 +77,7 @@ namespace Falcor
             ApiImage image;
         };
 
+
         ImportData loadDDS(const std::string& filename, bool loadAsSrgb)
         {
             assert(hasSuffix(filename, ".dds", false));
@@ -83,13 +85,13 @@ namespace Falcor
             ImportData data;
             if (findFileInDataDirectories(filename, data.fullpath) == false)
             {
-                throw std::exception(("Can't find file: " + filename).c_str());
+                throw std::exception(("Can't find file: '" + filename + "'").c_str());
             }
 
             DirectX::DDS_FLAGS flags = DirectX::DDS_FLAGS_NONE;
             if (FAILED(DirectX::LoadFromDDSFile(string_2_wstring(data.fullpath).c_str(), flags, nullptr, data.image.scratchImage)))
             {
-                throw std::exception(("Failed to load file: " + filename).c_str());
+                throw std::exception(("Failed to load file: '" + filename + "'").c_str());
             }
 
             const auto& meta = data.image.scratchImage.GetMetadata();
@@ -108,12 +110,12 @@ namespace Falcor
         {
             if (std::filesystem::path(filename).is_absolute() == false)
             {
-                throw std::exception((filename + " is not an absolute path.").c_str());
+                throw std::exception(("'" + filename + "' is not an absolute path.").c_str());
             }
 
             if (getExtensionFromFile(filename) != "dds")
             {
-                throw std::exception((filename + " does not end in dds").c_str());
+                throw std::exception(("'" + filename + "' does not end in dds").c_str());
             }
         }
 
@@ -160,6 +162,7 @@ namespace Falcor
             }
         }
 
+        // DirectXTex version
         void compress(ApiImage& image, ImageIO::CompressionMode mode)
         {
             if (isCompressedFormat(getResourceFormat(image.getFormat())))
@@ -192,11 +195,26 @@ namespace Falcor
             }
         }
 
-        /** Saves image data to a DDS file. Optionally compresses image.
+        /** Saves image data to a DDS file. Optionally compresses image and/or generate mips.
         */
-        void exportDDS(const std::string& filename, ApiImage& image, ImageIO::CompressionMode mode)
+        // DirectXTex version
+        void exportDDS(const std::string& filename, ApiImage& image, ImageIO::CompressionMode mode, bool generateMips)
         {
             validateSavePath(filename);
+
+            // Generate mips, if requested
+            if (generateMips)
+            {
+                HRESULT result = DirectX::GenerateMipMaps(image.image, DirectX::TEX_FILTER_FANT, 0, image.scratchImage);
+
+                if (result != S_OK)
+                {
+                    throw std::exception(("Failed to generate mipmaps for '" + filename + "':" + std::to_string(result)).c_str());
+                }
+
+                // Clear the bitmap, since mipmap generation wrote to the scatchImage.
+                image.image = {};
+            }
 
             // Compress
             try
@@ -240,7 +258,7 @@ namespace Falcor
         const auto& meta = scratchImage.GetMetadata();
         if (meta.IsCubemap() || meta.IsVolumemap())
         {
-            throw std::exception(("Cannot load " + filename + " as a Bitmap. Invalid resource dimension.").c_str());
+            throw std::exception(("Cannot load '" + filename + "' as a Bitmap. Invalid resource dimension.").c_str());
         }
 
         // Create from first image
@@ -284,8 +302,9 @@ namespace Falcor
         return pTex;
     }
 
-    void ImageIO::saveToDDS(const std::string& filename, const Bitmap& bitmap, CompressionMode mode)
+    void ImageIO::saveToDDS(const std::string& filename, const Bitmap& bitmap, CompressionMode mode, bool generateMips)
     {
+        // DirectXTex version
         ApiImage image;
         image.image.width = bitmap.getWidth();
         image.image.height = bitmap.getHeight();
@@ -294,11 +313,12 @@ namespace Falcor
         image.image.slicePitch = bitmap.getSize();
         image.image.pixels = bitmap.getData();
 
-        exportDDS(filename, image, mode);
+        exportDDS(filename, image, mode, generateMips);
     }
 
-    void ImageIO::saveToDDS(CopyContext* pContext, const std::string& filename, const Texture::SharedPtr& pTexture, CompressionMode mode)
+    void ImageIO::saveToDDS(CopyContext* pContext, const std::string& filename, const Texture::SharedPtr& pTexture, CompressionMode mode, bool generateMips)
     {
+        // DirectXTex version
         DirectX::TexMetadata meta = {};
         meta.width = pTexture->getWidth();
         meta.height = pTexture->getHeight();
@@ -320,7 +340,7 @@ namespace Falcor
             break;
         case Resource::Type::Texture3D:
             meta.dimension = DirectX::TEX_DIMENSION_TEXTURE3D;
-            throw std::exception("saveToDDS: Saving 3D textures currently not supported.");
+            break;
         default:
             throw std::exception("saveToDDS: Invalid resource dimension.");
         }
@@ -334,16 +354,19 @@ namespace Falcor
         {
             for (uint32_t m = 0; m < pTexture->getMipCount(); m++)
             {
+                size_t mipDepth = meta.depth >> m;
                 uint32_t subresource = pTexture->getSubresourceIndex(i, m);
-                const DirectX::Image* pImage = scratchImage.GetImage(m, i, 0);
-
                 std::vector<uint8_t> subresourceData = pContext->readTextureSubresource(pTexture.get(), subresource);
-                assert(subresourceData.size() == pImage->slicePitch);
-                std::memcpy(pImage->pixels, subresourceData.data(), subresourceData.size());
+                for (uint32_t slice = 0; slice < mipDepth; ++slice)
+                {
+                    const DirectX::Image* pImage = scratchImage.GetImage(m, i, slice);
+                    assert(subresourceData.size() == pImage->slicePitch * mipDepth);
+                    std::memcpy(pImage->pixels, subresourceData.data() + pImage->slicePitch * slice, pImage->slicePitch);
+                }
             }
         }
 
-        exportDDS(filename, image, mode);
+        exportDDS(filename, image, mode, generateMips);
     }
 
 }

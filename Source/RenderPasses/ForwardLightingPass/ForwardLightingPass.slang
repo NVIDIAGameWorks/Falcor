@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,8 +27,10 @@
  **************************************************************************/
 import Scene.Raster;
 import Scene.Shading;
-import Utils.Helpers;
+import Utils.Math.MathHelpers;
+import Experimental.Scene.Lights.LightHelpers;
 import Experimental.Scene.Lights.EnvMapLighting;
+import Experimental.Scene.Material.StandardMaterial;
 
 cbuffer PerFrameCB
 {
@@ -59,43 +61,53 @@ struct PsOut
 #endif
 };
 
-PsOut ps(VSOut vOut, uint triangleIndex : SV_PrimitiveID)
+PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID)
 {
     PsOut psOut;
 
-    float3 viewDir = normalize(gScene.camera.getPosition() - vOut.posW);
-    ShadingData sd = prepareShadingData(vOut, triangleIndex, viewDir);
+    if (alphaTest(vsOut, triangleIndex)) discard;
+
+    float3 viewDir = normalize(gScene.camera.getPosition() - vsOut.posW);
+    ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir);
+    StandardMaterial mtl;
 
     float4 finalColor = float4(0, 0, 0, 1);
 
-    for (uint l = 0; l < gScene.getLightCount(); l++)
+    // Direct lighting from analytic light sources
+    for (int i = 0; i < gScene.getLightCount(); i++)
     {
         float shadowFactor = 1;
-       if (l == 0)
+        if (i == 0)
         {
-            shadowFactor = visibilityBuffer.Load(int3(vOut.posH.xy, 0)).r;
+            shadowFactor = visibilityBuffer.Load(int3(vsOut.posH.xy, 0)).r;
             shadowFactor *= sd.opacity;
         }
-        finalColor.rgb += evalMaterial(sd, gScene.getLight(l), shadowFactor).color;
+
+        AnalyticLightSample ls;
+        evalLightApproximate(sd.posW, gScene.getLight(i), ls);
+        finalColor.rgb += mtl.eval(sd, ls.dir) * ls.Li * shadowFactor;
     }
 
     // Add the emissive component
     finalColor.rgb += sd.emissive;
     finalColor.a = sd.opacity;
+
 #ifdef _USE_ENV_MAP
-    finalColor.rgb += evalMaterial(sd, gEnvMapLighting).color;
+    // Add lighting from environment map
+    finalColor.rgb += gEnvMapLighting.evalDiffuse(sd);
+    finalColor.rgb += gEnvMapLighting.evalSpecular(sd, reflect(-sd.V, sd.N));
 #endif
 
     psOut.color = finalColor;
     psOut.normal = float4(sd.N * 0.5f + 0.5f, 1.0f);
 
 #ifdef _OUTPUT_MOTION_VECTORS
-    // Using vOut.posH.xy as pixel coordinate since it has the SV_Position semantic.
-    psOut.motion = calcMotionVector(vOut.posH.xy, vOut.prevPosH, gRenderTargetDim);
+    // Using vsOut.posH.xy as pixel coordinate since it has the SV_Position semantic.
+    psOut.motion = calcMotionVector(vsOut.posH.xy, vsOut.prevPosH, gRenderTargetDim);
 #endif
 
 #if defined(_VISUALIZE_CASCADES) && defined(_ENABLE_SHADOWS)
-    float3 cascadeColor = visibilityBuffer.Load(int3(vOut.posH.xy, 0)).gba;
+    float3 cascadeColor = visibilityBuffer.Load(int3(vsOut.posH.xy, 0)).gba;
     psOut.color.rgb *= cascadeColor;
 #endif
     return psOut;

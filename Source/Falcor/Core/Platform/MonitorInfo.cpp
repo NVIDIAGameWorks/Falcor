@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -176,7 +176,7 @@ namespace Falcor
         if (GetMonitorInfo(hMonitor, &info))
         {
             DISPLAY_DEVICE dev;
-            DisplayDeviceFromHMonitor(hMonitor, dev);
+            if (!DisplayDeviceFromHMonitor(hMonitor, dev)) return TRUE;
 
             std::wstring DeviceID(dev.DeviceID);
             DeviceID = DeviceID.substr(8, DeviceID.find(L'\\', 9) - 8);
@@ -206,20 +206,16 @@ namespace Falcor
         return TRUE;  // continue enumerating
     }
 
-    void MonitorInfo::getMonitorDescs(std::vector<MonitorInfo::MonitorDesc>& monitorDescs)
+    std::vector<MonitorInfo::MonitorDesc> MonitorInfo::getMonitorDescs()
     {
         internalDescs.clear();
         EnumDisplayMonitors(NULL, NULL, MonitorEnumProc, 0);
-        monitorDescs.resize(internalDescs.size());
-        std::copy(internalDescs.begin(), internalDescs.end(), monitorDescs.begin());
+        return internalDescs;
     }
 
     void MonitorInfo::displayMonitorInfo()
     {
-        std::vector<MonitorInfo::MonitorDesc> monitorDescs;
-        getMonitorDescs(monitorDescs);
-
-        for(auto& desc : monitorDescs)
+        for(const auto& desc : getMonitorDescs())
         {
             printf("%s%s: %0.0f x %0.0f pix, %0.1f x %0.1f in, %0.2f ppi\n",
                 desc.mIdentifier.c_str(),

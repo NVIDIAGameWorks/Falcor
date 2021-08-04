@@ -13,6 +13,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="$(SolutionDir)Source\Externals\.packman\cuda\extras\visual_studio_integration\MSBuildExtensions\CUDA 10.1.targets" />
+    <Import Project="$(SolutionDir)Source\Externals\.packman\cuda\extras\visual_studio_integration\MSBuildExtensions\CUDA 11.3.targets" />
   </ImportGroup>
 </Project>

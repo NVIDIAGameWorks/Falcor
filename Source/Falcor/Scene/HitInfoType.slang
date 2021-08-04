@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,13 +30,19 @@
 
 BEGIN_NAMESPACE_FALCOR
 
-enum InstanceType : uint32_t
+enum HitType
+// TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
+#ifdef HOST_CODE
+    : uint32_t
+#endif
 {
-    TriangleMesh    = 0,    ///< Triangle mesh instance.
-    Curve           = 1,    ///< Curve instance.
+    None                = 0,    ///< No hit.
+    Triangle            = 1,    ///< Triangle hit.
+    DisplacedTriangle   = 2,    ///< Displaced triangle hit.
+    Curve               = 3,    ///< Curve hit.
 
     //
-    // Add new instance types here
+    // Add new hit types here
     //
 
     Count // Must be last

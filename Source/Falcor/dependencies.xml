@@ -1,9 +1,11 @@
 <project toolsVersion="5.0">
+    <remote name="github-slang-windows" type="https" packageLocation="github.com/shader-slang/slang/releases/download/v${version}/slang-${version}-win64.zip"/>
+    <remote name="github-slang-linux" type="https" packageLocation="github.com/shader-slang/slang/releases/download/v${version}/slang-${version}-linux-x86_64.zip"/>
     <dependency name="falcor_dependencies" linkPath="../Externals/.packman/deps">
         <package name="falcor_dependencies" version="6adad071-${platform}" platforms="windows-x86_64" />
     </dependency>
     <dependency name="falcor_media" linkPath="../../Media">
-        <package name="falcor_media" version="cb35a70a" />
+        <package name="falcor_media" version="f9ee5206" />
     </dependency>
     <dependency name="dear_imgui" linkPath="../Externals/.packman/dear_imgui">
         <package name="dear_imgui" version="1.72WIP-docking-e5b9054" />
@@ -12,8 +14,8 @@
         <package name="vulkansdk" version="1.1.82.1" platforms="windows-x86_64" />
     </dependency>
     <dependency name="slang" linkPath="../Externals/.packman/slang">
-        <package name="slang" version="v0.17.5-windows-x64-release" platforms="windows-x86_64" />
-        <package name="slang" version="v0.17.5-linux-x64-release" platforms="linux-x86_64" />
+        <package name="slang" version="0.19.2" remotes="github-slang-windows" platforms="windows-x86_64"/>
+        <package name="slang" version="0.19.2" remotes="github-slang-linux" platforms="linux-x86_64" />
     </dependency>
     <dependency name="WinPixEventRuntime" linkPath="../Externals/.packman/WinPixEventRuntime">
         <package name="WinPixEventRuntime" version="1.0.190604001" platforms="windows-x86_64" />
@@ -23,5 +25,8 @@
     </dependency>
     <dependency name="nanovdb" linkPath="../Externals/.packman/nanovdb">
         <package name="nanovdb" version="pnanovdb-90289150" />
+    </dependency>
+    <dependency name="dxcompiler" linkPath="../Externals/.packman/dxcompiler">
+        <package name="dxcompiler" version="1.5.2010" />
     </dependency>
 </project>

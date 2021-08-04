@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,25 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 import Scene.Camera.CameraData;
+__exported import Utils.Math.Ray;
 import Utils.Math.MathHelpers;
-
-struct CameraRay
-{
-    float3 origin;
-    float tMin;
-    float3 dir;
-    float tMax;
-
-    RayDesc toRayDesc()
-    {
-        return { origin, tMin, dir, tMax };
-    }
-
-    float3 eval(float t)
-    {
-        return origin + t * dir;
-    }
-};
 
 struct Camera
 {
@@ -59,9 +42,9 @@ struct Camera
         \param[in] frameDim Image plane dimensions in pixels.
         \return Returns the camera ray.
     */
-    CameraRay computeRayPinhole(uint2 pixel, uint2 frameDim)
+    Ray computeRayPinhole(uint2 pixel, uint2 frameDim)
     {
-        CameraRay ray;
+        Ray ray;
 
         // Compute the normalized ray direction assuming a pinhole camera.
         ray.origin = data.posW;
@@ -99,9 +82,9 @@ struct Camera
         \param[in] u Uniform 2D sample.
         \return Returns the camera ray.
     */
-    CameraRay computeRayThinlens(uint2 pixel, uint2 frameDim, float2 u)
+    Ray computeRayThinlens(uint2 pixel, uint2 frameDim, float2 u)
     {
-        CameraRay ray;
+        Ray ray;
 
         // Sample position in screen space in [0,1] with origin at the top-left corner.
         // The camera jitter offsets the sample by +-0.5 pixels from the pixel center.

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,13 +27,12 @@
  **************************************************************************/
 import Scene.Scene;
 import Scene.ShadingData;
-import Utils.Helpers;
 import Utils.Math.MathHelpers;
 
 struct EnvMapLighting
 {
-    Texture2D dfgTexture;       ///< Texture containing shared pre-integrated (DFG) term
-    SamplerState dfgSampler;
+    Texture2D dfgTexture;       ///< Texture containing shared pre-integrated (DFG) term. The u-axis is NdotV=cos(theta) and the v-axis is GGX alpha, both in [0,1].
+    SamplerState dfgSampler;    ///< Sampler for the DFG texture: point filtering with clamp wrap mode.
 
     Texture2D diffuseTexture;   ///< Texture containing pre-integrated diffuse (LD) term
     Texture2D specularTexture;  ///< Texture containing pre-integrated specular (LD) term

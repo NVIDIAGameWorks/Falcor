@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -65,7 +65,7 @@ namespace Falcor
             for (uint32_t y = 0; y < rowsToCopy; y++)
             {
                 const uint8_t* pSrcRow = pSrcSlice + srcData.RowPitch * y;
-                uint8_t* pDstRow = pDstSlice + dstData.RowPitch* y;
+                uint8_t* pDstRow = pDstSlice + dstData.RowPitch * y;
                 memcpy(pDstRow, pSrcRow, rowSize);
             }
         }
@@ -162,6 +162,7 @@ namespace Falcor
         D3D12_TEXTURE_COPY_LOCATION dstLoc = { pThis->mpBuffer->getApiHandle(), D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT, footprint };
         pCtx->resourceBarrier(pTexture, Resource::State::CopySource);
         pCtx->getLowLevelData()->getCommandList()->CopyTextureRegion(&dstLoc, 0, 0, 0, &srcLoc, nullptr);
+        pCtx->setPendingCommands(true);
 
         // Create a fence and signal
         pThis->mpFence = GpuFence::create();
@@ -183,7 +184,7 @@ namespace Falcor
 
         // Get buffer data
         std::vector<uint8_t> result;
-        result.resize(mRowCount * actualRowSize);
+        result.resize(mRowCount * actualRowSize * footprint.Footprint.Depth);
         uint8_t* pData = reinterpret_cast<uint8_t*>(mpBuffer->map(Buffer::MapType::Read));
 
         for (uint32_t z = 0; z < footprint.Footprint.Depth; z++)
@@ -208,7 +209,7 @@ namespace Falcor
         barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
         barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
         barrier.Transition.pResource = pResource->getApiHandle();
-        barrier.Transition.StateBefore = getD3D12ResourceState(pResource->getGlobalState());
+        barrier.Transition.StateBefore = getD3D12ResourceState(oldState); 
         barrier.Transition.StateAfter = getD3D12ResourceState(newState);
         barrier.Transition.Subresource = subresourceIndex;
 

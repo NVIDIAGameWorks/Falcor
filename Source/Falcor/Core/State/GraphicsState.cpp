@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -180,7 +180,7 @@ namespace Falcor
 
     GraphicsState& GraphicsState::setRasterizerState(RasterizerState::SharedPtr pRasterizerState)
     {
-        if(mDesc.getRasterizerState() != pRasterizerState)
+        if (mDesc.getRasterizerState() != pRasterizerState)
         {
             mDesc.setRasterizerState(pRasterizerState);
             mpGsoGraph->walk((void*)pRasterizerState.get());

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -32,41 +32,30 @@ namespace Falcor
 {
     class Scene;
 
-    class HitInfo
+    class dlldecl HitInfo
     {
     public:
-        static const uint32_t kInvalidIndex = 0xffffffff;
         static const uint32_t kMaxPackedSizeInBytes = 12;
         static const ResourceFormat kDefaultFormat = ResourceFormat::RG32Uint;
-
-        /** Returns defines needed packing/unpacking a HitInfo struct.
-        */
-        Shader::DefineList getDefines() const
-        {
-            assert((mInstanceTypeBits + mInstanceIndexBits) <= 32 && mPrimitiveIndexBits <= 32);
-            Shader::DefineList defines;
-            defines.add("HIT_INSTANCE_TYPE_BITS", std::to_string(mInstanceTypeBits));
-            defines.add("HIT_INSTANCE_INDEX_BITS", std::to_string(mInstanceIndexBits));
-            defines.add("HIT_PRIMITIVE_INDEX_BITS", std::to_string(mPrimitiveIndexBits));
-            return defines;
-        }
-
-        /** Returns the resource format required for encoding packed hit information.
-        */
-        ResourceFormat getFormat() const
-        {
-            assert((mInstanceTypeBits + mInstanceIndexBits) <= 32 && mPrimitiveIndexBits <= 32);
-            if (mInstanceTypeBits + mInstanceIndexBits + mPrimitiveIndexBits <= 32) return ResourceFormat::RG32Uint;
-            else return ResourceFormat::RGBA32Uint; // RGB32Uint can't be used for UAV writes
-        }
 
         HitInfo() = default;
         HitInfo(const Scene & scene) { init(scene); }
         void init(const Scene& scene);
 
+        /** Returns defines needed packing/unpacking a HitInfo struct.
+        */
+        Shader::DefineList getDefines() const;
+
+        /** Returns the resource format required for encoding packed hit information.
+        */
+        ResourceFormat getFormat() const;
+
     private:
-        uint32_t mInstanceTypeBits = 0;
-        uint32_t mInstanceIndexBits = 0;
-        uint32_t mPrimitiveIndexBits = 0;
+        uint32_t mTypeBits = 0;             ///< Number of bits to store hit type.
+        uint32_t mInstanceIndexBits = 0;    ///< Number of bits to store instance index.
+        uint32_t mPrimitiveIndexBits = 0;   ///< Number of bits to store primitive index.
+
+        uint32_t mDataSize = 0;             ///< Number of uints to store unpacked hit information.
+        uint32_t mPackedDataSize = 0;       ///< Number of uints to store packed hit information.
     };
 }

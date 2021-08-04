@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -51,6 +51,7 @@ namespace
 
     const char kOutputFormat[] = "outputFormat";
 
+    const char kUseSceneMetadata[] = "useSceneMetadata";
     const char kExposureCompensation[] = "exposureCompensation";
     const char kAutoExposure[] = "autoExposure";
     const char kExposureValue[] = "exposureValue";
@@ -135,8 +136,15 @@ extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
 
 const char* ToneMapper::kDesc = "Tone-map a color-buffer. The resulting buffer is always in the [0, 1] range. The pass supports auto-exposure and eye-adaptation";
 
-ToneMapper::ToneMapper(ToneMapper::Operator op, ResourceFormat outputFormat) : mOperator(op), mOutputFormat(outputFormat)
+ToneMapper::SharedPtr ToneMapper::create(RenderContext* pRenderContext, const Dictionary& dict)
 {
+    return ToneMapper::SharedPtr(new ToneMapper(dict));
+}
+
+ToneMapper::ToneMapper(const Dictionary& dict)
+{
+    parseDictionary(dict);
+
     createLuminancePass();
     createToneMapPass();
 
@@ -149,38 +157,33 @@ ToneMapper::ToneMapper(ToneMapper::Operator op, ResourceFormat outputFormat) : m
     mpLinearSampler = Sampler::create(samplerDesc);
 }
 
-ToneMapper::SharedPtr ToneMapper::create(RenderContext* pRenderContext, const Dictionary& dict)
+void ToneMapper::parseDictionary(const Dictionary& dict)
 {
-    // outputFormat can only be set on construction
-    ResourceFormat outputFormat = ResourceFormat::Unknown;
-    if (dict.keyExists(kOutputFormat)) outputFormat = dict[kOutputFormat];
-
-    ToneMapper* pTM = new ToneMapper(Operator::Aces, outputFormat);
-
     for (const auto& [key, value] : dict)
     {
-        if (key == kExposureCompensation) pTM->setExposureCompensation(value);
-        else if (key == kAutoExposure) pTM->setAutoExposure(value);
-        else if (key == kFilmSpeed) pTM->setFilmSpeed(value);
-        else if (key == kWhiteBalance) pTM->setWhiteBalance(value);
-        else if (key == kWhitePoint) pTM->setWhitePoint(value);
-        else if (key == kOperator) pTM->setOperator(value);
-        else if (key == kClamp) pTM->setClamp(value);
-        else if (key == kWhiteMaxLuminance) pTM->setWhiteMaxLuminance(value);
-        else if (key == kWhiteScale) pTM->setWhiteScale(value);
-        else if (key == kFNumber) pTM->setFNumber(value);
-        else if (key == kShutter) pTM->setShutter(value);
-        else if (key == kExposureMode) pTM->setExposureMode(value);
+        if (key == kOutputFormat) mOutputFormat = value;
+        else if (key == kUseSceneMetadata) mUseSceneMetadata = value;
+        else if (key == kExposureCompensation) setExposureCompensation(value);
+        else if (key == kAutoExposure) setAutoExposure(value);
+        else if (key == kFilmSpeed) setFilmSpeed(value);
+        else if (key == kWhiteBalance) setWhiteBalance(value);
+        else if (key == kWhitePoint) setWhitePoint(value);
+        else if (key == kOperator) setOperator(value);
+        else if (key == kClamp) setClamp(value);
+        else if (key == kWhiteMaxLuminance) setWhiteMaxLuminance(value);
+        else if (key == kWhiteScale) setWhiteScale(value);
+        else if (key == kFNumber) setFNumber(value);
+        else if (key == kShutter) setShutter(value);
+        else if (key == kExposureMode) setExposureMode(value);
         else logWarning("Unknown field '" + key + "' in a ToneMapping dictionary");
     }
-
-    return ToneMapper::SharedPtr(pTM);
 }
 
 Dictionary ToneMapper::getScriptingDictionary()
 {
     Dictionary d;
     if (mOutputFormat != ResourceFormat::Unknown) d[kOutputFormat] = mOutputFormat;
+    d[kUseSceneMetadata] = mUseSceneMetadata;
     d[kExposureCompensation] = mExposureCompensation;
     d[kAutoExposure] = mAutoExposure;
     d[kFilmSpeed] = mFilmSpeed;
@@ -325,6 +328,7 @@ void ToneMapper::renderUI(Gui::Widgets& widget)
             {
                 setShutter(mShutter);
             }
+
         }
     }
 
@@ -366,6 +370,18 @@ void ToneMapper::renderUI(Gui::Widgets& widget)
         }
 
         mRecreateToneMapPass |= tonemappingGroup.checkbox("Clamp Output", mClamp);
+    }
+}
+
+void ToneMapper::setScene(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene)
+{
+    if (pScene && mUseSceneMetadata)
+    {
+        const Scene::Metadata& metadata = pScene->getMetadata();
+
+        if (metadata.filmISO) setFilmSpeed(metadata.filmISO.value());
+        if (metadata.fNumber) setFNumber(metadata.fNumber.value());
+        if (metadata.shutterSpeed) setShutter(metadata.shutterSpeed.value());
     }
 }
 
@@ -472,6 +488,7 @@ void ToneMapper::setExposureMode(ExposureMode mode)
 {
     mExposureMode = mode;
 }
+
 
 void ToneMapper::createLuminancePass()
 {

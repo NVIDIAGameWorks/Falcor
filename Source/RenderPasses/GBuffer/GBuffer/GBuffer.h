@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,7 +27,6 @@
  **************************************************************************/
 #pragma once
 #include "../GBufferBase.h"
-#include "GBufferParams.slang"
 #include "RenderGraph/RenderPassHelpers.h"
 
 using namespace Falcor;
@@ -36,24 +35,9 @@ using namespace Falcor;
 */
 class GBuffer : public GBufferBase
 {
-public:
-    virtual void renderUI(Gui::Widgets& widget) override;
-    virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
-    virtual Dictionary getScriptingDictionary() override;
-    virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
-
 protected:
     GBuffer();
-    virtual void parseDictionary(const Dictionary& dict) override;
-    virtual void setCullMode(RasterizerState::CullMode mode) { mCullMode = mode; }
 
     // Constants used in derived classes
     static const ChannelList kGBufferChannels;
-
-    // Internal state
-    GBufferParams                   mGBufferParams;
-
-    // UI variables
-    bool                            mForceCullMode = false;                         ///< Force cull mode for all geometry, otherwise set it based on the scene.
-    RasterizerState::CullMode       mCullMode = RasterizerState::CullMode::Back;    ///< Cull mode to use for when mForceCullMode is true.
 };

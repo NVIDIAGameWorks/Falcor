@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -89,10 +89,6 @@ struct BSDFViewerParams
     int     readback = 1;                       ///< True if we should read back data for the selected pixel.
     int2    selectedPixel = { 0, 0 };           ///< Pixel coordinates selected for readback.
     int     _pad5;
-
-    int     useLegacyBSDF = 1;
-    //int     debugSwitch0 = 0;
-    int3    _pad6;
 };
 
 /** Struct for readback of per-pixel data.

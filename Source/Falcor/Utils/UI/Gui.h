@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,10 +27,9 @@
  **************************************************************************/
 #pragma once
 #include <unordered_map>
-#include "Core/Program/ProgramVars.h"
-#include "Core/API/VAO.h"
-#include "Core/Program/GraphicsProgram.h"
-#include "Core/State/GraphicsState.h"
+#include "Core/API/Texture.h"
+#include "Core/API/FBO.h"
+#include "Core/API/RenderContext.h"
 
 struct ImFont;
 

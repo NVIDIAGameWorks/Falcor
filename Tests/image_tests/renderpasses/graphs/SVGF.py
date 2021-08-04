@@ -17,7 +17,7 @@ def render_graph_SVGF():
     g.addPass(SVGFPass, "SVGFPass")
     GBufferRaster = createPass("GBufferRaster", {'cull': CullMode.CullBack})
     g.addPass(GBufferRaster, "GBufferRaster")
-    PathTracer = createPass("MegakernelPathTracer", {'mSharedParams': PathTracerParams(useVBuffer=0), 'mSelectedSampleGenerator': 0, 'mSelectedEmissiveSampler': EmissiveLightSamplerType.Uniform})
+    PathTracer = createPass("MegakernelPathTracer", {'params': PathTracerParams(useVBuffer=0), 'sampleGenerator': 0, 'emissiveSampler': EmissiveLightSamplerType.Uniform})
     g.addPass(PathTracer, "PathTracer")
     g.addEdge("PathTracer.color", "SVGFPass.Color")
     g.addEdge("GBufferRaster.posW", "PathTracer.posW")

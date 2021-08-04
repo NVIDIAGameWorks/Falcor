@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -275,7 +275,7 @@ namespace Falcor
             format = ResourceFormat::BGRX8Unorm;
             break;
         case 16:
-            format = ResourceFormat::RG8Unorm;
+            format = (FreeImage_GetImageType(pDib) == FIT_UINT16) ? ResourceFormat::R16Unorm : ResourceFormat::RG8Unorm;
             break;
         case 8:
             format = ResourceFormat::R8Unorm;
@@ -300,6 +300,9 @@ namespace Falcor
             FreeImage_Unload(pDib);
             pDib = pNew;
         }
+
+        // PFM images are loaded y-flipped, fix this by inverting the isTopDown flag.
+        if (fifFormat == FIF_PFM) isTopDown = !isTopDown;
 
         UniqueConstPtr pBmp = UniqueConstPtr(new Bitmap(width, height, format));
         FreeImage_ConvertToRawBits(pBmp->getData(), pDib, pBmp->getRowPitch(), bpp, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK, isTopDown);
@@ -409,6 +412,7 @@ namespace Falcor
         {
             filters.push_back({ "exr", "High Dynamic Range" });
             filters.push_back({ "pfm", "Portable Float Map" });
+            filters.push_back({ "hdr", "Radiance HDR" });
         }
 
         if (showLdr)

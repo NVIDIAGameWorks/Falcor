@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -42,14 +42,17 @@ enum class PixelLogValueType
 
 struct PixelLogValue
 {
+    uint msgHash;       ///< String hash of print message.
     uint type;          ///< Value type (see PixelLogValueType).
     uint count;         ///< Number of components (1-4).
+    uint _pad0;
     uint4 data;         ///< The data bits. The encoding is determined by the data type.
 };
 
 struct AssertLogValue
 {
     uint3 launchIndex;  ///< Launch index for the assert.
+    uint msgHash;       ///< String hash of assert message.
 };
 
 END_NAMESPACE_FALCOR

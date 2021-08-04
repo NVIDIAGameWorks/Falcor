@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -40,6 +40,8 @@ namespace Falcor
         // for pybind11 bindings to work on inherited types.
         using SharedPtr = std::shared_ptr<Animatable>;
 
+        static const uint32_t kInvalidNode = -1;
+
         /** Set if object has animation data.
         */
         void setHasAnimation(bool hasAnimation) { mHasAnimation = hasAnimation; }
@@ -71,6 +73,6 @@ namespace Falcor
     protected:
         bool mHasAnimation = false;
         bool mIsAnimated = true;
-        uint32_t mNodeID = uint32_t(-1);
+        uint32_t mNodeID = kInvalidNode;
     };
 }

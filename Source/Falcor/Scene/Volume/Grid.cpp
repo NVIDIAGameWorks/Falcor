@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -34,6 +34,9 @@
 #include <nanovdb/util/OpenToNanoVDB.h>
 #include <openvdb/openvdb.h>
 #pragma warning(default:4146 4244 4267 4275 4996)
+#include <glm/gtc/type_ptr.hpp>
+#include "GridConverter.h"
+
 
 namespace Falcor
 {
@@ -107,16 +110,23 @@ namespace Falcor
     void Grid::setShaderData(const ShaderVar& var)
     {
         var["buf"] = mpBuffer;
+        var["rangeTex"] = mBrickedGrid.range;
+        var["indirectionTex"] = mBrickedGrid.indirection;
+        var["atlasTex"] = mBrickedGrid.atlas;
+        var["minIndex"] = getMinIndex();
+        var["minValue"] = getMinValue();
+        var["maxIndex"] = getMaxIndex();
+        var["maxValue"] = getMaxValue();
     }
 
     int3 Grid::getMinIndex() const
     {
-        return cast(mpFloatGrid->indexBBox().min());
+        return cast(mpFloatGrid->indexBBox().min()) & (~7); // The volume texture path requires the index bounding box to fall on a brick boundary (multiple of 8).
     }
 
     int3 Grid::getMaxIndex() const
     {
-        return cast(mpFloatGrid->indexBBox().max());
+        return (cast(mpFloatGrid->indexBBox().max()) + 7) & (~7); // The volume texture path requires the index bounding box to fall on a brick boundary (multiple of 8).
     }
 
     float Grid::getMinValue() const
@@ -136,7 +146,11 @@ namespace Falcor
 
     uint64_t Grid::getGridSizeInBytes() const
     {
-        return mpBuffer ? mpBuffer->getSize() : (uint64_t)0;
+        const uint64_t nvdb = mpBuffer ? mpBuffer->getSize() : (uint64_t)0;
+        const uint64_t bricks = (mBrickedGrid.range ? mBrickedGrid.range->getTextureSizeInBytes() : (uint64_t)0) +
+            (mBrickedGrid.indirection ? mBrickedGrid.indirection->getTextureSizeInBytes() : (uint64_t)0) +
+            (mBrickedGrid.atlas ? mBrickedGrid.atlas->getTextureSizeInBytes() : (uint64_t)0);
+        return nvdb + bricks;
     }
 
     AABB Grid::getWorldBounds() const
@@ -155,6 +169,22 @@ namespace Falcor
         return mGridHandle;
     }
 
+    glm::mat4 Grid::getTransform() const
+    {
+        const auto& gridMap = mGridHandle.gridMetaData()->map();
+        const float3x3 affine = glm::make_mat3(gridMap.mMatF);
+        const float3 translation = float3(gridMap.mVecF[0], gridMap.mVecF[1], gridMap.mVecF[2]);
+        return glm::translate(float4x4(affine), translation);
+    }
+
+    glm::mat4 Grid::getInvTransform() const
+    {
+        const auto& gridMap = mGridHandle.gridMetaData()->map();
+        const float3x3 invAffine = glm::make_mat3(gridMap.mInvMatF);
+        const float3 translation = float3(gridMap.mVecF[0], gridMap.mVecF[1], gridMap.mVecF[2]);
+        return glm::translate(float4x4(invAffine), -translation);
+    }
+
     Grid::Grid(nanovdb::GridHandle<nanovdb::HostBuffer> gridHandle)
         : mGridHandle(std::move(gridHandle))
         , mpFloatGrid(mGridHandle.grid<float>())
@@ -165,6 +195,7 @@ namespace Falcor
             nanovdb::gridStats(*mpFloatGrid);
         }
 
+        // Keep both NanoVDB and brick textures resident in GPU memory for simplicity for now (~15% increased footprint).
         mpBuffer = Buffer::createStructured(
             sizeof(uint32_t),
             uint32_t(div_round_up(mGridHandle.size(), sizeof(uint32_t))),
@@ -172,6 +203,8 @@ namespace Falcor
             Buffer::CpuAccess::None,
             mGridHandle.data()
         );
+        using NanoVDBGridConverter = NanoVDBConverterBC4;
+        mBrickedGrid = NanoVDBGridConverter(mpFloatGrid).convert();
     }
 
     Grid::SharedPtr Grid::createFromNanoVDBFile(const std::string& path, const std::string& gridname)
@@ -193,6 +226,12 @@ namespace Falcor
         if (!floatGrid || floatGrid->gridType() != nanovdb::GridType::Float)
         {
             logWarning("Error when loading grid. Grid '" + gridname + "' in '" + path + "' is not of type float");
+            return nullptr;
+        }
+
+        if (floatGrid->isEmpty())
+        {
+            logWarning("Grid '" + gridname + "' in '" + path + "' is empty");
             return nullptr;
         }
 
@@ -227,6 +266,12 @@ namespace Falcor
         if (!baseGrid->isType<openvdb::FloatGrid>())
         {
             logWarning("Error when loading grid. Grid '" + gridname + "' in '" + path + "' is not of type float");
+            return nullptr;
+        }
+
+        if (baseGrid->empty())
+        {
+            logWarning("Grid '" + gridname + "' in '" + path + "' is empty");
             return nullptr;
         }
 

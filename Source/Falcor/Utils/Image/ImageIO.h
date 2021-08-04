@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -92,16 +92,16 @@ namespace Falcor
         static Texture::SharedPtr loadTextureFromDDS(const std::string& filename, bool loadAsSrgb);
 
         /** Saves a bitmap to a DDS file.
-            Throws an exception of filename is invalid or image cannot be saved.
+            Throws an exception of filename is invalid or the image cannot be saved.
             \param[in] filename Filename to save to.
             \param[in] bitmap Bitmap object to save.
             \param[in] mode Block compression mode. By default, will save data as-is and will not decompress if already compressed.
+            \param[in] if true, generate and save full mipmap chain; requires the caller to have initialized COM.
         */
-        static void saveToDDS(const std::string& filename, const Bitmap& bitmap, CompressionMode mode = CompressionMode::None);
-        static void saveToDDS(const std::string& filename, const Bitmap::UniqueConstPtr& pBitmap, CompressionMode mode = CompressionMode::None);
+        static void saveToDDS(const std::string& filename, const Bitmap& bitmap, CompressionMode mode = CompressionMode::None, bool generateMips = false);
 
         /** Saves a Texture to a DDS file. All mips and array images are saved.
-            Throws an exception of filename is invalid or image cannot be saved.
+            Throws an exception of filename is invalid or the image cannot be saved.
 
             TODO: Support exporting single subresource. Options for one or all are probably enough?
 
@@ -109,8 +109,9 @@ namespace Falcor
             \param[in] filename Filename to save to.
             \param[in] pBitmap Bitmap object to save.
             \param[in] mode Block compression mode. By default, will save data as-is and will not decompress if already compressed.
+            \param[in] if true, generate and save full mipmap chain; requires the caller to have initialized COM.
         */
-        static void saveToDDS(CopyContext* pContext, const std::string& filename, const Texture::SharedPtr& pTexture, CompressionMode mode = CompressionMode::None);
+        static void saveToDDS(CopyContext* pContext, const std::string& filename, const Texture::SharedPtr& pTexture, CompressionMode mode = CompressionMode::None, bool generateMips = false);
     };
 
 }

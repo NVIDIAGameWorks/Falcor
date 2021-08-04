@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -114,6 +114,7 @@ namespace Falcor
     protected:
         Light(const std::string& name, LightType type);
 
+
         static const size_t kDataSize = sizeof(LightData);
 
         /* UI callbacks for keeping the intensity in-sync */
@@ -131,6 +132,8 @@ namespace Falcor
         float mUiLightIntensityScale = 1.0f;
         LightData mData, mPrevData;
         Changes mChanges = Changes::None;
+
+        friend class SceneCache;
     };
 
     /** Point light source.
@@ -277,6 +280,8 @@ namespace Falcor
         DistantLight(const std::string& name);
         void update();
         float mAngle;       ///<< Half-angle subtended by the source.
+
+        friend class SceneCache;
     };
 
     /** Analytic area light source.
@@ -311,6 +316,8 @@ namespace Falcor
         */
         glm::mat4 getTransformMatrix() const { return mTransformMatrix; }
 
+        void updateFromAnimation(const glm::mat4& transform) override { setTransformMatrix(transform); }
+
     protected:
         AnalyticAreaLight(const std::string& name, LightType type);
 
@@ -318,6 +325,8 @@ namespace Falcor
 
         float3 mScaling;                ///< Scaling, controls the size of the light
         glm::mat4 mTransformMatrix;     ///< Transform matrix minus scaling component
+
+        friend class SceneCache;
     };
 
     /** Rectangular area light source.

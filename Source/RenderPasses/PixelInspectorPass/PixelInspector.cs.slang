@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,6 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+import Scene.HitInfo;
 import Scene.ShadingData;
 import Scene.Camera.Camera;
 import Experimental.Scene.Material.MaterialHelpers;
@@ -46,7 +47,7 @@ cbuffer PerFrameCB
     uint2 gMaterialExtraParamsCoord;
     uint2 gLinearColorCoord;
     uint2 gOutputColorCoord;
-    uint2 gVisBufferCoord;
+    uint2 gVBufferCoord;
 
     Camera gCamera;
 }
@@ -62,7 +63,7 @@ Texture2D<float4> gMaterialEmissive;
 Texture2D<float4> gMaterialExtraParams;
 Texture2D<float4> gLinearColor;
 Texture2D<float4> gOutputColor;
-Texture2D<uint4>  gVisBuffer;
+Texture2D<PackedHitInfo> gVBuffer;
 
 RWStructuredBuffer<PixelData> gPixelDataBuffer;
 
@@ -126,7 +127,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
     data.ggxAlpha = sd.ggxAlpha;
 
     data.IoR = sd.IoR;
-    data.doubleSided = sd.doubleSided ? 1u : 0u;
+    data.doubleSided = sd.isDoubleSided() ? 1u : 0u;
 
     // Read output data
     data.linearColor = gLinearColor[gLinearColorCoord];
@@ -135,11 +136,15 @@ void main(uint3 DTid : SV_DispatchThreadID)
     // Compute luminance. Note we're using the Rec.709 color space now.
     data.luminance = luminance(data.linearColor.rgb);
 
-    // Visibility buffer
-    uint4 v = gVisBuffer[gVisBufferCoord];
-    data.meshInstanceID = v.x;
-    data.triangleIndex = v.y;
-    data.barycentrics = asfloat(v.zw);
+    // Decode visibility buffer.
+    const HitInfo hit = HitInfo(gVBuffer[gVBufferCoord]);
+    if (hit.isValid())
+    {
+        data.instanceType = (uint)hit.type;
+        data.instanceID = hit.instanceID.index;
+        data.primitiveIndex = hit.primitiveIndex;
+        data.barycentrics = hit.barycentrics;
+    }
 
     // Store result
     gPixelDataBuffer[0] = data;

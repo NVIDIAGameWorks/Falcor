@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -59,8 +59,11 @@ public:
     virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
     virtual void onHotReload(HotReloadFlags reloaded) override;
 
+    bool isEnabled() const { return mEnabled; }
+    void setEnabled(bool enabled);
+
     // Scripting functions
-    void reset() { mFrameCount = 0; }
+    void reset();
 
     enum class Precision : uint32_t
     {
@@ -78,6 +81,7 @@ protected:
     std::map<Precision, ComputeProgram::SharedPtr> mpProgram;   ///< Accumulation programs, one per mode.
     ComputeVars::SharedPtr      mpVars;                         ///< Program variables.
     ComputeState::SharedPtr     mpState;
+    FormatType                  mSrcFormat;                     ///< Format of the source that gets accumulated.
 
     uint32_t                    mFrameCount = 0;                ///< Number of accumulated frames. This is reset upon changes.
     uint2                       mFrameDim = { 0, 0 };           ///< Current frame dimension in pixels.
@@ -87,8 +91,9 @@ protected:
     Texture::SharedPtr          mpLastFrameSumHi;               ///< Last frame running sum (hi bits). Used in Double mode.
 
     // UI variables
-    bool                        mEnableAccumulation = true;     ///< UI control if accumulation is enabled.
+    bool                        mEnabled = true;                ///< True if accumulation is enabled.
     bool                        mAutoReset = true;              ///< Reset accumulation automatically upon scene changes, refresh flags, and/or subframe count.
     Precision                   mPrecisionMode = Precision::Single;
     uint32_t                    mSubFrameCount = 0;             ///< Number of frames to accumulate before reset. Useful for generating references.
+    uint32_t                    mMaxAccumulatedFrames = 0;      ///< Number of frames to accumulate before weights become constant. Useful for noise comparisons.
 };

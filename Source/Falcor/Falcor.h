@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -80,6 +80,7 @@
 // Core/Program
 #include "Core/Program/ComputeProgram.h"
 #include "Core/Program/GraphicsProgram.h"
+#include "Core/Program/CUDAProgram.h"
 #include "Core/Program/Program.h"
 #include "Core/Program/ProgramReflection.h"
 #include "Core/Program/ProgramVars.h"
@@ -119,6 +120,7 @@
 // Utils
 #include "Utils/Math/AABB.h"
 #include "Utils/BinaryFileStream.h"
+#include "Utils/CryptoUtils.h"
 #include "Utils/Logger.h"
 #include "Utils/NumericRange.h"
 #include "Utils/StringUtils.h"
@@ -144,6 +146,7 @@
 #include "Utils/Timing/Clock.h"
 #include "Utils/Timing/FrameRate.h"
 #include "Utils/Timing/Profiler.h"
+#include "Utils/Timing/ProfilerUI.h"
 #include "Utils/Timing/TimeReport.h"
 #include "Utils/UI/Font.h"
 #include "Utils/UI/Gui.h"
@@ -163,5 +166,5 @@
 #endif
 
 #define FALCOR_MAJOR_VERSION 4
-#define FALCOR_REVISION 3
-#define FALCOR_VERSION_STRING "4.3"
+#define FALCOR_REVISION 4
+#define FALCOR_VERSION_STRING "4.4"

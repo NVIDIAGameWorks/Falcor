@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -39,8 +39,8 @@
 
 import Scene.Scene;
 import Scene.ShadingData;
+__exported import Scene.Lights.LightCollection;
 import Utils.Math.MathHelpers;
-__exported import Experimental.Scene.Lights.LightCollection;
 import Experimental.Scene.Lights.EmissiveLightSamplerInterface;
 
 /** Samples an emissive triangle uniformly by area and evaluates the probability density function.
@@ -85,7 +85,7 @@ bool sampleTriangle(const float3 posW, const uint triangleIndex, const float2 u,
     float denom = max(FLT_MIN, cosTheta * tri.area);
     ls.pdf = distSqr / denom;
 
-    // Save light sample triangle barycentric coordinates 
+    // Save light sample triangle barycentric coordinates
     ls.uv = u;
 
     // TODO: We can simplify the expressions by using the unnormalized quantities for computing the pdf.
@@ -98,7 +98,7 @@ bool sampleTriangle(const float3 posW, const uint triangleIndex, const float2 u,
     \param[in] hit Triangle hit data.
     \return Probability density with respect to solid angle at the shading point.
 */
-float evalTrianglePdf(const float3 posW, const TriangleHit hit)
+float evalTrianglePdf(const float3 posW, const TriangleLightHit hit)
 {
     // Compute light vector and squared distance.
     float3 toLight = hit.posW - posW; // Unnormalized light vector

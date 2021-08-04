@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,11 +29,14 @@
 #include "Core/Program/ProgramVars.h"
 #include "RtProgram/RtProgram.h"
 #include "RtProgramVarsHelper.h"
+#include "RtBindingTable.h"
 
 namespace Falcor
 {
     class RtStateObject;
 
+    /** This class manages a raytracing program's reflection and variable assignment.
+    */
     class dlldecl RtProgramVars : public ProgramVars
     {
     public:
@@ -42,56 +45,62 @@ namespace Falcor
 
         /** Create a new ray tracing vars object.
             \param[in] pProgram The ray tracing program.
-            \param[in] pScene The scene.
+            \param[in] pBindingTable The raytracing binding table.
             \return A new object, or an exception is thrown if creation failed.
         */
-        static SharedPtr create(const RtProgram::SharedPtr& pProgram, const Scene::SharedPtr& pScene);
+        static SharedPtr create(const RtProgram::SharedPtr& pProgram, const RtBindingTable::SharedPtr& pBindingTable);
 
-        const EntryPointGroupVars::SharedPtr& getRayGenVars(uint32_t index = 0) { return mRayGenVars[index].pVars; }
-        const EntryPointGroupVars::SharedPtr& getMissVars(uint32_t rayID) { return mMissVars[rayID].pVars; }
-        const EntryPointGroupVars::SharedPtr& getHitVars(uint32_t rayID, uint32_t meshID) { return mHitVars[meshID * mDescHitGroupCount + rayID].pVars; }
-        const EntryPointGroupVars::SharedPtr& getAABBHitVars(uint32_t rayID, uint32_t primitiveIndex) { return mAABBHitVars[primitiveIndex * mDescHitGroupCount + rayID].pVars; }
+        const EntryPointGroupVars::SharedPtr& getRayGenVars()
+        {
+            assert(mRayGenVars.size() == 1);
+            return mRayGenVars[0].pVars;
+        }
+        const EntryPointGroupVars::SharedPtr& getMissVars(uint32_t missIndex)
+        {
+            assert(missIndex < mMissVars.size());
+            return mMissVars[missIndex].pVars;
+        }
+        const EntryPointGroupVars::SharedPtr& getHitVars(uint32_t rayType, uint32_t geometryID)
+        {
+            assert(rayType < mRayTypeCount&& geometryID < mGeometryCount);
+            return mHitVars[mRayTypeCount * geometryID + rayType].pVars;
+        }
 
         bool apply(RenderContext* pCtx, RtStateObject* pRtso);
 
         ShaderTable::SharedPtr getShaderTable() const { return mpShaderTable; }
 
-        uint32_t getRayGenVarsCount() const { return uint32_t(mRayGenVars.size()); }
         uint32_t getMissVarsCount() const { return uint32_t(mMissVars.size()); }
         uint32_t getTotalHitVarsCount() const { return uint32_t(mHitVars.size()); }
-        uint32_t getAABBHitVarsCount() const { return uint32_t(mAABBHitVars.size()); }
-        uint32_t getDescHitGroupCount() const { return mDescHitGroupCount; }
+        uint32_t getRayTypeCount() const { return mRayTypeCount; }
+        uint32_t getGeometryCount() const { return mGeometryCount; }
 
-        Scene::SharedPtr getSceneForGeometryIndices() const { return mpSceneForGeometryIndices.lock(); }
-        void setSceneForGeometryIndices(const Scene::SharedPtr& scene) { mpSceneForGeometryIndices = scene; }
+        const std::vector<int32_t>& getUniqueEntryPointGroupIndices() const { return mUniqueEntryPointGroupIndices; }
 
     private:
         struct EntryPointGroupInfo
         {
-            EntryPointGroupVars::SharedPtr  pVars;
-            ChangeEpoch                     lastObservedChangeEpoch = 0;
+            EntryPointGroupVars::SharedPtr pVars;
+            ChangeEpoch lastObservedChangeEpoch = 0;
         };
 
         using VarsVector = std::vector<EntryPointGroupInfo>;
 
-        RtProgramVars(
-            const RtProgram::SharedPtr& pProgram,
-            const Scene::SharedPtr& pScene);
+        RtProgramVars(const RtProgram::SharedPtr& pProgram, const RtBindingTable::SharedPtr& pBindingTable);
 
-        void init();
+        void init(const RtBindingTable::SharedPtr& pBindingTable);
         bool applyVarsToTable(ShaderTable::SubTableType type, uint32_t tableOffset, VarsVector& varsVec, const RtStateObject* pRtso);
 
-        Scene::SharedPtr mpScene;
-        uint32_t mDescHitGroupCount = 0;
-        mutable ShaderTable::SharedPtr mpShaderTable;
+        uint32_t mRayTypeCount = 0;                         ///< Number of ray types (= number of hit groups per geometry).
+        uint32_t mGeometryCount = 0;                        ///< Number of geometries.
+        std::vector<int32_t> mUniqueEntryPointGroupIndices; ///< Indices of all unique entry point groups that we use in the associated program.
+
+        mutable ShaderTable::SharedPtr mpShaderTable;       ///< GPU shader table.
 
         VarsVector mRayGenVars;
         VarsVector mMissVars;
         VarsVector mHitVars;
-        VarsVector mAABBHitVars;
 
         RtVarsContext::SharedPtr mpRtVarsHelper;
-
-        std::weak_ptr<Scene> mpSceneForGeometryIndices;
     };
 }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,8 +27,8 @@
  **************************************************************************/
 #include "stdafx.h"
 #include "Scripting.h"
+#include <pybind11/embed.h>
 #include <filesystem>
-#include "pybind11/embed.h"
 
 namespace Falcor
 {
@@ -142,7 +142,14 @@ namespace Falcor
 
     Scripting::RunResult Scripting::runScriptFromFile(const std::string& filename, Context& context, bool captureOutput)
     {
-        if (std::filesystem::exists(filename)) return Scripting::runScript(readFile(filename), context, captureOutput);
+        if (std::filesystem::exists(filename))
+        {
+            std::string absFile = std::filesystem::absolute(filename).string();
+            context.setObject("__file__", absFile);
+            auto result = Scripting::runScript(readFile(filename), context, captureOutput);
+            context.setObject("__file__", nullptr); // There seems to be no API on pybind11::dict to remove a key.
+            return result;
+        }
         throw std::exception(std::string("Failed to run script. Can't find the file '" + filename + "'.").c_str());
     }
 

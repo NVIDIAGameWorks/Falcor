@@ -23,13 +23,16 @@
     <ClCompile Include="Tests\Core\RootBufferParamBlockTests.cpp" />
     <ClCompile Include="Tests\Core\RootBufferTests.cpp" />
     <ClCompile Include="Tests\DebugPasses\InvalidPixelDetectionTests.cpp" />
+    <ClCompile Include="Tests\Platform\MonitorInfoTests.cpp" />
+    <ClCompile Include="Tests\Platform\OSTests.cpp" />
     <ClCompile Include="Tests\Sampling\AliasTableTests.cpp" />
+    <ClCompile Include="Tests\Sampling\LowDiscrepancyTests.cpp" />
+    <ClCompile Include="Tests\Sampling\PointSetsTests.cpp" />
     <ClCompile Include="Tests\Sampling\PseudorandomTests.cpp" />
     <ClCompile Include="Tests\Sampling\SampleGeneratorTests.cpp" />
     <ClCompile Include="Tests\Scene\EnvMapTests.cpp" />
+    <ClCompile Include="Tests\Scene\Material\BxDFTests.cpp" />
     <ClCompile Include="Tests\Scene\Material\HairChiang16Tests.cpp" />
-    <ClCompile Include="Tests\ShadingUtils\RaytracingTests.cpp" />
-    <ClCompile Include="Tests\ShadingUtils\ShadingUtilsTests.cpp" />
     <ClCompile Include="Tests\Slang\CastFloat16.cpp" />
     <ClCompile Include="Tests\Slang\Float16Tests.cpp" />
     <ClCompile Include="Tests\Slang\Float64Tests.cpp" />
@@ -47,12 +50,17 @@
     <ClCompile Include="Tests\Utils\BitonicSortTests.cpp" />
     <ClCompile Include="Tests\Utils\BitTricksTests.cpp" />
     <ClCompile Include="Tests\Utils\ColorUtilsTests.cpp" />
+    <ClCompile Include="Tests\Utils\CryptoUtilsTests.cpp" />
+    <ClCompile Include="Tests\Utils\GeometryHelpersTests.cpp" />
     <ClCompile Include="Tests\Utils\HalfUtilsTests.cpp" />
     <ClCompile Include="Tests\Utils\HashUtilsTests.cpp" />
+    <ClCompile Include="Tests\Utils\IntersectionHelpersTests.cpp" />
     <ClCompile Include="Tests\Utils\MathHelpersTests.cpp" />
     <ClCompile Include="Tests\Utils\PackedFormatsTests.cpp" />
     <ClCompile Include="Tests\Utils\ParallelReductionTests.cpp" />
     <ClCompile Include="Tests\Utils\PrefixSumTests.cpp" />
+    <ClCompile Include="Tests\Utils\StringUtilsTests.cpp" />
+    <ClCompile Include="Tests\Utils\TextureAnalyzerTests.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FalcorTest.h" />
@@ -71,11 +79,12 @@
     <ShaderSource Include="Tests\Core\RootBufferParamBlockTests.cs.slang" />
     <ShaderSource Include="Tests\Core\RootBufferTests.cs.slang" />
     <ShaderSource Include="Tests\Sampling\AliasTableTests.cs.slang" />
+    <ShaderSource Include="Tests\Sampling\LowDiscrepancyTests.cs.slang" />
+    <ShaderSource Include="Tests\Sampling\PointSetsTests.cs.slang" />
     <ShaderSource Include="Tests\Sampling\PseudorandomTests.cs.slang" />
     <ShaderSource Include="Tests\Sampling\SampleGeneratorTests.cs.slang" />
+    <ShaderSource Include="Tests\Scene\Material\BxDFTests.cs.slang" />
     <ShaderSource Include="Tests\Scene\Material\HairChiang16Tests.cs.slang" />
-    <ShaderSource Include="Tests\ShadingUtils\RaytracingTests.cs.slang" />
-    <ShaderSource Include="Tests\ShadingUtils\ShadingUtilsTests.cs.slang" />
     <ShaderSource Include="Tests\Slang\CastFloat16.cs.slang" />
     <ShaderSource Include="Tests\Slang\Float16Tests.cs.slang" />
     <ShaderSource Include="Tests\Slang\Float64Tests.cs.slang" />
@@ -91,8 +100,10 @@
     <ShaderSource Include="Tests\Slang\WaveOps.cs.slang" />
     <ShaderSource Include="Tests\Utils\AABBTests.cs.slang" />
     <ShaderSource Include="Tests\Utils\BitTricksTests.cs.slang" />
+    <ShaderSource Include="Tests\Utils\GeometryHelpersTests.cs.slang" />
     <ShaderSource Include="Tests\Utils\HalfUtilsTests.cs.slang" />
     <ShaderSource Include="Tests\Utils\HashUtilsTests.cs.slang" />
+    <ShaderSource Include="Tests\Utils\IntersectionHelpersTests.cs.slang" />
     <ShaderSource Include="Tests\Utils\MathHelpersTests.cs.slang" />
     <ShaderSource Include="Tests\Utils\PackedFormatsTests.cs.slang" />
   </ItemGroup>

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,6 +27,12 @@
  **************************************************************************/
 #pragma once
 #include "Utils/HostDeviceShared.slangh"
+
+#ifdef HOST_CODE
+#include "Scene/HitInfoType.slang"
+#else
+__exported import Scene.HitInfoType;
+#endif
 
 BEGIN_NAMESPACE_FALCOR
 
@@ -75,8 +81,9 @@ struct PixelData
     float4 outputColor;
 
     // Visibility data
-    uint meshInstanceID;
-    uint triangleIndex;
+    uint hitType;      ///< Type of hit, see enum HitType. Only valid if instanceID != kInvalidIndex.
+    uint instanceID;
+    uint primitiveIndex;
     float2 barycentrics;
 
 #ifdef HOST_CODE
@@ -127,8 +134,10 @@ struct PixelData
         linearColor = float4(0, 0, 0, 0);
         outputColor = float4(0, 0, 0, 0);
 
-        meshInstanceID = kInvalidIndex;
-        triangleIndex = kInvalidIndex;
+        // V-buffer data.
+        hitType = (uint)HitType::Triangle;
+        instanceID = kInvalidIndex;
+        primitiveIndex = kInvalidIndex;
         barycentrics = float2(0, 0);
     }
 };

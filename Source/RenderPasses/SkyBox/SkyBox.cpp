@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -84,8 +84,8 @@ SkyBox::SkyBox()
 
     // Create the rasterizer state
     RasterizerState::Desc rastDesc;
-    rastDesc.setCullMode(RasterizerState::CullMode::Front).setDepthClamp(true);
-    mpState->setRasterizerState(RasterizerState::create(rastDesc));
+    rastDesc.setCullMode(RasterizerState::CullMode::None).setDepthClamp(true);
+    mpRsState = RasterizerState::create(rastDesc);
 
     DepthStencilState::Desc dsDesc;
     dsDesc.setDepthWriteMask(false).setDepthFunc(DepthStencilState::Func::LessEqual);
@@ -152,7 +152,7 @@ void SkyBox::execute(RenderContext* pRenderContext, const RenderData& renderData
     mpVars["PerFrameCB"]["gViewMat"] = mpScene->getCamera()->getViewMatrix();
     mpVars["PerFrameCB"]["gProjMat"] = mpScene->getCamera()->getProjMatrix();
     mpState->setFbo(mpFbo);
-    mpCubeScene->rasterize(pRenderContext, mpState.get(), mpVars.get(), Scene::RenderFlags::UserRasterizerState);
+    mpCubeScene->rasterize(pRenderContext, mpState.get(), mpVars.get(), mpRsState, mpRsState);
 }
 
 void SkyBox::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)

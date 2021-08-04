@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -291,13 +291,6 @@ void RenderGraphEditor::onGuiRender(Gui* pGui)
         mCurrentLog += s;
     }
 
-    if (settingsWindow.button("Auto-Generate Edges"))
-    {
-        std::vector<uint32_t> executionOrder = mRenderGraphUIs[mCurrentGraphIndex].getPassOrder();
-        mpGraphs[mCurrentGraphIndex]->autoGenEdges(executionOrder);
-        mRenderGraphUIs[mCurrentGraphIndex].setToRebuild();
-    }
-
     auto pScene = mpGraphs[mCurrentGraphIndex]->getScene();
 //     if (pScene)
 //     {
@@ -523,6 +516,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 int main(int argc, char** argv)
 #endif
 {
+
     args::ArgumentParser parser("Render graph editor.");
     parser.helpParams.programName = "RenderGraphEditor";
     args::HelpFlag helpFlag(parser, "help", "Display this help menu.", {'h', "help"});

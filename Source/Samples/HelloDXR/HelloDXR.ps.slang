@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,21 +25,29 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-import Scene.Shading;
 import Scene.Raster;
+import Scene.Shading;
+import Utils.Sampling.TinyUniformSampleGenerator;
+import Experimental.Scene.Lights.LightHelpers;
+import Experimental.Scene.Material.StandardMaterial;
 
-float4 main(VSOut vOut, uint triangleIndex : SV_PrimitiveID) : SV_TARGET
+float4 main(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) : SV_TARGET
 {
-    float3 viewDir = normalize(gScene.camera.getPosition() - vOut.posW);
-    ShadingData sd = prepareShadingData(vOut, triangleIndex, viewDir);
-    float4 color = 0;
-    color.a = 1;
+    if (alphaTest(vsOut, triangleIndex)) discard;
 
+    float3 viewDir = normalize(gScene.camera.getPosition() - vsOut.posW);
+    ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir);
+    StandardMaterial mtl;
+
+    float3 color = sd.emissive;
+
+    // Direct lighting from analytic light sources
     for (int i = 0; i < gScene.getLightCount(); i++)
     {
-        color.rgb += evalMaterial(sd, gScene.getLight(i), 1).color;
+        AnalyticLightSample ls;
+        evalLightApproximate(sd.posW, gScene.getLight(i), ls);
+        color += mtl.eval(sd, ls.dir) * ls.Li;
     }
 
-    color.rgb += sd.emissive;
-    return color;
+    return float4(color, 1.f);
 }

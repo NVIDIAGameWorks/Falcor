@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -63,12 +63,6 @@ namespace Falcor
             pointCounts += subdivPerSegment * (vertexCountsPerStrand[i] - 1) + 1;
             segCounts += pointCounts - 1;
         }
-        result.indices.reserve(segCounts);
-        result.points.reserve(pointCounts);
-        result.radius.reserve(pointCounts);
-        result.tangents.reserve(pointCounts);
-        result.normals.reserve(pointCounts);
-        result.texCrds.reserve(pointCounts);
 
         uint32_t pointOffset = 0;
         for (uint32_t i = 0; i < strandCount; i++)
@@ -94,24 +88,6 @@ namespace Falcor
             float4 sph = transformSphere(xform, float4(strandPoints.interpolate(vertexCountsPerStrand[i] - 2, 1.f), strandWidths.interpolate(vertexCountsPerStrand[i] - 2, 1.f) * 0.5f));
             result.points.push_back(sph.xyz);
             result.radius.push_back(sph.w);
-
-            // Compute tangents and normals.
-            for (uint32_t j = resOffset; j < result.points.size(); j++)
-            {
-                float3 fwd, s, t;
-                if (j < result.points.size() - 1)
-                {
-                    fwd = normalize(result.points[j + 1] - result.points[j]);
-                }
-                else
-                {
-                    fwd = normalize(result.points[j] - result.points[j - 1]);
-                }
-                buildFrame(fwd, s, t);
-
-                result.tangents.push_back(fwd);
-                result.normals.push_back(s);
-            }
 
             // Texture coordinates.
             if (UVs)

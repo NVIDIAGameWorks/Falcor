@@ -5,15 +5,15 @@ def render_graph_PathTracerGraph():
     loadRenderPassLibrary("OptixDenoiser.dll")
     loadRenderPassLibrary("ToneMapper.dll")
     loadRenderPassLibrary("WavefrontPathTracer.dll")
-    AccumulatePass = createPass("AccumulatePass", {'enableAccumulation': True})
+    AccumulatePass = createPass("AccumulatePass", {'enabled': True})
     g.addPass(AccumulatePass, "AccumulatePass")
     ToneMappingPass = createPass("ToneMapper", {'autoExposure': False, 'exposureCompensation': 0.0})
     g.addPass(ToneMappingPass, "ToneMappingPass")
     GBufferRT = createPass("GBufferRT", {'forceCullMode': False, 'cull': CullMode.CullBack, 'samplePattern': SamplePattern.Stratified, 'sampleCount': 16})
     GBufferRaster = createPass("GBufferRaster", {'forceCullMode': False, 'cull': CullMode.CullBack, 'samplePattern': SamplePattern.Stratified, 'sampleCount': 16})      # viewW not exported ? Not compatible with Path Tracers anymore ?
     g.addPass(GBufferRT, "GBuffer")
-#    MegakernelPathTracer = createPass("MegakernelPathTracer", {'mSharedParams': PathTracerParams(useVBuffer=0, rayFootprintMode=0)})  # Generates an error apparently because of rayFootprintMode being unsigned, is there a specific syntac to use ?
-    MegakernelPathTracer = createPass("MegakernelPathTracer", {'mSharedParams': PathTracerParams(useVBuffer=0)})
+#    MegakernelPathTracer = createPass("MegakernelPathTracer", {'params': PathTracerParams(useVBuffer=0, rayFootprintMode=0)})  # Generates an error apparently because of rayFootprintMode being unsigned, is there a specific syntac to use ?
+    MegakernelPathTracer = createPass("MegakernelPathTracer", {'params': PathTracerParams(useVBuffer=0)})
     g.addPass(MegakernelPathTracer, "PathTracer")
     g.addEdge("GBuffer.vbuffer", "PathTracer.vbuffer")      # Required by Ray Footprint.
     g.addEdge("GBuffer.posW", "PathTracer.posW")

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,8 +27,8 @@
  **************************************************************************/
 #include "stdafx.h"
 #include "ScriptBindings.h"
-#include "pybind11/embed.h"
-#include "pybind11/operators.h"
+#include <pybind11/embed.h>
+#include <pybind11/operators.h>
 #include <algorithm>
 
 namespace Falcor::ScriptBindings
@@ -57,9 +57,9 @@ namespace Falcor::ScriptBindings
         };
 
         /** `gDeferredBindings` is declared as pointer so that we can ensure it can be explicitly
-            allocated when registerDeferredBinding() is called. (The C++ static objectinitialization fiasco.)
+            allocated when registerDeferredBinding() is called. (The C++ static object initialization fiasco.)
         */
-        std::unique_ptr<std::map<std::string, DeferredBinding>> gDeferredBindings;
+        std::unique_ptr<std::vector<DeferredBinding>> gDeferredBindings;
 
         uint32_t gDeferredBindingID = 0;
     }
@@ -92,18 +92,18 @@ namespace Falcor::ScriptBindings
 
     void registerDeferredBinding(const std::string& name, RegisterBindingFunc f)
     {
-        if (!gDeferredBindings) gDeferredBindings.reset(new std::map<std::string, DeferredBinding>());
-        if (gDeferredBindings->find(name) != gDeferredBindings->end())
+        if (!gDeferredBindings) gDeferredBindings.reset(new std::vector<DeferredBinding>());
+        if (std::find_if(gDeferredBindings->begin(), gDeferredBindings->end(), [&name](const DeferredBinding& binding) { return binding.name == name; }) != gDeferredBindings->end())
         {
             throw std::exception(("A script binding with the name '" + name + "' already exists!").c_str());
         }
-        gDeferredBindings->emplace(name, DeferredBinding(name, f));
+        gDeferredBindings->emplace_back(name, f);
     }
 
     void resolveDeferredBinding(const std::string &name, pybind11::module& m)
     {
-        auto it = gDeferredBindings->find(name);
-        if (it != gDeferredBindings->end()) it->second.bind(m);
+        auto it = std::find_if(gDeferredBindings->begin(), gDeferredBindings->end(), [&name](const DeferredBinding& binding) { return binding.name == name; });
+        if (it != gDeferredBindings->end()) it->bind(m);
     }
 
     template<typename VecT, bool withOperators>
@@ -157,6 +157,20 @@ namespace Falcor::ScriptBindings
         };
         vec.def("__str__", str);
 
+        vec.def(pybind11::pickle(
+            [length] (const VecT &v) {
+                pybind11::tuple t(length);
+                for (auto i = 0; i < length; ++i) t[i] = v[i];
+                return t;
+            },
+            [length] (pybind11::tuple t) {
+                if (t.size() != length) throw std::runtime_error("Invalid state!");
+                VecT v;
+                for (auto i = 0; i < length; ++i) v[i] = t[i].cast<ScalarT>();
+                return v;
+            }
+        ));
+
         if constexpr (withOperators)
         {
             vec.def(pybind11::self + pybind11::self);
@@ -207,7 +221,7 @@ namespace Falcor::ScriptBindings
 
         if (gDeferredBindings)
         {
-            for (auto& [name, binding] : *gDeferredBindings) binding.bind(m);
+            for (auto& binding : *gDeferredBindings) binding.bind(m);
         }
     }
 }

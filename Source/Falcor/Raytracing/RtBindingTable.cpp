@@ -1,0 +1,111 @@
+/***************************************************************************
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
+#include "stdafx.h"
+#include "RtBindingTable.h"
+
+namespace Falcor
+{
+    namespace
+    {
+        // Define API limitations.
+        // See https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html
+        const uint32_t kMaxMissCount = (1 << 16);
+        const uint32_t kMaxRayTypeCount = (1 << 4);
+    }
+
+    RtBindingTable::SharedPtr RtBindingTable::create(uint32_t missCount, uint32_t rayTypeCount, uint32_t geometryCount)
+    {
+        return SharedPtr(new RtBindingTable(missCount, rayTypeCount, geometryCount));
+    }
+
+    RtBindingTable::RtBindingTable(uint32_t missCount, uint32_t rayTypeCount, uint32_t geometryCount)
+        : mMissCount(missCount)
+        , mRayTypeCount(rayTypeCount)
+        , mGeometryCount(geometryCount)
+    {
+        if (missCount > kMaxMissCount)
+        {
+            throw std::runtime_error("'missCount' exceeds the maximum supported (" + std::to_string(kMaxMissCount) + ")");
+        }
+        if (rayTypeCount > kMaxRayTypeCount)
+        {
+            throw std::runtime_error("'rayTypeCount' exceeds the maximum supported (" + std::to_string(kMaxRayTypeCount) + ")");
+        }
+
+        size_t recordCount = 1ull + missCount + rayTypeCount * geometryCount;
+        if (recordCount > std::numeric_limits<uint32_t>::max())
+        {
+            throw std::runtime_error("Raytracing binding table is too large");
+        }
+
+        // Create the binding table. All entries will be assigned a null shader initially.
+        mShaderTable.resize(recordCount);
+    }
+
+    void RtBindingTable::setRayGen(ShaderID shaderID)
+    {
+        mShaderTable[0] = shaderID;
+    }
+
+    void RtBindingTable::setMiss(uint32_t missIndex, ShaderID shaderID)
+    {
+        if (missIndex >= mMissCount)
+        {
+            throw std::runtime_error("RtBindingTable::setMiss() - missIndex is out of range");
+        }
+        mShaderTable[getMissOffset(missIndex)] = shaderID;
+    }
+
+    void RtBindingTable::setHitGroup(uint32_t rayType, uint32_t geometryID, ShaderID shaderID)
+    {
+        if (rayType >= mRayTypeCount)
+        {
+            throw std::runtime_error("RtBindingTable::setHitGroup() - rayType is out of range");
+        }
+        if (geometryID >= mGeometryCount)
+        {
+            throw std::runtime_error("RtBindingTable::setHitGroup() - geometryID is out of range");
+        }
+        mShaderTable[getHitGroupOffset(rayType, geometryID)] = shaderID;
+    }
+
+    void RtBindingTable::setHitGroupByType(uint32_t rayType, const Scene::SharedPtr& pScene, Scene::GeometryType geometryType, ShaderID shaderID)
+    {
+        if (!pScene || pScene->getGeometryCount() != mGeometryCount) throw std::runtime_error("RtBindingTable::setHitGroupByType() - A scene with the same number of geometries as in the binding table has to be used");
+
+        // Iterate over the scene geometries to look for matching types.
+        // TODO: This could be optimized by having Scene return a container we can iterate over.
+        for (uint32_t geometryID = 0; geometryID < mGeometryCount; geometryID++)
+        {
+            if (pScene->getGeometryType(geometryID) == geometryType)
+            {
+                setHitGroup(rayType, geometryID, shaderID);
+            }
+        }
+    }
+}

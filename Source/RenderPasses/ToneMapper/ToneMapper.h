@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -56,6 +56,7 @@ public:
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
+    virtual void setScene(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene) override;
 
     // Scripting functions
     void setExposureCompensation(float exposureCompensation);
@@ -87,7 +88,8 @@ public:
     ExposureMode getExposureMode() const { return mExposureMode; }
 
 private:
-    ToneMapper(Operator op, ResourceFormat outputFormat);
+    ToneMapper(const Dictionary& dict);
+    void parseDictionary(const Dictionary& dict);
 
     void createToneMapPass();
     void createLuminancePass();
@@ -104,28 +106,30 @@ private:
     Sampler::SharedPtr mpPointSampler;
     Sampler::SharedPtr mpLinearSampler;
 
-    ResourceFormat mOutputFormat;       // Output format (uses default when set to ResourceFormat::Unknown).
+    ResourceFormat mOutputFormat = ResourceFormat::Unknown; ///< Output format (uses default when set to ResourceFormat::Unknown).
 
-    float mExposureCompensation = 0.f;  // Exposure compensation (in F-stops).
-    bool mAutoExposure = false;         // Enable auto exposure.
-    float mExposureValue = 0.0f;        // Exposure value (EV), derived from fNumber, shutter, and film speed; only used when auto exposure is disabled.
-    float mFilmSpeed = 100.f;           // Film speed (ISO), only used when auto exposure is disabled.
-    float mFNumber = 1.f;               // Lens speed
-    float mShutter = 1.f;               // Reciprocal of shutter time
+    bool mUseSceneMetadata = true;      ///< Use scene metadata for setting up tonemapper when loading a scene.
 
-    bool mWhiteBalance = false;         // Enable white balance.
-    float mWhitePoint = 6500.0f;        // White point (K).
+    float mExposureCompensation = 0.f;  ///< Exposure compensation (in F-stops).
+    bool mAutoExposure = false;         ///< Enable auto exposure.
+    float mExposureValue = 0.0f;        ///< Exposure value (EV), derived from fNumber, shutter, and film speed; only used when auto exposure is disabled.
+    float mFilmSpeed = 100.f;           ///< Film speed (ISO), only used when auto exposure is disabled.
+    float mFNumber = 1.f;               ///< Lens speed
+    float mShutter = 1.f;               ///< Reciprocal of shutter time
 
-    Operator mOperator;                 // Tone mapping operator.
-    bool mClamp = true;                 // Clamp output to [0,1].
+    bool mWhiteBalance = false;         ///< Enable white balance.
+    float mWhitePoint = 6500.0f;        ///< White point (K).
 
-    float mWhiteMaxLuminance = 1.0f;    // Parameter used in ModifiedReinhard operator.
-    float mWhiteScale = 11.2f;          // Parameter used in Uc2Hable operator.
+    Operator mOperator = Operator::Aces;///< Tone mapping operator.
+    bool mClamp = true;                 ///< Clamp output to [0,1].
+
+    float mWhiteMaxLuminance = 1.0f;    ///< Parameter used in ModifiedReinhard operator.
+    float mWhiteScale = 11.2f;          ///< Parameter used in Uc2Hable operator.
 
     // Pre-computed fields based on above settings
-    float3x3 mWhiteBalanceTransform;    // Color balance transform in RGB space.
-    float3 mSourceWhite;                // Source illuminant in RGB (the white point to which the image is transformed to conform to).
-    float3x3 mColorTransform;           // Final color transform with exposure value baked in.
+    float3x3 mWhiteBalanceTransform;    ///< Color balance transform in RGB space.
+    float3 mSourceWhite;                ///< Source illuminant in RGB (the white point to which the image is transformed to conform to).
+    float3x3 mColorTransform;           ///< Final color transform with exposure value baked in.
 
     bool mRecreateToneMapPass = true;
     bool mUpdateToneMapPass = true;

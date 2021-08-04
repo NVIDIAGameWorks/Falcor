@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -36,6 +36,7 @@ extern "C" __declspec(dllexport) const char* getProjDir()
 static void regAccumulatePass(pybind11::module& m)
 {
     pybind11::class_<AccumulatePass, RenderPass, AccumulatePass::SharedPtr> pass(m, "AccumulatePass");
+    pass.def_property("enabled", &AccumulatePass::isEnabled, &AccumulatePass::setEnabled);
     pass.def("reset", &AccumulatePass::reset);
 
     pybind11::enum_<AccumulatePass::Precision> precision(m, "AccumulatePrecision");
@@ -58,10 +59,11 @@ namespace
     const char kOutputChannel[] = "output";
 
     // Serialized parameters
-    const char kEnableAccumulation[] = "enableAccumulation";
+    const char kEnabled[] = "enabled";
     const char kAutoReset[] = "autoReset";
     const char kPrecisionMode[] = "precisionMode";
     const char kSubFrameCount[] = "subFrameCount";
+    const char kMaxAccumulatedFrames[] = "maxAccumulatedFrames";
 
     const Gui::DropdownList kModeSelectorList =
     {
@@ -81,19 +83,19 @@ AccumulatePass::AccumulatePass(const Dictionary& dict)
     // Deserialize pass from dictionary.
     for (const auto& [key, value] : dict)
     {
-        if (key == kEnableAccumulation) mEnableAccumulation = value;
+        if (key == kEnabled) mEnabled = value;
         else if (key == kAutoReset) mAutoReset = value;
         else if (key == kPrecisionMode) mPrecisionMode = value;
         else if (key == kSubFrameCount) mSubFrameCount = value;
+        else if (key == kMaxAccumulatedFrames) mMaxAccumulatedFrames = value;
         else logWarning("Unknown field '" + key + "' in AccumulatePass dictionary");
     }
 
-    // Create accumulation programs.
-    // Note only compensated summation needs precise floating-point mode.
-    mpProgram[Precision::Double] = ComputeProgram::createFromFile(kShaderFile, "accumulateDouble", Program::DefineList(), Shader::CompilerFlags::TreatWarningsAsErrors);
-    mpProgram[Precision::Single] = ComputeProgram::createFromFile(kShaderFile, "accumulateSingle", Program::DefineList(), Shader::CompilerFlags::TreatWarningsAsErrors);
-    mpProgram[Precision::SingleCompensated] = ComputeProgram::createFromFile(kShaderFile, "accumulateSingleCompensated", Program::DefineList(), Shader::CompilerFlags::FloatingPointModePrecise | Shader::CompilerFlags::TreatWarningsAsErrors);
-    mpVars = ComputeVars::create(mpProgram[Precision::Single]->getReflector());
+    if (dict.keyExists("enableAccumulation"))
+    {
+        logWarning("'enableAccumulation' is deprecated. Use 'enabled' instead.");
+        if (!dict.keyExists(kEnabled)) mEnabled = dict["enableAccumulation"];
+    }
 
     mpState = ComputeState::create();
 }
@@ -101,10 +103,11 @@ AccumulatePass::AccumulatePass(const Dictionary& dict)
 Dictionary AccumulatePass::getScriptingDictionary()
 {
     Dictionary dict;
-    dict[kEnableAccumulation] = mEnableAccumulation;
+    dict[kEnabled] = mEnabled;
     dict[kAutoReset] = mAutoReset;
     dict[kPrecisionMode] = mPrecisionMode;
     dict[kSubFrameCount] = mSubFrameCount;
+    dict[kMaxAccumulatedFrames] = mMaxAccumulatedFrames;
     return dict;
 }
 
@@ -121,8 +124,8 @@ void AccumulatePass::compile(RenderContext* pContext, const CompileData& compile
     // Reset accumulation when resolution changes.
     if (compileData.defaultTexDims != mFrameDim)
     {
-        mFrameCount = 0;
         mFrameDim = compileData.defaultTexDims;
+        reset();
     }
 }
 
@@ -132,10 +135,7 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
     {
         if (mSubFrameCount > 0) // Option to accumulate N frames. Works also for motion blur. Overrides logic for automatic reset on scene changes.
         {
-            if (mFrameCount == mSubFrameCount)
-            {
-                mFrameCount = 0;
-            }
+            if (mFrameCount == mSubFrameCount) reset();
         }
         else
         {
@@ -144,7 +144,7 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
             auto refreshFlags = dict.getValue(kRenderPassRefreshFlags, RenderPassRefreshFlags::None);
 
             // If any refresh flag is set, we reset frame accumulation.
-            if (refreshFlags != RenderPassRefreshFlags::None) mFrameCount = 0;
+            if (refreshFlags != RenderPassRefreshFlags::None) reset();
 
             // Reset accumulation upon all scene changes, except camera jitter and history changes.
             // TODO: Add UI options to select which changes should trigger reset
@@ -153,13 +153,13 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
                 auto sceneUpdates = mpScene->getUpdates();
                 if ((sceneUpdates & ~Scene::UpdateFlags::CameraPropertiesChanged) != Scene::UpdateFlags::None)
                 {
-                    mFrameCount = 0;
+                    reset();
                 }
                 if (is_set(sceneUpdates, Scene::UpdateFlags::CameraPropertiesChanged))
                 {
                     auto excluded = Camera::Changes::Jitter | Camera::Changes::History;
                     auto cameraChanges = mpScene->getCamera()->getChanges();
-                    if ((cameraChanges & ~excluded) != Camera::Changes::None) mFrameCount = 0;
+                    if ((cameraChanges & ~excluded) != Camera::Changes::None) reset();
                 }
             }
         }
@@ -174,11 +174,39 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
     const uint2 resolution = uint2(pSrc->getWidth(), pSrc->getHeight());
 
     // If accumulation is disabled, just blit the source to the destination and return.
-    if (!mEnableAccumulation)
+    // Only do this if the source format is not integer type, for which the blit does not work.
+    FormatType srcFormat = getFormatType(pSrc->getFormat());
+    if (!mEnabled && srcFormat != FormatType::Uint && srcFormat != FormatType::Sint)
     {
         // Only blit mip 0 and array slice 0, because that's what the accumulation uses otherwise otherwise.
         pRenderContext->blit(pSrc->getSRV(0, 1, 0, 1), pDst->getRTV(0, 0, 1));
         return;
+    }
+
+    // If for the first time, or if the input format has changed, (re)compile the programs
+    if (mpProgram.empty() || srcFormat != mSrcFormat)
+    {
+        Program::DefineList defines;
+        switch (srcFormat)
+        {
+            case FormatType::Uint:
+                defines.add("_INPUT_FORMAT", "INPUT_FORMAT_UINT");
+                break;
+            case FormatType::Sint:
+                defines.add("_INPUT_FORMAT", "INPUT_FORMAT_SINT");
+                break;
+            default:
+                defines.add("_INPUT_FORMAT", "INPUT_FORMAT_FLOAT");
+                break;
+        }
+        // Create accumulation programs.
+        // Note only compensated summation needs precise floating-point mode.
+        mpProgram[Precision::Double] = ComputeProgram::createFromFile(kShaderFile, "accumulateDouble", defines, Shader::CompilerFlags::TreatWarningsAsErrors);
+        mpProgram[Precision::Single] = ComputeProgram::createFromFile(kShaderFile, "accumulateSingle", defines, Shader::CompilerFlags::TreatWarningsAsErrors);
+        mpProgram[Precision::SingleCompensated] = ComputeProgram::createFromFile(kShaderFile, "accumulateSingleCompensated", defines, Shader::CompilerFlags::FloatingPointModePrecise | Shader::CompilerFlags::TreatWarningsAsErrors);
+        mpVars = ComputeVars::create(mpProgram[mPrecisionMode]->getReflector());
+
+        mSrcFormat = srcFormat;
     }
 
     // Setup accumulation.
@@ -186,7 +214,9 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
 
     // Set shader parameters.
     mpVars["PerFrameCB"]["gResolution"] = resolution;
-    mpVars["PerFrameCB"]["gAccumCount"] = mFrameCount++;
+    mpVars["PerFrameCB"]["gAccumCount"] = mFrameCount;
+    mpVars["PerFrameCB"]["gAccumulate"] = mEnabled;
+    mpVars["PerFrameCB"]["gMovingAverageMode"] = (mMaxAccumulatedFrames > 0);
     mpVars["gCurFrame"] = pSrc;
     mpVars["gOutputFrame"] = pDst;
 
@@ -195,6 +225,13 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
     mpVars["gLastFrameCorr"] = mpLastFrameCorr;
     mpVars["gLastFrameSumLo"] = mpLastFrameSumLo;
     mpVars["gLastFrameSumHi"] = mpLastFrameSumHi;
+
+    // Update the frame count.
+    // The accumulation limit (mMaxAccumulatedFrames) has a special value of 0 (no limit) and is not supported in the SingleCompensated mode.
+    if (mMaxAccumulatedFrames == 0 || mPrecisionMode == Precision::SingleCompensated || mFrameCount < mMaxAccumulatedFrames)
+    {
+        mFrameCount++;
+    }
 
     // Run the accumulation program.
     auto pProgram = mpProgram[mPrecisionMode];
@@ -206,18 +243,28 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
 
 void AccumulatePass::renderUI(Gui::Widgets& widget)
 {
-    if (widget.checkbox("Accumulate temporally", mEnableAccumulation))
-    {
-        // Reset accumulation when it is toggled.
-        mFrameCount = 0;
-    }
+    if (bool enabled = isEnabled(); widget.checkbox("Enabled", enabled)) setEnabled(enabled);
 
-    if (mEnableAccumulation)
+    if (mEnabled)
     {
+        if (widget.button("Reset", true)) reset();
+
         if (widget.dropdown("Mode", kModeSelectorList, (uint32_t&)mPrecisionMode))
         {
             // Reset accumulation when mode changes.
-            mFrameCount = 0;
+            reset();
+        }
+
+        if (mPrecisionMode != Precision::SingleCompensated)
+        {
+            // When mMaxAccumulatedFrames is nonzero, the accumulate pass will only compute the average of
+            // up to that number of frames. Further frames will be accumulated in the exponential moving
+            // average fashion, i.e. every next frame is blended with the history using the same weight.
+            if (widget.var("Max Frames", mMaxAccumulatedFrames, 0u))
+            {
+                reset();
+            }
+            widget.tooltip("0 = no limit");
         }
 
         const std::string text = std::string("Frames accumulated ") + std::to_string(mFrameCount);
@@ -227,15 +274,30 @@ void AccumulatePass::renderUI(Gui::Widgets& widget)
 
 void AccumulatePass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
 {
-    // Reset accumulation when the scene changes.
-    mFrameCount = 0;
     mpScene = pScene;
+
+    // Reset accumulation when the scene changes.
+    reset();
 }
 
 void AccumulatePass::onHotReload(HotReloadFlags reloaded)
 {
     // Reset accumulation if programs changed.
-    if (is_set(reloaded, HotReloadFlags::Program)) mFrameCount = 0;
+    if (is_set(reloaded, HotReloadFlags::Program)) reset();
+}
+
+void AccumulatePass::setEnabled(bool enabled)
+{
+    if (enabled != mEnabled)
+    {
+        mEnabled = enabled;
+        reset();
+    }
+}
+
+void AccumulatePass::reset()
+{
+    mFrameCount = 0;
 }
 
 void AccumulatePass::prepareAccumulation(RenderContext* pRenderContext, uint32_t width, uint32_t height)
@@ -254,7 +316,7 @@ void AccumulatePass::prepareAccumulation(RenderContext* pRenderContext, uint32_t
         {
             pBuf = Texture::create2D(width, height, format, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
             assert(pBuf);
-            mFrameCount = 0;
+            reset();
         }
         // Clear data if accumulation has been reset (either above or somewhere else).
         if (mFrameCount == 0)

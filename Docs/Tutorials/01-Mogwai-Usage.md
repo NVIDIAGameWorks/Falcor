@@ -25,12 +25,22 @@ Run Mogwai from within Visual Studio (by pressing Ctrl+F5), or from the command 
 
       -h, --help                        Display this help menu.
       -s[path], --script=[path]         Python script file to run.
+      -S[path], --scene=[path]          Scene file (for example, a .pyscene
+                                        file) to open.
       -l[path], --logfile=[path]        File to write log into.
+      -v[verbosity],
+      --verbosity=[verbosity]           Logging verbosity (0=disabled, 1=fatal
+                                        errors, 2=errors, 3=warnings, 4=infos,
+                                        5=debugging)
       --silent                          Starts Mogwai with a minimized window
                                         and disables mouse/keyboard input as
                                         well as error message dialogs.
       --width=[pixels]                  Initial window width.
       --height=[pixels]                 Initial window height.
+      -c, --use-cache                   Use scene cache to improve scene load
+                                        times.
+      --rebuild-cache                   Rebuild the scene cache.
+      -d, --debug-shaders               Generate shader debug info.
 ```
 
 Using `--silent` together with `--script` allows to run Mogwai for rendering in the background.

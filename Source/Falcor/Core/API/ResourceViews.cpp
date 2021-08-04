@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -56,7 +56,11 @@ namespace Falcor
         gNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture3D] = ShaderResourceView::create(ShaderResourceView::Dimension::Texture3D);
         gNullViews.srv[(size_t)ShaderResourceView::Dimension::TextureCube] = ShaderResourceView::create(ShaderResourceView::Dimension::TextureCube);
         gNullViews.srv[(size_t)ShaderResourceView::Dimension::TextureCubeArray] = ShaderResourceView::create(ShaderResourceView::Dimension::TextureCubeArray);
-        gNullViews.srv[(size_t)ShaderResourceView::Dimension::AccelerationStructure] = ShaderResourceView::create(ShaderResourceView::Dimension::AccelerationStructure);
+
+        if (gpDevice->isFeatureSupported(Device::SupportedFeatures::Raytracing))
+        {
+            gNullViews.srv[(size_t)ShaderResourceView::Dimension::AccelerationStructure] = ShaderResourceView::create(ShaderResourceView::Dimension::AccelerationStructure);
+        }
 
         gNullViews.uav[(size_t)UnorderedAccessView::Dimension::Buffer] = UnorderedAccessView::create(UnorderedAccessView::Dimension::Buffer);
         gNullViews.uav[(size_t)UnorderedAccessView::Dimension::Texture1D] = UnorderedAccessView::create(UnorderedAccessView::Dimension::Texture1D);

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,24 +27,13 @@
  **************************************************************************/
 #pragma once
 #include "Animation.h"
+#include "AnimatedVertexCache.h"
 #include "RenderGraph/BasePasses/ComputePass.h"
 #include "Scene/SceneTypes.slang"
 
 namespace Falcor
 {
     class Scene;
-
-    struct Bone
-    {
-        uint32_t parentID;
-        uint32_t boneID;
-        std::string name;
-        glm::mat4 offset;
-        glm::mat4 localTransform;
-        glm::mat4 originalLocalTransform;
-        glm::mat4 globalTransform;
-    };
-
     class Model;
     class AssimpModelImporter;
 
@@ -64,9 +53,17 @@ namespace Falcor
         */
         static UniquePtr create(Scene* pScene, const StaticVertexVector& staticVertexData, const DynamicVertexVector& dynamicVertexData, const std::vector<Animation::SharedPtr>& animations);
 
+        /** Add animated vertex caches (curves and meshes) to the controller.
+        */
+        void addAnimatedVertexCaches(std::vector<CachedCurve>& cachedCurves, std::vector<CachedMesh>& cachedMeshes);
+
         /** Returns true if controller contains animations.
         */
         bool hasAnimations() const { return mAnimations.size() > 0; }
+
+        /** Returns true if controller contains animated vertex caches.
+        */
+        bool hasAnimatedVertexCaches() const { return mpVertexCache && mpVertexCache->hasAnimations(); }
 
         /** Returns a list of all animations.
         */
@@ -101,7 +98,13 @@ namespace Falcor
         */
         bool isMatrixChanged(size_t matrixID) const { return mMatricesChanged[matrixID]; }
 
+        /** Get the local matrices.
+            These represent the current local transform for each scene graph node.
+        */
+        const std::vector<glm::mat4>& getLocalMatrices() const { return mLocalMatrices; }
+
         /** Get the global matrices.
+            These represent the current object-to-world space transform for each scene graph node.
         */
         const std::vector<glm::mat4>& getGlobalMatrices() const { return mGlobalMatrices; }
 
@@ -109,11 +112,15 @@ namespace Falcor
         */
         void renderUI(Gui::Widgets& widget);
 
-
         /** Get the previous vertex data buffer for dynamic meshes.
             \return Buffer containing the previous vertex data, or nullptr if no dynamic meshes exist.
         */
         Buffer::SharedPtr getPrevVertexData() const { return mpPrevVertexData; }
+
+        /** Get the previous curve vertex data buffer for dynamic curves.
+            \return Buffer containing the previous curve vertex data, or nullptr if no dynamic curves exist.
+        */
+        Buffer::SharedPtr getPrevCurveVertexData() const { return mpVertexCache ? mpVertexCache->getPrevCurveVertexData() : nullptr; }
 
         /** Get the total GPU memory usage in bytes.
         */
@@ -124,24 +131,30 @@ namespace Falcor
         AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const DynamicVertexVector& dynamicVertexData, const std::vector<Animation::SharedPtr>& animations);
 
         void initFlags();
+        void initLocalMatrices();
+        void updateLocalMatrices(double time);
+        void updateWorldMatrices(bool updateAll = false);
+        void uploadWorldMatrices(bool uploadAll = false);
+
         void bindBuffers();
-        void updateMatrices();
 
         void createSkinningPass(const std::vector<PackedStaticVertexData>& staticVertexData, const std::vector<DynamicVertexData>& dynamicVertexData);
-        void executeSkinningPass(RenderContext* pContext);
-        void initLocalMatrices();
+        void executeSkinningPass(RenderContext* pContext, bool initPrev = false);
 
         // Animation
         std::vector<Animation::SharedPtr> mAnimations;
-        std::vector<glm::mat4> mLocalMatrices;
-        std::vector<glm::mat4> mGlobalMatrices;
-        std::vector<glm::mat4> mInvTransposeGlobalMatrices;
+        std::vector<float4x4> mLocalMatrices;
+        std::vector<float4x4> mGlobalMatrices;
+        std::vector<float4x4> mInvTransposeGlobalMatrices;
         std::vector<bool> mMatricesAnimated;        ///< Flag per matrix, true if matrix is affected by animations.
         std::vector<bool> mMatricesChanged;         ///< Flag per matrix, true if matrix changed since last frame.
 
-        bool mEnabled = true;
-        bool mAnimationChanged = true;
-        double mLastAnimationTime = 0;
+        bool mFirstUpdate = true;       ///< True if this is the first update.
+        bool mEnabled = true;           ///< True if animations are enabled.
+        bool mPrevEnabled = false;      ///< True if animations were enabled in previous frame.
+        double mTime = 0.0;             ///< Global time of current frame.
+        double mPrevTime = 0.0;         ///< Global time of previous frame.
+
         bool mLoopAnimations = true;
         double mGlobalAnimationLength = 0;
         Scene* mpScene = nullptr;
@@ -149,17 +162,24 @@ namespace Falcor
         Buffer::SharedPtr mpWorldMatricesBuffer;
         Buffer::SharedPtr mpPrevWorldMatricesBuffer;
         Buffer::SharedPtr mpInvTransposeWorldMatricesBuffer;
+        Buffer::SharedPtr mpPrevInvTransposeWorldMatricesBuffer;
 
         // Skinning
         ComputePass::SharedPtr mpSkinningPass;
-        std::vector<glm::mat4> mSkinningMatrices;
-        std::vector<glm::mat4> mInvTransposeSkinningMatrices;
+        std::vector<float4x4> mMeshBindMatrices; // Optimization TODO: These are only needed per mesh
+        std::vector<float4x4> mSkinningMatrices;
+        std::vector<float4x4> mInvTransposeSkinningMatrices;
         uint32_t mSkinningDispatchSize = 0;
 
+        Buffer::SharedPtr mpMeshBindMatricesBuffer;
+        Buffer::SharedPtr mpMeshInvBindMatricesBuffer;
         Buffer::SharedPtr mpSkinningMatricesBuffer;
         Buffer::SharedPtr mpInvTransposeSkinningMatricesBuffer;
         Buffer::SharedPtr mpSkinningStaticVertexData;
         Buffer::SharedPtr mpSkinningDynamicVertexData;
         Buffer::SharedPtr mpPrevVertexData;
+
+        // Animated vertex caches
+        AnimatedVertexCache::UniquePtr mpVertexCache;
     };
 }

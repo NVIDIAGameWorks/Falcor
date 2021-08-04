@@ -6,7 +6,7 @@ def render_graph_MinimalPathTracer():
     loadRenderPassLibrary("GBuffer.dll")
     loadRenderPassLibrary("MinimalPathTracer.dll")
     loadRenderPassLibrary("ToneMapper.dll")
-    AccumulatePass = createPass("AccumulatePass", {'enableAccumulation': True, 'precisionMode': AccumulatePrecision.Single})
+    AccumulatePass = createPass("AccumulatePass", {'enabled': True, 'precisionMode': AccumulatePrecision.Single})
     g.addPass(AccumulatePass, "AccumulatePass")
     ToneMapper = createPass("ToneMapper", {'autoExposure': False, 'exposureCompensation': 0.0})
     g.addPass(ToneMapper, "ToneMapper")

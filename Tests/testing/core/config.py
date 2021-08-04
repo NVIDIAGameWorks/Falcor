@@ -10,6 +10,9 @@ DEFAULT_ENVIRONMENT="environment/default.json"
 # Default image comparison tolerance.
 DEFAULT_TOLERANCE = 1e-12
 
+# Default image test timeout.
+DEFAULT_TIMEOUT = 600
+
 IMAGE_TESTS_DIR = "Tests/image_tests"
 
 # Supported image extensions.

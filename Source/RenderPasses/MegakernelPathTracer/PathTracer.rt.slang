@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -48,7 +48,7 @@ RWTexture2D<float4> gOutputAlbedo;
 RWTexture2D<uint> gOutputTime;
 
 // Static configuration based on which buffers are bound.
-#define isValid(name) (is_valid_##name != 0)
+#define is_valid(name) (is_valid_##name != 0)
 
 
 /** ********************* Ray index 0: Scatter ray ************************ */
@@ -59,30 +59,26 @@ void scatterMiss(inout ScatterRayData rayData : SV_RayPayload)
 }
 
 [shader("anyhit")]
-void scatterAnyHit(
-    uniform HitShaderParams hitParams,
-    inout ScatterRayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
+void scatterAnyHit(inout ScatterRayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
 {
 #if USE_ALPHA_TEST
     // Alpha test for non-opaque geometry.
-    VertexData v = getVertexData(hitParams, PrimitiveIndex(), attribs);
-    const uint materialID = gScene.getMaterialID(hitParams.getGlobalHitID());
+    GeometryInstanceID instanceID = getGeometryInstanceID();
+    VertexData v = getVertexData(instanceID, PrimitiveIndex(), attribs);
+    const uint materialID = gScene.getMaterialID(instanceID);
     if (alphaTest(v, gScene.materials[materialID], gScene.materialResources[materialID], 0.f)) IgnoreHit();
 #endif
 }
 
 [shader("closesthit")]
-void scatterClosestHit(
-    uniform HitShaderParams hitParams,
-    inout ScatterRayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
+void scatterClosestHit(inout ScatterRayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
 {
     // Store hit information. Note we don't access the materials here.
-    HitInfo hit;
-    hit.type = InstanceType::TriangleMesh;
-    hit.instanceID = hitParams.getGlobalHitID();
-    hit.primitiveIndex = PrimitiveIndex();
-    hit.barycentrics = attribs.barycentrics;
-    rayData.packedHitInfo = hit.encode();
+    TriangleHit triangleHit;
+    triangleHit.instanceID = getGeometryInstanceID();
+    triangleHit.primitiveIndex = PrimitiveIndex();
+    triangleHit.barycentrics = attribs.barycentrics;
+    rayData.packedHitInfo = HitInfo(triangleHit).pack();
 }
 
 /************************** Ray index 1: Shadow ray ************************ */
@@ -95,14 +91,13 @@ void shadowMiss(inout ShadowRayData rayData : SV_RayPayload)
 }
 
 [shader("anyhit")]
-void shadowAnyHit(
-    uniform HitShaderParams hitParams,
-    inout ShadowRayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
+void shadowAnyHit(inout ShadowRayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
 {
 #if USE_ALPHA_TEST
     // Alpha test for non-opaque geometry.
-    VertexData v = getVertexData(hitParams, PrimitiveIndex(), attribs);
-    const uint materialID = gScene.getMaterialID(hitParams.getGlobalHitID());
+    GeometryInstanceID instanceID = getGeometryInstanceID();
+    VertexData v = getVertexData(instanceID, PrimitiveIndex(), attribs);
+    const uint materialID = gScene.getMaterialID(instanceID);
     if (alphaTest(v, gScene.materials[materialID], gScene.materialResources[materialID], 0.f)) IgnoreHit();
 #endif
 }
@@ -131,7 +126,7 @@ void rayGen()
     printSetPixel(launchIndex);
 
     GpuTimer timer;
-    if (isValid(gOutputTime)) timer.start();
+    if (is_valid(gOutputTime)) timer.start();
 
     float3 outColor = float3(0, 0, 0);
     float3 outAlbedo = float3(0, 0, 0);
@@ -154,6 +149,7 @@ void rayGen()
             PathData path = {};
             path.origin = rayOrigin;
             path.thp = float3(1.f);
+            path.hit = hit;
 
             // Create sample generator.
             uint frameSeed = gData.params.useFixedSeed ? 0 : gData.params.frameCount;
@@ -167,7 +163,7 @@ void rayGen()
             if (!(kRayFootprintMode == TexLODMode::Mip0))
             {
                 // Create the ray footprint data for TexLOD.
-                path.rayFootprint = RayFootprint.create(hit, launchIndex, launchDim, rayOrigin, gScene.camera.getPosition(), sd.faceN, sd.N, gData.params.screenSpacePixelSpreadAngle, sd.linearRoughness, path.isSpecular());
+                path.rayFootprint = RayFootprint.create(hit.getTriangleHit(), launchIndex, launchDim, rayOrigin, gScene.camera.getPosition(), sd.faceN, sd.N, gData.params.screenSpacePixelSpreadAngle, sd.linearRoughness, path.isSpecular());
             }
 
             // Trace the path.
@@ -200,9 +196,9 @@ void rayGen()
 
     // Write outputs.
     // These are all optional so using compile-time checks to decide which ones to write.
-    if (isValid(gOutputColor)) gOutputColor[launchIndex] = float4(outColor, outAlpha);
-    if (isValid(gOutputAlbedo)) gOutputAlbedo[launchIndex] = float4(outAlbedo, 1);
+    if (is_valid(gOutputColor)) gOutputColor[launchIndex] = float4(outColor, outAlpha);
+    if (is_valid(gOutputAlbedo)) gOutputAlbedo[launchIndex] = float4(outAlbedo, 1);
 
     // Write time.
-    if (isValid(gOutputTime)) gOutputTime[launchIndex] = timer.getElapsed();
+    if (is_valid(gOutputTime)) gOutputTime[launchIndex] = timer.getElapsed();
 }

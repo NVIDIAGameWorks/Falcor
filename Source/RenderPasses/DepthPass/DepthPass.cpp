@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -103,7 +103,7 @@ void DepthPass::execute(RenderContext* pContext, const RenderData& renderData)
     mpState->setFbo(mpFbo);
     pContext->clearDsv(pDepth->getDSV().get(), 1, 0);
 
-    if (mpScene) mpScene->rasterize(pContext, mpState.get(), mpVars.get(), mpRsState ? Scene::RenderFlags::UserRasterizerState : Scene::RenderFlags::None);
+    if (mpScene) mpScene->rasterize(pContext, mpState.get(), mpVars.get(), mCullMode);
 }
 
 DepthPass& DepthPass::setDepthBufferFormat(ResourceFormat format)
@@ -123,13 +123,6 @@ DepthPass& DepthPass::setDepthBufferFormat(ResourceFormat format)
 DepthPass& DepthPass::setDepthStencilState(const DepthStencilState::SharedPtr& pDsState)
 {
     mpState->setDepthStencilState(pDsState);
-    return *this;
-}
-
-DepthPass& DepthPass::setRasterizerState(const RasterizerState::SharedPtr& pRsState)
-{
-    mpRsState = pRsState;
-    mpState->setRasterizerState(mpRsState);
     return *this;
 }
 

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,12 +31,12 @@
 import Scene.Scene;
 import Scene.Shading;
 import Scene.TextureSampler;
-import Experimental.Scene.Material.MaterialShading;
-import Experimental.Scene.Lights.EnvMap;
+import Experimental.Scene.Material.StandardMaterial;
 import Utils.Sampling.SampleGenerator;
 import Utils.Debug.PixelDebug;
 import Utils.Math.BitTricks;
 import Utils.Math.MathHelpers;
+import Utils.Geometry.IntersectionHelpers;
 import BSDFViewerParams;
 
 cbuffer PerFrameCB
@@ -111,39 +111,6 @@ float3 calculateSliceGeometry(float2 uv, out VertexData v, out float3 viewDir)
     return normalize(L);
 }
 
-/** Ray-sphere intersection.
-    This function implements the standard analytic test and returns the closest hit.
-    \param[in] rayOrigin Ray origin.
-    \param[in] rayDir Ray direction (does not have to be normalized).
-    \param[in] center Sphere center.
-    \param[in] radius Sphere radius.
-    \param[in] intersectionPos Position on the sphere for the closest intersection (if any).
-    \return True if the ray intersects the sphere.
-*/
-bool raySphereIntersection(float3 rayOrigin, float3 rayDir, float3 center, float radius, out float3 intersectionPos)
-{
-    // The sphere equation is ||P-C||^2 = r^2 and the ray P = A+tB.
-    // Solve for minimum positive t to find the closest intersection.
-    float3 oc = rayOrigin - center;
-    float a = dot(rayDir, rayDir); // = 1.0 if direction is normalized
-    float b = 2.f * dot(rayDir, oc);
-    float c = dot(oc, oc) - radius * radius;
-    float discriminant = b * b - 4.f * a * c;
-
-    // Negative discriminant means ray missed sphere.
-    if (discriminant < 0.f) return false;
-
-    // There are two solutions t0 and t1, but one or both may be negative.
-    float t0 = -b - sqrt(discriminant);
-    float t1 = -b + sqrt(discriminant);
-    float tc = t0 < 0.f ? t1 : t0; // tc is the closest hit we care about
-    if (tc < 0.f) return false;
-
-    float t = tc / (2.f * a);
-    intersectionPos = rayOrigin + t * rayDir;
-    return true;
-}
-
 /** Calculate sphere geometry for the given viewport coordinate.
     \param[in] uv Viewport coordinate in [0,1].
     \param[out] v Interpolated attributes for the point on the sphere (if hit).
@@ -173,9 +140,9 @@ bool calculateSphereGeometry(float2 uv, out VertexData v, out float3 rayDir)
         float3 target = float3(ndc * gParams.cameraViewportScale, 0);
         rayDir = normalize(target - origin);
 
-        float3 p;
-        if (!raySphereIntersection(origin, rayDir, float3(0), 1.f, p)) return false;
-        v.posW = p;
+        float t;
+        if (!intersectRaySphere(origin, rayDir, float3(0.f), 1.f, t)) return false;
+        v.posW = origin + t * rayDir;
     }
 
     // Setup surface attributes for the unit sphere.
@@ -216,7 +183,7 @@ SurfaceData prepareMaterial(VertexData v, float3 viewDir)
         // Setup additional fields not currently available in ShadingData.
         MaterialData md = gScene.getMaterial(gParams.materialID);
         MaterialResources mr = gScene.materialResources[gParams.materialID];
-        data.baseColor = sampleTexture(mr.baseColor, mr.samplerState, v.texC, md.baseColor, EXTRACT_DIFFUSE_TYPE(md.flags), lod).rgb;
+        data.baseColor = sampleTexture(mr.baseColor, mr.samplerState, v.texC, md.baseColor, EXTRACT_BASE_COLOR_TYPE(md.flags), lod).rgb;
     }
     else
     {
@@ -230,9 +197,13 @@ SurfaceData prepareMaterial(VertexData v, float3 viewDir)
         sd.NdotV = dot(sd.N, sd.V);
         sd.faceN = v.faceNormalW;
         sd.frontFacing = dot(sd.V, sd.faceN) >= 0.f;
-        sd.doubleSided = false;
 
         computeTangentSpace(sd, v.tangentW);
+
+        // Set material data
+        sd.setMaterialType(MaterialType::Standard);
+        sd.setDoubleSided(false);
+        sd.setThinSurface(false);
 
         // Set material parameters.
         // Calculate the specular reflectance for dielectrics from the IoR.
@@ -247,7 +218,6 @@ SurfaceData prepareMaterial(VertexData v, float3 viewDir)
 
         // Unused
         sd.opacity = 1;
-        sd.occlusion = 1;
 
         // Store outputs
         data.sd = sd;
@@ -304,7 +274,7 @@ uint getActiveLobes()
 /** Evaluates the BSDF slice for a given viewport coordinate.
     \return Evaluated BSDF value.
 */
-float3 evalBSDFSlice(float2 uv, inout SurfaceData data)
+float3 evalBSDFSlice<Material : IMaterial>(const Material mtl, const float2 uv, inout SurfaceData data)
 {
     // Calculate geometry and incident/outgoing directions.
     VertexData v;
@@ -316,7 +286,7 @@ float3 evalBSDFSlice(float2 uv, inout SurfaceData data)
     data.wi = lightDir;
 
     // Evaluate BRDF at this point.
-    float3 f = evalBSDFCosine(data.sd, data.wi);
+    float3 f = mtl.eval(data.sd, data.wi);
 
     // Remove cosine term if it's disabled in the viewer.
     if (!gParams.applyNdotL)
@@ -335,20 +305,19 @@ float3 evalBSDFSlice(float2 uv, inout SurfaceData data)
     \param[out] s Generated sample. Only valid if true is returned.
     \return True if a sample was generated, false otherwise.
 */
-bool generateBSDFSample(const ShadingData sd, inout SampleGenerator sg, out BSDFSample s)
+bool generateBSDFSample<Material : IMaterial>(const ShadingData sd, const Material mtl, inout SampleGenerator sg, out BSDFSample s)
 {
     if (gParams.useDirectionalLight)
     {
         // With directional light, disable BSDF sampling and just return a sample in the light's direction.
-        s.wi = -normalize(gParams.lightDir);
-        s.weight = evalBSDFCosine(sd, s.wi);
+        s.wo = -normalize(gParams.lightDir);
+        s.weight = mtl.eval(sd, s.wo);
         s.pdf = 1.f;
-        return dot(sd.N, s.wi) > 0.f;
+        return dot(sd.N, s.wo) > 0.f;
     }
     else
     {
-        if (gParams.useBrdfSampling) return sampleBSDF(sd, sg, s);
-        else return sampleBSDF_Reference(sd, sg, s);
+        return mtl.sample(sd, sg, s, gParams.useBrdfSampling);
     }
 }
 
@@ -358,7 +327,7 @@ bool generateBSDFSample(const ShadingData sd, inout SampleGenerator sg, out BSDF
     the result converges to the total reflectance (integral of BSDF times the dot(N,L) factor.
     \return Outgoing radiance value.
 */
-float3 evalSphere(float2 uv, inout SurfaceData data, inout SampleGenerator sg)
+float3 evalSphere<Material : IMaterial>(const Material mtl, const float2 uv, inout SurfaceData data, inout SampleGenerator sg)
 {
     // Calculate the local surface frame.
     VertexData v;
@@ -370,15 +339,15 @@ float3 evalSphere(float2 uv, inout SurfaceData data, inout SampleGenerator sg)
 
     float3 output = 0;
     BSDFSample s = {};
-    if (generateBSDFSample(data.sd, sg, s))
+    if (generateBSDFSample(data.sd, mtl, sg, s))
     {
-        data.wi = s.wi;
-        float3 L = evalLighting(s.wi);
+        data.wi = s.wo;
+        float3 L = evalLighting(s.wo);
 
         // Use computed pdf explicitly (for debugging).
         if (gParams.usePdf)
         {
-            output = L * evalBSDFCosine(data.sd, s.wi) / s.pdf;
+            output = L * mtl.eval(data.sd, s.wo) / s.pdf;
         }
         else
         {
@@ -399,6 +368,7 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
 
     printSetPixel(pixel);
 
+    StandardMaterial mtl; // Instance of the standard material.
     SurfaceData data = {};
     float3 output = 0;
     float2 uv = getViewportCoord(pixel);
@@ -407,21 +377,15 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
     {
         if (all(uv >= 0.f && uv < 1.f))
         {
-            output = evalBSDFSlice(uv, data);
+            output = evalBSDFSlice(mtl, uv, data);
         }
     }
     else
     {
         // Create pseudorandom number generator.
         SampleGenerator sg = SampleGenerator.create(pixel, gParams.frameCount);
-        output = evalSphere(uv, data, sg);
+        output = evalSphere(mtl, uv, data, sg);
     }
-
-    // DEBUG
-    //if (gParams.debugSwitch0)
-    //{
-    //    if (sd.N.z < 0.f) output = float3(1, 0, 0);
-    //}
 
     // Write output data.
     gOutput[pixel] = float4(output, 1);

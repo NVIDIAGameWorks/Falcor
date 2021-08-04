@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -46,7 +46,7 @@ namespace Falcor
         /** Create a new GPU fence.
             \return A new object, or throws an exception if creation failed.
         */
-        static SharedPtr create();
+        static SharedPtr create(bool shared = false);
 
         /** Get the internal API handle
         */
@@ -71,11 +71,20 @@ namespace Falcor
         /** Insert a signal command into the command queue. This will increase the internal value
         */
         uint64_t gpuSignal(CommandQueueHandle pQueue);
+
+        /** Must be called to obtain the current value for use in an external semaphore.
+        */
+        uint64_t externalSignal() { return mCpuValue++; }
+
+        /** Creates a shared fence API handle.
+        */
+        SharedResourceApiHandle getSharedApiHandle() const;
     private:
         GpuFence() : mCpuValue(0) {}
         uint64_t mCpuValue;
 
         ApiHandle mApiHandle;
         FenceApiData* mpApiData = nullptr;
+        mutable SharedResourceApiHandle mSharedApiHandle = 0;
     };
 }

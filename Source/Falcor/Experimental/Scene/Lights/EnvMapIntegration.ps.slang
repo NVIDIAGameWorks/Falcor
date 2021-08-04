@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,8 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Utils/Math/MathConstants.slangh"
-import Utils.Helpers;
-import Scene.Material.BRDF;
+import Utils.Math.MathHelpers;
+import Utils.Sampling.LowDiscrepancy.HammersleySequence;
 
 SamplerState gSampler : register(s0);
 Texture2D gInputTex : register(t1);
@@ -84,6 +84,39 @@ float3 importanceSampleGGX(float2 u, float3 N, float roughness)
     return normalize(right * tH.x + forward * tH.y + N * tH.z);
 }
 
+float3 fresnelSchlick(float3 f0, float3 f90, float u)
+{
+    return f0 + (f90 - f0) * pow(1 - u, 5);
+}
+
+/** Disney's diffuse term. Based on https://disney-animation.s3.amazonaws.com/library/s2012_pbs_disney_brdf_notes_v2.pdf
+*/
+float disneyDiffuseFresnel(float NdotV, float NdotL, float LdotH, float linearRoughness)
+{
+    float fd90 = 0.5 + 2 * LdotH * LdotH * linearRoughness;
+    float fd0 = 1;
+    float lightScatter = fresnelSchlick(fd0, fd90, NdotL).r;
+    float viewScatter = fresnelSchlick(fd0, fd90, NdotV).r;
+    return lightScatter * viewScatter;
+}
+
+float evalGGX(float ggxAlpha, float NdotH)
+{
+    float a2 = ggxAlpha * ggxAlpha;
+    float d = ((NdotH * a2 - NdotH) * NdotH + 1);
+    return a2 / (d * d);
+}
+
+float evalSmithGGX(float NdotL, float NdotV, float ggxAlpha)
+{
+    // Optimized version of Smith, already taking into account the division by (4 * NdotV)
+    float a2 = ggxAlpha * ggxAlpha;
+    // `NdotV *` and `NdotL *` are inversed. It's not a mistake.
+    float ggxv = NdotL * sqrt((-NdotV * a2 + NdotV) * NdotV + a2);
+    float ggxl = NdotV * sqrt((-NdotL * a2 + NdotL) * NdotL + a2);
+    return 0.5f / (ggxv + ggxl);
+}
+
 float smithGGX(float NdotL, float NdotV, float roughness)
 {
     float k = ((roughness + 1) * (roughness + 1)) / 8;
@@ -104,7 +137,7 @@ float4 integrateDiffuseLD(float3 N)
         float NdotL = saturate(dot(N, L));
         if (NdotL > 0)
         {
-            float2 uv = dirToSphericalCrd(L);
+            float2 uv = world_to_latlong_map(L);
             float LdotH = saturate(dot(L, normalize(V + L)));
             float NdotV = saturate(dot(N, V));
             float brdf = disneyDiffuseFresnel(NdotV, NdotL, LdotH, 0);
@@ -148,7 +181,7 @@ float4 integrateSpecularLD(float3 V, float3 N, float roughness)
             float omegaP = 4.0 * M_PI / (6 * cubeWidth * cubeWidth);
             float mipLevel = clamp(0.5 * log2(omegaS / omegaP), 0, mipCount);
 
-            float2 uv = dirToSphericalCrd(L);
+            float2 uv = world_to_latlong_map(L);
             float3 Li = gInputTex.SampleLevel(gSampler, uv, mipLevel).rgb;
             float weight = NdotL;
             weight *= evalSmithGGX(NdotL, NdotV, roughness);
@@ -223,9 +256,9 @@ float4 main(float2 texC : TEXCOORD, float4 posS : SV_POSITION) : SV_TARGET0
 
     return integrateDFG(N, V, texC.y);
 
-#else// _INTEGRATE_DFG else
+#else // _INTEGRATE_DFG else
 
-    float3 dir = sphericalCrdToDir(texC);
+    float3 dir = latlong_map_to_world(texC);
 
 #ifdef _INTEGRATE_DIFFUSE_LD
     return integrateDiffuseLD(dir);

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -62,10 +62,8 @@ private:
 
     Scene::SharedPtr mpScene;
 
-    bool mOverrideRS = false;
     RasterizerState::SharedPtr mpWireframeRS = nullptr;
-    RasterizerState::SharedPtr mpCullRastState[3]; // 0 = no culling, 1 = backface culling, 2 = frontface culling
-    uint32_t mCullMode = 1;
+    RasterizerState::CullMode mCullMode = RasterizerState::CullMode::Back;
 
     DepthStencilState::SharedPtr mpNoDepthDS = nullptr;
     DepthStencilState::SharedPtr mpDepthTestDS = nullptr;

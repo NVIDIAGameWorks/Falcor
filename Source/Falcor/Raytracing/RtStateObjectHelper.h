@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -38,9 +38,9 @@ namespace Falcor
             clear();
         }
 
-        void addPipelineConfig(uint32_t maxTraceRecursionDepth)
+        void addPipelineConfig(uint32_t maxTraceRecursionDepth, D3D12_RAYTRACING_PIPELINE_FLAGS flags)
         {
-            addSubobject<PipelineConfig>(maxTraceRecursionDepth);
+            addSubobject<PipelineConfig>(maxTraceRecursionDepth, flags);
             mDirty = true;
         }
 
@@ -113,15 +113,16 @@ namespace Falcor
 
         struct PipelineConfig : public RtStateSubobjectBase
         {
-            PipelineConfig(uint32_t maxTraceRecursionDepth)
+            PipelineConfig(uint32_t maxTraceRecursionDepth, D3D12_RAYTRACING_PIPELINE_FLAGS flags)
             {
                 config.MaxTraceRecursionDepth = maxTraceRecursionDepth;
+                config.Flags = flags;
 
-                subobject.Type = D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG;
+                subobject.Type = D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG1;
                 subobject.pDesc = &config;
             }
             virtual ~PipelineConfig() = default;
-            D3D12_RAYTRACING_PIPELINE_CONFIG config = {};
+            D3D12_RAYTRACING_PIPELINE_CONFIG1 config = {};
         };
 
         struct ProgramDesc : public RtStateSubobjectBase

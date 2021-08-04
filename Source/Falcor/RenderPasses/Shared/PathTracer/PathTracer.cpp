@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -85,8 +85,7 @@ namespace Falcor
         {
             { (uint32_t)TexLODMode::Mip0, "Disabled" },
             { (uint32_t)TexLODMode::RayCones, "Ray Cones" },
-            { (uint32_t)TexLODMode::RayDiffsIsotropic, "Ray diffs (isotropic)" },
-            { (uint32_t)TexLODMode::RayDiffsAnisotropic, "Ray diffs (anisotropic)" },
+            { (uint32_t)TexLODMode::RayDiffs, "Ray Diffs" },
         };
 
         const Gui::DropdownList kRayConeModeList =
@@ -95,6 +94,11 @@ namespace Falcor
             { (uint32_t)RayConeMode::Unified, "Unified" },
         };
 
+        const char kParams[] = "params";
+        const char kSampleGenerator[] = "sampleGenerator";
+        const char kEmissiveSampler[] = "emissiveSampler";
+        const char kUniformSamplerOptions[] = "uniformSamplerOptions";
+        const char kLightBVHSamplerOptions[] = "lightBVHSamplerOptions";
     };
 
     static_assert(has_vtable<PathTracerParams>::value == false, "PathTracerParams must be non-virtual");
@@ -104,8 +108,7 @@ namespace Falcor
     PathTracer::PathTracer(const Dictionary& dict, const ChannelList& outputs)
         : mOutputChannels(outputs)
     {
-        // Deserialize pass from dictionary.
-        serializePass<true>(dict);
+        parseDictionary(dict);
         validateParameters();
 
         mInputChannels = mSharedParams.useVBuffer ? kVBufferInputChannels : kGBufferInputChannels;
@@ -121,11 +124,28 @@ namespace Falcor
         assert(mpPixelDebug);
     }
 
+    void PathTracer::parseDictionary(const Dictionary& dict)
+    {
+        for (const auto& [key, value] : dict)
+        {
+            if (key == kParams) mSharedParams = value;
+            else if (key == kSampleGenerator) mSelectedSampleGenerator = value;
+            else if (key == kEmissiveSampler) mSelectedEmissiveSampler = value;
+            else if (key == kUniformSamplerOptions) mUniformSamplerOptions = value;
+            else if (key == kUniformSamplerOptions) mLightBVHSamplerOptions = value;
+            else logWarning("Unknown field '" + key + "' in PathTracer dictionary");
+        }
+    }
+
     Dictionary PathTracer::getScriptingDictionary()
     {
-        Dictionary dict;
-        serializePass<false>(dict);
-        return dict;
+        Dictionary d;
+        d[kParams] = mSharedParams;
+        d[kSampleGenerator] = mSelectedSampleGenerator;
+        d[kEmissiveSampler] = mSelectedEmissiveSampler;
+        d[kUniformSamplerOptions] = mUniformSamplerOptions;
+        d[kUniformSamplerOptions] = mLightBVHSamplerOptions;
+        return d;
     }
 
     RenderPassReflection PathTracer::reflect(const CompileData& compileData)
@@ -182,8 +202,6 @@ namespace Falcor
             "Otherwise the background will be 0.0 and the foreground 1.0 to allow separate compositing.", true);
 
         dirty |= widget.checkbox("Use nested dielectrics", mSharedParams.useNestedDielectrics);
-
-        dirty |= widget.checkbox("Use legacy BSDF code", mSharedParams.useLegacyBSDF);
 
         // Ray footprint Mode (Tex LOD).
         if (mIsRayFootprintSupported)
@@ -503,13 +521,9 @@ namespace Falcor
 
         // Logic for determining what rays we need to trace. This should match what the shaders are doing.
         bool traceShadowRays = mUseAnalyticLights || mUseEnvLight || mUseEmissiveSampler;
-        bool traceScatterRayFromLastPathVertex =
-            (mUseEnvLight && mSharedParams.useMIS) ||
-            (mUseEmissiveLights && (!mSharedParams.useNEE || mSharedParams.useMIS)) ||
-            (mSharedParams.useLegacyBSDF == false); // New BSDF supports delta and transmission events, requiring an extra scatter ray.
 
         uint32_t shadowRays = traceShadowRays ? mSharedParams.lightSamplesPerVertex * (mSharedParams.maxBounces + 1) : 0;
-        uint32_t scatterRays = mSharedParams.maxBounces + (traceScatterRayFromLastPathVertex ? 1 : 0);
+        uint32_t scatterRays = mSharedParams.maxBounces + 1;
         uint32_t raysPerPath = shadowRays + scatterRays;
 
         return raysPerPath * mSharedParams.samplesPerPixel;
@@ -545,6 +559,11 @@ namespace Falcor
                 if (pDst) pRenderContext->clearTexture(pDst);
             }
             return false;
+        }
+
+        if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged))
+        {
+            throw std::runtime_error("This render pass does not support scene geometry changes. Aborting.");
         }
 
         // Configure depth-of-field.
@@ -639,10 +658,6 @@ namespace Falcor
         defines.add("USE_NESTED_DIELECTRICS", mSharedParams.useNestedDielectrics ? "1" : "0");
         defines.add("USE_LIGHTS_IN_DIELECTRIC_VOLUMES", mSharedParams.useLightsInDielectricVolumes ? "1" : "0");
         defines.add("DISABLE_CAUSTICS", mSharedParams.disableCaustics ? "1" : "0");
-
-        // Defines in MaterialShading.slang.
-        defines.add("_USE_LEGACY_SHADING_CODE", mSharedParams.useLegacyBSDF ? "1" : "0");
-
         defines.add("GBUFFER_ADJUST_SHADING_NORMALS", mGBufferAdjustShadingNormals ? "1" : "0");
 
         // Defines for ray footprint.
@@ -684,7 +699,6 @@ namespace Falcor
         params.field(probabilityAbsorption);
         params.field(useFixedSeed);
 
-        params.field(useLegacyBSDF);
         params.field(useNestedDielectrics);
         params.field(useLightsInDielectricVolumes);
         params.field(disableCaustics);

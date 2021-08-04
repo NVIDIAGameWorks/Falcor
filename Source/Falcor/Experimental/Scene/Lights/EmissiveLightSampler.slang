@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -63,17 +63,17 @@ __exported import Utils.Sampling.SampleGeneratorInterface;
     */
     struct NullEmissiveSampler : IEmissiveLightSampler
     {
-        bool sampleLight<S : ISampleGenerator>(const float3 posW, const float3 normalW, const bool onSurface, inout S sg, out TriangleLightSample ls)
+        bool sampleLight<S : ISampleGenerator>(const float3 posW, const float3 normalW, const bool upperHemisphere, inout S sg, out TriangleLightSample ls)
         {
             return false;
         }
 
-        float evalTriangleSelectionPdf(const float3 posW, const float3 normalW, const bool onSurface, const uint triangleIndex)
+        float evalTriangleSelectionPdf(const float3 posW, const float3 normalW, const bool upperHemisphere, const uint triangleIndex)
         {
             return 0.f;
         }
 
-        float evalPdf(const float3 posW, const float3 normalW, const bool onSurface, const TriangleHit hit)
+        float evalPdf(const float3 posW, const float3 normalW, const bool upperHemisphere, const TriangleLightHit hit)
         {
             return 0.f;
         }

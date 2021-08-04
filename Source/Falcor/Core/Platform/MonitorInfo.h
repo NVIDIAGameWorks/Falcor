@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -47,13 +47,13 @@ namespace Falcor
             bool mIsPrimary;
         };
 
-        /** Function to enumerate all monitors.
+        /** Get a list of all monitors.
             This function is _not_ thread-safe
-            \param monitorDescs An empty vector to receive the output list of monitor configurations.
+            \return Returns a list of monitor configurations.
         */
-        static void getMonitorDescs(std::vector<MonitorDesc>& monitorDescs);
+        static std::vector<MonitorDesc> getMonitorDescs();
 
-        /** Display information on currently connected monitors
+        /** Display information on currently connected monitors.
         */
         static void displayMonitorInfo();
     };

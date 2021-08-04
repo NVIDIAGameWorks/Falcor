@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -62,7 +62,9 @@ struct ShadowPassVSOut
 ShadowPassVSOut vsMain(VSIn vIn)
 {
     ShadowPassVSOut vOut;
-    float4x4 worldMat = gScene.getWorldMatrix(vIn.meshInstanceID);
+    const GeometryInstanceID instanceID = { vIn.meshInstanceID };
+
+    float4x4 worldMat = gScene.getWorldMatrix(instanceID);
     vOut.pos = mul(float4(vIn.pos, 1.f), worldMat);
 #ifdef _APPLY_PROJECTION
     vOut.pos = mul(vOut.pos, gScene.camera.getViewProj());

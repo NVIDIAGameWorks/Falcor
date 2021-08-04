@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -60,6 +60,15 @@ namespace Falcor
 
     private:
         AliasTable(std::vector<float> weights, std::mt19937& rng);
+
+        // Item structure for the mpItems buffer.
+        struct Item
+        {
+            float threshold;                ///< If rand() < threshold, pick indexB (else pick indexA)
+            uint32_t indexA;                ///< The "redirect" index, if uniform sampling would overweight indexB.
+            uint32_t indexB;                ///< The original / permutation index, sampled uniformly in [0...mCount-1]
+            uint32_t _pad;
+        };
 
         uint32_t mCount;                    ///< Number of items in the alias table.
         double mWeightSum;                  ///< Total weight of all elements used to create the alias table.

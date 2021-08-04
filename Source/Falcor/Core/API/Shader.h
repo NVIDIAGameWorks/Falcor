@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -149,6 +149,7 @@ namespace Falcor
             FloatingPointModeFast       = 0x4,
             FloatingPointModePrecise    = 0x8,
             GenerateDebugInfo           = 0x10,
+            MatrixLayoutColumnMajor     = 0x20, // Falcor is using row-major, use this only to compile external shaders that have no Falcor dependencies.
         };
 
         class DefineList : public std::map<std::string, std::string>

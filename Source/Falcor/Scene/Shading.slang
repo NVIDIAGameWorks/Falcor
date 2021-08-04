@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,15 +26,17 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Scene/Material/MaterialDefines.slangh"
+#include "Scene/ScenePrimitiveDefines.slangh"
 
 __exported import Scene.ShadingData;
 import Scene.SceneTypes;
 import Scene.TextureSampler;
 import Scene.Material.MaterialData;
-import Experimental.Scene.Material.BxDFTypes;
+import Scene.Material.AlphaTest;
+import Experimental.Scene.Material.IBxDF;
 import Experimental.Scene.Lights.EnvMapLighting;
 import Utils.Math.MathHelpers;
-import Utils.Helpers;
+import Utils.Color.ColorHelpers;
 
 /** Convert RGB to normal (unnormalized).
 */
@@ -54,6 +56,23 @@ float3 RgToNormal(float2 rg)
     n.z = saturate(dot(rg, rg)); // z = r*r + g*g
     n.z = sqrt(1 - n.z);
     return n;
+}
+
+// TODO: this function is broken an may return negative values.
+float getMetallic(float3 diffuse, float3 spec)
+{
+    // This is based on the way that UE4 and Substance Painter 2 converts base+metallic+specular level to diffuse/spec colors
+    // We don't have the specular level information, so the assumption is that it is equal to 0.5 (based on the UE4 documentation)
+    // Note that I'm using the luminance here instead of the actual colors. The reason is that there's no guaraentee that all RGB channels will end up with the same metallic value
+    float d = luminance(diffuse);
+    float s = luminance(spec);
+    if (s == 0) return 0;
+    float a = 0.04;
+    float b = s + d - 0.08;
+    float c = 0.04 - s;
+    float root = sqrt(b*b - 0.16*c);
+    float m = (root - b) * 12.5;
+    return m;
 }
 
 /** Apply normal map
@@ -98,8 +117,8 @@ bool _alphaTest<L:ITextureSampler>(VertexData v, MaterialData md, MaterialResour
     if (EXTRACT_ALPHA_MODE(md.flags) != AlphaModeMask) return false;
 
     // Load opacity from the alpha channel of the diffuse texture.
-    float alpha = sampleTexture(mr.baseColor, mr.samplerState, v.texC, md.baseColor, EXTRACT_DIFFUSE_TYPE(md.flags), lod).a;
-    return evalAlphaTest(md.flags, alpha, md.alphaThreshold, v.posW);
+    float alpha = sampleTexture(mr.baseColor, mr.samplerState, v.texC, md.baseColor, EXTRACT_ALPHA_TYPE(md.flags), lod).a;
+    return evalAlphaTest(alpha, md.alphaThreshold, v.posW);
 }
 
 /** Apply alpha test and return the result.
@@ -132,14 +151,6 @@ bool alphaTest(VertexData v, MaterialData md, MaterialResources mr, float2 gradX
     return _alphaTest(v, md, mr, lod);
 }
 
-void applyAlphaTest(uint matFlags, float alpha, float threshold, float3 posW)
-{
-#ifndef _MS_DISABLE_ALPHA_TEST
-    if (evalAlphaTest(matFlags, alpha, threshold, posW))
-        discard;
-#endif
-}
-
 /** Internal implementation of `prepareShadingData`
 
     The `lod` parameter represents the method to use for computing
@@ -149,14 +160,10 @@ ShadingData _prepareShadingData<L:ITextureSampler>(VertexData v, uint materialID
 {
     ShadingData sd = {};
 
-#ifdef _MS_STATIC_MATERIAL_FLAGS
-    md.flags = _MS_STATIC_MATERIAL_FLAGS;
-#endif
-
-    // Sample the diffuse texture and apply the alpha test.
-    float4 baseColor = sampleTexture(mr.baseColor, mr.samplerState, v.texC, md.baseColor, EXTRACT_DIFFUSE_TYPE(md.flags), lod);
-    sd.opacity = baseColor.a;
-    applyAlphaTest(md.flags, baseColor.a, md.alphaThreshold, v.posW);
+    // Load base color and opacity. These are sampled from the same texture but either one can be uniform parameters.
+    // TODO: Rewrite as single texture fetch followed by extraction of color and opacity to make it easier to optimize.
+    float3 baseColor = sampleTexture(mr.baseColor, mr.samplerState, v.texC, md.baseColor, EXTRACT_BASE_COLOR_TYPE(md.flags), lod).rgb;
+    sd.opacity = sampleTexture(mr.baseColor, mr.samplerState, v.texC, md.baseColor, EXTRACT_ALPHA_TYPE(md.flags), lod).a;
 
     sd.posW = v.posW;
     sd.uv = v.texC;
@@ -165,12 +172,20 @@ ShadingData _prepareShadingData<L:ITextureSampler>(VertexData v, uint materialID
 
     sd.faceN = v.faceNormalW;
     sd.frontFacing = dot(sd.V, sd.faceN) >= 0.f;
-    sd.doubleSided = EXTRACT_DOUBLE_SIDED(md.flags);
-    sd.activeLobes = (uint)LobeType::All;
+
     sd.materialID = materialID;
+    sd.setMaterialType(md.getType());
+    sd.setActiveLobes((uint)LobeType::All);
+    sd.setDoubleSided(EXTRACT_DOUBLE_SIDED(md.flags));
+    sd.setThinSurface(EXTRACT_THIN_SURFACE(md.flags));
 
     sd.IoR = md.IoR;
-    sd.specularTransmission = sampleTexture(mr.specularTransmission, mr.samplerState, v.texC, md.specularTransmission, EXTRACT_SPEC_TRANS_TYPE(md.flags), lod).r;
+    sd.diffuseTransmission = md.diffuseTransmission;
+    sd.specularTransmission = md.specularTransmission;
+    if (sd.diffuseTransmission > 0.f || sd.specularTransmission > 0.f)
+    {
+        sd.transmission = sampleTexture(mr.transmission, mr.samplerState, v.texC, float4(md.transmission, 0.f), EXTRACT_TRANS_TYPE(md.flags), lod).rgb;
+    }
     sd.eta = sd.frontFacing ? (1 / sd.IoR) : sd.IoR;
 
     // Setup tangent space.
@@ -178,37 +193,45 @@ ShadingData _prepareShadingData<L:ITextureSampler>(VertexData v, uint materialID
 
     // Sample the specular texture.
     // Depending on the shading model this encodes the material parameters differently.
-    sd.occlusion = 1.0f;
-    bool sampleOcclusion = EXTRACT_OCCLUSION_MAP(md.flags) > 0;
     float4 spec = sampleTexture(mr.specular, mr.samplerState, v.texC, md.specular, EXTRACT_SPECULAR_TYPE(md.flags), lod);
 
+#if SCENE_HAS_SPEC_GLOSS_MATERIALS
     if (EXTRACT_SHADING_MODEL(md.flags) == ShadingModelMetalRough)
+#endif
     {
-        // R - Occlusion; G - Roughness; B - Metallic
-        sd.diffuse = lerp(baseColor.rgb, float3(0), spec.b);
+        // G - Roughness; B - Metallic
+        sd.diffuse = lerp(baseColor, float3(0), spec.b);
 
         // Calculate the specular reflectance for dielectrics from the IoR, as in the Disney BSDF [Burley 2015].
         // UE4 uses 0.08 multiplied by a default specular value of 0.5, hence F0=0.04 as default. The default IoR=1.5 gives the same result.
         float f = (sd.IoR - 1.f) / (sd.IoR + 1.f);
         float F0 = f * f;
 
-        sd.specular = lerp(float3(F0), baseColor.rgb, spec.b);
+        sd.specular = lerp(float3(F0), baseColor, spec.b);
         sd.linearRoughness = spec.g;
         sd.metallic = spec.b;
-        if (sampleOcclusion) sd.occlusion = spec.r;
     }
+#if SCENE_HAS_SPEC_GLOSS_MATERIALS
     else // if (EXTRACT_SHADING_MODEL(md.flags) == ShadingModelSpecGloss)
     {
-        sd.diffuse = baseColor.rgb;
+        sd.diffuse = baseColor;
         sd.specular = spec.rgb;
         sd.linearRoughness = 1 - spec.a;
         sd.metallic = getMetallic(sd.diffuse, sd.specular);
-
-        if (sampleOcclusion)
-        {
-            sd.occlusion = sampleTexture(mr.occlusionMap, mr.samplerState, v.texC, 1, ChannelTypeTexture, lod);
-        }
     }
+#endif
+
+#if IS_SET(SCENE_PRIMITIVE_TYPE_FLAGS, PRIMITIVE_TYPE_CURVE)
+    if (EXTRACT_SHADING_MODEL(md.flags) == ShadingModelHairChiang16)
+    {
+        sd.diffuse = baseColor;
+        sd.specular = spec.rgb;
+
+        // Not used.
+        sd.linearRoughness = 0;
+        sd.metallic = 0;
+    }
+#endif
 
     // Compute GGX alpha value.
     // TODO: ggxAlpha should be removed and computed where it's needed.
@@ -226,7 +249,7 @@ ShadingData _prepareShadingData<L:ITextureSampler>(VertexData v, uint materialID
     sd.NdotV = dot(sd.N, sd.V);
 
     // Flip the shading normal for back-facing hits on double-sided materials.
-    if (!sd.frontFacing && sd.doubleSided)
+    if (!sd.frontFacing && sd.isDoubleSided())
     {
         sd.N = -sd.N;
         sd.NdotV = -sd.NdotV;
@@ -268,7 +291,7 @@ ShadingData prepareShadingDataUsingRayConesLOD(VertexData v, uint materialID, Ma
     return _prepareShadingData(v, materialID, md, mr, camPosW, explicitRayConesLOD, true);
 }
 
-/** Prepare the hit-point data when using ray differentials for texture LOD.
+/** Prepare the hit-point data when using ray differentials for texture LOD for isotropic lookups.
     \param[in] v Vertex data.
     \param[in] materialID Material identifier.
     \param[in] md Material data.
@@ -277,9 +300,9 @@ ShadingData prepareShadingDataUsingRayConesLOD(VertexData v, uint materialID, Ma
     \param[in] dUVdx Differential texture coordinates in x.
     \param[in] dUVdy Differential texture coordinates in y.
 */
-ShadingData prepareShadingDataUsingRayDiffsLOD(VertexData v, uint materialID, MaterialData md, MaterialResources mr, float3 camPosW, float2 dUVdx, float2 dUVdy)
+ShadingData prepareShadingDataUsingRayDiffsIsotropic(VertexData v, uint materialID, MaterialData md, MaterialResources mr, float3 camPosW, float2 dUVdx, float2 dUVdy)
 {
-    ExplicitRayDiffsLodTextureSampler explicitRayDiffsLOD = { dUVdx, dUVdy };
+    ExplicitRayDiffsIsotropicTextureSampler explicitRayDiffsLOD = { dUVdx, dUVdy };
     return _prepareShadingData(v, materialID, md, mr, camPosW, explicitRayDiffsLOD, true);
 }
 
@@ -329,7 +352,7 @@ bool computeTangentSpace(inout ShadingData sd, const float4 tangentW)
     return valid;
 }
 
-/** Helper function to adjust the shading normal for avoding black pixels due to back-facing view direction.
+/** Helper function to adjust the shading normal to reduce black pixels due to back-facing view direction.
     Note: This breaks the reciprocity of the BSDF!
 */
 void adjustShadingNormal(inout ShadingData sd, VertexData v)
@@ -348,61 +371,4 @@ void adjustShadingNormal(inout ShadingData sd, VertexData v)
         sd.NdotV = dot(sd.N, sd.V);
         computeTangentSpace(sd, v.tangentW);
     }
-}
-
-// ----------------------------------------------------------------------------
-// Legacy raster shading code
-// ----------------------------------------------------------------------------
-
-import Scene.Lights.Lights;
-import Scene.Material.BRDF;
-
-/** Shading result struct
-*/
-struct ShadingResult
-{
-    float3 diffuseBrdf;             // The result of the diffuse BRDF
-    float3 specularBrdf;            // The result of the specular BRDF
-    float3 diffuse;                 // The diffuse component of the result
-    float3 specular;                // The specular component of the result
-    float3 color;                   // The final color
-};
-
-ShadingResult evalMaterial(ShadingData sd, LightData light, float shadowFactor)
-{
-    ShadingResult sr = {};
-    LightSample ls = evalLight(light, sd);
-
-    // If the light doesn't hit the surface or we are viewing the surface from the back, return
-    if (ls.NdotL <= 0) return sr;
-    sd.NdotV = saturate(sd.NdotV);
-
-    // Calculate the diffuse term
-    sr.diffuseBrdf = evalDiffuseBrdf(sd, ls);
-    sr.diffuse = ls.diffuse * sr.diffuseBrdf * ls.NdotL;
-    sr.color = sr.diffuse;
-
-    // Calculate the specular term
-    sr.specularBrdf = evalSpecularBrdf(sd, ls);
-    sr.specular = ls.specular * sr.specularBrdf * ls.NdotL;
-    sr.color += sr.specular;
-
-    // Apply the shadow factor
-    sr.color *= shadowFactor;
-
-    return sr;
-};
-
-ShadingResult evalMaterial(ShadingData sd, EnvMapLighting envMapLighting)
-{
-    ShadingResult sr = {};
-
-    // Calculate the reflection vector
-    float3 L = reflect(-sd.V, sd.N);
-
-    sr.diffuse = envMapLighting.evalDiffuse(sd);
-    sr.specular = envMapLighting.evalSpecular(sd, L);
-    sr.color = sr.diffuse + sr.specular;
-
-    return sr;
 }

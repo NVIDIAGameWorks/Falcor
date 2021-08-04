@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,15 +29,17 @@
 #include "Core/API/VAO.h"
 #include "Animation/Animation.h"
 #include "Lights/Light.h"
+#include "Lights/LightCollection.h"
+#include "Lights/EnvMap.h"
 #include "Camera/Camera.h"
 #include "Material/Material.h"
 #include "Volume/Volume.h"
 #include "Volume/Grid.h"
 #include "Utils/Math/AABB.h"
 #include "Animation/AnimationController.h"
+#include "Animation/AnimatedVertexCache.h"
 #include "Camera/CameraController.h"
-#include "Experimental/Scene/Lights/LightCollection.h"
-#include "Experimental/Scene/Lights/EnvMap.h"
+#include "Displacement/DisplacementUpdateTask.slang"
 #include "SceneTypes.slang"
 #include "HitInfo.h"
 
@@ -50,47 +52,54 @@ namespace Falcor
 {
     class RtProgramVars;
 
-    /** DXR Scene and Resources Layout:
+    /** This class is the main scene representation.
+        It holds all scene resources such as geometry, cameras, lights, and materials.
+
+        DXR Scene and Resources Layout:
         - BLAS creation logic:
-            1) For static meshes, pre-transform and group them into single BLAS.
+            1) For static non-instanced meshes, pre-transform and group them into single BLAS.
                 a) This can be overridden by the 'RTDontMergeStatic' scene build flag.
             2) For dynamic non-instanced meshes, group them if they use the same scene graph transform matrix. One BLAS is created per group.
                 a) This can be overridden by the 'RTDontMergeDynamic' scene build flag.
                 b) It is possible a non-instanced mesh has no other meshes to merge with. In that case, the mesh goes in its own BLAS.
-            3) For instanced meshes, one BLAS is created per mesh.
+            3) For instanced meshes, one BLAS is created per group of mesh with identical instances.
+                a) This can be overridden by the 'RTDontMergeInstanced' scene build flag.
+            4) Procedural primitives are placed in their own BLAS at the end.
 
         - TLAS Construction:
             - Hit shaders use InstanceID() and GeometryIndex() to identify what was hit.
             - InstanceID is set like a starting offset so that (InstanceID + GeometryIndex) maps to unique indices.
-            - Shader table has one hit group per mesh. InstanceContribution is set accordingly for correct lookup.
+            - Shader table has one hit group per geometry and ray type. InstanceContribution is set accordingly for correct lookup.
 
-        Acceleration Structure Layout Example (Scene with 8 meshes, 10 instances total):
+        Acceleration Structure Layout Example (Scene with 11 geometries, 16 instances total):
 
-                               ----------------------------------------------------------------
-                               |                            Value(s)                          |
-        ---------------------------------------------------------------------------------------
-        | InstanceID           |  0                    |  4  |  5  |  6  |  7  |  8  |  9     |  7 INSTANCE_DESCs in TLAS
-        | InstanceContribution |  0                    |  4  |  5  |  6  |  7  |  7  |  7     |  Helps look up one hit group per MESH
-        | BLAS Geometry Index  |  0  ,  1  ,  2  ,  3  |  0  |  0  |  0  |  0                 |  5 BLAS's containing 8 meshes total
-        ---------------------------------------------------------------------------------------
-        | Notes                | Meshes merged into    | One instance    | Multiple instances |
-        |                      | one BLAS              | per mesh        | of a mesh          |
-        --------------------------------------------------------------------------------------|
+                               ----------------------------------------------------------------------------------------------
+                               |                                         Value(s)                                           |
+        ---------------------------------------------------------------------------------------------------------------------
+        | InstanceID           |  0                    |  4  |  5  |  6  |  7  |  8  |  9     |  10          |  13          |   9 INSTANCE_DESCs in TLAS
+        | InstanceContribution |  0                    |  4  |  5  |  6  |  7  |  7  |  7     |  8           |  8           |   Helps look up one hit group per geometry and ray type
+        | BLAS Geometry Index  |  0  ,  1  ,  2  ,  3  |  0  |  0  |  0  |  0                 |  0 , 1 , 2   |  0 , 1 , 2   |   6 BLAS's containing 11 geometries in total
+        ---------------------------------------------------------------------------------------------------------------------
+        | Notes                | Four geometries in    | One instance    | Multiple instances | Two instances of three      |
+        |                      | one BLAS              | per geom/BLAS   | of same geom/BLAS  | geometries in one BLAS      |
+        --------------------------------------------------------------------------------------------------------------------|
 
-        - "InstanceID() + GeometryIndex()" is used for indexing into MeshInstanceData.
-        - This is wrapped in getGlobalHitID() in Raytracing.slang.
+        - "InstanceID() + GeometryIndex()" is used for indexing into MeshInstanceData for hits on triangle meshes.
+        - This is wrapped in getGeometryInstanceID() in Raytracing.slang.
     */
-
     class dlldecl Scene : public std::enable_shared_from_this<Scene>
     {
     public:
         using SharedPtr = std::shared_ptr<Scene>;
-        using LightList = std::vector<Light::SharedPtr>;
+        using GeometryType = PrimitiveTypeFlags;
+
+        using UpdateCallback = std::function<void(const Scene::SharedPtr& pScene, double currentTime)>;
+
         static const uint32_t kMaxBonesPerVertex = 4;
         static const uint32_t kInvalidBone = -1;
         static const uint32_t kInvalidGrid = -1;
-
-        static const uint32_t kCurveIntersectionTypeID = 0;
+        static const uint32_t kInvalidNode = Animatable::kInvalidNode;
+        static const uint32_t kInvalidIndex = -1;
 
         static const FileDialogFilterVec& getFileExtensionFilters();
 
@@ -128,15 +137,21 @@ namespace Falcor
             bool operator!=(const RenderSettings& other) const { return !(*this == other); }
         };
 
-        enum class RenderFlags
+        /** Optional importer-provided rendering metadata
+         */
+        struct Metadata
         {
-            None                        = 0x0,
-            UserRasterizerState         = 0x1,      ///< Use the rasterizer state currently bound to `pState`. If this flag is not set, the default rasterizer state will be used.
-                                                    ///< Note that we need to change the rasterizer state during rendering because some meshes have a negative scale factor, and hence the triangles will have a different winding order.
-                                                    ///< If such meshes exist, overriding the state may result in incorrect rendering output
+            std::optional<float> fNumber;                       ///< Lens aperture.
+            std::optional<float> filmISO;                       ///< Film speed.
+            std::optional<float> shutterSpeed;                  ///< (Reciprocal) shutter speed.
+            std::optional<uint32_t> samplesPerPixel;            ///< Number of primary samples per pixel.
+            std::optional<uint32_t> maxDiffuseBounces;          ///< Maximum number of diffuse bounces.
+            std::optional<uint32_t> maxSpecularBounces;         ///< Maximum number of specular bounces.
+            std::optional<uint32_t> maxTransmissionBounces;     ///< Maximum number of transmission bounces.
+            std::optional<uint32_t> maxVolumeBounces;           ///< Maximum number of volume bounces.
         };
 
-        /** Flags indicating if and what was updated in the scene
+        /** Flags indicating if and what was updated in the scene.
         */
         enum class UpdateFlags
         {
@@ -159,6 +174,10 @@ namespace Falcor
             VolumePropertiesChanged     = 0x8000,   ///< Volume properties changed
             VolumeGridsChanged          = 0x10000,  ///< Volume grids changed
             VolumeBoundsChanged         = 0x20000,  ///< Volume bounds changed
+            CurvesMoved                 = 0x40000,  ///< Curves moved.
+            CustomPrimitivesMoved       = 0x80000,  ///< Custom primitives moved.
+            GeometryChanged             = 0x100000, ///< Scene geometry changed (added/removed).
+            DisplacementChanged         = 0x200000, ///< Displacement mapping parameters changed.
 
             All                         = -1
         };
@@ -183,16 +202,22 @@ namespace Falcor
         struct SceneStats
         {
             // Geometry stats
+            uint64_t meshCount = 0;                     ///< Number of meshes.
+            uint64_t meshInstanceCount = 0;             ///< Number if mesh instances.
+            uint64_t meshInstanceOpaqueCount = 0;       ///< Number if mesh instances that are opaque.
+            uint64_t transformCount = 0;                ///< Number of transform matrices.
             uint64_t uniqueTriangleCount = 0;           ///< Number of unique triangles. A triangle can exist in multiple instances.
             uint64_t uniqueVertexCount = 0;             ///< Number of unique vertices. A vertex can be referenced by multiple triangles/instances.
             uint64_t instancedTriangleCount = 0;        ///< Number of instanced triangles. This is the total number of rendered triangles.
             uint64_t instancedVertexCount = 0;          ///< Number of instanced vertices. This is the total number of vertices in the rendered triangles.
             uint64_t indexMemoryInBytes = 0;            ///< Total memory in bytes used by the index buffer.
             uint64_t vertexMemoryInBytes = 0;           ///< Total memory in bytes used by the vertex buffer.
-            uint64_t geometryMemoryInBytes = 0;         ///< Total memory in bytes used by the geometry data (meshes, curves, instances).
+            uint64_t geometryMemoryInBytes = 0;         ///< Total memory in bytes used by the geometry data (meshes, curves, custom primitives, instances etc.).
             uint64_t animationMemoryInBytes = 0;        ///< Total memory in bytes used by the animation system (transforms, skinning buffers).
 
             // Curve stats
+            uint64_t curveCount = 0;                    ///< Number of curves.
+            uint64_t curveInstanceCount = 0;            ///< Number of curve instances.
             uint64_t uniqueCurveSegmentCount = 0;       ///< Number of unique curve segments (linear tube segments by default). A segment can exist in multiple instances.
             uint64_t uniqueCurvePointCount = 0;         ///< Number of unique curve points. A point can be referenced by multiple segments/instances.
             uint64_t instancedCurveSegmentCount = 0;    ///< Number of instanced curve segments (linear tube segments by default). This is the total number of rendered segments.
@@ -200,8 +225,12 @@ namespace Falcor
             uint64_t curveIndexMemoryInBytes = 0;       ///< Total memory in bytes used by the curve index buffer.
             uint64_t curveVertexMemoryInBytes = 0;      ///< Total memory in bytes used by the curve vertex buffer.
 
+            // Custom primitive stats
+            uint64_t customPrimitiveCount = 0;          ///< Number of custom primitives.
+
             // Material stats
             uint64_t materialCount = 0;                 ///< Number of materials.
+            uint64_t materialOpaqueCount = 0;           ///< Number of materials that are opaque.
             uint64_t materialMemoryInBytes = 0;         ///< Total memory in bytes used by the material data.
             uint64_t textureCount = 0;                  ///< Number of unique textures. A texture can be referenced by multiple materials.
             uint64_t textureCompressedCount = 0;        ///< Number of unique compressed textures.
@@ -212,6 +241,9 @@ namespace Falcor
             uint64_t blasGroupCount = 0;                ///< Number of BLAS groups. There is one BLAS buffer per group.
             uint64_t blasCount = 0;                     ///< Number of BLASes.
             uint64_t blasCompactedCount = 0;            ///< Number of compacted BLASes.
+            uint64_t blasOpaqueCount = 0;               ///< Number of BLASes that contain only opaque geometry.
+            uint64_t blasGeometryCount = 0;             ///< Number of geometries.
+            uint64_t blasOpaqueGeometryCount = 0;       ///< Number of geometries that are opaque.
             uint64_t blasMemoryInBytes = 0;             ///< Total memory in bytes used by the BLASes.
             uint64_t blasScratchMemoryInBytes = 0;      ///< Additional memory in bytes kept around for BLAS updates etc.
             uint64_t tlasCount = 0;                     ///< Number of TLASes.
@@ -289,6 +321,18 @@ namespace Falcor
         */
         bool useVolumes() const;
 
+        /** Get the metadata.
+        */
+        const Metadata& getMetadata() { return mMetadata; }
+
+        /** Get the scene update callback.
+        */
+        UpdateCallback getUpdateCallback() const { return mUpdateCallback; }
+
+        /** Set the scene update callback.
+        */
+        void setUpdateCallback(UpdateCallback updateCallback) { mUpdateCallback = updateCallback; }
+
         /** Access the scene's currently selected camera to change properties or to use elsewhere.
         */
         const Camera::SharedPtr& getCamera() { return mCameras[mSelectedCamera]; }
@@ -354,21 +398,27 @@ namespace Falcor
         */
         bool hasSavedViewpoints() { return mViewpoints.size() > 1; }
 
-        /** Get the number of meshes.
+        /** Get the number of geometries in the scene.
+            This includes all types of geometry that exist in the ray tracing acceleration structures.
+            \return Total number of geometries.
+        */
+        uint32_t getGeometryCount() const;
+
+        /** Get the type of a given geometry.
+            \param[in] geometryID Global geometry ID.
+            \return The type of the given geometry.
+        */
+        GeometryType getGeometryType(uint32_t geometryID) const;
+
+        /** Check if scene has any geometry of the given type.
+            \param[in] type The type to check for.
+            \return True if scene has any geometry of this type.
+        */
+        bool hasGeometryType(GeometryType type) const { return is_set(getPrimitiveTypes(), (PrimitiveTypeFlags)type); }
+
+        /** Get the number of triangle meshes.
         */
         uint32_t getMeshCount() const { return (uint32_t)mMeshDesc.size(); }
-
-        /** Get the number of procedural primitives.
-        */
-        uint32_t getProceduralPrimitiveCount() const { return (uint32_t)mProceduralPrimData.size(); }
-
-        /** Get the number of curves.
-        */
-        uint32_t getCurveCount() const { return (uint32_t)mCurveDesc.size(); }
-
-        /** Get procedural primitives by raw index (the order they were defined, also the geometry order in the BLAS).
-        */
-        const ProceduralPrimitiveData& getProceduralPrimitive(uint32_t index) const { return mProceduralPrimData[index]; }
 
         /** Get a mesh desc.
         */
@@ -382,6 +432,15 @@ namespace Falcor
         */
         const MeshInstanceData& getMeshInstance(uint32_t instanceID) const { return mMeshInstanceData[instanceID]; }
 
+        /** Get the number of displaced mesh instances.
+            Note: All displaced mesh instances are at the end of the mesh instance list.
+        */
+        uint32_t getDisplacedMeshInstanceCount() const { return mDisplacedMeshInstanceCount; }
+
+        /** Get the number of curves.
+        */
+        uint32_t getCurveCount() const { return (uint32_t)mCurveDesc.size(); }
+
         /** Get a curve desc.
         */
         const CurveDesc& getCurve(uint32_t curveID) const { return mCurveDesc[curveID]; }
@@ -394,13 +453,72 @@ namespace Falcor
         */
         const CurveInstanceData& getCurveInstance(uint32_t instanceID) const { return mCurveInstanceData[instanceID]; }
 
+        /** Get the number of custom primitives.
+        */
+        uint32_t getCustomPrimitiveCount() const { return (uint32_t)mCustomPrimitiveDesc.size(); }
+
+        /** Get the custom primitive index for a geometry.
+            \param[in] geometryID Global geometry ID.
+            \return The custom primitive index of the geometry that can be used with getCustomPrimitive().
+        */
+        uint32_t getCustomPrimitiveIndex(uint32_t geometryID) const;
+
+        /** Get a custom primitive.
+            \param[in] index Index of the custom primitive.
+        */
+        const CustomPrimitiveDesc& getCustomPrimitive(uint32_t index) const;
+
+        /** Get a custom primitive AABB.
+            \param[in] index Index of the custom primitive.
+        */
+        const AABB& getCustomPrimitiveAABB(uint32_t index) const;
+
+        /** Add a custom primitive.
+            Custom primitives are sequentially numbered in the scene. The function returns the index at
+            which the primitive was inserted. Note that this index may change if primitives are removed.
+            Adding/removing custom primitives is a slow operation as the acceleration structure is rebuilt.
+            \param[in] userID User ID of primitive.
+            \param[in] aabb AABB of the primitive.
+            \return Index of the custom primitive that was added.
+        */
+        uint32_t addCustomPrimitive(uint32_t userID, const AABB& aabb);
+
+        /** Remove a custom primitive.
+            Custom primitives are sequentially numbered in the scene. The function removes the primitive at
+            the given index. Note that the index of subsequent primtives will change.
+            Adding/removing custom primitives is a slow operation as the acceleration structure is rebuilt.
+            \param[in] index Index of custom primitive to remove.
+        */
+        void removeCustomPrimitive(uint32_t index) { removeCustomPrimitives(index, index + 1); }
+
+        /** Remove a range [first,last) of custom primitives.
+            Note that the last index is non-inclusive. If first == last no action is performed.
+            \param[in] first Index of first custom primitive to remove.
+            \param[in] last Index one past the last custom primitive to remove.
+        */
+        void removeCustomPrimitives(uint32_t first, uint32_t last);
+
+        /** Update a custom primitive.
+            \param[in] index Index of the custom primitive.
+            \param[in] aabb AABB of the primitive.
+        */
+        void updateCustomPrimitive(uint32_t index, const AABB& aabb);
+
+        /** Get primitive types that exist in the scene.
+        */
+        PrimitiveTypeFlags getPrimitiveTypes() const { return mPrimitiveTypes; }
+
         /** Get a list of all materials in the scene.
         */
         const std::vector<Material::SharedPtr>& getMaterials() const { return mMaterials; }
 
-        /** Get the number of materials in the scene.
+        /** Get the total number of materials in the scene.
         */
         uint32_t getMaterialCount() const { return (uint32_t)mMaterials.size(); }
+
+        /** Get the number of materials of the given type.
+        */
+        uint32_t getMaterialCount(MaterialType type) const;
 
         /** Get a material.
         */
@@ -485,8 +603,8 @@ namespace Falcor
         UpdateMode getBlasUpdateMode() { return mBlasUpdateMode; }
 
         /** Update the scene. Call this once per frame to update the camera location, animations, etc.
-            \param pContext
-            \param currentTime The current time in seconds
+            \param[in] pContext
+            \param[in] currentTime The current time in seconds
         */
         UpdateFlags update(RenderContext* pContext, double currentTime);
 
@@ -496,8 +614,29 @@ namespace Falcor
         UpdateFlags getUpdates() const { return mUpdates; }
 
         /** Render the scene using the rasterizer.
+            Note the rasterizer state bound to 'pState' is ignored.
+            \param[in] pContext Render context.
+            \param[in] pState Graphics state.
+            \param[in] pVars Graphics vars.
+            \param[in] cullMode Optional rasterizer cull mode. The default is to cull back-facing primitives.
         */
-        void rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, RenderFlags flags = RenderFlags::None);
+        void rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, RasterizerState::CullMode cullMode = RasterizerState::CullMode::Back);
+
+        /** Render the scene using the rasterizer.
+            This overload uses the supplied rasterizer states.
+            \param[in] pContext Render context.
+            \param[in] pState Graphics state.
+            \param[in] pVars Graphics vars.
+            \param[in] pRasterizerStateCW Rasterizer state for meshes with clockwise triangle winding.
+            \param[in] pRasterizerStateCCW Rasterizer state for meshes with counter-clockwise triangle winding. Can be the same as for clockwise.
+        */
+        void rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, const RasterizerState::SharedPtr& pRasterizerStateCW, const RasterizerState::SharedPtr& pRasterizerStateCCW);
+
+        /** Get the required raytracing maximum attribute size for this scene.
+            Note: This depends on what types of geometry are used in the scene.
+            \return Max attribute size in bytes.
+        */
+        uint32_t getRaytracingMaxAttributeSize() const;
 
         /** Render the scene using raytracing.
         */
@@ -579,14 +718,8 @@ namespace Falcor
         void toggleAnimations(bool animate);
 
         /** Get the parameter block with all scene resources.
-            Note that the camera is not bound automatically.
         */
         const ParameterBlock::SharedPtr& getParameterBlock() const { return mpSceneBlock; }
-
-        /** Set the BLAS geometry index into the local vars for each geometry.
-            This is a workaround before GeometryIndex() is supported in shaders.
-        */
-        void setGeometryIndexIntoRtVars(const std::shared_ptr<RtProgramVars>& pVars);
 
         /** Set the scene ray tracing resources into a shader var.
             The acceleration structure is created lazily, which requires the render context.
@@ -608,19 +741,103 @@ namespace Falcor
         */
         std::vector<uint32_t> getMeshBlasIDs() const;
 
+        /** Returns the scene graph parent node ID for a node.
+            \return Node ID of the parent node, or kInvalidNode if top-level node.
+        */
+        uint32_t getParentNodeID(uint32_t nodeID) const;
+
         static void nullTracePass(RenderContext* pContext, const uint2& dim);
 
         std::string getScript(const std::string& sceneVar);
 
     private:
+        /** Represents a group of meshes.
+            The meshes are geometries in the same ray tracing bottom-level acceleration structure (BLAS).
+        */
+        struct MeshGroup
+        {
+            std::vector<uint32_t> meshList;     ///< List of meshId's that are part of the group.
+            bool isStatic = false;              ///< True if group represents static non-instanced geometry.
+            bool isDisplaced = false;           ///< True if group uses displacement mapping.
+        };
+
+        /** Scene graph node.
+        */
+        struct Node
+        {
+            Node() = default;
+            Node(const std::string& n, uint32_t p, const glm::mat4& t, const glm::mat4& mb, const glm::mat4& l2b) : parent(p), name(n), transform(t), meshBind(mb), localToBindSpace(l2b) {};
+            std::string name;
+            uint32_t parent = kInvalidNode;
+            float4x4 transform;         ///< The node's transformation matrix.
+            float4x4 meshBind;          ///< For skinned meshes. Mesh world space transform at bind time.
+            float4x4 localToBindSpace;  ///< For bones. Skeleton to bind space transformation. AKA the inverse-bind transform.
+        };
+
+        /** Full set of required data to create a scene object.
+            This data is typically prepared by SceneBuilder before creating a Scene object.
+        */
+        struct SceneData
+        {
+            std::string filename;                                   ///< Filename of the asset file the scene was loaded from.
+            RenderSettings renderSettings;                          ///< Render settings.
+            std::vector<Camera::SharedPtr> cameras;                 ///< List of cameras.
+            uint32_t selectedCamera = 0;                            ///< Index of selected camera.
+            float cameraSpeed = 1.f;                                ///< Camera speed.
+            std::vector<Light::SharedPtr> lights;                   ///< List of light sources.
+            std::vector<Material::SharedPtr> materials;             ///< List of materials.
+            std::vector<Volume::SharedPtr> volumes;                 ///< List of heterogeneous volumes.
+            std::vector<Grid::SharedPtr> grids;                     ///< List of volume grids.
+            EnvMap::SharedPtr pEnvMap;                              ///< Environment map.
+            std::vector<Node> sceneGraph;                           ///< Scene graph nodes.
+            std::vector<Animation::SharedPtr> animations;           ///< List of animations.
+            Metadata metadata;                                      ///< Scene meadata.
+
+            // Mesh data
+            std::vector<MeshDesc> meshDesc;                         ///< List of mesh descriptors.
+            std::vector<std::string> meshNames;                     ///< List of mesh names.
+            std::vector<AABB> meshBBs;                              ///< List of mesh bounding boxes in object space.
+            std::vector<MeshInstanceData> meshInstanceData;         ///< List of mesh instances.
+            uint32_t displacedMeshInstanceCount;                    ///< Number of displaced mesh instances. All displaced mesh instances are at the end of the mesh instance list.
+            std::vector<std::vector<uint32_t>> meshIdToInstanceIds; ///< Mapping of what instances belong to which mesh.
+            std::vector<MeshGroup> meshGroups;                      ///< List of mesh groups. Each group maps to a BLAS for ray tracing.
+            std::vector<CachedMesh> cachedMeshes;                   ///< Cached data for vertex-animated meshes.
+
+            bool has16BitIndices = false;                           ///< True if 16-bit mesh indices are used.
+            bool has32BitIndices = false;                           ///< True if 32-bit mesh indices are used.
+            uint32_t meshDrawCount = 0;                             ///< Number of meshes to draw.
+
+            std::vector<uint32_t> meshIndexData;                    ///< Vertex indices for all meshes in either 32-bit or 16-bit format packed tightly, decided per mesh.
+            std::vector<PackedStaticVertexData> meshStaticData;     ///< Vertex attributes for all meshes in packed format.
+            std::vector<DynamicVertexData> meshDynamicData;         ///< Additional vertex attributes for dynamic (skinned) meshes.
+
+            // Curve data
+            std::vector<CurveDesc> curveDesc;                       ///< List of curve descriptors.
+            std::vector<AABB> curveBBs;                             ///< List of curve bounding boxes in object space. Each curve consists of many segments, each with its own AABB. The bounding boxes here are the unions of those.
+            std::vector<CurveInstanceData> curveInstanceData;       ///< List of curve instances.
+
+            std::vector<uint32_t> curveIndexData;                   ///< Vertex indices for all curves in 32-bit.
+            std::vector<StaticCurveVertexData> curveStaticData;     ///< Vertex attributes for all curves.
+            std::vector<CachedCurve> cachedCurves;                  ///< Vertex cache for dynamic (vertex animated) curves.
+
+            // Custom primitive data
+            std::vector<CustomPrimitiveDesc> customPrimitiveDesc;   ///< Custom primitive descriptors.
+            std::vector<AABB> customPrimitiveAABBs;                 ///< List of AABBs for custom primitives in world space. Each custom primitive consists of one AABB.
+        };
+
         friend class SceneBuilder;
+        friend class SceneCache;
         friend class AnimationController;
+        friend class AnimatedVertexCache;
 
         static constexpr uint32_t kStaticDataBufferIndex = 0;
         static constexpr uint32_t kDrawIdBufferIndex = kStaticDataBufferIndex + 1;
         static constexpr uint32_t kVertexBufferCount = kDrawIdBufferIndex + 1;
 
-        static SharedPtr create();
+        static SharedPtr create(SceneData&& sceneData);
+
+        void createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& indexData, const std::vector<PackedStaticVertexData>& staticData, const std::vector<DynamicVertexData>& dynamicData);
+        void createCurveVao(const std::vector<uint32_t>& indexData, const std::vector<StaticCurveVertexData>& staticData);
 
         /** Create scene parameter block and retrieve pointers to buffers.
         */
@@ -646,13 +863,13 @@ namespace Falcor
         */
         void updateMeshInstances(bool forceUpdate);
 
-        /** Update procedural primitives.
-        */
-        void updateProceduralPrimitives(bool forceUpdate);
-
         /** Update curve instances.
         */
         void updateCurveInstances(bool forceUpdate);
+
+        /** Update primitive type flags.
+        */
+        void updatePrimitiveTypes();
 
         /** Do any additional initialization required after scene data is set and draw lists are determined.
         */
@@ -709,6 +926,10 @@ namespace Falcor
         UpdateFlags updateVolumes(bool forceUpdate);
         UpdateFlags updateEnvMap(bool forceUpdate);
         UpdateFlags updateMaterials(bool forceUpdate);
+        UpdateFlags updateGeometry(bool forceUpdate);
+        UpdateFlags updateProceduralPrimitives(bool forceUpdate);
+        UpdateFlags updateRaytracingAABBData(bool forceUpdate);
+        UpdateFlags updateDisplacement(bool forceUpdate);
 
         void updateGeometryStats();
         void updateMaterialStats();
@@ -717,7 +938,7 @@ namespace Falcor
         void updateLightStats();
         void updateVolumeStats();
 
-        Scene();
+        Scene(SceneData&& sceneData);
 
         // Scene Geometry
 
@@ -729,86 +950,90 @@ namespace Falcor
             ResourceFormat ibFormat = ResourceFormat::Unknown;  ///< Index buffer format.
         };
 
-        static const uint32_t kInvalidNode = -1;
-
-        struct Node
-        {
-            Node() = default;
-            Node(const std::string& n, uint32_t p, const glm::mat4& t, const glm::mat4& l2b) : parent(p), name(n), transform(t), localToBindSpace(l2b) {};
-            std::string name;
-            uint32_t parent = kInvalidNode;
-            glm::mat4 transform;            ///< The node's transformation matrix.
-            glm::mat4 localToBindSpace;     ///< Local to bind space transformation.
-        };
-
-        /** Represents a group of meshes.
-            The meshes are geometries in the same ray tracing bottom-level acceleration structure (BLAS).
-        */
-        struct MeshGroup
-        {
-            std::vector<uint32_t> meshList;     ///< List of meshId's that are part of the group.
-            bool isStatic = false;              ///< True if group represents static non-instanced geometry.
-        };
-
-        Vao::SharedPtr mpVao;                                       ///< Vertex array object for the global vertex/index buffers.
-        Vao::SharedPtr mpVao16Bit;                                  ///< VAO for drawing meshes with 16-bit vertex indices.
-        std::vector<DrawArgs> mDrawArgs;                            ///< List of draw arguments for rasterizing the scene.
-
-        Vao::SharedPtr mpCurveVao;                                  ///< Vertex array object for the global curve vertex/index buffers.
-
-        std::vector<MeshDesc> mMeshDesc;                            ///< Copy of mesh data GPU buffer (mpMeshes).
-        std::vector<MeshInstanceData> mMeshInstanceData;            ///< Mesh instance data.
-        std::vector<PackedMeshInstanceData> mPackedMeshInstanceData;///< Copy of packed mesh instance data GPU buffer (mpMeshInstances).
-        std::vector<ProceduralPrimitiveData> mProceduralPrimData;   ///< Procedural intersection AABB index data (offset, count) including all primitive types (custom primitives, curves, etc.).
-        std::vector<AABB> mCustomPrimitiveAABBs;                    ///< User-defined custom primitive AABBs.
-        std::vector<CurveDesc> mCurveDesc;                          ///< Copy of curve data GPU buffer (mpCurves).
-        std::vector<CurveInstanceData> mCurveInstanceData;          ///< Curve instance data.
-        std::vector<MeshGroup> mMeshGroups;                         ///< Groups of meshes. Each group maps to a BLAS for ray tracing.
-        std::vector<std::string> mMeshNames;                        ///< Mesh names, indxed by mesh ID
-        std::vector<Node> mSceneGraph;                              ///< For each index i, the array element indicates the parent node. Indices are in relation to mLocalToWorldMatrices.
-
-        /** The following array and buffer records the AABBs of all procedural primitives, including custom primitives, curves, etc.
-            There is an implicit type conversion from D3D12_RAYTRACING_AABB to AABB (defined in Utils.Math.AABB).
-            It is fine because both structs have the same data layout.
-        */
-        std::vector<D3D12_RAYTRACING_AABB> mRtAABBRaw;              ///< Raw AABB data (min, max).
-        Buffer::SharedPtr mpRtAABBBuffer;                           ///< GPU Buffer of raw AABB data. Used for acceleration structure creation, and bound to the Scene for access in shaders.
+        PrimitiveTypeFlags mPrimitiveTypes;                         ///< Flags indicating what primitive types exist in the scene.
 
         bool mHas16BitIndices = false;                              ///< True if any meshes use 16-bit indices.
         bool mHas32BitIndices = false;                              ///< True if any meshes use 32-bit indices.
 
+        Vao::SharedPtr mpVao;                                       ///< Vertex array object for the global mesh vertex/index buffers.
+        Vao::SharedPtr mpVao16Bit;                                  ///< VAO for drawing meshes with 16-bit vertex indices.
+        Vao::SharedPtr mpCurveVao;                                  ///< Vertex array object for the global curve vertex/index buffers.
+        std::vector<DrawArgs> mDrawArgs;                            ///< List of draw arguments for rasterizing the meshes in the scene.
+
+        std::vector<MeshDesc> mMeshDesc;                            ///< Copy of mesh data GPU buffer (mpMeshesBuffer).
+        std::vector<MeshInstanceData> mMeshInstanceData;            ///< Mesh instance data.
+        uint32_t mDisplacedMeshInstanceCount;                       ///< Number of displaced mesh instances. All displaced mesh instances are at the end of the mesh instance list.
+        std::vector<PackedMeshInstanceData> mPackedMeshInstanceData;///< Copy of packed mesh instance data GPU buffer (mpMeshInstancesBuffer).
+        std::vector<MeshGroup> mMeshGroups;                         ///< Groups of meshes. Each group maps to a BLAS for ray tracing.
+        std::vector<std::string> mMeshNames;                        ///< Mesh names, indxed by mesh ID
+        std::vector<Node> mSceneGraph;                              ///< For each index i, the array element indicates the parent node. Indices are in relation to mLocalToWorldMatrices.
+
+        // Displacement mapping.
+        struct
+        {
+            bool needsUpdate = true;                                ///< True if displacement data has changed and a AABB update is required.
+            struct DisplacementMeshData { uint32_t AABBOffset = 0; uint32_t AABBCount = 0; };
+            std::vector<DisplacementMeshData> meshData;             ///< List of displacement mesh data (reference to AABBs).
+            std::vector<DisplacementUpdateTask> updateTasks;        ///< List of displacement AABB update tasks.
+            Buffer::SharedPtr pUpdateTasksBuffer;                   ///< GPU Buffer with list of displacement AABB update tasks.
+            ComputePass::SharedPtr pUpdatePass;                     ///< Comput epass to update displacement AABB data.
+            Buffer::SharedPtr pAABBBuffer;                          ///< GPU Buffer of raw displacement AABB data. Used for acceleration structure creation, and bound to the Scene for access in shaders.
+        } mDisplacement;
+
+        // Procedural primitives
+        std::vector<CurveDesc> mCurveDesc;                          ///< Copy of curve data GPU buffer (mpCurvesBuffer).
+        std::vector<CurveInstanceData> mCurveInstanceData;          ///< Curve instance data.
+        std::vector<uint32_t> mCurveIndexData;                      ///< Vertex indices for all curves in 32-bit.
+        std::vector<StaticCurveVertexData> mCurveStaticData;        ///< Vertex attributes for all curves.
+
+        std::vector<CustomPrimitiveDesc> mCustomPrimitiveDesc;      ///< Copy of custom primitive data GPU buffer (mpCustomPrimitivesBuffer).
+        std::vector<AABB> mCustomPrimitiveAABBs;                    ///< User-defined custom primitive AABBs.
+        uint32_t mCustomPrimitiveAABBOffset = 0;                    ///< Offset of custom primitive AABBs in global AABB list.
+        bool mCustomPrimitivesMoved = false;                        ///< Flag indicating that custom primitives were moved since last frame.
+        bool mCustomPrimitivesChanged = false;                      ///< Flag indicating that custom primitives were added/removed since last frame.
+
+        // The following array and buffer records the AABBs of all procedural primitives, including custom primitives, curves, etc.
+        // There is an implicit type conversion from D3D12_RAYTRACING_AABB to AABB (defined in Utils.Math.AABB).
+        // It is fine because both structs have the same data layout.
+        std::vector<D3D12_RAYTRACING_AABB> mRtAABBRaw;              ///< Raw AABB data (min, max) for all procedural primitives.
+        Buffer::SharedPtr mpRtAABBBuffer;                           ///< GPU Buffer of raw AABB data. Used for acceleration structure creation, and bound to the Scene for access in shaders.
+
         // Materials
         std::vector<Material::SharedPtr> mMaterials;                ///< Bound to parameter block.
-        std::vector<uint32_t> mSortedMaterialIndices;               ///< Indices of materials, sorted alphabetically by case-insensitive name
-        bool mSortMaterialsByName = false;                          ///< If true, display materials sorted by name, rather than by ID
+        std::vector<uint32_t> mMaterialCountByType;                 ///< Number of materials of each type, indexed by MaterialType.
+        std::vector<uint32_t> mSortedMaterialIndices;               ///< Indices of materials, sorted alphabetically by case-insensitive name.
+        bool mSortMaterialsByName = false;                          ///< If true, display materials sorted by name, rather than by ID.
+        bool mHasSpecGlossMaterials = false;                        ///< If true, scene uses materials with the SpecGloss shading model.
 
         // Lights
-        std::vector<Light::SharedPtr> mLights;                      ///< Bound to parameter block.
-        std::vector<Volume::SharedPtr> mVolumes;                    ///< Bound to parameter block.
-        std::vector<Grid::SharedPtr> mGrids;                        ///< Bound to parameter block.
-        std::unordered_map<Grid::SharedPtr, uint32_t> mGridIDs;
-        LightCollection::SharedPtr mpLightCollection;               ///< Bound to parameter block.
-        EnvMap::SharedPtr mpEnvMap;                                 ///< Bound to parameter block.
-        bool mEnvMapChanged = false;
+        std::vector<Light::SharedPtr> mLights;                      ///< All analytic lights. Note that not all may be active.
+        std::vector<Volume::SharedPtr> mVolumes;                    ///< All loaded volumes.
+        std::vector<Grid::SharedPtr> mGrids;                        ///< All loaded volume grids.
+        std::unordered_map<Grid::SharedPtr, uint32_t> mGridIDs;     ///< Lookup table for grid IDs.
+        LightCollection::SharedPtr mpLightCollection;               ///< Class for managing emissive geometry. This is created lazily upon first use.
+        EnvMap::SharedPtr mpEnvMap;                                 ///< Environment map or nullptr if not loaded.
+        bool mEnvMapChanged = false;                                ///< Flag indicating that the environment map has changed since last frame.
+        uint32_t mActiveLightCount = 0;                             ///< Number of currently active analytic lights.
 
-        // Scene Metadata (CPU Only)
+        // Scene metadata (CPU only)
         std::vector<AABB> mMeshBBs;                                 ///< Bounding boxes for meshes (not instances) in object space.
-        std::vector<std::vector<uint32_t>> mMeshIdToInstanceIds;    ///< Mapping of what instances belong to which mesh.
+        std::vector<std::vector<uint32_t>> mMeshIdToInstanceIds;    ///< Mapping of what instances belong to which mesh. The instanceID are sorted in ascending order.
         std::vector<AABB> mCurveBBs;                                ///< Bounding boxes for curves (not instances) in object space.
         std::vector<std::vector<uint32_t>> mCurveIdToInstanceIds;   ///< Mapping of what instances belong to which curve.
         HitInfo mHitInfo;                                           ///< Geometry hit info requirements.
         AABB mSceneBB;                                              ///< Bounding boxes of the entire scene in world space.
-        std::vector<bool> mMeshHasDynamicData;                      ///< Whether a Mesh has dynamic data, meaning it is skinned.
         SceneStats mSceneStats;                                     ///< Scene statistics.
+        Metadata mMetadata;                                         ///< Importer-provided metadata.
         RenderSettings mRenderSettings;                             ///< Render settings.
         RenderSettings mPrevRenderSettings;
+        UpdateCallback mUpdateCallback;                             ///< Scene update callback.
 
-        // Scene Block Resources
+        // Scene block resources
         Buffer::SharedPtr mpMeshesBuffer;
         Buffer::SharedPtr mpMeshInstancesBuffer;
-        Buffer::SharedPtr mpProceduralPrimitivesBuffer;
         Buffer::SharedPtr mpCurvesBuffer;
         Buffer::SharedPtr mpCurveInstancesBuffer;
+        Buffer::SharedPtr mpCustomPrimitivesBuffer;
         Buffer::SharedPtr mpMaterialsBuffer;
         Buffer::SharedPtr mpLightsBuffer;
         Buffer::SharedPtr mpVolumesBuffer;
@@ -836,11 +1061,12 @@ namespace Falcor
         uint32_t mCurrentViewpoint = 0;
 
         // Rendering
-        RasterizerState::SharedPtr mpFrontClockwiseRS;
+        std::map<RasterizerState::CullMode, RasterizerState::SharedPtr> mFrontClockwiseRS;
+        std::map<RasterizerState::CullMode, RasterizerState::SharedPtr> mFrontCounterClockwiseRS;
         UpdateFlags mUpdates = UpdateFlags::All;
         AnimationController::UniquePtr mpAnimationController;
 
-        // Raytracing Data
+        // Raytracing data
         UpdateMode mTlasUpdateMode = UpdateMode::Rebuild;   ///< How the TLAS should be updated when there are changes in the scene.
         UpdateMode mBlasUpdateMode = UpdateMode::Refit;     ///< How the BLAS should be updated when there are changes to meshes.
 
@@ -877,7 +1103,9 @@ namespace Falcor
             uint64_t blasByteSize = 0;                      ///< Size of the final BLAS post-compaction, including padding.
             uint64_t blasByteOffset = 0;                    ///< Offset into the final BLAS buffer.
 
+            bool hasProceduralPrimitives = false;           ///< True if the BLAS contains procedural primitives. Otherwise it is triangles.
             bool hasSkinnedMesh = false;                    ///< Whether the BLAS contains a skinned mesh, which means the BLAS may need to be updated.
+            bool hasAnimatedVertexCache = false;            ///< Whether the BLAS contains an animated vertex cache, which means the BLAS may need to be updated.
             bool useCompaction = false;                     ///< Whether the BLAS should be compacted after build.
             UpdateMode updateMode = UpdateMode::Refit;      ///< Update mode this BLAS was created with.
         };
@@ -902,10 +1130,11 @@ namespace Falcor
         Buffer::SharedPtr mpBlasStaticWorldMatrices;        ///< Object-to-world transform matrices in row-major format. Only valid for static meshes.
         bool mRebuildBlas = true;                           ///< Flag to indicate BLASes need to be rebuilt.
         bool mHasSkinnedMesh = false;                       ///< Whether the scene has a skinned mesh at all.
+        bool mHasAnimatedVertexCache = false;               ///< Whether the scene has an animated vertex cache at all.
 
         std::string mFilename;
+        bool mFinalized = false;                            ///< True if scene is ready to be bound to the GPU.
     };
 
-    enum_class_operators(Scene::RenderFlags);
     enum_class_operators(Scene::UpdateFlags);
 }

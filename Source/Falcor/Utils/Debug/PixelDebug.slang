@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,7 +29,11 @@
 /** GPU side implementation of pixel debugging utils.
 
     Call the function printSetPixel() in the shader program to set the
-    current pixel before the first print() or assert() calls.
+    current pixel before calling any of the following functions:
+
+    print(value) for printing basic types
+    print(msg, value) for printing basic types with a prepended string
+    assert(condition, msg) for asserting on a condition (msg is optional)
 
     The host sets the following defines:
 
@@ -62,18 +66,19 @@ void printSetPixel(uint2 pixel)
 
 #ifdef _PIXEL_DEBUG_ENABLED
 
-    /** Define overloaded 'void print(Type x)' functions. Each takes a different
-        basic type as parameter and appends it in encoded form to the log.
+    /** Define overloaded 'void print(msg, Type x)' and 'void print(Type x)' functions.
+        Each takes a different basic type as parameter and appends it in encoded form to the log.
     */
     #define PRINT_FUNC(Type, Count, ValueType)                  \
-    void print(vector<Type, Count> v)                           \
+    void print(String msg, vector<Type, Count> v)               \
     {                                                           \
         if (all(gPixelDebugPixel == gPixelLogSelected))         \
         {                                                       \
             uint i = gPixelLog.IncrementCounter();              \
             if (i < gPixelLogSize)                              \
             {                                                   \
-                PixelLogValue val;                              \
+                PixelLogValue val = {};                         \
+                val.msgHash = getStringHash(msg);               \
                 val.type = (uint)ValueType;                     \
                 val.count = Count;                              \
                 for (int j = 0; j < 4; j++)                     \
@@ -83,12 +88,16 @@ void printSetPixel(uint2 pixel)
                 gPixelLog[i] = val;                             \
             }                                                   \
         }                                                       \
+    }                                                           \
+    void print(vector<Type, Count> v)                           \
+    {                                                           \
+        print("", v);                                           \
     }
 
     /** Shader assert.
         \param[in] condition If false, the current pixel is recorded in the log.
     */
-    void assert(bool condition)
+    void assert(bool condition, String msg = "")
     {
         if (!condition)
         {
@@ -97,6 +106,7 @@ void printSetPixel(uint2 pixel)
             {
                 AssertLogValue val;
                 val.launchIndex = uint3(gPixelDebugPixel, 0);
+                val.msgHash = getStringHash(msg);
                 gAssertLog[i] = val;
             }
         }
@@ -106,10 +116,11 @@ void printSetPixel(uint2 pixel)
 
     /** Define null functions if debugging is disabled.
     */
-    #define PRINT_FUNC(Type, Count, DataType) \
+    #define PRINT_FUNC(Type, Count, DataType)           \
+    void print(String msg, vector<Type, Count> v) {}    \
     void print(vector<Type, Count> v) {}
 
-    void assert(bool condition) {}
+    void assert(bool condition, String msg = "") {}
 
 #endif // !_PIXEL_DEBUG_ENABLED
 

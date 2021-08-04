@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -223,6 +223,19 @@ namespace Falcor
     /** Create a directory from path.
     */
     dlldecl bool createDirectory(const std::string& path);
+
+    /** Create a junction (soft link).
+        \param[in] link Link path.
+        \param[in] target Target path.
+        \return Returns true if successful.
+    */
+    dlldecl bool createJunction(const std::string& link, const std::string& target);
+
+    /** Delete a junction (sof link).
+        \param[in] link Link path.
+        \return Returns true if successful.
+    */
+    dlldecl bool deleteJunction(const std::string& link);
 
     /** Given the app name and full command line arguments, begin the process
     */

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -34,6 +34,14 @@ using namespace Falcor;
 class ErrorMeasurePass : public RenderPass
 {
 public:
+    enum class OutputId
+    {
+        Source,
+        Reference,
+        Difference,
+        Count
+    };
+
     using SharedPtr = std::shared_ptr<ErrorMeasurePass>;
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
@@ -87,14 +95,6 @@ private:
     bool                    mUseLoadedReference = false;        ///< If true, use loaded reference image instead of input.
     bool                    mReportRunningError = true;         ///< Use exponetial moving average (EMA) for the computed error.
     float                   mRunningErrorSigma = 0.995f;        ///< Coefficient used for the exponential moving average. Larger values mean slower response.
-
-    enum class OutputId
-    {
-        Source,
-        Reference,
-        Difference,
-        Count
-    };
 
     OutputId                mSelectedOutputId = OutputId::Source;
 

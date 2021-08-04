@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="DebugD3D12|x64">
@@ -121,28 +121,24 @@
     <ClInclude Include="Core\State\StateGraph.h" />
     <ClInclude Include="Core\Window.h" />
     <ClInclude Include="Experimental\Scene\Lights\EmissiveLightSampler.h" />
-    <ShaderSource Include="Experimental\Scene\Lights\BuildTriangleList.cs.slang" />
     <ShaderSource Include="Core\API\Blit.slang" />
     <ClInclude Include="Experimental\Scene\Lights\EmissivePowerSampler.h" />
     <ClInclude Include="Experimental\Scene\Lights\EmissiveUniformSampler.h" />
-    <ClInclude Include="Experimental\Scene\Lights\EnvMap.h" />
     <ClInclude Include="Experimental\Scene\Lights\EnvMapLighting.h" />
     <ClInclude Include="Experimental\Scene\Lights\EnvMapSampler.h" />
     <ClInclude Include="Experimental\Scene\Lights\LightBVH.h" />
     <ClInclude Include="Experimental\Scene\Lights\LightBVHBuilder.h" />
     <ClInclude Include="Experimental\Scene\Lights\LightBVHSampler.h" />
+    <ShaderSource Include="Core\API\BlitReduction.slang" />
     <ShaderSource Include="Experimental\Scene\Lights\EmissiveLightSamplerType.slangh" />
-    <ClInclude Include="Experimental\Scene\Lights\LightCollection.h" />
     <ShaderSource Include="Experimental\Scene\Lights\EmissivePowerSampler.slang" />
-    <ShaderSource Include="Experimental\Scene\Lights\EnvMapData.slang" />
     <ShaderSource Include="Experimental\Scene\Lights\EnvMapIntegration.ps.slang" />
     <ShaderSource Include="Experimental\Scene\Lights\EnvMapLighting.slang" />
     <ShaderSource Include="Experimental\Scene\Lights\EnvMapSampler.slang" />
-    <ShaderSource Include="Experimental\Scene\Lights\FinalizeIntegration.cs.slang" />
     <ShaderSource Include="Experimental\Scene\Lights\LightBVHSamplerSharedDefinitions.slang" />
     <ShaderSource Include="Experimental\Scene\Lights\LightBVHTypes.slang" />
-    <ShaderSource Include="Experimental\Scene\Lights\LightCollectionShared.slang" />
     <ClInclude Include="Experimental\Scene\Volume\VolumeSampler.h" />
+    <ClInclude Include="Raytracing\RtBindingTable.h" />
     <ClInclude Include="Raytracing\RtProgramVars.h" />
     <ClInclude Include="Raytracing\RtProgramVarsHelper.h" />
     <ClInclude Include="Raytracing\RtProgram\RtProgram.h" />
@@ -156,20 +152,23 @@
     <ClInclude Include="Scene\Animation\Animatable.h" />
     <ClInclude Include="Scene\Animation\Animation.h" />
     <ClInclude Include="Scene\Animation\AnimationController.h" />
+    <ClInclude Include="Scene\Animation\AnimatedVertexCache.h" />
     <ClInclude Include="Scene\Curves\CurveTessellation.h" />
     <ClInclude Include="Scene\HitInfo.h" />
     <ClInclude Include="Scene\Importer.h" />
     <ClInclude Include="Scene\Importers\AssimpImporter.h" />
     <ClInclude Include="Scene\Importers\PythonImporter.h" />
-    <ClInclude Include="Scene\Importers\SceneImporter.h" />
-    <ShaderSource Include="Experimental\Scene\Lights\MeshLightData.slang" />
-    <ShaderSource Include="Experimental\Scene\Lights\UpdateTriangleVertices.cs.slang" />
-    <ShaderSource Include="Experimental\Scene\Material\BCSDF.slang" />
     <ShaderSource Include="Experimental\Scene\Material\BCSDFConfig.slangh" />
     <ShaderSource Include="Experimental\Scene\Material\BxDFConfig.slangh" />
-    <ShaderSource Include="Experimental\Scene\Material\BxDFTypes.slang" />
+    <ShaderSource Include="Experimental\Scene\Material\ClothBRDF.slang" />
+    <ShaderSource Include="Experimental\Scene\Material\ClothMaterial.slang" />
+    <ShaderSource Include="Experimental\Scene\Material\HairMaterial.slang" />
     <ShaderSource Include="Experimental\Scene\Material\HairChiang16.slang" />
+    <ShaderSource Include="Experimental\Scene\Material\IBxDF.slang" />
+    <ShaderSource Include="Experimental\Scene\Material\IMaterial.slang" />
+    <ShaderSource Include="Experimental\Scene\Material\StandardMaterial.slang" />
     <ShaderSource Include="Experimental\Scene\Material\TexLODTypes.slang" />
+    <ShaderSource Include="Experimental\Scene\Volume\HomogeneousVolumeSampler.slang" />
     <ShaderSource Include="Experimental\Scene\Volume\PhaseFunctions.slang" />
     <ShaderSource Include="Experimental\Scene\Volume\VolumeSampler.slang" />
     <ShaderSource Include="Experimental\Scene\Volume\VolumeSamplerParams.slang" />
@@ -187,18 +186,33 @@
     <ShaderSource Include="RenderPasses\Shared\PathTracer\RayFootprintModes.slangh" />
     <ShaderSource Include="RenderPasses\Shared\PathTracer\StaticParams.slang" />
     <ShaderSource Include="Scene\Animation\Skinning.slang" />
+    <ShaderSource Include="Scene\Animation\UpdateAABBs.slang" />
+    <ShaderSource Include="Scene\Animation\UpdateVertices.slang" />
     <ShaderSource Include="Scene\Camera\Camera.slang" />
     <ShaderSource Include="Scene\Camera\CameraData.slang" />
+    <ShaderSource Include="Scene\Displacement\DisplacementMapping.slang" />
+    <ShaderSource Include="Scene\Displacement\DisplacementUpdate.cs.slang" />
+    <ShaderSource Include="Scene\Displacement\DisplacementUpdateTask.slang" />
     <ShaderSource Include="Scene\HitInfoType.slang" />
     <ShaderSource Include="Scene\Intersection.slang" />
+    <ShaderSource Include="Scene\Lights\BuildTriangleList.cs.slang" />
+    <ShaderSource Include="Scene\Lights\EmissiveIntegrator.3d.slang" />
+    <ShaderSource Include="Scene\Lights\EnvMap.slang" />
+    <ShaderSource Include="Scene\Lights\EnvMapData.slang" />
+    <ShaderSource Include="Scene\Lights\FinalizeIntegration.cs.slang" />
+    <ShaderSource Include="Scene\Lights\LightCollection.slang" />
+    <ShaderSource Include="Scene\Lights\LightCollectionShared.slang" />
+    <ShaderSource Include="Scene\Lights\MeshLightData.slang" />
+    <ShaderSource Include="Scene\Lights\UpdateTriangleVertices.cs.slang" />
+    <ShaderSource Include="Scene\Material\AlphaTest.slang" />
     <ShaderSource Include="Scene\NullTrace.cs.slang" />
     <ShaderSource Include="Scene\HitInfo.slang" />
     <ShaderSource Include="Scene\Lights\LightData.slang" />
-    <ShaderSource Include="Scene\Lights\Lights.slang" />
-    <ShaderSource Include="Scene\Material\BRDF.slang" />
     <ShaderSource Include="Scene\Material\MaterialData.slang" />
     <ShaderSource Include="Scene\Material\MaterialDefines.slangh" />
     <ShaderSource Include="Scene\ParticleSystem\ParticleConstColor.ps.slang" />
+    <ClInclude Include="Scene\Lights\EnvMap.h" />
+    <ClInclude Include="Scene\Lights\LightCollection.h" />
     <ClInclude Include="Scene\Material\MaterialTextureLoader.h" />
     <ClInclude Include="Scene\ParticleSystem\ParticleSystem.h" />
     <ClInclude Include="Falcor.h" />
@@ -230,11 +244,16 @@
     <ShaderSource Include="Scene\Raytracing.slang" />
     <ShaderSource Include="Scene\RaytracingInline.slang" />
     <ShaderSource Include="Scene\Scene.slang" />
+    <ShaderSource Include="Scene\ScenePrimitiveDefines.slangh" />
+    <ShaderSource Include="Scene\SceneRayQueryInterface.slang" />
     <ShaderSource Include="Scene\SceneTypes.slang" />
     <ShaderSource Include="Scene\Shading.slang" />
     <ShaderSource Include="Scene\ShadingData.slang" />
+    <ClInclude Include="Scene\SceneCache.h" />
     <ClInclude Include="Scene\Transform.h" />
     <ClInclude Include="Scene\TriangleMesh.h" />
+    <ClInclude Include="Scene\Volume\BrickedGrid.h" />
+    <ClInclude Include="Scene\Volume\GridConverter.h" />
     <ClInclude Include="Scene\Volume\Grid.h" />
     <ClInclude Include="Scene\Volume\Volume.h" />
     <ClInclude Include="stdafx.h" />
@@ -268,6 +287,7 @@
     <ClInclude Include="Utils\AsyncTextureLoader.h" />
     <ClInclude Include="Utils\BinaryFileStream.h" />
     <ClInclude Include="Utils\Color\ColorUtils.h" />
+    <ClInclude Include="Utils\CryptoUtils.h" />
     <ClInclude Include="Utils\Debug\DebugConsole.h" />
     <ClInclude Include="Utils\Debug\PixelDebug.h" />
     <ShaderSource Include="Utils\Algorithm\ParallelReductionType.slangh" />
@@ -275,13 +295,13 @@
     <ShaderSource Include="Utils\Color\ColorHelpers.slang" />
     <ClInclude Include="Utils\Image\Bitmap.h" />
     <ClInclude Include="Utils\Image\ImageIO.h" />
+    <ClInclude Include="Utils\Image\TextureAnalyzer.h" />
     <ClInclude Include="Utils\Logger.h" />
     <ClInclude Include="Utils\Math\AABB.h" />
     <ClInclude Include="Utils\Math\CubicSpline.h" />
     <ClInclude Include="Utils\Math\FalcorMath.h" />
     <ShaderSource Include="Utils\Debug\PixelDebugTypes.slang" />
     <ShaderSource Include="Utils\Debug\ReflectPixelDebugTypes.cs.slang" />
-    <ShaderSource Include="Utils\Helpers.slang" />
     <ClInclude Include="Utils\Math\MathHelpers.h" />
     <ClInclude Include="Utils\Math\PackedFormats.h" />
     <ClInclude Include="Utils\Math\Vector.h" />
@@ -293,7 +313,10 @@
     <ClInclude Include="Utils\SampleGenerators\StratifiedSamplePattern.h" />
     <ClInclude Include="Utils\Sampling\AliasTable.h" />
     <ClInclude Include="Utils\Sampling\SampleGenerator.h" />
+    <ShaderSource Include="Utils\Geometry\GeometryHelpers.slang" />
+    <ShaderSource Include="Utils\Geometry\IntersectionHelpers.slang" />
     <ShaderSource Include="Utils\HostDeviceShared.slangh" />
+    <ShaderSource Include="Utils\Image\TextureAnalyzer.cs.slang" />
     <ShaderSource Include="Utils\Math\MathConstants.slangh" />
     <ClInclude Include="Utils\Scripting\Console.h" />
     <ClInclude Include="Utils\Scripting\Dictionary.h" />
@@ -307,6 +330,7 @@
     <ClInclude Include="Utils\Timing\CpuTimer.h" />
     <ClInclude Include="Utils\Timing\FrameRate.h" />
     <ClInclude Include="Utils\Timing\Profiler.h" />
+    <ClInclude Include="Utils\Timing\ProfilerUI.h" />
     <ClInclude Include="Utils\Timing\TimeReport.h" />
     <ClInclude Include="Utils\UI\DebugDrawer.h" />
     <ClInclude Include="Utils\UI\Font.h" />
@@ -316,9 +340,16 @@
     <ClInclude Include="Utils\UI\UserInput.h" />
     <ClInclude Include="Utils\Video\VideoEncoder.h" />
     <ClInclude Include="Utils\Video\VideoEncoderUI.h" />
+    <ShaderSource Include="Utils\Math\Ray.slang" />
+    <ShaderSource Include="Utils\NVAPI.slang" />
+    <ShaderSource Include="Utils\NVAPI.slangh" />
     <ShaderSource Include="Utils\Sampling\AliasTable.slang" />
+    <ShaderSource Include="Utils\Sampling\LowDiscrepancy\HammersleySequence.slang" />
     <ShaderSource Include="Utils\Sampling\Pseudorandom\Xorshift32.slang" />
     <ShaderSource Include="Utils\Sampling\SampleGeneratorType.slangh" />
+    <ShaderSource Include="Utils\SDF\SDF2DDraw.slang" />
+    <ShaderSource Include="Utils\SDF\SDF2DPrimitives.slang" />
+    <ShaderSource Include="Utils\SDF\SDFOperations.slang" />
     <ShaderSource Include="Utils\Timing\GpuTimer.slang" />
     <ShaderSource Include="Utils\UI\Gui.slang" />
     <ShaderSource Include="Utils\UI\TextRenderer.slang" />
@@ -473,7 +504,6 @@
     <ClCompile Include="Core\API\RootSignature.cpp" />
     <ClCompile Include="Core\API\Sampler.cpp" />
     <ClCompile Include="Core\API\Texture.cpp" />
-    <ClCompile Include="Core\API\TextureLoader.cpp" />
     <ClCompile Include="Core\API\VAO.cpp" />
     <ClCompile Include="Core\API\VertexLayout.cpp" />
     <ClCompile Include="Core\API\Vulkan\VKBuffer.cpp">
@@ -616,14 +646,14 @@
     <ClCompile Include="Experimental\Scene\Lights\EmissiveLightSampler.cpp" />
     <ClCompile Include="Experimental\Scene\Lights\EmissivePowerSampler.cpp" />
     <ClCompile Include="Experimental\Scene\Lights\EmissiveUniformSampler.cpp" />
-    <ClCompile Include="Experimental\Scene\Lights\EnvMap.cpp" />
     <ClCompile Include="Experimental\Scene\Lights\EnvMapLighting.cpp" />
     <ClCompile Include="Experimental\Scene\Lights\EnvMapSampler.cpp" />
     <ClCompile Include="Experimental\Scene\Lights\LightBVH.cpp" />
     <ClCompile Include="Experimental\Scene\Lights\LightBVHBuilder.cpp" />
     <ClCompile Include="Experimental\Scene\Lights\LightBVHSampler.cpp" />
-    <ClCompile Include="Experimental\Scene\Lights\LightCollection.cpp" />
+    <ClCompile Include="Experimental\Scene\Material\TexLODTypes.cpp" />
     <ClCompile Include="Experimental\Scene\Volume\VolumeSampler.cpp" />
+    <ClCompile Include="Raytracing\RtBindingTable.cpp" />
     <ClCompile Include="Raytracing\RtProgramVars.cpp" />
     <ClCompile Include="Raytracing\RtProgramVarsHelper.cpp" />
     <ClCompile Include="Raytracing\RtProgram\RtProgram.cpp" />
@@ -635,12 +665,14 @@
     <ClCompile Include="Scene\Animation\Animatable.cpp" />
     <ClCompile Include="Scene\Animation\Animation.cpp" />
     <ClCompile Include="Scene\Animation\AnimationController.cpp" />
+    <ClCompile Include="Scene\Animation\AnimatedVertexCache.cpp" />
     <ClCompile Include="Scene\Curves\CurveTessellation.cpp" />
     <ClCompile Include="Scene\HitInfo.cpp" />
     <ClCompile Include="Scene\Importer.cpp" />
     <ClCompile Include="Scene\Importers\AssimpImporter.cpp" />
     <ClCompile Include="Scene\Importers\PythonImporter.cpp" />
-    <ClCompile Include="Scene\Importers\SceneImporter.cpp" />
+    <ClCompile Include="Scene\Lights\EnvMap.cpp" />
+    <ClCompile Include="Scene\Lights\LightCollection.cpp" />
     <ClCompile Include="Scene\Material\MaterialTextureLoader.cpp" />
     <ClCompile Include="Scene\ParticleSystem\ParticleSystem.cpp" />
     <ClCompile Include="RenderGraph\BasePasses\BaseGraphicsPass.cpp" />
@@ -664,6 +696,7 @@
     <ClCompile Include="Scene\Material\Material.cpp" />
     <ClCompile Include="Scene\SceneBuilder.cpp" />
     <ClCompile Include="Scene\Scene.cpp" />
+    <ClCompile Include="Scene\SceneCache.cpp" />
     <ClCompile Include="Scene\Transform.cpp" />
     <ClCompile Include="Scene\TriangleMesh.cpp" />
     <ClCompile Include="Scene\Volume\Grid.cpp" />
@@ -680,9 +713,11 @@
     <ClCompile Include="Utils\Algorithm\ParallelReduction.cpp" />
     <ClCompile Include="Utils\Algorithm\PrefixSum.cpp" />
     <ClCompile Include="Utils\AsyncTextureLoader.cpp" />
+    <ClCompile Include="Utils\CryptoUtils.cpp" />
     <ClCompile Include="Utils\Debug\PixelDebug.cpp" />
     <ClCompile Include="Utils\Image\Bitmap.cpp" />
     <ClCompile Include="Utils\Image\ImageIO.cpp" />
+    <ClCompile Include="Utils\Image\TextureAnalyzer.cpp" />
     <ClCompile Include="Utils\Logger.cpp" />
     <ClCompile Include="Utils\Math\AABB.cpp" />
     <ClCompile Include="Utils\Perception\Experiment.cpp" />
@@ -695,11 +730,13 @@
     <ClCompile Include="Utils\Scripting\Console.cpp" />
     <ClCompile Include="Utils\Scripting\ScriptBindings.cpp" />
     <ClCompile Include="Utils\Scripting\Scripting.cpp" />
+    <ClCompile Include="Utils\StringUtils.cpp" />
     <ClCompile Include="Utils\TermColor.cpp" />
     <ClCompile Include="Utils\Threading.cpp" />
     <ClCompile Include="Utils\Timing\Clock.cpp" />
     <ClCompile Include="Utils\Timing\FrameRate.cpp" />
     <ClCompile Include="Utils\Timing\Profiler.cpp" />
+    <ClCompile Include="Utils\Timing\ProfilerUI.cpp" />
     <ClCompile Include="Utils\Timing\TimeReport.cpp" />
     <ClCompile Include="Utils\UI\DebugDrawer.cpp" />
     <ClCompile Include="Utils\UI\Font.cpp" />
@@ -710,20 +747,16 @@
     <ClCompile Include="Utils\Video\VideoEncoderUI.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ShaderSource Include="Experimental\Scene\Lights\EmissiveIntegrator.ps.slang" />
     <ShaderSource Include="Experimental\Scene\Lights\EmissiveLightSampler.slang" />
     <ShaderSource Include="Experimental\Scene\Lights\EmissiveLightSamplerHelpers.slang" />
     <ShaderSource Include="Experimental\Scene\Lights\EmissiveLightSamplerInterface.slang" />
     <ShaderSource Include="Experimental\Scene\Lights\EmissiveUniformSampler.slang" />
-    <ShaderSource Include="Experimental\Scene\Lights\EnvMap.slang" />
     <ShaderSource Include="Experimental\Scene\Lights\EnvMapSamplerSetup.cs.slang" />
     <ShaderSource Include="Experimental\Scene\Lights\LightBVH.slang" />
     <ShaderSource Include="Experimental\Scene\Lights\LightBVHRefit.cs.slang" />
     <ShaderSource Include="Experimental\Scene\Lights\LightBVHSampler.slang" />
-    <ShaderSource Include="Experimental\Scene\Lights\LightCollection.slang" />
     <ShaderSource Include="Experimental\Scene\Lights\LightHelpers.slang" />
     <ShaderSource Include="Experimental\Scene\Material\MaterialHelpers.slang" />
-    <ShaderSource Include="Experimental\Scene\Material\MaterialShading.slang" />
     <ShaderSource Include="Experimental\Scene\Material\TexLODHelpers.slang" />
     <ShaderSource Include="Utils\Algorithm\BitonicSort.cs.slang" />
     <ShaderSource Include="Utils\Algorithm\ParallelReduction.cs.slang" />
@@ -826,7 +859,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>FALCOR_DLL;IMGUI_API=__declspec(dllexport);_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_D3D12;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE;_$(OutputType)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\.packman\deps\include;$(ProjectDir)\..\Externals\.packman;$(ProjectDir)\..\Externals;$(ProjectDir)\..\Externals\.packman\vulkansdk\Include;$(ProjectDir)\..\Externals\.packman\python\Include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman\nanovdb\include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\.packman\deps\include;$(ProjectDir)\..\Externals\.packman;$(ProjectDir)\..\Externals;$(ProjectDir)\..\Externals\.packman\vulkansdk\Include;$(ProjectDir)\..\Externals\.packman\python\Include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman\nanovdb\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -838,7 +871,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(ProjectDir)..\Externals\.packman\deps\debug\lib;$(ProjectDir)..\Externals\.packman\deps\lib;$(ProjectDir)..\Externals\.packman\nvapi\amd64;$(ProjectDir)..\Externals\.packman\vulkansdk\Lib;$(ProjectDir)..\Externals\.packman\slang\bin\windows-x64\release;$(ProjectDir)..\Externals\.packman\python\libs;$(ProjectDir)..\Externals\.packman\WinPixEventRuntime\bin\x64;$(ProjectDir)..\Externals\.packman\Cuda\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>WinPixEventRuntime.lib;glfw3dll.lib;slang.lib;Comctl32.lib;Shlwapi.lib;assimp-vc142-mt.lib;mikktspaced.lib;FreeImaged.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;Shcore.lib;DirectXTex.lib;Half-2_5_d.lib;openvdb.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>WinPixEventRuntime.lib;glfw3dll.lib;slang.lib;Comctl32.lib;Shlwapi.lib;assimp-vc142-mt.lib;mikktspaced.lib;FreeImaged.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;Shcore.lib;DirectXTex.lib;Half-2_5_d.lib;openvdb.lib;libcrypto.lib;lz4.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>call $(ProjectDir)\..\..\Build\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)</Command>
@@ -864,7 +897,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>FALCOR_DLL;IMGUI_API=__declspec(dllexport);_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_VK;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\.packman\deps\include;$(ProjectDir)\..\Externals\.packman;$(ProjectDir)\..\Externals;$(ProjectDir)\..\Externals\.packman\vulkansdk\Include;$(ProjectDir)\..\Externals\.packman\python\Include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman\nanovdb\include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\.packman\deps\include;$(ProjectDir)\..\Externals\.packman;$(ProjectDir)\..\Externals;$(ProjectDir)\..\Externals\.packman\vulkansdk\Include;$(ProjectDir)\..\Externals\.packman\python\Include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman\nanovdb\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -876,7 +909,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(ProjectDir)..\Externals\.packman\deps\debug\lib;$(ProjectDir)..\Externals\.packman\deps\lib;$(ProjectDir)..\Externals\.packman\nvapi\amd64;$(ProjectDir)..\Externals\.packman\vulkansdk\Lib;$(ProjectDir)..\Externals\.packman\slang\bin\windows-x64\release;$(ProjectDir)..\Externals\.packman\python\libs;$(ProjectDir)..\Externals\.packman\WinPixEventRuntime\bin\x64;</AdditionalLibraryDirectories>
-      <AdditionalDependencies>WinPixEventRuntime.lib;glfw3dll.lib;slang.lib;Comctl32.lib;Shlwapi.lib;assimp-vc142-mt.lib;mikktspaced.lib;FreeImaged.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;Shcore.lib;DirectXTex.lib;Half-2_5_d.lib;openvdb.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>WinPixEventRuntime.lib;glfw3dll.lib;slang.lib;Comctl32.lib;Shlwapi.lib;assimp-vc142-mt.lib;mikktspaced.lib;FreeImaged.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;Shcore.lib;DirectXTex.lib;Half-2_5_d.lib;openvdb.lib;libcrypto.lib;lz4.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>call $(ProjectDir)\..\..\Build\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)</Command>
@@ -905,7 +938,7 @@
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>FALCOR_DLL;IMGUI_API=__declspec(dllexport);_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_D3D12;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\.packman\deps\include;$(ProjectDir)\..\Externals\.packman;$(ProjectDir)\..\Externals;$(ProjectDir)\..\Externals\.packman\vulkansdk\Include;$(ProjectDir)\..\Externals\.packman\python\Include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman\nanovdb\include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\.packman\deps\include;$(ProjectDir)\..\Externals\.packman;$(ProjectDir)\..\Externals;$(ProjectDir)\..\Externals\.packman\vulkansdk\Include;$(ProjectDir)\..\Externals\.packman\python\Include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman\nanovdb\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -919,7 +952,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>$(ProjectDir)..\Externals\.packman\deps\lib;$(ProjectDir)..\Externals\.packman\nvapi\amd64;$(ProjectDir)..\Externals\.packman\vulkansdk\Lib;$(ProjectDir)..\Externals\.packman\slang\bin\windows-x64\release;$(ProjectDir)..\Externals\.packman\python\libs;$(ProjectDir)..\Externals\.packman\WinPixEventRuntime\bin\x64;$(ProjectDir)..\Externals\.packman\Cuda\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>WinPixEventRuntime.lib;glfw3dll.lib;slang.lib;Comctl32.lib;Shlwapi.lib;assimp-vc142-mt.lib;mikktspace.lib;FreeImage.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;Shcore.lib;DirectXTex.lib;Half-2_5.lib;openvdb.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>WinPixEventRuntime.lib;glfw3dll.lib;slang.lib;Comctl32.lib;Shlwapi.lib;assimp-vc142-mt.lib;mikktspace.lib;FreeImage.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;Shcore.lib;DirectXTex.lib;Half-2_5.lib;openvdb.lib;libcrypto.lib;lz4.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>call $(ProjectDir)\..\..\Build\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)</Command>
@@ -947,7 +980,7 @@
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>FALCOR_DLL;IMGUI_API=__declspec(dllexport);_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_VK;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\.packman\deps\include;$(ProjectDir)\..\Externals\.packman;$(ProjectDir)\..\Externals;$(ProjectDir)\..\Externals\.packman\vulkansdk\Include;$(ProjectDir)\..\Externals\.packman\python\Include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman\nanovdb\include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\.packman\deps\include;$(ProjectDir)\..\Externals\.packman;$(ProjectDir)\..\Externals;$(ProjectDir)\..\Externals\.packman\vulkansdk\Include;$(ProjectDir)\..\Externals\.packman\python\Include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman\nanovdb\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -961,7 +994,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>$(ProjectDir)..\Externals\.packman\deps\lib$(ProjectDir)..\Externals\.packman\nvapi\amd64;$(ProjectDir)..\Externals\.packman\vulkansdk\Lib;$(ProjectDir)..\Externals\.packman\slang\bin\windows-x64\release;$(ProjectDir)..\Externals\.packman\python\libs;$(ProjectDir)..\Externals\.packman\WinPixEventRuntime\bin\x64;</AdditionalLibraryDirectories>
-      <AdditionalDependencies>WinPixEventRuntime.lib;glfw3dll.lib;slang.lib;Comctl32.lib;Shlwapi.lib;assimp-vc142-mt.lib;mikktspace.lib;FreeImage.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;Shcore.lib;DirectXTex.lib;Half-2_5.lib;openvdb.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>WinPixEventRuntime.lib;glfw3dll.lib;slang.lib;Comctl32.lib;Shlwapi.lib;assimp-vc142-mt.lib;mikktspace.lib;FreeImage.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;Shcore.lib;DirectXTex.lib;Half-2_5.lib;openvdb.lib;libcrypto.lib;lz4.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>call $(ProjectDir)\..\..\Build\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)</Command>

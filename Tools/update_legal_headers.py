@@ -11,7 +11,7 @@ EXTENSIONS = ['.h', '.c', '.cpp', '.slang', '.slangh']
 # Public legal header.
 PUBLIC_HEADER = """
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -94,7 +94,7 @@ def fix_legal_header(include_dirs, exclude_dirs, extensions, header):
 # fix public headers
 fix_legal_header(
     include_dirs=["Source/**"],
-    exclude_dirs=["Source/Externals", "Source/Internal"],
+    exclude_dirs=["Source/Externals"],
     extensions=EXTENSIONS,
     header=PUBLIC_HEADER
 )

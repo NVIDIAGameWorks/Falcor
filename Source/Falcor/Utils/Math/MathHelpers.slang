@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -346,9 +346,58 @@ float3 sample_triangle(float2 u)
 
 /******************************************************************************
 
+    Motion vectors
+
+******************************************************************************/
+
+/** Calculate screen-space motion vector.
+    \param[in] pixelCrd Sample in current frame expressed in pixel coordinates with origin in the top-left corner.
+    \param[in] prevPosH Sample in previous frame expressed in homogeneous clip space coordinates. Note that the definition differs between D3D12 and Vulkan.
+    \param[in] renderTargetDim Render target dimension in pixels.
+    \return Motion vector pointing from current to previous position expressed in sceen space [0,1] with origin in the top-left corner.
+*/
+float2 calcMotionVector(float2 pixelCrd, float4 prevPosH, float2 renderTargetDim)
+{
+    float2 prevCrd = prevPosH.xy / prevPosH.w;
+#ifdef FALCOR_VK
+    prevCrd *= float2(0.5, 0.5);
+#else
+    prevCrd *= float2(0.5, -0.5);
+#endif
+    prevCrd += 0.5f;
+    float2 normalizedCrd = pixelCrd / renderTargetDim;
+    return prevCrd - normalizedCrd;
+}
+
+/******************************************************************************
+
     Miscellaneous functions
 
 ******************************************************************************/
+
+/** Inverts a 2x2 matrix.
+*/
+float2x2 inverse(float2x2 M)
+{
+    float2x2 inv;
+    float invdet = 1.0f / determinant(M);
+    inv[0][0] = M[1][1] * invdet;
+    inv[1][1] = M[0][0] * invdet;
+    inv[0][1] = -M[1][0] * invdet;
+    inv[1][0] = -M[0][1] * invdet;
+    return inv;
+}
+
+/** Inverts a 2x3 matrix.
+*/
+float2x3 inverse(float2x3 M)
+{
+    float2x2 N = float2x2(M._m00, M._m01, M._m10, M._m11);
+    float2x2 Ni = inverse(N);
+    float2 t = -mul(Ni, float2(M._m02, M._m12));
+    float2x3 Mi = float2x3(Ni._m00, Ni._m01, t.x, Ni._m10, Ni._m11, t.y);
+    return Mi;
+}
 
 /** Inverts a 3x3 matrix.
 */
@@ -370,6 +419,8 @@ float3x3 inverse(float3x3 M)
 
 /** Generate a vector that is orthogonal to the input vector.
     This can be used to invent a tangent frame for meshes that don't have real tangents/bitangents.
+    \param[in] u Unit vector.
+    \return v Unit vector that is orthogonal to u.
 */
 float3 perp_stark(float3 u)
 {
@@ -381,221 +432,6 @@ float3 perp_stark(float3 u)
     uint xm = uyx & uzx;
     uint ym = (1 ^ xm) & uzy;
     uint zm = 1 ^ (xm | ym);  // 1 ^ (xm & ym)
-    float3 v = cross(u, float3(xm, ym, zm));
+    float3 v = normalize(cross(u, float3(xm, ym, zm)));
     return v;
-}
-
-/** Computes the cosine of the half angle of the minimum bounding cone that encloses an AABB, as seen from a particular viewpoint.
-    We use an optimized algorithm that exploits the symmetry around the plane perpendicular to the central direction.
-
-    \param[in] origin Viewpoint origin.
-    \param[in] aabbMin minimum corner of the AABB.
-    \param[in] aabbMax maximum corner of the AABB.
-    \param[out] coneDir normalized vector defining the cone's axis.
-    \param[out] sinTheta Sine of the angle from the central direction to the cone edge. If the AABB can't be bounded we return 0.
-    \param[out] cosTheta Cosine of the angle from the central direction to the cone edge. If the AABB can't be bounded we return -1 (max cone).
-*/
-void boundBoxSubtendedConeAngleCenter(const float3 origin, const float3 aabbMin, const float3 aabbMax,
-                                      out float3 coneDir, out float sinTheta, out float cosTheta)
-{
-    const float3 center = (aabbMax + aabbMin) * 0.5f;
-    const float3 extent = (aabbMax - aabbMin) * 0.5f;
-    const float3 dir = center - origin;         // dir = Central cone direction (unnormalized)
-    const float extSqr = dot(extent, extent);   // extSqr = squared maximum extent
-    const float distSqr = dot(dir, dir);        // distSqr = squared distance to AABB center
-
-    coneDir = normalize(dir);
-
-    // AABB has eight corners, located at p = center +- e[i] for i=1..4.
-    // We use the absolute value of the dot product below to avoid having to test all eight.
-    float3 e[4];
-    e[0] = float3(extent.x, extent.y, extent.z);
-    e[1] = float3(extent.x, extent.y, -extent.z);
-    e[2] = float3(extent.x, -extent.y, extent.z);
-    e[3] = float3(extent.x, -extent.y, -extent.z);
-
-    cosTheta = 1.f;
-    sinTheta = 0.f;
-
-    // Workaround slang/fxc bug (https://github.com/NVIDIAGameWorks/Falcor/issues/164). This can go away when we always use dxc.
-#if 0
-    [unroll]
-    for (uint i = 0; i < 4; i++)
-#else
-    $for(i in Range(0,4))
-#endif
-    {
-        // Compute distance x from origin to corner projected onto central axis.
-        // Note that x is scaled by |dir| since we use unnormalized vectors.
-        float d = abs(dot(dir, e[i]));
-        float x = distSqr - d;
-
-        // Check if distance is negative, in which case the AABB can't be bounded by a cone and we return a cone that covers the whole sphere (theta = pi).
-        if (x < 1e-5)
-        {
-            cosTheta = -1.f;
-            sinTheta = 0.f;
-            return;                         // TODO: Look at numerical precision.
-        }
-
-        // Compute distance y from the corner to the projection on the central axis (also scaled by |dir|).
-        float y = sqrt(max(0, distSqr * extSqr - d * d));   // TODO: Look at numerical precision. Clamp for now just to be extra safe.
-
-        // Compute hypotenuse of the triangle.
-        float z = sqrt(x * x + y * y);
-
-        // The cosine of the cone angle cos(theta) = x / z. Track the minimum cosTheta, since we want
-        // cos(theta) for the maximum theta.
-        cosTheta = min(cosTheta, x / z);
-        // And along similar lines for sin(theta).
-        sinTheta = max(sinTheta, y / z);
-    }
-}
-
-/** Computes the solid angle subtended by an AABB by first computing the
-    average vector to all of its vertices and then finding the maximum
-    angle between that and each of the vectors to its vertices.
-
-    \param[in] origin point from which the solid angle is being comupted.
-    \param[in] aabbMin minimum corner of the AABB.
-    \param[in] aabbMax maximum corner of the AABB.
-    \param[out] coneDir central cone direction (normalized) or null vector if origin is inside the AABB.
-    \param[out] sinTheta sine of the angle.
-    \param[out] cosTheta cosine of the angle.
-*/
-void boundBoxSubtendedConeAngleAverage(float3 origin, float3 aabbMin, float3 aabbMax,
-                                       out float3 coneDir, out float sinTheta, out float cosTheta)
-{
-    if (all(origin >= aabbMin && origin <= aabbMax))
-    {
-        // |origin| is inside the AABB.
-        coneDir = float3(0.f, 0.f, 0.f);
-        sinTheta = 0.f;
-        cosTheta = -1.f;
-        return;
-    }
-
-    // Compute the average vector to each of the bounding box corners.
-    float3 dirSum = float3(0.f, 0.f, 0.f);
-    // Workaround slang/fxc bug (https://github.com/NVIDIAGameWorks/Falcor/issues/164). This can go away when we always use dxc.
-#if 0
-    [unroll]
-    for (int i = 0; i < 8; ++i)
-#else
-    $for(i in Range(0,8))
-#endif
-    {
-        const float3 corner = float3((i & 1) ? aabbMin.x : aabbMax.x,
-                                     (i & 2) ? aabbMin.y : aabbMax.y,
-                                     (i & 4) ? aabbMin.z : aabbMax.z);
-        dirSum += normalize(corner - origin);
-    }
-    coneDir = normalize(dirSum);
-
-    // Compute the cosine of the maximum angle between a corner and the
-    // average vector.
-    cosTheta = 1.f;
-#if 0
-    [unroll]
-    for (int i = 0; i < 8; ++i)
-#else
-    $for(i in Range(0,8))
-#endif
-    {
-        const float3 corner = float3((i & 1) ? aabbMin.x : aabbMax.x,
-                                     (i & 2) ? aabbMin.y : aabbMax.y,
-                                     (i & 4) ? aabbMin.z : aabbMax.z);
-        cosTheta = min(cosTheta, dot(normalize(corner - origin), coneDir));
-    }
-    sinTheta = sqrt(max(0.f, 1.f - cosTheta * cosTheta));
-}
-
-/** Computes the sine and cosine of the angle of the cone that encompasses
-    a sphere of given radius and center subtend as seen from a point at the origin.
-
-    \param[in] center Sphere's center.
-    \param[in] sqrRadius Square of sphere's radius.
-    \param[out] sinTheta Sine of the angle between a vector from the origin to |center| and a
-                vector from the origin that is tangent to the sphere.
-    \param[out] cosTheta Cosine of that angle.
-*/
-void boundSphereSubtendedConeAngle(float3 center, float sqrRadius, out float sinTheta, out float cosTheta)
-{
-    // Is the point inside the bounding sphere?
-    float centerDistance2 = dot(center, center);
-    if (centerDistance2 < sqrRadius)
-    {
-        // We're inside. Return the full cone.
-        sinTheta = 0.f;
-        cosTheta = -1.f;
-    }
-    else
-    {
-        // Compute the sine and then the cosine of the spread angle of a
-        // cone that bounds the sphere as seen from |center|.
-        float sin2Theta = sqrRadius / centerDistance2;
-        cosTheta = sqrt(1.f - sin2Theta);
-        sinTheta = sqrt(sin2Theta);
-    }
-}
-
-/** Computes the squared minimum distance between a point and a triangle.
-    This function is not sensitive to the handedness of the coordinate system.
-    \param[in] vertices Positions of the three vertices.
-    \param[in] p Coordinates of the point.
-    \return Squared minimum distance between p and the triangle.
-*/
-float computeSquaredMinDistanceToTriangle(const float3 vertices[3], const float3 p)
-{
-    // Project p onto the plane of the triangle (the result is independent of triangle winding).
-    const float3 n = normalize(cross(vertices[1] - vertices[0], vertices[2] - vertices[0]));
-    const float projDistance = dot(n, (p - vertices[0]));
-    const float3 pProj = p - projDistance * n;
-
-    // Edge tests to compute signed distance to each edge.
-    // Positive result means the projected point is "inside" the edge.
-    // With flipped winding, the edges are flipped but n is also flipped so it still works.
-    const float3 edges[3] = {
-        normalize(vertices[1] - vertices[0]),
-        normalize(vertices[2] - vertices[1]),
-        normalize(vertices[0] - vertices[2])
-    };
-    float sqrPlanarDistance = FLT_MAX;
-    uint insideMask = 0u;
-    [unroll]
-    for (uint i = 0u; i < 3u; ++i)
-    {
-        const float3 edgeN = cross(n, edges[i]);
-        const float edgeProjDistance = dot(edgeN, pProj - vertices[i]);
-        if (edgeProjDistance >= 0.0f)
-        {
-            insideMask |= 1u << i;
-        }
-        else
-        {
-            const float3 vec = pProj - vertices[i];
-            sqrPlanarDistance = min(edgeProjDistance * edgeProjDistance, sqrPlanarDistance);
-        }
-    }
-    if (insideMask == 0x7)
-    {
-        sqrPlanarDistance = 0.0f;
-    }
-
-    // If only one edge is considering the point as inside, then the projected point
-    // is closest to a triangle corner (the vertex opposite of that edge).
-    else if (insideMask == 1u << 0u)
-    {
-        sqrPlanarDistance = dot(pProj - vertices[2], pProj - vertices[2]);
-    }
-    else if (insideMask == 1u << 1u)
-    {
-        sqrPlanarDistance = dot(pProj - vertices[0], pProj - vertices[0]);
-    }
-    else if (insideMask == 1u << 2u)
-    {
-        sqrPlanarDistance = dot(pProj - vertices[1], pProj - vertices[1]);
-    }
-
-    return projDistance * projDistance + sqrPlanarDistance;
 }

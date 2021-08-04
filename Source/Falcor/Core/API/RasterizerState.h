@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -39,7 +39,7 @@ namespace Falcor
 
         /** Cull mode
         */
-        enum class CullMode
+        enum class CullMode : uint32_t
         {
             None,   ///< No culling
             Front,  ///< Cull front-facing primitives
@@ -64,6 +64,7 @@ namespace Falcor
             /** Set the cull mode
             */
             Desc& setCullMode(CullMode mode) { mCullMode = mode; return *this; }
+
             /** Set the fill mode
             */
             Desc& setFillMode(FillMode mode) { mFillMode = mode; return *this; }
@@ -93,7 +94,7 @@ namespace Falcor
 
             /** Enable/disable scissor test
             */
-            Desc& setScissorTest(bool enabled) {mScissorEnabled = enabled ; return *this;}
+            Desc& setScissorTest(bool enabled) { mScissorEnabled = enabled ; return *this; }
 
             /** Enable/disable conservative rasterization
             */

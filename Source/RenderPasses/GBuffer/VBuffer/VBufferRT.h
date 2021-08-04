@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -45,16 +45,29 @@ public:
     static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
 
     RenderPassReflection reflect(const CompileData& compileData) override;
-    void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
-    std::string getDesc(void) override { return kDesc; }
+    void renderUI(Gui::Widgets& widget) override;
+    Dictionary getScriptingDictionary() override;
+    void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
+    std::string getDesc() override { return kDesc; }
 
 private:
+    void executeRaytrace(RenderContext* pRenderContext, const RenderData& renderData);
+    void executeCompute(RenderContext* pRenderContext, const RenderData& renderData);
+
+    Program::DefineList getShaderDefines(const RenderData& renderData) const;
+    void setShaderData(const ShaderVar& var, const RenderData& renderData);
+    void recreatePrograms();
+
     VBufferRT(const Dictionary& dict);
+    void parseDictionary(const Dictionary& dict) override;
 
     // Internal state
+    bool mUseDOF = false;
     SampleGenerator::SharedPtr mpSampleGenerator;
-    uint32_t mFrameCount = 0;
+
+    // UI variables
+    bool mUseTraceRayInline = false;
 
     struct
     {
@@ -62,6 +75,9 @@ private:
         RtProgramVars::SharedPtr pVars;
     } mRaytrace;
 
+    ComputePass::SharedPtr mpComputePass;
+
     static const char* kDesc;
+
     friend void getPasses(Falcor::RenderPassLibrary& lib);
 };

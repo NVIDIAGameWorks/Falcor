@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -155,6 +155,8 @@ namespace Falcor
         */
         AABB transform(const glm::mat4& mat) const
         {
+            if (!valid()) return {};
+
             float3 xa = float3(mat[0] * minPoint.x);
             float3 xb = float3(mat[0] * maxPoint.x);
             float3 xMin = glm::min(xa, xb);

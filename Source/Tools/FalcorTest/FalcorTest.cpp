@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -60,6 +60,7 @@ void FalcorTest::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedP
 
 int main(int argc, char** argv)
 {
+
     args::ArgumentParser parser("Falcor unit tests.");
     parser.helpParams.programName = "FalcorTest";
     args::HelpFlag helpFlag(parser, "help", "Display this help menu.", {'h', "help"});

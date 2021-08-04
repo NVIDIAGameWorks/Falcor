@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -73,6 +73,12 @@ namespace Falcor
     Sampler::Desc& Sampler::Desc::setComparisonMode(ComparisonMode mode)
     {
         mComparisonMode = mode;
+        return *this;
+    }
+
+    Sampler::Desc& Sampler::Desc::setReductionMode(ReductionMode mode)
+    {
+        mReductionMode = mode;
         return *this;
     }
 

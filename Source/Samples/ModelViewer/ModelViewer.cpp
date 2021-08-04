@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -100,18 +100,13 @@ void ModelViewer::onGuiRender(Gui* pGui)
     w.separator();
     w.checkbox("Wireframe", mDrawWireframe);
 
-    if(mDrawWireframe == false)
+    if (mDrawWireframe == false)
     {
-        w.checkbox("Override Rasterizer State", mOverrideRS);
-
-        if(mOverrideRS)
-        {
-            Gui::DropdownList cullList;
-            cullList.push_back({ 0, "No Culling" });
-            cullList.push_back({ 1, "Backface Culling" });
-            cullList.push_back({ 2, "Frontface Culling" });
-            w.dropdown("Cull Mode", cullList, mCullMode);
-        }
+        Gui::DropdownList cullList;
+        cullList.push_back({ (uint32_t)RasterizerState::CullMode::None, "No Culling" });
+        cullList.push_back({ (uint32_t)RasterizerState::CullMode::Back, "Backface Culling" });
+        cullList.push_back({ (uint32_t)RasterizerState::CullMode::Front, "Frontface Culling" });
+        w.dropdown("Cull Mode", cullList, (uint32_t&)mCullMode);
     }
 
     Gui::DropdownList cameraDropdown;
@@ -135,14 +130,6 @@ void ModelViewer::onLoad(RenderContext* pRenderContext)
     wireframeDesc.setCullMode(RasterizerState::CullMode::None);
     mpWireframeRS = RasterizerState::create(wireframeDesc);
 
-    RasterizerState::Desc solidDesc;
-    solidDesc.setCullMode(RasterizerState::CullMode::None);
-    mpCullRastState[0] = RasterizerState::create(solidDesc);
-    solidDesc.setCullMode(RasterizerState::CullMode::Back);
-    mpCullRastState[1] = RasterizerState::create(solidDesc);
-    solidDesc.setCullMode(RasterizerState::CullMode::Front);
-    mpCullRastState[2] = RasterizerState::create(solidDesc);
-
     // Depth test
     DepthStencilState::Desc dsDesc;
     dsDesc.setDepthEnabled(false);
@@ -165,32 +152,25 @@ void ModelViewer::onFrameRender(RenderContext* pRenderContext, const Fbo::Shared
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
     mpGraphicsState->setFbo(pTargetFbo);
 
-    if(mpScene)
+    if (mpScene)
     {
         mpScene->update(pRenderContext, gpFramework->getGlobalClock().getTime());
 
         // Set render state
-        Scene::RenderFlags renderFlags = Scene::RenderFlags::None;
-        if(mDrawWireframe)
+        if (mDrawWireframe)
         {
-            renderFlags |= Scene::RenderFlags::UserRasterizerState;
-            mpGraphicsState->setRasterizerState(mpWireframeRS);
             mpGraphicsState->setDepthStencilState(mpNoDepthDS);
             mpProgramVars["PerFrameCB"]["gConstColor"] = true;
+
+            mpScene->rasterize(pRenderContext, mpGraphicsState.get(), mpProgramVars.get(), mpWireframeRS, mpWireframeRS);
         }
         else
         {
-            mpProgramVars["PerFrameCB"]["gConstColor"] = false;
             mpGraphicsState->setDepthStencilState(mpDepthTestDS);
-            if (mOverrideRS)
-            {
-                renderFlags |= Scene::RenderFlags::UserRasterizerState;
-                mpGraphicsState->setRasterizerState(mpCullRastState[mCullMode]);
-            }
-        }
+            mpProgramVars["PerFrameCB"]["gConstColor"] = false;
 
-        mpGraphicsState->setProgram(mpProgram);
-        mpScene->rasterize(pRenderContext, mpGraphicsState.get(), mpProgramVars.get(), renderFlags);
+            mpScene->rasterize(pRenderContext, mpGraphicsState.get(), mpProgramVars.get(), mCullMode);
+        }
     }
 
     TextRenderer::render(pRenderContext, mModelString, pTargetFbo, float2(10, 30));

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,10 +30,8 @@
 import Scene.ShadingData;
 import Utils.Math.MathHelpers;
 import Utils.Color.ColorHelpers;
-import Utils.Sampling.SampleGeneratorInterface;
 import Experimental.Scene.Material.Fresnel;
-import Experimental.Scene.Material.BxDF;
-__exported import Experimental.Scene.Material.BxDFTypes;
+__exported import Experimental.Scene.Material.IBxDF;
 
 // Enable explicitly computing sampling weights using eval(wo, wi) / evalPdf(wo, wi).
 // This is for testing only, as many terms of the equation cancel out allowing to save on computation.
@@ -173,7 +171,7 @@ struct HairChiang16 : IBxDF
         wi = sample_sphere(sampleNext2D(sg));
         pdf = M_1_4PI;
         weight = eval(wo, wi) / pdf;
-        lobe = wi.z > 0 ? (uint)LobeType::SpecularReflection : (uint)LobeType::SpecularTransmission;
+        lobe = wi.z > 0 ? (uint)LobeType::DiffuseReflection : (uint)LobeType::DiffuseTransmission;
         return true;
 #endif
 
@@ -239,7 +237,10 @@ struct HairChiang16 : IBxDF
 
         float phiI = phiO + dphi;
         wi = float3(sinThetaI, cosThetaI * cos(phiI), cosThetaI * sin(phiI));
-        lobe = wi.z > 0 ? (uint)LobeType::SpecularReflection : (uint)LobeType::SpecularTransmission;
+
+        // TODO: Determine whether it should be a diffuse lobe or a specular lobe according to the roughness.
+        // Now we assume they are all diffuse lobes (for animal fur).
+        lobe = wi.z > 0 ? (uint)LobeType::DiffuseReflection : (uint)LobeType::DiffuseTransmission;
 
         // Compute pdf.
         pdf = 0;

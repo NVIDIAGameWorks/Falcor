@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,10 +30,10 @@
 import Scene.Scene;
 import Scene.ShadingData;
 import Utils.Math.MathHelpers;
+import Utils.Geometry.GeometryHelpers;
 import Utils.Sampling.SampleGeneratorInterface;
 import Experimental.Scene.Lights.LightBVH;
 import Experimental.Scene.Lights.LightBVHSamplerSharedDefinitions;
-import Experimental.Scene.Lights.LightCollection;
 import Experimental.Scene.Lights.EmissiveLightSamplerHelpers;
 import Experimental.Scene.Lights.EmissiveLightSamplerInterface;
 
@@ -68,12 +68,12 @@ struct LightBVHSampler : IEmissiveLightSampler
     /** Draw a single light sample.
         \param[in] posW Shading point in world space.
         \param[in] normalW Normal at the shading point in world space.
-        \param[in] onSurface True if only upper hemisphere should be considered.
+        \param[in] upperHemisphere True if only upper hemisphere should be considered.
         \param[in,out] sg Sample generator.
         \param[out] ls Light sample. Only valid if true is returned.
         \return True if a sample was generated, false otherwise.
     */
-    bool sampleLight<S : ISampleGenerator>(const float3 posW, const float3 normalW, const bool onSurface, inout S sg, out TriangleLightSample ls)
+    bool sampleLight<S : ISampleGenerator>(const float3 posW, const float3 normalW, const bool upperHemisphere, inout S sg, out TriangleLightSample ls)
     {
         if (gScene.lightCollection.isEmpty()) return false;
 
@@ -81,7 +81,7 @@ struct LightBVHSampler : IEmissiveLightSampler
         uint triangleIndex;
         float trianglePdf;
         float uLight = sampleNext1D(sg);
-        if (!sampleLightViaBVH(posW, normalW, onSurface, uLight, trianglePdf, triangleIndex)) return false;
+        if (!sampleLightViaBVH(posW, normalW, upperHemisphere, uLight, trianglePdf, triangleIndex)) return false;
 
         // Sample a point on the triangle uniformly.
         float2 u = sampleNext2D(sg);
@@ -95,11 +95,11 @@ struct LightBVHSampler : IEmissiveLightSampler
     /** Evaluate the PDF associated with selecting an emissive triangle.
         \param[in] posW Shading point in world space.
         \param[in] normalW Normal at the shading point in world space.
-        \param[in] onSurface True if only upper hemisphere should be considered.
+        \param[in] upperHemisphere True if only upper hemisphere should be considered.
         \param[in] triangleIndex Index of selected triangle.
         \return Probability of drawing the input triangle
     */
-    float evalTriangleSelectionPdf(const float3 posW, const float3 normalW, const bool onSurface, const uint triangleIndex)
+    float evalTriangleSelectionPdf(const float3 posW, const float3 normalW, const bool upperHemisphere, const uint triangleIndex)
     {
         if (triangleIndex == LightCollection::kInvalidIndex) return 0.f;
 
@@ -114,10 +114,10 @@ struct LightBVHSampler : IEmissiveLightSampler
         uint64_t bitmask = ((uint64_t)tmp.y << 32) | tmp.x;
 
         uint leafNodeIndex;
-        traversalPdf = evalBVHTraversalPdf(posW, normalW, onSurface, bitmask, leafNodeIndex);
+        traversalPdf = evalBVHTraversalPdf(posW, normalW, upperHemisphere, bitmask, leafNodeIndex);
         if (traversalPdf == 0.0f) return 0.0f;
 
-        triangleSelectionPdf = evalNodeSamplingPdf(posW, normalW, onSurface, leafNodeIndex, triangleIndex);
+        triangleSelectionPdf = evalNodeSamplingPdf(posW, normalW, upperHemisphere, leafNodeIndex, triangleIndex);
         if (triangleSelectionPdf == 0.0f) return 0.0f;
 
         return traversalPdf * triangleSelectionPdf;
@@ -126,15 +126,15 @@ struct LightBVHSampler : IEmissiveLightSampler
     /** Evaluate the PDF at a shading point given a hit point on an emissive triangle.
         \param[in] posW Shading point in world space.
         \param[in] normalW Normal at the shading point in world space.
-        \param[in] onSurface True if only upper hemisphere should be considered.
+        \param[in] upperHemisphere True if only upper hemisphere should be considered.
         \param[in] hit Triangle hit data.
         \return Probability density with respect to solid angle at the shading point.
     */
-    float evalPdf(const float3 posW, const float3 normalW, const bool onSurface, const TriangleHit hit)
+    float evalPdf(const float3 posW, const float3 normalW, const bool upperHemisphere, const TriangleLightHit hit)
     {
         if (hit.triangleIndex == LightCollection::kInvalidIndex) return 0.f;
 
-        float triangleSelectionPdf = evalTriangleSelectionPdf(posW, normalW, onSurface, hit.triangleIndex);
+        float triangleSelectionPdf = evalTriangleSelectionPdf(posW, normalW, upperHemisphere, hit.triangleIndex);
 
         // Compute triangle sampling probability with respect to solid angle from the shading point.
         float trianglePdf = evalTrianglePdf(posW, hit);
@@ -209,11 +209,11 @@ struct LightBVHSampler : IEmissiveLightSampler
     /** Computes node importance from a given shading point.
         \param[in] posW Shading point in world space.
         \param[in] normalW Normal at the shading point in world space.
-        \param[in] onSurface True if only upper hemisphere should be considered.
+        \param[in] upperHemisphere True if only upper hemisphere should be considered.
         \param[in] nodeIndex Node index in BVH.
         \return Relative importance of this node.
     */
-    float computeImportance(const float3 posW, const float3 normalW, const bool onSurface, const uint nodeIndex)
+    float computeImportance(const float3 posW, const float3 normalW, const bool upperHemisphere, const uint nodeIndex)
     {
         const SharedNodeAttributes nodeAttribs = _lightBVH.getNodeAttributes(nodeIndex);
 
@@ -225,10 +225,10 @@ struct LightBVHSampler : IEmissiveLightSampler
 
         float NdotL = 1.f;
         float cosThetaBoundingCone = 0.f;
-        if (kUseLightingCone || (kUseBoundingCone && onSurface))
+        if (kUseLightingCone || (kUseBoundingCone && upperHemisphere))
         {
             NdotL = boundCosineTerm(posW, normalW, nodeAttribs.origin, nodeAttribs.extent, cosThetaBoundingCone);
-            if (!(kUseBoundingCone && onSurface)) NdotL = 1.f; // Do not use NdotL bound in volumes or if disabled
+            if (!(kUseBoundingCone && upperHemisphere)) NdotL = 1.f; // Do not use NdotL bound when full sphere is considered.
         }
 
         float orientationWeight = 1.f;
@@ -272,13 +272,13 @@ struct LightBVHSampler : IEmissiveLightSampler
     /** Traverses the light BVH to select a leaf node (range of lights) to sample.
         \param[in] posW Shading point in world space.
         \param[in] normalW Normal at the shading point in world space.
-        \param[in] onSurface True if only upper hemisphere should be considered.
+        \param[in] upperHemisphere True if only upper hemisphere should be considered.
         \param[in,out] u Uniform random number. Upon return, u is still uniform and can be used for sampling among the triangles in the leaf node.
         \param[out] pdf Probabiliy of the sampled leaf node, only valid if true is returned.
         \param[out] nodeIndex The index of the sampled BVH leaf node, only valid if true is returned.
         \return True if a leaf node was sampled, false otherwise.
     */
-    bool traverseTree(const float3 posW, const float3 normalW, const bool onSurface, inout float u, out float pdf, out uint nodeIndex)
+    bool traverseTree(const float3 posW, const float3 normalW, const bool upperHemisphere, inout float u, out float pdf, out uint nodeIndex)
     {
         pdf = 1.0f;
         nodeIndex = 0;
@@ -289,8 +289,8 @@ struct LightBVHSampler : IEmissiveLightSampler
             uint leftNodeIndex = nodeIndex + 1;
             uint rightNodeIndex = _lightBVH.getInternalNode(nodeIndex).rightChildIdx;
 
-            float leftNodeImportance = computeImportance(posW, normalW, onSurface, leftNodeIndex);
-            float rightNodeImportance = computeImportance(posW, normalW, onSurface, rightNodeIndex);
+            float leftNodeImportance = computeImportance(posW, normalW, upperHemisphere, leftNodeIndex);
+            float rightNodeImportance = computeImportance(posW, normalW, upperHemisphere, rightNodeIndex);
 
             float totalImportance = leftNodeImportance + rightNodeImportance;
 
@@ -322,11 +322,11 @@ struct LightBVHSampler : IEmissiveLightSampler
     /** Compute the importance for the given triangle as seen from a given shading point.
         \param[in] posW Shading point in world space.
         \param[in] normalW Normal at the shading point in world space.
-        \param[in] onSurface True if only upper hemisphere should be considered.
+        \param[in] upperHemisphere True if only upper hemisphere should be considered.
         \param[in] triangleIndex The index of the triangle to compute the importance for.
         \return True if we found any triangle(s) to sample, false otherwise.
     */
-    float computeTriangleImportance(const float3 posW, const float3 normalW, const bool onSurface, const uint triangleIndex)
+    float computeTriangleImportance(const float3 posW, const float3 normalW, const bool upperHemisphere, const uint triangleIndex)
     {
         const EmissiveTriangle tri = gScene.lightCollection.getTriangle(triangleIndex);
 
@@ -337,7 +337,7 @@ struct LightBVHSampler : IEmissiveLightSampler
         // TODO: Use an approximation for this. The exact formulation is math heavy.
         float distSqr = max(1e-5f, computeSquaredMinDistanceToTriangle(tri.posW, posW));
 
-        if (onSurface)
+        if (upperHemisphere)
         {
             // Compute conservative bounds for dot(N,L) at the shading point.
             float NdotL = 0.0f;
@@ -362,14 +362,14 @@ struct LightBVHSampler : IEmissiveLightSampler
     /** Pick a triangle in a leaf node to sample.
         \param[in] posW Shading point in world space.
         \param[in] normalW Normal at the shading point in world space.
-        \param[in] onSurface True if only upper hemisphere should be considered.
+        \param[in] upperHemisphere True if only upper hemisphere should be considered.
         \param[in] nodeIndex The index of the BVH leaf node.
         \param[in] u Uniform random number.
         \param[out] pdf Probabiliy of the sampled triangle, only valid if true is returned.
         \param[out] triangleIndex Index of the sampled triangle, only valid if true is returned.
         \return True if a triangle was sampled, false otherwise.
     */
-    bool pickTriangle(const float3 posW, const float3 normalW, const bool onSurface, const uint nodeIndex, const float u, out float pdf, out uint triangleIndex)
+    bool pickTriangle(const float3 posW, const float3 normalW, const bool upperHemisphere, const uint nodeIndex, const float u, out float pdf, out uint triangleIndex)
     {
         const LeafNode node = _lightBVH.getLeafNode(nodeIndex);
 
@@ -388,7 +388,7 @@ struct LightBVHSampler : IEmissiveLightSampler
             for (uint i = 0; i < node.triangleCount; ++i)
             {
                 uint triIdx = _lightBVH.getNodeTriangleIndex(node, i);
-                pdfs[i] = computeTriangleImportance(posW, normalW, onSurface, triIdx);
+                pdfs[i] = computeTriangleImportance(posW, normalW, upperHemisphere, triIdx);
                 totalImportance += pdfs[i];
             }
 
@@ -415,22 +415,22 @@ struct LightBVHSampler : IEmissiveLightSampler
     /** Samples a light using the BVH.
         \param[in] posW Shading point in world space.
         \param[in] normalW Normal at the shading point in world space.
-        \param[in] onSurface True if only upper hemisphere should be considered.
+        \param[in] upperHemisphere True if only upper hemisphere should be considered.
         \param[in] u Uniform random number.
         \param[out] pdf Probabiliy of the sampled triangle, only valid if true is returned.
         \param[out] triangleIndex Index of the sampled triangle, only valid if true is returned.
         \return True if a triangle was sampled, false otherwise.
     */
-    bool sampleLightViaBVH(const float3 posW, const float3 normalW, const bool onSurface, float u, out float pdf, out uint triangleIndex)
+    bool sampleLightViaBVH(const float3 posW, const float3 normalW, const bool upperHemisphere, float u, out float pdf, out uint triangleIndex)
     {
         // Traverse BVH to select a leaf node with N triangles based on estimated probabilities during traversal.
         float leafPdf;
         uint leafNodeIndex;
-        if (!traverseTree(posW, normalW, onSurface, u, leafPdf, leafNodeIndex)) return false;
+        if (!traverseTree(posW, normalW, upperHemisphere, u, leafPdf, leafNodeIndex)) return false;
 
         // Within the selected leaf, pick one out of the N triangles to sample.
         float trianglePdf;
-        if (!pickTriangle(posW, normalW, onSurface, leafNodeIndex, u, trianglePdf, triangleIndex)) return false;
+        if (!pickTriangle(posW, normalW, upperHemisphere, leafNodeIndex, u, trianglePdf, triangleIndex)) return false;
 
         pdf = leafPdf * trianglePdf;
         return true;
@@ -439,11 +439,11 @@ struct LightBVHSampler : IEmissiveLightSampler
     /** Returns the PDF of selecting the specified leaf node by traversing the tree.
         \param[in] posW Shading point in world space.
         \param[in] normalW Normal at the shading point in world space.
-        \param[in] onSurface True if only upper hemisphere should be considered.
+        \param[in] upperHemisphere True if only upper hemisphere should be considered.
         \param[in] bitmask The bit pattern describing at each level which child was chosen in order to reach the specifide leaf node.
         \param[out] nodeIndex The node index at which the given leaf node is located.
     */
-    float evalBVHTraversalPdf(const float3 posW, const float3 normalW, const bool onSurface, uint64_t bitmask, out uint nodeIndex)
+    float evalBVHTraversalPdf(const float3 posW, const float3 normalW, const bool upperHemisphere, uint64_t bitmask, out uint nodeIndex)
     {
         float traversalPdf = 1.0f;
         nodeIndex = 0;
@@ -454,8 +454,8 @@ struct LightBVHSampler : IEmissiveLightSampler
             uint leftNodeIndex = nodeIndex + 1;
             uint rightNodeIndex = _lightBVH.getInternalNode(nodeIndex).rightChildIdx;
 
-            float leftNodeImportance = computeImportance(posW, normalW, onSurface, leftNodeIndex);
-            float rightNodeImportance = computeImportance(posW, normalW, onSurface, rightNodeIndex);
+            float leftNodeImportance = computeImportance(posW, normalW, upperHemisphere, leftNodeIndex);
+            float rightNodeImportance = computeImportance(posW, normalW, upperHemisphere, rightNodeIndex);
 
             float totalImportance = leftNodeImportance + rightNodeImportance;
             if (totalImportance == 0.f) return 0.0f;
@@ -485,12 +485,12 @@ struct LightBVHSampler : IEmissiveLightSampler
     /** Returns the PDF of selecting the specified triangle inside the specified leaf node as seen from a given shading point.
         \param[in] posW Shading point in world space.
         \param[in] normalW Normal at the shading point in world space.
-        \param[in] onSurface True if only upper hemisphere should be considered.
+        \param[in] upperHemisphere True if only upper hemisphere should be considered.
         \param[in] nodeIndex The index at which the given leaf node is located.
         \param[in] triangleIndex The global index of the triangle that was selected.
         \return Probability density for selecting the given triangle.
     */
-    float evalNodeSamplingPdf(const float3 posW, const float3 normalW, const bool onSurface, const uint nodeIndex, const uint triangleIndex)
+    float evalNodeSamplingPdf(const float3 posW, const float3 normalW, const bool upperHemisphere, const uint nodeIndex, const uint triangleIndex)
     {
         const LeafNode node = _lightBVH.getLeafNode(nodeIndex);
 
@@ -505,7 +505,7 @@ struct LightBVHSampler : IEmissiveLightSampler
             for (uint i = 0; i < node.triangleCount; ++i)
             {
                 uint localTriangleIndex = _lightBVH.getNodeTriangleIndex(node, i);
-                float importance = computeTriangleImportance(posW, normalW, onSurface, localTriangleIndex);
+                float importance = computeTriangleImportance(posW, normalW, upperHemisphere, localTriangleIndex);
                 if (triangleIndex == localTriangleIndex)
                 {
                     triangleImportance = importance;

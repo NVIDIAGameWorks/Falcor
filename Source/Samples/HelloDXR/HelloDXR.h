@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -50,7 +50,6 @@ private:
     bool mRayTrace = true;
     bool mUseDOF = false;
     RtProgramVars::SharedPtr mpRtVars;
-    //RtSceneRenderer::SharedPtr mpRtRenderer;
     Texture::SharedPtr mpRtOut;
 
     uint32_t mSampleIndex = 0xdeadbeef;

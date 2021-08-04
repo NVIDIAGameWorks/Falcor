@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Scene.h"
+#include "SceneCache.h"
 #include "Transform.h"
 #include "TriangleMesh.h"
 #include "Material/MaterialTextureLoader.h"
@@ -39,12 +40,7 @@ namespace Falcor
     public:
         using SharedPtr = std::shared_ptr<SceneBuilder>;
 
-        using MaterialList = std::vector<Material::SharedPtr>;
-        using VolumeList = std::vector<Volume::SharedPtr>;
-        using GridList = std::vector<Grid::SharedPtr>;
-        using CameraList = std::vector<Camera::SharedPtr>;
-        using LightList = std::vector<Light::SharedPtr>;
-        using AnimationList = std::vector<Animation::SharedPtr>;
+        static const uint32_t kInvalidNode = Animatable::kInvalidNode;
 
         /** Flags that control how the scene will be built. They can be combined together.
         */
@@ -59,8 +55,16 @@ namespace Falcor
             UseMetalRoughMaterials      = 0x20,   ///< Set materials to use Metal-Rough shading model. Otherwise default is Spec-Gloss for OBJ, Metal-Rough for everything else.
             NonIndexedVertices          = 0x40,   ///< Convert meshes to use non-indexed vertices. This requires more memory but may increase performance.
             Force32BitIndices           = 0x80,   ///< Force 32-bit indices for all meshes. By default, 16-bit indices are used for small meshes.
-            RTDontMergeStatic           = 0x100,  ///< For raytracing, don't merge all static meshes into single pre-transformed BLAS.
-            RTDontMergeDynamic          = 0x200,  ///< For raytracing, don't merge all dynamic meshes with identical transforms into single BLAS.
+            RTDontMergeStatic           = 0x100,  ///< For raytracing, don't merge all static non-instanced meshes into single pre-transformed BLAS.
+            RTDontMergeDynamic          = 0x200,  ///< For raytracing, don't merge dynamic non-instanced meshes with identical transforms into single BLAS.
+            RTDontMergeInstanced        = 0x400,  ///< For raytracing, don't merge instanced meshes with identical instances into single BLAS.
+            FlattenStaticMeshInstances  = 0x800,  ///< Flatten static mesh instances by duplicating mesh data and composing transformations. Animated instances are not affected. Can lead to a large increase in memory use.
+            DontOptimizeGraph           = 0x1000, ///< Don't optimize the scene graph to remove unnecessary nodes.
+            DontOptimizeMaterials       = 0x2000, ///< Don't optimize materials by removing constant textures. The optimizations are lossless so should generally be enabled.
+            DontUseDisplacement         = 0x4000, ///< Don't use displacement mapping.
+
+            UseCache                    = 0x10000000, ///< Enable scene caching. This caches the runtime scene representation on disk to reduce load time.
+            RebuildCache                = 0x20000000, ///< Rebuild scene cache.
 
             Default = None
         };
@@ -105,25 +109,43 @@ namespace Falcor
 
             bool isFrontFaceCW = false;                 ///< Indicate whether front-facing side has clockwise winding in object space.
             bool useOriginalTangentSpace = false;       ///< Indicate whether to use the original tangent space that was loaded with the mesh. By default, we will ignore it and use MikkTSpace to generate the tangent space.
+            uint32_t skeletonNodeId = kInvalidNode;     ///< For skinned meshes, the node ID of the skeleton's world transform. If set to -1, the skeleton is based on the mesh's own world position (Assimp behavior pre-multiplies instance transform).
+
+            template<typename T>
+            uint32_t getAttributeIndex(const Attribute<T>& attribute, uint32_t face, uint32_t vert) const
+            {
+                switch (attribute.frequency)
+                {
+                case AttributeFrequency::Constant:
+                    return 0;
+                case AttributeFrequency::Uniform:
+                    return face;
+                case AttributeFrequency::Vertex:
+                    return pIndices[face * 3 + vert];
+                case AttributeFrequency::FaceVarying:
+                    return face * 3 + vert;
+                default:
+                    should_not_get_here();
+                }
+                return Scene::kInvalidIndex;
+            }
+
+            template<typename T>
+            T get(const Attribute<T>& attribute, uint32_t index) const
+            {
+                if (attribute.pData)
+                {
+                    return attribute.pData[index];
+                }
+                return T{};
+            }
 
             template<typename T>
             T get(const Attribute<T>& attribute, uint32_t face, uint32_t vert) const
             {
                 if (attribute.pData)
                 {
-                    switch (attribute.frequency)
-                    {
-                    case AttributeFrequency::Constant:
-                        return attribute.pData[0];
-                    case AttributeFrequency::Uniform:
-                        return attribute.pData[face];
-                    case AttributeFrequency::Vertex:
-                        return attribute.pData[pIndices[face * 3 + vert]];
-                    case AttributeFrequency::FaceVarying:
-                        return attribute.pData[face * 3 + vert];
-                    default:
-                        should_not_get_here();
-                    }
+                    return get(attribute, getAttributeIndex(attribute, face, vert));
                 }
                 return T{};
             }
@@ -162,6 +184,16 @@ namespace Falcor
                 float4 boneWeights;
             };
 
+            struct VertexAttributeIndices
+            {
+                uint32_t positionIdx;
+                uint32_t normalIdx;
+                uint32_t tangentIdx;
+                uint32_t texCrdIdx;
+                uint32_t boneIDsIdx;
+                uint32_t boneWeightsIdx;
+            };
+
             Vertex getVertex(uint32_t face, uint32_t vert) const
             {
                 Vertex v = {};
@@ -171,6 +203,30 @@ namespace Falcor
                 v.texCrd = get(texCrds, face, vert);
                 v.boneIDs = get(boneIDs, face, vert);
                 v.boneWeights = get(boneWeights, face, vert);
+                return v;
+            }
+
+            Vertex getVertex(const VertexAttributeIndices& attributeIndices)
+            {
+                Vertex v = {};
+                v.position = get(positions, attributeIndices.positionIdx);
+                v.normal = get(normals, attributeIndices.normalIdx);
+                v.tangent = get(tangents, attributeIndices.tangentIdx);
+                v.texCrd = get(texCrds, attributeIndices.texCrdIdx);
+                v.boneIDs = get(boneIDs, attributeIndices.boneIDsIdx);
+                v.boneWeights = get(boneWeights, attributeIndices.boneWeightsIdx);
+                return v;
+            }
+
+            VertexAttributeIndices getAttributeIndices(uint32_t face, uint32_t vert)
+            {
+                VertexAttributeIndices v = {};
+                v.positionIdx = getAttributeIndex(positions, face, vert);
+                v.normalIdx = getAttributeIndex(normals, face, vert);
+                v.tangentIdx = getAttributeIndex(tangents, face, vert);
+                v.texCrdIdx = getAttributeIndex(texCrds, face, vert);
+                v.boneIDsIdx = getAttributeIndex(boneIDs, face, vert);
+                v.boneWeightsIdx = getAttributeIndex(boneWeights, face, vert);
                 return v;
             }
 
@@ -189,6 +245,7 @@ namespace Falcor
             std::string name;
             Vao::Topology topology = Vao::Topology::Undefined;
             Material::SharedPtr pMaterial;
+            uint32_t skeletonNodeId = kInvalidNode; ///< Forwarded from Mesh struct.
 
             uint64_t indexCount = 0;            ///< Number of indices, or zero if non-indexed.
             bool use16BitIndices = false;       ///< True if the indices are in 16-bit format.
@@ -197,6 +254,8 @@ namespace Falcor
             std::vector<StaticVertexData> staticData;
             std::vector<DynamicVertexData> dynamicData;
         };
+
+        using MeshAttributeIndices = std::vector<Mesh::VertexAttributeIndices>;
 
         /** Curve description.
         */
@@ -217,8 +276,6 @@ namespace Falcor
 
             Attribute<float3> positions;                ///< Array of vertex positions. This field is required.
             Attribute<float> radius;                    ///< Array of sphere radius. This field is required.
-            Attribute<float3> tangents;                 ///< Array of vertex tangents. This field is required.
-            Attribute<float3> normals;                  ///< Array of vertex normals. This field is optional.
             Attribute<float2> texCrds;                  ///< Array of vertex texture coordinates. This field is optional. If set to nullptr, all texCrds will be set to (0,0).
         };
 
@@ -236,17 +293,16 @@ namespace Falcor
             std::vector<StaticCurveVertexData> staticData;
         };
 
-        static const uint32_t kInvalidNode = Scene::kInvalidNode;
-
         struct Node
         {
             std::string name;
-            glm::mat4 transform;
-            glm::mat4 localToBindPose;   // For bones
+            float4x4 transform;
+            float4x4 meshBind;          // For skinned meshes. World transform at bind time.
+            float4x4 localToBindPose;   // For bones. Inverse bind transform.
             uint32_t parent = kInvalidNode;
         };
 
-        using InstanceMatrices = std::vector<glm::mat4>;
+        using InstanceMatrices = std::vector<float4x4>;
 
         /** Create a new object
         */
@@ -278,15 +334,27 @@ namespace Falcor
 
         /** Set the render settings.
         */
-        void setRenderSettings(const Scene::RenderSettings& renderSettings) { mRenderSettings = renderSettings; }
+        void setRenderSettings(const Scene::RenderSettings& renderSettings) { mSceneData.renderSettings = renderSettings; }
 
         /** Get the render settings.
         */
-        Scene::RenderSettings& getRenderSettings() { return mRenderSettings; }
+        Scene::RenderSettings& getRenderSettings() { return mSceneData.renderSettings; }
 
         /** Get the render settings.
         */
-        const Scene::RenderSettings& getRenderSettings() const { return mRenderSettings; }
+        const Scene::RenderSettings& getRenderSettings() const { return mSceneData.renderSettings; }
+
+        /** Set the metadata.
+        */
+        void setMetadata(const Scene::Metadata& metadata) { mSceneData.metadata = metadata; }
+
+        /** Get the metadata.
+        */
+        Scene::Metadata& getMetadata() { return mSceneData.metadata; }
+
+        /** Get the metadata.
+        */
+        const Scene::Metadata& getMetadata() const { return mSceneData.metadata; }
 
         // Meshes
 
@@ -307,9 +375,16 @@ namespace Falcor
         /** Pre-process a mesh into the data format that is used in the global scene buffers.
             Throws an exception if something went wrong.
             \param mesh The mesh to pre-process.
+            \param pAttributeIndices Optional. If specified, the attribute indices used to create the final mesh vertices will be saved here.
             \return The pre-processed mesh.
         */
-        ProcessedMesh processMesh(const Mesh& mesh) const;
+        ProcessedMesh processMesh(const Mesh& mesh, MeshAttributeIndices* pAttributeIndices = nullptr) const;
+
+        /** Generate tangents for a mesh.
+            \param mesh The mesh to generate tangents for. If successful, the tangent attribute on the mesh will be set to the output vector.
+            \param tangents Output for generated tangents.
+        */
+        void generateTangents(Mesh& mesh, std::vector<float4>& tangents) const;
 
         /** Add a pre-processed mesh.
             \param mesh The pre-processed mesh.
@@ -317,15 +392,18 @@ namespace Falcor
         */
         uint32_t addProcessedMesh(const ProcessedMesh& mesh);
 
-        // Procedural primitives, including custom primitives, curves, etc.
+        /** Set mesh vertex cache for animation.
+            \param[in] cachedCurves The mesh vertex cache data.
+        */
+        void setCachedMeshes(const std::vector<CachedMesh>&& cachedMeshes) { mSceneData.cachedMeshes = cachedMeshes; }
 
         // Custom primitives
 
         /** Add an AABB defining a custom primitive.
-            \param[in] typeID The intersection shader ID that will be run on this primitive.
+            \param[in] userID User-defined ID that can be used to identify different sub-types of custom primitives.
             \param[in] aabb An AABB describing the bounds of the primitive.
         */
-        void addCustomPrimitive(uint32_t typeID, const AABB& aabb);
+        void addCustomPrimitive(uint32_t userID, const AABB& aabb);
 
         // Curves
 
@@ -349,11 +427,16 @@ namespace Falcor
         */
         uint32_t addProcessedCurve(const ProcessedCurve& curve);
 
+        /** Set curve vertex cache for animation.
+            \param[in] cachedCurves The dynamic curve vertex cache data.
+        */
+        void setCachedCurves(const std::vector<CachedCurve>& cachedCurves) { mSceneData.cachedCurves = cachedCurves; }
+
         // Materials
 
         /** Get the list of materials.
         */
-        const MaterialList& getMaterials() const { return mMaterials; }
+        const std::vector<Material::SharedPtr>& getMaterials() const { return mSceneData.materials; }
 
         /** Get a material by name.
             Note: This returns the first material found with a matching name.
@@ -375,11 +458,15 @@ namespace Falcor
         */
         void loadMaterialTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const std::string& filename);
 
+        /** Wait until all material textures are loaded.
+        */
+        void waitForMaterialTextureLoading();
+
         // Volumes
 
         /** Get the list of volumes.
         */
-        const VolumeList& getVolumes() const { return mVolumes; }
+        const std::vector<Volume::SharedPtr>& getVolumes() const { return mSceneData.volumes; }
 
         /** Get a volume by name.
             Note: This returns the first volume found with a matching name.
@@ -390,15 +477,23 @@ namespace Falcor
 
         /** Add a volume.
             \param pMaterial The volume.
+            \param nodeID The node to attach the volume to (optional).
             \return The ID of the volume in the scene.
         */
-        uint32_t addVolume(const Volume::SharedPtr& pVolume);
+        uint32_t addVolume(const Volume::SharedPtr& pVolume, uint32_t nodeID = kInvalidNode);
 
         // Lights
 
         /** Get the list of lights.
         */
-        const LightList& getLights() const { return mLights; }
+        const std::vector<Light::SharedPtr>& getLights() const { return mSceneData.lights; }
+
+        /** Get a light by name.
+            Note: This returns the first light found with a matching name.
+            \param name Light name.
+            \return Returns the first light with a matching name or nullptr if none was found.
+        */
+        Light::SharedPtr getLight(const std::string& name) const;
 
         /** Add a light source
             \param pLight The light object.
@@ -410,18 +505,18 @@ namespace Falcor
 
         /** Get the environment map.
         */
-        const EnvMap::SharedPtr& getEnvMap() const { return mpEnvMap; }
+        const EnvMap::SharedPtr& getEnvMap() const { return mSceneData.pEnvMap; }
 
         /** Set the environment map.
             \param[in] pEnvMap Environment map. Can be nullptr.
         */
-        void setEnvMap(EnvMap::SharedPtr pEnvMap) { mpEnvMap = pEnvMap; }
+        void setEnvMap(EnvMap::SharedPtr pEnvMap) { mSceneData.pEnvMap = pEnvMap; }
 
         // Cameras
 
         /** Get the list of cameras.
         */
-        const CameraList& getCameras() const { return mCameras; }
+        const std::vector<Camera::SharedPtr>& getCameras() const { return mSceneData.cameras; }
 
         /** Add a camera.
             \param pCamera Camera to be added.
@@ -431,7 +526,7 @@ namespace Falcor
 
         /** Get the selected camera.
         */
-        const Camera::SharedPtr& getSelectedCamera() const { return mpSelectedCamera; }
+        Camera::SharedPtr getSelectedCamera() const;
 
         /** Set the selected camera.
             \param pCamera Camera to use as selected camera (needs to be added first).
@@ -440,17 +535,17 @@ namespace Falcor
 
         /** Get the camera speed.
         */
-        float getCameraSpeed() const { return mCameraSpeed; }
+        float getCameraSpeed() const { return mSceneData.cameraSpeed; }
 
         /** Set the camera speed.
         */
-        void setCameraSpeed(float speed) { mCameraSpeed = speed; }
+        void setCameraSpeed(float speed) { mSceneData.cameraSpeed = speed; }
 
         // Animations
 
         /** Get the list of animations.
         */
-        const AnimationList& getAnimations() const { return mAnimations; }
+        const std::vector<Animation::SharedPtr>& getAnimations() const { return mSceneData.animations; }
 
         /** Add an animation
             \param pAnimation The animation
@@ -471,6 +566,11 @@ namespace Falcor
             \return The node ID.
         */
         uint32_t addNode(const Node& node);
+
+        /** Get how many nodes have been added to the scene graph.
+            \return The node count.
+        */
+        uint32_t getNodeCount() const { return uint32_t(mSceneGraph.size()); }
 
         /** Add a mesh instance to a node
         */
@@ -496,29 +596,37 @@ namespace Falcor
         {
             InternalNode() = default;
             InternalNode(const Node& n) : Node(n) {}
-            std::vector<uint32_t> children;     ///< Node IDs of all child nodes.
-            std::vector<uint32_t> meshes;       ///< Mesh IDs of all meshes this node transforms.
-            std::vector<uint32_t> curves;       ///< Curve IDs of all curves this node transforms.
+            std::vector<uint32_t> children;         ///< Node IDs of all child nodes.
+            std::vector<uint32_t> meshes;           ///< Mesh IDs of all meshes this node transforms.
+            std::vector<uint32_t> curves;           ///< Curve IDs of all curves this node transforms.
+            std::vector<Animatable*> animatable;    ///< Pointers to all animatable objects attached to this node.
+            bool dontOptimize = false;              ///< Whether node should be ignored in optimization passes
+
+            /** Returns true if node has any attached scene objects.
+            */
+            bool hasObjects() const { return !meshes.empty() || !curves.empty() || !animatable.empty(); }
         };
 
         struct MeshSpec
         {
             std::string name;
             Vao::Topology topology = Vao::Topology::Undefined;
-            uint32_t materialId = 0;            ///< Global material ID.
-            uint32_t staticVertexOffset = 0;    ///< Offset into the shared 'staticData' array. This is calculated in createGlobalBuffers().
-            uint32_t staticVertexCount = 0;     ///< Number of static vertices.
-            uint32_t dynamicVertexOffset = 0;   ///< Offset into the shared 'dynamicData' array. This is calculated in createGlobalBuffers().
-            uint32_t dynamicVertexCount = 0;    ///< Number of dynamic vertices.
-            uint32_t indexOffset = 0;           ///< Offset into the shared 'indexData' array. This is calculated in createGlobalBuffers().
-            uint32_t indexCount = 0;            ///< Number of indices, or zero if non-indexed.
-            uint32_t vertexCount = 0;           ///< Number of vertices.
-            bool use16BitIndices = false;       ///< True if the indices are in 16-bit format.
-            bool hasDynamicData = false;        ///< True if mesh has dynamic vertices.
-            bool isStatic = false;              ///< True if mesh is non-instanced and static (not dynamic or animated).
-            bool isFrontFaceCW = false;         ///< Indicate whether front-facing side has clockwise winding in object space.
-            AABB boundingBox;                   ///< Mesh bounding-box in object space.
-            std::vector<uint32_t> instances;    ///< Node IDs of all instances of this mesh.
+            uint32_t materialId = 0;                ///< Global material ID.
+            uint32_t staticVertexOffset = 0;        ///< Offset into the shared 'staticData' array. This is calculated in createGlobalBuffers().
+            uint32_t staticVertexCount = 0;         ///< Number of static vertices.
+            uint32_t dynamicVertexOffset = 0;       ///< Offset into the shared 'dynamicData' array. This is calculated in createGlobalBuffers().
+            uint32_t dynamicVertexCount = 0;        ///< Number of dynamic vertices.
+            uint32_t indexOffset = 0;               ///< Offset into the shared 'indexData' array. This is calculated in createGlobalBuffers().
+            uint32_t indexCount = 0;                ///< Number of indices, or zero if non-indexed.
+            uint32_t vertexCount = 0;               ///< Number of vertices.
+            uint32_t skeletonNodeID = kInvalidNode; ///< Node ID of skeleton world transform. Forwarded from Mesh struct.
+            bool use16BitIndices = false;           ///< True if the indices are in 16-bit format.
+            bool hasDynamicData = false;            ///< True if mesh has dynamic vertices.
+            bool isStatic = false;                  ///< True if mesh is non-instanced and static (not dynamic or animated).
+            bool isFrontFaceCW = false;             ///< Indicate whether front-facing side has clockwise winding in object space.
+            bool isDisplaced = false;               ///< True if mesh has displacement map.
+            AABB boundingBox;                       ///< Mesh bounding-box in object space.
+            std::vector<uint32_t> instances;        ///< Node IDs of all instances of this mesh.
 
             // Pre-processed vertex data.
             std::vector<uint32_t> indexData;    ///< Vertex indices in either 32-bit or 16-bit format packed tightly, or empty if non-indexed.
@@ -535,6 +643,12 @@ namespace Falcor
             {
                 assert(i < indexCount);
                 return use16BitIndices ? reinterpret_cast<const uint16_t*>(indexData.data())[i] : indexData[i];
+            }
+
+            bool isDynamic() const
+            {
+                assert(hasDynamicData == dynamicVertexCount > 0);
+                return hasDynamicData;
             }
         };
 
@@ -557,57 +671,34 @@ namespace Falcor
             std::vector<StaticCurveVertexData> staticData;
         };
 
-        // Geometry data
-        struct BuffersData
-        {
-            std::vector<uint32_t> indexData;                ///< Vertex indices for all meshes in either 32-bit or 16-bit format packed tightly, decided per mesh.
-            std::vector<PackedStaticVertexData> staticData; ///< Vertex attributes for all meshes in packed format.
-            std::vector<DynamicVertexData> dynamicData;     ///< Additional vertex attributes for dynamic (skinned) meshes.
-        } mBuffersData;
-
-        struct CurveBuffersData
-        {
-            std::vector<uint32_t> indexData;                ///< Vertex indices for all curves in 32-bit.
-            std::vector<StaticCurveVertexData> staticData;  ///< Vertex attributes for all curves.
-        } mCurveBuffersData;
-
         using SceneGraph = std::vector<InternalNode>;
         using MeshList = std::vector<MeshSpec>;
         using MeshGroup = Scene::MeshGroup;
         using MeshGroupList = std::vector<MeshGroup>;
         using CurveList = std::vector<CurveSpec>;
 
+        Scene::SceneData mSceneData;
         Scene::SharedPtr mpScene;
+        SceneCache::Key mSceneCacheKey;
+        bool mWriteSceneCache = false;  ///< True if scene cache should be written after import.
 
         SceneGraph mSceneGraph;
         const Flags mFlags;
-        std::string mFilename;
-
-        Scene::RenderSettings mRenderSettings;
 
         MeshList mMeshes;
         MeshGroupList mMeshGroups; ///< Groups of meshes. Each group represents all the geometries in a BLAS for ray tracing.
 
-        std::vector<ProceduralPrimitiveData> mProceduralPrimitives;           ///< GPU Data struct of procedural primitive metadata.
-        std::unordered_map<uint32_t, uint32_t> mProceduralPrimInstanceCount;  ///< Map typeId to instance count.
-        std::vector<AABB> mCustomPrimitiveAABBs;                              ///< User-defined custom primitive AABBs.
         CurveList mCurves;
 
-        MaterialList mMaterials;
         std::unique_ptr<MaterialTextureLoader> mpMaterialTextureLoader;
+        GpuFence::SharedPtr mpFence;
 
-        VolumeList mVolumes;
-        GridList mGrids;
-        std::unordered_map<Grid::SharedPtr, uint32_t> mGridIDs;
-
-        CameraList mCameras;
-        Camera::SharedPtr mpSelectedCamera;
-        LightList mLights;
-        EnvMap::SharedPtr mpEnvMap;
-        std::vector<Animation::SharedPtr> mAnimations;
-        float mCameraSpeed = 1.0f;
-
-        // Mesh helpers
+        // Helpers
+        bool doesNodeHaveAnimation(uint32_t nodeID) const;
+        void updateLinkedObjects(uint32_t oldNodeID, uint32_t newNodeID);
+        bool collapseNodes(uint32_t parentNodeID, uint32_t childNodeID);
+        bool mergeNodes(uint32_t dstNodeID, uint32_t srcNodeID);
+        void flipTriangleWinding(MeshSpec& mesh);
 
         /** Split a mesh by the given axis-aligned splitting plane.
             \return Pair of optional mesh IDs for the meshes on the left and right side, respectively.
@@ -626,29 +717,33 @@ namespace Falcor
         MeshGroupList splitMeshGroupMidpointMeshes(MeshGroup& meshGroup);
 
         // Post processing
+        void prepareDisplacementMaps();
+        void prepareSceneGraph();
         void removeUnusedMeshes();
+        void flattenStaticMeshInstances();
+        void optimizeSceneGraph();
         void pretransformStaticMeshes();
+        void unifyTriangleWinding();
         void calculateMeshBoundingBoxes();
         void createMeshGroups();
         void optimizeGeometry();
+        void sortMeshes();
         void createGlobalBuffers();
         void createCurveGlobalBuffers();
+        void optimizeMaterials();
         void removeDuplicateMaterials();
         void collectVolumeGrids();
         void quantizeTexCoords();
 
         // Scene setup
-        uint32_t createMeshData();
-        void createMeshVao(uint32_t drawCount);
+        void createMeshData();
+        void createMeshInstanceData();
         void createCurveData();
-        void createCurveVao();
-        void mapCurvesToProceduralPrimitives(uint32_t typeID);
-        void createRaytracingAABBData();
-        void createNodeList();
+        void createSceneGraph();
         void createMeshBoundingBoxes();
         void calculateCurveBoundingBoxes();
 
-        void pushProceduralPrimitive(uint32_t typeID, uint32_t instanceIdx, uint32_t AABBOffset, uint32_t AABBCount);
+        friend class SceneCache;
     };
 
     enum_class_operators(SceneBuilder::Flags);

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -48,13 +48,14 @@ namespace Falcor
         // The shader code will choose either a 64-bit or 96-bit format depending on requirements.
         // The barycentrics are encoded in 32 bits, while instance type and instance/primitive index are encoded in 32-64 bits.
 
-        uint32_t typeCount = (uint32_t)InstanceType::Count;
-        mInstanceTypeBits = allocateBits(typeCount);
+        uint32_t typeCount = (uint32_t)HitType::Count;
+        mTypeBits = allocateBits(typeCount);
 
-        uint32_t instanceCount = std::max(scene.getMeshInstanceCount(), scene.getCurveInstanceCount());
+        uint32_t instanceCount = scene.getMeshInstanceCount() + scene.getCurveInstanceCount();
         mInstanceIndexBits = allocateBits(instanceCount);
 
         uint32_t maxPrimitiveCount = 0;
+
         for (uint32_t meshID = 0; meshID < scene.getMeshCount(); meshID++)
         {
             uint32_t triangleCount = scene.getMesh(meshID).getTriangleCount();
@@ -67,26 +68,51 @@ namespace Falcor
         }
         mPrimitiveIndexBits = allocateBits(maxPrimitiveCount);
 
-        // Handle special case to reserve 'kInvalidIndex' from being used.
-        uint32_t maxTypeID = typeCount > 0 ? typeCount - 1 : 0;
-        uint32_t maxInstanceID = instanceCount > 0 ? instanceCount - 1 : 0;
-        uint32_t maxPrimitiveID = maxPrimitiveCount > 0 ? maxPrimitiveCount - 1 : 0;
-        uint32_t packedInstance = (maxTypeID << mInstanceIndexBits) | maxInstanceID;
-
-        if (mInstanceTypeBits + mInstanceIndexBits + mPrimitiveIndexBits == 32)
-        {
-            uint32_t packed = (packedInstance << mPrimitiveIndexBits) | maxPrimitiveID;
-            if (packed == kInvalidIndex) mInstanceIndexBits++;
-        }
-        if (mInstanceTypeBits + mInstanceIndexBits == 32)
-        {
-            if (packedInstance == kInvalidIndex) mInstanceIndexBits++;
-        }
-
         // Check that the final bit allocation fits.
-        if (mPrimitiveIndexBits > 32 || (mInstanceTypeBits + mInstanceIndexBits) > 32)
+        if (mPrimitiveIndexBits > 32 || (mTypeBits + mInstanceIndexBits) > 32)
         {
             throw std::exception("Scene requires > 96 bits for encoding hit information. This is currently not supported.");
         }
+
+        mDataSize = 4;
+        mPackedDataSize = (mTypeBits + mInstanceIndexBits + mPrimitiveIndexBits <= 32) ? 2 : 3;
+
+        // Check if hit info needs displacement value.
+        if (scene.hasGeometryType(Scene::GeometryType::DisplacedTriangleMesh))
+        {
+            mDataSize += 1;
+            mPackedDataSize += 1;
+        }
+    }
+
+    Shader::DefineList HitInfo::getDefines() const
+    {
+        assert((mTypeBits + mInstanceIndexBits) <= 32 && mPrimitiveIndexBits <= 32);
+        Shader::DefineList defines;
+        defines.add("HIT_INFO_DEFINES", "1");
+        defines.add("HIT_INFO_DATA_SIZE", std::to_string(mDataSize));
+        defines.add("HIT_INFO_PACKED_DATA_SIZE", std::to_string(mPackedDataSize));
+        defines.add("HIT_TYPE_BITS", std::to_string(mTypeBits));
+        defines.add("HIT_INSTANCE_INDEX_BITS", std::to_string(mInstanceIndexBits));
+        defines.add("HIT_PRIMITIVE_INDEX_BITS", std::to_string(mPrimitiveIndexBits));
+        return defines;
+    }
+
+    ResourceFormat HitInfo::getFormat() const
+    {
+        assert(mPackedDataSize >= 2 && mPackedDataSize <= 4);
+        switch (mPackedDataSize)
+        {
+        case 2:
+            return ResourceFormat::RG32Uint;
+        case 3:
+            return ResourceFormat::RGBA32Uint; // RGB32Uint can't be used for UAV writes
+        case 4:
+            return ResourceFormat::RGBA32Uint;
+        default:
+            should_not_get_here();
+            break;
+        }
+        return kDefaultFormat;
     }
 }

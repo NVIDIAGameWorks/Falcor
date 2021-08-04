@@ -241,7 +241,10 @@ def format_date(date):
     '''
     Convert a date in iso format to a human readable string.
     '''
-    return datetime.datetime.fromisoformat(date).strftime('%d. %B %Y %I:%M%p')
+    # TODO: With Python 3.7 we can use fromisoformat instead of custom parsing
+    # date = datetime.datetime.fromisoformat(date)
+    date = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%f")
+    return date.strftime('%d. %B %Y %I:%M%p')
 
 def format_duration(duration):
     '''

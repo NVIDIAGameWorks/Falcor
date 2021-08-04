@@ -6,8 +6,9 @@ def render_graph_VBufferRaster():
     g = RenderGraph("VBufferRaster")
     g.addPass(createPass("VBufferRaster"), "VBufferRaster")
 
-    g.markOutput("VBufferRaster.depth")
     g.markOutput("VBufferRaster.vbuffer")
+    g.markOutput("VBufferRaster.depth")
+    g.markOutput("VBufferRaster.mvec")
 
     return g
 

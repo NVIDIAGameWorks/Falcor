@@ -7,6 +7,9 @@ def render_graph_VBufferRT():
     g.addPass(createPass("VBufferRT"), "VBufferRT")
 
     g.markOutput("VBufferRT.vbuffer")
+    g.markOutput("VBufferRT.depth")
+    g.markOutput("VBufferRT.mvec")
+    g.markOutput("VBufferRT.viewW")
 
     return g
 

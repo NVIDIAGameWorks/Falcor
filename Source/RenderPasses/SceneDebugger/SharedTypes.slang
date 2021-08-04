@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -39,12 +39,12 @@ enum class SceneDebuggerMode : uint32_t
     FrontFacingFlag,
     BackfacingShadingNormal,
     TexCoords,
+    HitType,
+    InstanceID,
     MeshID,
-    MeshInstanceID,
     MaterialID,
     BlasID,
     CurveID,
-    CurveInstanceID,
     InstancedGeometry,
 };
 
@@ -68,11 +68,11 @@ struct PixelData
 {
     static const uint kInvalidID = 0xffffffff;
 
-    uint meshInstanceID;
-    uint meshID;
+    uint hitType;
+    uint instanceID;
     uint materialID;
+    uint meshID;
     uint blasID;
-    uint curveInstanceID;
     uint curveID;
 };
 

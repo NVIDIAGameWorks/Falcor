@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,6 +31,7 @@
 #include <commdlg.h>
 #include <ShlObj_core.h>
 #include <comutil.h>
+#include <winioctl.h>
 
 // Always run in Optimus mode on laptops
 extern "C"
@@ -197,6 +198,117 @@ namespace Falcor
         DWORD res = CreateDirectoryA(path.c_str(), NULL);
 
         return res == TRUE;
+    }
+
+    // As defined in ntifs.h
+    typedef struct _REPARSE_DATA_BUFFER {
+        ULONG  ReparseTag;
+        USHORT ReparseDataLength;
+        USHORT Reserved;
+        union {
+            struct {
+                USHORT SubstituteNameOffset;
+                USHORT SubstituteNameLength;
+                USHORT PrintNameOffset;
+                USHORT PrintNameLength;
+                ULONG Flags;
+                WCHAR PathBuffer[1];
+            } SymbolicLinkReparseBuffer;
+            struct {
+                USHORT SubstituteNameOffset;
+                USHORT SubstituteNameLength;
+                USHORT PrintNameOffset;
+                USHORT PrintNameLength;
+                WCHAR PathBuffer[1];
+            } MountPointReparseBuffer;
+            struct {
+                UCHAR  DataBuffer[1];
+            } GenericReparseBuffer;
+        } DUMMYUNIONNAME;
+    } REPARSE_DATA_BUFFER;
+
+    // As defined in wdm.h
+    #define FILE_DIRECTORY_FILE                     0x00000001
+    #define FILE_WRITE_THROUGH                      0x00000002
+    #define FILE_SEQUENTIAL_ONLY                    0x00000004
+    #define FILE_NO_INTERMEDIATE_BUFFERING          0x00000008
+
+    #define FILE_SYNCHRONOUS_IO_ALERT               0x00000010
+    #define FILE_SYNCHRONOUS_IO_NONALERT            0x00000020
+    #define FILE_NON_DIRECTORY_FILE                 0x00000040
+    #define FILE_CREATE_TREE_CONNECTION             0x00000080
+
+    #define FILE_COMPLETE_IF_OPLOCKED               0x00000100
+    #define FILE_NO_EA_KNOWLEDGE                    0x00000200
+    #define FILE_OPEN_REMOTE_INSTANCE               0x00000400
+    #define FILE_RANDOM_ACCESS                      0x00000800
+
+    #define FILE_DELETE_ON_CLOSE                    0x00001000
+    #define FILE_OPEN_BY_FILE_ID                    0x00002000
+    #define FILE_OPEN_FOR_BACKUP_INTENT             0x00004000
+    #define FILE_NO_COMPRESSION                     0x00008000
+
+    bool createJunction(const std::string& link, const std::string& target)
+    {
+        // Get absolute target.
+        CHAR absoluteTarget[MAX_PATH];
+        if (GetFullPathNameA(target.c_str(), MAX_PATH, absoluteTarget, NULL) == 0) return false;
+
+        // Create junction as normal directory.
+        if (!CreateDirectoryA(link.c_str(), NULL)) return false;
+
+        // Open file handle to junction directory.
+        HANDLE handle = CreateFileA(link.c_str(), GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS, NULL);
+        if (handle == INVALID_HANDLE_VALUE) return false;
+
+        // Allocate reparse data.
+        char tmp[MAXIMUM_REPARSE_DATA_BUFFER_SIZE] = {0};
+        REPARSE_DATA_BUFFER& reparseData = *reinterpret_cast<REPARSE_DATA_BUFFER*>(tmp);
+
+        // Setup reparse data.
+        std::wstring substituteName = string_2_wstring(std::string("\\??\\") + absoluteTarget);
+        std::wstring printName = string_2_wstring(absoluteTarget);
+
+        reparseData.ReparseTag = IO_REPARSE_TAG_MOUNT_POINT;
+        reparseData.Reserved = 0;
+        reparseData.MountPointReparseBuffer.SubstituteNameOffset = (USHORT)0;
+        reparseData.MountPointReparseBuffer.SubstituteNameLength = (USHORT)(substituteName.length() * sizeof(wchar_t));
+        reparseData.MountPointReparseBuffer.PrintNameOffset = (USHORT)((substituteName.length() + 1) * sizeof(wchar_t));
+        reparseData.MountPointReparseBuffer.PrintNameLength = (USHORT)(printName.length() * sizeof(wchar_t));
+        reparseData.ReparseDataLength = (USHORT)(sizeof(reparseData.MountPointReparseBuffer) + reparseData.MountPointReparseBuffer.PrintNameOffset + reparseData.MountPointReparseBuffer.PrintNameLength);
+        if (reparseData.ReparseDataLength > MAXIMUM_REPARSE_DATA_BUFFER_SIZE) return false;
+
+        std::memcpy(&reparseData.MountPointReparseBuffer.PathBuffer[0], substituteName.data(), substituteName.length() * sizeof(wchar_t));
+        std::memcpy(&reparseData.MountPointReparseBuffer.PathBuffer[substituteName.length() + 1], printName.data(), printName.length() * sizeof(wchar_t));
+
+        // Set the total size of the data buffer.
+
+        // Use DeviceIoControl to set the reparse point data on the file handle.
+        size_t headerSize = FIELD_OFFSET(REPARSE_DATA_BUFFER, MountPointReparseBuffer);
+        bool success = DeviceIoControl(handle, FSCTL_SET_REPARSE_POINT, &reparseData, (DWORD)headerSize + reparseData.ReparseDataLength, NULL, 0, NULL, 0);
+
+        // Close file handle.
+        CloseHandle(handle);
+
+        return success;
+    }
+
+    bool deleteJunction(const std::string& link)
+    {
+        // Open file handle to junction directory.
+        HANDLE handle = CreateFileA(link.c_str(), GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_DELETE_ON_CLOSE | FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS, NULL);
+        if (handle == INVALID_HANDLE_VALUE) return false;
+
+        REPARSE_GUID_DATA_BUFFER rgdb = {0};
+        rgdb.ReparseTag = IO_REPARSE_TAG_MOUNT_POINT;
+
+        // Delete reparse point data.
+        bool success = DeviceIoControl(handle, FSCTL_DELETE_REPARSE_POINT, &rgdb, REPARSE_GUID_DATA_BUFFER_HEADER_SIZE, NULL, 0, NULL, 0);
+
+        // Close file handle.
+        CloseHandle(handle);
+
+        return success;
     }
 
     std::string getTempFilename()
