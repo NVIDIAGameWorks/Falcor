@@ -61,7 +61,7 @@ The BibTex entry is
 
 ```bibtex
 @Misc{Kallweit21,
-   author =      {Simon Kallweit and Petrik Clarberg and Craig Kolb and Kai-Hwa Yao and T. Foley and Lifan Wu and Lucy Chen and Tomas Akenine-Moller and Chris Wyman and Cyril Crassin and Nir Benty}
+   author =      {Simon Kallweit and Petrik Clarberg and Craig Kolb and Kai-Hwa Yao and T. Foley and Lifan Wu and Lucy Chen and Tomas Akenine-Moller and Chris Wyman and Cyril Crassin and Nir Benty},
    title =       {The {Falcor} Rendering Framework},
    year =        {2021},
    month =       {08},
