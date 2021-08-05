@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -625,6 +625,39 @@ namespace Falcor
 
     static ParameterCategory getParameterCategory(TypeLayoutReflection* pTypeLayout);
 
+    static void extractDefaultConstantBufferBinding(
+        slang::TypeLayoutReflection*    pSlangType,
+        ReflectionPath*                 pPath,
+        ParameterBlockReflection*       pBlock,
+        bool                            shouldUseRootConstants)
+    {
+        auto pContainerLayout = pSlangType->getContainerVarLayout();
+        assert(pContainerLayout);
+
+        ExtendedReflectionPath containerPath(pPath, pContainerLayout);
+        int32_t containerCategoryCount = pContainerLayout->getCategoryCount();
+        for (int32_t containerCategoryIndex = 0; containerCategoryIndex < containerCategoryCount; ++containerCategoryIndex)
+        {
+            auto containerCategory = pContainerLayout->getCategoryByIndex(containerCategoryIndex);
+            switch (containerCategory)
+            {
+            case slang::ParameterCategory::DescriptorTableSlot:
+            case slang::ParameterCategory::ConstantBuffer:
+            {
+                ParameterBlockReflection::DefaultConstantBufferBindingInfo defaultConstantBufferInfo;
+                defaultConstantBufferInfo.regIndex = (uint32_t)getRegisterIndexFromPath(containerPath.pPrimary, containerCategory);
+                defaultConstantBufferInfo.regSpace = getRegisterSpaceFromPath(containerPath.pPrimary, containerCategory);
+                defaultConstantBufferInfo.useRootConstants = shouldUseRootConstants;
+                pBlock->setDefaultConstantBufferBindingInfo(defaultConstantBufferInfo);
+            }
+            break;
+
+            default:
+                break;
+            }
+        }
+    }
+
     ReflectionType::SharedPtr reflectResourceType(
         TypeLayoutReflection*       pSlangType,
         ParameterBlockReflection*   pBlock,
@@ -722,28 +755,7 @@ namespace Falcor
                 pProgramVersion);
             pSubBlock->setElementType(pElementType);
 
-            auto pContainerLayout = pSlangType->getContainerVarLayout();
-            ExtendedReflectionPath containerPath(pPath, pContainerLayout);
-            int32_t containerCategoryCount = pContainerLayout->getCategoryCount();
-            for (int32_t containerCategoryIndex = 0; containerCategoryIndex < containerCategoryCount; ++containerCategoryIndex)
-            {
-                auto containerCategory = pContainerLayout->getCategoryByIndex(containerCategoryIndex);
-                switch (containerCategory)
-                {
-                case slang::ParameterCategory::DescriptorTableSlot:
-                case slang::ParameterCategory::ConstantBuffer:
-                    {
-                        ParameterBlockReflection::DefaultConstantBufferBindingInfo defaultConstantBufferInfo;
-                        defaultConstantBufferInfo.regIndex = (uint32_t)getRegisterIndexFromPath(containerPath.pPrimary, containerCategory);
-                        defaultConstantBufferInfo.regSpace = getRegisterSpaceFromPath(containerPath.pPrimary, containerCategory);
-                        pSubBlock->setDefaultConstantBufferBindingInfo(defaultConstantBufferInfo);
-                    }
-                    break;
-
-                default:
-                    break;
-                }
-            }
+            extractDefaultConstantBufferBinding(pSlangType, pPath, pSubBlock.get(), /*shouldUseRootConstants:*/false);
 
             pSubBlock->finalize();
 
@@ -1235,27 +1247,75 @@ namespace Falcor
 
         auto pGroup = SharedPtr(new EntryPointGroupReflection(pProgramVersion));
 
-        auto pSlangVarLayout = pBestEntryPoint->getVarLayout();
-        auto pSlangTypeLayout = pBestEntryPoint->getTypeLayout();
+        // The layout for an entry point either represents a Slang `struct` type
+        // for the entry-point parameters, or it represents a Slang `ConstantBuffer<X>`
+        // where `X` is the `struct` type for the entry-point parameters.
+        //
+        auto pSlangEntryPointVarLayout = pBestEntryPoint->getVarLayout();
+        auto pSlangEntryPointTypeLayout = pBestEntryPoint->getTypeLayout();
+        ExtendedReflectionPath entryPointPath(nullptr, pSlangEntryPointVarLayout);
 
-        if(auto pSlangElementTypeLayout = pSlangTypeLayout->getElementTypeLayout())
-            pSlangTypeLayout = pSlangElementTypeLayout;
+        // We need to detect the latter case, because it means that a "default" constant
+        // buffer has been allocated for the parameters.
+        //
+        // Note: in recent Slang releases, we could just check if the "kind" of the
+        // `pSlangEntryPointTypeLayout` is `ConstantBuffer`, but in some existing
+        // releases that won't work (due to Slang bugs).
+        //
+        // Instead, we check whether the type layout has a "container" layout
+        // associated with it, which should only happen for `ConstantBuffer<...>`
+        // or `ParameterBlock<...>` types.
+        //
+        bool hasDefaultConstantBuffer = false;
+        if (pSlangEntryPointTypeLayout->getContainerVarLayout() != nullptr)
+        {
+            hasDefaultConstantBuffer = true;
+        }
 
-        ExtendedReflectionPath path(nullptr, pSlangVarLayout);
+        // In the case where theere is no default constant buffer, the variable
+        // and type layouts for the entry point itself are what we want to reflect
+        // as the "element type."
+        //
+        auto pSlangElementVarLayout = pSlangEntryPointVarLayout;
+        auto pSlangElementTypeLayout = pSlangEntryPointTypeLayout;
+        ReflectionPath* pElementPath = &entryPointPath;
+
+        // If there is a default constant buffer, though, we need to drill down
+        // to its element type to get the information we want.
+        //
+        if (hasDefaultConstantBuffer)
+        {
+            pSlangElementVarLayout = pSlangEntryPointTypeLayout->getElementVarLayout();
+            pSlangElementTypeLayout = pSlangElementVarLayout->getTypeLayout();
+        }
+        ExtendedReflectionPath elementPath(&entryPointPath, pSlangElementVarLayout);
+        if (hasDefaultConstantBuffer)
+        {
+            pElementPath = &elementPath;
+        }
 
         ReflectionStructType::BuildState elementTypeBuildState;
 
         std::string name;
-        if(entryPointCount == 0)
+        if(entryPointCount == 1)
             name = pBestEntryPoint->getName();
 
-        auto pElementType = ReflectionStructType::create(pSlangTypeLayout->getSize(), name, pSlangTypeLayout);
+        auto pElementType = ReflectionStructType::create(pSlangElementTypeLayout->getSize(), name, pSlangElementTypeLayout);
         pGroup->setElementType(pElementType);
 
         uint32_t entryPointParamCount = pBestEntryPoint->getParameterCount();
         for (uint32_t pp = 0; pp < entryPointParamCount; ++pp)
         {
             auto pSlangParam = pBestEntryPoint->getParameterByIndex(pp);
+
+            // Note: Due to some quirks on the Slang reflection information,
+            // we do not currently need to append the parameter to the
+            // reflection path(s) we computed outside the loop.
+            //
+            // TODO: We probably need to revisit this choice if/when we
+            // want to reflect all the parameters using the existing
+            // logic that handles `struct` types.
+            //
             ExtendedReflectionPath path(nullptr, pSlangParam);
 
             if(isVaryingParameter(pSlangParam))
@@ -1271,23 +1331,29 @@ namespace Falcor
             pElementType->addMember(pParam, elementTypeBuildState);
         }
 
-        if (pElementType->getByteSize() != 0)
+        // If the entry point had a default constant buffer allocated
+        // for it, we need to extract its binding information. The
+        // logic here is nearly identical to the logic for an explicit
+        // constant buffer in user code. The main difference is that
+        // entry-point `uniform` parameters should default to being
+        // treated as a root constant buffer.
+        //
+        if (hasDefaultConstantBuffer)
         {
-            ParameterCategory category = getParameterCategory(pSlangTypeLayout);
-            auto regIndex = (uint32_t)getRegisterIndexFromPath(path.pPrimary, category);
-            auto regSpace = getRegisterSpaceFromPath(path.pPrimary, category);
-
-            ParameterBlockReflection::DefaultConstantBufferBindingInfo defaultConstantBufferInfo;
-            defaultConstantBufferInfo.regIndex = regIndex;
-            defaultConstantBufferInfo.regSpace = regSpace;
-            defaultConstantBufferInfo.useRootConstants = true;
-            pGroup->setDefaultConstantBufferBindingInfo(defaultConstantBufferInfo);
+            extractDefaultConstantBufferBinding(pSlangEntryPointTypeLayout, &entryPointPath, pGroup.get(), /*shouldUseRootConstants:*/true);
         }
 
         pGroup->finalize();
 
-        // TODO(tfoley): validate other entry points in the group against the declaration
-        // of the "best" one.
+        // TODO(tfoley): There is no guarantee that all the other entry
+        // points in the group agree with the one we chose as the "best."
+        // We should ideally iterate over the parameters of the other
+        // entry points and perform a check to see if they match what
+        // we extracted from the best entry point.
+        //
+        // TODO: alternatively, if Falcor could identify the entry point
+        // groups more explicitly to Slang, we could skip the need for
+        // this kind of matching/validation in the application layer.
 
         return pGroup;
     }
@@ -1424,6 +1490,17 @@ namespace Falcor
             default:
                 break;
             }
+        }
+
+        // Get hashed strings
+        uint32_t hashedStringCount = (uint32_t)pSlangReflector->getHashedStringCount();
+        mHashedStrings.reserve(hashedStringCount);
+        for (uint32_t i = 0; i < hashedStringCount; ++i)
+        {
+            size_t stringSize;
+            const char *stringData = pSlangReflector->getHashedString(i, &stringSize);
+            uint32_t stringHash = spComputeStringHash(stringData, stringSize);
+            mHashedStrings.push_back(HashedString{ stringHash, std::string(stringData, stringData + stringSize) });
         }
     }
 

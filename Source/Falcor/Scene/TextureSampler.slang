@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -76,37 +76,45 @@ struct ExplicitRayConesLodTextureSampler : ITextureSampler
 };
 
 
-/** Texture sampling using an explicit scalar level of detail using ray diffs,
+/** Texture sampling using an explicit scalar, i.e., isotropic, level of detail using ray diffs,
     with the final LOD computations done below, since they are dependent on texture dimensions.
+    Use ExplicitGradientTextureSampler if you want anisotropic filtering with ray diffs.
 */
-enum class RayDiffsLODComputationMode { OpenGLStyle, PBRTStyle };
-static const RayDiffsLODComputationMode rayDiffsLODComputationMode = RayDiffsLODComputationMode::OpenGLStyle;
-
-struct ExplicitRayDiffsLodTextureSampler : ITextureSampler
+struct ExplicitRayDiffsIsotropicTextureSampler : ITextureSampler
 {
+    enum class Mode { IsotropicOpenGLStyle, IsotropicPBRTStyle };
+    static const Mode kMode = Mode::IsotropicOpenGLStyle;
+
     float2 dUVdx;               ///< derivatives in x over uv
     float2 dUVdy;               ///< derivatives in y over uv
 
     float4 sampleTexture(Texture2D t, SamplerState s, float2 uv)
     {
-        uint txw, txh;
-        float lambda;
-        t.GetDimensions(txw, txh);
-        if (rayDiffsLODComputationMode == RayDiffsLODComputationMode::OpenGLStyle)  // sharper, but alias sometimes for sharp edges textures, for example
+        uint2 dim;
+        t.GetDimensions(dim.x, dim.y);
+
+        switch (kMode)
         {
-            const float2 duvdx = dUVdx * txw;
-            const float2 duvdy = dUVdy * txh;
-            lambda = 0.5 * log2(max(dot(duvdx, duvdx), dot(duvdy, duvdy)));
+        case Mode::IsotropicOpenGLStyle:
+            {
+                // Sharper, but alias sometimes for sharp edges textures.
+                const float2 duvdx = dUVdx * dim.x;
+                const float2 duvdy = dUVdy * dim.y;
+                const float lambda = 0.5f * log2(max(dot(duvdx, duvdx), dot(duvdy, duvdy)));
+                return t.SampleLevel(s, uv, lambda);
+            }
+        case Mode::IsotropicPBRTStyle:
+            {
+                // PBRT style (much blurrier, but never (?) aliases).
+                const float filterWidth = 2.f * max(dim.x * max(abs(dUVdx.x), abs(dUVdy.x)), dim.y * max(abs(dUVdx.y), abs(dUVdy.y)));
+                const float lambda = log2(filterWidth);
+                return t.SampleLevel(s, uv, lambda);
+            }
         }
-        else // RayDiffsLODComputationMode::PBRTStyle
-        {
-            float filterWidth = 2.0 * max(txw * max(abs(dUVdx.x), abs(dUVdy.x)), txh * max(abs(dUVdx.y), abs(dUVdy.y)));    // PBRT style (much blurrier, but never (?) aliases)
-            lambda = log2(filterWidth);
-        }
-        return t.SampleLevel(s, uv, lambda);
+
+        return float4(0.f);
     }
 };
-
 
 /** Texture sampling using explicit screen-space gradients
 */

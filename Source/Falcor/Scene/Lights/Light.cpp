@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -69,7 +69,7 @@ namespace Falcor
         if (mPrevData.penumbraAngle != mData.penumbraAngle) mChanges |= Changes::SurfaceArea;
         if (mPrevData.cosSubtendedAngle != mData.cosSubtendedAngle) mChanges |= Changes::SurfaceArea;
         if (mPrevData.surfaceArea != mData.surfaceArea) mChanges |= Changes::SurfaceArea;
-        if (mPrevData.transMat != mData.transMat) mChanges |= (Changes::Position & Changes::Direction);
+        if (mPrevData.transMat != mData.transMat) mChanges |= (Changes::Position | Changes::Direction);
 
         assert(mPrevData.tangent == mData.tangent);
         assert(mPrevData.bitangent == mData.bitangent);
@@ -211,14 +211,10 @@ namespace Falcor
         widget.var("World Position", mData.posW, -FLT_MAX, FLT_MAX);
         widget.direction("Direction", mData.dirW);
 
-        if (widget.var("Opening Angle", mData.openingAngle, 0.f, (float)M_PI))
-        {
-            setOpeningAngle(mData.openingAngle);
-        }
-        if (widget.var("Penumbra Width", mData.penumbraAngle, 0.f, (float)M_PI))
-        {
-            setPenumbraAngle(mData.penumbraAngle);
-        }
+        float openingAngle = getOpeningAngle();
+        if (widget.var("Opening Angle", openingAngle, 0.f, (float)M_PI)) setOpeningAngle(openingAngle);
+        float penumbraAngle = getPenumbraAngle();
+        if (widget.var("Penumbra Width", penumbraAngle, 0.f, (float)M_PI)) setPenumbraAngle(penumbraAngle);
     }
 
     void PointLight::setOpeningAngle(float openingAngle)
@@ -227,6 +223,8 @@ namespace Falcor
         if (openingAngle == mData.openingAngle) return;
 
         mData.openingAngle = openingAngle;
+        mData.penumbraAngle = std::min(mData.penumbraAngle, openingAngle);
+
         // Prepare an auxiliary cosine of the opening angle to quickly check whether we're within the cone of a spot light.
         mData.cosOpeningAngle = std::cos(openingAngle);
     }
@@ -240,7 +238,7 @@ namespace Falcor
 
     void PointLight::updateFromAnimation(const glm::mat4& transform)
     {
-        float3 fwd = float3(transform[2]);
+        float3 fwd = float3(-transform[2]);
         float3 pos = float3(transform[3]);
         setWorldPosition(pos);
         setWorldDirection(fwd);
@@ -281,7 +279,7 @@ namespace Falcor
 
     void DirectionalLight::updateFromAnimation(const glm::mat4& transform)
     {
-        float3 fwd = float3(transform[2]);
+        float3 fwd = float3(-transform[2]);
         setWorldDirection(fwd);
     }
 
@@ -356,7 +354,7 @@ namespace Falcor
 
     void DistantLight::updateFromAnimation(const glm::mat4& transform)
     {
-        float3 fwd = float3(transform[2]);
+        float3 fwd = float3(-transform[2]);
         setWorldDirection(fwd);
     }
 
@@ -440,6 +438,8 @@ namespace Falcor
 
     SCRIPT_BINDING(Light)
     {
+        SCRIPT_BINDING_DEPENDENCY(Animatable)
+
         pybind11::class_<Light, Animatable, Light::SharedPtr> light(m, "Light");
         light.def_property("name", &Light::getName, &Light::setName);
         light.def_property("active", &Light::isActive, &Light::setActive);

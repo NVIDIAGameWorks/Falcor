@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -36,11 +36,7 @@
     and shared memory to shuffle between warps.
     Shuffles are not yet available in shader model 6.0+, we therefore rely on NVAPI.
 */
-
-// Setup NvApi. We need this to get shuffle-xor operations.
-#define NV_SHADER_EXTN_SLOT u63
-#define NV_SHADER_EXTN_REGISTER_SPACE space0
-#include "NVAPI/nvHLSLExtns.h"
+#include "Utils/NVAPI.slangh" // We need this to get shuffle-xor operations.
 
 #if (NV_WARP_SIZE != 32)
 #error Kernel assumes warp size 32
@@ -109,7 +105,7 @@ void main(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex)
     {
         // Minor steps for iterations j = {16, 8, ..., 1} in warp.
         const bool dir = ((i & k) == 0);   // Sort ascending (true) or descending (false)
-        uint j = k >> 1;    // j <= 16        
+        uint j = k >> 1;    // j <= 16
         bitonicSortInWarp(value, i, j, dir);
     }
 

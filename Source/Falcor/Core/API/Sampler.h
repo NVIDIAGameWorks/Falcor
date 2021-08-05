@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -57,6 +57,16 @@ namespace Falcor
             MirrorOnce          ///< Same as Mirror, but mirrors only once around 0
         };
 
+        /** Reduction mode
+        */
+        enum class ReductionMode
+        {
+            Standard,
+            Comparison,
+            Min,
+            Max,
+        };
+
         /** Comparison mode for the sampler.
         */
         using ComparisonMode = ComparisonFunc;
@@ -86,9 +96,13 @@ namespace Falcor
             */
             Desc& setLodParams(float minLod, float maxLod, float lodBias);
 
-            /** Set the sampler comparison mode
+            /** Set the sampler comparison mode.
             */
             Desc& setComparisonMode(ComparisonMode mode);
+
+            /** Set the sampler reduction mode.
+            */
+            Desc& setReductionMode(ReductionMode mode);
 
             /** Set the sampler addressing mode
                 \param[in] modeU Addressing mode for U texcoord channel
@@ -110,6 +124,7 @@ namespace Falcor
             float mMinLod = -1000;
             float mLodBias = 0;
             ComparisonMode mComparisonMode = ComparisonMode::Disabled;
+            ReductionMode mReductionMode = ReductionMode::Standard;
             AddressMode mModeU = AddressMode::Wrap;
             AddressMode mModeV = AddressMode::Wrap;
             AddressMode mModeW = AddressMode::Wrap;
@@ -159,6 +174,10 @@ namespace Falcor
         /** Get the comparison mode
         */
         ComparisonMode getComparisonMode() const { return mDesc.mComparisonMode; }
+
+        /** Get the reduction mode
+        */
+        ReductionMode getReductionMode() const { return mDesc.mReductionMode; }
 
         /** Get the addressing mode for the U texcoord
         */

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -321,6 +321,8 @@ namespace Falcor
 
     SCRIPT_BINDING(Animation)
     {
+        SCRIPT_BINDING_DEPENDENCY(Transform)
+
         pybind11::class_<Animation, Animation::SharedPtr> animation(m, "Animation");
         animation.def_property_readonly("name", &Animation::getName);
         animation.def_property_readonly("nodeID", &Animation::getNodeID);

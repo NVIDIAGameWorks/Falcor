@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -34,8 +34,14 @@ namespace Falcor
     {
         const Gui::DropdownList kTransmittanceEstimatorList =
         {
-            { (uint32_t)TransmittanceEstimator::DeltaTracking, "Delta Tracking" },
-            { (uint32_t)TransmittanceEstimator::RatioTracking, "Ratio Tracking" },
+            { (uint32_t)TransmittanceEstimator::DeltaTracking, "Delta Tracking (Global Majorant)" },
+            { (uint32_t)TransmittanceEstimator::RatioTracking, "Ratio Tracking (Global Majorant)" },
+            { (uint32_t)TransmittanceEstimator::RatioTrackingLocalMajorant, "Ratio Tracking (Local Majorants)" },
+        };
+        const Gui::DropdownList kDistanceSamplerList =
+        {
+            { (uint32_t)DistanceSampler::DeltaTracking, "Delta Tracking (Global Majorant)" },
+            { (uint32_t)DistanceSampler::DeltaTrackingLocalMajorant, "Delta Tracking (Local Majorants)" },
         };
     }
 
@@ -47,7 +53,9 @@ namespace Falcor
     Program::DefineList VolumeSampler::getDefines() const
     {
         Program::DefineList defines;
+        defines.add("VOLUME_SAMPLER_USE_BRICKEDGRID", std::to_string((uint32_t)mOptions.useBrickedGrid));
         defines.add("VOLUME_SAMPLER_TRANSMITTANCE_ESTIMATOR", std::to_string((uint32_t)mOptions.transmittanceEstimator));
+        defines.add("VOLUME_SAMPLER_DISTANCE_SAMPLER", std::to_string((uint32_t)mOptions.distanceSampler));
         return defines;
     }
 
@@ -60,8 +68,25 @@ namespace Falcor
     {
         bool dirty = false;
 
+        if (widget.checkbox("Use BrickedGrid", mOptions.useBrickedGrid))
+        {
+            if (!mOptions.useBrickedGrid) {
+                // Switch back to modes not requiring bricked grid.
+                if (requiresBrickedGrid(mOptions.transmittanceEstimator)) mOptions.transmittanceEstimator = TransmittanceEstimator::RatioTracking;
+                if (requiresBrickedGrid(mOptions.distanceSampler)) mOptions.distanceSampler = DistanceSampler::DeltaTracking;
+            }
+            dirty = true;
+        }
         if (widget.dropdown("Transmittance Estimator", kTransmittanceEstimatorList, reinterpret_cast<uint32_t&>(mOptions.transmittanceEstimator)))
         {
+            // Enable bricked grid if the chosen mode requires it.
+            if (requiresBrickedGrid(mOptions.transmittanceEstimator)) mOptions.useBrickedGrid = true;
+            dirty = true;
+        }
+        if (widget.dropdown("Distance Sampler", kDistanceSamplerList, reinterpret_cast<uint32_t&>(mOptions.distanceSampler)))
+        {
+            // Enable bricked grid if the chosen mode requires it.
+            if (requiresBrickedGrid(mOptions.distanceSampler)) mOptions.useBrickedGrid = true;
             dirty = true;
         }
 
@@ -80,11 +105,18 @@ namespace Falcor
         pybind11::enum_<TransmittanceEstimator> transmittanceEstimator(m, "TransmittanceEstimator");
         transmittanceEstimator.value("DeltaTracking", TransmittanceEstimator::DeltaTracking);
         transmittanceEstimator.value("RatioTracking", TransmittanceEstimator::RatioTracking);
+        transmittanceEstimator.value("RatioTrackingLocalMajorant", TransmittanceEstimator::RatioTrackingLocalMajorant);
+
+        pybind11::enum_<DistanceSampler> distanceSampler(m, "DistanceSampler");
+        distanceSampler.value("DeltaTracking", DistanceSampler::DeltaTracking);
+        distanceSampler.value("DeltaTrackingLocalMajorant", DistanceSampler::DeltaTrackingLocalMajorant);
 
         // TODO use a nested class in the bindings when supported.
         ScriptBindings::SerializableStruct<VolumeSampler::Options> options(m, "VolumeSamplerOptions");
 #define field(f_) field(#f_, &VolumeSampler::Options::f_)
         options.field(transmittanceEstimator);
+        options.field(distanceSampler);
+        options.field(useBrickedGrid);
 #undef field
     }
 }

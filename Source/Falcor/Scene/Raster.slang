@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -65,8 +65,8 @@ struct VSOut
     INTERPOLATION_MODE float4 prevPosH   : PREVPOSH;    ///< Position in clip space for the previous frame.
 
     // Per-triangle data
-    nointerpolation uint meshInstanceID  : DRAW_ID;     ///< Mesh instance ID.
-    nointerpolation uint materialID      : MATERIAL_ID; ///< Material ID.
+    nointerpolation GeometryInstanceID instanceID   : INSTANCE_ID;  ///< Geometry instance ID.
+    nointerpolation uint materialID                 : MATERIAL_ID;  ///< Material ID.
 
     float4 posH : SV_POSITION;
 };
@@ -74,29 +74,31 @@ struct VSOut
 VSOut defaultVS(VSIn vIn)
 {
     VSOut vOut;
-    float4x4 worldMat = gScene.getWorldMatrix(vIn.meshInstanceID);
-    float4 posW = mul(float4(vIn.pos, 1.f), worldMat);
-    vOut.posW = posW.xyz;
-    vOut.posH = mul(posW, gScene.camera.getViewProj());
+    const GeometryInstanceID instanceID = { vIn.meshInstanceID };
 
-    vOut.meshInstanceID = vIn.meshInstanceID;
-    vOut.materialID = gScene.getMaterialID(vIn.meshInstanceID);
+    float4x4 worldMat = gScene.getWorldMatrix(instanceID);
+    float3 posW = mul(float4(vIn.pos, 1.f), worldMat).xyz;
+    vOut.posW = posW;
+    vOut.posH = mul(float4(posW, 1.f), gScene.camera.getViewProj());
+
+    vOut.instanceID = instanceID;
+    vOut.materialID = gScene.getMaterialID(instanceID);
 
     vOut.texC = vIn.texC;
-    vOut.normalW = mul(vIn.unpack().normal, gScene.getInverseTransposeWorldMatrix(vIn.meshInstanceID));
+    vOut.normalW = mul(vIn.unpack().normal, gScene.getInverseTransposeWorldMatrix(instanceID));
     float4 tangent = vIn.unpack().tangent;
-    vOut.tangentW = float4(mul(tangent.xyz, (float3x3)gScene.getWorldMatrix(vIn.meshInstanceID)), tangent.w);
+    vOut.tangentW = float4(mul(tangent.xyz, (float3x3)gScene.getWorldMatrix(instanceID)), tangent.w);
 
     // Compute the vertex position in the previous frame.
     float3 prevPos = vIn.pos;
-    MeshInstanceData meshInstance = gScene.getMeshInstance(vIn.meshInstanceID);
+    MeshInstanceData meshInstance = gScene.getMeshInstance(instanceID);
     if (meshInstance.hasDynamicData())
     {
         uint dynamicVertexIndex = gScene.meshes[meshInstance.meshID].dynamicVbOffset + vIn.vertexID;
         prevPos = gScene.prevVertices[dynamicVertexIndex].position;
     }
-    float4 prevPosW = mul(float4(prevPos, 1.f), gScene.getPrevWorldMatrix(vIn.meshInstanceID));
-    vOut.prevPosH = mul(prevPosW, gScene.camera.data.prevViewProjMatNoJitter);
+    float3 prevPosW = mul(float4(prevPos, 1.f), gScene.getPrevWorldMatrix(instanceID)).xyz;
+    vOut.prevPosH = mul(float4(prevPosW, 1.f), gScene.camera.data.prevViewProjMatNoJitter);
 
     return vOut;
 }
@@ -123,7 +125,16 @@ VertexData prepareVertexData(VSOut vsOut, float3 faceNormalW)
 */
 ShadingData prepareShadingData(VSOut vsOut, uint triangleIndex, float3 viewDir)
 {
-    float3 faceNormal = gScene.getFaceNormalW(vsOut.meshInstanceID, triangleIndex);
+    float3 faceNormal = gScene.getFaceNormalW(vsOut.instanceID, triangleIndex);
     VertexData v = prepareVertexData(vsOut, faceNormal);
     return prepareShadingData(v, vsOut.materialID, gScene.materials[vsOut.materialID], gScene.materialResources[vsOut.materialID], viewDir);
+}
+
+/** Helper function to evaluate alpha testing.
+*/
+bool alphaTest(VSOut vsOut, uint triangleIndex)
+{
+    float3 faceNormal = gScene.getFaceNormalW(vsOut.instanceID, triangleIndex);
+    VertexData v = prepareVertexData(vsOut, faceNormal);
+    return alphaTest(v, gScene.materials[vsOut.materialID], gScene.materialResources[vsOut.materialID]);
 }

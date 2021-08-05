@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -53,6 +53,17 @@ namespace Falcor
     {
     public:
         ErrorRunningTestException(const std::string& what) : mWhat(what) { }
+
+        const char* what() const noexcept override { return mWhat.c_str(); }
+
+    private:
+        std::string mWhat;
+    };
+
+    class SkippingTestException : public std::exception
+    {
+    public:
+        SkippingTestException(const std::string& what) : mWhat(what) { }
 
         const char* what() const noexcept override { return mWhat.c_str(); }
 
@@ -327,7 +338,7 @@ namespace Falcor
         if (++ctx.mNumFailures == kMaxTestFailures) throw TooManyFailedTestsException();
 
         StreamSink ss(&ctx);
-        ss << file << ":" << line << " Test failed: " << xString;
+        ss << file << ":" << line << " Test failed: " << xString << " ";
         return ss;
     }
 

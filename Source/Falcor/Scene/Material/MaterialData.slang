@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -36,6 +36,20 @@ BEGIN_NAMESPACE_FALCOR
 #define Texture2D std::shared_ptr<Texture>
 #endif
 
+static const uint kMaterialTypeBits = 8;    ///< Maximum number of bits to store MaterialType.
+
+/** Material type.
+*/
+// TODO: Specify the backing type when Slang issue has been resolved
+enum class MaterialType // : uint32_t
+{
+    Standard,
+    Cloth,
+    Hair,
+
+    Count // Must be last
+};
+
 /** This is a host/device structure that describes material resources.
 */
 struct MaterialResources
@@ -45,31 +59,46 @@ struct MaterialResources
     Texture2D specular;
     Texture2D emissive;
     Texture2D normalMap;
-    Texture2D specularTransmission;
+    Texture2D transmission;
     Texture2D displacementMap;
 
-    // The following maps are not yet used by the material system
-    Texture2D occlusionMap;     // Ambient occlusion map
-
     SamplerState samplerState;
+    SamplerState displacementSamplerStateMin;
+    SamplerState displacementSamplerStateMax;
 };
 
 /** This is a host/device structure that describes a material.
 */
 struct MaterialData
 {
-    float4   baseColor              = float4(1);        ///< Material base color (RGB) and opacity (A).
-    float4   specular               = float4(0);        ///< Material specular channel encoding occlusion (R), roughness (G), metallic (B) in the default MetalRough mode. In SpecGloss mode specular color (RGB) and glossiness (A).
-    float3   emissive               = float3(0, 0, 0);  ///< Emissive color (RGB).
+    float4   baseColor              = float4(1.f);      ///< Material base color (RGB) and opacity (A).
+    float4   specular               = float4(0.f);      ///< Material specular channel encoding occlusion (R), roughness (G), metallic (B) in the default MetalRough mode. In SpecGloss mode specular color (RGB) and glossiness (A).
+    float3   emissive               = float3(0.f);      ///< Emissive color (RGB).
     float    emissiveFactor         = 1.f;              ///< Multiplication factor for the emissive color to control light intensity.
 
     float    alphaThreshold         = 0.5f;             ///< Alpha threshold, only used in case the alpha mode is mask.
     float    IoR                    = 1.5f;             ///< Index of refraction.
+    float    diffuseTransmission    = 0.f;              ///< Diffuse transmission.
     float    specularTransmission   = 0.f;              ///< Specular transmission.
-    uint32_t flags                  = 0;                ///< See flags in MaterialDefines.slangh
 
-    float3   volumeAbsorption       = float3(0, 0, 0);  ///< Volume absorption coefficient.
+    float3   transmission           = float3(1.f);      ///< Transmission color.
     float    _pad0                  = 0.f;
+
+    float3   volumeAbsorption       = float3(0.f);      ///< Volume absorption coefficient.
+    float    volumeAnisotropy       = 0.f;              ///< Volume phase function anisotropy (g).
+
+    float3   volumeScattering       = float3(0.f);      ///< Volume scattering coefficient.
+    float    _pad1                  = 0.f;
+
+    uint32_t flags                  = 0;                ///< See flags in MaterialDefines.slangh
+    uint32_t type                   = (uint32_t)MaterialType::Standard; ///< Material type.
+    float    displacementScale      = 0.f;              ///< Displacement scale value.
+    float    displacementOffset     = 0.f;              ///< Displacement offset value.
+
+    /** Get the material type. This decides how the fields should be interpreted.
+        \return Material type.
+    */
+    MaterialType getType() { return (MaterialType)type; }
 
     /** Get the nested priority used for nested dielectrics.
         \return Nested priority, with 0 reserved for the highest possible priority.

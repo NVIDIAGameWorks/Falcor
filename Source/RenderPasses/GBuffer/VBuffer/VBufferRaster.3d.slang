@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,6 +27,16 @@
  **************************************************************************/
 import Scene.Raster;
 import Scene.HitInfo;
+import Utils.Math.MathHelpers;
+
+RasterizerOrderedTexture2D<float2> gMotionVectors;
+
+cbuffer PerFrameCB
+{
+    uint2 gFrameDim;
+};
+
+#define is_valid(name) (is_valid_##name != 0)
 
 struct VBufferPSOut
 {
@@ -38,23 +48,41 @@ struct VBufferVSOut
     float2 texC : TEXCRD;
 
     // Per-triangle data
-    nointerpolation uint meshInstanceID : DRAW_ID;
-    nointerpolation uint materialID : MATERIAL_ID;
+    nointerpolation GeometryInstanceID instanceID   : INSTANCE_ID;
+    nointerpolation uint materialID                 : MATERIAL_ID;
 
-    float4 posH : SV_POSITION;
+    float4 posH : SV_POSITION;  ///< Position in world space.
+
+#if is_valid(gMotionVectors)
+    float4 prevPosH : PREVPOSH; ///< Position in clip space for the previous frame.
+#endif
 };
 
 VBufferVSOut vsMain(VSIn vsIn)
 {
     VBufferVSOut vsOut;
+    const GeometryInstanceID instanceID = { vsIn.meshInstanceID };
 
-    float4x4 worldMat = gScene.getWorldMatrix(vsIn.meshInstanceID);
-    float4 posW = mul(float4(vsIn.pos, 1.f), worldMat);
-    vsOut.posH = mul(posW, gScene.camera.getViewProj());
+    float4x4 worldMat = gScene.getWorldMatrix(instanceID);
+    float3 posW = mul(float4(vsIn.pos, 1.f), worldMat).xyz;
+    vsOut.posH = mul(float4(posW, 1.f), gScene.camera.getViewProj());
 
     vsOut.texC = vsIn.texC;
-    vsOut.meshInstanceID = vsIn.meshInstanceID;
-    vsOut.materialID = gScene.getMaterialID(vsIn.meshInstanceID);
+    vsOut.instanceID = instanceID;
+    vsOut.materialID = gScene.getMaterialID(instanceID);
+
+#if is_valid(gMotionVectors)
+    // Compute the vertex position in the previous frame.
+    float3 prevPos = vsIn.pos;
+    MeshInstanceData meshInstance = gScene.getMeshInstance(instanceID);
+    if (meshInstance.hasDynamicData())
+    {
+        uint dynamicVertexIndex = gScene.meshes[meshInstance.meshID].dynamicVbOffset + vsIn.vertexID;
+        prevPos = gScene.prevVertices[dynamicVertexIndex].position;
+    }
+    float3 prevPosW = mul(float4(prevPos, 1.f), gScene.getPrevWorldMatrix(instanceID)).xyz;
+    vsOut.prevPosH = mul(float4(prevPosW, 1.f), gScene.camera.data.prevViewProjMatNoJitter);
+#endif
 
     return vsOut;
 }
@@ -63,7 +91,10 @@ VBufferPSOut psMain(VBufferVSOut vsOut, uint triangleIndex : SV_PrimitiveID, flo
 {
     VBufferPSOut psOut;
 
-#if !DISABLE_ALPHA_TEST
+    // Using vsOut.posH.xy as pixel coordinate since it has the SV_Position semantic.
+    int2 ipos = int2(vsOut.posH.xy);
+
+#if USE_ALPHA_TEST
     // Alpha test.
     // With the default alpha test, only texC of VertexData is needed.
     // Alpha textures is sampled at lod=0 to match the ray traced V-buffer.
@@ -82,12 +113,21 @@ VBufferPSOut psMain(VBufferVSOut vsOut, uint triangleIndex : SV_PrimitiveID, flo
     // This is what we store in the hit info.
 
     // Store hit information.
-    HitInfo hit;
-    hit.type = InstanceType::TriangleMesh;
-    hit.instanceID = vsOut.meshInstanceID;
-    hit.primitiveIndex = triangleIndex;
-    hit.barycentrics = barycentrics.yz;
-    psOut.packedHitInfo = hit.encode();
+    TriangleHit triangleHit;
+    triangleHit.instanceID = vsOut.instanceID;
+    triangleHit.primitiveIndex = triangleIndex;
+    triangleHit.barycentrics = barycentrics.yz;
+    psOut.packedHitInfo = HitInfo(triangleHit).pack();
+
+#if is_valid(gMotionVectors)
+    // Compute motion vectors.
+    {
+        const float2 pixelPos = ipos + float2(0.5, 0.5); // Current sample in pixel coords.
+        const float4 prevPosH = vsOut.prevPosH; // Sample in previous frame in clip space coords, no jittering applied.
+        const float2 mv = calcMotionVector(pixelPos, prevPosH, gFrameDim) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY); // Remove camera jitter from motion vector
+        gMotionVectors[ipos] = mv;
+    }
+#endif
 
     return psOut;
 }

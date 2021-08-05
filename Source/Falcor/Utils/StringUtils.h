@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -314,6 +314,21 @@ namespace Falcor
 #endif
         return cvt.to_bytes(codepoint);
     }
+
+    /** Encode data into base 64 encoding.
+    */
+    dlldecl std::string encodeBase64(const void* data, size_t len);
+
+    /** Encode data into base 64 encoding.
+    */
+    inline std::string encodeBase64(const std::vector<uint8_t>& in)
+    {
+        return encodeBase64(in.data(), in.size());
+    }
+
+    /** Decode data from base 64 encoding.
+    */
+    dlldecl std::vector<uint8_t> decodeBase64(const std::string& in);
 
     /** Combine command line args to a single string
     */

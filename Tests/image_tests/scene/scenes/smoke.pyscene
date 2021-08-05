@@ -1,0 +1,20 @@
+# Create volumes
+
+smokeVolume = Volume('smoke')
+smokeVolume.loadGrid(Volume.GridSlot.Density, 'TestScenes/smoke.vdb', 'density')
+smokeVolume.densityScale = 0.5
+smokeVolume.albedo = float3(0.5, 0.5, 0.5)
+sceneBuilder.addVolume(smokeVolume)
+
+# Create camera
+
+camera = Camera()
+camera.position = float3(25, 0, 55)
+camera.target = float3(0, 25, 0)
+camera.up = float3(0, 1, 0)
+sceneBuilder.addCamera(camera)
+
+# Setup envmap
+
+sceneBuilder.envMap = EnvMap("Arcade/BlueSky.png")
+sceneBuilder.envMap.intensity = 1.5

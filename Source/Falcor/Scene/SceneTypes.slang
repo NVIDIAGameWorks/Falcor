@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Utils/HostDeviceShared.slangh"
+#include "ScenePrimitiveDefines.slangh"
 
 #ifdef HOST_CODE
 #include "Utils/Math/PackedFormats.h"
@@ -36,12 +37,53 @@ import Utils.Math.PackedFormats;
 
 BEGIN_NAMESPACE_FALCOR
 
+/** Geometry instance ID.
+    This uniquely identifies a geometry instance in the scene.
+    All instances are sequentially indexed, with mesh instances first.
+    This may change in the future, but a lot of existing code relies on it.
+*/
+struct GeometryInstanceID
+{
+    uint index;             ///< Global instance index. This is computed as InstanceID() + GeometryIndex().
+
+#ifndef HOST_CODE
+    /** Construct a geometry instance ID.
+        \param[in] instanceID The DXR InstanceID() system value.
+        \param[in] geometryIndex The DXR GeometryIndex() system value.
+    */
+    __init(uint instanceID, uint geometryIndex)
+    {
+        index = instanceID + geometryIndex;
+    }
+#endif
+};
+
+/** Flags indicating what primitive types exist in the scene.
+    These enums should match the define constants in ScenePrimitiveDefines.slangh.
+*/
+enum class PrimitiveTypeFlags : uint32_t
+{
+    None = 0x0,
+    TriangleMesh = 0x1,
+    DisplacedTriangleMesh = 0x2,
+    Curve = 0x4,
+    Custom = 0x8,
+
+    Procedural = 0x0e,
+    All = 0x0f,
+};
+
+#ifdef HOST_CODE
+enum_class_operators(PrimitiveTypeFlags);
+#endif
+
 enum class MeshFlags : uint32_t
 {
     None = 0x0,
     Use16BitIndices = 0x1,  ///< Indices are in 16-bit format. The default is 32-bit.
     HasDynamicData = 0x2,   ///< Mesh has dynamic vertex data.
     IsFrontFaceCW = 0x4,    ///< Front-facing side has clockwise winding in object space. Note that the winding in world space may be flipped due to the instance transform.
+    IsDisplaced = 0x8,      ///< Mesh has displacement map.
 };
 
 /** Mesh data stored in 64B.
@@ -67,9 +109,19 @@ struct MeshDesc
         return (flags & (uint)MeshFlags::Use16BitIndices) != 0;
     }
 
+    bool hasDynamicData() CONST_FUNCTION
+    {
+        return (flags & (uint)MeshFlags::HasDynamicData) != 0;
+    }
+
     bool isFrontFaceCW() CONST_FUNCTION
     {
         return (flags & (uint)MeshFlags::IsFrontFaceCW) != 0;
+    }
+
+    bool isDisplaced() CONST_FUNCTION
+    {
+        return (flags & (uint)MeshFlags::IsDisplaced) != 0;
     }
 };
 
@@ -99,6 +151,11 @@ struct MeshInstanceData
     bool hasDynamicData() CONST_FUNCTION
     {
         return (flags & (uint)MeshInstanceFlags::HasDynamicData) != 0;
+    }
+
+    bool isWorldFrontFaceCW() CONST_FUNCTION
+    {
+        return (flags & (uint)MeshInstanceFlags::IsWorldFrontFaceCW) != 0;
     }
 };
 
@@ -177,6 +234,7 @@ struct PackedStaticVertexData
     float2 texCrd;
 
 #ifdef HOST_CODE
+    PackedStaticVertexData() = default;
     PackedStaticVertexData(const StaticVertexData& v) { pack(v); }
     void pack(const StaticVertexData& v)
     {
@@ -212,7 +270,7 @@ struct PackedStaticVertexData
         v.normal.y = f16tof32(asuint(packedNormalTangent.x) >> 16);
         v.normal.z = f16tof32(asuint(packedNormalTangent.y) & 0xffff);
         v.normal = normalize(v.normal);
-       
+
         v.tangent.xyz = decodeNormal2x16(asuint(packedNormalTangent.z));
         v.tangent.w = f16tof32(asuint(packedNormalTangent.y) >> 16);
 
@@ -231,7 +289,8 @@ struct DynamicVertexData
     uint4 boneID;
     float4 boneWeight;
     uint staticIndex;       ///< The index in the static vertex buffer.
-    uint globalMatrixID;
+    uint bindMatrixID;
+    uint skeletonMatrixID;
 };
 
 /** Struct representing interpolated vertex attributes in world space.
@@ -247,15 +306,6 @@ struct VertexData
     float2 texC;            ///< Texture coordinate.
     float3 faceNormalW;     ///< Face normal in world space (normalized).
     float  coneTexLODValue; ///< Texture LOD data for cone tracing. This is zero, unless getVertexDataRayCones() is used.
-};
-
-struct ProceduralPrimitiveData
-{
-    uint typeID;        ///< Type ID corresponding to how it was defined during Scene creation.
-    uint instanceIdx;   ///< Of custom primitives of this type, what instance index it is, in the order of addition to the scene.
-
-    uint AABBOffset;    ///< Offset into global AABB buffer.
-    uint AABBCount;     ///< Number of AABBs within a custom primitive.
 };
 
 struct CurveDesc
@@ -286,9 +336,21 @@ struct StaticCurveVertexData
 {
     float3 position;    ///< Position.
     float radius;       ///< Radius of the sphere at curve ends.
-    float3 tangent;     ///< Shading tangent.
-    float3 normal;      ///< Shading normal.
     float2 texCrd;      ///< Texture coordinates.
+};
+
+struct DynamicCurveVertexData
+{
+    float3 position;    ///< Position.
+};
+
+/** Custom primitive data.
+    The custom primitives are currently mapped 1:1 to the list of custom primitive AABBs.
+*/
+struct CustomPrimitiveDesc
+{
+    uint userID;        ///< User-defined ID that is specified during scene creation. This can be used to identify different sub-types of custom primitives.
+    uint aabbOffset;    ///< Offset into list of procedural primitive AABBs.
 };
 
 END_NAMESPACE_FALCOR

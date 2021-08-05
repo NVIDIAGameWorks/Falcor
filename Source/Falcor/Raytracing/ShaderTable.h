@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -33,23 +33,23 @@ namespace Falcor
     class Program;
     class RtStateObject;
 
-    /* We are using the following layout for the shader-table:
+    /** This class represents the GPU shader table for raytracing programs.
+        We are using the following layout for the shader table:
 
-       +------------+---------+---------+-----+--------+---------+--------+-----+--------+--------+-----+--------+-----+--------+--------+-----+--------+
-       |            |         |         | ... |        |         |        | ... |        |        | ... |        | ... |        |        | ... |        |
-       |   RayGen   |   Ray0  |   Ray1  | ... |  RayN  |   Ray0  |  Ray1  | ... |  RayN  |  Ray0  | ... |  RayN  | ... |  Ray0  |  Ray0  | ... |  RayN  |
-       |   Entry    |   Miss  |   Miss  | ... |  Miss  |   Hit   |   Hit  | ... |  Hit   |  Hit   | ... |  Hit   | ... |  Hit   |  Hit   | ... |  Hit   |
-       |            |         |         | ... |        |  Mesh0  |  Mesh0 | ... |  Mesh0 |  Mesh1 | ... |  Mesh1 | ... | MeshN  |  MeshN | ... |  MeshN |
-       +------------+---------+---------+-----+--------+---------+--------+-----+--------+--------+-----+--------+-----+--------+--------+-----+--------+
+        +------------+--------+--------+-----+--------+---------+--------+-----+--------+--------+-----+--------+-----+---------+---------+-----+---------+
+        |            |        |        | ... |        |         |        | ... |        |        | ... |        | ... |         |         | ... |         |
+        |   RayGen   |  Miss  |  Miss  | ... |  Miss  |  Hit    |  Hit   | ... |  Hit   |  Hit   | ... |  Hit   | ... |  Hit    |  Hit    | ... |  Hit    |
+        |   Entry    |  Idx0  |  Idx1  | ... | IdxM-1 |  Ray0   |  Ray1  | ... | RayK-1 |  Ray0  | ... | RayK-1 | ... |  Ray0   |  Ray1   | ... | RayK-1  |
+        |            |        |        | ... |        |  Geom0  |  Geom0 | ... |  Geom0 |  Geom1 | ... |  Geom1 | ... | GeomN-1 | GeomN-1 | ... | GeomN-1 |
+        +------------+--------+--------+-----+--------+---------+--------+-----+--------+--------+-----+--------+-----+---------+---------+-----+---------+
 
-       The first record is the ray gen, followed by the miss records, followed by the meshes records.
-       For each mesh we have N hit records, N == number of ray types in the program
-       The size of each record is varying based on the type. RayGen and miss entries contain only the program identifier. Hit entries contain the program identifier and the geometry index as a shader constant
+        The first record is the ray gen record, followed by the M miss records, followed by the geometry hit group records.
+        For each of the N geometries in the scene we have K hit group records, where K is the number of ray types (the same for all geometries).
+        The size of each record is based on the requirements of the local root signatures. By default, raygen, miss, and hit group records contain only the program identifier (32B).
 
-       User provided local root signatures are not supported for performance reasons. Managing and updating data for custom root-signatures results in significant overhead.
-       To get the root-signature that matches this table, call the static function getRootSignatre()
+        User provided local root signatures are currently not supported for performance reasons. Managing and updating data for custom root signatures results in significant overhead.
+        To get the root signature that matches this table, call the static function getRootSignature().
     */
-
     class dlldecl ShaderTable
     {
     public:

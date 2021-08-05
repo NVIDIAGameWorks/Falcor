@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,6 +30,7 @@
 #include "API/Device.h"
 #include "Renderer.h"
 #include "Utils/Timing/FrameRate.h"
+#include "Utils/Timing/ProfilerUI.h"
 #include "Utils/UI/Gui.h"
 #include "Utils/UI/TextRenderer.h"
 #include "Utils/UI/PixelZoom.h"
@@ -136,6 +137,8 @@ namespace Falcor
             double currentTime = 0;
             bool displayUI = false;
         } mVideoCapture;
+
+        ProfilerUI::UniquePtr mpProfilerUI;
 
         std::set<KeyboardEvent::Key> mPressedKeys;
         PixelZoom::SharedPtr mpPixelZoom;

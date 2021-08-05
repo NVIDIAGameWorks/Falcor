@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,8 +27,6 @@
  **************************************************************************/
 #pragma once
 #include "PixelDebugTypes.slang"
-#include "Raytracing/RtProgram/RtProgram.h"
-#include "Raytracing/RtProgramVars.h"
 
 namespace Falcor
 {
@@ -75,7 +73,7 @@ namespace Falcor
 
     protected:
         PixelDebug(uint32_t logSize) : mLogSize(logSize) {}
-        void copyDataToCPU();
+        bool copyDataToCPU();
 
         // Internal state
         Program::SharedPtr          mpReflectProgram;               ///< Program for reflection of types.
@@ -88,7 +86,6 @@ namespace Falcor
         // Configuration
         bool                        mEnabled = false;               ///< Enable debugging features.
         uint2                       mSelectedPixel = { 0, 0 };      ///< Currently selected pixel.
-        bool                        mEnableLogging = false;         ///< Enable printing to logfile.
 
         // Runtime data
         uint2                       mFrameDim = { 0, 0 };
@@ -96,6 +93,8 @@ namespace Falcor
         bool                        mRunning = false;               ///< True when data collection is running (inbetween begin()/end() calls).
         bool                        mWaitingForData = false;        ///< True if we are waiting for data to become available on the GPU.
         bool                        mDataValid = false;             ///< True if data has been read back and is valid.
+
+        std::unordered_map<uint32_t, std::string> mHashToString;    ///< Map of string hashes to string values.
 
         std::vector<PixelLogValue>  mPixelLogData;                  ///< Pixel log data read back from the GPU.
         std::vector<AssertLogValue> mAssertLogData;                 ///< Assert log data read back from the GPU.

@@ -87,14 +87,78 @@ class falcor.**Clock**
 
 class falcor.**Profiler**
 
-| Property  | Type   | Description                 |
-|-----------|--------|-----------------------------|
-| `enabled` | `bool` | Enable/disable profiler.    |
-| `events`  | `dict` | Profiler events (readonly). |
+| Property      | Type   | Description                               |
+|---------------|--------|-------------------------------------------|
+| `enabled`     | `bool` | Enable/disable profiler.                  |
+| `paused`      | `bool` | Pause/resume profiler.                    |
+| `isCapturing` | `bool` | True if profiler is capturing (readonly). |
+| `events`      | `dict` | Profiler events (readonly).               |
 
-| Method          | Description                |
-|-----------------|----------------------------|
-| `clearEvents()` | Clear the profiler events. |
+| Method           | Description                              |
+|------------------|------------------------------------------|
+| `startCapture()` | Start capturing.                         |
+| `endCapture()`   | End capturing. Returns the capture data. |
+
+##### Profiler event names
+
+Profiler event names are expressed as paths due to their hierarchical nature. For example, `/present` is a top level event corresponding to the time it takes to present the final image, whereas `/onFrameRender/RenderGraphExe::execute()` is a nested event corresponding to the time it takes to execute the render graph. Because profiler events measure both CPU and GPU time, the paths are extended with either `/gpuTime` or `/cpuTime` to uniquely identify the actual measured quantity. As an example, `/present/gpuTime` refers to the GPU time it takes to present the final image.
+
+##### Accessing profiler data
+
+Profiler event data can be accessed through `m.profiler.events`. This returns a dictionary containing all event data of the last frame using the event name as a key. Each item itself is a dictionary containing the following keys/values:
+
+| Key       | Value                                                        |
+|-----------|--------------------------------------------------------------|
+| `name`    | The name of the event (same as the key to access this item). |
+| `value`   | Last measured value in _ms_.                                 |
+| `average` | Exponential moving average in _ms_.                          |
+| `stats`   | Dictionary containing stats from up to the last 512 frames.  |
+
+The `stats` dictionary contains the following keys/values:
+
+| Key      | Value                           |
+|----------|---------------------------------|
+| `mean`   | The mean value in _ms_.         |
+| `stdDev` | The standard deviation in _ms_. |
+| `min`    | The minimum value in _ms_.      |
+| `max`    | The maximum value in _ms_.      |
+
+To get the current present GPU time you can use `m.profiler.events["/present/gpuTime"]["value"]`. To get the mean from the last 512 frames you can use `m.profiler.events["/present/"gpuTime"]["stats"]["mean"]`.
+
+##### Capturing profiler data
+
+To capture profiler data from multiple frames, a separate capturing API can be used. A profile capture is started using `m.profiler.startCapture()`. Profile data is internally captured until a call to `m.profiler.endCapture()`, which will return a dictionary with all the captured data.
+
+The capture dictionary contains the following keys/values:
+
+| Key          | Value                                          |
+|--------------|------------------------------------------------|
+| `frameCount` | Total number of frames captured.               |
+| `events`     | Dictionary containing the captured event data. |
+
+The `events` dictionary uses event names as keys. Each item itself is a dictionary containing the following keys/values:
+
+| Key       | Value                                                        |
+|-----------|--------------------------------------------------------------|
+| `name`    | The name of the event (same as the key to access this item). |
+| `records` | Array containing the raw per frame data in _ms_.             |
+| `stats`   | Dictionary containing stats from the raw frame data.         |
+
+The `stats` dictionary has the same structure as explained above but is computed over the captured data instead of the last 512 frames.
+
+The following snippet shows how to capture profiling data over 256 frames and print the mean GPU frame render time:
+
+```python
+m.profiler.enabled = True
+m.profiler.startCapture()
+for frame in range(256):
+    m.renderFrame()
+capture = m.profiler.endCapture()
+m.profiler.enabled = False
+
+meanFrameTime = capture["events"]["/onFrameRender/gpuTime"]["stats"]["mean"]
+print(f"Mean frame time: {}", meanFrameTime)
+```
 
 #### FrameCapture
 
@@ -231,13 +295,23 @@ class falcor.**RenderGraph**
 | `getPass(name)`                | Get a pass by name.                                                                |
 | `addEdge(src, dst)`            | Add an edge to the render graph.                                                   |
 | `removeEdge(src, dst)`         | Remove an edge from the render graph.                                              |
-| `autoGenEdges(executionOrder)` | TODO document                                                                      |
 | `markOutput(name)`             | Mark an output to be selectable in Mogwai and writing files when capturing frames. |
 | `unmarkOutput(name)`           | Unmark an output.                                                                  |
 | `getOutput(index)`             | Get an output by index.                                                            |
 | `getOutput(name)`              | Get an output by name.                                                             |
 
 #### RenderPass
+
+class falcor.**RenderPass**
+
+| Property | Type  | Description                                |
+|----------|-------|--------------------------------------------|
+| `name`   | `str` | Name of the render pass (readonly).        |
+| `desc`   | `str` | Description of the render pass (readonly). |
+
+| Method            | Description                                                     |
+|-------------------|-----------------------------------------------------------------|
+| `getDictionary()` | Returns the configuration dictionary with the current settings. |
 
 #### Texture
 
@@ -296,21 +370,22 @@ class falcor.**SceneRenderSettings**
 
 class falcor.**Scene**
 
-| Property         | Type                  | Description                                       |
-|------------------|-----------------------|---------------------------------------------------|
-| `stats`          | `dict`                | Dictionary containing scene stats.                |
-| `bounds`         | `AABB`                | World space scene bounds (readonly).              |
-| `animated`       | `bool`                | Enable/disable scene animations.                  |
-| `loopAnimations` | `bool`                | Enable/disable globally looping scene animations. |
-| `renderSettings` | `SceneRenderSettings` | Settings to determine how the scene is rendered.  |
-| `camera`         | `Camera`              | Camera.                                           |
-| `cameraSpeed`    | `float`               | Speed of the interactive camera.                  |
-| `envMap`         | `EnvMap`              | Environment map.                                  |
-| `animations`     | `list(Animation)`     | List of animations.                               |
-| `cameras`        | `list(Camera)`        | List of cameras.                                  |
-| `lights`         | `list(Light)`         | List of lights.                                   |
-| `materials`      | `list(Material)`      | List of materials.                                |
-| `volumes`        | `list(Volume)`        | List of volumes.                                  |
+| Property         | Type                    | Description                                                             |
+|------------------|-------------------------|-------------------------------------------------------------------------|
+| `stats`          | `dict`                  | Dictionary containing scene stats.                                      |
+| `bounds`         | `AABB`                  | World space scene bounds (readonly).                                    |
+| `animated`       | `bool`                  | Enable/disable scene animations.                                        |
+| `loopAnimations` | `bool`                  | Enable/disable globally looping scene animations.                       |
+| `renderSettings` | `SceneRenderSettings`   | Settings to determine how the scene is rendered.                        |
+| `updateCallback` | `function(scene, time)` | Called at the beginning of each frame to update the scene procedurally. |
+| `camera`         | `Camera`                | Camera.                                                                 |
+| `cameraSpeed`    | `float`                 | Speed of the interactive camera.                                        |
+| `envMap`         | `EnvMap`                | Environment map.                                                        |
+| `animations`     | `list(Animation)`       | List of animations.                                                     |
+| `cameras`        | `list(Camera)`          | List of cameras.                                                        |
+| `lights`         | `list(Light)`           | List of lights.                                                         |
+| `materials`      | `list(Material)`        | List of materials.                                                      |
+| `volumes`        | `list(Volume)`          | List of volumes.                                                        |
 
 | Method                               | Description                                            |
 |--------------------------------------|--------------------------------------------------------|
@@ -361,25 +436,33 @@ class falcor.**EnvMap**
 
 enum falcor.**MaterialTextureSlot**
 
-`BaseColor`, `Specular`, `Emissive`, `Normal`, `Occlusion`, `SpecularTransmission`, `Displacement`
+`BaseColor`, `Specular`, `Emissive`, `Normal`, `Transmission`, `Displacement`
 
 class falcor.**Material**
 
-| Property               | Type     | Description                                           |
-|------------------------|----------|-------------------------------------------------------|
-| `name`                 | `str`    | Name of the material.                                 |
-| `baseColor`            | `float4` | Base color (linear RGB) and opacity.                  |
-| `specularParams`       | `float4` | Specular parameters (occlusion, roughness, metallic). |
-| `roughness`            | `float`  | Roughness (0 = smooth, 1 = rough).                    |
-| `metallic`             | `float`  | Metallic (0 = dielectric, 1 = conductive).            |
-| `specularTransmission` | `float`  | Specular transmission (0 = opaque, 1 = transparent).  |
-| `indexOfRefraction`    | `float`  | Index of refraction.                                  |
-| `emissiveColor`        | `float3` | Emissive color (linear RGB).                          |
-| `emissiveFactor`       | `float`  | Multiplier for emissive color.                        |
-| `alphaMode`            | `int`    | Alpha mode (0 = opaque, 1 = masked).                  |
-| `alphaThreshold`       | `float`  | Alpha masking threshold (0-1).                        |
-| `doubleSided`          | `bool`   | Enable double sided rendering.                        |
-| `nestedPriority`       | `int`    | Nested priority for nested dielectrics.               |
+| Property               | Type     | Description                                          |
+|------------------------|----------|------------------------------------------------------|
+| `name`                 | `str`    | Name of the material.                                |
+| `baseColor`            | `float4` | Base color (linear RGB) and opacity (alpha).         |
+| `specularParams`       | `float4` | Specular parameters.                                 |
+| `roughness`            | `float`  | Roughness (0 = smooth, 1 = rough).                   |
+| `metallic`             | `float`  | Metallic (0 = dielectric, 1 = conductive).           |
+| `transmissionColor`    | `float3` | Transmission color.                                  |
+| `diffuseTransmission`  | `float`  | Diffuse transmission (0 = opaque, 1 = transparent).  |
+| `specularTransmission` | `float`  | Specular transmission (0 = opaque, 1 = transparent). |
+| `indexOfRefraction`    | `float`  | Index of refraction.                                 |
+| `emissiveColor`        | `float3` | Emissive color (linear RGB).                         |
+| `emissiveFactor`       | `float`  | Multiplier for emissive color.                       |
+| `alphaMode`            | `int`    | Alpha mode (0 = opaque, 1 = masked).                 |
+| `alphaThreshold`       | `float`  | Alpha masking threshold (0-1).                       |
+| `doubleSided`          | `bool`   | Enable double sided rendering.                       |
+| `thinSurface`          | `bool`   | Enable thin surface rendering.                       |
+| `nestedPriority`       | `int`    | Nested priority for nested dielectrics.              |
+| `volumeAbsorption`     | `float3` | Volume absorption coefficient.                       |
+| `volumeScattering`     | `float3` | Volume scattering coefficient.                       |
+| `volumeAnisotropy`     | `float`  | Volume phase function anisotropy (g).                |
+| `displacementScale`    | `float`  | Displacement mapping scale value.                    |
+| `displacementOffset`   | `float`  | Displacement mapping offset value.                   |
 
 | Method                                      | Description                                |
 |---------------------------------------------|--------------------------------------------|
@@ -425,6 +508,8 @@ class falcor.**Volume**
 | `name`                | `str`          | Name of the volume.                                     |
 | `gridFrame`           | `int`          | Current frame in the grid sequence.                     |
 | `gridFrameCount`      | `int`          | Total number of frames in the grid sequence (readonly). |
+| `frameRate`           | `float`        | Frame rate for grid animation.                          |
+| `playbackEnabled`     | `bool`         | Enable/disable grid animation playback.                 |
 | `densityGrid`         | `Grid`         | Density grid.                                           |
 | `densityScale`        | `float`        | Density scale factor.                                   |
 | `emissionGrid`        | `Grid`         | Emission grid.                                          |
@@ -548,8 +633,8 @@ class falcor.**TriangleMesh**
 
 | Class Method                                         | Description                                                                                                                                       |
 |------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
-| `createQuad(size=1)`                                 | Creates a quad mesh, centered at the origin with normal pointing in positive Y direction.                                                         |
-| `createCube(size=1)`                                 | Creates a cube mesh, centered at the origin.                                                                                                      |
+| `createQuad(size=float2(1))`                         | Creates a quad mesh, centered at the origin with normal pointing in positive Y direction.                                                         |
+| `createCube(size=float3(1))`                         | Creates a cube mesh, centered at the origin.                                                                                                      |
 | `createSphere(radius=1, segmentsU=32, segmentsV=16)` | Creates a UV sphere mesh, centered at the origin with poles in positive/negative Y direction.                                                     |
 | `createFromFile(filename,smoothNormals=False)`       | Creates a triangle mesh from a file. If no normals are defined in the file, `smoothNormals` can be used generate smooth instead of facet normals. |
 
@@ -557,19 +642,26 @@ class falcor.**TriangleMesh**
 
 enum falcor.**SceneBuilderFlags**
 
-| Enum                        | Description                                                                                                                                                                                           |
-|-----------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `Default`                   | Use the default flags (0).                                                                                                                                                                            |
-| `DontMergeMaterials`        | Don't merge materials that have the same properties. Use this option to preserve the original material names.                                                                                         |
-| `UseOriginalTangentSpace`   | Use the original bitangents that were loaded with the mesh. By default, we will ignore them and use MikkTSpace to generate the tangent space. We will always generate bitangents if they are missing. |
-| `AssumeLinearSpaceTextures` | By default, textures representing colors (diffuse/specular) are interpreted as sRGB data. Use this flag to force linear space for color textures.                                                     |
-| `DontMergeMeshes`           | Preserve the original list of meshes in the scene, don't merge meshes with the same material.                                                                                                         |
-| `UseSpecGlossMaterials`     | Set materials to use Spec-Gloss shading model. Otherwise default is Spec-Gloss for OBJ, Metal-Rough for everything else.                                                                              |
-| `UseMetalRoughMaterials`    | Set materials to use Metal-Rough shading model. Otherwise default is Spec-Gloss for OBJ, Metal-Rough for everything else.                                                                             |
-| `NonIndexedVertices`        | Convert meshes to use non-indexed vertices. This requires more memory but may increase performance.                                                                                                   |
-| `Force32BitIndices`         | Force 32-bit indices for all meshes. By default, 16-bit indices are used for small meshes.                                                                                                            |
-| `RTDontMergeStatic`         | For raytracing, don't merge all static meshes into single pre-transformed BLAS.                                                                                                                       |
-| `RTDontMergeDynamic`        | For raytracing, don't merge all dynamic meshes with identical transforms into single BLAS.                                                                                                            |
+| Enum                         | Description                                                                                                                                                                                           |
+|------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Default`                    | Use the default flags (0).                                                                                                                                                                            |
+| `DontMergeMaterials`         | Don't merge materials that have the same properties. Use this option to preserve the original material names.                                                                                         |
+| `UseOriginalTangentSpace`    | Use the original bitangents that were loaded with the mesh. By default, we will ignore them and use MikkTSpace to generate the tangent space. We will always generate bitangents if they are missing. |
+| `AssumeLinearSpaceTextures`  | By default, textures representing colors (diffuse/specular) are interpreted as sRGB data. Use this flag to force linear space for color textures.                                                     |
+| `DontMergeMeshes`            | Preserve the original list of meshes in the scene, don't merge meshes with the same material.                                                                                                         |
+| `UseSpecGlossMaterials`      | Set materials to use Spec-Gloss shading model. Otherwise default is Spec-Gloss for OBJ, Metal-Rough for everything else.                                                                              |
+| `UseMetalRoughMaterials`     | Set materials to use Metal-Rough shading model. Otherwise default is Spec-Gloss for OBJ, Metal-Rough for everything else.                                                                             |
+| `NonIndexedVertices`         | Convert meshes to use non-indexed vertices. This requires more memory but may increase performance.                                                                                                   |
+| `Force32BitIndices`          | Force 32-bit indices for all meshes. By default, 16-bit indices are used for small meshes.                                                                                                            |
+| `RTDontMergeStatic`          | For raytracing, don't merge all static non-instanced meshes into single pre-transformed BLAS.                                                                                                         |
+| `RTDontMergeDynamic`         | For raytracing, don't merge dynamic non-instanced meshes with identical transforms into single BLAS.                                                                                                  |
+| `RTDontMergeInstanced`       | For raytracing, don't merge instanced meshes with identical instances into single BLAS.                                                                                                               |
+| `FlattenStaticMeshInstances` | Flatten static mesh instances by duplicating mesh data and composing transformations. Animated instances are not affected. Can lead to a large increase in memory use.                                |
+| `DontOptimizeGraph`          | Don't optimize the scene graph to remove unnecessary nodes.                                                                                                                                           |
+| `DontOptimizeMaterials`      | Don't optimize materials by removing constant textures. The optimizations are lossless so should generally be enabled.                                                                                |
+| `DontUseDisplacement`        | Don't use displacement mapping.                                                                                                                                                                       |
+| `UseCache`                   | Enable scene caching. This caches the runtime scene representation on disk to reduce load time.                                                                                                       |
+| `RebuildCache`               | Rebuild scene cache.                                                                                                                                                                                  |
 
 class falcor.**SceneBuilder**
 
@@ -593,14 +685,17 @@ class falcor.**SceneBuilder**
 | `addMaterial(material)`                         | Add a material and return its ID.                                                                               |
 | `getMaterial(name)`                             | Return a material by name. The first material with matching name is returned or `None` if none was found.       |
 | `loadMaterialTexture(material, slot, filename)` | Request loading a material texture asynchronously. Use `Material.loadTexture` for synchronous loading.          |
+| `waitForMaterialTextureLoading()`               | Wait until all material textures are loaded.                                                                    |
 | `addVolume(volume)`                             | Add a volume and return its ID.                                                                                 |
 | `getVolume(name)`                               | Return a volume by name. The first volume with matching name is returned or `None` if none was found.           |
 | `addLight(light)`                               | Add a light and return its ID.                                                                                  |
+| `getLight(name)`                                | Return a light by name. The first light with matching name is returned or `None` if none was found.             |
 | `addCamera(camera)`                             | Add a camera and return its ID.                                                                                 |
 | `addAnimation(animation)`                       | Add an animation.                                                                                               |
 | `createAnimation(animatable, name, duration)`   | Create an animation for an animatable object. Returns the new animation or `None` if one already exists.        |
 | `addNode(name, transform, parent)`              | Add a node and return its ID.                                                                                   |
 | `addMeshInstance(nodeID, meshID)`               | Add a mesh instance.                                                                                            |
+| `addCustomPrimitive(userID, aabb)`              | Add a custom primitive. 'aabb' is an AABB specifying its bounds.                                                |
 
 
 ### Render Passes

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -47,16 +47,12 @@ BEGIN_NAMESPACE_FALCOR
 
 #define CURVE_VERTEX_POSITION_LOC           0
 #define CURVE_VERTEX_RADIUS_LOC             1
-#define CURVE_VERTEX_TANGENT_LOC            2
-#define CURVE_VERTEX_NORMAL_LOC             3
-#define CURVE_VERTEX_TEXCOORD_LOC           4
+#define CURVE_VERTEX_TEXCOORD_LOC           2
 
-#define CURVE_VERTEX_LOCATION_COUNT         5
+#define CURVE_VERTEX_LOCATION_COUNT         3
 
 #define CURVE_VERTEX_POSITION_NAME          "POSITION"
 #define CURVE_VERTEX_RADIUS_NAME            "RADIUS"
-#define CURVE_VERTEX_TANGENT_NAME           "TANGENT"
-#define CURVE_VERTEX_NORMAL_NAME            "NORMAL"
 #define CURVE_VERTEX_TEXCOORD_NAME          "TEXCOORD"
 
 END_NAMESPACE_FALCOR

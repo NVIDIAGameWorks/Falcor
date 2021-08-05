@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,151 +30,105 @@
 
 namespace Falcor
 {
-    static bool checkParams(RtProgram::SharedPtr pProgram, Scene::SharedPtr pScene)
+    RtProgramVars::RtProgramVars(const RtProgram::SharedPtr& pProgram, const RtBindingTable::SharedPtr& pBindingTable)
+        : ProgramVars(pProgram->getReflector())
     {
-        if (pScene == nullptr)
+        if (pProgram == nullptr)
         {
-            logError("RtProgramVars must have a scene attached to it");
-            return false;
+            throw std::exception("RtProgramVars must have a raytracing program attached to it");
+        }
+        if (pBindingTable == nullptr || !pBindingTable->getRayGen().isValid())
+        {
+            throw std::exception("RtProgramVars must have a raygen program attached to it");
         }
 
-        if (pProgram == nullptr || pProgram->getRayGenProgramCount() == 0)
-        {
-            logError("RtProgramVars must have a ray-gen program attached to it");
-            return false;
-        }
-        return true;
-    }
-    
-    RtProgramVars::RtProgramVars(const RtProgram::SharedPtr& pProgram, const Scene::SharedPtr& pScene)
-        : ProgramVars(pProgram->getReflector())
-        , mpScene(pScene)
-    {
-        if (checkParams(pProgram, pScene) == false)
-        {
-            throw std::exception("Failed to create RtProgramVars object");
-        }
         mpRtVarsHelper = RtVarsContext::create();
         assert(mpRtVarsHelper);
-        init();
+        init(pBindingTable);
     }
 
-    RtProgramVars::SharedPtr RtProgramVars::create(const RtProgram::SharedPtr& pProgram, const Scene::SharedPtr& pScene)
+    RtProgramVars::SharedPtr RtProgramVars::create(const RtProgram::SharedPtr& pProgram, const RtBindingTable::SharedPtr& pBindingTable)
     {
-        return SharedPtr(new RtProgramVars(pProgram, pScene));
+        return SharedPtr(new RtProgramVars(pProgram, pBindingTable));
     }
 
-    void RtProgramVars::init()
+    void RtProgramVars::init(const RtBindingTable::SharedPtr& pBindingTable)
     {
+        mRayTypeCount = pBindingTable->getRayTypeCount();
+        mGeometryCount = pBindingTable->getGeometryCount();
+
         // We must create sub-shader-objects for all the entry point
-        // groups that are required by the scene.
+        // groups that are used by the supplied binding table.
         //
         assert(mpProgramVersion);
-        auto pProgram = (RtProgram*) mpProgramVersion->getProgram().get();
+        assert(dynamic_cast<RtProgram*>(mpProgramVersion->getProgram().get()));
+        auto pProgram = static_cast<RtProgram*>(mpProgramVersion->getProgram().get());
         auto pReflector = mpProgramVersion->getReflector();
 
-        auto& descExtra = pProgram->getDescExtra();
+        auto& rtDesc = pProgram->getRtDesc();
+        std::set<int32_t> entryPointGroupIndices;
 
         // Ray generation and miss programs are easy: we just allocate space
-        // for one parameter block per entry-point of the given type in
-        // the original `RtProgram::Desc`.
+        // for one parameter block per entry-point of the given type in the binding table.
         //
-        // TODO: We could easily support multiple "instances" of ray generation
-        // programs without requiring the SBT for miss or hit shaders to be
-        // rebuild on parameter changes. It might make sense for ray-gen programs
-        // to be more flexibly allocated.
-        //
+        const auto& info = pBindingTable->getRayGen();
+        assert(info.isValid());
+        mRayGenVars.resize(1);
+        mRayGenVars[0].pVars = EntryPointGroupVars::create(pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
+        entryPointGroupIndices.insert(info.groupIndex);
 
-        uint32_t rayGenProgCount = uint32_t(descExtra.mRayGenEntryPoints.size());
-        mRayGenVars.resize(rayGenProgCount);
-        for (uint32_t i = 0; i < rayGenProgCount; ++i)
+        uint32_t missCount = pBindingTable->getMissCount();
+        mMissVars.resize(missCount);
+
+        for (uint32_t i = 0; i < missCount; ++i)
         {
-            auto& info = descExtra.mRayGenEntryPoints[i];
-            if (info.groupIndex < 0) continue;
-
-            mRayGenVars[i].pVars = EntryPointGroupVars::create(pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
-        }
-
-        uint32_t missProgCount  = uint32_t(descExtra.mMissEntryPoints.size());
-        mMissVars.resize(missProgCount);
-        for (uint32_t i = 0; i < missProgCount; ++i)
-        {
-            auto& info = descExtra.mMissEntryPoints[i];
-            if (info.groupIndex < 0) continue;
+            const auto& info = pBindingTable->getMiss(i);
+            if (!info.isValid())
+            {
+                logWarning("Raytracing binding table has no shader at miss index " + std::to_string(i) + ". Is that intentional?");
+                continue;
+            }
 
             mMissVars[i].pVars = EntryPointGroupVars::create(pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
+            entryPointGroupIndices.insert(info.groupIndex);
         }
 
         // Hit groups are more complicated than ray generation and miss shaders.
         // We typically want a distinct parameter block per declared hit group
-        // and per mesh in the scene (and sometimes even per mesh instance).
+        // and per geometry in the scene.
         //
         // We need to take this extra complexity into account when allocating
         // space for the hit group parameter blocks.
         //
-        uint32_t descHitGroupCount = uint32_t(descExtra.mHitGroups.size());
-        uint32_t blockCountPerHitGroup = mpScene->getMeshCount();
-        uint32_t totalHitBlockCount = descHitGroupCount * blockCountPerHitGroup;
-        mDescHitGroupCount = descHitGroupCount;
+        uint32_t hitCount = mRayTypeCount * mGeometryCount;
+        mHitVars.resize(hitCount);
 
-        mHitVars.resize(totalHitBlockCount);
-        for (uint32_t i = 0; i < descHitGroupCount; ++i)
+        for (uint32_t rayType = 0; rayType < mRayTypeCount; rayType++)
         {
-            auto& info = descExtra.mHitGroups[i];
-            if (info.groupIndex < 0) continue;
-
-            for (uint32_t j = 0; j < blockCountPerHitGroup; ++j)
+            for (uint32_t geometryID = 0; geometryID < mGeometryCount; geometryID++)
             {
-                mHitVars[j * descHitGroupCount + i].pVars = EntryPointGroupVars::create(pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
+                const auto& info = pBindingTable->getHitGroup(rayType, geometryID);
+                if (!info.isValid()) continue;
+
+                mHitVars[mRayTypeCount * geometryID + rayType].pVars = EntryPointGroupVars::create(pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
+                entryPointGroupIndices.insert(info.groupIndex);
             }
         }
 
-        // Hit Groups for procedural primitives are different than for triangles.
-        //
-        // There must be a set of vars for every geometry defined in the BLAS (i.e. every prim added to the scene).
-        // All intersection shader x hit-shader permutations are already generated in Program creation, so we look up entry points based on each
-        // each geometry's type index.
-        //
-        // Hit groups in the program are ordered in the following way:
-        //
-        // [  Intersection Shader 0   |  Intersection Shader 1   | ... |  Intersection Shader N   ]
-        // [          with            |           with           |     |          with            ]
-        // [ Ray0 | Ray1 | ... | RayN | Ray0 | Ray1 | ... | RayN | ... | Ray0 | Ray1 | ... | RayN ]
-        //
-        // So the index of any specific hit group is calculated using: (IntersectionShaderIdx * RayCount + RayIdx)
-        //
-        // For each primitive, the hit groups for the corresponding intersection shader are looked up and appended to the vars.
-        //
-        uint32_t intersectionShaderCount = (uint32_t)descExtra.mIntersectionEntryPoints.size();
-        uint32_t proceduralPrimHitVarCount = mpScene->getProceduralPrimitiveCount() * descHitGroupCount; // Total Var Count = Prim Count * Ray Count
-        mAABBHitVars.resize(proceduralPrimHitVarCount);
-        uint32_t currAABBHitVar = 0;
-        for (uint32_t i = 0; i < mpScene->getProceduralPrimitiveCount(); i++)
-        {
-            uint32_t intersectionShaderId = mpScene->getProceduralPrimitive(i).typeID;
-            assert(intersectionShaderId < intersectionShaderCount);
+        mUniqueEntryPointGroupIndices.assign(entryPointGroupIndices.begin(), entryPointGroupIndices.end());
+        assert(!mUniqueEntryPointGroupIndices.empty());
 
-            // For this primitive's intersection shader group/type, get the hit vars for each ray type
-            for (uint32_t j = 0; j < descHitGroupCount; j++)
-            {
-                auto& info = descExtra.mAABBHitGroups[intersectionShaderId * descHitGroupCount + j];
-                if (info.groupIndex < 0) continue;
-
-                mAABBHitVars[currAABBHitVar++].pVars = EntryPointGroupVars::create(pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
-            }
-        }
-
-        for (auto entryPointGroupInfo : mRayGenVars)
-            mpEntryPointGroupVars.push_back(entryPointGroupInfo.pVars);
+        // Build list of vars for all entry point groups.
+        // Note that there may be nullptr entries, as not all hit groups need to be assigned.
+        assert(mRayGenVars.size() == 1);
+        mpEntryPointGroupVars.push_back(mRayGenVars[0].pVars);
         for (auto entryPointGroupInfo : mMissVars)
             mpEntryPointGroupVars.push_back(entryPointGroupInfo.pVars);
         for (auto entryPointGroupInfo : mHitVars)
             mpEntryPointGroupVars.push_back(entryPointGroupInfo.pVars);
-        for (auto entryPointGroupInfo : mAABBHitVars)
-            mpEntryPointGroupVars.push_back(entryPointGroupInfo.pVars);
     }
 
-    bool applyRtProgramVars(
+    static bool applyRtProgramVars(
         uint8_t* pRecord,
         const RtEntryPointGroupKernels* pKernels,
         uint32_t uniqueEntryPointGroupIndex,
@@ -210,11 +164,16 @@ namespace Falcor
         {
             auto& varsInfo = varsVec[i];
             auto pBlock = varsInfo.pVars.get();
+            if (!pBlock) continue;
 
             auto uniqueGroupIndex = pBlock->getGroupIndexInProgram();
 
             auto pGroupKernels = getUniqueRtEntryPointGroupKernels(pKernels, uniqueGroupIndex);
             if (!pGroupKernels) continue;
+
+            // If we get here the shader record is used and will be assigned a valid shader identifier.
+            // Shader records that are skipped above are left in their default state: initialized to zeros,
+            // indicating that no shader should be executed and the local root signature will not be accessed.
 
             uint8_t* pRecord = mpShaderTable->getRecordPtr(type, tableOffset + i);
 
@@ -230,8 +189,7 @@ namespace Falcor
 
     bool RtProgramVars::apply(RenderContext* pCtx, RtStateObject* pRtso)
     {
-        auto pKernels = pRtso->getKernels();
-        auto pProgram = static_cast<RtProgram*>(pKernels->getProgramVersion()->getProgram().get());
+        auto& pKernels = pRtso->getKernels();
 
         bool needShaderTableUpdate = false;
         if (!mpShaderTable)
@@ -252,18 +210,15 @@ namespace Falcor
         {
             // We need to check if anything has changed that would require the shader
             // table to be rebuilt.
-            uint32_t rayGenCount = getRayGenVarsCount();
-            for (uint32_t r = 0; r < rayGenCount; r++)
+            assert(mRayGenVars.size() == 1);
+            auto& varsInfo = mRayGenVars[0];
+            auto pBlock = varsInfo.pVars.get();
+
+            auto changeEpoch = computeEpochOfLastChange(pBlock);
+
+            if (changeEpoch != varsInfo.lastObservedChangeEpoch)
             {
-                auto& varsInfo = mRayGenVars[r];
-                auto pBlock = varsInfo.pVars.get();
-
-                auto changeEpoch = computeEpochOfLastChange(pBlock);
-
-                if (changeEpoch != varsInfo.lastObservedChangeEpoch)
-                {
-                    needShaderTableUpdate = true;
-                }
+                needShaderTableUpdate = true;
             }
         }
 
@@ -278,7 +233,6 @@ namespace Falcor
             if (!applyVarsToTable(ShaderTable::SubTableType::RayGen, 0, mRayGenVars, pRtso)) return false;
             if (!applyVarsToTable(ShaderTable::SubTableType::Miss, 0, mMissVars, pRtso)) return false;
             if (!applyVarsToTable(ShaderTable::SubTableType::Hit, 0, mHitVars, pRtso)) return false;
-            if (!applyVarsToTable(ShaderTable::SubTableType::Hit, (uint32_t)mHitVars.size(), mAABBHitVars, pRtso)) return false;
 
             mpShaderTable->flushBuffer(pCtx);
         }

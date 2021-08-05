@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -47,12 +47,12 @@ struct EmissiveUniformSampler : IEmissiveLightSampler
     /** Draw a single light sample.
         \param[in] posW Shading point in world space.
         \param[in] normalW Normal at the shading point in world space.
-        \param[in] onSurface True if only upper hemisphere should be considered.
+        \param[in] upperHemisphere True if only upper hemisphere should be considered.
         \param[in,out] sg Sample generator.
         \param[out] ls Light sample. Only valid if true is returned.
         \return True if a sample was generated, false otherwise.
     */
-    bool sampleLight<S : ISampleGenerator>(const float3 posW, const float3 normalW, const bool onSurface, inout S sg, out TriangleLightSample ls)
+    bool sampleLight<S : ISampleGenerator>(const float3 posW, const float3 normalW, const bool upperHemisphere, inout S sg, out TriangleLightSample ls)
     {
         if (gScene.lightCollection.getActiveTriangleCount() == 0) return false;
 
@@ -75,11 +75,11 @@ struct EmissiveUniformSampler : IEmissiveLightSampler
     /** Evaluate the PDF associated with selecting an emissive triangle.
         \param[in] posW Shading point in world space.
         \param[in] normalW Normal at the shading point in world space.
-        \param[in] onSurface True if only upper hemisphere should be considered.
+        \param[in] upperHemisphere True if only upper hemisphere should be considered.
         \param[in] triangleIndex Index of selected triangle.
         \return Probability of drawing the input triangle from an uniform distribution.
     */
-    float evalTriangleSelectionPdf(const float3 posW, const float3 normalW, const bool onSurface, const uint triangleIndex)
+    float evalTriangleSelectionPdf(const float3 posW, const float3 normalW, const bool upperHemisphere, const uint triangleIndex)
     {
         if (triangleIndex == LightCollection::kInvalidIndex) return 0.f;
 
@@ -90,15 +90,15 @@ struct EmissiveUniformSampler : IEmissiveLightSampler
     /** Evaluate the PDF at a shading point given a hit point on an emissive triangle.
         \param[in] posW Shading point in world space.
         \param[in] normalW Normal at the shading point in world space.
-        \param[in] onSurface True if only upper hemisphere should be considered.
+        \param[in] upperHemisphere True if only upper hemisphere should be considered.
         \param[in] hit Triangle hit data.
         \return Probability density with respect to solid angle at the shading point.
     */
-    float evalPdf(const float3 posW, const float3 normalW, const bool onSurface, const TriangleHit hit)
+    float evalPdf(const float3 posW, const float3 normalW, const bool upperHemisphere, const TriangleLightHit hit)
     {
         if (hit.triangleIndex == LightCollection::kInvalidIndex) return 0.f;
 
-        float triangleSelectionPdf = evalTriangleSelectionPdf(posW, normalW, onSurface, hit.triangleIndex);
+        float triangleSelectionPdf = evalTriangleSelectionPdf(posW, normalW, upperHemisphere, hit.triangleIndex);
 
         // Compute triangle sampling probability with respect to solid angle from the shading point.
         float trianglePdf = evalTrianglePdf(posW, hit);

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -43,7 +43,7 @@ struct VolumeData
     uint    densityGrid             = 0;            ///< Index of the density grid.
     uint    emissionGrid            = 0;            ///< Index of the emission grid.
     uint    flags                   = 0;            ///< Flags (contains only emission mode for now).
-    float   anisotropy              = 0.f;          ///< Phase function anisotropy.
+    float   anisotropy              = 0.f;          ///< Phase function anisotropy (g).
     float3  albedo                  = float3(1);    ///< Medium scattering albedo.
     float   emissionTemperature     = 0.f;          ///< Emission base temperature (K).
 };

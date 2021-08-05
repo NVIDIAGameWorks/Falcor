@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -59,7 +59,7 @@ Texture2D<float4> gMaterialExtraParams;
 Texture2D<PackedHitInfo> gVBuffer;              // Optional
 #endif
 
-#define isValid(name) (is_valid_##name != 0)
+#define is_valid(name) (is_valid_##name != 0)
 
 
 /** Returns the primary ray's direction.
@@ -67,7 +67,7 @@ Texture2D<PackedHitInfo> gVBuffer;              // Optional
 float3 getPrimaryRayDir(uint2 pixel, uint2 frameDim, const Camera camera)
 {
 #if !USE_VBUFFER
-    if (isValid(gWorldView))
+    if (is_valid(gWorldView))
     {
         // If we have the view vector bound as a buffer, just fetch it. No need to compute anything.
         return -gWorldView[pixel].xyz;
@@ -98,12 +98,14 @@ bool loadShadingData(uint2 pixel, uint2 frameDim, const Camera camera, out Shadi
     bool valid = false;
 
 #if USE_VBUFFER
-    if (hit.decode(gVBuffer[pixel]))
+    hit = HitInfo(gVBuffer[pixel]);
+    if (hit.isValid() && hit.getType() == HitType::Triangle)
     {
+        const TriangleHit triangleHit = hit.getTriangleHit();
         // Evaluate Falcor's material parameters at the hit point.
         // TODO: Implement texLOD to enable texture filtering in prepareShadingData().
-        VertexData v = gScene.getVertexData(hit);
-        const uint materialID = gScene.getMaterialID(hit.instanceID);
+        const VertexData v = gScene.getVertexData(triangleHit);
+        const uint materialID = gScene.getMaterialID(triangleHit.instanceID);
         sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -rayDir, 0.f);
 
         // Adjust shading normals if GBuffer pass has flag enabled.
@@ -118,7 +120,7 @@ bool loadShadingData(uint2 pixel, uint2 frameDim, const Camera camera, out Shadi
     {
         // Load geometry and material parameters from G-buffer.
         float3 normal = gWorldShadingNormal[pixel].xyz;
-        float4 tangent = isValid(gWorldShadingTangent) ? gWorldShadingTangent[pixel] : float4(perp_stark(normal), 1.f);
+        float4 tangent = is_valid(gWorldShadingTangent) ? gWorldShadingTangent[pixel] : float4(perp_stark(normal), 1.f);
         float3 faceNormal = gWorldFaceNormal[pixel].xyz;
         GeometryParams geoParams = prepareGeometryParams(worldPos.xyz, -rayDir, normal, tangent, faceNormal);
 
@@ -131,11 +133,12 @@ bool loadShadingData(uint2 pixel, uint2 frameDim, const Camera camera, out Shadi
         sd = prepareShadingData(geoParams, matParams);
         valid = true;
 
-        if (isValid(gVBuffer))
+        if (is_valid(gVBuffer))
         {
-            if (hit.decode(gVBuffer[pixel]))
+            hit = HitInfo(gVBuffer[pixel]);
+            if (hit.isValid() && hit.getType() == HitType::Triangle)
             {
-                sd.materialID = gScene.getMaterialID(hit.instanceID);
+                sd.materialID = gScene.getMaterialID(hit.getTriangleHit().instanceID);
             }
             else valid = false; // Shouldn't happen
         }

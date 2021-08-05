@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -40,7 +40,7 @@ namespace
     // The payload for the scatter rays is 8-12B.
     // The payload for the shadow rays is 4B.
     const uint32_t kMaxPayloadSizeBytes = HitInfo::kMaxPackedSizeInBytes;
-    const uint32_t kMaxAttributesSizeBytes = 8;
+    const uint32_t kMaxAttributeSizeBytes = 8;
     const uint32_t kMaxRecursionDepth = 1;
 
     // Render pass output channels.
@@ -77,24 +77,38 @@ MegakernelPathTracer::SharedPtr MegakernelPathTracer::create(RenderContext* pRen
 MegakernelPathTracer::MegakernelPathTracer(const Dictionary& dict)
     : PathTracer(dict, kOutputChannels)
 {
-    // Create ray tracing program.
-    RtProgram::Desc progDesc;
-    progDesc.addShaderLibrary(kShaderFile).setRayGen("rayGen");
-    progDesc.addHitGroup(kRayTypeScatter, "scatterClosestHit", "scatterAnyHit").addMiss(kRayTypeScatter, "scatterMiss");
-    progDesc.addHitGroup(kRayTypeShadow, "", "shadowAnyHit").addMiss(kRayTypeShadow, "shadowMiss");
-    progDesc.addDefine("MAX_BOUNCES", std::to_string(mSharedParams.maxBounces));
-    progDesc.addDefine("SAMPLES_PER_PIXEL", std::to_string(mSharedParams.samplesPerPixel));
-    progDesc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
-    mTracer.pProgram = RtProgram::create(progDesc, kMaxPayloadSizeBytes, kMaxAttributesSizeBytes);
 }
 
 void MegakernelPathTracer::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
 {
     PathTracer::setScene(pRenderContext, pScene);
 
-    if (pScene)
+    if (mpScene)
     {
-        mTracer.pProgram->addDefines(pScene->getSceneDefines());
+        if (mpScene->hasGeometryType(Scene::GeometryType::Procedural))
+        {
+            logWarning("This render pass only supports triangles. Other types of geometry will be ignored.");
+        }
+
+        // Create ray tracing program.
+        RtProgram::Desc desc;
+        desc.addShaderLibrary(kShaderFile);
+        desc.setMaxPayloadSize(kMaxPayloadSizeBytes);
+        desc.setMaxAttributeSize(kMaxAttributeSizeBytes);
+        desc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
+        desc.addDefines(mpScene->getSceneDefines());
+        desc.addDefine("MAX_BOUNCES", std::to_string(mSharedParams.maxBounces));
+        desc.addDefine("SAMPLES_PER_PIXEL", std::to_string(mSharedParams.samplesPerPixel));
+
+        mTracer.pBindingTable = RtBindingTable::create(2, 2, mpScene->getGeometryCount());
+        auto& sbt = mTracer.pBindingTable;
+        sbt->setRayGen(desc.addRayGen("rayGen"));
+        sbt->setMiss(kRayTypeScatter, desc.addMiss("scatterMiss"));
+        sbt->setMiss(kRayTypeShadow, desc.addMiss("shadowMiss"));
+        sbt->setHitGroupByType(kRayTypeScatter, mpScene, Scene::GeometryType::TriangleMesh, desc.addHitGroup("scatterClosestHit", "scatterAnyHit"));
+        sbt->setHitGroupByType(kRayTypeShadow, mpScene, Scene::GeometryType::TriangleMesh, desc.addHitGroup("", "shadowAnyHit"));
+
+        mTracer.pProgram = RtProgram::create(desc);
     }
 }
 
@@ -132,8 +146,8 @@ void MegakernelPathTracer::execute(RenderContext* pRenderContext, const RenderDa
     {
         if (!desc.texname.empty())
         {
-            auto pGlobalVars = mTracer.pVars->getRootVar();
-            pGlobalVars[desc.texname] = renderData[desc.name]->asTexture();
+            auto var = mTracer.pVars->getRootVar();
+            var[desc.texname] = renderData[desc.name]->asTexture();
         }
     };
     for (auto channel : mInputChannels) bind(channel);
@@ -158,19 +172,18 @@ void MegakernelPathTracer::execute(RenderContext* pRenderContext, const RenderDa
 
 void MegakernelPathTracer::prepareVars()
 {
-    assert(mpScene);
     assert(mTracer.pProgram);
 
     // Configure program.
     mTracer.pProgram->addDefines(mpSampleGenerator->getDefines());
 
-    // Create program variables for the current program/scene.
+    // Create program variables for the current program.
     // This may trigger shader compilation. If it fails, throw an exception to abort rendering.
-    mTracer.pVars = RtProgramVars::create(mTracer.pProgram, mpScene);
+    mTracer.pVars = RtProgramVars::create(mTracer.pProgram, mTracer.pBindingTable);
 
     // Bind utility classes into shared data.
-    auto pGlobalVars = mTracer.pVars->getRootVar();
-    bool success = mpSampleGenerator->setShaderData(pGlobalVars);
+    auto var = mTracer.pVars->getRootVar();
+    bool success = mpSampleGenerator->setShaderData(var);
     if (!success) throw std::exception("Failed to bind sample generator");
 
     // Create parameter block for shared data.

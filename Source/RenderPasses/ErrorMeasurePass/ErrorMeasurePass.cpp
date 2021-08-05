@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -53,6 +53,14 @@ namespace
     const std::string kSelectedOutputId = "SelectedOutputId";
 }
 
+static void regErrorMeasurePass(pybind11::module& m)
+{
+    pybind11::enum_<ErrorMeasurePass::OutputId> op(m, "OutputId");
+    op.value("Source", ErrorMeasurePass::OutputId::Source);
+    op.value("Reference", ErrorMeasurePass::OutputId::Reference);
+    op.value("Difference", ErrorMeasurePass::OutputId::Difference);
+}
+
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" __declspec(dllexport) const char* getProjDir()
 {
@@ -62,6 +70,7 @@ extern "C" __declspec(dllexport) const char* getProjDir()
 extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
 {
     lib.registerClass("ErrorMeasurePass", "Error Measurement Pass", ErrorMeasurePass::create);
+    ScriptBindings::registerBinding(regErrorMeasurePass);
 }
 
 const Gui::RadioButtonGroup ErrorMeasurePass::sOutputSelectionButtons =

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,19 +29,25 @@
 
 import Scene.Raster;
 import Scene.HitInfo;
-import Utils.Helpers;
+import Utils.Math.MathHelpers;
 import GBufferHelpers;
 import Experimental.Scene.Material.TexLODHelpers;
 
 // UAV output channels
-RWTexture2D<PackedHitInfo> gVBuffer;
-RWTexture2D<float2> gMotionVectors;
-RWTexture2D<float4> gFaceNormalW;
-RWTexture2D<float2> gPosNormalFwidth;
-RWTexture2D<float2> gLinearZAndDeriv;
-RWTexture2D<float>  gSurfaceSpreadAngle;
+RasterizerOrderedTexture2D<PackedHitInfo> gVBuffer;
+RasterizerOrderedTexture2D<float2> gMotionVectors;
+RasterizerOrderedTexture2D<float4> gRoughness;
+RasterizerOrderedTexture2D<float4> gMetallic;
+RasterizerOrderedTexture2D<float4> gFaceNormalW;
+RasterizerOrderedTexture2D<float2> gPosNormalFwidth;
+RasterizerOrderedTexture2D<float2> gLinearZAndDeriv;
 
-#define isValid(name) (is_valid_##name != 0)
+cbuffer PerFrameCB
+{
+    uint2 gFrameDim;
+};
+
+#define is_valid(name) (is_valid_##name != 0)
 
 struct GBufferPSOut
 {
@@ -68,10 +74,10 @@ GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 bar
     // Using vOut.posH.xy as pixel coordinate since it has the SV_Position semantic.
     int2 ipos = int2(vsOut.posH.xy);
 
-    float3 faceNormal = gScene.getFaceNormalW(vsOut.meshInstanceID, triangleIndex);
+    float3 faceNormal = gScene.getFaceNormalW(vsOut.instanceID, triangleIndex);
     VertexData v = prepareVertexData(vsOut, faceNormal);
 
-#if !DISABLE_ALPHA_TEST
+#if USE_ALPHA_TEST
     if (alphaTest(v, gScene.materials[vsOut.materialID], gScene.materialResources[vsOut.materialID])) discard;
 #endif
     float3 viewDir = normalize(gScene.camera.getPosition() - v.posW);
@@ -94,28 +100,38 @@ GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 bar
     psOut.matlExtra      = gbuf.matlExtra;
 
     // Store UAV outputs.
-    if (isValid(gFaceNormalW))
+    if (is_valid(gFaceNormalW))
     {
         gFaceNormalW[ipos] = float4(sd.faceN, 0);
     }
 
     // Compute motion vectors.
-    if (isValid(gMotionVectors))
+    if (is_valid(gMotionVectors))
     {
         const float2 pixelPos = ipos + float2(0.5, 0.5); // Current sample in pixel coords.
         const float4 prevPosH = vsOut.prevPosH; // Sample in previous frame in clip space coords, no jittering applied.
-        const float2 mv = calcMotionVector(pixelPos, prevPosH, gParams.frameSize) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY); // Remove camera jitter from motion vector
+        const float2 mv = calcMotionVector(pixelPos, prevPosH, gFrameDim) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY); // Remove camera jitter from motion vector
         gMotionVectors[ipos] = mv;
     }
 
+    if (is_valid(gRoughness))
+    {
+        gRoughness[ipos] = float4(float3(sd.linearRoughness), 1.0f);
+    }
+
+    if (is_valid(gMetallic))
+    {
+        gMetallic[ipos] = float4(float3(sd.metallic), 1.0f);
+    }
+
     // Length of derivatives of position and normal
-    if (isValid(gPosNormalFwidth))
+    if (is_valid(gPosNormalFwidth))
     {
         gPosNormalFwidth[ipos] = float2(length(fwidth(sd.posW)), length(fwidth(sd.N)));
     }
 
     // Linear z and its derivative
-    if (isValid(gLinearZAndDeriv))
+    if (is_valid(gLinearZAndDeriv))
     {
         const float linearZ = vsOut.posH.z * vsOut.posH.w;
         gLinearZAndDeriv[ipos] = float2(linearZ, max(abs(ddx(linearZ)), abs(ddy(linearZ))));
@@ -129,19 +145,13 @@ GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 bar
     // This is what we store in the hit info.
 
     // Store hit information.
-    if (isValid(gVBuffer))
+    if (is_valid(gVBuffer))
     {
-        HitInfo hit;
-        hit.type = InstanceType::TriangleMesh;
-        hit.instanceID = vsOut.meshInstanceID;
-        hit.primitiveIndex = triangleIndex;
-        hit.barycentrics = barycentrics.yz;
-        gVBuffer[ipos] = hit.encode();
-    }
-    // Store surface spread angle for texture LOD using ray cones.
-    if (isValid(gSurfaceSpreadAngle))
-    {
-        gSurfaceSpreadAngle[ipos] = computeScreenSpaceSurfaceSpreadAngle(sd.posW, sd.N) * sign(dot(viewDir, sd.N));
+        TriangleHit triangleHit;
+        triangleHit.instanceID = vsOut.instanceID;
+        triangleHit.primitiveIndex = triangleIndex;
+        triangleHit.barycentrics = barycentrics.yz;
+        gVBuffer[ipos] = HitInfo(triangleHit).pack();
     }
     return psOut;
 }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -53,6 +53,9 @@ namespace Falcor
         }
     }
 
+    std::set<std::string> PythonImporter::sImportPaths;
+    std::vector<std::string> PythonImporter::sImportDirectories;
+
     bool PythonImporter::import(const std::string& filename, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict)
     {
         bool success = false;
@@ -63,8 +66,15 @@ namespace Falcor
 
         if (findFileInDataDirectories(filename, fullpath))
         {
+            if (auto it = sImportPaths.emplace(fullpath); !it.second)
+            {
+                logError("Python scene file '" + fullpath + "' is recursively imported.");
+            }
+
             // Add script directory to search paths (add it to the front to make it highest priority).
             const std::string directory = getDirectoryFromFile(fullpath);
+            // Keep a stack of import directories do keep track of nested imports.
+            sImportDirectories.push_back(directory);
             addDataDirectory(directory, true);
 
             // Load the script file
@@ -77,15 +87,32 @@ namespace Falcor
             }
             else
             {
-                Scripting::Context context;
-                context.setObject("sceneBuilder", &builder);
-                Scripting::runScript("from falcor import *", context);
-                Scripting::runScriptFromFile(fullpath, context);
-                success = true;
+                while (!success)
+                {
+                    try
+                    {
+                        Scripting::Context context;
+                        context.setObject("sceneBuilder", &builder);
+                        Scripting::runScript("from falcor import *", context);
+                        Scripting::runScriptFromFile(fullpath, context);
+                        success = true;
+                    }
+                    catch (const std::exception& e)
+                    {
+                        logError("Failed to execute python scene script:\n" + filename + "\n\n" + e.what(), Logger::MsgBox::RetryAbort);
+                    }
+                }
             }
 
-            // Remove script directory from search path.
-            removeDataDirectory(directory);
+            // Remove script directory from search path (only if not needed by the outer importer).
+            sImportDirectories.pop_back();
+            if (std::find(sImportDirectories.begin(), sImportDirectories.end(), directory) == sImportDirectories.end())
+            {
+                removeDataDirectory(directory);
+            }
+
+            auto erased = sImportPaths.erase(fullpath);
+            assert(erased == 1);
         }
         else
         {

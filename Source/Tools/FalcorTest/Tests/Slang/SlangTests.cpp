@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -174,5 +174,28 @@ namespace Falcor
         test("6_2");
         test("6_3");
         test("6_5");
+    }
+
+    GPU_TEST(SlangHashedStrings)
+    {
+        ctx.createProgram("Tests/Slang/SlangTests.cs.slang", "testHashedStrings");
+        ctx.allocateStructuredBuffer("result", 4);
+        ctx.runProgram(1, 1, 1);
+
+        auto hashedStrings = ctx.getProgram()->getReflector()->getHashedStrings();
+        EXPECT_EQ(hashedStrings.size(), 4);
+        EXPECT_EQ(hashedStrings[0].string, "Test String 0");
+        EXPECT_EQ(hashedStrings[1].string, "Test String 1");
+        EXPECT_EQ(hashedStrings[2].string, "Test String 2");
+        EXPECT_EQ(hashedStrings[3].string, "Test String 3");
+
+        const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
+
+        for (size_t i = 0; i < 4; ++i)
+        {
+            EXPECT_EQ(result[i], hashedStrings[i].hash);
+        }
+
+        ctx.unmapBuffer("result");
     }
 }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,9 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#define NV_SHADER_EXTN_SLOT u63
-#define NV_SHADER_EXTN_REGISTER_SPACE space0
-#include "NVAPI/nvHLSLExtns.h"
+#include "Utils/NVAPI.slangh" // We need this for accessing the global timer.
 
 /** GPU timer based on NVAPI.
     Uses only the lower 32-bits of the global timer. This should be sufficient to do
@@ -59,7 +57,11 @@ struct GpuTimer
     */
     static TimePoint getCurrentTimePoint()
     {
+#if _ENABLE_NVAPI
         return (TimePoint)NvGetSpecial(NV_SPECIALOP_GLOBAL_TIMER_LO);
+#else
+        return 0;
+#endif
     }
 
     /** Compute the duration between two time points accounting for at most one overflow.

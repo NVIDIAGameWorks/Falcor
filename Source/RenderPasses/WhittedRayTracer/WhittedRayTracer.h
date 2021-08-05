@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,6 +31,7 @@
 #include "RenderGraph/RenderPassHelpers.h"
 #include "Utils/Sampling/SampleGenerator.h"
 #include "Experimental/Scene/Material/TexLODTypes.slang"  // Using the enum with Mip0, RayCones, etc
+#include "WhittedRayTracerTypes.slang"
 
 using namespace Falcor;
 
@@ -60,6 +61,14 @@ public:
     void setRayConeMode(const RayConeMode mode) { mRayConeMode = mode; }
     RayConeMode getRayConeMode() const { return mRayConeMode; }
 
+    void setRayConeFilterMode(const RayFootprintFilterMode mode) { mRayConeFilterMode = mode; }
+    RayFootprintFilterMode getRayConeFilterMode() const { return mRayConeFilterMode; }
+
+    void setRayDiffFilterMode(const RayFootprintFilterMode mode) { mRayDiffFilterMode = mode; }
+    RayFootprintFilterMode getRayDiffFilterMode() const { return mRayDiffFilterMode; }
+
+    static void registerBindings(pybind11::module& m);
+
 private:
     WhittedRayTracer(const Dictionary& dict);
 
@@ -70,51 +79,23 @@ private:
     Scene::SharedPtr            mpScene;                                    ///< Current scene.
     SampleGenerator::SharedPtr  mpSampleGenerator;                          ///< GPU sample generator.
 
-    ChannelList                 mInputChannels;
-    Gui::DropdownList           mTexLODModes;
-    Gui::DropdownList           mRayConeModes;
-
-    uint                        mMaxBounces = 3;                            ///< Max number of indirect bounces (0 = none).
-    TexLODMode                  mTexLODMode = TexLODMode::Mip0;             ///< Which texture LOD mode to use.
-    RayConeMode                 mRayConeMode = RayConeMode::Combo;          ///< Which variant of ray cones to use.
-    bool                        mVisualizeSurfaceSpread = false;            ///< Visualize surface spread angle at the first hit for the ray cones methods.
-    bool                        mUsingRasterizedGBuffer = true;             ///< Set by the Python file (whether rasterized GBUffer or ray traced GBuffer is used).
-    bool                        mUseRoughnessToVariance = false;            ///< Use roughness to variance to grow ray cones based on BDSF roughness.
+    uint                        mMaxBounces = 3;                                        ///< Max number of indirect bounces (0 = none).
+    TexLODMode                  mTexLODMode = TexLODMode::Mip0;                         ///< Which texture LOD mode to use.
+    RayConeMode                 mRayConeMode = RayConeMode::Combo;                      ///< Which variant of ray cones to use.
+    RayFootprintFilterMode      mRayConeFilterMode = RayFootprintFilterMode::Isotropic; ///< Which filter mode to use for ray cones.
+    RayFootprintFilterMode      mRayDiffFilterMode = RayFootprintFilterMode::Isotropic; ///< Which filter mode to use for ray differentials.
+    bool                        mVisualizeSurfaceSpread = false;                        ///< Visualize surface spread angle at the first hit for the ray cones methods.
+    bool                        mUseRoughnessToVariance = false;                        ///< Use roughness to variance to grow ray cones based on BDSF roughness.
+    bool                        mUseFresnelAsBRDF = false;                              ///< Use Fresnel term as BRDF (instead of hacky throughput adjustment)
     // Runtime data
-    uint                        mFrameCount = 0;                            ///< Frame count since scene was loaded.
+    uint                        mFrameCount = 0;                                        ///< Frame count since scene was loaded.
     bool                        mOptionsChanged = false;
 
     // Ray tracing program.
     struct
     {
         RtProgram::SharedPtr pProgram;
+        RtBindingTable::SharedPtr pBindingTable;
         RtProgramVars::SharedPtr pVars;
     } mTracer;
-
-    // Scripting
-#define serialize(var) \
-    if constexpr (!loadFromDict) dict[#var] = var; \
-    else if (dict.keyExists(#var)) { if constexpr (std::is_same<decltype(var), std::string>::value) var = (const std::string &)dict[#var]; else var = dict[#var]; vars.emplace(#var); }
-
-    template<bool loadFromDict, typename DictType>
-    void serializePass(DictType& dict)
-    {
-        std::unordered_set<std::string> vars;
-
-        // Add variables here that should be serialized to/from the dictionary.
-        serialize(mMaxBounces);
-        serialize(mTexLODMode);
-        serialize(mRayConeMode);
-        serialize(mUsingRasterizedGBuffer);
-        serialize(mUseRoughnessToVariance);
-
-        if constexpr (loadFromDict)
-        {
-            for (const auto& [key, value] : dict)
-            {
-                if (vars.find(key) == vars.end()) logWarning("Unknown field '" + key + "' in a WhittedRayTracer dictionary");
-            }
-        }
-    }
-#undef serialize
 };

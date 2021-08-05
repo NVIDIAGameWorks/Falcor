@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -73,6 +73,7 @@ namespace Falcor
         // Keep copies of the transforms used for the previous frame. We need these for computing motion vectors etc.
         mData.prevViewMat = mPrevData.viewMat;
         mData.prevViewProjMatNoJitter = mPrevData.viewProjMatNoJitter;
+        mData.prevPosW = mPrevData.posW;
 
         mChanges = is_set(mChanges, Changes::Movement | Changes::Frustum) ? Changes::History : Changes::None;
 
@@ -156,6 +157,7 @@ namespace Falcor
                 2.0f * mData.jitterX, 2.0f * mData.jitterY, 0.0f, 1.0f);
             // Apply jitter matrix to the projection matrix
             mData.viewProjMatNoJitter = mData.projMat * mData.viewMat;
+            mData.projMatNoJitter = mData.projMat;
             mData.projMat = jitterMat * mData.projMat;
 
             mData.viewProjMat = mData.projMat * mData.viewMat;
@@ -303,7 +305,7 @@ namespace Falcor
     void Camera::updateFromAnimation(const glm::mat4& transform)
     {
         float3 up = float3(transform[1]);
-        float3 fwd = float3(transform[2]);
+        float3 fwd = float3(-transform[2]);
         float3 pos = float3(transform[3]);
         setUpVector(up);
         setPosition(pos);
@@ -366,6 +368,8 @@ namespace Falcor
 
     SCRIPT_BINDING(Camera)
     {
+        SCRIPT_BINDING_DEPENDENCY(Animatable)
+
         pybind11::class_<Camera, Animatable, Camera::SharedPtr> camera(m, "Camera");
         camera.def_property("name", &Camera::getName, &Camera::setName);
         camera.def_property("aspectRatio", &Camera::getAspectRatio, &Camera::setAspectRatio);

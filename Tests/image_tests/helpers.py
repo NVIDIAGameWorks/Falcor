@@ -5,10 +5,11 @@ def render_frames(m, name, frames=[1], framerate=60, resolution=[1280,720]):
     m.clock.time = 0
     m.clock.pause()
     m.frameCapture.baseFilename = name
-    current_frame = 0
-    for frame in frames:
-        m.clock.frame = frame
-        while current_frame < frame:
+
+    frame = 0
+    for capture_frame in frames:
+        while frame < capture_frame:
+            frame += 1
+            m.clock.frame = frame
             m.renderFrame()
-            current_frame += 1
         m.frameCapture.capture()

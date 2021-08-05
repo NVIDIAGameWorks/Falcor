@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -39,7 +39,7 @@
 */
 
 __exported import Scene.ShadingData;
-import Experimental.Scene.Material.BxDFTypes;
+import Experimental.Scene.Material.IBxDF;
 
 /** Struct representing the material parameters at a hit point.
 */
@@ -48,7 +48,7 @@ struct MaterialParams
     float4 diffuseOpacity;      ///< Diffuse color (rgb) and opacity (a).
     float4 specularRoughness;   ///< Specular color (rgb) and roughness (a).
     float4 emissive;            ///< Emissive color (rgb). TODO: Use the alpha channel either for a luminance scaler, or 1.0/IoR.
-    float4 extraParams;         ///< Extra parameters (IoR, doubleSided, specularTransmission, metallic).
+    float4 extraParams;         ///< Extra parameters (IoR, flags, specularTransmission/diffuseTransmission, metallic).
 
     /** Returns the roughness parameter.
     */
@@ -83,7 +83,10 @@ MaterialParams getMaterialParams(ShadingData sd)
     m.diffuseOpacity = float4(sd.diffuse, sd.opacity);
     m.specularRoughness = float4(sd.specular, sd.linearRoughness);
     m.emissive = float4(sd.emissive, 0.f);
-    m.extraParams = float4(sd.IoR, sd.doubleSided ? 1.f : 0.f, sd.specularTransmission, sd.metallic);
+    m.extraParams.x = sd.IoR;
+    m.extraParams.y = asfloat(sd.flags);
+    m.extraParams.z = asfloat((f32tof16(sd.specularTransmission) << 16) | (f32tof16(sd.diffuseTransmission) & 0xffff));
+    m.extraParams.w = sd.metallic;
     return m;
 }
 
@@ -157,41 +160,14 @@ ShadingData prepareShadingData(GeometryParams geoParams, MaterialParams matParam
     sd.emissive = matParams.emissive.rgb;
     sd.IoR = matParams.extraParams.x;
     sd.eta = sd.frontFacing ? 1.f / sd.IoR : sd.IoR;
-    sd.doubleSided = matParams.extraParams.y != 0.f;
-    sd.specularTransmission = matParams.extraParams.z;
+
+    sd.flags = asuint(matParams.extraParams.y);
+
+    uint trans = asuint(matParams.extraParams.z);
+    sd.specularTransmission = f16tof32(trans >> 16);
+    sd.diffuseTransmission = f16tof32(trans & 0xffff);
+
     sd.metallic = matParams.extraParams.w;
 
-    sd.occlusion = 1.f;
-
-    sd.activeLobes = (uint)LobeType::All;
-
     return sd;
-}
-
-/** Helper function to transform vector v from the local surface frame to world space.
-*/
-float3 fromLocal(float3 v, ShadingData sd)
-{
-    return sd.T * v.x + sd.B * v.y + sd.N * v.z;
-}
-
-/** Helper function to transform vector v from the local surface frame to world space.
-*/
-float3 fromLocal(float3 v, GeometryParams sd)
-{
-    return sd.T * v.x + sd.B * v.y + sd.N * v.z;
-}
-
-/** Helper function to transform world space vector v to the local surface frame.
-*/
-float3 toLocal(float3 v, ShadingData sd)
-{
-    return float3(dot(v, sd.T), dot(v, sd.B), dot(v, sd.N));
-}
-
-/** Helper function to transform world space vector v to the local surface frame.
-*/
-float3 toLocal(float3 v, GeometryParams sd)
-{
-    return float3(dot(v, sd.T), dot(v, sd.B), dot(v, sd.N));
 }

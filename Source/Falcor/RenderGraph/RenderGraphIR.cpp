@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -39,7 +39,6 @@ namespace Falcor
     const char* RenderGraphIR::kRemoveEdge = "removeEdge";
     const char* RenderGraphIR::kMarkOutput = "markOutput";
     const char* RenderGraphIR::kUnmarkOutput = "unmarkOutput";
-    const char* RenderGraphIR::kAutoGenEdges = "autoGenEdges";
     const char* RenderGraphIR::kUpdatePass = "updatePass";
     const char* RenderGraphIR::kLoadPassLibrary = "loadRenderPassLibrary";
     const char* RenderGraphIR::kCreatePass = "createPass";
@@ -115,10 +114,5 @@ namespace Falcor
     void RenderGraphIR::loadPassLibrary(const std::string& name)
     {
         mIR += mIndentation + ScriptWriter::makeFunc(RenderGraphIR::kLoadPassLibrary, name);
-    }
-
-    void RenderGraphIR::autoGenEdges()
-    {
-        mIR += mGraphPrefix + ScriptWriter::makeFunc(RenderGraphIR::kAutoGenEdges);
     }
 }

@@ -8,5 +8,6 @@
   </ItemGroup>
   <ItemGroup>
     <ShaderSource Include="WhittedRayTracer.rt.slang" />
+    <ShaderSource Include="WhittedRayTracerTypes.slang" />
   </ItemGroup>
 </Project>

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,9 +27,7 @@
  **************************************************************************/
 import Scene.Raster;
 
-void main(VSOut vOut, uint triangleIndex : SV_PrimitiveID) : SV_TARGET
+void main(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) : SV_TARGET
 {
-    // Calling prepareShadingData() to discard pixels that fail alpha test. The pixel shader has no other side effects.
-    float3 viewDir = normalize(gScene.camera.getPosition() - vOut.posW);
-    prepareShadingData(vOut, triangleIndex, viewDir);
+    if (alphaTest(vsOut, triangleIndex)) discard;
 }

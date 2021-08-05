@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -42,6 +42,8 @@ namespace Falcor
 
         // Constants.
         const float kMaxAnisotropy = 0.99f;
+        const double kMinFrameRate = 1.0;
+        const double kMaxFrameRate = 1000.0;
     }
 
     static_assert(sizeof(VolumeData) % 16 == 0, "Volume::VolumeData size should be a multiple of 16");
@@ -69,6 +71,12 @@ namespace Falcor
         {
             uint32_t gridFrame = getGridFrame();
             if (widget.var("Grid frame", gridFrame, 0u, mGridFrameCount - 1, 1u)) setGridFrame(gridFrame);
+
+            double frameRate = getFrameRate();
+            if (widget.var("Frame rate", frameRate, kMinFrameRate, kMaxFrameRate, 1.0)) setFrameRate(frameRate);
+
+            bool playback = isPlaybackEnabled();
+            if (widget.checkbox("Playback", playback)) setPlaybackEnabled(playback);
         }
 
         if (const auto& densityGrid = getDensityGrid())
@@ -215,6 +223,26 @@ namespace Falcor
         }
     }
 
+    void Volume::setFrameRate(double frameRate)
+    {
+        mFrameRate = clamp(frameRate, kMinFrameRate, kMaxFrameRate);
+    }
+
+    void Volume::setPlaybackEnabled(bool enabled)
+    {
+        mPlaybackEnabled = enabled;
+    }
+
+    void Volume::updatePlayback(double currentTime)
+    {
+        uint32_t frameCount = getGridFrameCount();
+        if (mPlaybackEnabled && frameCount > 0)
+        {
+            uint32_t frameIndex = (uint32_t)std::floor(std::max(0.0, currentTime) * mFrameRate) % frameCount;
+            setGridFrame(frameIndex);
+        }
+    }
+
     void Volume::setDensityScale(float densityScale)
     {
         if (mData.densityScale != densityScale)
@@ -307,8 +335,8 @@ namespace Falcor
         if (mBounds != bounds)
         {
             mBounds = bounds;
-            mData.boundsMin = mBounds.minPoint;
-            mData.boundsMax = mBounds.maxPoint;
+            mData.boundsMin = mBounds.valid() ? mBounds.minPoint : float3(0.f);
+            mData.boundsMax = mBounds.valid() ? mBounds.maxPoint : float3(0.f);
             markUpdates(UpdateFlags::BoundsChanged);
         }
     }
@@ -329,10 +357,15 @@ namespace Falcor
 
     SCRIPT_BINDING(Volume)
     {
+        SCRIPT_BINDING_DEPENDENCY(Animatable)
+        SCRIPT_BINDING_DEPENDENCY(Grid)
+
         pybind11::class_<Volume, Animatable, Volume::SharedPtr> volume(m, "Volume");
         volume.def_property("name", &Volume::getName, &Volume::setName);
         volume.def_property("gridFrame", &Volume::getGridFrame, &Volume::setGridFrame);
         volume.def_property_readonly("gridFrameCount", &Volume::getGridFrameCount);
+        volume.def_property("frameRate", &Volume::getFrameRate, &Volume::setFrameRate);
+        volume.def_property("playbackEnabled", &Volume::isPlaybackEnabled, &Volume::setPlaybackEnabled);
         volume.def_property("densityGrid", &Volume::getDensityGrid, &Volume::setDensityGrid);
         volume.def_property("densityScale", &Volume::getDensityScale, &Volume::setDensityScale);
         volume.def_property("emissionGrid", &Volume::getEmissionGrid, &Volume::setEmissionGrid);
@@ -349,6 +382,7 @@ namespace Falcor
         volume.def("loadGridSequence",
             pybind11::overload_cast<Volume::GridSlot, const std::string&, const std::string&, bool>(&Volume::loadGridSequence),
             "slot"_a, "path"_a, "gridnames"_a, "keepEmpty"_a = true);
+
         pybind11::enum_<Volume::GridSlot> gridSlot(volume, "GridSlot");
         gridSlot.value("Density", Volume::GridSlot::Density);
         gridSlot.value("Emission", Volume::GridSlot::Emission);

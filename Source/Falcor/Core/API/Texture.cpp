@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,6 +30,7 @@
 #include "Device.h"
 #include "RenderContext.h"
 #include "Utils/Threading.h"
+#include "RenderGraph/BasePasses/FullScreenPass.h"
 
 #include <mutex>
 
@@ -37,6 +38,8 @@ namespace Falcor
 {
     namespace
     {
+        static const bool kTopDown = true; // Memory layout when loading from file
+
         Texture::BindFlags updateBindFlags(Texture::BindFlags flags, bool hasInitData, uint32_t mipLevels, ResourceFormat format, const std::string& texType)
         {
             if ((mipLevels == Texture::kMaxPossible) && hasInitData)
@@ -127,6 +130,43 @@ namespace Falcor
         Texture::SharedPtr pTexture = SharedPtr(new Texture(width, height, 1, arraySize, 1, sampleCount, format, Type::Texture2DMultisample, bindFlags));
         pTexture->apiInit(nullptr, false);
         return pTexture;
+    }
+
+    Texture::SharedPtr Texture::createFromFile(const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags)
+    {
+        std::string fullpath;
+        if (findFileInDataDirectories(filename, fullpath) == false)
+        {
+            logWarning("Error when loading image file. Can't find image file '" + filename + "'");
+            return nullptr;
+        }
+
+        Texture::SharedPtr pTex;
+        if (hasSuffix(filename, ".dds"))
+        {
+            pTex = ImageIO::loadTextureFromDDS(filename, loadAsSrgb);
+        }
+        else
+        {
+            Bitmap::UniqueConstPtr pBitmap = Bitmap::createFromFile(fullpath, kTopDown);
+            if (pBitmap)
+            {
+                ResourceFormat texFormat = pBitmap->getFormat();
+                if (loadAsSrgb)
+                {
+                    texFormat = linearToSrgbFormat(texFormat);
+                }
+
+                pTex = Texture::create2D(pBitmap->getWidth(), pBitmap->getHeight(), texFormat, 1, generateMipLevels ? Texture::kMaxPossible : 1, pBitmap->getData(), bindFlags);
+            }
+        }
+
+        if (pTex != nullptr)
+        {
+            pTex->setSourceFilename(fullpath);
+        }
+
+        return pTex;
     }
 
     Texture::Texture(uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type type, BindFlags bindFlags)
@@ -332,20 +372,30 @@ namespace Falcor
         }
     }
 
-    void Texture::generateMips(RenderContext* pContext)
+    void Texture::generateMips(RenderContext* pContext, bool minMaxMips)
     {
         if (mType != Type::Texture2D)
         {
             logWarning("Texture::generateMips() was only tested with Texture2Ds");
         }
+
         // #OPTME: should blit support arrays?
         for (uint32_t m = 0; m < mMipLevels - 1; m++)
         {
-            for(uint32_t a = 0 ; a < mArraySize ; a++)
+            for (uint32_t a = 0; a < mArraySize; a++)
             {
                 auto srv = getSRV(m, 1, a, 1);
                 auto rtv = getRTV(m + 1, a, 1);
-                pContext->blit(srv, rtv);
+                if (!minMaxMips)
+                {
+                    pContext->blit(srv, rtv, uint4(-1), uint4(-1), Sampler::Filter::Linear);
+                }
+                else
+                {
+                    const Sampler::ReductionMode redModes[] = { Sampler::ReductionMode::Standard, Sampler::ReductionMode::Min, Sampler::ReductionMode::Max, Sampler::ReductionMode::Standard };
+                    const float4 componentsTransform[] = { float4(1.0f, 0.0f, 0.0f, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 1.0f, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f) };
+                    pContext->blit(srv, rtv, uint4(-1), uint4(-1), Sampler::Filter::Linear, redModes, componentsTransform);
+                }
             }
         }
 
@@ -381,7 +431,7 @@ namespace Falcor
         D3D12_RESOURCE_ALLOCATION_INFO d3d12ResourceAllocationInfo;
         D3D12_RESOURCE_DESC desc = pTexResource->GetDesc();
 
-        assert(desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D);
+        assert(desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D || desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D);
 
         d3d12ResourceAllocationInfo = pDevicePtr->GetResourceAllocationInfo(0, 1, &desc);
         assert(d3d12ResourceAllocationInfo.SizeInBytes > 0);

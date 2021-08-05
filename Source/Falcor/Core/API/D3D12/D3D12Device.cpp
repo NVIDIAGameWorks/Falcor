@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -168,6 +168,7 @@ namespace Falcor
         {
             for (uint32_t i = 0; i < featureLevelCount; i++)
             {
+                logDebug("Trying to create D3D12 device with minimum feature level: " + to_string(pFeatureLevels[i]));
                 if (SUCCEEDED(D3D12CreateDevice(pAdapter, pFeatureLevels[i], IID_PPV_ARGS(&pDevice))))
                 {
                     selectedFeatureLevel = pFeatureLevels[i];
@@ -182,25 +183,55 @@ namespace Falcor
         const uint32_t vendorId = (preferredGpuVendorId != kUnspecified) ? preferredGpuVendorId : kDefaultVendorId;
         const uint32_t gpuIdx = (preferredGpuIndex != kUnspecified) ? preferredGpuIndex : 0;
 
+        std::ostringstream oss;
+        oss << "Looking for adapter with vendorID " << std::hex << std::showbase << vendorId << " and GPU index " << std::dec << gpuIdx;
+        logDebug(oss.str());
+
         // Select adapter
         uint32_t vendorDeviceIndex = 0; // Tracks device index within adapters matching a specific vendor ID
         uint32_t selectedAdapterIndex = uint32_t(-1); // The final adapter chosen to create the device object from
         for (uint32_t i = 0; DXGI_ERROR_NOT_FOUND != pFactory->EnumAdapters1(i, &pAdapter); i++)
         {
-            DXGI_ADAPTER_DESC1 desc;
-            pAdapter->GetDesc1(&desc);
+            DXGI_ADAPTER_DESC1 desc = {};
+            d3d_call(pAdapter->GetDesc1(&desc));
+
+            std::ostringstream oss;
+            oss << "Adapter index " << i << std::endl
+                << "  Description           : " << wstring_2_string(desc.Description) << std::endl
+                << "  VendorID              : " << std::hex << std::showbase << desc.VendorId << std::endl
+                << "  DeviceID              : " << desc.DeviceId << std::endl
+                << "  SubSysId              : " << desc.SubSysId << std::endl
+                << "  Revision              : " << desc.Revision << std::endl
+                << "  DedicatedVideoMemory  : " << formatByteSize(desc.DedicatedVideoMemory) << std::endl
+                << "  DedicatedSystemMemory : " << formatByteSize(desc.DedicatedSystemMemory) << std::endl
+                << "  SharedSystemMemory    : " << formatByteSize(desc.SharedSystemMemory) << std::endl
+                << "  Flags                 : " << std::hex << std::showbase << desc.Flags;
+            logDebug(oss.str());
 
             // Skip SW adapters
-            if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) continue;
+            if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
+            {
+                logDebug("Skipped due to software adapter");
+                continue;
+            }
 
             // Skip if vendorId doesn't match requested
-            if (desc.VendorId != vendorId) continue;
+            if (desc.VendorId != vendorId)
+            {
+                logDebug("Skipped due to wrong vendorID");
+                continue;
+            }
 
             // When a vendor match is found above, count to the specified device index of that vendor (e.g. the i-th NVIDIA GPU)
-            if(vendorDeviceIndex++ < gpuIdx) continue;
+            if (vendorDeviceIndex++ < gpuIdx)
+            {
+                logDebug("Skipped due to wrong GPU index");
+                continue;
+            }
 
             // Select the first adapter satisfying the conditions
             selectedAdapterIndex = i;
+            logDebug("Found matching adapter at index " + std::to_string(selectedAdapterIndex));
             break;
         }
 
@@ -208,6 +239,7 @@ namespace Falcor
         {
             // If no GPU was found, just select the first
             selectedAdapterIndex = 0;
+            logDebug("No matching adapter found, defaulting to adapter index " + std::to_string(selectedAdapterIndex));
 
             // Log a warning if an adapter matching user specifications wasn't found.
             // Selection could have failed based on the default settings, but that isn't an error.
@@ -218,8 +250,7 @@ namespace Falcor
         }
 
         // Retrieve the adapter that's been selected
-        HRESULT result = pFactory->EnumAdapters1(selectedAdapterIndex, &pAdapter);
-        assert(SUCCEEDED(result));
+        d3d_call(pFactory->EnumAdapters1(selectedAdapterIndex, &pAdapter));
 
         if (requestedFeatureLevel == 0) createMaxFeatureLevel(kFeatureLevels, arraysize(kFeatureLevels));
         else createMaxFeatureLevel(&requestedFeatureLevel, 1);
@@ -238,11 +269,42 @@ namespace Falcor
     {
         Device::SupportedFeatures supported = Device::SupportedFeatures::None;
 
+        D3D12_FEATURE_DATA_D3D12_OPTIONS features;
+        HRESULT hr = pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &features, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS));
+        if (FAILED(hr) || features.ConservativeRasterizationTier == D3D12_CONSERVATIVE_RASTERIZATION_TIER_NOT_SUPPORTED)
+        {
+            logWarning("Conservative rasterization is not supported on this device.");
+        }
+        else
+        {
+            if (features.ConservativeRasterizationTier == D3D12_CONSERVATIVE_RASTERIZATION_TIER_3)
+            {
+                supported |= Device::SupportedFeatures::ConservativeRasterizationTier1 | Device::SupportedFeatures::ConservativeRasterizationTier2 | Device::SupportedFeatures::ConservativeRasterizationTier3;
+            }
+            else if (features.ConservativeRasterizationTier == D3D12_CONSERVATIVE_RASTERIZATION_TIER_2)
+            {
+                supported |= Device::SupportedFeatures::ConservativeRasterizationTier1 | Device::SupportedFeatures::ConservativeRasterizationTier2;
+            }
+            else if (features.ConservativeRasterizationTier == D3D12_CONSERVATIVE_RASTERIZATION_TIER_1)
+            {
+                supported |= Device::SupportedFeatures::ConservativeRasterizationTier1;
+            }
+        }
+
+        if (FAILED(hr) || !features.ROVsSupported)
+        {
+            logWarning("Rasterizer ordered views (ROVs) are not supported on this device.");
+        }
+        else
+        {
+            supported |= Device::SupportedFeatures::RasterizerOrderedViews;
+        }
+
         D3D12_FEATURE_DATA_D3D12_OPTIONS2 features2;
-        HRESULT hr = pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS2, &features2, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS2));
+        hr = pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS2, &features2, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS2));
         if (FAILED(hr) || features2.ProgrammableSamplePositionsTier == D3D12_PROGRAMMABLE_SAMPLE_POSITIONS_TIER_NOT_SUPPORTED)
         {
-            logInfo("Programmable sample positions is not supported on this device.");
+            logWarning("Programmable sample positions is not supported on this device.");
         }
         else
         {
@@ -254,7 +316,7 @@ namespace Falcor
         hr = pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS3, &features3, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS3));
         if (FAILED(hr) || !features3.BarycentricsSupported)
         {
-            logInfo("Barycentrics are not supported on this device.");
+            logWarning("Barycentrics are not supported on this device.");
         }
         else
         {
@@ -265,7 +327,7 @@ namespace Falcor
         hr = pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &features5, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS5));
         if (FAILED(hr) || features5.RaytracingTier == D3D12_RAYTRACING_TIER_NOT_SUPPORTED)
         {
-            logInfo("Raytracing is not supported on this device.");
+            logWarning("Raytracing is not supported on this device.");
         }
         else
         {
@@ -335,6 +397,7 @@ namespace Falcor
         UINT dxgiFlags = 0;
         if (mDesc.enableDebugLayer)
         {
+            logDebug("Enabling the D3D12 debug layer");
             ID3D12DebugPtr pDx12Debug;
             if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&pDx12Debug))))
             {
@@ -349,9 +412,12 @@ namespace Falcor
         }
 
         // Create the DXGI factory
+        logDebug("Creating DXGI factory");
         d3d_call(CreateDXGIFactory2(dxgiFlags, IID_PPV_ARGS(&mpApiData->pDxgiFactory)));
+        if (mpApiData->pDxgiFactory == nullptr) return false;
 
         // Create the device
+        logDebug("Creating D3D12 device");
         mApiHandle = createDevice(mpApiData->pDxgiFactory, getD3DFeatureLevel(mDesc.apiMajorVersion, mDesc.apiMinorVersion), mDesc.experimentalFeatures);
         if (mApiHandle == nullptr) return false;
 

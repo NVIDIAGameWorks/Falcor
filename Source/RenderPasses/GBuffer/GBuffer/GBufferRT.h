@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 #pragma once
 #include "GBuffer.h"
 #include "Utils/Sampling/SampleGenerator.h"
+#include "Experimental/Scene/Material/TexLODTypes.slang"
 
 using namespace Falcor;
 
@@ -48,22 +49,24 @@ public:
     void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     std::string getDesc() override { return kDesc; }
 
-    enum class LODMode
-    {
-        UseMip0          = 0,       // Don't compute LOD (default)
-        RayDifferentials = 1,       // Use ray differentials
-        RayCones         = 2,       // Cone based LOD computation (not implemented yet)
-    };
+private:
+    void executeRaytrace(RenderContext* pRenderContext, const RenderData& renderData);
+    void executeCompute(RenderContext* pRenderContext, const RenderData& renderData);
 
-protected:
-    GBufferRT() : GBuffer() {}
+    Program::DefineList getShaderDefines(const RenderData& renderData) const;
+    void setShaderData(const ShaderVar& var, const RenderData& renderData);
+    void recreatePrograms();
+
+    GBufferRT(const Dictionary& dict);
     void parseDictionary(const Dictionary& dict) override;
 
     // Internal state
-    SampleGenerator::SharedPtr      mpSampleGenerator;
+    bool mUseDOF = false;
+    SampleGenerator::SharedPtr mpSampleGenerator;
 
     // UI variables
-    LODMode                         mLODMode = LODMode::UseMip0;
+    TexLODMode mLODMode = TexLODMode::Mip0;
+    bool mUseTraceRayInline = false;
 
     // Ray tracing resources
     struct
@@ -72,10 +75,9 @@ protected:
         RtProgramVars::SharedPtr pVars;
     } mRaytrace;
 
-    static const char* kDesc;
-    static void registerBindings(pybind11::module& m);
-    friend void getPasses(Falcor::RenderPassLibrary& lib);
+    ComputePass::SharedPtr mpComputePass;
 
-private:
-    GBufferRT(const Dictionary& dict);
+    static const char* kDesc;
+
+    friend void getPasses(Falcor::RenderPassLibrary& lib);
 };

@@ -14,9 +14,6 @@
     <ClCompile Include="Tests\Slang\SlangTests.cpp">
       <Filter>Tests\Slang</Filter>
     </ClCompile>
-    <ClCompile Include="Tests\ShadingUtils\ShadingUtilsTests.cpp">
-      <Filter>Tests\ShadingUtils</Filter>
-    </ClCompile>
     <ClCompile Include="Tests\Utils\ParallelReductionTests.cpp">
       <Filter>Tests\Utils</Filter>
     </ClCompile>
@@ -27,6 +24,9 @@
       <Filter>Tests\Utils</Filter>
     </ClCompile>
     <ClCompile Include="Tests\Sampling\PseudorandomTests.cpp">
+      <Filter>Tests\Sampling</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Sampling\PointSetsTests.cpp">
       <Filter>Tests\Sampling</Filter>
     </ClCompile>
     <ClCompile Include="Tests\Sampling\SampleGeneratorTests.cpp">
@@ -43,9 +43,6 @@
     </ClCompile>
     <ClCompile Include="Tests\Utils\AABBTests.cpp">
       <Filter>Tests\Utils</Filter>
-    </ClCompile>
-    <ClCompile Include="Tests\ShadingUtils\RaytracingTests.cpp">
-      <Filter>Tests\ShadingUtils</Filter>
     </ClCompile>
     <ClCompile Include="Tests\Core\BufferTests.cpp">
       <Filter>Tests\Core</Filter>
@@ -125,6 +122,33 @@
     <ClCompile Include="Tests\Sampling\AliasTableTests.cpp">
       <Filter>Tests\Sampling</Filter>
     </ClCompile>
+    <ClCompile Include="Tests\Utils\CryptoUtilsTests.cpp">
+      <Filter>Tests\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Utils\StringUtilsTests.cpp">
+      <Filter>Tests\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Utils\IntersectionHelpersTests.cpp">
+      <Filter>Tests\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Sampling\LowDiscrepancyTests.cpp">
+      <Filter>Tests\Sampling</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Utils\GeometryHelpersTests.cpp">
+      <Filter>Tests\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Utils\TextureAnalyzerTests.cpp">
+      <Filter>Tests\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Scene\Material\BxDFTests.cpp">
+      <Filter>Tests\Scene\Material</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Platform\OSTests.cpp">
+      <Filter>Tests\Platform</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Platform\MonitorInfoTests.cpp">
+      <Filter>Tests\Platform</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FalcorTest.h" />
@@ -142,9 +166,6 @@
     <Filter Include="Tests\Slang">
       <UniqueIdentifier>{68dbdd58-1038-443a-a47c-4ba6afed1f99}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Tests\ShadingUtils">
-      <UniqueIdentifier>{b68d5b46-cd0d-4739-99d0-645cc1d11377}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Tests\Scene">
       <UniqueIdentifier>{d5138b9b-d23f-415e-af68-eafc7cbdfb91}</UniqueIdentifier>
     </Filter>
@@ -157,11 +178,11 @@
     <Filter Include="Tests\Scene\Material">
       <UniqueIdentifier>{cc3f40f3-77e7-4204-aa15-7c0919f3ae56}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Tests\Platform">
+      <UniqueIdentifier>{1de53f08-ed1a-4e84-9d30-aed24c87cfeb}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ShaderSource Include="Tests\ShadingUtils\ShadingUtilsTests.cs.slang">
-      <Filter>Tests\ShadingUtils</Filter>
-    </ShaderSource>
     <ShaderSource Include="Tests\Slang\SlangTests.cs.slang">
       <Filter>Tests\Slang</Filter>
     </ShaderSource>
@@ -169,6 +190,9 @@
       <Filter>Tests\Utils</Filter>
     </ShaderSource>
     <ShaderSource Include="Tests\Sampling\PseudorandomTests.cs.slang">
+      <Filter>Tests\Sampling</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Sampling\PointSetsTests.cs.slang">
       <Filter>Tests\Sampling</Filter>
     </ShaderSource>
     <ShaderSource Include="Tests\Sampling\SampleGeneratorTests.cs.slang">
@@ -182,9 +206,6 @@
     </ShaderSource>
     <ShaderSource Include="Tests\Utils\AABBTests.cs.slang">
       <Filter>Tests\Utils</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Tests\ShadingUtils\RaytracingTests.cs.slang">
-      <Filter>Tests\ShadingUtils</Filter>
     </ShaderSource>
     <ShaderSource Include="Tests\Core\BufferTests.cs.slang">
       <Filter>Tests\Core</Filter>
@@ -269,6 +290,18 @@
     </ShaderSource>
     <ShaderSource Include="Tests\Sampling\AliasTableTests.cs.slang">
       <Filter>Tests\Sampling</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Utils\IntersectionHelpersTests.cs.slang">
+      <Filter>Tests\Utils</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Sampling\LowDiscrepancyTests.cs.slang">
+      <Filter>Tests\Sampling</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Utils\GeometryHelpersTests.cs.slang">
+      <Filter>Tests\Utils</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Scene\Material\BxDFTests.cs.slang">
+      <Filter>Tests\Scene\Material</Filter>
     </ShaderSource>
   </ItemGroup>
 </Project>

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -65,16 +65,31 @@ void HelloDXR::loadScene(const std::string& filename, const Fbo* pTargetFbo)
 
     mpRasterPass = RasterScenePass::create(mpScene, "Samples/HelloDXR/HelloDXR.ps.slang", "", "main");
 
+    // We'll now create a raytracing program. To do that we need to setup two things:
+    // - A program description (RtProgram::Desc). This holds all shader entry points, compiler flags, macro defintions, etc.
+    // - A binding table (RtBindingTable). This maps shaders to geometries in the scene, and sets the ray generation and miss shaders.
+    //
+    // After setting up these, we can create the RtProgram and associated RtProgramVars that holds the variable/resource bindings.
+    // The RtProgram can be reused for different scenes, but RtProgramVars needs to binding table which is Scene-specific and
+    // needs to be re-created when switching scene. In this example, we re-create both the program and vars when a scene is loaded.
+
     RtProgram::Desc rtProgDesc;
-    rtProgDesc.addShaderLibrary("Samples/HelloDXR/HelloDXR.rt.slang").setRayGen("rayGen");
-    rtProgDesc.addHitGroup(0, "primaryClosestHit", "primaryAnyHit").addMiss(0, "primaryMiss");
-    rtProgDesc.addHitGroup(1, "", "shadowAnyHit").addMiss(1, "shadowMiss");
+    rtProgDesc.addShaderLibrary("Samples/HelloDXR/HelloDXR.rt.slang");
     rtProgDesc.addDefines(mpScene->getSceneDefines());
-    rtProgDesc.setMaxTraceRecursionDepth(3); // 1 for calling TraceRay from RayGen, 1 for calling it from the primary-ray ClosestHitShader for reflections, 1 for reflection ray tracing a shadow ray
+    rtProgDesc.setMaxTraceRecursionDepth(3); // 1 for calling TraceRay from RayGen, 1 for calling it from the primary-ray ClosestHit shader for reflections, 1 for reflection ray tracing a shadow ray
+    rtProgDesc.setMaxPayloadSize(24); // The largest ray payload struct (PrimaryRayData) is 24 bytes. The payload size should be set as small as possible for maximum performance.
+
+    RtBindingTable::SharedPtr sbt = RtBindingTable::create(2, 2, mpScene->getGeometryCount());
+    sbt->setRayGen(rtProgDesc.addRayGen("rayGen"));
+    sbt->setMiss(0, rtProgDesc.addMiss("primaryMiss"));
+    sbt->setMiss(1, rtProgDesc.addMiss("shadowMiss"));
+    auto primary = rtProgDesc.addHitGroup("primaryClosestHit", "primaryAnyHit");
+    auto shadow = rtProgDesc.addHitGroup("", "shadowAnyHit");
+    sbt->setHitGroupByType(0, mpScene, Scene::GeometryType::TriangleMesh, primary);
+    sbt->setHitGroupByType(1, mpScene, Scene::GeometryType::TriangleMesh, shadow);
 
     mpRaytraceProgram = RtProgram::create(rtProgDesc);
-    mpRtVars = RtProgramVars::create(mpRaytraceProgram, mpScene);
-    mpRaytraceProgram->setScene(mpScene);
+    mpRtVars = RtProgramVars::create(mpRaytraceProgram, sbt);
 }
 
 void HelloDXR::onLoad(RenderContext* pRenderContext)
@@ -103,6 +118,13 @@ void HelloDXR::setPerFrameVars(const Fbo* pTargetFbo)
 void HelloDXR::renderRT(RenderContext* pContext, const Fbo* pTargetFbo)
 {
     PROFILE("renderRT");
+
+    assert(mpScene);
+    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged))
+    {
+        throw std::runtime_error("This sample does not support scene geometry changes. Aborting.");
+    }
+
     setPerFrameVars(pTargetFbo);
 
     pContext->clearUAV(mpRtOut->getUAV().get(), kClearColor);

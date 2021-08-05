@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,10 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-import Utils.Math.BitTricks;
+__exported import Utils.Sampling.SampleGeneratorInterface;
 import Utils.Sampling.Pseudorandom.Xoshiro;
 import Utils.Sampling.Pseudorandom.SplitMix64;
-import Utils.Sampling.SampleGeneratorInterface;
+import Utils.Math.BitTricks;
 
 /** Default uniform pseudorandom number generator.
 

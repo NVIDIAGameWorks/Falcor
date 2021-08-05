@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -57,7 +57,7 @@ namespace
         { "matlExtra",      "gMaterialExtraParams",         "additional material data",     true /* optional */ },
         { "linColor",       "gLinearColor",                 "color pre tone-mapping",       true /* optional */ },
         { "outColor",       "gOutputColor",                 "color post tone-mapping",      true /* optional */ },
-        { "visBuffer",      "gVisBuffer",                   "Visibility buffer",            true /* optional */, ResourceFormat::RGBA32Uint },
+        { "vbuffer",        "gVBuffer",                     "Visibility buffer",            true /* optional */, ResourceFormat::Unknown /* decided by upstream pass */ },
     };
     const char kOutputChannel[] = "gPixelDataBuffer";
 }
@@ -75,14 +75,8 @@ PixelInspectorPass::PixelInspectorPass()
     }
 
     mpProgram = ComputeProgram::createFromFile(kShaderFile, "main", Program::DefineList(), Shader::CompilerFlags::TreatWarningsAsErrors);
-    assert(mpProgram);
-
-    mpVars = ComputeVars::create(mpProgram->getReflector());
     mpState = ComputeState::create();
     mpState->setProgram(mpProgram);
-    assert(mpVars && mpState);
-
-    mpPixelDataBuffer = Buffer::createStructured(mpProgram.get(), kOutputChannel, 1);
 }
 
 std::string PixelInspectorPass::getDesc()
@@ -115,6 +109,7 @@ void PixelInspectorPass::execute(RenderContext* pRenderContext, const RenderData
     if (!mpScene) return;
 
     // Set the camera
+    assert(mpVars);
     const Camera::SharedPtr& pCamera = mpScene->getCamera();
     pCamera->setShaderData(mpVars["PerFrameCB"]["gCamera"]);
 
@@ -155,6 +150,7 @@ void PixelInspectorPass::execute(RenderContext* pRenderContext, const RenderData
     }
 
     // Bind the output buffer.
+    assert(mpPixelDataBuffer);
     mpVars[kOutputChannel] = mpPixelDataBuffer;
 
     // Run the inspector program.
@@ -163,6 +159,13 @@ void PixelInspectorPass::execute(RenderContext* pRenderContext, const RenderData
 
 void PixelInspectorPass::renderUI(Gui::Widgets& widget)
 {
+    if (!mpScene)
+    {
+        widget.textWrapped("No scene loaded, no data available!");
+        return;
+    }
+
+    assert(mpPixelDataBuffer);
     PixelData pixelData = *reinterpret_cast<const PixelData*>(mpPixelDataBuffer->map(Buffer::MapType::Read));
     mpPixelDataBuffer->unmap();
 
@@ -280,26 +283,42 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
     // Display visibility data
     if (auto visGroup = widget.group("Visibility data", true))
     {
-        if (mAvailableInputs["visBuffer"])
+        if (mAvailableInputs["vbuffer"])
         {
-            visGroup.var("MeshInstanceID", pixelData.meshInstanceID);
-            visGroup.var("TriangleIndex", pixelData.triangleIndex);
+            bool validHit = mpScene && pixelData.instanceID != PixelData::kInvalidIndex;
+
+            std::string hitType = "None";
+            if (validHit)
+            {
+                switch ((HitType)pixelData.hitType)
+                {
+                case HitType::Triangle: hitType = "Triangle"; break;
+                case HitType::Curve: hitType = "Curve"; break;
+                default: hitType = "Unknown"; assert(false);
+                }
+            }
+
+            visGroup.text("HitType: " + hitType);
+            visGroup.var("InstanceID", pixelData.instanceID);
+            visGroup.var("PrimitiveIndex", pixelData.primitiveIndex);
             visGroup.var("Barycentrics", pixelData.barycentrics);
 
-            if (mpScene && pixelData.meshInstanceID != PixelData::kInvalidIndex)
+            if (validHit && (HitType)pixelData.hitType == HitType::Triangle)
             {
-                auto instanceData = mpScene->getMeshInstance(pixelData.meshInstanceID);
+                auto instanceData = mpScene->getMeshInstance(pixelData.instanceID);
                 uint32_t matrixID = instanceData.globalMatrixID;
                 glm::mat4 M = mpScene->getAnimationController()->getGlobalMatrices()[matrixID];
+                M = glm::transpose(M); // Note glm is column-major, but we display the matrix using standard mathematical notation.
 
                 visGroup.text("Transform:");
-                visGroup.var("##col0", M[0]);
-                visGroup.var("##col1", M[1]);
-                visGroup.var("##col2", M[2]);
-                visGroup.var("##col3", M[3]);
+                visGroup.matrix("##mat", M);
 
                 bool flipped = instanceData.flags & (uint32_t)MeshInstanceFlags::TransformFlipped;
-                visGroup.checkbox("Flipped winding", flipped);
+                bool objectCW = instanceData.flags & (uint32_t)MeshInstanceFlags::IsObjectFrontFaceCW;
+                bool worldCW = instanceData.flags & (uint32_t)MeshInstanceFlags::IsWorldFrontFaceCW;
+                visGroup.checkbox("TransformFlipped", flipped);
+                visGroup.checkbox("IsObjectFrontFaceCW", objectCW);
+                visGroup.checkbox("IsWorldFrontFaceCW", worldCW);
             }
         }
         else
@@ -312,6 +331,16 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
 void PixelInspectorPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
 {
     mpScene = pScene;
+    mpVars = nullptr;
+    mpPixelDataBuffer = nullptr;
+
+    if (mpScene)
+    {
+        Shader::DefineList defines = mpScene->getSceneDefines();
+        mpProgram->addDefines(defines);
+        mpVars = ComputeVars::create(mpProgram->getReflector());
+        mpPixelDataBuffer = Buffer::createStructured(mpProgram.get(), kOutputChannel, 1);
+    }
 }
 
 bool PixelInspectorPass::onMouseEvent(const MouseEvent& mouseEvent)

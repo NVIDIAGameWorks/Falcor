@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -88,7 +88,7 @@ namespace Falcor
             Desc& dumpIntermediates(bool enable) { enable ? mShaderFlags |= Shader::CompilerFlags::DumpIntermediates : mShaderFlags &= ~(Shader::CompilerFlags::DumpIntermediates); return *this; }
 
             /** Set the shader model string. This depends on the API you are using.
-                For DirectX it should be `4_0`, `4_1`, `5_0`, `5_1`, `6_0`, `6_1`, `6_2`, `6_3`, `6_4`, or `6_5`. The default is `6_2`. Shader model `6.x` will use dxcompiler, previous shader models use fxc.
+                For DirectX it should be `4_0`, `4_1`, `5_0`, `5_1`, `6_0`, `6_1`, `6_2`, `6_3`, `6_4`, or `6_5`. The default is `6_3`. Shader model `6.x` will use dxcompiler, previous shader models use fxc.
                 For Vulkan, it should be `400`, `410`, `420`, `430`, `440` or `450`. The default is `450`
             */
             Desc& setShaderModel(const std::string& sm);
@@ -153,7 +153,7 @@ namespace Falcor
 #ifdef FALCOR_VK
             std::string mShaderModel = "450";
 #elif defined FALCOR_D3D12
-            std::string mShaderModel = "6_2";
+            std::string mShaderModel = "6_3";
 #endif
         };
 
@@ -222,6 +222,16 @@ namespace Falcor
             \param[in] defineList List of macro definitions.
         */
         static void removeGlobalDefines(const DefineList& defineList);
+
+        /** Enable/disable global generation of shader debug info.
+            \param[in] enabled Enable/disable.
+        */
+        static void setGenerateDebugInfoEnabled(bool enabled);
+
+        /** Check if global generation of shader debug info is enabled.
+            \return Returns true if enabled.
+        */
+        static bool isGenerateDebugInfoEnabled();
 
         /** Get the program reflection for the active program.
             \return Program reflection object, or an exception is thrown on failure.

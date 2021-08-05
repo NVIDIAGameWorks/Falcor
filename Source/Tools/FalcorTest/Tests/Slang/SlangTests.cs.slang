@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -245,4 +245,13 @@ void testDefaultInitializers()
     }
 
     // All done (i=37)
+}
+
+[numthreads(1, 1, 1)]
+void testHashedStrings()
+{
+    result[0] = getStringHash("Test String 0");
+    result[1] = getStringHash("Test String 1");
+    result[2] = getStringHash("Test String 2");
+    result[3] = getStringHash("Test String 3");
 }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -38,10 +38,6 @@
 namespace Falcor
 {
     IFramework* gpFramework = nullptr;
-    namespace
-    {
-        std::string kMonospaceFont = "monospace";
-    }
 
     void Sample::handleWindowSizeChange()
     {
@@ -194,6 +190,7 @@ namespace Falcor
         Sample s(pRenderer);
         try
         {
+            s.startScripting();
             s.runInternal(config, argc, argv);
         }
         catch (const std::exception & e)
@@ -237,6 +234,7 @@ namespace Falcor
         {
             logError("Caught exception:\n\n" + std::string(e.what()) + "\n\nEnable breaking on exceptions in the debugger to get a full stack trace.");
         }
+
         Logger::shutdown();
     }
 
@@ -247,7 +245,6 @@ namespace Falcor
         Logger::showBoxOnError(config.showMessageBoxOnError);
 
         OSServices::start();
-        startScripting();
         Threading::start();
 
         mSuppressInput = config.suppressInput;
@@ -268,6 +265,7 @@ namespace Falcor
         ProgressBar::SharedPtr pBar;
         if (config.windowDesc.mode != Window::WindowMode::Minimized) pBar = ProgressBar::show("Initializing Falcor");
 
+        // Create device
         Device::Desc d = config.deviceDesc;
         gpDevice = Device::create(mpWindow, config.deviceDesc);
         if (gpDevice == nullptr)
@@ -275,6 +273,10 @@ namespace Falcor
             logError("Failed to create device");
             return;
         }
+
+        // Set global shader defines
+        Program::DefineList globalDefines = {{ "_ENABLE_NVAPI", _ENABLE_NVAPI ? "1" : "0" }};
+        Program::addGlobalDefines(globalDefines);
 
         Clock::start();
 
@@ -435,11 +437,8 @@ namespace Falcor
 
                 if (open)
                 {
-                    std::string text = profiler.getEventsString();
-                    if (profilerWindow.button("Print to log")) logInfo("\n" + text);
-                    ImGui::PushFont(mpGui->getFont(kMonospaceFont));
-                    profilerWindow.text(text);
-                    ImGui::PopFont();
+                    if (!mpProfilerUI) mpProfilerUI = ProfilerUI::create(Profiler::instancePtr());
+                    mpProfilerUI->render();
                     profiler.startEvent("renderUI");
                     profilerWindow.release();
                 }
@@ -532,7 +531,6 @@ namespace Falcor
         float scaling = getDisplayScaleFactor();
         const auto& pSwapChainFbo = gpDevice->getSwapChainFbo();
         mpGui = Gui::create(uint32_t(pSwapChainFbo->getWidth()), uint32_t(pSwapChainFbo->getHeight()), scaling);
-        mpGui->addFont(kMonospaceFont, "Framework/Fonts/consolab.ttf");
         TextRenderer::start();
     }
 

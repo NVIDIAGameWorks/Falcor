@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,14 +28,16 @@
 import Scene.RaytracingInline;
 import Scene.Scene;
 import Scene.Shading;
-import Utils.Helpers;
 import Utils.Math.HashUtils;
+import Utils.Geometry.IntersectionHelpers;
 import Utils.Color.ColorMap;
 import Utils.Color.ColorHelpers;
 import SharedTypes;
 
 struct SceneDebugger
 {
+    static const int kUseAlphaTest = 1;
+
     SceneDebuggerParams params;
     StructuredBuffer<uint> meshToBlasID;
     StructuredBuffer<InstanceInfo> meshInstanceInfo;
@@ -52,84 +54,30 @@ struct SceneDebugger
         // Initialize pixel data for the selected pixel.
         if (all(pixel == params.selectedPixel))
         {
-            pixelData[0].meshInstanceID = PixelData::kInvalidID;
-            pixelData[0].meshID = PixelData::kInvalidID;
+            pixelData[0].hitType = PixelData::kInvalidID;
+            pixelData[0].instanceID = PixelData::kInvalidID;
             pixelData[0].materialID = PixelData::kInvalidID;
+            pixelData[0].meshID = PixelData::kInvalidID;
             pixelData[0].blasID = PixelData::kInvalidID;
-            pixelData[0].curveInstanceID = PixelData::kInvalidID;
             pixelData[0].curveID = PixelData::kInvalidID;
         }
 
         // Trace primary ray.
         RayDesc ray = gScene.camera.computeRayPinhole(pixel, params.frameDim).toRayDesc();
 
-        RayQuery<RAY_FLAG_NONE> rayQuery;
-        //RayQuery<RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES> rayQuery;
-
-        rayQuery.TraceRayInline(
-            gRtScene,
-            RAY_FLAG_NONE, // OR'd with template flags above
-            0xff, // InstanceInclusionMask
-            ray);
-
-        float2 curveCommittedAttribs = {};
-
-        while (rayQuery.Proceed())
-        {
-            switch (rayQuery.CandidateType())
-            {
-            case CANDIDATE_NON_OPAQUE_TRIANGLE:
-            {
-                // Alpha test for non-opaque geometry.
-                HitInfo hit = getCandidateTriangleHit(rayQuery);
-                VertexData v = gScene.getVertexData(hit);
-                uint materialID = gScene.getMaterialID(hit.instanceID);
-
-                if (alphaTest(v, gScene.materials[materialID], gScene.materialResources[materialID], 0.f)) continue;
-
-                rayQuery.CommitNonOpaqueTriangleHit();
-                break;
-            }
-            case CANDIDATE_PROCEDURAL_PRIMITIVE:
-            {
-                float t;
-                HitInfo hit;
-                bool valid = getCandidateCurveHit(rayQuery, ray, t, hit);
-
-                if (valid)
-                {
-                    rayQuery.CommitProceduralPrimitiveHit(t);
-                    curveCommittedAttribs = hit.barycentrics;
-                }
-                break;
-            }
-            }
-        }
-
-        // Process hit/miss.
         float3 color = float3(0);
-        float hitT = 1e30;
-        switch (rayQuery.CommittedStatus())
+
+        SceneRayQuery<kUseAlphaTest> sceneRayQuery;
+        HitInfo hit;
+        float hitT;
+        if (sceneRayQuery.traceRay(ray, hit, hitT, RAY_FLAG_NONE, 0xff))
         {
-        case COMMITTED_TRIANGLE_HIT:
-        {
-            HitInfo hit = getCommittedTriangleHit(rayQuery);
-            hitT = rayQuery.CommittedRayT();
             color = handleHit(pixel, ray.Direction, hit);
-            break;
         }
-        case COMMITTED_PROCEDURAL_PRIMITIVE_HIT:
+        else
         {
-            HitInfo hit = getCommittedCurveHit(rayQuery, curveCommittedAttribs);
-            hitT = rayQuery.CommittedRayT();
-            const float3 curveHitPosW = ray.Origin + ray.Direction * hitT;
-            color = handleHit(pixel, ray.Direction, hit, curveHitPosW);
-            break;
-        }
-        default: // COMMITTED_NOTHING
-        {
+            hitT = 1e30f;
             color = handleMiss(pixel, ray.Direction);
-        }
         }
 
         // Process volumes.
@@ -163,44 +111,57 @@ struct SceneDebugger
         return (uint3(h, h >> 8, h >> 16) & 0xff) / 255.f;
     }
 
-    float3 handleHit(const uint2 pixel, const float3 dir, const HitInfo hit, const float3 curveHitPosW = {})
+    float3 handleHit(const uint2 pixel, const float3 dir, const HitInfo hit)
     {
+        uint instanceID = PixelData::kInvalidID;
         uint materialID = PixelData::kInvalidID;
 
         uint meshID = PixelData::kInvalidID;
-        uint meshInstanceID = PixelData::kInvalidID;
         uint blasID = PixelData::kInvalidID;
 
         uint curveID = PixelData::kInvalidID;
-        uint curveInstanceID = PixelData::kInvalidID;
 
         VertexData v;
         ShadingData sd;
 
         switch (hit.getType())
         {
-        case InstanceType::TriangleMesh:
+        case HitType::Triangle:
         {
-            meshInstanceID = hit.instanceID;
-            meshID = gScene.getMeshInstance(meshInstanceID).meshID;
+            const TriangleHit triangleHit = hit.getTriangleHit();
+            instanceID = triangleHit.instanceID.index;
+            meshID = gScene.getMeshInstance(triangleHit.instanceID).meshID;
             blasID = meshToBlasID[meshID];
-            materialID = gScene.getMaterialID(meshInstanceID);
+            materialID = gScene.getMaterialID(triangleHit.instanceID);
 
             // Load shading attributes.
-            float3 barycentrics = float3(1.f - hit.barycentrics.x - hit.barycentrics.y, hit.barycentrics.x, hit.barycentrics.y);
-            v = gScene.getVertexData(hit.instanceID, hit.primitiveIndex, barycentrics);
+            v = gScene.getVertexData(triangleHit);
             sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -dir, 0.f);
             break;
         }
-        case InstanceType::Curve:
+        case HitType::DisplacedTriangle:
         {
-            curveInstanceID = hit.instanceID;
-            curveID = gScene.getCurveInstance(curveInstanceID).curveID;
-            materialID = gScene.getCurveMaterialID(curveInstanceID);
+            const DisplacedTriangleHit displacedTriangleHit = hit.getDisplacedTriangleHit();
+            instanceID = displacedTriangleHit.instanceID.index;
+            meshID = gScene.getMeshInstance(displacedTriangleHit.instanceID).meshID;
+            blasID = meshToBlasID[meshID];
+            materialID = gScene.getMaterialID(displacedTriangleHit.instanceID);
+
+            // Load shading attributes.
+            v = gScene.getVertexData(displacedTriangleHit, -dir);
+            sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -dir, 0.f);
+            break;
+        }
+        case HitType::Curve:
+        {
+            const CurveHit curveHit = hit.getCurveHit();
+            instanceID = curveHit.instanceID.index;
+            curveID = gScene.getCurveInstance(curveHit.instanceID).curveID;
+            materialID = gScene.getCurveMaterialID(curveHit.instanceID);
 
             // Load shading attributes.
             float radius;
-            v = gScene.getVertexDataFromCurve(hit.instanceID, hit.primitiveIndex, hit.barycentrics.x, curveHitPosW, radius);
+            v = gScene.getVertexDataFromCurve(curveHit, radius);
             sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -dir, 0.f);
             break;
         }
@@ -212,11 +173,11 @@ struct SceneDebugger
         // Write pixel data for the selected pixel.
         if (all(pixel == params.selectedPixel))
         {
-            pixelData[0].meshInstanceID = meshInstanceID;
+            pixelData[0].hitType = uint(hit.getType());
+            pixelData[0].instanceID = instanceID;
             pixelData[0].meshID = meshID;
             pixelData[0].materialID = materialID;
             pixelData[0].blasID = blasID;
-            pixelData[0].curveInstanceID = curveInstanceID;
             pixelData[0].curveID = curveID;
         }
 
@@ -246,24 +207,24 @@ struct SceneDebugger
         }
         case SceneDebuggerMode::TexCoords:
             return float3(frac(remapVector(sd.uv)), 0.f);
-        case SceneDebuggerMode::MeshID:
-            return pseudocolor(meshID);
-        case SceneDebuggerMode::MeshInstanceID:
-            return pseudocolor(meshInstanceID);
+        case SceneDebuggerMode::HitType:
+            return pseudocolor(uint(hit.getType()));
+        case SceneDebuggerMode::InstanceID:
+            return pseudocolor(instanceID);
         case SceneDebuggerMode::MaterialID:
             return pseudocolor(materialID);
+        case SceneDebuggerMode::MeshID:
+            return pseudocolor(meshID);
         case SceneDebuggerMode::BlasID:
             return pseudocolor(blasID);
         case SceneDebuggerMode::CurveID:
             return pseudocolor(curveID);
-        case SceneDebuggerMode::CurveInstanceID:
-            return pseudocolor(curveInstanceID);
         case SceneDebuggerMode::InstancedGeometry:
         {
             float v = 0.75f * luminance(abs(sd.faceN)) + 0.25f;
-            if (meshInstanceID != PixelData::kInvalidID)
+            if (hit.getType() == HitType::Triangle && instanceID != PixelData::kInvalidID)
             {
-                bool isInstanced = (meshInstanceInfo[meshInstanceID].flags & (uint)InstanceInfoFlags::IsInstanced) != 0;
+                bool isInstanced = (meshInstanceInfo[instanceID].flags & (uint)InstanceInfoFlags::IsInstanced) != 0;
                 return isInstanced ? float3(0, v, 0) : float3(v, 0, 0);
             }
             else
@@ -313,15 +274,17 @@ struct SceneDebugger
         gScene.getGrid(volume.getDensityGrid(), densityGrid);
         Grid::Accessor accessor = densityGrid.createAccessor();
 
+        // Transform to index-space.
+        const float3 ipos = mul(float4(pos, 1.f), volume.data.invTransform).xyz;
+        const float3 idir = mul(float4(dir, 0.f), volume.data.invTransform).xyz;
+
         // Evaluate transmittance using ray-marching.
         const uint kSteps = 500;
         float opticalDepth = 0.f;
         for (uint step = 0; step < kSteps; ++step)
         {
             float t = lerp(nearFar.x, nearFar.y, (step + 0.5f) / kSteps);
-            float3 p = pos + t * dir;
-            p = mul(float4(p, 1.f), volume.data.invTransform).xyz;
-            float density = densityGrid.lookupWorld(p, accessor);
+            float density = densityGrid.lookupIndex(ipos + t * idir, accessor);
             opticalDepth += density;
         }
         opticalDepth *= (nearFar.y - nearFar.x) / kSteps * volume.data.densityScale * params.densityScale;

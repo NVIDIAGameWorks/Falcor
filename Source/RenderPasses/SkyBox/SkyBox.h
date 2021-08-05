@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -67,6 +67,7 @@ private:
     GraphicsProgram::SharedPtr mpProgram;
     GraphicsVars::SharedPtr mpVars;
     GraphicsState::SharedPtr mpState;
+    RasterizerState::SharedPtr mpRsState;
     Fbo::SharedPtr mpFbo;
     Scene::SharedPtr mpScene;
     Sampler::SharedPtr mpSampler;

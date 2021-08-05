@@ -99,6 +99,9 @@ class Test:
         # Get tolerance.
         self.tolerance = self.header.get('tolerance', config.DEFAULT_TOLERANCE)
 
+        # Get timeout.
+        self.timeout = self.header.get('timeout', config.DEFAULT_TIMEOUT)
+
     def __repr__(self):
         return f'Test(name={self.name},script_file={self.script_file})'
 
@@ -158,7 +161,7 @@ class Test:
         ]
         p = subprocess.Popen(args, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         try:
-            outs, errs = p.communicate(timeout=600)
+            outs, errs = p.communicate(timeout=self.timeout)
         except subprocess.TimeoutExpired:
             p.kill()
             return Test.Result.FAILED, ['Process killed due to timeout']

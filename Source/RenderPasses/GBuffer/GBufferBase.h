@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -54,22 +54,27 @@ public:
 protected:
     GBufferBase() = default;
     virtual void parseDictionary(const Dictionary& dict);
+    virtual void setCullMode(RasterizerState::CullMode mode) { mCullMode = mode; }
     void updateSamplePattern();
 
     // Internal state
     Scene::SharedPtr                mpScene;
     CPUSampleGenerator::SharedPtr   mpSampleGenerator;
 
+    uint32_t                        mFrameCount = 0;
     uint2                           mFrameDim = {};
     float2                          mInvFrameDim = {};
     ResourceFormat                  mVBufferFormat = HitInfo::kDefaultFormat;
 
     // UI variables
-    SamplePattern                   mSamplePattern = SamplePattern::Center;     ///< Which camera jitter sample pattern to use.
-    uint32_t                        mSampleCount = 16;                          ///< Sample count for camera jitter.
-    bool                            mDisableAlphaTest = false;                  ///< Disable alpha test.
-    bool                            mAdjustShadingNormals = true;               ///< Adjust shading normals.
-    bool                            mOptionsChanged = false;
+    SamplePattern                   mSamplePattern = SamplePattern::Center;         ///< Which camera jitter sample pattern to use.
+    uint32_t                        mSampleCount = 16;                              ///< Sample count for camera jitter.
+    bool                            mUseAlphaTest = true;                           ///< Enable alpha test.
+    bool                            mAdjustShadingNormals = true;                   ///< Adjust shading normals.
+    bool                            mForceCullMode = false;                         ///< Force cull mode for all geometry, otherwise set it based on the scene.
+    RasterizerState::CullMode       mCullMode = RasterizerState::CullMode::Back;    ///< Cull mode to use for when mForceCullMode is true.
+
+    bool                            mOptionsChanged = false;                        ///< Indicates whether any options that affect the output have changed since last frame.
 
     static void registerBindings(pybind11::module& m);
     friend void getPasses(Falcor::RenderPassLibrary& lib);

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -121,10 +121,6 @@ namespace Falcor
         /** function used to add a new node for a render pass referenced graph and update ui data
         */
         void addRenderPass(const std::string& name, const std::string& nodeTypeName);
-
-        /** Get an execution order for graph based on the visual layout of the graph
-        */
-        std::vector<uint32_t> getPassOrder();
 
         /** Returns the current log from the events in the editor
         */

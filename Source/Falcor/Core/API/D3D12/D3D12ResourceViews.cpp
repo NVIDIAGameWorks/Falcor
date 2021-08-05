@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -410,6 +410,12 @@ namespace Falcor
 
     ShaderResourceView::ApiHandle createSrvDescriptor(const D3D12_SHADER_RESOURCE_VIEW_DESC& desc, Resource::ApiHandle resHandle)
     {
+        if (desc.ViewDimension == D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE &&
+            !gpDevice->isFeatureSupported(Device::SupportedFeatures::Raytracing))
+        {
+            throw std::exception("Raytracing is not supported by the current device");
+        }
+
         DescriptorSet::Layout layout;
         layout.addRange(DescriptorSet::Type::TextureSrv, 0, 1);
         ShaderResourceView::ApiHandle handle = DescriptorSet::create(gpDevice->getCpuDescriptorPool(), layout);

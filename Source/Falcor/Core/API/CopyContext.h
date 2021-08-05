@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -39,7 +39,7 @@ namespace Falcor
         using SharedPtr = std::shared_ptr<CopyContext>;
         using SharedConstPtr = std::shared_ptr<const CopyContext>;
 
-        class ReadTextureTask
+        class dlldecl ReadTextureTask
         {
         public:
             using SharedPtr = std::shared_ptr<ReadTextureTask>;

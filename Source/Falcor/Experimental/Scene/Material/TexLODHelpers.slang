@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,9 +29,10 @@
 /** Helper functions for the texture level-of-detail (LOD) system.
 
     Supports texture LOD both for ray differentials (Igehy, SIGGRAPH 1999) and a method based on ray cones,
-    described in "Strategies for Texture Level-of-Detail for Real-Time Ray Tracing," by
-    Tomas Akenine-Moller et al., Ray Tracing Gems, 2019 and
-    in "Improved Shader and Texture Level-of-Detail using Ray Cones" by Akenine-Moller et al. (submitted to JCGT)
+    described in
+    * "Strategies for Texture Level-of-Detail for Real-Time Ray Tracing," by Tomas Akenine-Moller et al., Ray Tracing Gems, 2019,
+    * "Improved Shader and Texture Level-of-Detail using Ray Cones" by Akenine-Moller et al., Journal of Graphics Tools, 2021,
+    * "Refraction Ray Cones for Texture Level of Detail" by Boksansky et al., to appear in Ray Tracing Gems II, 2021.
 
     Note that the actual texture lookups are baked into the TextureSampler interfaces.
 
@@ -42,8 +43,16 @@
 import Experimental.Scene.Material.TexLODTypes;
 import Scene.SceneTypes;        // Needed for ray bounce helpers.
 
+// Modes for calculating spread angle from curvature
+#define TEXLOD_SPREADANGLE_RTG1                     0     // 0: Original approach derived from RTG.
+#define TEXLOD_SPREADANGLE_ARC_LENGTH_UNOPTIMIZED   1     // 1: New arc-length integration approach, unoptimized.
+#define TEXLOD_SPREADANGLE_ARC_LENGTH_OPTIMIZED     2     // 2: New arc-length integration approach, optimized.
 
-#define TEXLOD_SPREADANGLE_FROM_CURVATURE_MODE          2       // Spread angle from curvature computation mode. 0: Original approach derived from RTG. 1: New arc-length integration approach, unoptimized. 2: New arc-length integration approach, optimized.
+// Chose one of modes above, default to optimized arc length approach (2)
+#define TEXLOD_SPREADANGLE_FROM_CURVATURE_MODE TEXLOD_SPREADANGLE_ARC_LENGTH_OPTIMIZED
+
+// Uncomment to use FP16 for ray cone payload
+//#define USE_RAYCONES_WITH_FP16_IN_RAYPAYLOAD
 
 // ----------------------------------------------------------------------------
 // Ray cone helpers
@@ -67,63 +76,60 @@ struct RayCone
     float getSpreadAngle()      { return f16tof32(widthSpreadAngleFP16); }
 #endif
 
-    /** Propagate the raycone to the next hit point (hitT distance away) and with the current spreadAngle + update ray cone angle with the surfaceSpreadAngle.
-
-        \param[in] surfaceSpreadAngle Surface spread angle, computed using computeScreenSpaceSurfaceSpreadAngle(). This is called beta in the Ray Tracing Gems article (chapter 20).
+    /** Propagate the raycone to the next hit point (hitT distance away).
         \param[in] hitT Distance to the hit point.
         \return The propagated ray cone.
     */
-    RayCone propagate(float surfaceSpreadAngle, float hitT)
+    RayCone propagateDistance(float hitT)
     {
         float angle = getSpreadAngle();
-        return RayCone.create(angle * hitT + getWidth(), angle + surfaceSpreadAngle);
+        float width = getWidth();
+        return RayCone.create(angle * hitT + width, angle);
     }
 
-    /** Compute texture level of details based on ray cone.
+    /** Add surface spread angle to the current RayCone and returns the updated RayCone.
+        \param[in] surfaceSpreadAngle Angle to be added.
+        \return The updated ray cone.
     */
-    // TODO: Should really remove this one, but may be good to have for other users, or code readers?!!!
-    float computeLOD(float triLODConstant, float3 rayDir, float3 normal, float textureWidth, float textureHeight)     // Note: call propagate() before computeLOD()
+    RayCone addToSpreadAngle(float surfaceSpreadAngle)
     {
-        float lambda = triLODConstant;  // Constant per triangle.
+        float angle = getSpreadAngle();
+        return RayCone.create(getWidth(), angle + surfaceSpreadAngle);
+    }
+
+    /** Compute texture level of details based on ray cone. Commented out, since we handle texture resolution as part of the texture lookup in Falcor.
+        Keeping this here for now, since other may find it easier to understand.
+        Note: call propagateDistance() before computeLOD()
+    */
+    float computeLOD(float triLODConstant, float3 rayDir, float3 normal, float textureWidth, float textureHeight)     
+    {
+        float lambda = triLODConstant;                                  // Constant per triangle.
         float filterWidth = getWidth();
-        // Keeping this implementation since it is easier to read, but the following three lines that are not commented out are a bit faster
-        //float distTerm = abs(filterWidth);
-        //float normalTerm = abs(dot(rayDir, normal));
-        //lambda += 0.5f * log2(textureWidth * textureHeight);             // Texture size term.
-        //lambda += log2(distTerm);                                       // Distance term.
-        //lambda -= log2(normalTerm);                                     // Surface orientation term.
-        float distTerm = filterWidth * filterWidth;
-        float normalTerm = dot(rayDir, normal);
-        lambda += 0.5f * log2(textureWidth * textureHeight * distTerm / (normalTerm * normalTerm));
+        float distTerm = abs(filterWidth);
+        float normalTerm = abs(dot(rayDir, normal));
+        lambda += 0.5f * log2(textureWidth * textureHeight);            // Texture size term.
+        lambda += log2(distTerm);                                       // Distance term.
+        lambda -= log2(normalTerm);                                     // Surface orientation term.
         return lambda;
     }
 
     /** Compute texture level of details based on ray cone.
         Note that this versions excludes texture dimension dependency, which is instead added back in
         using the ExplicitRayConesLodTextureSampler:ITextureSampler in order to support baseColor, specular, etc per surfaces.
-
         \param[in] triLODConstant Value computed by computeRayConeTriangleLODValue().
         \param[in] rayDir Ray direction.
         \param[in] normal Normal at the hit point.
         \return The level of detail, lambda.
     */
-    float computeLOD(float triLODConstant, float3 rayDir, float3 normal)
+    float computeLOD(float triLODConstant, float3 rayDir, float3 normal)     // Note: call propagateDistance() before computeLOD()
     {
         float lambda = triLODConstant; // constant per triangle
         float filterWidth = getWidth();
-
-        // Keeping this implementation since it is easier to read, but the following three lines that are not commented out are a bit faster
-        //float distTerm = abs(filterWidth);
-        //float normalTerm = abs(dot(rayDir, normal));
-        //lambda += log2(distTerm);                                       // Distance term
-        //lambda -= log2(normalTerm);                                     // Surface orientation term
-
         float distTerm = filterWidth * filterWidth;
         float normalTerm = dot(rayDir, normal);
         lambda += 0.5f * log2(distTerm / (normalTerm * normalTerm));
         return lambda;
     }
-
 
     /** Create a ray cone struct.
         \param[in] width The width of the ray cone.
@@ -167,11 +173,11 @@ float computeRayConeTriangleLODValue(float3 vertices[3], float2 txcoords[3], flo
 }
 
 /** Compute the triangle LOD value based on triangle vertices and texture coordinates, used by ray cones.
-    \param[in] meshInstanceID The mesh instance ID.
     \param[in] triangleIndex Index of the triangle in the given mesh.
+    \param[in] worldMat World matrix.
     \return Triangle LOD value for ray cone.
 */
-float computeRayConeTriangleLODValue(StaticVertexData triangleVertices[3], uint meshInstanceID, float3x3 worldMat)
+float computeRayConeTriangleLODValue(const StaticVertexData triangleVertices[3], const float3x3 worldMat)
 {
     float2 txcoords[3];
     float3 positions[3];
@@ -188,11 +194,9 @@ float computeRayConeTriangleLODValue(StaticVertexData triangleVertices[3], uint 
 /** Compute screen space spread angle at the first hit point based on ddx and ddy of normal and position.
     \param[in] positionW Position of the hit point in world space.
     \param[in] normalW Normal of the hit point in world space.
-    \param[in] betaFactorK1 Optional factor, default value = 1. See Ray Tracing Gems, chapter 20.
-    \param[in] betaFactorK2 Optional factor, default value = 0. See Ray Tracing Gems, chapter 20.
     \return Spread angle at hit point.
 */
-float computeScreenSpaceSurfaceSpreadAngle(float3 positionW, float3 normalW, float betaFactorK1 = 1.0, float betaFactorK2 = 0.0)
+float computeScreenSpaceSurfaceSpreadAngle(float3 positionW, float3 normalW)
 {
     float3 dNdx = ddx(normalW);
     float3 dNdy = ddy(normalW);
@@ -200,8 +204,7 @@ float computeScreenSpaceSurfaceSpreadAngle(float3 positionW, float3 normalW, flo
     float3 dPdy = ddy(positionW);
 
     float beta = sqrt(dot(dNdx, dNdx) + dot(dNdy, dNdy)) * sign(dot(dNdx, dPdx) + dot(dNdy, dPdy));
-
-    return 2.0f * beta * betaFactorK1 + betaFactorK2;
+    return beta;
 }
 
 /** Compute screen space spread angle at the first hit point based on ddx and ddy of normal and position.
@@ -215,7 +218,7 @@ float computeScreenSpaceSurfaceSpreadAngle(float3 rightVector, float3 upVector, 
 {
     float betaX = atan(length(dNdx));
     float betaY = atan(length(dNdy));
-    float betaCurvature = 2.0f * sqrt(betaX * betaX + betaY * betaY) * (betaX >= betaY ? sign(dot(rightVector, dNdx)) : sign(dot(upVector, dNdy)));
+    float betaCurvature = sqrt(betaX * betaX + betaY * betaY) * (betaX >= betaY ? sign(dot(rightVector, dNdx)) : sign(dot(upVector, dNdy)));
     return betaCurvature;
 }
 
@@ -231,12 +234,12 @@ float computeSpreadAngleFromCurvatureIso(float curvature, float rayConeWidth, fl
     float dn = -dot(rayDir, normal);
     dn = abs(dn) < 1.0e-5 ? sign(dn) * 1.0e-5 : dn;
 
-#if TEXLOD_SPREADANGLE_FROM_CURVATURE_MODE == 0
+#if TEXLOD_SPREADANGLE_FROM_CURVATURE_MODE == TEXLOD_SPREADANGLE_RTG1
     // Original approach.
     float s = sign(curvature);
     float curvatureScaled = curvature * rayConeWidth * 0.5 / dn;
-    float surfaceSpreadAngle = 4.0 * atan(abs(curvatureScaled) / sqrt(2.0)) * s;
-#elif TEXLOD_SPREADANGLE_FROM_CURVATURE_MODE == 1
+    float surfaceSpreadAngle = 2.0 * atan(abs(curvatureScaled) / sqrt(2.0)) * s;
+#elif TEXLOD_SPREADANGLE_FROM_CURVATURE_MODE == TEXLOD_SPREADANGLE_ARC_LENGTH_UNOPTIMIZED
     // New approach, unoptimized: https://www.math24.net/curvature-plane-curves/
 
     float r = 1.0 / (curvature);
@@ -244,11 +247,11 @@ float computeSpreadAngleFromCurvatureIso(float curvature, float rayConeWidth, fl
     float arcLength = asin(chord / (2.0 * r)) * (2.0 * r);
     float deltaPhi = (curvature) * (arcLength);
 
-    float surfaceSpreadAngle = deltaPhi * 2.0;
-#else
+    float surfaceSpreadAngle = deltaPhi;
+#else // TEXLOD_SPREADANGLE_FROM_CURVATURE_MODE == TEXLOD_SPREADANGLE_ARC_LENGTH_OPTIMIZED
     // New approach : Fast Approximation.
     float deltaPhi = (curvature * rayConeWidth / dn);
-    float surfaceSpreadAngle = deltaPhi * 2.0;
+    float surfaceSpreadAngle = deltaPhi;
 #endif
 
     return surfaceSpreadAngle;
@@ -300,6 +303,173 @@ void computeAnisotropicEllipseAxes(float3 intersectionPoint, float3 faceNormal, 
     texGradientY = (1.0f - u - v) * txcoords[0] + u * txcoords[1] + v * txcoords[2] - interpolatedTexCoordsAtIntersection;
 }
 
+/** Refracts a ray and handles total internal reflection (TIR) in 3D.
+    \param[in] rayDir The ray direction to be refracted.
+    \param[in] normal The normal at the hit point.
+    \param[in] eta The raio of indices of refraction (entering / exiting).
+    \param[out] refractedRayDir The refracted vector.
+    \return Returns false if total internal reflection occured, otherwise true.
+*/
+bool refractWithTIR(float3 rayDir, float3 normal, float eta, out float3 refractedRayDir)
+{
+    float NdotD = dot(normal, rayDir);
+    float k = 1.0f - eta * eta * (1.0f - NdotD * NdotD);
+    if (k < 0.0f)
+    {
+        refractedRayDir = float3(0.0f);
+        return false;
+    }
+    else
+    {
+        refractedRayDir = rayDir * eta - normal * (eta * NdotD + sqrt(k));
+        return true;
+    }
+}
+
+/** Refracts a ray and handles total internal reflection (TIR) in 2D.
+    \param[in] rayDir The ray direction to be refracted.
+    \param[in] normal The normal at the hit point.
+    \param[in] eta The raio of indices of refraction (entering / exiting).
+    \param[out] refractedRayDir The refracted vector.
+    \return Returns false if total internal reflection occured, otherwise true.
+*/
+bool refractWithTIR(float2 rayDir, float2 normal, float eta, out float2 refractedRayDir)
+{
+    float NdotD = dot(normal, rayDir);
+    float k = 1.0f - eta * eta * (1.0f - NdotD * NdotD);
+    if (k < 0.0f)
+    {
+        refractedRayDir = float2(0.0f);
+        return false;
+    }
+    else
+    {
+        refractedRayDir = rayDir * eta - normal * (eta * NdotD + sqrt(k));
+        return true;
+    }
+}
+
+/** Helper function rotate a vector by both +angle and -angle.
+    \param[in] vec A vector to be rotated.
+    \param[in] angle The angle used for rotation.
+    \param[out] rotatedVecPlus The in vector rotated by +angle.
+    \param[out] rotatedVecMinus The in vector rotated by -angle.
+*/
+void rotate2DPlusMinus(float2 vec, float angle, out float2 rotatedVecPlus, out float2 rotatedVecMinus)
+{
+    float c = cos(angle);
+    float s = sin(angle);
+    float cx = c * vec.x;
+    float sy = s * vec.y;
+    float sx = s * vec.x;
+    float cy = c * vec.y;
+    rotatedVecPlus =  float2(cx - sy, +sx + cy);    // Rotate +angle,
+    rotatedVecMinus = float2(cx + sy, -sx + cy);    // Rotate -angle.
+}
+
+/** Helper function that returns an orthogonal vector to the in vector: 90 degrees counter-clockwise rotation.
+    \param[in] vec A vector to be rotate 90 degrees counter-clockwise.
+    \return The in vector rotated 90 degrees counter-clockwise.
+*/
+float2 orthogonal(float2 vec)
+{
+    return float2(-vec.y, vec.x);
+}
+
+/** Computes RayCone for a given refracted ray direction. Note that the incident ray cone should be called with propagateDistance(hitT); before computeRayConeForRefraction() is called.
+    \param[in,out] rayCone A ray cone to be refracted, result is returned here as well.
+    \param[in] rayOrg Ray origin.
+    \param[in] rayDir Ray direction.
+    \param[in] hitPoint The hit point.
+    \param[in] normal The normal at the hit point.
+    \param[in] normalSpreadAngle The spread angle at the normal at the hit point.
+    \param[in] eta Ratio of indices of refraction (enteringIndexOfRefraction / exitingIndexOfRefraction).
+    \param[in] refractedRayDir The refracted ray direction.
+*/
+void computeRayConeForRefraction(inout RayCone rayCone, float3 rayOrg, float3 rayDir, float3 hitPoint, float3 normal, float normalSpreadAngle,
+    float eta, float3 refractedRayDir)
+{
+    // We have refractedRayDir, which is the direction of the refracted ray cone,
+    // but we also need the rayCone.width and the rayCone.spreadAngle. These are computed in 2D,
+    // with xAxis and yAxis as the 3D axes. hitPoint is the origin of this 2D coordinate system.
+    float3 xAxis = normalize(rayDir - normal * dot(normal, rayDir));
+    float3 yAxis = normal;
+
+    float2 refractedDir2D = float2(dot(refractedRayDir, xAxis), dot(refractedRayDir, yAxis));           // Project to 2D.
+    float2 incidentDir2D = float2(dot(rayDir, xAxis), dot(rayDir, yAxis));                              // Project to 2D.
+    float2 incidentDir2D_u, incidentDir2D_l;                                                            // Upper (_u) and lower (_l) line of ray cone in 2D.
+    float2 incidentDirOrtho2D = orthogonal(incidentDir2D);
+
+    float widthSign = rayCone.getWidth() > 0.0f ? 1.0f : -1.0f;
+
+    rotate2DPlusMinus(incidentDir2D, rayCone.getSpreadAngle() * widthSign * 0.5f, incidentDir2D_u, incidentDir2D_l);
+
+    // Note: since we assume that the incident ray cone has been propagated to the hitpoint, we start the width-vector
+    // from the origin (0,0), and so, we do not need to add rayOrigin2D to tu and tl.
+    float2 tu = +incidentDirOrtho2D * rayCone.getWidth() * 0.5f;                               // Top, upper point on the incoming ray cone (in 2D).
+    float2 tl = -tu;                                                                           // Top, lower point on the incoming ray cone (in 2D).
+    // Intersect 2D rays (tu + t * incidentDir2D_u, and similar for _l) with y = 0.
+    // Optimized becuase y will always be 0.0f, so only need to compute x.
+    float hitPoint_u_x = tu.x + incidentDir2D_u.x * (-tu.y / incidentDir2D_u.y);
+    float hitPoint_l_x = tl.x + incidentDir2D_l.x * (-tl.y / incidentDir2D_l.y);
+
+    float normalSign = hitPoint_u_x > hitPoint_l_x ? +1.0f : -1.0f;
+
+    float2 normal2D = float2(0.0f, 1.0f);
+    float2 normal2D_u, normal2D_l;
+
+    rotate2DPlusMinus(normal2D, -normalSpreadAngle * normalSign * 0.5f, normal2D_u, normal2D_l);
+
+    // Refract in 2D.
+    float2 refractedDir2D_u, refractedDir2D_l;
+    if (!refractWithTIR(incidentDir2D_u, normal2D_u, eta, refractedDir2D_u))
+    {
+        refractedDir2D_u = incidentDir2D_u - normal2D_u * dot(normal2D_u, incidentDir2D_u);
+        refractedDir2D_u = normalize(refractedDir2D_u);
+    }
+    if (!refractWithTIR(incidentDir2D_l, normal2D_l, eta, refractedDir2D_l))
+    {
+        refractedDir2D_l = incidentDir2D_l - normal2D_l * dot(normal2D_l, incidentDir2D_l);
+        refractedDir2D_l = normalize(refractedDir2D_l);
+    }
+
+    float signA = (refractedDir2D_u.x * refractedDir2D_l.y - refractedDir2D_u.y * refractedDir2D_l.x) * normalSign < 0.0f ? +1.0f : -1.0f;
+    float spreadAngle = acos(dot(refractedDir2D_u, refractedDir2D_l)) * signA;
+
+    // Now compute the width of the refracted cone.
+    float2 refractDirOrtho2D = orthogonal(refractedDir2D);
+
+    // Intersect line (0,0) + t * refractDirOrtho2D with the line: hitPoint_u + s * refractedDir2D_u, but optimized since hitPoint_ul.y=0.
+    float width = (-hitPoint_u_x * refractedDir2D_u.y) / dot(refractDirOrtho2D, orthogonal(refractedDir2D_u));
+    // Intersect line (0,0) + t * refractDirOrtho2D with the line: hitPoint_l + s * refractedDir2D_l.
+    width += (hitPoint_l_x * refractedDir2D_l.y) / dot(refractDirOrtho2D, orthogonal(refractedDir2D_l));
+
+    rayCone = RayCone.create(width, spreadAngle);
+}
+
+/** Refracts a ray cone. Note that teh incident ray cone should be called with propagate(0.0f, hitT); before refractRayCone() is called.
+    \param[in,out] rayCone A ray cone to be refracted, result is returned here as well.
+    \param[in] rayOrg Ray origin.
+    \param[in] rayDir Ray direction.
+    \param[in] hitPoint The hit point.
+    \param[in] normal The normal at the hit point.
+    \param[in] normalSpreadAngle The spread angle at the normal at the hit point.
+    \param[in] eta Ratio of indices of refraction (enteringIndexOfRefraction / exitingIndexOfRefraction).
+    \param[out] refractedRayDir The refracted ray direction (unless the ray was totally internally reflcted (TIR:ed).
+    \return Whether the ray was not totally internally reflected, i.e., returns true without TIR, and false in cases of TIR
+*/
+bool refractRayCone(inout RayCone rayCone, float3 rayOrg, float3 rayDir, float3 hitPoint, float3 normal, float normalSpreadAngle,
+    float eta, out float3 refractedRayDir)
+{
+    if (!refractWithTIR(rayDir, normal, eta, refractedRayDir))
+    {
+        return false;               // total internal reflection
+    }
+
+    computeRayConeForRefraction(rayCone, rayOrg, rayDir, hitPoint, normal, normalSpreadAngle, eta, refractedRayDir);
+
+    return true;
+}
 
 // ----------------------------------------------------------------------------
 // Ray differentials helpers
@@ -330,10 +500,10 @@ struct RayDiff
     */
     RayDiff propagate(float3 O, float3 D, float t, float3 N)
     {
-        float3 dodx = getdOdx() + t * getdDdx();    // Part of Igehy Equation 10
+        float3 dodx = getdOdx() + t * getdDdx();    // Part of Igehy Equation 10.
         float3 dody = getdOdy() + t * getdDdy();
 
-        float rcpDN = 1.0f / dot(D, N);              // Igehy Equation 10 and 12
+        float rcpDN = 1.0f / dot(D, N);              // Igehy Equations 10 and 12.
         float dtdx = -dot(dodx, N) * rcpDN;
         float dtdy = -dot(dody, N) * rcpDN;
         dodx += D * dtdx;
@@ -360,7 +530,7 @@ struct RayDiff
     }
 };
 
-/** Computes the ray direction differential under the assumption that getCameraRayDir() is as commented out just above.
+/** Computes the ray direction differential under the assumption that getCameraRayDir() is implemented as shown in the code which is commented out just below.
     \param[in] nonNormalizedCameraRaydir Non-normalized camera ray direction.
     \param[in] cameraRight Camera right vector.
     \param[in] cameraUp Camera up vector.
@@ -378,7 +548,7 @@ struct RayDiff
 */
 void computeRayDirectionDifferentials(float3 nonNormalizedCameraRaydir, float3 cameraRight, float3 cameraUp, float2 viewportDims, out float3 dDdx, out float3 dDdy)
 {
-    // Igehy Equation 8, adapted to getRayDirection() above
+    // Igehy Equation 8, adapted to getRayDirection() above.
     float dd = dot(nonNormalizedCameraRaydir, nonNormalizedCameraRaydir);
     float divd = 2.0f / (dd * sqrt(dd));
     float dr = dot(nonNormalizedCameraRaydir, cameraRight);
@@ -399,15 +569,15 @@ void computeRayDirectionDifferentials(float3 nonNormalizedCameraRaydir, float3 c
 void computeBarycentricDifferentials(RayDiff rayDiff, float3 rayDir, float3 edge01, float3 edge02,
     float3 faceNormalW, out float2 dBarydx, out float2 dBarydy)
 {
-    float3 Nu = cross(edge02, faceNormalW);      // Igehy "Normal-Interpolated Triangles", page 182 SIGGRAPH 1999
+    float3 Nu = cross(edge02, faceNormalW);      // Igehy "Normal-Interpolated Triangles", page 182 SIGGRAPH 1999.
     float3 Nv = cross(edge01, faceNormalW);
-    float3 Lu = Nu / (dot(Nu, edge01));          // Plane equations for the triangle edges, scaled in order to make the dot with the opposive vertex = 1
+    float3 Lu = Nu / (dot(Nu, edge01));          // Plane equations for the triangle edges, scaled in order to make the dot with the opposive vertex = 1.
     float3 Lv = Nv / (dot(Nv, edge02));
 
-    dBarydx.x = dot(Lu, rayDiff.getdOdx());     // du / dx
-    dBarydx.y = dot(Lv, rayDiff.getdOdx());     // dv / dx
-    dBarydy.x = dot(Lu, rayDiff.getdOdy());     // du / dy
-    dBarydy.y = dot(Lv, rayDiff.getdOdy());     // dv / dy
+    dBarydx.x = dot(Lu, rayDiff.getdOdx());     // du / dx.
+    dBarydx.y = dot(Lv, rayDiff.getdOdx());     // dv / dx.
+    dBarydy.x = dot(Lu, rayDiff.getdOdy());     // du / dy.
+    dBarydy.y = dot(Lv, rayDiff.getdOdy());     // dv / dy.
 }
 
 
@@ -468,8 +638,8 @@ void interpolateDifferentials(float2 dBarydx, float2 dBarydy, float3 vertexValue
 void computeNormalDifferentials(RayDiff rayDiff, float3 nonNormalizedInterpolatedNormalW,
     float2 dBarydx, float2 dBarydy, float3 normals[3], out float3 dNdx, out float3 dNdy)
 {
-    // Differential normal (see "Normal-Interpolated Triangles" in Igehy's paper)
-    float NN = dot(nonNormalizedInterpolatedNormalW, nonNormalizedInterpolatedNormalW); // normal must be unnormalized! (otherwise NN would be 1)
+    // Differential normal (see "Normal-Interpolated Triangles" in Igehy's paper).
+    float NN = dot(nonNormalizedInterpolatedNormalW, nonNormalizedInterpolatedNormalW); // normal must be unnormalized! (otherwise NN would be 1).
     float rcpNN = 1.0f / (NN * sqrt(NN));
 
     float3 dndx, dndy;
@@ -494,7 +664,7 @@ void reflectRayDifferential(inout RayDiff rayDiff, float3 rayDir, float3 nonNorm
     float3 dNdx, dNdy;
     computeNormalDifferentials(rayDiff, nonNormalizedInterpolatedNormalW, dBarydx, dBarydy, normalsW, dNdx, dNdy);
 
-    // Differential of reflected ray direction (perfect specular reflection) -- Equation 14 and 15 in Igehy's paper
+    // Differential of reflected ray direction (perfect specular reflection) -- Equations 14 and 15 in Igehy's paper.
     float dDNdx = dot(rayDiff.getdDdx(), normalizedInterpolatedNormalW) + dot(rayDir, dNdx);
     float dDNdy = dot(rayDiff.getdDdy(), normalizedInterpolatedNormalW) + dot(rayDir, dNdy);
 
@@ -505,6 +675,121 @@ void reflectRayDifferential(inout RayDiff rayDiff, float3 rayDir, float3 nonNorm
     float3 dDdx = rayDiff.getdDdx() - 2.0f * (dNdx * DN + normalizedInterpolatedNormalW * dDNdx);
     float3 dDdy = rayDiff.getdDdy() - 2.0f * (dNdy * DN + normalizedInterpolatedNormalW * dDNdy);
     rayDiff = RayDiff.create(dOdx, dOdy, dDdx, dDdy);
+}
+
+/** Computes the refracted ray differential.
+    \param[in,out] rayDiff RayDifferential to be refracted, result is returned here as well.
+    \param[in] rayDir Ray direction.
+    \param[in] nonNormalizedInterpolatedNormalW Interpolated NON-normalized normal in world space.
+    \param[in] normalizedInterpolatedNormalW Interpolated normalized normal in world space.
+    \param[in] dBarydx Differential barycentric coordinates wrt x.
+    \param[in] dBarydy Differential barycentric coordinates wrt y.
+    \param[in] normalsW The triangle's three normalized normals in world space.
+    \param[in] eta The ratio of indices of refraction.
+    \param[in] refractedDir The direction of the refracted direction.
+    \param[in] NdotD The dot product of the normal with the ray direction.
+    \param[in] NdotDprime The dot product between the normal and the refracted direction (Eq. 17, Igehy)
+    \param[in] mu An intermediate term used by Igehy to compute the refracted ray differential (Eq. 17, Igehy). See the overloaded refractRayDifferential() function just below.
+    */
+void computeRayDifferentialRefraction(inout RayDiff rayDiff, float3 rayDir, float3 nonNormalizedInterpolatedNormalW,
+    float3 normalizedInterpolatedNormalW, float2 dBarydx, float2 dBarydy, float3 normalsW[3],
+    float eta, float3 refractedDir, float NdotD, float NdotDprime, float mu)
+{
+    float3 dNdx, dNdy;
+    computeNormalDifferentials(rayDiff, nonNormalizedInterpolatedNormalW, dBarydx, dBarydy, normalsW, dNdx, dNdy);
+
+    // Differential of refracted ray direction -- Equations 16-19 in Igehy's paper (SIGGRAPH 1999).
+    float dDNdx = dot(rayDiff.getdDdx(), normalizedInterpolatedNormalW) + dot(rayDir, dNdx);
+    float dDNdy = dot(rayDiff.getdDdy(), normalizedInterpolatedNormalW) + dot(rayDir, dNdy);
+
+    float dMudx = eta * (1.0f + eta * NdotD / NdotDprime) * dDNdx;                                  // Equation 19.
+    float dMudy = eta * (1.0f + eta * NdotD / NdotDprime) * dDNdy;                                  // Equation 19.
+    float3 dOdx = rayDiff.getdOdx();
+    float3 dOdy = rayDiff.getdOdy();
+    float3 dDdx = eta * rayDiff.getdDdx() - (mu * dNdx + dMudx * normalizedInterpolatedNormalW);    // Equation 18.
+    float3 dDdy = eta * rayDiff.getdDdy() - (mu * dNdy + dMudy * normalizedInterpolatedNormalW);    // Equation 18.
+
+    rayDiff = RayDiff.create(dOdx, dOdy, dDdx, dDdy);
+}
+
+/** Computes the refracted ray differential. Calls the computeRayDifferentialRefraction() just above.
+    \param[in,out] rayDiff RayDifferential to be refracted, result is returned here as well.
+    \param[in] rayDir Ray direction.
+    \param[in] nonNormalizedInterpolatedNormalW Interpolated NON-normalized normal in world space.
+    \param[in] normalizedInterpolatedNormalW Interpolated normalized normal in world space.
+    \param[in] dBarydx Differential barycentric coordinates wrt x.
+    \param[in] dBarydy Differential barycentric coordinates wrt y.
+    \param[in] normalsW The triangle's three normalized normals in world space.
+    \param[in] eta The ratio of indices of refraction.
+    \param[in] refractedDir The direction of the refracted direction.
+    */
+void computeRayDifferentialRefraction(inout RayDiff rayDiff, float3 rayDir, float3 nonNormalizedInterpolatedNormalW,
+    float3 normalizedInterpolatedNormalW, float2 dBarydx, float2 dBarydy, float3 normalsW[3],
+    float eta, float3 refractedDir)
+{
+    float NdotD = dot(normalizedInterpolatedNormalW, rayDir);
+    float k = eta * eta * (1.0f - NdotD * NdotD);
+    float NdotDprime = sqrt(1.0f - k);                                                              // Equation 17.
+    float mu = eta * NdotD + NdotDprime;                                                            // Equation 17.
+
+    computeRayDifferentialRefraction(rayDiff, rayDir, nonNormalizedInterpolatedNormalW,
+        normalizedInterpolatedNormalW, dBarydx, dBarydy, normalsW,
+        eta, refractedDir, NdotD, NdotDprime, mu);
+}
+
+/** Refract ray differentials using interpolated vertex attributes. Takes existing refracted ray direction.
+    \param[in] v The mesh vertex data at hit point.
+    \param[in] triangleVertices The vertices of the triangle.
+    \param[in] barycentrics Barycentric coordinates in the triangle.
+    \param[in] rayDir Ray direction.
+    \param[in] refractedDir Refracted ray direction.
+    \param[in] worldMat World transformation matrix.
+    \param[in] worldInvTransposeMat Inverse transpose of world transformation matrix.
+    \param[in,out] rayDiff The ray differential used as input and output.
+    \param[out] dUVdx The differential of the texture coordinates in pixel coordinate x.
+    \param[out] dUVdy The differential of the texture coordinates in pixel coordinate y.
+*/
+void refractRayDiffUsingVertexData(VertexData v, StaticVertexData triangleVertices[3], float3 barycentrics, float3 rayDir, float3 refractedDir, float eta, float4x4 worldMat, float3x3 worldInvTransposeMat,
+    inout RayDiff rayDiff, out float2 dUVdx, out float2 dUVdy)
+{
+    float3 unnormalizedN;   // Non-normalized interpolated normal for ray differential scatter.
+    float3 normals[3];      // Non-normalized normals for ray differential scatter.
+    float2 dBarydx, dBarydy;
+    prepareRayDiffAtHitPoint(v, triangleVertices, barycentrics, rayDir, worldMat, worldInvTransposeMat, rayDiff, unnormalizedN, normals, dBarydx, dBarydy, dUVdx, dUVdy);
+    computeRayDifferentialRefraction(rayDiff, rayDir, unnormalizedN, normalize(unnormalizedN), dBarydx, dBarydy, normals, eta, refractedDir);
+}
+
+/** Refracts a ray differential. Actually refract the ray and compute the new ray direction.
+    \param[in,out] rayDiff RayDifferential to be refracted, result is returned here as well.
+    \param[in] rayDir Ray direction.
+    \param[in] nonNormalizedInterpolatedNormalW Interpolated NON-normalized normal in world space.
+    \param[in] normalizedInterpolatedNormalW Interpolated normalized normal in world space.
+    \param[in] dBarydx Differential barycentric coordinates wrt x.
+    \param[in] dBarydy Differential barycentric coordinates wrt y.
+    \param[in] normalsW The triangle's three normalized normals in world space.
+    \param[in] eta The ratio of indices of refraction: enteringIndexOfRefraction / exitingIndexOfRefraction.
+    \param[out] refractedRayDir The refracted ray direction (unless the ray was totally internally reflcted (TIR:ed).
+    \return Whether the ray was not totally internally reflected, i.e., returns true without TIR, and false in cases of TIR
+*/
+bool refractRayDifferential(inout RayDiff rayDiff, float3 rayDir, float3 nonNormalizedInterpolatedNormalW,
+    float3 normalizedInterpolatedNormalW, float2 dBarydx, float2 dBarydy, float3 normalsW[3],
+    float eta, out float3 refractedDir)
+{
+    float NdotD = dot(normalizedInterpolatedNormalW, rayDir);
+    float k = eta * eta * (1.0f - NdotD * NdotD);
+    if (k > 1.0f)
+    {
+        refractedDir = float3(0.0f, 0.0f, 0.0f);
+        return false;                                                                               // Total internal reflection occured.
+    }
+
+    float NdotDprime = sqrt(1.0f - k);                                                              // Equation 17.
+    float mu = eta * NdotD + NdotDprime;                                                            // Equation 17.
+    refractedDir = eta * rayDir - mu * normalizedInterpolatedNormalW;                               // Equation 16.
+
+    computeRayDifferentialRefraction(rayDiff, rayDir, nonNormalizedInterpolatedNormalW, normalizedInterpolatedNormalW, dBarydx, dBarydy, normalsW, eta, refractedDir, NdotD, NdotDprime, mu);
+
+    return true;                                                                        // Success, i.e., no total internal reflection.
 }
 
 /** Prepares vertices for ray differentials so that computations happen in world space.
@@ -530,6 +815,9 @@ void prepareVerticesForRayDiffs(float3 rayDir, StaticVertexData vertices[3], flo
     normals[2] = mul(vertices[2].normal, worldInvTransposeMat).xyz;
     // Note that we do not need to normalize the individual normals[], since the derivation
     // by Igehy page 182 normalizes the normal after interpolation.
+
+    // Note also that we do not need to (possibly) flip the sign of the normals due to doublesidedness.
+    // This is not needed for reflectRayDifferential() because the signs will cancel out, but it is needed for refractRayDifferential()
     unnormalizedN = normals[0] * barycentrics[0];
     unnormalizedN += normals[1] * barycentrics[1];
     unnormalizedN += normals[2] * barycentrics[2];
@@ -540,26 +828,32 @@ void prepareVerticesForRayDiffs(float3 rayDir, StaticVertexData vertices[3], flo
         normals[1] = -normals[1];
         normals[2] = -normals[2];
     }
-
     txcoords[0] = vertices[0].texCrd;
     txcoords[1] = vertices[1].texCrd;
     txcoords[2] = vertices[2].texCrd;
 }
 
-/** Computes ray differentials parameters at surface hit point.
+/** Computes ray differentials parameters (dUVdx, dUVdy) at surface hit point.
+     \param[in] v The mesh vertex data at hit point.
+     \param[in] triangleVertices The vertices of the triangle.
+     \param[in] barycentrics Barycentric coordinates in the triangle.
+     \param[in] rayDir Ray direction.
+     \param[in] worldMat World transformation matrix.
+     \param[in] worldInvTransposeMat Inverse transpose of world transformation matrix.
+     \param[in] rayDiff The ray differential.
+     \param[out] unnormalizedN Interpolated normal (not normalized).
+     \param[out] normals Normals of the triangle transformed with inverse transpose world matrix.
+     \param[out] dBarydx Differential barycentric coordinates wrt x.
+     \param[out] dBarydy Differential barycentric coordinates wrt y.
+     \param[out] dUVdx Differential texture coordinates wrt x.
+     \param[out] dUVdy Differential texture coordinates wrt y.
 */
-void prepareRayDiffAtHitPoint(VertexData v, StaticVertexData triangleVertices[3], float3 barycentrics, float3 rayDir, float hitT, float4x4 worldMat, float3x3 worldInvTransposeMat,
-    RayDiff rayDiff, out float2 dUVdx, out float2 dUVdy)
+void prepareRayDiffAtHitPoint(VertexData v, StaticVertexData triangleVertices[3], float3 barycentrics, float3 rayDir, float4x4 worldMat, float3x3 worldInvTransposeMat,
+    RayDiff rayDiff, out float3 unnormalizedN, out float3 normals[3], out float2 dBarydx, out float2 dBarydy, out float2 dUVdx, out float2 dUVdy)
 {
-
     float3 edge01, edge02;
-    float3 unnormalizedN, normals[3];
     float2 txcoords[3];
-
-    prepareVerticesForRayDiffs(rayDir, triangleVertices, worldMat, worldInvTransposeMat, barycentrics,
-        edge01, edge02, normals, unnormalizedN, txcoords);
-
-    float2 dBarydx, dBarydy;
+    prepareVerticesForRayDiffs(rayDir, triangleVertices, worldMat, worldInvTransposeMat, barycentrics, edge01, edge02, normals, unnormalizedN, txcoords);
     computeBarycentricDifferentials(rayDiff, rayDir, edge01, edge02, v.faceNormalW, dBarydx, dBarydy);
     interpolateDifferentials(dBarydx, dBarydy, txcoords, dUVdx, dUVdy);
 }
@@ -578,35 +872,12 @@ void prepareRayDiffAtHitPoint(VertexData v, StaticVertexData triangleVertices[3]
 void reflectRayDiffUsingVertexData(VertexData v, StaticVertexData triangleVertices[3], float3 barycentrics, float3 rayDir, float4x4 worldMat, float3x3 worldInvTransposeMat,
     inout RayDiff rayDiff, out float2 dUVdx, out float2 dUVdy)
 {
-
     float3 unnormalizedN;   // Non-normalized interpolated normal for ray differential scatter.
     float3 normals[3];      // Non-normalized normals for ray differential scatter.
-    float2 txcoords[3];
     float2 dBarydx, dBarydy;
-
-    float3 edge01 = mul(triangleVertices[1].position - triangleVertices[0].position, (float3x3)worldMat);
-    float3 edge02 = mul(triangleVertices[2].position - triangleVertices[0].position, (float3x3)worldMat);
-    // Note that we do not need to normalize the individual normals[], since the derivation
-    // by Igehy on page 182 normalizes the normal after interpolation
-    // Note also that we do not need to (possibly) flip the sign of the normals due to doublesidedness,
-    // etc, because the way the computations are used in reflectRayDifferential(), those signs
-    // will cancel due to (-A)*(-B) = AB.
-    normals[0] = mul(triangleVertices[0].normal, worldInvTransposeMat);
-    normals[1] = mul(triangleVertices[1].normal, worldInvTransposeMat);
-    normals[2] = mul(triangleVertices[2].normal, worldInvTransposeMat);
-    txcoords[0] = triangleVertices[0].texCrd;
-    txcoords[1] = triangleVertices[1].texCrd;
-    txcoords[2] = triangleVertices[2].texCrd;
-
-    unnormalizedN = normals[0] * barycentrics[0];
-    unnormalizedN += normals[1] * barycentrics[1];
-    unnormalizedN += normals[2] * barycentrics[2];
-
-    computeBarycentricDifferentials(rayDiff, rayDir, edge01, edge02, v.faceNormalW, dBarydx, dBarydy);
-    interpolateDifferentials(dBarydx, dBarydy, txcoords, dUVdx, dUVdy);
+    prepareRayDiffAtHitPoint(v, triangleVertices, barycentrics, rayDir, worldMat, worldInvTransposeMat, rayDiff, unnormalizedN, normals, dBarydx, dBarydy, dUVdx, dUVdy);
     reflectRayDifferential(rayDiff, rayDir, unnormalizedN, v.normalW, dBarydx, dBarydy, normals);
 }
-
 
 // ----------------------------------------------------------------------------
 // Environment map sampling helpers
@@ -622,7 +893,7 @@ float computeEnvironmentMapLOD(float spreadAngle, Texture2D environmentMap)
 {
     uint txw, txh;
     environmentMap.GetDimensions(txw, txh);
-    return log2(abs(spreadAngle) * txh * M_1_PI);                                // From chapter 21 in Ray Tracing Gems
+    return log2(abs(spreadAngle) * txh * M_1_PI);                                // From chapter 21 in Ray Tracing Gems.
 }
 
 /** Compute the LOD used when performing a lookup in an environment map when using ray differentials
@@ -635,7 +906,7 @@ float computeEnvironmentMapLOD(float3 dDdx, float3 dDdy, Texture2D environmentMa
 {
     uint txw, txh;
     environmentMap.GetDimensions(txw, txh);
-    return log2(length(dDdx + dDdy) * txh * M_1_PI);                             // From chapter 21 in Ray Tracing Gems
+    return log2(length(dDdx + dDdy) * txh * M_1_PI);                             // From chapter 21 in Ray Tracing Gems.
 }
 
 
@@ -855,5 +1126,13 @@ struct TriangleCurvature_EllipseVis : ITriangleCurvatureEstimator
 
         return abs(rayConeAngle + surfaceSpreadAngle0) > abs(rayConeAngle + surfaceSpreadAngle1) ? k0 : k1;
 #endif
+    }
+};
+
+struct TriangleCurvature_Zero : ITriangleCurvatureEstimator
+{
+    float eval(float3 edge01, float3 edge02, float3 edge12, float curvature01, float curvature02, float curvature12)
+    {
+        return 0.0f;      // Zero triangle curvature -- fastest method. Could be sufficiently good for secondary bounces.
     }
 };

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -34,6 +34,8 @@ import Scene.SceneTypes;
 
 struct SkinningData
 {
+    bool initPrev; ///< Copy current frame data to previous frame data.
+
     // Vertex data
     StructuredBuffer<PackedStaticVertexData> staticData;            ///< Original global vertex buffer. This holds the unmodified input vertices.
     StructuredBuffer<DynamicVertexData> dynamicData;                ///< Bone IDs and weights for all dynamic vertices.
@@ -44,6 +46,8 @@ struct SkinningData
     StructuredBuffer<float4> boneMatrices;
     StructuredBuffer<float4> inverseTransposeBoneMatrices;
     StructuredBuffer<float4> worldMatrices;
+    StructuredBuffer<float4> meshBindMatrices;
+    StructuredBuffer<float4> meshInvBindMatrices;
     StructuredBuffer<float4> inverseTransposeWorldMatrices;
 
     // Accessors
@@ -66,6 +70,22 @@ struct SkinningData
         inverseTransposeWorldMatrices[matrixID * 4 + 3]);
 
         return transpose(m);
+    }
+
+    float4x4 getMeshBindMatrix(uint matrixID)
+    {
+        return float4x4(meshBindMatrices[matrixID * 4 + 0],
+        meshBindMatrices[matrixID * 4 + 1],
+        meshBindMatrices[matrixID * 4 + 2],
+        meshBindMatrices[matrixID * 4 + 3]);
+    }
+
+    float4x4 getInverseMeshBindMatrix(uint matrixID)
+    {
+        return float4x4(meshInvBindMatrices[matrixID * 4 + 0],
+        meshInvBindMatrices[matrixID * 4 + 1],
+        meshInvBindMatrices[matrixID * 4 + 2],
+        meshInvBindMatrices[matrixID * 4 + 3]);
     }
 
     float4x4 getBoneMatrix(uint matrixID)
@@ -93,7 +113,14 @@ struct SkinningData
         boneMat += getBoneMatrix(d.boneID.z) * d.boneWeight.z;
         boneMat += getBoneMatrix(d.boneID.w) * d.boneWeight.w;
 
-        boneMat = mul(boneMat, getInverseWorldMatrix(d.globalMatrixID));
+        // Apply mesh bind transform before skinning (mesh to skeleton local at bind time)
+        boneMat = mul(getMeshBindMatrix(d.bindMatrixID), boneMat);
+
+        // Skinning takes us to world space, so apply the inverse to return to skeleton local
+        boneMat = mul(boneMat, getInverseWorldMatrix(d.skeletonMatrixID));
+
+        // Apply inverse bind matrix to return to mesh-local
+        boneMat = mul(boneMat, getInverseMeshBindMatrix(d.bindMatrixID));
         return boneMat;
     }
 
@@ -106,7 +133,7 @@ struct SkinningData
         boneMat += getInverseTransposeBoneMatrix(d.boneID.z) * d.boneWeight.z;
         boneMat += getInverseTransposeBoneMatrix(d.boneID.w) * d.boneWeight.w;
 
-        boneMat = mul(boneMat, getTransposeWorldMatrix(d.globalMatrixID));
+        boneMat = mul(boneMat, getTransposeWorldMatrix(d.skeletonMatrixID));
         return boneMat;
     }
 
@@ -143,10 +170,6 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
     gData.dynamicData.GetDimensions(vertexCount, stride);
     if (vertexId >= vertexCount) return;
 
-    // Copy the previous skinned data
-    PrevVertexData prev;
-    prev.position = gData.getCurrentPosition(vertexId);
-
     // Blend the vertices
     StaticVertexData s = gData.getStaticVertexData(vertexId);
     float4x4 boneMat = gData.getBlendedMatrix(vertexId);
@@ -155,6 +178,10 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
     s.position = mul(float4(s.position, 1.f), boneMat).xyz;
     s.tangent.xyz = mul(s.tangent.xyz, (float3x3) boneMat);
     s.normal = mul(s.normal, (float3x3) transpose(invTransposeMat));
+
+    // Copy the previous skinned data
+    PrevVertexData prev;
+    prev.position = gData.initPrev ? s.position : gData.getCurrentPosition(vertexId);
 
     // Store the result
     gData.storeSkinnedVertexData(vertexId, s, prev);

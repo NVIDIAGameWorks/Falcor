@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -42,78 +42,7 @@ const ChannelList GBuffer::kGBufferChannels =
     { "matlExtra",      "gMatlExtra",       "additional material data",     true /* optional */, ResourceFormat::RGBA32Float },
 };
 
-namespace
-{
-    // Scripting options.
-    const char kForceCullMode[] = "forceCullMode";
-    const char kCullMode[] = "cull";
-
-    // UI variables.
-    const Gui::DropdownList kCullModeList =
-    {
-        { (uint32_t)RasterizerState::CullMode::None, "None" },
-        { (uint32_t)RasterizerState::CullMode::Back, "Back" },
-        { (uint32_t)RasterizerState::CullMode::Front, "Front" },
-    };
-}
-
-GBuffer::GBuffer() : mGBufferParams{}
+GBuffer::GBuffer()
 {
     assert(kGBufferChannels.size() == 8); // The list of primary GBuffer channels should contain 8 entries, corresponding to the 8 render targets.
-}
-
-void GBuffer::parseDictionary(const Dictionary& dict)
-{
-    GBufferBase::parseDictionary(dict);
-
-    for (const auto& [key, value] : dict)
-    {
-        if (key == kForceCullMode) mForceCullMode = value;
-        else if (key == kCullMode) mCullMode = value;
-        // TODO: Check for unparsed fields, including those parsed in base classes.
-    }
-}
-
-Dictionary GBuffer::getScriptingDictionary()
-{
-    Dictionary dict = GBufferBase::getScriptingDictionary();
-    dict[kForceCullMode] = mForceCullMode;
-    dict[kCullMode] = mCullMode;
-    return dict;
-}
-
-void GBuffer::renderUI(Gui::Widgets& widget)
-{
-    // Render the base class UI first.
-    GBufferBase::renderUI(widget);
-
-    // Cull mode controls.
-    mOptionsChanged |= widget.checkbox("Force cull mode", mForceCullMode);
-    widget.tooltip("Enable this option to force the same cull mode for all geometry.\n\n"
-        "Otherwise the default for rasterization is to set the cull mode automatically based on triangle winding, and for ray tracing to disable culling.", true);
-
-    if (mForceCullMode)
-    {
-        uint32_t cullMode = (uint32_t)mCullMode;
-        if (widget.dropdown("Cull mode", kCullModeList, cullMode))
-        {
-            setCullMode((RasterizerState::CullMode)cullMode);
-            mOptionsChanged = true;
-        }
-    }
-}
-
-void GBuffer::compile(RenderContext* pContext, const CompileData& compileData)
-{
-    GBufferBase::compile(pContext, compileData);
-
-    mGBufferParams.frameSize = mFrameDim;
-    mGBufferParams.invFrameSize = mInvFrameDim;
-}
-
-void GBuffer::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
-{
-    GBufferBase::setScene(pRenderContext, pScene);
-
-    mGBufferParams.frameCount = 0;
 }

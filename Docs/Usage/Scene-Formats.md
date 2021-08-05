@@ -13,18 +13,19 @@ From assets, Falcor will import:
     - Diffuse Texture
         - Metal-Rough Shading Model (Default)
             - RGB: Base Color
+            - A: Opacity (alpha)
         - Spec-Gloss Shading Model (Default for OBJ only)
             - RGB: Diffuse Color
+            - A: Opacity (alpha)
     - Specular Parameters Texture
         - Metal-Rough Shading Model (Default)
-            - R: Occlusion
+            - R: Occlusion (unsupported)
             - G: Roughness
             - B: Metallic
         - Spec-Gloss Shading Model (Default for OBJ only)
             - RGB: Specular Color
             - A: Glossiness
     - Normals Texture
-    - Occlusion Texture (Used for Spec-Gloss shading model only)
     - Emissive Color/Texture
 - Cameras
 - Point lights
@@ -136,22 +137,22 @@ Next we need to define at least one material to use for our meshes:
 ```python
 # Create materials
 red = Material('Red')
-red.baseColor = float4(0.8, 0.1, 0.1, 0)
+red.baseColor = float4(0.8, 0.1, 0.1, 1.0)
 red.roughness = 0.3
 
 green = Material('Green')
-green.baseColor = float4(0.1, 0.8, 0.1, 0)
+green.baseColor = float4(0.1, 0.8, 0.1, 1.0)
 green.roughness = 0.2
 green.emissiveColor = float3(1, 1, 1)
 green.emissiveFactor = 0.1
 
 blue = Material('Blue')
-blue.baseColor = float4(0.1, 0.1, 0.8, 0)
+blue.baseColor = float4(0.1, 0.1, 0.8, 1.0)
 blue.roughness = 0.3
 blue.metallic = 1
 
 emissive = Material('Emissive')
-emissive.baseColor = float4(1, 1, 1, 0)
+emissive.baseColor = float4(1, 1, 1, 1)
 emissive.roughness = 0.2
 emissive.emissiveColor = float3(1, 1, 1)
 emissive.emissiveFactor = 20

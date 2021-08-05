@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -230,9 +230,21 @@ bool samplePointLight(const float3 shadingPosW, const LightData light, out Analy
     ls.distance = sqrt(distSqr);
     ls.dir = toLight / ls.distance;
 
+    // Calculate the falloff for spot-lights.
+    float cosTheta = -dot(ls.dir, light.dirW);
+    float falloff = 1.f;
+    if (cosTheta < light.cosOpeningAngle)
+    {
+        falloff = 0.f;
+    }
+    else if (light.penumbraAngle > 0.f)
+    {
+        float deltaAngle = light.openingAngle - acos(cosTheta);
+        falloff = smoothstep(0.f, light.penumbraAngle, deltaAngle);
+    }
+
     // Compute incident radiance at shading point.
-    // TODO: Support spot lights. We assume uniform emission for now.
-    ls.Li = light.intensity / distSqr;
+    ls.Li = light.intensity * falloff / distSqr;
 
     // For a point light, the PDF with respect to solid angle is a Dirac function. Set to zero.
     ls.pdf = 0.f;
@@ -269,4 +281,27 @@ bool sampleLight<S : ISampleGenerator>(const float3 shadingPosW, const LightData
         ls = {};
         return false; // Should not happen
     }
+}
+
+/** Evaluates a light approximately. This is useful for raster passes that don't use stochastic integration.
+    For now only point and directional light sources are supported.
+    \param[in] shadingPosW Shading point in world space.
+    \param[in] light Light data.
+    \param[out] ls Sampled point on the light and associated sample data (zero initialized if no sample is generated).
+    \return True if a sample was generated, false otherwise.
+*/
+bool evalLightApproximate(const float3 shadingPosW, const LightData light, out AnalyticLightSample ls)
+{
+    ls = {};
+
+    switch (light.type)
+    {
+    case LightType::Point:
+        return samplePointLight(shadingPosW, light, ls);
+    case LightType::Directional:
+        return sampleDirectionalLight(shadingPosW, light, ls);
+    }
+
+    // All other light types are not supported.
+    return false;
 }

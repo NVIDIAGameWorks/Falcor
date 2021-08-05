@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,7 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "pybind11/stl.h"
+#include <pybind11/stl.h>
+#include <pybind11/functional.h>
 
 namespace Falcor::ScriptBindings
 {
@@ -83,11 +84,17 @@ namespace Falcor::ScriptBindings
         return pybind11::repr(pybind11::cast(value));
     }
 
-    /** This helper allows to register bindings for simple data structs.
-        This is accomplished by adding a __init__ (constructor) and a __repr__ implementation.
-        The __init__ function takes kwargs and populates all the structs fields that have been
-        registered with the field() method on this helper. The __repr__ implementation prints all
-        the fields registered with the field() method. Lets assume we have a C++ struct:
+    /** This helper creates script bindings for simple data-only structs.
+
+        The structs are made "serializable" to/from python code by adding a __init__ (constructor)
+        and a __repr__ implementation. The __init__ function takes kwargs and populates all the
+        struct fields that have been registered with the field() method on this helper.
+        The __repr__ implementation prints all the fields registered with the field() method.
+
+        This helper also makes the python type "pickle-able" by providing a __getstate__
+        and __setstate__ implementation.
+
+        Lets assume we have a C++ struct:
 
         struct Example
         {
@@ -127,6 +134,10 @@ namespace Falcor::ScriptBindings
             this->def(pybind11::init(initFunc));
             this->def(pybind11::init<>());
             this->def("__repr__", This::repr);
+            this->def(pybind11::pickle(
+                [] (const T &obj) { return This::getState(obj); },
+                [] (pybind11::tuple t) { T obj; This::setState(obj, t); return obj; }
+            ));
         }
 
         template<typename D, typename... Extra>
@@ -134,54 +145,85 @@ namespace Falcor::ScriptBindings
         {
             this->def_readwrite(name, pm, extra...);
 
-            auto setter = [pm](void* pObj, pybind11::handle h)
+            auto getter = [pm](const T& obj) -> pybind11::object
             {
-                static_cast<T*>(pObj)->*pm = h.cast<D>();
+                return pybind11::cast(obj.*pm);
+            };
+
+            auto setter = [pm](T& obj, pybind11::handle h)
+            {
+                obj.*pm = h.cast<D>();
             };
 
             std::string nameStr(name);
-            auto printer = [pm, nameStr](const void* pObj)
+            auto printer = [pm, nameStr](const T& obj)
             {
-                return nameStr + "=" + std::string(pybind11::repr(pybind11::cast(static_cast<const T*>(pObj)->*pm)));
+                return nameStr + "=" + std::string(pybind11::repr(pybind11::cast(obj.*pm)));
             };
 
-            This::info().fields[name] = { setter, printer };
+            auto &info = This::info();
+            auto field = Field { getter, setter, printer };
+            info.fields.emplace_back(field);
+            info.fieldByName[name] = field;
             return *this;
         }
 
     private:
         static T init(const pybind11::kwargs& args)
         {
-            T t;
-            const auto& fields = This::info().fields;
-            for (auto a : args) fields.at(a.first.cast<std::string>()).setter(&t, a.second);
-            return t;
+            T obj;
+            const auto& fieldByName = This::info().fieldByName;
+            for (auto a : args) fieldByName.at(a.first.cast<std::string>()).setter(obj, a.second);
+            return obj;
         }
 
-        static std::string repr(const T& t)
+        static std::string repr(const T& obj)
         {
             const auto& info = This::info();
             std::string s = info.name + '(';
             bool first = true;
-            for (const auto a : info.fields)
+            for (const auto f : info.fields)
             {
                 if (!first) s += ", ";
                 first = false;
-                s += a.second.printer(&t);
+                s += f.printer(obj);
             }
             return s + ')';
         }
 
+        static pybind11::tuple getState(const T &obj)
+        {
+            const auto& fields = This::info().fields;
+            pybind11::tuple t(fields.size());
+            for (size_t i = 0; i < fields.size(); ++i)
+            {
+                t[i] = fields[i].getter(obj);
+            }
+            return t;
+        }
+
+        static void setState(T &obj, pybind11::tuple t)
+        {
+            const auto& fields = This::info().fields;
+            if (t.size() != fields.size()) throw std::runtime_error("Invalid state!");
+            for (size_t i = 0; i < fields.size(); ++i)
+            {
+                fields[i].setter(obj, t[i]);
+            }
+        }
+
         struct Field
         {
-            std::function<void(void*, pybind11::handle)> setter;
-            std::function<std::string(const void*)> printer;
+            std::function<pybind11::object(const T&)> getter;
+            std::function<void(T&, pybind11::handle)> setter;
+            std::function<std::string(const T&)> printer;
         };
 
         struct Info
         {
             std::string name;
-            std::unordered_map<std::string, Field> fields;
+            std::vector<Field> fields;
+            std::unordered_map<std::string, Field> fieldByName;
         };
 
         static Info& info()

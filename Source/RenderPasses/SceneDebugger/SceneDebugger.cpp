@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -45,12 +45,12 @@ namespace
         { (uint32_t)SceneDebuggerMode::FrontFacingFlag, "Front-facing flag" },
         { (uint32_t)SceneDebuggerMode::BackfacingShadingNormal, "Back-facing shading normal" },
         { (uint32_t)SceneDebuggerMode::TexCoords, "Texture coordinates" },
-        { (uint32_t)SceneDebuggerMode::MeshID, "Mesh ID" },
-        { (uint32_t)SceneDebuggerMode::MeshInstanceID, "Mesh instance ID" },
+        { (uint32_t)SceneDebuggerMode::HitType, "Hit type" },
+        { (uint32_t)SceneDebuggerMode::InstanceID, "Instance ID" },
         { (uint32_t)SceneDebuggerMode::MaterialID, "Material ID" },
+        { (uint32_t)SceneDebuggerMode::MeshID, "Mesh ID" },
         { (uint32_t)SceneDebuggerMode::BlasID, "BLAS ID" },
         { (uint32_t)SceneDebuggerMode::CurveID, "Curve ID" },
-        { (uint32_t)SceneDebuggerMode::CurveInstanceID, "Curve instance ID" },
         { (uint32_t)SceneDebuggerMode::InstancedGeometry, "Instanced geometry" },
     };
 
@@ -73,18 +73,18 @@ namespace
             "Pixels where the shading normal is back-facing with respect to view vector are highlighted";
         case SceneDebuggerMode::TexCoords: return
             "Texture coordinates in RG color wrapped to [0,1]";
-        case SceneDebuggerMode::MeshID: return
-            "Mesh ID in pseudocolor";
-        case SceneDebuggerMode::MeshInstanceID: return
-            "Mesh instance ID in pseudocolor";
+        case SceneDebuggerMode::HitType: return
+            "Hit type in pseudocolor";
+        case SceneDebuggerMode::InstanceID: return
+            "Instance ID in pseudocolor";
         case SceneDebuggerMode::MaterialID: return
             "Material ID in pseudocolor";
+        case SceneDebuggerMode::MeshID: return
+            "Mesh ID in pseudocolor";
         case SceneDebuggerMode::BlasID: return
             "Raytracing bottom-level acceleration structure (BLAS) ID in pseudocolor";
         case SceneDebuggerMode::CurveID: return
             "Curve ID in pseudocolor";
-        case SceneDebuggerMode::CurveInstanceID: return
-            "Curve instance ID in pseudocolor";
         case SceneDebuggerMode::InstancedGeometry: return
             "Green = instanced geometry\n"
             "Red = non-instanced geometry";
@@ -108,13 +108,16 @@ namespace
         mode.value("FrontFacingFlag", SceneDebuggerMode::FrontFacingFlag);
         mode.value("BackfacingShadingNormal", SceneDebuggerMode::BackfacingShadingNormal);
         mode.value("TexCoords", SceneDebuggerMode::TexCoords);
-        mode.value("MeshID", SceneDebuggerMode::MeshID);
-        mode.value("MeshInstanceID", SceneDebuggerMode::MeshInstanceID);
+        mode.value("HitType", SceneDebuggerMode::HitType);
+        mode.value("InstanceID", SceneDebuggerMode::InstanceID);
         mode.value("MaterialID", SceneDebuggerMode::MaterialID);
+        mode.value("MeshID", SceneDebuggerMode::MeshID);
         mode.value("BlasID", SceneDebuggerMode::BlasID);
         mode.value("CurveID", SceneDebuggerMode::CurveID);
-        mode.value("CurveInstanceID", SceneDebuggerMode::CurveInstanceID);
         mode.value("InstancedGeometry", SceneDebuggerMode::InstancedGeometry);
+
+        pybind11::class_<SceneDebugger, RenderPass, SceneDebugger::SharedPtr> pass(m, "SceneDebugger");
+        pass.def_property(kMode, &SceneDebugger::getMode, &SceneDebugger::setMode);
     }
 }
 
@@ -190,10 +193,6 @@ void SceneDebugger::setScene(RenderContext* pRenderContext, const Scene::SharedP
     {
         // Prepare our programs for the scene.
         Shader::DefineList defines = mpScene->getSceneDefines();
-
-        // Disable discard and gradient operations.
-        defines.add("_MS_DISABLE_ALPHA_TEST");
-        defines.add("_DEFAULT_ALPHA_TEST");
 
         mpDebugPass->getProgram()->addDefines(defines);
         mpDebugPass->setVars(nullptr); // Trigger recompile
@@ -276,6 +275,7 @@ void SceneDebugger::renderUI(Gui::Widgets& widget)
     // Show data for the currently selected pixel.
     widget.dummy("#spacer0", { 1, 20 });
     widget.var("Selected pixel", mParams.selectedPixel);
+
     renderPixelDataUI(widget);
 
     widget.dummy("#spacer1", { 1, 20 });
@@ -284,97 +284,135 @@ void SceneDebugger::renderUI(Gui::Widgets& widget)
 
 void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
 {
-    if (mPixelDataAvailable)
+    if (!mPixelDataAvailable) return;
+
+    assert(mpPixelDataStaging);
+    mpFence->syncCpu();
+    const PixelData& data = *reinterpret_cast<const PixelData*>(mpPixelDataStaging->map(Buffer::MapType::Read));
+
+    std::ostringstream oss;
+
+    switch ((HitType)data.hitType)
     {
-        assert(mpPixelDataStaging);
-        mpFence->syncCpu();
-        const PixelData& data = *reinterpret_cast<const PixelData*>(mpPixelDataStaging->map(Buffer::MapType::Read));
+    case HitType::Triangle:
+        oss << "Mesh ID: " << data.meshID << std::endl
+            << "Mesh name: " << (mpScene->hasMesh(data.meshID) ? mpScene->getMeshName(data.meshID) : "unknown") << std::endl
+            << "Instance ID: " << data.instanceID << std::endl
+            << "Material ID: " << data.materialID << std::endl
+            << "BLAS ID: " << data.blasID << std::endl;
 
-        std::ostringstream oss;
-        if (data.meshInstanceID != PixelData::kInvalidID)
+        widget.text(oss.str());
+        widget.dummy("#spacer2", { 1, 10 });
+
+        // Show mesh details.
+        if (auto g = widget.group("Mesh info"); g.open())
         {
-            oss << "Mesh ID: " << data.meshID << std::endl
-                << "Mesh name: " << (mpScene->hasMesh(data.meshID) ? mpScene->getMeshName(data.meshID) : "unknown") << std::endl
-                << "Mesh instance ID: " << data.meshInstanceID << std::endl
-                << "Material ID: " << data.materialID << std::endl
-                << "BLAS ID: " << data.blasID << std::endl;
-
-            widget.text(oss.str());
-            widget.dummy("#spacer2", { 1, 10 });
-
-            // Show mesh details.
-            if (auto g = widget.group("Mesh info"); g.open())
-            {
-                const auto& mesh = mpScene->getMesh(data.meshID);
-                std::ostringstream oss;
-                oss << "flags: " << mesh.flags << std::endl
-                    << "vertexCount: " << mesh.vertexCount << std::endl
-                    << "indexCount: " << mesh.indexCount << std::endl
-                    << "triangleCount: " << mesh.getTriangleCount() << std::endl
-                    << "vbOffset: " << mesh.vbOffset << std::endl
-                    << "ibOffset: " << mesh.ibOffset << std::endl
-                    << "use16BitIndices: " << mesh.use16BitIndices() << std::endl;
-                g.text(oss.str());
-                g.release();
-            }
-
-            // Show material info.
-            if (auto g = widget.group("Material info"); g.open())
-            {
-                const auto& material = *mpScene->getMaterial(data.materialID);
-                std::ostringstream oss;
-                oss << "name: " << material.getName() << std::endl
-                    << "emissive: " << (material.isEmissive() ? "true" : "false") << std::endl
-                    << "doubleSided: " << (material.isDoubleSided() ? "true" : "false") << std::endl
-                    << std::endl
-                    << "See Scene Settings->Materials for more details" << std::endl;
-                g.text(oss.str());
-                g.release();
-            }
-        }
-        else if (data.curveInstanceID != PixelData::kInvalidID)
-        {
-            oss << "Curve ID: " << data.curveID << std::endl
-                << "Curve instance ID: " << data.curveInstanceID << std::endl
-                << "Material ID: " << data.materialID << std::endl
-                << "BLAS ID: " << data.blasID << std::endl;
-
-            widget.text(oss.str());
-            widget.dummy("#spacer2", { 1, 10 });
-
-            // Show mesh details.
-            if (auto g = widget.group("Curve info"); g.open())
-            {
-                const auto& curve = mpScene->getCurve(data.curveID);
-                std::ostringstream oss;
-                oss << "degree: " << curve.degree << std::endl
-                    << "vertexCount: " << curve.vertexCount << std::endl
-                    << "indexCount: " << curve.indexCount << std::endl
-                    << "vbOffset: " << curve.vbOffset << std::endl
-                    << "ibOffset: " << curve.ibOffset << std::endl;
-                g.text(oss.str());
-                g.release();
-            }
-
-            // Show material info.
-            if (auto g = widget.group("Material info"); g.open())
-            {
-                const auto& material = *mpScene->getMaterial(data.materialID);
-                std::ostringstream oss;
-                oss << "name: " << material.getName() << std::endl
-                    << std::endl
-                    << "See Scene Settings->Materials for more details" << std::endl;
-                g.text(oss.str());
-                g.release();
-            }
-        }
-        else
-        {
-            oss << "Background pixel" << std::endl;
+            assert(data.meshID < mpScene->getMeshCount());
+            const auto& mesh = mpScene->getMesh(data.meshID);
+            std::ostringstream oss;
+            oss << "flags: " << std::hex << std::showbase << mesh.flags << std::dec << std::noshowbase << std::endl
+                << "materialID: " << mesh.materialID << std::endl
+                << "vertexCount: " << mesh.vertexCount << std::endl
+                << "indexCount: " << mesh.indexCount << std::endl
+                << "triangleCount: " << mesh.getTriangleCount() << std::endl
+                << "vbOffset: " << mesh.vbOffset << std::endl
+                << "ibOffset: " << mesh.ibOffset << std::endl
+                << "dynamicVbOffset: " << mesh.dynamicVbOffset << std::endl
+                << "use16BitIndices: " << mesh.use16BitIndices() << std::endl
+                << "isFrontFaceCW: " << mesh.isFrontFaceCW() << std::endl;
+            g.text(oss.str());
         }
 
-        mpPixelDataStaging->unmap();
+        // Show mesh instance info.
+        if (auto g = widget.group("Mesh instance info"); g.open())
+        {
+            assert(data.instanceID < mpScene->getMeshInstanceCount());
+            const auto& instance = mpScene->getMeshInstance(data.instanceID);
+            std::ostringstream oss;
+            oss << "flags: " << std::hex << std::showbase << instance.flags << std::dec << std::noshowbase << std::endl
+                << "nodeID: " << instance.globalMatrixID << std::endl
+                << "meshID: " << instance.meshID << std::endl
+                << "materialID: " << instance.materialID << std::endl
+                << "vbOffset: " << instance.vbOffset << std::endl
+                << "ibOffset: " << instance.ibOffset << std::endl
+                << "hasDynamicData: " << instance.hasDynamicData() << std::endl;
+            g.text(oss.str());
+
+            // Print the list of scene graph nodes affecting this mesh instance.
+            std::vector<uint32_t> nodes;
+            auto nodeID = instance.globalMatrixID;
+            while (nodeID != Scene::kInvalidNode)
+            {
+                nodes.push_back(nodeID);
+                nodeID = mpScene->getParentNodeID(nodeID);
+            }
+            assert(!nodes.empty());
+
+            g.text("Scene graph (root first):");
+            const auto& localMatrices = mpScene->getAnimationController()->getLocalMatrices();
+            for (auto it = nodes.rbegin(); it != nodes.rend(); it++)
+            {
+                auto nodeID = *it;
+                glm::mat4 mat = glm::transpose(localMatrices[nodeID]);
+                if (auto nodeGroup = widget.group("ID " + std::to_string(nodeID)); nodeGroup.open())
+                {
+                    g.matrix("", mat);
+                }
+            }
+        }
+
+        // Show material info.
+        if (auto g = widget.group("Material info"); g.open())
+        {
+            const auto& material = *mpScene->getMaterial(data.materialID);
+            std::ostringstream oss;
+            oss << "name: " << material.getName() << std::endl
+                << "emissive: " << (material.isEmissive() ? "true" : "false") << std::endl
+                << "doubleSided: " << (material.isDoubleSided() ? "true" : "false") << std::endl
+                << std::endl
+                << "See Scene Settings->Materials for more details" << std::endl;
+            g.text(oss.str());
+        }
+        break;
+    case HitType::Curve:
+        oss << "Curve ID: " << data.curveID << std::endl
+            << "Instance ID: " << data.instanceID << std::endl
+            << "Material ID: " << data.materialID << std::endl
+            << "BLAS ID: " << data.blasID << std::endl;
+
+        widget.text(oss.str());
+        widget.dummy("#spacer2", { 1, 10 });
+
+        // Show mesh details.
+        if (auto g = widget.group("Curve info"); g.open())
+        {
+            const auto& curve = mpScene->getCurve(data.curveID);
+            std::ostringstream oss;
+            oss << "degree: " << curve.degree << std::endl
+                << "vertexCount: " << curve.vertexCount << std::endl
+                << "indexCount: " << curve.indexCount << std::endl
+                << "vbOffset: " << curve.vbOffset << std::endl
+                << "ibOffset: " << curve.ibOffset << std::endl;
+            g.text(oss.str());
+        }
+
+        // Show material info.
+        if (auto g = widget.group("Material info"); g.open())
+        {
+            const auto& material = *mpScene->getMaterial(data.materialID);
+            std::ostringstream oss;
+            oss << "name: " << material.getName() << std::endl
+                << std::endl
+                << "See Scene Settings->Materials for more details" << std::endl;
+            g.text(oss.str());
+        }
+        break;
+    default:
+        oss << "Background pixel" << std::endl;
+        break;
     }
+
+    mpPixelDataStaging->unmap();
 }
 
 bool SceneDebugger::onMouseEvent(const MouseEvent& mouseEvent)

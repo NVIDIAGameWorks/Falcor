@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 #include "MaterialData.slang"
 #include "MaterialDefines.slangh"
 #include "Scene/Transform.h"
+#include "Utils/Image/TextureAnalyzer.h"
 
 namespace Falcor
 {
@@ -40,7 +41,7 @@ namespace Falcor
                 - RGB - Base Color
                 - A   - Transparency
             Specular
-                - R - Occlusion
+                - R - Occlusion (unsupported)
                 - G - Roughness
                 - B - Metallic
                 - A - Reserved
@@ -70,7 +71,6 @@ namespace Falcor
             Normal
                 - 3-Channel standard normal map, or 2-Channel BC5 format
     */
-
     class dlldecl Material : public std::enable_shared_from_this<Material>
     {
     public:
@@ -84,6 +84,7 @@ namespace Falcor
             None                = 0x0,  ///< Nothing updated
             DataChanged         = 0x1,  ///< Material data (properties) changed
             ResourcesChanged    = 0x2,  ///< Material resources (textures, sampler) changed
+            DisplacementChanged = 0x4,  ///< Displacement changed
         };
 
         /** Texture slots available in the material
@@ -94,11 +95,17 @@ namespace Falcor
             Specular,
             Emissive,
             Normal,
-            Occlusion,
-            SpecularTransmission,
+            Transmission,
             Displacement,
 
             Count // Must be last
+        };
+
+        struct TextureOptimizationStats
+        {
+            std::array<size_t, (size_t)TextureSlot::Count> texturesRemoved = {};
+            size_t disabledAlpha = 0;
+            size_t constantNormalMaps = 0;
         };
 
         /** Create a new material.
@@ -137,6 +144,14 @@ namespace Falcor
         */
         const std::string& getName() const { return mName; }
 
+        /** Set the material type.
+        */
+        void setType(MaterialType type);
+
+        /** Get the material type.
+        */
+        MaterialType getType() const { return static_cast<MaterialType>(mData.type); }
+
         /** Set one of the available texture slots.
         */
         void setTexture(TextureSlot slot, Texture::SharedPtr pTexture);
@@ -152,6 +167,18 @@ namespace Falcor
         /** Get one of the available texture slots.
         */
         Texture::SharedPtr getTexture(TextureSlot slot) const;
+
+        /** Optimize texture usage for the given texture slot.
+            This function may replace constant textures by uniform material parameters etc.
+            \param[in] slot The texture slot.
+            \param[in] texInfo Information about the texture bound to this slot.
+            \param[out] stats Optimization stats passed back to the caller.
+        */
+        void optimizeTexture(TextureSlot slot, const TextureAnalyzer::Result& texInfo, TextureOptimizationStats& stats);
+
+        /** If present, prepares the displacement maps in order to match the format required for rendering.
+        */
+        void prepareDisplacementMapForRendering();
 
         /** Return the maximum dimensions of the bound textures.
         */
@@ -188,11 +215,11 @@ namespace Falcor
 
         /** Set the specular transmission texture
         */
-        void setSpecularTransmissionTexture(const Texture::SharedPtr& pTransmission) { setTexture(TextureSlot::SpecularTransmission, pTransmission); }
+        void setTransmissionTexture(const Texture::SharedPtr& pTransmission) { setTexture(TextureSlot::Transmission, pTransmission); }
 
         /** Get the specular transmission texture
         */
-        Texture::SharedPtr getSpecularTransmissionTexture() const { return getTexture(TextureSlot::SpecularTransmission); }
+        Texture::SharedPtr getTransmissionTexture() const { return getTexture(TextureSlot::Transmission); }
 
         /** Set the shading model
         */
@@ -210,14 +237,6 @@ namespace Falcor
         */
         Texture::SharedPtr getNormalMap() const { return getTexture(TextureSlot::Normal); }
 
-        /** Set the occlusion map
-        */
-        void setOcclusionMap(Texture::SharedPtr pOcclusionMap) { setTexture(TextureSlot::Occlusion, pOcclusionMap); }
-
-        /** Get the occlusion map
-        */
-        Texture::SharedPtr getOcclusionMap() const { return getTexture(TextureSlot::Occlusion); }
-
         /** Set the displacement map
         */
         void setDisplacementMap(Texture::SharedPtr pDisplacementMap) { setTexture(TextureSlot::Displacement, pDisplacementMap); }
@@ -225,6 +244,22 @@ namespace Falcor
         /** Get the displacement map
         */
         Texture::SharedPtr getDisplacementMap() const { return getTexture(TextureSlot::Displacement); }
+
+        /** Set the displacement scale
+        */
+        void setDisplacementScale(float scale);
+
+        /** Get the displacement scale
+        */
+        float getDisplacementScale() const { return mData.displacementScale; }
+
+        /** Set the displacement offset
+        */
+        void setDisplacementOffset(float offset);
+
+        /** Get the displacement offset
+        */
+        float getDisplacementOffset() const { return mData.displacementOffset; }
 
         /** Set the base color
         */
@@ -262,6 +297,22 @@ namespace Falcor
         */
         float getMetallic() const { return getShadingModel() == ShadingModelMetalRough ? mData.specular.b : 0.f; }
 
+        /** Set the transmission color
+        */
+        void setTransmissionColor(const float3& transmissionColor);
+
+        /** Get the transmission color
+        */
+        const float3& getTransmissionColor() const { return mData.transmission; }
+
+        /** Set the diffuse transmission
+        */
+        void setDiffuseTransmission(float diffuseTransmission);
+
+        /** Get the diffuse transmission
+        */
+        float getDiffuseTransmission() const { return mData.diffuseTransmission; }
+
         /** Set the specular transmission
         */
         void setSpecularTransmission(float specularTransmission);
@@ -277,6 +328,22 @@ namespace Falcor
         /** Get the volume absorption (absorption coefficient).
         */
         const float3& getVolumeAbsorption() const { return mData.volumeAbsorption; }
+
+        /** Set the volume scattering (scattering coefficient).
+        */
+        void setVolumeScattering(const float3& volumeScattering);
+
+        /** Get the volume scattering (scattering coefficient).
+        */
+        const float3& getVolumeScattering() const { return mData.volumeScattering; }
+
+        /** Set the volume phase function anisotropy (g).
+        */
+        void setVolumeAnisotropy(float volumeAnisotropy);
+
+        /** Get the volume phase function anisotropy (g).
+        */
+        float getVolumeAnisotropy() const { return mData.volumeAnisotropy; }
 
         /** Set the emissive color
         */
@@ -301,6 +368,14 @@ namespace Falcor
         /** Get the alpha mode
         */
         uint32_t getAlphaMode() const { return EXTRACT_ALPHA_MODE(mData.flags); }
+
+        /** Returns true if the material is opaque.
+        */
+        bool isOpaque() const { return getAlphaMode() == AlphaModeOpaque; }
+
+        /** Get the normal map type.
+        */
+        uint32_t getNormalMapType() const { return EXTRACT_NORMAL_MAP_TYPE(mData.flags); }
 
         /** Set the double-sided flag. This flag doesn't affect the rasterizer state, just the shading
         */
@@ -338,6 +413,14 @@ namespace Falcor
             \return Nested priority, with 0 reserved for the highest possible priority.
         */
         uint32_t getNestedPriority() const { return EXTRACT_NESTED_PRIORITY(mData.flags); }
+
+        /** Set the thin surface flag
+        */
+        void setThinSurface(bool thinSurface);
+
+        /** Returns true if the material is a thin surface
+        */
+        bool isThinSurface() const { return EXTRACT_THIN_SURFACE(mData.flags); }
 
         /** Returns true if material is emissive.
         */
@@ -377,27 +460,53 @@ namespace Falcor
         const Transform& getTextureTransform() const { return mTextureTransform; }
 
     private:
-        void markUpdates(UpdateFlags updates);
+        Material(const std::string& name);
 
+        void markUpdates(UpdateFlags updates);
         void setFlags(uint32_t flags);
         void updateBaseColorType();
         void updateSpecularType();
         void updateEmissiveType();
-        void updateSpecularTransmissionType();
+        void updateTransmissionType();
         void updateAlphaMode();
         void updateNormalMapMode();
-        void updateOcclusionFlag();
+        void updateDoubleSidedFlag();
         void updateDisplacementFlag();
 
-        Material(const std::string& name);
-        std::string mName;
-        MaterialData mData;
-        MaterialResources mResources;
-        Transform mTextureTransform;
-        bool mOcclusionMapEnabled = false;
+        std::string mName;                          ///< Name of the material.
+        MaterialData mData;                         ///< Material parameters.
+        MaterialResources mResources;               ///< Material textures and samplers.
+        Transform mTextureTransform;                ///< Texture transform. This is currently applied at load time.
+        bool mDoubleSided = false;
+
+        // Additional data to optimize texture access.
+        float2 mAlphaRange = float2(0.f, 1.f);      ///< Conservative range of opacity (alpha) values for the material.
+        bool mIsTexturedBaseColorConstant = false;  ///< Flag indicating if the color channels of the base color texture are constant.
+        bool mIsTexturedAlphaConstant = false;      ///< Flag indicating if the alpha channel of the base color texture is constant.
+
         mutable UpdateFlags mUpdates = UpdateFlags::None;
         static UpdateFlags sGlobalUpdates;
+
+        friend class SceneCache;
     };
+
+    inline std::string to_string(Material::TextureSlot slot)
+    {
+#define type_2_string(a) case Material::TextureSlot::a: return #a;
+        switch (slot)
+        {
+            type_2_string(BaseColor);
+            type_2_string(Specular);
+            type_2_string(Emissive);
+            type_2_string(Normal);
+            type_2_string(Transmission);
+            type_2_string(Displacement);
+        default:
+            should_not_get_here();
+            return "";
+        }
+#undef type_2_string
+    }
 
     enum_class_operators(Material::UpdateFlags);
 }

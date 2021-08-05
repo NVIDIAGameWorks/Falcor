@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -48,3 +48,4 @@ __exported import Utils.Sampling.SampleGeneratorInterface;
     import Utils.Sampling.UniformSampleGenerator;
     typedef UniformSampleGenerator SampleGenerator;
 #endif
+

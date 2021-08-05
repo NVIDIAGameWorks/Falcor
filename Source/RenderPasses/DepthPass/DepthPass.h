@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -57,7 +57,7 @@ public:
 
     DepthPass& setDepthBufferFormat(ResourceFormat format);
     DepthPass& setDepthStencilState(const DepthStencilState::SharedPtr& pDsState);
-    DepthPass& setRasterizerState(const RasterizerState::SharedPtr& pRsState);
+    void setCullMode(RasterizerState::CullMode cullMode) { mCullMode = cullMode; }
 
 private:
     DepthPass(const Dictionary& dict);
@@ -66,7 +66,7 @@ private:
     Fbo::SharedPtr mpFbo;
     GraphicsState::SharedPtr mpState;
     GraphicsVars::SharedPtr mpVars;
-    RasterizerState::SharedPtr mpRsState;
+    RasterizerState::CullMode mCullMode = RasterizerState::CullMode::Back;
     ResourceFormat mDepthFormat = ResourceFormat::D32Float;
     Scene::SharedPtr mpScene;
 };

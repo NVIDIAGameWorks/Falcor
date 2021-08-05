@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -36,5 +36,7 @@ namespace Falcor
         static bool import(const std::string& filename, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict);
     private:
         PythonImporter() = default;
+        static std::set<std::string> sImportPaths;  ///< Set of currently imported paths, used to avoid recursion.
+        static std::vector<std::string> sImportDirectories; ///< Stack of import directories to properly handle adding/removing data search paths.
     };
 }

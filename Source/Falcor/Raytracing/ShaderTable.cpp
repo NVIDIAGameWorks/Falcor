@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -41,7 +41,7 @@ namespace Falcor
     {
         auto info = getSubTableInfo(type);
         assert(index < info.recordCount);
-        return &mData[0] + info.offset + index * info.recordSize;
+        return mData.data() + info.offset + index * info.recordSize;
     }
 
     static RtEntryPointGroupKernels* getUniqueRtEntryPointGroup(const ProgramKernels::SharedConstPtr& pKernels, int32_t index)
@@ -56,8 +56,7 @@ namespace Falcor
     {
         mpRtso = pRtso;
 
-        auto pKernels = pRtso->getKernels();
-        auto pProgram = static_cast<RtProgram*>(pKernels->getProgramVersion()->getProgram().get());
+        auto& pKernels = pRtso->getKernels();
 
         for (uint32_t i = 0; i < uint32_t(SubTableType::Count); ++i)
         {
@@ -66,16 +65,18 @@ namespace Falcor
             mSubTables[i].recordSize = 0;
         }
 
-        mSubTables[uint32_t(SubTableType::RayGen)].recordCount = pVars->getRayGenVarsCount();
+        mSubTables[uint32_t(SubTableType::RayGen)].recordCount = 1;
         mSubTables[uint32_t(SubTableType::Miss)].recordCount = pVars->getMissVarsCount();
-        mSubTables[uint32_t(SubTableType::Hit)].recordCount = pVars->getTotalHitVarsCount() + pVars->getAABBHitVarsCount();
+        mSubTables[uint32_t(SubTableType::Hit)].recordCount = pVars->getTotalHitVarsCount();
 
-        for (auto pUniqueEntryPointGroup : pKernels->getUniqueEntryPointGroups())
+        // Iterate over the entry points used by RtProgramVars to compute the
+        // maximum shader table record size for each sub-table.
+        for (auto index : pVars->getUniqueEntryPointGroupIndices())
         {
-            auto pEntryPointGroup = static_cast<RtEntryPointGroupKernels*>(pUniqueEntryPointGroup.get());
+            auto pEntryPointGroup = getUniqueRtEntryPointGroup(pKernels, index);
 
             SubTableType subTableType = SubTableType::Count;
-            switch( pEntryPointGroup->getShaderByIndex(0)->getType() )
+            switch (pEntryPointGroup->getShaderByIndex(0)->getType())
             {
             case ShaderType::AnyHit:
             case ShaderType::ClosestHit:
@@ -115,15 +116,16 @@ namespace Falcor
 
         uint32_t shaderTableBufferSize = subTableOffset;
 
-        mData.resize(shaderTableBufferSize);
+        // Reallocate CPU buffer for shader table.
+        // Make sure it's zero initialized as there may be unused miss/hit entries.
+        if (shaderTableBufferSize != mData.size()) mData.resize(shaderTableBufferSize, 0);
+        else std::fill(mData.begin(), mData.end(), 0);
 
-        // Create a buffer
+        // Create GPU buffer.
         if (!mpBuffer || mpBuffer->getSize() < shaderTableBufferSize)
         {
             mpBuffer = Buffer::create(shaderTableBufferSize, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None);
         }
-
-        pCtx->updateBuffer(mpBuffer.get(), mData.data());
     }
 
     void ShaderTable::flushBuffer(RenderContext* pCtx)

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -75,6 +75,10 @@ namespace Falcor
         */
         uint32_t getNodeID() const { return mNodeID; }
 
+        /** Set the animated node.
+        */
+        void setNodeID(uint32_t id) { mNodeID = id; }
+
         /** Get the animation duration in seconds.
         */
         double getDuration() const { return mDuration; }
@@ -146,7 +150,7 @@ namespace Falcor
         Keyframe interpolate(InterpolationMode mode, double time) const;
         double calcSampleTime(double currentTime);
 
-        const std::string mName;
+        std::string mName;
         uint32_t mNodeID;
         double mDuration; // Includes any time before the first keyframe. May be Assimp or FBX specific.
 
@@ -158,5 +162,7 @@ namespace Falcor
 
         std::vector<Keyframe> mKeyframes;
         mutable size_t mCachedFrameIndex = 0;
+
+        friend class SceneCache;
     };
 }

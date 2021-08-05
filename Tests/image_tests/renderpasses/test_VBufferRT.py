@@ -1,7 +1,3 @@
-IMAGE_TEST = {
-    'tolerance': 5e-7
-}
-
 import sys
 sys.path.append('..')
 from helpers import render_frames

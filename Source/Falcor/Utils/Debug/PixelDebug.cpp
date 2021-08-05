@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -114,6 +114,8 @@ namespace Falcor
     {
         assert(mRunning);
 
+        mHashToString.clear();
+
         if (mEnabled)
         {
             pProgram->addDefine("_PIXEL_DEBUG_ENABLED");
@@ -122,6 +124,12 @@ namespace Falcor
             var["PixelDebugCB"]["gPixelLogSelected"] = mSelectedPixel;
             var["PixelDebugCB"]["gPixelLogSize"] = mLogSize;
             var["PixelDebugCB"]["gAssertLogSize"] = mLogSize;
+
+            const auto &hashedStrings = pProgram->getReflector()->getHashedStrings();
+            for (const auto& hashedString : hashedStrings)
+            {
+                mHashToString.insert(std::make_pair(hashedString.hash, hashedString.string));
+            }
         }
         else
         {
@@ -141,16 +149,15 @@ namespace Falcor
         widget.checkbox("Pixel debug", mEnabled);
         widget.tooltip("Enables shader debugging.\n\n"
             "Left-mouse click on a pixel to select it.\n"
-            "Use print() in the shader to print values of basic types (int, float2, etc.) for the selected pixel.\n"
-            "Use assert() in the shader to test a condition.", true);
+            "Use print(value) or print(msg, value) in the shader to print values of basic types (int, float2, etc.) for the selected pixel.\n"
+            "Use assert(condition) or assert(condition, msg) in the shader to test a condition.", true);
         if (mEnabled)
         {
             widget.var("Selected pixel", mSelectedPixel);
-            widget.checkbox("Enable logging", mEnableLogging);
         }
 
         // Fetch stats and show log if available.
-        copyDataToCPU();
+        bool isNewData = copyDataToCPU();
         if (mDataValid)
         {
             std::ostringstream oss;
@@ -159,6 +166,10 @@ namespace Falcor
             oss << "Pixel log:" << (mPixelLogData.empty() ? " <empty>\n" : "\n");
             for (auto v : mPixelLogData)
             {
+                // Print message.
+                auto it = mHashToString.find(v.msgHash);
+                if (it != mHashToString.end() && !it->second.empty()) oss << it->second << " ";
+
                 // Parse value and convert to string.
                 if (v.count > 1) oss << "(";
                 for (uint32_t i = 0; i < v.count; i++)
@@ -195,15 +206,17 @@ namespace Falcor
                 oss << "\n";
                 for (auto v : mAssertLogData)
                 {
-                    oss << "assert at (" << v.launchIndex.x << ", " << v.launchIndex.y << ", " << v.launchIndex.z << ")\n";
-                    logWarning("Shader assert at launch index (" + std::to_string(v.launchIndex.x) + ", " + std::to_string(v.launchIndex.y) + ", " + std::to_string(v.launchIndex.z) + ")");
+                    oss << "Assert at (" << v.launchIndex.x << ", " << v.launchIndex.y << ", " << v.launchIndex.z << ")";
+                    auto it = mHashToString.find(v.msgHash);
+                    if (it != mHashToString.end() && !it->second.empty()) oss << " " << it->second;
+                    oss << "\n";
                 }
             }
 
             widget.text(oss.str());
 
             bool isEmpty = mPixelLogData.empty() && mAssertLogData.empty();
-            if (mEnableLogging && !isEmpty) logInfo("\n" + oss.str());
+            if (isNewData && !isEmpty) logInfo("\n" + oss.str());
         }
     }
 
@@ -220,7 +233,7 @@ namespace Falcor
         return false;
     }
 
-    void PixelDebug::copyDataToCPU()
+    bool PixelDebug::copyDataToCPU()
     {
         assert(!mRunning);
         if (mWaitingForData)
@@ -238,7 +251,7 @@ namespace Falcor
                 mpCounterBuffer->unmap();
 
                 // Map the data buffer and copy the relevant sections.
-                byte* pLog = (byte*)mpDataBuffer->map(Buffer::MapType::Read);
+                uint8_t* pLog = (uint8_t*)mpDataBuffer->map(Buffer::MapType::Read);
 
                 mPixelLogData.resize(printCount);
                 for (uint32_t i = 0; i < printCount; i++) mPixelLogData[i] = ((PixelLogValue*)pLog)[i];
@@ -249,7 +262,11 @@ namespace Falcor
 
                 mpDataBuffer->unmap();
                 mDataValid = true;
+                return true;
             }
         }
+
+        return false;
     }
+
 }

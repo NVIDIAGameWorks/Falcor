@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -72,7 +72,11 @@ namespace Mogwai
         struct Options
         {
             std::string scriptFile;
+            std::string sceneFile;
             bool silentMode = false;
+            bool useSceneCache = false;
+            bool rebuildSceneCache = false;
+            bool generateShaderDebugInfo = false;
         };
 
         Renderer(const Options& options);

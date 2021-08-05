@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -76,6 +76,7 @@ static const bool kUseRussianRoulette = USE_RUSSIAN_ROULETTE;
 static const uint kMISHeuristic = MIS_HEURISTIC;
 //static const MISHeuristic kMISHeuristic = (MISHeuristic) MIS_HEURISTIC; // TODO: Use enum instead of uint when Slang supports it.
 static const bool kUseNestedDielectrics = USE_NESTED_DIELECTRICS;
+
 static const bool kUseLightsInDielectricVolumes = USE_LIGHTS_IN_DIELECTRIC_VOLUMES;
 
 static const bool kDisableCaustics = DISABLE_CAUSTICS;

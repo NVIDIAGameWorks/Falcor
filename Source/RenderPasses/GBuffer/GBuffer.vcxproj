@@ -29,7 +29,6 @@
     <ClCompile Include="GBuffer\GBuffer.cpp" />
     <ClCompile Include="GBuffer\GBufferRaster.cpp" />
     <ClCompile Include="GBuffer\GBufferRT.cpp" />
-    <ClCompile Include="GBuffer\GBufferRTCurves.cpp" />
     <ClCompile Include="VBuffer\VBufferRaster.cpp" />
     <ClCompile Include="VBuffer\VBufferRT.cpp" />
   </ItemGroup>
@@ -46,17 +45,19 @@
     <ClInclude Include="GBuffer\GBuffer.h" />
     <ClInclude Include="GBuffer\GBufferRaster.h" />
     <ClInclude Include="GBuffer\GBufferRT.h" />
-    <ClInclude Include="GBuffer\GBufferRTCurves.h" />
     <ClInclude Include="VBuffer\VBufferRaster.h" />
     <ClInclude Include="VBuffer\VBufferRT.h" />
   </ItemGroup>
   <ItemGroup>
     <ShaderSource Include="GBuffer\GBufferHelpers.slang" />
-    <ShaderSource Include="GBuffer\GBufferParams.slang" />
     <ShaderSource Include="GBuffer\GBufferRaster.3d.slang" />
+    <ShaderSource Include="GBuffer\GBufferRT.cs.slang" />
     <ShaderSource Include="GBuffer\GBufferRT.rt.slang" />
+    <ShaderSource Include="GBuffer\GBufferRT.slang" />
     <ShaderSource Include="VBuffer\VBufferRaster.3d.slang" />
+    <ShaderSource Include="VBuffer\VBufferRT.cs.slang" />
     <ShaderSource Include="VBuffer\VBufferRT.rt.slang" />
+    <ShaderSource Include="VBuffer\VBufferRT.slang" />
   </ItemGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>

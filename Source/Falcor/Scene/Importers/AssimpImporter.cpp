@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -110,14 +110,12 @@ namespace Falcor
                 { aiTextureType_SPECULAR, 0, Material::TextureSlot::Specular },
                 { aiTextureType_EMISSIVE, 0, Material::TextureSlot::Emissive },
                 { aiTextureType_NORMALS, 0, Material::TextureSlot::Normal },
-                { aiTextureType_AMBIENT, 0, Material::TextureSlot::Occlusion },
             },
             // OBJ mappings
             {
                 { aiTextureType_DIFFUSE, 0, Material::TextureSlot::BaseColor },
                 { aiTextureType_SPECULAR, 0, Material::TextureSlot::Specular },
                 { aiTextureType_EMISSIVE, 0, Material::TextureSlot::Emissive },
-                { aiTextureType_AMBIENT, 0, Material::TextureSlot::Occlusion },
                 // OBJ does not offer a normal map, thus we use the bump map instead.
                 { aiTextureType_HEIGHT, 0, Material::TextureSlot::Normal },
                 { aiTextureType_DISPLACEMENT, 0, Material::TextureSlot::Normal },
@@ -127,7 +125,6 @@ namespace Falcor
                 { aiTextureType_DIFFUSE, 0, Material::TextureSlot::BaseColor },
                 { aiTextureType_EMISSIVE, 0, Material::TextureSlot::Emissive },
                 { aiTextureType_NORMALS, 0, Material::TextureSlot::Normal },
-                { aiTextureType_AMBIENT, 0, Material::TextureSlot::Occlusion },
                 // GLTF2 exposes metallic roughness texture.
                 { AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLICROUGHNESS_TEXTURE, Material::TextureSlot::Specular },
             }
@@ -220,11 +217,14 @@ namespace Falcor
             resetTime(pAiNode->mScalingKeys, pAiNode->mNumScalingKeys);
         }
 
-        void createAnimation(ImporterData& data, const aiAnimation* pAiAnim)
+        void createAnimation(ImporterData& data, const aiAnimation* pAiAnim, ImportMode importMode)
         {
             assert(pAiAnim->mNumMeshChannels == 0);
             double duration = pAiAnim->mDuration;
             double ticksPerSecond = pAiAnim->mTicksPerSecond ? pAiAnim->mTicksPerSecond : 25;
+            // The GLTF2 importer in Assimp has a bug where duration and keyframe times are loaded as milliseconds instead of ticks.
+            // We can fix this by using a fixed ticksPerSecond value of 1000.
+            if (importMode == ImportMode::GLTF2) ticksPerSecond = 1000.0;
             double durationInSeconds = duration / ticksPerSecond;
 
             for (uint32_t i = 0; i < pAiAnim->mNumChannels; i++)
@@ -285,6 +285,7 @@ namespace Falcor
                 pCamera->setPosition(aiCast(pAiCamera->mPosition));
                 pCamera->setUpVector(aiCast(pAiCamera->mUp));
                 pCamera->setTarget(aiCast(pAiCamera->mLookAt) + aiCast(pAiCamera->mPosition));
+
                 // Some importers don't provide the aspect ratio, use default for that case.
                 float aspectRatio = pAiCamera->mAspect != 0.f ? pAiCamera->mAspect : pCamera->getAspectRatio();
                 // Load focal length only when using GLTF2, use fixed 35mm for backwards compatibility with FBX files.
@@ -301,8 +302,8 @@ namespace Falcor
                     n.name = "Camera.BaseMatrix";
                     n.parent = nodeID;
                     n.transform = pCamera->getViewMatrix();
-                    // GLTF2 has the view direction reversed.
-                    if (importMode == ImportMode::GLTF2) n.transform[2] = -n.transform[2];
+                    // GLTF2 already uses -Z view direction convention in Assimp, FBX does not
+                    if (importMode != ImportMode::GLTF2) n.transform[2] = -n.transform[2];
                     nodeID = data.builder.addNode(n);
                     if (data.builder.isNodeAnimated(nodeID))
                     {
@@ -346,7 +347,7 @@ namespace Falcor
             float3 direction = normalize(aiCast(pAiLight->mDirection));
             pLight->setWorldDirection(direction);
             glm::mat4 base;
-            base[2] = float4(direction, 0);
+            base[2] = float4(-direction, 0);
             return addLightCommon(pLight, base, data, pAiLight);
         }
 
@@ -354,18 +355,23 @@ namespace Falcor
         {
             PointLight::SharedPtr pLight = PointLight::create(pAiLight->mName.C_Str());
             float3 position = aiCast(pAiLight->mPosition);
-            float3 lookAt = normalize(aiCast(pAiLight->mDirection));
-            float3 up = normalize(aiCast(pAiLight->mUp));
+            float3 direction = aiCast(pAiLight->mDirection);
+            float3 up = aiCast(pAiLight->mUp);
+
+            // GLTF2 may report zero vectors for direction/up in which case we need to initialize to sensible defaults.
+            direction = length(direction) == 0.f ? float3(0.f, 0.f, -1.f) : normalize(direction);
+            up = length(up) == 0.f ? float3(0.f, 1.f, 0.f) : normalize(up);
+
             pLight->setWorldPosition(position);
-            pLight->setWorldDirection(lookAt);
+            pLight->setWorldDirection(direction);
             pLight->setOpeningAngle(pAiLight->mAngleOuterCone);
             pLight->setPenumbraAngle(pAiLight->mAngleOuterCone - pAiLight->mAngleInnerCone);
 
-            float3 right = cross(up, lookAt);
+            float3 right = cross(direction, up);
             glm::mat4 base;
             base[0] = float4(right, 0);
             base[1] = float4(up, 0);
-            base[2] = float4(lookAt, 0);
+            base[2] = float4(-direction, 0);
             base[3] = float4(position, 1);
 
             return addLightCommon(pLight, base, data, pAiLight);
@@ -394,11 +400,11 @@ namespace Falcor
             return true;
         }
 
-        bool createAnimations(ImporterData& data)
+        bool createAnimations(ImporterData& data, ImportMode importMode)
         {
             for (uint32_t i = 0; i < data.pScene->mNumAnimations; i++)
             {
-                createAnimation(data, data.pScene->mAnimations[i]);
+                createAnimation(data, data.pScene->mAnimations[i], importMode);
             }
             return true;
         }
@@ -887,7 +893,6 @@ namespace Falcor
             if (opacity < 1.f)
             {
                 pMaterial->setSpecularTransmission(1.f - opacity);
-                pMaterial->setDoubleSided(true);
             }
 
             return pMaterial;
@@ -1067,7 +1072,7 @@ namespace Falcor
         addMeshInstances(data, data.pScene->mRootNode);
         timeReport.measure("Creating meshes");
 
-        if (createAnimations(data) == false)
+        if (createAnimations(data, importMode) == false)
         {
             logError("Can't create animations for model " + filename);
             return false;

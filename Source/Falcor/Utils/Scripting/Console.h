@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -46,7 +46,7 @@ namespace Falcor
             - The ESC key is used to close the console if currently open.
             - The UP/DOWN keys are used to browse through the history.
             \param[in] pGui GUI.
-            \param[in/out] show Flag to indicate if console is shown.
+            \param[in,out] show Flag to indicate if console is shown.
         */
         void render(Gui* pGui, bool& show);
 

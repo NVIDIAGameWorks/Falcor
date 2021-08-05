@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -39,6 +39,7 @@ namespace Falcor
 #endif
 
     static Program::DefineList sGlobalDefineList;
+    static bool sGenerateDebugInfo;
 
     static Shader::SharedPtr createShaderFromBlob(const Shader::Blob& shaderBlob, ShaderType shaderType, const std::string& entryPointName, Shader::CompilerFlags flags, std::string& log)
     {
@@ -500,11 +501,12 @@ namespace Falcor
         sessionDesc.targets = &targetDesc;
         sessionDesc.targetCount = 1;
 
-        // We always use row-major matrix layout (and when we invoke fxc/dxc we pass in the
-        // appropriate flags to request this behavior), so we need to inform Slang that
-        // this is what we want/expect so that it can compute correct reflection information.
-        //
-        sessionDesc.defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_ROW_MAJOR;
+        // We always use row-major matrix layout in Falcor so by default that's what we pass to Slang
+        // to allow it to compute correct reflection information. Slang then invokes the downstream compiler.
+        // Column major option can be useful when compiling external shader sources that don't depend
+        // on anything Falcor.
+        bool useColumnMajor = is_set(mDesc.getCompilerFlags(), Shader::CompilerFlags::MatrixLayoutColumnMajor);
+        sessionDesc.defaultMatrixLayoutMode = useColumnMajor ? SLANG_MATRIX_LAYOUT_COLUMN_MAJOR : SLANG_MATRIX_LAYOUT_ROW_MAJOR;
 
         ComPtr<slang::ISession> pSlangSession;
         pSlangGlobalSession->createSession(
@@ -523,7 +525,7 @@ namespace Falcor
         bool dumpIR = is_set(mDesc.getCompilerFlags(), Shader::CompilerFlags::DumpIntermediates);
         spSetDumpIntermediates(pSlangRequest, dumpIR);
 
-        if (is_set(mDesc.getCompilerFlags(), Shader::CompilerFlags::GenerateDebugInfo))
+        if (sGenerateDebugInfo || is_set(mDesc.getCompilerFlags(), Shader::CompilerFlags::GenerateDebugInfo))
         {
             spSetDebugInfoLevel(pSlangRequest, SLANG_DEBUG_INFO_LEVEL_STANDARD);
         }
@@ -1035,6 +1037,16 @@ namespace Falcor
     {
         sGlobalDefineList.remove(defineList);
         reloadAllPrograms(true);
+    }
+
+    void Program::setGenerateDebugInfoEnabled(bool enabled)
+    {
+        sGenerateDebugInfo = enabled;
+    }
+
+    bool Program::isGenerateDebugInfoEnabled()
+    {
+        return sGenerateDebugInfo;
     }
 
     SCRIPT_BINDING(Program)

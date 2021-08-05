@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,22 +25,15 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#include "Scene/ScenePrimitiveDefines.slangh"
+
 import Scene.Raytracing;
-import Scene.HitInfo;
-import Utils.Timing.GpuTimer;
-import Utils.Sampling.SampleGenerator;
+import Scene.Intersection;
+import VBufferRT;
 
-cbuffer PerFrameCB
-{
-    uint frameCount;
-};
+ConstantBuffer<VBufferRT> gVBufferRT;
 
-RWTexture2D<PackedHitInfo> gVBuffer;
-RWTexture2D<uint> gTime;
-
-#define isValid(name) (is_valid_##name != 0)
-
-/** ***************************** Ray index 0 ****************************** */
+/** ****************************** Ray type 0 ****************************** */
 
 struct RayData
 {
@@ -52,41 +45,35 @@ void miss(inout RayData rayData)
 {
     // Write invalid hit to output buffer.
     uint2 launchIndex = DispatchRaysIndex().xy;
-    gVBuffer[launchIndex] = { HitInfo::kInvalidIndex };
+    gVBufferRT.writeMiss(launchIndex, WorldRayOrigin(), WorldRayDirection());
 }
 
 [shader("anyhit")]
-void anyHit(
-    uniform HitShaderParams hitParams,
-    inout RayData rayData : SV_RayPayload,
-    BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
+void anyHit(inout RayData rayData, BuiltInTriangleIntersectionAttributes attribs)
 {
-#if !DISABLE_ALPHA_TEST
-    // Alpha test for non-opaque geometry.
-    VertexData v = getVertexData(hitParams, PrimitiveIndex(), attribs);
-    uint materialID = gScene.getMaterialID(hitParams.getGlobalHitID());
-    if (alphaTest(v, gScene.materials[materialID], gScene.materialResources[materialID], 0.f)) IgnoreHit();
-#endif
+    if (VBufferRT::kUseAlphaTest)
+    {
+        // Alpha test for non-opaque geometry.
+        GeometryInstanceID instanceID = getGeometryInstanceID();
+        VertexData v = getVertexData(instanceID, PrimitiveIndex(), attribs);
+        uint materialID = gScene.getMaterialID(instanceID);
+        if (alphaTest(v, gScene.materials[materialID], gScene.materialResources[materialID], 0.f)) IgnoreHit();
+    }
 }
 
 [shader("closesthit")]
-void closestHit(
-    uniform HitShaderParams hitParams,
-    inout RayData rayData,
-    BuiltInTriangleIntersectionAttributes attribs)
+void closestHit(inout RayData rayData, BuiltInTriangleIntersectionAttributes attribs)
 {
     // Store hit information. Note we don't access the materials here.
-    HitInfo hit;
-    hit.type = InstanceType::TriangleMesh;
-    hit.instanceID = hitParams.getGlobalHitID();
-    hit.primitiveIndex = PrimitiveIndex();
-    hit.barycentrics = attribs.barycentrics;
+    TriangleHit triangleHit;
+    triangleHit.instanceID = getGeometryInstanceID();
+    triangleHit.primitiveIndex = PrimitiveIndex();
+    triangleHit.barycentrics = attribs.barycentrics;
 
     // Write hit info to output buffer.
     uint2 launchIndex = DispatchRaysIndex().xy;
-    gVBuffer[launchIndex] = hit.encode();
+    gVBufferRT.writeHit(launchIndex, WorldRayOrigin(), WorldRayDirection(), HitInfo(triangleHit));
 }
-
 
 /** ******************************** RayGen ******************************** */
 
@@ -94,23 +81,81 @@ void closestHit(
 void rayGen()
 {
     uint2 launchIndex = DispatchRaysIndex().xy;
-    uint2 launchDim = DispatchRaysDimensions().xy;
 
     GpuTimer timer;
-    if (isValid(gTime)) timer.start();
-
-    // Sample ray
-#if USE_DEPTH_OF_FIELD
-    SampleGenerator sg = SampleGenerator.create(launchIndex, frameCount);
-    RayDesc ray = gScene.camera.computeRayThinlens(launchIndex, launchDim, sampleNext2D(sg)).toRayDesc();
-#else
-    RayDesc ray = gScene.camera.computeRayPinhole(launchIndex, launchDim).toRayDesc();
-#endif
+    gVBufferRT.beginTime(timer);
 
     // Trace ray
+    const Ray ray = gVBufferRT.generateRay(launchIndex);
     RayData rayData;
-    TraceRay(gRtScene, RAY_FLAG_NONE, 0xff /* instanceInclusionMask */, 0 /* hitIdx */, hitProgramCount, 0 /* missIdx */, ray, rayData);
+    TraceRay(gScene.rtAccel, VBufferRT::kRayFlags, 0xff /* instanceInclusionMask */, 0 /* hitIdx */, rayTypeCount, 0 /* missIdx */, ray.toRayDesc(), rayData);
 
-    // Write time.
-    if (isValid(gTime)) gTime[launchIndex] = timer.getElapsed();
+    gVBufferRT.writeAux(launchIndex, ray);
+
+    gVBufferRT.endTime(launchIndex, timer);
 }
+
+/** ************************** Displaced mesh intersection ************************** */
+
+#if IS_SET(SCENE_PRIMITIVE_TYPE_FLAGS, PRIMITIVE_TYPE_DISPLACED_TRIANGLE_MESH)
+
+[shader("intersection")]
+void displacedTriangleMeshIntersection()
+{
+    const Ray ray = Ray(WorldRayOrigin(), WorldRayDirection(), RayTMin(), RayTCurrent());
+    DisplacedTriangleMeshIntersector::Attribs attribs;
+    float t;
+    if (DisplacedTriangleMeshIntersector::intersect(ray, getGeometryInstanceID(), PrimitiveIndex(), attribs, t))
+    {
+        ReportHit(t, 0, attribs);
+    }
+}
+
+[shader("closesthit")]
+void displacedTriangleMeshClosestHit(inout RayData rayData, DisplacedTriangleMeshIntersector::Attribs attribs)
+{
+    // Store hit information. Note we don't access the materials here.
+    DisplacedTriangleHit displacedTriangleHit;
+    displacedTriangleHit.instanceID = getGeometryInstanceID();
+    displacedTriangleHit.primitiveIndex = PrimitiveIndex();
+    displacedTriangleHit.barycentrics = attribs.barycentrics;
+    displacedTriangleHit.displacement = attribs.displacement;
+
+    // Write hit info to output buffer.
+    uint2 launchIndex = DispatchRaysIndex().xy;
+    gVBufferRT.writeHit(launchIndex, WorldRayOrigin(), WorldRayDirection(), HitInfo(displacedTriangleHit));
+}
+
+#endif
+
+/** ************************** Curve intersection ************************** */
+
+#if IS_SET(SCENE_PRIMITIVE_TYPE_FLAGS, PRIMITIVE_TYPE_CURVE)
+
+[shader("intersection")]
+void curveIntersection()
+{
+    const Ray ray = Ray(WorldRayOrigin(), WorldRayDirection(), RayTMin(), RayTCurrent());
+    CurveIntersector::Attribs attribs;
+    float t;
+    if (CurveIntersector::intersect(ray, getGeometryInstanceID(), PrimitiveIndex(), attribs, t))
+    {
+        ReportHit(t, 0, attribs);
+    }
+}
+
+[shader("closesthit")]
+void curveClosestHit(inout RayData rayData, in CurveIntersector::Attribs attribs)
+{
+    // Store hit information. Note we don't access the materials here.
+    CurveHit curveHit;
+    curveHit.instanceID = getGeometryInstanceID();
+    curveHit.primitiveIndex = PrimitiveIndex();
+    curveHit.barycentrics = attribs.barycentrics;
+
+    // Write hit info to output buffer.
+    uint2 launchIndex = DispatchRaysIndex().xy;
+    gVBufferRT.writeHit(launchIndex, WorldRayOrigin(), WorldRayDirection(), HitInfo(curveHit));
+}
+
+#endif

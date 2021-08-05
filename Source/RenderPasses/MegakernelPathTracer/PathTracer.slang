@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -39,6 +39,7 @@
 __exported import Scene.Scene;
 __exported import Scene.Raytracing;
 __exported import Scene.HitInfo;
+__exported import Experimental.Scene.Material.StandardMaterial;
 __exported import RenderPasses.Shared.PathTracer.PixelStats;
 __exported import RenderPasses.Shared.PathTracer.PathTracerHelpers;
 __exported import RenderPasses.Shared.PathTracer.InteriorListHelpers;
@@ -53,8 +54,13 @@ static const bool kForceOpaque = !kUseAlphaTest;
 struct PathTracerData
 {
     PathTracerParams        params;             ///< PathTracer shared parameters.
+
+    // Samplers
     EnvMapSampler           envMapSampler;      ///< Environment map sampler.
     EmissiveLightSampler    emissiveSampler;    ///< Emissive light sampler.
+
+    // Materials
+    StandardMaterial        standardMaterial;   ///< Instance of Falcor's standard surface material.
 };
 
 /** Payload for shadow ray.
@@ -90,7 +96,7 @@ bool traceShadowRay(float3 origin, float3 dir, float distance, bool valid = true
     ShadowRayData rayData = { false }; // Set to true by miss shader if ray is not terminated before
     uint rayFlags = RAY_FLAG_SKIP_CLOSEST_HIT_SHADER | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH;
     if (kForceOpaque) rayFlags |= RAY_FLAG_FORCE_OPAQUE;
-    TraceRay(gRtScene, rayFlags, 0xff /* instanceInclusionMask */, kRayTypeShadow /* hitIdx */, hitProgramCount, kRayTypeShadow /* missIdx */, ray, rayData);
+    TraceRay(gScene.rtAccel, rayFlags, 0xff /* instanceInclusionMask */, kRayTypeShadow /* hitIdx */, rayTypeCount, kRayTypeShadow /* missIdx */, ray, rayData);
 
     // We let TraceRay() execute even when !valid in order to run the miss shader.
     // This is faster on current drivers thanks to reduced divergence.
@@ -106,13 +112,12 @@ bool traceShadowRay(float3 origin, float3 dir, float distance, bool valid = true
     \param[in] origin Ray origin for the shadow ray.
     \param[in] dir Direction from ray origin towards the light source (normalized).
     \param[in,out] interiorList Interior list for handling nested dielectrics.
-    \param[out] hit Hit information. The 'instanceID' field is set to HitInfo::kInvalidIndex upon miss.
+    \param[out] hit Hit information. The type is set to 'HitType::None' upon miss.
     \return False if path was terminated, true otherwise.
 */
 bool traceScatterRay(float3 origin, float3 dir, inout InteriorList interiorList, out HitInfo hit)
 {
     hit = {};
-    hit.instanceID = HitInfo::kInvalidIndex;
 
     // Setup ray based on params passed via payload.
     RayDesc ray;
@@ -121,33 +126,32 @@ bool traceScatterRay(float3 origin, float3 dir, inout InteriorList interiorList,
     ray.TMin = 0.f;
     ray.TMax = kRayTMax;
 
-    ScatterRayData rayData;
+    ScatterRayData rayData = {};
     uint rejectedHits = 0;
 
     // For nested dielectrics, we potentially have to trace additional rays after false intersections.
     while (true)
     {
-        rayData.packedHitInfo = { HitInfo::kInvalidIndex }; // Set the first component to kInvalidIndex
+        rayData.packedHitInfo.x = 0; // Clear hit
 
         uint rayFlags = RAY_FLAG_NONE; // TODO: Set cull mode from the app
         if (kForceOpaque) rayFlags |= RAY_FLAG_FORCE_OPAQUE;
-        TraceRay(gRtScene, rayFlags, 0xff /* instanceInclusionMask */, kRayTypeScatter /* hitIdx */, hitProgramCount, kRayTypeScatter /* missIdx */, ray, rayData);
+        TraceRay(gScene.rtAccel, rayFlags, 0xff /* instanceInclusionMask */, kRayTypeScatter /* hitIdx */, rayTypeCount, kRayTypeScatter /* missIdx */, ray, rayData);
 
         logTraceRay(PixelStatsRayType::ClosestHit);
 
         // Check for false intersections.
-        if (kUseNestedDielectrics && rayData.packedHitInfo.x != HitInfo::kInvalidIndex)
+        if (kUseNestedDielectrics && rayData.packedHitInfo.x != 0)
         {
-            HitInfo tmpHit;
-            tmpHit.decode(rayData.packedHitInfo);
-            uint materialID = gScene.getMaterialID(tmpHit.instanceID);
+            const TriangleHit triangleHit = HitInfo(rayData.packedHitInfo).getTriangleHit();
+            uint materialID = gScene.getMaterialID(triangleHit.instanceID);
             uint nestedPriority = gScene.materials[materialID].getNestedPriority();
             if (!interiorList.isTrueIntersection(nestedPriority))
             {
                 if (rejectedHits < kMaxRejectedHits)
                 {
                     rejectedHits++;
-                    VertexData v = gScene.getVertexData(tmpHit);
+                    VertexData v = gScene.getVertexData(triangleHit);
                     bool frontFacing = dot(-ray.Direction, v.faceNormalW) >= 0.f;
                     interiorList.handleIntersection(materialID, nestedPriority, frontFacing);
                     ray.Origin = computeRayOrigin(v.posW, frontFacing ? -v.faceNormalW : v.faceNormalW);
@@ -164,9 +168,9 @@ bool traceScatterRay(float3 origin, float3 dir, inout InteriorList interiorList,
         break;
     }
 
-    if (rayData.packedHitInfo.x != HitInfo::kInvalidIndex)
+    if (rayData.packedHitInfo.x != 0)
     {
-        hit.decode(rayData.packedHitInfo);
+        hit = HitInfo(rayData.packedHitInfo);
     }
 
     return true;
@@ -185,14 +189,17 @@ void handleHit(const PathTracerData pt, inout ShadingData sd, inout PathData pat
 {
     logPathVertex();
 
+    // We only support triangle hits.
+    const TriangleHit triangleHit = path.hit.getTriangleHit();
+
     // Get vertex data for current hit point. VertexData and triangleVertices kept alive out of handleHit() to be used by rayFootprint.bounceOnSurface() if needed.
-    v = gScene.getVertexData(path.hit, triangleVertices);
+    v = gScene.getVertexData(triangleHit, triangleVertices);
 
     // Update the ray footprint with current hit surface.
-    path.rayFootprint.hitSurface(v, triangleVertices, path.hit, path.origin, path.dir);
+    path.rayFootprint.hitSurface(v, triangleVertices, triangleHit, path.origin, path.dir);
 
     // Evaluate Falcor's material parameters at the hit point using the current ray footprint mode and doing texLOD.
-    sd = prepareShadingData(v, path.rayFootprint, triangleVertices, path.hit, path.origin, path.dir);
+    sd = prepareShadingData(v, path.rayFootprint, triangleVertices, triangleHit, path.origin, path.dir);
 
     if (kAdjustShadingNormals) adjustShadingNormal(sd, v);
 
@@ -231,10 +238,11 @@ void handleHit(const PathTracerData pt, inout ShadingData sd, inout PathData pat
         {
             // If emissive light sampling and MIS is enabled, we've already sampled emissive lights using NEE.
             // We need to evaluate the MIS weight here to account for the remaining contribution.
+            // Note that MIS is only applied for hits on emissive triangles (other emissive geometry is not supported).
 
             // Prepare hit point struct with data needed for emissive light PDF evaluation.
-            TriangleHit hit;
-            hit.triangleIndex = gScene.lightCollection.getTriangleIndex(path.hit.instanceID, path.hit.primitiveIndex);
+            TriangleLightHit hit;
+            hit.triangleIndex = gScene.lightCollection.getTriangleIndex(triangleHit.instanceID, triangleHit.primitiveIndex);
             hit.posW = sd.posW;
             hit.normalW = sd.frontFacing ? sd.faceN : -sd.faceN;
 
@@ -294,7 +302,7 @@ void evalDirect(const PathTracerData pt, ShadingData sd, inout PathData path)
     for (uint i = 0; i < kLightSamplesPerVertex; ++i)
     {
         ShadowRay shadowRay = {};
-        bool valid = generateShadowRay(pt.params, pt.envMapSampler, pt.emissiveSampler, sd, i, path, path.sg, shadowRay);
+        bool valid = generateShadowRay(pt.params, pt.envMapSampler, pt.emissiveSampler, sd, pt.standardMaterial, i, path, path.sg, shadowRay);
         bool visible = traceShadowRay(path.origin, shadowRay.rayParams.xyz, shadowRay.rayParams.w, valid);
         path.L += visible ? shadowRay.Lr : float3(0.f);
     }
@@ -320,7 +328,7 @@ void tracePath(const PathTracerData pt, ShadingData sd, inout PathData path)
         // Determine if BSDF supports sampling with next-event estimation.
         // The following line generates bad code:
         // bool supportsNEE = (getBSDFLobes(sd) & (uint)LobeType::NonDeltaReflection) != 0;
-        uint lobes = getBSDFLobes(sd);
+        uint lobes = pt.standardMaterial.getBSDFLobes(sd);
         bool supportsNEE = (lobes & (uint)LobeType::DiffuseReflection) != 0 || (lobes & (uint)LobeType::SpecularReflection) != 0;
 
         // Compute direct illumination.
@@ -343,12 +351,12 @@ void tracePath(const PathTracerData pt, ShadingData sd, inout PathData path)
         const float3 rayDirIn = path.dir;
 
         // Generate next path segment.
-        if (!generateScatterRay(pt.params, sd, path, path.sg)) return;
+        if (!generateScatterRay(pt.params, sd, pt.standardMaterial, path, path.sg)) return;
 
         // Scatter the ray footprint out of the surface. Primary bounce is handled at footprint creation time.
         if (depth > 0)
         {
-            path.rayFootprint.bounceOnSurface(v, triangleVertices, path.hit, sd, v.normalW, rayDirIn, path.dir, path.isSpecular(), path.isTransmission());
+            path.rayFootprint.bounceOnSurface(v, triangleVertices, path.hit.getTriangleHit(), sd, v.normalW, rayDirIn, path.dir, path.isSpecular(), path.isTransmission());
         }
 
         // Update ray origin on transmissive events.
@@ -368,7 +376,7 @@ void tracePath(const PathTracerData pt, ShadingData sd, inout PathData path)
         if (!traceScatterRay(path.origin, path.dir, path.interiorList, path.hit)) return;
 
         // Handle scatter ray hit/miss.
-        if (path.hit.instanceID != HitInfo::kInvalidIndex)
+        if (path.hit.isValid())
         {
             handleHit(pt, sd, path);
         }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -49,7 +49,6 @@ public:
 
 private:
     GBufferRaster(const Dictionary& dict);
-    void setCullMode(RasterizerState::CullMode mode) override;
 
     // Internal state
     DepthPass::SharedPtr            mpDepthPrePass;
@@ -59,12 +58,12 @@ private:
     // Rasterization resources
     struct
     {
-        RasterizerState::SharedPtr pRsState;
         GraphicsState::SharedPtr pState;
         GraphicsProgram::SharedPtr pProgram;
         GraphicsVars::SharedPtr pVars;
     } mRaster;
 
     static const char* kDesc;
+
     friend void getPasses(Falcor::RenderPassLibrary& lib);
 };

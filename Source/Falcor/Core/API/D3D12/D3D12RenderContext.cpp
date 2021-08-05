@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -52,8 +52,12 @@ namespace Falcor
 
                 Sampler::SharedPtr pLinearSampler;
                 Sampler::SharedPtr pPointSampler;
+                Sampler::SharedPtr pLinearMinSampler;
+                Sampler::SharedPtr pPointMinSampler;
+                Sampler::SharedPtr pLinearMaxSampler;
+                Sampler::SharedPtr pPointMaxSampler;
 
-                ParameterBlock::SharedPtr pSrcRectBuffer;
+                ParameterBlock::SharedPtr pBlitParamsBuffer;
                 float2 prevSrcRectOffset = float2(0, 0);
                 float2 prevSrcReftScale = float2(0, 0);
 
@@ -61,6 +65,11 @@ namespace Falcor
                 UniformShaderVarOffset offsetVarOffset;
                 UniformShaderVarOffset scaleVarOffset;
                 ProgramReflection::BindLocation texBindLoc;
+                
+                // Parameters for complex blit
+                float4 prevComponentsTransform[4] = { float4(0), float4(0), float4(0), float4(0) };
+                UniformShaderVarOffset compTransVarOffset[4];
+
             } blitData;
 
             static void init();
@@ -75,24 +84,38 @@ namespace Falcor
             auto& blitData = sApiData.blitData;
             if (blitData.pPass == nullptr)
             {
-                // Init the blit data
+                // Init the blit data.
                 Program::Desc d;
-                d.addShaderLibrary("Core/API/Blit.slang").vsEntry("vs").psEntry("ps");
+                d.addShaderLibrary("Core/API/BlitReduction.slang").vsEntry("vs").psEntry("ps");
                 blitData.pPass = FullScreenPass::create(d);
                 blitData.pFbo = Fbo::create();
                 assert(blitData.pPass && blitData.pFbo);
 
-                blitData.pSrcRectBuffer = blitData.pPass->getVars()->getParameterBlock("SrcRectCB");
-                blitData.offsetVarOffset = blitData.pSrcRectBuffer->getVariableOffset("gOffset");
-                blitData.scaleVarOffset = blitData.pSrcRectBuffer->getVariableOffset("gScale");
+                blitData.pBlitParamsBuffer = blitData.pPass->getVars()->getParameterBlock("BlitParamsCB");
+                blitData.offsetVarOffset = blitData.pBlitParamsBuffer->getVariableOffset("gOffset");
+                blitData.scaleVarOffset = blitData.pBlitParamsBuffer->getVariableOffset("gScale");
                 blitData.prevSrcRectOffset = float2(-1.0f);
                 blitData.prevSrcReftScale = float2(-1.0f);
 
                 Sampler::Desc desc;
-                desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
+                desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
+                desc.setReductionMode(Sampler::ReductionMode::Standard);
+                desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point);
                 blitData.pLinearSampler = Sampler::create(desc);
-                desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
+                desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
                 blitData.pPointSampler = Sampler::create(desc);
+                // Min reductions.
+                desc.setReductionMode(Sampler::ReductionMode::Min);
+                desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point);
+                blitData.pLinearMinSampler = Sampler::create(desc);
+                desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
+                blitData.pPointMinSampler = Sampler::create(desc);
+                // Max reductions.
+                desc.setReductionMode(Sampler::ReductionMode::Max);
+                desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point);
+                blitData.pLinearMaxSampler = Sampler::create(desc);
+                desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
+                blitData.pPointMaxSampler = Sampler::create(desc);
 
                 const auto& pDefaultBlockReflection = blitData.pPass->getProgram()->getReflector()->getDefaultParameterBlock();
                 blitData.texBindLoc = pDefaultBlockReflection->getResourceBinding("gTex");
@@ -114,6 +137,18 @@ namespace Falcor
                 argDesc.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
                 sigDesc.pArgumentDescs = &argDesc;
                 d3d_call(gpDevice->getApiHandle()->CreateCommandSignature(&sigDesc, nullptr, IID_PPV_ARGS(&sApiData.pDrawIndexCommandSig)));
+        
+                // Complex blit parameters
+                
+                blitData.compTransVarOffset[0] = blitData.pBlitParamsBuffer->getVariableOffset("gCompTransformR");
+                blitData.compTransVarOffset[1] = blitData.pBlitParamsBuffer->getVariableOffset("gCompTransformG");
+                blitData.compTransVarOffset[2] = blitData.pBlitParamsBuffer->getVariableOffset("gCompTransformB");
+                blitData.compTransVarOffset[3] = blitData.pBlitParamsBuffer->getVariableOffset("gCompTransformA");
+                blitData.prevComponentsTransform[0] = float4(1.0f, 0.0f, 0.0f, 0.0f);
+                blitData.prevComponentsTransform[1] = float4(0.0f, 1.0f, 0.0f, 0.0f);
+                blitData.prevComponentsTransform[2] = float4(0.0f, 0.0f, 1.0f, 0.0f);
+                blitData.prevComponentsTransform[3] = float4(0.0f, 0.0f, 0.0f, 1.0f);
+                for (uint32_t i = 0; i < 4; i++) blitData.pBlitParamsBuffer->setVariable(blitData.compTransVarOffset[i], blitData.prevComponentsTransform[i]);
             }
 
             sApiData.refCount++;
@@ -392,15 +427,15 @@ namespace Falcor
         raytraceDesc.RayGenerationShaderRecord.SizeInBytes = pShaderTable->getRayGenRecordSize();;
 
         // Miss data
-        if (pProgram->getMissProgramCount() > 0)
+        if (pShaderTable->getMissRecordCount() > 0)
         {
             raytraceDesc.MissShaderTable.StartAddress = startAddress + pShaderTable->getMissTableOffset();
             raytraceDesc.MissShaderTable.StrideInBytes = pShaderTable->getMissRecordSize();
-            raytraceDesc.MissShaderTable.SizeInBytes = pShaderTable->getMissRecordSize() * pProgram->getMissProgramCount();
+            raytraceDesc.MissShaderTable.SizeInBytes = pShaderTable->getMissRecordSize() * pShaderTable->getMissRecordCount();
         }
 
         // Hit data
-        if (pProgram->getHitProgramCount() > 0)
+        if (pShaderTable->getHitRecordCount() > 0)
         {
             raytraceDesc.HitGroupTable.StartAddress = startAddress + pShaderTable->getHitTableOffset();
             raytraceDesc.HitGroupTable.StrideInBytes = pShaderTable->getHitRecordSize();
@@ -418,13 +453,62 @@ namespace Falcor
 
     void RenderContext::blit(ShaderResourceView::SharedPtr pSrc, RenderTargetView::SharedPtr pDst, const uint4& srcRect, const uint4& dstRect, Sampler::Filter filter)
     {
+        const Sampler::ReductionMode componentsReduction[] = { Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard };
+        const float4 componentsTransform[] = { float4(1.0f, 0.0f, 0.0f, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 1.0f, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f) };
+
+        blit(pSrc, pDst, srcRect, dstRect, filter, componentsReduction, componentsTransform);
+    }
+
+    void RenderContext::blit(ShaderResourceView::SharedPtr pSrc, RenderTargetView::SharedPtr pDst, const uint4& srcRect, const uint4& dstRect, Sampler::Filter filter, const Sampler::ReductionMode componentsReduction[4], const float4 componentsTransform[4])
+    {
         auto& blitData = sApiData.blitData;
-        blitData.pPass->getVars()->setSampler("gSampler", (filter == Sampler::Filter::Linear) ? blitData.pLinearSampler : blitData.pPointSampler);
+        const Texture* pSrcTexture = dynamic_cast<const Texture*>(pSrc->getResource());
+        const bool complexBlit = pSrcTexture->getSampleCount() <= 1 &&
+            !(  (componentsReduction[0] == Sampler::ReductionMode::Standard) && (componentsReduction[1] == Sampler::ReductionMode::Standard) && (componentsReduction[2] == Sampler::ReductionMode::Standard) && (componentsReduction[3] == Sampler::ReductionMode::Standard) &&
+                (componentsTransform[0] == float4(1.0f, 0.0f, 0.0f, 0.0f)) && (componentsTransform[1] == float4(0.0f, 1.0f, 0.0f, 0.0f)) && (componentsTransform[2] == float4(0.0f, 0.0f, 1.0f, 0.0f)) && (componentsTransform[3] == float4(0.0f, 0.0f, 0.0f, 1.0f)) );
+
+        if (complexBlit)
+        {
+            // Complex blit doesn't work with multi-sampled textures.
+            assert(pSrcTexture->getSampleCount() <= 1);
+
+            blitData.pPass->addDefine("COMPLEX_BLIT", "1");
+
+            Sampler::SharedPtr usedSampler[4];
+            for (uint32_t i = 0; i < 4; i++)
+            {
+                assert(componentsReduction[i] != Sampler::ReductionMode::Comparison);        // Comparison mode not supported.
+
+                if (componentsReduction[i] == Sampler::ReductionMode::Min) usedSampler[i] = (filter == Sampler::Filter::Linear) ? blitData.pLinearMinSampler : blitData.pPointMinSampler;
+                else if (componentsReduction[i] == Sampler::ReductionMode::Max) usedSampler[i] = (filter == Sampler::Filter::Linear) ? blitData.pLinearMaxSampler : blitData.pPointMaxSampler;
+                else usedSampler[i] = (filter == Sampler::Filter::Linear) ? blitData.pLinearSampler : blitData.pPointSampler;
+            }
+
+            blitData.pPass->getVars()->setSampler("gSamplerR", usedSampler[0]);
+            blitData.pPass->getVars()->setSampler("gSamplerG", usedSampler[1]);
+            blitData.pPass->getVars()->setSampler("gSamplerB", usedSampler[2]);
+            blitData.pPass->getVars()->setSampler("gSamplerA", usedSampler[3]);
+
+            // Parameters for complex blit
+            for (uint32_t i = 0; i < 4; i++)
+            {
+                if (blitData.prevComponentsTransform[i] != componentsTransform[i])
+                {
+                    blitData.pBlitParamsBuffer->setVariable(blitData.compTransVarOffset[i], componentsTransform[i]);
+                    blitData.prevComponentsTransform[i] = componentsTransform[i];
+                }
+            }
+        }
+        else
+        {
+            blitData.pPass->removeDefine("COMPLEX_BLIT");
+
+            blitData.pPass->getVars()->setSampler("gSampler", (filter == Sampler::Filter::Linear) ? blitData.pLinearSampler : blitData.pPointSampler);
+        }
 
         assert(pSrc->getViewInfo().arraySize == 1 && pSrc->getViewInfo().mipCount == 1);
         assert(pDst->getViewInfo().arraySize == 1 && pDst->getViewInfo().mipCount == 1);
 
-        const Texture* pSrcTexture = dynamic_cast<const Texture*>(pSrc->getResource());
         Texture* pDstTexture = dynamic_cast<Texture*>(pDst->getResource());
         assert(pSrcTexture != nullptr && pDstTexture != nullptr);
 
@@ -451,13 +535,13 @@ namespace Falcor
         // Update buffer/state
         if (srcRectOffset != blitData.prevSrcRectOffset)
         {
-            blitData.pSrcRectBuffer->setVariable(blitData.offsetVarOffset, srcRectOffset);
+            blitData.pBlitParamsBuffer->setVariable(blitData.offsetVarOffset, srcRectOffset);
             blitData.prevSrcRectOffset = srcRectOffset;
         }
 
         if (srcRectScale != blitData.prevSrcReftScale)
         {
-            blitData.pSrcRectBuffer->setVariable(blitData.scaleVarOffset, srcRectScale);
+            blitData.pBlitParamsBuffer->setVariable(blitData.scaleVarOffset, srcRectScale);
             blitData.prevSrcReftScale = srcRectScale;
         }
 

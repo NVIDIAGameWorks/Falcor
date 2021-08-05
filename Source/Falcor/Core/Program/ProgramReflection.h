@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -1462,6 +1462,14 @@ namespace Falcor
 
         using BindLocation = ParameterBlockReflection::BindLocation;
 
+        /** Data structure describing a hashed string used in the program.
+        */
+        struct HashedString
+        {
+            uint32_t hash;
+            std::string string;
+        };
+
         /** Create a new object for a Slang reflector object
         */
         static SharedPtr create(
@@ -1518,6 +1526,8 @@ namespace Falcor
 
         EntryPointGroupReflection::SharedPtr const& getEntryPointGroup(uint32_t index) const { return mEntryPointGroups[index]; }
 
+        std::vector<HashedString> const& getHashedStrings() const { return mHashedStrings; }
+
     private:
         ProgramReflection(
             ProgramVersion const* pProgramVersion,
@@ -1542,6 +1552,8 @@ namespace Falcor
         mutable std::map<std::string, ReflectionType::SharedPtr> mMapNameToType;
 
         std::vector<EntryPointGroupReflection::SharedPtr> mEntryPointGroups;
+
+        std::vector<HashedString> mHashedStrings;
     };
 
     inline const std::string to_string(ReflectionBasicType::Type type)

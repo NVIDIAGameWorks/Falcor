@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,7 +31,7 @@
 #include <nanovdb/util/GridHandle.h>
 #include <nanovdb/util/HostBuffer.h>
 #pragma warning(default:4244 4267)
-
+#include "BrickedGrid.h"
 namespace Falcor
 {
     /** Voxel grid based on NanoVDB.
@@ -114,15 +114,28 @@ namespace Falcor
         */
         const nanovdb::GridHandle<nanovdb::HostBuffer>& getGridHandle() const;
 
+        /** Get the (affine) NanoVDB transformation matrix.
+        */
+        glm::mat4 getTransform() const;
+
+        /** Get the inverse (affine) NanoVDB transformation matrix.
+        */
+        glm::mat4 getInvTransform() const;
+
     private:
         Grid(nanovdb::GridHandle<nanovdb::HostBuffer> gridHandle);
 
         static SharedPtr createFromNanoVDBFile(const std::string& path, const std::string& gridname);
         static SharedPtr createFromOpenVDBFile(const std::string& path, const std::string& gridname);
 
+        // Host data.
         nanovdb::GridHandle<nanovdb::HostBuffer> mGridHandle;
         nanovdb::FloatGrid* mpFloatGrid;
         nanovdb::FloatGrid::AccessorType mAccessor;
+        // Device data.
         Buffer::SharedPtr mpBuffer;
+        BrickedGrid mBrickedGrid;
+
+        friend class SceneCache;
     };
 }

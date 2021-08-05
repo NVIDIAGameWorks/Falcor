@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -102,7 +102,7 @@ float getAngleFromGGXRoughness(float roughness)
 #if RAY_FOOTPRINT_MODE == RAY_FOOTPRINT_MODE_RAYCONE     // Ray Cone.
 extension RayFootprint
 {
-    static RayFootprint create(HitInfo hit, uint2 pixel, uint2 frameDim, float3 worldPos, float3 cameraPos, float3 faceNormal, float3 normal, float screenSpacePixelSpreadAngle, float roughness, bool isSpecular)
+    static RayFootprint create(TriangleHit hit, uint2 pixel, uint2 frameDim, float3 worldPos, float3 cameraPos, float3 faceNormal, float3 normal, float screenSpacePixelSpreadAngle, float roughness, bool isSpecular)
     {
         RayFootprint res;
 
@@ -147,6 +147,8 @@ extension RayFootprint
             surfaceSpreadAngle = computeSpreadAngleFromCurvatureIso(curvature, rayConeWidth, rayDir, normal);
         }
 
+        surfaceSpreadAngle *= 2.0;      // computeScreenSpaceSurfaceSpreadAngle() and computeSpreadAngleFromCurvatureIso() do not have that factor in it. The factor 2.0 should only be used for reflection, but not for refraction.
+
         if (kRayFootprintUseMaterialRoughness)
         {
             float linearRoughnessForFootprint = roughness;
@@ -163,23 +165,24 @@ extension RayFootprint
         }
 
         // Propagate cone to primary hit point, and reflect over the surface with surfaceSpreadAngle change.
-        res.rayCone = res.rayCone.propagate(surfaceSpreadAngle, hitT);
+        res.rayCone = res.rayCone.propagateDistance(hit);
+        res.rayCone = res.rayCone.addToSpreadAngle(surfaceSpreadAngle);
 
         return res;
     }
 
     [mutating]
-    void hitSurface(inout VertexData v, StaticVertexData triangleVertices[3], HitInfo hit, float3 rayOrg, float3 rayDir)
+    void hitSurface(inout VertexData v, StaticVertexData triangleVertices[3], TriangleHit hit, float3 rayOrg, float3 rayDir)
     {
         // Adds Ray Cone data to previously fetched VertexData.
-        v.coneTexLODValue = computeRayConeTriangleLODValue(triangleVertices, hit.instanceID, float3x3(gScene.getWorldMatrix(hit.instanceID)));
+        v.coneTexLODValue = computeRayConeTriangleLODValue(triangleVertices, float3x3(gScene.getWorldMatrix(hit.instanceID)));
 
         float hitT = length(v.posW - rayOrg);
         // Propagate the cone to current surface.
-        rayCone = rayCone.propagate(0.0, hitT);
+        rayCone = rayCone.propagateDistance(hitT);
     }
 
-    ShadingData computeShadingData(VertexData v, StaticVertexData triangleVertices[3], HitInfo hit, float3 rayOrg, float3 rayDir)
+    ShadingData computeShadingData(VertexData v, StaticVertexData triangleVertices[3], TriangleHit hit, float3 rayOrg, float3 rayDir)
     {
         // Compute texture LOD for prepareShadingData().
         float lambda = rayCone.computeLOD(v.coneTexLODValue, rayDir, v.normalW);
@@ -191,7 +194,7 @@ extension RayFootprint
 
     // isSpecular, isTransmission : of the new scattered ray.
     [mutating]
-    void bounceOnSurface(VertexData v, StaticVertexData triangleVertices[3], HitInfo hit, ShadingData sd, float3 normal, float3 rayDirIn, float3 rayDirOut, bool isSpecular, bool isTransmission)
+    void bounceOnSurface(VertexData v, StaticVertexData triangleVertices[3], TriangleHit hit, ShadingData sd, float3 normal, float3 rayDirIn, float3 rayDirOut, bool isSpecular, bool isTransmission)
     {
         // Check if scattered ray is refracted.
         if (isTransmission || dot(rayDirOut, normal) <= 0.0) return; // Leaves the footprint unchanged until refraction if properly handled.
@@ -203,7 +206,7 @@ extension RayFootprint
             // Declares tce, the triangle curvature estimator to use.
             RAY_FOOTPRINT_CURVATURE_ESTIMATOR_SECONDARY(rayDir, rayConeWidth, rayCone.getSpreadAngle());
             float curvature = gScene.computeCurvatureGeneric(hit.instanceID, hit.primitiveIndex, tce);
-            surfaceSpreadAngle = computeSpreadAngleFromCurvatureIso(curvature, rayConeWidth, rayDirIn, normal);
+            surfaceSpreadAngle = computeSpreadAngleFromCurvatureIso(curvature, rayConeWidth, rayDirIn, normal) * 2.0;       //  The factor 2.0 should only be used for reflection, but not for refraction.
         }
 
         if (kRayFootprintUseMaterialRoughness)
@@ -222,7 +225,7 @@ extension RayFootprint
         }
 
         // Reflect the cone: update spread angle.
-        rayCone = rayCone.propagate(surfaceSpreadAngle, 0.0);
+        rayCone = rayCone.addToSpreadAngle(surfaceSpreadAngle);
     }
 };
 
@@ -233,7 +236,7 @@ extension RayFootprint
 
 extension RayFootprint
 {
-    static RayFootprint create(HitInfo hit, uint2 pixel, uint2 frameDim, float3 worldPos, float3 cameraPos, float3 faceNormal, float3 normal, float screenSpacePixelSpreadAngle, float roughness, bool isSpecular)
+    static RayFootprint create(TriangleHit hit, uint2 pixel, uint2 frameDim, float3 worldPos, float3 cameraPos, float3 faceNormal, float3 normal, float screenSpacePixelSpreadAngle, float roughness, bool isSpecular)
     {
         RayFootprint res;
 
@@ -266,7 +269,7 @@ extension RayFootprint
     }
 
     [mutating]
-    void hitSurface(inout VertexData v, StaticVertexData triangleVertices[3], HitInfo hit, float3 rayOrg, float3 rayDir)
+    void hitSurface(inout VertexData v, StaticVertexData triangleVertices[3], TriangleHit hit, float3 rayOrg, float3 rayDir)
     {
         // Propagate to hit point.
         float hitT = length(v.posW - rayOrg);
@@ -274,7 +277,7 @@ extension RayFootprint
         this.rayDiff = this.rayDiff.propagate(rayOrg, rayDir, hitT, geometricNormal);   // Propagate the ray differential to the current hit point.
     }
 
-    ShadingData computeShadingData(VertexData v, StaticVertexData triangleVertices[3], HitInfo hit, float3 rayOrg, float3 rayDir)
+    ShadingData computeShadingData(VertexData v, StaticVertexData triangleVertices[3], TriangleHit hit, float3 rayOrg, float3 rayDir)
     {
         float hitT = length(v.posW - rayOrg);
 
@@ -285,25 +288,14 @@ extension RayFootprint
 
         // Compute shading data.
         float3 viewDir = -rayDir;
-        ShadingData sd;
         const uint materialID = gScene.getMaterialID(hit.instanceID);
-        if (kRayFootprintMode == TexLODMode::RayDiffsIsotropic)
-        {
-            // When using prepareShadingDataUsingRayDiffsLOD(), the texture sampler will compute a single lambda for texture LOD
-            // using the dUVdx and dUVdy.
-            sd = prepareShadingDataUsingRayDiffsLOD(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], viewDir, dUVdx, dUVdy);
-        }
-        else        // TexLODMode::RayDiffsAnisotropic.
-        {
-            // Use the dUVdx and dUVdy directly --> gives you anisotropic filtering.
-            sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], viewDir, dUVdx, dUVdy);
-        }
+        ShadingData sd = prepareShadingDataUsingRayDiffsIsotropic(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], viewDir, dUVdx, dUVdy);
 
         return sd;
     }
 
     [mutating]
-    void bounceOnSurface(VertexData v, StaticVertexData triangleVertices[3], HitInfo hit, ShadingData sd, float3 normal, float3 rayDirIn, float3 rayDirOut, bool isSpecular, bool isTransmission)
+    void bounceOnSurface(VertexData v, StaticVertexData triangleVertices[3], TriangleHit hit, ShadingData sd, float3 normal, float3 rayDirIn, float3 rayDirOut, bool isSpecular, bool isTransmission)
     {
         // Check if scattered ray is refracted.
         if (isTransmission || dot(rayDirOut, normal) <= 0.0) return; // Leaves the footprint unchanged until refraction if properly handled.
@@ -322,23 +314,23 @@ extension RayFootprint
 #else
 extension RayFootprint
 {
-    static RayFootprint create(HitInfo hit, uint2 pixel, uint2 frameDim, float3 worldPos, float3 cameraPos, float3 faceNormal, float3 normal, float screenSpacePixelSpreadAngle, float roughness, bool isSpecular)
+    static RayFootprint create(TriangleHit hit, uint2 pixel, uint2 frameDim, float3 worldPos, float3 cameraPos, float3 faceNormal, float3 normal, float screenSpacePixelSpreadAngle, float roughness, bool isSpecular)
     {
         RayFootprint res;
         return res;
     }
 
     [mutating]
-    void hitSurface(inout VertexData v, StaticVertexData triangleVertices[3], HitInfo hit, float3 rayOrg, float3 rayDir)
+    void hitSurface(inout VertexData v, StaticVertexData triangleVertices[3], TriangleHit hit, float3 rayOrg, float3 rayDir)
     {
     }
 
     [mutating]
-    void bounceOnSurface(VertexData v, StaticVertexData triangleVertices[3], HitInfo hit, ShadingData sd, float3 normal, float3 rayDirIn, float3 rayDirOut, bool isSpecular, bool isTransmission)
+    void bounceOnSurface(VertexData v, StaticVertexData triangleVertices[3], TriangleHit hit, ShadingData sd, float3 normal, float3 rayDirIn, float3 rayDirOut, bool isSpecular, bool isTransmission)
     {
     }
 
-    ShadingData computeShadingData(VertexData v, StaticVertexData triangleVertices[3], HitInfo hit, float3 rayOrg, float3 rayDir)
+    ShadingData computeShadingData(VertexData v, StaticVertexData triangleVertices[3], TriangleHit hit, float3 rayOrg, float3 rayDir)
     {
         const uint materialID = gScene.getMaterialID(hit.instanceID);
         return prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -rayDir, 0.f);
@@ -355,7 +347,7 @@ extension RayFootprint
    \param[in] rayDir Ray direction.
    \return Shading data computed at hit point.
 */
-ShadingData prepareShadingData(VertexData v, RayFootprint rayFootprint, StaticVertexData triangleVertices[3], HitInfo hit, float3 rayOrg, float3 rayDir)
+ShadingData prepareShadingData(VertexData v, RayFootprint rayFootprint, StaticVertexData triangleVertices[3], TriangleHit hit, float3 rayOrg, float3 rayDir)
 {
     return rayFootprint.computeShadingData(v, triangleVertices, hit, rayOrg, rayDir);
 }

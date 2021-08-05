@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -42,7 +42,7 @@ namespace Falcor
         safe_delete(mpApiData);
     }
 
-    GpuFence::SharedPtr GpuFence::create()
+    GpuFence::SharedPtr GpuFence::create(bool shared)
     {
         SharedPtr pFence = SharedPtr(new GpuFence());
         pFence->mpApiData = new FenceApiData;
@@ -51,7 +51,7 @@ namespace Falcor
 
         assert(gpDevice);
         ID3D12Device* pDevice = gpDevice->getApiHandle().GetInterfacePtr();
-        HRESULT hr = pDevice->CreateFence(pFence->mCpuValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&pFence->mApiHandle));
+        HRESULT hr = pDevice->CreateFence(pFence->mCpuValue, shared ? D3D12_FENCE_FLAG_SHARED : D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&pFence->mApiHandle));
         if (FAILED(hr))
         {
             d3dTraceHR("Failed to create a fence object", hr);
@@ -91,5 +91,26 @@ namespace Falcor
     uint64_t GpuFence::getGpuValue() const
     {
         return mApiHandle->GetCompletedValue();
+    }
+
+    SharedResourceApiHandle GpuFence::getSharedApiHandle() const
+    {
+        if (!mSharedApiHandle)
+        {
+            ID3D12DevicePtr pDevicePtr = gpDevice->getApiHandle();
+            LPCWSTR name = NULL;
+            SharedFenceApiHandle pHandle;
+
+            HRESULT res = pDevicePtr->CreateSharedHandle(mApiHandle, 0, GENERIC_ALL, name, &pHandle);
+            if (res == S_OK)
+            {
+                mSharedApiHandle = pHandle;
+            }
+            else
+            {
+                throw std::exception("GpuFence::getSharedApiHandle(): failed to create shared handle");
+            }
+        }
+        return mSharedApiHandle;
     }
 }

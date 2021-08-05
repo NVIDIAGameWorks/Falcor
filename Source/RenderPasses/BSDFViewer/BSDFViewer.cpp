@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -60,8 +60,6 @@ BSDFViewer::BSDFViewer(const Dictionary& dict)
     // Defines to disable discard and gradient operations in Falcor's material system.
     Program::DefineList defines =
     {
-        {"_MS_DISABLE_ALPHA_TEST", ""},
-        {"_DEFAULT_ALPHA_TEST", ""},
         {"SCENE_MATERIAL_COUNT", "1"},
         {"SCENE_GRID_COUNT", "0"},
     };
@@ -151,8 +149,6 @@ void BSDFViewer::execute(RenderContext* pRenderContext, const RenderData& render
     }
 
     // Set compile-time constants.
-    mpViewerPass->addDefine("_USE_LEGACY_SHADING_CODE", mParams.useLegacyBSDF ? "1" : "0");
-
     if (mParams.useDisneyDiffuse) mpViewerPass->addDefine("DiffuseBrdf", "DiffuseBrdfDisney");
     else mpViewerPass->removeDefine("DiffuseBrdf");
     if (mParams.useSeparableMaskingShadowing) mpViewerPass->addDefine("SpecularMaskingFunction", "SpecularMaskingFunctionSmithGGXSeparable");
@@ -242,8 +238,6 @@ void BSDFViewer::renderUI(Gui::Widgets& widget)
 
     if (auto bsdfGroup = widget.group("BSDF", true))
     {
-        dirty |= bsdfGroup.checkbox("Use legacy BSDF code", mParams.useLegacyBSDF);
-
         dirty |= bsdfGroup.checkbox("Enable diffuse", mParams.enableDiffuse);
         dirty |= bsdfGroup.checkbox("Enable specular", mParams.enableSpecular, true);
 
@@ -366,9 +360,6 @@ void BSDFViewer::renderUI(Gui::Widgets& widget)
     {
         mpPixelDebug->renderUI(widget);
     }
-
-    //widget.dummy("#space3", float2(1, 16));
-    //dirty |= widget.checkbox("Debug switch", mParams.debugSwitch0);
 
     if (dirty)
     {

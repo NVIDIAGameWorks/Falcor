@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,7 +28,6 @@
 #include "GBufferBase.h"
 #include "GBuffer/GBufferRaster.h"
 #include "GBuffer/GBufferRT.h"
-#include "GBuffer/GBufferRTCurves.h"
 #include "VBuffer/VBufferRaster.h"
 #include "VBuffer/VBufferRT.h"
 
@@ -42,12 +41,10 @@ extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
 {
     lib.registerClass("GBufferRaster", GBufferRaster::kDesc, GBufferRaster::create);
     lib.registerClass("GBufferRT", GBufferRT::kDesc, GBufferRT::create);
-    lib.registerClass("GBufferRTCurves", GBufferRTCurves::kDesc, GBufferRTCurves::create);
     lib.registerClass("VBufferRaster", VBufferRaster::kDesc, VBufferRaster::create);
     lib.registerClass("VBufferRT", VBufferRT::kDesc, VBufferRT::create);
 
     Falcor::ScriptBindings::registerBinding(GBufferBase::registerBindings);
-    Falcor::ScriptBindings::registerBinding(GBufferRT::registerBindings);
 }
 
 void GBufferBase::registerBindings(pybind11::module& m)
@@ -64,8 +61,11 @@ namespace
     // Scripting options.
     const char kSamplePattern[] = "samplePattern";
     const char kSampleCount[] = "sampleCount";
-    const char kDisableAlphaTest[] = "disableAlphaTest";
+    const char kUseAlphaTest[] = "useAlphaTest";
+    const char kDisableAlphaTest[] = "disableAlphaTest"; ///< Deprecated for "useAlphaTest".
     const char kAdjustShadingNormals[] = "adjustShadingNormals";
+    const char kForceCullMode[] = "forceCullMode";
+    const char kCullMode[] = "cull";
 
     // UI variables.
     const Gui::DropdownList kSamplePatternList =
@@ -75,6 +75,13 @@ namespace
         { (uint32_t)GBufferBase::SamplePattern::Halton, "Halton" },
         { (uint32_t)GBufferBase::SamplePattern::Stratified, "Stratified" },
     };
+
+    const Gui::DropdownList kCullModeList =
+    {
+        { (uint32_t)RasterizerState::CullMode::None, "None" },
+        { (uint32_t)RasterizerState::CullMode::Back, "Back" },
+        { (uint32_t)RasterizerState::CullMode::Front, "Front" },
+    };
 }
 
 void GBufferBase::parseDictionary(const Dictionary& dict)
@@ -83,10 +90,15 @@ void GBufferBase::parseDictionary(const Dictionary& dict)
     {
         if (key == kSamplePattern) mSamplePattern = value;
         else if (key == kSampleCount) mSampleCount = value;
-        else if (key == kDisableAlphaTest) mDisableAlphaTest = value;
+        else if (key == kUseAlphaTest) mUseAlphaTest = value;
         else if (key == kAdjustShadingNormals) mAdjustShadingNormals = value;
+        else if (key == kForceCullMode) mForceCullMode = value;
+        else if (key == kCullMode) mCullMode = value;
         // TODO: Check for unparsed fields, including those parsed in derived classes.
     }
+
+    // Handle deprecated "disableAlphaTest" value.
+    if (dict.keyExists(kDisableAlphaTest) && !dict.keyExists(kUseAlphaTest)) mUseAlphaTest = !dict[kDisableAlphaTest];
 }
 
 Dictionary GBufferBase::getScriptingDictionary()
@@ -94,8 +106,10 @@ Dictionary GBufferBase::getScriptingDictionary()
     Dictionary dict;
     dict[kSamplePattern] = mSamplePattern;
     dict[kSampleCount] = mSampleCount;
-    dict[kDisableAlphaTest] = mDisableAlphaTest;
+    dict[kUseAlphaTest] = mUseAlphaTest;
     dict[kAdjustShadingNormals] = mAdjustShadingNormals;
+    dict[kForceCullMode] = mForceCullMode;
+    dict[kCullMode] = mCullMode;
     return dict;
 }
 
@@ -117,10 +131,27 @@ void GBufferBase::renderUI(Gui::Widgets& widget)
         mOptionsChanged = true;
     }
 
-    mOptionsChanged |=  widget.checkbox("Disable Alpha Test", mDisableAlphaTest);
+    // Misc controls.
+    mOptionsChanged |=  widget.checkbox("Alpha Test", mUseAlphaTest);
+    widget.tooltip("Use alpha testing on non-opaque triangles.");
 
     mOptionsChanged |= widget.checkbox("Adjust shading normals", mAdjustShadingNormals);
     widget.tooltip("Enables adjustment of the shading normals to reduce the risk of black pixels due to back-facing vectors.", true);
+
+    // Cull mode controls.
+    mOptionsChanged |= widget.checkbox("Force cull mode", mForceCullMode);
+    widget.tooltip("Enable this option to override the default cull mode.\n\n"
+        "Otherwise the default for rasterization is to cull backfacing geometry, and for ray tracing to disable culling.", true);
+
+    if (mForceCullMode)
+    {
+        uint32_t cullMode = (uint32_t)mCullMode;
+        if (widget.dropdown("Cull mode", kCullModeList, cullMode))
+        {
+            setCullMode((RasterizerState::CullMode)cullMode);
+            mOptionsChanged = true;
+        }
+    }
 }
 
 void GBufferBase::compile(RenderContext* pContext, const CompileData& compileData)
@@ -157,6 +188,7 @@ void GBufferBase::execute(RenderContext* pRenderContext, const RenderData& rende
 void GBufferBase::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
 {
     mpScene = pScene;
+    mFrameCount = 0;
     updateSamplePattern();
 
     if (pScene)

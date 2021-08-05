@@ -12,7 +12,7 @@ def render_graph_MegakernelPathTracerGBuffer():
     g.addPass(ToneMapper, "ToneMapper")
     AccumulatePass = createPass("AccumulatePass")
     g.addPass(AccumulatePass, "AccumulatePass")
-    MegakernelPathTracer = createPass("MegakernelPathTracer", {'mSharedParams': PathTracerParams(useVBuffer=0)})
+    MegakernelPathTracer = createPass("MegakernelPathTracer", {'params': PathTracerParams(useVBuffer=0)})
     g.addPass(MegakernelPathTracer, "MegakernelPathTracer")
     g.addEdge("AccumulatePass.output", "ToneMapper.src")
     g.addEdge("GBufferRT.posW", "MegakernelPathTracer.posW")

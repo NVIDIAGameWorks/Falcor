@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,10 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-import Scene.Lights.Lights;
-import Scene.Shading;
 import Scene.Raytracing;
-import Utils.Helpers;
+import Scene.Shading;
+import Utils.Sampling.TinyUniformSampleGenerator;
+import Experimental.Scene.Lights.LightHelpers;
+import Experimental.Scene.Material.StandardMaterial;
 
 cbuffer PerFrameCB
 {
@@ -70,15 +71,11 @@ void primaryMiss(inout PrimaryRayData hitData)
     hitData.hitT = -1;
 }
 
-bool checkLightHit(uint lightIndex, float3 origin)
+bool traceShadowRay(RayDesc ray)
 {
-    LightData light = gScene.lights[lightIndex];
-    RayDesc ray = getShadowRay(light, origin);
-    ray.TMin = max(ray.TMin, 0.001);
-    
     ShadowRayData rayData;
     rayData.hit = true;
-    TraceRay(gRtScene, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xFF, 1 /* ray index */, hitProgramCount, 1, ray, rayData);
+    TraceRay(gScene.rtAccel, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xFF, 1 /* ray index */, rayTypeCount, 1, ray, rayData);
     return rayData.hit;
 }
 
@@ -94,7 +91,7 @@ float3 getReflectionColor(float3 worldOrigin, VertexData v, float3 worldRayDir, 
         ray.Direction = reflect(worldRayDir, v.normalW);
         ray.TMin = 0.001;
         ray.TMax = 100000;
-        TraceRay(gRtScene, 0 /*rayFlags*/, 0xFF, 0 /* ray index*/, hitProgramCount, 0, ray, secondaryRay);
+        TraceRay(gScene.rtAccel, 0 /*rayFlags*/, 0xFF, 0 /* ray index*/, rayTypeCount, 0, ray, secondaryRay);
         reflectColor = secondaryRay.hitT == -1 ? 0 : secondaryRay.color.rgb;
         float falloff = max(1, (secondaryRay.hitT * secondaryRay.hitT));
         reflectColor *= 20 / falloff;
@@ -103,9 +100,7 @@ float3 getReflectionColor(float3 worldOrigin, VertexData v, float3 worldRayDir, 
 }
 
 [shader("closesthit")]
-void primaryClosestHit(
-    uniform HitShaderParams hitParams,
-    inout PrimaryRayData hitData, in BuiltInTriangleIntersectionAttributes attribs)
+void primaryClosestHit(inout PrimaryRayData hitData, in BuiltInTriangleIntersectionAttributes attribs)
 {
     // Get the hit-point data
     float3 rayOrigW = WorldRayOrigin();
@@ -115,19 +110,27 @@ void primaryClosestHit(
 
     float3 posW = rayOrigW + hitT * rayDirW;
     // prepare the shading data
-    VertexData v = getVertexData(hitParams, triangleIndex, attribs);
-    uint materialID = gScene.getMaterialID(hitParams.getGlobalHitID());
+    const GeometryInstanceID instanceID = getGeometryInstanceID();
+    VertexData v = getVertexData(instanceID, triangleIndex, attribs);
+    uint materialID = gScene.getMaterialID(instanceID);
     ShadingData sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -rayDirW, 0);
+    StandardMaterial mtl;
 
     // Shoot a reflection ray
     float3 reflectColor = getReflectionColor(posW, v, rayDirW, hitData.depth.r);
     float3 color = 0;
 
+    // Direct lighting from analytic light sources
     for (int i = 0; i < gScene.getLightCount(); i++)
     {
-        if (checkLightHit(i, posW) == false)
+        AnalyticLightSample ls;
+        if (evalLightApproximate(sd.posW, gScene.getLight(i), ls))
         {
-            color += evalMaterial(sd, gScene.getLight(i), 1).color;
+            RayDesc shadowRay = { sd.posW, 0.001f, ls.dir, ls.distance };
+            if (!traceShadowRay(shadowRay))
+            {
+                color += mtl.eval(sd, ls.dir) * ls.Li;
+            }
         }
     }
 
@@ -142,14 +145,12 @@ void primaryClosestHit(
 }
 
 [shader("anyhit")]
-void primaryAnyHit(
-    uniform HitShaderParams                 hitParams,
-    inout PrimaryRayData                    rayData,
-    BuiltInTriangleIntersectionAttributes   attribs)
+void primaryAnyHit(inout PrimaryRayData rayData, BuiltInTriangleIntersectionAttributes attribs)
 {
     // Alpha test for non-opaque geometry.
-    VertexData v = getVertexData(hitParams, PrimitiveIndex(), attribs);
-    uint materialID = gScene.getMaterialID(hitParams.getGlobalHitID());
+    GeometryInstanceID instanceID = getGeometryInstanceID();
+    VertexData v = getVertexData(instanceID, PrimitiveIndex(), attribs);
+    uint materialID = gScene.getMaterialID(instanceID);
     if (alphaTest(v, gScene.materials[materialID], gScene.materialResources[materialID], 0.f))
     {
         IgnoreHit();
@@ -157,11 +158,10 @@ void primaryAnyHit(
 }
 
 [shader("raygeneration")]
-void rayGen(
-    uniform RWTexture2D<float4> gOutput)
+void rayGen(uniform RWTexture2D<float4> gOutput)
 {
     uint3 launchIndex = DispatchRaysIndex();
-    uint randSeed = rand_init(launchIndex.x + launchIndex.y * viewportDims.x, sampleIndex, 16);
+    TinyUniformSampleGenerator sg = TinyUniformSampleGenerator::create(launchIndex.xy, sampleIndex);
 
     RayDesc ray;
     if (!useDOF)
@@ -170,12 +170,12 @@ void rayGen(
     }
     else
     {
-        float2 u = float2(rand_next(randSeed), rand_next(randSeed));
+        float2 u = sampleNext2D(sg);
         ray = gScene.camera.computeRayThinlens(launchIndex.xy, viewportDims, u).toRayDesc();
     }
 
     PrimaryRayData hitData;
     hitData.depth = 0;
-    TraceRay(gRtScene, 0 /*rayFlags*/, 0xFF, 0 /* ray index*/, hitProgramCount, 0, ray, hitData);
+    TraceRay(gScene.rtAccel, 0 /*rayFlags*/, 0xFF, 0 /* ray index*/, rayTypeCount, 0, ray, hitData);
     gOutput[launchIndex.xy] = hitData.color;
 }

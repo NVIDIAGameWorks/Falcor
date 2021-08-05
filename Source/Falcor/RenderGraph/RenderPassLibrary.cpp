@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -144,8 +144,24 @@ namespace Falcor
     void copyDllFile(const std::string& fullpath)
     {
         std::ifstream src(fullpath, std::ios::binary);
+        if (src.fail())
+        {
+            logError("Failed to open '" + fullpath + "' for reading.");
+            return;
+        }
+
         std::ofstream dst(fullpath + kDllSuffix, std::ios::binary);
+        if (dst.fail())
+        {
+            logWarning("Failed to open '" + fullpath + kDllSuffix + "' for writing. It is likely in use by another Falcor instance.");
+            return;
+        }
+
         dst << src.rdbuf();
+        if (dst.fail())
+        {
+            logError("An error occurred while copying '" + fullpath + "'.");
+        }
     }
 
     void RenderPassLibrary::loadLibrary(const std::string& filename)
@@ -168,6 +184,12 @@ namespace Falcor
         copyDllFile(fullpath);
 
         DllHandle l = loadDll(fullpath + kDllSuffix);
+        if (l == nullptr)
+        {
+            logError("Failed to load render-pass library '" + fullpath + "'.");
+            return;
+        }
+
         mLibs[fullpath] = { l, getFileModifiedTime(fullpath) };
         auto func = (LibraryFunc)getDllProcAddress(l, "getPasses");
 

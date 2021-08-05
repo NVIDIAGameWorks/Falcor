@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,11 +27,14 @@
  **************************************************************************/
 #include "stdafx.h"
 #include "SceneBuilder.h"
+#include "SceneCache.h"
 #include "Importer.h"
 #include "Utils/Math/MathConstants.slangh"
+#include "Utils/Image/TextureAnalyzer.h"
 #include "Utils/Timing/TimeReport.h"
 #include <mikktspace.h>
 #include <filesystem>
+#include <numeric>
 
 namespace Falcor
 {
@@ -148,9 +151,23 @@ namespace Falcor
             }
             return indexData;
         }
+
+        SceneCache::Key computeSceneCacheKey(const std::string& scenePath, SceneBuilder::Flags buildFlags)
+        {
+            SceneBuilder::Flags cacheFlags = buildFlags & (~(SceneBuilder::Flags::UseCache | SceneBuilder::Flags::RebuildCache));
+            SHA1 sha1;
+            sha1.update(scenePath.data(), scenePath.size());
+            sha1.update(&cacheFlags, sizeof(cacheFlags));
+            return sha1.final();
+
+        }
     }
 
-    SceneBuilder::SceneBuilder(Flags flags) : mFlags(flags) {}
+    SceneBuilder::SceneBuilder(Flags flags)
+        : mFlags(flags)
+    {
+        mpFence = GpuFence::create();
+    }
 
     SceneBuilder::SharedPtr SceneBuilder::create(Flags flags)
     {
@@ -159,14 +176,47 @@ namespace Falcor
 
     SceneBuilder::SharedPtr SceneBuilder::create(const std::string& filename, Flags buildFlags, const InstanceMatrices& instances)
     {
+        std::string fullPath;
+        if (!findFileInDataDirectories(filename, fullPath))
+        {
+            logError("Can't find file '" + filename + "'");
+            return nullptr;
+        }
+
         auto pBuilder = create(buildFlags);
+
+        // We can only use scene cache if not using instances.
+        bool sceneCacheSupported = instances.empty();
+
+        // Compute scene cache key based on absolute scene path and build flags.
+        pBuilder->mSceneCacheKey = computeSceneCacheKey(fullPath, buildFlags);
+
+        // Determine if scene cache should be written after import.
+        bool useCache = is_set(buildFlags, Flags::UseCache);
+        bool rebuildCache = is_set(buildFlags, Flags::RebuildCache);
+        pBuilder->mWriteSceneCache = sceneCacheSupported && (useCache || rebuildCache);
+
+        // Try to load scene cache if supported, available and requested.
+        if (sceneCacheSupported && useCache && !rebuildCache && SceneCache::hasValidCache(pBuilder->mSceneCacheKey))
+        {
+            try
+            {
+                pBuilder->mpScene = Scene::create(SceneCache::readCache(pBuilder->mSceneCacheKey));
+                return pBuilder;
+            }
+            catch (const std::exception& e)
+            {
+                logWarning(std::string("Failed to load scene cache: ") + e.what());
+            }
+        }
+
         return pBuilder->import(filename, instances) ? pBuilder : nullptr;
     }
 
     bool SceneBuilder::import(const std::string& filename, const InstanceMatrices& instances, const Dictionary& dict)
     {
         bool success = Importer::import(filename, *this, instances, dict);
-        mFilename = filename;
+        mSceneData.filename = filename;
         return success;
     }
 
@@ -195,55 +245,54 @@ namespace Falcor
         // Post-process the scene data.
         TimeReport timeReport;
 
+        // Prepare displacement maps. This either removes them (if requested in build flags)
+        // or makes sure that normal maps are removed if displacement is in use.
+        prepareDisplacementMaps();
+
+        prepareSceneGraph();
         removeUnusedMeshes();
+        flattenStaticMeshInstances();
         pretransformStaticMeshes();
+        unifyTriangleWinding();
+        optimizeSceneGraph();
         calculateMeshBoundingBoxes();
         createMeshGroups();
         optimizeGeometry();
+        sortMeshes();
         createGlobalBuffers();
         createCurveGlobalBuffers();
-        removeDuplicateMaterials();
         collectVolumeGrids();
+
+        timeReport.measure("Post processing geometry");
+
+        optimizeMaterials();
+        removeDuplicateMaterials();
         quantizeTexCoords();
 
-        timeReport.measure("Post processing meshes");
-
-        // Create the scene object and assign resources.
-        mpScene = Scene::create();
-        mpScene->mRenderSettings = mRenderSettings;
-        mpScene->mCameras = mCameras;
-        mpScene->mSelectedCamera = (uint32_t)(mpSelectedCamera ? std::distance(mCameras.begin(), std::find(mCameras.begin(), mCameras.end(), mpSelectedCamera)) : 0);
-        mpScene->mCameraSpeed = mCameraSpeed;
-        mpScene->mLights = mLights;
-        mpScene->mMaterials = mMaterials;
-        mpScene->mVolumes = mVolumes;
-        mpScene->mCustomPrimitiveAABBs = mCustomPrimitiveAABBs;
-        mpScene->mGrids = mGrids;
-        mpScene->mGridIDs = mGridIDs;
-        mpScene->mpEnvMap = mpEnvMap;
-        mpScene->mFilename = mFilename;
+        timeReport.measure("Optimizing materials");
 
         // Prepare scene resources.
-        createNodeList();
-
-        uint32_t drawCount = createMeshData();
-        createMeshVao(drawCount);
+        createSceneGraph();
+        createMeshData();
+        createMeshInstanceData();
         createMeshBoundingBoxes();
 
         if (!mCurves.empty())
         {
             createCurveData();
-            createCurveVao();
             calculateCurveBoundingBoxes();
-            mapCurvesToProceduralPrimitives(Scene::kCurveIntersectionTypeID);
         }
 
-        createRaytracingAABBData();
+        // Write scene cache if requested.
+        if (mWriteSceneCache)
+        {
+            SceneCache::writeCache(mSceneData, mSceneCacheKey);
+            timeReport.measure("Writing cache");
+        }
 
-        mpScene->mpAnimationController = AnimationController::create(mpScene.get(), mBuffersData.staticData, mBuffersData.dynamicData, mAnimations);
-
-        // Finalize the scene object. This is where the final setup is done.
-        mpScene->finalize();
+        // Create the scene object.
+        mpScene = Scene::create(std::move(mSceneData));
+        mSceneData = {};
 
         timeReport.measure("Creating resources");
         timeReport.printToLog();
@@ -271,6 +320,7 @@ namespace Falcor
         mesh.indexCount = (uint32_t)indices.size();
         mesh.pIndices = indices.data();
         mesh.topology = Vao::Topology::TriangleList;
+        mesh.isFrontFaceCW = pTriangleMesh->getFrontFaceCW();
         mesh.pMaterial = pMaterial;
 
         std::vector<float3> positions(vertices.size());
@@ -287,7 +337,7 @@ namespace Falcor
         return addMesh(mesh);
     }
 
-    SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_) const
+    SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAttributeIndices* pAttributeIndices) const
     {
         // This function preprocesses a mesh into the final runtime representation.
         // Note the function needs to be thread safe. The following steps are performed:
@@ -305,6 +355,7 @@ namespace Falcor
         processedMesh.topology = mesh.topology;
         processedMesh.pMaterial = mesh.pMaterial;
         processedMesh.isFrontFaceCW = mesh.isFrontFaceCW;
+        processedMesh.skeletonNodeId = mesh.skeletonNodeId;
 
         // Error checking.
         auto throw_on_missing_element = [&](const std::string& element)
@@ -339,21 +390,10 @@ namespace Falcor
         std::vector<float4> tangents;
         if (!(is_set(mFlags, Flags::UseOriginalTangentSpace) || mesh.useOriginalTangentSpace) || !mesh.tangents.pData)
         {
-            tangents = MikkTSpaceWrapper::generateTangents(mesh);
-            if (!tangents.empty())
-            {
-                assert(tangents.size() == mesh.indexCount);
-                mesh.tangents.pData = tangents.data();
-                mesh.tangents.frequency = Mesh::AttributeFrequency::FaceVarying;
-            }
-            else
-            {
-                mesh.tangents.pData = nullptr;
-                mesh.tangents.frequency = Mesh::AttributeFrequency::None;
-            }
+            generateTangents(mesh, tangents);
         }
 
-        // Pretransform the texture coordinates, rather than tranforming them at runtime.
+        // Pretransform the texture coordinates, rather than transforming them at runtime.
         std::vector<float2> transformedTexCoords;
         if (mesh.texCrds.pData != nullptr)
         {
@@ -394,6 +434,11 @@ namespace Falcor
         std::vector<uint32_t> indices(mesh.indexCount);
         std::vector<uint32_t> heads(mesh.vertexCount, invalidIndex);
 
+        if (pAttributeIndices)
+        {
+            pAttributeIndices->reserve(mesh.vertexCount);
+        }
+
         for (uint32_t face = 0; face < mesh.faceCount; face++)
         {
             for (uint32_t vert = 0; vert < 3; vert++)
@@ -422,6 +467,13 @@ namespace Falcor
                     assert(vertices.size() < std::numeric_limits<uint32_t>::max());
                     index = (uint32_t)vertices.size();
                     vertices.push_back({ v, heads[origIndex] });
+
+                    if (pAttributeIndices)
+                    {
+                        pAttributeIndices->push_back(mesh.getAttributeIndices(face, vert));
+                        assert(vertices.size() == pAttributeIndices->size());
+                    }
+
                     heads[origIndex] = index;
                 }
 
@@ -484,12 +536,29 @@ namespace Falcor
                 d.boneWeight = v.boneWeights;
                 d.boneID = v.boneIDs;
                 d.staticIndex = i; // This references the local vertex here and gets updated in addProcessedMesh().
-                d.globalMatrixID = 0; // This will be initialized in createMeshData().
+                d.bindMatrixID = 0; // This will be initialized in createMeshData().
+                d.skeletonMatrixID = 0; // This will be initialized in createMeshData().
                 processedMesh.dynamicData.push_back(d);
             }
         }
 
         return processedMesh;
+    }
+
+    void SceneBuilder::generateTangents(Mesh& mesh, std::vector<float4>& tangents) const
+    {
+        tangents = MikkTSpaceWrapper::generateTangents(mesh);
+        if (!tangents.empty())
+        {
+            assert(tangents.size() == mesh.indexCount);
+            mesh.tangents.pData = tangents.data();
+            mesh.tangents.frequency = Mesh::AttributeFrequency::FaceVarying;
+        }
+        else
+        {
+            mesh.tangents.pData = nullptr;
+            mesh.tangents.frequency = Mesh::AttributeFrequency::None;
+        }
     }
 
     uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh)
@@ -503,6 +572,7 @@ namespace Falcor
         spec.topology = mesh.topology;
         spec.materialId = addMaterial(mesh.pMaterial);
         spec.isFrontFaceCW = mesh.isFrontFaceCW;
+        spec.skeletonNodeID = mesh.skeletonNodeId;
 
         spec.vertexCount = (uint32_t)mesh.staticData.size();
         spec.staticVertexCount = (uint32_t)mesh.staticData.size();
@@ -533,21 +603,21 @@ namespace Falcor
         return (uint32_t)(mMeshes.size() - 1);
     }
 
-    void SceneBuilder::addCustomPrimitive(uint32_t typeID, const AABB& aabb)
+    void SceneBuilder::addCustomPrimitive(uint32_t userID, const AABB& aabb)
     {
-        uint32_t instanceIdx = 0;
-        auto it = mProceduralPrimInstanceCount.find(typeID);
-        if (it != mProceduralPrimInstanceCount.end())
+        // Currently each custom primitive has exactly one AABB. This may change in the future.
+        assert(mSceneData.customPrimitiveDesc.size() == mSceneData.customPrimitiveAABBs.size());
+        if (mSceneData.customPrimitiveAABBs.size() > std::numeric_limits<uint32_t>::max())
         {
-            instanceIdx = it->second++;
-        }
-        else
-        {
-            mProceduralPrimInstanceCount[typeID] = 1;
+            throw std::runtime_error("Custom primitive count exceeds the maximum");
         }
 
-        pushProceduralPrimitive(typeID, instanceIdx, (uint32_t)mCustomPrimitiveAABBs.size(), 1);
-        mCustomPrimitiveAABBs.push_back(aabb);
+        CustomPrimitiveDesc desc = {};
+        desc.userID = userID;
+        desc.aabbOffset = (uint32_t)mSceneData.customPrimitiveAABBs.size();
+
+        mSceneData.customPrimitiveDesc.push_back(desc);
+        mSceneData.customPrimitiveAABBs.push_back(aabb);
     }
 
     // Curves
@@ -583,8 +653,6 @@ namespace Falcor
 
         if (curve.positions.pData == nullptr) throw_on_missing_element("positions");
         if (curve.radius.pData == nullptr) throw_on_missing_element("radius");
-        if (curve.tangents.pData == nullptr) throw_on_missing_element("tangents");
-        if (curve.normals.pData == nullptr) missing_element_warning("normals");
         if (curve.texCrds.pData == nullptr) missing_element_warning("texture coordinates");
 
         // Copy indices and vertices into processed curve.
@@ -596,16 +664,6 @@ namespace Falcor
             StaticCurveVertexData s;
             s.position = curve.positions.pData[i];
             s.radius = curve.radius.pData[i];
-            s.tangent = curve.tangents.pData[i];
-
-            if (curve.normals.pData != nullptr)
-            {
-                s.normal = curve.normals.pData[i];
-            }
-            else
-            {
-                s.normal = float3(0.f);
-            }
 
             if (curve.texCrds.pData != nullptr)
             {
@@ -656,19 +714,19 @@ namespace Falcor
         assert(pMaterial);
 
         // Reuse previously added materials
-        if (auto it = std::find(mMaterials.begin(), mMaterials.end(), pMaterial); it != mMaterials.end())
+        if (auto it = std::find(mSceneData.materials.begin(), mSceneData.materials.end(), pMaterial); it != mSceneData.materials.end())
         {
-            return (uint32_t)std::distance(mMaterials.begin(), it);
+            return (uint32_t)std::distance(mSceneData.materials.begin(), it);
         }
 
-        mMaterials.push_back(pMaterial);
-        assert(mMaterials.size() <= std::numeric_limits<uint32_t>::max());
-        return (uint32_t)mMaterials.size() - 1;
+        mSceneData.materials.push_back(pMaterial);
+        assert(mSceneData.materials.size() <= std::numeric_limits<uint32_t>::max());
+        return (uint32_t)mSceneData.materials.size() - 1;
     }
 
     Material::SharedPtr SceneBuilder::getMaterial(const std::string& name) const
     {
-        for (const auto& pMaterial : mMaterials)
+        for (const auto& pMaterial : mSceneData.materials)
         {
             if (pMaterial->getName() == name) return pMaterial;
         }
@@ -681,34 +739,55 @@ namespace Falcor
         mpMaterialTextureLoader->loadTexture(pMaterial, slot, filename);
     }
 
+    void SceneBuilder::waitForMaterialTextureLoading()
+    {
+        mpMaterialTextureLoader.reset();
+    }
+
     // Volumes
 
     Volume::SharedPtr SceneBuilder::getVolume(const std::string& name) const
     {
-        for (const auto& pVolume : mVolumes)
+        for (const auto& pVolume : mSceneData.volumes)
         {
             if (pVolume->getName() == name) return pVolume;
         }
         return nullptr;
     }
 
-    uint32_t SceneBuilder::addVolume(const Volume::SharedPtr& pVolume)
+    uint32_t SceneBuilder::addVolume(const Volume::SharedPtr& pVolume, uint32_t nodeID)
     {
         assert(pVolume);
+        if (nodeID != kInvalidNode && nodeID >= mSceneGraph.size()) throw std::runtime_error("SceneBuilder::addVolume() - nodeID " + std::to_string(nodeID) + " is out of range");
 
-        mVolumes.push_back(pVolume);
-        assert(mVolumes.size() <= std::numeric_limits<uint32_t>::max());
-        return (uint32_t)mVolumes.size() - 1;
+        if (nodeID != kInvalidNode)
+        {
+            pVolume->setHasAnimation(true);
+            pVolume->setNodeID(nodeID);
+        }
+
+        mSceneData.volumes.push_back(pVolume);
+        assert(mSceneData.volumes.size() <= std::numeric_limits<uint32_t>::max());
+        return (uint32_t)mSceneData.volumes.size() - 1;
     }
 
     // Lights
 
+    Light::SharedPtr SceneBuilder::getLight(const std::string& name) const
+    {
+        for (const auto& pLight : mSceneData.lights)
+        {
+            if (pLight->getName() == name) return pLight;
+        }
+        return nullptr;
+    }
+
     uint32_t SceneBuilder::addLight(const Light::SharedPtr& pLight)
     {
         assert(pLight);
-        mLights.push_back(pLight);
-        assert(mLights.size() <= std::numeric_limits<uint32_t>::max());
-        return (uint32_t)mLights.size() - 1;
+        mSceneData.lights.push_back(pLight);
+        assert(mSceneData.lights.size() <= std::numeric_limits<uint32_t>::max());
+        return (uint32_t)mSceneData.lights.size() - 1;
     }
 
     // Cameras
@@ -716,22 +795,27 @@ namespace Falcor
     uint32_t SceneBuilder::addCamera(const Camera::SharedPtr& pCamera)
     {
         assert(pCamera);
-        mCameras.push_back(pCamera);
-        assert(mCameras.size() <= std::numeric_limits<uint32_t>::max());
-        return (uint32_t)mCameras.size() - 1;
+        mSceneData.cameras.push_back(pCamera);
+        assert(mSceneData.cameras.size() <= std::numeric_limits<uint32_t>::max());
+        return (uint32_t)mSceneData.cameras.size() - 1;
+    }
+
+    Camera::SharedPtr SceneBuilder::getSelectedCamera() const
+    {
+        return mSceneData.selectedCamera < mSceneData.cameras.size() ? mSceneData.cameras[mSceneData.selectedCamera] : nullptr;
     }
 
     void SceneBuilder::setSelectedCamera(const Camera::SharedPtr& pCamera)
     {
-        auto it = std::find(mCameras.begin(), mCameras.end(), pCamera);
-        if (it != mCameras.end()) mpSelectedCamera = pCamera;
+        auto it = std::find(mSceneData.cameras.begin(), mSceneData.cameras.end(), pCamera);
+        mSceneData.selectedCamera = it != mSceneData.cameras.end() ? (uint32_t)std::distance(mSceneData.cameras.begin(), it) : 0;
     }
 
     // Animations
 
     void SceneBuilder::addAnimation(const Animation::SharedPtr& pAnimation)
     {
-        mAnimations.push_back(pAnimation);
+        mSceneData.animations.push_back(pAnimation);
     }
 
     Animation::SharedPtr SceneBuilder::createAnimation(Animatable::SharedPtr pAnimatable, const std::string& name, double duration)
@@ -760,12 +844,39 @@ namespace Falcor
 
     uint32_t SceneBuilder::addNode(const Node& node)
     {
-        assert(node.parent == kInvalidNode || node.parent < mSceneGraph.size());
+        // Validate node.
+        auto validateMatrix = [&](glm::mat4 m, const char* field)
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                if (glm::any(glm::isinf(m[i])) || glm::any(glm::isnan(m[i])))
+                {
+                    throw std::runtime_error("SceneBuilder::addNode() - Node '" + node.name + "' " + field + " matrix has inf/nan values");
+                }
+                // Check the assumption that transforms are affine. Note that glm is column-major.
+                if (m[0][3] != 0.f || m[1][3] != 0.f || m[2][3] != 0.f || m[3][3] != 1.f)
+                {
+                    logWarning("SceneBuilder::addNode() - Node '" + node.name + "' " + field + " matrix is not affine. Setting last row to (0,0,0,1).");
+                    m[0][3] = m[1][3] = m[2][3] = 0.f;
+                    m[3][3] = 1.f;
+                }
+            }
+            return m;
+        };
 
-        assert(mSceneGraph.size() <= std::numeric_limits<uint32_t>::max());
+        InternalNode internalNode(node);
+        internalNode.transform = validateMatrix(node.transform, "transform");
+        internalNode.localToBindPose = validateMatrix(node.localToBindPose, "localToBindPose");
+
+        static_assert(kInvalidNode >= std::numeric_limits<uint32_t>::max());
+        if (node.parent != kInvalidNode && node.parent >= mSceneGraph.size()) throw std::runtime_error("SceneBuilder::addNode() - Node parent is out of range");
+        if (mSceneGraph.size() >= std::numeric_limits<uint32_t>::max()) throw std::runtime_error("SceneBuilder::addNode() - Scene graph is too large");
+
+        // Add node to scene graph.
         uint32_t newNodeID = (uint32_t)mSceneGraph.size();
-        mSceneGraph.push_back(InternalNode(node));
+        mSceneGraph.push_back(internalNode);
         if (node.parent != kInvalidNode) mSceneGraph[node.parent].children.push_back(newNodeID);
+
         return newNodeID;
     }
 
@@ -787,16 +898,22 @@ namespace Falcor
         mCurves[curveID].instances.push_back(nodeID);
     }
 
+    bool SceneBuilder::doesNodeHaveAnimation(uint32_t nodeID) const
+    {
+        assert(nodeID != kInvalidNode && nodeID < mSceneGraph.size());
+        for (const auto& pAnimation : mSceneData.animations)
+        {
+            if (pAnimation->getNodeID() == nodeID) return true;
+        }
+
+        return false;
+    }
+
     bool SceneBuilder::isNodeAnimated(uint32_t nodeID) const
     {
-        assert(nodeID < mSceneGraph.size());
-
         while (nodeID != kInvalidNode)
         {
-            for (const auto& pAnimation : mAnimations)
-            {
-                if (pAnimation->getNodeID() == nodeID) return true;
-            }
+            if (doesNodeHaveAnimation(nodeID)) return true;
             nodeID = mSceneGraph[nodeID].parent;
         }
 
@@ -809,7 +926,7 @@ namespace Falcor
 
         while (nodeID != kInvalidNode)
         {
-            for (const auto& pAnimation : mAnimations)
+            for (const auto& pAnimation : mSceneData.animations)
             {
                 if (pAnimation->getNodeID() == nodeID)
                 {
@@ -823,11 +940,190 @@ namespace Falcor
 
     // Internal
 
+    void SceneBuilder::updateLinkedObjects(uint32_t nodeID, uint32_t newNodeID)
+    {
+        // Helper function to update all objects linked from a node to point to newNodeID.
+        // This is useful when modifying the graph.
+
+        assert(nodeID != kInvalidNode && nodeID < mSceneGraph.size());
+        assert(newNodeID != kInvalidNode && newNodeID < mSceneGraph.size());
+        const auto& node = mSceneGraph[nodeID];
+
+        for (auto childID : node.children)
+        {
+            assert(childID < mSceneGraph.size());
+            assert(mSceneGraph[childID].parent == nodeID);
+            mSceneGraph[childID].parent = newNodeID;
+        }
+        for (auto meshID : node.meshes)
+        {
+            assert(meshID < mMeshes.size());
+            auto& mesh = mMeshes[meshID];
+            std::replace(mesh.instances.begin(), mesh.instances.end(), nodeID, newNodeID);
+        }
+        for (auto curveID : node.curves)
+        {
+            assert(curveID < mCurves.size());
+            auto& curve = mCurves[curveID];
+            std::replace(curve.instances.begin(), curve.instances.end(), nodeID, newNodeID);
+        }
+        for (auto pObject : node.animatable)
+        {
+            assert(pObject);
+            assert(pObject->getNodeID() == nodeID);
+            pObject->setNodeID(newNodeID);
+        }
+    }
+
+    bool SceneBuilder::collapseNodes(uint32_t parentNodeID, uint32_t childNodeID)
+    {
+        // Collapses the nodes from parent...child node into the parent node if possible.
+        // The transform of the parent node is updated to account for the combined transform.
+        // The prerequisite for this is that the parent..child-1 nodes have no other children and that
+        // all the nodes are static. The function returns false if the necessary conditions are not met.
+
+        // Check that nodes are valid.
+        if (parentNodeID == kInvalidNode || childNodeID == kInvalidNode) return false;
+        assert(parentNodeID < mSceneGraph.size() && childNodeID < mSceneGraph.size());
+
+        if (mSceneGraph[parentNodeID].dontOptimize || mSceneGraph[childNodeID].dontOptimize) return false;
+        if (doesNodeHaveAnimation(childNodeID)) return false;
+
+        // Compute the combined transform.
+        auto& child = mSceneGraph[childNodeID];
+        glm::mat4 transform = child.transform;
+        uint32_t prevNodeID = childNodeID;
+        uint32_t nodeID = child.parent;
+
+        while (nodeID != kInvalidNode)
+        {
+            assert(nodeID < mSceneGraph.size());
+            const auto& node = mSceneGraph[nodeID];
+
+            // Check that node is a static interior node with a single child.
+            if (node.children.size() > 1 ||
+                node.hasObjects() ||
+                doesNodeHaveAnimation(nodeID) ||
+                mSceneGraph[nodeID].dontOptimize) return false;
+
+            assert(node.children.size() == 1);
+            assert(node.children[0] == prevNodeID);
+
+            // Update the transform and step to the parent.
+            transform = node.transform * transform;
+
+            if (nodeID == parentNodeID) break;
+            prevNodeID = nodeID;
+            nodeID = mSceneGraph[nodeID].parent;
+        }
+
+        if (nodeID == kInvalidNode) return false; // We didn't find the parent.
+
+        // Update all linked objects to point to the new parent node.
+        updateLinkedObjects(childNodeID, parentNodeID);
+
+        // Update the parent node to the child's data.
+        // The new parent node will hold the combined transform.
+        auto& parent = mSceneGraph[parentNodeID];
+        auto oldParentID = parent.parent;
+
+        parent = std::move(child);
+        parent.parent = oldParentID;
+        parent.transform = transform;
+
+        // Reset the now unused nodes below the parent to a valid empty state.
+        // TODO: Run a separate optimization pass to compact the node list.
+        nodeID = childNodeID;
+        while (nodeID != parentNodeID)
+        {
+            auto& node = mSceneGraph[nodeID];
+            nodeID = node.parent;
+            node = InternalNode();
+        }
+
+        return true;
+    }
+
+    bool SceneBuilder::mergeNodes(uint32_t dstNodeID, uint32_t srcNodeID)
+    {
+        // This function merges the source node into the destination node.
+        // The prerequisite for this to work is that the two nodes are static
+        // and have identical transforms and parent nodes (or no parents).
+        // The function returns false if the necessary conditions are not met.
+
+        // Check that nodes are valid and compatible for merging.
+        if (dstNodeID == kInvalidNode || srcNodeID == kInvalidNode) return false;
+        assert(dstNodeID < mSceneGraph.size() && srcNodeID < mSceneGraph.size());
+
+        auto& dst = mSceneGraph[dstNodeID];
+        auto& src = mSceneGraph[srcNodeID];
+
+        if (mSceneGraph[dstNodeID].dontOptimize || mSceneGraph[srcNodeID].dontOptimize) return false;
+        if (doesNodeHaveAnimation(dstNodeID) || doesNodeHaveAnimation(srcNodeID)) return false;
+
+        if (dst.parent != src.parent ||
+            dst.transform != src.transform ||
+            dst.localToBindPose != src.localToBindPose) return false;
+
+        // Update all linked objects to point to the dest node.
+        updateLinkedObjects(srcNodeID, dstNodeID);
+
+        // Merge the source node into the dest node.
+        dst.children.insert(dst.children.end(), src.children.begin(), src.children.end());
+        dst.meshes.insert(dst.meshes.end(), src.meshes.begin(), src.meshes.end());
+        dst.curves.insert(dst.curves.end(), src.curves.begin(), src.curves.end());
+        dst.animatable.insert(dst.animatable.end(), src.animatable.begin(), src.animatable.end());
+
+        // Reset the now unused source node to a valid empty state.
+        src = InternalNode();
+
+        return true;
+    }
+
+    void SceneBuilder::prepareDisplacementMaps()
+    {
+        for (const auto& pMaterial : mSceneData.materials)
+        {
+            // Remove displacement maps if requested by scene flags.
+            if (is_set(mFlags, Flags::DontUseDisplacement)) pMaterial->clearTexture(Material::TextureSlot::Displacement);
+
+            // Remove normal maps for materials using displacement.
+            if (pMaterial->getDisplacementMap() != nullptr) pMaterial->clearTexture(Material::TextureSlot::Normal);
+        }
+    }
+
+    void SceneBuilder::prepareSceneGraph()
+    {
+        // This function validates and prepares the scene graph for use by later passes.
+        // It appends pointers to all animatable objects to their respective scene graph nodes.
+
+        auto addAnimatable = [this](Animatable* pObject, const std::string& name) {
+            if (auto nodeID = pObject->getNodeID(); nodeID != kInvalidNode)
+            {
+                if (nodeID >= mSceneGraph.size()) throw std::runtime_error("Invalid node ID in animatable object named '" + name + "'");
+                mSceneGraph[nodeID].animatable.push_back(pObject);
+            }
+        };
+
+        for (const auto& light : mSceneData.lights) addAnimatable(light.get(), light->getName());
+        for (const auto& camera : mSceneData.cameras) addAnimatable(camera.get(), camera->getName());
+        for (const auto& volume : mSceneData.volumes) addAnimatable(volume.get(), volume->getName());
+
+        for (const auto& mesh : mMeshes)
+        {
+            if (mesh.skeletonNodeID != kInvalidNode)
+            {
+                mSceneGraph[mesh.skeletonNodeID].dontOptimize = true;
+            }
+        }
+    }
+
     void SceneBuilder::removeUnusedMeshes()
     {
         // If the scene contained meshes that are not referenced by the scene graph,
         // those will be removed here and warnings logged.
 
+        // First count number of unused meshes.
         size_t unusedCount = 0;
         for (uint32_t meshID = 0; meshID < (uint32_t)mMeshes.size(); meshID++)
         {
@@ -839,6 +1135,7 @@ namespace Falcor
             }
         }
 
+        // Rebuild mesh list and scene graph only if one or more meshes need to be removed.
         if (unusedCount > 0)
         {
             logWarning("Scene has " + std::to_string(unusedCount) + " unused meshes that will be removed.");
@@ -855,7 +1152,7 @@ namespace Falcor
                 // Get new mesh ID.
                 const uint32_t newMeshID = (uint32_t)meshes.size();
 
-                // Update scene graph nodes meshIDs.
+                // Update the mesh IDs in the scene graph nodes.
                 for (const auto nodeID : mesh.instances)
                 {
                     assert(nodeID < mSceneGraph.size());
@@ -877,8 +1174,199 @@ namespace Falcor
         }
     }
 
+    void SceneBuilder::flattenStaticMeshInstances()
+    {
+        // This function optionally flattens all instanced non-skinned mesh instances to
+        // separate non-instanced meshes by duplicating mesh data and composing transformations.
+        // The pass is disabled by default. Can lead to a large increase in memory use.
+
+        if (!is_set(mFlags, Flags::FlattenStaticMeshInstances))
+        {
+            return;
+        }
+
+        size_t flattenedInstanceCount = 0;
+        std::vector<MeshSpec> newMeshes;
+
+        for (uint32_t meshID = 0; meshID < (uint32_t)mMeshes.size(); meshID++)
+        {
+            auto& mesh = mMeshes[meshID];
+
+            // Skip non-instanced and dynamic meshes.
+            if (mesh.instances.size() == 1 || mesh.isDynamic())
+            {
+                continue;
+            }
+
+            assert(!mesh.instances.empty());
+            assert(mesh.dynamicData.empty() && mesh.dynamicVertexCount == 0);
+
+            // i is the current index into mesh.instances in the loop below.
+            // It is only incremented when skipping over an instance that is not being flattened.
+            uint32_t i = 0;
+            // Because we're deleting elements from mesh.instances below, stash the original size of the vector.
+            const size_t instCount = mesh.instances.size();
+            for (uint32_t instNum = 0; instNum < instCount; ++instNum)
+            {
+                auto nodeID = mesh.instances.at(i);
+                // Skip animated/skinned instances.
+                if (isNodeAnimated(nodeID))
+                {
+                    ++i;
+                    continue;
+                }
+                MeshSpec meshCopy;
+                // newMesh will point to the mesh representing the instance we are flattening.
+                MeshSpec* newMesh;
+                if (mesh.instances.size() > 1)
+                {
+                    // There is more than once instance, either static or dynamic.
+                    // Create a copy of the mesh. This can be expensive.
+                    meshCopy = mesh;
+                    meshCopy.name = mesh.name + "[" + std::to_string(instNum) + "]";
+                    // Make newMesh point to the copy
+                    newMesh = &meshCopy;
+                }
+                else
+                {
+                    // This is now the only instance of the mesh. Re-use it, rather than
+                    // making an (potentially expensive) copy.
+                    newMesh = &mesh;
+                }
+
+                // Compute the object->world transform for the node.
+                assert(nodeID != kInvalidNode);
+
+                glm::mat4 transform = glm::identity<glm::mat4>();
+                while (nodeID != kInvalidNode)
+                {
+                    assert(nodeID < mSceneGraph.size());
+                    transform = mSceneGraph[nodeID].transform * transform;
+
+                    nodeID = mSceneGraph[nodeID].parent;
+                }
+
+                flattenedInstanceCount++;
+
+                // Unlink original instance from its previous transform node.
+                auto& prevNode = mSceneGraph[mesh.instances[i]];
+                auto it = std::find(prevNode.meshes.begin(), prevNode.meshes.end(), meshID);
+                assert(it != prevNode.meshes.end());
+                prevNode.meshes.erase(it);
+
+                // Link mesh to new top-level node.
+                uint32_t newNodeID = addNode(Node{newMesh->name, transform, glm::identity<glm::mat4>()});
+                auto& newNode = mSceneGraph[newNodeID];
+
+                // Clear the copied list of instance parents, and replace with the new, single instance parent.
+                newMesh->instances.clear();
+                newMesh->instances.push_back(newNodeID);
+
+                if (mesh.instances.size() > 1)
+                {
+                    // newMesh is a new copy of the original.
+                    // Add it to the new node
+                    uint32_t newMeshID = (uint32_t)(mMeshes.size() + newMeshes.size());
+                    newNode.meshes.push_back(newMeshID);
+                    // Remove the instance from the current mesh
+                    mesh.instances.erase(mesh.instances.begin() + i);
+                    // Add to vector of meshes to be appended to mMeshes
+                    newMeshes.push_back(*newMesh);
+                }
+                else
+                {
+                    // Re-using the original mesh; add it to the new node.
+                    newNode.meshes.push_back(meshID);
+                }
+            }
+        }
+
+        if (mMeshes.size() == 0)
+        {
+            mMeshes = std::move(newMeshes);
+        }
+        else
+        {
+            mMeshes.reserve(mMeshes.size() + newMeshes.size());
+            std::move(newMeshes.begin(), newMeshes.end(), std::back_inserter(mMeshes));
+        }
+
+        if (flattenedInstanceCount > 0) logInfo("Flattened " + std::to_string(flattenedInstanceCount) + " static instances.");
+    }
+
+    void SceneBuilder::optimizeSceneGraph()
+    {
+        // This function optimizes the scene graph to flatten transform hierarchies
+        // where possible by merging nodes.
+        if (is_set(mFlags, Flags::DontOptimizeGraph)) return;
+
+        // Iterate over all nodes to collapse sub-trees of static nodes.
+        size_t removedNodes = 0;
+        for (uint32_t nodeID = 0; nodeID < mSceneGraph.size(); nodeID++)
+        {
+            const auto& node = mSceneGraph[nodeID];
+            if (collapseNodes(node.parent, nodeID)) removedNodes++;
+        }
+
+        if (removedNodes > 0) logInfo("Optimized scene graph by removing " + std::to_string(removedNodes) + " internal static nodes");
+
+        // Merge identical static nodes.
+        // We build a set of unique nodes. If a node is identical to one of the
+        // existing nodes, its contents are merged into the matching node.
+
+        // Comparison for strict weak ordering of glm::mat4. TODO: Isn't there a better way?
+        auto lessThan = [](const glm::mat4& lhs, const glm::mat4& rhs) {
+            for (int i = 0; i < 4; i++)
+                for (int j = 0; j < 4; j++)
+                    if (lhs[i][j] != rhs[i][j]) return lhs[i][j] < rhs[i][j];
+            return false;
+        };
+
+        // Comparison for strict weak ordering of scene graph nodes w r t to the fields we care about.
+        auto cmp = [this, lessThan](uint32_t lhsID, uint32_t rhsID) {
+            const auto& lhs = mSceneGraph[lhsID];
+            const auto& rhs = mSceneGraph[rhsID];
+            if (lhs.parent != rhs.parent) return lhs.parent < rhs.parent;
+            if (lhs.transform != rhs.transform) return lessThan(lhs.transform, rhs.transform);
+            if (lhs.localToBindPose != rhs.localToBindPose) return lessThan(lhs.localToBindPose, rhs.localToBindPose);
+            return false;
+        };
+
+        std::set<uint32_t, decltype(cmp)> uniqueStaticNodes(cmp); // In C++20 we can drop the constructor argument.
+
+        size_t mergedNodes = 0;
+        for (uint32_t nodeID = 0; nodeID < mSceneGraph.size(); nodeID++)
+        {
+            const auto& node = mSceneGraph[nodeID];
+
+            // Skip over unused or animated nodes.
+            if (node.children.empty() && !node.hasObjects()) continue;
+            if (doesNodeHaveAnimation(nodeID)) continue;
+            if (mSceneGraph[nodeID].dontOptimize) continue;
+
+            // Look for an identical node and merge current node into it if found.
+            auto it = uniqueStaticNodes.find(nodeID);
+            if (it != uniqueStaticNodes.end())
+            {
+                bool merged = mergeNodes(*it, nodeID);
+                if (!merged) throw std::logic_error("Unexpectedly failed to merge nodes");
+                mergedNodes++;
+            }
+            else
+            {
+                uniqueStaticNodes.insert(nodeID);
+            }
+        }
+
+        if (mergedNodes > 0) logInfo("Optimized scene graph by merging " + std::to_string(mergedNodes) + " identical static nodes");
+    }
+
     void SceneBuilder::pretransformStaticMeshes()
     {
+        // This function transforms all static, non-instanced meshes to world space.
+        // A new identity transform node is inserted in the scene graph, linking all transformed meshes.
+        // This step is a prerequisite for the ray tracing optimizations we do later.
+
         // Add an identity transform node.
         uint32_t identityNodeID = addNode(Node{ "Identity", glm::identity<glm::mat4>(), glm::identity<glm::mat4>() });
         auto& identityNode = mSceneGraph[identityNodeID];
@@ -890,9 +1378,9 @@ namespace Falcor
 
             // Skip instanced/animated/skinned meshes.
             assert(!mesh.instances.empty());
-            if (mesh.instances.size() > 1 || isNodeAnimated(mesh.instances[0]) || mesh.hasDynamicData) continue;
+            if (mesh.instances.size() > 1 || isNodeAnimated(mesh.instances[0]) || mesh.isDynamic()) continue;
 
-            assert(mesh.dynamicData.empty() && mesh.dynamicVertexCount == 0);
+            assert(mesh.dynamicData.empty());
             mesh.isStatic = true;
 
             // Compute the object->world transform for the node.
@@ -908,7 +1396,7 @@ namespace Falcor
                 nodeID = mSceneGraph[nodeID].parent;
             }
 
-            // Flip triangle winding if the transform flips the coordinate system handedness (negative determinant).
+            // Flip triangle winding flag if the transform flips the coordinate system handedness (negative determinant).
             bool flippedWinding = glm::determinant((glm::mat3)transform) < 0.f;
             if (flippedWinding) mesh.isFrontFaceCW = !mesh.isFrontFaceCW;
 
@@ -947,7 +1435,68 @@ namespace Falcor
             mesh.instances[0] = identityNodeID;
         }
 
-        logDebug("Pre-transformed " + std::to_string(transformedMeshCount) + " static meshes to world space");
+        if (transformedMeshCount > 0) logInfo("Pre-transformed " + std::to_string(transformedMeshCount) + " static meshes to world space");
+    }
+
+    void SceneBuilder::flipTriangleWinding(MeshSpec& mesh)
+    {
+        assert(mesh.topology == Vao::Topology::TriangleList);
+
+        // Abort if mesh is non-indexed. Implement this code path when/if needed.
+        // Note that both static and dynamic vertices have to be swapped for dynamic meshes.
+        if (mesh.indexCount == 0)
+        {
+            throw std::runtime_error("SceneBuilder::flipTriangleWinding() is not implemented for non-indexed meshes");
+        }
+
+        // Flip winding of indexed mesh by swapping vertex index 0 and 1 for each triangle.
+        assert(!mesh.indexData.empty());
+        assert(mesh.indexCount % 3 == 0);
+
+        if (mesh.use16BitIndices)
+        {
+            assert(mesh.indexCount <= mesh.indexData.size() * 2);
+            uint16_t* indices = reinterpret_cast<uint16_t*>(mesh.indexData.data());
+            for (size_t i = 0; i < mesh.indexCount; i += 3) std::swap(indices[i], indices[i + 1]);
+        }
+        else
+        {
+            assert(mesh.indexCount == mesh.indexData.size());
+            uint32_t* indices = mesh.indexData.data();
+            for (size_t i = 0; i < mesh.indexCount; i += 3) std::swap(indices[i], indices[i + 1]);
+        }
+
+        mesh.isFrontFaceCW = !mesh.isFrontFaceCW;
+    }
+
+    void SceneBuilder::unifyTriangleWinding()
+    {
+        // This function makes the triangle winding for all meshes consistent in object space,
+        // so that a triangle is front facing if its vertices appear counter-clockwise from the ray origin
+        // in a right-handed coordinate system (Falcor's default).
+        //
+        // The reason to do this is so that we can pack meshes into BLASes without having to separate them
+        // by clockwise and counter-clockwise winding. This is a requirement to support backface culling
+        // when ray tracing, since all meshes in a BLAS must have the same winding.
+        //
+        // Note that this pass needs to run *after* pre-transformation of static meshes to world space,
+        // as those transforms may flip the winding.
+
+        size_t flippedMeshCount = 0;
+        for (uint32_t meshID = 0; meshID < (uint32_t)mMeshes.size(); meshID++)
+        {
+            auto& mesh = mMeshes[meshID];
+
+            // Skip meshes that are already front face counter-clockwise.
+            if (mesh.isFrontFaceCW == false) continue;
+
+            flipTriangleWinding(mesh);
+            assert(!mesh.isFrontFaceCW);
+
+            flippedMeshCount++;
+        }
+
+        if (flippedMeshCount > 0) logInfo("Flipped triangle winding for " + std::to_string(flippedMeshCount) + " out of " + std::to_string(mMeshes.size()) + " meshes");
     }
 
     void SceneBuilder::calculateMeshBoundingBoxes()
@@ -976,67 +1525,150 @@ namespace Falcor
         // Note that a BLAS may be referenced by multiple TLAS instances.
         //
         // The sorting criteria are:
-        //  - Instanced meshes are placed in unique groups (BLASes).
-        //    The TLAS instances will apply different transforms but all refer to the same BLAS.
-        //  - Non-instanced dynamic meshes (skinned and/or animated) are sorted into groups with the same transform.
-        //    The idea is that all parts of a dynamic object that move together go in the same BLAS and the TLAS instance applies the transform.
-        //  - Non-instanced static meshes are all placed in the same group.
+        //  - Non-instanced static meshes are all placed in the same group (BLAS).
         //    The vertices are pre-transformed in the BLAS and the TLAS instance has an identity transform.
         //    This ensures fast traversal for the static parts of a scene independent of the scene hierarchy.
+        //  - Non-instanced dynamic meshes (skinned and/or animated) are sorted into groups (BLASes) with the same transform.
+        //    The idea is that all parts of a dynamic object that move together go in the same BLAS and the TLAS instance applies the transform.
+        //  - Instanced meshes are sorted into groups (BLASes) with identical instances.
+        //    The idea is that all parts of an instanced object go in the same BLAS and the TLAS instances apply the transforms.
+        //    Note that dynamic (skinned) meshes currently cannot be instanced due to limitations in the scene structures. See #1118.
         // TODO: Add build flag to turn off pre-transformation to world space.
 
         // Classify non-instanced meshes.
         // The non-instanced dynamic meshes are grouped based on what global matrix ID their transform is.
         // The non-instanced static meshes are placed in the same group.
-        std::unordered_map<uint32_t, std::vector<uint32_t>> nodeToMeshList;
-        std::vector<uint32_t> staticMeshes;
+
+        using meshList = std::vector<uint32_t>;
+        std::unordered_map<uint32_t, meshList> nodeToMeshList;
+        meshList staticMeshes;
+        meshList staticDisplacedMeshes;
+        meshList dynamicDisplacedMeshes;
+        size_t nonInstancedMeshCount = 0;
 
         for (uint32_t meshID = 0; meshID < (uint32_t)mMeshes.size(); meshID++)
         {
-            const auto& mesh = mMeshes[meshID];
+            auto& mesh = mMeshes[meshID];
             if (mesh.instances.size() > 1) continue; // Only processing non-instanced meshes here
 
             assert(mesh.instances.size() == 1);
             uint32_t nodeID = mesh.instances[0];
 
-            if (mesh.isStatic) staticMeshes.push_back(meshID);
+            // Mark displaced meshes.
+            if (mSceneData.materials[mesh.materialId]->getDisplacementMap() != nullptr) mesh.isDisplaced = true;
+
+            if (mesh.isStatic && mesh.isDisplaced) staticDisplacedMeshes.push_back(meshID);
+            else if (mesh.isStatic) staticMeshes.push_back(meshID);
+            else if (!mesh.isStatic && mesh.isDisplaced) dynamicDisplacedMeshes.push_back(meshID);
             else nodeToMeshList[nodeID].push_back(meshID);
+            nonInstancedMeshCount++;
         }
 
+        // Validate that mesh counts add up.
+        size_t nonInstancedDynamicMeshCount = 0;
+        for (const auto& it : nodeToMeshList) nonInstancedDynamicMeshCount += it.second.size();
+        assert(staticMeshes.size() + staticDisplacedMeshes.size() + dynamicDisplacedMeshes.size() + nonInstancedDynamicMeshCount == nonInstancedMeshCount);
+
+        // Classify instanced meshes.
+        // The instanced meshes are grouped based on their lists of instances.
+        // Meshes with an identical set of instances can be placed together in a BLAS.
+
+        // It's important the instance lists are ordered and unique, so using std::set to describe them.
+        // TODO: Maybe we should just change MeshSpec::instances to be a std::set in the first place?
+        using instances = std::set<uint32_t>;
+        std::map<instances, meshList> instancesToMeshList;
+        std::map<instances, meshList> displacedInstancesToMeshList;
+        size_t instancedMeshCount = 0;
+
+        for (uint32_t meshID = 0; meshID < (uint32_t)mMeshes.size(); meshID++)
+        {
+            auto& mesh = mMeshes[meshID];
+            if (mesh.instances.size() <= 1) continue; // Only processing instanced meshes here
+
+            // Mark displaced meshes.
+            if (mSceneData.materials[mesh.materialId]->getDisplacementMap() != nullptr) mesh.isDisplaced = true;
+
+            instances inst(mesh.instances.begin(), mesh.instances.end());
+            if (mesh.isDisplaced) displacedInstancesToMeshList[inst].push_back(meshID);
+            else instancesToMeshList[inst].push_back(meshID);
+            instancedMeshCount++;
+        }
+
+        // Validate that each mesh is only indexed once.
+        std::set<uint32_t> instancedMeshes;
+        size_t instancedCount = 0;
+        for (const auto& it : instancesToMeshList)
+        {
+            instancedMeshes.insert(it.second.begin(), it.second.end());
+            instancedCount += it.second.size();
+        }
+        std::set<uint32_t> displacedInstancedMeshes;
+        size_t displacedInstancedCount = 0;
+        for (const auto& it : displacedInstancesToMeshList)
+        {
+            displacedInstancedMeshes.insert(it.second.begin(), it.second.end());
+            displacedInstancedCount += it.second.size();
+        }
+        if ((instancedCount + displacedInstancedCount) != instancedMeshCount ||
+            (instancedMeshes.size() + displacedInstancedMeshes.size()) != instancedMeshCount) throw std::logic_error("Error in instanced mesh grouping logic");
+
+        logInfo("Found " + std::to_string(staticMeshes.size()) + " static non-instanced meshes, arranged in 1 mesh group.");
+        logInfo("Found " + std::to_string(staticDisplacedMeshes.size()) + " displaced non-instanced meshes, arranged in 1 mesh group.");
+        logInfo("Found " + std::to_string(nonInstancedDynamicMeshCount) + " dynamic non-instanced meshes, arranged in " + std::to_string(nodeToMeshList.size()) + " mesh groups.");
+        logInfo("Found " + std::to_string(instancedMeshCount) + " instanced meshes, arranged in " + std::to_string(instancesToMeshList.size()) + " mesh groups.");
+
         // Build final result. Format is a list of Mesh ID's per mesh group.
+
+        auto addMeshes = [this](const meshList& meshes, bool isStatic, bool isDisplaced, bool splitGroup)
+        {
+            if (!splitGroup)
+            {
+                mMeshGroups.push_back({ meshes, isStatic, isDisplaced });
+            }
+            else
+            {
+                for (const auto& meshID : meshes) mMeshGroups.push_back(MeshGroup{ meshList({ meshID }), isStatic });
+            }
+        };
 
         // All static non-instanced meshes go in a single group or individual groups depending on config.
         if (!staticMeshes.empty())
         {
-            if (!is_set(mFlags, Flags::RTDontMergeStatic))
-            {
-                mMeshGroups.push_back({ staticMeshes, true });
-            }
-            else
-            {
-                for (const auto& meshID : staticMeshes) mMeshGroups.push_back(MeshGroup{ std::vector<uint32_t>({ meshID }), true });
-            }
+            addMeshes(staticMeshes, true, false, is_set(mFlags, Flags::RTDontMergeStatic));
         }
 
         // Non-instanced dynamic meshes were sorted above so just copy each list.
         for (const auto& it : nodeToMeshList)
         {
-            if (!is_set(mFlags, Flags::RTDontMergeDynamic))
-            {
-                mMeshGroups.push_back({ it.second, false });
-            }
-            else
-            {
-                for (const auto& meshID : it.second) mMeshGroups.push_back(MeshGroup{ std::vector<uint32_t>({ meshID }), false });
-            }
+            addMeshes(it.second, false, false, is_set(mFlags, Flags::RTDontMergeDynamic));
         }
 
-        // Instanced static and dynamic meshes always go in their own groups.
-        for (uint32_t meshID = 0; meshID < (uint32_t)mMeshes.size(); meshID++)
+        // Instanced static and dynamic meshes are grouped based on instance lists.
+        for (const auto& it : instancesToMeshList)
         {
-            const auto& mesh = mMeshes[meshID];
-            if (mesh.instances.size() == 1) continue; // Only processing instanced meshes here
-            mMeshGroups.push_back({ std::vector<uint32_t>({ meshID }), false });
+            addMeshes(it.second, false, false, is_set(mFlags, Flags::RTDontMergeInstanced));
+        }
+
+        // Important note:
+        // All displaced meshes instances need to be added at the end of the list.
+        // This allows determining if an instance is displaced soley by looking at the instance ID.
+
+        // All static displaced meshes go in a single group or individual groups depending on config.
+        if (!staticDisplacedMeshes.empty())
+        {
+            addMeshes(staticDisplacedMeshes, true, true, is_set(mFlags, Flags::RTDontMergeStatic));
+        }
+
+        // All dynamic displaced meshes go in a single group or individual groups depending on config.
+        if (!dynamicDisplacedMeshes.empty())
+        {
+            addMeshes(dynamicDisplacedMeshes, false, true, is_set(mFlags, Flags::RTDontMergeDynamic));
+        }
+
+        // Instanced displaced meshes are grouped based on instance lists.
+        for (const auto& it : displacedInstancesToMeshList)
+        {
+            addMeshes(it.second, false, true, is_set(mFlags, Flags::RTDontMergeInstanced));
         }
     }
 
@@ -1052,7 +1684,7 @@ namespace Falcor
         const auto& mesh = mMeshes[meshID];
 
         // Check if mesh is supported.
-        if (mesh.dynamicVertexCount > 0 || !mesh.dynamicData.empty())
+        if (mesh.isDynamic())
         {
             throw std::exception(("Cannot split mesh '" + mesh.name + "', only non-dynamic meshes supported").c_str());
         }
@@ -1393,11 +2025,43 @@ namespace Falcor
         mMeshGroups = std::move(optimizedGroups);
     }
 
+    void SceneBuilder::sortMeshes()
+    {
+        // This function sorts meshes by the order they are used in the mesh groups.
+        // This is required because at runtime we assume geometries within a mesh group (BLAS)
+        // to use consecutive indices (e.g. mesh IDs).
+
+        // Generate a mapping from old to new mesh IDs.
+        std::unordered_map<uint32_t, uint32_t> meshMap;
+        uint32_t newMeshID = 0;
+        for (const auto &meshGroup : mMeshGroups) {
+            for (uint32_t meshID : meshGroup.meshList) {
+                meshMap[meshID] = newMeshID++;
+            }
+        }
+
+        // Sort meshes by new IDs.
+        assert(meshMap.size() == mMeshes.size());
+        std::vector<MeshSpec> sortedMeshes(mMeshes.size());
+        for (size_t i = 0; i < mMeshes.size(); ++i) {
+            sortedMeshes[meshMap[(uint32_t)i]] = std::move(mMeshes[i]);
+        }
+        mMeshes = std::move(sortedMeshes);
+
+        // Remap mesh lists in mesh groups.
+        for (auto &meshGroup : mMeshGroups) {
+            auto &meshList = meshGroup.meshList;
+            for (size_t i = 0 ; i < meshList.size(); ++i) {
+                meshList[i] = meshMap[meshList[i]];
+            }
+        }
+    }
+
     void SceneBuilder::createGlobalBuffers()
     {
-        assert(mBuffersData.indexData.empty());
-        assert(mBuffersData.staticData.empty());
-        assert(mBuffersData.dynamicData.empty());
+        assert(mSceneData.meshIndexData.empty());
+        assert(mSceneData.meshStaticData.empty());
+        assert(mSceneData.meshDynamicData.empty());
 
         const bool isIndexed = !is_set(mFlags, Flags::NonIndexedVertices);
 
@@ -1421,34 +2085,35 @@ namespace Falcor
             throw std::exception("Trying to build a scene that exceeds supported mesh data size.");
         }
 
-        mBuffersData.indexData.reserve(totalIndexDataCount);
-        mBuffersData.staticData.reserve(totalStaticVertexCount);
-        mBuffersData.dynamicData.reserve(totalDynamicVertexCount);
+        mSceneData.meshIndexData.reserve(totalIndexDataCount);
+        mSceneData.meshStaticData.reserve(totalStaticVertexCount);
+        mSceneData.meshDynamicData.reserve(totalDynamicVertexCount);
 
         // Copy all vertex and index data into the global buffers.
         for (auto& mesh : mMeshes)
         {
-            mesh.staticVertexOffset = (uint32_t)mBuffersData.staticData.size();
-            mesh.dynamicVertexOffset = (uint32_t)mBuffersData.dynamicData.size();
+            mesh.staticVertexOffset = (uint32_t)mSceneData.meshStaticData.size();
+            mesh.dynamicVertexOffset = (uint32_t)mSceneData.meshDynamicData.size();
 
             // Insert the static vertex data in the global array.
             // The vertices are automatically converted to their packed format in this step.
-            mBuffersData.staticData.insert(mBuffersData.staticData.end(), mesh.staticData.begin(), mesh.staticData.end());
+            mSceneData.meshStaticData.insert(mSceneData.meshStaticData.end(), mesh.staticData.begin(), mesh.staticData.end());
 
             if (isIndexed)
             {
-                mesh.indexOffset = (uint32_t)mBuffersData.indexData.size();
-                mBuffersData.indexData.insert(mBuffersData.indexData.end(), mesh.indexData.begin(), mesh.indexData.end());
+                mesh.indexOffset = (uint32_t)mSceneData.meshIndexData.size();
+                mSceneData.meshIndexData.insert(mSceneData.meshIndexData.end(), mesh.indexData.begin(), mesh.indexData.end());
             }
 
-            if (!mesh.dynamicData.empty())
+            if (mesh.isDynamic())
             {
-                mBuffersData.dynamicData.insert(mBuffersData.dynamicData.end(), mesh.dynamicData.begin(), mesh.dynamicData.end());
+                assert(!mesh.dynamicData.empty());
+                mSceneData.meshDynamicData.insert(mSceneData.meshDynamicData.end(), mesh.dynamicData.begin(), mesh.dynamicData.end());
 
                 // Patch vertex index references.
                 for (uint32_t i = 0; i < mesh.dynamicData.size(); ++i)
                 {
-                    mBuffersData.dynamicData[mesh.dynamicVertexOffset + i].staticIndex += mesh.staticVertexOffset;
+                    mSceneData.meshDynamicData[mesh.dynamicVertexOffset + i].staticIndex += mesh.staticVertexOffset;
                 }
             }
 
@@ -1461,8 +2126,8 @@ namespace Falcor
 
     void SceneBuilder::createCurveGlobalBuffers()
     {
-        assert(mCurveBuffersData.indexData.empty());
-        assert(mCurveBuffersData.staticData.empty());
+        assert(mSceneData.curveIndexData.empty());
+        assert(mSceneData.curveStaticData.empty());
 
         // Count total number of curve vertex and index data elements.
         size_t totalIndexDataCount = 0;
@@ -1481,17 +2146,17 @@ namespace Falcor
             throw std::exception("Trying to build a scene that exceeds supported curve data size.");
         }
 
-        mCurveBuffersData.indexData.reserve(totalIndexDataCount);
-        mCurveBuffersData.staticData.reserve(totalStaticCurveVertexCount);
+        mSceneData.curveIndexData.reserve(totalIndexDataCount);
+        mSceneData.curveStaticData.reserve(totalStaticCurveVertexCount);
 
         // Copy all curve vertex and index data into the curve global buffers.
         for (auto& curve : mCurves)
         {
-            curve.staticVertexOffset = (uint32_t)mCurveBuffersData.staticData.size();
-            mCurveBuffersData.staticData.insert(mCurveBuffersData.staticData.end(), curve.staticData.begin(), curve.staticData.end());
+            curve.staticVertexOffset = (uint32_t)mSceneData.curveStaticData.size();
+            mSceneData.curveStaticData.insert(mSceneData.curveStaticData.end(), curve.staticData.begin(), curve.staticData.end());
 
-            curve.indexOffset = (uint32_t)mCurveBuffersData.indexData.size();
-            mCurveBuffersData.indexData.insert(mCurveBuffersData.indexData.end(), curve.indexData.begin(), curve.indexData.end());
+            curve.indexOffset = (uint32_t)mSceneData.curveIndexData.size();
+            mSceneData.curveIndexData.insert(mSceneData.curveIndexData.end(), curve.indexData.begin(), curve.indexData.end());
 
             // Free the curve local data.
             curve.indexData.clear();
@@ -1499,18 +2164,94 @@ namespace Falcor
         }
     }
 
+    void SceneBuilder::optimizeMaterials()
+    {
+        // This passes optimizes the materials by analyzing the material textures
+        // and replacing constant textures by uniform material parameters.
+        // NOTE: This code has to be updated if the texture usage changes.
+
+        if (is_set(mFlags, Flags::DontOptimizeMaterials)) return;
+
+        // Gather a list of all textures to analyze.
+        std::vector<std::pair<Material::SharedPtr, Material::TextureSlot>> materialSlots;
+        std::vector<Texture::SharedPtr> textures;
+        size_t maxCount = mSceneData.materials.size() * (size_t)Material::TextureSlot::Count;
+        materialSlots.reserve(maxCount);
+        textures.reserve(maxCount);
+
+        for (const auto& material : mSceneData.materials)
+        {
+            for (uint32_t i = 0; i < (uint32_t)Material::TextureSlot::Count; i++)
+            {
+                auto texSlot = (Material::TextureSlot)i;
+                if (auto texture = material->getTexture(texSlot))
+                {
+                    materialSlots.push_back({ material, texSlot });
+                    textures.push_back(texture);
+                }
+            }
+        }
+
+        if (textures.empty()) return;
+
+        // Analyze the textures.
+        logInfo("Analyzing " + std::to_string(textures.size()) + " material textures");
+
+        TextureAnalyzer::SharedPtr pAnalyzer = TextureAnalyzer::create();
+        auto pResults = Buffer::create(textures.size() * TextureAnalyzer::getResultSize(), ResourceBindFlags::UnorderedAccess);
+        pAnalyzer->analyze(gpDevice->getRenderContext(), textures, pResults);
+
+        // Copy result to staging buffer for readback.
+        // This is mostly to avoid a full flush and the associated perf warning.
+        // We do not have any other useful GPU work, but unrelated GPU tasks can be in flight.
+        auto pResultsStaging = Buffer::create(textures.size() * TextureAnalyzer::getResultSize(), ResourceBindFlags::None, Buffer::CpuAccess::Read);
+        gpDevice->getRenderContext()->copyResource(pResultsStaging.get(), pResults.get());
+        gpDevice->getRenderContext()->flush(false);
+        mpFence->gpuSignal(gpDevice->getRenderContext()->getLowLevelData()->getCommandQueue());
+
+        // Wait for results to become available. Then optimize the materials.
+        mpFence->syncCpu();
+        const TextureAnalyzer::Result* results = static_cast<const TextureAnalyzer::Result*>(pResultsStaging->map(Buffer::MapType::Read));
+        Material::TextureOptimizationStats stats = {};
+
+        for (size_t i = 0; i < textures.size(); i++)
+        {
+            materialSlots[i].first->optimizeTexture(materialSlots[i].second, results[i], stats);
+        }
+
+        pResultsStaging->unmap();
+
+        // Log optimization stats.
+        if (size_t totalRemoved = std::accumulate(stats.texturesRemoved.begin(), stats.texturesRemoved.end(), 0ull); totalRemoved > 0)
+        {
+            logInfo("Optimized materials by removing " + std::to_string(totalRemoved) + " constant textures");
+            for (size_t slot = 0; slot < (size_t)Material::TextureSlot::Count; slot++)
+            {
+                logInfo(padStringToLength("  " + to_string((Material::TextureSlot)slot) + ":", 26) + std::to_string(stats.texturesRemoved[slot]));
+            }
+        }
+
+        if (stats.disabledAlpha > 0) logInfo("Optimized materials by disabling alpha test for " + std::to_string(stats.disabledAlpha) + " materials");
+        if (stats.constantNormalMaps > 0) logWarning("Scene has " + std::to_string(stats.constantNormalMaps) + " normal maps of constant value. Please update the asset to optimize performance.");
+    }
+
     void SceneBuilder::removeDuplicateMaterials()
     {
+        // This pass identifies materials with identical set of parameters.
+        // It should run after optimizeMaterials() as materials with different
+        // textures may be reduced to identical materials after optimization,
+        // increasing the likelihood of finding duplicates here.
+
         if (is_set(mFlags, Flags::DontMergeMaterials)) return;
 
         std::vector<Material::SharedPtr> uniqueMaterials;
-        std::vector<uint32_t> idMap(mMaterials.size());
+        std::vector<uint32_t> idMap(mSceneData.materials.size());
 
         // Find unique set of materials.
-        for (uint32_t id = 0; id < mMaterials.size(); ++id)
+        for (uint32_t id = 0; id < mSceneData.materials.size(); ++id)
         {
-            const auto& pMaterial = mMaterials[id];
-            auto it = std::find_if(uniqueMaterials.begin(), uniqueMaterials.end(), [&pMaterial] (const auto& m) { return *m == *pMaterial; });
+            const auto& pMaterial = mSceneData.materials[id];
+            auto it = std::find_if(uniqueMaterials.begin(), uniqueMaterials.end(), [&pMaterial](const auto& m) { return *m == *pMaterial; });
             if (it == uniqueMaterials.end())
             {
                 idMap[id] = (uint32_t)uniqueMaterials.size();
@@ -1529,25 +2270,19 @@ namespace Falcor
             mesh.materialId = idMap[mesh.materialId];
         }
 
-        mMaterials = uniqueMaterials;
+        mSceneData.materials = uniqueMaterials;
     }
 
     void SceneBuilder::collectVolumeGrids()
     {
         // Collect grids from volumes.
         std::set<Grid::SharedPtr> uniqueGrids;
-        for (auto& volume : mVolumes)
+        for (auto& volume : mSceneData.volumes)
         {
             auto grids = volume->getAllGrids();
             uniqueGrids.insert(grids.begin(), grids.end());
         }
-        mGrids = GridList(uniqueGrids.begin(), uniqueGrids.end());
-
-        // Setup grid -> id map.
-        for (size_t i = 0; i < mGrids.size(); ++i)
-        {
-            mGridIDs.emplace(mGrids[i], (uint32_t)i);
-        }
+        mSceneData.grids = std::vector<Grid::SharedPtr>(uniqueGrids.begin(), uniqueGrids.end());
     }
 
     void SceneBuilder::quantizeTexCoords()
@@ -1557,7 +2292,7 @@ namespace Falcor
         // Note that non-emissive meshes are unmodified and use full precision texcoords.
         for (auto& mesh : mMeshes)
         {
-            const auto& pMaterial = mMaterials[mesh.materialId];
+            const auto& pMaterial = mSceneData.materials[mesh.materialId];
             if (pMaterial->getEmissiveTexture() != nullptr)
             {
                 // Quantize texture coordinates to fp16. Also track the bounds and max error.
@@ -1567,7 +2302,7 @@ namespace Falcor
 
                 for (uint32_t i = 0; i < mesh.staticVertexCount; ++i)
                 {
-                    auto& v = mBuffersData.staticData[mesh.staticVertexOffset + i];
+                    auto& v = mSceneData.meshStaticData[mesh.staticVertexOffset + i];
                     float2 texCrd = v.texCrd;
                     minTexCrd = min(minTexCrd, texCrd);
                     maxTexCrd = max(maxTexCrd, texCrd);
@@ -1602,99 +2337,12 @@ namespace Falcor
         }
     }
 
-    void SceneBuilder::createMeshVao(uint32_t drawCount)
+    void SceneBuilder::createMeshData()
     {
-        for (auto& mesh : mMeshes) assert(mesh.topology == mMeshes[0].topology);
+        assert(mSceneData.meshDesc.empty());
 
-        // Create the index buffer.
-        size_t ibSize = sizeof(uint32_t) * mBuffersData.indexData.size();
-        if (ibSize > std::numeric_limits<uint32_t>::max())
-        {
-            throw std::exception("Index buffer size exceeds 4GB");
-        }
-
-        Buffer::SharedPtr pIB = nullptr;
-        if (ibSize > 0)
-        {
-            ResourceBindFlags ibBindFlags = Resource::BindFlags::Index | ResourceBindFlags::ShaderResource;
-            pIB = Buffer::create(ibSize, ibBindFlags, Buffer::CpuAccess::None, mBuffersData.indexData.data());
-        }
-
-        // Create the vertex data structured buffer.
-        const size_t vertexCount = (uint32_t)mBuffersData.staticData.size();
-        size_t staticVbSize = sizeof(PackedStaticVertexData) * vertexCount;
-        if (staticVbSize > std::numeric_limits<uint32_t>::max())
-        {
-            throw std::exception("Vertex buffer size exceeds 4GB");
-        }
-
-        ResourceBindFlags vbBindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess | ResourceBindFlags::Vertex;
-        Buffer::SharedPtr pStaticBuffer = Buffer::createStructured(sizeof(PackedStaticVertexData), (uint32_t)vertexCount, vbBindFlags, Buffer::CpuAccess::None, nullptr, false);
-
-        Vao::BufferVec pVBs(Scene::kVertexBufferCount);
-        pVBs[Scene::kStaticDataBufferIndex] = pStaticBuffer;
-
-        // Create the draw ID buffer.
-        // This is only needed when rasterizing the scene.
-        ResourceFormat drawIDFormat = drawCount <= (1 << 16) ? ResourceFormat::R16Uint : ResourceFormat::R32Uint;
-
-        Buffer::SharedPtr pDrawIDBuffer = nullptr;
-        if (drawIDFormat == ResourceFormat::R16Uint)
-        {
-            assert(drawCount <= (1 << 16));
-            std::vector<uint16_t> drawIDs(drawCount);
-            for (uint32_t i = 0; i < drawCount; i++) drawIDs[i] = i;
-            pDrawIDBuffer = Buffer::create(drawCount * sizeof(uint16_t), ResourceBindFlags::Vertex, Buffer::CpuAccess::None, drawIDs.data());
-        }
-        else if (drawIDFormat == ResourceFormat::R32Uint)
-        {
-            std::vector<uint32_t> drawIDs(drawCount);
-            for (uint32_t i = 0; i < drawCount; i++) drawIDs[i] = i;
-            pDrawIDBuffer = Buffer::create(drawCount * sizeof(uint32_t), ResourceBindFlags::Vertex, Buffer::CpuAccess::None, drawIDs.data());
-        }
-        else should_not_get_here();
-
-        assert(pDrawIDBuffer);
-        pVBs[Scene::kDrawIdBufferIndex] = pDrawIDBuffer;
-
-        // Create vertex layout.
-        // The layout only initializes the vertex data and draw ID layout. The skinning data doesn't get passed into the vertex shader.
-        VertexLayout::SharedPtr pLayout = VertexLayout::create();
-
-        // Add the packed static vertex data layout.
-        VertexBufferLayout::SharedPtr pStaticLayout = VertexBufferLayout::create();
-        pStaticLayout->addElement(VERTEX_POSITION_NAME, offsetof(PackedStaticVertexData, position), ResourceFormat::RGB32Float, 1, VERTEX_POSITION_LOC);
-        pStaticLayout->addElement(VERTEX_PACKED_NORMAL_TANGENT_NAME, offsetof(PackedStaticVertexData, packedNormalTangent), ResourceFormat::RGB32Float, 1, VERTEX_PACKED_NORMAL_TANGENT_LOC);
-        pStaticLayout->addElement(VERTEX_TEXCOORD_NAME, offsetof(PackedStaticVertexData, texCrd), ResourceFormat::RG32Float, 1, VERTEX_TEXCOORD_LOC);
-        pLayout->addBufferLayout(Scene::kStaticDataBufferIndex, pStaticLayout);
-
-        // Add the draw ID layout.
-        VertexBufferLayout::SharedPtr pInstLayout = VertexBufferLayout::create();
-        pInstLayout->addElement(INSTANCE_DRAW_ID_NAME, 0, drawIDFormat, 1, INSTANCE_DRAW_ID_LOC);
-        pInstLayout->setInputClass(VertexBufferLayout::InputClass::PerInstanceData, 1);
-        pLayout->addBufferLayout(Scene::kDrawIdBufferIndex, pInstLayout);
-
-        // Create the VAO objects.
-        // Note that the global index buffer can be mixed 16/32-bit format.
-        // For drawing the meshes we need separate VAOs for these cases.
-        assert(mpScene && mpScene->mpVao == nullptr);
-        mpScene->mpVao = Vao::create(mMeshes[0].topology, pLayout, pVBs, pIB, ResourceFormat::R32Uint);
-        mpScene->mpVao16Bit = Vao::create(mMeshes[0].topology, pLayout, pVBs, pIB, ResourceFormat::R16Uint);
-    }
-
-    uint32_t SceneBuilder::createMeshData()
-    {
-        assert(mpScene->mMeshDesc.empty());
-        assert(mpScene->mMeshInstanceData.empty());
-        assert(mpScene->mMeshHasDynamicData.empty());
-        assert(mpScene->mMeshIdToInstanceIds.empty());
-        assert(mpScene->mMeshGroups.empty());
-
-        auto& meshData = mpScene->mMeshDesc;
-        auto& instanceData = mpScene->mMeshInstanceData;
+        auto& meshData = mSceneData.meshDesc;
         meshData.resize(mMeshes.size());
-        mpScene->mMeshHasDynamicData.resize(mMeshes.size());
-        size_t drawCount = 0;
 
         // Setup all mesh data.
         for (uint32_t meshID = 0; meshID < mMeshes.size(); meshID++)
@@ -1708,44 +2356,120 @@ namespace Falcor
             meshData[meshID].dynamicVbOffset = mesh.hasDynamicData ? mesh.dynamicVertexOffset : 0;
             assert(mesh.dynamicVertexCount == 0 || mesh.dynamicVertexCount == mesh.staticVertexCount);
 
-            mpScene->mMeshNames.push_back(mesh.name);
+            mSceneData.meshNames.push_back(mesh.name);
 
             uint32_t meshFlags = 0;
             meshFlags |= mesh.use16BitIndices ? (uint32_t)MeshFlags::Use16BitIndices : 0;
             meshFlags |= mesh.hasDynamicData ? (uint32_t)MeshFlags::HasDynamicData : 0;
             meshFlags |= mesh.isFrontFaceCW ? (uint32_t)MeshFlags::IsFrontFaceCW : 0;
+            meshFlags |= mesh.isDisplaced ? (uint32_t)MeshFlags::IsDisplaced : 0;
             meshData[meshID].flags = meshFlags;
 
-            if (mesh.use16BitIndices) mpScene->mHas16BitIndices = true;
-            else mpScene->mHas32BitIndices = true;
+            if (mesh.use16BitIndices) mSceneData.has16BitIndices = true;
+            else mSceneData.has32BitIndices = true;
 
             if (mesh.hasDynamicData)
             {
-                assert(mesh.instances.size() == 1);
-                mpScene->mMeshHasDynamicData[meshID] = true;
+                // Dynamic (skinned) meshes can only be instanced if an explicit skeleton transform node is specified.
+                assert(mesh.instances.size() == 1 || mesh.skeletonNodeID != kInvalidNode);
 
                 for (uint32_t i = 0; i < mesh.vertexCount; i++)
                 {
-                    mBuffersData.dynamicData[mesh.dynamicVertexOffset + i].globalMatrixID = (uint32_t)mesh.instances[0];
+                    DynamicVertexData& d = mSceneData.meshDynamicData[mesh.dynamicVertexOffset + i];
+
+                    // The bind matrix is per mesh, so just take it from the first instance
+                    d.bindMatrixID = (uint32_t)mesh.instances[0];
+
+                    // If a skeleton's world transform node is not explicitly set, it is the same transform as the instance (Assimp behavior)
+                    d.skeletonMatrixID = mesh.skeletonNodeID == kInvalidNode ? (uint32_t)mesh.instances[0] : mesh.skeletonNodeID;
                 }
             }
         }
+    }
 
+    void SceneBuilder::createMeshInstanceData()
+    {
         // Setup all mesh instances.
-        // Mesh instances are added in the order they appear in the mesh groups.
+        //
+        // Mesh instances are added in the same order as the meshes in the mesh groups.
         // For ray tracing, one BLAS per mesh group is created and the mesh instances
         // can therefore be directly indexed by [InstanceID() + GeometryIndex()].
         // This avoids the need to have a lookup table from hit IDs to mesh instance.
+        //
+        // If the mesh group is instanced, then a complete set of such mesh instances
+        // are created for each instance. The final mesh instances are thus ordered by:
+        //
+        //  1. Mesh group
+        //  2. Mesh group instance
+        //  3. Mesh within the mesh group
+        //
+        // Example:
+        //
+        //  MeshGroup 0 has 3 meshes with 2 instance nodes => 6 mesh instances added
+        //  MeshGroup 1 has 2 meshes with 1 instance node  => 2 mesh instances added
+        //
+        //  Final layout:
+        //
+        //  |-----------------------------------------------------------------------|
+        //  | Inst 0 | Inst 1 | Inst 2 | Inst 3 | Inst 4 | Inst 5 | Inst 6 | Inst 7 |
+        //  | Mesh 0 | Mesh 1 | Mesh 2 | Mesh 0 | Mesh 1 | Mesh 2 | Mesh 0 | Mesh 1 |
+        //  |-----------------------------------------------------------------------|
+        //  <--      MeshGroup 0    --><--     MeshGroup 0     --><-- MeshGroup 1 -->
+        //
+        assert(mSceneData.meshInstanceData.empty());
+        assert(mSceneData.meshIdToInstanceIds.empty());
+        assert(mSceneData.meshGroups.empty());
+
+        auto& instanceData = mSceneData.meshInstanceData;
+        size_t drawCount = 0;
+        bool hasDisplaced = false;
+        uint32_t displacedMeshInstanceOffset = 0;
+
         for (const auto& meshGroup : mMeshGroups)
         {
-            assert(!meshGroup.meshList.empty());
-            for (const uint32_t meshID : meshGroup.meshList)
+            // Displaced mesh instances must all be at the end of the instance list.
+            // Make sure that's the case and get the index of the first displaced instance.
+            if (hasDisplaced)
             {
-                const auto& mesh = mMeshes[meshID];
-                drawCount += mesh.instances.size();
-
-                for (const auto& nodeID : mesh.instances)
+                assert(meshGroup.isDisplaced);
+            }
+            else
+            {
+                if (meshGroup.isDisplaced)
                 {
+                    hasDisplaced = true;
+                    displacedMeshInstanceOffset = (uint32_t)instanceData.size();
+                }
+            }
+
+            const auto& meshList = meshGroup.meshList;
+
+            // If mesh group is instanced, all meshes have identical lists of instances.
+            // This is a requirement for ray tracing and ensured by createMeshGroups().
+            // For non-instanced static mesh groups, we allow the meshes to have different nodes.
+            // This case is handled by pre-transforming the vertices in the BLAS build.
+            assert(!meshList.empty());
+            const auto& firstMesh = mMeshes[meshList[0]];
+            size_t instanceCount = firstMesh.instances.size();
+
+            assert(instanceCount > 0);
+            for (size_t instanceIdx = 0; instanceIdx < instanceCount; instanceIdx++)
+            {
+                for (const uint32_t meshID : meshList)
+                {
+                    const auto& mesh = mMeshes[meshID];
+
+                    // Figure out node ID to use for the current mesh instance.
+                    // If mesh group is non-instanced, just use the current mesh's node.
+                    // If instanced, then all meshes have identical lists of instances.
+                    // But there is a subtle issue: the lists may be permuted differently depending on the order
+                    // in which mesh instances were added. Therefore, use the node ID from the first mesh to get
+                    // a consistent ordering across all meshes. This is a requirement for the TLAS build.
+                    assert(instanceCount == mesh.instances.size());
+                    uint32_t nodeID = instanceCount == 1
+                        ? mesh.instances[0] // non-instanced => use per-mesh transform.
+                        : firstMesh.instances[instanceIdx]; // instanced => get transform from the first mesh.
+
                     instanceData.push_back({});
                     auto& meshInstance = instanceData.back();
                     meshInstance.globalMatrixID = nodeID;
@@ -1760,77 +2484,32 @@ namespace Falcor
                     meshInstance.flags = instanceFlags;
                 }
             }
+
+            drawCount += instanceCount * meshList.size();
         }
 
-        // Create mapping of mesh IDs to their instanc IDs.
-        mpScene->mMeshIdToInstanceIds.resize(mMeshes.size());
+        // Set number of displaced meshes.
+        mSceneData.displacedMeshInstanceCount = hasDisplaced ? uint32_t(instanceData.size() - displacedMeshInstanceOffset) : 0u;
+
+        // Create mapping of mesh IDs to their instance IDs.
+        mSceneData.meshIdToInstanceIds.resize(mMeshes.size());
         for (uint32_t instanceID = 0; instanceID < (uint32_t)instanceData.size(); instanceID++)
         {
             const auto& instance = instanceData[instanceID];
-            mpScene->mMeshIdToInstanceIds[instance.meshID].push_back(instanceID);
+            mSceneData.meshIdToInstanceIds[instance.meshID].push_back(instanceID);
         }
 
         // Setup mesh groups. This just copies our final list.
-        mpScene->mMeshGroups = mMeshGroups;
+        mSceneData.meshGroups = mMeshGroups;
 
         assert(drawCount <= std::numeric_limits<uint32_t>::max());
-        return (uint32_t)drawCount;
-    }
-
-    void SceneBuilder::createCurveVao()
-    {
-        // Create the index buffer.
-        size_t ibSize = sizeof(uint32_t) * mCurveBuffersData.indexData.size();
-        if (ibSize > std::numeric_limits<uint32_t>::max())
-        {
-            throw std::exception("Curve index buffer size exceeds 4GB");
-        }
-
-        Buffer::SharedPtr pIB = nullptr;
-        if (ibSize > 0)
-        {
-            ResourceBindFlags ibBindFlags = Resource::BindFlags::Index | ResourceBindFlags::ShaderResource;
-            pIB = Buffer::create(ibSize, ibBindFlags, Buffer::CpuAccess::None, mCurveBuffersData.indexData.data());
-        }
-
-        // Create the vertex data as structured buffers.
-        const size_t vertexCount = (uint32_t)mCurveBuffersData.staticData.size();
-        size_t staticVbSize = sizeof(StaticCurveVertexData) * vertexCount;
-        if (staticVbSize > std::numeric_limits<uint32_t>::max())
-        {
-            throw std::exception("Curve vertex buffer exceeds 4GB");
-        }
-
-        ResourceBindFlags vbBindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess | ResourceBindFlags::Vertex;
-        // Also upload the curve vertex data.
-        Buffer::SharedPtr pStaticBuffer = Buffer::createStructured(sizeof(StaticCurveVertexData), (uint32_t)vertexCount, vbBindFlags, Buffer::CpuAccess::None, mCurveBuffersData.staticData.data(), false);
-
-        // Curves do not need DrawIDBuffer.
-        Vao::BufferVec pVBs(Scene::kVertexBufferCount - 1);
-        pVBs[Scene::kStaticDataBufferIndex] = pStaticBuffer;
-
-        // Create vertex layout.
-        // The layout only initializes the vertex data layout. The skinning data doesn't get passed into the vertex shader.
-        VertexLayout::SharedPtr pLayout = VertexLayout::create();
-
-        // Add the packed static vertex data layout.
-        VertexBufferLayout::SharedPtr pStaticLayout = VertexBufferLayout::create();
-        pStaticLayout->addElement(CURVE_VERTEX_POSITION_NAME, offsetof(StaticCurveVertexData, position), ResourceFormat::RGB32Float, 1, CURVE_VERTEX_POSITION_LOC);
-        pStaticLayout->addElement(CURVE_VERTEX_RADIUS_NAME, offsetof(StaticCurveVertexData, radius), ResourceFormat::R32Float, 1, CURVE_VERTEX_RADIUS_LOC);
-        pStaticLayout->addElement(CURVE_VERTEX_TANGENT_NAME, offsetof(StaticCurveVertexData, tangent), ResourceFormat::RGB32Float, 1, CURVE_VERTEX_TANGENT_LOC);
-        pStaticLayout->addElement(CURVE_VERTEX_NORMAL_NAME, offsetof(StaticCurveVertexData, normal), ResourceFormat::RGB32Float, 1, CURVE_VERTEX_NORMAL_LOC);
-        pStaticLayout->addElement(CURVE_VERTEX_TEXCOORD_NAME, offsetof(StaticCurveVertexData, texCrd), ResourceFormat::RG32Float, 1, CURVE_VERTEX_TEXCOORD_LOC);
-        pLayout->addBufferLayout(Scene::kStaticDataBufferIndex, pStaticLayout);
-
-        // Create the VAO objects.
-        assert(mpScene && mpScene->mpCurveVao == nullptr);
-        mpScene->mpCurveVao = Vao::create(Vao::Topology::LineStrip, pLayout, pVBs, pIB, ResourceFormat::R32Uint);
+        mSceneData.meshDrawCount = (uint32_t)drawCount;
     }
 
     void SceneBuilder::createCurveData()
     {
-        auto& curveData = mpScene->mCurveDesc;
-        auto& instanceData = mpScene->mCurveInstanceData;
+        auto& curveData = mSceneData.curveDesc;
+        auto& instanceData = mSceneData.curveInstanceData;
         curveData.resize(mCurves.size());
 
         for (uint32_t curveID = 0; curveID < mCurves.size(); curveID++)
@@ -1858,110 +2537,38 @@ namespace Falcor
         }
     }
 
-    void SceneBuilder::mapCurvesToProceduralPrimitives(uint32_t typeID)
+    void SceneBuilder::createSceneGraph()
     {
-        // Clear any previously mapped curves.
-        mProceduralPrimitives.resize(mCustomPrimitiveAABBs.size());
-
-        uint32_t offset = (uint32_t)mCustomPrimitiveAABBs.size(); // Start curve AABBs at end of user defined AABBs.
-
-        // Add curves to mProceduralPrimitives.
-        for (uint32_t curveID = 0; curveID < mCurves.size(); curveID++)
-        {
-            const auto& curve = mCurves[curveID];
-            assert(curve.instances.size() == 1); // Assume static curves.
-            for (const auto& instID : curve.instances)
-            {
-                pushProceduralPrimitive(typeID, curveID, offset, curve.indexCount);
-            }
-            offset += curve.indexCount;
-        }
-    }
-
-    void SceneBuilder::createRaytracingAABBData()
-    {
-        if (mProceduralPrimitives.empty()) return;
-
-        uint32_t totalAABBCount = (uint32_t)mCustomPrimitiveAABBs.size();
-        for (uint32_t i = 0; i < mCurves.size(); i++) totalAABBCount += mCurves[i].indexCount;
-
-        mpScene->mRtAABBRaw.resize(totalAABBCount);
-        uint32_t offset = 0;
-
-        // Add all user-defined AABBs
-        for (auto& aabb : mCustomPrimitiveAABBs)
-        {
-            D3D12_RAYTRACING_AABB& rtAabb = mpScene->mRtAABBRaw[offset++];
-            rtAabb.MinX = aabb.minPoint.x;
-            rtAabb.MinY = aabb.minPoint.y;
-            rtAabb.MinZ = aabb.minPoint.z;
-            rtAabb.MaxX = aabb.maxPoint.x;
-            rtAabb.MaxY = aabb.maxPoint.y;
-            rtAabb.MaxZ = aabb.maxPoint.z;
-        }
-
-        // Compute AABBs of curve segments.
-        for (const auto& curve : mCurves)
-        {
-            const auto* indexData = &mCurveBuffersData.indexData[curve.indexOffset];
-            const auto* staticData = &mCurveBuffersData.staticData[curve.staticVertexOffset];
-            for (uint32_t j = 0; j < curve.indexCount; j++)
-            {
-                AABB curveSegBB;
-                uint32_t v = indexData[j];
-
-                for (uint32_t k = 0; k <= curve.degree; k++)
-                {
-                    curveSegBB.include(staticData[v + k].position - float3(staticData[v + k].radius));
-                    curveSegBB.include(staticData[v + k].position + float3(staticData[v + k].radius));
-                }
-
-                D3D12_RAYTRACING_AABB& aabb = mpScene->mRtAABBRaw[offset++];
-                aabb.MinX = curveSegBB.minPoint.x;
-                aabb.MinY = curveSegBB.minPoint.y;
-                aabb.MinZ = curveSegBB.minPoint.z;
-                aabb.MaxX = curveSegBB.maxPoint.x;
-                aabb.MaxY = curveSegBB.maxPoint.y;
-                aabb.MaxZ = curveSegBB.maxPoint.z;
-            }
-        }
-
-        // Set custom prim metadata
-        mpScene->mProceduralPrimData = mProceduralPrimitives;
-    }
-
-    void SceneBuilder::createNodeList()
-    {
-        mpScene->mSceneGraph.resize(mSceneGraph.size());
+        mSceneData.sceneGraph.resize(mSceneGraph.size());
 
         for (size_t i = 0; i < mSceneGraph.size(); i++)
         {
             assert(mSceneGraph[i].parent <= std::numeric_limits<uint32_t>::max());
-            mpScene->mSceneGraph[i] = Scene::Node(mSceneGraph[i].name, (uint32_t)mSceneGraph[i].parent, mSceneGraph[i].transform, mSceneGraph[i].localToBindPose);
+            mSceneData.sceneGraph[i] = Scene::Node(mSceneGraph[i].name, (uint32_t)mSceneGraph[i].parent, mSceneGraph[i].transform, mSceneGraph[i].meshBind, mSceneGraph[i].localToBindPose);
         }
     }
 
     void SceneBuilder::createMeshBoundingBoxes()
     {
-        mpScene->mMeshBBs.resize(mMeshes.size());
+        mSceneData.meshBBs.resize(mMeshes.size());
 
         for (size_t i = 0; i < mMeshes.size(); i++)
         {
             const auto& mesh = mMeshes[i];
-            mpScene->mMeshBBs[i] = mesh.boundingBox;
+            mSceneData.meshBBs[i] = mesh.boundingBox;
         }
     }
 
     void SceneBuilder::calculateCurveBoundingBoxes()
     {
         // Calculate curve bounding boxes.
-        mpScene->mCurveBBs.resize(mCurves.size());
+        mSceneData.curveBBs.resize(mCurves.size());
         for (size_t i = 0; i < mCurves.size(); i++)
         {
             const auto& curve = mCurves[i];
             AABB curveBB;
 
-            const auto* staticData = &mCurveBuffersData.staticData[curve.staticVertexOffset];
+            const auto* staticData = &mSceneData.curveStaticData[curve.staticVertexOffset];
             for (uint32_t v = 0; v < curve.vertexCount; v++)
             {
                 float radius = staticData[v].radius;
@@ -1969,19 +2576,8 @@ namespace Falcor
                 curveBB.include(staticData[v].position + float3(radius));
             }
 
-            mpScene->mCurveBBs[i] = curveBB;
+            mSceneData.curveBBs[i] = curveBB;
         }
-    }
-
-    void SceneBuilder::pushProceduralPrimitive(uint32_t typeID, uint32_t instanceIdx, uint32_t AABBOffset, uint32_t AABBCount)
-    {
-        ProceduralPrimitiveData data;
-        data.typeID = typeID;
-        data.instanceIdx = instanceIdx;
-        data.AABBOffset = AABBOffset;
-        data.AABBCount = AABBCount;
-
-        mProceduralPrimitives.push_back(data);
     }
 
     SCRIPT_BINDING(SceneBuilder)
@@ -1993,6 +2589,7 @@ namespace Falcor
         SCRIPT_BINDING_DEPENDENCY(Transform)
         SCRIPT_BINDING_DEPENDENCY(EnvMap)
         SCRIPT_BINDING_DEPENDENCY(Animation)
+        SCRIPT_BINDING_DEPENDENCY(AABB)
 
         pybind11::enum_<SceneBuilder::Flags> flags(m, "SceneBuilderFlags");
         flags.value("Default", SceneBuilder::Flags::Default);
@@ -2006,6 +2603,13 @@ namespace Falcor
         flags.value("Force32BitIndices", SceneBuilder::Flags::Force32BitIndices);
         flags.value("RTDontMergeStatic", SceneBuilder::Flags::RTDontMergeStatic);
         flags.value("RTDontMergeDynamic", SceneBuilder::Flags::RTDontMergeDynamic);
+        flags.value("RTDontMergeInstanced", SceneBuilder::Flags::RTDontMergeInstanced);
+        flags.value("FlattenStaticMeshInstances", SceneBuilder::Flags::FlattenStaticMeshInstances);
+        flags.value("DontOptimizeGraph", SceneBuilder::Flags::DontOptimizeGraph);
+        flags.value("DontOptimizeMaterials", SceneBuilder::Flags::DontOptimizeMaterials);
+        flags.value("DontUseDisplacement", SceneBuilder::Flags::DontUseDisplacement);
+        flags.value("UseCache", SceneBuilder::Flags::UseCache);
+        flags.value("RebuildCache", SceneBuilder::Flags::RebuildCache);
         ScriptBindings::addEnumBinaryOperators(flags);
 
         pybind11::class_<SceneBuilder, SceneBuilder::SharedPtr> sceneBuilder(m, "SceneBuilder");
@@ -2031,9 +2635,11 @@ namespace Falcor
         sceneBuilder.def("addMaterial", &SceneBuilder::addMaterial, "material"_a);
         sceneBuilder.def("getMaterial", &SceneBuilder::getMaterial, "name"_a);
         sceneBuilder.def("loadMaterialTexture", &SceneBuilder::loadMaterialTexture, "material"_a, "slot"_a, "filename"_a);
-        sceneBuilder.def("addVolume", &SceneBuilder::addVolume, "volume"_a);
+        sceneBuilder.def("waitForMaterialTextureLoading", &SceneBuilder::waitForMaterialTextureLoading);
+        sceneBuilder.def("addVolume", &SceneBuilder::addVolume, "volume"_a, "nodeID"_a = SceneBuilder::kInvalidNode);
         sceneBuilder.def("getVolume", &SceneBuilder::getVolume, "name"_a);
         sceneBuilder.def("addLight", &SceneBuilder::addLight, "light"_a);
+        sceneBuilder.def("getLight", &SceneBuilder::getLight, "name"_a);
         sceneBuilder.def("addCamera", &SceneBuilder::addCamera, "camera"_a);
         sceneBuilder.def("addAnimation", &SceneBuilder::addAnimation, "animation"_a);
         sceneBuilder.def("createAnimation", &SceneBuilder::createAnimation, "animatable"_a, "name"_a, "duration"_a);
@@ -2045,5 +2651,6 @@ namespace Falcor
             return pSceneBuilder->addNode(node);
         }, "name"_a, "transform"_a = Transform(), "parent"_a = SceneBuilder::kInvalidNode);
         sceneBuilder.def("addMeshInstance", &SceneBuilder::addMeshInstance);
+        sceneBuilder.def("addCustomPrimitive", &SceneBuilder::addCustomPrimitive);
     }
 }

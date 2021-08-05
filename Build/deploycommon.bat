@@ -33,10 +33,11 @@ robocopy %ExtDir%\python\ %OutDir% Python36*.dll /r:0 >nul
 robocopy %ExtDir%\python %OutDir%\Python /E /r:0 >nul
 robocopy %ExtDir%\slang\bin\windows-x64\release %OutDir% *.dll /r:0 >nul
 robocopy %ExtDir%\WinPixEventRuntime\bin\x64 %OutDir% WinPixEventRuntime.dll /r:0 >nul
-robocopy "%~4\Redist\D3D\%2" %OutDir% dxil.dll /r:0 >nul
-robocopy "%~4\Redist\D3D\%2" %OutDir% dxcompiler.dll /r:0 >nul
+robocopy %ExtDir%\dxcompiler\bin\x64 %OutDir% dxil.dll /r:0 >nul
+robocopy %ExtDir%\dxcompiler\bin\x64 %OutDir% dxcompiler.dll /r:0 >nul
 robocopy %ExtDir%\Cuda\bin\ %OutDir% cudart*.dll /r:0 >nul
 robocopy %ExtDir%\Cuda\bin\ %OutDir% nvrtc*.dll /r:0 >nul
+robocopy %ExtDir%\Cuda\bin\ %OutDir% cublas*.dll /r:0 >nul
 
 rem Copy NVAPI
 set NvApiDir=%ExtDir%\nvapi

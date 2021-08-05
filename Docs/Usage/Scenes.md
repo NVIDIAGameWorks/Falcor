@@ -138,16 +138,17 @@ float4 main(VSOut vertexOut, float4 pixelCrd : SV_POSITION, uint triangleIndex :
 
 ### Raytracing
 
-Use the helper function in `Scene/Raytracing.slang` called `uint getGlobalHitID()` to calculate the equivalent of what `meshInstanceID` would be in raster, which can be used in the same way to look up geometry and material data.
+Use the helper function in `Scene/Raytracing.slang` called `getGlobalInstanceID()` to calculate the equivalent of what `meshInstanceID` would be in raster, which can be used in the same way to look up geometry and material data.
 
 ```c++
 import Scene.Raytracing;
 
 [shader("closesthit")]
-void primaryClosestHit(uniform HitShaderParams hitParams, inout PrimaryRayData hitData, in BuiltInTriangleIntersectionAttributes attribs)
+void primaryClosestHit(inout PrimaryRayData hitData, in BuiltInTriangleIntersectionAttributes attribs)
 {
-    VertexData v = getVertexData(hitParams, PrimitiveIndex(), attribs);
-    uint materialID = gScene.getMaterialID(hitParams.getGlobalHitID());
+    const uint globalInstanceID = getGlobalInstanceID();
+    const VertexData v = getVertexData(globalInstanceID, PrimitiveIndex(), attribs);
+    const uint materialID = gScene.getMaterialID(globalInstanceID);
     ShadingData sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -WorldRayDirection(), 0);
     ...
 }
