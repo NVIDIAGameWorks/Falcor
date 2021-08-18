@@ -202,7 +202,7 @@ float evalMaskingSmithGGXCorrelated(float alpha, float cosThetaI, float cosTheta
     return 1 / (1 + lambdaI + lambdaO);
 }
 
-/** Approximate pre-integrated specular BRDF. The approximation assumes GGX VNDF and Shlick's approximation.
+/** Approximate pre-integrated specular BRDF. The approximation assumes GGX VNDF and Schlick's approximation.
     See Eq 4 in [Ray Tracing Gems, Chapter 32]
 
     \param[in] specularReflectance Reflectance from a direction parallel to the normal.
