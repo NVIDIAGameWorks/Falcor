@@ -29,6 +29,8 @@
 #include "RenderGraph/RenderPassStandardFlags.h"
 #include "GBufferRaster.h"
 
+#include <limits>
+
 const char* GBufferRaster::kDesc = "Rasterized G-buffer generation pass";
 
 namespace
@@ -47,6 +49,7 @@ namespace
         { "roughness",        "gRoughness",          "Roughness",                        true /* optional */, ResourceFormat::RGBA8Unorm  },
         { "metallic",         "gMetallic",           "Metallic",                         true /* optional */, ResourceFormat::RGBA8Unorm  },
         { "faceNormalW",      "gFaceNormalW",        "Face normal in world space",       true /* optional */, ResourceFormat::RGBA32Float },
+        { "viewW",            "gViewW",              "View direction in world space",    true /* optional */, ResourceFormat::RGBA32Float }, // TODO: Switch to packed 2x16-bit snorm format.
         { "pnFwidth",         "gPosNormalFwidth",    "position and normal filter width", true /* optional */, ResourceFormat::RG32Float   },
         { "linearZ",          "gLinearZAndDeriv",    "linear z (and derivative)",        true /* optional */, ResourceFormat::RG32Float   },
     };
@@ -156,7 +159,10 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     auto clear = [&](const ChannelDesc& channel)
     {
         auto pTex = renderData[channel.name]->asTexture();
-        if (pTex) pRenderContext->clearUAV(pTex->getUAV().get(), float4(0.f));
+        if (pTex) {
+            if (channel.name == kVBufferName) pRenderContext->clearUAV(pTex->getUAV().get(), uint4(std::numeric_limits<uint32_t>::max()));
+            else pRenderContext->clearUAV(pTex->getUAV().get(), float4(0.f));
+        }
     };
     for (const auto& channel : kGBufferExtraChannels) clear(channel);
 
