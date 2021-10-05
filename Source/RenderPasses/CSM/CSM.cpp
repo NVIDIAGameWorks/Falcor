@@ -621,7 +621,7 @@ void CSM::renderScene(RenderContext* pCtx)
 
     pCB->setBlob(&mCsmData, 0, sizeof(mCsmData));
     mpLightCamera->setProjectionMatrix(mCsmData.globalMat);
-    mpScene->rasterize(pCtx, mShadowPass.pState.get(), mShadowPass.pVars.get(), mControls.depthClamp ? Scene::RenderFlags::UserRasterizerState : Scene::RenderFlags::None);
+    mpScene->rasterize(pCtx, mShadowPass.pState.get(), mShadowPass.pVars.get());
     //        mpCsmSceneRenderer->renderScene(pCtx, mShadowPass.pState.get(), mShadowPass.pVars.get(), mpLightCamera.get());
 }
 
