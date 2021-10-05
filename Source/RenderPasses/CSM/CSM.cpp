@@ -330,6 +330,11 @@ void CSM::createShadowPassResources()
     mShadowPass.pState->setProgram(mShadowPass.pProgram);
     mShadowPass.pState->setDepthStencilState(nullptr);
     mShadowPass.pState->setFbo(mShadowPass.pFbo);
+
+    RasterizerState::Desc rsDesc;
+    rsDesc.setDepthClamp(true);
+    RasterizerState::SharedPtr rsState = RasterizerState::create(rsDesc);
+    mShadowPass.pState->setRasterizerState(rsState);
 }
 
 CSM::CSM()
@@ -407,7 +412,7 @@ RenderPassReflection CSM::reflect(const CompileData& compileData)
     RenderPassReflection reflector;
     reflector.addOutput(kVisibility, "Visibility map. Values are [0,1] where 0 means the pixel is completely shadowed and 1 means it's not shadowed at all")
         .format(getVisBufferFormat(mVisibilityPassData.mapBitsPerChannel, mVisibilityPassData.shouldVisualizeCascades))
-        .texture2D(mVisibilityPassData.screenDim.x, mVisibilityPassData.screenDim.y);
+        .texture2D(0, 0);
     reflector.addInput(kDepth, "Pre-initialized scene depth buffer used for SDSM.\nIf not provided, the pass will run a depth-pass internally").flags(RenderPassReflection::Field::Flags::Optional);
     return reflector;
 }
@@ -616,7 +621,7 @@ void CSM::renderScene(RenderContext* pCtx)
 
     pCB->setBlob(&mCsmData, 0, sizeof(mCsmData));
     mpLightCamera->setProjectionMatrix(mCsmData.globalMat);
-    mpScene->rasterize(pCtx, mShadowPass.pState.get(), mShadowPass.pVars.get());
+    mpScene->rasterize(pCtx, mShadowPass.pState.get(), mShadowPass.pVars.get(), mControls.depthClamp ? Scene::RenderFlags::UserRasterizerState : Scene::RenderFlags::None);
     //        mpCsmSceneRenderer->renderScene(pCtx, mShadowPass.pState.get(), mShadowPass.pVars.get(), mpLightCamera.get());
 }
 
