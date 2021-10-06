@@ -106,7 +106,7 @@ GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 bar
         gFaceNormalW[ipos] = float4(sd.faceN, 0);
     }
 
-    if (isValid(gViewW))
+    if (is_valid(gViewW))
     {
         gViewW[ipos] = float4(sd.V, 0);
     }
