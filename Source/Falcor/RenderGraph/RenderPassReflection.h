@@ -63,6 +63,8 @@ namespace Falcor
                 Texture3D,
                 TextureCube,
                 RawBuffer,
+                StructuredBuffer,
+                TypedBuffer,
             };
             
             Field(const std::string& name, const std::string& desc, Visibility v);
@@ -75,6 +77,8 @@ namespace Falcor
             static const uint32_t kMaxMipLevels = Texture::kMaxPossible;
 
             Field& rawBuffer(uint32_t size);
+            Field& structuredBuffer(uint32_t elementCount, uint32_t structureSize);
+            Field& typedBuffer(uint32_t elementCount);
             Field& texture1D(uint32_t width = 0, uint32_t mipCount = 1, uint32_t arraySize = 1);
             Field& texture2D(uint32_t width = 0, uint32_t height = 0, uint32_t sampleCount = 1, uint32_t mipCount = 1, uint32_t arraySize = 1);
             Field& texture3D(uint32_t width = 0, uint32_t height = 0, uint32_t depth = 0, uint32_t arraySize = 1);
@@ -102,6 +106,8 @@ namespace Falcor
             Type getType() const { return mType; }
             Visibility getVisibility() const { return mVisibility; }
 
+            bool isBuffer() const { return mType == Type::RawBuffer || mType == Type::StructuredBuffer || mType == Type::TypedBuffer; }
+
             /** Overwrite previously unknown/unspecified fields with specified ones.
                 If a property is specified both in the current object, as well as the other field, an error will be logged and the current field will be undefined
             */
@@ -115,8 +121,8 @@ namespace Falcor
             Type mType = Type::Texture2D;
             std::string mName;                             ///< The field's name
             std::string mDesc;                             ///< A description of the field
-            uint32_t mWidth = 0;                           ///< For texture, the width. For buffers, the size in bytes. 0 means don't care - the pass will use whatever is bound (the RenderGraph will use the window size if this field is 0)
-            uint32_t mHeight = 0;                          ///< 0 means don't care - the pass will use whatever is bound (the RenderGraph will use the window size if this field is 0)
+            uint32_t mWidth = 0;                           ///< For texture, the width. For raw buffer, the size in bytes. For typed or structured buffer, the numer of elements. 0 means don't care - the pass will use whatever is bound (the RenderGraph will use the window size if this field is 0)
+            uint32_t mHeight = 0;                          ///< For texture, the height. For structured buffer, the structure size. 0 means don't care - the pass will use whatever is bound (the RenderGraph will use the window size if this field is 0)
             uint32_t mDepth = 0;                           ///< 0 means don't care - the pass will use whatever is bound (the RenderGraph will use the window size if this field is 0)
             uint32_t mSampleCount = 1;                     ///< 0 means don't care - the pass will use whatever is bound
             uint32_t mMipCount = 1;                        ///< The required mip-level count. Only valid for textures
@@ -155,6 +161,8 @@ namespace Falcor
         switch (t)
         {
             t2s(RawBuffer);
+            t2s(StructuredBuffer);
+            t2s(TypedBuffer);
             t2s(Texture1D);
             t2s(Texture2D);
             t2s(Texture3D);
@@ -170,6 +178,8 @@ namespace Falcor
     {
         switch (t)
         {
+        case Resource::Type::Buffer:
+            return RenderPassReflection::Field::Type::RawBuffer;
         case Resource::Type::Texture1D:
             return RenderPassReflection::Field::Type::Texture1D;
         case Resource::Type::Texture2D:
