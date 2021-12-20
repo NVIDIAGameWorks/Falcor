@@ -27,7 +27,6 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "FalcorExperimental.h"
 #include "ToneMapperParams.slang"
 
 using namespace Falcor;
@@ -35,23 +34,21 @@ using namespace Falcor;
 class ToneMapper : public RenderPass
 {
 public:
+    using SharedPtr = std::shared_ptr<ToneMapper>;
+    using Operator = ToneMapperOperator;
+
+    static const Info kInfo;
+
     enum class ExposureMode
     {
         AperturePriority,       // Keep aperture constant when modifying EV
         ShutterPriority,        // Keep shutter constant when modifying EV
     };
 
-    using SharedPtr = std::shared_ptr<ToneMapper>;
-
-    static const char* kDesc;
-
-    using Operator = ToneMapperOperator;
-
     /** Create a new object
     */
     static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
 
-    std::string getDesc() override { return kDesc; }
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
@@ -106,7 +103,9 @@ private:
     Sampler::SharedPtr mpPointSampler;
     Sampler::SharedPtr mpLinearSampler;
 
-    ResourceFormat mOutputFormat = ResourceFormat::Unknown; ///< Output format (uses default when set to ResourceFormat::Unknown).
+    RenderPassHelpers::IOSize mOutputSizeSelection = RenderPassHelpers::IOSize::Default;    ///< Selected output size.
+    ResourceFormat mOutputFormat = ResourceFormat::Unknown;                                 ///< Output format (uses default when set to ResourceFormat::Unknown).
+    uint2 mFixedOutputSize = { 512, 512 };                                                  ///< Output size in pixels when 'Fixed' size is selected.
 
     bool mUseSceneMetadata = true;      ///< Use scene metadata for setting up tonemapper when loading a scene.
 

@@ -34,10 +34,8 @@ import Utils.Math.BitTricks;
 
     This generator has only 32 bit state and sub-optimal statistical properties.
     Do not use for anything critical; correlation artifacts may be prevalent.
-
-    This code works on shader model 5.1 and above.
 */
-struct TinyUniformSampleGenerator : ISampleGenerator
+public struct TinyUniformSampleGenerator : ISampleGenerator
 {
     struct Padded
     {
@@ -45,27 +43,23 @@ struct TinyUniformSampleGenerator : ISampleGenerator
         uint3 _pad;
     };
 
-    /** Create sample generator.
+    /** Initializes the sample generator.
         \param[in] seed Seed value.
-        \return Return a new sample generator.
     */
-    static TinyUniformSampleGenerator create(uint seed)
+    __init(uint seed)
     {
-        TinyUniformSampleGenerator sampleGenerator;
-        sampleGenerator.rng = createLCG(seed);
-        return sampleGenerator;
+        this.rng = createLCG(seed);
     }
 
-    /** Create sample generator for a given pixel and sample number.
+    /** Initializes the sample generator for a given pixel and sample number.
         \param[in] pixel Pixel id.
         \param[in] sampleNumber Sample number.
-        \return Return a new sample generator.
     */
-    static TinyUniformSampleGenerator create(uint2 pixel, uint sampleNumber)
+    __init(uint2 pixel, uint sampleNumber)
     {
         // Use block cipher to generate a pseudorandom initial seed.
         uint seed = blockCipherTEA(interleave_32bit(pixel), sampleNumber).x;
-        return create(seed);
+        this.rng = createLCG(seed);
     }
 
     /** Returns the next sample value. This function updates the state.

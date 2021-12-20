@@ -26,14 +26,51 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "Core/API/RootSignature.h"
+#include "D3D12RootSignature.h"
 #include "D3D12State.h"
 #include "Core/API/Device.h"
+#include "Core/Program/ProgramReflection.h"
 
 namespace Falcor
 {
-    void RootSignature::apiInit()
+    D3D12RootSignature::SharedPtr D3D12RootSignature::spEmptySig;
+    uint64_t D3D12RootSignature::sObjCount = 0;
+
+    D3D12RootSignature::Desc& D3D12RootSignature::Desc::addDescriptorSet(const DescriptorSetLayout& setLayout)
     {
+        assert(mRootConstants.empty()); // For now we disallow both root-constants and descriptor-sets
+        assert(setLayout.getRangeCount());
+        mSets.push_back(setLayout);
+        return *this;
+    }
+
+    D3D12RootSignature::Desc& D3D12RootSignature::Desc::addRootDescriptor(DescType type, uint32_t regIndex, uint32_t spaceIndex, ShaderVisibility visibility)
+    {
+        RootDescriptorDesc desc;
+        desc.type = type;
+        desc.regIndex = regIndex;
+        desc.spaceIndex = spaceIndex;
+        desc.visibility = visibility;
+        mRootDescriptors.push_back(desc);
+        return *this;
+    }
+
+    D3D12RootSignature::Desc& D3D12RootSignature::Desc::addRootConstants(uint32_t regIndex, uint32_t spaceIndex, uint32_t count)
+    {
+        assert(mSets.empty()); // For now we disallow both root-constants and descriptor-sets
+        RootConstantsDesc desc;
+        desc.count = count;
+        desc.regIndex = regIndex;
+        desc.spaceIndex = spaceIndex;
+        mRootConstants.push_back(desc);
+        return *this;
+    }
+
+    D3D12RootSignature::D3D12RootSignature(const Desc& desc)
+        : mDesc(desc)
+    {
+        sObjCount++;
+
         // Get vector of root parameters
         RootSignatureParams params;
         initD3D12RootParams(mDesc, params);
@@ -42,16 +79,15 @@ namespace Falcor
         D3D12_VERSIONED_ROOT_SIGNATURE_DESC versionedDesc = {};
         versionedDesc.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
 
-        D3D12_ROOT_SIGNATURE_DESC1& desc = versionedDesc.Desc_1_1;
-        desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-        if (mDesc.mIsLocal) desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
-        mSizeInBytes = params.signatureSizeInBytes; 
+        D3D12_ROOT_SIGNATURE_DESC1& d3dDesc = versionedDesc.Desc_1_1;
+        d3dDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+        mSizeInBytes = params.signatureSizeInBytes;
         mElementByteOffset = params.elementByteOffset;
 
-        desc.pParameters = params.rootParams.data();
-        desc.NumParameters = (uint32_t)params.rootParams.size();
-        desc.pStaticSamplers = nullptr;
-        desc.NumStaticSamplers = 0;
+        d3dDesc.pParameters = params.rootParams.data();
+        d3dDesc.NumParameters = (uint32_t)params.rootParams.size();
+        d3dDesc.pStaticSamplers = nullptr;
+        d3dDesc.NumStaticSamplers = 0;
 
         // Create versioned root signature
         ID3DBlobPtr pSigBlob;
@@ -60,25 +96,153 @@ namespace Falcor
         if (FAILED(hr))
         {
             std::string msg = convertBlobToString(pErrorBlob.GetInterfacePtr());
-            throw std::exception(("Failed to create root signature:\n" + msg).c_str());
+            throw RuntimeError("Failed to create root signature: " + msg);
         }
 
         if (mSizeInBytes > sizeof(uint32_t) * D3D12_MAX_ROOT_COST)
         {
-            throw std::exception(("Root signature cost is too high. D3D12 root signatures are limited to 64 DWORDs, trying to create a signature with " + std::to_string(mSizeInBytes / sizeof(uint32_t)) + " DWORDs.").c_str());
+            throw RuntimeError("Root signature cost is too high. D3D12 root signatures are limited to 64 DWORDs, trying to create a signature with {} DWORDs.", mSizeInBytes / sizeof(uint32_t));
         }
 
         createApiHandle(pSigBlob);
     }
 
-    void RootSignature::createApiHandle(ID3DBlobPtr pSigBlob)
+    D3D12RootSignature::~D3D12RootSignature()
+    {
+        sObjCount--;
+        if (spEmptySig && sObjCount == 1) // That's right, 1. It means spEmptySig is the only object
+        {
+            spEmptySig = nullptr;
+        }
+    }
+
+    D3D12RootSignature::SharedPtr D3D12RootSignature::getEmpty()
+    {
+        if (spEmptySig) return spEmptySig;
+        return create(Desc());
+    }
+
+    D3D12RootSignature::SharedPtr D3D12RootSignature::create(const Desc& desc)
+    {
+        bool empty = desc.mSets.empty() && desc.mRootDescriptors.empty() && desc.mRootConstants.empty();
+        if (empty && spEmptySig) return spEmptySig;
+
+        SharedPtr pSig = SharedPtr(new D3D12RootSignature(desc));
+        if (empty) spEmptySig = pSig;
+
+        return pSig;
+    }
+
+    ReflectionResourceType::ShaderAccess getRequiredShaderAccess(D3D12RootSignature::DescType type)
+    {
+        switch (type)
+        {
+        case D3D12RootSignature::DescType::TextureSrv:
+        case D3D12RootSignature::DescType::RawBufferSrv:
+        case D3D12RootSignature::DescType::TypedBufferSrv:
+        case D3D12RootSignature::DescType::StructuredBufferSrv:
+        case D3D12RootSignature::DescType::AccelerationStructureSrv:
+        case D3D12RootSignature::DescType::Cbv:
+        case D3D12RootSignature::DescType::Sampler:
+            return ReflectionResourceType::ShaderAccess::Read;
+        case D3D12RootSignature::DescType::TextureUav:
+        case D3D12RootSignature::DescType::RawBufferUav:
+        case D3D12RootSignature::DescType::TypedBufferUav:
+        case D3D12RootSignature::DescType::StructuredBufferUav:
+            return ReflectionResourceType::ShaderAccess::ReadWrite;
+        default:
+            should_not_get_here();
+            return ReflectionResourceType::ShaderAccess(-1);
+        }
+    }
+
+    // Add the descriptor set layouts from `pBlock` to the list
+    // of descriptor set layouts being built for a root signature.
+    //
+    static void addParamBlockSets(
+        const ParameterBlockReflection* pBlock,
+        D3D12RootSignature::Desc& ioDesc)
+    {
+        auto defaultConstantBufferInfo = pBlock->getDefaultConstantBufferBindingInfo();
+        if (defaultConstantBufferInfo.useRootConstants)
+        {
+            uint32_t count = uint32_t(pBlock->getElementType()->getByteSize() / sizeof(uint32_t));
+            ioDesc.addRootConstants(defaultConstantBufferInfo.regIndex, defaultConstantBufferInfo.regSpace, count);
+        }
+
+        uint32_t setCount = pBlock->getD3D12DescriptorSetCount();
+        for (uint32_t s = 0; s < setCount; ++s)
+        {
+            auto& setLayout = pBlock->getD3D12DescriptorSetLayout(s);
+            ioDesc.addDescriptorSet(setLayout);
+        }
+
+        uint32_t parameterBlockRangeCount = pBlock->getParameterBlockSubObjectRangeCount();
+        for (uint32_t i = 0; i < parameterBlockRangeCount; ++i)
+        {
+            uint32_t rangeIndex = pBlock->getParameterBlockSubObjectRangeIndex(i);
+
+            auto& resourceRange = pBlock->getResourceRange(rangeIndex);
+            auto& bindingInfo = pBlock->getResourceRangeBindingInfo(rangeIndex);
+            assert(bindingInfo.flavor == ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::ParameterBlock);
+            assert(resourceRange.count == 1); // TODO: The code here does not handle arrays of sub-objects
+
+            addParamBlockSets(bindingInfo.pSubObjectReflector.get(), ioDesc);
+        }
+    }
+
+    // Add the root descriptors from `pBlock` to the root signature being built.
+    static void addRootDescriptors(
+        const ParameterBlockReflection* pBlock,
+        D3D12RootSignature::Desc& ioDesc)
+    {
+        uint32_t rootDescriptorRangeCount = pBlock->getRootDescriptorRangeCount();
+        for (uint32_t i = 0; i < rootDescriptorRangeCount; ++i)
+        {
+            uint32_t rangeIndex = pBlock->getRootDescriptorRangeIndex(i);
+
+            auto& resourceRange = pBlock->getResourceRange(rangeIndex);
+            auto& bindingInfo = pBlock->getResourceRangeBindingInfo(rangeIndex);
+            assert(bindingInfo.isRootDescriptor());
+            assert(resourceRange.count == 1); // Root descriptors cannot be arrays
+
+            ioDesc.addRootDescriptor(resourceRange.descriptorType, bindingInfo.regIndex, bindingInfo.regSpace); // TODO: Using shader visibility *all* for now, get this info from reflection if we have it.
+        }
+
+        // Iterate over constant buffers and parameter blocks to recursively add their root descriptors.
+        uint32_t resourceRangeCount = pBlock->getResourceRangeCount();
+        for (uint32_t rangeIndex = 0; rangeIndex < resourceRangeCount; ++rangeIndex)
+        {
+            auto& bindingInfo = pBlock->getResourceRangeBindingInfo(rangeIndex);
+
+            if (bindingInfo.flavor != ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::ConstantBuffer &&
+                bindingInfo.flavor != ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::ParameterBlock)
+                continue;
+
+            auto& resourceRange = pBlock->getResourceRange(rangeIndex);
+            assert(resourceRange.count == 1); // TODO: The code here does not handle arrays of sub-objects
+
+            addRootDescriptors(bindingInfo.pSubObjectReflector.get(), ioDesc);
+        }
+    }
+
+    D3D12RootSignature::SharedPtr D3D12RootSignature::create(const ProgramReflection* pReflector)
+    {
+        assert(pReflector);
+        D3D12RootSignature::Desc d;
+        addParamBlockSets(pReflector->getDefaultParameterBlock().get(), d);
+        addRootDescriptors(pReflector->getDefaultParameterBlock().get(), d);
+        return D3D12RootSignature::create(d);
+    }
+
+    void D3D12RootSignature::createApiHandle(ID3DBlobPtr pSigBlob)
     {
         Device::ApiHandle pDevice = gpDevice->getApiHandle();
-        d3d_call(pDevice->CreateRootSignature(0, pSigBlob->GetBufferPointer(), pSigBlob->GetBufferSize(), IID_PPV_ARGS(&mApiHandle)));
+        FALCOR_D3D_CALL(pDevice->CreateRootSignature(0, pSigBlob->GetBufferPointer(), pSigBlob->GetBufferSize(), IID_PPV_ARGS(&mApiHandle)));
     }
 
     template<bool forGraphics>
-    static void bindRootSigCommon(CopyContext* pCtx, const RootSignature::ApiHandle& rootSig)
+    static void bindRootSigCommon(CopyContext* pCtx, const D3D12RootSignature::ApiHandle& rootSig)
     {
         if (forGraphics)
         {
@@ -90,12 +254,12 @@ namespace Falcor
         }
     }
 
-    void RootSignature::bindForCompute(CopyContext* pCtx)
+    void D3D12RootSignature::bindForCompute(CopyContext* pCtx)
     {
         bindRootSigCommon<false>(pCtx, mApiHandle);
     }
 
-    void RootSignature::bindForGraphics(CopyContext* pCtx)
+    void D3D12RootSignature::bindForGraphics(CopyContext* pCtx)
     {
         bindRootSigCommon<true>(pCtx, mApiHandle);
     }

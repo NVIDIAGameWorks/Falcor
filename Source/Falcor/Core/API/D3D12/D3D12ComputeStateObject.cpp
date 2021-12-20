@@ -32,14 +32,14 @@
 
 namespace Falcor
 {
-#if _ENABLE_NVAPI
+#if FALCOR_ENABLE_NVAPI
     bool getNvApiComputePsoDesc(const ComputeStateObject::Desc& desc, std::vector<NvApiPsoExDesc>& nvApiPsoExDescs)
     {
         auto ret = NvAPI_Initialize();
 
         if (ret != NVAPI_OK)
         {
-            logError("Failed to initialize NVAPI");
+            reportError("Failed to initialize NVAPI");
             return false;
         }
 
@@ -70,7 +70,7 @@ namespace Falcor
 
         if (ret != NVAPI_OK || apiHandle == nullptr)
         {
-            logError("Failed to create a compute pipeline state object with NVAPI extensions");
+            reportError("Failed to create a compute pipeline state object with NVAPI extensions");
             return nullptr;
         }
 
@@ -92,24 +92,31 @@ namespace Falcor
     {
         assert(mDesc.mpProgram);
         auto pComputeShader = mDesc.mpProgram->getShader(ShaderType::Compute);
-        if (pComputeShader == nullptr) throw std::exception("Can't create compute state object without a compute shader");
+        if (pComputeShader == nullptr) RuntimeError("Can't create compute state object without a compute shader");
 
         D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {};
         desc.CS = pComputeShader->getApiHandle();
-        desc.pRootSignature = mDesc.mpRootSignature ? mDesc.mpRootSignature->getApiHandle() : nullptr;
+        if (mDesc.mpD3D12RootSignatureOverride)
+        {
+            desc.pRootSignature = mDesc.mpD3D12RootSignatureOverride->getApiHandle();
+        }
+        else
+        {
+            desc.pRootSignature = mDesc.mpProgram->getD3D12RootSignature() ? mDesc.mpProgram->getD3D12RootSignature()->getApiHandle() : nullptr;
+        }
 
         if (getIsNvApiComputePsoRequired(mDesc))
         {
             std::vector<NvApiPsoExDesc> nvApiDesc;
             bool ret = getNvApiComputePsoDesc(mDesc, nvApiDesc);
-            if (!ret) throw std::exception("Failed to create compute PSO desc with NVAPI extensions");
+            if (!ret) RuntimeError("Failed to create compute PSO desc with NVAPI extensions");
 
             mApiHandle = getNvApiComputePsoHandle(nvApiDesc, desc);
-            if (mApiHandle == nullptr) throw std::exception("Failed to create compute PSO with NVAPI extensions");
+            if (mApiHandle == nullptr) RuntimeError("Failed to create compute PSO with NVAPI extensions");
         }
         else
         {
-            d3d_call(gpDevice->getApiHandle()->CreateComputePipelineState(&desc, IID_PPV_ARGS(&mApiHandle)));
+            FALCOR_D3D_CALL(gpDevice->getApiHandle()->CreateComputePipelineState(&desc, IID_PPV_ARGS(&mApiHandle)));
         }
     }
 }

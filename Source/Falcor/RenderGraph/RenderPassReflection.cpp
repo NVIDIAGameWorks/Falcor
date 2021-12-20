@@ -48,8 +48,9 @@ namespace Falcor
         mWidth = width;
         mHeight = 1;
         mDepth = 1;
-        mArraySize = arraySize;
+        mSampleCount = 1;
         mMipCount = mipCount;
+        mArraySize = arraySize;
         return *this;
     }
 
@@ -58,10 +59,10 @@ namespace Falcor
         mType = Type::Texture2D;
         mWidth = width;
         mHeight = height;
-        mSampleCount = sampleCount;
         mDepth = 1;
-        mArraySize = arraySize;
+        mSampleCount = sampleCount;
         mMipCount = mipCount;
+        mArraySize = arraySize;
         return *this;
     }
 
@@ -71,6 +72,8 @@ namespace Falcor
         mWidth = width;
         mHeight = height;
         mDepth = depth;
+        mSampleCount = 1;
+        mMipCount = 1;
         mArraySize = arraySize;
         return *this;
     }
@@ -81,6 +84,7 @@ namespace Falcor
         mWidth = width;
         mHeight = height;
         mDepth = 1;
+        mSampleCount = 1;
         mMipCount = mipCount;
         mArraySize = arraySize;
         return *this;
@@ -91,7 +95,7 @@ namespace Falcor
         switch (type)
         {
         case RenderPassReflection::Field::Type::RawBuffer:
-            if(height > 0 || depth > 0 || sampleCount > 0) logWarning("RenderPassReflection::Field::resourceType - height, depth, sampleCount for " + to_string(type) + " must be either 0");
+            if (height > 0 || depth > 0 || sampleCount > 0) logWarning("RenderPassReflection::Field::resourceType - height, depth, sampleCount for " + to_string(type) + " must be 0");
             return rawBuffer(width);
         case RenderPassReflection::Field::Type::Texture1D:
             if (height > 1 || depth > 1 || sampleCount > 1) logWarning("RenderPassReflection::Field::resourceType - height, depth, sampleCount for " + to_string(type) + " must be either 0 or 1");
@@ -106,7 +110,7 @@ namespace Falcor
             if (depth > 1 || sampleCount > 1) logWarning("RenderPassReflection::Field::resourceType - depth, sampleCount for " + to_string(type) + " must be either 0 or 1");
             return textureCube(width, height, mipCount, arraySize);
         default:
-            throw std::runtime_error("RenderPassReflection::Field::resourceType - " + to_string(type) + " is not a valid Field type");
+            throw RuntimeError("RenderPassReflection::Field::resourceType - {} is not a valid Field type", to_string(type));
         }
     }
 
@@ -122,13 +126,13 @@ namespace Falcor
     {
         if (mSampleCount > 1 && mMipCount > 1)
         {
-            logError("Trying to create a multisampled RenderPassReflection::Field '" + mName + "' with mip-count larger than 1. This is illegal.");
+            reportError("Trying to create a multisampled RenderPassReflection::Field '" + mName + "' with mip-count larger than 1. This is illegal.");
             return false;
         }
 
         if (is_set(mVisibility, Visibility::Internal) && is_set(mFlags, Flags::Optional))
         {
-            logError("Internal resource can't be optional, since there will never be a graph edge that forces their creation");
+            reportError("Internal resource can't be optional, since there will never be a graph edge that forces their creation");
             return false;
         }
 
@@ -151,7 +155,7 @@ namespace Falcor
                 }
                 else if ((existingF.getVisibility() & field.getVisibility()) != field.getVisibility())
                 {
-                    logError("Trying to add an existing field '" + field.getName() + "' to RenderPassReflection, but the visibility flags mismatch. Overriding the previous definition");
+                    reportError("Trying to add an existing field '" + field.getName() + "' to RenderPassReflection, but the visibility flags mismatch. Overriding the previous definition");
                 }
                 return existingF;
             }
@@ -209,7 +213,7 @@ namespace Falcor
         auto err = [&](const std::string& msg)
         {
             const std::string s = "Can't merge RenderPassReflection::Fields. base(" + getName() + "), newField(" + other.getName() + "). ";
-            throw std::exception((s + msg).c_str());
+            throw RuntimeError(s + msg);
         };
 
         if (mType != other.mType) err("mismatching types");

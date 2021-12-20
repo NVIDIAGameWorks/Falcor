@@ -41,15 +41,13 @@ namespace Falcor
 
     AnimationController::AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const DynamicVertexVector& dynamicVertexData, const std::vector<Animation::SharedPtr>& animations)
         : mpScene(pScene)
+        , mAnimations(animations)
+        , mNodesEdited(pScene->mSceneGraph.size())
         , mLocalMatrices(pScene->mSceneGraph.size())
         , mGlobalMatrices(pScene->mSceneGraph.size())
         , mInvTransposeGlobalMatrices(pScene->mSceneGraph.size())
-        , mMatricesAnimated(pScene->mSceneGraph.size())
         , mMatricesChanged(pScene->mSceneGraph.size())
-        , mAnimations(animations)
     {
-        initFlags();
-
         // Create GPU resources.
         assert(mLocalMatrices.size() * 4 <= std::numeric_limits<uint32_t>::max());
         uint32_t float4Count = (uint32_t)mLocalMatrices.size() * 4;
@@ -77,9 +75,17 @@ namespace Falcor
         return UniquePtr(new AnimationController(pScene, staticVertexData, dynamicVertexData, animations));
     }
 
-    void AnimationController::addAnimatedVertexCaches(std::vector<CachedCurve>& cachedCurves, std::vector<CachedMesh>& cachedMeshes)
+    void AnimationController::addAnimatedVertexCaches(std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes)
     {
-        mpVertexCache = AnimatedVertexCache::create(mpScene, cachedCurves, cachedMeshes);
+        mpVertexCache = AnimatedVertexCache::create(mpScene, std::move(cachedCurves), std::move(cachedMeshes));
+
+        // Note: It is a workaround to have two pre-infinity behaviors for the cached animation.
+        // We need `Cycle` behavior when the length of cached animation is smaller than the length of mesh animation (e.g., tiger forest).
+        // We need `Constant` behavior when both animation lengths are equal (e.g., a standalone tiger).
+        if (mpVertexCache->getGlobalAnimationLength() < mGlobalAnimationLength)
+        {
+            mpVertexCache->setPreInfinityBehavior(Animation::Behavior::Cycle);
+        }
     }
 
     void AnimationController::setEnabled(bool enabled)
@@ -87,25 +93,13 @@ namespace Falcor
         mEnabled = enabled;
     }
 
-    void AnimationController::initFlags()
+    void AnimationController::setIsLooped(bool looped)
     {
-        std::fill(mMatricesAnimated.begin(), mMatricesAnimated.end(), false);
+        mLoopAnimations = looped;
 
-        // Tag all matrices affected by an animation.
-        for (const auto& pAnimation : mAnimations)
+        if (mpVertexCache)
         {
-            mMatricesAnimated[pAnimation->getNodeID()] = true;
-        }
-
-        // Traverse the scene graph hierarchy to propagate the flags.
-        assert(mpScene->mSceneGraph.size() == mMatricesAnimated.size());
-        for (size_t i = 0; i < mMatricesAnimated.size(); i++)
-        {
-            if (uint32_t parent = mpScene->mSceneGraph[i].parent; parent != SceneBuilder::kInvalidNode)
-            {
-                assert(parent < i);
-                mMatricesAnimated[i] = mMatricesAnimated[i] || mMatricesAnimated[parent];
-            }
+            mpVertexCache->setIsLooped(looped);
         }
     }
 
@@ -119,11 +113,26 @@ namespace Falcor
 
     bool AnimationController::animate(RenderContext* pContext, double currentTime)
     {
-        PROFILE("animate");
+        FALCOR_PROFILE("animate");
+
+        std::fill(mMatricesChanged.begin(), mMatricesChanged.end(), false);
+
+        // Check for edited scene nodes and update local matrices.
+        auto &sceneGraph = mpScene->mSceneGraph;
+        bool edited = false;
+        for (size_t i = 0; i < sceneGraph.size(); ++i)
+        {
+            if (mNodesEdited[i])
+            {
+                mLocalMatrices[i] = sceneGraph[i].transform;
+                mNodesEdited[i] = false;
+                mMatricesChanged[i] = true;
+                edited = true;
+            }
+        }
 
         bool changed = false;
         double time = mLoopAnimations ? std::fmod(currentTime, mGlobalAnimationLength) : currentTime;
-        std::fill(mMatricesChanged.begin(), mMatricesChanged.end(), false);
 
         // Check if animation controller was enabled/disabled since last call.
         // When enabling/disabling, all data for the current and previous frame is initialized,
@@ -143,7 +152,16 @@ namespace Falcor
             bindBuffers();
             executeSkinningPass(pContext, true);
 
-            if (mpVertexCache) mpVertexCache->copyToPrevVertices(pContext);
+            if (mpVertexCache)
+            {
+                if (mEnabled && mpVertexCache->hasAnimations())
+                {
+                    // Recompute time based on the cycle length of vertex caches.
+                    double vertexCacheTime = (mGlobalAnimationLength == 0) ? currentTime : time;
+                    mpVertexCache->animate(pContext, vertexCacheTime);
+                }
+                mpVertexCache->copyToPrevVertices(pContext);
+            }
 
             mFirstUpdate = false;
             mPrevEnabled = mEnabled;
@@ -152,9 +170,9 @@ namespace Falcor
 
         // Perform incremental update.
         // This updates all animated matrices and dynamic vertex data.
-        if (mEnabled && (time != mTime || mTime != mPrevTime))
+        if (edited || mEnabled && (time != mTime || mTime != mPrevTime))
         {
-            if (hasAnimations())
+            if (edited || hasAnimations())
             {
                 swap(mpPrevWorldMatricesBuffer, mpWorldMatricesBuffer);
                 swap(mpPrevInvTransposeWorldMatricesBuffer, mpInvTransposeWorldMatricesBuffer);
@@ -168,8 +186,9 @@ namespace Falcor
 
             if (mpVertexCache && mpVertexCache->hasAnimations())
             {
-                double time = mLoopAnimations ? std::fmod(currentTime, mpVertexCache->getGlobalAnimationLength()) : currentTime;
-                mpVertexCache->animate(pContext, time);
+                // Recompute time based on the cycle length of vertex caches.
+                double vertexCacheTime = (mGlobalAnimationLength == 0) ? currentTime : time;
+                mpVertexCache->animate(pContext, vertexCacheTime);
                 changed = true;
             }
 
@@ -192,24 +211,30 @@ namespace Falcor
 
     void AnimationController::updateWorldMatrices(bool updateAll)
     {
+        auto &sceneGraph = mpScene->mSceneGraph;
+
         for (size_t i = 0; i < mGlobalMatrices.size(); i++)
         {
-            if (!mMatricesAnimated[i] && !updateAll) continue;
+            // Propagate matrix change flag to children.
+            if (sceneGraph[i].parent != SceneBuilder::kInvalidNode)
+            {
+                mMatricesChanged[i] = mMatricesChanged[i] || mMatricesChanged[sceneGraph[i].parent];
+            }
+
+            if (!mMatricesChanged[i] && !updateAll) continue;
 
             mGlobalMatrices[i] = mLocalMatrices[i];
 
             if (mpScene->mSceneGraph[i].parent != SceneBuilder::kInvalidNode)
             {
-                mGlobalMatrices[i] = mGlobalMatrices[mpScene->mSceneGraph[i].parent] * mGlobalMatrices[i];
-                mMatricesChanged[i] = mMatricesChanged[i] || mMatricesChanged[mpScene->mSceneGraph[i].parent];
-                assert(!mMatricesChanged[i] || mMatricesAnimated[i]);
+                mGlobalMatrices[i] = mGlobalMatrices[sceneGraph[i].parent] * mGlobalMatrices[i];
             }
 
             mInvTransposeGlobalMatrices[i] = transpose(inverse(mGlobalMatrices[i]));
 
             if (mpSkinningPass)
             {
-                mSkinningMatrices[i] = mGlobalMatrices[i] * mpScene->mSceneGraph[i].localToBindSpace;
+                mSkinningMatrices[i] = mGlobalMatrices[i] * sceneGraph[i].localToBindSpace;
                 mInvTransposeSkinningMatrices[i] = transpose(inverse(mSkinningMatrices[i]));
             }
         }
@@ -225,16 +250,16 @@ namespace Falcor
         }
         else
         {
-            // Upload animated matrices only.
+            // Upload changed matrices only.
             for (size_t i = 0; i < mGlobalMatrices.size();)
             {
-                // Detect ranges of consecutive matrices that are all animated or not.
+                // Detect ranges of consecutive matrices that have all changed or not.
                 size_t offset = i;
-                bool animated = mMatricesAnimated[i];
-                while (i < mGlobalMatrices.size() && mMatricesAnimated[i] == animated) ++i;
+                bool changed = mMatricesChanged[i];
+                while (i < mGlobalMatrices.size() && mMatricesChanged[i] == changed) ++i;
 
-                // Upload range of animated matrices.
-                if (animated)
+                // Upload range of changed matrices.
+                if (changed)
                 {
                     size_t count = i - offset;
                     mpWorldMatricesBuffer->setBlob(&mGlobalMatrices[offset], offset * sizeof(float4x4), count * sizeof(float4x4));
@@ -354,7 +379,13 @@ namespace Falcor
 
     void AnimationController::renderUI(Gui::Widgets& widget)
     {
-        widget.checkbox("Loop Animations", mLoopAnimations);
+        if (widget.checkbox("Loop Animations", mLoopAnimations))
+        {
+            if (mpVertexCache)
+            {
+                mpVertexCache->setIsLooped(mLoopAnimations);
+            }
+        }
         widget.tooltip("Enable/disable global animation looping.");
 
         for (auto& animation : mAnimations)

@@ -27,29 +27,27 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "FalcorExperimental.h"
 
 using namespace Falcor;
 
 #ifdef BUILD_GAUSSIAN_PASS
-#define dllpassdecl __declspec(dllexport)
+#define PASS_API FALCOR_API_EXPORT
 #else
-#define dllpassdecl __declspec(dllimport)
+#define PASS_API FALCOR_API_IMPORT
 #endif
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib);
-
-class dllpassdecl GaussianBlur : public RenderPass
+class PASS_API GaussianBlur : public RenderPass
 {
 public:
     using SharedPtr = std::shared_ptr<GaussianBlur>;
 
+    static const Info kInfo;
+
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
-    std::string getDesc() override { return kDesc; }
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
-    virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
+    virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
 
@@ -57,6 +55,8 @@ public:
     void setSigma(float sigma);
     uint32_t getKernelWidth() { return mKernelWidth; }
     float getSigma() { return mSigma; }
+
+    static void registerBindings(pybind11::module& m);
 
 private:
     GaussianBlur();
@@ -71,8 +71,6 @@ private:
     Fbo::SharedPtr mpFbo;
     Fbo::SharedPtr mpTmpFbo;
     Sampler::SharedPtr mpSampler;
-
-    static const char* kDesc;
-    static void registerBindings(pybind11::module& m);
-    friend void getPasses(Falcor::RenderPassLibrary& lib);
 };
+
+#undef PASS_API

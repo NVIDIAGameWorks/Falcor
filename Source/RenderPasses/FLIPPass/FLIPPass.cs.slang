@@ -28,32 +28,42 @@
 #include "Utils/Math/MathConstants.slangh"
 #include "flip.hlsli"
 
-#define GroupX 32
-#define GroupY 32
+import ToneMappers;
 
-Texture2D gInputA;
-Texture2D gInputB;
-RWTexture2D<float4> gOutput;
+Texture2D gTestImage;
+Texture2D gReferenceImage;
+RWTexture2D<float4> gFLIPErrorMap;
+RWTexture2D<float4> gFLIPErrorMapDisplay;
+RWTexture2D<float4> gExposureMapDisplay;
 
 cbuffer PerFrameCB
 {
-    uint2 gDimensions;
+    uint2 gResolution;
+    bool gIsHDR;
     bool gUseMagma;
+    bool gClampInput;
 
-    //  viewing conditions, for PPD calculation
+    // HDR-FLIP constants.
+    float gStartExposure;
+    float gExposureDelta;
+    uint gNumExposures;
+
+    //  Viewing conditions for PPD calculation.
     uint gMonitorWidthPixels;
     float gMonitorWidthMeters;
     float gMonitorDistance;
     uint2 pad;
 };
 
-static const float gqc = 0.7;
-static const float gpc = 0.4;
-static const float gpt = 0.95;
-static const float gw = 0.082;
-static const float gqf = 0.5;
+static const FLIPToneMapperType kHDRFLIPToneMapper = FLIPToneMapperType(TONE_MAPPER);
 
-static float MaxDistance = pow(HyAB(Hunt(linearRGB2CIELab(float3(0.0, 1.0, 0.0))), Hunt(linearRGB2CIELab(float3(0.0, 0.0, 1.0)))), gqc);
+static const float gqc = 0.7f;
+static const float gpc = 0.4f;
+static const float gpt = 0.95f;
+static const float gw = 0.082f;
+static const float gqf = 0.5f;
+
+static float MaxDistance = pow(HyAB(Hunt(linearRGB2CIELab(float3(0.0f, 1.0f, 0.0f))), Hunt(linearRGB2CIELab(float3(0.0f, 0.0f, 1.0f)))), gqc);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -62,166 +72,32 @@ static float MaxDistance = pow(HyAB(Hunt(linearRGB2CIELab(float3(0.0, 1.0, 0.0))
 //  Pixels per degree (PPD)
 float ppd(void)
 {
-    return gMonitorDistance * (gMonitorWidthPixels / gMonitorWidthMeters) * (M_PI / 180.0);
+    return gMonitorDistance * (gMonitorWidthPixels / gMonitorWidthMeters) * (M_PI / 180.0f);
+}
+
+float3 getPixel(Texture2D image, int2 pixel, float exposure)
+{
+    float3 pixelCol = image[pixel].rgb;
+    if (gIsHDR)
+    {
+        pixelCol = gClampInput ? max(pixelCol, 0.0f) : pixelCol;
+        pixelCol = pow(2.0f, exposure) * pixelCol; // Exposure compensation.
+        pixelCol = toneMap(pixelCol, kHDRFLIPToneMapper);
+    }
+    else
+    {
+        pixelCol = gClampInput ? clamp(pixelCol, 0.0f, 1.0f) : pixelCol;
+    }
+
+    return linearRGB2YCxCz(pixelCol);
 }
 
 float calculateWeight(float dist2, float4 ab)
 {
-    float b1Inv = 1.0 / ab.z;
-    float b2Inv = 1.0 / ab.w;
+    float b1Inv = 1.0f / ab.z;
+    float b2Inv = 1.0f / ab.w;
     return ab.x * sqrt(Pi * b1Inv) * exp(b1Inv * dist2) + ab.y * sqrt(Pi * b2Inv) * exp(b2Inv * dist2);
 }
-
-float3 gaussianFilter(uint3 loc3d, int radius, float4 abValuesA, float4 abValuesRG, float4 abValuesBY, bool useChannelA)
-{
-    float3 kernelSum = float3(0.0, 0.0, 0.0);
-    float3 colorSum = float3(0.0, 0.0, 0.0);
-
-    const float dx = 1.0 / ppd();
-    //[unroll]
-    for (int y = -radius; y <= radius; y++)
-    {
-        //[unroll]
-        for (int x = -radius; x <= radius; x++)
-        {
-            int2 loc2d = loc3d.xy + int2(x, y);
-            loc2d = min(max(int2(0, 0), loc2d), gDimensions-1);
-
-            float2 p = float2(x, y) * dx;
-            float dist2 = -(p.x * p.x + p.y * p.y) * PiSquared;
-            float weightA = calculateWeight(dist2, abValuesA);
-            float weightRG = calculateWeight(dist2, abValuesRG);
-            float weightBY = calculateWeight(dist2, abValuesBY);
-            float3 weight = float3(weightA, weightRG, weightBY);
-
-            float3 color = (useChannelA ? gInputA[loc2d].rgb : gInputB[loc2d].rgb);
-
-            kernelSum += weight;
-            colorSum += weight * linearRGB2YCxCz(color); //< Inputs are in linear space
-        }
-    }
-
-    float3 value = colorSum / kernelSum;
-    value = clamp(YCxCz2LinearRGB(value), 0.0, 1.0);
-
-    return linearRGB2CIELab(value);
-}
-
-
-float3 filterCSF(uint3 loc3d, bool bUseChannelA)
-{
-    const float4 abValuesA = { 1.0, 0.0, 0.0047, 1e-5 };  //  a1, a2, b1, b2 for A
-    const float4 abValuesRG = { 1.0, 0.0, 0.0053, 1e-5 };  //  a1, a2, b1, b2 for RG
-    const float4 abValuesBY = { 34.1, 13.5, 0.04, 0.025 };  //  a1, a2, b1, b2 for BY
-
-    const float b1Max = max(max(abValuesA.z, abValuesRG.z), abValuesBY.z);
-    const float b2Max = max(max(abValuesA.w, abValuesRG.w), abValuesBY.w);
-    const float bMax = max(b1Max, b2Max);
-
-    // 3 sigmas --> 99.7% of the signal
-    const float sigmaFactor = 3.0f;
-
-    int radius = int(ceil(sqrt(bMax / (2.0 * PiSquared)) * sigmaFactor * ppd()));
-
-    return gaussianFilter(loc3d, radius, abValuesA, abValuesRG, abValuesBY, bUseChannelA);
-}
-
-
-float2 gradient(uint3 loc3d, bool bPointInsteadOfEdge, bool bUseInputA)
-{
-    float sigma = 0.5 * gw * ppd();
-    int radius = int(ceil(3.0 * sigma));
-
-    float sigmaSquared = sigma * sigma;
-
-    //  Gaussian derivative
-    float positiveKernelSum = 0.0;
-    float negativeKernelSum = 0.0;
-
-    float kernelSum = 0.0;
-
-    float2 weight = { 0.0, 0.0 };
-    float2 normalization = { 0.0, 0.0 };
-
-    //[unroll]
-    for (int y = -radius; y <= radius; y++)
-    {
-        //[unroll]
-        for (int x = -radius; x <= radius; x++)
-        {
-            int2 loc2d = loc3d.xy + int2(x, y);
-            loc2d = min(max(int2(0, 0), loc2d), gDimensions - 1);
-
-            float g = exp(-(x * x + y * y) / (2.0 * sigmaSquared));
-
-            if (bPointInsteadOfEdge)
-            {
-                weight = (float2(x * x, y * y) / sigmaSquared - 1) * g;
-
-                positiveKernelSum += (weight.x >= 0.0 ? weight.x : 0.0);
-                negativeKernelSum += (weight.x < 0.0 ? -weight.x : 0.0);
-            }
-            else
-            {
-                weight = -float2(x, y) * g;
-
-                kernelSum += (weight.x >= 0.0 ? weight.x : 0.0);
-            }
-        }
-    }
-
-    float2 gradient = float2(0.0, 0.0);
-
-    //[unroll]
-    for (int y = -radius; y <= radius; y++)
-    {
-        //[unroll]
-        for (int x = -radius; x <= radius; x++)
-        {
-            int2 loc2d = loc3d.xy + int2(x, y);
-            loc2d = min(max(int2(0, 0), loc2d), gDimensions - 1);
-
-            float g = exp(-(x * x + y * y) / (2.0 * sigmaSquared));
-
-            if (bPointInsteadOfEdge)
-            {
-                weight = (float2(x * x, y * y) / sigmaSquared - 1) * g;
-
-                normalization = float2(1.0, 1.0) / float2(weight.x >= 0.0 ? positiveKernelSum : negativeKernelSum, weight.y >= 0.0 ? positiveKernelSum : negativeKernelSum);
-            }
-            else
-            {
-                weight = -float2(x, y) * g;
-
-                normalization = float2(1.0, 1.0) / float2(kernelSum, kernelSum);
-            }
-            
-            float luminance = (linearRGB2YCxCz(bUseInputA ? gInputA[loc2d].rgb : gInputB[loc2d].rgb).x + 16.0) / 116.0; //< Inputs are in linear space
-            gradient += luminance * weight * normalization;
-        }
-    }
-
-    return gradient;
-}
-
-
-float featureDetection(uint3 loc3d, bool pointInsteadOfEdge)
-{
-    float2 gA = gradient(loc3d, pointInsteadOfEdge, true);
-    float2 gB = gradient(loc3d, pointInsteadOfEdge, false);
-
-    return abs(length(gA) - length(gB));
-}
-
-
-float featureDifference(uint3 loc3d)
-{
-    float pointDifference = featureDetection(loc3d, true);
-    float edgeDifference = featureDetection(loc3d, false);
-
-    return pow(max(pointDifference, edgeDifference) * InvSqrt2, gqf);
-}
-
 
 float HyAB(float3 a, float3 b)
 {
@@ -230,28 +106,17 @@ float HyAB(float3 a, float3 b)
     return abs(diff.x) + length(diff.yz);
 }
 
-
 float3 Hunt(float3 color)
 {
-    float huntValue = 0.01 * color.x;
+    float huntValue = 0.01f * color.x;
     return float3(color.x, huntValue * color.y, huntValue * color.z);
 }
 
-
-float colorDifference(uint3 loc3d)
-{
-    float3 A = Hunt(filterCSF(loc3d, true));
-    float3 B = Hunt(filterCSF(loc3d, false));
-
-    return HyAB(A, B);
-}
-
-
-float errorFunction(float colorDifference, float featureDifference)
+float redistributeErrors(float colorDifference, float featureDifference)
 {
     float error = pow(colorDifference, gqc);
 
-    //  Normalization
+    //  Normalization.
     float perceptualCutoff = gpc * MaxDistance;
 
     if (error < perceptualCutoff)
@@ -260,31 +125,186 @@ float errorFunction(float colorDifference, float featureDifference)
     }
     else
     {
-        error = gpt + ((error - perceptualCutoff) / (MaxDistance - perceptualCutoff)) * (1.0 - gpt);
+        error = gpt + ((error - perceptualCutoff) / (MaxDistance - perceptualCutoff)) * (1.0f - gpt);
     }
 
-    error = pow(error, (1.0 - featureDifference));
+    error = pow(error, (1.0f - featureDifference));
 
     return error;
 }
 
-
-float FLIP(uint3 loc3d)
+float LDRFLIP(uint2 pixel, float exposure = 0.0f)
 {
-    return errorFunction(colorDifference(loc3d), featureDifference(loc3d));
+    // ************* SETUP ************** //
+    // Compute pixels per degree.
+    const float pixelsPerDegree = ppd();
+    const float dx = 1.0f / ppd();
+
+    // Variables for CSF filtering.
+    const float4 abValuesA = { 1.0f, 0.0f, 0.0047f, 1.0e-5f };  //  a1, a2, b1, b2 for A.
+    const float4 abValuesRG = { 1.0f, 0.0f, 0.0053f, 1.0e-5f };  //  a1, a2, b1, b2 for RG.
+    const float4 abValuesBY = { 34.1f, 13.5f, 0.04f, 0.025f };  //  a1, a2, b1, b2 for BY.
+    float3 colorWeight = { 0.0f, 0.0f };
+    float3 csfKernelSum = float3(0.0f, 0.0f, 0.0f);
+    float3 referenceColorSum = float3(0.0f, 0.0f, 0.0f);
+    float3 testColorSum = float3(0.0f, 0.0f, 0.0f);
+    float3 spatialFilteredReference = float3(0.0f);
+    float3 spatialFilteredTest = float3(0.0f);
+
+    // Variables for feature detection.
+    float sigmaFeatures = 0.5f * gw * pixelsPerDegree;
+    float sigmaFeaturesSquared = sigmaFeatures * sigmaFeatures;
+    float positiveKernelSum = 0.0f;
+    float negativeKernelSum = 0.0f;
+    float edgeKernelSum = 0.0f;
+    float2 pointWeight = { 0.0f, 0.0f };
+    float2 edgeWeight = { 0.0f, 0.0f };
+    float2 pointNormalization = { 0.0f, 0.0f };
+    float2 edgeNormalization = { 0.0f, 0.0f };
+    float2 referenceEdgeGradient = float2(0.0f, 0.0f);
+    float2 referencePointGradient = float2(0.0f, 0.0f);
+    float2 testEdgeGradient = float2(0.0f, 0.0f);
+    float2 testPointGradient = float2(0.0f, 0.0f);
+
+    // Use radius of the spatial filter kernel, as it is always greater than or equal to the radius of the feature detection kernel.
+    int radius = int(ceil(3.0f * sqrt(0.04f / (2.0f * PiSquared)) * pixelsPerDegree)); // See FLIP paper for explanation of the 0.04 and 3.0 factors.
+
+    // Prepare point and edge kernel sums for feature detection.
+    for (int y = -radius; y <= radius; y++)
+    {
+        for (int x = -radius; x <= radius; x++)
+        {
+            int2 pixelNeighbor = pixel + int2(x, y);
+            pixelNeighbor = min(max(int2(0, 0), pixelNeighbor), gResolution - 1);
+
+            float g = exp(-(x * x + y * y) / (2.0f * sigmaFeaturesSquared));
+
+            pointWeight = (float2(x * x, y * y) / sigmaFeaturesSquared - 1) * g;
+            positiveKernelSum += (pointWeight.x >= 0.0f ? pointWeight.x : 0.0f);
+            negativeKernelSum += (pointWeight.x < 0.0f ? -pointWeight.x : 0.0f);
+
+            edgeWeight = -float2(x, y) * g;
+            edgeKernelSum += (edgeWeight.x >= 0.0f ? edgeWeight.x : 0.0f);
+        }
+    }
+
+    //[unroll]
+    for (int y = -radius; y <= radius; y++)
+    {
+        //[unroll]
+        for (int x = -radius; x <= radius; x++)
+        {
+            // Load pixel colors.
+            int2 pixelNeighbor = pixel + int2(x, y);
+            pixelNeighbor = min(max(int2(0, 0), pixelNeighbor), gResolution - 1);
+            float3 referenceColor = getPixel(gReferenceImage, pixelNeighbor, exposure);
+            float3 testColor = getPixel(gTestImage, pixelNeighbor, exposure);
+
+
+            // **************** COLOR PIPELINE ******************** //
+            float2 p = float2(x, y) * dx;
+            float dist2 = -(p.x * p.x + p.y * p.y) * PiSquared;
+            float weightA = calculateWeight(dist2, abValuesA);
+            float weightRG = calculateWeight(dist2, abValuesRG);
+            float weightBY = calculateWeight(dist2, abValuesBY);
+            colorWeight = float3(weightA, weightRG, weightBY);
+
+            csfKernelSum += colorWeight;
+            referenceColorSum += colorWeight * referenceColor;
+            testColorSum += colorWeight * testColor;
+
+
+            // **************** FEATURE PIPELINE ******************** //
+            float g = exp(-(x * x + y * y) / (2.0f * sigmaFeaturesSquared));
+
+            pointWeight = (float2(x * x, y * y) / sigmaFeaturesSquared - 1) * g;
+            pointNormalization = float2(1.0f, 1.0f) / float2(pointWeight.x >= 0.0f ? positiveKernelSum : negativeKernelSum, pointWeight.y >= 0.0f ? positiveKernelSum : negativeKernelSum);
+            edgeWeight = -float2(x, y) * g;
+            edgeNormalization = float2(1.0f, 1.0f) / float2(edgeKernelSum, edgeKernelSum);
+
+            float referenceLuminance = (referenceColor.x + 16.0f) / 116.0f; // Normalized Y from YCxCz.
+            referencePointGradient += referenceLuminance * pointWeight * pointNormalization;
+            referenceEdgeGradient += referenceLuminance * edgeWeight * edgeNormalization;
+
+            float testLuminance = (testColor.x + 16.0f) / 116.0f; // Normalized Y from YCxCz.
+            testPointGradient += testLuminance * pointWeight * pointNormalization;
+            testEdgeGradient += testLuminance * edgeWeight * edgeNormalization;
+        }
+    }
+
+    // **************** COLOR PIPELINE ******************** //
+    spatialFilteredReference = referenceColorSum / csfKernelSum;
+    spatialFilteredTest = testColorSum / csfKernelSum;
+    spatialFilteredReference = clamp(YCxCz2LinearRGB(spatialFilteredReference), 0.0f, 1.0f);
+    spatialFilteredTest = clamp(YCxCz2LinearRGB(spatialFilteredTest), 0.0f, 1.0f);
+    float colorDiff = HyAB(Hunt(linearRGB2CIELab(spatialFilteredReference)), Hunt(linearRGB2CIELab(spatialFilteredTest)));
+
+    // **************** FEATURE PIPELINE ******************** //
+    float edgeDifference = abs(length(referenceEdgeGradient) - length(testEdgeGradient));
+    float pointDifference = abs(length(referencePointGradient) - length(testPointGradient));
+    float featureDiff = pow(max(pointDifference, edgeDifference) * InvSqrt2, gqf);
+
+    return redistributeErrors(colorDiff, featureDiff);
+}
+
+float HDRFLIP(uint2 pixel)
+{
+    float exposure;
+    float ldrflip;
+    float hdrflip = 0.0f;
+    uint exposureMapIndex = 0u;
+
+    // HDR-FLIP is maximum LDR-FLIP over a range of exposures.
+    for (uint i = 0; i < gNumExposures; i++)
+    {
+        exposure = gStartExposure + i * gExposureDelta;
+        ldrflip = LDRFLIP(pixel, exposure);
+        if (ldrflip > hdrflip)
+        {
+            hdrflip = ldrflip;
+            exposureMapIndex = i;
+        }
+    }
+
+    // Store exposure map.
+    float exposureMapFloatIndex = float(exposureMapIndex) / (gNumExposures - 1.0f);
+    gExposureMapDisplay[pixel] = float4(sRGB2LinearRGB(ViridisMap[int(exposureMapFloatIndex * 255.0f + 0.5f)]), 1.0f); // See reasoning for sRGB2LinearRGB in main().
+
+    return hdrflip;
+}
+
+float FLIP(uint2 pixel)
+{
+    if (gIsHDR) return HDRFLIP(pixel);
+    else return LDRFLIP(pixel);
 }
 
 
-[numthreads(GroupX, GroupY, 1)]
+[numthreads(32, 32, 1)]
 void main(uint3 globalId : SV_DispatchThreadID, uint3 groupThreadId : SV_GroupThreadId)
 {
-    uint2 loc2d = globalId.xy;
-    uint3 loc3d = uint3(loc2d, 0);
+    uint2 pixel = globalId.xy;
 
-    float value = FLIP(loc3d);
+    float value = FLIP(pixel);
 
-    if (isnan(value) || isinf(value) || value < 0.0 || value > 1.0)
-        gOutput[loc2d] = float4(1.0, 0.0, 0.0, 1.0);
+    if (isnan(value) || isinf(value) || value < 0.0f || value > 1.0f)
+    {
+        gFLIPErrorMap[pixel] = float4(1.0f, 0.0f, 0.0f, 1.0f);
+        gFLIPErrorMapDisplay[pixel] = float4(1.0f, 0.0f, 0.0f, 1.0f);
+    }
     else
-        gOutput[loc2d] = float4((gUseMagma ? MagmaMap[int(value * 255.0 + 0.5)] : float3(value)), value);
+    {
+        // Store FLIP error after possible magma conversion.
+        float3 col = gUseMagma ? MagmaMap[int(value * 255.0f + 0.5f)] : float3(value);
+        gFLIPErrorMap[pixel] = float4(col, value);
+
+        /*
+        Before storing for display, apply an sRGB2LinearRGB transform to make the final output (when displayed)
+        the same as what other FLIP implementations generate. This is necessary because, after this shader,
+        which stores linear RGB in the FLIP error map, is run, the buffer will be blit:ed to an sRGB buffer.
+        The blit includes a LinearRGB2sRGB transform. To cancel the effect of that transform, the sRGB2LinearRGB
+        transform is added here. This also applies to the exposure map.
+        */
+        gFLIPErrorMapDisplay[pixel] = float4(sRGB2LinearRGB(col), 1.0f);
+    }
 }

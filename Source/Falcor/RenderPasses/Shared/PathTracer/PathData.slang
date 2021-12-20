@@ -28,7 +28,7 @@
 __exported import Scene.HitInfo;
 __exported import Utils.Sampling.SampleGenerator;
 __exported import RenderPasses.Shared.PathTracer.StaticParams;
-__exported import RenderPasses.Shared.PathTracer.InteriorList;
+__exported import Rendering.Materials.InteriorList;
 __exported import RenderPasses.Shared.PathTracer.RayFootprintData;
 
 struct ShadowRay

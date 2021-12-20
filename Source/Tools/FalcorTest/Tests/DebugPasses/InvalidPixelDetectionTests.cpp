@@ -38,7 +38,7 @@ namespace Falcor
         Texture::SharedPtr pInput = Texture::create2D(2, 4, ResourceFormat::R32Float, 1, Resource::kMaxPossible, pInitData);
         RenderGraph::SharedPtr pGraph = RenderGraph::create("Invalid Pixel Detection");
         RenderPass::SharedPtr pPass = RenderPassLibrary::instance().createPass(pRenderContext, "InvalidPixelDetectionPass");
-        if (!pPass) throw std::exception("Could not create render pass 'InvalidPixelDetectionPass'");
+        if (!pPass) throw RuntimeError("Could not create render pass 'InvalidPixelDetectionPass'");
         pGraph->addPass(pPass, "InvalidPixelDetectionPass");
         pGraph->setInput("InvalidPixelDetectionPass.src", pInput);
         pGraph->markOutput("InvalidPixelDetectionPass.dst");

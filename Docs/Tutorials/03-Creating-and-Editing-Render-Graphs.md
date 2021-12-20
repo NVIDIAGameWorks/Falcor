@@ -58,6 +58,8 @@ Creating a render graph through scripting follows similar steps as creating it t
     - `"renderPassName.resourceName"` to mark single outputs.
     -  `"renderPassName"` to mark every output of the pass as a graph output
     - `"*"` to mark all pass outputs as graph outputs.
+    - `markOutput()` takes an optional `mask` parameter specifying which color channels to output for frame capture.
+    - Multiple calls to `markOutput()` with different masks can be made, frame capture will generate separate output files.
 
 *For more information on the scripting API, you can find the documentation [here](../Usage/Scripting.md).*
 

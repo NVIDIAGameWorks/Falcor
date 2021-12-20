@@ -29,15 +29,23 @@
 #include "PixelInspectorData.slang"
 #include "RenderGraph/RenderPassHelpers.h"
 
+const RenderPass::Info PixelInspectorPass::kInfo
+{
+    "PixelInspectorPass",
+
+    "Inspect geometric and material properties at a given pixel.\n"
+    "Left-mouse click on a pixel to select it.\n"
+};
+
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" FALCOR_API_EXPORT const char* getProjDir()
 {
     return PROJECT_DIR;
 }
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
 {
-    lib.registerClass("PixelInspectorPass", "Per pixel surface attributes inspector", PixelInspectorPass::create);
+    lib.registerPass(PixelInspectorPass::kInfo, PixelInspectorPass::create);
 }
 
 namespace
@@ -46,18 +54,16 @@ namespace
 
     const ChannelList kInputChannels =
     {
-        { "posW",           "gWorldPosition",               "world space position",         true /* optional */ },
+        { "posW",           "gWorldPosition",               "world space position"                              },
         { "normW",          "gWorldShadingNormal",          "world space normal",           true /* optional */ },
         { "tangentW",       "gWorldTangent",                "world space tangent",          true /* optional */ },
         { "faceNormalW",    "gWorldFaceNormal",             "face normal in world space",   true /* optional */ },
-        { "texC",           "gTextureCoordinate",           "texture coordinates",          true /* optional */ },
-        { "diffuseOpacity", "gMaterialDiffuseOpacity",      "diffuse color and opacity",    true /* optional */ },
-        { "specRough",      "gMaterialSpecularRoughness",   "specular color and roughness", true /* optional */ },
-        { "emissive",       "gMaterialEmissive",            "emissive color",               true /* optional */ },
-        { "matlExtra",      "gMaterialExtraParams",         "additional material data",     true /* optional */ },
+        { "texC",           "gTextureCoord",                "Texture coordinate",           true /* optional */ },
+        { "texGrads",       "gTextureGrads",                "Texture gradients",            true /* optional */ },
+        { "mtlData",        "gMaterialData",                "Material data"                                     },
         { "linColor",       "gLinearColor",                 "color pre tone-mapping",       true /* optional */ },
         { "outColor",       "gOutputColor",                 "color post tone-mapping",      true /* optional */ },
-        { "vbuffer",        "gVBuffer",                     "Visibility buffer",            true /* optional */, ResourceFormat::Unknown /* decided by upstream pass */ },
+        { "vbuffer",        "gVBuffer",                     "Visibility buffer",            true /* optional */ },
     };
     const char kOutputChannel[] = "gPixelDataBuffer";
 }
@@ -68,6 +74,7 @@ PixelInspectorPass::SharedPtr PixelInspectorPass::create(RenderContext* pRenderC
 }
 
 PixelInspectorPass::PixelInspectorPass()
+    : RenderPass(kInfo)
 {
     for (auto it : kInputChannels)
     {
@@ -79,23 +86,11 @@ PixelInspectorPass::PixelInspectorPass()
     mpState->setProgram(mpProgram);
 }
 
-std::string PixelInspectorPass::getDesc()
-{
-    return
-        "Inspect geometric and material properties at a given pixel.\n"
-        "\n"
-        "Left-mouse click on a pixel to select it\n";
-}
-
 RenderPassReflection PixelInspectorPass::reflect(const CompileData& compileData)
 {
-    // Define the required resources here
     RenderPassReflection reflector;
-    for (auto it : kInputChannels)
-    {
-        auto& f = reflector.addInput(it.name, it.desc).format(it.format);
-        if (it.optional) f.flags(RenderPassReflection::Field::Flags::Optional);
-    }
+    addRenderPassInputs(reflector, kInputChannels);
+
     return reflector;
 }
 
@@ -108,12 +103,19 @@ void PixelInspectorPass::execute(RenderContext* pRenderContext, const RenderData
 
     if (!mpScene) return;
 
-    // Set the camera
-    assert(mpVars);
-    const Camera::SharedPtr& pCamera = mpScene->getCamera();
-    pCamera->setShaderData(mpVars["PerFrameCB"]["gCamera"]);
+    // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
+    mpProgram->addDefines(getValidResourceDefines(kInputChannels, renderData));
 
-    if (pCamera->getApertureRadius() > 0.f)
+    if (!mpVars)
+    {
+        mpVars = ComputeVars::create(mpProgram->getReflector());
+        mpPixelDataBuffer = Buffer::createStructured(mpProgram.get(), kOutputChannel, 1);
+    }
+
+    // Bind the scene.
+    mpVars["gScene"] = mpScene->getParameterBlock();
+
+    if (mpScene->getCamera()->getApertureRadius() > 0.f)
     {
         // TODO: Take view dir as optional input. For now issue warning if DOF is enabled.
         logWarning("Depth-of-field is enabled, but PixelInspectorPass assumes a pinhole camera. Expect the view vector to be inaccurate.");
@@ -219,9 +221,9 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
         if (displayedData == false) outputGroup.text("No input data");
     }
 
+    // Display geometry data.
     if (auto geometryGroup = widget.group("Geometry data", true))
     {
-        // Display geometry data
         displayValues({ "posW" }, { "World position" }, [&geometryGroup](PixelData& pixelData) {
             geometryGroup.var("World position", pixelData.posW, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), 0.001f, false, "%.6f");
         });
@@ -242,45 +244,74 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
             geometryGroup.var("Face normal", pixelData.faceNormal, -1.f, 1.f, 0.001f, false, "%.6f");
         });
 
-        displayValues({ "texC" }, { "Texture coords" }, [&geometryGroup](PixelData& pixelData) {
-            float2 texCoords = float2(pixelData.texCoordU, pixelData.texCoordV);
-            geometryGroup.var("Texture coords", texCoords, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), 0.001f, false, "%.6f");
-        });
-
         geometryGroup.var("View vector", pixelData.view, -1.f, 1.f, 0.001f, false, "%.6f");
 
-        displayValues({ "normW" }, { "NdotV" }, [&geometryGroup](PixelData& pixelData) {
-            geometryGroup.var("NdotV", pixelData.NdotV, -1.f, 1.f, 0.001f, false, "%.6f");
+        displayValues({ "texC" }, { "Texture coords" }, [&geometryGroup](PixelData& pixelData) {
+            geometryGroup.var("Texture coord", pixelData.texCoord, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), 0.001f, false, "%.6f");
         });
+
+        geometryGroup.checkbox("Front facing", pixelData.frontFacing);
     }
 
+    // Display material data.
     if (auto materialGroup = widget.group("Material data", true))
     {
-        // Display material data
-        bool displayedData = displayValues({ "diffuseOpacity" }, { "Diffuse color", "Opacity" }, [&materialGroup](PixelData& pixelData) {
-            materialGroup.var("Diffuse color", pixelData.diffuse, 0.f, 1.f, 0.001f, false, "%.6f");
+        const std::vector<std::string> requiredInputs = { "posW", "texC", "mtlData" };
+
+        bool displayedData = false;
+
+        displayedData |= displayValues(requiredInputs, { "Material ID" }, [&materialGroup](PixelData& pixelData) {
+            materialGroup.var("Material ID", pixelData.materialID);
+        });
+
+        displayedData |= displayValues(requiredInputs, { "Double sided" }, [&materialGroup](PixelData& pixelData) {
+            materialGroup.checkbox("Double sided", pixelData.doubleSided);
+        });
+
+        displayedData |= displayValues(requiredInputs, { "Opacity" }, [&materialGroup](PixelData& pixelData) {
             materialGroup.var("Opacity", pixelData.opacity, 0.f, 1.f, 0.001f, false, "%.6f");
         });
 
-        displayedData |= displayValues({ "specRough" }, { "Specular color", "GGX Alpha", "Roughness" }, [&materialGroup](PixelData& pixelData) {
-            materialGroup.var("Specular color", pixelData.specular, 0.f, 1.f, 0.001f, false, "%.6f");
-            materialGroup.var("GGX Alpha", pixelData.ggxAlpha, 0.f, 1.f, 0.001f, false, "%.6f");
-            materialGroup.var("Roughness", pixelData.linearRoughness, 0.f, 1.f, 0.001f, false, "%.6f");
+        displayedData |= displayValues(requiredInputs, { "IoR (outside)" }, [&materialGroup](PixelData& pixelData) {
+            materialGroup.var("IoR (outside)", pixelData.IoR, 0.f, std::numeric_limits<float>::max(), 0.001f, false, "%.6f");
         });
 
-        displayedData |= displayValues({ "emissive" }, { "Emissive" }, [&materialGroup](PixelData& pixelData) {
+        displayedData |= displayValues(requiredInputs, { "Emissive" }, [&materialGroup](PixelData& pixelData) {
             materialGroup.var("Emissive", pixelData.emissive, 0.f, std::numeric_limits<float>::max(), 0.001f, false, "%.6f");
         });
 
-        displayedData |= displayValues({ "matlExtra" }, { "IoR", "Double sided" }, [&materialGroup](PixelData& pixelData) {
-            materialGroup.var("IoR", pixelData.IoR, 0.f, std::numeric_limits<float>::max(), 0.001f, false, "%.6f");
-            materialGroup.checkbox("Double sided", (int&)pixelData.doubleSided);
+        displayedData |= displayValues(requiredInputs, { "Roughness" }, [&materialGroup](PixelData& pixelData) {
+            materialGroup.var("Roughness", pixelData.roughness, 0.f, std::numeric_limits<float>::max(), 0.001f, false, "%.6f");
+        });
+
+        displayedData |= displayValues(requiredInputs, { "DiffuseReflectionAlbedo" }, [&materialGroup](PixelData& pixelData) {
+            materialGroup.var("DiffuseReflectionAlbedo", pixelData.diffuseReflectionAlbedo, 0.f, std::numeric_limits<float>::max(), 0.001f, false, "%.6f");
+        });
+
+        displayedData |= displayValues(requiredInputs, { "DiffuseTransmissionAlbedo" }, [&materialGroup](PixelData& pixelData) {
+            materialGroup.var("DiffuseTransmissionAlbedo", pixelData.diffuseTransmissionAlbedo, 0.f, std::numeric_limits<float>::max(), 0.001f, false, "%.6f");
+        });
+
+        displayedData |= displayValues(requiredInputs, { "SpecularReflectionAlbedo" }, [&materialGroup](PixelData& pixelData) {
+            materialGroup.var("SpecularReflectionAlbedo", pixelData.specularReflectionAlbedo, 0.f, std::numeric_limits<float>::max(), 0.001f, false, "%.6f");
+        });
+
+        displayedData |= displayValues(requiredInputs, { "SpecularTransmissionAlbedo" }, [&materialGroup](PixelData& pixelData) {
+            materialGroup.var("SpecularTransmissionAlbedo", pixelData.specularTransmissionAlbedo, 0.f, std::numeric_limits<float>::max(), 0.001f, false, "%.6f");
+        });
+
+        displayedData |= displayValues(requiredInputs, { "SpecularReflectance" }, [&materialGroup](PixelData& pixelData) {
+            materialGroup.var("SpecularReflectance", pixelData.specularReflectance, 0.f, std::numeric_limits<float>::max(), 0.001f, false, "%.6f");
+        });
+
+        displayedData |= displayValues(requiredInputs, { "IsTransmissive" }, [&materialGroup](PixelData& pixelData) {
+            materialGroup.checkbox("IsTransmissive", pixelData.isTransmissive);
         });
 
         if (displayedData == false) materialGroup.text("No input data");
     }
 
-    // Display visibility data
+    // Display visibility data.
     if (auto visGroup = widget.group("Visibility data", true))
     {
         if (mAvailableInputs["vbuffer"])
@@ -305,7 +336,7 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
 
             if (validHit && (HitType)pixelData.hitType == HitType::Triangle)
             {
-                auto instanceData = mpScene->getMeshInstance(pixelData.instanceID);
+                auto instanceData = mpScene->getGeometryInstance(pixelData.instanceID);
                 uint32_t matrixID = instanceData.globalMatrixID;
                 glm::mat4 M = mpScene->getAnimationController()->getGlobalMatrices()[matrixID];
                 M = glm::transpose(M); // Note glm is column-major, but we display the matrix using standard mathematical notation.
@@ -313,9 +344,9 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
                 visGroup.text("Transform:");
                 visGroup.matrix("##mat", M);
 
-                bool flipped = instanceData.flags & (uint32_t)MeshInstanceFlags::TransformFlipped;
-                bool objectCW = instanceData.flags & (uint32_t)MeshInstanceFlags::IsObjectFrontFaceCW;
-                bool worldCW = instanceData.flags & (uint32_t)MeshInstanceFlags::IsWorldFrontFaceCW;
+                bool flipped = instanceData.flags & (uint32_t)GeometryInstanceFlags::TransformFlipped;
+                bool objectCW = instanceData.flags & (uint32_t)GeometryInstanceFlags::IsObjectFrontFaceCW;
+                bool worldCW = instanceData.flags & (uint32_t)GeometryInstanceFlags::IsWorldFrontFaceCW;
                 visGroup.checkbox("TransformFlipped", flipped);
                 visGroup.checkbox("IsObjectFrontFaceCW", objectCW);
                 visGroup.checkbox("IsWorldFrontFaceCW", worldCW);
@@ -336,10 +367,8 @@ void PixelInspectorPass::setScene(RenderContext* pRenderContext, const Scene::Sh
 
     if (mpScene)
     {
-        Shader::DefineList defines = mpScene->getSceneDefines();
-        mpProgram->addDefines(defines);
-        mpVars = ComputeVars::create(mpProgram->getReflector());
-        mpPixelDataBuffer = Buffer::createStructured(mpProgram.get(), kOutputChannel, 1);
+        mpProgram->addDefines(mpScene->getSceneDefines());
+        mpProgram->setTypeConformances(mpScene->getTypeConformances());
     }
 }
 

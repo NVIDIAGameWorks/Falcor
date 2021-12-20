@@ -32,12 +32,11 @@
 #include "Core/API/RasterizerState.h"
 #include "Core/API/DepthStencilState.h"
 #include "Core/API/BlendState.h"
-#include "Core/API/RootSignature.h"
 #include "Core/API/VAO.h"
 
 namespace Falcor
 {
-    class dlldecl GraphicsStateObject
+    class FALCOR_API GraphicsStateObject
     {
     public:
         using SharedPtr = std::shared_ptr<GraphicsStateObject>;
@@ -57,10 +56,9 @@ namespace Falcor
             Patch,
         };
 
-        class dlldecl Desc
+        class FALCOR_API Desc
         {
         public:
-            Desc& setRootSignature(RootSignature::SharedPtr pSignature) { mpRootSignature = pSignature; return *this; }
             Desc& setVertexLayout(VertexLayout::SharedConstPtr pLayout) { mpLayout = pLayout; return *this; }
             Desc& setFboFormats(const Fbo::Desc& fboFormats) { mFboDesc = fboFormats; return *this; }
             Desc& setProgramKernels(ProgramKernels::SharedConstPtr pProgram) { mpProgram = pProgram; return *this; }
@@ -75,7 +73,6 @@ namespace Falcor
             DepthStencilState::SharedPtr getDepthStencilState() const { return mpDepthStencilState; }
             ProgramKernels::SharedConstPtr getProgramKernels() const { return mpProgram; }
             ProgramVersion::SharedConstPtr getProgramVersion() const { return mpProgram->getProgramVersion(); }
-            RootSignature::SharedPtr getRootSignature() const { return mpRootSignature; }
             uint32_t getSampleMask() const { return mSampleMask; }
             VertexLayout::SharedConstPtr getVertexLayout() const { return mpLayout; }
             PrimitiveType getPrimitiveType() const { return mPrimType; }
@@ -92,19 +89,7 @@ namespace Falcor
             DepthStencilState::SharedPtr mpDepthStencilState;
             BlendState::SharedPtr mpBlendState;
             uint32_t mSampleMask = kSampleMaskAll;
-            RootSignature::SharedPtr mpRootSignature;
             PrimitiveType mPrimType = PrimitiveType::Undefined;
-
-#ifdef FALCOR_VK
-        public:
-            Desc& setVao(const Vao::SharedConstPtr& pVao) { mpVao = pVao; return *this; }
-            Desc& setRenderPass(VkRenderPass renderPass) { mRenderPass = renderPass; return *this; }
-            const Vao::SharedConstPtr& getVao() const { return mpVao; }
-            VkRenderPass getRenderPass() const {return mRenderPass;}
-        private:
-            Vao::SharedConstPtr mpVao;
-            VkRenderPass mRenderPass;
-#endif
         };
 
         ~GraphicsStateObject();
@@ -119,12 +104,22 @@ namespace Falcor
 
         const Desc& getDesc() const { return mDesc; }
 
+#ifdef FALCOR_GFX
+        gfx::IRenderPassLayout* getGFXRenderPassLayout() const { return mpGFXRenderPassLayout.get(); }
+#endif
+
     private:
         GraphicsStateObject(const Desc& desc);
         void apiInit();
 
         Desc mDesc;
         ApiHandle mApiHandle;
+
+#ifdef FALCOR_GFX
+        Slang::ComPtr<gfx::IInputLayout> mpGFXInputLayout;
+        Slang::ComPtr<gfx::IFramebufferLayout> mpGFXFramebufferLayout;
+        Slang::ComPtr<gfx::IRenderPassLayout> mpGFXRenderPassLayout;
+#endif
 
         // Default state objects
         static BlendState::SharedPtr spDefaultBlendState;

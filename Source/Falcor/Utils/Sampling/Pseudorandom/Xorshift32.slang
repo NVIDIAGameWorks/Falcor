@@ -33,15 +33,13 @@
 */
 struct Xorshift32
 {
-    /** Creates a new Xorshift32 pseudorandom generator.
+    /** Initializes a Xorshift32 pseudorandom generator.
         \param[in] seed The random seed.
         \return the new pseudorandom generator.
     */
-    static Xorshift32 create(uint seed)
+    __init(uint seed)
     {
-        Xorshift32 rng;
-        rng.state = seed;
-        return rng;
+        this.state = seed;
     }
 
     /** Generates the next pseudorandom number in the sequence (32 bits).

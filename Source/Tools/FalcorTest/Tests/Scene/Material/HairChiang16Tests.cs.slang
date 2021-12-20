@@ -30,7 +30,7 @@
 import Utils.Math.MathHelpers;
 import Utils.Color.ColorHelpers;
 import Utils.Sampling.SampleGenerator;
-import Experimental.Scene.Material.HairChiang16;
+import Rendering.Materials.HairChiang16;
 
 StructuredBuffer<float> gBetaM;
 StructuredBuffer<float> gBetaN;
@@ -38,8 +38,8 @@ StructuredBuffer<float> gAlpha;
 StructuredBuffer<float> gIoR;
 StructuredBuffer<float3> gSigmaA;
 StructuredBuffer<float> gH;
-StructuredBuffer<float3> gWo;
 StructuredBuffer<float3> gWi;
+StructuredBuffer<float3> gWo;
 RWStructuredBuffer<float3> gResultOurs;
 
 StructuredBuffer<float2> roughness;
@@ -68,7 +68,7 @@ void testPbrtReference(uint3 threadId : SV_DispatchThreadID)
     bcsdf.h = gH[idx];
     bcsdf.precompute();
 
-    gResultOurs[idx] = bcsdf.eval(gWo[idx], gWi[idx]);
+    gResultOurs[idx] = bcsdf.eval(gWi[idx], gWo[idx]);
 }
 
 [numthreads(16, 1, 1)]
@@ -89,9 +89,9 @@ void testWhiteFurnaceUniform(uint3 threadId : SV_DispatchThreadID)
     bcsdf.sigmaA = float3(0.f);
 
     // Create sample generator.
-    SampleGenerator sg = SampleGenerator.create(threadId.xy, threadId.z);
+    SampleGenerator sg = SampleGenerator(threadId.xy, threadId.z);
 
-    float3 wo = sample_sphere(sampleNext2D(sg));
+    float3 wi = sample_sphere(sampleNext2D(sg));
 
     float3 sum = float3(0.f);
     for (uint i = 0; i < sampleCount; i++)
@@ -99,8 +99,8 @@ void testWhiteFurnaceUniform(uint3 threadId : SV_DispatchThreadID)
         bcsdf.h = -1.f + 2.f * sampleNext1D(sg);
         bcsdf.precompute();
 
-        float3 wi = sample_sphere(sampleNext2D(sg));
-        sum += bcsdf.eval(wo, wi);
+        float3 wo = sample_sphere(sampleNext2D(sg));
+        sum += bcsdf.eval(wi, wo);
     }
 
     result[threadId.x] = luminance(sum) / sampleCount * M_4PI;
@@ -124,9 +124,9 @@ void testWhiteFurnaceImportanceSampling(uint3 threadId : SV_DispatchThreadID)
     bcsdf.sigmaA = float3(0.f);
 
     // Create sample generator.
-    SampleGenerator sg = SampleGenerator.create(threadId.xy, threadId.z);
+    SampleGenerator sg = SampleGenerator(threadId.xy, threadId.z);
 
-    float3 wo = sample_sphere(sampleNext2D(sg));
+    float3 wi = sample_sphere(sampleNext2D(sg));
 
     float3 sum = float3(0.f);
     for (uint i = 0; i < sampleCount; i++)
@@ -134,11 +134,14 @@ void testWhiteFurnaceImportanceSampling(uint3 threadId : SV_DispatchThreadID)
         bcsdf.h = -1.f + 2.f * sampleNext1D(sg);
         bcsdf.precompute();
 
-        float3 wi, weight;
+        float3 wo, weight;
         float pdf;
         uint lobe;
 
-        if (bcsdf.sample(wo, wi, pdf, weight, lobe, sg)) sum += weight;
+        if (bcsdf.sample(wi, wo, pdf, weight, lobe, sg))
+        {
+            sum += weight;
+        }
     }
 
     result[threadId.x] = luminance(sum) / sampleCount;
@@ -162,16 +165,16 @@ void testImportanceSamplingWeights(uint3 threadId : SV_DispatchThreadID)
     bcsdf.sigmaA = float3(0.f);
 
     // Create sample generator.
-    SampleGenerator sg = SampleGenerator.create(threadId.xy, threadId.z);
+    SampleGenerator sg = SampleGenerator(threadId.xy, threadId.z);
 
     bcsdf.h = -1.f + 2.f * sampleNext1D(sg);
     bcsdf.precompute();
 
-    float3 wo = sample_sphere(sampleNext2D(sg));
-    float3 wi, weight;
+    float3 wi = sample_sphere(sampleNext2D(sg));
+    float3 wo, weight;
     float pdf;
     uint lobe;
-    if (bcsdf.sample(wo, wi, pdf, weight, lobe, sg))
+    if (bcsdf.sample(wi, wo, pdf, weight, lobe, sg))
     {
         result[threadId.x * sampleCount + threadId.y] = luminance(weight);
     }
@@ -197,13 +200,13 @@ void testSamplingConsistency(uint3 threadId : SV_DispatchThreadID)
     bcsdf.eta = 1.f / bcsdf.IoR;
 
     // Create sample generator.
-    SampleGenerator sg = SampleGenerator.create(threadId.xy, threadId.z);
+    SampleGenerator sg = SampleGenerator(threadId.xy, threadId.z);
 
     float3 color = sampleNext3D(sg);
     bcsdf.sigmaA = sigmaAFromColor(color, betaN);
     bcsdf.alpha = 5.f * sampleNext1D(sg);
 
-    float3 wo = sample_sphere(sampleNext2D(sg));
+    float3 wi = sample_sphere(sampleNext2D(sg));
 
     float3 fIS = float3(0.f);
     float3 fUniform = float3(0.f);
@@ -212,18 +215,21 @@ void testSamplingConsistency(uint3 threadId : SV_DispatchThreadID)
         bcsdf.h = -1.f + 2.f * sampleNext1D(sg);
         bcsdf.precompute();
 
-        float3 wi, weight;
+        float3 wo, weight;
         float pdf;
         uint lobe;
 
-        // Assume Li = wi.z * wi.z.
+        // Assume Li = wo.z * wo.z.
 
         // Importance sampling.
-        if (bcsdf.sample(wo, wi, pdf, weight, lobe, sg)) fIS += weight * (wi.z * wi.z) / sampleCount;
+        if (bcsdf.sample(wi, wo, pdf, weight, lobe, sg))
+        {
+            fIS += weight * (wo.z * wo.z) / sampleCount;
+        }
 
         // Uniform sampling.
-        wi = sample_sphere(sampleNext2D(sg));
-        fUniform += bcsdf.eval(wo, wi) * M_4PI * (wi.z * wi.z) / sampleCount;
+        wo = sample_sphere(sampleNext2D(sg));
+        fUniform += bcsdf.eval(wi, wo) * M_4PI * (wo.z * wo.z) / sampleCount;
     }
 
     result[threadId.x] = abs(luminance(fIS) - luminance(fUniform)) / luminance(fUniform);

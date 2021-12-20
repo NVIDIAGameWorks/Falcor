@@ -56,7 +56,7 @@ namespace Falcor
             : mBegin(begin)
             , mEnd(end)
         {
-            if (begin > end) throw std::out_of_range("Invalid range");
+            if (begin > end) throw ArgumentError("Invalid range");
         }
         NumericRange() = delete;
         NumericRange(const NumericRange&) = delete;

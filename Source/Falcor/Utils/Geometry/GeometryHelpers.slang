@@ -96,13 +96,8 @@ void boundBoxSubtendedConeAngleCenter(const float3 origin, const float3 aabbMin,
     cosTheta = 1.f;
     sinTheta = 0.f;
 
-    // Workaround slang/fxc bug (https://github.com/NVIDIAGameWorks/Falcor/issues/164). This can go away when we always use dxc.
-#if 0
     [unroll]
     for (uint i = 0; i < 4; i++)
-#else
-    $for(i in Range(0,4))
-#endif
     {
         // Compute distance x from origin to corner projected onto central axis.
         // Note that x is scaled by |dir| since we use unnormalized vectors.
@@ -156,13 +151,8 @@ void boundBoxSubtendedConeAngleAverage(float3 origin, float3 aabbMin, float3 aab
 
     // Compute the average vector to each of the bounding box corners.
     float3 dirSum = float3(0.f, 0.f, 0.f);
-    // Workaround slang/fxc bug (https://github.com/NVIDIAGameWorks/Falcor/issues/164). This can go away when we always use dxc.
-#if 0
     [unroll]
     for (int i = 0; i < 8; ++i)
-#else
-    $for(i in Range(0,8))
-#endif
     {
         const float3 corner = float3((i & 1) ? aabbMin.x : aabbMax.x,
                                      (i & 2) ? aabbMin.y : aabbMax.y,
@@ -174,12 +164,8 @@ void boundBoxSubtendedConeAngleAverage(float3 origin, float3 aabbMin, float3 aab
     // Compute the cosine of the maximum angle between a corner and the
     // average vector.
     cosTheta = 1.f;
-#if 0
     [unroll]
     for (int i = 0; i < 8; ++i)
-#else
-    $for(i in Range(0,8))
-#endif
     {
         const float3 corner = float3((i & 1) ? aabbMin.x : aabbMax.x,
                                      (i & 2) ? aabbMin.y : aabbMax.y,
@@ -514,4 +500,28 @@ void uvToCurveHitPos(const float2 uv, const float4 sphereA, const float4 sphereB
     float3 perpToFwd = width * (cos(phi) * s + sin(phi) * t);
     hitPos = sphereA.xyz + z * fwd + perpToFwd;
     sphereCenter = sphereA.xyz + (z + deltaZ) * fwd;
+}
+
+/** Extract scale from a 4x4 transformation matrix.
+    We assume scaling is isotropic; i.e., it keeps the sphere shape after transformation.
+
+    \param[in] xform Transformation matrix.
+    \return Isotropic scaling factor.
+*/
+float extractScaleFromTransform(const float4x4 xform)
+{
+    return sqrt(xform[0][0] * xform[0][0] + xform[0][1] * xform[0][1] + xform[0][2] * xform[0][2]);
+}
+
+/** Transform a sphere at curve's end.
+
+    \param[in] sphere Sphere (3D position + radius) at curve's end point.
+    \param[in] worldMat Local-to-world transformation matrix.
+    \return Transformed sphere.
+*/
+float4 transformSphere(const float4 sphere, const float4x4 worldMat)
+{
+    float scaleFactor = extractScaleFromTransform(worldMat);
+    float3 worldPos = mul(float4(sphere.xyz, 1.f), worldMat).xyz;
+    return float4(worldPos, sphere.w * scaleFactor);
 }

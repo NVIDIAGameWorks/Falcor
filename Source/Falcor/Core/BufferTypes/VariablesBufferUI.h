@@ -34,7 +34,7 @@ namespace Falcor
     class Gui;
     class ParameterBlock;
 
-    class dlldecl VariablesBufferUI
+    class FALCOR_API VariablesBufferUI
     {
     public:
         VariablesBufferUI(ParameterBlock& variablesBufferRef) : mVariablesBufferRef(variablesBufferRef) {}

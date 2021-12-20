@@ -42,7 +42,7 @@ namespace Falcor
         The numerical error for the summation operation lies between pairwise
         summation (blocks of size n = 2) and naive running summation.
     */
-    class dlldecl ComputeParallelReduction : public std::enable_shared_from_this<ComputeParallelReduction>
+    class FALCOR_API ComputeParallelReduction
     {
     public:
         using SharedPtr = std::shared_ptr<ComputeParallelReduction>;

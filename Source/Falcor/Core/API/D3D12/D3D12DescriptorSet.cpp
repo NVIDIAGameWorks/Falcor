@@ -26,16 +26,17 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "Core/API/DescriptorSet.h"
+#include "D3D12DescriptorSet.h"
+#include "D3D12DescriptorPool.h"
 #include "D3D12DescriptorData.h"
 #include "Core/API/Device.h"
 #include "Core/API/CopyContext.h"
 
 namespace Falcor
 {
-    D3D12_DESCRIPTOR_HEAP_TYPE falcorToDxDescType(DescriptorPool::Type t);
+    D3D12_DESCRIPTOR_HEAP_TYPE falcorToDxDescType(D3D12DescriptorPool::Type t);
 
-    static D3D12DescriptorHeap* getHeap(const DescriptorPool* pPool, DescriptorSet::Type type)
+    static D3D12DescriptorHeap* getHeap(const D3D12DescriptorPool* pPool, D3D12DescriptorSet::Type type)
     {
         auto dxType = falcorToDxDescType(type);
         D3D12DescriptorHeap* pHeap = pPool->getApiData()->pHeaps[dxType].get();
@@ -44,7 +45,62 @@ namespace Falcor
         return pHeap;
     }
 
-    void DescriptorSet::apiInit()
+    D3D12DescriptorSet::CpuHandle D3D12DescriptorSet::getCpuHandle(uint32_t rangeIndex, uint32_t descInRange) const
+    {
+        uint32_t index = mpApiData->rangeBaseOffset[rangeIndex] + descInRange;
+        return mpApiData->pAllocation->getCpuHandle(index);
+    }
+
+    D3D12DescriptorSet::GpuHandle D3D12DescriptorSet::getGpuHandle(uint32_t rangeIndex, uint32_t descInRange) const
+    {
+        uint32_t index = mpApiData->rangeBaseOffset[rangeIndex] + descInRange;
+        return mpApiData->pAllocation->getGpuHandle(index);
+    }
+
+    void setCpuHandle(D3D12DescriptorSet* pSet, uint32_t rangeIndex, uint32_t descIndex, const D3D12DescriptorSet::CpuHandle& handle)
+    {
+        auto dstHandle = pSet->getCpuHandle(rangeIndex, descIndex);
+        gpDevice->getApiHandle()->CopyDescriptorsSimple(1, dstHandle, handle, falcorToDxDescType(pSet->getRange(rangeIndex).type));
+    }
+
+    void D3D12DescriptorSet::setSrv(uint32_t rangeIndex, uint32_t descIndex, const ShaderResourceView* pSrv)
+    {
+        setCpuHandle(this, rangeIndex, descIndex, pSrv->getApiHandle()->getCpuHandle(0));
+    }
+
+    void D3D12DescriptorSet::setUav(uint32_t rangeIndex, uint32_t descIndex, const UnorderedAccessView* pUav)
+    {
+        setCpuHandle(this, rangeIndex, descIndex, pUav->getApiHandle()->getCpuHandle(0));
+    }
+
+    void D3D12DescriptorSet::setSampler(uint32_t rangeIndex, uint32_t descIndex, const Sampler* pSampler)
+    {
+        setCpuHandle(this, rangeIndex, descIndex, pSampler->getApiHandle()->getCpuHandle(0));
+    }
+
+    void D3D12DescriptorSet::bindForGraphics(CopyContext* pCtx, const D3D12RootSignature* pRootSig, uint32_t rootIndex)
+    {
+        pCtx->getLowLevelData()->getCommandList()->SetGraphicsRootDescriptorTable(rootIndex, getGpuHandle(0));
+    }
+
+    void D3D12DescriptorSet::bindForCompute(CopyContext* pCtx, const D3D12RootSignature* pRootSig, uint32_t rootIndex)
+    {
+        pCtx->getLowLevelData()->getCommandList()->SetComputeRootDescriptorTable(rootIndex, getGpuHandle(0));
+    }
+
+    void D3D12DescriptorSet::setCbv(uint32_t rangeIndex, uint32_t descIndex, ConstantBufferView* pView)
+    {
+        setCpuHandle(this, rangeIndex, descIndex, pView->getApiHandle()->getCpuHandle(0));
+    }
+
+    D3D12DescriptorSet::SharedPtr D3D12DescriptorSet::create(const D3D12DescriptorPool::SharedPtr& pPool, const Layout& layout)
+    {
+        return SharedPtr(new D3D12DescriptorSet(pPool, layout));
+    }
+
+    D3D12DescriptorSet::D3D12DescriptorSet(D3D12DescriptorPool::SharedPtr pPool, const Layout& layout)
+        : mpPool(pPool)
+        , mLayout(layout)
     {
         mpApiData = std::make_shared<DescriptorSetApiData>();
         uint32_t count = 0;
@@ -72,54 +128,23 @@ namespace Falcor
         }
 
         // Allocation failed again, there is nothing else we can do.
-        if (mpApiData->pAllocation == nullptr) throw std::exception("Failed to create descriptor set");
+        if (mpApiData->pAllocation == nullptr) throw RuntimeError("Failed to create descriptor set");
     }
 
-    DescriptorSet::CpuHandle DescriptorSet::getCpuHandle(uint32_t rangeIndex, uint32_t descInRange) const
+    D3D12DescriptorSet::~D3D12DescriptorSet()
     {
-        uint32_t index = mpApiData->rangeBaseOffset[rangeIndex] + descInRange;
-        return mpApiData->pAllocation->getCpuHandle(index);
+        mpPool->releaseAllocation(mpApiData);
     }
 
-    DescriptorSet::GpuHandle DescriptorSet::getGpuHandle(uint32_t rangeIndex, uint32_t descInRange) const
+    D3D12DescriptorSet::Layout& D3D12DescriptorSet::Layout::addRange(D3D12DescriptorSet::Type type, uint32_t baseRegIndex, uint32_t descriptorCount, uint32_t regSpace)
     {
-        uint32_t index = mpApiData->rangeBaseOffset[rangeIndex] + descInRange;
-        return mpApiData->pAllocation->getGpuHandle(index);
-    }
+        Range r;
+        r.descCount = descriptorCount;
+        r.baseRegIndex = baseRegIndex;
+        r.regSpace = regSpace;
+        r.type = type;
 
-    void setCpuHandle(DescriptorSet* pSet, uint32_t rangeIndex, uint32_t descIndex, const DescriptorSet::CpuHandle& handle)
-    {
-        auto dstHandle = pSet->getCpuHandle(rangeIndex, descIndex);
-        gpDevice->getApiHandle()->CopyDescriptorsSimple(1, dstHandle, handle, falcorToDxDescType(pSet->getRange(rangeIndex).type));
-    }
-
-    void DescriptorSet::setSrv(uint32_t rangeIndex, uint32_t descIndex, const ShaderResourceView* pSrv)
-    {
-        setCpuHandle(this, rangeIndex, descIndex, pSrv->getApiHandle()->getCpuHandle(0));
-    }
-
-    void DescriptorSet::setUav(uint32_t rangeIndex, uint32_t descIndex, const UnorderedAccessView* pUav)
-    {
-        setCpuHandle(this, rangeIndex, descIndex, pUav->getApiHandle()->getCpuHandle(0));
-    }
-
-    void DescriptorSet::setSampler(uint32_t rangeIndex, uint32_t descIndex, const Sampler* pSampler)
-    {
-        setCpuHandle(this, rangeIndex, descIndex, pSampler->getApiHandle()->getCpuHandle(0));
-    }
-
-    void DescriptorSet::bindForGraphics(CopyContext* pCtx, const RootSignature* pRootSig, uint32_t rootIndex)
-    {
-        pCtx->getLowLevelData()->getCommandList()->SetGraphicsRootDescriptorTable(rootIndex, getGpuHandle(0));
-    }
-
-    void DescriptorSet::bindForCompute(CopyContext* pCtx, const RootSignature* pRootSig, uint32_t rootIndex)
-    {
-        pCtx->getLowLevelData()->getCommandList()->SetComputeRootDescriptorTable(rootIndex, getGpuHandle(0));
-    }
-
-    void DescriptorSet::setCbv(uint32_t rangeIndex, uint32_t descIndex, ConstantBufferView* pView)
-    {
-        setCpuHandle(this, rangeIndex, descIndex, pView->getApiHandle()->getCpuHandle(0));
+        mRanges.push_back(r);
+        return *this;
     }
 }

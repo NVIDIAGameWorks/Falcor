@@ -25,7 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#if _ENABLE_NVAPI
+#if FALCOR_ENABLE_NVAPI
 #define NV_SHADER_EXTN_SLOT u63
 #define NV_SHADER_EXTN_REGISTER_SPACE space0
 #include "NVAPI/nvHLSLExtns.h"

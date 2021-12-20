@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "stdafx.h"
 #include "Core/API/Shader.h"
-#include "Slang/slang.h"
+#include <slang/slang.h>
 
 namespace Falcor
 {
@@ -84,9 +84,24 @@ namespace Falcor
         return true;
     }
 
+    const Shader::ApiHandle& Shader::getApiHandle() const
+    {
+        return mApiHandle;
+    }
+
     ID3DBlobPtr Shader::getD3DBlob() const
     {
         const ShaderData* pData = (ShaderData*)mpPrivateData;
         return pData->pBlob;
     }
+
+    Shader::BlobData Shader::getBlobData() const
+    {
+        BlobData result;
+        auto blob = getD3DBlob();
+        result.data = blob->GetBufferPointer();
+        result.size = blob->GetBufferSize();
+        return result;
+    }
+
 }

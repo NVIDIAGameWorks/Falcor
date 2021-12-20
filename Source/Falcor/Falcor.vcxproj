@@ -1,20 +1,20 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="DebugD3D12|x64">
       <Configuration>DebugD3D12</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="DebugVK|x64">
-      <Configuration>DebugVK</Configuration>
+    <ProjectConfiguration Include="DebugGFX|x64">
+      <Configuration>DebugGFX</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
     <ProjectConfiguration Include="ReleaseD3D12|x64">
       <Configuration>ReleaseD3D12</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="ReleaseVK|x64">
-      <Configuration>ReleaseVK</Configuration>
+    <ProjectConfiguration Include="ReleaseGFX|x64">
+      <Configuration>ReleaseGFX</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
@@ -26,42 +26,84 @@
     <ClInclude Include="..\Externals\.packman\dear_imgui\imstb_textedit.h" />
     <ClInclude Include="..\Externals\.packman\dear_imgui\imstb_truetype.h" />
     <ClInclude Include="..\Externals\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.h" />
+    <ClInclude Include="Core\API\BlitContext.h" />
+    <ClInclude Include="Core\API\D3D12\D3D12RtAccelerationStructure.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="Core\API\D3D12\D3D12RootSignature.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="Core\API\D3D12\D3D12DescriptorPool.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="Core\API\D3D12\D3D12DescriptorSet.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="Core\API\GFX\FalcorGFX.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="Core\API\GFX\GFXDeviceApiData.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="Core\API\GFX\GFXFormats.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="Core\API\GFX\GFXLowLevelContextApiData.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="Core\API\GFX\GFXResource.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="Core\API\GFX\GFXRtAccelerationStructure.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="Core\API\IndirectCommands.h" />
+    <ClInclude Include="Core\API\ParameterBlock.h" />
+    <ClInclude Include="Core\API\RtAccelerationStructure.h" />
     <ClInclude Include="Core\API\BlendState.h" />
     <ClInclude Include="Core\API\Buffer.h" />
     <ClInclude Include="Core\API\ComputeContext.h" />
     <ClInclude Include="Core\API\ComputeStateObject.h" />
     <ClInclude Include="Core\API\CopyContext.h" />
     <ClInclude Include="Core\API\D3D12\D3D12ApiData.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="Core\API\D3D12\D3D12DescriptorData.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="Core\API\D3D12\D3D12DescriptorHeap.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="Core\API\D3D12\D3D12NvApiExDesc.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="Core\API\D3D12\D3D12Resource.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="Core\API\D3D12\D3D12State.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="Core\API\D3D12\FalcorD3D12.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="Core\API\DepthStencilState.h" />
-    <ClInclude Include="Core\API\DescriptorPool.h" />
-    <ClInclude Include="Core\API\DescriptorSet.h" />
     <ClInclude Include="Core\API\Device.h" />
     <ClInclude Include="Core\API\FBO.h" />
     <ClInclude Include="Core\API\FencedPool.h" />
@@ -72,34 +114,23 @@
     <ClInclude Include="Core\API\LowLevelContextData.h" />
     <ClInclude Include="Core\API\QueryHeap.h" />
     <ClInclude Include="Core\API\RasterizerState.h" />
+    <ClInclude Include="Core\API\Raytracing.h" />
     <ClInclude Include="Core\API\RenderContext.h" />
     <ClInclude Include="Core\API\Resource.h" />
     <ClInclude Include="Core\API\GpuMemoryHeap.h" />
     <ClInclude Include="Core\API\ResourceViews.h" />
-    <ClInclude Include="Core\API\RootSignature.h" />
+    <ClInclude Include="Core\API\RtAccelerationStructurePostBuildInfoPool.h" />
+    <ClInclude Include="Core\API\RtStateObject.h" />
     <ClInclude Include="Core\API\Sampler.h" />
     <ClInclude Include="Core\API\Shader.h" />
+    <ClInclude Include="Core\API\ShaderResourceType.h" />
+    <ClInclude Include="Core\API\ShaderTable.h" />
     <ClInclude Include="Core\API\Texture.h" />
     <ClInclude Include="Core\API\VAO.h" />
     <ClInclude Include="Core\API\VertexLayout.h" />
-    <ClInclude Include="Core\API\Vulkan\FalcorVK.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClInclude>
-    <ClInclude Include="Core\API\Vulkan\VKDescriptorData.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClInclude>
-    <ClInclude Include="Core\API\Vulkan\VKSmartHandle.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClInclude>
-    <ClInclude Include="Core\API\Vulkan\VKState.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClInclude>
-    <ClInclude Include="Core\BufferTypes\ParameterBlock.h" />
     <ClInclude Include="Core\BufferTypes\VariablesBufferUI.h" />
+    <ClInclude Include="Core\ErrorHandling.h" />
+    <ClInclude Include="Core\Errors.h" />
     <ClInclude Include="Core\FalcorConfig.h" />
     <ClInclude Include="Core\Framework.h" />
     <ClInclude Include="Core\Platform\MonitorInfo.h" />
@@ -111,6 +142,8 @@
     <ClInclude Include="Core\Program\Program.h" />
     <ClInclude Include="Core\Program\ProgramReflection.h" />
     <ClInclude Include="Core\Program\ProgramVars.h" />
+    <ClInclude Include="Core\Program\RtBindingTable.h" />
+    <ClInclude Include="Core\Program\RtProgram.h" />
     <ClInclude Include="Core\Program\ShaderVar.h" />
     <ClInclude Include="Core\Program\ProgramVersion.h" />
     <ClInclude Include="Core\Program\ShaderLibrary.h" />
@@ -120,34 +153,19 @@
     <ClInclude Include="Core\State\GraphicsState.h" />
     <ClInclude Include="Core\State\StateGraph.h" />
     <ClInclude Include="Core\Window.h" />
-    <ClInclude Include="Experimental\Scene\Lights\EmissiveLightSampler.h" />
-    <ShaderSource Include="Core\API\Blit.slang" />
-    <ClInclude Include="Experimental\Scene\Lights\EmissivePowerSampler.h" />
-    <ClInclude Include="Experimental\Scene\Lights\EmissiveUniformSampler.h" />
-    <ClInclude Include="Experimental\Scene\Lights\EnvMapLighting.h" />
-    <ClInclude Include="Experimental\Scene\Lights\EnvMapSampler.h" />
-    <ClInclude Include="Experimental\Scene\Lights\LightBVH.h" />
-    <ClInclude Include="Experimental\Scene\Lights\LightBVHBuilder.h" />
-    <ClInclude Include="Experimental\Scene\Lights\LightBVHSampler.h" />
     <ShaderSource Include="Core\API\BlitReduction.slang" />
-    <ShaderSource Include="Experimental\Scene\Lights\EmissiveLightSamplerType.slangh" />
-    <ShaderSource Include="Experimental\Scene\Lights\EmissivePowerSampler.slang" />
-    <ShaderSource Include="Experimental\Scene\Lights\EnvMapIntegration.ps.slang" />
-    <ShaderSource Include="Experimental\Scene\Lights\EnvMapLighting.slang" />
-    <ShaderSource Include="Experimental\Scene\Lights\EnvMapSampler.slang" />
-    <ShaderSource Include="Experimental\Scene\Lights\LightBVHSamplerSharedDefinitions.slang" />
-    <ShaderSource Include="Experimental\Scene\Lights\LightBVHTypes.slang" />
-    <ClInclude Include="Experimental\Scene\Volume\VolumeSampler.h" />
-    <ClInclude Include="Raytracing\RtBindingTable.h" />
-    <ClInclude Include="Raytracing\RtProgramVars.h" />
-    <ClInclude Include="Raytracing\RtProgramVarsHelper.h" />
-    <ClInclude Include="Raytracing\RtProgram\RtProgram.h" />
-    <ClInclude Include="Raytracing\RtStateObject.h" />
-    <ClInclude Include="Raytracing\RtStateObjectHelper.h" />
-    <ClInclude Include="Raytracing\ShaderTable.h" />
     <ClInclude Include="RenderGraph\RenderPassHelpers.h" />
+    <ClInclude Include="Rendering\Lights\EmissiveLightSampler.h" />
+    <ClInclude Include="Rendering\Lights\EmissivePowerSampler.h" />
+    <ClInclude Include="Rendering\Lights\EmissiveUniformSampler.h" />
+    <ClInclude Include="Rendering\Lights\EnvMapLighting.h" />
+    <ClInclude Include="Rendering\Lights\EnvMapSampler.h" />
+    <ClInclude Include="Rendering\Lights\LightBVH.h" />
+    <ClInclude Include="Rendering\Lights\LightBVHBuilder.h" />
+    <ClInclude Include="Rendering\Lights\LightBVHSampler.h" />
+    <ClInclude Include="Rendering\Utils\PixelStats.h" />
+    <ClInclude Include="Rendering\Volumes\GridVolumeSampler.h" />
     <ClInclude Include="RenderPasses\ResolvePass.h" />
-    <ClInclude Include="RenderPasses\Shared\PathTracer\PixelStats.h" />
     <ClInclude Include="RenderPasses\Shared\PathTracer\PathTracer.h" />
     <ClInclude Include="Scene\Animation\Animatable.h" />
     <ClInclude Include="Scene\Animation\Animation.h" />
@@ -158,42 +176,73 @@
     <ClInclude Include="Scene\Importer.h" />
     <ClInclude Include="Scene\Importers\AssimpImporter.h" />
     <ClInclude Include="Scene\Importers\PythonImporter.h" />
-    <ShaderSource Include="Experimental\Scene\Material\BCSDFConfig.slangh" />
-    <ShaderSource Include="Experimental\Scene\Material\BxDFConfig.slangh" />
-    <ShaderSource Include="Experimental\Scene\Material\ClothBRDF.slang" />
-    <ShaderSource Include="Experimental\Scene\Material\ClothMaterial.slang" />
-    <ShaderSource Include="Experimental\Scene\Material\HairMaterial.slang" />
-    <ShaderSource Include="Experimental\Scene\Material\HairChiang16.slang" />
-    <ShaderSource Include="Experimental\Scene\Material\IBxDF.slang" />
-    <ShaderSource Include="Experimental\Scene\Material\IMaterial.slang" />
-    <ShaderSource Include="Experimental\Scene\Material\StandardMaterial.slang" />
-    <ShaderSource Include="Experimental\Scene\Material\TexLODTypes.slang" />
-    <ShaderSource Include="Experimental\Scene\Volume\HomogeneousVolumeSampler.slang" />
-    <ShaderSource Include="Experimental\Scene\Volume\PhaseFunctions.slang" />
-    <ShaderSource Include="Experimental\Scene\Volume\VolumeSampler.slang" />
-    <ShaderSource Include="Experimental\Scene\Volume\VolumeSamplerParams.slang" />
-    <ShaderSource Include="RenderPasses\Shared\PathTracer\InteriorList.slang" />
-    <ShaderSource Include="RenderPasses\Shared\PathTracer\InteriorListHelpers.slang" />
+    <ShaderSource Include="Rendering\Lights\EmissiveLightSampler.slang" />
+    <ShaderSource Include="Rendering\Lights\EmissiveLightSamplerHelpers.slang" />
+    <ShaderSource Include="Rendering\Lights\EmissiveLightSamplerInterface.slang" />
+    <ShaderSource Include="Rendering\Lights\EmissiveLightSamplerType.slangh" />
+    <ShaderSource Include="Rendering\Lights\EmissivePowerSampler.slang" />
+    <ShaderSource Include="Rendering\Lights\EmissiveUniformSampler.slang" />
+    <ShaderSource Include="Rendering\Lights\EnvMapIntegration.ps.slang" />
+    <ShaderSource Include="Rendering\Lights\EnvMapLighting.slang" />
+    <ShaderSource Include="Rendering\Lights\EnvMapSampler.slang" />
+    <ShaderSource Include="Rendering\Lights\EnvMapSamplerSetup.cs.slang" />
+    <ShaderSource Include="Rendering\Lights\LightBVH.slang" />
+    <ShaderSource Include="Rendering\Lights\LightBVHRefit.cs.slang" />
+    <ShaderSource Include="Rendering\Lights\LightBVHSampler.slang" />
+    <ShaderSource Include="Rendering\Lights\LightBVHSamplerSharedDefinitions.slang" />
+    <ShaderSource Include="Rendering\Lights\LightBVHTypes.slang" />
+    <ShaderSource Include="Rendering\Lights\LightHelpers.slang" />
+    <ShaderSource Include="Rendering\Materials\BCSDFConfig.slangh" />
+    <ShaderSource Include="Rendering\Materials\BxDF.slang" />
+    <ShaderSource Include="Rendering\Materials\BxDFConfig.slangh" />
+    <ShaderSource Include="Rendering\Materials\ClothBSDF.slang" />
+    <ShaderSource Include="Rendering\Materials\ClothBRDF.slang" />
+    <ShaderSource Include="Rendering\Materials\ClothMaterial.slang" />
+    <ShaderSource Include="Rendering\Materials\Fresnel.slang" />
+    <ShaderSource Include="Rendering\Materials\HairBSDF.slang" />
+    <ShaderSource Include="Rendering\Materials\HairChiang16.slang" />
+    <ShaderSource Include="Rendering\Materials\HairMaterial.slang" />
+    <ShaderSource Include="Rendering\Materials\IBSDF.slang" />
+    <ShaderSource Include="Rendering\Materials\IBxDF.slang" />
+    <ShaderSource Include="Rendering\Materials\IMaterial.slang" />
+    <ShaderSource Include="Rendering\Materials\InteriorList.slang" />
+    <ShaderSource Include="Rendering\Materials\InteriorListHelpers.slang" />
+    <ShaderSource Include="Rendering\Materials\LobeType.slang" />
+    <ShaderSource Include="Rendering\Materials\Microfacet.slang" />
+    <ShaderSource Include="Rendering\Materials\StandardBSDF.slang" />
+    <ShaderSource Include="Rendering\Materials\StandardMaterial.slang" />
+    <ShaderSource Include="Rendering\Materials\TexLODHelpers.slang" />
+    <ShaderSource Include="Rendering\Materials\TexLODTypes.slang" />
+    <ShaderSource Include="Rendering\Utils\PixelStats.cs.slang" />
+    <ShaderSource Include="Rendering\Utils\PixelStats.slang" />
+    <ShaderSource Include="Rendering\Utils\PixelStatsShared.slang" />
+    <ShaderSource Include="Rendering\Volumes\HomogeneousVolumeSampler.slang" />
+    <ShaderSource Include="Rendering\Volumes\IPhaseFunction.slang" />
+    <ShaderSource Include="Rendering\Volumes\PhaseFunction.slang" />
+    <ShaderSource Include="Rendering\Volumes\GridVolumeSampler.slang" />
+    <ShaderSource Include="Rendering\Volumes\GridVolumeSamplerParams.slang" />
     <ShaderSource Include="RenderPasses\Shared\PathTracer\LoadShadingData.slang" />
-    <ShaderSource Include="RenderPasses\Shared\PathTracer\PixelStats.cs.slang" />
-    <ShaderSource Include="RenderPasses\Shared\PathTracer\PixelStats.slang" />
     <ShaderSource Include="RenderPasses\Shared\PathTracer\PathData.slang" />
     <ShaderSource Include="RenderPasses\Shared\PathTracer\PathTracerHelpers.slang" />
     <ShaderSource Include="RenderPasses\Shared\PathTracer\PathTracerParams.slang" />
-    <ShaderSource Include="RenderPasses\Shared\PathTracer\PixelStatsShared.slang" />
     <ShaderSource Include="RenderPasses\Shared\PathTracer\RayFootprint.slang" />
     <ShaderSource Include="RenderPasses\Shared\PathTracer\RayFootprintData.slang" />
     <ShaderSource Include="RenderPasses\Shared\PathTracer\RayFootprintModes.slangh" />
     <ShaderSource Include="RenderPasses\Shared\PathTracer\StaticParams.slang" />
     <ShaderSource Include="Scene\Animation\Skinning.slang" />
-    <ShaderSource Include="Scene\Animation\UpdateAABBs.slang" />
-    <ShaderSource Include="Scene\Animation\UpdateVertices.slang" />
+    <ShaderSource Include="Scene\Animation\UpdateCurveAABBs.slang" />
+    <ShaderSource Include="Scene\Animation\UpdateCurveVertices.slang" />
     <ShaderSource Include="Scene\Camera\Camera.slang" />
     <ShaderSource Include="Scene\Camera\CameraData.slang" />
     <ShaderSource Include="Scene\Displacement\DisplacementMapping.slang" />
+    <ShaderSource Include="Scene\Displacement\DisplacementData.slang" />
     <ShaderSource Include="Scene\Displacement\DisplacementUpdate.cs.slang" />
     <ShaderSource Include="Scene\Displacement\DisplacementUpdateTask.slang" />
     <ShaderSource Include="Scene\HitInfoType.slang" />
+    <ShaderSource Include="Scene\Importers\USDImporter\CreateSpecularTexture.cs.slang" />
+    <ShaderSource Include="Scene\Importers\USDImporter\CreateSpecularTransmissionTexture.cs.slang" />
+    <ShaderSource Include="Scene\Importers\USDImporter\PackBaseColorAlpha.cs.slang" />
+    <ShaderSource Include="Scene\Importers\USDImporter\SampleTexture.slang" />
     <ShaderSource Include="Scene\Intersection.slang" />
     <ShaderSource Include="Scene\Lights\BuildTriangleList.cs.slang" />
     <ShaderSource Include="Scene\Lights\EmissiveIntegrator.3d.slang" />
@@ -205,18 +254,31 @@
     <ShaderSource Include="Scene\Lights\MeshLightData.slang" />
     <ShaderSource Include="Scene\Lights\UpdateTriangleVertices.cs.slang" />
     <ShaderSource Include="Scene\Material\AlphaTest.slang" />
+    <ShaderSource Include="Scene\Material\BasicMaterialData.slang" />
+    <ShaderSource Include="Scene\Material\MaterialFactory.slang" />
+    <ShaderSource Include="Scene\Material\ShadingUtils.slang" />
+    <ShaderSource Include="Scene\Material\HomogeneousVolumeData.slang" />
+    <ShaderSource Include="Scene\Material\MaterialSystem.slang" />
+    <ShaderSource Include="Scene\Material\MaterialTypes.slang" />
+    <ShaderSource Include="Scene\Material\TextureHandle.slang" />
+    <ShaderSource Include="Scene\Material\TextureSampler.slang" />
     <ShaderSource Include="Scene\NullTrace.cs.slang" />
     <ShaderSource Include="Scene\HitInfo.slang" />
     <ShaderSource Include="Scene\Lights\LightData.slang" />
     <ShaderSource Include="Scene\Material\MaterialData.slang" />
-    <ShaderSource Include="Scene\Material\MaterialDefines.slangh" />
-    <ShaderSource Include="Scene\ParticleSystem\ParticleConstColor.ps.slang" />
+    <ClInclude Include="Scene\Importers\USDImporter\ImporterContext.h" />
+    <ClInclude Include="Scene\Importers\USDImporter\PreviewSurfaceConverter.h" />
+    <ClInclude Include="Scene\Importers\USDImporter\USDImporter.h" />
+    <ClInclude Include="Scene\Importers\USDImporter\Utils.h" />
     <ClInclude Include="Scene\Lights\EnvMap.h" />
     <ClInclude Include="Scene\Lights\LightCollection.h" />
+    <ClInclude Include="Scene\Material\BasicMaterial.h" />
+    <ClInclude Include="Scene\Material\ClothMaterial.h" />
+    <ClInclude Include="Scene\Material\HairMaterial.h" />
+    <ClInclude Include="Scene\Material\Material.h" />
+    <ClInclude Include="Scene\Material\MaterialSystem.h" />
     <ClInclude Include="Scene\Material\MaterialTextureLoader.h" />
-    <ClInclude Include="Scene\ParticleSystem\ParticleSystem.h" />
     <ClInclude Include="Falcor.h" />
-    <ClInclude Include="FalcorExperimental.h" />
     <ClInclude Include="RenderGraph\BasePasses\BaseGraphicsPass.h" />
     <ClInclude Include="RenderGraph\BasePasses\ComputePass.h" />
     <ClInclude Include="RenderGraph\BasePasses\FullScreenPass.h" />
@@ -236,26 +298,58 @@
     <ClInclude Include="Scene\Camera\Camera.h" />
     <ClInclude Include="Scene\Camera\CameraController.h" />
     <ClInclude Include="Scene\Lights\Light.h" />
-    <ClInclude Include="Scene\Material\Material.h" />
+    <ClInclude Include="Scene\Material\StandardMaterial.h" />
     <ClInclude Include="Scene\SceneBuilder.h" />
     <ClInclude Include="Scene\Scene.h" />
-    <ShaderSource Include="Scene\ParticleSystem\ParticleData.slang" />
     <ShaderSource Include="Scene\Raster.slang" />
     <ShaderSource Include="Scene\Raytracing.slang" />
     <ShaderSource Include="Scene\RaytracingInline.slang" />
     <ShaderSource Include="Scene\Scene.slang" />
-    <ShaderSource Include="Scene\ScenePrimitiveDefines.slangh" />
+    <ShaderSource Include="Scene\SceneDefines.slangh" />
     <ShaderSource Include="Scene\SceneRayQueryInterface.slang" />
     <ShaderSource Include="Scene\SceneTypes.slang" />
-    <ShaderSource Include="Scene\Shading.slang" />
+    <ShaderSource Include="Scene\SDFs\EvaluateSDFPrimitives.cs.slang" />
+    <ShaderSource Include="Scene\SDFs\NormalizedDenseSDFGrid\NDSDFGrid.slang" />
+    <ShaderSource Include="Scene\SDFs\SDF3DPrimitive.slang" />
+    <ShaderSource Include="Scene\SDFs\SDFGridBase.slang" />
+    <ShaderSource Include="Scene\SDFs\SDFGrid.slang" />
+    <ShaderSource Include="Scene\SDFs\SDFGridHitData.slang" />
+    <ShaderSource Include="Scene\SDFs\SDFGridNoDefines.slangh" />
+    <ShaderSource Include="Scene\SDFs\SDFSurfaceVoxelCounter.cs.slang" />
+    <ShaderSource Include="Scene\SDFs\SDFVoxelCommon.slang" />
+    <ShaderSource Include="Scene\SDFs\SDFVoxelHitUtils.slang" />
+    <ShaderSource Include="Scene\SDFs\SDFVoxelTypes.slang" />
+    <ShaderSource Include="Scene\SDFs\SparseBrickSet\BC4Encode.slang" />
+    <ShaderSource Include="Scene\SDFs\SparseBrickSet\SDFSBS.slang" />
+    <ShaderSource Include="Scene\SDFs\SparseBrickSet\SDFSBSAssignBrickValidityFromValuesPass.cs.slang" />
+    <ShaderSource Include="Scene\SDFs\SparseBrickSet\SDFSBSCompactifyChunks.cs.slang" />
+    <ShaderSource Include="Scene\SDFs\SparseBrickSet\SDFSBSCopyIndirectionBuffer.cs.slang" />
+    <ShaderSource Include="Scene\SDFs\SparseBrickSet\SDFSBSCreateBricksFromChunks.cs.slang" />
+    <ShaderSource Include="Scene\SDFs\SparseBrickSet\SDFSBSCreateBricksFromValues.cs.slang" />
+    <ShaderSource Include="Scene\SDFs\SparseBrickSet\SDFSBSCreateChunksFromPrimitives.cs.slang" />
+    <ShaderSource Include="Scene\SDFs\SparseBrickSet\SDFSBSPruneEmptyBricks.cs.slang" />
+    <ShaderSource Include="Scene\SDFs\SparseBrickSet\SDFSBSResetBrickValidity.cs.slang" />
+    <ShaderSource Include="Scene\SDFs\SparseVoxelOctree\SDFSVO.slang" />
+    <ShaderSource Include="Scene\SDFs\SparseVoxelOctree\SDFSVOBuildLevelFromTexture.cs.slang" />
+    <ShaderSource Include="Scene\SDFs\SparseVoxelOctree\SDFSVOBuildOctree.cs.slang" />
+    <ShaderSource Include="Scene\SDFs\SparseVoxelOctree\SDFSVOHashTable.slang" />
+    <ShaderSource Include="Scene\SDFs\SparseVoxelOctree\SDFSVOLocationCodeSorter.cs.slang" />
+    <ShaderSource Include="Scene\SDFs\SparseVoxelOctree\SDFSVOWriteSVOOffsets.cs.slang" />
+    <ShaderSource Include="Scene\SDFs\SparseVoxelSet\SDFSVS.slang" />
+    <ShaderSource Include="Scene\SDFs\SparseVoxelSet\SDFSVSVoxelizer.cs.slang" />
     <ShaderSource Include="Scene\ShadingData.slang" />
     <ClInclude Include="Scene\SceneCache.h" />
+    <ClInclude Include="Scene\SDFs\NormalizedDenseSDFGrid\NDSDFGrid.h" />
+    <ClInclude Include="Scene\SDFs\SDFGrid.h" />
+    <ClInclude Include="Scene\SDFs\SparseBrickSet\SDFSBS.h" />
+    <ClInclude Include="Scene\SDFs\SparseVoxelOctree\SDFSVO.h" />
+    <ClInclude Include="Scene\SDFs\SparseVoxelSet\SDFSVS.h" />
     <ClInclude Include="Scene\Transform.h" />
     <ClInclude Include="Scene\TriangleMesh.h" />
     <ClInclude Include="Scene\Volume\BrickedGrid.h" />
     <ClInclude Include="Scene\Volume\GridConverter.h" />
     <ClInclude Include="Scene\Volume\Grid.h" />
-    <ClInclude Include="Scene\Volume\Volume.h" />
+    <ClInclude Include="Scene\Volume\GridVolume.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="Testing\UnitTest.h" />
     <ClInclude Include="Utils\Algorithm\BitonicSort.h" />
@@ -263,28 +357,17 @@
     <ClInclude Include="Utils\Algorithm\DirectedGraph.h" />
     <ClInclude Include="Utils\Algorithm\DirectedGraphTraversal.h" />
     <ClInclude Include="Utils\Algorithm\ParallelReduction.h" />
-    <ShaderSource Include="Experimental\Scene\Material\BxDF.slang" />
-    <ShaderSource Include="Experimental\Scene\Material\Fresnel.slang" />
-    <ShaderSource Include="Experimental\Scene\Material\Microfacet.slang" />
     <ShaderSource Include="RenderGraph\BasePasses\FullScreenPass.gs.slang" />
     <ShaderSource Include="RenderGraph\BasePasses\FullScreenPass.vs.slang" />
-    <ShaderSource Include="Scene\ParticleSystem\ParticleEmit.cs.slang" />
-    <ShaderSource Include="Scene\ParticleSystem\ParticleInterpColor.ps.slang" />
-    <ShaderSource Include="Scene\ParticleSystem\ParticleSimulate.cs.slang" />
-    <ShaderSource Include="Scene\ParticleSystem\ParticleSort.cs.slang" />
-    <ShaderSource Include="Scene\ParticleSystem\ParticleTexture.ps.slang" />
-    <ShaderSource Include="Scene\ParticleSystem\ParticleVertex.vs.slang" />
     <ShaderSource Include="Scene\SceneBlock.slang" />
-    <ShaderSource Include="Scene\TextureSampler.slang" />
     <ShaderSource Include="Scene\VertexAttrib.slangh" />
     <ShaderSource Include="Scene\Volume\Grid.slang" />
-    <ShaderSource Include="Scene\Volume\Volume.slang" />
-    <ShaderSource Include="Scene\Volume\VolumeData.slang" />
+    <ShaderSource Include="Scene\Volume\GridVolume.slang" />
+    <ShaderSource Include="Scene\Volume\GridVolumeData.slang" />
     <ShaderSource Include="Testing\UnitTest.cs.slang" />
     <ShaderSource Include="Utils\Algorithm\ParallelReduction.ps.slang" />
     <ClInclude Include="Utils\Algorithm\PrefixSum.h" />
     <ClInclude Include="Utils\AlignedAllocator.h" />
-    <ClInclude Include="Utils\AsyncTextureLoader.h" />
     <ClInclude Include="Utils\BinaryFileStream.h" />
     <ClInclude Include="Utils\Color\ColorUtils.h" />
     <ClInclude Include="Utils\CryptoUtils.h" />
@@ -293,15 +376,19 @@
     <ShaderSource Include="Utils\Algorithm\ParallelReductionType.slangh" />
     <ShaderSource Include="Utils\Attributes.slang" />
     <ShaderSource Include="Utils\Color\ColorHelpers.slang" />
+    <ClInclude Include="Utils\Image\AsyncTextureLoader.h" />
     <ClInclude Include="Utils\Image\Bitmap.h" />
     <ClInclude Include="Utils\Image\ImageIO.h" />
+    <ClInclude Include="Utils\Image\ImageProcessing.h" />
     <ClInclude Include="Utils\Image\TextureAnalyzer.h" />
+    <ClInclude Include="Utils\Image\TextureManager.h" />
     <ClInclude Include="Utils\Logger.h" />
     <ClInclude Include="Utils\Math\AABB.h" />
     <ClInclude Include="Utils\Math\CubicSpline.h" />
     <ClInclude Include="Utils\Math\FalcorMath.h" />
     <ShaderSource Include="Utils\Debug\PixelDebugTypes.slang" />
     <ShaderSource Include="Utils\Debug\ReflectPixelDebugTypes.cs.slang" />
+    <ClInclude Include="Utils\Math\Float16.h" />
     <ClInclude Include="Utils\Math\MathHelpers.h" />
     <ClInclude Include="Utils\Math\PackedFormats.h" />
     <ClInclude Include="Utils\Math\Vector.h" />
@@ -316,7 +403,9 @@
     <ShaderSource Include="Utils\Geometry\GeometryHelpers.slang" />
     <ShaderSource Include="Utils\Geometry\IntersectionHelpers.slang" />
     <ShaderSource Include="Utils\HostDeviceShared.slangh" />
+    <ShaderSource Include="Utils\Image\CopyColorChannel.cs.slang" />
     <ShaderSource Include="Utils\Image\TextureAnalyzer.cs.slang" />
+    <ShaderSource Include="Utils\Math\IntervalArithmetic.slang" />
     <ShaderSource Include="Utils\Math\MathConstants.slangh" />
     <ClInclude Include="Utils\Scripting\Console.h" />
     <ClInclude Include="Utils\Scripting\Dictionary.h" />
@@ -332,7 +421,6 @@
     <ClInclude Include="Utils\Timing\Profiler.h" />
     <ClInclude Include="Utils\Timing\ProfilerUI.h" />
     <ClInclude Include="Utils\Timing\TimeReport.h" />
-    <ClInclude Include="Utils\UI\DebugDrawer.h" />
     <ClInclude Include="Utils\UI\Font.h" />
     <ClInclude Include="Utils\UI\Gui.h" />
     <ClInclude Include="Utils\UI\PixelZoom.h" />
@@ -349,6 +437,7 @@
     <ShaderSource Include="Utils\Sampling\SampleGeneratorType.slangh" />
     <ShaderSource Include="Utils\SDF\SDF2DDraw.slang" />
     <ShaderSource Include="Utils\SDF\SDF2DPrimitives.slang" />
+    <ShaderSource Include="Utils\SDF\SDF3DShapes.slang" />
     <ShaderSource Include="Utils\SDF\SDFOperations.slang" />
     <ShaderSource Include="Utils\Timing\GpuTimer.slang" />
     <ShaderSource Include="Utils\UI\Gui.slang" />
@@ -357,273 +446,309 @@
   <ItemGroup>
     <ClCompile Include="..\Externals\.packman\dear_imgui\imgui.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\Externals\.packman\dear_imgui\imgui_draw.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\Externals\.packman\dear_imgui\imgui_widgets.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\Externals\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Core\API\BlendState.cpp" />
+    <ClCompile Include="Core\API\BlitContext.cpp" />
     <ClCompile Include="Core\API\Buffer.cpp" />
     <ClCompile Include="Core\API\ComputeContext.cpp" />
     <ClCompile Include="Core\API\ComputeStateObject.cpp" />
     <ClCompile Include="Core\API\CopyContext.cpp" />
     <ClCompile Include="Core\API\D3D12\D3D12Buffer.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12ComputeContext.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12ComputeStateObject.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12CopyContext.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12DescriptorHeap.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12DescriptorPool.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12DescriptorSet.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12Device.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12Fbo.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12GpuFence.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12GpuTimer.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12GraphicsStateObject.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\D3D12\D3D12IndirectCommands.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12LowLevelContextData.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\D3D12\D3D12ParameterBlock.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\D3D12\D3D12ProgramVars.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12QueryHeap.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12RasterizerState.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12RenderContext.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12Resource.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12GpuMemoryHeap.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12ResourceViews.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12RootSignature.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\D3D12\D3D12RtAccelerationStructure.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\D3D12\D3D12RtAccelerationStructurePostBuildInfoPool.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\D3D12\D3D12RtStateObject.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12Sampler.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\D3D12\D3D12ShaderTable.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12State.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12Texture.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12Vao.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12Formats.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12Shader.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\API\DepthStencilState.cpp" />
-    <ClCompile Include="Core\API\DescriptorPool.cpp" />
-    <ClCompile Include="Core\API\DescriptorSet.cpp" />
     <ClCompile Include="Core\API\Device.cpp" />
     <ClCompile Include="Core\API\FBO.cpp" />
     <ClCompile Include="Core\API\Formats.cpp" />
+    <ClCompile Include="Core\API\GFX\GFXBuffer.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXComputeContext.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXComputeStateObject.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXCopyContext.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXDevice.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXFbo.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXFormats.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXGpuFence.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXGpuMemoryHeap.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXGpuTimer.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXGraphicsStateObject.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXLowLevelContextData.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXParameterBlock.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXProgramVars.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXQueryHeap.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXRasterizerState.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXRenderContext.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXResource.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXResourceViews.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXRtAccelerationStructure.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXRtAccelerationStructurePostBuildInfoPool.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXRtStateObject.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXSampler.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXShader.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXShaderTable.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXTexture.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXVao.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="Core\API\GpuTimer.cpp" />
     <ClCompile Include="Core\API\GraphicsStateObject.cpp" />
+    <ClCompile Include="Core\API\ParameterBlock.cpp" />
     <ClCompile Include="Core\API\RasterizerState.cpp" />
     <ClCompile Include="Core\API\RenderContext.cpp" />
     <ClCompile Include="Core\API\Resource.cpp" />
     <ClCompile Include="Core\API\GpuMemoryHeap.cpp" />
     <ClCompile Include="Core\API\ResourceViews.cpp" />
-    <ClCompile Include="Core\API\RootSignature.cpp" />
+    <ClCompile Include="Core\API\RtAccelerationStructure.cpp" />
+    <ClCompile Include="Core\API\RtAccelerationStructurePostBuildInfoPool.cpp" />
+    <ClCompile Include="Core\API\RtStateObject.cpp" />
     <ClCompile Include="Core\API\Sampler.cpp" />
+    <ClCompile Include="Core\API\ShaderTable.cpp" />
     <ClCompile Include="Core\API\Texture.cpp" />
     <ClCompile Include="Core\API\VAO.cpp" />
     <ClCompile Include="Core\API\VertexLayout.cpp" />
-    <ClCompile Include="Core\API\Vulkan\VKBuffer.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKComputeContext.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKComputeStateObject.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKCopyContext.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKDescriptorPool.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKDescriptorSet.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKDevice.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKFbo.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKFormats.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKGpuFence.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKGpuTimer.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKGraphicsStateObject.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKLowLevelContextData.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VkQueryHeap.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKRasterizerState.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKRenderContext.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VkResource.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VkGpuMemoryHeap.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKResourceViews.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKRootSignature.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKSampler.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKShader.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VkSmartHandle.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKState.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKTexture.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKVao.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Core\BufferTypes\ParameterBlock.cpp" />
     <ClCompile Include="Core\BufferTypes\VariablesBufferUI.cpp" />
+    <ClCompile Include="Core\ErrorHandling.cpp" />
+    <ClCompile Include="Core\Errors.cpp" />
     <ClCompile Include="Core\Framework.cpp" />
     <ClCompile Include="Core\Platform\Linux\Linux.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\Platform\Linux\ProgressBarLinux.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\Platform\MonitorInfo.cpp" />
     <ClCompile Include="Core\Platform\OS.cpp" />
@@ -637,30 +762,27 @@
     <ClCompile Include="Core\Program\ProgramReflection.cpp" />
     <ClCompile Include="Core\Program\ProgramVars.cpp" />
     <ClCompile Include="Core\Program\ProgramVersion.cpp" />
+    <ClCompile Include="Core\Program\RtBindingTable.cpp" />
+    <ClCompile Include="Core\Program\RtProgram.cpp" />
     <ClCompile Include="Core\Program\ShaderLibrary.cpp" />
     <ClCompile Include="Core\Program\ShaderVar.cpp" />
     <ClCompile Include="Core\Sample.cpp" />
     <ClCompile Include="Core\State\ComputeState.cpp" />
     <ClCompile Include="Core\State\GraphicsState.cpp" />
     <ClCompile Include="Core\Window.cpp" />
-    <ClCompile Include="Experimental\Scene\Lights\EmissiveLightSampler.cpp" />
-    <ClCompile Include="Experimental\Scene\Lights\EmissivePowerSampler.cpp" />
-    <ClCompile Include="Experimental\Scene\Lights\EmissiveUniformSampler.cpp" />
-    <ClCompile Include="Experimental\Scene\Lights\EnvMapLighting.cpp" />
-    <ClCompile Include="Experimental\Scene\Lights\EnvMapSampler.cpp" />
-    <ClCompile Include="Experimental\Scene\Lights\LightBVH.cpp" />
-    <ClCompile Include="Experimental\Scene\Lights\LightBVHBuilder.cpp" />
-    <ClCompile Include="Experimental\Scene\Lights\LightBVHSampler.cpp" />
-    <ClCompile Include="Experimental\Scene\Material\TexLODTypes.cpp" />
-    <ClCompile Include="Experimental\Scene\Volume\VolumeSampler.cpp" />
-    <ClCompile Include="Raytracing\RtBindingTable.cpp" />
-    <ClCompile Include="Raytracing\RtProgramVars.cpp" />
-    <ClCompile Include="Raytracing\RtProgramVarsHelper.cpp" />
-    <ClCompile Include="Raytracing\RtProgram\RtProgram.cpp" />
-    <ClCompile Include="Raytracing\RtStateObject.cpp" />
-    <ClCompile Include="Raytracing\ShaderTable.cpp" />
+    <ClCompile Include="RenderGraph\RenderPassHelpers.cpp" />
+    <ClCompile Include="Rendering\Lights\EmissiveLightSampler.cpp" />
+    <ClCompile Include="Rendering\Lights\EmissivePowerSampler.cpp" />
+    <ClCompile Include="Rendering\Lights\EmissiveUniformSampler.cpp" />
+    <ClCompile Include="Rendering\Lights\EnvMapLighting.cpp" />
+    <ClCompile Include="Rendering\Lights\EnvMapSampler.cpp" />
+    <ClCompile Include="Rendering\Lights\LightBVH.cpp" />
+    <ClCompile Include="Rendering\Lights\LightBVHBuilder.cpp" />
+    <ClCompile Include="Rendering\Lights\LightBVHSampler.cpp" />
+    <ClCompile Include="Rendering\Materials\TexLODTypes.cpp" />
+    <ClCompile Include="Rendering\Utils\PixelStats.cpp" />
+    <ClCompile Include="Rendering\Volumes\GridVolumeSampler.cpp" />
     <ClCompile Include="RenderPasses\ResolvePass.cpp" />
-    <ClCompile Include="RenderPasses\Shared\PathTracer\PixelStats.cpp" />
     <ClCompile Include="RenderPasses\Shared\PathTracer\PathTracer.cpp" />
     <ClCompile Include="Scene\Animation\Animatable.cpp" />
     <ClCompile Include="Scene\Animation\Animation.cpp" />
@@ -671,10 +793,17 @@
     <ClCompile Include="Scene\Importer.cpp" />
     <ClCompile Include="Scene\Importers\AssimpImporter.cpp" />
     <ClCompile Include="Scene\Importers\PythonImporter.cpp" />
+    <ClCompile Include="Scene\Importers\USDImporter\ImporterContext.cpp" />
+    <ClCompile Include="Scene\Importers\USDImporter\PreviewSurfaceConverter.cpp" />
+    <ClCompile Include="Scene\Importers\USDImporter\USDImporter.cpp" />
     <ClCompile Include="Scene\Lights\EnvMap.cpp" />
     <ClCompile Include="Scene\Lights\LightCollection.cpp" />
+    <ClCompile Include="Scene\Material\BasicMaterial.cpp" />
+    <ClCompile Include="Scene\Material\ClothMaterial.cpp" />
+    <ClCompile Include="Scene\Material\HairMaterial.cpp" />
+    <ClCompile Include="Scene\Material\Material.cpp" />
+    <ClCompile Include="Scene\Material\MaterialSystem.cpp" />
     <ClCompile Include="Scene\Material\MaterialTextureLoader.cpp" />
-    <ClCompile Include="Scene\ParticleSystem\ParticleSystem.cpp" />
     <ClCompile Include="RenderGraph\BasePasses\BaseGraphicsPass.cpp" />
     <ClCompile Include="RenderGraph\BasePasses\ComputePass.cpp" />
     <ClCompile Include="RenderGraph\BasePasses\FullScreenPass.cpp" />
@@ -693,31 +822,38 @@
     <ClCompile Include="Scene\Camera\Camera.cpp" />
     <ClCompile Include="Scene\Camera\CameraController.cpp" />
     <ClCompile Include="Scene\Lights\Light.cpp" />
-    <ClCompile Include="Scene\Material\Material.cpp" />
+    <ClCompile Include="Scene\Material\StandardMaterial.cpp" />
     <ClCompile Include="Scene\SceneBuilder.cpp" />
     <ClCompile Include="Scene\Scene.cpp" />
     <ClCompile Include="Scene\SceneCache.cpp" />
+    <ClCompile Include="Scene\SDFs\NormalizedDenseSDFGrid\NDSDFGrid.cpp" />
+    <ClCompile Include="Scene\SDFs\SDFGrid.cpp" />
+    <ClCompile Include="Scene\SDFs\SparseBrickSet\SDFSBS.cpp" />
+    <ClCompile Include="Scene\SDFs\SparseVoxelOctree\SDFSVO.cpp" />
+    <ClCompile Include="Scene\SDFs\SparseVoxelSet\SDFSVS.cpp" />
     <ClCompile Include="Scene\Transform.cpp" />
     <ClCompile Include="Scene\TriangleMesh.cpp" />
     <ClCompile Include="Scene\Volume\Grid.cpp" />
-    <ClCompile Include="Scene\Volume\Volume.cpp" />
+    <ClCompile Include="Scene\Volume\GridVolume.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Testing\UnitTest.cpp" />
     <ClCompile Include="Utils\Algorithm\BitonicSort.cpp" />
     <ClCompile Include="Utils\Algorithm\ComputeParallelReduction.cpp" />
     <ClCompile Include="Utils\Algorithm\ParallelReduction.cpp" />
     <ClCompile Include="Utils\Algorithm\PrefixSum.cpp" />
-    <ClCompile Include="Utils\AsyncTextureLoader.cpp" />
     <ClCompile Include="Utils\CryptoUtils.cpp" />
     <ClCompile Include="Utils\Debug\PixelDebug.cpp" />
+    <ClCompile Include="Utils\Image\AsyncTextureLoader.cpp" />
     <ClCompile Include="Utils\Image\Bitmap.cpp" />
     <ClCompile Include="Utils\Image\ImageIO.cpp" />
+    <ClCompile Include="Utils\Image\ImageProcessing.cpp" />
     <ClCompile Include="Utils\Image\TextureAnalyzer.cpp" />
+    <ClCompile Include="Utils\Image\TextureManager.cpp" />
     <ClCompile Include="Utils\Logger.cpp" />
     <ClCompile Include="Utils\Math\AABB.cpp" />
     <ClCompile Include="Utils\Perception\Experiment.cpp" />
@@ -738,7 +874,6 @@
     <ClCompile Include="Utils\Timing\Profiler.cpp" />
     <ClCompile Include="Utils\Timing\ProfilerUI.cpp" />
     <ClCompile Include="Utils\Timing\TimeReport.cpp" />
-    <ClCompile Include="Utils\UI\DebugDrawer.cpp" />
     <ClCompile Include="Utils\UI\Font.cpp" />
     <ClCompile Include="Utils\UI\Gui.cpp" />
     <ClCompile Include="Utils\UI\PixelZoom.cpp" />
@@ -747,17 +882,6 @@
     <ClCompile Include="Utils\Video\VideoEncoderUI.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ShaderSource Include="Experimental\Scene\Lights\EmissiveLightSampler.slang" />
-    <ShaderSource Include="Experimental\Scene\Lights\EmissiveLightSamplerHelpers.slang" />
-    <ShaderSource Include="Experimental\Scene\Lights\EmissiveLightSamplerInterface.slang" />
-    <ShaderSource Include="Experimental\Scene\Lights\EmissiveUniformSampler.slang" />
-    <ShaderSource Include="Experimental\Scene\Lights\EnvMapSamplerSetup.cs.slang" />
-    <ShaderSource Include="Experimental\Scene\Lights\LightBVH.slang" />
-    <ShaderSource Include="Experimental\Scene\Lights\LightBVHRefit.cs.slang" />
-    <ShaderSource Include="Experimental\Scene\Lights\LightBVHSampler.slang" />
-    <ShaderSource Include="Experimental\Scene\Lights\LightHelpers.slang" />
-    <ShaderSource Include="Experimental\Scene\Material\MaterialHelpers.slang" />
-    <ShaderSource Include="Experimental\Scene\Material\TexLODHelpers.slang" />
     <ShaderSource Include="Utils\Algorithm\BitonicSort.cs.slang" />
     <ShaderSource Include="Utils\Algorithm\ParallelReduction.cs.slang" />
     <ShaderSource Include="Utils\Algorithm\PrefixSum.cs.slang" />
@@ -798,7 +922,7 @@
     <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
@@ -811,12 +935,12 @@
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -824,13 +948,13 @@
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'" Label="PropertySheets">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'" Label="PropertySheets">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
@@ -839,7 +963,7 @@
     <IntDir>$(SolutionDir)Bin\Int\$(PlatformShortName)\$(Configuration)\</IntDir>
     <CustomBuildAfterTargets>Clean</CustomBuildAfterTargets>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">
     <OutDir>$(SolutionDir)Bin\$(PlatformShortName)\Debug\</OutDir>
     <IntDir>$(SolutionDir)Bin\Int\$(PlatformShortName)\$(Configuration)\</IntDir>
     <CustomBuildAfterTargets>Clean</CustomBuildAfterTargets>
@@ -849,7 +973,7 @@
     <IntDir>$(SolutionDir)Bin\Int\$(PlatformShortName)\$(Configuration)\</IntDir>
     <CustomBuildAfterTargets>Clean</CustomBuildAfterTargets>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">
     <OutDir>$(SolutionDir)Bin\$(PlatformShortName)\Release\</OutDir>
     <IntDir>$(SolutionDir)Bin\Int\$(PlatformShortName)\$(Configuration)\</IntDir>
     <CustomBuildAfterTargets>Clean</CustomBuildAfterTargets>
@@ -857,9 +981,10 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
+      <DisableSpecificWarnings>4251</DisableSpecificWarnings>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>FALCOR_DLL;IMGUI_API=__declspec(dllexport);_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_D3D12;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE;_$(OutputType)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\.packman\deps\include;$(ProjectDir)\..\Externals\.packman;$(ProjectDir)\..\Externals;$(ProjectDir)\..\Externals\.packman\vulkansdk\Include;$(ProjectDir)\..\Externals\.packman\python\Include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman\nanovdb\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\..\Externals\.packman\agility-sdk\build\native\include;$(ProjectDir);$(ProjectDir)\..\Externals\.packman\deps\include;$(ProjectDir)\..\Externals\.packman;$(ProjectDir)\..\Externals;$(ProjectDir)\..\Externals\.packman\python\Include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvtt\include;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman\nanovdb\include;$(ProjectDir)\..\Externals\.packman\nv-usd-debug\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -870,8 +995,8 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\Externals\.packman\deps\debug\lib;$(ProjectDir)..\Externals\.packman\deps\lib;$(ProjectDir)..\Externals\.packman\nvapi\amd64;$(ProjectDir)..\Externals\.packman\vulkansdk\Lib;$(ProjectDir)..\Externals\.packman\slang\bin\windows-x64\release;$(ProjectDir)..\Externals\.packman\python\libs;$(ProjectDir)..\Externals\.packman\WinPixEventRuntime\bin\x64;$(ProjectDir)..\Externals\.packman\Cuda\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>WinPixEventRuntime.lib;glfw3dll.lib;slang.lib;Comctl32.lib;Shlwapi.lib;assimp-vc142-mt.lib;mikktspaced.lib;FreeImaged.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;Shcore.lib;DirectXTex.lib;Half-2_5_d.lib;openvdb.lib;libcrypto.lib;lz4.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)\..\Externals\.packman\agility-sdk\build\native\bin\x64;$(ProjectDir)..\Externals\.packman\deps\debug\lib;$(ProjectDir)..\Externals\.packman\deps\lib;$(ProjectDir)..\Externals\.packman\nvtt\lib\x64-v142;$(ProjectDir)..\Externals\.packman\nvapi\amd64;$(ProjectDir)..\Externals\.packman\slang\bin\windows-x64\release;$(ProjectDir)..\Externals\.packman\python\libs;$(ProjectDir)..\Externals\.packman\WinPixEventRuntime\bin\x64;$(ProjectDir)..\Externals\.packman\Cuda\lib\x64;$(ProjectDir)..\Externals\.packman\nv-usd-debug\lib;$(ProjectDir)..\Externals\.packman\nv-usd-debug\plugin\usd;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>fmtd.lib;nvtt30106.lib;WinPixEventRuntime.lib;glfw3dll.lib;slang.lib;Comctl32.lib;Shlwapi.lib;assimp-vc142-mt.lib;mikktspaced.lib;FreeImaged.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;Shcore.lib;DirectXTex.lib;Half-2_5_d.lib;openvdb.lib;libcrypto.lib;lz4.lib;usd.lib;sdf.lib;usdGeom.lib;usdImaging.lib;usdRender.lib;usdSkel.lib;vt.lib;ar.lib;work.lib;hd.lib;arch.lib;tbb_debug.lib;tf.lib;usdLux.lib;usdShade.lib;plug.lib;gf.lib;boost_python37-vc141-mt-gd-x64-1_68.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>call $(ProjectDir)\..\..\Build\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)</Command>
@@ -892,12 +1017,13 @@
       <Command>call $(ProjectDir)\..\..\Build\deploycommon.bat $(ProjectDir)\.. $(PlatformShortName) $(OutDir) $(FALCOR_BACKEND) "$(WindowsSdkDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugGFX|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
+      <DisableSpecificWarnings>4251</DisableSpecificWarnings>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>FALCOR_DLL;IMGUI_API=__declspec(dllexport);_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_VK;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\.packman\deps\include;$(ProjectDir)\..\Externals\.packman;$(ProjectDir)\..\Externals;$(ProjectDir)\..\Externals\.packman\vulkansdk\Include;$(ProjectDir)\..\Externals\.packman\python\Include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman\nanovdb\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>FALCOR_DLL;IMGUI_API=__declspec(dllexport);_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_GFX;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE;_$(OutputType)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)\..\Externals\.packman\agility-sdk\build\native\include;$(ProjectDir);$(ProjectDir)\..\Externals\.packman\deps\include;$(ProjectDir)\..\Externals\.packman;$(ProjectDir)\..\Externals;$(ProjectDir)\..\Externals\.packman\python\Include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvtt\include;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman\nanovdb\include;$(ProjectDir)\..\Externals\.packman\nv-usd-debug\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -908,8 +1034,8 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\Externals\.packman\deps\debug\lib;$(ProjectDir)..\Externals\.packman\deps\lib;$(ProjectDir)..\Externals\.packman\nvapi\amd64;$(ProjectDir)..\Externals\.packman\vulkansdk\Lib;$(ProjectDir)..\Externals\.packman\slang\bin\windows-x64\release;$(ProjectDir)..\Externals\.packman\python\libs;$(ProjectDir)..\Externals\.packman\WinPixEventRuntime\bin\x64;</AdditionalLibraryDirectories>
-      <AdditionalDependencies>WinPixEventRuntime.lib;glfw3dll.lib;slang.lib;Comctl32.lib;Shlwapi.lib;assimp-vc142-mt.lib;mikktspaced.lib;FreeImaged.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;Shcore.lib;DirectXTex.lib;Half-2_5_d.lib;openvdb.lib;libcrypto.lib;lz4.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)\..\Externals\.packman\agility-sdk\build\native\bin\x64;$(ProjectDir)..\Externals\.packman\deps\debug\lib;$(ProjectDir)..\Externals\.packman\deps\lib;$(ProjectDir)..\Externals\.packman\nvtt\lib\x64-v142;$(ProjectDir)..\Externals\.packman\nvapi\amd64;$(ProjectDir)..\Externals\.packman\slang\bin\windows-x64\release;$(ProjectDir)..\Externals\.packman\python\libs;$(ProjectDir)..\Externals\.packman\WinPixEventRuntime\bin\x64;$(ProjectDir)..\Externals\.packman\Cuda\lib\x64;$(ProjectDir)..\Externals\.packman\nv-usd-debug\lib;$(ProjectDir)..\Externals\.packman\nv-usd-debug\plugin\usd;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>fmtd.lib;nvtt30106.lib;WinPixEventRuntime.lib;glfw3dll.lib;slang.lib;Comctl32.lib;Shlwapi.lib;assimp-vc142-mt.lib;mikktspaced.lib;FreeImaged.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;Shcore.lib;DirectXTex.lib;Half-2_5_d.lib;openvdb.lib;libcrypto.lib;lz4.lib;usd.lib;sdf.lib;usdGeom.lib;usdImaging.lib;usdRender.lib;usdSkel.lib;vt.lib;ar.lib;work.lib;hd.lib;arch.lib;tbb_debug.lib;tf.lib;usdLux.lib;usdShade.lib;plug.lib;gf.lib;boost_python37-vc141-mt-gd-x64-1_68.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>call $(ProjectDir)\..\..\Build\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)</Command>
@@ -925,8 +1051,6 @@
     <Lib>
       <AdditionalDependencies>
       </AdditionalDependencies>
-      <AdditionalLibraryDirectories>
-      </AdditionalLibraryDirectories>
     </Lib>
     <PostBuildEvent>
       <Command>call $(ProjectDir)\..\..\Build\deploycommon.bat $(ProjectDir)\.. $(PlatformShortName) $(OutDir) $(FALCOR_BACKEND) "$(WindowsSdkDir)"</Command>
@@ -935,10 +1059,11 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
+      <DisableSpecificWarnings>4251</DisableSpecificWarnings>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>FALCOR_DLL;IMGUI_API=__declspec(dllexport);_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_D3D12;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\.packman\deps\include;$(ProjectDir)\..\Externals\.packman;$(ProjectDir)\..\Externals;$(ProjectDir)\..\Externals\.packman\vulkansdk\Include;$(ProjectDir)\..\Externals\.packman\python\Include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman\nanovdb\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\..\Externals\.packman\agility-sdk\build\native\include;$(ProjectDir);$(ProjectDir)\..\Externals\.packman\deps\include;$(ProjectDir)\..\Externals\.packman;$(ProjectDir)\..\Externals;$(ProjectDir)\..\Externals\.packman\python\Include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvtt\include;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman\nanovdb\include;$(ProjectDir)\..\Externals\.packman\nv-usd-release\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -951,8 +1076,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\Externals\.packman\deps\lib;$(ProjectDir)..\Externals\.packman\nvapi\amd64;$(ProjectDir)..\Externals\.packman\vulkansdk\Lib;$(ProjectDir)..\Externals\.packman\slang\bin\windows-x64\release;$(ProjectDir)..\Externals\.packman\python\libs;$(ProjectDir)..\Externals\.packman\WinPixEventRuntime\bin\x64;$(ProjectDir)..\Externals\.packman\Cuda\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>WinPixEventRuntime.lib;glfw3dll.lib;slang.lib;Comctl32.lib;Shlwapi.lib;assimp-vc142-mt.lib;mikktspace.lib;FreeImage.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;Shcore.lib;DirectXTex.lib;Half-2_5.lib;openvdb.lib;libcrypto.lib;lz4.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)\..\Externals\.packman\agility-sdk\build\native\bin\x64;$(ProjectDir)..\Externals\.packman\deps\lib;$(ProjectDir)..\Externals\.packman\nvtt\lib\x64-v142;$(ProjectDir)..\Externals\.packman\nvapi\amd64;$(ProjectDir)..\Externals\.packman\slang\bin\windows-x64\release;$(ProjectDir)..\Externals\.packman\python\libs;$(ProjectDir)..\Externals\.packman\WinPixEventRuntime\bin\x64;$(ProjectDir)..\Externals\.packman\Cuda\lib\x64;$(ProjectDir)..\Externals\.packman\nv-usd-release\lib;$(ProjectDir)..\Externals\.packman\nv-usd-release\plugin\usd;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>fmt.lib;nvtt30106.lib;WinPixEventRuntime.lib;glfw3dll.lib;slang.lib;Comctl32.lib;Shlwapi.lib;assimp-vc142-mt.lib;mikktspace.lib;FreeImage.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;Shcore.lib;DirectXTex.lib;Half-2_5.lib;openvdb.lib;libcrypto.lib;lz4.lib;usd.lib;sdf.lib;usdGeom.lib;usdImaging.lib;usdRender.lib;usdSkel.lib;vt.lib;ar.lib;work.lib;hd.lib;arch.lib;tbb.lib;tf.lib;usdLux.lib;usdShade.lib;plug.lib;gf.lib;boost_python37-vc141-mt-x64-1_68.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>call $(ProjectDir)\..\..\Build\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)</Command>
@@ -974,13 +1099,14 @@
       <Command>call $(ProjectDir)\..\..\Build\deploycommon.bat $(ProjectDir)\.. $(PlatformShortName) $(OutDir) $(FALCOR_BACKEND) "$(WindowsSdkDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseGFX|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
+      <DisableSpecificWarnings>4251</DisableSpecificWarnings>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>FALCOR_DLL;IMGUI_API=__declspec(dllexport);_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_VK;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\.packman\deps\include;$(ProjectDir)\..\Externals\.packman;$(ProjectDir)\..\Externals;$(ProjectDir)\..\Externals\.packman\vulkansdk\Include;$(ProjectDir)\..\Externals\.packman\python\Include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman\nanovdb\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>FALCOR_DLL;IMGUI_API=__declspec(dllexport);_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;$(FALCOR_BACKEND);WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)\..\Externals\.packman\agility-sdk\build\native\include;$(ProjectDir);$(ProjectDir)\..\Externals\.packman\deps\include;$(ProjectDir)\..\Externals\.packman;$(ProjectDir)\..\Externals;$(ProjectDir)\..\Externals\.packman\python\Include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvtt\include;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman\nanovdb\include;$(ProjectDir)\..\Externals\.packman\nv-usd-release\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -993,8 +1119,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\Externals\.packman\deps\lib$(ProjectDir)..\Externals\.packman\nvapi\amd64;$(ProjectDir)..\Externals\.packman\vulkansdk\Lib;$(ProjectDir)..\Externals\.packman\slang\bin\windows-x64\release;$(ProjectDir)..\Externals\.packman\python\libs;$(ProjectDir)..\Externals\.packman\WinPixEventRuntime\bin\x64;</AdditionalLibraryDirectories>
-      <AdditionalDependencies>WinPixEventRuntime.lib;glfw3dll.lib;slang.lib;Comctl32.lib;Shlwapi.lib;assimp-vc142-mt.lib;mikktspace.lib;FreeImage.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;Shcore.lib;DirectXTex.lib;Half-2_5.lib;openvdb.lib;libcrypto.lib;lz4.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)\..\Externals\.packman\agility-sdk\build\native\bin\x64;$(ProjectDir)..\Externals\.packman\deps\lib;$(ProjectDir)..\Externals\.packman\nvtt\lib\x64-v142;$(ProjectDir)..\Externals\.packman\nvapi\amd64;$(ProjectDir)..\Externals\.packman\slang\bin\windows-x64\release;$(ProjectDir)..\Externals\.packman\python\libs;$(ProjectDir)..\Externals\.packman\WinPixEventRuntime\bin\x64;$(ProjectDir)..\Externals\.packman\Cuda\lib\x64;(ProjectDir)..\Externals\.packman\nv-usd-release\lib;$(ProjectDir)..\Externals\.packman\nv-usd-release\plugin\usd;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>fmt.lib;nvtt30106.lib;WinPixEventRuntime.lib;glfw3dll.lib;slang.lib;Comctl32.lib;Shlwapi.lib;assimp-vc142-mt.lib;mikktspace.lib;FreeImage.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;Shcore.lib;DirectXTex.lib;Half-2_5.lib;openvdb.lib;libcrypto.lib;lz4.lib;usd.lib;sdf.lib;usdGeom.lib;usdImaging.lib;usdRender.lib;usdSkel.lib;vt.lib;ar.lib;work.lib;hd.lib;arch.lib;tbb.lib;tf.lib;usdLux.lib;usdShade.lib;plug.lib;gf.lib;boost_python37-vc141-mt-x64-1_68.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>call $(ProjectDir)\..\..\Build\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)</Command>
@@ -1008,8 +1134,7 @@
       </Outputs>
     </CustomBuildStep>
     <Lib>
-      <AdditionalLibraryDirectories>
-      </AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>
       </AdditionalDependencies>
     </Lib>

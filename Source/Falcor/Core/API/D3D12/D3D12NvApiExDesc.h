@@ -27,7 +27,7 @@
  **************************************************************************/
 namespace Falcor
 {
-#if _ENABLE_NVAPI
+#if FALCOR_ENABLE_NVAPI
     struct NvApiPsoExDesc
     {
         NV_PSO_EXTENSION psoExtension;

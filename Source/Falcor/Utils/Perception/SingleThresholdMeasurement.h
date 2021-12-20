@@ -41,7 +41,7 @@ namespace Falcor
             MethodOfConstantStimuli
         };
 
-        /** Struct for experimental design parameters: Contains all parameters for both 
+        /** Struct for experimental design parameters: Contains all parameters for both
             Staircase and Method of Constant Stimuli.
         */
         struct ExperimentalDesignParameter
@@ -73,7 +73,7 @@ namespace Falcor
 
         /** Class to abstract single threshold measurement
         */
-        class dlldecl SingleThresholdMeasurement
+        class FALCOR_API SingleThresholdMeasurement
         {
         public:
 

@@ -37,11 +37,11 @@ public:
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
-    virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
+    virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
 
 protected:
-    ComparisonPass() = default;
+    ComparisonPass(const Info& info) : RenderPass(info) {}
     virtual void createProgram() = 0;
     bool parseKeyValuePair(const std::string key, const Dictionary::Value val);
 

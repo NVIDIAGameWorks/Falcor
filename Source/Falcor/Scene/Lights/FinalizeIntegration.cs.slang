@@ -56,11 +56,14 @@ void finalizeIntegration(uint3 DTid : SV_DispatchThreadID)
     if (triIdx >= gTriangleCount) return;
 
     // Compute the triangle's average emitted radiance (RGB).
+    // For this purpose we access the material data directly for basic materials.
+    // No type checking is needed because the host side only operates on basic materials.
+    // TODO: Generalize light collection to support arbitrary materials (#1314).
     const EmissiveTriangle tri = gTriangleData[triIdx].unpack();
-    const MaterialData materialData = gScene.getMaterial(tri.materialID);
+    const BasicMaterialData materialData = gScene.materials.getBasicMaterialData(tri.materialID);
     float3 averageEmissiveColor = materialData.emissive;
 
-    if (gScene.isEmissiveTextured(tri.materialID))
+    if (gScene.materials.isEmissiveTextured(tri.materialID))
     {
         // Compute the triangle's average textured emissive color based on the pre-integration results.
         // The alpha channel stores the total coverage in texels.
@@ -92,7 +95,7 @@ void finalizeIntegration(uint3 DTid : SV_DispatchThreadID)
             averageEmissiveColor = float3(0.f);
             for (int i = 0; i < 3; i++)
             {
-                averageEmissiveColor += gScene.materialResources[tri.materialID].emissive.SampleLevel(gPointSampler, tri.texCoords[i], 0.f).rgb;
+                averageEmissiveColor += gScene.materials.sampleTexture(materialData.texEmissive, gPointSampler, tri.texCoords[i], 0.f).rgb; // Sample at mip 0
             }
             averageEmissiveColor /= 3.f;
         }

@@ -28,7 +28,7 @@
 #pragma once
 #include "GBuffer.h"
 #include "Utils/Sampling/SampleGenerator.h"
-#include "Experimental/Scene/Material/TexLODTypes.slang"
+#include "Rendering/Materials/TexLODTypes.slang"
 
 using namespace Falcor;
 
@@ -40,6 +40,8 @@ class GBufferRT : public GBuffer
 public:
     using SharedPtr = std::shared_ptr<GBufferRT>;
 
+    static const Info kInfo;
+
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
     RenderPassReflection reflect(const CompileData& compileData) override;
@@ -47,7 +49,6 @@ public:
     void renderUI(Gui::Widgets& widget) override;
     Dictionary getScriptingDictionary() override;
     void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
-    std::string getDesc() override { return kDesc; }
 
 private:
     void executeRaytrace(RenderContext* pRenderContext, const RenderData& renderData);
@@ -61,12 +62,13 @@ private:
     void parseDictionary(const Dictionary& dict) override;
 
     // Internal state
-    bool mUseDOF = false;
+    bool mComputeDOF = false;           ///< Flag indicating if depth-of-field is computed for the current frame.
     SampleGenerator::SharedPtr mpSampleGenerator;
 
     // UI variables
     TexLODMode mLODMode = TexLODMode::Mip0;
     bool mUseTraceRayInline = false;
+    bool mUseDOF = true;                ///< Option for enabling depth-of-field when camera's aperture radius is nonzero.
 
     // Ray tracing resources
     struct
@@ -76,8 +78,4 @@ private:
     } mRaytrace;
 
     ComputePass::SharedPtr mpComputePass;
-
-    static const char* kDesc;
-
-    friend void getPasses(Falcor::RenderPassLibrary& lib);
 };

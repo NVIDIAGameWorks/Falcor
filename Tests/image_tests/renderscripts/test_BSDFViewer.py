@@ -5,11 +5,12 @@ from helpers import render_frames
 
 exec(open('../../../Source/Mogwai/Data/BSDFViewer.py').read())
 
-# default
-render_frames(m, 'default', frames=[64])
-
 # arcade
 m.loadScene('Arcade/Arcade.pyscene')
-render_frames(m, 'arcade', frames=[64])
+render_frames(m, 'arcade', frames=[16])
+
+# materials
+m.loadScene('TestScenes/MaterialTest.pyscene')
+render_frames(m, 'materials', frames=[16])
 
 exit()

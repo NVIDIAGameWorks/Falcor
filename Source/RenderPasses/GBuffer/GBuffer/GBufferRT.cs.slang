@@ -44,7 +44,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     SceneRayQuery<GBufferRT::kUseAlphaTest> sceneRayQuery;
     HitInfo hit;
     float hitT;
-    if (sceneRayQuery.traceRay(ray.toRayDesc(), hit, hitT, GBufferRT::kRayFlags, 0xff))
+    if (sceneRayQuery.traceRay(ray, hit, hitT, GBufferRT::kRayFlags, 0xff))
     {
         gGBufferRT.writeHit(pixel, ray.origin, ray.dir, hit, hitT);
     }

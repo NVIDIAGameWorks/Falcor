@@ -55,7 +55,7 @@ namespace Falcor
         D3D12_RESOURCE_STATES d3dState = getD3D12ResourceState(initState);
         ID3D12ResourcePtr pApiHandle;
         D3D12_HEAP_FLAGS heapFlags = is_set(bindFlags, ResourceBindFlags::Shared) ? D3D12_HEAP_FLAG_SHARED : D3D12_HEAP_FLAG_NONE;
-        d3d_call(pDevice->CreateCommittedResource(&heapProps, heapFlags, &bufDesc, d3dState, nullptr, IID_PPV_ARGS(&pApiHandle)));
+        FALCOR_D3D_CALL(pDevice->CreateCommittedResource(&heapProps, heapFlags, &bufDesc, d3dState, nullptr, IID_PPV_ARGS(&pApiHandle)));
         assert(pApiHandle);
 
         return pApiHandle;
@@ -75,7 +75,7 @@ namespace Falcor
     {
         D3D12_RANGE r{ 0, size };
         void* pData;
-        d3d_call(apiHandle->Map(0, &r, &pData));
+        FALCOR_D3D_CALL(apiHandle->Map(0, &r, &pData));
         return pData;
     }
 
@@ -83,12 +83,12 @@ namespace Falcor
     {
         if (mCpuAccess != CpuAccess::None && is_set(mBindFlags, BindFlags::Shared))
         {
-            throw std::exception("Can't create shared resource with CPU access other than 'None'.");
+            throw ArgumentError("Can't create shared resource with CPU access other than 'None'.");
         }
 
         if (mBindFlags == BindFlags::Constant)
         {
-            mSize = align_to(D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT, mSize);
+            mSize = align_to((size_t)D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT, mSize);
         }
 
         if (mCpuAccess == CpuAccess::Write)

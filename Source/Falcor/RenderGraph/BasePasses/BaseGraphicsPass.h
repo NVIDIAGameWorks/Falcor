@@ -32,7 +32,7 @@
 
 namespace Falcor
 {
-    class dlldecl BaseGraphicsPass
+    class FALCOR_API BaseGraphicsPass
     {
     public:
         virtual ~BaseGraphicsPass() = default;

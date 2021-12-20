@@ -33,7 +33,7 @@ namespace Falcor
 {
     /** A class to extract information about displays
     */
-    class dlldecl MonitorInfo
+    class FALCOR_API MonitorInfo
     {
     public:
         /** Description data structure

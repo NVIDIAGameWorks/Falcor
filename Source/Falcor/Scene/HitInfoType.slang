@@ -38,8 +38,13 @@ enum HitType
 {
     None                = 0,    ///< No hit.
     Triangle            = 1,    ///< Triangle hit.
-    DisplacedTriangle   = 2,    ///< Displaced triangle hit.
-    Curve               = 3,    ///< Curve hit.
+    Volume              = 2,    ///< Volume hit.
+
+    // The following hit types are only available if hit info compression is disabled.
+
+    DisplacedTriangle   = 3,    ///< Displaced triangle hit.
+    Curve               = 4,    ///< Curve hit.
+    SDFGrid             = 5,    ///< SDF grid hit.
 
     //
     // Add new hit types here

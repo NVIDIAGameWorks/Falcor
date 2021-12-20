@@ -31,7 +31,7 @@
 
 namespace Falcor
 {
-    class dlldecl FullScreenPass : public BaseGraphicsPass, public std::enable_shared_from_this<FullScreenPass>
+    class FALCOR_API FullScreenPass : public BaseGraphicsPass
     {
     public:
         using SharedPtr = ParameterBlockSharedPtr<FullScreenPass>;

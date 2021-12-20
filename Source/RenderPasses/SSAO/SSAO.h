@@ -27,7 +27,6 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "FalcorExperimental.h"
 #include "SSAOData.slang"
 #include "../Utils/GaussianBlur/GaussianBlur.h"
 
@@ -38,7 +37,7 @@ class SSAO : public RenderPass
 public:
     using SharedPtr = std::shared_ptr<SSAO>;
 
-    static const char* kDesc;
+    static const Info kInfo;
 
     enum class SampleDistribution : uint32_t
     {
@@ -49,7 +48,6 @@ public:
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
-    std::string getDesc() override { return kDesc; }
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
@@ -66,7 +64,7 @@ public:
 
 private:
     SSAO();
-    Texture::SharedPtr generateAOMap(RenderContext* pContext, const Camera* pCamera, const Texture::SharedPtr& pDepthTexture, const Texture::SharedPtr& pNormalTexture);
+    Texture::SharedPtr generateAOMap(RenderContext* pRenderContext, const Camera* pCamera, const Texture::SharedPtr& pDepthTexture, const Texture::SharedPtr& pNormalTexture);
     void setNoiseTexture(uint32_t width, uint32_t height);
     void setKernel();
 

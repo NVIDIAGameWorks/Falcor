@@ -25,9 +25,46 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#pragma once
 #include "Utils/Math/MathConstants.slangh"
+#include "Utils/HostDeviceShared.slangh"
 
+#ifndef HOST_CODE
 import Utils.Math.MathHelpers;
+#endif
+
+BEGIN_NAMESPACE_FALCOR
+
+/** This enum is shared between CPU/GPU.
+    It enumerates the different 2D SDF markers.
+*/
+enum class SDF2DShapeType
+    // TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
+#ifdef HOST_CODE
+    : uint32_t
+#endif
+{
+    Circle,
+    Square,
+    Diamond,
+    Heart,
+    Chevron,
+    Ring,
+    Tag,
+    Cross,
+    Asterisk,
+    Infinity,
+    Pin,
+    Arrow,
+    RoundedBox,
+    Triangle,
+    RoundedLine,
+    Vector,
+    MarkerOpMarker,
+    ArrowFromTwoTris,
+};
+
+#ifndef HOST_CODE
 
 // Some of the code below is based on the JCGT article "Antialiased 2D Grid, Marker, and Arrow Shaders" by Rougier.
 // However, the code has been bug fixed in several places and extended in some ways + addition of new primitives.
@@ -363,4 +400,6 @@ struct SDF2DTriangle : ISDF2D
     }
     float eval(float2 p) { return sdfTriangle(p, p0, p1, p2); }
 };
+#endif
 
+END_NAMESPACE_FALCOR

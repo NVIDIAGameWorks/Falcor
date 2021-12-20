@@ -36,7 +36,7 @@ __exported import Scene.HitInfoType;
 
 BEGIN_NAMESPACE_FALCOR
 
-/** Pixel data read out by the InspectorPass.
+/** Pixel data read out by the PixelInspectorPass.
 */
 struct PixelData
 {
@@ -44,41 +44,34 @@ struct PixelData
 
     // Geometry data
     float3 posW;
-    float texCoordU;
-
     float3 normal;
-    float texCoordV;
-
     float3 tangent;
-    float NdotV;
-
     float3 bitangent;
-    float _pad0;
-
     float3 faceNormal;
-    float _pad3;
-
     float3 view;
-    float _pad1;
+    float2 texCoord;
+    int frontFacing;
 
     // Material data
-    float3 diffuse;
+    uint materialID;
+    int doubleSided;
     float opacity;
-
-    float3 specular;
-    float linearRoughness;
-
-    float3 emissive;
-    float ggxAlpha;
-
     float IoR;
-    uint doubleSided;
-    float luminance;
-    float _pad2;
+
+    // BSDF properties
+    float3 emissive;
+    float  roughness;
+    float3 diffuseReflectionAlbedo;
+    float3 diffuseTransmissionAlbedo;
+    float3 specularReflectionAlbedo;
+    float3 specularTransmissionAlbedo;
+    float3 specularReflectance;
+    int    isTransmissive;
 
     // Output data
     float4 linearColor;
     float4 outputColor;
+    float luminance;
 
     // Visibility data
     uint hitType;      ///< Type of hit, see enum HitType. Only valid if instanceID != kInvalidIndex.
@@ -86,60 +79,17 @@ struct PixelData
     uint primitiveIndex;
     float2 barycentrics;
 
-#ifdef HOST_CODE
-    PixelData()
+#ifndef HOST_CODE
+    __init()
     {
-        init();
-    }
-#endif
-
-#ifdef HOST_CODE
-    void init()
-#else
-    [mutating] void init()
-#endif
-    {
-        posW = float3(0, 0, 0);
-        texCoordU = 0;
-
-        normal = float3(0, 0, 0);
-        texCoordV = 0;
-
-        tangent = float3(0, 0, 0);
-        NdotV = 0;
-
-        bitangent = float3(0, 0, 0);
-        _pad0 = 0;
-
-        faceNormal = float3(0, 0, 0);
-        _pad3 = 0;
-
-        view = float3(0, 0, 0);
-        _pad1 = 0;
-
-        diffuse = float3(0, 0, 0);
-        opacity = 0;
-
-        specular = float3(0, 0, 0);
-        linearRoughness = 0;
-
-        emissive = float3(0, 0, 0);
-        ggxAlpha = 0;
-
-        IoR = 0;
-        doubleSided = 0;
-        luminance = 0;
-        _pad2 = 0;
-
-        linearColor = float4(0, 0, 0, 0);
-        outputColor = float4(0, 0, 0, 0);
+        this = {};
 
         // V-buffer data.
         hitType = (uint)HitType::Triangle;
         instanceID = kInvalidIndex;
         primitiveIndex = kInvalidIndex;
-        barycentrics = float2(0, 0);
     }
+#endif
 };
 
 END_NAMESPACE_FALCOR

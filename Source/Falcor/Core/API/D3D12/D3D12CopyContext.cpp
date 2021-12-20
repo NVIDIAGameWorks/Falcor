@@ -36,9 +36,9 @@ namespace Falcor
 {
     void CopyContext::bindDescriptorHeaps()
     {
-        const DescriptorPool* pGpuPool = gpDevice->getGpuDescriptorPool().get();
-        const DescriptorPool::ApiData* pData = pGpuPool->getApiData();
-        ID3D12DescriptorHeap* pHeaps[arraysize(pData->pHeaps)];
+        const D3D12DescriptorPool* pGpuPool = gpDevice->getD3D12GpuDescriptorPool().get();
+        const D3D12DescriptorPool::ApiData* pData = pGpuPool->getApiData();
+        ID3D12DescriptorHeap* pHeaps[D3D12DescriptorPool::ApiData::kHeapCount];
         uint32_t heapCount = 0;
         for (uint32_t i = 0; i < arraysize(pData->pHeaps); i++)
         {
@@ -96,7 +96,7 @@ namespace Falcor
             footprint[0].Footprint.Width = (size.x == -1) ? pTexture->getWidth(mipLevel) - offset.x : size.x;
             footprint[0].Footprint.Height = (size.y == -1) ? pTexture->getHeight(mipLevel) - offset.y : size.y;
             footprint[0].Footprint.Depth = (size.z == -1) ? pTexture->getDepth(mipLevel) - offset.z : size.z;
-            footprint[0].Footprint.RowPitch = align_to(D3D12_TEXTURE_DATA_PITCH_ALIGNMENT, footprint[0].Footprint.Width * getFormatBytesPerBlock(pTexture->getFormat()));
+            footprint[0].Footprint.RowPitch = align_to((uint32_t)D3D12_TEXTURE_DATA_PITCH_ALIGNMENT, footprint[0].Footprint.Width * getFormatBytesPerBlock(pTexture->getFormat()));
             rowCount[0] = footprint[0].Footprint.Height;
             rowSize[0] = footprint[0].Footprint.RowPitch;
             bufferSize = rowSize[0] * rowCount[0] * footprint[0].Footprint.Depth;

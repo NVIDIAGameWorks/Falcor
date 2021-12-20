@@ -107,5 +107,6 @@ namespace Falcor
         testPrefixSum(ctx, pPrefixSum, 10201);
         testPrefixSum(ctx, pPrefixSum, 231917);
         testPrefixSum(ctx, pPrefixSum, 1088921);
+        testPrefixSum(ctx, pPrefixSum, 13912615);
     }
 }

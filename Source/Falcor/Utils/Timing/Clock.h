@@ -33,7 +33,7 @@ namespace Falcor
 {
     /** A clock. This class supports both real-time clock (based on the system's clock) and a fixed time-step clock (based on tick count)
     */
-    class dlldecl Clock
+    class FALCOR_API Clock
     {
     public:
         Clock();

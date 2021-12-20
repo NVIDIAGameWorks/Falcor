@@ -287,7 +287,7 @@ namespace Falcor
         , mFrontFaceCW(frontFaceCW)
     {}
 
-    SCRIPT_BINDING(TriangleMesh)
+    FALCOR_SCRIPT_BINDING(TriangleMesh)
     {
         pybind11::class_<TriangleMesh, TriangleMesh::SharedPtr> triangleMesh(m, "TriangleMesh");
         triangleMesh.def_property("name", &TriangleMesh::getName, &TriangleMesh::setName);

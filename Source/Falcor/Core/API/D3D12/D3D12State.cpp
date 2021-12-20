@@ -419,24 +419,24 @@ namespace Falcor
         return (D3D12_SHADER_VISIBILITY)-1;
     }
 
-    D3D12_DESCRIPTOR_RANGE_TYPE getRootDescRangeType(RootSignature::DescType type)
+    D3D12_DESCRIPTOR_RANGE_TYPE getRootDescRangeType(D3D12RootSignature::DescType type)
     {
         switch (type)
         {
-        case RootSignature::DescType::TextureSrv:
-        case RootSignature::DescType::RawBufferSrv:
-        case RootSignature::DescType::TypedBufferSrv:
-        case RootSignature::DescType::StructuredBufferSrv:
-        case RootSignature::DescType::AccelerationStructureSrv:
+        case D3D12RootSignature::DescType::TextureSrv:
+        case D3D12RootSignature::DescType::RawBufferSrv:
+        case D3D12RootSignature::DescType::TypedBufferSrv:
+        case D3D12RootSignature::DescType::StructuredBufferSrv:
+        case D3D12RootSignature::DescType::AccelerationStructureSrv:
             return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-        case RootSignature::DescType::TextureUav:
-        case RootSignature::DescType::RawBufferUav:
-        case RootSignature::DescType::TypedBufferUav:
-        case RootSignature::DescType::StructuredBufferUav:
+        case D3D12RootSignature::DescType::TextureUav:
+        case D3D12RootSignature::DescType::RawBufferUav:
+        case D3D12RootSignature::DescType::TypedBufferUav:
+        case D3D12RootSignature::DescType::StructuredBufferUav:
             return D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-        case RootSignature::DescType::Cbv:
+        case D3D12RootSignature::DescType::Cbv:
             return D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-        case RootSignature::DescType::Sampler:
+        case D3D12RootSignature::DescType::Sampler:
             return D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
         default:
             should_not_get_here();
@@ -444,11 +444,11 @@ namespace Falcor
         }
     }
 
-    void convertRootCbvSet(const RootSignature::DescriptorSetLayout& set, D3D12_ROOT_PARAMETER1& desc)
+    void convertRootCbvSet(const D3D12RootSignature::DescriptorSetLayout& set, D3D12_ROOT_PARAMETER1& desc)
     {
         assert(set.getRangeCount() == 1);
         const auto& range = set.getRange(0);
-        assert(range.type == RootSignature::DescType::Cbv && range.descCount == 1);
+        assert(range.type == D3D12RootSignature::DescType::Cbv && range.descCount == 1);
 
         desc.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
         desc.Descriptor.RegisterSpace = range.regSpace;
@@ -457,7 +457,7 @@ namespace Falcor
         desc.ShaderVisibility = getShaderVisibility(set.getVisibility());
     }
 
-    void convertRootDescTable(const RootSignature::DescriptorSetLayout& falcorSet, D3D12_ROOT_PARAMETER1& desc, std::vector<D3D12_DESCRIPTOR_RANGE1>& d3dRange)
+    void convertRootDescTable(const D3D12RootSignature::DescriptorSetLayout& falcorSet, D3D12_ROOT_PARAMETER1& desc, std::vector<D3D12_DESCRIPTOR_RANGE1>& d3dRange)
     {
         desc.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
         desc.ShaderVisibility = getShaderVisibility(falcorSet.getVisibility());
@@ -477,26 +477,26 @@ namespace Falcor
         }
     }
 
-    void convertRootDescriptor(const RootSignature::RootDescriptorDesc& rootDesc, D3D12_ROOT_PARAMETER1& desc)
+    void convertRootDescriptor(const D3D12RootSignature::RootDescriptorDesc& rootDesc, D3D12_ROOT_PARAMETER1& desc)
     {
         // Convert the descriptor type to a root parameter type.
         // Only buffer SRV/UAVs are supported (CBVs take another path).
         switch (rootDesc.type)
         {
-        case RootSignature::DescType::RawBufferSrv:
-        case RootSignature::DescType::TypedBufferSrv:
-        case RootSignature::DescType::StructuredBufferSrv:
-        case RootSignature::DescType::AccelerationStructureSrv:
+        case D3D12RootSignature::DescType::RawBufferSrv:
+        case D3D12RootSignature::DescType::TypedBufferSrv:
+        case D3D12RootSignature::DescType::StructuredBufferSrv:
+        case D3D12RootSignature::DescType::AccelerationStructureSrv:
             desc.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
             break;
-        case RootSignature::DescType::RawBufferUav:
-        case RootSignature::DescType::TypedBufferUav:
-        case RootSignature::DescType::StructuredBufferUav:
+        case D3D12RootSignature::DescType::RawBufferUav:
+        case D3D12RootSignature::DescType::TypedBufferUav:
+        case D3D12RootSignature::DescType::StructuredBufferUav:
             desc.ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
             break;
         default:
             should_not_get_here();
-            logError("Unsupported root descriptor type. Only buffer SRV/UAVs supported.");
+            reportError("Unsupported root descriptor type. Only buffer SRV/UAVs supported.");
         }
 
         desc.Descriptor.RegisterSpace = rootDesc.spaceIndex;
@@ -505,7 +505,7 @@ namespace Falcor
         desc.ShaderVisibility = getShaderVisibility(rootDesc.visibility);
     }
 
-    void initD3D12RootParams(const RootSignature::Desc& desc, RootSignatureParams& params)
+    void initD3D12RootParams(const D3D12RootSignature::Desc& desc, RootSignatureParams& params)
     {
         const size_t numElements = desc.getSetsCount() + desc.getRootDescriptorCount() + desc.getRootConstantCount();
         params.signatureSizeInBytes = 0;
@@ -574,7 +574,9 @@ namespace Falcor
             desc.InputLayout.pInputElementDescs = layoutDesc.elements.data();
         }
         desc.SampleMask = gsoDesc.getSampleMask();
-        desc.pRootSignature = gsoDesc.getRootSignature() ? gsoDesc.getRootSignature()->getApiHandle() : nullptr;
+
+        const auto& rootSignatureObject = gsoDesc.getProgramKernels()->getD3D12RootSignature();
+        desc.pRootSignature = rootSignatureObject ? rootSignatureObject->getApiHandle() : nullptr;
 
         uint32_t numRtvs = 0;
         for (uint32_t rt = 0; rt < Fbo::getMaxColorTargetCount(); rt++)

@@ -27,7 +27,6 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "FalcorExperimental.h"
 #include "BSDFViewerParams.slang"
 #include "Utils/Sampling/SampleGenerator.h"
 #include "Utils/Debug/PixelDebug.h"
@@ -40,39 +39,43 @@ class BSDFViewer : public RenderPass
 public:
     using SharedPtr = std::shared_ptr<BSDFViewer>;
 
+    static const Info kInfo;
+
     /** Create a new object
     */
-    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+    static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
 
-    virtual std::string getDesc() override { return sDesc; }
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
-    virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
+    virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     virtual bool onMouseEvent(const MouseEvent& mouseEvent) override;
     virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override;
 
-    static const char* sDesc;
-
 private:
     BSDFViewer(const Dictionary& dict);
+    void parseDictionary(const Dictionary& dict);
     bool loadEnvMap(const std::string& filename);
+    void readPixelData();
 
     // Internal state
-    Scene::SharedPtr                mpScene;                ///< Loaded scene if any, nullptr otherwise.
-    EnvMap::SharedPtr               mpEnvMap;               ///< Environment map if loaded, nullptr otherwise.
+    Scene::SharedPtr                mpScene;                    ///< Loaded scene if any, nullptr otherwise.
+    EnvMap::SharedPtr               mpEnvMap;                   ///< Environment map if loaded, nullptr otherwise.
 
-    BSDFViewerParams                mParams;                ///< Parameters shared with the shaders.
-    SampleGenerator::SharedPtr      mpSampleGenerator;      ///< Random number generator for the integrator.
+    BSDFViewerParams                mParams;                    ///< Parameters shared with the shaders.
+    SampleGenerator::SharedPtr      mpSampleGenerator;          ///< Random number generator for the integrator.
     bool                            mOptionsChanged = false;
 
-    Buffer::SharedPtr               mPixelDataBuffer;       ///< Buffer for read back of data for the selected pixel.
-    PixelData                       mPixelData;             ///< Pixel data for the selected pixel (if valid).
+    GpuFence::SharedPtr             mpFence;                    ///< GPU fence for synchronizing readback.
+    Buffer::SharedPtr               mpPixelDataBuffer;          ///< Buffer for data for the selected pixel.
+    Buffer::SharedPtr               mpPixelStagingBuffer;       ///< Staging buffer for readback of pixel data.
+    PixelData                       mPixelData;                 ///< Pixel data for the selected pixel (if valid).
     bool                            mPixelDataValid = false;
+    bool                            mPixelDataAvailable = false;
 
-    PixelDebug::SharedPtr           mpPixelDebug;           ///< Utility class for pixel debugging (print in shaders).
+    PixelDebug::SharedPtr           mpPixelDebug;               ///< Utility class for pixel debugging (print in shaders).
 
     ComputePass::SharedPtr          mpViewerPass;
 

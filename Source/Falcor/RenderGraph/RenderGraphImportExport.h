@@ -30,7 +30,7 @@
 
 namespace Falcor
 {
-    class dlldecl RenderGraphImporter
+    class FALCOR_API RenderGraphImporter
     {
     public:
         /** Import a graph from a file.
@@ -46,7 +46,7 @@ namespace Falcor
         static std::vector <RenderGraph::SharedPtr> importAllGraphs(const std::string& filename);
     };
 
-    class dlldecl RenderGraphExporter
+    class FALCOR_API RenderGraphExporter
     {
     public:
         static std::string getIR(const RenderGraph::SharedPtr& pGraph);

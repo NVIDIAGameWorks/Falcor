@@ -32,12 +32,11 @@ namespace Falcor
 {
     namespace
     {
-        std::string sLogFilePath;
-        bool sLogToConsole = false;
-        bool sShowBoxOnError = true;
         Logger::Level sVerbosity = Logger::Level::Info;
+        Logger::OutputFlags sOutputs = Logger::OutputFlags::Console | Logger::OutputFlags::File | Logger::OutputFlags::DebugWindow;
+        std::string sLogFilePath;
 
-#if _LOG_ENABLED
+#if FALCOR_ENABLE_LOGGER
         bool sInitialized = false;
         FILE* sLogFile = nullptr;
 
@@ -98,7 +97,7 @@ namespace Falcor
 
     void Logger::shutdown()
     {
-#if _LOG_ENABLED
+#if FALCOR_ENABLE_LOGGER
         if(sLogFile)
         {
             fclose(sLogFile);
@@ -128,74 +127,38 @@ namespace Falcor
         }
     }
 
-    void Logger::log(Level level, const std::string& msg, MsgBox mbox, bool terminateOnError)
+    void Logger::log(Level level, const std::string& msg)
     {
-#if _LOG_ENABLED
+#if FALCOR_ENABLE_LOGGER
         if (level <= sVerbosity)
         {
             std::string s = getLogLevelString(level) + std::string(" ") + msg + "\n";
 
-            // Write to log file.
-            printToLogFile(s);
+            // Write to console.
+            if (is_set(sOutputs, OutputFlags::Console))
+            {
+                if (level > Logger::Level::Error) std::cout << s;
+                else std::cerr << s;
+            }
+
+            // Write to file.
+            if (is_set(sOutputs, OutputFlags::File))
+            {
+                printToLogFile(s);
+            }
 
             // Write to debug window if debugger is attached.
-            if (isDebuggerPresent()) printToDebugWindow(s);
-
-            // Write errors to stderr unconditionally, other messages to stdout if enabled.
-            if (level > Logger::Level::Error)
+            if (is_set(sOutputs, OutputFlags::DebugWindow) && isDebuggerPresent())
             {
-                if (sLogToConsole) std::cout << s;
-            }
-            else
-            {
-                std::cerr << s;
+                printToDebugWindow(s);
             }
         }
 #endif
-
-        if (sShowBoxOnError)
-        {
-            if (mbox == MsgBox::Auto)
-            {
-                mbox = (level <= Level::Error) ? MsgBox::ContinueAbort : MsgBox::None;
-            }
-
-            if (mbox != MsgBox::None)
-            {
-                enum ButtonId {
-                    ContinueOrRetry,
-                    Debug,
-                    Abort
-                };
-
-                // Setup message box buttons
-                std::vector<MsgBoxCustomButton> buttons;
-                if (level != Level::Fatal) buttons.push_back({ContinueOrRetry, mbox == MsgBox::ContinueAbort ? "Continue" : "Retry"});
-                if (isDebuggerPresent()) buttons.push_back({Debug, "Debug"});
-                buttons.push_back({Abort, "Abort"});
-
-                // Setup icon
-                MsgBoxIcon icon = MsgBoxIcon::Info;
-                if (level == Level::Warning) icon = MsgBoxIcon::Warning;
-                else if (level <= Level::Error) icon = MsgBoxIcon::Error;
-
-                // Show message box
-                auto result = msgBox(msg, buttons, icon);
-                if (result == Debug) debugBreak();
-                else if (result == Abort) exit(1);
-            }
-        }
-
-        // Terminate on errors if not displaying message box and terminateOnError is enabled
-        if (level == Level::Error && !sShowBoxOnError && terminateOnError) exit(1);
-
-        // Always terminate on fatal errors
-        if (level == Level::Fatal) exit(1);
     }
 
     bool Logger::setLogFilePath(const std::string& path)
     {
-#if _LOG_ENABLED
+#if FALCOR_ENABLE_LOGGER
         if (sLogFile)
         {
             return false;
@@ -210,10 +173,11 @@ namespace Falcor
 #endif
     }
 
-    const std::string& Logger::getLogFilePath() { return sLogFilePath; }
-    void Logger::logToConsole(bool enable) { sLogToConsole = enable; }
-    bool Logger::shouldLogToConsole() { return sLogToConsole; }
-    void Logger::showBoxOnError(bool showBox) { sShowBoxOnError = showBox; }
-    bool Logger::isBoxShownOnError() { return sShowBoxOnError; }
     void Logger::setVerbosity(Level level) { sVerbosity = level; }
+    Logger::Level Logger::getVerbosity() { return sVerbosity; }
+
+    void Logger::setOutputs(OutputFlags outputs) { sOutputs = outputs; }
+    Logger::OutputFlags Logger::getOutputs() { return sOutputs; }
+
+    const std::string& Logger::getLogFilePath() { return sLogFilePath; }
 }

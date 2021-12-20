@@ -26,10 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 import Scene.Raytracing;
-import Scene.Shading;
 import Utils.Sampling.TinyUniformSampleGenerator;
-import Experimental.Scene.Lights.LightHelpers;
-import Experimental.Scene.Material.StandardMaterial;
+import Rendering.Lights.LightHelpers;
+
+RWTexture2D<float4> gOutput;
 
 cbuffer PerFrameCB
 {
@@ -59,7 +59,7 @@ void shadowMiss(inout ShadowRayData hitData)
 }
 
 [shader("anyhit")]
-void shadowAnyHit(inout ShadowRayData hitData, in BuiltInTriangleIntersectionAttributes attribs)
+void shadowAnyHit(inout ShadowRayData hitData, BuiltInTriangleIntersectionAttributes attribs)
 {
     hitData.hit = true;
 }
@@ -67,8 +67,8 @@ void shadowAnyHit(inout ShadowRayData hitData, in BuiltInTriangleIntersectionAtt
 [shader("miss")]
 void primaryMiss(inout PrimaryRayData hitData)
 {
-    hitData.color = float4(0.38f, 0.52f, 0.10f, 1);
-    hitData.hitT = -1;
+    hitData.color = float4(0.38f, 0.52f, 0.10f, 1.f);
+    hitData.hitT = -1.f;
 }
 
 bool traceShadowRay(RayDesc ray)
@@ -79,48 +79,54 @@ bool traceShadowRay(RayDesc ray)
     return rayData.hit;
 }
 
-float3 getReflectionColor(float3 worldOrigin, VertexData v, float3 worldRayDir, uint hitDepth)
+float3 getReflectionColor(const ShadingData sd, const BSDFProperties bsdfProperties, float3 normalW, float3 worldRayDir, uint hitDepth)
 {
     float3 reflectColor = float3(0, 0, 0);
     if (hitDepth == 0)
     {
-        PrimaryRayData secondaryRay;
-        secondaryRay.depth.r = 1;
+        PrimaryRayData secondaryRay = {};
+        secondaryRay.depth = 1;
+
         RayDesc ray;
-        ray.Origin = worldOrigin;
-        ray.Direction = reflect(worldRayDir, v.normalW);
-        ray.TMin = 0.001;
-        ray.TMax = 100000;
+        ray.Origin = sd.posW;
+        ray.Direction = reflect(worldRayDir, normalW);
+        ray.TMin = 0.001f;
+        ray.TMax = 100000.f;
         TraceRay(gScene.rtAccel, 0 /*rayFlags*/, 0xFF, 0 /* ray index*/, rayTypeCount, 0, ray, secondaryRay);
-        reflectColor = secondaryRay.hitT == -1 ? 0 : secondaryRay.color.rgb;
-        float falloff = max(1, (secondaryRay.hitT * secondaryRay.hitT));
-        reflectColor *= 20 / falloff;
+
+        // A very non-PBR inaccurate way to do reflections.
+        reflectColor = secondaryRay.hitT < 0.f ? float3(0.f) : secondaryRay.color.rgb;
+        float falloff = max(1.f, (secondaryRay.hitT * secondaryRay.hitT));
+        reflectColor *= 20.f / falloff;
+        float ggxAlpha = min(0.5f, max(1e-8f, bsdfProperties.roughness * bsdfProperties.roughness));
+        reflectColor += bsdfProperties.specularReflectance * reflectColor * (ggxAlpha * ggxAlpha);
     }
     return reflectColor;
 }
 
 [shader("closesthit")]
-void primaryClosestHit(inout PrimaryRayData hitData, in BuiltInTriangleIntersectionAttributes attribs)
+void primaryClosestHit(inout PrimaryRayData hitData, BuiltInTriangleIntersectionAttributes attribs)
 {
-    // Get the hit-point data
-    float3 rayOrigW = WorldRayOrigin();
+    // Get the hit-point data.
     float3 rayDirW = WorldRayDirection();
     float hitT = RayTCurrent();
     uint triangleIndex = PrimitiveIndex();
 
-    float3 posW = rayOrigW + hitT * rayDirW;
-    // prepare the shading data
+    let lod = ExplicitLodTextureSampler(0.f);
+
+    // Prepare the shading data.
     const GeometryInstanceID instanceID = getGeometryInstanceID();
     VertexData v = getVertexData(instanceID, triangleIndex, attribs);
     uint materialID = gScene.getMaterialID(instanceID);
-    ShadingData sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -rayDirW, 0);
-    StandardMaterial mtl;
+    ShadingData sd = gScene.materials.prepareShadingData(v, materialID, -rayDirW, lod);
 
-    // Shoot a reflection ray
-    float3 reflectColor = getReflectionColor(posW, v, rayDirW, hitData.depth.r);
-    float3 color = 0;
+    // Create BSDF instance and query its properties.
+    let bsdf = gScene.materials.getBSDF(sd, lod);
+    let bsdfProperties = bsdf.getProperties(sd);
 
-    // Direct lighting from analytic light sources
+    float3 color = bsdfProperties.emissive;
+
+    // Direct lighting from analytic light sources.
     for (int i = 0; i < gScene.getLightCount(); i++)
     {
         AnalyticLightSample ls;
@@ -129,19 +135,16 @@ void primaryClosestHit(inout PrimaryRayData hitData, in BuiltInTriangleIntersect
             RayDesc shadowRay = { sd.posW, 0.001f, ls.dir, ls.distance };
             if (!traceShadowRay(shadowRay))
             {
-                color += mtl.eval(sd, ls.dir) * ls.Li;
+                color += bsdf.eval(sd, ls.dir) * ls.Li;
             }
         }
     }
 
-    hitData.color.rgb = color;
+    // Shoot a reflection ray.
+    color += getReflectionColor(sd, bsdfProperties, v.normalW, rayDirW, hitData.depth);
 
+    hitData.color = float4(color, 1.f);
     hitData.hitT = hitT;
-    // A very non-PBR inaccurate way to do reflections
-    float alpha = min(0.5, max(1e-8, sd.ggxAlpha));
-    hitData.color.rgb += sd.specular * reflectColor * (alpha * alpha);
-    hitData.color.rgb += sd.emissive;
-    hitData.color.a = 1;
 }
 
 [shader("anyhit")]
@@ -151,17 +154,17 @@ void primaryAnyHit(inout PrimaryRayData rayData, BuiltInTriangleIntersectionAttr
     GeometryInstanceID instanceID = getGeometryInstanceID();
     VertexData v = getVertexData(instanceID, PrimitiveIndex(), attribs);
     uint materialID = gScene.getMaterialID(instanceID);
-    if (alphaTest(v, gScene.materials[materialID], gScene.materialResources[materialID], 0.f))
+    if (gScene.materials.alphaTest(v, materialID, 0.f))
     {
         IgnoreHit();
     }
 }
 
 [shader("raygeneration")]
-void rayGen(uniform RWTexture2D<float4> gOutput)
+void rayGen()
 {
     uint3 launchIndex = DispatchRaysIndex();
-    TinyUniformSampleGenerator sg = TinyUniformSampleGenerator::create(launchIndex.xy, sampleIndex);
+    TinyUniformSampleGenerator sg = TinyUniformSampleGenerator(launchIndex.xy, sampleIndex);
 
     RayDesc ray;
     if (!useDOF)

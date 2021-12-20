@@ -36,7 +36,7 @@ namespace Falcor
     class ParameterBlock;
     struct ResourceViewInfo;
 
-    class dlldecl Resource : public std::enable_shared_from_this<Resource>
+    class FALCOR_API Resource : public std::enable_shared_from_this<Resource>
     {
     public:
         using ApiHandle = ResourceHandle;
@@ -79,9 +79,7 @@ namespace Falcor
             Predication,
             PixelShader,
             NonPixelShader,
-#ifdef FALCOR_D3D12
             AccelerationStructure,
-#endif
         };
 
         using SharedPtr = std::shared_ptr<Resource>;
@@ -162,7 +160,7 @@ namespace Falcor
         std::shared_ptr<Texture> asTexture() { return this ? std::dynamic_pointer_cast<Texture>(shared_from_this()) : nullptr; }
         std::shared_ptr<Buffer> asBuffer() { return this ? std::dynamic_pointer_cast<Buffer>(shared_from_this()) : nullptr; }
 
-#if _ENABLE_CUDA
+#if FALCOR_ENABLE_CUDA
         /** Get the CUDA device address for this resource.
             \return CUDA device address.
             Throws an exception if the resource is not shared.
@@ -204,6 +202,6 @@ namespace Falcor
         mutable std::unordered_map<ResourceViewInfo, UnorderedAccessView::SharedPtr, ViewInfoHashFunc> mUavs;
     };
 
-    const std::string dlldecl to_string(Resource::Type);
-    const std::string dlldecl to_string(Resource::State);
+    const std::string FALCOR_API to_string(Resource::Type);
+    const std::string FALCOR_API to_string(Resource::State);
 }

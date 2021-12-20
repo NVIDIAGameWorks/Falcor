@@ -33,7 +33,7 @@ namespace Falcor
 {
     class RenderGraph;
 
-    class dlldecl RenderGraphCompiler
+    class FALCOR_API RenderGraphCompiler
     {
     public:
         struct Dependencies
@@ -41,7 +41,7 @@ namespace Falcor
             ResourceCache::DefaultProperties defaultResourceProps;
             ResourceCache::ResourcesMap externalResources;
         };
-        static RenderGraphExe::SharedPtr compile(RenderGraph& graph, RenderContext* pContext, const Dependencies& dependencies);
+        static RenderGraphExe::SharedPtr compile(RenderGraph& graph, RenderContext* pRenderContext, const Dependencies& dependencies);
 
     private:
         RenderGraphCompiler(RenderGraph& graph, const Dependencies& dependencies);
@@ -65,7 +65,7 @@ namespace Falcor
         } mCompilationChanges;
 
         void resolveExecutionOrder();
-        void compilePasses(RenderContext* pContext);
+        void compilePasses(RenderContext* pRenderContext);
         bool insertAutoPasses();
         void allocateResources(ResourceCache* pResourceCache);
         void validateGraph() const;

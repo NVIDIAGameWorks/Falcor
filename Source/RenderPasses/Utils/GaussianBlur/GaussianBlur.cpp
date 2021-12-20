@@ -29,7 +29,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
-const char* GaussianBlur::kDesc = "Gaussian Blur";
+const RenderPass::Info GaussianBlur::kInfo { "GaussianBlur", "Gaussian blur." };
 
 namespace
 {
@@ -50,6 +50,7 @@ void GaussianBlur::registerBindings(pybind11::module& m)
 }
 
 GaussianBlur::GaussianBlur()
+    : RenderPass(kInfo)
 {
     mpFbo = Fbo::create();
     Sampler::Desc samplerDesc;
@@ -109,9 +110,9 @@ RenderPassReflection GaussianBlur::reflect(const CompileData& compileData)
     return reflector;
 }
 
-void GaussianBlur::compile(RenderContext* pContext, const CompileData& compileData)
+void GaussianBlur::compile(RenderContext* pRenderContext, const CompileData& compileData)
 {
-    if (!mReady) throw std::runtime_error("GaussianBlur::compile - missing incoming reflection information");
+    if (!mReady) throw RuntimeError("GaussianBlur: Missing incoming reflection information");
 
     uint32_t arraySize = compileData.connectedResources.getField(kSrc)->getArraySize();
     Program::DefineList defines;
@@ -177,13 +178,13 @@ void GaussianBlur::renderUI(Gui::Widgets& widget)
 void GaussianBlur::setKernelWidth(uint32_t kernelWidth)
 {
     mKernelWidth = kernelWidth | 1; // Make sure the kernel width is an odd number
-    mPassChangedCB();
+    requestRecompile();
 }
 
 void GaussianBlur::setSigma(float sigma)
 {
     mSigma = sigma;
-    mPassChangedCB();
+    requestRecompile();
 }
 
 float getCoefficient(float sigma, float kernelWidth, float x)

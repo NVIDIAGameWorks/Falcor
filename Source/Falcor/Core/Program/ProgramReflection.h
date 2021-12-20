@@ -26,7 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Core/API/DescriptorSet.h"
+#include "Core/API/ShaderResourceType.h"
+#ifdef FALCOR_D3D12
+#include "Core/API/D3D12/D3D12DescriptorSet.h"
+#endif
 #include <slang/slang.h>
 #include <map>
 
@@ -576,7 +579,7 @@ namespace Falcor
 
     /** Reflection and layout information for a type in shader code.
     */
-    class dlldecl ReflectionType : public std::enable_shared_from_this<ReflectionType>
+    class FALCOR_API ReflectionType : public std::enable_shared_from_this<ReflectionType>
     {
     public:
         using SharedPtr = std::shared_ptr<ReflectionType>;
@@ -693,7 +696,7 @@ namespace Falcor
 
         Some examples:
 
-        * A basic type like `float2` has zero resoruce ranges.
+        * A basic type like `float2` has zero resource ranges.
 
         * A resource type like `Texture2D` will have one resource range,
           with a corresponding descriptor type and an array count of one.
@@ -715,7 +718,7 @@ namespace Falcor
 
             /** The type of descriptors that are stored in the range
             */
-            DescriptorSet::Type descriptorType;
+            ShaderResourceType descriptorType;
 
             /** The total number of descriptors in the range.
             */
@@ -754,7 +757,7 @@ namespace Falcor
 
     /** Represents an array type in shader code.
     */
-    class dlldecl ReflectionArrayType : public ReflectionType
+    class FALCOR_API ReflectionArrayType : public ReflectionType
     {
     public:
         using SharedPtr = std::shared_ptr<ReflectionArrayType>;
@@ -805,7 +808,7 @@ namespace Falcor
 
     /** Represents a `struct` type in shader code.
     */
-    class dlldecl ReflectionStructType : public ReflectionType
+    class FALCOR_API ReflectionStructType : public ReflectionType
     {
     public:
         using SharedPtr = std::shared_ptr<ReflectionStructType>;
@@ -881,7 +884,7 @@ namespace Falcor
 
     /** Reflection object for scalars, vectors and matrices
     */
-    class dlldecl ReflectionBasicType : public ReflectionType
+    class FALCOR_API ReflectionBasicType : public ReflectionType
     {
     public:
         using SharedPtr = std::shared_ptr<ReflectionBasicType>;
@@ -996,7 +999,7 @@ namespace Falcor
 
     /** Reflection object for resources
     */
-    class dlldecl ReflectionResourceType : public ReflectionType
+    class FALCOR_API ReflectionResourceType : public ReflectionType
     {
     public:
         using SharedPtr = std::shared_ptr<ReflectionResourceType>;
@@ -1127,7 +1130,7 @@ namespace Falcor
 
     /** Reflection object for resources
     */
-    class dlldecl ReflectionInterfaceType : public ReflectionType
+    class FALCOR_API ReflectionInterfaceType : public ReflectionType
     {
     public:
         using SharedPtr = std::shared_ptr<ReflectionInterfaceType>;
@@ -1154,7 +1157,7 @@ namespace Falcor
 
     /** An object describing a variable
     */
-    class dlldecl ReflectionVar
+    class FALCOR_API ReflectionVar
     {
     public:
         using SharedPtr = std::shared_ptr<ReflectionVar>;
@@ -1202,7 +1205,7 @@ namespace Falcor
 
     /** A reflection object describing a parameter block
     */
-    class dlldecl ParameterBlockReflection : public std::enable_shared_from_this<ParameterBlockReflection>
+    class FALCOR_API ParameterBlockReflection : public std::enable_shared_from_this<ParameterBlockReflection>
     {
     public:
         using SharedPtr = std::shared_ptr<ParameterBlockReflection>;
@@ -1238,6 +1241,7 @@ namespace Falcor
         */
         BindLocation getResourceBinding(const std::string& name) const;
 
+#ifdef FALCOR_D3D12
         /// Information on how a particular descriptor set should be filled in.
         ///
         /// A single `ParameterBlock` may map to zero or more distinct descriptor
@@ -1247,7 +1251,7 @@ namespace Falcor
         struct DescriptorSetInfo
         {
             /// The layout of the API descriptor set to allocate.
-            DescriptorSet::Layout   layout;
+            D3D12DescriptorSet::Layout   layout;
 
             /// The indices of resource ranges within the parameter block
             /// to bind to the descriptor ranges of the above set.
@@ -1282,13 +1286,14 @@ namespace Falcor
 
         /** Get the number of descriptor sets that are needed for an object of this type.
         */
-        uint32_t getDescriptorSetCount() const { return (uint32_t) mDescriptorSets.size(); }
+        uint32_t getD3D12DescriptorSetCount() const { return (uint32_t) mDescriptorSets.size(); }
 
-        const DescriptorSetInfo& getDescriptorSetInfo(uint32_t index) const { return mDescriptorSets[index]; }
+        const DescriptorSetInfo& getD3D12DescriptorSetInfo(uint32_t index) const { return mDescriptorSets[index]; }
 
         /** Get the layout for the `index`th descriptor set that needs to be created for an object of this type.
         */
-        const DescriptorSet::Layout& getDescriptorSetLayout(uint32_t index) const { return mDescriptorSets[index].layout; }
+        const D3D12DescriptorSet::Layout& getD3D12DescriptorSetLayout(uint32_t index) const { return mDescriptorSets[index].layout; }
+#endif // FALCOR_D3D12
 
         /** Describes binding information for a resource range.
 
@@ -1393,6 +1398,7 @@ namespace Falcor
         ///
         std::vector<ResourceRangeBindingInfo> mResourceRanges;
 
+#ifdef FALCOR_D3D12
         /// Layout and binding information for all descriptor sets that
         /// must be created to represent the state of a parameter block
         /// using this reflector.
@@ -1403,6 +1409,7 @@ namespace Falcor
         /// descriptor sets that this object can simply re-use.
         ///
         std::vector<DescriptorSetInfo> mDescriptorSets;
+#endif
 
         /// Indices of the resource ranges that represent root descriptors,
         /// and which therefore need their resources to be bound to the root signature.
@@ -1424,7 +1431,7 @@ namespace Falcor
 
     typedef ParameterBlockReflection ParameterBlockReflection;
 
-    class dlldecl EntryPointGroupReflection : public ParameterBlockReflection
+    class FALCOR_API EntryPointGroupReflection : public ParameterBlockReflection
     {
     public:
         using SharedPtr = std::shared_ptr<EntryPointGroupReflection>;
@@ -1443,7 +1450,7 @@ namespace Falcor
 
     /** Reflection object for an entire program. Essentially, it's a collection of ParameterBlocks
     */
-    class dlldecl ProgramReflection
+    class FALCOR_API ProgramReflection
     {
     public:
         using SharedPtr = std::shared_ptr<ProgramReflection>;

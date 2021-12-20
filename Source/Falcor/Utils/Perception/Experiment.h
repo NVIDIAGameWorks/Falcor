@@ -33,8 +33,8 @@ namespace Falcor
 {
     namespace Perception
     {
-        /** Description of an experiment: Any information that could be useful 
-            in future, in case an experiment grows while piloting or when 
+        /** Description of an experiment: Any information that could be useful
+            in future, in case an experiment grows while piloting or when
             between-experiment analysis becomes necessary later.
         */
         struct ExperimentDescription
@@ -46,11 +46,11 @@ namespace Falcor
 
         /** A class representing a psychophysical experiment
         */
-        class dlldecl Experiment
+        class FALCOR_API Experiment
         {
         public:
 
-            /** Provide experiment description: This is not a mandatory step for initialization, 
+            /** Provide experiment description: This is not a mandatory step for initialization,
                 but is strongly recommended because it could be useful in many cases.
                 \param[in] newExpDesc New experiment description
             */

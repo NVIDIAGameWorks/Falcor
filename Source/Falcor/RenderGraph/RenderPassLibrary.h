@@ -31,7 +31,7 @@
 
 namespace Falcor
 {
-    class dlldecl RenderPassLibrary
+    class FALCOR_API RenderPassLibrary
     {
     public:
         RenderPassLibrary() = default;
@@ -42,10 +42,9 @@ namespace Falcor
         struct RenderPassDesc
         {
             RenderPassDesc() = default;
-            RenderPassDesc(const char* name, const char* desc_, CreateFunc func_) : className(name), desc(desc_), func(func_) {}
+            RenderPassDesc(const RenderPass::Info& info, CreateFunc func) : info(info), func(func) {}
 
-            const char* className = nullptr;
-            const char* desc = nullptr;
+            RenderPass::Info info;
             CreateFunc func = nullptr;
         };
 
@@ -59,17 +58,20 @@ namespace Falcor
         */
         void shutdown();
 
-        /** Add a new pass class to the library
+        /** Register a render pass to the library.
+            \param[in] info Render pass info.
+            \param[in] func Render pass factory.
+            \return The render pass library.
         */
-        RenderPassLibrary& registerClass(const char* className, const char* desc, CreateFunc func);
+        RenderPassLibrary& registerPass(const RenderPass::Info& info, CreateFunc func);
 
         /** Instantiate a new render pass object.
             \param[in] pRenderContext The render context.
-            \param[in] className Render pass class name.
+            \param[in] type Render pass type.
             \param[in] dict Dictionary for serialized parameters.
             \return A new object, or an exception is thrown if creation failed. Nullptr is returned if class name cannot be found.
         */
-        RenderPass::SharedPtr createPass(RenderContext* pRenderContext, const char* className, const Dictionary& dict = {});
+        RenderPass::SharedPtr createPass(RenderContext* pRenderContext, const std::string& type, const Dictionary& dict = {});
 
         /** Get a list of all the registered classes
         */
@@ -97,22 +99,18 @@ namespace Falcor
         */
         static StrVec enumerateLibraries();
 
-        /** Get a description from one existing render pass class
-        */
-        static std::string getClassDescription(const std::string& className);
-
     private:
         static RenderPassLibrary* spInstance;
 
         struct ExtendedDesc : RenderPassDesc
         {
             ExtendedDesc() = default;
-            ExtendedDesc(const char* name, const char* desc_, CreateFunc func_, DllHandle module_) : RenderPassDesc(name, desc_, func_), module(module_) {}
+            ExtendedDesc(const RenderPass::Info& info, CreateFunc func, DllHandle module) : RenderPassDesc(info, func), module(module) {}
 
             DllHandle module = nullptr;
         };
 
-        void registerInternal(const char* className, const char* desc, CreateFunc func, DllHandle hmodule);
+        void registerInternal(const RenderPass::Info& info, CreateFunc func, DllHandle hmodule);
 
         struct LibDesc
         {

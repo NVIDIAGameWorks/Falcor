@@ -218,7 +218,7 @@ namespace Falcor
         }
         else
         {
-            throw std::exception("Unknown interpolation mode");
+            throw ArgumentError("'mode' is unknown interpolation mode");
         }
     }
 
@@ -264,7 +264,10 @@ namespace Falcor
         if (mKeyframes.size() == 0 || mKeyframes[0].time > keyframe.time)
         {
             mKeyframes.insert(mKeyframes.begin(), keyframe);
-            return;
+        }
+        else if (mKeyframes.back().time < keyframe.time)
+        {
+            mKeyframes.push_back(keyframe);
         }
         else
         {
@@ -301,7 +304,7 @@ namespace Falcor
         {
             if (k.time == time) return k;
         }
-        throw std::runtime_error(("Animation::getKeyframe() - can't find a keyframe at time " + std::to_string(time)).c_str());
+        throw ArgumentError("'time' ({}) does not refer to an existing keyframe", time);
     }
 
     bool Animation::doesKeyframeExists(double time) const
@@ -319,9 +322,9 @@ namespace Falcor
         widget.dropdown("Post-Infinity Behavior", kChannelLoopModeDropdown, reinterpret_cast<uint32_t&>(mPostInfinityBehavior));
     }
 
-    SCRIPT_BINDING(Animation)
+    FALCOR_SCRIPT_BINDING(Animation)
     {
-        SCRIPT_BINDING_DEPENDENCY(Transform)
+        FALCOR_SCRIPT_BINDING_DEPENDENCY(Transform)
 
         pybind11::class_<Animation, Animation::SharedPtr> animation(m, "Animation");
         animation.def_property_readonly("name", &Animation::getName);

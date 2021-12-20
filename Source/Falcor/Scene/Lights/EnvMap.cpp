@@ -41,7 +41,7 @@ namespace Falcor
     {
         // Load environment map from file. Set it to generate mips and use linear color.
         auto pTexture = Texture::createFromFile(filename, true, false);
-        if (!pTexture) throw std::exception("Failed to load environment map texture");
+        if (!pTexture) throw RuntimeError("Failed to load environment map texture");
         return create(pTexture);
     }
 
@@ -109,7 +109,7 @@ namespace Falcor
 
     EnvMap::EnvMap(const Texture::SharedPtr& texture)
     {
-        if (!texture) throw std::exception("Failed to create environment map without texture");
+        if (!texture) throw ArgumentError("'texture' must be a valid texture");
 
         mpEnvMap = texture;
 
@@ -121,7 +121,7 @@ namespace Falcor
         mpEnvSampler = Sampler::create(samplerDesc);
     }
 
-    SCRIPT_BINDING(EnvMap)
+    FALCOR_SCRIPT_BINDING(EnvMap)
     {
         pybind11::class_<EnvMap, EnvMap::SharedPtr> envMap(m, "EnvMap");
         envMap.def(pybind11::init(pybind11::overload_cast<const std::string&>(&EnvMap::create)), "filename"_a);

@@ -27,7 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "FalcorExperimental.h"
+#include "Rendering/Lights/EnvMapLighting.h"
 
 using namespace Falcor;
 
@@ -36,14 +36,14 @@ class ForwardLightingPass : public RenderPass
 public:
     using SharedPtr = std::shared_ptr<ForwardLightingPass>;
 
-    static const char* kDesc;
+    static const Info kInfo;
 
     /** Create a new object
     */
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
-    virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
+    virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
 
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     virtual void renderUI(Gui::Widgets& widget) override;
@@ -77,14 +77,10 @@ public:
     */
     ForwardLightingPass& setSampler(const Sampler::SharedPtr& pSampler);
 
-    /** Get a description of the pass
-    */
-    std::string getDesc() override { return kDesc; }
-
 private:
     ForwardLightingPass();
     void initDepth(const RenderData& renderData);
-    void initFbo(RenderContext* pContext, const RenderData& renderData);
+    void initFbo(RenderContext* pRenderContext, const RenderData& renderData);
 
     Fbo::SharedPtr mpFbo;
     GraphicsState::SharedPtr mpState;

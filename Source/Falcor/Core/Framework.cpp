@@ -29,7 +29,7 @@
 
 namespace Falcor
 {
-    SCRIPT_BINDING(ComparisonFunc)
+    FALCOR_SCRIPT_BINDING(ComparisonFunc)
     {
         pybind11::enum_<ComparisonFunc> comparisonFunc(m, "ComparisonFunc");
         comparisonFunc.value("Disabled", ComparisonFunc::Disabled);

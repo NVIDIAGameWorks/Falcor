@@ -36,17 +36,19 @@ namespace Falcor
         This class manages different versions of the same program. Different versions means same shader files, different macro definitions.
         This allows simple usage in case different macros are required - for example static vs. animated models.
     */
-    class dlldecl Program : public std::enable_shared_from_this<Program>
+    class FALCOR_API Program : public std::enable_shared_from_this<Program>
     {
     public:
         using SharedPtr = std::shared_ptr<Program>;
         using SharedConstPtr = std::shared_ptr<const Program>;
 
         using DefineList = Shader::DefineList;
+        using ArgumentList = std::vector<std::string>;
+        using TypeConformanceList = Shader::TypeConformanceList;
 
         /** Description of a program to be created.
         */
-        class dlldecl Desc
+        class FALCOR_API Desc
         {
         public:
             /** Begin building a description, that initially has no source files or entry points.
@@ -54,23 +56,28 @@ namespace Falcor
             Desc();
 
             /** Begin building a description, based on a single path for source code.
-                This is equivalent to: `Desc().sourceFile(path)`
+                This is equivalent to: `Desc().addShaderLibrary(path)`
+                \param[in] path Path to the source code.
             */
-            explicit Desc(std::string const& filename);
+            explicit Desc(const std::string& path);
 
             /** Add a file of source code to use.
                 This also sets the given file as the "active" source for subsequent entry points.
+                \param[in] path Path to the source code.
             */
             Desc& addShaderLibrary(const std::string& path);
 
             /** Add a string of source code to use.
                 This also sets the given string as the "active" source for subsequent entry points.
+                \param[in] shader Source code.
             */
             Desc& addShaderString(const std::string& shader);
 
             /** Adds an entry point based on the "active" source.
             */
             Desc& entryPoint(ShaderType shaderType, const std::string& name);
+
+            bool hasEntryPoint(ShaderType stage) const;
 
             Desc& vsEntry(const std::string& name) { return entryPoint(ShaderType::Vertex, name); }
             Desc& hsEntry(const std::string& name) { return entryPoint(ShaderType::Hull, name); }
@@ -79,21 +86,24 @@ namespace Falcor
             Desc& psEntry(const std::string& name) { return entryPoint(ShaderType::Pixel, name); }
             Desc& csEntry(const std::string& name) { return entryPoint(ShaderType::Compute, name); }
 
-            /** Enable/disable treat-warnings-as-error compilation flag
+            /** Adds a list of type conformances.
+            */
+            Desc& addTypeConformances(const TypeConformanceList& typeConformances) { mTypeConformances.add(typeConformances); return *this; }
+
+            /** Enable/disable treat-warnings-as-error compilation flag.
             */
             Desc& warningsAsErrors(bool enable) { enable ? mShaderFlags |= Shader::CompilerFlags::TreatWarningsAsErrors : mShaderFlags &= ~(Shader::CompilerFlags::TreatWarningsAsErrors); return *this; }
 
-            /** Enable/disable pre-processed shader dump
+            /** Enable/disable pre-processed shader dump.
             */
             Desc& dumpIntermediates(bool enable) { enable ? mShaderFlags |= Shader::CompilerFlags::DumpIntermediates : mShaderFlags &= ~(Shader::CompilerFlags::DumpIntermediates); return *this; }
 
-            /** Set the shader model string. This depends on the API you are using.
-                For DirectX it should be `4_0`, `4_1`, `5_0`, `5_1`, `6_0`, `6_1`, `6_2`, `6_3`, `6_4`, or `6_5`. The default is `6_3`. Shader model `6.x` will use dxcompiler, previous shader models use fxc.
-                For Vulkan, it should be `400`, `410`, `420`, `430`, `440` or `450`. The default is `450`
+            /** Set the shader model string.
+                This should be `6_0`, `6_1`, `6_2`, `6_3`, `6_4`, or `6_5`. The default is `6_3`.
             */
             Desc& setShaderModel(const std::string& sm);
 
-            /** Get the compiler flags
+            /** Get the compiler flags.
             */
             Shader::CompilerFlags getCompilerFlags() const { return mShaderFlags; }
 
@@ -101,8 +111,13 @@ namespace Falcor
             */
             Desc& setCompilerFlags(Shader::CompilerFlags flags) { mShaderFlags = flags; return *this; }
 
+            /** Get additional compiler arguments.
+            */
+            const ArgumentList& getCompilerArguments() const { return mCompilerArguments; }
 
-            bool hasEntryPoint(ShaderType stage) const;
+            /** Set additional compiler arguments. Replaces any previously set arguments.
+            */
+            Desc& setCompilerArguments(const ArgumentList& arguments) { mCompilerArguments = arguments; return *this; }
 
         protected:
             friend class Program;
@@ -146,15 +161,13 @@ namespace Falcor
             std::vector<Source> mSources;
             std::vector<EntryPointGroup> mGroups;
             std::vector<EntryPoint> mEntryPoints;
+            TypeConformanceList mTypeConformances;
 
             int32_t mActiveSource = -1;
             int32_t mActiveGroup = -1;
             Shader::CompilerFlags mShaderFlags = Shader::CompilerFlags::None;
-#ifdef FALCOR_VK
-            std::string mShaderModel = "450";
-#elif defined FALCOR_D3D12
+            ArgumentList mCompilerArguments;
             std::string mShaderModel = "6_3";
-#endif
         };
 
         virtual ~Program() = 0;
@@ -202,6 +215,27 @@ namespace Falcor
             \return True if any macro definition was changed, false otherwise.
         */
         bool setDefines(const DefineList& dl);
+
+        /** Add a type conformance to the program.
+            \param[in] typeName The name of the implementation shader type.
+            \param[in] interfaceType The name of the interface type that `typeName` implements.
+            \param[in] id The ID representing the implementation type. If set to -1, Slang will automatically assign an ID for the type.
+            \return True if any type conformances were added to the program.
+        */
+        bool addTypeConformance(const std::string& typeName, const std::string interfaceType, uint32_t id);
+
+        /** Remove a type conformance from the program. If the type conformance doesn't exist, the function call will be silently ignored.
+            \param[in] typeName The name of the implementation shader type.
+            \param[in] interfaceType The name of the interface type that `typeName` implements.
+            \return True if any type conformances were modified.
+        */
+        bool removeTypeConformance(const std::string& typeName, const std::string interfaceType);
+
+        /** Set the type conformance list of the active program version.
+            \param[in] conformances List of type conformances.
+            \return True if any type conformance was changed, false otherwise.
+        */
+        bool setTypeConformances(const TypeConformanceList& conformances);
 
         /** Get the macro definition list of the active program version.
         */
@@ -281,6 +315,7 @@ namespace Falcor
 
         virtual ProgramKernels::SharedPtr createProgramKernels(
             const ProgramVersion* pVersion,
+            slang::IComponentType* pSpecializedSlangProgram,
             const ProgramReflection::SharedPtr& pReflector,
             const ProgramKernels::UniqueEntryPointGroups& uniqueEntryPointGroups,
             std::string& log,
@@ -290,6 +325,8 @@ namespace Falcor
         Desc mDesc;
 
         DefineList mDefineList;
+
+        TypeConformanceList mTypeConformanceList;
 
         // We are doing lazy compilation, so these are mutable
         mutable bool mLinkRequired = true;
@@ -306,4 +343,6 @@ namespace Falcor
         bool checkIfFilesChanged();
         void reset();
     };
+
+    slang::IGlobalSession* getSlangGlobalSession();
 }

@@ -30,6 +30,8 @@
 #include "Scene/HitInfo.h"
 #include <sstream>
 
+const RenderPass::Info MegakernelPathTracer::kInfo { "MegakernelPathTracer", "Megakernel path tracer." };
+
 namespace
 {
     const char kShaderFile[] = "RenderPasses/MegakernelPathTracer/PathTracer.rt.slang";
@@ -50,23 +52,21 @@ namespace
 
     const Falcor::ChannelList kOutputChannels =
     {
-        { kColorOutput,     "gOutputColor",               "Output color (linear)", true /* optional */                              },
-        { kAlbedoOutput,    "gOutputAlbedo",              "Surface albedo (base color) or background color", true /* optional */    },
-        { kTimeOutput,      "gOutputTime",                "Per-pixel execution time", true /* optional */, ResourceFormat::R32Uint  },
+        { kColorOutput,     "gOutputColor",               "Output color (linear)", true /* optional */, ResourceFormat::RGBA32Float },
+        { kAlbedoOutput,    "gOutputAlbedo",              "Surface albedo (base color) or background color", true /* optional */, ResourceFormat::RGBA32Float },
+        { kTimeOutput,      "gOutputTime",                "Per-pixel execution time", true /* optional */, ResourceFormat::R32Uint },
     };
 };
 
-const char* MegakernelPathTracer::sDesc = "Megakernel path tracer";
-
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" FALCOR_API_EXPORT const char* getProjDir()
 {
     return PROJECT_DIR;
 }
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
 {
-    lib.registerClass("MegakernelPathTracer", MegakernelPathTracer::sDesc, MegakernelPathTracer::create);
+    lib.registerPass(MegakernelPathTracer::kInfo, MegakernelPathTracer::create);
 }
 
 MegakernelPathTracer::SharedPtr MegakernelPathTracer::create(RenderContext* pRenderContext, const Dictionary& dict)
@@ -75,7 +75,7 @@ MegakernelPathTracer::SharedPtr MegakernelPathTracer::create(RenderContext* pRen
 }
 
 MegakernelPathTracer::MegakernelPathTracer(const Dictionary& dict)
-    : PathTracer(dict, kOutputChannels)
+    : PathTracer(kInfo, dict, kOutputChannels)
 {
 }
 
@@ -85,10 +85,15 @@ void MegakernelPathTracer::setScene(RenderContext* pRenderContext, const Scene::
 
     if (mpScene)
     {
-        if (mpScene->hasGeometryType(Scene::GeometryType::Procedural))
+        if (mpScene->hasProceduralGeometry())
         {
             logWarning("This render pass only supports triangles. Other types of geometry will be ignored.");
         }
+
+        Program::DefineList defines;
+        defines.add(mpScene->getSceneDefines());
+        defines.add("MAX_BOUNCES", std::to_string(mSharedParams.maxBounces));
+        defines.add("SAMPLES_PER_PIXEL", std::to_string(mSharedParams.samplesPerPixel));
 
         // Create ray tracing program.
         RtProgram::Desc desc;
@@ -96,19 +101,16 @@ void MegakernelPathTracer::setScene(RenderContext* pRenderContext, const Scene::
         desc.setMaxPayloadSize(kMaxPayloadSizeBytes);
         desc.setMaxAttributeSize(kMaxAttributeSizeBytes);
         desc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
-        desc.addDefines(mpScene->getSceneDefines());
-        desc.addDefine("MAX_BOUNCES", std::to_string(mSharedParams.maxBounces));
-        desc.addDefine("SAMPLES_PER_PIXEL", std::to_string(mSharedParams.samplesPerPixel));
 
         mTracer.pBindingTable = RtBindingTable::create(2, 2, mpScene->getGeometryCount());
         auto& sbt = mTracer.pBindingTable;
         sbt->setRayGen(desc.addRayGen("rayGen"));
         sbt->setMiss(kRayTypeScatter, desc.addMiss("scatterMiss"));
         sbt->setMiss(kRayTypeShadow, desc.addMiss("shadowMiss"));
-        sbt->setHitGroupByType(kRayTypeScatter, mpScene, Scene::GeometryType::TriangleMesh, desc.addHitGroup("scatterClosestHit", "scatterAnyHit"));
-        sbt->setHitGroupByType(kRayTypeShadow, mpScene, Scene::GeometryType::TriangleMesh, desc.addHitGroup("", "shadowAnyHit"));
+        sbt->setHitGroup(kRayTypeScatter, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), desc.addHitGroup("scatterClosestHit", "scatterAnyHit"));
+        sbt->setHitGroup(kRayTypeShadow, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), desc.addHitGroup("", "shadowAnyHit"));
 
-        mTracer.pProgram = RtProgram::create(desc);
+        mTracer.pProgram = RtProgram::create(desc, defines);
     }
 }
 
@@ -162,7 +164,7 @@ void MegakernelPathTracer::execute(RenderContext* pRenderContext, const RenderDa
 
     // Spawn the rays.
     {
-        PROFILE("MegakernelPathTracer::execute()_RayTrace");
+        FALCOR_PROFILE("MegakernelPathTracer::execute()_RayTrace");
         mpScene->raytrace(pRenderContext, mTracer.pProgram.get(), mTracer.pVars, uint3(targetDim, 1));
     }
 
@@ -174,8 +176,11 @@ void MegakernelPathTracer::prepareVars()
 {
     assert(mTracer.pProgram);
 
-    // Configure program.
+    // Specialize the program.
     mTracer.pProgram->addDefines(mpSampleGenerator->getDefines());
+
+    // Configure scene types.
+    mTracer.pProgram->setTypeConformances(mpScene->getTypeConformances());
 
     // Create program variables for the current program.
     // This may trigger shader compilation. If it fails, throw an exception to abort rendering.
@@ -183,8 +188,7 @@ void MegakernelPathTracer::prepareVars()
 
     // Bind utility classes into shared data.
     auto var = mTracer.pVars->getRootVar();
-    bool success = mpSampleGenerator->setShaderData(var);
-    if (!success) throw std::exception("Failed to bind sample generator");
+    mpSampleGenerator->setShaderData(var);
 
     // Create parameter block for shared data.
     ProgramReflection::SharedConstPtr pReflection = mTracer.pProgram->getReflector();
@@ -213,7 +217,6 @@ void MegakernelPathTracer::setTracerData(const RenderData& renderData)
     if (mUseEmissiveSampler)
     {
         assert(mpEmissiveSampler);
-        bool success = mpEmissiveSampler->setShaderData(pBlock["emissiveSampler"]);
-        if (!success) throw std::exception("Failed to bind emissive light sampler");
+        mpEmissiveSampler->setShaderData(pBlock["emissiveSampler"]);
     }
 }

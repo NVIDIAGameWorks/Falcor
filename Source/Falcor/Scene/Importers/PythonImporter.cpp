@@ -51,78 +51,99 @@ namespace Falcor
 
             return {};
         }
-    }
 
-    std::set<std::string> PythonImporter::sImportPaths;
-    std::vector<std::string> PythonImporter::sImportDirectories;
+        static std::set<std::string> sImportPaths; ///< Set of currently imported paths, used to avoid recursion.
+        static std::vector<std::string> sImportDirectories; ///< Stack of import directories to properly handle adding/removing data search paths.
 
-    bool PythonImporter::import(const std::string& filename, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict)
-    {
-        bool success = false;
-
-        if (!instances.empty()) logWarning("Python importer does not support instancing.");
-
-        std::string fullpath;
-
-        if (findFileInDataDirectories(filename, fullpath))
+        /** This class is used to handle nested imports through RAII.
+            It keeps a set of import paths in sImportPaths to detect recursive imports.
+            It keeps a stack of import directories in sImportdirectories and updates the global data search directories.
+        */
+        class ScopedImport
         {
-            if (auto it = sImportPaths.emplace(fullpath); !it.second)
+        public:
+            ScopedImport(const std::string& path)
+                : mPath(path)
+                , mDirectory(getDirectoryFromFile(path))
             {
-                logError("Python scene file '" + fullpath + "' is recursively imported.");
+                sImportPaths.emplace(mPath);
+                sImportDirectories.push_back(mDirectory);
+
+                // Add directory to search directories (add it to the front to make it highest priority).
+                addDataDirectory(mDirectory, true);
             }
-
-            // Add script directory to search paths (add it to the front to make it highest priority).
-            const std::string directory = getDirectoryFromFile(fullpath);
-            // Keep a stack of import directories do keep track of nested imports.
-            sImportDirectories.push_back(directory);
-            addDataDirectory(directory, true);
-
-            // Load the script file
-            const std::string script = readFile(fullpath);
-
-            // Check for legacy .pyscene file format.
-            if (auto sceneFile = parseLegacyHeader(script))
+            ~ScopedImport()
             {
-                logError("Python scene file '" + fullpath + "' is using old header comment syntax. Use the new 'sceneBuilder' object instead.");
-            }
-            else
-            {
-                while (!success)
+                auto erased = sImportPaths.erase(mPath);
+                assert(erased == 1);
+
+                assert(sImportDirectories.size() > 0);
+                sImportDirectories.pop_back();
+
+                // Remove script directory from search path (only if not needed by the outer importer).
+                if (std::find(sImportDirectories.begin(), sImportDirectories.end(), mDirectory) == sImportDirectories.end())
                 {
-                    try
-                    {
-                        Scripting::Context context;
-                        context.setObject("sceneBuilder", &builder);
-                        Scripting::runScript("from falcor import *", context);
-                        Scripting::runScriptFromFile(fullpath, context);
-                        success = true;
-                    }
-                    catch (const std::exception& e)
-                    {
-                        logError("Failed to execute python scene script:\n" + filename + "\n\n" + e.what(), Logger::MsgBox::RetryAbort);
-                    }
+                    removeDataDirectory(mDirectory);
                 }
             }
 
-            // Remove script directory from search path (only if not needed by the outer importer).
-            sImportDirectories.pop_back();
-            if (std::find(sImportDirectories.begin(), sImportDirectories.end(), directory) == sImportDirectories.end())
-            {
-                removeDataDirectory(directory);
-            }
+        private:
+            std::string mPath;
+            std::string mDirectory;
+        };
 
-            auto erased = sImportPaths.erase(fullpath);
-            assert(erased == 1);
-        }
-        else
+        static bool isRecursiveImport(const std::string& path)
         {
-            logError("Error when loading scene file '" + filename + "'. File not found.");
+            return sImportPaths.find(path) != sImportPaths.end();
         }
-
-        return success;
     }
 
-    REGISTER_IMPORTER(
+    void PythonImporter::import(const std::string& filename, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict)
+    {
+        if (!instances.empty())
+        {
+            throw ImporterError(filename, "Python importer does not support instancing.");
+        }
+
+        std::string fullpath;
+        if (!findFileInDataDirectories(filename, fullpath))
+        {
+            throw ImporterError(filename, "File not found.");
+        }
+
+        if (isRecursiveImport(filename))
+        {
+            throw ImporterError(filename, "Scene is imported recursively.");
+        }
+
+        // Load the script file
+        const std::string script = readFile(fullpath);
+
+        // Check for legacy .pyscene file format.
+        if (auto sceneFile = parseLegacyHeader(script))
+        {
+            throw ImporterError(filename, "Python scene file is using old header comment syntax. Use the new 'sceneBuilder' object instead.");
+        }
+
+        // Keep track of this import and add script directory to data search directories.
+        // We use RAII here to make sure the scope is properly removed when throwing an exception.
+        ScopedImport scopedImport(fullpath);
+
+        // Execute script.
+        try
+        {
+            Scripting::Context context;
+            context.setObject("sceneBuilder", &builder);
+            Scripting::runScript("from falcor import *", context);
+            Scripting::runScriptFromFile(fullpath, context);
+        }
+        catch (const std::exception& e)
+        {
+            throw ImporterError(filename, fmt::format("Failed to run python scene script: {}", e.what()));
+        }
+    }
+
+    FALCOR_REGISTER_IMPORTER(
         PythonImporter,
         Importer::ExtensionList({
             "pyscene"

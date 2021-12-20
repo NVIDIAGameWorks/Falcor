@@ -32,7 +32,7 @@
 
 namespace Falcor
 {
-    class dlldecl ComputeContext : public CopyContext
+    class FALCOR_API ComputeContext : public CopyContext
     {
     public:
         using SharedPtr = std::shared_ptr<ComputeContext>;
@@ -79,8 +79,10 @@ namespace Falcor
 
     protected:
         ComputeContext(LowLevelContextData::CommandQueueType type, CommandQueueHandle queue);
+#ifdef FALCOR_D3D12
         bool prepareForDispatch(ComputeState* pState, ComputeVars* pVars);
-        bool applyComputeVars(ComputeVars* pVars, RootSignature* pRootSignature);
+        bool applyComputeVars(ComputeVars* pVars, const ProgramKernels* pProgramKernels);
+#endif
 
         const ComputeVars* mpLastBoundComputeVars = nullptr;
     };

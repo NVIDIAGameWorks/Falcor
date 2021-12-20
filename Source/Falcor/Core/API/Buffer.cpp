@@ -45,7 +45,7 @@ namespace Falcor
             const ReflectionResourceType* pResourceType = pType->unwrapArray()->asResourceType();
             if (!pResourceType || pResourceType->getType() != ReflectionResourceType::Type::StructuredBuffer)
             {
-                throw std::exception(("Can't create a structured buffer from the variable '" + varName + "'. The variable is not a structured buffer.").c_str());
+                throw RuntimeError("Can't create a structured buffer from the variable '{}'. The variable is not a structured buffer.", varName);
             }
 
             assert(pResourceType->getSize() <= std::numeric_limits<uint32_t>::max());
@@ -134,7 +134,7 @@ namespace Falcor
         const ReflectionVar* pVar = pDefaultBlock ? pDefaultBlock->getResource(name).get() : nullptr;
         if (pVar == nullptr)
         {
-            throw std::exception(("Can't find a structured buffer named '" + name + "' in the program").c_str());
+            throw RuntimeError("Can't find a structured buffer named '{}' in the program", name);
         }
         return createStructuredFromType(pVar->getType().get(), name, elementCount, bindFlags, cpuAccess, pInitData, createCounter);
     }
@@ -145,19 +145,19 @@ namespace Falcor
         CpuAccess cpuAccess = pBaseResource->asBuffer() ? pBaseResource->asBuffer()->getCpuAccess() : CpuAccess::None;
         if (cpuAccess != CpuAccess::None)
         {
-            logError("Buffer::aliasResource() - trying to alias a buffer with CpuAccess::" + to_string(cpuAccess) + " which is illegal. Aliased resource must have CpuAccess::None");
+            reportError("Buffer::aliasResource() - trying to alias a buffer with CpuAccess::" + to_string(cpuAccess) + " which is illegal. Aliased resource must have CpuAccess::None");
             return nullptr;
         }
 
         if ((pBaseResource->getBindFlags() & bindFlags) != bindFlags)
         {
-            logError("Buffer::aliasResource() - requested buffer bind-flags don't match the aliased resource bind flags.\nRequested = " + to_string(bindFlags) + "\nAliased = " + to_string(pBaseResource->getBindFlags()));
+            reportError("Buffer::aliasResource() - requested buffer bind-flags don't match the aliased resource bind flags.\nRequested = " + to_string(bindFlags) + "\nAliased = " + to_string(pBaseResource->getBindFlags()));
             return nullptr;
         }
 
         if (offset >= pBaseResource->getSize() || (offset + size) >= pBaseResource->getSize())
         {
-            logError("Buffer::aliasResource() - requested offset and size don't fit inside the alias resource dimensions. Requested size = " +
+            reportError("Buffer::aliasResource() - requested offset and size don't fit inside the alias resource dimensions. Requested size = " +
                 std::to_string(size) + ", offset = " + std::to_string(offset) + ". Aliased resource size = " + std::to_string(pBaseResource->getSize()));
             return nullptr;
         }
@@ -187,7 +187,9 @@ namespace Falcor
         }
         else
         {
+#ifdef FALCOR_D3D12
             gpDevice->releaseResource(mApiHandle);
+#endif
         }
     }
 
@@ -241,7 +243,7 @@ namespace Falcor
     {
         if (offset + size > mSize)
         {
-            logError("Error when setting blob to buffer. Blob to large and will result in an overflow. Ignoring call");
+            reportError("Error when setting blob to buffer. Blob to large and will result in an overflow. Ignoring call");
             return false;
         }
 
@@ -263,7 +265,7 @@ namespace Falcor
         {
             if (mCpuAccess != CpuAccess::Write)
             {
-                logError("Trying to map a buffer for write, but it wasn't created with the write permissions");
+                reportError("Trying to map a buffer for write, but it wasn't created with the write permissions");
                 return nullptr;
             }
             return mDynamicData.pData;
@@ -272,7 +274,7 @@ namespace Falcor
         {
             if (mCpuAccess != CpuAccess::Write)
             {
-                logError("Trying to map a buffer for write, but it wasn't created with the write permissions");
+                reportError("Trying to map a buffer for write, but it wasn't created with the write permissions");
                 return nullptr;
             }
 
@@ -334,10 +336,10 @@ namespace Falcor
         if (mStructSize != 0) return mStructSize;
         if (mFormat == ResourceFormat::Unknown) return 1;
 
-        throw std::exception("Buffer::getElementSize() - inferring element size from resourec format is unimplemented");
+        throw RuntimeError("Inferring element size from resource format is not implemented");
     }
 
-    SCRIPT_BINDING(Buffer)
+    FALCOR_SCRIPT_BINDING(Buffer)
     {
         pybind11::class_<Buffer, Buffer::SharedPtr>(m, "Buffer");
     }

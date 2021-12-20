@@ -42,7 +42,7 @@ namespace Falcor
 
     RenderGraphCompiler::RenderGraphCompiler(RenderGraph& graph, const Dependencies& dependencies) : mGraph(graph), mDependencies(dependencies) {}
 
-    RenderGraphExe::SharedPtr RenderGraphCompiler::compile(RenderGraph& graph, RenderContext* pContext, const Dependencies& dependencies)
+    RenderGraphExe::SharedPtr RenderGraphCompiler::compile(RenderGraph& graph, RenderContext* pRenderContext, const Dependencies& dependencies)
     {
         RenderGraphCompiler c = RenderGraphCompiler(graph, dependencies);
 
@@ -51,7 +51,7 @@ namespace Falcor
         for (const auto&[name, pRes] : dependencies.externalResources) pResourcesCache->registerExternalResource(name, pRes);
 
         c.resolveExecutionOrder();
-        c.compilePasses(pContext);
+        c.compilePasses(pRenderContext);
         if (c.insertAutoPasses()) c.resolveExecutionOrder();
         c.validateGraph();
         c.allocateResources(pResourcesCache.get());
@@ -99,7 +99,7 @@ namespace Falcor
 
         if (mGraph.getOutputCount() == 0) err += "Graph must have at least one output.\n";
 
-        if (err.size()) throw std::exception(err.c_str());
+        if (err.size()) throw RuntimeError(err);
     }
 
     void RenderGraphCompiler::resolveExecutionOrder()
@@ -137,13 +137,17 @@ namespace Falcor
         // Run topological sort
         auto topologicalSort = DirectedGraphTopologicalSort::sort(mGraph.mpGraph.get());
 
+        RenderPass::CompileData compileData;
+        compileData.defaultTexDims = mDependencies.defaultResourceProps.dims;
+        compileData.defaultTexFormat = mDependencies.defaultResourceProps.format;
+
         // For each object in the vector, if it's being used in the execution, put it in the list
         for (auto& node : topologicalSort)
         {
             if (participatingPasses.find(node) != participatingPasses.end())
             {
                 const auto pData = mGraph.mNodeData[node];
-                mExecutionList.push_back({ node, pData.pPass, pData.name, pData.pPass->reflect({}) });
+                mExecutionList.push_back({ node, pData.pPass, pData.name, pData.pPass->reflect(compileData) });
             }
         }
     }
@@ -254,7 +258,7 @@ namespace Falcor
             auto isResourceUsed = [&](auto field)
             {
                 if (!is_set(field.getFlags(), RenderPassReflection::Field::Flags::Optional)) return true;
-                if(mGraph.isGraphOutput({ nodeIndex, field.getName() })) return true;
+                if (mGraph.isGraphOutput({ nodeIndex, field.getName() })) return true;
                 for (uint32_t e = 0; e < pNode->getOutgoingEdgeCount(); e++)
                 {
                     const auto& edgeData = mGraph.mEdgeData[pNode->getOutgoingEdge(e)];
@@ -396,7 +400,7 @@ namespace Falcor
         return compileData;
     }
 
-    void RenderGraphCompiler::compilePasses(RenderContext* pContext)
+    void RenderGraphCompiler::compilePasses(RenderContext* pRenderContext)
     {
         while(1)
         {
@@ -406,7 +410,7 @@ namespace Falcor
             {
                 try
                 {
-                    p.pPass->compile(pContext, prepPassCompilationData(p));
+                    p.pPass->compile(pRenderContext, prepPassCompilationData(p));
                 }
                 catch (const std::exception& e)
                 {
@@ -431,7 +435,7 @@ namespace Falcor
 
             if (!changed)
             {
-                logError("Graph compilation failed.\n" + log);
+                reportError("Graph compilation failed.\n" + log);
                 return;
             }
         }

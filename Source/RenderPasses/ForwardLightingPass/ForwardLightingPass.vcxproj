@@ -36,7 +36,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ShaderSource Include="ForwardLightingPass.slang" />
+    <ShaderSource Include="ForwardLightingPass.3d.slang" />
   </ItemGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>

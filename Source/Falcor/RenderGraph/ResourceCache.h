@@ -31,7 +31,7 @@
 
 namespace Falcor
 {
-    class dlldecl ResourceCache : public std::enable_shared_from_this<ResourceCache>
+    class FALCOR_API ResourceCache
     {
     public:
         using SharedPtr = std::shared_ptr<ResourceCache>;

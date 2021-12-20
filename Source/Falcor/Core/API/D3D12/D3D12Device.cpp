@@ -33,6 +33,28 @@ namespace Falcor
     namespace
     {
         const uint32_t kDefaultVendorId = 0x10DE; ///< NVIDIA GPUs
+
+#define to_string_case(a) case a: return #a;
+        std::string to_string(D3D_FEATURE_LEVEL featureLevel)
+        {
+            switch (featureLevel)
+            {
+            to_string_case(D3D_FEATURE_LEVEL_9_1)
+            to_string_case(D3D_FEATURE_LEVEL_9_2)
+            to_string_case(D3D_FEATURE_LEVEL_9_3)
+            to_string_case(D3D_FEATURE_LEVEL_10_0)
+            to_string_case(D3D_FEATURE_LEVEL_10_1)
+            to_string_case(D3D_FEATURE_LEVEL_11_0)
+            to_string_case(D3D_FEATURE_LEVEL_11_1)
+            to_string_case(D3D_FEATURE_LEVEL_12_0)
+            to_string_case(D3D_FEATURE_LEVEL_12_1)
+#if FALCOR_ENABLE_D3D12_AGILITY_SDK
+            to_string_case(D3D_FEATURE_LEVEL_12_2)
+#endif
+            default: should_not_get_here(); return "";
+            }
+        }
+#undef to_string_case
     }
 
     struct DeviceApiData
@@ -48,7 +70,7 @@ namespace Falcor
         FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, hr, 0, hr_msg, ARRAYSIZE(hr_msg), nullptr);
 
         std::string error_msg = msg + ".\nError! " + hr_msg;
-        logError(error_msg);
+        reportError(error_msg);
     }
 
     D3D_FEATURE_LEVEL getD3DFeatureLevel(uint32_t majorVersion, uint32_t minorVersion)
@@ -61,6 +83,10 @@ namespace Falcor
                 return D3D_FEATURE_LEVEL_12_0;
             case 1:
                 return D3D_FEATURE_LEVEL_12_1;
+#if FALCOR_ENABLE_D3D12_AGILITY_SDK
+            case 2:
+                return D3D_FEATURE_LEVEL_12_2;
+#endif
             }
         }
         else if (majorVersion == 11)
@@ -112,7 +138,7 @@ namespace Falcor
         swapChainDesc.SampleDesc.Count = 1;
 
         // CreateSwapChainForHwnd() doesn't accept IDXGISwapChain3 (Why MS? Why?)
-        MAKE_SMART_COM_PTR(IDXGISwapChain1);
+        FALCOR_MAKE_SMART_COM_PTR(IDXGISwapChain1);
         IDXGISwapChain1Ptr pSwapChain;
 
         HRESULT hr = pFactory->CreateSwapChainForHwnd(pCommandQueue, pWindow->getApiHandle(), &swapChainDesc, nullptr, nullptr, &pSwapChain);
@@ -123,7 +149,7 @@ namespace Falcor
         }
 
         IDXGISwapChain3Ptr pSwapChain3;
-        d3d_call(pSwapChain->QueryInterface(IID_PPV_ARGS(&pSwapChain3)));
+        FALCOR_D3D_CALL(pSwapChain->QueryInterface(IID_PPV_ARGS(&pSwapChain3)));
         return pSwapChain3;
     }
 
@@ -132,6 +158,9 @@ namespace Falcor
         // Feature levels to try creating devices. Listed in descending order so the highest supported level is used.
         const static D3D_FEATURE_LEVEL kFeatureLevels[] =
         {
+#if FALCOR_ENABLE_D3D12_AGILITY_SDK
+            D3D_FEATURE_LEVEL_12_2,
+#endif
             D3D_FEATURE_LEVEL_12_1,
             D3D_FEATURE_LEVEL_12_0,
             D3D_FEATURE_LEVEL_11_1,
@@ -193,7 +222,7 @@ namespace Falcor
         for (uint32_t i = 0; DXGI_ERROR_NOT_FOUND != pFactory->EnumAdapters1(i, &pAdapter); i++)
         {
             DXGI_ADAPTER_DESC1 desc = {};
-            d3d_call(pAdapter->GetDesc1(&desc));
+            FALCOR_D3D_CALL(pAdapter->GetDesc1(&desc));
 
             std::ostringstream oss;
             oss << "Adapter index " << i << std::endl
@@ -250,9 +279,9 @@ namespace Falcor
         }
 
         // Retrieve the adapter that's been selected
-        d3d_call(pFactory->EnumAdapters1(selectedAdapterIndex, &pAdapter));
+        FALCOR_D3D_CALL(pFactory->EnumAdapters1(selectedAdapterIndex, &pAdapter));
 
-        if (requestedFeatureLevel == 0) createMaxFeatureLevel(kFeatureLevels, arraysize(kFeatureLevels));
+        if (requestedFeatureLevel == 0) createMaxFeatureLevel(kFeatureLevels, (uint32_t)arraysize(kFeatureLevels));
         else createMaxFeatureLevel(&requestedFeatureLevel, 1);
 
         if (pDevice != nullptr)
@@ -261,11 +290,11 @@ namespace Falcor
             return pDevice;
         }
 
-        logFatal("Could not find a GPU that supports D3D12 device");
+        reportError("Could not find a GPU that supports D3D12 device");
         return nullptr;
     }
 
-    Device::SupportedFeatures getSupportedFeatures(DeviceHandle pDevice)
+    Device::SupportedFeatures querySupportedFeatures(DeviceHandle pDevice)
     {
         Device::SupportedFeatures supported = Device::SupportedFeatures::None;
 
@@ -338,6 +367,48 @@ namespace Falcor
         return supported;
     }
 
+    Device::ShaderModel querySupportedShaderModel(DeviceHandle pDevice)
+    {
+        auto getD3DShaderModel = [](Device::ShaderModel shaderModel)
+        {
+            switch (shaderModel)
+            {
+            case Device::ShaderModel::SM6_0:
+                return D3D_SHADER_MODEL_6_0;
+            case Device::ShaderModel::SM6_1:
+                return D3D_SHADER_MODEL_6_1;
+            case Device::ShaderModel::SM6_2:
+                return D3D_SHADER_MODEL_6_2;
+            case Device::ShaderModel::SM6_3:
+                return D3D_SHADER_MODEL_6_3;
+            case Device::ShaderModel::SM6_4:
+                return D3D_SHADER_MODEL_6_4;
+            case Device::ShaderModel::SM6_5:
+                return D3D_SHADER_MODEL_6_5;
+            case Device::ShaderModel::SM6_6:
+                return D3D_SHADER_MODEL_6_6;
+            case Device::ShaderModel::SM6_7:
+                return D3D_SHADER_MODEL_6_7;
+            default:
+                should_not_get_here();
+                return (D3D_SHADER_MODEL)0;
+            }
+        };
+
+        for (uint32_t i = (uint32_t)Device::ShaderModel::SM6_7; i >= (uint32_t)Device::ShaderModel::SM6_0; --i)
+        {
+            Device::ShaderModel shaderModel = (Device::ShaderModel)i;
+            D3D_SHADER_MODEL d3dShaderModel = getD3DShaderModel(shaderModel);
+            D3D12_FEATURE_DATA_SHADER_MODEL feature = { d3dShaderModel };
+            if (!FAILED(pDevice->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &feature, sizeof(feature))) && feature.HighestShaderModel == d3dShaderModel)
+            {
+                return shaderModel;
+            }
+        }
+
+        return Device::ShaderModel::Unknown;
+    }
+
     CommandQueueHandle Device::getCommandQueueHandle(LowLevelContextData::CommandQueueType type, uint32_t index) const
     {
         return mCmdQueues[(uint32_t)type][index];
@@ -354,7 +425,7 @@ namespace Falcor
         case LowLevelContextData::CommandQueueType::Direct:
             return D3D12_COMMAND_LIST_TYPE_DIRECT;
         default:
-            throw std::exception("Unknown command queue type");
+            throw ArgumentError("Unknown command queue type");
         }
     }
 
@@ -397,7 +468,7 @@ namespace Falcor
         UINT dxgiFlags = 0;
         if (mDesc.enableDebugLayer)
         {
-            logDebug("Enabling the D3D12 debug layer");
+            logInfo("Enabling the D3D12 debug layer");
             ID3D12DebugPtr pDx12Debug;
             if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&pDx12Debug))))
             {
@@ -413,7 +484,7 @@ namespace Falcor
 
         // Create the DXGI factory
         logDebug("Creating DXGI factory");
-        d3d_call(CreateDXGIFactory2(dxgiFlags, IID_PPV_ARGS(&mpApiData->pDxgiFactory)));
+        FALCOR_D3D_CALL(CreateDXGIFactory2(dxgiFlags, IID_PPV_ARGS(&mpApiData->pDxgiFactory)));
         if (mpApiData->pDxgiFactory == nullptr) return false;
 
         // Create the device
@@ -421,21 +492,21 @@ namespace Falcor
         mApiHandle = createDevice(mpApiData->pDxgiFactory, getD3DFeatureLevel(mDesc.apiMajorVersion, mDesc.apiMinorVersion), mDesc.experimentalFeatures);
         if (mApiHandle == nullptr) return false;
 
-        mSupportedFeatures = getSupportedFeatures(mApiHandle);
+        mSupportedFeatures = querySupportedFeatures(mApiHandle);
+        mSupportedShaderModel = querySupportedShaderModel(mApiHandle);
 
         if (mDesc.enableDebugLayer)
         {
-            MAKE_SMART_COM_PTR(ID3D12InfoQueue);
+            FALCOR_MAKE_SMART_COM_PTR(ID3D12InfoQueue);
             ID3D12InfoQueuePtr pInfoQueue;
             mApiHandle->QueryInterface(IID_PPV_ARGS(&pInfoQueue));
             D3D12_MESSAGE_ID hideMessages[] =
             {
                 D3D12_MESSAGE_ID_CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE,
                 D3D12_MESSAGE_ID_CLEARDEPTHSTENCILVIEW_MISMATCHINGCLEARVALUE,
-                D3D12_MESSAGE_ID_COPY_DESCRIPTORS_INVALID_RANGES
             };
             D3D12_INFO_QUEUE_FILTER f = {};
-            f.DenyList.NumIDs = arraysize(hideMessages);
+            f.DenyList.NumIDs = (UINT)arraysize(hideMessages);
             f.DenyList.pIDList = hideMessages;
             pInfoQueue->AddStorageFilterEntries(&f);
 
@@ -455,7 +526,7 @@ namespace Falcor
                 ID3D12CommandQueuePtr pQueue;
                 if (FAILED(mApiHandle->CreateCommandQueue(&cqDesc, IID_PPV_ARGS(&pQueue))))
                 {
-                    logError("Failed to create command queue");
+                    reportError("Failed to create command queue");
                     return false;
                 }
 
@@ -464,7 +535,7 @@ namespace Falcor
         }
 
         uint64_t freq;
-        d3d_call(getCommandQueueHandle(LowLevelContextData::CommandQueueType::Direct, 0)->GetTimestampFrequency(&freq));
+        FALCOR_D3D_CALL(getCommandQueueHandle(LowLevelContextData::CommandQueueType::Direct, 0)->GetTimestampFrequency(&freq));
         mGpuTimestampFrequency = 1000.0 / (double)freq;
         return createSwapChain(mDesc.colorFormat);
     }
@@ -479,8 +550,8 @@ namespace Falcor
     void Device::apiResizeSwapChain(uint32_t width, uint32_t height, ResourceFormat colorFormat)
     {
         DXGI_SWAP_CHAIN_DESC desc;
-        d3d_call(mpApiData->pSwapChain->GetDesc(&desc));
-        d3d_call(mpApiData->pSwapChain->ResizeBuffers(kSwapChainBuffersCount, width, height, desc.BufferDesc.Format, desc.Flags));
+        FALCOR_D3D_CALL(mpApiData->pSwapChain->GetDesc(&desc));
+        FALCOR_D3D_CALL(mpApiData->pSwapChain->ResizeBuffers(kSwapChainBuffersCount, width, height, desc.BufferDesc.Format, desc.Flags));
     }
 
     bool Device::isWindowOccluded() const

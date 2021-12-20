@@ -79,6 +79,26 @@ namespace Falcor
         ComputeContextApiData::release();
     }
 
+    bool ComputeContext::applyComputeVars(ComputeVars* pVars, const ProgramKernels* pProgramKernels)
+    {
+        bool varsChanged = (pVars != mpLastBoundComputeVars);
+
+        // FIXME TODO Temporary workaround
+        varsChanged = true;
+
+        if (pVars->apply(this, varsChanged, pProgramKernels) == false)
+        {
+            logWarning("ComputeContext::applyComputeVars() - applying ComputeVars failed, most likely because we ran out of descriptors. Flushing the GPU and retrying");
+            flush(true);
+            if (!pVars->apply(this, varsChanged, pProgramKernels))
+            {
+                reportError("ComputeVars::applyComputeVars() - applying ComputeVars failed, most likely because we ran out of descriptors");
+                return false;
+            }
+        }
+        return true;
+    }
+
     bool ComputeContext::prepareForDispatch(ComputeState* pState, ComputeVars* pVars)
     {
         assert(pState);
@@ -88,9 +108,9 @@ namespace Falcor
         // Apply the vars. Must be first because applyComputeVars() might cause a flush
         if (pVars)
         {
-            if (applyComputeVars(pVars, pCSO->getDesc().getProgramKernels()->getRootSignature().get()) == false) return false;
+            if (applyComputeVars(pVars, pCSO->getDesc().getProgramKernels().get()) == false) return false;
         }
-        else mpLowLevelData->getCommandList()->SetComputeRootSignature(RootSignature::getEmpty()->getApiHandle());
+        else mpLowLevelData->getCommandList()->SetComputeRootSignature(D3D12RootSignature::getEmpty()->getApiHandle());
 
         mpLastBoundComputeVars = pVars;
         mpLowLevelData->getCommandList()->SetPipelineState(pCSO->getApiHandle());
@@ -105,7 +125,7 @@ namespace Falcor
             dispatchSize.y > D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION ||
             dispatchSize.z > D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION)
         {
-            logError("ComputePass::execute() - Dispatch dimension exceeds maximum. Skipping.");
+            reportError("ComputePass::execute() - Dispatch dimension exceeds maximum. Skipping.");
             return;
         }
 
@@ -113,19 +133,19 @@ namespace Falcor
         mpLowLevelData->getCommandList()->Dispatch(dispatchSize.x, dispatchSize.y, dispatchSize.z);
     }
 
-
     template<typename ClearType>
     void clearUavCommon(ComputeContext* pContext, const UnorderedAccessView* pUav, const ClearType& clear, ID3D12GraphicsCommandList* pList)
     {
-        pContext->resourceBarrier(pUav->getResource(), Resource::State::UnorderedAccess);
+        auto pResource = pUav->getResource();
+        pContext->resourceBarrier(pResource.get(), Resource::State::UnorderedAccess);
         UavHandle uav = pUav->getApiHandle();
         if (typeid(ClearType) == typeid(float4))
         {
-            pList->ClearUnorderedAccessViewFloat(uav->getGpuHandle(0), uav->getCpuHandle(0), pUav->getResource()->getApiHandle(), (float*)value_ptr(clear), 0, nullptr);
+            pList->ClearUnorderedAccessViewFloat(uav->getGpuHandle(0), uav->getCpuHandle(0), pResource->getApiHandle(), (float*)value_ptr(clear), 0, nullptr);
         }
         else if (typeid(ClearType) == typeid(uint4))
         {
-            pList->ClearUnorderedAccessViewUint(uav->getGpuHandle(0), uav->getCpuHandle(0), pUav->getResource()->getApiHandle(), (uint32_t*)value_ptr(clear), 0, nullptr);
+            pList->ClearUnorderedAccessViewUint(uav->getGpuHandle(0), uav->getCpuHandle(0), pResource->getApiHandle(), (uint32_t*)value_ptr(clear), 0, nullptr);
         }
         else
         {

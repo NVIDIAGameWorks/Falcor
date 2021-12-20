@@ -17,7 +17,7 @@ def patchGroup(propSheet, group, val):
 	return propSheet
 
 if(len(sys.argv) != 4):
-	sys.exit("Usage:\npatchpropssheet.py <Falcor Core Directory> <Current Solution Directory> <Backend [FALCOR_D3D12, FALCOR_VK]>")    
+	sys.exit("Usage:\npatchpropssheet.py <Falcor Core Directory> <Current Solution Directory> <Backend [FALCOR_D3D12, FALCOR_GFX]>")
 
 coreDir = sys.argv[1]
 solutionDir = sys.argv[2]

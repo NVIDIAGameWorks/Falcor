@@ -1,14 +1,14 @@
 # Create volumes
 
-sphereVolume = Volume('Sphere')
+sphereVolume = GridVolume('Sphere')
 sphereVolume.densityGrid = Grid.createSphere(1.0, 0.01)
 sphereVolume.densityScale = 0.5
-sceneBuilder.addVolume(sphereVolume)
+sceneBuilder.addGridVolume(sphereVolume)
 
-boxVolume = Volume('Box')
+boxVolume = GridVolume('Box')
 boxVolume.densityGrid = Grid.createBox(1.0, 1.0, 1.0, 0.01)
 boxVolume.densityScale = 2.5
-sceneBuilder.addVolume(boxVolume)
+sceneBuilder.addGridVolume(boxVolume)
 
 # Create camera
 

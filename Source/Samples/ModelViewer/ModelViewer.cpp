@@ -36,7 +36,7 @@ void ModelViewer::setModelString(double loadTime)
     //mModelString += std::to_string(pModel->getIndexCount()) + " indices, ";
     //mModelString += std::to_string(pModel->getPrimitiveCount()) + " primitives, ";
     mModelString += std::to_string(mpScene->getMeshCount()) + " meshes, ";
-    mModelString += std::to_string(mpScene->getMeshInstanceCount()) + " mesh instances, ";
+    mModelString += std::to_string(mpScene->getGeometryInstanceCount()) + " instances, ";
     mModelString += std::to_string(mpScene->getMaterialCount()) + " materials, ";
     //mModelString += std::to_string(pModel->getTextureCount()) + " textures, ";
     //mModelString += std::to_string(pModel->getBufferCount()) + " buffers.\n";
@@ -52,18 +52,20 @@ void ModelViewer::loadModelFromFile(const std::string& filename, ResourceFormat 
     if (mDontMergeMaterials) flags |= SceneBuilder::Flags::DontMergeMaterials;
     flags |= isSrgbFormat(fboFormat) ? SceneBuilder::Flags::None : SceneBuilder::Flags::AssumeLinearSpaceTextures;
 
-    SceneBuilder::SharedPtr pBuilder = SceneBuilder::create(filename, flags);
-
-    if (!pBuilder)
+    try
     {
-        msgBox("Could not load model");
+        mpScene = SceneBuilder::create(filename, flags)->getScene();
+    }
+    catch (const std::exception& e)
+    {
+        msgBox(fmt::format("Failed to load model.\n\n{}", e.what()));
         return;
     }
 
-    mpScene = pBuilder->getScene();
     mpProgram->addDefines(mpScene->getSceneDefines());
+    mpProgram->setTypeConformances(mpScene->getTypeConformances());
     mpProgramVars = GraphicsVars::create(mpProgram->getReflector());
-    mpScene->bindSamplerToMaterials(mUseTriLinearFiltering ? mpLinearSampler : mpPointSampler);
+    mpScene->getMaterialSystem()->setDefaultTextureSampler(mUseTriLinearFiltering ? mpLinearSampler : mpPointSampler);
     setCamController();
 
     timer.update();
@@ -124,7 +126,7 @@ void ModelViewer::onLoad(RenderContext* pRenderContext)
     mpGraphicsState = GraphicsState::create();
     mpGraphicsState->setProgram(mpProgram);
 
-    // create rasterizer state
+    // Create rasterizer state
     RasterizerState::Desc wireframeDesc;
     wireframeDesc.setFillMode(RasterizerState::FillMode::Wireframe);
     wireframeDesc.setCullMode(RasterizerState::CullMode::None);

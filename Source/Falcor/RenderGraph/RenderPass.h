@@ -40,7 +40,7 @@ namespace Falcor
 {
     /** Helper class that's passed to the user during `RenderPass::execute()`
     */
-    class dlldecl RenderData
+    class FALCOR_API RenderData
     {
     public:
         /** Get a resource
@@ -70,14 +70,17 @@ namespace Falcor
         /** Get the default format used for Texture2Ds (when `Unknown` is specified as the format in `RenderPassReflection`)
         */
         ResourceFormat getDefaultTextureFormat() const { return mDefaultTexFormat; }
+
     protected:
-        friend class RenderGraphExe;
         RenderData(const std::string& passName, const ResourceCache::SharedPtr& pResourceCache, const InternalDictionary::SharedPtr& pDict, const uint2& defaultTexDims, ResourceFormat defaultTexFormat);
+
         const std::string& mName;
         ResourceCache::SharedPtr mpResources;
         InternalDictionary::SharedPtr mpDictionary;
         uint2 mDefaultTexDims;
         ResourceFormat mDefaultTexFormat;
+
+        friend class RenderGraphExe;
     };
 
     /** Base class for render passes.
@@ -91,27 +94,48 @@ namespace Falcor
         and as part of the render graph compilation their compile() function is called.
         At runtime, execute() is called each frame to generate the pass outputs.
     */
-    class dlldecl RenderPass : public std::enable_shared_from_this<RenderPass>
+    class FALCOR_API RenderPass
     {
     public:
         using SharedPtr = std::shared_ptr<RenderPass>;
         virtual ~RenderPass() = default;
 
-        struct CompileData
+        // Render pass info.
+        struct Info
         {
-            RenderPassReflection connectedResources;
-            uint2 defaultTexDims;
-            ResourceFormat defaultTexFormat;
+            std::string type;   ///< Type name of the render pass. In general this should match the name of the class implementing the render pass.
+            std::string desc;   ///< Brief textural description of what the render pass does.
         };
 
-        /** Called once before compilation. Describes I/O requirements of the pass.
-            The requirements can't change after the graph is compiled. If the IO requests are dynamic, you'll need to trigger compilation of the render-graph yourself.
+        struct CompileData
+        {
+            uint2 defaultTexDims;                       ///< Default texture dimension (same as the swap chain size).
+            ResourceFormat defaultTexFormat;            ///< Default texture format (same as the swap chain format).
+            RenderPassReflection connectedResources;    ///< Reflection data for connected resources, if available. This field may be empty when reflect() is called.
+        };
+
+        /** Get the render pass info data.
+        */
+        const Info& getInfo() const { return mInfo; }
+
+        /** Get the render pass type.
+        */
+        const std::string& getType() const { return mInfo.type; }
+
+        /** Get the render pass description.
+        */
+        const std::string& getDesc() const { return mInfo.desc; }
+
+        /** Called before render graph compilation. Describes I/O requirements of the pass.
+            The function may be called repeatedly and should not perform any expensive operations.
+            The requirements can't change after the graph is compiled. If the I/O are dynamic, you'll need to
+            trigger re-compilation of the render graph yourself by calling 'requestRecompile()'.
         */
         virtual RenderPassReflection reflect(const CompileData& compileData) = 0;
 
         /** Will be called during graph compilation. You should throw an exception in case the compilation failed
         */
-        virtual void compile(RenderContext* pContext, const CompileData& compileData) {}
+        virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) {}
 
         /** Executes the pass.
         */
@@ -120,10 +144,6 @@ namespace Falcor
         /** Get a dictionary that can be used to reconstruct the object
         */
         virtual Dictionary getScriptingDictionary() { return {}; }
-
-        /** Get a string describing what the pass is doing
-        */
-        virtual std::string getDesc() = 0;
 
         /** Render the pass's UI
         */
@@ -153,9 +173,19 @@ namespace Falcor
         const std::string& getName() const { return mName; }
 
     protected:
-        friend class RenderGraph;
-        RenderPass() = default;
+        RenderPass(const Info& info) : mInfo(info) {}
+
+        /** Request a recompilation of the render graph.
+            Call this function if the I/O requirements of the pass have changed.
+            During the recompile, reflect() will be called for the pass to report the new requirements.
+        */
+        void requestRecompile() { mPassChangedCB(); }
+
+        const Info mInfo;
         std::string mName;
+
         std::function<void(void)> mPassChangedCB = [] {};
+
+        friend class RenderGraph;
     };
 }

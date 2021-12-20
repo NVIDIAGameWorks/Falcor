@@ -73,6 +73,6 @@ namespace Falcor
         data.pResourceHandle = createBuffer(getInitState(mType), size, getHeapProps(mType), Buffer::BindFlags::None);
         data.offset = 0;
         D3D12_RANGE readRange = {};
-        d3d_call(data.pResourceHandle->Map(0, &readRange, (void**)&data.pData));
+        FALCOR_D3D_CALL(data.pResourceHandle->Map(0, &readRange, (void**)&data.pData));
     }
 }

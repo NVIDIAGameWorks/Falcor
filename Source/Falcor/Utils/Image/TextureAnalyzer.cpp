@@ -32,6 +32,12 @@ namespace Falcor
 {
     namespace
     {
+        // Verify channel flags use same bit pattern as the shader.
+        static_assert((uint32_t)TextureChannelFlags::Red == 0x1);
+        static_assert((uint32_t)TextureChannelFlags::Green == 0x2);
+        static_assert((uint32_t)TextureChannelFlags::Blue == 0x4);
+        static_assert((uint32_t)TextureChannelFlags::Alpha == 0x8);
+
         const char kShaderFilename[] = "Utils/Image/TextureAnalyzer.cs.slang";
     }
 
@@ -119,15 +125,15 @@ namespace Falcor
         // Validate that input is supported.
         if (pInput->getDepth() > 1)
         {
-            throw std::runtime_error("TextureAnalyzer::analyze() - 3D textures are not supported");
+            throw RuntimeError("3D textures are not supported");
         }
         if (mipLevel >= pInput->getMipCount() || arraySlice >= pInput->getArraySize())
         {
-            throw std::runtime_error("TextureAnalyzer::analyze() - Mip level and/or array slice is out of range");
+            throw RuntimeError("Mip level and/or array slice is out of range");
         }
         if (pInput->getSampleCount() != 1)
         {
-            throw std::runtime_error("TextureAnalyzer::analyze() - Multi-sampled textures are not supported");
+            throw RuntimeError("Multi-sampled textures are not supported");
         }
 
         auto format = pInput->getFormat();
@@ -140,10 +146,10 @@ namespace Falcor
             break;
         case FormatType::Sint:
         case FormatType::Uint:
-            throw std::runtime_error("TextureAnalyzer::analyze() - Format " + to_string(format) + " is not supported");
+            throw RuntimeError("Format {} is not supported", to_string(format));
         default:
             assert(false);
-            throw std::runtime_error("Unknown format type");
+            throw RuntimeError("Unknown format type");
         }
     }
 }

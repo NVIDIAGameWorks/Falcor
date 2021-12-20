@@ -48,7 +48,7 @@ namespace Falcor
     //
     // Basic idea:  creating each alias table entry combines one overweighted sample and one underweighted sample
     // into one alias table entry plus a residual sample (the overweighted sample minus some of its weight).
-    // 
+    //
     // By first separating all inputs into 2 temporary buffer (one overweighted set, with weights above the
     // average; one underweighted set, with weights below average), we can simply walk through the lists once,
     // merging the first elements in each temporary buffer.  The residual sample is interted into either the
@@ -61,7 +61,7 @@ namespace Falcor
         : mCount((uint32_t)weights.size())
     {
         // Use >= since we reserve 0xFFFFFFFFu as an invalid flag marker during construction.
-        if (weights.size() >= std::numeric_limits<uint32_t>::max()) throw std::exception("Too many entries for alias table.");
+        if (weights.size() >= std::numeric_limits<uint32_t>::max()) throw RuntimeError("Too many entries for alias table.");
 
         std::uniform_int_distribution<uint32_t> rngDist;
 
@@ -96,8 +96,8 @@ namespace Falcor
             // Usual case:  We have an above-average and below-average sample we can combine into one alias table entry
             if ((lowIdx[i] != 0xFFFFFFFFu) && (highIdx[i] != 0xFFFFFFFFu))
             {
-                // Create an alias table tuple: 
-                items[i] = { weights[lowIdx[i]] / avgWeight, highIdx[i], lowIdx[i], 0 };  
+                // Create an alias table tuple:
+                items[i] = { weights[lowIdx[i]] / avgWeight, highIdx[i], lowIdx[i], 0 };
 
                 // We've removed some weight from element highIdx[i]; update it's weight, then re-enter it
                 // on the end of either the above-average or below-average lists.
@@ -127,7 +127,7 @@ namespace Falcor
                 items[i] = { 1.0f, lowIdx[i], lowIdx[i], 0 };
             }
 
-            // If there is neither a highIdx[i] or lowIdx[i] for some array element(s).  By construction, 
+            // If there is neither a highIdx[i] or lowIdx[i] for some array element(s).  By construction,
             // this cannot occur (without some logic bug above).
             else
             {

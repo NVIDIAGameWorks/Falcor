@@ -28,7 +28,7 @@
 #include "FXAA/FXAA.h"
 #include "TAA/TAA.h"
 
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" FALCOR_API_EXPORT const char* getProjDir()
 {
     return PROJECT_DIR;
 }
@@ -49,10 +49,10 @@ static void regTAA(pybind11::module& m)
     pass.def_property("sigma", &TAA::getColorBoxSigma, &TAA::setColorBoxSigma);
 }
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
 {
-    lib.registerClass("FXAA", "Fast Approximate Anti-Aliasing", FXAA::create);
-    lib.registerClass("TAA", "Temporal Anti-Aliasing", TAA::create);
+    lib.registerPass(FXAA::kInfo, FXAA::create);
+    lib.registerPass(TAA::kInfo, TAA::create);
     ScriptBindings::registerBinding(regFXAA);
     ScriptBindings::registerBinding(regTAA);
 }

@@ -35,7 +35,7 @@ namespace Falcor
 {
     class Gui;
 
-    class dlldecl Scripting
+    class FALCOR_API Scripting
     {
     public:
         static const FileDialogFilterVec kFileExtensionFilters;

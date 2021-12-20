@@ -30,7 +30,7 @@
 
 using namespace Falcor;
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib);
+extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib);
 
 /** Base class for the different types of G-buffer passes (including V-buffer).
 */
@@ -46,27 +46,30 @@ public:
     };
 
     virtual void renderUI(Gui::Widgets& widget) override;
-    virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual Dictionary getScriptingDictionary() override;
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
 
 protected:
-    GBufferBase() = default;
+    GBufferBase(const Info& info) : RenderPass(info) {}
     virtual void parseDictionary(const Dictionary& dict);
     virtual void setCullMode(RasterizerState::CullMode mode) { mCullMode = mode; }
+    void updateFrameDim(const uint2 frameDim);
     void updateSamplePattern();
+    Texture::SharedPtr getOutput(const RenderData& renderData, const std::string& name) const;
 
     // Internal state
     Scene::SharedPtr                mpScene;
-    CPUSampleGenerator::SharedPtr   mpSampleGenerator;
+    CPUSampleGenerator::SharedPtr   mpSampleGenerator;                              ///< Sample generator for camera jitter.
 
-    uint32_t                        mFrameCount = 0;
-    uint2                           mFrameDim = {};
+    uint32_t                        mFrameCount = 0;                                ///< Frames rendered since last change of scene. This is used as random seed.
+    uint2                           mFrameDim = {};                                 ///< Current frame dimension in pixels. Note this may be different from the window size.
     float2                          mInvFrameDim = {};
     ResourceFormat                  mVBufferFormat = HitInfo::kDefaultFormat;
 
     // UI variables
+    RenderPassHelpers::IOSize       mOutputSizeSelection = RenderPassHelpers::IOSize::Default; ///< Selected output size.
+    uint2                           mFixedOutputSize = { 512, 512 };                ///< Output size in pixels when 'Fixed' size is selected.
     SamplePattern                   mSamplePattern = SamplePattern::Center;         ///< Which camera jitter sample pattern to use.
     uint32_t                        mSampleCount = 16;                              ///< Sample count for camera jitter.
     bool                            mUseAlphaTest = true;                           ///< Enable alpha test.

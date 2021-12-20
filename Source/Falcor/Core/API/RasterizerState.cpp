@@ -30,7 +30,7 @@
 
 namespace Falcor
 {
-    SCRIPT_BINDING(RasterizerState)
+    FALCOR_SCRIPT_BINDING(RasterizerState)
     {
         pybind11::class_<RasterizerState, RasterizerState::SharedPtr>(m, "RasterizerState");
 

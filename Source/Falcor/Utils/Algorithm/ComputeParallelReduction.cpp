@@ -73,12 +73,12 @@ namespace Falcor
     template<typename T>
     bool ComputeParallelReduction::execute(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, T* pResult, Buffer::SharedPtr pResultBuffer, uint64_t resultOffset)
     {
-        PROFILE("ComputeParallelReduction::execute");
+        FALCOR_PROFILE("ComputeParallelReduction::execute");
 
         // Check texture array/mip/sample count.
         if (pInput->getArraySize() != 1 || pInput->getMipCount() != 1 || pInput->getSampleCount() != 1)
         {
-            logError("ComputeParallelReduction::execute() - Input texture is unsupported. Aborting.");
+            reportError("ComputeParallelReduction::execute() - Input texture is unsupported. Aborting.");
             return false;
         }
 
@@ -98,7 +98,7 @@ namespace Falcor
             formatType = FORMAT_TYPE_UINT;
             break;
         default:
-            logError("ComputeParallelReduction::execute() - Input texture format unsupported. Aborting.");
+            reportError("ComputeParallelReduction::execute() - Input texture format unsupported. Aborting.");
             return false;
         }
 
@@ -108,7 +108,7 @@ namespace Falcor
             (formatType == FORMAT_TYPE_SINT && (!std::is_integral<T::value_type>::value || !std::is_signed<T::value_type>::value)) ||
             (formatType == FORMAT_TYPE_UINT && (!std::is_integral<T::value_type>::value || !std::is_unsigned<T::value_type>::value)))
         {
-            logError("ComputeParallelReduction::execute() - Template type T is not compatible with resource format. Aborting.");
+            reportError("ComputeParallelReduction::execute() - Template type T is not compatible with resource format. Aborting.");
             return false;
         }
 
@@ -125,7 +125,7 @@ namespace Falcor
             elementSize = 2;
             break;
         default:
-            logError("ComputeParallelReduction::execute() - Unknown reduction type. Aborting.");
+            reportError("ComputeParallelReduction::execute() - Unknown reduction type. Aborting.");
             return false;
         }
 
@@ -186,7 +186,7 @@ namespace Falcor
         {
             if (resultOffset + resultSize > pResultBuffer->getSize())
             {
-                logError("ComputeParallelReduction::execute() - Results buffer is too small. Aborting.");
+                reportError("ComputeParallelReduction::execute() - Results buffer is too small. Aborting.");
                 return false;
             }
 
@@ -206,7 +206,7 @@ namespace Falcor
     }
 
     // Explicit template instantiation of the supported types.
-    template dlldecl bool ComputeParallelReduction::execute<float4>(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, float4* pResult, Buffer::SharedPtr pResultBuffer, uint64_t resultOffset);
-    template dlldecl bool ComputeParallelReduction::execute<int4>(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, int4* pResult, Buffer::SharedPtr pResultBuffer, uint64_t resultOffset);
-    template dlldecl bool ComputeParallelReduction::execute<uint4>(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, uint4* pResult, Buffer::SharedPtr pResultBuffer, uint64_t resultOffset);
+    template FALCOR_API bool ComputeParallelReduction::execute<float4>(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, float4* pResult, Buffer::SharedPtr pResultBuffer, uint64_t resultOffset);
+    template FALCOR_API bool ComputeParallelReduction::execute<int4>(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, int4* pResult, Buffer::SharedPtr pResultBuffer, uint64_t resultOffset);
+    template FALCOR_API bool ComputeParallelReduction::execute<uint4>(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, uint4* pResult, Buffer::SharedPtr pResultBuffer, uint64_t resultOffset);
 }

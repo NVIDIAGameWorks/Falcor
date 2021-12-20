@@ -198,7 +198,7 @@ void drawBox(float2 coords, int voxelX, int voxelY, float2 _p00, float2 _p10, fl
     }
 }
 
-float4 main(in float2 texC : TEXCOORD) : SV_TARGET
+float4 main(float2 texC : TEXCOORD) : SV_TARGET
 {
     const float blendRadius = 1.0 / min(iResolution.x, iResolution.y);
     const float circleRadius = 0.005;

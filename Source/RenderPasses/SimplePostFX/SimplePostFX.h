@@ -27,7 +27,6 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "FalcorExperimental.h"
 
 using namespace Falcor;
 
@@ -36,6 +35,8 @@ class SimplePostFX : public RenderPass
 public:
     using SharedPtr = std::shared_ptr<SimplePostFX>;
 
+    static const Info kInfo;
+
     /** Create a new render pass object.
         \param[in] pRenderContext The render context.
         \param[in] dict Dictionary of serialized parameters.
@@ -43,10 +44,9 @@ public:
     */
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
-    virtual std::string getDesc() override;
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
-    virtual void compile(RenderContext* pContext, const CompileData& compileData) override {}
+    virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override {}
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override {}
@@ -90,15 +90,18 @@ private:
 
     const static int kNumLevels = 8;
 
+    RenderPassHelpers::IOSize mOutputSizeSelection = RenderPassHelpers::IOSize::Default;    ///< Selected output size.
+    uint2 mFixedOutputSize = { 512, 512 };                                                  ///< Output size in pixels when 'Fixed' size is selected.
+
     ComputePass::SharedPtr      mpDownsamplePass;
     ComputePass::SharedPtr      mpUpsamplePass;
     ComputePass::SharedPtr      mpPostFXPass;
 
-    Texture::SharedPtr          mpPyramid[kNumLevels + 1];                    ///< Image pyramid, fine to coarse, full res down in steps of 4x (16x area).
+    Texture::SharedPtr          mpPyramid[kNumLevels + 1];                  ///< Image pyramid, fine to coarse, full res down in steps of 4x (16x area).
     Sampler::SharedPtr          mpLinearSampler;
 
-    float   mWipe = 0.f;                                                    ///< Wipe across to see the effect without fx. 0<=all effect, 1>= disabled
-    bool    mEnabled = true;                                                ///< Enable the entire pass
+    float   mWipe = 0.f;                                                    ///< Wipe across to see the effect without fx. 0<=all effect, 1>= disabled.
+    bool    mEnabled = true;                                                ///< Enable the entire pass.
 
     float   mBloomAmount = 0.f;                                             ///< Amount of bloom.
     float   mStarAmount = 0.f;                                              ///< how much of a 6 pointed star to add to the bloom kernel.

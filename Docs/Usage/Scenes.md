@@ -117,9 +117,9 @@ GraphicsVars::SharedPtr pProgramVars = GraphicsVars::create(pProgram->getReflect
 
 ### Rasterization
 
-The output of the default vertex shader includes two parameters: `meshInstanceID`, and `materialID` which can be used to look up data for the current mesh being rendered.
+The output of the default vertex shader includes two parameters: `instanceID`, and `materialID` which can be used to look up data for the current mesh being rendered.
 ```c++
-gScene.meshInstances[vertexOut.meshInstanceID];
+gScene.geometryInstances[vertexOut.instanceID];
 gScene.materials[vertexOut.materialID];
 ```
 
@@ -138,7 +138,7 @@ float4 main(VSOut vertexOut, float4 pixelCrd : SV_POSITION, uint triangleIndex :
 
 ### Raytracing
 
-Use the helper function in `Scene/Raytracing.slang` called `getGlobalInstanceID()` to calculate the equivalent of what `meshInstanceID` would be in raster, which can be used in the same way to look up geometry and material data.
+Use the helper function in `Scene/Raytracing.slang` called `getGeometryInstanceID()` to calculate the equivalent of what `instanceID` would be in raster, which can be used in the same way to look up geometry and material data.
 
 ```c++
 import Scene.Raytracing;

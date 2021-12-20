@@ -51,8 +51,6 @@ void HelloDXR::onGuiRender(Gui* pGui)
 void HelloDXR::loadScene(const std::string& filename, const Fbo* pTargetFbo)
 {
     mpScene = Scene::create(filename);
-    if (!mpScene) return;
-
     mpCamera = mpScene->getCamera();
 
     // Update the controllers
@@ -63,7 +61,14 @@ void HelloDXR::loadScene(const std::string& filename, const Fbo* pTargetFbo)
     mpCamera->setDepthRange(nearZ, farZ);
     mpCamera->setAspectRatio((float)pTargetFbo->getWidth() / (float)pTargetFbo->getHeight());
 
+    // Get type conformances for types used by the scene.
+    // These need to be set on the program in order to fully use Falcor's material system.
+    auto typeConformances = mpScene->getTypeConformances();
+
+    // Create raster pass.
+    // This utility wraps the creation of the program and vars, and sets the necessary scene defines.
     mpRasterPass = RasterScenePass::create(mpScene, "Samples/HelloDXR/HelloDXR.ps.slang", "", "main");
+    mpRasterPass->getProgram()->setTypeConformances(typeConformances);
 
     // We'll now create a raytracing program. To do that we need to setup two things:
     // - A program description (RtProgram::Desc). This holds all shader entry points, compiler flags, macro defintions, etc.
@@ -75,7 +80,6 @@ void HelloDXR::loadScene(const std::string& filename, const Fbo* pTargetFbo)
 
     RtProgram::Desc rtProgDesc;
     rtProgDesc.addShaderLibrary("Samples/HelloDXR/HelloDXR.rt.slang");
-    rtProgDesc.addDefines(mpScene->getSceneDefines());
     rtProgDesc.setMaxTraceRecursionDepth(3); // 1 for calling TraceRay from RayGen, 1 for calling it from the primary-ray ClosestHit shader for reflections, 1 for reflection ray tracing a shadow ray
     rtProgDesc.setMaxPayloadSize(24); // The largest ray payload struct (PrimaryRayData) is 24 bytes. The payload size should be set as small as possible for maximum performance.
 
@@ -85,10 +89,11 @@ void HelloDXR::loadScene(const std::string& filename, const Fbo* pTargetFbo)
     sbt->setMiss(1, rtProgDesc.addMiss("shadowMiss"));
     auto primary = rtProgDesc.addHitGroup("primaryClosestHit", "primaryAnyHit");
     auto shadow = rtProgDesc.addHitGroup("", "shadowAnyHit");
-    sbt->setHitGroupByType(0, mpScene, Scene::GeometryType::TriangleMesh, primary);
-    sbt->setHitGroupByType(1, mpScene, Scene::GeometryType::TriangleMesh, shadow);
+    sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), primary);
+    sbt->setHitGroup(1, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), shadow);
 
-    mpRaytraceProgram = RtProgram::create(rtProgDesc);
+    mpRaytraceProgram = RtProgram::create(rtProgDesc, mpScene->getSceneDefines());
+    mpRaytraceProgram->setTypeConformances(typeConformances);
     mpRtVars = RtProgramVars::create(mpRaytraceProgram, sbt);
 }
 
@@ -96,7 +101,7 @@ void HelloDXR::onLoad(RenderContext* pRenderContext)
 {
     if (gpDevice->isFeatureSupported(Device::SupportedFeatures::Raytracing) == false)
     {
-        logFatal("Device does not support raytracing!");
+        throw RuntimeError("Device does not support raytracing!");
     }
 
     loadScene(kDefaultScene, gpFramework->getTargetFbo().get());
@@ -104,7 +109,7 @@ void HelloDXR::onLoad(RenderContext* pRenderContext)
 
 void HelloDXR::setPerFrameVars(const Fbo* pTargetFbo)
 {
-    PROFILE("setPerFrameVars");
+    FALCOR_PROFILE("setPerFrameVars");
     auto cb = mpRtVars["PerFrameCB"];
     cb["invView"] = glm::inverse(mpCamera->getViewMatrix());
     cb["viewportDims"] = float2(pTargetFbo->getWidth(), pTargetFbo->getHeight());
@@ -112,17 +117,17 @@ void HelloDXR::setPerFrameVars(const Fbo* pTargetFbo)
     cb["tanHalfFovY"] = std::tan(fovY * 0.5f);
     cb["sampleIndex"] = mSampleIndex++;
     cb["useDOF"] = mUseDOF;
-    mpRtVars->getRayGenVars()["gOutput"] = mpRtOut;
+    mpRtVars["gOutput"] = mpRtOut;
 }
 
 void HelloDXR::renderRT(RenderContext* pContext, const Fbo* pTargetFbo)
 {
-    PROFILE("renderRT");
+    FALCOR_PROFILE("renderRT");
 
     assert(mpScene);
     if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged))
     {
-        throw std::runtime_error("This sample does not support scene geometry changes. Aborting.");
+        throw RuntimeError("This sample does not support scene geometry changes.");
     }
 
     setPerFrameVars(pTargetFbo);

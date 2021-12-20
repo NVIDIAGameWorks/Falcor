@@ -39,10 +39,10 @@ namespace Falcor
 
     const Fbo::ApiHandle& Fbo::getApiHandle() const
     {
-        UNSUPPORTED_IN_D3D12("Fbo::getApiHandle()");
+        FALCOR_UNSUPPORTED_IN_D3D12("Fbo::getApiHandle()");
         return mApiHandle;
     }
-    
+
     uint32_t Fbo::getMaxColorTargetCount()
     {
         return D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT;

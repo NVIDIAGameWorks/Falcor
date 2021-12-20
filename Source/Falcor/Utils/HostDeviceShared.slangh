@@ -35,19 +35,24 @@
 #define HOST_CODE 1
 #endif
 
+// TODO: Replace by bit packing functions
+#define EXTRACT_BITS(bits, offset, value) (((value) >> (offset)) & ((1 << (bits)) - 1))
+#define PACK_BITS(bits, offset, flags, value) ((((value) & ((1 << (bits)) - 1)) << (offset)) | ((flags) & (~(((1 << (bits)) - 1) << (offset)))))
 
 #ifdef HOST_CODE
 /*******************************************************************
                     CPU declarations
 *******************************************************************/
-#include "Utils/Math/Vector.h"
-#include "glm/packing.hpp"
-#include <algorithm>
-
 #define BEGIN_NAMESPACE_FALCOR namespace Falcor{
 #define END_NAMESPACE_FALCOR }
 #define SETTER_DECL
 #define CONST_FUNCTION const
+
+
+#include "Utils/Math/Vector.h"
+#include "Utils/Math/Float16.h"
+#include "glm/packing.hpp"
+#include <algorithm>
 
 namespace Falcor
 {
@@ -85,8 +90,10 @@ namespace Falcor
 
     inline float asfloat(uint32_t i) { return bit_cast<float>(i); }
     inline float asfloat(int32_t i) { return bit_cast<float>(i); }
-    inline uint32_t asuint(float i) { return bit_cast<uint32_t>(i); }
-    inline int32_t asint(float i) { return bit_cast<int32_t>(i); }
+    inline float16_t asfloat16(uint16_t i) { return bit_cast<float16_t>(i); }
+    inline uint32_t asuint(float f) { return bit_cast<uint32_t>(f); }
+    inline int32_t asint(float f) { return bit_cast<int32_t>(f); }
+    inline uint16_t asuint16(float16_t f) { return bit_cast<uint16_t>(f); }
 }
 
 #else

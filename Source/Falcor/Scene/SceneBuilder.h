@@ -35,7 +35,7 @@
 
 namespace Falcor
 {
-    class dlldecl SceneBuilder
+    class FALCOR_API SceneBuilder
     {
     public:
         using SharedPtr = std::shared_ptr<SceneBuilder>;
@@ -62,6 +62,7 @@ namespace Falcor
             DontOptimizeGraph           = 0x1000, ///< Don't optimize the scene graph to remove unnecessary nodes.
             DontOptimizeMaterials       = 0x2000, ///< Don't optimize materials by removing constant textures. The optimizations are lossless so should generally be enabled.
             DontUseDisplacement         = 0x4000, ///< Don't use displacement mapping.
+            UseCompressedHitInfo        = 0x8000, ///< Use compressed hit info (on scenes with triangle meshes only).
 
             UseCache                    = 0x10000000, ///< Enable scene caching. This caches the runtime scene representation on disk to reduce load time.
             RebuildCache                = 0x20000000, ///< Rebuild scene cache.
@@ -312,16 +313,16 @@ namespace Falcor
             \param filename The filename to load
             \param flags The build flags
             \param instances A list of instance matrices to load. This is optional, by default a single instance will be load
-            \return A new object with the imported file already initialized. If an import error occurred, a nullptr will be returned
+            \return A new object with the imported file already initialized, or throws an ImporterError if importing went wrong.
         */
         static SharedPtr create(const std::string& filename, Flags buildFlags = Flags::Default, const InstanceMatrices& instances = InstanceMatrices());
 
         /** Import a scene/model file
             \param filename The filename to load
             \param instances A list of instance matrices to load. This is optional, by default a single instance will be load
-            \return true if the import succeeded, otherwise false
+            Throws an ImporterError if something went wrong.
         */
-        bool import(const std::string& filename, const InstanceMatrices& instances = InstanceMatrices(), const Dictionary& dict = Dictionary());
+        void import(const std::string& filename, const InstanceMatrices& instances = InstanceMatrices(), const Dictionary& dict = Dictionary());
 
         /** Get the scene. Make sure to add all the objects before calling this function
             \return nullptr if something went wrong, otherwise a new Scene object
@@ -430,26 +431,35 @@ namespace Falcor
         /** Set curve vertex cache for animation.
             \param[in] cachedCurves The dynamic curve vertex cache data.
         */
-        void setCachedCurves(const std::vector<CachedCurve>& cachedCurves) { mSceneData.cachedCurves = cachedCurves; }
+        void setCachedCurves(std::vector<CachedCurve>&& cachedCurves) { mSceneData.cachedCurves = std::move(cachedCurves); }
+
+        // SDFs
+
+        /** Add an SDF grid.
+            \param pSDFGrid The SDF grid.
+            \param pMaterial The material to be used by this SDF grid.
+            \return The ID of the SDG grid desc in the scene.
+        */
+        uint32_t addSDFGrid(const SDFGrid::SharedPtr& pSDFGrid, const Material::SharedPtr& pMaterial);
 
         // Materials
 
         /** Get the list of materials.
         */
-        const std::vector<Material::SharedPtr>& getMaterials() const { return mSceneData.materials; }
+        const std::vector<Material::SharedPtr>& getMaterials() const { return mSceneData.pMaterials->getMaterials(); }
 
         /** Get a material by name.
             Note: This returns the first material found with a matching name.
             \param name Material name.
             \return Returns the first material with a matching name or nullptr if none was found.
         */
-        Material::SharedPtr getMaterial(const std::string& name) const;
+        Material::SharedPtr getMaterial(const std::string& name) const { return mSceneData.pMaterials->getMaterialByName(name); }
 
         /** Add a material.
             \param pMaterial The material.
             \return The ID of the material in the scene.
         */
-        uint32_t addMaterial(const Material::SharedPtr& pMaterial);
+        uint32_t addMaterial(const Material::SharedPtr& pMaterial) { return mSceneData.pMaterials->addMaterial(pMaterial); }
 
         /** Request loading a material texture.
             \param[in] pMaterial Material to load texture into.
@@ -464,23 +474,23 @@ namespace Falcor
 
         // Volumes
 
-        /** Get the list of volumes.
+        /** Get the list of grid volumes.
         */
-        const std::vector<Volume::SharedPtr>& getVolumes() const { return mSceneData.volumes; }
+        const std::vector<GridVolume::SharedPtr>& getGridVolumes() const { return mSceneData.gridVolumes; }
 
-        /** Get a volume by name.
+        /** Get a grid volume by name.
             Note: This returns the first volume found with a matching name.
             \param name Volume name.
             \return Returns the first volume with a matching name or nullptr if none was found.
         */
-        Volume::SharedPtr getVolume(const std::string& name) const;
+        GridVolume::SharedPtr getGridVolume(const std::string& name) const;
 
-        /** Add a volume.
-            \param pMaterial The volume.
+        /** Add a grid volume.
+            \param pGridVolume The grid volume.
             \param nodeID The node to attach the volume to (optional).
             \return The ID of the volume in the scene.
         */
-        uint32_t addVolume(const Volume::SharedPtr& pVolume, uint32_t nodeID = kInvalidNode);
+        uint32_t addGridVolume(const GridVolume::SharedPtr& pGridVolume, uint32_t nodeID = kInvalidNode);
 
         // Lights
 
@@ -580,6 +590,10 @@ namespace Falcor
         */
         void addCurveInstance(uint32_t nodeID, uint32_t curveID);
 
+        /** Add an SDF grid instance to a node.
+        */
+        void addSDFGridInstance(uint32_t nodeID, uint32_t sdfGridID);
+
         /** Check if a scene node is animated. This check is done recursively through parent nodes.
             \return Returns true if node is animated.
         */
@@ -599,12 +613,13 @@ namespace Falcor
             std::vector<uint32_t> children;         ///< Node IDs of all child nodes.
             std::vector<uint32_t> meshes;           ///< Mesh IDs of all meshes this node transforms.
             std::vector<uint32_t> curves;           ///< Curve IDs of all curves this node transforms.
+            std::vector<uint32_t> sdfGrids;         ///< SDF grid IDs of all SDF grids this node transforms.
             std::vector<Animatable*> animatable;    ///< Pointers to all animatable objects attached to this node.
             bool dontOptimize = false;              ///< Whether node should be ignored in optimization passes
 
             /** Returns true if node has any attached scene objects.
             */
-            bool hasObjects() const { return !meshes.empty() || !curves.empty() || !animatable.empty(); }
+            bool hasObjects() const { return !meshes.empty() || !curves.empty() || !sdfGrids.empty() || !animatable.empty(); }
         };
 
         struct MeshSpec
@@ -699,6 +714,7 @@ namespace Falcor
         bool collapseNodes(uint32_t parentNodeID, uint32_t childNodeID);
         bool mergeNodes(uint32_t dstNodeID, uint32_t srcNodeID);
         void flipTriangleWinding(MeshSpec& mesh);
+        void updateSDFGridID(uint32_t oldID, uint32_t newID);
 
         /** Split a mesh by the given axis-aligned splitting plane.
             \return Pair of optional mesh IDs for the meshes on the left and right side, respectively.
@@ -734,11 +750,13 @@ namespace Falcor
         void removeDuplicateMaterials();
         void collectVolumeGrids();
         void quantizeTexCoords();
+        void removeDuplicateSDFGrids();
 
         // Scene setup
         void createMeshData();
-        void createMeshInstanceData();
+        void createMeshInstanceData(uint32_t& tlasInstanceIndex);
         void createCurveData();
+        void createCurveInstanceData(uint32_t& tlasInstanceIndex);
         void createSceneGraph();
         void createMeshBoundingBoxes();
         void calculateCurveBoundingBoxes();
@@ -746,5 +764,5 @@ namespace Falcor
         friend class SceneCache;
     };
 
-    enum_class_operators(SceneBuilder::Flags);
+    FALCOR_ENUM_CLASS_OPERATORS(SceneBuilder::Flags);
 }

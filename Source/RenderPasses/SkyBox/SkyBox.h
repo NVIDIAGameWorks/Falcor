@@ -27,7 +27,6 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "FalcorExperimental.h"
 
 using namespace Falcor;
 
@@ -36,11 +35,10 @@ class SkyBox : public RenderPass
 public:
     using SharedPtr = std::shared_ptr<SkyBox>;
 
-    static const char* kDesc;
+    static const Info kInfo;
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
-    std::string getDesc() override { return kDesc; }
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;

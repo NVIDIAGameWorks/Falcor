@@ -32,7 +32,7 @@ namespace Falcor
 {
     class Scene;
 
-    class dlldecl RenderGraphIR
+    class FALCOR_API RenderGraphIR
     {
     public:
         using SharedPtr = std::shared_ptr<RenderGraphIR>;
@@ -45,7 +45,7 @@ namespace Falcor
         void removePass(const std::string& passName);
         void addEdge(const std::string& src, const std::string& dst);
         void removeEdge(const std::string& src, const std::string& dst);
-        void markOutput(const std::string& name);
+        void markOutput(const std::string& name, const TextureChannelFlags mask = TextureChannelFlags::RGB);
         void unmarkOutput(const std::string& name);
         void loadPassLibrary(const std::string& name);
 

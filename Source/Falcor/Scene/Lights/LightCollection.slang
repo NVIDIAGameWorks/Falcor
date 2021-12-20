@@ -25,8 +25,6 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Scene/Material/MaterialDefines.slangh"
-
 import Utils.Attributes;
 import Scene.SceneTypes;
 import Scene.ShadingData;

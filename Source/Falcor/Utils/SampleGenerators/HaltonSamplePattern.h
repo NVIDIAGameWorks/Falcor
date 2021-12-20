@@ -30,7 +30,7 @@
 
 namespace Falcor
 {
-    class dlldecl HaltonSamplePattern : public CPUSampleGenerator
+    class FALCOR_API HaltonSamplePattern : public CPUSampleGenerator
     {
     public:
         using SharedPtr = std::shared_ptr<HaltonSamplePattern>;

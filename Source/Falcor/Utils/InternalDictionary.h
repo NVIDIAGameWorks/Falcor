@@ -87,7 +87,7 @@ namespace Falcor
         T getValue(const std::string& key)
         {
             auto it = mContainer.find(key);
-            if (it == mContainer.end()) throw std::exception(("Key '" + key + "' does not exist").c_str());
+            if (it == mContainer.end()) throw ArgumentError("Key '{}' does not exist", key);
             return it->second;
         }
 

@@ -89,6 +89,123 @@ uint packSnorm2x8(precise float2 v)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+//                              8-bit unorm
+///////////////////////////////////////////////////////////////////////////////
+
+/** Convert float value to 8-bit unorm (unsafe version).
+    \param[in] v Float value assumed to be in [0,1].
+    \return 8-bit unorm in low bits, high bits all zeros.
+*/
+uint packUnorm8_unsafe(float v)
+{
+    return (uint)trunc(v * 255.f + 0.5f);
+}
+
+/** Convert float value to 8-bit unorm.
+    Values outside [0,1] are clamped and NaN is encoded as zero.
+    \param[in] v Float value.
+    \return 8-bit unorm in low bits, high bits all zeros.
+*/
+uint packUnorm8(float v)
+{
+    v = isnan(v) ? 0.f : saturate(v);
+    return packUnorm8_unsafe(v);
+}
+
+/** Pack two floats into 8-bit unorm values.
+    Values outside [0,1] are clamped and NaN is encoded as zero.
+    \param[in] v Two float values.
+    \return Packed 8-bit unorm values in low bits, high bits all zeros.
+*/
+uint packUnorm2x8(float2 v)
+{
+    return (packUnorm8(v.y) << 8) | packUnorm8(v.x);
+}
+
+/** Pack two floats into 8-bit unorm values (unsafe version)
+    \param[in] v Two float values assumed to be in [0,1].
+    \return Packed 8-bit unorm values in low bits, high bits all zeros.
+*/
+uint packUnorm2x8_unsafe(float2 v)
+{
+    return (packUnorm8_unsafe(v.y) << 8) | packUnorm8_unsafe(v.x);
+}
+
+/** Pack three floats into 8-bit unorm values.
+    Values outside [0,1] are clamped and NaN is encoded as zero.
+    \param[in] v Three float values.
+    \return Packed 8-bit unorm values in low bits, high bits all zeros.
+*/
+uint packUnorm3x8(float3 v)
+{
+    return (packUnorm8(v.z) << 16) | (packUnorm8(v.y) << 8) | packUnorm8(v.x);
+}
+
+/** Pack three floats into 8-bit unorm values (unsafe version)
+    \param[in] v Three float values assumed to be in [0,1].
+    \return Packed 8-bit unorm values in low bits, high bits all zeros.
+*/
+uint packUnorm3x8_unsafe(float3 v)
+{
+    return (packUnorm8_unsafe(v.z) << 16) | (packUnorm8_unsafe(v.y) << 8) | packUnorm8_unsafe(v.x);
+}
+
+/** Pack four floats into 8-bit unorm values.
+    Values outside [0,1] are clamped and NaN is encoded as zero.
+    \param[in] v Four float values.
+    \return Packed 8-bit unorm values.
+*/
+uint packUnorm4x8(float4 v)
+{
+    return (packUnorm8(v.w) << 24) | (packUnorm8(v.z) << 16) | (packUnorm8(v.y) << 8) | packUnorm8(v.x);
+}
+
+/** Pack four floats into 8-bit unorm values (unsafe version)
+    \param[in] v Four float values assumed to be in [0,1].
+    \return Packed 8-bit unorm values.
+*/
+uint packUnorm4x8_unsafe(float4 v)
+{
+    return (packUnorm8_unsafe(v.w) << 24) | (packUnorm8_unsafe(v.z) << 16) | (packUnorm8_unsafe(v.y) << 8) | packUnorm8_unsafe(v.x);
+}
+
+/** Convert 8-bit unorm to float value.
+    \param[in] packed 8-bit unorm in low bits, high bits don't care.
+    \return Float value in [0,1].
+*/
+float unpackUnorm8(uint packed)
+{
+    return float(packed & 0xff) * (1.f / 255);
+}
+
+/** Unpack two 8-bit unorm values.
+    \param[in] packed 8-bit unorm values in low bits, high bits don't care.
+    \return Two float values in [0,1].
+*/
+float2 unpackUnorm2x8(uint packed)
+{
+    return float2(uint2(packed, packed >> 8) & 0xff) * (1.f / 255);
+}
+
+/** Unpack three 8-bit unorm values.
+    \param[in] packed 8-bit unorm values in low bits, high bits don't care.
+    \return Three float values in [0,1].
+*/
+float3 unpackUnorm3x8(uint packed)
+{
+    return float3(uint3(packed, packed >> 8, packed >> 16) & 0xff) * (1.f / 255);
+}
+
+/** Unpack four 8-bit unorm values.
+    \param[in] packed 8-bit unorm values.
+    \return Four float values in [0,1].
+*/
+float4 unpackUnorm4x8(uint packed)
+{
+    return float4(uint4(packed, packed >> 8, packed >> 16, packed >> 24) & 0xff) * (1.f / 255);
+}
+
+///////////////////////////////////////////////////////////////////////////////
 //                              16-bit snorm
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -139,7 +256,6 @@ uint packSnorm2x16(precise float2 v)
 {
     return (floatToSnorm16(v.x) & 0x0000ffff) | (floatToSnorm16(v.y) << 16);
 }
-
 
 ///////////////////////////////////////////////////////////////////////////////
 //                              16-bit unorm
@@ -222,4 +338,24 @@ float3 unpackR11G11B10(uint packed)
     float g = f16tof32((packed >> 7 ) & 0x7FF0);
     float b = f16tof32((packed >> 17) & 0x7FE0);
     return float3(r, g, b);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//                          64-bit unsigned integer
+///////////////////////////////////////////////////////////////////////////////
+
+/** Encodes the 32-bit unsigned integers of v in a 64-bit unsigned integer.
+    v.x will become the low bits of the return value while v.y will become the high bits.
+*/
+uint64_t u2x32to64(uint2 v)
+{
+    return (uint64_t(v.y) << 32) | uint64_t(v.x);
+}
+
+/** Encodes the 64-bit unsigned integer v in two 32-bit unsigned integers.
+    The return value will store the low bits of v in the x-component and the high bits of v in the y-component.
+*/
+uint2 u64to2x32(uint64_t v)
+{
+    return uint2(v & 0xffffffff, v >> 32);
 }

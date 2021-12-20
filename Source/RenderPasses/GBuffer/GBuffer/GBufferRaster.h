@@ -39,13 +39,14 @@ class GBufferRaster : public GBuffer
 public:
     using SharedPtr = std::shared_ptr<GBufferRaster>;
 
+    static const Info kInfo;
+
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
     RenderPassReflection reflect(const CompileData& compileData) override;
     void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
-    std::string getDesc(void) override { return kDesc; }
-    virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
+    virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
 
 private:
     GBufferRaster(const Dictionary& dict);
@@ -62,8 +63,4 @@ private:
         GraphicsProgram::SharedPtr pProgram;
         GraphicsVars::SharedPtr pVars;
     } mRaster;
-
-    static const char* kDesc;
-
-    friend void getPasses(Falcor::RenderPassLibrary& lib);
 };

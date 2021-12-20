@@ -33,14 +33,14 @@
 
 namespace Falcor
 {
-#if _ENABLE_NVAPI
+#if FALCOR_ENABLE_NVAPI
     bool getNvApiGraphicsPsoDesc(const GraphicsStateObject::Desc& desc, std::vector<NvApiPsoExDesc>& nvApiPsoExDescs)
     {
         auto ret = NvAPI_Initialize();
 
         if (ret != NVAPI_OK)
         {
-            logError("Failed to initialize NvApi");
+            reportError("Failed to initialize NvApi");
             return false;
         }
 
@@ -74,7 +74,7 @@ namespace Falcor
 
         if (ret != NVAPI_OK || apiHandle == nullptr)
         {
-            logError("Failed to create a graphics pipeline state object with NVAPI extensions");
+            reportError("Failed to create a graphics pipeline state object with NVAPI extensions");
             return nullptr;
         }
 
@@ -101,14 +101,14 @@ namespace Falcor
         {
             std::vector<NvApiPsoExDesc> nvApiDesc;
             bool ret = getNvApiGraphicsPsoDesc(mDesc, nvApiDesc);
-            if (!ret) throw std::exception("Failed to create graphics PSO desc with NVAPI extensions");
+            if (!ret) throw RuntimeError("Failed to create graphics PSO desc with NVAPI extensions");
 
             mApiHandle = getNvApiGraphicsPsoHandle(nvApiDesc, d3dDesc);
-            if (mApiHandle == nullptr) throw std::exception("Failed to create graphics PSO with NVAPI extensions");
+            if (mApiHandle == nullptr) throw RuntimeError("Failed to create graphics PSO with NVAPI extensions");
         }
         else
         {
-            d3d_call(gpDevice->getApiHandle()->CreateGraphicsPipelineState(&d3dDesc, IID_PPV_ARGS(&mApiHandle)));
+            FALCOR_D3D_CALL(gpDevice->getApiHandle()->CreateGraphicsPipelineState(&d3dDesc, IID_PPV_ARGS(&mApiHandle)));
         }
     }
 }

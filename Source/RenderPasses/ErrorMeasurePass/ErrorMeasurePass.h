@@ -34,6 +34,10 @@ using namespace Falcor;
 class ErrorMeasurePass : public RenderPass
 {
 public:
+    using SharedPtr = std::shared_ptr<ErrorMeasurePass>;
+
+    static const Info kInfo;
+
     enum class OutputId
     {
         Source,
@@ -42,11 +46,8 @@ public:
         Count
     };
 
-    using SharedPtr = std::shared_ptr<ErrorMeasurePass>;
-
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
-    virtual std::string getDesc() override { return "Measures error with respect to a reference image"; }
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;

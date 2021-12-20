@@ -1,7 +1,7 @@
 from falcor import *
 
-def render_graph_DefaultRenderGraph():
-    g = RenderGraph('DefaultRenderGraph')
+def render_graph_GBufferRasterInspector():
+    g = RenderGraph('GBufferRasterInspector')
     loadRenderPassLibrary('GBuffer.dll')
     loadRenderPassLibrary('PixelInspectorPass.dll')
     GBufferRaster = createPass('GBufferRaster', {'samplePattern': SamplePattern.Center})
@@ -11,17 +11,15 @@ def render_graph_DefaultRenderGraph():
     g.addEdge('GBufferRaster.posW', 'PixelInspectorPass.posW')
     g.addEdge('GBufferRaster.normW', 'PixelInspectorPass.normW')
     g.addEdge('GBufferRaster.tangentW', 'PixelInspectorPass.tangentW')
-    g.addEdge('GBufferRaster.texC', 'PixelInspectorPass.texC')
-    g.addEdge('GBufferRaster.diffuseOpacity', 'PixelInspectorPass.diffuseOpacity')
-    g.addEdge('GBufferRaster.specRough', 'PixelInspectorPass.specRough')
-    g.addEdge('GBufferRaster.emissive', 'PixelInspectorPass.emissive')
-    g.addEdge('GBufferRaster.matlExtra', 'PixelInspectorPass.matlExtra')
     g.addEdge('GBufferRaster.faceNormalW', 'PixelInspectorPass.faceNormalW')
+    g.addEdge('GBufferRaster.texC', 'PixelInspectorPass.texC')
+    g.addEdge('GBufferRaster.texGrads', 'PixelInspectorPass.texGrads')
+    g.addEdge('GBufferRaster.mtlData', 'PixelInspectorPass.mtlData')
     g.addEdge('GBufferRaster.vbuffer', 'PixelInspectorPass.vbuffer')
     g.addEdge('GBufferRaster', 'PixelInspectorPass')
     g.markOutput('GBufferRaster.faceNormalW')
     return g
 
-DefaultRenderGraph = render_graph_DefaultRenderGraph()
-try: m.addGraph(DefaultRenderGraph)
+GBufferRasterInspector = render_graph_GBufferRasterInspector()
+try: m.addGraph(GBufferRasterInspector)
 except NameError: None

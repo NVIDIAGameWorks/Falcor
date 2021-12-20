@@ -31,71 +31,102 @@
 
 namespace Falcor
 {
-    AnimatedVertexCache::AnimatedVertexCache(Scene* pScene, std::vector<CachedCurve>& cachedCurves, std::vector<CachedMesh>& cachedMeshes)
+    namespace
+    {
+        const std::string kUpdateCurveVerticesFilename = "Scene/Animation/UpdateCurveVertices.slang";
+        const std::string kUpdateCurveAABBsFilename = "Scene/Animation/UpdateCurveAABBs.slang";
+
+        InterpolationInfo calculateInterpolation(double time, const std::vector<double>& timeSamples, Animation::Behavior preInfinityBehavior)
+        {
+            if (!std::isfinite(time))
+            {
+                return InterpolationInfo{ uint2(0), 0.f };
+            }
+
+            if (time < 0.0 || time > timeSamples.back())
+            {
+                time = clamp(time, 0.0, timeSamples.back());
+            }
+
+            uint2 keyframeIndices;
+            float t;
+            if (time <= timeSamples.front())
+            {
+                if (preInfinityBehavior == Animation::Behavior::Constant)
+                {
+                    keyframeIndices = uint2(0);
+                    t = 0.f;
+                }
+                else if (preInfinityBehavior == Animation::Behavior::Cycle)
+                {
+                    keyframeIndices.x = (uint32_t)timeSamples.size() - 1;
+                    keyframeIndices.y = 0;
+
+                    // The first keyframe has timeCode >= 1 (see processCurve() in ImporterContext.cpp).
+                    assert(timeSamples.front() >= 1.0);
+                    t = (float)(time / timeSamples.front());
+                }
+            }
+            else
+            {
+                keyframeIndices.y = uint32_t(std::lower_bound(timeSamples.begin(), timeSamples.end(), time) - timeSamples.begin());
+                keyframeIndices.x = keyframeIndices.y - 1;
+                assert(timeSamples[keyframeIndices.y] > timeSamples[keyframeIndices.x]);
+                t = (float)((time - timeSamples[keyframeIndices.x]) / (timeSamples[keyframeIndices.y] - timeSamples[keyframeIndices.x]));
+            }
+
+            return InterpolationInfo{ keyframeIndices, t };
+        }
+    }
+
+    AnimatedVertexCache::AnimatedVertexCache(Scene* pScene, std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes)
         : mpScene(pScene)
-        , mCachedCurves(cachedCurves.size())
+        , mCachedCurves(cachedCurves)
     {
         if (cachedCurves.empty()) return;
 
-        for (size_t i = 0; i < cachedCurves.size(); i++)
+        if (!mCachedCurves.empty())
         {
-            auto& srcCache = cachedCurves[i];
-            auto& dstCache = mCachedCurves[i];
-            dstCache.timeSamples = std::move(srcCache.timeSamples);
-            dstCache.indexData = std::move(srcCache.indexData);
-            dstCache.vertexData.resize(srcCache.vertexData.size());
-            for (size_t j = 0; j < srcCache.vertexData.size(); j++) dstCache.vertexData[j] = std::move(srcCache.vertexData[j]);
+            initCurveKeyframes();
+            bindCurveBuffers();
+
+            createCurveVertexUpdatePass();
+            createCurveAABBUpdatePass();
         }
-
-        initKeyframes();
-        bindCurveBuffers();
-
-        createVertexUpdatePass();
-        createAABBUpdatePass();
     }
 
-    AnimatedVertexCache::UniquePtr AnimatedVertexCache::create(Scene* pScene, std::vector<CachedCurve>& cachedCurves, std::vector<CachedMesh>& cachedMeshes)
+    AnimatedVertexCache::UniquePtr AnimatedVertexCache::create(Scene* pScene, std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes)
     {
-        return UniquePtr(new AnimatedVertexCache(pScene, cachedCurves, cachedMeshes));
+        return UniquePtr(new AnimatedVertexCache(pScene, std::move(cachedCurves), std::move(cachedMeshes)));
     }
 
     bool AnimatedVertexCache::animate(RenderContext* pContext, double time)
     {
         if (!hasAnimations()) return false;
 
-        if (time < mKeyframeTimes.front() || time > mKeyframeTimes.back())
+        if (!mCachedCurves.empty())
         {
-            time = clamp(time, mKeyframeTimes.front(), mKeyframeTimes.back());
+            double curveTime = mLoopAnimations ? std::fmod(time, mGlobalCurveAnimationLength) : time;
+            executeCurveVertexUpdatePass(pContext, calculateInterpolation(curveTime, mCurveKeyframeTimes, mPreInfinityBehavior));
+            executeCurveAABBUpdatePass(pContext);
         }
-
-        uint2 keyframeIndices;
-        float t;
-        if (time <= mKeyframeTimes.front())
-        {
-            keyframeIndices = uint2(0);
-            t = 0.f;
-        }
-        else
-        {
-            keyframeIndices.y = uint32_t(std::lower_bound(mKeyframeTimes.begin(), mKeyframeTimes.end(), time) - mKeyframeTimes.begin());
-            keyframeIndices.x = keyframeIndices.y - 1;
-            t = (float)((time - mKeyframeTimes[keyframeIndices.x]) / (mKeyframeTimes[keyframeIndices.y] - mKeyframeTimes[keyframeIndices.x]));
-        }
-
-        executeVertexUpdatePass(pContext, keyframeIndices, t);
-        executeAABBUpdatePass(pContext);
 
         return true;
     }
 
     void AnimatedVertexCache::copyToPrevVertices(RenderContext* pContext)
     {
-        executeVertexUpdatePass(pContext, uint2(0), 0.f, true);
+        executeCurveVertexUpdatePass(pContext, InterpolationInfo{ uint2(0), 0.f }, true);
     }
 
-    bool AnimatedVertexCache::hasAnimations()
+    bool AnimatedVertexCache::hasAnimations() const
     {
-        return mGlobalAnimationLength > 0 && mKeyframeCount > 1;
+        return hasCurveAnimations();
+    }
+
+    bool AnimatedVertexCache::hasCurveAnimations() const
+    {
+        return mCurveKeyframeTimes.size() > 1;
     }
 
     uint64_t AnimatedVertexCache::getMemoryUsageInBytes() const
@@ -107,19 +138,21 @@ namespace Falcor
         return m;
     }
 
-    void AnimatedVertexCache::initKeyframes()
+    // We create a merged list of all timestamps and generate new frames for curves where those timestamps are missing.
+    // This can lead to fairly heavy overhead if we have cached curves with vastly different total length.
+    // Currently, our assets have cached curves with the same list of timestamps.
+    void AnimatedVertexCache::initCurveKeyframes()
     {
         // Align the time samples across vertex caches.
-        mKeyframeTimes.clear();
+        mCurveKeyframeTimes.clear();
         for (size_t i = 0; i < mCachedCurves.size(); i++)
         {
-            mKeyframeTimes.insert(mKeyframeTimes.end(), mCachedCurves[i].timeSamples.begin(), mCachedCurves[i].timeSamples.end());
+            mCurveKeyframeTimes.insert(mCurveKeyframeTimes.end(), mCachedCurves[i].timeSamples.begin(), mCachedCurves[i].timeSamples.end());
         }
-        std::sort(mKeyframeTimes.begin(), mKeyframeTimes.end());
-        mKeyframeTimes.erase(std::unique(mKeyframeTimes.begin(), mKeyframeTimes.end()), mKeyframeTimes.end());
+        std::sort(mCurveKeyframeTimes.begin(), mCurveKeyframeTimes.end());
+        mCurveKeyframeTimes.erase(std::unique(mCurveKeyframeTimes.begin(), mCurveKeyframeTimes.end()), mCurveKeyframeTimes.end());
 
-        mKeyframeCount = (uint32_t)mKeyframeTimes.size();
-        mGlobalAnimationLength = mKeyframeTimes.back();
+        mGlobalCurveAnimationLength = mCurveKeyframeTimes.empty() ? 0 : mCurveKeyframeTimes.back();
     }
 
     void AnimatedVertexCache::bindCurveBuffers()
@@ -137,8 +170,8 @@ namespace Falcor
 
         // Create buffers for vertex positions in curve vertex caches.
         ResourceBindFlags vbBindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess;
-        mpCurveVertexBuffers.resize(mKeyframeCount);
-        for (uint32_t i = 0; i < mKeyframeCount; i++)
+        mpCurveVertexBuffers.resize(mCurveKeyframeTimes.size());
+        for (uint32_t i = 0; i < mCurveKeyframeTimes.size(); i++)
         {
             mpCurveVertexBuffers[i] = Buffer::createStructured(sizeof(DynamicCurveVertexData), mCurveVertexCount, vbBindFlags, Buffer::CpuAccess::None, nullptr, false);
             mpCurveVertexBuffers[i]->setName("AnimatedVertexCache::mpCurveVertexBuffers[" + std::to_string(i) + "]");
@@ -157,18 +190,18 @@ namespace Falcor
             uint32_t k = 0;
             const auto& timeSamples = mCachedCurves[i].timeSamples;
 
-            for (uint32_t j = 0; j < mKeyframeCount; j++)
+            for (uint32_t j = 0; j < mCurveKeyframeTimes.size(); j++)
             {
-                while (k + 1 < timeSamples.size() && timeSamples[k] < mKeyframeTimes[j]) k++;
+                while (k + 1 < timeSamples.size() && timeSamples[k] < mCurveKeyframeTimes[j]) k++;
 
-                if (timeSamples[k] == mKeyframeTimes[j])
+                if (timeSamples[k] == mCurveKeyframeTimes[j])
                 {
                     mpCurveVertexBuffers[j]->setBlob(mCachedCurves[i].vertexData[k].data(), offset, bufSize);
                 }
                 else
                 {
                     // Linearly interpolate at the missing keyframe.
-                    float t = float((mKeyframeTimes[j] - timeSamples[k - 1]) / (timeSamples[k] - timeSamples[k - 1]));
+                    float t = float((mCurveKeyframeTimes[j] - timeSamples[k - 1]) / (timeSamples[k] - timeSamples[k - 1]));
                     std::vector<DynamicCurveVertexData> interpVertices(vertexCount);
                     for (size_t p = 0; p < vertexCount; p++)
                     {
@@ -201,69 +234,69 @@ namespace Falcor
             }
         }
         mpCurveIndexBuffer->setBlob(indexData.data(), 0, mCurveIndexCount * sizeof(uint32_t));
-
-        // AABBs of curves are after AABBs of custom primitives.
-        mCurveAABBOffset = mpScene->getCustomPrimitiveCount();
     }
 
-    void AnimatedVertexCache::createVertexUpdatePass()
+    void AnimatedVertexCache::createCurveVertexUpdatePass()
     {
-        if (!hasAnimations()) return;
+        assert(!mCachedCurves.empty());
 
         Program::DefineList defines;
-        defines.add("CURVE_KEYFRAME_COUNT", std::to_string(mKeyframeCount));
-        mpVertexUpdatePass = ComputePass::create("Scene/Animation/UpdateVertices.slang", "main", defines);
+        defines.add("CURVE_KEYFRAME_COUNT", std::to_string(mCurveKeyframeTimes.size()));
+        mpCurveVertexUpdatePass = ComputePass::create(kUpdateCurveVerticesFilename, "main", defines);
 
-        auto block = mpVertexUpdatePass->getVars()["gCurveVertexUpdater"];
+        auto block = mpCurveVertexUpdatePass->getVars()["gCurveVertexUpdater"];
         auto var = block["curvePerKeyframe"];
 
         // Bind curve vertex data.
-        for (uint32_t i = 0; i < mKeyframeCount; i++) var[i]["vertexData"] = mpCurveVertexBuffers[i];
-        block["prevCurveVertices"] = mpPrevCurveVertexBuffer;
+        for (uint32_t i = 0; i < mCurveKeyframeTimes.size(); i++) var[i]["vertexData"] = mpCurveVertexBuffers[i];
     }
 
-    void AnimatedVertexCache::createAABBUpdatePass()
+    void AnimatedVertexCache::createCurveAABBUpdatePass()
     {
-        if (!hasAnimations()) return;
+        assert(!mCachedCurves.empty());
 
-        mpAABBUpdatePass = ComputePass::create("Scene/Animation/UpdateAABBs.slang");
-        auto block = mpAABBUpdatePass->getVars()["gCurveAABBUpdater"];
+        mpCurveAABBUpdatePass = ComputePass::create(kUpdateCurveAABBsFilename);
+
+        auto block = mpCurveAABBUpdatePass->getVars()["gCurveAABBUpdater"];
         block["curveIndexData"] = mpCurveIndexBuffer;
     }
 
-    void AnimatedVertexCache::executeVertexUpdatePass(RenderContext* pContext, uint2 keyframeIndices, float t, bool copyPrev)
+    void AnimatedVertexCache::executeCurveVertexUpdatePass(RenderContext* pContext, const InterpolationInfo& info, bool copyPrev)
     {
-        PROFILE("update vertices");
-        if (!mpVertexUpdatePass) return;
+        if (!mpCurveVertexUpdatePass) return;
 
-        auto block = mpVertexUpdatePass->getVars()["gCurveVertexUpdater"];
-        block["keyframeIndices"] = keyframeIndices;
-        block["t"] = t;
+        FALCOR_PROFILE("update curve vertices");
+
+        auto block = mpCurveVertexUpdatePass->getVars()["gCurveVertexUpdater"];
+        block["keyframeIndices"] = info.keyframeIndices;
+        block["t"] = info.t;
         block["copyPrev"] = copyPrev;
         block["curveVertices"] = mpScene->mpCurveVao->getVertexBuffer(0);
+        block["prevCurveVertices"] = mpPrevCurveVertexBuffer;
 
         uint32_t dimX = (1 << 16);
         uint32_t dimY = (uint32_t)std::ceil((float)mCurveVertexCount / dimX);
         block["dimX"] = dimX;
         block["vertexCount"] = mCurveVertexCount;
 
-        mpVertexUpdatePass->execute(pContext, dimX, dimY, 1);
+        mpCurveVertexUpdatePass->execute(pContext, dimX, dimY, 1);
     }
 
-    void AnimatedVertexCache::executeAABBUpdatePass(RenderContext* pContext)
+    void AnimatedVertexCache::executeCurveAABBUpdatePass(RenderContext* pContext)
     {
-        PROFILE("update AABBs");
-        if (!mpAABBUpdatePass || !mpScene->mpRtAABBBuffer) return;
+        if (!mpCurveAABBUpdatePass || !mpScene->mpRtAABBBuffer) return;
 
-        auto block = mpAABBUpdatePass->getVars()["gCurveAABBUpdater"];
+        FALCOR_PROFILE("update curve AABBs");
+
+        auto block = mpCurveAABBUpdatePass->getVars()["gCurveAABBUpdater"];
         block["curveVertices"] = mpScene->mpCurveVao->getVertexBuffer(0);
-        block["curveAABBs"].setUav(mpScene->mpRtAABBBuffer->getUAV(mCurveAABBOffset, mCurveIndexCount));
+        block["curveAABBs"].setUav(mpScene->mpRtAABBBuffer->getUAV(0, mCurveIndexCount));
 
         uint32_t dimX = (1 << 16);
         uint32_t dimY = (uint32_t)std::ceil((float)mCurveIndexCount / dimX);
         block["dimX"] = dimX;
         block["AABBCount"] = mCurveIndexCount;
 
-        mpAABBUpdatePass->execute(pContext, dimX, dimY, 1);
+        mpCurveAABBUpdatePass->execute(pContext, dimX, dimY, 1);
     }
 }

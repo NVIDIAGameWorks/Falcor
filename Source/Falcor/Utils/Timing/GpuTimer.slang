@@ -57,7 +57,7 @@ struct GpuTimer
     */
     static TimePoint getCurrentTimePoint()
     {
-#if _ENABLE_NVAPI
+#if FALCOR_ENABLE_NVAPI
         return (TimePoint)NvGetSpecial(NV_SPECIALOP_GLOBAL_TIMER_LO);
 #else
         return 0;

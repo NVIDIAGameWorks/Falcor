@@ -32,7 +32,7 @@ namespace Falcor
 {
     struct LowLevelContextApiData;
 
-    class dlldecl LowLevelContextData : public std::enable_shared_from_this<LowLevelContextData>
+    class FALCOR_API LowLevelContextData
     {
     public:
         using SharedPtr = std::shared_ptr<LowLevelContextData>;

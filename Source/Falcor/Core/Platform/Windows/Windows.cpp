@@ -26,12 +26,15 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
+#include "Utils/Logger.h"
 #include <shellscalingapi.h>
 #include <Psapi.h>
 #include <commdlg.h>
 #include <ShlObj_core.h>
 #include <comutil.h>
 #include <winioctl.h>
+
+#define os_call(a) {auto hr_ = a; if(FAILED(hr_)) { reportError(#a); }}
 
 // Always run in Optimus mode on laptops
 extern "C"
@@ -369,7 +372,7 @@ namespace Falcor
     bool getEnvironmentVariable(const std::string& varName, std::string& value)
     {
         static char buff[4096];
-        int numChar = GetEnvironmentVariableA(varName.c_str(), buff, arraysize(buff)); //what is the best way to deal with wchar ?
+        int numChar = GetEnvironmentVariableA(varName.c_str(), buff, (DWORD)arraysize(buff)); //what is the best way to deal with wchar ?
         assert(numChar < arraysize(buff));
         if (numChar == 0)
         {
@@ -452,7 +455,7 @@ namespace Falcor
         FilterSpec fs(filters, typeid(DialogType) == typeid(IFileOpenDialog));
 
         DialogType* pDialog;
-        d3d_call(CoCreateInstance(clsid, NULL, CLSCTX_ALL, IID_PPV_ARGS(&pDialog)));
+        os_call(CoCreateInstance(clsid, NULL, CLSCTX_ALL, IID_PPV_ARGS(&pDialog)));
         pDialog->SetOptions(options | FOS_FORCEFILESYSTEM);
         pDialog->SetFileTypes((uint32_t)fs.size(), fs.data());
         pDialog->SetDefaultExtension(fs.data()->pszSpec);
@@ -501,7 +504,7 @@ namespace Falcor
         }
         else
         {
-            logError("Error when loading icon. Can't find the file " + iconFile + ".");
+            reportError("Error when loading icon. Can't find the file " + iconFile + ".");
         }
     }
 
@@ -572,7 +575,7 @@ namespace Falcor
         STARTUPINFOA startupInfo{}; PROCESS_INFORMATION processInformation{};
         if (!CreateProcessA(nullptr, (LPSTR)commandLine.c_str(), nullptr, nullptr, TRUE, NORMAL_PRIORITY_CLASS, nullptr, nullptr, &startupInfo, &processInformation))
         {
-            logError("Unable to execute the render graph editor");
+            reportError("Unable to execute the render graph editor");
             return 0;
         }
 
@@ -623,14 +626,14 @@ namespace Falcor
             if (!ReadDirectoryChangesW(hFile, buffer.data(), static_cast<uint32_t>(sizeof(uint32_t) * buffer.size()), FALSE,
                 FILE_NOTIFY_CHANGE_LAST_WRITE, 0, &overlapped, nullptr))
             {
-                logError("Failed to read directory changes for shared file.");
+                reportError("Failed to read directory changes for shared file.");
                 CloseHandle(hFile);
                 return;
             }
 
             if (!GetOverlappedResult(hFile, &overlapped, (LPDWORD)&bytesReturned, true))
             {
-                logError("Failed to read directory changes for shared file.");
+                reportError("Failed to read directory changes for shared file.");
                 CloseHandle(hFile);
                 return;
 
@@ -767,7 +770,7 @@ namespace Falcor
         struct stat s;
         if (stat(filename.c_str(), &s) != 0)
         {
-            logError("Can't get file time for '" + filename + "'");
+            reportError("Can't get file time for '" + filename + "'");
             return 0;
         }
 
@@ -850,7 +853,7 @@ namespace Falcor
 
     void OSServices::start()
     {
-        d3d_call(CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE));
+        os_call(CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE));
     }
 
     void OSServices::stop()

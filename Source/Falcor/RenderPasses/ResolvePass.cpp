@@ -30,7 +30,7 @@
 
 namespace Falcor
 {
-    const char* ResolvePass::kDesc = "Resolve a multi-sampled texture";
+    const RenderPass::Info ResolvePass::kInfo { "ResolvePass", "Resolve a multi-sampled texture." };
 
     static const std::string kDst = "dst";
     static const std::string kSrc = "src";
@@ -45,10 +45,12 @@ namespace Falcor
 
     ResolvePass::SharedPtr ResolvePass::create(RenderContext* pRenderContext, const Dictionary& dictionary)
     {
-        return SharedPtr(new ResolvePass);
+        return SharedPtr(new ResolvePass());
     }
-    
-    void ResolvePass::execute(RenderContext* pContext, const RenderData& renderData)
+
+    ResolvePass::ResolvePass() : RenderPass(kInfo) {}
+
+    void ResolvePass::execute(RenderContext* pRenderContext, const RenderData& renderData)
     {
         auto pSrcTex = renderData[kSrc]->asTexture();
         auto pDstTex = renderData[kDst]->asTexture();
@@ -61,7 +63,7 @@ namespace Falcor
                 return;
             }
 
-            pContext->resolveResource(pSrcTex, pDstTex);
+            pRenderContext->resolveResource(pSrcTex, pDstTex);
         }
         else
         {

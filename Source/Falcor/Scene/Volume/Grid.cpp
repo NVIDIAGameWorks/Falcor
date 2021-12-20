@@ -27,13 +27,14 @@
  **************************************************************************/
 #include "stdafx.h"
 #include "Grid.h"
-#pragma warning(disable:4146 4244 4267 4275 4996)
+#pragma warning(push)
+#pragma warning(disable : 4146 4244 4267 4275 4996)
 #include <nanovdb/util/IO.h>
 #include <nanovdb/util/GridStats.h>
 #include <nanovdb/util/GridBuilder.h>
 #include <nanovdb/util/OpenToNanoVDB.h>
 #include <openvdb/openvdb.h>
-#pragma warning(default:4146 4244 4267 4275 4996)
+#pragma warning(pop)
 #include <glm/gtc/type_ptr.hpp>
 #include "GridConverter.h"
 
@@ -282,7 +283,7 @@ namespace Falcor
     }
 
 
-    SCRIPT_BINDING(Grid)
+    FALCOR_SCRIPT_BINDING(Grid)
     {
         pybind11::class_<Grid, Grid::SharedPtr> grid(m, "Grid");
         grid.def_property_readonly("voxelCount", &Grid::getVoxelCount);

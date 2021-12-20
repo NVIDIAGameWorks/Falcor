@@ -1,8 +1,8 @@
-def render_graph_BSDFViewerGraph():
-    g = RenderGraph("BSDFViewerGraph")
+def render_graph_BSDFViewer():
+    g = RenderGraph("BSDFViewer")
     loadRenderPassLibrary("AccumulatePass.dll")
     loadRenderPassLibrary("BSDFViewer.dll")
-    BSDFViewer = createPass("BSDFViewer")
+    BSDFViewer = createPass("BSDFViewer", {'materialID': 0})
     g.addPass(BSDFViewer, "BSDFViewer")
     AccumulatePass = createPass("AccumulatePass", {'enabled': True, 'precisionMode': AccumulatePrecision.Double})
     g.addPass(AccumulatePass, "AccumulatePass")
@@ -10,6 +10,6 @@ def render_graph_BSDFViewerGraph():
     g.markOutput("AccumulatePass.output")
     return g
 
-BSDFViewerGraph = render_graph_BSDFViewerGraph()
-try: m.addGraph(BSDFViewerGraph)
+BSDFViewer = render_graph_BSDFViewer()
+try: m.addGraph(BSDFViewer)
 except NameError: None

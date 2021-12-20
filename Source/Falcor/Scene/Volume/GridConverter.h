@@ -27,9 +27,10 @@
  **************************************************************************/
 #pragma once
 #include <execution>
-#pragma warning(disable:4244 4267)
+#pragma warning(push)
+#pragma warning(disable : 4244 4267)
 #include <nanovdb/NanoVDB.h>
-#pragma warning(default:4244 4267)
+#pragma warning(pop)
 #include "BC4Encode.h"
 #include "Utils/NumericRange.h"
 #include "BrickedGrid.h"
@@ -47,7 +48,7 @@ namespace Falcor
     public:
         NanoVDBToBricksConverter(const nanovdb::FloatGrid* grid);
         NanoVDBToBricksConverter(const NanoVDBToBricksConverter& rhs) = delete;
-        
+
         BrickedGrid convert();
 
     private:
@@ -66,7 +67,7 @@ namespace Falcor
             case 4: return ResourceFormat::BC4Unorm;
             case 8: return ResourceFormat::R8Unorm;
             case 16: return ResourceFormat::R16Unorm;
-            default: throw std::exception("unsupported bitdepth in NanoVDBToBricksConverter");
+            default: throw RuntimeError("Unsupported bitdepth in NanoVDBToBricksConverter");
             }
         }
 

@@ -26,13 +26,13 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-
 #include "Falcor.h"
-#include "Utils/AsyncTextureLoader.h"
+#include "Scene/Material/Material.h"
+#include "Utils/Image/TextureManager.h"
 
 namespace Falcor
 {
-    /** Helper class to load material textures using multiple threads.
+    /** Helper class to load material textures using the texture manager.
 
         Calling `loadTexture` does not assign the texture to the material right away.
         Instead, an asynchronous texture load request is issued and a reference for the
@@ -43,7 +43,7 @@ namespace Falcor
     class MaterialTextureLoader
     {
     public:
-        MaterialTextureLoader(bool useSrgb);
+        MaterialTextureLoader(const TextureManager::SharedPtr& pTextureManager, bool useSrgb);
         ~MaterialTextureLoader();
 
         /** Request loading a material texture.
@@ -56,19 +56,15 @@ namespace Falcor
     private:
         void assignTextures();
 
-        bool mUseSrgb;
-
-        using TextureKey = std::pair<std::string, bool>; // filename, srgb
-
         struct TextureAssignment
         {
             Material::SharedPtr pMaterial;
             Material::TextureSlot textureSlot;
-            TextureKey textureKey;
+            TextureManager::TextureHandle handle;
         };
 
-        std::map<TextureKey, std::future<Texture::SharedPtr>> mRequestedTextures;
+        bool mUseSrgb;
         std::vector<TextureAssignment> mTextureAssignments;
-        AsyncTextureLoader mAsyncTextureLoader;
+        TextureManager::SharedPtr mpTextureManager;
     };
 }

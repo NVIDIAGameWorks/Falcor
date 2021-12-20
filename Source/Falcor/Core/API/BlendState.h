@@ -31,7 +31,7 @@ namespace Falcor
 {
     /** Blend state
     */
-    class dlldecl BlendState : public std::enable_shared_from_this<BlendState>
+    class FALCOR_API BlendState
     {
     public:
         using SharedPtr = std::shared_ptr<BlendState>;
@@ -73,7 +73,7 @@ namespace Falcor
 
         /** Descriptor used to create new blend-state
         */
-        class dlldecl Desc
+        class FALCOR_API Desc
         {
         public:
             Desc();

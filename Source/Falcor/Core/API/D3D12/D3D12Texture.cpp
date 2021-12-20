@@ -28,6 +28,7 @@
 #include "stdafx.h"
 #include "Core/API/Texture.h"
 #include "Core/API/Device.h"
+#include "Core/API/Formats.h"
 #include "D3D12Resource.h"
 
 namespace Falcor
@@ -50,6 +51,21 @@ namespace Falcor
             should_not_get_here();
             return D3D12_RESOURCE_DIMENSION_UNKNOWN;
         }
+    }
+
+    uint64_t Texture::getTextureSizeInBytes() const
+    {
+        ID3D12DevicePtr pDevicePtr = gpDevice->getApiHandle();
+        ID3D12ResourcePtr pTexResource = this->getApiHandle();
+
+        D3D12_RESOURCE_ALLOCATION_INFO d3d12ResourceAllocationInfo;
+        D3D12_RESOURCE_DESC desc = pTexResource->GetDesc();
+
+        assert(desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D || desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D);
+
+        d3d12ResourceAllocationInfo = pDevicePtr->GetResourceAllocationInfo(0, 1, &desc);
+        assert(d3d12ResourceAllocationInfo.SizeInBytes > 0);
+        return d3d12ResourceAllocationInfo.SizeInBytes;
     }
 
     void Texture::apiInit(const void* pData, bool autoGenMips)
@@ -102,7 +118,7 @@ namespace Falcor
         }
 
         D3D12_HEAP_FLAGS heapFlags = is_set(mBindFlags, ResourceBindFlags::Shared) ? D3D12_HEAP_FLAG_SHARED : D3D12_HEAP_FLAG_NONE;
-        d3d_call(gpDevice->getApiHandle()->CreateCommittedResource(&kDefaultHeapProps, heapFlags, &desc, D3D12_RESOURCE_STATE_COMMON, pClearVal, IID_PPV_ARGS(&mApiHandle)));
+        FALCOR_D3D_CALL(gpDevice->getApiHandle()->CreateCommittedResource(&kDefaultHeapProps, heapFlags, &desc, D3D12_RESOURCE_STATE_COMMON, pClearVal, IID_PPV_ARGS(&mApiHandle)));
         assert(mApiHandle);
 
         if (pData)

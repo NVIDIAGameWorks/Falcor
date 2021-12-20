@@ -143,7 +143,7 @@ namespace Falcor
     {
         if (T < 1667.f || T > 25000.f)
         {
-            logError("colorTemperatureToXYZ() - T is out of range");
+            reportError("colorTemperatureToXYZ() - T is out of range");
             return float3(0, 0, 0);
         }
 

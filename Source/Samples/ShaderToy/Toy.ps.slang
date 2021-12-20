@@ -36,7 +36,7 @@ float rand(float n)
     return frac(sin(n) * 43758.5453123);
 }
 
-float2 rand2(in float2 p)
+float2 rand2(float2 p)
 {
     return frac(float2(sin(p.x * 591.32 + p.y * 154.077), cos(p.x * 391.32 + p.y * 49.077)));
 }
@@ -55,7 +55,7 @@ float4 getRBCColor(float x)
     return lerp(v4DarkRed, v4LightRed, poly);
 }
 
-float4 mainImage(in float2 fragCoord)
+float4 mainImage(float2 fragCoord)
 {
     float2 uv = fragCoord / iResolution.y;
 
@@ -94,7 +94,7 @@ float4 mainImage(in float2 fragCoord)
     //fragColor.rgb = pow(fragColor.rgb, 2.0f);
 }
 
-float4 main(in float2 texC : TEXCOORD) : SV_TARGET
+float4 main(float2 texC : TEXCOORD) : SV_TARGET
 {
     return mainImage(texC * iResolution);
 }

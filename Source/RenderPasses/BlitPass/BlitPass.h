@@ -27,7 +27,6 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "FalcorExperimental.h"
 
 using namespace Falcor;
 
@@ -40,14 +39,15 @@ class BlitPass : public RenderPass
 public:
     using SharedPtr = std::shared_ptr<BlitPass>;
 
+    static const Info kInfo;
+
     /** Create a new object
     */
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
-    virtual std::string getDesc() override;
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
-    virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
+    virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
 
     // Scripting functions

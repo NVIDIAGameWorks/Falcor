@@ -11,15 +11,15 @@ Note: This page will cover more complex elements of render passes. Basic element
 Falcor will look for a function called `getPasses()` in your DLL. The signature is as follows:
 
 ```c++
-extern "C" __declspec(dllexport) void getPasses(RenderPassLibrary& lib);
+extern "C" FALCOR_API_EXPORT void getPasses(RenderPassLibrary& lib);
 ```
 
 This function should register all the passes that the DLL exports:
 
 ```c++
-extern "C" __declspec(dllexport) void getPasses(RenderPassLibrary& lib)
+extern "C" FALCOR_API_EXPORT void getPasses(RenderPassLibrary& lib)
 {
-    lib.registerClass("ExamplePass", "Example Render Pass", ExamplePass::create);
+    lib.registerPass(ExamplePass::kInfo, ExamplePass::create);
 }
 ```
 
@@ -110,9 +110,9 @@ static void regExamplePass(pybind11::module& m)
     // register classes, properties, and enums here
 }
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
 {
-    lib.registerClass("ExamplePass", "Example Render Pass", ExamplePass::create);
+    lib.registerPass(ExamplePass::kInfo, ExamplePass::create);
     ScriptBindings::registerBinding(regExamplePass);
 }
 ```

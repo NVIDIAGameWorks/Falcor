@@ -101,9 +101,17 @@ namespace Falcor
         mIR += mGraphPrefix + ScriptWriter::makeFunc(RenderGraphIR::kRemoveEdge, src, dst);
     }
 
-    void RenderGraphIR::markOutput(const std::string& name)
+    void RenderGraphIR::markOutput(const std::string& name, const TextureChannelFlags mask)
     {
-        mIR += mGraphPrefix + ScriptWriter::makeFunc(RenderGraphIR::kMarkOutput, name);
+        if (mask == TextureChannelFlags::RGB)
+        {
+            // Leave out mask parameter for the default case (RGB).
+            mIR += mGraphPrefix + ScriptWriter::makeFunc(RenderGraphIR::kMarkOutput, name);
+        }
+        else
+        {
+            mIR += mGraphPrefix + ScriptWriter::makeFunc(RenderGraphIR::kMarkOutput, name, mask);
+        }
     }
 
     void RenderGraphIR::unmarkOutput(const std::string& name)

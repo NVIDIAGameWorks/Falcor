@@ -37,7 +37,7 @@ namespace Falcor
         uploading the necessary lookup tables (if needed).
         On the GPU, import SampleGenerator.slang in your shader program.
     */
-    class dlldecl SampleGenerator : public std::enable_shared_from_this<SampleGenerator>
+    class FALCOR_API SampleGenerator
     {
     public:
         using SharedPtr = std::shared_ptr<SampleGenerator>;
@@ -58,9 +58,8 @@ namespace Falcor
 
         /** Binds the data to a program vars object.
             \param[in] pVars ProgramVars of the program to set data into.
-            \return false if there was an error, true otherwise.
         */
-        virtual bool setShaderData(ShaderVar const& var) const { return true; }
+        virtual void setShaderData(ShaderVar const& var) const {}
 
         /** Returns a GUI dropdown list of all available sample generators.
         */

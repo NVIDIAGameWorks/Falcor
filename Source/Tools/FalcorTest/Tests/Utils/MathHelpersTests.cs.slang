@@ -33,7 +33,7 @@ RWStructuredBuffer<float> result;
 [numthreads(1024, 1, 1)]
 void testSphericalCoordinates(uint3 threadId : SV_DispatchThreadID)
 {
-    TinyUniformSampleGenerator sg = TinyUniformSampleGenerator::create(uint2(0), threadId.x);
+    TinyUniformSampleGenerator sg = TinyUniformSampleGenerator(uint2(0), threadId.x);
     float3 dir = normalize(sampleNext3D(sg) * 2.f - 1.f);
     float2 uv = world_to_latlong_map(dir);
     result[threadId.x] = dot(normalize(dir), latlong_map_to_world(uv));

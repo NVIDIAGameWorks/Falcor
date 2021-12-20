@@ -36,8 +36,9 @@ struct EnvMapData
 {
     float3x4    transform;              ///< Local to world transform.
     float3x4    invTransform;           ///< World to local transform.
-    float       intensity = 1.f;        ///< Radiance scale
+
     float3      tint = {1.f, 1.f, 1.f}; ///< Color tint
+    float       intensity = 1.f;        ///< Radiance scale
 };
 
 END_NAMESPACE_FALCOR

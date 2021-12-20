@@ -30,17 +30,17 @@
 #include "SideBySidePass/SideBySidePass.h"
 #include "ColorMapPass/ColorMapPass.h"
 
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" FALCOR_API_EXPORT const char* getProjDir()
 {
     return PROJECT_DIR;
 }
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
 {
-    lib.registerClass("SplitScreenPass", SplitScreenPass::kDesc, SplitScreenPass::create);
-    lib.registerClass("InvalidPixelDetectionPass", InvalidPixelDetectionPass::kDesc, InvalidPixelDetectionPass::create);
-    lib.registerClass("SideBySidePass", SideBySidePass::kDesc, SideBySidePass::create);
-    lib.registerClass("ColorMapPass", ColorMapPass::kDesc, ColorMapPass::create);
+    lib.registerPass(SplitScreenPass::kInfo, SplitScreenPass::create);
+    lib.registerPass(InvalidPixelDetectionPass::kInfo, InvalidPixelDetectionPass::create);
+    lib.registerPass(SideBySidePass::kInfo, SideBySidePass::create);
+    lib.registerPass(ColorMapPass::kInfo, ColorMapPass::create);
 
     ScriptBindings::registerBinding(ColorMapPass::registerScriptBindings);
 }

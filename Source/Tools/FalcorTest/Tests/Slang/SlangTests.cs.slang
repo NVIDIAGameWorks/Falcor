@@ -167,8 +167,6 @@ void testDefaultInitializers()
         result[i++] = asuint(b);
         result[i++] = asuint(c);
     }
-#if 0
-    // Fails on SM5.1 probably due to fxc bug with asuint.
     {
         double a = 1, b = 2, c = {};
         a = {};
@@ -177,9 +175,9 @@ void testDefaultInitializers()
         asuint(b, result[i], result[i + 1]); i += 2;
         asuint(c, result[i], result[i + 1]); i += 2;
     }
-#endif
 
-    // Vector/matrix types (i=9)
+
+    // Vector/matrix types (i=15)
     {
         float4 a = float4(1, 2, 3, 4), b = {};
         a = {};
@@ -205,7 +203,7 @@ void testDefaultInitializers()
         result[i++] = asuint(b[1][1]);
     }
 
-    // Struct (i=25)
+    // Struct (i=31)
     {
         A myA;
         myA.a = 1;
@@ -232,7 +230,7 @@ void testDefaultInitializers()
         result[i++] = asuint(foo.f.b);
     }
 
-    // Struct with enum (i=35)
+    // Struct with enum (i=41)
     {
         Foo2 foo;
         foo.a = 1;
@@ -244,7 +242,7 @@ void testDefaultInitializers()
         result[i++] = (uint)foo.t; // Enum should be initialized to its default value specified in the struct declaration (i=36)
     }
 
-    // All done (i=37)
+    // All done (i=43)
 }
 
 [numthreads(1, 1, 1)]

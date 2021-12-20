@@ -29,7 +29,7 @@
 /** Requirements to use this pass:
     1) Have the OptiX 7.3 SDK installed (directly or via packman)
     2) Have NVIDIA driver 465.84 or later.
-    3) Set _ENABLE_OPTIX to 1 in `Source/Core/FalcorConfig.h`
+    3) Set FALCOR_ENABLE_OPTIX to 1 in `Source/Core/FalcorConfig.h`
 
     When porting this pass, especially to older Falcor forks, it sometimes becomes
     dependent on the DLL cudart64_101.dll, which is generally not copied into the binary
@@ -66,40 +66,41 @@
 
 #include "Falcor.h"
 
-#if _ENABLE_CUDA && _ENABLE_OPTIX
+#if FALCOR_ENABLE_CUDA && FALCOR_ENABLE_OPTIX
 #include "CudaUtils.h"
 #endif
 
 using namespace Falcor;
 
-
-class OptixDenoiserPass : public RenderPass
+// Note: The trailing underscore is to avoid clashing with the OptixDenoiser type in optix.h
+class OptixDenoiser_ : public RenderPass
 {
 public:
-    using SharedPtr = std::shared_ptr<OptixDenoiserPass>;
+    using SharedPtr = std::shared_ptr<OptixDenoiser_>;
+
+    static const Info kInfo;
 
     static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
 
-    virtual std::string getDesc() override;
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
-    virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
+    virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
     virtual void setScene(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene) override;
 
-#if _ENABLE_CUDA && _ENABLE_OPTIX
+#if FALCOR_ENABLE_CUDA && FALCOR_ENABLE_OPTIX
     // Scripting functions
     bool getEnabled() const { return mEnabled; }
     void setEnabled(bool enabled) { mEnabled = enabled; }
 #endif
 
 private:
-    OptixDenoiserPass(const Dictionary& dict);
+    OptixDenoiser_(const Dictionary& dict);
 
     Scene::SharedPtr mpScene;
 
-#if _ENABLE_CUDA && _ENABLE_OPTIX
+#if FALCOR_ENABLE_CUDA && FALCOR_ENABLE_OPTIX
     /** Initializes OptiX & CUDA contexts.  Returns true on success (if false, everything else will fail).
     */
     bool initializeOptix();
@@ -115,10 +116,10 @@ private:
         avoid exposing OptiX interop outside this render pass) so this isn't much slower than a better-designed
         sharing of GPU memory between DX and OptiX.
     */
-    void convertTexToBuf(RenderContext* pContext, const Texture::SharedPtr& tex, const Buffer::SharedPtr& buf, const uint2& size);
-    void convertNormalsToBuf(RenderContext* pContext, const Texture::SharedPtr& tex, const Buffer::SharedPtr& buf, const uint2& size, glm::mat4 viewIT);
-    void convertBufToTex(RenderContext* pContext, const Buffer::SharedPtr& buf, const Texture::SharedPtr& tex, const uint2& size);
-    void convertMotionVectors(RenderContext* pContext, const Texture::SharedPtr& tex, const Buffer::SharedPtr& buf, const uint2& size);
+    void convertTexToBuf(RenderContext* pRenderContext, const Texture::SharedPtr& tex, const Buffer::SharedPtr& buf, const uint2& size);
+    void convertNormalsToBuf(RenderContext* pRenderContext, const Texture::SharedPtr& tex, const Buffer::SharedPtr& buf, const uint2& size, glm::mat4 viewIT);
+    void convertBufToTex(RenderContext* pRenderContext, const Buffer::SharedPtr& buf, const Texture::SharedPtr& tex, const uint2& size);
+    void convertMotionVectors(RenderContext* pRenderContext, const Texture::SharedPtr& tex, const Buffer::SharedPtr& buf, const uint2& size);
 
     // Options and parameters for the Falcor render pass
     bool                        mEnabled = true;            ///< True = using OptiX denoiser, False = pass is a no-op
@@ -197,7 +198,7 @@ private:
 
     /** Allocate a DX <-> CUDA staging buffer
     */
-    void allocateStagingBuffer(RenderContext* pContext, Interop& interop, OptixImage2D& image, OptixPixelFormat format = OPTIX_PIXEL_FORMAT_FLOAT4);
+    void allocateStagingBuffer(RenderContext* pRenderContext, Interop& interop, OptixImage2D& image, OptixPixelFormat format = OPTIX_PIXEL_FORMAT_FLOAT4);
 
     /** Not strictly required, but can be used to deallocate a staging buffer if a user toggles its use off
     */
@@ -205,12 +206,12 @@ private:
 
     /** Reallocate all our staging buffers for DX <-> CUDA/Optix interop
     */
-    void reallocateStagingBuffers(RenderContext* pContext);
+    void reallocateStagingBuffers(RenderContext* pRenderContext);
 
     /** Get a device pointer from a buffer.  This wrapper gracefully handles nullptrs (i.e., if buf == nullptr)
     */
     void* exportBufferToCudaDevice(Buffer::SharedPtr& buf);
 
 
-#endif // _ENABLE_CUDA && _ENABLE_OPTIX
+#endif // FALCOR_ENABLE_CUDA && FALCOR_ENABLE_OPTIX
 };

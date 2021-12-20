@@ -26,6 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "ProjectTemplate.h"
+
+#ifdef FALCOR_D3D12
+FALCOR_EXPORT_D3D12_AGILITY_SDK
+#endif
+
 uint32_t mSampleGuiWidth = 250;
 uint32_t mSampleGuiHeight = 200;
 uint32_t mSampleGuiPositionX = 20;

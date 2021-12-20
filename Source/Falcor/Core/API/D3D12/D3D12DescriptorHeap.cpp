@@ -53,7 +53,7 @@ namespace Falcor
         desc.NumDescriptors = chunkCount * kDescPerChunk;
         if (FAILED(pDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&pHeap->mApiHandle))))
         {
-            throw std::exception("Failed to create descriptor heap");
+            throw RuntimeError("Failed to create descriptor heap");
         }
 
         pHeap->mCpuHeapStart = pHeap->mApiHandle->GetCPUDescriptorHandleForHeapStart();
@@ -144,7 +144,7 @@ namespace Falcor
         mAllocatedChunks += chunkCount;
         return true;
     }
-    
+
     void D3D12DescriptorHeap::releaseChunk(Chunk::SharedPtr pChunk)
     {
         pChunk->allocCount--;

@@ -33,7 +33,7 @@ namespace Falcor
 {
     /** Represents an object that has a transform which can be animated using a scene graph node.
     */
-    class dlldecl Animatable
+    class FALCOR_API Animatable
     {
     public:
         // While this is an abstract base class, we still need a holder type (shared_ptr)

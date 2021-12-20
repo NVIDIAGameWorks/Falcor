@@ -30,15 +30,53 @@
 
 namespace Falcor
 {
+    /** Exception thrown during scene import.
+        Holds the filename of the imported asset and a description of the exception.
+    */
+    class FALCOR_API ImporterError : public Exception
+    {
+    public:
+        ImporterError() noexcept
+        {}
+
+        ImporterError(const char* filename, const char* what)
+            : Exception(what)
+            , mpFilename(std::make_shared<std::string>(filename))
+        {}
+
+        ImporterError(const std::string& filename, const std::string& what)
+            : ImporterError(filename.c_str(), what.c_str())
+        {}
+
+        template<typename... Args>
+        explicit ImporterError(const std::string& filename, const std::string& fmtString, Args&&... args)
+            : ImporterError(filename.c_str(), fmt::format(fmtString, std::forward<Args>(args)...).c_str())
+        {}
+
+        virtual ~ImporterError() override
+        {}
+
+        ImporterError(const ImporterError& other) noexcept
+        {
+            mpWhat = other.mpWhat;
+            mpFilename = other.mpFilename;
+        }
+
+        const std::string& filename() const noexcept { return *mpFilename; }
+
+    private:
+        std::shared_ptr<std::string> mpFilename;
+    };
+
     /** This class is a global registry for asset importers.
         Importers are bound to a set of file extensions. This allows the right importer to
         be called when importing an asset file.
     */
-    class dlldecl Importer
+    class FALCOR_API Importer
     {
     public:
         using ExtensionList = std::vector<std::string>;
-        using ImportFunction = std::function<bool(const std::string& filename, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict)>;
+        using ImportFunction = std::function<void(const std::string& filename, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict)>;
 
         /** Description of an importer.
         */
@@ -58,9 +96,9 @@ namespace Falcor
             \param[in] builder Scene builder.
             \param[in] instances Optional list of instance transforms.
             \param[in] dict Optional dictionary.
-            \return True if asset was successfully imported, false otherwise.
+            Throws an ImporterError if something went wrong.
         */
-        static bool import(const std::string& filename, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict);
+        static void import(const std::string& filename, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict);
 
         /** Registers an importer.
             \param[in] desc Importer description.
@@ -70,15 +108,15 @@ namespace Falcor
 }
 
 #ifndef _staticlibrary
-#define REGISTER_IMPORTER(_class_, _extensions_)                                    \
-    static struct RegisterImporter##_class_ {                                       \
-        RegisterImporter##_class_()                                                 \
+#define FALCOR_REGISTER_IMPORTER(_class, _extensions)                               \
+    static struct RegisterImporter##_class {                                        \
+        RegisterImporter##_class()                                                  \
         {                                                                           \
-            Importer::registerImporter({#_class_, _extensions_, _class_::import});  \
+            Importer::registerImporter({#_class, _extensions, _class::import});     \
         }                                                                           \
-    } gRegisterImporter##_class_;
+    } gRegisterImporter##_class;
 #else
-#define REGISTER_IMPORTER(_class_, _extensions_) \
-    static_assert(false, "Using REGISTER_IMPORTER() in a static-library is not supported. The C++ linker usually doesn't pull static-initializers into the EXE. " \
+#define FALCOR_REGISTER_IMPORTER(_class, _extensions) \
+    static_assert(false, "Using FALCOR_REGISTER_IMPORTER() in a static-library is not supported. The C++ linker usually doesn't pull static-initializers into the EXE. " \
     "Call 'Importer::registerImporter()' yourself from code that is guarenteed to run.");
 #endif

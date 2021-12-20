@@ -42,7 +42,6 @@ namespace Falcor
         b = b && (mFboDesc                  == other.mFboDesc);
         b = b && (mpProgram                 == other.mpProgram);
         b = b && (mSampleMask               == other.mSampleMask);
-        b = b && (mpRootSignature           == other.mpRootSignature);
         b = b && (mPrimType                 == other.mPrimType);
 
         if (mpRasterizerState)
@@ -77,7 +76,9 @@ namespace Falcor
 
     GraphicsStateObject::~GraphicsStateObject()
     {
+#ifdef FALCOR_D3D12
         gpDevice->releaseResource(mApiHandle);
+#endif
     }
 
     GraphicsStateObject::GraphicsStateObject(const Desc& desc)

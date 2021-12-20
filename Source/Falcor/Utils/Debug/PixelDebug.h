@@ -51,7 +51,7 @@ namespace Falcor
         The shader code is disabled (using macros) when debugging is off.
         When enabled, async readback is used but expect a minor perf loss.
     */
-    class dlldecl PixelDebug
+    class FALCOR_API PixelDebug
     {
     public:
         using SharedPtr = std::shared_ptr<PixelDebug>;

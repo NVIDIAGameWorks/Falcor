@@ -32,7 +32,7 @@ namespace Falcor
 {
     /** Sample pattern generator for the Direct3D 8x MSAA/SSAA pattern.
     */
-    class dlldecl DxSamplePattern : public CPUSampleGenerator
+    class FALCOR_API DxSamplePattern : public CPUSampleGenerator
     {
     public:
         using SharedPtr = std::shared_ptr<DxSamplePattern>;

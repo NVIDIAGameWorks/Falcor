@@ -28,96 +28,42 @@
 #pragma once
 #define NOMINMAX
 #include <d3d12.h>
+#include "Core/FalcorConfig.h"
 #include "Core/API/Formats.h"
 #include <comdef.h>
 #include <dxgi1_4.h>
 #include <dxgiformat.h>
 
-#define MAKE_SMART_COM_PTR(_a) _COM_SMARTPTR_TYPEDEF(_a, __uuidof(_a))
+#if FALCOR_ENABLE_D3D12_AGILITY_SDK
+// To enable the D3D12 Agility SDK, this macro needs to be added to the main source file of the executable.
+#define FALCOR_EXPORT_D3D12_AGILITY_SDK                                                     \
+    extern "C" { FALCOR_API_EXPORT extern const UINT D3D12SDKVersion = 4;}              \
+    extern "C" { FALCOR_API_EXPORT extern const char* D3D12SDKPath = u8".\\D3D12\\"; }
+#else
+#define FALCOR_EXPORT_D3D12_AGILITY_SDK
+#endif
 
-__forceinline BOOL dxBool(bool b) { return b ? TRUE : FALSE; }
+#define FALCOR_MAKE_SMART_COM_PTR(_a) _COM_SMARTPTR_TYPEDEF(_a, __uuidof(_a))
 
-#define d3d_call(a) {HRESULT hr_ = a; if(FAILED(hr_)) { d3dTraceHR( #a, hr_); }}
+#define FALCOR_D3D_CALL(_a) {HRESULT hr_ = _a; if (FAILED(hr_)) { Falcor::d3dTraceHR( #_a, hr_); }}
 
-#define GET_COM_INTERFACE(base, type, var) MAKE_SMART_COM_PTR(type); concat_strings(type, Ptr) var; d3d_call(base->QueryInterface(IID_PPV_ARGS(&var)));
+#define FALCOR_GET_COM_INTERFACE(_base, _type, _var) FALCOR_MAKE_SMART_COM_PTR(_type); FALCOR_CONCAT_STRINGS(_type, Ptr) _var; FALCOR_D3D_CALL(_base->QueryInterface(IID_PPV_ARGS(&_var)));
 
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3d12.lib")
 
-#define UNSUPPORTED_IN_D3D(msg_) {logWarning(msg_ + std::string(" is not supported in D3D. Ignoring call."));}
+#define FALCOR_UNSUPPORTED_IN_D3D(_msg) {Falcor::logWarning(_msg + std::string(" is not supported in D3D. Ignoring call."));}
 
 namespace Falcor
 {
-    class DescriptorSet;
+    class D3D12DescriptorSet;
+    class ShaderResourceView;
     /*!
     *  \addtogroup Falcor
     *  @{
     */
 
-    struct DxgiFormatDesc
-    {
-        ResourceFormat falcorFormat;
-        DXGI_FORMAT dxgiFormat;
-    };
-
-    extern const dlldecl DxgiFormatDesc kDxgiFormatDesc[];
-
-    /** Convert from Falcor to DXGI format
-    */
-    inline DXGI_FORMAT getDxgiFormat(ResourceFormat format)
-    {
-        assert(kDxgiFormatDesc[(uint32_t)format].falcorFormat == format);
-        return kDxgiFormatDesc[(uint32_t)format].dxgiFormat;
-    }
-
-    /** Convert from DXGI to Falcor format
-    */
-    inline ResourceFormat getResourceFormat(DXGI_FORMAT format)
-    {
-        for (size_t i = 0; i < (size_t)ResourceFormat::Count; ++i)
-        {
-            const auto& desc = kDxgiFormatDesc[i];
-            if (desc.dxgiFormat == format) return desc.falcorFormat;
-        }
-        return ResourceFormat::Unknown;
-    }
-
-    inline DXGI_FORMAT getTypelessFormatFromDepthFormat(ResourceFormat format)
-    {
-        switch (format)
-        {
-        case ResourceFormat::D16Unorm:
-            return DXGI_FORMAT_R16_TYPELESS;
-        case ResourceFormat::D32FloatS8X24:
-            return DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
-        case ResourceFormat::D24UnormS8:
-            return DXGI_FORMAT_R24G8_TYPELESS;
-        case ResourceFormat::D32Float:
-            return DXGI_FORMAT_R32_TYPELESS;
-        default:
-            assert(isDepthFormat(format) == false);
-            return kDxgiFormatDesc[(uint32_t)format].dxgiFormat;
-        }
-    }
-
-#define to_string_case(a) case a: return #a;
-    inline std::string to_string(D3D_FEATURE_LEVEL featureLevel)
-    {
-        switch (featureLevel)
-        {
-            to_string_case(D3D_FEATURE_LEVEL_9_1)
-            to_string_case(D3D_FEATURE_LEVEL_9_2)
-            to_string_case(D3D_FEATURE_LEVEL_9_3)
-            to_string_case(D3D_FEATURE_LEVEL_10_0)
-            to_string_case(D3D_FEATURE_LEVEL_10_1)
-            to_string_case(D3D_FEATURE_LEVEL_11_0)
-            to_string_case(D3D_FEATURE_LEVEL_11_1)
-            to_string_case(D3D_FEATURE_LEVEL_12_0)
-            to_string_case(D3D_FEATURE_LEVEL_12_1)
-        default: should_not_get_here(); return "";
-        }
-    }
-#undef to_string_case
+    inline BOOL dxBool(bool b) { return b ? TRUE : FALSE; }
 
     /** Get D3D_FEATURE_LEVEL
     */
@@ -125,7 +71,7 @@ namespace Falcor
 
     /** Log a message if hr indicates an error
     */
-    void dlldecl d3dTraceHR(const std::string& Msg, HRESULT hr);
+    void FALCOR_API d3dTraceHR(const std::string& Msg, HRESULT hr);
 
     template<typename BlobType>
     inline std::string convertBlobToString(BlobType* pBlob)
@@ -135,6 +81,24 @@ namespace Falcor
         infoLog[pBlob->GetBufferSize()] = 0;
         return std::string(infoLog.data());
     }
+
+    /** Flags passed to TraceRay(). These must match the device side.
+    */
+    enum class RayFlags : uint32_t
+    {
+        None = D3D12_RAY_FLAG_NONE,
+        ForceOpaque = D3D12_RAY_FLAG_FORCE_OPAQUE,
+        ForceNonOpaque = D3D12_RAY_FLAG_FORCE_NON_OPAQUE,
+        AcceptFirstHitAndEndSearch = D3D12_RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,
+        SkipClosestHitShader = D3D12_RAY_FLAG_SKIP_CLOSEST_HIT_SHADER,
+        CullBackFacingTriangles = D3D12_RAY_FLAG_CULL_BACK_FACING_TRIANGLES,
+        CullFrontFacingTriangles = D3D12_RAY_FLAG_CULL_FRONT_FACING_TRIANGLES,
+        CullOpaque = D3D12_RAY_FLAG_CULL_OPAQUE,
+        CullNonOpaque = D3D12_RAY_FLAG_CULL_NON_OPAQUE,
+        SkipTriangles = D3D12_RAY_FLAG_SKIP_TRIANGLES,
+        SkipProceduralPrimitives = D3D12_RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES,
+    };
+    FALCOR_ENUM_CLASS_OPERATORS(RayFlags);
 
     enum class RtBuildFlags
     {
@@ -146,7 +110,7 @@ namespace Falcor
         MinimizeMemory = 0x10,
         PerformUpdate = 0x20,
     };
-    enum_class_operators(RtBuildFlags);
+    FALCOR_ENUM_CLASS_OPERATORS(RtBuildFlags);
 
 #define rt_flags(a) case RtBuildFlags::a: return #a
     inline std::string to_string(RtBuildFlags flags)
@@ -181,30 +145,30 @@ namespace Falcor
         return dxr;
     }
 
-    // The max scalars supported by our driver
-    #define FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES (14 * sizeof(float))
+    // Maximum raytracing attribute size.
+    inline constexpr uint32_t getRaytracingMaxAttributeSize() { return D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES; }
 
     // DXGI
-    MAKE_SMART_COM_PTR(IDXGISwapChain3);
-    MAKE_SMART_COM_PTR(IDXGIDevice);
-    MAKE_SMART_COM_PTR(IDXGIAdapter1);
-    MAKE_SMART_COM_PTR(IDXGIFactory4);
-    MAKE_SMART_COM_PTR(ID3DBlob);
+    FALCOR_MAKE_SMART_COM_PTR(IDXGISwapChain3);
+    FALCOR_MAKE_SMART_COM_PTR(IDXGIDevice);
+    FALCOR_MAKE_SMART_COM_PTR(IDXGIAdapter1);
+    FALCOR_MAKE_SMART_COM_PTR(IDXGIFactory4);
+    FALCOR_MAKE_SMART_COM_PTR(ID3DBlob);
 
-    MAKE_SMART_COM_PTR(ID3D12StateObject);
-    MAKE_SMART_COM_PTR(ID3D12Device);
-    MAKE_SMART_COM_PTR(ID3D12GraphicsCommandList);
-    MAKE_SMART_COM_PTR(ID3D12Debug);
-    MAKE_SMART_COM_PTR(ID3D12CommandQueue);
-    MAKE_SMART_COM_PTR(ID3D12CommandAllocator);
-    MAKE_SMART_COM_PTR(ID3D12DescriptorHeap);
-    MAKE_SMART_COM_PTR(ID3D12Resource);
-    MAKE_SMART_COM_PTR(ID3D12Fence);
-    MAKE_SMART_COM_PTR(ID3D12PipelineState);
-    MAKE_SMART_COM_PTR(ID3D12RootSignature);
-    MAKE_SMART_COM_PTR(ID3D12QueryHeap);
-    MAKE_SMART_COM_PTR(ID3D12CommandSignature);
-    MAKE_SMART_COM_PTR(IUnknown);
+    FALCOR_MAKE_SMART_COM_PTR(ID3D12StateObject);
+    FALCOR_MAKE_SMART_COM_PTR(ID3D12Device);
+    FALCOR_MAKE_SMART_COM_PTR(ID3D12GraphicsCommandList);
+    FALCOR_MAKE_SMART_COM_PTR(ID3D12Debug);
+    FALCOR_MAKE_SMART_COM_PTR(ID3D12CommandQueue);
+    FALCOR_MAKE_SMART_COM_PTR(ID3D12CommandAllocator);
+    FALCOR_MAKE_SMART_COM_PTR(ID3D12DescriptorHeap);
+    FALCOR_MAKE_SMART_COM_PTR(ID3D12Resource);
+    FALCOR_MAKE_SMART_COM_PTR(ID3D12Fence);
+    FALCOR_MAKE_SMART_COM_PTR(ID3D12PipelineState);
+    FALCOR_MAKE_SMART_COM_PTR(ID3D12RootSignature);
+    FALCOR_MAKE_SMART_COM_PTR(ID3D12QueryHeap);
+    FALCOR_MAKE_SMART_COM_PTR(ID3D12CommandSignature);
+    FALCOR_MAKE_SMART_COM_PTR(IUnknown);
 
     using ApiObjectHandle = IUnknownPtr;
 
@@ -222,12 +186,13 @@ namespace Falcor
     using CommandSignatureHandle = ID3D12CommandSignaturePtr;
     using FenceHandle = ID3D12FencePtr;
     using ResourceHandle = ID3D12ResourcePtr;
-    using RtvHandle = std::shared_ptr<DescriptorSet>;
-    using DsvHandle = std::shared_ptr<DescriptorSet>;
-    using SrvHandle = std::shared_ptr<DescriptorSet>;
-    using SamplerHandle = std::shared_ptr<DescriptorSet>;
-    using UavHandle = std::shared_ptr<DescriptorSet>;
-    using CbvHandle = std::shared_ptr<DescriptorSet>;
+    using RtvHandle = std::shared_ptr<D3D12DescriptorSet>;
+    using DsvHandle = std::shared_ptr<D3D12DescriptorSet>;
+    using SrvHandle = std::shared_ptr<D3D12DescriptorSet>;
+    using SamplerHandle = std::shared_ptr<D3D12DescriptorSet>;
+    using UavHandle = std::shared_ptr<D3D12DescriptorSet>;
+    using CbvHandle = std::shared_ptr<D3D12DescriptorSet>;
+    using AccelerationStructureHandle = std::shared_ptr<ShaderResourceView>;
     using FboHandle = void*;
     using GpuAddress = D3D12_GPU_VIRTUAL_ADDRESS;
     using QueryHeapHandle = ID3D12QueryHeapPtr;
@@ -236,6 +201,8 @@ namespace Falcor
 
     using GraphicsStateHandle = ID3D12PipelineStatePtr;
     using ComputeStateHandle = ID3D12PipelineStatePtr;
+    using RaytracingStateHandle = ID3D12StateObjectPtr;
+
     using ShaderHandle = D3D12_SHADER_BYTECODE;
     using RootSignatureHandle = ID3D12RootSignaturePtr;
     using DescriptorHeapHandle = ID3D12DescriptorHeapPtr;
@@ -258,4 +225,4 @@ namespace Falcor
     /*! @} */
 }
 
-#define UNSUPPORTED_IN_D3D12(msg_) {Falcor::logWarning(msg_ + std::string(" is not supported in D3D12. Ignoring call."));}
+#define FALCOR_UNSUPPORTED_IN_D3D12(_msg) {Falcor::logWarning(_msg + std::string(" is not supported in D3D12. Ignoring call."));}

@@ -36,7 +36,10 @@
 
 namespace Falcor
 {
-    class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph>
+    /** Represents a render graph.
+        The render graph is a direct acyclic graph (DAG) of render passes.
+    */
+    class FALCOR_API RenderGraph
     {
     public:
         using SharedPtr = std::shared_ptr<RenderGraph>;
@@ -52,111 +55,131 @@ namespace Falcor
         */
         static SharedPtr create(const std::string& name = "");
 
-        /** Set a scene
+        /** Set a scene.
+            \param[in] pScene New scene. This may be nullptr to unset the scene.
         */
         void setScene(const Scene::SharedPtr& pScene);
 
-        /** Add a render-pass. The name has to be unique, otherwise the call will be ignored
+        /** Add a render pass. The name has to be unique, otherwise the call will be ignored.
+            \return Render pass ID, or kInvalidIndex upon failure.
         */
         uint32_t addPass(const RenderPass::SharedPtr& pPass, const std::string& passName);
 
-        /** Get a render-pass
+        /** Get a render pass by name.
+            \return Ptr to render pass, or nullptr if pass wasn't found.
         */
         const RenderPass::SharedPtr& getPass(const std::string& name) const;
 
-        /** Remove a render-pass. You need to make sure the edges are still valid after the node was removed
+        /** Remove a render pass and all its edges. You need to make sure the graph is still valid after the pass was removed.
         */
         void removePass(const std::string& name);
 
-        /** Update dictionary for specified render pass.
+        /** Update render pass using the specified dictionary. This function recreates the pass in place.
         */
         void updatePass(RenderContext* pRenderContext, const std::string& passName, const Dictionary& dict);
 
-        /** Insert an edge from a render-pass' output into a different render-pass input.
+        /** Insert an edge from a render pass' output to a different render pass input.
             The render passes must be different, the graph must be a DAG.
             There are 2 types of edges:
-            - Data dependency edge - Connecting as pass` output resource to another pass` input resource.
-                                     The src/dst strings have the format `renderPassName.resourceName`, where the `renderPassName` is the name used in `addPass()` and the `resourceName` is the resource-name as described by the render-pass object
+            - Data dependency edge - Connecting as pass output resource to another pass input resource.
+                                     The src/dst strings have the format `renderPassName.resourceName`, where the `renderPassName` is the name used in `addPass()` and the `resourceName` is the resource name as described by the render pass `reflect()` call.
             - Execution dependency edge - As the name implies, it creates an execution dependency between 2 passes, even if there's no data dependency. You can use it to control the execution order of the graph, or to force execution of passes which have no inputs/outputs.
-                                          The src/dst string are `srcPass` and `dstPass` as used in `addPass()`
+                                          The src/dst string are `srcPass` and `dstPass` as used in `addPass()`.
 
-            Note that data-dependency edges may be optimized out of the execution, if they are determined not to influence the requested graph-output. Execution-dependency edges are never optimized and will always execute
+            Note that data-dependency edges may be optimized out of the execution, if they are determined not to influence the requested graph output. Execution-dependency edges are never optimized and will always execute.
+            \return Edge ID, or kInvalidIndex upon failure.
         */
         uint32_t addEdge(const std::string& src, const std::string& dst);
 
-        /** Remove an edge
-         */
+        /** Remove an edge by name. See naming conventions in addEdge().
+        */
         void removeEdge(const std::string& src, const std::string& dst);
 
-        /** Remove an edge
-         */
+        /** Remove an edge by ID.
+        */
         void removeEdge(uint32_t edgeID);
 
-        /** Execute the graph
+        /** Execute the graph.
         */
-        void execute(RenderContext* pContext);
+        void execute(RenderContext* pRenderContext);
 
-        /** Update graph based on another graph's topology
+        /** Update graph based on another graph's topology.
         */
         void update(const SharedPtr& pGraph);
 
-        /** Set an external input resource
-            \param[in] name Input name. Has the format `renderPassName.resourceName`
-            \param[in] pResource The resource to bind. If this is nullptr, will unregister the resource
+        /** Set an external input resource.
+            \param[in] name Input name. Has the format `renderPassName.resourceName`.
+            \param[in] pResource The resource to bind. If this is nullptr, will unregister the resource.
         */
         void setInput(const std::string& name, const Resource::SharedPtr& pResource);
 
         /** Returns true if a render pass exists by this name in the graph.
-         */
+        */
         bool doesPassExist(const std::string& name) const { return (mNameToIndex.find(name) != mNameToIndex.end()); }
 
-        /** Return the index of a pass from a name, or kInvalidIndex if the pass doesn't exists
+        /** Return the index of a pass from a name, or kInvalidIndex if the pass doesn't exists.
         */
         uint32_t getPassIndex(const std::string& name) const;
 
-        /** Get an output resource. The name has the format `renderPassName.resourceName`.
-        This is an alias for `getRenderPass(renderPassName)->getOutput(resourceName)`
+        /** Get an output resource by name.
+            This is an alias for `getRenderPass(renderPassName)->getOutput(resourceName)`.
+            \param[in] name Output name. Has format `renderPassName.resourceName`.
+            \return Resource object, or nullptr if output not available.
         */
         Resource::SharedPtr getOutput(const std::string& name);
 
-        /** Get an output resource. The index corresponds to getOutputCount().
-            If markOutput() or unmarkOutput() was called, the indices might change so don't cache them
+        /** Get an output resource by index.
+            If markOutput() or unmarkOutput() was called, the indices might change so don't cache them.
+            \param[in] index Output index. The index corresponds to getOutputCount().
+            \return Resource object, or nullptr if output not available.
         */
         Resource::SharedPtr getOutput(uint32_t index);
 
-        /** Mark a render-pass output as the graph's output. If the graph has no outputs it is invalid.
-            The name has the format `renderPassName.resourceName`. You can also use `renderPassName` which will allocate all the render-pass outputs.
-            The graph will automatically allocate the output resource
-            If name is '*', it will mark all available outputs
+        /** Mark a render pass output as the graph's output.
+            The name has the format `renderPassName.resourceName`. You can also use `renderPassName` which will allocate all the render pass outputs.
+            The graph will automatically allocate the output resource. If the graph has no outputs it is invalid.
+            If name is '*', it will mark all available outputs.
+            \param[in] name Render pass output.
+            \param[in] mask Mask of color channels. The default is RGB.
         */
-        void markOutput(const std::string& name);
+        void markOutput(const std::string& name, const TextureChannelFlags mask = TextureChannelFlags::RGB);
 
-        /** Unmark a graph output
-            The name has the format `renderPassName.resourceName`. You can also use `renderPassName` which will allocate all the render-pass outputs
+        /** Unmark a graph output.
+            The name has the format `renderPassName.resourceName`. You can also use `renderPassName` which will unmark all the render pass outputs.
+            \param[in] name Render pass output.
         */
         void unmarkOutput(const std::string& name);
 
-        /** Check if a name is marked as output
+        /** Check if a name is marked as output.
+            \param[in] name Render pass output.
         */
         bool isGraphOutput(const std::string& name) const;
 
-        /** Call this when the swap-chain was resized
+        /** Call this when the swap chain was resized.
         */
         void onResize(const Fbo* pTargetFbo);
 
-        /** Get the attached scene
+        /** Get the attached scene.
         */
         const Scene::SharedPtr& getScene() const { return mpScene; }
 
-        /** Get an graph output name from the graph outputs
-        */
-        std::string getOutputName(size_t index) const;
-
-        /** Get the num of outputs from this graph
+        /** Get the number of outputs from this graph.
         */
         size_t getOutputCount() const { return mOutputs.size(); }
 
-        /** Get all output names for the render graph
+        /** Get an graph output name from the graph output index.
+            \param[in] index Output index. The index corresponds to getOutputCount().
+            \return Output name.
+        */
+        std::string getOutputName(size_t index) const;
+
+        /** Get the set of output masks from the graph output index.
+            \param[in] index Output index. The index corresponds to getOutputCount().
+            \return Set of color channel masks.
+        */
+        std::unordered_set<TextureChannelFlags> getOutputMasks(size_t index) const;
+
+        /** Get all output names for the render graph.
         */
         std::vector<std::string> getAvailableOutputs() const;
 
@@ -164,17 +187,17 @@ namespace Falcor
         */
         std::vector<std::string> getUnmarkedOutputs() const;
 
-        /** Render the UI
+        /** Render the graph UI.
         */
         void renderUI(Gui::Widgets& widget);
 
         /** Mouse event handler.
-            Returns true if the event was handled by the object, false otherwise
+            \return True if the event was handled by the object, false otherwise.
         */
         bool onMouseEvent(const MouseEvent& mouseEvent);
 
-        /** Keyboard event handler
-        Returns true if the event was handled by the object, false otherwise
+        /** Keyboard event handler.
+            \return True if the event was handled by the object, false otherwise.
         */
         bool onKeyEvent(const KeyboardEvent& keyEvent);
 
@@ -183,31 +206,25 @@ namespace Falcor
         */
         void onHotReload(HotReloadFlags reloaded);
 
-        /** Get the dictionary objects used to communicate app data to the render-passes
+        /** Get the dictionary objects used to communicate app data to the render passes.
         */
         const InternalDictionary::SharedPtr& getPassesDictionary() const { return mpPassDictionary; }
 
-        /** Get the name
+        /** Get the graph name.
         */
         const std::string& getName() const { return mName; }
 
-        /** Get the name
+        /** Set the graph name.
         */
         void setName(const std::string& name) { mName = name; }
 
-        /** Compile the graph
+        /** Compile the graph.
         */
-        bool compile(RenderContext* pContext, std::string& log);
-        bool compile(RenderContext* pContext) { std::string s; return compile(pContext, s); }
+        bool compile(RenderContext* pRenderContext, std::string& log);
+        bool compile(RenderContext* pRenderContext) { std::string s; return compile(pRenderContext, s); }
 
     private:
-        friend class RenderGraphUI;
-        friend class RenderGraphExporter;
-        friend class RenderPassLibrary;
-        friend class RenderGraphCompiler;
-
         RenderGraph(const std::string& name);
-        std::string mName;
 
         struct EdgeData
         {
@@ -221,35 +238,46 @@ namespace Falcor
             RenderPass::SharedPtr pPass;
         };
 
-        uint32_t getEdge(const std::string& src, const std::string& dst);
-
-        Scene::SharedPtr mpScene;
-        std::unordered_map<std::string, uint32_t> mNameToIndex;
-        DirectedGraph::SharedPtr mpGraph;
-        std::unordered_map<uint32_t, EdgeData> mEdgeData;
-        std::unordered_map<uint32_t, NodeData> mNodeData;
-
         struct GraphOut
         {
-            uint32_t nodeId;
-            std::string field;
+            uint32_t nodeId = kInvalidIndex;                ///< Render pass node ID.
+            std::string field;                              ///< Name of the output field.
+            std::unordered_set<TextureChannelFlags> masks;  ///< Set of output color channel masks.
 
             bool operator==(const GraphOut& other) const
             {
                 if (nodeId != other.nodeId) return false;
                 if (field != other.field) return false;
+                // Do not compare masks, the other fields uniquely identify the output.
                 return true;
             }
 
             bool operator!=(const GraphOut& other) const { return !(*this == other); }
         };
 
-        std::vector<GraphOut> mOutputs; // GRAPH_TODO should this be an unordered set?
+        RenderPass* getRenderPassAndNamePair(const bool input, const std::string& fullname, const std::string& errorPrefix, std::pair<std::string, std::string>& nameAndField) const;
+        uint32_t getEdge(const std::string& src, const std::string& dst);
+        void getUnsatisfiedInputs(const NodeData* pNodeData, const RenderPassReflection& passReflection, std::vector<RenderPassReflection::Field>& outList) const;
+        void autoConnectPasses(const NodeData* pSrcNode, const RenderPassReflection& srcReflection, const NodeData* pDestNode, std::vector<RenderPassReflection::Field>& unsatisfiedInputs);
         bool isGraphOutput(const GraphOut& graphOut) const;
 
-        InternalDictionary::SharedPtr mpPassDictionary;
-        RenderGraphExe::SharedPtr mpExe;
-        bool mRecompile = false;
-        RenderGraphCompiler::Dependencies mCompilerDeps;
+        std::string mName;                                          ///< Name of render graph.
+        Scene::SharedPtr mpScene;                                   ///< Current scene. This may be nullptr.
+
+        DirectedGraph::SharedPtr mpGraph;                           ///< DAG of render passes. Only IDs are stored, not the actual passes.
+        std::unordered_map<std::string, uint32_t> mNameToIndex;     ///< Map from render pass name to node ID in graph.
+        std::unordered_map<uint32_t, EdgeData> mEdgeData;
+        std::unordered_map<uint32_t, NodeData> mNodeData;           ///< Map from node ID to render pass name and ptr.
+        std::vector<GraphOut> mOutputs;                             ///< Array of all outputs marked as graph outputs. GRAPH_TODO should this be an unordered set?
+
+        InternalDictionary::SharedPtr mpPassDictionary;             ///< Dictionary used to communicate between passes.
+        RenderGraphExe::SharedPtr mpExe;                            ///< Helper for allocating resources and executing the graph.
+        RenderGraphCompiler::Dependencies mCompilerDeps;            ///< Data needed by the graph compiler.
+        bool mRecompile = false;                                    ///< Set to true to trigger a recompilation after any graph changes (topology/scene/size/passes/etc.)
+
+        friend class RenderGraphUI;
+        friend class RenderGraphExporter;
+        friend class RenderPassLibrary;
+        friend class RenderGraphCompiler;
     };
 }

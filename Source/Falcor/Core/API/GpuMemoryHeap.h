@@ -30,8 +30,8 @@
 #include "Core/API/GpuFence.h"
 
 namespace Falcor
-{   
-    class dlldecl GpuMemoryHeap
+{
+    class FALCOR_API GpuMemoryHeap
     {
     public:
         using SharedPtr = std::shared_ptr<GpuMemoryHeap>;

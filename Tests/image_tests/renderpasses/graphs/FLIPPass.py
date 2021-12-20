@@ -11,9 +11,9 @@ def test_FLIPPass():
     graph.addPass(imageLoaderA, "ImageLoaderA")
     graph.addPass(imageLoaderB, "ImageLoaderB")
     graph.addPass(flip, "FLIP")
-    graph.addEdge("ImageLoaderA.dst", "FLIP.inputA")
-    graph.addEdge("ImageLoaderB.dst", "FLIP.inputB")
-    graph.markOutput("FLIP.output")
+    graph.addEdge("ImageLoaderA.dst", "FLIP.referenceImage")
+    graph.addEdge("ImageLoaderB.dst", "FLIP.testImage")
+    graph.markOutput("FLIP.errorMapDisplay")
 
     return graph
 

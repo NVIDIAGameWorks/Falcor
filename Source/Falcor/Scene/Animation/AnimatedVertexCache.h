@@ -37,6 +37,10 @@ namespace Falcor
 
     struct CachedCurve
     {
+        static const uint32_t kInvalidID = std::numeric_limits<uint32_t>::max();
+
+        uint32_t curveID = kInvalidID; ///< ID of the curve this data is animating.
+
         std::vector<double> timeSamples;
 
         // Shared among all frames.
@@ -49,7 +53,9 @@ namespace Falcor
 
     struct CachedMesh
     {
-        uint32_t meshId = -1; ///< ID of the mesh this data is animating
+        static const uint32_t kInvalidID = std::numeric_limits<uint32_t>::max();
+
+        uint32_t meshID = kInvalidID; ///< ID of the mesh this data is animating.
 
         std::vector<double> timeSamples;
 
@@ -63,53 +69,56 @@ namespace Falcor
         float t;
     };
 
-    class dlldecl AnimatedVertexCache
+    class FALCOR_API AnimatedVertexCache
     {
     public:
         using UniquePtr = std::unique_ptr<AnimatedVertexCache>;
         using UniqueConstPtr = std::unique_ptr<const AnimatedVertexCache>;
         ~AnimatedVertexCache() = default;
 
-        static UniquePtr create(Scene* pScene, std::vector<CachedCurve>& cachedCurves, std::vector<CachedMesh>& cachedMeshes);
+        static UniquePtr create(Scene* pScene, std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes);
+
+        void setIsLooped(bool looped) { mLoopAnimations = looped; }
+        bool isLooped() const { return mLoopAnimations; };
+        void setPreInfinityBehavior(Animation::Behavior behavior) { mPreInfinityBehavior = behavior; }
+
+        bool hasAnimations() const;
+        bool hasCurveAnimations() const;
+        double getGlobalAnimationLength() const { return mGlobalCurveAnimationLength; }
 
         bool animate(RenderContext* pContext, double time);
-
         void copyToPrevVertices(RenderContext* pContext);
-
-        bool hasAnimations();
-
-        double getGlobalAnimationLength() const { return mGlobalAnimationLength; }
+        Buffer::SharedPtr getPrevCurveVertexData() const { return mpPrevCurveVertexBuffer; }
 
         uint64_t getMemoryUsageInBytes() const;
 
-        Buffer::SharedPtr getPrevCurveVertexData() const { return mpPrevCurveVertexBuffer; }
-
     private:
-        AnimatedVertexCache(Scene* pScene, std::vector<CachedCurve>& cachedCurves, std::vector<CachedMesh>& cachedMeshes);
+        AnimatedVertexCache(Scene* pScene, std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes);
 
-        void initKeyframes();
+        void initCurveKeyframes();
         void bindCurveBuffers();
 
-        void createVertexUpdatePass();
-        void createAABBUpdatePass();
+        void createCurveVertexUpdatePass();
+        void createCurveAABBUpdatePass();
 
         // Interpolate vertex positions.
-        void executeVertexUpdatePass(RenderContext* pContext, uint2 keyframeIndices, float t, bool copyPrev = false);
+        // When copyPrev is set to true, interpolation info is ignored and we just copy the current vertex data to the previous data.
+        void executeCurveVertexUpdatePass(RenderContext* pContext, const InterpolationInfo& info, bool copyPrev = false);
 
         // Update the AABBs of procedural primitives (such as curve segments).
-        void executeAABBUpdatePass(RenderContext* pContext);
+        void executeCurveAABBUpdatePass(RenderContext* pContext);
 
-        double mGlobalAnimationLength = 0;
+        bool mLoopAnimations = true;
+        double mGlobalCurveAnimationLength = 0;
         Scene* mpScene = nullptr;
-
-        ComputePass::SharedPtr mpVertexUpdatePass;
-        ComputePass::SharedPtr mpAABBUpdatePass;
-
-        // Manage keyframes.
-        uint32_t mKeyframeCount = 0;
-        std::vector<double> mKeyframeTimes;
+        Animation::Behavior mPreInfinityBehavior = Animation::Behavior::Constant; // How the animation behaves before the first keyframe.
 
         // Cached curve animation.
+        ComputePass::SharedPtr mpCurveVertexUpdatePass;
+        ComputePass::SharedPtr mpCurveAABBUpdatePass;
+
+        std::vector<double> mCurveKeyframeTimes;
+
         std::vector<CachedCurve> mCachedCurves;
         uint32_t mCurveVertexCount = 0;
         uint32_t mCurveIndexCount = 0;

@@ -30,7 +30,7 @@
 
 namespace Falcor
 {
-    class dlldecl CurveTessellation
+    class FALCOR_API CurveTessellation
     {
     public:
         // Swept spheres
@@ -52,10 +52,11 @@ namespace Falcor
             \param[in] UVs Array of texture coordinates.
             \param[in] degree Polynomial degree of strand (linear -- cubic).
             \param[in] subdivPerSegment Number of sub-segments within each cubic bspline segment (defined by 4 control points).
+            \param[in] keepOneEveryXPerStrand Keep one of every X vertices in each curve strand.
             \param[in] xform Row-major 4x4 transformation matrix. We apply pre-transformation to curve geometry.
             \return Linear swept sphere segments.
         */
-        static SweptSphereResult convertToLinearSweptSphere(size_t strandCount, const int* vertexCountsPerStrand, const float3* controlPoints, const float* widths, const float2* UVs, uint32_t degree, uint32_t subdivPerSegment, const glm::mat4& xform);
+        static SweptSphereResult convertToLinearSweptSphere(size_t strandCount, const int* vertexCountsPerStrand, const float3* controlPoints, const float* widths, const float2* UVs, uint32_t degree, uint32_t subdivPerSegment, uint32_t keepOneEveryXPerStrand, const glm::mat4& xform);
 
         // Tessellated mesh
 
@@ -80,7 +81,7 @@ namespace Falcor
             \return Tessellated mesh.
         */
         static MeshResult convertToMesh(size_t strandCount, const int* vertexCountsPerStrand, const float3* controlPoints, const float* widths, const float2* UVs, uint32_t subdivPerSegment, uint32_t pointCountPerCrossSection);
-        
+
     private:
         CurveTessellation() = default;
         CurveTessellation(const CurveTessellation&) = delete;

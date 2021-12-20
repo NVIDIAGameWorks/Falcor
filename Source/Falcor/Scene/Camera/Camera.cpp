@@ -215,6 +215,12 @@ namespace Falcor
         return mData.viewProjMat;
     }
 
+    const glm::mat4& Camera::getViewProjMatrixNoJitter() const
+    {
+        calculateCameraParameters();
+        return mData.viewProjMatNoJitter;
+    }
+
     const glm::mat4& Camera::getInvViewProjMatrix() const
     {
         calculateCameraParameters();
@@ -366,9 +372,9 @@ namespace Falcor
         return c;
     }
 
-    SCRIPT_BINDING(Camera)
+    FALCOR_SCRIPT_BINDING(Camera)
     {
-        SCRIPT_BINDING_DEPENDENCY(Animatable)
+        FALCOR_SCRIPT_BINDING_DEPENDENCY(Animatable)
 
         pybind11::class_<Camera, Animatable, Camera::SharedPtr> camera(m, "Camera");
         camera.def_property("name", &Camera::getName, &Camera::setName);

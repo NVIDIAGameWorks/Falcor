@@ -26,17 +26,18 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#pragma warning(disable:4244 4267)
+#pragma warning(push)
+#pragma warning(disable : 4244 4267)
 #include <nanovdb/NanoVDB.h>
 #include <nanovdb/util/GridHandle.h>
 #include <nanovdb/util/HostBuffer.h>
-#pragma warning(default:4244 4267)
+#pragma warning(pop)
 #include "BrickedGrid.h"
 namespace Falcor
 {
     /** Voxel grid based on NanoVDB.
     */
-    class dlldecl Grid
+    class FALCOR_API Grid
     {
     public:
         using SharedPtr = std::shared_ptr<Grid>;

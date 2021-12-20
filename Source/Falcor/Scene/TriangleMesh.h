@@ -34,7 +34,7 @@ namespace Falcor
         Vertices have position, normal and texture coordinate attributes.
         This class is used as a utility to pass simple geometry to the SceneBuilder.
     */
-    class dlldecl TriangleMesh
+    class FALCOR_API TriangleMesh
     {
     public:
         using SharedPtr = std::shared_ptr<TriangleMesh>;

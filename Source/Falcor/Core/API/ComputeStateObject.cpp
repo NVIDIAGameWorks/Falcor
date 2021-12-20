@@ -35,13 +35,14 @@ namespace Falcor
     {
         bool b = true;
         b = b && (mpProgram == other.mpProgram);
-        b = b && (mpRootSignature == other.mpRootSignature);
         return b;
     }
 
     ComputeStateObject::~ComputeStateObject()
     {
+#ifdef FALCOR_D3D12
         gpDevice->releaseResource(mApiHandle);
+#endif
     }
 
     ComputeStateObject::ComputeStateObject(const Desc& desc)

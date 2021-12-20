@@ -33,7 +33,7 @@ namespace Falcor
 {
     class Gui;
 
-    class dlldecl VideoEncoderUI
+    class FALCOR_API VideoEncoderUI
     {
     public:
         using UniquePtr = std::unique_ptr<VideoEncoderUI>;
