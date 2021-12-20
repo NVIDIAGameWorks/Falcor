@@ -38,7 +38,7 @@ BEGIN_NAMESPACE_FALCOR
 */
 struct MeshLightData
 {
-    uint        meshInstanceID      = kInvalidIndex;    ///< Mesh instance ID in the scene (= getGlobalHitID()).
+    uint        instanceID          = kInvalidIndex;    ///< Geometry instance ID in the scene.
     uint        triangleOffset      = kInvalidIndex;    ///< Offset into LightCollection's global list of emissive triangles.
     uint        triangleCount       = 0;                ///< Number of triangles in mesh light.
     uint        materialID          = kInvalidIndex;    ///< Material ID (index into scene.materials array).

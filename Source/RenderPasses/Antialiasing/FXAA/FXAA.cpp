@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "FXAA.h"
 
-const char* FXAA::kDesc = "Fast Approximate Anti-Aliasing";
+const RenderPass::Info FXAA::kInfo { "FXAA", "Fast Approximate Anti-Aliasing." };
 
 namespace
 {
@@ -43,6 +43,7 @@ namespace
 }
 
 FXAA::FXAA()
+    : RenderPass(kInfo)
 {
     mpPass = FullScreenPass::create(kShaderFilename);
     mpFbo = Fbo::create();
@@ -83,7 +84,7 @@ RenderPassReflection FXAA::reflect(const CompileData& compileData)
     return reflector;
 }
 
-void FXAA::execute(RenderContext* pContext, const RenderData& renderData)
+void FXAA::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
     auto pSrc = renderData[kSrc]->asTexture();
     auto pDst = renderData[kDst]->asTexture();
@@ -99,7 +100,7 @@ void FXAA::execute(RenderContext* pContext, const RenderData& renderData)
     pCB["qualityEdgeThresholdMin"] = mQualityEdgeThresholdMin;
     pCB["earlyOut"] = mEarlyOut;
 
-    mpPass->execute(pContext, mpFbo);
+    mpPass->execute(pRenderContext, mpFbo);
 }
 
 void FXAA::renderUI(Gui::Widgets& widget)

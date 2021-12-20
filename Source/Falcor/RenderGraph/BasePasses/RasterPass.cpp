@@ -48,13 +48,13 @@ namespace Falcor
     {
     }
 
-    void RasterPass::drawIndexed(RenderContext* pContext, uint32_t indexCount, uint32_t startIndexLocation, int32_t baseVertexLocation)
+    void RasterPass::drawIndexed(RenderContext* pRenderContext, uint32_t indexCount, uint32_t startIndexLocation, int32_t baseVertexLocation)
     {
-        pContext->drawIndexed(mpState.get(), mpVars.get(), indexCount, startIndexLocation, baseVertexLocation);
+        pRenderContext->drawIndexed(mpState.get(), mpVars.get(), indexCount, startIndexLocation, baseVertexLocation);
     }
 
-    void RasterPass::draw(RenderContext* pContext, uint32_t vertexCount, uint32_t startVertexLocation)
+    void RasterPass::draw(RenderContext* pRenderContext, uint32_t vertexCount, uint32_t startVertexLocation)
     {
-        pContext->draw(mpState.get(), mpVars.get(), vertexCount, startVertexLocation);
+        pRenderContext->draw(mpState.get(), mpVars.get(), vertexCount, startVertexLocation);
     }
 }

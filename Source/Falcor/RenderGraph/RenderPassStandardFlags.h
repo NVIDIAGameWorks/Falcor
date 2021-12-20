@@ -52,5 +52,5 @@ namespace Falcor
     */
     static const char kRenderPassGBufferAdjustShadingNormals[] = "_gbufferAdjustShadingNormals";
 
-    enum_class_operators(RenderPassRefreshFlags);
+    FALCOR_ENUM_CLASS_OPERATORS(RenderPassRefreshFlags);
 }

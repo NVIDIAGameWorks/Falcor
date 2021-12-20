@@ -1,32 +1,42 @@
 <project toolsVersion="5.0">
     <remote name="github-slang-windows" type="https" packageLocation="github.com/shader-slang/slang/releases/download/v${version}/slang-${version}-win64.zip"/>
     <remote name="github-slang-linux" type="https" packageLocation="github.com/shader-slang/slang/releases/download/v${version}/slang-${version}-linux-x86_64.zip"/>
+    <remote name="nuget-agility-sdk" type="https" packageLocation="globalcdn.nuget.org/packages/microsoft.direct3d.d3d12.${version}.nupkg"/>
     <dependency name="falcor_dependencies" linkPath="../Externals/.packman/deps">
         <package name="falcor_dependencies" version="6adad071-${platform}" platforms="windows-x86_64" />
     </dependency>
     <dependency name="falcor_media" linkPath="../../Media">
-        <package name="falcor_media" version="f9ee5206" />
+        <package name="falcor_media" version="0c54be2c" />
     </dependency>
     <dependency name="dear_imgui" linkPath="../Externals/.packman/dear_imgui">
         <package name="dear_imgui" version="1.72WIP-docking-e5b9054" />
     </dependency>
-    <dependency name="vulkansdk" linkPath="../Externals/.packman/vulkansdk">
-        <package name="vulkansdk" version="1.1.82.1" platforms="windows-x86_64" />
-    </dependency>
     <dependency name="slang" linkPath="../Externals/.packman/slang">
-        <package name="slang" version="0.19.2" remotes="github-slang-windows" platforms="windows-x86_64"/>
-        <package name="slang" version="0.19.2" remotes="github-slang-linux" platforms="linux-x86_64" />
+        <package name="slang" version="0.19.24" remotes="github-slang-windows" platforms="windows-x86_64"/>
+        <package name="slang" version="0.19.24" remotes="github-slang-linux" platforms="linux-x86_64" />
     </dependency>
     <dependency name="WinPixEventRuntime" linkPath="../Externals/.packman/WinPixEventRuntime">
         <package name="WinPixEventRuntime" version="1.0.190604001" platforms="windows-x86_64" />
     </dependency>
     <dependency name="python" linkPath="../Externals/.packman/python">
-        <package name="python" version="3.6.7-${platform}" platforms="windows-x86_64 linux-x86_64" />
+        <package name="python" version="3.7.9-1-${platform}" platforms="windows-x86_64 linux-x86_64" />
     </dependency>
     <dependency name="nanovdb" linkPath="../Externals/.packman/nanovdb">
         <package name="nanovdb" version="pnanovdb-90289150" />
     </dependency>
     <dependency name="dxcompiler" linkPath="../Externals/.packman/dxcompiler">
-        <package name="dxcompiler" version="1.5.2010" />
+        <package name="dxcompiler" version="1.6.2106" />
+    </dependency>
+    <dependency name="agility-sdk" linkPath="../Externals/.packman/agility-sdk">
+        <package name="agility-sdk" version="1.4.10" remotes="nuget-agility-sdk" platforms="windows-x86_64"/>
+    </dependency>
+    <dependency name="nvtt" linkPath="../Externals/.packman/nvtt">
+        <package name="nvtt" version="3.1.6-windows-x86_64" platforms="windows-x86_64" />
+    </dependency>
+    <dependency name="nv_usd_release" linkPath="../Externals/.packman/nv-usd-release">
+        <package name="nv-usd" version="20.08.nv.1.1.2064.0ffb3647-win64_py37_release-main" platforms="windows-x86_64" />
+    </dependency>
+    <dependency name="nv_usd_debug" linkPath="../Externals/.packman/nv-usd-debug">
+        <package name="nv-usd" version="20.08.nv.1.1.2064.0ffb3647-win64_py37_debug-main" platforms="windows-x86_64" />
     </dependency>
 </project>

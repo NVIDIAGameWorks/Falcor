@@ -34,7 +34,7 @@ namespace Falcor
 
     /** Class that renders text into the screen.
     */
-    class dlldecl TextRenderer
+    class FALCOR_API TextRenderer
     {
     public:
         enum class Flags
@@ -81,5 +81,5 @@ namespace Falcor
         TextRenderer() = default;
     };
 
-    enum_class_operators(TextRenderer::Flags);
+    FALCOR_ENUM_CLASS_OPERATORS(TextRenderer::Flags);
 }

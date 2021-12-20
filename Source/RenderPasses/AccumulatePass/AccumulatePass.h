@@ -44,14 +44,14 @@ class AccumulatePass : public RenderPass
 public:
     using SharedPtr = std::shared_ptr<AccumulatePass>;
 
+    static const Info kInfo;
+
     virtual ~AccumulatePass() = default;
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
-    virtual std::string getDesc() override { return "Temporal accumulation pass"; }
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
-    virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
@@ -75,13 +75,14 @@ public:
 protected:
     AccumulatePass(const Dictionary& dict);
     void prepareAccumulation(RenderContext* pRenderContext, uint32_t width, uint32_t height);
+    void accumulate(RenderContext* pRenderContext, const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDst);
 
     // Internal state
     Scene::SharedPtr            mpScene;                        ///< The current scene (or nullptr if no scene).
     std::map<Precision, ComputeProgram::SharedPtr> mpProgram;   ///< Accumulation programs, one per mode.
     ComputeVars::SharedPtr      mpVars;                         ///< Program variables.
     ComputeState::SharedPtr     mpState;
-    FormatType                  mSrcFormat;                     ///< Format of the source that gets accumulated.
+    FormatType                  mSrcType;                       ///< Format type of the source that gets accumulated.
 
     uint32_t                    mFrameCount = 0;                ///< Number of accumulated frames. This is reset upon changes.
     uint2                       mFrameDim = { 0, 0 };           ///< Current frame dimension in pixels.
@@ -96,4 +97,8 @@ protected:
     Precision                   mPrecisionMode = Precision::Single;
     uint32_t                    mSubFrameCount = 0;             ///< Number of frames to accumulate before reset. Useful for generating references.
     uint32_t                    mMaxAccumulatedFrames = 0;      ///< Number of frames to accumulate before weights become constant. Useful for noise comparisons.
+
+    ResourceFormat              mOutputFormat = ResourceFormat::Unknown;                    ///< Output format (uses default when set to ResourceFormat::Unknown).
+    RenderPassHelpers::IOSize   mOutputSizeSelection = RenderPassHelpers::IOSize::Default;  ///< Selected output size.
+    uint2                       mFixedOutputSize = { 512, 512 };                            ///< Output size in pixels when 'Fixed' size is selected.
 };

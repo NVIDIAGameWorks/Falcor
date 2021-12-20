@@ -35,7 +35,7 @@ namespace Falcor
     /** Environment map based radiance probe.
         Utily class for evaluating radiance stored in an lat-long environment map.
     */
-    class dlldecl EnvMap : public std::enable_shared_from_this<EnvMap>
+    class FALCOR_API EnvMap
     {
     public:
         using SharedPtr = std::shared_ptr<EnvMap>;
@@ -131,5 +131,5 @@ namespace Falcor
         friend class SceneCache;
     };
 
-    enum_class_operators(EnvMap::Changes);
+    FALCOR_ENUM_CLASS_OPERATORS(EnvMap::Changes);
 }

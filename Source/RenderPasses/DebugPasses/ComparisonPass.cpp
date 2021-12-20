@@ -85,7 +85,7 @@ RenderPassReflection ComparisonPass::reflect(const CompileData& compileData)
     return r;
 }
 
-void ComparisonPass::execute(RenderContext* pContext, const RenderData& renderData)
+void ComparisonPass::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
     // Get references to our input, output, and temporary accumulation texture
     pLeftSrcTex = renderData[kLeftInput]->asTexture();
@@ -102,7 +102,7 @@ void ComparisonPass::execute(RenderContext* pContext, const RenderData& renderDa
     mpSplitShader["gRightInput"] = mSwapSides ? pLeftSrcTex : pRightSrcTex;
 
     // Execute the accumulation shader
-    mpSplitShader->execute(pContext, pDstFbo);
+    mpSplitShader->execute(pRenderContext, pDstFbo);
 
     // Render some labels
     if (mShowLabels)
@@ -112,12 +112,12 @@ void ComparisonPass::execute(RenderContext* pContext, const RenderData& renderDa
 
         // Draw text labeling the right side image
         std::string rightSide = mSwapSides ? mLeftLabel : mRightLabel;
-        TextRenderer::render(pContext, rightSide, pDstFbo, float2(screenLocX + 16, screenLocY));
+        TextRenderer::render(pRenderContext, rightSide, pDstFbo, float2(screenLocX + 16, screenLocY));
 
         // Draw text labeling the left side image
         std::string leftSide = mSwapSides ? mRightLabel : mLeftLabel;
         uint32_t leftLength = uint32_t(leftSide.length()) * 9;
-        TextRenderer::render(pContext, leftSide, pDstFbo, float2(screenLocX - 16 - leftLength, screenLocY));
+        TextRenderer::render(pRenderContext, leftSide, pDstFbo, float2(screenLocX - 16 - leftLength, screenLocY));
     }
 }
 

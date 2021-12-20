@@ -44,7 +44,7 @@ namespace Falcor
 
             if (mipLevel >= pTexture->getMipCount())
             {
-                logError("Error when attaching texture to FBO. Requested mip-level is out-of-bound.");
+                reportError("Error when attaching texture to FBO. Requested mip-level is out-of-bound.");
                 return false;
             }
 
@@ -52,7 +52,7 @@ namespace Falcor
             {
                 if (arraySize == 0)
                 {
-                    logError("Error when attaching texture to FBO. Requested to attach zero array slices");
+                    reportError("Error when attaching texture to FBO. Requested to attach zero array slices");
                     return false;
                 }
 
@@ -60,7 +60,7 @@ namespace Falcor
                 {
                     if (arraySize + firstArraySlice > pTexture->getDepth())
                     {
-                        logError("Error when attaching texture to FBO. Requested depth-index is out-of-bound.");
+                        reportError("Error when attaching texture to FBO. Requested depth-index is out-of-bound.");
                         return false;
                     }
                 }
@@ -68,7 +68,7 @@ namespace Falcor
                 {
                     if (arraySize + firstArraySlice > pTexture->getArraySize())
                     {
-                        logError("Error when attaching texture to FBO. Requested array index is out-of-bound.");
+                        reportError("Error when attaching texture to FBO. Requested array index is out-of-bound.");
                         return false;
                     }
                 }
@@ -78,13 +78,13 @@ namespace Falcor
             {
                 if (isDepthStencilFormat(pTexture->getFormat()) == false)
                 {
-                    logError("Error when attaching texture to FBO. Attaching to depth-stencil target, but resource has color format.");
+                    reportError("Error when attaching texture to FBO. Attaching to depth-stencil target, but resource has color format.");
                     return false;
                 }
 
                 if ((pTexture->getBindFlags() & Texture::BindFlags::DepthStencil) == Texture::BindFlags::None)
                 {
-                    logError("Error when attaching texture to FBO. Attaching to depth-stencil target, the texture wasn't create with the DepthStencil bind flag");
+                    reportError("Error when attaching texture to FBO. Attaching to depth-stencil target, the texture wasn't create with the DepthStencil bind flag");
                     return false;
 
                 }
@@ -93,13 +93,13 @@ namespace Falcor
             {
                 if (isDepthStencilFormat(pTexture->getFormat()))
                 {
-                    logError("Error when attaching texture to FBO. Attaching to color target, but resource has depth-stencil format.");
+                    reportError("Error when attaching texture to FBO. Attaching to color target, but resource has depth-stencil format.");
                     return false;
                 }
 
                 if ((pTexture->getBindFlags() & Texture::BindFlags::RenderTarget) == Texture::BindFlags::None)
                 {
-                    logError("Error when attaching texture to FBO. Attaching to color target, the texture wasn't create with the RenderTarget bind flag");
+                    reportError("Error when attaching texture to FBO. Attaching to color target, the texture wasn't create with the RenderTarget bind flag");
                     return false;
 
                 }
@@ -121,13 +121,13 @@ namespace Falcor
             {
                 if (sampleCount > 1 && mipLevels > 1)
                 {
-                    logError(msg + "can't create multi-sampled texture with more than one mip-level. sampleCount = " + std::to_string(sampleCount) + ", mipLevels = " + std::to_string(mipLevels) + ".");
+                    reportError(msg + "can't create multi-sampled texture with more than one mip-level. sampleCount = " + std::to_string(sampleCount) + ", mipLevels = " + std::to_string(mipLevels) + ".");
                     return false;
                 }
                 return true;
             }
 
-            logError(msg + param + " can't be zero.");
+            reportError(msg + param + " can't be zero.");
             return false;
         }
 
@@ -135,7 +135,7 @@ namespace Falcor
         {
             if (format == ResourceFormat::Unknown)
             {
-                logError("Can't create Texture2D with an unknown resource format");
+                reportError("Can't create Texture2D with an unknown resource format");
                 return nullptr;
             }
 
@@ -242,7 +242,7 @@ namespace Falcor
     {
         if (checkAttachmentParams(pDepthStencil.get(), mipLevel, firstArraySlice, arraySize, true) == false)
         {
-            throw std::exception("Can't attach depth-stencil texture to FBO. Invalid parameters.");
+            throw RuntimeError("Can't attach depth-stencil texture to FBO. Invalid parameters.");
         }
 
         mpDesc = nullptr;
@@ -264,11 +264,11 @@ namespace Falcor
     {
         if (rtIndex >= mColorAttachments.size())
         {
-            throw std::exception(("Error when attaching texture to FBO. Requested color index " + std::to_string(rtIndex) + ", but context only supports " + std::to_string(mColorAttachments.size()) + " targets").c_str());
+            throw ArgumentError("'index' ({}) is out of range. Only {} color targets are available.", rtIndex, mColorAttachments.size());
         }
         if (checkAttachmentParams(pTexture.get(), mipLevel, firstArraySlice, arraySize, false) == false)
         {
-            throw std::exception("Can't attach texture to FBO. Invalid parameters.");
+            throw RuntimeError("Can't attach texture to FBO. Invalid parameters.");
         }
 
         mpDesc = nullptr;
@@ -313,14 +313,14 @@ namespace Falcor
 
                 if (mTempDesc.getSampleCount() != pTexture->getSampleCount())
                 {
-                    logError("Error when validating FBO. Different sample counts in attachments\n");
+                    reportError("Error when validating FBO. Different sample counts in attachments\n");
                     return false;
                 }
 
 
                 if (mIsLayered != (attachment.arraySize > 1))
                 {
-                    logError("Error when validating FBO. Can't bind both layered and non-layered textures\n");
+                    reportError("Error when validating FBO. Can't bind both layered and non-layered textures\n");
                     return false;
                 }
             }
@@ -354,7 +354,7 @@ namespace Falcor
             uint32_t expectedCount = mSamplePositionsPixelCount * mTempDesc.getSampleCount();
             if (expectedCount != mSamplePositions.size())
             {
-                logError("Error when validating FBO. The sample-positions array-size has the wrong size.\n");
+                reportError("Error when validating FBO. The sample-positions array-size has the wrong size.\n");
                 return false;
             }
         }
@@ -369,7 +369,7 @@ namespace Falcor
     {
         if (index >= mColorAttachments.size())
         {
-            throw std::exception(("Can't get texture from FBO. Index is out of range. Requested " + std::to_string(index) + " but only " + std::to_string(mColorAttachments.size()) + " color slots are available.").c_str());
+            throw ArgumentError("'index' ({}) is out of range. Only {} color slots are available.", index, mColorAttachments.size());
         }
         return mColorAttachments[index].pTexture;
     }
@@ -385,7 +385,7 @@ namespace Falcor
         {
             if (calcAndValidateProperties() == false)
             {
-                throw std::exception("Can't finalize FBO. Invalid frame buffer object.");
+                throw RuntimeError("Can't finalize FBO. Invalid frame buffer object.");
             }
             initApiHandle();
         }
@@ -410,7 +410,7 @@ namespace Falcor
         uint32_t sampleCount = fboDesc.getSampleCount();
         if (checkParams("Create2D", width, height, arraySize, mipLevels, sampleCount) == false)
         {
-            throw std::exception("Can't create 2D FBO. Invalid parameters.");
+            throw RuntimeError("Can't create 2D FBO. Invalid parameters.");
         }
 
         Fbo::SharedPtr pFbo = create();
@@ -440,11 +440,11 @@ namespace Falcor
     {
         if (fboDesc.getSampleCount() > 1)
         {
-            throw std::exception("Can't create cubemap FBO. Multisampled cubemap is not supported.");
+            throw RuntimeError("Can't create cubemap FBO. Multisampled cubemap is not supported.");
         }
         if (checkParams("CreateCubemap", width, height, arraySize, mipLevels, 0) == false)
         {
-            throw std::exception("Can't create cubemap FBO. Invalid parameters.");
+            throw RuntimeError("Can't create cubemap FBO. Invalid parameters.");
         }
 
         Fbo::SharedPtr pFbo = create();
@@ -474,7 +474,7 @@ namespace Falcor
         return create2D(width, height, d);
     }
 
-    SCRIPT_BINDING(Fbo)
+    FALCOR_SCRIPT_BINDING(Fbo)
     {
         pybind11::class_<Fbo, Fbo::SharedPtr>(m, "Fbo");
     }

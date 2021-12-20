@@ -41,14 +41,6 @@ inline float luminance(float3 rgb)
     return dot(rgb, float3(0.2126f, 0.7152f, 0.0722f));
 }
 
-/** Returns pseudo-luminance of scalar value. Currently, only used by Material system to check
-    for zero-valued potentially-textured material parameters.
-*/
-inline float luminance(float val)
-{
-    return val;
-}
-
 #ifndef HOST_CODE
 // TODO: Unify this code with the host-side functions in ColorUtils.h when #175 is solved.
 /** Transforms an RGB color in Rec.709 to CIE XYZ.

@@ -449,7 +449,7 @@ namespace Falcor
         int32_t result = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuMask);
         if (result != 0)
         {
-            logError("setThreadAffinity() - pthread_setaffinity_np() failed with error code " + threadErrorToString(result));
+            reportError("setThreadAffinity() - pthread_setaffinity_np() failed with error code " + threadErrorToString(result));
         }
     }
 
@@ -478,7 +478,7 @@ namespace Falcor
 
         if (result != 0)
         {
-            logError("setThreadPriority() - pthread_setschedprio() failed with error code " + threadErrorToString(result));
+            reportError("setThreadPriority() - pthread_setschedprio() failed with error code " + threadErrorToString(result));
         }
     }
 
@@ -487,7 +487,7 @@ namespace Falcor
         struct stat s;
         if (stat(filename.c_str(), &s) != 0)
         {
-            logError("Can't get file time for '" + filename + "'");
+            reportError("Can't get file time for '" + filename + "'");
             return 0;
         }
 

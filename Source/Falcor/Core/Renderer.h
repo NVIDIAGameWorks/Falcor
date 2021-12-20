@@ -126,7 +126,7 @@ namespace Falcor
         virtual bool isVsyncEnabled() = 0;
     };
 
-    dlldecl extern IFramework* gpFramework;
+    FALCOR_API extern IFramework* gpFramework;
 
     class IRenderer
     {

@@ -28,7 +28,7 @@
 #include "Composite.h"
 #include "CompositeMode.slangh"
 
-const char* Composite::kDesc = "Composite pass";
+const RenderPass::Info Composite::kInfo { "Composite", "Composite pass." };
 
 namespace
 {
@@ -56,6 +56,7 @@ Composite::SharedPtr Composite::create(RenderContext* pRenderContext, const Dict
 }
 
 Composite::Composite(const Dictionary& dict)
+    : RenderPass(kInfo)
 {
     // Parse dictionary.
     for (const auto& [key, value] : dict)
@@ -90,7 +91,7 @@ RenderPassReflection Composite::reflect(const CompileData& compileData)
     return reflector;
 }
 
-void Composite::compile(RenderContext* pContext, const CompileData& compileData)
+void Composite::compile(RenderContext* pRenderContext, const CompileData& compileData)
 {
     mFrameDim = compileData.defaultTexDims;
 }

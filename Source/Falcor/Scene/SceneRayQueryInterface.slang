@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 __exported import Scene.HitInfo;
+__exported import Utils.Math.Ray;
 
 // TODO: Use default arguments when slang supports them:
 // bool traceRay(const RayDesc ray, out HitInfo hit, out float hitT, uint rayFlags = RAY_FLAG_NONE, uint instanceInclusionMask = 0xff);
@@ -43,7 +44,7 @@ interface ISceneRayQuery
         \param[in] instanceInclusionMask Includes/rejects geometry based on instance mask.
         \return Returns true if the ray does intersect the scene.
     */
-    bool traceRay(const RayDesc ray, out HitInfo hit, out float hitT, uint rayFlags, uint instanceInclusionMask);
+    bool traceRay(const Ray ray, out HitInfo hit, out float hitT, uint rayFlags, uint instanceInclusionMask);
 
     /** Trace a visibility ray against the scene.
         \param[in] ray Ray.
@@ -51,5 +52,5 @@ interface ISceneRayQuery
         \param[in] instanceInclusionMask Includes/rejects geometry based on instance mask.
         \return Returns true if the ray endpoints are mutually visible (i.e. the ray does NOT intersect the scene).
     */
-    bool traceVisibilityRay(const RayDesc ray, uint rayFlags, uint instanceInclusionMask);
+    bool traceVisibilityRay(const Ray ray, uint rayFlags, uint instanceInclusionMask);
 };

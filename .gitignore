@@ -18,3 +18,4 @@ Media
 Tools/.packman
 Tests/data
 *.tlog
+/Source/Falcor/dependencies.user.xml

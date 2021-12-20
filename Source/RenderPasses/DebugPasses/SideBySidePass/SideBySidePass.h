@@ -36,12 +36,11 @@ class SideBySidePass : public ComparisonPass
 public:
     using SharedPtr = std::shared_ptr<SideBySidePass>;
 
-    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
-    virtual std::string getDesc() override { return kDesc; }
-    virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
-    virtual void renderUI(Gui::Widgets& widget) override;
+    static const Info kInfo;
 
-    static const char* kDesc;
+    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+    virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
+    virtual void renderUI(Gui::Widgets& widget) override;
 
 private:
     SideBySidePass();

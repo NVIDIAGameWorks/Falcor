@@ -111,7 +111,7 @@ namespace Falcor
                 case KeyboardEvent::Key::F12:
                     mCaptureScreen = true;
                     break;
-#if _PROFILING_ENABLED
+#if FALCOR_ENABLE_PROFILER
                 case KeyboardEvent::Key::P:
                     Profiler::instance().setEnabled(!Profiler::instance().isEnabled());
                     break;
@@ -195,7 +195,7 @@ namespace Falcor
         }
         catch (const std::exception & e)
         {
-            logError("Caught exception:\n\n" + std::string(e.what()) + "\n\nEnable breaking on exceptions in the debugger to get a full stack trace.");
+            reportError("Caught exception:\n\n" + std::string(e.what()) + "\n\nEnable breaking on exceptions in the debugger to get a full stack trace.");
         }
         Logger::shutdown();
     }
@@ -205,7 +205,7 @@ namespace Falcor
         Sample s(pRenderer);
         try
         {
-            auto err = [filename](std::string_view msg) {logError("Error in Sample::Run(). '" + filename + "' " + msg); };
+            auto err = [filename](std::string_view msg) {reportError("Error in Sample::Run(). '" + filename + "' " + msg); };
 
             s.startScripting(); // We have to do that before running the script
             std::string fullpath;
@@ -232,7 +232,7 @@ namespace Falcor
         }
         catch (const std::exception & e)
         {
-            logError("Caught exception:\n\n" + std::string(e.what()) + "\n\nEnable breaking on exceptions in the debugger to get a full stack trace.");
+            reportError("Caught exception:\n\n" + std::string(e.what()) + "\n\nEnable breaking on exceptions in the debugger to get a full stack trace.");
         }
 
         Logger::shutdown();
@@ -242,7 +242,7 @@ namespace Falcor
     {
         gpFramework = this;
 
-        Logger::showBoxOnError(config.showMessageBoxOnError);
+        setShowMessageBoxOnError(config.showMessageBoxOnError);
 
         OSServices::start();
         Threading::start();
@@ -257,7 +257,7 @@ namespace Falcor
         mpWindow = Window::create(config.windowDesc, this);
         if (mpWindow == nullptr)
         {
-            logError("Failed to create device and window");
+            reportError("Failed to create device and window");
             return;
         }
 
@@ -270,12 +270,12 @@ namespace Falcor
         gpDevice = Device::create(mpWindow, config.deviceDesc);
         if (gpDevice == nullptr)
         {
-            logError("Failed to create device");
+            reportError("Failed to create device");
             return;
         }
 
         // Set global shader defines
-        Program::DefineList globalDefines = {{ "_ENABLE_NVAPI", _ENABLE_NVAPI ? "1" : "0" }};
+        Program::DefineList globalDefines = {{ "FALCOR_ENABLE_NVAPI", FALCOR_ENABLE_NVAPI ? "1" : "0" }};
         Program::addGlobalDefines(globalDefines);
 
         Clock::start();
@@ -337,8 +337,8 @@ namespace Falcor
             return 0u;
         };
 
-        static const Gui::DropdownList dropdownList = initDropDown(resolutions, arraysize(resolutions));
-        uint32_t currentVal = initDropDownVal(resolutions, arraysize(resolutions), screenDims);
+        static const Gui::DropdownList dropdownList = initDropDown(resolutions, (uint32_t)arraysize(resolutions));
+        uint32_t currentVal = initDropDownVal(resolutions, (uint32_t)arraysize(resolutions), screenDims);
 
         widget.var("Screen Resolution", screenDims);
         if (widget.dropdown("Change Resolution", dropdownList, currentVal) && (currentVal != 0)) gpFramework->resizeSwapChain(resolutions[currentVal].x, resolutions[currentVal].y);
@@ -347,19 +347,19 @@ namespace Falcor
     std::string Sample::getKeyboardShortcutsStr()
     {
         constexpr char help[] =
-            "  'F2'      - Show\\Hide GUI\n"
-            "  'F5'      - Reload shaders\n"
-            "  'ESC'     - Quit\n"
-            "  'V'       - Toggle VSync\n"
-            "  'F3'      - Capture current camera location\n"
-            "  'F12'     - Capture screenshot\n"
-            "  'Shift+F12'  - Video capture\n"
-            "  'Pause|Space'      - Pause\\resume the global timer\n"
-            "  'Ctrl+Pause|Space' - Pause\\resume the renderer\n"
-            "  'Z'       - Zoom in on a pixel\n"
-            "  'MouseWheel' - Change level of zoom\n"
-#if _PROFILING_ENABLED
-            "  'P'       - Enable profiling\n"
+            "ESC - Quit\n"
+            "F2 - Show/hide UI\n"
+            "F3 - Capture current camera location\n"
+            "F5 - Reload shaders\n"
+            "F12 - Capture screenshot\n"
+            "Shift+F12 - Capture video\n"
+            "V - Toggle VSync\n"
+            "Pause|Space - Pause/resume the global timer\n"
+            "Ctrl+Pause|Space - Pause/resume the renderer\n"
+            "Z - Zoom in on a pixel\n"
+            "MouseWheel - Change level of zoom\n"
+#if FALCOR_ENABLE_PROFILER
+            "P - Enable/disable profiler\n"
 #endif
             ;
 
@@ -412,7 +412,7 @@ namespace Falcor
 
     void Sample::renderUI()
     {
-        PROFILE("renderUI");
+        FALCOR_PROFILE("renderUI");
 
         auto& profiler = Profiler::instance();
 
@@ -462,7 +462,7 @@ namespace Falcor
         if (mVideoCapture.fixedTimeDelta) { mClock.setTime(mVideoCapture.currentTime); }
 
         {
-            PROFILE("onFrameRender");
+            FALCOR_PROFILE("onFrameRender");
 
             // The swap-chain FBO might have changed between frames, so get it
             if (!mRendererPaused)
@@ -487,7 +487,7 @@ namespace Falcor
             pSwapChainFbo = gpDevice->getSwapChainFbo(); // The UI might have triggered a swap-chain resize, invalidating the previous FBO
             if (mpPixelZoom) mpPixelZoom->render(pRenderContext, pSwapChainFbo.get());
 
-#if _PROFILING_ENABLED
+#if FALCOR_ENABLE_PROFILER
             Profiler::instance().endFrame();
 #endif
             // Capture video frame after UI is rendered
@@ -495,7 +495,7 @@ namespace Falcor
             if (mCaptureScreen) captureScreen();
 
             {
-                PROFILE("present", Profiler::Flags::Internal);
+                FALCOR_PROFILE("present", Profiler::Flags::Internal);
                 gpDevice->present();
             }
         }
@@ -519,7 +519,7 @@ namespace Falcor
         }
         else
         {
-            logError("Could not find available filename when capturing screen");
+            reportError("Could not find available filename when capturing screen");
             return "";
         }
 
@@ -623,7 +623,7 @@ namespace Falcor
         SampleConfig c;
         c.deviceDesc = gpDevice->getDesc();
         c.windowDesc = mpWindow->getDesc();
-        c.showMessageBoxOnError = Logger::isBoxShownOnError();
+        c.showMessageBoxOnError = getShowMessageBoxOnError();
         c.timeScale = (float)mClock.getTimeScale();
         c.pauseTime = mClock.isPaused();
         c.showUI = mShowUI;

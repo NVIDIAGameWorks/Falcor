@@ -12,7 +12,7 @@ from build_falcor import build_falcor
 from core import Environment, config
 from core.termcolor import colored
 
-def run_unit_tests(env, filter_regex):
+def run_unit_tests(env, filter_regex, repeat_count):
     '''
     Run unit tests by running FalcorTest.
     The optional filter_regex is used to select specific tests to run.
@@ -20,6 +20,8 @@ def run_unit_tests(env, filter_regex):
     args = [str(env.falcor_test_exe)]
     if filter_regex:
         args += ['--filter', str(filter_regex)]
+    if repeat_count:
+        args += ['--repeat', str(repeat_count)]
 
     p = subprocess.Popen(args)
     try:
@@ -40,6 +42,7 @@ def main():
     parser.add_argument('-c', '--config', type=str, action='store', help=f'Build configuration: {available_configs}', default=config.DEFAULT_BUILD_CONFIG)
     parser.add_argument('-e', '--environment', type=str, action='store', help='Environment', default=config.DEFAULT_ENVIRONMENT)
     parser.add_argument('-f', '--filter', type=str, action='store', help='Regular expression for filtering tests to run')
+    parser.add_argument('-r', '--repeat', type=int, action='store', help='Number of times to repeat the test.')
     parser.add_argument('--skip-build', action='store_true', help='Skip building project before running tests')
     args = parser.parse_args()
 
@@ -57,7 +60,7 @@ def main():
             sys.exit(1)
 
     # Run tests.
-    success = run_unit_tests(env, args.filter)
+    success = run_unit_tests(env, args.filter, args.repeat)
 
     sys.exit(0 if success else 1)
 

@@ -38,7 +38,7 @@ namespace Falcor
 
     /** Abstracts the API texture objects
     */
-    class dlldecl Texture : public Resource
+    class FALCOR_API Texture : public Resource
     {
     public:
         using SharedPtr = std::shared_ptr<Texture>;
@@ -180,7 +180,7 @@ namespace Falcor
         */
         virtual UnorderedAccessView::SharedPtr getUAV() override;
 
-#if _ENABLE_CUDA
+#if FALCOR_ENABLE_CUDA
         /** Get the CUDA device address for this resource.
             \return CUDA device address.
             Throws an exception if the resource is not (or cannot be) shared with CUDA.
@@ -252,6 +252,11 @@ namespace Falcor
         /** Returns the size of the texture in bytes as allocated in GPU memory.
         */
         uint64_t getTextureSizeInBytes() const;
+
+        /** Compares the texture description to another texture.
+            \return True if all fields (size/format/etc) are identical.
+        */
+        bool compareDesc(const Texture* pOther) const;
 
     protected:
         Texture(uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type Type, BindFlags bindFlags);

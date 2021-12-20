@@ -26,134 +26,130 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 import Scene.Scene;
-import Scene.Shading;
 __exported import Scene.HitInfo;
 __exported import Utils.Timing.GpuTimer;
 __exported import Utils.Math.Ray;
 import Utils.Math.MathHelpers;
 import Utils.Sampling.SampleGenerator;
-import Experimental.Scene.Material.TexLODTypes;
-import Experimental.Scene.Material.TexLODHelpers;
+import Rendering.Materials.TexLODTypes;
+import Rendering.Materials.TexLODHelpers;
 import GBufferHelpers;
 
 // GBuffer channels
 RWTexture2D<float4> gPosW;
 RWTexture2D<float4> gNormW;
 RWTexture2D<float4> gTangentW;
-RWTexture2D<float4> gTexC;
-RWTexture2D<float4> gDiffuseOpacity;
-RWTexture2D<float4> gSpecRough;
-RWTexture2D<float4> gEmissive;
-RWTexture2D<float4> gMatlExtra;
+RWTexture2D<float4> gFaceNormalW;
+RWTexture2D<float2> gTexC;
+RWTexture2D<float4> gTexGrads;
+RWTexture2D<float2> gMotionVector;
+RWTexture2D<uint4>  gMaterialData;
 
 // GBufferRT channels
 RWTexture2D<PackedHitInfo> gVBuffer;
-RWTexture2D<float2> gLinearZ;
 RWTexture2D<float>  gDepth;
-RWTexture2D<float2> gMotionVectors;
-RWTexture2D<float4> gMotionVectorsW;
+RWTexture2D<float2> gLinearZ;
+RWTexture2D<float4> gMotionVectorW;
 RWTexture2D<float4> gNormalWRoughness;
-RWTexture2D<float4> gRoughness;
-RWTexture2D<float4> gMetallic;
-RWTexture2D<float4> gFaceNormalW;
+RWTexture2D<float4> gDiffOpacity;
+RWTexture2D<float4> gSpecRough;
+RWTexture2D<float4> gEmissive;
 RWTexture2D<float4> gViewW;
-RWTexture2D<uint> gTime;
-RWTexture2D<float> gDisocclusion;
+RWTexture2D<uint>   gTime;
+RWTexture2D<float>  gDisocclusion;
 
 #define is_valid(name) (is_valid_##name != 0)
 
-static const float kEnvMapDepth = 100000000.0f; // Arbitrary big number
-
-/** Ray differentials for primary hit. Code from RayTracingGems, Chapter 20.
-*/
-void computeRayDifferentials(const TriangleHit hit, float3 rayDir, float hitT, const Camera camera, float2 invFrameDim, out float2 ddx, out float2 ddy)
-{
-    // TODO: Is this code correct for instance transforms that flip the handedness of the coordinate system?
-
-    // Ray differentials
-    float3 P[3];
-    gScene.getVertexPositionsW(hit.instanceID, hit.primitiveIndex, P);
-    float3 e1 = P[1] - P[0];
-    float3 e2 = P[2] - P[0];
-    float3 d = rayDir;
-    float k = dot(cross(e1, e2), d);
-    k = abs(k) > 1e-20f ? rcp(k) : 0.0f;
-    float3 cu = cross(e2, d);
-    float3 cv = cross(d, e1);
-    // Assumes a normalized ray direction
-    float3 dx = camera.data.cameraU * 2.f * invFrameDim.x / camera.data.focalDistance; // dDdx in ray gen
-    float3 dy = camera.data.cameraV * 2.f * invFrameDim.y / camera.data.focalDistance; // dDdy in ray gen
-    float3 q = dx * hitT; // Transfer to primary hit
-    float3 r = dy * hitT;
-    float dudx = k * dot(cu, q);
-    float dudy = k * dot(cu, r);
-    float dvdx = k * dot(cv, q);
-    float dvdy = k * dot(cv, r);
-    float2 T[3];
-    gScene.getVertexTexCoords(hit.instanceID, hit.primitiveIndex, T);
-    float2 g1 = T[1] - T[0];
-    float2 g2 = T[2] - T[0];
-    float dsdx = (dudx * g1.x + dvdx * g2.x);
-    float dsdy = (dudy * g1.x + dvdy * g2.x);
-    float dtdx = (dudx * g1.y + dvdx * g2.y);
-    float dtdy = (dudy * g1.y + dvdy * g2.y);
-    ddx = float2(dsdx, dtdx);
-    ddy = float2(dsdy, dtdy);
-}
-
-void computeAnisotropicAxesRayCones(const TriangleHit hit, VertexData v, float3 rayDir, float hitT, float pixelAngle, out float2 ddx, out float2 ddy)
-{
-    float3 positions[3];
-    float2 texCoords[3];
-    gScene.getVertexPositionsW(hit.instanceID, hit.primitiveIndex, positions);
-    gScene.getVertexTexCoords(hit.instanceID, hit.primitiveIndex, texCoords);
-
-    float coneRadiusAtHitPoint = hitT * tan(pixelAngle);
-    // Using faceNormal, since it is needed for the barycentric computations inside computeAnisotropicEllipseAxes().
-    computeAnisotropicEllipseAxes(v.posW, v.faceNormalW, rayDir, coneRadiusAtHitPoint, positions, texCoords, v.texC, ddx, ddy);
-}
-
-float3 computeDdxPosW(float3 posW, float3 normW, float2 invFrameDim)
-{
-    float3 projRight = normalize(cross(normW, cross(normW, gScene.camera.data.cameraV)));
-    float distanceToHit = length(posW - gScene.camera.data.posW);
-    float2 ddNdc = float2(2.f, -2.f) * invFrameDim;
-    float distRight = distanceToHit * ddNdc.x / dot(normalize(gScene.camera.data.cameraV), projRight);
-    return distRight * projRight;
-}
-
-float3 computeDdyPosW(float3 posW, float3 normW, float2 invFrameDim)
-{
-    float3 projUp = normalize(cross(normW, cross(normW, gScene.camera.data.cameraU)));
-    float distanceToHit = length(posW - gScene.camera.data.posW);
-    float2 ddNdc = float2(2.f, -2.f) * invFrameDim;
-    float distUp = distanceToHit * ddNdc.y / dot(normalize(gScene.camera.data.cameraU), projUp);
-    return distUp * projUp;
-}
-
-
-#if !defined(USE_DEPTH_OF_FIELD) || !defined(USE_ALPHA_TEST) || !defined(LOD_MODE) || !defined(ADJUST_SHADING_NORMALS) || !defined(RAY_FLAGS)
+#if !defined(COMPUTE_DEPTH_OF_FIELD) || !defined(USE_ALPHA_TEST) || !defined(LOD_MODE) || !defined(ADJUST_SHADING_NORMALS) || !defined(RAY_FLAGS)
 #error "Not all defines are set!"
 #endif
 
 struct GBufferRT
 {
-    static const bool kUseDepthOfField = USE_DEPTH_OF_FIELD;
+    static const bool kComputeDepthOfField = COMPUTE_DEPTH_OF_FIELD;
     static const bool kUseAlphaTest = USE_ALPHA_TEST;
     static const TexLODMode kLODMode = TexLODMode(LOD_MODE);
     static const bool kAdjustShadingNormals = ADJUST_SHADING_NORMALS;
     static const uint kRayFlags = RAY_FLAGS;
+    static const float kEnvMapDepth = 100000000.0f; // Arbitrary big number
 
     uint2 frameDim;
     float2 invFrameDim;
     uint frameCount;
     float screenSpacePixelSpreadAngle;
 
+    /** Ray differentials for primary hit. Code from RayTracingGems, Chapter 20.
+    */
+    void computeRayDifferentials(const TriangleHit hit, float3 rayDir, float hitT, const Camera camera, float2 invFrameDim, out float2 ddx, out float2 ddy)
+    {
+        // TODO: Is this code correct for instance transforms that flip the handedness of the coordinate system?
+
+        // Ray differentials
+        float3 P[3];
+        gScene.getVertexPositionsW(hit.instanceID, hit.primitiveIndex, P);
+        float3 e1 = P[1] - P[0];
+        float3 e2 = P[2] - P[0];
+        float3 d = rayDir;
+        float k = dot(cross(e1, e2), d);
+        k = abs(k) > 1e-20f ? rcp(k) : 0.0f;
+        float3 cu = cross(e2, d);
+        float3 cv = cross(d, e1);
+        // Assumes a normalized ray direction
+        float3 dx = camera.data.cameraU * 2.f * invFrameDim.x / camera.data.focalDistance; // dDdx in ray gen
+        float3 dy = camera.data.cameraV * 2.f * invFrameDim.y / camera.data.focalDistance; // dDdy in ray gen
+        float3 q = dx * hitT; // Transfer to primary hit
+        float3 r = dy * hitT;
+        float dudx = k * dot(cu, q);
+        float dudy = k * dot(cu, r);
+        float dvdx = k * dot(cv, q);
+        float dvdy = k * dot(cv, r);
+        float2 T[3];
+        gScene.getVertexTexCoords(hit.instanceID, hit.primitiveIndex, T);
+        float2 g1 = T[1] - T[0];
+        float2 g2 = T[2] - T[0];
+        float dsdx = (dudx * g1.x + dvdx * g2.x);
+        float dsdy = (dudy * g1.x + dvdy * g2.x);
+        float dtdx = (dudx * g1.y + dvdx * g2.y);
+        float dtdy = (dudy * g1.y + dvdy * g2.y);
+        ddx = float2(dsdx, dtdx);
+        ddy = float2(dsdy, dtdy);
+    }
+
+    void computeAnisotropicAxesRayCones(const TriangleHit hit, VertexData v, float3 rayDir, float hitT, float pixelAngle, out float2 ddx, out float2 ddy)
+    {
+        float3 positions[3];
+        float2 texCoords[3];
+        gScene.getVertexPositionsW(hit.instanceID, hit.primitiveIndex, positions);
+        gScene.getVertexTexCoords(hit.instanceID, hit.primitiveIndex, texCoords);
+
+        float coneRadiusAtHitPoint = hitT * tan(pixelAngle);
+        // Using faceNormal, since it is needed for the barycentric computations inside computeAnisotropicEllipseAxes().
+        computeAnisotropicEllipseAxes(v.posW, v.faceNormalW, rayDir, coneRadiusAtHitPoint, positions, texCoords, v.texC, ddx, ddy);
+    }
+
+    float3 computeDdxPosW(float3 posW, float3 normW, float2 invFrameDim)
+    {
+        float3 projRight = normalize(cross(normW, cross(normW, gScene.camera.data.cameraV)));
+        float distanceToHit = length(posW - gScene.camera.data.posW);
+        float2 ddNdc = float2(2.f, -2.f) * invFrameDim;
+        float distRight = distanceToHit * ddNdc.x / dot(normalize(gScene.camera.data.cameraV), projRight);
+        return distRight * projRight;
+    }
+
+    float3 computeDdyPosW(float3 posW, float3 normW, float2 invFrameDim)
+    {
+        float3 projUp = normalize(cross(normW, cross(normW, gScene.camera.data.cameraU)));
+        float distanceToHit = length(posW - gScene.camera.data.posW);
+        float2 ddNdc = float2(2.f, -2.f) * invFrameDim;
+        float distUp = distanceToHit * ddNdc.y / dot(normalize(gScene.camera.data.cameraU), projUp);
+        return distUp * projUp;
+    }
+
     Ray generateRay(uint2 pixel)
     {
-        if (kUseDepthOfField)
+        if (kComputeDepthOfField)
         {
-            SampleGenerator sg = SampleGenerator.create(pixel, frameCount);
+            SampleGenerator sg = SampleGenerator(pixel, frameCount);
             return gScene.camera.computeRayThinlens(pixel, frameDim, sampleNext2D(sg));
         }
         else
@@ -164,100 +160,117 @@ struct GBufferRT
 
     void writeHit(uint2 pixel, float3 rayOrigin, float3 rayDir, const HitInfo hit, float hitT)
     {
-        VertexData v;
-        ShadingData sd;
+        uint materialID = 0;
+        VertexData v = {};
         float curveRadius = 0.f;
-        float3 prevPosW = float3(0.f);
-        float2 motionVector = float2(0.f);
-        float4 motionVectorW = float4(0.f);
+        float3 prevPosW = {};
+        float4 texGrads = {};
+        float2 motionVector = {};
+        float4 motionVectorW = {};
+        float disocclusion = 0.f;
+        ITextureSampler lod = ExplicitLodTextureSampler(0.f); // The default LOD method is replaced below in some cases.
 
+        // Compute data at the hit.
         if (hit.getType() == HitType::Triangle)
         {
             const TriangleHit triangleHit = hit.getTriangleHit();
 
-            const uint materialID = gScene.getMaterialID(triangleHit.instanceID);
+            materialID = gScene.getMaterialID(triangleHit.instanceID);
             v = gScene.getVertexData(triangleHit);
+            prevPosW = gScene.getPrevPosW(triangleHit);
 
-            if (kLODMode == TexLODMode::Mip0)
-            {
-                sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -rayDir, 0.f);
-            }
-            else if (kLODMode == TexLODMode::RayCones)
+            if (kLODMode == TexLODMode::RayCones)
             {
                 float2 ddx, ddy;
                 computeAnisotropicAxesRayCones(triangleHit, v, rayDir, hitT, screenSpacePixelSpreadAngle, ddx, ddy);
-                sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -rayDir, ddx, ddy);
+                lod = ExplicitGradientTextureSampler(ddx, ddy);
+                texGrads = float4(ddx, ddy);
             }
             else if (kLODMode == TexLODMode::RayDiffs)
             {
                 float2 ddx, ddy;
                 computeRayDifferentials(triangleHit, rayDir, hitT, gScene.camera, invFrameDim, ddx, ddy);
-                sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -rayDir, ddx, ddy);
+                lod = ExplicitGradientTextureSampler(ddx, ddy);
+                texGrads = float4(ddx, ddy);
             }
-
-            if (kAdjustShadingNormals) adjustShadingNormal(sd, v);
-
-            prevPosW = gScene.getPrevPosW(triangleHit);
+            // else kLODMode == TexLODMode::Mip0
         }
         else if (hit.getType() == HitType::DisplacedTriangle)
         {
             const DisplacedTriangleHit displacedTriangleHit = hit.getDisplacedTriangleHit();
 
-            const uint materialID = gScene.getMaterialID(displacedTriangleHit.instanceID);
+            materialID = gScene.getMaterialID(displacedTriangleHit.instanceID);
             v = gScene.getVertexData(displacedTriangleHit, -rayDir);
-            sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -rayDir, 0.f);
-
-            if (kAdjustShadingNormals) adjustShadingNormal(sd, v);
-
             prevPosW = gScene.getPrevPosW(displacedTriangleHit);
         }
         else if (hit.getType() == HitType::Curve)
         {
             const CurveHit curveHit = hit.getCurveHit();
 
-            const uint materialID = gScene.getCurveMaterialID(curveHit.instanceID);
+            materialID = gScene.getMaterialID(curveHit.instanceID);
             v = gScene.getVertexDataFromCurve(curveHit, curveRadius);
-            sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -rayDir, 0.f);
-
             prevPosW = gScene.getPrevPosWFromCurve(curveHit);
         }
+        else if (hit.getType() == HitType::SDFGrid)
+        {
+            const SDFGridHit sdfGridHit = hit.getSDFGridHit();
 
-        if (hit.getType() == HitType::Triangle || hit.getType() == HitType::DisplacedTriangle || hit.getType() == HitType::Curve)
+            materialID = gScene.getMaterialID(sdfGridHit.instanceID);
+            v = gScene.getVertexDataFromSDFGrid(sdfGridHit, rayOrigin, rayDir);
+            prevPosW = gScene.getPrevPosWFromSDFGrid(sdfGridHit, v.posW);
+        }
+        else
+        {
+            // We hit some other geometry type that isn't supported. This shouldn't happen but
+            // early out here just in case to avoid crash below if trying to setup an invalid material.
+            return;
+        }
+
+        // Prepare shading data.
+        ShadingData sd = gScene.materials.prepareShadingData(v, materialID, -rayDir, lod);
+
+        if (kAdjustShadingNormals && (hit.getType() == HitType::Triangle || hit.getType() == HitType::DisplacedTriangle))
+        {
+            adjustShadingNormal(sd, v);
+        }
+
+        if (hit.getType() == HitType::Triangle || hit.getType() == HitType::DisplacedTriangle || hit.getType() == HitType::Curve || hit.getType() == HitType::SDFGrid)
         {
             // Compute motion vector in screen and world space.
             float2 pixelPos = pixel + float2(0.5f, 0.5f);
             float4 prevPosH = mul(float4(prevPosW, 1.f), gScene.camera.data.prevViewProjMatNoJitter);
             motionVector = calcMotionVector(pixelPos, prevPosH, frameDim) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY); // Remove camera jitter from motion vector
-            motionVectorW = float4(prevPosW - sd.posW, 0.0f);
+            motionVectorW = float4(prevPosW - sd.posW, 0.f);
 
             // Compute disocclusion.
-            if (is_valid(gDisocclusion))
-            {
-                // Do the occlusion masking in linearZ space
-                float4 curPosH = mul(float4(sd.posW, 1.f), gScene.camera.data.viewProjMatNoJitter);
-                float depthDiff = prevPosH.w - curPosH.w;
-                gDisocclusion[pixel] = depthDiff;
-            }
+            // Do the occlusion masking in linearZ space
+            float4 curPosH = mul(float4(sd.posW, 1.f), gScene.camera.data.viewProjMatNoJitter);
+            disocclusion = prevPosH.w - curPosH.w;
         }
 
-        // Write the outputs.
-        GBuffer gbuf = storeGBufferOutput(sd, v);
+        // Create BSDF instance.
+        let bsdf = gScene.materials.getBSDF(sd, lod);
+
+        const GBufferData gbuf = prepareGBufferData(sd, bsdf);
 
         if (hit.getType() == HitType::Curve) gbuf.posW.w = curveRadius;
 
-        gPosW[pixel]            = gbuf.posW;
-        gNormW[pixel]           = gbuf.normW;
-        gTangentW[pixel]        = gbuf.tangentW;
-        gTexC[pixel]            = gbuf.texC;
-        gDiffuseOpacity[pixel]  = gbuf.diffuseOpacity;
-        gSpecRough[pixel]       = gbuf.specRough;
-        gEmissive[pixel]        = gbuf.emissive;
-        gMatlExtra[pixel]       = gbuf.matlExtra;
+        // GBuffer channels
+        if (is_valid(gPosW))                gPosW[pixel]                = gbuf.posW;
+        if (is_valid(gNormW))               gNormW[pixel]               = gbuf.normW;
+        if (is_valid(gTangentW))            gTangentW[pixel]            = gbuf.tangentW;
+        if (is_valid(gFaceNormalW))         gFaceNormalW[pixel]         = gbuf.faceNormalW;
+        if (is_valid(gTexC))                gTexC[pixel]                = gbuf.texC;
+        if (is_valid(gTexGrads))            gTexGrads[pixel]            = texGrads;
+        if (is_valid(gMotionVector))        gMotionVector[pixel]        = motionVector;
+        if (is_valid(gMaterialData))        gMaterialData[pixel]        = gbuf.mtlData;
 
-        if (is_valid(gFaceNormalW))
-        {
-            gFaceNormalW[pixel] = float4(v.faceNormalW, 0.f);
-        }
+        // GBufferRT channels
+        if (is_valid(gMotionVectorW))       gMotionVectorW[pixel]       = motionVectorW;
+        if (is_valid(gDiffOpacity))         gDiffOpacity[pixel]         = gbuf.diffuseOpacity;
+        if (is_valid(gSpecRough))           gSpecRough[pixel]           = gbuf.specRough;
+        if (is_valid(gEmissive))            gEmissive[pixel]            = gbuf.emissive;
+        if (is_valid(gDisocclusion))        gDisocclusion[pixel]        = disocclusion;
 
         if (is_valid(gLinearZ))
         {
@@ -282,67 +295,53 @@ struct GBufferRT
             gDepth[pixel] = curPosH.z / curPosH.w;
         }
 
-        if (is_valid(gMotionVectors)) gMotionVectors[pixel] = motionVector;
-        if (is_valid(gMotionVectorsW)) gMotionVectorsW[pixel] = motionVectorW;
-
-        // NRD-specific buffer that packs normals and clamps roughness.
+        // Output a buffer that packs normal and roughness estimation.
         if (is_valid(gNormalWRoughness))
         {
-            // TODO: roughness below 0.08 is used to indicate perfectly smooth surfaces
-            // but that doesn't work well with NRD yet. Clamp roughness to 0.08 for now.
-
-            // Clamp roughness so it's representable of what is actually used in the renderer.
-            float clampedRoughness = max(0.08f, sd.linearRoughness);
-            gNormalWRoughness[pixel] = float4(sd.N * 0.5 + 0.5, clampedRoughness);
-        }
-
-        if (is_valid(gRoughness))
-        {
-            gRoughness[pixel] = float4(float3(sd.linearRoughness), 1.0f);
-        }
-
-        if (is_valid(gMetallic))
-        {
-            gMetallic[pixel] = float4(float3(sd.metallic), 1.0f);
+            float roughness = bsdf.getProperties(sd).roughness;
+            gNormalWRoughness[pixel] = float4(sd.N * 0.5 + 0.5, roughness);
         }
 
         // Encode hit information.
         if (is_valid(gVBuffer))
         {
-            gVBuffer[pixel] = hit.pack();
+            gVBuffer[pixel] = hit.getData();
         }
     }
 
-    void writeMiss(uint2 pixel, float3 rayOrigin, float3 rayDir)
+    float2 computeMotionVectorBackground(const uint2 pixel, const float3 rayOrigin, const float3 rayDir)
     {
-        gPosW[pixel]            = {};
-        gNormW[pixel]           = {};
-        gTangentW[pixel]        = {};
-        gTexC[pixel]            = {};
-        gDiffuseOpacity[pixel]  = {};
-        gSpecRough[pixel]       = {};
-        gEmissive[pixel]        = {};
-        gMatlExtra[pixel]       = {};
+        // Hacky motion vector computation for env map, taking the camera movement into account
+        float3 worldPos = rayOrigin + normalize(rayDir) * kEnvMapDepth; // Hit on env map
 
+        float2 pixelPos = pixel + float2(0.5f, 0.5f);
+        float4 prevPosH = mul(float4(worldPos, 1.f), gScene.camera.data.prevViewProjMatNoJitter);
+        return calcMotionVector(pixelPos, prevPosH, frameDim) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY); // Remove camera jitter from motion vector
+    }
+
+    void writeMiss(const uint2 pixel, const float3 rayOrigin, const float3 rayDir)
+    {
+        const float2 mvec = computeMotionVectorBackground(pixel, rayOrigin, rayDir);
+
+        // GBuffer channels
+        if (is_valid(gPosW))                gPosW[pixel]                = {};
+        if (is_valid(gNormW))               gNormW[pixel]               = {};
+        if (is_valid(gTangentW))            gTangentW[pixel]            = {};
         if (is_valid(gFaceNormalW))         gFaceNormalW[pixel]         = {};
-        if (is_valid(gLinearZ))             gLinearZ[pixel]             = float2(kEnvMapDepth, 0.f);
-        if (is_valid(gDepth))               gDepth[pixel]               = 1.f;
-        if (is_valid(gMotionVectorsW))      gMotionVectorsW[pixel]      = {};
-        if (is_valid(gDisocclusion))        gDisocclusion[pixel]        = 0.0f;
-        if (is_valid(gNormalWRoughness))    gNormalWRoughness[pixel]    = float4(0.2215f,0.2215f,0.2215f, 0.f); // UE4 default value at miss
+        if (is_valid(gTexC))                gTexC[pixel]                = {};
+        if (is_valid(gTexGrads))            gTexGrads[pixel]            = {};
+        if (is_valid(gMotionVector))        gMotionVector[pixel]        = mvec;
+
+        // GBufferRT channels
         if (is_valid(gVBuffer))             gVBuffer[pixel]             = {};
-
-        // Hacky motion vectors for env map
-        if (is_valid(gMotionVectors))
-        {
-            // Hacky motion vector computation for env map, taking the camera movement into account
-            float3 worldPos = rayOrigin + normalize(rayDir) * kEnvMapDepth; // Hit on env map
-
-            float2 pixelPos = pixel + float2(0.5f, 0.5f);
-            float4 prevPosH = mul(float4(worldPos, 1.f), gScene.camera.data.prevViewProjMatNoJitter);
-            float2 motionVec = calcMotionVector(pixelPos, prevPosH, frameDim) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY); // Remove camera jitter from motion vector
-            gMotionVectors[pixel] = motionVec;
-        }
+        if (is_valid(gDepth))               gDepth[pixel]               = 1.f;
+        if (is_valid(gLinearZ))             gLinearZ[pixel]             = float2(kEnvMapDepth, 0.f);
+        if (is_valid(gMotionVectorW))       gMotionVectorW[pixel]       = {};
+        if (is_valid(gNormalWRoughness))    gNormalWRoughness[pixel]    = float4(0.2215f,0.2215f,0.2215f, 0.f); // UE4 default value at miss
+        if (is_valid(gDiffOpacity))         gDiffOpacity[pixel]         = {};
+        if (is_valid(gSpecRough))           gSpecRough[pixel]           = {};
+        if (is_valid(gEmissive))            gEmissive[pixel]            = {};
+        if (is_valid(gDisocclusion))        gDisocclusion[pixel]        = 0.f;
     }
 
     void writeAux(uint2 pixel, const Ray ray)

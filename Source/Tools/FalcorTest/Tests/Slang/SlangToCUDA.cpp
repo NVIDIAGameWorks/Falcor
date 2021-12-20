@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "Testing/UnitTest.h"
 
-#if _ENABLE_CUDA
+#if FALCOR_ENABLE_CUDA
 
 #include "Core/Program/CUDAProgram.h"
 

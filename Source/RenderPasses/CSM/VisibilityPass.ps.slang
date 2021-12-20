@@ -30,7 +30,7 @@ import RenderPasses.CSM.CascadedShadowMap;
 struct VisibilityPassData
 {
     bool visualizeCascades;
-    float4x4 invViewProj; 
+    float4x4 invViewProj;
     uint2 screenDimension;
     uint mapBitsPerChannel;
 };
@@ -46,10 +46,10 @@ Texture2D gDepth;
 float3 loadPosition(float2 UV, float depth)
 {
     float2 invSize = 1.0f / gPass.screenDimension.xy;
-    // Recompute position by unprojecting the depth stored in the z-buffer 
+    // Recompute position by unprojecting the depth stored in the z-buffer
     float2 ndc = 2 * UV + invSize - 1;
-    // Need to invert the y. For Vulkan, the clip-space is inverted, so no need to do anything
-#ifdef FALCOR_D3D
+#ifndef FALCOR_FLIP_Y
+    // NDC Y is bottom-to-top
     ndc.y = -ndc.y;
 #endif
     float4 wsPos = mul(float4(ndc.x, ndc.y, depth, 1.f), gPass.invViewProj);
@@ -60,7 +60,7 @@ float4 main(float2 texC : TEXCOORD) : SV_TARGET0
 {
     //[0, 1] -> [0, 2] -> [-1, 1]
     float2 ndcXy = (texC * 2) - 1;
-    
+
     float depth = gDepth[texC * gPass.screenDimension].x;
     float3 posW = loadPosition(texC, depth);
 

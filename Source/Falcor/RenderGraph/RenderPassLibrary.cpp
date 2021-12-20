@@ -42,8 +42,6 @@ namespace Falcor
     template<typename Pass>
     using PassFunc = typename Pass::SharedPtr(*)(RenderContext* pRenderContext, const Dictionary&);
 
-#define addClass(c, desc) registerClass(#c, desc, (PassFunc<c>)c::create)
-
     RenderPassLibrary& RenderPassLibrary::instance()
     {
         if (!spInstance) spInstance = new RenderPassLibrary;
@@ -65,7 +63,7 @@ namespace Falcor
     {
         auto& lib = RenderPassLibrary::instance();
 
-        lib.addClass(ResolvePass, ResolvePass::kDesc);
+        lib.registerPass(ResolvePass::kInfo, ResolvePass::create);
 
         return true;
     };
@@ -73,25 +71,25 @@ namespace Falcor
     static const bool b = addBuiltinPasses();
 
 
-    RenderPassLibrary& RenderPassLibrary::registerClass(const char* className, const char* desc, CreateFunc func)
+    RenderPassLibrary& RenderPassLibrary::registerPass(const RenderPass::Info& info, CreateFunc func)
     {
-        registerInternal(className, desc, func, nullptr);
+        registerInternal(info, func, nullptr);
         return *this;
     }
 
-    void RenderPassLibrary::registerInternal(const char* className, const char* desc, CreateFunc func, DllHandle module)
+    void RenderPassLibrary::registerInternal(const RenderPass::Info& info, CreateFunc func, DllHandle module)
     {
-        if (mPasses.find(className) != mPasses.end())
+        if (mPasses.find(info.type) != mPasses.end())
         {
-            logWarning("Trying to register a render-pass '" + std::string(className) + "' to the render-passes library,  but a render-pass with the same name already exists. Ignoring the new definition");
+            logWarning("Trying to register a render-pass '" + std::string(info.type) + "' to the render-passes library,  but a render-pass with the same name already exists. Ignoring the new definition");
         }
         else
         {
-            mPasses[className] = ExtendedDesc(className, desc, func, module);
+            mPasses[info.type] = ExtendedDesc(info, func, module);
         }
     }
 
-    std::shared_ptr<RenderPass> RenderPassLibrary::createPass(RenderContext* pRenderContext, const char* className, const Dictionary& dict)
+    std::shared_ptr<RenderPass> RenderPassLibrary::createPass(RenderContext* pRenderContext, const std::string& type, const Dictionary& dict)
     {
 #ifdef _MSC_VER
         static const std::string kDllType = ".dll";
@@ -99,21 +97,21 @@ namespace Falcor
         static const std::string kDllType = ".so";
 #endif
 
-        if (mPasses.find(className) == mPasses.end())
+        if (mPasses.find(type) == mPasses.end())
         {
-            // See if we can load a DLL with the class's name and retry
-            std::string libName = className + kDllType;
-            logInfo("Can't find a render-pass named '" + std::string(className) + "'. Trying to load a render-pass library '" + libName + "'");
+            // See if we can load a DLL with the render passes's type name and retry
+            std::string libName = type + kDllType;
+            logInfo("Can't find a render-pass named '" + std::string(type) + "'. Trying to load a render-pass library '" + libName + "'");
             loadLibrary(libName);
 
-            if (mPasses.find(className) == mPasses.end())
+            if (mPasses.find(type) == mPasses.end())
             {
-                logWarning("Trying to create a render-pass named '" + std::string(className) + "', but no such class exists in the library");
+                logWarning("Trying to create a render-pass named '" + type + "', but no such type exists in the library");
                 return nullptr;
             }
         }
 
-        auto& renderPass = mPasses[className];
+        auto& renderPass = mPasses[type];
         return renderPass.func(pRenderContext, dict);
     }
 
@@ -135,18 +133,12 @@ namespace Falcor
         return libNames;
     }
 
-    std::string RenderPassLibrary::getClassDescription(const std::string& className)
-    {
-        auto classDescIt = spInstance->mPasses.find(className);
-        return std::string(classDescIt->second.desc);
-    }
-
     void copyDllFile(const std::string& fullpath)
     {
         std::ifstream src(fullpath, std::ios::binary);
         if (src.fail())
         {
-            logError("Failed to open '" + fullpath + "' for reading.");
+            reportError("Failed to open '" + fullpath + "' for reading.");
             return;
         }
 
@@ -160,7 +152,7 @@ namespace Falcor
         dst << src.rdbuf();
         if (dst.fail())
         {
-            logError("An error occurred while copying '" + fullpath + "'.");
+            reportError("An error occurred while copying '" + fullpath + "'.");
         }
     }
 
@@ -186,7 +178,7 @@ namespace Falcor
         DllHandle l = loadDll(fullpath + kDllSuffix);
         if (l == nullptr)
         {
-            logError("Failed to load render-pass library '" + fullpath + "'.");
+            reportError("Failed to load render-pass library '" + fullpath + "'.");
             return;
         }
 
@@ -207,7 +199,11 @@ namespace Falcor
         RenderPassLibrary lib;
         func(lib);
 
-        for (auto& p : lib.mPasses) registerInternal(p.second.className, p.second.desc, p.second.func, l);
+        for (auto& p : lib.mPasses)
+        {
+            const auto& desc = p.second;
+            registerInternal(desc.info, desc.func, l);
+        }
 
         // Re-import falcor package to current (executing) scripting context.
         auto ctx = Scripting::getCurrentContext();
@@ -279,7 +275,7 @@ namespace Falcor
                 // Loop over the passes
                 for (auto& node : pGraph->mNodeData)
                 {
-                    if (getClassTypeName(node.second.pPass.get()) == passDesc.first)
+                    if (node.second.pPass->getType() == passDesc.first)
                     {
                         passesToReplace.push_back({ pGraph, passDesc.first, node.first });
                         node.second.pPass = nullptr;

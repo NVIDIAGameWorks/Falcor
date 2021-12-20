@@ -8,7 +8,7 @@ import os
 DEFAULT_ENVIRONMENT="environment/default.json"
 
 # Default image comparison tolerance.
-DEFAULT_TOLERANCE = 1e-12
+DEFAULT_TOLERANCE = 0.0
 
 # Default image test timeout.
 DEFAULT_TIMEOUT = 600

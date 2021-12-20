@@ -37,19 +37,18 @@ class ColorMapPass : public RenderPass
 public:
     using SharedPtr = std::shared_ptr<ColorMapPass>;
 
+    static const Info kInfo;
+
     /** Create a new object
     */
     static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
 
-    virtual std::string getDesc() override { return kDesc; }
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
 
     static void registerScriptBindings(pybind11::module& m);
-
-    static const char* kDesc;
 
 private:
     ColorMapPass(const Dictionary& dict);

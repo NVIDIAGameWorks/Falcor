@@ -26,12 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Utils/Math/MathConstants.slangh"
-#include "Scene/Material/MaterialDefines.slangh"
 
 import Scene.Scene;
-import Scene.Shading;
-import Scene.TextureSampler;
-import Experimental.Scene.Material.StandardMaterial;
+import Scene.Material.ShadingUtils;
+import Scene.Material.TextureSampler;
 import Utils.Sampling.SampleGenerator;
 import Utils.Debug.PixelDebug;
 import Utils.Math.BitTricks;
@@ -53,10 +51,8 @@ static const float3 kGroundPlaneColor = float3(0.05f);
 struct SurfaceData
 {
     ShadingData sd;
-
-    // Additional fields we want to inspect that are not part of Falcor's ShadingData.
-    float3 baseColor;
-    float3 wi;
+    BSDFProperties bsdfProperties;
+    float3 wo;
 };
 
 
@@ -71,7 +67,7 @@ float2 getViewportCoord(uint2 pixel)
     return (p - gParams.viewportOffset) * gParams.viewportScale;
 }
 
-/** Setup geometric frame of reference for BRDF slice.
+/** Setup geometric frame of reference for BSDF slice.
     \param[in] uv Viewport coordinate in [0,1].
     \param[out] v Interpolated attributes for the point on the sphere.
     \param[out] viewDir View direction.
@@ -167,64 +163,16 @@ bool calculateSphereGeometry(float2 uv, out VertexData v, out float3 rayDir)
     return true;
 }
 
-/** Prepare SurfaceData struct with material parameters.
+/** Prepare SurfaceData struct with shading data.
     All unused fields are initialized to their default values.
 */
-SurfaceData prepareMaterial(VertexData v, float3 viewDir)
+SurfaceData prepareShadingData(const VertexData v, const float3 viewDir, const ITextureSampler lod)
 {
     SurfaceData data = {};
 
-    if (gParams.useSceneMaterial)
-    {
-        // Setup Falcor's ShadingData based on scene material.
-        ExplicitLodTextureSampler lod = { 0.f };
-        data.sd = _prepareShadingData(v, gParams.materialID, gScene.materials[gParams.materialID], gScene.materialResources[gParams.materialID], viewDir, lod, gParams.useNormalMapping);
-
-        // Setup additional fields not currently available in ShadingData.
-        MaterialData md = gScene.getMaterial(gParams.materialID);
-        MaterialResources mr = gScene.materialResources[gParams.materialID];
-        data.baseColor = sampleTexture(mr.baseColor, mr.samplerState, v.texC, md.baseColor, EXTRACT_BASE_COLOR_TYPE(md.flags), lod).rgb;
-    }
-    else
-    {
-        ShadingData sd = {};
-
-        // Set geometric parameters.
-        sd.posW = v.posW;
-        sd.uv = v.texC;
-        sd.V = normalize(viewDir);
-        sd.N = normalize(v.normalW);
-        sd.NdotV = dot(sd.N, sd.V);
-        sd.faceN = v.faceNormalW;
-        sd.frontFacing = dot(sd.V, sd.faceN) >= 0.f;
-
-        computeTangentSpace(sd, v.tangentW);
-
-        // Set material data
-        sd.setMaterialType(MaterialType::Standard);
-        sd.setDoubleSided(false);
-        sd.setThinSurface(false);
-
-        // Set material parameters.
-        // Calculate the specular reflectance for dielectrics from the IoR.
-        sd.IoR = gParams.IoR;
-        float f = (sd.IoR - 1.f) / (sd.IoR + 1.f);
-        float F0 = f * f;
-        sd.diffuse = lerp(gParams.baseColor.rgb, float3(0), gParams.metallic);
-        sd.specular = lerp(float3(F0), gParams.baseColor.rgb, gParams.metallic);
-        sd.linearRoughness = gParams.linearRoughness;
-        sd.ggxAlpha = sd.linearRoughness * sd.linearRoughness;
-        sd.metallic = gParams.metallic;
-
-        // Unused
-        sd.opacity = 1;
-
-        // Store outputs
-        data.sd = sd;
-        data.baseColor = gParams.baseColor;
-    }
-
-    data.sd.setActiveLobes(getActiveLobes());
+    // Setup Falcor's ShadingData based on the selected scene material and lobes.
+    data.sd = gScene.materials.prepareShadingData(v, gParams.materialID, viewDir, lod, gParams.useNormalMapping);
+    data.sd.mtl.setActiveLobes(getActiveLobes());
 
     return data;
 }
@@ -274,24 +222,28 @@ uint getActiveLobes()
 /** Evaluates the BSDF slice for a given viewport coordinate.
     \return Evaluated BSDF value.
 */
-float3 evalBSDFSlice<Material : IMaterial>(const Material mtl, const float2 uv, inout SurfaceData data)
+float3 evalBSDFSlice(const float2 uv, const ITextureSampler lod, inout SurfaceData data)
 {
     // Calculate geometry and incident/outgoing directions.
     VertexData v;
     float3 viewDir;
     float3 lightDir = calculateSliceGeometry(uv, v, viewDir);
 
-    // Setup shading data based on the current material.
-    data = prepareMaterial(v, viewDir);
-    data.wi = lightDir;
+    // Setup shading data.
+    data = prepareShadingData(v, viewDir, lod);
+    data.wo = lightDir;
 
-    // Evaluate BRDF at this point.
-    float3 f = mtl.eval(data.sd, data.wi);
+    // Create BSDF instance.
+    let bsdf = gScene.materials.getBSDF(data.sd, lod);
+    data.bsdfProperties = bsdf.getProperties(data.sd);
+
+    // Evaluate BSDF at shading point.
+    float3 f = bsdf.eval(data.sd, data.wo);
 
     // Remove cosine term if it's disabled in the viewer.
     if (!gParams.applyNdotL)
     {
-        float NdotL = dot(data.sd.N, data.wi);
+        float NdotL = dot(data.sd.N, data.wo);
         f = NdotL > 0.f ? f / NdotL : float3(0);
     }
 
@@ -300,24 +252,25 @@ float3 evalBSDFSlice<Material : IMaterial>(const Material mtl, const float2 uv, 
 
 /** Samples the BSDF to evaluate incident illumination.
     This is done differently depending on the configuration.
-    \param[in] sd Shading point data.
-    \param[in] sg Sample generator.
+    \param[in] sd Shading data.
+    \param[in] bsdf BSDF instance.
+    \param[in,out] sg Sample generator.
     \param[out] s Generated sample. Only valid if true is returned.
     \return True if a sample was generated, false otherwise.
 */
-bool generateBSDFSample<Material : IMaterial>(const ShadingData sd, const Material mtl, inout SampleGenerator sg, out BSDFSample s)
+bool generateBSDFSample(const ShadingData sd, const IBSDF bsdf, inout SampleGenerator sg, out BSDFSample s)
 {
     if (gParams.useDirectionalLight)
     {
         // With directional light, disable BSDF sampling and just return a sample in the light's direction.
         s.wo = -normalize(gParams.lightDir);
-        s.weight = mtl.eval(sd, s.wo);
+        s.weight = bsdf.eval(sd, s.wo);
         s.pdf = 1.f;
         return dot(sd.N, s.wo) > 0.f;
     }
     else
     {
-        return mtl.sample(sd, sg, s, gParams.useBrdfSampling);
+        return bsdf.sample(sd, sg, s, gParams.useImportanceSampling);
     }
 }
 
@@ -327,27 +280,33 @@ bool generateBSDFSample<Material : IMaterial>(const ShadingData sd, const Materi
     the result converges to the total reflectance (integral of BSDF times the dot(N,L) factor.
     \return Outgoing radiance value.
 */
-float3 evalSphere<Material : IMaterial>(const Material mtl, const float2 uv, inout SurfaceData data, inout SampleGenerator sg)
+float3 evalSphere(const float2 uv, const ITextureSampler lod, inout SurfaceData data, inout SampleGenerator sg)
 {
     // Calculate the local surface frame.
     VertexData v;
     float3 rayDir;
     if (!calculateSphereGeometry(uv, v, rayDir)) return evalBackground(uv, rayDir);
 
-    // Setup shading data based on the current material.
-    data = prepareMaterial(v, -rayDir);
+    // Setup shading data.
+    data = prepareShadingData(v, -rayDir, lod);
 
+    // Create BSDF instance.
+    let bsdf = gScene.materials.getBSDF(data.sd, lod);
+    data.bsdfProperties = bsdf.getProperties(data.sd);
+
+    // Sample BSDF at shading point.
     float3 output = 0;
     BSDFSample s = {};
-    if (generateBSDFSample(data.sd, mtl, sg, s))
+
+    if (generateBSDFSample(data.sd, bsdf, sg, s))
     {
-        data.wi = s.wo;
+        data.wo = s.wo;
         float3 L = evalLighting(s.wo);
 
         // Use computed pdf explicitly (for debugging).
         if (gParams.usePdf)
         {
-            output = L * mtl.eval(data.sd, s.wo) / s.pdf;
+            output = L * bsdf.eval(data.sd, s.wo) / s.pdf;
         }
         else
         {
@@ -368,43 +327,52 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
 
     printSetPixel(pixel);
 
-    StandardMaterial mtl; // Instance of the standard material.
     SurfaceData data = {};
     float3 output = 0;
     float2 uv = getViewportCoord(pixel);
 
-    if (gParams.sliceViewer)
+    // TODO: Implement texture level-of-detail. For now sample at mip 0.
+    let lod = ExplicitLodTextureSampler(0.f);
+
+    if (gParams.enableSliceViewer)
     {
         if (all(uv >= 0.f && uv < 1.f))
         {
-            output = evalBSDFSlice(mtl, uv, data);
+            output = evalBSDFSlice(uv, lod, data);
         }
     }
     else
     {
         // Create pseudorandom number generator.
-        SampleGenerator sg = SampleGenerator.create(pixel, gParams.frameCount);
-        output = evalSphere(mtl, uv, data, sg);
+        SampleGenerator sg = SampleGenerator(pixel, gParams.frameCount);
+        output = evalSphere(uv, lod, data, sg);
     }
 
     // Write output data.
     gOutput[pixel] = float4(output, 1);
 
-    if (gParams.readback && all(pixel == gParams.selectedPixel))
+    if (all(pixel == gParams.selectedPixel))
     {
-        PixelData px;
+        PixelData px = {};
+
         px.texC = data.sd.uv;
-        px.baseColor = data.baseColor;
-        px.diffuse = data.sd.diffuse;
-        px.specular = data.sd.specular;
-        px.linearRoughness = data.sd.linearRoughness;
-        px.metallic = data.sd.metallic;
         px.N = data.sd.N;
         px.T = data.sd.T;
         px.B = data.sd.B;
-        px.wo = data.sd.V;
-        px.wi = data.wi;
+        px.wi = data.sd.V;
+        px.wo = data.wo;
         px.output = output;
+
+        // BSDF properties
+        px.emissive = data.bsdfProperties.emissive;
+        px.roughness = data.bsdfProperties.roughness;
+        px.diffuseReflectionAlbedo = data.bsdfProperties.diffuseReflectionAlbedo;
+        px.diffuseTransmissionAlbedo = data.bsdfProperties.diffuseTransmissionAlbedo;
+        px.specularReflectionAlbedo = data.bsdfProperties.specularReflectionAlbedo;
+        px.specularTransmissionAlbedo = data.bsdfProperties.specularTransmissionAlbedo;
+        px.specularReflectance = data.bsdfProperties.specularReflectance;
+        px.isTransmissive = data.bsdfProperties.isTransmissive ? 1 : 0;
+
         gPixelData[0] = px;
     }
 }

@@ -29,7 +29,7 @@ import Scene.Raster;
 import Scene.HitInfo;
 import Utils.Math.MathHelpers;
 
-RasterizerOrderedTexture2D<float2> gMotionVectors;
+RasterizerOrderedTexture2D<float2> gMotionVector;
 
 cbuffer PerFrameCB
 {
@@ -53,7 +53,7 @@ struct VBufferVSOut
 
     float4 posH : SV_POSITION;  ///< Position in world space.
 
-#if is_valid(gMotionVectors)
+#if is_valid(gMotionVector)
     float4 prevPosH : PREVPOSH; ///< Position in clip space for the previous frame.
 #endif
 };
@@ -61,7 +61,7 @@ struct VBufferVSOut
 VBufferVSOut vsMain(VSIn vsIn)
 {
     VBufferVSOut vsOut;
-    const GeometryInstanceID instanceID = { vsIn.meshInstanceID };
+    const GeometryInstanceID instanceID = { vsIn.instanceID };
 
     float4x4 worldMat = gScene.getWorldMatrix(instanceID);
     float3 posW = mul(float4(vsIn.pos, 1.f), worldMat).xyz;
@@ -71,13 +71,13 @@ VBufferVSOut vsMain(VSIn vsIn)
     vsOut.instanceID = instanceID;
     vsOut.materialID = gScene.getMaterialID(instanceID);
 
-#if is_valid(gMotionVectors)
+#if is_valid(gMotionVector)
     // Compute the vertex position in the previous frame.
     float3 prevPos = vsIn.pos;
-    MeshInstanceData meshInstance = gScene.getMeshInstance(instanceID);
-    if (meshInstance.hasDynamicData())
+    GeometryInstanceData instance = gScene.getGeometryInstance(instanceID);
+    if (instance.hasDynamicData())
     {
-        uint dynamicVertexIndex = gScene.meshes[meshInstance.meshID].dynamicVbOffset + vsIn.vertexID;
+        uint dynamicVertexIndex = gScene.meshes[instance.geometryID].dynamicVbOffset + vsIn.vertexID;
         prevPos = gScene.prevVertices[dynamicVertexIndex].position;
     }
     float3 prevPosW = mul(float4(prevPos, 1.f), gScene.getPrevWorldMatrix(instanceID)).xyz;
@@ -102,7 +102,7 @@ VBufferPSOut psMain(VBufferVSOut vsOut, uint triangleIndex : SV_PrimitiveID, flo
     v.texC = vsOut.texC;
     float lod = 0.f;
 
-    if (alphaTest(v, gScene.materials[vsOut.materialID], gScene.materialResources[vsOut.materialID], lod)) discard;
+    if (gScene.materials.alphaTest(v, vsOut.materialID, lod)) discard;
 #endif
 
     // Note on barycentrics:
@@ -117,15 +117,15 @@ VBufferPSOut psMain(VBufferVSOut vsOut, uint triangleIndex : SV_PrimitiveID, flo
     triangleHit.instanceID = vsOut.instanceID;
     triangleHit.primitiveIndex = triangleIndex;
     triangleHit.barycentrics = barycentrics.yz;
-    psOut.packedHitInfo = HitInfo(triangleHit).pack();
+    psOut.packedHitInfo = triangleHit.pack();
 
-#if is_valid(gMotionVectors)
-    // Compute motion vectors.
+#if is_valid(gMotionVector)
+    // Compute motion vector.
     {
         const float2 pixelPos = ipos + float2(0.5, 0.5); // Current sample in pixel coords.
         const float4 prevPosH = vsOut.prevPosH; // Sample in previous frame in clip space coords, no jittering applied.
         const float2 mv = calcMotionVector(pixelPos, prevPosH, gFrameDim) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY); // Remove camera jitter from motion vector
-        gMotionVectors[ipos] = mv;
+        gMotionVector[ipos] = mv;
     }
 #endif
 

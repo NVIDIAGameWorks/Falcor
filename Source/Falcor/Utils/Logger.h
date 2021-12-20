@@ -26,23 +26,24 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Core/Framework.h"
 
 namespace Falcor
 {
     /** Container class for logging messages.
-    *   To enable log messages, make sure _LOG_ENABLED is set to true in FalcorConfig.h.
-    *   Messages are printed to a log file in the application directory. Using Logger#ShowBoxOnError() you can control if a message box will be shown as well.
+        To enable log messages, make sure FALCOR_ENABLE_LOGGER is set to `1` in FalcorConfig.h.
+        Messages are only printed to the selected outputs if they match the verbosity level.
     */
-    class dlldecl Logger
+    class FALCOR_API Logger
     {
     public:
-        /** Log messages severity
+        /** Log message severity.
         */
         enum class Level
         {
             Disabled,   ///< Disable log messages.
-            Fatal,      ///< Unrecoverable error messages. Terminates application immediately.
-            Error,      ///< Error messages. Application might be able to continue running, but incorrectly.
+            Fatal,      ///< Fatal messages.
+            Error,      ///< Error messages.
             Warning,    ///< Warning messages.
             Info,       ///< Informative messages.
             Debug,      ///< Debugging messages.
@@ -50,19 +51,38 @@ namespace Falcor
             Count,      ///< Keep this last.
         };
 
-        /** Message box behavior
+        /** Log output.
         */
-        enum class MsgBox
+        enum class OutputFlags
         {
-            Auto,           ///< Use `ContinueAbort` mode if the verbosity is `Error` or higher **and** `isBoxShownOnError()` returns `true`, otherwise use `None` mode.
-            ContinueAbort,  ///< Show a message box with options to continue or abort (and an option to enter the debugger if present).
-            RetryAbort,     ///< Show a message box with options to retry or abort (and an option to enter the debugger if present).
-            None            ///< Don't show a message box.
+            Console         = 0x2,  ///< Output to console (stdout/stderr).
+            File            = 0x1,  ///< Output to log file.
+            DebugWindow     = 0x4,  ///< Output to debug window (if debugger is attached).
         };
 
         /** Shutdown the logger and close the log file.
         */
         static void shutdown();
+
+        /** Set the logger verbosity.
+            \param level Log level.
+        */
+        static void setVerbosity(Level level);
+
+        /** Get the logger verbosity.
+            \return Return the log level.
+        */
+        static Level getVerbosity();
+
+        /** Set the logger outputs.
+            \param outputs Log outputs.
+        */
+        static void setOutputs(OutputFlags outputs);
+
+        /** Get the logger outputs.
+            \return Return the log outputs.
+        */
+        static OutputFlags getOutputs();
 
         /** Set the path of the logfile.
             Note: This only works if the logfile has not been opened for writing yet.
@@ -76,49 +96,26 @@ namespace Falcor
         */
         static const std::string& getLogFilePath();
 
-        /** Enable/disable logging to the console (stdout).
-            \param[in] enable True to enable logging to stdout.
+        /** Check if the logger is enabled.
         */
-        static void logToConsole(bool enable);
-
-        /** Returns true if logging to console (stdout) is enabled.
-            \return Returns true if logging to stdout is enabled.
-        */
-        static bool shouldLogToConsole();
-
-        /** Controls weather or not to show a message box on error messages.
-            If this is disabled, logging an error will immediately terminate the application.
-            \param[in] showBox true to show a message box, false to disable it.
-        */
-        static void showBoxOnError(bool showBox);
-
-        /** Returns weather or not the message box is shown on error messages.
-            \return Returns true if a message box is shown, false otherwise.
-        */
-        static bool isBoxShownOnError();
-
-        /** Check if the logger is enabled
-        */
-        static constexpr bool enabled() { return _LOG_ENABLED != 0; }
-
-        /** Set the logger verbosity
-        */
-        static void setVerbosity(Level level);
+        static constexpr bool enabled() { return FALCOR_ENABLE_LOGGER != 0; }
 
     private:
-        friend void logDebug(const std::string& msg, MsgBox mbox);
-        friend void logInfo(const std::string& msg, MsgBox mbox);
-        friend void logWarning(const std::string& msg, MsgBox mbox);
-        friend void logError(const std::string& msg, MsgBox mbox, bool terminate);
-        friend void logFatal(const std::string& msg, MsgBox mbox);
+        friend void logDebug(const std::string& msg);
+        friend void logInfo(const std::string& msg);
+        friend void logWarning(const std::string& msg);
+        friend void logError(const std::string& msg);
+        friend void logFatal(const std::string& msg);
 
-        static void log(Level level, const std::string& msg, MsgBox mbox = Logger::MsgBox::Auto, bool terminateOnError = true);
+        static void log(Level level, const std::string& msg);
         Logger() = delete;
     };
 
-    inline void logDebug(const std::string& msg, Logger::MsgBox mbox = Logger::MsgBox::Auto) { Logger::log(Logger::Level::Debug, msg, mbox); }
-    inline void logInfo(const std::string& msg, Logger::MsgBox mbox = Logger::MsgBox::Auto) { Logger::log(Logger::Level::Info, msg, mbox); }
-    inline void logWarning(const std::string& msg, Logger::MsgBox mbox = Logger::MsgBox::Auto) { Logger::log(Logger::Level::Warning, msg, mbox); }
-    inline void logError(const std::string& msg, Logger::MsgBox mbox = Logger::MsgBox::Auto, bool terminate = true) { Logger::log(Logger::Level::Error, msg, mbox, terminate); }
-    inline void logFatal(const std::string& msg, Logger::MsgBox mbox = Logger::MsgBox::Auto) { Logger::log(Logger::Level::Fatal, msg, mbox); }
+    FALCOR_ENUM_CLASS_OPERATORS(Logger::OutputFlags);
+
+    inline void logDebug(const std::string& msg) { Logger::log(Logger::Level::Debug, msg); }
+    inline void logInfo(const std::string& msg) { Logger::log(Logger::Level::Info, msg); }
+    inline void logWarning(const std::string& msg) { Logger::log(Logger::Level::Warning, msg); }
+    inline void logError(const std::string& msg) { Logger::log(Logger::Level::Error, msg); }
+    inline void logFatal(const std::string& msg) { Logger::log(Logger::Level::Fatal, msg); }
 }

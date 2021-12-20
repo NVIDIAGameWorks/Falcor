@@ -33,7 +33,7 @@ namespace Falcor
 {
     /** Framerate calculator
     */
-    class dlldecl FrameRate
+    class FALCOR_API FrameRate
     {
     public:
         FrameRate()

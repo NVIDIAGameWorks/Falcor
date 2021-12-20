@@ -41,7 +41,7 @@ namespace Falcor
         }
         else
         {
-            throw std::exception("Can't create SampleGenerator. Unknown type");
+            throw ArgumentError("Can't create SampleGenerator. Unknown type");
         }
     }
 

@@ -83,11 +83,11 @@ void ExampleBlitPass::execute(RenderContext* pRenderContext, const RenderData& r
 
 ## Registering Render Passes
 
-Every render pass library project contains a `getPasses()` function which registers all render passes implemented in the project. Let's update the pass' description in this function as well.
+Every render pass library project contains a `getPasses()` function which registers all render passes implemented in the project.
 ```c++
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
 {
-    lib.registerClass("ExampleBlitPass", "Blits a texture into another texture", ExampleBlitPass::create);
+    lib.registerPass(ExampleBlitPass::kInfo, ExampleBlitPass::create);
 }
 ```
 

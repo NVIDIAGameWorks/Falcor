@@ -18,6 +18,7 @@ def render_graph_MegakernelPathTracerVBuffer():
     g.addEdge("VBufferRT.vbuffer", "MegakernelPathTracer.vbuffer")
     g.addEdge("MegakernelPathTracer.color", "AccumulatePass.input")
     g.markOutput("ToneMapper.dst")
+    g.markOutput("ToneMapper.dst", TextureChannelFlags.Alpha)
     return g
 
 MegakernelPathTracerVBuffer = render_graph_MegakernelPathTracerVBuffer()

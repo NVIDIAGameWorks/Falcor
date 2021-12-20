@@ -85,7 +85,7 @@ void anyHit(inout RayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAt
     GeometryInstanceID instanceID = getGeometryInstanceID();
     VertexData v = getVertexData(instanceID, PrimitiveIndex(), attribs);
     uint materialID = gScene.getMaterialID(instanceID);
-    if (alphaTest(v, gScene.materials[materialID], gScene.materialResources[materialID], 0.f)) IgnoreHit();
+    if (gScene.materials.alphaTest(v, materialID, 0.f)) IgnoreHit();
 }
 
 [shader("closesthit")]

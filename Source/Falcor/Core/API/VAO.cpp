@@ -37,7 +37,7 @@ namespace Falcor
         {
             if (ibFormat != ResourceFormat::R16Uint && ibFormat != ResourceFormat::R32Uint)
             {
-                logError("Invalid index buffer format (" + to_string(ibFormat) + ")");
+                reportError("Invalid index buffer format (" + to_string(ibFormat) + ")");
                 return false;
             }
         }
@@ -60,7 +60,7 @@ namespace Falcor
         {
             if (checkVaoParams(pVBs, pLayout.get(), pIB.get(), ibFormat) == false)
             {
-                throw std::exception("Failed to create VAO");
+                throw RuntimeError("Failed to create VAO");
             }
         }
 
@@ -90,7 +90,7 @@ namespace Falcor
         return desc;
     }
 
-    SCRIPT_BINDING(Vao)
+    FALCOR_SCRIPT_BINDING(Vao)
     {
         pybind11::class_<Vao, Vao::SharedPtr>(m, "Vao");
     }

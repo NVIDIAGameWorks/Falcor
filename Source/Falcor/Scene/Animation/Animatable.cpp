@@ -30,7 +30,7 @@
 
 namespace Falcor
 {
-    SCRIPT_BINDING(Animatable)
+    FALCOR_SCRIPT_BINDING(Animatable)
     {
         pybind11::class_<Animatable, Animatable::SharedPtr> animatable(m, "Animatable");
         animatable.def_property_readonly("hasAnimation", &Animatable::hasAnimation);

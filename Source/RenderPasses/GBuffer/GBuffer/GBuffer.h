@@ -36,7 +36,7 @@ using namespace Falcor;
 class GBuffer : public GBufferBase
 {
 protected:
-    GBuffer();
+    GBuffer(const Info& info);
 
     // Constants used in derived classes
     static const ChannelList kGBufferChannels;

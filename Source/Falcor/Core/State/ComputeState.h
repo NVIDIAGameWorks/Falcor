@@ -38,7 +38,7 @@ namespace Falcor
         This class contains the entire state required by a single dispatch call. It's not an immutable object - you can change it dynamically during rendering.
         The recommended way to use it is to create multiple ComputeState objects (ideally, a single object per program)
     */
-    class dlldecl ComputeState
+    class FALCOR_API ComputeState
     {
     public:
         using SharedPtr = std::shared_ptr<ComputeState>;
@@ -65,7 +65,7 @@ namespace Falcor
         /** Get the active compute state object
         */
         ComputeStateObject::SharedPtr getCSO(const ComputeVars* pVars);
-        
+
     private:
         ComputeState();
         ComputeProgram::SharedPtr mpProgram;
@@ -74,7 +74,6 @@ namespace Falcor
         struct CachedData
         {
             const ProgramKernels* pProgramKernels = nullptr;
-            const RootSignature* pRootSig = nullptr;
         };
         CachedData mCachedData;
 

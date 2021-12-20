@@ -112,7 +112,7 @@ namespace Falcor
         auto result = findMember(name);
         if( !result.isValid() && isValid() )
         {
-            logError("No member named '" + name + "' found.");
+            reportError("No member named '" + name + "' found.");
         }
         return result;
     }
@@ -184,7 +184,7 @@ namespace Falcor
             }
         }
 
-        logError("No element or member found at index " + std::to_string(index));
+        reportError("No element or member found at index " + std::to_string(index));
         return ShaderVar();
     }
 
@@ -274,7 +274,7 @@ namespace Falcor
             }
         }
 
-        logError("no member at offset");
+        reportError("no member at offset");
         return ShaderVar();
     }
 
@@ -306,6 +306,11 @@ namespace Falcor
     bool ShaderVar::setUav(const UnorderedAccessView::SharedPtr& pUav) const
     {
         return mpBlock->setUav(mOffset, pUav);
+    }
+
+    bool ShaderVar::setAccelerationStructure(const RtAccelerationStructure::SharedPtr& pAccl) const
+    {
+        return mpBlock->setAccelerationStructure(mOffset, pAccl);
     }
 
     bool ShaderVar::setParameterBlock(const std::shared_ptr<ParameterBlock>& pBlock) const
@@ -401,6 +406,11 @@ namespace Falcor
     UnorderedAccessView::SharedPtr ShaderVar::getUav() const
     {
         return mpBlock->getUav(mOffset);
+    }
+
+    RtAccelerationStructure::SharedPtr ShaderVar::getAccelerationStructure() const
+    {
+        return mpBlock->getAccelerationStructure(mOffset);
     }
 
     size_t ShaderVar::getByteOffset() const

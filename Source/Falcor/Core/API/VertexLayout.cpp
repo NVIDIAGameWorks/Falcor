@@ -30,7 +30,7 @@
 
 namespace Falcor
 {
-    SCRIPT_BINDING(VertexLayout)
+    FALCOR_SCRIPT_BINDING(VertexLayout)
     {
         pybind11::class_<VertexLayout, VertexLayout::SharedPtr>(m, "VertexLayout");
     }

@@ -32,7 +32,7 @@ namespace Falcor
 {
     class AnimationController;
 
-    class dlldecl Animation
+    class FALCOR_API Animation
     {
     public:
         using SharedPtr = std::shared_ptr<Animation>;

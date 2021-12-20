@@ -66,7 +66,7 @@ namespace Falcor
         }
     };
 
-    enum_class_operators(DirectedGraphTraversal::Flags);
+    FALCOR_ENUM_CLASS_OPERATORS(DirectedGraphTraversal::Flags);
 
     template<typename Args>
     class DirectedGraphTraversalTemplate : public DirectedGraphTraversal

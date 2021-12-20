@@ -34,7 +34,9 @@ namespace Falcor
 {
     class NodeGraphEditorGui;
 
-    class dlldecl RenderPassUI
+    /** Class for drawing UI elements for a render pass in the render graph editor.
+    */
+    class FALCOR_API RenderPassUI
     {
     public:
 
@@ -69,7 +71,9 @@ namespace Falcor
         RenderPassReflection mReflection;
     };
 
-    class dlldecl RenderGraphUI
+    /** Class for drawing UI elements for a graph in the render graph editor.
+    */
+    class FALCOR_API RenderGraphUI
     {
     public:
         RenderGraphUI();
@@ -80,7 +84,7 @@ namespace Falcor
 
         /** Display enter graph in GUI.
         */
-        void renderUI(RenderContext* pContext, Gui* pGui);
+        void renderUI(RenderContext* pRenderContext, Gui* pGui);
 
         /** Clear graph ui for rebuilding node graph
         */
@@ -92,7 +96,7 @@ namespace Falcor
 
         /** Writes out all the changes made to the graph
         */
-        void writeUpdateScriptToFile(RenderContext* pContext, const std::string& filePath, float lastFrameTimes);
+        void writeUpdateScriptToFile(RenderContext* pRenderContext, const std::string& filePath, float lastFrameTimes);
 
         /** function used to add an edge for the internally referenced render graph and update ui data
          */
@@ -136,7 +140,7 @@ namespace Falcor
 
         /** Update change for the graph based on script
         */
-        void updateGraph(RenderContext* pContext);
+        void updateGraph(RenderContext* pRenderContext);
 
         /** Get name of reference graph
         */
@@ -149,7 +153,7 @@ namespace Falcor
 
         /** Updates structure for drawing the GUI graph
         */
-        void updateDisplayData(RenderContext* pContext);
+        void updateDisplayData(RenderContext* pRenderContext);
 
         /** Updates information about pin connections and graph output.
         */

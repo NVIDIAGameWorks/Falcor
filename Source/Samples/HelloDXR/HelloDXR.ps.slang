@@ -26,27 +26,28 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 import Scene.Raster;
-import Scene.Shading;
 import Utils.Sampling.TinyUniformSampleGenerator;
-import Experimental.Scene.Lights.LightHelpers;
-import Experimental.Scene.Material.StandardMaterial;
+import Rendering.Lights.LightHelpers;
 
 float4 main(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) : SV_TARGET
 {
-    if (alphaTest(vsOut, triangleIndex)) discard;
+    let lod = ImplicitLodTextureSampler();
+    if (alphaTest(vsOut, triangleIndex, lod)) discard;
 
     float3 viewDir = normalize(gScene.camera.getPosition() - vsOut.posW);
-    ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir);
-    StandardMaterial mtl;
+    ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir, lod);
 
-    float3 color = sd.emissive;
+    // Create BSDF instance.
+    let bsdf = gScene.materials.getBSDF(sd, lod);
+
+    float3 color = bsdf.getProperties(sd).emissive;
 
     // Direct lighting from analytic light sources
     for (int i = 0; i < gScene.getLightCount(); i++)
     {
         AnalyticLightSample ls;
         evalLightApproximate(sd.posW, gScene.getLight(i), ls);
-        color += mtl.eval(sd, ls.dir) * ls.Li;
+        color += bsdf.eval(sd, ls.dir) * ls.Li;
     }
 
     return float4(color, 1.f);

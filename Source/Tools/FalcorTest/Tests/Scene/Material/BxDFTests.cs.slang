@@ -30,7 +30,7 @@
 import Utils.Math.MathHelpers;
 import Utils.Color.ColorHelpers;
 import Utils.Sampling.UniformSampleGenerator;
-import Experimental.Scene.Material.BxDF;
+import Rendering.Materials.BxDF;
 
 struct SamplingTest
 {
@@ -44,7 +44,7 @@ struct SamplingTest
     uint threadSampleCount;
     uint binSampleCount;
 
-    StructuredBuffer<float3> testWo;
+    StructuredBuffer<float3> testWi;
     StructuredBuffer<float4> testParams;
 
     RWStructuredBuffer<uint> histogramSampling;     ///< Written during tabulateHistogram().
@@ -58,26 +58,26 @@ struct SamplingTest
         uint testIndex = threadId.z;
         if (threadId.x >= threadCount || testIndex >= testCount) return;
 
-        const float3 wo = normalize(testWo[testIndex]);
+        const float3 wi = normalize(testWi[testIndex]);
         const float4 params = testParams[testIndex];
 
         TEST_BxDF bxdf;
         TEST_BxDF_INIT;
 
         // Create sample generator.
-        UniformSampleGenerator sg = UniformSampleGenerator.create(threadId.xy, 0);
+        UniformSampleGenerator sg = UniformSampleGenerator(threadId.xy, 0);
 
         for (uint i = 0; i < threadSampleCount; ++i)
         {
-            float3 wi;
+            float3 wo;
             float pdf;
             float3 weight;
             uint lobe;
-            if (bxdf.sample(wo, wi, pdf, weight, lobe, sg))
+            if (bxdf.sample(wi, wo, pdf, weight, lobe, sg))
             {
-                if (wi.z < -1.0 + kCosThetaMargin || wi.z > 1.0 - kCosThetaMargin) continue;
-                uint cosThetaBin = clamp((uint)floor(((double)wi.z * 0.5 + 0.5) * cosThetaBinCount), 0, cosThetaBinCount - 1);
-                double scaledPhi = atan2((double)wi.y, (double)wi.x) * M_1_2PI;
+                if (wo.z < -1.f + kCosThetaMargin || wo.z > 1.f - kCosThetaMargin) continue;
+                uint cosThetaBin = clamp((uint)floor(((double)wo.z * 0.5 + 0.5) * cosThetaBinCount), 0, cosThetaBinCount - 1);
+                double scaledPhi = atan2((double)wo.y, (double)wo.x) * M_1_2PI;
                 if (scaledPhi < 0.0) scaledPhi += 1.0;
                 uint phiBin = clamp((uint)floor(scaledPhi * phiBinCount), 0, phiBinCount - 1);
 
@@ -94,7 +94,7 @@ struct SamplingTest
         uint testIndex = threadId.z;
         if (phiBin >= phiBinCount || cosThetaBin >= cosThetaBinCount || testIndex >= testCount) return;
 
-        const float3 wo = normalize(testWo[testIndex]);
+        const float3 wi = normalize(testWi[testIndex]);
         const float4 params = testParams[testIndex];
 
         TEST_BxDF bxdf;
@@ -121,9 +121,9 @@ struct SamplingTest
                 float sinTheta = sqrt(1.f - cosTheta * cosTheta);
                 float sinPhi = sin(phi);
                 float cosPhi = cos(phi);
-                float3 wi = normalize(float3(sinTheta * cosPhi, sinTheta * sinPhi, cosTheta));
+                float3 wo = normalize(float3(sinTheta * cosPhi, sinTheta * sinPhi, cosTheta));
 
-                pdf += bxdf.evalPdf(wo, wi);
+                pdf += bxdf.evalPdf(wi, wo);
             }
         }
 
@@ -140,25 +140,25 @@ struct SamplingTest
         uint testIndex = threadId.z;
         if (threadIndex >= threadCount || testIndex >= testCount) return;
 
-        const float3 wo = normalize(testWo[testIndex]);
+        const float3 wi = normalize(testWi[testIndex]);
         const float4 params = testParams[testIndex];
 
         TEST_BxDF bxdf;
         TEST_BxDF_INIT;
 
         // Create sample generator.
-        UniformSampleGenerator sg = UniformSampleGenerator.create(threadId.xy, 0);
+        UniformSampleGenerator sg = UniformSampleGenerator(threadId.xy, 0);
 
         for (uint i = 0; i < threadSampleCount; ++i)
         {
-            float3 wi;
+            float3 wo;
             float pdf;
             float3 weight;
             uint lobe;
-            if (bxdf.sample(wo, wi, pdf, weight, lobe, sg))
+            if (bxdf.sample(wi, wo, pdf, weight, lobe, sg))
             {
-                float3 value = bxdf.eval(wo, wi);
-                float pdfRef = bxdf.evalPdf(wo, wi);
+                float3 value = bxdf.eval(wi, wo);
+                float pdfRef = bxdf.evalPdf(wi, wo);
                 float3 weightRef = pdfRef > 0.f ? (value / pdfRef) : float3(0.f);
 
                 float3 weightErrors = abs(weight - weightRef) / (weightRef > 0.f ? weightRef : 1.f);
@@ -166,8 +166,8 @@ struct SamplingTest
 
                 float pdfError = abs(pdf - pdfRef) / (pdfRef > 0.f ? pdfRef : 1.f);
 
-                uint cosThetaBin = clamp((uint)floor(((double)wi.z * 0.5 + 0.5) * cosThetaBinCount), 0, cosThetaBinCount - 1);
-                double scaledPhi = atan2((double)wi.y, (double)wi.x) * M_1_2PI;
+                uint cosThetaBin = clamp((uint)floor(((double)wo.z * 0.5 + 0.5) * cosThetaBinCount), 0, cosThetaBinCount - 1);
+                double scaledPhi = atan2((double)wo.y, (double)wo.x) * M_1_2PI;
                 if (scaledPhi < 0.0) scaledPhi += 1.0;
                 uint phiBin = clamp((uint)floor(scaledPhi * phiBinCount), 0, phiBinCount - 1);
 

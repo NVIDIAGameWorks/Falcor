@@ -28,6 +28,12 @@
 #include "ToneMapper.h"
 #include "Utils/Color/ColorUtils.h"
 
+const RenderPass::Info ToneMapper::kInfo
+{
+    "ToneMapper",
+    "Tone-map a color-buffer. The resulting buffer is always in the [0, 1] range. The pass supports auto-exposure and eye-adaptation."
+};
+
 namespace
 {
     const Gui::DropdownList kOperatorList =
@@ -49,7 +55,10 @@ namespace
     const char kSrc[] = "src";
     const char kDst[] = "dst";
 
+    // Scripting options.
+    const char kOutputSize[] = "outputSize";
     const char kOutputFormat[] = "outputFormat";
+    const char kFixedOutputSize[] = "fixedOutputSize";
 
     const char kUseSceneMetadata[] = "useSceneMetadata";
     const char kExposureCompensation[] = "exposureCompensation";
@@ -93,7 +102,7 @@ namespace
 }
 
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" FALCOR_API_EXPORT const char* getProjDir()
 {
     return PROJECT_DIR;
 }
@@ -128,13 +137,11 @@ static void regToneMapper(pybind11::module& m)
     exposureMode.value("ShutterPriority", ToneMapper::ExposureMode::ShutterPriority);
 }
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
 {
-    lib.registerClass("ToneMapper", "Tone-map a color-buffer", ToneMapper::create);
+    lib.registerPass(ToneMapper::kInfo, ToneMapper::create);
     ScriptBindings::registerBinding(regToneMapper);
 }
-
-const char* ToneMapper::kDesc = "Tone-map a color-buffer. The resulting buffer is always in the [0, 1] range. The pass supports auto-exposure and eye-adaptation";
 
 ToneMapper::SharedPtr ToneMapper::create(RenderContext* pRenderContext, const Dictionary& dict)
 {
@@ -142,6 +149,7 @@ ToneMapper::SharedPtr ToneMapper::create(RenderContext* pRenderContext, const Di
 }
 
 ToneMapper::ToneMapper(const Dictionary& dict)
+    : RenderPass(kInfo)
 {
     parseDictionary(dict);
 
@@ -161,7 +169,9 @@ void ToneMapper::parseDictionary(const Dictionary& dict)
 {
     for (const auto& [key, value] : dict)
     {
-        if (key == kOutputFormat) mOutputFormat = value;
+        if (key == kOutputSize) mOutputSizeSelection = value;
+        else if (key == kOutputFormat) mOutputFormat = value;
+        else if (key == kFixedOutputSize) mFixedOutputSize = value;
         else if (key == kUseSceneMetadata) mUseSceneMetadata = value;
         else if (key == kExposureCompensation) setExposureCompensation(value);
         else if (key == kAutoExposure) setAutoExposure(value);
@@ -182,6 +192,8 @@ void ToneMapper::parseDictionary(const Dictionary& dict)
 Dictionary ToneMapper::getScriptingDictionary()
 {
     Dictionary d;
+    d[kOutputSize] = mOutputSizeSelection;
+    if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed) d[kFixedOutputSize] = mFixedOutputSize;
     if (mOutputFormat != ResourceFormat::Unknown) d[kOutputFormat] = mOutputFormat;
     d[kUseSceneMetadata] = mUseSceneMetadata;
     d[kExposureCompensation] = mExposureCompensation;
@@ -202,8 +214,10 @@ Dictionary ToneMapper::getScriptingDictionary()
 RenderPassReflection ToneMapper::reflect(const CompileData& compileData)
 {
     RenderPassReflection reflector;
+    const uint2 sz = RenderPassHelpers::calculateIOSize(mOutputSizeSelection, mFixedOutputSize, compileData.defaultTexDims);
+
     reflector.addInput(kSrc, "Source texture");
-    auto& output = reflector.addOutput(kDst, "Tone-mapped output texture");
+    auto& output = reflector.addOutput(kDst, "Tone-mapped output texture").texture2D(sz.x, sz.y);
     if (mOutputFormat != ResourceFormat::Unknown)
     {
         output.format(mOutputFormat);
@@ -216,6 +230,14 @@ void ToneMapper::execute(RenderContext* pRenderContext, const RenderData& render
 {
     auto pSrc = renderData[kSrc]->asTexture();
     auto pDst = renderData[kDst]->asTexture();
+    assert(pSrc && pDst);
+
+    // Issue warning if image will be resampled. The render pass supports this but image quality may suffer.
+    if (pSrc->getWidth() != pDst->getWidth() || pSrc->getHeight() != pDst->getHeight())
+    {
+        logWarning("ToneMapper pass I/O has different dimensions. The image will be resampled.");
+    }
+
     Fbo::SharedPtr pFbo = Fbo::create();
     pFbo->attachColorTarget(pDst, 0);
 
@@ -271,7 +293,7 @@ void ToneMapper::createLuminanceFbo(const Texture::SharedPtr& pSrc)
     uint32_t bytesPerChannel = getFormatBytesPerBlock(srcFormat) / getFormatChannelCount(srcFormat);
 
     // Find the required texture size and format
-    ResourceFormat luminanceFormat = (bytesPerChannel == 32) ? ResourceFormat::R32Float : ResourceFormat::R16Float;
+    ResourceFormat luminanceFormat = (bytesPerChannel == 4) ? ResourceFormat::R32Float : ResourceFormat::R16Float;
     uint32_t requiredHeight = getLowerPowerOf2(pSrc->getHeight());
     uint32_t requiredWidth = getLowerPowerOf2(pSrc->getWidth());
 
@@ -298,6 +320,14 @@ void ToneMapper::updateExposureValue()
 
 void ToneMapper::renderUI(Gui::Widgets& widget)
 {
+    // Controls for output size.
+    // When output size requirements change, we'll trigger a graph recompile to update the render pass I/O sizes.
+    if (widget.dropdown("Output size", RenderPassHelpers::kIOSizeList, (uint32_t&)mOutputSizeSelection)) requestRecompile();
+    if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed)
+    {
+        if (widget.var("Size in pixels", mFixedOutputSize, 32u, 16384u)) requestRecompile();
+    }
+
     if (auto exposureGroup = widget.group("Exposure", true))
     {
         mUpdateToneMapPass |= exposureGroup.var("Exposure Compensation", mExposureCompensation, kExposureCompensationMin, kExposureCompensationMax, 0.1f, false, "%.1f");

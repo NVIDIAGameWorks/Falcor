@@ -25,11 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma  once
-#include <vector>
-#include "Core/API/RootSignature.h"
+#pragma once
+#include "D3D12RootSignature.h"
 #include "Core/API/VAO.h"
 #include "Core/API/GraphicsStateObject.h"
+#include <vector>
 
 namespace Falcor
 {
@@ -62,7 +62,7 @@ namespace Falcor
         std::vector<uint32_t> elementByteOffset;
     };
 
-    void initD3D12RootParams(const RootSignature::Desc& desc, RootSignatureParams& params);
+    void initD3D12RootParams(const D3D12RootSignature::Desc& desc, RootSignatureParams& params);
 
     inline D3D_PRIMITIVE_TOPOLOGY getD3DPrimitiveTopology(Vao::Topology topology)
     {

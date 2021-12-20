@@ -44,7 +44,7 @@ namespace Falcor
         Call Sample::run() to start the sample.
         The render loop will then call the user's Renderer object
     */
-    class dlldecl Sample : public Window::ICallbacks, public IFramework
+    class FALCOR_API Sample : public Window::ICallbacks, public IFramework
     {
     public:
         /** Entry-point to Sample. User should call this to start processing.

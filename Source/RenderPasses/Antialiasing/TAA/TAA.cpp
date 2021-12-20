@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "TAA.h"
 
-const char* TAA::kDesc = "Temporal Anti-Aliasing";
+const RenderPass::Info TAA::kInfo { "TAA", "Temporal Anti-Aliasing." };
 
 namespace
 {
@@ -42,6 +42,7 @@ namespace
 }
 
 TAA::TAA()
+    : RenderPass(kInfo)
 {
     mpPass = FullScreenPass::create(kShaderFilename);
     mpFbo = Fbo::create();
@@ -79,7 +80,7 @@ RenderPassReflection TAA::reflect(const CompileData& compileData)
     return reflection;
 }
 
-void TAA::execute(RenderContext* pContext, const RenderData& renderData)
+void TAA::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
     const auto& pColorIn = renderData[kColorIn]->asTexture();
     const auto& pColorOut = renderData[kColorOut]->asTexture();
@@ -99,8 +100,8 @@ void TAA::execute(RenderContext* pContext, const RenderData& renderData)
     mpPass["gTexPrevColor"] = mpPrevColor;
     mpPass["gSampler"] = mpLinearSampler;
 
-    mpPass->execute(pContext, mpFbo);
-    pContext->blit(pColorOut->getSRV(), mpPrevColor->getRTV());
+    mpPass->execute(pRenderContext, mpFbo);
+    pRenderContext->blit(pColorOut->getSRV(), mpPrevColor->getRTV());
 }
 
 void TAA::allocatePrevColor(const Texture* pColorOut)

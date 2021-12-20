@@ -47,7 +47,7 @@ namespace Falcor
         SharedPtr pFence = SharedPtr(new GpuFence());
         pFence->mpApiData = new FenceApiData;
         pFence->mpApiData->eventHandle = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-        if (pFence->mpApiData->eventHandle == nullptr) throw std::exception("Failed to create an event object");
+        if (pFence->mpApiData->eventHandle == nullptr) throw RuntimeError("Failed to create an event object");
 
         assert(gpDevice);
         ID3D12Device* pDevice = gpDevice->getApiHandle().GetInterfacePtr();
@@ -55,7 +55,7 @@ namespace Falcor
         if (FAILED(hr))
         {
             d3dTraceHR("Failed to create a fence object", hr);
-            throw std::exception("Failed to create GPU fence");
+            throw RuntimeError("Failed to create GPU fence");
         }
 
         pFence->mCpuValue++;
@@ -65,14 +65,14 @@ namespace Falcor
     uint64_t GpuFence::gpuSignal(CommandQueueHandle pQueue)
     {
         assert(pQueue);
-        d3d_call(pQueue->Signal(mApiHandle, mCpuValue));
+        FALCOR_D3D_CALL(pQueue->Signal(mApiHandle, mCpuValue));
         mCpuValue++;
         return mCpuValue - 1;
     }
 
     void GpuFence::syncGpu(CommandQueueHandle pQueue)
     {
-        d3d_call(pQueue->Wait(mApiHandle, mCpuValue - 1));
+        FALCOR_D3D_CALL(pQueue->Wait(mApiHandle, mCpuValue - 1));
     }
 
     void GpuFence::syncCpu(std::optional<uint64_t> val)
@@ -83,7 +83,7 @@ namespace Falcor
         uint64_t gpuVal = getGpuValue();
         if (gpuVal < syncVal)
         {
-            d3d_call(mApiHandle->SetEventOnCompletion(syncVal, mpApiData->eventHandle));
+            FALCOR_D3D_CALL(mApiHandle->SetEventOnCompletion(syncVal, mpApiData->eventHandle));
             WaitForSingleObject(mpApiData->eventHandle, INFINITE);
         }
     }
@@ -108,7 +108,7 @@ namespace Falcor
             }
             else
             {
-                throw std::exception("GpuFence::getSharedApiHandle(): failed to create shared handle");
+                throw RuntimeError("Failed to create shared handle");
             }
         }
         return mSharedApiHandle;

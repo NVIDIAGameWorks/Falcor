@@ -33,7 +33,7 @@ namespace Falcor
 
     /** A class representing a memory bitmap
     */
-    class dlldecl Bitmap : public std::enable_shared_from_this<Bitmap>
+    class FALCOR_API Bitmap
     {
     public:
         enum class ExportFlags : uint32_t
@@ -126,7 +126,7 @@ namespace Falcor
         static std::string getFileExtFromResourceFormat(ResourceFormat format);
 
         /** Get the file format flags for the image extension
-            \param[in] ext The image file extension to get the 
+            \param[in] ext The image file extension to get the
         */
         static FileFormat getFormatFromFileExtension(const std::string& ext);
 
@@ -143,5 +143,5 @@ namespace Falcor
         ResourceFormat mFormat = ResourceFormat::Unknown;
     };
 
-    enum_class_operators(Bitmap::ExportFlags);
+    FALCOR_ENUM_CLASS_OPERATORS(Bitmap::ExportFlags);
 }

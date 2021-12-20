@@ -28,7 +28,10 @@
 #pragma once
 
 #include "Falcor.h"
-#if _ENABLE_CUDA && _ENABLE_OPTIX
+#if FALCOR_ENABLE_CUDA && FALCOR_ENABLE_OPTIX
+
+#pragma comment(lib, "cuda.lib")
+#pragma comment(lib, "cudart_static.lib")
 
 #include <optix.h>
 #include <optix_stubs.h>
@@ -80,4 +83,4 @@ private:
     void*   mpDevicePtr = nullptr;
 };
 
-#endif // _ENABLE_CUDA && _ENABLE_OPTIX
+#endif // FALCOR_ENABLE_CUDA && FALCOR_ENABLE_OPTIX

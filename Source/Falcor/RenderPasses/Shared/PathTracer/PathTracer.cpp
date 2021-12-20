@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "stdafx.h"
 #include "PathTracer.h"
-#include "Experimental/Scene/Material/TexLODTypes.slang"
+#include "Rendering/Materials/TexLODTypes.slang"
 #include <sstream>
 
 namespace Falcor
@@ -45,19 +45,18 @@ namespace Falcor
         {
             { "posW",           "gWorldPosition",             "World-space position (xyz) and foreground flag (w)"       },
             { "normalW",        "gWorldShadingNormal",        "World-space shading normal (xyz)"                         },
-            { "tangentW",       "gWorldShadingTangent",       "World-space shading tangent (xyz) and sign (w)", true /* optional */ },
+            { "tangentW",       "gWorldShadingTangent",       "World-space shading tangent (xyz) and sign (w)",          },
             { "faceNormalW",    "gWorldFaceNormal",           "Face normal in world space (xyz)",                        },
             { kViewDirInput,    "gWorldView",                 "World-space view direction (xyz)", true /* optional */    },
-            { "mtlDiffOpacity", "gMaterialDiffuseOpacity",    "Material diffuse color (xyz) and opacity (w)"             },
-            { "mtlSpecRough",   "gMaterialSpecularRoughness", "Material specular color (xyz) and roughness (w)"          },
-            { "mtlEmissive",    "gMaterialEmissive",          "Material emissive color (xyz)"                            },
-            { "mtlParams",      "gMaterialExtraParams",       "Material parameters (IoR, flags etc)"                     },
-            { "vbuffer",        "gVBuffer",                   "Visibility buffer in packed format",  true /* optional */, ResourceFormat::Unknown },
+            { "texC",           "gTextureCoord",              "Texture coordinate",                                      },
+            { "texGrads",       "gTextureGrads",              "Texture gradients", true /* optional */                   },
+            { "mtlData",        "gMaterialData",              "Material data"                                            },
+            { "vbuffer",        "gVBuffer",                   "V-buffer in packed format", true /* optional */           },
         };
 
         const Falcor::ChannelList kVBufferInputChannels =
         {
-            { "vbuffer",        "gVBuffer",                   "Visibility buffer in packed format", false, ResourceFormat::Unknown },
+            { "vbuffer",        "gVBuffer",                   "V-buffer in packed format"                                },
         };
 
         const Falcor::ChannelList kPixelStatsOutputChannels =
@@ -105,8 +104,8 @@ namespace Falcor
     static_assert(sizeof(PathTracerParams) % 16 == 0, "PathTracerParams size should be a multiple of 16");
     static_assert(kMaxPathLength > 0 && ((kMaxPathLength & (kMaxPathLength + 1)) == 0), "kMaxPathLength should be 2^N-1");
 
-    PathTracer::PathTracer(const Dictionary& dict, const ChannelList& outputs)
-        : mOutputChannels(outputs)
+    PathTracer::PathTracer(const Info& info, const Dictionary& dict, const ChannelList& outputs)
+        : RenderPass(info), mOutputChannels(outputs)
     {
         parseDictionary(dict);
         validateParameters();
@@ -367,7 +366,7 @@ namespace Falcor
         mSharedParams.frameCount = 0;
 
         // Lighting setup. This clears previous data if no scene is given.
-        if (!initLights(pRenderContext)) throw std::exception("Failed to initialize lights");
+        if (!initLights(pRenderContext)) throw RuntimeError("Failed to initialize lights");
 
         recreateVars(); // Trigger recreation of the program vars.
     }
@@ -381,14 +380,14 @@ namespace Falcor
     {
         if (mSharedParams.lightSamplesPerVertex < 1 || mSharedParams.lightSamplesPerVertex > kMaxLightSamplesPerVertex)
         {
-            logError("Unsupported number of light samples per path vertex. Clamping to the range [1," + std::to_string(kMaxLightSamplesPerVertex) + "].");
+            reportError("Unsupported number of light samples per path vertex. Clamping to the range [1," + std::to_string(kMaxLightSamplesPerVertex) + "].");
             mSharedParams.lightSamplesPerVertex = std::clamp(mSharedParams.lightSamplesPerVertex, 1u, kMaxLightSamplesPerVertex);
             recreateVars();
         }
 
         if (mSharedParams.maxBounces > kMaxPathLength)
         {
-            logError("'maxBounces' exceeds the maximum supported path length. Clamping to " + std::to_string(kMaxPathLength));
+            reportError("'maxBounces' exceeds the maximum supported path length. Clamping to " + std::to_string(kMaxPathLength));
             mSharedParams.maxBounces = kMaxPathLength;
         }
 
@@ -400,7 +399,7 @@ namespace Falcor
 
         if (mSharedParams.specularRoughnessThreshold < 0.f || mSharedParams.specularRoughnessThreshold > 1.f)
         {
-            logError("'specularRoughnessThreshold' has invalid value. Clamping to the range [0,1].");
+            reportError("'specularRoughnessThreshold' has invalid value. Clamping to the range [0,1].");
             mSharedParams.specularRoughnessThreshold = std::clamp(mSharedParams.specularRoughnessThreshold, 0.f, 1.f);
         }
     }
@@ -497,9 +496,9 @@ namespace Falcor
                         mpEmissiveSampler = EmissivePowerSampler::create(pRenderContext, mpScene);
                         break;
                     default:
-                        logError("Unknown emissive light sampler type");
+                        reportError("Unknown emissive light sampler type");
                     }
-                    if (!mpEmissiveSampler) throw std::exception("Failed to create emissive light sampler");
+                    if (!mpEmissiveSampler) throw RuntimeError("Failed to create emissive light sampler");
 
                     recreateVars(); // Trigger recreation of the program vars.
                 }
@@ -563,7 +562,7 @@ namespace Falcor
 
         if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged))
         {
-            throw std::runtime_error("This render pass does not support scene geometry changes. Aborting.");
+            throw RuntimeError("This render pass does not support scene geometry changes.");
         }
 
         // Configure depth-of-field.
@@ -668,7 +667,7 @@ namespace Falcor
         pProgram->addDefines(defines);
     }
 
-    SCRIPT_BINDING(PathTracer)
+    FALCOR_SCRIPT_BINDING(PathTracer)
     {
         // Register our parameters struct.
         ScriptBindings::SerializableStruct<PathTracerParams> params(m, "PathTracerParams");

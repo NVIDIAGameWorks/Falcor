@@ -32,7 +32,7 @@
 
 namespace Falcor
 {
-    class dlldecl Threading
+    class FALCOR_API Threading
     {
     public:
         const static uint32_t kDefaultThreadCount = 16;
@@ -84,7 +84,7 @@ namespace Falcor
         TODO: Once we move to C++20, we should change users of Barrier to use std::barrier instead.
         The only change necessary will be to use std::barrier::arrive_and_wait() in place of Barrier::wait().
     */
-    class dlldecl Barrier
+    class FALCOR_API Barrier
     {
     public:
         Barrier(size_t threadCount, std::function<void()> completionFunc = nullptr)

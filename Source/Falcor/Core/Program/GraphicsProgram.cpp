@@ -46,7 +46,7 @@ namespace Falcor
         return create(d, programDefines);
     }
 
-    SCRIPT_BINDING(GraphicsProgram)
+    FALCOR_SCRIPT_BINDING(GraphicsProgram)
     {
         pybind11::class_<GraphicsProgram, GraphicsProgram::SharedPtr>(m, "GraphicsProgram");
     }

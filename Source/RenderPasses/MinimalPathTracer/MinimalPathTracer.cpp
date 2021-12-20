@@ -28,15 +28,17 @@
 #include "MinimalPathTracer.h"
 #include "RenderGraph/RenderPassHelpers.h"
 
+const RenderPass::Info MinimalPathTracer::kInfo { "MinimalPathTracer", "Minimal path tracer." };
+
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" FALCOR_API_EXPORT const char* getProjDir()
 {
     return PROJECT_DIR;
 }
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
 {
-    lib.registerClass("MinimalPathTracer", "Minimal path tracer", MinimalPathTracer::create);
+    lib.registerPass(MinimalPathTracer::kInfo, MinimalPathTracer::create);
 }
 
 namespace
@@ -46,31 +48,24 @@ namespace
     // Ray tracing settings that affect the traversal stack size.
     // These should be set as small as possible.
     const uint32_t kMaxPayloadSizeBytes = 80u;
-    const uint32_t kMaxAttributeSizeBytes = 8u;
     const uint32_t kMaxRecursionDepth = 2u;
 
-    const char kViewDirInput[] = "viewW";
+    const char kInputViewDir[] = "viewW";
 
     const ChannelList kInputChannels =
     {
-        { "posW",           "gWorldPosition",             "World-space position (xyz) and foreground flag (w)"       },
-        { "normalW",        "gWorldShadingNormal",        "World-space shading normal (xyz)"                         },
-        { "tangentW",       "gWorldShadingTangent",       "World-space shading tangent (xyz) and sign (w)", true /* optional */ },
-        { "faceNormalW",    "gWorldFaceNormal",           "Face normal in world space (xyz)",                        },
-        { kViewDirInput,    "gWorldView",                 "World-space view direction (xyz)", true /* optional */    },
-        { "mtlDiffOpacity", "gMaterialDiffuseOpacity",    "Material diffuse color (xyz) and opacity (w)"             },
-        { "mtlSpecRough",   "gMaterialSpecularRoughness", "Material specular color (xyz) and roughness (w)"          },
-        { "mtlEmissive",    "gMaterialEmissive",          "Material emissive color (xyz)"                            },
-        { "mtlParams",      "gMaterialExtraParams",       "Material parameters (IoR, flags etc)"                     },
+        { "vbuffer",        "gVBuffer",     "Visibility buffer in packed format" },
+        { kInputViewDir,    "gViewW",       "World-space view direction (xyz float format)", true /* optional */ },
     };
 
     const ChannelList kOutputChannels =
     {
-        { "color",          "gOutputColor",               "Output color (sum of direct and indirect)"                },
+        { "color",          "gOutputColor", "Output color (sum of direct and indirect)", false, ResourceFormat::RGBA32Float },
     };
 
     const char kMaxBounces[] = "maxBounces";
     const char kComputeDirect[] = "computeDirect";
+    const char kUseImportanceSampling[] = "useImportanceSampling";
 }
 
 MinimalPathTracer::SharedPtr MinimalPathTracer::create(RenderContext* pRenderContext, const Dictionary& dict)
@@ -79,6 +74,7 @@ MinimalPathTracer::SharedPtr MinimalPathTracer::create(RenderContext* pRenderCon
 }
 
 MinimalPathTracer::MinimalPathTracer(const Dictionary& dict)
+    : RenderPass(kInfo)
 {
     parseDictionary(dict);
 
@@ -93,6 +89,7 @@ void MinimalPathTracer::parseDictionary(const Dictionary& dict)
     {
         if (key == kMaxBounces) mMaxBounces = value;
         else if (key == kComputeDirect) mComputeDirect = value;
+        else if (key == kUseImportanceSampling) mUseImportanceSampling = value;
         else logWarning("Unknown field '" + key + "' in MinimalPathTracer dictionary");
     }
 }
@@ -102,6 +99,7 @@ Dictionary MinimalPathTracer::getScriptingDictionary()
     Dictionary d;
     d[kMaxBounces] = mMaxBounces;
     d[kComputeDirect] = mComputeDirect;
+    d[kUseImportanceSampling] = mUseImportanceSampling;
     return d;
 }
 
@@ -140,7 +138,7 @@ void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData&
 
     if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged))
     {
-        throw std::runtime_error("This render pass does not support scene geometry changes. Aborting.");
+        throw RuntimeError("MinimalPathTracer: This render pass does not support scene geometry changes.");
     }
 
     // Request the light collection if emissive lights are enabled.
@@ -151,15 +149,16 @@ void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData&
 
     // Configure depth-of-field.
     const bool useDOF = mpScene->getCamera()->getApertureRadius() > 0.f;
-    if (useDOF && renderData[kViewDirInput] == nullptr)
+    if (useDOF && renderData[kInputViewDir] == nullptr)
     {
-        logWarning("Depth-of-field requires the '" + std::string(kViewDirInput) + "' input. Expect incorrect shading.");
+        logWarning("Depth-of-field requires the '" + std::string(kInputViewDir) + "' input. Expect incorrect shading.");
     }
 
     // Specialize program.
     // These defines should not modify the program vars. Do not trigger program vars re-creation.
     mTracer.pProgram->addDefine("MAX_BOUNCES", std::to_string(mMaxBounces));
     mTracer.pProgram->addDefine("COMPUTE_DIRECT", mComputeDirect ? "1" : "0");
+    mTracer.pProgram->addDefine("USE_IMPORTANCE_SAMPLING", mUseImportanceSampling ? "1" : "0");
     mTracer.pProgram->addDefine("USE_ANALYTIC_LIGHTS", mpScene->useAnalyticLights() ? "1" : "0");
     mTracer.pProgram->addDefine("USE_EMISSIVE_LIGHTS", mpScene->useEmissiveLights() ? "1" : "0");
     mTracer.pProgram->addDefine("USE_ENV_LIGHT", mpScene->useEnvLight() ? "1" : "0");
@@ -205,11 +204,14 @@ void MinimalPathTracer::renderUI(Gui::Widgets& widget)
 {
     bool dirty = false;
 
-    dirty |= widget.var("Max bounces", mMaxBounces, 0u, 1u<<16);
+    dirty |= widget.var("Max bounces", mMaxBounces, 0u, 1u << 16);
     widget.tooltip("Maximum path length for indirect illumination.\n0 = direct only\n1 = one indirect bounce etc.", true);
 
     dirty |= widget.checkbox("Evaluate direct illumination", mComputeDirect);
     widget.tooltip("Compute direct illumination.\nIf disabled only indirect is computed (when max bounces > 0).", true);
+
+    dirty |= widget.checkbox("Use importance sampling", mUseImportanceSampling);
+    widget.tooltip("Use importance sampling for materials", true);
 
     // If rendering options that modify the output have changed, set flag to indicate that.
     // In execute() we will pass the flag to other passes for reset of temporal data etc.
@@ -233,37 +235,57 @@ void MinimalPathTracer::setScene(RenderContext* pRenderContext, const Scene::Sha
 
     if (mpScene)
     {
-        if (mpScene->hasGeometryType(Scene::GeometryType::Procedural))
-        {
-            logWarning("This render pass only supports triangles. Other types of geometry will be ignored.");
-        }
+        if (pScene->hasGeometryType(Scene::GeometryType::Custom)) reportError("This render pass does not support custom primitives.");
 
         // Create ray tracing program.
         RtProgram::Desc desc;
         desc.addShaderLibrary(kShaderFile);
         desc.setMaxPayloadSize(kMaxPayloadSizeBytes);
-        desc.setMaxAttributeSize(kMaxAttributeSizeBytes);
+        desc.setMaxAttributeSize(mpScene->getRaytracingMaxAttributeSize());
         desc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
-        desc.addDefines(mpScene->getSceneDefines());
 
         mTracer.pBindingTable = RtBindingTable::create(2, 2, mpScene->getGeometryCount());
         auto& sbt = mTracer.pBindingTable;
         sbt->setRayGen(desc.addRayGen("rayGen"));
         sbt->setMiss(0, desc.addMiss("scatterMiss"));
         sbt->setMiss(1, desc.addMiss("shadowMiss"));
-        sbt->setHitGroupByType(0, mpScene, Scene::GeometryType::TriangleMesh, desc.addHitGroup("scatterClosestHit", "scatterAnyHit"));
-        sbt->setHitGroupByType(1, mpScene, Scene::GeometryType::TriangleMesh, desc.addHitGroup("", "shadowAnyHit"));
 
-        mTracer.pProgram = RtProgram::create(desc);
+        if (mpScene->hasGeometryType(Scene::GeometryType::TriangleMesh))
+        {
+            sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), desc.addHitGroup("scatterTriangleMeshClosestHit", "scatterTriangleMeshAnyHit"));
+            sbt->setHitGroup(1, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), desc.addHitGroup("", "shadowTriangleMeshAnyHit"));
+        }
+
+        if (mpScene->hasGeometryType(Scene::GeometryType::DisplacedTriangleMesh))
+        {
+            sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::DisplacedTriangleMesh), desc.addHitGroup("scatterDisplacedTriangleMeshClosestHit", "", "displacedTriangleMeshIntersection"));
+            sbt->setHitGroup(1, mpScene->getGeometryIDs(Scene::GeometryType::DisplacedTriangleMesh), desc.addHitGroup("", "", "displacedTriangleMeshIntersection"));
+        }
+
+        if (mpScene->hasGeometryType(Scene::GeometryType::Curve))
+        {
+            sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::Curve), desc.addHitGroup("scatterCurveClosestHit", "", "curveIntersection"));
+            sbt->setHitGroup(1, mpScene->getGeometryIDs(Scene::GeometryType::Curve), desc.addHitGroup("", "", "curveIntersection"));
+        }
+
+        if (mpScene->hasGeometryType(Scene::GeometryType::SDFGrid))
+        {
+            sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::SDFGrid), desc.addHitGroup("scatterSdfGridClosestHit", "", "sdfGridIntersection"));
+            sbt->setHitGroup(1, mpScene->getGeometryIDs(Scene::GeometryType::SDFGrid), desc.addHitGroup("", "", "sdfGridIntersection"));
+        }
+
+        mTracer.pProgram = RtProgram::create(desc, mpScene->getSceneDefines());
     }
 }
 
 void MinimalPathTracer::prepareVars()
 {
+    assert(mpScene);
     assert(mTracer.pProgram);
 
     // Configure program.
     mTracer.pProgram->addDefines(mpSampleGenerator->getDefines());
+    mTracer.pProgram->setTypeConformances(mpScene->getTypeConformances());
 
     // Create program variables for the current program.
     // This may trigger shader compilation. If it fails, throw an exception to abort rendering.
@@ -271,6 +293,5 @@ void MinimalPathTracer::prepareVars()
 
     // Bind utility classes into shared data.
     auto var = mTracer.pVars->getRootVar();
-    bool success = mpSampleGenerator->setShaderData(var);
-    if (!success) throw std::exception("Failed to bind sample generator");
+    mpSampleGenerator->setShaderData(var);
 }

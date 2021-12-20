@@ -31,7 +31,7 @@ namespace Falcor
 {
     /** Two-dimensional sample pattern generator on the CPU.
     */
-    class dlldecl CPUSampleGenerator : public std::enable_shared_from_this<CPUSampleGenerator>
+    class FALCOR_API CPUSampleGenerator
     {
     public:
         using SharedPtr = std::shared_ptr<CPUSampleGenerator>;

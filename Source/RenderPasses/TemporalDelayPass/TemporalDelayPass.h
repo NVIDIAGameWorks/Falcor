@@ -34,17 +34,17 @@ class TemporalDelayPass : public RenderPass
 {
 public:
     using SharedPtr = std::shared_ptr<TemporalDelayPass>;
-    static const char* kDesc;
+
+    static const Info kInfo;
 
     /** Create a new object
     */
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
-    virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
+    virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual Dictionary getScriptingDictionary() override;
-    virtual std::string getDesc() override { return kDesc; }
     virtual void renderUI(Gui::Widgets& widget) override;
 
     uint32_t getDelay() { return mDelay; }

@@ -35,7 +35,7 @@ namespace Falcor
 
     /** Base class for light sources. All light sources should inherit from this.
     */
-    class dlldecl Light : public Animatable
+    class FALCOR_API Light : public Animatable
     {
     public:
         using SharedPtr = std::shared_ptr<Light>;
@@ -139,7 +139,7 @@ namespace Falcor
     /** Point light source.
         Simple infinitely-small point light with quadratic attenuation.
     */
-    class dlldecl PointLight : public Light
+    class FALCOR_API PointLight : public Light
     {
     public:
         using SharedPtr = std::shared_ptr<PointLight>;
@@ -200,7 +200,7 @@ namespace Falcor
 
     /** Directional light source.
     */
-    class dlldecl DirectionalLight : public Light
+    class FALCOR_API DirectionalLight : public Light
     {
     public:
         using SharedPtr = std::shared_ptr<DirectionalLight>;
@@ -239,7 +239,7 @@ namespace Falcor
     /** Distant light source.
         Same as directional light source but subtending a non-zero solid angle.
     */
-    class dlldecl DistantLight : public Light
+    class FALCOR_API DistantLight : public Light
     {
     public:
         using SharedPtr = std::shared_ptr<DistantLight>;
@@ -286,7 +286,7 @@ namespace Falcor
 
     /** Analytic area light source.
     */
-    class dlldecl AnalyticAreaLight : public Light
+    class FALCOR_API AnalyticAreaLight : public Light
     {
     public:
         using SharedPtr = std::shared_ptr<AnalyticAreaLight>;
@@ -331,7 +331,7 @@ namespace Falcor
 
     /** Rectangular area light source.
     */
-    class dlldecl RectLight : public AnalyticAreaLight
+    class FALCOR_API RectLight : public AnalyticAreaLight
     {
     public:
         using SharedPtr = std::shared_ptr<RectLight>;
@@ -348,7 +348,7 @@ namespace Falcor
 
     /** Disc area light source.
     */
-    class dlldecl DiscLight : public AnalyticAreaLight
+    class FALCOR_API DiscLight : public AnalyticAreaLight
     {
     public:
         using SharedPtr = std::shared_ptr<DiscLight>;
@@ -365,7 +365,7 @@ namespace Falcor
 
     /** Sphere area light source.
     */
-    class dlldecl SphereLight : public AnalyticAreaLight
+    class FALCOR_API SphereLight : public AnalyticAreaLight
     {
     public:
         using SharedPtr = std::shared_ptr<SphereLight>;
@@ -380,5 +380,5 @@ namespace Falcor
         virtual void update() override;
     };
 
-    enum_class_operators(Light::Changes);
+    FALCOR_ENUM_CLASS_OPERATORS(Light::Changes);
 }

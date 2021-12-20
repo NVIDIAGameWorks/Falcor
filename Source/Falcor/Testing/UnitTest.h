@@ -47,38 +47,28 @@ namespace Falcor
     class CPUUnitTestContext;
     class GPUUnitTestContext;
 
-    struct TooManyFailedTestsException : public std::exception { };
+    struct TooManyFailedTestsException : public Exception { };
 
-    class ErrorRunningTestException : public std::exception
+    class ErrorRunningTestException : public Exception
     {
     public:
-        ErrorRunningTestException(const std::string& what) : mWhat(what) { }
-
-        const char* what() const noexcept override { return mWhat.c_str(); }
-
-    private:
-        std::string mWhat;
+        ErrorRunningTestException(const std::string& what) : Exception(what) { }
     };
 
-    class SkippingTestException : public std::exception
+    class SkippingTestException : public Exception
     {
     public:
-        SkippingTestException(const std::string& what) : mWhat(what) { }
-
-        const char* what() const noexcept override { return mWhat.c_str(); }
-
-    private:
-        std::string mWhat;
+        SkippingTestException(const std::string& what) : Exception(what) { }
     };
 
     using CPUTestFunc = std::function<void(CPUUnitTestContext& ctx)>;
     using GPUTestFunc = std::function<void(GPUUnitTestContext& ctx)>;
 
-    dlldecl void registerCPUTest(const std::string& filename, const std::string& name, const std::string& skipMessage, CPUTestFunc func);
-    dlldecl void registerGPUTest(const std::string& filename, const std::string& name, const std::string& skipMessage, GPUTestFunc func);
-    dlldecl int32_t runTests(std::ostream& stream, RenderContext* pRenderContext, const std::string& testFilterRegexp);
+    FALCOR_API void registerCPUTest(const std::string& filename, const std::string& name, const std::string& skipMessage, CPUTestFunc func);
+    FALCOR_API void registerGPUTest(const std::string& filename, const std::string& name, const std::string& skipMessage, GPUTestFunc func);
+    FALCOR_API int32_t runTests(std::ostream& stream, RenderContext* pRenderContext, const std::string& testFilterRegexp, uint32_t repeatCount = 1);
 
-    class dlldecl UnitTestContext
+    class FALCOR_API UnitTestContext
     {
     public:
         /** reportFailure is called with an error message to report a failing
@@ -99,11 +89,11 @@ namespace Falcor
         std::vector<std::string> mFailureMessages;
     };
 
-    class dlldecl CPUUnitTestContext : public UnitTestContext
+    class FALCOR_API CPUUnitTestContext : public UnitTestContext
     {
     };
 
-    class dlldecl GPUUnitTestContext : public UnitTestContext
+    class FALCOR_API GPUUnitTestContext : public UnitTestContext
     {
     public:
         GPUUnitTestContext(RenderContext* pContext) : mpContext(pContext) { }

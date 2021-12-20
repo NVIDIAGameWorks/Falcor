@@ -78,7 +78,6 @@ namespace Falcor
     GPU_TEST(SlangEnum)
     {
         testEnum(ctx, "");      // Use default shader model for the unit test system
-        testEnum(ctx, "5_1");   // Test SM 5.1 and higher explicitly
         testEnum(ctx, "6_0");
         testEnum(ctx, "6_3");
     }
@@ -145,7 +144,7 @@ namespace Falcor
     */
     GPU_TEST(SlangDefaultInitializers)
     {
-        const uint32_t maxTests = 100, usedTests = 37;
+        const uint32_t maxTests = 100, usedTests = 43;
         std::vector<uint32_t> initData(maxTests, -1);
 
         auto test = [&](const std::string& shaderModel)
@@ -159,7 +158,7 @@ namespace Falcor
             for (uint32_t i = 0; i < maxTests; i++)
             {
                 uint32_t expected = i < usedTests ? 0 : -1;
-                if (i == 36) expected = (uint32_t)Type3::C;
+                if (i == 42) expected = (uint32_t)Type3::C;
 
                 EXPECT_EQ(result[i], expected) << "i = " << i << " (sm" << shaderModel << ")";
             }
@@ -168,12 +167,14 @@ namespace Falcor
 
         // Test the default shader model, followed by specific models.
         test("");
-        test("5_1");
         test("6_0");
         test("6_1");
         test("6_2");
         test("6_3");
         test("6_5");
+#if defined(FALCOR_D3D12) && FALCOR_ENABLE_D3D12_AGILITY_SDK
+        test("6_6");
+#endif
     }
 
     GPU_TEST(SlangHashedStrings)

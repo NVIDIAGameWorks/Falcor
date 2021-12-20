@@ -27,22 +27,29 @@
  **************************************************************************/
 #include "GBuffer.h"
 
+namespace Falcor
+{
+    // Update 'mtlData' channel format if size changes.
+    static_assert(sizeof(MaterialHeader) == 8);
+}
+
 // List of primary GBuffer channels. These correspond to the render targets
 // used in the GBufferRaster pixel shader. Note that channel order should
 // correspond to SV_TARGET index order.
 const ChannelList GBuffer::kGBufferChannels =
 {
-    { "posW",           "gPosW",            "world space position",         true /* optional */, ResourceFormat::RGBA32Float },
-    { "normW",          "gNormW",           "world space normal",           true /* optional */, ResourceFormat::RGBA32Float },
-    { "tangentW",       "gTangentW",        "world space tangent",          true /* optional */, ResourceFormat::RGBA32Float },
-    { "texC",           "gTexC",            "texture coordinates",          true /* optional */, ResourceFormat::RGBA32Float },
-    { "diffuseOpacity", "gDiffuseOpacity",  "diffuse color and opacity",    true /* optional */, ResourceFormat::RGBA32Float },
-    { "specRough",      "gSpecRough",       "specular color and roughness", true /* optional */, ResourceFormat::RGBA32Float },
-    { "emissive",       "gEmissive",        "emissive color",               true /* optional */, ResourceFormat::RGBA32Float },
-    { "matlExtra",      "gMatlExtra",       "additional material data",     true /* optional */, ResourceFormat::RGBA32Float },
+    { "posW",           "gPosW",            "World space position",         true /* optional */, ResourceFormat::RGBA32Float },
+    { "normW",          "gNormW",           "World space normal",           true /* optional */, ResourceFormat::RGBA32Float },
+    { "tangentW",       "gTangentW",        "World space tangent",          true /* optional */, ResourceFormat::RGBA32Float },
+    { "faceNormalW",    "gFaceNormalW",     "Face normal in world space",   true /* optional */, ResourceFormat::RGBA32Float },
+    { "texC",           "gTexC",            "Texture coordinate",           true /* optional */, ResourceFormat::RG32Float   },
+    { "texGrads",       "gTexGrads",        "Texture gradients (ddx, ddy)", true /* optional */, ResourceFormat::RGBA16Float },
+    { "mvec",           "gMotionVector",    "Motion vector",                true /* optional */, ResourceFormat::RG32Float   },
+    { "mtlData",        "gMaterialData",    "Material data (ID, header)",   true /* optional */, ResourceFormat::RGBA32Uint  },
 };
 
-GBuffer::GBuffer()
+GBuffer::GBuffer(const Info& info)
+    : GBufferBase(info)
 {
     assert(kGBufferChannels.size() == 8); // The list of primary GBuffer channels should contain 8 entries, corresponding to the 8 render targets.
 }

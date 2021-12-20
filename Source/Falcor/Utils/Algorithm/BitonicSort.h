@@ -38,9 +38,9 @@ namespace Falcor
         The time complexity is O(N*log^2(N)), but it parallelizes very well and has practically no branching.
         The sort is implemented using horizontal operations within warps, and shared memory across warps.
 
-        This code requires an NVIDIA GPU and NVAPI. Set _ENABLE_NVAPI to true in FalcorConfig.h.
+        This code requires an NVIDIA GPU and NVAPI. Set FALCOR_ENABLE_NVAPI to true in FalcorConfig.h.
     */
-    class dlldecl BitonicSort : public std::enable_shared_from_this<BitonicSort>
+    class FALCOR_API BitonicSort
     {
     public:
         using SharedPtr = std::shared_ptr<BitonicSort>;

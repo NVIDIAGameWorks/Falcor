@@ -28,8 +28,10 @@
 #include "WhittedRayTracer.h"
 #include "RenderGraph/RenderPassHelpers.h"
 
+const RenderPass::Info WhittedRayTracer::kInfo { "WhittedRayTracer", "Simple Whitted ray tracer." };
+
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" FALCOR_API_EXPORT const char* getProjDir()
 {
     return PROJECT_DIR;
 }
@@ -44,7 +46,7 @@ namespace
     const char kRayConeFilterMode[] = "rayConeFilterMode";
     const char kRayDiffFilterMode[] = "rayDiffFilterMode";
     const char kUseRoughnessToVariance[] = "useRoughnessToVariance";
-    
+
     const Gui::DropdownList kTexLODModeList =
     {
         { uint32_t(TexLODMode::Mip0), "Mip0" },
@@ -73,26 +75,25 @@ namespace
 
     const ChannelList kOutputChannels =
     {
-        { "color",             "gOutputColor",               "Output color (sum of direct and indirect)"                },
+        { "color",          "gOutputColor",               "Output color (sum of direct and indirect)", false, ResourceFormat::RGBA32Float },
     };
 
     const ChannelList kInputChannels =
     {
-        { "posW",             "gWorldPosition",             "World-space position (xyz) and foreground flag (w)"            },
-        { "normalW",          "gWorldShadingNormal",        "World-space shading normal (xyz)"                              },
-        { "tangentW",         "gWorldShadingTangent",       "World-space shading tangent (xyz) and sign (w)", true /* optional */ },
-        { "faceNormalW",      "gWorldFaceNormal",           "Face normal in world space (xyz)",                             },
-        { "mtlDiffOpacity",   "gMaterialDiffuseOpacity",    "Material diffuse color (xyz) and opacity (w)"                  },
-        { "mtlSpecRough",     "gMaterialSpecularRoughness", "Material specular color (xyz) and roughness (w)"               },
-        { "mtlEmissive",      "gMaterialEmissive",          "Material emissive color (xyz)"                                 },
-        { "mtlParams",        "gMaterialExtraParams",       "Material parameters (IoR, flags etc)"                          },
-        { "vbuffer",          "gVBuffer",                   "Visibility buffer in packed format", true, ResourceFormat::Unknown },
+        { "posW",           "gWorldPosition",             "World-space position (xyz) and foreground flag (w)"       },
+        { "normalW",        "gWorldShadingNormal",        "World-space shading normal (xyz)"                         },
+        { "tangentW",       "gWorldShadingTangent",       "World-space shading tangent (xyz) and sign (w)"           },
+        { "faceNormalW",    "gWorldFaceNormal",           "Face normal in world space (xyz)",                        },
+        { "texC",           "gTextureCoord",              "Texture coordinate",                                      },
+        { "texGrads",       "gTextureGrads",              "Texture gradients", true /* optional */                   },
+        { "mtlData",        "gMaterialData",              "Material data"                                            },
+        { "vbuffer",        "gVBuffer",                   "V-buffer buffer in packed format"                         },
     };
 };
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary & lib)
+extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary & lib)
 {
-    lib.registerClass("WhittedRayTracer", "Simple Whitted ray tracer", WhittedRayTracer::create);
+    lib.registerPass(WhittedRayTracer::kInfo, WhittedRayTracer::create);
     ScriptBindings::registerBinding(WhittedRayTracer::registerBindings);
 }
 
@@ -116,6 +117,7 @@ WhittedRayTracer::SharedPtr WhittedRayTracer::create(RenderContext* pRenderConte
 }
 
 WhittedRayTracer::WhittedRayTracer(const Dictionary& dict)
+    : RenderPass(kInfo)
 {
     // Parse dictionary.
     for (const auto& [key, value] : dict)
@@ -125,7 +127,7 @@ WhittedRayTracer::WhittedRayTracer(const Dictionary& dict)
         else if (key == kRayConeMode) mRayConeMode = value;
         else if (key == kRayConeFilterMode) mRayConeFilterMode = value;
         else if (key == kRayDiffFilterMode) mRayDiffFilterMode = value;
-        else if (key == kUseRoughnessToVariance)  mUseRoughnessToVariance = value;        
+        else if (key == kUseRoughnessToVariance)  mUseRoughnessToVariance = value;
         else logWarning("Unknown field '" + key + "' in a WhittedRayTracer dictionary");
     }
 
@@ -181,7 +183,7 @@ void WhittedRayTracer::execute(RenderContext* pRenderContext, const RenderData& 
 
     if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged))
     {
-        throw std::runtime_error("This render pass does not support scene geometry changes. Aborting.");
+        throw RuntimeError("WhittedRayTracer: This render pass does not support scene geometry changes.");
     }
 
     setStaticParams(mTracer.pProgram.get());
@@ -297,7 +299,7 @@ void WhittedRayTracer::setScene(RenderContext* pRenderContext, const Scene::Shar
 
     if (mpScene)
     {
-        if (mpScene->hasGeometryType(Scene::GeometryType::Procedural))
+        if (mpScene->hasProceduralGeometry())
         {
             logWarning("This render pass only supports triangles. Other types of geometry will be ignored.");
         }
@@ -308,17 +310,16 @@ void WhittedRayTracer::setScene(RenderContext* pRenderContext, const Scene::Shar
         desc.setMaxPayloadSize(kMaxPayloadSizeBytes);
         desc.setMaxAttributeSize(kMaxAttributeSizeBytes);
         desc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
-        desc.addDefines(mpScene->getSceneDefines());
 
         mTracer.pBindingTable = RtBindingTable::create(2, 2, mpScene->getGeometryCount());
         auto& sbt = mTracer.pBindingTable;
         sbt->setRayGen(desc.addRayGen("rayGen"));
         sbt->setMiss(0, desc.addMiss("scatterMiss"));
         sbt->setMiss(1, desc.addMiss("shadowMiss"));
-        sbt->setHitGroupByType(0, mpScene, Scene::GeometryType::TriangleMesh, desc.addHitGroup("scatterClosestHit", "scatterAnyHit"));
-        sbt->setHitGroupByType(1, mpScene, Scene::GeometryType::TriangleMesh, desc.addHitGroup("", "shadowAnyHit"));
+        sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), desc.addHitGroup("scatterClosestHit", "scatterAnyHit"));
+        sbt->setHitGroup(1, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), desc.addHitGroup("", "shadowAnyHit"));
 
-        mTracer.pProgram = RtProgram::create(desc);
+        mTracer.pProgram = RtProgram::create(desc, mpScene->getSceneDefines());
     }
 }
 
@@ -328,6 +329,7 @@ void WhittedRayTracer::prepareVars()
 
     // Configure program.
     mTracer.pProgram->addDefines(mpSampleGenerator->getDefines());
+    mTracer.pProgram->setTypeConformances(mpScene->getTypeConformances());
 
     // Create program variables for the current program.
     // This may trigger shader compilation. If it fails, throw an exception to abort rendering.
@@ -335,8 +337,7 @@ void WhittedRayTracer::prepareVars()
 
     // Bind utility classes into shared data.
     auto var = mTracer.pVars->getRootVar();
-    bool success = mpSampleGenerator->setShaderData(var);
-    if (!success) throw std::exception("Failed to bind sample generator");
+    mpSampleGenerator->setShaderData(var);
 }
 
 void WhittedRayTracer::setStaticParams(RtProgram* pProgram) const

@@ -39,7 +39,7 @@ namespace Falcor
     {
         if (gpDevice)
         {
-            logError("Falcor only supports a single device");
+            reportError("Falcor only supports a single device");
             return nullptr;
         }
         gpDevice = SharedPtr(new Device(pWindow, desc));
@@ -53,24 +53,16 @@ namespace Falcor
         assert(mDesc.cmdQueues[kDirectQueueIndex] > 0);
         if (apiInit() == false) return false;
 
-        // Create the descriptor pools
-        DescriptorPool::Desc poolDesc;
-        // For DX12 there is no difference between the different SRV/UAV types. For Vulkan it matters, hence the #ifdef
-        // DX12 guarantees at least 1,000,000 descriptors
-        poolDesc.setDescCount(DescriptorPool::Type::TextureSrv, 1000000).setDescCount(DescriptorPool::Type::Sampler, 2048).setShaderVisible(true);
-#ifndef FALCOR_D3D12
-        poolDesc.setDescCount(DescriptorPool::Type::Cbv, 16 * 1024).setDescCount(DescriptorPool::Type::TextureUav, 16 * 1024);
-        poolDesc.setDescCount(DescriptorPool::Type::StructuredBufferSrv, 2 * 1024)
-            .setDescCount(DescriptorPool::Type::StructuredBufferUav, 2 * 1024)
-            .setDescCount(DescriptorPool::Type::TypedBufferSrv, 2 * 1024)
-            .setDescCount(DescriptorPool::Type::TypedBufferUav, 2 * 1024)
-            .setDescCount(DescriptorPool::Type::RawBufferSrv, 2 * 1024)
-            .setDescCount(DescriptorPool::Type::RawBufferUav, 2 * 1024);
-#endif
         mpFrameFence = GpuFence::create();
-        mpGpuDescPool = DescriptorPool::create(poolDesc, mpFrameFence);
-        poolDesc.setShaderVisible(false).setDescCount(DescriptorPool::Type::Rtv, 16 * 1024).setDescCount(DescriptorPool::Type::Dsv, 1024);
-        mpCpuDescPool = DescriptorPool::create(poolDesc, mpFrameFence);
+
+#ifdef FALCOR_D3D12
+        // Create the descriptor pools
+        D3D12DescriptorPool::Desc poolDesc;
+        poolDesc.setDescCount(ShaderResourceType::TextureSrv, 1000000).setDescCount(ShaderResourceType::Sampler, 2048).setShaderVisible(true);
+        mpD3D12GpuDescPool = D3D12DescriptorPool::create(poolDesc, mpFrameFence);
+        poolDesc.setShaderVisible(false).setDescCount(ShaderResourceType::Rtv, 16 * 1024).setDescCount(ShaderResourceType::Dsv, 1024);
+        mpD3D12CpuDescPool = D3D12DescriptorPool::create(poolDesc, mpFrameFence);
+#endif // FALCOR_D3D12
 
         mpUploadHeap = GpuMemoryHeap::create(GpuMemoryHeap::Type::Upload, 1024 * 1024 * 2, mpFrameFence);
         createNullViews();
@@ -155,6 +147,11 @@ namespace Falcor
         return is_set(mSupportedFeatures, flags);
     }
 
+    bool Device::isShaderModelSupported(ShaderModel shaderModel) const
+    {
+        return ((uint32_t)shaderModel <= (uint32_t)mSupportedShaderModel);
+    }
+
     void Device::executeDeferredReleases()
     {
         mpUploadHeap->executeDeferredReleases();
@@ -163,8 +160,11 @@ namespace Falcor
         {
             mDeferredReleases.pop();
         }
-        mpCpuDescPool->executeDeferredReleases();
-        mpGpuDescPool->executeDeferredReleases();
+
+#ifdef FALCOR_D3D12
+        mpD3D12CpuDescPool->executeDeferredReleases();
+        mpD3D12GpuDescPool->executeDeferredReleases();
+#endif // FALCOR_D3D12
     }
 
     void Device::toggleVSync(bool enable)
@@ -183,8 +183,12 @@ namespace Falcor
         releaseNullViews();
         mpRenderContext.reset();
         mpUploadHeap.reset();
-        mpCpuDescPool.reset();
-        mpGpuDescPool.reset();
+
+#ifdef FALCOR_D3D12
+        mpD3D12CpuDescPool.reset();
+        mpD3D12GpuDescPool.reset();
+#endif // FALCOR_D3D12
+
         mpFrameFence.reset();
         for (auto& heap : mTimestampQueryHeaps) heap.reset();
 
@@ -266,14 +270,14 @@ namespace Falcor
         }
 #endif
 
-#if !defined(FALCOR_D3D12) && !defined(FALCOR_VK)
+#if !defined(FALCOR_D3D12) && !defined(FALCOR_GFX)
 #error Verify state handling on swapchain resize for this API
 #endif
 
         return getSwapChainFbo();
     }
 
-    SCRIPT_BINDING(Device)
+    FALCOR_SCRIPT_BINDING(Device)
     {
         ScriptBindings::SerializableStruct<Device::Desc> deviceDesc(m, "DeviceDesc");
 #define field(f_) field(#f_, &Device::Desc::f_)

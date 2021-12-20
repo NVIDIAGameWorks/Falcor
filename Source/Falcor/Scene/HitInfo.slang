@@ -25,44 +25,42 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Scene/ScenePrimitiveDefines.slangh"
+#include "Scene/SceneDefines.slangh"
 import Utils.Math.FormatConversion;
 __exported import Scene.HitInfoType;
 __exported import Scene.SceneTypes;
+__exported import Scene.SDFs.SDFGridHitData;
 
 /** Ray hit information.
 
     'HitInfo' is a polymorphic container for storing ray hit information.
-    'PackedHitInfo' holds a packed version of the data in 'HitInfo'.
-    Both use the upper bits of the first uint to store the type of the hit.
+    'PackedHitInfo' holds the data in 'HitInfo'.
+    The upper bits of the first uint are used to store the type of the hit.
+    A zero initialized value represent hit type 'None'.
 
-    HitInfo stores one of the following type specific structs:
-    TriangleHit, DisplacedTriangleHit, CurveHit
+    HitInfo stores data for one of the following type specific structs:
+    TriangleHit, DisplacedTriangleHit, CurveHit, SDFGridHit, VolumeHit
 
     TriangleHit, DisplacedTriangleHit and CurveHit all store the hit point in terms of
     an instance ID and a primitive index, together with barycentrics.
 
     DisplacedTriangleHit additionally stores the displacement offset.
 
-    If the host sets the following defines, the HitInfo struct size is optimized and helpers
-    for packing/unpacking are added. Use 'PackedHitInfo' in your code.
-    A zero initialized struct represent hit type 'None'.
+    To use HitInfo, the host needs to set the following defines:
 
     - HIT_INFO_DEFINES              Marks that the rest of the defines are available.
-    - HIT_INFO_DATA_SIZE            Number of uints of data in HitInfo.
-    - HIT_INFO_PACKED_DATA_SIZE     Number of uints to encode the HitInfo.
-    - HIT_TYPE_BITS                 Bits needed to encode the hit type.
-    - HIT_INSTANCE_INDEX_BITS       Bits needed to encode the mesh instance ID of the hit.
-    - HIT_PRIMITIVE_INDEX_BITS      Bits needed to encode the primitive index of the hit.
+    - HIT_INFO_USE_COMPRESSION      Use compressed format (64 bits instead of 128 bits).
+    - HIT_INFO_TYPE_BITS            Bits needed to encode the hit type.
+    - HIT_INFO_INSTANCE_ID_BITS     Bits needed to encode the instance ID of the hit.
+    - HIT_INFO_PRIMITIVE_INDEX_BITS Bits needed to encode the primitive index of the hit.
 
     If a bit size define is zero, no bits are needed (the field has only one possible value = 0).
-
 */
 
-#if defined(HIT_INFO_PACKED_DATA_SIZE)
-typedef vector<uint, HIT_INFO_PACKED_DATA_SIZE> PackedHitInfo;
+#if HIT_INFO_USE_COMPRESSION
+typedef uint2 PackedHitInfo;
 #else
-typedef uint4 PackedHitInfo; // Dummy type.
+typedef uint4 PackedHitInfo;
 #endif
 
 /** Geometry hit information (base class).
@@ -82,22 +80,215 @@ struct GeometryHit
 };
 
 /** Triangle hit information.
+
+    Encoding (without compression):
+    | header  | barycentrics.x | barycentrics.y |
+    | 64 bits | 32 bit float   | 32 bit float   |
+
+    Encoding (with compression):
+    | header     | barycentrics.x | barycentrics.y |
+    | 32 bits    | 16 bit unorm   | 16 bit unorm   |
 */
 struct TriangleHit : GeometryHit
 {
+    __init(const PackedHitInfo packed)
+    {
+#if SCENE_HAS_GEOMETRY_TYPE(GEOMETRY_TYPE_TRIANGLE_MESH)
+        HitInfo::unpackHeader(packed, instanceID, primitiveIndex);
+#if HIT_INFO_USE_COMPRESSION
+        barycentrics = unpackUnorm2x16(packed[1]);
+#else
+        barycentrics.x = asfloat(packed[2]);
+        barycentrics.y = asfloat(packed[3]);
+#endif
+#else
+        this = {};
+#endif
+    }
+
+    PackedHitInfo pack()
+    {
+        PackedHitInfo packed = {};
+#if SCENE_HAS_GEOMETRY_TYPE(GEOMETRY_TYPE_TRIANGLE_MESH)
+        HitInfo::packHeader(packed, HitType::Triangle, instanceID, primitiveIndex);
+#if HIT_INFO_USE_COMPRESSION
+        packed[1] = packUnorm2x16_unsafe(barycentrics);
+#else
+        packed[2] = asuint(barycentrics.x);
+        packed[3] = asuint(barycentrics.y);
+#endif
+#endif
+        return packed;
+    }
 };
 
 /** Displaced triangle hit information.
+
+    Encoding:
+    | header  | barycentrics.x | barycentrics.y | displacement |
+    | 64 bits | 24 bit unorm   | 24 bit unorm   | 16 bit float |
 */
 struct DisplacedTriangleHit : GeometryHit
 {
     float displacement;
+
+    __init(const PackedHitInfo packed)
+    {
+#if SCENE_HAS_GEOMETRY_TYPE(GEOMETRY_TYPE_DISPLACED_TRIANGLE_MESH)
+        HitInfo::unpackHeader(packed, instanceID, primitiveIndex);
+        const uint ux = (packed[2] >> 8);
+        const uint uy = ((packed[2] & 0xff) << 16) | (packed[3] >> 16);
+        barycentrics = float2(ux, uy) * (1.f / 16777215);
+        displacement = f16tof32(packed[3]);
+#else
+        this = {};
+#endif
+    }
+
+    PackedHitInfo pack()
+    {
+        PackedHitInfo packed = {};
+#if SCENE_HAS_GEOMETRY_TYPE(GEOMETRY_TYPE_DISPLACED_TRIANGLE_MESH)
+        HitInfo::packHeader(packed, HitType::DisplacedTriangle, instanceID, primitiveIndex);
+        const uint2 u = trunc(barycentrics * 16777215.f + 0.5f);
+        packed[2] = (u.x << 8) | (u.y >> 16);
+        packed[3] = (u.y << 16) | f32tof16(displacement);
+#endif
+        return packed;
+    }
 };
 
 /** Curve hit information.
+
+    Encoding:
+    | header  | barycentrics.x | barycentrics.y |
+    | 64 bits | 32 bit float   | 32 bit float   |
 */
 struct CurveHit : GeometryHit
 {
+    __init(const PackedHitInfo packed)
+    {
+#if SCENE_HAS_GEOMETRY_TYPE(GEOMETRY_TYPE_CURVE)
+        HitInfo::unpackHeader(packed, instanceID, primitiveIndex);
+        barycentrics.x = asfloat(packed[2]);
+        barycentrics.y = asfloat(packed[3]);
+#else
+        this = {};
+#endif
+    }
+
+    PackedHitInfo pack()
+    {
+        PackedHitInfo packed = {};
+#if SCENE_HAS_GEOMETRY_TYPE(GEOMETRY_TYPE_CURVE)
+        HitInfo::packHeader(packed, HitType::Curve, instanceID, primitiveIndex);
+        packed[2] = asuint(barycentrics.x);
+        packed[3] = asuint(barycentrics.y);
+#endif
+        return packed;
+    }
+};
+
+/** SDF grid hit information.
+
+    Encoding:
+    | header  | extra  | extra  |
+    | 64 bits | 32 bit | 32 bit |
+*/
+struct SDFGridHit
+{
+    GeometryInstanceID instanceID;
+    SDFGridHitData hitData;
+
+    __init(const PackedHitInfo packed)
+    {
+#if SCENE_HAS_GEOMETRY_TYPE(GEOMETRY_TYPE_SDF_GRID)
+        uint primitiveData;
+        HitInfo::unpackHeader(packed, instanceID, primitiveData);
+
+
+#if SCENE_SDF_GRID_IMPLEMENTATION == SCENE_SDF_GRID_IMPLEMENTATION_NDSDF
+        hitData.lod = primitiveData;
+        hitData.hitT = asfloat(packed[2]);
+#elif SCENE_SDF_GRID_IMPLEMENTATION == SCENE_SDF_GRID_IMPLEMENTATION_SVS || SCENE_SDF_GRID_IMPLEMENTATION == SCENE_SDF_GRID_IMPLEMENTATION_SBS
+        hitData.primitiveID = primitiveData;
+        hitData.hitT = asfloat(packed[2]);
+#elif SCENE_SDF_GRID_IMPLEMENTATION == SCENE_SDF_GRID_IMPLEMENTATION_SVO
+        hitData.svoIndex = primitiveData;
+        hitData.hitT = asfloat(packed[2]);
+#endif
+
+
+#else
+        this = {};
+#endif // SCENE_HAS_GEOMETRY_TYPE(GEOMETRY_TYPE_SDF_GRID)
+    }
+
+    PackedHitInfo pack()
+    {
+        PackedHitInfo packed = {};
+
+#if SCENE_HAS_GEOMETRY_TYPE(GEOMETRY_TYPE_SDF_GRID)
+        uint primitiveData = {};
+
+#if SCENE_SDF_GRID_IMPLEMENTATION == SCENE_SDF_GRID_IMPLEMENTATION_NDSDF
+        primitiveData = hitData.lod;
+        packed[2] = asuint(hitData.hitT);
+#elif SCENE_SDF_GRID_IMPLEMENTATION == SCENE_SDF_GRID_IMPLEMENTATION_SVS || SCENE_SDF_GRID_IMPLEMENTATION == SCENE_SDF_GRID_IMPLEMENTATION_SBS
+        primitiveData = hitData.primitiveID;
+        packed[2] = asuint(hitData.hitT);
+#elif SCENE_SDF_GRID_IMPLEMENTATION == SCENE_SDF_GRID_IMPLEMENTATION_SVO
+        primitiveData = hitData.svoIndex;
+        packed[2] = asuint(hitData.hitT);
+#endif
+
+
+        HitInfo::packHeader(packed, HitType::SDFGrid, instanceID, primitiveData);
+#endif // SCENE_HAS_GEOMETRY_TYPE(GEOMETRY_TYPE_SDF_GRID)
+
+        return packed;
+    }
+};
+
+/** Volume hit information.
+
+    Encoding (without compression):
+    | header  | t            | g            |
+    | 64 bits | 32 bit float | 32 bit float |
+
+    Encoding (with compression):
+    | header  | g            | t            |
+    | 16 bits | 16 bit float | 32 bit float |
+*/
+struct VolumeHit
+{
+    float t;
+    float g;
+
+    __init(const PackedHitInfo packed)
+    {
+#if HIT_INFO_USE_COMPRESSION
+        t = asfloat(packed[1]);
+        g = f16tof32(packed[0] & 0xffff);
+#else
+        t = asfloat(packed[1]);
+        g = asfloat(packed[2]);
+#endif
+    }
+
+    PackedHitInfo pack()
+    {
+        PackedHitInfo packed = {};
+        HitInfo::packHeader(packed, HitType::Volume);
+#if HIT_INFO_USE_COMPRESSION
+        packed[1] = asuint(t);
+        packed[0] |= f32tof16(g) & 0xffff;
+#else
+        packed[1] = asuint(t);
+        packed[2] = asuint(g);
+#endif
+        return packed;
+    }
 };
 
 /** Polymorphic hit information type.
@@ -105,28 +296,27 @@ struct CurveHit : GeometryHit
 struct HitInfo
 {
 #ifdef HIT_INFO_DEFINES
-    static const uint kDataSize = HIT_INFO_DATA_SIZE;
-    static const uint kTypeBits = HIT_TYPE_BITS;
-
-    static const uint kInstanceIndexBits = HIT_INSTANCE_INDEX_BITS;
-    static const uint kPrimitiveIndexBits = HIT_PRIMITIVE_INDEX_BITS;
-    static const uint kInstanceIndexOffset = kPrimitiveIndexBits;
-
+    static const uint kTypeBits = HIT_INFO_TYPE_BITS;
+    static const uint kInstanceIDBits = HIT_INFO_INSTANCE_ID_BITS;
+    static const uint kPrimitiveIndexBits = HIT_INFO_PRIMITIVE_INDEX_BITS;
 #else
-    static const uint kDataSize = 4;
-    static const uint kTypeBits = 2;
+    static const uint kTypeBits = 1;
+    static const uint kInstanceIDBits = 1;
+    static const uint kPrimitiveIndexBits = 1;
 #endif
 
     static const uint kTypeOffset = 32u - kTypeBits;
-    static const uint kData0Mask = (1u << kTypeOffset) - 1u;
+    static const uint kInstanceIDOffset = kPrimitiveIndexBits;
 
-    uint data[kDataSize];
+    static const uint kHeaderBits = kTypeBits + kInstanceIDBits + kPrimitiveIndexBits;
+
+    PackedHitInfo data;
 
     /** Initialize empty (invalid) hit info.
     */
     __init()
     {
-        clear();
+        data = {};
     }
 
     /** Initialize hit info from a packed hit info.
@@ -134,7 +324,7 @@ struct HitInfo
     */
     __init(const PackedHitInfo packed)
     {
-        unpack(packed);
+        data = packed;
     }
 
     /** Initialize hit info from a triangle hit.
@@ -142,10 +332,7 @@ struct HitInfo
     */
     __init(const TriangleHit triangleHit)
     {
-        data[0] = (uint(HitType::Triangle) << kTypeOffset) | (triangleHit.instanceID.index & kData0Mask);
-        data[1] = triangleHit.primitiveIndex;
-        data[2] = asuint(triangleHit.barycentrics.x);
-        data[3] = asuint(triangleHit.barycentrics.y);
+        data = triangleHit.pack();
     }
 
     /** Initialize hit info from a displaced triangle hit.
@@ -153,13 +340,7 @@ struct HitInfo
     */
     __init(const DisplacedTriangleHit displacedTriangleHit)
     {
-#if IS_SET(SCENE_PRIMITIVE_TYPE_FLAGS, PRIMITIVE_TYPE_DISPLACED_TRIANGLE_MESH)
-        data[0] = (uint(HitType::DisplacedTriangle) << kTypeOffset) | (displacedTriangleHit.instanceID.index & kData0Mask);
-        data[1] = displacedTriangleHit.primitiveIndex;
-        data[2] = asuint(displacedTriangleHit.barycentrics.x);
-        data[3] = asuint(displacedTriangleHit.barycentrics.y);
-        data[4] = asuint(displacedTriangleHit.displacement);
-#endif
+        data = displacedTriangleHit.pack();
     }
 
     /** Initialize hit info from a curve hit.
@@ -167,19 +348,23 @@ struct HitInfo
     */
     __init(const CurveHit curveHit)
     {
-#if IS_SET(SCENE_PRIMITIVE_TYPE_FLAGS, PRIMITIVE_TYPE_CURVE)
-        data[0] = (uint(HitType::Curve) << kTypeOffset) | (curveHit.instanceID.index & kData0Mask);
-        data[1] = curveHit.primitiveIndex;
-        data[2] = asuint(curveHit.barycentrics.x);
-        data[3] = asuint(curveHit.barycentrics.y);
-#endif
+        data = curveHit.pack();
     }
 
-    /** Clear hit. This marks the hit as invalid.
+    /** Initialize hit info from a SDF grid hit.
+        \param[in] sdfGridHit Curve hit information.
     */
-    [mutating] void clear()
+    __init(const SDFGridHit sdfGridHit)
     {
-        data[0] = 0;
+        data = sdfGridHit.pack();
+    }
+
+    /** Initialize hit info from a volume hit.
+        \param[in] volumeHit Volume hit information.
+    */
+    __init(const VolumeHit volumeHit)
+    {
+        data = volumeHit.pack();
     }
 
     /** Return true if object represents a valid hit.
@@ -201,12 +386,7 @@ struct HitInfo
     */
     TriangleHit getTriangleHit()
     {
-        TriangleHit triangleHit;
-        triangleHit.instanceID.index = data[0] & kData0Mask;
-        triangleHit.primitiveIndex = data[1];
-        triangleHit.barycentrics.x = asfloat(data[2]);
-        triangleHit.barycentrics.y = asfloat(data[3]);
-        return triangleHit;
+        return TriangleHit(data);
     }
 
     /** Return the displaced triangle hit.
@@ -214,15 +394,7 @@ struct HitInfo
     */
     DisplacedTriangleHit getDisplacedTriangleHit()
     {
-        DisplacedTriangleHit displacedTriangleHit = {};
-#if IS_SET(SCENE_PRIMITIVE_TYPE_FLAGS, PRIMITIVE_TYPE_DISPLACED_TRIANGLE_MESH)
-        displacedTriangleHit.instanceID.index = data[0] & kData0Mask;
-        displacedTriangleHit.primitiveIndex = data[1];
-        displacedTriangleHit.barycentrics.x = asfloat(data[2]);
-        displacedTriangleHit.barycentrics.y = asfloat(data[3]);
-        displacedTriangleHit.displacement = asfloat(data[4]);
-#endif
-        return displacedTriangleHit;
+        return DisplacedTriangleHit(data);
     }
 
     /** Return the curve hit.
@@ -230,91 +402,62 @@ struct HitInfo
     */
     CurveHit getCurveHit()
     {
-        CurveHit curveHit = {};
-#if IS_SET(SCENE_PRIMITIVE_TYPE_FLAGS, PRIMITIVE_TYPE_CURVE)
-        curveHit.instanceID.index = data[0] & kData0Mask;
-        curveHit.primitiveIndex = data[1];
-        curveHit.barycentrics.x = asfloat(data[2]);
-        curveHit.barycentrics.y = asfloat(data[3]);
-#endif
-        return curveHit;
+        return CurveHit(data);
     }
 
-    /** Set from a packed hit info.
-        \param[in] packed Packed hit info.
+    /** Return the SDF grid hit.
+        Only valid if type is HitType::SDFGrid.
     */
-    [mutating] void unpack(const PackedHitInfo packed)
+    SDFGridHit getSDFGridHit()
     {
-#ifdef HIT_INFO_DEFINES
-        const HitType type = HitType(packed[0] >> kTypeOffset);
-        if (type == HitType::Triangle || type == HitType::DisplacedTriangle || type == HitType::Curve)
-        {
-#if ((HIT_TYPE_BITS) + (HIT_INSTANCE_INDEX_BITS) + (HIT_PRIMITIVE_INDEX_BITS)) <= 32
-            uint instanceID = { (packed[0] >> kInstanceIndexOffset) & ((1 << kInstanceIndexBits) - 1) };
-            uint primitiveIndex = packed[0] & ((1 << kPrimitiveIndexBits) - 1);
-            float2 barycentrics = unpackUnorm2x16(packed[1]);
-#else
-            uint instanceID = { packed[0] & ((1 << kInstanceIndexBits) - 1) };
-            uint primitiveIndex = packed[1];
-            float2 barycentrics = unpackUnorm2x16(packed[2]);
-#endif
-            data[0] = (uint(type) << kTypeOffset) | (instanceID & kData0Mask);
-            data[1] = primitiveIndex;
-            data[2] = asuint(barycentrics.x);
-            data[3] = asuint(barycentrics.y);
+        return SDFGridHit(data);
+    }
 
-#if IS_SET(SCENE_PRIMITIVE_TYPE_FLAGS, PRIMITIVE_TYPE_DISPLACED_TRIANGLE_MESH)
-            if (type == HitType::DisplacedTriangle)
-            {
-#if ((HIT_TYPE_BITS) + (HIT_INSTANCE_INDEX_BITS) + (HIT_PRIMITIVE_INDEX_BITS)) <= 32
-                data[4] = packed[2];
-#else
-                data[4] = packed[3];
-#endif
-            }
-#endif
-        }
-        else
-#endif
-        {
-            clear();
-        }
+    /** Return the volume hit.
+        Only valid if type is HitType::Volume.
+    */
+    VolumeHit getVolumeHit()
+    {
+        return VolumeHit(data);
     }
 
     /** Return the packed hit info.
         \return Packed hit info.
     */
-    PackedHitInfo pack()
+    PackedHitInfo getData()
     {
-        PackedHitInfo packed = {};
-#ifdef HIT_INFO_DEFINES
-        const HitType type = getType();
-        if (type == HitType::Triangle || type == HitType::DisplacedTriangle || type == HitType::Curve)
-        {
-            const uint instanceID = data[0] & kData0Mask;
-            const uint primitiveIndex = data[1];
-            const float2 barycentrics = { asfloat(data[2]), asfloat(data[3]) };
-#if ((HIT_TYPE_BITS) + (HIT_INSTANCE_INDEX_BITS) + (HIT_PRIMITIVE_INDEX_BITS)) <= 32
-            packed[0] = (uint(type) << kTypeOffset) | (instanceID << kInstanceIndexOffset) | primitiveIndex;
-            packed[1] = packUnorm2x16_unsafe(barycentrics);
-#else
-            packed[0] = (uint(type) << kTypeOffset) | instanceID;
-            packed[1] = primitiveIndex;
-            packed[2] = packUnorm2x16_unsafe(barycentrics);
-#endif
+        return data;
+    }
 
-#if IS_SET(SCENE_PRIMITIVE_TYPE_FLAGS, PRIMITIVE_TYPE_DISPLACED_TRIANGLE_MESH)
-            if (type == HitType::DisplacedTriangle)
-            {
-#if ((HIT_TYPE_BITS) + (HIT_INSTANCE_INDEX_BITS) + (HIT_PRIMITIVE_INDEX_BITS)) <= 32
-                packed[2] = data[4];
-#else
-                packed[3] = data[4];
-#endif
-            }
-#endif
+    static void packHeader(inout PackedHitInfo packed, const HitType type)
+    {
+        packed[0] = uint(type) << kTypeOffset;
+    }
+
+    static void packHeader(inout PackedHitInfo packed, const HitType type, const GeometryInstanceID instanceID, const uint primitiveIndex)
+    {
+        if (kHeaderBits <= 32)
+        {
+            packed[0] = (uint(type) << kTypeOffset) | (instanceID.index << kInstanceIDOffset) | primitiveIndex;
         }
-#endif
-        return packed;
+        else
+        {
+            packed[0] = (uint(type) << kTypeOffset) | instanceID.index;
+            packed[1] = primitiveIndex;
+        }
+    }
+
+    static void unpackHeader(const PackedHitInfo packed, out GeometryInstanceID instanceID, out uint primitiveIndex)
+    {
+        if (kHeaderBits <= 32)
+        {
+            instanceID.index = { (packed[0] >> kInstanceIDOffset) & ((1 << kInstanceIDBits) - 1) };
+            primitiveIndex = packed[0] & ((1 << kPrimitiveIndexBits) - 1);
+        }
+        else
+        {
+            instanceID.index = { packed[0] & ((1 << kInstanceIDBits) - 1) };
+            primitiveIndex = packed[1];
+        }
     }
 };

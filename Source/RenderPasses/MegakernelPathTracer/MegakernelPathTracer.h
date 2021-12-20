@@ -45,13 +45,12 @@ class MegakernelPathTracer : public PathTracer
 public:
     using SharedPtr = std::shared_ptr<MegakernelPathTracer>;
 
+    static const Info kInfo;
+
     static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
 
-    virtual std::string getDesc() override { return sDesc; }
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
-
-    static const char* sDesc;
 
 private:
     MegakernelPathTracer(const Dictionary& dict);

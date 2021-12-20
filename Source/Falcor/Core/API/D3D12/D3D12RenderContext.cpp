@@ -27,12 +27,13 @@
  **************************************************************************/
 #include "stdafx.h"
 #include "Core/API/RenderContext.h"
+#include "Core/API/BlitContext.h"
 #include "Core/API/Device.h"
 #include "glm/gtc/type_ptr.hpp"
 #include "D3D12State.h"
-#include "Raytracing/RtProgram/RtProgram.h"
-#include "Raytracing/RtProgramVars.h"
+#include "Core/Program/RtProgram.h"
 #include "RenderGraph/BasePasses/FullScreenPass.h"
+#include "Core/API/D3D12/D3D12RtAccelerationStructure.h"
 
 namespace Falcor
 {
@@ -45,32 +46,7 @@ namespace Falcor
             CommandSignatureHandle pDrawCommandSig;
             CommandSignatureHandle pDrawIndexCommandSig;
 
-            struct
-            {
-                std::shared_ptr<FullScreenPass> pPass;
-                Fbo::SharedPtr pFbo;
-
-                Sampler::SharedPtr pLinearSampler;
-                Sampler::SharedPtr pPointSampler;
-                Sampler::SharedPtr pLinearMinSampler;
-                Sampler::SharedPtr pPointMinSampler;
-                Sampler::SharedPtr pLinearMaxSampler;
-                Sampler::SharedPtr pPointMaxSampler;
-
-                ParameterBlock::SharedPtr pBlitParamsBuffer;
-                float2 prevSrcRectOffset = float2(0, 0);
-                float2 prevSrcReftScale = float2(0, 0);
-
-                // Variable offsets in constant buffer
-                UniformShaderVarOffset offsetVarOffset;
-                UniformShaderVarOffset scaleVarOffset;
-                ProgramReflection::BindLocation texBindLoc;
-                
-                // Parameters for complex blit
-                float4 prevComponentsTransform[4] = { float4(0), float4(0), float4(0), float4(0) };
-                UniformShaderVarOffset compTransVarOffset[4];
-
-            } blitData;
+            BlitContext blitData;
 
             static void init();
             static void release();
@@ -84,41 +60,7 @@ namespace Falcor
             auto& blitData = sApiData.blitData;
             if (blitData.pPass == nullptr)
             {
-                // Init the blit data.
-                Program::Desc d;
-                d.addShaderLibrary("Core/API/BlitReduction.slang").vsEntry("vs").psEntry("ps");
-                blitData.pPass = FullScreenPass::create(d);
-                blitData.pFbo = Fbo::create();
-                assert(blitData.pPass && blitData.pFbo);
-
-                blitData.pBlitParamsBuffer = blitData.pPass->getVars()->getParameterBlock("BlitParamsCB");
-                blitData.offsetVarOffset = blitData.pBlitParamsBuffer->getVariableOffset("gOffset");
-                blitData.scaleVarOffset = blitData.pBlitParamsBuffer->getVariableOffset("gScale");
-                blitData.prevSrcRectOffset = float2(-1.0f);
-                blitData.prevSrcReftScale = float2(-1.0f);
-
-                Sampler::Desc desc;
-                desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
-                desc.setReductionMode(Sampler::ReductionMode::Standard);
-                desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point);
-                blitData.pLinearSampler = Sampler::create(desc);
-                desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
-                blitData.pPointSampler = Sampler::create(desc);
-                // Min reductions.
-                desc.setReductionMode(Sampler::ReductionMode::Min);
-                desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point);
-                blitData.pLinearMinSampler = Sampler::create(desc);
-                desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
-                blitData.pPointMinSampler = Sampler::create(desc);
-                // Max reductions.
-                desc.setReductionMode(Sampler::ReductionMode::Max);
-                desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point);
-                blitData.pLinearMaxSampler = Sampler::create(desc);
-                desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
-                blitData.pPointMaxSampler = Sampler::create(desc);
-
-                const auto& pDefaultBlockReflection = blitData.pPass->getProgram()->getReflector()->getDefaultParameterBlock();
-                blitData.texBindLoc = pDefaultBlockReflection->getResourceBinding("gTex");
+                blitData.init();
 
                 // Init the draw signature
                 D3D12_COMMAND_SIGNATURE_DESC sigDesc;
@@ -130,25 +72,13 @@ namespace Falcor
                 sigDesc.ByteStride = sizeof(D3D12_DRAW_ARGUMENTS);
                 argDesc.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW;
                 sigDesc.pArgumentDescs = &argDesc;
-                d3d_call(gpDevice->getApiHandle()->CreateCommandSignature(&sigDesc, nullptr, IID_PPV_ARGS(&sApiData.pDrawCommandSig)));
+                FALCOR_D3D_CALL(gpDevice->getApiHandle()->CreateCommandSignature(&sigDesc, nullptr, IID_PPV_ARGS(&sApiData.pDrawCommandSig)));
 
                 // Draw index
                 sigDesc.ByteStride = sizeof(D3D12_DRAW_INDEXED_ARGUMENTS);
                 argDesc.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
                 sigDesc.pArgumentDescs = &argDesc;
-                d3d_call(gpDevice->getApiHandle()->CreateCommandSignature(&sigDesc, nullptr, IID_PPV_ARGS(&sApiData.pDrawIndexCommandSig)));
-        
-                // Complex blit parameters
-                
-                blitData.compTransVarOffset[0] = blitData.pBlitParamsBuffer->getVariableOffset("gCompTransformR");
-                blitData.compTransVarOffset[1] = blitData.pBlitParamsBuffer->getVariableOffset("gCompTransformG");
-                blitData.compTransVarOffset[2] = blitData.pBlitParamsBuffer->getVariableOffset("gCompTransformB");
-                blitData.compTransVarOffset[3] = blitData.pBlitParamsBuffer->getVariableOffset("gCompTransformA");
-                blitData.prevComponentsTransform[0] = float4(1.0f, 0.0f, 0.0f, 0.0f);
-                blitData.prevComponentsTransform[1] = float4(0.0f, 1.0f, 0.0f, 0.0f);
-                blitData.prevComponentsTransform[2] = float4(0.0f, 0.0f, 1.0f, 0.0f);
-                blitData.prevComponentsTransform[3] = float4(0.0f, 0.0f, 0.0f, 1.0f);
-                for (uint32_t i = 0; i < 4; i++) blitData.pBlitParamsBuffer->setVariable(blitData.compTransVarOffset[i], blitData.prevComponentsTransform[i]);
+                FALCOR_D3D_CALL(gpDevice->getApiHandle()->CreateCommandSignature(&sigDesc, nullptr, IID_PPV_ARGS(&sApiData.pDrawIndexCommandSig)));
             }
 
             sApiData.refCount++;
@@ -157,7 +87,11 @@ namespace Falcor
         void RenderContextApiData::release()
         {
             sApiData.refCount--;
-            if (sApiData.refCount == 0) sApiData = {};
+            if (sApiData.refCount == 0)
+            {
+                sApiData.blitData.release();
+                sApiData = {};
+            }
         }
     }
 
@@ -172,9 +106,11 @@ namespace Falcor
         RenderContextApiData::release();
     }
 
+    BlitContext& RenderContext::getBlitContext() { return sApiData.blitData; }
+
     void RenderContext::clearRtv(const RenderTargetView* pRtv, const float4& color)
     {
-        resourceBarrier(pRtv->getResource(), Resource::State::RenderTarget);
+        resourceBarrier(pRtv->getResource().get(), Resource::State::RenderTarget);
         mpLowLevelData->getCommandList()->ClearRenderTargetView(pRtv->getApiHandle()->getCpuHandle(0), glm::value_ptr(color), 0, nullptr);
         mCommandsPending = true;
     }
@@ -184,7 +120,7 @@ namespace Falcor
         uint32_t flags = clearDepth ? D3D12_CLEAR_FLAG_DEPTH : 0;
         flags |= clearStencil ? D3D12_CLEAR_FLAG_STENCIL : 0;
 
-        resourceBarrier(pDsv->getResource(), Resource::State::DepthStencil);
+        resourceBarrier(pDsv->getResource().get(), Resource::State::DepthStencil);
         mpLowLevelData->getCommandList()->ClearDepthStencilView(pDsv->getApiHandle()->getCpuHandle(0), D3D12_CLEAR_FLAGS(flags), depth, stencil, 0, nullptr);
         mCommandsPending = true;
     }
@@ -219,7 +155,7 @@ namespace Falcor
             }
         }
 
-        pList->IASetVertexBuffers(0, arraysize(vb), vb);
+        pList->IASetVertexBuffers(0, (uint32_t)arraysize(vb), vb);
         pList->IASetIndexBuffer(&ib);
     }
 
@@ -245,7 +181,7 @@ namespace Falcor
             }
 
             auto& pTexture = pFbo->getDepthStencilTexture();
-            if(pTexture)
+            if (pTexture)
             {
                 pDSV = pFbo->getDepthStencilView()->getApiHandle()->getCpuHandle(0);
                 if (pTexture)
@@ -265,21 +201,20 @@ namespace Falcor
         pList->QueryInterface(IID_PPV_ARGS(&pList1));
 
         bool featureSupported = gpDevice->isFeatureSupported(Device::SupportedFeatures::ProgrammableSamplePositionsPartialOnly) ||
-                                gpDevice->isFeatureSupported(Device::SupportedFeatures::ProgrammableSamplePositionsFull);
+            gpDevice->isFeatureSupported(Device::SupportedFeatures::ProgrammableSamplePositionsFull);
 
         const auto& samplePos = pFbo->getSamplePositions();
 
-#if _LOG_ENABLED
         if (featureSupported == false && samplePos.size() > 0)
         {
-            logError("The FBO specifies programmable sample positions, but the hardware does not support it");
+            reportError("The FBO specifies programmable sample positions, but the hardware does not support it");
         }
         else if (gpDevice->isFeatureSupported(Device::SupportedFeatures::ProgrammableSamplePositionsPartialOnly) && samplePos.size() > 1)
         {
-            logError("The FBO specifies multiple programmable sample positions, but the hardware only supports one");
+            reportError("The FBO specifies multiple programmable sample positions, but the hardware only supports one");
         }
-#endif
-        if(featureSupported)
+
+        if (featureSupported)
         {
             static_assert(offsetof(Fbo::SamplePosition, xOffset) == offsetof(D3D12_SAMPLE_POSITION, X), "SamplePosition.X");
             static_assert(offsetof(Fbo::SamplePosition, yOffset) == offsetof(D3D12_SAMPLE_POSITION, Y), "SamplePosition.Y");
@@ -317,6 +252,22 @@ namespace Falcor
         pList->RSSetScissorRects(D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE, (D3D12_RECT*)sc);
     }
 
+    bool RenderContext::applyGraphicsVars(GraphicsVars* pVars, const ProgramKernels* pProgramKernels)
+    {
+        bool bindRootSig = (pVars != mpLastBoundGraphicsVars);
+        if (pVars->apply(this, bindRootSig, pProgramKernels) == false)
+        {
+            logWarning("RenderContext::prepareForDraw() - applying GraphicsVars failed, most likely because we ran out of descriptors. Flushing the GPU and retrying");
+            flush(true);
+            if (!pVars->apply(this, bindRootSig, pProgramKernels))
+            {
+                reportError("RenderContext::applyGraphicsVars() - applying GraphicsVars failed, most likely because we ran out of descriptors");
+                return false;
+            }
+        }
+        return true;
+    }
+
     bool RenderContext::prepareForDraw(GraphicsState* pState, GraphicsVars* pVars)
     {
         assert(pState);
@@ -334,9 +285,9 @@ namespace Falcor
                 // from computing the GSO down into `applyGraphicsVars` so that parameters
                 // can be bound using an appropriate layout.
                 //
-                if (applyGraphicsVars(pVars, pGSO->getDesc().getRootSignature().get()) == false) return false;
+                if (applyGraphicsVars(pVars, pGSO->getDesc().getProgramKernels().get()) == false) return false;
             }
-            else mpLowLevelData->getCommandList()->SetGraphicsRootSignature(RootSignature::getEmpty()->getApiHandle());
+            else mpLowLevelData->getCommandList()->SetGraphicsRootSignature(D3D12RootSignature::getEmpty()->getApiHandle());
             mpLastBoundGraphicsVars = pVars;
         }
 
@@ -369,7 +320,7 @@ namespace Falcor
 
     void RenderContext::draw(GraphicsState* pState, GraphicsVars* pVars, uint32_t vertexCount, uint32_t startVertexLocation)
     {
-        drawInstanced(pState,pVars, vertexCount, 1, startVertexLocation, 0);
+        drawInstanced(pState, pVars, vertexCount, 1, startVertexLocation, 0);
     }
 
     void RenderContext::drawIndexedInstanced(GraphicsState* pState, GraphicsVars* pVars, uint32_t indexCount, uint32_t instanceCount, uint32_t startIndexLocation, int32_t baseVertexLocation, uint32_t startInstanceLocation)
@@ -443,125 +394,12 @@ namespace Falcor
         }
 
         auto pCmdList = getLowLevelData()->getCommandList();
-        pCmdList->SetComputeRootSignature(pRtso->getGlobalRootSignature()->getApiHandle().GetInterfacePtr());
+        pCmdList->SetComputeRootSignature(pRtso->getKernels()->getD3D12RootSignature()->getApiHandle().GetInterfacePtr());
 
         // Dispatch
-        GET_COM_INTERFACE(pCmdList, ID3D12GraphicsCommandList4, pList4);
+        FALCOR_GET_COM_INTERFACE(pCmdList, ID3D12GraphicsCommandList4, pList4);
         pList4->SetPipelineState1(pRtso->getApiHandle().GetInterfacePtr());
         pList4->DispatchRays(&raytraceDesc);
-    }
-
-    void RenderContext::blit(ShaderResourceView::SharedPtr pSrc, RenderTargetView::SharedPtr pDst, const uint4& srcRect, const uint4& dstRect, Sampler::Filter filter)
-    {
-        const Sampler::ReductionMode componentsReduction[] = { Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard };
-        const float4 componentsTransform[] = { float4(1.0f, 0.0f, 0.0f, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 1.0f, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f) };
-
-        blit(pSrc, pDst, srcRect, dstRect, filter, componentsReduction, componentsTransform);
-    }
-
-    void RenderContext::blit(ShaderResourceView::SharedPtr pSrc, RenderTargetView::SharedPtr pDst, const uint4& srcRect, const uint4& dstRect, Sampler::Filter filter, const Sampler::ReductionMode componentsReduction[4], const float4 componentsTransform[4])
-    {
-        auto& blitData = sApiData.blitData;
-        const Texture* pSrcTexture = dynamic_cast<const Texture*>(pSrc->getResource());
-        const bool complexBlit = pSrcTexture->getSampleCount() <= 1 &&
-            !(  (componentsReduction[0] == Sampler::ReductionMode::Standard) && (componentsReduction[1] == Sampler::ReductionMode::Standard) && (componentsReduction[2] == Sampler::ReductionMode::Standard) && (componentsReduction[3] == Sampler::ReductionMode::Standard) &&
-                (componentsTransform[0] == float4(1.0f, 0.0f, 0.0f, 0.0f)) && (componentsTransform[1] == float4(0.0f, 1.0f, 0.0f, 0.0f)) && (componentsTransform[2] == float4(0.0f, 0.0f, 1.0f, 0.0f)) && (componentsTransform[3] == float4(0.0f, 0.0f, 0.0f, 1.0f)) );
-
-        if (complexBlit)
-        {
-            // Complex blit doesn't work with multi-sampled textures.
-            assert(pSrcTexture->getSampleCount() <= 1);
-
-            blitData.pPass->addDefine("COMPLEX_BLIT", "1");
-
-            Sampler::SharedPtr usedSampler[4];
-            for (uint32_t i = 0; i < 4; i++)
-            {
-                assert(componentsReduction[i] != Sampler::ReductionMode::Comparison);        // Comparison mode not supported.
-
-                if (componentsReduction[i] == Sampler::ReductionMode::Min) usedSampler[i] = (filter == Sampler::Filter::Linear) ? blitData.pLinearMinSampler : blitData.pPointMinSampler;
-                else if (componentsReduction[i] == Sampler::ReductionMode::Max) usedSampler[i] = (filter == Sampler::Filter::Linear) ? blitData.pLinearMaxSampler : blitData.pPointMaxSampler;
-                else usedSampler[i] = (filter == Sampler::Filter::Linear) ? blitData.pLinearSampler : blitData.pPointSampler;
-            }
-
-            blitData.pPass->getVars()->setSampler("gSamplerR", usedSampler[0]);
-            blitData.pPass->getVars()->setSampler("gSamplerG", usedSampler[1]);
-            blitData.pPass->getVars()->setSampler("gSamplerB", usedSampler[2]);
-            blitData.pPass->getVars()->setSampler("gSamplerA", usedSampler[3]);
-
-            // Parameters for complex blit
-            for (uint32_t i = 0; i < 4; i++)
-            {
-                if (blitData.prevComponentsTransform[i] != componentsTransform[i])
-                {
-                    blitData.pBlitParamsBuffer->setVariable(blitData.compTransVarOffset[i], componentsTransform[i]);
-                    blitData.prevComponentsTransform[i] = componentsTransform[i];
-                }
-            }
-        }
-        else
-        {
-            blitData.pPass->removeDefine("COMPLEX_BLIT");
-
-            blitData.pPass->getVars()->setSampler("gSampler", (filter == Sampler::Filter::Linear) ? blitData.pLinearSampler : blitData.pPointSampler);
-        }
-
-        assert(pSrc->getViewInfo().arraySize == 1 && pSrc->getViewInfo().mipCount == 1);
-        assert(pDst->getViewInfo().arraySize == 1 && pDst->getViewInfo().mipCount == 1);
-
-        Texture* pDstTexture = dynamic_cast<Texture*>(pDst->getResource());
-        assert(pSrcTexture != nullptr && pDstTexture != nullptr);
-
-        float2 srcRectOffset(0.0f);
-        float2 srcRectScale(1.0f);
-        uint32_t srcMipLevel = pSrc->getViewInfo().mostDetailedMip;
-        uint32_t dstMipLevel = pDst->getViewInfo().mostDetailedMip;
-        GraphicsState::Viewport dstViewport(0.0f, 0.0f, (float)pDstTexture->getWidth(dstMipLevel), (float)pDstTexture->getHeight(dstMipLevel), 0.0f, 1.0f);
-
-        // If src rect specified
-        if (srcRect.x != (uint32_t)-1)
-        {
-            const float2 srcSize(pSrcTexture->getWidth(srcMipLevel), pSrcTexture->getHeight(srcMipLevel));
-            srcRectOffset = float2(srcRect.x, srcRect.y) / srcSize;
-            srcRectScale = float2(srcRect.z - srcRect.x, srcRect.w - srcRect.y) / srcSize;
-        }
-
-        // If dest rect specified
-        if (dstRect.x != (uint32_t)-1)
-        {
-            dstViewport = GraphicsState::Viewport((float)dstRect.x, (float)dstRect.y, (float)(dstRect.z - dstRect.x), (float)(dstRect.w - dstRect.y), 0.0f, 1.0f);
-        }
-
-        // Update buffer/state
-        if (srcRectOffset != blitData.prevSrcRectOffset)
-        {
-            blitData.pBlitParamsBuffer->setVariable(blitData.offsetVarOffset, srcRectOffset);
-            blitData.prevSrcRectOffset = srcRectOffset;
-        }
-
-        if (srcRectScale != blitData.prevSrcReftScale)
-        {
-            blitData.pBlitParamsBuffer->setVariable(blitData.scaleVarOffset, srcRectScale);
-            blitData.prevSrcReftScale = srcRectScale;
-        }
-
-        if (pSrcTexture->getSampleCount() > 1)
-        {
-            blitData.pPass->addDefine("SAMPLE_COUNT", std::to_string(pSrcTexture->getSampleCount()));
-        }
-        else
-        {
-            blitData.pPass->removeDefine("SAMPLE_COUNT");
-        }
-
-        Texture::SharedPtr pSharedTex = std::static_pointer_cast<Texture>(pDstTexture->shared_from_this());
-        blitData.pFbo->attachColorTarget(pSharedTex, 0, pDst->getViewInfo().mostDetailedMip, pDst->getViewInfo().firstArraySlice, pDst->getViewInfo().arraySize);
-        blitData.pPass->getVars()->setSrv(blitData.texBindLoc, pSrc);
-        blitData.pPass->getState()->setViewport(0, dstViewport);
-        blitData.pPass->execute(this, blitData.pFbo, false);
-
-        // Release the resources we bound
-        blitData.pPass->getVars()->setSrv(blitData.texBindLoc, nullptr);
     }
 
     void RenderContext::resolveSubresource(const Texture::SharedPtr& pSrc, uint32_t srcSubresource, const Texture::SharedPtr& pDst, uint32_t dstSubresource)
@@ -589,5 +427,43 @@ namespace Falcor
         {
             resolveSubresource(pSrc, s, pDst, s);
         }
+    }
+
+    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_TYPE translatePostBuildInfoType(RtAccelerationStructurePostBuildInfoQueryType);
+
+    void RenderContext::buildAccelerationStructure(const RtAccelerationStructure::BuildDesc& desc, uint32_t postBuildInfoCount, RtAccelerationStructurePostBuildInfoDesc* pPostBuildInfoDescs)
+    {
+        // Translate BuildInputs.
+        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc = {};
+        D3D12AccelerationStructureBuildInputsTranslator translator;
+        buildDesc.Inputs = translator.translate(desc.inputs);
+        assert(desc.dest);
+        buildDesc.DestAccelerationStructureData = desc.dest->getGpuAddress();
+        buildDesc.ScratchAccelerationStructureData = desc.scratchData;
+        buildDesc.SourceAccelerationStructureData = desc.source ? desc.source->getGpuAddress() : 0;
+
+        // Translate PostBuildInfoDesc.
+        std::vector<D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC> postBuildInfoDescs;
+        postBuildInfoDescs.resize(postBuildInfoCount);
+        for (uint32_t i = 0; i < postBuildInfoCount; ++i)
+        {
+            postBuildInfoDescs[i].DestBuffer = pPostBuildInfoDescs[i].pool->getBufferAddress(pPostBuildInfoDescs[i].index);
+            postBuildInfoDescs[i].InfoType = translatePostBuildInfoType(pPostBuildInfoDescs[i].type);
+        }
+
+        // Dispatch D3D12 command to build the acceleration structure.
+        FALCOR_GET_COM_INTERFACE(getLowLevelData()->getCommandList(), ID3D12GraphicsCommandList4, pList4);
+        pList4->BuildRaytracingAccelerationStructure(&buildDesc, (UINT)postBuildInfoDescs.size(), postBuildInfoDescs.size() > 0 ? postBuildInfoDescs.data() : nullptr);
+    }
+
+    void RenderContext::copyAccelerationStructure(RtAccelerationStructure* dest, RtAccelerationStructure* source, RenderContext::RtAccelerationStructureCopyMode mode)
+    {
+        FALCOR_GET_COM_INTERFACE(getLowLevelData()->getCommandList(), ID3D12GraphicsCommandList4, pList4);
+        pList4->CopyRaytracingAccelerationStructure(
+            dest->getGpuAddress(),
+            source->getGpuAddress(),
+            mode == RtAccelerationStructureCopyMode::Compact
+                ? D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE_COMPACT
+                : D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE_CLONE);
     }
 }

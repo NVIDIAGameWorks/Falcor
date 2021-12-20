@@ -30,21 +30,20 @@
 
 namespace Falcor
 {
-    class dlldecl ResolvePass : public RenderPass
+    class FALCOR_API ResolvePass : public RenderPass
     {
     public:
         using SharedPtr = std::shared_ptr<ResolvePass>;
 
-        static const char* kDesc;
+        static const Info kInfo;
 
         static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dictionary = {});
 
         void setFormat(ResourceFormat format) { mFormat = format; }
         virtual RenderPassReflection reflect(const CompileData& compileData) override;
-        virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
-        virtual std::string getDesc() override { return kDesc; }
+        virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     private:
-        ResolvePass() = default;
-        ResourceFormat mFormat;
+        ResolvePass();
+        ResourceFormat mFormat = ResourceFormat::Unknown;
     };
 }

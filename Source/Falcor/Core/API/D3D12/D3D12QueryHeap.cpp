@@ -56,6 +56,6 @@ namespace Falcor
         desc.NodeMask = 0;
         desc.Type = getD3D12HeapType(type);
 
-        d3d_call(pDevice->CreateQueryHeap(&desc, IID_PPV_ARGS(&mApiHandle)));
+        FALCOR_D3D_CALL(pDevice->CreateQueryHeap(&desc, IID_PPV_ARGS(&mApiHandle)));
     }
 }

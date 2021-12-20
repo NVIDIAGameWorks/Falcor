@@ -27,8 +27,10 @@
  **************************************************************************/
 #include "AccumulatePass.h"
 
+const RenderPass::Info AccumulatePass::kInfo { "AccumulatePass", "Temporal accumulation." };
+
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" FALCOR_API_EXPORT const char* getProjDir()
 {
     return PROJECT_DIR;
 }
@@ -45,9 +47,9 @@ static void regAccumulatePass(pybind11::module& m)
     precision.value("SingleCompensated", AccumulatePass::Precision::SingleCompensated);
 }
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
 {
-    lib.registerClass("AccumulatePass", "Temporal accumulation", AccumulatePass::create);
+    lib.registerPass(AccumulatePass::kInfo, AccumulatePass::create);
     ScriptBindings::registerBinding(regAccumulatePass);
 }
 
@@ -60,6 +62,9 @@ namespace
 
     // Serialized parameters
     const char kEnabled[] = "enabled";
+    const char kOutputFormat[] = "outputFormat";
+    const char kOutputSize[] = "outputSize";
+    const char kFixedOutputSize[] = "fixedOutputSize";
     const char kAutoReset[] = "autoReset";
     const char kPrecisionMode[] = "precisionMode";
     const char kSubFrameCount[] = "subFrameCount";
@@ -79,11 +84,15 @@ AccumulatePass::SharedPtr AccumulatePass::create(RenderContext* pRenderContext, 
 }
 
 AccumulatePass::AccumulatePass(const Dictionary& dict)
+    : RenderPass(kInfo)
 {
     // Deserialize pass from dictionary.
     for (const auto& [key, value] : dict)
     {
         if (key == kEnabled) mEnabled = value;
+        else if (key == kOutputFormat) mOutputFormat = value;
+        else if (key == kOutputSize) mOutputSizeSelection = value;
+        else if (key == kFixedOutputSize) mFixedOutputSize = value;
         else if (key == kAutoReset) mAutoReset = value;
         else if (key == kPrecisionMode) mPrecisionMode = value;
         else if (key == kSubFrameCount) mSubFrameCount = value;
@@ -104,6 +113,9 @@ Dictionary AccumulatePass::getScriptingDictionary()
 {
     Dictionary dict;
     dict[kEnabled] = mEnabled;
+    if (mOutputFormat != ResourceFormat::Unknown) dict[kOutputFormat] = mOutputFormat;
+    dict[kOutputSize] = mOutputSizeSelection;
+    if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed) dict[kFixedOutputSize] = mFixedOutputSize;
     dict[kAutoReset] = mAutoReset;
     dict[kPrecisionMode] = mPrecisionMode;
     dict[kSubFrameCount] = mSubFrameCount;
@@ -114,19 +126,12 @@ Dictionary AccumulatePass::getScriptingDictionary()
 RenderPassReflection AccumulatePass::reflect(const CompileData& compileData)
 {
     RenderPassReflection reflector;
-    reflector.addInput(kInputChannel, "Input data to be temporally accumulated").bindFlags(ResourceBindFlags::ShaderResource);
-    reflector.addOutput(kOutputChannel, "Output data that is temporally accumulated").bindFlags(ResourceBindFlags::RenderTarget | ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource).format(ResourceFormat::RGBA32Float);
-    return reflector;
-}
+    const uint2 sz = RenderPassHelpers::calculateIOSize(mOutputSizeSelection, mFixedOutputSize, compileData.defaultTexDims);
+    const auto fmt = mOutputFormat != ResourceFormat::Unknown ? mOutputFormat : ResourceFormat::RGBA32Float;
 
-void AccumulatePass::compile(RenderContext* pContext, const CompileData& compileData)
-{
-    // Reset accumulation when resolution changes.
-    if (compileData.defaultTexDims != mFrameDim)
-    {
-        mFrameDim = compileData.defaultTexDims;
-        reset();
-    }
+    reflector.addInput(kInputChannel, "Input data to be temporally accumulated").bindFlags(ResourceBindFlags::ShaderResource);
+    reflector.addOutput(kOutputChannel, "Output data that is temporally accumulated").bindFlags(ResourceBindFlags::RenderTarget | ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource).format(fmt).texture2D(sz.x, sz.y);
+    return reflector;
 }
 
 void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& renderData)
@@ -168,26 +173,61 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
     // Grab our input/output buffers.
     Texture::SharedPtr pSrc = renderData[kInputChannel]->asTexture();
     Texture::SharedPtr pDst = renderData[kOutputChannel]->asTexture();
-
     assert(pSrc && pDst);
-    assert(pSrc->getWidth() == pDst->getWidth() && pSrc->getHeight() == pDst->getHeight());
-    const uint2 resolution = uint2(pSrc->getWidth(), pSrc->getHeight());
 
-    // If accumulation is disabled, just blit the source to the destination and return.
-    // Only do this if the source format is not integer type, for which the blit does not work.
-    FormatType srcFormat = getFormatType(pSrc->getFormat());
-    if (!mEnabled && srcFormat != FormatType::Uint && srcFormat != FormatType::Sint)
+    const uint2 resolution = uint2(pSrc->getWidth(), pSrc->getHeight());
+    const bool resolutionMatch = pDst->getWidth() == resolution.x && pDst->getHeight() == resolution.y;
+
+    // Reset accumulation when resolution changes.
+    if (resolution != mFrameDim)
     {
-        // Only blit mip 0 and array slice 0, because that's what the accumulation uses otherwise otherwise.
-        pRenderContext->blit(pSrc->getSRV(0, 1, 0, 1), pDst->getRTV(0, 0, 1));
-        return;
+        mFrameDim = resolution;
+        reset();
     }
 
-    // If for the first time, or if the input format has changed, (re)compile the programs
-    if (mpProgram.empty() || srcFormat != mSrcFormat)
+    // Verify that output is non-integer format. It shouldn't be since reflect() requests a floating-point format.
+    if (isIntegerFormat(pDst->getFormat())) throw RuntimeError("AccumulatePass: Output to integer format is not supported");
+
+    // Issue error and disable pass if unsupported I/O size. The user can hit continue and fix the config or abort.
+    if (mEnabled && !resolutionMatch)
+    {
+        logError("AccumulatePass I/O sizes don't match. The pass will be disabled.");
+        mEnabled = false;
+    }
+
+    // Decide action based on current configuration:
+    // - The accumulation pass supports integer input but requires matching I/O size.
+    // - Blit supports mismatching size but requires non-integer format.
+    // - As a fallback, issue warning and clear the output.
+
+    if (!mEnabled && !isIntegerFormat(pSrc->getFormat()))
+    {
+        // Only blit mip 0 and array slice 0, because that's what the accumulation uses otherwise.
+        pRenderContext->blit(pSrc->getSRV(0, 1, 0, 1), pDst->getRTV(0, 0, 1));
+    }
+    else if (resolutionMatch)
+    {
+        accumulate(pRenderContext, pSrc, pDst);
+    }
+    else
+    {
+        logWarning("AccumulatePass unsupported I/O configuration. The output will be cleared.");
+        pRenderContext->clearUAV(pDst->getUAV().get(), uint4(0));
+    }
+}
+
+void AccumulatePass::accumulate(RenderContext* pRenderContext, const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDst)
+{
+    assert(pSrc && pDst);
+    assert(pSrc->getWidth() == mFrameDim.x && pSrc->getHeight() == mFrameDim.y);
+    assert(pDst->getWidth() == mFrameDim.x && pDst->getHeight() == mFrameDim.y);
+    const FormatType srcType = getFormatType(pSrc->getFormat());
+
+    // If for the first time, or if the input format type has changed, (re)compile the programs.
+    if (mpProgram.empty() || srcType != mSrcType)
     {
         Program::DefineList defines;
-        switch (srcFormat)
+        switch (srcType)
         {
             case FormatType::Uint:
                 defines.add("_INPUT_FORMAT", "INPUT_FORMAT_UINT");
@@ -206,14 +246,14 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
         mpProgram[Precision::SingleCompensated] = ComputeProgram::createFromFile(kShaderFile, "accumulateSingleCompensated", defines, Shader::CompilerFlags::FloatingPointModePrecise | Shader::CompilerFlags::TreatWarningsAsErrors);
         mpVars = ComputeVars::create(mpProgram[mPrecisionMode]->getReflector());
 
-        mSrcFormat = srcFormat;
+        mSrcType = srcType;
     }
 
     // Setup accumulation.
-    prepareAccumulation(pRenderContext, resolution.x, resolution.y);
+    prepareAccumulation(pRenderContext, mFrameDim.x, mFrameDim.y);
 
     // Set shader parameters.
-    mpVars["PerFrameCB"]["gResolution"] = resolution;
+    mpVars["PerFrameCB"]["gResolution"] = mFrameDim;
     mpVars["PerFrameCB"]["gAccumCount"] = mFrameCount;
     mpVars["PerFrameCB"]["gAccumulate"] = mEnabled;
     mpVars["PerFrameCB"]["gMovingAverageMode"] = (mMaxAccumulatedFrames > 0);
@@ -236,13 +276,21 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
     // Run the accumulation program.
     auto pProgram = mpProgram[mPrecisionMode];
     assert(pProgram);
-    uint3 numGroups = div_round_up(uint3(resolution.x, resolution.y, 1u), pProgram->getReflector()->getThreadGroupSize());
+    uint3 numGroups = div_round_up(uint3(mFrameDim.x, mFrameDim.y, 1u), pProgram->getReflector()->getThreadGroupSize());
     mpState->setProgram(pProgram);
     pRenderContext->dispatch(mpState.get(), mpVars.get(), numGroups);
 }
 
 void AccumulatePass::renderUI(Gui::Widgets& widget)
 {
+    // Controls for output size.
+    // When output size requirements change, we'll trigger a graph recompile to update the render pass I/O sizes.
+    if (widget.dropdown("Output size", RenderPassHelpers::kIOSizeList, (uint32_t&)mOutputSizeSelection)) requestRecompile();
+    if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed)
+    {
+        if (widget.var("Size in pixels", mFixedOutputSize, 32u, 16384u)) requestRecompile();
+    }
+
     if (bool enabled = isEnabled(); widget.checkbox("Enabled", enabled)) setEnabled(enabled);
 
     if (mEnabled)

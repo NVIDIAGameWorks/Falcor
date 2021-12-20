@@ -27,13 +27,18 @@
  **************************************************************************/
 #include "SimplePostFX.h"
 
+const RenderPass::Info SimplePostFX::kInfo { "SimplePostFX", "Simple set of post effects." };
+
 namespace
 {
-    const char kDesc[] = "Simple set of Post FX";
-
     const char kSrc[] = "src";
     const char kDst[] = "dst";
 
+    // Scripting options.
+    const char kEnabled[] = "enabled";
+    const char kOutputSize[] = "outputSize";
+    const char kFixedOutputSize[] = "fixedOutputSize";
+    const char kWipe[] = "wipe";
     const char kBloomAmount[] = "bloomAmount";
     const char kStarAmount[] = "starAmount";
     const char kStarAngle[] = "starAngle";
@@ -47,14 +52,12 @@ namespace
     const char kColorOffsetScalar[] = "colorOffsetScalar";
     const char kColorScaleScalar[] = "colorScaleScalar";
     const char kColorPowerScalar[] = "colorPowerScalar";
-    const char kWipe[] = "wipe";
-    const char kEnabled[] = "enabled";
 
     const char kShaderFile[] = "RenderPasses/SimplePostFX/SimplePostFX.cs.slang";
 }
 
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" FALCOR_API_EXPORT const char* getProjDir()
 {
     return PROJECT_DIR;
 }
@@ -79,9 +82,9 @@ static void regSimplePostFX(pybind11::module& m)
     pass.def_property(kColorPowerScalar, &SimplePostFX::getColorPowerScalar, &SimplePostFX::setColorPowerScalar);
 }
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary & lib)
+extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary & lib)
 {
-    lib.registerClass("SimplePostFX", kDesc, SimplePostFX::create);
+    lib.registerPass(SimplePostFX::kInfo, SimplePostFX::create);
     ScriptBindings::registerBinding(regSimplePostFX);
 }
 
@@ -90,12 +93,12 @@ SimplePostFX::SharedPtr SimplePostFX::create(RenderContext* pRenderContext, cons
     return SharedPtr(new SimplePostFX(dict));
 }
 
-std::string SimplePostFX::getDesc() { return kDesc; }
-
 Dictionary SimplePostFX::getScriptingDictionary()
 {
     Dictionary dict;
     dict[kEnabled] = getEnabled();
+    dict[kOutputSize] = mOutputSizeSelection;
+    if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed) dict[kFixedOutputSize] = mFixedOutputSize;
     dict[kWipe] = getWipe();
     dict[kBloomAmount] = getBloomAmount();
     dict[kStarAmount] = getStarAmount();
@@ -114,12 +117,15 @@ Dictionary SimplePostFX::getScriptingDictionary()
 }
 
 SimplePostFX::SimplePostFX(const Dictionary& dict)
+    : RenderPass(kInfo)
 {
     // Deserialize pass from dictionary.
     for (const auto& [key, value] : dict)
     {
-        if (key == kWipe) setWipe(value);
-        else if (key == kEnabled) setEnabled(value);
+        if (key == kEnabled) setEnabled(value);
+        else if (key == kOutputSize) mOutputSizeSelection = value;
+        else if (key == kFixedOutputSize) mFixedOutputSize = value;
+        else if (key == kWipe) setWipe(value);
         else if (key == kBloomAmount) setBloomAmount(value);
         else if (key == kStarAmount) setStarAmount(value);
         else if (key == kStarAngle) setStarAngle(value);
@@ -149,10 +155,11 @@ SimplePostFX::SimplePostFX(const Dictionary& dict)
 
 RenderPassReflection SimplePostFX::reflect(const CompileData& compileData)
 {
-    // Define the required resources here
     RenderPassReflection reflector;
+    const uint2 sz = RenderPassHelpers::calculateIOSize(mOutputSizeSelection, mFixedOutputSize, compileData.defaultTexDims);
+
     reflector.addInput(kSrc, "Source texture").bindFlags(ResourceBindFlags::ShaderResource);;
-    reflector.addOutput(kDst, "post-effected output texture").bindFlags(ResourceBindFlags::RenderTarget | ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess).format(ResourceFormat::RGBA32Float);
+    reflector.addOutput(kDst, "post-effected output texture").bindFlags(ResourceBindFlags::RenderTarget | ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess).format(ResourceFormat::RGBA32Float).texture2D(sz.x, sz.y);
     return reflector;
 }
 
@@ -160,6 +167,15 @@ void SimplePostFX::execute(RenderContext* pRenderContext, const RenderData& rend
 {
     auto pSrc = renderData[kSrc]->asTexture();
     auto pDst = renderData[kDst]->asTexture();
+    assert(pSrc && pDst);
+
+    // Issue error and disable pass if I/O size doesn't match. The user can hit continue and fix the config or abort.
+    if (getEnabled() && (pSrc->getWidth() != pDst->getWidth() || pSrc->getHeight() != pDst->getHeight()))
+    {
+        logError("SimplePostFX I/O sizes don't match. The pass will be disabled.");
+        mEnabled = false;
+    }
+    const uint2 resolution = uint2(pSrc->getWidth(), pSrc->getHeight());
 
     // if we have 'identity' settings, we can just copy input to output
     if (getEnabled() == false || getWipe() >= 1.f || (
@@ -179,10 +195,6 @@ void SimplePostFX::execute(RenderContext* pRenderContext, const RenderData& rend
         pRenderContext->blit(pSrc->getSRV(), pDst->getRTV());
         return;
     }
-
-    assert(pSrc && pDst);
-    assert(pSrc->getWidth() == pDst->getWidth() && pSrc->getHeight() == pDst->getHeight());
-    const uint2 resolution = uint2(pSrc->getWidth(), pSrc->getHeight());
 
     preparePostFX(pRenderContext, resolution.x, resolution.y);
     if (getBloomAmount() > 0.f)
@@ -276,7 +288,16 @@ void SimplePostFX::preparePostFX(RenderContext* pRenderContext, uint32_t width, 
 
 void SimplePostFX::renderUI(Gui::Widgets& widget)
 {
-    widget.checkbox("enable post fx", mEnabled);
+    // Controls for output size.
+    // When output size requirements change, we'll trigger a graph recompile to update the render pass I/O sizes.
+    if (widget.dropdown("Output size", RenderPassHelpers::kIOSizeList, (uint32_t&)mOutputSizeSelection)) requestRecompile();
+    if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed)
+    {
+        if (widget.var("Size in pixels", mFixedOutputSize, 32u, 16384u)) requestRecompile();
+    }
+
+    // PostFX options.
+    widget.checkbox("Enable post fx", mEnabled);
     widget.slider("Wipe", mWipe, 0.f, 1.f);
     if (auto group = widget.group("Lens FX", true))
     {

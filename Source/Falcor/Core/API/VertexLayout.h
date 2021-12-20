@@ -34,7 +34,7 @@ namespace Falcor
 {
     /** Describes the layout of a vertex buffer that will be bound to a render operation as part of a VAO.
     */
-    class dlldecl VertexBufferLayout : public std::enable_shared_from_this<VertexBufferLayout>
+    class FALCOR_API VertexBufferLayout
     {
     public:
         using SharedPtr = std::shared_ptr<VertexBufferLayout>;
@@ -114,7 +114,7 @@ namespace Falcor
         {
             return (uint32_t)mElements.size();
         }
-        
+
         /** Return the total stride of all elements in bytes
         */
         uint32_t getStride() const { return mVertexStride; }
@@ -161,7 +161,7 @@ namespace Falcor
 
     /** Container to hold layouts for every vertex layout that will be bound at once to a VAO.
     */
-    class VertexLayout : public std::enable_shared_from_this<VertexLayout>
+    class VertexLayout
     {
     public:
         using SharedPtr = std::shared_ptr<VertexLayout>;

@@ -31,26 +31,26 @@
 #include <aclapi.h>
 #include "Core/API/Device.h"
 
-#define CU_CHECK_SUCCESS(x)                                                         \
-    do {                                                                            \
-        CUresult result = x;                                                        \
-        if (result != CUDA_SUCCESS)                                                 \
-        {                                                                           \
-            const char* msg;                                                        \
-            cuGetErrorName(result, &msg);                                           \
-            logError("CUDA Error: " #x " failed with error " + std::string(msg));   \
-            return 0;                                                               \
-        }                                                                           \
+#define CU_CHECK_SUCCESS(x)                                                             \
+    do {                                                                                \
+        CUresult result = x;                                                            \
+        if (result != CUDA_SUCCESS)                                                     \
+        {                                                                               \
+            const char* msg;                                                            \
+            cuGetErrorName(result, &msg);                                               \
+            reportError("CUDA Error: " #x " failed with error " + std::string(msg));    \
+            return 0;                                                                   \
+        }                                                                               \
     } while(0)
 
-#define CUDA_CHECK_SUCCESS(x)                                                                            \
-    do {                                                                                                 \
-        cudaError_t result = x;                                                                          \
-        if (result != cudaSuccess)                                                                       \
-        {                                                                                                \
-            logError("CUDA Error: " #x " failed with error " + std::string(cudaGetErrorString(result))); \
-            return 0;                                                                                    \
-        }                                                                                                \
+#define CUDA_CHECK_SUCCESS(x)                                                                               \
+    do {                                                                                                    \
+        cudaError_t result = x;                                                                             \
+        if (result != cudaSuccess)                                                                          \
+        {                                                                                                   \
+            reportError("CUDA Error: " #x " failed with error " + std::string(cudaGetErrorString(result))); \
+            return 0;                                                                                       \
+        }                                                                                                   \
     } while(0)
 
 using namespace Falcor;
@@ -136,7 +136,7 @@ namespace FalcorCUDA
 
         if (firstGPUID < 0)
         {
-            logError("No CUDA 10 compatible GPU found");
+            reportError("No CUDA 10 compatible GPU found");
             return false;
         }
         gNodeMask = prop.luidDeviceNodeMask;
@@ -152,7 +152,7 @@ namespace FalcorCUDA
         HANDLE sharedHandle = pTex->getSharedApiHandle();
         if (sharedHandle == NULL)
         {
-            logError("FalcorCUDA::importTextureToMipmappedArray - texture shared handle creation failed");
+            reportError("FalcorCUDA::importTextureToMipmappedArray - texture shared handle creation failed");
             return false;
         }
 
@@ -192,7 +192,7 @@ namespace FalcorCUDA
         cudaMipmappedArray_t mipmap;
         if (!importTextureToMipmappedArray(pTex, mipmap, cudaUsageFlags))
         {
-            logError("Failed to import texture into a mipmapped array");
+            reportError("Failed to import texture into a mipmapped array");
             return 0;
         }
 

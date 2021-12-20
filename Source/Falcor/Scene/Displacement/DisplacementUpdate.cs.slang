@@ -59,7 +59,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     const uint materialID = gScene.meshes[task.meshID].materialID;
 
     DisplacementData displacementData;
-    loadDisplacementData(gScene.materials[materialID], gScene.materialResources[materialID], displacementData);
+    gScene.materials.loadDisplacementData(materialID, displacementData);
 
     const float globalExpansion = displacementData.getConservativeGlobalExpansion();
     const uint iterationCount = (task.count + DisplacementUpdateTask::kThreadCount - 1) / DisplacementUpdateTask::kThreadCount;

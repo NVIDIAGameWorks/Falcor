@@ -20,12 +20,12 @@ def render_graph_MegakernelPathTracerGBuffer():
     g.addEdge("GBufferRT.tangentW", "MegakernelPathTracer.tangentW")
     g.addEdge("GBufferRT.faceNormalW", "MegakernelPathTracer.faceNormalW")
     g.addEdge("GBufferRT.viewW", "MegakernelPathTracer.viewW")
-    g.addEdge("GBufferRT.diffuseOpacity", "MegakernelPathTracer.mtlDiffOpacity")
-    g.addEdge("GBufferRT.specRough", "MegakernelPathTracer.mtlSpecRough")
-    g.addEdge("GBufferRT.emissive", "MegakernelPathTracer.mtlEmissive")
-    g.addEdge("GBufferRT.matlExtra", "MegakernelPathTracer.mtlParams")
+    g.addEdge("GBufferRT.texC", "MegakernelPathTracer.texC")
+    g.addEdge("GBufferRT.texGrads", "MegakernelPathTracer.texGrads")
+    g.addEdge("GBufferRT.mtlData", "MegakernelPathTracer.mtlData")
     g.addEdge("MegakernelPathTracer.color", "AccumulatePass.input")
     g.markOutput("ToneMapper.dst")
+    g.markOutput("ToneMapper.dst", TextureChannelFlags.Alpha)
     return g
 
 MegakernelPathTracerGBuffer = render_graph_MegakernelPathTracerGBuffer()

@@ -43,7 +43,7 @@ namespace Falcor
         This class uses a double-buffering scheme for GPU profiling to avoid GPU stalls.
         ProfilerEvent is a wrapper class which together with scoping can simplify event profiling.
     */
-    class dlldecl Profiler
+    class FALCOR_API Profiler
     {
     public:
         using SharedPtr = std::shared_ptr<Profiler>;
@@ -256,9 +256,11 @@ namespace Falcor
         Capture::SharedPtr mpCapture;                       ///< Currently active capture.
     };
 
+    FALCOR_ENUM_CLASS_OPERATORS(Profiler::Flags);
+
     /** Helper class for starting and ending profiling events using RAII.
         The constructor and destructor call Profiler::StartEvent() and Profiler::EndEvent().
-        The PROFILE macro wraps creation of local ProfilerEvent objects when profiling is enabled,
+        The FALCOR_PROFILE macro wraps creation of local ProfilerEvent objects when profiling is enabled,
         and does nothing when profiling is disabled, so should be used instead of directly creating ProfilerEvent objects.
     */
     class ProfilerEvent
@@ -280,16 +282,13 @@ namespace Falcor
         const std::string mName;
         Profiler::Flags mFlags;
     };
+}
 
-#if _PROFILING_ENABLED
-#define PROFILE_ALL_FLAGS(_name) Falcor::ProfilerEvent _profileEvent##__LINE__(_name)
-#define PROFILE_SOME_FLAGS(_name, _flags) Falcor::ProfilerEvent _profileEvent##__LINE__(_name, _flags)
-
-#define GET_PROFILE(_1, _2, NAME, ...) NAME
-#define PROFILE(...) GET_PROFILE(__VA_ARGS__, PROFILE_SOME_FLAGS, PROFILE_ALL_FLAGS)(__VA_ARGS__)
+#if FALCOR_ENABLE_PROFILER
+#define FALCOR_PROFILE(_name, ...) Falcor::ProfilerEvent _profileEvent##__LINE__(_name, __VA_ARGS__)
 #else
-#define PROFILE(_name)
+#define FALCOR_PROFILE(_name, ...)
 #endif
 
-    enum_class_operators(Profiler::Flags);
-}
+// DEPRECATED: Use FALCOR_PROFILE instead.
+#define PROFILE(...) FALCOR_PROFILE(__VA_ARGS__)

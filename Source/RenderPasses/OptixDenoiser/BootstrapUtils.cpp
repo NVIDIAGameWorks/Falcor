@@ -25,25 +25,17 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-
-// These are wrappers around Falcor::logError() and friends so they can be used in
-//    CudaUtils.cpp (for logging of CUDA errors on the standard Falcor logs) without
-//    me debugging why the CUDA and Falcor includes/namespaces don't like each other.
-// (Signs point to type conflicts, like Falcor float4 and CUDA float4, being a key issue.)
-
 #include "Falcor.h"
 
-void logFatal(std::string str)
+/** Trampoline for indirectly calling Falcor's reportFatalError() function
+    due to name clashing when including both Falcor and Optix headers.
+*/
+void reportFatalError(std::string str)
 {
-    Falcor::logFatal(str);
+    Falcor::reportFatalError(str);
 }
 
-void logError(std::string str)
-{
-    Falcor::logError(str);
-}
-
-void logOptixWarning(unsigned int level, const char* tag, const char* message, void*)
+void optixLogCallback(unsigned int level, const char* tag, const char* message, void*)
 {
     char buf[2048];
     sprintf(buf, "[OptiX][%2d][%12s]: %s", (int)level, tag, message);

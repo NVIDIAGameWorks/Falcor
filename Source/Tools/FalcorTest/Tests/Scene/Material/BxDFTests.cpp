@@ -49,14 +49,14 @@ namespace Falcor
         struct BxdfConfig
         {
             std::string name;
-            float3 wo;
+            float3 wi;
             float4 params;
 
-            static std::vector<float3> getWo(const std::vector<BxdfConfig>& configs)
+            static std::vector<float3> getWi(const std::vector<BxdfConfig>& configs)
             {
-                std::vector<float3> wo;
-                std::transform(configs.begin(), configs.end(), std::back_inserter(wo), [](auto const& config) { return config.wo; });
-                return wo;
+                std::vector<float3> wi;
+                std::transform(configs.begin(), configs.end(), std::back_inserter(wi), [](auto const& config) { return config.wi; });
+                return wi;
             }
 
             static std::vector<float4> getParams(const std::vector<BxdfConfig>& configs)
@@ -118,9 +118,9 @@ namespace Falcor
             var["threadSampleCount"] = spec.threadSampleCount;
             var["binSampleCount"] = spec.binSampleCount;
 
-            auto testWo = BxdfConfig::getWo(spec.bxdfConfigs);
-            auto pTestWoBuffer = Buffer::createStructured(var["testWo"], testCount, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, testWo.data());
-            var["testWo"] = pTestWoBuffer;
+            auto testWi = BxdfConfig::getWi(spec.bxdfConfigs);
+            auto pTestWiBuffer = Buffer::createStructured(var["testWi"], testCount, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, testWi.data());
+            var["testWi"] = pTestWiBuffer;
 
             auto testParams = BxdfConfig::getParams(spec.bxdfConfigs);
             auto pTestParamsBuffer = Buffer::createStructured(var["testParams"], testCount, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, testParams.data());
@@ -301,7 +301,7 @@ namespace Falcor
             ctx,
             {
                 "DiffuseReflectionDisney",
-                "bxdf.albedo = float3(1.f); bxdf.linearRoughness = 0.5f;",
+                "bxdf.albedo = float3(1.f); bxdf.roughness = 0.5f;",
                 {
                     { "perp",    perp,      { 0.f, 0.f, 0.f, 0.f } },
                     { "oblique", oblique,   { 0.f, 0.f, 0.f, 0.f } },
@@ -313,7 +313,7 @@ namespace Falcor
             ctx,
             {
                 "DiffuseReflectionFrostbite",
-                "bxdf.albedo = float3(1.f); bxdf.linearRoughness = 0.5f;",
+                "bxdf.albedo = float3(1.f); bxdf.roughness = 0.5f;",
                 {
                     { "perp",    perp,      { 0.f, 0.f, 0.f, 0.f } },
                     { "oblique", oblique,   { 0.f, 0.f, 0.f, 0.f } },

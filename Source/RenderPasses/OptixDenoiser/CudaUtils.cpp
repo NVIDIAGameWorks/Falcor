@@ -27,16 +27,15 @@
  **************************************************************************/
 #include "CudaUtils.h"
 
-#if _ENABLE_CUDA && _ENABLE_OPTIX
+#if FALCOR_ENABLE_CUDA && FALCOR_ENABLE_OPTIX
 
 #include <cuda_runtime.h>
 #include <sstream>
 
 // These live in _BootstrapUtils.cpp since they use Falcor includes / namespace,
 //    which does not appear to play nice with the CUDA includes / namespace.
-extern void logFatal(std::string str);
-extern void logError(std::string str);
-extern void logOptixWarning(unsigned int level, const char* tag, const char* message, void*);
+extern void reportFatalError(std::string str);
+extern void optixLogCallback(unsigned int level, const char* tag, const char* message, void*);
 
 // Apparently: this include may only appear in a single source file:
 #include <optix_function_table_definition.h>
@@ -50,8 +49,7 @@ extern void logOptixWarning(unsigned int level, const char* tag, const char* mes
         cudaError_t err =  rc; /*cudaGetLastError();*/                  \
         txt << "CUDA Error " << cudaGetErrorName(err)                   \
             << " (" << cudaGetErrorString(err) << ")";                  \
-        logFatal(txt.str());                                            \
-        throw std::runtime_error(txt.str());                            \
+        reportFatalError(txt.str());                                    \
       }                                                                 \
     }
 
@@ -67,8 +65,7 @@ extern void logOptixWarning(unsigned int level, const char* tag, const char* mes
       {                                                                 \
         char buf[1024]; \
         sprintf( buf, "Optix call (%s) failed with code %d (line %d)\n", #call, res, __LINE__ ); \
-        logError(std::string(buf)); \
-        exit( 2 );                                                      \
+        reportFatalError(std::string(buf));                             \
       }                                                                 \
   }
 
@@ -80,8 +77,7 @@ extern void logOptixWarning(unsigned int level, const char* tag, const char* mes
       {                                                                 \
         char buf[1024]; \
         sprintf( buf, "error (%s: line %d): %s\n", __FILE__, __LINE__, cudaGetErrorString( error ) ); \
-        logError(std::string(buf)); \
-        exit( 2 );                                                      \
+        reportFatalError(std::string(buf));                             \
       }                                                                 \
   }
 
@@ -133,7 +129,7 @@ bool initOptix(OptixDeviceContext& optixContext)
 
     // Tell Optix how to write to our Falcor log.
     OPTIX_CHECK(optixDeviceContextSetLogCallback(optixContext,
-        logOptixWarning, nullptr, 4));
+        optixLogCallback, nullptr, 4));
 
     return true;
 }
@@ -219,4 +215,4 @@ bool freeSharedDevicePtr(void* ptr)
     return cudaSuccess == cudaFree(ptr);
 }
 
-#endif // _ENABLE_CUDA && _ENABLE_OPTIX
+#endif // FALCOR_ENABLE_CUDA && FALCOR_ENABLE_OPTIX

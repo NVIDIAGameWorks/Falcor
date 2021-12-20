@@ -35,7 +35,7 @@ namespace Falcor
     /** This class can be used to synchronize GPU and CPU execution
         It's value monotonically increasing - every time a signal is sent, it will change the value first
     */
-    class dlldecl GpuFence : public std::enable_shared_from_this<GpuFence>
+    class FALCOR_API GpuFence
     {
     public:
         using SharedPtr = std::shared_ptr<GpuFence>;

@@ -32,7 +32,8 @@
 
 namespace Falcor
 {
-    namespace {
+    namespace
+    {
         const char kReflectPixelDebugTypesFile[] = "Utils/Debug/ReflectPixelDebugTypes.cs.slang";
     }
 
@@ -46,7 +47,7 @@ namespace Falcor
         mFrameDim = frameDim;
         if (mRunning)
         {
-            logError("PixelDebug::beginFrame() - Logging is already running, did you forget to call endFrame()? Ignoring call.");
+            reportError("PixelDebug::beginFrame() - Logging is already running, did you forget to call endFrame()? Ignoring call.");
             return;
         }
         mRunning = true;
@@ -67,10 +68,10 @@ namespace Falcor
 
                 // Allocate GPU buffers.
                 mpPixelLog = Buffer::createStructured(mpReflectProgram.get(), "gPixelLog", mLogSize);
-                if (mpPixelLog->getStructSize() != sizeof(PixelLogValue)) throw std::runtime_error("Struct PixelLogValue size mismatch between CPU/GPU");
+                if (mpPixelLog->getStructSize() != sizeof(PixelLogValue)) RuntimeError("Struct PixelLogValue size mismatch between CPU/GPU");
 
                 mpAssertLog = Buffer::createStructured(mpReflectProgram.get(), "gAssertLog", mLogSize);
-                if (mpAssertLog->getStructSize() != sizeof(AssertLogValue)) throw std::runtime_error("Struct AssertLogValue size mismatch between CPU/GPU");
+                if (mpAssertLog->getStructSize() != sizeof(AssertLogValue)) RuntimeError("Struct AssertLogValue size mismatch between CPU/GPU");
 
                 // Allocate staging buffers for readback. These are shared, the data is stored consecutively.
                 mpCounterBuffer = Buffer::create(2 * sizeof(uint32_t), ResourceBindFlags::None, Buffer::CpuAccess::Read);
@@ -86,7 +87,7 @@ namespace Falcor
     {
         if (!mRunning)
         {
-            logError("PixelDebug::endFrame() - Logging is not running, did you forget to call beginFrame()? Ignoring call.");
+            reportError("PixelDebug::endFrame() - Logging is not running, did you forget to call beginFrame()? Ignoring call.");
             return;
         }
         mRunning = false;
@@ -114,8 +115,6 @@ namespace Falcor
     {
         assert(mRunning);
 
-        mHashToString.clear();
-
         if (mEnabled)
         {
             pProgram->addDefine("_PIXEL_DEBUG_ENABLED");
@@ -141,7 +140,7 @@ namespace Falcor
     {
         if (mRunning)
         {
-            logError("PixelDebug::renderUI() - Logging is running, call end() before renderUI(). Ignoring call.");
+            reportError("PixelDebug::renderUI() - Logging is running, call end() before renderUI(). Ignoring call.");
             return;
         }
 

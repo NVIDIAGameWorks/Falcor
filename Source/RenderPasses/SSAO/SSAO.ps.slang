@@ -50,8 +50,8 @@ float4 getPosition(float2 uv)
     float4 pos;
     pos.x = uv.x * 2.0f - 1.0f;
     pos.y = (1.0f - uv.y) * 2.0f - 1.0f;
-#ifdef FALCOR_VK
-    // NDC space is inverted
+#ifdef FALCOR_FLIP_Y
+    // NDC Y is top-to-bottom
     pos.y = -pos.y;
 #endif
     pos.z = gDepthTex.SampleLevel(gTextureSampler, uv, 0).r;
@@ -95,8 +95,8 @@ float4 main(float2 texC : TEXCOORD) : SV_TARGET0
         samplePosProj /= samplePosProj.w;
 
         // Sample depth buffer at the same place as sample
-#ifdef FALCOR_VK
-        // NDC space is inverted
+#ifdef FALCOR_FLIP_Y
+        // NDC Y is top-to-bottom
         samplePosProj.y = -samplePosProj.y;
 #endif
         float2 sampleUV = saturate(float2(samplePosProj.x, -samplePosProj.y) * 0.5f + 0.5f);

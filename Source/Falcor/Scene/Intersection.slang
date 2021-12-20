@@ -27,6 +27,7 @@
  **************************************************************************/
 import Scene.Scene;
 import Scene.Displacement.DisplacementMapping;
+import Scene.SDFs.SDFGrid;
 import Utils.Geometry.IntersectionHelpers;
 import Utils.Geometry.GeometryHelpers;
 __exported import Utils.Math.Ray;
@@ -59,7 +60,7 @@ struct DisplacedTriangleMeshIntersector
         const float4x4 worldMat = gScene.getWorldMatrix(instanceID);
 
         DisplacementData displacementData;
-        loadDisplacementData(gScene.materials[materialID], gScene.materialResources[materialID], displacementData);
+        gScene.materials.loadDisplacementData(materialID, displacementData);
 
         DisplacementIntersection result;
         if (intersectDisplacedTriangle(ray, vertices, worldMat, displacementData, result))
@@ -104,8 +105,9 @@ struct CurveIntersector
         const StaticCurveVertexData v0 = gScene.getCurveVertex(v0Index);
         const StaticCurveVertexData v1 = gScene.getCurveVertex(v0Index + 1);
 
-        const float4 sphereA = float4(v0.position, v0.radius);
-        const float4 sphereB = float4(v1.position, v1.radius);
+        const float4x4 worldMat = gScene.getWorldMatrix(instanceID);
+        const float4 sphereA = transformSphere(float4(v0.position, v0.radius), worldMat);
+        const float4 sphereB = transformSphere(float4(v1.position, v1.radius), worldMat);
 
         const float rayLength = length(ray.dir);
         const float invRayLength = 1.f / rayLength;
@@ -138,3 +140,63 @@ struct CurveIntersector
         return false;
     }
 };
+
+/** Helper for intersecting rays against SDF grids.
+*/
+struct SDFGridIntersector
+{
+    /** Intersects a ray with an SDF grid.
+        \param[in] ray Ray in world-space.
+        \param[in] instanceID Geometry instance ID.
+        \param[in] primitiveID The primitive ID of the AABB that was hit.
+        \param[out] hitData SDFGridHitData that contains hit point information.
+        \param[out] t Intersection t.
+        \return True if the ray intersects the SDF grid.
+    */
+    static bool intersect(const Ray ray, const GeometryInstanceID instanceID, const uint primitiveID, out SDFGridHitData hitData, out float t)
+    {
+        const GeometryInstanceData instance = gScene.getGeometryInstance(instanceID);
+        SDFGrid sdfGrid;
+        gScene.getSDFGrid(instanceID, sdfGrid);
+
+        // Load Matrices.
+        float4x4 worldMat = gScene.loadWorldMatrix(instance.globalMatrixID);
+        float3x3 worldInvTransposeMat = gScene.loadInverseTransposeWorldMatrix(instance.globalMatrixID);
+
+        // Convert ray origin and direction to local space.
+        float3 rayOrigLocal = mul(worldInvTransposeMat, ray.origin - worldMat[3].xyz);
+        float3 rayDirLocal = mul(worldInvTransposeMat, ray.dir);
+
+
+        return sdfGrid.intersectSDF(rayOrigLocal, rayDirLocal, ray.tMin, ray.tMax, primitiveID, t, hitData);
+    }
+
+    /** Intersects a ray with an SDF grid, does not return information about the intersection.
+        \param[in] ray Ray in world-space.
+        \param[in] instanceID Geometry instance ID.
+        \param[in] primitiveID The primitive ID of the AABB that was hit.
+        \return True if the ray intersects the SDF grid.
+    */
+    static bool intersectAny(const Ray ray, const GeometryInstanceID instanceID, const uint primitiveID)
+    {
+        const GeometryInstanceData instance = gScene.getGeometryInstance(instanceID);
+        SDFGrid sdfGrid;
+        gScene.getSDFGrid(instanceID, sdfGrid);
+
+        // Load Matrices.
+        float4x4 worldMat = gScene.loadWorldMatrix(instance.globalMatrixID);
+        float3x3 worldInvTransposeMat = gScene.loadInverseTransposeWorldMatrix(instance.globalMatrixID);
+
+        // Convert ray origin and direction to local space.
+        float3 rayOrigLocal = mul(worldInvTransposeMat, ray.origin - worldMat[3].xyz);
+        float3 rayDirLocal = mul(worldInvTransposeMat, ray.dir);
+
+#if SCENE_SDF_OPTIMIZE_VISIBILITY_RAYS
+        return sdfGrid.intersectSDFAny(rayOrigLocal, rayDirLocal, ray.tMin, ray.tMax, primitiveID);
+#else
+        float dummyT;
+        SDFGridHitData dummyHitData;
+        return sdfGrid.intersectSDF(rayOrigLocal, rayDirLocal, ray.tMin, ray.tMax, primitiveID, dummyT, dummyHitData);
+#endif
+    }
+}

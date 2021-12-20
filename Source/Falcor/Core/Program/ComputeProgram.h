@@ -35,7 +35,7 @@ namespace Falcor
 
     /** Compute program. See GraphicsProgram to manage graphics programs.
     */
-    class dlldecl ComputeProgram : public Program
+    class FALCOR_API ComputeProgram : public Program
     {
     public:
         using SharedPtr = std::shared_ptr<ComputeProgram>;

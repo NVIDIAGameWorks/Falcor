@@ -22,18 +22,6 @@
     <ClInclude Include="Core\API\D3D12\D3D12ApiData.h">
       <Filter>Core\API\D3D12</Filter>
     </ClInclude>
-    <ClInclude Include="Core\API\Vulkan\VKDescriptorData.h">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Core\API\Vulkan\VKSmartHandle.h">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Core\API\Vulkan\VKState.h">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Core\API\Vulkan\FalcorVK.h">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClInclude>
     <ClInclude Include="Core\API\ComputeStateObject.h">
       <Filter>Core\API</Filter>
     </ClInclude>
@@ -41,12 +29,6 @@
       <Filter>Core\API</Filter>
     </ClInclude>
     <ClInclude Include="Core\API\DepthStencilState.h">
-      <Filter>Core\API</Filter>
-    </ClInclude>
-    <ClInclude Include="Core\API\DescriptorPool.h">
-      <Filter>Core\API</Filter>
-    </ClInclude>
-    <ClInclude Include="Core\API\DescriptorSet.h">
       <Filter>Core\API</Filter>
     </ClInclude>
     <ClInclude Include="Core\API\Device.h">
@@ -86,9 +68,6 @@
       <Filter>Core\API</Filter>
     </ClInclude>
     <ClInclude Include="Core\API\ResourceViews.h">
-      <Filter>Core\API</Filter>
-    </ClInclude>
-    <ClInclude Include="Core\API\RootSignature.h">
       <Filter>Core\API</Filter>
     </ClInclude>
     <ClInclude Include="Core\API\Sampler.h">
@@ -160,9 +139,6 @@
     <ClInclude Include="Scene\Lights\Light.h">
       <Filter>Scene\Lights</Filter>
     </ClInclude>
-    <ClInclude Include="Scene\Material\Material.h">
-      <Filter>Scene\Material</Filter>
-    </ClInclude>
     <ClInclude Include="Testing\UnitTest.h">
       <Filter>Testing</Filter>
     </ClInclude>
@@ -182,7 +158,6 @@
       <Filter>Utils\Video</Filter>
     </ClInclude>
     <ClInclude Include="Falcor.h" />
-    <ClInclude Include="FalcorExperimental.h" />
     <ClInclude Include="Utils\Timing\CpuTimer.h">
       <Filter>Utils\Timing</Filter>
     </ClInclude>
@@ -234,9 +209,6 @@
     </ClInclude>
     <ClInclude Include="Core\Framework.h">
       <Filter>Core</Filter>
-    </ClInclude>
-    <ClInclude Include="Utils\UI\DebugDrawer.h">
-      <Filter>Utils\UI</Filter>
     </ClInclude>
     <ClInclude Include="Core\Platform\MonitorInfo.h">
       <Filter>Core\Platform</Filter>
@@ -361,14 +333,8 @@
     <ClInclude Include="Scene\Scene.h">
       <Filter>Scene</Filter>
     </ClInclude>
-    <ClInclude Include="Scene\ParticleSystem\ParticleSystem.h">
-      <Filter>Scene\ParticleSystem</Filter>
-    </ClInclude>
     <ClInclude Include="Core\Program\ShaderVar.h">
       <Filter>Core\Program</Filter>
-    </ClInclude>
-    <ClInclude Include="Core\BufferTypes\ParameterBlock.h">
-      <Filter>Core\BufferTypes</Filter>
     </ClInclude>
     <ClInclude Include="Scene\Animation\AnimationController.h">
       <Filter>Scene\Animation</Filter>
@@ -381,21 +347,6 @@
     </ClInclude>
     <ClInclude Include="RenderPasses\ResolvePass.h">
       <Filter>RenderPasses</Filter>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtProgram\RtProgram.h">
-      <Filter>Raytracing\RtProgram</Filter>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtProgramVars.h">
-      <Filter>Raytracing</Filter>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtProgramVarsHelper.h">
-      <Filter>Raytracing</Filter>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtStateObject.h">
-      <Filter>Raytracing</Filter>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtStateObjectHelper.h">
-      <Filter>Raytracing</Filter>
     </ClInclude>
     <ClInclude Include="RenderGraph\RenderPassHelpers.h">
       <Filter>RenderGraph</Filter>
@@ -433,32 +384,11 @@
     <ClInclude Include="Utils\AlignedAllocator.h">
       <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="Experimental\Scene\Lights\EmissiveUniformSampler.h">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ClInclude>
-    <ClInclude Include="Experimental\Scene\Lights\EmissiveLightSampler.h">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ClInclude>
-    <ClInclude Include="Experimental\Scene\Lights\LightBVHSampler.h">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ClInclude>
-    <ClInclude Include="Experimental\Scene\Lights\LightBVH.h">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ClInclude>
-    <ClInclude Include="Experimental\Scene\Lights\LightBVHBuilder.h">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ClInclude>
-    <ClInclude Include="Raytracing\ShaderTable.h">
-      <Filter>Raytracing</Filter>
-    </ClInclude>
     <ClInclude Include="Scene\Importers\PythonImporter.h">
       <Filter>Scene\Importers</Filter>
     </ClInclude>
     <ClInclude Include="Utils\TermColor.h">
       <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="RenderPasses\Shared\PathTracer\PixelStats.h">
-      <Filter>RenderPasses\Shared\PathTracer</Filter>
     </ClInclude>
     <ClInclude Include="RenderPasses\Shared\PathTracer\PathTracer.h">
       <Filter>RenderPasses\Shared\PathTracer</Filter>
@@ -469,9 +399,6 @@
     <ClInclude Include="Utils\Math\PackedFormats.h">
       <Filter>Utils\Math</Filter>
     </ClInclude>
-    <ClInclude Include="Experimental\Scene\Lights\EnvMapSampler.h">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ClInclude>
     <ClInclude Include="Utils\Timing\TimeReport.h">
       <Filter>Utils\Timing</Filter>
     </ClInclude>
@@ -480,9 +407,6 @@
     </ClInclude>
     <ClInclude Include="Scene\Importer.h">
       <Filter>Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="Utils\AsyncTextureLoader.h">
-      <Filter>Utils</Filter>
     </ClInclude>
     <ClInclude Include="Scene\Curves\CurveTessellation.h">
       <Filter>Scene\Curves</Filter>
@@ -502,7 +426,7 @@
     <ClInclude Include="Scene\TriangleMesh.h">
       <Filter>Scene</Filter>
     </ClInclude>
-    <ClInclude Include="Scene\Volume\Volume.h">
+    <ClInclude Include="Scene\Volume\GridVolume.h">
       <Filter>Scene\Volume</Filter>
     </ClInclude>
     <ClInclude Include="Scene\Volume\Grid.h">
@@ -510,15 +434,6 @@
     </ClInclude>
     <ClInclude Include="Core\Program\CUDAProgram.h">
       <Filter>Core\Program</Filter>
-    </ClInclude>
-    <ClInclude Include="Experimental\Scene\Lights\EnvMapLighting.h">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ClInclude>
-    <ClInclude Include="Experimental\Scene\Volume\VolumeSampler.h">
-      <Filter>Experimental\Scene\Volume</Filter>
-    </ClInclude>
-    <ClInclude Include="Experimental\Scene\Lights\EmissivePowerSampler.h">
-      <Filter>Experimental\Scene\Lights</Filter>
     </ClInclude>
     <ClInclude Include="Utils\Sampling\AliasTable.h">
       <Filter>Utils\Sampling</Filter>
@@ -547,14 +462,167 @@
     <ClInclude Include="Utils\Image\ImageIO.h">
       <Filter>Utils\Image</Filter>
     </ClInclude>
-    <ClInclude Include="Raytracing\RtBindingTable.h">
-      <Filter>Raytracing</Filter>
-    </ClInclude>
     <ClInclude Include="Utils\Timing\ProfilerUI.h">
       <Filter>Utils\Timing</Filter>
     </ClInclude>
     <ClInclude Include="Scene\Animation\AnimatedVertexCache.h">
       <Filter>Scene\Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Lights\EmissiveLightSampler.h">
+      <Filter>Rendering\Lights</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Lights\EmissivePowerSampler.h">
+      <Filter>Rendering\Lights</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Lights\EmissiveUniformSampler.h">
+      <Filter>Rendering\Lights</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Lights\EnvMapLighting.h">
+      <Filter>Rendering\Lights</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Lights\EnvMapSampler.h">
+      <Filter>Rendering\Lights</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Lights\LightBVH.h">
+      <Filter>Rendering\Lights</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Lights\LightBVHBuilder.h">
+      <Filter>Rendering\Lights</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Lights\LightBVHSampler.h">
+      <Filter>Rendering\Lights</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Volumes\GridVolumeSampler.h">
+      <Filter>Rendering\Volumes</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Utils\PixelStats.h">
+      <Filter>Rendering\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Math\Float16.h">
+      <Filter>Utils\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Material\HairMaterial.h">
+      <Filter>Scene\Material</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Material\ClothMaterial.h">
+      <Filter>Scene\Material</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Material\StandardMaterial.h">
+      <Filter>Scene\Material</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Material\BasicMaterial.h">
+      <Filter>Scene\Material</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Material\Material.h">
+      <Filter>Scene\Material</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\SDFs\SDFGrid.h">
+      <Filter>Scene\SDFs</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\SDFs\NormalizedDenseSDFGrid\NDSDFGrid.h">
+      <Filter>Scene\SDFs\NormalizedDenseSDFGrid</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\SDFs\SparseVoxelSet\SDFSVS.h">
+      <Filter>Scene\SDFs\SparseVoxelSet</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Image\TextureManager.h">
+      <Filter>Utils\Image</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\SDFs\SparseBrickSet\SDFSBS.h">
+      <Filter>Scene\SDFs\SparseBrickSet</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\SDFs\SparseVoxelOctree\SDFSVO.h">
+      <Filter>Scene\SDFs\SparseVoxelOctree</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Material\MaterialSystem.h">
+      <Filter>Scene\Material</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Program\RtProgram.h">
+      <Filter>Core\Program</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Program\RtBindingTable.h">
+      <Filter>Core\Program</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\API\RtStateObject.h">
+      <Filter>Core\API</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\API\ShaderTable.h">
+      <Filter>Core\API</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\API\Raytracing.h">
+      <Filter>Core\API</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\API\RtAccelerationStructure.h">
+      <Filter>Core\API</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\API\RtAccelerationStructurePostBuildInfoPool.h">
+      <Filter>Core\API</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\API\D3D12\D3D12RtAccelerationStructure.h">
+      <Filter>Core\API\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Image\AsyncTextureLoader.h">
+      <Filter>Utils\Image</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\API\D3D12\D3D12RootSignature.h">
+      <Filter>Core\API\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\API\D3D12\D3D12DescriptorPool.h">
+      <Filter>Core\API\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\API\D3D12\D3D12DescriptorSet.h">
+      <Filter>Core\API\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\API\ShaderResourceType.h">
+      <Filter>Core\API</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\API\ParameterBlock.h">
+      <Filter>Core\API</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\API\GFX\FalcorGFX.h">
+      <Filter>Core\API\GFX</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\API\IndirectCommands.h">
+      <Filter>Core\API</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\API\GFX\GFXLowLevelContextApiData.h">
+      <Filter>Core\API\GFX</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\API\GFX\GFXDeviceApiData.h">
+      <Filter>Core\API\GFX</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\API\GFX\GFXFormats.h">
+      <Filter>Core\API\GFX</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\ErrorHandling.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Importers\USDImporter\ImporterContext.h">
+      <Filter>Scene\Importers\USDImporter</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Importers\USDImporter\PreviewSurfaceConverter.h">
+      <Filter>Scene\Importers\USDImporter</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Importers\USDImporter\USDImporter.h">
+      <Filter>Scene\Importers\USDImporter</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Importers\USDImporter\Utils.h">
+      <Filter>Scene\Importers\USDImporter</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Image\ImageProcessing.h">
+      <Filter>Utils\Image</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Errors.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\API\GFX\GFXResource.h">
+      <Filter>Core\API\GFX</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\API\BlitContext.h">
+      <Filter>Core\API</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\API\GFX\GFXRtAccelerationStructure.h">
+      <Filter>Core\API\GFX</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -566,9 +634,6 @@
     </Filter>
     <Filter Include="Core\API\D3D12">
       <UniqueIdentifier>{c95f5d9c-1636-49d4-998f-495bade41a7e}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Core\API\Vulkan">
-      <UniqueIdentifier>{9bc470ff-b97f-48f8-9841-6aed7b07e822}</UniqueIdentifier>
     </Filter>
     <Filter Include="Core\Program">
       <UniqueIdentifier>{6a7f5301-b62c-42de-a2af-6acc0448d998}</UniqueIdentifier>
@@ -651,20 +716,11 @@
     <Filter Include="Utils\Color">
       <UniqueIdentifier>{13ab0eff-5708-4b2c-9ec3-d6d1df839719}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Scene\ParticleSystem">
-      <UniqueIdentifier>{a5e366f9-af02-4a41-a630-621da069c661}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Scene\Animation">
       <UniqueIdentifier>{6d9bd53c-0171-4f34-80ed-77d948789c2b}</UniqueIdentifier>
     </Filter>
     <Filter Include="Scene\Importers">
       <UniqueIdentifier>{2639b21f-a7da-42dc-80eb-6445f1429668}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Raytracing">
-      <UniqueIdentifier>{017d4e86-3442-47ea-972e-14c11ab4fa54}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Raytracing\RtProgram">
-      <UniqueIdentifier>{d0bf1d70-9550-409c-b072-70bd43e64d67}</UniqueIdentifier>
     </Filter>
     <Filter Include="Utils\Debug">
       <UniqueIdentifier>{001bb8ce-735b-44d4-b170-0140b510dd0e}</UniqueIdentifier>
@@ -674,18 +730,6 @@
     </Filter>
     <Filter Include="Utils\Sampling\Pseudorandom">
       <UniqueIdentifier>{bf53cf51-a063-4004-b562-ad4d1c68879a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Experimental">
-      <UniqueIdentifier>{0ee0f6df-2831-4da1-bdb5-d910ae1a6126}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Experimental\Scene">
-      <UniqueIdentifier>{1936fdab-bbc5-4d52-bd4f-fe6346e8ee4c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Experimental\Scene\Lights">
-      <UniqueIdentifier>{e73a5a47-f7ca-4606-a4f9-8395d8758080}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Experimental\Scene\Material">
-      <UniqueIdentifier>{f68ff384-c7a3-48db-bea4-7ed52734fdad}</UniqueIdentifier>
     </Filter>
     <Filter Include="RenderPasses">
       <UniqueIdentifier>{a994ccdb-f91e-402b-8891-fef3b9c40b4d}</UniqueIdentifier>
@@ -702,9 +746,6 @@
     <Filter Include="Scene\Volume">
       <UniqueIdentifier>{dab1a8c2-24d6-4768-9cf8-eccf8df38c81}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Experimental\Scene\Volume">
-      <UniqueIdentifier>{b71b1c11-7080-4491-9571-9daad77e3a75}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Utils\Sampling\LowDiscrepancy">
       <UniqueIdentifier>{5320375b-01ad-4192-943f-33cbf89c24f4}</UniqueIdentifier>
     </Filter>
@@ -716,6 +757,42 @@
     </Filter>
     <Filter Include="Utils\SDF">
       <UniqueIdentifier>{8252692b-95b4-4793-8709-3fb8f9a590a9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering">
+      <UniqueIdentifier>{8707086e-dccc-44cb-a8c0-f2ba29ea9022}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering\Materials">
+      <UniqueIdentifier>{a416d6c7-d3e4-4279-a954-0d48c603e9d6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering\Utils">
+      <UniqueIdentifier>{ae3e7a00-9707-4c92-b5a8-e9558fb85459}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering\Lights">
+      <UniqueIdentifier>{ea4ac2e4-adfa-47a5-b3b4-8fa122869c1d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering\Volumes">
+      <UniqueIdentifier>{679c016a-0763-441a-b7d9-13d2b62ee1bc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Scene\SDFs">
+      <UniqueIdentifier>{76faf58f-c5a1-4579-8b88-3efa90cfa7d5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Scene\SDFs\NormalizedDenseSDFGrid">
+      <UniqueIdentifier>{7629f006-8cca-41e5-8573-eabcc34d0eef}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Scene\SDFs\SparseVoxelSet">
+      <UniqueIdentifier>{7be4f004-a2dc-4afe-85e9-9eacd18bc38c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Scene\SDFs\SparseBrickSet">
+      <UniqueIdentifier>{3f530d94-acf7-4b2b-b810-88e14eb25eaa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Scene\SDFs\SparseVoxelOctree">
+      <UniqueIdentifier>{426557d6-ad34-4cd1-9245-0070500bf80b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Core\API\GFX">
+      <UniqueIdentifier>{c1afcf96-9d14-4df9-b6cd-32cfb24fdd09}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Scene\Importers\USDImporter">
+      <UniqueIdentifier>{f41563d4-7825-4ef3-9b79-dc134faad71e}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -788,91 +865,10 @@
     <ClCompile Include="Core\API\D3D12\D3D12CopyContext.cpp">
       <Filter>Core\API\D3D12</Filter>
     </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKCopyContext.cpp">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKDescriptorPool.cpp">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKDescriptorSet.cpp">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKDevice.cpp">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKFbo.cpp">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKFormats.cpp">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKGpuFence.cpp">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKGpuTimer.cpp">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKGraphicsStateObject.cpp">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKLowLevelContextData.cpp">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VkQueryHeap.cpp">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKRasterizerState.cpp">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKRenderContext.cpp">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VkResource.cpp">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKResourceViews.cpp">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKRootSignature.cpp">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKSampler.cpp">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKShader.cpp">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VkSmartHandle.cpp">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKState.cpp">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKTexture.cpp">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKVao.cpp">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKBuffer.cpp">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKComputeContext.cpp">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VKComputeStateObject.cpp">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClCompile>
     <ClCompile Include="Core\API\CopyContext.cpp">
       <Filter>Core\API</Filter>
     </ClCompile>
     <ClCompile Include="Core\API\DepthStencilState.cpp">
-      <Filter>Core\API</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\DescriptorPool.cpp">
-      <Filter>Core\API</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\DescriptorSet.cpp">
       <Filter>Core\API</Filter>
     </ClCompile>
     <ClCompile Include="Core\API\Device.cpp">
@@ -897,9 +893,6 @@
       <Filter>Core\API</Filter>
     </ClCompile>
     <ClCompile Include="Core\API\ResourceViews.cpp">
-      <Filter>Core\API</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\RootSignature.cpp">
       <Filter>Core\API</Filter>
     </ClCompile>
     <ClCompile Include="Core\API\Sampler.cpp">
@@ -927,9 +920,6 @@
       <Filter>Core\Program</Filter>
     </ClCompile>
     <ClCompile Include="Core\Program\ProgramReflection.cpp">
-      <Filter>Core\Program</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\Program\ProgramVars.cpp">
       <Filter>Core\Program</Filter>
     </ClCompile>
     <ClCompile Include="Core\Program\ProgramVersion.cpp">
@@ -964,9 +954,6 @@
     </ClCompile>
     <ClCompile Include="Scene\Lights\Light.cpp">
       <Filter>Scene\Lights</Filter>
-    </ClCompile>
-    <ClCompile Include="Scene\Material\Material.cpp">
-      <Filter>Scene\Material</Filter>
     </ClCompile>
     <ClCompile Include="Testing\UnitTest.cpp">
       <Filter>Testing</Filter>
@@ -1035,9 +1022,6 @@
       <Filter>Utils\Perception</Filter>
     </ClCompile>
     <ClCompile Include="stdafx.cpp" />
-    <ClCompile Include="Utils\UI\DebugDrawer.cpp">
-      <Filter>Utils\UI</Filter>
-    </ClCompile>
     <ClCompile Include="Core\Platform\MonitorInfo.cpp">
       <Filter>Core\Platform</Filter>
     </ClCompile>
@@ -1134,9 +1118,6 @@
     <ClCompile Include="Core\API\GpuMemoryHeap.cpp">
       <Filter>Core\API</Filter>
     </ClCompile>
-    <ClCompile Include="Core\API\Vulkan\VkGpuMemoryHeap.cpp">
-      <Filter>Core\API\Vulkan</Filter>
-    </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12GpuMemoryHeap.cpp">
       <Filter>Core\API\D3D12</Filter>
     </ClCompile>
@@ -1149,14 +1130,8 @@
     <ClCompile Include="Scene\Scene.cpp">
       <Filter>Scene</Filter>
     </ClCompile>
-    <ClCompile Include="Scene\ParticleSystem\ParticleSystem.cpp">
-      <Filter>Scene\ParticleSystem</Filter>
-    </ClCompile>
     <ClCompile Include="Core\Program\ShaderVar.cpp">
       <Filter>Core\Program</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\BufferTypes\ParameterBlock.cpp">
-      <Filter>Core\BufferTypes</Filter>
     </ClCompile>
     <ClCompile Include="Scene\Animation\AnimationController.cpp">
       <Filter>Scene\Animation</Filter>
@@ -1166,18 +1141,6 @@
     </ClCompile>
     <ClCompile Include="Scene\Importers\AssimpImporter.cpp">
       <Filter>Scene\Importers</Filter>
-    </ClCompile>
-    <ClCompile Include="Raytracing\RtProgram\RtProgram.cpp">
-      <Filter>Raytracing\RtProgram</Filter>
-    </ClCompile>
-    <ClCompile Include="Raytracing\RtProgramVars.cpp">
-      <Filter>Raytracing</Filter>
-    </ClCompile>
-    <ClCompile Include="Raytracing\RtProgramVarsHelper.cpp">
-      <Filter>Raytracing</Filter>
-    </ClCompile>
-    <ClCompile Include="Raytracing\RtStateObject.cpp">
-      <Filter>Raytracing</Filter>
     </ClCompile>
     <ClCompile Include="Utils\Debug\PixelDebug.cpp">
       <Filter>Utils\Debug</Filter>
@@ -1194,24 +1157,6 @@
     <ClCompile Include="Utils\Sampling\SampleGenerator.cpp">
       <Filter>Utils\Sampling</Filter>
     </ClCompile>
-    <ClCompile Include="Experimental\Scene\Lights\EmissiveUniformSampler.cpp">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ClCompile>
-    <ClCompile Include="Experimental\Scene\Lights\EmissiveLightSampler.cpp">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ClCompile>
-    <ClCompile Include="Experimental\Scene\Lights\LightBVH.cpp">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ClCompile>
-    <ClCompile Include="Experimental\Scene\Lights\LightBVHBuilder.cpp">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ClCompile>
-    <ClCompile Include="Experimental\Scene\Lights\LightBVHSampler.cpp">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ClCompile>
-    <ClCompile Include="Raytracing\ShaderTable.cpp">
-      <Filter>Raytracing</Filter>
-    </ClCompile>
     <ClCompile Include="RenderPasses\ResolvePass.cpp">
       <Filter>RenderPasses</Filter>
     </ClCompile>
@@ -1221,14 +1166,8 @@
     <ClCompile Include="Utils\TermColor.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
-    <ClCompile Include="RenderPasses\Shared\PathTracer\PixelStats.cpp">
-      <Filter>RenderPasses\Shared\PathTracer</Filter>
-    </ClCompile>
     <ClCompile Include="RenderPasses\Shared\PathTracer\PathTracer.cpp">
       <Filter>RenderPasses\Shared\PathTracer</Filter>
-    </ClCompile>
-    <ClCompile Include="Experimental\Scene\Lights\EnvMapSampler.cpp">
-      <Filter>Experimental\Scene\Lights</Filter>
     </ClCompile>
     <ClCompile Include="Utils\Timing\TimeReport.cpp">
       <Filter>Utils\Timing</Filter>
@@ -1242,9 +1181,6 @@
     <ClCompile Include="Scene\HitInfo.cpp">
       <Filter>Scene</Filter>
     </ClCompile>
-    <ClCompile Include="Utils\AsyncTextureLoader.cpp">
-      <Filter>Utils</Filter>
-    </ClCompile>
     <ClCompile Include="Scene\Curves\CurveTessellation.cpp">
       <Filter>Scene\Curves</Filter>
     </ClCompile>
@@ -1257,7 +1193,7 @@
     <ClCompile Include="Scene\TriangleMesh.cpp">
       <Filter>Scene</Filter>
     </ClCompile>
-    <ClCompile Include="Scene\Volume\Volume.cpp">
+    <ClCompile Include="Scene\Volume\GridVolume.cpp">
       <Filter>Scene\Volume</Filter>
     </ClCompile>
     <ClCompile Include="Scene\Volume\Grid.cpp">
@@ -1268,15 +1204,6 @@
     </ClCompile>
     <ClCompile Include="Utils\Math\AABB.cpp">
       <Filter>Utils\Math</Filter>
-    </ClCompile>
-    <ClCompile Include="Experimental\Scene\Lights\EnvMapLighting.cpp">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ClCompile>
-    <ClCompile Include="Experimental\Scene\Volume\VolumeSampler.cpp">
-      <Filter>Experimental\Scene\Volume</Filter>
-    </ClCompile>
-    <ClCompile Include="Experimental\Scene\Lights\EmissivePowerSampler.cpp">
-      <Filter>Experimental\Scene\Lights</Filter>
     </ClCompile>
     <ClCompile Include="Utils\Sampling\AliasTable.cpp">
       <Filter>Utils\Sampling</Filter>
@@ -1302,17 +1229,233 @@
     <ClCompile Include="Utils\Image\ImageIO.cpp">
       <Filter>Utils\Image</Filter>
     </ClCompile>
-    <ClCompile Include="Raytracing\RtBindingTable.cpp">
-      <Filter>Raytracing</Filter>
-    </ClCompile>
     <ClCompile Include="Utils\Timing\ProfilerUI.cpp">
       <Filter>Utils\Timing</Filter>
     </ClCompile>
-    <ClCompile Include="Experimental\Scene\Material\TexLODTypes.cpp">
-      <Filter>Experimental\Scene\Material</Filter>
-    </ClCompile>
     <ClCompile Include="Scene\Animation\AnimatedVertexCache.cpp">
       <Filter>Scene\Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderGraph\RenderPassHelpers.cpp">
+      <Filter>RenderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Lights\EmissiveLightSampler.cpp">
+      <Filter>Rendering\Lights</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Lights\EmissivePowerSampler.cpp">
+      <Filter>Rendering\Lights</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Lights\EmissiveUniformSampler.cpp">
+      <Filter>Rendering\Lights</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Lights\EnvMapLighting.cpp">
+      <Filter>Rendering\Lights</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Lights\EnvMapSampler.cpp">
+      <Filter>Rendering\Lights</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Lights\LightBVH.cpp">
+      <Filter>Rendering\Lights</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Lights\LightBVHBuilder.cpp">
+      <Filter>Rendering\Lights</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Lights\LightBVHSampler.cpp">
+      <Filter>Rendering\Lights</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Materials\TexLODTypes.cpp">
+      <Filter>Rendering\Materials</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Volumes\GridVolumeSampler.cpp">
+      <Filter>Rendering\Volumes</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Utils\PixelStats.cpp">
+      <Filter>Rendering\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Material\HairMaterial.cpp">
+      <Filter>Scene\Material</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Material\ClothMaterial.cpp">
+      <Filter>Scene\Material</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Material\StandardMaterial.cpp">
+      <Filter>Scene\Material</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Material\BasicMaterial.cpp">
+      <Filter>Scene\Material</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Material\Material.cpp">
+      <Filter>Scene\Material</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\SDFs\SDFGrid.cpp">
+      <Filter>Scene\SDFs</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\SDFs\NormalizedDenseSDFGrid\NDSDFGrid.cpp">
+      <Filter>Scene\SDFs\NormalizedDenseSDFGrid</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\SDFs\SparseVoxelSet\SDFSVS.cpp">
+      <Filter>Scene\SDFs\SparseVoxelSet</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Image\TextureManager.cpp">
+      <Filter>Utils\Image</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\SDFs\SparseBrickSet\SDFSBS.cpp">
+      <Filter>Scene\SDFs\SparseBrickSet</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\SDFs\SparseVoxelOctree\SDFSVO.cpp">
+      <Filter>Scene\SDFs\SparseVoxelOctree</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Material\MaterialSystem.cpp">
+      <Filter>Scene\Material</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Program\RtProgram.cpp">
+      <Filter>Core\Program</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Program\RtBindingTable.cpp">
+      <Filter>Core\Program</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\RtStateObject.cpp">
+      <Filter>Core\API</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\D3D12\D3D12RtStateObject.cpp">
+      <Filter>Core\API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\ShaderTable.cpp">
+      <Filter>Core\API</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\D3D12\D3D12ShaderTable.cpp">
+      <Filter>Core\API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\RtAccelerationStructure.cpp">
+      <Filter>Core\API</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\D3D12\D3D12RtAccelerationStructure.cpp">
+      <Filter>Core\API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\RtAccelerationStructurePostBuildInfoPool.cpp">
+      <Filter>Core\API</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\D3D12\D3D12RtAccelerationStructurePostBuildInfoPool.cpp">
+      <Filter>Core\API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Image\AsyncTextureLoader.cpp">
+      <Filter>Utils\Image</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\D3D12\D3D12ParameterBlock.cpp">
+      <Filter>Core\API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\D3D12\D3D12ProgramVars.cpp">
+      <Filter>Core\API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\D3D12\D3D12IndirectCommands.cpp">
+      <Filter>Core\API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXTexture.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXBuffer.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXComputeContext.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXComputeStateObject.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXCopyContext.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXDevice.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXFbo.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXGpuFence.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXGpuMemoryHeap.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXGpuTimer.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXGraphicsStateObject.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXLowLevelContextData.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXParameterBlock.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXProgramVars.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXQueryHeap.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXRenderContext.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXResourceViews.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXRtAccelerationStructure.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXRtStateObject.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXSampler.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXVao.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Program\ProgramVars.cpp">
+      <Filter>Core\Program</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXShader.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXShaderTable.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXRtAccelerationStructurePostBuildInfoPool.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXFormats.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXResource.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXRasterizerState.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\ErrorHandling.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Importers\USDImporter\ImporterContext.cpp">
+      <Filter>Scene\Importers\USDImporter</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Importers\USDImporter\PreviewSurfaceConverter.cpp">
+      <Filter>Scene\Importers\USDImporter</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Importers\USDImporter\USDImporter.cpp">
+      <Filter>Scene\Importers\USDImporter</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\ParameterBlock.cpp">
+      <Filter>Core\API</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\BlitContext.cpp">
+      <Filter>Core\API</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Image\ImageProcessing.cpp">
+      <Filter>Utils\Image</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Errors.cpp">
+      <Filter>Core</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -1331,18 +1474,6 @@
     <ShaderSource Include="Utils\Color\ColorMap.slang">
       <Filter>Utils\Color</Filter>
     </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Lights\EmissiveLightSampler.slang">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Lights\EmissiveLightSamplerInterface.slang">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Lights\EmissiveLightSamplerHelpers.slang">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Lights\EmissiveUniformSampler.slang">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ShaderSource>
     <ShaderSource Include="Utils\Math\FormatConversion.slang">
       <Filter>Utils\Math</Filter>
     </ShaderSource>
@@ -1354,24 +1485,6 @@
     </ShaderSource>
     <ShaderSource Include="Utils\Sampling\Pseudorandom\LCG.slang">
       <Filter>Utils\Sampling\Pseudorandom</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Lights\LightBVH.slang">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Lights\LightBVHRefit.cs.slang">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Lights\LightBVHSampler.slang">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Lights\LightHelpers.slang">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Material\MaterialHelpers.slang">
-      <Filter>Experimental\Scene\Material</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Material\TexLODHelpers.slang">
-      <Filter>Experimental\Scene\Material</Filter>
     </ShaderSource>
     <ShaderSource Include="Utils\Math\MathHelpers.slang">
       <Filter>Utils\Math</Filter>
@@ -1409,15 +1522,6 @@
     <ShaderSource Include="Utils\Math\SphericalHarmonics.slang">
       <Filter>Utils\Math</Filter>
     </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Material\BxDF.slang">
-      <Filter>Experimental\Scene\Material</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Material\Fresnel.slang">
-      <Filter>Experimental\Scene\Material</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Material\Microfacet.slang">
-      <Filter>Experimental\Scene\Material</Filter>
-    </ShaderSource>
     <ShaderSource Include="Utils\Algorithm\ParallelReduction.ps.slang">
       <Filter>Utils\Algorithm</Filter>
     </ShaderSource>
@@ -1436,35 +1540,11 @@
     <ShaderSource Include="RenderGraph\BasePasses\FullScreenPass.vs.slang">
       <Filter>RenderGraph\BasePasses</Filter>
     </ShaderSource>
-    <ShaderSource Include="Scene\ParticleSystem\ParticleConstColor.ps.slang">
-      <Filter>Scene\ParticleSystem</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Scene\ParticleSystem\ParticleEmit.cs.slang">
-      <Filter>Scene\ParticleSystem</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Scene\ParticleSystem\ParticleInterpColor.ps.slang">
-      <Filter>Scene\ParticleSystem</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Scene\ParticleSystem\ParticleSimulate.cs.slang">
-      <Filter>Scene\ParticleSystem</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Scene\ParticleSystem\ParticleSort.cs.slang">
-      <Filter>Scene\ParticleSystem</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Scene\ParticleSystem\ParticleTexture.ps.slang">
-      <Filter>Scene\ParticleSystem</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Scene\ParticleSystem\ParticleVertex.vs.slang">
-      <Filter>Scene\ParticleSystem</Filter>
-    </ShaderSource>
     <ShaderSource Include="Testing\UnitTest.cs.slang">
       <Filter>Testing</Filter>
     </ShaderSource>
     <ShaderSource Include="Scene\Animation\Skinning.slang">
       <Filter>Scene\Animation</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Core\API\Blit.slang">
-      <Filter>Core\API</Filter>
     </ShaderSource>
     <ShaderSource Include="Scene\Raytracing.slang">
       <Filter>Scene</Filter>
@@ -1477,9 +1557,6 @@
     </ShaderSource>
     <ShaderSource Include="Scene\Camera\CameraData.slang">
       <Filter>Scene\Camera</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Scene\Shading.slang">
-      <Filter>Scene</Filter>
     </ShaderSource>
     <ShaderSource Include="Scene\ShadingData.slang">
       <Filter>Scene</Filter>
@@ -1495,12 +1572,6 @@
     </ShaderSource>
     <ShaderSource Include="Scene\SceneTypes.slang">
       <Filter>Scene</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Scene\Material\MaterialDefines.slangh">
-      <Filter>Scene\Material</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Lights\EmissiveLightSamplerType.slangh">
-      <Filter>Experimental\Scene\Lights</Filter>
     </ShaderSource>
     <ShaderSource Include="Utils\Math\MathConstants.slangh">
       <Filter>Utils\Math</Filter>
@@ -1520,24 +1591,6 @@
     <ShaderSource Include="Scene\VertexAttrib.slangh">
       <Filter>Scene</Filter>
     </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Lights\LightBVHSamplerSharedDefinitions.slang">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Scene\ParticleSystem\ParticleData.slang">
-      <Filter>Scene\ParticleSystem</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Material\BxDFConfig.slangh">
-      <Filter>Experimental\Scene\Material</Filter>
-    </ShaderSource>
-    <ShaderSource Include="RenderPasses\Shared\PathTracer\InteriorList.slang">
-      <Filter>RenderPasses\Shared\PathTracer</Filter>
-    </ShaderSource>
-    <ShaderSource Include="RenderPasses\Shared\PathTracer\InteriorListHelpers.slang">
-      <Filter>RenderPasses\Shared\PathTracer</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Scene\TextureSampler.slang">
-      <Filter>Scene</Filter>
-    </ShaderSource>
     <ShaderSource Include="Scene\RaytracingInline.slang">
       <Filter>Scene</Filter>
     </ShaderSource>
@@ -1545,9 +1598,6 @@
       <Filter>Scene\Camera</Filter>
     </ShaderSource>
     <ShaderSource Include="RenderPasses\Shared\PathTracer\LoadShadingData.slang">
-      <Filter>RenderPasses\Shared\PathTracer</Filter>
-    </ShaderSource>
-    <ShaderSource Include="RenderPasses\Shared\PathTracer\PixelStats.slang">
       <Filter>RenderPasses\Shared\PathTracer</Filter>
     </ShaderSource>
     <ShaderSource Include="RenderPasses\Shared\PathTracer\PathData.slang">
@@ -1565,9 +1615,6 @@
     <ShaderSource Include="Utils\Debug\ReflectPixelDebugTypes.cs.slang">
       <Filter>Utils\Debug</Filter>
     </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Material\TexLODTypes.slang">
-      <Filter>Experimental\Scene\Material</Filter>
-    </ShaderSource>
     <ShaderSource Include="Utils\Attributes.slang">
       <Filter>Utils</Filter>
     </ShaderSource>
@@ -1583,15 +1630,6 @@
     <ShaderSource Include="Utils\Sampling\Pseudorandom\Xorshift32.slang">
       <Filter>Utils\Sampling\Pseudorandom</Filter>
     </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Lights\LightBVHTypes.slang">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Lights\EnvMapSampler.slang">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Lights\EnvMapSamplerSetup.cs.slang">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ShaderSource>
     <ShaderSource Include="RenderPasses\Shared\PathTracer\RayFootprintModes.slangh">
       <Filter>RenderPasses\Shared\PathTracer</Filter>
     </ShaderSource>
@@ -1601,47 +1639,17 @@
     <ShaderSource Include="Utils\Timing\GpuTimer.slang">
       <Filter>Utils\Timing</Filter>
     </ShaderSource>
-    <ShaderSource Include="RenderPasses\Shared\PathTracer\PixelStatsShared.slang">
-      <Filter>RenderPasses\Shared\PathTracer</Filter>
-    </ShaderSource>
-    <ShaderSource Include="RenderPasses\Shared\PathTracer\PixelStats.cs.slang">
-      <Filter>RenderPasses\Shared\PathTracer</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Scene\Volume\VolumeData.slang">
+    <ShaderSource Include="Scene\Volume\GridVolumeData.slang">
       <Filter>Scene\Volume</Filter>
     </ShaderSource>
     <ShaderSource Include="Scene\Volume\Grid.slang">
       <Filter>Scene\Volume</Filter>
     </ShaderSource>
-    <ShaderSource Include="Scene\Volume\Volume.slang">
+    <ShaderSource Include="Scene\Volume\GridVolume.slang">
       <Filter>Scene\Volume</Filter>
     </ShaderSource>
     <ShaderSource Include="Scene\NullTrace.cs.slang">
       <Filter>Scene</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Lights\EnvMapIntegration.ps.slang">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Lights\EnvMapLighting.slang">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Volume\VolumeSampler.slang">
-      <Filter>Experimental\Scene\Volume</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Volume\PhaseFunctions.slang">
-      <Filter>Experimental\Scene\Volume</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Volume\VolumeSamplerParams.slang">
-      <Filter>Experimental\Scene\Volume</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Lights\EmissivePowerSampler.slang">
-      <Filter>Experimental\Scene\Lights</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Material\BCSDFConfig.slangh">
-      <Filter>Experimental\Scene\Material</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Material\HairChiang16.slang">
-      <Filter>Experimental\Scene\Material</Filter>
     </ShaderSource>
     <ShaderSource Include="Scene\Intersection.slang">
       <Filter>Scene</Filter>
@@ -1652,7 +1660,7 @@
     <ShaderSource Include="Utils\Sampling\AliasTable.slang">
       <Filter>Utils\Sampling</Filter>
     </ShaderSource>
-    <ShaderSource Include="Scene\ScenePrimitiveDefines.slangh">
+    <ShaderSource Include="Scene\SceneDefines.slangh">
       <Filter>Scene</Filter>
     </ShaderSource>
     <ShaderSource Include="Scene\Lights\LightCollection.slang">
@@ -1706,38 +1714,17 @@
     <ShaderSource Include="Utils\NVAPI.slangh">
       <Filter>Utils</Filter>
     </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Volume\HomogeneousVolumeSampler.slang">
-      <Filter>Experimental\Scene\Volume</Filter>
-    </ShaderSource>
     <ShaderSource Include="Utils\Math\Ray.slang">
       <Filter>Utils\Math</Filter>
     </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Material\StandardMaterial.slang">
-      <Filter>Experimental\Scene\Material</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Material\IMaterial.slang">
-      <Filter>Experimental\Scene\Material</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Material\HairMaterial.slang">
-      <Filter>Experimental\Scene\Material</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Scene\Animation\UpdateAABBs.slang">
+    <ShaderSource Include="Scene\Animation\UpdateCurveAABBs.slang">
       <Filter>Scene\Animation</Filter>
     </ShaderSource>
-    <ShaderSource Include="Scene\Animation\UpdateVertices.slang">
+    <ShaderSource Include="Scene\Animation\UpdateCurveVertices.slang">
       <Filter>Scene\Animation</Filter>
     </ShaderSource>
     <ShaderSource Include="Core\API\BlitReduction.slang">
       <Filter>Core\API</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Material\ClothMaterial.slang">
-      <Filter>Experimental\Scene\Material</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Material\ClothBRDF.slang">
-      <Filter>Experimental\Scene\Material</Filter>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Material\IBxDF.slang">
-      <Filter>Experimental\Scene\Material</Filter>
     </ShaderSource>
     <ShaderSource Include="Scene\Displacement\DisplacementMapping.slang">
       <Filter>Scene\Displacement</Filter>
@@ -1756,6 +1743,276 @@
     </ShaderSource>
     <ShaderSource Include="Utils\SDF\SDFOperations.slang">
       <Filter>Utils\SDF</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Lights\EmissiveLightSampler.slang">
+      <Filter>Rendering\Lights</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Lights\EmissiveLightSamplerHelpers.slang">
+      <Filter>Rendering\Lights</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Lights\EmissiveLightSamplerInterface.slang">
+      <Filter>Rendering\Lights</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Lights\EmissiveLightSamplerType.slangh">
+      <Filter>Rendering\Lights</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Lights\EmissivePowerSampler.slang">
+      <Filter>Rendering\Lights</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Lights\EmissiveUniformSampler.slang">
+      <Filter>Rendering\Lights</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Lights\EnvMapIntegration.ps.slang">
+      <Filter>Rendering\Lights</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Lights\EnvMapLighting.slang">
+      <Filter>Rendering\Lights</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Lights\EnvMapSampler.slang">
+      <Filter>Rendering\Lights</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Lights\EnvMapSamplerSetup.cs.slang">
+      <Filter>Rendering\Lights</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Lights\LightBVH.slang">
+      <Filter>Rendering\Lights</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Lights\LightBVHRefit.cs.slang">
+      <Filter>Rendering\Lights</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Lights\LightBVHSampler.slang">
+      <Filter>Rendering\Lights</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Lights\LightBVHSamplerSharedDefinitions.slang">
+      <Filter>Rendering\Lights</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Lights\LightBVHTypes.slang">
+      <Filter>Rendering\Lights</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Lights\LightHelpers.slang">
+      <Filter>Rendering\Lights</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Materials\BCSDFConfig.slangh">
+      <Filter>Rendering\Materials</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Materials\BxDF.slang">
+      <Filter>Rendering\Materials</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Materials\BxDFConfig.slangh">
+      <Filter>Rendering\Materials</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Materials\ClothBRDF.slang">
+      <Filter>Rendering\Materials</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Materials\ClothMaterial.slang">
+      <Filter>Rendering\Materials</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Materials\Fresnel.slang">
+      <Filter>Rendering\Materials</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Materials\HairChiang16.slang">
+      <Filter>Rendering\Materials</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Materials\HairMaterial.slang">
+      <Filter>Rendering\Materials</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Materials\IBxDF.slang">
+      <Filter>Rendering\Materials</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Materials\IMaterial.slang">
+      <Filter>Rendering\Materials</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Materials\Microfacet.slang">
+      <Filter>Rendering\Materials</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Materials\StandardMaterial.slang">
+      <Filter>Rendering\Materials</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Materials\TexLODHelpers.slang">
+      <Filter>Rendering\Materials</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Materials\TexLODTypes.slang">
+      <Filter>Rendering\Materials</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Volumes\HomogeneousVolumeSampler.slang">
+      <Filter>Rendering\Volumes</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Volumes\GridVolumeSampler.slang">
+      <Filter>Rendering\Volumes</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Volumes\GridVolumeSamplerParams.slang">
+      <Filter>Rendering\Volumes</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Materials\InteriorList.slang">
+      <Filter>Rendering\Materials</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Materials\InteriorListHelpers.slang">
+      <Filter>Rendering\Materials</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Utils\PixelStats.cs.slang">
+      <Filter>Rendering\Utils</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Utils\PixelStats.slang">
+      <Filter>Rendering\Utils</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Utils\PixelStatsShared.slang">
+      <Filter>Rendering\Utils</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Volumes\IPhaseFunction.slang">
+      <Filter>Rendering\Volumes</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Volumes\PhaseFunction.slang">
+      <Filter>Rendering\Volumes</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\Material\BasicMaterialData.slang">
+      <Filter>Scene\Material</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\NormalizedDenseSDFGrid\NDSDFGrid.slang">
+      <Filter>Scene\SDFs\NormalizedDenseSDFGrid</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\SDFVoxelCommon.slang">
+      <Filter>Scene\SDFs</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\SDFVoxelTypes.slang">
+      <Filter>Scene\SDFs</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\SparseVoxelSet\SDFSVS.slang">
+      <Filter>Scene\SDFs\SparseVoxelSet</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\SparseVoxelSet\SDFSVSVoxelizer.cs.slang">
+      <Filter>Scene\SDFs\SparseVoxelSet</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\SDFGridBase.slang">
+      <Filter>Scene\SDFs</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\SDFGrid.slang">
+      <Filter>Scene\SDFs</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\SDFGridHitData.slang">
+      <Filter>Scene\SDFs</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\SDFSurfaceVoxelCounter.cs.slang">
+      <Filter>Scene\SDFs</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\SDFVoxelHitUtils.slang">
+      <Filter>Scene\SDFs</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\SDFGridNoDefines.slangh">
+      <Filter>Scene\SDFs</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Materials\LobeType.slang">
+      <Filter>Rendering\Materials</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\SparseBrickSet\BC4Encode.slang">
+      <Filter>Scene\SDFs\SparseBrickSet</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\SparseBrickSet\SDFSBS.slang">
+      <Filter>Scene\SDFs\SparseBrickSet</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\SparseBrickSet\SDFSBSCopyIndirectionBuffer.cs.slang">
+      <Filter>Scene\SDFs\SparseBrickSet</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\SparseBrickSet\SDFSBSResetBrickValidity.cs.slang">
+      <Filter>Scene\SDFs\SparseBrickSet</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Utils\Math\IntervalArithmetic.slang">
+      <Filter>Utils\Math</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\EvaluateSDFPrimitives.cs.slang">
+      <Filter>Scene\SDFs</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\SDF3DPrimitive.slang">
+      <Filter>Scene\SDFs</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Utils\SDF\SDF3DShapes.slang">
+      <Filter>Utils\SDF</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\SparseBrickSet\SDFSBSPruneEmptyBricks.cs.slang">
+      <Filter>Scene\SDFs\SparseBrickSet</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\SparseBrickSet\SDFSBSCompactifyChunks.cs.slang">
+      <Filter>Scene\SDFs\SparseBrickSet</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\SparseBrickSet\SDFSBSCreateBricksFromChunks.cs.slang">
+      <Filter>Scene\SDFs\SparseBrickSet</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\SparseBrickSet\SDFSBSCreateBricksFromValues.cs.slang">
+      <Filter>Scene\SDFs\SparseBrickSet</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\SparseBrickSet\SDFSBSCreateChunksFromPrimitives.cs.slang">
+      <Filter>Scene\SDFs\SparseBrickSet</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\SparseBrickSet\SDFSBSAssignBrickValidityFromValuesPass.cs.slang">
+      <Filter>Scene\SDFs\SparseBrickSet</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\SparseVoxelOctree\SDFSVOBuildLevelFromTexture.cs.slang">
+      <Filter>Scene\SDFs\SparseVoxelOctree</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\SparseVoxelOctree\SDFSVOBuildOctree.cs.slang">
+      <Filter>Scene\SDFs\SparseVoxelOctree</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\SparseVoxelOctree\SDFSVOHashTable.slang">
+      <Filter>Scene\SDFs\SparseVoxelOctree</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\SparseVoxelOctree\SDFSVOLocationCodeSorter.cs.slang">
+      <Filter>Scene\SDFs\SparseVoxelOctree</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\SparseVoxelOctree\SDFSVOWriteSVOOffsets.cs.slang">
+      <Filter>Scene\SDFs\SparseVoxelOctree</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\SparseVoxelOctree\SDFSVO.slang">
+      <Filter>Scene\SDFs\SparseVoxelOctree</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\Material\MaterialSystem.slang">
+      <Filter>Scene\Material</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\Material\TextureSampler.slang">
+      <Filter>Scene\Material</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\Displacement\DisplacementData.slang">
+      <Filter>Scene\Displacement</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\Material\MaterialTypes.slang">
+      <Filter>Scene\Material</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\Material\ShadingUtils.slang">
+      <Filter>Scene\Material</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\Material\TextureHandle.slang">
+      <Filter>Scene\Material</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\Material\HomogeneousVolumeData.slang">
+      <Filter>Scene\Material</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Materials\IBSDF.slang">
+      <Filter>Rendering\Materials</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Materials\StandardBSDF.slang">
+      <Filter>Rendering\Materials</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Materials\HairBSDF.slang">
+      <Filter>Rendering\Materials</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Materials\ClothBSDF.slang">
+      <Filter>Rendering\Materials</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\Material\MaterialFactory.slang">
+      <Filter>Scene\Material</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\Importers\USDImporter\CreateSpecularTexture.cs.slang">
+      <Filter>Scene\Importers\USDImporter</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\Importers\USDImporter\CreateSpecularTransmissionTexture.cs.slang">
+      <Filter>Scene\Importers\USDImporter</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\Importers\USDImporter\PackBaseColorAlpha.cs.slang">
+      <Filter>Scene\Importers\USDImporter</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\Importers\USDImporter\SampleTexture.slang">
+      <Filter>Scene\Importers\USDImporter</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Utils\Image\CopyColorChannel.cs.slang">
+      <Filter>Utils\Image</Filter>
     </ShaderSource>
   </ItemGroup>
 </Project>

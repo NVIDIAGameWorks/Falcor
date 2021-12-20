@@ -39,28 +39,24 @@ struct BSDFViewerParams
 {
     uint2   frameDim = { 0, 0 };                ///< Frame buffer dimension in pixels.
     uint    frameCount = 0;                     ///< Frames rendered.
-    int     sliceViewer = 0;                    ///< Enable BSDF slice viewer, otherwise material viewer.
+    int     enableSliceViewer = 0;              ///< Enable BSDF slice viewer, otherwise material viewer.
 
     float2  viewportOffset;                     ///< Top-left corner of viewport in pixels.
     float2  viewportScale;                      ///< 1/Size of viewport in pixels.
 
     // Material parameters
     uint    materialID = 0;                     ///< Scene material ID.
-    int     useSceneMaterial = 0;               ///< Use material from scene, otherwise use manually specified BSDF parameters.
     int     useNormalMapping = 0;               ///< Use normal mapping.
-    int     useFixedTexCoords = 0;               ///< Use fixed texture coordinates.
+    int     useFixedTexCoords = 0;              ///< Use fixed texture coordinates.
+    int     _pad0;
 
-    float3  baseColor = { 0.5f, 0.5f, 0.5f };   ///< Material base color.
-    float   linearRoughness = 1.f;              ///< Linear roughness in [0,1].
-
-    float   metallic = 0.f;                     ///< Metallic factor in [0,1]. This blends between the dielectric BSDF and the metallic BRDF.
-    float   IoR = 1.5f;                         ///< Index of refraction in [1,inf). This is used to compute the specular reflectance/transmittance for dielectrics.
     float2  texCoords = { 0.f, 0.f };           ///< Texture coordinates to use when 'useFixedTexCoords' is true.
+    float2  _pad1;
 
     // BSDF settings
     int     useDisneyDiffuse = 0;               ///< Use the original Disney diffuse BRDF, otherwise Falcor's default (Frostbite's version).
     int     useSeparableMaskingShadowing = 0;   ///< Use the separable form of the masking-shadowing function, otherwise Falcor's default (the correlated form).
-    int     useBrdfSampling = 1;                ///< Use BRDF importance sampling.
+    int     useImportanceSampling = 1;          ///< Use importance sampling.
     int     usePdf = 0;                         ///< Use BRDF sampling pdf explicitly, otherwise the precomputed weight (for debugging).
 
     int     enableDiffuse = 1;                  ///< Enable diffuse lobe in slice viewer.
@@ -86,9 +82,8 @@ struct BSDFViewerParams
     float   cameraViewportScale;                ///< Camera viewport scale (= tan(fovY/2)*distance) computed at runtime in projective mode.
 
     // Misc settings
-    int     readback = 1;                       ///< True if we should read back data for the selected pixel.
     int2    selectedPixel = { 0, 0 };           ///< Pixel coordinates selected for readback.
-    int     _pad5;
+    int2    _pad5;
 };
 
 /** Struct for readback of per-pixel data.
@@ -96,17 +91,22 @@ struct BSDFViewerParams
 struct PixelData
 {
     float2 texC;
-    float3 baseColor;
-    float3 diffuse;
-    float3 specular;
-    float  linearRoughness;
-    float  metallic;
     float3 T;
     float3 B;
     float3 N;
-    float3 wo;
     float3 wi;
+    float3 wo;
     float3 output;
+
+    // BSDF properties
+    float3 emissive;
+    float  roughness;
+    float3 diffuseReflectionAlbedo;
+    float3 diffuseTransmissionAlbedo;
+    float3 specularReflectionAlbedo;
+    float3 specularTransmissionAlbedo;
+    float3 specularReflectance;
+    int    isTransmissive;
 };
 
 END_NAMESPACE_FALCOR

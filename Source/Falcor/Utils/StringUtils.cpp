@@ -101,7 +101,7 @@ namespace Falcor
 
         size_t inLen = in.size();
         if (inLen == 0) return {};
-        if (inLen % 4 != 0) throw std::exception("Input data size is not a multiple of 4");
+        if (inLen % 4 != 0) throw ArgumentError("Input data size is not a multiple of 4");
 
         size_t outLen = inLen / 4 * 3;
         if (in[inLen - 1] == '=') outLen--;

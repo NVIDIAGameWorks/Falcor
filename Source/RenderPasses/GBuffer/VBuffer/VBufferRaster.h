@@ -41,12 +41,13 @@ class VBufferRaster : public GBufferBase
 public:
     using SharedPtr = std::shared_ptr<VBufferRaster>;
 
+    static const Info kInfo;
+
     static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
 
     RenderPassReflection reflect(const CompileData& compileData) override;
     void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
-    std::string getDesc(void) override { return kDesc; }
 
 private:
     VBufferRaster(const Dictionary& dict);
@@ -60,7 +61,4 @@ private:
         GraphicsProgram::SharedPtr pProgram;
         GraphicsVars::SharedPtr pVars;
     } mRaster;
-
-    static const char* kDesc;
-    friend void getPasses(Falcor::RenderPassLibrary& lib);
 };

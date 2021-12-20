@@ -59,7 +59,7 @@ namespace Falcor
         mEnd = pHeap->allocate();
         if (mStart == QueryHeap::kInvalidIndex || mEnd == QueryHeap::kInvalidIndex)
         {
-            throw std::exception("Can't create GPU timer, no available timestamp queries.");
+            throw RuntimeError("Can't create GPU timer, no available timestamp queries.");
         }
         assert(mEnd == (mStart + 1));
         mpLowLevelData = gpDevice->getRenderContext()->getLowLevelData();
@@ -124,7 +124,7 @@ namespace Falcor
         return mElapsedTime;
     }
 
-    SCRIPT_BINDING(GpuTimer)
+    FALCOR_SCRIPT_BINDING(GpuTimer)
     {
         pybind11::class_<GpuTimer, GpuTimer::SharedPtr>(m, "GpuTimer");
     }

@@ -57,7 +57,7 @@ namespace Falcor
             }
             catch (const std::exception& e)
             {
-                logError("Can't start the python interpreter. Exception says " + std::string(e.what()));
+                reportError("Can't start the python interpreter. Exception says " + std::string(e.what()));
                 return false;
             }
         }
@@ -150,7 +150,7 @@ namespace Falcor
             context.setObject("__file__", nullptr); // There seems to be no API on pybind11::dict to remove a key.
             return result;
         }
-        throw std::exception(std::string("Failed to run script. Can't find the file '" + filename + "'.").c_str());
+        throw RuntimeError("Failed to run script. Can't find the file '{}'.", filename);
     }
 
     std::string Scripting::interpretScript(const std::string& script, Context& context)

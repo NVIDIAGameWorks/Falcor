@@ -26,16 +26,16 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "RenderPasses/Shared/PathTracer/RayFootprintModes.slangh"
-__exported import Experimental.Scene.Material.TexLODHelpers;
-__exported import Experimental.Scene.Material.TexLODTypes;
+__exported import Rendering.Materials.TexLODHelpers;
+__exported import Rendering.Materials.TexLODTypes;
 
+// Check for required defines that must set to use this module.
 #ifndef RAY_FOOTPRINT_MODE
-// RAY_FOOTPRINT_MODE must be defined in order to use this module.
 #error "RAY_FOOTPRINT_MODE not defined!"
 #endif
 
 /** Ray footprint base structure for tex LOD.
-  * TODO: Abstract and use interface ?
+    TODO: Abstract and use interface?
 */
 struct RayFootprint
 {

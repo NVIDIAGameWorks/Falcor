@@ -41,10 +41,9 @@ enum class SceneDebuggerMode : uint32_t
     TexCoords,
     HitType,
     InstanceID,
-    MeshID,
     MaterialID,
+    GeometryID,
     BlasID,
-    CurveID,
     InstancedGeometry,
 };
 
@@ -71,9 +70,8 @@ struct PixelData
     uint hitType;
     uint instanceID;
     uint materialID;
-    uint meshID;
+    uint geometryID;
     uint blasID;
-    uint curveID;
 };
 
 enum class InstanceInfoFlags : uint32_t

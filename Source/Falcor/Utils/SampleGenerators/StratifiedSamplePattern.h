@@ -41,7 +41,7 @@ namespace Falcor
         The order in which samples are generated is randomly permuted to avoid
         correlation artefacts with low-discrepancy sample generators.
     */
-    class dlldecl StratifiedSamplePattern : public CPUSampleGenerator
+    class FALCOR_API StratifiedSamplePattern : public CPUSampleGenerator
     {
     public:
         using SharedPtr = std::shared_ptr<StratifiedSamplePattern>;

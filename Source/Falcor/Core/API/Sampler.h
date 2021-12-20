@@ -31,7 +31,7 @@ namespace Falcor
 {
     /** Abstract the API sampler state object
     */
-    class dlldecl Sampler : public std::enable_shared_from_this<Sampler>
+    class FALCOR_API Sampler
     {
     public:
         using SharedPtr = std::shared_ptr<Sampler>;
@@ -73,7 +73,7 @@ namespace Falcor
 
         /** Descriptor used to create a new Sampler object
         */
-        class dlldecl Desc
+        class FALCOR_API Desc
         {
         public:
             friend class Sampler;
@@ -114,6 +114,14 @@ namespace Falcor
             /** Set the border color. Only applies when the addressing mode is ClampToBorder
             */
             Desc& setBorderColor(const float4& borderColor);
+
+            /** Returns true if sampler descs are identical.
+            */
+            bool operator==(const Desc& other) const;
+
+            /** Returns true if sampler descs are not identical.
+            */
+            bool operator!=(const Desc& other) const { return !(*this == other); }
 
         protected:
             Filter mMagFilter = Filter::Linear;

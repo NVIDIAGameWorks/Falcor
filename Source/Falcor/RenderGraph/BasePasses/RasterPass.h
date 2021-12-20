@@ -31,7 +31,7 @@
 
 namespace Falcor
 {
-    class dlldecl RasterPass : public BaseGraphicsPass, public std::enable_shared_from_this<RasterPass>
+    class FALCOR_API RasterPass : public BaseGraphicsPass
     {
     public:
         using SharedPtr = ParameterBlockSharedPtr<RasterPass>;
@@ -56,14 +56,14 @@ namespace Falcor
             \param[in] vertexCount Number of vertices to draw
             \param[in] startVertexLocation The location of the first vertex to read from the vertex buffers (offset in vertices)
         */
-        void draw(RenderContext* pContext, uint32_t vertexCount, uint32_t startVertexLocation);
+        void draw(RenderContext* pRenderContext, uint32_t vertexCount, uint32_t startVertexLocation);
 
         /** Indexed draw call.
             \param[in] indexCount Number of indices to draw
             \param[in] startIndexLocation The location of the first index to read from the index buffer (offset in indices)
             \param[in] baseVertexLocation A value which is added to each index before reading a vertex from the vertex buffer
         */
-        void drawIndexed(RenderContext* pContext, uint32_t indexCount, uint32_t startIndexLocation, int32_t baseVertexLocation);
+        void drawIndexed(RenderContext* pRenderContext, uint32_t indexCount, uint32_t startIndexLocation, int32_t baseVertexLocation);
 
     protected:
         RasterPass(const Program::Desc& progDesc, const Program::DefineList& programDefines);

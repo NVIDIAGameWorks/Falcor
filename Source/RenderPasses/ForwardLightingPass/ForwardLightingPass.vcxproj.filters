@@ -7,6 +7,6 @@
     <ClInclude Include="ForwardLightingPass.h" />
   </ItemGroup>
   <ItemGroup>
-    <ShaderSource Include="ForwardLightingPass.slang" />
+    <ShaderSource Include="ForwardLightingPass.3d.slang" />
   </ItemGroup>
 </Project>

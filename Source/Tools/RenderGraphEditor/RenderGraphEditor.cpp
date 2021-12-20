@@ -26,7 +26,6 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "RenderGraphEditor.h"
-#include "RenderGraphEditor.h"
 #include "dear_imgui/imgui.h"
 #include "dear_imgui/imgui_internal.h"
 
@@ -34,6 +33,10 @@
 
 #include <fstream>
 #include <filesystem>
+
+#ifdef FALCOR_D3D12
+FALCOR_EXPORT_D3D12_AGILITY_SDK
+#endif
 
 namespace
 {
@@ -64,7 +67,7 @@ RenderGraphEditor::~RenderGraphEditor()
 void RenderGraphEditor::onLoad(RenderContext* pRenderContext)
 {
     mpDefaultIconTex = Texture::createFromFile(kDefaultPassIcon, false, false);
-    if (!mpDefaultIconTex) throw std::exception("Failed to load icon");
+    if (!mpDefaultIconTex) throw RuntimeError("Failed to load icon");
 
     loadAllPassLibraries();
 
@@ -216,11 +219,11 @@ void RenderGraphEditor::onGuiRender(Gui* pGui)
     for (size_t i = 0; i < renderPasses.size(); i++)
     {
         const auto& pass = renderPasses[i];
-        passWindow.rect({ 148.0f, 64.0f }, pGui->pickUniqueColor(pass.className), false);
+        passWindow.rect({ 148.0f, 64.0f }, pGui->pickUniqueColor(pass.info.type), false);
         passWindow.image(("RenderPass##" + std::to_string(i)).c_str(), mpDefaultIconTex, { 148.0f, 44.0f });
-        passWindow.dragDropSource(pass.className, "RenderPassType", pass.className);
-        passWindow.text(pass.className);
-        passWindow.tooltip(pass.desc, true);
+        passWindow.dragDropSource(pass.info.type.c_str(), "RenderPassType", pass.info.type);
+        passWindow.text(pass.info.type);
+        passWindow.tooltip(pass.info.desc, true);
         passWindow.nextColumn();
     }
 

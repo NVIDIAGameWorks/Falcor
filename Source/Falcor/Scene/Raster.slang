@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "VertexAttrib.slangh"
 __exported import Scene.Scene;
-__exported import Scene.Shading;
+import Scene.Material.TextureSampler;
 
 struct VSIn
 {
@@ -37,7 +37,7 @@ struct VSIn
     float2 texC                     : TEXCOORD;
 
     // Other vertex attributes
-    uint meshInstanceID             : DRAW_ID;
+    uint instanceID                 : DRAW_ID;
 
     // System values
     uint vertexID                   : SV_VertexID;
@@ -74,7 +74,7 @@ struct VSOut
 VSOut defaultVS(VSIn vIn)
 {
     VSOut vOut;
-    const GeometryInstanceID instanceID = { vIn.meshInstanceID };
+    const GeometryInstanceID instanceID = { vIn.instanceID };
 
     float4x4 worldMat = gScene.getWorldMatrix(instanceID);
     float3 posW = mul(float4(vIn.pos, 1.f), worldMat).xyz;
@@ -91,10 +91,10 @@ VSOut defaultVS(VSIn vIn)
 
     // Compute the vertex position in the previous frame.
     float3 prevPos = vIn.pos;
-    MeshInstanceData meshInstance = gScene.getMeshInstance(instanceID);
-    if (meshInstance.hasDynamicData())
+    GeometryInstanceData instance = gScene.getGeometryInstance(instanceID);
+    if (instance.hasDynamicData())
     {
-        uint dynamicVertexIndex = gScene.meshes[meshInstance.meshID].dynamicVbOffset + vIn.vertexID;
+        uint dynamicVertexIndex = gScene.meshes[instance.geometryID].dynamicVbOffset + vIn.vertexID;
         prevPos = gScene.prevVertices[dynamicVertexIndex].position;
     }
     float3 prevPosW = mul(float4(prevPos, 1.f), gScene.getPrevWorldMatrix(instanceID)).xyz;
@@ -121,20 +121,28 @@ VertexData prepareVertexData(VSOut vsOut, float3 faceNormalW)
 }
 
 /** Helper function that prepares the ShadingData struct based on VSOut.
-    This version uses implicit LOD and fetches material data directly from the scene.
+    \param[in] vsOut Interpolated vertex attributes.
+    \param[in] triangleIndex Triangle index.
+    \param[in] viewDir View direction. Points from the shading point towards the viewer.
+    \param[in] lod Method for computing texture level-of-detail, must implement the `ITextureSampler` interface.
+    \return Shading data struct.
 */
-ShadingData prepareShadingData(VSOut vsOut, uint triangleIndex, float3 viewDir)
+ShadingData prepareShadingData<L:ITextureSampler>(VSOut vsOut, uint triangleIndex, float3 viewDir, L lod)
 {
     float3 faceNormal = gScene.getFaceNormalW(vsOut.instanceID, triangleIndex);
     VertexData v = prepareVertexData(vsOut, faceNormal);
-    return prepareShadingData(v, vsOut.materialID, gScene.materials[vsOut.materialID], gScene.materialResources[vsOut.materialID], viewDir);
+    return gScene.materials.prepareShadingData(v, vsOut.materialID, viewDir, lod);
 }
 
-/** Helper function to evaluate alpha testing.
+/** Helper function to evaluate alpha testing based on VSOut.
+    \param[in] vsOut Interpolated vertex attributes.
+    \param[in] triangleIndex Triangle index.
+    \param[in] lod Method for computing texture level-of-detail, must implement the `ITextureSampler` interface.
+    \return True if hit should be ignored/discarded.
 */
-bool alphaTest(VSOut vsOut, uint triangleIndex)
+bool alphaTest<L:ITextureSampler>(VSOut vsOut, uint triangleIndex, L lod)
 {
     float3 faceNormal = gScene.getFaceNormalW(vsOut.instanceID, triangleIndex);
     VertexData v = prepareVertexData(vsOut, faceNormal);
-    return alphaTest(v, gScene.materials[vsOut.materialID], gScene.materialResources[vsOut.materialID]);
+    return gScene.materials.alphaTest(v, vsOut.materialID, lod);
 }

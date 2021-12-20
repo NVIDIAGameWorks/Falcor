@@ -32,10 +32,9 @@ import Scene.Scene;
 import Scene.ShadingData;
 __exported import Utils.Geometry.GeometryHelpers;
 __exported import Utils.Math.MathHelpers;
-__exported import Experimental.Scene.Material.IMaterial;
-__exported import Experimental.Scene.Lights.EnvMapSampler;
-__exported import Experimental.Scene.Lights.EmissiveLightSampler;
-__exported import Experimental.Scene.Lights.LightHelpers;
+__exported import Rendering.Lights.EnvMapSampler;
+__exported import Rendering.Lights.EmissiveLightSampler;
+__exported import Rendering.Lights.LightHelpers;
 __exported import RenderPasses.Shared.PathTracer.PathData;
 __exported import RenderPasses.Shared.PathTracer.PathTracerParams;
 __exported import Utils.Sampling.SampleGeneratorInterface;
@@ -151,13 +150,13 @@ float getEmissiveLightSelectionPdf()
 
 /** Evaluates the probability density function for the BRDF sampling strategy used for the scatter ray.
     \param[in] sd Describes the shading point.
-    \param[in] mtl The material at the shading point.
+    \param[in] bsdf BSDF at the shading point.
     \param[in] dir The normalized incident direction for which to evaluate the pdf.
     \return Probability density with respect to solid angle from the shading point.
 */
-float evalPdfScatter<Material : IMaterial>(const ShadingData sd, const Material mtl, const float3 dir)
+float evalPdfScatter(const ShadingData sd, const IBSDF bsdf, const float3 dir)
 {
-    return mtl.evalPdf(sd, dir, kUseBRDFSampling);
+    return bsdf.evalPdf(sd, dir, kUseBRDFSampling);
 }
 
 /** Samples a light source in the scene.
@@ -167,14 +166,14 @@ float evalPdfScatter<Material : IMaterial>(const ShadingData sd, const Material 
     \param[in] envMapSampler Environment map sampler.
     \param[in] emissiveSampler Emissive light sampler.
     \param[in] sd Shading data.
-    \param[in] mtl The material at the shading point.
+    \param[in] bsdf BSDF at the shading point.
     \param[in] rayOrigin Ray origin for the shadow ray.
     \param[in] numSamples Total number of light samples that will be taken. This is needed for the MIS weighting.
     \param[in,out] sg SampleGenerator object.
     \param[out] ls Generated light sample. Only valid if true is returned.
     \return True if a sample was generated, false otherwise.
 */
-bool sampleSceneLights<S : ISampleGenerator, Material : IMaterial>(const PathTracerParams params, const EnvMapSampler envMapSampler, const EmissiveLightSampler emissiveSampler, const ShadingData sd, const Material mtl, const float3 rayOrigin, const uint numSamples, inout S sg, out SceneLightSample ls)
+bool sampleSceneLights<S : ISampleGenerator>(const PathTracerParams params, const EnvMapSampler envMapSampler, const EmissiveLightSampler emissiveSampler, const ShadingData sd, const IBSDF bsdf, const float3 rayOrigin, const uint numSamples, inout S sg, out SceneLightSample ls)
 {
     // Set relative probabilities of the different sampling techniques.
     // TODO: These should use estimated irradiance from each light type. Using equal probabilities for now.
@@ -217,7 +216,7 @@ bool sampleSceneLights<S : ISampleGenerator, Material : IMaterial>(const PathTra
             float misWeight = 1.f;
             if (kUseMIS && pdf > 0.f)
             {
-                float brdfPdf = evalPdfScatter(sd, mtl, lightSample.dir);
+                float brdfPdf = evalPdfScatter(sd, bsdf, lightSample.dir);
                 misWeight = evalMIS(params, numSamples, pdf, 1, brdfPdf);
             }
 
@@ -281,7 +280,7 @@ bool sampleSceneLights<S : ISampleGenerator, Material : IMaterial>(const PathTra
             float misWeight = 1.f;
             if (kUseMIS && pdf > 0.f)
             {
-                float brdfPdf = evalPdfScatter(sd, mtl, lightSample.dir);
+                float brdfPdf = evalPdfScatter(sd, bsdf, lightSample.dir);
                 misWeight = evalMIS(params, numSamples, pdf, 1, brdfPdf);
             }
 
@@ -313,22 +312,22 @@ bool sampleSceneLights<S : ISampleGenerator, Material : IMaterial>(const PathTra
     \param[in] envMapSampler Environment map sampler.
     \param[in] emissiveSampler Emissive light sampler.
     \param[in] sd Shading data.
-    \param[in] mtl The material at the shading point.
+    \param[in] bsdf BSDF at the shading point.
     \param[in] i The sample index in the range [0, kLightSamplesPerVertex).
     \param[in,out] path Path data. The path flags will be updated to enable the i:th shadow ray if a sample was generated.
     \param[in,out] sg Sample generator.
     \param[in,out] shadowRay Shadow ray parameters and unoccluded contribution for the generated sample.
     \return True if a sample was generated, false otherwise.
 */
-bool generateShadowRay<S : ISampleGenerator, Material : IMaterial>(const PathTracerParams params, const EnvMapSampler envMapSampler, const EmissiveLightSampler emissiveSampler, const ShadingData sd, const Material mtl, const uint i, inout PathData path, inout S sg, inout ShadowRay shadowRay)
+bool generateShadowRay<S : ISampleGenerator>(const PathTracerParams params, const EnvMapSampler envMapSampler, const EmissiveLightSampler emissiveSampler, const ShadingData sd, const IBSDF bsdf, const uint i, inout PathData path, inout S sg, inout ShadowRay shadowRay)
 {
     // Sample the scene lights.
     SceneLightSample ls;
-    bool valid = sampleSceneLights(params, envMapSampler, emissiveSampler, sd, mtl, path.origin, kLightSamplesPerVertex, sg, ls);
+    bool valid = sampleSceneLights(params, envMapSampler, emissiveSampler, sd, bsdf, path.origin, kLightSamplesPerVertex, sg, ls);
 
     if (valid && any(ls.Li > 0.f))
     {
-        float3 Lr = mtl.eval(sd, ls.dir) * ls.Li * path.thp;
+        float3 Lr = bsdf.eval(sd, ls.dir) * ls.Li * path.thp;
         if (any(Lr > 0.f))
         {
             // The sample is valid and has a non-zero contribution.
@@ -347,16 +346,16 @@ bool generateShadowRay<S : ISampleGenerator, Material : IMaterial>(const PathTra
     The function assumes path.origin is the ray origin for the new ray.
     \param[in] params Path tracer parameters.
     \param[in] sd Shading data.
-    \param[in] mtl The material at the shading point.
+    \param[in] bsdf BSDF at the shading point.
     \param[in,out] path Path data.
     \param[in,out] sg Sample generator.
     \return True if a sample was generated and path should continue, false otherwise.
 */
-bool generateScatterRay<S : ISampleGenerator, Material : IMaterial>(const PathTracerParams params, const ShadingData sd, const Material mtl, inout PathData path, inout S sg)
+bool generateScatterRay<S : ISampleGenerator>(const PathTracerParams params, const ShadingData sd, const IBSDF bsdf, inout PathData path, inout S sg)
 {
     // Generate next path segment.
     BSDFSample result;
-    bool valid = mtl.sample(sd, sg, result, kUseBRDFSampling);
+    bool valid = bsdf.sample(sd, sg, result, kUseBRDFSampling);
 
     if (valid)
     {
@@ -367,8 +366,9 @@ bool generateScatterRay<S : ISampleGenerator, Material : IMaterial>(const PathTr
         path.clearEventFlags();
 
         // Handle specular events.
+        float roughness = bsdf.getProperties(sd).roughness;
         if (result.isLobe(LobeType::SpecularTransmission) ||
-            (result.isLobe(LobeType::SpecularReflection) && sd.linearRoughness <= params.specularRoughnessThreshold) ||
+            (result.isLobe(LobeType::SpecularReflection) && roughness <= params.specularRoughnessThreshold) ||
             result.isLobe(LobeType::Delta))
         {
             path.setSpecular();
@@ -394,9 +394,9 @@ bool generateScatterRay<S : ISampleGenerator, Material : IMaterial>(const PathTr
             path.transmissionOrigin = sd.computeNewRayOrigin(false);
 
             // Update interior list and inside volume flag.
-            if (kUseNestedDielectrics && !sd.isThinSurface())
+            if (kUseNestedDielectrics && !sd.mtl.isThinSurface())
             {
-                uint nestedPriority = gScene.materials[sd.materialID].getNestedPriority();
+                uint nestedPriority = sd.mtl.getNestedPriority();
                 path.interiorList.handleIntersection(sd.materialID, nestedPriority, sd.frontFacing);
                 path.setInsideVolume(!path.interiorList.isEmpty());
             }

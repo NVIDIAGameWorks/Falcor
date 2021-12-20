@@ -41,6 +41,8 @@ Run Mogwai from within Visual Studio (by pressing Ctrl+F5), or from the command 
                                         times.
       --rebuild-cache                   Rebuild the scene cache.
       -d, --debug-shaders               Generate shader debug info.
+      --enable-debug-layer              Enable debug layer (enabled by default
+                                        in Debug build).
 ```
 
 Using `--silent` together with `--script` allows to run Mogwai for rendering in the background.

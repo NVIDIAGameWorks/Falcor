@@ -28,7 +28,7 @@
 #include "stdafx.h"
 #include "ProgramReflection.h"
 #include "Utils/StringUtils.h"
-#include "Slang/slang.h"
+#include <slang/slang.h>
 #include <map>
 using namespace slang;
 
@@ -62,7 +62,7 @@ namespace Falcor
             }
         }
 
-        logError("No member named '" + name + "' found.");
+        reportError("No member named '" + name + "' found.");
         return TypedShaderVarOffset();
     }
 
@@ -582,7 +582,7 @@ namespace Falcor
                 offset += (uint32_t)pp->pVar->getOffset(category);
                 continue;
             }
-            logError("internal error: invalid reflection path");
+            reportError("internal error: invalid reflection path");
             return 0;
         }
         return offset;
@@ -614,13 +614,13 @@ namespace Falcor
                 continue;
             }
 
-            logError("internal error: invalid reflection path");
+            reportError("internal error: invalid reflection path");
             return 0;
         }
         return offset;
     }
 
-    static DescriptorSet::Type getDescriptorSetType(
+    static ShaderResourceType getShaderResourceType(
         const ReflectionResourceType* pType);
 
     static ParameterCategory getParameterCategory(TypeLayoutReflection* pTypeLayout);
@@ -685,13 +685,13 @@ namespace Falcor
             if (type != ReflectionResourceType::Type::RawBuffer && type != ReflectionResourceType::Type::StructuredBuffer &&
                 type != ReflectionResourceType::Type::AccelerationStructure)
             {
-                logError("Resource '" + name + "' cannot be bound as root descriptor. Only raw buffers, structured buffers, and acceleration structures are supported.");
+                reportError("Resource '" + name + "' cannot be bound as root descriptor. Only raw buffers, structured buffers, and acceleration structures are supported.");
                 return nullptr;
             }
             if (shaderAccess != ReflectionResourceType::ShaderAccess::Read &&
                 shaderAccess != ReflectionResourceType::ShaderAccess::ReadWrite)
             {
-                logError("Buffer '" + name + "' cannot be bound as root descriptor. Only SRV/UAVs are supported.");
+                reportError("Buffer '" + name + "' cannot be bound as root descriptor. Only SRV/UAVs are supported.");
                 return nullptr;
             }
             assert(type != ReflectionResourceType::Type::AccelerationStructure || shaderAccess == ReflectionResourceType::ShaderAccess::Read);
@@ -704,7 +704,7 @@ namespace Falcor
                 assert(structuredType != ReflectionResourceType::StructuredType::Invalid);
                 if (structuredType == ReflectionResourceType::StructuredType::Append || structuredType == ReflectionResourceType::StructuredType::Consume)
                 {
-                    logError("StructuredBuffer '" + name + "' cannot be bound as root descriptor. Only regular structured buffers are supported, not append/consume buffers.");
+                    reportError("StructuredBuffer '" + name + "' cannot be bound as root descriptor. Only regular structured buffers are supported, not append/consume buffers.");
                     return nullptr;
                 }
             }
@@ -966,7 +966,7 @@ namespace Falcor
             return nullptr;
         case TypeReflection::Kind::GenericTypeParameter:
             // TODO: How to handle this type? Let it generate an error for now.
-            throw std::exception("Unexpected Slang type");
+            throw ArgumentError("Unexpected Slang type");
         default:
             should_not_get_here();
         }
@@ -1482,11 +1482,6 @@ namespace Falcor
             case SLANG_STAGE_VERTEX:
                 reflectShaderIO(pSlangEntryPoint, SLANG_PARAMETER_CATEGORY_VERTEX_INPUT, mVertAttr, &mVertAttrBySemantic);
                 break;
-#ifdef FALCOR_VK
-                mIsSampleFrequency = pEntryPoint->usesAnySampleRateInput();
-#else
-                mIsSampleFrequency = true; // #SLANG Slang reports false for DX shaders. There's an open issue, once it's fixed we should remove that
-#endif
             default:
                 break;
             }
@@ -1524,35 +1519,35 @@ namespace Falcor
 
             switch (fieldRange.descriptorType)
             {
-            case DescriptorSet::Type::Cbv:
+            case ShaderResourceType::Cbv:
                 fieldRange.baseIndex = ioBuildState.cbCount;
                 ioBuildState.cbCount += fieldRange.count;
                 break;
 
-            case DescriptorSet::Type::TextureSrv:
-            case DescriptorSet::Type::RawBufferSrv:
-            case DescriptorSet::Type::TypedBufferSrv:
-            case DescriptorSet::Type::StructuredBufferSrv:
-            case DescriptorSet::Type::AccelerationStructureSrv:
+            case ShaderResourceType::TextureSrv:
+            case ShaderResourceType::RawBufferSrv:
+            case ShaderResourceType::TypedBufferSrv:
+            case ShaderResourceType::StructuredBufferSrv:
+            case ShaderResourceType::AccelerationStructureSrv:
                 fieldRange.baseIndex = ioBuildState.srvCount;
                 ioBuildState.srvCount += fieldRange.count;
                 break;
 
-            case DescriptorSet::Type::TextureUav:
-            case DescriptorSet::Type::RawBufferUav:
-            case DescriptorSet::Type::TypedBufferUav:
-            case DescriptorSet::Type::StructuredBufferUav:
+            case ShaderResourceType::TextureUav:
+            case ShaderResourceType::RawBufferUav:
+            case ShaderResourceType::TypedBufferUav:
+            case ShaderResourceType::StructuredBufferUav:
                 fieldRange.baseIndex = ioBuildState.uavCount;
                 ioBuildState.uavCount += fieldRange.count;
                 break;
 
-            case DescriptorSet::Type::Sampler:
+            case ShaderResourceType::Sampler:
                 fieldRange.baseIndex = ioBuildState.samplerCount;
                 ioBuildState.samplerCount += fieldRange.count;
                 break;
 
-            case DescriptorSet::Type::Dsv:
-            case DescriptorSet::Type::Rtv:
+            case ShaderResourceType::Dsv:
+            case ShaderResourceType::Rtv:
                 break;
 
             default:
@@ -1575,7 +1570,7 @@ namespace Falcor
             int32_t index = mNameToIndex[pVar->getName()];
             if (*pVar != *mMembers[index])
             {
-                logError("Mismatch in variable declarations between different shader stages. Variable name is '" + pVar->getName() + "', struct name is '" + mName + "'");
+                reportError("Mismatch in variable declarations between different shader stages. Variable name is '" + pVar->getName() + "', struct name is '" + mName + "'");
             }
             return -1;
         }
@@ -1635,8 +1630,7 @@ namespace Falcor
 
 #ifdef FALCOR_D3D12
         ReflectionStructType::BuildState counters;
-#elif defined(FALCOR_VK)
-        uint32_t bindingCount = 0;
+#elif defined(FALCOR_GFX)
 #else
 #error unimplemented graphics API
 #endif
@@ -1654,44 +1648,42 @@ namespace Falcor
 #ifdef FALCOR_D3D12
             switch (rangeInfo.descriptorType)
             {
-            case DescriptorSet::Type::Cbv:
+            case ShaderResourceType::Cbv:
                 regIndex += counters.cbCount;
                 counters.cbCount += rangeInfo.count;
                 break;
 
-            case DescriptorSet::Type::TextureSrv:
-            case DescriptorSet::Type::RawBufferSrv:
-            case DescriptorSet::Type::TypedBufferSrv:
-            case DescriptorSet::Type::StructuredBufferSrv:
-            case DescriptorSet::Type::AccelerationStructureSrv:
+            case ShaderResourceType::TextureSrv:
+            case ShaderResourceType::RawBufferSrv:
+            case ShaderResourceType::TypedBufferSrv:
+            case ShaderResourceType::StructuredBufferSrv:
+            case ShaderResourceType::AccelerationStructureSrv:
                 regIndex += counters.srvCount;
                 counters.srvCount += rangeInfo.count;
                 break;
 
-            case DescriptorSet::Type::TextureUav:
-            case DescriptorSet::Type::RawBufferUav:
-            case DescriptorSet::Type::TypedBufferUav:
-            case DescriptorSet::Type::StructuredBufferUav:
+            case ShaderResourceType::TextureUav:
+            case ShaderResourceType::RawBufferUav:
+            case ShaderResourceType::TypedBufferUav:
+            case ShaderResourceType::StructuredBufferUav:
                 regIndex += counters.uavCount;
                 counters.uavCount += rangeInfo.count;
                 break;
 
-            case DescriptorSet::Type::Sampler:
+            case ShaderResourceType::Sampler:
                 regIndex += counters.samplerCount;
                 counters.samplerCount += rangeInfo.count;
                 break;
 
-            case DescriptorSet::Type::Dsv:
-            case DescriptorSet::Type::Rtv:
+            case ShaderResourceType::Dsv:
+            case ShaderResourceType::Rtv:
                 break;
 
             default:
                 should_not_get_here();
                 break;
             }
-#elif defined(FALCOR_VK)
-            regIndex = bindingCount;
-            bindingCount++;
+#elif defined(FALCOR_GFX)
 #else
 #error unimplemented graphics API
 #endif
@@ -1727,45 +1719,45 @@ namespace Falcor
     }
 
 
-    static DescriptorSet::Type getDescriptorSetType(
+    static ShaderResourceType getShaderResourceType(
         const ReflectionResourceType* pType)
     {
         auto shaderAccess = pType->getShaderAccess();
         switch (pType->getType())
         {
         case ReflectionResourceType::Type::ConstantBuffer:
-            return DescriptorSet::Type::Cbv;
+            return ShaderResourceType::Cbv;
             break;
         case ReflectionResourceType::Type::Texture:
             return shaderAccess == ReflectionResourceType::ShaderAccess::Read
-                ? DescriptorSet::Type::TextureSrv
-                : DescriptorSet::Type::TextureUav;
+                ? ShaderResourceType::TextureSrv
+                : ShaderResourceType::TextureUav;
             break;
         case ReflectionResourceType::Type::RawBuffer:
             return shaderAccess == ReflectionResourceType::ShaderAccess::Read
-                ? DescriptorSet::Type::RawBufferSrv
-                : DescriptorSet::Type::RawBufferUav;
+                ? ShaderResourceType::RawBufferSrv
+                : ShaderResourceType::RawBufferUav;
             break;
         case ReflectionResourceType::Type::StructuredBuffer:
             return shaderAccess == ReflectionResourceType::ShaderAccess::Read
-                ? DescriptorSet::Type::StructuredBufferSrv
-                : DescriptorSet::Type::StructuredBufferUav;
+                ? ShaderResourceType::StructuredBufferSrv
+                : ShaderResourceType::StructuredBufferUav;
             break;
         case ReflectionResourceType::Type::TypedBuffer:
             return shaderAccess == ReflectionResourceType::ShaderAccess::Read
-                ? DescriptorSet::Type::TypedBufferSrv
-                : DescriptorSet::Type::TypedBufferUav;
+                ? ShaderResourceType::TypedBufferSrv
+                : ShaderResourceType::TypedBufferUav;
             break;
         case ReflectionResourceType::Type::AccelerationStructure:
             assert(shaderAccess == ReflectionResourceType::ShaderAccess::Read);
-            return DescriptorSet::Type::AccelerationStructureSrv;
+            return ShaderResourceType::AccelerationStructureSrv;
             break;
         case ReflectionResourceType::Type::Sampler:
-            return DescriptorSet::Type::Sampler;
+            return ShaderResourceType::Sampler;
             break;
         default:
             should_not_get_here();
-            return DescriptorSet::Type::Count;
+            return ShaderResourceType::Count;
         }
     }
 
@@ -1780,17 +1772,16 @@ namespace Falcor
         mResourceRanges.push_back(bindingInfo);
     }
 
+#ifdef FALCOR_D3D12
     struct ParameterBlockReflectionFinalizer
     {
         struct SetIndex
         {
             SetIndex(
                 uint32_t                regSpace,
-                DescriptorSet::Type     descriptorType)
+                ShaderResourceType      descriptorType)
                 : regSpace(regSpace)
-#ifdef FALCOR_D3D12
-                , isSampler(descriptorType == DescriptorSet::Type::Sampler)
-#endif
+                , isSampler(descriptorType == ShaderResourceType::Sampler)
             {}
             bool isSampler = false;
             uint32_t regSpace;
@@ -1805,7 +1796,7 @@ namespace Falcor
 
         uint32_t computeDescriptorSetIndex(
             uint32_t                regSpace,
-            DescriptorSet::Type     descriptorType)
+            ShaderResourceType      descriptorType)
         {
             SetIndex origIndex(regSpace, descriptorType);
             uint32_t setIndex;
@@ -1840,10 +1831,10 @@ namespace Falcor
             // arrays of constant buffers.
 
             assert(pSubObjectReflector);
-            auto subSetCount = pSubObjectReflector->getDescriptorSetCount();
+            auto subSetCount = pSubObjectReflector->getD3D12DescriptorSetCount();
             for (uint32_t subSetIndex = 0; subSetIndex < subSetCount; ++subSetIndex)
             {
-                auto& subSet = pSubObjectReflector->getDescriptorSetInfo(subSetIndex);
+                auto& subSet = pSubObjectReflector->getD3D12DescriptorSetInfo(subSetIndex);
 
                 assert(subSet.layout.getRangeCount() != 0);
                 auto subRange = subSet.layout.getRange(0);
@@ -1883,7 +1874,7 @@ namespace Falcor
 
             if (pReflector->hasDefaultConstantBuffer())
             {
-                auto descriptorType = DescriptorSet::Type::Cbv;
+                auto descriptorType = ShaderResourceType::Cbv;
                 auto& bindingInfo = pReflector->mDefaultConstantBufferBindingInfo;
 
                 if(!bindingInfo.useRootConstants)
@@ -1930,7 +1921,7 @@ namespace Falcor
                 case ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::RootDescriptor:
                     if (range.count > 1)
                     {
-                        logError("Root descriptor at register index " + std::to_string(rangeBindingInfo.regIndex) + " in space " + std::to_string(rangeBindingInfo.regSpace) + " is illegal. Root descriptors cannot be arrays.");
+                        reportError("Root descriptor at register index " + std::to_string(rangeBindingInfo.regIndex) + " in space " + std::to_string(rangeBindingInfo.regSpace) + " is illegal. Root descriptors cannot be arrays.");
                     }
                     pReflector->mRootDescriptorRangeIndices.push_back(rangeIndex);
                     break;
@@ -1983,7 +1974,7 @@ namespace Falcor
             // TODO: Do we need to handle interface sub-object slots here?
         }
     };
-
+#endif // FALCOR_D3D12
     bool ParameterBlockReflection::hasDefaultConstantBuffer() const
     {
         // A parameter block needs a "default" constant buffer whenever its element type requires it to store ordinary/uniform data
@@ -2003,9 +1994,10 @@ namespace Falcor
     void ParameterBlockReflection::finalize()
     {
         assert(getElementType()->getResourceRangeCount() == mResourceRanges.size());
-
+#ifdef FALCOR_D3D12
         ParameterBlockReflectionFinalizer finalizer;
         finalizer.finalize(this);
+#endif
     }
 
     std::shared_ptr<const ProgramVersion> ProgramReflection::getProgramVersion() const
@@ -2177,7 +2169,7 @@ namespace Falcor
         , mDimensions(dims)
     {
         ResourceRange range;
-        range.descriptorType = getDescriptorSetType(this);
+        range.descriptorType = getShaderResourceType(this);
         range.count = 1;
         range.baseIndex = 0;
 
@@ -2358,7 +2350,7 @@ namespace Falcor
     {
         ResourceRange range;
 
-        range.descriptorType = DescriptorSet::Type::Cbv;
+        range.descriptorType = ShaderResourceType::Cbv;
         range.count = 1;
         range.baseIndex = 0;
 

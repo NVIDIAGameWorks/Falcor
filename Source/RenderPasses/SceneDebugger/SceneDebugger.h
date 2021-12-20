@@ -27,7 +27,6 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "FalcorExperimental.h"
 #include "Scene/HitInfoType.slang"
 #include "SharedTypes.slang"
 
@@ -42,12 +41,13 @@ class SceneDebugger : public RenderPass
 public:
     using SharedPtr = std::shared_ptr<SceneDebugger>;
 
+    static const Info kInfo;
+
     static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
 
-    std::string getDesc() override;
     Dictionary getScriptingDictionary() override;
     RenderPassReflection reflect(const CompileData& compileData) override;
-    void compile(RenderContext* pContext, const CompileData& compileData) override;
+    void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
     void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     void renderUI(Gui::Widgets& widget) override;
@@ -71,6 +71,6 @@ private:
     Buffer::SharedPtr       mpPixelData;            ///< Buffer for recording pixel data at the selected pixel.
     Buffer::SharedPtr       mpPixelDataStaging;     ///< Readback buffer.
     Buffer::SharedPtr       mpMeshToBlasID;
-    Buffer::SharedPtr       mpMeshInstanceInfo;
+    Buffer::SharedPtr       mpInstanceInfo;
     bool                    mPixelDataAvailable = false;
 };

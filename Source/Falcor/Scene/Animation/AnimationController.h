@@ -37,7 +37,7 @@ namespace Falcor
     class Model;
     class AssimpModelImporter;
 
-    class dlldecl AnimationController
+    class FALCOR_API AnimationController
     {
     public:
         using UniquePtr = std::unique_ptr<AnimationController>;
@@ -55,7 +55,7 @@ namespace Falcor
 
         /** Add animated vertex caches (curves and meshes) to the controller.
         */
-        void addAnimatedVertexCaches(std::vector<CachedCurve>& cachedCurves, std::vector<CachedMesh>& cachedMeshes);
+        void addAnimatedVertexCaches(std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes);
 
         /** Returns true if controller contains animations.
         */
@@ -63,7 +63,11 @@ namespace Falcor
 
         /** Returns true if controller contains animated vertex caches.
         */
-        bool hasAnimatedVertexCaches() const { return mpVertexCache && mpVertexCache->hasAnimations(); }
+        bool hasAnimatedVertexCaches() const { return hasAnimatedCurveCaches(); }
+
+        /** Returns true if controller contains animated curve caches.
+        */
+        bool hasAnimatedCurveCaches() const { return mpVertexCache && mpVertexCache->hasCurveAnimations(); }
 
         /** Returns a list of all animations.
         */
@@ -79,20 +83,21 @@ namespace Falcor
 
         /** Enable/disable globally looping animations.
         */
-        void setIsLooped(bool looped) { mLoopAnimations = looped; }
+        void setIsLooped(bool looped);
 
         /** Returns true if animations are currently globally looped.
         */
         bool isLooped() { return mLoopAnimations; }
 
-        /** Run the animation
-            \return true if a change occurred, otherwise false
+        /** Mark a scene node as being edited externally.
+            Ensures that all global matrices depending on this scene node are updated.
+        */
+        void setNodeEdited(size_t nodeID) { mNodesEdited[nodeID] = true; }
+
+        /** Run the animation system.
+            \return true if a change occurred, otherwise false.
         */
         bool animate(RenderContext* pContext, double currentTime);
-
-        /** Check if a matrix is animated.
-        */
-        bool isMatrixAnimated(size_t matrixID) const { return mMatricesAnimated[matrixID]; }
 
         /** Check if a matrix changed since last frame.
         */
@@ -130,7 +135,6 @@ namespace Falcor
         friend class SceneBuilder;
         AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const DynamicVertexVector& dynamicVertexData, const std::vector<Animation::SharedPtr>& animations);
 
-        void initFlags();
         void initLocalMatrices();
         void updateLocalMatrices(double time);
         void updateWorldMatrices(bool updateAll = false);
@@ -143,10 +147,10 @@ namespace Falcor
 
         // Animation
         std::vector<Animation::SharedPtr> mAnimations;
+        std::vector<bool> mNodesEdited;
         std::vector<float4x4> mLocalMatrices;
         std::vector<float4x4> mGlobalMatrices;
         std::vector<float4x4> mInvTransposeGlobalMatrices;
-        std::vector<bool> mMatricesAnimated;        ///< Flag per matrix, true if matrix is affected by animations.
         std::vector<bool> mMatricesChanged;         ///< Flag per matrix, true if matrix changed since last frame.
 
         bool mFirstUpdate = true;       ///< True if this is the first update.

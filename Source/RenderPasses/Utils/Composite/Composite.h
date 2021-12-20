@@ -42,6 +42,8 @@ class Composite : public RenderPass
 public:
     using SharedPtr = std::shared_ptr<Composite>;
 
+    static const Info kInfo;
+
     /** Composite modes.
     */
     enum class Mode
@@ -52,14 +54,11 @@ public:
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
-    virtual std::string getDesc() override { return kDesc; }
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
-    virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
+    virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
-
-    static const char* kDesc;
 
     static void registerBindings(pybind11::module& m);
 

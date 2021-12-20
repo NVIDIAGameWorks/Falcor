@@ -188,7 +188,7 @@ namespace Falcor
         return 0;
     }
 
-    SCRIPT_BINDING(Console)
+    FALCOR_SCRIPT_BINDING(Console)
     {
         auto cls = []() { Console::instance().clear(); };
         m.def("cls", cls);

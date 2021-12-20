@@ -31,7 +31,7 @@ namespace Falcor
 {
     /** Rasterizer state
     */
-    class dlldecl RasterizerState : public std::enable_shared_from_this<RasterizerState>
+    class FALCOR_API RasterizerState
     {
     public:
         using SharedPtr = std::shared_ptr<RasterizerState>;
@@ -56,7 +56,7 @@ namespace Falcor
 
         /** Rasterizer state descriptor
         */
-        class dlldecl Desc
+        class FALCOR_API Desc
         {
         public:
             friend class RasterizerState;

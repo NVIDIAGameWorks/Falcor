@@ -84,7 +84,7 @@ namespace Falcor
         return (face == Face::Front) ? mDesc.mStencilFront : mDesc.mStencilBack;
     }
 
-    SCRIPT_BINDING(DepthStencilState)
+    FALCOR_SCRIPT_BINDING(DepthStencilState)
     {
         pybind11::class_<DepthStencilState, DepthStencilState::SharedPtr>(m, "DepthStencilState");
     }

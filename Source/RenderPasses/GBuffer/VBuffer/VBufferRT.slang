@@ -34,19 +34,19 @@ import Utils.Sampling.SampleGenerator;
 
 RWTexture2D<PackedHitInfo> gVBuffer;
 RWTexture2D<float>  gDepth;
-RWTexture2D<float2> gMotionVectors;
+RWTexture2D<float2> gMotionVector;
 RWTexture2D<float4> gViewW;
 RWTexture2D<uint> gTime;
 
 #define is_valid(name) (is_valid_##name != 0)
 
-#if !defined(USE_DEPTH_OF_FIELD) || !defined(USE_ALPHA_TEST) || !defined(RAY_FLAGS)
+#if !defined(COMPUTE_DEPTH_OF_FIELD) || !defined(USE_ALPHA_TEST) || !defined(RAY_FLAGS)
 #error "Not all defines are set!"
 #endif
 
 struct VBufferRT
 {
-    static const bool kUseDepthOfField = USE_DEPTH_OF_FIELD;
+    static const bool kComputeDepthOfField = COMPUTE_DEPTH_OF_FIELD;
     static const bool kUseAlphaTest = USE_ALPHA_TEST;
     static const uint kRayFlags = RAY_FLAGS;
 
@@ -55,9 +55,9 @@ struct VBufferRT
 
     Ray generateRay(uint2 pixel)
     {
-        if (kUseDepthOfField)
+        if (kComputeDepthOfField)
         {
-            SampleGenerator sg = SampleGenerator.create(pixel, frameCount);
+            SampleGenerator sg = SampleGenerator(pixel, frameCount);
             return gScene.camera.computeRayThinlens(pixel, frameDim, sampleNext2D(sg));
         }
         else
@@ -68,7 +68,7 @@ struct VBufferRT
 
     void writeHit(uint2 pixel, float3 rayOrigin, float3 rayDir, const HitInfo hit)
     {
-        gVBuffer[pixel] = hit.pack();
+        gVBuffer[pixel] = hit.getData();
 
         VertexData v;
         float depth = 1.f;
@@ -94,21 +94,28 @@ struct VBufferRT
             v = gScene.getVertexDataFromCurve(curveHit, curveRadius);
             prevPosW = gScene.getPrevPosWFromCurve(curveHit);
         }
+        else if (hit.getType() == HitType::SDFGrid)
+        {
+            const SDFGridHit sdfGridHit = hit.getSDFGridHit();
+            v = gScene.getVertexDataFromSDFGrid(sdfGridHit, rayOrigin, rayDir);
 
-        if (hit.getType() == HitType::Triangle || hit.getType() == HitType::DisplacedTriangle || hit.getType() == HitType::Curve)
+            prevPosW = gScene.getPrevPosWFromSDFGrid(sdfGridHit, v.posW);
+        }
+
+        if (hit.getType() == HitType::Triangle || hit.getType() == HitType::DisplacedTriangle || hit.getType() == HitType::Curve || hit.getType() == HitType::SDFGrid)
         {
             // Compute depth similar to raster (NDC).
             float4 curPosH = mul(float4(v.posW, 1.f), gScene.camera.data.viewProjMatNoJitter);
             depth = curPosH.z / curPosH.w;
 
-            // Compute motion vectors.
+            // Compute motion vector.
             float2 pixelPos = pixel + float2(0.5f, 0.5f);
             float4 prevPosH = mul(float4(prevPosW, 1.f), gScene.camera.data.prevViewProjMatNoJitter);
             motionVector = calcMotionVector(pixelPos, prevPosH, frameDim) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY); // Remove camera jitter from motion vector
         }
 
         if (is_valid(gDepth))           gDepth[pixel]           = depth;
-        if (is_valid(gMotionVectors))   gMotionVectors[pixel]   = motionVector;
+        if (is_valid(gMotionVector))    gMotionVector[pixel]    = motionVector;
     }
 
     void writeMiss(uint2 pixel, float3 rayOrigin, float3 rayDir)
@@ -116,7 +123,7 @@ struct VBufferRT
         gVBuffer[pixel] = {};
 
         if (is_valid(gDepth))           gDepth[pixel]           = 1.f;
-        if (is_valid(gMotionVectors))   gMotionVectors[pixel]   = {};
+        if (is_valid(gMotionVector))    gMotionVector[pixel]    = {};
     }
 
     void writeAux(uint2 pixel, const Ray ray)

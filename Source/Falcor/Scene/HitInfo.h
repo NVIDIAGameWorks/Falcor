@@ -32,15 +32,25 @@ namespace Falcor
 {
     class Scene;
 
-    class dlldecl HitInfo
+    /** Host side utility to setup the bit allocations for device side HitInfo.
+
+        By default, HitInfo is encoded in 128 bits. There is a compression mode
+        where HitInfo is encoded in 64 bits. This mode is only available in
+        scenes that exclusively use triangle meshes and are small enough so
+        the header information fits in 32 bits. In compression mode,
+        barycentrics are quantized to 16 bit unorms.
+
+        See HitInfo.slang for more information.
+    */
+    class FALCOR_API HitInfo
     {
     public:
-        static const uint32_t kMaxPackedSizeInBytes = 12;
-        static const ResourceFormat kDefaultFormat = ResourceFormat::RG32Uint;
+        static const uint32_t kMaxPackedSizeInBytes = 16;
+        static const ResourceFormat kDefaultFormat = ResourceFormat::RGBA32Uint;
 
         HitInfo() = default;
-        HitInfo(const Scene & scene) { init(scene); }
-        void init(const Scene& scene);
+        HitInfo(const Scene& scene, bool useCompression = false) { init(scene, useCompression); }
+        void init(const Scene& scene, bool useCompression);
 
         /** Returns defines needed packing/unpacking a HitInfo struct.
         */
@@ -51,11 +61,10 @@ namespace Falcor
         ResourceFormat getFormat() const;
 
     private:
-        uint32_t mTypeBits = 0;             ///< Number of bits to store hit type.
-        uint32_t mInstanceIndexBits = 0;    ///< Number of bits to store instance index.
-        uint32_t mPrimitiveIndexBits = 0;   ///< Number of bits to store primitive index.
+        bool mUseCompression = false;       ///< Store in compressed format (64 bits instead of 128 bits).
 
-        uint32_t mDataSize = 0;             ///< Number of uints to store unpacked hit information.
-        uint32_t mPackedDataSize = 0;       ///< Number of uints to store packed hit information.
+        uint32_t mTypeBits = 0;             ///< Number of bits to store hit type.
+        uint32_t mInstanceIDBits = 0;       ///< Number of bits to store instance ID.
+        uint32_t mPrimitiveIndexBits = 0;   ///< Number of bits to store primitive index.
     };
 }

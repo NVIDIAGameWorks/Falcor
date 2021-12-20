@@ -26,12 +26,12 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#if _ENABLE_CUDA
+#if FALCOR_ENABLE_CUDA
 #include "ComputeProgram.h"
 
 namespace Falcor
 {
-    class dlldecl CUDAProgram : public ComputeProgram
+    class FALCOR_API CUDAProgram : public ComputeProgram
     {
     public:
         using SharedPtr = std::shared_ptr<CUDAProgram>;
@@ -72,6 +72,7 @@ namespace Falcor
 
         virtual ProgramKernels::SharedPtr createProgramKernels(
             const ProgramVersion* pVersion,
+            slang::IComponentType* pSlangProgram,
             const ProgramReflection::SharedPtr& pReflector,
             const ProgramKernels::UniqueEntryPointGroups& uniqueEntryPointGroups,
             std::string& log,

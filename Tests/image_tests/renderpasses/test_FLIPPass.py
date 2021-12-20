@@ -14,4 +14,14 @@ for useMagma in [False, True]:
     g.updatePass('FLIP', {'useMagma': useMagma})
     render_frames(m, 'useMagma.' + str(useMagma))
 
+# isHDR
+for isHDR in [False, True]:
+    g.updatePass('FLIP', {'isHDR': isHDR})
+    render_frames(m, 'isHDR.' + str(isHDR))
+
+# toneMapper
+for toneMapper in [FLIPToneMapperType.ACES, FLIPToneMapperType.Hable, FLIPToneMapperType.Reinhard]:
+    g.updatePass('FLIP', {'isHDR': True, 'toneMapper': toneMapper})
+    render_frames(m, 'toneMapper.' + str(toneMapper))
+
 exit()

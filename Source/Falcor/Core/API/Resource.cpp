@@ -142,7 +142,7 @@ namespace Falcor
         mState.perSubresource[pTexture->getSubresourceIndex(arraySlice, mipLevel)] = newState;
     }
 
-    SCRIPT_BINDING(Resource)
+    FALCOR_SCRIPT_BINDING(Resource)
     {
         pybind11::class_<Resource, Resource::SharedPtr>(m, "Resource");
     }

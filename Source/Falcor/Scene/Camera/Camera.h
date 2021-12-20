@@ -29,7 +29,7 @@
 #include "CameraData.slang"
 #include "Scene/Animation/Animatable.h"
 #include "Utils/SampleGenerators/CPUSampleGenerator.h"
-#include "Core/BufferTypes/ParameterBlock.h"
+#include "Core/API/ParameterBlock.h"
 #include "Utils/Math/AABB.h"
 
 namespace Falcor
@@ -40,7 +40,7 @@ namespace Falcor
 
     /** Camera class.
     */
-    class dlldecl Camera : public Animatable
+    class FALCOR_API Camera : public Animatable
     {
     public:
         using SharedPtr = std::shared_ptr<Camera>;
@@ -171,8 +171,10 @@ namespace Falcor
         float getFarPlane() const { return mData.farZ; }
 
         /** Set a pattern generator. If a generator is set, then a jitter will be set every frame based on the generator
+            \param[in] pGenerator Sample generator. This may be nullptr.
+            \param[in] scale Jitter scale. This should normally be 1.0 / frameDim.
         */
-        void setPatternGenerator(const CPUSampleGenerator::SharedPtr& pGenerator, const float2& scale = float2(1));
+        void setPatternGenerator(const CPUSampleGenerator::SharedPtr& pGenerator, const float2& scale);
 
         /** Get the bound pattern generator
         */
@@ -207,6 +209,10 @@ namespace Falcor
         /** Get the view-projection matrix.
         */
         const glm::mat4& getViewProjMatrix() const;
+
+        /** Get the view-projection matrix, without jittering.
+        */
+        const glm::mat4& getViewProjMatrixNoJitter() const;
 
         /** Get the inverse of the view-projection matrix.
         */
@@ -305,5 +311,5 @@ namespace Falcor
         friend class SceneCache;
     };
 
-    enum_class_operators(Camera::Changes);
+    FALCOR_ENUM_CLASS_OPERATORS(Camera::Changes);
 }

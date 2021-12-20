@@ -45,10 +45,10 @@ namespace Mogwai
     private:
         MogwaiSettings(Renderer* pRenderer) : Extension(pRenderer, "Settings") {}
 
-        void mainMenu(Gui* pGui);
-        void graphs(Gui* pGui);
-        void timeSettings(Gui* pGui);
-        void windowSettings(Gui* pGui);
+        void renderMainMenu(Gui* pGui);
+        void renderGraphs(Gui* pGui);
+        void renderTimeSettings(Gui* pGui);
+        void renderWindowSettings(Gui* pGui);
         void exitIfNeeded();
 
         bool mAutoHideMenu = false;

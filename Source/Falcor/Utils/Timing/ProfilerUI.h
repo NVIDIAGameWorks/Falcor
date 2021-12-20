@@ -37,7 +37,7 @@ namespace Falcor
         This class uses raw calls to ImGui for increased control
         (most of it cannot be done through the Falcor wrapper).
     */
-    class dlldecl ProfilerUI
+    class FALCOR_API ProfilerUI
     {
     public:
         using UniquePtr = std::unique_ptr<ProfilerUI>;

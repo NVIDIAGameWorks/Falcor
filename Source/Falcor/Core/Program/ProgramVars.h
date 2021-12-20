@@ -26,8 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Core/API/RootSignature.h"
 #include "ShaderVar.h"
+#include "RtBindingTable.h"
 
 namespace Falcor
 {
@@ -35,7 +35,7 @@ namespace Falcor
     class ComputeProgram;
     class ComputeContext;
 
-    class dlldecl EntryPointGroupVars  : public ParameterBlock
+    class FALCOR_API EntryPointGroupVars  : public ParameterBlock
     {
     public:
         using SharedPtr = ParameterBlockSharedPtr<EntryPointGroupVars>;
@@ -69,7 +69,7 @@ namespace Falcor
     /** This class manages a program's reflection and variable assignment.
         It's a high-level abstraction of variables-related concepts such as CBs, texture and sampler assignments, root-signature, descriptor tables, etc.
     */
-    class dlldecl ProgramVars : public ParameterBlock
+    class FALCOR_API ProgramVars : public ParameterBlock
     {
     public:
         using SharedPtr = ParameterBlockSharedPtr<ProgramVars>;
@@ -79,7 +79,9 @@ namespace Falcor
         */
         const ProgramReflection::SharedConstPtr& getReflection() const { return mpReflector; }
 
+#ifdef FALCOR_D3D12
         virtual bool updateSpecializationImpl() const override;
+#endif
 
         uint32_t getEntryPointGroupCount() const { return uint32_t(mpEntryPointGroupVars.size()); }
         EntryPointGroupVars* getEntryPointGroupVars(uint32_t index) const
@@ -97,7 +99,7 @@ namespace Falcor
         std::vector<EntryPointGroupVars::SharedPtr> mpEntryPointGroupVars;
     };
 
-    class dlldecl GraphicsVars : public ProgramVars
+    class FALCOR_API GraphicsVars : public ProgramVars
     {
     public:
         using SharedPtr = ParameterBlockSharedPtr<GraphicsVars>;
@@ -115,16 +117,18 @@ namespace Falcor
         */
         static SharedPtr create(const GraphicsProgram* pProg);
 
-        virtual bool apply(RenderContext* pContext, bool bindRootSig, RootSignature* pRootSignature);
+#ifdef FALCOR_D3D12
+        virtual bool apply(RenderContext* pContext, bool bindRootSig, const ProgramKernels* pProgramKernels);
+#endif
 
     protected:
         GraphicsVars(const ProgramReflection::SharedConstPtr& pReflector);
     };
 
     template<bool forGraphics>
-    bool applyProgramVarsCommon(ParameterBlock* pVars, CopyContext* pContext, bool bindRootSig, RootSignature* pRootSignature);
+    bool applyProgramVarsCommon(ParameterBlock* pVars, CopyContext* pContext, bool bindRootSig, ProgramKernels* pProgramKernels);
 
-    class dlldecl ComputeVars : public ProgramVars
+    class FALCOR_API ComputeVars : public ProgramVars
     {
     public:
         using SharedPtr = ParameterBlockSharedPtr<ComputeVars>;
@@ -142,7 +146,9 @@ namespace Falcor
         */
         static SharedPtr create(const ComputeProgram* pProg);
 
-        virtual bool apply(ComputeContext* pContext, bool bindRootSig, RootSignature* pRootSignature);
+#ifdef FALCOR_D3D12
+        virtual bool apply(ComputeContext* pContext, bool bindRootSig, const ProgramKernels* pProgramKernels);
+#endif
 
         /** Dispatch the program using the argument values set in this object.
         */
@@ -151,4 +157,58 @@ namespace Falcor
     protected:
         ComputeVars(const ProgramReflection::SharedConstPtr& pReflector);
     };
+
+    class RtStateObject;
+
+    /** This class manages a raytracing program's reflection and variable assignment.
+    */
+    class FALCOR_API RtProgramVars : public ProgramVars
+    {
+    public:
+        using SharedPtr = ParameterBlockSharedPtr<RtProgramVars>;
+        using SharedConstPtr = ParameterBlockSharedPtr<const RtProgramVars>;
+
+        /** Create a new ray tracing vars object.
+            \param[in] pProgram The ray tracing program.
+            \param[in] pBindingTable The raytracing binding table.
+            \return A new object, or an exception is thrown if creation failed.
+        */
+        static SharedPtr create(const RtProgram::SharedPtr& pProgram, const RtBindingTable::SharedPtr& pBindingTable);
+
+        bool apply(RenderContext* pCtx, RtStateObject* pRtso);
+
+        ShaderTable::SharedPtr getShaderTable() const { return mpShaderTable; }
+
+        uint32_t getMissVarsCount() const { return uint32_t(mMissVars.size()); }
+        uint32_t getTotalHitVarsCount() const { return uint32_t(mHitVars.size()); }
+        uint32_t getRayTypeCount() const { return mRayTypeCount; }
+        uint32_t getGeometryCount() const { return mGeometryCount; }
+
+        const std::vector<int32_t>& getUniqueEntryPointGroupIndices() const { return mUniqueEntryPointGroupIndices; }
+
+    private:
+        struct EntryPointGroupInfo
+        {
+            EntryPointGroupVars::SharedPtr pVars;
+            ChangeEpoch lastObservedChangeEpoch = 0;
+        };
+
+        using VarsVector = std::vector<EntryPointGroupInfo>;
+
+        RtProgramVars(const RtProgram::SharedPtr& pProgram, const RtBindingTable::SharedPtr& pBindingTable);
+
+        void init(const RtBindingTable::SharedPtr& pBindingTable);
+        bool applyVarsToTable(ShaderTable::SubTableType type, uint32_t tableOffset, VarsVector& varsVec, const RtStateObject* pRtso);
+
+        uint32_t mRayTypeCount = 0;                         ///< Number of ray types (= number of hit groups per geometry).
+        uint32_t mGeometryCount = 0;                        ///< Number of geometries.
+        std::vector<int32_t> mUniqueEntryPointGroupIndices; ///< Indices of all unique entry point groups that we use in the associated program.
+
+        mutable ShaderTable::SharedPtr mpShaderTable;       ///< GPU shader table.
+
+        VarsVector mRayGenVars;
+        VarsVector mMissVars;
+        VarsVector mHitVars;
+    };
+
 }

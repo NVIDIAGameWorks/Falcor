@@ -93,7 +93,7 @@ namespace Falcor
         bool addAlias = (alias.empty() == false);
         if (addAlias && mNameToIndex.count(alias) == 0)
         {
-            throw std::exception(("Field named " + alias + " not found. Cannot register " + name + " as an alias.").c_str());
+            throw RuntimeError("Field named '{}' not found. Cannot register '{}' as an alias.", alias, name);
         }
 
         // Add a new field

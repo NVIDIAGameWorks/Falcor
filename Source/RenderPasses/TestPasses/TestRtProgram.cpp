@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "TestRtProgram.h"
 
-const char* TestRtProgram::kDesc = "Test pass for RtProgram";
+const RenderPass::Info TestRtProgram::kInfo { "TestRtProgram", "Test pass for RtProgram." };
 
 namespace
 {
@@ -92,7 +92,6 @@ void TestRtProgram::sceneChanged()
 
     RtProgram::Desc desc;
     desc.addShaderLibrary(kShaderFilename);
-    desc.addDefines(mpScene->getSceneDefines());
     desc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
     desc.setMaxPayloadSize(kMaxPayloadSizeBytes);
     desc.setMaxAttributeSize(kMaxAttributeSizeBytes);
@@ -118,11 +117,11 @@ void TestRtProgram::sceneChanged()
     auto sphereYellow = desc.addHitGroup("closestHitSphereYellow", "", "intersectSphere");
 
     // Assign default hit groups to all geometries.
-    sbt->setHitGroupByType(0, mpScene, Scene::GeometryType::TriangleMesh, defaultMtl0);
-    sbt->setHitGroupByType(1, mpScene, Scene::GeometryType::TriangleMesh, defaultMtl1);
+    sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), defaultMtl0);
+    sbt->setHitGroup(1, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), defaultMtl1);
 
-    sbt->setHitGroupByType(0, mpScene, Scene::GeometryType::Custom, sphereDefaultMtl0);
-    sbt->setHitGroupByType(1, mpScene, Scene::GeometryType::Custom, sphereDefaultMtl1);
+    sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::Custom), sphereDefaultMtl0);
+    sbt->setHitGroup(1, mpScene->getGeometryIDs(Scene::GeometryType::Custom), sphereDefaultMtl1);
 
     // Override specific hit groups for some geometries.
     for (uint geometryID = 0; geometryID < geometryCount; geometryID++)
@@ -156,7 +155,8 @@ void TestRtProgram::sceneChanged()
         }
     }
 
-    mRT.pProgram = RtProgram::create(desc);
+    mRT.pProgram = RtProgram::create(desc, mpScene->getSceneDefines());
+    mRT.pProgram->setTypeConformances(mpScene->getTypeConformances());
     mRT.pVars = RtProgramVars::create(mRT.pProgram, sbt);
 }
 

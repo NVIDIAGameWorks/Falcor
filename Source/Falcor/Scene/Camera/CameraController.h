@@ -36,7 +36,7 @@ namespace Falcor
 
     /** Camera controller interface. Camera controllers should inherit from this object.
     */
-    class dlldecl CameraController
+    class FALCOR_API CameraController
     {
     public:
         using SharedPtr = std::shared_ptr<CameraController>;
@@ -71,7 +71,7 @@ namespace Falcor
         * Left mouse click + movement will orbit around the model.
         * Mouse wheel zooms in/out.
     */
-    class dlldecl OrbiterCameraController : public CameraController
+    class FALCOR_API OrbiterCameraController : public CameraController
     {
     public:
         using SharedPtr = std::shared_ptr<OrbiterCameraController>;
@@ -120,7 +120,7 @@ namespace Falcor
         - Ctrl for slower movement.
     */
     template<bool b6DoF>
-    class dlldecl FirstPersonCameraControllerCommon : public CameraController
+    class FALCOR_API FirstPersonCameraControllerCommon : public CameraController
     {
     public:
         FirstPersonCameraControllerCommon(const Camera::SharedPtr& pCamera);

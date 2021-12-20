@@ -27,9 +27,10 @@
  **************************************************************************/
 #include "SceneDebugger.h"
 
+const RenderPass::Info SceneDebugger::kInfo { "SceneDebugger", "Scene debugger for identifying asset issues." };
+
 namespace
 {
-    const char kDesc[] = "Scene debugger for identifying asset issues.";
     const char kShaderFile[] = "RenderPasses/SceneDebugger/SceneDebugger.cs.slang";
     const char kShaderModel[] = "6_5";
 
@@ -48,9 +49,8 @@ namespace
         { (uint32_t)SceneDebuggerMode::HitType, "Hit type" },
         { (uint32_t)SceneDebuggerMode::InstanceID, "Instance ID" },
         { (uint32_t)SceneDebuggerMode::MaterialID, "Material ID" },
-        { (uint32_t)SceneDebuggerMode::MeshID, "Mesh ID" },
+        { (uint32_t)SceneDebuggerMode::GeometryID, "Geometry ID" },
         { (uint32_t)SceneDebuggerMode::BlasID, "BLAS ID" },
-        { (uint32_t)SceneDebuggerMode::CurveID, "Curve ID" },
         { (uint32_t)SceneDebuggerMode::InstancedGeometry, "Instanced geometry" },
     };
 
@@ -79,12 +79,10 @@ namespace
             "Instance ID in pseudocolor";
         case SceneDebuggerMode::MaterialID: return
             "Material ID in pseudocolor";
-        case SceneDebuggerMode::MeshID: return
-            "Mesh ID in pseudocolor";
+        case SceneDebuggerMode::GeometryID: return
+            "Geometry ID in pseudocolor";
         case SceneDebuggerMode::BlasID: return
             "Raytracing bottom-level acceleration structure (BLAS) ID in pseudocolor";
-        case SceneDebuggerMode::CurveID: return
-            "Curve ID in pseudocolor";
         case SceneDebuggerMode::InstancedGeometry: return
             "Green = instanced geometry\n"
             "Red = non-instanced geometry";
@@ -111,9 +109,8 @@ namespace
         mode.value("HitType", SceneDebuggerMode::HitType);
         mode.value("InstanceID", SceneDebuggerMode::InstanceID);
         mode.value("MaterialID", SceneDebuggerMode::MaterialID);
-        mode.value("MeshID", SceneDebuggerMode::MeshID);
+        mode.value("GeometryID", SceneDebuggerMode::GeometryID);
         mode.value("BlasID", SceneDebuggerMode::BlasID);
-        mode.value("CurveID", SceneDebuggerMode::CurveID);
         mode.value("InstancedGeometry", SceneDebuggerMode::InstancedGeometry);
 
         pybind11::class_<SceneDebugger, RenderPass, SceneDebugger::SharedPtr> pass(m, "SceneDebugger");
@@ -122,14 +119,14 @@ namespace
 }
 
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" FALCOR_API_EXPORT const char* getProjDir()
 {
     return PROJECT_DIR;
 }
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
 {
-    lib.registerClass("SceneDebugger", kDesc, SceneDebugger::create);
+    lib.registerPass(SceneDebugger::kInfo, SceneDebugger::create);
     Falcor::ScriptBindings::registerBinding(registerBindings);
 }
 
@@ -139,10 +136,11 @@ SceneDebugger::SharedPtr SceneDebugger::create(RenderContext* pRenderContext, co
 }
 
 SceneDebugger::SceneDebugger(const Dictionary& dict)
+    : RenderPass(kInfo)
 {
     if (!gpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1))
     {
-        throw std::exception("Raytracing Tier 1.1 is not supported by the current device");
+        throw RuntimeError("SceneDebugger: Raytracing Tier 1.1 is not supported by the current device");
     }
 
     // Parse dictionary.
@@ -157,11 +155,6 @@ SceneDebugger::SceneDebugger(const Dictionary& dict)
     desc.addShaderLibrary(kShaderFile).csEntry("main").setShaderModel(kShaderModel);
     mpDebugPass = ComputePass::create(desc, Program::DefineList(), false);
     mpFence = GpuFence::create();
-}
-
-std::string SceneDebugger::getDesc()
-{
-    return kDesc;
 }
 
 Dictionary SceneDebugger::getScriptingDictionary()
@@ -180,7 +173,7 @@ RenderPassReflection SceneDebugger::reflect(const CompileData& compileData)
     return reflector;
 }
 
-void SceneDebugger::compile(RenderContext* pContext, const CompileData& compileData)
+void SceneDebugger::compile(RenderContext* pRenderContext, const CompileData& compileData)
 {
     mParams.frameDim = compileData.defaultTexDims;
 }
@@ -195,6 +188,7 @@ void SceneDebugger::setScene(RenderContext* pRenderContext, const Scene::SharedP
         Shader::DefineList defines = mpScene->getSceneDefines();
 
         mpDebugPass->getProgram()->addDefines(defines);
+        mpDebugPass->getProgram()->setTypeConformances(mpScene->getTypeConformances());
         mpDebugPass->setVars(nullptr); // Trigger recompile
 
         // Create lookup table for mesh to BLAS ID.
@@ -214,7 +208,7 @@ void SceneDebugger::setScene(RenderContext* pRenderContext, const Scene::SharedP
         }
         var["pixelData"] = mpPixelData;
         var["meshToBlasID"] = mpMeshToBlasID;
-        var["meshInstanceInfo"] = mpMeshInstanceInfo;
+        var["instanceInfo"] = mpInstanceInfo;
     }
 }
 
@@ -295,8 +289,8 @@ void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
     switch ((HitType)data.hitType)
     {
     case HitType::Triangle:
-        oss << "Mesh ID: " << data.meshID << std::endl
-            << "Mesh name: " << (mpScene->hasMesh(data.meshID) ? mpScene->getMeshName(data.meshID) : "unknown") << std::endl
+        oss << "Mesh ID: " << data.geometryID << std::endl
+            << "Mesh name: " << (mpScene->hasMesh(data.geometryID) ? mpScene->getMeshName(data.geometryID) : "unknown") << std::endl
             << "Instance ID: " << data.instanceID << std::endl
             << "Material ID: " << data.materialID << std::endl
             << "BLAS ID: " << data.blasID << std::endl;
@@ -307,8 +301,8 @@ void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
         // Show mesh details.
         if (auto g = widget.group("Mesh info"); g.open())
         {
-            assert(data.meshID < mpScene->getMeshCount());
-            const auto& mesh = mpScene->getMesh(data.meshID);
+            assert(data.geometryID < mpScene->getMeshCount());
+            const auto& mesh = mpScene->getMesh(data.geometryID);
             std::ostringstream oss;
             oss << "flags: " << std::hex << std::showbase << mesh.flags << std::dec << std::noshowbase << std::endl
                 << "materialID: " << mesh.materialID << std::endl
@@ -326,12 +320,12 @@ void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
         // Show mesh instance info.
         if (auto g = widget.group("Mesh instance info"); g.open())
         {
-            assert(data.instanceID < mpScene->getMeshInstanceCount());
-            const auto& instance = mpScene->getMeshInstance(data.instanceID);
+            assert(data.instanceID < mpScene->getGeometryInstanceCount());
+            const auto& instance = mpScene->getGeometryInstance(data.instanceID);
             std::ostringstream oss;
             oss << "flags: " << std::hex << std::showbase << instance.flags << std::dec << std::noshowbase << std::endl
                 << "nodeID: " << instance.globalMatrixID << std::endl
-                << "meshID: " << instance.meshID << std::endl
+                << "meshID: " << instance.geometryID << std::endl
                 << "materialID: " << instance.materialID << std::endl
                 << "vbOffset: " << instance.vbOffset << std::endl
                 << "ibOffset: " << instance.ibOffset << std::endl
@@ -368,14 +362,13 @@ void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
             std::ostringstream oss;
             oss << "name: " << material.getName() << std::endl
                 << "emissive: " << (material.isEmissive() ? "true" : "false") << std::endl
-                << "doubleSided: " << (material.isDoubleSided() ? "true" : "false") << std::endl
                 << std::endl
                 << "See Scene Settings->Materials for more details" << std::endl;
             g.text(oss.str());
         }
         break;
     case HitType::Curve:
-        oss << "Curve ID: " << data.curveID << std::endl
+        oss << "Curve ID: " << data.geometryID << std::endl
             << "Instance ID: " << data.instanceID << std::endl
             << "Material ID: " << data.materialID << std::endl
             << "BLAS ID: " << data.blasID << std::endl;
@@ -386,13 +379,41 @@ void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
         // Show mesh details.
         if (auto g = widget.group("Curve info"); g.open())
         {
-            const auto& curve = mpScene->getCurve(data.curveID);
+            const auto& curve = mpScene->getCurve(data.geometryID);
             std::ostringstream oss;
             oss << "degree: " << curve.degree << std::endl
                 << "vertexCount: " << curve.vertexCount << std::endl
                 << "indexCount: " << curve.indexCount << std::endl
                 << "vbOffset: " << curve.vbOffset << std::endl
                 << "ibOffset: " << curve.ibOffset << std::endl;
+            g.text(oss.str());
+        }
+
+        // Show material info.
+        if (auto g = widget.group("Material info"); g.open())
+        {
+            const auto& material = *mpScene->getMaterial(data.materialID);
+            std::ostringstream oss;
+            oss << "name: " << material.getName() << std::endl
+                << std::endl
+                << "See Scene Settings->Materials for more details" << std::endl;
+            g.text(oss.str());
+        }
+        break;
+    case HitType::SDFGrid:
+        oss << "SDF Grid ID: " << data.geometryID << std::endl
+            << "Instance ID: " << data.instanceID << std::endl
+            << "Material ID: " << data.materialID << std::endl
+            << "BLAS ID: " << data.blasID << std::endl;
+        widget.text(oss.str());
+        widget.dummy("#spacer2", { 1, 10 });
+
+        // Show SDF grid details.
+        if (auto g = widget.group("SDF grid info"); g.open())
+        {
+            const SDFGrid::SharedPtr& pSDFGrid = mpScene->getSDFGrid(data.geometryID);
+            std::ostringstream oss;
+            oss << "gridWidth: " << pSDFGrid->getGridWidth() << std::endl;
             g.text(oss.str());
         }
 
@@ -428,35 +449,32 @@ bool SceneDebugger::onMouseEvent(const MouseEvent& mouseEvent)
 
 void SceneDebugger::initInstanceInfo()
 {
-    const uint32_t instanceCount = mpScene ? mpScene->getMeshInstanceCount() : 0;
+    const uint32_t instanceCount = mpScene ? mpScene->getGeometryInstanceCount() : 0;
 
-    // If there are no mesh instances. Just clear the buffer and return.
+    // If there are no instances. Just clear the buffer and return.
     if (instanceCount == 0)
     {
-        mpMeshInstanceInfo = nullptr;
+        mpInstanceInfo = nullptr;
         return;
     }
 
-    // Count number of instances of each mesh.
-    const uint32_t meshCount = mpScene->getMeshCount();
-    assert(meshCount > 0);
+    // Count number of times each geometry is used.
+    std::vector<std::vector<uint32_t>> instanceCounts((size_t)GeometryType::Count);
+    for (auto& counts : instanceCounts) counts.resize(mpScene->getGeometryCount());
 
-    std::vector<size_t> meshInstanceCounts(meshCount, 0);
     for (uint32_t instanceID = 0; instanceID < instanceCount; instanceID++)
     {
-        uint32_t meshID = mpScene->getMeshInstance(instanceID).meshID;
-        assert(meshID < meshCount);
-        meshInstanceCounts[meshID]++;
+        const auto& instance = mpScene->getGeometryInstance(instanceID);
+        instanceCounts[(size_t)instance.getType()][instance.geometryID]++;
     }
 
     // Setup instance metadata.
     std::vector<InstanceInfo> instanceInfo(instanceCount);
     for (uint32_t instanceID = 0; instanceID < instanceCount; instanceID++)
     {
+        const auto& instance = mpScene->getGeometryInstance(instanceID);
         auto& info = instanceInfo[instanceID];
-
-        uint32_t meshID = mpScene->getMeshInstance(instanceID).meshID;
-        if (meshInstanceCounts[meshID] > 1)
+        if (instanceCounts[(size_t)instance.getType()][instance.geometryID] > 1)
         {
             info.flags |= (uint32_t)InstanceInfoFlags::IsInstanced;
         }
@@ -464,5 +482,5 @@ void SceneDebugger::initInstanceInfo()
 
     // Create GPU buffer.
     assert(!instanceInfo.empty());
-    mpMeshInstanceInfo = Buffer::createStructured(sizeof(InstanceInfo), (uint32_t)instanceInfo.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, instanceInfo.data(), false);
+    mpInstanceInfo = Buffer::createStructured(sizeof(InstanceInfo), (uint32_t)instanceInfo.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, instanceInfo.data(), false);
 }
