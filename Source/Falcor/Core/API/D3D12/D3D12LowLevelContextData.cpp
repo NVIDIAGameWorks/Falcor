@@ -38,7 +38,7 @@ namespace Falcor
         ID3D12CommandAllocatorPtr pAllocator;
         if (FAILED(gpDevice->getApiHandle()->CreateCommandAllocator(type, IID_PPV_ARGS(&pAllocator))))
         {
-            logError("Failed to create command allocator");
+            reportError("Failed to create command allocator");
             return nullptr;
         }
         return pAllocator;
@@ -84,7 +84,7 @@ namespace Falcor
         mpAllocator = mpApiData->pAllocatorPool->newObject();
         assert(mpAllocator);
 
-        d3d_call(gpDevice->getApiHandle()->CreateCommandList(0, cmdListType, mpAllocator, nullptr, IID_PPV_ARGS(&mpList)));
+        FALCOR_D3D_CALL(gpDevice->getApiHandle()->CreateCommandList(0, cmdListType, mpAllocator, nullptr, IID_PPV_ARGS(&mpList)));
         assert(mpList);
     }
 
@@ -95,13 +95,13 @@ namespace Falcor
 
     void LowLevelContextData::flush()
     {
-        d3d_call(mpList->Close());
+        FALCOR_D3D_CALL(mpList->Close());
         ID3D12CommandList* pList = mpList.GetInterfacePtr();
         assert(mpQueue);
         mpQueue->ExecuteCommandLists(1, &pList);
         mpFence->gpuSignal(mpQueue);
         mpAllocator = mpApiData->pAllocatorPool->newObject();
-        d3d_call(mpAllocator->Reset());
-        d3d_call(mpList->Reset(mpAllocator, nullptr));
+        FALCOR_D3D_CALL(mpAllocator->Reset());
+        FALCOR_D3D_CALL(mpList->Reset(mpAllocator, nullptr));
     }
 }

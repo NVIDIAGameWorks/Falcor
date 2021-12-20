@@ -385,7 +385,7 @@ namespace Falcor
         // Init GLFW
         if (glfwInit() == GLFW_FALSE)
         {
-            logError("GLFW initialization failed");
+            reportError("GLFW initialization failed");
             return nullptr;
         }
 
@@ -419,7 +419,7 @@ namespace Falcor
 
         if (pGLFWWindow == nullptr)
         {
-            logError("Window creation failed!");
+            reportError("Window creation failed!");
             return nullptr;
         }
 
@@ -509,7 +509,7 @@ namespace Falcor
         glfwPollEvents();
     }
 
-    SCRIPT_BINDING(Window)
+    FALCOR_SCRIPT_BINDING(Window)
     {
         pybind11::class_<Window, Window::SharedPtr> window(m, "Window");
         window.def("setWindowPos", &Window::setWindowPos);

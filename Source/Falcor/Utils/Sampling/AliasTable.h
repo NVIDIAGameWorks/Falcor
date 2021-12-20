@@ -32,7 +32,7 @@ namespace Falcor
 {
     /** Implements the alias method for sampling from a discrete probability distribution.
     */
-    class dlldecl AliasTable
+    class FALCOR_API AliasTable
     {
     public:
         using SharedPtr = std::shared_ptr<AliasTable>;

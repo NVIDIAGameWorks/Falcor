@@ -34,14 +34,14 @@ namespace Falcor
     /** Low level framebuffer object.
         This class abstracts the API's framebuffer creation and management.
     */
-    class dlldecl Fbo : public std::enable_shared_from_this<Fbo>
+    class FALCOR_API Fbo
     {
     public:
         using SharedPtr = std::shared_ptr<Fbo>;
         using SharedConstPtr = std::shared_ptr<const Fbo>;
         using ApiHandle = FboHandle;
 
-        class dlldecl Desc
+        class FALCOR_API Desc
         {
         public:
             Desc();
@@ -94,7 +94,7 @@ namespace Falcor
                 TargetDesc(ResourceFormat f, bool uav) : format(f), allowUav(uav) {}
                 ResourceFormat format = ResourceFormat::Unknown;
                 bool allowUav = false;
-                
+
                 bool operator==(const TargetDesc& other) const {return (format == other.format) && (allowUav == other.allowUav); }
 
                 bool operator!=(const TargetDesc& other) const { return !(*this == other); }
@@ -177,7 +177,7 @@ namespace Falcor
         */
         void attachColorTarget(const Texture::SharedPtr& pColorTexture, uint32_t rtIndex, uint32_t mipLevel = 0, uint32_t firstArraySlice = 0, uint32_t arraySize = kAttachEntireMipLevel);
 
-        /** Get the object's API handle.      
+        /** Get the object's API handle.
         */
         const ApiHandle& getApiHandle() const;
 

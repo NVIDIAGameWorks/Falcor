@@ -29,16 +29,16 @@
 #include "GaussianBlur/GaussianBlur.h"
 
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" FALCOR_API_EXPORT const char* getProjDir()
 {
     return PROJECT_DIR;
 }
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
 {
-    lib.registerClass("Composite", Composite::kDesc, Composite::create);
+    lib.registerPass(Composite::kInfo, Composite::create);
     ScriptBindings::registerBinding(Composite::registerBindings);
 
-    lib.registerClass("GaussianBlur", GaussianBlur::kDesc, GaussianBlur::create);
+    lib.registerPass(GaussianBlur::kInfo, GaussianBlur::create);
     ScriptBindings::registerBinding(GaussianBlur::registerBindings);
 }

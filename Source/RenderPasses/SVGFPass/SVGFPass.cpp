@@ -35,6 +35,8 @@ TODO:
 - enum for fbo channel indices
 */
 
+const RenderPass::Info SVGFPass::kInfo { "SVGFPass", "SVGF denoising pass." };
+
 namespace
 {
     // Shader source files
@@ -74,14 +76,14 @@ namespace
 }
 
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" FALCOR_API_EXPORT const char* getProjDir()
 {
     return PROJECT_DIR;
 }
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
 {
-    lib.registerClass("SVGFPass", "SVGF Denoising Pass", SVGFPass::create);
+    lib.registerPass(SVGFPass::kInfo, SVGFPass::create);
 }
 
 SVGFPass::SharedPtr SVGFPass::create(RenderContext* pRenderContext, const Dictionary& dict)
@@ -90,6 +92,7 @@ SVGFPass::SharedPtr SVGFPass::create(RenderContext* pRenderContext, const Dictio
 }
 
 SVGFPass::SVGFPass(const Dictionary& dict)
+    : RenderPass(kInfo)
 {
     for (const auto& [key, value] : dict)
     {
@@ -391,7 +394,7 @@ void SVGFPass::computeAtrousDecomposition(RenderContext* pRenderContext, Texture
 void SVGFPass::renderUI(Gui::Widgets& widget)
 {
     int dirty = 0;
-    dirty |= (int)widget.checkbox(mFilterEnabled ? "SVGF enabled" : "SVGF disabled", mFilterEnabled);
+    dirty |= (int)widget.checkbox("Enable SVGF", mFilterEnabled);
 
     widget.text("");
     widget.text("Number of filter iterations.  Which");

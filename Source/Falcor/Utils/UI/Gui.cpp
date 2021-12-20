@@ -33,7 +33,8 @@
 #include "glm/gtc/type_ptr.hpp"
 #include "Utils/StringUtils.h"
 
-#pragma warning (disable : 4756) // overflow in constant arithmetic caused by calculating the setFloat*() functions (when calculating the step and min/max are +/- INF)
+#pragma warning(disable : 4756) // overflow in constant arithmetic caused by calculating the setFloat*() functions (when calculating the step and min/max are +/- INF)
+
 namespace Falcor
 {
     class GuiImpl
@@ -396,17 +397,6 @@ namespace Falcor
         ImGuiTreeNodeFlags flags = beginExpanded ? ImGuiTreeNodeFlags_DefaultOpen : 0;
         bool visible = mGroupStackSize ? ImGui::TreeNodeEx(name, flags) : ImGui::CollapsingHeader(name, flags);
         if (visible) mGroupStackSize++;
-
-        std::string popupName = std::string("HeaderOptions##") + nameString;
-        if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(1)) ImGui::OpenPopup(popupName.c_str());
-
-        if (ImGui::BeginPopup(popupName.c_str()))
-        {
-            if (ImGui::Button("Open in Window")) ImGui::CloseCurrentPopup();
-            if (ImGui::Button("Cancel")) { ImGui::CloseCurrentPopup(); }
-            ImGui::EndPopup();
-        }
-
         return visible;
     }
 
@@ -455,10 +445,12 @@ namespace Falcor
 
     bool GuiImpl::addDropdown(const char label[], const Gui::DropdownList& values, uint32_t& var, bool sameLine)
     {
+        if (values.size() == 0) return false;
+
         if (sameLine) ImGui::SameLine();
         // Check if we need to update the currentItem
         const auto& iter = mDropDownValues.find(label);
-        int curItem;
+        int curItem = -1;
         if ((iter == mDropDownValues.end()) || (iter->second.lastVal != var))
         {
             // Search the current val
@@ -691,30 +683,37 @@ namespace Falcor
     template<typename T>
     bool GuiImpl::addScalarVar(const char label[], T& var, T minVal, T maxVal, float step, bool sameLine, const char* displayFormat)
     {
-        if (std::is_same<T, int32_t>::value)
+        if constexpr (std::is_same<T, int32_t>::value)
         {
             return addScalarVarHelper(label, var, ImGuiDataType_S32, minVal, maxVal, step, sameLine, displayFormat);
         }
-        else if (std::is_same<T, uint32_t>::value)
+        else if constexpr (std::is_same<T, uint32_t>::value)
         {
             return addScalarVarHelper(label, var, ImGuiDataType_U32, minVal, maxVal, step, sameLine, displayFormat);
         }
-        else if (std::is_same<T, float>::value)
+        else if constexpr (std::is_same<T, int64_t>::value)
         {
-            return addScalarVarHelper(label, var, ImGuiDataType_Float, minVal, maxVal, step, sameLine, displayFormat);
+            return addScalarVarHelper(label, var, ImGuiDataType_S64, minVal, maxVal, step, sameLine, displayFormat);
         }
-        else if (std::is_same<T, uint64_t>::value)
+        else if constexpr (std::is_same<T, uint64_t>::value)
         {
             return addScalarVarHelper(label, var, ImGuiDataType_U64, minVal, maxVal, step, sameLine, displayFormat);
         }
-        else if (std::is_same<T, double>::value)
+        else if constexpr (std::is_same<T, float>::value)
+        {
+            return addScalarVarHelper(label, var, ImGuiDataType_Float, minVal, maxVal, step, sameLine, displayFormat);
+        }
+        else if constexpr (std::is_same<T, uint64_t>::value)
+        {
+            return addScalarVarHelper(label, var, ImGuiDataType_U64, minVal, maxVal, step, sameLine, displayFormat);
+        }
+        else if constexpr (std::is_same<T, double>::value)
         {
             return addScalarVarHelper(label, var, ImGuiDataType_Double, minVal, maxVal, step, sameLine, displayFormat);
         }
         else
         {
-            logError("Unsupported slider type");
-            return false;
+            static_assert(false, "Unsupported data type");
         }
     }
 
@@ -731,26 +730,33 @@ namespace Falcor
     template<typename T>
     bool GuiImpl::addScalarSlider(const char label[], T& var, T minVal, T maxVal, bool sameLine, const char* displayFormat)
     {
-        if (std::is_same<T, int32_t>::value)
+        if constexpr (std::is_same<T, int32_t>::value)
         {
             return addScalarSliderHelper(label, var, ImGuiDataType_S32, minVal, maxVal, sameLine, displayFormat);
         }
-        else if (std::is_same<T, uint32_t>::value)
+        else if constexpr (std::is_same<T, uint32_t>::value)
         {
             return addScalarSliderHelper(label, var, ImGuiDataType_U32, minVal, maxVal, sameLine, displayFormat);
         }
-        else if (std::is_same<T, float>::value)
+        else if constexpr (std::is_same<T, int64_t>::value)
+        {
+            return addScalarSliderHelper(label, var, ImGuiDataType_S64, minVal, maxVal, sameLine, displayFormat);
+        }
+        else if constexpr (std::is_same<T, uint64_t>::value)
+        {
+            return addScalarSliderHelper(label, var, ImGuiDataType_U64, minVal, maxVal, sameLine, displayFormat);
+        }
+        else if constexpr (std::is_same<T, float>::value)
         {
             return addScalarSliderHelper(label, var, ImGuiDataType_Float, minVal, maxVal, sameLine, displayFormat);
         }
-        else if (std::is_same<T, double>::value)
+        else if constexpr (std::is_same<T, double>::value)
         {
             return addScalarSliderHelper(label, var, ImGuiDataType_Double, minVal, maxVal, sameLine, displayFormat);
         }
         else
         {
-            logError("Unsupported slider type");
-            return false;
+            static_assert(false, "Unsupported data type");
         }
     }
 
@@ -768,26 +774,33 @@ namespace Falcor
     template<typename T>
     bool GuiImpl::addVecVar(const char label[], T& var, typename T::value_type minVal, typename T::value_type maxVal, float step, bool sameLine, const char* displayFormat)
     {
-        if (std::is_same<T::value_type, int32_t>::value)
+        if constexpr (std::is_same<T::value_type, int32_t>::value)
         {
             return addVecVarHelper(label, var, ImGuiDataType_S32, minVal, maxVal, step, sameLine, displayFormat);
         }
-        else if (std::is_same<T::value_type, uint32_t>::value)
+        else if constexpr (std::is_same<T::value_type, uint32_t>::value)
         {
             return addVecVarHelper(label, var, ImGuiDataType_U32, minVal, maxVal, step, sameLine, displayFormat);
         }
-        else if (std::is_same<T::value_type, float>::value)
+        else if constexpr (std::is_same<T::value_type, int64_t>::value)
+        {
+            return addVecVarHelper(label, var, ImGuiDataType_S64, minVal, maxVal, step, sameLine, displayFormat);
+        }
+        else if constexpr (std::is_same<T::value_type, uint64_t>::value)
+        {
+            return addVecVarHelper(label, var, ImGuiDataType_U64, minVal, maxVal, step, sameLine, displayFormat);
+        }
+        else if constexpr (std::is_same<T::value_type, float>::value)
         {
             return addVecVarHelper(label, var, ImGuiDataType_Float, minVal, maxVal, step, sameLine, displayFormat);
         }
-        else if (std::is_same<T::value_type, uint64_t>::value)
+        else if constexpr (std::is_same<T::value_type, uint64_t>::value)
         {
             return addVecVarHelper(label, var, ImGuiDataType_U64, minVal, maxVal, step, sameLine, displayFormat);
         }
         else
         {
-            logError("Unsupported slider type");
-            return false;
+            static_assert(false, "Unsupported data type");
         }
     }
 
@@ -804,22 +817,29 @@ namespace Falcor
     template<typename T>
     bool GuiImpl::addVecSlider(const char label[], T& var, typename T::value_type minVal, typename T::value_type maxVal, bool sameLine, const char* displayFormat)
     {
-        if (std::is_same<T::value_type, int32_t>::value)
+        if constexpr (std::is_same<T::value_type, int32_t>::value)
         {
             return addVecSliderHelper(label, var, ImGuiDataType_S32, minVal, maxVal, sameLine, displayFormat);
         }
-        else if (std::is_same<T::value_type, uint32_t>::value)
+        else if constexpr (std::is_same<T::value_type, uint32_t>::value)
         {
             return addVecSliderHelper(label, var, ImGuiDataType_U32, minVal, maxVal, sameLine, displayFormat);
         }
-        else if (std::is_same<T::value_type, float>::value)
+        else if constexpr (std::is_same<T::value_type, int64_t>::value)
+        {
+            return addVecSliderHelper(label, var, ImGuiDataType_S64, minVal, maxVal, sameLine, displayFormat);
+        }
+        else if constexpr (std::is_same<T::value_type, uint64_t>::value)
+        {
+            return addVecSliderHelper(label, var, ImGuiDataType_U64, minVal, maxVal, sameLine, displayFormat);
+        }
+        else if constexpr (std::is_same<T::value_type, float>::value)
         {
             return addVecSliderHelper(label, var, ImGuiDataType_Float, minVal, maxVal, sameLine, displayFormat);
         }
         else
         {
-            logError("Unsupported slider type");
-            return false;
+            static_assert(false, "Unsupported data type");
         }
     }
 
@@ -1033,7 +1053,7 @@ namespace Falcor
         ImGuiIO& io = ImGui::GetIO();
         io.DisplaySize.x = (float)width;
         io.DisplaySize.y = (float)height;
-#ifdef FALCOR_VK
+#ifdef FALCOR_FLIP_Y
         mpWrapper->mpProgramVars["PerFrameCB"]["scale"] = 2.0f / float2(io.DisplaySize.x, io.DisplaySize.y);
         mpWrapper->mpProgramVars["PerFrameCB"]["offset"] = float2(-1.0f);
 #else
@@ -1159,13 +1179,13 @@ namespace Falcor
     }
 
     template<>
-    dlldecl bool Gui::Widgets::checkbox<bool>(const char label[], bool& var, bool sameLine)
+    FALCOR_API bool Gui::Widgets::checkbox<bool>(const char label[], bool& var, bool sameLine)
     {
         return mpGui ? mpGui->mpWrapper->addCheckbox(label, var, sameLine) : false;
     }
 
     template<>
-    dlldecl bool Gui::Widgets::checkbox<int>(const char label[], int& var, bool sameLine)
+    FALCOR_API bool Gui::Widgets::checkbox<int>(const char label[], int& var, bool sameLine)
     {
         return mpGui ? mpGui->mpWrapper->addCheckbox(label, var, sameLine) : false;
     }
@@ -1176,7 +1196,7 @@ namespace Falcor
         return mpGui ? mpGui->mpWrapper->addBoolVecVar<T>(label, var, sameLine) : false;
     }
 
-#define add_bool_vec_type(TypeName)  template dlldecl bool Gui::Widgets::checkbox<TypeName>(const char[], TypeName&, bool)
+#define add_bool_vec_type(TypeName)  template FALCOR_API bool Gui::Widgets::checkbox<TypeName>(const char[], TypeName&, bool)
 
     add_bool_vec_type(bool2);
     add_bool_vec_type(bool3);
@@ -1200,7 +1220,7 @@ namespace Falcor
         return mpGui ? mpGui->mpWrapper->addScalarVar(label, var, minVal, maxVal, step, sameLine, displayFormat) : false;
     }
 
-#define add_scalarVar_type(TypeName) template dlldecl bool Gui::Widgets::var<TypeName>(const char[], TypeName&, TypeName, TypeName, float, bool, const char*)
+#define add_scalarVar_type(TypeName) template FALCOR_API bool Gui::Widgets::var<TypeName>(const char[], TypeName&, TypeName, TypeName, float, bool, const char*)
 
     add_scalarVar_type(int32_t);
     add_scalarVar_type(uint32_t);
@@ -1218,7 +1238,7 @@ namespace Falcor
         return mpGui ? mpGui->mpWrapper->addScalarSlider(label, var, lowerBound, upperBound, sameLine, displayFormat) : false;
     }
 
-#define add_scalarSlider_type(TypeName) template dlldecl bool Gui::Widgets::slider<TypeName>(const char[], TypeName&, TypeName, TypeName, bool, const char*)
+#define add_scalarSlider_type(TypeName) template FALCOR_API bool Gui::Widgets::slider<TypeName>(const char[], TypeName&, TypeName, TypeName, bool, const char*)
 
     add_scalarSlider_type(int32_t);
     add_scalarSlider_type(uint32_t);
@@ -1234,7 +1254,7 @@ namespace Falcor
         return mpGui ? mpGui->mpWrapper->addVecVar(label, var, minVal, maxVal, step, sameLine, displayFormat) : false;
     }
 
-#define add_vecVar_type(TypeName) template dlldecl bool Gui::Widgets::var<TypeName>(const char[], TypeName&, typename TypeName::value_type, typename TypeName::value_type, float, bool, const char*)
+#define add_vecVar_type(TypeName) template FALCOR_API bool Gui::Widgets::var<TypeName>(const char[], TypeName&, typename TypeName::value_type, typename TypeName::value_type, float, bool, const char*)
 
     add_vecVar_type(int2);
     add_vecVar_type(int3);
@@ -1256,7 +1276,7 @@ namespace Falcor
         return mpGui ? mpGui->mpWrapper->addVecSlider(label, var, lowerBound, upperBound, sameLine, displayFormat) : false;
     }
 
-#define add_vecSlider_type(TypeName) template dlldecl bool Gui::Widgets::slider<TypeName>(const char[], TypeName&, typename TypeName::value_type, typename TypeName::value_type, bool, const char*)
+#define add_vecSlider_type(TypeName) template FALCOR_API bool Gui::Widgets::slider<TypeName>(const char[], TypeName&, typename TypeName::value_type, typename TypeName::value_type, bool, const char*)
 
     add_vecSlider_type(int2);
     add_vecSlider_type(int3);
@@ -1326,7 +1346,7 @@ namespace Falcor
         return mpGui ? mpGui->mpWrapper->addMatrixVar(label, var, minVal, maxVal, sameLine) : false;
     }
 
-#define add_matrix_var(TypeName) template dlldecl bool Gui::Widgets::matrix<TypeName>(const char[], TypeName&, float, float, bool)
+#define add_matrix_var(TypeName) template FALCOR_API bool Gui::Widgets::matrix<TypeName>(const char[], TypeName&, float, float, bool)
 
     add_matrix_var(glm::mat2x2);
     add_matrix_var(glm::mat2x3);

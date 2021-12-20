@@ -31,7 +31,7 @@ namespace Falcor
 {
     /** Depth-Stencil state
     */
-    class dlldecl DepthStencilState : public std::enable_shared_from_this<DepthStencilState>
+    class FALCOR_API DepthStencilState
     {
     public:
         using SharedPtr = std::shared_ptr<DepthStencilState>;
@@ -76,7 +76,7 @@ namespace Falcor
 
         /** Depth-stencil descriptor
         */
-        class dlldecl Desc
+        class FALCOR_API Desc
         {
         public:
             friend class DepthStencilState;

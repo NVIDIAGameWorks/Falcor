@@ -32,11 +32,11 @@ namespace Falcor
 {
     void RenderGraphExe::execute(const Context& ctx)
     {
-        PROFILE("RenderGraphExe::execute()");
+        FALCOR_PROFILE("RenderGraphExe::execute()");
 
         for (const auto& pass : mExecutionList)
         {
-            PROFILE(pass.name);
+            FALCOR_PROFILE(pass.name);
 
             RenderData renderData(pass.name, mpResourceCache, ctx.pGraphDictionary, ctx.defaultTexDims, ctx.defaultTexFormat);
             pass.pPass->execute(ctx.pRenderContext, renderData);

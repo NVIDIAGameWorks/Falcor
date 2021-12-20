@@ -1,19 +1,7 @@
 Optix Denoiser Render Pass
 --------------------------
 
-To use this you need:
-  1) The OptiX 7.3 SDK installed (see <optix.h> for OPTIX_VERSION 70300, or later)
-  2) A driver supporting OptiX 7.3 (465.84 or later)
-       -- Using earlier drivers will cause optixInit() to fail with a cryptic error
-  3) Enable OptiX in `Source\Core\FalcorConfig.h` by setting the _ENABLE_OPTIX #define to 1
-  4) Make sure to link or copy the OptiX SDK into `Source\Externals`.  There are two options:
-       a) There should be an `optix` directory in `Source\Externals\`
-          (i.e., file `Source\Externals\optix\include\optix.h` should exist)
-       b) There should be an `optix` directory in `Source\Externals\.packman\`
-          (i.e., file `Source\Externals\.packman\optix\include\optix.h` should exist)
-  5) OptiX requires CUDA be installed on your machine, as well, though after confuring OptiX,
-     no additional configuration for CUDA is required (for this pass -- other passes may
-     require expliciy changing the _ENABLE_CUDE setting to use correctly).
+See the main README on how to install OptiX.
 
 -----------------------------------------------------------------------------------------------------
 

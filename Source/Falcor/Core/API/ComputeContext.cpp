@@ -37,26 +37,6 @@ namespace Falcor
         return pCtx;
     }
     
-    bool ComputeContext::applyComputeVars(ComputeVars* pVars, RootSignature* pRootSignature)
-    {
-        bool varsChanged = (pVars != mpLastBoundComputeVars);
-
-        // FIXME TODO Temporary workaround
-        varsChanged = true;
-
-        if (pVars->apply(this, varsChanged, pRootSignature) == false)
-        {
-            logWarning("ComputeContext::applyComputeVars() - applying ComputeVars failed, most likely because we ran out of descriptors. Flushing the GPU and retrying");
-            flush(true);
-            if (!pVars->apply(this, varsChanged, pRootSignature))
-            {
-                logError("ComputeVars::applyComputeVars() - applying ComputeVars failed, most likely because we ran out of descriptors");
-                return false;
-            }
-        }
-        return true;
-    }
-    
     void ComputeContext::flush(bool wait)
     {
         CopyContext::flush(wait);

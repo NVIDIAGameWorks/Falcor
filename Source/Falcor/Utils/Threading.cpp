@@ -84,12 +84,12 @@ namespace Falcor
 
     bool Threading::Task::isRunning()
     {
-        logError("Threading::Task::isRunning() not implemented");
+        reportError("Threading::Task::isRunning() not implemented");
         return true;
     }
 
     void Threading::Task::finish()
     {
-        logError("Threading::Task::finish() not implemented");
+        reportError("Threading::Task::finish() not implemented");
     }
 }

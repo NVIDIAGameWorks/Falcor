@@ -35,6 +35,8 @@ class TestRtProgram : public RenderPass
 public:
     using SharedPtr = std::shared_ptr<TestRtProgram>;
 
+    static const Info kInfo;
+
     /** Create a new render pass object.
         \param[in] pRenderContext The render context.
         \param[in] dict Dictionary of serialized parameters.
@@ -42,10 +44,9 @@ public:
     */
     static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
 
-    virtual std::string getDesc() override { return kDesc; }
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
-    virtual void compile(RenderContext* pContext, const CompileData& compileData) override {}
+    virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override {}
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
@@ -53,10 +54,9 @@ public:
     virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
 
     static void registerScriptBindings(pybind11::module& m);
-    static const char* kDesc;
 
 private:
-    TestRtProgram() = default;
+    TestRtProgram() : RenderPass(kInfo) {}
 
     void sceneChanged();
     void addCustomPrimitive();

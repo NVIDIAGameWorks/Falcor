@@ -90,8 +90,6 @@ namespace Falcor
 
         // Create texture.
         auto pTex = Texture::create2D(texWidth, texHeight, ResourceFormat::RGBA8Unorm, 1, Resource::kMaxPossible, textureBase.data(), ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
-
-        if (!pTex) throw std::runtime_error("Failed to create texture");
         EXPECT(pTex) << "Texture was not created";
 
         // Generate new MIPS using MIN/MAX Filtering.
@@ -149,7 +147,7 @@ namespace Falcor
                     EXPECT_EQ((uint32_t)valMin, (uint32_t)expectedMin) << " MIN - MIP level: " << m << " pixel: [" << x << " - " << y << "]";
                     EXPECT_EQ((uint32_t)valMax, (uint32_t)expectedMax) << " MAX - MIP level: " << m << " pixel: [" << x << " - " << y << "]";
                     EXPECT_EQ((uint32_t)valAlpha, (uint32_t)expectedAlpha) << " ALPHA - MIP level: " << m << " pixel: [" << x << " - " << y << "]";
-                    
+
                     // Save calculated ref values for next iteration.
                     calculatedValues[texelOffset + 0] = expectedAvg;
                     calculatedValues[texelOffset + 1] = expectedMin;

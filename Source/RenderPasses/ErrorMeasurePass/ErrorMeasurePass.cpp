@@ -28,6 +28,8 @@
 #include "ErrorMeasurePass.h"
 #include <sstream>
 
+const RenderPass::Info ErrorMeasurePass::kInfo { "ErrorMeasurePass", "Measures error with respect to a reference image." };
+
 namespace
 {
     const std::string kErrorComputationShaderFile = "RenderPasses/ErrorMeasurePass/ErrorMeasurer.cs.slang";
@@ -62,14 +64,14 @@ static void regErrorMeasurePass(pybind11::module& m)
 }
 
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" FALCOR_API_EXPORT const char* getProjDir()
 {
     return PROJECT_DIR;
 }
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
 {
-    lib.registerClass("ErrorMeasurePass", "Error Measurement Pass", ErrorMeasurePass::create);
+    lib.registerPass(ErrorMeasurePass::kInfo, ErrorMeasurePass::create);
     ScriptBindings::registerBinding(regErrorMeasurePass);
 }
 
@@ -91,6 +93,7 @@ ErrorMeasurePass::SharedPtr ErrorMeasurePass::create(RenderContext* pRenderConte
 }
 
 ErrorMeasurePass::ErrorMeasurePass(const Dictionary& dict)
+    : RenderPass(kInfo)
 {
     for (const auto& [key, value] : dict)
     {
@@ -184,7 +187,7 @@ void ErrorMeasurePass::execute(RenderContext* pRenderContext, const RenderData& 
         pRenderContext->blit(mpDifferenceTexture->getSRV(), pOutputImageTexture->getRTV());
         break;
     default:
-        throw std::exception("Unhandled OutputId case in ErrorMeasurePass");
+        throw RuntimeError("ErrorMeasurePass: Unhandled OutputId case");
     }
 
     saveMeasurementsToFile();
@@ -217,7 +220,7 @@ void ErrorMeasurePass::runReductionPasses(RenderContext* pRenderContext, const R
     float4 error;
     if (!mpParallelReduction->execute(pRenderContext, mpDifferenceTexture, ComputeParallelReduction::Type::Sum, &error))
     {
-        throw std::exception("Error running parallel reduction in ErrorMeasurePass");
+        throw RuntimeError("ErrorMeasurePass: Error running parallel reduction");
     }
 
     const float pixelCountf = static_cast<float>(mpDifferenceTexture->getWidth() * mpDifferenceTexture->getHeight());
@@ -361,7 +364,7 @@ void ErrorMeasurePass::loadReference()
     mpReferenceTexture = Texture::createFromFile(mReferenceImagePath, false /* no MIPs */, false /* linear color */);
     if (!mpReferenceTexture)
     {
-        logError("Failed to load texture " + mReferenceImagePath);
+        reportError("Failed to load texture " + mReferenceImagePath);
         mReferenceImagePath = "";
     }
 
@@ -381,7 +384,7 @@ void ErrorMeasurePass::openMeasurementsFile()
     mMeasurementsFile = std::ofstream(mMeasurementsFilePath, std::ios::trunc);
     if (!mMeasurementsFile)
     {
-        logError("Failed to open file " + mMeasurementsFilePath);
+        reportError("Failed to open file " + mMeasurementsFilePath);
         mMeasurementsFilePath = "";
     }
     else

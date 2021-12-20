@@ -29,7 +29,7 @@
 #include "RenderGraph/RenderPassStandardFlags.h"
 #include "GBufferRT.h"
 
-const char* GBufferRT::kDesc = "Ray traced G-buffer generation pass";
+const RenderPass::Info GBufferRT::kInfo { "GBufferRT", "Ray traced G-buffer generation pass." };
 
 namespace
 {
@@ -38,6 +38,7 @@ namespace
 
     // Scripting options.
     const char kUseTraceRayInline[] = "useTraceRayInline";
+    const char kUseDOF[] = "useDOF";
 
     // Ray tracing settings that affect the traversal stack size. Set as small as possible.
     const uint32_t kMaxPayloadSizeBytes = 4;
@@ -57,18 +58,17 @@ namespace
     const std::string kVBufferName = "vbuffer";
     const ChannelList kGBufferExtraChannels =
     {
-        { kVBufferName,     "gVBuffer",             "Visibility buffer",                    true /* optional */, ResourceFormat::Unknown /* set at runtime */ },
-        { "depth",          "gDepth",               "Depth buffer (NDC)",                   true /* optional */, ResourceFormat::R32Float       },
-        { "linearZ",        "gLinearZ",             "Linear Z and slope",                   true /* optional */, ResourceFormat::RG32Float      },
-        { "mvec",           "gMotionVectors",       "Motion vectors",                       true /* optional */, ResourceFormat::RG32Float      },
-        { "mvecW",          "gMotionVectorsW",      "Motion vectors in world space",        true /* optional */, ResourceFormat::RGBA16Float    },
-        { "normWRoughness", "gNormalWRoughness",    "Normal in world space and roughness",  true /* optional */, ResourceFormat::RGBA8Unorm     },
-        { "roughness",      "gRoughness",           "Roughness",                            true /* optional */, ResourceFormat::RGBA8Unorm     },
-        { "metallic",       "gMetallic",            "Metallic",                             true /* optional */, ResourceFormat::RGBA8Unorm     },
-        { "faceNormalW",    "gFaceNormalW",         "Face normal in world space",           true /* optional */, ResourceFormat::RGBA32Float    },
-        { "viewW",          "gViewW",               "View direction in world space",        true /* optional */, ResourceFormat::RGBA32Float    }, // TODO: Switch to packed 2x16-bit snorm format.
-        { "time",           "gTime",                "Per-pixel execution time",             true /* optional */, ResourceFormat::R32Uint        },
-        { "disocclusion",   "gDisocclusion",        "Disocclusion mask",                    true /* optional */, ResourceFormat::R32Float       },
+        { kVBufferName,     "gVBuffer",             "Visibility buffer",                        true /* optional */, ResourceFormat::Unknown /* set at runtime */ },
+        { "depth",          "gDepth",               "Depth buffer (NDC)",                       true /* optional */, ResourceFormat::R32Float    },
+        { "linearZ",        "gLinearZ",             "Linear Z and slope",                       true /* optional */, ResourceFormat::RG32Float   },
+        { "mvecW",          "gMotionVectorW",       "Motion vector in world space",             true /* optional */, ResourceFormat::RGBA16Float },
+        { "normWRoughness", "gNormalWRoughness",    "Normal in world space and roughness",      true /* optional */, ResourceFormat::RGBA8Unorm  },
+        { "diffuseOpacity", "gDiffOpacity",         "Diffuse reflection albedo and opacity",    true /* optional */, ResourceFormat::RGBA32Float },
+        { "specRough",      "gSpecRough",           "Specular reflectance and roughness",       true /* optional */, ResourceFormat::RGBA32Float },
+        { "emissive",       "gEmissive",            "Emissive color",                           true /* optional */, ResourceFormat::RGBA32Float },
+        { "viewW",          "gViewW",               "View direction in world space",            true /* optional */, ResourceFormat::RGBA32Float }, // TODO: Switch to packed 2x16-bit snorm format.
+        { "time",           "gTime",                "Per-pixel execution time",                 true /* optional */, ResourceFormat::R32Uint     },
+        { "disocclusion",   "gDisocclusion",        "Disocclusion mask",                        true /* optional */, ResourceFormat::R32Float    },
     };
 };
 
@@ -80,10 +80,11 @@ GBufferRT::SharedPtr GBufferRT::create(RenderContext* pRenderContext, const Dict
 RenderPassReflection GBufferRT::reflect(const CompileData& compileData)
 {
     RenderPassReflection reflector;
+    const uint2 sz = RenderPassHelpers::calculateIOSize(mOutputSizeSelection, mFixedOutputSize, compileData.defaultTexDims);
 
-    // Add all outputs as UAVs.
-    addRenderPassOutputs(reflector, kGBufferChannels);
-    addRenderPassOutputs(reflector, kGBufferExtraChannels);
+    // Add all outputs as UAVs. These are all optional.
+    addRenderPassOutputs(reflector, kGBufferChannels, ResourceBindFlags::UnorderedAccess, sz);
+    addRenderPassOutputs(reflector, kGBufferExtraChannels, ResourceBindFlags::UnorderedAccess, sz);
     reflector.getField(kVBufferName)->format(mVBufferFormat);
 
     return reflector;
@@ -93,29 +94,46 @@ void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
 {
     GBuffer::execute(pRenderContext, renderData);
 
+    // Update frame dimension based on render pass output.
+    // In this pass all outputs are optional, so we must first find one that exists.
+    Texture::SharedPtr pOutput;
+    auto findOutput = [&](const std::string& name) {
+        auto pTex = renderData[name]->asTexture();
+        if (pTex && !pOutput) pOutput = pTex;
+    };
+    for (const auto& channel : kGBufferChannels) findOutput(channel.name);
+    for (const auto& channel : kGBufferExtraChannels) findOutput(channel.name);
+
+    if (!pOutput)
+    {
+        logWarning("GBufferRT::execute() - Render pass has no connected outputs. Is this intended?");
+        return;
+    }
+    assert(pOutput);
+    updateFrameDim(uint2(pOutput->getWidth(), pOutput->getHeight()));
+
     // If there is no scene, clear the output and return.
     if (mpScene == nullptr)
     {
-        auto clear = [&](const ChannelDesc& channel)
-        {
-            auto pTex = renderData[channel.name]->asTexture();
-            if (pTex) pRenderContext->clearUAV(pTex->getUAV().get(), float4(0.f));
-        };
-        for (const auto& channel : kGBufferChannels) clear(channel);
-        for (const auto& channel : kGBufferExtraChannels) clear(channel);
+        clearRenderPassChannels(pRenderContext, kGBufferChannels, renderData);
+        clearRenderPassChannels(pRenderContext, kGBufferExtraChannels, renderData);
         return;
     }
 
-    // Check for scene geometry changes.
-    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged))
+    // Check for scene changes.
+    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged) ||
+        is_set(mpScene->getUpdates(), Scene::UpdateFlags::SDFGridConfigChanged))
     {
         recreatePrograms();
     }
 
     // Configure depth-of-field.
     // When DOF is enabled, two PRNG dimensions are used. Pass this info to subsequent passes via the dictionary.
-    mUseDOF = mpScene->getCamera()->getApertureRadius() > 0.f;
-    if (mUseDOF) renderData.getDictionary()[Falcor::kRenderPassPRNGDimension] = mUseDOF ? 2u : 0u;
+    mComputeDOF = mUseDOF && mpScene->getCamera()->getApertureRadius() > 0.f;
+    if (mUseDOF)
+    {
+        renderData.getDictionary()[Falcor::kRenderPassPRNGDimension] = mComputeDOF ? 2u : 0u;
+    }
 
     if (mLODMode == TexLODMode::RayDiffs)
     {
@@ -143,6 +161,13 @@ void GBufferRT::renderUI(Gui::Widgets& widget)
     {
         mOptionsChanged = true;
     }
+
+
+    if (widget.checkbox("Use depth-of-field", mUseDOF))
+    {
+        mOptionsChanged = true;
+    }
+    widget.tooltip("This option enables stochastic depth-of-field when the camera's aperture radius is nonzero. Disable it to force the use of a pinhole camera.", true);
 }
 
 Dictionary GBufferRT::getScriptingDictionary()
@@ -150,6 +175,7 @@ Dictionary GBufferRT::getScriptingDictionary()
     Dictionary dict = GBuffer::getScriptingDictionary();
     dict[kLODMode] = mLODMode;
     dict[kUseTraceRayInline] = mUseTraceRayInline;
+    dict[kUseDOF] = mUseDOF;
     return dict;
 }
 
@@ -171,41 +197,50 @@ void GBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData&
 {
     if (!mRaytrace.pProgram || !mRaytrace.pVars)
     {
+        Program::DefineList defines;
+        defines.add(mpScene->getSceneDefines());
+        defines.add(mpSampleGenerator->getDefines());
+        defines.add(getShaderDefines(renderData));
+
         // Create ray tracing program.
         RtProgram::Desc desc;
         desc.addShaderLibrary(kProgramRaytraceFile);
         desc.setMaxPayloadSize(kMaxPayloadSizeBytes);
         desc.setMaxAttributeSize(mpScene->getRaytracingMaxAttributeSize());
         desc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
-        desc.addDefines(mpScene->getSceneDefines());
-        desc.addDefines(mpSampleGenerator->getDefines());
-        desc.addDefines(getShaderDefines(renderData));
+        desc.addTypeConformances(mpScene->getTypeConformances());
 
         RtBindingTable::SharedPtr sbt = RtBindingTable::create(1, 1, mpScene->getGeometryCount());
         sbt->setRayGen(desc.addRayGen("rayGen"));
         sbt->setMiss(0, desc.addMiss("miss"));
-        sbt->setHitGroupByType(0, mpScene, Scene::GeometryType::TriangleMesh, desc.addHitGroup("closestHit", "anyHit"));
+        sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), desc.addHitGroup("closestHit", "anyHit"));
 
         // Add hit group with intersection shader for displaced meshes.
         if (mpScene->hasGeometryType(Scene::GeometryType::DisplacedTriangleMesh))
         {
-            sbt->setHitGroupByType(0, mpScene, Scene::GeometryType::DisplacedTriangleMesh, desc.addHitGroup("displacedTriangleMeshClosestHit", "", "displacedTriangleMeshIntersection"));
+            sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::DisplacedTriangleMesh), desc.addHitGroup("displacedTriangleMeshClosestHit", "", "displacedTriangleMeshIntersection"));
         }
 
         // Add hit group with intersection shader for curves (represented as linear swept spheres).
         if (mpScene->hasGeometryType(Scene::GeometryType::Curve))
         {
-            sbt->setHitGroupByType(0, mpScene, Scene::GeometryType::Curve, desc.addHitGroup("curveClosestHit", "", "curveIntersection"));
+            sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::Curve), desc.addHitGroup("curveClosestHit", "", "curveIntersection"));
+        }
+
+        // Add hit group with intersection shader for SDF grids.
+        if (mpScene->hasGeometryType(Scene::GeometryType::SDFGrid))
+        {
+            sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::SDFGrid), desc.addHitGroup("sdfGridClosestHit", "", "sdfGridIntersection"));
         }
 
         // Add hit groups for for other procedural primitives here.
 
-        mRaytrace.pProgram = RtProgram::create(desc);
+        mRaytrace.pProgram = RtProgram::create(desc, defines);
         mRaytrace.pVars = RtProgramVars::create(mRaytrace.pProgram, sbt);
 
         // Bind static resources.
         ShaderVar var = mRaytrace.pVars->getRootVar();
-        if (!mpSampleGenerator->setShaderData(var)) throw std::exception("Failed to bind sample generator");
+        mpSampleGenerator->setShaderData(var);
     }
 
     mRaytrace.pProgram->addDefines(getShaderDefines(renderData));
@@ -221,7 +256,7 @@ void GBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
 {
     if (!gpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1))
     {
-        throw std::exception("Raytracing Tier 1.1 is not supported by the current device");
+        throw RuntimeError("GBufferRT: Raytracing Tier 1.1 is not supported by the current device");
     }
 
     // Create compute pass.
@@ -229,6 +264,7 @@ void GBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
     {
     	Program::Desc desc;
     	desc.addShaderLibrary(kProgramComputeFile).csEntry("main").setShaderModel("6_5");
+        desc.addTypeConformances(mpScene->getTypeConformances());
 
         Program::DefineList defines;
         defines.add(mpScene->getSceneDefines());
@@ -240,7 +276,7 @@ void GBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
         // Bind static resources
         ShaderVar var = mpComputePass->getRootVar();
         mpScene->setRaytracingShaderData(pRenderContext, var);
-        if (!mpSampleGenerator->setShaderData(var)) throw std::exception("Failed to bind sample generator");
+        mpSampleGenerator->setShaderData(var);
     }
 
     mpComputePass->getProgram()->addDefines(getShaderDefines(renderData));
@@ -254,19 +290,20 @@ void GBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
 Program::DefineList GBufferRT::getShaderDefines(const RenderData& renderData) const
 {
     Program::DefineList defines;
-    defines.add("USE_DEPTH_OF_FIELD", mUseDOF ? "1" : "0");
+    defines.add("COMPUTE_DEPTH_OF_FIELD", mComputeDOF ? "1" : "0");
     defines.add("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
     defines.add("LOD_MODE", std::to_string((uint32_t)mLODMode));
     defines.add("ADJUST_SHADING_NORMALS", mAdjustShadingNormals ? "1" : "0");
 
     // Setup ray flags.
-    uint32_t rayFlags = D3D12_RAY_FLAG_NONE;
-    if (mForceCullMode && mCullMode == RasterizerState::CullMode::Front) rayFlags = D3D12_RAY_FLAG_CULL_FRONT_FACING_TRIANGLES;
-    else if (mForceCullMode && mCullMode == RasterizerState::CullMode::Back) rayFlags = D3D12_RAY_FLAG_CULL_BACK_FACING_TRIANGLES;
-    defines.add("RAY_FLAGS", std::to_string(rayFlags));
+    RayFlags rayFlags = RayFlags::None;
+    if (mForceCullMode && mCullMode == RasterizerState::CullMode::Front) rayFlags = RayFlags::CullFrontFacingTriangles;
+    else if (mForceCullMode && mCullMode == RasterizerState::CullMode::Back) rayFlags = RayFlags::CullBackFacingTriangles;
+    defines.add("RAY_FLAGS", std::to_string((uint32_t)rayFlags));
 
     // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
     // TODO: This should be moved to a more general mechanism using Slang.
+    defines.add(getValidResourceDefines(kGBufferChannels, renderData));
     defines.add(getValidResourceDefines(kGBufferExtraChannels, renderData));
     return defines;
 }
@@ -281,7 +318,7 @@ void GBufferRT::setShaderData(const ShaderVar& var, const RenderData& renderData
     // Bind output channels as UAV buffers.
     auto bind = [&](const ChannelDesc& channel)
     {
-        Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
+        Texture::SharedPtr pTex = getOutput(renderData, channel.name);
         var[channel.texname] = pTex;
     };
     for (const auto& channel : kGBufferChannels) bind(channel);
@@ -289,7 +326,7 @@ void GBufferRT::setShaderData(const ShaderVar& var, const RenderData& renderData
 }
 
 GBufferRT::GBufferRT(const Dictionary& dict)
-    : GBuffer()
+    : GBuffer(kInfo)
 {
     parseDictionary(dict);
 
@@ -304,7 +341,8 @@ void GBufferRT::parseDictionary(const Dictionary& dict)
     for (const auto& [key, value] : dict)
     {
         if (key == kLODMode) mLODMode = value;
-        if (key == kUseTraceRayInline) mUseTraceRayInline = value;
+        else if (key == kUseTraceRayInline) mUseTraceRayInline = value;
+        else if (key == kUseDOF) mUseDOF = value;
         // TODO: Check for unparsed fields, including those parsed in base classes.
     }
 }

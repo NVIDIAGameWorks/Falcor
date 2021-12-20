@@ -33,7 +33,7 @@ namespace Falcor
     struct KeyboardEvent;
     struct MouseEvent;
 
-    class dlldecl Window
+    class FALCOR_API Window
     {
     public:
         using SharedPtr = std::shared_ptr<Window>;

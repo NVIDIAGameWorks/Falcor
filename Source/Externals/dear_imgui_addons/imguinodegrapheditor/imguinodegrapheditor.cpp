@@ -955,11 +955,15 @@ namespace ImGui {
                                 ImGui::SetTooltip("%s", tooltip);
                                 igStyle.WindowPadding.x = igStyle.WindowPadding.y = 0.f;
                             }
+                            // FALCOR: Disable ability to edit the node for now, this results in a crash.
+                            // Code is unable to properly propagate the change back to the render graph.
+#if 0
                             if (isLMBDoubleClicked) {
                                 nodeThatIsBeingEditing = node;
                                 node->isInEditingMode = mustStartEditingNodeName = true;
                                 strcpy(&NewNodeName[0], node->Name);
                             }
+#endif
                         }
                     }
                     else {
@@ -1408,7 +1412,7 @@ namespace ImGui {
                         }
                         cp1 = p1 + link_cp;
                         cp2 = p2 - link_cp;
-                        
+
                         const float distanceSquared = GetSquaredDistanceToBezierCurve(io.MousePos, p1, cp1, cp2, p2);
                         if (ImGui::IsMouseClicked(1))
                         {

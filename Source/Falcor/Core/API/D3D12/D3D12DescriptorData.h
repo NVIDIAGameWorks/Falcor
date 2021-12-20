@@ -26,13 +26,15 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+
 #include "D3D12DescriptorHeap.h"
 
 namespace Falcor
 {
     struct DescriptorPoolApiData
     {
-        D3D12DescriptorHeap::SharedPtr pHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
+        static constexpr size_t kHeapCount = D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES;
+        D3D12DescriptorHeap::SharedPtr pHeaps[kHeapCount];
     };
 
     struct DescriptorSetApiData

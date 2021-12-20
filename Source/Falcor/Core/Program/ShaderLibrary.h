@@ -29,7 +29,7 @@
 
 namespace Falcor
 {
-    class dlldecl ShaderLibrary
+    class FALCOR_API ShaderLibrary
     {
     public:
         using SharedPtr = std::shared_ptr<ShaderLibrary>;

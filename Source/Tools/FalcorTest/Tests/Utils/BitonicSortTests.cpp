@@ -72,7 +72,7 @@ namespace Falcor
         }
     }
 
-#if _ENABLE_NVAPI
+#if FALCOR_ENABLE_NVAPI
     GPU_TEST(BitonicSort)
 #else
     GPU_TEST(BitonicSort, "Requires NVAPI")

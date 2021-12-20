@@ -38,7 +38,7 @@ namespace Falcor
 
     RasterScenePass::SharedPtr RasterScenePass::create(const Scene::SharedPtr& pScene, const Program::Desc& progDesc, const Program::DefineList& programDefines)
     {
-        if (pScene == nullptr) throw std::exception("Can't create a RasterScenePass object without a scene");
+        if (pScene == nullptr) throw ArgumentError("Can't create a RasterScenePass object without a scene");
 
         Program::DefineList dl = programDefines;
         dl.add(pScene->getSceneDefines());
@@ -53,10 +53,10 @@ namespace Falcor
         return create(pScene, d, programDefines);
     }
 
-    void RasterScenePass::renderScene(RenderContext* pContext, const Fbo::SharedPtr& pDstFbo)
+    void RasterScenePass::renderScene(RenderContext* pRenderContext, const Fbo::SharedPtr& pDstFbo)
     {
         mpState->setFbo(pDstFbo);
-        mpScene->rasterize(pContext, mpState.get(), mpVars.get());
+        mpScene->rasterize(pRenderContext, mpState.get(), mpVars.get());
     }
 
     bool RasterScenePass::onMouseEvent(const MouseEvent& mouseEvent)

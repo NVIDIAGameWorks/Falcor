@@ -25,10 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+import Scene.Scene;
 import Scene.HitInfo;
 import Scene.ShadingData;
 import Scene.Camera.Camera;
-import Experimental.Scene.Material.MaterialHelpers;
 import Utils.Color.ColorHelpers;
 import PixelInspectorData;
 
@@ -40,110 +40,148 @@ cbuffer PerFrameCB
     uint2 gWorldShadingNormalCoord;
     uint2 gWorldTangentCoord;
     uint2 gWorldFaceNormalCoord;
-    uint2 gTextureCoordinateCoord;
-    uint2 gMaterialDiffuseOpacityCoord;
-    uint2 gMaterialSpecularRoughnessCoord;
-    uint2 gMaterialEmissiveCoord;
-    uint2 gMaterialExtraParamsCoord;
+    uint2 gTextureCoordCoord;
+    uint2 gTextureGradsCoord;
+    uint2 gMaterialDataCoord;
     uint2 gLinearColorCoord;
     uint2 gOutputColorCoord;
     uint2 gVBufferCoord;
-
-    Camera gCamera;
 }
 
+// G-buffer inputs
 Texture2D<float4> gWorldPosition;
 Texture2D<float4> gWorldShadingNormal;
 Texture2D<float4> gWorldTangent;
 Texture2D<float4> gWorldFaceNormal;
-Texture2D<float4> gTextureCoordinate;
-Texture2D<float4> gMaterialDiffuseOpacity;
-Texture2D<float4> gMaterialSpecularRoughness;
-Texture2D<float4> gMaterialEmissive;
-Texture2D<float4> gMaterialExtraParams;
+Texture2D<float4> gTextureCoord;
+Texture2D<float4> gTextureGrads;
+Texture2D<uint4>  gMaterialData;
+
 Texture2D<float4> gLinearColor;
 Texture2D<float4> gOutputColor;
 Texture2D<PackedHitInfo> gVBuffer;
 
 RWStructuredBuffer<PixelData> gPixelDataBuffer;
 
-/** Load material parameters.
-    \return MaterialParams struct filled in with values that were available.
-*/
-MaterialParams loadMaterialParams()
-{
-    MaterialParams matParams;
-    matParams.diffuseOpacity = gMaterialDiffuseOpacity[gMaterialDiffuseOpacityCoord];
-    matParams.specularRoughness = gMaterialSpecularRoughness[gMaterialSpecularRoughnessCoord];
-    matParams.emissive = gMaterialEmissive[gMaterialEmissiveCoord];
-    matParams.extraParams = gMaterialExtraParams[gMaterialExtraParamsCoord];
+#define is_valid(name) (is_valid_##name != 0)
 
-    return matParams;
+/** Helper to create a texture sampler instance.
+    The method for computing texture level-of-detail depends on the configuration.
+    \param[in] pixel Current pixel coordinates.
+    \return Texture sampler instance.
+*/
+ITextureSampler createTextureSampler(const uint2 pixel)
+{
+    if (is_valid(gTextureGrads))
+    {
+        float4 texGrads = gTextureGrads[pixel];
+        return ExplicitGradientTextureSampler(texGrads.xy, texGrads.zw);
+    }
+    else
+    {
+        return ExplicitLodTextureSampler(0.f);
+    }
+}
+
+/** Helper to load G-buffer data and prepare shading data.
+*/
+bool loadShadingData(const float3 viewDir, const ITextureSampler lod, inout ShadingData sd)
+{
+    float4 worldPos = gWorldPosition[gWorldPositionCoord];
+    if (worldPos.w != 0.f) // Using w to indicate valid geometry for now.
+    {
+        // Load G-buffer data.
+        float3 normal = gWorldShadingNormal[gWorldShadingNormalCoord].xyz;
+        float4 tangent = gWorldTangent[gWorldTangentCoord];
+        float3 faceNormal = gWorldFaceNormal[gWorldFaceNormalCoord].xyz;
+        float2 texC = gTextureCoord[gTextureCoordCoord].xy;
+        uint materialID = gMaterialData[gMaterialDataCoord].x;
+
+        VertexData v = {};
+        v.posW = worldPos.xyz;
+        v.normalW = normalize(normal);
+        v.tangentW = float4(normalize(tangent.xyz), tangent.w);
+        v.faceNormalW = normalize(faceNormal);
+        v.texC = texC;
+        v.coneTexLODValue = 0.f;
+
+        // Prepare shading data.
+        // Set 'useNormalMap' parameter to false as normal mapping has already been applied when generating the G-buffer.
+        sd = gScene.materials.prepareShadingData(v, materialID, viewDir, lod, false);
+
+        return true;
+    }
+
+    return false;
 }
 
 [numthreads(1, 1, 1)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
-    const uint2 pixelPos = gSelectedPixel;
-
-    PixelData data;
-    data.init();
-
-    // Read material data
-    const float4 worldPos = gWorldPosition[gWorldPositionCoord];
-    const float3 normal = gWorldShadingNormal[gWorldShadingNormalCoord].xyz;
-    const float4 tangent = gWorldTangent[gWorldTangentCoord];
-    const float3 faceNormal = gWorldFaceNormal[gWorldFaceNormalCoord].xyz;
+    const uint2 pixel = gSelectedPixel;
 
     // Compute the view vector. This must exactly match what the G-buffer pass is doing (jitter etc.).
     // Note that we do not take depth-of-field into account as it would require exactly matching the
     // sample generator between the passes, which is error prone. The host side will issue a warning instead.
-    const float3 viewDir = -gCamera.computeRayPinhole(pixelPos, gResolution).dir;
+    const float3 viewDir = -gScene.camera.computeRayPinhole(pixel, gResolution).dir;
 
-    const GeometryParams geoParams = prepareGeometryParams(worldPos.xyz, viewDir, normal, tangent, faceNormal, gTextureCoordinate[gTextureCoordinateCoord].xy);
-    const MaterialParams matParams = loadMaterialParams();
-    const ShadingData sd = prepareShadingData(geoParams, matParams);
+    PixelData data = PixelData();
+    ShadingData sd = {};
+    let lod = createTextureSampler(gTextureGradsCoord);
 
-    data.posW = sd.posW;
-    data.texCoordU = sd.uv.x;
+    if (loadShadingData(viewDir, lod, sd))
+    {
+        let bsdf = gScene.materials.getBSDF(sd, lod);
+        let bsdfProperties = bsdf.getProperties(sd);
 
-    data.normal = sd.N;
-    data.texCoordV = sd.uv.y;
+        // Store geometry data.
+        data.posW = sd.posW;
+        data.normal = sd.N;
+        data.tangent = sd.T;
+        data.bitangent = sd.B;
+        data.faceNormal = sd.faceN;
+        data.view = sd.V;
+        data.texCoord = sd.uv;
+        data.frontFacing = sd.frontFacing ? 1 : 0;
 
-    data.tangent = sd.T;
-    data.NdotV = sd.NdotV;
+        // Store material data.
+        data.materialID = sd.materialID;
+        data.doubleSided = sd.mtl.isDoubleSided() ? 1 : 0;
+        data.opacity = sd.opacity;
+        data.IoR = sd.IoR;
 
-    data.bitangent = sd.B;
-    data.faceNormal = sd.faceN;
-    data.view = sd.V;
+        // Store BSDF properties.
+        data.emissive = bsdfProperties.emissive;
+        data.roughness = bsdfProperties.roughness;
+        data.diffuseReflectionAlbedo = bsdfProperties.diffuseReflectionAlbedo;
+        data.diffuseTransmissionAlbedo = bsdfProperties.diffuseTransmissionAlbedo;
+        data.specularReflectionAlbedo = bsdfProperties.specularReflectionAlbedo;
+        data.specularTransmissionAlbedo = bsdfProperties.specularTransmissionAlbedo;
+        data.specularReflectance = bsdfProperties.specularReflectance;
+        data.isTransmissive = bsdfProperties.isTransmissive ? 1 : 0;
+    }
 
-    data.diffuse = sd.diffuse;
-    data.opacity = sd.opacity;
-
-    data.specular = sd.specular;
-    data.linearRoughness = sd.linearRoughness;
-
-    data.emissive = sd.emissive;
-    data.ggxAlpha = sd.ggxAlpha;
-
-    data.IoR = sd.IoR;
-    data.doubleSided = sd.isDoubleSided() ? 1u : 0u;
-
-    // Read output data
+    // Store output data.
+    // We compute output luminance using the Rec.709 color space.
     data.linearColor = gLinearColor[gLinearColorCoord];
     data.outputColor = gOutputColor[gOutputColorCoord];
-
-    // Compute luminance. Note we're using the Rec.709 color space now.
     data.luminance = luminance(data.linearColor.rgb);
 
     // Decode visibility buffer.
-    const HitInfo hit = HitInfo(gVBuffer[gVBufferCoord]);
-    if (hit.isValid())
+    if (is_valid(gVBuffer))
     {
-        data.instanceType = (uint)hit.type;
-        data.instanceID = hit.instanceID.index;
-        data.primitiveIndex = hit.primitiveIndex;
-        data.barycentrics = hit.barycentrics;
+        const HitInfo hit = HitInfo(gVBuffer[gVBufferCoord]);
+        if (hit.isValid())
+        {
+            data.hitType = (uint)hit.getType();
+            if (hit.getType() == HitType::Triangle)
+            {
+                const TriangleHit triangleHit = hit.getTriangleHit();
+                data.instanceID = triangleHit.instanceID.index;
+                data.primitiveIndex = triangleHit.primitiveIndex;
+                data.barycentrics = triangleHit.barycentrics;
+            }
+        }
     }
 
     // Store result

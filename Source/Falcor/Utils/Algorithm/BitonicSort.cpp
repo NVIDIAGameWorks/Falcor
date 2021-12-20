@@ -34,8 +34,8 @@ namespace Falcor
 
     BitonicSort::BitonicSort()
     {
-#if !_ENABLE_NVAPI
-        throw std::exception("BitonicSort requires NVAPI. Set _ENABLE_NVAPI to true in FalcorConfig.h.");
+#if !FALCOR_ENABLE_NVAPI
+        throw RuntimeError("BitonicSort requires NVAPI. See installation instructions in README.");
 #endif
         mSort.pState = ComputeState::create();
 
@@ -55,7 +55,7 @@ namespace Falcor
 
     bool BitonicSort::execute(RenderContext* pRenderContext, Buffer::SharedPtr pData, uint32_t totalSize, uint32_t chunkSize, uint32_t groupSize)
     {
-        PROFILE("BitonicSort::execute");
+        FALCOR_PROFILE("BitonicSort::execute");
 
         // Validate inputs.
         assert(pRenderContext);

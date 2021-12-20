@@ -46,4 +46,20 @@ namespace Falcor
         testEncodeDecode("Hello World!", "SGVsbG8gV29ybGQh");
         testEncodeDecode("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.", "TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQsIGNvbnNlY3RldHVyIGFkaXBpc2NpbmcgZWxpdCwgc2VkIGRvIGVpdXNtb2QgdGVtcG9yIGluY2lkaWR1bnQgdXQgbGFib3JlIGV0IGRvbG9yZSBtYWduYSBhbGlxdWEu");
     }
+
+    CPU_TEST(RemoveWhitespace)
+    {
+        const char* whitespace = " \t\n\r";
+        EXPECT_EQ(removeLeadingWhitespace("  \t\t\n\n\r\rtest", whitespace), "test");
+        EXPECT_EQ(removeLeadingWhitespace("test", whitespace), "test");
+        EXPECT_EQ(removeLeadingWhitespace("test  \t\t\n\n\r\r", whitespace), "test  \t\t\n\n\r\r");
+
+        EXPECT_EQ(removeTrailingWhitespace("  \t\t\n\n\r\rtest", whitespace), "  \t\t\n\n\r\rtest");
+        EXPECT_EQ(removeTrailingWhitespace("test", whitespace), "test");
+        EXPECT_EQ(removeTrailingWhitespace("test  \t\t\n\n\r\r", whitespace), "test");
+
+        EXPECT_EQ(removeLeadingTrailingWhitespace("  \t\t\n\n\r\rtest", whitespace), "test");
+        EXPECT_EQ(removeLeadingTrailingWhitespace("test", whitespace), "test");
+        EXPECT_EQ(removeLeadingTrailingWhitespace("test  \t\t\n\n\r\r", whitespace), "test");
+    }
 }

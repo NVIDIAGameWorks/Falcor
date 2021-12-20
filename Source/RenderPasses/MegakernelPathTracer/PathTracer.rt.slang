@@ -66,7 +66,7 @@ void scatterAnyHit(inout ScatterRayData rayData : SV_RayPayload, BuiltInTriangle
     GeometryInstanceID instanceID = getGeometryInstanceID();
     VertexData v = getVertexData(instanceID, PrimitiveIndex(), attribs);
     const uint materialID = gScene.getMaterialID(instanceID);
-    if (alphaTest(v, gScene.materials[materialID], gScene.materialResources[materialID], 0.f)) IgnoreHit();
+    if (gScene.materials.alphaTest(v, materialID, 0.f)) IgnoreHit();
 #endif
 }
 
@@ -78,7 +78,7 @@ void scatterClosestHit(inout ScatterRayData rayData : SV_RayPayload, BuiltInTria
     triangleHit.instanceID = getGeometryInstanceID();
     triangleHit.primitiveIndex = PrimitiveIndex();
     triangleHit.barycentrics = attribs.barycentrics;
-    rayData.packedHitInfo = HitInfo(triangleHit).pack();
+    rayData.packedHitInfo = triangleHit.pack();
 }
 
 /************************** Ray index 1: Shadow ray ************************ */
@@ -98,7 +98,7 @@ void shadowAnyHit(inout ShadowRayData rayData : SV_RayPayload, BuiltInTriangleIn
     GeometryInstanceID instanceID = getGeometryInstanceID();
     VertexData v = getVertexData(instanceID, PrimitiveIndex(), attribs);
     const uint materialID = gScene.getMaterialID(instanceID);
-    if (alphaTest(v, gScene.materials[materialID], gScene.materialResources[materialID], 0.f)) IgnoreHit();
+    if (gScene.materials.alphaTest(v, materialID, 0.f)) IgnoreHit();
 #endif
 }
 
@@ -119,11 +119,11 @@ void shadowAnyHit(inout ShadowRayData rayData : SV_RayPayload, BuiltInTriangleIn
 [shader("raygeneration")]
 void rayGen()
 {
-    uint2 launchIndex = DispatchRaysIndex().xy;
-    uint2 launchDim = DispatchRaysDimensions().xy;
+    const uint2 pixel = DispatchRaysIndex().xy;
+    const uint2 frameDim = DispatchRaysDimensions().xy;
 
-    logSetPixel(launchIndex);
-    printSetPixel(launchIndex);
+    logSetPixel(pixel);
+    printSetPixel(pixel);
 
     GpuTimer timer;
     if (is_valid(gOutputTime)) timer.start();
@@ -134,9 +134,15 @@ void rayGen()
 
     HitInfo hit;
     ShadingData sd;
-    if (loadShadingData(launchIndex, launchDim, gScene.camera, sd, hit))
+    let lod = createTextureSampler(pixel);
+
+    if (loadShadingData(pixel, frameDim, gScene.camera, lod, sd, hit))
     {
         // Pixel represents a primary hit. Compute its contribution.
+
+        // Create BSDF instance and query its properties.
+        let bsdf = gScene.materials.getBSDF(sd, lod);
+        let bsdfProperties = bsdf.getProperties(sd);
 
         // Compute ray origin for new rays spawned from the G-buffer.
         const float3 rayOrigin = sd.computeNewRayOrigin();
@@ -153,7 +159,7 @@ void rayGen()
 
             // Create sample generator.
             uint frameSeed = gData.params.useFixedSeed ? 0 : gData.params.frameCount;
-            path.sg = SampleGenerator.create(launchIndex, frameSeed * kSamplesPerPixel + sampleIdx);
+            path.sg = SampleGenerator(pixel, frameSeed * kSamplesPerPixel + sampleIdx);
 
             // Advance the generator to the first available dimension.
             // TODO: This is potentially expensive. We may want to store/restore the state from memory if it becomes a problem.
@@ -163,11 +169,11 @@ void rayGen()
             if (!(kRayFootprintMode == TexLODMode::Mip0))
             {
                 // Create the ray footprint data for TexLOD.
-                path.rayFootprint = RayFootprint.create(hit.getTriangleHit(), launchIndex, launchDim, rayOrigin, gScene.camera.getPosition(), sd.faceN, sd.N, gData.params.screenSpacePixelSpreadAngle, sd.linearRoughness, path.isSpecular());
+                path.rayFootprint = RayFootprint::create(hit.getTriangleHit(), pixel, frameDim, rayOrigin, gScene.camera.getPosition(), sd.faceN, sd.N, gData.params.screenSpacePixelSpreadAngle, bsdfProperties.roughness, path.isSpecular());
             }
 
             // Trace the path.
-            tracePath(gData, sd, path);
+            tracePath(gData, sd, bsdf, path);
 
             logPathLength(path.length);
 
@@ -180,7 +186,7 @@ void rayGen()
         // We're done accumulating over all samples.
         const float invSpp = 1.f / kSamplesPerPixel;
         outColor *= invSpp;
-        outAlbedo = sd.diffuse + sd.specular;
+        outAlbedo = bsdfProperties.diffuseReflectionAlbedo + bsdfProperties.specularReflectionAlbedo; // TODO: Include transmission?
         outAlpha = 1.f;
     }
     else
@@ -196,9 +202,9 @@ void rayGen()
 
     // Write outputs.
     // These are all optional so using compile-time checks to decide which ones to write.
-    if (is_valid(gOutputColor)) gOutputColor[launchIndex] = float4(outColor, outAlpha);
-    if (is_valid(gOutputAlbedo)) gOutputAlbedo[launchIndex] = float4(outAlbedo, 1);
+    if (is_valid(gOutputColor)) gOutputColor[pixel] = float4(outColor, outAlpha);
+    if (is_valid(gOutputAlbedo)) gOutputAlbedo[pixel] = float4(outAlbedo, 1);
 
     // Write time.
-    if (is_valid(gOutputTime)) gOutputTime[launchIndex] = timer.getElapsed();
+    if (is_valid(gOutputTime)) gOutputTime[pixel] = timer.getElapsed();
 }

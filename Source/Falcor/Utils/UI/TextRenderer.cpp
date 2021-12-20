@@ -85,7 +85,7 @@ namespace Falcor
             vpTransform[1][1] = -2 / height;
             vpTransform[3][0] = -1;
             vpTransform[3][1] = 1;
-#ifdef FALCOR_VK
+#ifdef FALCOR_FLIP_Y
             vpTransform[1][1] *= -1.0f;
             vpTransform[3][1] *= -1.0f;
 #endif

@@ -36,13 +36,12 @@ class SplitScreenPass : public ComparisonPass
 public:
     using SharedPtr = std::shared_ptr<SplitScreenPass>;
 
+    static const Info kInfo;
+
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
-    virtual std::string getDesc() override { return kDesc; }
-    virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
+    virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual bool onMouseEvent(const MouseEvent& mouseEvent) override;
     virtual void renderUI(Gui::Widgets& widget) override;
-
-    static const char* kDesc;
 
 private:
     SplitScreenPass();

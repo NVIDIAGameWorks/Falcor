@@ -47,7 +47,7 @@ namespace Falcor
     {
         if(rtIndex >= mRtDesc.size())
         {
-            logError("Error when setting blend state RT parameters. Invalid render-target index " + std::to_string(rtIndex) + ". Must be smaller than " + std::to_string(mRtDesc.size()) + ".");
+            reportError("Error when setting blend state RT parameters. Invalid render-target index " + std::to_string(rtIndex) + ". Must be smaller than " + std::to_string(mRtDesc.size()) + ".");
             return *this;
         }
         mRtDesc[rtIndex].rgbBlendOp = rgbOp;
@@ -63,7 +63,7 @@ namespace Falcor
     {
         if(rtIndex >= mRtDesc.size())
         {
-            logError("Error when setting blend state RT write-mask. Invalid render-target index " + std::to_string(rtIndex) + ". Must be smaller than " + std::to_string(mRtDesc.size()) + ".");
+            reportError("Error when setting blend state RT write-mask. Invalid render-target index " + std::to_string(rtIndex) + ". Must be smaller than " + std::to_string(mRtDesc.size()) + ".");
             return *this;
         }
         mRtDesc[rtIndex].writeMask.writeRed = writeRed;
@@ -73,7 +73,7 @@ namespace Falcor
         return *this;
     }
 
-    SCRIPT_BINDING(BlendState)
+    FALCOR_SCRIPT_BINDING(BlendState)
     {
         pybind11::class_<BlendState, BlendState::SharedPtr>(m, "BlendState");
     }

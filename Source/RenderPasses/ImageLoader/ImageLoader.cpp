@@ -27,11 +27,13 @@
  **************************************************************************/
 #include "ImageLoader.h"
 
+const RenderPass::Info ImageLoader::kInfo { "ImageLoader", "Load an image into a texture." };
+
 namespace
 {
-    const char kDesc[] = "Load an image into a texture";
     const std::string kDst = "dst";
 
+    const std::string kOutputSize = "outputSize";
     const std::string kOutputFormat = "outputFormat";
     const std::string kImage = "filename";
     const std::string kMips = "mips";
@@ -41,22 +43,23 @@ namespace
 }
 
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" FALCOR_API_EXPORT const char* getProjDir()
 {
     return PROJECT_DIR;
 }
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
 {
-    lib.registerClass("ImageLoader", kDesc, ImageLoader::create);
+    lib.registerPass(ImageLoader::kInfo, ImageLoader::create);
 }
-
-std::string ImageLoader::getDesc() { return kDesc; }
 
 RenderPassReflection ImageLoader::reflect(const CompileData& compileData)
 {
     RenderPassReflection reflector;
-    reflector.addOutput(kDst, "Destination texture").format(mOutputFormat);
+    uint2 fixedSize = mpTex ? uint2(mpTex->getWidth(), mpTex->getHeight()) : uint2(0);
+    const uint2 sz = RenderPassHelpers::calculateIOSize(mOutputSizeSelection, fixedSize, compileData.defaultTexDims);
+
+    reflector.addOutput(kDst, "Destination texture").format(mOutputFormat).texture2D(sz.x, sz.y);
     return reflector;
 }
 
@@ -66,10 +69,12 @@ ImageLoader::SharedPtr ImageLoader::create(RenderContext* pRenderContext, const 
 }
 
 ImageLoader::ImageLoader(const Dictionary& dict)
+    : RenderPass(kInfo)
 {
     for (const auto& [key, value] : dict)
     {
-        if (key == kOutputFormat) mOutputFormat = value;
+        if (key == kOutputSize) mOutputSizeSelection = value;
+        else if (key == kOutputFormat) mOutputFormat = value;
         else if (key == kImage) mImageName = value.operator std::string();
         else if (key == kSrgb) mLoadSRGB = value;
         else if (key == kMips) mGenerateMips = value;
@@ -88,13 +93,14 @@ ImageLoader::ImageLoader(const Dictionary& dict)
             mImageName = fullPath;
             mpTex = Texture::createFromFile(mImageName, mGenerateMips, mLoadSRGB);
         }
-        if (!mpTex) throw std::runtime_error("ImageLoader() - Failed to load image file '" + mImageName + "'");
+        if (!mpTex) throw RuntimeError("ImageLoader: Failed to load image from '{}'", mImageName);
     }
 }
 
 Dictionary ImageLoader::getScriptingDictionary()
 {
     Dictionary dict;
+    dict[kOutputSize] = mOutputSizeSelection;
     if (mOutputFormat != ResourceFormat::Unknown) dict[kOutputFormat] = mOutputFormat;
     dict[kImage] = stripDataDirectories(mImageName);
     dict[kMips] = mGenerateMips;
@@ -104,30 +110,38 @@ Dictionary ImageLoader::getScriptingDictionary()
     return dict;
 }
 
-void ImageLoader::compile(RenderContext* pContext, const CompileData& compileData)
+void ImageLoader::compile(RenderContext* pRenderContext, const CompileData& compileData)
 {
-    if (!mpTex) throw std::runtime_error("ImageLoader::compile() - No image loaded!");
+    if (!mpTex) throw RuntimeError("ImageLoader: No image loaded");
 }
 
-void ImageLoader::execute(RenderContext* pContext, const RenderData& renderData)
+void ImageLoader::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
     const auto& pDstTex = renderData[kDst]->asTexture();
     assert(pDstTex);
     mOutputFormat = pDstTex->getFormat();
+    mOutputSize = { pDstTex->getWidth(), pDstTex->getHeight() };
 
     if (!mpTex)
     {
-        pContext->clearRtv(pDstTex->getRTV().get(), float4(0, 0, 0, 0));
+        pRenderContext->clearRtv(pDstTex->getRTV().get(), float4(0, 0, 0, 0));
         return;
     }
 
     mMipLevel = std::min(mMipLevel, mpTex->getMipCount() - 1);
     mArraySlice = std::min(mArraySlice, mpTex->getArraySize() - 1);
-    pContext->blit(mpTex->getSRV(mMipLevel, 1, mArraySlice, 1), pDstTex->getRTV());
+    pRenderContext->blit(mpTex->getSRV(mMipLevel, 1, mArraySlice, 1), pDstTex->getRTV());
 }
 
 void ImageLoader::renderUI(Gui::Widgets& widget)
 {
+    // When output size requirements change, we'll trigger a graph recompile to update the render pass I/O sizes.
+    if (widget.dropdown("Output size", RenderPassHelpers::kIOSizeList, (uint32_t&)mOutputSizeSelection)) requestRecompile();
+    widget.tooltip("Specifies the pass output size.\n"
+        "'Default' means that the output is sized based on requirements of connected passes.\n"
+        "'Fixed' means the output is always at the image's native size.\n"
+        "If the output is of a different size than the native image resolution, the image will be rescaled bilinearly." , true);
+
     bool reloadImage = widget.textbox("Image File", mImageName);
     reloadImage |= widget.checkbox("Load As SRGB", mLoadSRGB);
     reloadImage |= widget.checkbox("Generate Mipmaps", mGenerateMips);
@@ -143,12 +157,25 @@ void ImageLoader::renderUI(Gui::Widgets& widget)
         if (mpTex->getArraySize() > 1) widget.slider("Array Slice", mArraySlice, 0u, mpTex->getArraySize() - 1);
 
         widget.image(mImageName.c_str(), mpTex, { 320, 320 });
+        widget.text("Image format: " + to_string(mpTex->getFormat()));
+        widget.text("Image size: (" + std::to_string(mpTex->getWidth()) + ", " + std::to_string(mpTex->getHeight()) + ")");
         widget.text("Output format: " + to_string(mOutputFormat));
+        widget.text("Output size: (" + std::to_string(mOutputSize.x) + ", " + std::to_string(mOutputSize.y) + ")");
     }
 
     if (reloadImage && !mImageName.empty())
     {
+        uint2 prevSize = {};
+        if (mpTex) prevSize = { mpTex->getWidth(), mpTex->getHeight() };
+
         mImageName = stripDataDirectories(mImageName);
         mpTex = Texture::createFromFile(mImageName, mGenerateMips, mLoadSRGB);
+
+        // If output is set to native size and image dimensions have changed, we'll trigger a graph recompile to update the render pass I/O sizes.
+        if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed && mpTex != nullptr &&
+            (mpTex->getWidth() != prevSize.x || mpTex->getHeight() != prevSize.y))
+        {
+            requestRecompile();
+        }
     }
 }

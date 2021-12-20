@@ -359,7 +359,7 @@ float3 sample_triangle(float2 u)
 float2 calcMotionVector(float2 pixelCrd, float4 prevPosH, float2 renderTargetDim)
 {
     float2 prevCrd = prevPosH.xy / prevPosH.w;
-#ifdef FALCOR_VK
+#ifdef FALCOR_FLIP_Y
     prevCrd *= float2(0.5, 0.5);
 #else
     prevCrd *= float2(0.5, -0.5);

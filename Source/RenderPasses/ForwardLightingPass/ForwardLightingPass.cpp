@@ -27,22 +27,29 @@
  **************************************************************************/
 #include "ForwardLightingPass.h"
 
+const RenderPass::Info ForwardLightingPass::kInfo
+{
+    "ForwardLightingPass",
+
+    "Computes direct and indirect illumination and applies shadows for the current scene (if visibility map is provided).\n"
+    "The pass can output the world-space normals and screen-space motion vectors, both are optional."
+};
+
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" FALCOR_API_EXPORT const char* getProjDir()
 {
     return PROJECT_DIR;
 }
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
 {
-    lib.registerClass("ForwardLightingPass", "Computes direct and indirect illumination and applies shadows for the current scene", ForwardLightingPass::create);
+    lib.registerPass(ForwardLightingPass::kInfo, ForwardLightingPass::create);
 }
-
-const char* ForwardLightingPass::kDesc = "The pass computes the lighting results for the current scene. It will compute direct-illumination, indirect illumination from the light-probe and apply shadows (if a visibility map is provided).\n"
-"The pass can output the world-space normals and screen-space motion vectors, both are optional";
 
 namespace
 {
+    const char kShaderFile[] = "RenderPasses/ForwardLightingPass/ForwardLightingPass.3d.slang";
+
     const std::string kDepth = "depth";
     const std::string kColor = "color";
     const std::string kMotionVecs = "motionVecs";
@@ -77,8 +84,9 @@ Dictionary ForwardLightingPass::getScriptingDictionary()
 }
 
 ForwardLightingPass::ForwardLightingPass()
+    : RenderPass(kInfo)
 {
-    GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("RenderPasses/ForwardLightingPass/ForwardLightingPass.slang", "", "ps");
+    GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile(kShaderFile, "", "ps");
     mpState = GraphicsState::create();
     mpState->setProgram(pProgram);
 
@@ -115,14 +123,19 @@ RenderPassReflection ForwardLightingPass::reflect(const CompileData& compileData
 void ForwardLightingPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
 {
     mpScene = pScene;
+    mpVars = nullptr;
 
-    if (mpScene) mpState->getProgram()->addDefines(mpScene->getSceneDefines());
+    if (mpScene)
+    {
+        mpState->getProgram()->addDefines(mpScene->getSceneDefines());
+        mpState->getProgram()->setTypeConformances(mpScene->getTypeConformances());
 
-    mpVars = GraphicsVars::create(mpState->getProgram()->getReflector());
+        mpVars = GraphicsVars::create(mpState->getProgram()->getReflector());
 
-    Sampler::Desc samplerDesc;
-    samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-    setSampler(Sampler::create(samplerDesc));
+        Sampler::Desc samplerDesc;
+        samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
+        setSampler(Sampler::create(samplerDesc));
+    }
 }
 
 void ForwardLightingPass::initDepth(const RenderData& renderData)
@@ -145,7 +158,7 @@ void ForwardLightingPass::initDepth(const RenderData& renderData)
     }
 }
 
-void ForwardLightingPass::initFbo(RenderContext* pContext, const RenderData& renderData)
+void ForwardLightingPass::initFbo(RenderContext* pRenderContext, const RenderData& renderData)
 {
     mpFbo->attachColorTarget(renderData[kColor]->asTexture(), 0);
     mpFbo->attachColorTarget(renderData[kNormals]->asTexture(), 1);
@@ -154,17 +167,17 @@ void ForwardLightingPass::initFbo(RenderContext* pContext, const RenderData& ren
     for (uint32_t i = 1; i < 3; i++)
     {
         const auto& pRtv = mpFbo->getRenderTargetView(i).get();
-        if (pRtv->getResource() != nullptr) pContext->clearRtv(pRtv, float4(0));
+        if (pRtv->getResource() != nullptr) pRenderContext->clearRtv(pRtv, float4(0));
     }
 
     // TODO Matt (not really matt, just need to fix that since if depth is not bound the pass crashes
-    if (mUsePreGenDepth == false) pContext->clearDsv(renderData[kDepth]->asTexture()->getDSV().get(), 1, 0);
+    if (mUsePreGenDepth == false) pRenderContext->clearDsv(renderData[kDepth]->asTexture()->getDSV().get(), 1, 0);
 }
 
-void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& renderData)
+void ForwardLightingPass::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
     initDepth(renderData);
-    initFbo(pContext, renderData);
+    initFbo(pRenderContext, renderData);
 
     if (!mpScene) return;
 
@@ -172,7 +185,7 @@ void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& ren
     const auto& pEnvMap = mpScene->getEnvMap();
     if (pEnvMap && (!mpEnvMapLighting || mpEnvMapLighting->getEnvMap() != pEnvMap))
     {
-        mpEnvMapLighting = EnvMapLighting::create(pContext, pEnvMap);
+        mpEnvMapLighting = EnvMapLighting::create(pRenderContext, pEnvMap);
         mpEnvMapLighting->setShaderData(mpVars["gEnvMapLighting"]);
         mpState->getProgram()->addDefine("_USE_ENV_MAP");
     }
@@ -186,7 +199,7 @@ void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& ren
     mpVars->setTexture(kVisBuffer, renderData[kVisBuffer]->asTexture());
 
     mpState->setFbo(mpFbo);
-    mpScene->rasterize(pContext, mpState.get(), mpVars.get());
+    mpScene->rasterize(pRenderContext, mpState.get(), mpVars.get());
 }
 
 void ForwardLightingPass::renderUI(Gui::Widgets& widget)
@@ -206,14 +219,14 @@ void ForwardLightingPass::renderUI(Gui::Widgets& widget)
 ForwardLightingPass& ForwardLightingPass::setColorFormat(ResourceFormat format)
 {
     mColorFormat = format;
-    mPassChangedCB();
+    requestRecompile();
     return *this;
 }
 
 ForwardLightingPass& ForwardLightingPass::setNormalMapFormat(ResourceFormat format)
 {
     mNormalMapFormat = format;
-    mPassChangedCB();
+    requestRecompile();
     return *this;
 }
 
@@ -228,14 +241,14 @@ ForwardLightingPass& ForwardLightingPass::setMotionVecFormat(ResourceFormat form
     {
         mpState->getProgram()->removeDefine("_OUTPUT_MOTION_VECTORS");
     }
-    mPassChangedCB();
+    requestRecompile();
     return *this;
 }
 
 ForwardLightingPass& ForwardLightingPass::setSampleCount(uint32_t samples)
 {
     mSampleCount = samples;
-    mPassChangedCB();
+    requestRecompile();
     return *this;
 }
 
@@ -257,7 +270,7 @@ ForwardLightingPass& ForwardLightingPass::setSuperSampling(bool enable)
 ForwardLightingPass& ForwardLightingPass::usePreGeneratedDepthBuffer(bool enable)
 {
     mUsePreGenDepth = enable;
-    mPassChangedCB();
+    requestRecompile();
     mpState->setDepthStencilState(mUsePreGenDepth ? mpDsNoDepthWrite : nullptr);
 
     return *this;

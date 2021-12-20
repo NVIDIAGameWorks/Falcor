@@ -32,17 +32,17 @@
 #include "VBuffer/VBufferRT.h"
 
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" FALCOR_API_EXPORT const char* getProjDir()
 {
     return PROJECT_DIR;
 }
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
 {
-    lib.registerClass("GBufferRaster", GBufferRaster::kDesc, GBufferRaster::create);
-    lib.registerClass("GBufferRT", GBufferRT::kDesc, GBufferRT::create);
-    lib.registerClass("VBufferRaster", VBufferRaster::kDesc, VBufferRaster::create);
-    lib.registerClass("VBufferRT", VBufferRT::kDesc, VBufferRT::create);
+    lib.registerPass(GBufferRaster::kInfo, GBufferRaster::create);
+    lib.registerPass(GBufferRT::kInfo, GBufferRT::create);
+    lib.registerPass(VBufferRaster::kInfo, VBufferRaster::create);
+    lib.registerPass(VBufferRT::kInfo, VBufferRT::create);
 
     Falcor::ScriptBindings::registerBinding(GBufferBase::registerBindings);
 }
@@ -59,6 +59,8 @@ void GBufferBase::registerBindings(pybind11::module& m)
 namespace
 {
     // Scripting options.
+    const char kOutputSize[] = "outputSize";
+    const char kFixedOutputSize[] = "fixedOutputSize";
     const char kSamplePattern[] = "samplePattern";
     const char kSampleCount[] = "sampleCount";
     const char kUseAlphaTest[] = "useAlphaTest";
@@ -88,7 +90,9 @@ void GBufferBase::parseDictionary(const Dictionary& dict)
 {
     for (const auto& [key, value] : dict)
     {
-        if (key == kSamplePattern) mSamplePattern = value;
+        if (key == kOutputSize) mOutputSizeSelection = value;
+        else if (key == kFixedOutputSize) mFixedOutputSize = value;
+        else if (key == kSamplePattern) mSamplePattern = value;
         else if (key == kSampleCount) mSampleCount = value;
         else if (key == kUseAlphaTest) mUseAlphaTest = value;
         else if (key == kAdjustShadingNormals) mAdjustShadingNormals = value;
@@ -104,6 +108,8 @@ void GBufferBase::parseDictionary(const Dictionary& dict)
 Dictionary GBufferBase::getScriptingDictionary()
 {
     Dictionary dict;
+    dict[kOutputSize] = mOutputSizeSelection;
+    if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed) dict[kFixedOutputSize] = mFixedOutputSize;
     dict[kSamplePattern] = mSamplePattern;
     dict[kSampleCount] = mSampleCount;
     dict[kUseAlphaTest] = mUseAlphaTest;
@@ -115,6 +121,14 @@ Dictionary GBufferBase::getScriptingDictionary()
 
 void GBufferBase::renderUI(Gui::Widgets& widget)
 {
+    // Controls for output size.
+    // When output size requirements change, we'll trigger a graph recompile to update the render pass I/O sizes.
+    if (widget.dropdown("Output size", RenderPassHelpers::kIOSizeList, (uint32_t&)mOutputSizeSelection)) requestRecompile();
+    if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed)
+    {
+        if (widget.var("Size in pixels", mFixedOutputSize, 32u, 16384u)) requestRecompile();
+    }
+
     // Sample pattern controls.
     bool updatePattern = widget.dropdown("Sample pattern", kSamplePatternList, (uint32_t&)mSamplePattern);
     widget.tooltip("Selects sample pattern for anti-aliasing over multiple frames.\n\n"
@@ -154,18 +168,6 @@ void GBufferBase::renderUI(Gui::Widgets& widget)
     }
 }
 
-void GBufferBase::compile(RenderContext* pContext, const CompileData& compileData)
-{
-    mFrameDim = compileData.defaultTexDims;
-    mInvFrameDim = 1.f / float2(mFrameDim);
-
-    if (mpScene)
-    {
-        auto pCamera = mpScene->getCamera();
-        pCamera->setPatternGenerator(pCamera->getPatternGenerator(), mInvFrameDim);
-    }
-}
-
 void GBufferBase::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
     // Update refresh flag if options that affect the output have changed.
@@ -180,9 +182,6 @@ void GBufferBase::execute(RenderContext* pRenderContext, const RenderData& rende
     // Pass flag for adjust shading normals to subsequent passes via the dictionary.
     // Adjusted shading normals cannot be passed via the VBuffer, so this flag allows consuming passes to compute them when enabled.
     dict[Falcor::kRenderPassGBufferAdjustShadingNormals] = mAdjustShadingNormals;
-
-    // Setup camera with sample generator.
-    if (mpScene) mpScene->getCamera()->setPatternGenerator(mpSampleGenerator, mInvFrameDim);
 }
 
 void GBufferBase::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
@@ -198,7 +197,7 @@ void GBufferBase::setScene(RenderContext* pRenderContext, const Scene::SharedPtr
         if (format != mVBufferFormat)
         {
             mVBufferFormat = format;
-            mPassChangedCB();
+            requestRecompile();
         }
     }
 }
@@ -221,8 +220,30 @@ static CPUSampleGenerator::SharedPtr createSamplePattern(GBufferBase::SamplePatt
     }
 }
 
+void GBufferBase::updateFrameDim(const uint2 frameDim)
+{
+    assert(frameDim.x > 0 && frameDim.y > 0);
+    mFrameDim = frameDim;
+    mInvFrameDim = 1.f / float2(frameDim);
+
+    // Update sample generator for camera jitter.
+    if (mpScene) mpScene->getCamera()->setPatternGenerator(mpSampleGenerator, mInvFrameDim);
+}
+
 void GBufferBase::updateSamplePattern()
 {
     mpSampleGenerator = createSamplePattern(mSamplePattern, mSampleCount);
     if (mpSampleGenerator) mSampleCount = mpSampleGenerator->getSampleCount();
+}
+
+Texture::SharedPtr GBufferBase::getOutput(const RenderData& renderData, const std::string& name) const
+{
+    // This helper fetches the render pass output with the given name and verifies it has the correct size.
+    assert(mFrameDim.x > 0 && mFrameDim.y > 0);
+    auto pTex = renderData[name]->asTexture();
+    if (pTex && (pTex->getWidth() != mFrameDim.x || pTex->getHeight() != mFrameDim.y))
+    {
+        throw RuntimeError("GBufferBase: Pass output '{}' has mismatching size. All outputs must be of the same size.", name);
+    }
+    return pTex;
 }

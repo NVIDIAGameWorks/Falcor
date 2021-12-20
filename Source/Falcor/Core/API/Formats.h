@@ -27,12 +27,32 @@
  **************************************************************************/
 #pragma once
 
+#if __has_include(<dxgiformat.h>)
+#include <dxgiformat.h>
+#define FALCOR_HAS_DXGI_FORMAT_HEADER 1
+#endif
+
 namespace Falcor
 {
     /*!
     *  \addtogroup Falcor
     *  @{
     */
+
+    /** Flags for enumerating texture color channels.
+    */
+    enum class TextureChannelFlags : uint32_t
+    {
+        None = 0x0,
+        Red = 0x1,
+        Green = 0x2,
+        Blue = 0x4,
+        Alpha = 0x8,
+        RGB = 0x7,
+        RGBA = 0xf,
+    };
+
+    FALCOR_ENUM_CLASS_OPERATORS(TextureChannelFlags);
 
     /** These flags are hints the driver to what pipeline stages the resource will be bound to.
     */
@@ -49,15 +69,13 @@ namespace Falcor
         DepthStencil = 0x80,    ///< The resource will be bound as a depth-stencil buffer
         IndirectArg = 0x100,    ///< The resource will be bound as an indirect argument buffer
         Shared      = 0x200,    ///< The resource will be shared with a different adapter. Mostly useful for sharing resoures with CUDA
-#ifdef FALCOR_D3D12
         AccelerationStructure = 0x80000000,  ///< The resource will be bound as an acceleration structure
-#endif
 
         AllColorViews = ShaderResource | UnorderedAccess | RenderTarget,
         AllDepthViews = ShaderResource | DepthStencil
     };
 
-    enum_class_operators(ResourceBindFlags);
+    FALCOR_ENUM_CLASS_OPERATORS(ResourceBindFlags);
 
     /** Resource formats
     */
@@ -118,7 +136,7 @@ namespace Falcor
 
         BGRA8Unorm,
         BGRA8UnormSrgb,
-        
+
         BGRX8Unorm,
         BGRX8UnormSrgb,
         Alpha8Unorm,
@@ -133,7 +151,7 @@ namespace Falcor
 
         // Compressed formats
         BC1Unorm,   // DXT1
-        BC1UnormSrgb, 
+        BC1UnormSrgb,
         BC2Unorm,   // DXT3
         BC2UnormSrgb,
         BC3Unorm,   // DXT5
@@ -149,7 +167,7 @@ namespace Falcor
 
         Count
     };
-    
+
     /** Falcor format Type
     */
     enum class FormatType
@@ -170,13 +188,13 @@ namespace Falcor
         uint32_t bytesPerBlock;
         uint32_t channelCount;
         FormatType Type;
-        struct  
+        struct
         {
             bool isDepth;
             bool isStencil;
             bool isCompressed;
         };
-        struct 
+        struct
         {
             uint32_t width;
             uint32_t height;
@@ -184,7 +202,7 @@ namespace Falcor
         int numChannelBits[4];
     };
 
-    extern const dlldecl FormatDesc kFormatDesc[];
+    extern const FALCOR_API FormatDesc kFormatDesc[];
 
     /** Get the number of bytes per format
     */
@@ -263,9 +281,43 @@ namespace Falcor
         return kFormatDesc[(uint32_t)format].Type;
     }
 
+    /** Check if a format is an integer type.
+    */
+    inline bool isIntegerFormat(ResourceFormat format)
+    {
+        FormatType type = getFormatType(format);
+        return type == FormatType::Uint || type == FormatType::Sint;
+    }
+
+    /** Get number of bits used for a given color channel.
+    */
     inline uint32_t getNumChannelBits(ResourceFormat format, int channel)
     {
         return kFormatDesc[(uint32_t)format].numChannelBits[channel];
+    }
+
+    /** Get number of bits used for the given color channels.
+    */
+    inline uint32_t getNumChannelBits(ResourceFormat format, TextureChannelFlags mask)
+    {
+        uint32_t bits = 0;
+        if (is_set(mask, TextureChannelFlags::Red)) bits += getNumChannelBits(format, 0);
+        if (is_set(mask, TextureChannelFlags::Green)) bits += getNumChannelBits(format, 1);
+        if (is_set(mask, TextureChannelFlags::Blue)) bits += getNumChannelBits(format, 2);
+        if (is_set(mask, TextureChannelFlags::Alpha)) bits += getNumChannelBits(format, 3);
+        return bits;
+    }
+
+    /** Get mask of enabled color channels. See TextureChannelFlags.
+    */
+    inline TextureChannelFlags getChannelMask(ResourceFormat format)
+    {
+        TextureChannelFlags mask = TextureChannelFlags::None;
+        if (kFormatDesc[(uint32_t)format].numChannelBits[0] > 0) mask |= TextureChannelFlags::Red;
+        if (kFormatDesc[(uint32_t)format].numChannelBits[1] > 0) mask |= TextureChannelFlags::Green;
+        if (kFormatDesc[(uint32_t)format].numChannelBits[2] > 0) mask |= TextureChannelFlags::Blue;
+        if (kFormatDesc[(uint32_t)format].numChannelBits[3] > 0) mask |= TextureChannelFlags::Alpha;
+        return mask;
     }
 
     /** Get the number of bytes per row. If format is compressed, width should be evenly divisible by the compression ratio.
@@ -333,7 +385,7 @@ namespace Falcor
             return format;
         }
     }
-    
+
     inline ResourceFormat depthToColorFormat(ResourceFormat format)
     {
         switch (format)
@@ -353,7 +405,7 @@ namespace Falcor
         }
     }
 
-    inline bool doesFormatHasAlpha(ResourceFormat format)
+    inline bool doesFormatHaveAlpha(ResourceFormat format)
     {
         if (getFormatChannelCount(format) == 4)
         {
@@ -425,12 +477,22 @@ namespace Falcor
         flag_to_str(RenderTarget);
         flag_to_str(DepthStencil);
         flag_to_str(IndirectArg);
-#ifdef FALCOR_D3D12
         flag_to_str(AccelerationStructure);
-#endif
 #undef flag_to_str
 
         return s;
     }
+
+#ifdef FALCOR_HAS_DXGI_FORMAT_HEADER
+
+    /** Convert from Falcor to DXGI format
+    */
+    DXGI_FORMAT FALCOR_API getDxgiFormat(ResourceFormat format);
+
+    /** Convert from DXGI to Falcor format
+    */
+    ResourceFormat FALCOR_API getResourceFormat(DXGI_FORMAT format);
+    DXGI_FORMAT FALCOR_API getTypelessFormatFromDepthFormat(ResourceFormat format);
+#endif
     /*! @} */
 }

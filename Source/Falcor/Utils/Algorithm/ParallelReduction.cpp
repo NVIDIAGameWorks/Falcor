@@ -48,7 +48,7 @@ namespace Falcor
            defines.add("_MIN_MAX_REDUCTION");
            break;
         default:
-            throw std::exception("Unknown parallel reduction operator");
+            throw ArgumentError("Unknown parallel reduction operator");
         }
 
         Sampler::Desc samplerDesc;

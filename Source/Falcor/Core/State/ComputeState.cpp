@@ -46,20 +46,11 @@ namespace Falcor
             mpCsoGraph->walk((void*)mCachedData.pProgramKernels);
         }
 
-        RootSignature::SharedPtr pRoot = pProgramKernels ? pProgramKernels->getRootSignature() : RootSignature::getEmpty();
-
-        if (mCachedData.pRootSig != pRoot.get())
-        {
-            mCachedData.pRootSig = pRoot.get();
-            mpCsoGraph->walk((void*)mCachedData.pRootSig);
-        }
-
         ComputeStateObject::SharedPtr pCso = mpCsoGraph->getCurrentNode();
 
         if(pCso == nullptr)
         {
             mDesc.setProgramKernels(pProgramKernels);
-            mDesc.setRootSignature(pRoot);
 
             StateGraph::CompareFunc cmpFunc = [&desc = mDesc](ComputeStateObject::SharedPtr pCso) -> bool
             {
@@ -80,7 +71,7 @@ namespace Falcor
         return pCso;
     }
 
-    SCRIPT_BINDING(ComputeState)
+    FALCOR_SCRIPT_BINDING(ComputeState)
     {
         pybind11::class_<ComputeState, ComputeState::SharedPtr>(m, "ComputeState");
     }

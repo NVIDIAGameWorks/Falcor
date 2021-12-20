@@ -36,13 +36,14 @@ namespace Mogwai
     {
         void shortcuts()
         {
-            std::string s;
-            s += " 'F1'   - Show the help message\n";
-            s += " 'F9'   - Show/Hide the time\n";
-            s += " 'F10'  - Show/Hide the FPS\n";
-            s += " 'F11'  - Toggle Main Menu Auto-Hide\n";
-            s += "\n" + gpFramework->getKeyboardShortcutsStr();
-            msgBox(s);
+            constexpr char help[] =
+                "F1 - Show the help message\n"
+                "F9 - Show/hide the time\n"
+                "F6 - Show/hide the graph UI\n"
+                "F10 - Show/hide the FPS\n"
+                "F11 - Enable/disable main menu auto-hiding\n"
+                "\n";
+            msgBox(help + gpFramework->getKeyboardShortcutsStr());
         }
 
         void about()
@@ -94,8 +95,8 @@ namespace Mogwai
             };
 
             uint2 currentRes = gpFramework->getWindow()->getClientAreaSize();
-            static const Gui::DropdownList dropdownList = initDropDown(resolutions, arraysize(resolutions));
-            uint32_t currentVal = initDropDownVal(resolutions, arraysize(resolutions), currentRes);
+            static const Gui::DropdownList dropdownList = initDropDown(resolutions, (uint32_t)arraysize(resolutions));
+            uint32_t currentVal = initDropDownVal(resolutions, (uint32_t)arraysize(resolutions), currentRes);
             w.text("Window Size");
             w.tooltip("The Window Size refers to the renderable area size (Swap-Chain dimensions)");
 
@@ -135,13 +136,13 @@ namespace Mogwai
         }
     }
 
-    void MogwaiSettings::windowSettings(Gui* pGui)
+    void MogwaiSettings::renderWindowSettings(Gui* pGui)
     {
         Gui::Window w(pGui, "Window", mShowWinSize, { 0, 0 }, { 350, 300 }, Gui::WindowFlags::AllowMove | Gui::WindowFlags::AutoResize | Gui::WindowFlags::ShowTitleBar | Gui::WindowFlags::CloseButton);
         winSizeUI(w);
     }
 
-    void MogwaiSettings::timeSettings(Gui* pGui)
+    void MogwaiSettings::renderTimeSettings(Gui* pGui)
     {
         Gui::Window w(pGui, "Time", mShowTime, { 0, 0 }, { 350, 25 }, Gui::WindowFlags::AllowMove | Gui::WindowFlags::AutoResize | Gui::WindowFlags::ShowTitleBar | Gui::WindowFlags::CloseButton);
 
@@ -152,7 +153,7 @@ namespace Mogwai
         double exitTime = clock.getExitTime();
         uint64_t exitFrame = clock.getExitFrame();
 
-        if (exitTime || exitTime)
+        if (exitTime || exitFrame)
         {
             std::stringstream s;
             s << "Exiting in ";
@@ -162,7 +163,7 @@ namespace Mogwai
         }
     }
 
-    void MogwaiSettings::graphs(Gui* pGui)
+    void MogwaiSettings::renderGraphs(Gui* pGui)
     {
         if (!mShowGraphUI || mpRenderer->mGraphs.empty()) return;
 
@@ -190,14 +191,28 @@ namespace Mogwai
 
         // Active graph output
         mpRenderer->graphOutputsGui(w); // MOGWAI shouldn't be here
+        w.separator();
+
+        // Scene UI
+        if (mpRenderer->mpScene)
+        {
+            if (auto group = w.group("Scene Settings"))
+            {
+                mpRenderer->mpScene->renderUI(group);
+            }
+        }
+        else
+        {
+            w.text("No scene loaded");
+        }
+        w.separator();
 
         // Graph UI
-        w.separator();
-        Gui::Group graphGroup(pGui, mpRenderer->mGraphs[mpRenderer->mActiveGraph].pGraph->getName() + "##Graph");
-        mpRenderer->mGraphs[mpRenderer->mActiveGraph].pGraph->renderUI(graphGroup);
+        auto pActiveGraph = mpRenderer->mGraphs[mpRenderer->mActiveGraph].pGraph;
+        pActiveGraph->renderUI(w);
     }
 
-    void MogwaiSettings::mainMenu(Gui* pGui)
+    void MogwaiSettings::renderMainMenu(Gui* pGui)
     {
         if (mAutoHideMenu && mMousePosition.y >= 20) return;
 
@@ -210,7 +225,7 @@ namespace Mogwai
             if (file.item("Load Scene", "Ctrl+Shift+O")) mpRenderer->loadSceneDialog();
             // if (file.item("Reset Scene")) mpRenderer->setScene(nullptr);
             file.separator();
-            if (file.item("Reload Render-Passes", "F5")) RenderPassLibrary::instance().reloadLibraries(gpFramework->getRenderContext());
+            if (file.item("Reload RenderGraph and Shaders", "F5")) RenderPassLibrary::instance().reloadLibraries(gpFramework->getRenderContext());
             file.separator();
 
             {
@@ -270,11 +285,11 @@ namespace Mogwai
     void MogwaiSettings::renderUI(Gui* pGui__)
     {
         Gui* pGui = (Gui*)pGui__;
-        mainMenu(pGui);
-        graphs(pGui);
+        renderMainMenu(pGui);
+        renderGraphs(pGui);
         if (mShowFps) showFps(pGui);
-        if (mShowTime) timeSettings(pGui);
-        if (mShowWinSize) windowSettings(pGui);
+        if (mShowTime) renderTimeSettings(pGui);
+        if (mShowWinSize) renderWindowSettings(pGui);
         Console::instance().render(pGui__, mShowConsole);
     }
 

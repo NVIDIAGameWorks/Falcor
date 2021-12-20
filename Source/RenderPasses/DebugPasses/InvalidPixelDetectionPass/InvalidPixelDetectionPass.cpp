@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "InvalidPixelDetectionPass.h"
 
-const char* InvalidPixelDetectionPass::kDesc = "Pass that marks all NaN pixels red and Inf pixels green in an image.";
+const RenderPass::Info InvalidPixelDetectionPass::kInfo { "InvalidPixelDetectionPass", "Pass that marks all NaN pixels red and Inf pixels green in an image." };
 
 namespace
 {
@@ -37,6 +37,7 @@ namespace
 }
 
 InvalidPixelDetectionPass::InvalidPixelDetectionPass()
+    : RenderPass(kInfo)
 {
     mpInvalidPixelDetectPass = FullScreenPass::create("RenderPasses/DebugPasses/InvalidPixelDetectionPass/InvalidPixelDetection.ps.slang");
     mpFbo = Fbo::create();
@@ -80,9 +81,9 @@ RenderPassReflection InvalidPixelDetectionPass::reflect(const CompileData& compi
     return r;
 }
 
-void InvalidPixelDetectionPass::compile(RenderContext* pContext, const CompileData& compileData)
+void InvalidPixelDetectionPass::compile(RenderContext* pRenderContext, const CompileData& compileData)
 {
-    if (!mReady) throw std::runtime_error("InvalidPixelDetectionPass::compile - missing incoming reflection data");
+    if (!mReady) throw RuntimeError("InvalidPixelDetectionPass: Missing incoming reflection data");
 }
 
 void InvalidPixelDetectionPass::execute(RenderContext* pRenderContext, const RenderData& renderData)

@@ -33,7 +33,7 @@ namespace Falcor
 {
     /** Helper to compute SHA-1 hash.
     */
-    class dlldecl SHA1
+    class FALCOR_API SHA1
     {
     public:
         using MD = std::array<uint8_t, 20>; ///< Message digest.

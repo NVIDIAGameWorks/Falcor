@@ -34,7 +34,7 @@ namespace Falcor
 
     /** Creates a progress bar visual and manages a new thread for it.
     */
-    class dlldecl ProgressBar
+    class FALCOR_API ProgressBar
     {
     public:
         using SharedPtr = std::shared_ptr<ProgressBar>;

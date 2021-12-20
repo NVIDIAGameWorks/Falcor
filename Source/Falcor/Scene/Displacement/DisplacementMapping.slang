@@ -26,9 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 import Scene.SceneTypes;
-import Scene.Material.MaterialData;
+import Scene.Material.BasicMaterialData;
 import Utils.Math.Ray;
 import Utils.Geometry.IntersectionHelpers;
+import Scene.Displacement.DisplacementData;
 
 #define DISPLACEMENT_DISABLED                               0           // Debug: Used to disable displacement mapping and intersect base triangles in sw instead.
 #define DISPLACEMENT_TWO_SIDED                              0           // Displaced surface is two sided. This can create some cracks.
@@ -43,20 +44,11 @@ static const float kSurfaceThickness = 0.008f;
 static const int kRaymarchingMaxSampleCount = 32;
 static const int kRaymarchingSampleCountFactor = 2;
 
-
-struct DisplacementData
+/** Extension to add displacement mapping functionality to the
+    DisplacementData struct.
+*/
+extension DisplacementData
 {
-    static const float2 kShellMinMaxMargin = float2(-0.0001f, 0.0001f);
-    static const float2 kSurfaceSafetyScaleBias = float2(1.0001, 0.0001);
-
-    Texture2D texture;              ///< Displacement texture.
-    SamplerState samplerState;      ///< Displacement texture sampler.
-    SamplerState samplerStateMin;   ///< Displacement texture sampler Min.
-    SamplerState samplerStateMax;   ///< Displacement texture sampler Max.
-    float2 size;                    ///< Texture size in texels.
-    float scale;                    ///< Displacement scale.
-    float bias;                     ///< Displacement bias.
-
     // Maps a raw value to a displacement value. Transforms raw displacement texture value into object-space distance.
     float mapValue(const float raw)
     {
@@ -139,7 +131,7 @@ struct DisplacementData
             return float2(mapValue(0.f), mapValue(1.f));
         }
 #else
-        return shellMinMaxMargin;
+        return kShellMinMaxMargin;
 #endif
     }
 
@@ -155,18 +147,6 @@ struct DisplacementData
         return triangleLOD;
     }
 };
-
-void loadDisplacementData(const MaterialData md, const MaterialResources mr, out DisplacementData displacementData)
-{
-    displacementData.texture = mr.displacementMap;
-    displacementData.samplerState = mr.samplerState;
-    displacementData.samplerStateMin = mr.displacementSamplerStateMin;
-    displacementData.samplerStateMax = mr.displacementSamplerStateMax;
-    displacementData.texture.GetDimensions(displacementData.size.x, displacementData.size.y);
-
-    displacementData.scale = md.displacementScale;
-    displacementData.bias = md.displacementOffset;
-}
 
 struct DisplacementIntersection
 {
@@ -503,16 +483,14 @@ bool calcDisplacementIntersection(const Ray ray, const StaticVertexData vertices
     // 1. ray "prism" intersection to grab valid start/end t for the valid segment along ray direction
     float tStart = ray.tMin;
 
-    // min: entry point, max: exit point
-    IntersectAttribute minIntersection;
-    IntersectAttribute maxIntersection;
-
     // extruded triangle
     IntersectAttribute extrudedTriangleIntersectAttri;
     rayTriangleIntersectionTest(extrudedP0, extrudedP1, extrudedP2, ray.origin, ray.dir, maxHeight,
         extrudedTriangleIntersectAttri);
-    minIntersection.min(extrudedTriangleIntersectAttri);
-    maxIntersection.max(extrudedTriangleIntersectAttri);
+
+    // min: entry point, max: exit point
+    IntersectAttribute minIntersection = extrudedTriangleIntersectAttri;
+    IntersectAttribute maxIntersection = extrudedTriangleIntersectAttri;
 
     // first slab/fin
     IntersectAttribute slabIntersectAttri0;

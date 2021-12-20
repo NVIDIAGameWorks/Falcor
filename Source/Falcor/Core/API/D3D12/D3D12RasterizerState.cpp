@@ -34,7 +34,7 @@ namespace Falcor
 
     const RasterizerStateHandle& RasterizerState::getApiHandle() const
     {
-        UNSUPPORTED_IN_D3D12("RasterizerState::getApiHandle()");
+        FALCOR_UNSUPPORTED_IN_D3D12("RasterizerState::getApiHandle()");
         return mApiHandle;
     }
 }

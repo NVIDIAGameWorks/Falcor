@@ -27,88 +27,147 @@
  **************************************************************************/
 #pragma once
 #include "Utils/HostDeviceShared.slangh"
-#include "Scene/Material/MaterialDefines.slangh"
+
+#ifdef HOST_CODE
+#include "MaterialTypes.slang"
+#else
+__exported import MaterialTypes;
+#endif
 
 BEGIN_NAMESPACE_FALCOR
 
-#ifdef HOST_CODE
-#define SamplerState std::shared_ptr<Sampler>
-#define Texture2D std::shared_ptr<Texture>
-#endif
-
-static const uint kMaterialTypeBits = 8;    ///< Maximum number of bits to store MaterialType.
-
-/** Material type.
+/** This is a host/device structure for material header data for all material types (8B).
 */
-// TODO: Specify the backing type when Slang issue has been resolved
-enum class MaterialType // : uint32_t
+struct MaterialHeader
 {
-    Standard,
-    Cloth,
-    Hair,
+    uint2 packedData = {};
+    // packedData.y high 16 bits are reserved
 
-    Count // Must be last
-};
+    static const uint kMaterialTypeBits = 8;
+    static const uint kAlphaModeBits = 1;
+    static const uint kNestedPriorityBits = 4;
+    static const uint kLobeTypeBits = 8; // Only 6 bits needed if packing LobeType
+    static const uint kSamplerIDBits = 7;
 
-/** This is a host/device structure that describes material resources.
-*/
-struct MaterialResources
-{
-    // See Material.h for channel layout
-    Texture2D baseColor;
-    Texture2D specular;
-    Texture2D emissive;
-    Texture2D normalMap;
-    Texture2D transmission;
-    Texture2D displacementMap;
+    static const uint kMaterialTypeOffset = 0;
+    static const uint kAlphaModeOffset = kMaterialTypeOffset + kMaterialTypeBits;
+    static const uint kNestedPriorityOffset = kAlphaModeOffset + kAlphaModeBits;
+    static const uint kLobeTypeOffset = kNestedPriorityOffset + kNestedPriorityBits;
+    static const uint kSamplerIDOffset = kLobeTypeOffset + kLobeTypeBits;
+    static const uint kDoubleSidedFlagOffset = kSamplerIDOffset + kSamplerIDBits;
+    static const uint kThinSurfaceFlagOffset = kDoubleSidedFlagOffset + 1;
+    static const uint kEmissiveFlagOffset = kThinSurfaceFlagOffset + 1;
+    static const uint kIsBasicMaterialFlagOffset = kEmissiveFlagOffset + 1;
 
-    SamplerState samplerState;
-    SamplerState displacementSamplerStateMin;
-    SamplerState displacementSamplerStateMax;
-};
+    static const uint kTotalHeaderBits = kIsBasicMaterialFlagOffset + 1;
 
-/** This is a host/device structure that describes a material.
-*/
-struct MaterialData
-{
-    float4   baseColor              = float4(1.f);      ///< Material base color (RGB) and opacity (A).
-    float4   specular               = float4(0.f);      ///< Material specular channel encoding occlusion (R), roughness (G), metallic (B) in the default MetalRough mode. In SpecGloss mode specular color (RGB) and glossiness (A).
-    float3   emissive               = float3(0.f);      ///< Emissive color (RGB).
-    float    emissiveFactor         = 1.f;              ///< Multiplication factor for the emissive color to control light intensity.
-
-    float    alphaThreshold         = 0.5f;             ///< Alpha threshold, only used in case the alpha mode is mask.
-    float    IoR                    = 1.5f;             ///< Index of refraction.
-    float    diffuseTransmission    = 0.f;              ///< Diffuse transmission.
-    float    specularTransmission   = 0.f;              ///< Specular transmission.
-
-    float3   transmission           = float3(1.f);      ///< Transmission color.
-    float    _pad0                  = 0.f;
-
-    float3   volumeAbsorption       = float3(0.f);      ///< Volume absorption coefficient.
-    float    volumeAnisotropy       = 0.f;              ///< Volume phase function anisotropy (g).
-
-    float3   volumeScattering       = float3(0.f);      ///< Volume scattering coefficient.
-    float    _pad1                  = 0.f;
-
-    uint32_t flags                  = 0;                ///< See flags in MaterialDefines.slangh
-    uint32_t type                   = (uint32_t)MaterialType::Standard; ///< Material type.
-    float    displacementScale      = 0.f;              ///< Displacement scale value.
-    float    displacementOffset     = 0.f;              ///< Displacement offset value.
-
-    /** Get the material type. This decides how the fields should be interpreted.
-        \return Material type.
+    /** Set material type.
     */
-    MaterialType getType() { return (MaterialType)type; }
+    SETTER_DECL void setMaterialType(MaterialType type) { packedData.x = PACK_BITS(kMaterialTypeBits, kMaterialTypeOffset, packedData.x, (uint)type); }
+
+    /** Get material type.
+    */
+    MaterialType getMaterialType() CONST_FUNCTION { return MaterialType(EXTRACT_BITS(kMaterialTypeBits, kMaterialTypeOffset, packedData.x)); }
+
+    /** Set alpha testing mode.
+    */
+    SETTER_DECL void setAlphaMode(AlphaMode mode) { packedData.x = PACK_BITS(kAlphaModeBits, kAlphaModeOffset, packedData.x, (uint)mode); }
+
+    /** Get material type.
+    */
+    AlphaMode getAlphaMode() CONST_FUNCTION { return AlphaMode(EXTRACT_BITS(kAlphaModeBits, kAlphaModeOffset, packedData.x)); }
+
+    /** Set alpha threshold.
+    */
+    SETTER_DECL void setAlphaThreshold(float16_t alphaThreshold) { packedData.y = (uint)asuint16(alphaThreshold); }
+
+    /** Get alpha threshold.
+    */
+    float16_t getAlphaThreshold() CONST_FUNCTION { return asfloat16((uint16_t)packedData.y); }
+
+    /** Set the nested priority used for nested dielectrics.
+    */
+    SETTER_DECL void setNestedPriority(uint32_t priority) { packedData.x = PACK_BITS(kNestedPriorityBits, kNestedPriorityOffset, packedData.x, priority); }
 
     /** Get the nested priority used for nested dielectrics.
         \return Nested priority, with 0 reserved for the highest possible priority.
     */
-    uint getNestedPriority() { return EXTRACT_NESTED_PRIORITY(flags); }
-};
+    uint getNestedPriority() CONST_FUNCTION { return EXTRACT_BITS(kNestedPriorityBits, kNestedPriorityOffset, packedData.x); }
+
+    /** Set active BxDF lobes.
+        \param[in] activeLobes Bit mask of active lobes. See LobeType.
+    */
+    SETTER_DECL void setActiveLobes(uint activeLobes) { packedData.x = PACK_BITS(kLobeTypeBits, kLobeTypeOffset, packedData.x, activeLobes); }
+
+    /** Get active BxDF lobes.
+        \return Bit mask of active lobes. See LobeType.
+    */
+    uint getActiveLobes() CONST_FUNCTION { return EXTRACT_BITS(kLobeTypeBits, kLobeTypeOffset, packedData.x); }
+
+    /** Set default texture sampler ID.
+    */
+    SETTER_DECL void setDefaultTextureSamplerID(uint samplerID) { packedData.x = PACK_BITS(kSamplerIDBits, kSamplerIDOffset, packedData.x, samplerID); }
+
+    /** Get default texture sampler ID.
+    */
+    uint getDefaultTextureSamplerID() CONST_FUNCTION { return EXTRACT_BITS(kSamplerIDBits, kSamplerIDOffset, packedData.x); }
+
+    /** Set double-sided flag.
+    */
+    SETTER_DECL void setDoubleSided(bool doubleSided) { packedData.x = PACK_BITS(1, kDoubleSidedFlagOffset, packedData.x, doubleSided ? 1 : 0); }
+
+    /** Get double-sided flag.
+    */
+    bool isDoubleSided() CONST_FUNCTION { return packedData.x & (1u << kDoubleSidedFlagOffset); }
+
+    /** Set thin surface flag.
+    */
+    SETTER_DECL void setThinSurface(bool thinSurface) { packedData.x = PACK_BITS(1, kThinSurfaceFlagOffset, packedData.x, thinSurface ? 1 : 0); }
+
+    /** Get thin surface flag.
+    */
+    bool isThinSurface() CONST_FUNCTION { return packedData.x & (1u << kThinSurfaceFlagOffset); }
+
+    /** Set emissive flag.
+    */
+    SETTER_DECL void setEmissive(bool isEmissive) { packedData.x = PACK_BITS(1, kEmissiveFlagOffset, packedData.x, isEmissive ? 1 : 0); }
+
+    /** Get emissive flag.
+    */
+    bool isEmissive() CONST_FUNCTION { return packedData.x & (1u << kEmissiveFlagOffset); }
+
+    /** Set basic material flag. This flag is an optimization to allow quick type checking.
+    */
+    SETTER_DECL void setIsBasicMaterial(bool isBasicMaterial) { packedData.x = PACK_BITS(1, kIsBasicMaterialFlagOffset, packedData.x, isBasicMaterial ? 1 : 0); }
+
+    /** Get basic material flag. This flag is an optimization to allow quick type checking.
+    */
+    bool isBasicMaterial() CONST_FUNCTION { return packedData.x & (1u << kIsBasicMaterialFlagOffset); }
 
 #ifdef HOST_CODE
-#undef SamplerState
-#undef Texture2D
+    friend bool operator==(const MaterialHeader& lhs, const MaterialHeader& rhs);
+    friend bool operator!=(const MaterialHeader& lhs, const MaterialHeader& rhs) { return !(lhs == rhs); }
 #endif
+};
+
+/** This is a host/device structure for material payload data (120B).
+    The format of the data depends on the material type. 
+*/
+struct MaterialPayload
+{
+    uint data[30];
+};
+
+/** This is a host/device structure representing a blob of material data (128B).
+    The material data blob consists of a header and a payload. The header is always valid.
+    The blob is sized to fit into one cacheline for efficient access. Do not change the size.
+    All material types should keep their main material data within this footprint.
+    Material that need more can reference additional sideband data stored elsewhere.
+*/
+struct MaterialDataBlob
+{
+    MaterialHeader header; // 8B
+    MaterialPayload payload; // 120B
+};
 
 END_NAMESPACE_FALCOR

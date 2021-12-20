@@ -250,7 +250,7 @@ namespace Falcor
         }
     }
 
-    SCRIPT_BINDING(Clock)
+    FALCOR_SCRIPT_BINDING(Clock)
     {
         pybind11::class_<Clock> clock(m, "Clock");
 
@@ -274,7 +274,7 @@ namespace Falcor
         auto loadTexture = [](const std::string& tex)
         {
             auto pTex = Texture::createFromFile("Framework/Textures/" + tex, false, true);
-            if (!pTex) throw std::exception("Failed to load texture");
+            if (!pTex) throw RuntimeError("Failed to load texture");
             return pTex;
         };
         gClockTextures.pRewind = loadTexture("Rewind.jpg");

@@ -27,7 +27,6 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "FalcorExperimental.h"
 
 using namespace Falcor;
 
@@ -37,6 +36,7 @@ public:
     struct Options
     {
         std::string filter;
+        uint32_t repeat = 1;
     };
 
     FalcorTest(const Options& options) : mOptions(options) {}

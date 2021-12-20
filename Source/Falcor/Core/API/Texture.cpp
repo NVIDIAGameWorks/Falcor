@@ -51,7 +51,7 @@ namespace Falcor
             supported |= ResourceBindFlags::Shared;
             if ((flags & supported) != flags)
             {
-                logError("Error when creating " + texType + " of format " + to_string(format) + ". The requested bind-flags are not supported.\n"
+                reportError("Error when creating " + texType + " of format " + to_string(format) + ". The requested bind-flags are not supported.\n"
                     "Requested = (" + to_string(flags) + "), supported = (" + to_string(supported) + ").\n\n"
                     "The texture will be created only with the supported bind flags, which may result in a crash or a rendering error.");
                 flags = flags & supported;
@@ -144,7 +144,14 @@ namespace Falcor
         Texture::SharedPtr pTex;
         if (hasSuffix(filename, ".dds"))
         {
-            pTex = ImageIO::loadTextureFromDDS(filename, loadAsSrgb);
+            try
+            {
+                pTex = ImageIO::loadTextureFromDDS(filename, loadAsSrgb);
+            }
+            catch (const std::exception& e)
+            {
+                logWarning("Error loading '" + fullpath + "': " + e.what());
+            }
         }
         else
         {
@@ -268,15 +275,15 @@ namespace Falcor
         return getUAV(0);
     }
 
-#if _ENABLE_CUDA
+#if FALCOR_ENABLE_CUDA
     void* Texture::getCUDADeviceAddress() const
     {
-        throw std::exception("Texture::getCUDADeviceAddress() - unimplemented");
+        throw RuntimeError("Texture::getCUDADeviceAddress() unimplemented");
     }
 
     void* Texture::getCUDADeviceAddress(ResourceViewInfo const& viewInfo) const
     {
-        throw std::exception("Texture::getCUDADeviceAddress() - unimplemented");
+        throw RuntimeError("Texture::getCUDADeviceAddress() unimplemented");
     }
 #endif
 
@@ -304,12 +311,13 @@ namespace Falcor
     {
         if (format == Bitmap::FileFormat::DdsFile)
         {
-            throw std::exception("Texture::captureToFile does not yet support saving to DDS.");
+            throw RuntimeError("Texture::captureToFile does not yet support saving to DDS.");
         }
 
-        assert(mType == Type::Texture2D);
+        if (mType != Type::Texture2D) throw RuntimeError("Texture::captureToFile only supported for 2D textures.");
         RenderContext* pContext = gpDevice->getRenderContext();
-        // Handle the special case where we have an HDR texture with less then 3 channels
+
+        // Handle the special case where we have an HDR texture with less then 3 channels.
         FormatType type = getFormatType(mFormat);
         uint32_t channels = getFormatChannelCount(mFormat);
         std::vector<uint8_t> textureData;
@@ -388,13 +396,13 @@ namespace Falcor
                 auto rtv = getRTV(m + 1, a, 1);
                 if (!minMaxMips)
                 {
-                    pContext->blit(srv, rtv, uint4(-1), uint4(-1), Sampler::Filter::Linear);
+                    pContext->blit(srv, rtv, RenderContext::kMaxRect, RenderContext::kMaxRect, Sampler::Filter::Linear);
                 }
                 else
                 {
                     const Sampler::ReductionMode redModes[] = { Sampler::ReductionMode::Standard, Sampler::ReductionMode::Min, Sampler::ReductionMode::Max, Sampler::ReductionMode::Standard };
                     const float4 componentsTransform[] = { float4(1.0f, 0.0f, 0.0f, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 1.0f, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f) };
-                    pContext->blit(srv, rtv, uint4(-1), uint4(-1), Sampler::Filter::Linear, redModes, componentsTransform);
+                    pContext->blit(srv, rtv, RenderContext::kMaxRect, RenderContext::kMaxRect, Sampler::Filter::Linear, redModes, componentsTransform);
                 }
             }
         }
@@ -423,22 +431,20 @@ namespace Falcor
         return count;
     }
 
-    uint64_t Texture::getTextureSizeInBytes() const
+    bool Texture::compareDesc(const Texture* pOther) const
     {
-        ID3D12DevicePtr pDevicePtr = gpDevice->getApiHandle();
-        ID3D12ResourcePtr pTexResource = this->getApiHandle();
-
-        D3D12_RESOURCE_ALLOCATION_INFO d3d12ResourceAllocationInfo;
-        D3D12_RESOURCE_DESC desc = pTexResource->GetDesc();
-
-        assert(desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D || desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D);
-
-        d3d12ResourceAllocationInfo = pDevicePtr->GetResourceAllocationInfo(0, 1, &desc);
-        assert(d3d12ResourceAllocationInfo.SizeInBytes > 0);
-        return d3d12ResourceAllocationInfo.SizeInBytes;
+        return mWidth == pOther->mWidth &&
+            mHeight == pOther->mHeight &&
+            mDepth == pOther->mDepth &&
+            mMipLevels == pOther->mMipLevels &&
+            mSampleCount == pOther->mSampleCount &&
+            mArraySize == pOther->mArraySize &&
+            mFormat == pOther->mFormat &&
+            mIsSparse == pOther->mIsSparse &&
+            mSparsePageRes == pOther->mSparsePageRes;
     }
 
-    SCRIPT_BINDING(Texture)
+    FALCOR_SCRIPT_BINDING(Texture)
     {
         pybind11::class_<Texture, Texture::SharedPtr> texture(m, "Texture");
         texture.def_property_readonly("width", &Texture::getWidth);

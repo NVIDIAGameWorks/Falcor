@@ -81,6 +81,31 @@ float3 decodeNormal3x16(uint2 packedNormal)
     return normalize(normal);
 }
 
+/** Flattens a 3D index into a 1D index in scanline order.
+    \param[in] idx A 3D index.
+    \param[in] width The width of the indexed 3D structure.
+    \param[in] height The height of the indexed 3D structure.
+*/
+uint flatten3D(uint3 idx, uint width, uint height)
+{
+    return idx.x + width * (idx.y + height * idx.z);
+}
+
+/** Unflattens a 1D index into a 3D index in scanline order.
+    \param[in] idx A flattened 3D index.
+    \param[in] width The width of the indexed 3D structure.
+    \param[in] height The height of the indexed 3D structure.
+*/
+uint3 unflatten3D(uint flattenedIdx, uint width, uint height)
+{
+    uint3 idx = uint3(width, width * height, 0);
+    idx.z = flattenedIdx / idx.y;
+    flattenedIdx -= idx.z * idx.y;
+    idx.y = flattenedIdx / width;
+    idx.x = flattenedIdx % width;
+    return idx;
+}
+
 /** Encode an RGB color into a 32-bit LogLuv HDR format.
     The supported luminance range is roughly 10^-6..10^6 in 0.17% steps.
 

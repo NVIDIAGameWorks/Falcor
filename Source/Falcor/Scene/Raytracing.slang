@@ -27,9 +27,8 @@
  **************************************************************************/
 import Utils.Attributes;
 __exported import Scene.Scene;
-__exported import Scene.Shading;
 
-import Experimental.Scene.Material.TexLODHelpers;
+import Rendering.Materials.TexLODHelpers;
 
 cbuffer DxrPerFrame
 {

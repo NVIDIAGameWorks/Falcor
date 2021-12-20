@@ -31,6 +31,34 @@
 #include <pybind11/operators.h>
 #include <algorithm>
 
+namespace pybind11::detail
+{
+    // Casting float16_t <-> float.
+    template<>
+    struct type_caster<Falcor::float16_t>
+    {
+    public:
+        PYBIND11_TYPE_CASTER(Falcor::float16_t, _("float16_t"));
+        using float_caster = type_caster<float>;
+
+        bool load(handle src, bool convert)
+        {
+            float_caster caster;
+            if (caster.load(src, convert))
+            {
+                this->value = Falcor::float16_t(float(caster));
+                return true;
+            }
+            return false;
+        }
+
+        static handle cast(Falcor::float16_t src, return_value_policy policy, handle parent)
+        {
+            return float_caster::cast(float(src), policy, parent);
+        }
+    };
+}
+
 namespace Falcor::ScriptBindings
 {
     namespace
@@ -78,7 +106,7 @@ namespace Falcor::ScriptBindings
             catch (const std::exception& e)
             {
                 PyErr_SetString(PyExc_ImportError, e.what());
-                logError(e.what());
+                reportError(e.what());
                 return;
             }
         }
@@ -95,7 +123,7 @@ namespace Falcor::ScriptBindings
         if (!gDeferredBindings) gDeferredBindings.reset(new std::vector<DeferredBinding>());
         if (std::find_if(gDeferredBindings->begin(), gDeferredBindings->end(), [&name](const DeferredBinding& binding) { return binding.name == name; }) != gDeferredBindings->end())
         {
-            throw std::exception(("A script binding with the name '" + name + "' already exists!").c_str());
+            throw RuntimeError("A script binding with the name '{}' already exists!", name);
         }
         gDeferredBindings->emplace_back(name, f);
     }
@@ -105,6 +133,7 @@ namespace Falcor::ScriptBindings
         auto it = std::find_if(gDeferredBindings->begin(), gDeferredBindings->end(), [&name](const DeferredBinding& binding) { return binding.name == name; });
         if (it != gDeferredBindings->end()) it->bind(m);
     }
+
 
     template<typename VecT, bool withOperators>
     void addVecType(pybind11::module& m, const std::string name)
@@ -143,14 +172,33 @@ namespace Falcor::ScriptBindings
             vec.def(pybind11::init(initVector), "x"_a, "y"_a, "z"_a, "w"_a);
         }
 
+        // Casting float16_t <-> float vectors.
+        // This allows explicit casts, e.g., float16_t3(c), where c is a float3 in python.
+        if constexpr (std::is_same<ScalarT, float16_t>::value)
+        {
+            using floatN = glm::vec<length, float, glm::defaultp>;
+            auto initVector = [](floatN v) { return VecT(v); };
+            vec.def(pybind11::init(initVector), "v"_a);
+        }
+        else if constexpr (std::is_same<ScalarT, float>::value)
+        {
+            using float16_tN = tfloat16_vec<length>;
+            auto initVector = [](float16_tN v) { return VecT(v); };
+            vec.def(pybind11::init(initVector), "v"_a);
+        }
+
         auto repr = [](const VecT& v) { return Falcor::to_string(v); };
         vec.def("__repr__", repr);
 
         auto str = [](const VecT& v) {
-            std::string vec = "[" + std::to_string(v[0]);
+            auto tostr = [](const ScalarT& s) {
+                if constexpr (std::is_same<ScalarT, float16_t>::value) return to_string(s);
+                else return std::to_string(s);
+            };
+            std::string vec = "[" + tostr(v[0]);
             for (int i = 1; i < VecT::length(); i++)
             {
-                vec += ", " + std::to_string(v[i]);
+                vec += ", " + tostr(v[i]);
             }
             vec += "]";
             return vec;
@@ -164,7 +212,7 @@ namespace Falcor::ScriptBindings
                 return t;
             },
             [length] (pybind11::tuple t) {
-                if (t.size() != length) throw std::runtime_error("Invalid state!");
+                if (t.size() != length) throw RuntimeError("Invalid state!");
                 VecT v;
                 for (auto i = 0; i < length; ++i) v[i] = t[i].cast<ScalarT>();
                 return v;
@@ -218,6 +266,11 @@ namespace Falcor::ScriptBindings
         // Note: We register these as simple data types without any operations because semantics may change in the future.
         pybind11::class_<glm::float3x3>(m, "float3x3");
         pybind11::class_<glm::float4x4>(m, "float4x4");
+
+        // float16_t types
+        addVecType<float16_t2, false>(m, "float16_t2");
+        addVecType<float16_t3, false>(m, "float16_t3");
+        addVecType<float16_t4, false>(m, "float16_t4");
 
         if (gDeferredBindings)
         {

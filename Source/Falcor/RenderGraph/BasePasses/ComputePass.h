@@ -26,12 +26,12 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "..\RenderPass.h"
-#include "Core\Program\ShaderVar.h"
+#include "../RenderPass.h"
+#include "Core/Program/ShaderVar.h"
 
 namespace Falcor
 {
-    class dlldecl ComputePass : public std::enable_shared_from_this<ComputePass>
+    class FALCOR_API ComputePass
     {
     public:
         using SharedPtr = ParameterBlockSharedPtr<ComputePass>;
@@ -74,7 +74,12 @@ namespace Falcor
         */
         virtual void executeIndirect(ComputeContext* context, const Buffer* pArgBuffer, uint64_t argBufferOffset = 0);
 
-        /** Get the vars
+        /** Check if a vars object exists. If not, use setVars() to set or create a new vars object.
+            \return True if a vars object exists.
+        */
+        bool hasVars() const { return mpVars != nullptr; }
+
+        /** Get the vars.
         */
         const ComputeVars::SharedPtr& getVars() const { assert(mpVars); return mpVars; };
 

@@ -31,7 +31,7 @@ namespace Falcor
 {
     /** A class for analyzing texture contents.
     */
-    class dlldecl TextureAnalyzer : public std::enable_shared_from_this<TextureAnalyzer>
+    class FALCOR_API TextureAnalyzer
     {
     public:
         using SharedPtr = std::shared_ptr<TextureAnalyzer>;
@@ -48,17 +48,6 @@ namespace Falcor
             float4 minValue;        ///< The minimum color value in RGBA fp32 format. NOTE: Clamped to zero.
             float4 maxValue;        ///< The maximum color value in RGBA fp32 format. NOTE: Clamped to zero.
 
-            enum class ChannelMask : uint32_t
-            {
-                Red     = 0x1,
-                Green   = 0x2,
-                Blue    = 0x4,
-                Alpha   = 0x8,
-
-                RGB     = Red | Green | Blue,
-                RGBA    = Red | Green | Blue | Alpha,
-            };
-
             enum class RangeFlags : uint32_t
             {
                 Pos     = 0x1,      ///< Texture channel has positive values > 0;
@@ -68,18 +57,18 @@ namespace Falcor
             };
 
             bool isConstant(uint32_t channelMask) const { return (mask & channelMask) == 0; }
-            bool isConstant(ChannelMask channelMask) const { return isConstant((uint32_t)channelMask); }
+            bool isConstant(TextureChannelFlags channelMask) const { return isConstant((uint32_t)channelMask); }
 
-            bool isPos(ChannelMask channelMask) const { return getRange(channelMask) & (uint32_t)RangeFlags::Pos; }
-            bool isNeg(ChannelMask channelMask) const { return getRange(channelMask) & (uint32_t)RangeFlags::Neg; }
-            bool isInf(ChannelMask channelMask) const { return getRange(channelMask) & (uint32_t)RangeFlags::Inf; }
-            bool isNaN(ChannelMask channelMask) const { return getRange(channelMask) & (uint32_t)RangeFlags::NaN; }
+            bool isPos(TextureChannelFlags channelMask) const { return getRange(channelMask) & (uint32_t)RangeFlags::Pos; }
+            bool isNeg(TextureChannelFlags channelMask) const { return getRange(channelMask) & (uint32_t)RangeFlags::Neg; }
+            bool isInf(TextureChannelFlags channelMask) const { return getRange(channelMask) & (uint32_t)RangeFlags::Inf; }
+            bool isNaN(TextureChannelFlags channelMask) const { return getRange(channelMask) & (uint32_t)RangeFlags::NaN; }
 
             /** Returns the numerical range of texels in the given color channels.
                 \param[in] channelMask Which color channels to look at.
                 \return Union of 'RangeFlags' flags (0 = no texels, 1 = at least one texel).
             */
-            uint32_t getRange(ChannelMask channelMask) const
+            uint32_t getRange(TextureChannelFlags channelMask) const
             {
                 uint32_t range = 0;
                 for (int i = 0; i < 4; i++)
@@ -142,6 +131,5 @@ namespace Falcor
         ComputePass::SharedPtr mpAnalyzePass;
     };
 
-    enum_class_operators(TextureAnalyzer::Result::ChannelMask);
-    enum_class_operators(TextureAnalyzer::Result::RangeFlags);
+    FALCOR_ENUM_CLASS_OPERATORS(TextureAnalyzer::Result::RangeFlags);
 }

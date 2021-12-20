@@ -49,7 +49,7 @@ namespace Falcor
 
     /** A class wrapping the external GUI library
     */
-    class dlldecl Gui
+    class FALCOR_API Gui
     {
     public:
         using UniquePtr = std::unique_ptr<Gui>;
@@ -101,9 +101,9 @@ namespace Falcor
             Inactive = 0x2,     ///< Inactive widget, disallow edits
         };
 
-        class dlldecl Group;
+        class FALCOR_API Group;
 
-        class dlldecl Widgets
+        class FALCOR_API Widgets
         {
         public:
             /** Begin a new group
@@ -325,7 +325,7 @@ namespace Falcor
             Gui* mpGui = nullptr;
         };
 
-        class dlldecl Menu
+        class FALCOR_API Menu
         {
         public:
             /** Create a new menu
@@ -340,7 +340,7 @@ namespace Falcor
             */
             void release();
 
-            class dlldecl Dropdown
+            class FALCOR_API Dropdown
             {
             public:
                 /** Create a new dropdown menu
@@ -397,7 +397,7 @@ namespace Falcor
             Gui* mpGui = nullptr;
         };
 
-        class dlldecl Group : public Widgets
+        class FALCOR_API Group : public Widgets
         {
         public:
             Group() = default;
@@ -431,7 +431,7 @@ namespace Falcor
             void release();
         };
 
-        class dlldecl Window : public Widgets
+        class FALCOR_API Window : public Widgets
         {
         public:
             /** Create a new window
@@ -480,7 +480,7 @@ namespace Falcor
             void windowSize(uint32_t width, uint32_t height);
         };
 
-        class dlldecl MainMenu : public Menu
+        class FALCOR_API MainMenu : public Menu
         {
         public:
             /** Create a new main menu bar.
@@ -541,6 +541,6 @@ namespace Falcor
         GuiImpl* mpWrapper = nullptr;
     };
 
-    enum_class_operators(Gui::WindowFlags);
-    enum_class_operators(Gui::TextFlags);
+    FALCOR_ENUM_CLASS_OPERATORS(Gui::WindowFlags);
+    FALCOR_ENUM_CLASS_OPERATORS(Gui::TextFlags);
 }

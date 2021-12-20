@@ -1,0 +1,27 @@
+# Create materials
+sdfGridMaterial = Material('SDF Grid')
+sdfGridMaterial.baseColor = float4(1.0, 0.5, 0.5, 1.0)
+sdfGridMaterial.specularParams = float4(0.001)
+
+# Create SDF grids
+
+sdfGrid = SDFGrid.createSVS()
+sdfGrid.generateCheeseValues(128, 0)
+
+sceneBuilder.addSDFGridInstance(
+    sceneBuilder.addNode('SDFGrid', Transform()),
+    sceneBuilder.addSDFGrid(sdfGrid, sdfGridMaterial)
+)
+
+# Create camera
+
+camera = Camera()
+camera.position = float3(1, 1, 1)
+camera.target = float3(0, 0, 0)
+camera.up = float3(0, 1, 0)
+sceneBuilder.addCamera(camera)
+
+# Setup envmap
+
+sceneBuilder.envMap = EnvMap("Arcade/BlueSky.png")
+sceneBuilder.envMap.intensity = 1

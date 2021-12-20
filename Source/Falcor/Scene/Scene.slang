@@ -25,42 +25,37 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Scene/Material/MaterialDefines.slangh"
-#include "ScenePrimitiveDefines.slangh"
+
+#include "SceneDefines.slangh"
 
 __exported import Scene.SceneTypes;
 __exported import Scene.Camera.Camera;
 __exported import Scene.Lights.LightData;
 __exported import Scene.Lights.LightCollection;
 __exported import Scene.Lights.EnvMap;
-__exported import Scene.Material.MaterialData;
-__exported import Scene.Volume.Volume;
-__exported import Scene.Volume.Grid;
+__exported import Scene.Material.MaterialSystem;
+__exported import Scene.Material.MaterialFactory;
+__exported import Scene.Volume.GridVolume;
+__exported import Scene.SDFs.SDFGrid;
 
 import HitInfo;
-import TextureSampler;
-import Displacement.DisplacementMapping;
 import Utils.Attributes;
 import Utils.Math.MathHelpers;
 import Utils.Geometry.GeometryHelpers;
-import Experimental.Scene.Material.TexLODHelpers;
+import Scene.SDFs.SDFVoxelCommon;
+import Scene.Displacement.DisplacementMapping;
+import Rendering.Materials.TexLODHelpers;
 
-#ifndef SCENE_MATERIAL_COUNT
+#ifndef SCENE_GEOMETRY_TYPES
 // This error occurs when a shader imports Scene.slang without setting the defines
 // returned by Scene::getSceneDefines().
-#error "SCENE_MATERIAL_COUNT not defined!"
+#error "SCENE_GEOMETRY_TYPES not defined!"
 #endif
 
 /** Scene data required for rendering.
 */
 struct Scene
 {
-#ifdef SCENE_PRIMITIVE_TYPE_FLAGS
-    static PrimitiveTypeFlags kPrimitiveTypeFlags = (PrimitiveTypeFlags)SCENE_PRIMITIVE_TYPE_FLAGS;
-#else
-    static PrimitiveTypeFlags kPrimitiveTypeFlags = PrimitiveTypeFlags::None;
-#endif
-
     // Raytracing
     [root] RaytracingAccelerationStructure rtAccel;
 
@@ -70,8 +65,10 @@ struct Scene
     StructuredBuffer<float4> prevWorldMatrices;
     StructuredBuffer<float4> prevInverseTransposeWorldMatrices;
 
+    // Instances
+    [root] StructuredBuffer<GeometryInstanceData> geometryInstances;
+
     // Triangle meshes
-    [root] StructuredBuffer<PackedMeshInstanceData> meshInstances;
     StructuredBuffer<MeshDesc> meshes;
 
     [root] StructuredBuffer<PackedStaticVertexData> vertices;       ///< Vertex data for this frame.
@@ -80,31 +77,31 @@ struct Scene
     [root] ByteAddressBuffer indexData;                             ///< Vertex indices, three indices per triangle packed tightly. The format is specified per mesh.
 #endif
 
-    // Procedural primitives
-    uint displacedMeshInstanceOffset;
-    uint curveInstanceOffset;
-    uint curveInstanceCount;
-    uint customPrimitiveInstanceOffset;
-    uint customPrimitiveInstanceCount;
-    uint customPrimitiveAABBOffset;
-    uint totalInstanceCount;
-
-    StructuredBuffer<AABB> proceduralPrimitiveAABBs;                ///< Global list of AABBs for procedural primitives (curves, custom primitives, etc.).
-
     // Curves
-    StructuredBuffer<CurveInstanceData> curveInstances;
     StructuredBuffer<CurveDesc> curves;
 
     StructuredBuffer<StaticCurveVertexData> curveVertices;
     StructuredBuffer<DynamicCurveVertexData> prevCurveVertices;
     ByteAddressBuffer curveIndices;
 
+    // SDF Grids
+#if SCENE_SDF_GRID_COUNT > 0
+    SDFGrid sdfGrids[SCENE_SDF_GRID_COUNT];
+#else
+    SDFGrid sdfGrids[1]; // Zero-length arrays are not supported.
+#endif
+
+    // Procedural primitives
+    StructuredBuffer<AABB> proceduralPrimitiveAABBs;                ///< Global list of AABBs for procedural primitives (curves, custom primitives, etc.).
+
     // Custom primitives
+    uint customPrimitiveInstanceOffset;
+    uint customPrimitiveInstanceCount;
+    uint customPrimitiveAABBOffset;
     StructuredBuffer<CustomPrimitiveDesc> customPrimitives;
 
     // Materials
-    StructuredBuffer<MaterialData> materials;
-    MaterialResources materialResources[SCENE_MATERIAL_COUNT];
+    ParameterBlock<MaterialSystem> materials;
 
     // Lights and camera
     uint lightCount;
@@ -113,9 +110,9 @@ struct Scene
     EnvMap envMap;
     Camera camera;
 
-    // Volumes
-    uint volumeCount;
-    StructuredBuffer<Volume> volumes;
+    // Grid volumes
+    uint gridVolumeCount;
+    StructuredBuffer<GridVolume> gridVolumes;
 #if SCENE_GRID_COUNT > 0
     Grid grids[SCENE_GRID_COUNT];
 #else
@@ -128,13 +125,10 @@ struct Scene
         \param[in] instanceID Global geometry instance ID.
         \return The type of geometry this instance represents.
     */
-    PrimitiveTypeFlags getGeometryInstanceType(const GeometryInstanceID instanceID)
+    GeometryType getGeometryInstanceType(const GeometryInstanceID instanceID)
     {
-        if (instanceID.index < displacedMeshInstanceOffset) return PrimitiveTypeFlags::TriangleMesh;
-        else if (instanceID.index < curveInstanceOffset) return PrimitiveTypeFlags::DisplacedTriangleMesh;
-        else if (instanceID.index < customPrimitiveInstanceOffset) return PrimitiveTypeFlags::Curve;
-        else if (instanceID.index < totalInstanceCount) return PrimitiveTypeFlags::Custom;
-        else return PrimitiveTypeFlags::None;
+        if (instanceID.index >= customPrimitiveInstanceOffset) return GeometryType::Custom;
+        return geometryInstances[instanceID.index].getType();
     }
 
     // Mesh and instance data access
@@ -187,80 +181,65 @@ struct Scene
 
     float4x4 getWorldMatrix(const GeometryInstanceID instanceID)
     {
-        uint matrixID = meshInstances[instanceID.index].unpack().globalMatrixID;
+        uint matrixID = geometryInstances[instanceID.index].globalMatrixID;
         return loadWorldMatrix(matrixID);
     }
 
     float4x4 getPrevWorldMatrix(const GeometryInstanceID instanceID)
     {
-        uint matrixID = meshInstances[instanceID.index].unpack().globalMatrixID;
+        uint matrixID = geometryInstances[instanceID.index].globalMatrixID;
         return loadPrevWorldMatrix(matrixID);
     }
 
     float3x3 getInverseTransposeWorldMatrix(const GeometryInstanceID instanceID)
     {
-        uint matrixID = meshInstances[instanceID.index].unpack().globalMatrixID;
+        uint matrixID = geometryInstances[instanceID.index].globalMatrixID;
         return loadInverseTransposeWorldMatrix(matrixID);
     }
 
     float3x3 getPrevInverseTransposeWorldMatrix(const GeometryInstanceID instanceID)
     {
-        uint matrixID = meshInstances[instanceID.index].unpack().globalMatrixID;
+        uint matrixID = geometryInstances[instanceID.index].globalMatrixID;
         return loadPrevInverseTransposeWorldMatrix(matrixID);
     }
 
     bool isWorldMatrixFlippedWinding(const GeometryInstanceID instanceID)
     {
-        return (meshInstances[instanceID.index].unpack().flags & uint(MeshInstanceFlags::TransformFlipped)) != 0;
+        return (geometryInstances[instanceID.index].flags & uint(GeometryInstanceFlags::TransformFlipped)) != 0;
     }
 
     bool isObjectFrontFaceCW(const GeometryInstanceID instanceID)
     {
-        return (meshInstances[instanceID.index].unpack().flags & uint(MeshInstanceFlags::IsObjectFrontFaceCW)) != 0;
+        return (geometryInstances[instanceID.index].flags & uint(GeometryInstanceFlags::IsObjectFrontFaceCW)) != 0;
     }
 
     bool isWorldFrontFaceCW(const GeometryInstanceID instanceID)
     {
-        return (meshInstances[instanceID.index].unpack().flags & uint(MeshInstanceFlags::IsWorldFrontFaceCW)) != 0;
+        return (geometryInstances[instanceID.index].flags & uint(GeometryInstanceFlags::IsWorldFrontFaceCW)) != 0;
     }
 
-    MeshInstanceData getMeshInstance(const GeometryInstanceID instanceID)
+    GeometryInstanceData getGeometryInstance(const GeometryInstanceID instanceID)
     {
-        return meshInstances[instanceID.index].unpack();
+        return geometryInstances[instanceID.index];
     }
 
     MeshDesc getMeshDesc(const GeometryInstanceID instanceID)
     {
-        return meshes[meshInstances[instanceID.index].unpack().meshID];
+        return meshes[geometryInstances[instanceID.index].geometryID];
     }
 
-    // Materials and lights access
+    // Materials access
 
-    /** Return the material ID for a triangle mesh.
-        Note: It is assume the instanceID represents a triangle mesh. No type checking is performed!
+    /** Return the material ID for a geometry instance.
         \param[in] instanceID Global geometry instance ID.
         \return Material ID.
     */
     uint getMaterialID(const GeometryInstanceID instanceID)
     {
-        return meshInstances[instanceID.index].unpack().materialID;
+        return geometryInstances[instanceID.index].materialID;
     };
 
-    uint getCurveMaterialID(const GeometryInstanceID instanceID)
-    {
-        uint curveInstanceID = getCurveInstanceID(instanceID);
-        return curveInstances[curveInstanceID].materialID;
-    }
-
-    uint getMaterialCount()
-    {
-        return SCENE_MATERIAL_COUNT;
-    }
-
-    MaterialData getMaterial(const uint materialID)
-    {
-        return materials[materialID];
-    }
+    // Lights access
 
     uint getLightCount()
     {
@@ -284,14 +263,14 @@ struct Scene
         grid = grids[gridIndex];
     }
 
-    uint getVolumeCount()
+    uint getGridVolumeCount()
     {
-        return volumeCount;
+        return gridVolumeCount;
     }
 
-    Volume getVolume(const uint volumeIndex)
+    GridVolume getGridVolume(const uint volumeIndex)
     {
-        return volumes[volumeIndex];
+        return gridVolumes[volumeIndex];
     }
 
     // Geometry access
@@ -311,8 +290,10 @@ struct Scene
         bool read16Bit = use16Bit;
 #elif SCENE_HAS_16BIT_INDICES
         bool read16Bit = true;
-#else
+#elif SCENE_HAS_32BIT_INDICES
         bool read16Bit = false;
+#else
+        #error Scene vertex formats are not specified
 #endif
         // Load the vertex indices.
         uint baseIndex = ibOffset * 4;
@@ -354,9 +335,9 @@ struct Scene
     */
     uint3 getIndices(const GeometryInstanceID instanceID, const uint triangleIndex)
     {
-        const MeshInstanceData meshInstance = getMeshInstance(instanceID);
-        uint3 vtxIndices = getLocalIndices(meshInstance.ibOffset, triangleIndex, meshInstance.flags & uint(MeshInstanceFlags::Use16BitIndices));
-        vtxIndices += meshInstance.vbOffset;
+        const GeometryInstanceData instance = getGeometryInstance(instanceID);
+        uint3 vtxIndices = getLocalIndices(instance.ibOffset, triangleIndex, instance.flags & uint(GeometryInstanceFlags::Use16BitIndices));
+        vtxIndices += instance.vbOffset;
         return vtxIndices;
     }
 
@@ -569,7 +550,7 @@ struct Scene
         // Load displacement data.
         const uint materialID = getMaterialID(hit.instanceID);
         DisplacementData displacementData;
-        loadDisplacementData(materials[materialID], materialResources[materialID], displacementData);
+        materials.loadDisplacementData(materialID, displacementData);
 
         // Update face normal according to local displacement map values.
         // This is only an approximation in order to get plausible displaced face and smooth normals.
@@ -603,6 +584,25 @@ struct Scene
         return v;
     }
 
+    /** Returns interpolated position in world space for the previous frame.
+        \param[in] hit Hit info.
+        \return Interpolated position in world space for the previous frame.
+    */
+    float3 getPrevPosW(const HitInfo hit)
+    {
+        switch (hit.getType())
+        {
+        case HitType::Triangle:
+            return gScene.getPrevPosW(hit.getTriangleHit());
+        case HitType::DisplacedTriangle:
+            return gScene.getPrevPosW(hit.getDisplacedTriangleHit());
+        case HitType::Curve:
+            return gScene.getPrevPosWFromCurve(hit.getCurveHit());
+        default:
+            return 0.f;
+        }
+    }
+
     /** Returns interpolated position on a triangle in world space for the previous frame.
         \param[in] instanceID Geometry instance ID of the mesh.
         \param[in] triangleIndex Index of the triangle in the given mesh.
@@ -613,13 +613,13 @@ struct Scene
     {
         float3 prevPos = {};
 
-        const MeshInstanceData meshInstance = getMeshInstance(instanceID);
-        uint3 vtxIndices = getLocalIndices(meshInstance.ibOffset, triangleIndex, meshInstance.flags & uint(MeshInstanceFlags::Use16BitIndices));
+        const GeometryInstanceData instance = getGeometryInstance(instanceID);
+        uint3 vtxIndices = getLocalIndices(instance.ibOffset, triangleIndex, instance.flags & uint(GeometryInstanceFlags::Use16BitIndices));
 
-        if (meshInstance.hasDynamicData())
+        if (instance.hasDynamicData())
         {
             // For dynamic meshes, the previous position is stored in a separate buffer.
-            vtxIndices += meshes[meshInstance.meshID].dynamicVbOffset;
+            vtxIndices += meshes[instance.geometryID].dynamicVbOffset;
 
             prevPos += prevVertices[vtxIndices[0]].position * barycentrics[0];
             prevPos += prevVertices[vtxIndices[1]].position * barycentrics[1];
@@ -628,14 +628,14 @@ struct Scene
         else
         {
             // For non-dynamic meshes, the previous positions are the same as the current.
-            vtxIndices += meshInstance.vbOffset;
+            vtxIndices += instance.vbOffset;
 
             prevPos += vertices[vtxIndices[0]].position * barycentrics[0];
             prevPos += vertices[vtxIndices[1]].position * barycentrics[1];
             prevPos += vertices[vtxIndices[2]].position * barycentrics[2];
         }
 
-        const float4x4 prevWorldMat = loadPrevWorldMatrix(meshInstance.globalMatrixID);
+        const float4x4 prevWorldMat = loadPrevWorldMatrix(instance.globalMatrixID);
         return mul(float4(prevPos, 1.f), prevWorldMat).xyz;
     }
 
@@ -658,11 +658,11 @@ struct Scene
         float3 prevNormal = {};
 
         const float3 barycentrics = hit.getBarycentricWeights();
-        const MeshInstanceData meshInstance = getMeshInstance(hit.instanceID);
-        uint3 vtxIndices = getLocalIndices(meshInstance.ibOffset, hit.primitiveIndex, meshInstance.flags & uint(MeshInstanceFlags::Use16BitIndices));
+        const GeometryInstanceData instance = getGeometryInstance(hit.instanceID);
+        uint3 vtxIndices = getLocalIndices(instance.ibOffset, hit.primitiveIndex, instance.flags & uint(GeometryInstanceFlags::Use16BitIndices));
 
         // For non-dynamic meshes, the previous position/normal is the same as the current.
-        vtxIndices += meshInstance.vbOffset;
+        vtxIndices += instance.vbOffset;
 
         prevPos += vertices[vtxIndices[0]].position * barycentrics[0];
         prevPos += vertices[vtxIndices[1]].position * barycentrics[1];
@@ -675,7 +675,7 @@ struct Scene
         // Offset surface along the displaced direction to avoid self-intersections because of precision.
         prevPos += prevNormal * (hit.displacement * DisplacementData::kSurfaceSafetyScaleBias.x + DisplacementData::kSurfaceSafetyScaleBias.y);
 
-        const float4x4 prevWorldMat = loadPrevWorldMatrix(meshInstance.globalMatrixID);
+        const float4x4 prevWorldMat = loadPrevWorldMatrix(instance.globalMatrixID);
         return mul(float4(prevPos, 1.f), prevWorldMat).xyz;
     }
 
@@ -715,29 +715,10 @@ struct Scene
 
     // Curve access
 
-    uint getCurveInstanceID(const GeometryInstanceID instanceID)
-    {
-        return instanceID.index - curveInstanceOffset;
-    }
-
-    CurveInstanceData getCurveInstance(const GeometryInstanceID instanceID)
-    {
-        uint curveInstanceID = getCurveInstanceID(instanceID);
-        return curveInstances[curveInstanceID];
-    }
-
     CurveDesc getCurveDesc(const GeometryInstanceID instanceID)
     {
-        uint curveInstanceID = getCurveInstanceID(instanceID);
-        return curves[curveInstances[curveInstanceID].curveID];
+        return curves[geometryInstances[instanceID.index].geometryID];
     }
-
-    float4x4 getWorldMatrixForCurves(const GeometryInstanceID instanceID)
-    {
-        uint curveInstanceID = getCurveInstanceID(instanceID);
-        uint matrixID = curveInstances[curveInstanceID].globalMatrixID;
-        return loadWorldMatrix(matrixID);
-    };
 
     /** Returns the global curve vertex indices for the first control point of a curve segment.
         \param[in] instanceID Geometry instance ID of the curve.
@@ -746,10 +727,9 @@ struct Scene
     */
     uint getFirstCurveVertexIndex(const GeometryInstanceID instanceID, const uint curveSegIndex)
     {
-        uint curveInstanceID = getCurveInstanceID(instanceID);
-        uint baseIndex = curveInstances[curveInstanceID].ibOffset + curveSegIndex;
+        uint baseIndex = geometryInstances[instanceID.index].ibOffset + curveSegIndex;
         uint vertexIndex = curveIndices.Load(baseIndex * 4);
-        vertexIndex += curveInstances[curveInstanceID].vbOffset;
+        vertexIndex += geometryInstances[instanceID.index].vbOffset;
         return vertexIndex;
     }
 
@@ -776,11 +756,11 @@ struct Scene
 
         StaticCurveVertexData vertices[2] = { getCurveVertex(v0Index), getCurveVertex(v0Index + 1) };
 
-        // Note that worldMat should not have a scale component.
+        // Note that worldMat should have an isotropic scale component.
         // Otherwise the curve endcaps might not be spheres.
-        const float4x4 worldMat = getWorldMatrixForCurves(instanceID);
-        const float4 sphereA = float4(mul(float4(vertices[0].position, 1.f), worldMat).xyz, vertices[0].radius);
-        const float4 sphereB = float4(mul(float4(vertices[1].position, 1.f), worldMat).xyz, vertices[1].radius);
+        const float4x4 worldMat = getWorldMatrix(instanceID);
+        const float4 sphereA = transformSphere(float4(vertices[0].position, vertices[0].radius), worldMat);
+        const float4 sphereB = transformSphere(float4(vertices[1].position, vertices[1].radius), worldMat);
 
         float3 hitPos, sphereCenter;
         uvToCurveHitPos(uv, sphereA, sphereB, hitPos, sphereCenter);
@@ -825,11 +805,11 @@ struct Scene
         float3 positions[2] = { prevCurveVertices[v0Index].position, prevCurveVertices[v0Index + 1].position };
         float radii[2] = { getCurveVertex(v0Index).radius, getCurveVertex(v0Index + 1).radius };
 
-        // Note that worldMat doesn't change across frames.
-        // It should not have a scale component, otherwise the curve endcaps might not be spheres.
-        const float4x4 worldMat = getWorldMatrixForCurves(instanceID);
-        const float4 sphereA = float4(mul(float4(positions[0], 1.f), worldMat).xyz, radii[0]);
-        const float4 sphereB = float4(mul(float4(positions[1], 1.f), worldMat).xyz, radii[1]);
+        // Note that prevWorldMat should have an isotropic scale component.
+        // Otherwise the curve endcaps might not be spheres.
+        const float4x4 prevWorldMat = getPrevWorldMatrix(instanceID);
+        const float4 sphereA = transformSphere(float4(positions[0], radii[0]), prevWorldMat);
+        const float4 sphereB = transformSphere(float4(positions[1], radii[1]), prevWorldMat);
 
         float3 hitPos, sphereCenter;
         uvToCurveHitPos(uv, sphereA, sphereB, hitPos, sphereCenter);
@@ -843,6 +823,73 @@ struct Scene
     float3 getPrevPosWFromCurve(const CurveHit hit)
     {
         return getPrevPosWFromCurve(hit.instanceID, hit.primitiveIndex, hit.barycentrics);
+    }
+
+    // SDF grid access
+
+    void getSDFGrid(const GeometryInstanceID instanceID, out SDFGrid sdfGrid)
+    {
+        sdfGrid = sdfGrids[geometryInstances[instanceID.index].geometryID];
+    }
+
+    /** Returns the interpolated vertex attributes for an SDF grid.
+    \param[in] hit SDF grid hit info.
+    \param[in] posW The world position of the hit point.
+    \return Interpolated vertex attributes.
+    */
+    VertexData getVertexDataFromSDFGrid(const SDFGridHit hit, float3 posW)
+    {
+        VertexData v;
+
+        const GeometryInstanceData instance = geometryInstances[hit.instanceID.index];
+        const SDFGrid sdfGrid = sdfGrids[instance.geometryID];
+
+        // Load Matrices.
+        const float4x4 worldMat = loadWorldMatrix(instance.globalMatrixID);
+        const float3x3 worldInvTransposeMat = loadInverseTransposeWorldMatrix(instance.globalMatrixID);
+
+        const float3 hitPosition = mul(worldInvTransposeMat, posW - worldMat[3].xyz);
+
+        float3 gradient;
+        sdfGrid.decodeHit(hit.hitData, hitPosition, gradient);
+
+        v.posW = posW;
+        v.normalW = normalize(mul(normalize(gradient), worldInvTransposeMat));
+        v.tangentW = float4(perp_stark(v.normalW), 1.0f);
+        v.faceNormalW = v.normalW;
+
+        v.texC = float2(0.0f);
+        v.coneTexLODValue = 0.0f;
+
+        return v;
+    }
+
+    /** Returns the interpolated vertex attributes for an SDF grid.
+    \param[in] hit SDF grid hit info.
+    \param[in] rayOrigin The origin of the ray that led to the hit.
+    \param[in] rayDir The normalized direction of the ray that led to the hit.
+    \return Interpolated vertex attributes.
+    */
+    VertexData getVertexDataFromSDFGrid(const SDFGridHit hit, float3 rayOrigin, float3 rayDir)
+    {
+        return getVertexDataFromSDFGrid(hit, rayOrigin + rayDir * hit.hitData.hitT);
+    }
+
+    /** Returns world position of a point on an SDF grid for the previous frame.
+        \param[in] hit SDF grid hit info.
+        \param[in] posW SDF The world position of the point for the current frame.
+        \return Position in world space for the previous frame.
+    */
+    float3 getPrevPosWFromSDFGrid(const SDFGridHit hit, float3 posW)
+    {
+        const GeometryInstanceData instance = geometryInstances[hit.instanceID.index];
+
+        // Load Matrices.
+        const float4x4 worldMat = loadWorldMatrix(instance.globalMatrixID);
+        const float3x3 worldInvTransposeMat = loadInverseTransposeWorldMatrix(instance.globalMatrixID);
+        const float4x4 prevWorldMat = loadPrevWorldMatrix(instance.globalMatrixID);
+
+        return mul(float4(mul(worldInvTransposeMat, posW - worldMat[3].xyz), 1.0f), prevWorldMat).xyz;
     }
 
     // Custom primitive access
@@ -860,31 +907,7 @@ struct Scene
         return proceduralPrimitiveAABBs[index];
     }
 
-    // Emissive access
-
-    /** Check if a material has an emissive texture.
-        \param[in] materialID Material ID
-        \return Returns true if material has emissive texture.
-    */
-    bool isEmissiveTextured(const uint materialID)
-    {
-        return EXTRACT_EMISSIVE_TYPE(materials[materialID].flags) == ChannelTypeTexture;
-    }
-
-    /** Evaluates the outgoing radiance on a given material.
-        This function samples the emissive texture if its textured.
-        Note the caller check the facing status themselves to discard back-facing hits.
-        \param[in] materialID Material ID
-        \param[in] uv Texture coordinates
-        \param[in] mr MaterialResources struct for the given material ID. This is a workaround to avoid perf problems due to dynamic indexing.
-        \return Evaluated outgoing radiance on the front-facing side.
-    */
-    float3 getEmissive(const uint materialID, const float2 uv, const MaterialResources mr)
-    {
-        MaterialData m = materials[materialID];
-        ExplicitLodTextureSampler lod = { 0.0 };
-        return sampleTexture(mr.emissive, mr.samplerState, uv, float4(m.emissive, 1.0), EXTRACT_EMISSIVE_TYPE(m.flags), lod).rgb * m.emissiveFactor;
-    }
+    // Curvature helpers
 
     /** Returns the estimated curvature from a triangle vertex attributes for ray tracing using the provided estimator.
         \param[in] instanceID Geometry instance ID of the mesh.
@@ -951,3 +974,4 @@ struct Scene
 };
 
 ParameterBlock<Scene> gScene;
+

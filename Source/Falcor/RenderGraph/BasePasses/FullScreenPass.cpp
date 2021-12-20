@@ -41,23 +41,13 @@ namespace Falcor
 
         FullScreenPassData gFullScreenData;
 
-        bool checkForViewportArray2Support()
-        {
-#ifdef FALCOR_D3D12
-            return false;
-#elif defined FALCOR_VK
-            return false;
-#else
-#error Unknown API
-#endif
-        }
         struct Vertex
         {
             float2 screenPos;
             float2 texCoord;
         };
 
-#ifdef FALCOR_VK
+#ifdef FALCOR_FLIP_Y
 #define ADJUST_Y(a) (-(a))
 #else
 #define ADJUST_Y(a) a
@@ -131,15 +121,8 @@ namespace Falcor
         if (viewportMask)
         {
             defs.add("_VIEWPORT_MASK", std::to_string(viewportMask));
-            if (checkForViewportArray2Support())
-            {
-                defs.add("_USE_VP2_EXT");
-            }
-            else
-            {
-                defs.add("_OUTPUT_VERTEX_COUNT", std::to_string(3 * popcount(viewportMask)));
-                d.addShaderLibrary("RenderGraph/BasePasses/FullScreenPass.gs.slang").gsEntry("main");
-            }
+            defs.add("_OUTPUT_VERTEX_COUNT", std::to_string(3 * popcount(viewportMask)));
+            d.addShaderLibrary("RenderGraph/BasePasses/FullScreenPass.gs.slang").gsEntry("main");
         }
         if (!d.hasEntryPoint(ShaderType::Vertex)) d.addShaderLibrary("RenderGraph/BasePasses/FullScreenPass.vs.slang").vsEntry("main");
 
@@ -156,6 +139,6 @@ namespace Falcor
     void FullScreenPass::execute(RenderContext* pRenderContext, const Fbo::SharedPtr& pFbo, bool autoSetVpSc) const
     {
         mpState->setFbo(pFbo, autoSetVpSc);
-        pRenderContext->draw(mpState.get(), mpVars.get(), arraysize(kVertices), 0);
+        pRenderContext->draw(mpState.get(), mpVars.get(), (uint32_t)arraysize(kVertices), 0);
     }
 }

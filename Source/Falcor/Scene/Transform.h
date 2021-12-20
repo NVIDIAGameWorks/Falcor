@@ -34,7 +34,7 @@ namespace Falcor
         rotation and scaling. These operations are applied in order of
         scaling, rotation, and translation last.
     */
-    class dlldecl Transform
+    class FALCOR_API Transform
     {
     public:
         Transform();
@@ -57,6 +57,9 @@ namespace Falcor
         void lookAt(const float3& position, const float3& target, const float3& up);
 
         const glm::float4x4& getMatrix() const;
+
+        bool operator==(const Transform& other) const;
+        bool operator!=(const Transform& other) const { return !((*this) == other); }
 
     private:
         float3 mTranslation = float3(0.f);

@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Core/API/Raytracing.h"
 #include "Utils/Math/Vector.h"
 #include <limits>
 
@@ -220,6 +221,13 @@ namespace Falcor
         {
             AABB bb = *this;
             return bb &= rhs;
+        }
+
+        /** Conversion to RtAABB.
+        */
+        explicit operator RtAABB() const
+        {
+            return { minPoint, maxPoint };
         }
     };
 }

@@ -122,7 +122,7 @@ namespace Falcor
         return gNullViews.cbv;
     }
 
-    SCRIPT_BINDING(ResourceView)
+    FALCOR_SCRIPT_BINDING(ResourceView)
     {
         pybind11::class_<ShaderResourceView, ShaderResourceView::SharedPtr>(m, "ShaderResourceView");
         pybind11::class_<RenderTargetView, RenderTargetView::SharedPtr>(m, "RenderTargetView");

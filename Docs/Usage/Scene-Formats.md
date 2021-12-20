@@ -136,22 +136,22 @@ Next we need to define at least one material to use for our meshes:
 
 ```python
 # Create materials
-red = Material('Red')
+red = StandardMaterial('Red')
 red.baseColor = float4(0.8, 0.1, 0.1, 1.0)
 red.roughness = 0.3
 
-green = Material('Green')
+green = StandardMaterial('Green')
 green.baseColor = float4(0.1, 0.8, 0.1, 1.0)
 green.roughness = 0.2
 green.emissiveColor = float3(1, 1, 1)
 green.emissiveFactor = 0.1
 
-blue = Material('Blue')
+blue = StandardMaterial('Blue')
 blue.baseColor = float4(0.1, 0.1, 0.8, 1.0)
 blue.roughness = 0.3
 blue.metallic = 1
 
-emissive = Material('Emissive')
+emissive = StandardMaterial('Emissive')
 emissive.baseColor = float4(1, 1, 1, 1)
 emissive.roughness = 0.2
 emissive.emissiveColor = float3(1, 1, 1)
@@ -162,7 +162,7 @@ We can also create materials using textures:
 
 ```python
 # Create material with textures
-floor = Material('Floor')
+floor = StandardMaterial('Floor')
 floor.loadTexture(MaterialTextureSlot.BaseColor, 'Arcade/Textures/CheckerTile_BaseColor.png')
 floor.loadTexture(MaterialTextureSlot.Specular, 'Arcade/Textures/CheckerTile_Specular.png')
 floor.loadTexture(MaterialTextureSlot.Normal, 'Arcade/Textures/CheckerTile_Normal.png')

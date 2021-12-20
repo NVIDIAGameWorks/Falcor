@@ -116,7 +116,7 @@ namespace Falcor
         {
             std::string fn = "texture" + std::to_string(i + 1) + (i < kNumPNGs ? ".png" : ".exr");
             textures[i] = Texture::createFromFile(fn, false, false);
-            if (!textures[i]) throw std::runtime_error("Failed to load " + fn);
+            if (!textures[i]) throw RuntimeError("Failed to load {}", fn);
         }
 
         // Analyze textures.
@@ -153,10 +153,10 @@ namespace Falcor
                     }
                 }
 
-                EXPECT_EQ(result[i].isPos(TextureAnalyzer::Result::ChannelMask::RGBA), (rangeFlags & (uint32_t)TextureAnalyzer::Result::RangeFlags::Pos) != 0) << "i = " << i;
-                EXPECT_EQ(result[i].isNeg(TextureAnalyzer::Result::ChannelMask::RGBA), (rangeFlags & (uint32_t)TextureAnalyzer::Result::RangeFlags::Neg) != 0) << "i = " << i;
-                EXPECT_EQ(result[i].isInf(TextureAnalyzer::Result::ChannelMask::RGBA), (rangeFlags & (uint32_t)TextureAnalyzer::Result::RangeFlags::Inf) != 0) << "i = " << i;
-                EXPECT_EQ(result[i].isNaN(TextureAnalyzer::Result::ChannelMask::RGBA), (rangeFlags & (uint32_t)TextureAnalyzer::Result::RangeFlags::NaN) != 0) << "i = " << i;
+                EXPECT_EQ(result[i].isPos(TextureChannelFlags::RGBA), (rangeFlags & (uint32_t)TextureAnalyzer::Result::RangeFlags::Pos) != 0) << "i = " << i;
+                EXPECT_EQ(result[i].isNeg(TextureChannelFlags::RGBA), (rangeFlags & (uint32_t)TextureAnalyzer::Result::RangeFlags::Neg) != 0) << "i = " << i;
+                EXPECT_EQ(result[i].isInf(TextureChannelFlags::RGBA), (rangeFlags & (uint32_t)TextureAnalyzer::Result::RangeFlags::Inf) != 0) << "i = " << i;
+                EXPECT_EQ(result[i].isNaN(TextureChannelFlags::RGBA), (rangeFlags & (uint32_t)TextureAnalyzer::Result::RangeFlags::NaN) != 0) << "i = " << i;
             }
             pResult->unmap();
         };

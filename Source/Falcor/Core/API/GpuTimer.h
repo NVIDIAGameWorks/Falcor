@@ -32,10 +32,10 @@
 
 namespace Falcor
 {
-    /** Abstracts GPU timer queries. \n
+    /** Abstracts GPU timer queries.
         This class provides mechanism to get elapsed time in milliseconds between a pair of Begin()/End() calls.
     */
-    class dlldecl GpuTimer : public std::enable_shared_from_this<GpuTimer>
+    class FALCOR_API GpuTimer
     {
     public:
         using SharedPtr = std::shared_ptr<GpuTimer>;

@@ -27,7 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Utils/HostDeviceShared.slangh"
-#include "Experimental/Scene/Lights/EmissiveLightSamplerType.slangh"
+#include "Rendering/Lights/EmissiveLightSamplerType.slangh"
 
 BEGIN_NAMESPACE_FALCOR
 
@@ -54,7 +54,7 @@ enum class MISHeuristic
 /** Path tracer parameters. Shared between host and device.
 
     Note that if you add configuration parameters, do not forget to register
-    them with the scripting system in SCRIPT_BINDING() in PathTracer.cpp.
+    them with the scripting system in FALCOR_SCRIPT_BINDING() in PathTracer.cpp.
 */
 struct PathTracerParams
 {
@@ -98,7 +98,7 @@ struct PathTracerParams
     // Ray footprint
     float   screenSpacePixelSpreadAngle = 0.0; ///< The angle an "average" pixel spans from camera (Used by ray footprint).
     uint    rayFootprintMode = 0;           ///< Ray footprint tracking mode used for Texture LOD. See RayFootprintModes.slangh.
-    uint    rayConeMode = 2;                ///< Sub-mode for the Ray Cone mode of ray footprint. 0:RayTracingGems1 (unsupported), 1:Combo, 2:Unified. See RayFootprint.slang.
+    uint    rayConeMode = 0;                ///< Sub-mode for the Ray Cone mode of ray footprint. See TexLODTypes.slang.
     int     rayFootprintUseRoughness = 0;   ///< Integrates material roughness into the footprint calculation (only used by Ray Cone right now).
 
     // Runtime data

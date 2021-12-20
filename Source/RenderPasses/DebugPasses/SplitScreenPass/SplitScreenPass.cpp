@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "SplitScreenPass.h"
 
-const char* SplitScreenPass::kDesc = "Allows the user to split the screen between two inputs.";
+const RenderPass::Info SplitScreenPass::kInfo { "SplitScreenPass", "Allows the user to split the screen between two inputs." };
 
 namespace
 {
@@ -60,6 +60,7 @@ namespace
 }
 
 SplitScreenPass::SplitScreenPass()
+    : ComparisonPass(kInfo)
 {
     mpArrowTex = Texture::create2D(16, 16, ResourceFormat::R8Unorm, 1, Texture::kMaxPossible, kArrowArray);
     mClock = gpFramework->getGlobalClock();
@@ -85,14 +86,14 @@ void SplitScreenPass::createProgram()
     mpSplitShader = FullScreenPass::create(kSplitShader);
 }
 
-void SplitScreenPass::execute(RenderContext* pContext, const RenderData& renderData)
+void SplitScreenPass::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
     mpSplitShader["GlobalCB"]["gDividerColor"] = mMouseOverDivider ? kColorSelected : kColorUnselected;
     mpSplitShader["GlobalCB"]["gMousePosition"] = mMousePos;
     mpSplitShader["GlobalCB"]["gDrawArrows"] = mDrawArrows && mMouseOverDivider;
     mpSplitShader["gArrowTex"] = mpArrowTex;
 
-    ComparisonPass::execute(pContext, renderData);
+    ComparisonPass::execute(pRenderContext, renderData);
 }
 
 bool SplitScreenPass::onMouseEvent(const MouseEvent& mouseEvent)

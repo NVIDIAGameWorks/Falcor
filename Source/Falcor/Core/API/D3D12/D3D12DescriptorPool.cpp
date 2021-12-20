@@ -26,31 +26,31 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "Core/API/DescriptorPool.h"
+#include "D3D12DescriptorPool.h"
 #include "D3D12DescriptorData.h"
 
 namespace Falcor
 {
-    D3D12_DESCRIPTOR_HEAP_TYPE falcorToDxDescType(DescriptorPool::Type t)
+    D3D12_DESCRIPTOR_HEAP_TYPE falcorToDxDescType(D3D12DescriptorPool::Type t)
     {
         switch (t)
         {
-        case DescriptorPool::Type::TextureSrv:
-        case DescriptorPool::Type::TextureUav:
-        case DescriptorPool::Type::RawBufferSrv:
-        case DescriptorPool::Type::RawBufferUav:
-        case DescriptorPool::Type::TypedBufferSrv:
-        case DescriptorPool::Type::TypedBufferUav:
-        case DescriptorPool::Type::StructuredBufferSrv:
-        case DescriptorPool::Type::StructuredBufferUav:
-        case DescriptorPool::Type::AccelerationStructureSrv:
-        case DescriptorPool::Type::Cbv:
+        case D3D12DescriptorPool::Type::TextureSrv:
+        case D3D12DescriptorPool::Type::TextureUav:
+        case D3D12DescriptorPool::Type::RawBufferSrv:
+        case D3D12DescriptorPool::Type::RawBufferUav:
+        case D3D12DescriptorPool::Type::TypedBufferSrv:
+        case D3D12DescriptorPool::Type::TypedBufferUav:
+        case D3D12DescriptorPool::Type::StructuredBufferSrv:
+        case D3D12DescriptorPool::Type::StructuredBufferUav:
+        case D3D12DescriptorPool::Type::AccelerationStructureSrv:
+        case D3D12DescriptorPool::Type::Cbv:
             return D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-        case DescriptorPool::Type::Dsv:
+        case D3D12DescriptorPool::Type::Dsv:
             return D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-        case DescriptorPool::Type::Rtv:
+        case D3D12DescriptorPool::Type::Rtv:
             return D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-        case DescriptorPool::Type::Sampler:
+        case D3D12DescriptorPool::Type::Sampler:
             return D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
         default:
             should_not_get_here();
@@ -58,10 +58,28 @@ namespace Falcor
         }
     }
 
-    void DescriptorPool::apiInit()
+    uint32_t D3D12DescriptorPool::getMaxShaderVisibleSamplerHeapSize()
+    {
+        return D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE;
+    }
+
+    const D3D12DescriptorPool::ApiHandle& D3D12DescriptorPool::getApiHandle(uint32_t heapIndex) const
+    {
+        assert(heapIndex < arraysize(mpApiData->pHeaps));
+        return mpApiData->pHeaps[heapIndex]->getApiHandle();
+    }
+
+    D3D12DescriptorPool::SharedPtr D3D12DescriptorPool::create(const Desc& desc, const GpuFence::SharedPtr& pFence)
+    {
+        return SharedPtr(new D3D12DescriptorPool(desc, pFence));
+    }
+
+    D3D12DescriptorPool::D3D12DescriptorPool(const Desc& desc, const GpuFence::SharedPtr& pFence)
+        : mDesc(desc)
+        , mpFence(pFence)
     {
         // Find out how many heaps we need
-        static_assert(DescriptorPool::kTypeCount == 13, "Unexpected desc count, make sure all desc types are supported");
+        static_assert(D3D12DescriptorPool::kTypeCount == 13, "Unexpected desc count, make sure all desc types are supported");
         uint32_t descCount[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES] = { 0 };
 
         descCount[D3D12_DESCRIPTOR_HEAP_TYPE_RTV] = mDesc.mDescCount[(uint32_t)Type::Rtv];
@@ -82,9 +100,22 @@ namespace Falcor
         }
     }
 
-    const DescriptorPool::ApiHandle& DescriptorPool::getApiHandle(uint32_t heapIndex) const
+    D3D12DescriptorPool::~D3D12DescriptorPool() = default;
+
+    void D3D12DescriptorPool::executeDeferredReleases()
     {
-        assert(heapIndex < arraysize(mpApiData->pHeaps));
-        return mpApiData->pHeaps[heapIndex]->getApiHandle();
+        uint64_t gpuVal = mpFence->getGpuValue();
+        while (mpDeferredReleases.size() && mpDeferredReleases.top().fenceValue <= gpuVal)
+        {
+            mpDeferredReleases.pop();
+        }
+    }
+
+    void D3D12DescriptorPool::releaseAllocation(std::shared_ptr<DescriptorSetApiData> pData)
+    {
+        DeferredRelease d;
+        d.pData = pData;
+        d.fenceValue = mpFence->getCpuValue();
+        mpDeferredReleases.push(d);
     }
 }

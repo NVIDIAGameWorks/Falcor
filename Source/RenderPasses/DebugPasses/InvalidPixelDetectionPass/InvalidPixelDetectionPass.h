@@ -35,17 +35,16 @@ class InvalidPixelDetectionPass : public RenderPass
 public:
     using SharedPtr = std::shared_ptr<InvalidPixelDetectionPass>;
 
+    static const Info kInfo;
+
     /** Create a new object
     */
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
-    virtual std::string getDesc() override { return kDesc; }
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
-    virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
+    virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
-
-    static const char* kDesc;
 
 private:
     InvalidPixelDetectionPass();

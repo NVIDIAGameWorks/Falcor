@@ -34,6 +34,10 @@
 #include <filesystem>
 #include <algorithm>
 
+#ifdef FALCOR_D3D12
+FALCOR_EXPORT_D3D12_AGILITY_SDK
+#endif
+
 namespace Mogwai
 {
     namespace
@@ -62,7 +66,7 @@ namespace Mogwai
         if (!gExtensions) gExtensions = new std::map<std::string, Extension::CreateFunc>();
         if (gExtensions->find(name) != gExtensions->end())
         {
-            logError("Extension " + name + " already registered. If you continue the new extension will be discarded");
+            reportError("Extension " + name + " already registered. If you continue the new extension will be discarded");
             return;
         }
         (*gExtensions)[name] = func;
@@ -193,7 +197,7 @@ namespace Mogwai
         // Get the current output, in case `renderOutputUI()` unmarks it
         Texture::SharedPtr pTex = std::dynamic_pointer_cast<Texture>(mGraphs[mActiveGraph].pGraph->getOutput(data.currentOutput));
         std::string label = data.currentOutput + "##" + mGraphs[mActiveGraph].pGraph->getName();
-        if (!pTex) { logError("Invalid output resource. Is not a texture."); }
+        if (!pTex) { reportError("Invalid output resource. Is not a texture."); }
 
         uint2 debugSize = (uint2)(float2(winSize) * float2(0.4f, 0.55f));
         uint2 debugPos = winSize - debugSize;
@@ -344,7 +348,7 @@ namespace Mogwai
     {
         auto pGraph = getGraph(graphName);
         if (pGraph) removeGraph(pGraph);
-        else logError("Can't find a graph named '" + graphName + "'. There's nothing to remove.");
+        else reportError("Can't find a graph named '" + graphName + "'. There's nothing to remove.");
     }
 
     RenderGraph::SharedPtr Renderer::getGraph(const std::string& graphName) const
@@ -364,7 +368,10 @@ namespace Mogwai
     std::vector<std::string> Renderer::getGraphOutputs(const RenderGraph::SharedPtr& pGraph)
     {
         std::vector<std::string> outputs;
-        for (size_t i = 0; i < pGraph->getOutputCount(); i++) outputs.push_back(pGraph->getOutputName(i));
+        for (size_t i = 0; i < pGraph->getOutputCount(); i++)
+        {
+            outputs.push_back(pGraph->getOutputName(i));
+        }
         return outputs;
     }
 
@@ -375,14 +382,17 @@ namespace Mogwai
             mGraphs.push_back({});
             pData = &mGraphs.back();
         }
-
         GraphData& data = *pData;
-        // Set input image if it exists
+
+        // Set input image if it exists.
         data.pGraph = pGraph;
         data.pGraph->setScene(mpScene);
-        if (data.pGraph->getOutputCount() != 0) data.mainOutput = data.pGraph->getOutputName(0);
+        if (data.pGraph->getOutputCount() != 0)
+        {
+            data.mainOutput = data.pGraph->getOutputName(0);
+        }
 
-        // Store the original outputs
+        // Store the original outputs.
         data.originalOutputs = getGraphOutputs(pGraph);
 
         for (auto& e : mpExtensions) e->addGraph(pGraph.get());
@@ -421,7 +431,7 @@ namespace Mogwai
         }
         catch (const std::exception& e)
         {
-            logError("Error when loading configuration file: " + filename + "\n" + std::string(e.what()));
+            reportError("Error when loading configuration file: " + filename + "\n" + std::string(e.what()));
         }
     }
 
@@ -439,7 +449,7 @@ namespace Mogwai
     {
         if (pGraph == nullptr)
         {
-            logError("Can't add an empty graph");
+            reportError("Can't add an empty graph");
             return;
         }
 
@@ -469,18 +479,24 @@ namespace Mogwai
 
     void Renderer::loadScene(std::string filename, SceneBuilder::Flags buildFlags)
     {
-        TimeReport timeReport;
-
         if (mOptions.useSceneCache) buildFlags |= SceneBuilder::Flags::UseCache;
         if (mOptions.rebuildSceneCache) buildFlags |= SceneBuilder::Flags::RebuildCache;
 
-        SceneBuilder::SharedPtr pBuilder = SceneBuilder::create(filename, buildFlags);
-        if (!pBuilder) return;
-
-        setScene(pBuilder->getScene());
-
-        timeReport.measure("Loading scene (total)");
-        timeReport.printToLog();
+        while (true)
+        {
+            try
+            {
+                TimeReport timeReport;
+                setScene(SceneBuilder::create(filename, buildFlags)->getScene());
+                timeReport.measure("Loading scene (total)");
+                timeReport.printToLog();
+                return;
+            }
+            catch (const ImporterError &e)
+            {
+                reportErrorAndAllowRetry("Failed to load scene.\n\nError in " + e.filename() + "\n\n" + e.what());
+            }
+        }
     }
 
     void Renderer::unloadScene()
@@ -506,7 +522,7 @@ namespace Mogwai
                 desc.setMaxAnisotropy(8);
                 mpSampler = Sampler::create(desc);
             }
-            mpScene->bindSamplerToMaterials(mpSampler);
+            mpScene->getMaterialSystem()->setDefaultTextureSampler(mpSampler);
         }
 
         for (auto& g : mGraphs) g.pGraph->setScene(mpScene);
@@ -690,6 +706,7 @@ int main(int argc, char** argv)
     args::Flag useSceneCacheFlag(parser, "", "Use scene cache to improve scene load times.", {'c', "use-cache"});
     args::Flag rebuildSceneCacheFlag(parser, "", "Rebuild the scene cache.", {"rebuild-cache"});
     args::Flag generateShaderDebugInfo(parser, "", "Generate shader debug info.", {'d', "debug-shaders"});
+    args::Flag enableDebugLayer(parser, "", "Enable debug layer (enabled by default in Debug build).", {"enable-debug-layer"});
 
     args::CompletionFlag completionFlag(parser, {"complete"});
 
@@ -729,7 +746,6 @@ int main(int argc, char** argv)
     }
 
     Logger::setVerbosity((Logger::Level)verbosity);
-    Logger::logToConsole(true);
 
     if (logfileFlag)
     {
@@ -753,6 +769,7 @@ int main(int argc, char** argv)
         IRenderer::UniquePtr pRenderer = std::make_unique<Mogwai::Renderer>(options);
         SampleConfig config;
         config.windowDesc.title = "Mogwai";
+        if (enableDebugLayer) config.deviceDesc.enableDebugLayer = true;
 
         if (silentFlag)
         {
@@ -761,7 +778,7 @@ int main(int argc, char** argv)
             config.windowDesc.mode = Window::WindowMode::Minimized;
 
             // Set early to not show message box on errors that occur before setting the sample configuration.
-            Logger::showBoxOnError(false);
+            setShowMessageBoxOnError(false);
         }
 
         if (widthFlag) config.windowDesc.width = args::get(widthFlag);
@@ -772,7 +789,7 @@ int main(int argc, char** argv)
     catch (const std::exception& e)
     {
         // Note: This can only trigger from the setup code above. Sample::run() handles all exceptions internally.
-        logFatal("Mogwai crashed unexpectedly...\n" + std::string(e.what()));
+        reportFatalError("Mogwai crashed unexpectedly...\n" + std::string(e.what()));
     }
     return 0;
 }

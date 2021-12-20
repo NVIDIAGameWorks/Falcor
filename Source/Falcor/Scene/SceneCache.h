@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-
+#include "Material/BasicMaterial.h"
 #include "Material/MaterialTextureLoader.h"
 #include "Utils/CryptoUtils.h"
 
@@ -38,7 +38,7 @@ namespace Falcor
         The scene cache is used to heavily reduce load times of more complex assets.
         The cache stores a binary representation of `Scene::SceneData` which contains everything to re-create a `Scene`.
     */
-    class dlldecl SceneCache
+    class FALCOR_API SceneCache
     {
     public:
         using Key = SHA1::MD;
@@ -79,11 +79,18 @@ namespace Falcor
         static void writeLight(OutputStream& stream, const Light::SharedPtr& pLight);
         static Light::SharedPtr readLight(InputStream& stream);
 
+        static void writeMaterials(OutputStream& stream, const MaterialSystem::SharedPtr& pMaterials);
         static void writeMaterial(OutputStream& stream, const Material::SharedPtr& pMaterial);
+        static void writeBasicMaterial(OutputStream& stream, const BasicMaterial::SharedPtr& pMaterial);
+        static void readMaterials(InputStream& stream, const MaterialSystem::SharedPtr& pMaterials, MaterialTextureLoader& materialTextureLoader);
         static Material::SharedPtr readMaterial(InputStream& stream, MaterialTextureLoader& materialTextureLoader);
+        static void readBasicMaterial(InputStream& stream, MaterialTextureLoader& materialTextureLoader, const BasicMaterial::SharedPtr& pMaterial);
 
-        static void writeVolume(OutputStream& stream, const Volume::SharedPtr& pVolume, const std::vector<Grid::SharedPtr>& grids);
-        static Volume::SharedPtr readVolume(InputStream& stream, const std::vector<Grid::SharedPtr>& grids);
+        static void writeSampler(OutputStream& stream, const Sampler::SharedPtr& pSampler);
+        static Sampler::SharedPtr readSampler(InputStream& stream);
+
+        static void writeGridVolume(OutputStream& stream, const GridVolume::SharedPtr& pVolume, const std::vector<Grid::SharedPtr>& grids);
+        static GridVolume::SharedPtr readGridVolume(InputStream& stream, const std::vector<Grid::SharedPtr>& grids);
 
         static void writeGrid(OutputStream& stream, const Grid::SharedPtr& pGrid);
         static Grid::SharedPtr readGrid(InputStream& stream);

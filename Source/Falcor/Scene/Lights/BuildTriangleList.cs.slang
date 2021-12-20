@@ -34,7 +34,7 @@ cbuffer CB
 {
     uint gLightIdx;                         ///< The mesh light index.
     uint gMaterialID;                       ///< The material ID of the mesh light.
-    uint gMeshInstanceID;                   ///< Mesh light's global mesh instance ID. We use this to find its data in the scene.
+    uint gInstanceID;                       ///< Mesh light's global geometry instance ID. We use this to find its data in the scene.
     uint gTriangleCount;                    ///< Number of triangles in current mesh light.
     uint gTriangleOffset;                   ///< Current offset into global list of emissive triangles.
 }
@@ -49,7 +49,7 @@ void buildTriangleList(uint3 DTid : SV_DispatchThreadID)
 {
     if (DTid.x >= gTriangleCount) return;
 
-    const GeometryInstanceID instanceID = { gMeshInstanceID };
+    const GeometryInstanceID instanceID = { gInstanceID };
     const uint triangleIndex = DTid.x; // Triangle index in current mesh.
     const uint triIdx = gTriangleOffset + triangleIndex;
     const uint vtxIdx = triIdx * 3; // The emissive triangle list is non-indexed.

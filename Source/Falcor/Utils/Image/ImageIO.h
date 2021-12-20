@@ -31,7 +31,7 @@
 
 namespace Falcor
 {
-    class dlldecl ImageIO
+    class FALCOR_API ImageIO
     {
     public:
         enum class CompressionMode
@@ -77,17 +77,17 @@ namespace Falcor
         };
 
         /** Load a DDS file to a Bitmap. If the file contains an image array and/or mips, only the first image will be loaded.
-            Throws an exception if file cannot be found or there is a loading error.
+            Throws an exception if the DDS file is malformed.
             \param[in] filename Path of file to load.
-            \return Bitmap object containing image data.
+            \return Bitmap object containing image data if loading was successful. Otherwise, nullptr.
         */
         static Bitmap::UniqueConstPtr loadBitmapFromDDS(const std::string& filename); // top down = true
 
         /** Load a DDS file to a Texture.
-            Throws an exception if file cannot be found or there is a loading error.
+            Throws an exception if the DDS file is malformed.
             \param[in] filename Path of file to load.
             \param[in] loadAsSrgb If true, convert the image format property to a corresponding sRGB format if available. Image data is not changed.
-            \return Texture object containing image data.
+            \return Texture object containing image data if loading was successful. Otherwise, nullptr.
         */
         static Texture::SharedPtr loadTextureFromDDS(const std::string& filename, bool loadAsSrgb);
 
@@ -113,5 +113,4 @@ namespace Falcor
         */
         static void saveToDDS(CopyContext* pContext, const std::string& filename, const Texture::SharedPtr& pTexture, CompressionMode mode = CompressionMode::None, bool generateMips = false);
     };
-
 }

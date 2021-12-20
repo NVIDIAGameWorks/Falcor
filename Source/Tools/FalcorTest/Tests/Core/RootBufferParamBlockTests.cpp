@@ -52,7 +52,6 @@ namespace Falcor
             // This is to ensure that the register index/space here do not match those of the final program.
             Program::Desc reflDesc;
             reflDesc.addShaderLibrary(kReflectionProgram).csEntry("main");
-            reflDesc.setShaderModel("5_1"); // Note: Using 5.1 for the reflection, and the specified higher shading model for the actual test to make sure the reflection isn't affected.
             auto pReflectionProgram = ComputePass::create(reflDesc, defines);
             EXPECT(pReflectionProgram != nullptr);
             auto pBlockReflection = pReflectionProgram->getProgram()->getReflector()->getParameterBlock("gParamBlock");
@@ -144,9 +143,6 @@ namespace Falcor
             ctx.unmapBuffer("result");
         }
     }
-
-    GPU_TEST(RootBufferParamBlockSRV_5_1) { testRootBuffer(ctx, "5_1", false); }
-    GPU_TEST(RootBufferParamBlockUAV_5_1) { testRootBuffer(ctx, "5_1", true); }
 
     GPU_TEST(RootBufferParamBlockSRV_6_0) { testRootBuffer(ctx, "6_0", false); }
     GPU_TEST(RootBufferParamBlockUAV_6_0) { testRootBuffer(ctx, "6_0", true); }

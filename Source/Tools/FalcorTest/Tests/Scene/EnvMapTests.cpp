@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "Testing/UnitTest.h"
 #include "Scene/Lights/EnvMap.h"
-#include "Experimental/Scene/Lights/EnvMapSampler.h"
+#include "Rendering/Lights/EnvMapSampler.h"
 
 namespace Falcor
 {

@@ -47,7 +47,7 @@ namespace Falcor
             std::string fullpath;
             if (findFileInDataDirectories(filename, fullpath) == false)
             {
-                throw std::exception("Can't find the file");
+                throw RuntimeError("Can't find the file '{}'", filename);
             }
 
             std::string script = readFile(fullpath) + custom;
@@ -57,7 +57,7 @@ namespace Falcor
 
     bool loadFailed(std::exception e, const std::string& filename)
     {
-        logError(e.what(), Logger::MsgBox::None);
+        logError(e.what());
         auto res = msgBox(std::string("Error when importing graph from file '" + filename + "'\n" + e.what() + "\n\nWould you like to try and reload the file?").c_str(), MsgBoxType::YesNo);
         return (res == MsgBoxButton::No);
     }
@@ -133,18 +133,18 @@ namespace Falcor
         // Add the passes
         for (const auto& node : pGraph->mNodeData)
         {
-            const auto& data = node.second;
-            pIR->addPass(getClassTypeName(data.pPass.get()), data.name, data.pPass->getScriptingDictionary());
+            const auto& nodeData = node.second;
+            pIR->addPass(nodeData.pPass->getType(), nodeData.name, nodeData.pPass->getScriptingDictionary());
         }
 
         // Add the edges
         for (const auto& edge : pGraph->mEdgeData)
         {
-            const auto& data = edge.second;
+            const auto& edgeData = edge.second;
             const auto& srcPass = pGraph->mNodeData[pGraph->mpGraph->getEdge(edge.first)->getSourceNode()].name;
             const auto& dstPass = pGraph->mNodeData[pGraph->mpGraph->getEdge(edge.first)->getDestNode()].name;
-            std::string src = srcPass + (data.srcField.size() ? '.' + data.srcField : data.srcField);
-            std::string dst = dstPass + (data.dstField.size() ? '.' + data.dstField : data.dstField);
+            std::string src = srcPass + (edgeData.srcField.size() ? '.' + edgeData.srcField : edgeData.srcField);
+            std::string dst = dstPass + (edgeData.dstField.size() ? '.' + edgeData.dstField : edgeData.dstField);
             pIR->addEdge(src, dst);
         }
 
@@ -152,7 +152,10 @@ namespace Falcor
         for (const auto& out : pGraph->mOutputs)
         {
             std::string str = pGraph->mNodeData[out.nodeId].name + '.' + out.field;
-            pIR->markOutput(str);
+            for (auto mask : out.masks)
+            {
+                pIR->markOutput(str, mask);
+            }
         }
 
         return pIR->getIR();

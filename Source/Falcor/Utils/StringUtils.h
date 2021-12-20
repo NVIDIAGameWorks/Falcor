@@ -157,43 +157,38 @@ namespace Falcor
         return result;
     }
 
-    /** Remove leading whitespace (space, tab, newline, carriage-return).
+    /** Remove leading whitespace.
         \param[in] str String to operate on.
+        \param[in] whitespace Whitespace characters.
         \return String with leading whitespace removed.
     */
-    inline std::string removeLeadingWhitespace(const std::string& str)
+    inline std::string removeLeadingWhitespace(const std::string& str, const char* whitespace = " \n\r\t")
     {
-        size_t offset = str.find_first_not_of(" \n\r\t");
-        std::string ret;
-        if(offset != std::string::npos)
-        {
-            ret = str.substr(offset);
-        }
-        return ret;
+        std::string result(str);
+        result.erase(0, result.find_first_not_of(whitespace));
+        return result;
     }
 
-    /** Remove trailing whitespace (space, tab, newline, carriage-return).
+    /** Remove trailing whitespace.
         \param[in] str String to operate on.
+        \param[in] whitespace Whitespace characters.
         \return String with trailing whitespace removed.
     */
-    inline std::string removeTrailingWhitespace(const std::string& str)
+    inline std::string removeTrailingWhitespace(const std::string& str, const char* whitespace = " \n\r\t")
     {
-        size_t offset = str.find_last_not_of(" \n\r\t");
-        std::string ret;
-        if(offset != std::string::npos)
-        {
-            ret = str.substr(0, offset + 1);
-        }
-        return ret;
+        std::string result(str);
+        result.erase(result.find_last_not_of(whitespace) + 1);
+        return result;
     }
 
-    /** Remove leading and trailing whitespace (space, tab, newline, carriage-return).
+    /** Remove leading and trailing whitespace.
         \param[in] str String to operate on.
+        \param[in] whitespace Whitespace characters.
         \return String with leading and trailing whitespace removed.
     */
-    inline std::string removeLeadingTrailingWhitespace(const std::string& str)
+    inline std::string removeLeadingTrailingWhitespace(const std::string& str, const char* whitespace = " \n\r\t")
     {
-        return removeTrailingWhitespace(removeLeadingWhitespace(str));
+        return removeTrailingWhitespace(removeLeadingWhitespace(str, whitespace), whitespace);
     }
 
     /** Pad string to minimum length.
@@ -317,7 +312,7 @@ namespace Falcor
 
     /** Encode data into base 64 encoding.
     */
-    dlldecl std::string encodeBase64(const void* data, size_t len);
+    FALCOR_API std::string encodeBase64(const void* data, size_t len);
 
     /** Encode data into base 64 encoding.
     */
@@ -328,7 +323,7 @@ namespace Falcor
 
     /** Decode data from base 64 encoding.
     */
-    dlldecl std::vector<uint8_t> decodeBase64(const std::string& in);
+    FALCOR_API std::vector<uint8_t> decodeBase64(const std::string& in);
 
     /** Combine command line args to a single string
     */
@@ -343,32 +338,5 @@ namespace Falcor
         return s;
     }
 
-    /** Return string name of class type from a pointer to an object
-    */
-    template<class T>
-    std::string getClassTypeName(const T* ptr = nullptr)
-    {
-        std::string typeName = typeid(*ptr).name();
-#ifdef _WIN32
-        assert(hasPrefix(typeName, "class "));
-        auto v = splitString(typeName.substr(6), "::");
-        return v.back();
-#else
-#error getClassTypeName() not implemented for this platform
-#endif
-    }
-
-    template<class T>
-    std::string getEnumTypeName(const T& e = T(0))
-    {
-        std::string typeName = typeid(e).name();
-#ifdef _WIN32
-        assert(hasPrefix(typeName, "enum "));
-        auto v = splitString(typeName.substr(6), "::");
-        return v.back();
-#else
-#error getClassTypeName() not implemented for this platform
-#endif
-    }
     /*! @} */
 };

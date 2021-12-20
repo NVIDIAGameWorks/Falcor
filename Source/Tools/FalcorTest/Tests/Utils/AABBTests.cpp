@@ -49,7 +49,7 @@ namespace Falcor
         // Setup and run GPU test.
         ctx.createProgram("Tests/Utils/AABBTests.cs.slang", "testAABB");
         ctx.allocateStructuredBuffer("result", resultSize);
-        ctx.allocateStructuredBuffer("testData", arraysize(kTestData), kTestData, sizeof(kTestData));
+        ctx.allocateStructuredBuffer("testData", (uint32_t)arraysize(kTestData), kTestData, sizeof(kTestData));
         ctx["CB"]["n"] = (uint32_t)arraysize(kTestData);
         ctx.runProgram();
 

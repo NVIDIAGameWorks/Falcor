@@ -45,9 +45,10 @@ class MinimalPathTracer : public RenderPass
 public:
     using SharedPtr = std::shared_ptr<MinimalPathTracer>;
 
+    static const Info kInfo;
+
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
-    virtual std::string getDesc() override { return "Minimal path tracer"; }
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
@@ -62,15 +63,16 @@ private:
     void prepareVars();
 
     // Internal state
-    Scene::SharedPtr            mpScene;                    ///< Current scene.
-    SampleGenerator::SharedPtr  mpSampleGenerator;          ///< GPU sample generator.
+    Scene::SharedPtr            mpScene;                        ///< Current scene.
+    SampleGenerator::SharedPtr  mpSampleGenerator;              ///< GPU sample generator.
 
     // Configuration
-    uint                        mMaxBounces = 3;            ///< Max number of indirect bounces (0 = none).
-    bool                        mComputeDirect = true;      ///< Compute direct illumination (otherwise indirect only).
+    uint                        mMaxBounces = 3;                ///< Max number of indirect bounces (0 = none).
+    bool                        mComputeDirect = true;          ///< Compute direct illumination (otherwise indirect only).
+    bool                        mUseImportanceSampling = true;  ///< Use importance sampling for materials.
 
     // Runtime data
-    uint                        mFrameCount = 0;            ///< Frame count since scene was loaded.
+    uint                        mFrameCount = 0;                ///< Frame count since scene was loaded.
     bool                        mOptionsChanged = false;
 
     // Ray tracing program.

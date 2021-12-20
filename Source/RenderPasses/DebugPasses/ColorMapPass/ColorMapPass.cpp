@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "ColorMapPass.h"
 
-const char* ColorMapPass::kDesc = "Pass that applies a color map to the input.";
+const RenderPass::Info ColorMapPass::kInfo { "ColorMapPass", "Pass that applies a color map to the input." };
 
 namespace
 {
@@ -65,6 +65,7 @@ void ColorMapPass::registerScriptBindings(pybind11::module& m)
 }
 
 ColorMapPass::ColorMapPass(const Dictionary& dict)
+    : RenderPass(kInfo)
 {
     for (const auto& [key, value] : dict)
     {

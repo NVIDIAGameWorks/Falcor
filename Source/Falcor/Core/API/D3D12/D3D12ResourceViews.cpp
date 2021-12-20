@@ -191,7 +191,7 @@ namespace Falcor
         assert(bufferElementSize > 0);
         if (desc.Buffer.FirstElement + desc.Buffer.NumElements > ((1ull << 32) / bufferElementSize - 8))
         {
-            throw std::exception("Buffer SRV exceeds the maximum supported size");
+            throw RuntimeError("Buffer SRV exceeds the maximum supported size");
         }
 
         return desc;
@@ -328,7 +328,7 @@ namespace Falcor
             }
             else
             {
-                throw std::exception("Texture2DMultisample does not support UAV views");
+                throw RuntimeError("Texture2DMultisample does not support UAV views");
             }
             break;
         case Resource::Type::Texture3D:
@@ -341,7 +341,7 @@ namespace Falcor
             }
             else
             {
-                throw std::exception("Texture3D does not support DSV views");
+                throw RuntimeError("Texture3D does not support DSV views");
             }
             break;
         default:
@@ -402,7 +402,7 @@ namespace Falcor
         assert(bufferElementSize > 0);
         if (desc.Buffer.FirstElement + desc.Buffer.NumElements > ((1ull << 32) / bufferElementSize - 8))
         {
-            throw std::exception("Buffer UAV exceeds the maximum supported size");
+            throw RuntimeError("Buffer UAV exceeds the maximum supported size");
         }
 
         return desc;
@@ -413,12 +413,12 @@ namespace Falcor
         if (desc.ViewDimension == D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE &&
             !gpDevice->isFeatureSupported(Device::SupportedFeatures::Raytracing))
         {
-            throw std::exception("Raytracing is not supported by the current device");
+            throw RuntimeError("Raytracing is not supported by the current device");
         }
 
-        DescriptorSet::Layout layout;
-        layout.addRange(DescriptorSet::Type::TextureSrv, 0, 1);
-        ShaderResourceView::ApiHandle handle = DescriptorSet::create(gpDevice->getCpuDescriptorPool(), layout);
+        D3D12DescriptorSet::Layout layout;
+        layout.addRange(ShaderResourceType::TextureSrv, 0, 1);
+        ShaderResourceView::ApiHandle handle = D3D12DescriptorSet::create(gpDevice->getD3D12CpuDescriptorPool(), layout);
         gpDevice->getApiHandle()->CreateShaderResourceView(resHandle, &desc, handle->getCpuHandle(0));
 
         return handle;
@@ -463,9 +463,9 @@ namespace Falcor
         srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
         srvDesc.RaytracingAccelerationStructure.Location = pBuffer->getGpuAddress();
 
-        DescriptorSet::Layout layout;
-        layout.addRange(DescriptorSet::Type::AccelerationStructureSrv, 0, 1);
-        ShaderResourceView::ApiHandle handle = DescriptorSet::create(gpDevice->getCpuDescriptorPool(), layout);
+        D3D12DescriptorSet::Layout layout;
+        layout.addRange(ShaderResourceType::AccelerationStructureSrv, 0, 1);
+        ShaderResourceView::ApiHandle handle = D3D12DescriptorSet::create(gpDevice->getD3D12CpuDescriptorPool(), layout);
         gpDevice->getApiHandle()->CreateShaderResourceView(nullptr, &srvDesc, handle->getCpuHandle(0));
 
         return SharedPtr(new ShaderResourceView(pBuffer, handle));
@@ -473,9 +473,9 @@ namespace Falcor
 
     DepthStencilView::ApiHandle createDsvDescriptor(const D3D12_DEPTH_STENCIL_VIEW_DESC& desc, Resource::ApiHandle resHandle)
     {
-        DescriptorSet::Layout layout;
-        layout.addRange(DescriptorSet::Type::Dsv, 0, 1);
-        DepthStencilView::ApiHandle handle = DescriptorSet::create(gpDevice->getCpuDescriptorPool(), layout);
+        D3D12DescriptorSet::Layout layout;
+        layout.addRange(ShaderResourceType::Dsv, 0, 1);
+        DepthStencilView::ApiHandle handle = D3D12DescriptorSet::create(gpDevice->getD3D12CpuDescriptorPool(), layout);
         gpDevice->getApiHandle()->CreateDepthStencilView(resHandle, &desc, handle->getCpuHandle(0));
 
         return handle;
@@ -502,9 +502,9 @@ namespace Falcor
 
     UnorderedAccessView::ApiHandle createUavDescriptor(const D3D12_UNORDERED_ACCESS_VIEW_DESC& desc, Resource::ApiHandle resHandle, Resource::ApiHandle counterHandle)
     {
-        DescriptorSet::Layout layout;
-        layout.addRange(DescriptorSet::Type::TextureUav, 0, 1);
-        UnorderedAccessView::ApiHandle handle = DescriptorSet::create(gpDevice->getCpuDescriptorPool(), layout);
+        D3D12DescriptorSet::Layout layout;
+        layout.addRange(ShaderResourceType::TextureUav, 0, 1);
+        UnorderedAccessView::ApiHandle handle = D3D12DescriptorSet::create(gpDevice->getD3D12CpuDescriptorPool(), layout);
         gpDevice->getApiHandle()->CreateUnorderedAccessView(resHandle, counterHandle, &desc, handle->getCpuHandle(0));
 
         return handle;
@@ -547,9 +547,9 @@ namespace Falcor
 
     RenderTargetView::ApiHandle createRtvDescriptor(const D3D12_RENDER_TARGET_VIEW_DESC& desc, Resource::ApiHandle resHandle)
     {
-        DescriptorSet::Layout layout;
-        layout.addRange(DescriptorSet::Type::Rtv, 0, 1);
-        RenderTargetView::ApiHandle handle = DescriptorSet::create(gpDevice->getCpuDescriptorPool(), layout);
+        D3D12DescriptorSet::Layout layout;
+        layout.addRange(ShaderResourceType::Rtv, 0, 1);
+        RenderTargetView::ApiHandle handle = D3D12DescriptorSet::create(gpDevice->getD3D12CpuDescriptorPool(), layout);
         gpDevice->getApiHandle()->CreateRenderTargetView(resHandle, &desc, handle->getCpuHandle(0));
 
         return handle;
@@ -576,9 +576,9 @@ namespace Falcor
 
     ConstantBufferView::ApiHandle createCbvDescriptor(const D3D12_CONSTANT_BUFFER_VIEW_DESC& desc, Resource::ApiHandle resHandle)
     {
-        DescriptorSet::Layout layout;
-        layout.addRange(DescriptorSet::Type::Cbv, 0, 1);
-        ConstantBufferView::ApiHandle handle = DescriptorSet::create(gpDevice->getCpuDescriptorPool(), layout);
+        D3D12DescriptorSet::Layout layout;
+        layout.addRange(ShaderResourceType::Cbv, 0, 1);
+        ConstantBufferView::ApiHandle handle = D3D12DescriptorSet::create(gpDevice->getD3D12CpuDescriptorPool(), layout);
         gpDevice->getApiHandle()->CreateConstantBufferView(&desc, handle->getCpuHandle(0));
 
         return handle;

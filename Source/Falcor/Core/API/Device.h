@@ -30,27 +30,31 @@
 #include "Core/API/Texture.h"
 #include "Core/API/FBO.h"
 #include "Core/API/RenderContext.h"
-#include "Core/API/DescriptorPool.h"
 #include "Core/API/GpuMemoryHeap.h"
 #include "Core/API/QueryHeap.h"
+
+#ifdef FALCOR_D3D12
+#include "Core/API/D3D12/D3D12DescriptorPool.h"
+#endif
 
 namespace Falcor
 {
 #ifdef _DEBUG
-#define DEFAULT_ENABLE_DEBUG_LAYER true
+#define FALCOR_DEFAULT_ENABLE_DEBUG_LAYER true
 #else
-#define DEFAULT_ENABLE_DEBUG_LAYER false
+#define FALCOR_DEFAULT_ENABLE_DEBUG_LAYER false
 #endif
 
     struct DeviceApiData;
 
-    class dlldecl Device
+    class FALCOR_API Device
     {
     public:
         using SharedPtr = std::shared_ptr<Device>;
         using SharedConstPtr = std::shared_ptr<const Device>;
         using ApiHandle = DeviceHandle;
         static const uint32_t kQueueTypeCount = (uint32_t)LowLevelContextData::CommandQueueType::Count;
+        static constexpr uint32_t kSwapChainBuffersCount = 3;
 
         /** Device configuration
         */
@@ -61,7 +65,7 @@ namespace Falcor
             uint32_t apiMajorVersion = 0;                                   ///< Requested API major version. If specified, device creation will fail if not supported. Otherwise, the highest supported version will be automatically selected.
             uint32_t apiMinorVersion = 0;                                   ///< Requested API minor version. If specified, device creation will fail if not supported. Otherwise, the highest supported version will be automatically selected.
             bool enableVsync = false;                                       ///< Controls vertical-sync
-            bool enableDebugLayer = DEFAULT_ENABLE_DEBUG_LAYER;             ///< Enable the debug layer. The default for release build is false, for debug build it's true.
+            bool enableDebugLayer = FALCOR_DEFAULT_ENABLE_DEBUG_LAYER;      ///< Enable the debug layer. The default for release build is false, for debug build it's true.
 
             static_assert((uint32_t)LowLevelContextData::CommandQueueType::Direct == 2, "Default initialization of cmdQueues assumes that Direct queue index is 2");
             std::array<uint32_t, kQueueTypeCount> cmdQueues = { 0, 0, 1 };  ///< Command queues to create. If no direct-queues are created, mpRenderContext will not be initialized
@@ -84,6 +88,19 @@ namespace Falcor
             ConservativeRasterizationTier2 = 0x40,        // On D3D12, conservative rasterization tier 2 is supported.
             ConservativeRasterizationTier3 = 0x80,        // On D3D12, conservative rasterization tier 3 is supported.
             RasterizerOrderedViews = 0x100,               // On D3D12, rasterizer ordered views (ROVs) are supported.
+        };
+
+        enum class ShaderModel : uint32_t
+        {
+            Unknown,
+            SM6_0,
+            SM6_1,
+            SM6_2,
+            SM6_3,
+            SM6_4,
+            SM6_5,
+            SM6_6,
+            SM6_7,
         };
 
         /** Create a new device.
@@ -157,8 +174,12 @@ namespace Falcor
         */
         std::weak_ptr<QueryHeap> createQueryHeap(QueryHeap::Type type, uint32_t count);
 
-        const DescriptorPool::SharedPtr& getCpuDescriptorPool() const { return mpCpuDescPool; }
-        const DescriptorPool::SharedPtr& getGpuDescriptorPool() const { return mpGpuDescPool; }
+#ifdef FALCOR_D3D12
+        const D3D12DescriptorPool::SharedPtr& getD3D12CpuDescriptorPool() const { return mpD3D12CpuDescPool; }
+        const D3D12DescriptorPool::SharedPtr& getD3D12GpuDescriptorPool() const { return mpD3D12GpuDescPool; }
+#endif // FALCOR_D3D12
+
+        DeviceApiData* getApiData() const { return mpApiData; }
         const GpuMemoryHeap::SharedPtr& getUploadHeap() const { return mpUploadHeap; }
         void releaseResource(ApiObjectHandle pResource);
         double getGpuTimestampFrequency() const { return mGpuTimestampFrequency; } // ms/tick
@@ -166,13 +187,20 @@ namespace Falcor
         /** Check if features are supported by the device
         */
         bool isFeatureSupported(SupportedFeatures flags) const;
-#ifdef FALCOR_VK
-        uint32_t getVkMemoryType(GpuMemoryHeap::Type falcorType, uint32_t memoryTypeBits) const;
-        const VkPhysicalDeviceLimits& getPhysicalDeviceLimits() const;
-        uint32_t  getDeviceVendorID() const;
-#endif
+
+        /** Check if a shader model is supported by the device
+        */
+        bool isShaderModelSupported(ShaderModel shaderModel) const;
+
+        /** Return the highest supported shader model by the device
+        */
+        ShaderModel getSupportedShaderModel() const { return mSupportedShaderModel; }
+
+        /** Return the current index of the back buffer being rendered to.
+        */
+        uint32_t getCurrentBackBufferIndex() const { return mCurrentBackBufferIndex; }
+
     private:
-        static constexpr uint32_t kSwapChainBuffersCount = 3;
         struct ResourceRelease
         {
             size_t frameID;
@@ -192,8 +220,10 @@ namespace Falcor
         Desc mDesc;
         ApiHandle mApiHandle;
         GpuMemoryHeap::SharedPtr mpUploadHeap;
-        DescriptorPool::SharedPtr mpCpuDescPool;
-        DescriptorPool::SharedPtr mpGpuDescPool;
+#ifdef FALCOR_D3D12
+        D3D12DescriptorPool::SharedPtr mpD3D12CpuDescPool;
+        D3D12DescriptorPool::SharedPtr mpD3D12GpuDescPool;
+#endif
         bool mIsWindowOccluded = false;
         GpuFence::SharedPtr mpFrameFence;
 
@@ -206,6 +236,7 @@ namespace Falcor
         std::vector<CommandQueueHandle> mCmdQueues[kQueueTypeCount];
 
         SupportedFeatures mSupportedFeatures = SupportedFeatures::None;
+        ShaderModel mSupportedShaderModel = ShaderModel::Unknown;
 
         // API specific functions
         bool getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle apiHandles[kSwapChainBuffersCount], uint32_t& currentBackBufferIndex);
@@ -217,7 +248,7 @@ namespace Falcor
         void toggleFullScreen(bool fullscreen);
     };
 
-    dlldecl extern Device::SharedPtr gpDevice;
+    FALCOR_API extern Device::SharedPtr gpDevice;
 
-    enum_class_operators(Device::SupportedFeatures);
+    FALCOR_ENUM_CLASS_OPERATORS(Device::SupportedFeatures);
 }

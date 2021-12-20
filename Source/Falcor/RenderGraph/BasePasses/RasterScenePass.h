@@ -31,7 +31,7 @@
 
 namespace Falcor
 {
-    class dlldecl RasterScenePass : public BaseGraphicsPass, public std::enable_shared_from_this<RasterScenePass>
+    class FALCOR_API RasterScenePass : public BaseGraphicsPass
     {
     public:
         using SharedPtr = std::shared_ptr<RasterScenePass>;
@@ -56,7 +56,7 @@ namespace Falcor
 
         /** Render the scene into the dst FBO
         */
-        void renderScene(RenderContext* pContext, const Fbo::SharedPtr& pDstFbo);
+        void renderScene(RenderContext* pRenderContext, const Fbo::SharedPtr& pDstFbo);
 
         /** Call whenever a keyboard event happens
         */

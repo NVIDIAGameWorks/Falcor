@@ -48,7 +48,7 @@ static const float4 orange = float4(1.0, 0.5, 0.0, 1);
 static const float4 black = float4(0.0, 0.0, 0.0, 1.0);
 
 
-float4 main(in float2 texC : TEXCOORD) : SV_TARGET
+float4 main(float2 texC : TEXCOORD) : SV_TARGET
 {
     const float blendRadius = 1.0 / min(iResolution.x, iResolution.y);
     const float circleSize = 0.01;

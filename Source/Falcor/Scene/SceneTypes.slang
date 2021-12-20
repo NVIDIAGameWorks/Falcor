@@ -27,7 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Utils/HostDeviceShared.slangh"
-#include "ScenePrimitiveDefines.slangh"
+#include "SceneDefines.slangh"
 
 #ifdef HOST_CODE
 #include "Utils/Math/PackedFormats.h"
@@ -58,24 +58,98 @@ struct GeometryInstanceID
 #endif
 };
 
-/** Flags indicating what primitive types exist in the scene.
-    These enums should match the define constants in ScenePrimitiveDefines.slangh.
+/** Geometry types in the scene.
 */
-enum class PrimitiveTypeFlags : uint32_t
+enum class GeometryType
+// TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
+#ifdef HOST_CODE
+    : uint32_t
+#endif
 {
-    None = 0x0,
-    TriangleMesh = 0x1,
-    DisplacedTriangleMesh = 0x2,
-    Curve = 0x4,
-    Custom = 0x8,
+    None                    = GEOMETRY_TYPE_NONE,
+    TriangleMesh            = GEOMETRY_TYPE_TRIANGLE_MESH,
+    DisplacedTriangleMesh   = GEOMETRY_TYPE_DISPLACED_TRIANGLE_MESH,
+    Curve                   = GEOMETRY_TYPE_CURVE,
+    SDFGrid                 = GEOMETRY_TYPE_SDF_GRID,
+    Custom                  = GEOMETRY_TYPE_CUSTOM,
 
-    Procedural = 0x0e,
-    All = 0x0f,
+    Count
+};
+
+/** Flags indicating what geometry types exist in the scene.
+*/
+enum class GeometryTypeFlags
+// TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
+#ifdef HOST_CODE
+    : uint32_t
+#endif
+{
+    TriangleMesh            = (1u << GEOMETRY_TYPE_TRIANGLE_MESH),
+    DisplacedTriangleMesh   = (1u << GEOMETRY_TYPE_DISPLACED_TRIANGLE_MESH),
+    Curve                   = (1u << GEOMETRY_TYPE_CURVE),
+    SDFGrid                 = (1u << GEOMETRY_TYPE_SDF_GRID),
+    Custom                  = (1u << GEOMETRY_TYPE_CUSTOM),
 };
 
 #ifdef HOST_CODE
-enum_class_operators(PrimitiveTypeFlags);
+FALCOR_ENUM_CLASS_OPERATORS(GeometryTypeFlags);
 #endif
+
+enum class GeometryInstanceFlags
+// TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
+#ifdef HOST_CODE
+    : uint32_t
+#endif
+{
+    None = 0x0,
+
+    // Mesh flags.
+    Use16BitIndices = 0x1,      ///< Indices are in 16-bit format. The default is 32-bit.
+    HasDynamicData = 0x2,       ///< Mesh has dynamic vertex data.
+    TransformFlipped = 0x4,     ///< Instance transform flips the coordinate system handedness. TODO: Deprecate this flag if we need an extra bit.
+    IsObjectFrontFaceCW = 0x8,  ///< Front-facing side has clockwise winding in object space. Note that the winding in world space may be flipped due to the instance transform.
+    IsWorldFrontFaceCW = 0x10,  ///< Front-facing side has clockwise winding in world space. This is the combination of the mesh winding and instance transform handedness.
+};
+
+struct GeometryInstanceData
+{
+    static const uint kTypeBits = 3;
+    static const uint kTypeOffset = 32 - kTypeBits;
+
+    uint flags;             ///< Upper kTypeBits bits are reserved for storing the type.
+    uint globalMatrixID;
+    uint materialID;
+    uint geometryID;
+
+    uint vbOffset;          ///< Offset into vertex buffer.
+    uint ibOffset;          ///< Offset into index buffer, or zero if non-indexed.
+
+    uint instanceIndex;     ///< InstanceIndex in TLAS.
+    uint geometryIndex;     ///< GeometryIndex in BLAS.
+
+#ifdef HOST_CODE
+    GeometryInstanceData() = default;
+
+    GeometryInstanceData(GeometryType type)
+        : flags((uint32_t)type << kTypeOffset)
+    {}
+#endif
+
+    GeometryType getType() CONST_FUNCTION
+    {
+        return GeometryType(flags >> kTypeOffset);
+    }
+
+    bool hasDynamicData() CONST_FUNCTION
+    {
+        return (flags & (uint)GeometryInstanceFlags::HasDynamicData) != 0;
+    }
+
+    bool isWorldFrontFaceCW() CONST_FUNCTION
+    {
+        return (flags & (uint)GeometryInstanceFlags::IsWorldFrontFaceCW) != 0;
+    }
+};
 
 enum class MeshFlags : uint32_t
 {
@@ -122,98 +196,6 @@ struct MeshDesc
     bool isDisplaced() CONST_FUNCTION
     {
         return (flags & (uint)MeshFlags::IsDisplaced) != 0;
-    }
-};
-
-enum class MeshInstanceFlags
-// TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
-#ifdef HOST_CODE
-    : uint32_t
-#endif
-{
-    None = 0x0,
-    Use16BitIndices = 0x1,      ///< Indices are in 16-bit format. The default is 32-bit.
-    HasDynamicData = 0x2,       ///< Mesh has dynamic vertex data.
-    TransformFlipped = 0x4,     ///< Instance transform flips the coordinate system handedness. TODO: Deprecate this flag if we need an extra bit.
-    IsObjectFrontFaceCW = 0x8,  ///< Front-facing side has clockwise winding in object space. Note that the winding in world space may be flipped due to the instance transform.
-    IsWorldFrontFaceCW = 0x10,  ///< Front-facing side has clockwise winding in world space. This is the combination of the mesh winding and instance transform handedness.
-};
-
-struct MeshInstanceData
-{
-    uint globalMatrixID;
-    uint materialID;
-    uint meshID;
-    uint flags;         ///< See MeshInstanceFlags.
-    uint vbOffset;      ///< Offset into global vertex buffer.
-    uint ibOffset;      ///< Offset into global index buffer, or zero if non-indexed.
-
-    bool hasDynamicData() CONST_FUNCTION
-    {
-        return (flags & (uint)MeshInstanceFlags::HasDynamicData) != 0;
-    }
-
-    bool isWorldFrontFaceCW() CONST_FUNCTION
-    {
-        return (flags & (uint)MeshInstanceFlags::IsWorldFrontFaceCW) != 0;
-    }
-};
-
-/** Mesh instance data packed into 16B.
-*/
-struct PackedMeshInstanceData
-{
-    uint packedIDs[2];  ///< Packed materialID, meshID, globalMatrixID, and flags packed into 64 bits.
-    uint vbOffset;      ///< Offset into global vertex buffer.
-    uint ibOffset;      ///< Offset into global index buffer, or zero if non-indexed.
-
-    // Packed representation
-    // The pack/unpack logic assumes that meshID representation is split between packedIds[0] and packedIds[1]
-    // (i.e., kFlagBigs + kMatrixBits < 32, kFlagsBits + kMatrixBits + kMeshBits > 32)
-    // bit position  31.......................................0
-    // packedIds[1]   |    kMaterialBits   |    kMeshBitsHi   |
-    // packedIDs[0]   | kMeshBitsLo | kMatrixBits | kFlagBits |
-
-    static const uint kMaterialBits = 17;
-    static const uint kMatrixBits = 21;
-    static const uint kMeshBits = 21;
-    static const uint kFlagsBits = 5;
-
-    static const uint kFlagsOffset = 0;
-    static const uint kMatrixOffset = kFlagsOffset + kFlagsBits;
-    static const uint kMeshOffsetLo = kMatrixOffset + kMatrixBits;
-    static const uint kMeshBitsLo = 32 - kMeshOffsetLo;
-    static const uint kMeshOffsetHi = 0;
-    static const uint kMeshBitsHi = kMeshBits - kMeshBitsLo;
-    static const uint kMaterialOffset = kMeshOffsetHi + kMeshBitsHi;
-
-#ifdef HOST_CODE
-    void pack(const MeshInstanceData& d)
-    {
-        vbOffset = d.vbOffset;
-        ibOffset = d.ibOffset;
-
-        assert(d.flags < (1 << kFlagsBits));
-        assert(d.meshID < (1 << kMeshBits));
-        assert(d.globalMatrixID < (1 << kMatrixBits));
-        assert(d.materialID < (1 << kMaterialBits));
-        packedIDs[0] = (d.flags << kFlagsOffset) | (d.globalMatrixID << kMatrixOffset) | ((d.meshID & ((1 << kMeshBitsLo) -1)) << kMeshOffsetLo);
-        packedIDs[1] = (d.meshID >> kMeshBitsLo) | (d.materialID << kMaterialOffset);
-    }
-#endif
-
-    MeshInstanceData unpack()
-    {
-        MeshInstanceData d;
-        d.vbOffset = vbOffset;
-        d.ibOffset = ibOffset;
-
-        d.materialID = (packedIDs[1] >> kMaterialOffset) & ((1 << kMaterialBits) - 1);
-        d.meshID = ((packedIDs[0] >> kMeshOffsetLo) & ((1 << kMeshBitsLo) - 1)) | (((packedIDs[1] >> kMeshOffsetHi) & ((1 << kMeshBitsHi) -1)) << kMeshBitsLo);
-        d.globalMatrixID = (packedIDs[0] >> kMatrixOffset) & ((1 << kMatrixBits) - 1);
-        d.flags = (packedIDs[0] >> kFlagsOffset) & ((1 << kFlagsBits) - 1);
-
-        return d;
     }
 };
 
@@ -321,15 +303,6 @@ struct CurveDesc
     {
         return indexCount;
     }
-};
-
-struct CurveInstanceData
-{
-    uint globalMatrixID;
-    uint materialID;
-    uint curveID;
-    uint vbOffset;      ///< Offset into global curve vertex buffer.
-    uint ibOffset;      ///< Offset into global curve index buffer.
 };
 
 struct StaticCurveVertexData

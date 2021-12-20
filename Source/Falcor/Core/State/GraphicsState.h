@@ -42,7 +42,7 @@ namespace Falcor
         This class contains the entire state required by a single draw-call. It's not an immutable object - you can change it dynamically during rendering.
         The recommended way to use it is to create multiple PipelineState objects (ideally, a single object per render-pass)
     */
-    class dlldecl GraphicsState
+    class FALCOR_API GraphicsState
     {
     public:
         using SharedPtr = std::shared_ptr<GraphicsState>;
@@ -59,8 +59,8 @@ namespace Falcor
 
             float originX = 0;      ///< Top left X position
             float originY = 0;      ///< Top left Y position
-            float width = 1.0f;     ///< Viewport width. Cannot be 0 in Vulkan
-            float height = 1.0f;    ///< Viewport height. Cannot be 0 in Vulkan
+            float width = 1.0f;     ///< Viewport width.
+            float height = 1.0f;    ///< Viewport height.
             float minDepth = 0;     ///< Minimum depth (0-1)
             float maxDepth = 1;     ///< Maximum depth (0-1)
         };
@@ -234,7 +234,6 @@ namespace Falcor
         Vao::SharedConstPtr mpVao;
         Fbo::SharedPtr mpFbo;
         GraphicsProgram::SharedPtr mpProgram;
-        RootSignature::SharedPtr mpRootSignature;
         GraphicsStateObject::Desc mDesc;
         uint8_t mStencilRef = 0;
         std::vector<Viewport> mViewports;
@@ -247,7 +246,6 @@ namespace Falcor
         struct CachedData
         {
             const ProgramKernels* pProgramKernels = nullptr;
-            const RootSignature* pRootSig = nullptr;
             const Fbo::Desc* pFboDesc = nullptr;
         };
         CachedData mCachedData;

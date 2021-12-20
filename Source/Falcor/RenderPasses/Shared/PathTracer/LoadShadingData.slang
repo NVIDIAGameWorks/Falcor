@@ -35,27 +35,23 @@
 */
 
 import Scene.Scene;
-import Scene.Shading;
 import Scene.HitInfo;
+import Scene.Material.ShadingUtils;
 import Utils.Math.MathHelpers;
 
 #if USE_VBUFFER
-
 // V-buffer inputs
 Texture2D<PackedHitInfo> gVBuffer;
 #else
-import Experimental.Scene.Material.MaterialHelpers;
-
 // G-buffer inputs
 Texture2D<float4> gWorldPosition;
 Texture2D<float4> gWorldShadingNormal;
-Texture2D<float4> gWorldShadingTangent;         // Optional
-Texture2D<float4> gWorldView;                   // Optional
+Texture2D<float4> gWorldShadingTangent;
 Texture2D<float4> gWorldFaceNormal;
-Texture2D<float4> gMaterialDiffuseOpacity;
-Texture2D<float4> gMaterialSpecularRoughness;
-Texture2D<float4> gMaterialEmissive;
-Texture2D<float4> gMaterialExtraParams;
+Texture2D<float4> gWorldView;                   // Optional
+Texture2D<float2> gTextureCoord;
+Texture2D<float4> gTextureGrads;                // Optional
+Texture2D<uint4>  gMaterialData;
 Texture2D<PackedHitInfo> gVBuffer;              // Optional
 #endif
 
@@ -82,15 +78,38 @@ float3 getPrimaryRayDir(uint2 pixel, uint2 frameDim, const Camera camera)
     }
 }
 
+/** Helper to create a texture sampler instance.
+    The method for computing texture level-of-detail depends on the configuration.
+    \param[in] pixel Current pixel coordinates.
+    \return Texture sampler instance.
+*/
+ITextureSampler createTextureSampler(const uint2 pixel)
+{
+#if USE_VBUFFER
+    return ExplicitLodTextureSampler(0.f);
+#else
+    if (is_valid(gTextureGrads))
+    {
+        float4 texGrads = gTextureGrads[pixel];
+        return ExplicitGradientTextureSampler(texGrads.xy, texGrads.zw);
+    }
+    else
+    {
+        return ExplicitLodTextureSampler(0.f);
+    }
+#endif
+}
+
 /** Helper for setting up the ShadingData struct based on loaded data.
     \param[in] pixel Current pixel coordinates.
     \param[in] frameDim Frame dimensions in pixel.
     \param[in] camera Current camera.
+    \param[in] lod Method for computing texture level-of-detail.
     \param[out] sd ShadingData struct.
     \param[out] hit HitInfo struct returned with geometry fetched from vbuffer if available. Only valid if true is returned.
     \return True if the pixel has valid data (not a background pixel). Note sd.V is always valid.
 */
-bool loadShadingData(uint2 pixel, uint2 frameDim, const Camera camera, out ShadingData sd, out HitInfo hit)
+bool loadShadingData(const uint2 pixel, const uint2 frameDim, const Camera camera, const ITextureSampler lod, out ShadingData sd, out HitInfo hit)
 {
     sd = {};
 
@@ -106,7 +125,7 @@ bool loadShadingData(uint2 pixel, uint2 frameDim, const Camera camera, out Shadi
         // TODO: Implement texLOD to enable texture filtering in prepareShadingData().
         const VertexData v = gScene.getVertexData(triangleHit);
         const uint materialID = gScene.getMaterialID(triangleHit.instanceID);
-        sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -rayDir, 0.f);
+        sd = gScene.materials.prepareShadingData(v, materialID, -rayDir, lod);
 
         // Adjust shading normals if GBuffer pass has flag enabled.
 #if GBUFFER_ADJUST_SHADING_NORMALS
@@ -118,30 +137,32 @@ bool loadShadingData(uint2 pixel, uint2 frameDim, const Camera camera, out Shadi
     float4 worldPos = gWorldPosition[pixel];
     if (worldPos.w != 0.f) // Using w to indicate valid geometry for now.
     {
-        // Load geometry and material parameters from G-buffer.
+        // Load G-buffer data.
         float3 normal = gWorldShadingNormal[pixel].xyz;
-        float4 tangent = is_valid(gWorldShadingTangent) ? gWorldShadingTangent[pixel] : float4(perp_stark(normal), 1.f);
+        float4 tangent = gWorldShadingTangent[pixel];
         float3 faceNormal = gWorldFaceNormal[pixel].xyz;
-        GeometryParams geoParams = prepareGeometryParams(worldPos.xyz, -rayDir, normal, tangent, faceNormal);
+        float2 texC = gTextureCoord[pixel];
+        uint materialID = gMaterialData[pixel].x;
 
-        MaterialParams matParams;
-        matParams.diffuseOpacity = gMaterialDiffuseOpacity[pixel];
-        matParams.specularRoughness = gMaterialSpecularRoughness[pixel];
-        matParams.emissive = gMaterialEmissive[pixel];
-        matParams.extraParams = gMaterialExtraParams[pixel];
+        VertexData v = {};
+        v.posW = worldPos.xyz;
+        v.normalW = normalize(normal);
+        v.tangentW = float4(normalize(tangent.xyz), tangent.w);
+        v.faceNormalW = normalize(faceNormal);
+        v.texC = texC;
+        v.coneTexLODValue = 0.f;
 
-        sd = prepareShadingData(geoParams, matParams);
-        valid = true;
+        // Prepare shading data.
+        // Set 'useNormalMap' parameter to false as normal mapping has already been applied when generating the G-buffer.
+        sd = gScene.materials.prepareShadingData(v, materialID, -rayDir, lod, false);
 
+        // Load hit info from V-buffer if available. This is needed for ray footprint.
         if (is_valid(gVBuffer))
         {
             hit = HitInfo(gVBuffer[pixel]);
-            if (hit.isValid() && hit.getType() == HitType::Triangle)
-            {
-                sd.materialID = gScene.getMaterialID(hit.getTriangleHit().instanceID);
-            }
-            else valid = false; // Shouldn't happen
         }
+
+        valid = true;
     }
 #endif
 
@@ -153,11 +174,12 @@ bool loadShadingData(uint2 pixel, uint2 frameDim, const Camera camera, out Shadi
     \param[in] pixel Current pixel coordinates.
     \param[in] frameDim Frame dimensions in pixel.
     \param[in] camera Current camera.
+    \param[in] lod Method for computing texture level-of-detail.
     \param[out] sd ShadingData struct.
     \return True if the pixel has valid data (not a background pixel). Note sd.V is always valid.
 */
-bool loadShadingData(uint2 pixel, uint2 frameDim, const Camera camera, out ShadingData sd)
+bool loadShadingData(const uint2 pixel, const uint2 frameDim, const Camera camera, const ITextureSampler lod, out ShadingData sd)
 {
     HitInfo hit;
-    return loadShadingData(pixel, frameDim, camera, sd, hit);
+    return loadShadingData(pixel, frameDim, camera, lod, sd, hit);
 }

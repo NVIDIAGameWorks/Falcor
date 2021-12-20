@@ -31,45 +31,52 @@ namespace Falcor
 {
     namespace
     {
-        uint32_t getRayFlags1_0()
+        void testRayFlags(GPUUnitTestContext& ctx, bool useDXR_1_1)
         {
-            return D3D12_RAY_FLAG_NONE |
-                D3D12_RAY_FLAG_FORCE_OPAQUE |
-                D3D12_RAY_FLAG_FORCE_NON_OPAQUE |
-                D3D12_RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH |
-                D3D12_RAY_FLAG_SKIP_CLOSEST_HIT_SHADER |
-                D3D12_RAY_FLAG_CULL_BACK_FACING_TRIANGLES |
-                D3D12_RAY_FLAG_CULL_FRONT_FACING_TRIANGLES |
-                D3D12_RAY_FLAG_CULL_OPAQUE |
-                D3D12_RAY_FLAG_CULL_NON_OPAQUE;
-        }
+            std::vector<uint32_t> expected =
+            {
+                (uint32_t)RayFlags::None,
+                (uint32_t)RayFlags::ForceOpaque,
+                (uint32_t)RayFlags::ForceNonOpaque,
+                (uint32_t)RayFlags::AcceptFirstHitAndEndSearch,
+                (uint32_t)RayFlags::SkipClosestHitShader,
+                (uint32_t)RayFlags::CullBackFacingTriangles,
+                (uint32_t)RayFlags::CullFrontFacingTriangles,
+                (uint32_t)RayFlags::CullOpaque,
+                (uint32_t)RayFlags::CullNonOpaque
+            };
 
-        uint32_t getRayFlags1_1()
-        {
-            return getRayFlags1_0() |
-                D3D12_RAY_FLAG_SKIP_TRIANGLES |
-                D3D12_RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES;
-        }
+            Program::DefineList defines;
+            std::string shaderModel = "6_3";
 
-        void testRayFlags(GPUUnitTestContext& ctx, uint32_t expected, const Program::DefineList& defines, const std::string& shaderModel)
-        {
+            if (useDXR_1_1)
+            {
+                expected.push_back((uint32_t)RayFlags::SkipTriangles);
+                expected.push_back((uint32_t)RayFlags::SkipProceduralPrimitives);
+                defines.add("DXR_1_1");
+                shaderModel = "6_5";
+            }
+
             ctx.createProgram("Tests/Slang/TraceRayFlags.cs.slang", "testRayFlags", defines, Shader::CompilerFlags::None, shaderModel);
-            ctx.allocateStructuredBuffer("result", 1);
+            ctx.allocateStructuredBuffer("result", (uint32_t)expected.size());
             ctx.runProgram(1, 1, 1);
 
-            const uint32_t result = *ctx.mapBuffer<const uint32_t>("result");
-            EXPECT_EQ(result, expected);
+            const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
+            for (size_t i = 0; i < expected.size(); ++i)
+            {
+                EXPECT_EQ(result[i], expected[i]);
+            }
             ctx.unmapBuffer("result");
         }
     }
 
     GPU_TEST(TraceRayFlagsDXR1_0)
     {
-        testRayFlags(ctx, getRayFlags1_0(), {}, "6_3");
+        testRayFlags(ctx, false);
     }
 
     GPU_TEST(TraceRayFlagsDXR1_1)
     {
-        testRayFlags(ctx, getRayFlags1_1(), { { "DXR_1_1", ""} }, "6_5");
+        testRayFlags(ctx, true);
     }
 }

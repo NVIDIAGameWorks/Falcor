@@ -32,7 +32,7 @@ namespace Falcor
 {
     const VaoHandle& Vao::getApiHandle() const
     {
-        UNSUPPORTED_IN_D3D12("VAO doesn't have an API handle");
+        FALCOR_UNSUPPORTED_IN_D3D12("VAO doesn't have an API handle");
         return mApiHandle;
     }
 }

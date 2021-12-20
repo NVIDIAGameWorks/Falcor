@@ -87,7 +87,7 @@ namespace Mogwai
             Texture::SharedPtr pTex = pGraph->getOutput(i)->asTexture();
             if (!pTex || pTex->getType() != Texture::Type::Texture2D)
             {
-                logError("Can't video capture " + outputName + ". The output is not a Texture2D");
+                reportError("Can't video capture " + outputName + ". The output is not a Texture2D");
                 continue;
             }
 
@@ -206,7 +206,7 @@ namespace Mogwai
     void VideoCapture::addRanges(const std::string& graphName, const range_vec& ranges)
     {
         auto pGraph = mpRenderer->getGraph(graphName).get();
-        if (!pGraph) throw std::runtime_error("Can't find a graph named '" + graphName + "'");
+        if (!pGraph) throw RuntimeError("Can't find a graph named '{}'", graphName);
         this->addRanges(pGraph, ranges);
     }
 

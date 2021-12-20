@@ -1,7 +1,7 @@
 from falcor import *
 
 def render_graph_WhittedRayTracer():
-    g = RenderGraph("DefaultRenderGraph")
+    g = RenderGraph("WhittedRayTracer")
     loadRenderPassLibrary("GBuffer.dll")
     loadRenderPassLibrary("WhittedRayTracer.dll")
     loadRenderPassLibrary("ToneMapper.dll")
@@ -15,11 +15,10 @@ def render_graph_WhittedRayTracer():
     g.addEdge("GBufferRT.posW", "WhittedRayTracer.posW")
     g.addEdge("GBufferRT.normW", "WhittedRayTracer.normalW")
     g.addEdge("GBufferRT.tangentW", "WhittedRayTracer.tangentW")
-    g.addEdge("GBufferRT.diffuseOpacity", "WhittedRayTracer.mtlDiffOpacity")
-    g.addEdge("GBufferRT.specRough", "WhittedRayTracer.mtlSpecRough")
-    g.addEdge("GBufferRT.matlExtra", "WhittedRayTracer.mtlParams")
-    g.addEdge("GBufferRT.emissive", "WhittedRayTracer.mtlEmissive")
     g.addEdge("GBufferRT.faceNormalW", "WhittedRayTracer.faceNormalW")
+    g.addEdge("GBufferRT.texC", "WhittedRayTracer.texC")
+    g.addEdge("GBufferRT.texGrads", "WhittedRayTracer.texGrads")
+    g.addEdge("GBufferRT.mtlData", "WhittedRayTracer.mtlData")
     g.addEdge("GBufferRT.vbuffer", "WhittedRayTracer.vbuffer")
     g.markOutput("ToneMapper.dst")
     return g

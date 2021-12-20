@@ -1,5 +1,5 @@
-# Topmost EditorConfig file; do not look at files higher up in the directory tree
-root = true
+# Allow looking at files higher up in the directory tree
+root = false
 
 # Set default editor config for all files:
 # - 4 spaces, no trailing whitespaces

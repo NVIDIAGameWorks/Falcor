@@ -33,13 +33,13 @@ namespace Falcor
 {
     class Texture;
 
-    class dlldecl CopyContext
+    class FALCOR_API CopyContext
     {
     public:
         using SharedPtr = std::shared_ptr<CopyContext>;
         using SharedConstPtr = std::shared_ptr<const CopyContext>;
 
-        class dlldecl ReadTextureTask
+        class FALCOR_API ReadTextureTask
         {
         public:
             using SharedPtr = std::shared_ptr<ReadTextureTask>;
@@ -50,12 +50,15 @@ namespace Falcor
             GpuFence::SharedPtr mpFence;
             Buffer::SharedPtr mpBuffer;
             CopyContext* mpContext;
-#ifdef FALCOR_D3D12
             uint32_t mRowCount;
+#ifdef FALCOR_GFX
+            uint32_t mRowSize;
+            uint32_t mActualRowSize;
+            uint32_t mDepth;
+#endif
+#ifdef FALCOR_D3D12
             ResourceFormat mTextureFormat;
             D3D12_PLACED_SUBRESOURCE_FOOTPRINT mFootprint;
-#elif defined(FALCOR_VK)
-            size_t mDataSize;
 #endif
         };
 

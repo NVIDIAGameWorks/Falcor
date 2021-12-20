@@ -62,7 +62,7 @@ struct ShadowPassVSOut
 ShadowPassVSOut vsMain(VSIn vIn)
 {
     ShadowPassVSOut vOut;
-    const GeometryInstanceID instanceID = { vIn.meshInstanceID };
+    const GeometryInstanceID instanceID = { vIn.instanceID };
 
     float4x4 worldMat = gScene.getWorldMatrix(instanceID);
     vOut.pos = mul(float4(vIn.pos, 1.f), worldMat);

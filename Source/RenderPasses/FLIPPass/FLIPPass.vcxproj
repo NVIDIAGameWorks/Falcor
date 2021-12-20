@@ -36,8 +36,10 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ShaderSource Include="ComputeLuminance.cs.slang" />
     <ShaderSource Include="flip.hlsli" />
     <ShaderSource Include="FLIPPass.cs.slang" />
+    <ShaderSource Include="ToneMappers.slang" />
   </ItemGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>

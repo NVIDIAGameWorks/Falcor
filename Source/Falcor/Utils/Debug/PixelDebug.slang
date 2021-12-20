@@ -64,34 +64,100 @@ void printSetPixel(uint2 pixel)
 #endif
 }
 
+/** Interface for values that can be printed.
+*/
+interface IPrintable
+{
+    /** Convert this value to a single `uint` holding its bits.
+    */
+    uint getPrintableDataVal();
+
+    /** Get the `PixelLogValueType` that represents this type.
+    */
+    static PixelLogValueType getPrintableValueType();
+}
+
+/** Values of type `bool` are printable.
+*/
+extension bool : IPrintable
+{
+    uint getPrintableDataVal() { return uint(this); }
+    static PixelLogValueType getPrintableValueType() { return PixelLogValueType::Bool; }
+}
+
+/** Values of type `int` are printable.
+*/
+extension int : IPrintable
+{
+    uint getPrintableDataVal() { return asuint(this); }
+    static PixelLogValueType getPrintableValueType() { return PixelLogValueType::Int; }
+}
+
+/** Values of type `uint` are printable.
+*/
+extension uint : IPrintable
+{
+    uint getPrintableDataVal() { return this; }
+    static PixelLogValueType getPrintableValueType() { return PixelLogValueType::Uint; }
+}
+
+/** Values of type `float` are printable.
+*/
+extension float : IPrintable
+{
+    uint getPrintableDataVal() { return asuint(this); }
+    static PixelLogValueType getPrintableValueType() { return PixelLogValueType::Float; }
+}
+
 #ifdef _PIXEL_DEBUG_ENABLED
 
-    /** Define overloaded 'void print(msg, Type x)' and 'void print(Type x)' functions.
-        Each takes a different basic type as parameter and appends it in encoded form to the log.
+    /** Add a value to the pixel log if the current pixel is the selected one.
+        \param[in] msg A string message to accompany the value.
+        \param[in] valueType The type of values encoded into `data`
+        \param[in] count The number of components of `valueType` encoded into `data`
+        \param[in] data The bits of the value to be printed.
+
+        This is a lower-level worker routine used by `print()`.
     */
-    #define PRINT_FUNC(Type, Count, ValueType)                  \
-    void print(String msg, vector<Type, Count> v)               \
-    {                                                           \
-        if (all(gPixelDebugPixel == gPixelLogSelected))         \
-        {                                                       \
-            uint i = gPixelLog.IncrementCounter();              \
-            if (i < gPixelLogSize)                              \
-            {                                                   \
-                PixelLogValue val = {};                         \
-                val.msgHash = getStringHash(msg);               \
-                val.type = (uint)ValueType;                     \
-                val.count = Count;                              \
-                for (int j = 0; j < 4; j++)                     \
-                {                                               \
-                    val.data[j] = j < Count ? asuint(v[j]) : 0; \
-                }                                               \
-                gPixelLog[i] = val;                             \
-            }                                                   \
-        }                                                       \
-    }                                                           \
-    void print(vector<Type, Count> v)                           \
-    {                                                           \
-        print("", v);                                           \
+    void _print(String msg, PixelLogValueType valueType, int count, uint4 data)
+    {
+        if (!all(gPixelDebugPixel == gPixelLogSelected)) return;
+
+        uint i = gPixelLog.IncrementCounter();
+        if (i < gPixelLogSize)
+        {
+            PixelLogValue val = {};
+            val.msgHash = getStringHash(msg);
+            val.type = (uint)valueType;
+            val.count = count;
+            val.data = data;
+            gPixelLog[i] = val;
+        }
+    }
+
+    /** Print a value if the current pixel is the selected one.
+        \param[in] msg A string message to accompany the value.
+        \param[in] v The value to print
+    */
+    void print<T : IPrintable>(String msg, T v)
+    {
+        vector<uint,4> u = 0;
+        u[0] = v.getPrintableDataVal();
+        _print(msg, T.getPrintableValueType(), 1, u);
+    }
+
+    /** Print a vector or values if the current pixel is the selected one.
+        \param[in] msg A string message to accompany the value.
+        \param[in] v The value to print
+    */
+    void print<T : IPrintable, let N : int>(String msg, vector<T,N> v)
+    {
+        vector<uint,4> u = 0;
+        for(int i = 0; i < N; ++i)
+        {
+            u[i] = v[i].getPrintableDataVal();
+        }
+        _print(msg, T.getPrintableValueType(), N, u);
     }
 
     /** Shader assert.
@@ -116,29 +182,13 @@ void printSetPixel(uint2 pixel)
 
     /** Define null functions if debugging is disabled.
     */
-    #define PRINT_FUNC(Type, Count, DataType)           \
-    void print(String msg, vector<Type, Count> v) {}    \
-    void print(vector<Type, Count> v) {}
+
+    void print<T : IPrintable, let N : int>(String msg, vector<T,N> v)
+    {}
+
+    void print<T : IPrintable>(String msg, T v)
+    {}
 
     void assert(bool condition, String msg = "") {}
 
 #endif // !_PIXEL_DEBUG_ENABLED
-
-PRINT_FUNC(bool, 1, PixelLogValueType::Bool)
-PRINT_FUNC(bool, 2, PixelLogValueType::Bool)
-PRINT_FUNC(bool, 3, PixelLogValueType::Bool)
-PRINT_FUNC(bool, 4, PixelLogValueType::Bool)
-PRINT_FUNC(int, 1, PixelLogValueType::Int)
-PRINT_FUNC(int, 2, PixelLogValueType::Int)
-PRINT_FUNC(int, 3, PixelLogValueType::Int)
-PRINT_FUNC(int, 4, PixelLogValueType::Int)
-PRINT_FUNC(uint, 1, PixelLogValueType::Uint)
-PRINT_FUNC(uint, 2, PixelLogValueType::Uint)
-PRINT_FUNC(uint, 3, PixelLogValueType::Uint)
-PRINT_FUNC(uint, 4, PixelLogValueType::Uint)
-PRINT_FUNC(float, 1, PixelLogValueType::Float)
-PRINT_FUNC(float, 2, PixelLogValueType::Float)
-PRINT_FUNC(float, 3, PixelLogValueType::Float)
-PRINT_FUNC(float, 4, PixelLogValueType::Float)
-
-#undef PRINT_FUNC

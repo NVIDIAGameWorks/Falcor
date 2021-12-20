@@ -28,8 +28,10 @@
 #include "SSAO.h"
 #include "glm/gtc/random.hpp"
 
+const RenderPass::Info SSAO::kInfo { "SSAO", "Screen-space ambient occlusion. Can be used with and without a normal-map." };
+
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" FALCOR_API_EXPORT const char* getProjDir()
 {
     return PROJECT_DIR;
 }
@@ -47,13 +49,11 @@ static void regSSAO(pybind11::module& m)
     sampleDistribution.value("CosineHammersley", SSAO::SampleDistribution::CosineHammersley);
 }
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
 {
-    lib.registerClass("SSAO", "Screen-space ambient occlusion", SSAO::create);
+    lib.registerPass(SSAO::kInfo, SSAO::create);
     ScriptBindings::registerBinding(regSSAO);
 }
-
-const char* SSAO::kDesc = "Screen-space ambient occlusion. Can be used with and without a normal-map";
 
 namespace
 {
@@ -83,6 +83,7 @@ namespace
 }
 
 SSAO::SSAO()
+    : RenderPass(kInfo)
 {
     Sampler::Desc samplerDesc;
     samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap);
@@ -185,7 +186,7 @@ void SSAO::execute(RenderContext* pRenderContext, const RenderData& renderData)
     mComposeData.pApplySSAOPass->execute(pRenderContext, mComposeData.pFbo);
 }
 
-Texture::SharedPtr SSAO::generateAOMap(RenderContext* pContext, const Camera* pCamera, const Texture::SharedPtr& pDepthTexture, const Texture::SharedPtr& pNormalTexture)
+Texture::SharedPtr SSAO::generateAOMap(RenderContext* pRenderContext, const Camera* pCamera, const Texture::SharedPtr& pDepthTexture, const Texture::SharedPtr& pNormalTexture)
 {
     if (mDirty)
     {
@@ -207,7 +208,7 @@ Texture::SharedPtr SSAO::generateAOMap(RenderContext* pContext, const Camera* pC
     mpSSAOPass["gNormalTex"] = pNormalTexture;
 
     // Generate AO
-    mpSSAOPass->execute(pContext, mpAOFbo);
+    mpSSAOPass->execute(pRenderContext, mpAOFbo);
     return mpAOFbo->getColorTexture(0);
 }
 

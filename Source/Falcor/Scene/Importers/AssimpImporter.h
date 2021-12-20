@@ -30,10 +30,10 @@
 
 namespace Falcor
 {
-    class dlldecl AssimpImporter
+    class FALCOR_API AssimpImporter
     {
     public:
-        static bool import(const std::string& filename, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict);
+        static void import(const std::string& filename, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict);
     private:
         AssimpImporter() = default;
         AssimpImporter(const AssimpImporter&) = delete;

@@ -32,7 +32,7 @@
 
 namespace Falcor
 {
-    SCRIPT_BINDING(AABB)
+    FALCOR_SCRIPT_BINDING(AABB)
     {
         pybind11::class_<AABB> aabb(m, "AABB");
 

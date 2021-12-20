@@ -27,29 +27,40 @@
  **************************************************************************/
 #pragma once
 #include "Core/Program/ProgramVersion.h"
-#include "Core/API/RootSignature.h"
+
+#ifdef FALCOR_D3D12
+#include "Core/API/D3D12/D3D12RootSignature.h"
+#endif
 
 namespace Falcor
 {
-    class dlldecl ComputeStateObject
+    class FALCOR_API ComputeStateObject
     {
     public:
         using SharedPtr = std::shared_ptr<ComputeStateObject>;
         using SharedConstPtr = std::shared_ptr<const ComputeStateObject>;
         using ApiHandle = ComputeStateHandle;
 
-        class dlldecl Desc
+        class FALCOR_API Desc
         {
         public:
-            Desc& setRootSignature(RootSignature::SharedPtr pSignature) { mpRootSignature = pSignature; return *this; }
             Desc& setProgramKernels(const ProgramKernels::SharedConstPtr& pProgram) { mpProgram = pProgram; return *this; }
+#ifdef FALCOR_D3D12
+            /** Set a D3D12 root signature to use instead of the one that comes with the program kernel.
+                This function is supported on D3D12 only.
+                \param[in] pRootSignature An overriding D3D12RootSignature object to use in the compute state.
+            */
+            Desc& setD3D12RootSignatureOverride(const D3D12RootSignature::SharedConstPtr& pRootSignature) { mpD3D12RootSignatureOverride = pRootSignature; return *this; }
+#endif
             const ProgramKernels::SharedConstPtr getProgramKernels() const { return mpProgram; }
             ProgramVersion::SharedConstPtr getProgramVersion() const { return mpProgram->getProgramVersion(); }
             bool operator==(const Desc& other) const;
         private:
             friend class ComputeStateObject;
             ProgramKernels::SharedConstPtr mpProgram;
-            RootSignature::SharedPtr mpRootSignature;
+#ifdef FALCOR_D3D12
+            D3D12RootSignature::SharedConstPtr mpD3D12RootSignatureOverride;
+#endif
         };
 
         ~ComputeStateObject();

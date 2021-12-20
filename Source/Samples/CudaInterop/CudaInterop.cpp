@@ -28,10 +28,17 @@
 #include "CudaInterop.h"
 #include "CopySurface.h"
 
+namespace
+{
+    const std::string kTextureFilename = "smoke-puff.png";
+}
+
 void CudaInterop::onLoad(RenderContext* pRenderContext)
 {
     // Create our input and output textures
-    mpInputTex = Texture::createFromFile("smoke-puff.png", false, false, ResourceBindFlags::Shared);
+    mpInputTex = Texture::createFromFile(kTextureFilename, false, false, ResourceBindFlags::Shared);
+    if (!mpInputTex) throw RuntimeError("Failed to load texture '{}'", kTextureFilename);
+
     mWidth = mpInputTex->getWidth();
     mHeight = mpInputTex->getHeight();
     mpOutputTex = Texture::create2D(mWidth, mHeight, mpInputTex->getFormat(), 1, 1, nullptr, ResourceBindFlags::Shared | ResourceBindFlags::ShaderResource);
@@ -43,13 +50,13 @@ void CudaInterop::onLoad(RenderContext* pRenderContext)
     mInputSurf = FalcorCUDA::mapTextureToSurface(mpInputTex, usageFlags);
     if (mInputSurf == 0)
     {
-        logError("Input texture to surface mapping failed");
+        reportError("Input texture to surface mapping failed");
         return;
     }
     mOutputSurf = FalcorCUDA::mapTextureToSurface(mpOutputTex, usageFlags);
     if (mOutputSurf == 0)
     {
-        logError("Output texture to surface mapping failed");
+        reportError("Output texture to surface mapping failed");
         return;
     }
 }
@@ -70,7 +77,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     // Initializes the CUDA driver API, which is required prior to any API calls.
     if (!FalcorCUDA::initCUDA())
     {
-        logError("CUDA driver API initialization failed");
+        reportError("CUDA driver API initialization failed");
         exit(1);
     }
 

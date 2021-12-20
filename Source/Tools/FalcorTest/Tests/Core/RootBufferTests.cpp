@@ -143,9 +143,6 @@ namespace Falcor
         }
     }
 
-    GPU_TEST(RootBufferSRV_5_1) { testRootBuffer(ctx, "5_1", false); }
-    GPU_TEST(RootBufferUAV_5_1) { testRootBuffer(ctx, "5_1", true); }
-
     GPU_TEST(RootBufferSRV_6_0) { testRootBuffer(ctx, "6_0", false); }
     GPU_TEST(RootBufferUAV_6_0) { testRootBuffer(ctx, "6_0", true); }
 

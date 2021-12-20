@@ -42,16 +42,15 @@ namespace Falcor
         return sFileExtensionsFilters;
     }
 
-    bool Importer::import(const std::string& filename, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict)
+    void Importer::import(const std::string& filename, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict)
     {
         auto ext = getExtensionFromFile(filename);
         auto it = sImportFunctions.find(ext);
         if (it == sImportFunctions.end())
         {
-            logError("Error when loading '" + filename + "'. Unknown file extension.");
-            return false;
+            throw ImporterError(filename, "Unknown file extension.");
         }
-        return it->second(filename, builder, instances, dict);
+        it->second(filename, builder, instances, dict);
     }
 
     void Importer::registerImporter(const Desc& desc)
@@ -64,5 +63,10 @@ namespace Falcor
             sImportFunctions[ext] = desc.import;
             sFileExtensionsFilters.push_back(ext);
         }
+    }
+
+    FALCOR_SCRIPT_BINDING(Importer)
+    {
+        pybind11::register_exception<ImporterError>(m, "ImporterError");
     }
 }

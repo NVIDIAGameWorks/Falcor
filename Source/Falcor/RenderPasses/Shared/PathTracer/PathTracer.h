@@ -27,22 +27,21 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "FalcorExperimental.h"
 #include "Utils/Sampling/SampleGenerator.h"
 #include "Utils/Debug/PixelDebug.h"
-#include "Experimental/Scene/Lights/EnvMapSampler.h"
-#include "Experimental/Scene/Lights/EmissiveUniformSampler.h"
-#include "Experimental/Scene/Lights/LightBVHSampler.h"
-#include "Experimental/Scene/Lights/EmissivePowerSampler.h"
+#include "Rendering/Lights/EnvMapSampler.h"
+#include "Rendering/Lights/EmissiveUniformSampler.h"
+#include "Rendering/Lights/LightBVHSampler.h"
+#include "Rendering/Lights/EmissivePowerSampler.h"
+#include "Rendering/Utils/PixelStats.h"
 #include "RenderGraph/RenderPassHelpers.h"
 #include "PathTracerParams.slang"
-#include "PixelStats.h"
 
 namespace Falcor
 {
     /** Base class for path tracers.
     */
-    class dlldecl PathTracer : public RenderPass
+    class FALCOR_API PathTracer : public RenderPass
     {
     public:
         using SharedPtr = std::shared_ptr<PathTracer>;
@@ -56,7 +55,7 @@ namespace Falcor
         virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
 
     protected:
-        PathTracer(const Dictionary& dict, const ChannelList& outputs);
+        PathTracer(const Info& info, const Dictionary& dict, const ChannelList& outputs);
         void parseDictionary(const Dictionary& dict);
 
         virtual void recreateVars() {}

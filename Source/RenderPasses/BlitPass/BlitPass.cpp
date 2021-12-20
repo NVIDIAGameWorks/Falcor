@@ -27,10 +27,10 @@
  **************************************************************************/
 #include "BlitPass.h"
 
+const RenderPass::Info BlitPass::kInfo { "BlitPass", "Blit a texture into a different texture." };
+
 namespace
 {
-    const char kDesc[] = "Blit a texture into a different texture";
-
     const char kDst[] = "dst";
     const char kSrc[] = "src";
     const char kFilter[] = "filter";
@@ -43,14 +43,14 @@ namespace
 }
 
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" FALCOR_API_EXPORT const char* getProjDir()
 {
     return PROJECT_DIR;
 }
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
 {
-    lib.registerClass("BlitPass", kDesc, BlitPass::create);
+    lib.registerPass(BlitPass::kInfo, BlitPass::create);
     ScriptBindings::registerBinding(regBlitPass);
 }
 
@@ -77,11 +77,10 @@ BlitPass::SharedPtr BlitPass::create(RenderContext* pRenderContext, const Dictio
 }
 
 BlitPass::BlitPass(const Dictionary& dict)
+    : RenderPass(kInfo)
 {
     parseDictionary(dict);
 }
-
-std::string BlitPass::getDesc() { return kDesc; }
 
 Dictionary BlitPass::getScriptingDictionary()
 {
@@ -90,14 +89,14 @@ Dictionary BlitPass::getScriptingDictionary()
     return d;
 }
 
-void BlitPass::execute(RenderContext* pContext, const RenderData& renderData)
+void BlitPass::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
     const auto& pSrcTex = renderData[kSrc]->asTexture();
     const auto& pDstTex = renderData[kDst]->asTexture();
 
     if (pSrcTex && pDstTex)
     {
-        pContext->blit(pSrcTex->getSRV(), pDstTex->getRTV(), uint4(-1), uint4(-1), mFilter);
+        pRenderContext->blit(pSrcTex->getSRV(), pDstTex->getRTV(), RenderContext::kMaxRect, RenderContext::kMaxRect, mFilter);
     }
     else
     {

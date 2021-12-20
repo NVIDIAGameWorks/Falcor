@@ -140,7 +140,7 @@ namespace Falcor
         return result;
     }
 
-    int32_t runTests(std::ostream& stream, RenderContext* pRenderContext, const std::string &testFilter)
+    int32_t runTests(std::ostream& stream, RenderContext* pRenderContext, const std::string &testFilter, uint32_t repeatCount)
     {
         if (testRegistry == nullptr) return 0;
 
@@ -167,21 +167,26 @@ namespace Falcor
 
         for (const auto& test : tests)
         {
-            stream << "  " << padStringToLength(test.getTitle(), 60) << ": " << std::flush;
-
-            TestResult result = runTest(test, pRenderContext);
-
-            switch (result.status)
+            for (uint32_t repeatIndex = 0; repeatIndex < repeatCount; ++repeatIndex)
             {
-            case TestResult::Status::Passed: stream << colored("PASSED", TermColor::Green, stream); break;
-            case TestResult::Status::Failed: stream << colored("FAILED", TermColor::Red, stream); break;
-            case TestResult::Status::Skipped: stream << colored("SKIPPED", TermColor::Yellow, stream); break;
+                stream << "  " << padStringToLength(test.getTitle(), 60) << ": ";
+                if (repeatCount > 1) stream << "[" << (repeatIndex + 1) << "/" << repeatCount << "] ";
+                stream << std::flush;
+
+                TestResult result = runTest(test, pRenderContext);
+
+                switch (result.status)
+                {
+                case TestResult::Status::Passed: stream << colored("PASSED", TermColor::Green, stream); break;
+                case TestResult::Status::Failed: stream << colored("FAILED", TermColor::Red, stream); break;
+                case TestResult::Status::Skipped: stream << colored("SKIPPED", TermColor::Yellow, stream); break;
+                }
+
+                stream << " (" << std::to_string(result.elapsedMS) << " ms)" << std::endl;
+                for (const auto& m : result.messages) stream << "    "  << m << std::endl;
+
+                if (result.status == TestResult::Status::Failed) ++failureCount;
             }
-
-            stream << " (" << std::to_string(result.elapsedMS) << " ms)" << std::endl;
-            for (const auto& m : result.messages) stream << "    "  << m << std::endl;
-
-            if (result.status == TestResult::Status::Failed) ++failureCount;
         }
 
         return failureCount;

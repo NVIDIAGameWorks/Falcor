@@ -9,5 +9,7 @@
   <ItemGroup>
     <ShaderSource Include="flip.hlsli" />
     <ShaderSource Include="FLIPPass.cs.slang" />
+    <ShaderSource Include="ToneMappers.slang" />
+    <ShaderSource Include="ComputeLuminance.cs.slang" />
   </ItemGroup>
 </Project>

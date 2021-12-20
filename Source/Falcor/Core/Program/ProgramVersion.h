@@ -28,20 +28,23 @@
 #pragma once
 #include "Core/Program/ProgramReflection.h"
 #include "Core/API/Shader.h"
-#include "Core/API/RootSignature.h"
+
+#ifdef FALCOR_D3D12
+#include "Core/API/D3D12/D3D12RootSignature.h"
+#endif
 
 #include <slang/slang.h>
 
 namespace Falcor
 {
-    class dlldecl Program;
-    class dlldecl ProgramVars;
-    class dlldecl ProgramVersion;
+    class FALCOR_API Program;
+    class FALCOR_API ProgramVars;
+    class FALCOR_API ProgramVersion;
 
 #if 0
     /** A collection of one or more entry points in a program kernels object.
     */
-    class dlldecl EntryPointGroup
+    class FALCOR_API EntryPointGroup
     {
     public:
         using SharedPtr = std::shared_ptr<EntryPointGroup>;
@@ -64,7 +67,7 @@ namespace Falcor
 
     /** A collection of one or more entry points in a program kernels object.
     */
-    class dlldecl EntryPointGroupKernels
+    class FALCOR_API EntryPointGroupKernels
     {
     public:
         using SharedPtr = std::shared_ptr<EntryPointGroupKernels>;
@@ -100,20 +103,17 @@ namespace Falcor
         Shaders mShaders;
     };
 
-    class dlldecl RtEntryPointGroupKernels : public EntryPointGroupKernels
+    class FALCOR_API RtEntryPointGroupKernels : public EntryPointGroupKernels
     {
     public:
         static SharedPtr create(
             Type type,
             const Shaders& shaders,
             std::string const& exportName,
-            RootSignature::SharedPtr const& localRootSignature,
             uint32_t maxPayloadSize,
             uint32_t maxAttributeSize);
 
         const std::string& getExportName() const { return mExportName; }
-
-        const RootSignature::SharedPtr& getLocalRootSignature() const { return mLocalRootSignature; }
 
         uint32_t getMaxPayloadSize() const { return mMaxPayloadSize; }
         uint32_t getMaxAttributesSize() const { return mMaxAttributesSize; }
@@ -123,12 +123,10 @@ namespace Falcor
             Type type,
             const Shaders& shaders,
             std::string const& exportName,
-            RootSignature::SharedPtr const& localRootSignature,
             uint32_t maxPayloadSize,
             uint32_t maxAttributeSize);
 
         std::string mExportName;
-        RootSignature::SharedPtr mLocalRootSignature;
         uint32_t mMaxPayloadSize;
         uint32_t mMaxAttributesSize;
     };
@@ -136,7 +134,7 @@ namespace Falcor
     /** Low-level program object
         This class abstracts the API's program creation and management
     */
-    class dlldecl ProgramKernels : public std::enable_shared_from_this<ProgramKernels>
+    class FALCOR_API ProgramKernels : public std::enable_shared_from_this<ProgramKernels>
     {
     public:
         using SharedPtr = std::shared_ptr<ProgramKernels>;
@@ -157,6 +155,7 @@ namespace Falcor
         */
         static SharedPtr create(
             const ProgramVersion* pVersion,
+            slang::IComponentType* pSpecializedSlangProgram,
             const ProgramReflection::SharedPtr& pReflector,
             const UniqueEntryPointGroups& uniqueEntryPointGroups,
             std::string& log,
@@ -176,7 +175,9 @@ namespace Falcor
         */
         const ProgramReflection::SharedPtr& getReflector() const { return mpReflector; }
 
-        RootSignature::SharedPtr const& getRootSignature() const { return mpRootSignature; }
+#ifdef FALCOR_D3D12
+        D3D12RootSignature::SharedPtr const& getD3D12RootSignature() const { return mpRootSignature; }
+#endif
 
         std::shared_ptr<const ProgramVersion> getProgramVersion() const;
 
@@ -184,9 +185,12 @@ namespace Falcor
 
         const EntryPointGroupKernels::SharedPtr& getUniqueEntryPointGroup(uint32_t index) const { return mUniqueEntryPointGroups[index]; }
 
+        ProgramHandle getApiHandle() const { return mApiHandle; }
+
     protected:
         ProgramKernels(
             const ProgramVersion* pVersion,
+            slang::IComponentType* pSpecializedSlangProgram,
             const ProgramReflection::SharedPtr& pReflector,
             const UniqueEntryPointGroups& uniqueEntryPointGroups,
             const std::string& name = "");
@@ -200,7 +204,10 @@ namespace Falcor
         const ProgramReflection::SharedPtr mpReflector;
 
         ProgramVersion const* mpVersion = nullptr;
-        RootSignature::SharedPtr mpRootSignature;
+
+#ifdef FALCOR_D3D12
+        D3D12RootSignature::SharedPtr mpRootSignature;
+#endif
     };
 
     class ProgramVersion : public std::enable_shared_from_this<ProgramVersion>
@@ -209,6 +216,7 @@ namespace Falcor
         using SharedPtr = std::shared_ptr<ProgramVersion>;
         using SharedConstPtr = std::shared_ptr<const ProgramVersion>;
         using DefineList = Shader::DefineList;
+        using TypeConformanceList = Shader::TypeConformanceList;
 
         /** Get the program that this version was created from
         */
@@ -245,12 +253,14 @@ namespace Falcor
 
         void init(
             const DefineList&                                   defineList,
+            const TypeConformanceList&                          typeConformanceList,
             const ProgramReflection::SharedPtr&                 pReflector,
             const std::string&                                  name,
             std::vector<ComPtr<slang::IComponentType>> const&   pSlangEntryPoints);
 
         std::shared_ptr<Program>        mpProgram;
         DefineList                      mDefines;
+        TypeConformanceList             mTypeConformances;
         ProgramReflection::SharedPtr    mpReflector;
         std::string                     mName;
         ComPtr<slang::IComponentType>   mpSlangGlobalScope;

@@ -25,88 +25,42 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Scene/Material/MaterialDefines.slangh"
-
-import Experimental.Scene.Material.IBxDF;
+import Rendering.Materials.IBxDF;
 import Scene.Material.MaterialData;
 import Utils.Geometry.GeometryHelpers;
 
-/** This struct holds all the data for shading a specific hit point. This consists of:
-    - Geometric data
-    - Material data (type/ID, BSDF lobes to be evaluated/sampled etc)
-    - Preprocessed material properties (fetched from constants/textures)
+/** This struct holds information needed for shading a hit point.
+
+    This includes:
+    - Geometric properties of the surface.
+    - Texture coordinates.
+    - Material ID and header.
+    - Opacity value for alpha testing.
+    - Index of refraction of the surrounding medium.
+
+    Based on a ShadingData struct, the material system can be queried
+    for a BSDF instance at the hit using `gScene.materials.getBSDF()`.
+    The BSDF has interfaces for sampling and evaluation, as well as for
+    querying its properties at the hit.
 */
 struct ShadingData
 {
+    // Geometry data
     float3  posW;                   ///< Shading hit position in world space.
     float3  V;                      ///< Direction to the eye at shading hit.
     float3  N;                      ///< Shading normal at shading hit.
     float3  T;                      ///< Shading tangent at shading hit.
     float3  B;                      ///< Shading bitangent at shading hit.
     float2  uv;                     ///< Texture mapping coordinates.
-    float   NdotV;                  ///< Unclamped, can be negative.
-
-    // Primitive data
     float3  faceN;                  ///< Face normal in world space, always on the front-facing side.
     bool    frontFacing;            ///< True if primitive seen from the front-facing side.
+    float   curveSphereRadius;      ///< Sphere radius for curve hits.
 
     // Material data
-    uint    materialID;             ///< Material ID at shading location.
-    uint    flags;                  ///< Flags storing additional fields. Use the accessor functions below.
-
-    // Pre-loaded material properties
-    float3  diffuse;                ///< Diffuse albedo.
-    float   opacity;
-    float3  specular;               ///< Specular albedo.
-    float   linearRoughness;        ///< This is the original roughness, before re-mapping.
-    float3  transmission;           ///< Transmission color.
-    float   ggxAlpha;               ///< DEPRECATED: This is the re-mapped roughness value, which should be used for GGX computations. It equals `roughness^2`
-    float3  emissive;
-    float   IoR;                    ///< Index of refraction of the medium "behind" the surface.
-    float   metallic;               ///< Metallic parameter, blends between dielectric and conducting BSDFs. It is used for storing the curve sphere radius when it refers to shading curves.
-    float   diffuseTransmission;    ///< Diffuse transmission, blends between diffuse reflection and transmission lobes.
-    float   specularTransmission;   ///< Specular transmission, blends between opaque dielectric BRDF and specular transmissive BSDF.
-    float   eta;                    ///< Relative index of refraction (incident IoR / transmissive IoR).
-
-
-    // Accessor functions
-
-    static const uint kMaterialTypeOffset = 0;
-    static const uint kActiveLobesOffset = kMaterialTypeOffset + kMaterialTypeBits; // Note: kMaterialTypeBits is declared in MaterialData.slang.
-    static const uint kDoubleSidedOffset = kActiveLobesOffset + kLobeTypeBits; // Note: kLobeTypeBits is declared in IBxDF.slang.
-    static const uint kThinSurfaceOffset = kDoubleSidedOffset + 1;
-
-    /** Set material type at the hit.
-    */
-    [mutating] void setMaterialType(MaterialType type) { flags = PACK_BITS(kMaterialTypeBits, kMaterialTypeOffset, flags, (uint)type); }
-
-    /** Get material type at the hit.
-    */
-    MaterialType getMaterialType() { return MaterialType(EXTRACT_BITS(kMaterialTypeBits, kMaterialTypeOffset, flags)); }
-
-    /** Set active BSDF lobes. See LobeType in IBxDF.slang.
-    */
-    [mutating] void setActiveLobes(uint activeLobes) { flags = PACK_BITS(kLobeTypeBits, kActiveLobesOffset, flags, activeLobes); }
-
-    /** Get active BSDF lobes.
-    */
-    uint getActiveLobes() { return EXTRACT_BITS(kLobeTypeBits, kActiveLobesOffset, flags); }
-
-    /** Set double-sided flag, if false only shade front face.
-    */
-    [mutating] void setDoubleSided(bool doubleSided) { flags = PACK_BITS(1, kDoubleSidedOffset, flags, doubleSided ? 1 : 0); }
-
-    /** Get double-sided flag.
-    */
-    bool isDoubleSided() { return flags & (1u << kDoubleSidedOffset); }
-
-    /** Set thin surface flag, if true material has a thin surface.
-    */
-    [mutating] void setThinSurface(bool thinSurface) { flags = PACK_BITS(1, kThinSurfaceOffset, flags, thinSurface ? 1 : 0); }
-
-    /** Get thin surface flag.
-    */
-    bool isThinSurface() { return flags & (1u << kThinSurfaceOffset); }
+    MaterialHeader mtl;             ///< Material header data.
+    uint    materialID;             ///< Material ID at shading location.    
+    float   opacity;                ///< Opacity value in [0,1]. This is used for alpha testing.
+    float   IoR;                    ///< Index of refraction for the medium on the front-facing side (i.e. "outside" the material at the hit).
 
 
     // Utility functions

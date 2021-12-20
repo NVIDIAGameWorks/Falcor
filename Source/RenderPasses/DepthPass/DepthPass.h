@@ -27,37 +27,36 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "FalcorExperimental.h"
 
 using namespace Falcor;
 
 #ifdef BUILD_DEPTH_PASS
-#define dllpassdecl __declspec(dllexport)
+#define PASS_API FALCOR_API_EXPORT
 #else
-#define dllpassdecl __declspec(dllimport)
+#define PASS_API FALCOR_API_IMPORT
 #endif
 
-class dllpassdecl DepthPass : public RenderPass
+class PASS_API DepthPass : public RenderPass
 {
 public:
     using SharedPtr = std::shared_ptr<DepthPass>;
 
-    static const char* kDesc;
+    static const Info kInfo;
 
     /** Create a new object
     */
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
-    virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
+    virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     virtual void renderUI(Gui::Widgets& widget) override;
     virtual Dictionary getScriptingDictionary() override;
-    virtual std::string getDesc() override { return kDesc; }
 
     DepthPass& setDepthBufferFormat(ResourceFormat format);
     DepthPass& setDepthStencilState(const DepthStencilState::SharedPtr& pDsState);
     void setCullMode(RasterizerState::CullMode cullMode) { mCullMode = cullMode; }
+    void setOutputSize(const uint2& outputSize);
 
 private:
     DepthPass(const Dictionary& dict);
@@ -69,4 +68,7 @@ private:
     RasterizerState::CullMode mCullMode = RasterizerState::CullMode::Back;
     ResourceFormat mDepthFormat = ResourceFormat::D32Float;
     Scene::SharedPtr mpScene;
+    uint2 mOutputSize = {};
 };
+
+#undef PASS_API

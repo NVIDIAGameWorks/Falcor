@@ -30,6 +30,7 @@
 #include "Core/API/Texture.h"
 #include "Core/API/Sampler.h"
 #include "Core/API/Buffer.h"
+#include "Core/API/RtAccelerationStructure.h"
 
 namespace Falcor
 {
@@ -68,7 +69,7 @@ namespace Falcor
 
         pObj["someTexture"].setTexture(pMyTexture);
     */
-    struct dlldecl ShaderVar
+    struct FALCOR_API ShaderVar
     {
         /** Create a null/invalid shader variable pointer.
         */
@@ -229,6 +230,16 @@ namespace Falcor
         */
         UnorderedAccessView::SharedPtr getUav() const;
 
+        /** Set the acceleration structure that this variable points to.
+            Logs an error and returns `false` if this variable doesn't point at an acceleration structure.
+        */
+        bool setAccelerationStructure(const RtAccelerationStructure::SharedPtr& pAccl) const;
+
+        /** Get the acceleration structure that this variable points to.
+            Logs an error and returns null if this variable doesn't point at an acceleration structure.
+        */
+        RtAccelerationStructure::SharedPtr getAccelerationStructure() const;
+
         /** Set the parameter block that this variable points to.
             Logs an error and returns `false` if this variable doesn't point at a parameter block.
         */
@@ -366,15 +377,6 @@ namespace Falcor
         */
         TypedShaderVarOffset    mOffset;
 
-#if _LOG_ENABLED
-        /** A string representation of the path into the object.
-
-            This field is retained for debugging purposes only, so that better error messages can be reported on things like missing
-            or incorrectly typed fields.
-        */
-        std::string mDebugName;
-#endif
-
         bool setImpl(const Texture::SharedPtr& pTexture) const;
         bool setImpl(const Sampler::SharedPtr& pSampler) const;
         bool setImpl(const Buffer::SharedPtr& pBuffer) const;
@@ -390,4 +392,4 @@ namespace Falcor
     };
 }
 
-#include "Core/BufferTypes/ParameterBlock.h"
+#include "Core/API/ParameterBlock.h"

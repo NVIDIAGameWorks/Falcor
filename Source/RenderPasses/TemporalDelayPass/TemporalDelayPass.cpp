@@ -27,7 +27,9 @@
  **************************************************************************/
 #include "TemporalDelayPass.h"
 
-extern "C" __declspec(dllexport) const char* getProjDir()
+const RenderPass::Info TemporalDelayPass::kInfo { "TemporalDelayPass", "Delays frame rendering by a specified amount of frames." };
+
+extern "C" FALCOR_API_EXPORT const char* getProjDir()
 {
     return PROJECT_DIR;
 }
@@ -38,9 +40,9 @@ void regTemporalDelayPass(pybind11::module& m)
     pass.def_property("delay", &TemporalDelayPass::getDelay, &TemporalDelayPass::setDelay);
 }
 
-extern "C" __declspec(dllexport) void getPasses(RenderPassLibrary& lib)
+extern "C" FALCOR_API_EXPORT void getPasses(RenderPassLibrary& lib)
 {
-    lib.registerClass("TemporalDelayPass", TemporalDelayPass::kDesc, TemporalDelayPass::create);
+    lib.registerPass(TemporalDelayPass::kInfo, TemporalDelayPass::create);
     ScriptBindings::registerBinding(regTemporalDelayPass);
 }
 
@@ -50,9 +52,8 @@ namespace
     const std::string kMaxDelay = "maxDelay";
     const std::string kDelay = "delay";
 }
-const char* TemporalDelayPass::kDesc = "Delays frame rendering by a specified amount of frames";
 
-TemporalDelayPass::TemporalDelayPass() {}
+TemporalDelayPass::TemporalDelayPass() : RenderPass(kInfo) {}
 
 TemporalDelayPass::SharedPtr TemporalDelayPass::create(RenderContext* pRenderContext, const Dictionary& dict)
 {
@@ -107,9 +108,9 @@ RenderPassReflection TemporalDelayPass::reflect(const CompileData& compileData)
     return r;
 }
 
-void TemporalDelayPass::compile(RenderContext* pContext, const CompileData& compileData)
+void TemporalDelayPass::compile(RenderContext* pRenderContext, const CompileData& compileData)
 {
-    if (!mReady) throw(std::runtime_error("TemporalDelayPass::compile - missing incoming reflection information"));
+    if (!mReady) throw RuntimeError("TemporalDelayPass: Missing incoming reflection information");
 }
 
 void TemporalDelayPass::execute(RenderContext* pRenderContext, const RenderData& renderData)
@@ -143,6 +144,6 @@ void TemporalDelayPass::renderUI(Gui::Widgets& widget)
 TemporalDelayPass& TemporalDelayPass::setDelay(uint32_t delay)
 {
     mDelay = delay;
-    mPassChangedCB();
+    requestRecompile();
     return *this;
 }

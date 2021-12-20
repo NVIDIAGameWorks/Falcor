@@ -32,6 +32,7 @@
 
 namespace Falcor
 {
+
     //
     // EntryPointGroupKernels
     //
@@ -62,23 +63,20 @@ namespace Falcor
             Type type,
             const Shaders& shaders,
             std::string const& exportName,
-            RootSignature::SharedPtr const& localRootSignature,
             uint32_t maxPayloadSize,
             uint32_t maxAttributeSize)
     {
-        return SharedPtr(new RtEntryPointGroupKernels(type, shaders, exportName, localRootSignature, maxPayloadSize, maxAttributeSize));
+        return SharedPtr(new RtEntryPointGroupKernels(type, shaders, exportName, maxPayloadSize, maxAttributeSize));
     }
 
     RtEntryPointGroupKernels::RtEntryPointGroupKernels(
         Type type,
         const Shaders& shaders,
         std::string const& exportName,
-        RootSignature::SharedPtr const& localRootSignature,
         uint32_t maxPayloadSize,
         uint32_t maxAttributeSize)
         : EntryPointGroupKernels(type, shaders)
         , mExportName(exportName)
-        , mLocalRootSignature(localRootSignature)
         , mMaxPayloadSize(maxPayloadSize)
         , mMaxAttributesSize(maxAttributeSize)
     {}
@@ -89,6 +87,7 @@ namespace Falcor
 
     ProgramKernels::ProgramKernels(
         const ProgramVersion* pVersion,
+        slang::IComponentType* pSpecializedSlangProgram,
         const ProgramReflection::SharedPtr& pReflector,
         const ProgramKernels::UniqueEntryPointGroups& uniqueEntryPointGroups,
         const std::string& name)
@@ -97,17 +96,26 @@ namespace Falcor
         , mpVersion(pVersion)
         , mUniqueEntryPointGroups(uniqueEntryPointGroups)
     {
-        mpRootSignature = RootSignature::create(pReflector.get());
+#ifdef FALCOR_D3D12
+        mpRootSignature = D3D12RootSignature::create(pReflector.get());
+#endif
+#ifdef FALCOR_GFX
+        gfx::IShaderProgram::Desc programDesc = {};
+        programDesc.pipelineType = gfx::PipelineType::Unknown;
+        programDesc.slangProgram = pSpecializedSlangProgram;
+        gfx_call(gpDevice->getApiHandle()->createProgram(programDesc, mApiHandle.writeRef()));
+#endif
     }
 
     ProgramKernels::SharedPtr ProgramKernels::create(
         const ProgramVersion* pVersion,
+        slang::IComponentType* pSpecializedSlangProgram,
         const ProgramReflection::SharedPtr& pReflector,
         const ProgramKernels::UniqueEntryPointGroups& uniqueEntryPointGroups,
         std::string& log,
         const std::string& name)
     {
-        SharedPtr pProgram = SharedPtr(new ProgramKernels(pVersion, pReflector, uniqueEntryPointGroups, name));
+        SharedPtr pProgram = SharedPtr(new ProgramKernels(pVersion, pSpecializedSlangProgram, pReflector, uniqueEntryPointGroups, name));
         return pProgram;
     }
 
@@ -136,12 +144,14 @@ namespace Falcor
 
     void ProgramVersion::init(
         const DefineList&                                   defineList,
+        const TypeConformanceList&                          typeConformanceList,
         const ProgramReflection::SharedPtr&                 pReflector,
         const std::string&                                  name,
         std::vector<ComPtr<slang::IComponentType>> const&   pSlangEntryPoints)
     {
         assert(pReflector);
-        mDefines = defineList,
+        mDefines = defineList;
+        mTypeConformances = typeConformanceList;
         mpReflector = pReflector;
         mName = name;
         mpSlangEntryPoints = pSlangEntryPoints;
@@ -164,7 +174,10 @@ namespace Falcor
         std::string specializationKey;
 
         ParameterBlock::SpecializationArgs specializationArgs;
-        pVars->collectSpecializationArgs(specializationArgs);
+        if (pVars)
+        {
+            pVars->collectSpecializationArgs(specializationArgs);
+        }
 
         bool first = true;
         for( auto specializationArg : specializationArgs )
@@ -203,7 +216,7 @@ namespace Falcor
                 // Failure
 
                 std::string error = "Failed to link program:\n" + getName() + "\n\n" + log;
-                logError(error, Logger::MsgBox::RetryAbort);
+                reportErrorAndAllowRetry(error);
 
                 // Continue loop to keep trying...
             }

@@ -95,7 +95,7 @@ namespace Falcor
         {
             std::string s("Error when creating video capture file ");
             s += filename + ".\n" + msg;
-            logError(msg);
+            reportError(msg);
             return false;
         }
 
@@ -353,7 +353,7 @@ namespace Falcor
             mpOutputContext = nullptr;
             mpOutputStream = nullptr;
         }
-        safe_delete(mpFlippedImage)
+        safe_delete(mpFlippedImage);
     }
 
     void VideoEncoder::appendFrame(const void* pData)
@@ -425,7 +425,7 @@ namespace Falcor
         return filters;
     }
 
-    SCRIPT_BINDING(VideoEncoder)
+    FALCOR_SCRIPT_BINDING(VideoEncoder)
     {
         pybind11::enum_<VideoEncoder::Codec> codec(m, "Codec");
         codec.value("Raw", VideoEncoder::Codec::Raw);

@@ -27,7 +27,6 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "FalcorExperimental.h"
 
 using namespace Falcor;
 
@@ -36,21 +35,25 @@ class ImageLoader : public RenderPass
 public:
     using SharedPtr = std::shared_ptr<ImageLoader>;
 
+    static const Info kInfo;
+
     /** Create a new object
     */
     static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
 
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
-    virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
-    virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
+    virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
+    virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
     virtual Dictionary getScriptingDictionary() override;
-    virtual std::string getDesc() override;
 
 private:
     ImageLoader(const Dictionary& dict);
 
-    ResourceFormat mOutputFormat = ResourceFormat::Unknown;
+    RenderPassHelpers::IOSize mOutputSizeSelection = RenderPassHelpers::IOSize::Default; ///< Selected output size.
+    ResourceFormat mOutputFormat = ResourceFormat::Unknown;     ///< Current output resource format.
+    uint2 mOutputSize = {};                                     ///< Current output size in pixels.
+
     Texture::SharedPtr mpTex;
     std::string mImageName;
     uint32_t mArraySlice = 0;

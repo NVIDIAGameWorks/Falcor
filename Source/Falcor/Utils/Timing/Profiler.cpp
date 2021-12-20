@@ -282,11 +282,12 @@ namespace Falcor
                 mCurrentFrameEvents.push_back(pEvent);
             }
         }
-
+#ifdef FALCOR_D3D12
         if (is_set(flags, Flags::Pix))
         {
             PIXBeginEvent((ID3D12GraphicsCommandList*)gpDevice->getRenderContext()->getLowLevelData()->getCommandList(), PIX_COLOR(0, 0, 0), name.c_str());
         }
+#endif
     }
 
     void Profiler::endEvent(const std::string& name, Flags flags)
@@ -303,10 +304,12 @@ namespace Falcor
             mCurrentEventName.erase(mCurrentEventName.find_last_of("/"));
         }
 
+#ifdef FALCOR_D3D12
         if (is_set(flags, Flags::Pix))
         {
             PIXEndEvent((ID3D12GraphicsCommandList*)gpDevice->getRenderContext()->getLowLevelData()->getCommandList());
         }
+#endif
     }
 
     Profiler::Event* Profiler::getEvent(const std::string& name)
@@ -392,7 +395,7 @@ namespace Falcor
         return (event == mEvents.end()) ? nullptr : event->second.get();
     }
 
-    SCRIPT_BINDING(Profiler)
+    FALCOR_SCRIPT_BINDING(Profiler)
     {
         auto endCapture = [] (Profiler* pProfiler) {
             std::optional<pybind11::dict> result;

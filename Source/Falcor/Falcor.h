@@ -26,17 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#ifdef _WIN32
-#define NOMINMAX
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#endif
-
-#include "Core/Framework.h"
-#define _USE_MATH_DEFINES
-#include <math.h>
 
 // Core
+#include "Core/Framework.h"
 #include "Core/Sample.h"
 #include "Core/Window.h"
 
@@ -47,8 +39,6 @@
 #include "Core/API/ComputeStateObject.h"
 #include "Core/API/CopyContext.h"
 #include "Core/API/DepthStencilState.h"
-#include "Core/API/DescriptorPool.h"
-#include "Core/API/DescriptorSet.h"
 #include "Core/API/Device.h"
 #include "Core/API/FBO.h"
 #include "Core/API/FencedPool.h"
@@ -56,21 +46,22 @@
 #include "Core/API/GpuFence.h"
 #include "Core/API/GpuTimer.h"
 #include "Core/API/GraphicsStateObject.h"
+#include "Core/API/IndirectCommands.h"
 #include "Core/API/LowLevelContextData.h"
+#include "Core/API/ParameterBlock.h"
 #include "Core/API/QueryHeap.h"
 #include "Core/API/RasterizerState.h"
+#include "Core/API/Raytracing.h"
 #include "Core/API/RenderContext.h"
 #include "Core/API/Resource.h"
 #include "Core/API/GpuMemoryHeap.h"
 #include "Core/API/ResourceViews.h"
-#include "Core/API/RootSignature.h"
 #include "Core/API/Sampler.h"
 #include "Core/API/Texture.h"
 #include "Core/API/VAO.h"
 #include "Core/API/VertexLayout.h"
 
 // Core/BufferTypes
-#include "Core/BufferTypes/ParameterBlock.h"
 #include "Core/BufferTypes/VariablesBufferUI.h"
 
 // Core/Platform
@@ -100,6 +91,7 @@
 #include "RenderGraph/RenderPassLibrary.h"
 #include "RenderGraph/RenderPassReflection.h"
 #include "RenderGraph/RenderPassStandardFlags.h"
+#include "RenderGraph/RenderPassHelpers.h"
 #include "RenderGraph/ResourceCache.h"
 #include "RenderGraph/BasePasses/ComputePass.h"
 #include "RenderGraph/BasePasses/RasterPass.h"
@@ -112,10 +104,12 @@
 #include "Scene/Camera/Camera.h"
 #include "Scene/Camera/CameraController.h"
 #include "Scene/Lights/Light.h"
-#include "Scene/Material/Material.h"
+#include "Scene/Material/MaterialSystem.h"
+#include "Scene/Material/StandardMaterial.h"
+#include "Scene/Material/HairMaterial.h"
+#include "Scene/Material/ClothMaterial.h"
 #include "Scene/Animation/Animation.h"
 #include "Scene/Animation/AnimationController.h"
-#include "Scene/ParticleSystem/ParticleSystem.h"
 
 // Utils
 #include "Utils/Math/AABB.h"
@@ -131,6 +125,8 @@
 #include "Utils/Algorithm/ParallelReduction.h"
 #include "Utils/Image/Bitmap.h"
 #include "Utils/Image/ImageIO.h"
+#include "Utils/Image/TextureManager.h"
+#include "Utils/Image/ImageProcessing.h"
 #include "Utils/Math/CubicSpline.h"
 #include "Utils/Math/FalcorMath.h"
 #include "Utils/Scripting/Dictionary.h"
@@ -150,7 +146,6 @@
 #include "Utils/Timing/TimeReport.h"
 #include "Utils/UI/Font.h"
 #include "Utils/UI/Gui.h"
-#include "Utils/UI/DebugDrawer.h"
 #include "Utils/UI/PixelZoom.h"
 #include "Utils/UI/TextRenderer.h"
 #include "Utils/UI/UserInput.h"
@@ -160,11 +155,10 @@
 #include "Utils/Debug/PixelDebug.h"
 
 #ifdef FALCOR_D3D12
-#include "Raytracing/RtProgramVars.h"
-#include "Raytracing/RtStateObject.h"
-#include "Raytracing/RtProgram/RtProgram.h"
+#include "Core/API/RtStateObject.h"
+#include "Core/Program/RtProgram.h"
 #endif
 
-#define FALCOR_MAJOR_VERSION 4
-#define FALCOR_REVISION 4
-#define FALCOR_VERSION_STRING "4.4"
+#define FALCOR_MAJOR_VERSION 5
+#define FALCOR_REVISION 0
+#define FALCOR_VERSION_STRING "5.0-preview"

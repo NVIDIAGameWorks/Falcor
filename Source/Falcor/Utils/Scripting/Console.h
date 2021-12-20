@@ -34,7 +34,7 @@ struct ImGuiInputTextCallbackData;
 
 namespace Falcor
 {
-    class dlldecl Console
+    class FALCOR_API Console
     {
     public:
         /** Clears the console.

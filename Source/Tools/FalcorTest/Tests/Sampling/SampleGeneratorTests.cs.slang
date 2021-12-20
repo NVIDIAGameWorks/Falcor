@@ -41,7 +41,7 @@ void test(uint3 threadId : SV_DispatchThreadID)
     if (any(threadId >= gDispatchDim)) return;
 
     // Create sample generator.
-    SampleGenerator sg = SampleGenerator.create(threadId.xy, threadId.z);
+    SampleGenerator sg = SampleGenerator(threadId.xy, threadId.z);
 
     // Generate samples.
     // The output is a 4D tensor of samples, stored in memory as Z instances

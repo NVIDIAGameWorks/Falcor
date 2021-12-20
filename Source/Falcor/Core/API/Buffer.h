@@ -37,7 +37,7 @@ namespace Falcor
     /** Low-level buffer object
         This class abstracts the API's buffer creation and management
     */
-    class dlldecl Buffer : public Resource
+    class FALCOR_API Buffer : public Resource
     {
     public:
         using SharedPtr = std::shared_ptr<Buffer>;
@@ -192,7 +192,7 @@ namespace Falcor
         */
         virtual UnorderedAccessView::SharedPtr getUAV() override;
 
-#if _ENABLE_CUDA
+#if FALCOR_ENABLE_CUDA
         /** Get the CUDA device address for this resource.
             \return CUDA device address.
             Throws an exception if the buffer is not shared.

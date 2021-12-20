@@ -29,10 +29,10 @@
 
 namespace Falcor
 {
-    class dlldecl RenderPassReflection
+    class FALCOR_API RenderPassReflection
     {
     public:
-        class dlldecl Field
+        class FALCOR_API Field
         {
         public:
             /** The type of visibility the field has
@@ -64,7 +64,7 @@ namespace Falcor
                 TextureCube,
                 RawBuffer,
             };
-            
+
             Field(const std::string& name, const std::string& desc, Visibility v);
             Field() = default;
 
@@ -113,17 +113,18 @@ namespace Falcor
             friend class RenderPassReflection;
 
             Type mType = Type::Texture2D;
-            std::string mName;                             ///< The field's name
-            std::string mDesc;                             ///< A description of the field
-            uint32_t mWidth = 0;                           ///< For texture, the width. For buffers, the size in bytes. 0 means don't care - the pass will use whatever is bound (the RenderGraph will use the window size if this field is 0)
-            uint32_t mHeight = 0;                          ///< 0 means don't care - the pass will use whatever is bound (the RenderGraph will use the window size if this field is 0)
-            uint32_t mDepth = 0;                           ///< 0 means don't care - the pass will use whatever is bound (the RenderGraph will use the window size if this field is 0)
-            uint32_t mSampleCount = 1;                     ///< 0 means don't care - the pass will use whatever is bound
-            uint32_t mMipCount = 1;                        ///< The required mip-level count. Only valid for textures
-            uint32_t mArraySize = 1;                       ///< The required array-size. Only valid for textures
-            ResourceFormat mFormat = ResourceFormat::Unknown; ///< Unknown means use the back-buffer format for output resources, don't care for input resources
-            ResourceBindFlags mBindFlags = ResourceBindFlags::None;  ///< The required bind flags. The default for outputs is RenderTarget, for inputs is ShaderResource and for InOut (RenderTarget | ShaderResource)
-            Flags mFlags = Flags::None;                    ///< The field flags
+            std::string mName;                             ///< The field's name.
+            std::string mDesc;                             ///< A description of the field.
+            uint32_t mWidth = 0;                           ///< For texture, the width in texels. For buffers, the size in bytes. 0 means don't care - the pass will use whatever is bound (the RenderGraph will use the window size by default).
+            uint32_t mHeight = 0;                          ///< For texture, the height in texels. 0 means don't care - the pass will use whatever is bound (the RenderGraph will use the window size by default).
+            uint32_t mDepth = 0;                           ///< For texture, the depth in texels. 0 means don't care - the pass will use whatever is bound (the RenderGraph will use the window size by default).
+            uint32_t mSampleCount = 1;                     ///< The required sample count. Only valid for textures.
+            uint32_t mMipCount = 1;                        ///< The required mip-level count. Only valid for textures.
+            uint32_t mArraySize = 1;                       ///< The required array-size. Only valid for textures.
+
+            ResourceFormat mFormat = ResourceFormat::Unknown; ///< Unknown means use the back-buffer format for output resources, don't care for input resources.
+            ResourceBindFlags mBindFlags = ResourceBindFlags::None;  ///< The required bind flags. The default for outputs is RenderTarget, for inputs is ShaderResource and for InOut (RenderTarget | ShaderResource).
+            Flags mFlags = Flags::None;                    ///< The field flags.
             Visibility mVisibility = Visibility::Undefined;
         };
 
@@ -146,8 +147,8 @@ namespace Falcor
         std::vector<Field> mFields;
     };
 
-    enum_class_operators(RenderPassReflection::Field::Visibility);
-    enum_class_operators(RenderPassReflection::Field::Flags);
+    FALCOR_ENUM_CLASS_OPERATORS(RenderPassReflection::Field::Visibility);
+    FALCOR_ENUM_CLASS_OPERATORS(RenderPassReflection::Field::Flags);
 
     inline std::string to_string(RenderPassReflection::Field::Type t)
     {
@@ -180,7 +181,7 @@ namespace Falcor
         case Resource::Type::TextureCube:
             return RenderPassReflection::Field::Type::TextureCube;
         default:
-            throw std::runtime_error("resourceTypeToFieldType - No RenderPassReflection::Field::Type exists for Resource::Type::" + to_string(t));
+            throw RuntimeError("resourceTypeToFieldType - No RenderPassReflection::Field::Type exists for Resource::Type::{}", to_string(t));
         }
     }
 }

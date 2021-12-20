@@ -27,7 +27,6 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "FalcorExperimental.h"
 #include "CSMData.slang"
 #include "../Utils/GaussianBlur/GaussianBlur.h"
 
@@ -38,7 +37,7 @@ class CSM : public RenderPass
 public:
     using SharedPtr = std::shared_ptr<CSM>;
 
-    static const char* kDesc;
+    static const Info kInfo;
 
     enum class PartitionMode
     {
@@ -49,11 +48,10 @@ public:
 
     static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict = {});
 
-    virtual std::string getDesc() override { return kDesc; }
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
-    virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
-    virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
+    virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
+    virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     virtual void renderUI(Gui::Widgets& widget) override;
 

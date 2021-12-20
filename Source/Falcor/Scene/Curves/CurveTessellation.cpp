@@ -42,12 +42,12 @@ namespace Falcor
             float3 q = sphere.xyz + float3(sphere.w, 0, 0);
             float4 xp = xform * float4(sphere.xyz, 1.f);
             float4 xq = xform * float4(q, 1.f);
-            float xr = glm::length(xq - xp);
+            float xr = glm::length(xq.xyz - xp.xyz);
             return float4(xp.xyz, xr);
         }
     }
 
-    CurveTessellation::SweptSphereResult CurveTessellation::convertToLinearSweptSphere(size_t strandCount, const int* vertexCountsPerStrand, const float3* controlPoints, const float* widths, const float2* UVs, uint32_t degree, uint32_t subdivPerSegment, const glm::mat4& xform)
+    CurveTessellation::SweptSphereResult CurveTessellation::convertToLinearSweptSphere(size_t strandCount, const int* vertexCountsPerStrand, const float3* controlPoints, const float* widths, const float2* UVs, uint32_t degree, uint32_t subdivPerSegment, uint32_t keepOneEveryXPerStrand, const glm::mat4& xform)
     {
         SweptSphereResult result;
 
@@ -60,9 +60,14 @@ namespace Falcor
         uint32_t segCounts = 0;
         for (uint32_t i = 0; i < strandCount; i++)
         {
-            pointCounts += subdivPerSegment * (vertexCountsPerStrand[i] - 1) + 1;
-            segCounts += pointCounts - 1;
+            uint32_t tmpPointCount = (subdivPerSegment * (vertexCountsPerStrand[i] - 1) + keepOneEveryXPerStrand - 1) / keepOneEveryXPerStrand + 1;
+            pointCounts += tmpPointCount;
+            segCounts += tmpPointCount - 1;
         }
+        result.indices.reserve(segCounts);
+        result.points.reserve(pointCounts);
+        result.radius.reserve(pointCounts);
+        result.texCrds.reserve(pointCounts);
 
         uint32_t pointOffset = 0;
         for (uint32_t i = 0; i < strandCount; i++)
@@ -70,18 +75,23 @@ namespace Falcor
             CubicSpline strandPoints(controlPoints + pointOffset, vertexCountsPerStrand[i]);
             CubicSpline strandWidths(widths + pointOffset, vertexCountsPerStrand[i]);
 
-            uint32_t resOffset = (uint32_t)result.points.size();
+            uint32_t tmpCount = 0;
             for (uint32_t j = 0; j < (uint32_t)vertexCountsPerStrand[i] - 1; j++)
             {
                 for (uint32_t k = 0; k < subdivPerSegment; k++)
                 {
-                    float t = (float)k / (float)subdivPerSegment;
-                    result.indices.push_back((uint32_t)result.points.size());
+                    // Always keep the last vertex.
+                    if (tmpCount % keepOneEveryXPerStrand == 0 || (j == vertexCountsPerStrand[i] - 1 && k == subdivPerSegment - 1))
+                    {
+                        float t = (float)k / (float)subdivPerSegment;
+                        result.indices.push_back((uint32_t)result.points.size());
 
-                    // Pre-transform curve points.
-                    float4 sph = transformSphere(xform, float4(strandPoints.interpolate(j, t), strandWidths.interpolate(j, t) * 0.5f));
-                    result.points.push_back(sph.xyz);
-                    result.radius.push_back(sph.w);
+                        // Pre-transform curve points.
+                        float4 sph = transformSphere(xform, float4(strandPoints.interpolate(j, t), strandWidths.interpolate(j, t) * 0.5f));
+                        result.points.push_back(sph.xyz);
+                        result.radius.push_back(sph.w);
+                    }
+                    tmpCount++;
                 }
             }
 
@@ -93,12 +103,17 @@ namespace Falcor
             if (UVs)
             {
                 CubicSpline strandUVs(UVs + pointOffset, vertexCountsPerStrand[i]);
+                tmpCount = 0;
                 for (uint32_t j = 0; j < (uint32_t)vertexCountsPerStrand[i] - 1; j++)
                 {
                     for (uint32_t k = 0; k < subdivPerSegment; k++)
                     {
-                        float t = (float)k / (float)subdivPerSegment;
-                        result.texCrds.push_back(strandUVs.interpolate(j, t));
+                        if (tmpCount % keepOneEveryXPerStrand == 0 || (j == vertexCountsPerStrand[i] - 1 && k == subdivPerSegment - 1))
+                        {
+                            float t = (float)k / (float)subdivPerSegment;
+                            result.texCrds.push_back(strandUVs.interpolate(j, t));
+                        }
+                        tmpCount++;
                     }
                 }
                 result.texCrds.push_back(strandUVs.interpolate(vertexCountsPerStrand[i] - 2, 1.f));

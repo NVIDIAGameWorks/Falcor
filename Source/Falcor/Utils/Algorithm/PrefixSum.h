@@ -38,7 +38,7 @@ namespace Falcor
         The prefix sum is computed in place using exclusive scan.
         Each new element is y[i] = x[0] + ... + x[i-1], for i=1..N and y[0] = 0.
     */
-    class dlldecl PrefixSum : public std::enable_shared_from_this<PrefixSum>
+    class FALCOR_API PrefixSum
     {
     public:
         using SharedPtr = std::shared_ptr<PrefixSum>;
@@ -72,5 +72,7 @@ namespace Falcor
         ComputeVars::SharedPtr      mpPrefixSumFinalizeVars;
 
         Buffer::SharedPtr           mpPrefixGroupSums;              ///< Temporary buffer for prefix sum computation.
+        Buffer::SharedPtr           mpTotalSum;                     ///< Temporary buffer for total sum of an iteration.
+        Buffer::SharedPtr           mpPrevTotalSum;                 ///< Temporary buffer for prev total sum of an iteration.
     };
 }

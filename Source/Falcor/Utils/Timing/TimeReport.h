@@ -36,7 +36,7 @@ namespace Falcor
     /** Utility class to record a number of timing measurements and print them afterwards.
         This is mainly intended for measuring longer running tasks on the CPU.
     */
-    class dlldecl TimeReport
+    class FALCOR_API TimeReport
     {
     public:
         TimeReport();

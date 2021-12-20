@@ -42,9 +42,9 @@ namespace Falcor
         SharedPtr pSampler = SharedPtr(new Sampler(desc));
         D3D12_SAMPLER_DESC d3dDesc;
         initD3D12SamplerDesc(pSampler.get(), d3dDesc);
-        DescriptorSet::Layout layout;
-        layout.addRange(DescriptorSet::Type::Sampler, 0, 1);
-        pSampler->mApiHandle = DescriptorSet::create(gpDevice->getCpuDescriptorPool(), layout);
+        D3D12DescriptorSet::Layout layout;
+        layout.addRange(ShaderResourceType::Sampler, 0, 1);
+        pSampler->mApiHandle = D3D12DescriptorSet::create(gpDevice->getD3D12CpuDescriptorPool(), layout);
         gpDevice->getApiHandle()->CreateSampler(&d3dDesc, pSampler->mApiHandle->getCpuHandle(0));
 
         return pSampler;

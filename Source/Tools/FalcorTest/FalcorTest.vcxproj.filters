@@ -149,6 +149,27 @@
     <ClCompile Include="Tests\Platform\MonitorInfoTests.cpp">
       <Filter>Tests\Platform</Filter>
     </ClCompile>
+    <ClCompile Include="Tests\Core\BlitTests.cpp">
+      <Filter>Tests\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Utils\Float16TypesTests.cpp">
+      <Filter>Tests\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Slang\SlangInheritance.cpp">
+      <Filter>Tests\Slang</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Slang\SlangReinterpretCast.cpp">
+      <Filter>Tests\Slang</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Slang\UnboundedDescriptorArray.cpp">
+      <Filter>Tests\Slang</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Core\DDSReadTests.cpp">
+      <Filter>Tests\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Utils\ImageProcessing.cpp">
+      <Filter>Tests\Utils</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FalcorTest.h" />
@@ -302,6 +323,21 @@
     </ShaderSource>
     <ShaderSource Include="Tests\Scene\Material\BxDFTests.cs.slang">
       <Filter>Tests\Scene\Material</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Core\BlitTests.cs.slang">
+      <Filter>Tests\Core</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Slang\SlangInheritance.cs.slang">
+      <Filter>Tests\Slang</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Slang\SlangReinterpretCast.cs.slang">
+      <Filter>Tests\Slang</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Slang\UnboundedDescriptorArray.cs.slang">
+      <Filter>Tests\Slang</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Core\DDSReadTests.cs.slang">
+      <Filter>Tests\Core</Filter>
     </ShaderSource>
   </ItemGroup>
 </Project>

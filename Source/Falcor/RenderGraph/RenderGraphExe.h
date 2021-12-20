@@ -34,10 +34,11 @@ namespace Falcor
 {
     class RenderGraphCompiler;
 
-    class dlldecl RenderGraphExe
+    class FALCOR_API RenderGraphExe
     {
     public:
         using SharedPtr = std::shared_ptr<RenderGraphExe>;
+
         struct Context
         {
             RenderContext* pRenderContext;

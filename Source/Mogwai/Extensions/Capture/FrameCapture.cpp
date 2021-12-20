@@ -58,6 +58,12 @@ namespace Mogwai
         return UniquePtr(new FrameCapture(pRenderer));
     }
 
+    FrameCapture::FrameCapture(Renderer* pRenderer)
+        : CaptureTrigger(pRenderer, "Frame Capture")
+    {
+        mpImageProcessing = ImageProcessing::create();
+    }
+
     void FrameCapture::renderUI(Gui* pGui)
     {
         if (mShowUI)
@@ -119,7 +125,7 @@ namespace Mogwai
         return s;
     }
 
-    void FrameCapture::triggerFrame(RenderContext* pCtx, RenderGraph* pGraph, uint64_t frameID)
+    void FrameCapture::triggerFrame(RenderContext* pRenderContext, RenderGraph* pGraph, uint64_t frameID)
     {
         std::vector<std::string> unmarkedOutputs;
 
@@ -128,23 +134,114 @@ namespace Mogwai
             // Mark all outputs and (re)execute the graph.
             unmarkedOutputs = pGraph->getUnmarkedOutputs();
             for (const auto& output : unmarkedOutputs) pGraph->markOutput(output);
-            pGraph->execute(pCtx);
+            pGraph->execute(pRenderContext);
         }
 
         for (uint32_t i = 0 ; i < pGraph->getOutputCount() ; i++)
         {
-            Texture* pTex = pGraph->getOutput(i)->asTexture().get();
-            assert(pTex);
-            auto ext = Bitmap::getFileExtFromResourceFormat(pTex->getFormat());
-            auto format = Bitmap::getFormatFromFileExtension(ext);
-            std::string filename = getOutputNamePrefix(pGraph->getOutputName(i)) + std::to_string(gpFramework->getGlobalClock().getFrame()) + "." + ext;
-            pTex->captureToFile(0, 0, filename, format);
+            captureOutput(pRenderContext, pGraph, i);
         }
 
         if (mCaptureAllOutputs && !unmarkedOutputs.empty())
         {
             for (const auto& output : unmarkedOutputs) pGraph->unmarkOutput(output);
-            pGraph->compile(pCtx);
+            pGraph->compile(pRenderContext);
+        }
+    }
+
+    void FrameCapture::captureOutput(RenderContext* pRenderContext, RenderGraph* pGraph, const uint32_t outputIndex)
+    {
+        const std::string outputName = pGraph->getOutputName(outputIndex);
+        const std::string basename = getOutputNamePrefix(outputName) + std::to_string(gpFramework->getGlobalClock().getFrame());
+
+        const Texture::SharedPtr pOutput = pGraph->getOutput(outputIndex)->asTexture();
+        if (!pOutput) throw RuntimeError("Graph output {} is not a texture", outputName);
+
+        const ResourceFormat format = pOutput->getFormat();
+        const uint32_t channels = getFormatChannelCount(format);
+
+        for (auto mask : pGraph->getOutputMasks(outputIndex))
+        {
+            // Determine output color channels and filename suffix.
+            std::string suffix;
+            uint32_t outputChannels = 0;
+
+            switch (mask)
+            {
+            case TextureChannelFlags::Red: suffix = ".R"; outputChannels = 1; break;
+            case TextureChannelFlags::Green: suffix = ".G"; outputChannels = 1; break;
+            case TextureChannelFlags::Blue: suffix = ".B"; outputChannels = 1; break;
+            case TextureChannelFlags::Alpha: suffix = ".A"; outputChannels = 1; break;
+            case TextureChannelFlags::RGB: /* No suffix */ outputChannels = 3; break;
+            case TextureChannelFlags::RGBA: suffix = ".RGBA"; outputChannels = 4; break;
+            default:
+                logWarning(fmt::format("Graph output {} mask {#x} is not supported. Skipping.", outputName, mask));
+                continue;
+            }
+
+            // Copy relevant channels into new texture if necessary.
+            Texture::SharedPtr pTex = pOutput;
+            if (outputChannels == 1 && channels > 1)
+            {
+                // Determine output format.
+                ResourceFormat outputFormat = ResourceFormat::Unknown;
+                uint bits = getNumChannelBits(format, mask);
+
+                switch (getFormatType(format))
+                {
+                case FormatType::Unorm:
+                case FormatType::UnormSrgb:
+                    if (bits == 8) outputFormat = ResourceFormat::R8Unorm;
+                    else if (bits == 16) outputFormat = ResourceFormat::R16Unorm;
+                    break;
+                case FormatType::Snorm:
+                    if (bits == 8) outputFormat = ResourceFormat::R8Snorm;
+                    else if (bits == 16) outputFormat = ResourceFormat::R16Snorm;
+                    break;
+                case FormatType::Uint:
+                    if (bits == 8) outputFormat = ResourceFormat::R8Uint;
+                    else if (bits == 16) outputFormat = ResourceFormat::R16Uint;
+                    else if (bits == 32) outputFormat = ResourceFormat::R32Uint;
+                    break;
+                case FormatType::Sint:
+                    if (bits == 8) outputFormat = ResourceFormat::R8Int;
+                    else if (bits == 16) outputFormat = ResourceFormat::R16Int;
+                    else if (bits == 32) outputFormat = ResourceFormat::R32Int;
+                    break;
+                case FormatType::Float:
+                    if (bits == 16) outputFormat = ResourceFormat::R16Float;
+                    else if (bits == 32) outputFormat = ResourceFormat::R32Float;
+                    break;
+                }
+
+                if (outputFormat == ResourceFormat::Unknown)
+                {
+                    logWarning(fmt::format("Graph output {} mask {#x} failed to determine output format. Skipping.", outputName, mask));
+                    continue;
+                }
+
+                // If extracting a single R, G or B channel from an SRGB format we may lose some precision in the conversion
+                // to a singel channel non-SRGB format of the same bit depth. Issue a warning for this case for now.
+                // The alternative would be to convert to a higher-precision monochrome format like R32Float,
+                // but then the output image will be in a floating-point format which may be undesirable too.
+                if (is_set(mask, TextureChannelFlags::RGB) && isSrgbFormat(format))
+                {
+                    logWarning(fmt::format("Graph output {} mask {#x} extracting single RGB channel from SRGB format may lose precision.", outputName, mask));
+                }
+
+                // Copy color channel into temporary texture.
+                pTex = Texture::create2D(pOutput->getWidth(), pOutput->getHeight(), outputFormat, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+                mpImageProcessing->copyColorChannel(pRenderContext, pOutput->getSRV(0, 1, 0, 1), pTex->getUAV(), mask);
+            }
+
+            // Write output image.
+            auto ext = Bitmap::getFileExtFromResourceFormat(pTex->getFormat());
+            auto fileformat = Bitmap::getFormatFromFileExtension(ext);
+            std::string filename = basename + suffix + "." + ext;
+            Bitmap::ExportFlags flags = Bitmap::ExportFlags::None;
+            if (mask == TextureChannelFlags::RGBA) flags |= Bitmap::ExportFlags::ExportAlpha;
+
+            pTex->captureToFile(0, 0, filename, fileformat, flags);
         }
     }
 
@@ -156,7 +253,7 @@ namespace Mogwai
     void FrameCapture::addFrames(const std::string& graphName, const uint64_vec& frames)
     {
         auto pGraph = mpRenderer->getGraph(graphName).get();
-        if (!pGraph) throw std::runtime_error("Can't find a graph named '" + graphName + "'");
+        if (!pGraph) throw RuntimeError("Can't find a graph named '{}'", graphName);
         this->addFrames(pGraph, frames);
     }
 

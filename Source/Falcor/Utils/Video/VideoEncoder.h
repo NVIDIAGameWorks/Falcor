@@ -35,7 +35,7 @@ struct AVCodecContext;
 
 namespace Falcor
 {
-    class dlldecl VideoEncoder
+    class FALCOR_API VideoEncoder
     {
     public:
         using UniquePtr = std::unique_ptr<VideoEncoder>;

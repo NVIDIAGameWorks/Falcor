@@ -31,7 +31,7 @@
 
 namespace Falcor
 {
-    class dlldecl ParallelReduction
+    class FALCOR_API ParallelReduction
     {
     public:
         using UniquePtr = std::unique_ptr<ParallelReduction>;

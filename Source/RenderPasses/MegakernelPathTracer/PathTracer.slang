@@ -39,10 +39,10 @@
 __exported import Scene.Scene;
 __exported import Scene.Raytracing;
 __exported import Scene.HitInfo;
-__exported import Experimental.Scene.Material.StandardMaterial;
-__exported import RenderPasses.Shared.PathTracer.PixelStats;
+__exported import Scene.Material.ShadingUtils;
+__exported import Rendering.Materials.InteriorListHelpers;
+__exported import Rendering.Utils.PixelStats;
 __exported import RenderPasses.Shared.PathTracer.PathTracerHelpers;
-__exported import RenderPasses.Shared.PathTracer.InteriorListHelpers;
 __exported import RenderPasses.Shared.PathTracer.RayFootprint;
 __exported import Utils.Debug.PixelDebug;
 
@@ -58,9 +58,6 @@ struct PathTracerData
     // Samplers
     EnvMapSampler           envMapSampler;      ///< Environment map sampler.
     EmissiveLightSampler    emissiveSampler;    ///< Emissive light sampler.
-
-    // Materials
-    StandardMaterial        standardMaterial;   ///< Instance of Falcor's standard surface material.
 };
 
 /** Payload for shadow ray.
@@ -103,7 +100,7 @@ bool traceShadowRay(float3 origin, float3 dir, float distance, bool valid = true
     if (!valid) return false;
 
     // Note we're not counting stats for dummy rays. TODO: Make a separate bin in the logger.
-    logTraceRay(PixelStatsRayType::Shadow);
+    logTraceRay(PixelStatsRayType::Visibility);
 
     return rayData.visible;
 }
@@ -143,9 +140,9 @@ bool traceScatterRay(float3 origin, float3 dir, inout InteriorList interiorList,
         // Check for false intersections.
         if (kUseNestedDielectrics && rayData.packedHitInfo.x != 0)
         {
-            const TriangleHit triangleHit = HitInfo(rayData.packedHitInfo).getTriangleHit();
+            const TriangleHit triangleHit = TriangleHit(rayData.packedHitInfo);
             uint materialID = gScene.getMaterialID(triangleHit.instanceID);
-            uint nestedPriority = gScene.materials[materialID].getNestedPriority();
+            uint nestedPriority = gScene.materials.getMaterialHeader(materialID).getNestedPriority();
             if (!interiorList.isTrueIntersection(nestedPriority))
             {
                 if (rejectedHits < kMaxRejectedHits)
@@ -184,13 +181,15 @@ static VertexData v;
     \param[in] pt PathTracer data.
     \param[in] sd Shading data.
     \param[in,out] path Path data.
+    \return BSDF instance for the hit.
 */
-void handleHit(const PathTracerData pt, inout ShadingData sd, inout PathData path)
+IBSDF handleHit(const PathTracerData pt, inout ShadingData sd, inout PathData path)
 {
     logPathVertex();
 
     // We only support triangle hits.
     const TriangleHit triangleHit = path.hit.getTriangleHit();
+    const uint materialID = gScene.getMaterialID(triangleHit.instanceID);
 
     // Get vertex data for current hit point. VertexData and triangleVertices kept alive out of handleHit() to be used by rayFootprint.bounceOnSurface() if needed.
     v = gScene.getVertexData(triangleHit, triangleVertices);
@@ -198,30 +197,44 @@ void handleHit(const PathTracerData pt, inout ShadingData sd, inout PathData pat
     // Update the ray footprint with current hit surface.
     path.rayFootprint.hitSurface(v, triangleVertices, triangleHit, path.origin, path.dir);
 
-    // Evaluate Falcor's material parameters at the hit point using the current ray footprint mode and doing texLOD.
-    sd = prepareShadingData(v, path.rayFootprint, triangleVertices, triangleHit, path.origin, path.dir);
+    // Create texture sampler based on current ray footprint for texLOD.
+    let lod = path.rayFootprint.createTextureSampler(v, triangleVertices, triangleHit, path.origin, path.dir);
+
+    // Prepare shading data.
+    sd = gScene.materials.prepareShadingData(v, materialID, -path.dir, lod);
 
     if (kAdjustShadingNormals) adjustShadingNormal(sd, v);
 
     if (kUseNestedDielectrics)
     {
-        // Compute relative index of refraction at interface.
-        sd.eta = computeRelativeIoR(path.interiorList, sd.materialID, sd.frontFacing);
+        // Compute index of refraction for medium on the outside.
+        sd.IoR = computeOutsideIoR(path.interiorList, sd.materialID, sd.frontFacing);
 
         // Handle volume absorption.
         if (!path.interiorList.isEmpty())
         {
             const uint interiorMaterialID = path.interiorList.getTopMaterialID();
-            float3 sigmaA = gScene.materials[interiorMaterialID].volumeAbsorption;
-            float distance = length(path.origin - v.posW);
-            path.thp *= exp(-sigmaA * distance);
+
+            // Fetch volume absorption from the material. This field only exist in basic materials for now.
+            if (gScene.materials.isBasicMaterial(interiorMaterialID))
+            {
+                BasicMaterialData md = gScene.materials.getBasicMaterialData(interiorMaterialID);
+
+                float3 sigmaA = md.volumeAbsorption;
+                float distance = length(path.origin - v.posW);
+                path.thp *= exp(-sigmaA * distance);
+            }
         }
     }
 
+    // Create BSDF instance and query its properties.
+    let bsdf = gScene.materials.getBSDF(sd, lod);
+    let bsdfProperties = bsdf.getProperties(sd);
+
     // Disable specular lobes if caustics are disabled and path already contains non-specular vertex.
-    if (kDisableCaustics && path.nonSpecularBounces > 0 && sd.linearRoughness <= pt.params.specularRoughnessThreshold)
+    if (kDisableCaustics && path.nonSpecularBounces > 0 && bsdfProperties.roughness <= pt.params.specularRoughnessThreshold)
     {
-        sd.setActiveLobes((uint)LobeType::Diffuse);
+        sd.mtl.setActiveLobes((uint)LobeType::Diffuse);
     }
 
     // Check if the scatter event is samplable by the light sampling technique.
@@ -230,8 +243,9 @@ void handleHit(const PathTracerData pt, inout ShadingData sd, inout PathData pat
     // Determine if we need to compute the emissive based on the current configuration.
     // It's only needed if emissive is enabled, and its full contribution hasn't been sampled elsewhere.
     const bool computeEmissive = kUseEmissiveLights && (kUseLightsInDielectricVolumes || !path.isInsideVolume()) && (!kUseNEE || kUseMIS || !isLightSamplable);
+    const float3 emission = bsdfProperties.emissive;
 
-    if (computeEmissive && any(sd.emissive > 0.f))
+    if (computeEmissive && any(emission > 0.f))
     {
         float misWeight = 1.f;
         if (kUseNEE && kUseMIS && isLightSamplable)
@@ -255,7 +269,7 @@ void handleHit(const PathTracerData pt, inout ShadingData sd, inout PathData pat
         }
 
         // Accumulate emitted radiance weighted by path throughput and MIS weight.
-        path.L += path.thp * sd.emissive * misWeight;
+        path.L += path.thp * emission * misWeight;
     }
 
     path.length++;
@@ -263,6 +277,8 @@ void handleHit(const PathTracerData pt, inout ShadingData sd, inout PathData pat
     // Compute the ray origin for the next path segment.
     // The origin is offset slightly from the hit to avoid self-intersections.
     path.origin = sd.computeNewRayOrigin();
+
+    return bsdf;
 }
 
 /** Handle scatter ray miss.
@@ -297,24 +313,20 @@ void handleMiss(const PathTracerData pt, inout PathData path)
     }
 }
 
-void evalDirect(const PathTracerData pt, ShadingData sd, inout PathData path)
+void evalDirect(const PathTracerData pt, const ShadingData sd, const IBSDF bsdf, inout PathData path)
 {
     for (uint i = 0; i < kLightSamplesPerVertex; ++i)
     {
         ShadowRay shadowRay = {};
-        bool valid = generateShadowRay(pt.params, pt.envMapSampler, pt.emissiveSampler, sd, pt.standardMaterial, i, path, path.sg, shadowRay);
+        bool valid = generateShadowRay(pt.params, pt.envMapSampler, pt.emissiveSampler, sd, bsdf, i, path, path.sg, shadowRay);
         bool visible = traceShadowRay(path.origin, shadowRay.rayParams.xyz, shadowRay.rayParams.w, valid);
         path.L += visible ? shadowRay.Lr : float3(0.f);
     }
 }
 
-void tracePath(const PathTracerData pt, ShadingData sd, inout PathData path)
+void tracePath(const PathTracerData pt, ShadingData sd, IBSDF bsdf, inout PathData path)
 {
     logPathVertex();
-
-    // Always output directly emitted light from the primary hit.
-    // This is independent of whether emissive materials are treated as light sources or not.
-    path.L += sd.emissive;
 
     // Compute iteration count.
     // We always add one bounce for handling surfaces that cannot be handled using light sampling.
@@ -325,16 +337,22 @@ void tracePath(const PathTracerData pt, ShadingData sd, inout PathData path)
     [loop]
     for (uint depth = 0; depth < kIterationCount; depth++)
     {
+        let bsdfProperties = bsdf.getProperties(sd);
+
+        // Always output directly emitted light from the primary hit.
+        // This is independent of whether emissive materials are treated as light sources or not.
+        if (depth == 0)
+        {
+            path.L += bsdfProperties.emissive;
+        }
+
         // Determine if BSDF supports sampling with next-event estimation.
-        // The following line generates bad code:
-        // bool supportsNEE = (getBSDFLobes(sd) & (uint)LobeType::NonDeltaReflection) != 0;
-        uint lobes = pt.standardMaterial.getBSDFLobes(sd);
-        bool supportsNEE = (lobes & (uint)LobeType::DiffuseReflection) != 0 || (lobes & (uint)LobeType::SpecularReflection) != 0;
+        bool supportsNEE = (bsdf.getLobes(sd) & (uint)LobeType::NonDeltaReflection) != 0;
 
         // Compute direct illumination.
         if (kUseNEE && supportsNEE && (kUseLightsInDielectricVolumes || !path.isInsideVolume()))
         {
-            evalDirect(pt, sd, path);
+            evalDirect(pt, sd, bsdf, path);
         }
 
         // Russian roulette to stochastically terminate the path.
@@ -351,12 +369,12 @@ void tracePath(const PathTracerData pt, ShadingData sd, inout PathData path)
         const float3 rayDirIn = path.dir;
 
         // Generate next path segment.
-        if (!generateScatterRay(pt.params, sd, pt.standardMaterial, path, path.sg)) return;
+        if (!generateScatterRay(pt.params, sd, bsdf, path, path.sg)) return;
 
         // Scatter the ray footprint out of the surface. Primary bounce is handled at footprint creation time.
         if (depth > 0)
         {
-            path.rayFootprint.bounceOnSurface(v, triangleVertices, path.hit.getTriangleHit(), sd, v.normalW, rayDirIn, path.dir, path.isSpecular(), path.isTransmission());
+            path.rayFootprint.bounceOnSurface(v, triangleVertices, path.hit.getTriangleHit(), sd, v.normalW, rayDirIn, path.dir, bsdfProperties.roughness, path.isSpecular(), path.isTransmission());
         }
 
         // Update ray origin on transmissive events.
@@ -378,7 +396,7 @@ void tracePath(const PathTracerData pt, ShadingData sd, inout PathData path)
         // Handle scatter ray hit/miss.
         if (path.hit.isValid())
         {
-            handleHit(pt, sd, path);
+            bsdf = handleHit(pt, sd, path);
         }
         else
         {
