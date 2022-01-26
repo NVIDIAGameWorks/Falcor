@@ -55,7 +55,7 @@ namespace Falcor
         if (mNeedsRebuild)
         {
             // Get global list of emissive triangles.
-            assert(mpLightCollection);
+            FALCOR_ASSERT(mpLightCollection);
             const auto& triangles = mpLightCollection->getMeshLightTriangles();
 
             const size_t numTris = triangles.size();
@@ -73,7 +73,7 @@ namespace Falcor
 
     void EmissivePowerSampler::setShaderData(const ShaderVar& var) const
     {
-        assert(var.isValid());
+        FALCOR_ASSERT(var.isValid());
 
         var["_emissivePower"]["invWeightsSum"] = 1.0f / mTriangleTable.weightSum;
         var["_emissivePower"]["triangleAliasTable"] = mTriangleTable.fullTable;

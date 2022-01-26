@@ -42,14 +42,14 @@ namespace Falcor
         case QueryHeap::Type::PipelineStats:
             return D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return D3D12_QUERY_HEAP_TYPE(-1);
         }
     }
 
     QueryHeap::QueryHeap(Type type, uint32_t count) : mType(type), mCount(count)
     {
-        assert(gpDevice);
+        FALCOR_ASSERT(gpDevice);
         ID3D12Device* pDevice = gpDevice->getApiHandle().GetInterfacePtr();
         D3D12_QUERY_HEAP_DESC desc;
         desc.Count = count;

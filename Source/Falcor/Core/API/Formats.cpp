@@ -229,7 +229,7 @@ namespace Falcor
 
     DXGI_FORMAT getDxgiFormat(ResourceFormat format)
     {
-        assert(kDxgiFormatDesc[(uint32_t)format].falcorFormat == format);
+        FALCOR_ASSERT(kDxgiFormatDesc[(uint32_t)format].falcorFormat == format);
         return kDxgiFormatDesc[(uint32_t)format].dxgiFormat;
     }
 
@@ -256,7 +256,7 @@ namespace Falcor
         case ResourceFormat::D32Float:
             return DXGI_FORMAT_R32_TYPELESS;
         default:
-            assert(isDepthFormat(format) == false);
+            FALCOR_ASSERT(isDepthFormat(format) == false);
             return kDxgiFormatDesc[(uint32_t)format].dxgiFormat;
         }
     }

@@ -59,9 +59,9 @@ namespace Falcor
 
     void TextureAnalyzer::analyze(RenderContext* pRenderContext, const Texture::SharedPtr pInput, uint32_t mipLevel, uint32_t arraySlice, Buffer::SharedPtr pResult, uint64_t resultOffset, bool clearResult)
     {
-        assert(pRenderContext && pInput);
-        assert(pResult && resultOffset + getResultSize() <= pResult->getSize());
-        assert(resultOffset < std::numeric_limits<uint32_t>::max());
+        FALCOR_ASSERT(pRenderContext && pInput);
+        FALCOR_ASSERT(pResult && resultOffset + getResultSize() <= pResult->getSize());
+        FALCOR_ASSERT(resultOffset < std::numeric_limits<uint32_t>::max());
 
         checkFormatSupport(pInput, mipLevel, arraySlice);
 
@@ -71,10 +71,10 @@ namespace Falcor
         }
 
         auto pSRV = pInput->getSRV(mipLevel, 1, arraySlice, 1);
-        assert(pSRV);
+        FALCOR_ASSERT(pSRV);
 
         uint2 dim = { pInput->getWidth(mipLevel), pInput->getHeight(mipLevel) };
-        assert(dim.x > 0 && dim.y > 0);
+        FALCOR_ASSERT(dim.x > 0 && dim.y > 0);
 
         // Bind resources.
         auto var = mpAnalyzePass->getRootVar()["gTextureAnalyzer"];
@@ -88,8 +88,8 @@ namespace Falcor
 
     void TextureAnalyzer::analyze(RenderContext* pRenderContext, const std::vector<Texture::SharedPtr>& inputs, Buffer::SharedPtr pResult, bool clearResult)
     {
-        assert(pRenderContext && !inputs.empty());
-        assert(pResult && inputs.size() * getResultSize() <= pResult->getSize());
+        FALCOR_ASSERT(pRenderContext && !inputs.empty());
+        FALCOR_ASSERT(pResult && inputs.size() * getResultSize() <= pResult->getSize());
 
         if (clearResult)
         {
@@ -107,9 +107,9 @@ namespace Falcor
 
     void TextureAnalyzer::clear(RenderContext* pRenderContext, Buffer::SharedPtr pResult, uint64_t resultOffset, size_t resultCount) const
     {
-        assert(pRenderContext);
-        assert(pResult && resultOffset + resultCount * getResultSize() <= pResult->getSize());
-        assert(resultCount > 0 && resultOffset < std::numeric_limits<uint32_t>::max());
+        FALCOR_ASSERT(pRenderContext);
+        FALCOR_ASSERT(pResult && resultOffset + resultCount * getResultSize() <= pResult->getSize());
+        FALCOR_ASSERT(resultCount > 0 && resultOffset < std::numeric_limits<uint32_t>::max());
 
         // Bind resources.
         auto var = mpClearPass->getRootVar()["gTextureAnalyzer"];
@@ -148,7 +148,7 @@ namespace Falcor
         case FormatType::Uint:
             throw RuntimeError("Format {} is not supported", to_string(format));
         default:
-            assert(false);
+            FALCOR_ASSERT(false);
             throw RuntimeError("Unknown format type");
         }
     }

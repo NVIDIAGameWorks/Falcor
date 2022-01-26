@@ -43,7 +43,7 @@ namespace Falcor
         case Vao::Topology::TriangleStrip:
             return GraphicsStateObject::PrimitiveType::Triangle;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return GraphicsStateObject::PrimitiveType::Undefined;
         }
     }
@@ -132,11 +132,8 @@ namespace Falcor
 
     void GraphicsState::popFbo(bool setVp0Sc0)
     {
-        if (mFboStack.empty())
-        {
-            reportError("PipelineState::popFbo() - can't pop FBO since the FBO stack is empty.");
-            return;
-        }
+        checkInvariant(!mFboStack.empty(), "Empty stack.");
+
         setFbo(mFboStack.top(), setVp0Sc0);
         mFboStack.pop();
     }
@@ -193,17 +190,17 @@ namespace Falcor
 
     void GraphicsState::pushViewport(uint32_t index, const GraphicsState::Viewport& vp, bool setScissors)
     {
+        checkArgument(index < mVpStack.size(), "'index' is out of range.");
+
         mVpStack[index].push(mViewports[index]);
         setViewport(index, vp, setScissors);
     }
 
     void GraphicsState::popViewport(uint32_t index, bool setScissors)
     {
-        if (mVpStack[index].empty())
-        {
-            reportError("PipelineState::popViewport() - can't pop viewport since the viewport stack is empty.");
-            return;
-        }
+        checkArgument(index < mVpStack.size(), "'index' is out of range.");
+        checkInvariant(!mVpStack[index].empty(), "Empty stack.");
+
         const auto& VP = mVpStack[index].top();
         setViewport(index, VP, setScissors);
         mVpStack[index].pop();
@@ -211,17 +208,17 @@ namespace Falcor
 
     void GraphicsState::pushScissors(uint32_t index, const GraphicsState::Scissor& sc)
     {
+        checkArgument(index < mScStack.size(), "'index' is out of range.");
+
         mScStack[index].push(mScissors[index]);
         setScissors(index, sc);
     }
 
     void GraphicsState::popScissors(uint32_t index)
     {
-        if (mScStack[index].empty())
-        {
-            reportError("PipelineState::popScissors() - can't pop scissors since the scissors stack is empty.");
-            return;
-        }
+        checkArgument(index < mScStack.size(), "'index' is out of range.");
+        checkInvariant(!mScStack[index].empty(), "Empty stack.");
+
         const auto& sc = mScStack[index].top();
         setScissors(index, sc);
         mScStack[index].pop();

@@ -48,8 +48,8 @@ namespace Falcor
         mpVars = ComputeVars::create(mpInitialProgram.get());
 
         // Check assumptions on thread group sizes. The initial pass is a 2D dispatch, the final pass a 1D.
-        assert(mpInitialProgram->getReflector()->getThreadGroupSize().z == 1);
-        assert(mpFinalProgram->getReflector()->getThreadGroupSize().y == 1 && mpFinalProgram->getReflector()->getThreadGroupSize().z == 1);
+        FALCOR_ASSERT(mpInitialProgram->getReflector()->getThreadGroupSize().z == 1);
+        FALCOR_ASSERT(mpFinalProgram->getReflector()->getThreadGroupSize().y == 1 && mpFinalProgram->getReflector()->getThreadGroupSize().z == 1);
 
         mpState = ComputeState::create();
     }
@@ -60,26 +60,27 @@ namespace Falcor
         {
             // Buffer 0 has one element per tile.
             mpBuffers[0] = Buffer::createTyped<uint4>(elementCount * elementSize);
+            mpBuffers[0]->setName("ComputeParallelReduction::mpBuffers[0]");
 
             // Buffer 1 has one element per N elements in buffer 0.
             const uint32_t numElem1 = div_round_up(elementCount, mpFinalProgram->getReflector()->getThreadGroupSize().x);
             if (mpBuffers[1] == nullptr || mpBuffers[1]->getElementCount() < numElem1 * elementSize)
             {
                 mpBuffers[1] = Buffer::createTyped<uint4>(numElem1 * elementSize);
+                mpBuffers[1]->setName("ComputeParallelReduction::mpBuffers[1]");
             }
         }
     }
 
     template<typename T>
-    bool ComputeParallelReduction::execute(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, T* pResult, Buffer::SharedPtr pResultBuffer, uint64_t resultOffset)
+    void ComputeParallelReduction::execute(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, T* pResult, Buffer::SharedPtr pResultBuffer, uint64_t resultOffset)
     {
         FALCOR_PROFILE("ComputeParallelReduction::execute");
 
         // Check texture array/mip/sample count.
         if (pInput->getArraySize() != 1 || pInput->getMipCount() != 1 || pInput->getSampleCount() != 1)
         {
-            reportError("ComputeParallelReduction::execute() - Input texture is unsupported. Aborting.");
-            return false;
+            throw RuntimeError("ComputeParallelReduction::execute() - Input texture is unsupported.");
         }
 
         // Check texture format.
@@ -98,8 +99,7 @@ namespace Falcor
             formatType = FORMAT_TYPE_UINT;
             break;
         default:
-            reportError("ComputeParallelReduction::execute() - Input texture format unsupported. Aborting.");
-            return false;
+            throw RuntimeError("ComputeParallelReduction::execute() - Input texture format unsupported.");
         }
 
         // Check that reduction type T is compatible with the resource format.
@@ -108,8 +108,7 @@ namespace Falcor
             (formatType == FORMAT_TYPE_SINT && (!std::is_integral<T::value_type>::value || !std::is_signed<T::value_type>::value)) ||
             (formatType == FORMAT_TYPE_UINT && (!std::is_integral<T::value_type>::value || !std::is_unsigned<T::value_type>::value)))
         {
-            reportError("ComputeParallelReduction::execute() - Template type T is not compatible with resource format. Aborting.");
-            return false;
+            throw RuntimeError("ComputeParallelReduction::execute() - Template type T is not compatible with resource format.");
         }
 
         uint32_t reductionType = REDUCTION_TYPE_UNKNOWN;
@@ -125,23 +124,22 @@ namespace Falcor
             elementSize = 2;
             break;
         default:
-            reportError("ComputeParallelReduction::execute() - Unknown reduction type. Aborting.");
-            return false;
+            throw RuntimeError("ComputeParallelReduction::execute() - Unknown reduction type.");
         }
 
         // Allocate intermediate buffers if needed.
         const uint2 resolution = uint2(pInput->getWidth(), pInput->getHeight());
-        assert(resolution.x > 0 && resolution.y > 0);
-        assert(elementSize > 0);
+        FALCOR_ASSERT(resolution.x > 0 && resolution.y > 0);
+        FALCOR_ASSERT(elementSize > 0);
 
         const uint2 numTiles = div_round_up(resolution, uint2(mpInitialProgram->getReflector()->getThreadGroupSize()));
         allocate(numTiles.x * numTiles.y, elementSize);
-        assert(mpBuffers[0]);
-        assert(mpBuffers[1]);
+        FALCOR_ASSERT(mpBuffers[0]);
+        FALCOR_ASSERT(mpBuffers[1]);
 
         // Configure program.
         const uint32_t channelCount = getFormatChannelCount(pInput->getFormat());
-        assert(channelCount >= 1 && channelCount <= 4);
+        FALCOR_ASSERT(channelCount >= 1 && channelCount <= 4);
 
         Program::DefineList defines;
         defines.add("REDUCTION_TYPE", std::to_string(reductionType));
@@ -155,6 +153,7 @@ namespace Falcor
         mpVars["PerFrameCB"]["gResolution"] = resolution;
         mpVars["PerFrameCB"]["gNumTiles"] = numTiles;
         mpVars["gInput"] = pInput;
+        mpVars->setBuffer("gInputBuffer", nullptr); // Unbind previously bound buffer from last call to execute()
         mpVars->setBuffer("gResult", mpBuffers[0]);
 
         mpState->setProgram(mpInitialProgram);
@@ -186,8 +185,7 @@ namespace Falcor
         {
             if (resultOffset + resultSize > pResultBuffer->getSize())
             {
-                reportError("ComputeParallelReduction::execute() - Results buffer is too small. Aborting.");
-                return false;
+                throw RuntimeError("ComputeParallelReduction::execute() - Results buffer is too small.");
             }
 
             pRenderContext->copyBufferRegion(pResultBuffer.get(), resultOffset, mpBuffers[inputsBufferIndex].get(), 0, resultSize);
@@ -197,16 +195,14 @@ namespace Falcor
         if (pResult)
         {
             const T* pBuf = static_cast<const T*>(mpBuffers[inputsBufferIndex]->map(Buffer::MapType::Read));
-            assert(pBuf);
+            FALCOR_ASSERT(pBuf);
             std::memcpy(pResult, pBuf, resultSize);
             mpBuffers[inputsBufferIndex]->unmap();
         }
-
-        return true;
     }
 
     // Explicit template instantiation of the supported types.
-    template FALCOR_API bool ComputeParallelReduction::execute<float4>(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, float4* pResult, Buffer::SharedPtr pResultBuffer, uint64_t resultOffset);
-    template FALCOR_API bool ComputeParallelReduction::execute<int4>(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, int4* pResult, Buffer::SharedPtr pResultBuffer, uint64_t resultOffset);
-    template FALCOR_API bool ComputeParallelReduction::execute<uint4>(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, uint4* pResult, Buffer::SharedPtr pResultBuffer, uint64_t resultOffset);
+    template FALCOR_API void ComputeParallelReduction::execute<float4>(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, float4* pResult, Buffer::SharedPtr pResultBuffer, uint64_t resultOffset);
+    template FALCOR_API void ComputeParallelReduction::execute<int4>(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, int4* pResult, Buffer::SharedPtr pResultBuffer, uint64_t resultOffset);
+    template FALCOR_API void ComputeParallelReduction::execute<uint4>(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, uint4* pResult, Buffer::SharedPtr pResultBuffer, uint64_t resultOffset);
 }

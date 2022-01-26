@@ -101,7 +101,7 @@ namespace Mogwai
 
         if (document.HasParseError())
         {
-            logWarning("Failed to parse Mogwai settings file " + path.string() + ": " + rapidjson::GetParseError_En(document.GetParseError()));
+            logWarning("Failed to parse Mogwai settings file '{}': {}", path.string(), rapidjson::GetParseError_En(document.GetParseError()));
             return;
         }
 

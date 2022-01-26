@@ -75,7 +75,7 @@ namespace Falcor
         /** Create a new window.
             \param[in] desc Window configuration
             \param[in] pCallbacks User callbacks
-            \return A new object if creation succeeded, otherwise nullptr
+            \return A new object, or throws an exception if creation failed.
         */
         static SharedPtr create(const Desc& desc, ICallbacks* pCallbacks);
 

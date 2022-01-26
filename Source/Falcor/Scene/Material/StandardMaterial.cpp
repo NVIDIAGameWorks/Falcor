@@ -98,10 +98,8 @@ namespace Falcor
 
     void StandardMaterial::setShadingModel(ShadingModel model)
     {
-        if (model != ShadingModel::MetalRough && model != ShadingModel::SpecGloss)
-        {
-            throw ArgumentError("'model' must be MetalRough or SpecGloss");
-        }
+        checkArgument(model == ShadingModel::MetalRough || model == ShadingModel::SpecGloss, "'model' must be MetalRough or SpecGloss");
+
         if (getShadingModel() != model)
         {
             mData.setShadingModel(model);
@@ -113,7 +111,7 @@ namespace Falcor
     {
         if (getShadingModel() != ShadingModel::MetalRough)
         {
-            logWarning("Ignoring setRoughness(). Material '" + mName + "' does not use the metallic/roughness shading model.");
+            logWarning("Ignoring setRoughness(). Material '{}' does not use the metallic/roughness shading model.", mName);
             return;
         }
 
@@ -128,7 +126,7 @@ namespace Falcor
     {
         if (getShadingModel() != ShadingModel::MetalRough)
         {
-            logWarning("Ignoring setMetallic(). Material '" + mName + "' does not use the metallic/roughness shading model.");
+            logWarning("Ignoring setMetallic(). Material '{}' does not use the metallic/roughness shading model.", mName);
             return;
         }
 

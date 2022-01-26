@@ -30,11 +30,7 @@
 
 BEGIN_NAMESPACE_FALCOR
 
-enum class SolidAngleBoundMethod
-// TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
-#ifdef HOST_CODE
-    : uint32_t
-#endif
+enum class SolidAngleBoundMethod : uint32_t
 {
     BoxToCenter = 1,
     BoxToAverage,

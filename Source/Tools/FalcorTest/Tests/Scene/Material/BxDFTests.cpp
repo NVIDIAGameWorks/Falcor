@@ -98,9 +98,9 @@ namespace Falcor
 
         void setupSamplingTest(GPUUnitTestContext& ctx, const SamplingTestSpec& spec, const std::string& csEntry)
         {
-            assert(!spec.bxdf.empty());
-            assert(!spec.bxdfConfigs.empty());
-            assert(spec.sampleCount > spec.threadSampleCount && spec.sampleCount % spec.threadSampleCount == 0);
+            FALCOR_ASSERT(!spec.bxdf.empty());
+            FALCOR_ASSERT(!spec.bxdfConfigs.empty());
+            FALCOR_ASSERT(spec.sampleCount > spec.threadSampleCount && spec.sampleCount % spec.threadSampleCount == 0);
 
             uint32_t testCount = (uint32_t)spec.bxdfConfigs.size();
             uint32_t binCount = spec.phiBinCount * spec.cosThetaBinCount;

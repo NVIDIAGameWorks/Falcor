@@ -72,8 +72,16 @@ namespace Falcor
         case ResourceFormat::BGRA8UnormSrgb:
             return gfx::Format::B8G8R8A8_UNORM_SRGB;
         case ResourceFormat::BGRX8Unorm:
-            return gfx::Format::Unknown;
+            return gfx::Format::B8G8R8X8_UNORM;
         case ResourceFormat::BGRX8UnormSrgb:
+            return gfx::Format::B8G8R8X8_UNORM_SRGB;
+        case ResourceFormat::D16Unorm:
+            return gfx::Format::D16_UNORM;
+        case ResourceFormat::D24UnormS8:
+            return gfx::Format::Unknown;
+        case ResourceFormat::D32Float:
+            return gfx::Format::D32_FLOAT;
+        case ResourceFormat::D32FloatS8X24:
             return gfx::Format::Unknown;
         case ResourceFormat::R11G11B10Float:
             return gfx::Format::R11G11B10_FLOAT;
@@ -155,6 +163,14 @@ namespace Falcor
             return gfx::Format::B5G5R5A1_UNORM;
         case ResourceFormat::RGB9E5Float:
             return gfx::Format::R9G9B9E5_SHAREDEXP;
+        case ResourceFormat::RGBA16Float:
+            return gfx::Format::R16G16B16A16_FLOAT;
+        case ResourceFormat::RGBA16Int:
+            return gfx::Format::R16G16B16A16_SINT;
+        case ResourceFormat::RGBA16Uint:
+            return gfx::Format::R16G16B16A16_UINT;
+        case ResourceFormat::RGBA16Unorm:
+            return gfx::Format::R16G16B16A16_UNORM;
         case ResourceFormat::RGBA32Float:
             return gfx::Format::R32G32B32A32_FLOAT;
         case ResourceFormat::RGBA32Int:

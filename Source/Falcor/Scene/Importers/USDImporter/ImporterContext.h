@@ -161,7 +161,7 @@ namespace Falcor
             else
             {
                 // The node stack should at least contain the root node.
-                assert(nodeStack.size() > 0);
+                FALCOR_ASSERT(nodeStack.size() > 0);
                 float4x4 localTransform;
                 bool resets = getLocalTransform(prim, localTransform);
 

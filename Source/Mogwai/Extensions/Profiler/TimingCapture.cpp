@@ -70,13 +70,13 @@ namespace Mogwai
         {
             if (doesFileExist(filename))
             {
-                logWarning("Frame times in file '" + filename + "' will be overwritten.");
+                logWarning("Frame times in file '{}' will be overwritten.", filename);
             }
 
             mFrameTimeFile.open(filename, std::ofstream::trunc);
             if (!mFrameTimeFile.is_open())
             {
-                logError("Failed to open file '" + filename + "' for writing. Ignoring call.");
+                logError("Failed to open file '{}' for writing. Ignoring call.", filename);
             }
         }
     }

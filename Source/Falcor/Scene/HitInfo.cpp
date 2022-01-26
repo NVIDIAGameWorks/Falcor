@@ -98,15 +98,16 @@ namespace Falcor
         // Switch to using fewer bits for the type if compression is used.
         if (mUseCompression) mTypeBits = kCompressedTypeBits;
 
-        logInfo("HitInfo: Total size is " + std::to_string(mUseCompression ? 64 : 128) + " bits (" +
-            "type: " + std::to_string(mTypeBits) + " bits, "
-            "instanceID: " + std::to_string(mInstanceIDBits) + " bits, "
-            "primitiveIndex: " + std::to_string(mPrimitiveIndexBits) + " bits)");
+        logInfo(
+            "HitInfo: Total size is {} bits (type: {} bits, instanceID: {} bits, primitiveIndex: {} bits)",
+            mUseCompression ? 64 : 128, mTypeBits, mInstanceIDBits, mPrimitiveIndexBits
+        );
+
     }
 
     Shader::DefineList HitInfo::getDefines() const
     {
-        assert((mTypeBits + mInstanceIDBits) <= 32 && mPrimitiveIndexBits <= 32);
+        FALCOR_ASSERT((mTypeBits + mInstanceIDBits) <= 32 && mPrimitiveIndexBits <= 32);
         Shader::DefineList defines;
         defines.add("HIT_INFO_DEFINES", "1");
         defines.add("HIT_INFO_USE_COMPRESSION", mUseCompression ? "1" : "0");

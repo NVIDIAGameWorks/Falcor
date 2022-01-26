@@ -461,7 +461,7 @@ namespace Falcor
         // (The details are implemented later in this file)
         //
         auto pEntryPointArgs = pGlobalVars->getEntryPointGroupVars(0);
-        assert(pEntryPointArgs);
+        FALCOR_ASSERT(pEntryPointArgs);
         size_t entryPointArgsSize = 0;
         void* entryPointArgsData = pEntryPointArgs->getCUDAHostBuffer(entryPointArgsSize);
 
@@ -740,7 +740,7 @@ namespace Falcor
         // simply copy that data over to the CUDA buffer.
         //
         auto dataSize = getSize();
-        assert(dataSize <= bufferSize);
+        FALCOR_ASSERT(dataSize <= bufferSize);
         FALCOR_CUDA_THROW_ON_FAIL(cudaMemcpy(pBufferData, mData.data(), dataSize, memcpyKind));
 
         // For fields with "extraordinary" types (buffers, textures, etc.)
@@ -847,7 +847,7 @@ namespace Falcor
                     switch (descriptorType)
                     {
                     default:
-                        should_not_get_here();
+                        FALCOR_UNREACHABLE();
                         return;
 
                     case ShaderResourceType::RawBufferSrv:

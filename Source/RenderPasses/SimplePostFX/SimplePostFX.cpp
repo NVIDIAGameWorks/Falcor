@@ -139,7 +139,7 @@ SimplePostFX::SimplePostFX(const Dictionary& dict)
         else if (key == kColorOffsetScalar) setColorOffsetScalar(value);
         else if (key == kColorScaleScalar) setColorScaleScalar(value);
         else if (key == kColorPowerScalar) setColorPowerScalar(value);
-        else logWarning("Unknown field '" + key + "' in SimplePostFX dictionary");
+        else logWarning("Unknown field '{}' in SimplePostFX dictionary.", key);
     }
 
     Sampler::Desc samplerDesc;
@@ -167,7 +167,7 @@ void SimplePostFX::execute(RenderContext* pRenderContext, const RenderData& rend
 {
     auto pSrc = renderData[kSrc]->asTexture();
     auto pDst = renderData[kDst]->asTexture();
-    assert(pSrc && pDst);
+    FALCOR_ASSERT(pSrc && pDst);
 
     // Issue error and disable pass if I/O size doesn't match. The user can hit continue and fix the config or abort.
     if (getEnabled() && (pSrc->getWidth() != pDst->getWidth() || pSrc->getHeight() != pDst->getHeight()))
@@ -280,7 +280,7 @@ void SimplePostFX::preparePostFX(RenderContext* pRenderContext, uint32_t width, 
             if (!pBuf || pBuf->getWidth() != w || pBuf->getHeight() != h)
             {
                 pBuf = Texture::create2D(w, h, ResourceFormat::RGBA16Float, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
-                assert(pBuf);
+                FALCOR_ASSERT(pBuf);
             }
         }
     }

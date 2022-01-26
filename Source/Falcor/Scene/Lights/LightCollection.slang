@@ -44,7 +44,6 @@ struct LightCollection
     uint                                        triangleCount;          ///< Total number of emissive triangles in all mesh lights.
     uint                                        activeTriangleCount;    ///< Total number of active (non-culled) emissive triangles in all mesh lights.
     uint                                        meshCount;              ///< Total number of mesh lights.
-    uint                                        _pad;
 
     // These buffers are only valid if triangleCount > 0.
     [root] StructuredBuffer<PackedEmissiveTriangle> triangleData;       ///< Per-triangle geometry data for emissive triangles.

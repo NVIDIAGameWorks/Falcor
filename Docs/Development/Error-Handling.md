@@ -26,7 +26,7 @@ Note that error reporting is a separate topic from error handling and is discuss
 
 * Use asserts to check for logic errors in C++ code; errors that should never occur and are a result of programmer mistakes rather than runtime conditions.
 * Use `static_assert()` to check for logic errors at compile time if possible, for example, type checking of template arguments, or checking struct sizes.
-* Use `assert()` to check for logic errors at runtime.
+* Use `FALCOR_ASSERT()` to check for logic errors at runtime.
 * Use asserts generously. Even trivially correct code might be affected by changes elsewhere.
 * Make a habit of running the application in Debug mode regularly to make sure that no asserts trigger.
 

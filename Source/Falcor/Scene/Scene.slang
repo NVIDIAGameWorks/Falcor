@@ -28,17 +28,16 @@
 
 #include "SceneDefines.slangh"
 
+__exported import Scene.HitInfo;
 __exported import Scene.SceneTypes;
 __exported import Scene.Camera.Camera;
 __exported import Scene.Lights.LightData;
 __exported import Scene.Lights.LightCollection;
 __exported import Scene.Lights.EnvMap;
 __exported import Scene.Material.MaterialSystem;
-__exported import Scene.Material.MaterialFactory;
 __exported import Scene.Volume.GridVolume;
 __exported import Scene.SDFs.SDFGrid;
 
-import HitInfo;
 import Utils.Attributes;
 import Utils.Math.MathHelpers;
 import Utils.Geometry.GeometryHelpers;

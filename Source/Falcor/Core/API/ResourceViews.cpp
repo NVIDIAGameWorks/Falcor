@@ -95,25 +95,25 @@ namespace Falcor
 
     ShaderResourceView::SharedPtr ShaderResourceView::getNullView(ShaderResourceView::Dimension dimension)
     {
-        assert((size_t)dimension < gNullViews.srv.size() && gNullViews.srv[(size_t)dimension]);
+        FALCOR_ASSERT((size_t)dimension < gNullViews.srv.size() && gNullViews.srv[(size_t)dimension]);
         return gNullViews.srv[(size_t)dimension];
     }
 
     UnorderedAccessView::SharedPtr UnorderedAccessView::getNullView(UnorderedAccessView::Dimension dimension)
     {
-        assert((size_t)dimension < gNullViews.uav.size() && gNullViews.uav[(size_t)dimension]);
+        FALCOR_ASSERT((size_t)dimension < gNullViews.uav.size() && gNullViews.uav[(size_t)dimension]);
         return gNullViews.uav[(size_t)dimension];
     }
 
     DepthStencilView::SharedPtr DepthStencilView::getNullView(DepthStencilView::Dimension dimension)
     {
-        assert((size_t)dimension < gNullViews.dsv.size() && gNullViews.dsv[(size_t)dimension]);
+        FALCOR_ASSERT((size_t)dimension < gNullViews.dsv.size() && gNullViews.dsv[(size_t)dimension]);
         return gNullViews.dsv[(size_t)dimension];
     }
 
     RenderTargetView::SharedPtr RenderTargetView::getNullView(RenderTargetView::Dimension dimension)
     {
-        assert((size_t)dimension < gNullViews.rtv.size() && gNullViews.rtv[(size_t)dimension]);
+        FALCOR_ASSERT((size_t)dimension < gNullViews.rtv.size() && gNullViews.rtv[(size_t)dimension]);
         return gNullViews.rtv[(size_t)dimension];
     }
 

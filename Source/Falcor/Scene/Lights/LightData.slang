@@ -33,11 +33,7 @@ BEGIN_NAMESPACE_FALCOR
 
 /** Types of light sources. Used in LightData structure.
 */
-enum class LightType
-// TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
-#ifdef HOST_CODE
-    : uint32_t
-#endif
+enum class LightType : uint32_t
 {
     Point,          ///< Point light source, can be a spot light if its opening angle is < 2pi
     Directional,    ///< Directional light source
@@ -58,14 +54,14 @@ struct LightData
     float3   intensity          = float3(1, 1, 1);  ///< Emitted radiance of th light source
     float    cosOpeningAngle    = -1.f;             ///< For point (spot) light: cos(openingAngle), -1 by default because openingAngle is pi by default
     float    cosSubtendedAngle  = 0.9999893f;       ///< For distant light; cosine of the half-angle subtended by the light. Default corresponds to the sun as viewed from earth
-    float2   pad;
     float    penumbraAngle      = 0.f;              ///< For point (spot) light: Opening half-angle of penumbra region in radians, usually does not exceed openingAngle. 0.f by default, meaning a spot light with hard cut-off
+    float2   _pad0;
 
     // Extra parameters for analytic area lights
     float3   tangent            = float3(0);        ///< Tangent vector of the light shape
     float    surfaceArea        = 0.f;              ///< Surface area of the light shape
     float3   bitangent          = float3(0);        ///< Bitangent vector of the light shape
-    float    pad1;
+    float    _pad1;
     float4x4 transMat           = {};               ///< Transformation matrix of the light shape, from local to world space.
     float4x4 transMatIT         = {};               ///< Inverse-transpose of transformation matrix of the light shape
 };

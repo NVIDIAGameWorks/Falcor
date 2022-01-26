@@ -175,7 +175,7 @@ namespace Mogwai
             case TextureChannelFlags::RGB: /* No suffix */ outputChannels = 3; break;
             case TextureChannelFlags::RGBA: suffix = ".RGBA"; outputChannels = 4; break;
             default:
-                logWarning(fmt::format("Graph output {} mask {#x} is not supported. Skipping.", outputName, mask));
+                logWarning("Graph output {} mask {:#x} is not supported. Skipping.", outputName, mask);
                 continue;
             }
 
@@ -216,7 +216,7 @@ namespace Mogwai
 
                 if (outputFormat == ResourceFormat::Unknown)
                 {
-                    logWarning(fmt::format("Graph output {} mask {#x} failed to determine output format. Skipping.", outputName, mask));
+                    logWarning("Graph output {} mask {:#x} failed to determine output format. Skipping.", outputName, mask);
                     continue;
                 }
 
@@ -226,7 +226,7 @@ namespace Mogwai
                 // but then the output image will be in a floating-point format which may be undesirable too.
                 if (is_set(mask, TextureChannelFlags::RGB) && isSrgbFormat(format))
                 {
-                    logWarning(fmt::format("Graph output {} mask {#x} extracting single RGB channel from SRGB format may lose precision.", outputName, mask));
+                    logWarning("Graph output {} mask {:#x} extracting single RGB channel from SRGB format may lose precision.", outputName, mask);
                 }
 
                 // Copy color channel into temporary texture.

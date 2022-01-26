@@ -62,7 +62,7 @@ namespace Falcor
         */
         const CharTexCrdDesc& getCharDesc(char c) const
         {
-            assert(c >= mFirstChar && c <= mLastChar);
+            FALCOR_ASSERT(c >= mFirstChar && c <= mLastChar);
             return mCharDesc[c - mFirstChar];
         }
 

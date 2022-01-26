@@ -120,6 +120,16 @@ namespace Falcor
         */
         const Sampler::SharedPtr& getTextureSampler(const uint32_t samplerID) const { return mTextureSamplers[samplerID]; }
 
+        /** Add a buffer resource to be managed.
+            \param[in] pBuffer The buffer.
+            \return The ID of the buffer.
+        */
+        uint32_t addBuffer(const Buffer::SharedPtr& pBuffer);
+
+        /** Get the total number of managed buffers.
+        */
+        uint32_t getBufferCount() const { return (uint32_t)mBuffers.size(); }
+
         /** Add a material.
             If an identical material already exists, the material is not added and the existing ID returned.
             \param[in] pMaterial The material.
@@ -179,8 +189,10 @@ namespace Falcor
         uint32_t mSpecGlossMaterialCount = 0;                       ///< Number of standard materials using the SpecGloss shading model.
         TextureManager::SharedPtr mpTextureManager;                 ///< Texture manager holding all material textures.
         size_t mTextureDescCount = 0;                               ///< Number of texture descriptors in GPU descriptor array. This variable is for book-keeping until unbounded descriptor arrays are supported (see #1321).
+        size_t mBufferDescCount = 0;                                ///< Number of buffer descriptors in GPU descriptor array. This variable is for book-keeping until unbounded descriptor arrays are supported (see #1321).
 
         bool mSamplersChanged = false;                              ///< Flag indicating if samplers were added/removed since last update.
+        bool mBuffersChanged = false;                               ///< Flag indicating if buffers were added/removed since last update.
         bool mMaterialsChanged = false;                             ///< Flag indicating if materials were added/removed since last update. Per-material updates are tracked by each material's update flags.
         Material::UpdateFlags mMaterialUpdates = Material::UpdateFlags::None; ///< Material updates across all materials since last update.
 
@@ -189,7 +201,8 @@ namespace Falcor
         ParameterBlock::SharedPtr mpMaterialsBlock;                 ///< Parameter block for binding all material resources.
         Buffer::SharedPtr mpMaterialDataBuffer;                     ///< GPU buffer holding all material data.
         Sampler::SharedPtr mpDefaultTextureSampler;                 ///< Default texture sampler to use for all materials.
-        std::vector<Sampler::SharedPtr> mTextureSamplers;           ///< Texture sampler states. These are indexed by ID by the materials.
+        std::vector<Sampler::SharedPtr> mTextureSamplers;           ///< Texture sampler states. These are indexed by ID in the materials.
+        std::vector<Buffer::SharedPtr> mBuffers;                    ///< Buffers used by the materials. These are indexed by ID in the materials.
 
         // UI variables
         std::vector<uint32_t> mSortedMaterialIndices;               ///< Indices of materials, sorted alphabetically by case-insensitive name.

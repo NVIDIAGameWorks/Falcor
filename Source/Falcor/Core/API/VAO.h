@@ -83,7 +83,7 @@ namespace Falcor
 
         /** Get a vertex buffer
         */
-        const Buffer::SharedPtr& getVertexBuffer(uint32_t index) const { assert(index < (uint32_t)mpVBs.size()); return mpVBs[index]; }
+        const Buffer::SharedPtr& getVertexBuffer(uint32_t index) const { FALCOR_ASSERT(index < (uint32_t)mpVBs.size()); return mpVBs[index]; }
 
         /** Get a vertex buffer layout
         */

@@ -76,6 +76,11 @@ namespace Falcor
         return mApiHandle;
     }
 
+    bool RtAccelerationStructure::apiInit()
+    {
+        return true;
+    }
+
     AccelerationStructureHandle RtAccelerationStructure::getApiHandle() const
     {
         return const_cast<RtAccelerationStructure*>(this)->getShaderResourceView();
@@ -113,7 +118,7 @@ namespace Falcor
                     break;
 
                 default:
-                    should_not_get_here();
+                    FALCOR_UNREACHABLE();
                 }
             }
         }

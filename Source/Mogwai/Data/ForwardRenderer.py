@@ -1,4 +1,4 @@
-def render_graph_forward_renderer():
+def render_graph_ForwardRenderer():
     loadRenderPassLibrary("Antialiasing.dll")
     loadRenderPassLibrary("BlitPass.dll")
     loadRenderPassLibrary("CSM.dll")
@@ -7,35 +7,33 @@ def render_graph_forward_renderer():
     loadRenderPassLibrary("SSAO.dll")
     loadRenderPassLibrary("ToneMapper.dll")
 
-    skyBox = createPass("SkyBox")
+    ForwardRenderer = RenderGraph("ForwardRenderer")
 
-    forward_renderer = RenderGraph("ForwardRenderer")
-    forward_renderer.addPass(createPass("DepthPass"), "DepthPrePass")
-    forward_renderer.addPass(createPass("ForwardLightingPass"), "LightingPass")
-    forward_renderer.addPass(createPass("CSM"), "ShadowPass")
-    forward_renderer.addPass(createPass("BlitPass"), "BlitPass")
-    forward_renderer.addPass(createPass("ToneMapper", {'autoExposure': True}), "ToneMapping")
-    forward_renderer.addPass(createPass("SSAO"), "SSAO")
-    forward_renderer.addPass(createPass("FXAA"), "FXAA")
+    ForwardRenderer.addPass(createPass("DepthPass"), "DepthPrePass")
+    ForwardRenderer.addPass(createPass("ForwardLightingPass"), "LightingPass")
+    ForwardRenderer.addPass(createPass("CSM"), "ShadowPass")
+    ForwardRenderer.addPass(createPass("BlitPass"), "BlitPass")
+    ForwardRenderer.addPass(createPass("ToneMapper", {'autoExposure': True}), "ToneMapping")
+    ForwardRenderer.addPass(createPass("SSAO"), "SSAO")
+    ForwardRenderer.addPass(createPass("FXAA"), "FXAA")
+    ForwardRenderer.addPass(createPass("SkyBox"), "SkyBox")
 
-    forward_renderer.addPass(skyBox, "SkyBox")
+    ForwardRenderer.addEdge("DepthPrePass.depth", "SkyBox.depth")
+    ForwardRenderer.addEdge("SkyBox.target", "LightingPass.color")
+    ForwardRenderer.addEdge("DepthPrePass.depth", "ShadowPass.depth")
+    ForwardRenderer.addEdge("DepthPrePass.depth", "LightingPass.depth")
+    ForwardRenderer.addEdge("ShadowPass.visibility", "LightingPass.visibilityBuffer")
+    ForwardRenderer.addEdge("LightingPass.color", "ToneMapping.src")
+    ForwardRenderer.addEdge("ToneMapping.dst", "SSAO.colorIn")
+    ForwardRenderer.addEdge("LightingPass.normals", "SSAO.normals")
+    ForwardRenderer.addEdge("LightingPass.depth", "SSAO.depth")
+    ForwardRenderer.addEdge("SSAO.colorOut", "FXAA.src")
+    ForwardRenderer.addEdge("FXAA.dst", "BlitPass.src")
 
-    forward_renderer.addEdge("DepthPrePass.depth", "SkyBox.depth")
-    forward_renderer.addEdge("SkyBox.target", "LightingPass.color")
-    forward_renderer.addEdge("DepthPrePass.depth", "ShadowPass.depth")
-    forward_renderer.addEdge("DepthPrePass.depth", "LightingPass.depth")
-    forward_renderer.addEdge("ShadowPass.visibility", "LightingPass.visibilityBuffer")
-    forward_renderer.addEdge("LightingPass.color", "ToneMapping.src")
-    forward_renderer.addEdge("ToneMapping.dst", "SSAO.colorIn")
-    forward_renderer.addEdge("LightingPass.normals", "SSAO.normals")
-    forward_renderer.addEdge("LightingPass.depth", "SSAO.depth")
-    forward_renderer.addEdge("SSAO.colorOut", "FXAA.src")
-    forward_renderer.addEdge("FXAA.dst", "BlitPass.src")
+    ForwardRenderer.markOutput("BlitPass.dst")
 
-    forward_renderer.markOutput("BlitPass.dst")
+    return ForwardRenderer
 
-    return forward_renderer
-
-forward_renderer = render_graph_forward_renderer()
-try: m.addGraph(forward_renderer)
+ForwardRenderer = render_graph_ForwardRenderer()
+try: m.addGraph(ForwardRenderer)
 except NameError: None

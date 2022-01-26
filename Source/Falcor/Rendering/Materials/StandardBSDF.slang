@@ -46,7 +46,7 @@ import Utils.Math.MathHelpers;
 struct StandardBSDF : IBSDF
 {
     StandardBSDFData data;      ///< BSDF parameters.
-    float3 emissive;            ///< Radiance emitted in the incident direction (wi).
+    float3 emission;            ///< Radiance emitted in the incident direction (wi).
 
     float3 eval(const ShadingData sd, const float3 wo)
     {
@@ -89,7 +89,7 @@ struct StandardBSDF : IBSDF
     {
         BSDFProperties p = {};
 
-        p.emissive = emissive;
+        p.emission = emission;
 
         // Clamp roughness so it's representable of what is actually used in FalcorBSDF.
         // Roughness^2 below kMinGGXAlpha is used to indicate perfectly smooth surfaces.
@@ -115,7 +115,6 @@ struct StandardBSDF : IBSDF
     {
         return FalcorBSDF::getLobes(data);
     }
-
 
 
     // Additional functions

@@ -34,7 +34,7 @@ namespace Falcor
 {
     ID3D12ResourcePtr createBuffer(Buffer::State initState, size_t size, const D3D12_HEAP_PROPERTIES& heapProps, Buffer::BindFlags bindFlags)
     {
-        assert(gpDevice);
+        FALCOR_ASSERT(gpDevice);
         ID3D12Device* pDevice = gpDevice->getApiHandle();
 
         // Create the buffer
@@ -50,13 +50,13 @@ namespace Falcor
         bufDesc.SampleDesc.Count = 1;
         bufDesc.SampleDesc.Quality = 0;
         bufDesc.Width = size;
-        assert(bufDesc.Width > 0);
+        FALCOR_ASSERT(bufDesc.Width > 0);
 
         D3D12_RESOURCE_STATES d3dState = getD3D12ResourceState(initState);
         ID3D12ResourcePtr pApiHandle;
         D3D12_HEAP_FLAGS heapFlags = is_set(bindFlags, ResourceBindFlags::Shared) ? D3D12_HEAP_FLAG_SHARED : D3D12_HEAP_FLAG_NONE;
         FALCOR_D3D_CALL(pDevice->CreateCommittedResource(&heapProps, heapFlags, &bufDesc, d3dState, nullptr, IID_PPV_ARGS(&pApiHandle)));
-        assert(pApiHandle);
+        FALCOR_ASSERT(pApiHandle);
 
         return pApiHandle;
     }
@@ -96,7 +96,7 @@ namespace Falcor
             mState.global = Resource::State::GenericRead;
             if(hasInitData == false) // Else the allocation will happen when updating the data
             {
-                assert(gpDevice);
+                FALCOR_ASSERT(gpDevice);
                 mDynamicData = gpDevice->getUploadHeap()->allocate(mSize, getBufferDataAlignment(this));
                 mApiHandle = mDynamicData.pResourceHandle;
                 mGpuVaOffset = mDynamicData.offset;

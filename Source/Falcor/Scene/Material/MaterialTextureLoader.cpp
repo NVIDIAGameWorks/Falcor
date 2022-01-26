@@ -43,10 +43,10 @@ namespace Falcor
 
     void MaterialTextureLoader::loadTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const std::string& filename)
     {
-        assert(pMaterial);
+        FALCOR_ASSERT(pMaterial);
         if (!pMaterial->hasTextureSlot(slot))
         {
-            logWarning("MaterialTextureLoader::loadTexture() - Material '" + pMaterial->getName() + "' does not have texture slot '" + to_string(slot) + "'. Ignoring call.");
+            logWarning("MaterialTextureLoader::loadTexture() - Material '{}' does not have texture slot '{}'. Ignoring call.", pMaterial->getName(), to_string(slot));
             return;
         }
 

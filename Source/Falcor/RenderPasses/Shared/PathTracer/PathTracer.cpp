@@ -114,13 +114,13 @@ namespace Falcor
 
         // Create a sample generator.
         mpSampleGenerator = SampleGenerator::create(mSelectedSampleGenerator);
-        assert(mpSampleGenerator);
+        FALCOR_ASSERT(mpSampleGenerator);
 
         // Stats and debugging utils.
         mpPixelStats = PixelStats::create();
-        assert(mpPixelStats);
+        FALCOR_ASSERT(mpPixelStats);
         mpPixelDebug = PixelDebug::create();
-        assert(mpPixelDebug);
+        FALCOR_ASSERT(mpPixelDebug);
     }
 
     void PathTracer::parseDictionary(const Dictionary& dict)
@@ -132,7 +132,7 @@ namespace Falcor
             else if (key == kEmissiveSampler) mSelectedEmissiveSampler = value;
             else if (key == kUniformSamplerOptions) mUniformSamplerOptions = value;
             else if (key == kUniformSamplerOptions) mLightBVHSamplerOptions = value;
-            else logWarning("Unknown field '" + key + "' in PathTracer dictionary");
+            else logWarning("Unknown field '{}' in PathTracer dictionary.", key);
         }
     }
 
@@ -291,7 +291,7 @@ namespace Falcor
                             case EmissiveLightSamplerType::Power:
                                 break;
                             default:
-                                should_not_get_here();
+                                FALCOR_UNREACHABLE();
                             }
                             dirty = true;
                         }
@@ -380,26 +380,26 @@ namespace Falcor
     {
         if (mSharedParams.lightSamplesPerVertex < 1 || mSharedParams.lightSamplesPerVertex > kMaxLightSamplesPerVertex)
         {
-            reportError("Unsupported number of light samples per path vertex. Clamping to the range [1," + std::to_string(kMaxLightSamplesPerVertex) + "].");
+            logWarning("Unsupported number of light samples per path vertex. Clamping to the range [1,{}].", kMaxLightSamplesPerVertex);
             mSharedParams.lightSamplesPerVertex = std::clamp(mSharedParams.lightSamplesPerVertex, 1u, kMaxLightSamplesPerVertex);
             recreateVars();
         }
 
         if (mSharedParams.maxBounces > kMaxPathLength)
         {
-            reportError("'maxBounces' exceeds the maximum supported path length. Clamping to " + std::to_string(kMaxPathLength));
+            logWarning("'maxBounces' exceeds the maximum supported path length. Clamping to {}.", kMaxPathLength);
             mSharedParams.maxBounces = kMaxPathLength;
         }
 
         if (mSharedParams.maxNonSpecularBounces > mSharedParams.maxBounces)
         {
-            logWarning("'maxNonSpecularBounces' exceeds 'maxBounces'. Clamping to " + std::to_string(mSharedParams.maxBounces));
+            logWarning("'maxNonSpecularBounces' exceeds 'maxBounces'. Clamping to {}.", mSharedParams.maxBounces);
             mSharedParams.maxNonSpecularBounces = mSharedParams.maxBounces;
         }
 
         if (mSharedParams.specularRoughnessThreshold < 0.f || mSharedParams.specularRoughnessThreshold > 1.f)
         {
-            reportError("'specularRoughnessThreshold' has invalid value. Clamping to the range [0,1].");
+            logWarning("'specularRoughnessThreshold' has invalid value. Clamping to the range [0,1].");
             mSharedParams.specularRoughnessThreshold = std::clamp(mSharedParams.specularRoughnessThreshold, 0.f, 1.f);
         }
     }
@@ -496,7 +496,7 @@ namespace Falcor
                         mpEmissiveSampler = EmissivePowerSampler::create(pRenderContext, mpScene);
                         break;
                     default:
-                        reportError("Unknown emissive light sampler type");
+                        throw RuntimeError("Unknown emissive light sampler type");
                     }
                     if (!mpEmissiveSampler) throw RuntimeError("Failed to create emissive light sampler");
 
@@ -504,7 +504,7 @@ namespace Falcor
                 }
 
                 // Update the emissive sampler to the current frame.
-                assert(mpEmissiveSampler);
+                FALCOR_ASSERT(mpEmissiveSampler);
                 lightingChanged = mpEmissiveSampler->update(pRenderContext);
             }
         }
@@ -571,7 +571,7 @@ namespace Falcor
             if (!mSharedParams.useVBuffer && renderData[kViewDirInput] == nullptr)
             {
                 // The GBuffer path currently expects the view-dir input, give a warning if it is not available.
-                logWarning("Depth-of-field requires the '" + std::string(kViewDirInput) + "' G-buffer input. Expect incorrect shading.");
+                logWarning("Depth-of-field requires the '{}' G-buffer input. Expect incorrect shading.", kViewDirInput);
             }
             else if (mSharedParams.useVBuffer)
             {
@@ -596,7 +596,7 @@ namespace Falcor
 
         // Update the spread angle parameter for ray footprint.
         const uint2 targetDim = renderData.getDefaultTextureDims();
-        assert(targetDim.x > 0 && targetDim.y > 0);
+        FALCOR_ASSERT(targetDim.x > 0 && targetDim.y > 0);
         mSharedParams.screenSpacePixelSpreadAngle = mpScene->getCamera()->computeScreenSpacePixelSpreadAngle(targetDim.y);
 
         mpPixelDebug->beginFrame(pRenderContext, renderData.getDefaultTextureDims());
@@ -614,9 +614,9 @@ namespace Falcor
         {
             if (pDst && pSrc)
             {
-                assert(pDst && pSrc);
-                assert(pDst->getFormat() == pSrc->getFormat());
-                assert(pDst->getWidth() == pSrc->getWidth() && pDst->getHeight() == pSrc->getHeight());
+                FALCOR_ASSERT(pDst && pSrc);
+                FALCOR_ASSERT(pDst->getFormat() == pSrc->getFormat());
+                FALCOR_ASSERT(pDst->getWidth() == pSrc->getWidth() && pDst->getHeight() == pSrc->getHeight());
                 pRenderContext->copyResource(pDst, pSrc);
             }
             else if (pDst)

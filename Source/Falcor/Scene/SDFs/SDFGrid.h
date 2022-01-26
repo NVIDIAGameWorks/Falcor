@@ -73,13 +73,13 @@ namespace Falcor
 
         /** Set the the SDF primitives to be used to construct the SDF grid.
         */
-        bool setPrimitives(const std::vector<SDF3DPrimitive>& primitives, uint32_t gridWidth);
+        void setPrimitives(const std::vector<SDF3DPrimitive>& primitives, uint32_t gridWidth);
 
         /** Set the signed distance values of the SDF grid, values are expected to be at the corners of voxels.
             \param[in] cornerValues The corner values for all voxels in the grid.
             \param[in] gridWidth The grid width, note that this represents the grid width in voxels, not in values, i.e., cornerValues should have a size of (gridWidth + 1)^3.
         */
-        bool setValues(const std::vector<float>& cornerValues, uint32_t gridWidth);
+        void setValues(const std::vector<float>& cornerValues, uint32_t gridWidth);
 
         /** Set the signed distance values of the SDF grid from a file.
             \param[in] filename The name of a .sdfg file.
@@ -90,13 +90,12 @@ namespace Falcor
         /** Set the signed distance values of the SDF grid to represent a swiss cheese like shape.
             \param[in] gridWidth The grid width, note that this represents the grid width in voxels, not in values, i.e., cornerValues should have a size of (gridWidth + 1)^3.
             \param[in] seed Set the seed used to create the random holes in the swiss cheese..
-            \return true if the values could be set, otherwise false.
         */
-        bool generateCheeseValues(uint32_t gridWidth, uint32_t seed);
+        void generateCheeseValues(uint32_t gridWidth, uint32_t seed);
 
         /** Evaluates the SDF grid primitives on to a grid and writes the grid to a file.
             \param[in] filepath A path to the file that should store the values.
-            return true if the values could be written, otherwise false.
+            \return true if the values could be written, otherwise false.
         */
         bool writeValuesFromPrimitivesToFile(const std::string& filePath, RenderContext* pRenderContext = nullptr);
 
@@ -104,7 +103,7 @@ namespace Falcor
             \param[in] filename The name to the input file.
             \param[in] gridWidth The targeted width of the SDF grid, the resulting grid may have a larger width.
             \param[in] dir A directory path, if this is empty, the file will be searched for in data directories.
-            return The number of primitives loaded.
+            \return The number of primitives loaded.
         */
         uint32_t loadPrimitivesFromFile(const std::string& filename, uint32_t gridWidth, const std::string& dir = "");
 
@@ -136,7 +135,7 @@ namespace Falcor
 
         /** Creates the GPU data structures required to render the SDF grid.
         */
-        virtual bool createResources(RenderContext* pRenderContext = nullptr, bool deleteScratchData = true) = 0;
+        virtual void createResources(RenderContext* pRenderContext = nullptr, bool deleteScratchData = true) = 0;
 
         /** Returns an AABB buffer that can be used to create an accelerations strucure using this SDF grid.
         */
@@ -151,7 +150,7 @@ namespace Falcor
         virtual void setShaderData(const ShaderVar& var) const = 0;
 
     protected:
-        virtual bool setValuesInternal(const std::vector<float>& cornerValues) = 0;
+        virtual void setValuesInternal(const std::vector<float>& cornerValues) = 0;
 
         void updatePrimitivesBuffer();
 

@@ -81,12 +81,11 @@ namespace Falcor
         return bitScanReverse(mSVOElementCount - 1) + 1;
     }
 
-    bool SDFSVO::createResources(RenderContext* pRenderContext, bool deleteScratchData)
+    void SDFSVO::createResources(RenderContext* pRenderContext, bool deleteScratchData)
     {
         if (!mPrimitives.empty())
         {
-            reportError("An SDFSVO instance cannot be created from primitives!");
-            return false;
+            throw RuntimeError("An SDFSVO instance cannot be created from primitives!");
         }
 
         // Create source grid texture to read from.
@@ -376,8 +375,6 @@ namespace Falcor
             mpLocationCodesBuffer.reset();
             mpReadbackFence.reset();
         }
-
-        return true;
     }
 
     void SDFSVO::setShaderData(const ShaderVar& var) const
@@ -389,7 +386,7 @@ namespace Falcor
         var["svoElementCount"] = mSVOElementCount;
     }
 
-    bool SDFSVO::setValuesInternal(const std::vector<float>& cornerValues)
+    void SDFSVO::setValuesInternal(const std::vector<float>& cornerValues)
     {
         mLevelCount = bitScanReverse(mGridWidth) + 1;
 
@@ -405,7 +402,5 @@ namespace Falcor
             float integerScale = normalizedValue * float(INT8_MAX);
             mValues[v] = integerScale >= 0.0f ? int8_t(integerScale + 0.5f) : int8_t(integerScale - 0.5f);
         }
-
-        return true;
     }
 }

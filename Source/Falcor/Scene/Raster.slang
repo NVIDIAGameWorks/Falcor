@@ -26,8 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "VertexAttrib.slangh"
-__exported import Scene.Scene;
-import Scene.Material.TextureSampler;
+
+__exported import Scene.Shading;
 
 struct VSIn
 {

@@ -118,10 +118,7 @@ GraphicsVars::SharedPtr pProgramVars = GraphicsVars::create(pProgram->getReflect
 ### Rasterization
 
 The output of the default vertex shader includes two parameters: `instanceID`, and `materialID` which can be used to look up data for the current mesh being rendered.
-```c++
-gScene.geometryInstances[vertexOut.instanceID];
-gScene.materials[vertexOut.materialID];
-```
+See interfaces in `Scene/Scene.slang`.
 
 For basic usage, it is not necessary to perform the lookups yourself. A helper function defined in `Scene/Raster.slang` can load and prepare data for you.
 
@@ -131,7 +128,8 @@ import Scene.Raster;
 float4 main(VSOut vertexOut, float4 pixelCrd : SV_POSITION, uint triangleIndex : SV_PrimitiveID) : SV_TARGET
 {
     float3 viewDir = normalize(gScene.camera.getPosition() - vOut.posW);
-    ShadingData sd = prepareShadingData(vertexOut, triangleIndex, viewDir);
+    let lod = ImplicitLodTextureSampler();
+    ShadingData sd = prepareShadingData(vertexOut, triangleIndex, viewDir, lod);
     ...
 }
 ```
@@ -146,10 +144,11 @@ import Scene.Raytracing;
 [shader("closesthit")]
 void primaryClosestHit(inout PrimaryRayData hitData, in BuiltInTriangleIntersectionAttributes attribs)
 {
-    const uint globalInstanceID = getGlobalInstanceID();
-    const VertexData v = getVertexData(globalInstanceID, PrimitiveIndex(), attribs);
-    const uint materialID = gScene.getMaterialID(globalInstanceID);
-    ShadingData sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -WorldRayDirection(), 0);
+    GeometryInstanceID instanceID = getGeometryInstanceID();
+    VertexData v = getVertexData(instanceID, PrimitiveIndex(), attribs);
+    const uint materialID = gScene.getMaterialID(instanceID);
+    let lod = ExplicitLodTextureSampler(0.f);
+    ShadingData sd = gScene.materials.prepareShadingData(v, materialID, -WorldRayDirection(), lod);
     ...
 }
 ```

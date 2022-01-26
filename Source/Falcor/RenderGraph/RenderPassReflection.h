@@ -161,7 +161,7 @@ namespace Falcor
             t2s(Texture3D);
             t2s(TextureCube);
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return "";
         }
 #undef t2s

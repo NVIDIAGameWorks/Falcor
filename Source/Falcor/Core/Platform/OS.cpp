@@ -41,9 +41,23 @@ namespace Falcor
         gMsgBoxTitle = title;
     }
 
+    uint32_t getNextPowerOf2(uint32_t a)
+    {
+        // TODO: With C++20 we could use std::bit_ceil instead.
+        a--;
+        a |= a >> 1;
+        a |= a >> 2;
+        a |= a >> 4;
+        a |= a >> 8;
+        a |= a >> 16;
+        a++;
+        return a;
+    }
+
     uint32_t getLowerPowerOf2(uint32_t a)
     {
-        assert(a != 0);
+        // TODO: With C++20 we could use std::bit_floor instead.
+        FALCOR_ASSERT(a != 0);
         return 1 << bitScanReverse(a);
     }
 
@@ -194,21 +208,15 @@ namespace Falcor
         return false;
     }
 
-    bool findAvailableFilename(const std::string& prefix, const std::string& directory, const std::string& extension, std::string& filename)
+    std::string findAvailableFilename(const std::string& prefix, const std::string& directory, const std::string& extension)
     {
         for (uint32_t i = 0; i < (uint32_t)-1; i++)
         {
             std::string newPrefix = prefix + '.' + std::to_string(i);
-            filename = (fs::path(directory) / newPrefix).string() + "." + extension;
-
-            if (doesFileExist(filename) == false)
-            {
-                return true;
-            }
+            std::string filename = (fs::path(directory) / newPrefix).string() + "." + extension;
+            if (!doesFileExist(filename)) return filename;
         }
-        should_not_get_here();
-        filename = "";
-        return false;
+        throw RuntimeError("Failed to find available filename.");
     }
 
     std::string stripDataDirectories(const std::string& filename)

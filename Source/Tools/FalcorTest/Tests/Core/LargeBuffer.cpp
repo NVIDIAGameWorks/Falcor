@@ -92,7 +92,7 @@ namespace Falcor
             defines.add("USE_ROOT_DESC", useRootDesc ? "1" : "0");
 
             size_t elemCount = bufferSize / sizeof(uint32_t);
-            assert(elemCount <= std::numeric_limits<uint32_t>::max());
+            FALCOR_ASSERT(elemCount <= std::numeric_limits<uint32_t>::max());
 
             // Initialize small buffers with known data.
             std::vector<uint32_t> data(256);
@@ -143,7 +143,7 @@ namespace Falcor
             defines.add("USE_ROOT_DESC", useRootDesc ? "1" : "0");
 
             size_t elemCount = bufferSize / sizeof(uint4);
-            assert(elemCount <= std::numeric_limits<uint32_t>::max());
+            FALCOR_ASSERT(elemCount <= std::numeric_limits<uint32_t>::max());
 
             // Initialize small buffers with known data.
             std::vector<uint4> data(256);
@@ -194,7 +194,7 @@ namespace Falcor
             defines.add("USE_ROOT_DESC", useRootDesc ? "1" : "0");
 
             size_t elemCount = bufferSize / sizeof(uint32_t);
-            assert(elemCount <= std::numeric_limits<uint32_t>::max());
+            FALCOR_ASSERT(elemCount <= std::numeric_limits<uint32_t>::max());
 
             // Initialize small buffers with known data.
             std::vector<uint32_t> data(256);

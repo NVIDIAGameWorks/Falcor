@@ -81,7 +81,7 @@ namespace Falcor
     {
         if (mPasses.find(info.type) != mPasses.end())
         {
-            logWarning("Trying to register a render-pass '" + std::string(info.type) + "' to the render-passes library,  but a render-pass with the same name already exists. Ignoring the new definition");
+            logWarning("Trying to register a render-pass '{}' to the render-passes library, but a render-pass with the same name already exists. Ignoring the new definition.", info.type);
         }
         else
         {
@@ -101,12 +101,12 @@ namespace Falcor
         {
             // See if we can load a DLL with the render passes's type name and retry
             std::string libName = type + kDllType;
-            logInfo("Can't find a render-pass named '" + std::string(type) + "'. Trying to load a render-pass library '" + libName + "'");
+            logInfo("Can't find a render-pass named '{}'. Trying to load a render-pass library '{}'.", type, libName);
             loadLibrary(libName);
 
             if (mPasses.find(type) == mPasses.end())
             {
-                logWarning("Trying to create a render-pass named '" + type + "', but no such type exists in the library");
+                logWarning("Trying to create a render-pass named '{}', but no such type exists in the library.", type);
                 return nullptr;
             }
         }
@@ -145,7 +145,7 @@ namespace Falcor
         std::ofstream dst(fullpath + kDllSuffix, std::ios::binary);
         if (dst.fail())
         {
-            logWarning("Failed to open '" + fullpath + kDllSuffix + "' for writing. It is likely in use by another Falcor instance.");
+            logWarning("Failed to open '{}' for writing. It is likely in use by another Falcor instance.", fullpath + kDllSuffix);
             return;
         }
 
@@ -162,13 +162,13 @@ namespace Falcor
 
         if (doesFileExist(fullpath) == false)
         {
-            logWarning("Can't load render-pass library '" + fullpath + "'. File not found");
+            logWarning("Can't load render-pass library '{}'. File not found.", fullpath);
             return;
         }
 
         if (mLibs.find(fullpath) != mLibs.end())
         {
-            logInfo("Render-pass library '" + fullpath + "' already loaded. Ignoring 'loadLibrary()' call");
+            logInfo("Render-pass library '{}' already loaded. Ignoring 'loadLibrary()' call.", fullpath);
             return;
         }
 
@@ -217,7 +217,7 @@ namespace Falcor
         auto libIt = mLibs.find(fullpath);
         if (libIt == mLibs.end())
         {
-            logWarning("Can't unload render-pass library '" + fullpath + "'. The library wasn't loaded");
+            logWarning("Can't unload render-pass library '{}'. The library wasn't loaded.", fullpath);
             return;
         }
 
@@ -249,7 +249,7 @@ namespace Falcor
 
     void RenderPassLibrary::reloadLibrary(RenderContext* pRenderContext, std::string name)
     {
-        assert(pRenderContext);
+        FALCOR_ASSERT(pRenderContext);
 
         auto lastTime = getFileModifiedTime(name);
         if ((lastTime == mLibs[name].lastModified) || (lastTime == 0)) return;

@@ -33,4 +33,5 @@
 namespace Falcor
 {
     gfx::ResourceState getGFXResourceState(Resource::State state);
+    void getGFXResourceState(Resource::BindFlags flags, gfx::ResourceState& defaultState, gfx::ResourceStateSet& allowedStates);
 }

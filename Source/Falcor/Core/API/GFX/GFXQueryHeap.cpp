@@ -32,7 +32,7 @@ namespace Falcor
 {
     QueryHeap::QueryHeap(Type type, uint32_t count) : mType(type), mCount(count)
     {
-        assert(gpDevice);
+        FALCOR_ASSERT(gpDevice);
         gfx::IQueryPool::Desc desc = {};
         desc.count = count;
         switch (type)
@@ -41,7 +41,7 @@ namespace Falcor
             desc.type = gfx::QueryType::Timestamp;
             break;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             break;
         }
         gfx_call(gpDevice->getApiHandle()->createQueryPool(desc, mApiHandle.writeRef()));

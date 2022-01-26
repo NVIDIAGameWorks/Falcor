@@ -38,8 +38,8 @@ namespace Falcor
 
     D3D12RootSignature::Desc& D3D12RootSignature::Desc::addDescriptorSet(const DescriptorSetLayout& setLayout)
     {
-        assert(mRootConstants.empty()); // For now we disallow both root-constants and descriptor-sets
-        assert(setLayout.getRangeCount());
+        FALCOR_ASSERT(mRootConstants.empty()); // For now we disallow both root-constants and descriptor-sets
+        FALCOR_ASSERT(setLayout.getRangeCount());
         mSets.push_back(setLayout);
         return *this;
     }
@@ -57,7 +57,7 @@ namespace Falcor
 
     D3D12RootSignature::Desc& D3D12RootSignature::Desc::addRootConstants(uint32_t regIndex, uint32_t spaceIndex, uint32_t count)
     {
-        assert(mSets.empty()); // For now we disallow both root-constants and descriptor-sets
+        FALCOR_ASSERT(mSets.empty()); // For now we disallow both root-constants and descriptor-sets
         RootConstantsDesc desc;
         desc.count = count;
         desc.regIndex = regIndex;
@@ -151,7 +151,7 @@ namespace Falcor
         case D3D12RootSignature::DescType::StructuredBufferUav:
             return ReflectionResourceType::ShaderAccess::ReadWrite;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return ReflectionResourceType::ShaderAccess(-1);
         }
     }
@@ -184,8 +184,8 @@ namespace Falcor
 
             auto& resourceRange = pBlock->getResourceRange(rangeIndex);
             auto& bindingInfo = pBlock->getResourceRangeBindingInfo(rangeIndex);
-            assert(bindingInfo.flavor == ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::ParameterBlock);
-            assert(resourceRange.count == 1); // TODO: The code here does not handle arrays of sub-objects
+            FALCOR_ASSERT(bindingInfo.flavor == ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::ParameterBlock);
+            FALCOR_ASSERT(resourceRange.count == 1); // TODO: The code here does not handle arrays of sub-objects
 
             addParamBlockSets(bindingInfo.pSubObjectReflector.get(), ioDesc);
         }
@@ -203,8 +203,8 @@ namespace Falcor
 
             auto& resourceRange = pBlock->getResourceRange(rangeIndex);
             auto& bindingInfo = pBlock->getResourceRangeBindingInfo(rangeIndex);
-            assert(bindingInfo.isRootDescriptor());
-            assert(resourceRange.count == 1); // Root descriptors cannot be arrays
+            FALCOR_ASSERT(bindingInfo.isRootDescriptor());
+            FALCOR_ASSERT(resourceRange.count == 1); // Root descriptors cannot be arrays
 
             ioDesc.addRootDescriptor(resourceRange.descriptorType, bindingInfo.regIndex, bindingInfo.regSpace); // TODO: Using shader visibility *all* for now, get this info from reflection if we have it.
         }
@@ -220,7 +220,7 @@ namespace Falcor
                 continue;
 
             auto& resourceRange = pBlock->getResourceRange(rangeIndex);
-            assert(resourceRange.count == 1); // TODO: The code here does not handle arrays of sub-objects
+            FALCOR_ASSERT(resourceRange.count == 1); // TODO: The code here does not handle arrays of sub-objects
 
             addRootDescriptors(bindingInfo.pSubObjectReflector.get(), ioDesc);
         }
@@ -228,7 +228,7 @@ namespace Falcor
 
     D3D12RootSignature::SharedPtr D3D12RootSignature::create(const ProgramReflection* pReflector)
     {
-        assert(pReflector);
+        FALCOR_ASSERT(pReflector);
         D3D12RootSignature::Desc d;
         addParamBlockSets(pReflector->getDefaultParameterBlock().get(), d);
         addRootDescriptors(pReflector->getDefaultParameterBlock().get(), d);

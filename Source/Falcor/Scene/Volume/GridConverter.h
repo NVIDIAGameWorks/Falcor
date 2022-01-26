@@ -276,7 +276,7 @@ namespace Falcor
         std::for_each(std::execution::par, range.begin(), range.end(), [&](int z) { convertSlice(z); });
         for (int mip = 1; mip < 4; ++mip) computeMip(mip);
         double dt = CpuTimer::calcDuration(t0, CpuTimer::getCurrentTimePoint());
-        logInfo("converted in " + std::to_string(dt) + "ms: mNonEmptyCount " + std::to_string(mNonEmptyCount) + " vs max " + std::to_string(getAtlasMaxBrick()) + "\n");
+        logInfo("converted in {}ms: mNonEmptyCount {} vs max {}", dt, mNonEmptyCount, getAtlasMaxBrick());
 
         BrickedGrid bricks;
         bricks.range = Texture::create3D(mLeafDim[0].x, mLeafDim[0].y, mLeafDim[0].z, ResourceFormat::RG16Float, 4, mRangeData.data(), ResourceBindFlags::ShaderResource, false);

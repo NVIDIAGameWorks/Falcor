@@ -41,25 +41,32 @@ BEGIN_NAMESPACE_FALCOR
 struct MaterialHeader
 {
     uint2 packedData = {};
-    // packedData.y high 16 bits are reserved
 
-    static const uint kMaterialTypeBits = 8;
-    static const uint kAlphaModeBits = 1;
+    static const uint kMaterialTypeBits = 16;
     static const uint kNestedPriorityBits = 4;
     static const uint kLobeTypeBits = 8; // Only 6 bits needed if packing LobeType
-    static const uint kSamplerIDBits = 7;
+    static const uint kSamplerIDBits = 8;
+    static const uint kAlphaModeBits = 1;
+    static const uint kAlphaThresholdBits = 16; // Using float16_t format
 
+    // packedData.x bit layout
     static const uint kMaterialTypeOffset = 0;
-    static const uint kAlphaModeOffset = kMaterialTypeOffset + kMaterialTypeBits;
-    static const uint kNestedPriorityOffset = kAlphaModeOffset + kAlphaModeBits;
+    static const uint kNestedPriorityOffset = kMaterialTypeOffset + kMaterialTypeBits;
     static const uint kLobeTypeOffset = kNestedPriorityOffset + kNestedPriorityBits;
-    static const uint kSamplerIDOffset = kLobeTypeOffset + kLobeTypeBits;
-    static const uint kDoubleSidedFlagOffset = kSamplerIDOffset + kSamplerIDBits;
+    static const uint kDoubleSidedFlagOffset = kLobeTypeOffset + kLobeTypeBits;
     static const uint kThinSurfaceFlagOffset = kDoubleSidedFlagOffset + 1;
     static const uint kEmissiveFlagOffset = kThinSurfaceFlagOffset + 1;
     static const uint kIsBasicMaterialFlagOffset = kEmissiveFlagOffset + 1;
 
-    static const uint kTotalHeaderBits = kIsBasicMaterialFlagOffset + 1;
+    static const uint kTotalHeaderBitsX = kIsBasicMaterialFlagOffset + 1;
+
+    // packedData.y bit layout
+    static const uint kAlphaThresholdOffset = 0;
+    static const uint kAlphaModeOffset = kAlphaThresholdOffset + kAlphaThresholdBits;
+    static const uint kSamplerIDOffset = kAlphaModeOffset + kAlphaModeBits;
+
+    static const uint kTotalHeaderBitsY = kSamplerIDOffset + kSamplerIDBits;
+
 
     /** Set material type.
     */
@@ -71,19 +78,19 @@ struct MaterialHeader
 
     /** Set alpha testing mode.
     */
-    SETTER_DECL void setAlphaMode(AlphaMode mode) { packedData.x = PACK_BITS(kAlphaModeBits, kAlphaModeOffset, packedData.x, (uint)mode); }
+    SETTER_DECL void setAlphaMode(AlphaMode mode) { packedData.y = PACK_BITS(kAlphaModeBits, kAlphaModeOffset, packedData.y, (uint)mode); }
 
     /** Get material type.
     */
-    AlphaMode getAlphaMode() CONST_FUNCTION { return AlphaMode(EXTRACT_BITS(kAlphaModeBits, kAlphaModeOffset, packedData.x)); }
+    AlphaMode getAlphaMode() CONST_FUNCTION { return AlphaMode(EXTRACT_BITS(kAlphaModeBits, kAlphaModeOffset, packedData.y)); }
 
     /** Set alpha threshold.
     */
-    SETTER_DECL void setAlphaThreshold(float16_t alphaThreshold) { packedData.y = (uint)asuint16(alphaThreshold); }
+    SETTER_DECL void setAlphaThreshold(float16_t alphaThreshold) { packedData.y = PACK_BITS_UNSAFE(kAlphaThresholdBits, kAlphaThresholdOffset, packedData.y, (uint)asuint16(alphaThreshold)); }
 
     /** Get alpha threshold.
     */
-    float16_t getAlphaThreshold() CONST_FUNCTION { return asfloat16((uint16_t)packedData.y); }
+    float16_t getAlphaThreshold() CONST_FUNCTION { return asfloat16((uint16_t)EXTRACT_BITS(kAlphaThresholdBits, kAlphaThresholdOffset, packedData.y)); }
 
     /** Set the nested priority used for nested dielectrics.
     */
@@ -106,11 +113,11 @@ struct MaterialHeader
 
     /** Set default texture sampler ID.
     */
-    SETTER_DECL void setDefaultTextureSamplerID(uint samplerID) { packedData.x = PACK_BITS(kSamplerIDBits, kSamplerIDOffset, packedData.x, samplerID); }
+    SETTER_DECL void setDefaultTextureSamplerID(uint samplerID) { packedData.y = PACK_BITS(kSamplerIDBits, kSamplerIDOffset, packedData.y, samplerID); }
 
     /** Get default texture sampler ID.
     */
-    uint getDefaultTextureSamplerID() CONST_FUNCTION { return EXTRACT_BITS(kSamplerIDBits, kSamplerIDOffset, packedData.x); }
+    uint getDefaultTextureSamplerID() CONST_FUNCTION { return EXTRACT_BITS(kSamplerIDBits, kSamplerIDOffset, packedData.y); }
 
     /** Set double-sided flag.
     */

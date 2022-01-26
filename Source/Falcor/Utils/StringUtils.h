@@ -200,7 +200,7 @@ namespace Falcor
         return result;
     }
 
-    /** Replace all occurrences of a substring in a string. The function doesn't change the original string
+    /** Replace all occurrences of a substring in a string. The function doesn't change the original string.
         \param input The input string
         \param src The substring to replace
         \param dst The substring to replace Src with
@@ -209,7 +209,7 @@ namespace Falcor
     {
         std::string res = input;
         size_t offset = res.find(src);
-        while(offset != std::string::npos)
+        while (offset != std::string::npos)
         {
             res.replace(offset, src.length(), dst);
             offset += dst.length();
@@ -238,7 +238,7 @@ namespace Falcor
                 std::string indexStr = name.substr(bracket + 1);
                 char* pEndPtr;
                 index = strtol(indexStr.c_str(), &pEndPtr, 0);
-                assert(*pEndPtr == ']');
+                FALCOR_ASSERT(*pEndPtr == ']');
                 nonArray = name.substr(0, bracket);
                 return true;
             }

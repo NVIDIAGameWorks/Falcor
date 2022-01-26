@@ -32,6 +32,8 @@
 
 namespace Falcor
 {
+    static_assert(sizeof(LightData) % 16 == 0, "LightData size should be a multiple of 16B");
+
     // Light
 
     void Light::setActive(bool active)
@@ -61,8 +63,8 @@ namespace Falcor
         if (mPrevData.surfaceArea != mData.surfaceArea) mChanges |= Changes::SurfaceArea;
         if (mPrevData.transMat != mData.transMat) mChanges |= (Changes::Position | Changes::Direction);
 
-        assert(mPrevData.tangent == mData.tangent);
-        assert(mPrevData.bitangent == mData.bitangent);
+        FALCOR_ASSERT(mPrevData.tangent == mData.tangent);
+        FALCOR_ASSERT(mPrevData.bitangent == mData.bitangent);
 
         mPrevData = mData;
         mActiveChanged = false;
@@ -72,7 +74,7 @@ namespace Falcor
 
     void Light::setShaderData(const ShaderVar& var)
     {
-#define check_offset(_a) assert(var.getType()->getMemberOffset(#_a).getByteOffset() == offsetof(LightData, _a))
+#define check_offset(_a) FALCOR_ASSERT(var.getType()->getMemberOffset(#_a).getByteOffset() == offsetof(LightData, _a))
         check_offset(dirW);
         check_offset(intensity);
         check_offset(penumbraAngle);

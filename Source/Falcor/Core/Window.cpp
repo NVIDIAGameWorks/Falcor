@@ -162,8 +162,8 @@ namespace Falcor
 
         static void errorCallback(int errorCode, const char* pDescription)
         {
-            std::string errorMsg = std::to_string(errorCode) + " - " + std::string(pDescription) + "\n";
-            logError(errorMsg.c_str());
+            // GLFW errors are always recoverable. Therefore we just log the error.
+            logError("GLFW error {}: {}", errorCode, pDescription);
         }
 
         static void droppedFileCallback(GLFWwindow* pGlfwWindow, int count, const char** paths)
@@ -306,7 +306,7 @@ namespace Falcor
             case GLFW_KEY_MENU:
                 return KeyboardEvent::Key::Menu;
             default:
-                should_not_get_here();
+                FALCOR_UNREACHABLE();
                 return (KeyboardEvent::Key)0;
             }
         }
@@ -358,7 +358,7 @@ namespace Falcor
 
     void Window::setWindowSize(uint32_t width, uint32_t height)
     {
-        assert(width > 0 && height > 0);
+        FALCOR_ASSERT(width > 0 && height > 0);
 
         mDesc.width = width;
         mDesc.height = height;
@@ -385,11 +385,8 @@ namespace Falcor
         // Init GLFW
         if (glfwInit() == GLFW_FALSE)
         {
-            reportError("GLFW initialization failed");
-            return nullptr;
+            throw RuntimeError("Failed to initialize GLFW.");
         }
-
-        SharedPtr pWindow = SharedPtr(new Window(pCallbacks, desc));
 
         // Create the window
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -416,22 +413,22 @@ namespace Falcor
         }
 
         GLFWwindow* pGLFWWindow = glfwCreateWindow(w, h, desc.title.c_str(), nullptr, nullptr);
-
-        if (pGLFWWindow == nullptr)
+        if (!pGLFWWindow)
         {
-            reportError("Window creation failed!");
-            return nullptr;
+            throw RuntimeError("Failed to create GLFW window.");
         }
+
+        SharedPtr pWindow = SharedPtr(new Window(pCallbacks, desc));
 
         // Init handles
         pWindow->mpGLFWWindow = pGLFWWindow;
 #ifdef _WIN32
         pWindow->mApiHandle = glfwGetWin32Window(pGLFWWindow);
-        assert(pWindow->mApiHandle);
+        FALCOR_ASSERT(pWindow->mApiHandle);
 #else
         pWindow->mApiHandle.pDisplay = glfwGetX11Display();
         pWindow->mApiHandle.window = glfwGetX11Window(pGLFWWindow);
-        assert(pWindow->mApiHandle.pDisplay != nullptr);
+        FALCOR_ASSERT(pWindow->mApiHandle.pDisplay != nullptr);
 #endif
         setMainWindowHandle(pWindow->mApiHandle);
 

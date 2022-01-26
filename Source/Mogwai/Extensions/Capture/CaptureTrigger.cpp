@@ -100,7 +100,7 @@ namespace Mogwai
 
         if (mCurrent.pGraph)
         {
-            assert(pGraph == mCurrent.pGraph);
+            FALCOR_ASSERT(pGraph == mCurrent.pGraph);
             return;
         }
 

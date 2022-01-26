@@ -163,6 +163,9 @@
     <ClInclude Include="Rendering\Lights\LightBVH.h" />
     <ClInclude Include="Rendering\Lights\LightBVHBuilder.h" />
     <ClInclude Include="Rendering\Lights\LightBVHSampler.h" />
+    <ClInclude Include="Rendering\Materials\BSDFIntegrator.h" />
+    <ClInclude Include="Rendering\RTXDI\RTXDIModule.h" />
+    <ClInclude Include="Rendering\RTXDI\RTXDI.h" />
     <ClInclude Include="Rendering\Utils\PixelStats.h" />
     <ClInclude Include="Rendering\Volumes\GridVolumeSampler.h" />
     <ClInclude Include="RenderPasses\ResolvePass.h" />
@@ -193,6 +196,7 @@
     <ShaderSource Include="Rendering\Lights\LightBVHTypes.slang" />
     <ShaderSource Include="Rendering\Lights\LightHelpers.slang" />
     <ShaderSource Include="Rendering\Materials\BCSDFConfig.slangh" />
+    <ShaderSource Include="Rendering\Materials\BSDFIntegrator.cs.slang" />
     <ShaderSource Include="Rendering\Materials\BxDF.slang" />
     <ShaderSource Include="Rendering\Materials\BxDFConfig.slangh" />
     <ShaderSource Include="Rendering\Materials\ClothBSDF.slang" />
@@ -208,11 +212,22 @@
     <ShaderSource Include="Rendering\Materials\InteriorList.slang" />
     <ShaderSource Include="Rendering\Materials\InteriorListHelpers.slang" />
     <ShaderSource Include="Rendering\Materials\LobeType.slang" />
+    <ShaderSource Include="Rendering\Materials\MERLBSDF.slang" />
+    <ShaderSource Include="Rendering\Materials\MERLMaterial.slang" />
     <ShaderSource Include="Rendering\Materials\Microfacet.slang" />
     <ShaderSource Include="Rendering\Materials\StandardBSDF.slang" />
     <ShaderSource Include="Rendering\Materials\StandardMaterial.slang" />
     <ShaderSource Include="Rendering\Materials\TexLODHelpers.slang" />
     <ShaderSource Include="Rendering\Materials\TexLODTypes.slang" />
+    <ShaderSource Include="Rendering\RTXDI\EnvLightUpdater.cs.slang" />
+    <ShaderSource Include="Rendering\RTXDI\LightUpdater.cs.slang" />
+    <ShaderSource Include="Rendering\RTXDI\PackedTypes.slang" />
+    <ShaderSource Include="Rendering\RTXDI\PolymorphicLight.slang" />
+    <ShaderSource Include="Rendering\RTXDI\ReflectTypes.cs.slang" />
+    <ShaderSource Include="Rendering\RTXDI\RTXDI.slang" />
+    <ShaderSource Include="Rendering\RTXDI\RTXDIApplicationBridge.slangh" />
+    <ShaderSource Include="Rendering\RTXDI\RTXDISetup.cs.slang" />
+    <ShaderSource Include="Rendering\RTXDI\SurfaceData.slang" />
     <ShaderSource Include="Rendering\Utils\PixelStats.cs.slang" />
     <ShaderSource Include="Rendering\Utils\PixelStats.slang" />
     <ShaderSource Include="Rendering\Utils\PixelStatsShared.slang" />
@@ -221,6 +236,10 @@
     <ShaderSource Include="Rendering\Volumes\PhaseFunction.slang" />
     <ShaderSource Include="Rendering\Volumes\GridVolumeSampler.slang" />
     <ShaderSource Include="Rendering\Volumes\GridVolumeSamplerParams.slang" />
+    <ShaderSource Include="RenderPasses\Shared\Denoising\NRDBuffers.slang" />
+    <ShaderSource Include="RenderPasses\Shared\Denoising\NRDConstants.slang" />
+    <ShaderSource Include="RenderPasses\Shared\Denoising\NRDData.slang" />
+    <ShaderSource Include="RenderPasses\Shared\Denoising\NRDHelpers.slang" />
     <ShaderSource Include="RenderPasses\Shared\PathTracer\LoadShadingData.slang" />
     <ShaderSource Include="RenderPasses\Shared\PathTracer\PathData.slang" />
     <ShaderSource Include="RenderPasses\Shared\PathTracer\PathTracerHelpers.slang" />
@@ -256,6 +275,7 @@
     <ShaderSource Include="Scene\Material\AlphaTest.slang" />
     <ShaderSource Include="Scene\Material\BasicMaterialData.slang" />
     <ShaderSource Include="Scene\Material\MaterialFactory.slang" />
+    <ShaderSource Include="Scene\Material\MERLMaterialData.slang" />
     <ShaderSource Include="Scene\Material\ShadingUtils.slang" />
     <ShaderSource Include="Scene\Material\HomogeneousVolumeData.slang" />
     <ShaderSource Include="Scene\Material\MaterialSystem.slang" />
@@ -298,6 +318,7 @@
     <ClInclude Include="Scene\Camera\Camera.h" />
     <ClInclude Include="Scene\Camera\CameraController.h" />
     <ClInclude Include="Scene\Lights\Light.h" />
+    <ClInclude Include="Scene\Material\MERLMaterial.h" />
     <ClInclude Include="Scene\Material\StandardMaterial.h" />
     <ClInclude Include="Scene\SceneBuilder.h" />
     <ClInclude Include="Scene\Scene.h" />
@@ -337,6 +358,7 @@
     <ShaderSource Include="Scene\SDFs\SparseVoxelOctree\SDFSVOWriteSVOOffsets.cs.slang" />
     <ShaderSource Include="Scene\SDFs\SparseVoxelSet\SDFSVS.slang" />
     <ShaderSource Include="Scene\SDFs\SparseVoxelSet\SDFSVSVoxelizer.cs.slang" />
+    <ShaderSource Include="Scene\Shading.slang" />
     <ShaderSource Include="Scene\ShadingData.slang" />
     <ClInclude Include="Scene\SceneCache.h" />
     <ClInclude Include="Scene\SDFs\NormalizedDenseSDFGrid\NDSDFGrid.h" />
@@ -779,7 +801,10 @@
     <ClCompile Include="Rendering\Lights\LightBVH.cpp" />
     <ClCompile Include="Rendering\Lights\LightBVHBuilder.cpp" />
     <ClCompile Include="Rendering\Lights\LightBVHSampler.cpp" />
+    <ClCompile Include="Rendering\Materials\BSDFIntegrator.cpp" />
     <ClCompile Include="Rendering\Materials\TexLODTypes.cpp" />
+    <ClCompile Include="Rendering\RTXDI\RTXDI.cpp" />
+    <ClCompile Include="Rendering\RTXDI\RTXDISDK.cpp" />
     <ClCompile Include="Rendering\Utils\PixelStats.cpp" />
     <ClCompile Include="Rendering\Volumes\GridVolumeSampler.cpp" />
     <ClCompile Include="RenderPasses\ResolvePass.cpp" />
@@ -822,6 +847,7 @@
     <ClCompile Include="Scene\Camera\Camera.cpp" />
     <ClCompile Include="Scene\Camera\CameraController.cpp" />
     <ClCompile Include="Scene\Lights\Light.cpp" />
+    <ClCompile Include="Scene\Material\MERLMaterial.cpp" />
     <ClCompile Include="Scene\Material\StandardMaterial.cpp" />
     <ClCompile Include="Scene\SceneBuilder.cpp" />
     <ClCompile Include="Scene\Scene.cpp" />
@@ -984,7 +1010,7 @@
       <DisableSpecificWarnings>4251</DisableSpecificWarnings>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>FALCOR_DLL;IMGUI_API=__declspec(dllexport);_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_D3D12;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE;_$(OutputType)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir)\..\Externals\.packman\agility-sdk\build\native\include;$(ProjectDir);$(ProjectDir)\..\Externals\.packman\deps\include;$(ProjectDir)\..\Externals\.packman;$(ProjectDir)\..\Externals;$(ProjectDir)\..\Externals\.packman\python\Include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvtt\include;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman\nanovdb\include;$(ProjectDir)\..\Externals\.packman\nv-usd-debug\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\..\Externals\.packman\rtxdi\rtxdi-sdk\include;$(ProjectDir)\..\Externals\.packman\agility-sdk\build\native\include;$(ProjectDir);$(ProjectDir)\..\Externals\.packman\deps\include;$(ProjectDir)\..\Externals\.packman;$(ProjectDir)\..\Externals;$(ProjectDir)\..\Externals\.packman\python\Include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvtt\include;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman\nanovdb\include;$(ProjectDir)\..\Externals\.packman\nv-usd-debug\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -1023,7 +1049,7 @@
       <DisableSpecificWarnings>4251</DisableSpecificWarnings>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>FALCOR_DLL;IMGUI_API=__declspec(dllexport);_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_GFX;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE;_$(OutputType)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir)\..\Externals\.packman\agility-sdk\build\native\include;$(ProjectDir);$(ProjectDir)\..\Externals\.packman\deps\include;$(ProjectDir)\..\Externals\.packman;$(ProjectDir)\..\Externals;$(ProjectDir)\..\Externals\.packman\python\Include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvtt\include;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman\nanovdb\include;$(ProjectDir)\..\Externals\.packman\nv-usd-debug\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\..\Externals\.packman\rtxdi\rtxdi-sdk\include;$(ProjectDir)\..\Externals\.packman\agility-sdk\build\native\include;$(ProjectDir);$(ProjectDir)\..\Externals\.packman\deps\include;$(ProjectDir)\..\Externals\.packman;$(ProjectDir)\..\Externals;$(ProjectDir)\..\Externals\.packman\python\Include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvtt\include;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman\nanovdb\include;$(ProjectDir)\..\Externals\.packman\nv-usd-debug\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -1063,7 +1089,7 @@
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>FALCOR_DLL;IMGUI_API=__declspec(dllexport);_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_D3D12;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir)\..\Externals\.packman\agility-sdk\build\native\include;$(ProjectDir);$(ProjectDir)\..\Externals\.packman\deps\include;$(ProjectDir)\..\Externals\.packman;$(ProjectDir)\..\Externals;$(ProjectDir)\..\Externals\.packman\python\Include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvtt\include;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman\nanovdb\include;$(ProjectDir)\..\Externals\.packman\nv-usd-release\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\..\Externals\.packman\rtxdi\rtxdi-sdk\include;$(ProjectDir)\..\Externals\.packman\agility-sdk\build\native\include;$(ProjectDir);$(ProjectDir)\..\Externals\.packman\deps\include;$(ProjectDir)\..\Externals\.packman;$(ProjectDir)\..\Externals;$(ProjectDir)\..\Externals\.packman\python\Include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvtt\include;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman\nanovdb\include;$(ProjectDir)\..\Externals\.packman\nv-usd-release\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -1106,7 +1132,7 @@
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>FALCOR_DLL;IMGUI_API=__declspec(dllexport);_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;$(FALCOR_BACKEND);WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir)\..\Externals\.packman\agility-sdk\build\native\include;$(ProjectDir);$(ProjectDir)\..\Externals\.packman\deps\include;$(ProjectDir)\..\Externals\.packman;$(ProjectDir)\..\Externals;$(ProjectDir)\..\Externals\.packman\python\Include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvtt\include;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman\nanovdb\include;$(ProjectDir)\..\Externals\.packman\nv-usd-release\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\..\Externals\.packman\rtxdi\rtxdi-sdk\include;$(ProjectDir)\..\Externals\.packman\agility-sdk\build\native\include;$(ProjectDir);$(ProjectDir)\..\Externals\.packman\deps\include;$(ProjectDir)\..\Externals\.packman;$(ProjectDir)\..\Externals;$(ProjectDir)\..\Externals\.packman\python\Include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvtt\include;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman\nanovdb\include;$(ProjectDir)\..\Externals\.packman\nv-usd-release\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp17</LanguageStandard>

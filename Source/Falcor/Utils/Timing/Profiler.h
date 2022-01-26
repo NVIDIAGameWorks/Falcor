@@ -289,6 +289,3 @@ namespace Falcor
 #else
 #define FALCOR_PROFILE(_name, ...)
 #endif
-
-// DEPRECATED: Use FALCOR_PROFILE instead.
-#define PROFILE(...) FALCOR_PROFILE(__VA_ARGS__)

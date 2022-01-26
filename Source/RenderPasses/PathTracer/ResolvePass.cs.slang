@@ -28,6 +28,7 @@
 import ColorType;
 import GuideData;
 import Params;
+import RenderPasses.Shared.Denoising.NRDData;
 
 /** Compute shader implementing a sample resolve pass.
 
@@ -39,22 +40,30 @@ import Params;
 struct ResolvePass
 {
     // Resources
-    PathTracerParams params;                            ///< Runtime parameters.
+    PathTracerParams params;                                ///< Runtime parameters.
 
-    StructuredBuffer<ColorType> sampleColor;            ///< Input per-sample color if kSamplesPerPixel != 1.
-    StructuredBuffer<GuideData> sampleGuideData;        ///< Input per-sample guide data. Only valid if kOutputGuideData == true.
+    StructuredBuffer<ColorType>   sampleColor;              ///< Input per-sample color if kSamplesPerPixel != 1.
+    StructuredBuffer<GuideData>   sampleGuideData;          ///< Input per-sample guide data. Only valid if kOutputGuideData == true.
+    StructuredBuffer<NRDRadiance> sampleNRDRadiance;        ///< Input per-sample NRD radiance data. Only valid if kOutputNRDData == true.
+    StructuredBuffer<float>       sampleNRDHitDist;         ///< Input per-sample NRD hit distance data. Only valid if kOutputNRDData == true.
+    StructuredBuffer<float4>      sampleNRDEmission;        ///< Input per-sample NRD emission data. Only valid if kOutputNRDData == true.
+    StructuredBuffer<float4>      sampleNRDReflectance;     ///< Input per-sample NRD reflectance data. Only valid if kOutputNRDData == true.
 
-    Texture2D<uint> sampleCount;                        ///< Optional input sample count buffer. Only valid when kSamplesPerPixel == 0.
-    Texture2D<uint> sampleOffset;                       ///< Output offset into per-sample buffers. Only valid when kSamplesPerPixel == 0.
+    Texture2D<uint> sampleCount;                            ///< Optional input sample count buffer. Only valid when kSamplesPerPixel == 0.
+    Texture2D<uint> sampleOffset;                           ///< Output offset into per-sample buffers. Only valid when kSamplesPerPixel == 0.
 
-    RWTexture2D<float4> outputColor;                    ///< Output resolved color.
-    RWTexture2D<float4> outputAlbedo;                   ///< Output resolved albedo. Only valid if kOutputGuideData == true.
-    RWTexture2D<float4> outputSpecularAlbedo;           ///< Output resolved specular albedo. Only valid if kOutputGuideData == true.
-    RWTexture2D<float4> outputIndirectAlbedo;           ///< Output resolved indirect albedo. Only valid if kOutputGuideData == true.
-    RWTexture2D<float4> outputNormal;                   ///< Output resolved normal. Only valid if kOutputGuideData == true.
-    RWTexture2D<float4> outputReflectionPosW;           ///< Output resolved reflection pos. Only valid if kOutputGuideData == true.
+    RWTexture2D<float4> outputColor;                        ///< Output resolved color.
+    RWTexture2D<float4> outputAlbedo;                       ///< Output resolved albedo. Only valid if kOutputGuideData == true.
+    RWTexture2D<float4> outputSpecularAlbedo;               ///< Output resolved specular albedo. Only valid if kOutputGuideData == true.
+    RWTexture2D<float4> outputIndirectAlbedo;               ///< Output resolved indirect albedo. Only valid if kOutputGuideData == true.
+    RWTexture2D<float4> outputNormal;                       ///< Output resolved normal. Only valid if kOutputGuideData == true.
+    RWTexture2D<float4> outputReflectionPosW;               ///< Output resolved reflection pos. Only valid if kOutputGuideData == true.
+    RWTexture2D<float4> outputNRDDiffuseRadianceHitDist;    ///< Output resolved diffuse color in .rgb and hit distance in .a for NRD. Only valid if kOutputNRDData == true.
+    RWTexture2D<float4> outputNRDSpecularRadianceHitDist;   ///< Output resolved specular color in .rgb and hit distance in .a for NRD. Only valid if kOutputNRDData == true.
+    RWTexture2D<float4> outputNRDResidualRadianceHitDist;   ///< Output resolved residual color in .rgb and hit distance in .a for NRD. Only valid if kOutputNRDData == true.
 
     static const bool kOutputGuideData = OUTPUT_GUIDE_DATA;
+    static const bool kOutputNRDData = OUTPUT_NRD_DATA;
 
     /** Entry point for resolve pass.
         \param[in] pixel Pixel coordinates.
@@ -111,6 +120,49 @@ struct ResolvePass
             outputIndirectAlbedo[pixel] = float4(invSpp * indirectAlbedo, 0.f);
             outputNormal[pixel] = float4(invSpp * normal, 0.f);
             outputReflectionPosW[pixel] = float4(invSpp * reflectionPosW, 0.f);
+        }
+
+        // NRD data is always written per-sample and needs to be resolved.
+        if (kOutputNRDData)
+        {
+            float3 diffuseRadiance = 0.f;
+            float3 specularRadiance = 0.f;
+            float3 residualRadiance = 0.f;
+            float hitDist = 0.f;
+
+            for (uint sampleIdx = 0; sampleIdx < spp; sampleIdx++)
+            {
+                const uint idx = offset + sampleIdx;
+
+                const NRDRadiance radianceData = sampleNRDRadiance[idx];
+                const NRDPathType pathType = radianceData.getPathType();
+                const float3 radiance = radianceData.getRadiance();
+
+                float3 reflectance = sampleNRDReflectance[idx].rgb;
+                reflectance = max(0.04f, reflectance);
+                float3 emission = sampleNRDEmission[idx].rgb;
+                float3 demodulatedRadiance = max(0.f, (radiance - emission)) / reflectance;
+
+                switch (pathType)
+                {
+                case NRDPathType::Diffuse:
+                    diffuseRadiance += demodulatedRadiance;
+                    break;
+                case NRDPathType::Specular:
+                    specularRadiance += demodulatedRadiance;
+                    break;
+                default:
+                    // Do not demodulate residual.
+                    residualRadiance += radiance;
+                    break;
+                }
+
+                hitDist += sampleNRDHitDist[idx];
+            }
+
+            outputNRDDiffuseRadianceHitDist[pixel] = float4(invSpp * diffuseRadiance, invSpp * hitDist);
+            outputNRDSpecularRadianceHitDist[pixel] = float4(invSpp * specularRadiance, invSpp * hitDist);
+            outputNRDResidualRadianceHitDist[pixel] = float4(invSpp * residualRadiance, invSpp * hitDist);
         }
     }
 };

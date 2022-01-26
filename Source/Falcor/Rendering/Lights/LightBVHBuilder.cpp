@@ -190,9 +190,7 @@ namespace
                                                delta + theta <= oTheta + 1e-3f);
                                if (!dInCone)
                                {
-                                   reportError("coneUnion error! angle diff " + std::to_string(delta + theta) +
-                                       " > spread " + std::to_string(oTheta));
-                                   assert(dInCone);
+                                   throw RuntimeError("Error in coneUnion(): angle diff {} > spread {}", delta + theta, oTheta);
                                }
                            };
         checkInside(aDir, aTheta);
@@ -237,10 +235,10 @@ namespace Falcor
         FALCOR_PROFILE("LightBVHBuilder::build()");
 
         bvh.clear();
-        assert(!bvh.isValid() && bvh.mNodes.empty());
+        FALCOR_ASSERT(!bvh.isValid() && bvh.mNodes.empty());
 
         // Get global list of emissive triangles.
-        assert(bvh.mpLightCollection);
+        FALCOR_ASSERT(bvh.mpLightCollection);
         const auto& triangles = bvh.mpLightCollection->getMeshLightTriangles();
         if (triangles.empty()) return;
 
@@ -295,12 +293,12 @@ namespace Falcor
         // Build the tree.
         SplitHeuristicFunction splitFunc = getSplitFunction(mOptions.splitHeuristicSelection);
         buildInternal(mOptions, splitFunc, 0ull, 0, Range(0, static_cast<uint32_t>(data.trianglesData.size())), data);
-        assert(!data.nodes.empty());
+        FALCOR_ASSERT(!data.nodes.empty());
 
         size_t numValid = 0;
         for (auto mask : data.triangleBitmasks)
             if (mask != invalidBitmask) numValid++;
-        assert(numValid == data.trianglesData.size());
+        FALCOR_ASSERT(numValid == data.trianglesData.size());
 
         // Compute per-node light bounding cones.
         float cosConeAngle;
@@ -362,7 +360,7 @@ namespace Falcor
 
     uint32_t LightBVHBuilder::buildInternal(const Options& options, const SplitHeuristicFunction& splitHeuristic, uint64_t bitmask, uint32_t depth, const Range& triangleRange, BuildingData& data)
     {
-        assert(triangleRange.begin < triangleRange.end);
+        FALCOR_ASSERT(triangleRange.begin < triangleRange.end);
 
         // Compute the AABB and total flux of the node.
         float nodeFlux = 0.f;
@@ -372,7 +370,7 @@ namespace Falcor
             nodeBounds |= data.trianglesData[dataIndex].bounds;
             nodeFlux += data.trianglesData[dataIndex].flux;
         }
-        assert(nodeBounds.valid());
+        FALCOR_ASSERT(nodeBounds.valid());
 
         data.currentNodeFlux = nodeFlux;
 
@@ -382,14 +380,14 @@ namespace Falcor
         // If we should split, then create an internal node and split.
         if (splitResult.isValid())
         {
-            assert(triangleRange.begin < splitResult.triangleIndex && splitResult.triangleIndex < triangleRange.end);
+            FALCOR_ASSERT(triangleRange.begin < splitResult.triangleIndex && splitResult.triangleIndex < triangleRange.end);
 
             // Sort the centroids and update the lists accordingly.
             auto comp = [dim = splitResult.axis](const TriangleSortData& d1, const TriangleSortData& d2) { return d1.bounds.center()[dim] < d2.bounds.center()[dim]; };
             std::nth_element(std::begin(data.trianglesData) + triangleRange.begin, std::begin(data.trianglesData) + splitResult.triangleIndex, std::begin(data.trianglesData) + triangleRange.end, comp);
 
             // Allocate internal node.
-            assert(data.nodes.size() < std::numeric_limits<uint32_t>::max());
+            FALCOR_ASSERT(data.nodes.size() < std::numeric_limits<uint32_t>::max());
             const uint32_t nodeIndex = (uint32_t)data.nodes.size();
             data.nodes.push_back({});
 
@@ -408,7 +406,7 @@ namespace Falcor
             uint32_t leftIndex = buildInternal(options, splitHeuristic, bitmask | (0ull << depth), depth + 1, Range(triangleRange.begin, splitResult.triangleIndex), data);
             uint32_t rightIndex = buildInternal(options, splitHeuristic, bitmask | (1ull << depth), depth + 1, Range(splitResult.triangleIndex, triangleRange.end), data);
 
-            assert(leftIndex == nodeIndex + 1); // The left node should always be placed immediately after the current node.
+            FALCOR_ASSERT(leftIndex == nodeIndex + 1); // The left node should always be placed immediately after the current node.
             node.rightChildIdx = rightIndex;
 
             data.nodes[nodeIndex].setInternalNode(node);
@@ -416,10 +414,10 @@ namespace Falcor
         }
         else // No split => create leaf node
         {
-            assert(triangleRange.length() <= options.maxTriangleCountPerLeaf);
+            FALCOR_ASSERT(triangleRange.length() <= options.maxTriangleCountPerLeaf);
 
             // Allocate leaf node.
-            assert(data.nodes.size() < std::numeric_limits<uint32_t>::max());
+            FALCOR_ASSERT(data.nodes.size() < std::numeric_limits<uint32_t>::max());
             const uint32_t nodeIndex = (uint32_t)data.nodes.size();
             data.nodes.push_back({});
 
@@ -432,8 +430,8 @@ namespace Falcor
 
             node.triangleCount = triangleRange.length();
             node.triangleOffset = (uint32_t)data.triangleIndices.size();
-            assert(node.triangleCount < kMaxLeafTriangleCount);
-            assert(node.triangleOffset < kMaxLeafTriangleOffset);
+            FALCOR_ASSERT(node.triangleCount < kMaxLeafTriangleCount);
+            FALCOR_ASSERT(node.triangleOffset < kMaxLeafTriangleOffset);
 
             for (uint32_t triangleIdx = triangleRange.begin, index = 0; triangleIdx < triangleRange.end; ++triangleIdx, ++index)
             {
@@ -441,7 +439,7 @@ namespace Falcor
                 data.triangleIndices.push_back(globalTriangleIndex);
                 data.triangleBitmasks[globalTriangleIndex] = bitmask;
             }
-            assert(data.triangleIndices.size() == node.triangleOffset + node.triangleCount);
+            FALCOR_ASSERT(data.triangleIndices.size() == node.triangleOffset + node.triangleCount);
 
             data.nodes[nodeIndex].setLeafNode(node);
             return nodeIndex;
@@ -519,7 +517,7 @@ namespace Falcor
         SplitResult result;
         result.axis = dimension;
         result.triangleIndex = triangleRange.middle();
-        assert(triangleRange.begin < result.triangleIndex && result.triangleIndex < triangleRange.end);
+        FALCOR_ASSERT(triangleRange.begin < result.triangleIndex && result.triangleIndex < triangleRange.end);
         return result;
     }
 
@@ -531,14 +529,14 @@ namespace Falcor
     {
         float aabbCost = bounds.valid() ? (parameters.useVolumeOverSA ? aabbVolume(bounds, parameters.volumeEpsilon) : bounds.area()) : 0.f;
         float cost = aabbCost * (float)triangleCount;
-        assert(cost >= 0.f && !std::isnan(cost) && !std::isinf(cost));
+        FALCOR_ASSERT(cost >= 0.f && !std::isnan(cost) && !std::isinf(cost));
         return cost;
     }
 
     LightBVHBuilder::SplitResult LightBVHBuilder::computeSplitWithBinnedSAH(const BuildingData& data, const Range& triangleRange, const AABB& nodeBounds, const Options& parameters)
     {
         std::pair<float, SplitResult> overallBestSplit = std::make_pair(std::numeric_limits<float>::infinity(), SplitResult());
-        assert(!overallBestSplit.second.isValid());
+        FALCOR_ASSERT(!overallBestSplit.second.isValid());
 
         struct Bin
         {
@@ -555,7 +553,7 @@ namespace Falcor
             }
         };
 
-        assert(parameters.binCount > 1);
+        FALCOR_ASSERT(parameters.binCount > 1);
         std::vector<Bin> bins(parameters.binCount);
         std::vector<float> costs(parameters.binCount - 1);
 
@@ -569,10 +567,10 @@ namespace Falcor
             auto getBinId = [&](const TriangleSortData& td)
             {
                 float bmin = nodeBounds.minPoint[dimension], bmax = nodeBounds.maxPoint[dimension];
-                assert(bmin < bmax);
+                FALCOR_ASSERT(bmin < bmax);
                 float scale = (float)parameters.binCount / (bmax - bmin);
                 float p = td.bounds.center()[dimension];
-                assert(bmin <= p && p <= bmax);
+                FALCOR_ASSERT(bmin <= p && p <= bmax);
                 return std::min((uint32_t)((p - bmin) * scale), parameters.binCount - 1);
             };
 
@@ -613,7 +611,7 @@ namespace Falcor
                     axisBestSplit = std::make_pair(costs[i], SplitResult{ dimension, triIdx });
                 }
             }
-            assert(triangleRange.begin <= axisBestSplit.second.triangleIndex && axisBestSplit.second.triangleIndex <= triangleRange.end);
+            FALCOR_ASSERT(triangleRange.begin <= axisBestSplit.second.triangleIndex && axisBestSplit.second.triangleIndex <= triangleRange.end);
 
             // Early out if all lights fall on either side of the split.
             if (axisBestSplit.second.triangleIndex == triangleRange.begin ||
@@ -622,7 +620,7 @@ namespace Falcor
             if (axisBestSplit.first < overallBestSplit.first)
             {
                 overallBestSplit = axisBestSplit;
-                assert(triangleRange.begin < overallBestSplit.second.triangleIndex && overallBestSplit.second.triangleIndex < triangleRange.end);
+                FALCOR_ASSERT(triangleRange.begin < overallBestSplit.second.triangleIndex && overallBestSplit.second.triangleIndex < triangleRange.end);
             }
         };
 
@@ -652,7 +650,7 @@ namespace Falcor
         }
 
         // If the best split we found is more expensive than the cost of a leaf node (and we can create one), then create a leaf node.
-        assert(overallBestSplit.second.isValid());
+        FALCOR_ASSERT(overallBestSplit.second.isValid());
         if (parameters.useLeafCreationCost && triangleRange.length() <= parameters.maxTriangleCountPerLeaf)
         {
             float leafCost = evalSAH(nodeBounds, triangleRange.length(), parameters);
@@ -686,14 +684,14 @@ namespace Falcor
         float theta = cosTheta != kInvalidCosConeAngle ? safeACos(cosTheta) : glm::pi<float>();
         float orientationCost = parameters.useLightingCones ? computeOrientationCost(theta) : 1.0f;
         float cost = fluxCost * aabbCost * orientationCost;
-        assert(cost >= 0.f && !std::isnan(cost) && !std::isinf(cost));
+        FALCOR_ASSERT(cost >= 0.f && !std::isnan(cost) && !std::isinf(cost));
         return cost;
     }
 
     LightBVHBuilder::SplitResult LightBVHBuilder::computeSplitWithBinnedSAOH(const BuildingData& data, const Range& triangleRange, const AABB& nodeBounds, const Options& parameters)
     {
         std::pair<float, SplitResult> overallBestSplit = std::make_pair(std::numeric_limits<float>::infinity(), SplitResult());
-        assert(!overallBestSplit.second.isValid());
+        FALCOR_ASSERT(!overallBestSplit.second.isValid());
 
         // Find the largest dimension.
         float3 dimensions = nodeBounds.extent();
@@ -721,7 +719,7 @@ namespace Falcor
             }
         };
 
-        assert(parameters.binCount > 1);
+        FALCOR_ASSERT(parameters.binCount > 1);
         std::vector<Bin> bins(parameters.binCount);
         std::vector<float> costs(parameters.binCount - 1);
 
@@ -739,10 +737,10 @@ namespace Falcor
             {
                 float bmin = nodeBounds.minPoint[dimension], bmax = nodeBounds.maxPoint[dimension];
                 float w = bmax - bmin;
-                assert(w >= 0.f); // The node bounds can be zero if all primitives are axis-aligned and coplanar
+                FALCOR_ASSERT(w >= 0.f); // The node bounds can be zero if all primitives are axis-aligned and coplanar
                 float scale = w > FLT_MIN ? (float)parameters.binCount / w : 0.f;
                 float p = td.bounds.center()[dimension];
-                assert(bmin <= p && p <= bmax);
+                FALCOR_ASSERT(bmin <= p && p <= bmax);
                 return std::min((uint32_t)((p - bmin) * scale), parameters.binCount - 1);
             };
 
@@ -825,7 +823,7 @@ namespace Falcor
                     axisBestSplit = std::make_pair(costs[i], SplitResult{ dimension, triIdx });
                 }
             }
-            assert(triangleRange.begin <= axisBestSplit.second.triangleIndex && axisBestSplit.second.triangleIndex <= triangleRange.end);
+            FALCOR_ASSERT(triangleRange.begin <= axisBestSplit.second.triangleIndex && axisBestSplit.second.triangleIndex <= triangleRange.end);
 
             // Scale the cost by the ratio of the node's extent to discourage long skinny nodes.
             axisBestSplit.first *= static_cast<float>(dimensions[largestDimension]) / static_cast<float>(dimensions[dimension]);
@@ -837,7 +835,7 @@ namespace Falcor
             if (axisBestSplit.first < overallBestSplit.first)
             {
                 overallBestSplit = axisBestSplit;
-                assert(triangleRange.begin < overallBestSplit.second.triangleIndex && overallBestSplit.second.triangleIndex < triangleRange.end);
+                FALCOR_ASSERT(triangleRange.begin < overallBestSplit.second.triangleIndex && overallBestSplit.second.triangleIndex < triangleRange.end);
             }
         };
 
@@ -863,7 +861,7 @@ namespace Falcor
         }
 
         // If the best split we found is more expensive than the cost of a leaf node (and we can create one), then create a leaf node.
-        assert(overallBestSplit.second.isValid());
+        FALCOR_ASSERT(overallBestSplit.second.isValid());
         if (parameters.useLeafCreationCost && triangleRange.length() <= parameters.maxTriangleCountPerLeaf)
         {
             // Evaluate the cost metric for the node. This requires us to first compute the cone angle.
@@ -887,8 +885,7 @@ namespace Falcor
         case SplitHeuristic::BinnedSAOH:
             return computeSplitWithBinnedSAOH;
         default:
-            reportError("Unsupported SplitHeuristic: " + std::to_string(static_cast<uint32_t>(heuristic)));
-            return nullptr;
+            throw RuntimeError("Unsupported SplitHeuristic: {}", static_cast<uint32_t>(heuristic));
         }
     }
 

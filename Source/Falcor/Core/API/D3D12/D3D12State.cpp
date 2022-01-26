@@ -71,7 +71,7 @@ namespace Falcor
         case BlendState::BlendFunc::OneMinusSrc1Alpha:
             return D3D12_BLEND_INV_SRC1_ALPHA;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return (D3D12_BLEND)0;
         }
 
@@ -129,7 +129,7 @@ namespace Falcor
         case RasterizerState::FillMode::Solid:
             return D3D12_FILL_MODE_SOLID;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return (D3D12_FILL_MODE)0;
         }
     }
@@ -145,7 +145,7 @@ namespace Falcor
         case Falcor::RasterizerState::CullMode::Back:
             return D3D12_CULL_MODE_BACK;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return (D3D12_CULL_MODE)0;
         }
     }
@@ -177,7 +177,7 @@ namespace Falcor
         case VertexBufferLayout::InputClass::PerInstanceData:
             return D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return (D3D12_INPUT_CLASSIFICATION) - 1;
         }
     }
@@ -242,7 +242,7 @@ namespace Falcor
         case FalcorType::GreaterEqual:
             return D3D12_COMPARISON_FUNC_GREATER_EQUAL;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return (D3D12_COMPARISON_FUNC)0;
         }
     }
@@ -268,7 +268,7 @@ namespace Falcor
         case DepthStencilState::StencilOp::Invert:
             return D3D12_STENCIL_OP_INVERT;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return (D3D12_STENCIL_OP)0;
         }
     }
@@ -305,7 +305,7 @@ namespace Falcor
         case Sampler::Filter::Linear:
             return D3D12_FILTER_TYPE_LINEAR;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return (D3D12_FILTER_TYPE)-1;
         }
     }
@@ -323,7 +323,7 @@ namespace Falcor
         case Sampler::ReductionMode::Max:
             return D3D12_FILTER_REDUCTION_TYPE_MAXIMUM;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return (D3D12_FILTER_REDUCTION_TYPE)-1;
         }
     }
@@ -363,7 +363,7 @@ namespace Falcor
         case Sampler::AddressMode::MirrorOnce:
             return D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return (D3D12_TEXTURE_ADDRESS_MODE)-1;
         }
     }
@@ -415,7 +415,7 @@ namespace Falcor
             return D3D12_SHADER_VISIBILITY_HULL;
         }
         // If it was compute, it can't be anything else and so the first `if` would have handled it
-        should_not_get_here();
+        FALCOR_UNREACHABLE();
         return (D3D12_SHADER_VISIBILITY)-1;
     }
 
@@ -439,16 +439,16 @@ namespace Falcor
         case D3D12RootSignature::DescType::Sampler:
             return D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return (D3D12_DESCRIPTOR_RANGE_TYPE)-1;
         }
     }
 
     void convertRootCbvSet(const D3D12RootSignature::DescriptorSetLayout& set, D3D12_ROOT_PARAMETER1& desc)
     {
-        assert(set.getRangeCount() == 1);
+        FALCOR_ASSERT(set.getRangeCount() == 1);
         const auto& range = set.getRange(0);
-        assert(range.type == D3D12RootSignature::DescType::Cbv && range.descCount == 1);
+        FALCOR_ASSERT(range.type == D3D12RootSignature::DescType::Cbv && range.descCount == 1);
 
         desc.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
         desc.Descriptor.RegisterSpace = range.regSpace;
@@ -495,8 +495,7 @@ namespace Falcor
             desc.ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
             break;
         default:
-            should_not_get_here();
-            reportError("Unsupported root descriptor type. Only buffer SRV/UAVs supported.");
+            throw RuntimeError("Unsupported root descriptor type. Only buffer SRV/UAVs supported.");
         }
 
         desc.Descriptor.RegisterSpace = rootDesc.spaceIndex;
@@ -548,13 +547,13 @@ namespace Falcor
             params.signatureSizeInBytes += 4 * rootConst.count;
             elementIndex++;
         }
-        assert(elementIndex == numElements);
+        FALCOR_ASSERT(elementIndex == numElements);
     }
 
     void initD3D12GraphicsStateDesc(const GraphicsStateObject::Desc& gsoDesc, D3D12_GRAPHICS_PIPELINE_STATE_DESC& desc, InputLayoutDesc& layoutDesc)
     {
         desc = {};
-        assert(gsoDesc.getProgramKernels());
+        FALCOR_ASSERT(gsoDesc.getProgramKernels());
 #define get_shader_handle(_type) gsoDesc.getProgramKernels()->getShader(_type) ? gsoDesc.getProgramKernels()->getShader(_type)->getApiHandle() : D3D12_SHADER_BYTECODE{}
         desc.VS = get_shader_handle(ShaderType::Vertex);
         desc.PS = get_shader_handle(ShaderType::Pixel);

@@ -100,22 +100,74 @@ namespace Falcor
         */
         static constexpr bool enabled() { return FALCOR_ENABLE_LOGGER != 0; }
 
-    private:
-        friend void logDebug(const std::string& msg);
-        friend void logInfo(const std::string& msg);
-        friend void logWarning(const std::string& msg);
-        friend void logError(const std::string& msg);
-        friend void logFatal(const std::string& msg);
+        /** Log a message.
+            \param[in] level Log level.
+            \param[in] msg Log message.
+        */
+        static void log(Level level, const std::string_view msg);
 
-        static void log(Level level, const std::string& msg);
+    private:
         Logger() = delete;
     };
 
     FALCOR_ENUM_CLASS_OPERATORS(Logger::OutputFlags);
 
-    inline void logDebug(const std::string& msg) { Logger::log(Logger::Level::Debug, msg); }
-    inline void logInfo(const std::string& msg) { Logger::log(Logger::Level::Info, msg); }
-    inline void logWarning(const std::string& msg) { Logger::log(Logger::Level::Warning, msg); }
-    inline void logError(const std::string& msg) { Logger::log(Logger::Level::Error, msg); }
-    inline void logFatal(const std::string& msg) { Logger::log(Logger::Level::Fatal, msg); }
+    // We define two types of logging helpers, one taking raw strings,
+    // the other taking formatted strings. We don't want string formatting and
+    // errors being thrown due to missing arguments when passing raw strings.
+
+    inline void logDebug(const std::string_view msg)
+    {
+        Logger::log(Logger::Level::Debug, msg);
+    }
+
+    template<typename... Args>
+    inline void logDebug(const std::string_view fmtString, Args&&... args)
+    {
+        Logger::log(Logger::Level::Debug, fmt::format(fmtString, std::forward<Args>(args)...));
+    }
+
+    inline void logInfo(const std::string_view msg)
+    {
+        Logger::log(Logger::Level::Info, msg);
+    }
+
+    template<typename... Args>
+    inline void logInfo(const std::string_view fmtString, Args&&... args)
+    {
+        Logger::log(Logger::Level::Info, fmt::format(fmtString, std::forward<Args>(args)...));
+    }
+
+    inline void logWarning(const std::string_view msg)
+    {
+        Logger::log(Logger::Level::Warning, msg);
+    }
+
+    template<typename... Args>
+    inline void logWarning(const std::string_view fmtString, Args&&... args)
+    {
+        Logger::log(Logger::Level::Warning, fmt::format(fmtString, std::forward<Args>(args)...));
+    }
+
+    inline void logError(const std::string_view msg)
+    {
+        Logger::log(Logger::Level::Error, msg);
+    }
+
+    template<typename... Args>
+    inline void logError(const std::string_view fmtString, Args&&... args)
+    {
+        Logger::log(Logger::Level::Error, fmt::format(fmtString, std::forward<Args>(args)...));
+    }
+
+    inline void logFatal(const std::string_view msg)
+    {
+        Logger::log(Logger::Level::Fatal, msg);
+    }
+
+    template<typename... Args>
+    inline void logFatal(const std::string_view fmtString, Args&&... args)
+    {
+        Logger::log(Logger::Level::Fatal, fmt::format(fmtString, std::forward<Args>(args)...));
+    }
 }

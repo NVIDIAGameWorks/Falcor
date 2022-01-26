@@ -198,6 +198,8 @@ namespace Falcor
 
             uint64_t getSize() const { return mSize; }
 
+            RtAccelerationStructureKind getKind() const { return mKind; }
+
         protected:
             RtAccelerationStructureKind mKind = RtAccelerationStructureKind::BottomLevel;
             Buffer::SharedPtr mBuffer = nullptr;
@@ -222,6 +224,8 @@ namespace Falcor
         static RtAccelerationStructurePrebuildInfo getPrebuildInfo(const RtAccelerationStructureBuildInputs& inputs);
 
         ~RtAccelerationStructure();
+
+        bool apiInit();
 
         uint64_t getGpuAddress();
 

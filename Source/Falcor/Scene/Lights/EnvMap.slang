@@ -46,13 +46,53 @@ struct EnvMap
         return dim;
     }
 
+    /** Evaluates the radiance at a given texel.
+    */
+    float3 evalTexel(uint2 coord)
+    {
+        return envMap[coord].rgb * getIntensity();
+    }
+
+    /** Evaluates the radiance at a given uv coordinate.
+    */
+    float3 eval(float2 uv, float lod = 0.f)
+    {
+        return envMap.SampleLevel(envSampler, uv, lod).rgb * getIntensity();
+    }
+
     /** Evaluates the radiance coming from world space direction 'dir'.
     */
     float3 eval(float3 dir, float lod = 0.f)
     {
-        // Get (u,v) coord in latitude-longitude map format.
-        float2 uv = world_to_latlong_map(toLocal(dir));
-        return envMap.SampleLevel(envSampler, uv, lod).rgb * getIntensity();
+        return eval(worldToUv(dir), lod);
+    }
+
+    /** Transform direction in local space to uv coordinates.
+    */
+    float2 localToUv(float3 dir)
+    {
+        return world_to_latlong_map(dir);
+    }
+
+    /** Transform uv coordinates to direction in local space.
+    */
+    float3 uvToLocal(float2 uv)
+    {
+        return latlong_map_to_world(uv);
+    }
+
+    /** Transform direction in world space to uv coordinates.
+    */
+    float2 worldToUv(float3 dir)
+    {
+        return localToUv(toLocal(dir));
+    }
+
+    /** Transform uv coordinates to direction in world space.
+    */
+    float3 uvToWorld(float2 uv)
+    {
+        return toWorld(uvToLocal(uv));
     }
 
     /** Transform direction from local to world space.

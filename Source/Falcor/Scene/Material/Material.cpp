@@ -41,7 +41,9 @@ namespace Falcor
         static_assert(static_cast<uint32_t>(AlphaMode::Count) <= (1u << MaterialHeader::kAlphaModeBits), "AlphaMode bit count exceeds the maximum");
         static_assert(static_cast<uint32_t>(LobeType::All) < (1u << MaterialHeader::kLobeTypeBits), "LobeType bit count exceeds the maximum");
         static_assert(static_cast<uint32_t>(TextureHandle::Mode::Count) <= (1u << TextureHandle::kModeBits), "TextureHandle::Mode bit count exceeds the maximum");
-        static_assert(MaterialHeader::kTotalHeaderBits <= 32, "MaterialHeader bit count exceeds the maximum");
+        static_assert(MaterialHeader::kTotalHeaderBitsX <= 32, "MaterialHeader bit count x exceeds the maximum");
+        static_assert(MaterialHeader::kTotalHeaderBitsY <= 32, "MaterialHeader bit count y exceeds the maximum");
+        static_assert(MaterialHeader::kAlphaThresholdBits == 16, "MaterialHeader alpha threshold bit count must be 16");
     }
 
     bool operator==(const MaterialHeader& lhs, const MaterialHeader& rhs)
@@ -115,12 +117,12 @@ namespace Falcor
 
     void Material::setAlphaMode(AlphaMode alphaMode)
     {
-        logWarning("Material '" + getName() + "' of type '" + to_string(getType()) + "' does not support alpha. Ignoring call to setAlphaMode().");
+        logWarning("Material '{}' of type '{}' does not support alpha. Ignoring call to setAlphaMode().", getName(), to_string(getType()));
     }
 
     void Material::setAlphaThreshold(float alphaThreshold)
     {
-        logWarning("Material '" + getName() + "' of type '" + to_string(getType()) + "' does not support alpha. Ignoring call to setAlphaThreshold().");
+        logWarning("Material '{}' of type '{}' does not support alpha. Ignoring call to setAlphaThreshold().", getName(), to_string(getType()));
     }
 
     void Material::setNestedPriority(uint32_t priority)
@@ -128,7 +130,7 @@ namespace Falcor
         const uint32_t maxPriority = (1u << MaterialHeader::kNestedPriorityBits) - 1;
         if (priority > maxPriority)
         {
-            logWarning("Requested nested priority " + std::to_string(priority) + " for material '" + mName + "' is out of range. Clamping to " + std::to_string(maxPriority) + ".");
+            logWarning("Requested nested priority {} for material '{}' is out of range. Clamping to {}.", priority, mName, maxPriority);
             priority = maxPriority;
         }
         if (mHeader.getNestedPriority() != priority)
@@ -140,13 +142,13 @@ namespace Falcor
 
     const Material::TextureSlotInfo& Material::getTextureSlotInfo(const TextureSlot slot) const
     {
-        assert((size_t)slot < mTextureSlotInfo.size());
+        FALCOR_ASSERT((size_t)slot < mTextureSlotInfo.size());
         return mTextureSlotInfo[(size_t)slot];
     }
 
     bool Material::hasTextureSlotData(const TextureSlot slot) const
     {
-        assert((size_t)slot < mTextureSlotInfo.size());
+        FALCOR_ASSERT((size_t)slot < mTextureSlotInfo.size());
         return mTextureSlotData[(size_t)slot].pTexture != nullptr;
     }
 
@@ -154,13 +156,13 @@ namespace Falcor
     {
         if (!hasTextureSlot(slot))
         {
-            logWarning("Material '" + getName() + "' does not have texture slot '" + to_string(slot) + "'. Ignoring call to setTexture().");
+            logWarning("Material '{}' does not have texture slot '{}'. Ignoring call to setTexture().", getName(), to_string(slot));
             return false;
         }
 
         if (pTexture == getTexture(slot)) return false;
 
-        assert((size_t)slot < mTextureSlotInfo.size());
+        FALCOR_ASSERT((size_t)slot < mTextureSlotInfo.size());
         mTextureSlotData[(size_t)slot].pTexture = pTexture;
 
         markUpdates(UpdateFlags::ResourcesChanged);
@@ -171,7 +173,7 @@ namespace Falcor
     {
         if (!hasTextureSlot(slot)) return nullptr;
 
-        assert((size_t)slot < mTextureSlotInfo.size());
+        FALCOR_ASSERT((size_t)slot < mTextureSlotInfo.size());
         return mTextureSlotData[(size_t)slot].pTexture;
     }
 
@@ -179,7 +181,7 @@ namespace Falcor
     {
         if (!hasTextureSlot(slot))
         {
-            logWarning("Material '" + getName() + "' does not have texture slot '" + to_string(slot) + "'. Ignoring call to loadTexture().");
+            logWarning("Material '{}' does not have texture slot '{}'. Ignoring call to loadTexture().", getName(), to_string(slot));
             return;
         }
 
@@ -223,16 +225,15 @@ namespace Falcor
         if (mUpdateCallback) mUpdateCallback(updates);
     }
 
-    void Material::updateTextureHandle(MaterialSystem* pOwner, const TextureSlot slot, TextureHandle& handle)
+    void Material::updateTextureHandle(MaterialSystem* pOwner, const Texture::SharedPtr& pTexture, TextureHandle& handle)
     {
         TextureHandle prevHandle = handle;
 
         // Update the given texture handle.
-        auto pTexture = getTexture(slot);
         if (pTexture)
         {
             auto h = pOwner->getTextureManager()->addTexture(pTexture);
-            assert(h);
+            FALCOR_ASSERT(h);
             handle.setTextureID(h.getID());
         }
         else
@@ -241,6 +242,12 @@ namespace Falcor
         }
 
         if (handle != prevHandle) mUpdates |= Material::UpdateFlags::DataChanged;
+    }
+
+    void Material::updateTextureHandle(MaterialSystem* pOwner, const TextureSlot slot, TextureHandle& handle)
+    {
+        auto pTexture = getTexture(slot);
+        updateTextureHandle(pOwner, pTexture, handle);
     };
 
     void Material::updateDefaultTextureSamplerID(MaterialSystem* pOwner, const Sampler::SharedPtr& pSampler)
@@ -262,7 +269,7 @@ namespace Falcor
         if (mHeader != other.mHeader) return false;
         if (mTextureTransform != other.mTextureTransform) return false;
 
-        assert(mTextureSlotInfo.size() == mTextureSlotData.size());
+        FALCOR_ASSERT(mTextureSlotInfo.size() == mTextureSlotData.size());
         for (size_t i = 0; i < mTextureSlotInfo.size(); i++)
         {
             // Compare texture slots.
@@ -288,6 +295,7 @@ namespace Falcor
         materialType.value("Standard", MaterialType::Standard);
         materialType.value("Cloth", MaterialType::Cloth);
         materialType.value("Hair", MaterialType::Hair);
+        materialType.value("MERL", MaterialType::MERL);
 
         pybind11::enum_<AlphaMode> alphaMode(m, "AlphaMode");
         alphaMode.value("Opaque", AlphaMode::Opaque);

@@ -47,7 +47,7 @@ namespace
 
     // Ray tracing settings that affect the traversal stack size.
     // These should be set as small as possible.
-    const uint32_t kMaxPayloadSizeBytes = 80u;
+    const uint32_t kMaxPayloadSizeBytes = 72u;
     const uint32_t kMaxRecursionDepth = 2u;
 
     const char kInputViewDir[] = "viewW";
@@ -80,7 +80,7 @@ MinimalPathTracer::MinimalPathTracer(const Dictionary& dict)
 
     // Create a sample generator.
     mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
-    assert(mpSampleGenerator);
+    FALCOR_ASSERT(mpSampleGenerator);
 }
 
 void MinimalPathTracer::parseDictionary(const Dictionary& dict)
@@ -90,7 +90,7 @@ void MinimalPathTracer::parseDictionary(const Dictionary& dict)
         if (key == kMaxBounces) mMaxBounces = value;
         else if (key == kComputeDirect) mComputeDirect = value;
         else if (key == kUseImportanceSampling) mUseImportanceSampling = value;
-        else logWarning("Unknown field '" + key + "' in MinimalPathTracer dictionary");
+        else logWarning("Unknown field '{}' in MinimalPathTracer dictionary.", key);
     }
 }
 
@@ -151,7 +151,7 @@ void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData&
     const bool useDOF = mpScene->getCamera()->getApertureRadius() > 0.f;
     if (useDOF && renderData[kInputViewDir] == nullptr)
     {
-        logWarning("Depth-of-field requires the '" + std::string(kInputViewDir) + "' input. Expect incorrect shading.");
+        logWarning("Depth-of-field requires the '{}' input. Expect incorrect shading.", kInputViewDir);
     }
 
     // Specialize program.
@@ -172,7 +172,7 @@ void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData&
     // Prepare program vars. This may trigger shader compilation.
     // The program should have all necessary defines set at this point.
     if (!mTracer.pVars) prepareVars();
-    assert(mTracer.pVars);
+    FALCOR_ASSERT(mTracer.pVars);
 
     // Set constants.
     auto var = mTracer.pVars->getRootVar();
@@ -192,7 +192,7 @@ void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData&
 
     // Get dimensions of ray dispatch.
     const uint2 targetDim = renderData.getDefaultTextureDims();
-    assert(targetDim.x > 0 && targetDim.y > 0);
+    FALCOR_ASSERT(targetDim.x > 0 && targetDim.y > 0);
 
     // Spawn the rays.
     mpScene->raytrace(pRenderContext, mTracer.pProgram.get(), mTracer.pVars, uint3(targetDim, 1));
@@ -235,7 +235,10 @@ void MinimalPathTracer::setScene(RenderContext* pRenderContext, const Scene::Sha
 
     if (mpScene)
     {
-        if (pScene->hasGeometryType(Scene::GeometryType::Custom)) reportError("This render pass does not support custom primitives.");
+        if (pScene->hasGeometryType(Scene::GeometryType::Custom))
+        {
+            logWarning("MinimalPathTracer: This render pass does not support custom primitives.");
+        }
 
         // Create ray tracing program.
         RtProgram::Desc desc;
@@ -280,8 +283,8 @@ void MinimalPathTracer::setScene(RenderContext* pRenderContext, const Scene::Sha
 
 void MinimalPathTracer::prepareVars()
 {
-    assert(mpScene);
-    assert(mTracer.pProgram);
+    FALCOR_ASSERT(mpScene);
+    FALCOR_ASSERT(mTracer.pProgram);
 
     // Configure program.
     mTracer.pProgram->addDefines(mpSampleGenerator->getDefines());

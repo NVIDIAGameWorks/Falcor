@@ -37,11 +37,11 @@ namespace Falcor
         return SharedPtr(new EnvMap(pTexture));
     }
 
-    EnvMap::SharedPtr EnvMap::create(const std::string& filename)
+    EnvMap::SharedPtr EnvMap::createFromFile(const std::string& filename)
     {
         // Load environment map from file. Set it to generate mips and use linear color.
         auto pTexture = Texture::createFromFile(filename, true, false);
-        if (!pTexture) throw RuntimeError("Failed to load environment map texture");
+        if (!pTexture) return nullptr;
         return create(pTexture);
     }
 
@@ -79,7 +79,7 @@ namespace Falcor
 
     void EnvMap::setShaderData(const ShaderVar& var) const
     {
-        assert(var.isValid());
+        FALCOR_ASSERT(var.isValid());
 
         // Set variables.
         var["data"].setBlob(mData);
@@ -107,11 +107,11 @@ namespace Falcor
         return mpEnvMap ? mpEnvMap->getTextureSizeInBytes() : 0;
     }
 
-    EnvMap::EnvMap(const Texture::SharedPtr& texture)
+    EnvMap::EnvMap(const Texture::SharedPtr& pTexture)
     {
-        if (!texture) throw ArgumentError("'texture' must be a valid texture");
+        checkArgument(pTexture != nullptr, "'pTexture' must be a valid texture");
 
-        mpEnvMap = texture;
+        mpEnvMap = pTexture;
 
         // Create sampler.
         // The lat-long map wraps around horizontally, but not vertically. Set the sampler to only wrap in U.
@@ -124,7 +124,8 @@ namespace Falcor
     FALCOR_SCRIPT_BINDING(EnvMap)
     {
         pybind11::class_<EnvMap, EnvMap::SharedPtr> envMap(m, "EnvMap");
-        envMap.def(pybind11::init(pybind11::overload_cast<const std::string&>(&EnvMap::create)), "filename"_a);
+        envMap.def(pybind11::init(pybind11::overload_cast<const std::string&>(&EnvMap::createFromFile)), "filename"_a);
+        envMap.def_static("createFromFile", &EnvMap::createFromFile, "filename"_a);
         envMap.def_property_readonly("filename", &EnvMap::getFilename);
         envMap.def_property("rotation", &EnvMap::getRotation, &EnvMap::setRotation);
         envMap.def_property("intensity", &EnvMap::getIntensity, &EnvMap::setIntensity);

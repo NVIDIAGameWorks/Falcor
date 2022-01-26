@@ -81,10 +81,9 @@ namespace Falcor
             \param[out] pResult (Optional) The result of the reduction operation is stored here if non-nullptr. Note that this requires a GPU flush!
             \param[out] pResultBuffer (Optional) Buffer on the GPU to which the result is copied (16B or 32B).
             \param[out] resultOffset (Optional) Byte offset into pResultBuffer to where the result should be stored.
-            \return True if successful, false if an error occured.
         */
         template<typename T>
-        bool execute(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, T* pResult = nullptr, Buffer::SharedPtr pResultBuffer = nullptr, uint64_t resultOffset = 0);
+        void execute(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, T* pResult = nullptr, Buffer::SharedPtr pResultBuffer = nullptr, uint64_t resultOffset = 0);
 
     private:
         ComputeParallelReduction();

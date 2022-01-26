@@ -70,7 +70,7 @@ namespace Falcor
     ComputeContext::ComputeContext(LowLevelContextData::CommandQueueType type, CommandQueueHandle queue)
         : CopyContext(type, queue)
     {
-        assert(queue);
+        FALCOR_ASSERT(queue);
         ComputeContextApiData::init();
     }
 
@@ -79,7 +79,7 @@ namespace Falcor
         ComputeContextApiData::release();
     }
 
-    bool ComputeContext::applyComputeVars(ComputeVars* pVars, const ProgramKernels* pProgramKernels)
+    void ComputeContext::applyComputeVars(ComputeVars* pVars, const ProgramKernels* pProgramKernels)
     {
         bool varsChanged = (pVars != mpLastBoundComputeVars);
 
@@ -92,30 +92,30 @@ namespace Falcor
             flush(true);
             if (!pVars->apply(this, varsChanged, pProgramKernels))
             {
-                reportError("ComputeVars::applyComputeVars() - applying ComputeVars failed, most likely because we ran out of descriptors");
-                return false;
+                throw RuntimeError("ComputeVars::applyComputeVars() - applying ComputeVars failed, most likely because we ran out of descriptors");
             }
         }
-        return true;
     }
 
-    bool ComputeContext::prepareForDispatch(ComputeState* pState, ComputeVars* pVars)
+    void ComputeContext::prepareForDispatch(ComputeState* pState, ComputeVars* pVars)
     {
-        assert(pState);
+        FALCOR_ASSERT(pState);
 
         auto pCSO = pState->getCSO(pVars);
 
         // Apply the vars. Must be first because applyComputeVars() might cause a flush
         if (pVars)
         {
-            if (applyComputeVars(pVars, pCSO->getDesc().getProgramKernels().get()) == false) return false;
+            applyComputeVars(pVars, pCSO->getDesc().getProgramKernels().get());
         }
-        else mpLowLevelData->getCommandList()->SetComputeRootSignature(D3D12RootSignature::getEmpty()->getApiHandle());
+        else
+        {
+            mpLowLevelData->getCommandList()->SetComputeRootSignature(D3D12RootSignature::getEmpty()->getApiHandle());
+        }
 
         mpLastBoundComputeVars = pVars;
         mpLowLevelData->getCommandList()->SetPipelineState(pCSO->getApiHandle());
         mCommandsPending = true;
-        return true;
     }
 
     void ComputeContext::dispatch(ComputeState* pState, ComputeVars* pVars, const uint3& dispatchSize)
@@ -125,13 +125,14 @@ namespace Falcor
             dispatchSize.y > D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION ||
             dispatchSize.z > D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION)
         {
-            reportError("ComputePass::execute() - Dispatch dimension exceeds maximum. Skipping.");
-            return;
+            throw RuntimeError("ComputePass::execute() - Dispatch dimension exceeds maximum.");
         }
 
-        if (prepareForDispatch(pState, pVars) == false) return;
+        prepareForDispatch(pState, pVars);
         mpLowLevelData->getCommandList()->Dispatch(dispatchSize.x, dispatchSize.y, dispatchSize.z);
     }
+
+    D3D12_DESCRIPTOR_HEAP_TYPE falcorToDxDescType(D3D12DescriptorPool::Type t); // Defined in D3D12DescriptorPool.cpp
 
     template<typename ClearType>
     void clearUavCommon(ComputeContext* pContext, const UnorderedAccessView* pUav, const ClearType& clear, ID3D12GraphicsCommandList* pList)
@@ -139,17 +140,32 @@ namespace Falcor
         auto pResource = pUav->getResource();
         pContext->resourceBarrier(pResource.get(), Resource::State::UnorderedAccess);
         UavHandle uav = pUav->getApiHandle();
+
+        // ClearUnorderedAccessView* requires both CPU and GPU handles to descriptors
+        // created on two different heaps: one shader visible and one that is not shader visible.
+        // The supplied UAV is created on a CPU descriptor heap. We'll copy it here to a transient GPU descriptor.
+        // This is a special-case for UAV clears. Other D3D12 operations copy the CPU descriptor into the command list.
+
+        D3D12DescriptorSet::Layout layout;
+        layout.addRange(ShaderResourceType::TextureUav, 0, 1);
+        auto pSet = D3D12DescriptorSet::create(gpDevice->getD3D12GpuDescriptorPool(), layout);
+        auto dstHandle = pSet->getCpuHandle(0);
+
+        D3D12DescriptorSet::CpuHandle cpuHandle = uav->getCpuHandle(0);
+        D3D12DescriptorSet::GpuHandle gpuHandle = pSet->getGpuHandle(0);
+        gpDevice->getApiHandle()->CopyDescriptorsSimple(1, dstHandle, cpuHandle, falcorToDxDescType(pSet->getRange(0).type));
+
         if (typeid(ClearType) == typeid(float4))
         {
-            pList->ClearUnorderedAccessViewFloat(uav->getGpuHandle(0), uav->getCpuHandle(0), pResource->getApiHandle(), (float*)value_ptr(clear), 0, nullptr);
+            pList->ClearUnorderedAccessViewFloat(gpuHandle, cpuHandle, pResource->getApiHandle(), (float*)value_ptr(clear), 0, nullptr);
         }
         else if (typeid(ClearType) == typeid(uint4))
         {
-            pList->ClearUnorderedAccessViewUint(uav->getGpuHandle(0), uav->getCpuHandle(0), pResource->getApiHandle(), (uint32_t*)value_ptr(clear), 0, nullptr);
+            pList->ClearUnorderedAccessViewUint(gpuHandle, cpuHandle, pResource->getApiHandle(), (uint32_t*)value_ptr(clear), 0, nullptr);
         }
         else
         {
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
         }
     }
 
@@ -175,7 +191,7 @@ namespace Falcor
 
     void ComputeContext::dispatchIndirect(ComputeState* pState, ComputeVars* pVars, const Buffer* pArgBuffer, uint64_t argBufferOffset)
     {
-        if (prepareForDispatch(pState, pVars) == false) return;
+        prepareForDispatch(pState, pVars);
         resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
         mpLowLevelData->getCommandList()->ExecuteIndirect(sApiData.pDispatchCommandSig, 1, pArgBuffer->getApiHandle(), argBufferOffset, nullptr, 0);
     }

@@ -4,7 +4,17 @@
 
 # Scene Formats
 
-Falcor uses [Assimp](https://github.com/assimp/assimp) as its core asset loader and can load all file formats Assimp supports by default.
+## USD Scene Files
+
+Starting with version 5.0 Falcor includes an experimental importer for Universal Scene Description (USD) files.
+
+The `UsdPreviewSurface` material model is partially supported by mapping to Falcor's `StandardMaterial` at load time.
+
+## FBX/GLTF Scene Files
+
+Falcor uses [Assimp](https://github.com/assimp/assimp) as its asset loader for FBX and GLTF scenes. It can load all other file formats Assimp supports by default, but support may be more limited.
+
+All loaded material data is mapped to Falcor's `StandardMaterial` at load time.
 
 From assets, Falcor will import:
 - Scene Graph
@@ -132,7 +142,8 @@ Each vertex has a _position_, _normal_ and _texCoord_ attribute. Triangles are d
 
 #### Create Materials
 
-Next we need to define at least one material to use for our meshes:
+Next we need to define at least one material to use for our meshes.
+For more examples, see [Materials](./Materials.md).
 
 ```python
 # Create materials

@@ -45,11 +45,8 @@ namespace Falcor
 
     BlendState::Desc& BlendState::Desc::setRtParams(uint32_t rtIndex, BlendOp rgbOp, BlendOp alphaOp, BlendFunc srcRgbFunc, BlendFunc dstRgbFunc, BlendFunc srcAlphaFunc, BlendFunc dstAlphaFunc)
     {
-        if(rtIndex >= mRtDesc.size())
-        {
-            reportError("Error when setting blend state RT parameters. Invalid render-target index " + std::to_string(rtIndex) + ". Must be smaller than " + std::to_string(mRtDesc.size()) + ".");
-            return *this;
-        }
+        checkArgument(rtIndex < mRtDesc.size(), "'rtIndex' ({}) is out of range.  Must be smaller than {}.", rtIndex, mRtDesc.size());
+
         mRtDesc[rtIndex].rgbBlendOp = rgbOp;
         mRtDesc[rtIndex].alphaBlendOp = alphaOp;
         mRtDesc[rtIndex].srcRgbFunc = srcRgbFunc;
@@ -61,11 +58,8 @@ namespace Falcor
 
     BlendState::Desc& BlendState::Desc::setRenderTargetWriteMask(uint32_t rtIndex, bool writeRed, bool writeGreen, bool writeBlue, bool writeAlpha)
     {
-        if(rtIndex >= mRtDesc.size())
-        {
-            reportError("Error when setting blend state RT write-mask. Invalid render-target index " + std::to_string(rtIndex) + ". Must be smaller than " + std::to_string(mRtDesc.size()) + ".");
-            return *this;
-        }
+        checkArgument(rtIndex < mRtDesc.size(), "'rtIndex' ({}) is out of range.  Must be smaller than {}.", rtIndex, mRtDesc.size());
+
         mRtDesc[rtIndex].writeMask.writeRed = writeRed;
         mRtDesc[rtIndex].writeMask.writeGreen = writeGreen;
         mRtDesc[rtIndex].writeMask.writeBlue = writeBlue;

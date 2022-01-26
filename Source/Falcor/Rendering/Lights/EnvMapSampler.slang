@@ -50,6 +50,12 @@ struct EnvMapSample
 */
 struct EnvMapSampler
 {
+    SamplerState        importanceSampler;      ///< Point sampling with clamp to edge.
+    Texture2D<float>    importanceMap;          ///< Hierarchical importance map (entire mip chain).
+    float2              importanceInvDim;       ///< 1.0 / dimension.
+    uint                importanceBaseMip;      ///< Mip level for 1x1 resolution.
+    // TODO: Add scalar value for total integrated intensity, i.e., same as 1x1 mip
+
     /** Evaluates the radiance coming from world space direction 'dir'.
     */
     float3 eval(float3 dir, float lod = 0.f)
@@ -149,11 +155,4 @@ struct EnvMapSampler
         float pdf = importanceMap.SampleLevel(importanceSampler, uv, 0) / avg_w;
         return pdf * (1.f / M_4PI);
     }
-
-    SamplerState        importanceSampler;      ///< Point sampling with clamp to edge.
-    Texture2D<float>    importanceMap;          ///< Hierarchical importance map (entire mip chain).
-    float2              importanceInvDim;       ///< 1.0 / dimension.
-    uint                importanceBaseMip;      ///< Mip level for 1x1 resolution.
-    uint                _pad;
-    // TODO: Add scalar value for total integrated intensity, i.e., same as 1x1 mip
 };

@@ -87,7 +87,7 @@ namespace
             "Green = instanced geometry\n"
             "Red = non-instanced geometry";
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return "";
         }
     }
@@ -148,7 +148,7 @@ SceneDebugger::SceneDebugger(const Dictionary& dict)
     {
         if (key == kMode) mParams.mode = (uint32_t)value;
         else if (key == kShowVolumes) mParams.showVolumes = value;
-        else logWarning("Unknown field '" + key + "' in a SceneDebugger dictionary");
+        else logWarning("Unknown field '{}' in a SceneDebugger dictionary.", key);
     }
 
     Program::Desc desc;
@@ -181,6 +181,7 @@ void SceneDebugger::compile(RenderContext* pRenderContext, const CompileData& co
 void SceneDebugger::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
 {
     mpScene = pScene;
+    mpMeshToBlasID = nullptr;
 
     if (mpScene)
     {
@@ -193,8 +194,10 @@ void SceneDebugger::setScene(RenderContext* pRenderContext, const Scene::SharedP
 
         // Create lookup table for mesh to BLAS ID.
         auto blasIDs = mpScene->getMeshBlasIDs();
-        assert(!blasIDs.empty());
-        mpMeshToBlasID = Buffer::createStructured(sizeof(uint32_t), (uint32_t)blasIDs.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, blasIDs.data(), false);
+        if (!blasIDs.empty())
+        {
+            mpMeshToBlasID = Buffer::createStructured(sizeof(uint32_t), (uint32_t)blasIDs.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, blasIDs.data(), false);
+        }
 
         // Create instance metadata.
         initInstanceInfo();
@@ -280,7 +283,7 @@ void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
 {
     if (!mPixelDataAvailable) return;
 
-    assert(mpPixelDataStaging);
+    FALCOR_ASSERT(mpPixelDataStaging);
     mpFence->syncCpu();
     const PixelData& data = *reinterpret_cast<const PixelData*>(mpPixelDataStaging->map(Buffer::MapType::Read));
 
@@ -301,7 +304,7 @@ void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
         // Show mesh details.
         if (auto g = widget.group("Mesh info"); g.open())
         {
-            assert(data.geometryID < mpScene->getMeshCount());
+            FALCOR_ASSERT(data.geometryID < mpScene->getMeshCount());
             const auto& mesh = mpScene->getMesh(data.geometryID);
             std::ostringstream oss;
             oss << "flags: " << std::hex << std::showbase << mesh.flags << std::dec << std::noshowbase << std::endl
@@ -320,7 +323,7 @@ void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
         // Show mesh instance info.
         if (auto g = widget.group("Mesh instance info"); g.open())
         {
-            assert(data.instanceID < mpScene->getGeometryInstanceCount());
+            FALCOR_ASSERT(data.instanceID < mpScene->getGeometryInstanceCount());
             const auto& instance = mpScene->getGeometryInstance(data.instanceID);
             std::ostringstream oss;
             oss << "flags: " << std::hex << std::showbase << instance.flags << std::dec << std::noshowbase << std::endl
@@ -340,7 +343,7 @@ void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
                 nodes.push_back(nodeID);
                 nodeID = mpScene->getParentNodeID(nodeID);
             }
-            assert(!nodes.empty());
+            FALCOR_ASSERT(!nodes.empty());
 
             g.text("Scene graph (root first):");
             const auto& localMatrices = mpScene->getAnimationController()->getLocalMatrices();
@@ -481,6 +484,5 @@ void SceneDebugger::initInstanceInfo()
     }
 
     // Create GPU buffer.
-    assert(!instanceInfo.empty());
     mpInstanceInfo = Buffer::createStructured(sizeof(InstanceInfo), (uint32_t)instanceInfo.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, instanceInfo.data(), false);
 }

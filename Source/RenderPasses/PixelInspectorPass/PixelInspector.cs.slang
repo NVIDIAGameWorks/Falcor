@@ -25,9 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-import Scene.Scene;
-import Scene.HitInfo;
-import Scene.ShadingData;
+import Scene.Shading;
 import Scene.Camera.Camera;
 import Utils.Color.ColorHelpers;
 import PixelInspectorData;
@@ -151,7 +149,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
         data.IoR = sd.IoR;
 
         // Store BSDF properties.
-        data.emissive = bsdfProperties.emissive;
+        data.emission = bsdfProperties.emission;
         data.roughness = bsdfProperties.roughness;
         data.diffuseReflectionAlbedo = bsdfProperties.diffuseReflectionAlbedo;
         data.diffuseTransmissionAlbedo = bsdfProperties.diffuseTransmissionAlbedo;

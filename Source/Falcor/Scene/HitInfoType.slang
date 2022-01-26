@@ -30,11 +30,7 @@
 
 BEGIN_NAMESPACE_FALCOR
 
-enum HitType
-// TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
-#ifdef HOST_CODE
-    : uint32_t
-#endif
+enum class HitType : uint32_t
 {
     None                = 0,    ///< No hit.
     Triangle            = 1,    ///< Triangle hit.

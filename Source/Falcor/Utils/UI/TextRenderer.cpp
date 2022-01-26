@@ -98,7 +98,7 @@ namespace Falcor
         void renderText(RenderContext* pRenderContext, const std::string& text, const Fbo::SharedPtr& pDstFbo, float2 pos)
         {
             // Make sure we enough space for the next char
-            assert(text.size() < kMaxCharCount);
+            FALCOR_ASSERT(text.size() < kMaxCharCount);
             setCbData(pDstFbo);
             Vertex* verts = (Vertex*)gTextData.pVb->map(Buffer::MapType::WriteDiscard);
 

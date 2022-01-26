@@ -80,7 +80,7 @@ namespace Falcor
 
     const DepthStencilState::StencilDesc& DepthStencilState::getStencilDesc(Face face) const
     {
-        assert(face != Face::FrontAndBack);
+        FALCOR_ASSERT(face != Face::FrontAndBack);
         return (face == Face::Front) ? mDesc.mStencilFront : mDesc.mStencilBack;
     }
 

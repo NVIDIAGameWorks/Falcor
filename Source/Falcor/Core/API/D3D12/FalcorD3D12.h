@@ -52,7 +52,7 @@
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3d12.lib")
 
-#define FALCOR_UNSUPPORTED_IN_D3D(_msg) {Falcor::logWarning(_msg + std::string(" is not supported in D3D. Ignoring call."));}
+#define FALCOR_UNSUPPORTED_IN_D3D(_msg) {Falcor::logWarning("{}  is not supported in D3D. Ignoring call.", _msg);}
 
 namespace Falcor
 {
@@ -125,7 +125,7 @@ namespace Falcor
             rt_flags(MinimizeMemory);
             rt_flags(PerformUpdate);
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return "";
         }
     }
@@ -225,4 +225,4 @@ namespace Falcor
     /*! @} */
 }
 
-#define FALCOR_UNSUPPORTED_IN_D3D12(_msg) {Falcor::logWarning(_msg + std::string(" is not supported in D3D12. Ignoring call."));}
+#define FALCOR_UNSUPPORTED_IN_D3D12(_msg) {Falcor::logWarning("{} is not supported in D3D12. Ignoring call.", _msg);}

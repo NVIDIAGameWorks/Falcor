@@ -30,21 +30,6 @@
 
 namespace Falcor
 {
-    bool checkVaoParams(const Vao::BufferVec& vbDesc, const VertexLayout* pLayout, Buffer* pIB, ResourceFormat ibFormat)
-    {
-        // TODO: Check number of vertex buffers match with pLayout.
-        if (pIB)
-        {
-            if (ibFormat != ResourceFormat::R16Uint && ibFormat != ResourceFormat::R32Uint)
-            {
-                reportError("Invalid index buffer format (" + to_string(ibFormat) + ")");
-                return false;
-            }
-        }
-
-        return true;
-    }
-
     Vao::Vao(const BufferVec& pVBs, const VertexLayout::SharedPtr& pLayout, const Buffer::SharedPtr& pIB, ResourceFormat ibFormat, Topology topology)
         : mIbFormat(ibFormat)
         , mpVBs(pVBs)
@@ -56,14 +41,8 @@ namespace Falcor
 
     Vao::SharedPtr Vao::create(Topology topology, const VertexLayout::SharedPtr& pLayout, const BufferVec& pVBs, const Buffer::SharedPtr& pIB, ResourceFormat ibFormat)
     {
-        if (pLayout != nullptr)
-        {
-            if (checkVaoParams(pVBs, pLayout.get(), pIB.get(), ibFormat) == false)
-            {
-                throw RuntimeError("Failed to create VAO");
-            }
-        }
-
+        // TODO: Check number of vertex buffers match with pLayout.
+        checkArgument(!pIB || (ibFormat == ResourceFormat::R16Uint || ibFormat == ResourceFormat::R32Uint), "'ibFormat' must be R16Uint or R32Uint.");
         SharedPtr pVao = SharedPtr(new Vao(pVBs, pLayout, pIB, ibFormat, topology));
         return pVao;
     }
@@ -75,7 +54,7 @@ namespace Falcor
         for(uint32_t bufId = 0; bufId < getVertexBuffersCount(); ++bufId)
         {
             const VertexBufferLayout* pVbLayout = mpVertexLayout->getBufferLayout(bufId).get();
-            assert(pVbLayout);
+            FALCOR_ASSERT(pVbLayout);
 
             for(uint32_t i = 0; i < pVbLayout->getElementCount(); ++i)
             {

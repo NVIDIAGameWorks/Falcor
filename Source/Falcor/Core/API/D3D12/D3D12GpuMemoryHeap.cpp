@@ -46,7 +46,7 @@ namespace Falcor
             case GpuMemoryHeap::Type::Readback:
                 return kReadbackHeapProps;
             default:
-                should_not_get_here();
+                FALCOR_UNREACHABLE();
                 return D3D12_HEAP_PROPERTIES();
             }
         }
@@ -62,7 +62,7 @@ namespace Falcor
             case GpuMemoryHeap::Type::Readback:
                 return Buffer::State::CopyDest;
             default:
-                should_not_get_here();
+                FALCOR_UNREACHABLE();
                 return Buffer::State::Undefined;
             }
         }

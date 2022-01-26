@@ -26,9 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 import Utils.Attributes;
-__exported import Scene.Scene;
-
 import Rendering.Materials.TexLODHelpers;
+__exported import Scene.Shading;
 
 cbuffer DxrPerFrame
 {

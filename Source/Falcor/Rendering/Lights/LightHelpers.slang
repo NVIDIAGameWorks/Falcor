@@ -87,15 +87,14 @@ bool finalizeAreaLightSample(const float3 shadingPosW, const LightData light, in
 /** Samples a rectangular area light source.
     \param[in] shadingPosW Shading point in world space.
     \param[in] light Light data.
-    \param[in,out] sg Sample generator.
+    \param[in] u Uniform random numbers.
     \param[out] ls Light sample struct.
     \return True if a sample was generated, false otherwise.
 */
-bool sampleRectAreaLight<S : ISampleGenerator>(const float3 shadingPosW, const LightData light, inout S sg, out AnalyticLightSample ls)
+bool sampleRectAreaLight(const float3 shadingPosW, const LightData light, const float2 u, out AnalyticLightSample ls)
 {
     // Pick a random sample on the quad.
     // The quad is from (-1,-1,0) to (1,1,0) in object space, but may be scaled by its transform matrix.
-    float2 u = sampleNext2D(sg);
     float3 pos = float3(u.x * 2.f - 1.f, u.y * 2.f - 1.f, 0.f);
 
     // Apply model to world transformation matrix.
@@ -111,15 +110,14 @@ bool sampleRectAreaLight<S : ISampleGenerator>(const float3 shadingPosW, const L
 /** Samples a spherical area light source.
     \param[in] shadingPosW Shading point in world space.
     \param[in] light Light data.
-    \param[in,out] sg Sample generator.
+    \param[in] u Uniform random numbers.
     \param[out] ls Light sample struct.
     \return True if a sample was generated, false otherwise.
 */
-bool sampleSphereAreaLight<S : ISampleGenerator>(const float3 shadingPosW, const LightData light, inout S sg, out AnalyticLightSample ls)
+bool sampleSphereAreaLight(const float3 shadingPosW, const LightData light, const float2 u, out AnalyticLightSample ls)
 {
     // Sample a random point on the sphere.
     // TODO: We should pick a random point on the hemisphere facing the shading point.
-    float2 u = sampleNext2D(sg);
     float3 pos = sample_sphere(u);
 
     // Apply model to world transformation matrix.
@@ -134,15 +132,14 @@ bool sampleSphereAreaLight<S : ISampleGenerator>(const float3 shadingPosW, const
 /** Samples disc area light source.
     \param[in] shadingPosW Shading point in world space.
     \param[in] light Light data.
-    \param[in,out] sg Sample generator.
+    \param[in] Uniform random numbers.
     \param[out] ls Light sample struct.
     \return True if a sample was generated, false otherwise.
 */
-bool sampleDiscAreaLight<S : ISampleGenerator>(const float3 shadingPosW, const LightData light, inout S sg, out AnalyticLightSample ls)
+bool sampleDiscAreaLight(const float3 shadingPosW, const LightData light, const float2 u, out AnalyticLightSample ls)
 {
     // Sample a random point on the disk.
     // TODO: Fix spelling disagreement between disc vs disk.
-    float2 u = sampleNext2D(sg);
     float3 pos = float3(sample_disk(u), 0.f);
 
     // Transform to world space.
@@ -157,16 +154,16 @@ bool sampleDiscAreaLight<S : ISampleGenerator>(const float3 shadingPosW, const L
 /** Samples a distant light source.
     \param[in] shadingPosW Shading point in world space.
     \param[in] light Light data.
-    \param[in,out] sg Sample generator.
+    \param[in] u Uniform random numbers.
     \param[out] ls Light sample struct.
     \return True if a sample was generated, false otherwise.
 */
-bool sampleDistantLight<S : ISampleGenerator>(const float3 shadingPosW, const LightData light, inout S sg, out AnalyticLightSample ls)
+bool sampleDistantLight(const float3 shadingPosW, const LightData light, const float2 u, out AnalyticLightSample ls)
 {
     // A distant light doesn't have a position. Just clear to zero.
     ls.posW = float3(0.f, 0.f, 0.f);
 
-    float2 u = sampleNext2D(sg);
+    // Sample direction.
     float3 dir = sample_cone(u, light.cosSubtendedAngle);
 
     // Transform sampled direction to world space
@@ -270,13 +267,13 @@ bool sampleLight<S : ISampleGenerator>(const float3 shadingPosW, const LightData
     case LightType::Directional:
         return sampleDirectionalLight(shadingPosW, light, ls);
     case LightType::Rect:
-        return sampleRectAreaLight(shadingPosW, light, sg, ls);
+        return sampleRectAreaLight(shadingPosW, light, sampleNext2D(sg), ls);
     case LightType::Sphere:
-        return sampleSphereAreaLight(shadingPosW, light, sg, ls);
+        return sampleSphereAreaLight(shadingPosW, light, sampleNext2D(sg), ls);
     case LightType::Disc:
-        return sampleDiscAreaLight(shadingPosW, light, sg, ls);
+        return sampleDiscAreaLight(shadingPosW, light, sampleNext2D(sg), ls);
     case LightType::Distant:
-        return sampleDistantLight(shadingPosW, light, sg, ls);
+        return sampleDistantLight(shadingPosW, light, sampleNext2D(sg), ls);
     default:
         ls = {};
         return false; // Should not happen

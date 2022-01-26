@@ -97,7 +97,7 @@ AccumulatePass::AccumulatePass(const Dictionary& dict)
         else if (key == kPrecisionMode) mPrecisionMode = value;
         else if (key == kSubFrameCount) mSubFrameCount = value;
         else if (key == kMaxAccumulatedFrames) mMaxAccumulatedFrames = value;
-        else logWarning("Unknown field '" + key + "' in AccumulatePass dictionary");
+        else logWarning("Unknown field '{}' in AccumulatePass dictionary.", key);
     }
 
     if (dict.keyExists("enableAccumulation"))
@@ -173,7 +173,7 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
     // Grab our input/output buffers.
     Texture::SharedPtr pSrc = renderData[kInputChannel]->asTexture();
     Texture::SharedPtr pDst = renderData[kOutputChannel]->asTexture();
-    assert(pSrc && pDst);
+    FALCOR_ASSERT(pSrc && pDst);
 
     const uint2 resolution = uint2(pSrc->getWidth(), pSrc->getHeight());
     const bool resolutionMatch = pDst->getWidth() == resolution.x && pDst->getHeight() == resolution.y;
@@ -218,9 +218,9 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
 
 void AccumulatePass::accumulate(RenderContext* pRenderContext, const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDst)
 {
-    assert(pSrc && pDst);
-    assert(pSrc->getWidth() == mFrameDim.x && pSrc->getHeight() == mFrameDim.y);
-    assert(pDst->getWidth() == mFrameDim.x && pDst->getHeight() == mFrameDim.y);
+    FALCOR_ASSERT(pSrc && pDst);
+    FALCOR_ASSERT(pSrc->getWidth() == mFrameDim.x && pSrc->getHeight() == mFrameDim.y);
+    FALCOR_ASSERT(pDst->getWidth() == mFrameDim.x && pDst->getHeight() == mFrameDim.y);
     const FormatType srcType = getFormatType(pSrc->getFormat());
 
     // If for the first time, or if the input format type has changed, (re)compile the programs.
@@ -275,7 +275,7 @@ void AccumulatePass::accumulate(RenderContext* pRenderContext, const Texture::Sh
 
     // Run the accumulation program.
     auto pProgram = mpProgram[mPrecisionMode];
-    assert(pProgram);
+    FALCOR_ASSERT(pProgram);
     uint3 numGroups = div_round_up(uint3(mFrameDim.x, mFrameDim.y, 1u), pProgram->getReflector()->getThreadGroupSize());
     mpState->setProgram(pProgram);
     pRenderContext->dispatch(mpState.get(), mpVars.get(), numGroups);
@@ -363,7 +363,7 @@ void AccumulatePass::prepareAccumulation(RenderContext* pRenderContext, uint32_t
         if (!pBuf || pBuf->getWidth() != width || pBuf->getHeight() != height)
         {
             pBuf = Texture::create2D(width, height, format, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
-            assert(pBuf);
+            FALCOR_ASSERT(pBuf);
             reset();
         }
         // Clear data if accumulation has been reset (either above or somewhere else).

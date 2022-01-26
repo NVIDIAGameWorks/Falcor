@@ -46,6 +46,7 @@ namespace
 
     const std::string kDepth = "depth";
     const std::string kDepthFormat = "depthFormat";
+    const std::string kUseAlphaTest = "useAlphaTest";
 }
 
 void DepthPass::parseDictionary(const Dictionary& dict)
@@ -53,7 +54,8 @@ void DepthPass::parseDictionary(const Dictionary& dict)
     for (const auto& [key, value] : dict)
     {
         if (key == kDepthFormat) setDepthBufferFormat(value);
-        else logWarning("Unknown field '" + key + "' in a DepthPass dictionary");
+        else if (key == kUseAlphaTest) mUseAlphaTest = value;
+        else logWarning("Unknown field '{}' in a DepthPass dictionary.", key);
     }
 }
 
@@ -61,6 +63,7 @@ Dictionary DepthPass::getScriptingDictionary()
 {
     Dictionary d;
     d[kDepthFormat] = mDepthFormat;
+    d[kUseAlphaTest] = mUseAlphaTest;
     return d;
 }
 
@@ -98,6 +101,7 @@ void DepthPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& 
     {
         auto pProgram = mpState->getProgram();
         pProgram->addDefines(mpScene->getSceneDefines());
+        pProgram->addDefine("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
         pProgram->setTypeConformances(mpScene->getTypeConformances());
         mpVars = GraphicsVars::create(pProgram->getReflector());
     }
@@ -113,6 +117,7 @@ void DepthPass::execute(RenderContext* pRenderContext, const RenderData& renderD
 
     if (mpScene)
     {
+        mpState->getProgram()->addDefine("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
         mpScene->rasterize(pRenderContext, mpState.get(), mpVars.get(), mCullMode);
     }
 }
@@ -144,6 +149,11 @@ void DepthPass::setOutputSize(const uint2& outputSize)
         mOutputSize = outputSize;
         requestRecompile();
     }
+}
+
+void DepthPass::setAlphaTest(bool useAlphaTest)
+{
+    mUseAlphaTest = useAlphaTest;
 }
 
 static const Gui::DropdownList kDepthFormats =

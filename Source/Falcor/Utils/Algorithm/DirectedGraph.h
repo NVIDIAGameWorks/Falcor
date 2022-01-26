@@ -77,7 +77,7 @@ namespace Falcor
 
             // Remove the index from the map
             mNodes.erase(id);
-            
+
             return removedEdges;
         }
 
@@ -120,7 +120,7 @@ namespace Falcor
 
             mEdges.erase(edgeId);
         }
-        
+
         class Node
         {
         public:
@@ -148,7 +148,7 @@ namespace Falcor
             uint32_t mSrc = kInvalidID;
             uint32_t mDst = kInvalidID;
         };
-        
+
         /** Check if a node exists
         */
         bool doesNodeExist(uint32_t nodeId) const { return mNodes.find(nodeId) != mNodes.end(); }
@@ -156,7 +156,7 @@ namespace Falcor
         /** Check if an edge exists
         */
         bool doesEdgeExist(uint32_t edgeId) const { return mEdges.find(edgeId) != mEdges.end(); }
-        
+
         /** Get a node
         */
         const Node* getNode(uint32_t nodeId) const
@@ -218,7 +218,7 @@ namespace Falcor
                     return;
                 }
             }
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
         }
     };
 }

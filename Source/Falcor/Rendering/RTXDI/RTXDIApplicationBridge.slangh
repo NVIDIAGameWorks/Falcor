@@ -1,0 +1,320 @@
+/***************************************************************************
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
+
+/** This file defines the various RTXDI application bridge structures and methods
+    used by RTXDI's ResamplingFunctions.hlsli.
+
+    For more information please see the RTXDI documentation:
+    https://github.com/NVIDIAGameWorks/RTXDI/blob/main/doc/RtxdiApplicationBridge.md
+*/
+
+import Utils.Sampling.TinyUniformSampleGenerator;
+import Rendering.Materials.Microfacet;
+import Rendering.Materials.Fresnel;
+import SurfaceData;
+
+// ------------------------------------------------------------------------------------------------
+// Types.
+// ------------------------------------------------------------------------------------------------
+
+/** Stores information about a surface, including its position, orientation, and material parameters.
+    See SurfaceData.slang for details.
+*/
+typedef SurfaceData RAB_Surface;
+
+/** Stores information about a polymorphic light, i.e. a light of any type.
+    See PolymorphicLight.slang for details.
+*/
+typedef PolymorphicLight RAB_LightInfo;
+
+/** Represents a point on a light and its radiance, weighted relative to the surface that was used
+    to generate the sample.
+    See PolymorphicLight.slang for details.
+*/
+typedef PolymorphicLightSample RAB_LightSample;
+
+/** Stores the mutable state of a random number generator (RNG).
+    We use Falcor's TinyUniformSampleGenerator which is based on a 32-bit LCG.
+    This PRNG seems good enough and using a PCG-based replacement doesn't give any perceptible
+    benefit (but increases cost).
+*/
+typedef TinyUniformSampleGenerator RAB_RandomSamplerState;
+
+// ------------------------------------------------------------------------------------------------
+// Empty type constructors.
+// ------------------------------------------------------------------------------------------------
+
+RAB_Surface RAB_EmptySurface()
+{
+    return {};
+}
+
+RAB_LightInfo RAB_EmptyLightInfo()
+{
+    return {};
+}
+
+RAB_LightSample RAB_EmptyLightSample()
+{
+    return {};
+}
+
+// ------------------------------------------------------------------------------------------------
+// G-buffer input and accessor functions.
+// ------------------------------------------------------------------------------------------------
+
+/** A copy of Falcor's Camera::computeRayPinhole() method that works for current/last frame.
+*/
+float3 computeRayDirection(uint2 pixel, bool previousFrame)
+{
+    const float2 jitter = previousFrame
+        ? float2(-gRTXDI.prevCameraJitter.x, gRTXDI.prevCameraJitter.y)
+        : float2(-gScene.camera.data.jitterX, gScene.camera.data.jitterY);
+
+    // Compute sample position in screen space in [0,1] with origin at the top-left corner.
+    // The camera jitter offsets the sample by +-0.5 pixels from the pixel center.
+    const float2 p = (pixel + float2(0.5f, 0.5f)) / gRTXDI.frameDim + jitter;
+    const float2 ndc = float2(2, -2) * p + float2(-1, 1);
+
+    const float3 cameraU = previousFrame ? gRTXDI.prevCameraU : gScene.camera.data.cameraU;
+    const float3 cameraV = previousFrame ? gRTXDI.prevCameraV : gScene.camera.data.cameraV;
+    const float3 cameraW = previousFrame ? gRTXDI.prevCameraW : gScene.camera.data.cameraW;
+
+    // Compute the normalized ray direction assuming a pinhole camera.
+    return normalize(ndc.x * cameraU + ndc.y * cameraV + cameraW);
+}
+
+/** Loads a surface from the current or previous G-buffer at the specified pixel position.
+    Pixel positions may be out-of-bounds or negative, in which case the function is supposed to
+    return an invalid surface.
+*/
+RAB_Surface RAB_GetGBufferSurface(int2 pixelPosition, bool previousFrame)
+{
+    // Return invalid surface data if pixel is out of bounds.
+    if (any(pixelPosition < 0) || any(pixelPosition >= gRTXDI.frameDim)) return SurfaceData();
+
+    // Compute buffer index based on pixel and currently used surface buffer index.
+    uint surfaceIdx = previousFrame ? gRTXDI.prevSurfaceBufferIndex : gRTXDI.currentSurfaceBufferIndex;
+    uint bufferIdx = pixelPosition.x + (pixelPosition.y * gRTXDI.frameDim.x) + surfaceIdx * gRTXDI.pixelCount;
+
+    // Compute ray direction.
+    float3 rayDir = computeRayDirection(pixelPosition, previousFrame);
+
+    // Load surface data.
+    return SurfaceData(gRTXDI.surfaceData[bufferIdx], -rayDir);
+}
+
+/** Tests if the provided surface contains valid geometry.
+*/
+bool RAB_IsSurfaceValid(RAB_Surface surface)
+{
+    return surface.valid;
+}
+
+/** Returns the world position of the provided surface.
+*/
+float3 RAB_GetSurfaceWorldPos(RAB_Surface surface)
+{
+    return surface.position;
+}
+
+/** Returns the world space shading normal of the provided surface.
+*/
+float3 RAB_GetSurfaceNormal(RAB_Surface surface)
+{
+    return surface.normal;
+}
+
+/** Returns the linear depth of the provided surface.
+*/
+float RAB_GetSurfaceLinearDepth(RAB_Surface surface)
+{
+    return max(0.f, surface.viewDepth);
+}
+
+// ------------------------------------------------------------------------------------------------
+// Lights and samples.
+// ------------------------------------------------------------------------------------------------
+
+/** Loads the information about a polymorphic light based on its index, on the current
+    or previous frame.
+    Note: Our current implementation does only maintain one copy of light information, so the
+    previousFrame argument is ignored.
+*/
+RAB_LightInfo RAB_LoadLightInfo(uint index, bool previousFrame)
+{
+    return PolymorphicLight(gRTXDI.lightInfo[index]);
+}
+
+/** Stores the information about a polymorphic light in a compacted form in the RIS buffer location
+    at linearIndex.
+*/
+bool RAB_StoreCompactLightInfo(uint linearIndex, RAB_LightInfo lightInfo)
+{
+    if (gRTXDI.storeCompactLightInfo) return false;
+
+    gRTXDI.compactLightInfo[linearIndex] = lightInfo.pack();
+    return true;
+}
+
+/** Loads the information about a polymorphic light that is stored in a compacted form in the
+    RIS buffer location at linearIndex.
+*/
+RAB_LightInfo RAB_LoadCompactLightInfo(uint linearIndex)
+{
+    return PolymorphicLight(gRTXDI.compactLightInfo[linearIndex]);
+}
+
+/** Translates the light index from the current frame to the previous frame
+    (if currentToPrevious is true) or from the previous frame to the current frame
+    (if currentToPrevious is false).
+    Returns the new index, or a negative number if the light does not exist in the other frame.
+    Note: Our current implementation does only maintain one copy of light information,
+    so we just return the same index.
+*/
+int RAB_TranslateLightIndex(uint lightIndex, bool currentToPrevious)
+{
+    return lightIndex;
+}
+
+// ------------------------------------------------------------------------------------------------
+// Sampling functions.
+// ------------------------------------------------------------------------------------------------
+
+/** Computes the weight of the given light sample when the given surface is shaded using that
+    light sample.
+
+    This evaluates the target function (aka p-hat in the ReSTIR paper).
+    We choose p-hat to evaluate the full BRDF response, minus the visibility term.
+    Since it's a PDF, it's a scalar value rather than a RGB color computed when shading.
+*/
+float RAB_GetLightSampleTargetPdfForSurface(RAB_LightSample lightSample, RAB_Surface surface)
+{
+    if (!lightSample.valid) return 0.f;
+
+    float3 N = surface.normal;
+    float3 V = surface.viewDir;
+    float3 L = lightSample.direction;
+    float3 H = normalize(V + L);
+    float NdotV = saturate(dot(N, V));
+    float NdotL = saturate(dot(N, L));
+    float NdotH = saturate(dot(N, H));
+    float LdotH = saturate(dot(L, H));
+
+    // Compute the BRDF terms for the target function.
+    float roughness = surface.roughness;
+    float specular = surface.specular;
+    float D = evalNdfGGX(roughness * roughness, NdotH);
+    float G = evalMaskingSmithGGXSeparable(roughness, NdotL, NdotV);
+
+    // This is the "right" value to match the integral
+    // float F = specular < 1e-8f ? 0.f : evalFresnelSchlick(specular, 1.f, LdotH);
+
+    // This gives much less noisy results. We can change the target PDF however we want, so use this.
+    float F = specular < 1e-8f ? 0.f : (evalFresnelSchlick(specular, 1.f, LdotH) / specular);
+
+    // Mix the diffuse and specular BRDFs.
+    float diffuseBRDF = NdotL * M_1_PI;
+    float specularBRDF = D * G * F / (4.f * NdotV);
+    float fullBRDF = max(0.f, lerp(specularBRDF, diffuseBRDF, surface.diffuseProb));
+
+    return fullBRDF * lightSample.Li.x;
+}
+
+/** Computes the weight of the given light for arbitrary surfaces located inside the
+    specified volume. Used for world-space light grid construction (ReGIR).
+    Note: Our current implementation does not support ReGIR, so this always returns zero.
+*/
+float RAB_GetLightTargetPdfForVolume(RAB_LightInfo light, float3 volumeCenter, float volumeRadius)
+{
+    return 0.f;
+}
+
+/** Samples a polymorphic light relative to the given receiver surface.
+*/
+RAB_LightSample RAB_SamplePolymorphicLight(RAB_LightInfo lightInfo, RAB_Surface surface, float2 uv)
+{
+    // Calculate light sample with scalar emission.
+    return lightInfo.calcSample(surface.position, uv, true);
+}
+
+/** Traces a visibility ray that returns approximate, conservative visibility between the surface
+    and the light sample. Conservative means if unsure, assume the light is visible.
+*/
+bool RAB_GetConservativeVisibility(RAB_Surface surface, RAB_LightSample lightSample)
+{
+    Ray ray = Ray(surface.position, lightSample.direction, 0.f, lightSample.distance - gRTXDI.rayEpsilon);
+
+    // Trace our ray (with SceneRayQuery<0> meaning no alpha testing) and cull non-opaque geometry.
+    SceneRayQuery<0> rayQuery;
+    return rayQuery.traceVisibilityRay(ray, RAY_FLAG_CULL_NON_OPAQUE, 0xff);
+}
+
+/** Same visibility ray tracing as RAB_GetConservativeVisibility but for surfaces and light samples
+    originating from the previous frame.
+    Note: Our implementation does not provide the last frame's BVH so we just use the current one.
+    This can cause slight darkening around boundaries or fast moving objects but is generally imperceptible.
+*/
+bool RAB_GetTemporalConservativeVisibility(RAB_Surface curSurface, RAB_Surface prevSurface, RAB_LightSample lightSample)
+{
+    return RAB_GetConservativeVisibility(curSurface, lightSample);
+}
+
+// ------------------------------------------------------------------------------------------------
+// Misc functions.
+// ------------------------------------------------------------------------------------------------
+
+/** Returns the next random number from the provided RNG state.
+*/
+float RAB_GetNextRandom(inout RAB_RandomSamplerState rng)
+{
+    return sampleNext1D(rng);
+}
+
+/** Compares the materials of two surfaces, returns true if the surfaces are similar enough that
+    it makes sense to share the light reservoirs between them. A conservative implementation would
+    always return true, which might result in more noisy images than actually comparing the materials.
+*/
+bool RAB_AreMaterialsSimilar(RAB_Surface a, RAB_Surface b)
+{
+    return true;
+}
+
+// ------------------------------------------------------------------------------------------------
+// Helper functions not defined by RTXDI.
+// ------------------------------------------------------------------------------------------------
+
+/** Initialize the random sampler.
+    \param[in] index Index on 2D domain (i.e. pixel index).
+    \param[in] passIndex Pass index within current frame.
+    \return The random sampler.
+*/
+RAB_RandomSamplerState RAB_InitRandomSampler(uint2 index, uint passIndex)
+{
+    return TinyUniformSampleGenerator(index, gRTXDI.frameIndex + passIndex * 13);
+}

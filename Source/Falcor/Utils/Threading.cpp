@@ -60,7 +60,7 @@ namespace Falcor
 
     Threading::Task Threading::dispatchTask(const std::function<void(void)>& func)
     {
-        assert(gData.initialized);
+        FALCOR_ASSERT(gData.initialized);
 
         std::thread& t = gData.threads[gData.current];
         if (t.joinable()) t.join();
@@ -84,12 +84,11 @@ namespace Falcor
 
     bool Threading::Task::isRunning()
     {
-        reportError("Threading::Task::isRunning() not implemented");
-        return true;
+        throw RuntimeError("Threading::Task::isRunning() is not implemented");
     }
 
     void Threading::Task::finish()
     {
-        reportError("Threading::Task::finish() not implemented");
+        throw RuntimeError("Threading::Task::finish() is not implemented");
     }
 }

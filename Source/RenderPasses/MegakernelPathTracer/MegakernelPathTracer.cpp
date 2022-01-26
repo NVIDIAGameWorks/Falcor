@@ -87,7 +87,7 @@ void MegakernelPathTracer::setScene(RenderContext* pRenderContext, const Scene::
     {
         if (mpScene->hasProceduralGeometry())
         {
-            logWarning("This render pass only supports triangles. Other types of geometry will be ignored.");
+            logWarning("MegakernelPathTracer: This render pass only supports triangles. Other types of geometry will be ignored.");
         }
 
         Program::DefineList defines;
@@ -131,14 +131,14 @@ void MegakernelPathTracer::execute(RenderContext* pRenderContext, const RenderDa
     if (mUseEmissiveSampler)
     {
         // Specialize program for the current emissive light sampler options.
-        assert(mpEmissiveSampler);
+        FALCOR_ASSERT(mpEmissiveSampler);
         if (pProgram->addDefines(mpEmissiveSampler->getDefines())) mTracer.pVars = nullptr;
     }
 
     // Prepare program vars. This may trigger shader compilation.
     // The program should have all necessary defines set at this point.
     if (!mTracer.pVars) prepareVars();
-    assert(mTracer.pVars);
+    FALCOR_ASSERT(mTracer.pVars);
 
     // Set shared data into parameter block.
     setTracerData(renderData);
@@ -157,7 +157,7 @@ void MegakernelPathTracer::execute(RenderContext* pRenderContext, const RenderDa
 
     // Get dimensions of ray dispatch.
     const uint2 targetDim = renderData.getDefaultTextureDims();
-    assert(targetDim.x > 0 && targetDim.y > 0);
+    FALCOR_ASSERT(targetDim.x > 0 && targetDim.y > 0);
 
     mpPixelDebug->prepareProgram(pProgram, mTracer.pVars->getRootVar());
     mpPixelStats->prepareProgram(pProgram, mTracer.pVars->getRootVar());
@@ -174,7 +174,7 @@ void MegakernelPathTracer::execute(RenderContext* pRenderContext, const RenderDa
 
 void MegakernelPathTracer::prepareVars()
 {
-    assert(mTracer.pProgram);
+    FALCOR_ASSERT(mTracer.pProgram);
 
     // Specialize the program.
     mTracer.pProgram->addDefines(mpSampleGenerator->getDefines());
@@ -193,9 +193,9 @@ void MegakernelPathTracer::prepareVars()
     // Create parameter block for shared data.
     ProgramReflection::SharedConstPtr pReflection = mTracer.pProgram->getReflector();
     ParameterBlockReflection::SharedConstPtr pBlockReflection = pReflection->getParameterBlock(kParameterBlockName);
-    assert(pBlockReflection);
+    FALCOR_ASSERT(pBlockReflection);
     mTracer.pParameterBlock = ParameterBlock::create(pBlockReflection);
-    assert(mTracer.pParameterBlock);
+    FALCOR_ASSERT(mTracer.pParameterBlock);
 
     // Bind static resources to the parameter block here. No need to rebind them every frame if they don't change.
     // Bind the light probe if one is loaded.
@@ -208,7 +208,7 @@ void MegakernelPathTracer::prepareVars()
 void MegakernelPathTracer::setTracerData(const RenderData& renderData)
 {
     auto pBlock = mTracer.pParameterBlock;
-    assert(pBlock);
+    FALCOR_ASSERT(pBlock);
 
     // Upload parameters struct.
     pBlock["params"].setBlob(mSharedParams);
@@ -216,7 +216,7 @@ void MegakernelPathTracer::setTracerData(const RenderData& renderData)
     // Bind emissive light sampler.
     if (mUseEmissiveSampler)
     {
-        assert(mpEmissiveSampler);
+        FALCOR_ASSERT(mpEmissiveSampler);
         mpEmissiveSampler->setShaderData(pBlock["emissiveSampler"]);
     }
 }

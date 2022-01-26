@@ -40,7 +40,7 @@ namespace Falcor
     {
         Slang::ComPtr<gfx::IResourceView> handle;
         gfx::IResourceView::Desc desc = {};
-        desc.format = getGFXFormat(pTexture->getFormat());
+        desc.format = getGFXFormat(depthToColorFormat(pTexture->getFormat()));
         desc.type = gfx::IResourceView::Type::ShaderResource;
         desc.subresourceRange.baseArrayLayer = firstArraySlice;
         desc.subresourceRange.layerCount = arraySize;
@@ -54,10 +54,44 @@ namespace Falcor
     {
         Slang::ComPtr<gfx::IResourceView> handle;
         gfx::IResourceView::Desc desc = {};
-        desc.format = getGFXFormat(pBuffer->getFormat());
+        auto format = depthToColorFormat(pBuffer->getFormat());
+        desc.format = getGFXFormat(format);
         desc.type = gfx::IResourceView::Type::ShaderResource;
+
+        uint32_t bufferElementSize = 0;
+        uint32_t bufferElementCount = 0;
+        if (pBuffer->isTyped())
+        {
+            FALCOR_ASSERT(getFormatPixelsPerBlock(format) == 1);
+            bufferElementSize = getFormatBytesPerBlock(format);
+            bufferElementCount = pBuffer->getElementCount();
+        }
+        else if (pBuffer->isStructured())
+        {
+            bufferElementSize = pBuffer->getStructSize();
+            bufferElementCount = pBuffer->getElementCount();
+            desc.format = gfx::Format::Unknown;
+            desc.bufferElementSize = bufferElementSize;
+        }
+        else
+        {
+            desc.format = gfx::Format::Unknown;
+            bufferElementSize = 0;
+            bufferElementCount = (uint32_t)(pBuffer->getSize());
+        }
+
+        bool useDefaultCount = (elementCount == ShaderResourceView::kMaxPossible);
+        FALCOR_ASSERT(useDefaultCount || (firstElement + elementCount) <= bufferElementCount); // Check range
         desc.bufferRange.firstElement = firstElement;
-        desc.bufferRange.elementCount = elementCount;
+        desc.bufferRange.elementCount = useDefaultCount ? (bufferElementCount - firstElement) : elementCount;
+
+        // Views that extend to close to 4GB or beyond the base address are not supported by D3D12, so
+        // we report an error here.
+        if (bufferElementSize > 0 && desc.bufferRange.firstElement + desc.bufferRange.elementCount > ((1ull << 32) / bufferElementSize - 8))
+        {
+            throw RuntimeError("Buffer SRV exceeds the maximum supported size");
+        }
+
         gfx_call(gpDevice->getApiHandle()->createBufferView(static_cast<gfx::IBufferResource*>(pBuffer->getApiHandle().get()), desc, handle.writeRef()));
         return SharedPtr(new ShaderResourceView(pBuffer, handle, firstElement, elementCount));
     }
@@ -70,6 +104,8 @@ namespace Falcor
 
     DepthStencilView::SharedPtr DepthStencilView::create(ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
     {
+        auto gfxTexture = static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get());
+
         Slang::ComPtr<gfx::IResourceView> handle;
         gfx::IResourceView::Desc desc = {};
         desc.format = getGFXFormat(pTexture->getFormat());
@@ -78,6 +114,11 @@ namespace Falcor
         desc.subresourceRange.layerCount = arraySize;
         desc.subresourceRange.mipLevel = mipLevel;
         desc.subresourceRange.mipLevelCount = 1;
+        desc.renderTarget.shape = gfxTexture->getDesc()->type;
+        desc.renderTarget.arrayIndex = firstArraySlice;
+        desc.renderTarget.arraySize = arraySize;
+        desc.renderTarget.mipSlice = mipLevel;
+        desc.renderTarget.planeIndex = 0;
         gfx_call(gpDevice->getApiHandle()->createTextureView(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), desc, handle.writeRef()));
         return SharedPtr(new DepthStencilView(pTexture, handle, mipLevel, firstArraySlice, arraySize));
     }
@@ -108,7 +149,9 @@ namespace Falcor
         desc.format = getGFXFormat(pBuffer->getFormat());
         desc.type = gfx::IResourceView::Type::UnorderedAccess;
         desc.bufferRange.firstElement = firstElement;
-        desc.bufferRange.elementCount = elementCount;
+
+        bool useDefaultCount = (elementCount == UnorderedAccessView::kMaxPossible);
+        desc.bufferRange.elementCount = useDefaultCount ? pBuffer->getElementCount() - firstElement : elementCount;
         gfx_call(gpDevice->getApiHandle()->createBufferView(static_cast<gfx::IBufferResource*>(pBuffer->getApiHandle().get()), desc, handle.writeRef()));
         return SharedPtr(new UnorderedAccessView(pBuffer, handle, firstElement, elementCount));
     }
@@ -144,7 +187,7 @@ namespace Falcor
     ConstantBufferView::SharedPtr ConstantBufferView::create(ConstBufferSharedPtrRef pBuffer)
     {
         // TODO: GFX doesn't support constant buffer view. Consider remove this from public interface.
-        assert(pBuffer);
+        FALCOR_ASSERT(pBuffer);
         return nullptr;
     }
 

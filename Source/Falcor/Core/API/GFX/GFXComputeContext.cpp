@@ -34,7 +34,7 @@ namespace Falcor
     ComputeContext::ComputeContext(LowLevelContextData::CommandQueueType type, CommandQueueHandle queue)
         : CopyContext(type, queue)
     {
-        assert(queue);
+        FALCOR_ASSERT(queue);
     }
 
     ComputeContext::~ComputeContext()
@@ -43,25 +43,55 @@ namespace Falcor
 
     void ComputeContext::dispatch(ComputeState* pState, ComputeVars* pVars, const uint3& dispatchSize)
     {
+        pVars->prepareDescriptorSets(this);
+
         auto computeEncoder = mpLowLevelData->getApiData()->getComputeCommandEncoder();
         auto rootObject = computeEncoder->bindPipeline(pState->getCSO(pVars)->getApiHandle());
-        rootObject->copyFrom(pVars->getShaderObject());
+        rootObject->copyFrom(pVars->getShaderObject(), gpDevice->getCurrentTransientResourceHeap());
         computeEncoder->dispatchCompute((int)dispatchSize.x, (int)dispatchSize.y, (int)dispatchSize.z);
     }
 
     void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const float4& value)
     {
+        resourceBarrier(pUav->getResource().get(), Resource::State::UnorderedAccess);
+
+        auto resourceEncoder = mpLowLevelData->getApiData()->getResourceCommandEncoder();
+        gfx::ClearValue clearValue = { };
+        memcpy(clearValue.color.floatValues, &value, sizeof(float) * 4);
+        resourceEncoder->clearResourceView(pUav->getApiHandle(), &clearValue, gfx::ClearResourceViewFlags::FloatClearValues);
     }
 
     void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const uint4& value)
     {
+        resourceBarrier(pUav->getResource().get(), Resource::State::UnorderedAccess);
+
+        auto resourceEncoder = mpLowLevelData->getApiData()->getResourceCommandEncoder();
+        gfx::ClearValue clearValue = { };
+        memcpy(clearValue.color.uintValues, &value, sizeof(uint32_t) * 4);
+        resourceEncoder->clearResourceView(pUav->getApiHandle(), &clearValue, gfx::ClearResourceViewFlags::None);
     }
 
     void ComputeContext::clearUAVCounter(const Buffer::SharedPtr& pBuffer, uint32_t value)
     {
+        if (pBuffer->getUAVCounter())
+        {
+            resourceBarrier(pBuffer->getUAVCounter().get(), Resource::State::UnorderedAccess);
+
+            auto resourceEncoder = mpLowLevelData->getApiData()->getResourceCommandEncoder();
+            gfx::ClearValue clearValue = { };
+            clearValue.color.uintValues[0] = clearValue.color.uintValues[1] = clearValue.color.uintValues[2] = clearValue.color.uintValues[3] = value;
+            resourceEncoder->clearResourceView(pBuffer->getUAVCounter()->getUAV()->getApiHandle(), &clearValue, gfx::ClearResourceViewFlags::None);
+        }
     }
 
     void ComputeContext::dispatchIndirect(ComputeState* pState, ComputeVars* pVars, const Buffer* pArgBuffer, uint64_t argBufferOffset)
     {
+        resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
+        pVars->prepareDescriptorSets(this);
+
+        auto computeEncoder = mpLowLevelData->getApiData()->getComputeCommandEncoder();
+        auto rootObject = computeEncoder->bindPipeline(pState->getCSO(pVars)->getApiHandle());
+        rootObject->copyFrom(pVars->getShaderObject(), gpDevice->getCurrentTransientResourceHeap());
+        computeEncoder->dispatchComputeIndirect(static_cast<gfx::IBufferResource*>(pArgBuffer->getApiHandle().get()), argBufferOffset);
     }
 }

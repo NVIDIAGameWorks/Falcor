@@ -50,13 +50,13 @@ namespace Falcor
         virtual Type getType() const { return Type::NormalizedDenseGrid; }
 
 
-        virtual bool createResources(RenderContext* pRenderContext, bool deleteScratchData = true) override;
+        virtual void createResources(RenderContext* pRenderContext, bool deleteScratchData = true) override;
         virtual const Buffer::SharedPtr& getAABBBuffer() const override { return spNDSDFGridUnitAABBBuffer; }
         virtual uint32_t getAABBCount() const override { return 1; }
         virtual void setShaderData(const ShaderVar& var) const override;
 
     protected:
-        virtual bool setValuesInternal(const std::vector<float>& cornerValues) override;
+        virtual void setValuesInternal(const std::vector<float>& cornerValues) override;
 
         float calculateNormalizationFactor(uint32_t gridWidth) const;
 

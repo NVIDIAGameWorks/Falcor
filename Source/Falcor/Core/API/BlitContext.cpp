@@ -32,7 +32,7 @@ namespace Falcor
 {
     void BlitContext::init()
     {
-        assert(gpDevice);
+        FALCOR_ASSERT(gpDevice);
         if (pPass == nullptr)
         {
             // Init the blit data.
@@ -47,7 +47,7 @@ namespace Falcor
             d.addShaderLibrary("Core/API/BlitReduction.slang").vsEntry("vs").psEntry("ps");
             pPass = FullScreenPass::create(d, defines);
             pFbo = Fbo::create();
-            assert(pPass && pFbo);
+            FALCOR_ASSERT(pPass && pFbo);
 
             pBlitParamsBuffer = pPass->getVars()->getParameterBlock("BlitParamsCB");
             offsetVarOffset = pBlitParamsBuffer->getVariableOffset("gOffset");

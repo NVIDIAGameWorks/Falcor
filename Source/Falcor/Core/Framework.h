@@ -34,7 +34,9 @@
 
 #ifdef _WIN32
 #define NOMINMAX
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 #endif
 
@@ -66,9 +68,6 @@
 #define FALCOR_API FALCOR_API_IMPORT
 #endif // FALCOR_DLL
 
-// DEPRECATED: Use FALCOR_API instead.
-#define dlldecl FALCOR_API
-
 #include "Core/FalcorConfig.h"
 #include "Core/ErrorHandling.h"
 #include "Core/Errors.h"
@@ -78,26 +77,21 @@
 #define offsetof(s, m) (size_t)( (ptrdiff_t)&reinterpret_cast<const volatile char&>((((s *)0)->m)) )
 #endif
 
-#ifdef assert
-#undef assert
-#endif
-
 #ifdef _DEBUG
 
-#define assert(a)\
+#define FALCOR_ASSERT(a)\
     if (!(a)) {\
         std::string str = "assertion failed(" + std::string(#a) + ")\nFile " + __FILE__ + ", line " + std::to_string(__LINE__);\
         Falcor::reportFatalError(str);\
     }
 
-#define should_not_get_here() assert(false)
-
 #else // _DEBUG
 
-#define assert(a) {}
-#define should_not_get_here() {}
+#define FALCOR_ASSERT(a) {}
 
 #endif // _DEBUG
+
+#define FALCOR_UNREACHABLE() FALCOR_ASSERT(false)
 
 #define FALCOR_STRINGIZE(a) #a
 #define FALCOR_CONCAT_STRINGS_(a, b) a##b
@@ -107,15 +101,11 @@
 #if defined(_MSC_VER)
 // Enable Windows visual styles
 #pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
-#define FALCOR_DEPRECATE(_ver_, _msg_) __declspec(deprecated("This function has been deprecated in " ##  _ver_ ## ". " ## _msg_))
 #define FALCOR_FORCEINLINE __forceinline
 using DllHandle = HMODULE;
-#define FALCOR_SUPPRESS_DEPRECATION __pragma(warning(suppress : 4996));
 #elif defined(__GNUC__)
-#define FALCOR_DEPRECATE(_ver_, _msg_) __attribute__ ((deprecated("This function has been deprecated in " _ver_ ". " _msg_)))
 #define FALCOR_FORCEINLINE __attribute__((always_inline))
 using DllHandle = void*;
-#define FALCOR_SUPPRESS_DEPRECATION _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
 #endif
 
 namespace Falcor
@@ -128,9 +118,6 @@ namespace Falcor
     inline e_  operator~ (e_ a) { return static_cast<e_>(~static_cast<int>(a)); } \
     inline bool is_set(e_ val, e_ flag) { return (val & flag) != static_cast<e_>(0); } \
     inline void flip_bit(e_& val, e_ flag) { val = is_set(val, flag) ? (val & (~flag)) : (val | flag); }
-
-// DEPRECATED: Use FALCOR_ENUM_CLASS_OPERATORS instead.
-#define enum_class_operators(e_) FALCOR_ENUM_CLASS_OPERATORS(e_)
 
     /*!
     *  \addtogroup Falcor
@@ -194,7 +181,7 @@ namespace Falcor
             return "callable";
 #endif
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return "";
         }
     }

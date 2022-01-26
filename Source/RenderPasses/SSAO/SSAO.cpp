@@ -113,7 +113,7 @@ SSAO::SharedPtr SSAO::create(RenderContext* pRenderContext, const Dictionary& di
         else if (key == kRadius) pSSAO->mData.radius = value;
         else if (key == kBlurKernelWidth) pSSAO->mBlurDict["kernelWidth"] = (uint32_t)value;
         else if (key == kBlurSigma) pSSAO->mBlurDict["sigma"] = (float)value;
-        else logWarning("Unknown field '" + key + "' in a SSAO dictionary");
+        else logWarning("Unknown field '{}' in a SSAO dictionary.", key);
     }
     return pSSAO;
 }
@@ -170,7 +170,7 @@ void SSAO::execute(RenderContext* pRenderContext, const RenderData& renderData)
     auto pColorIn = renderData[kColorIn]->asTexture();
     auto pAoMap = renderData[kAoMap]->asTexture();
 
-    assert(pColorOut != pColorIn);
+    FALCOR_ASSERT(pColorOut != pColorIn);
     pAoMap = generateAOMap(pRenderContext, mpScene->getCamera().get(), pDepth, pNormals);
 
     if (mApplyBlur)

@@ -185,7 +185,7 @@ void ToneMapper::parseDictionary(const Dictionary& dict)
         else if (key == kFNumber) setFNumber(value);
         else if (key == kShutter) setShutter(value);
         else if (key == kExposureMode) setExposureMode(value);
-        else logWarning("Unknown field '" + key + "' in a ToneMapping dictionary");
+        else logWarning("Unknown field '{}' in a ToneMapping dictionary.", key);
     }
 }
 
@@ -230,7 +230,7 @@ void ToneMapper::execute(RenderContext* pRenderContext, const RenderData& render
 {
     auto pSrc = renderData[kSrc]->asTexture();
     auto pDst = renderData[kDst]->asTexture();
-    assert(pSrc && pDst);
+    FALCOR_ASSERT(pSrc && pDst);
 
     // Issue warning if image will be resampled. The render pass supports this but image quality may suffer.
     if (pSrc->getWidth() != pDst->getWidth() || pSrc->getHeight() != pDst->getHeight())
@@ -444,7 +444,7 @@ void ToneMapper::setExposureValue(float exposureValue)
         mFNumber = glm::clamp(mFNumber, kFNumberMin, kFNumberMax);
         break;
     default:
-        should_not_get_here();
+        FALCOR_UNREACHABLE();
     }
 
     updateExposureValue();

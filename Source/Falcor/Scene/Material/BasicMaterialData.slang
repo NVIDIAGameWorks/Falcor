@@ -37,7 +37,7 @@ __exported import Scene.Material.MaterialData;
 
 BEGIN_NAMESPACE_FALCOR
 
-/** This is a host/device structure that describes the parameters for a basic material (120B).
+/** This is a host/device structure that describes the parameters for a basic material.
 
     The layout ensures vector types are stored at 8B/16B aligned memory addresses.
     All color fields are in the range [0,1].
@@ -73,8 +73,6 @@ struct BasicMaterialData
     TextureHandle texNormalMap;
     TextureHandle texTransmission;
     TextureHandle texDisplacementMap;
-
-    float       _pad[8]                 = {};
 
     static const uint kShadingModelBits = 1;
     static const uint kNormalMapTypeBits = 2;

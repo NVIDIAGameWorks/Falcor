@@ -45,7 +45,7 @@ namespace Falcor
             type_2_string(TextureCube);
             type_2_string(Texture2DMultisample);
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return "";
         }
 #undef type_2_string
@@ -92,6 +92,16 @@ namespace Falcor
         mDsvs.clear();
     }
 
+    std::shared_ptr<Texture> Resource::asTexture()
+    {
+        return this ? std::dynamic_pointer_cast<Texture>(shared_from_this()) : nullptr;
+    }
+
+    std::shared_ptr<Buffer> Resource::asBuffer()
+    {
+        return this ? std::dynamic_pointer_cast<Buffer>(shared_from_this()) : nullptr;
+    }
+
     Resource::State Resource::getGlobalState() const
     {
         if (mState.isGlobal == false)
@@ -113,7 +123,7 @@ namespace Falcor
         else
         {
             logWarning("Calling Resource::getSubresourceState() on an object that is not a texture. This call is invalid, use Resource::getGlobalState() instead");
-            assert(mState.isGlobal);
+            FALCOR_ASSERT(mState.isGlobal);
             return mState.global;
         }
     }

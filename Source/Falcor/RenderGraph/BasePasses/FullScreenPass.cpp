@@ -67,7 +67,7 @@ namespace Falcor
             // First time we got here. create VB and VAO
             const uint32_t vbSize = (uint32_t)(sizeof(Vertex)*arraysize(kVertices));
             pVB = Buffer::create(vbSize, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, (void*)kVertices);
-            assert(pVB);
+            FALCOR_ASSERT(pVB);
 
             // Create VAO
             VertexLayout::SharedPtr pLayout = VertexLayout::create();
@@ -78,7 +78,7 @@ namespace Falcor
 
             Vao::BufferVec buffers{ pVB };
             pVao = Vao::create(Vao::Topology::TriangleStrip, pLayout, buffers);
-            assert(pVao);
+            FALCOR_ASSERT(pVao);
         }
     }
 
@@ -88,7 +88,7 @@ namespace Falcor
         gFullScreenData.objectCount++;
 
         // Create depth stencil state
-        assert(mpState);
+        FALCOR_ASSERT(mpState);
         auto pDsState = DepthStencilState::create(DepthStencilState::Desc().setDepthEnabled(false));
         mpState->setDepthStencilState(pDsState);
 
@@ -96,13 +96,13 @@ namespace Falcor
         {
             initFullScreenData(gFullScreenData.pVertexBuffer, gFullScreenData.pVao);
         }
-        assert(gFullScreenData.pVao);
+        FALCOR_ASSERT(gFullScreenData.pVao);
         mpState->setVao(gFullScreenData.pVao);
     }
 
     FullScreenPass::~FullScreenPass()
     {
-        assert(gFullScreenData.objectCount > 0);
+        FALCOR_ASSERT(gFullScreenData.objectCount > 0);
 
         gFullScreenData.objectCount--;
         if (gFullScreenData.objectCount == 0)

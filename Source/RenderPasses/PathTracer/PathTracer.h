@@ -34,6 +34,7 @@
 #include "Rendering/Lights/EnvMapSampler.h"
 #include "Rendering/Materials/TexLODTypes.slang"
 #include "Rendering/Utils/PixelStats.h"
+#include "Rendering/RTXDI/RTXDI.h"
 
 #include "Params.slang"
 
@@ -74,6 +75,8 @@ private:
     void resetLighting();
     void prepareMaterials(RenderContext* pRenderContext);
     bool prepareLighting(RenderContext* pRenderContext);
+    void prepareRTXDI(RenderContext* pRenderContext);
+    void setNRDData(const ShaderVar& var, const RenderData& renderData) const;
     void setShaderData(const ShaderVar& var, const RenderData& renderData, bool useLightSampling = true) const;
     bool renderRenderingUI(Gui::Widgets& widget);
     bool renderDebugUI(Gui::Widgets& widget);
@@ -90,10 +93,10 @@ private:
     {
         // Rendering parameters
         uint32_t    samplesPerPixel = 1;                        ///< Number of samples (paths) per pixel, unless a sample density map is used.
-        uint32_t    maxSurfaceBounces = 3;                      ///< Max number of surface bounces (diffuse + specular + transmission), up to kMaxPathLenth.
-        uint32_t    maxDiffuseBounces = -1;                     ///< Max number of diffuse bounces (0 = direct only), up to kMaxBounces. This will be initialized at startup.
-        uint32_t    maxSpecularBounces = -1;                    ///< Max number of specular bounces (0 = direct only), up to kMaxBounces. This will be initialized at startup.
-        uint32_t    maxTransmissionBounces = -1;                ///< Max number of transmission bounces (0 = none), up to kMaxBounces. This will be initialized at startup.
+        uint32_t    maxSurfaceBounces = 0;                      ///< Max number of surface bounces (diffuse + specular + transmission), up to kMaxPathLenth. This will be initialized at startup.
+        uint32_t    maxDiffuseBounces = 3;                      ///< Max number of diffuse bounces (0 = direct only), up to kMaxBounces.
+        uint32_t    maxSpecularBounces = 3;                     ///< Max number of specular bounces (0 = direct only), up to kMaxBounces.
+        uint32_t    maxTransmissionBounces = 10;                ///< Max number of transmission bounces (0 = none), up to kMaxBounces.
 
         // Sampling parameters
         uint32_t    sampleGenerator = SAMPLE_GENERATOR_TINY_UNIFORM; ///< Pseudorandom sample generator type.
@@ -104,6 +107,7 @@ private:
         MISHeuristic misHeuristic = MISHeuristic::Balance;      ///< MIS heuristic.
         float       misPowerExponent = 2.f;                     ///< MIS exponent for the power heuristic. This is only used when 'PowerExp' is chosen.
         EmissiveLightSamplerType emissiveSampler = EmissiveLightSamplerType::LightBVH;  ///< Emissive light sampler to use for NEE.
+        bool        useRTXDI = false;                           ///< Use RTXDI for direct illumination.
 
         // Material parameters
         bool        useAlphaTest = true;                        ///< Use alpha testing on non-opaque triangles.
@@ -114,7 +118,10 @@ private:
         TexLODMode  primaryLodMode = TexLODMode::Mip0;          ///< Use filtered texture lookups at the primary hit.
 
         // Output parameters
-        ColorFormat colorFormat = ColorFormat::LogLuvHDR;           ///< Color format used for internal per-sample color and denoiser buffers.
+        ColorFormat colorFormat = ColorFormat::LogLuvHDR;       ///< Color format used for internal per-sample color and denoiser buffers.
+
+        // Denoising parameters
+        bool        useNRDDemodulation = true;                  ///< Global switch for NRD demodulation.
 
         Program::DefineList getDefines(const PathTracer& owner) const;
         Program::TypeConformanceList getTypeConformances(const PathTracer& owner) const;
@@ -124,6 +131,7 @@ private:
     PathTracerParams                mParams;                    ///< Runtime path tracer parameters.
     StaticParams                    mStaticParams;              ///< Static parameters. These are set as compile-time constants in the shaders.
     LightBVHSampler::Options        mLightBVHOptions;           ///< Current options for the light BVH sampler.
+    RTXDI::Options                  mRTXDIOptions;              ///< Current options for the RTXDI sampler.
 
     bool                            mEnabled = true;            ///< Switch to enable/disable the path tracer. When disabled the pass outputs are cleared.
     RenderPassHelpers::IOSize       mOutputSizeSelection = RenderPassHelpers::IOSize::Default;  ///< Selected output size.
@@ -134,6 +142,7 @@ private:
     SampleGenerator::SharedPtr      mpSampleGenerator;          ///< GPU pseudo-random sample generator.
     EnvMapSampler::SharedPtr        mpEnvMapSampler;            ///< Environment map sampler or nullptr if not used.
     EmissiveLightSampler::SharedPtr mpEmissiveSampler;          ///< Emissive light sampler or nullptr if not used.
+    RTXDI::SharedPtr                mpRTXDI;                    ///< RTXDI sampler for direct illumination or nullptr if not used.
     PixelStats::SharedPtr           mpPixelStats;               ///< Utility class for collecting pixel stats.
     PixelDebug::SharedPtr           mpPixelDebug;               ///< Utility class for pixel debugging (print in shaders).
 
@@ -145,6 +154,7 @@ private:
     bool                            mGBufferAdjustShadingNormals = false; ///< True if GBuffer/VBuffer has adjusted shading normals enabled.
     bool                            mFixedSampleCount = true;   ///< True if a fixed sample count per pixel is used. Otherwise load it from the pass sample count input.
     bool                            mOutputGuideData = false;   ///< True if guide data should be generated as outputs.
+    bool                            mOutputNRDData = false;     ///< True if NRD diffuse/specular data should be generated as outputs.
 
     ComputePass::SharedPtr          mpGeneratePaths;            ///< Fullscreen compute pass generating paths starting at primary hits.
     ComputePass::SharedPtr          mpResolvePass;              ///< Sample resolve pass.
@@ -160,4 +170,8 @@ private:
     Texture::SharedPtr              mpSampleOffset;             ///< Output offset into per-sample buffers to where the samples for each pixel are stored (the offset is relative the start of the tile). Only used with non-fixed sample count.
     Buffer::SharedPtr               mpSampleColor;              ///< Compact per-sample color buffer. This is used only if spp > 1.
     Buffer::SharedPtr               mpSampleGuideData;          ///< Compact per-sample denoiser guide data.
+    Buffer::SharedPtr               mpSampleNRDRadiance;        ///< Compact per-sample NRD radiance data.
+    Buffer::SharedPtr               mpSampleNRDHitDist;         ///< Compact per-sample NRD hit distance data.
+    Buffer::SharedPtr               mpSampleNRDEmission;        ///< Compact per-sample NRD emission data.
+    Buffer::SharedPtr               mpSampleNRDReflectance;     ///< Compact per-sample NRD reflectance data.
 };

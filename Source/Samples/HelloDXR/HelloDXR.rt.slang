@@ -124,7 +124,7 @@ void primaryClosestHit(inout PrimaryRayData hitData, BuiltInTriangleIntersection
     let bsdf = gScene.materials.getBSDF(sd, lod);
     let bsdfProperties = bsdf.getProperties(sd);
 
-    float3 color = bsdfProperties.emissive;
+    float3 color = bsdfProperties.emission;
 
     // Direct lighting from analytic light sources.
     for (int i = 0; i < gScene.getLightCount(); i++)

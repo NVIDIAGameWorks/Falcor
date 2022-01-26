@@ -101,7 +101,7 @@ namespace Falcor
         {
             if (saveFileDialog(VideoEncoder::getSupportedContainerForCodec(mCodec), mFilename))
             {
-                assert(mStartCB);
+                FALCOR_ASSERT(mStartCB);
                 mCapturing = mStartCB();
             }
         }
@@ -122,7 +122,7 @@ namespace Falcor
     {
         if (mCapturing)
         {
-            assert(mEndCB);
+            FALCOR_ASSERT(mEndCB);
             mEndCB();
             mCapturing = false;
         }

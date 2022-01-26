@@ -60,11 +60,7 @@ struct GeometryInstanceID
 
 /** Geometry types in the scene.
 */
-enum class GeometryType
-// TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
-#ifdef HOST_CODE
-    : uint32_t
-#endif
+enum class GeometryType : uint32_t
 {
     None                    = GEOMETRY_TYPE_NONE,
     TriangleMesh            = GEOMETRY_TYPE_TRIANGLE_MESH,
@@ -78,11 +74,7 @@ enum class GeometryType
 
 /** Flags indicating what geometry types exist in the scene.
 */
-enum class GeometryTypeFlags
-// TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
-#ifdef HOST_CODE
-    : uint32_t
-#endif
+enum class GeometryTypeFlags : uint32_t
 {
     TriangleMesh            = (1u << GEOMETRY_TYPE_TRIANGLE_MESH),
     DisplacedTriangleMesh   = (1u << GEOMETRY_TYPE_DISPLACED_TRIANGLE_MESH),
@@ -95,11 +87,7 @@ enum class GeometryTypeFlags
 FALCOR_ENUM_CLASS_OPERATORS(GeometryTypeFlags);
 #endif
 
-enum class GeometryInstanceFlags
-// TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
-#ifdef HOST_CODE
-    : uint32_t
-#endif
+enum class GeometryInstanceFlags : uint32_t
 {
     None = 0x0,
 

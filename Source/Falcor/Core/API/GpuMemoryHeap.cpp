@@ -105,7 +105,7 @@ namespace Falcor
 
     void GpuMemoryHeap::release(Allocation& data)
     {
-        assert(data.pResourceHandle);
+        FALCOR_ASSERT(data.pResourceHandle);
         mDeferredReleases.push(data);
     }
 

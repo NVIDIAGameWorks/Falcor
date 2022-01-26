@@ -80,8 +80,8 @@ namespace Falcor
     protected:
         ComputeContext(LowLevelContextData::CommandQueueType type, CommandQueueHandle queue);
 #ifdef FALCOR_D3D12
-        bool prepareForDispatch(ComputeState* pState, ComputeVars* pVars);
-        bool applyComputeVars(ComputeVars* pVars, const ProgramKernels* pProgramKernels);
+        void prepareForDispatch(ComputeState* pState, ComputeVars* pVars);
+        void applyComputeVars(ComputeVars* pVars, const ProgramKernels* pProgramKernels);
 #endif
 
         const ComputeVars* mpLastBoundComputeVars = nullptr;

@@ -25,10 +25,12 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-import Scene.Scene;
 import Utils.Attributes;
 import Utils.Color.ColorHelpers;
 import Rendering.Lights.EnvMapSampler;
+import Rendering.RTXDI.RTXDI;
+import RenderPasses.Shared.Denoising.NRDBuffers;
+import RenderPasses.Shared.Denoising.NRDConstants;
 import LoadShadingData;
 import PathTracer;
 import PathState;
@@ -72,6 +74,7 @@ struct PathGenerator
 
     RWStructuredBuffer<ColorType> sampleColor;      ///< Output per-sample color if kSamplesPerPixel != 1.
     RWStructuredBuffer<GuideData> sampleGuideData;  ///< Output per-sample guide data.
+    NRDBuffers outputNRD;                           ///< Output NRD data.
 
     RWTexture2D<float4> outputColor;                ///< Output color buffer if kSamplesPerPixel == 1.
 
@@ -115,6 +118,33 @@ struct PathGenerator
             // Load the primary hit from the V-buffer.
             const HitInfo hit = HitInfo(vbuffer[pixel]);
             hitSurface = hit.isValid();
+
+            // Prepare per-pixel surface data for RTXDI.
+            if (kUseRTXDI)
+            {
+                bool validSurface = false;
+                if (hitSurface)
+                {
+                    let lod = ExplicitLodTextureSampler(0.f);
+                    ShadingData sd = loadShadingData(hit, cameraRay.origin, cameraRay.dir, true, lod);
+
+                    // Create BSDF instance and query its properties.
+                    let bsdf = gScene.materials.getBSDF(sd, lod);
+                    let bsdfProperties = bsdf.getProperties(sd);
+
+                    // Check for BSDF lobes that RTXDI can sample.
+                    uint lobes = bsdf.getLobes(sd);
+                    validSurface = (lobes & (uint)LobeType::NonDeltaReflection) != 0;
+
+                    if (validSurface)
+                    {
+                        // RTXDI uses a simple material model with only diffuse and specular reflection lobes.
+                        // We query the BSDF for the diffuse albedo and specular reflectance.
+                        gRTXDI.setSurfaceData(pixel, sd.computeNewRayOrigin(), sd.N, bsdfProperties.diffuseReflectionAlbedo, bsdfProperties.specularReflectance, bsdfProperties.roughness);
+                    }
+                }
+                if (!validSurface) gRTXDI.setInvalidSurfaceData(pixel);
+            }
         }
 
         // Perform a reduction over the tile to determine the number of samples required.
@@ -200,6 +230,21 @@ struct PathGenerator
             {
                 PathTracer::setBackgroundGuideData(sampleGuideData[outIdx + i], dir, color);
             }
+
+            if (kOutputNRDData)
+            {
+                outputNRD.sampleRadiance[outIdx + i] = {};
+                outputNRD.sampleHitDist[outIdx + i] = kNRDInvalidPathLength;
+                outputNRD.sampleEmission[outIdx + i] = 0.f;
+                outputNRD.sampleReflectance[outIdx + i] = 1.f;
+            }
+        }
+
+        if (kOutputNRDData)
+        {
+            outputNRD.primaryHitEmission[pixel] = float4(color, 1.f);
+            outputNRD.primaryHitDiffuseReflectance[pixel] = 0.f;
+            outputNRD.primaryHitSpecularReflectance[pixel] = 0.f;
         }
     }
 };

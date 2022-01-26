@@ -42,7 +42,7 @@ namespace Falcor
             switch (type)
             {
             case Resource::Type::Buffer:
-                assert(isTextureArray == false);
+                FALCOR_ASSERT(isTextureArray == false);
                 return ReflectionResourceType::Dimensions::Buffer;
             case Resource::Type::Texture1D:
                 return (isTextureArray) ? ReflectionResourceType::Dimensions::Texture1DArray : ReflectionResourceType::Dimensions::Texture1D;
@@ -51,12 +51,12 @@ namespace Falcor
             case Resource::Type::Texture2DMultisample:
                 return (isTextureArray) ? ReflectionResourceType::Dimensions::Texture2DMSArray : ReflectionResourceType::Dimensions::Texture2DMS;
             case Resource::Type::Texture3D:
-                assert(isTextureArray == false);
+                FALCOR_ASSERT(isTextureArray == false);
                 return ReflectionResourceType::Dimensions::Texture3D;
             case Resource::Type::TextureCube:
                 return (isTextureArray) ? ReflectionResourceType::Dimensions::TextureCubeArray : ReflectionResourceType::Dimensions::TextureCube;
             default:
-                should_not_get_here();
+                FALCOR_UNREACHABLE();
                 return ReflectionResourceType::Dimensions::Unknown;
             }
         }
@@ -83,7 +83,7 @@ namespace Falcor
             case ReflectionResourceType::Dimensions::TextureCubeArray: return D3D12_SRV_DIMENSION_TEXTURECUBEARRAY;
             case ReflectionResourceType::Dimensions::AccelerationStructure: return D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
             default:
-                should_not_get_here();
+                FALCOR_UNREACHABLE();
                 return D3D12_SRV_DIMENSION_UNKNOWN;
             }
         }
@@ -100,7 +100,7 @@ namespace Falcor
             case ReflectionResourceType::Dimensions::Texture2DArray: return D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
             case ReflectionResourceType::Dimensions::Texture3D: return D3D12_UAV_DIMENSION_TEXTURE3D;
             default:
-                should_not_get_here();
+                FALCOR_UNREACHABLE();
                 return D3D12_UAV_DIMENSION_UNKNOWN;
             }
         }
@@ -119,7 +119,7 @@ namespace Falcor
             // TODO: Falcor previously mapped cube to 2D array. Not sure if needed anymore.
             //case ReflectionResourceType::Dimensions::TextureCube: return D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
             default:
-                should_not_get_here();
+                FALCOR_UNREACHABLE();
                 return D3D12_DSV_DIMENSION_UNKNOWN;
             }
         }
@@ -140,7 +140,7 @@ namespace Falcor
             // TODO: Falcor previously mapped cube to 2D array. Not sure if needed anymore.
             //case ReflectionResourceType::Dimensions::TextureCube: return D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
             default:
-                should_not_get_here();
+                FALCOR_UNREACHABLE();
                 return D3D12_RTV_DIMENSION_UNKNOWN;
             }
         }
@@ -151,14 +151,14 @@ namespace Falcor
 
     D3D12_SHADER_RESOURCE_VIEW_DESC createBufferSrvDesc(const Buffer* pBuffer, uint32_t firstElement, uint32_t elementCount)
     {
-        assert(pBuffer);
+        FALCOR_ASSERT(pBuffer);
         D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
 
         uint32_t bufferElementSize = 0;
         uint32_t bufferElementCount = 0;
         if (pBuffer->isTyped())
         {
-            assert(getFormatPixelsPerBlock(pBuffer->getFormat()) == 1);
+            FALCOR_ASSERT(getFormatPixelsPerBlock(pBuffer->getFormat()) == 1);
             bufferElementSize = getFormatBytesPerBlock(pBuffer->getFormat());
             bufferElementCount = pBuffer->getElementCount();
             desc.Format = getDxgiFormat(pBuffer->getFormat());
@@ -179,7 +179,7 @@ namespace Falcor
         }
 
         bool useDefaultCount = (elementCount == ShaderResourceView::kMaxPossible);
-        assert(useDefaultCount || (firstElement + elementCount) <= bufferElementCount); // Check range
+        FALCOR_ASSERT(useDefaultCount || (firstElement + elementCount) <= bufferElementCount); // Check range
         desc.Buffer.FirstElement = firstElement;
         desc.Buffer.NumElements = useDefaultCount ? (bufferElementCount - firstElement) : elementCount;
 
@@ -188,7 +188,7 @@ namespace Falcor
 
         // D3D12 doesn't currently handle views that extend to close to 4GB or beyond the base address.
         // TODO: Revisit this check in the future.
-        assert(bufferElementSize > 0);
+        FALCOR_ASSERT(bufferElementSize > 0);
         if (desc.Buffer.FirstElement + desc.Buffer.NumElements > ((1ull << 32) / bufferElementSize - 8))
         {
             throw RuntimeError("Buffer SRV exceeds the maximum supported size");
@@ -199,7 +199,7 @@ namespace Falcor
 
     D3D12_SHADER_RESOURCE_VIEW_DESC createTextureSrvDesc(const Texture* pTexture, uint32_t firstArraySlice, uint32_t arraySize, uint32_t mostDetailedMip, uint32_t mipCount)
     {
-        assert(pTexture);
+        FALCOR_ASSERT(pTexture);
         D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
 
         //If not depth, returns input format
@@ -247,7 +247,7 @@ namespace Falcor
             }
             break;
         case Resource::Type::Texture3D:
-            assert(arraySize == 1);
+            FALCOR_ASSERT(arraySize == 1);
             desc.Texture3D.MipLevels = mipCount;
             desc.Texture3D.MostDetailedMip = mostDetailedMip;
             break;
@@ -266,7 +266,7 @@ namespace Falcor
             }
             break;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
         }
 
         desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -277,7 +277,7 @@ namespace Falcor
     DescType createDsvRtvUavDescCommon(const Resource* pResource, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
     {
         const Texture* pTexture = dynamic_cast<const Texture*>(pResource);
-        assert(pTexture);   // Buffers should not get here
+        FALCOR_ASSERT(pTexture);   // Buffers should not get here
 
         uint32_t arrayMultiplier = (pResource->getType() == Resource::Type::TextureCube) ? 6 : 1;
 
@@ -334,7 +334,7 @@ namespace Falcor
         case Resource::Type::Texture3D:
             if constexpr (std::is_same_v<DescType, D3D12_UNORDERED_ACCESS_VIEW_DESC> || std::is_same_v<DescType, D3D12_RENDER_TARGET_VIEW_DESC>)
             {
-                assert(pTexture->getArraySize() == 1);
+                FALCOR_ASSERT(pTexture->getArraySize() == 1);
                 desc.Texture3D.MipSlice = mipLevel;
                 desc.Texture3D.FirstWSlice = 0;
                 desc.Texture3D.WSize = pTexture->getDepth(mipLevel);
@@ -345,7 +345,7 @@ namespace Falcor
             }
             break;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
         }
 
         return desc;
@@ -363,14 +363,14 @@ namespace Falcor
 
     D3D12_UNORDERED_ACCESS_VIEW_DESC createBufferUavDesc(const Buffer* pBuffer, uint32_t firstElement, uint32_t elementCount)
     {
-        assert(pBuffer);
+        FALCOR_ASSERT(pBuffer);
         D3D12_UNORDERED_ACCESS_VIEW_DESC desc = {};
 
         uint32_t bufferElementSize = 0;
         uint32_t bufferElementCount = 0;
         if (pBuffer->isTyped())
         {
-            assert(getFormatPixelsPerBlock(pBuffer->getFormat()) == 1);
+            FALCOR_ASSERT(getFormatPixelsPerBlock(pBuffer->getFormat()) == 1);
             bufferElementSize = getFormatBytesPerBlock(pBuffer->getFormat());
             bufferElementCount = pBuffer->getElementCount();
             desc.Format = getDxgiFormat(pBuffer->getFormat());
@@ -391,7 +391,7 @@ namespace Falcor
         }
 
         bool useDefaultCount = (elementCount == UnorderedAccessView::kMaxPossible);
-        assert(useDefaultCount || (firstElement + elementCount) <= bufferElementCount); // Check range
+        FALCOR_ASSERT(useDefaultCount || (firstElement + elementCount) <= bufferElementCount); // Check range
         desc.Buffer.FirstElement = firstElement;
         desc.Buffer.NumElements = useDefaultCount ? bufferElementCount - firstElement : elementCount;
 
@@ -399,7 +399,7 @@ namespace Falcor
 
         // D3D12 doesn't currently handle views that extend to close to 4GB or beyond the base address.
         // TODO: Revisit this check in the future.
-        assert(bufferElementSize > 0);
+        FALCOR_ASSERT(bufferElementSize > 0);
         if (desc.Buffer.FirstElement + desc.Buffer.NumElements > ((1ull << 32) / bufferElementSize - 8))
         {
             throw RuntimeError("Buffer UAV exceeds the maximum supported size");
@@ -426,7 +426,7 @@ namespace Falcor
 
     ShaderResourceView::SharedPtr ShaderResourceView::create(ConstTextureSharedPtrRef pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
     {
-        assert(pTexture);
+        FALCOR_ASSERT(pTexture);
         D3D12_SHADER_RESOURCE_VIEW_DESC desc = createTextureSrvDesc(pTexture.get(), firstArraySlice, arraySize, mostDetailedMip, mipCount);
         Resource::ApiHandle resHandle = pTexture->getApiHandle();
 
@@ -435,7 +435,7 @@ namespace Falcor
 
     ShaderResourceView::SharedPtr ShaderResourceView::create(ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount)
     {
-        assert(pBuffer);
+        FALCOR_ASSERT(pBuffer);
         D3D12_SHADER_RESOURCE_VIEW_DESC desc = createBufferSrvDesc(pBuffer.get(), firstElement, elementCount);
         Resource::ApiHandle resHandle = pBuffer->getApiHandle();
 
@@ -457,7 +457,7 @@ namespace Falcor
     {
         // Views for acceleration structures pass the GPU VA as part of the view desc.
         // Note that in the call to CreateShaderResourceView() the resource ptr should be nullptr.
-        assert(pBuffer);
+        FALCOR_ASSERT(pBuffer);
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
         srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -483,7 +483,7 @@ namespace Falcor
 
     DepthStencilView::SharedPtr DepthStencilView::create(ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
     {
-        assert(pTexture);
+        FALCOR_ASSERT(pTexture);
         D3D12_DEPTH_STENCIL_VIEW_DESC desc = createDsvDesc(pTexture.get(), mipLevel, firstArraySlice, arraySize);
         Resource::ApiHandle resHandle = pTexture->getApiHandle();
 
@@ -512,7 +512,7 @@ namespace Falcor
 
     UnorderedAccessView::SharedPtr UnorderedAccessView::create(ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
     {
-        assert(pTexture);
+        FALCOR_ASSERT(pTexture);
         D3D12_UNORDERED_ACCESS_VIEW_DESC desc = createDsvRtvUavDescCommon<D3D12_UNORDERED_ACCESS_VIEW_DESC>(pTexture.get(), mipLevel, firstArraySlice, arraySize);
         Resource::ApiHandle resHandle = pTexture->getApiHandle();
 
@@ -521,7 +521,7 @@ namespace Falcor
 
     UnorderedAccessView::SharedPtr UnorderedAccessView::create(ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount)
     {
-        assert(pBuffer);
+        FALCOR_ASSERT(pBuffer);
         D3D12_UNORDERED_ACCESS_VIEW_DESC desc = createBufferUavDesc(pBuffer.get(), firstElement, elementCount);
         Resource::ApiHandle resHandle = pBuffer->getApiHandle();
         Resource::ApiHandle counterHandle = nullptr;
@@ -557,7 +557,7 @@ namespace Falcor
 
     RenderTargetView::SharedPtr RenderTargetView::create(ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
     {
-        assert(pTexture);
+        FALCOR_ASSERT(pTexture);
         D3D12_RENDER_TARGET_VIEW_DESC desc = createRtvDesc(pTexture.get(), mipLevel, firstArraySlice, arraySize);
         Resource::ApiHandle resHandle = pTexture->getApiHandle();
 
@@ -586,7 +586,7 @@ namespace Falcor
 
     ConstantBufferView::SharedPtr ConstantBufferView::create(ConstBufferSharedPtrRef pBuffer)
     {
-        assert(pBuffer);
+        FALCOR_ASSERT(pBuffer);
         D3D12_CONSTANT_BUFFER_VIEW_DESC desc = {};
         desc.BufferLocation = pBuffer->getGpuAddress();
         desc.SizeInBytes = (uint32_t)pBuffer->getSize();

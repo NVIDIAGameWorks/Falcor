@@ -65,7 +65,7 @@ GaussianBlur::SharedPtr GaussianBlur::create(RenderContext* pRenderContext, cons
     {
         if (key == kKernelWidth) pBlur->mKernelWidth = value;
         else if (key == kSigma) pBlur->mSigma = value;
-        else logWarning("Unknown field '" + key + "' in a GaussianBlur dictionary");
+        else logWarning("Unknown field '{}' in a GaussianBlur dictionary.", key);
     }
     return pBlur;
 }

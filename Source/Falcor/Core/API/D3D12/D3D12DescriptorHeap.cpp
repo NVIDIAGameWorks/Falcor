@@ -31,7 +31,10 @@
 
 namespace Falcor
 {
-    D3D12DescriptorHeap::D3D12DescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t chunkCount) : mMaxChunkCount(chunkCount), mType(type)
+    D3D12DescriptorHeap::D3D12DescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t chunkCount, bool shaderVisible)
+        : mMaxChunkCount(chunkCount)
+        , mType(type)
+        , mShaderVisible(shaderVisible)
     {
         DeviceHandle pDevice = gpDevice->getApiHandle();
         mDescriptorSize = pDevice->GetDescriptorHandleIncrementSize(type);
@@ -41,11 +44,11 @@ namespace Falcor
 
     D3D12DescriptorHeap::SharedPtr D3D12DescriptorHeap::create(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t descCount, bool shaderVisible)
     {
-        assert(gpDevice);
+        FALCOR_ASSERT(gpDevice);
         DeviceHandle pDevice = gpDevice->getApiHandle();
 
         uint32_t chunkCount = (descCount + kDescPerChunk - 1) / kDescPerChunk;
-        D3D12DescriptorHeap::SharedPtr pHeap = SharedPtr(new D3D12DescriptorHeap(type, chunkCount));
+        D3D12DescriptorHeap::SharedPtr pHeap = SharedPtr(new D3D12DescriptorHeap(type, chunkCount, shaderVisible));
         D3D12_DESCRIPTOR_HEAP_DESC desc = {};
 
         desc.Flags = shaderVisible ? D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE : D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
@@ -57,8 +60,15 @@ namespace Falcor
         }
 
         pHeap->mCpuHeapStart = pHeap->mApiHandle->GetCPUDescriptorHandleForHeapStart();
-        pHeap->mGpuHeapStart = pHeap->mApiHandle->GetGPUDescriptorHandleForHeapStart();
+        if (shaderVisible) pHeap->mGpuHeapStart = pHeap->mApiHandle->GetGPUDescriptorHandleForHeapStart();
+
         return pHeap;
+    }
+
+    D3D12DescriptorHeap::GpuHandle D3D12DescriptorHeap::getBaseGpuHandle() const
+    {
+        if (!mShaderVisible) throw RuntimeError("getBaseGpuHandle() - heap must be shader visible.");
+        return mGpuHeapStart;
     }
 
     template<typename HandleType>
@@ -70,12 +80,12 @@ namespace Falcor
 
     D3D12DescriptorHeap::CpuHandle D3D12DescriptorHeap::getCpuHandle(uint32_t index) const
     {
-        return getHandleCommon(mCpuHeapStart, index, mDescriptorSize);
+        return getHandleCommon(getBaseCpuHandle(), index, mDescriptorSize);
     }
 
     D3D12DescriptorHeap::GpuHandle D3D12DescriptorHeap::getGpuHandle(uint32_t index) const
     {
-        return getHandleCommon(mGpuHeapStart, index, mDescriptorSize);
+        return getHandleCommon(getBaseGpuHandle(), index, mDescriptorSize);
     }
 
     D3D12DescriptorHeap::Allocation::SharedPtr D3D12DescriptorHeap::allocateDescriptors(uint32_t count)

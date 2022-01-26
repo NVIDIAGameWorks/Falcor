@@ -140,12 +140,12 @@ namespace Falcor
         std::string fullpath;
         if (!findFileInDataDirectories(path, fullpath))
         {
-            logWarning("Cannot find directory '" + path + "'");
+            logWarning("Cannot find directory '{}'.", path);
             return 0;
         }
         if (!std::filesystem::is_directory(fullpath))
         {
-            logWarning("'" + path + "' is not a directory");
+            logWarning("'{}' is not a directory.", path);
             return 0;
         }
 
@@ -166,7 +166,7 @@ namespace Falcor
     void GridVolume::setGridSequence(GridSlot slot, const GridSequence& grids)
     {
         uint32_t slotIndex = (uint32_t)slot;
-        assert(slotIndex >= 0 && slotIndex < (uint32_t)GridSlot::Count);
+        FALCOR_ASSERT(slotIndex >= 0 && slotIndex < (uint32_t)GridSlot::Count);
 
         if (mGrids[slotIndex] != grids)
         {
@@ -180,7 +180,7 @@ namespace Falcor
     const GridVolume::GridSequence& GridVolume::getGridSequence(GridSlot slot) const
     {
         uint32_t slotIndex = (uint32_t)slot;
-        assert(slotIndex >= 0 && slotIndex < (uint32_t)GridSlot::Count);
+        FALCOR_ASSERT(slotIndex >= 0 && slotIndex < (uint32_t)GridSlot::Count);
 
         return mGrids[slotIndex];
     }
@@ -195,7 +195,7 @@ namespace Falcor
         static const Grid::SharedPtr kNullGrid;
 
         uint32_t slotIndex = (uint32_t)slot;
-        assert(slotIndex >= 0 && slotIndex < (uint32_t)GridSlot::Count);
+        FALCOR_ASSERT(slotIndex >= 0 && slotIndex < (uint32_t)GridSlot::Count);
 
         const auto& gridSequence = mGrids[slotIndex];
         uint32_t gridIndex = std::min(mGridFrame, (uint32_t)gridSequence.size() - 1);

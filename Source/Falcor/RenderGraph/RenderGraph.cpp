@@ -54,7 +54,7 @@ namespace Falcor
     RenderGraph::~RenderGraph()
     {
         auto it = std::find(gRenderGraphs.begin(), gRenderGraphs.end(), this);
-        assert(it != gRenderGraphs.end());
+        FALCOR_ASSERT(it != gRenderGraphs.end());
         gRenderGraphs.erase(it);
     }
 
@@ -78,7 +78,7 @@ namespace Falcor
 
     uint32_t RenderGraph::addPass(const RenderPass::SharedPtr& pPass, const std::string& passName)
     {
-        assert(pPass);
+        FALCOR_ASSERT(pPass);
         uint32_t passIndex = getPassIndex(passName);
         if (passIndex != kInvalidIndex)
         {
@@ -105,7 +105,7 @@ namespace Falcor
         uint32_t index = getPassIndex(name);
         if (index == kInvalidIndex)
         {
-            logWarning("Can't remove pass '" + name + "'. Pass doesn't exist");
+            logWarning("Can't remove pass '{}'. Pass doesn't exist.", name);
             return;
         }
 
@@ -166,7 +166,7 @@ namespace Falcor
 
     static bool checkRenderPassIoExist(RenderPass* pPass, const std::string& name, const bool input, const RenderPass::CompileData& compileData)
     {
-        assert(pPass);
+        FALCOR_ASSERT(pPass);
         RenderPassReflection reflect = pPass->reflect(compileData);
         for (size_t i = 0; i < reflect.getFieldCount(); i++)
         {
@@ -408,7 +408,7 @@ namespace Falcor
             return;
         }
 
-        assert(mpExe);
+        FALCOR_ASSERT(mpExe);
         RenderGraphExe::Context c;
         c.pGraphDictionary = mpPassDictionary;
         c.pRenderContext = pRenderContext;
@@ -494,7 +494,7 @@ namespace Falcor
         {
             if (mCompilerDeps.externalResources.find(name) == mCompilerDeps.externalResources.end())
             {
-                logWarning("RenderGraph::setInput() - Trying to remove an external resource named '" + name + "' but the resource wasn't registered before. Ignoring call");
+                logWarning("RenderGraph::setInput() - Trying to remove an external resource named '{}' but the resource wasn't registered before. Ignoring call.", name);
                 return;
             }
             mCompilerDeps.externalResources.erase(name);
@@ -599,14 +599,14 @@ namespace Falcor
 
     std::string RenderGraph::getOutputName(size_t index) const
     {
-        assert(index < mOutputs.size());
+        FALCOR_ASSERT(index < mOutputs.size());
         const GraphOut& graphOut = mOutputs[index];
         return mNodeData.find(graphOut.nodeId)->second.name + "." + graphOut.field;
     }
 
     std::unordered_set<TextureChannelFlags> RenderGraph::getOutputMasks(size_t index) const
     {
-        assert(index < mOutputs.size());
+        FALCOR_ASSERT(index < mOutputs.size());
         return mOutputs[index].masks;
     }
 
@@ -626,7 +626,7 @@ namespace Falcor
 
     bool canFieldsConnect(const RenderPassReflection::Field& src, const RenderPassReflection::Field& dst)
     {
-        assert(is_set(src.getVisibility(), RenderPassReflection::Field::Visibility::Output) && is_set(dst.getVisibility(), RenderPassReflection::Field::Visibility::Input));
+        FALCOR_ASSERT(is_set(src.getVisibility(), RenderPassReflection::Field::Visibility::Output) && is_set(dst.getVisibility(), RenderPassReflection::Field::Visibility::Input));
 
         return src.getName() == dst.getName() &&
             (dst.getWidth() == 0 || src.getWidth() == dst.getWidth()) &&

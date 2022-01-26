@@ -39,6 +39,7 @@
     <ShaderSource Include="GeneratePaths.cs.slang" />
     <ShaderSource Include="GuideData.slang" />
     <ShaderSource Include="LoadShadingData.slang" />
+    <ShaderSource Include="NRDHelpers.slang" />
     <ShaderSource Include="Params.slang" />
     <ShaderSource Include="PathState.slang" />
     <ShaderSource Include="PathTracer.slang" />

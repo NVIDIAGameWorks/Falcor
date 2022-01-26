@@ -74,6 +74,7 @@ namespace Falcor
         bool mStagingBufferUpToDate = false;
 #elif defined(FALCOR_GFX)
         Slang::ComPtr<gfx::IQueryPool> mpGFXQueryPool;
+        bool mNeedFlush = true;
 #endif
     };
 

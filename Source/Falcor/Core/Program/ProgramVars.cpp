@@ -38,6 +38,7 @@ namespace Falcor
 {
     void ProgramVars::addSimpleEntryPointGroups()
     {
+#ifdef FALCOR_D3D12
         auto& entryPointGroups = mpReflector->getEntryPointGroups();
         auto groupCount = entryPointGroups.size();
         for( size_t gg = 0; gg < groupCount; ++gg )
@@ -46,6 +47,7 @@ namespace Falcor
             auto pGroupVars = EntryPointGroupVars::create(pGroup, uint32_t(gg));
             mpEntryPointGroupVars.push_back(pGroupVars);
         }
+#endif
     }
 
     GraphicsVars::GraphicsVars(const ProgramReflection::SharedConstPtr& pReflector)
@@ -56,25 +58,25 @@ namespace Falcor
 
     GraphicsVars::SharedPtr GraphicsVars::create(const ProgramReflection::SharedConstPtr& pReflector)
     {
-        if (pReflector == nullptr) ArgumentError("Can't create a GraphicsVars object without a program reflector");
+        if (pReflector == nullptr) throw ArgumentError("Can't create a GraphicsVars object without a program reflector");
         return SharedPtr(new GraphicsVars(pReflector));
     }
 
     GraphicsVars::SharedPtr GraphicsVars::create(const GraphicsProgram* pProg)
     {
-        if (pProg == nullptr) ArgumentError("Can't create a GraphicsVars object without a program");
+        if (pProg == nullptr) throw ArgumentError("Can't create a GraphicsVars object without a program");
         return create(pProg->getReflector());
     }
 
     ComputeVars::SharedPtr ComputeVars::create(const ProgramReflection::SharedConstPtr& pReflector)
     {
-        if (pReflector == nullptr) ArgumentError("Can't create a ComputeVars object without a program reflector");
+        if (pReflector == nullptr) throw ArgumentError("Can't create a ComputeVars object without a program reflector");
         return SharedPtr(new ComputeVars(pReflector));
     }
 
     ComputeVars::SharedPtr ComputeVars::create(const ComputeProgram* pProg)
     {
-        if (pProg == nullptr) ArgumentError("Can't create a ComputeVars object without a program");
+        if (pProg == nullptr) throw ArgumentError("Can't create a ComputeVars object without a program");
         return create(pProg->getReflector());
     }
 

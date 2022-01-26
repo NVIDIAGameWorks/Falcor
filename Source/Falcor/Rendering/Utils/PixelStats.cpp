@@ -50,7 +50,7 @@ namespace Falcor
     void PixelStats::beginFrame(RenderContext* pRenderContext, const uint2& frameDim)
     {
         // Prepare state.
-        assert(!mRunning);
+        FALCOR_ASSERT(!mRunning);
         mRunning = true;
         mWaitingForData = false;
         mFrameDim = frameDim;
@@ -94,7 +94,7 @@ namespace Falcor
 
     void PixelStats::endFrame(RenderContext* pRenderContext)
     {
-        assert(mRunning);
+        FALCOR_ASSERT(mRunning);
         mRunning = false;
 
         if (mEnabled)
@@ -122,7 +122,7 @@ namespace Falcor
 
     void PixelStats::prepareProgram(const Program::SharedPtr& pProgram, const ShaderVar& var)
     {
-        assert(mRunning);
+        FALCOR_ASSERT(mRunning);
 
         if (mEnabled)
         {
@@ -195,7 +195,7 @@ namespace Falcor
 
     const Texture::SharedPtr PixelStats::getRayCountTexture(RenderContext* pRenderContext)
     {
-        assert(!mRunning);
+        FALCOR_ASSERT(!mRunning);
         if (!mStatsBuffersValid) return nullptr;
 
         if (!mRayCountTextureValid)
@@ -203,13 +203,13 @@ namespace Falcor
             computeRayCountTexture(pRenderContext);
         }
 
-        assert(mRayCountTextureValid);
+        FALCOR_ASSERT(mRayCountTextureValid);
         return mpStatsRayCountTotal;
     }
 
     void PixelStats::computeRayCountTexture(RenderContext* pRenderContext)
     {
-        assert(mStatsBuffersValid);
+        FALCOR_ASSERT(mStatsBuffersValid);
         if (!mpStatsRayCountTotal || mpStatsRayCountTotal->getWidth() != mFrameDim.x || mpStatsRayCountTotal->getHeight() != mFrameDim.y)
         {
             mpStatsRayCountTotal = Texture::create2D(mFrameDim.x, mFrameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
@@ -229,25 +229,25 @@ namespace Falcor
 
     const Texture::SharedPtr PixelStats::getPathLengthTexture() const
     {
-        assert(!mRunning);
+        FALCOR_ASSERT(!mRunning);
         return mStatsBuffersValid ? mpStatsPathLength : nullptr;
     }
 
     const Texture::SharedPtr PixelStats::getPathVertexCountTexture() const
     {
-        assert(!mRunning);
+        FALCOR_ASSERT(!mRunning);
         return mStatsBuffersValid ? mpStatsPathVertexCount : nullptr;
     }
 
     const Texture::SharedPtr PixelStats::getVolumeLookupCountTexture() const
     {
-        assert(!mRunning);
+        FALCOR_ASSERT(!mRunning);
         return mStatsBuffersValid ? mpStatsVolumeLookupCount : nullptr;
     }
 
     void PixelStats::copyStatsToCPU()
     {
-        assert(!mRunning);
+        FALCOR_ASSERT(!mRunning);
         if (mWaitingForData)
         {
             // Wait for signal.
@@ -258,13 +258,13 @@ namespace Falcor
             {
                 // Map the stats buffer.
                 const uint4* result = static_cast<const uint4*>(mpReductionResult->map(Buffer::MapType::Read));
-                assert(result);
+                FALCOR_ASSERT(result);
 
                 const uint32_t totalPathLength = result[kRayTypeCount].x;
                 const uint32_t totalPathVertices = result[kRayTypeCount + 1].x;
                 const uint32_t totalVolumeLookups = result[kRayTypeCount + 2].x;
                 const uint32_t numPixels = mFrameDim.x * mFrameDim.y;
-                assert(numPixels > 0);
+                FALCOR_ASSERT(numPixels > 0);
 
                 mStats.visibilityRays = result[(uint32_t)PixelStatsRayType::Visibility].x;
                 mStats.closestHitRays = result[(uint32_t)PixelStatsRayType::ClosestHit].x;
