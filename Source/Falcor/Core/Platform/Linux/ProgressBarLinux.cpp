@@ -97,7 +97,7 @@ namespace Falcor
 
         if (!gtk_init_check(0, nullptr))
         {
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
         }
 
         // Create window

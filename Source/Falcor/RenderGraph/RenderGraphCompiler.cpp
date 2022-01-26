@@ -114,7 +114,7 @@ namespace Falcor
         {
             if (e.second.dstField.empty())
             {
-                assert(e.second.srcField.empty());
+                FALCOR_ASSERT(e.second.srcField.empty());
                 const auto& edge = mGraph.mpGraph->getEdge(e.first);
                 mandatoryPasses.insert(edge->getDestNode());
                 mandatoryPasses.insert(edge->getSourceNode());
@@ -195,7 +195,7 @@ namespace Falcor
                         if (!dstReflection) continue;
                         const auto& dstField = *dstReflection->getField(edgeData.dstField);
 
-                        assert(srcField.isValid() && dstField.isValid());
+                        FALCOR_ASSERT(srcField.isValid() && dstField.isValid());
                         if (canAutoResolve(srcField, dstField))
                         {
                             std::string dstFieldName = dstPassName + '.' + dstField.getName();
@@ -251,7 +251,7 @@ namespace Falcor
             uint32_t nodeIndex = mExecutionList[i].index;
 
             const DirectedGraph::Node* pNode = mGraph.mpGraph->getNode(nodeIndex);
-            assert(pNode);
+            FALCOR_ASSERT(pNode);
             RenderPass* pCurrPass = mGraph.mNodeData[nodeIndex].pPass.get();
             const auto& passReflection = mExecutionList[i].reflector;
 
@@ -296,12 +296,12 @@ namespace Falcor
                 // Skip execution-edges
                 if (edgeData.dstField.empty())
                 {
-                    assert(edgeData.srcField.empty());
+                    FALCOR_ASSERT(edgeData.srcField.empty());
                     continue;
                 }
 
                 const auto& dstField = *passReflection.getField(edgeData.dstField);
-                assert(dstField.isValid() && is_set(dstField.getVisibility(), RenderPassReflection::Field::Visibility::Input));
+                FALCOR_ASSERT(dstField.isValid() && is_set(dstField.getVisibility(), RenderPassReflection::Field::Visibility::Input));
 
                 // Merge dst/input field into same resource data
                 std::string srcFieldName = mGraph.mNodeData[pEdge->getSourceNode()].name + '.' + edgeData.srcField;

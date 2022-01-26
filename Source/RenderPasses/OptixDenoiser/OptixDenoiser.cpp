@@ -92,7 +92,7 @@ OptixDenoiser_::OptixDenoiser_(const Dictionary& dict)
         }
         else if (key == kBlend) mDenoiser.params.blendFactor = value;
         else if (key == kDenoiseAlpha) mDenoiser.params.denoiseAlpha = (value ? 1u : 0u);
-        else logWarning("Unknown field '" + key + "' in a OptixDenoiser dictionary");
+        else logWarning("Unknown field '{}' in a OptixDenoiser dictionary.", key);
     }
 
     mpConvertTexToBuf = ComputePass::create(kConvertTexToBufFile, "main");
@@ -144,8 +144,7 @@ void OptixDenoiser_::compile(RenderContext* pRenderContext, const CompileData& c
 #if FALCOR_ENABLE_CUDA && FALCOR_ENABLE_OPTIX
     if (!initializeOptix())
     {
-        reportError("OptixDenoiser failed to initialize CUDA and/or OptiX!");
-        return;
+        throw RuntimeError("OptixDenoiser failed to initialize CUDA and/or OptiX!");
     }
 
     // Determine available inputs
@@ -260,8 +259,7 @@ void OptixDenoiser_::allocateStagingBuffer(RenderContext* pRenderContext, Intero
         falcorFormat = ResourceFormat::RG32Float;
         break;
     default:
-        reportError("OptixDenoiser called allocateStagingBuffer() with unsupported format!");
-        return;
+        throw RuntimeError("OptixDenoiser called allocateStagingBuffer() with unsupported format");
     }
 
     // If we had an existing buffer in this location, free it.

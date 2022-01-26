@@ -51,8 +51,8 @@ namespace Falcor
         */
         static SharedPtr create(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t descCount, bool shaderVisible = true);
 
-        GpuHandle getBaseGpuHandle() const { return mGpuHeapStart; }
         CpuHandle getBaseCpuHandle() const { return mCpuHeapStart; }
+        GpuHandle getBaseGpuHandle() const;
 
     private:
         struct Chunk;
@@ -64,10 +64,10 @@ namespace Falcor
             using SharedPtr = std::shared_ptr<Allocation>;
             ~Allocation();
 
-            uint32_t getHeapEntryIndex(uint32_t index) const { assert(index < mDescCount); return index + mBaseIndex; }
+            uint32_t getHeapEntryIndex(uint32_t index) const { FALCOR_ASSERT(index < mDescCount); return index + mBaseIndex; }
             CpuHandle getCpuHandle(uint32_t index) const { return mpHeap->getCpuHandle(getHeapEntryIndex(index)); } // Index is relative to the allocation
             GpuHandle getGpuHandle(uint32_t index) const { return mpHeap->getGpuHandle(getHeapEntryIndex(index)); } // Index is relative to the allocation
-            
+
         private:
             friend D3D12DescriptorHeap;
             static SharedPtr create(D3D12DescriptorHeap::SharedPtr pHeap, uint32_t baseIndex, uint32_t descCount, std::shared_ptr<Chunk> pChunk);
@@ -77,7 +77,7 @@ namespace Falcor
             uint32_t mDescCount;
             std::shared_ptr<Chunk> mpChunk;
         };
-        
+
         Allocation::SharedPtr allocateDescriptors(uint32_t count);
         const ApiHandle& getApiHandle() const { return mApiHandle; }
         D3D12_DESCRIPTOR_HEAP_TYPE getType() const { return mType; }
@@ -87,19 +87,19 @@ namespace Falcor
 
     private:
         friend Allocation;
-        D3D12DescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t chunkCount);
-        
+        D3D12DescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t chunkCount, bool shaderVisible);
 
         CpuHandle getCpuHandle(uint32_t index) const;
-        GpuHandle getGpuHandle(uint32_t index) const;
+        GpuHandle getGpuHandle(uint32_t index) const; // Only valid if heap is shader visible
 
         CpuHandle mCpuHeapStart = {};
-        GpuHandle mGpuHeapStart = {};
+        GpuHandle mGpuHeapStart = {}; // Only valid if heap is shader visible
         uint32_t mDescriptorSize;
         const uint32_t mMaxChunkCount = 0;
         uint32_t mAllocatedChunks = 0;
         ApiHandle mApiHandle;
         D3D12_DESCRIPTOR_HEAP_TYPE mType;
+        bool mShaderVisible;
 
         struct Chunk
         {

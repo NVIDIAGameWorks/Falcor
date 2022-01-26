@@ -255,8 +255,8 @@ namespace Falcor
     private:
         static std::unordered_set<Desc, DescHash> sDescs;
 
-        bool verifyAttachment(const Attachment& attachment) const;
-        bool calcAndValidateProperties() const;
+        void validateAttachment(const Attachment& attachment) const;
+        void calcAndValidateProperties() const;
 
         void applyColorAttachment(uint32_t rtIndex);
         void applyDepthAttachment();

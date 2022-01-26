@@ -170,6 +170,16 @@ namespace Falcor
             std::string mShaderModel = "6_3";
         };
 
+        struct CompilationStats
+        {
+            size_t programVersionCount = 0;
+            size_t programKernelsCount = 0;
+            double programVersionMaxTime = 0.0;
+            double programKernelsMaxTime = 0.0;
+            double programVersionTotalTime = 0.0;
+            double programKernelsTotalTime = 0.0;
+        };
+
         virtual ~Program() = 0;
 
         /** Get the API handle of the active program.
@@ -279,6 +289,9 @@ namespace Falcor
             return mDesc.mGroups[groupIndex].entryPoints[entryPointIndexInGroup];
         }
 
+        static const CompilationStats& getGlobalCompilationStats() { return sCompilationStats; }
+        static void resetGlobalCompilationStats() { sCompilationStats = {}; }
+
     protected:
         friend class ::Falcor::ProgramVersion;
 
@@ -336,6 +349,7 @@ namespace Falcor
 
         std::string getProgramDescString() const;
         static std::vector<std::weak_ptr<Program>> sPrograms;
+        static CompilationStats sCompilationStats;
 
         using string_time_map = std::unordered_map<std::string, time_t>;
         mutable string_time_map mFileTimeMap;

@@ -40,9 +40,7 @@ namespace Falcor
 
     ComputeStateObject::~ComputeStateObject()
     {
-#ifdef FALCOR_D3D12
         gpDevice->releaseResource(mApiHandle);
-#endif
     }
 
     ComputeStateObject::ComputeStateObject(const Desc& desc)

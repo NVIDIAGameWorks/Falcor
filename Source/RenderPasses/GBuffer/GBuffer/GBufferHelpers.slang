@@ -75,7 +75,7 @@ GBufferData prepareGBufferData(const ShadingData sd, const IBSDF bsdf)
     // Setup legacy material channels.
     gbuf.diffuseOpacity = float4(bsdfProperties.diffuseReflectionAlbedo, sd.opacity);
     gbuf.specRough      = float4(bsdfProperties.specularReflectance, bsdfProperties.roughness);
-    gbuf.emissive       = float4(bsdfProperties.emissive, 0.f);
+    gbuf.emissive       = float4(bsdfProperties.emission, 0.f);
 
     return gbuf;
 }

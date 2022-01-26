@@ -47,7 +47,7 @@ namespace Falcor
             case Sampler::AddressMode::Wrap:
                 return gfx::TextureAddressingMode::Wrap;
             default:
-                should_not_get_here();
+                FALCOR_UNREACHABLE();
                 return gfx::TextureAddressingMode::ClampToBorder;
             }
         }
@@ -61,7 +61,7 @@ namespace Falcor
             case Sampler::Filter::Point:
                 return gfx::TextureFilteringMode::Point;
             default:
-                should_not_get_here();
+                FALCOR_UNREACHABLE();
                 return gfx::TextureFilteringMode::Point;
             }
         }
@@ -110,10 +110,10 @@ namespace Falcor
         gfxDesc.minLOD = desc.mMinLod;
         gfxDesc.mipFilter = getGFXFilter(desc.mMipFilter);
         gfxDesc.mipLODBias = desc.mLodBias;
-        gfxDesc.reductionOp = getGFXReductionMode(desc.mReductionMode);
+        gfxDesc.reductionOp = (desc.mComparisonMode != Sampler::ComparisonMode::Disabled) ? gfx::TextureReductionOp::Comparison : getGFXReductionMode(desc.mReductionMode);
 
         Sampler::SharedPtr result = Sampler::SharedPtr(new Sampler(desc));
         gfx_call(gpDevice->getApiHandle()->createSamplerState(gfxDesc, result->mApiHandle.writeRef()));
-        return nullptr;
+        return result;
     }
 }

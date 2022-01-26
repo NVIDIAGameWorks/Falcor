@@ -127,5 +127,4 @@ struct HairBSDF : IBSDF
         // TODO: Update this when lobes are classified as diffuse or specular according to roughness.
         return (uint)LobeType::DiffuseReflection | (uint)LobeType::DiffuseTransmission;
     }
-
 };

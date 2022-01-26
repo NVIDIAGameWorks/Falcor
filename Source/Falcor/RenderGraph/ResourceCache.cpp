@@ -72,7 +72,7 @@ namespace Falcor
             auto it = mExternalResources.find(name);
             if (it == mExternalResources.end())
             {
-                logWarning("ResourceCache::registerExternalResource: " + name + " does not exist.");
+                logWarning("ResourceCache::registerExternalResource: '{}' does not exist.", name);
                 return;
             }
 
@@ -88,7 +88,7 @@ namespace Falcor
 
     void ResourceCache::registerField(const std::string& name, const RenderPassReflection::Field& field, uint32_t timePoint, const std::string& alias)
     {
-        assert(mNameToIndex.find(name) == mNameToIndex.end());
+        FALCOR_ASSERT(mNameToIndex.find(name) == mNameToIndex.end());
 
         bool addAlias = (alias.empty() == false);
         if (addAlias && mNameToIndex.count(alias) == 0)
@@ -99,7 +99,7 @@ namespace Falcor
         // Add a new field
         if (addAlias == false)
         {
-            assert(mNameToIndex.count(name) == 0);
+            FALCOR_ASSERT(mNameToIndex.count(name) == 0);
             mNameToIndex[name] = (uint32_t)mResourceData.size();
             bool resolveBindFlags = (field.getBindFlags() == ResourceBindFlags::None);
             mResourceData.push_back({ field, {timePoint, timePoint}, nullptr, resolveBindFlags, name });
@@ -172,7 +172,7 @@ namespace Falcor
             pResource = Texture::createCube(width, height, format, arraySize, mipLevels, nullptr, bindFlags);
             break;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return nullptr;
         }
         pResource->setName(resourceName);

@@ -43,8 +43,7 @@ namespace Falcor
 
     GpuFence::SharedPtr GpuFence::create(bool shared)
     {
-        assert(gpDevice);
-
+        FALCOR_ASSERT(gpDevice);
         SharedPtr pFence = SharedPtr(new GpuFence());
         pFence->mpApiData = new FenceApiData;
         gfx::IFence::Desc fenceDesc = {};
@@ -52,7 +51,8 @@ namespace Falcor
         {
             throw RuntimeError("Failed to create a fence object");
         }
-        
+        pFence->mApiHandle = pFence->mpApiData->gfxFence;
+
         pFence->mCpuValue++;
         return pFence;
     }

@@ -58,7 +58,10 @@ enum class PathFlags
     lightSampledUpper           = 0x0040,   ///< Last path vertex sampled lights using NEE (in upper hemisphere).
     lightSampledLower           = 0x0080,   ///< Last path vertex sampled lights using NEE (in lower hemisphere).
 
-    // Bits 9 to kPathFlagsBitCount are still unused.
+    diffusePrimaryHit           = 0x0100,   ///< Scatter ray went through a diffuse event on primary hit.
+    specularPrimaryHit          = 0x0200,   ///< Scatter ray went through a specular event on primary hit.
+
+    // Bits 11 to kPathFlagsBitCount are still unused.
 };
 
 /** Bounce types. We keep separate counters for all of these.
@@ -116,6 +119,9 @@ struct PathState
     bool isLightSampledUpper() { return hasFlag(PathFlags::lightSampledUpper); }
     bool isLightSampledLower() { return hasFlag(PathFlags::lightSampledLower); }
 
+    bool isDiffusePrimaryHit() { return hasFlag(PathFlags::diffusePrimaryHit); }
+    bool isSpecularPrimaryHit() { return hasFlag(PathFlags::specularPrimaryHit); }
+
     // Check if the scatter event is samplable by the light sampling technique.
     bool isLightSamplable() { return !isDelta(); }
 
@@ -135,6 +141,8 @@ struct PathState
     [mutating] void setDelta(bool value = true) { setFlag(PathFlags::delta, value); }
     [mutating] void setInsideDielectricVolume(bool value = true) { setFlag(PathFlags::insideDielectricVolume, value); }
     [mutating] void setLightSampled(bool upper, bool lower) { setFlag(PathFlags::lightSampledUpper, upper); setFlag(PathFlags::lightSampledLower, lower); }
+    [mutating] void setDiffusePrimaryHit(bool value = true) { setFlag(PathFlags::diffusePrimaryHit, value); }
+    [mutating] void setSpecularPrimaryHit(bool value = true) { setFlag(PathFlags::specularPrimaryHit, value); }
 
     bool hasFlag(PathFlags flag)
     {

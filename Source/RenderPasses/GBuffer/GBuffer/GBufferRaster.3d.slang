@@ -28,7 +28,6 @@
 #include "Scene/VertexAttrib.slangh"
 
 import Scene.Raster;
-import Scene.HitInfo;
 import Utils.Math.MathHelpers;
 import GBufferHelpers;
 import Rendering.Materials.TexLODHelpers;

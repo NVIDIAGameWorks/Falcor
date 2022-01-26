@@ -67,7 +67,7 @@ namespace
         WindowsSecurityAttributes::WindowsSecurityAttributes()
         {
             mWinPSecurityDescriptor = (PSECURITY_DESCRIPTOR)calloc(1, SECURITY_DESCRIPTOR_MIN_LENGTH + 2 * sizeof(void**));
-            assert(mWinPSecurityDescriptor != (PSECURITY_DESCRIPTOR)NULL);
+            FALCOR_ASSERT(mWinPSecurityDescriptor != (PSECURITY_DESCRIPTOR)NULL);
 
             PSID* ppSID = (PSID*)((PBYTE)mWinPSecurityDescriptor + SECURITY_DESCRIPTOR_MIN_LENGTH);
             PACL* ppACL = (PACL*)((PBYTE)ppSID + sizeof(PSID*));

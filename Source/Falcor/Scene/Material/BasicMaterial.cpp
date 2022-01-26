@@ -35,7 +35,6 @@ namespace Falcor
 {
     namespace
     {
-        static_assert((sizeof(MaterialHeader) + sizeof(BasicMaterialData)) % 16 == 0, "Total material data size should be a multiple of 16");
         static_assert((sizeof(MaterialHeader) + sizeof(BasicMaterialData)) <= sizeof(MaterialDataBlob), "Total material data size is too large");
         static_assert(static_cast<uint32_t>(ShadingModel::Count) <= (1u << BasicMaterialData::kShadingModelBits), "ShadingModel bit count exceeds the maximum");
         static_assert(static_cast<uint32_t>(NormalMapType::Count) <= (1u << BasicMaterialData::kNormalMapTypeBits), "NormalMapType bit count exceeds the maximum");
@@ -185,7 +184,7 @@ namespace Falcor
 
     Material::UpdateFlags BasicMaterial::update(MaterialSystem* pOwner)
     {
-        assert(pOwner);
+        FALCOR_ASSERT(pOwner);
 
         auto flags = Material::UpdateFlags::None;
         if (mUpdates != Material::UpdateFlags::None)
@@ -230,8 +229,8 @@ namespace Falcor
     {
         if (!isAlphaSupported())
         {
-            assert(getAlphaMode() == AlphaMode::Opaque);
-            logWarning("Alpha is not supported by material type '" + to_string(getType()) + "'. Ignoring call to setAlphaMode() for material '" + getName() + "'.");
+            FALCOR_ASSERT(getAlphaMode() == AlphaMode::Opaque);
+            logWarning("Alpha is not supported by material type '{}'. Ignoring call to setAlphaMode() for material '{}'.", to_string(getType()), getName());
             return;
         }
         if (mHeader.getAlphaMode() != alphaMode)
@@ -245,7 +244,7 @@ namespace Falcor
     {
         if (!isAlphaSupported())
         {
-            logWarning("Alpha is not supported by material type '" + to_string(getType()) + "'. Ignoring call to setAlphaThreshold() for material '" + getName() + "'.");
+            logWarning("Alpha is not supported by material type '{}'. Ignoring call to setAlphaThreshold() for material '{}'.", to_string(getType()), getName());
             return;
         }
         if (mHeader.getAlphaThreshold() != (float16_t)alphaThreshold)
@@ -319,7 +318,7 @@ namespace Falcor
 
     void BasicMaterial::optimizeTexture(const TextureSlot slot, const TextureAnalyzer::Result& texInfo, TextureOptimizationStats& stats)
     {
-        assert(getTexture(slot) != nullptr);
+        FALCOR_ASSERT(getTexture(slot) != nullptr);
         TextureChannelFlags channelMask = getTextureSlotInfo(slot).mask;
 
         switch (slot)
@@ -607,7 +606,7 @@ namespace Falcor
     {
         if (!isAlphaSupported())
         {
-            assert(getAlphaMode() == AlphaMode::Opaque);
+            FALCOR_ASSERT(getAlphaMode() == AlphaMode::Opaque);
             return;
         }
 
@@ -643,8 +642,8 @@ namespace Falcor
                 type = NormalMapType::RGB;
                 break;
             default:
-                should_not_get_here();
-                logWarning("Unsupported normal map format for material " + mName);
+                FALCOR_UNREACHABLE();
+                logWarning("Unsupported normal map format for material '{}'.", mName);
             }
         }
 
@@ -681,16 +680,6 @@ namespace Falcor
         if (isDisplaced()) doubleSided = true;
 
         setDoubleSided(doubleSided);
-    }
-
-    MaterialDataBlob BasicMaterial::getDataBlob() const
-    {
-        MaterialDataBlob blob = {};
-        blob.header = mHeader;
-        static_assert(sizeof(mHeader) + sizeof(mData) <= sizeof(blob));
-        static_assert(offsetof(MaterialDataBlob, payload) == sizeof(MaterialHeader));
-        std::memcpy(&blob.payload, &mData, sizeof(mData));
-        return blob;
     }
 
     FALCOR_SCRIPT_BINDING(BasicMaterial)

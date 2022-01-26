@@ -32,6 +32,7 @@ namespace Falcor
 {
     void Resource::apiSetName()
     {
+        mApiHandle->setDebugName(mName.c_str());
     }
 
     SharedResourceApiHandle Resource::getSharedApiHandle() const
@@ -60,7 +61,7 @@ namespace Falcor
         case Resource::State::UnorderedAccess:
             return gfx::ResourceState::UnorderedAccess;
         case Resource::State::DepthStencil:
-            return gfx::ResourceState::DepthRead;
+            return gfx::ResourceState::DepthWrite;
         case Resource::State::ShaderResource:
             return gfx::ResourceState::ShaderResource;
         case Resource::State::StreamOut:
@@ -88,8 +89,45 @@ namespace Falcor
         case Resource::State::AccelerationStructure:
             return gfx::ResourceState::AccelerationStructure;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return gfx::ResourceState::Undefined;
         }
     }
-}
+
+    void getGFXResourceState(Resource::BindFlags flags, gfx::ResourceState& defaultState, gfx::ResourceStateSet& allowedStates)
+    {
+        defaultState = gfx::ResourceState::General;
+        allowedStates = gfx::ResourceStateSet(defaultState);
+
+        // setting up the following flags requires Slang gfx resourece states to have integral type
+        if (is_set(flags, Resource::BindFlags::UnorderedAccess))
+        {
+            allowedStates.add(gfx::ResourceState::UnorderedAccess);
+        }
+
+        if (is_set(flags, Resource::BindFlags::ShaderResource))
+        {
+            allowedStates.add(gfx::ResourceState::ShaderResource);
+        }
+
+        if (is_set(flags, Resource::BindFlags::RenderTarget))
+        {
+            allowedStates.add(gfx::ResourceState::RenderTarget);
+        }
+
+        if (is_set(flags, Resource::BindFlags::DepthStencil))
+        {
+            allowedStates.add(gfx::ResourceState::DepthWrite);
+        }
+
+        if (is_set(flags, Resource::BindFlags::AccelerationStructure))
+        {
+            allowedStates.add(gfx::ResourceState::AccelerationStructure);
+            allowedStates.add(gfx::ResourceState::ShaderResource);
+            allowedStates.add(gfx::ResourceState::UnorderedAccess);
+            defaultState = gfx::ResourceState::AccelerationStructure;
+        }
+        allowedStates.add(gfx::ResourceState::CopyDestination);
+        allowedStates.add(gfx::ResourceState::CopySource);
+    }
+} // namespace Falcor

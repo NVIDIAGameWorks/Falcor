@@ -191,7 +191,7 @@ namespace Falcor
     {
         auto cachePath = getCachePath(key);
 
-        logInfo("Writing scene cache to " + cachePath.string());
+        logInfo("Writing scene cache to '{}'.", cachePath.string());
 
         // Create directories if not existing.
         std::filesystem::create_directories(cachePath.parent_path());
@@ -217,7 +217,7 @@ namespace Falcor
     {
         auto cachePath = getCachePath(key);
 
-        logInfo("Loading scene cache from " + cachePath.string());
+        logInfo("Loading scene cache from '{}'.", cachePath.string());
 
         // Open file.
         std::ifstream fs(cachePath.c_str(), std::ios_base::binary);
@@ -719,7 +719,7 @@ namespace Falcor
                 throw RuntimeError("Unsupported material type");
             }
         }
-        assert(pMaterial);
+        FALCOR_ASSERT(pMaterial);
 
         // Read common fields.
         stream.read(pMaterial->mName);
@@ -863,7 +863,8 @@ namespace Falcor
     EnvMap::SharedPtr SceneCache::readEnvMap(InputStream& stream)
     {
         auto filename = stream.read<std::string>();
-        auto pEnvMap = EnvMap::create(filename);
+        auto pEnvMap = EnvMap::createFromFile(filename);
+        if (!pEnvMap) throw RuntimeError("Failed to load environment map");
         stream.read(pEnvMap->mData);
         stream.read(pEnvMap->mRotation);
         return pEnvMap;

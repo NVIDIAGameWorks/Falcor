@@ -44,10 +44,9 @@ namespace Falcor
     {
         mpFence = GpuFence::create();
         mpApiData = new LowLevelContextApiData;
-        assert(mpFence && mpApiData);
+        FALCOR_ASSERT(mpFence && mpApiData);
 
-        auto transientHeap = gpDevice->getApiData()->pTransientResourceHeaps[gpDevice->getCurrentBackBufferIndex()].get();
-        mpApiData->pCommandBuffer = transientHeap->createCommandBuffer();
+        openCommandBuffer();
     }
 
     LowLevelContextData::~LowLevelContextData()
@@ -55,13 +54,23 @@ namespace Falcor
         safe_delete(mpApiData);
     }
 
-    void LowLevelContextData::flush()
+    void LowLevelContextData::closeCommandBuffer()
     {
         mpApiData->closeEncoders();
         mpApiData->pCommandBuffer->close();
-        mpQueue->executeCommandBuffers(1, mpApiData->pCommandBuffer.readRef(), mpFence->getApiHandle(), mpFence->externalSignal());
+    }
+
+    void LowLevelContextData::openCommandBuffer()
+    {
         auto transientHeap = gpDevice->getApiData()->pTransientResourceHeaps[gpDevice->getCurrentBackBufferIndex()].get();
         mpApiData->pCommandBuffer = transientHeap->createCommandBuffer();
+    }
+
+    void LowLevelContextData::flush()
+    {
+        closeCommandBuffer();
+        mpQueue->executeCommandBuffers(1, mpApiData->pCommandBuffer.readRef(), mpFence->getApiHandle(), mpFence->externalSignal());
+        openCommandBuffer();
     }
 
     void LowLevelContextApiData::closeEncoders()

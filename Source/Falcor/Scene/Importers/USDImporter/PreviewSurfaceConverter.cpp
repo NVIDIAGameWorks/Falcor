@@ -72,7 +72,7 @@ namespace Falcor
                 case TextureChannelFlags::Alpha:
                     return 3;
                 default:
-                    should_not_get_here();
+                    FALCOR_UNREACHABLE();
             }
             return -1;
         }
@@ -91,7 +91,7 @@ namespace Falcor
                     // If there's a connected source of type asset, return it.
                     for (uint32_t i = 0; i < inputs.size(); ++i)
                     {
-                        logDebug("Input '" + input.GetBaseName().GetString() + "' has source '" + inputs[i].GetBaseName().GetString() + "'.");
+                        logDebug("Input '{}' has source '{}'.", input.GetBaseName().GetString(), inputs[i].GetBaseName().GetString());
                         SdfValueTypeName typeName(inputs[i].GetTypeName());
                         if (typeName == SdfValueTypeNames->Asset)
                         {
@@ -131,23 +131,23 @@ namespace Falcor
             if (iter == mMaterialCache.end())
             {
                 // No entry for this shader. Add one, with a nullptr Falcor material instance, to indicate that work is underway.
-                logDebug("No cached material for UsdPreviewSurface '" + shaderName + "'; starting conversion.");
+                logDebug("No cached material for UsdPreviewSurface '{}'; starting conversion.", shaderName);
                 mMaterialCache.insert(std::make_pair(shader.GetPrim(), nullptr));
                 return nullptr;
             }
             if (iter->second != nullptr)
             {
                 // Found a valid entry
-                logDebug("Found a cached material for UsdPreviewSurface '" + shaderName + "'.");
+                logDebug("Found a cached material for UsdPreviewSurface '{}'.", shaderName);
                 return iter->second;
             }
             // There is an dictionary entry, but it is null, indicating that another thread is current performing conversion.
             // Wait until we are signaled that a new entry has been added to the dictionary, and check again.
             // Note that this mechanism requires that conversion never fail to create an entry in the dictionary after calling this function.
-            logDebug("In-progressed cached entry for UsdPreviewSurface '" + shaderName + "' detected. Waiting.");
+            logDebug("In-progressed cached entry for UsdPreviewSurface '{}' detected. Waiting.", shaderName);
             mCacheUpdated.wait(lock);
         }
-        should_not_get_here();
+        FALCOR_UNREACHABLE();
         return nullptr;
     }
 
@@ -197,7 +197,7 @@ namespace Falcor
         UsdPrim prim(input.GetPrim());
         if (!prim.IsA<UsdShadeShader>())
         {
-            logWarning("Expected UsdUVTexture node '" + prim.GetPath().GetString() + "' is not a UsdShadeShader.");
+            logWarning("Expected UsdUVTexture node '{}' is not a UsdShadeShader.", prim.GetPath().GetString());
             return ret;
         }
 
@@ -206,21 +206,21 @@ namespace Falcor
         TfToken id = getAttribute(prim.GetAttribute(UsdShadeTokens->infoId), TfToken());
         if (id != UsdImagingTokens->UsdUVTexture)
         {
-            logWarning("Expected UsdUVTexture node '" + prim.GetPath().GetString() + "' is not a UsdUVTexture.");
+            logWarning("Expected UsdUVTexture node '{}' is not a UsdUVTexture.", prim.GetPath().GetString());
             return ret;
         }
 
         if (shader.GetInput(wrapSToken) || shader.GetInput(wrapTToken))
         {
             // Issue a low-priorty message, under the assumption that wrap modes most often don't matter.
-            logInfo("UsdUvTexture node '" + prim.GetPath().GetString() + "' specifies a wrap mode, which is not supported.");
+            logInfo("UsdUvTexture node '{}' specifies a wrap mode, which is not supported.", prim.GetPath().GetString());
         }
 
         if (shader.GetInput(biasToken))
         {
             if (!isUniformFloat4(shader.GetInput(biasToken), float4(0.f, 0.f, 0.f, 0.f)))
             {
-                logWarning("UsdUvTexture node '" + prim.GetPath().GetString() + "' specifies a non-zero bias, which is not supported.");
+                logWarning("UsdUvTexture node '{}' specifies a non-zero bias, which is not supported.", prim.GetPath().GetString());
             }
         }
 
@@ -228,7 +228,7 @@ namespace Falcor
         {
             if (!isUniformFloat4(shader.GetInput(scaleToken), float4(1.f, 1.f, 1.f, 1.f)))
             {
-                logWarning("UsdUvTexture node '" + prim.GetPath().GetString() + "' specifies a non-unity scale, which is not supported.");
+                logWarning("UsdUvTexture node '{}' specifies a non-unity scale, which is not supported.", prim.GetPath().GetString());
             }
         }
 
@@ -241,13 +241,13 @@ namespace Falcor
             id = getAttribute(stPrim.GetAttribute(UsdShadeTokens->infoId), TfToken());
             if (id != float2PrimvarReaderToken)
             {
-                logWarning("UsdUVTexture node '" + prim.GetPath().GetString() + "' defines an st primvar reader of an unexpected type: '" + id.GetString() + "'.");
+                logWarning("UsdUVTexture node '{}' defines an st primvar reader of an unexpected type: '{}'.", prim.GetPath().GetString(), id.GetString());
             }
         }
         else
         {
             // Issue a lower priority message if there is simply no st input defined, under the assumption that the default behavior is expected.
-            logInfo("UsdUVTexture node '" + prim.GetPath().GetString() + "' does not define an st input.");
+            logInfo("UsdUVTexture node '{}' does not define an st input.", prim.GetPath().GetString());
         }
 
         // Initialize the uniform converted value using the fallback value, if any.
@@ -289,7 +289,7 @@ namespace Falcor
         }
         if (ret.channels == TextureChannelFlags::None)
         {
-            logWarning("No valid output specified by UsdUVTexture '" + prim.GetName().GetString() + "'.");
+            logWarning("No valid output specified by UsdUVTexture '{}'.", prim.GetName().GetString());
             return ret;
         }
 
@@ -338,7 +338,7 @@ namespace Falcor
         }
         else
         {
-            logWarning("UsdUVTexture '" + prim.GetName().GetString() + "' does not specify a file input.");
+            logWarning("UsdUVTexture '{}' does not specify a file input.", prim.GetName().GetString());
         }
         return ret;
     }
@@ -357,7 +357,7 @@ namespace Falcor
         }
         else
         {
-            logWarning("Unexpected value type when converting float input: '" + typeName.GetAsToken().GetString() + "'.");
+            logWarning("Unexpected value type when converting float input: '{}'.", typeName.GetAsToken().GetString());
         }
         return ret;
     }
@@ -380,7 +380,7 @@ namespace Falcor
         }
         else
         {
-            logWarning("Unexpected value type when converting color input: '" + typeName.GetAsToken().GetString() + "'.");
+            logWarning("Unexpected value type when converting color input: '{}'.", typeName.GetAsToken().GetString());
         }
         return ret;
     }
@@ -517,7 +517,7 @@ namespace Falcor
 
         if (!surface.IsDefined())
         {
-            logDebug("Material '" + primName + "' does not define a surface output.");
+            logDebug("Material '{}' does not define a surface output.", primName);
             return nullptr;
         }
 
@@ -540,18 +540,18 @@ namespace Falcor
         }
         if (!shader)
         {
-            logDebug("Material '" + primName + "' surface output is not a UsdShadeShader.");
+            logDebug("Material '{}' surface output is not a UsdShadeShader.", primName);
             return nullptr;
         }
 
         TfToken id = getAttribute(shader.GetPrim().GetAttribute(UsdShadeTokens->infoId), TfToken());
         if (id != UsdImagingTokens->UsdPreviewSurface)
         {
-            logDebug("Material '" + primName + "' has a surface output node of type '" + id.GetString() + "', not UsdPreviewSurface.");
+            logDebug("Material '{}' has a surface output node of type '{}', not UsdPreviewSurface.", primName, id.GetString());
             return nullptr;
         }
 
-        logDebug("Material '" + primName + "' has UsdPreviewSurface output '" + shader.GetPath().GetString() + "'.");
+        logDebug("Material '{}' has UsdPreviewSurface output '{}'.", primName, shader.GetPath().GetString());
 
         // Is there a valid cached instance for this UsdPreviewSurface?  If so, simply return it.
         // Note that this call will block if another thread is concurrently converting the same shader.
@@ -577,7 +577,7 @@ namespace Falcor
         // Traverse the UsdPreviewSurface node inputs
         for (auto& curInput : shader.GetInputs())
         {
-            logDebug("UsdPreviewSurface '" + shader.GetPath().GetString() + "' has input: " + curInput.GetBaseName().GetString());
+            logDebug("UsdPreviewSurface '{}' has input: {}", shader.GetPath().GetString(), curInput.GetBaseName().GetString());
 
             // Convert the input name to lowercase to allow for mixed capitalization
             std::string inputName = curInput.GetBaseName();
@@ -587,7 +587,7 @@ namespace Falcor
             UsdShadeInput input = getSourceInput(curInput);
 
             SdfValueTypeName typeName(input.GetTypeName());
-            logDebug("UsdPreviewSurface '" + shader.GetPath().GetString() + "' input '" + inputName + "' has type '" + typeName.GetAsToken().GetString() + "'.");
+            logDebug("UsdPreviewSurface '{}' input '{}' has type '{}'.", shader.GetPath().GetString(), inputName, typeName.GetAsToken().GetString());
 
             if (inputName == "diffusecolor")
             {
@@ -620,7 +620,7 @@ namespace Falcor
                 }
                 else
                 {
-                    logWarning("Unsupported specular workflow value type: '" + typeName.GetAsToken().GetString() + "'.");
+                    logWarning("Unsupported specular workflow value type: '{}'.", typeName.GetAsToken().GetString());
                 }
             }
             else if (inputName == "metallic")
@@ -639,7 +639,7 @@ namespace Falcor
                 }
                 else
                 {
-                    logInfo("Unsupported specular color value type: '" + typeName.GetAsToken().GetString() + "'.");
+                    logInfo("Unsupported specular color value type: '{}'.", typeName.GetAsToken().GetString());
                 }
             }
             else if (inputName == "roughness")
@@ -670,7 +670,7 @@ namespace Falcor
                 }
                 else
                 {
-                    logWarning("Unsupported opacity threshold value type: '" + typeName.GetAsToken().GetString() + "'.");
+                    logWarning("Unsupported opacity threshold value type: '{}'.", typeName.GetAsToken().GetString());
                 }
             }
             else if (inputName == "ior")
@@ -685,7 +685,7 @@ namespace Falcor
                 }
                 else
                 {
-                    logWarning("Unsupported ior value type: '" + typeName.GetAsToken().GetString() + "'.");
+                    logWarning("Unsupported ior value type: '{}'.", typeName.GetAsToken().GetString());
                 }
             }
             else if (inputName == "normal")
@@ -704,7 +704,7 @@ namespace Falcor
                 }
                 else
                 {
-                    logWarning("Unsupported normal value type: '" + typeName.GetAsToken().GetString() + "'.");
+                    logWarning("Unsupported normal value type: '{}'.", typeName.GetAsToken().GetString());
                 }
             }
             else if (inputName == "displacement")
@@ -725,7 +725,7 @@ namespace Falcor
             }
             else
             {
-                logWarning("Unsupported UsdPreviewSurface input '" + inputName + "'.");
+                logWarning("Unsupported UsdPreviewSurface input '{}'.", inputName);
             }
         }
 

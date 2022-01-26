@@ -62,7 +62,7 @@ namespace Falcor
             case ReflectionResourceType::ShaderAccess::ReadWrite:
                 return false;
             default:
-                should_not_get_here();
+                FALCOR_UNREACHABLE();
                 return false;
             }
         }
@@ -80,7 +80,7 @@ namespace Falcor
             case ReflectionResourceType::ShaderAccess::ReadWrite:
                 return true;
             default:
-                should_not_get_here();
+                FALCOR_UNREACHABLE();
                 return false;
             }
         }
@@ -90,7 +90,7 @@ namespace Falcor
             auto resourceType = pType->unwrapArray()->asResourceType();
             if (resourceType->getType() == ReflectionResourceType::Type::ConstantBuffer)
             {
-                assert(resourceType->getShaderAccess() == ReflectionResourceType::ShaderAccess::Read);
+                FALCOR_ASSERT(resourceType->getShaderAccess() == ReflectionResourceType::ShaderAccess::Read);
                 return true;
             }
             return false;
@@ -106,6 +106,7 @@ namespace Falcor
         gfx_call(gpDevice->getApiHandle()->createMutableRootShaderObject(
             pReflector->getProgramVersion()->getKernels(nullptr)->getApiHandle(),
             mpShaderObject.writeRef()));
+        createConstantBuffers(getRootVar());
     }
 
     ParameterBlock::ParameterBlock(
@@ -118,6 +119,7 @@ namespace Falcor
             pReflection->getElementType()->getSlangTypeLayout()->getType(),
             gfx::ShaderObjectContainerType::None,
             mpShaderObject.writeRef()));
+        createConstantBuffers(getRootVar());
     }
 
     bool ParameterBlock::setBlob(const void* pSrc, UniformShaderVarOffset offset, size_t size)
@@ -200,7 +202,7 @@ namespace Falcor
     {
         auto gfxOffset = getGFXShaderOffset(bindLocation);
         mParameterBlocks[gfxOffset] = pBlock;
-        return SLANG_SUCCEEDED(mpShaderObject->setObject(gfxOffset, pBlock->mpShaderObject));
+        return SLANG_SUCCEEDED(mpShaderObject->setObject(gfxOffset, pBlock ? pBlock->mpShaderObject : nullptr));
     }
 
     ParameterBlock::SharedPtr ParameterBlock::getParameterBlock(const std::string& name) const
@@ -325,7 +327,7 @@ namespace Falcor
         gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
         if (isSrvType(bindLocation.getType()))
         {
-            mpShaderObject->setResource(gfxOffset, pSrv->getApiHandle());
+            mpShaderObject->setResource(gfxOffset, pSrv ? pSrv->getApiHandle() : nullptr);
             mSRVs[gfxOffset] = pSrv;
         }
         else
@@ -341,7 +343,7 @@ namespace Falcor
         gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
         if (isUavType(bindLocation.getType()))
         {
-            mpShaderObject->setResource(gfxOffset, pUav->getApiHandle());
+            mpShaderObject->setResource(gfxOffset, pUav ? pUav->getApiHandle() : nullptr);
             mUAVs[gfxOffset] = pUav;
         }
         else
@@ -356,7 +358,7 @@ namespace Falcor
     {
         gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
         mAccelerationStructures[gfxOffset] = pAccl;
-        return SLANG_SUCCEEDED(mpShaderObject->setResource(gfxOffset, pAccl->getApiHandle()));
+        return SLANG_SUCCEEDED(mpShaderObject->setResource(gfxOffset, pAccl ? pAccl->getApiHandle() : nullptr));
     }
 
     ShaderResourceView::SharedPtr ParameterBlock::getSrv(const BindLocation& bindLocation) const
@@ -392,8 +394,9 @@ namespace Falcor
     bool ParameterBlock::setSampler(const BindLocation& bindLocation, const Sampler::SharedPtr& pSampler)
     {
         gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
-        mSamplers[gfxOffset] = pSampler;
-        return SLANG_SUCCEEDED(mpShaderObject->setSampler(gfxOffset, pSampler->getApiHandle()));
+        auto pBoundSampler = pSampler ? pSampler : Sampler::getDefault();
+        mSamplers[gfxOffset] = pBoundSampler;
+        return SLANG_SUCCEEDED(mpShaderObject->setSampler(gfxOffset, pBoundSampler->getApiHandle()));
     }
 
     const Sampler::SharedPtr& ParameterBlock::getSampler(const BindLocation& bindLocation) const
@@ -427,6 +430,19 @@ namespace Falcor
 
     bool ParameterBlock::prepareDescriptorSets(CopyContext* pCopyContext)
     {
+        // Insert necessary resource barriers for bound resources.
+        for (auto& srv : mSRVs)
+        {
+            prepareResource(pCopyContext, srv.second->getResource().get(), false);
+        }
+        for (auto& uav : mUAVs)
+        {
+            prepareResource(pCopyContext, uav.second->getResource().get(), true);
+        }
+        for (auto& subObj : this->mParameterBlocks)
+        {
+            subObj.second->prepareDescriptorSets(pCopyContext);
+        }
         return true;
     }
 

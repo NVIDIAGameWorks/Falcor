@@ -63,7 +63,7 @@ namespace Falcor
                     keyframeIndices.y = 0;
 
                     // The first keyframe has timeCode >= 1 (see processCurve() in ImporterContext.cpp).
-                    assert(timeSamples.front() >= 1.0);
+                    FALCOR_ASSERT(timeSamples.front() >= 1.0);
                     t = (float)(time / timeSamples.front());
                 }
             }
@@ -71,7 +71,7 @@ namespace Falcor
             {
                 keyframeIndices.y = uint32_t(std::lower_bound(timeSamples.begin(), timeSamples.end(), time) - timeSamples.begin());
                 keyframeIndices.x = keyframeIndices.y - 1;
-                assert(timeSamples[keyframeIndices.y] > timeSamples[keyframeIndices.x]);
+                FALCOR_ASSERT(timeSamples[keyframeIndices.y] > timeSamples[keyframeIndices.x]);
                 t = (float)((time - timeSamples[keyframeIndices.x]) / (timeSamples[keyframeIndices.y] - timeSamples[keyframeIndices.x]));
             }
 
@@ -162,8 +162,8 @@ namespace Falcor
         mCurveIndexCount = 0;
         for (uint32_t i = 0; i < mpScene->getCurveCount(); i++)
         {
-            assert(mpScene->getCurve(i).vertexCount == (uint32_t)mCachedCurves[i].vertexData[0].size());
-            assert(mpScene->getCurve(i).indexCount == (uint32_t)mCachedCurves[i].indexData.size());
+            FALCOR_ASSERT(mpScene->getCurve(i).vertexCount == (uint32_t)mCachedCurves[i].vertexData[0].size());
+            FALCOR_ASSERT(mpScene->getCurve(i).indexCount == (uint32_t)mCachedCurves[i].indexData.size());
             mCurveVertexCount += mpScene->getCurve(i).vertexCount;
             mCurveIndexCount += mpScene->getCurve(i).indexCount;
         }
@@ -238,7 +238,7 @@ namespace Falcor
 
     void AnimatedVertexCache::createCurveVertexUpdatePass()
     {
-        assert(!mCachedCurves.empty());
+        FALCOR_ASSERT(!mCachedCurves.empty());
 
         Program::DefineList defines;
         defines.add("CURVE_KEYFRAME_COUNT", std::to_string(mCurveKeyframeTimes.size()));
@@ -253,7 +253,7 @@ namespace Falcor
 
     void AnimatedVertexCache::createCurveAABBUpdatePass()
     {
-        assert(!mCachedCurves.empty());
+        FALCOR_ASSERT(!mCachedCurves.empty());
 
         mpCurveAABBUpdatePass = ComputePass::create(kUpdateCurveAABBsFilename);
 

@@ -54,7 +54,7 @@ struct BSDFSample
 */
 struct BSDFProperties
 {
-    float3  emissive;                       ///< Radiance emitted in the incident direction (wi).
+    float3  emission;                       ///< Radiance emitted in the incident direction (wi).
     float   roughness;                      ///< Surface roughness on a perceptually linear scale, where 0.0 = perfectly smooth and 1.0 = maximum roughness.
 
     // Approximate directional-hemispherical reflectance/transmittance of the BSDF (black-sky albedo).
@@ -148,5 +148,4 @@ interface IBSDF
         \return A combination of LobeType flags (see LobeType.slang).
     */
     uint getLobes(const ShadingData sd);
-
 }

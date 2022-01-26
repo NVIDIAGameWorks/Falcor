@@ -88,7 +88,7 @@ void Visualization2D::createRenderPass()
         mpMainPass = FullScreenPass::create(kNormalsShaderFile);
         break;
     default:
-        should_not_get_here();
+        FALCOR_UNREACHABLE();
         break;
     }
 }

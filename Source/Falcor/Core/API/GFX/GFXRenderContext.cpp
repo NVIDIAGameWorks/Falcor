@@ -51,19 +51,67 @@ namespace Falcor
             static_assert(offsetof(gfx::ScissorRect, maxY) == offsetof(GraphicsState::Scissor, bottom));
         }
 
+        void ensureFboAttachmentResourceStates(RenderContext* pCtx, Fbo* pFbo)
+        {
+            if (pFbo)
+            {
+                for (uint32_t i = 0; i < pFbo->getMaxColorTargetCount(); i++)
+                {
+                    auto pTexture = pFbo->getColorTexture(i);
+                    if (pTexture)
+                    {
+                        pCtx->resourceBarrier(pTexture.get(), Resource::State::RenderTarget);
+                    }
+                }
+
+                auto& pTexture = pFbo->getDepthStencilTexture();
+                if (pTexture)
+                {
+                    if (pTexture)
+                    {
+                        pCtx->resourceBarrier(pTexture.get(), Resource::State::DepthStencil);
+                    }
+                }
+            }
+        }
+
+        gfx::PrimitiveTopology getGFXPrimitiveTopology(Vao::Topology topology)
+        {
+            switch (topology)
+            {
+            case Vao::Topology::Undefined:
+                return gfx::PrimitiveTopology::TriangleList;
+            case Vao::Topology::PointList:
+                return gfx::PrimitiveTopology::PointList;
+            case Vao::Topology::LineList:
+                return gfx::PrimitiveTopology::LineList;
+            case Vao::Topology::LineStrip:
+                return gfx::PrimitiveTopology::LineStrip;
+            case Vao::Topology::TriangleList:
+                return gfx::PrimitiveTopology::TriangleList;
+            case Vao::Topology::TriangleStrip:
+                return gfx::PrimitiveTopology::TriangleStrip;
+            default:
+                FALCOR_UNREACHABLE();
+                return gfx::PrimitiveTopology::TriangleList;
+            }
+        }
+
         gfx::IRenderCommandEncoder* drawCallCommon(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars)
         {
             static GraphicsStateObject* spLastGso = nullptr;
+
+            pVars->prepareDescriptorSets(pContext);
 
             auto pGso = pState->getGSO(pVars).get();
             bool isNewEncoder = false;
             auto encoder = pContext->getLowLevelData()->getApiData()->getRenderCommandEncoder(
                 pGso->getGFXRenderPassLayout(),
-                pState->getFbo()->getApiHandle(),
+                pState->getFbo() ? pState->getFbo()->getApiHandle() : nullptr,
                 isNewEncoder);
 
             auto rootObject = encoder->bindPipeline(pGso->getApiHandle());
-            rootObject->copyFrom(pVars->getShaderObject());
+            rootObject->copyFrom(pVars->getShaderObject(), gpDevice->getCurrentTransientResourceHeap());
 
             if (isNewEncoder || pGso != spLastGso)
             {
@@ -73,23 +121,28 @@ namespace Falcor
                 for (uint32_t i = 0; i < pVao->getVertexBuffersCount(); i++)
                 {
                     auto bufferLayout = pVertexLayout->getBufferLayout(i);
+                    auto vertexBuffer = pVao->getVertexBuffer(i).get();
+                    //pContext->resourceBarrier(vertexBuffer, Resource::State::VertexBuffer);
                     encoder->setVertexBuffer(
                         i,
                         static_cast<gfx::IBufferResource*>(pVao->getVertexBuffer(i)->getApiHandle().get()),
-                        bufferLayout->getStride(),
-                        bufferLayout->getElementOffset(0));
+                        bufferLayout->getElementOffset(0) + (uint32_t)vertexBuffer->getGpuAddressOffset());
                 }
                 if (pVao->getIndexBuffer())
                 {
+                    auto indexBuffer = pVao->getIndexBuffer().get();
+                    //pContext->resourceBarrier(indexBuffer, Resource::State::IndexBuffer);
                     encoder->setIndexBuffer(
-                        static_cast<gfx::IBufferResource*>(pVao->getIndexBuffer()->getApiHandle().get()),
+                        static_cast<gfx::IBufferResource*>(indexBuffer->getApiHandle().get()),
                         getGFXFormat(pVao->getIndexBufferFormat()),
-                        0);
+                        (uint32_t)indexBuffer->getGpuAddressOffset());
                 }
+                encoder->setPrimitiveTopology(getGFXPrimitiveTopology(pVao->getPrimitiveTopology()));
                 encoder->setViewports((uint32_t)pState->getViewports().size(), reinterpret_cast<const gfx::Viewport*>(pState->getViewports().data()));
                 encoder->setScissorRects((uint32_t)pState->getScissors().size(), reinterpret_cast<const gfx::ScissorRect*>(pState->getScissors().data()));
             }
 
+            ensureFboAttachmentResourceStates(pContext, pState->getFbo().get());
             return encoder;
         }
 
@@ -102,7 +155,7 @@ namespace Falcor
             case RenderContext::RtAccelerationStructureCopyMode::Compact:
                 return gfx::AccelerationStructureCopyMode::Compact;
             default:
-                should_not_get_here();
+                FALCOR_UNREACHABLE();
                 return gfx::AccelerationStructureCopyMode::Clone;
             }
         }
@@ -150,6 +203,7 @@ namespace Falcor
 
     void RenderContext::clearRtv(const RenderTargetView* pRtv, const float4& color)
     {
+        resourceBarrier(pRtv->getResource().get(), Resource::State::RenderTarget);
         gfx::ClearValue clearValue = {};
         memcpy(clearValue.color.floatValues, &color, sizeof(float) * 4);
         auto encoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
@@ -159,6 +213,7 @@ namespace Falcor
 
     void RenderContext::clearDsv(const DepthStencilView* pDsv, float depth, uint8_t stencil, bool clearDepth, bool clearStencil)
     {
+        resourceBarrier(pDsv->getResource().get(), Resource::State::DepthStencil);
         gfx::ClearValue clearValue = {};
         clearValue.depthStencil.depth = depth;
         clearValue.depthStencil.stencil = stencil;
@@ -200,24 +255,26 @@ namespace Falcor
 
     void RenderContext::drawIndirect(GraphicsState* pState, GraphicsVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset)
     {
+        resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
         auto encoder = drawCallCommon(this, pState, pVars);
         encoder->drawIndirect(
             maxCommandCount,
             static_cast<gfx::IBufferResource*>(pArgBuffer->getApiHandle().get()),
             argBufferOffset,
-            static_cast<gfx::IBufferResource*>(pCountBuffer->getApiHandle().get()),
+            pCountBuffer ? static_cast<gfx::IBufferResource*>(pCountBuffer->getApiHandle().get()) : nullptr,
             countBufferOffset);
         mCommandsPending = true;
     }
 
     void RenderContext::drawIndexedIndirect(GraphicsState* pState, GraphicsVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset)
     {
+        resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
         auto encoder = drawCallCommon(this, pState, pVars);
         encoder->drawIndexedIndirect(
             maxCommandCount,
             static_cast<gfx::IBufferResource*>(pArgBuffer->getApiHandle().get()),
             argBufferOffset,
-            static_cast<gfx::IBufferResource*>(pCountBuffer->getApiHandle().get()),
+            pCountBuffer ? static_cast<gfx::IBufferResource*>(pCountBuffer->getApiHandle().get()) : nullptr,
             countBufferOffset);
         mCommandsPending = true;
     }
@@ -229,7 +286,6 @@ namespace Falcor
     void RenderContext::resolveSubresource(const Texture::SharedPtr& pSrc, uint32_t srcSubresource, const Texture::SharedPtr& pDst, uint32_t dstSubresource)
     {
         auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
-
         gfx::SubresourceRange srcRange = {};
         srcRange.baseArrayLayer = pSrc->getSubresourceArraySlice(srcSubresource);
         srcRange.layerCount = 1;
@@ -252,6 +308,9 @@ namespace Falcor
 
     void RenderContext::resolveResource(const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDst)
     {
+        resourceBarrier(pSrc.get(), Resource::State::ResolveSource);
+        resourceBarrier(pDst.get(), Resource::State::ResolveDest);
+
         auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
 
         gfx::SubresourceRange srcRange = {};

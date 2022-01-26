@@ -52,7 +52,7 @@ namespace Falcor
 
         virtual Type getType() const override { return Type::SparseVoxelOctree; }
 
-        virtual bool createResources(RenderContext* pRenderContext, bool deleteScratchData = true) override;
+        virtual void createResources(RenderContext* pRenderContext, bool deleteScratchData = true) override;
 
         virtual const Buffer::SharedPtr& getAABBBuffer() const override { return spSDFSVOGridUnitAABBBuffer; }
         virtual uint32_t getAABBCount() const override { return 1; }
@@ -60,7 +60,7 @@ namespace Falcor
         virtual void setShaderData(const ShaderVar& var) const override;
 
     protected:
-        virtual bool setValuesInternal(const std::vector<float>& cornerValues) override;
+        virtual void setValuesInternal(const std::vector<float>& cornerValues) override;
 
     private:
         SDFSVO() = default;

@@ -42,19 +42,9 @@ namespace Falcor
 
         std::string generateLogFilePath()
         {
-            // Get current process name
-            std::string filename = getExecutableName();
-
-            // Now we have a folder and a filename, look for an available filename (we don't overwrite existing files)
-            std::string prefix = std::string(filename);
-            std::string executableDir = getExecutableDirectory();
-            std::string path;
-            if (findAvailableFilename(prefix, executableDir, "log", path))
-            {
-                return path;
-            }
-            should_not_get_here();
-            return "";
+            std::string prefix = getExecutableName();
+            std::string directory = getExecutableDirectory();
+            return findAvailableFilename(prefix, directory, "log");
         }
 
         FILE* openLogFile()
@@ -74,7 +64,7 @@ namespace Falcor
             }
 
             // If we got here, we couldn't create a log file
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return pFile;
         }
 
@@ -122,17 +112,17 @@ namespace Falcor
         case Logger::Level::Debug:
             return "(Debug)";
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return nullptr;
         }
     }
 
-    void Logger::log(Level level, const std::string& msg)
+    void Logger::log(Level level, const std::string_view msg)
     {
 #if FALCOR_ENABLE_LOGGER
         if (level <= sVerbosity)
         {
-            std::string s = getLogLevelString(level) + std::string(" ") + msg + "\n";
+            std::string s = fmt::format("{} {}\n", getLogLevelString(level), msg);
 
             // Write to console.
             if (is_set(sOutputs, OutputFlags::Console))

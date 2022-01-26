@@ -170,6 +170,12 @@
     <ClCompile Include="Tests\Utils\ImageProcessing.cpp">
       <Filter>Tests\Utils</Filter>
     </ClCompile>
+    <ClCompile Include="Tests\Slang\NestedStructs.cpp">
+      <Filter>Tests\Slang</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Rendering\Materials\TestBSDFIntegrator.cpp">
+      <Filter>Tests\Rendering\Materials</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FalcorTest.h" />
@@ -201,6 +207,12 @@
     </Filter>
     <Filter Include="Tests\Platform">
       <UniqueIdentifier>{1de53f08-ed1a-4e84-9d30-aed24c87cfeb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\Rendering">
+      <UniqueIdentifier>{3d2ec3a5-cb42-4b35-8911-4752336ce657}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\Rendering\Materials">
+      <UniqueIdentifier>{e348a5ee-c42c-49fb-8c4f-7baf622ffb8a}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -338,6 +350,9 @@
     </ShaderSource>
     <ShaderSource Include="Tests\Core\DDSReadTests.cs.slang">
       <Filter>Tests\Core</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Slang\NestedStructs.cs.slang">
+      <Filter>Tests\Slang</Filter>
     </ShaderSource>
   </ItemGroup>
 </Project>

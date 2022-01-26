@@ -128,12 +128,12 @@ WhittedRayTracer::WhittedRayTracer(const Dictionary& dict)
         else if (key == kRayConeFilterMode) mRayConeFilterMode = value;
         else if (key == kRayDiffFilterMode) mRayDiffFilterMode = value;
         else if (key == kUseRoughnessToVariance)  mUseRoughnessToVariance = value;
-        else logWarning("Unknown field '" + key + "' in a WhittedRayTracer dictionary");
+        else logWarning("Unknown field '{}' in a WhittedRayTracer dictionary.", key);
     }
 
     // Create a sample generator.
     mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
-    assert(mpSampleGenerator);
+    FALCOR_ASSERT(mpSampleGenerator);
 
 }
 
@@ -196,11 +196,11 @@ void WhittedRayTracer::execute(RenderContext* pRenderContext, const RenderData& 
     // Prepare program vars. This may trigger shader compilation.
     // The program should have all necessary defines set at this point.
     if (!mTracer.pVars) prepareVars();
-    assert(mTracer.pVars);
+    FALCOR_ASSERT(mTracer.pVars);
 
     // Get dimensions of ray dispatch.
     const uint2 targetDim = renderData.getDefaultTextureDims();
-    assert(targetDim.x > 0 && targetDim.y > 0);
+    FALCOR_ASSERT(targetDim.x > 0 && targetDim.y > 0);
 
     // Set constants.
     auto var = mTracer.pVars->getRootVar();
@@ -301,7 +301,7 @@ void WhittedRayTracer::setScene(RenderContext* pRenderContext, const Scene::Shar
     {
         if (mpScene->hasProceduralGeometry())
         {
-            logWarning("This render pass only supports triangles. Other types of geometry will be ignored.");
+            logWarning("WhittedRayTracer: This render pass only supports triangles. Other types of geometry will be ignored.");
         }
 
         // Create ray tracing program.
@@ -325,7 +325,7 @@ void WhittedRayTracer::setScene(RenderContext* pRenderContext, const Scene::Shar
 
 void WhittedRayTracer::prepareVars()
 {
-    assert(mTracer.pProgram);
+    FALCOR_ASSERT(mTracer.pProgram);
 
     // Configure program.
     mTracer.pProgram->addDefines(mpSampleGenerator->getDefines());

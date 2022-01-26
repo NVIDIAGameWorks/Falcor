@@ -38,6 +38,7 @@ enum class MaterialType // : uint32_t
     Standard,
     Cloth,
     Hair,
+    MERL,
 
     Count // Must be last
 };

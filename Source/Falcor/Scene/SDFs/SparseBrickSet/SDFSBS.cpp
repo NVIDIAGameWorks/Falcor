@@ -49,11 +49,7 @@ namespace Falcor
 
     SDFSBS::SharedPtr SDFSBS::create(uint32_t brickWidth, bool compressed)
     {
-        if (compressed && (brickWidth + 1) % 4 != 0)
-        {
-            reportError("SDFSBS::create() brick width must be a multiple of 4 for compressed SDFSBSs");
-            return nullptr;
-        }
+        checkArgument(!compressed || (brickWidth + 1) % 4 == 0, "'brickWidth' ({}) must be a multiple of 4 minus 1 for compressed SDFSBSs", brickWidth);
 
 
         if (!spSDFSBSSampler)
@@ -79,7 +75,7 @@ namespace Falcor
         return bitScanReverse(mBrickCount - 1) + 1;
     }
 
-    bool SDFSBS::createResources(RenderContext* pRenderContext, bool deleteScratchData)
+    void SDFSBS::createResources(RenderContext* pRenderContext, bool deleteScratchData)
     {
         if (!pRenderContext) pRenderContext = gpDevice->getRenderContext();
 
@@ -88,29 +84,25 @@ namespace Falcor
 
         if (!mPrimitives.empty() && mValues.empty())
         {
-            if (!createResourcesFromPrimitives(pRenderContext, deleteScratchData))
-                return false;
+            createResourcesFromPrimitives(pRenderContext, deleteScratchData);
         }
         else if (mPrimitives.empty() && !mValues.empty())
         {
-            if (!createResourcesFromValues(pRenderContext, deleteScratchData))
-                return false;
+            createResourcesFromValues(pRenderContext, deleteScratchData);
         }
         else
         {
-            reportError("SDFSBS::setValues() or SDFSBS::setPrimitives() must be called prior to calling SDFSBS::construct()");
+            throw RuntimeError("SDFSBS::setValues() or SDFSBS::setPrimitives() must be called prior to calling SDFSBS::construct()");
         }
 
         allocatePrimitiveBits();
-
-        return true;
     }
 
     void SDFSBS::setShaderData(const ShaderVar& var) const
     {
         if (!mpBrickAABBsBuffer || !mpIndirectionTexture || !mpBrickTexture)
         {
-            reportError("SDFSBS::setShaderData() can't be called before calling SDFSBS::createResources()!");
+            throw RuntimeError("SDFSBS::setShaderData() can't be called before calling SDFSBS::createResources()!");
         }
 
         var["aabbs"] = mpBrickAABBsBuffer;
@@ -126,7 +118,7 @@ namespace Falcor
         var["normalizationFactor"] = 0.5f * glm::root_three<float>() / mGridWidth;
     }
 
-    bool SDFSBS::createResourcesFromPrimitives(RenderContext* pRenderContext, bool deleteScratchData)
+    void SDFSBS::createResourcesFromPrimitives(RenderContext* pRenderContext, bool deleteScratchData)
     {
         // Chunk width must be equal to 4 for now.
         static const uint32_t kChunkWidth = 4;
@@ -452,11 +444,9 @@ namespace Falcor
             mpSubChunkCoordsBuffer.reset();
             mpSubdivisionArgBuffer.reset();
         }
-
-        return true;
     }
 
-    bool SDFSBS::createResourcesFromValues(RenderContext* pRenderContext, bool deleteScratchData)
+    void SDFSBS::createResourcesFromValues(RenderContext* pRenderContext, bool deleteScratchData)
     {
         // Create source grid texture to read from.
         if (mpSDFGridTexture && mpSDFGridTexture->getWidth() == mGridWidth + 1)
@@ -636,8 +626,6 @@ namespace Falcor
             mpIndirectionBuffer.reset();
             mpSDFGridTexture.reset();
         }
-
-        return true;
     }
 
     void SDFSBS::allocatePrimitiveBits()
@@ -647,7 +635,7 @@ namespace Falcor
         mBrickLocalVoxelCoordsBitCount = bitScanReverse((mBrickWidth * mBrickWidth * mBrickWidth) - 1) + 1;
     }
 
-    bool SDFSBS::setValuesInternal(const std::vector<float>& cornerValues)
+    void SDFSBS::setValuesInternal(const std::vector<float>& cornerValues)
     {
         uint32_t gridWidthInValues = mGridWidth + 1;
         uint32_t valueCount = gridWidthInValues * gridWidthInValues * gridWidthInValues;
@@ -661,8 +649,6 @@ namespace Falcor
             float integerScale = normalizedValue * float(INT8_MAX);
             mValues[v] = integerScale >= 0.0f ? int8_t(integerScale + 0.5f) : int8_t(integerScale - 0.5f);
         }
-
-        return true;
     }
 
     SDFSBS::SDFSBS(uint32_t brickWidth, bool compressed) :

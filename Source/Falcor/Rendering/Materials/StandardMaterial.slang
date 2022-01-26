@@ -100,7 +100,7 @@ struct StandardMaterial : IMaterial
         // Note that the material is only emissive on the front-facing side.
         if (sd.frontFacing)
         {
-            bsdf.emissive = ms.sampleTexture(data.texEmissive, s, sd.uv, float4(data.emissive, 1), lod).rgb * data.emissiveFactor;
+            bsdf.emission = ms.sampleTexture(data.texEmissive, s, sd.uv, float4(data.emissive, 1), lod).rgb * data.emissiveFactor;
         }
 
         return bsdf;

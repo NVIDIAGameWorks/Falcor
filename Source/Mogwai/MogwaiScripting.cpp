@@ -172,7 +172,7 @@ namespace Mogwai
             {
                 if (pe->getName() == name) return pe.get();
             }
-            assert(false);
+            FALCOR_ASSERT(false);
             return static_cast<Extension*>(nullptr);
         };
 

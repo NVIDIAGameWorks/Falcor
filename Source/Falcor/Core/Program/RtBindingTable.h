@@ -111,16 +111,16 @@ namespace Falcor
 
         uint32_t getMissOffset(uint32_t missIndex) const
         {
-            assert(missIndex < mMissCount);
+            FALCOR_ASSERT(missIndex < mMissCount);
             uint32_t offset = 1 + missIndex;
-            assert(offset < mShaderTable.size());
+            FALCOR_ASSERT(offset < mShaderTable.size());
             return offset;
         }
         uint32_t getHitGroupOffset(uint32_t rayType, uint32_t geometryID) const
         {
-            assert(rayType < mRayTypeCount && geometryID < mGeometryCount);
+            FALCOR_ASSERT(rayType < mRayTypeCount && geometryID < mGeometryCount);
             uint32_t offset = 1 + mMissCount + geometryID * mRayTypeCount + rayType;
-            assert(offset < mShaderTable.size());
+            FALCOR_ASSERT(offset < mShaderTable.size());
             return offset;
         }
 

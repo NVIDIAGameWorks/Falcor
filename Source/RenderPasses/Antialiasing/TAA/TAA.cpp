@@ -58,7 +58,7 @@ TAA::SharedPtr TAA::create(RenderContext* pRenderContext, const Dictionary& dict
     {
         if (key == kAlpha) pTAA->mControls.alpha = value;
         else if (key == kColorBoxSigma) pTAA->mControls.colorBoxSigma = value;
-        else logWarning("Unknown field '" + key + "' in a TemporalAA dictionary");
+        else logWarning("Unknown field '{}' in a TemporalAA dictionary.", key);
     }
     return pTAA;
 }
@@ -89,9 +89,9 @@ void TAA::execute(RenderContext* pRenderContext, const RenderData& renderData)
     mpFbo->attachColorTarget(pColorOut, 0);
 
     // Make sure the dimensions match
-    assert((pColorIn->getWidth() == mpPrevColor->getWidth()) && (pColorIn->getWidth() == pMotionVec->getWidth()));
-    assert((pColorIn->getHeight() == mpPrevColor->getHeight()) && (pColorIn->getHeight() == pMotionVec->getHeight()));
-    assert(pColorIn->getSampleCount() == 1 && mpPrevColor->getSampleCount() == 1 && pMotionVec->getSampleCount() == 1);
+    FALCOR_ASSERT((pColorIn->getWidth() == mpPrevColor->getWidth()) && (pColorIn->getWidth() == pMotionVec->getWidth()));
+    FALCOR_ASSERT((pColorIn->getHeight() == mpPrevColor->getHeight()) && (pColorIn->getHeight() == pMotionVec->getHeight()));
+    FALCOR_ASSERT(pColorIn->getSampleCount() == 1 && mpPrevColor->getSampleCount() == 1 && pMotionVec->getSampleCount() == 1);
 
     mpPass["PerFrameCB"]["gAlpha"] = mControls.alpha;
     mpPass["PerFrameCB"]["gColorBoxSigma"] = mControls.colorBoxSigma;
@@ -111,7 +111,7 @@ void TAA::allocatePrevColor(const Texture* pColorOut)
     allocate = allocate || (mpPrevColor->getHeight() != pColorOut->getHeight());
     allocate = allocate || (mpPrevColor->getDepth() != pColorOut->getDepth());
     allocate = allocate || (mpPrevColor->getFormat() != pColorOut->getFormat());
-    assert(pColorOut->getSampleCount() == 1);
+    FALCOR_ASSERT(pColorOut->getSampleCount() == 1);
 
     if (allocate) mpPrevColor = Texture::create2D(pColorOut->getWidth(), pColorOut->getHeight(), pColorOut->getFormat(), 1, 1, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
 }

@@ -51,7 +51,7 @@ SideBySidePass::SharedPtr SideBySidePass::create(RenderContext* pRenderContext, 
         if (key == kImageLeftBound) pPass->mImageLeftBound = value;
         else if (!pPass->parseKeyValuePair(key, value))
         {
-            logWarning("Unknown field '" + key + "' in a SideBySidePass dictionary");
+            logWarning("Unknown field '{}' in a SideBySidePass dictionary.", key);
         }
     }
     return pPass;

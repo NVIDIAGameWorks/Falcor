@@ -103,34 +103,52 @@ namespace Falcor
         static const uint32_t kInvalidNode = Animatable::kInvalidNode;
         static const uint32_t kInvalidIndex = -1;
 
-        static const FileDialogFilterVec& getFileExtensionFilters();
-
-        /** Create scene from file.
-            \param[in] filename Import the scene from this file.
-            \return Scene object, or throws an ImporterError if import went wrong.
+        /** Flags indicating if and what was updated in the scene.
         */
-        static SharedPtr create(const std::string& filename);
+        enum class UpdateFlags
+        {
+            None                        = 0x0,      ///< Nothing happened
+            GeometryMoved               = 0x1,      ///< Geometry moved
+            CameraMoved                 = 0x2,      ///< The camera moved
+            CameraPropertiesChanged     = 0x4,      ///< Some camera properties changed, excluding position
+            CameraSwitched              = 0x8,      ///< Selected a different camera
+            LightsMoved                 = 0x10,     ///< Lights were moved
+            LightIntensityChanged       = 0x20,     ///< Light intensity changed
+            LightPropertiesChanged      = 0x40,     ///< Other light changes not included in LightIntensityChanged and LightsMoved
+            SceneGraphChanged           = 0x80,     ///< Any transform in the scene graph changed.
+            LightCollectionChanged      = 0x100,    ///< Light collection changed (mesh lights)
+            MaterialsChanged            = 0x200,    ///< Materials changed
+            EnvMapChanged               = 0x400,    ///< Environment map changed
+            EnvMapPropertiesChanged     = 0x800,    ///< Environment map properties changed (check EnvMap::getChanges() for more specific information)
+            LightCountChanged           = 0x1000,   ///< Number of active lights changed
+            RenderSettingsChanged       = 0x2000,   ///< Render settings changed
+            GridVolumesMoved            = 0x4000,   ///< Grid volumes were moved
+            GridVolumePropertiesChanged = 0x8000,   ///< Grid volume properties changed
+            GridVolumeGridsChanged      = 0x10000,  ///< Grid volume grids changed
+            GridVolumeBoundsChanged     = 0x20000,  ///< Grid volume bounds changed
+            CurvesMoved                 = 0x40000,  ///< Curves moved.
+            CustomPrimitivesMoved       = 0x80000,  ///< Custom primitives moved.
+            GeometryChanged             = 0x100000, ///< Scene geometry changed (added/removed).
+            DisplacementChanged         = 0x200000, ///< Displacement mapping parameters changed.
+            SDFGridConfigChanged        = 0x400000, ///< SDF grid config changed.
 
-        /** Get default scene defines.
-            This is the minimal set of defines needed for a program to compile that imports the scene module.
-            Note that the actual defines need to be set at runtime, call getSceneDefines() to query them.
-            \return List of shader defines.
-        */
-        static Shader::DefineList getDefaultSceneDefines();
+            All                         = -1
+        };
 
-        /** Get scene defines.
-            These defines must be set on all programs that access the scene.
-            The defines are static and it's sufficient to set them once after loading.
-            \return List of shader defines.
+        /** Settings for how the scene ray tracing acceleration structures are updated.
         */
-        Shader::DefineList getSceneDefines() const;
+        enum class UpdateMode
+        {
+            Rebuild,    ///< Recreate acceleration structure when updates are needed.
+            Refit       ///< Update acceleration structure when updates are needed.
+        };
 
-        /** Get type conformances.
-            These need to be set on a program before using the scene's material system.
-            The update() function must have been called before calling this function.
-            \return List of type conformances.
-        */
-        Program::TypeConformanceList getTypeConformances() const;
+        enum class CameraControllerType
+        {
+            FirstPerson,
+            Orbiter,
+            SixDOF
+        };
 
         enum class SDFGridIntersectionMethod : uint32_t
         {
@@ -228,51 +246,84 @@ namespace Falcor
             std::vector<uint32_t> instances;    ///< All instances using this SDF grid desc.
         };
 
-        /** Flags indicating if and what was updated in the scene.
+        /** Represents a group of meshes.
+            The meshes are geometries in the same ray tracing bottom-level acceleration structure (BLAS).
         */
-        enum class UpdateFlags
+        struct MeshGroup
         {
-            None                        = 0x0,      ///< Nothing happened
-            GeometryMoved               = 0x1,      ///< Geometry moved
-            CameraMoved                 = 0x2,      ///< The camera moved
-            CameraPropertiesChanged     = 0x4,      ///< Some camera properties changed, excluding position
-            CameraSwitched              = 0x8,      ///< Selected a different camera
-            LightsMoved                 = 0x10,     ///< Lights were moved
-            LightIntensityChanged       = 0x20,     ///< Light intensity changed
-            LightPropertiesChanged      = 0x40,     ///< Other light changes not included in LightIntensityChanged and LightsMoved
-            SceneGraphChanged           = 0x80,     ///< Any transform in the scene graph changed.
-            LightCollectionChanged      = 0x100,    ///< Light collection changed (mesh lights)
-            MaterialsChanged            = 0x200,    ///< Materials changed
-            EnvMapChanged               = 0x400,    ///< Environment map changed
-            EnvMapPropertiesChanged     = 0x800,    ///< Environment map properties changed (check EnvMap::getChanges() for more specific information)
-            LightCountChanged           = 0x1000,   ///< Number of active lights changed
-            RenderSettingsChanged       = 0x2000,   ///< Render settings changed
-            GridVolumesMoved            = 0x4000,   ///< Grid volumes were moved
-            GridVolumePropertiesChanged = 0x8000,   ///< Grid volume properties changed
-            GridVolumeGridsChanged      = 0x10000,  ///< Grid volume grids changed
-            GridVolumeBoundsChanged     = 0x20000,  ///< Grid volume bounds changed
-            CurvesMoved                 = 0x40000,  ///< Curves moved.
-            CustomPrimitivesMoved       = 0x80000,  ///< Custom primitives moved.
-            GeometryChanged             = 0x100000, ///< Scene geometry changed (added/removed).
-            DisplacementChanged         = 0x200000, ///< Displacement mapping parameters changed.
-            SDFGridConfigChanged        = 0x400000, ///< SDF grid config changed.
-
-            All                         = -1
+            std::vector<uint32_t> meshList;     ///< List of meshId's that are part of the group.
+            bool isStatic = false;              ///< True if group represents static non-instanced geometry.
+            bool isDisplaced = false;           ///< True if group uses displacement mapping.
         };
 
-        /** Settings for how the scene ray tracing acceleration structures are updated.
+        /** Scene graph node.
         */
-        enum class UpdateMode
+        struct Node
         {
-            Rebuild,    ///< Recreate acceleration structure when updates are needed.
-            Refit       ///< Update acceleration structure when updates are needed.
+            Node() = default;
+            Node(const std::string& n, uint32_t p, const glm::mat4& t, const glm::mat4& mb, const glm::mat4& l2b) : parent(p), name(n), transform(t), meshBind(mb), localToBindSpace(l2b) {};
+            std::string name;
+            uint32_t parent = kInvalidNode;
+            float4x4 transform;         ///< The node's transformation matrix.
+            float4x4 meshBind;          ///< For skinned meshes. Mesh world space transform at bind time.
+            float4x4 localToBindSpace;  ///< For bones. Skeleton to bind space transformation. AKA the inverse-bind transform.
         };
 
-        enum class CameraControllerType
+        /** Full set of required data to create a scene object.
+            This data is typically prepared by SceneBuilder before creating a Scene object.
+        */
+        struct SceneData
         {
-            FirstPerson,
-            Orbiter,
-            SixDOF
+            std::string filename;                                   ///< Filename of the asset file the scene was loaded from.
+            RenderSettings renderSettings;                          ///< Render settings.
+            std::vector<Camera::SharedPtr> cameras;                 ///< List of cameras.
+            uint32_t selectedCamera = 0;                            ///< Index of selected camera.
+            float cameraSpeed = 1.f;                                ///< Camera speed.
+            std::vector<Light::SharedPtr> lights;                   ///< List of light sources.
+            MaterialSystem::SharedPtr pMaterials;                   ///< Material system. This holds data and resources for all materials.
+            std::vector<GridVolume::SharedPtr> gridVolumes;         ///< List of grid volumes.
+            std::vector<Grid::SharedPtr> grids;                     ///< List of grids.
+            EnvMap::SharedPtr pEnvMap;                              ///< Environment map.
+            std::vector<Node> sceneGraph;                           ///< Scene graph nodes.
+            std::vector<Animation::SharedPtr> animations;           ///< List of animations.
+            Metadata metadata;                                      ///< Scene meadata.
+
+            // Mesh data
+            std::vector<MeshDesc> meshDesc;                         ///< List of mesh descriptors.
+            std::vector<std::string> meshNames;                     ///< List of mesh names.
+            std::vector<AABB> meshBBs;                              ///< List of mesh bounding boxes in object space.
+            std::vector<GeometryInstanceData> meshInstanceData;     ///< List of mesh instances.
+            std::vector<std::vector<uint32_t>> meshIdToInstanceIds; ///< Mapping of what instances belong to which mesh.
+            std::vector<MeshGroup> meshGroups;                      ///< List of mesh groups. Each group maps to a BLAS for ray tracing.
+            std::vector<CachedMesh> cachedMeshes;                   ///< Cached data for vertex-animated meshes.
+
+            bool useCompressedHitInfo = false;                      ///< True if scene should used compressed HitInfo (on scenes with triangles meshes only).
+            bool has16BitIndices = false;                           ///< True if 16-bit mesh indices are used.
+            bool has32BitIndices = false;                           ///< True if 32-bit mesh indices are used.
+            uint32_t meshDrawCount = 0;                             ///< Number of meshes to draw.
+
+            std::vector<uint32_t> meshIndexData;                    ///< Vertex indices for all meshes in either 32-bit or 16-bit format packed tightly, decided per mesh.
+            std::vector<PackedStaticVertexData> meshStaticData;     ///< Vertex attributes for all meshes in packed format.
+            std::vector<DynamicVertexData> meshDynamicData;         ///< Additional vertex attributes for dynamic (skinned) meshes.
+
+            // Curve data
+            std::vector<CurveDesc> curveDesc;                       ///< List of curve descriptors.
+            std::vector<AABB> curveBBs;                             ///< List of curve bounding boxes in object space. Each curve consists of many segments, each with its own AABB. The bounding boxes here are the unions of those.
+            std::vector<GeometryInstanceData> curveInstanceData;    ///< List of curve instances.
+
+            std::vector<uint32_t> curveIndexData;                   ///< Vertex indices for all curves in 32-bit.
+            std::vector<StaticCurveVertexData> curveStaticData;     ///< Vertex attributes for all curves.
+            std::vector<CachedCurve> cachedCurves;                  ///< Vertex cache for dynamic (vertex animated) curves.
+
+            // SDF grid data
+            std::vector<SDFGrid::SharedPtr> sdfGrids;               ///< List of SDF grids.
+            std::vector<SDFGridDesc> sdfGridDesc;                   ///< List of SDF grid descriptors.
+            std::vector<GeometryInstanceData> sdfGridInstances;     ///< List of SDG grid instances.
+            uint32_t sdfGridMaxLODCount = 0;                        ///< The max LOD count of any SDF grid.
+
+            // Custom primitive data
+            std::vector<CustomPrimitiveDesc> customPrimitiveDesc;   ///< Custom primitive descriptors.
+            std::vector<AABB> customPrimitiveAABBs;                 ///< List of AABBs for custom primitives in world space. Each custom primitive consists of one AABB.
         };
 
         /** Statistics.
@@ -365,6 +416,45 @@ namespace Falcor
             pybind11::dict toPython() const;
         };
 
+        /** Return list of file extensions filters for all supported file formats.
+        */
+        static const FileDialogFilterVec& getFileExtensionFilters();
+
+        /** Create scene from file.
+            \param[in] filename Import the scene from this file.
+            \return Scene object, or throws an ImporterError if import went wrong.
+        */
+        static SharedPtr create(const std::string& filename);
+
+        /** Create scene from in-memory representation.
+            \param[in] sceneData All scene data.
+            \return Scene object or throws on error.
+        */
+        static SharedPtr create(SceneData&& sceneData);
+
+        /** Get default scene defines.
+            This is the minimal set of defines needed for a program to compile that imports the scene module.
+            Note that the actual defines need to be set at runtime, call getSceneDefines() to query them.
+            \return List of shader defines.
+        */
+        static Shader::DefineList getDefaultSceneDefines();
+
+        /** Get scene defines.
+            These defines must be set on all programs that access the scene.
+            The defines are static and it's sufficient to set them once after loading.
+            \return List of shader defines.
+        */
+        Shader::DefineList getSceneDefines() const;
+
+        /** Get type conformances.
+            These need to be set on a program before using the scene's material system.
+            The update() function must have been called before calling this function.
+            \return List of type conformances.
+        */
+        Program::TypeConformanceList getTypeConformances() const;
+
+        /** Get the current scene statistics.
+        */
         const SceneStats& getSceneStats() const { return mSceneStats; }
 
         /** Get the render settings.
@@ -690,7 +780,7 @@ namespace Falcor
 
         /** Get a list of all lights in the scene.
         */
-        const std::vector<Light::SharedPtr>& getLights() { return mLights; };
+        const std::vector<Light::SharedPtr>& getLights() const { return mLights; };
 
         /** Get the number of lights in the scene.
         */
@@ -703,6 +793,18 @@ namespace Falcor
         /** Get a light by name.
         */
         Light::SharedPtr getLightByName(const std::string& name) const;
+
+        /** Get a list of all active lights in the scene.
+        */
+        const std::vector<Light::SharedPtr>& getActiveLights() const { return mActiveLights; }
+
+        /** Get the number of active lights in the scene.
+        */
+        uint32_t getActiveLightCount() const { return (uint32_t)mActiveLights.size(); }
+
+        /** Get an active light.
+        */
+        const Light::SharedPtr& getActiveLight(uint32_t lightID) const { return mActiveLights[lightID]; }
 
         /** Get the light collection representing all the mesh lights in the scene.
             The light collection is created lazily on the first call. It needs a render context.
@@ -778,14 +880,16 @@ namespace Falcor
         */
         void renderUI(Gui::Widgets& widget);
 
-        /** Get the scene's VAO.
-            The default VAO uses 32-bit vertex indices. For meshes with 16-bit indices, use getVao16() instead.
+        /** Get the scene's VAO for meshes.
+            The default VAO uses 32-bit vertex indices. For meshes with 16-bit indices, use getMeshVao16() instead.
+            \return VAO object or nullptr if no meshes using 32-bit indices.
         */
-        const Vao::SharedPtr& getVao() const { return mpVao; }
+        const Vao::SharedPtr& getMeshVao() const { return mpMeshVao; }
 
         /** Get the scene's VAO for 16-bit vertex indices.
+            \return VAO object or nullptr if no meshes using 16-bit indices.
         */
-        const Vao::SharedPtr& getVao16() const { return mpVao16Bit; }
+        const Vao::SharedPtr& getMeshVao16() const { return mpMeshVao16Bit; }
 
         /** Get the scene's VAO for curves.
         */
@@ -798,8 +902,9 @@ namespace Falcor
 
         /** Load an environment from an image.
             \param[in] filename Texture filename.
+            \return True if environmant map was successfully loaded.
         */
-        void loadEnvMap(const std::string& filename);
+        bool loadEnvMap(const std::string& filename);
 
         /** Handle mouse events.
         */
@@ -859,7 +964,7 @@ namespace Falcor
 
         /** Get the name of the mesh with the given ID.
         */
-        std::string getMeshName(uint32_t meshID) const { assert(meshID < mMeshNames.size());  return mMeshNames[meshID]; }
+        std::string getMeshName(uint32_t meshID) const { FALCOR_ASSERT(meshID < mMeshNames.size());  return mMeshNames[meshID]; }
 
         /** Return true if the given mesh ID is valid, false otherwise.
         */
@@ -879,96 +984,12 @@ namespace Falcor
         std::string getScript(const std::string& sceneVar);
 
     private:
-        /** Represents a group of meshes.
-            The meshes are geometries in the same ray tracing bottom-level acceleration structure (BLAS).
-        */
-        struct MeshGroup
-        {
-            std::vector<uint32_t> meshList;     ///< List of meshId's that are part of the group.
-            bool isStatic = false;              ///< True if group represents static non-instanced geometry.
-            bool isDisplaced = false;           ///< True if group uses displacement mapping.
-        };
-
-        /** Scene graph node.
-        */
-        struct Node
-        {
-            Node() = default;
-            Node(const std::string& n, uint32_t p, const glm::mat4& t, const glm::mat4& mb, const glm::mat4& l2b) : parent(p), name(n), transform(t), meshBind(mb), localToBindSpace(l2b) {};
-            std::string name;
-            uint32_t parent = kInvalidNode;
-            float4x4 transform;         ///< The node's transformation matrix.
-            float4x4 meshBind;          ///< For skinned meshes. Mesh world space transform at bind time.
-            float4x4 localToBindSpace;  ///< For bones. Skeleton to bind space transformation. AKA the inverse-bind transform.
-        };
-
-        /** Full set of required data to create a scene object.
-            This data is typically prepared by SceneBuilder before creating a Scene object.
-        */
-        struct SceneData
-        {
-            std::string filename;                                   ///< Filename of the asset file the scene was loaded from.
-            RenderSettings renderSettings;                          ///< Render settings.
-            std::vector<Camera::SharedPtr> cameras;                 ///< List of cameras.
-            uint32_t selectedCamera = 0;                            ///< Index of selected camera.
-            float cameraSpeed = 1.f;                                ///< Camera speed.
-            std::vector<Light::SharedPtr> lights;                   ///< List of light sources.
-            MaterialSystem::SharedPtr pMaterials;                   ///< Material system. This holds data and resources for all materials.
-            std::vector<GridVolume::SharedPtr> gridVolumes;         ///< List of grid volumes.
-            std::vector<Grid::SharedPtr> grids;                     ///< List of grids.
-            EnvMap::SharedPtr pEnvMap;                              ///< Environment map.
-            std::vector<Node> sceneGraph;                           ///< Scene graph nodes.
-            std::vector<Animation::SharedPtr> animations;           ///< List of animations.
-            Metadata metadata;                                      ///< Scene meadata.
-
-            // Mesh data
-            std::vector<MeshDesc> meshDesc;                         ///< List of mesh descriptors.
-            std::vector<std::string> meshNames;                     ///< List of mesh names.
-            std::vector<AABB> meshBBs;                              ///< List of mesh bounding boxes in object space.
-            std::vector<GeometryInstanceData> meshInstanceData;     ///< List of mesh instances.
-            std::vector<std::vector<uint32_t>> meshIdToInstanceIds; ///< Mapping of what instances belong to which mesh.
-            std::vector<MeshGroup> meshGroups;                      ///< List of mesh groups. Each group maps to a BLAS for ray tracing.
-            std::vector<CachedMesh> cachedMeshes;                   ///< Cached data for vertex-animated meshes.
-
-            bool useCompressedHitInfo = false;                      ///< True if scene should used compressed HitInfo (on scenes with triangles meshes only).
-            bool has16BitIndices = false;                           ///< True if 16-bit mesh indices are used.
-            bool has32BitIndices = false;                           ///< True if 32-bit mesh indices are used.
-            uint32_t meshDrawCount = 0;                             ///< Number of meshes to draw.
-
-            std::vector<uint32_t> meshIndexData;                    ///< Vertex indices for all meshes in either 32-bit or 16-bit format packed tightly, decided per mesh.
-            std::vector<PackedStaticVertexData> meshStaticData;     ///< Vertex attributes for all meshes in packed format.
-            std::vector<DynamicVertexData> meshDynamicData;         ///< Additional vertex attributes for dynamic (skinned) meshes.
-
-            // Curve data
-            std::vector<CurveDesc> curveDesc;                       ///< List of curve descriptors.
-            std::vector<AABB> curveBBs;                             ///< List of curve bounding boxes in object space. Each curve consists of many segments, each with its own AABB. The bounding boxes here are the unions of those.
-            std::vector<GeometryInstanceData> curveInstanceData;    ///< List of curve instances.
-
-            std::vector<uint32_t> curveIndexData;                   ///< Vertex indices for all curves in 32-bit.
-            std::vector<StaticCurveVertexData> curveStaticData;     ///< Vertex attributes for all curves.
-            std::vector<CachedCurve> cachedCurves;                  ///< Vertex cache for dynamic (vertex animated) curves.
-
-            // SDF grid data
-            std::vector<SDFGrid::SharedPtr> sdfGrids;               ///< List of SDF grids.
-            std::vector<SDFGridDesc> sdfGridDesc;                   ///< List of SDF grid descriptors.
-            std::vector<GeometryInstanceData> sdfGridInstances;     ///< List of SDG grid instances.
-            uint32_t sdfGridMaxLODCount = 0;                        ///< The max LOD count of any SDF grid.
-
-            // Custom primitive data
-            std::vector<CustomPrimitiveDesc> customPrimitiveDesc;   ///< Custom primitive descriptors.
-            std::vector<AABB> customPrimitiveAABBs;                 ///< List of AABBs for custom primitives in world space. Each custom primitive consists of one AABB.
-        };
-
-        friend class SceneBuilder;
-        friend class SceneCache;
         friend class AnimationController;
         friend class AnimatedVertexCache;
 
         static constexpr uint32_t kStaticDataBufferIndex = 0;
         static constexpr uint32_t kDrawIdBufferIndex = kStaticDataBufferIndex + 1;
         static constexpr uint32_t kVertexBufferCount = kDrawIdBufferIndex + 1;
-
-        static SharedPtr create(SceneData&& sceneData);
 
         void createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& indexData, const std::vector<PackedStaticVertexData>& staticData, const std::vector<DynamicVertexData>& dynamicData);
         void createCurveVao(const std::vector<uint32_t>& indexData, const std::vector<StaticCurveVertexData>& staticData);
@@ -1043,7 +1064,7 @@ namespace Falcor
 
         /** Check whether scene has an index buffer.
         */
-        bool hasIndexBuffer() const { return mpVao->getIndexBuffer() != nullptr; }
+        bool hasIndexBuffer() const { return mpMeshVao && mpMeshVao->getIndexBuffer() != nullptr; }
 
         /** Initialize all cameras in the scene through the animation controller using their corresponding scene graph nodes.
         */
@@ -1094,8 +1115,8 @@ namespace Falcor
         bool mHas16BitIndices = false;                              ///< True if any meshes use 16-bit indices.
         bool mHas32BitIndices = false;                              ///< True if any meshes use 32-bit indices.
 
-        Vao::SharedPtr mpVao;                                       ///< Vertex array object for the global mesh vertex/index buffers.
-        Vao::SharedPtr mpVao16Bit;                                  ///< VAO for drawing meshes with 16-bit vertex indices.
+        Vao::SharedPtr mpMeshVao;                                   ///< Vertex array object for the global mesh vertex/index buffers.
+        Vao::SharedPtr mpMeshVao16Bit;                              ///< VAO for drawing meshes with 16-bit vertex indices.
         Vao::SharedPtr mpCurveVao;                                  ///< Vertex array object for the global curve vertex/index buffers.
         std::vector<DrawArgs> mDrawArgs;                            ///< List of draw arguments for rasterizing the meshes in the scene.
 
@@ -1145,13 +1166,13 @@ namespace Falcor
 
         // Lights
         std::vector<Light::SharedPtr> mLights;                      ///< All analytic lights. Note that not all may be active.
+        std::vector<Light::SharedPtr> mActiveLights;                ///< All active analytic lights.
         std::vector<GridVolume::SharedPtr> mGridVolumes;            ///< All loaded grid volumes.
         std::vector<Grid::SharedPtr> mGrids;                        ///< All loaded grids.
         std::unordered_map<Grid::SharedPtr, uint32_t> mGridIDs;     ///< Lookup table for grid IDs.
         LightCollection::SharedPtr mpLightCollection;               ///< Class for managing emissive geometry. This is created lazily upon first use.
         EnvMap::SharedPtr mpEnvMap;                                 ///< Environment map or nullptr if not loaded.
         bool mEnvMapChanged = false;                                ///< Flag indicating that the environment map has changed since last frame.
-        uint32_t mActiveLightCount = 0;                             ///< Number of currently active analytic lights.
 
         // Scene metadata (CPU only)
         std::vector<AABB> mMeshBBs;                                 ///< Bounding boxes for meshes (not instances) in object space.
@@ -1225,8 +1246,8 @@ namespace Falcor
         */
         struct BlasData
         {
-            RtAccelerationStructurePrebuildInfo prebuildInfo;
-            RtAccelerationStructureBuildInputs buildInputs;
+            RtAccelerationStructurePrebuildInfo prebuildInfo = {};
+            RtAccelerationStructureBuildInputs buildInputs = {};
             std::vector<RtGeometryDesc> geomDescs;
 
             uint32_t blasGroupIndex = 0;                    ///< Index of the BLAS group that contains this BLAS.
@@ -1265,6 +1286,7 @@ namespace Falcor
         std::vector<BlasGroup> mBlasGroups;                 ///< BLAS group data.
         Buffer::SharedPtr mpBlasScratch;                    ///< Scratch buffer used for BLAS builds.
         Buffer::SharedPtr mpBlasStaticWorldMatrices;        ///< Object-to-world transform matrices in row-major format. Only valid for static meshes.
+        bool mBlasDataValid = false;                        ///< Flag to indicate if the BLAS data is valid. This will be reset when geometry is changed.
         bool mRebuildBlas = true;                           ///< Flag to indicate BLASes need to be rebuilt.
         bool mHasSkinnedMesh = false;                       ///< Whether the scene has a skinned mesh at all.
         bool mHasAnimatedVertexCache = false;               ///< Whether the scene has an animated vertex cache at all.

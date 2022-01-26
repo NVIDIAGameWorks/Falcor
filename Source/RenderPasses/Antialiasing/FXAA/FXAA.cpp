@@ -61,7 +61,7 @@ FXAA::SharedPtr FXAA::create(RenderContext* pRenderContext, const Dictionary& di
         else if (key == kQualityEdgeThreshold) pFXAA->mQualityEdgeThreshold = value;
         else if (key == kQualityEdgeThresholdMin) pFXAA->mQualityEdgeThresholdMin = value;
         else if (key == kEarlyOut) pFXAA->mEarlyOut = value;
-        else logWarning("Unknown field '" + key + "' in an FXAA dictionary");
+        else logWarning("Unknown field '{}' in an FXAA dictionary.", key);
     }
     return pFXAA;
 }

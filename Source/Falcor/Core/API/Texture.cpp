@@ -51,9 +51,8 @@ namespace Falcor
             supported |= ResourceBindFlags::Shared;
             if ((flags & supported) != flags)
             {
-                reportError("Error when creating " + texType + " of format " + to_string(format) + ". The requested bind-flags are not supported.\n"
-                    "Requested = (" + to_string(flags) + "), supported = (" + to_string(supported) + ").\n\n"
-                    "The texture will be created only with the supported bind flags, which may result in a crash or a rendering error.");
+                throw RuntimeError("Error when creating {} of format {}. The requested bind-flags are not supported. Requested = ({}), supported = ({}).",
+                    texType, to_string(format), to_string(flags), to_string(supported));
                 flags = flags & supported;
             }
 
@@ -63,26 +62,26 @@ namespace Falcor
 
     Texture::SharedPtr Texture::createFromApiHandle(ApiHandle handle, Type type, uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize, uint32_t mipLevels, State initState, BindFlags bindFlags)
     {
-        assert(handle);
+        FALCOR_ASSERT(handle);
         switch (type)
         {
             case Resource::Type::Texture1D:
-                assert(height == 1 && depth == 1 && sampleCount == 1);
+                FALCOR_ASSERT(height == 1 && depth == 1 && sampleCount == 1);
                 break;
             case Resource::Type::Texture2D:
-                assert(depth == 1 && sampleCount == 1);
+                FALCOR_ASSERT(depth == 1 && sampleCount == 1);
                 break;
             case Resource::Type::Texture2DMultisample:
-                assert(depth == 1);
+                FALCOR_ASSERT(depth == 1);
                 break;
             case Resource::Type::Texture3D:
-                assert(sampleCount == 1);
+                FALCOR_ASSERT(sampleCount == 1);
                 break;
             case Resource::Type::TextureCube:
-                assert(depth == 1 && sampleCount == 1);
+                FALCOR_ASSERT(depth == 1 && sampleCount == 1);
                 break;
             default:
-                should_not_get_here();
+                FALCOR_UNREACHABLE();
                 break;
         }
         Texture::SharedPtr pTexture = SharedPtr(new Texture(width, height, depth, arraySize, mipLevels, sampleCount, format, type, bindFlags));
@@ -137,7 +136,7 @@ namespace Falcor
         std::string fullpath;
         if (findFileInDataDirectories(filename, fullpath) == false)
         {
-            logWarning("Error when loading image file. Can't find image file '" + filename + "'");
+            logWarning("Error when loading image file. Can't find image file '{}'.", filename);
             return nullptr;
         }
 
@@ -150,7 +149,7 @@ namespace Falcor
             }
             catch (const std::exception& e)
             {
-                logWarning("Error loading '" + fullpath + "': " + e.what());
+                logWarning("Error loading '{}': {}", fullpath, e.what());
             }
         }
         else
@@ -179,9 +178,9 @@ namespace Falcor
     Texture::Texture(uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type type, BindFlags bindFlags)
         : Resource(type, bindFlags, 0), mWidth(width), mHeight(height), mDepth(depth), mMipLevels(mipLevels), mSampleCount(sampleCount), mArraySize(arraySize), mFormat(format)
     {
-        assert(width > 0 && height > 0 && depth > 0);
-        assert(arraySize > 0 && mipLevels > 0 && sampleCount > 0);
-        assert(format != ResourceFormat::Unknown);
+        FALCOR_ASSERT(width > 0 && height > 0 && depth > 0);
+        FALCOR_ASSERT(arraySize > 0 && mipLevels > 0 && sampleCount > 0);
+        FALCOR_ASSERT(format != ResourceFormat::Unknown);
 
         if (mMipLevels == kMaxPossible)
         {
@@ -353,7 +352,7 @@ namespace Falcor
         static std::mutex mutex;
         std::lock_guard<std::mutex> lock(mutex);
 
-        assert(gpDevice);
+        FALCOR_ASSERT(gpDevice);
         auto pRenderContext = gpDevice->getRenderContext();
         if (autoGenMips)
         {
@@ -423,11 +422,11 @@ namespace Falcor
         for (uint32_t i = 0; i < getMipCount(); i++)
         {
             uint64_t texelsInMip = (uint64_t)getWidth(i) * getHeight(i) * getDepth(i);
-            assert(texelsInMip > 0);
+            FALCOR_ASSERT(texelsInMip > 0);
             count += texelsInMip;
         }
         count *= getArraySize();
-        assert(count > 0);
+        FALCOR_ASSERT(count > 0);
         return count;
     }
 

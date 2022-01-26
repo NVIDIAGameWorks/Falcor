@@ -48,7 +48,7 @@ namespace Falcor
         */
         static SharedPtr create(const EntryPointGroupReflection::SharedConstPtr& pReflector, uint32_t groupIndexInProgram)
         {
-            assert(pReflector);
+            FALCOR_ASSERT(pReflector);
             return SharedPtr(new EntryPointGroupVars(pReflector, groupIndexInProgram));
         }
 
@@ -59,7 +59,7 @@ namespace Falcor
             : ParameterBlock(pReflector->getProgramVersion(), pReflector)
             , mGroupIndexInProgram(groupIndexInProgram)
         {
-            assert(pReflector);
+            FALCOR_ASSERT(pReflector);
         }
 
     private:

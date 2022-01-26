@@ -29,8 +29,11 @@ def render_graph_PathTracerAdaptive():
     g.addEdge("VBufferRT.vbuffer", "PathTracer.vbuffer")
     g.addEdge("PathTracer.color", "AccumulatePass.input")
     g.addEdge("AccumulatePass.output", "ToneMapper.src")
+
+    # Final frame output
     g.markOutput("ToneMapper.dst")
     g.markOutput("ToneMapper.dst", TextureChannelFlags.Alpha)
+
     return g
 
 PathTracerAdaptive = render_graph_PathTracerAdaptive()

@@ -108,7 +108,7 @@ ErrorMeasurePass::ErrorMeasurePass(const Dictionary& dict)
         else if (key == kSelectedOutputId) mSelectedOutputId = value;
         else
         {
-            logWarning("Unknown field '" + key + "' in ErrorMeasurePass dictionary");
+            logWarning("Unknown field '{}' in ErrorMeasurePass dictionary.", key);
         }
     }
 
@@ -159,7 +159,7 @@ void ErrorMeasurePass::execute(RenderContext* pRenderContext, const RenderData& 
     {
         mpDifferenceTexture = Texture::create2D(width, height, ResourceFormat::RGBA32Float, 1, 1, nullptr,
                                                 Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
-        assert(mpDifferenceTexture);
+        FALCOR_ASSERT(mpDifferenceTexture);
     }
 
     mMeasurements.valid = false;
@@ -218,10 +218,7 @@ void ErrorMeasurePass::runDifferencePass(RenderContext* pRenderContext, const Re
 void ErrorMeasurePass::runReductionPasses(RenderContext* pRenderContext, const RenderData& renderData)
 {
     float4 error;
-    if (!mpParallelReduction->execute(pRenderContext, mpDifferenceTexture, ComputeParallelReduction::Type::Sum, &error))
-    {
-        throw RuntimeError("ErrorMeasurePass: Error running parallel reduction");
-    }
+    mpParallelReduction->execute(pRenderContext, mpDifferenceTexture, ComputeParallelReduction::Type::Sum, &error);
 
     const float pixelCountf = static_cast<float>(mpDifferenceTexture->getWidth() * mpDifferenceTexture->getHeight());
     mMeasurements.error = error / pixelCountf;
@@ -405,7 +402,7 @@ void ErrorMeasurePass::saveMeasurementsToFile()
 {
     if (!mMeasurementsFile) return;
 
-    assert(mMeasurements.valid);
+    FALCOR_ASSERT(mMeasurements.valid);
     mMeasurementsFile << mMeasurements.avgError << ",";
     mMeasurementsFile << mMeasurements.error.r << ',' << mMeasurements.error.g << ',' << mMeasurements.error.b;
     mMeasurementsFile << std::endl;

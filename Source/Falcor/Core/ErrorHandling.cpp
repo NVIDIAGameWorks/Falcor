@@ -88,7 +88,7 @@ namespace Falcor
         std::quick_exit(1);
     }
 
-    void reportFatalError(const std::string& msg)
+    [[noreturn]] void reportFatalError(const std::string& msg)
     {
         logFatal(msg);
 

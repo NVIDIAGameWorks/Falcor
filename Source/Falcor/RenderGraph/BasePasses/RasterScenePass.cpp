@@ -33,7 +33,7 @@ namespace Falcor
     RasterScenePass::RasterScenePass(const Scene::SharedPtr& pScene, const Program::Desc& progDesc, const Program::DefineList& programDefines)
         : BaseGraphicsPass(progDesc, programDefines), mpScene(pScene)
     {
-        assert(pScene);
+        FALCOR_ASSERT(pScene);
     }
 
     RasterScenePass::SharedPtr RasterScenePass::create(const Scene::SharedPtr& pScene, const Program::Desc& progDesc, const Program::DefineList& programDefines)

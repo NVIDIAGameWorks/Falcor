@@ -28,6 +28,7 @@
 #include "stdafx.h"
 #include "Core/API/Buffer.h"
 #include "Core/API/Resource.h"
+#include "GFXResource.h"
 
 #define GFX_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT ( 256 )
 #define GFX_TEXTURE_DATA_PLACEMENT_ALIGNMENT ( 512 )
@@ -36,18 +37,34 @@ namespace Falcor
 {
     Slang::ComPtr<gfx::IBufferResource> createBuffer(Buffer::State initState, size_t size, Buffer::BindFlags bindFlags, Buffer::CpuAccess cpuAccess)
     {
-        assert(gpDevice);
+        FALCOR_ASSERT(gpDevice);
         Slang::ComPtr<gfx::IDevice> pDevice = gpDevice->getApiHandle();
 
         // Create the buffer
         gfx::IBufferResource::Desc bufDesc = {};
         // Pipe through element size and format?
         bufDesc.sizeInBytes = size;
-        bufDesc.cpuAccessFlags = (int)cpuAccess;
+        switch (cpuAccess)
+        {
+        case Buffer::CpuAccess::None:
+            bufDesc.memoryType = gfx::MemoryType::DeviceLocal;
+            break;
+        case Buffer::CpuAccess::Read:
+            bufDesc.memoryType = gfx::MemoryType::ReadBack;
+            break;
+        case Buffer::CpuAccess::Write:
+            bufDesc.memoryType = gfx::MemoryType::Upload;
+            break;
+        default:
+            FALCOR_UNREACHABLE();
+            break;
+        }
+
+        getGFXResourceState(bindFlags, bufDesc.defaultState, bufDesc.allowedStates);
 
         Slang::ComPtr<gfx::IBufferResource> pApiHandle;
         pDevice->createBufferResource(bufDesc, nullptr, pApiHandle.writeRef());
-        assert(pApiHandle);
+        FALCOR_ASSERT(pApiHandle);
 
         return pApiHandle;
     }
@@ -80,7 +97,7 @@ namespace Falcor
             mState.global = Resource::State::GenericRead;
             if (hasInitData == false) // Else the allocation will happen when updating the data
             {
-                assert(gpDevice);
+                FALCOR_ASSERT(gpDevice);
                 mDynamicData = gpDevice->getUploadHeap()->allocate(mSize, getBufferDataAlignment(this));
                 mApiHandle = mDynamicData.pResourceHandle;
                 mGpuVaOffset = mDynamicData.offset;
@@ -102,28 +119,29 @@ namespace Falcor
     void* mapBufferApi(const Buffer::ApiHandle& apiHandle, size_t size)
     {
         void* pData = nullptr;
-        // TODO: uncomment once slang-gfx backend implements this function.
-        //gpDevice->getApiHandle()->mapBufferResource(
-        //    dynamic_cast<gfx::IBufferResource*>(apiHandle.get()),
-        //    pData);
+        static_cast<gfx::IBufferResource*>(apiHandle.get())->map(nullptr, &pData);
         return pData;
     }
 
     uint64_t Buffer::getGpuAddress() const
     {
         gfx::IBufferResource* bufHandle = static_cast<gfx::IBufferResource*>(mApiHandle.get());
-        assert(bufHandle);
+        FALCOR_ASSERT(bufHandle);
         // slang-gfx backend does not includ the mGpuVaOffset.
         return mGpuVaOffset + bufHandle->getDeviceAddress();
     }
 
     void Buffer::unmap()
     {
-        // Only unmap read buffers, write buffers are persistently mapped
-        // (SlangGFX handles this).
-        // TODO: uncomment once slang-gfx backend implements this function.
-        //gpDevice->getApiHandle()->unMapBufferResource(
-        //    dynamic_cast<gfx::IBufferResource*>(mApiHandle.get()));
+        // Only unmap read buffers, write buffers are persistently mapped.
+        if (mpStagingResource)
+        {
+            static_cast<gfx::IBufferResource*>(mpStagingResource->mApiHandle.get())->unmap(nullptr);
+        }
+        else if (mCpuAccess == CpuAccess::Read)
+        {
+            static_cast<gfx::IBufferResource*>(mApiHandle.get())->unmap(nullptr);
+        }
     }
 
 #if FALCOR_ENABLE_CUDA

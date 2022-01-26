@@ -27,6 +27,7 @@
     <ClCompile Include="Tests\DebugPasses\InvalidPixelDetectionTests.cpp" />
     <ClCompile Include="Tests\Platform\MonitorInfoTests.cpp" />
     <ClCompile Include="Tests\Platform\OSTests.cpp" />
+    <ClCompile Include="Tests\Rendering\Materials\TestBSDFIntegrator.cpp" />
     <ClCompile Include="Tests\Sampling\AliasTableTests.cpp" />
     <ClCompile Include="Tests\Sampling\LowDiscrepancyTests.cpp" />
     <ClCompile Include="Tests\Sampling\PointSetsTests.cpp" />
@@ -39,6 +40,7 @@
     <ClCompile Include="Tests\Slang\Float16Tests.cpp" />
     <ClCompile Include="Tests\Slang\Float64Tests.cpp" />
     <ClCompile Include="Tests\Slang\Int64Tests.cpp" />
+    <ClCompile Include="Tests\Slang\NestedStructs.cpp" />
     <ClCompile Include="Tests\Slang\ShaderModel.cpp" />
     <ClCompile Include="Tests\Slang\SlangInheritance.cpp" />
     <ClCompile Include="Tests\Slang\SlangMutatingTests.cpp" />
@@ -98,6 +100,7 @@
     <ShaderSource Include="Tests\Slang\Float16Tests.cs.slang" />
     <ShaderSource Include="Tests\Slang\Float64Tests.cs.slang" />
     <ShaderSource Include="Tests\Slang\Int64Tests.cs.slang" />
+    <ShaderSource Include="Tests\Slang\NestedStructs.cs.slang" />
     <ShaderSource Include="Tests\Slang\ShaderModel.cs.slang" />
     <ShaderSource Include="Tests\Slang\SlangInheritance.cs.slang" />
     <ShaderSource Include="Tests\Slang\SlangMutatingTests.cs.slang" />

@@ -82,7 +82,7 @@ namespace Falcor
             , mpFence(pFence)
             , mNewObjFunc(newFunc)
         {
-            assert(pFence && newFunc);
+            FALCOR_ASSERT(pFence && newFunc);
             mActiveObject = createObject();
         }
 

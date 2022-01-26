@@ -56,10 +56,8 @@
 #include "Scene/SceneDefines.slangh"
 #include "Utils/Math/MathConstants.slangh"
 
-import Scene.Scene;
 import Scene.Raytracing;
 import Scene.Intersection;
-import Scene.HitInfo;
 import Utils.Math.MathHelpers;
 import Utils.Geometry.GeometryHelpers;
 import Utils.Sampling.SampleGenerator;
@@ -97,7 +95,7 @@ struct ShadowRayData
     bool visible;
 };
 
-/** Payload for scatter ray (80B).
+/** Payload for scatter ray (up to 72B).
 */
 struct ScatterRayData
 {
@@ -106,9 +104,7 @@ struct ScatterRayData
     float3  thp;            ///< Current path throughput. This is updated at each path vertex.
     uint    pathLength;     ///< Path length in number of path segments (0 at origin, 1 at first secondary hit, etc.). Max 2^31.
     float3  origin;         ///< Next path segment origin.
-    uint    _pad0;
     float3  direction;      ///< Next path segment direction.
-    uint    _pad1;
 
     SampleGenerator sg;     ///< Per-ray state for the sample generator (up to 16B).
 
@@ -324,7 +320,7 @@ void handleHit(const HitInfo hit, inout ScatterRayData rayData)
     // Add emitted light.
     if (kUseEmissiveLights && (kComputeDirect || rayData.pathLength > 0))
     {
-        rayData.radiance += rayData.thp * bsdf.getProperties(sd).emissive;
+        rayData.radiance += rayData.thp * bsdf.getProperties(sd).emission;
     }
 
     // Check whether to terminate based on max depth.
@@ -420,7 +416,7 @@ float3 tracePath(const uint2 pixel, const uint2 frameDim)
         if (kComputeDirect)
         {
             // Always output directly emitted light, independent of whether emissive materials are treated as light sources or not.
-            outColor += bsdf.getProperties(sd).emissive;
+            outColor += bsdf.getProperties(sd).emission;
 
             // Add contribution of direct light from analytic lights.
             // Light probe and mesh lights are handled by the scatter ray hit/miss shaders.

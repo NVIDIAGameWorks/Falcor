@@ -169,7 +169,7 @@ namespace Falcor
 
     int Console::inputTextCallback(ImGuiInputTextCallbackData* data)
     {
-        assert(data->UserData != nullptr);
+        FALCOR_ASSERT(data->UserData != nullptr);
         Console& console = *static_cast<Console*>(data->UserData);
 
         if (data->EventFlag == ImGuiInputTextFlags_CallbackCharFilter)

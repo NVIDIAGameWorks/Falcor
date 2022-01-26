@@ -50,7 +50,7 @@ namespace Falcor
         */
         void setMinimumAlignment(int minAlignment)
         {
-            assert(minAlignment == 0 || isPowerOf2(minAlignment));
+            FALCOR_ASSERT(minAlignment == 0 || isPowerOf2(minAlignment));
             mMinAlignment = minAlignment;
         }
 
@@ -61,7 +61,7 @@ namespace Falcor
         */
         void setCacheLineSize(int cacheLineSize)
         {
-            assert(cacheLineSize == 0 || isPowerOf2(cacheLineSize));
+            FALCOR_ASSERT(cacheLineSize == 0 || isPowerOf2(cacheLineSize));
             mCacheLineSize = cacheLineSize;
         }
 
@@ -85,7 +85,7 @@ namespace Falcor
         */
         template <typename T, typename ...Args> T* allocateSized(size_t size, Args&&... args)
         {
-            assert(size >= sizeof(T));
+            FALCOR_ASSERT(size >= sizeof(T));
             computeAndAllocatePadding(size);
             void* ptr = allocInternal(size);
             return new (ptr) T(std::forward<Args>(args)...);
@@ -104,7 +104,7 @@ namespace Falcor
         */
         size_t offsetOf(void* ptr) const
         {
-            assert(ptr >= mBuffer.data() && ptr < mBuffer.data() + mBuffer.size());
+            FALCOR_ASSERT(ptr >= mBuffer.data() && ptr < mBuffer.data() + mBuffer.size());
             return static_cast<uint8_t*>(ptr) - mBuffer.data();
         }
 

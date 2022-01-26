@@ -8,6 +8,7 @@
 - [Scene Creation](./Scene-Creation.md)
 - [Scenes](./Scenes.md)
 - [Scene Formats](./Scene-Formats.md)
+- [Materials](./Materials.md)
 - [Scripting](./Scripting.md)
 - [Render Passes](./Render-Passes.md)
 - [Path Tracer](./Path-Tracer.md)

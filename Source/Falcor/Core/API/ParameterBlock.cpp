@@ -39,13 +39,13 @@ namespace Falcor
 
     ParameterBlock::SharedPtr ParameterBlock::create(const ParameterBlockReflection::SharedConstPtr& pReflection)
     {
-        assert(pReflection);
+        FALCOR_ASSERT(pReflection);
         return SharedPtr(new ParameterBlock(pReflection->getProgramVersion(), pReflection));
     }
 
     ParameterBlock::SharedPtr ParameterBlock::create(const std::shared_ptr<const ProgramVersion>& pProgramVersion, const std::string& typeName)
     {
-        assert(pProgramVersion);
+        FALCOR_ASSERT(pProgramVersion);
         return ParameterBlock::create(pProgramVersion, pProgramVersion->getReflector()->findType(typeName));
     }
 
@@ -74,9 +74,73 @@ namespace Falcor
         return getElementType()->getZeroOffset()[varName];
     }
 
+    void ParameterBlock::createConstantBuffers(const ShaderVar& var)
+    {
+        auto pType = var.getType();
+        if (pType->getResourceRangeCount() == 0) return;
+
+        switch (pType->getKind())
+        {
+        case ReflectionType::Kind::Struct:
+        {
+            auto pStructType = pType->asStructType();
+            uint32_t memberCount = pStructType->getMemberCount();
+            for (uint32_t i = 0; i < memberCount; ++i) createConstantBuffers(var[i]);
+        }
+        break;
+        case ReflectionType::Kind::Resource:
+        {
+            auto pResourceType = pType->asResourceType();
+            switch (pResourceType->getType())
+            {
+            case ReflectionResourceType::Type::ConstantBuffer:
+            {
+                auto pCB = ParameterBlock::create(pResourceType->getParameterBlockReflector());
+                var.setParameterBlock(pCB);
+            }
+            break;
+
+            default:
+                break;
+            }
+        }
+        break;
+
+        default:
+            break;
+        }
+    }
+
     void ParameterBlock::renderUI(Gui::Widgets& widget)
     {
         VariablesBufferUI variablesBufferUI(*this);
         variablesBufferUI.renderUI(widget);
+    }
+
+    void ParameterBlock::prepareResource(
+        CopyContext* pContext,
+        Resource* pResource,
+        bool isUav)
+    {
+        if (!pResource) return;
+
+        // If it's a buffer with a UAV counter, insert a UAV barrier
+        const Buffer* pBuffer = pResource->asBuffer().get();
+        if (isUav && pBuffer && pBuffer->getUAVCounter())
+        {
+            pContext->resourceBarrier(pBuffer->getUAVCounter().get(), Resource::State::UnorderedAccess);
+            pContext->uavBarrier(pBuffer->getUAVCounter().get());
+        }
+
+        bool insertBarrier = true;
+        insertBarrier = (is_set(pResource->getBindFlags(), Resource::BindFlags::AccelerationStructure) == false);
+        if (insertBarrier)
+        {
+            insertBarrier = !pContext->resourceBarrier(pResource, isUav ? Resource::State::UnorderedAccess : Resource::State::ShaderResource);
+        }
+
+        // Insert UAV barrier automatically if the resource is an UAV that is already in UnorderedAccess state.
+        // Otherwise the user would have to insert barriers explicitly between passes accessing UAVs, which is easily forgotten.
+        if (insertBarrier && isUav) pContext->uavBarrier(pResource);
     }
 }

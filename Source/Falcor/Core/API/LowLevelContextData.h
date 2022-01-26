@@ -67,6 +67,10 @@ namespace Falcor
         // Used in DXR
         void setCommandList(CommandListHandle pList) { mpList = pList; }
 #endif
+#ifdef FALCOR_GFX
+        void closeCommandBuffer();
+        void openCommandBuffer();
+#endif
     protected:
         LowLevelContextData(CommandQueueType type, CommandQueueHandle queue);
 

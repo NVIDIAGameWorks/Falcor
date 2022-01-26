@@ -76,9 +76,7 @@ namespace Falcor
 
     GraphicsStateObject::~GraphicsStateObject()
     {
-#ifdef FALCOR_D3D12
         gpDevice->releaseResource(mApiHandle);
-#endif
     }
 
     GraphicsStateObject::GraphicsStateObject(const Desc& desc)

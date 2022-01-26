@@ -152,7 +152,7 @@ void PixelInspectorPass::execute(RenderContext* pRenderContext, const RenderData
     }
 
     // Bind the output buffer.
-    assert(mpPixelDataBuffer);
+    FALCOR_ASSERT(mpPixelDataBuffer);
     mpVars[kOutputChannel] = mpPixelDataBuffer;
 
     // Run the inspector program.
@@ -167,7 +167,7 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
         return;
     }
 
-    assert(mpPixelDataBuffer);
+    FALCOR_ASSERT(mpPixelDataBuffer);
     PixelData pixelData = *reinterpret_cast<const PixelData*>(mpPixelDataBuffer->map(Buffer::MapType::Read));
     mpPixelDataBuffer->unmap();
 
@@ -276,8 +276,8 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
             materialGroup.var("IoR (outside)", pixelData.IoR, 0.f, std::numeric_limits<float>::max(), 0.001f, false, "%.6f");
         });
 
-        displayedData |= displayValues(requiredInputs, { "Emissive" }, [&materialGroup](PixelData& pixelData) {
-            materialGroup.var("Emissive", pixelData.emissive, 0.f, std::numeric_limits<float>::max(), 0.001f, false, "%.6f");
+        displayedData |= displayValues(requiredInputs, { "Emission" }, [&materialGroup](PixelData& pixelData) {
+            materialGroup.var("Emission", pixelData.emission, 0.f, std::numeric_limits<float>::max(), 0.001f, false, "%.6f");
         });
 
         displayedData |= displayValues(requiredInputs, { "Roughness" }, [&materialGroup](PixelData& pixelData) {
@@ -325,7 +325,7 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
                 {
                 case HitType::Triangle: hitType = "Triangle"; break;
                 case HitType::Curve: hitType = "Curve"; break;
-                default: hitType = "Unknown"; assert(false);
+                default: hitType = "Unknown"; FALCOR_ASSERT(false);
                 }
             }
 

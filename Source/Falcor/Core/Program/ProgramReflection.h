@@ -1594,7 +1594,7 @@ namespace Falcor
             type_2_string(Float4x3);
             type_2_string(Float4x4);
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return "";
         }
 #undef type_2_string
@@ -1609,7 +1609,7 @@ namespace Falcor
             access_2_string(Read);
             access_2_string(ReadWrite);
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return "";
         }
 #undef access_2_string
@@ -1625,7 +1625,7 @@ namespace Falcor
             type_2_string(Uint);
             type_2_string(Int);
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return "";
         }
 #undef type_2_string
@@ -1648,7 +1648,7 @@ namespace Falcor
             type_2_string(TextureCubeArray);
             type_2_string(Buffer);
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return "";
         }
 #undef type_2_string
@@ -1666,7 +1666,7 @@ namespace Falcor
             type_2_string(TypedBuffer);
             type_2_string(Sampler);
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return "";
         }
 #undef type_2_string

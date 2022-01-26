@@ -114,10 +114,9 @@ namespace Falcor
     protected:
         Light(const std::string& name, LightType type);
 
-
         static const size_t kDataSize = sizeof(LightData);
 
-        /* UI callbacks for keeping the intensity in-sync */
+        // UI callbacks for keeping the intensity in-sync.
         float3 getColorForUI();
         void setColorFromUI(const float3& uiColor);
         float getIntensityForUI();
@@ -127,10 +126,11 @@ namespace Falcor
         bool mActive = true;
         bool mActiveChanged = false;
 
-        /* These two variables track mData values for consistent UI operation.*/
+        // These two variables track mData values for consistent UI operation.
         float3 mUiLightIntensityColor = float3(0.5f, 0.5f, 0.5f);
         float mUiLightIntensityScale = 1.0f;
-        LightData mData, mPrevData;
+        LightData mData;
+        LightData mPrevData;
         Changes mChanges = Changes::None;
 
         friend class SceneCache;

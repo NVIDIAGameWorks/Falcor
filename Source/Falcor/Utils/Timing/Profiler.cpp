@@ -109,7 +109,7 @@ namespace Falcor
     {
         if (++mTriggered > 1)
         {
-            logWarning("Profiler event '" + mName + "' was triggered while it is already running. Nesting profiler events with the same name is disallowed and you should probably fix that. Ignoring the new call.");
+            logWarning("Profiler event '{}' was triggered while it is already running. Nesting profiler events with the same name is disallowed and you should probably fix that. Ignoring the new call.", mName);
             return;
         }
 
@@ -119,8 +119,8 @@ namespace Falcor
         frameData.cpuStartTime = CpuTimer::getCurrentTimePoint();
 
         // Update GPU time.
-        assert(frameData.pActiveTimer == nullptr);
-        assert(frameData.currentTimer <= frameData.pTimers.size());
+        FALCOR_ASSERT(frameData.pActiveTimer == nullptr);
+        FALCOR_ASSERT(frameData.currentTimer <= frameData.pTimers.size());
         if (frameData.currentTimer == frameData.pTimers.size())
         {
             frameData.pTimers.push_back(GpuTimer::create());
@@ -139,7 +139,7 @@ namespace Falcor
         frameData.cpuTotalTime += (float)CpuTimer::calcDuration(frameData.cpuStartTime, CpuTimer::getCurrentTimePoint());
 
         // Update GPU time.
-        assert(frameData.pActiveTimer != nullptr);
+        FALCOR_ASSERT(frameData.pActiveTimer != nullptr);
         frameData.pActiveTimer->end();
         frameData.pActiveTimer = nullptr;
     }
@@ -248,7 +248,7 @@ namespace Falcor
 
     void Profiler::Capture::finalize()
     {
-        assert(!mFinalized);
+        FALCOR_ASSERT(!mFinalized);
 
         for (auto& lane : mLanes)
         {
@@ -274,7 +274,7 @@ namespace Falcor
             mCurrentEventName = mCurrentEventName + "/" + name;
 
             Event* pEvent = getEvent(mCurrentEventName);
-            assert(pEvent != nullptr);
+            FALCOR_ASSERT(pEvent != nullptr);
             if (!mPaused) pEvent->start(mFrameIndex);
 
             if (std::find(mCurrentFrameEvents.begin(), mCurrentFrameEvents.end(), pEvent) == mCurrentFrameEvents.end())
@@ -298,7 +298,7 @@ namespace Falcor
             if (name.find('/') != std::string::npos) return;
 
             Event* pEvent = getEvent(mCurrentEventName);
-            assert(pEvent != nullptr);
+            FALCOR_ASSERT(pEvent != nullptr);
             if (!mPaused) pEvent->end(mFrameIndex);
 
             mCurrentEventName.erase(mCurrentEventName.find_last_of("/"));

@@ -56,7 +56,7 @@ namespace Falcor
 
         void RenderContextApiData::init()
         {
-            assert(gpDevice);
+            FALCOR_ASSERT(gpDevice);
             auto& blitData = sApiData.blitData;
             if (blitData.pPass == nullptr)
             {
@@ -207,11 +207,11 @@ namespace Falcor
 
         if (featureSupported == false && samplePos.size() > 0)
         {
-            reportError("The FBO specifies programmable sample positions, but the hardware does not support it");
+            throw RuntimeError("The FBO specifies programmable sample positions, but the hardware does not support it");
         }
         else if (gpDevice->isFeatureSupported(Device::SupportedFeatures::ProgrammableSamplePositionsPartialOnly) && samplePos.size() > 1)
         {
-            reportError("The FBO specifies multiple programmable sample positions, but the hardware only supports one");
+            throw RuntimeError("The FBO specifies multiple programmable sample positions, but the hardware only supports one");
         }
 
         if (featureSupported)
@@ -252,7 +252,7 @@ namespace Falcor
         pList->RSSetScissorRects(D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE, (D3D12_RECT*)sc);
     }
 
-    bool RenderContext::applyGraphicsVars(GraphicsVars* pVars, const ProgramKernels* pProgramKernels)
+    void RenderContext::applyGraphicsVars(GraphicsVars* pVars, const ProgramKernels* pProgramKernels)
     {
         bool bindRootSig = (pVars != mpLastBoundGraphicsVars);
         if (pVars->apply(this, bindRootSig, pProgramKernels) == false)
@@ -261,18 +261,16 @@ namespace Falcor
             flush(true);
             if (!pVars->apply(this, bindRootSig, pProgramKernels))
             {
-                reportError("RenderContext::applyGraphicsVars() - applying GraphicsVars failed, most likely because we ran out of descriptors");
-                return false;
+                throw RuntimeError("RenderContext::applyGraphicsVars() - applying GraphicsVars failed, most likely because we ran out of descriptors");
             }
         }
-        return true;
     }
 
-    bool RenderContext::prepareForDraw(GraphicsState* pState, GraphicsVars* pVars)
+    void RenderContext::prepareForDraw(GraphicsState* pState, GraphicsVars* pVars)
     {
-        assert(pState);
+        FALCOR_ASSERT(pState);
         // Vao must be valid so at least primitive topology is known
-        assert(pState->getVao().get());
+        FALCOR_ASSERT(pState->getVao().get());
 
         auto pGSO = pState->getGSO(pVars);
 
@@ -285,9 +283,12 @@ namespace Falcor
                 // from computing the GSO down into `applyGraphicsVars` so that parameters
                 // can be bound using an appropriate layout.
                 //
-                if (applyGraphicsVars(pVars, pGSO->getDesc().getProgramKernels().get()) == false) return false;
+                applyGraphicsVars(pVars, pGSO->getDesc().getProgramKernels().get());
             }
-            else mpLowLevelData->getCommandList()->SetGraphicsRootSignature(D3D12RootSignature::getEmpty()->getApiHandle());
+            else
+            {
+                mpLowLevelData->getCommandList()->SetGraphicsRootSignature(D3D12RootSignature::getEmpty()->getApiHandle());
+            }
             mpLastBoundGraphicsVars = pVars;
         }
 
@@ -309,12 +310,11 @@ namespace Falcor
         pList->OMSetStencilRef(pDsState == nullptr ? 0 : pDsState->getStencilRef());
 
         mCommandsPending = true;
-        return true;
     }
 
     void RenderContext::drawInstanced(GraphicsState* pState, GraphicsVars* pVars, uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertexLocation, uint32_t startInstanceLocation)
     {
-        if (prepareForDraw(pState, pVars) == false) return;
+        prepareForDraw(pState, pVars);
         mpLowLevelData->getCommandList()->DrawInstanced(vertexCount, instanceCount, startVertexLocation, startInstanceLocation);
     }
 
@@ -325,7 +325,7 @@ namespace Falcor
 
     void RenderContext::drawIndexedInstanced(GraphicsState* pState, GraphicsVars* pVars, uint32_t indexCount, uint32_t instanceCount, uint32_t startIndexLocation, int32_t baseVertexLocation, uint32_t startInstanceLocation)
     {
-        if (prepareForDraw(pState, pVars) == false) return;
+        prepareForDraw(pState, pVars);
         mpLowLevelData->getCommandList()->DrawIndexedInstanced(indexCount, instanceCount, startIndexLocation, baseVertexLocation, startInstanceLocation);
     }
 
@@ -343,13 +343,13 @@ namespace Falcor
 
     void RenderContext::drawIndirect(GraphicsState* pState, GraphicsVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset)
     {
-        if (prepareForDraw(pState, pVars) == false) return;
+        prepareForDraw(pState, pVars);
         drawIndirectCommon(this, mpLowLevelData->getCommandList(), sApiData.pDrawCommandSig, maxCommandCount, pArgBuffer, argBufferOffset, pCountBuffer, countBufferOffset);
     }
 
     void RenderContext::drawIndexedIndirect(GraphicsState* pState, GraphicsVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset)
     {
-        if (prepareForDraw(pState, pVars) == false) return;
+        prepareForDraw(pState, pVars);
         drawIndirectCommon(this, mpLowLevelData->getCommandList(), sApiData.pDrawIndexCommandSig, maxCommandCount, pArgBuffer, argBufferOffset, pCountBuffer, countBufferOffset);
     }
 
@@ -437,7 +437,7 @@ namespace Falcor
         D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc = {};
         D3D12AccelerationStructureBuildInputsTranslator translator;
         buildDesc.Inputs = translator.translate(desc.inputs);
-        assert(desc.dest);
+        FALCOR_ASSERT(desc.dest);
         buildDesc.DestAccelerationStructureData = desc.dest->getGpuAddress();
         buildDesc.ScratchAccelerationStructureData = desc.scratchData;
         buildDesc.SourceAccelerationStructureData = desc.source ? desc.source->getGpuAddress() : 0;

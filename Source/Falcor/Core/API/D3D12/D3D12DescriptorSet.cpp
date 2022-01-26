@@ -40,8 +40,8 @@ namespace Falcor
     {
         auto dxType = falcorToDxDescType(type);
         D3D12DescriptorHeap* pHeap = pPool->getApiData()->pHeaps[dxType].get();
-        assert(pHeap);
-        assert(pHeap->getType() == dxType);
+        FALCOR_ASSERT(pHeap);
+        FALCOR_ASSERT(pHeap->getType() == dxType);
         return pHeap;
     }
 
@@ -114,7 +114,7 @@ namespace Falcor
         {
             const auto& range = mLayout.getRange(i);
             mpApiData->rangeBaseOffset[i] = count;
-            assert(d3dType == falcorToDxDescType(range.type)); // We can only allocate from a single heap
+            FALCOR_ASSERT(d3dType == falcorToDxDescType(range.type)); // We can only allocate from a single heap
             count += range.descCount;
         }
 

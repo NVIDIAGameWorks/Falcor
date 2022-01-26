@@ -75,9 +75,9 @@ namespace Falcor
             ~ScopedImport()
             {
                 auto erased = sImportPaths.erase(mPath);
-                assert(erased == 1);
+                FALCOR_ASSERT(erased == 1);
 
-                assert(sImportDirectories.size() > 0);
+                FALCOR_ASSERT(sImportDirectories.size() > 0);
                 sImportDirectories.pop_back();
 
                 // Remove script directory from search path (only if not needed by the outer importer).

@@ -55,7 +55,7 @@ namespace Falcor
         // call on beginning a new frame
         void setCurrentGui(Gui* pGui) { mpGui = pGui; }
 
-        Gui* getCurrentGui() const { assert(mpGui); return mpGui; }
+        Gui* getCurrentGui() const { FALCOR_ASSERT(mpGui); return mpGui; }
 
         void reset() { inited = false; }
 
@@ -166,7 +166,7 @@ namespace Falcor
 
         bool pinIsConnected(uint32_t id, bool isInput)
         {
-            assert(isInput ? id < IMGUINODE_MAX_INPUT_SLOTS : id < IMGUINODE_MAX_OUTPUT_SLOTS);
+            FALCOR_ASSERT(isInput ? id < IMGUINODE_MAX_INPUT_SLOTS : id < IMGUINODE_MAX_OUTPUT_SLOTS);
             return isInput ? mInputPinConnected[id] : mOutputPinConnected[id];
         }
 
@@ -544,7 +544,7 @@ namespace Falcor
     {
         if (dstField[0] == '#')
         {
-            assert(srcField[0] == '#');
+            FALCOR_ASSERT(srcField[0] == '#');
             mpIr->removeEdge(srcPass, dstPass);
         }
         else
@@ -757,7 +757,7 @@ namespace Falcor
             ImGui::TextUnformatted("Persistent");
             break;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
         }
     }
 
@@ -1181,7 +1181,7 @@ namespace Falcor
                         mpNodeGraphEditor->getNodeFromID(inputIDs.second),inputIDs.first ))
                     {
                         auto edgeIt = mInputPinStringToLinkID.find(currentPass.first + "." + currentPinName);
-                        assert(edgeIt != mInputPinStringToLinkID.end());
+                        FALCOR_ASSERT(edgeIt != mInputPinStringToLinkID.end());
                         uint32_t edgeID = edgeIt->second;
 
                         removeEdge(mpNodeGraphEditor->getNodeFromID(connectedNodeUI.mGuiNodeID)->getName(),
@@ -1331,7 +1331,7 @@ namespace Falcor
                 }
 
                 auto pSourceNode = mpRenderGraph->mNodeData.find( mpRenderGraph->mpGraph->getEdge(edgeID)->getSourceNode());
-                assert(pSourceNode != mpRenderGraph->mNodeData.end());
+                FALCOR_ASSERT(pSourceNode != mpRenderGraph->mNodeData.end());
                 addedExecutionInput = currentEdge.dstField.empty();
 
                 std::string dstFieldName = currentEdge.dstField.empty() ? kInPrefix + nameToIndex.first : currentEdge.dstField;
@@ -1376,7 +1376,7 @@ namespace Falcor
                 }
 
                 auto pDestNode = mpRenderGraph->mNodeData.find(mpRenderGraph->mpGraph->getEdge(edgeID)->getDestNode());
-                assert(pDestNode != mpRenderGraph->mNodeData.end());
+                FALCOR_ASSERT(pDestNode != mpRenderGraph->mNodeData.end());
                 addedExecutionOutput = currentEdge.dstField.empty();
 
                 std::string dstFieldName = currentEdge.dstField.empty() ? kInPrefix + pDestNode->second.name : currentEdge.dstField;

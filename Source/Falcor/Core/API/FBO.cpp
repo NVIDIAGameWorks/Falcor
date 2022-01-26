@@ -32,124 +32,52 @@ namespace Falcor
 {
     namespace
     {
-        bool checkAttachmentParams(const Texture* pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize, bool isDepthAttachment)
+        void checkAttachArguments(const Texture* pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize, bool isDepthAttachment)
         {
-#ifndef _DEBUG
-            return true;
-#endif
-            if (pTexture == nullptr)
-            {
-                return true;
-            }
+            if (pTexture == nullptr) return;
 
-            if (mipLevel >= pTexture->getMipCount())
-            {
-                reportError("Error when attaching texture to FBO. Requested mip-level is out-of-bound.");
-                return false;
-            }
+            checkArgument(mipLevel < pTexture->getMipCount(), "'mipLevel' ({}) is out of bounds.", mipLevel);
 
             if (arraySize != Fbo::kAttachEntireMipLevel)
             {
-                if (arraySize == 0)
-                {
-                    reportError("Error when attaching texture to FBO. Requested to attach zero array slices");
-                    return false;
-                }
-
+                checkArgument(arraySize != 0, "'arraySize' must not be zero.");
                 if (pTexture->getType() == Texture::Type::Texture3D)
                 {
-                    if (arraySize + firstArraySlice > pTexture->getDepth())
-                    {
-                        reportError("Error when attaching texture to FBO. Requested depth-index is out-of-bound.");
-                        return false;
-                    }
+                    checkArgument(arraySize + firstArraySlice <= pTexture->getDepth(), "'firstArraySlice' ({}) and 'arraySize' ({}) request depth index that is out of bounds.", firstArraySlice, arraySize);
                 }
                 else
                 {
-                    if (arraySize + firstArraySlice > pTexture->getArraySize())
-                    {
-                        reportError("Error when attaching texture to FBO. Requested array index is out-of-bound.");
-                        return false;
-                    }
+                    checkArgument(arraySize + firstArraySlice <= pTexture->getArraySize(), "'frstArraySlice' ({}) and 'arraySize' ({}) request array index that is out of bounds.", firstArraySlice, arraySize);
                 }
             }
 
             if (isDepthAttachment)
             {
-                if (isDepthStencilFormat(pTexture->getFormat()) == false)
-                {
-                    reportError("Error when attaching texture to FBO. Attaching to depth-stencil target, but resource has color format.");
-                    return false;
-                }
-
-                if ((pTexture->getBindFlags() & Texture::BindFlags::DepthStencil) == Texture::BindFlags::None)
-                {
-                    reportError("Error when attaching texture to FBO. Attaching to depth-stencil target, the texture wasn't create with the DepthStencil bind flag");
-                    return false;
-
-                }
+                checkArgument(isDepthStencilFormat(pTexture->getFormat()), "Depth-stencil texture must have a depth-stencil format.");
+                checkArgument(is_set(pTexture->getBindFlags(), Texture::BindFlags::DepthStencil), "Depth-stencil texture must have the DepthStencil bind flag.");
             }
             else
             {
-                if (isDepthStencilFormat(pTexture->getFormat()))
-                {
-                    reportError("Error when attaching texture to FBO. Attaching to color target, but resource has depth-stencil format.");
-                    return false;
-                }
-
-                if ((pTexture->getBindFlags() & Texture::BindFlags::RenderTarget) == Texture::BindFlags::None)
-                {
-                    reportError("Error when attaching texture to FBO. Attaching to color target, the texture wasn't create with the RenderTarget bind flag");
-                    return false;
-
-                }
+                checkArgument(!isDepthStencilFormat(pTexture->getFormat()), "Color texture must not have a depth-stencil format.");
+                checkArgument(is_set(pTexture->getBindFlags(), Texture::BindFlags::RenderTarget), "Color texture must have the RenderTarget bind flag.");
             }
-
-            return true;
-        }
-
-        bool checkParams(const std::string& Func, uint32_t width, uint32_t height, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount)
-        {
-            std::string msg = "Fbo::" + Func + "() - ";
-            std::string param;
-
-            if (mipLevels == 0)      param = "mipLevels";
-            else if (width == 0)     param = "width";
-            else if (height == 0)    param = "height";
-            else if (arraySize == 0) param = "arraySize";
-            else
-            {
-                if (sampleCount > 1 && mipLevels > 1)
-                {
-                    reportError(msg + "can't create multi-sampled texture with more than one mip-level. sampleCount = " + std::to_string(sampleCount) + ", mipLevels = " + std::to_string(mipLevels) + ".");
-                    return false;
-                }
-                return true;
-            }
-
-            reportError(msg + param + " can't be zero.");
-            return false;
         }
 
         Texture::SharedPtr createTexture2D(uint32_t w, uint32_t h, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize, uint32_t mipLevels, Texture::BindFlags flags)
         {
             if (format == ResourceFormat::Unknown)
             {
-                reportError("Can't create Texture2D with an unknown resource format");
-                return nullptr;
+                throw RuntimeError("Can't create Texture2D with an unknown resource format.");
             }
 
-            Texture::SharedPtr pTex;
             if (sampleCount > 1)
             {
-                pTex = Texture::create2DMS(w, h, format, sampleCount, arraySize, flags);
+                return Texture::create2DMS(w, h, format, sampleCount, arraySize, flags);
             }
             else
             {
-                pTex = Texture::create2D(w, h, format, arraySize, mipLevels, nullptr, flags);
+                return Texture::create2D(w, h, format, arraySize, mipLevels, nullptr, flags);
             }
-
-            return pTex;
         }
 
         Texture::BindFlags getBindFlags(bool isDepth, bool allowUav)
@@ -240,10 +168,7 @@ namespace Falcor
 
     void Fbo::attachDepthStencilTarget(const Texture::SharedPtr& pDepthStencil, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
     {
-        if (checkAttachmentParams(pDepthStencil.get(), mipLevel, firstArraySlice, arraySize, true) == false)
-        {
-            throw RuntimeError("Can't attach depth-stencil texture to FBO. Invalid parameters.");
-        }
+        checkAttachArguments(pDepthStencil.get(), mipLevel, firstArraySlice, arraySize, true);
 
         mpDesc = nullptr;
         mDepthStencil.pTexture = pDepthStencil;
@@ -262,14 +187,8 @@ namespace Falcor
 
     void Fbo::attachColorTarget(const Texture::SharedPtr& pTexture, uint32_t rtIndex, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
     {
-        if (rtIndex >= mColorAttachments.size())
-        {
-            throw ArgumentError("'index' ({}) is out of range. Only {} color targets are available.", rtIndex, mColorAttachments.size());
-        }
-        if (checkAttachmentParams(pTexture.get(), mipLevel, firstArraySlice, arraySize, false) == false)
-        {
-            throw RuntimeError("Can't attach texture to FBO. Invalid parameters.");
-        }
+        checkArgument(rtIndex < mColorAttachments.size(), "'rtIndex' ({}) is out of range. Only {} color targets are available.", rtIndex, mColorAttachments.size());
+        checkAttachArguments(pTexture.get(), mipLevel, firstArraySlice, arraySize, false);
 
         mpDesc = nullptr;
         mColorAttachments[rtIndex].pTexture = pTexture;
@@ -286,7 +205,7 @@ namespace Falcor
         applyColorAttachment(rtIndex);
     }
 
-    bool Fbo::verifyAttachment(const Attachment& attachment) const
+    void Fbo::validateAttachment(const Attachment& attachment) const
     {
         const Texture* pTexture = attachment.pTexture.get();
         if (pTexture)
@@ -308,27 +227,23 @@ namespace Falcor
                 {
                     // We're using target-independent raster (more depth samples than color samples).  This is OK.
                     mTempDesc.setSampleCount(pTexture->getSampleCount());
-                    return true;
                 }
 
                 if (mTempDesc.getSampleCount() != pTexture->getSampleCount())
                 {
-                    reportError("Error when validating FBO. Different sample counts in attachments\n");
-                    return false;
+                    throw RuntimeError("Error when validating FBO. Different sample counts in attachments.");
                 }
 
 
                 if (mIsLayered != (attachment.arraySize > 1))
                 {
-                    reportError("Error when validating FBO. Can't bind both layered and non-layered textures\n");
-                    return false;
+                    throw RuntimeError("Error when validating FBO. Can't bind both layered and non-layered textures.");
                 }
             }
         }
-        return true;
     }
 
-    bool Fbo::calcAndValidateProperties() const
+    void Fbo::calcAndValidateProperties() const
     {
         mWidth = (uint32_t)-1;
         mHeight = (uint32_t)-1;
@@ -336,41 +251,29 @@ namespace Falcor
         mTempDesc.setSampleCount(uint32_t(-1));
         mIsLayered = false;
 
-        // Check color
-        for (const auto& attachment : mColorAttachments)
-        {
-            if (verifyAttachment(attachment) == false)
-            {
-                return false;
-            }
-        }
+        // Validate color attachments.
+        for (const auto& attachment : mColorAttachments) validateAttachment(attachment);
 
-        // Check depth
-        if (verifyAttachment(mDepthStencil) == false) return false;
+        // Validate depth attachment.
+        validateAttachment(mDepthStencil);
 
-        // In case there are sample positions, make sure they are valid
+        // In case there are sample positions, make sure they are valid.
         if (mSamplePositions.size())
         {
             uint32_t expectedCount = mSamplePositionsPixelCount * mTempDesc.getSampleCount();
             if (expectedCount != mSamplePositions.size())
             {
-                reportError("Error when validating FBO. The sample-positions array-size has the wrong size.\n");
-                return false;
+                throw RuntimeError("Error when validating FBO. The sample positions array size has the wrong size.");
             }
         }
 
-        // Insert the attachment into the static array and initialize the address
+        // Insert the attachment into the static array and initialize the address.
         mpDesc = &(*(sDescs.insert(mTempDesc).first));
-
-        return true;
     }
 
     Texture::SharedPtr Fbo::getColorTexture(uint32_t index) const
     {
-        if (index >= mColorAttachments.size())
-        {
-            throw ArgumentError("'index' ({}) is out of range. Only {} color slots are available.", index, mColorAttachments.size());
-        }
+        checkArgument(index < mColorAttachments.size(), "'index' ({}) is out of range. Only {} color slots are available.", index, mColorAttachments.size());
         return mColorAttachments[index].pTexture;
     }
 
@@ -383,10 +286,7 @@ namespace Falcor
     {
         if (mpDesc == nullptr)
         {
-            if (calcAndValidateProperties() == false)
-            {
-                throw RuntimeError("Can't finalize FBO. Invalid frame buffer object.");
-            }
+            calcAndValidateProperties();
             initApiHandle();
         }
     }
@@ -408,10 +308,12 @@ namespace Falcor
     Fbo::SharedPtr Fbo::create2D(uint32_t width, uint32_t height, const Fbo::Desc& fboDesc, uint32_t arraySize, uint32_t mipLevels)
     {
         uint32_t sampleCount = fboDesc.getSampleCount();
-        if (checkParams("Create2D", width, height, arraySize, mipLevels, sampleCount) == false)
-        {
-            throw RuntimeError("Can't create 2D FBO. Invalid parameters.");
-        }
+
+        checkArgument(width > 0, "'width' must not be zero.");
+        checkArgument(height > 0, "'height' must not be zero.");
+        checkArgument(arraySize > 0, "'arraySize' must not be zero.");
+        checkArgument(mipLevels > 0, "'mipLevels' must not be zero.");
+        checkArgument(sampleCount == 1 || mipLevels == 1, "Cannot create multi-sampled texture with more than one mip-level.");
 
         Fbo::SharedPtr pFbo = create();
 
@@ -438,14 +340,11 @@ namespace Falcor
 
     Fbo::SharedPtr Fbo::createCubemap(uint32_t width, uint32_t height, const Desc& fboDesc, uint32_t arraySize, uint32_t mipLevels)
     {
-        if (fboDesc.getSampleCount() > 1)
-        {
-            throw RuntimeError("Can't create cubemap FBO. Multisampled cubemap is not supported.");
-        }
-        if (checkParams("CreateCubemap", width, height, arraySize, mipLevels, 0) == false)
-        {
-            throw RuntimeError("Can't create cubemap FBO. Invalid parameters.");
-        }
+        checkArgument(width > 0, "'width' must not be zero.");
+        checkArgument(height > 0, "'height' must not be zero.");
+        checkArgument(arraySize > 0, "'arraySize' must not be zero.");
+        checkArgument(mipLevels > 0, "'mipLevels' must not be zero.");
+        checkArgument(fboDesc.getSampleCount() == 1, "Cannot create multi-sampled cube map.");
 
         Fbo::SharedPtr pFbo = create();
 

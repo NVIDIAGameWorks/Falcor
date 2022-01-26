@@ -51,5 +51,5 @@ const ChannelList GBuffer::kGBufferChannels =
 GBuffer::GBuffer(const Info& info)
     : GBufferBase(info)
 {
-    assert(kGBufferChannels.size() == 8); // The list of primary GBuffer channels should contain 8 entries, corresponding to the 8 render targets.
+    FALCOR_ASSERT(kGBufferChannels.size() == 8); // The list of primary GBuffer channels should contain 8 entries, corresponding to the 8 render targets.
 }

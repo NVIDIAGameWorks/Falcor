@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Core/Framework.h"
 #include "Vector.h"
 #include "glm/detail/type_half.hpp"
 
@@ -79,8 +80,8 @@ namespace Falcor
         explicit operator float2() const { return float2(float(x), float(y)); }
 
         // Access
-        float16_t& operator[](size_t i) { assert(i < length()); return (&x)[i]; }
-        const float16_t& operator[](size_t i) const { assert(i < length()); return (&x)[i]; }
+        float16_t& operator[](size_t i) { FALCOR_ASSERT(i < length()); return (&x)[i]; }
+        const float16_t& operator[](size_t i) const { FALCOR_ASSERT(i < length()); return (&x)[i]; }
 
         bool operator==(const tfloat16_vec& other) const { return x == other.x && y == other.y; }
         bool operator!=(const tfloat16_vec& other) const { return x != other.x || y != other.y; }
@@ -107,8 +108,8 @@ namespace Falcor
         explicit operator float3() const { return float3(float(x), float(y), float(z)); }
 
         // Access
-        float16_t& operator[](size_t i) { assert(i < length()); return (&x)[i]; }
-        const float16_t& operator[](size_t i) const { assert(i < length()); return (&x)[i]; }
+        float16_t& operator[](size_t i) { FALCOR_ASSERT(i < length()); return (&x)[i]; }
+        const float16_t& operator[](size_t i) const { FALCOR_ASSERT(i < length()); return (&x)[i]; }
 
         bool operator==(const tfloat16_vec& other) const { return x == other.x && y == other.y && z == other.z; }
         bool operator!=(const tfloat16_vec& other) const { return x != other.x || y != other.y || z != other.z; }
@@ -135,8 +136,8 @@ namespace Falcor
         explicit operator float4() const { return float4(float(x), float(y), float(z), float(w)); }
 
         // Access
-        float16_t& operator[](size_t i) { assert(i < length()); return (&x)[i]; }
-        const float16_t& operator[](size_t i) const { assert(i < length()); return (&x)[i]; }
+        float16_t& operator[](size_t i) { FALCOR_ASSERT(i < length()); return (&x)[i]; }
+        const float16_t& operator[](size_t i) const { FALCOR_ASSERT(i < length()); return (&x)[i]; }
 
         bool operator==(const tfloat16_vec& other) const { return x == other.x && y == other.y && z == other.z && w == other.w; }
         bool operator!=(const tfloat16_vec& other) const { return x != other.x || y != other.y || z != other.z || w != other.w; }

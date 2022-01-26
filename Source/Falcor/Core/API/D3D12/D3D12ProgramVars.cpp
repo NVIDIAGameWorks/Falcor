@@ -60,7 +60,7 @@ namespace Falcor
         : ParameterBlock(pReflector->getProgramVersion(), pReflector->getDefaultParameterBlock())
         , mpReflector(pReflector)
     {
-        assert(pReflector);
+        FALCOR_ASSERT(pReflector);
     }
 
     template<bool forGraphics>
@@ -80,7 +80,7 @@ namespace Falcor
     void bindRootDescriptor(CopyContext* pContext, uint32_t rootIndex, const Resource::SharedPtr& pResource, bool isUav)
     {
         auto pBuffer = pResource->asBuffer();
-        assert(!pResource || pBuffer); // If a resource is bound, it must be a buffer
+        FALCOR_ASSERT(!pResource || pBuffer); // If a resource is bound, it must be a buffer
         uint64_t gpuAddress = pBuffer ? pBuffer->getGpuAddress() : 0;
 
         if (forGraphics)
@@ -189,7 +189,7 @@ namespace Falcor
             auto resourceRangeIndex = pParameterBlockReflector->getRootDescriptorRangeIndex(i);
             auto& resourceRange = pParameterBlockReflector->getResourceRange(resourceRangeIndex);
 
-            assert(resourceRange.count == 1); // Root descriptors cannot be arrays
+            FALCOR_ASSERT(resourceRange.count == 1); // Root descriptors cannot be arrays
             auto [pResource, isUav] = pParameterBlock->getRootDescriptor(resourceRangeIndex, 0);
 
             bindRootDescriptor<forGraphics>(pContext, rootDescIndex++, pResource, isUav);
@@ -287,7 +287,7 @@ namespace Falcor
     void ComputeVars::dispatchCompute(ComputeContext* pContext, uint3 const& threadGroupCount)
     {
         auto pProgram = std::dynamic_pointer_cast<ComputeProgram>(getReflection()->getProgramVersion()->getProgram());
-        assert(pProgram);
+        FALCOR_ASSERT(pProgram);
         pProgram->dispatchCompute(pContext, this, threadGroupCount);
     }
 
@@ -299,8 +299,8 @@ namespace Falcor
         // We must create sub-shader-objects for all the entry point
         // groups that are used by the supplied binding table.
         //
-        assert(mpProgramVersion);
-        assert(dynamic_cast<RtProgram*>(mpProgramVersion->getProgram().get()));
+        FALCOR_ASSERT(mpProgramVersion);
+        FALCOR_ASSERT(dynamic_cast<RtProgram*>(mpProgramVersion->getProgram().get()));
         auto pProgram = static_cast<RtProgram*>(mpProgramVersion->getProgram().get());
         auto pReflector = mpProgramVersion->getReflector();
 
@@ -311,7 +311,7 @@ namespace Falcor
         // for one parameter block per entry-point of the given type in the binding table.
         //
         const auto& info = pBindingTable->getRayGen();
-        assert(info.isValid());
+        FALCOR_ASSERT(info.isValid());
         mRayGenVars.resize(1);
         mRayGenVars[0].pVars = EntryPointGroupVars::create(pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
         entryPointGroupIndices.insert(info.groupIndex);
@@ -324,7 +324,7 @@ namespace Falcor
             const auto& info = pBindingTable->getMiss(i);
             if (!info.isValid())
             {
-                logWarning("Raytracing binding table has no shader at miss index " + std::to_string(i) + ". Is that intentional?");
+                logWarning("Raytracing binding table has no shader at miss index {}. Is that intentional?", i);
                 continue;
             }
 
@@ -355,11 +355,11 @@ namespace Falcor
         }
 
         mUniqueEntryPointGroupIndices.assign(entryPointGroupIndices.begin(), entryPointGroupIndices.end());
-        assert(!mUniqueEntryPointGroupIndices.empty());
+        FALCOR_ASSERT(!mUniqueEntryPointGroupIndices.empty());
 
         // Build list of vars for all entry point groups.
         // Note that there may be nullptr entries, as not all hit groups need to be assigned.
-        assert(mRayGenVars.size() == 1);
+        FALCOR_ASSERT(mRayGenVars.size() == 1);
         mpEntryPointGroupVars.push_back(mRayGenVars[0].pVars);
         for (auto entryPointGroupInfo : mMissVars)
             mpEntryPointGroupVars.push_back(entryPointGroupInfo.pVars);
@@ -371,7 +371,7 @@ namespace Falcor
     {
         if (uniqueEntryPointGroupIndex < 0) return nullptr;
         auto pEntryPointGroup = pKernels->getUniqueEntryPointGroup(uniqueEntryPointGroupIndex);
-        assert(dynamic_cast<RtEntryPointGroupKernels*>(pEntryPointGroup.get()));
+        FALCOR_ASSERT(dynamic_cast<RtEntryPointGroupKernels*>(pEntryPointGroup.get()));
         return static_cast<RtEntryPointGroupKernels*>(pEntryPointGroup.get());
     }
 
@@ -429,7 +429,7 @@ namespace Falcor
         {
             // We need to check if anything has changed that would require the shader
             // table to be rebuilt.
-            assert(mRayGenVars.size() == 1);
+            FALCOR_ASSERT(mRayGenVars.size() == 1);
             auto& varsInfo = mRayGenVars[0];
             auto pBlock = varsInfo.pVars.get();
 

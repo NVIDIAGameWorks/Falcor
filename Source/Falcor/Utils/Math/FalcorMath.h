@@ -164,7 +164,7 @@ namespace Falcor
     */
     inline float apertureFNumberToRadius(float fNumber, float focalLength, float sceneUnit)
     {
-        assert(fNumber > 0.0f && focalLength > 0.f && sceneUnit > 0.f);
+        FALCOR_ASSERT(fNumber > 0.0f && focalLength > 0.f && sceneUnit > 0.f);
         float radius = 0.5f * focalLength / fNumber; // in mm
         return radius * 0.001f / sceneUnit;
     }
@@ -176,7 +176,7 @@ namespace Falcor
     */
     inline float apertureRadiusToFNumber(float apertureRadius, float focalLength, float sceneUnit)
     {
-        assert(focalLength > 0.f && sceneUnit > 0.f);
+        FALCOR_ASSERT(focalLength > 0.f && sceneUnit > 0.f);
         float radius = apertureRadius * sceneUnit * 1000.f; // in mm
         return 0.5f * focalLength / radius;
     }

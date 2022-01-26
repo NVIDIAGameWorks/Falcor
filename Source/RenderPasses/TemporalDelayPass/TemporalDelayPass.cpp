@@ -61,7 +61,7 @@ TemporalDelayPass::SharedPtr TemporalDelayPass::create(RenderContext* pRenderCon
     for (const auto& [key, value] : dict)
     {
         if (key == kDelay) pPass->mDelay = value;
-        else logWarning("Unknown field '" + key + "' in a TemporalDelayPass dictionary");
+        else logWarning("Unknown field '{}' in a TemporalDelayPass dictionary.", key);
     }
     return pPass;
 }

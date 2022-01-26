@@ -104,7 +104,7 @@ SVGFPass::SVGFPass(const Dictionary& dict)
         else if (key == kPhiNormal) mPhiNormal = value;
         else if (key == kAlpha) mAlpha = value;
         else if (key == kMomentsAlpha) mMomentsAlpha = value;
-        else logWarning("Unknown field '" + key + "' in SVGFPass dictionary");
+        else logWarning("Unknown field '{}' in SVGFPass dictionary.", key);
     }
 
     mpPackLinearZAndNormal = FullScreenPass::create(kPackLinearZAndNormalShader);
@@ -112,7 +112,7 @@ SVGFPass::SVGFPass(const Dictionary& dict)
     mpAtrous = FullScreenPass::create(kAtrousShader);
     mpFilterMoments = FullScreenPass::create(kFilterMomentShader);
     mpFinalModulate = FullScreenPass::create(kFinalModulateShader);
-    assert(mpPackLinearZAndNormal && mpReprojection && mpAtrous && mpFilterMoments && mpFinalModulate);
+    FALCOR_ASSERT(mpPackLinearZAndNormal && mpReprojection && mpAtrous && mpFilterMoments && mpFinalModulate);
 }
 
 Dictionary SVGFPass::getScriptingDictionary()
@@ -191,7 +191,7 @@ void SVGFPass::execute(RenderContext* pRenderContext, const RenderData& renderDa
 
     Texture::SharedPtr pOutputTexture = renderData[kOutputBufferFilteredImage]->asTexture();
 
-    assert(mpFilteredIlluminationFbo &&
+    FALCOR_ASSERT(mpFilteredIlluminationFbo &&
            mpFilteredIlluminationFbo->getWidth() == pAlbedoTexture->getWidth() &&
            mpFilteredIlluminationFbo->getHeight() == pAlbedoTexture->getHeight());
 

@@ -30,16 +30,53 @@
 
 namespace Falcor
 {
+    struct FboPrivateData
+    {
+        bool mHandleDirty = true;
+    };
+
+    namespace
+    {
+        FboPrivateData* getFboPrivateData(void* privateData)
+        {
+            return static_cast<FboPrivateData*>(privateData);
+        }
+
+        void releaseFboHandleIfEmpty(FboHandle& apiHandle, Fbo::Attachment& depthStencil, std::vector<Fbo::Attachment>& colorAttachments)
+        {
+            if (depthStencil.pTexture)
+            {
+                return;
+            }
+            for (auto& attachment : colorAttachments)
+            {
+                if (attachment.pTexture)
+                {
+                    return;
+                }
+            }
+            apiHandle = nullptr;
+        }
+
+    }
+
     Fbo::Fbo()
     {
+        mpPrivateData = new FboPrivateData();
         mColorAttachments.resize(getMaxColorTargetCount());
     }
 
-    Fbo::~Fbo() = default;
+    Fbo::~Fbo()
+    {
+        delete getFboPrivateData(mpPrivateData);
+    }
 
     const Fbo::ApiHandle& Fbo::getApiHandle() const
     {
-        UNSUPPORTED_IN_GFX("Fbo::getApiHandle()");
+        if (getFboPrivateData(mpPrivateData)->mHandleDirty)
+        {
+            initApiHandle();
+        }
         return mApiHandle;
     }
 
@@ -50,13 +87,57 @@ namespace Falcor
 
     void Fbo::applyColorAttachment(uint32_t rtIndex)
     {
+        getFboPrivateData(mpPrivateData)->mHandleDirty = true;
+        releaseFboHandleIfEmpty(mApiHandle, mDepthStencil, mColorAttachments);
     }
 
     void Fbo::applyDepthAttachment()
     {
+        getFboPrivateData(mpPrivateData)->mHandleDirty = true;
+        releaseFboHandleIfEmpty(mApiHandle, mDepthStencil, mColorAttachments);
     }
 
-    void Fbo::initApiHandle() const {}
+    void Fbo::initApiHandle() const
+    {
+        getFboPrivateData(mpPrivateData)->mHandleDirty = false;
+
+        gfx::IFramebufferLayout::Desc layoutDesc = {};
+        std::vector<gfx::IFramebufferLayout::AttachmentLayout> attachmentLayouts;
+        gfx::IFramebufferLayout::AttachmentLayout depthAttachmentLayout = {};
+        gfx::IFramebuffer::Desc desc = {};
+        if (mDepthStencil.pTexture)
+        {
+            auto texture = static_cast<gfx::ITextureResource*>(mDepthStencil.pTexture->getApiHandle().get());
+            depthAttachmentLayout.format = texture->getDesc()->format;
+            depthAttachmentLayout.sampleCount = texture->getDesc()->sampleDesc.numSamples;
+            layoutDesc.depthStencil = &depthAttachmentLayout;
+        }
+        desc.depthStencilView = getDepthStencilView()->getApiHandle();
+        desc.renderTargetCount = 0;
+        std::vector<gfx::IResourceView*> renderTargetViews;
+        for (uint32_t i = 0; i < static_cast<uint32_t>(mColorAttachments.size()); i++)
+        {
+            if (mColorAttachments[i].pTexture)
+            {
+                gfx::IFramebufferLayout::AttachmentLayout renderAttachmentLayout = {};
+                auto texture = static_cast<gfx::ITextureResource*>(mColorAttachments[i].pTexture->getApiHandle().get());
+                renderAttachmentLayout.format = texture->getDesc()->format;
+                renderAttachmentLayout.sampleCount = texture->getDesc()->sampleDesc.numSamples;
+                attachmentLayouts.push_back(renderAttachmentLayout);
+                renderTargetViews.push_back(getRenderTargetView(i)->getApiHandle());
+                desc.renderTargetCount = i + 1;
+            }
+        }
+        desc.renderTargetViews = renderTargetViews.data();
+        layoutDesc.renderTargetCount = desc.renderTargetCount;
+        layoutDesc.renderTargets = attachmentLayouts.data();
+
+        Slang::ComPtr<gfx::IFramebufferLayout> fboLayout;
+        FALCOR_ASSERT(SLANG_SUCCEEDED(gpDevice->getApiHandle()->createFramebufferLayout(layoutDesc, fboLayout.writeRef())));
+
+        desc.layout = fboLayout.get();
+        FALCOR_ASSERT(SLANG_SUCCEEDED(gpDevice->getApiHandle()->createFramebuffer(desc, mApiHandle.writeRef())));
+    }
 
     RenderTargetView::SharedPtr Fbo::getRenderTargetView(uint32_t rtIndex) const
     {

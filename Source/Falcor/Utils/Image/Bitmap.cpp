@@ -96,7 +96,7 @@ namespace Falcor
     */
     static std::vector<float> convertToRGBA32Float(ResourceFormat format, uint32_t width, uint32_t height, const void* pData)
     {
-        assert(isConvertibleToRGBA32Float(format));
+        FALCOR_ASSERT(isConvertibleToRGBA32Float(format));
 
         FormatType type = getFormatType(format);
         uint32_t channelCount = getFormatChannelCount(format);
@@ -126,7 +126,7 @@ namespace Falcor
         }
         else
         {
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
         }
 
         // Default alpha channel to 1.
@@ -185,7 +185,7 @@ namespace Falcor
         std::string fullpath;
         if (findFileInDataDirectories(filename, fullpath) == false)
         {
-            logWarning("Error when loading image file. Can't find image file '" + filename + "'");
+            logWarning("Error when loading image file. Can't find image file '{}'.", filename);
             return nullptr;
         }
 
@@ -311,7 +311,7 @@ namespace Falcor
         if (isCompressedFormat(format))
         {
             uint32_t blockSizeY = getFormatHeightCompressionRatio(format);
-            assert(height % blockSizeY == 0); // Should divide evenly
+            FALCOR_ASSERT(height % blockSizeY == 0); // Should divide evenly
             mSize = mRowPitch * (height / blockSizeY);
         }
         else
@@ -345,7 +345,7 @@ namespace Falcor
         case Bitmap::FileFormat::ExrFile:
             return FIF_EXR;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
         }
         return FIF_PNG;
     }
@@ -361,7 +361,7 @@ namespace Falcor
         case 16:
             return FIT_RGBAF;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
         }
         return FIT_BITMAP;
     }
@@ -538,7 +538,7 @@ namespace Falcor
                 }
                 else
                 {
-                    assert(exportAlpha == false);
+                    FALCOR_ASSERT(exportAlpha == false);
                     for (unsigned x = 0; x < width; x++)
                     {
                         dstBits[x*3 + 0] = (((float*)head)[x*4 + 0]);
@@ -618,12 +618,12 @@ namespace Falcor
                 break;
 
             default:
-                should_not_get_here();
+                FALCOR_UNREACHABLE();
             }
 
             if (warnings.empty() == false)
             {
-                logWarning("Bitmap::saveImage: " + joinStrings(warnings, " "));
+                logWarning("Bitmap::saveImage: {}", joinStrings(warnings, " "));
             }
         }
 

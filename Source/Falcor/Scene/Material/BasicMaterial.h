@@ -102,7 +102,7 @@ namespace Falcor
 
         /** Get the material data blob for uploading to the GPU.
         */
-        virtual MaterialDataBlob getDataBlob() const override;
+        virtual MaterialDataBlob getDataBlob() const override { return prepareDataBlob(mData); }
 
 
         // Additional member functions for BasicMaterial
@@ -293,7 +293,7 @@ namespace Falcor
             tostr(SpecGloss);
 #undef tostr
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return "";
         }
     }

@@ -67,7 +67,7 @@ void BlitPass::parseDictionary(const Dictionary& dict)
     for (const auto& [key, value] : dict)
     {
         if (key == kFilter) setFilter(value);
-        else logWarning("Unknown field '" + key + "' in a BlitPass dictionary");
+        else logWarning("Unknown field '{}' in a BlitPass dictionary.", key);
     }
 }
 

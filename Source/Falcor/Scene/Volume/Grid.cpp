@@ -76,7 +76,7 @@ namespace Falcor
         std::string fullpath;
         if (!findFileInDataDirectories(filename, fullpath))
         {
-            logWarning("Error when loading grid. Can't find grid file '" + filename + "'");
+            logWarning("Error when loading grid. Can't find grid file '{}'.", filename);
             return nullptr;
         }
 
@@ -91,7 +91,7 @@ namespace Falcor
         }
         else
         {
-            logWarning("Error when loading grid. Unsupported grid file '" + filename + "'");
+            logWarning("Error when loading grid. Unsupported grid file '{}'.", filename);
             return nullptr;
         }
     }
@@ -212,7 +212,7 @@ namespace Falcor
     {
         if (!nanovdb::io::hasGrid(path, gridname))
         {
-            logWarning("Error when loading grid. Can't find grid '" + gridname + "' in '" + path + "'");
+            logWarning("Error when loading grid. Can't find grid '{}' in '{}'.", gridname, path);
             return nullptr;
         }
 
@@ -226,13 +226,13 @@ namespace Falcor
         auto floatGrid = handle.grid<float>();
         if (!floatGrid || floatGrid->gridType() != nanovdb::GridType::Float)
         {
-            logWarning("Error when loading grid. Grid '" + gridname + "' in '" + path + "' is not of type float");
+            logWarning("Error when loading grid. Grid '{}' in '{}' is not of type float.", gridname, path);
             return nullptr;
         }
 
         if (floatGrid->isEmpty())
         {
-            logWarning("Grid '" + gridname + "' in '" + path + "' is empty");
+            logWarning("Grid '{}' in '{}' is empty.", gridname, path);
             return nullptr;
         }
 
@@ -260,19 +260,19 @@ namespace Falcor
 
         if (!baseGrid)
         {
-            logWarning("Error when loading grid. Can't find grid '" + gridname + "' in '" + path + "'");
+            logWarning("Error when loading grid. Can't find grid '{}' in '{}'.", gridname, path);
             return nullptr;
         }
 
         if (!baseGrid->isType<openvdb::FloatGrid>())
         {
-            logWarning("Error when loading grid. Grid '" + gridname + "' in '" + path + "' is not of type float");
+            logWarning("Error when loading grid. Grid '{}' in '{}' is not of type float.", gridname, path);
             return nullptr;
         }
 
         if (baseGrid->empty())
         {
-            logWarning("Grid '" + gridname + "' in '" + path + "' is empty");
+            logWarning("Grid '{}' in '{}' is empty.", gridname, path);
             return nullptr;
         }
 

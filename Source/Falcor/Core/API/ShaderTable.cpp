@@ -44,7 +44,7 @@ namespace Falcor
     uint8_t* ShaderTable::getRecordPtr(SubTableType type, uint32_t index)
     {
         auto info = getSubTableInfo(type);
-        assert(index < info.recordCount);
+        FALCOR_ASSERT(index < info.recordCount);
         return mData.data() + info.offset + index * info.recordSize;
     }
 
@@ -52,7 +52,7 @@ namespace Falcor
     {
         if (index < 0) return nullptr;
         auto pEntryPointGroup = pKernels->getUniqueEntryPointGroup(index);
-        assert(dynamic_cast<RtEntryPointGroupKernels*>(pEntryPointGroup.get()));
+        FALCOR_ASSERT(dynamic_cast<RtEntryPointGroupKernels*>(pEntryPointGroup.get()));
         return static_cast<RtEntryPointGroupKernels*>(pEntryPointGroup.get());
     }
 
@@ -95,7 +95,7 @@ namespace Falcor
                 break;
 
             default:
-                should_not_get_here();
+                FALCOR_UNREACHABLE();
                 break;
             }
 

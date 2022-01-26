@@ -106,7 +106,7 @@ namespace Falcor
         /** Create a new device.
             \param[in] pWindow a previously-created window object
             \param[in] desc Device configuration descriptor.
-            \return nullptr if the function failed, otherwise a new device object
+            \return A pointer to a new device object, or throws an exception if creation failed.
         */
         static SharedPtr create(Window::SharedPtr& pWindow, const Desc& desc);
 
@@ -182,6 +182,9 @@ namespace Falcor
         DeviceApiData* getApiData() const { return mpApiData; }
         const GpuMemoryHeap::SharedPtr& getUploadHeap() const { return mpUploadHeap; }
         void releaseResource(ApiObjectHandle pResource);
+#ifdef FALCOR_GFX
+        void releaseResource(ISlangUnknown* pResource) { releaseResource(ApiObjectHandle(pResource)); }
+#endif
         double getGpuTimestampFrequency() const { return mGpuTimestampFrequency; } // ms/tick
 
         /** Check if features are supported by the device
@@ -199,6 +202,10 @@ namespace Falcor
         /** Return the current index of the back buffer being rendered to.
         */
         uint32_t getCurrentBackBufferIndex() const { return mCurrentBackBufferIndex; }
+
+#ifdef FALCOR_GFX
+        gfx::ITransientResourceHeap* getCurrentTransientResourceHeap();
+#endif
 
     private:
         struct ResourceRelease

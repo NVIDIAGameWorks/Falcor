@@ -53,7 +53,7 @@ namespace Falcor
         case D3D12DescriptorPool::Type::Sampler:
             return D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return D3D12_DESCRIPTOR_HEAP_TYPE(-1);
         }
     }
@@ -65,7 +65,7 @@ namespace Falcor
 
     const D3D12DescriptorPool::ApiHandle& D3D12DescriptorPool::getApiHandle(uint32_t heapIndex) const
     {
-        assert(heapIndex < arraysize(mpApiData->pHeaps));
+        FALCOR_ASSERT(heapIndex < arraysize(mpApiData->pHeaps));
         return mpApiData->pHeaps[heapIndex]->getApiHandle();
     }
 

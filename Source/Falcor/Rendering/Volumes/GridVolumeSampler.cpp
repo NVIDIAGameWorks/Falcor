@@ -61,7 +61,7 @@ namespace Falcor
 
     void GridVolumeSampler::setShaderData(const ShaderVar& var) const
     {
-        assert(var.isValid());
+        FALCOR_ASSERT(var.isValid());
     }
 
     bool GridVolumeSampler::renderUI(Gui::Widgets& widget)
@@ -97,7 +97,7 @@ namespace Falcor
         : mpScene(pScene)
         , mOptions(options)
     {
-        assert(pScene);
+        FALCOR_ASSERT(pScene);
     }
 
     FALCOR_SCRIPT_BINDING(GridVolumeSampler)

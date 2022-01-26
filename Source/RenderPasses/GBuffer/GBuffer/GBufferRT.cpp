@@ -58,17 +58,17 @@ namespace
     const std::string kVBufferName = "vbuffer";
     const ChannelList kGBufferExtraChannels =
     {
-        { kVBufferName,     "gVBuffer",             "Visibility buffer",                        true /* optional */, ResourceFormat::Unknown /* set at runtime */ },
-        { "depth",          "gDepth",               "Depth buffer (NDC)",                       true /* optional */, ResourceFormat::R32Float    },
-        { "linearZ",        "gLinearZ",             "Linear Z and slope",                       true /* optional */, ResourceFormat::RG32Float   },
-        { "mvecW",          "gMotionVectorW",       "Motion vector in world space",             true /* optional */, ResourceFormat::RGBA16Float },
-        { "normWRoughness", "gNormalWRoughness",    "Normal in world space and roughness",      true /* optional */, ResourceFormat::RGBA8Unorm  },
-        { "diffuseOpacity", "gDiffOpacity",         "Diffuse reflection albedo and opacity",    true /* optional */, ResourceFormat::RGBA32Float },
-        { "specRough",      "gSpecRough",           "Specular reflectance and roughness",       true /* optional */, ResourceFormat::RGBA32Float },
-        { "emissive",       "gEmissive",            "Emissive color",                           true /* optional */, ResourceFormat::RGBA32Float },
-        { "viewW",          "gViewW",               "View direction in world space",            true /* optional */, ResourceFormat::RGBA32Float }, // TODO: Switch to packed 2x16-bit snorm format.
-        { "time",           "gTime",                "Per-pixel execution time",                 true /* optional */, ResourceFormat::R32Uint     },
-        { "disocclusion",   "gDisocclusion",        "Disocclusion mask",                        true /* optional */, ResourceFormat::R32Float    },
+        { kVBufferName,                 "gVBuffer",                     "Visibility buffer",                                    true /* optional */, ResourceFormat::Unknown /* set at runtime */ },
+        { "depth",                      "gDepth",                       "Depth buffer (NDC)",                                   true /* optional */, ResourceFormat::R32Float     },
+        { "linearZ",                    "gLinearZ",                     "Linear Z and slope",                                   true /* optional */, ResourceFormat::RG32Float    },
+        { "mvecW",                      "gMotionVectorW",               "Motion vector in world space",                         true /* optional */, ResourceFormat::RGBA16Float  },
+        { "normWRoughnessMaterialID",   "gNormalWRoughnessMaterialID",  "Normal in world space, roughness, and material ID",    true /* optional */, ResourceFormat::RGB10A2Unorm },
+        { "diffuseOpacity",             "gDiffOpacity",                 "Diffuse reflection albedo and opacity",                true /* optional */, ResourceFormat::RGBA32Float  },
+        { "specRough",                  "gSpecRough",                   "Specular reflectance and roughness",                   true /* optional */, ResourceFormat::RGBA32Float  },
+        { "emissive",                   "gEmissive",                    "Emissive color",                                       true /* optional */, ResourceFormat::RGBA32Float  },
+        { "viewW",                      "gViewW",                       "View direction in world space",                        true /* optional */, ResourceFormat::RGBA32Float  }, // TODO: Switch to packed 2x16-bit snorm format.
+        { "time",                       "gTime",                        "Per-pixel execution time",                             true /* optional */, ResourceFormat::R32Uint      },
+        { "disocclusion",               "gDisocclusion",                "Disocclusion mask",                                    true /* optional */, ResourceFormat::R32Float     },
     };
 };
 
@@ -109,7 +109,7 @@ void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
         logWarning("GBufferRT::execute() - Render pass has no connected outputs. Is this intended?");
         return;
     }
-    assert(pOutput);
+    FALCOR_ASSERT(pOutput);
     updateFrameDim(uint2(pOutput->getWidth(), pOutput->getHeight()));
 
     // If there is no scene, clear the output and return.

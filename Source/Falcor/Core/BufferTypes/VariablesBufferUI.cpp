@@ -132,7 +132,7 @@ namespace Falcor
         case ReflectionBasicType::Type::Unknown:
             break;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             break;
         }
 #undef to_gui_widget_bvec

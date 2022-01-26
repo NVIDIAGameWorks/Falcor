@@ -49,7 +49,7 @@ namespace Falcor
         virtual uint32_t getMaxPrimitiveIDBits() const override;
         virtual Type getType() const { return Type::SparseVoxelSet; }
 
-        virtual bool createResources(RenderContext* pRenderContext, bool deleteScratchData = true) override;
+        virtual void createResources(RenderContext* pRenderContext, bool deleteScratchData = true) override;
 
         virtual const Buffer::SharedPtr& getAABBBuffer() const override { return mpVoxelAABBBuffer; }
         virtual uint32_t getAABBCount() const override { return mVoxelCount; }
@@ -57,7 +57,7 @@ namespace Falcor
         virtual void setShaderData(const ShaderVar& var) const override;
 
     protected:
-        virtual bool setValuesInternal(const std::vector<float>& cornerValues) override;
+        virtual void setValuesInternal(const std::vector<float>& cornerValues) override;
 
     private:
         SDFSVS() = default;

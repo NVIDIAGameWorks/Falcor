@@ -46,6 +46,11 @@ namespace Falcor
 
     uint64_t RtAccelerationStructurePostBuildInfoPool::getElement(CopyContext* pContext, uint32_t index)
     {
+        if (mNeedFlush)
+        {
+            pContext->flush(true);
+            mNeedFlush = false;
+        }
         uint64_t result = 0;
         gfx_call(mpGFXQueryPool->getResult(index, 1, &result));
         return result;
@@ -53,5 +58,7 @@ namespace Falcor
 
     void RtAccelerationStructurePostBuildInfoPool::reset(CopyContext* pContext)
     {
+        gfx_call(mpGFXQueryPool->reset());
+        mNeedFlush = true;
     }
 }

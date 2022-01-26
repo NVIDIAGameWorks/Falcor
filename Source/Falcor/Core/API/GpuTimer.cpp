@@ -43,7 +43,7 @@ namespace Falcor
 
     GpuTimer::GpuTimer()
     {
-        assert(gpDevice);
+        FALCOR_ASSERT(gpDevice);
 #ifdef FALCOR_D3D12
         mpResolveBuffer = Buffer::create(sizeof(uint64_t) * 2, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
 #endif
@@ -54,14 +54,14 @@ namespace Falcor
             spHeap = gpDevice->createQueryHeap(QueryHeap::Type::Timestamp, 16 * 1024);
         }
         auto pHeap = spHeap.lock();
-        assert(pHeap);
+        FALCOR_ASSERT(pHeap);
         mStart = pHeap->allocate();
         mEnd = pHeap->allocate();
         if (mStart == QueryHeap::kInvalidIndex || mEnd == QueryHeap::kInvalidIndex)
         {
             throw RuntimeError("Can't create GPU timer, no available timestamp queries.");
         }
-        assert(mEnd == (mStart + 1));
+        FALCOR_ASSERT(mEnd == (mStart + 1));
         mpLowLevelData = gpDevice->getRenderContext()->getLowLevelData();
     }
 
@@ -120,7 +120,7 @@ namespace Falcor
             mElapsedTime = range * gpDevice->getGpuTimestampFrequency();
             mStatus = Status::Idle;
         }
-        assert(mStatus == Status::Idle);
+        FALCOR_ASSERT(mStatus == Status::Idle);
         return mElapsedTime;
     }
 

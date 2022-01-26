@@ -33,14 +33,11 @@
 namespace Falcor
 {
 #if FALCOR_ENABLE_NVAPI
-    bool getNvApiComputePsoDesc(const ComputeStateObject::Desc& desc, std::vector<NvApiPsoExDesc>& nvApiPsoExDescs)
+    void getNvApiComputePsoDesc(const ComputeStateObject::Desc& desc, std::vector<NvApiPsoExDesc>& nvApiPsoExDescs)
     {
-        auto ret = NvAPI_Initialize();
-
-        if (ret != NVAPI_OK)
+        if (NvAPI_Initialize() != NVAPI_OK)
         {
-            reportError("Failed to initialize NVAPI");
-            return false;
+            throw RuntimeError("Failed to initialize NVAPI.");
         }
 
         if (auto optRegisterIndex = findNvApiShaderRegister(desc.getProgramKernels()))
@@ -49,12 +46,11 @@ namespace Falcor
             nvApiPsoExDescs.push_back(NvApiPsoExDesc());
             createNvApiUavSlotExDesc(nvApiPsoExDescs.back(), registerIndex);
         }
-        return true;
     }
 
     ComputeStateObject::ApiHandle getNvApiComputePsoHandle(const std::vector<NvApiPsoExDesc>& nvDescVec, const D3D12_COMPUTE_PIPELINE_STATE_DESC& desc)
     {
-        assert(nvDescVec.size() <= 1);
+        FALCOR_ASSERT(nvDescVec.size() <= 1);
         const NVAPI_D3D12_PSO_EXTENSION_DESC* ppPSOExtensionsDesc[1] = {};
 
         for (uint32_t ex = 0; ex < nvDescVec.size(); ex++)
@@ -62,7 +58,7 @@ namespace Falcor
             switch (nvDescVec[ex].psoExtension)
             {
             case NV_PSO_SET_SHADER_EXTNENSION_SLOT_AND_SPACE:   ppPSOExtensionsDesc[ex] = &nvDescVec[ex].mExtSlotDesc; break;
-            default: should_not_get_here();
+            default: FALCOR_UNREACHABLE();
             }
         }
         ComputeStateObject::ApiHandle apiHandle;
@@ -70,8 +66,7 @@ namespace Falcor
 
         if (ret != NVAPI_OK || apiHandle == nullptr)
         {
-            reportError("Failed to create a compute pipeline state object with NVAPI extensions");
-            return nullptr;
+            throw RuntimeError("Failed to create a compute pipeline state object with NVAPI extensions.");
         }
 
         return apiHandle;
@@ -83,16 +78,16 @@ namespace Falcor
     }
 
 #else
-    bool getNvApiComputePsoDesc(const ComputeStateObject::Desc& desc, std::vector<NvApiPsoExDesc>& nvApiPsoExDescs) { should_not_get_here(); return false; }
-    ComputeStateObject::ApiHandle getNvApiComputePsoHandle(const std::vector<NvApiPsoExDesc>& psoDesc, const D3D12_COMPUTE_PIPELINE_STATE_DESC& desc) { should_not_get_here(); return nullptr; }
+    void getNvApiComputePsoDesc(const ComputeStateObject::Desc& desc, std::vector<NvApiPsoExDesc>& nvApiPsoExDescs) { FALCOR_UNREACHABLE(); }
+    ComputeStateObject::ApiHandle getNvApiComputePsoHandle(const std::vector<NvApiPsoExDesc>& psoDesc, const D3D12_COMPUTE_PIPELINE_STATE_DESC& desc) { FALCOR_UNREACHABLE(); return nullptr; }
     bool getIsNvApiComputePsoRequired(const ComputeStateObject::Desc& desc) { return false; }
 #endif
 
     void ComputeStateObject::apiInit()
     {
-        assert(mDesc.mpProgram);
+        FALCOR_ASSERT(mDesc.mpProgram);
         auto pComputeShader = mDesc.mpProgram->getShader(ShaderType::Compute);
-        if (pComputeShader == nullptr) RuntimeError("Can't create compute state object without a compute shader");
+        if (pComputeShader == nullptr) throw RuntimeError("Can't create compute state object without a compute shader");
 
         D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {};
         desc.CS = pComputeShader->getApiHandle();
@@ -108,11 +103,8 @@ namespace Falcor
         if (getIsNvApiComputePsoRequired(mDesc))
         {
             std::vector<NvApiPsoExDesc> nvApiDesc;
-            bool ret = getNvApiComputePsoDesc(mDesc, nvApiDesc);
-            if (!ret) RuntimeError("Failed to create compute PSO desc with NVAPI extensions");
-
+            getNvApiComputePsoDesc(mDesc, nvApiDesc);
             mApiHandle = getNvApiComputePsoHandle(nvApiDesc, desc);
-            if (mApiHandle == nullptr) RuntimeError("Failed to create compute PSO with NVAPI extensions");
         }
         else
         {

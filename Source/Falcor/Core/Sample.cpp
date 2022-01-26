@@ -193,7 +193,7 @@ namespace Falcor
             s.startScripting();
             s.runInternal(config, argc, argv);
         }
-        catch (const std::exception & e)
+        catch (const std::exception& e)
         {
             reportError("Caught exception:\n\n" + std::string(e.what()) + "\n\nEnable breaking on exceptions in the debugger to get a full stack trace.");
         }
@@ -205,8 +205,6 @@ namespace Falcor
         Sample s(pRenderer);
         try
         {
-            auto err = [filename](std::string_view msg) {reportError("Error in Sample::Run(). '" + filename + "' " + msg); };
-
             s.startScripting(); // We have to do that before running the script
             std::string fullpath;
             SampleConfig c;
@@ -216,21 +214,27 @@ namespace Falcor
                 Scripting::Context ctx;
                 Scripting::runScriptFromFile(fullpath, ctx);
                 auto configs = ctx.getObjects<SampleConfig>();
-                if (configs.empty()) err("doesn't contain any SampleConfig objects");
+                if (configs.empty())
+                {
+                    logWarning("Configuration '{}' does not contain any SampleConfig objects. Using default configuration.", filename);
+                }
                 else
                 {
-                    if (configs.size() > 1) err("contains multiple SampleConfig objects. Using the first one");
+                    if (configs.size() > 1)
+                    {
+                        logWarning("Configuration '{}' does contain multiple SampleConfig objects. Using first the first one.", filename);
+                    }
                     c = configs[0];
                 }
             }
             else
             {
-                err("doesn't exist. Using default configuration");
+                logWarning("Configuration '{}' does not exist. Using default configuration.", filename);
             }
 
             s.runInternal(c, argc, argv);
         }
-        catch (const std::exception & e)
+        catch (const std::exception& e)
         {
             reportError("Caught exception:\n\n" + std::string(e.what()) + "\n\nEnable breaking on exceptions in the debugger to get a full stack trace.");
         }
@@ -255,11 +259,6 @@ namespace Falcor
 
         // Create the window
         mpWindow = Window::create(config.windowDesc, this);
-        if (mpWindow == nullptr)
-        {
-            reportError("Failed to create device and window");
-            return;
-        }
 
         // Show the progress bar (unless window is minimized)
         ProgressBar::SharedPtr pBar;
@@ -268,11 +267,6 @@ namespace Falcor
         // Create device
         Device::Desc d = config.deviceDesc;
         gpDevice = Device::create(mpWindow, config.deviceDesc);
-        if (gpDevice == nullptr)
-        {
-            reportError("Failed to create device");
-            return;
-        }
 
         // Set global shader defines
         Program::DefineList globalDefines = {{ "FALCOR_ENABLE_NVAPI", FALCOR_ENABLE_NVAPI ? "1" : "0" }};
@@ -510,20 +504,11 @@ namespace Falcor
         std::string filename = explicitFilename != "" ? explicitFilename : getExecutableName();
         std::string outputDirectory = explicitOutputDirectory != "" ? explicitOutputDirectory : getExecutableDirectory();
 
-        std::string pngFile;
-        if (findAvailableFilename(filename, outputDirectory, "png", pngFile))
-        {
-            Texture::SharedPtr pTexture;
-            pTexture = gpDevice->getSwapChainFbo()->getColorTexture(0);
-            pTexture->captureToFile(0, 0, pngFile);
-        }
-        else
-        {
-            reportError("Could not find available filename when capturing screen");
-            return "";
-        }
-
-         return pngFile;
+        std::string pngFile = findAvailableFilename(filename, outputDirectory, "png");
+        Texture::SharedPtr pTexture;
+        pTexture = gpDevice->getSwapChainFbo()->getColorTexture(0);
+        pTexture->captureToFile(0, 0, pngFile);
+        return pngFile;
     }
 
     void Sample::initUI()
@@ -571,7 +556,7 @@ namespace Falcor
         mVideoCapture.pVideoCapture = VideoEncoder::create(desc);
         if (!mVideoCapture.pVideoCapture) return false;
 
-        assert(mVideoCapture.pVideoCapture);
+        FALCOR_ASSERT(mVideoCapture.pVideoCapture);
         mVideoCapture.pFrame.resize(desc.width*desc.height * 4);
         mVideoCapture.fixedTimeDelta = 1 / (double)desc.fps;
 

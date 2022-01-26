@@ -56,7 +56,7 @@ namespace Falcor
     void ImageProcessing::copyColorChannel(RenderContext* pRenderContext, const ShaderResourceView::SharedPtr& pSrc, const UnorderedAccessView::SharedPtr& pDst, const TextureChannelFlags srcMask)
     {
         // Validate arguments.
-        assert(pSrc && pDst);
+        FALCOR_ASSERT(pSrc && pDst);
         if (pSrc->getResource()->getType() != Resource::Type::Texture2D) throw RuntimeError("Source resource type must be Texture2D");
         if (pDst->getResource()->getType() != Resource::Type::Texture2D) throw RuntimeError("Source resource type must be Texture2D");
 

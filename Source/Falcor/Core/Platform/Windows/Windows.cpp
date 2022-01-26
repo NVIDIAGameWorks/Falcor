@@ -71,7 +71,7 @@ namespace Falcor
         case MsgBoxType::RetryCancel: buttons = { buttonRetry, buttonCancel }; break;
         case MsgBoxType::AbortRetryIgnore: buttons = { buttonAbort, buttonRetry, buttonIgnore }; break;
         case MsgBoxType::YesNo: buttons = { buttonYes, buttonNo }; break;
-        default: should_not_get_here();
+        default: FALCOR_UNREACHABLE();
         }
 
         return (MsgBoxButton)msgBox(msg, buttons, icon);
@@ -79,7 +79,7 @@ namespace Falcor
 
     uint32_t msgBox(const std::string& msg, std::vector<MsgBoxCustomButton> buttons, MsgBoxIcon icon, uint32_t defaultButtonId)
     {
-        assert(buttons.size() > 0);
+        FALCOR_ASSERT(buttons.size() > 0);
 
         // Helper to convert a string to a wide string
         auto toWideString = [](const std::string& str) { std::wstring wstr(str.begin(), str.end()); return wstr; };
@@ -373,7 +373,7 @@ namespace Falcor
     {
         static char buff[4096];
         int numChar = GetEnvironmentVariableA(varName.c_str(), buff, (DWORD)arraysize(buff)); //what is the best way to deal with wchar ?
-        assert(numChar < arraysize(buff));
+        FALCOR_ASSERT(numChar < arraysize(buff));
         if (numChar == 0)
         {
             return false;
@@ -504,7 +504,7 @@ namespace Falcor
         }
         else
         {
-            reportError("Error when loading icon. Can't find the file " + iconFile + ".");
+            logWarning("Error when loading icon. Can't find the file '{}'.", iconFile);
         }
     }
 
@@ -547,7 +547,7 @@ namespace Falcor
             case SCALE_450_PERCENT: return 4.50f;
             case SCALE_500_PERCENT: return 4.60f;
             default:
-                should_not_get_here();
+                FALCOR_UNREACHABLE();
                 return 1.0f;
             }
         }
@@ -575,8 +575,7 @@ namespace Falcor
         STARTUPINFOA startupInfo{}; PROCESS_INFORMATION processInformation{};
         if (!CreateProcessA(nullptr, (LPSTR)commandLine.c_str(), nullptr, nullptr, TRUE, NORMAL_PRIORITY_CLASS, nullptr, nullptr, &startupInfo, &processInformation))
         {
-            reportError("Unable to execute the render graph editor");
-            return 0;
+            throw RuntimeError("Unable to execute process: " + commandLine);
         }
 
         return reinterpret_cast<size_t>(processInformation.hProcess);
@@ -611,7 +610,7 @@ namespace Falcor
 
         HANDLE hFile = CreateFileA(dir.c_str(), GENERIC_READ | FILE_LIST_DIRECTORY,
             FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, NULL);
-        assert(hFile != INVALID_HANDLE_VALUE);
+        FALCOR_ASSERT(hFile != INVALID_HANDLE_VALUE);
 
         // overlapped struct requires unique event handle to be valid
         OVERLAPPED overlapped{};
@@ -626,17 +625,14 @@ namespace Falcor
             if (!ReadDirectoryChangesW(hFile, buffer.data(), static_cast<uint32_t>(sizeof(uint32_t) * buffer.size()), FALSE,
                 FILE_NOTIFY_CHANGE_LAST_WRITE, 0, &overlapped, nullptr))
             {
-                reportError("Failed to read directory changes for shared file.");
+                logError("Failed to read directory changes for shared file '{}'. Aborting monitoring.", filePath);
                 CloseHandle(hFile);
-                return;
             }
 
             if (!GetOverlappedResult(hFile, &overlapped, (LPDWORD)&bytesReturned, true))
             {
-                reportError("Failed to read directory changes for shared file.");
+                logError("Failed to read directory changes for shared file '{}'. Aborting monitoring.", filePath);
                 CloseHandle(hFile);
-                return;
-
             }
 
             // don't check for another overlapped result if main thread is closed
@@ -738,7 +734,7 @@ namespace Falcor
             FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
                 NULL, dwError, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, NULL);
             std::wstring err((LPTSTR)lpMsgBuf);
-            logWarning("setThreadAffinity failed with error: " + wstring_2_string(err));
+            logWarning("setThreadAffinity failed with error: {}", wstring_2_string(err));
             LocalFree(lpMsgBuf);
         }
     }
@@ -752,7 +748,7 @@ namespace Falcor
         else if (priority == ThreadPriorityType::BackgroundEnd)
             ::SetThreadPriority(thread, THREAD_MODE_BACKGROUND_END);
         else
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
 
         if (DWORD dwError = GetLastError() != 0)
         {
@@ -760,7 +756,7 @@ namespace Falcor
             FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
                 NULL, dwError, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, NULL);
             std::wstring err((LPTSTR)lpMsgBuf);
-            logWarning("setThreadPriority failed with error: " + wstring_2_string(err));
+            logWarning("setThreadPriority failed with error: {}", wstring_2_string(err));
             LocalFree(lpMsgBuf);
         }
     }
@@ -770,8 +766,7 @@ namespace Falcor
         struct stat s;
         if (stat(filename.c_str(), &s) != 0)
         {
-            reportError("Can't get file time for '" + filename + "'");
-            return 0;
+            throw RuntimeError("Can't get file time for '{}'.", filename);
         }
 
         return s.st_mtime;

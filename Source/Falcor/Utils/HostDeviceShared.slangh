@@ -38,6 +38,7 @@
 // TODO: Replace by bit packing functions
 #define EXTRACT_BITS(bits, offset, value) (((value) >> (offset)) & ((1 << (bits)) - 1))
 #define PACK_BITS(bits, offset, flags, value) ((((value) & ((1 << (bits)) - 1)) << (offset)) | ((flags) & (~(((1 << (bits)) - 1) << (offset)))))
+#define PACK_BITS_UNSAFE(bits, offset, flags, value) (((value) << (offset)) | ((flags) & (~(((1 << (bits)) - 1) << (offset)))))
 
 #ifdef HOST_CODE
 /*******************************************************************

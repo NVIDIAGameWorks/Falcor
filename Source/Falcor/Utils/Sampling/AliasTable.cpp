@@ -131,7 +131,7 @@ namespace Falcor
             // this cannot occur (without some logic bug above).
             else
             {
-                assert(false); // Should not occur
+                FALCOR_ASSERT(false); // Should not occur
             }
         }
 

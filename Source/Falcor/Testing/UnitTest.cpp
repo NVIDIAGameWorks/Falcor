@@ -215,19 +215,19 @@ namespace Falcor
         // Create shader variables.
         ProgramReflection::SharedConstPtr pReflection = mpProgram->getReflector();
         mpVars = ComputeVars::create(pReflection);
-        assert(mpVars);
+        FALCOR_ASSERT(mpVars);
 
         // Try to use shader reflection to query thread group size.
         // ((1,1,1) is assumed if it's not specified.)
         mThreadGroupSize = pReflection->getThreadGroupSize();
-        assert(mThreadGroupSize.x >= 1 && mThreadGroupSize.y >= 1 && mThreadGroupSize.z >= 1);
+        FALCOR_ASSERT(mThreadGroupSize.x >= 1 && mThreadGroupSize.y >= 1 && mThreadGroupSize.z >= 1);
     }
 
     void GPUUnitTestContext::allocateStructuredBuffer(const std::string& name, uint32_t nElements, const void* pInitData, size_t initDataSize)
     {
-        assert(mpVars);
+        FALCOR_ASSERT(mpVars);
         mStructuredBuffers[name].pBuffer = Buffer::createStructured(mpProgram.get(), name, nElements);
-        assert(mStructuredBuffers[name].pBuffer);
+        FALCOR_ASSERT(mStructuredBuffers[name].pBuffer);
         if (pInitData)
         {
             size_t expectedDataSize = mStructuredBuffers[name].pBuffer->getStructSize() * mStructuredBuffers[name].pBuffer->getElementCount();
@@ -239,7 +239,7 @@ namespace Falcor
 
     void GPUUnitTestContext::runProgram(const uint3& dimensions)
     {
-        assert(mpVars);
+        FALCOR_ASSERT(mpVars);
         for (const auto& buffer : mStructuredBuffers)
         {
             mpVars->setBuffer(buffer.first, buffer.second.pBuffer);
@@ -262,7 +262,7 @@ namespace Falcor
 
     void GPUUnitTestContext::unmapBuffer(const char* bufferName)
     {
-        assert(mStructuredBuffers.find(bufferName) != mStructuredBuffers.end());
+        FALCOR_ASSERT(mStructuredBuffers.find(bufferName) != mStructuredBuffers.end());
         if (!mStructuredBuffers[bufferName].mapped) throw ErrorRunningTestException(std::string(bufferName) + ": buffer not mapped");
         mStructuredBuffers[bufferName].pBuffer->unmap();
         mStructuredBuffers[bufferName].mapped = false;
@@ -270,7 +270,7 @@ namespace Falcor
 
     const void* GPUUnitTestContext::mapRawRead(const char* bufferName)
     {
-        assert(mStructuredBuffers.find(bufferName) != mStructuredBuffers.end());
+        FALCOR_ASSERT(mStructuredBuffers.find(bufferName) != mStructuredBuffers.end());
         if (mStructuredBuffers.find(bufferName) == mStructuredBuffers.end())
         {
             throw ErrorRunningTestException(std::string(bufferName) + ": couldn't find buffer to map");

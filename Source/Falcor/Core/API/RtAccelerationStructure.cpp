@@ -46,7 +46,12 @@ namespace Falcor
 
     RtAccelerationStructure::SharedPtr RtAccelerationStructure::create(const Desc& desc)
     {
-        return SharedPtr(new RtAccelerationStructure(desc));
+        auto pResult = SharedPtr(new RtAccelerationStructure(desc));
+        if (!pResult->apiInit())
+        {
+            throw RuntimeError("Failed to create acceleration structure.");
+        }
+        return pResult;
     }
 
     uint64_t RtAccelerationStructure::getGpuAddress()

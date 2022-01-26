@@ -121,7 +121,7 @@ namespace Falcor
         */
         ComputeVars& vars()
         {
-            assert(mpVars);
+            FALCOR_ASSERT(mpVars);
             return *mpVars;
         }
 

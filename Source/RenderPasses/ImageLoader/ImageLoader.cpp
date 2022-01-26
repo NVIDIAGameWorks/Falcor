@@ -80,7 +80,7 @@ ImageLoader::ImageLoader(const Dictionary& dict)
         else if (key == kMips) mGenerateMips = value;
         else if (key == kArraySlice) mArraySlice = value;
         else if (key == kMipLevel) mMipLevel = value;
-        else logWarning("Unknown field '" + key + "' in a ImageLoader dictionary");
+        else logWarning("Unknown field '{}' in a ImageLoader dictionary.", key);
     }
 
     if (!mImageName.empty())
@@ -118,7 +118,7 @@ void ImageLoader::compile(RenderContext* pRenderContext, const CompileData& comp
 void ImageLoader::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
     const auto& pDstTex = renderData[kDst]->asTexture();
-    assert(pDstTex);
+    FALCOR_ASSERT(pDstTex);
     mOutputFormat = pDstTex->getFormat();
     mOutputSize = { pDstTex->getWidth(), pDstTex->getHeight() };
 

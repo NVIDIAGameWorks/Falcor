@@ -36,9 +36,7 @@
 
 #include "Utils/Math/MathConstants.slangh"
 
-__exported import Scene.Scene;
 __exported import Scene.Raytracing;
-__exported import Scene.HitInfo;
 __exported import Scene.Material.ShadingUtils;
 __exported import Rendering.Materials.InteriorListHelpers;
 __exported import Rendering.Utils.PixelStats;
@@ -243,7 +241,7 @@ IBSDF handleHit(const PathTracerData pt, inout ShadingData sd, inout PathData pa
     // Determine if we need to compute the emissive based on the current configuration.
     // It's only needed if emissive is enabled, and its full contribution hasn't been sampled elsewhere.
     const bool computeEmissive = kUseEmissiveLights && (kUseLightsInDielectricVolumes || !path.isInsideVolume()) && (!kUseNEE || kUseMIS || !isLightSamplable);
-    const float3 emission = bsdfProperties.emissive;
+    const float3 emission = bsdfProperties.emission;
 
     if (computeEmissive && any(emission > 0.f))
     {
@@ -343,7 +341,7 @@ void tracePath(const PathTracerData pt, ShadingData sd, IBSDF bsdf, inout PathDa
         // This is independent of whether emissive materials are treated as light sources or not.
         if (depth == 0)
         {
-            path.L += bsdfProperties.emissive;
+            path.L += bsdfProperties.emission;
         }
 
         // Determine if BSDF supports sampling with next-event estimation.

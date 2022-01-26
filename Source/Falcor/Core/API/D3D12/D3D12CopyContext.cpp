@@ -74,12 +74,12 @@ namespace Falcor
     void CopyContext::updateTextureSubresources(const Texture* pTexture, uint32_t firstSubresource, uint32_t subresourceCount, const void* pData, const uint3& offset, const uint3& size)
     {
         bool copyRegion = (offset != uint3(0)) || (size != uint3(-1));
-        assert(subresourceCount == 1 || (copyRegion == false));
+        FALCOR_ASSERT(subresourceCount == 1 || (copyRegion == false));
 
         mCommandsPending = true;
 
         uint32_t arraySize = (pTexture->getType() == Texture::Type::TextureCube) ? pTexture->getArraySize() * 6 : pTexture->getArraySize();
-        assert(firstSubresource + subresourceCount <= arraySize * pTexture->getMipCount());
+        FALCOR_ASSERT(firstSubresource + subresourceCount <= arraySize * pTexture->getMipCount());
 
         // Get the footprint
         D3D12_RESOURCE_DESC texDesc = pTexture->getApiHandle()->GetDesc();
@@ -179,7 +179,7 @@ namespace Falcor
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT& footprint = mFootprint;
 
         // Calculate row size. GPU pitch can be different because it is aligned to D3D12_TEXTURE_DATA_PITCH_ALIGNMENT
-        assert(footprint.Footprint.Width % getFormatWidthCompressionRatio(mTextureFormat) == 0); // Should divide evenly
+        FALCOR_ASSERT(footprint.Footprint.Width % getFormatWidthCompressionRatio(mTextureFormat) == 0); // Should divide evenly
         uint32_t actualRowSize = (footprint.Footprint.Width / getFormatWidthCompressionRatio(mTextureFormat)) * getFormatBytesPerBlock(mTextureFormat);
 
         // Get buffer data
@@ -209,7 +209,7 @@ namespace Falcor
         barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
         barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
         barrier.Transition.pResource = pResource->getApiHandle();
-        barrier.Transition.StateBefore = getD3D12ResourceState(oldState); 
+        barrier.Transition.StateBefore = getD3D12ResourceState(oldState);
         barrier.Transition.StateAfter = getD3D12ResourceState(newState);
         barrier.Transition.Subresource = subresourceIndex;
 
@@ -217,17 +217,17 @@ namespace Falcor
         D3D12_RESOURCE_STATES beforeOrAfterState = barrier.Transition.StateBefore | barrier.Transition.StateAfter;
         if (beforeOrAfterState & D3D12_RESOURCE_STATE_RENDER_TARGET)
         {
-            assert(is_set(pResource->getBindFlags(), Resource::BindFlags::RenderTarget));
+            FALCOR_ASSERT(is_set(pResource->getBindFlags(), Resource::BindFlags::RenderTarget));
         }
 
         if (beforeOrAfterState & (D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE))
         {
-            assert(is_set(pResource->getBindFlags(), Resource::BindFlags::ShaderResource));
+            FALCOR_ASSERT(is_set(pResource->getBindFlags(), Resource::BindFlags::ShaderResource));
         }
 
         if (beforeOrAfterState & D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
         {
-            assert(is_set(pResource->getBindFlags(), Resource::BindFlags::UnorderedAccess));
+            FALCOR_ASSERT(is_set(pResource->getBindFlags(), Resource::BindFlags::UnorderedAccess));
         }
 
         pCmdList->ResourceBarrier(1, &barrier);
@@ -245,6 +245,7 @@ namespace Falcor
 
     bool CopyContext::textureBarrier(const Texture* pTexture, Resource::State newState)
     {
+        FALCOR_ASSERT(pTexture);
         bool recorded = d3d12GlobalResourceBarrier(pTexture, newState, mpLowLevelData->getCommandList());
         pTexture->setGlobalState(newState);
         mCommandsPending = mCommandsPending || recorded;
@@ -253,7 +254,8 @@ namespace Falcor
 
     bool CopyContext::bufferBarrier(const Buffer* pBuffer, Resource::State newState)
     {
-        if (pBuffer && pBuffer->getCpuAccess() != Buffer::CpuAccess::None) return false;
+        FALCOR_ASSERT(pBuffer);
+        if (pBuffer->getCpuAccess() != Buffer::CpuAccess::None) return false;
         bool recorded = d3d12GlobalResourceBarrier(pBuffer, newState, mpLowLevelData->getCommandList());
         pBuffer->setGlobalState(newState);
         mCommandsPending = mCommandsPending || recorded;
@@ -275,7 +277,7 @@ namespace Falcor
 
         // Check that resource has required bind flags for UAV barrier to be supported
         static const Resource::BindFlags reqFlags = Resource::BindFlags::UnorderedAccess | Resource::BindFlags::AccelerationStructure;
-        assert(is_set(pResource->getBindFlags(), reqFlags));
+        FALCOR_ASSERT(is_set(pResource->getBindFlags(), reqFlags));
         mpLowLevelData->getCommandList()->ResourceBarrier(1, &barrier);
         mCommandsPending = true;
     }

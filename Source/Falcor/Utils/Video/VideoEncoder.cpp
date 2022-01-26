@@ -51,7 +51,7 @@ namespace Falcor
             case AV_CODEC_ID_MPEG4:
                 return AV_PIX_FMT_YUV420P;
             default:
-                should_not_get_here();
+                FALCOR_UNREACHABLE();
                 return AV_PIX_FMT_NONE;
             }
         }
@@ -86,7 +86,7 @@ namespace Falcor
             case VideoEncoder::Codec::MPEG4:
                 return AV_CODEC_ID_MPEG4;
             default:
-                should_not_get_here();
+                FALCOR_UNREACHABLE();
                 return AV_CODEC_ID_NONE;
             }
         }
@@ -212,7 +212,7 @@ namespace Falcor
     VideoEncoder::UniquePtr VideoEncoder::create(const Desc& desc)
     {
         UniquePtr pVC = UniquePtr(new VideoEncoder(desc.filename));
-        assert(pVC);
+        FALCOR_ASSERT(pVC);
 
         // Initialize the encoder. This may fail, in which case we return nullptr.
         if (pVC->init(desc) == false)
@@ -243,7 +243,7 @@ namespace Falcor
 
         // Get the output format of the container
         AVOutputFormat* pOutputFormat = mpOutputContext->oformat;
-        assert((pOutputFormat->flags & AVFMT_NOFILE) == 0); // Problem. We want a file.
+        FALCOR_ASSERT((pOutputFormat->flags & AVFMT_NOFILE) == 0); // Problem. We want a file.
 
         // Create the video codec
         AVCodec* pVideoCodec;
@@ -274,7 +274,7 @@ namespace Falcor
         av_dump_format(mpOutputContext, 0, mFilename.c_str(), 1);
 
         // Open the output file
-        assert((pOutputFormat->flags & AVFMT_NOFILE) == 0); // No output file required. Not sure if/when this happens.
+        FALCOR_ASSERT((pOutputFormat->flags & AVFMT_NOFILE) == 0); // No output file required. Not sure if/when this happens.
         if(avio_open(&mpOutputContext->pb, mFilename.c_str(), AVIO_FLAG_WRITE) < 0)
         {
             return error(mFilename, "Can't open output file.");
@@ -293,7 +293,7 @@ namespace Falcor
             mpFlippedImage = new uint8_t[desc.height * mRowPitch];
         }
 
-        assert(isFormatSupported(desc.format));
+        FALCOR_ASSERT(isFormatSupported(desc.format));
         mpSwsContext = sws_getContext(desc.width, desc.height, getPictureFormatFromFalcorFormat(desc.format), desc.width, desc.height, mpCodecContext->pix_fmt, SWS_POINT, nullptr, nullptr, nullptr);
         if(mpSwsContext == nullptr)
         {
@@ -420,7 +420,7 @@ namespace Falcor
             filters.push_back(MKV);
             break;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
         }
         return filters;
     }

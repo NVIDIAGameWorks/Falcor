@@ -48,9 +48,35 @@ set NvApiDir=%ExtDir%\nvapi
 set NvApiTargetDir=%OutDir%\Shaders\NVAPI
 if exist %NvApiDir% (
     if not exist %NvApiTargetDir% mkdir %NvApiTargetDir% >nul
-    copy /y %NvApiDir%\nvHLSLExtns.h %NvApiTargetDir%
-    copy /y %NvApiDir%\nvHLSLExtnsInternal.h %NvApiTargetDir%
-    copy /y %NvApiDir%\nvShaderExtnEnums.h %NvApiTargetDir%
+    copy /y %NvApiDir%\nvHLSLExtns.h %NvApiTargetDir% >nul
+    copy /y %NvApiDir%\nvHLSLExtnsInternal.h %NvApiTargetDir% >nul
+    copy /y %NvApiDir%\nvShaderExtnEnums.h %NvApiTargetDir% >nul
+)
+
+rem Copy NRD
+set NrdDir=%ExtDir%\nrd
+set NrdTargetDir=%OutDir%\Shaders\nrd\Shaders
+if exist %NrdDir% (
+    if not exist %NrdTargetDir% mkdir %NrdTargetDir% >nul
+    robocopy %NrdDir%\Shaders %NrdTargetDir% /s /r:0 >nul
+    if %IsDebug% EQU 0 (
+        robocopy %NrdDir%\Lib\Release %OutDir% *.dll /r:0 >nul
+    ) else (
+        robocopy %NrdDir%\Lib\Debug %OutDir% *.dll /r:0 >nul
+    )
+)
+
+rem Copy RTXDI SDK shaders
+set RtxdiSDKDir=%ExtDir%\rtxdi\rtxdi-sdk\include\rtxdi
+set RtxdiSDKTargetDir=%OutDir%\Shaders\rtxdi
+if exist %RtxdiSDKDir% (
+    if not exist %RtxdiSDKTargetDir% mkdir %RtxdiSDKTargetDir% >nul
+    copy /y %RtxdiSDKDir%\ResamplingFunctions.hlsli %RtxdiSDKTargetDir% >nul
+    copy /y %RtxdiSDKDir%\Reservoir.hlsli %RtxdiSDKTargetDir% >nul
+    copy /y %RtxdiSDKDir%\RtxdiHelpers.hlsli %RtxdiSDKTargetDir% >nul
+    copy /y %RtxdiSDKDir%\RtxdiMath.hlsli %RtxdiSDKTargetDir% >nul
+    copy /y %RtxdiSDKDir%\RtxdiParameters.h %RtxdiSDKTargetDir% >nul
+    copy /y %RtxdiSDKDir%\RtxdiTypes.h %RtxdiSDKTargetDir% >nul
 )
 
 rem Copy Agility SDK Runtime
@@ -58,16 +84,16 @@ set AgilitySDKDir=%ExtDir%\agility-sdk
 set AgilitySDKTargetDir=%OutDir%\D3D12
 if exist %AgilitySDKDir% (
     if not exist %AgilitySDKTargetDir% mkdir %AgilitySDKTargetDir% >nul
-    copy /y %AgilitySDKDir%\build\native\bin\x64\D3D12Core.dll %AgilitySDKTargetDir%
-    copy /y %AgilitySDKDir%\build\native\bin\x64\d3d12SDKLayers.dll %AgilitySDKTargetDir%
+    copy /y %AgilitySDKDir%\build\native\bin\x64\D3D12Core.dll %AgilitySDKTargetDir% >nul
+    copy /y %AgilitySDKDir%\build\native\bin\x64\d3d12SDKLayers.dll %AgilitySDKTargetDir% >nul
 )
 
 rem Copy NanoVDB
-set NanoVDBApiDir=%ExtDir%\nanovdb
+set NanoVDBDir=%ExtDir%\nanovdb
 set NanoVDBTargetDir=%OutDir%\Shaders\NanoVDB
-if exist %NanoVDBApiDir% (
+if exist %NanoVDBDir% (
     if not exist %NanoVDBTargetDir% mkdir %NanoVDBTargetDir% >nul
-    copy /y %NanoVDBApiDir%\include\nanovdb\PNanoVDB.h %NanoVDBTargetDir%
+    copy /y %NanoVDBDir%\include\nanovdb\PNanoVDB.h %NanoVDBTargetDir% >nul
 )
 
 rem Copy USD files, making sure not to overwrite dlls provided by other components, or dlls that we don't need.
@@ -92,6 +118,12 @@ if %IsDebug% EQU 0 (
     robocopy %ExtDir%\nvtt\lib\x64-v141\Release %OutDir% nvtt.dll /r:0 >nul
 ) else (
     robocopy %ExtDir%\nvtt\lib\x64-v141\Debug %OutDir% nvtt.dll /r:0 >nul
+)
+
+rem Copy DLSS
+set NGXDir=%ExtDir%\ngx
+if exist %NGXDir% (
+    robocopy %NGXDir%\lib\Windows_x86_64\rel %OutDir% nvngx_dlss.dll /r:0 >nul
 )
 
 rem robocopy sets the error level to something that is not zero even if the copy operation was successful. Set the error level to zero

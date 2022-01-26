@@ -97,8 +97,8 @@ namespace Falcor
 
     void LightBVHSampler::setShaderData(const ShaderVar& var) const
     {
-        assert(var.isValid());
-        assert(mpBVH);
+        FALCOR_ASSERT(var.isValid());
+        FALCOR_ASSERT(mpBVH);
         mpBVH->setShaderData(var["_lightBVH"]);
     }
 

@@ -33,7 +33,7 @@ __exported import Scene.Displacement.DisplacementData;
 __exported import Scene.Material.BasicMaterialData;
 __exported import Scene.Material.HomogeneousVolumeData;
 
-#if !defined(MATERIAL_SYSTEM_TEXTURE_DESC_COUNT) || !defined(MATERIAL_SYSTEM_SAMPLER_DESC_COUNT)
+#if !defined(MATERIAL_SYSTEM_TEXTURE_DESC_COUNT) || !defined(MATERIAL_SYSTEM_SAMPLER_DESC_COUNT) || !defined(MATERIAL_SYSTEM_BUFFER_DESC_COUNT)
 // This error occurs when the module is imported without setting the defines returned by getDefines().
 // This check is necessary until unbounded descriptor arrays are supported (see #1321).
 #error "MaterialSystem defines are not set!"
@@ -51,6 +51,12 @@ struct MaterialSystem
     Texture2D<float4> materialTextures[MATERIAL_SYSTEM_TEXTURE_DESC_COUNT];     ///< Texture resources for all materials. TODO: Make this an unbounded array (see #1321).
 #else
     Texture2D<float4> materialTextures[1]; // Zero-length arrays are not supported.
+#endif
+
+#if MATERIAL_SYSTEM_BUFFER_DESC_COUNT > 0
+    ByteAddressBuffer materialBuffers[MATERIAL_SYSTEM_BUFFER_DESC_COUNT];       ///< Buffer resources for all materials. TODO: Make this an unbounded array (see #1321).
+#else
+    ByteAddressBuffer materialBuffers[1]; // Zero-length arrays are not supported.
 #endif
 
 
@@ -113,6 +119,13 @@ struct MaterialSystem
     {
         uint samplerID = getMaterialHeader(materialID).getDefaultTextureSamplerID();
         return getTextureSampler(samplerID);
+    }
+
+    /** Get a buffer by ID.
+    */
+    ByteAddressBuffer getBuffer(const uint bufferID)
+    {
+        return materialBuffers[bufferID];
     }
 
     /** Check if a material has an emissive texture.

@@ -18,5 +18,6 @@
     <ShaderSource Include="GeneratePaths.cs.slang" />
     <ShaderSource Include="PathTracer.slang" />
     <ShaderSource Include="TracePass.rt.slang" />
+    <ShaderSource Include="NRDHelpers.slang" />
   </ItemGroup>
 </Project>

@@ -25,46 +25,49 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-import Scene.Scene;
-import Scene.ShadingData;
-import Utils.Math.MathHelpers;
+import LoadShadingData;
+import Utils.Color.ColorHelpers;
+import Rendering.RTXDI.RTXDI;
 
-#if _USE_SPHERICAL_MAP
-Texture2D gTexture;
-#else
-TextureCube gTexture;
-#endif
-SamplerState gSampler;
-
-cbuffer PerFrameCB
+/** Prepares RTXDI surface data.
+*/
+struct PrepareSurfaceData
 {
-    float4x4 gWorld;
-    float4x4 gViewMat;
-    float4x4 gProjMat;
-    float gScale;
-    EnvMap gEnvMap;
+    Texture2D<PackedHitInfo> vbuffer;
+    Texture2D<float2> texGrads;
+
+    uint2 frameDim;
+
+    void execute(const uint2 pixel)
+    {
+        if (any(pixel >= frameDim)) return;
+
+        ShadingData sd;
+        let lod = ExplicitLodTextureSampler(0.f); // TODO: Implement texture level-of-detail.
+        bool isValidSurface = loadShadingData(pixel, frameDim, gScene.camera, vbuffer, lod, sd);
+
+        if (isValidSurface)
+        {
+            // Create BSDF instance and query its properties.
+            let bsdf = gScene.materials.getBSDF(sd, lod);
+            let bsdfProperties = bsdf.getProperties(sd);
+
+            // RTXDI uses a simple material model with only diffuse and specular reflection lobes.
+            // We query the BSDF for the diffuse albedo and specular reflectance, and use their luminances as weights.
+            // Note: Final shading uses the full material model, the simplified model is only used for resampling purposes.
+            gRTXDI.setSurfaceData(pixel, sd.computeNewRayOrigin(), sd.N, bsdfProperties.diffuseReflectionAlbedo, bsdfProperties.specularReflectance, bsdfProperties.roughness);
+        }
+        else
+        {
+            gRTXDI.setInvalidSurfaceData(pixel);
+        }
+    }
 };
 
-void vs(float4 posL : POSITION, out float3 dir : NORMAL, out float4 posH : SV_POSITION)
-{
-    dir = posL.xyz;
-    float4 viewPos = mul(mul(posL, gWorld), gViewMat);
-    posH = mul(viewPos, gProjMat);
-    posH.xy *= gScale;
-    posH.z = posH.w;
-}
+ParameterBlock<PrepareSurfaceData> gPrepareSurfaceData;
 
-float4 ps(float3 dir : NORMAL) : SV_TARGET
+[numthreads(16, 16, 1)]
+void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
-#if _USE_ENV_MAP
-    float3 color = gEnvMap.eval(dir);
-    return float4(color, 1.f);
-#else
-#if _USE_SPHERICAL_MAP
-    float2 uv = world_to_latlong_map(dir);
-    return gTexture.Sample(gSampler, uv);
-#else
-    return gTexture.SampleLevel(gSampler, normalize(dir), 0);
-#endif
-#endif // _USE_ENV_MAP
+    gPrepareSurfaceData.execute(dispatchThreadId.xy);
 }

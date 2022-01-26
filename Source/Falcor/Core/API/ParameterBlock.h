@@ -415,11 +415,17 @@ namespace Falcor
         ParameterBlockReflection::SharedConstPtr mpReflector;
         mutable ParameterBlockReflection::SharedConstPtr mpSpecializedReflector;
 
+        void createConstantBuffers(const ShaderVar& var);
+
+        static void prepareResource(
+            CopyContext* pContext,
+            Resource* pResource,
+            bool isUav);
+
 #ifdef FALCOR_D3D12
         std::vector<uint8_t> mData;
 
         virtual bool updateSpecializationImpl() const;
-        void createConstantBuffers(const ShaderVar& var);
 
         /** Get a constant buffer view for the underlying constant buffer for ordinary/uniform data.
         */
@@ -469,7 +475,7 @@ namespace Falcor
 
         struct AssignedParameterBlock
         {
-            ParameterBlock::SharedPtr   pBlock;
+            ParameterBlock::SharedPtr pBlock;
             mutable ChangeEpoch epochOfLastObservedChange = 0;
         };
 
@@ -483,6 +489,8 @@ namespace Falcor
         std::map<size_t, RtAccelerationStructure::SharedPtr> mAccelerationStructures;
 
         AssignedParameterBlock const& getAssignedParameterBlock(uint32_t resourceRangeIndex, uint32_t arrayIndex) const;
+        const AssignedParameterBlock& getAssignedParameterBlock(size_t index) const;
+        AssignedParameterBlock& getAssignedParameterBlock(size_t index);
 
         size_t getFlatIndex(const BindLocation& bindLocation) const;
 

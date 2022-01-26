@@ -444,6 +444,10 @@ class falcor.**EnvMap**
 | `rotation`  | `float3` | Rotation angles in degrees (XYZ).              |
 | `intensity` | `float`  | Intensity (scalar multiplier).                 |
 
+| Static method              | Description                           |
+|----------------------------|---------------------------------------|
+| `createFromFile(filename)` | Create a environment map from a file. |
+
 #### Material
 
 **DEPRECATED**: Use `StandardMaterial` instead.

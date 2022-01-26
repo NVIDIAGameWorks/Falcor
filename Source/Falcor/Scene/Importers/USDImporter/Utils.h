@@ -141,7 +141,7 @@ namespace Falcor
         }
         else
         {
-            logError("Unsupported primvar interpolation mode: " + std::to_string((uint32_t)freq));
+            logError("Unsupported primvar interpolation mode {}.", freq);
             return 0;
         }
     }
@@ -182,7 +182,7 @@ namespace Falcor
         }
         else
         {
-            logError("Unknown vertex interpolation mode: " + mode.GetString());
+            logError("Unknown vertex interpolation mode '{}'.", mode.GetString());
             return AttributeFrequency::None;
         }
     }

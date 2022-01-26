@@ -32,11 +32,46 @@ namespace Falcor
 {
     Slang::ComPtr<gfx::IBufferResource> createBuffer(Buffer::State initState, size_t size, Buffer::BindFlags bindFlags, Buffer::CpuAccess cpuAccess);
 
+    namespace
+    {
+        Buffer::CpuAccess getCpuAccess(GpuMemoryHeap::Type t)
+        {
+            switch (t)
+            {
+            case GpuMemoryHeap::Type::Default:
+                return Buffer::CpuAccess::None;
+            case GpuMemoryHeap::Type::Upload:
+                return Buffer::CpuAccess::Write;
+            case GpuMemoryHeap::Type::Readback:
+                return Buffer::CpuAccess::Read;
+            default:
+                FALCOR_UNREACHABLE();
+                return Buffer::CpuAccess::None;
+            }
+        }
+
+        Buffer::State getInitState(GpuMemoryHeap::Type t)
+        {
+            switch (t)
+            {
+            case GpuMemoryHeap::Type::Default:
+                return Buffer::State::Common;
+            case GpuMemoryHeap::Type::Upload:
+                return Buffer::State::GenericRead;
+            case GpuMemoryHeap::Type::Readback:
+                return Buffer::State::CopyDest;
+            default:
+                FALCOR_UNREACHABLE();
+                return Buffer::State::Undefined;
+            }
+        }
+    }
+
     void GpuMemoryHeap::initBasePageData(BaseData& data, size_t size)
     {
-        assert(!"unimplemented");
-        data.pResourceHandle = nullptr;
+        data.pResourceHandle = createBuffer(getInitState(mType), size, Buffer::BindFlags::None, getCpuAccess(mType));
         data.offset = 0;
-        data.pData = nullptr;
+        auto bufferResource = static_cast<gfx::IBufferResource*>(data.pResourceHandle.get());
+        bufferResource->map(nullptr, (void**)&data.pData);
     }
 }

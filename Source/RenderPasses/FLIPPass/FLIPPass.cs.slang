@@ -52,7 +52,6 @@ cbuffer PerFrameCB
     uint gMonitorWidthPixels;
     float gMonitorWidthMeters;
     float gMonitorDistance;
-    uint2 pad;
 };
 
 static const FLIPToneMapperType kHDRFLIPToneMapper = FLIPToneMapperType(TONE_MAPPER);

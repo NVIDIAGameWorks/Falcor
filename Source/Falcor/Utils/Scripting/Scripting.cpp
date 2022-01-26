@@ -36,7 +36,7 @@ namespace Falcor
     bool Scripting::sRunning = false;
     std::unique_ptr<Scripting::Context> Scripting::sDefaultContext;
 
-    bool Scripting::start()
+    void Scripting::start()
     {
         if (!sRunning)
         {
@@ -57,12 +57,9 @@ namespace Falcor
             }
             catch (const std::exception& e)
             {
-                reportError("Can't start the python interpreter. Exception says " + std::string(e.what()));
-                return false;
+                throw RuntimeError("Failed to start the Python interpreter: {}", e.what());
             }
         }
-
-        return true;
     }
 
     void Scripting::shutdown()
@@ -77,7 +74,7 @@ namespace Falcor
 
     Scripting::Context& Scripting::getDefaultContext()
     {
-        assert(sDefaultContext);
+        FALCOR_ASSERT(sDefaultContext);
         return *sDefaultContext;
     }
 

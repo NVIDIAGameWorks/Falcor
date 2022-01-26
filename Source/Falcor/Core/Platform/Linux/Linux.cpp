@@ -56,7 +56,7 @@ namespace Falcor
     {
         if (!gtk_init_check(0, nullptr))
         {
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
         }
 
         GtkButtonsType buttonType = GTK_BUTTONS_NONE;
@@ -76,7 +76,7 @@ namespace Falcor
             buttonType = GTK_BUTTONS_YES_NO;
             break;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             break;
         }
 
@@ -132,7 +132,7 @@ namespace Falcor
         case gint(MsgResponseId::Ignore):
             return MsgBoxButton::Ignore;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return MsgBoxButton::Cancel;
         }
     }
@@ -154,7 +154,7 @@ namespace Falcor
 
         int32_t forkVal = fork();
 
-        assert(forkVal != -1);
+        FALCOR_ASSERT(forkVal != -1);
         if(forkVal == 0)
         {
             if (execv(linuxAppName.c_str(), (char* const*)argv.data()))
@@ -175,7 +175,7 @@ namespace Falcor
     void terminateProcess(size_t processID)
     {
         (void)processID;
-        should_not_get_here();
+        FALCOR_UNREACHABLE();
     }
 
     bool doesFileExist(const std::string& filename)
@@ -197,13 +197,13 @@ namespace Falcor
     void monitorFileUpdates(const std::string& filePath, const std::function<void()>& callback)
     {
         (void)filePath; (void)callback;
-        should_not_get_here();
+        FALCOR_UNREACHABLE();
     }
 
     void closeSharedFile(const std::string& filePath)
     {
         (void)filePath;
-        should_not_get_here();
+        FALCOR_UNREACHABLE();
     }
 
     std::string getTempFilename()
@@ -242,7 +242,7 @@ namespace Falcor
 
     const std::string getAppDataDirectory()
     {
-        assert(0);
+        FALCOR_ASSERT(0);
         return std::string();
     }
 
@@ -269,7 +269,7 @@ namespace Falcor
     {
         if (!gtk_init_check(0, nullptr))
         {
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
         }
 
         GtkWidget* pParent = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -449,7 +449,7 @@ namespace Falcor
         int32_t result = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuMask);
         if (result != 0)
         {
-            reportError("setThreadAffinity() - pthread_setaffinity_np() failed with error code " + threadErrorToString(result));
+            logError("setThreadAffinity() - pthread_setaffinity_np() failed with error code {}", threadErrorToString(result));
         }
     }
 
@@ -473,12 +473,12 @@ namespace Falcor
         // #TODO: Is there a "Background" priority in Linux? Is there a way to emulate it?
         else
         {
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
         }
 
         if (result != 0)
         {
-            reportError("setThreadPriority() - pthread_setschedprio() failed with error code " + threadErrorToString(result));
+            logError("setThreadPriority() - pthread_setschedprio() failed with error code {}", threadErrorToString(result));
         }
     }
 
@@ -487,7 +487,7 @@ namespace Falcor
         struct stat s;
         if (stat(filename.c_str(), &s) != 0)
         {
-            reportError("Can't get file time for '" + filename + "'");
+            logError("Can't get file time for '{}'.", filename);
             return 0;
         }
 

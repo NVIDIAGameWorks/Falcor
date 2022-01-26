@@ -60,7 +60,6 @@ struct SceneDebuggerParams
 
     int showVolumes = true;         ///< Show volumes.
     float densityScale = 1.f;       ///< Volume density scale factor.
-    uint2 _pad;
 };
 
 struct PixelData
