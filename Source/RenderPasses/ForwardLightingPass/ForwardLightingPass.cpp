@@ -69,7 +69,7 @@ ForwardLightingPass::SharedPtr ForwardLightingPass::create(RenderContext* pRende
     {
         if (key == kSampleCount) pThis->setSampleCount(value);
         else if (key == kSuperSampling) pThis->setSuperSampling(value);
-        else logWarning("Unknown field '" + key + "' in a ForwardLightingPass dictionary");
+        else logWarning("Unknown field '{}' in a ForwardLightingPass dictionary.", key);
     }
 
     return pThis;

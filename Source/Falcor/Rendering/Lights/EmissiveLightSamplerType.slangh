@@ -33,11 +33,7 @@ BEGIN_NAMESPACE_FALCOR
 /** This enum is shared between CPU/GPU.
     It enumerates the different emissive light samplers that are available.
 */
-enum class EmissiveLightSamplerType
-// TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
-#ifdef HOST_CODE
-    : uint32_t
-#endif
+enum class EmissiveLightSamplerType : uint32_t
 {
     Uniform     = 0,
     LightBVH    = 1,

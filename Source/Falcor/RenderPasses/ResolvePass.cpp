@@ -67,7 +67,7 @@ namespace Falcor
         }
         else
         {
-            logWarning("ResolvePass::execute() - missing an input or output resource");
+            logWarning("ResolvePass::execute() - missing an input or output resource.");
         }
     }
 }

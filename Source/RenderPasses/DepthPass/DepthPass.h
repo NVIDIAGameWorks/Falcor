@@ -57,6 +57,7 @@ public:
     DepthPass& setDepthStencilState(const DepthStencilState::SharedPtr& pDsState);
     void setCullMode(RasterizerState::CullMode cullMode) { mCullMode = cullMode; }
     void setOutputSize(const uint2& outputSize);
+    void setAlphaTest(bool useAlphaTest);
 
 private:
     DepthPass(const Dictionary& dict);
@@ -69,6 +70,7 @@ private:
     ResourceFormat mDepthFormat = ResourceFormat::D32Float;
     Scene::SharedPtr mpScene;
     uint2 mOutputSize = {};
+    bool mUseAlphaTest = true;
 };
 
 #undef PASS_API

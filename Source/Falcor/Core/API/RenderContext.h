@@ -225,8 +225,8 @@ namespace Falcor
         BlitContext& getBlitContext();
 
 #ifdef FALCOR_D3D12
-        bool applyGraphicsVars(GraphicsVars* pVars, const ProgramKernels* pProgramKernels);
-        bool prepareForDraw(GraphicsState* pState, GraphicsVars* pVars);
+        void applyGraphicsVars(GraphicsVars* pVars, const ProgramKernels* pProgramKernels);
+        void prepareForDraw(GraphicsState* pState, GraphicsVars* pVars);
 #endif
         StateBindFlags mBindFlags = StateBindFlags::All;
         GraphicsVars* mpLastBoundGraphicsVars = nullptr;

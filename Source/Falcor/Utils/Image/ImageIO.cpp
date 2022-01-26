@@ -560,7 +560,7 @@ namespace Falcor
         std::string fullpath;
         if (findFileInDataDirectories(filename, fullpath) == false)
         {
-            logWarning(fmt::format("Failed to load DDS image from '{}': Can't find file.", filename));
+            logWarning("Failed to load DDS image from '{}': Can't find file.", filename);
             return nullptr;
         }
 
@@ -571,13 +571,13 @@ namespace Falcor
         }
         catch (const RuntimeError& e)
         {
-            logWarning(fmt::format("Failed to load DDS image from '{}': {}", filename, e.what()));
+            logWarning("Failed to load DDS image from '{}': {}", filename, e.what());
             return nullptr;
         }
 
         if (data.type == Resource::Type::Texture3D || data.type == Resource::Type::TextureCube)
         {
-            logWarning(fmt::format("Failed to load DDS image from '{}': Invalid resource type {}.", filename, to_string(data.type)));
+            logWarning("Failed to load DDS image from '{}': Invalid resource type {}.", filename, to_string(data.type));
             return nullptr;
         }
 
@@ -590,7 +590,7 @@ namespace Falcor
         std::string fullpath;
         if (findFileInDataDirectories(filename, fullpath) == false)
         {
-            logWarning(fmt::format("Failed to load DDS image from '{}': Can't find file.", filename));
+            logWarning("Failed to load DDS image from '{}': Can't find file.", filename);
             return nullptr;
         }
 
@@ -601,7 +601,7 @@ namespace Falcor
         }
         catch (const RuntimeError& e)
         {
-            logWarning(fmt::format("Failed to load DDS image from '{}': {}", filename, e.what()));
+            logWarning("Failed to load DDS image from '{}': {}", filename, e.what());
             return nullptr;
         }
 
@@ -622,7 +622,7 @@ namespace Falcor
             pTex = Texture::create3D(data.width, data.height, data.depth, data.format, data.mipLevels, data.imageData.data());
             break;
         default:
-            logWarning(fmt::format("Failed to load DDS image from '{}': Unrecognized texture type.", filename));
+            logWarning("Failed to load DDS image from '{}': Unrecognized texture type.", filename);
             return nullptr;
         }
 
@@ -638,7 +638,7 @@ namespace Falcor
     {
         if (getExtensionFromFile(filename) != "dds")
         {
-            logWarning(fmt::format("Saving DDS image to '{}' which does not have 'dds' file extension.", filename));
+            logWarning("Saving DDS image to '{}' which does not have 'dds' file extension.", filename);
         }
 
         try
@@ -664,7 +664,7 @@ namespace Falcor
                 bool clamped = clampIfNeeded(image);
                 if (clamped)
                 {
-                    logWarning(fmt::format("Saving DDS image to '{}' with clamped image dimensions to accomodate mipmaps and compression.", filename));
+                    logWarning("Saving DDS image to '{}' with clamped image dimensions to accomodate mipmaps and compression.", filename);
                 }
             }
 
@@ -714,7 +714,7 @@ namespace Falcor
     {
         if (getExtensionFromFile(filename) != "dds")
         {
-            logWarning(fmt::format("Saving DDS image to '{}' which does not have 'dds' file extension.", filename));
+            logWarning("Saving DDS image to '{}' which does not have 'dds' file extension.", filename);
         }
 
         try
@@ -738,7 +738,7 @@ namespace Falcor
                 bool clamped = clampIfNeeded(image);
                 if (clamped)
                 {
-                    logWarning(fmt::format("Saving DDS image to '{}' with clamped image dimensions to accomodate mipmaps and compression.", filename));
+                    logWarning("Saving DDS image to '{}' with clamped image dimensions to accomodate mipmaps and compression.", filename);
                 }
             }
 

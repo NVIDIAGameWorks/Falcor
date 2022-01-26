@@ -34,9 +34,7 @@
 #include <filesystem>
 #include <algorithm>
 
-#ifdef FALCOR_D3D12
 FALCOR_EXPORT_D3D12_AGILITY_SDK
-#endif
 
 namespace Mogwai
 {
@@ -66,8 +64,7 @@ namespace Mogwai
         if (!gExtensions) gExtensions = new std::map<std::string, Extension::CreateFunc>();
         if (gExtensions->find(name) != gExtensions->end())
         {
-            reportError("Extension " + name + " already registered. If you continue the new extension will be discarded");
-            return;
+            throw RuntimeError("Extension '{}' is already registered.", name);
         }
         (*gExtensions)[name] = func;
     }
@@ -277,7 +274,7 @@ namespace Mogwai
         }
         else
         {
-            logWarning("RenderGraphViewer::onDroppedFile() - Unknown file extension '" + ext + "'");
+            logWarning("RenderGraphViewer::onDroppedFile() - Unknown file extension '{}'", ext);
         }
     }
 
@@ -338,7 +335,7 @@ namespace Mogwai
         for (auto& e : mpExtensions) e->removeGraph(pGraph.get());
         size_t i = 0;
         for (; i < mGraphs.size(); i++) if (mGraphs[i].pGraph == pGraph) break;
-        assert(i < mGraphs.size());
+        FALCOR_ASSERT(i < mGraphs.size());
         mGraphs.erase(mGraphs.begin() + i);
         if (mActiveGraph >= i && mActiveGraph > 0) mActiveGraph--;
         setActiveGraph(mActiveGraph);
@@ -415,7 +412,7 @@ namespace Mogwai
 
     void Renderer::loadScript(const std::string& filename)
     {
-        assert(filename.size());
+        FALCOR_ASSERT(filename.size());
 
         try
         {
@@ -459,7 +456,7 @@ namespace Mogwai
         {
             if (mGraphs[i].pGraph->getName() == pGraph->getName())
             {
-                logWarning("Replacing existing graph '" + pGraph->getName() + "' with new graph.");
+                logWarning("Replacing existing graph '{}' with new graph.", pGraph->getName());
                 pGraphData = &mGraphs[i];
                 break;
             }
@@ -628,7 +625,7 @@ namespace Mogwai
             if (mGraphs[mActiveGraph].mainOutput.size())
             {
                 Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Texture>(pGraph->getOutput(mGraphs[mActiveGraph].mainOutput));
-                assert(pOutTex);
+                FALCOR_ASSERT(pOutTex);
                 pRenderContext->blit(pOutTex->getSRV(), pTargetFbo->getRenderTargetView(0));
             }
         }

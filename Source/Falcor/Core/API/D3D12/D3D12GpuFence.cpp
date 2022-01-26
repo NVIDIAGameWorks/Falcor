@@ -49,7 +49,7 @@ namespace Falcor
         pFence->mpApiData->eventHandle = CreateEvent(nullptr, FALSE, FALSE, nullptr);
         if (pFence->mpApiData->eventHandle == nullptr) throw RuntimeError("Failed to create an event object");
 
-        assert(gpDevice);
+        FALCOR_ASSERT(gpDevice);
         ID3D12Device* pDevice = gpDevice->getApiHandle().GetInterfacePtr();
         HRESULT hr = pDevice->CreateFence(pFence->mCpuValue, shared ? D3D12_FENCE_FLAG_SHARED : D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&pFence->mApiHandle));
         if (FAILED(hr))
@@ -64,7 +64,7 @@ namespace Falcor
 
     uint64_t GpuFence::gpuSignal(CommandQueueHandle pQueue)
     {
-        assert(pQueue);
+        FALCOR_ASSERT(pQueue);
         FALCOR_D3D_CALL(pQueue->Signal(mApiHandle, mCpuValue));
         mCpuValue++;
         return mCpuValue - 1;
@@ -78,7 +78,7 @@ namespace Falcor
     void GpuFence::syncCpu(std::optional<uint64_t> val)
     {
         uint64_t syncVal = val ? val.value() : mCpuValue - 1;
-        assert(syncVal <= mCpuValue - 1);
+        FALCOR_ASSERT(syncVal <= mCpuValue - 1);
 
         uint64_t gpuVal = getGpuValue();
         if (gpuVal < syncVal)

@@ -193,6 +193,24 @@ namespace Mogwai
         mpRenderer->graphOutputsGui(w); // MOGWAI shouldn't be here
         w.separator();
 
+        // Framework UI
+        if (auto g = w.group("Framework Stats"))
+        {
+            g.text("Program compilation:\n");
+
+            const auto& s = Program::getGlobalCompilationStats();
+            std::ostringstream oss;
+            oss << "Program version count: " << s.programVersionCount << std::endl
+                << "Program kernels count: " << s.programKernelsCount << std::endl
+                << "Program version time (total): " << s.programVersionTotalTime << " s" << std::endl
+                << "Program kernels time (total): " << s.programKernelsTotalTime << " s" << std::endl
+                << "Program version time (max): " << s.programVersionMaxTime << " s" << std::endl
+                << "Program kernels time (max): " << s.programKernelsMaxTime << " s" << std::endl;
+            g.text(oss.str());
+
+            if (g.button("Reset")) Program::resetGlobalCompilationStats();
+        }
+
         // Scene UI
         if (mpRenderer->mpScene)
         {

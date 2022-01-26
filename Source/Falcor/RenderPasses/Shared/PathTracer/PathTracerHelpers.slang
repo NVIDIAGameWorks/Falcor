@@ -28,8 +28,7 @@
 #include "Utils/Math/MathConstants.slangh"
 
 // TODO: Which ones need __exported
-import Scene.Scene;
-import Scene.ShadingData;
+import Scene.Shading;
 __exported import Utils.Geometry.GeometryHelpers;
 __exported import Utils.Math.MathHelpers;
 __exported import Rendering.Lights.EnvMapSampler;

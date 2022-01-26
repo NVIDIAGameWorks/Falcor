@@ -208,13 +208,13 @@ namespace Falcor
     */
     inline uint32_t getFormatBytesPerBlock(ResourceFormat format)
     {
-        assert(kFormatDesc[(uint32_t)format].format == format);
+        FALCOR_ASSERT(kFormatDesc[(uint32_t)format].format == format);
         return kFormatDesc[(uint32_t)format].bytesPerBlock;
     }
 
     inline uint32_t getFormatPixelsPerBlock(ResourceFormat format)
     {
-        assert(kFormatDesc[(uint32_t)format].format == format);
+        FALCOR_ASSERT(kFormatDesc[(uint32_t)format].format == format);
         return kFormatDesc[(uint32_t)format].compressionRatio.width * kFormatDesc[(uint32_t)format].compressionRatio.height;
     }
 
@@ -222,7 +222,7 @@ namespace Falcor
     */
     inline bool isDepthFormat(ResourceFormat format)
     {
-        assert(kFormatDesc[(uint32_t)format].format == format);
+        FALCOR_ASSERT(kFormatDesc[(uint32_t)format].format == format);
         return kFormatDesc[(uint32_t)format].isDepth;
     }
 
@@ -230,7 +230,7 @@ namespace Falcor
     */
     inline bool isStencilFormat(ResourceFormat format)
     {
-        assert(kFormatDesc[(uint32_t)format].format == format);
+        FALCOR_ASSERT(kFormatDesc[(uint32_t)format].format == format);
         return kFormatDesc[(uint32_t)format].isStencil;
     }
 
@@ -245,7 +245,7 @@ namespace Falcor
     */
     inline bool isCompressedFormat(ResourceFormat format)
     {
-        assert(kFormatDesc[(uint32_t)format].format == format);
+        FALCOR_ASSERT(kFormatDesc[(uint32_t)format].format == format);
         return kFormatDesc[(uint32_t)format].isCompressed;
     }
 
@@ -253,7 +253,7 @@ namespace Falcor
     */
     inline uint32_t getFormatWidthCompressionRatio(ResourceFormat format)
     {
-        assert(kFormatDesc[(uint32_t)format].format == format);
+        FALCOR_ASSERT(kFormatDesc[(uint32_t)format].format == format);
         return kFormatDesc[(uint32_t)format].compressionRatio.width;
     }
 
@@ -261,7 +261,7 @@ namespace Falcor
     */
     inline uint32_t getFormatHeightCompressionRatio(ResourceFormat format)
     {
-        assert(kFormatDesc[(uint32_t)format].format == format);
+        FALCOR_ASSERT(kFormatDesc[(uint32_t)format].format == format);
         return kFormatDesc[(uint32_t)format].compressionRatio.height;
     }
 
@@ -269,7 +269,7 @@ namespace Falcor
     */
     inline uint32_t getFormatChannelCount(ResourceFormat format)
     {
-        assert(kFormatDesc[(uint32_t)format].format == format);
+        FALCOR_ASSERT(kFormatDesc[(uint32_t)format].format == format);
         return kFormatDesc[(uint32_t)format].channelCount;
     }
 
@@ -277,7 +277,7 @@ namespace Falcor
     */
     inline FormatType getFormatType(ResourceFormat format)
     {
-        assert(kFormatDesc[(uint32_t)format].format == format);
+        FALCOR_ASSERT(kFormatDesc[(uint32_t)format].format == format);
         return kFormatDesc[(uint32_t)format].Type;
     }
 
@@ -324,7 +324,7 @@ namespace Falcor
     */
     inline uint32_t getFormatRowPitch(ResourceFormat format, uint32_t width)
     {
-        assert(width % getFormatWidthCompressionRatio(format) == 0);
+        FALCOR_ASSERT(width % getFormatWidthCompressionRatio(format) == 0);
         return (width / getFormatWidthCompressionRatio(format)) * getFormatBytesPerBlock(format);
     }
 
@@ -356,7 +356,7 @@ namespace Falcor
         case ResourceFormat::BC7UnormSrgb:
             return ResourceFormat::BC7Unorm;
         default:
-            assert(isSrgbFormat(format) == false);
+            FALCOR_ASSERT(isSrgbFormat(format) == false);
             return format;
         }
     }
@@ -397,10 +397,10 @@ namespace Falcor
         case ResourceFormat::D32Float:
             return ResourceFormat::R32Float;
         case ResourceFormat::D32FloatS8X24:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return ResourceFormat::Unknown;
         default:
-            assert(isDepthFormat(format) == false);
+            FALCOR_ASSERT(isDepthFormat(format) == false);
             return format;
         }
     }
@@ -435,7 +435,7 @@ namespace Falcor
 
     inline const std::string& to_string(ResourceFormat format)
     {
-        assert(kFormatDesc[(uint32_t)format].format == format);
+        FALCOR_ASSERT(kFormatDesc[(uint32_t)format].format == format);
         return kFormatDesc[(uint32_t)format].name;
     }
 
@@ -452,7 +452,7 @@ namespace Falcor
         type_2_string(Uint);
         type_2_string(Sint);
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return "";
         }
 #undef type_2_string

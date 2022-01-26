@@ -37,7 +37,5 @@ void reportFatalError(std::string str)
 
 void optixLogCallback(unsigned int level, const char* tag, const char* message, void*)
 {
-    char buf[2048];
-    sprintf(buf, "[OptiX][%2d][%12s]: %s", (int)level, tag, message);
-    Falcor::logWarning(buf);
+    Falcor::logWarning("[Optix][{:2}][{:12}]: {}", level, tag, message);
 }

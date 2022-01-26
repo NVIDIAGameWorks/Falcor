@@ -45,7 +45,7 @@ namespace Falcor
     {
         FALCOR_PROFILE("LightBVH::refit()");
 
-        assert(mIsValid);
+        FALCOR_ASSERT(mIsValid);
 
         // Update all leaf nodes.
         {
@@ -55,7 +55,7 @@ namespace Falcor
             var["gNodeIndices"] = mpNodeIndicesBuffer;
 
             const uint32_t nodeCount = mPerDepthRefitEntryInfo.back().count;
-            assert(nodeCount > 0);
+            FALCOR_ASSERT(nodeCount > 0);
             var["gFirstNodeOffset"] = mPerDepthRefitEntryInfo.back().offset;
             var["gNodeCount"] = nodeCount;
 
@@ -73,7 +73,7 @@ namespace Falcor
             for (int depth = (int)mBVHStats.treeHeight - 1; depth >= 0; --depth)
             {
                 const uint32_t nodeCount = mPerDepthRefitEntryInfo[depth].count;
-                assert(nodeCount > 0);
+                FALCOR_ASSERT(nodeCount > 0);
                 var["gFirstNodeOffset"] = mPerDepthRefitEntryInfo[depth].offset;
                 var["gNodeCount"] = nodeCount;
 
@@ -175,11 +175,11 @@ namespace Falcor
 
     void LightBVH::computeStats()
     {
-        assert(isValid());
+        FALCOR_ASSERT(isValid());
         mBVHStats.nodeCountPerLevel.clear();
         mBVHStats.nodeCountPerLevel.reserve(32);
 
-        assert(mMaxTriangleCountPerLeaf > 0);
+        FALCOR_ASSERT(mMaxTriangleCountPerLeaf > 0);
         mBVHStats.leafCountPerTriangleCount.clear();
         mBVHStats.leafCountPerTriangleCount.resize(mMaxTriangleCountPerLeaf + 1, 0);
 
@@ -222,7 +222,7 @@ namespace Falcor
         // The nodes of the BVH are stored in depth-first order. To simplify the work of the refit kernels,
         // they are first run on all leaf nodes, and then on all internal nodes on a per level basis.
         // In order to do that, we need to compute how many internal nodes are stored at each level.
-        assert(isValid());
+        FALCOR_ASSERT(isValid());
         mPerDepthRefitEntryInfo.clear();
         mPerDepthRefitEntryInfo.resize(mBVHStats.treeHeight + 1);
         mPerDepthRefitEntryInfo.back().count = mBVHStats.leafNodeCount;
@@ -244,10 +244,10 @@ namespace Falcor
             uint32_t currentOffset = 0;
             for (const RefitEntryInfo& info : mPerDepthRefitEntryInfo)
             {
-                assert(info.offset == currentOffset);
+                FALCOR_ASSERT(info.offset == currentOffset);
                 currentOffset += info.count;
             }
-            assert(currentOffset == (mBVHStats.internalNodeCount + mBVHStats.leafNodeCount));
+            FALCOR_ASSERT(currentOffset == (mBVHStats.internalNodeCount + mBVHStats.leafNodeCount));
         }
 
         // Now that we know how many nodes are stored per level (excluding leaf nodes) and how many leaf nodes there are,
@@ -291,14 +291,14 @@ namespace Falcor
         }
 
         // Update our GPU side buffers.
-        assert(mpBVHNodesBuffer->getElementCount() >= mNodes.size());
-        assert(mpBVHNodesBuffer->getStructSize() == sizeof(mNodes[0]));
+        FALCOR_ASSERT(mpBVHNodesBuffer->getElementCount() >= mNodes.size());
+        FALCOR_ASSERT(mpBVHNodesBuffer->getStructSize() == sizeof(mNodes[0]));
         mpBVHNodesBuffer->setBlob(mNodes.data(), 0, mNodes.size() * sizeof(mNodes[0]));
 
-        assert(mpTriangleIndicesBuffer->getSize() >= triangleIndices.size() * sizeof(triangleIndices[0]));
+        FALCOR_ASSERT(mpTriangleIndicesBuffer->getSize() >= triangleIndices.size() * sizeof(triangleIndices[0]));
         mpTriangleIndicesBuffer->setBlob(triangleIndices.data(), 0, triangleIndices.size() * sizeof(triangleIndices[0]));
 
-        assert(mpTriangleBitmasksBuffer->getSize() >= triangleBitmasks.size() * sizeof(triangleBitmasks[0]));
+        FALCOR_ASSERT(mpTriangleBitmasksBuffer->getSize() >= triangleBitmasks.size() * sizeof(triangleBitmasks[0]));
         mpTriangleBitmasksBuffer->setBlob(triangleBitmasks.data(), 0, triangleBitmasks.size() * sizeof(triangleBitmasks[0]));
 
         mIsCpuDataValid = true;
@@ -311,7 +311,7 @@ namespace Falcor
         // TODO: This is slow because of the flush. We should copy to a staging buffer
         // after the data is updated on the GPU and map the staging buffer here instead.
         const void* const ptr = mpBVHNodesBuffer->map(Buffer::MapType::Read);
-        assert(mNodes.size() > 0 && mNodes.size() <= mpBVHNodesBuffer->getElementCount());
+        FALCOR_ASSERT(mNodes.size() > 0 && mNodes.size() <= mpBVHNodesBuffer->getElementCount());
         std::memcpy(mNodes.data(), ptr, mNodes.size() * sizeof(mNodes[0]));
         mpBVHNodesBuffer->unmap();
         mIsCpuDataValid = true;
@@ -321,7 +321,7 @@ namespace Falcor
     {
         if (isValid())
         {
-            assert(var.isValid());
+            FALCOR_ASSERT(var.isValid());
             var["nodes"] = mpBVHNodesBuffer;
             var["triangleIndices"] = mpTriangleIndicesBuffer;
             var["triangleBitmasks"] = mpTriangleBitmasksBuffer;

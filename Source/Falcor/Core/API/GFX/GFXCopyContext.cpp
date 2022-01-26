@@ -39,12 +39,14 @@ namespace Falcor
 
     void CopyContext::updateTextureSubresources(const Texture* pTexture, uint32_t firstSubresource, uint32_t subresourceCount, const void* pData, const uint3& offset, const uint3& size)
     {
+        resourceBarrier(pTexture, Resource::State::CopyDest);
+
         bool copyRegion = (offset != uint3(0)) || (size != uint3(-1));
-        assert(subresourceCount == 1 || (copyRegion == false));
+        FALCOR_ASSERT(subresourceCount == 1 || (copyRegion == false));
         uint8_t* dataPtr = (uint8_t*)pData;
         auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
         gfx::ITextureResource::Offset3D gfxOffset = { offset.x, offset.y, offset.z };
-        gfx::ITextureResource::Offset3D gfxSize = { size.x, size.y, size.z };
+        gfx::ITextureResource::Size gfxSize = { (int)size.x, (int)size.y, (int)size.z };
         gfx::FormatInfo formatInfo = {};
         gfx::gfxGetFormatInfo(getGFXFormat(pTexture->getFormat()), &formatInfo);
         for (uint32_t index = firstSubresource; index < firstSubresource + subresourceCount; index++)
@@ -56,14 +58,14 @@ namespace Falcor
             subresourceRange.mipLevelCount = 1;
             if (!copyRegion)
             {
-                gfxSize.x = pTexture->getWidth(subresourceRange.mipLevel);
-                gfxSize.y = pTexture->getHeight(subresourceRange.mipLevel);
-                gfxSize.z = pTexture->getDepth(subresourceRange.mipLevel);
+                gfxSize.width = pTexture->getWidth(subresourceRange.mipLevel);
+                gfxSize.height = pTexture->getHeight(subresourceRange.mipLevel);
+                gfxSize.depth = pTexture->getDepth(subresourceRange.mipLevel);
             }
             gfx::ITextureResource::SubresourceData data = {};
             data.data = dataPtr;
-            data.strideY = (int64_t)(gfxSize.x + formatInfo.blockWidth - 1) / formatInfo.blockWidth * formatInfo.blockSizeInBytes;
-            data.strideZ = data.strideY * ((gfxSize.y + formatInfo.blockHeight - 1) / formatInfo.blockHeight);
+            data.strideY = (int64_t)(gfxSize.width + formatInfo.blockWidth - 1) / formatInfo.blockWidth * formatInfo.blockSizeInBytes;
+            data.strideZ = data.strideY * ((gfxSize.height + formatInfo.blockHeight - 1) / formatInfo.blockHeight);
             dataPtr += data.strideZ;
             resourceEncoder->uploadTextureData(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), subresourceRange, gfxOffset, gfxSize, &data, 1);
         }
@@ -155,6 +157,8 @@ namespace Falcor
 
     bool CopyContext::bufferBarrier(const Buffer* pBuffer, Resource::State newState)
     {
+        FALCOR_ASSERT(pBuffer);
+        if (pBuffer->getCpuAccess() != Buffer::CpuAccess::None) return false;
         auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
         bool recorded = false;
         if (pBuffer->getGlobalState() != newState)
@@ -182,7 +186,6 @@ namespace Falcor
             resourceEncoder->textureSubresourceBarrier(textureResource, subresourceRange, getGFXResourceState(pTexture->getGlobalState()), getGFXResourceState(newState));
             mCommandsPending = true;
         }
-        pTexture->setGlobalState(newState);
     }
 
     void CopyContext::uavBarrier(const Resource* pResource)
@@ -205,13 +208,16 @@ namespace Falcor
     void CopyContext::copyResource(const Resource* pDst, const Resource* pSrc)
     {
         // Copy from texture to texture or from buffer to buffer.
-        assert(pDst->getType() == pSrc->getType());
+        FALCOR_ASSERT(pDst->getType() == pSrc->getType());
+
+        resourceBarrier(pDst, Resource::State::CopyDest);
+        resourceBarrier(pSrc, Resource::State::CopySource);
 
         auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
 
         if (pDst->getType() == Resource::Type::Buffer)
         {
-            assert(pSrc->getSize() <= pDst->getSize());
+            FALCOR_ASSERT(pSrc->getSize() <= pDst->getSize());
 
             gfx::IBufferResource* srcBuffer = static_cast<gfx::IBufferResource*>(pSrc->getApiHandle().get());
             gfx::IBufferResource* dstBuffer = static_cast<gfx::IBufferResource*>(pDst->getApiHandle().get());
@@ -236,16 +242,22 @@ namespace Falcor
 
     void CopyContext::copyBufferRegion(const Buffer* pDst, uint64_t dstOffset, const Buffer* pSrc, uint64_t srcOffset, uint64_t numBytes)
     {
+        resourceBarrier(pDst, Resource::State::CopyDest);
+        resourceBarrier(pSrc, Resource::State::CopySource);
+
         auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
         gfx::IBufferResource* dstBuffer = static_cast<gfx::IBufferResource*>(pDst->getApiHandle().get());
         gfx::IBufferResource* srcBuffer = static_cast<gfx::IBufferResource*>(pSrc->getApiHandle().get());
 
-        resourceEncoder->copyBuffer(dstBuffer, dstOffset, srcBuffer, srcOffset, numBytes);
+        resourceEncoder->copyBuffer(dstBuffer, dstOffset, srcBuffer, pSrc->getGpuAddressOffset() + srcOffset, numBytes);
         mCommandsPending = true;
     }
 
     void CopyContext::copySubresourceRegion(const Texture* pDst, uint32_t dstSubresourceIdx, const Texture* pSrc, uint32_t srcSubresourceIdx, const uint3& dstOffset, const uint3& srcOffset, const uint3& size)
     {
+        resourceBarrier(pDst, Resource::State::CopyDest);
+        resourceBarrier(pSrc, Resource::State::CopySource);
+
         auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
         gfx::ITextureResource* dstTexture = static_cast<gfx::ITextureResource*>(pDst->getApiHandle().get());
         gfx::ITextureResource* srcTexture = static_cast<gfx::ITextureResource*>(pSrc->getApiHandle().get());

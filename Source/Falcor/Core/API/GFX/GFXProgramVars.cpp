@@ -40,13 +40,13 @@ namespace Falcor
         : ParameterBlock(pReflector)
         , mpReflector(pReflector)
     {
-        assert(pReflector);
+        FALCOR_ASSERT(pReflector);
     }
 
     void ComputeVars::dispatchCompute(ComputeContext* pContext, uint3 const& threadGroupCount)
     {
         auto pProgram = std::dynamic_pointer_cast<ComputeProgram>(getReflection()->getProgramVersion()->getProgram());
-        assert(pProgram);
+        FALCOR_ASSERT(pProgram);
         pProgram->dispatchCompute(pContext, this, threadGroupCount);
     }
 

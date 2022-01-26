@@ -54,6 +54,8 @@ public:
     virtual bool onMouseEvent(const MouseEvent& mouseEvent) override;
     virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override;
 
+    static void registerBindings(pybind11::module& m);
+
 private:
     BSDFViewer(const Dictionary& dict);
     void parseDictionary(const Dictionary& dict);
@@ -63,6 +65,7 @@ private:
     // Internal state
     Scene::SharedPtr                mpScene;                    ///< Loaded scene if any, nullptr otherwise.
     EnvMap::SharedPtr               mpEnvMap;                   ///< Environment map if loaded, nullptr otherwise.
+    bool                            mUseEnvMap = true;          ///< Use environment map if available.
 
     BSDFViewerParams                mParams;                    ///< Parameters shared with the shaders.
     SampleGenerator::SharedPtr      mpSampleGenerator;          ///< Random number generator for the integrator.

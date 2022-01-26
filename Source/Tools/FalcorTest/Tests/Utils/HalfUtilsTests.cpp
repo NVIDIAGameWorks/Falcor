@@ -149,7 +149,7 @@ namespace Falcor
             for (uint32_t i = 0; i < 0xfc00; i++)
             {
                 if (i >= 0x7c00 && i < 0x8000) continue;    // Skip special values (inf, nan).
-                assert(i <= 0xffff);
+                FALCOR_ASSERT(i <= 0xffff);
                 data.push_back(i);
             }
             return data;

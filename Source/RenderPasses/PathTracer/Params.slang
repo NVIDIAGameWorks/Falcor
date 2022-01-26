@@ -32,21 +32,13 @@ BEGIN_NAMESPACE_FALCOR
 
 /** Per-sample color format.
 */
-enum class ColorFormat
-// TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
-#ifdef HOST_CODE
-    : uint32_t
-#endif
+enum class ColorFormat : uint32_t
 {
     RGBA32F         = 0,
     LogLuvHDR       = 1,
 };
 
-enum class MISHeuristic
-// TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
-#ifdef HOST_CODE
-    : uint32_t
-#endif
+enum class MISHeuristic : uint32_t
 {
     Balance     = 0,    ///< Balance heuristic.
     PowerTwo    = 1,    ///< Power heuristic (exponent = 2.0).

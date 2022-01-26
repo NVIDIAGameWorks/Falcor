@@ -97,13 +97,13 @@ namespace Falcor
 
             if (jsonMember == jsonPrimitive.MemberEnd())
             {
-                reportError("JSON member " + std::string(pKey) + " could not be found!");
+                logWarning("JSON member '{}' could not be found!", pKey);
                 return false;
             }
 
             if (!jsonMember->value.IsUint())
             {
-                reportError("JSON member " + std::string(pKey) + " is not of type uint!");
+                logWarning("JSON member '{}' is not of type uint!", pKey);
                 return false;
             }
 
@@ -117,13 +117,13 @@ namespace Falcor
 
             if (jsonMember == jsonPrimitive.MemberEnd())
             {
-                reportError("JSON member " + std::string(pKey) + " could not be found!");
+                logWarning("JSON member '{}' could not be found!", pKey);
                 return false;
             }
 
             if (!jsonMember->value.IsNumber())
             {
-                reportError("JSON member " + std::string(pKey) + " is not a number!");
+                logWarning("JSON member '{}' is not a number!", pKey);
                 return false;
             }
 
@@ -137,13 +137,13 @@ namespace Falcor
 
             if (jsonMember == jsonPrimitive.MemberEnd())
             {
-                reportError("JSON member " + std::string(pKey) + " could not be found!");
+                logWarning("JSON member '{}' could not be found!", pKey);
                 return false;
             }
 
             if (!jsonMember->value.IsArray())
             {
-                reportError("JSON member " + std::string(pKey) + " is not of type float!");
+                logWarning("JSON member '{}' is not of type float!", pKey);
                 return false;
             }
 
@@ -153,7 +153,7 @@ namespace Falcor
 
                 if (!jsonValue.IsNumber())
                 {
-                    reportError("JSON vector index " + std::to_string(i) + " of member " + std::string(pKey) + " is not a number!");
+                    logWarning("JSON vector index {} of member '{}' is not a number!", i, pKey);
                     return false;
                 }
 
@@ -169,13 +169,13 @@ namespace Falcor
 
             if (jsonMember == jsonPrimitive.MemberEnd())
             {
-                reportError("JSON member " + std::string(pKey) + " could not be found!");
+                logWarning("JSON member '{}' could not be found!", pKey);
                 return false;
             }
 
             if (!jsonMember->value.IsArray())
             {
-                reportError("JSON member " + std::string(pKey) + " is not of type float!");
+                logWarning("JSON member '{}' is not of type float!", pKey);
                 return false;
             }
 
@@ -185,7 +185,7 @@ namespace Falcor
 
                 if (!jsonValue.IsNumber())
                 {
-                    reportError("JSON matrix index " + std::to_string(i) + " of member " + std::string(pKey) + " is not a number!");
+                    logWarning("JSON matrix index '{}' of member is not a number!", i, pKey);
                     return false;
                 }
 
@@ -196,34 +196,24 @@ namespace Falcor
         };
     }
 
-    bool SDFGrid::setPrimitives(const std::vector<SDF3DPrimitive>& primitives, uint32_t gridWidth)
+    void SDFGrid::setPrimitives(const std::vector<SDF3DPrimitive>& primitives, uint32_t gridWidth)
     {
-        if (gridWidth == 0 || (gridWidth & (gridWidth - 1)) != 0)
-        {
-            reportError("SDFGrid::setPrimitives() gridWidth must be a power of 2");
-            return false;
-        }
+        checkArgument(isPowerOf2(gridWidth), "'gridWidth' ({}) must be a power of 2.", gridWidth);
 
         mOriginalGridWidth = gridWidth;
         mGridWidth = gridWidth;
         mPrimitives = primitives;
         updatePrimitivesBuffer();
-
-        return true;
     }
 
-    bool SDFGrid::setValues(const std::vector<float>& cornerValues, uint32_t gridWidth)
+    void SDFGrid::setValues(const std::vector<float>& cornerValues, uint32_t gridWidth)
     {
-        if (gridWidth == 0 || (gridWidth & (gridWidth - 1)) != 0)
-        {
-            reportError("SDFGrid::setValues() gridWidth must be a power of 2");
-            return false;
-        }
+        checkArgument(isPowerOf2(gridWidth), "'gridWidth' ({}) must be a power of 2.", gridWidth);
 
         mOriginalGridWidth = gridWidth;
         mGridWidth = gridWidth;
 
-        return setValuesInternal(cornerValues);
+        setValuesInternal(cornerValues);
     }
 
     bool SDFGrid::loadValuesFromFile(const std::string& filename)
@@ -243,15 +233,16 @@ namespace Falcor
                 file.read(reinterpret_cast<char*>(cornerValues.data()), totalValueCount * sizeof(float));
 
                 file.close();
-                return setValues(cornerValues, gridWidth);
+                setValues(cornerValues, gridWidth);
+                return true;
             }
         }
 
-        reportError("SDFGrid::loadValues() file with name " + filename + " could not be opened!");
+        logWarning("SDFGrid::loadValues() file '{}' could not be opened!", filename);
         return false;
     }
 
-    bool SDFGrid::generateCheeseValues(uint32_t gridWidth, uint32_t seed)
+    void SDFGrid::generateCheeseValues(uint32_t gridWidth, uint32_t seed)
     {
         const float kHalfCheeseExtent = 0.4f;
         const uint32_t kHoleCount = 32;
@@ -300,7 +291,7 @@ namespace Falcor
             }
         }
 
-        return setValues(cornerValues, gridWidth);
+        setValues(cornerValues, gridWidth);
     }
 
     bool SDFGrid::writeValuesFromPrimitivesToFile(const std::string& filePath, RenderContext* pRenderContext)
@@ -356,7 +347,7 @@ namespace Falcor
         {
             if (!findFileInDataDirectories(filename, filePath))
             {
-                reportError("File " + filename + " could not be found in data directories!");
+                logWarning("File '{}' could not be found in data directories!", filename);
                 return 0;
             }
         }
@@ -375,13 +366,13 @@ namespace Falcor
         {
             size_t line;
             line = std::count(jsonData.begin(), jsonData.begin() + jsonDocument.GetErrorOffset(), '\n');
-            reportError("Error when deserializing SDF grid '" + filePath + "'.\nJSON Parse error in line " + std::to_string(line) + ". " + rapidjson::GetParseError_En(jsonDocument.GetParseError()));
+            logWarning("Error when deserializing SDF grid from '{}'. JSON Parse error in line {}: {}", filePath, line, rapidjson::GetParseError_En(jsonDocument.GetParseError()));
             return 0;
         }
 
         if (!jsonDocument.IsArray())
         {
-            reportError("SDF grid JSON document is not of array type!");
+            logWarning("Error when deserializing SDF grid from '{}'. JSON document is not of array type!");
             return 0;
         }
 
@@ -406,8 +397,7 @@ namespace Falcor
             if (!deserializeFloat3x3(kPrimitiveInvRotationScaleJSONKey, jsonPrimitive, primitive.invRotationScale)) return 0;
         }
 
-        if (!setPrimitives(primitives, gridWidth))
-            return 0;
+        setPrimitives(primitives, gridWidth);
 
         return (uint32_t)mPrimitives.size();
     }

@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 
-/** Enums for WhittedTracer 
+/** Enums for WhittedTracer
 */
 
 #pragma once
@@ -37,11 +37,7 @@ BEGIN_NAMESPACE_FALCOR
 /** This enum is shared between CPU/GPU.
     It enumerates the different the different filter modes for ray cones.
 */
-enum class RayFootprintFilterMode
-    // TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
-#ifdef HOST_CODE
-    : uint32_t
-#endif
+enum class RayFootprintFilterMode : uint32_t
 {
     Isotropic = 0,
     Anisotropic = 1,

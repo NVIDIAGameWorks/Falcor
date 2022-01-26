@@ -130,7 +130,7 @@ void GBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedP
 
     if (pScene)
     {
-        if (pScene->getVao()->getPrimitiveTopology() != Vao::Topology::TriangleList)
+        if (pScene->getMeshVao() && pScene->getMeshVao()->getPrimitiveTopology() != Vao::Topology::TriangleList)
         {
             throw RuntimeError("GBufferRaster: Requires triangle list geometry due to usage of SV_Barycentrics.");
         }
@@ -148,7 +148,7 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
 
     // Update frame dimension based on render pass output.
     auto pDepth = renderData[kDepthName]->asTexture();
-    assert(pDepth);
+    FALCOR_ASSERT(pDepth);
     updateFrameDim(uint2(pDepth->getWidth(), pDepth->getHeight()));
 
     // Bind primary channels as render targets and clear them.
@@ -184,15 +184,16 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
         mRaster.pVars = GraphicsVars::create(mRaster.pProgram.get());
     }
 
-    // Setup depth pass to use same culling mode and output size.
+    // Setup depth pass to use same configuration as this pass.
     RasterizerState::CullMode cullMode = mForceCullMode ? mCullMode : kDefaultCullMode;
     mpDepthPrePass->setCullMode(cullMode);
     mpDepthPrePass->setOutputSize(mFrameDim);
+    mpDepthPrePass->setAlphaTest(mUseAlphaTest);
 
     // Execute depth pass and copy depth buffer.
     mpDepthPrePassGraph->execute(pRenderContext);
     auto pPreDepth = mpDepthPrePassGraph->getOutput("DepthPrePass.depth")->asTexture();
-    assert(pPreDepth && pPreDepth->getWidth() == mFrameDim.x && pPreDepth->getHeight() == mFrameDim.y);
+    FALCOR_ASSERT(pPreDepth && pPreDepth->getWidth() == mFrameDim.x && pPreDepth->getHeight() == mFrameDim.y);
     mpFbo->attachDepthStencilTarget(pPreDepth);
     pRenderContext->copyResource(pDepth.get(), pPreDepth.get());
 

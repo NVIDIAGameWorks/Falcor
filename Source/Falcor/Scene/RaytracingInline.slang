@@ -35,8 +35,7 @@
 import Utils.Attributes;
 import Scene.Intersection;
 import Scene.SDFs.SDFGridHitData;
-__exported import Scene.Scene;
-__exported import Scene.HitInfo;
+__exported import Scene.Shading;
 __exported import Scene.SceneRayQueryInterface;
 
 /** Return the geometry type for a committed hit.

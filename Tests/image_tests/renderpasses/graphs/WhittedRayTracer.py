@@ -1,7 +1,7 @@
 from falcor import *
 
 def render_graph_WhittedRayTracer():
-    g = RenderGraph("DefaultRenderGraph")
+    g = RenderGraph("WhittedRayTracer")
     loadRenderPassLibrary("GBuffer.dll")
     loadRenderPassLibrary("WhittedRayTracer.dll")
     loadRenderPassLibrary("ToneMapper.dll")

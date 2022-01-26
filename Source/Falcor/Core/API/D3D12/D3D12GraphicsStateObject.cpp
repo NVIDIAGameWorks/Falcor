@@ -34,14 +34,11 @@
 namespace Falcor
 {
 #if FALCOR_ENABLE_NVAPI
-    bool getNvApiGraphicsPsoDesc(const GraphicsStateObject::Desc& desc, std::vector<NvApiPsoExDesc>& nvApiPsoExDescs)
+    void getNvApiGraphicsPsoDesc(const GraphicsStateObject::Desc& desc, std::vector<NvApiPsoExDesc>& nvApiPsoExDescs)
     {
-        auto ret = NvAPI_Initialize();
-
-        if (ret != NVAPI_OK)
+        if (NvAPI_Initialize() != NVAPI_OK)
         {
-            reportError("Failed to initialize NvApi");
-            return false;
+            throw RuntimeError("Failed to initialize NVAPI.");
         }
 
         if (auto optRegisterIndex = findNvApiShaderRegister(desc.getProgramKernels()))
@@ -50,7 +47,6 @@ namespace Falcor
             nvApiPsoExDescs.push_back(NvApiPsoExDesc());
             createNvApiUavSlotExDesc(nvApiPsoExDescs.back(), registerIndex);
         }
-        return true;
     }
 
     GraphicsStateObject::ApiHandle getNvApiGraphicsPsoHandle(const std::vector<NvApiPsoExDesc>& nvDescVec, const D3D12_GRAPHICS_PIPELINE_STATE_DESC& desc)
@@ -66,7 +62,7 @@ namespace Falcor
             case NV_PSO_DOMAIN_SHADER_EXTENSION:                ppPSOExtensionsDesc[ex] = &nvDescVec[ex].mDsExDesc; break;
             case NV_PSO_GEOMETRY_SHADER_EXTENSION:              ppPSOExtensionsDesc[ex] = &nvDescVec[ex].mGsExDesc; break;
             case NV_PSO_SET_SHADER_EXTNENSION_SLOT_AND_SPACE:   ppPSOExtensionsDesc[ex] = &nvDescVec[ex].mExtSlotDesc; break;
-            default: should_not_get_here();
+            default: FALCOR_UNREACHABLE();
             }
         }
         GraphicsStateObject::ApiHandle apiHandle;
@@ -74,8 +70,7 @@ namespace Falcor
 
         if (ret != NVAPI_OK || apiHandle == nullptr)
         {
-            reportError("Failed to create a graphics pipeline state object with NVAPI extensions");
-            return nullptr;
+            throw RuntimeError("Failed to create a graphics pipeline state object with NVAPI extensions.");
         }
 
         return apiHandle;
@@ -86,8 +81,8 @@ namespace Falcor
         return findNvApiShaderRegister(desc.getProgramKernels()).has_value();
     }
 #else
-    bool getNvApiGraphicsPsoDesc(const GraphicsStateObject::Desc& desc, std::vector<NvApiPsoExDesc>& nvApiPsoExDescs) { should_not_get_here(); return false; }
-    GraphicsStateObject::ApiHandle getNvApiGraphicsPsoHandle(const std::vector<NvApiPsoExDesc>& psoDesc, const D3D12_GRAPHICS_PIPELINE_STATE_DESC& desc) { should_not_get_here(); return nullptr; }
+    void getNvApiGraphicsPsoDesc(const GraphicsStateObject::Desc& desc, std::vector<NvApiPsoExDesc>& nvApiPsoExDescs) { FALCOR_UNREACHABLE(); }
+    GraphicsStateObject::ApiHandle getNvApiGraphicsPsoHandle(const std::vector<NvApiPsoExDesc>& psoDesc, const D3D12_GRAPHICS_PIPELINE_STATE_DESC& desc) { FALCOR_UNREACHABLE(); return nullptr; }
     bool getIsNvApiGraphicsPsoRequired(const GraphicsStateObject::Desc& desc) { return false; }
 #endif
 
@@ -100,11 +95,8 @@ namespace Falcor
         if (getIsNvApiGraphicsPsoRequired(mDesc))
         {
             std::vector<NvApiPsoExDesc> nvApiDesc;
-            bool ret = getNvApiGraphicsPsoDesc(mDesc, nvApiDesc);
-            if (!ret) throw RuntimeError("Failed to create graphics PSO desc with NVAPI extensions");
-
+            getNvApiGraphicsPsoDesc(mDesc, nvApiDesc);
             mApiHandle = getNvApiGraphicsPsoHandle(nvApiDesc, d3dDesc);
-            if (mApiHandle == nullptr) throw RuntimeError("Failed to create graphics PSO with NVAPI extensions");
         }
         else
         {

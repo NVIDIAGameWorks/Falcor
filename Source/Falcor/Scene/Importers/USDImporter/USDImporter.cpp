@@ -92,7 +92,7 @@ namespace Falcor
 
                 if (prim.IsA<UsdGeomImageable>() && !isRenderable(UsdGeomImageable(prim)))
                 {
-                    logDebug("Pruning non-renderable prim " + primName);
+                    logDebug("Pruning non-renderable prim '{}'.", primName);
                     it.PruneChildren();
                     continue;
                 }
@@ -103,27 +103,27 @@ namespace Falcor
 
                     if (protoPrim.IsValid())
                     {
-                        logDebug("Adding instance '" + primName + "' of '" + protoPrim.GetPath().GetString() + "'.");
+                        logDebug("Adding instance '{}' of '{}'.", primName, protoPrim.GetPath().GetString());
                         PrototypeInstance protoInst = { primName, protoPrim, ctx.nodeStack.back() };
 
                         ctx.addPrototypeInstance(protoInst);
                     }
                     else
                     {
-                        logError("No valid prototype prim for instance " + primName);
+                        logError("No valid prototype prim for instance '{}'.", primName);
                         it.PruneChildren();
                         continue;
                     }
                 }
                 else if (prim.IsA<UsdGeomPointInstancer>())
                 {
-                    logDebug("Processing point instancer " + primName);
+                    logDebug("Processing point instancer '{}'.", primName);
                     ctx.createPointInstances(prim);
                     it.PruneChildren();
                 }
                 else if (prim.IsA<UsdGeomMesh>())
                 {
-                    logDebug("Adding mesh " + primName);
+                    logDebug("Adding mesh '{}'.", primName);
                     ctx.addMesh(prim);
                     float4x4 bindXform = ctx.getGeomBindTransform(prim);
                     ctx.addGeomInstance(primName, prim, float4x4(1.f), bindXform);
@@ -132,7 +132,7 @@ namespace Falcor
                 {
                     if (kCurveTessellationOutput == CurveTessellationOutput::LinearSweptSphere)
                     {
-                        logDebug("Adding curve " + primName + " for linear swept sphere tessellation");
+                        logDebug("Adding curve '{}' for linear swept sphere tessellation.", primName);
                         ctx.addCurve(prim);
 
                         // TODO: Add support for curve instancing
@@ -141,7 +141,7 @@ namespace Falcor
                     }
                     else if (kCurveTessellationOutput == CurveTessellationOutput::Mesh)
                     {
-                        logDebug("Tessellating curve " + primName + " to mesh");
+                        logDebug("Tessellating curve '{}' to mesh.", primName);
                         ctx.addMesh(prim);
                         float4x4 bindXform = ctx.getGeomBindTransform(prim);
                         ctx.addGeomInstance(primName, prim, glm::identity<glm::mat4>(), bindXform);
@@ -153,42 +153,42 @@ namespace Falcor
                 }
                 else if (prim.IsA<UsdSkelRoot>())
                 {
-                    logDebug("Processing Skeleton " + primName);
+                    logDebug("Processing Skeleton '{}'.", primName);
                     ctx.createSkeleton(prim);
                 }
                 else if (prim.IsA<UsdLuxDistantLight>())
                 {
-                    logDebug("Processing distant light " + primName);
+                    logDebug("Processing distant light '{}'.", primName);
                     ctx.createDistantLight(prim);
                 }
                 else if (prim.IsA<UsdLuxRectLight>())
                 {
-                    logDebug("Processing rect light " + primName);
+                    logDebug("Processing rect light '{}'.", primName);
                     ctx.createRectLight(prim);
                 }
                 else if (prim.IsA<UsdLuxSphereLight>())
                 {
-                    logDebug("Processing sphere light " + primName);
+                    logDebug("Processing sphere light '{}'.", primName);
                     ctx.createSphereLight(prim);
                 }
                 else if (prim.IsA<UsdLuxDiskLight>())
                 {
-                    logDebug("Processing disk light " + primName);
+                    logDebug("Processing disk light '{}'.", primName);
                     ctx.createDiskLight(prim);
                 }
                 else if (prim.IsA<UsdLuxDomeLight>())
                 {
-                    logDebug("Processing dome light " + primName);
+                    logDebug("Processing dome light '{}'.", primName);
                     ctx.createEnvMap(prim);
                 }
                 else if (prim.IsA<UsdGeomCamera>())
                 {
-                    logDebug("Processing camera " + primName);
+                    logDebug("Processing camera '{}'.", primName);
                     ctx.createCamera(prim);
                 }
                 else if (prim.IsA<UsdGeomXform>())
                 {
-                    logDebug("Processing xform " + primName);
+                    logDebug("Processing xform '{}'.", primName);
                     // Processing of this UsdGeomXformable performed above
                 }
                 else if (prim.IsA<UsdShadeMaterial>() ||
@@ -200,11 +200,11 @@ namespace Falcor
                 }
                 else if (prim.IsA<UsdGeomScope>())
                 {
-                    logDebug("Processing scope " + primName);
+                    logDebug("Processing scope '{}'.", primName);
                 }
                 else if (!prim.GetTypeName().GetString().empty())
                 {
-                    logWarning("Ignoring prim '" + primName + "' of unsupported type " + prim.GetTypeName().GetString());
+                    logWarning("Ignoring prim '{}' of unsupported type {}.", primName, prim.GetTypeName().GetString());
                     it.PruneChildren();
                 }
             }
@@ -231,8 +231,10 @@ namespace Falcor
                 // If the type of the value stored in the USD dictionary is not the same as we are expecting, cast to the proper type if possible.
                 if (!vtval.CanCastToTypeid(typeid(T)))
                 {
-                    logWarning("USD metadata parameter '" + key + "' is of type '" + std::string(vtval.GetTypeid().name()) +
-                               "', which is not compatible with the equivalent Falcor parameter of type '" + std::string(typeid(T).name()) + "'. Using default value instead.");
+                    logWarning(
+                        "USD metadata parameter '{}' is of type '{}', which is not compatible with the equivalent Falcor parameter of type '{}'. Using default value instead.",
+                        key, vtval.GetTypeid().name(), typeid(T).name()
+                    );
                     return defaultValue;
                 }
                 else
@@ -362,7 +364,7 @@ namespace Falcor
                 ctx.createPrototype(rootPrim);
             }
             ctx.popNodeStack();
-            assert(ctx.getNodeStackDepth() == 0);
+            FALCOR_ASSERT(ctx.getNodeStackDepth() == 0);
         }
 
         // Initialize stage-to-Falcor transformation based on specified stage up and unit scaling which
@@ -374,7 +376,7 @@ namespace Falcor
         }
         else
         {
-            assert(UsdGeomGetStageUpAxis(pStage) == UsdGeomTokens->y);
+            FALCOR_ASSERT(UsdGeomGetStageUpAxis(pStage) == UsdGeomTokens->y);
         }
 
         // A root prim in USD doesn't have an associated xform, so we must manually set the root transform we have computed.
@@ -384,7 +386,7 @@ namespace Falcor
         traversePrims(rootPrim, ctx);
 
         // Only the stage root xform should remain.
-        assert(ctx.getNodeStackDepth() == 1);
+        FALCOR_ASSERT(ctx.getNodeStackDepth() == 1);
 
         timeReport.measure("Traverse prims");
 

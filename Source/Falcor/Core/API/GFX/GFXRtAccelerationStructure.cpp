@@ -48,7 +48,7 @@ namespace Falcor
         GFXAccelerationStructureBuildInputsTranslator translator;
         gfxBuildInputs = translator.translate(inputs);
 
-        assert(gpDevice);
+        FALCOR_ASSERT(gpDevice);
         Slang::ComPtr<gfx::IDevice> pDevice = gpDevice->getApiHandle();
 
         gfx::IAccelerationStructure::PrebuildInfo gfxPrebuildInfo;
@@ -59,6 +59,31 @@ namespace Falcor
         result.scratchDataSize = gfxPrebuildInfo.scratchDataSize;
         result.updateScratchDataSize = gfxPrebuildInfo.updateScratchDataSize;
         return result;
+    }
+
+    gfx::IAccelerationStructure::Kind getGFXAccelerationStructureKind(RtAccelerationStructureKind kind)
+    {
+        switch (kind)
+        {
+        case RtAccelerationStructureKind::TopLevel:
+            return gfx::IAccelerationStructure::Kind::TopLevel;
+        case RtAccelerationStructureKind::BottomLevel:
+            return gfx::IAccelerationStructure::Kind::BottomLevel;
+        default:
+            should_not_get_here();
+            return gfx::IAccelerationStructure::Kind::BottomLevel;
+        }
+    }
+
+    bool RtAccelerationStructure::apiInit()
+    {
+        gfx::IAccelerationStructure::CreateDesc createDesc = {};
+        createDesc.buffer = static_cast<gfx::IBufferResource*>(mDesc.getBuffer()->getApiHandle().get());
+        createDesc.kind = getGFXAccelerationStructureKind(mDesc.mKind);
+        createDesc.offset = mDesc.getOffset();
+        createDesc.size = mDesc.getSize();
+        SLANG_RETURN_FALSE_ON_FAIL(gpDevice->getApiHandle()->createAccelerationStructure(createDesc, mApiHandle.writeRef()));
+        return true;
     }
 
     AccelerationStructureHandle RtAccelerationStructure::getApiHandle() const
@@ -98,7 +123,7 @@ namespace Falcor
                     break;
 
                 default:
-                    should_not_get_here();
+                    FALCOR_UNREACHABLE();
                 }
             }
         }
@@ -133,7 +158,7 @@ namespace Falcor
         case RtAccelerationStructurePostBuildInfoQueryType::CurrentSize:
             return gfx::QueryType::AccelerationStructureCurrentSize;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return gfx::QueryType::AccelerationStructureCompactedSize;
         }
     }

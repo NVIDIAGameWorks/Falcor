@@ -37,11 +37,7 @@ BEGIN_NAMESPACE_FALCOR
 /** This enum is shared between CPU/GPU.
     It enumerates the different tone mapper options for HDR-FLIP.
 */
-enum class FLIPToneMapperType
-    // TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
-#ifdef HOST_CODE
-    : uint32_t
-#endif
+enum class FLIPToneMapperType : uint32_t
 {
     ACES = 0,
     Hable = 1,

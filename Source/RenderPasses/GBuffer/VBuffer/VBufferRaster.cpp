@@ -110,7 +110,7 @@ void VBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedP
 
     if (pScene)
     {
-        if (pScene->getVao()->getPrimitiveTopology() != Vao::Topology::TriangleList)
+        if (pScene->getMeshVao() && pScene->getMeshVao()->getPrimitiveTopology() != Vao::Topology::TriangleList)
         {
             throw RuntimeError("VBufferRaster: Requires triangle list geometry due to usage of SV_Barycentrics.");
         }
@@ -126,7 +126,7 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
 
     // Update frame dimension based on render pass output.
     auto pOutput = renderData[kVBufferName]->asTexture();
-    assert(pOutput);
+    FALCOR_ASSERT(pOutput);
     updateFrameDim(uint2(pOutput->getWidth(), pOutput->getHeight()));
 
     // Clear depth and output buffer.

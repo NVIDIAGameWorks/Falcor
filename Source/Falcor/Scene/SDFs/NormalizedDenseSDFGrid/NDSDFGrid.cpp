@@ -69,12 +69,11 @@ namespace Falcor
         return bitScanReverse(uint32_t(mValues.size() - 1)) + 1;
     }
 
-    bool NDSDFGrid::createResources(RenderContext* pRenderContext, bool deleteScratchData)
+    void NDSDFGrid::createResources(RenderContext* pRenderContext, bool deleteScratchData)
     {
         if (!mPrimitives.empty())
         {
-            reportError("An NDSDFGrid instance cannot be created from primitives!");
-            return false;
+            throw RuntimeError("An NDSDFGrid instance cannot be created from primitives!");
         }
 
         uint32_t lodCount = (uint32_t)mValues.size();
@@ -99,8 +98,6 @@ namespace Falcor
                 pNDSDFTexture = Texture::create3D(lodWidth, lodWidth, lodWidth, ResourceFormat::R8Snorm, 1, mValues[lod].data());
             }
         }
-
-        return true;
     }
 
     void NDSDFGrid::setShaderData(const ShaderVar& var) const
@@ -124,14 +121,13 @@ namespace Falcor
         }
     }
 
-    bool NDSDFGrid::setValuesInternal(const std::vector<float>& cornerValues)
+    void NDSDFGrid::setValuesInternal(const std::vector<float>& cornerValues)
     {
         const uint32_t kCoarsestAllowedGridWidth = 8;
 
         if (kCoarsestAllowedGridWidth > mGridWidth)
         {
-            reportError("NDSDFGrid::setValues() grid width must be larger than " + std::to_string(kCoarsestAllowedGridWidth));
-            return false;
+            throw RuntimeError("NDSDFGrid::setValues() grid width must be larger than {}.", kCoarsestAllowedGridWidth);
         }
 
         uint32_t lodCount = bitScanReverse(mGridWidth / kCoarsestAllowedGridWidth) + 1;
@@ -169,8 +165,6 @@ namespace Falcor
                 }
             }
         }
-
-        return true;
     }
 
     float NDSDFGrid::calculateNormalizationFactor(uint32_t gridWidth) const

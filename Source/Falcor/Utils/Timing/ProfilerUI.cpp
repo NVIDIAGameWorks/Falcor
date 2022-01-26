@@ -230,7 +230,7 @@ namespace Falcor
             if (ImGui::Button("End Capture"))
             {
                 auto pCapture = mpProfiler->endCapture();
-                assert(pCapture);
+                FALCOR_ASSERT(pCapture);
                 FileDialogFilterVec filters {{ "json", "JSON" }};
                 std::string filename;
                 if (saveFileDialog(filters, filename))
@@ -314,7 +314,7 @@ namespace Falcor
         ImGui::Dummy(ImVec2(size));
         if (ImGui::IsItemHovered() && highlightValue)
         {
-            assert(newHighlightIndex >= 0 && newHighlightIndex < mEventData.size());
+            FALCOR_ASSERT(newHighlightIndex >= 0 && newHighlightIndex < mEventData.size());
             ImGui::BeginTooltip();
             ImGui::Text("%s\n%.2f%%", mEventData[newHighlightIndex].name.c_str(), *highlightValue * 100.f);
             ImGui::EndTooltip();

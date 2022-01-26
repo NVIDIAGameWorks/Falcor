@@ -157,8 +157,8 @@ namespace Falcor
 
         /** Conversions to derived classes
         */
-        std::shared_ptr<Texture> asTexture() { return this ? std::dynamic_pointer_cast<Texture>(shared_from_this()) : nullptr; }
-        std::shared_ptr<Buffer> asBuffer() { return this ? std::dynamic_pointer_cast<Buffer>(shared_from_this()) : nullptr; }
+        std::shared_ptr<Texture> asTexture();
+        std::shared_ptr<Buffer> asBuffer();
 
 #if FALCOR_ENABLE_CUDA
         /** Get the CUDA device address for this resource.

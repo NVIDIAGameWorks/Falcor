@@ -6,14 +6,14 @@
         <package name="falcor_dependencies" version="6adad071-${platform}" platforms="windows-x86_64" />
     </dependency>
     <dependency name="falcor_media" linkPath="../../Media">
-        <package name="falcor_media" version="0c54be2c" />
+        <package name="falcor_media" version="877c05c6" />
     </dependency>
     <dependency name="dear_imgui" linkPath="../Externals/.packman/dear_imgui">
         <package name="dear_imgui" version="1.72WIP-docking-e5b9054" />
     </dependency>
     <dependency name="slang" linkPath="../Externals/.packman/slang">
-        <package name="slang" version="0.19.24" remotes="github-slang-windows" platforms="windows-x86_64"/>
-        <package name="slang" version="0.19.24" remotes="github-slang-linux" platforms="linux-x86_64" />
+        <package name="slang" version="0.20.0" remotes="github-slang-windows" platforms="windows-x86_64"/>
+        <package name="slang" version="0.20.0" remotes="github-slang-linux" platforms="linux-x86_64" />
     </dependency>
     <dependency name="WinPixEventRuntime" linkPath="../Externals/.packman/WinPixEventRuntime">
         <package name="WinPixEventRuntime" version="1.0.190604001" platforms="windows-x86_64" />

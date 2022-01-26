@@ -225,6 +225,7 @@ namespace Falcor
     void GuiImpl::createVao(uint32_t vertexCount, uint32_t indexCount)
     {
         static_assert(sizeof(ImDrawIdx) == sizeof(uint16_t), "ImDrawIdx expected size is a word");
+        FALCOR_ASSERT(vertexCount > 0 && indexCount > 0);
         uint32_t requiredVbSize = vertexCount * sizeof(ImDrawVert);
         uint32_t requiredIbSize = indexCount * sizeof(uint16_t);
         bool createVB = true;
@@ -232,8 +233,9 @@ namespace Falcor
 
         if (mpVao)
         {
-            createVB = mpVao->getVertexBuffer(0)->getSize() <= requiredVbSize;
-            createIB = mpVao->getIndexBuffer()->getSize() <= requiredIbSize;
+            FALCOR_ASSERT(mpVao->getVertexBuffer(0) && mpVao->getIndexBuffer());
+            createVB = mpVao->getVertexBuffer(0)->getSize() < requiredVbSize;
+            createIB = mpVao->getIndexBuffer()->getSize() < requiredIbSize;
 
             if (!createIB && !createVB)
             {
@@ -340,8 +342,7 @@ namespace Falcor
         {
             if (!is_set(flags, Gui::WindowFlags::ShowTitleBar))
             {
-                std::string warning("Asking for a close button on  window ");
-                logWarning(warning.append(label).append(", but the ShowTitleBar flag is not set on the window. The window will not be able to display a close button."));
+                logWarning("Asking for a close button on window '{}' but the ShowTitleBar flag is not set on the window. The window will not be able to display a close button.", label);
             }
         }
 
@@ -402,7 +403,7 @@ namespace Falcor
 
     void GuiImpl::endGroup()
     {
-        assert(mGroupStackSize >= 1);
+        FALCOR_ASSERT(mGroupStackSize >= 1);
         mGroupStackSize--;
         if (mGroupStackSize) ImGui::TreePop();
     }
@@ -645,7 +646,7 @@ namespace Falcor
 
     void GuiImpl::addImage(const char label[], const Texture::SharedPtr& pTex, float2 size, bool maintainRatio, bool sameLine)
     {
-        assert(pTex);
+        FALCOR_ASSERT(pTex);
         if (size == float2(0))
         {
             ImVec2 windowSize = ImGui::GetWindowSize();
@@ -662,7 +663,7 @@ namespace Falcor
 
     bool GuiImpl::addImageButton(const char label[], const Texture::SharedPtr& pTex, float2 size, bool maintainRatio, bool sameLine)
     {
-        assert(pTex);
+        FALCOR_ASSERT(pTex);
         mpImages.push_back(pTex);
         if (sameLine) ImGui::SameLine();
         float aspectRatio = maintainRatio ? (static_cast<float>(pTex->getHeight()) / static_cast<float>(pTex->getWidth())) : 1.0f;
@@ -932,7 +933,7 @@ namespace Falcor
         std::string fullpath;
         if (findFileInDataDirectories(filename, fullpath) == false)
         {
-            logWarning("Can't find font file '" + filename + "'");
+            logWarning("Can't find font file '{}'.", filename);
             return;
         }
 
@@ -947,7 +948,7 @@ namespace Falcor
         const auto& it = mpWrapper->mFontMap.find(font);
         if (it == mpWrapper->mFontMap.end())
         {
-            logWarning("Can't find a font named '" + font + "'");
+            logWarning("Can't find a font named '{}'.", font);
             mpWrapper->mpActiveFont = nullptr;
         }
         mpWrapper->mpActiveFont = it->second;
@@ -983,61 +984,64 @@ namespace Falcor
 
         mpWrapper->resetMouseEvents();
 
-        // Update the VAO
-        mpWrapper->createVao(pDrawData->TotalVtxCount, pDrawData->TotalIdxCount);
-        mpWrapper->mpPipelineState->setVao(mpWrapper->mpVao);
-
-        // Upload the data
-        ImDrawVert* pVerts = (ImDrawVert*)mpWrapper->mpVao->getVertexBuffer(0)->map(Buffer::MapType::WriteDiscard);
-        uint16_t* pIndices = (uint16_t*)mpWrapper->mpVao->getIndexBuffer()->map(Buffer::MapType::WriteDiscard);
-
-        for (int n = 0; n < pDrawData->CmdListsCount; n++)
+        if (pDrawData->CmdListsCount > 0)
         {
-            const ImDrawList* pCmdList = pDrawData->CmdLists[n];
-            memcpy(pVerts, pCmdList->VtxBuffer.Data, pCmdList->VtxBuffer.Size * sizeof(ImDrawVert));
-            memcpy(pIndices, pCmdList->IdxBuffer.Data, pCmdList->IdxBuffer.Size * sizeof(ImDrawIdx));
-            pVerts += pCmdList->VtxBuffer.Size;
-            pIndices += pCmdList->IdxBuffer.Size;
-        }
-        mpWrapper->mpVao->getVertexBuffer(0)->unmap();
-        mpWrapper->mpVao->getIndexBuffer()->unmap();
-        mpWrapper->mpPipelineState->setFbo(pFbo);
+            // Update the VAO
+            mpWrapper->createVao(pDrawData->TotalVtxCount, pDrawData->TotalIdxCount);
+            mpWrapper->mpPipelineState->setVao(mpWrapper->mpVao);
 
-        // Setup viewport
-        GraphicsState::Viewport vp;
-        vp.originX = 0;
-        vp.originY = 0;
-        vp.width = ImGui::GetIO().DisplaySize.x;
-        vp.height = ImGui::GetIO().DisplaySize.y;
-        vp.minDepth = 0;
-        vp.maxDepth = 1;
-        mpWrapper->mpPipelineState->setViewport(0, vp);
+            // Upload the data
+            ImDrawVert* pVerts = (ImDrawVert*)mpWrapper->mpVao->getVertexBuffer(0)->map(Buffer::MapType::WriteDiscard);
+            uint16_t* pIndices = (uint16_t*)mpWrapper->mpVao->getIndexBuffer()->map(Buffer::MapType::WriteDiscard);
 
-        // Render command lists
-        uint32_t vtxOffset = 0;
-        uint32_t idxOffset = 0;
-
-        for (int n = 0; n < pDrawData->CmdListsCount; n++)
-        {
-            const ImDrawList* pCmdList = pDrawData->CmdLists[n];
-            for (int32_t cmd = 0; cmd < pCmdList->CmdBuffer.Size; cmd++)
+            for (int n = 0; n < pDrawData->CmdListsCount; n++)
             {
-                const ImDrawCmd* pCmd = &pCmdList->CmdBuffer[cmd];
-                GraphicsState::Scissor scissor((int32_t)pCmd->ClipRect.x, (int32_t)pCmd->ClipRect.y, (int32_t)pCmd->ClipRect.z, (int32_t)pCmd->ClipRect.w);
-                if (pCmd->TextureId)
-                {
-                    mpWrapper->mpProgramVars->setSrv(mpWrapper->mGuiImageLoc, (mpWrapper->mpImages[reinterpret_cast<size_t>(pCmd->TextureId) - 1])->getSRV());
-                    mpWrapper->mpProgramVars["PerFrameCB"]["useGuiImage"] = true;
-                }
-                else
-                {
-                    mpWrapper->mpProgramVars["PerFrameCB"]["useGuiImage"] = false;
-                }
-                mpWrapper->mpPipelineState->setScissors(0, scissor);
-                pContext->drawIndexed(mpWrapper->mpPipelineState.get(), mpWrapper->mpProgramVars.get(), pCmd->ElemCount, idxOffset, vtxOffset);
-                idxOffset += pCmd->ElemCount;
+                const ImDrawList* pCmdList = pDrawData->CmdLists[n];
+                memcpy(pVerts, pCmdList->VtxBuffer.Data, pCmdList->VtxBuffer.Size * sizeof(ImDrawVert));
+                memcpy(pIndices, pCmdList->IdxBuffer.Data, pCmdList->IdxBuffer.Size * sizeof(ImDrawIdx));
+                pVerts += pCmdList->VtxBuffer.Size;
+                pIndices += pCmdList->IdxBuffer.Size;
             }
-            vtxOffset += pCmdList->VtxBuffer.Size;
+            mpWrapper->mpVao->getVertexBuffer(0)->unmap();
+            mpWrapper->mpVao->getIndexBuffer()->unmap();
+            mpWrapper->mpPipelineState->setFbo(pFbo);
+
+            // Setup viewport
+            GraphicsState::Viewport vp;
+            vp.originX = 0;
+            vp.originY = 0;
+            vp.width = ImGui::GetIO().DisplaySize.x;
+            vp.height = ImGui::GetIO().DisplaySize.y;
+            vp.minDepth = 0;
+            vp.maxDepth = 1;
+            mpWrapper->mpPipelineState->setViewport(0, vp);
+
+            // Render command lists
+            uint32_t vtxOffset = 0;
+            uint32_t idxOffset = 0;
+
+            for (int n = 0; n < pDrawData->CmdListsCount; n++)
+            {
+                const ImDrawList* pCmdList = pDrawData->CmdLists[n];
+                for (int32_t cmd = 0; cmd < pCmdList->CmdBuffer.Size; cmd++)
+                {
+                    const ImDrawCmd* pCmd = &pCmdList->CmdBuffer[cmd];
+                    GraphicsState::Scissor scissor((int32_t)pCmd->ClipRect.x, (int32_t)pCmd->ClipRect.y, (int32_t)pCmd->ClipRect.z, (int32_t)pCmd->ClipRect.w);
+                    if (pCmd->TextureId)
+                    {
+                        mpWrapper->mpProgramVars->setSrv(mpWrapper->mGuiImageLoc, (mpWrapper->mpImages[reinterpret_cast<size_t>(pCmd->TextureId) - 1])->getSRV());
+                        mpWrapper->mpProgramVars["PerFrameCB"]["useGuiImage"] = true;
+                    }
+                    else
+                    {
+                        mpWrapper->mpProgramVars["PerFrameCB"]["useGuiImage"] = false;
+                    }
+                    mpWrapper->mpPipelineState->setScissors(0, scissor);
+                    pContext->drawIndexed(mpWrapper->mpPipelineState.get(), mpWrapper->mpProgramVars.get(), pCmd->ElemCount, idxOffset, vtxOffset);
+                    idxOffset += pCmd->ElemCount;
+                }
+                vtxOffset += pCmdList->VtxBuffer.Size;
+            }
         }
 
         // Prepare for the next frame
@@ -1122,7 +1126,7 @@ namespace Falcor
                 io.KeysDown[key] = false;
                 break;
             default:
-                should_not_get_here();
+                FALCOR_UNREACHABLE();
             }
 
             io.KeyCtrl = event.mods.isCtrlDown;

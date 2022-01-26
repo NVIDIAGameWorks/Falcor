@@ -171,7 +171,7 @@ void FLIPPass::parseDictionary(const Dictionary& dict)
         else if (key == kMonitorDistance) mMonitorDistanceMeters = value;
         else if (key == kComputePooledFLIPValues) mComputePooledFLIPValues = value;
         else if (key == kUseRealMonitorInfo) mUseRealMonitorInfo = value;
-        else logWarning("Unknown field '" + key + "' in a FLIPPass dictionary");
+        else logWarning("Unknown field '{}' in a FLIPPass dictionary.", key);
     }
 }
 
@@ -252,7 +252,7 @@ void FLIPPass::computeExposureParameters(const float Ymedian, const float Ymax)
     }
     else
     {
-        should_not_get_here();
+        FALCOR_UNREACHABLE();
     }
 
     const float t = 0.85f;

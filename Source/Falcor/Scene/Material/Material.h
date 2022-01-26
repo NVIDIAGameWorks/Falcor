@@ -270,7 +270,7 @@ namespace Falcor
         {
             if (mHeader.isBasicMaterial())
             {
-                assert(std::dynamic_pointer_cast<BasicMaterial>(shared_from_this()));
+                FALCOR_ASSERT(std::dynamic_pointer_cast<BasicMaterial>(shared_from_this()));
                 return std::static_pointer_cast<BasicMaterial>(shared_from_this());
             }
             return nullptr;
@@ -283,9 +283,21 @@ namespace Falcor
         void registerUpdateCallback(const UpdateCallback& updateCallback) { mUpdateCallback = updateCallback; }
         void markUpdates(UpdateFlags updates);
         bool hasTextureSlotData(const TextureSlot slot) const;
+        void updateTextureHandle(MaterialSystem* pOwner, const Texture::SharedPtr& pTexture, TextureHandle& handle);
         void updateTextureHandle(MaterialSystem* pOwner, const TextureSlot slot, TextureHandle& handle);
         void updateDefaultTextureSamplerID(MaterialSystem* pOwner, const Sampler::SharedPtr& pSampler);
         bool isBaseEqual(const Material& other) const;
+
+        template<typename T>
+        MaterialDataBlob prepareDataBlob(const T& data) const
+        {
+            MaterialDataBlob blob = {};
+            blob.header = mHeader;
+            static_assert(sizeof(mHeader) + sizeof(data) <= sizeof(blob));
+            static_assert(offsetof(MaterialDataBlob, payload) == sizeof(MaterialHeader));
+            std::memcpy(&blob.payload, &data, sizeof(data));
+            return blob;
+        }
 
         std::string mName;                          ///< Name of the material.
         MaterialHeader mHeader;                     ///< Material header data available in all material types.
@@ -309,6 +321,7 @@ namespace Falcor
             tostr(Standard);
             tostr(Cloth);
             tostr(Hair);
+            tostr(MERL);
 #undef tostr
         default:
             throw ArgumentError("Invalid material type");

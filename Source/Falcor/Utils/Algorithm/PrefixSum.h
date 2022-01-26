@@ -58,7 +58,7 @@ namespace Falcor
             \param[in] pTotalSumBuffer (Optional) Buffer on the GPU to which the total sum is copied (uint32_t).
             \param[in] pTotalSumOffset (Optional) Byte offset into pTotalSumBuffer to where the sum should be written.
         */
-        bool execute(RenderContext* pRenderContext, Buffer::SharedPtr pData, uint32_t elementCount, uint32_t* pTotalSum = nullptr, Buffer::SharedPtr pTotalSumBuffer = nullptr, uint64_t pTotalSumOffset = 0);
+        void execute(RenderContext* pRenderContext, Buffer::SharedPtr pData, uint32_t elementCount, uint32_t* pTotalSum = nullptr, Buffer::SharedPtr pTotalSumBuffer = nullptr, uint64_t pTotalSumOffset = 0);
 
     protected:
         PrefixSum();

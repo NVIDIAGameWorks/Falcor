@@ -27,9 +27,9 @@
  **************************************************************************/
 #include "RenderPasses/Shared/PathTracer/RayFootprintModes.slangh"
 import Scene.Scene;
+import Scene.ShadingData;
 import Scene.Material.MaterialData;
 import Scene.Material.TextureSampler;
-import Scene.HitInfo;
 import Utils.Attributes;
 import RenderPasses.Shared.PathTracer.PathData;
 import RenderPasses.Shared.PathTracer.StaticParams;

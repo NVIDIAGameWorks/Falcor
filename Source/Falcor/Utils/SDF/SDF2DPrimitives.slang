@@ -38,11 +38,7 @@ BEGIN_NAMESPACE_FALCOR
 /** This enum is shared between CPU/GPU.
     It enumerates the different 2D SDF markers.
 */
-enum class SDF2DShapeType
-    // TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
-#ifdef HOST_CODE
-    : uint32_t
-#endif
+enum class SDF2DShapeType : uint32_t
 {
     Circle,
     Square,

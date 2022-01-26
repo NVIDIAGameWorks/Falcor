@@ -94,13 +94,13 @@ namespace Falcor
             const uint32_t sz = getFormatBytesPerBlock(format) / channels;
             const FormatType type = getFormatType(format);
 
-            assert(getFormatPixelsPerBlock(format) == 1);
-            assert(!isCompressedFormat(format));
-            assert(channels >= 1);
-            assert(elems > 0);
-            assert(sz * channels == getFormatBytesPerBlock(format));
-            assert(sz == 1 || sz == 2 || sz == 4);
-            assert(type != FormatType::Unknown && type != FormatType::UnormSrgb);
+            FALCOR_ASSERT(getFormatPixelsPerBlock(format) == 1);
+            FALCOR_ASSERT(!isCompressedFormat(format));
+            FALCOR_ASSERT(channels >= 1);
+            FALCOR_ASSERT(elems > 0);
+            FALCOR_ASSERT(sz * channels == getFormatBytesPerBlock(format));
+            FALCOR_ASSERT(sz == 1 || sz == 2 || sz == 4);
+            FALCOR_ASSERT(type != FormatType::Unknown && type != FormatType::UnormSrgb);
 
             std::default_random_engine rng;
             auto dist = std::uniform_real_distribution<float>();
@@ -126,7 +126,7 @@ namespace Falcor
                     value = u() * 200.f - 100.f;
                     if (sz == 2) store<half>(ptr, i, value);
                     else if (sz == 4) store<float>(ptr, i, value);
-                    else should_not_get_here();
+                    else FALCOR_UNREACHABLE();
                 }
                 else if (type == FormatType::Sint)
                 {
@@ -134,7 +134,7 @@ namespace Falcor
                     if (sz == 1) store<int8_t>(ptr, i, value);
                     else if (sz == 2) store<int16_t>(ptr, i, value);
                     else if (sz == 4) store<int32_t>(ptr, i, value);
-                    else should_not_get_here();
+                    else FALCOR_UNREACHABLE();
                 }
                 else if (type == FormatType::Uint)
                 {
@@ -142,23 +142,23 @@ namespace Falcor
                     if (sz == 1) store<uint8_t>(ptr, i, value);
                     else if (sz == 2) store<uint16_t>(ptr, i, value);
                     else if (sz == 4) store<uint32_t>(ptr, i, value);
-                    else should_not_get_here();
+                    else FALCOR_UNREACHABLE();
                 }
                 else if (type == FormatType::Unorm)
                 {
                     value = u();
                     if (sz == 1) store<unorm8_t>(ptr, i, value);
                     else if (sz == 2) store<unorm16_t>(ptr, i, value);
-                    else should_not_get_here();
+                    else FALCOR_UNREACHABLE();
                 }
                 else if (type == FormatType::Snorm)
                 {
                     value = u() * 2.f - 1.f;
                     if (sz == 1) store<snorm8_t>(ptr, i, value);
                     else if (sz == 2) store<snorm16_t>(ptr, i, value);
-                    else should_not_get_here();
+                    else FALCOR_UNREACHABLE();
                 }
-                else should_not_get_here();
+                else FALCOR_UNREACHABLE();
 
                 // Compute reference sum (per channel).
                 refSum[i % channels] += (RefType)value;
@@ -178,12 +178,11 @@ namespace Falcor
 
                 // Perform reduction operation.
                 DataType result;
-                bool success = pReduction->execute(ctx.getRenderContext(), pTexture, ComputeParallelReduction::Type::Sum, &result, pResultBuffer, 0);
-                EXPECT_EQ(success, true);
+                pReduction->execute(ctx.getRenderContext(), pTexture, ComputeParallelReduction::Type::Sum, &result, pResultBuffer, 0);
 
                 // Verify that returned result is identical to result stored to GPU buffer.
                 DataType* resultBuffer = (DataType*)pResultBuffer->map(Buffer::MapType::Read);
-                assert(resultBuffer);
+                FALCOR_ASSERT(resultBuffer);
                 for (uint32_t i = 0; i < 4; i++)
                 {
                     EXPECT_EQ((*resultBuffer)[i], result[i % 4]) << "i = " << i;
@@ -223,12 +222,11 @@ namespace Falcor
 
                 // Perform reduction operation.
                 DataType result[2];
-                bool success = pReduction->execute(ctx.getRenderContext(), pTexture, ComputeParallelReduction::Type::MinMax, result, pResultBuffer, 0);
-                EXPECT_EQ(success, true);
+                pReduction->execute(ctx.getRenderContext(), pTexture, ComputeParallelReduction::Type::MinMax, result, pResultBuffer, 0);
 
                 // Verify that returned result is identical to result stored to GPU buffer.
                 DataType* resultBuffer = (DataType*)pResultBuffer->map(Buffer::MapType::Read);
-                assert(resultBuffer);
+                FALCOR_ASSERT(resultBuffer);
                 for (uint32_t i = 0; i < 2; i++)
                 {
                     for (uint32_t j = 0; j < 4; j++)
@@ -263,14 +261,14 @@ namespace Falcor
     GPU_TEST(ParallelReduction)
     {
         // Quick test of the snorm/unorm data types we use.
-        assert((float)unorm8_t(163.499f / 255.f) == (163 / 255.f));
-        assert((float)unorm16_t(163.501f / 65535.f) == (164 / 65535.f));
-        assert((float)snorm8_t(10.499f / 127.f) == (10 / 127.f));
-        assert((float)snorm8_t(10.501f / 127.f) == (11 / 127.f));
-        assert((float)snorm8_t(-10.499f / 127.f) == (-10 / 127.f));
-        assert((float)snorm8_t(-10.501f / 127.f) == (-11 / 127.f));
-        assert((float)snorm16_t(-10.499f / 32767.f) == (-10 / 32767.f));
-        assert((float)snorm16_t(-10.501f / 32767.f) == (-11 / 32767.f));
+        FALCOR_ASSERT((float)unorm8_t(163.499f / 255.f) == (163 / 255.f));
+        FALCOR_ASSERT((float)unorm16_t(163.501f / 65535.f) == (164 / 65535.f));
+        FALCOR_ASSERT((float)snorm8_t(10.499f / 127.f) == (10 / 127.f));
+        FALCOR_ASSERT((float)snorm8_t(10.501f / 127.f) == (11 / 127.f));
+        FALCOR_ASSERT((float)snorm8_t(-10.499f / 127.f) == (-10 / 127.f));
+        FALCOR_ASSERT((float)snorm8_t(-10.501f / 127.f) == (-11 / 127.f));
+        FALCOR_ASSERT((float)snorm16_t(-10.499f / 32767.f) == (-10 / 32767.f));
+        FALCOR_ASSERT((float)snorm16_t(-10.501f / 32767.f) == (-11 / 32767.f));
 
         // Create reduction operation.
         ComputeParallelReduction::SharedPtr pReduction = ComputeParallelReduction::create();

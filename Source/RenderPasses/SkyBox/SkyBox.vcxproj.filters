@@ -7,6 +7,6 @@
     <ClInclude Include="SkyBox.h" />
   </ItemGroup>
   <ItemGroup>
-    <ShaderSource Include="SkyBox.slang" />
+    <ShaderSource Include="SkyBox.3d.slang" />
   </ItemGroup>
 </Project>

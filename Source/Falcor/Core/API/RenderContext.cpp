@@ -66,14 +66,14 @@ namespace Falcor
 
     void RenderContext::clearTexture(Texture* pTexture, const float4& clearColor)
     {
-        assert(pTexture);
+        FALCOR_ASSERT(pTexture);
 
         // Check that the format is either Unorm, Snorm or float
         auto format = pTexture->getFormat();
         auto fType = getFormatType(format);
         if (fType == FormatType::Sint || fType == FormatType::Uint || fType == FormatType::Unknown)
         {
-            logWarning("RenderContext::clearTexture() - Unsupported texture format " + to_string(format) + ". The texture format must be a normalized or floating-point format");
+            logWarning("RenderContext::clearTexture() - Unsupported texture format {}. The texture format must be a normalized or floating-point format.", to_string(format));
             return;
         }
 
@@ -85,7 +85,7 @@ namespace Falcor
         {
             if (isStencilFormat(format) && (clearColor.y != 0))
             {
-                logWarning("RenderContext::clearTexture() - when clearing a depth-stencil texture the stencil value(clearColor.y) must be 0. Received " + std::to_string(clearColor.y) + ". Forcing stencil to 0");
+                logWarning("RenderContext::clearTexture() - when clearing a depth-stencil texture the stencil value(clearColor.y) must be 0. Received {}. Forcing stencil to 0.", clearColor.y);
             }
             clearDsv(pTexture->getDSV().get(), clearColor.r, 0);
         }
@@ -114,7 +114,7 @@ namespace Falcor
         auto& blitData = getBlitContext();
 
         // Fetch textures from views.
-        assert(pSrc && pDst);
+        FALCOR_ASSERT(pSrc && pDst);
         auto pSrcResource = pSrc->getResource();
         auto pDstResource = pDst->getResource();
         if (pSrcResource->getType() == Resource::Type::Buffer || pDstResource->getType() == Resource::Type::Buffer)
@@ -124,7 +124,7 @@ namespace Falcor
 
         const Texture* pSrcTexture = dynamic_cast<const Texture*>(pSrcResource.get());
         const Texture* pDstTexture = dynamic_cast<const Texture*>(pDstResource.get());
-        assert(pSrcTexture != nullptr && pDstTexture != nullptr);
+        FALCOR_ASSERT(pSrcTexture != nullptr && pDstTexture != nullptr);
 
         // Clamp rectangles to the dimensions of the source/dest views.
         const uint32_t srcMipLevel = pSrc->getViewInfo().mostDetailedMip;
@@ -200,12 +200,12 @@ namespace Falcor
 
         if (complexBlit)
         {
-            assert(sampleCount <= 1);
+            FALCOR_ASSERT(sampleCount <= 1);
 
             Sampler::SharedPtr usedSampler[4];
             for (uint32_t i = 0; i < 4; i++)
             {
-                assert(componentsReduction[i] != Sampler::ReductionMode::Comparison);        // Comparison mode not supported.
+                FALCOR_ASSERT(componentsReduction[i] != Sampler::ReductionMode::Comparison);        // Comparison mode not supported.
 
                 if (componentsReduction[i] == Sampler::ReductionMode::Min) usedSampler[i] = (filter == Sampler::Filter::Linear) ? blitData.pLinearMinSampler : blitData.pPointMinSampler;
                 else if (componentsReduction[i] == Sampler::ReductionMode::Max) usedSampler[i] = (filter == Sampler::Filter::Linear) ? blitData.pLinearMaxSampler : blitData.pPointMaxSampler;

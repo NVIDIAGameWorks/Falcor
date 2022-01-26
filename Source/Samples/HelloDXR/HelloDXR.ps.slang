@@ -40,7 +40,7 @@ float4 main(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) : SV_TARGET
     // Create BSDF instance.
     let bsdf = gScene.materials.getBSDF(sd, lod);
 
-    float3 color = bsdf.getProperties(sd).emissive;
+    float3 color = bsdf.getProperties(sd).emission;
 
     // Direct lighting from analytic light sources
     for (int i = 0; i < gScene.getLightCount(); i++)

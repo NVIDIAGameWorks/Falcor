@@ -124,7 +124,7 @@ void HelloDXR::renderRT(RenderContext* pContext, const Fbo* pTargetFbo)
 {
     FALCOR_PROFILE("renderRT");
 
-    assert(mpScene);
+    FALCOR_ASSERT(mpScene);
     if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged))
     {
         throw RuntimeError("This sample does not support scene geometry changes.");

@@ -93,7 +93,7 @@ namespace Falcor
             uint32_t begin;
             uint32_t end;
 
-            Range(uint32_t _begin, uint32_t _end) : begin(_begin), end(_end) { assert(begin <= end); }
+            Range(uint32_t _begin, uint32_t _end) : begin(_begin), end(_end) { FALCOR_ASSERT(begin <= end); }
             constexpr uint32_t middle() const noexcept { return (begin + end) / 2; }
             constexpr uint32_t length() const noexcept { return end - begin; }
         };

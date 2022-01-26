@@ -215,14 +215,14 @@ static CPUSampleGenerator::SharedPtr createSamplePattern(GBufferBase::SamplePatt
     case GBufferBase::SamplePattern::Stratified:
         return StratifiedSamplePattern::create(sampleCount);
     default:
-        should_not_get_here();
+        FALCOR_UNREACHABLE();
         return nullptr;
     }
 }
 
 void GBufferBase::updateFrameDim(const uint2 frameDim)
 {
-    assert(frameDim.x > 0 && frameDim.y > 0);
+    FALCOR_ASSERT(frameDim.x > 0 && frameDim.y > 0);
     mFrameDim = frameDim;
     mInvFrameDim = 1.f / float2(frameDim);
 
@@ -239,7 +239,7 @@ void GBufferBase::updateSamplePattern()
 Texture::SharedPtr GBufferBase::getOutput(const RenderData& renderData, const std::string& name) const
 {
     // This helper fetches the render pass output with the given name and verifies it has the correct size.
-    assert(mFrameDim.x > 0 && mFrameDim.y > 0);
+    FALCOR_ASSERT(mFrameDim.x > 0 && mFrameDim.y > 0);
     auto pTex = renderData[name]->asTexture();
     if (pTex && (pTex->getWidth() != mFrameDim.x || pTex->getHeight() != mFrameDim.y))
     {

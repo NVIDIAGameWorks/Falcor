@@ -34,7 +34,7 @@ namespace Falcor
         template<class T>
         void testBlit(GPUUnitTestContext& ctx, const uint2 srcDim, const uint32_t scale)
         {
-            assert(scale == 1 || scale == 2);
+            FALCOR_ASSERT(scale == 1 || scale == 2);
             const uint2 dstDim = srcDim / uint2(scale);
             const uint32_t dstElemes = dstDim.x * dstDim.y * 4;
 

@@ -25,7 +25,6 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-import Scene.Scene;
 import Rendering.Lights.EnvMapSampler;
 import Rendering.Lights.EmissiveLightSampler;
 import Rendering.Lights.EmissiveLightSamplerHelpers;
@@ -34,11 +33,16 @@ import Rendering.Materials.Microfacet;
 import Rendering.Materials.InteriorListHelpers;
 import Rendering.Volumes.HomogeneousVolumeSampler;
 import Rendering.Utils.PixelStats;
+import Rendering.RTXDI.RTXDI;
+import RenderPasses.Shared.Denoising.NRDBuffers;
+import RenderPasses.Shared.Denoising.NRDData;
+import RenderPasses.Shared.Denoising.NRDHelpers;
 import Utils.Color.ColorHelpers;
 import Utils.Geometry.GeometryHelpers;
 import Utils.Debug.PixelDebug;
 import LoadShadingData;
 import ColorType;
+import NRDHelpers;
 __exported import PathState;
 __exported import Params;
 
@@ -76,6 +80,7 @@ struct PathTracer
     // Outputs
     RWStructuredBuffer<ColorType> sampleColor;      ///< Output per-sample color if kSamplesPerPixel != 1.
     RWStructuredBuffer<GuideData> sampleGuideData;  ///< Output per-sample guide data.
+    NRDBuffers outputNRD;                           ///< Output NRD data.
 
     RWTexture2D<float4> outputColor;                ///< Output color buffer if kSamplesPerPixel == 1.
 
@@ -199,9 +204,9 @@ struct PathTracer
     */
     static void setIndirectSurfaceGuideData(inout GuideData guideData, const ShadingData sd, const BSDFProperties bsdfProperties)
     {
-        if (any(bsdfProperties.emissive > 0.f))
+        if (any(bsdfProperties.emission > 0.f))
         {
-            float3 indirectBaseColor = pow(bsdfProperties.emissive / (bsdfProperties.emissive + 1.0f), 0.454545f);
+            float3 indirectBaseColor = pow(bsdfProperties.emission / (bsdfProperties.emission + 1.0f), 0.454545f);
             guideData.setIndirectAlbedo(indirectBaseColor);
         }
         else
@@ -320,6 +325,14 @@ struct PathTracer
         BSDFSample result;
         bool valid = bsdf.sample(sd, path.sg, result, kUseBSDFSampling);
         if (valid) valid = generateScatterRay(result, sd, bsdf, path);
+
+        // Ignore valid on purpose for now.
+        if (kOutputNRDData && path.getVertexIndex() == 1)
+        {
+            path.setDiffusePrimaryHit(result.isLobe(LobeType::Diffuse));
+            path.setSpecularPrimaryHit(result.isLobe(LobeType::Specular));
+        }
+
         return valid;
     }
 
@@ -746,7 +759,7 @@ struct PathTracer
         // Optionally disable emission inside volumes.
         if (!kUseLightsInDielectricVolumes && path.isInsideDielectricVolume())
         {
-            bsdfProperties.emissive = float3(0.f);
+            bsdfProperties.emission = float3(0.f);
         }
 
         // Check if the scatter event is samplable by the light sampling technique.
@@ -756,7 +769,14 @@ struct PathTracer
         // The primary hit is always included, secondary hits only if emissive lights are enabled and the full light contribution hasn't been sampled elsewhere.
         bool computeEmissive = isPrimaryHit || kUseEmissiveLights && (!kUseNEE || kUseMIS || !path.isLightSampled() || !isLightSamplable);
 
-        if (computeEmissive && any(bsdfProperties.emissive > 0.f))
+        // With RTXDI enabled, we sample the full direct illumination contribution on the primary hit.
+        // Skip any additional contribution on the secondary hit unless it comes from a scatter event
+        // that RTXDI cannot handle, such as transmission or delta scattering events.
+        if (kUseRTXDI && path.getVertexIndex() == 2 && !path.isTransmission() && !path.isDelta()) computeEmissive = false;
+
+        float3 attenuatedEmission = 0.f;
+
+        if (computeEmissive && any(bsdfProperties.emission > 0.f))
         {
             float misWeight = 1.f;
             if (kUseEmissiveLights && kUseNEE && kUseMIS && isTriangleHit && !isPrimaryHit && path.isLightSampled() && isLightSamplable)
@@ -783,7 +803,9 @@ struct PathTracer
             }
 
             // Accumulate emitted radiance weighted by path throughput and MIS weight.
-            addToPathContribution(path, misWeight * bsdfProperties.emissive);
+            addToPathContribution(path, misWeight * bsdfProperties.emission);
+
+            attenuatedEmission = path.thp * misWeight * bsdfProperties.emission;
         }
 
         // Terminate after scatter ray on last vertex has been processed.
@@ -811,27 +833,41 @@ struct PathTracer
         // Check if we should apply NEE.
         const bool applyNEE = kUseNEE && hasNonDeltaLobes;
 
+        // Check if sample from RTXDI should be applied instead of NEE.
+        const bool applyRTXDI = kUseRTXDI && isPrimaryHit && hasNonDeltaLobes;
+
         // TODO: Support multiple shadow rays.
         path.setLightSampled(false, false);
-        if (applyNEE)
+        if (applyNEE || applyRTXDI)
         {
-            // Setup path vertex.
-            PathVertex vertex = PathVertex(path.getVertexIndex(), sd.posW, sd.N, sd.faceN);
-
-            // Determine if upper/lower hemispheres need to be sampled.
-            bool sampleUpperHemisphere = isCurveHit || ((lobes & (uint)LobeType::NonDeltaReflection) != 0);
-            if (!kUseLightsInDielectricVolumes && path.isInsideDielectricVolume()) sampleUpperHemisphere = false;
-            bool sampleLowerHemisphere = isCurveHit || ((lobes & (uint)LobeType::NonDeltaTransmission) != 0);
-
-            // Sample a light.
             LightSample ls = {};
-            bool validSample = generateLightSample(vertex, sampleUpperHemisphere, sampleLowerHemisphere, path.sg, ls);
-            path.setLightSampled(sampleUpperHemisphere, sampleLowerHemisphere);
+            bool validSample = false;
+
+            if (applyRTXDI)
+            {
+                // Query final sample from RTXDI.
+                validSample = gRTXDI.getFinalSample(path.getPixel(), ls.dir, ls.distance, ls.Li);
+                ls.origin = sd.computeNewRayOrigin();
+            }
+            else
+            {
+                // Setup path vertex.
+                PathVertex vertex = PathVertex(path.getVertexIndex(), sd.posW, sd.N, sd.faceN);
+
+                // Determine if upper/lower hemispheres need to be sampled.
+                bool sampleUpperHemisphere = isCurveHit || ((lobes & (uint)LobeType::NonDeltaReflection) != 0);
+                if (!kUseLightsInDielectricVolumes && path.isInsideDielectricVolume()) sampleUpperHemisphere = false;
+                bool sampleLowerHemisphere = isCurveHit || ((lobes & (uint)LobeType::NonDeltaTransmission) != 0);
+
+                // Sample a light.
+                validSample = generateLightSample(vertex, sampleUpperHemisphere, sampleLowerHemisphere, path.sg, ls);
+                path.setLightSampled(sampleUpperHemisphere, sampleLowerHemisphere);
+            }
 
             if (validSample)
             {
                 // Apply MIS weight.
-                if (kUseMIS && ls.lightType != (uint)LightType::Analytic)
+                if (kUseMIS && !applyRTXDI && ls.lightType != (uint)LightType::Analytic)
                 {
                     float scatterPdf = bsdf.evalPdf(sd, ls.dir, kUseBSDFSampling);
                     ls.Li *= evalMIS(1, ls.pdf, 1, scatterPdf);
@@ -868,6 +904,19 @@ struct PathTracer
             setIndirectSurfaceGuideData(path.guideData, sd, bsdfProperties);
         }
 
+        if (kOutputNRDData)
+        {
+            const uint2 pixel = path.getPixel();
+            const uint outSampleIdx = params.getSampleOffset(pixel, sampleOffset) + path.getSampleIdx();
+
+            setNRDPrimaryHitEmission(outputNRD, kUseNRDDemodulation, path, pixel, isPrimaryHit, attenuatedEmission);
+            setNRDPrimaryHitReflectance(outputNRD, kUseNRDDemodulation, path, pixel, isPrimaryHit, sd, bsdfProperties);
+
+            setNRDSampleHitDist(outputNRD, path, outSampleIdx);
+            setNRDSampleEmission(outputNRD, kUseNRDDemodulation, path, outSampleIdx, isPrimaryHit, attenuatedEmission);
+            setNRDSampleReflectance(outputNRD, kUseNRDDemodulation, path, outSampleIdx, isPrimaryHit, sd, bsdfProperties);
+        }
+
         // Check if this is the last path vertex.
         const bool isLastVertex = hasFinishedSurfaceBounces(path);
 
@@ -899,6 +948,11 @@ struct PathTracer
 
         // Add env radiance.
         bool computeEnv = kUseEnvLight && (!kUseNEE || kUseMIS || !path.isLightSampled() || !isLightSamplable);
+
+        // With RTXDI enabled, we sample the full direct illumination contribution on the primary hit.
+        // Skip any additional contribution on the secondary hit unless it comes from a scatter event
+        // that RTXDI cannot handle, such as transmission, delta or volume scattering events.
+        if (kUseRTXDI && path.getVertexIndex() == 2 && !path.isTransmission() && !path.isDelta()) computeEnv = false;
 
         if (computeEnv)
         {
@@ -937,6 +991,12 @@ struct PathTracer
             path.guideData.setNormal(-path.dir);
         }
 
+        if (kOutputNRDData)
+        {
+            const uint outSampleIdx = params.getSampleOffset(path.getPixel(), sampleOffset) + path.getSampleIdx();
+            setNRDSampleHitDist(outputNRD, path, outSampleIdx);
+        }
+
         path.terminate();
     }
 
@@ -966,6 +1026,20 @@ struct PathTracer
         if (kOutputGuideData)
         {
             sampleGuideData[outIdx] = path.guideData;
+        }
+
+        if (kOutputNRDData)
+        {
+            // TODO: Optimize this for 1 SPP. It doesn't have to go through resolve pass like the color above.
+            NRDRadiance data = {};
+
+            if (path.isDiffusePrimaryHit()) data.setPathType(NRDPathType::Diffuse);
+            else if (path.isSpecularPrimaryHit()) data.setPathType(NRDPathType::Specular);
+            else data.setPathType(NRDPathType::Residual);
+
+            data.setRadiance(path.L);
+
+            outputNRD.sampleRadiance[outIdx] = data;
         }
     }
 };

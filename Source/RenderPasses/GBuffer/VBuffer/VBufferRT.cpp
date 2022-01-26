@@ -83,7 +83,7 @@ void VBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
 
     // Update frame dimension based on render pass output.
     auto pOutput = renderData[kVBufferName]->asTexture();
-    assert(pOutput);
+    FALCOR_ASSERT(pOutput);
     updateFrameDim(uint2(pOutput->getWidth(), pOutput->getHeight()));
 
     // If there is no scene, clear the output and return.

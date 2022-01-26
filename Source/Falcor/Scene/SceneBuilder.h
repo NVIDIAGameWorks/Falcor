@@ -126,7 +126,7 @@ namespace Falcor
                 case AttributeFrequency::FaceVarying:
                     return face * 3 + vert;
                 default:
-                    should_not_get_here();
+                    FALCOR_UNREACHABLE();
                 }
                 return Scene::kInvalidIndex;
             }
@@ -165,7 +165,7 @@ namespace Falcor
                 case AttributeFrequency::FaceVarying:
                     return 3 * faceCount;
                 default:
-                    should_not_get_here();
+                    FALCOR_UNREACHABLE();
                 }
                 return 0;
             }
@@ -459,7 +459,7 @@ namespace Falcor
             \param pMaterial The material.
             \return The ID of the material in the scene.
         */
-        uint32_t addMaterial(const Material::SharedPtr& pMaterial) { return mSceneData.pMaterials->addMaterial(pMaterial); }
+        uint32_t addMaterial(const Material::SharedPtr& pMaterial);
 
         /** Request loading a material texture.
             \param[in] pMaterial Material to load texture into.
@@ -650,19 +650,19 @@ namespace Falcor
 
             uint32_t getTriangleCount() const
             {
-                assert(topology == Vao::Topology::TriangleList);
+                FALCOR_ASSERT(topology == Vao::Topology::TriangleList);
                 return (indexCount > 0 ? indexCount : vertexCount) / 3;
             }
 
             uint32_t getIndex(const size_t i) const
             {
-                assert(i < indexCount);
+                FALCOR_ASSERT(i < indexCount);
                 return use16BitIndices ? reinterpret_cast<const uint16_t*>(indexData.data())[i] : indexData[i];
             }
 
             bool isDynamic() const
             {
-                assert(hasDynamicData == dynamicVertexCount > 0);
+                FALCOR_ASSERT(hasDynamicData == dynamicVertexCount > 0);
                 return hasDynamicData;
             }
         };

@@ -97,7 +97,7 @@ namespace Falcor
 
     Resource::SharedPtr RenderGraphExe::getResource(const std::string& name) const
     {
-        assert(mpResourceCache);
+        FALCOR_ASSERT(mpResourceCache);
         return mpResourceCache->getResource(name);
     }
 

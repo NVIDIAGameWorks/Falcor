@@ -38,7 +38,7 @@ namespace Falcor
         else if (selection == RenderPassHelpers::IOSize::Half) sz = windowSize / uint2(2);
         else if (selection == RenderPassHelpers::IOSize::Quarter) sz = windowSize / uint2(4);
         else if (selection == RenderPassHelpers::IOSize::Double) sz = windowSize * uint2(2);
-        else assert(selection == RenderPassHelpers::IOSize::Default);
+        else FALCOR_ASSERT(selection == RenderPassHelpers::IOSize::Default);
         return sz;
     }
 

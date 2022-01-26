@@ -102,5 +102,4 @@ namespace Falcor
             setHitGroup(rayType, geometryID, shaderID);
         }
     }
-
 }

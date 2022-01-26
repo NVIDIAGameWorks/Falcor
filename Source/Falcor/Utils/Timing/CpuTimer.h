@@ -30,14 +30,14 @@
 
 namespace Falcor
 {
-    /** Provides timer utilities to the application
+    /** Provides CPU timer utilities to the application.
     */
     class CpuTimer
     {
     public:
-        using TimePoint = std::chrono::time_point < std::chrono::high_resolution_clock >;
+        using TimePoint = std::chrono::time_point<std::chrono::high_resolution_clock>;
 
-        /** Returns the current time
+        /** Returns the current time.
         */
         static TimePoint getCurrentTimePoint()
         {
@@ -45,8 +45,7 @@ namespace Falcor
         }
 
         /** Update the timer.
-            \return The TimePoint of the last update() call.
-                This value is meaningless on it's own. Call CCpuTimer#calcDuration() to get the duration that passed between 2 TimePoints
+            \return The TimePoint of the last update() call. This value is meaningless on it's own. Call calcDuration() to get the duration that passed between two TimePoints.
         */
         TimePoint update()
         {
@@ -57,13 +56,14 @@ namespace Falcor
         }
 
         /** Get the time that passed from the last update() call to the one before that.
+            \return Elapsed time in seconds.
         */
         double delta() const
         {
             return mElapsedTime.count();
         }
 
-        /** Calculate the duration in milliseconds between 2 time points
+        /** Calculate the duration in milliseconds between 2 time points.
         */
         static double calcDuration(TimePoint start, TimePoint end)
         {

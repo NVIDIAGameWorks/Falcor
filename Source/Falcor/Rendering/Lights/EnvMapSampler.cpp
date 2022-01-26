@@ -47,7 +47,7 @@ namespace Falcor
 
     void EnvMapSampler::setShaderData(const ShaderVar& var) const
     {
-        assert(var.isValid());
+        FALCOR_ASSERT(var.isValid());
 
         // Set variables.
         float2 invDim = 1.f / float2(mpImportanceMap->getWidth(), mpImportanceMap->getHeight());
@@ -62,7 +62,7 @@ namespace Falcor
     EnvMapSampler::EnvMapSampler(RenderContext* pRenderContext, EnvMap::SharedPtr pEnvMap)
         : mpEnvMap(pEnvMap)
     {
-        assert(pEnvMap);
+        FALCOR_ASSERT(pEnvMap);
 
         // Create compute program for the setup phase.
         mpSetupPass = ComputePass::create(kShaderFilenameSetup, "main");
@@ -82,24 +82,24 @@ namespace Falcor
 
     bool EnvMapSampler::createImportanceMap(RenderContext* pRenderContext, uint32_t dimension, uint32_t samples)
     {
-        assert(isPowerOf2(dimension));
-        assert(isPowerOf2(samples));
+        FALCOR_ASSERT(isPowerOf2(dimension));
+        FALCOR_ASSERT(isPowerOf2(samples));
 
         // We create log2(N)+1 mips from NxN...1x1 texels resolution.
         uint32_t mips = glm::log2(dimension) + 1;
-        assert((1u << (mips - 1)) == dimension);
-        assert(mips > 1 && mips <= 12);     // Shader constant limits max resolution, increase if needed.
+        FALCOR_ASSERT((1u << (mips - 1)) == dimension);
+        FALCOR_ASSERT(mips > 1 && mips <= 12);     // Shader constant limits max resolution, increase if needed.
 
         // Create importance map. We have to set the RTV flag to be able to use generateMips().
         mpImportanceMap = Texture::create2D(dimension, dimension, ResourceFormat::R32Float, 1, mips, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess);
-        assert(mpImportanceMap);
+        FALCOR_ASSERT(mpImportanceMap);
 
         mpSetupPass["gEnvMap"] = mpEnvMap->getEnvMap();
         mpSetupPass["gImportanceMap"] = mpImportanceMap;
 
         uint32_t samplesX = std::max(1u, (uint32_t)std::sqrt(samples));
         uint32_t samplesY = samples / samplesX;
-        assert(samples == samplesX * samplesY);
+        FALCOR_ASSERT(samples == samplesX * samplesY);
 
         mpSetupPass["CB"]["outputDim"] = uint2(dimension);
         mpSetupPass["CB"]["outputDimInSamples"] = uint2(dimension * samplesX, dimension * samplesY);

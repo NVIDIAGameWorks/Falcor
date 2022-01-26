@@ -59,7 +59,7 @@ struct PixelData
     float IoR;
 
     // BSDF properties
-    float3 emissive;
+    float3 emission;
     float  roughness;
     float3 diffuseReflectionAlbedo;
     float3 diffuseTransmissionAlbedo;

@@ -16,6 +16,7 @@ def render_graph_PathTracer():
     g.addPass(ToneMapper, "ToneMapper")
     g.addEdge("VBufferRT.vbuffer", "PathTracer.vbuffer")
     g.addEdge("VBufferRT.viewW", "PathTracer.viewW")
+    g.addEdge("VBufferRT.mvec", "PathTracer.mvec")
     g.addEdge("PathTracer.color", "AccumulatePass.input")
     g.addEdge("AccumulatePass.output", "ToneMapper.src")
     g.markOutput("ToneMapper.dst")

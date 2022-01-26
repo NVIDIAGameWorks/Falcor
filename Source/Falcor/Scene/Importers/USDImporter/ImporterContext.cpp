@@ -126,7 +126,7 @@ namespace Falcor
         void remapGeomSubsetData(T& inData, const VtIntArray& faceMap, VtIntArray subsetOffset, const VtIntArray& primitiveParams)
         {
             // Note that subsetOffset is passed by value; we modify the local copy as part of bookkeeping
-            assert(N == 1 || N == 3);
+            FALCOR_ASSERT(N == 1 || N == 3);
 
             T outData(inData.size());
 
@@ -196,7 +196,7 @@ namespace Falcor
         void remapMeshJointIndices(ImporterContext& ctx, const Skeleton::SubSkeleton& subskel, const UsdPrim& prim, VtIntArray& meshJointIndices)
         {
             auto jointMapIt = subskel.skinnedMeshes.find(prim);
-            assert(jointMapIt != subskel.skinnedMeshes.end());
+            FALCOR_ASSERT(jointMapIt != subskel.skinnedMeshes.end());
             for (size_t i = 0; i < meshJointIndices.size(); i++)
             {
                 // If there's no mapping table, index doesn't need to be remapped
@@ -221,7 +221,7 @@ namespace Falcor
             UsdAttribute pointsAttr = usdMesh.GetPointsAttr();
             if (!pointsAttr)
             {
-                logWarning("Mesh '" + meshName + "' does not specify vertices. Ignoring.");
+                logWarning("Mesh '{}' does not specify vertices. Ignoring.", meshName);
                 return false;
             }
             VtVec3fArray usdPoints;
@@ -230,7 +230,7 @@ namespace Falcor
             UsdAttribute faceCountsAttr = usdMesh.GetFaceVertexCountsAttr();
             if (!faceCountsAttr)
             {
-                logWarning("Mesh '" + meshName + "' has no faces. Ignoring.");
+                logWarning("Mesh '{}' has no faces. Ignoring.", meshName);
                 return false;
             }
             VtIntArray usdFaceCounts;
@@ -239,7 +239,7 @@ namespace Falcor
             UsdAttribute faceIndicesAttr = usdMesh.GetFaceVertexIndicesAttr();
             if (!faceIndicesAttr)
             {
-                logWarning("Mesh '" + meshName + "' does not specify face indices. Ignoring.");
+                logWarning("Mesh '{}' does not specify face indices. Ignoring.", meshName);
                 return false;
             }
 
@@ -298,7 +298,7 @@ namespace Falcor
                 geomOut.normalInterp = AttributeFrequency::Vertex;
             }
 
-            assert(usdNormals.size() > 0);
+            FALCOR_ASSERT(usdNormals.size() > 0);
 
             // Generated triangulated normals, if necessary
             convertTriangulatedFaceData(usdNormals, geomOut.normalInterp, HdType::HdTypeFloatVec3, triangleIndices.size(), primitiveParams, meshUtil);
@@ -332,17 +332,17 @@ namespace Falcor
                 auto skelMapIt = ctx.meshSkelMap.find(usdMesh.GetPrim());
                 if (skelMapIt == ctx.meshSkelMap.end())
                 {
-                    logWarning(meshName + " has skinning data but no skeleton. Skinning data will not be loaded.");
+                    logWarning("Mesh '{}' has skinning data but no skeleton. Skinning data will not be loaded.", meshName);
                 }
                 else
                 {
-                    assert(jointIndicesPrimvar.GetElementSize() == jointWeightsPrimvar.GetElementSize());
+                    FALCOR_ASSERT(jointIndicesPrimvar.GetElementSize() == jointWeightsPrimvar.GetElementSize());
                     const uint32_t elementSize = uint32_t(jointIndicesPrimvar.GetElementSize());
 
                     // Only support up to 4 bones per vertex
                     if (elementSize > Scene::kMaxBonesPerVertex)
                     {
-                        logWarning(meshName + " contains more than " + std::to_string(Scene::kMaxBonesPerVertex) + " bones per vertex (" + std::to_string(elementSize) + "). Ignoring extra data.");
+                        logWarning("Mesh '{}' contains more than {} bones per vertex ({}). Ignoring extra data.", meshName, Scene::kMaxBonesPerVertex, elementSize);
                     }
 
                     // Skinning data can only be constant or vertex. Supporting vertex only first
@@ -354,7 +354,7 @@ namespace Falcor
                         jointWeightsPrimvar.Get(&jointWeights, UsdTimeCode::EarliestTime());
 
                         // Should be a set of bone influences per point when interpolation is "vertex"
-                        assert(usdPoints.size() == jointIndices.size() / elementSize);
+                        FALCOR_ASSERT(usdPoints.size() == jointIndices.size() / elementSize);
 
                         // Get the skeleton bound to this mesh and remap indices
                         const auto& skelIdx = skelMapIt->second;
@@ -388,7 +388,7 @@ namespace Falcor
                     }
                     else
                     {
-                        logWarning("Skinning data for " + meshName + " must be per-vertex. \"constant\" interpolation is not supported. Ignoring primitive.");
+                        logWarning("Skinning data for mesh '{}' must be per-vertex. \"constant\" interpolation is not supported. Ignoring primitive.", meshName);
                         return false;
                     }
                 }
@@ -429,7 +429,7 @@ namespace Falcor
                         {
                             if (faceIdx > faceMap.size() || faceMap[faceIdx] != -1)
                             {
-                                logError("Invalid GeomSubset '" + geomSubset.GetPath().GetString() + "' specified for " + meshName + "', ignoring.");
+                                logError("Invalid GeomSubset '{}' specified for '{}', ignoring.", geomSubset.GetPath().GetString(), meshName);
                                 continue;
                             }
                             faceMap[faceIdx] = (int)i;
@@ -443,7 +443,7 @@ namespace Falcor
                 {
                     for (int idx : unassignedIndices)
                     {
-                        assert(faceMap[idx] == -1);
+                        FALCOR_ASSERT(faceMap[idx] == -1);
                         faceMap[idx] = subsetCount;
                     }
                     ++subsetCount;
@@ -531,7 +531,7 @@ namespace Falcor
             else
             {
                 // There should always be normals, either authored or computed.
-                logError("Mesh '" + meshName + "' has no normals.");
+                logError("Mesh '{}' has no normals.", meshName);
             }
 
             // Copy texture coordinates
@@ -559,7 +559,7 @@ namespace Falcor
             UsdAttribute extentAttr = usdCurve.GetExtentAttr();
             if (!extentAttr)
             {
-                logWarning("Curve '" + curveName + "' has no AABB. Ignoring.");
+                logWarning("Curve '{}' has no AABB. Ignoring.", curveName);
                 return false;
             }
             VtVec3fArray usdExtent;
@@ -568,7 +568,7 @@ namespace Falcor
             UsdAttribute pointsAttr = usdCurve.GetPointsAttr();
             if (!pointsAttr)
             {
-                logWarning("Curve '" + curveName + "' does not specify control points. Ignoring.");
+                logWarning("Curve '{}' does not specify control points. Ignoring.", curveName);
                 return false;
             }
             VtVec3fArray usdPoints;
@@ -577,7 +577,7 @@ namespace Falcor
             UsdAttribute curveVertexCountsAttr = usdCurve.GetCurveVertexCountsAttr();
             if (!curveVertexCountsAttr)
             {
-                logWarning("Curve '" + curveName + "' has no vertices. Ignoring.");
+                logWarning("Curve '{}' has no vertices. Ignoring.", curveName);
                 return false;
             }
             VtIntArray usdCurveVertexCounts;
@@ -586,7 +586,7 @@ namespace Falcor
             UsdAttribute widthsAttr = usdCurve.GetWidthsAttr();
             if (!widthsAttr)
             {
-                logWarning("Curve '" + curveName + "' has no width attribute. Ignoring.");
+                logWarning("Curve '{}' has no width attribute. Ignoring.", curveName);
                 return false;
             }
             VtFloatArray usdCurveWidths;
@@ -610,9 +610,9 @@ namespace Falcor
 
             size_t strandCount = usdCurveVertexCounts.size();
             size_t vertexCount = std::accumulate(usdCurveVertexCounts.begin(), usdCurveVertexCounts.end(), 0);
-            assert(vertexCount == usdPoints.size());
-            assert(vertexCount == usdCurveWidths.size());
-            assert(vertexCount == usdUVs.size() || usdUVs.size() == 0);
+            FALCOR_ASSERT(vertexCount == usdPoints.size());
+            FALCOR_ASSERT(vertexCount == usdCurveWidths.size());
+            FALCOR_ASSERT(vertexCount == usdUVs.size() || usdUVs.size() == 0);
 
             const float2* pUsdUVs = usdUVs.empty() ? nullptr : (float2*)usdUVs.data();
 
@@ -637,7 +637,7 @@ namespace Falcor
                 }
                 else
                 {
-                    logWarning("Curve '" + curveName + "' has no texture coordinates.");
+                    logWarning("Curve '{}' has no texture coordinates.", curveName);
                 }
             }
             else if constexpr (std::is_same<T, MeshGeomData>::value)
@@ -666,7 +666,7 @@ namespace Falcor
                 }
                 else
                 {
-                    logWarning("Curve '" + curveName + "' has no texture coordinates.");
+                    logWarning("Curve '{}' has no texture coordinates.", curveName);
                 }
             }
             else
@@ -707,7 +707,7 @@ namespace Falcor
             if (skelMapIt != ctx.meshSkelMap.end())
             {
                 // Look up node containing the skeleton's world transform.
-                assert(sbMesh.boneIDs.pData != nullptr && sbMesh.boneWeights.pData != nullptr);
+                FALCOR_ASSERT(sbMesh.boneIDs.pData != nullptr && sbMesh.boneWeights.pData != nullptr);
                 sbMesh.skeletonNodeId = ctx.skeletons[skelMapIt->second.first].nodeID;
             }
 
@@ -715,12 +715,12 @@ namespace Falcor
 
             if (sbMesh.pIndices == nullptr || sbMesh.indexCount == 0)
             {
-                logWarning("Gprim " + meshPrim.GetPath().GetString() + " has no indices. Ignoring.");
+                logWarning("Gprim '{}' has no indices. Ignoring.", meshPrim.GetPath().GetString());
                 return false;
             }
             if (sbMesh.positions.pData == nullptr)
             {
-                logWarning("Gprim " + meshPrim.GetPath().GetString() + " has no position data. Ignoring.");
+                logWarning("Gprim '{}' has no position data. Ignoring.", meshPrim.GetPath().GetString());
                 return false;
             }
             return true;
@@ -740,22 +740,22 @@ namespace Falcor
 
             // It is possible the material was found in the scene and is assigned to other non-curve geometry.
             // We'll issue a warning if there is a material type mismatch.
-            assert(pMaterial);
+            FALCOR_ASSERT(pMaterial);
             if (pMaterial->getType() != MaterialType::Hair)
             {
-                logWarning("Material '" + pMaterial->getName() + "' assigned to curve '" + sbCurve.name + "' is of non-hair type.");
+                logWarning("Material '{}' assigned to curve '{}' is of non-hair type.", pMaterial->getName(), sbCurve.name);
             }
 
             sbCurve.pMaterial = pMaterial;
 
             if (sbCurve.pIndices == nullptr || sbCurve.indexCount == 0)
             {
-                logWarning("Gprim " + curvePrim.GetPath().GetString() + " has no indices. Ignoring.");
+                logWarning("Gprim '{}' has no indices. Ignoring.", curvePrim.GetPath().GetString());
                 return false;
             }
             if (sbCurve.positions.pData == nullptr)
             {
-                logWarning("Gprim " + curvePrim.GetPath().GetString() + " has no position data. Ignoring.");
+                logWarning("Gprim '{}' has no position data. Ignoring.", curvePrim.GetPath().GetString());
                 return false;
             }
             return true;
@@ -763,8 +763,8 @@ namespace Falcor
 
         bool processMesh(Mesh& mesh, ImporterContext& ctx)
         {
-            assert(mesh.prim.IsA<UsdGeomMesh>() || mesh.prim.IsA<UsdGeomBasisCurves>());
-            assert(isRenderable(UsdGeomImageable(mesh.prim)));
+            FALCOR_ASSERT(mesh.prim.IsA<UsdGeomMesh>() || mesh.prim.IsA<UsdGeomBasisCurves>());
+            FALCOR_ASSERT(isRenderable(UsdGeomImageable(mesh.prim)));
 
             std::string primName = mesh.prim.GetPath().GetString();
 
@@ -860,8 +860,8 @@ namespace Falcor
             }
 
             // Convert geom data to keyframe data for the mesh at a particular sample
-            assert(geomData.geomSubsets.size() == mesh.processedMeshes.size());
-            assert(!mesh.meshIDs.empty()); // Mesh should have been added to builder already
+            FALCOR_ASSERT(geomData.geomSubsets.size() == mesh.processedMeshes.size());
+            FALCOR_ASSERT(!mesh.meshIDs.empty()); // Mesh should have been added to builder already
             for (size_t i = 0; i < geomData.geomSubsets.size(); ++i)
             {
                 // Create mesh to set up data according to subsets
@@ -991,7 +991,7 @@ namespace Falcor
                         if (animations.size() > 0)
                         {
                             // Animation and bones array correspond 1:1, so set the Animation nodeId to wherever the bone node index is
-                            assert(animations[i]->getNodeID() + subskel.nodeOffset == nodeID);
+                            FALCOR_ASSERT(animations[i]->getNodeID() + subskel.nodeOffset == nodeID);
                             animations[i]->setNodeID(nodeID);
                             ctx.builder.addAnimation(animations[i]);
                         }
@@ -1007,7 +1007,7 @@ namespace Falcor
             std::for_each(std::execution::par, meshRange.begin(), meshRange.end(),
                 [&](size_t i)
                 {
-                    assert(ctx.meshTasks[i].sampleIdx == 0);
+                    FALCOR_ASSERT(ctx.meshTasks[i].sampleIdx == 0);
                     processMesh(ctx.meshes[ctx.meshTasks[i].meshId], ctx);
                 }
             );
@@ -1016,7 +1016,7 @@ namespace Falcor
             // This is done sequentially after being processed in parallel to ensure a deterministic ordering.
             for (auto& mesh : ctx.meshes)
             {
-                assert(mesh.meshIDs.empty());
+                FALCOR_ASSERT(mesh.meshIDs.empty());
                 for (auto& m : mesh.processedMeshes)
                 {
                     mesh.meshIDs.push_back(ctx.builder.addProcessedMesh(m));
@@ -1067,7 +1067,7 @@ namespace Falcor
             auto addSubmeshes = [&](const UsdPrim& meshPrim, const std::string& name, const float4x4& xform, const float4x4& bindXform, uint32_t parentId)
             {
                 auto subNodeId = ctx.builder.addNode(makeNode(name, xform, bindXform, parentId));
-                assert(meshPrim.IsA<UsdGeomMesh>());
+                FALCOR_ASSERT(meshPrim.IsA<UsdGeomMesh>());
                 const auto& mesh = ctx.getMesh(meshPrim);
                 for (uint32_t meshID : mesh.meshIDs)
                 {
@@ -1111,7 +1111,7 @@ namespace Falcor
                     // Get a reference to the prototype
                     if (!ctx.hasPrototype(protoInstance.protoPrim))
                     {
-                        logError("Cannot create instance of '" + protoInstance.protoPrim.GetPath().GetString() + "'; no prototype exists.");
+                        logError("Cannot create instance of '{}'; no prototype exists.", protoInstance.protoPrim.GetPath().GetString());
                         continue;
                     }
 
@@ -1178,7 +1178,7 @@ namespace Falcor
             // This is done sequentially after being processed in parallel to ensure a deterministic ordering.
             for (auto& curve : ctx.curves)
             {
-                assert(!curve.processedCurves.empty());
+                FALCOR_ASSERT(!curve.processedCurves.empty());
                 uint32_t curveID = ctx.builder.addProcessedCurve(curve.processedCurves[0]);
                 curve.curveID = curveID;
             }
@@ -1227,7 +1227,7 @@ namespace Falcor
 
             if (pivot != GfVec3f(0.f, 0.f, 0.f))
             {
-                logWarning("Ignoring non-zero pivot extracted from '" + xformAPI.GetPath().GetString() + "'.");
+                logWarning("Ignoring non-zero pivot extracted from '{}'.", xformAPI.GetPath().GetString());
             }
 
             glm::quat qx = glm::angleAxis(glm::radians(rot[0]), glm::vec3(1.f, 0.f, 0.f));
@@ -1255,7 +1255,7 @@ namespace Falcor
                 keyframe.rotation = qx * qy * qz;
                 break;
             default:
-                should_not_get_here();
+                FALCOR_UNREACHABLE();
             }
 
             return keyframe;
@@ -1264,9 +1264,9 @@ namespace Falcor
 
     void PrototypeGeom::addAnimation(const UsdGeomXformable& xformable)
     {
-        logDebug("Creating prototype-internal animation for '" + xformable.GetPath().GetString() + "'.");
+        logDebug("Creating prototype-internal animation for '{}'.", xformable.GetPath().GetString());
 
-        assert(xformable.TransformMightBeTimeVarying());
+        FALCOR_ASSERT(xformable.TransformMightBeTimeVarying());
 
         std::vector<double> times;
         xformable.GetTimeSamples(&times);
@@ -1293,7 +1293,7 @@ namespace Falcor
         const UsdAttribute texAttribute = UsdLuxDomeLight(lightPrim).GetTextureFileAttr();
         if (!texAttribute)
         {
-            logWarning("No texture attribute specified for dome light '" + lightPrim.GetPath().GetString() + "'. Ignoring.");
+            logWarning("No texture attribute specified for dome light '{}'. Ignoring.", lightPrim.GetPath().GetString());
             return;
         }
 
@@ -1328,20 +1328,20 @@ namespace Falcor
 
         if (envMapPath.empty())
         {
-            logError("Failed to resolve environment map path '" + path.GetAssetPath() + "' for light '" + lightPrim.GetPath().GetString() + "'.");
+            logError("Failed to resolve environment map path '{}' for light '{}'.", path.GetAssetPath(), lightPrim.GetPath().GetString());
             return;
         }
 
-        EnvMap::SharedPtr envMap = EnvMap::create(envMapPath);
+        EnvMap::SharedPtr pEnvMap = EnvMap::createFromFile(envMapPath);
 
-        if (envMap == nullptr)
+        if (pEnvMap == nullptr)
         {
-            logError("Failed to create environment map for light " + lightPrim.GetPath().GetString());
+            logError("Failed to create environment map for light '{}'.", lightPrim.GetPath().GetString());
             return;
         }
 
-        envMap->setIntensity(std::pow(2.f, exposure) * intens);
-        envMap->setTint(color);
+        pEnvMap->setIntensity(std::pow(2.f, exposure) * intens);
+        pEnvMap->setTint(color);
 
         // The local-to-world transform includes a 90-degree rotation about X to account for the difference
         // between USD dome light orientation (up=+Z) and Falcor env map orientation (up=+Y), as well as
@@ -1352,8 +1352,8 @@ namespace Falcor
         float3 rotation;
         // Extract rotation from the computed transform
         glm::extractEulerAngleXYZ(xform, rotation.x, rotation.y, rotation.z);
-        envMap->setRotation(glm::degrees(rotation));
-        builder.setEnvMap(envMap);
+        pEnvMap->setRotation(glm::degrees(rotation));
+        builder.setEnvMap(pEnvMap);
     }
 
     void ImporterContext::addLight(const UsdPrim& lightPrim, Light::SharedPtr pLight, uint32_t parentId)
@@ -1497,7 +1497,7 @@ namespace Falcor
 
     bool ImporterContext::createPointInstanceKeyframes(const UsdGeomPointInstancer& instancer, std::vector<std::vector<Animation::Keyframe>>& keyframes)
     {
-        logDebug("Creating PointInstancer keyframes for '" + instancer.GetPath().GetString() + "'.");
+        logDebug("Creating PointInstancer keyframes for '{}'.", instancer.GetPath().GetString());
 
         UsdAttribute posAttr(instancer.GetPositionsAttr());
 
@@ -1518,7 +1518,7 @@ namespace Falcor
         std::vector<VtMatrix4dArray> instXforms;
         if (!instancer.ComputeInstanceTransformsAtTimes(&instXforms, timeCodes, UsdTimeCode::EarliestTime(), UsdGeomPointInstancer::ProtoXformInclusion::ExcludeProtoXform))
         {
-            logError("Error occurred computing sampled point instancer transforms for " + instancer.GetPath().GetString() + ". Ignoring prim.");
+            logError("Error occurred computing sampled point instancer transforms for '{}'. Ignoring prim.", instancer.GetPath().GetString());
             return false;
         }
 
@@ -1526,7 +1526,7 @@ namespace Falcor
         // Each element of the vector holds an array of size equal to the number of instances.
         // We need to, in effect, transpose this layout when constructing the vector of Animations.
         keyframes.resize(instXforms[0].size());
-        assert(instXforms.size() == times.size());
+        FALCOR_ASSERT(instXforms.size() == times.size());
 
         // For each time sample
         for (uint32_t i = 0; i < instXforms.size(); ++i)
@@ -1553,8 +1553,8 @@ namespace Falcor
 
     uint32_t ImporterContext::createAnimation(const UsdGeomXformable& xformable)
     {
-        logDebug("Creating animation for '" + xformable.GetPath().GetString() + "'.");
-        assert(xformable.TransformMightBeTimeVarying());
+        logDebug("Creating animation for '{}'.", xformable.GetPath().GetString());
+        FALCOR_ASSERT(xformable.TransformMightBeTimeVarying());
 
         std::vector<double> times;
         xformable.GetTimeSamples(&times);
@@ -1655,7 +1655,7 @@ namespace Falcor
         }
         if (!pMaterial)
         {
-            logInfo("No material bound to '" + primName + "'. Using a default material.");
+            logInfo("No material bound to '{}'. Using a default material.", primName);
             pMaterial = getDefaultMaterial(prim);
         }
         return pMaterial;
@@ -1737,7 +1737,7 @@ namespace Falcor
             else
             {
                 // Non-curve, non-mesh prims should result in an exception above.
-                should_not_get_here();
+                FALCOR_UNREACHABLE();
             }
         }
         return nullptr;
@@ -1789,7 +1789,7 @@ namespace Falcor
         PrototypeGeom proto(rootPrim, timeCodesPerSecond);
         UsdGeomXformCache xformCache(UsdTimeCode::EarliestTime());
 
-        logDebug("Creating prototype '" + rootPrim.GetPath().GetString() + "'.");
+        logDebug("Creating prototype '{}'.", rootPrim.GetPath().GetString());
 
         // Traverse prototype prim, ignoring everything but transforms and gprims
         Usd_PrimFlagsPredicate pred = UsdPrimDefaultPredicate;
@@ -1811,7 +1811,7 @@ namespace Falcor
 
                 if (prim.IsA<UsdGeomImageable>() && !isRenderable(UsdGeomImageable(prim)))
                 {
-                    logDebug("Pruning non-renderable prim " + primName);
+                    logDebug("Pruning non-renderable prim '{}'.", primName);
                     it.PruneChildren();
                     continue;
                 }
@@ -1822,24 +1822,24 @@ namespace Falcor
 
                     if (!protoPrim.IsValid())
                     {
-                        logError("No valid prototype prim for instance " + primName);
+                        logError("No valid prototype prim for instance '{}'.", primName);
                     }
                     else
                     {
-                        logDebug("Adding instance '" + primName + "' of '" + protoPrim.GetPath().GetString() + "' to prototype '" + rootPrim.GetPath().GetString() + "'.");
+                        logDebug("Adding instance '{}' of '{}' to prototype '{}'.", primName, protoPrim.GetPath().GetString(), rootPrim.GetPath().GetString());
                         PrototypeInstance inst{ primName, protoPrim, proto.nodeStack.back() };
                         proto.addPrototypeInstance(inst);
                     }
                 }
                 else if (prim.IsA<UsdGeomPointInstancer>())
                 {
-                    logDebug("Processing instanced PointInstancer " + primName);
+                    logDebug("Processing instanced PointInstancer '{}'.", primName);
                     createPointInstances(prim, &proto);
                     it.PruneChildren();
                 }
                 else if (prim.IsA<UsdGeomMesh>())
                 {
-                    logDebug("Adding mesh " + primName);
+                    logDebug("Adding mesh '{}'.", primName);
                     addMesh(prim);
                     proto.addGeomInstance(primName, prim, float4x4(1.f), float4x4(1.f));
                 }
@@ -1851,17 +1851,17 @@ namespace Falcor
                 }
                 else if (prim.IsA<UsdGeomBasisCurves>())
                 {
-                    logDebug("Ignoring unsupported basis curves " + primName + " encountered in prototype prim");
+                    logDebug("Ignoring unsupported basis curves '{}' encountered in prototype prim.", primName);
                     it.PruneChildren();
                 }
                 else if (prim.IsA<UsdLuxLight>())
                 {
-                    logWarning("Ignoring light " + primName + " encountered in prototype prim");
+                    logWarning("Ignoring light '{}' encountered in prototype prim.", primName);
                     it.PruneChildren();
                 }
                 else if (prim.IsA<UsdGeomXform>())
                 {
-                    logDebug("Processing xform " + primName);
+                    logDebug("Processing xform '{}'.", primName);
                     // Processing of this UsdGeomXformable performed above
                 }
                 else if (prim.IsA<UsdShadeMaterial>() ||
@@ -1873,11 +1873,11 @@ namespace Falcor
                 }
                 else if (prim.IsA<UsdGeomScope>())
                 {
-                    logDebug("Processing scope " + primName);
+                    logDebug("Processing scope '{}'.", primName);
                 }
                 else if (!prim.GetTypeName().GetString().empty())
                 {
-                    logWarning("Ignoring prim '" + primName + "' of unsupported type " + prim.GetTypeName().GetString() + " while traversing prototype prim.");
+                    logWarning("Ignoring prim '{}' of unsupported type {} while traversing prototype prim.", primName, prim.GetTypeName().GetString());
                     it.PruneChildren();
                 }
             }
@@ -1922,13 +1922,13 @@ namespace Falcor
         SdfPathVector prototypePaths;
         if (!instancer.GetPrototypesRel().GetForwardedTargets(&prototypePaths))
         {
-            logError("Error occurred gathering prototypes for point instancer " + primName);
+            logError("Error occurred gathering prototypes for point instancer '{}'.", primName);
         }
 
         UsdAttribute protoIndicesAttr(instancer.GetProtoIndicesAttr());
         if (!protoIndicesAttr.IsDefined())
         {
-            logError("Point instancer " + primName + " has no prototype indices. Ignoring prim.");
+            logError("Point instancer '{}' has no prototype indices. Ignoring prim.", primName);
             return;
         }
 
@@ -1941,12 +1941,12 @@ namespace Falcor
 
         for (auto path : prototypePaths)
         {
-            logDebug("Processing point instancer prototype " + path.GetString());
+            logDebug("Processing point instancer prototype '{}'.", path.GetString());
             UsdPrim protoPrim(pStage->GetPrimAtPath(path));
 
             if (!protoPrim.IsDefined())
             {
-                logError("Point instancer '" + primName + "' references nonexistent prim '" + path.GetString() + "'. Ignoring.");
+                logError("Point instancer '{}' references nonexistent prim '{}'. Ignoring.", primName, path.GetString());
                 continue;
             }
 
@@ -1975,7 +1975,7 @@ namespace Falcor
         {
             if (protoIndices.size() != keyframes.size())
             {
-                logError("Point instancer " + primName + " has " + std::to_string(protoIndices.size()) + " prototype indices but " + std::to_string(keyframes.size()) + " sampled transforms.");
+                logError("Point instancer '{}' has {} prototype indices but {} sampled transforms.", primName, protoIndices.size(), keyframes.size());
                 return;
             }
         }
@@ -1985,12 +1985,12 @@ namespace Falcor
             // The prototype xform is included in its definition, so we exclude it in the computed instance xforms.
             if (!instancer.ComputeInstanceTransformsAtTime(&instXforms, UsdTimeCode::EarliestTime(), UsdTimeCode::EarliestTime(), UsdGeomPointInstancer::ProtoXformInclusion::ExcludeProtoXform))
             {
-                logError("Error occurred computing point instancer transforms for " + primName + ". Ignoring prim.");
+                logError("Error occurred computing point instancer transforms for '{}'. Ignoring prim.", primName);
                 return;
             }
             if (protoIndices.size() != instXforms.size())
             {
-                logError("Point instancer " + primName + " has " + std::to_string(protoIndices.size()) + " prototype indices but " + std::to_string(instXforms.size()) + " transforms.");
+                logError("Point instancer '{}' has {} prototype indices but {} transforms.", primName, protoIndices.size(), instXforms.size());
                 return;
             }
         }
@@ -2045,7 +2045,7 @@ namespace Falcor
 
         if (bindings.empty())
         {
-            logWarning("SkelRoot " + prim.GetName().GetString() + " does not contain any skeleton bindings.");
+            logWarning("SkelRoot '{}' does not contain any skeleton bindings.", prim.GetName().GetString());
             return;
         }
 
@@ -2063,7 +2063,7 @@ namespace Falcor
             if (!animQuery)
             {
                 // FIXME: An associated animation shouldn't be required.
-                logWarning("SkelRoot '" + skelData.name + "': contains a skeleton swithout an associated animation, which is not supported. Ignoring.");
+                logWarning("SkelRoot '{}' contains a skeleton swithout an associated animation, which is not supported. Ignoring.", skelData.name);
                 continue;
             }
 
@@ -2112,7 +2112,7 @@ namespace Falcor
                 }
                 else
                 {
-                    logWarning("Cannot apply skinning to non-mesh prim " + prim.GetName().GetString() + " of type" + prim.GetTypeName().GetString());
+                    logWarning("Cannot apply skinning to non-mesh prim '{}' of type {}.", prim.GetName().GetString(), prim.GetTypeName().GetString());
                 }
             }
 
@@ -2184,7 +2184,7 @@ namespace Falcor
         else
         {
             // The node stack should at least contain the root node.
-            assert(nodeStack.size() > 0);
+            FALCOR_ASSERT(nodeStack.size() > 0);
             float4x4 localTransform;
             bool resets = getLocalTransform(prim, localTransform);
             SceneBuilder::Node node;

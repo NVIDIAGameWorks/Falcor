@@ -154,7 +154,7 @@ namespace Falcor
         EXPECT_EQ(result[i].x, 5.0f) << "i = " << i; ++i;
         EXPECT_EQ(result[i].x, 13.0f) << "i = " << i; ++i;
 
-        assert(i <= resultSize);
+        FALCOR_ASSERT(i <= resultSize);
         ctx.unmapBuffer("result");
     }
 }

@@ -83,7 +83,7 @@ void TestRtProgram::setScene(RenderContext* pRenderContext, const Scene::SharedP
 
 void TestRtProgram::sceneChanged()
 {
-    assert(mpScene);
+    FALCOR_ASSERT(mpScene);
 
     //
     // Example creating a ray tracing program using the new interfaces.

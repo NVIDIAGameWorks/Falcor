@@ -339,7 +339,7 @@ void RenderGraphEditor::onGuiRender(Gui* pGui)
             // load application for the editor given it the name of the mapped file
             std::string commandLineArgs = kScriptSwitch + " " + mUpdateFilePath;
             mViewerProcess = executeProcess(kViewerExecutableName, commandLineArgs);
-            assert(mViewerProcess);
+            FALCOR_ASSERT(mViewerProcess);
             mViewerRunning = true;
         }
     }
@@ -430,7 +430,7 @@ void RenderGraphEditor::deserializeRenderGraph(const std::string& fileName)
 
 void RenderGraphEditor::loadGraphsFromFile(const std::string& fileName, const std::string& graphName)
 {
-    assert(fileName.size());
+    FALCOR_ASSERT(fileName.size());
 
     // behavior is load each graph defined within the file as a separate editor ui
     std::vector <RenderGraph::SharedPtr> newGraphs;

@@ -131,7 +131,7 @@ namespace Falcor
         case Resource::State::AccelerationStructure:
             return D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return D3D12_RESOURCE_STATE_GENERIC_READ;
         }
     }

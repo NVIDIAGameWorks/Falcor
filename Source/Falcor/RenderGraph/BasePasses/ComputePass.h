@@ -81,7 +81,7 @@ namespace Falcor
 
         /** Get the vars.
         */
-        const ComputeVars::SharedPtr& getVars() const { assert(mpVars); return mpVars; };
+        const ComputeVars::SharedPtr& getVars() const { FALCOR_ASSERT(mpVars); return mpVars; };
 
         ShaderVar getRootVar() const { return mpVars->getRootVar(); }
 

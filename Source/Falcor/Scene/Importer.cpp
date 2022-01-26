@@ -59,7 +59,7 @@ namespace Falcor
 
         for (const auto& ext : desc.extensions)
         {
-            assert(sImportFunctions.find(ext) == sImportFunctions.end());
+            FALCOR_ASSERT(sImportFunctions.find(ext) == sImportFunctions.end());
             sImportFunctions[ext] = desc.import;
             sFileExtensionsFilters.push_back(ext);
         }

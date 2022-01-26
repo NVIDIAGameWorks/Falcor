@@ -243,7 +243,7 @@ namespace Falcor
 
         /** Returns the raw camera data
         */
-        const CameraData& getData() const { calculateCameraParameters(); return  mData; }
+        const CameraData& getData() const { calculateCameraParameters(); return mData; }
 
         void updateFromAnimation(const glm::mat4& transform) override;
 

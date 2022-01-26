@@ -292,10 +292,9 @@ namespace Falcor
         \param[in] prefix Requested file prefix.
         \param[in] directory The directory to create the file in.
         \param[in] extension The requested file extension.
-        \param[out] filename On success, will hold a valid unused filename in the following format - 'Directory\\Prefix.<index>.Extension'.
-        \return true if an available filename was found, otherwise false.
+        \return Returns a valid unused filename in the following format - 'Directory\\Prefix.<index>.Extension'.
     */
-    FALCOR_API bool findAvailableFilename(const std::string& prefix, const std::string& directory, const std::string& extension, std::string& filename);
+    FALCOR_API std::string findAvailableFilename(const std::string& prefix, const std::string& directory, const std::string& extension);
 
     /** Check if a debugger session is attached.
         \return true if debugger is attached to the Falcor process.
@@ -401,6 +400,10 @@ namespace Falcor
     /** Returns index of least significant set bit, or 0 if no bits were set.
     */
     FALCOR_API uint32_t bitScanForward(uint32_t a);
+
+    /** Gets the closest power of two to a number, rounded up.
+    */
+    FALCOR_API uint32_t getNextPowerOf2(uint32_t a);
 
     /** Gets the closest power of two to a number, rounded down.
     */

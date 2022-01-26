@@ -57,7 +57,7 @@ namespace Falcor
 
     TextureManager::TextureHandle TextureManager::addTexture(const Texture::SharedPtr& pTexture)
     {
-        assert(pTexture);
+        FALCOR_ASSERT(pTexture);
         if (pTexture->getType() != Resource::Type::Texture2D || pTexture->getSampleCount() != 1)
         {
             throw ArgumentError("Only single-sample 2D textures can be added");
@@ -94,7 +94,7 @@ namespace Falcor
                 }
                 else
                 {
-                    logWarning("TextureManager::addTexture() - Texture loaded from '" + pTexture->getSourceFilename() + "' appears to be identical to an already loaded texture. This could be optimized by getting it from TextureManager.");
+                    logWarning("TextureManager::addTexture() - Texture loaded from '{}' appears to be identical to an already loaded texture. This could be optimized by getting it from TextureManager.", pTexture->getSourceFilename());
                 }
             }
         }
@@ -110,7 +110,7 @@ namespace Falcor
         std::string fullPath;
         if (!findFileInDataDirectories(filename, fullPath))
         {
-            logWarning("Can't find texture file '" + filename + "'");
+            logWarning("Can't find texture file '{}'.", filename);
             return handle;
         }
 
@@ -221,7 +221,7 @@ namespace Falcor
 
         if (desc.pTexture)
         {
-            assert(mTextureToHandle.find(desc.pTexture.get()) != mTextureToHandle.end());
+            FALCOR_ASSERT(mTextureToHandle.find(desc.pTexture.get()) != mTextureToHandle.end());
             mTextureToHandle.erase(desc.pTexture.get());
         }
 
@@ -237,7 +237,7 @@ namespace Falcor
         if (!handle) return {};
 
         std::lock_guard<std::mutex> lock(mMutex);
-        assert(handle && handle.id < mTextureDescs.size());
+        FALCOR_ASSERT(handle && handle.id < mTextureDescs.size());
         return mTextureDescs[handle.id];
     }
 
@@ -293,7 +293,7 @@ namespace Falcor
 
     TextureManager::TextureDesc& TextureManager::getDesc(const TextureHandle& handle)
     {
-        assert(handle && handle.id < mTextureDescs.size());
+        FALCOR_ASSERT(handle && handle.id < mTextureDescs.size());
         return mTextureDescs[handle.id];
     }
 }

@@ -73,7 +73,7 @@ namespace Falcor
 
         void release(uint32_t entry)
         {
-            assert(entry != kInvalidIndex),
+            FALCOR_ASSERT(entry != kInvalidIndex);
             mFreeQueries.push_back(entry);
         }
 

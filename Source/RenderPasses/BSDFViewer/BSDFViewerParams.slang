@@ -30,6 +30,21 @@
 
 BEGIN_NAMESPACE_FALCOR
 
+enum class BSDFViewerMode : uint32_t
+{
+    Material,       ///< Rendered view with material sample.
+    Slice,          ///< BSDF slice viewer.
+};
+
+enum class AlbedoSelection : uint32_t
+{
+    ShowAlbedo = 0x1,
+    DiffuseReflection = 0x2,
+    DiffuseTransmission = 0x4,
+    SpecularReflection = 0x8,
+    SpecularTransmission = 0x10,
+};
+
 /** BSDFViewer parameters shared between host and device.
     Make sure struct layout follows the HLSL packing rules as it is uploaded as a memory blob.
     Do not use bool's as they are 1 byte in Visual Studio, 4 bytes in HLSL.
@@ -39,7 +54,7 @@ struct BSDFViewerParams
 {
     uint2   frameDim = { 0, 0 };                ///< Frame buffer dimension in pixels.
     uint    frameCount = 0;                     ///< Frames rendered.
-    int     enableSliceViewer = 0;              ///< Enable BSDF slice viewer, otherwise material viewer.
+    BSDFViewerMode viewerMode = BSDFViewerMode::Material; ///< Current viewer mode.
 
     float2  viewportOffset;                     ///< Top-left corner of viewport in pixels.
     float2  viewportScale;                      ///< 1/Size of viewport in pixels.
@@ -59,10 +74,10 @@ struct BSDFViewerParams
     int     useImportanceSampling = 1;          ///< Use importance sampling.
     int     usePdf = 0;                         ///< Use BRDF sampling pdf explicitly, otherwise the precomputed weight (for debugging).
 
+    uint    outputAlbedo = 0;                   ///< Whether to output albedo instead of reflectance. See AlbedoSelection flags.
     int     enableDiffuse = 1;                  ///< Enable diffuse lobe in slice viewer.
     int     enableSpecular = 1;                 ///< Enable specular lobe in slice viewer.
     int     applyNdotL = 0;                     ///< Multiply BSDF by NdotL in slice viewer.
-    int     _pad2;
 
     // Lighting settings
     int     useGroundPlane = 0;                 ///< Draw a ground plane.
@@ -99,7 +114,7 @@ struct PixelData
     float3 output;
 
     // BSDF properties
-    float3 emissive;
+    float3 emission;
     float  roughness;
     float3 diffuseReflectionAlbedo;
     float3 diffuseTransmissionAlbedo;

@@ -171,7 +171,7 @@ namespace Falcor
 
             void addAiNode(const aiNode* pNode, uint32_t falcorNodeID)
             {
-                assert(mAiToFalcorNodeID.find(pNode) == mAiToFalcorNodeID.end());
+                FALCOR_ASSERT(mAiToFalcorNodeID.find(pNode) == mAiToFalcorNodeID.end());
                 mAiToFalcorNodeID[pNode] = falcorNodeID;
 
                 if (mAiNodes.find(pNode->mName.C_Str()) == mAiNodes.end())
@@ -214,7 +214,7 @@ namespace Falcor
         {
             auto resetTime = [](auto keys, uint32_t count)
             {
-                if (count > 1) assert(keys[1].mTime >= 0);
+                if (count > 1) FALCOR_ASSERT(keys[1].mTime >= 0);
                 if (keys[0].mTime < 0) keys[0].mTime = 0;
             };
             resetTime(pAiNode->mPositionKeys, pAiNode->mNumPositionKeys);
@@ -224,7 +224,7 @@ namespace Falcor
 
         void createAnimation(ImporterData& data, const aiAnimation* pAiAnim, ImportMode importMode)
         {
-            assert(pAiAnim->mNumMeshChannels == 0);
+            FALCOR_ASSERT(pAiAnim->mNumMeshChannels == 0);
             double duration = pAiAnim->mDuration;
             double ticksPerSecond = pAiAnim->mTicksPerSecond ? pAiAnim->mTicksPerSecond : 25;
             // The GLTF2 importer in Assimp has a bug where duration and keyframe times are loaded as milliseconds instead of ticks.
@@ -259,14 +259,14 @@ namespace Falcor
                     if (pos < pAiNode->mNumPositionKeys) time = std::max(time, pAiNode->mPositionKeys[pos].mTime);
                     if (rot < pAiNode->mNumRotationKeys) time = std::max(time, pAiNode->mRotationKeys[rot].mTime);
                     if (scale < pAiNode->mNumScalingKeys) time = std::max(time, pAiNode->mScalingKeys[scale].mTime);
-                    assert(time != -std::numeric_limits<double>::max());
+                    FALCOR_ASSERT(time != -std::numeric_limits<double>::max());
                     return time;
                 };
 
                 while (!done)
                 {
                     double time = nextKeyTime();
-                    assert(time == 0 || (time / ticksPerSecond) > keyframe.time);
+                    FALCOR_ASSERT(time == 0 || (time / ticksPerSecond) > keyframe.time);
                     keyframe.time = time / ticksPerSecond;
 
                     // Note the order of the logical-and, we don't want to short-circuit the function calls
@@ -322,7 +322,7 @@ namespace Falcor
 
         void addLightCommon(const Light::SharedPtr& pLight, const glm::mat4& baseMatrix, ImporterData& data, const aiLight* pAiLight)
         {
-            assert(pAiLight->mColorDiffuse == pAiLight->mColorSpecular);
+            FALCOR_ASSERT(pAiLight->mColorDiffuse == pAiLight->mColorSpecular);
             pLight->setIntensity(aiCast(pAiLight->mColorSpecular));
 
             // Find if the light is affected by a node
@@ -391,7 +391,7 @@ namespace Falcor
                     createPointLight(data, pAiLight);
                     break;
                 default:
-                    logWarning(fmt::format("AssimpImporter: Light '{}' has unsupported type {}, ignoring.", pAiLight->mName.C_Str(), pAiLight->mType));
+                    logWarning("AssimpImporter: Light '{}' has unsupported type {}, ignoring.", pAiLight->mName.C_Str(), pAiLight->mType);
                     continue;
                 }
             }
@@ -410,7 +410,7 @@ namespace Falcor
             texCrds.resize(count);
             for (uint32_t i = 0; i < count; i++)
             {
-                assert(pAiTexCrd[i].z == 0);
+                FALCOR_ASSERT(pAiTexCrd[i].z == 0);
                 texCrds[i] = float2(pAiTexCrd[i].x, pAiTexCrd[i].y);
             }
         }
@@ -438,7 +438,7 @@ namespace Falcor
             indices.resize(indexCount);
             for (uint32_t i = 0; i < pAiMesh->mNumFaces; i++)
             {
-                assert(pAiMesh->mFaces[i].mNumIndices == perFaceIndexCount); // Mesh contains mixed primitive types, can be solved using aiProcess_SortByPType
+                FALCOR_ASSERT(pAiMesh->mFaces[i].mNumIndices == perFaceIndexCount); // Mesh contains mixed primitive types, can be solved using aiProcess_SortByPType
                 for (uint32_t j = 0; j < perFaceIndexCount; j++)
                 {
                     indices[i * perFaceIndexCount + j] = (uint32_t)(pAiMesh->mFaces[i].mIndices[j]);
@@ -459,7 +459,7 @@ namespace Falcor
             for (uint32_t bone = 0; bone < pAiMesh->mNumBones; bone++)
             {
                 const aiBone* pAiBone = pAiMesh->mBones[bone];
-                assert(data.getNodeInstanceCount(pAiBone->mName.C_Str()) == 1);
+                FALCOR_ASSERT(data.getNodeInstanceCount(pAiBone->mName.C_Str()) == 1);
                 uint32_t aiBoneID = data.getFalcorNodeID(pAiBone->mName.C_Str(), 0);
 
                 // The way Assimp works, the weights holds the IDs of the vertices it affects.
@@ -516,12 +516,12 @@ namespace Falcor
                 const aiMesh* pMesh = pScene->mMeshes[i];
                 if (!pMesh->HasFaces())
                 {
-                    logWarning(fmt::format("AssimpImporter: Mesh '{}' has no faces, ignoring.", pMesh->mName.C_Str()));
+                    logWarning("AssimpImporter: Mesh '{}' has no faces, ignoring.", pMesh->mName.C_Str());
                     continue;
                 }
                 if (pMesh->mFaces->mNumIndices != 3)
                 {
-                    logWarning(fmt::format("AssimpImporter: Mesh '{}' is not a triangle mesh, ignoring.", pMesh->mName.C_Str()));
+                    logWarning("AssimpImporter: Mesh '{}' is not a triangle mesh, ignoring.", pMesh->mName.C_Str());
                     continue;
                 }
                 meshes.push_back(pMesh);
@@ -547,13 +547,13 @@ namespace Falcor
 
                 // Indices
                 createIndexList(pAiMesh, indexList);
-                assert(indexList.size() <= std::numeric_limits<uint32_t>::max());
+                FALCOR_ASSERT(indexList.size() <= std::numeric_limits<uint32_t>::max());
                 mesh.indexCount = (uint32_t)indexList.size();
                 mesh.pIndices = indexList.data();
                 mesh.topology = Vao::Topology::TriangleList;
 
                 // Vertices
-                assert(pAiMesh->mVertices);
+                FALCOR_ASSERT(pAiMesh->mVertices);
                 mesh.vertexCount = pAiMesh->mNumVertices;
                 static_assert(sizeof(pAiMesh->mVertices[0]) == sizeof(mesh.positions.pData[0]));
                 static_assert(sizeof(pAiMesh->mNormals[0]) == sizeof(mesh.normals.pData[0]));
@@ -565,7 +565,7 @@ namespace Falcor
                 if (pAiMesh->HasTextureCoords(0))
                 {
                     createTexCrdList(pAiMesh->mTextureCoords[0], pAiMesh->mNumVertices, texCrds);
-                    assert(!texCrds.empty());
+                    FALCOR_ASSERT(!texCrds.empty());
                     mesh.texCrds.pData = texCrds.data();
                     mesh.texCrds.frequency = SceneBuilder::Mesh::AttributeFrequency::Vertex;
                 }
@@ -573,7 +573,7 @@ namespace Falcor
                 if (loadTangents && pAiMesh->HasTangentsAndBitangents())
                 {
                     createTangentList(pAiMesh->mTangents, pAiMesh->mBitangents, pAiMesh->mNormals, pAiMesh->mNumVertices, tangents);
-                    assert(!tangents.empty());
+                    FALCOR_ASSERT(!tangents.empty());
                     mesh.tangents.pData = tangents.data();
                     mesh.tangents.frequency = SceneBuilder::Mesh::AttributeFrequency::Vertex;
                 }
@@ -660,7 +660,7 @@ namespace Falcor
             SceneBuilder::Node n;
             n.name = pCurrent->mName.C_Str();
             bool currentIsBone = isBone(data, n.name);
-            assert(currentIsBone == false || pCurrent->mNumMeshes == 0);
+            FALCOR_ASSERT(currentIsBone == false || pCurrent->mNumMeshes == 0);
 
             n.parent = pCurrent->mParent ? data.getFalcorNodeID(pCurrent->mParent) : SceneBuilder::kInvalidNode;
             n.transform = aiCast(pCurrent->mTransformation);
@@ -695,7 +695,7 @@ namespace Falcor
         {
             createBoneList(data);
             aiNode* pRoot = data.pScene->mRootNode;
-            assert(isBone(data, pRoot->mName.C_Str()) == false);
+            FALCOR_ASSERT(isBone(data, pRoot->mName.C_Str()) == false);
             parseNode(data, pRoot, false);
             // dumpSceneGraphHierarchy(data, "graph.dotfile", pRoot); // used for debugging
         }
@@ -776,7 +776,7 @@ namespace Falcor
             // MetalRough is the default for everything except OBJ. Check that both flags aren't set simultaneously.
             ShadingModel shadingModel = ShadingModel::MetalRough;
             SceneBuilder::Flags builderFlags = data.builder.getFlags();
-            assert(!(is_set(builderFlags, SceneBuilder::Flags::UseSpecGlossMaterials) && is_set(builderFlags, SceneBuilder::Flags::UseMetalRoughMaterials)));
+            FALCOR_ASSERT(!(is_set(builderFlags, SceneBuilder::Flags::UseSpecGlossMaterials) && is_set(builderFlags, SceneBuilder::Flags::UseMetalRoughMaterials)));
             if (is_set(builderFlags, SceneBuilder::Flags::UseSpecGlossMaterials) || (importMode == ImportMode::OBJ && !is_set(builderFlags, SceneBuilder::Flags::UseMetalRoughMaterials)))
             {
                 shadingModel = ShadingModel::SpecGloss;
@@ -888,7 +888,7 @@ namespace Falcor
                     std::string str = nameVec[i];
                     std::transform(str.begin(), str.end(), str.begin(), ::tolower);
                     if (str == "doublesided") pMaterial->setDoubleSided(true);
-                    else logWarning(fmt::format("AssimpImporter: Material '{}' has an unknown material property: '{}'.", nameStr, nameVec[i]));
+                    else logWarning("AssimpImporter: Material '{}' has an unknown material property: '{}'.", nameStr, nameVec[i]);
                 }
             }
 
@@ -977,7 +977,7 @@ namespace Falcor
         {
             if (data.pScene->mNumTextures > 0)
             {
-                logWarning(fmt::format("AssimpImporter: Scene has {} embedded textures which Falcor doesn't load.", data.pScene->mNumTextures));
+                logWarning("AssimpImporter: Scene has {} embedded textures which Falcor doesn't load.", data.pScene->mNumTextures);
             }
 
             validateBones(data);

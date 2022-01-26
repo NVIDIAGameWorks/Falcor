@@ -95,7 +95,7 @@ void InvalidPixelDetectionPass::execute(RenderContext* pRenderContext, const Ren
         mFormat = pSrc->getFormat();
         if (getFormatType(mFormat) != FormatType::Float)
         {
-            logWarning("InvalidPixelDetectionPass::execute() -  " + kFormatWarning);
+            logWarning("InvalidPixelDetectionPass::execute() - {}", kFormatWarning);
         }
     }
 

@@ -39,18 +39,20 @@ namespace Falcor
     {
         if (gpDevice)
         {
-            reportError("Falcor only supports a single device");
-            return nullptr;
+            throw RuntimeError("Falcor only supports a single device.");
         }
         gpDevice = SharedPtr(new Device(pWindow, desc));
-        if (gpDevice->init() == false) { gpDevice = nullptr;}
+        if (!gpDevice->init())
+        {
+            throw RuntimeError("Failed to create device.");
+        }
         return gpDevice;
     }
 
     bool Device::init()
     {
         const uint32_t kDirectQueueIndex = (uint32_t)LowLevelContextData::CommandQueueType::Direct;
-        assert(mDesc.cmdQueues[kDirectQueueIndex] > 0);
+        FALCOR_ASSERT(mDesc.cmdQueues[kDirectQueueIndex] > 0);
         if (apiInit() == false) return false;
 
         mpFrameFence = GpuFence::create();
@@ -68,7 +70,7 @@ namespace Falcor
         createNullViews();
         mpRenderContext = RenderContext::create(mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
 
-        assert(mpRenderContext);
+        FALCOR_ASSERT(mpRenderContext);
         mpRenderContext->flush();  // This will bind the descriptor heaps.
         // TODO: Do we need to flush here or should RenderContext::create() bind the descriptor heaps automatically without flush? See #749.
 
@@ -216,7 +218,7 @@ namespace Falcor
 
     Fbo::SharedPtr Device::resizeSwapChain(uint32_t width, uint32_t height)
     {
-        assert(width > 0 && height > 0);
+        FALCOR_ASSERT(width > 0 && height > 0);
 
         mpRenderContext->flush(true);
 
@@ -236,19 +238,19 @@ namespace Falcor
         std::array<Resource::State, kSwapChainBuffersCount> fboDepthStates;
         for (uint32_t i = 0; i < kSwapChainBuffersCount; i++)
         {
-            assert(mpSwapChainFbos[i]->getColorTexture(0)->isStateGlobal());
+            FALCOR_ASSERT(mpSwapChainFbos[i]->getColorTexture(0)->isStateGlobal());
             fboColorStates[i] = mpSwapChainFbos[i]->getColorTexture(0)->getGlobalState();
 
             const auto& pSwapChainDepth = mpSwapChainFbos[i]->getDepthStencilTexture();
             if (pSwapChainDepth != nullptr)
             {
-                assert(pSwapChainDepth->isStateGlobal());
+                FALCOR_ASSERT(pSwapChainDepth->isStateGlobal());
                 fboDepthStates[i] = pSwapChainDepth->getGlobalState();
             }
         }
 #endif
 
-        assert(mpSwapChainFbos[0]->getSampleCount() == 1);
+        FALCOR_ASSERT(mpSwapChainFbos[0]->getSampleCount() == 1);
 
         // Delete all the FBOs
         releaseFboData();
@@ -259,12 +261,12 @@ namespace Falcor
         // Restore FBO resource states
         for (uint32_t i = 0; i < kSwapChainBuffersCount; i++)
         {
-            assert(mpSwapChainFbos[i]->getColorTexture(0)->isStateGlobal());
+            FALCOR_ASSERT(mpSwapChainFbos[i]->getColorTexture(0)->isStateGlobal());
             mpSwapChainFbos[i]->getColorTexture(0)->setGlobalState(fboColorStates[i]);
             const auto& pSwapChainDepth = mpSwapChainFbos[i]->getDepthStencilTexture();
             if (pSwapChainDepth != nullptr)
             {
-                assert(pSwapChainDepth->isStateGlobal());
+                FALCOR_ASSERT(pSwapChainDepth->isStateGlobal());
                 pSwapChainDepth->setGlobalState(fboDepthStates[i]);
             }
         }

@@ -104,7 +104,7 @@ namespace Falcor
         const std::vector<Shader::SharedPtr>& shaders,
         EntryPointBaseReflection::SharedPtr const& pReflector) const
     {
-        assert(shaders.size() != 0);
+        FALCOR_ASSERT(shaders.size() != 0);
 
         if (
 #ifdef FALCOR_D3D12

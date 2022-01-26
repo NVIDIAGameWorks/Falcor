@@ -37,7 +37,16 @@
 
 #define gfx_call(a) {auto hr_ = a; if(FAILED(hr_)) { reportError(#a); }}
 
-#define UNSUPPORTED_IN_GFX(msg_) {logWarning(msg_ + std::string(" is not supported in GFX. Ignoring call."));}
+#define UNSUPPORTED_IN_GFX(msg_) {logWarning("{} is not supported in GFX. Ignoring call.", msg_);}
+
+#if FALCOR_ENABLE_D3D12_AGILITY_SDK
+ // To enable the D3D12 Agility SDK, this macro needs to be added to the main source file of the executable.
+#define FALCOR_EXPORT_D3D12_AGILITY_SDK                                                     \
+    extern "C" { FALCOR_API_EXPORT extern const UINT D3D12SDKVersion = 4;}              \
+    extern "C" { FALCOR_API_EXPORT extern const char* D3D12SDKPath = u8".\\D3D12\\"; }
+#else
+#define FALCOR_EXPORT_D3D12_AGILITY_SDK
+#endif
 
 #pragma comment(lib, "gfx.lib")
 

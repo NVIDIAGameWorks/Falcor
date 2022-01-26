@@ -50,7 +50,7 @@ namespace Falcor
         {
             // Create a buffer of random data to use as test data.
             // We make sure the total sum fits in 32 bits.
-            assert(numElems > 0);
+            FALCOR_ASSERT(numElems > 0);
             const uint32_t maxVal = std::numeric_limits<uint32_t>::max() / numElems;
             std::vector<uint32_t> testData(numElems);
             std::mt19937 r;
@@ -64,8 +64,7 @@ namespace Falcor
 
             // Execute prefix sum on the GPU.
             uint32_t sum = 0;
-            bool retval = pPrefixSum->execute(ctx.getRenderContext(), pTestDataBuffer, numElems, &sum, pSumBuffer, 0);
-            EXPECT_EQ(retval, true);
+            pPrefixSum->execute(ctx.getRenderContext(), pTestDataBuffer, numElems, &sum, pSumBuffer, 0);
 
             // Compute prefix sum on the CPU for comparison.
             const uint32_t refSum = prefixSum(testData);
@@ -74,12 +73,12 @@ namespace Falcor
             EXPECT_EQ(sum, refSum);
 
             uint32_t* resultSum = (uint32_t*)pSumBuffer->map(Buffer::MapType::Read);
-            assert(resultSum);
+            FALCOR_ASSERT(resultSum);
             EXPECT_EQ(resultSum[0], refSum);
             pSumBuffer->unmap();
 
             const uint32_t* result = (const uint32_t*)pTestDataBuffer->map(Buffer::MapType::Read);
-            assert(result);
+            FALCOR_ASSERT(result);
             for (uint32_t i = 0; i < numElems; i++)
             {
                 EXPECT_EQ(testData[i], result[i]) << "i = " << i;
@@ -93,8 +92,8 @@ namespace Falcor
         // Quick test of our reference function.
         std::vector<uint32_t> x({ 5, 17, 2, 9, 23 });
         uint32_t sum = prefixSum(x);
-        assert(x[0] == 0 && x[1] == 5 && x[2] == 22 && x[3] == 24 && x[4] == 33);
-        assert(sum == 56);
+        FALCOR_ASSERT(x[0] == 0 && x[1] == 5 && x[2] == 22 && x[3] == 24 && x[4] == 33);
+        FALCOR_ASSERT(sum == 56);
 
         // Create helper class.
         PrefixSum::SharedPtr pPrefixSum = PrefixSum::create();

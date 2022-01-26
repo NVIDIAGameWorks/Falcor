@@ -38,12 +38,12 @@ namespace Falcor
     CopyContext::CopyContext(LowLevelContextData::CommandQueueType type, CommandQueueHandle queue)
     {
         mpLowLevelData = LowLevelContextData::create(type, queue);
-        assert(mpLowLevelData);
+        FALCOR_ASSERT(mpLowLevelData);
     }
 
     CopyContext::SharedPtr CopyContext::create(CommandQueueHandle queue)
     {
-        assert(queue);
+        FALCOR_ASSERT(queue);
         return SharedPtr(new CopyContext(LowLevelContextData::CommandQueueType::Copy, queue));
     }
 

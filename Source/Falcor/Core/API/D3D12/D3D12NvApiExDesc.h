@@ -94,8 +94,8 @@ namespace Falcor
 
 #else
     using NvApiPsoExDesc = uint32_t;
-    inline void createNvApiVsExDesc(NvApiPsoExDesc& ret) { should_not_get_here(); }
-    inline void createNvApiUavSlotExDesc(NvApiPsoExDesc& ret, uint32_t uavSlot) { should_not_get_here(); }
+    inline void createNvApiVsExDesc(NvApiPsoExDesc& ret) { FALCOR_UNREACHABLE(); }
+    inline void createNvApiUavSlotExDesc(NvApiPsoExDesc& ret, uint32_t uavSlot) { FALCOR_UNREACHABLE(); }
     inline std::optional<uint32_t> findNvApiShaderRegister(ProgramKernels::SharedConstPtr const& pKernels, uint32_t& outRegisterIndex) { return std::optional<uint32_t>(); }
 #endif
 }

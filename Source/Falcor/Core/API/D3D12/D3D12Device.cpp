@@ -51,7 +51,7 @@ namespace Falcor
 #if FALCOR_ENABLE_D3D12_AGILITY_SDK
             to_string_case(D3D_FEATURE_LEVEL_12_2)
 #endif
-            default: should_not_get_here(); return "";
+            default: FALCOR_UNREACHABLE(); return "";
             }
         }
 #undef to_string_case
@@ -197,7 +197,7 @@ namespace Falcor
         {
             for (uint32_t i = 0; i < featureLevelCount; i++)
             {
-                logDebug("Trying to create D3D12 device with minimum feature level: " + to_string(pFeatureLevels[i]));
+                logDebug("Trying to create D3D12 device with minimum feature level: {}", to_string(pFeatureLevels[i]));
                 if (SUCCEEDED(D3D12CreateDevice(pAdapter, pFeatureLevels[i], IID_PPV_ARGS(&pDevice))))
                 {
                     selectedFeatureLevel = pFeatureLevels[i];
@@ -260,7 +260,7 @@ namespace Falcor
 
             // Select the first adapter satisfying the conditions
             selectedAdapterIndex = i;
-            logDebug("Found matching adapter at index " + std::to_string(selectedAdapterIndex));
+            logDebug("Found matching adapter at index {}", selectedAdapterIndex);
             break;
         }
 
@@ -268,7 +268,7 @@ namespace Falcor
         {
             // If no GPU was found, just select the first
             selectedAdapterIndex = 0;
-            logDebug("No matching adapter found, defaulting to adapter index " + std::to_string(selectedAdapterIndex));
+            logDebug("No matching adapter found, defaulting to adapter index {}", selectedAdapterIndex);
 
             // Log a warning if an adapter matching user specifications wasn't found.
             // Selection could have failed based on the default settings, but that isn't an error.
@@ -286,11 +286,11 @@ namespace Falcor
 
         if (pDevice != nullptr)
         {
-            logInfo("Successfully created device with feature level: " + to_string(selectedFeatureLevel));
+            logInfo("Successfully created device with feature level: {}", to_string(selectedFeatureLevel));
             return pDevice;
         }
 
-        reportError("Could not find a GPU that supports D3D12 device");
+        logError("Could not find a GPU that supports D3D12 device");
         return nullptr;
     }
 
@@ -390,7 +390,7 @@ namespace Falcor
             case Device::ShaderModel::SM6_7:
                 return D3D_SHADER_MODEL_6_7;
             default:
-                should_not_get_here();
+                FALCOR_UNREACHABLE();
                 return (D3D_SHADER_MODEL)0;
             }
         };
@@ -524,12 +524,7 @@ namespace Falcor
                 cqDesc.Type = getApiCommandQueueType((LowLevelContextData::CommandQueueType)i);
 
                 ID3D12CommandQueuePtr pQueue;
-                if (FAILED(mApiHandle->CreateCommandQueue(&cqDesc, IID_PPV_ARGS(&pQueue))))
-                {
-                    reportError("Failed to create command queue");
-                    return false;
-                }
-
+                FALCOR_D3D_CALL(mApiHandle->CreateCommandQueue(&cqDesc, IID_PPV_ARGS(&pQueue)));
                 mCmdQueues[i].push_back(pQueue);
             }
         }

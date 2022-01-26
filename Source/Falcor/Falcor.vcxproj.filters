@@ -624,6 +624,18 @@
     <ClInclude Include="Core\API\GFX\GFXRtAccelerationStructure.h">
       <Filter>Core\API\GFX</Filter>
     </ClInclude>
+    <ClInclude Include="Scene\Material\MERLMaterial.h">
+      <Filter>Scene\Material</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Materials\BSDFIntegrator.h">
+      <Filter>Rendering\Materials</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\RTXDI\RTXDIModule.h">
+      <Filter>Rendering\RTXDI</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\RTXDI\RTXDI.h">
+      <Filter>Rendering\RTXDI</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Core">
@@ -793,6 +805,12 @@
     </Filter>
     <Filter Include="Scene\Importers\USDImporter">
       <UniqueIdentifier>{f41563d4-7825-4ef3-9b79-dc134faad71e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RenderPasses\Shared\Denoising">
+      <UniqueIdentifier>{85ab13b0-fe3a-4c0f-b292-095acb07b03a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering\RTXDI">
+      <UniqueIdentifier>{3adba9f2-c6c2-4f1d-9992-0034104817f9}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -1457,6 +1475,18 @@
     <ClCompile Include="Core\Errors.cpp">
       <Filter>Core</Filter>
     </ClCompile>
+    <ClCompile Include="Scene\Material\MERLMaterial.cpp">
+      <Filter>Scene\Material</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Materials\BSDFIntegrator.cpp">
+      <Filter>Rendering\Materials</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\RTXDI\RTXDI.cpp">
+      <Filter>Rendering\RTXDI</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\RTXDI\RTXDISDK.cpp">
+      <Filter>Rendering\RTXDI</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Xml Include="dependencies.xml" />
@@ -2013,6 +2043,60 @@
     </ShaderSource>
     <ShaderSource Include="Utils\Image\CopyColorChannel.cs.slang">
       <Filter>Utils\Image</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\Material\MERLMaterialData.slang">
+      <Filter>Scene\Material</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Materials\MERLMaterial.slang">
+      <Filter>Rendering\Materials</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Materials\MERLBSDF.slang">
+      <Filter>Rendering\Materials</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\Shading.slang">
+      <Filter>Scene</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\Materials\BSDFIntegrator.cs.slang">
+      <Filter>Rendering\Materials</Filter>
+    </ShaderSource>
+    <ShaderSource Include="RenderPasses\Shared\Denoising\NRDBuffers.slang">
+      <Filter>RenderPasses\Shared\Denoising</Filter>
+    </ShaderSource>
+    <ShaderSource Include="RenderPasses\Shared\Denoising\NRDConstants.slang">
+      <Filter>RenderPasses\Shared\Denoising</Filter>
+    </ShaderSource>
+    <ShaderSource Include="RenderPasses\Shared\Denoising\NRDData.slang">
+      <Filter>RenderPasses\Shared\Denoising</Filter>
+    </ShaderSource>
+    <ShaderSource Include="RenderPasses\Shared\Denoising\NRDHelpers.slang">
+      <Filter>RenderPasses\Shared\Denoising</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\RTXDI\RTXDISetup.cs.slang">
+      <Filter>Rendering\RTXDI</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\RTXDI\RTXDI.slang">
+      <Filter>Rendering\RTXDI</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\RTXDI\RTXDIApplicationBridge.slangh">
+      <Filter>Rendering\RTXDI</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\RTXDI\PackedTypes.slang">
+      <Filter>Rendering\RTXDI</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\RTXDI\ReflectTypes.cs.slang">
+      <Filter>Rendering\RTXDI</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\RTXDI\SurfaceData.slang">
+      <Filter>Rendering\RTXDI</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\RTXDI\EnvLightUpdater.cs.slang">
+      <Filter>Rendering\RTXDI</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\RTXDI\LightUpdater.cs.slang">
+      <Filter>Rendering\RTXDI</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\RTXDI\PolymorphicLight.slang">
+      <Filter>Rendering\RTXDI</Filter>
     </ShaderSource>
   </ItemGroup>
 </Project>

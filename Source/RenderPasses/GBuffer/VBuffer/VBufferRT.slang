@@ -25,8 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-import Scene.Scene;
-__exported import Scene.HitInfo;
+__exported import Scene.Shading;
 __exported import Utils.Timing.GpuTimer;
 __exported import Utils.Math.Ray;
 import Utils.Math.MathHelpers;

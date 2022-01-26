@@ -36,7 +36,7 @@ namespace Falcor
         pCtx->bindDescriptorHeaps(); // TODO: Should this be done here?
         return pCtx;
     }
-    
+
     void ComputeContext::flush(bool wait)
     {
         CopyContext::flush(wait);

@@ -25,8 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-import Scene.Scene;
-__exported import Scene.HitInfo;
+__exported import Scene.Shading;
 __exported import Utils.Timing.GpuTimer;
 __exported import Utils.Math.Ray;
 import Utils.Math.MathHelpers;
@@ -50,7 +49,7 @@ RWTexture2D<PackedHitInfo> gVBuffer;
 RWTexture2D<float>  gDepth;
 RWTexture2D<float2> gLinearZ;
 RWTexture2D<float4> gMotionVectorW;
-RWTexture2D<float4> gNormalWRoughness;
+RWTexture2D<float4> gNormalWRoughnessMaterialID;
 RWTexture2D<float4> gDiffOpacity;
 RWTexture2D<float4> gSpecRough;
 RWTexture2D<float4> gEmissive;
@@ -122,9 +121,9 @@ struct GBufferRT
         gScene.getVertexPositionsW(hit.instanceID, hit.primitiveIndex, positions);
         gScene.getVertexTexCoords(hit.instanceID, hit.primitiveIndex, texCoords);
 
-        float coneRadiusAtHitPoint = hitT * tan(pixelAngle);
+        float coneWidthAtHitPoint = hitT * tan(pixelAngle);   // The exact expression is 2.0f * hitT * tan(pixelAngle * 0.5f), but can be approximated as hitT * tan(pixelAngle) due to tan(b) ~= b for small b.
         // Using faceNormal, since it is needed for the barycentric computations inside computeAnisotropicEllipseAxes().
-        computeAnisotropicEllipseAxes(v.posW, v.faceNormalW, rayDir, coneRadiusAtHitPoint, positions, texCoords, v.texC, ddx, ddy);
+        computeAnisotropicEllipseAxes(v.posW, v.faceNormalW, rayDir, coneWidthAtHitPoint, positions, texCoords, v.texC, ddx, ddy);
     }
 
     float3 computeDdxPosW(float3 posW, float3 normW, float2 invFrameDim)
@@ -296,10 +295,12 @@ struct GBufferRT
         }
 
         // Output a buffer that packs normal and roughness estimation.
-        if (is_valid(gNormalWRoughness))
+        if (is_valid(gNormalWRoughnessMaterialID))
         {
+            float2 octNormal = ndir_to_oct_unorm(sd.N);
             float roughness = bsdf.getProperties(sd).roughness;
-            gNormalWRoughness[pixel] = float4(sd.N * 0.5 + 0.5, roughness);
+            float materialID = 0.f;
+            gNormalWRoughnessMaterialID[pixel] = float4(octNormal, roughness, materialID);
         }
 
         // Encode hit information.
@@ -322,26 +323,29 @@ struct GBufferRT
     void writeMiss(const uint2 pixel, const float3 rayOrigin, const float3 rayDir)
     {
         const float2 mvec = computeMotionVectorBackground(pixel, rayOrigin, rayDir);
+        const float2 octNormal = ndir_to_oct_unorm(float3(0.2215f, 0.2215f, 0.2215f)); // UE4 default value at miss
+        const float roughness = 0.f;
+        const float materialID = 0.f;
 
         // GBuffer channels
-        if (is_valid(gPosW))                gPosW[pixel]                = {};
-        if (is_valid(gNormW))               gNormW[pixel]               = {};
-        if (is_valid(gTangentW))            gTangentW[pixel]            = {};
-        if (is_valid(gFaceNormalW))         gFaceNormalW[pixel]         = {};
-        if (is_valid(gTexC))                gTexC[pixel]                = {};
-        if (is_valid(gTexGrads))            gTexGrads[pixel]            = {};
-        if (is_valid(gMotionVector))        gMotionVector[pixel]        = mvec;
+        if (is_valid(gPosW))                        gPosW[pixel]                        = {};
+        if (is_valid(gNormW))                       gNormW[pixel]                       = {};
+        if (is_valid(gTangentW))                    gTangentW[pixel]                    = {};
+        if (is_valid(gFaceNormalW))                 gFaceNormalW[pixel]                 = {};
+        if (is_valid(gTexC))                        gTexC[pixel]                        = {};
+        if (is_valid(gTexGrads))                    gTexGrads[pixel]                    = {};
+        if (is_valid(gMotionVector))                gMotionVector[pixel]                = mvec;
 
         // GBufferRT channels
-        if (is_valid(gVBuffer))             gVBuffer[pixel]             = {};
-        if (is_valid(gDepth))               gDepth[pixel]               = 1.f;
-        if (is_valid(gLinearZ))             gLinearZ[pixel]             = float2(kEnvMapDepth, 0.f);
-        if (is_valid(gMotionVectorW))       gMotionVectorW[pixel]       = {};
-        if (is_valid(gNormalWRoughness))    gNormalWRoughness[pixel]    = float4(0.2215f,0.2215f,0.2215f, 0.f); // UE4 default value at miss
-        if (is_valid(gDiffOpacity))         gDiffOpacity[pixel]         = {};
-        if (is_valid(gSpecRough))           gSpecRough[pixel]           = {};
-        if (is_valid(gEmissive))            gEmissive[pixel]            = {};
-        if (is_valid(gDisocclusion))        gDisocclusion[pixel]        = 0.f;
+        if (is_valid(gVBuffer))                     gVBuffer[pixel]                     = {};
+        if (is_valid(gDepth))                       gDepth[pixel]                       = 1.f;
+        if (is_valid(gLinearZ))                     gLinearZ[pixel]                     = float2(kEnvMapDepth, 0.f);
+        if (is_valid(gMotionVectorW))               gMotionVectorW[pixel]               = {};
+        if (is_valid(gNormalWRoughnessMaterialID))  gNormalWRoughnessMaterialID[pixel]  = float4(octNormal, roughness, materialID);
+        if (is_valid(gDiffOpacity))                 gDiffOpacity[pixel]                 = {};
+        if (is_valid(gSpecRough))                   gSpecRough[pixel]                   = {};
+        if (is_valid(gEmissive))                    gEmissive[pixel]                    = {};
+        if (is_valid(gDisocclusion))                gDisocclusion[pixel]                = 0.f;
     }
 
     void writeAux(uint2 pixel, const Ray ray)

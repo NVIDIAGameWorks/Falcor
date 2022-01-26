@@ -100,7 +100,7 @@ namespace Falcor
                 } while (x * x + y * y + z * z >= radius * radius);
                 break;
             default:
-                should_not_get_here();
+                FALCOR_UNREACHABLE();
             }
 
             return float3(x, y, z) + center;

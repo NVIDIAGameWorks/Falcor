@@ -183,7 +183,7 @@ namespace Falcor
 
         /** Bind a program to the pipeline.
         */
-        GraphicsState& setProgram(const GraphicsProgram::SharedPtr& pProgram) { assert(pProgram); mpProgram = pProgram; return *this; }
+        GraphicsState& setProgram(const GraphicsProgram::SharedPtr& pProgram) { FALCOR_ASSERT(pProgram); mpProgram = pProgram; return *this; }
 
         /** Get the currently bound program.
         */

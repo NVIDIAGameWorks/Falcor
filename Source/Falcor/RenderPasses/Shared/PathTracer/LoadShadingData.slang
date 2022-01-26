@@ -34,8 +34,7 @@
     is_valid_<name> is 1 if buffer with this name is bound, 0 otherwise.
 */
 
-import Scene.Scene;
-import Scene.HitInfo;
+__exported import Scene.Shading;
 import Scene.Material.ShadingUtils;
 import Utils.Math.MathHelpers;
 

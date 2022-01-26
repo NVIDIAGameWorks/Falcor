@@ -95,19 +95,19 @@ namespace Falcor
         switch (type)
         {
         case RenderPassReflection::Field::Type::RawBuffer:
-            if (height > 0 || depth > 0 || sampleCount > 0) logWarning("RenderPassReflection::Field::resourceType - height, depth, sampleCount for " + to_string(type) + " must be 0");
+            if (height > 0 || depth > 0 || sampleCount > 0) logWarning("RenderPassReflection::Field::resourceType - height, depth, sampleCount for {} must be 0.", to_string(type));
             return rawBuffer(width);
         case RenderPassReflection::Field::Type::Texture1D:
-            if (height > 1 || depth > 1 || sampleCount > 1) logWarning("RenderPassReflection::Field::resourceType - height, depth, sampleCount for " + to_string(type) + " must be either 0 or 1");
+            if (height > 1 || depth > 1 || sampleCount > 1) logWarning("RenderPassReflection::Field::resourceType - height, depth, sampleCount for {} must be either 0 or 1.", to_string(type));
             return texture1D(width, mipCount, arraySize);
         case RenderPassReflection::Field::Type::Texture2D:
-            if (depth > 1) logWarning("RenderPassReflection::Field::resourceType - depth for " + to_string(type) + " must be either 0 or 1");
+            if (depth > 1) logWarning("RenderPassReflection::Field::resourceType - depth for {} must be either 0 or 1.", to_string(type));
             return texture2D(width, height, sampleCount, mipCount, arraySize);
         case RenderPassReflection::Field::Type::Texture3D:
-            if (sampleCount > 1 || mipCount > 1) logWarning("RenderPassReflection::Field::resourceType - sampleCount, mipCount for " + to_string(type) + " must be either 0 or 1");
+            if (sampleCount > 1 || mipCount > 1) logWarning("RenderPassReflection::Field::resourceType - sampleCount, mipCount for {} must be either 0 or 1.", to_string(type));
             return texture3D(width, height, depth, arraySize);
         case RenderPassReflection::Field::Type::TextureCube:
-            if (depth > 1 || sampleCount > 1) logWarning("RenderPassReflection::Field::resourceType - depth, sampleCount for " + to_string(type) + " must be either 0 or 1");
+            if (depth > 1 || sampleCount > 1) logWarning("RenderPassReflection::Field::resourceType - depth, sampleCount for {} must be either 0 or 1.", to_string(type));
             return textureCube(width, height, mipCount, arraySize);
         default:
             throw RuntimeError("RenderPassReflection::Field::resourceType - {} is not a valid Field type", to_string(type));
@@ -241,8 +241,8 @@ namespace Falcor
         merge_field(Format);
 #undef merge_field
 
-        assert(is_set(other.mVisibility, RenderPassReflection::Field::Visibility::Internal) == false); // We can't alias/merge internal fields
-        assert(is_set(mVisibility, RenderPassReflection::Field::Visibility::Internal) == false); // We can't alias/merge internal fields
+        FALCOR_ASSERT(is_set(other.mVisibility, RenderPassReflection::Field::Visibility::Internal) == false); // We can't alias/merge internal fields
+        FALCOR_ASSERT(is_set(mVisibility, RenderPassReflection::Field::Visibility::Internal) == false); // We can't alias/merge internal fields
         mVisibility = mVisibility | other.mVisibility;
         mBindFlags = mBindFlags | other.mBindFlags;
         return *this;

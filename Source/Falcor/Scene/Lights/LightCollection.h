@@ -110,7 +110,7 @@ namespace Falcor
             Note that update() must be called before the collection is ready to use.
             \param[in] pRenderContext The render context.
             \param[in] pScene The scene.
-            \return Ptr to the created object, or nullptr if an error occured.
+            \return A pointer to a new light collection object, or throws an exception if creation failed.
         */
         static SharedPtr create(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene);
 
@@ -171,11 +171,10 @@ namespace Falcor
         };
 
     protected:
-        LightCollection() = default;
+        LightCollection(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene);
 
-        bool init(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene);
-        bool initIntegrator(const Scene& scene);
-        bool setupMeshLights(const Scene& scene);
+        void initIntegrator(const Scene& scene);
+        void setupMeshLights(const Scene& scene);
         void build(RenderContext* pRenderContext, const Scene& scene);
         void prepareTriangleData(RenderContext* pRenderContext, const Scene& scene);
         void prepareMeshData(const Scene& scene);

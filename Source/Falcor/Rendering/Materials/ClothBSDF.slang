@@ -81,7 +81,6 @@ struct ClothBSDF : IBSDF
     }
 
 
-
     // Additional functions
 
     /** Reference implementation that uses cosine-weighted hemisphere sampling.

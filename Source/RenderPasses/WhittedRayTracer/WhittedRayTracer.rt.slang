@@ -49,7 +49,6 @@
 #include "Utils/Math/MathConstants.slangh"
 
 import Scene.Raytracing;
-import Scene.HitInfo;
 import Utils.Math.MathHelpers;
 import Utils.Sampling.SampleGenerator;
 import Rendering.Lights.LightHelpers;
@@ -372,9 +371,9 @@ void scatterClosestHit(inout ScatterRayData rayData : SV_RayPayload, BuiltInTria
             gScene.getVertexPositionsW(instanceID, PrimitiveIndex(), positions);
             gScene.getVertexTexCoords(instanceID, PrimitiveIndex(), txcoords);
 
-            float coneRadiusAtHitPoint = rayData.rayCone.getWidth();
+            float coneWidthAtHitPoint = rayData.rayCone.getWidth();
             float2 ddx = float2(0), ddy = float2(0);
-            computeAnisotropicEllipseAxes(v.posW, v.faceNormalW, rayDir, coneRadiusAtHitPoint, positions, txcoords, v.texC, ddx, ddy);
+            computeAnisotropicEllipseAxes(v.posW, v.faceNormalW, rayDir, coneWidthAtHitPoint, positions, txcoords, v.texC, ddx, ddy);
             lod = ExplicitGradientTextureSampler(ddx, ddy);
         }
         sd = gScene.materials.prepareShadingData(v, materialID, -rayDir, lod);
@@ -472,7 +471,7 @@ void scatterClosestHit(inout ScatterRayData rayData : SV_RayPayload, BuiltInTria
     // Add emitted light.
     if (kUseEmissiveLights)
     {
-        rayData.radiance += rayData.thp * bsdfProperties.emissive;
+        rayData.radiance += rayData.thp * bsdfProperties.emission;
     }
 
     // Check whether to terminate based on max depth.
@@ -589,7 +588,7 @@ void rayGen()
         const float3 rayOriginAtHitPoint = sd.computeNewRayOrigin();
 
         // Always output directly emitted light, independent of whether emissive materials are treated as light sources or not.
-        outColor += bsdfProperties.emissive;
+        outColor += bsdfProperties.emission;
 
         // Add contribution of direct light from analytic lights.
         // Light probe and mesh lights are handled by the scatter ray hit/miss shaders.

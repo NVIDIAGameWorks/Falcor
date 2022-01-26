@@ -42,15 +42,16 @@ namespace Falcor
 
         virtual ~EnvMap() = default;
 
-        /** Create a new object.
+        /** Create a new environment map.
             \param[in] texture The environment map texture.
         */
         static SharedPtr create(const Texture::SharedPtr& texture);
 
-        /** Create a new object.
+        /** Create a new environment map from file.
             \param[in] filename The environment map texture filename.
+            \return A new object, or nullptr if the environment map failed to load.
         */
-        static SharedPtr create(const std::string& filename);
+        static SharedPtr createFromFile(const std::string& filename);
 
         /** Render the GUI.
         */

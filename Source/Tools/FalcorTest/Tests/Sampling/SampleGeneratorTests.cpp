@@ -65,7 +65,7 @@ namespace Falcor
                 sum_xy += x * y;
                 n++;
             }
-            assert(n > 0);
+            FALCOR_ASSERT(n > 0);
             double r_xy = ((double)n * sum_xy - sum_x * sum_y) /
                 (std::sqrt(n * sum_xx - sum_x * sum_x) * std::sqrt(n * sum_yy - sum_y * sum_y));
             return r_xy;

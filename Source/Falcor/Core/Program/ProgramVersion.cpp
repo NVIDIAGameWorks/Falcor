@@ -99,12 +99,6 @@ namespace Falcor
 #ifdef FALCOR_D3D12
         mpRootSignature = D3D12RootSignature::create(pReflector.get());
 #endif
-#ifdef FALCOR_GFX
-        gfx::IShaderProgram::Desc programDesc = {};
-        programDesc.pipelineType = gfx::PipelineType::Unknown;
-        programDesc.slangProgram = pSpecializedSlangProgram;
-        gfx_call(gpDevice->getApiHandle()->createProgram(programDesc, mApiHandle.writeRef()));
-#endif
     }
 
     ProgramKernels::SharedPtr ProgramKernels::create(
@@ -116,6 +110,19 @@ namespace Falcor
         const std::string& name)
     {
         SharedPtr pProgram = SharedPtr(new ProgramKernels(pVersion, pSpecializedSlangProgram, pReflector, uniqueEntryPointGroups, name));
+#ifdef FALCOR_GFX
+        gfx::IShaderProgram::Desc programDesc = {};
+        programDesc.slangProgram = pSpecializedSlangProgram;
+        Slang::ComPtr<ISlangBlob> diagnostics;
+        if (SLANG_FAILED(gpDevice->getApiHandle()->createProgram(programDesc, pProgram->mApiHandle.writeRef(), diagnostics.writeRef())))
+        {
+            pProgram = nullptr;
+        }
+        if (diagnostics)
+        {
+            log = (const char*)diagnostics->getBufferPointer();
+        }
+#endif
         return pProgram;
     }
 
@@ -139,7 +146,7 @@ namespace Falcor
         : mpProgram(pProgram->shared_from_this())
         , mpSlangGlobalScope(pSlangGlobalScope)
     {
-        assert(pProgram);
+        FALCOR_ASSERT(pProgram);
     }
 
     void ProgramVersion::init(
@@ -149,7 +156,7 @@ namespace Falcor
         const std::string&                                  name,
         std::vector<ComPtr<slang::IComponentType>> const&   pSlangEntryPoints)
     {
-        assert(pReflector);
+        FALCOR_ASSERT(pReflector);
         mDefines = defineList;
         mTypeConformances = typeConformanceList;
         mpReflector = pReflector;

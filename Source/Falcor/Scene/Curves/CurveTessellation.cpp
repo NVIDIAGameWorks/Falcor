@@ -53,7 +53,7 @@ namespace Falcor
 
         // Only support linear tube segments now.
         // TODO: Add quadratic or cubic tube segments if necessary.
-        assert(degree == 1);
+        FALCOR_ASSERT(degree == 1);
         result.degree = degree;
 
         uint32_t pointCounts = 0;

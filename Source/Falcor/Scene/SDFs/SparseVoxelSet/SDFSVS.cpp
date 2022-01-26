@@ -53,12 +53,11 @@ namespace Falcor
         return bitScanReverse(uint32_t(mGridWidth * mGridWidth * mGridWidth - 1)) + 1;
     }
 
-    bool SDFSVS::createResources(RenderContext* pRenderContext, bool deleteScratchData)
+    void SDFSVS::createResources(RenderContext* pRenderContext, bool deleteScratchData)
     {
         if (!mPrimitives.empty())
         {
-            reportError("An SDFSVS instance cannot be created from primitives!");
-            return false;
+            throw RuntimeError("An SDFSVS instance cannot be created from primitives!");
         }
 
         if (mpSDFGridTexture && mpSDFGridTexture->getWidth() == mGridWidth + 1)
@@ -155,8 +154,6 @@ namespace Falcor
             mpSurfaceVoxelCounterStagingBuffer.reset();
             mpSDFGridTexture.reset();
         }
-
-        return true;
     }
 
     void SDFSVS::setShaderData(const ShaderVar& var) const
@@ -174,7 +171,7 @@ namespace Falcor
         var["voxels"] = mpVoxelBuffer;
     }
 
-    bool SDFSVS::setValuesInternal(const std::vector<float>& cornerValues)
+    void SDFSVS::setValuesInternal(const std::vector<float>& cornerValues)
     {
         uint32_t gridWidthInValues = mGridWidth + 1;
         uint32_t valueCount = gridWidthInValues * gridWidthInValues * gridWidthInValues;
@@ -188,7 +185,5 @@ namespace Falcor
             float integerScale = normalizedValue * float(INT8_MAX);
             mValues[v] = integerScale >= 0.0f ? int8_t(integerScale + 0.5f) : int8_t(integerScale - 0.5f);
         }
-
-        return true;
     }
 }

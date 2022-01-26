@@ -45,7 +45,7 @@ namespace Mogwai
 
         Texture::SharedPtr createTextureForBlit(const Texture* pSource)
         {
-            assert(pSource->getType() == Texture::Type::Texture2D);
+            FALCOR_ASSERT(pSource->getType() == Texture::Type::Texture2D);
             return Texture::create2D(pSource->getWidth(), pSource->getHeight(), ResourceFormat::RGBA8UnormSrgb, 1, 1, nullptr, Texture::BindFlags::RenderTarget);
         }
     }

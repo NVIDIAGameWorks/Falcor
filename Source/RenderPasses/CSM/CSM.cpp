@@ -251,7 +251,7 @@ static void createShadowMatrix(const Light* pLight, const float3& center, float 
     case LightType::Point:
         return createShadowMatrix((PointLight*)pLight, center, radius, fboAspectRatio, shadowVP);
     default:
-        should_not_get_here();
+        FALCOR_UNREACHABLE();
     }
 }
 
@@ -325,6 +325,10 @@ void CSM::createShadowPassResources()
     desc.vsEntry("vsMain").gsEntry("gsMain").psEntry("psMain");
 
     mShadowPass.pProgram = GraphicsProgram::create(desc, defines);
+    if (mpScene)
+    {
+        mShadowPass.pProgram->addDefines(mpScene->getSceneDefines());
+    }
     mShadowPass.pState = GraphicsState::create();
     mShadowPass.pState->setProgram(mShadowPass.pProgram);
     mShadowPass.pState->setDepthStencilState(nullptr);
@@ -370,7 +374,7 @@ CSM::SharedPtr CSM::create(RenderContext* pRenderContext, const Dictionary& dict
         else if (key == kSdsmReadbackLatency) pCSM->setSdsmReadbackLatency(value);
         else if (key == kBlurKernelWidth) pCSM->mBlurDict["kernelWidth"] = (uint32_t)value;
         else if (key == kBlurSigma) pCSM->mBlurDict["sigma"] = (float)value;
-        else logWarning("Unknown field '" + key + "' in a CSM dictionary");
+        else logWarning("Unknown field '{}' in a CSM dictionary.", key);
     }
     pCSM->createShadowPassResources();
     return pCSM;
@@ -402,7 +406,7 @@ static ResourceFormat getVisBufferFormat(uint32_t bitsPerChannel, bool visualize
     case 32:
         return visualizeCascades ? ResourceFormat::RGBA32Float : ResourceFormat::R32Float;
     default:
-        should_not_get_here();
+        FALCOR_UNREACHABLE();
         return ResourceFormat::Unknown;
     }
 }
@@ -551,7 +555,7 @@ void CSM::partitionCascades(const Camera* pCamera, const float2& distanceRange)
             nextCascadeStart = calcPssmPartitionEnd(nearPlane, depthRange, distanceRange, mControls.pssmLambda, c, mCsmData.cascadeCount);
             break;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
         }
 
         // If we blend between cascades, we need to expand the range to make sure we will not try to read off the edge of the shadow-map
@@ -589,7 +593,7 @@ void CSM::partitionCascades(const Camera* pCamera, const float2& distanceRange)
 void CSM::renderScene(RenderContext* pCtx)
 {
     auto pCB = mShadowPass.pVars->getParameterBlock(mPerLightCbLoc);
-#define check_offset(_a) assert(pCB["gCsmData"][#_a].getByteOffset() == offsetof(CsmData, _a))
+#define check_offset(_a) FALCOR_ASSERT(pCB["gCsmData"][#_a].getByteOffset() == offsetof(CsmData, _a))
     check_offset(globalMat);
     check_offset(cascadeScale);
     check_offset(cascadeOffset);
@@ -951,7 +955,7 @@ void CSM::setSdsmReadbackLatency(uint32_t latency)
 
 void CSM::createSdsmData(Texture::SharedPtr pTexture)
 {
-    assert(pTexture);
+    FALCOR_ASSERT(pTexture);
     // Only create a new technique if it doesn't exist or the dimensions changed
     if (mSdsmData.minMaxReduction)
     {

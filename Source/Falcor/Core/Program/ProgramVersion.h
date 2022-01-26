@@ -233,7 +233,7 @@ namespace Falcor
         /** Get the reflection object.
             \return A program reflection object.
         */
-        const ProgramReflection::SharedPtr& getReflector() const { assert(mpReflector); return mpReflector; }
+        const ProgramReflection::SharedPtr& getReflector() const { FALCOR_ASSERT(mpReflector); return mpReflector; }
 
         /** Get executable kernels based on state in a `ProgramVars`
         */

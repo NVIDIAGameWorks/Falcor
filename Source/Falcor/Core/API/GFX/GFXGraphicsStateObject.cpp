@@ -70,7 +70,7 @@ namespace Falcor
         case Falcor::BlendState::BlendFunc::OneMinusSrc1Alpha:
             return gfx::BlendFactor::InvSecondarySrcAlpha;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return gfx::BlendFactor::Zero;
         }
     }
@@ -90,7 +90,7 @@ namespace Falcor
         case Falcor::BlendState::BlendOp::Max:
             return gfx::BlendOp::Max;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return gfx::BlendOp::Add;
         }
     }
@@ -116,7 +116,7 @@ namespace Falcor
         case Falcor::DepthStencilState::StencilOp::Invert:
             return gfx::StencilOp::Invert;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return gfx::StencilOp::Keep;
         }
     }
@@ -144,7 +144,7 @@ namespace Falcor
         case Falcor::ComparisonFunc::GreaterEqual:
             return gfx::ComparisonFunc::GreaterEqual;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return gfx::ComparisonFunc::Never;
         }
     }
@@ -172,7 +172,7 @@ namespace Falcor
         case Falcor::GraphicsStateObject::PrimitiveType::Patch:
             return gfx::PrimitiveType::Patch;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return gfx::PrimitiveType::Triangle;
         }
     }
@@ -188,7 +188,7 @@ namespace Falcor
         case Falcor::RasterizerState::CullMode::Back:
             return gfx::CullMode::Back;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return gfx::CullMode::None;
         }
     }
@@ -202,7 +202,7 @@ namespace Falcor
         case Falcor::RasterizerState::FillMode::Solid:
             return gfx::FillMode::Solid;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return gfx::FillMode::Solid;
         }
     }
@@ -216,7 +216,7 @@ namespace Falcor
         case Falcor::VertexBufferLayout::InputClass::PerInstanceData:
             return gfx::InputSlotClass::PerInstance;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return gfx::InputSlotClass::PerVertex;
         }
     }
@@ -225,10 +225,10 @@ namespace Falcor
     {
         gfx::GraphicsPipelineStateDesc desc = {};
         // Set blend state.
+        auto blendState = mDesc.getBlendState();
+        std::vector<gfx::TargetBlendDesc> targetBlendDescs(blendState->getRtCount());
         {
-            auto blendState = mDesc.getBlendState();
             desc.blend.targetCount = blendState->getRtCount();
-            std::vector<gfx::TargetBlendDesc> targetBlendDescs(desc.blend.targetCount);
             for (gfx::UInt i = 0; i < desc.blend.targetCount; ++i)
             {
                 auto& rtDesc = blendState->getRtDesc(i);
@@ -286,28 +286,43 @@ namespace Falcor
         // Create input layout.
         {
             auto vertexLayout = mDesc.getVertexLayout();
-            std::vector<gfx::InputElementDesc> inputElements;
-            for (size_t i = 0; i < vertexLayout->getBufferCount(); ++i)
+            if (vertexLayout)
             {
-                auto& bufferLayout = mDesc.getVertexLayout()->getBufferLayout(i);
-                for (uint32_t j = 0; j < bufferLayout->getElementCount(); ++j)
+                std::vector<gfx::VertexStreamDesc> vertexStreams(vertexLayout->getBufferCount());
+                std::vector<gfx::InputElementDesc> inputElements;
+                for (size_t i = 0; i < vertexLayout->getBufferCount(); ++i)
                 {
-                    gfx::InputElementDesc elementDesc = {};
-                    elementDesc.format = getGFXFormat(bufferLayout->getElementFormat(j));
-                    elementDesc.offset = bufferLayout->getElementOffset(j);
-                    elementDesc.semanticName = bufferLayout->getElementName(j).c_str();
-                    elementDesc.instanceDataStepRate = bufferLayout->getInstanceStepRate();
-                    elementDesc.bufferSlotIndex = i;
-                    elementDesc.slotClass = getGFXInputSlotClass(bufferLayout->getInputClass());
-                    for (uint32_t arrayIndex = 0; arrayIndex < bufferLayout->getElementArraySize(j); arrayIndex++)
+                    auto& bufferLayout = mDesc.getVertexLayout()->getBufferLayout(i);
+                    vertexStreams[i].instanceDataStepRate = bufferLayout->getInstanceStepRate();
+                    vertexStreams[i].slotClass = getGFXInputSlotClass(bufferLayout->getInputClass());
+                    vertexStreams[i].stride = bufferLayout->getStride();
+
+                    for (uint32_t j = 0; j < bufferLayout->getElementCount(); ++j)
                     {
-                        elementDesc.semanticIndex = arrayIndex;
-                        inputElements.push_back(elementDesc);
-                        elementDesc.offset += getFormatBytesPerBlock(bufferLayout->getElementFormat(j));
+                        gfx::InputElementDesc elementDesc = {};
+                        gfx::VertexStreamDesc vertexStreamDesc = {};
+
+                        elementDesc.format = getGFXFormat(bufferLayout->getElementFormat(j));
+                        elementDesc.offset = bufferLayout->getElementOffset(j);
+                        elementDesc.semanticName = bufferLayout->getElementName(j).c_str();
+                        elementDesc.bufferSlotIndex = i;
+
+                        for (uint32_t arrayIndex = 0; arrayIndex < bufferLayout->getElementArraySize(j); arrayIndex++)
+                        {
+                            elementDesc.semanticIndex = arrayIndex;
+                            inputElements.push_back(elementDesc);
+                            elementDesc.offset += getFormatBytesPerBlock(bufferLayout->getElementFormat(j));
+                        }
                     }
                 }
+
+                gfx::IInputLayout::Desc inputLayoutDesc = {};
+                inputLayoutDesc.inputElementCount = inputElements.size();
+                inputLayoutDesc.inputElements = inputElements.data();
+                inputLayoutDesc.vertexStreamCount = vertexStreams.size();
+                inputLayoutDesc.vertexStreams = vertexStreams.data();
+                gfx_call(gpDevice->getApiHandle()->createInputLayout(inputLayoutDesc, mpGFXInputLayout.writeRef()));
             }
-            gfx_call(gpDevice->getApiHandle()->createInputLayout(inputElements.data(), (gfx::UInt)inputElements.size(), mpGFXInputLayout.writeRef()));
             desc.inputLayout = mpGFXInputLayout;
         }
 
@@ -316,13 +331,13 @@ namespace Falcor
         {
             auto fboDesc = mDesc.getFboDesc();
             gfx::IFramebufferLayout::AttachmentLayout depthAttachment = {};
+            std::vector<gfx::IFramebufferLayout::AttachmentLayout> attachments(Fbo::getMaxColorTargetCount());
             if (mDesc.getFboDesc().getDepthStencilFormat() != ResourceFormat::Unknown)
             {
                 depthAttachment.format = getGFXFormat(fboDesc.getDepthStencilFormat());
                 depthAttachment.sampleCount = fboDesc.getSampleCount();
                 gfxFbDesc.depthStencil = &depthAttachment;
             }
-            std::vector<gfx::IFramebufferLayout::AttachmentLayout> attachments(Fbo::getMaxColorTargetCount());
             for (uint32_t i = 0; i < (uint32_t)attachments.size(); ++i)
             {
                 attachments[i].format = getGFXFormat(fboDesc.getColorTargetFormat(i));
@@ -347,8 +362,10 @@ namespace Falcor
             depthAccess.stencilLoadOp = gfx::IRenderPassLayout::AttachmentLoadOp::Load;
             depthAccess.stencilStoreOp = gfx::IRenderPassLayout::AttachmentStoreOp::Store;
             depthAccess.storeOp = gfx::IRenderPassLayout::AttachmentStoreOp::Store;
-            
-            renderPassDesc.depthStencilAccess = &depthAccess;
+            if (this->mDesc.getFboDesc().getDepthStencilFormat() != ResourceFormat::Unknown)
+            {
+                renderPassDesc.depthStencilAccess = &depthAccess;
+            }
             renderPassDesc.framebufferLayout = mpGFXFramebufferLayout.get();
             renderPassDesc.renderTargetCount = gfxFbDesc.renderTargetCount;
             std::vector<gfx::IRenderPassLayout::AttachmentAccessDesc> colorAccesses(renderPassDesc.renderTargetCount);
@@ -365,7 +382,7 @@ namespace Falcor
 
         desc.primitiveType = getGFXPrimitiveType(mDesc.getPrimitiveType());
         desc.program = mDesc.getProgramKernels()->getApiHandle().get();
-        
+
         gfx_call(gpDevice->getApiHandle()->createGraphicsPipelineState(desc, mApiHandle.writeRef()));
     }
 }

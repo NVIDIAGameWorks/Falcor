@@ -29,7 +29,7 @@
 
 void ModelViewer::setModelString(double loadTime)
 {
-    assert(mpScene != nullptr);
+    FALCOR_ASSERT(mpScene != nullptr);
 
     mModelString = "Loading took " + std::to_string(loadTime) + " seconds.\n";
     //mModelString += "Model has " + std::to_string(pModel->getVertexCount()) + " vertices, ";

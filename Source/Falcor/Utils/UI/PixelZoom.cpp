@@ -70,7 +70,7 @@ namespace Falcor
 
     void PixelZoom::onResizeSwapChain(const Fbo* pBackbuffer)
     {
-        assert(pBackbuffer);
+        FALCOR_ASSERT(pBackbuffer);
         const Fbo::Desc& desc = pBackbuffer->getDesc();
         mpSrcBlitFbo = Fbo::create2D(pBackbuffer->getWidth(), pBackbuffer->getHeight(), desc);
         if (mpDstBlitFbo == nullptr)

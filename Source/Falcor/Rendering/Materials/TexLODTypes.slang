@@ -37,11 +37,7 @@ BEGIN_NAMESPACE_FALCOR
 /** This enum is shared between CPU/GPU.
     It enumerates the different the different texture LOD modes.
 */
-enum class TexLODMode
-    // TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
-#ifdef HOST_CODE
-    : uint32_t
-#endif
+enum class TexLODMode : uint32_t
 {
     Mip0 = 0,
     RayCones = 1,
@@ -53,11 +49,7 @@ enum class TexLODMode
     Combo uses ray differentials to compute the spread at the first hit and then average edge curvature for all hits after that.
     Unified uses interpolated edge curvatures for the first hit and then average edge curvatures for all hits after that.
 */
-enum class RayConeMode
-    // TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
-#ifdef HOST_CODE
-    : uint32_t
-#endif
+enum class RayConeMode : uint32_t
 {
     Combo = 0,
     Unified = 1,

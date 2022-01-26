@@ -74,7 +74,7 @@ SplitScreenPass::SharedPtr SplitScreenPass::create(RenderContext* pRenderContext
     {
         if (!pPass->parseKeyValuePair(key, value))
         {
-            logWarning("Unknown field '" + key + "' in a SplitScreenPass dictionary");
+            logWarning("Unknown field '{}' in a SplitScreenPass dictionary.", key);
         }
     }
     return pPass;

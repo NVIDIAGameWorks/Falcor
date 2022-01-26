@@ -137,7 +137,7 @@ namespace Falcor
         EXPECT_EQ(result[i], 0x12345678); i++;
 
         ctx.unmapBuffer("result");
-        assert(i < maxTests);
+        FALCOR_ASSERT(i < maxTests);
     }
 
     /** Test Slang default initializers for basic types and structs.

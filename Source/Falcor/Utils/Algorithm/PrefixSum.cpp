@@ -67,13 +67,13 @@ namespace Falcor
         return SharedPtr(new PrefixSum());
     }
 
-    bool PrefixSum::execute(RenderContext* pRenderContext, Buffer::SharedPtr pData, uint32_t elementCount, uint32_t* pTotalSum, Buffer::SharedPtr pTotalSumBuffer, uint64_t pTotalSumOffset)
+    void PrefixSum::execute(RenderContext* pRenderContext, Buffer::SharedPtr pData, uint32_t elementCount, uint32_t* pTotalSum, Buffer::SharedPtr pTotalSumBuffer, uint64_t pTotalSumOffset)
     {
         FALCOR_PROFILE("PrefixSum::execute");
 
-        assert(pRenderContext);
-        assert(elementCount > 0);
-        assert(pData && pData->getSize() >= elementCount * sizeof(uint32_t));
+        FALCOR_ASSERT(pRenderContext);
+        FALCOR_ASSERT(elementCount > 0);
+        FALCOR_ASSERT(pData && pData->getSize() >= elementCount * sizeof(uint32_t));
 
         // Clear total sum to zero.
         pRenderContext->clearUAV(mpTotalSum->getUAV().get(), uint4(0));
@@ -86,7 +86,7 @@ namespace Falcor
         {
             // Compute number of thread groups in the first pass. Each thread operates on two elements.
             uint32_t numPrefixGroups = std::max(1u, div_round_up(std::min(elementCount, maxElementCountPerIteration), kGroupSize * 2));
-            assert(numPrefixGroups > 0 && numPrefixGroups <= kGroupSize);
+            FALCOR_ASSERT(numPrefixGroups > 0 && numPrefixGroups <= kGroupSize);
 
             // Copy previus iterations total sum to read buffer.
             pRenderContext->copyResource(mpPrevTotalSum.get(), mpTotalSum.get());
@@ -118,7 +118,7 @@ namespace Falcor
                 // Compute number of thread groups. Each thread operates on one element.
                 // Note that we're skipping the first group of 2N elements, as no add is needed (their group sum is zero).
                 const uint dispatchSizeX = (numPrefixGroups - 1) * 2;
-                assert(dispatchSizeX > 0);
+                FALCOR_ASSERT(dispatchSizeX > 0);
 
                 // Set constants and data.
                 mpPrefixSumFinalizeVars["CB"]["gNumGroups"] = numPrefixGroups;
@@ -139,8 +139,7 @@ namespace Falcor
         {
             if (pTotalSumOffset + 4 > pTotalSumBuffer->getSize())
             {
-                reportError("PrefixSum::execute() - Results buffer is too small. Aborting.");
-                return false;
+                throw RuntimeError("PrefixSum::execute() - Results buffer is too small.");
             }
 
             pRenderContext->copyBufferRegion(pTotalSumBuffer.get(), pTotalSumOffset, mpTotalSum.get(), 0, 4);
@@ -153,7 +152,5 @@ namespace Falcor
             *pTotalSum = *pMappedTotalSum;
             mpTotalSum->unmap();
         }
-
-        return true;
     }
 }

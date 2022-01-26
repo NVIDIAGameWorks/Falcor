@@ -53,7 +53,7 @@ namespace Falcor
         case ShaderType::Compute:
             return "cs_" + shaderModel;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return "";
         }
     }

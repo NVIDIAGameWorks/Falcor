@@ -54,7 +54,7 @@ namespace Falcor
         virtual uint32_t getMaxPrimitiveIDBits() const override;
         virtual Type getType() const override { return Type::SparseBrickSet; }
 
-        virtual bool createResources(RenderContext* pRenderContext, bool deleteScratchData = true) override;
+        virtual void createResources(RenderContext* pRenderContext, bool deleteScratchData = true) override;
 
         virtual const Buffer::SharedPtr& getAABBBuffer() const override { return mpBrickAABBsBuffer; }
         virtual uint32_t getAABBCount() const override { return mBrickCount; }
@@ -62,12 +62,12 @@ namespace Falcor
         virtual void setShaderData(const ShaderVar& var) const override;
 
     protected:
-        bool createResourcesFromPrimitives(RenderContext* pRenderContext, bool deleteScratchData);
-        bool createResourcesFromValues(RenderContext* pRenderContext, bool deleteScratchData);
+        void createResourcesFromPrimitives(RenderContext* pRenderContext, bool deleteScratchData);
+        void createResourcesFromValues(RenderContext* pRenderContext, bool deleteScratchData);
 
         void allocatePrimitiveBits();
 
-        virtual bool setValuesInternal(const std::vector<float>& cornerValues) override;
+        virtual void setValuesInternal(const std::vector<float>& cornerValues) override;
 
     private:
         SDFSBS(uint32_t brickWidth, bool compressed);

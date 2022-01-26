@@ -226,7 +226,7 @@ namespace Falcor
             virtual void addToVector(SubobjectVector& vec) override
             {
                 // TODO: finalize() assumes that the subobject to associate comes right before the export associataion subobject. Need to figure out a way to remove this assumption
-                assert(pAssociatedSubobject);
+                FALCOR_ASSERT(pAssociatedSubobject);
                 pAssociatedSubobject->addToVector(vec);
                 vec.push_back(subobject);
             }
@@ -326,7 +326,7 @@ namespace Falcor
         // Loop over the programs
         for (const auto& pBaseEntryPointGroup : pKernels->getUniqueEntryPointGroups() )
         {
-            assert(dynamic_cast<RtEntryPointGroupKernels*>(pBaseEntryPointGroup.get()));
+            FALCOR_ASSERT(dynamic_cast<RtEntryPointGroupKernels*>(pBaseEntryPointGroup.get()));
             auto pEntryPointGroup = static_cast<RtEntryPointGroupKernels*>(pBaseEntryPointGroup.get());
             switch( pBaseEntryPointGroup->getType() )
             {
@@ -381,7 +381,7 @@ namespace Falcor
 
         for (const auto& pBaseEntryPointGroup : pKernels->getUniqueEntryPointGroups())
         {
-            assert(dynamic_cast<RtEntryPointGroupKernels*>(pBaseEntryPointGroup.get()));
+            FALCOR_ASSERT(dynamic_cast<RtEntryPointGroupKernels*>(pBaseEntryPointGroup.get()));
             auto pEntryPointGroup = static_cast<RtEntryPointGroupKernels*>(pBaseEntryPointGroup.get());
             const std::wstring& exportName = string_2_wstring(pEntryPointGroup->getExportName());
 

@@ -51,7 +51,7 @@ namespace Falcor
             break;
         }
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             break;
         }
         mpPostbuildInfoBuffer = Buffer::create(desc.elementCount * mElementSize, Buffer::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
@@ -77,7 +77,7 @@ namespace Falcor
             mMappedPostBuildInfo = mpPostbuildInfoStagingBuffer->map(Buffer::MapType::Read);
         }
 
-        assert(index < mDesc.elementCount);
+        FALCOR_ASSERT(index < mDesc.elementCount);
 
         switch (mDesc.queryType)
         {
@@ -100,10 +100,10 @@ namespace Falcor
             return mappedPostBuildInfo[index].CurrentSizeInBytes;
         }
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return 0;
         }
-        
+
     }
 
     uint64_t RtAccelerationStructurePostBuildInfoPool::getBufferAddress(uint32_t index)
@@ -133,7 +133,7 @@ namespace Falcor
         case RtAccelerationStructurePostBuildInfoQueryType::CurrentSize:
             return D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_CURRENT_SIZE;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_COMPACTED_SIZE;
         }
     }

@@ -41,7 +41,7 @@
 
 #include "Utils/Math/MathConstants.slangh"
 import Rendering.Materials.TexLODTypes;
-import Scene.SceneTypes;        // Needed for ray bounce helpers.
+import Scene.SceneTypes; // Needed for ray bounce helpers.
 
 // Modes for calculating spread angle from curvature
 #define TEXLOD_SPREADANGLE_RTG1                     0     // 0: Original approach derived from RTG.
@@ -259,12 +259,12 @@ float computeSpreadAngleFromCurvatureIso(float curvature, float rayConeWidth, fl
     \param[in] intersectionPoint The intersection point.
     \param[in] faceNormal The normal of the triangle.
     \param[in] rayConeDir Direction of the ray cone.
-    \param[in] rayConeRadiusAtIntersection Radius of the cone at the intersection point, typically computed as coneRadiusAtIntersection = t * tan(rayConeAngle);
+    \param[in] rayConeWidthAtIntersection Width of the cone at the intersection point (use: raycone.getWidth()).
     \param[in] positions Positions of the triangle.
     \param[in] txcoords Texture coordinates of the vertices of the triangle.
     \param[in] interpolatedTexCoordsAtIntersection Interpolated texture coordinates at the intersection point.
-    \param[in] texGradientX First gradient of texture coordinates.
-    \param[in] texGradientY Second gradient of texture coordinates.
+    \param[in] texGradientX First gradient of texture coordinates, which can be fed into SampleGrad().
+    \param[in] texGradientY Second gradient of texture coordinates, which can be fed into SampleGrad().
 */
 void computeAnisotropicEllipseAxes(float3 intersectionPoint, float3 faceNormal, float3 rayConeDir,
     float rayConeRadiusAtIntersection, float3 positions[3], float2 txcoords[3], float2 interpolatedTexCoordsAtIntersection,
