@@ -1,4 +1,4 @@
-# Falcor 5.0-preview
+# Falcor 5.0
 
 Falcor is a real-time rendering framework supporting DirectX 12. It aims to improve productivity of research and prototype projects.
 
