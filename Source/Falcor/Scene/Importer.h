@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,7 +31,7 @@
 namespace Falcor
 {
     /** Exception thrown during scene import.
-        Holds the filename of the imported asset and a description of the exception.
+        Holds the path of the imported asset and a description of the exception.
     */
     class FALCOR_API ImporterError : public Exception
     {
@@ -39,18 +39,18 @@ namespace Falcor
         ImporterError() noexcept
         {}
 
-        ImporterError(const char* filename, const char* what)
+        ImporterError(const std::filesystem::path& path, const char* what)
             : Exception(what)
-            , mpFilename(std::make_shared<std::string>(filename))
+            , mpPath(std::make_shared<std::filesystem::path>(path))
         {}
 
-        ImporterError(const std::string& filename, const std::string& what)
-            : ImporterError(filename.c_str(), what.c_str())
+        ImporterError(const std::filesystem::path& path, const std::string& what)
+            : ImporterError(path, what.c_str())
         {}
 
         template<typename... Args>
-        explicit ImporterError(const std::string& filename, const std::string& fmtString, Args&&... args)
-            : ImporterError(filename.c_str(), fmt::format(fmtString, std::forward<Args>(args)...).c_str())
+        explicit ImporterError(const std::filesystem::path& path, const std::string_view fmtString, Args&&... args)
+            : ImporterError(path, fmt::format(fmtString, std::forward<Args>(args)...).c_str())
         {}
 
         virtual ~ImporterError() override
@@ -59,13 +59,13 @@ namespace Falcor
         ImporterError(const ImporterError& other) noexcept
         {
             mpWhat = other.mpWhat;
-            mpFilename = other.mpFilename;
+            mpPath = other.mpPath;
         }
 
-        const std::string& filename() const noexcept { return *mpFilename; }
+        const std::filesystem::path& path() const noexcept { return *mpPath; }
 
     private:
-        std::shared_ptr<std::string> mpFilename;
+        std::shared_ptr<std::filesystem::path> mpPath;
     };
 
     /** This class is a global registry for asset importers.
@@ -76,7 +76,7 @@ namespace Falcor
     {
     public:
         using ExtensionList = std::vector<std::string>;
-        using ImportFunction = std::function<void(const std::string& filename, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict)>;
+        using ImportFunction = std::function<void(const std::filesystem::path& path, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict)>;
 
         /** Description of an importer.
         */
@@ -92,13 +92,13 @@ namespace Falcor
         static const FileDialogFilterVec& getFileExtensionFilters();
 
         /** Import an asset.
-            \param[in] filename Filename.
+            \param[in] path File path.
             \param[in] builder Scene builder.
             \param[in] instances Optional list of instance transforms.
             \param[in] dict Optional dictionary.
             Throws an ImporterError if something went wrong.
         */
-        static void import(const std::string& filename, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict);
+        static void import(const std::filesystem::path& path, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict);
 
         /** Registers an importer.
             \param[in] desc Importer description.

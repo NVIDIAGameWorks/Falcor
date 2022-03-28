@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -78,6 +78,7 @@ namespace Falcor
         {
             { (uint32_t)RTXDI::BiasCorrection::Off, "Off" },
             { (uint32_t)RTXDI::BiasCorrection::Basic, "Basic" },
+            { (uint32_t)RTXDI::BiasCorrection::Pairwise, "Pairwise" },
             { (uint32_t)RTXDI::BiasCorrection::RayTraced, "RayTraced" },
         };
 
@@ -101,6 +102,8 @@ namespace Falcor
         : mpScene(pScene)
         , mOptions(options)
     {
+        mpPixelDebug = PixelDebug::create();
+
         FALCOR_ASSERT(pScene);
         setOptions(options);
         if (!isInstalled()) logWarning("RTXDI SDK is not installed.");
@@ -116,6 +119,8 @@ namespace Falcor
         validateRange(newOptions.localLightCandidateCount, kMinLightCandidateCount, kMaxLightCandidateCount, "localLightCandidateCount");
         validateRange(newOptions.infiniteLightCandidateCount, kMinLightCandidateCount, kMaxLightCandidateCount, "infiniteLightCandidateCount");
         validateRange(newOptions.envLightCandidateCount, kMinLightCandidateCount, kMaxLightCandidateCount, "envLightCandidateCount");
+        validateRange(newOptions.brdfCandidateCount, kMinLightCandidateCount, kMaxLightCandidateCount, "brdfCandidateCount");
+        validateRange(newOptions.brdfCutoff, 0.f, 1.f, "brdfCutoff");
 
         validateRange(newOptions.depthThreshold, 0.f, 1.f, "depthThreshold");
         validateRange(newOptions.normalThreshold, 0.f, 1.f, "normalThreshold");
@@ -225,6 +230,8 @@ namespace Falcor
             mFlags.updateEnvLight = true;
         }
 #endif
+
+        mpPixelDebug->beginFrame(pRenderContext, mFrameDim);
     }
 
     void RTXDI::endFrame(RenderContext* pRenderContext)
@@ -237,6 +244,8 @@ namespace Falcor
         // Remember this frame's camera data for use next frame.
         mPrevCameraData = mpScene->getCamera()->getData();
 #endif
+
+        mpPixelDebug->endFrame(pRenderContext);
     }
 
     void RTXDI::update(RenderContext* pRenderContext, const Texture::SharedPtr& pMotionVectors)
@@ -308,6 +317,7 @@ namespace Falcor
         var["localLightCandidateCount"] = mOptions.localLightCandidateCount;
         var["infiniteLightCandidateCount"] = mOptions.infiniteLightCandidateCount;
         var["envLightCandidateCount"] = mOptions.envLightCandidateCount;
+        var["brdfCandidateCount"] = mOptions.brdfCandidateCount;
 
         // Parameters for general sample reuse
         var["maxHistoryLength"] = mOptions.maxHistoryLength;
@@ -560,6 +570,8 @@ namespace Falcor
         FALCOR_PROFILE("generateCandidates");
 
         auto var = mpGenerateCandidatesPass->getRootVar();
+        mpPixelDebug->prepareProgram(mpGenerateCandidatesPass->getProgram(), var);
+
         var["CB"]["gOutputReservoirID"] = outputReservoirID;
         setShaderDataInternal(var, nullptr);
         mpGenerateCandidatesPass->execute(pRenderContext, mFrameDim.x, mFrameDim.y);
@@ -586,6 +598,8 @@ namespace Falcor
         uint32_t outputID = (inputID != 1) ? 1 : 0;
 
         auto var = mpSpatialResamplingPass->getRootVar();
+        mpPixelDebug->prepareProgram(mpSpatialResamplingPass->getProgram(), var);
+
         for (uint32_t i = 0; i < mOptions.spatialIterations; ++i)
         {
             var["CB"]["gInputReservoirID"] = inputID;
@@ -610,6 +624,8 @@ namespace Falcor
         uint32_t outputReservoirID = 1 - lastFrameReservoirID;
 
         auto var = mpTemporalResamplingPass->getRootVar();
+        mpPixelDebug->prepareProgram(mpTemporalResamplingPass->getProgram(), var);
+
         var["CB"]["gTemporalReservoirID"] = lastFrameReservoirID;
         var["CB"]["gInputReservoirID"] = candidateReservoirID;
         var["CB"]["gOutputReservoirID"] = outputReservoirID;
@@ -628,6 +644,8 @@ namespace Falcor
         uint32_t outputReservoirID = 1 - lastFrameReservoirID;
 
         auto var = mpSpatiotemporalResamplingPass->getRootVar();
+        mpPixelDebug->prepareProgram(mpSpatiotemporalResamplingPass->getProgram(), var);
+
         var["CB"]["gTemporalReservoirID"] = lastFrameReservoirID;
         var["CB"]["gInputReservoirID"] = candidateReservoirID;
         var["CB"]["gOutputReservoirID"] = outputReservoirID;
@@ -657,8 +675,8 @@ namespace Falcor
             desc.addShaderLibrary(file);
             desc.setShaderModel(kShaderModel);
             desc.csEntry(entryPoint);
+            desc.addTypeConformances(mpScene->getTypeConformances());
             ComputePass::SharedPtr pPass = ComputePass::create(desc, defines);
-            pPass->getProgram()->setTypeConformances(mpScene->getTypeConformances());
             pPass->setVars(nullptr);
             pPass->getRootVar()["gScene"] = mpScene->getParameterBlock();
             return pPass;
@@ -823,6 +841,13 @@ namespace Falcor
             changed |= group.var("Environment light samples", options.envLightCandidateCount, kMinLightCandidateCount, kMaxLightCandidateCount);
             group.tooltip("Number of initial environment light candidate samples.");
 
+            changed |= group.var("BRDF samples", options.brdfCandidateCount, kMinLightCandidateCount, kMaxLightCandidateCount);
+            group.tooltip("Number of initial BRDF candidate samples.");
+
+            changed |= group.var("BRDF Cutoff", options.brdfCutoff, 0.f, 1.f);
+            group.tooltip("Value in range [0,1] to determine how much to shorten BRDF rays");
+
+
             if (useResampling)
             {
                 changed |= group.checkbox("Test selected candidate visibility", options.testCandidateVisibility);
@@ -890,6 +915,11 @@ namespace Falcor
             group.tooltip("Enables permuting the pixels sampled from the previous frame (noisier but more denoiser friendly).");
         }
 
+        if (auto group = widget.group("Debugging"))
+        {
+            mpPixelDebug->renderUI(group);
+        }
+
         if (changed) setOptions(options);
 #else
         widget.textWrapped("The RTXDI SDK is not installed. See README for installation details.");
@@ -909,6 +939,7 @@ namespace Falcor
         pybind11::enum_<RTXDI::BiasCorrection> biasCorrection(m, "RTXDIBiasCorrection");
         biasCorrection.value("Off", RTXDI::BiasCorrection::Off);
         biasCorrection.value("Basic", RTXDI::BiasCorrection::Basic);
+        biasCorrection.value("Pairwise", RTXDI::BiasCorrection::Pairwise);
         biasCorrection.value("RayTraced", RTXDI::BiasCorrection::RayTraced);
 
         ScriptBindings::SerializableStruct<RTXDI::Options> options(m, "RTXDIOptions");
@@ -922,6 +953,8 @@ namespace Falcor
         options.field(localLightCandidateCount);
         options.field(infiniteLightCandidateCount);
         options.field(envLightCandidateCount);
+        options.field(brdfCandidateCount);
+        options.field(brdfCutoff);
         options.field(testCandidateVisibility);
 
         options.field(biasCorrection);

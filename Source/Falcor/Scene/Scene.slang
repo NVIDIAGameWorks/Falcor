@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,7 +25,6 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-
 #include "SceneDefines.slangh"
 
 __exported import Scene.HitInfo;
@@ -467,12 +466,17 @@ struct Scene
         v.texC += vertices[1].texCrd * barycentrics[1];
         v.texC += vertices[2].texCrd * barycentrics[2];
 
+        v.curveRadius = vertices[0].curveRadius * barycentrics[0];
+        v.curveRadius += vertices[1].curveRadius * barycentrics[1];
+        v.curveRadius += vertices[2].curveRadius * barycentrics[2];
+
         v.faceNormalW = getFaceNormalInObjectSpace(vertices, isFrontFaceCW);
 
         v.posW = mul(float4(v.posW, 1.f), worldMat).xyz;
         v.normalW = mul(v.normalW, worldInvTransposeMat);
         v.faceNormalW = mul(v.faceNormalW, worldInvTransposeMat);
         v.tangentW.xyz = mul(v.tangentW.xyz, (float3x3)worldMat);
+        v.curveRadius = length(mul(float3(v.curveRadius, 0.f, 0.f), (float3x3)worldMat));
 
         v.normalW = normalize(v.normalW);
         v.faceNormalW = normalize(v.faceNormalW);
@@ -615,10 +619,10 @@ struct Scene
         const GeometryInstanceData instance = getGeometryInstance(instanceID);
         uint3 vtxIndices = getLocalIndices(instance.ibOffset, triangleIndex, instance.flags & uint(GeometryInstanceFlags::Use16BitIndices));
 
-        if (instance.hasDynamicData())
+        if (instance.isDynamic())
         {
             // For dynamic meshes, the previous position is stored in a separate buffer.
-            vtxIndices += meshes[instance.geometryID].dynamicVbOffset;
+            vtxIndices += meshes[instance.geometryID].prevVbOffset;
 
             prevPos += prevVertices[vtxIndices[0]].position * barycentrics[0];
             prevPos += prevVertices[vtxIndices[1]].position * barycentrics[1];
@@ -745,10 +749,9 @@ struct Scene
         \param[in] instanceID Geometry instance ID of the curve.
         \param[in] curveSegIndex Index of the curve segment in the given curve.
         \param[in] uv UV parameters (between 0 and 1) of the ray-curve hit point.
-        \param[out] radius Sphere radius at the intersection.
         \return Interpolated vertex attributes.
     */
-    VertexData getVertexDataFromCurve(const GeometryInstanceID instanceID, const uint curveSegIndex, const float2 uv, out float radius)
+    VertexData getVertexDataFromCurve(const GeometryInstanceID instanceID, const uint curveSegIndex, const float2 uv)
     {
         const uint v0Index = getFirstCurveVertexIndex(instanceID, curveSegIndex);
         VertexData v = {};
@@ -766,8 +769,9 @@ struct Scene
 
         v.posW = hitPos;
         v.normalW = hitPos - sphereCenter;
-        radius = length(v.normalW);
-        v.normalW /= radius;
+        float curveRadius = length(v.normalW);
+        v.curveRadius = curveRadius;
+        v.normalW /= curveRadius;
         v.faceNormalW = v.normalW;
 
         // Note that the tangent direction is not perpendicular to the normal direction.
@@ -782,12 +786,11 @@ struct Scene
 
     /** Returns the interpolated vertex attributes for a given hitpoint on curves.
         \param[in] hit Curve hit info.
-        \param[out] radius Sphere radius at the intersection.
         \return Interpolated vertex attributes.
     */
-    VertexData getVertexDataFromCurve(const CurveHit hit, out float radius)
+    VertexData getVertexDataFromCurve(const CurveHit hit)
     {
-        return getVertexDataFromCurve(hit.instanceID, hit.primitiveIndex, hit.barycentrics, radius);
+        return getVertexDataFromCurve(hit.instanceID, hit.primitiveIndex, hit.barycentrics);
     }
 
     /** Returns interpolated position on a curve in world space for the previous frame.
@@ -973,4 +976,3 @@ struct Scene
 };
 
 ParameterBlock<Scene> gScene;
-

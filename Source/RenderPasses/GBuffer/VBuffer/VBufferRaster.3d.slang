@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -74,10 +74,10 @@ VBufferVSOut vsMain(VSIn vsIn)
     // Compute the vertex position in the previous frame.
     float3 prevPos = vsIn.pos;
     GeometryInstanceData instance = gScene.getGeometryInstance(instanceID);
-    if (instance.hasDynamicData())
+    if (instance.isDynamic())
     {
-        uint dynamicVertexIndex = gScene.meshes[instance.geometryID].dynamicVbOffset + vsIn.vertexID;
-        prevPos = gScene.prevVertices[dynamicVertexIndex].position;
+        uint prevVertexIndex = gScene.meshes[instance.geometryID].prevVbOffset + vsIn.vertexID;
+        prevPos = gScene.prevVertices[prevVertexIndex].position;
     }
     float3 prevPosW = mul(float4(prevPos, 1.f), gScene.getPrevWorldMatrix(instanceID)).xyz;
     vsOut.prevPosH = mul(float4(prevPosW, 1.f), gScene.camera.data.prevViewProjMatNoJitter);

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -117,7 +117,7 @@ struct HairChiang16 : IBxDF
         precompute();
     }
 
-    float3 eval(const float3 wi, const float3 wo)
+    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
     {
         float sinThetaI = wi.x;
         float cosThetaI = sqrt(max(0.f, 1.f - sinThetaI * sinThetaI));
@@ -187,7 +187,7 @@ struct HairChiang16 : IBxDF
 #if !USE_BCSDF_IMPORTANCE_SAMPLING
         wo = sample_sphere(sampleNext2D(sg));
         pdf = M_1_4PI;
-        weight = eval(wi, wo) / pdf;
+        weight = eval(wi, wo, sg) / pdf;
         lobe = wo.z > 0 ? (uint)LobeType::DiffuseReflection : (uint)LobeType::DiffuseTransmission;
         return true;
 #endif
@@ -308,7 +308,7 @@ struct HairChiang16 : IBxDF
 
         if (!isnan(pdf))
         {
-            weight = eval(wi, wo) / pdf;
+            weight = eval(wi, wo, sg) / pdf;
         }
         else
         {

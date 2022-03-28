@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,7 +27,9 @@
  **************************************************************************/
 #pragma once
 #define NOMINMAX
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #include <Windows.h>
 #include "Core/Framework.h"
 #include "Core/API/Formats.h"
@@ -35,7 +37,49 @@
 #include <slang/slang-gfx.h>
 #include <slang/slang-com-ptr.h>
 
-#define gfx_call(a) {auto hr_ = a; if(FAILED(hr_)) { reportError(#a); }}
+#if defined(FALCOR_GFX_D3D12) || defined (FALCOR_GFX_VK)
+#define FALCOR_GFX
+#endif
+
+#if FALCOR_GFX_D3D12
+// If we are building Falcor with GFX backend + D3D12 support, define `FALCOR_D3D12_AVAILABLE` so users
+// can know raw D3D12 API and helper classes are available.
+#define FALCOR_D3D12_AVAILABLE 1
+#endif
+
+#if FALCOR_ENABLE_NVAPI && FALCOR_D3D12_AVAILABLE
+#define FALCOR_NVAPI_AVAILABLE 1
+#else
+#define FALCOR_NVAPI_AVAILABLE 0
+#endif
+
+#if FALCOR_GFX_VK
+// If we are building Falcor with GFX backend + Vulkan support, define `FALCOR_VK_AVAILABLE` so users
+// can know raw Vulkan API and helper classes are available.
+#define FALCOR_VK_AVAILABLE 1
+#endif
+
+#include "Core/API/Shared/D3D12Handles.h"
+
+#define FALCOR_GFX_CALL(a) {auto hr_ = a; if(FAILED(hr_)) { reportError(#a); }}
+
+#if FALCOR_GFX_D3D12
+#pragma comment(lib, "dxgi.lib")
+#pragma comment(lib, "d3d12.lib")
+#define FALCOR_D3D_CALL(_a) {HRESULT hr_ = _a; if (FAILED(hr_)) { reportError( #_a); }}
+#define FALCOR_GET_COM_INTERFACE(_base, _type, _var) FALCOR_MAKE_SMART_COM_PTR(_type); FALCOR_CONCAT_STRINGS(_type, Ptr) _var; FALCOR_D3D_CALL(_base->QueryInterface(IID_PPV_ARGS(&_var)));
+#define FALCOR_MAKE_SMART_COM_PTR(_a) _COM_SMARTPTR_TYPEDEF(_a, __uuidof(_a))
+inline BOOL dxBool(bool b) { return b ? TRUE : FALSE; }
+#endif
+
+template<typename BlobType>
+inline std::string convertBlobToString(BlobType* pBlob)
+{
+    std::vector<char> infoLog(pBlob->GetBufferSize() + 1);
+    memcpy(infoLog.data(), pBlob->GetBufferPointer(), pBlob->GetBufferSize());
+    infoLog[pBlob->GetBufferSize()] = 0;
+    return std::string(infoLog.data());
+}
 
 #define UNSUPPORTED_IN_GFX(msg_) {logWarning("{} is not supported in GFX. Ignoring call.", msg_);}
 
@@ -47,6 +91,7 @@
 #else
 #define FALCOR_EXPORT_D3D12_AGILITY_SDK
 #endif
+
 
 #pragma comment(lib, "gfx.lib")
 
@@ -80,6 +125,7 @@ namespace Falcor
 
     using WindowHandle = HWND;
     using DeviceHandle = Slang::ComPtr<gfx::IDevice>;
+
     using CommandListHandle = Slang::ComPtr<gfx::ICommandBuffer>;
     using CommandQueueHandle = Slang::ComPtr<gfx::ICommandQueue>;
     using ApiCommandQueueType = gfx::ICommandQueue::QueueType;
@@ -90,9 +136,12 @@ namespace Falcor
     using RtvHandle = Slang::ComPtr<gfx::IResourceView>;
     using DsvHandle = Slang::ComPtr<gfx::IResourceView>;
     using SrvHandle = Slang::ComPtr<gfx::IResourceView>;
+
+    class D3D12DescriptorSet;
+    using CbvHandle = std::shared_ptr<D3D12DescriptorSet>;
+
     using SamplerHandle = Slang::ComPtr<gfx::ISamplerState>;
     using UavHandle = Slang::ComPtr<gfx::IResourceView>;
-    using CbvHandle = Slang::ComPtr<gfx::IResourceView>;
     using AccelerationStructureHandle = Slang::ComPtr<gfx::IAccelerationStructure>;
     using FboHandle = Slang::ComPtr<gfx::IFramebuffer>;
     using GpuAddress = uint64_t;
@@ -104,9 +153,10 @@ namespace Falcor
     using ComputeStateHandle = Slang::ComPtr<gfx::IPipelineState>;
     using RaytracingStateHandle = Slang::ComPtr<gfx::IPipelineState>;
 
-    using ShaderHandle = ApiObjectHandle;
-
     using VaoHandle = Slang::ComPtr<gfx::IInputLayout>;
+
+    using ShaderHandle = Slang::ComPtr<slang::IComponentType>;
+
     using VertexShaderHandle = void*;
     using FragmentShaderHandle = void*;
     using DomainShaderHandle = void*;

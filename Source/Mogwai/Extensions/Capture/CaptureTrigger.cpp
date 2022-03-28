@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -145,22 +145,25 @@ namespace Mogwai
     void CaptureTrigger::renderUI(Gui::Window& w)
     {
         w.textbox("Base Filename", mBaseFilename);
-        w.text("Output Directory\n" + mOutputDir);
-        w.tooltip("Relative paths are treated as relative to the executable directory (" + getExecutableDirectory() + ").");
-        std::string folder;
-        if (w.button("Change Folder") && chooseFolderDialog(folder)) setOutputDirectory(folder);
+        w.text("Output Directory\n" + mOutputDir.string());
+        w.tooltip("Relative paths are treated as relative to the executable directory (" + getExecutableDirectory().string() + ").");
+        if (w.button("Change Folder"))
+        {
+            std::filesystem::path path;
+            if (chooseFolderDialog(path)) setOutputDirectory(path);
+        }
     }
 
-    void CaptureTrigger::setOutputDirectory(const std::string& outDir)
+    void CaptureTrigger::setOutputDirectory(const std::filesystem::path& path_)
     {
-        std::filesystem::path path(outDir);
+        std::filesystem::path path = path_;
         if (path.is_absolute())
         {
             // Use relative path to executable directory if possible.
             auto relativePath = path.lexically_relative(getExecutableDirectory());
             if (!relativePath.empty() && relativePath.string().find("..") == std::string::npos) path = relativePath;
         }
-        mOutputDir = path.string();
+        mOutputDir = path;
     }
 
     void CaptureTrigger::setBaseFilename(const std::string& baseFilename)
@@ -185,15 +188,15 @@ namespace Mogwai
     std::string CaptureTrigger::getScript(const std::string& var) const
     {
         std::string s;
-        s += ScriptWriter::makeSetProperty(var, kOutputDir, ScriptWriter::getFilenameString(mOutputDir, false));
+        s += ScriptWriter::makeSetProperty(var, kOutputDir, ScriptWriter::getPathString(mOutputDir, false));
         s += ScriptWriter::makeSetProperty(var, kBaseFilename, mBaseFilename);
         return s;
     }
 
     std::filesystem::path CaptureTrigger::getOutputPath() const
     {
-        auto path = std::filesystem::path(mOutputDir);
-        if (!path.is_absolute()) path = std::filesystem::absolute(std::filesystem::path(getExecutableDirectory()) / path);
+        auto path = mOutputDir;
+        if (!path.is_absolute()) path = std::filesystem::absolute(getExecutableDirectory() / path);
         return path;
     }
 

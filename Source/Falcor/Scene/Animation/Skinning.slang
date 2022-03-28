@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -38,9 +38,9 @@ struct SkinningData
 
     // Vertex data
     StructuredBuffer<PackedStaticVertexData> staticData;            ///< Original global vertex buffer. This holds the unmodified input vertices.
-    StructuredBuffer<DynamicVertexData> dynamicData;                ///< Bone IDs and weights for all dynamic vertices.
+    StructuredBuffer<SkinningVertexData> skinningData;              ///< Bone IDs and weights for all skinned vertices.
     RWStructuredBuffer<PackedStaticVertexData> skinnedVertices;     ///< Skinned global vertex buffer. We'll update the positions only for the dynamic meshes.
-    RWStructuredBuffer<PrevVertexData> prevSkinnedVertices;         ///< Previous frame vertex positions for dynamic meshes. Same size as 'dynamicData'.
+    RWStructuredBuffer<PrevVertexData> prevSkinnedVertices;         ///< Previous frame vertex positions for all dynamic meshes.
 
     // Transforms
     StructuredBuffer<float4> boneMatrices;
@@ -106,40 +106,40 @@ struct SkinningData
 
     float4x4 getBlendedMatrix(uint vertexId)
     {
-        DynamicVertexData d = dynamicData[vertexId];
+        SkinningVertexData s = skinningData[vertexId];
 
-        float4x4 boneMat = getBoneMatrix(d.boneID.x) * d.boneWeight.x;
-        boneMat += getBoneMatrix(d.boneID.y) * d.boneWeight.y;
-        boneMat += getBoneMatrix(d.boneID.z) * d.boneWeight.z;
-        boneMat += getBoneMatrix(d.boneID.w) * d.boneWeight.w;
+        float4x4 boneMat = getBoneMatrix(s.boneID.x) * s.boneWeight.x;
+        boneMat += getBoneMatrix(s.boneID.y) * s.boneWeight.y;
+        boneMat += getBoneMatrix(s.boneID.z) * s.boneWeight.z;
+        boneMat += getBoneMatrix(s.boneID.w) * s.boneWeight.w;
 
         // Apply mesh bind transform before skinning (mesh to skeleton local at bind time)
-        boneMat = mul(getMeshBindMatrix(d.bindMatrixID), boneMat);
+        boneMat = mul(getMeshBindMatrix(s.bindMatrixID), boneMat);
 
         // Skinning takes us to world space, so apply the inverse to return to skeleton local
-        boneMat = mul(boneMat, getInverseWorldMatrix(d.skeletonMatrixID));
+        boneMat = mul(boneMat, getInverseWorldMatrix(s.skeletonMatrixID));
 
         // Apply inverse bind matrix to return to mesh-local
-        boneMat = mul(boneMat, getInverseMeshBindMatrix(d.bindMatrixID));
+        boneMat = mul(boneMat, getInverseMeshBindMatrix(s.bindMatrixID));
         return boneMat;
     }
 
     float4x4 getInverseTransposeBlendedMatrix(uint vertexId)
     {
-        DynamicVertexData d = dynamicData[vertexId];
+        SkinningVertexData s = skinningData[vertexId];
 
-        float4x4 boneMat = getInverseTransposeBoneMatrix(d.boneID.x) * d.boneWeight.x;
-        boneMat += getInverseTransposeBoneMatrix(d.boneID.y) * d.boneWeight.y;
-        boneMat += getInverseTransposeBoneMatrix(d.boneID.z) * d.boneWeight.z;
-        boneMat += getInverseTransposeBoneMatrix(d.boneID.w) * d.boneWeight.w;
+        float4x4 boneMat = getInverseTransposeBoneMatrix(s.boneID.x) * s.boneWeight.x;
+        boneMat += getInverseTransposeBoneMatrix(s.boneID.y) * s.boneWeight.y;
+        boneMat += getInverseTransposeBoneMatrix(s.boneID.z) * s.boneWeight.z;
+        boneMat += getInverseTransposeBoneMatrix(s.boneID.w) * s.boneWeight.w;
 
-        boneMat = mul(boneMat, getTransposeWorldMatrix(d.skeletonMatrixID));
+        boneMat = mul(boneMat, getTransposeWorldMatrix(s.skeletonMatrixID));
         return boneMat;
     }
 
     uint getStaticVertexID(uint vertexId)
     {
-        return dynamicData[vertexId].staticIndex;
+        return skinningData[vertexId].staticIndex;
     }
 
     StaticVertexData getStaticVertexData(uint vertexId)
@@ -167,7 +167,7 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
     // Check that this is an active vertex
     uint vertexId = dispatchThreadID.x;
     uint vertexCount, stride;
-    gData.dynamicData.GetDimensions(vertexCount, stride);
+    gData.skinningData.GetDimensions(vertexCount, stride);
     if (vertexId >= vertexCount) return;
 
     // Blend the vertices

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -49,7 +49,7 @@ struct HairBSDF : IBSDF
         this.data = data;
     }
 
-    float3 eval(const ShadingData sd, const float3 wo)
+    float3 eval<S : ISampleGenerator>(const ShadingData sd, const float3 wo, inout S sg)
     {
 #if BCSDF == HairChiang
         float3 wiLocal = sd.toLocal(sd.V);
@@ -57,7 +57,7 @@ struct HairBSDF : IBSDF
 
         HairChiang16 bcsdf = HairChiang16(sd, data);
 
-        return bcsdf.eval(wiLocal, woLocal);
+        return bcsdf.eval(wiLocal, woLocal, sg);
 #else
         // Diffuse BRDF
         return data.baseColor * (float)M_1_PI * saturate(dot(sd.N, wo));

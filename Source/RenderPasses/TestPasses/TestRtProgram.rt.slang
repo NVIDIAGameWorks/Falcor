@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,6 +28,10 @@
 import Scene.Raytracing;
 import Utils.Geometry.IntersectionHelpers;
 
+#ifndef MODE
+#error MODE is expected to be defined
+#endif
+
 struct TestProgram
 {
     uint2 frameDim;
@@ -41,16 +45,19 @@ struct TestProgram
         // Select miss shader index in a checkerboard pattern.
         uint missIndex = (pixel.x ^ pixel.y) & 0x10 ? 1 : 0;
 
+#if MODE == 0
         // Select ray type in a diagonal line pattern.
         uint rayType = (pixel.x + pixel.y) & 0x8 ? 1 : 0;
-
+#elif MODE == 1
+        uint rayType = 0;
+#endif
         TraceRay(gScene.rtAccel, RAY_FLAG_NONE, 0xff, rayType, rayTypeCount, missIndex, ray, rayData);
 
         output[pixel] = float4(rayData.color, 1.f);
     }
 };
 
-ConstantBuffer<TestProgram> gTestProgram;
+ParameterBlock<TestProgram> gTestProgram;
 
 //
 // Ray payload and entry points for miss shaders.
@@ -77,6 +84,8 @@ void miss1(inout RayData rayData)
 //
 // Shader entry points for triangle hit groups.
 //
+
+#if MODE == 0
 
 [shader("anyhit")]
 void anyHit(inout RayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
@@ -116,9 +125,101 @@ void closestHitGreen(inout RayData rayData, BuiltInTriangleIntersectionAttribute
     rayData.color = float3(0.f, 1.f, 0.f);
 }
 
+#elif MODE == 1
+
+//
+// Types used for testing createDynamicObject() below.
+//
+
+[anyValueSize(4)]
+interface IMtl
+{
+    float3 getColor();
+    bool alphaTest(uint2 pixel);
+};
+
+struct Mtl0 : IMtl
+{
+    float3 getColor()
+    {
+        return float3(1, 0, 0);
+    }
+
+    bool alphaTest(uint2 pixel)
+    {
+        return pixel.x % 8 == 0;
+    }
+}
+
+struct Mtl1 : IMtl
+{
+    float3 getColor()
+    {
+        return float3(0, 1, 0);
+    }
+
+    bool alphaTest(uint2 pixel)
+    {
+        return pixel.y % 8 == 0;
+    }
+}
+
+struct Mtl2 : IMtl
+{
+    float3 getColor()
+    {
+        return float3(0, 0, 1);
+    }
+
+    bool alphaTest(uint2 pixel)
+    {
+        return (pixel.x + pixel.y) % 8 == 0;
+    }
+}
+
+[shader("anyhit")]
+void anyHit(inout RayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
+{
+    GeometryInstanceID instanceID = getGeometryInstanceID();
+    uint geometryID = gScene.getGeometryInstance(instanceID).geometryID;
+
+    // Select which IMtl type to create based on geometry ID.
+    uint type = geometryID % 3;
+
+    // Dynamically create an instance of the given type.
+    // Note we don't need any data so passing in a dummy int.
+    int dummyData = 0;
+    let mtl = createDynamicObject<IMtl, int>(int(type), dummyData);
+
+    // Depending on which type was created we'll get a different pattern of discarded pixels.
+    if (mtl.alphaTest(DispatchRaysIndex().xy)) IgnoreHit();
+}
+
+[shader("closesthit")]
+void closestHit(inout RayData rayData, BuiltInTriangleIntersectionAttributes attribs)
+{
+    GeometryInstanceID instanceID = getGeometryInstanceID();
+    uint geometryID = gScene.getGeometryInstance(instanceID).geometryID;
+
+    // Select which IMtl type to create based on geometry ID.
+    uint type = geometryID % 3;
+
+    // Dynamically create an instance of the given type.
+    // Note we don't need any data so passing in a dummy int.
+    int dummyData = 0;
+    let mtl = createDynamicObject<IMtl, int>(int(type), dummyData);
+
+    // Depending on which type was created we'll get a different color.
+    rayData.color = mtl.getColor();
+}
+
+#endif
+
 //
 // Shader entry points for procedural primitive hit groups.
 //
+
+#if MODE == 0
 
 struct MyIntersectionAttribs
 {
@@ -172,6 +273,8 @@ void closestHitSphereYellow(inout RayData rayData, MyIntersectionAttribs attribs
     rayData.t = RayTCurrent();
     rayData.color = float3(1.f, 1.f, 0.f);
 }
+
+#endif
 
 //
 // Entry point for ray generation shader.

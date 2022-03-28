@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,42 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
 #include "Utils/Math/MathConstants.slangh"
-#include "Utils/HostDeviceShared.slangh"
 
-#ifndef HOST_CODE
 import Utils.Math.MathHelpers;
-#endif
-
-BEGIN_NAMESPACE_FALCOR
-
-/** This enum is shared between CPU/GPU.
-    It enumerates the different 2D SDF markers.
-*/
-enum class SDF2DShapeType : uint32_t
-{
-    Circle,
-    Square,
-    Diamond,
-    Heart,
-    Chevron,
-    Ring,
-    Tag,
-    Cross,
-    Asterisk,
-    Infinity,
-    Pin,
-    Arrow,
-    RoundedBox,
-    Triangle,
-    RoundedLine,
-    Vector,
-    MarkerOpMarker,
-    ArrowFromTwoTris,
-};
-
-#ifndef HOST_CODE
 
 // Some of the code below is based on the JCGT article "Antialiased 2D Grid, Marker, and Arrow Shaders" by Rougier.
 // However, the code has been bug fixed in several places and extended in some ways + addition of new primitives.
@@ -396,6 +363,3 @@ struct SDF2DTriangle : ISDF2D
     }
     float eval(float2 p) { return sdfTriangle(p, p0, p1, p2); }
 };
-#endif
-
-END_NAMESPACE_FALCOR

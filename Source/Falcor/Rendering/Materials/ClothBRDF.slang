@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -49,7 +49,7 @@ struct ClothBRDF : IBxDF
 
     // Implementation of IBxDF interface
 
-    float3 eval(const float3 wi, const float3 wo)
+    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
     {
         if (min(wi.z, wo.z) < kMinCosTheta) return float3(0.f);
 

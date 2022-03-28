@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -51,7 +51,10 @@
 #include <string_view>
 #include <vector>
 #include <algorithm>
+#include <filesystem>
 #include <fmt/format.h> // TODO: Replace with <format> when switching to C++20
+#define TCB_SPAN_NAMESPACE_NAME fstd
+#include "span/span.h" // TODO: Replace with <span> when switching to C++20
 
 // Define DLL export/import
 #ifdef _MSC_VER
@@ -81,15 +84,42 @@
 
 #define FALCOR_ASSERT(a)\
     if (!(a)) {\
-        std::string str = "assertion failed(" + std::string(#a) + ")\nFile " + __FILE__ + ", line " + std::to_string(__LINE__);\
+        std::string str = fmt::format("assertion failed( {} )\n{}({})", #a, __FILE__, __LINE__); \
         Falcor::reportFatalError(str);\
     }
+#define FALCOR_ASSERT_MSG(a, msg)\
+    if (!(a)) {\
+        std::string str = fmt::format("assertion failed( {} ): {}\n{}({})", #a, msg, __FILE__, __LINE__); \
+        Falcor::reportFatalError(str); \
+    }
+#define FALCOR_ASSERT_OP(a, b, OP)\
+    if (!(a OP b)) {\
+        std::string str = fmt::format("assertion failed( {} {} {} ({} {} {}) )\n{}({})", #a, #OP, #b, a, #OP, b, __FILE__, __LINE__); \
+        Falcor::reportFatalError(str); \
+    }
+#define FALCOR_ASSERT_EQ(a, b) FALCOR_ASSERT_OP(a, b, == )
+#define FALCOR_ASSERT_NE(a, b) FALCOR_ASSERT_OP(a, b, != )
+#define FALCOR_ASSERT_GE(a, b) FALCOR_ASSERT_OP(a, b, >= )
+#define FALCOR_ASSERT_GT(a, b) FALCOR_ASSERT_OP(a, b, > )
+#define FALCOR_ASSERT_LE(a, b) FALCOR_ASSERT_OP(a, b, <= )
+#define FALCOR_ASSERT_LT(a, b) FALCOR_ASSERT_OP(a, b, < )
+
 
 #else // _DEBUG
 
 #define FALCOR_ASSERT(a) {}
+#define FALCOR_ASSERT_MSG(a, msg) {}
+#define FALCOR_ASSERT_OP(a, b, OP) {}
+#define FALCOR_ASSERT_EQ(a, b) FALCOR_ASSERT_OP(a, b, == )
+#define FALCOR_ASSERT_NE(a, b) FALCOR_ASSERT_OP(a, b, != )
+#define FALCOR_ASSERT_GE(a, b) FALCOR_ASSERT_OP(a, b, >= )
+#define FALCOR_ASSERT_GT(a, b) FALCOR_ASSERT_OP(a, b, > )
+#define FALCOR_ASSERT_LE(a, b) FALCOR_ASSERT_OP(a, b, <= )
+#define FALCOR_ASSERT_LT(a, b) FALCOR_ASSERT_OP(a, b, < )
 
 #endif // _DEBUG
+
+#define FALCOR_UNIMPLEMENTED() do{ FALCOR_ASSERT_MSG(false, "Not implemented"); throw Falcor::RuntimeError("Not implemented"); } while(0)
 
 #define FALCOR_UNREACHABLE() FALCOR_ASSERT(false)
 
@@ -97,15 +127,16 @@
 #define FALCOR_CONCAT_STRINGS_(a, b) a##b
 #define FALCOR_CONCAT_STRINGS(a, b) FALCOR_CONCAT_STRINGS_(a, b)
 
+#define FALCOR_PRINT( x ) do { Falcor::logInfo("{} = {}", #x, x); } while(0)
 
 #if defined(_MSC_VER)
 // Enable Windows visual styles
 #pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #define FALCOR_FORCEINLINE __forceinline
-using DllHandle = HMODULE;
+using SharedLibraryHandle = HMODULE;
 #elif defined(__GNUC__)
 #define FALCOR_FORCEINLINE __attribute__((always_inline))
-using DllHandle = void*;
+using SharedLibraryHandle = void*;
 #endif
 
 namespace Falcor
@@ -135,14 +166,12 @@ namespace Falcor
         Domain,         ///< Domain shader (AKA Tessellation evaluation shader)
         Compute,        ///< Compute shader
 
-#if defined(FALCOR_D3D12) || defined(FALCOR_GFX)
         RayGeneration,  ///< Ray generation shader
         Intersection,   ///< Intersection shader
         AnyHit,         ///< Any hit shader
         ClosestHit,     ///< Closest hit shader
         Miss,           ///< Miss shader
         Callable,       ///< Callable shader
-#endif
         Count           ///< Shader Type count
     };
 
@@ -236,6 +265,18 @@ namespace Falcor
         return std::min(std::max(val, minVal), maxVal);
     }
 
+    /** Linearly interpolate two values.
+        \param[in] a The first value.
+        \param[in] b The second value.
+        \param[in] t Interpolation weight.
+        \return (1-t) * a + t * b.
+    */
+    template<typename T>
+    inline T lerp(const T& a, const T& b, const T& t)
+    {
+        return (T(1) - t) * a + t * b;
+    }
+
     /** Returns whether an integer number is a power of two.
     */
     template<typename T>
@@ -286,12 +327,25 @@ namespace Falcor
     /*! @} */
 }
 
+namespace fmt
+{
+    template<>
+    struct formatter<std::filesystem::path> : formatter<std::string>
+    {
+        template <typename FormatContext>
+        auto format(const std::filesystem::path& p, FormatContext& ctx)
+        {
+            return formatter<std::string>::format(p.string(), ctx);
+        }
+    };
+}
+
 #include "Utils/Math/Vector.h"
 #include "Utils/Math/Float16.h"
 
 #if defined(FALCOR_D3D12)
 #include "Core/API/D3D12/FalcorD3D12.h"
-#elif defined(FALCOR_GFX)
+#elif defined(FALCOR_GFX_D3D12) || defined(FALCOR_GFX_VK)
 #include "Core/API/GFX/FalcorGFX.h"
 #else
 #error Undefined falcor backend. Make sure that a backend is selected in "FalcorConfig.h"
@@ -302,7 +356,7 @@ namespace Falcor
 #include "Utils/Timing/Profiler.h"
 #include "Utils/Scripting/Scripting.h"
 
-#if FALCOR_ENABLE_NVAPI
+#if FALCOR_NVAPI_AVAILABLE
 #include "nvapi.h"
 #pragma comment(lib, "nvapi64.lib")
 #endif

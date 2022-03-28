@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -69,7 +69,11 @@ namespace Falcor
 
     void GpuMemoryHeap::initBasePageData(BaseData& data, size_t size)
     {
-        data.pResourceHandle = createBuffer(getInitState(mType), size, Buffer::BindFlags::None, getCpuAccess(mType));
+        data.pResourceHandle = createBuffer(
+            getInitState(mType),
+            size,
+            Buffer::BindFlags::Vertex | Buffer::BindFlags::Index | Buffer::BindFlags::Constant,
+            getCpuAccess(mType));
         data.offset = 0;
         auto bufferResource = static_cast<gfx::IBufferResource*>(data.pResourceHandle.get());
         bufferResource->map(nullptr, (void**)&data.pData);

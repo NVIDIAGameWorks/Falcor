@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -198,11 +198,129 @@ namespace Falcor
 
     void SDFGrid::setPrimitives(const std::vector<SDF3DPrimitive>& primitives, uint32_t gridWidth)
     {
+        uint32_t dummyBasePrimitiveID;
+        setPrimitives(primitives, gridWidth, dummyBasePrimitiveID);
+    }
+
+    void SDFGrid::setPrimitives(const std::vector<SDF3DPrimitive>& primitives, uint32_t gridWidth, uint32_t& basePrimitiveID)
+    {
         checkArgument(isPowerOf2(gridWidth), "'gridWidth' ({}) must be a power of 2.", gridWidth);
 
         mOriginalGridWidth = gridWidth;
         mGridWidth = gridWidth;
-        mPrimitives = primitives;
+        mPrimitives.clear();
+        mPrimitiveIDToIndex.clear();
+        mNextPrimitiveID = 0;
+
+        addPrimitives(primitives, basePrimitiveID);
+    }
+
+    void SDFGrid::addPrimitives(const std::vector<SDF3DPrimitive>& primitives)
+    {
+        uint32_t dummyBasePrimitiveID;
+        addPrimitives(primitives, dummyBasePrimitiveID);
+    }
+
+    void SDFGrid::addPrimitives(const std::vector<SDF3DPrimitive>& primitives, uint32_t& basePrimitiveID)
+    {
+        // Copy primitives.
+        uint32_t primitivesStartOffset = (uint32_t)mPrimitives.size();
+        mPrimitives.reserve(mPrimitives.size() + primitives.size());
+        mPrimitives.insert(mPrimitives.end(), primitives.begin(), primitives.end());
+
+        // Assign indirection.
+        mPrimitiveIDToIndex.reserve(mPrimitives.size());
+        basePrimitiveID = mNextPrimitiveID;
+
+        for (uint32_t idx = primitivesStartOffset; idx < mPrimitives.size(); idx++)
+        {
+            mPrimitiveIDToIndex[mNextPrimitiveID++] = idx;
+        }
+
+        std::unordered_set<uint32_t> indexSet;
+        for (const auto& [id, index] : mPrimitiveIDToIndex)
+        {
+            if (indexSet.count(index))
+            {
+                throw RuntimeError("Multiple copies of index {}!", index);
+            }
+            indexSet.insert(index);
+        }
+
+        mPrimitivesDirty = true;
+
+        updatePrimitivesBuffer();
+    }
+
+    void SDFGrid::removePrimitives(const std::vector<uint32_t>& primitiveIDs)
+    {
+        for (uint32_t primitiveID : primitiveIDs)
+        {
+            auto idxIt = mPrimitiveIDToIndex.find(primitiveID);
+
+            if (idxIt == mPrimitiveIDToIndex.end())
+            {
+                logWarning("Primitive with ID {} does not exist!", primitiveID);
+                continue;
+            }
+
+            // Mark as dirty.
+            mPrimitivesDirty = true;
+
+            // Erase the index from the indirection map.
+            uint32_t idx = idxIt->second;
+            mPrimitiveIDToIndex.erase(idxIt);
+
+            // Compactify the primitive list.
+            mPrimitives.erase(mPrimitives.begin() + idx);
+
+            if (idx < mPrimitives.size())
+            {
+                // Update larger IDs as the primitive list must be compact.
+                for (auto& [id, index] : mPrimitiveIDToIndex)
+                {
+                    if (index > idx)
+                    {
+                        --index;
+                    }
+                }
+            }
+        }
+
+        std::unordered_set<uint32_t> indexSet;
+        for (const auto& [id, index] : mPrimitiveIDToIndex)
+        {
+            if (indexSet.count(index))
+            {
+                throw RuntimeError("Multiple copies of index {}!", index);
+            }
+            indexSet.insert(index);
+        }
+
+        updatePrimitivesBuffer();
+    }
+
+    void SDFGrid::updatePrimitives(const std::vector<std::pair<uint32_t, SDF3DPrimitive>>& primitives)
+    {
+        for (auto it = primitives.begin(); it != primitives.end(); it++)
+        {
+            uint32_t primitiveID = it->first;
+            const SDF3DPrimitive& primitive = it->second;
+
+            auto idxIt = mPrimitiveIDToIndex.find(primitiveID);
+            if (idxIt == mPrimitiveIDToIndex.end())
+            {
+                logWarning("Primitive with ID {} does not exist!", primitiveID);
+                continue;
+            }
+
+            // Mark as dirty.
+            mPrimitivesDirty = true;
+
+            // Update the primitive.
+            mPrimitives[idxIt->second] = primitive;
+        }
+
         updatePrimitivesBuffer();
     }
 
@@ -216,12 +334,12 @@ namespace Falcor
         setValuesInternal(cornerValues);
     }
 
-    bool SDFGrid::loadValuesFromFile(const std::string& filename)
+    bool SDFGrid::loadValuesFromFile(const std::filesystem::path& path)
     {
-        std::string filePath;
-        if (findFileInDataDirectories(filename, filePath))
+        std::filesystem::path fullPath;
+        if (findFileInDataDirectories(path, fullPath))
         {
-            std::ifstream file(filePath, std::ios::in | std::ios::binary);
+            std::ifstream file(fullPath, std::ios::in | std::ios::binary);
 
             if (file.is_open())
             {
@@ -238,7 +356,7 @@ namespace Falcor
             }
         }
 
-        logWarning("SDFGrid::loadValues() file '{}' could not be opened!", filename);
+        logWarning("SDFGrid::loadValuesFromFile() file '{}' could not be opened!", path);
         return false;
     }
 
@@ -340,23 +458,23 @@ namespace Falcor
         return true;
     }
 
-    uint32_t SDFGrid::loadPrimitivesFromFile(const std::string& filename, uint32_t gridWidth, const std::string& dir)
+    uint32_t SDFGrid::loadPrimitivesFromFile(const std::filesystem::path& path, uint32_t gridWidth, const std::filesystem::path& dir)
     {
-        std::string filePath;
+        std::filesystem::path fullPath;
         if (dir.empty())
         {
-            if (!findFileInDataDirectories(filename, filePath))
+            if (!findFileInDataDirectories(path, fullPath))
             {
-                logWarning("File '{}' could not be found in data directories!", filename);
+                logWarning("File '{}' could not be found in data directories!", path);
                 return 0;
             }
         }
         else
         {
-            filePath = dir + filename;
+            fullPath = dir / path;
         }
 
-        std::string jsonData = readFile(filePath);
+        std::string jsonData = readFile(fullPath);
         rapidjson::StringStream jsonStream(jsonData.c_str());
 
         rapidjson::Document jsonDocument;
@@ -366,7 +484,7 @@ namespace Falcor
         {
             size_t line;
             line = std::count(jsonData.begin(), jsonData.begin() + jsonDocument.GetErrorOffset(), '\n');
-            logWarning("Error when deserializing SDF grid from '{}'. JSON Parse error in line {}: {}", filePath, line, rapidjson::GetParseError_En(jsonDocument.GetParseError()));
+            logWarning("Error when deserializing SDF grid from '{}'. JSON Parse error in line {}: {}", fullPath, line, rapidjson::GetParseError_En(jsonDocument.GetParseError()));
             return 0;
         }
 
@@ -402,6 +520,75 @@ namespace Falcor
         return (uint32_t)mPrimitives.size();
     }
 
+    bool SDFGrid::writePrimitivesToFile(const std::filesystem::path& path)
+    {
+        std::ofstream file(path, std::ios::out | std::ios::trunc);
+
+        if (!file.is_open())
+        {
+            logWarning("Failed to open SDF grid file '{}'.", path);
+            return false;
+        }
+
+        rapidjson::StringBuffer jsonStringBuffer;
+        rapidjson::PrettyWriter<rapidjson::StringBuffer> jsonWriter(jsonStringBuffer);
+
+        // Serialize primitives into JSON array.
+        jsonWriter.StartArray();
+        for (const SDF3DPrimitive& primitive : mPrimitives)
+        {
+            jsonWriter.StartObject();
+            {
+                // Shape Type.
+                serializeUint(kPrimitiveShapeTypeJSONKey, (uint32_t)primitive.shapeType, jsonWriter);
+
+                // Shape Data.
+                serializeFloat3(kPrimitiveShapeDataJSONKey, primitive.shapeData, jsonWriter);
+
+                // Shape Blobbing.
+                serializeFloat(kPrimitiveShapeBlobbingJSONKey, primitive.shapeBlobbing, jsonWriter);
+
+                // Operation Type.
+                serializeUint(kPrimitiveOperationTypeJSONKey, (uint32_t)primitive.operationType, jsonWriter);
+
+                // Operation Smoothing.
+                serializeFloat(kPrimitiveOperationSmoothingJSONKey, primitive.operationSmoothing, jsonWriter);
+
+                // Translation.
+                serializeFloat3(kPrimitiveTranslationJSONKey, primitive.translation, jsonWriter);
+
+                // Inverse Rotation Scale.
+                serializeFloat3x3(kPrimitiveInvRotationScaleJSONKey, primitive.invRotationScale, jsonWriter);
+            }
+            jsonWriter.EndObject();
+        }
+        jsonWriter.EndArray();
+
+        // Write JSON string to file.
+        file << jsonStringBuffer.GetString();
+        file.close();
+        return true;
+    }
+
+    const SDF3DPrimitive& SDFGrid::getPrimitive(uint32_t primitiveID) const
+    {
+        auto it = mPrimitiveIDToIndex.find(primitiveID);
+        checkArgument(it != mPrimitiveIDToIndex.end(), "'primitiveID' ({}) is invalid.", primitiveID);
+        return mPrimitives[it->second];
+    }
+
+    std::string SDFGrid::getTypeName(Type type)
+    {
+        switch (type)
+        {
+        case Type::NormalizedDenseGrid: return "NormalizedDenseGrid";
+        case Type::SparseVoxelSet: return "SparseVoxelSet";
+        case Type::SparseBrickSet: return "SparseBrickSet";
+        case Type::SparseVoxelOctree: return "SparseVoxelOctree";
+        default: FALCOR_UNREACHABLE(); return "";
+        }
+    }
+
     FALCOR_SCRIPT_BINDING(SDFGrid)
     {
         auto createSBS = [](const pybind11::kwargs& args)
@@ -433,9 +620,9 @@ namespace Falcor
         sdfGrid.def_static("createNDGrid", [](float narrowBandThickness) { return SDFGrid::SharedPtr(NDSDFGrid::create(narrowBandThickness)); }, "narrowBandThickness"_a);
         sdfGrid.def_static("createSVS", [](){ return SDFGrid::SharedPtr(SDFSVS::create()); });
         sdfGrid.def_static("createSBS", createSBS);
-        sdfGrid.def_static("createSVO", []() { return SDFGrid::SharedPtr(SDFSVO::create()); });
-        sdfGrid.def("loadValuesFromFile", &SDFGrid::loadValuesFromFile, "filename"_a);
-        sdfGrid.def("loadPrimitivesFromFile", &SDFGrid::loadPrimitivesFromFile, "filename"_a, "gridWidth"_a, "dir"_a = "");
+        sdfGrid.def_static("createSVO", [](){ return SDFGrid::SharedPtr(SDFSVO::create()); });
+        sdfGrid.def("loadValuesFromFile", &SDFGrid::loadValuesFromFile, "path"_a);
+        sdfGrid.def("loadPrimitivesFromFile", &SDFGrid::loadPrimitivesFromFile, "path"_a, "gridWidth"_a, "dir"_a = "");
         sdfGrid.def("generateCheeseValues", &SDFGrid::generateCheeseValues, "gridWidth"_a, "seed"_a);
         sdfGrid.def_property("name", &SDFGrid::getName, &SDFGrid::setName);
     }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,7 +29,7 @@
 #include "Core/API/GraphicsStateObject.h"
 #include "D3D12NvApiExDesc.h"
 #include "Core/API/Device.h"
-#include "D3D12State.h"
+#include "Core/API/D3D12/D3D12State.h"
 
 namespace Falcor
 {

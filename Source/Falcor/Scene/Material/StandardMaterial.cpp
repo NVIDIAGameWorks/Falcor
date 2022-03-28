@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -63,7 +63,7 @@ namespace Falcor
 
         if (auto pTexture = getEmissiveTexture())
         {
-            widget.text("Emissive color: " + pTexture->getSourceFilename());
+            widget.text("Emissive color: " + pTexture->getSourcePath().string());
             widget.text("Texture info: " + std::to_string(pTexture->getWidth()) + "x" + std::to_string(pTexture->getHeight()) + " (" + to_string(pTexture->getFormat()) + ")");
             widget.image("Emissive color", pTexture, float2(100.f));
             if (widget.button("Remove texture##Emissive")) setEmissiveTexture(nullptr);

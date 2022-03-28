@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -555,29 +555,29 @@ namespace Falcor
         }
     }
 
-    Bitmap::UniqueConstPtr ImageIO::loadBitmapFromDDS(const std::string& filename)
+    Bitmap::UniqueConstPtr ImageIO::loadBitmapFromDDS(const std::filesystem::path& path)
     {
-        std::string fullpath;
-        if (findFileInDataDirectories(filename, fullpath) == false)
+        std::filesystem::path fullPath;
+        if (!findFileInDataDirectories(path, fullPath))
         {
-            logWarning("Failed to load DDS image from '{}': Can't find file.", filename);
+            logWarning("Failed to load DDS image from '{}': Can't find file.", path);
             return nullptr;
         }
 
         ImportData data;
         try
         {
-            loadDDS(fullpath, false, data);
+            loadDDS(fullPath, false, data);
         }
         catch (const RuntimeError& e)
         {
-            logWarning("Failed to load DDS image from '{}': {}", filename, e.what());
+            logWarning("Failed to load DDS image from '{}': {}", path, e.what());
             return nullptr;
         }
 
         if (data.type == Resource::Type::Texture3D || data.type == Resource::Type::TextureCube)
         {
-            logWarning("Failed to load DDS image from '{}': Invalid resource type {}.", filename, to_string(data.type));
+            logWarning("Failed to load DDS image from '{}': Invalid resource type {}.", path, to_string(data.type));
             return nullptr;
         }
 
@@ -585,23 +585,23 @@ namespace Falcor
         return Bitmap::create(data.width, data.height, data.format, data.imageData.data());
     }
 
-    Texture::SharedPtr ImageIO::loadTextureFromDDS(const std::string& filename, bool loadAsSrgb)
+    Texture::SharedPtr ImageIO::loadTextureFromDDS(const std::filesystem::path& path, bool loadAsSrgb)
     {
-        std::string fullpath;
-        if (findFileInDataDirectories(filename, fullpath) == false)
+        std::filesystem::path fullPath;
+        if (!findFileInDataDirectories(path, fullPath))
         {
-            logWarning("Failed to load DDS image from '{}': Can't find file.", filename);
+            logWarning("Failed to load DDS image from '{}': Can't find file.", path);
             return nullptr;
         }
 
         ImportData data;
         try
         {
-            loadDDS(fullpath, loadAsSrgb, data);
+            loadDDS(fullPath, loadAsSrgb, data);
         }
         catch (const RuntimeError& e)
         {
-            logWarning("Failed to load DDS image from '{}': {}", filename, e.what());
+            logWarning("Failed to load DDS image from '{}': {}", path, e.what());
             return nullptr;
         }
 
@@ -622,23 +622,23 @@ namespace Falcor
             pTex = Texture::create3D(data.width, data.height, data.depth, data.format, data.mipLevels, data.imageData.data());
             break;
         default:
-            logWarning("Failed to load DDS image from '{}': Unrecognized texture type.", filename);
+            logWarning("Failed to load DDS image from '{}': Unrecognized texture type.", path);
             return nullptr;
         }
 
         if (pTex != nullptr)
         {
-            pTex->setSourceFilename(fullpath);
+            pTex->setSourcePath(fullPath);
         }
 
         return pTex;
     }
 
-    void ImageIO::saveToDDS(const std::string& filename, const Bitmap& bitmap, CompressionMode mode, bool generateMips)
+    void ImageIO::saveToDDS(const std::filesystem::path& path, const Bitmap& bitmap, CompressionMode mode, bool generateMips)
     {
-        if (getExtensionFromFile(filename) != "dds")
+        if (!hasExtension(path, "dds"))
         {
-            logWarning("Saving DDS image to '{}' which does not have 'dds' file extension.", filename);
+            logWarning("Saving DDS image to '{}' which does not have 'dds' file extension.", path);
         }
 
         try
@@ -664,7 +664,7 @@ namespace Falcor
                 bool clamped = clampIfNeeded(image);
                 if (clamped)
                 {
-                    logWarning("Saving DDS image to '{}' with clamped image dimensions to accomodate mipmaps and compression.", filename);
+                    logWarning("Saving DDS image to '{}' with clamped image dimensions to accomodate mipmaps and compression.", path);
                 }
             }
 
@@ -702,19 +702,19 @@ namespace Falcor
                 mode = convertFormatToMode(image.format);
             }
 
-            exportDDS(filename, image, mode, generateMips);
+            exportDDS(path, image, mode, generateMips);
         }
         catch (const RuntimeError& e)
         {
-            throw RuntimeError("Failed to save DDS image to '{}': {}", filename, e.what());
+            throw RuntimeError("Failed to save DDS image to '{}': {}", path, e.what());
         }
     }
 
-    void ImageIO::saveToDDS(CopyContext* pContext, const std::string& filename, const Texture::SharedPtr& pTexture, CompressionMode mode, bool generateMips)
+    void ImageIO::saveToDDS(CopyContext* pContext, const std::filesystem::path& path, const Texture::SharedPtr& pTexture, CompressionMode mode, bool generateMips)
     {
-        if (getExtensionFromFile(filename) != "dds")
+        if (!hasExtension(path, "dds"))
         {
-            logWarning("Saving DDS image to '{}' which does not have 'dds' file extension.", filename);
+            logWarning("Saving DDS image to '{}' which does not have 'dds' file extension.", path);
         }
 
         try
@@ -738,7 +738,7 @@ namespace Falcor
                 bool clamped = clampIfNeeded(image);
                 if (clamped)
                 {
-                    logWarning("Saving DDS image to '{}' with clamped image dimensions to accomodate mipmaps and compression.", filename);
+                    logWarning("Saving DDS image to '{}' with clamped image dimensions to accomodate mipmaps and compression.", path);
                 }
             }
 
@@ -807,11 +807,11 @@ namespace Falcor
                 mode = convertFormatToMode(image.format);
             }
 
-            exportDDS(filename, image, mode, generateMips);
+            exportDDS(path, image, mode, generateMips);
         }
         catch (const RuntimeError& e)
         {
-            throw RuntimeError("Failed to save DDS image to '{}': {}", filename, e.what());
+            throw RuntimeError("Failed to save DDS image to '{}': {}", path, e.what());
         }
     }
 }

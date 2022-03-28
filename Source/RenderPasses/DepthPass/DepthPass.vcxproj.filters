@@ -7,6 +7,6 @@
     <ClInclude Include="DepthPass.h" />
   </ItemGroup>
   <ItemGroup>
-    <ShaderSource Include="DepthPass.ps.slang" />
+    <ShaderSource Include="DepthPass.3d.slang" />
   </ItemGroup>
 </Project>

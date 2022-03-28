@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -48,10 +48,10 @@ namespace Falcor
         gpDevice->flushAndSync();
     }
 
-    std::future<Texture::SharedPtr> AsyncTextureLoader::loadFromFile(const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Resource::BindFlags bindFlags, LoadCallback callback)
+    std::future<Texture::SharedPtr> AsyncTextureLoader::loadFromFile(const std::filesystem::path& path, bool generateMipLevels, bool loadAsSrgb, Resource::BindFlags bindFlags, LoadCallback callback)
     {
         std::lock_guard<std::mutex> lock(mMutex);
-        mLoadRequestQueue.push(LoadRequest{filename, generateMipLevels, loadAsSrgb, bindFlags, callback });
+        mLoadRequestQueue.push(LoadRequest{path, generateMipLevels, loadAsSrgb, bindFlags, callback });
         mCondition.notify_one();
         return mLoadRequestQueue.back().promise.get_future();
     }
@@ -106,7 +106,7 @@ namespace Falcor
             lock.unlock();
 
             // Load the textures (this part is running in parallel).
-            Texture::SharedPtr pTexture = Texture::createFromFile(request.filename, request.generateMipLevels, request.loadAsSRGB, request.bindFlags);
+            Texture::SharedPtr pTexture = Texture::createFromFile(request.path, request.generateMipLevels, request.loadAsSRGB, request.bindFlags);
             request.promise.set_value(pTexture);
 
             if (request.callback)

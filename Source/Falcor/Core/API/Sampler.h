@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -210,6 +210,11 @@ namespace Falcor
         /** Get an object that represents a default sampler
         */
         static Sampler::SharedPtr getDefault();
+
+        /** Get an D3D12 CPU Descriptor handle.
+            \return A valid CPU descriptor heap handle when using the D3D12 API, otherwise nullptr.
+        */
+        D3D12DescriptorCpuHandle getD3D12CpuHeapHandle() const;
 
     private:
         Sampler(const Desc& desc);

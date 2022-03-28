@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -51,6 +51,7 @@ namespace Falcor
         User provided local root signatures are currently not supported for performance reasons. Managing and updating data for custom root signatures results in significant overhead.
         To get the root signature that matches this table, call the static function getRootSignature().
     */
+#ifdef FALCOR_D3D12
     class FALCOR_API ShaderTable
     {
     public:
@@ -148,4 +149,10 @@ namespace Falcor
         uint32_t mShaderRecordAlignment = 0;
         uint32_t mShaderTableAlignment = 0;
     };
+    using ShaderTablePtr = ShaderTable::SharedPtr;
+
+#elif defined (FALCOR_GFX)
+    // In GFX, we use gfx::IShaderTable directly.
+    using ShaderTablePtr = Slang::ComPtr<gfx::IShaderTable>;
+#endif
 }

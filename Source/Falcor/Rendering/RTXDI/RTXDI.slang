@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 import Scene.Scene;
 import Scene.RaytracingInline;
 import Utils.Color.ColorHelpers;
+import Utils.Debug.PixelDebug;
 import PackedTypes;
 
 // Set default value for RTXDI_INSTALLED.
@@ -68,6 +69,8 @@ struct RTXDI
     uint    localLightCandidateCount;                   ///< Number of initial candidates (per pixel) on local lights.
     uint    infiniteLightCandidateCount;                ///< Number of initial candidates (per pixel) on infinite lights.
     uint    envLightCandidateCount;                     ///< Number of initial candidates (per pixel) on the environment light.
+    uint    brdfCandidateCount;                         ///< Number of initial candidates (per pixel) from brdf.
+    float   brdfCutoff;                                 ///< Value in range[0, 1] to determine how much to shorten BRDF rays. 0 to disable shortening.
 
     // Parameters needed to control RTXDI sample reuse (generally).
     uint    maxHistoryLength;                           ///< Maximum history length for temporal reuse, measured in frames.
@@ -232,6 +235,7 @@ extension RTXDI
     void generateCandidates(uint2 pixelID, uint outputReservoirIndex)
     {
         uint2 pixelPosition = RTXDI_ReservoirToPixelPos(pixelID, gRTXDI.params);
+        printSetPixel(pixelPosition);
 
         // Initialize random samplers.
         RAB_RandomSamplerState rng = RAB_InitRandomSampler(pixelPosition, 2);
@@ -240,15 +244,19 @@ extension RTXDI
         // Load surface data.
         RAB_Surface surface = RAB_GetGBufferSurface(pixelPosition, false);
 
-        // Generate initial candidates.
-        RAB_LightSample lightSample;
-        RTXDI_Reservoir reservoir = RTXDI_SampleLightsForSurface(
-            rng, tileRng, surface,
+        RTXDI_SampleParameters sampleParams = RTXDI_InitSampleParameters(
             0, // Number of samples to take from ReGIR.
             gRTXDI.localLightCandidateCount,
             gRTXDI.infiniteLightCandidateCount,
             gRTXDI.envLightCandidateCount,
-            gRTXDI.params, lightSample);
+            gRTXDI.brdfCandidateCount,
+            gRTXDI.brdfCutoff,
+            0.001f);
+
+        // Generate initial candidates.
+        RAB_LightSample lightSample;
+        RTXDI_Reservoir reservoir = RTXDI_SampleLightsForSurface(
+            rng, tileRng, surface, sampleParams, gRTXDI.params, lightSample);
 
         // Store selected light sample in a reservoir for later reuse and shading.
         RTXDI_StoreReservoir(reservoir, gRTXDI.params, pixelID, outputReservoirIndex);

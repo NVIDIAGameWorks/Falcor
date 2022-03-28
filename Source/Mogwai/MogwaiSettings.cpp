@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -251,7 +251,7 @@ namespace Mogwai
                 auto recentScripts = file.menu("Recent Scripts");
                 for (auto path : appData.getRecentScripts())
                 {
-                    if (recentScripts.item(path))
+                    if (recentScripts.item(path.string()))
                     {
                         mpRenderer->loadScriptDeferred(path);
                         appData.addRecentScript(path);
@@ -264,7 +264,7 @@ namespace Mogwai
                 auto recentScenes = file.menu("Recent Scenes");
                 for (auto path : appData.getRecentScenes())
                 {
-                    if (recentScenes.item(path))
+                    if (recentScenes.item(path.string()))
                     {
                         mpRenderer->loadScene(path);
                         appData.addRecentScene(path);
@@ -317,35 +317,30 @@ namespace Mogwai
         return false;
     }
 
-    bool noMods(InputModifiers m)
-    {
-        return !(m.isAltDown || m.isCtrlDown || m.isShiftDown);
-    }
-
     bool MogwaiSettings::keyboardEvent(const KeyboardEvent& e)
     {
         if (e.type == KeyboardEvent::Type::KeyPressed)
         {
-            if (e.mods.isAltDown) return false;
+            if (e.hasModifier(Input::Modifier::Alt)) return false;
 
             // Regular keystrokes
-            if (noMods(e.mods))
+            if (e.mods == Input::ModifierFlags::None)
             {
                 switch (e.key)
                 {
-                case KeyboardEvent::Key::F1:
+                case Input::Key::F1:
                     shortcuts();
                     break;
-                case KeyboardEvent::Key::F10:
+                case Input::Key::F10:
                     mShowFps = !mShowFps;
                     break;
-                case KeyboardEvent::Key::F11:
+                case Input::Key::F11:
                     mAutoHideMenu = !mAutoHideMenu;
                     break;
-                case KeyboardEvent::Key::F6:
+                case Input::Key::F6:
                     mShowGraphUI = !mShowGraphUI;
                     break;
-                case KeyboardEvent::Key::F9:
+                case Input::Key::F9:
                     mShowTime = !mShowTime;
                     break;
                 default:
@@ -353,11 +348,11 @@ namespace Mogwai
                 }
                 return true;
             }
-            else if (e.mods.isCtrlDown)
+            else if (e.hasModifier(Input::Modifier::Ctrl))
             {
-                if (e.key == KeyboardEvent::Key::O)
+                if (e.key == Input::Key::O)
                 {
-                    e.mods.isShiftDown ? mpRenderer->loadSceneDialog() : mpRenderer->loadScriptDialog();
+                    e.hasModifier(Input::Modifier::Shift) ? mpRenderer->loadSceneDialog() : mpRenderer->loadScriptDialog();
                     return true;
                 }
                 else return false;

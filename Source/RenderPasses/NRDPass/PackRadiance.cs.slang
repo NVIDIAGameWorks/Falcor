@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,48 +25,76 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#define COMPILER_DXC
-#include "nrd/Shaders/NRD.hlsli"
+#define NRD_COMPILER_DXC
+#include "nrd/Shaders/Include/NRD.hlsli"
 
 import Utils.Color.ColorHelpers;
 
+#ifndef NRD_METHOD
+// NRD_METHOD must be defined in order to use this module.
+#error "NRD_METHOD not defined!"
+#endif
+
+#define NRD_METHOD_RELAX_DIFFUSE_SPECULAR 0
+#define NRD_METHOD_REBLUR_DIFFUSE_SPECULAR 1
+
 cbuffer PerImageCB
 {
-    float gMaxIntensity;
+    float4  gHitDistParams;
+    float   gMaxIntensity;
 
-    Texture2D<float4>   gDiffuseRadianceHitDist;
-    Texture2D<float4>   gSpecularRadianceHitDist;
+    Texture2D<float>    gViewZ;
+    Texture2D<float4>   gNormalRoughness;
 
-    RWTexture2D<float4> gOutDiffuseRadianceHitDist;
-    RWTexture2D<float4> gOutSpecularRadianceHitDist;
+    RWTexture2D<float4> gDiffuseRadianceHitDist;
+    RWTexture2D<float4> gSpecularRadianceHitDist;
 };
+
+void clampRadiance(inout float3 diffuseRadiance, inout float3 specularRadiance)
+{
+    static const float kEpsilon = 1e-6f;
+
+    float lDiff = luminance(diffuseRadiance);
+    if (lDiff > kEpsilon)
+    {
+        diffuseRadiance *= min(gMaxIntensity / lDiff, 1.f);
+    }
+
+    float lSpec = luminance(specularRadiance);
+    if (lSpec > kEpsilon)
+    {
+        specularRadiance *= min(gMaxIntensity / lSpec, 1.f);
+    }
+}
 
 [numthreads(16, 16, 1)]
 void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
-    static const float kEpsilon = 1e-6f;
-
     int2 ipos = dispatchThreadId.xy;
 
     float4 diffuseRadianceHitDist = gDiffuseRadianceHitDist[ipos];
     float4 specularRadianceHitDist = gSpecularRadianceHitDist[ipos];
 
-    // Clamp radiance.
-    float lDiff = luminance(diffuseRadianceHitDist.rgb);
-    if (lDiff > kEpsilon)
-    {
-        diffuseRadianceHitDist.rgb *= min(gMaxIntensity / lDiff, 1.f);
-    }
+    clampRadiance(diffuseRadianceHitDist.rgb, specularRadianceHitDist.rgb);
 
-    float lSpec = luminance(specularRadianceHitDist.rgb);
-    if (lSpec > kEpsilon)
-    {
-        specularRadianceHitDist.rgb *= min(gMaxIntensity / lSpec, 1.f);
-    }
+#if NRD_METHOD == NRD_METHOD_RELAX_DIFFUSE_SPECULAR
 
     diffuseRadianceHitDist = RELAX_FrontEnd_PackRadianceAndHitDist(diffuseRadianceHitDist.rgb, diffuseRadianceHitDist.a);
     specularRadianceHitDist = RELAX_FrontEnd_PackRadianceAndHitDist(specularRadianceHitDist.rgb, specularRadianceHitDist.a);
 
-    gOutDiffuseRadianceHitDist[ipos] = diffuseRadianceHitDist;
-    gOutSpecularRadianceHitDist[ipos] = specularRadianceHitDist;
+#else // NRD_METHOD == NRD_METHOD_REBLUR_DIFFUSE_SPECULAR
+
+    float viewZ = gViewZ[ipos];
+    float linearRoughness = gNormalRoughness[ipos].z;
+
+    diffuseRadianceHitDist.a = REBLUR_FrontEnd_GetNormHitDist(diffuseRadianceHitDist.a, viewZ, gHitDistParams, linearRoughness);
+    REBLUR_FrontEnd_PackRadianceAndHitDist(diffuseRadianceHitDist.rgb, diffuseRadianceHitDist.a);
+
+    specularRadianceHitDist.a = REBLUR_FrontEnd_GetNormHitDist(specularRadianceHitDist.a, viewZ, gHitDistParams, linearRoughness);
+    REBLUR_FrontEnd_PackRadianceAndHitDist(specularRadianceHitDist.rgb, specularRadianceHitDist.a);
+
+#endif
+
+    gDiffuseRadianceHitDist[ipos] = diffuseRadianceHitDist;
+    gSpecularRadianceHitDist[ipos] = specularRadianceHitDist;
 }

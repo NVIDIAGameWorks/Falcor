@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -49,9 +49,9 @@ namespace Falcor
         /** Request loading a material texture.
             \param[in] pMaterial Material to load texture into.
             \param[in] slot Slot to load texture into.
-            \param[in] filename Texture filename.
+            \param[in] path Texture file path.
         */
-        void loadTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const std::string& filename);
+        void loadTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const std::filesystem::path& path);
 
     private:
         void assignTextures();

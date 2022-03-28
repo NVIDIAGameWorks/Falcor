@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -56,5 +56,5 @@ private:
 
     void setPerFrameVars(const Fbo* pTargetFbo);
     void renderRT(RenderContext* pContext, const Fbo* pTargetFbo);
-    void loadScene(const std::string& filename, const Fbo* pTargetFbo);
+    void loadScene(const std::filesystem::path& path, const Fbo* pTargetFbo);
 };

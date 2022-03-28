@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -46,6 +46,8 @@ namespace Falcor
         */
         static SharedPtr create(uint32_t brickWidth = 7, bool compressed = false);
 
+        virtual UpdateFlags update(RenderContext* pRenderContext) override;
+
         uint32_t getVirtualBrickCoordsBitCount() const { return mVirtualBrickCoordsBitCount; }
         uint32_t getBrickLocalVoxelCoordsBrickCount() const { return mBrickLocalVoxelCoordsBitCount; }
         bool isCompressed() const { return mCompressed; }
@@ -62,7 +64,7 @@ namespace Falcor
         virtual void setShaderData(const ShaderVar& var) const override;
 
     protected:
-        void createResourcesFromPrimitives(RenderContext* pRenderContext, bool deleteScratchData);
+        UpdateFlags createResourcesFromPrimitives(RenderContext* pRenderContext, bool deleteScratchData);
         void createResourcesFromValues(RenderContext* pRenderContext, bool deleteScratchData);
 
         void allocatePrimitiveBits();
@@ -104,7 +106,8 @@ namespace Falcor
         ComputePass::SharedPtr mpCreateRootChunksFromPrimitives;
         ComputePass::SharedPtr mpSubdivideChunksUsingPrimitives;
         ComputePass::SharedPtr mpCompactifyChunks;
-        ComputePass::SharedPtr mpPruneEmptyBricks;
+        ComputePass::SharedPtr mpCoarselyPruneEmptyBricks;
+        ComputePass::SharedPtr mpFinelyPruneEmptyBricks;
         ComputePass::SharedPtr mpCreateBricksFromChunks;
 
         // Compute passes used to build the SBS from both values and primitives.
@@ -122,5 +125,6 @@ namespace Falcor
         Buffer::SharedPtr mpSubChunkValidityBuffer;
         Buffer::SharedPtr mpSubChunkCoordsBuffer;
         Buffer::SharedPtr mpSubdivisionArgBuffer;
+        GpuFence::SharedPtr mpReadbackFence;
     };
 }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -34,7 +34,7 @@ namespace Falcor
 
     BitonicSort::BitonicSort()
     {
-#if !FALCOR_ENABLE_NVAPI
+#if !FALCOR_NVAPI_AVAILABLE
         throw RuntimeError("BitonicSort requires NVAPI. See installation instructions in README.");
 #endif
         mSort.pState = ComputeState::create();

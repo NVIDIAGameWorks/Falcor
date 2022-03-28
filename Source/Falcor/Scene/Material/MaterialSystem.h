@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -50,6 +50,7 @@ namespace Falcor
 
         struct MaterialStats
         {
+            uint64_t materialTypeCount = 0;             ///< Number of material types.
             uint64_t materialCount = 0;                 ///< Number of materials.
             uint64_t materialOpaqueCount = 0;           ///< Number of materials that are opaque.
             uint64_t materialMemoryInBytes = 0;         ///< Total memory in bytes used by the material data.
@@ -89,12 +90,19 @@ namespace Falcor
         */
         Shader::DefineList getDefines() const;
 
-        /** Get type conformances.
-            These need to be set on a program before using the material system.
+        /** Get type conformances for all material types used.
+            These need to be set on a program before using the material system in shaders
+            that need to create a material of *any* type, such as compute or raygen shaders.
             The update() function must have been called before calling this function.
             \return List of type conformances.
         */
         Program::TypeConformanceList getTypeConformances() const;
+
+        /** Get type conformances for a given material type.
+            \param[in] type Material type.
+            \return List of type conformances.
+        */
+        Program::TypeConformanceList getTypeConformances(const MaterialType type) const;
 
         /** Get the parameter block with all material resources.
             The update() function must have been called before calling this function.
@@ -149,6 +157,10 @@ namespace Falcor
         */
         uint32_t getMaterialCountByType(const MaterialType type) const;
 
+        /** Get the set of all material types used.
+        */
+        std::set<MaterialType> getMaterialTypes() const { return mMaterialTypes; }
+
         /** Get a material by ID.
         */
         const Material::SharedPtr& getMaterial(const uint32_t materialID) const;
@@ -186,6 +198,7 @@ namespace Falcor
 
         std::vector<Material::SharedPtr> mMaterials;                ///< List of all materials.
         std::vector<uint32_t> mMaterialCountByType;                 ///< Number of materials of each type, indexed by MaterialType.
+        std::set<MaterialType> mMaterialTypes;                      ///< Set of all material types used.
         uint32_t mSpecGlossMaterialCount = 0;                       ///< Number of standard materials using the SpecGloss shading model.
         TextureManager::SharedPtr mpTextureManager;                 ///< Texture manager holding all material textures.
         size_t mTextureDescCount = 0;                               ///< Number of texture descriptors in GPU descriptor array. This variable is for book-keeping until unbounded descriptor arrays are supported (see #1321).

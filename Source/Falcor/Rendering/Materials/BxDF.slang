@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -60,7 +60,7 @@ struct DiffuseReflectionLambert : IBxDF
 {
     float3 albedo;  ///< Diffuse albedo.
 
-    float3 eval(const float3 wi, const float3 wo)
+    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
     {
         if (min(wi.z, wo.z) < kMinCosTheta) return float3(0.f);
 
@@ -98,7 +98,7 @@ struct DiffuseReflectionDisney : IBxDF
     float3 albedo;          ///< Diffuse albedo.
     float roughness;        ///< Roughness before remapping.
 
-    float3 eval(const float3 wi, const float3 wo)
+    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
     {
         if (min(wi.z, wo.z) < kMinCosTheta) return float3(0.f);
 
@@ -151,7 +151,7 @@ struct DiffuseReflectionFrostbite : IBxDF
     float3 albedo;          ///< Diffuse albedo.
     float roughness;        ///< Roughness before remapping.
 
-    float3 eval(const float3 wi, const float3 wo)
+    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
     {
         if (min(wi.z, wo.z) < kMinCosTheta) return float3(0.f);
 
@@ -203,7 +203,7 @@ struct DiffuseTransmissionLambert : IBxDF
 {
     float3 albedo;  ///< Diffuse albedo.
 
-    float3 eval(const float3 wi, const float3 wo)
+    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
     {
         if (min(wi.z, -wo.z) < kMinCosTheta) return float3(0.f);
 
@@ -244,7 +244,7 @@ struct SpecularReflectionMicrofacet : IBxDF
 
     bool hasLobe(LobeType lobe) { return (activeLobes & (uint)lobe) != 0; }
 
-    float3 eval(const float3 wi, const float3 wo)
+    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
     {
         if (min(wi.z, wo.z) < kMinCosTheta) return float3(0.f);
 
@@ -309,7 +309,7 @@ struct SpecularReflectionMicrofacet : IBxDF
 #if ExplicitSampleWeights
         // For testing.
         pdf = evalPdf(wi, wo);
-        weight = eval(wi, wo) / pdf;
+        weight = eval(wi, wo, sg) / pdf;
         lobe = (uint)LobeType::SpecularReflection;
         return true;
 #endif
@@ -366,7 +366,7 @@ struct SpecularReflectionTransmissionMicrofacet : IBxDF
 
     bool hasLobe(LobeType lobe) { return (activeLobes & (uint)lobe) != 0; }
 
-    float3 eval(const float3 wi, const float3 wo)
+    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
     {
         if (min(wi.z, abs(wo.z)) < kMinCosTheta) return float3(0.f);
 
@@ -493,7 +493,7 @@ struct SpecularReflectionTransmissionMicrofacet : IBxDF
 #if ExplicitSampleWeights
         // For testing.
         pdf = evalPdf(wi, wo);
-        weight = pdf > 0.f ? eval(wi, wo) / pdf : float3(0.f);
+        weight = pdf > 0.f ? eval(wi, wo, sg) / pdf : float3(0.f);
         return true;
 #endif
 
@@ -720,13 +720,13 @@ struct FalcorBSDF : IBxDF
         return lobes;
     }
 
-    float3 eval(const float3 wi, const float3 wo)
+    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
     {
         float3 result = 0.f;
-        if (pDiffuseReflection > 0.f) result += (1.f - specTrans) * (1.f - diffTrans) * diffuseReflection.eval(wi, wo);
-        if (pDiffuseTransmission > 0.f) result += (1.f - specTrans) * diffTrans * diffuseTransmission.eval(wi, wo);
-        if (pSpecularReflection > 0.f) result += (1.f - specTrans) * specularReflection.eval(wi, wo);
-        if (pSpecularReflectionTransmission > 0.f) result += specTrans * (specularReflectionTransmission.eval(wi, wo));
+        if (pDiffuseReflection > 0.f) result += (1.f - specTrans) * (1.f - diffTrans) * diffuseReflection.eval(wi, wo, sg);
+        if (pDiffuseTransmission > 0.f) result += (1.f - specTrans) * diffTrans * diffuseTransmission.eval(wi, wo, sg);
+        if (pSpecularReflection > 0.f) result += (1.f - specTrans) * specularReflection.eval(wi, wo, sg);
+        if (pSpecularReflectionTransmission > 0.f) result += specTrans * (specularReflectionTransmission.eval(wi, wo, sg));
         return result;
     }
 

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -222,7 +222,7 @@ namespace Falcor
     {
         if (mEnabled)
         {
-            if (mouseEvent.type == MouseEvent::Type::LeftButtonDown)
+            if (mouseEvent.type == MouseEvent::Type::ButtonDown && mouseEvent.button == Input::MouseButton::Left)
             {
                 mSelectedPixel = uint2(mouseEvent.pos * float2(mFrameDim));
                 return true;

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -93,11 +93,9 @@ namespace Falcor
         */
         using LibraryFunc = void(*)(RenderPassLibrary& lib);
 
-        using StrVec = std::vector<std::string>;
-
         /** Get list of registered libraries
         */
-        static StrVec enumerateLibraries();
+        static std::vector<std::string> enumerateLibraries();
 
     private:
         static RenderPassLibrary* spInstance;
@@ -105,21 +103,21 @@ namespace Falcor
         struct ExtendedDesc : RenderPassDesc
         {
             ExtendedDesc() = default;
-            ExtendedDesc(const RenderPass::Info& info, CreateFunc func, DllHandle module) : RenderPassDesc(info, func), module(module) {}
+            ExtendedDesc(const RenderPass::Info& info, CreateFunc func, SharedLibraryHandle library) : RenderPassDesc(info, func), library(library) {}
 
-            DllHandle module = nullptr;
+            SharedLibraryHandle library = nullptr;
         };
 
-        void registerInternal(const RenderPass::Info& info, CreateFunc func, DllHandle hmodule);
+        void registerInternal(const RenderPass::Info& info, CreateFunc func, SharedLibraryHandle library);
 
         struct LibDesc
         {
-            DllHandle module;
+            SharedLibraryHandle library;
             time_t lastModified;
         };
         std::unordered_map<std::string, LibDesc> mLibs;
         std::unordered_map<std::string, ExtendedDesc> mPasses;
 
-        void reloadLibrary(RenderContext* pRenderContext, std::string name);
+        void reloadLibrary(RenderContext* pRenderContext, const std::string& filename);
     };
 }

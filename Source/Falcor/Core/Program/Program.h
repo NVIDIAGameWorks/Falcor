@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -59,13 +59,13 @@ namespace Falcor
                 This is equivalent to: `Desc().addShaderLibrary(path)`
                 \param[in] path Path to the source code.
             */
-            explicit Desc(const std::string& path);
+            explicit Desc(const std::filesystem::path& path);
 
             /** Add a file of source code to use.
                 This also sets the given file as the "active" source for subsequent entry points.
                 \param[in] path Path to the source code.
             */
-            Desc& addShaderLibrary(const std::string& path);
+            Desc& addShaderLibrary(const std::filesystem::path& path);
 
             /** Add a string of source code to use.
                 This also sets the given string as the "active" source for subsequent entry points.
@@ -87,6 +87,7 @@ namespace Falcor
             Desc& csEntry(const std::string& name) { return entryPoint(ShaderType::Compute, name); }
 
             /** Adds a list of type conformances.
+                The type conformances are linked into all shaders in the program.
             */
             Desc& addTypeConformances(const TypeConformanceList& typeConformances) { mTypeConformances.add(typeConformances); return *this; }
 
@@ -121,11 +122,10 @@ namespace Falcor
 
         protected:
             friend class Program;
-            friend class GraphicsProgram;
             friend class RtProgram;
 
-            Desc& beginEntryPointGroup();
-            Desc& addDefaultVertexShaderIfNeeded();
+            Desc& beginEntryPointGroup(const std::string& entryPointNameSuffix = "");
+            Desc& addTypeConformancesToGroup(const TypeConformanceList& typeConformances);
             uint32_t declareEntryPoint(ShaderType type, const std::string& name);
 
             struct Source
@@ -148,23 +148,27 @@ namespace Falcor
 
             struct EntryPointGroup
             {
-                std::vector<uint32_t> entryPoints;
+                std::vector<uint32_t> entryPoints;          ///< Indices into `mEntryPoints` for all entry points in the group.
+                TypeConformanceList typeConformances;       ///< Type conformances linked into all shaders in the group.
+                std::string nameSuffix;                     ///< Suffix added to the entry point names by Slang's code generation.
             };
 
             struct EntryPoint
             {
-                std::string name;
+                std::string name;                           ///< Name of the entry point in the shader source.
+                std::string exportName;                     ///< Name of the entry point in the generated code.
                 ShaderType stage;
                 int32_t sourceIndex;
+                int32_t groupIndex;                         ///< Entry point group index.
             };
 
             std::vector<Source> mSources;
             std::vector<EntryPointGroup> mGroups;
             std::vector<EntryPoint> mEntryPoints;
-            TypeConformanceList mTypeConformances;
+            TypeConformanceList mTypeConformances;          ///< Type conformances linked into all shaders in the program.
 
-            int32_t mActiveSource = -1;
-            int32_t mActiveGroup = -1;
+            int32_t mActiveSource = -1;                     ///< Current source index.
+            int32_t mActiveGroup = -1;                      ///< Current entry point index.
             Shader::CompilerFlags mShaderFlags = Shader::CompilerFlags::None;
             ArgumentList mCompilerArguments;
             std::string mShaderModel = "6_3";
@@ -295,10 +299,11 @@ namespace Falcor
     protected:
         friend class ::Falcor::ProgramVersion;
 
-        Program() = default;
+        static void registerProgramForReload(const SharedPtr& pProg);
 
-        void init(Desc const& desc, DefineList const& programDefines);
+        Program(Desc const& desc, DefineList const& programDefines);
 
+        void validateEntryPoints() const;
         bool link() const;
 
         SlangCompileRequest* createSlangCompileRequest(
@@ -328,17 +333,17 @@ namespace Falcor
 
         virtual ProgramKernels::SharedPtr createProgramKernels(
             const ProgramVersion* pVersion,
-            slang::IComponentType* pSpecializedSlangProgram,
+            slang::IComponentType* pSpecializedSlangGlobalScope,
+            const std::vector<slang::IComponentType*>& pTypeConformanceSpecializedEntryPoints,
             const ProgramReflection::SharedPtr& pReflector,
             const ProgramKernels::UniqueEntryPointGroups& uniqueEntryPointGroups,
             std::string& log,
             const std::string& name = "") const;
 
         // The description used to create this program
-        Desc mDesc;
+        const Desc mDesc;
 
         DefineList mDefineList;
-
         TypeConformanceList mTypeConformanceList;
 
         // We are doing lazy compilation, so these are mutable
@@ -348,7 +353,7 @@ namespace Falcor
         void markDirty() { mLinkRequired = true; }
 
         std::string getProgramDescString() const;
-        static std::vector<std::weak_ptr<Program>> sPrograms;
+        static std::vector<std::weak_ptr<Program>> sProgramsForReload;
         static CompilationStats sCompilationStats;
 
         using string_time_map = std::unordered_map<std::string, time_t>;

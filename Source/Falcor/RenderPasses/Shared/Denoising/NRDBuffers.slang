@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -49,11 +49,11 @@ struct NRDBuffers
     RWTexture2D<float4> deltaReflectionEmission;                ///< Output per-pixel delta reflection emission. Only valid if kOutputNRDAdditionalData == true.
     RWTexture2D<float4> deltaReflectionNormWRoughMaterialID;    ///< Output per-pixel delta reflection world normal, roughness, and material ID. Only valid if kOutputNRDAdditionalData == true.
     RWTexture2D<float>  deltaReflectionPathLength;              ///< Output per-pixel delta reflection path length. Only valid if kOutputNRDAdditionalData == true.
-    RWTexture2D<float2> deltaReflectionMotionVectors;           ///< Output per-pixel delta reflection screen-space motion vector. Only valid if kOutputNRDAdditionalData == true.
+    RWTexture2D<float>  deltaReflectionHitDist;                 ///< Output per-pixel delta reflection hit distance. Only valid if kOutputNRDAdditionalData == true.
+
     RWTexture2D<float4> deltaTransmissionReflectance;           ///< Output per-pixel delta transmission reflectance. Only valid if kOutputNRDAdditionalData == true.
     RWTexture2D<float4> deltaTransmissionEmission;              ///< Output per-pixel delta transmission emission. Only valid if kOutputNRDAdditionalData == true.
     RWTexture2D<float4> deltaTransmissionNormWRoughMaterialID;  ///< Output per-pixel delta transmission world normal, roughness, and material ID. Only valid if kOutputNRDAdditionalData == true.
     RWTexture2D<float>  deltaTransmissionPathLength;            ///< Output per-pixel delta transmission path length. Only valid if kOutputNRDAdditionalData == true.
-    RWTexture2D<float2> deltaTransmissionMotionVectors;         ///< Output per-pixel delta transmission screen-space motion vector. Only valid if kOutputNRDAdditionalData == true.
     RWTexture2D<float4> deltaTransmissionPosW;                  ///< Output per-pixel delta transmission world position. Only valid if kOutputNRDAdditionalData == true.
 };

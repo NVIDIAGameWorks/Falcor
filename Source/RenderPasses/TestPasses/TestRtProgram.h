@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -56,7 +56,7 @@ public:
     static void registerScriptBindings(pybind11::module& m);
 
 private:
-    TestRtProgram() : RenderPass(kInfo) {}
+    TestRtProgram(const Dictionary& dict);
 
     void sceneChanged();
     void addCustomPrimitive();
@@ -66,6 +66,7 @@ private:
     // Internal state
     Scene::SharedPtr mpScene;
 
+    uint32_t mMode = 0;
     uint32_t mSelectedIdx = 0;
     uint32_t mPrevSelectedIdx = -1;
     uint32_t mUserID = 0;

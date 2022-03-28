@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -87,8 +87,8 @@ private:
     std::ofstream           mMeasurementsFile;
 
     // UI variables
-    std::string             mReferenceImagePath;                ///< Path to the reference used in the comparison.
-    std::string             mMeasurementsFilePath;              ///< Path to the output file where measurements are stored (.csv).
+    std::filesystem::path   mReferenceImagePath;                ///< Path to the reference used in the comparison.
+    std::filesystem::path   mMeasurementsFilePath;              ///< Path to the output file where measurements are stored (.csv).
 
     bool                    mIgnoreBackground = true;           ///< If true, do not measure error on pixels that belong to the background.
     bool                    mComputeSquaredDifference = true;   ///< Compute the square difference when creating the difference image.

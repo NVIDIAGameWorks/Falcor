@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,18 +30,13 @@
 
 namespace Falcor
 {
-    struct FboPrivateData
+    struct FboData
     {
         bool mHandleDirty = true;
     };
 
     namespace
     {
-        FboPrivateData* getFboPrivateData(void* privateData)
-        {
-            return static_cast<FboPrivateData*>(privateData);
-        }
-
         void releaseFboHandleIfEmpty(FboHandle& apiHandle, Fbo::Attachment& depthStencil, std::vector<Fbo::Attachment>& colorAttachments)
         {
             if (depthStencil.pTexture)
@@ -55,25 +50,25 @@ namespace Falcor
                     return;
                 }
             }
-            apiHandle = nullptr;
+            gpDevice->releaseResource(apiHandle);
         }
 
     }
 
     Fbo::Fbo()
     {
-        mpPrivateData = new FboPrivateData();
+        mpPrivateData = std::make_unique<FboData>();
         mColorAttachments.resize(getMaxColorTargetCount());
     }
 
     Fbo::~Fbo()
     {
-        delete getFboPrivateData(mpPrivateData);
+        gpDevice->releaseResource(mApiHandle);
     }
 
     const Fbo::ApiHandle& Fbo::getApiHandle() const
     {
-        if (getFboPrivateData(mpPrivateData)->mHandleDirty)
+        if (mpPrivateData->mHandleDirty)
         {
             initApiHandle();
         }
@@ -87,19 +82,19 @@ namespace Falcor
 
     void Fbo::applyColorAttachment(uint32_t rtIndex)
     {
-        getFboPrivateData(mpPrivateData)->mHandleDirty = true;
+        mpPrivateData->mHandleDirty = true;
         releaseFboHandleIfEmpty(mApiHandle, mDepthStencil, mColorAttachments);
     }
 
     void Fbo::applyDepthAttachment()
     {
-        getFboPrivateData(mpPrivateData)->mHandleDirty = true;
+        mpPrivateData->mHandleDirty = true;
         releaseFboHandleIfEmpty(mApiHandle, mDepthStencil, mColorAttachments);
     }
 
     void Fbo::initApiHandle() const
     {
-        getFboPrivateData(mpPrivateData)->mHandleDirty = false;
+        mpPrivateData->mHandleDirty = false;
 
         gfx::IFramebufferLayout::Desc layoutDesc = {};
         std::vector<gfx::IFramebufferLayout::AttachmentLayout> attachmentLayouts;
@@ -117,9 +112,10 @@ namespace Falcor
         std::vector<gfx::IResourceView*> renderTargetViews;
         for (uint32_t i = 0; i < static_cast<uint32_t>(mColorAttachments.size()); i++)
         {
+            gfx::IFramebufferLayout::AttachmentLayout renderAttachmentLayout = {};
+
             if (mColorAttachments[i].pTexture)
             {
-                gfx::IFramebufferLayout::AttachmentLayout renderAttachmentLayout = {};
                 auto texture = static_cast<gfx::ITextureResource*>(mColorAttachments[i].pTexture->getApiHandle().get());
                 renderAttachmentLayout.format = texture->getDesc()->format;
                 renderAttachmentLayout.sampleCount = texture->getDesc()->sampleDesc.numSamples;
@@ -127,16 +123,28 @@ namespace Falcor
                 renderTargetViews.push_back(getRenderTargetView(i)->getApiHandle());
                 desc.renderTargetCount = i + 1;
             }
+            else
+            {
+                auto dimension = mColorAttachments[i].arraySize > 1 ? RenderTargetView::Dimension::Texture2DArray : RenderTargetView::Dimension::Texture2D;
+                renderAttachmentLayout.format = gfx::Format::R8G8B8A8_UNORM;
+                renderAttachmentLayout.sampleCount = 1;
+                renderTargetViews.push_back(RenderTargetView::getNullView(dimension)->getApiHandle());
+                attachmentLayouts.push_back(renderAttachmentLayout);
+            }
         }
         desc.renderTargetViews = renderTargetViews.data();
         layoutDesc.renderTargetCount = desc.renderTargetCount;
         layoutDesc.renderTargets = attachmentLayouts.data();
 
+        // Push FBO handle to deferred release queue so it remains valid
+        // for pending GPU commands.
+        gpDevice->releaseResource(mApiHandle);
+
         Slang::ComPtr<gfx::IFramebufferLayout> fboLayout;
-        FALCOR_ASSERT(SLANG_SUCCEEDED(gpDevice->getApiHandle()->createFramebufferLayout(layoutDesc, fboLayout.writeRef())));
+        FALCOR_GFX_CALL(gpDevice->getApiHandle()->createFramebufferLayout(layoutDesc, fboLayout.writeRef()));
 
         desc.layout = fboLayout.get();
-        FALCOR_ASSERT(SLANG_SUCCEEDED(gpDevice->getApiHandle()->createFramebuffer(desc, mApiHandle.writeRef())));
+        FALCOR_GFX_CALL(gpDevice->getApiHandle()->createFramebuffer(desc, mApiHandle.writeRef()));
     }
 
     RenderTargetView::SharedPtr Fbo::getRenderTargetView(uint32_t rtIndex) const

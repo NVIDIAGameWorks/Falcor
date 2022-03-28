@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,6 +31,13 @@ struct Params
 {
     int a;
     uint b;
+
+    // This float3 field is not used in the test but it is here
+    // to make sure we are currently using `scalar` layout on Vulkan.
+    // Otherwise GLSL's default std140 rules will result in a different layout
+    // from D3D12 and cause the test to fail.
+    float3 val;
+
     float c;
 };
 

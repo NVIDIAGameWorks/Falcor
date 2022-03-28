@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -126,10 +126,10 @@ namespace Falcor
         {
             throw RuntimeError("LightCollection requires conservative rasterization tier 3 support.");
         }
-
-#if !FALCOR_ENABLE_NVAPI
-        throw RuntimeError("LightCollection requires NVAPI. See installation instructions in README.");
-#endif
+        if (!gpDevice->isShaderModelSupported(Device::ShaderModel::SM6_6))
+        {
+            throw RuntimeError("LightCollection requires Shader Model 6.6 support.");
+        }
 
         // Create program.
         auto defines = scene.getSceneDefines();
@@ -137,6 +137,7 @@ namespace Falcor
 
         Program::Desc desc;
         desc.addShaderLibrary(kEmissiveIntegratorFile).vsEntry("vsMain").gsEntry("gsMain").psEntry("psMain");
+        desc.setShaderModel("6_6");
         mIntegrator.pProgram = GraphicsProgram::create(desc, defines);
 
         // Create graphics state.
@@ -337,6 +338,7 @@ namespace Falcor
 
             // Bind our resources.
             mIntegrator.pVars["gTexelMax"] = pTexelMax;
+            mIntegrator.pVars["gTexelSum"].setUav(UnorderedAccessView::getNullView(ReflectionResourceType::Dimensions::Buffer));
 
             // Execute.
             mIntegrator.pProgram->addDefine("INTEGRATOR_PASS", "1");
@@ -496,14 +498,20 @@ namespace Falcor
         // Read back the current data. This is potentially expensive.
         syncCPUData();
 
+        const uint32_t triCount = (uint32_t)mMeshLightTriangles.size();
+        const uint32_t kInvalidActiveIndex = ~0u;
+
+        mTriToActiveList.clear();
+        mTriToActiveList.resize(triCount, kInvalidActiveIndex);
         mActiveTriangleList.clear();
-        mActiveTriangleList.reserve(mMeshLightTriangles.size());
+        mActiveTriangleList.reserve(triCount);
 
         // Iterate over the emissive triangles.
-        for (uint32_t triIdx = 0; triIdx < (uint32_t)mMeshLightTriangles.size(); triIdx++)
+        for (uint32_t triIdx = 0; triIdx < triCount; triIdx++)
         {
             if (mMeshLightTriangles[triIdx].flux > 0.f)
             {
+                mTriToActiveList[triIdx] = (uint32_t)mActiveTriangleList.size();
                 mActiveTriangleList.push_back(triIdx);
             }
         }
@@ -523,6 +531,16 @@ namespace Falcor
             {
                 mpActiveTriangleList->setBlob(mActiveTriangleList.data(), 0, activeCount * sizeof(mActiveTriangleList[0]));
             }
+        }
+
+        if (!mpTriToActiveList || mpTriToActiveList->getElementCount() < triCount)
+        {
+            mpTriToActiveList = Buffer::createStructured(sizeof(uint32_t), triCount, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, mTriToActiveList.data(), false);
+            mpTriToActiveList->setName("LightCollection::mpTriToActiveList");
+        }
+        else
+        {
+            mpTriToActiveList->setBlob(mTriToActiveList.data(), 0, triCount * sizeof(mTriToActiveList[0]));
         }
     }
 
@@ -576,6 +594,8 @@ namespace Falcor
                 FALCOR_ASSERT(mpActiveTriangleList);
                 var["activeTriangles"] = mpActiveTriangleList;
             }
+
+            var["triToActiveMapping"] = mpTriToActiveList;
         }
         else
         {
@@ -686,6 +706,7 @@ namespace Falcor
         uint64_t m = 0;
         if (mpTriangleData) m += mpTriangleData->getSize();
         if (mpActiveTriangleList) m += mpActiveTriangleList->getSize();
+        if (mpTriToActiveList) m += mpTriToActiveList->getSize();
         if (mpFluxData) m += mpFluxData->getSize();
         if (mpMeshData) m += mpMeshData->getSize();
         if (mpPerMeshInstanceOffset) m += mpPerMeshInstanceOffset->getSize();

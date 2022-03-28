@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -64,8 +64,8 @@ namespace Falcor
     using CPUTestFunc = std::function<void(CPUUnitTestContext& ctx)>;
     using GPUTestFunc = std::function<void(GPUUnitTestContext& ctx)>;
 
-    FALCOR_API void registerCPUTest(const std::string& filename, const std::string& name, const std::string& skipMessage, CPUTestFunc func);
-    FALCOR_API void registerGPUTest(const std::string& filename, const std::string& name, const std::string& skipMessage, GPUTestFunc func);
+    FALCOR_API void registerCPUTest(const std::filesystem::path& path, const std::string& name, const std::string& skipMessage, CPUTestFunc func);
+    FALCOR_API void registerGPUTest(const std::filesystem::path& path, const std::string& name, const std::string& skipMessage, GPUTestFunc func);
     FALCOR_API int32_t runTests(std::ostream& stream, RenderContext* pRenderContext, const std::string& testFilterRegexp, uint32_t repeatCount = 1);
 
     class FALCOR_API UnitTestContext
@@ -103,7 +103,7 @@ namespace Falcor
             otherwise specified with the |csEntry| parameter.  Preprocessor
             defines and compiler flags can also be optionally provided.
         */
-        void createProgram(const std::string& path,
+        void createProgram(const std::filesystem::path& path,
                            const std::string& csEntry = "main",
                            const Program::DefineList& programDefines = Program::DefineList(),
                            Shader::CompilerFlags flags = Shader::CompilerFlags::None,
@@ -349,8 +349,9 @@ namespace Falcor
     struct CPUUnitTestRegisterer##Name {                                        \
         CPUUnitTestRegisterer##Name()                                           \
         {                                                                       \
+            std::filesystem::path path = __FILE__;                              \
             const char* skipMessage = "" __VA_ARGS__;                           \
-            registerCPUTest(__FILE__, #Name, skipMessage, CPUUnitTest##Name);   \
+            registerCPUTest(path, #Name, skipMessage, CPUUnitTest##Name);       \
         }                                                                       \
     } RegisterCPUTest##Name;                                                    \
     static void CPUUnitTest##Name(CPUUnitTestContext& ctx) /* over to the user for the braces */
@@ -364,8 +365,9 @@ namespace Falcor
     struct GPUUnitTestRegisterer##Name {                                        \
         GPUUnitTestRegisterer##Name()                                           \
         {                                                                       \
+            std::filesystem::path path = __FILE__;                              \
             const char* skipMessage = "" __VA_ARGS__;                           \
-            registerGPUTest(__FILE__, #Name, skipMessage, GPUUnitTest##Name);   \
+            registerGPUTest(path, #Name, skipMessage, GPUUnitTest##Name);       \
         }                                                                       \
     } RegisterGPUTest##Name;                                                    \
     static void GPUUnitTest##Name(GPUUnitTestContext& ctx) /* over to the user for the braces */

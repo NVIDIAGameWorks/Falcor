@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -67,7 +67,7 @@ namespace Falcor
             }
         };
 
-        void dumpHistogram(const std::string& filename, const double* pData, double factor, uint32_t width, uint32_t height)
+        void dumpHistogram(const std::filesystem::path& path, const double* pData, double factor, uint32_t width, uint32_t height)
         {
             std::vector<float> img(width * height * 3, 0);
             for (uint32_t y = 0; y < height; ++y)
@@ -81,7 +81,7 @@ namespace Falcor
                     img[index + 2] = value;
                 }
             }
-            Bitmap::saveImage(filename, width, height, Bitmap::FileFormat::ExrFile, Bitmap::ExportFlags::None, ResourceFormat::RGB32Float, true, img.data());
+            Bitmap::saveImage(path, width, height, Bitmap::FileFormat::ExrFile, Bitmap::ExportFlags::None, ResourceFormat::RGB32Float, true, img.data());
         }
 
         struct SamplingTestSpec

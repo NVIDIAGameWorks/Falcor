@@ -15,4 +15,10 @@ render_frames(m, 'default', frames=[1])
 m.loadScene('CurveTest/two_curves.pyscene')
 render_frames(m, 'two_curves', frames=[1])
 
+g.updatePass('TestRtProgram', {'mode': 1})
+
+# test for dynamic dispatch
+m.loadScene('TestScenes/AlphaTest/AlphaTest.pyscene')
+render_frames(m, 'types', frames=[1])
+
 exit()

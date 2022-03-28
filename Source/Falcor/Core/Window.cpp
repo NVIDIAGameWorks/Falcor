@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "stdafx.h"
 #include "Core/Window.h"
-#include "Utils/UI/UserInput.h"
+#include "Utils/UI/InputTypes.h"
 
 // Don't include GL/GLES headers
 #define GLFW_INCLUDE_NONE
@@ -115,16 +115,20 @@ namespace Falcor
         {
             MouseEvent event;
             // Prepare the mouse data
+            MouseEvent::Type type = (action == GLFW_PRESS) ? MouseEvent::Type::ButtonDown : MouseEvent::Type::ButtonUp;
             switch (button)
             {
             case GLFW_MOUSE_BUTTON_LEFT:
-                event.type = (action == GLFW_PRESS) ? MouseEvent::Type::LeftButtonDown : MouseEvent::Type::LeftButtonUp;
+                event.type = type;
+                event.button = Input::MouseButton::Left;
                 break;
             case GLFW_MOUSE_BUTTON_MIDDLE:
-                event.type = (action == GLFW_PRESS) ? MouseEvent::Type::MiddleButtonDown : MouseEvent::Type::MiddleButtonUp;
+                event.type = type;
+                event.button = Input::MouseButton::Middle;
                 break;
             case GLFW_MOUSE_BUTTON_RIGHT:
-                event.type = (action == GLFW_PRESS) ? MouseEvent::Type::RightButtonDown : MouseEvent::Type::RightButtonUp;
+                event.type = type;
+                event.button = Input::MouseButton::Right;
                 break;
             default:
                 // Other keys are not supported
@@ -173,150 +177,152 @@ namespace Falcor
             {
                 for (int i = 0; i < count; i++)
                 {
-                    std::string filename(paths[i]);
-                    pWindow->mpCallbacks->handleDroppedFile(filename);
+                    std::filesystem::path path(paths[i]);
+                    pWindow->mpCallbacks->handleDroppedFile(path);
                 }
             }
         }
     private:
 
-        static inline KeyboardEvent::Key glfwToFalcorKey(int glfwKey)
+        static inline Input::Key glfwToFalcorKey(int glfwKey)
         {
             static_assert(GLFW_KEY_ESCAPE == 256, "GLFW_KEY_ESCAPE is expected to be 256");
+            static_assert((uint32_t)Input::Key::Escape >= 256, "Input::Key::Escape is expected to be at least 256");
+
             if (glfwKey < GLFW_KEY_ESCAPE)
             {
                 // Printable keys are expected to have the same value
-                return (KeyboardEvent::Key)glfwKey;
+                return (Input::Key)glfwKey;
             }
 
             switch (glfwKey)
             {
             case GLFW_KEY_ESCAPE:
-                return KeyboardEvent::Key::Escape;
+                return Input::Key::Escape;
             case GLFW_KEY_ENTER:
-                return KeyboardEvent::Key::Enter;
+                return Input::Key::Enter;
             case GLFW_KEY_TAB:
-                return KeyboardEvent::Key::Tab;
+                return Input::Key::Tab;
             case GLFW_KEY_BACKSPACE:
-                return KeyboardEvent::Key::Backspace;
+                return Input::Key::Backspace;
             case GLFW_KEY_INSERT:
-                return KeyboardEvent::Key::Insert;
+                return Input::Key::Insert;
             case GLFW_KEY_DELETE:
-                return KeyboardEvent::Key::Del;
+                return Input::Key::Del;
             case GLFW_KEY_RIGHT:
-                return KeyboardEvent::Key::Right;
+                return Input::Key::Right;
             case GLFW_KEY_LEFT:
-                return KeyboardEvent::Key::Left;
+                return Input::Key::Left;
             case GLFW_KEY_DOWN:
-                return KeyboardEvent::Key::Down;
+                return Input::Key::Down;
             case GLFW_KEY_UP:
-                return KeyboardEvent::Key::Up;
+                return Input::Key::Up;
             case GLFW_KEY_PAGE_UP:
-                return KeyboardEvent::Key::PageUp;
+                return Input::Key::PageUp;
             case GLFW_KEY_PAGE_DOWN:
-                return KeyboardEvent::Key::PageDown;
+                return Input::Key::PageDown;
             case GLFW_KEY_HOME:
-                return KeyboardEvent::Key::Home;
+                return Input::Key::Home;
             case GLFW_KEY_END:
-                return KeyboardEvent::Key::End;
+                return Input::Key::End;
             case GLFW_KEY_CAPS_LOCK:
-                return KeyboardEvent::Key::CapsLock;
+                return Input::Key::CapsLock;
             case GLFW_KEY_SCROLL_LOCK:
-                return KeyboardEvent::Key::ScrollLock;
+                return Input::Key::ScrollLock;
             case GLFW_KEY_NUM_LOCK:
-                return KeyboardEvent::Key::NumLock;
+                return Input::Key::NumLock;
             case GLFW_KEY_PRINT_SCREEN:
-                return KeyboardEvent::Key::PrintScreen;
+                return Input::Key::PrintScreen;
             case GLFW_KEY_PAUSE:
-                return KeyboardEvent::Key::Pause;
+                return Input::Key::Pause;
             case GLFW_KEY_F1:
-                return KeyboardEvent::Key::F1;
+                return Input::Key::F1;
             case GLFW_KEY_F2:
-                return KeyboardEvent::Key::F2;
+                return Input::Key::F2;
             case GLFW_KEY_F3:
-                return KeyboardEvent::Key::F3;
+                return Input::Key::F3;
             case GLFW_KEY_F4:
-                return KeyboardEvent::Key::F4;
+                return Input::Key::F4;
             case GLFW_KEY_F5:
-                return KeyboardEvent::Key::F5;
+                return Input::Key::F5;
             case GLFW_KEY_F6:
-                return KeyboardEvent::Key::F6;
+                return Input::Key::F6;
             case GLFW_KEY_F7:
-                return KeyboardEvent::Key::F7;
+                return Input::Key::F7;
             case GLFW_KEY_F8:
-                return KeyboardEvent::Key::F8;
+                return Input::Key::F8;
             case GLFW_KEY_F9:
-                return KeyboardEvent::Key::F9;
+                return Input::Key::F9;
             case GLFW_KEY_F10:
-                return KeyboardEvent::Key::F10;
+                return Input::Key::F10;
             case GLFW_KEY_F11:
-                return KeyboardEvent::Key::F11;
+                return Input::Key::F11;
             case GLFW_KEY_F12:
-                return KeyboardEvent::Key::F12;
+                return Input::Key::F12;
             case GLFW_KEY_KP_0:
-                return KeyboardEvent::Key::Keypad0;
+                return Input::Key::Keypad0;
             case GLFW_KEY_KP_1:
-                return KeyboardEvent::Key::Keypad1;
+                return Input::Key::Keypad1;
             case GLFW_KEY_KP_2:
-                return KeyboardEvent::Key::Keypad2;
+                return Input::Key::Keypad2;
             case GLFW_KEY_KP_3:
-                return KeyboardEvent::Key::Keypad3;
+                return Input::Key::Keypad3;
             case GLFW_KEY_KP_4:
-                return KeyboardEvent::Key::Keypad4;
+                return Input::Key::Keypad4;
             case GLFW_KEY_KP_5:
-                return KeyboardEvent::Key::Keypad5;
+                return Input::Key::Keypad5;
             case GLFW_KEY_KP_6:
-                return KeyboardEvent::Key::Keypad6;
+                return Input::Key::Keypad6;
             case GLFW_KEY_KP_7:
-                return KeyboardEvent::Key::Keypad7;
+                return Input::Key::Keypad7;
             case GLFW_KEY_KP_8:
-                return KeyboardEvent::Key::Keypad8;
+                return Input::Key::Keypad8;
             case GLFW_KEY_KP_9:
-                return KeyboardEvent::Key::Keypad9;
+                return Input::Key::Keypad9;
             case GLFW_KEY_KP_DECIMAL:
-                return KeyboardEvent::Key::KeypadDel;
+                return Input::Key::KeypadDel;
             case GLFW_KEY_KP_DIVIDE:
-                return KeyboardEvent::Key::KeypadDivide;
+                return Input::Key::KeypadDivide;
             case GLFW_KEY_KP_MULTIPLY:
-                return KeyboardEvent::Key::KeypadMultiply;
+                return Input::Key::KeypadMultiply;
             case GLFW_KEY_KP_SUBTRACT:
-                return KeyboardEvent::Key::KeypadSubtract;
+                return Input::Key::KeypadSubtract;
             case GLFW_KEY_KP_ADD:
-                return KeyboardEvent::Key::KeypadAdd;
+                return Input::Key::KeypadAdd;
             case GLFW_KEY_KP_ENTER:
-                return KeyboardEvent::Key::KeypadEnter;
+                return Input::Key::KeypadEnter;
             case GLFW_KEY_KP_EQUAL:
-                return KeyboardEvent::Key::KeypadEqual;
+                return Input::Key::KeypadEqual;
             case GLFW_KEY_LEFT_SHIFT:
-                return KeyboardEvent::Key::LeftShift;
+                return Input::Key::LeftShift;
             case GLFW_KEY_LEFT_CONTROL:
-                return KeyboardEvent::Key::LeftControl;
+                return Input::Key::LeftControl;
             case GLFW_KEY_LEFT_ALT:
-                return KeyboardEvent::Key::LeftAlt;
+                return Input::Key::LeftAlt;
             case GLFW_KEY_LEFT_SUPER:
-                return KeyboardEvent::Key::LeftSuper;
+                return Input::Key::LeftSuper;
             case GLFW_KEY_RIGHT_SHIFT:
-                return KeyboardEvent::Key::RightShift;
+                return Input::Key::RightShift;
             case GLFW_KEY_RIGHT_CONTROL:
-                return KeyboardEvent::Key::RightControl;
+                return Input::Key::RightControl;
             case GLFW_KEY_RIGHT_ALT:
-                return KeyboardEvent::Key::RightAlt;
+                return Input::Key::RightAlt;
             case GLFW_KEY_RIGHT_SUPER:
-                return KeyboardEvent::Key::RightSuper;
+                return Input::Key::RightSuper;
             case GLFW_KEY_MENU:
-                return KeyboardEvent::Key::Menu;
+                return Input::Key::Menu;
             default:
-                FALCOR_UNREACHABLE();
-                return (KeyboardEvent::Key)0;
+                return Input::Key::Unknown;
             }
         }
 
-        static inline InputModifiers getInputModifiers(int mask)
+        static inline Input::ModifierFlags getInputModifiers(int mask)
         {
-            InputModifiers mods;
-            mods.isAltDown = (mask & GLFW_MOD_ALT) != 0;
-            mods.isCtrlDown = (mask & GLFW_MOD_CONTROL) != 0;
-            mods.isShiftDown = (mask & GLFW_MOD_SHIFT) != 0;
+            // The GLFW mods should match the Input::ModifierFlags, but this is used for now to be safe if it changes in the future.
+            Input::ModifierFlags mods = Input::ModifierFlags::None;
+            if (mask & GLFW_MOD_ALT) mods |= Input::ModifierFlags::Alt;
+            if (mask & GLFW_MOD_CONTROL) mods |= Input::ModifierFlags::Ctrl;
+            if (mask & GLFW_MOD_SHIFT) mods |= Input::ModifierFlags::Shift;
             return mods;
         }
 
@@ -486,7 +492,7 @@ namespace Falcor
 
         while (glfwWindowShouldClose(mpGLFWWindow) == false)
         {
-            glfwPollEvents();
+            pollForEvents();
             mpCallbacks->handleRenderFrame();
         }
     }
@@ -504,6 +510,113 @@ namespace Falcor
     void Window::pollForEvents()
     {
         glfwPollEvents();
+        handleGamepadInput();
+    }
+
+    struct Window::GamepadData
+    {
+        static constexpr int kInvalidID = -1;
+        bool initialized = false;
+        int activeID = kInvalidID;
+        GamepadState previousState;
+    };
+
+    void Window::handleGamepadInput()
+    {
+        // Perform one-time initialization.
+        if (!mpGamepadData)
+        {
+            mpGamepadData = std::make_unique<GamepadData>();
+
+            // Register mappings for NV controllers.
+            static char nvPadMapping[] =
+                "03000000550900001472000000000000,NVIDIA Controller v01.04,a:b11,b:b10,back:b13,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b12,leftshoulder:b7,leftstick:b5,lefttrigger:a4,leftx:a0,lefty:a1,rightshoulder:b6,rightstick:b4,righttrigger:a5,rightx:a3,righty:a6,start:b3,x:b9,y:b8,platform:Windows,\n"
+                "03000000550900001072000000000000,NVIDIA Shield,a:b9,b:b8,back:b11,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,leftshoulder:b5,leftstick:b3,lefttrigger:a3,leftx:a0,lefty:a1,rightshoulder:b4,rightstick:b2,righttrigger:a4,rightx:a2,righty:a5,start:b0,x:b7,y:b6,platform:Windows,\n"
+                "030000005509000000b4000000000000,NVIDIA Virtual Gamepad,a:b0,b:b1,back:b6,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,leftshoulder:b4,leftstick:b8,lefttrigger:+a2,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b9,righttrigger:-a2,rightx:a3,righty:a4,start:b7,x:b2,y:b3,platform:Windows,";
+            glfwUpdateGamepadMappings(nvPadMapping);
+        }
+
+        // Check if a gamepad is connected.
+        if (mpGamepadData->activeID == GamepadData::kInvalidID)
+        {
+            for (int id = GLFW_JOYSTICK_1; id <= GLFW_JOYSTICK_LAST; ++id)
+            {
+                if (glfwJoystickPresent(id) && glfwJoystickIsGamepad(id))
+                {
+                    std::string name(glfwGetJoystickName(id));
+                    logInfo("Gamepad '{}' connected.", name);
+                    mpGamepadData->activeID = id;
+                    mpGamepadData->previousState = {};
+
+                    GamepadEvent event { GamepadEvent::Type::Connected };
+                    mpCallbacks->handleGamepadEvent(event);
+
+                    break;
+                }
+            }
+        }
+
+        // Check if gamepad is disconnected.
+        if (mpGamepadData->activeID != GamepadData::kInvalidID)
+        {
+            if (!(glfwJoystickPresent(mpGamepadData->activeID) && glfwJoystickIsGamepad(mpGamepadData->activeID)))
+            {
+                logInfo("Gamepad disconnected.");
+                mpGamepadData->activeID = GamepadData::kInvalidID;
+
+                GamepadEvent event { GamepadEvent::Type::Disconnected };
+                mpCallbacks->handleGamepadEvent(event);
+            }
+        }
+
+        if (mpGamepadData->activeID == GamepadData::kInvalidID) return;
+
+        GLFWgamepadstate glfwState;
+        if (glfwGetGamepadState(mpGamepadData->activeID, &glfwState) != GLFW_TRUE) return;
+
+        GamepadState currentState;
+        currentState.leftX = glfwState.axes[GLFW_GAMEPAD_AXIS_LEFT_X];
+        currentState.leftY = glfwState.axes[GLFW_GAMEPAD_AXIS_LEFT_Y];
+        currentState.rightX = glfwState.axes[GLFW_GAMEPAD_AXIS_RIGHT_X];
+        currentState.rightY = glfwState.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y];
+        currentState.leftTrigger = glfwState.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER];
+        currentState.rightTrigger = glfwState.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER];
+        currentState.buttons[(size_t)GamepadButton::A] = glfwState.buttons[GLFW_GAMEPAD_BUTTON_A] == GLFW_PRESS;
+        currentState.buttons[(size_t)GamepadButton::B] = glfwState.buttons[GLFW_GAMEPAD_BUTTON_B] == GLFW_PRESS;
+        currentState.buttons[(size_t)GamepadButton::X] = glfwState.buttons[GLFW_GAMEPAD_BUTTON_X] == GLFW_PRESS;
+        currentState.buttons[(size_t)GamepadButton::Y] = glfwState.buttons[GLFW_GAMEPAD_BUTTON_Y] == GLFW_PRESS;
+        currentState.buttons[(size_t)GamepadButton::LeftBumper] = glfwState.buttons[GLFW_GAMEPAD_BUTTON_LEFT_BUMPER] == GLFW_PRESS;
+        currentState.buttons[(size_t)GamepadButton::RightBumper] = glfwState.buttons[GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER] == GLFW_PRESS;
+        currentState.buttons[(size_t)GamepadButton::Back] = glfwState.buttons[GLFW_GAMEPAD_BUTTON_BACK] == GLFW_PRESS;
+        currentState.buttons[(size_t)GamepadButton::Start] = glfwState.buttons[GLFW_GAMEPAD_BUTTON_START] == GLFW_PRESS;
+        currentState.buttons[(size_t)GamepadButton::Guide] = glfwState.buttons[GLFW_GAMEPAD_BUTTON_GUIDE] == GLFW_PRESS;
+        currentState.buttons[(size_t)GamepadButton::LeftThumb] = glfwState.buttons[GLFW_GAMEPAD_BUTTON_LEFT_THUMB] == GLFW_PRESS;
+        currentState.buttons[(size_t)GamepadButton::RightThumb] = glfwState.buttons[GLFW_GAMEPAD_BUTTON_RIGHT_THUMB] == GLFW_PRESS;
+        currentState.buttons[(size_t)GamepadButton::Up] = glfwState.buttons[GLFW_GAMEPAD_BUTTON_DPAD_UP] == GLFW_PRESS;
+        currentState.buttons[(size_t)GamepadButton::Right] = glfwState.buttons[GLFW_GAMEPAD_BUTTON_DPAD_RIGHT] == GLFW_PRESS;
+        currentState.buttons[(size_t)GamepadButton::Down] = glfwState.buttons[GLFW_GAMEPAD_BUTTON_DPAD_DOWN] == GLFW_PRESS;
+        currentState.buttons[(size_t)GamepadButton::Left] = glfwState.buttons[GLFW_GAMEPAD_BUTTON_DPAD_LEFT] == GLFW_PRESS;
+
+        auto &previousState = mpGamepadData->previousState;
+
+        // Synthesize gamepad button events.
+        for (uint32_t buttonIndex = 0; buttonIndex < (uint32_t)GamepadButton::Count; ++buttonIndex)
+        {
+            if (currentState.buttons[buttonIndex] && !previousState.buttons[buttonIndex])
+            {
+                GamepadEvent event { GamepadEvent::Type::ButtonDown, GamepadButton(buttonIndex) };
+                mpCallbacks->handleGamepadEvent(event);
+            }
+            if (!currentState.buttons[buttonIndex] && previousState.buttons[buttonIndex])
+            {
+                GamepadEvent event { GamepadEvent::Type::ButtonUp, GamepadButton(buttonIndex) };
+                mpCallbacks->handleGamepadEvent(event);
+            }
+        }
+
+        previousState = currentState;
+
+        mpCallbacks->handleGamepadState(currentState);
     }
 
     FALCOR_SCRIPT_BINDING(Window)

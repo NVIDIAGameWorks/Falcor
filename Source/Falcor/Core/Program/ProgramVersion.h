@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,8 +29,8 @@
 #include "Core/Program/ProgramReflection.h"
 #include "Core/API/Shader.h"
 
-#ifdef FALCOR_D3D12
-#include "Core/API/D3D12/D3D12RootSignature.h"
+#if FALCOR_D3D12_AVAILABLE
+#include "Core/API/Shared/D3D12RootSignature.h"
 #endif
 
 #include <slang/slang.h>
@@ -155,7 +155,8 @@ namespace Falcor
         */
         static SharedPtr create(
             const ProgramVersion* pVersion,
-            slang::IComponentType* pSpecializedSlangProgram,
+            slang::IComponentType* pSpecializedSlangGlobalScope,
+            const std::vector<slang::IComponentType*>& pTypeConformanceSpecializedEntryPoints,
             const ProgramReflection::SharedPtr& pReflector,
             const UniqueEntryPointGroups& uniqueEntryPointGroups,
             std::string& log,
@@ -190,7 +191,6 @@ namespace Falcor
     protected:
         ProgramKernels(
             const ProgramVersion* pVersion,
-            slang::IComponentType* pSpecializedSlangProgram,
             const ProgramReflection::SharedPtr& pReflector,
             const UniqueEntryPointGroups& uniqueEntryPointGroups,
             const std::string& name = "");
@@ -216,7 +216,6 @@ namespace Falcor
         using SharedPtr = std::shared_ptr<ProgramVersion>;
         using SharedConstPtr = std::shared_ptr<const ProgramVersion>;
         using DefineList = Shader::DefineList;
-        using TypeConformanceList = Shader::TypeConformanceList;
 
         /** Get the program that this version was created from
         */
@@ -253,14 +252,12 @@ namespace Falcor
 
         void init(
             const DefineList&                                   defineList,
-            const TypeConformanceList&                          typeConformanceList,
             const ProgramReflection::SharedPtr&                 pReflector,
             const std::string&                                  name,
             std::vector<ComPtr<slang::IComponentType>> const&   pSlangEntryPoints);
 
         std::shared_ptr<Program>        mpProgram;
         DefineList                      mDefines;
-        TypeConformanceList             mTypeConformances;
         ProgramReflection::SharedPtr    mpReflector;
         std::string                     mName;
         ComPtr<slang::IComponentType>   mpSlangGlobalScope;

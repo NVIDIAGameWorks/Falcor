@@ -7,7 +7,7 @@
     <ClInclude Include="HelloDXR.h" />
   </ItemGroup>
   <ItemGroup>
-    <ShaderSource Include="HelloDXR.ps.slang" />
     <ShaderSource Include="HelloDXR.rt.slang" />
+    <ShaderSource Include="HelloDXR.3d.slang" />
   </ItemGroup>
 </Project>

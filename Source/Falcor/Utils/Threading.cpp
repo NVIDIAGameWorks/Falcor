@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -84,11 +84,11 @@ namespace Falcor
 
     bool Threading::Task::isRunning()
     {
-        throw RuntimeError("Threading::Task::isRunning() is not implemented");
+        FALCOR_UNIMPLEMENTED();
     }
 
     void Threading::Task::finish()
     {
-        throw RuntimeError("Threading::Task::finish() is not implemented");
+        FALCOR_UNIMPLEMENTED();
     }
 }

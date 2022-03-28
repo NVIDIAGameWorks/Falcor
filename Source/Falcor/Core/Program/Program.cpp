@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -41,21 +41,14 @@ namespace Falcor
     static Program::DefineList sGlobalDefineList;
     static bool sGenerateDebugInfo;
 
-    static Shader::SharedPtr createShaderFromBlob(const Shader::Blob& shaderBlob, ShaderType shaderType, const std::string& entryPointName, Shader::CompilerFlags flags, std::string& log)
-    {
-        std::string errorMsg;
-        auto pShader = Shader::create(shaderBlob, shaderType, entryPointName, flags, log);
-        return pShader;
-    }
-
     Program::Desc::Desc() = default;
 
-    Program::Desc::Desc(std::string const& path)
+    Program::Desc::Desc(const std::filesystem::path& path)
     {
         addShaderLibrary(path);
     }
 
-    Program::Desc& Program::Desc::addShaderLibrary(std::string const& path)
+    Program::Desc& Program::Desc::addShaderLibrary(const std::filesystem::path& path)
     {
         Source source(ShaderLibrary::create(path));
 
@@ -72,18 +65,18 @@ namespace Falcor
         return *this;
     }
 
-    Program::Desc& Program::Desc::beginEntryPointGroup()
+    Program::Desc& Program::Desc::beginEntryPointGroup(const std::string& entryPointNameSuffix)
     {
         mActiveGroup = (int32_t)mGroups.size();
         mGroups.push_back(EntryPointGroup());
+        mGroups[mActiveGroup].nameSuffix = entryPointNameSuffix;
 
         return *this;
     }
 
     Program::Desc& Program::Desc::entryPoint(ShaderType shaderType, std::string const& name)
     {
-        if (name.size() == 0)
-            return *this;
+        checkArgument(!name.empty(), "Missing entry point name.");
 
         if (mActiveGroup < 0)
         {
@@ -107,19 +100,17 @@ namespace Falcor
         return false;
     }
 
-    Program::Desc& Program::Desc::addDefaultVertexShaderIfNeeded()
+    Program::Desc& Program::Desc::addTypeConformancesToGroup(const TypeConformanceList& typeConformances)
     {
-        // Don't set default vertex shader if one was set already.
-        if (hasEntryPoint(ShaderType::Vertex))
-        {
-            return *this;
-        }
-        return addShaderLibrary("Scene/Raster.slang").entryPoint(ShaderType::Vertex, "defaultVS");
+        FALCOR_ASSERT(mActiveGroup >= 0);
+        mGroups[mActiveGroup].typeConformances.add(typeConformances);
+        return *this;
     }
 
     uint32_t Program::Desc::declareEntryPoint(ShaderType type, const std::string& name)
     {
         FALCOR_ASSERT(!name.empty());
+        FALCOR_ASSERT(mActiveGroup >= 0 && mActiveGroup < mGroups.size());
 
         if (mActiveSource < 0)
         {
@@ -129,7 +120,9 @@ namespace Falcor
         EntryPoint entryPoint;
         entryPoint.stage = type;
         entryPoint.name = name;
+        entryPoint.exportName = name + mGroups[mActiveGroup].nameSuffix;
         entryPoint.sourceIndex = mActiveSource;
+        entryPoint.groupIndex = mActiveGroup;
 
         uint32_t index = (uint32_t)mEntryPoints.size();
         mEntryPoints.push_back(entryPoint);
@@ -168,15 +161,35 @@ namespace Falcor
     }
 
     // Program
-    std::vector<std::weak_ptr<Program>> Program::sPrograms;
+    std::vector<std::weak_ptr<Program>> Program::sProgramsForReload;
     Program::CompilationStats Program::sCompilationStats;
 
-    void Program::init(Desc const& desc, DefineList const& defineList)
+    void Program::registerProgramForReload(const SharedPtr& pProg)
     {
-        mDesc = desc;
-        mDefineList = defineList;
-        mTypeConformanceList = desc.mTypeConformances;
-        sPrograms.push_back(shared_from_this());
+        sProgramsForReload.push_back(pProg);
+    }
+
+    Program::Program(Desc const& desc, DefineList const& defineList)
+        : mDesc(desc)
+        , mDefineList(defineList)
+        , mTypeConformanceList(desc.mTypeConformances)
+    {
+        validateEntryPoints();
+    }
+
+    void Program::validateEntryPoints() const
+    {
+        // Check that all exported entry point names are unique for each shader type.
+        // They don't necessarily have to be, but it could be an indication of the program not created correctly.
+        using NameTypePair = std::pair<std::string, ShaderType>;
+        std::set<NameTypePair> entryPointNamesAndTypes;
+        for (const auto& e : mDesc.mEntryPoints)
+        {
+            if (!entryPointNamesAndTypes.insert(NameTypePair(e.exportName, e.stage)).second)
+            {
+                logWarning("Duplicate program entry points '{}' of type '{}'.", e.exportName, to_string(e.stage));
+            }
+        }
     }
 
     Program::~Program()
@@ -196,7 +209,7 @@ namespace Falcor
             switch (src.type)
             {
             case Desc::Source::Type::File:
-                desc += src.pLibrary->getFilename();
+                desc += src.pLibrary->getPath().string();
                 break;
             case Desc::Source::Type::String:
                 desc += "Created from string";
@@ -211,7 +224,7 @@ namespace Falcor
                 auto& entryPoint = mDesc.mEntryPoints[src.entryPoints[ee]];
 
                 if (ee != 0) desc += ", ";
-                desc += entryPoint.name;
+                desc += entryPoint.exportName;
             }
             desc += ")";
         }
@@ -337,7 +350,6 @@ namespace Falcor
         return false;
     }
 
-
     bool Program::checkIfFilesChanged()
     {
         if (mpActiveVersion == nullptr)
@@ -433,8 +445,24 @@ namespace Falcor
         slang::TargetDesc&  ioTargetDesc,
         char const*&        ioTargetMacroName) const
     {
+#ifdef FALCOR_D3D12
         ioTargetDesc.format = SLANG_DXIL;
         ioTargetMacroName = "FALCOR_D3D";
+#else
+        switch (gpDevice->getApiHandle()->getDeviceInfo().deviceType)
+        {
+        case gfx::DeviceType::DirectX12:
+            ioTargetDesc.format = SLANG_DXIL;
+            ioTargetMacroName = "FALCOR_D3D";
+            break;
+        case gfx::DeviceType::Vulkan:
+            ioTargetDesc.format = SLANG_SPIRV;
+            ioTargetMacroName = "FALCOR_VK";
+            break;
+        default:
+            FALCOR_UNREACHABLE();
+        }
+#endif
     }
 
     SlangCompileRequest* Program::createSlangCompileRequest(
@@ -445,16 +473,18 @@ namespace Falcor
 
         slang::SessionDesc sessionDesc;
 
-        // Add our media search paths as `#include` search paths for Slang.
+        // Add our shader search paths as `#include` search paths for Slang.
         //
         // Note: Slang allows application to plug in a callback API to
         // implement file I/O, and this could be used instead of specifying
         // the data directories to Slang.
         //
+        std::vector<std::string> searchPaths;
         std::vector<const char*> slangSearchPaths;
         for (auto& path : getShaderDirectoriesList())
         {
-            slangSearchPaths.push_back(path.c_str());
+            searchPaths.push_back(path.string());
+            slangSearchPaths.push_back(searchPaths.back().data());
         }
         sessionDesc.searchPaths = slangSearchPaths.data();
         sessionDesc.searchPathCount = (SlangInt)slangSearchPaths.size();
@@ -483,6 +513,8 @@ namespace Falcor
         else if (flagPrecise) slangFpMode = SLANG_FLOATING_POINT_MODE_PRECISE;
 
         targetDesc.floatingPointMode = slangFpMode;
+
+        targetDesc.forceGLSLScalarBufferLayout = true;
 
         const char* targetMacroName;
 
@@ -589,18 +621,19 @@ namespace Falcor
             if (src.type == Desc::Source::Type::File)
             {
                 // If this is not an HLSL or a SLANG file, display a warning
-                if (!hasSuffix(src.pLibrary->getFilename(), ".hlsl", false) && !hasSuffix(src.pLibrary->getFilename(), ".slang", false))
+                const auto& path = src.pLibrary->getPath();
+                if (!(hasExtension(path, "hlsl") || hasExtension(path, "slang")))
                 {
                     logWarning("Compiling a shader file which is not a SLANG file or an HLSL file. This is not an error, but make sure that the file contains valid shaders");
                 }
-                std::string fullpath;
-                if (!findFileInShaderDirectories(src.pLibrary->getFilename(), fullpath))
+                std::filesystem::path fullPath;
+                if (!findFileInShaderDirectories(path, fullPath))
                 {
-                    reportError("Can't find file " + src.pLibrary->getFilename());
+                    reportError("Can't find file " + src.pLibrary->getPath().string());
                     spDestroyCompileRequest(pSlangRequest);
                     return nullptr;
                 }
-                spAddTranslationUnitSourceFile(pSlangRequest, translationUnitIndex, fullpath.c_str());
+                spAddTranslationUnitSourceFile(pSlangRequest, translationUnitIndex, fullPath.string().c_str());
             }
             else
             {
@@ -709,65 +742,106 @@ namespace Falcor
 #endif
         // Create a composite component type that represents all type conformances
         // linked into the `ProgramVersion`.
-        ComPtr<slang::IComponentType> pTypeConformancesCompositeComponent;
-        std::vector<ComPtr<slang::ITypeConformance>> typeConformanceComponentList;
-        std::vector<slang::IComponentType*> typeConformanceComponentRawPtrList;
-        for (auto& typeConformance : mTypeConformanceList)
+        auto createTypeConformanceComponentList = [&](const TypeConformanceList& typeConformances) -> ComPtr<slang::IComponentType>
         {
-            ComPtr<slang::IBlob> pSlangDiagnostics;
+            ComPtr<slang::IComponentType> pTypeConformancesCompositeComponent;
+            std::vector<ComPtr<slang::ITypeConformance>> typeConformanceComponentList;
+            std::vector<slang::IComponentType*> typeConformanceComponentRawPtrList;
 
-            ComPtr<slang::ITypeConformance> pTypeConformanceComponent;
-            auto slangType = pSlangGlobalScope->getLayout()->findTypeByName(typeConformance.first.mTypeName.c_str());
-            auto slangInterfaceType = pSlangGlobalScope->getLayout()->findTypeByName(typeConformance.first.mInterfaceName.c_str());
-            if (!slangType || !slangInterfaceType)
+            for (auto& typeConformance : typeConformances)
             {
-                // If the specified type is not in the current program context, quietly ignore the conformance.
-                continue;
+                ComPtr<slang::IBlob> pSlangDiagnostics;
+
+                ComPtr<slang::ITypeConformance> pTypeConformanceComponent;
+                auto slangType = pSlangGlobalScope->getLayout()->findTypeByName(typeConformance.first.mTypeName.c_str());
+                auto slangInterfaceType = pSlangGlobalScope->getLayout()->findTypeByName(typeConformance.first.mInterfaceName.c_str());
+                if (!slangType || !slangInterfaceType)
+                {
+                    // If the specified type is not in the current program context, quietly ignore the conformance.
+                    continue;
+                }
+                pSlangSession->createTypeConformanceComponentType(
+                    slangType,
+                    slangInterfaceType,
+                    pTypeConformanceComponent.writeRef(),
+                    (SlangInt)typeConformance.second,
+                    pSlangDiagnostics.writeRef());
+                if (pSlangDiagnostics && pSlangDiagnostics->getBufferSize() > 0)
+                {
+                    log += (char const*)pSlangDiagnostics->getBufferPointer();
+                }
+                if (pTypeConformanceComponent)
+                {
+                    typeConformanceComponentList.push_back(pTypeConformanceComponent);
+                    typeConformanceComponentRawPtrList.push_back(pTypeConformanceComponent.get());
+                }
             }
-            pSlangSession->createTypeConformanceComponentType(
-                slangType,
-                slangInterfaceType,
-                pTypeConformanceComponent.writeRef(),
-                (SlangInt)typeConformance.second,
-                pSlangDiagnostics.writeRef());
-            if (pSlangDiagnostics && pSlangDiagnostics->getBufferSize() > 0)
+            if (!typeConformanceComponentList.empty())
             {
-                log += (char const*)pSlangDiagnostics->getBufferPointer();
+                ComPtr<slang::IBlob> pSlangDiagnostics;
+                pSlangSession->createCompositeComponentType(
+                    &typeConformanceComponentRawPtrList[0],
+                    (SlangInt)typeConformanceComponentRawPtrList.size(),
+                    pTypeConformancesCompositeComponent.writeRef(),
+                    pSlangDiagnostics.writeRef());
             }
-            if (pTypeConformanceComponent)
-            {
-                typeConformanceComponentList.push_back(pTypeConformanceComponent);
-                typeConformanceComponentRawPtrList.push_back(pTypeConformanceComponent.get());
-            }
-        }
-        if (typeConformanceComponentList.size())
+            return pTypeConformancesCompositeComponent;
+        };
+
+        // Create one composite component type for the type conformances of each entry point group.
+        // The type conformances for each group is the combination of the global and group type conformances.
+        std::vector<ComPtr<slang::IComponentType>> typeConformancesCompositeComponents;
+        typeConformancesCompositeComponents.reserve(getEntryPointGroupCount());
+        for (const auto& group : mDesc.mGroups)
         {
-            ComPtr<slang::IBlob> pSlangDiagnostics;
-            pSlangSession->createCompositeComponentType(
-                &typeConformanceComponentRawPtrList[0],
-                (SlangInt)typeConformanceComponentRawPtrList.size(),
-                pTypeConformancesCompositeComponent.writeRef(),
-                pSlangDiagnostics.writeRef());
+            TypeConformanceList typeConformances = mTypeConformanceList;
+            typeConformances.add(group.typeConformances);
+            typeConformancesCompositeComponents.emplace_back(createTypeConformanceComponentList(typeConformances));
         }
 
         // Create a `IComponentType` for each entry point.
         uint32_t allEntryPointCount = uint32_t(mDesc.mEntryPoints.size());
+
+        std::vector<ComPtr<slang::IComponentType>> pTypeConformanceSpecializedEntryPoints;
+        std::vector<slang::IComponentType*> pTypeConformanceSpecializedEntryPointsRawPtr;
         std::vector<ComPtr<slang::IComponentType>> pLinkedEntryPoints;
 
         for (uint32_t ee = 0; ee < allEntryPointCount; ++ee)
         {
             auto pSlangEntryPoint = pVersion->getSlangEntryPoint(ee);
 
-            slang::IComponentType* componentTypes[] = { pSpecializedSlangGlobalScope, pSlangEntryPoint, pTypeConformancesCompositeComponent };
+            int32_t groupIndex = mDesc.mEntryPoints[ee].groupIndex;
+            FALCOR_ASSERT(groupIndex >= 0 && groupIndex < typeConformancesCompositeComponents.size());
+
+            ComPtr<slang::IBlob> pSlangDiagnostics;
+
+            ComPtr<slang::IComponentType> pTypeComformanceSpecializedEntryPoint;
+            if (typeConformancesCompositeComponents[groupIndex])
+            {
+                slang::IComponentType* componentTypes[] = { pSlangEntryPoint, typeConformancesCompositeComponents[groupIndex] };
+                pSlangSession->createCompositeComponentType(
+                    componentTypes,
+                    2,
+                    pTypeComformanceSpecializedEntryPoint.writeRef(),
+                    pSlangDiagnostics.writeRef());
+            }
+            else
+            {
+                pTypeComformanceSpecializedEntryPoint = pSlangEntryPoint;
+            }
+            pTypeConformanceSpecializedEntryPoints.push_back(pTypeComformanceSpecializedEntryPoint);
+            pTypeConformanceSpecializedEntryPointsRawPtr.push_back(pTypeComformanceSpecializedEntryPoint.get());
 
             ComPtr<slang::IComponentType> pLinkedSlangEntryPoint;
-            ComPtr<slang::IBlob> pSlangDiagnostics;
-            pSlangSession->createCompositeComponentType(
-                componentTypes,
-                pTypeConformancesCompositeComponent ? 3 : 2,
-                pLinkedSlangEntryPoint.writeRef(),
-                pSlangDiagnostics.writeRef());
+            {
+                slang::IComponentType* componentTypes[] = { pSpecializedSlangGlobalScope, pTypeComformanceSpecializedEntryPoint };
 
+                pSlangSession->createCompositeComponentType(
+                    componentTypes,
+                    2,
+                    pLinkedSlangEntryPoint.writeRef(),
+                    pSlangDiagnostics.writeRef());
+            }
             pLinkedEntryPoints.push_back(pLinkedSlangEntryPoint);
         }
 
@@ -816,10 +890,7 @@ namespace Falcor
             //
             std::vector<slang::IComponentType*> componentTypesForProgram;
             componentTypesForProgram.push_back(pSpecializedSlangGlobalScope);
-            if (pTypeConformancesCompositeComponent)
-            {
-                componentTypesForProgram.push_back(pTypeConformancesCompositeComponent);
-            }
+
             for (uint32_t ee = 0; ee < allEntryPointCount; ++ee)
             {
                 // TODO: Eventually this would need to use the specialized
@@ -827,6 +898,16 @@ namespace Falcor
                 //
                 auto pSlangEntryPoint = pVersion->getSlangEntryPoint(ee);
                 componentTypesForProgram.push_back(pSlangEntryPoint);
+            }
+
+            // Add type conformances for all entry point groups.
+            // TODO: Is it correct to put all these in the global scope?
+            for (auto pTypeConformancesComposite : typeConformancesCompositeComponents)
+            {
+                if (pTypeConformancesComposite)
+                {
+                    componentTypesForProgram.push_back(pTypeConformancesComposite);
+                }
             }
 
             pSlangSession->createCompositeComponentType(
@@ -838,35 +919,18 @@ namespace Falcor
         ProgramReflection::SharedPtr pReflector;
         doSlangReflection(pVersion, pSpecializedSlangProgram, pLinkedEntryPoints, pReflector, log);
 
-#ifdef FALCOR_D3D12
-        // Create Shader objects for each entry point and cache them here
+        // Create Shader objects for each entry point and cache them here.
         std::vector<Shader::SharedPtr> allShaders;
         for (uint32_t i = 0; i < allEntryPointCount; i++)
         {
             auto pLinkedEntryPoint = pLinkedEntryPoints[i];
             auto entryPointDesc = mDesc.mEntryPoints[i];
 
-            Shader::Blob blob;
-            ComPtr<slang::IBlob> pSlangDiagnostics;
-            bool failed = SLANG_FAILED(pLinkedEntryPoint->getEntryPointCode(
-                /* entryPointIndex: */ 0,
-                /* targetIndex: */ 0,
-                blob.writeRef(),
-                pSlangDiagnostics.writeRef()));
-
-            if (pSlangDiagnostics && pSlangDiagnostics->getBufferSize() > 0)
-            {
-                log += (char const*)pSlangDiagnostics->getBufferPointer();
-            }
-
-            if (failed) return nullptr;
-
-            Shader::SharedPtr shader = createShaderFromBlob(blob, entryPointDesc.stage, entryPointDesc.name, mDesc.getCompilerFlags(), log);
+            Shader::SharedPtr shader = Shader::create(pLinkedEntryPoint, entryPointDesc.stage, entryPointDesc.exportName, mDesc.getCompilerFlags(), log);
             if (!shader) return nullptr;
 
             allShaders.push_back(std::move(shader));
         }
-#endif
 
         // In order to construct the `ProgramKernels` we need to extract
         // the kernels for each entry-point group.
@@ -887,12 +951,10 @@ namespace Falcor
             // version of the entry-point group.
             //
             std::vector<Shader::SharedPtr> shaders;
-#ifdef FALCOR_D3D12
             for (auto entryPointIndex : entryPointGroupDesc.entryPoints)
             {
                 shaders.push_back(allShaders[entryPointIndex]);
             }
-#endif
             auto pGroupReflector = pReflector->getEntryPointGroup(gg);
             auto pEntryPointGroupKernels = createEntryPointGroupKernels(shaders, pGroupReflector);
             entryPointGroups.push_back(pEntryPointGroupKernels);
@@ -901,7 +963,8 @@ namespace Falcor
         auto descStr = getProgramDescString();
         ProgramKernels::SharedPtr pProgramKernels = createProgramKernels(
             pVersion,
-            pSpecializedSlangProgram,
+            pSpecializedSlangGlobalScope,
+            pTypeConformanceSpecializedEntryPointsRawPtr,
             pReflector,
             entryPointGroups,
             log,
@@ -919,7 +982,8 @@ namespace Falcor
 
     ProgramKernels::SharedPtr Program::createProgramKernels(
         const ProgramVersion* pVersion,
-        slang::IComponentType* pSpecializedSlangProgram,
+        slang::IComponentType* pSpecializedSlangGlobalScope,
+        const std::vector<slang::IComponentType*>& pTypeConformanceSpecializedEntryPoints,
         const ProgramReflection::SharedPtr& pReflector,
         const ProgramKernels::UniqueEntryPointGroups& uniqueEntryPointGroups,
         std::string& log,
@@ -927,7 +991,8 @@ namespace Falcor
     {
         return ProgramKernels::create(
             pVersion,
-            pSpecializedSlangProgram,
+            pSpecializedSlangGlobalScope,
+            pTypeConformanceSpecializedEntryPoints,
             pReflector,
             uniqueEntryPointGroups,
             log,
@@ -958,22 +1023,34 @@ namespace Falcor
 
         ComPtr<slang::ISession> pSlangSession(pSlangGlobalScope->getSession());
 
+        // Prepare entry points.
         std::vector<ComPtr<slang::IComponentType>> pSlangEntryPoints;
         uint32_t entryPointCount = (uint32_t)mDesc.mEntryPoints.size();
         for (uint32_t ee = 0; ee < entryPointCount; ++ee)
         {
-            auto entryPointDesc = mDesc.mEntryPoints[ee];
-
             ComPtr<slang::IComponentType> pSlangEntryPoint;
             spCompileRequest_getEntryPoint(
                 pSlangRequest,
                 ee,
                 pSlangEntryPoint.writeRef());
 
-            pSlangEntryPoints.push_back(pSlangEntryPoint);
+            // Rename entry point in the generated code if the exported name differs from the source name.
+            // This makes it possible to generate different specializations of the same source entry point,
+            // for example by setting different type conformances.
+            const auto& entryPointDesc = mDesc.mEntryPoints[ee];
+            if (entryPointDesc.exportName != entryPointDesc.name)
+            {
+                ComPtr<slang::IComponentType> pRenamedEntryPoint;
+                pSlangEntryPoint->renameEntryPoint(entryPointDesc.exportName.c_str(), pRenamedEntryPoint.writeRef());
+                pSlangEntryPoints.push_back(pRenamedEntryPoint);
+            }
+            else
+            {
+                pSlangEntryPoints.push_back(pSlangEntryPoint);
+            }
         }
 
-        // Extract list of files referenced, for dependency-tracking purposes
+        // Extract list of files referenced, for dependency-tracking purposes.
         int depFileCount = spGetDependencyFileCount(pSlangRequest);
         for (int ii = 0; ii < depFileCount; ++ii)
         {
@@ -1017,7 +1094,6 @@ namespace Falcor
         auto descStr = getProgramDescString();
         pVersion->init(
             mDefineList,
-            mTypeConformanceList,
             pReflector,
             descStr,
             pSlangEntryPoints);
@@ -1080,7 +1156,7 @@ namespace Falcor
     {
         bool hasReloaded = false;
 
-        // The `sPrograms` array stores weak pointers, and we will
+        // The `sProgramsForReload` array stores weak pointers, and we will
         // use this step as a chance to clean up the contents of
         // the array that might have changed to `nullptr` because
         // the `Program` has been deleted.
@@ -1090,20 +1166,19 @@ namespace Falcor
         // reading and one for writing. The write iterator will
         // be explicit:
         //
-        auto writeIter = sPrograms.begin();
+        auto writeIter = sProgramsForReload.begin();
         //
         // The read iterator will be implicit in our loop over the
         // entire array of programs:
         //
-        for (auto& pWeakProgram : sPrograms)
+        for (auto& pWeakProgram : sProgramsForReload)
         {
             // We will skip any programs where the weak pointer
             // has changed to `nullptr` because the object was
             // already deleted.
             //
             auto pProgram = pWeakProgram.lock();
-            if (!pProgram)
-                continue;
+            if (!pProgram) continue;
 
             // Now we know that we have a valid (non-null) `Program`,
             // so we wnat to keep it in the array for next time.
@@ -1115,8 +1190,7 @@ namespace Falcor
             // we can skip further processing of this program
             // (unless forceReload flag is set).
             //
-            if (!(pProgram->checkIfFilesChanged() || forceReload))
-                continue;
+            if (!(pProgram->checkIfFilesChanged() || forceReload)) continue;
 
             // If any files have changed, then we need to reset
             // the caches of compiled information for the program.
@@ -1127,13 +1201,13 @@ namespace Falcor
         }
 
         // Once we are done, we will have written a compacted
-        // version of `sPrograms` (skipping the null elements)
+        // version of `sProgramsForReload` (skipping the null elements)
         // to the first N elements of the vector. To make the
         // vector only contain those first N elements, we
         // then need to erase everything past the last point
         // we wrote to.
         //
-        sPrograms.erase(writeIter, sPrograms.end());
+        sProgramsForReload.erase(writeIter, sProgramsForReload.end());
 
         return hasReloaded;
     }

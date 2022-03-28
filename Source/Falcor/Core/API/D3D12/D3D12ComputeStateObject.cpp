@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -90,7 +90,7 @@ namespace Falcor
         if (pComputeShader == nullptr) throw RuntimeError("Can't create compute state object without a compute shader");
 
         D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {};
-        desc.CS = pComputeShader->getApiHandle();
+        desc.CS = pComputeShader->getD3D12ShaderByteCode();
         if (mDesc.mpD3D12RootSignatureOverride)
         {
             desc.pRootSignature = mDesc.mpD3D12RootSignatureOverride->getApiHandle();
@@ -111,4 +111,6 @@ namespace Falcor
             FALCOR_D3D_CALL(gpDevice->getApiHandle()->CreateComputePipelineState(&desc, IID_PPV_ARGS(&mApiHandle)));
         }
     }
+
+    const D3D12ComputeStateHandle& ComputeStateObject::getD3D12Handle() { return mApiHandle; }
 }

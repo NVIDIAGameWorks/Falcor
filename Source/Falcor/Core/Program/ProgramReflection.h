@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,9 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Core/Framework.h"
 #include "Core/API/ShaderResourceType.h"
-#ifdef FALCOR_D3D12
-#include "Core/API/D3D12/D3D12DescriptorSet.h"
+#if FALCOR_D3D12_AVAILABLE
+#include "Core/API/Shared/D3D12DescriptorSet.h"
 #endif
 #include <slang/slang.h>
 #include <map>
@@ -1241,7 +1242,7 @@ namespace Falcor
         */
         BindLocation getResourceBinding(const std::string& name) const;
 
-#ifdef FALCOR_D3D12
+#if FALCOR_D3D12_AVAILABLE
         /// Information on how a particular descriptor set should be filled in.
         ///
         /// A single `ParameterBlock` may map to zero or more distinct descriptor
@@ -1293,7 +1294,7 @@ namespace Falcor
         /** Get the layout for the `index`th descriptor set that needs to be created for an object of this type.
         */
         const D3D12DescriptorSet::Layout& getD3D12DescriptorSetLayout(uint32_t index) const { return mDescriptorSets[index].layout; }
-#endif // FALCOR_D3D12
+#endif // FALCOR_D3D12_AVAILABLE
 
         /** Describes binding information for a resource range.
 
@@ -1398,7 +1399,7 @@ namespace Falcor
         ///
         std::vector<ResourceRangeBindingInfo> mResourceRanges;
 
-#ifdef FALCOR_D3D12
+#if FALCOR_D3D12_AVAILABLE
         /// Layout and binding information for all descriptor sets that
         /// must be created to represent the state of a parameter block
         /// using this reflector.

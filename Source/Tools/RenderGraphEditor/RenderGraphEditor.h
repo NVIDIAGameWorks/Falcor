@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -47,13 +47,13 @@ public:
     void onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
     void onResizeSwapChain(uint32_t width, uint32_t height) override;
     void onGuiRender(Gui* pGui) override;
-    void onDroppedFile(const std::string& filename) override;
+    void onDroppedFile(const std::filesystem::path& path) override;
 
 private:
     void createNewGraph(const std::string& renderGraphName);
-    void loadGraphsFromFile(const std::string& fileName, const std::string& graphName = "");
-    void serializeRenderGraph(const std::string& fileName);
-    void deserializeRenderGraph(const std::string& fileName);
+    void loadGraphsFromFile(const std::filesystem::path& path, const std::string& graphName = "");
+    void serializeRenderGraph(const std::filesystem::path& path);
+    void deserializeRenderGraph(const std::filesystem::path& path);
     void renderLogWindow(Gui::Widgets& widget);
     void loadAllPassLibraries();
 
@@ -68,7 +68,7 @@ private:
     std::string mNextGraphString;
     std::string mCurrentGraphOutput;
     std::string mGraphOutputEditString;
-    std::string mUpdateFilePath;
+    std::filesystem::path mUpdateFilePath;
     Texture::SharedPtr mpDefaultIconTex;
 
     Gui::DropdownList mOpenGraphNames;

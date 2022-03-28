@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -276,7 +276,7 @@ void SceneDebugger::renderUI(Gui::Widgets& widget)
     renderPixelDataUI(widget);
 
     widget.dummy("#spacer1", { 1, 20 });
-    widget.text("Scene: " + (mpScene ? mpScene->getFilename() : "No scene loaded"));
+    widget.text("Scene: " + (mpScene ? mpScene->getPath().string() : "No scene loaded"));
 }
 
 void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
@@ -314,7 +314,8 @@ void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
                 << "triangleCount: " << mesh.getTriangleCount() << std::endl
                 << "vbOffset: " << mesh.vbOffset << std::endl
                 << "ibOffset: " << mesh.ibOffset << std::endl
-                << "dynamicVbOffset: " << mesh.dynamicVbOffset << std::endl
+                << "skinningVbOffset: " << mesh.skinningVbOffset << std::endl
+                << "prevVbOffset: " << mesh.prevVbOffset << std::endl
                 << "use16BitIndices: " << mesh.use16BitIndices() << std::endl
                 << "isFrontFaceCW: " << mesh.isFrontFaceCW() << std::endl;
             g.text(oss.str());
@@ -332,7 +333,7 @@ void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
                 << "materialID: " << instance.materialID << std::endl
                 << "vbOffset: " << instance.vbOffset << std::endl
                 << "ibOffset: " << instance.ibOffset << std::endl
-                << "hasDynamicData: " << instance.hasDynamicData() << std::endl;
+                << "isDynamic: " << instance.isDynamic() << std::endl;
             g.text(oss.str());
 
             // Print the list of scene graph nodes affecting this mesh instance.
@@ -441,7 +442,7 @@ void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
 
 bool SceneDebugger::onMouseEvent(const MouseEvent& mouseEvent)
 {
-    if (mouseEvent.type == MouseEvent::Type::LeftButtonDown)
+    if (mouseEvent.type == MouseEvent::Type::ButtonDown && mouseEvent.button == Input::MouseButton::Left)
     {
         float2 cursorPos = mouseEvent.pos * (float2)mParams.frameDim;
         mParams.selectedPixel = (uint2)glm::clamp(cursorPos, float2(0.f), float2(mParams.frameDim.x - 1, mParams.frameDim.y - 1));

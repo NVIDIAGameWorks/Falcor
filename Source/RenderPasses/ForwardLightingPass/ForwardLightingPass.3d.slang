@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,10 +29,12 @@ import Scene.Raster;
 import Utils.Math.MathHelpers;
 import Rendering.Lights.LightHelpers;
 import Rendering.Lights.EnvMapLighting;
+import Utils.Sampling.TinyUniformSampleGenerator;
 
 cbuffer PerFrameCB
 {
     float2 gRenderTargetDim;
+    float  gFrameCount;
 };
 
 EnvMapLighting gEnvMapLighting;
@@ -40,7 +42,7 @@ SamplerState gSampler;
 Texture2D visibilityBuffer;
 static VSOut vsData;
 
-VSOut vs(VSIn vIn)
+VSOut vsMain(VSIn vIn)
 {
     VSOut vsOut;
     vsOut = defaultVS(vIn);
@@ -59,7 +61,7 @@ struct PsOut
 #endif
 };
 
-PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID)
+PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID)
 {
     PsOut psOut;
 
@@ -76,6 +78,8 @@ PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID)
     float4 finalColor = float4(0, 0, 0, 1);
 
     // Direct lighting from analytic light sources
+    const uint2 pixel = vsOut.posH.xy;
+    TinyUniformSampleGenerator sg = TinyUniformSampleGenerator(pixel, gFrameCount);
     for (int i = 0; i < gScene.getLightCount(); i++)
     {
         float shadowFactor = 1;
@@ -87,7 +91,7 @@ PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID)
 
         AnalyticLightSample ls;
         evalLightApproximate(sd.posW, gScene.getLight(i), ls);
-        finalColor.rgb += bsdf.eval(sd, ls.dir) * ls.Li * shadowFactor;
+        finalColor.rgb += bsdf.eval(sd, ls.dir, sg) * ls.Li * shadowFactor;
     }
 
     // Add the emissive component

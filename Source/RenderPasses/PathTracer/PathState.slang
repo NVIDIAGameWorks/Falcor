@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -60,8 +60,11 @@ enum class PathFlags
 
     diffusePrimaryHit           = 0x0100,   ///< Scatter ray went through a diffuse event on primary hit.
     specularPrimaryHit          = 0x0200,   ///< Scatter ray went through a specular event on primary hit.
+    deltaReflectionPrimaryHit   = 0x0400,   ///< Primary hit was sampled as the delta reflection.
+    deltaTransmissionPath       = 0x0800,   ///< Path started with and followed delta transmission events (whenever possible - TIR could be an exception) until it hit the first non-delta event.
+    deltaOnlyPath               = 0x1000,   ///< There was no non-delta events along the path so far.
 
-    // Bits 11 to kPathFlagsBitCount are still unused.
+    // Bits 14 to kPathFlagsBitCount are still unused.
 };
 
 /** Bounce types. We keep separate counters for all of these.
@@ -121,6 +124,9 @@ struct PathState
 
     bool isDiffusePrimaryHit() { return hasFlag(PathFlags::diffusePrimaryHit); }
     bool isSpecularPrimaryHit() { return hasFlag(PathFlags::specularPrimaryHit); }
+    bool isDeltaReflectionPrimaryHit() { return hasFlag(PathFlags::deltaReflectionPrimaryHit); }
+    bool isDeltaTransmissionPath() { return hasFlag(PathFlags::deltaTransmissionPath); }
+    bool isDeltaOnlyPath() { return hasFlag(PathFlags::deltaOnlyPath); }
 
     // Check if the scatter event is samplable by the light sampling technique.
     bool isLightSamplable() { return !isDelta(); }
@@ -143,6 +149,9 @@ struct PathState
     [mutating] void setLightSampled(bool upper, bool lower) { setFlag(PathFlags::lightSampledUpper, upper); setFlag(PathFlags::lightSampledLower, lower); }
     [mutating] void setDiffusePrimaryHit(bool value = true) { setFlag(PathFlags::diffusePrimaryHit, value); }
     [mutating] void setSpecularPrimaryHit(bool value = true) { setFlag(PathFlags::specularPrimaryHit, value); }
+    [mutating] void setDeltaReflectionPrimaryHit(bool value = true) { setFlag(PathFlags::deltaReflectionPrimaryHit, value); }
+    [mutating] void setDeltaTransmissionPath(bool value = true) { setFlag(PathFlags::deltaTransmissionPath, value); }
+    [mutating] void setDeltaOnlyPath(bool value = true) { setFlag(PathFlags::deltaOnlyPath, value); }
 
     bool hasFlag(PathFlags flag)
     {

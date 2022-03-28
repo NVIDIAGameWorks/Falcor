@@ -3,15 +3,17 @@
 import os
 import sys
 import re
+import subprocess
+from datetime import datetime
 from glob import glob
 
 # List of file extensions requiring the legal header.
 EXTENSIONS = ['.h', '.c', '.cpp', '.slang', '.slangh']
 
 # Public legal header.
-PUBLIC_HEADER = """
+PUBLIC_HEADER_TEMPLATE = """
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) {years}, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -60,7 +62,15 @@ def get_sources(include_dirs, exclude_dirs, extensions):
     return sources
 
 
-def fix_legal_header(include_dirs, exclude_dirs, extensions, header):
+def get_last_modify_year(path):
+    cmd = ["git", "log", "-1", "--follow", "--pretty=%aI", path]
+    result = subprocess.run(cmd, stdout=subprocess.PIPE)
+    str = result.stdout.decode("utf-8")
+    year = int(str[0:4])
+    return year
+
+
+def fix_legal_header(include_dirs, exclude_dirs, extensions, header_template):
     # regular expression matching the first block comment (after whitespace)
     rheader = re.compile(r"^\s*\/\*((\*(?!\/)|[^*])*)\*\/\s*")
 
@@ -68,10 +78,14 @@ def fix_legal_header(include_dirs, exclude_dirs, extensions, header):
     rcomment = re.compile(r"^\s*\/[\*\/]")
 
     # prepare header text
-    header = header.strip() + "\n"
+    header_template = header_template.strip() + "\n"
 
     for p in get_sources(include_dirs, exclude_dirs, extensions):
         print("Processing %s" % (p))
+
+        first_year = DEFAULT_FIRST_YEAR
+        last_year = max(DEFAULT_LAST_YEAR, get_last_modify_year(p))
+        header = header_template.replace("{years}", "%d-%02d" % (first_year, last_year % 100))
 
         # read file
         text = open(p).read()
@@ -96,5 +110,5 @@ fix_legal_header(
     include_dirs=["Source/**"],
     exclude_dirs=["Source/Externals"],
     extensions=EXTENSIONS,
-    header=PUBLIC_HEADER
+    header_template=PUBLIC_HEADER_TEMPLATE
 )

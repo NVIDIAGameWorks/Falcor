@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -81,13 +81,13 @@ namespace Falcor
     // to that for `ComputeProgram`.
 
     CUDAProgram::SharedPtr CUDAProgram::createFromFile(
-        const std::string& filename,
+        const std::filesystem::path& path,
         const std::string& csEntry,
         const DefineList& programDefines,
         Shader::CompilerFlags flags,
         const std::string& shaderModel)
     {
-        Desc d(filename);
+        Desc d(path);
         if (!shaderModel.empty()) d.setShaderModel(shaderModel);
         d.setCompilerFlags(flags);
         d.csEntry(csEntry);
@@ -95,12 +95,17 @@ namespace Falcor
     }
 
     CUDAProgram::SharedPtr CUDAProgram::create(
-        const Program::Desc& desc,
+        const Desc& desc,
         const DefineList& programDefines)
     {
-        SharedPtr pProg = SharedPtr(new CUDAProgram);
-        pProg->init(desc, programDefines);
+        auto pProg = SharedPtr(new CUDAProgram(desc, programDefines));
+        registerProgramForReload(pProg);
         return pProg;
+    }
+
+    CUDAProgram::CUDAProgram(const Desc& desc, const DefineList& programDefines)
+        : ComputeProgram(desc, programDefines)
+    {
     }
 
     // The first place where an interesting difference arises is when
@@ -153,13 +158,14 @@ namespace Falcor
         */
         static SharedPtr create(
             const ProgramVersion* pVersion,
-            slang::IComponentType* pSlangProgram,
+            slang::IComponentType* pSpecializedSlangGlobalScope,
+            const std::vector<slang::IComponentType*>& pTypeConformanceSpecializedEntryPoints,
             const ProgramReflection::SharedPtr& pReflector,
             const UniqueEntryPointGroups& uniqueEntryPointGroups,
             std::string& log,
             const std::string& name = "")
         {
-            return SharedPtr(new CUDAProgramKernels(pVersion, pSlangProgram, pReflector, uniqueEntryPointGroups, name));
+            return SharedPtr(new CUDAProgramKernels(pVersion, pReflector, uniqueEntryPointGroups, name));
         }
 
         virtual ~CUDAProgramKernels();
@@ -173,11 +179,10 @@ namespace Falcor
     protected:
         CUDAProgramKernels(
             const ProgramVersion* pVersion,
-            slang::IComponentType* pSlangProgram,
             const ProgramReflection::SharedPtr& pReflector,
             const UniqueEntryPointGroups& uniqueEntryPointGroups,
             const std::string& name = "")
-            : ProgramKernels(pVersion, pSlangProgram, pReflector, uniqueEntryPointGroups, name)
+            : ProgramKernels(pVersion, pReflector, uniqueEntryPointGroups, name)
         {
             init();
         }
@@ -209,7 +214,8 @@ namespace Falcor
     //
     ProgramKernels::SharedPtr CUDAProgram::createProgramKernels(
         const ProgramVersion* pVersion,
-        slang::IComponentType* pSlangProgram,
+        slang::IComponentType* pSpecializedSlangGlobalScope,
+        const std::vector<slang::IComponentType*>& pTypeConformanceSpecializedEntryPoints,
         const ProgramReflection::SharedPtr& pReflector,
         const ProgramKernels::UniqueEntryPointGroups& uniqueEntryPointGroups,
         std::string& log,
@@ -217,7 +223,8 @@ namespace Falcor
     {
         return CUDAProgramKernels::create(
             pVersion,
-            pSlangProgram,
+            pSpecializedSlangGlobalScope,
+            pTypeConformanceSpecializedEntryPoints,
             pReflector,
             uniqueEntryPointGroups,
             log,

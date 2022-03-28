@@ -12,12 +12,19 @@ For this tutorial, we'll create a pass that renders a scene as a wireframe of a 
 Our shader for this example will be a simple one line pixel shader that we can pass a color to, which will return that color as the color for each pixel. For this, we will need a constant buffer containing our color input as well as a function that returns this input.
 
 ```c++
+import Scene.Raster; // Imports defaultVS.
+
 cbuffer PerFrameCB
 {
     float4 gColor;
 };
 
-float4 main() : SV_TARGET
+VSOut vsMain(VSIn vIn)
+{
+    return defaultVS(vIn);
+}
+
+float4 psMain() : SV_TARGET
 {
     return gColor;
 }
@@ -48,7 +55,7 @@ The constructor should look similar to this:
 ```c++
 WireframePass::WireframePass()
 {
-    mpProgram = GraphicsProgram::createFromFile("RenderPasses/WireframePass/Wireframe.ps.slang", "", "main");
+    mpProgram = GraphicsProgram::createFromFile("RenderPasses/WireframePass/Wireframe.3d.slang", "vsMain", "psMain");
 
     RasterizerState::Desc wireframeDesc;
     wireframeDesc.setFillMode(RasterizerState::FillMode::Wireframe);

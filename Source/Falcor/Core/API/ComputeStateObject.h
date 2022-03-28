@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,8 +28,8 @@
 #pragma once
 #include "Core/Program/ProgramVersion.h"
 
-#ifdef FALCOR_D3D12
-#include "Core/API/D3D12/D3D12RootSignature.h"
+#ifdef FALCOR_D3D12_AVAILABLE
+#include "Core/API/Shared/D3D12RootSignature.h"
 #endif
 
 namespace Falcor
@@ -45,7 +45,7 @@ namespace Falcor
         {
         public:
             Desc& setProgramKernels(const ProgramKernels::SharedConstPtr& pProgram) { mpProgram = pProgram; return *this; }
-#ifdef FALCOR_D3D12
+#if FALCOR_D3D12_AVAILABLE
             /** Set a D3D12 root signature to use instead of the one that comes with the program kernel.
                 This function is supported on D3D12 only.
                 \param[in] pRootSignature An overriding D3D12RootSignature object to use in the compute state.
@@ -58,7 +58,7 @@ namespace Falcor
         private:
             friend class ComputeStateObject;
             ProgramKernels::SharedConstPtr mpProgram;
-#ifdef FALCOR_D3D12
+#if FALCOR_D3D12_AVAILABLE
             D3D12RootSignature::SharedConstPtr mpD3D12RootSignatureOverride;
 #endif
         };
@@ -72,6 +72,9 @@ namespace Falcor
         static SharedPtr create(const Desc& desc);
 
         const ApiHandle& getApiHandle() { return mApiHandle; }
+
+        const D3D12ComputeStateHandle& getD3D12Handle();
+
         const Desc& getDesc() const { return mDesc; }
 
     private:
@@ -80,5 +83,9 @@ namespace Falcor
 
         Desc mDesc;
         ApiHandle mApiHandle;
+
+#if defined(FALCOR_GFX) && FALCOR_D3D12_AVAILABLE
+        D3D12ComputeStateHandle mpD3D12Handle;
+#endif
     };
 }

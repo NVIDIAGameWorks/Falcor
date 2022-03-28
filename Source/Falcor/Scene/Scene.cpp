@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,6 +28,8 @@
 #include "stdafx.h"
 #include "Scene.h"
 #include "SceneDefines.slangh"
+#include "Scene/Curves/CurveConfig.h"
+#include "Utils/Math/MathHelpers.h"
 
 #include <sstream>
 #include <numeric>
@@ -98,7 +100,7 @@ namespace Falcor
     Scene::Scene(SceneData&& sceneData)
     {
         // Copy/move scene data to member variables.
-        mFilename = sceneData.filename;
+        mPath = sceneData.path;
         mRenderSettings = sceneData.renderSettings;
         mCameras = std::move(sceneData.cameras);
         mSelectedCamera = sceneData.selectedCamera;
@@ -155,22 +157,47 @@ namespace Falcor
         setSDFGridConfig();
 
         // Create vertex array objects for meshes and curves.
-        createMeshVao(sceneData.meshDrawCount, sceneData.meshIndexData, sceneData.meshStaticData, sceneData.meshDynamicData);
+        createMeshVao(sceneData.meshDrawCount, sceneData.meshIndexData, sceneData.meshStaticData, sceneData.meshSkinningData);
         createCurveVao(mCurveIndexData, mCurveStaticData);
 
         // Create animation controller.
-        mpAnimationController = AnimationController::create(this, sceneData.meshStaticData, sceneData.meshDynamicData, sceneData.animations);
+        mpAnimationController = AnimationController::create(this, sceneData.meshStaticData, sceneData.meshSkinningData, sceneData.prevVertexCount, sceneData.animations);
+
+        // Some runtime mesh data validation. These are essentially asserts, but large scenes are mostly opened in Release
+        for (const auto& mesh : mMeshDesc)
+        {
+            if (mesh.isDynamic())
+            {
+                if (mesh.prevVbOffset + mesh.vertexCount > sceneData.prevVertexCount) throw RuntimeError("Cached Mesh Animation: Invalid prevVbOffset");
+            }
+        }
+        for (const auto &mesh : sceneData.cachedMeshes)
+        {
+            if (!mMeshDesc[mesh.meshID].isAnimated()) throw RuntimeError("Cached Mesh Animation: Referenced mesh ID is not dynamic");
+            if (mesh.timeSamples.size() != mesh.vertexData.size()) throw RuntimeError("Cached Mesh Animation: Time sample count mismatch.");
+            for (const auto &vertices : mesh.vertexData)
+            {
+                if (vertices.size() != mMeshDesc[mesh.meshID].vertexCount) throw RuntimeError("Cached Mesh Animation: Vertex count mismatch.");
+            }
+        }
+        for (const auto& cache : sceneData.cachedCurves)
+        {
+            if (cache.tessellationMode != CurveTessellationMode::LinearSweptSphere)
+            {
+                if (!mMeshDesc[cache.geometryID].isAnimated()) throw RuntimeError("Cached Curve Animation: Referenced mesh ID is not dynamic");
+            }
+        }
 
         // Must be placed after curve data/AABB creation.
-        mpAnimationController->addAnimatedVertexCaches(std::move(sceneData.cachedCurves), std::move(sceneData.cachedMeshes));
+        mpAnimationController->addAnimatedVertexCaches(std::move(sceneData.cachedCurves), std::move(sceneData.cachedMeshes), sceneData.meshStaticData);
 
         // Finalize scene.
         finalize();
     }
 
-    Scene::SharedPtr Scene::create(const std::string& filename)
+    Scene::SharedPtr Scene::create(const std::filesystem::path& path)
     {
-        return SceneBuilder::create(filename)->getScene();
+        return SceneBuilder::create(path)->getScene();
     }
 
     Scene::SharedPtr Scene::create(SceneData&& sceneData)
@@ -320,7 +347,7 @@ namespace Falcor
         pContext->raytrace(pProgram, pVars.get(), dispatchDims.x, dispatchDims.y, dispatchDims.z);
     }
 
-    void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& indexData, const std::vector<PackedStaticVertexData>& staticData, const std::vector<DynamicVertexData>& dynamicData)
+    void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& indexData, const std::vector<PackedStaticVertexData>& staticData, const std::vector<SkinningVertexData>& skinningData)
     {
         if (drawCount == 0) return;
 
@@ -386,7 +413,7 @@ namespace Falcor
         // Add the packed static vertex data layout.
         VertexBufferLayout::SharedPtr pStaticLayout = VertexBufferLayout::create();
         pStaticLayout->addElement(VERTEX_POSITION_NAME, offsetof(PackedStaticVertexData, position), ResourceFormat::RGB32Float, 1, VERTEX_POSITION_LOC);
-        pStaticLayout->addElement(VERTEX_PACKED_NORMAL_TANGENT_NAME, offsetof(PackedStaticVertexData, packedNormalTangent), ResourceFormat::RGB32Float, 1, VERTEX_PACKED_NORMAL_TANGENT_LOC);
+        pStaticLayout->addElement(VERTEX_PACKED_NORMAL_TANGENT_CURVE_RADIUS_NAME, offsetof(PackedStaticVertexData, packedNormalTangentCurveRadius), ResourceFormat::RGB32Float, 1, VERTEX_PACKED_NORMAL_TANGENT_CURVE_RADIUS_LOC);
         pStaticLayout->addElement(VERTEX_TEXCOORD_NAME, offsetof(PackedStaticVertexData, texCrd), ResourceFormat::RG32Float, 1, VERTEX_TEXCOORD_LOC);
         pLayout->addBufferLayout(kStaticDataBufferIndex, pStaticLayout);
 
@@ -468,7 +495,7 @@ namespace Falcor
             }
         }
 
-        // Set default SDF grid config and ompute allowed SDF grid UI settings list.
+        // Set default SDF grid config and compute allowed SDF grid UI settings list.
 
         switch (mSDFGridConfig.implementation)
         {
@@ -565,7 +592,7 @@ namespace Falcor
 
     void Scene::initResources()
     {
-        GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("Scene/SceneBlock.slang", "", "main", getSceneDefines());
+        ComputeProgram::SharedPtr pProgram = ComputeProgram::createFromFile("Scene/SceneBlock.slang", "main", getSceneDefines());
         ParameterBlockReflection::SharedConstPtr pReflection = pProgram->getReflector()->getParameterBlock(kParameterBlockName);
         FALCOR_ASSERT(pReflection);
 
@@ -671,7 +698,7 @@ namespace Falcor
             }
             case GeometryType::SDFGrid:
             {
-                float3x3 transform3x3 = glm::mat3(transform3x3);
+                float3x3 transform3x3 = glm::mat3(transform);
                 transform3x3[0] = glm::abs(transform3x3[0]);
                 transform3x3[1] = glm::abs(transform3x3[1]);
                 transform3x3[2] = glm::abs(transform3x3[2]);
@@ -911,6 +938,37 @@ namespace Falcor
         }
 
         return UpdateFlags::None;
+    }
+
+    Scene::UpdateFlags Scene::updateSDFGrids(RenderContext* pRenderContext)
+    {
+        UpdateFlags updateFlags = UpdateFlags::None;
+        if (!is_set(mGeometryTypes, GeometryTypeFlags::SDFGrid)) return updateFlags;
+
+        for (uint32_t sdfGridID = 0; sdfGridID < mSDFGrids.size(); ++sdfGridID)
+        {
+            SDFGrid::SharedPtr& pSDFGrid = mSDFGrids[sdfGridID];
+            SDFGrid::UpdateFlags sdfGridUpdateFlags = pSDFGrid->update(pRenderContext);
+
+            if (is_set(sdfGridUpdateFlags, SDFGrid::UpdateFlags::AABBsChanged))
+            {
+                updateGeometryStats();
+
+                // Clear any previous BLAS data. This will trigger a full BLAS/TLAS rebuild.
+                // TODO: Support partial rebuild of just the procedural primitives.
+                mBlasDataValid = false;
+                updateFlags |= Scene::UpdateFlags::SDFGeometryChanged;
+            }
+
+            if (is_set(sdfGridUpdateFlags, SDFGrid::UpdateFlags::BuffersReallocated))
+            {
+                updateGeometryStats();
+                pSDFGrid->setShaderData(mpSceneBlock[kSDFGridsArrayName][sdfGridID]);
+                updateFlags |= Scene::UpdateFlags::SDFGeometryChanged;
+            }
+        }
+
+        return updateFlags;
     }
 
     Scene::UpdateFlags Scene::updateProceduralPrimitives(bool forceUpdate)
@@ -1503,6 +1561,8 @@ namespace Falcor
         if (mpAnimationController->animate(pContext, currentTime))
         {
             mUpdates |= UpdateFlags::SceneGraphChanged;
+            if (mpAnimationController->hasSkinnedMeshes()) mUpdates |= UpdateFlags::MeshesChanged;
+
             for (const auto& inst : mGeometryInstanceData)
             {
                 if (mpAnimationController->isMatrixChanged(inst.globalMatrixID))
@@ -1513,6 +1573,7 @@ namespace Falcor
 
             // We might end up setting the flag even if curves haven't changed (if looping is disabled for example).
             if (mpAnimationController->hasAnimatedCurveCaches()) mUpdates |= UpdateFlags::CurvesMoved;
+            if (mpAnimationController->hasAnimatedMeshCaches()) mUpdates |= UpdateFlags::MeshesChanged;
         }
 
         for (const auto& pGridVolume : mGridVolumes)
@@ -1526,22 +1587,22 @@ namespace Falcor
         mUpdates |= updateEnvMap(false);
         mUpdates |= updateMaterials(false);
         mUpdates |= updateGeometry(false);
+        mUpdates |= updateSDFGrids(pContext);
         pContext->flush();
 
         if (is_set(mUpdates, UpdateFlags::GeometryMoved))
         {
-            mTlasCache.clear();
+            invalidateTlasCache();
             updateGeometryInstances(false);
         }
 
         // Update existing BLASes if skinned animation and/or procedural primitives moved.
-        bool skinnedAnimation = mHasSkinnedMesh && is_set(mUpdates, UpdateFlags::SceneGraphChanged);
         bool updateProcedural = is_set(mUpdates, UpdateFlags::CurvesMoved) || is_set(mUpdates, UpdateFlags::CustomPrimitivesMoved);
-        bool blasUpdateRequired = skinnedAnimation || updateProcedural;
+        bool blasUpdateRequired = is_set(mUpdates, UpdateFlags::MeshesChanged) || updateProcedural;
 
         if (mBlasDataValid && blasUpdateRequired)
         {
-            mTlasCache.clear();
+            invalidateTlasCache();
             buildBlas(pContext);
         }
 
@@ -1614,10 +1675,10 @@ namespace Falcor
             if (widget.button("Save Viewpoints"))
             {
                 static const FileDialogFilterVec kFileExtensionFilters = { { "txt", "Text Files"} };
-                std::string filename = "cameraPath.txt";
-                if (saveFileDialog(kFileExtensionFilters, filename))
+                std::filesystem::path path = "cameraPath.txt";
+                if (saveFileDialog(kFileExtensionFilters, path))
                 {
-                    std::ofstream file(filename, std::ios::out);
+                    std::ofstream file(path, std::ios::out);
                     if (file.is_open())
                     {
                         for (uint32_t i = 0; i < mViewpoints.size(); i++)
@@ -1687,12 +1748,12 @@ namespace Falcor
         {
             if (envMapGroup.button("Load"))
             {
-                std::string filename;
-                if (openFileDialog(Bitmap::getFileDialogFilters(ResourceFormat::RGBA32Float), filename))
+                std::filesystem::path path;
+                if (openFileDialog(Bitmap::getFileDialogFilters(ResourceFormat::RGBA32Float), path))
                 {
-                    if (!loadEnvMap(filename))
+                    if (!loadEnvMap(path))
                     {
-                        msgBox(fmt::format("Failed to load environment map from '{}'.", filename), MsgBoxType::Ok, MsgBoxIcon::Warning);
+                        msgBox(fmt::format("Failed to load environment map from '{}'.", path), MsgBoxType::Ok, MsgBoxIcon::Warning);
                     }
                 }
             }
@@ -1741,7 +1802,7 @@ namespace Falcor
             const double bytesPerTexel = s.materials.textureTexelCount > 0 ? (double)s.materials.textureMemoryInBytes / s.materials.textureTexelCount : 0.0;
 
             std::ostringstream oss;
-            oss << "Filename: " << mFilename << std::endl;
+            oss << "Path: " << mPath << std::endl;
             oss << "Bounds: (" << mSceneBB.minPoint.x << "," << mSceneBB.minPoint.y << "," << mSceneBB.minPoint.z << ")-(" << mSceneBB.maxPoint.x << "," << mSceneBB.maxPoint.y << "," << mSceneBB.maxPoint.z << ")" << std::endl;
             oss << "Total scene memory: " << formatByteSize(s.getTotalMemory()) << std::endl;
 
@@ -1794,6 +1855,7 @@ namespace Falcor
 
             // Material stats.
             oss << "Materials stats:" << std::endl
+                << "  Material types: " << s.materials.materialTypeCount << std::endl
                 << "  Material count (total): " << s.materials.materialCount << std::endl
                 << "  Material count (opaque): " << s.materials.materialOpaqueCount << std::endl
                 << "  Material count (non-opaque): " << (s.materials.materialCount - s.materials.materialOpaqueCount) << std::endl
@@ -1843,7 +1905,7 @@ namespace Falcor
             oss << "Environment map:" << std::endl;
             if (mpEnvMap)
             {
-                oss << "  Filename: " << mpEnvMap->getFilename() << std::endl
+                oss << "  Filename: " << mpEnvMap->getPath().string() << std::endl
                     << "  Resolution: " << mpEnvMap->getEnvMap()->getWidth() << "x" << mpEnvMap->getEnvMap()->getHeight() << std::endl
                     << "  Texture memory: " << formatByteSize(s.envMapMemoryInBytes) << std::endl;
             }
@@ -2000,16 +2062,33 @@ namespace Falcor
         return (uint32_t)totalGeometries;
     }
 
-    std::vector<uint32_t> Scene::getGeometryIDs(GeometryType type) const
+    std::vector<uint32_t> Scene::getGeometryIDs(GeometryType geometryType) const
     {
-        std::vector<uint32_t> geometryIDs;
+        if (!hasGeometryType(geometryType)) return {};
 
+        std::vector<uint32_t> geometryIDs;
         uint32_t geometryCount = getGeometryCount();
         for (uint32_t geometryID = 0; geometryID < geometryCount; geometryID++)
         {
-            if (getGeometryType(geometryID) == type) geometryIDs.push_back(geometryID);
+            if (getGeometryType(geometryID) == geometryType) geometryIDs.push_back(geometryID);
         }
+        return geometryIDs;
+    }
 
+    std::vector<uint32_t> Scene::getGeometryIDs(GeometryType geometryType, MaterialType materialType) const
+    {
+        if (!hasGeometryType(geometryType)) return {};
+
+        std::vector<uint32_t> geometryIDs;
+        uint32_t geometryCount = getGeometryCount();
+        for (uint32_t geometryID = 0; geometryID < geometryCount; geometryID++)
+        {
+            auto pMaterial = getGeometryMaterial(geometryID);
+            if (getGeometryType(geometryID) == geometryType && pMaterial && pMaterial->getType() == materialType)
+            {
+                geometryIDs.push_back(geometryID);
+            }
+        }
         return geometryIDs;
     }
 
@@ -2039,6 +2118,30 @@ namespace Falcor
             FALCOR_UNREACHABLE();
             return 0;
         }
+    }
+
+    uint32_t Scene::findSDFGridIDFromGeometryInstanceID(uint32_t instanceID) const
+    {
+        for (const auto& sdf : mSDFGridDesc)
+        {
+            auto instanceIt = std::find(sdf.instances.begin(), sdf.instances.end(), instanceID);
+            if (instanceIt != sdf.instances.end())
+            {
+                return sdf.sdfGridID;
+            }
+        }
+        return UINT32_MAX;
+    }
+
+    std::vector<uint32_t> Scene::getGeometryInstanceIDsByType(GeometryType type) const
+    {
+        std::vector<uint32_t> instanceIDs;
+        for (uint32_t i = 0; i < getGeometryInstanceCount(); ++i)
+        {
+            const GeometryInstanceData& instanceData = mGeometryInstanceData[i];
+            if (instanceData.getType() == type) instanceIDs.push_back(i);
+        }
+        return instanceIDs;
     }
 
     Material::SharedPtr Scene::getGeometryMaterial(uint32_t geometryID) const
@@ -2288,8 +2391,6 @@ namespace Falcor
         mBlasData.clear();
         mBlasData.resize(totalBlasCount);
         mRebuildBlas = true;
-        mHasSkinnedMesh = false;
-        mHasAnimatedVertexCache = false;
 
         if (!mMeshGroups.empty())
         {
@@ -2344,7 +2445,7 @@ namespace Falcor
                     const uint32_t meshID = meshList[j];
                     const MeshDesc& mesh = mMeshDesc[meshID];
                     bool frontFaceCW = mesh.isFrontFaceCW();
-                    blas.hasSkinnedMesh |= mesh.hasDynamicData();
+                    blas.hasDynamicMesh |= mesh.isDynamic();
 
                     RtGeometryDesc& desc = geomDescs[j];
 
@@ -2414,8 +2515,7 @@ namespace Falcor
                     }
                 }
 
-                mHasSkinnedMesh |= blas.hasSkinnedMesh;
-                FALCOR_ASSERT(!(isStatic && mHasSkinnedMesh));
+                FALCOR_ASSERT(!(isStatic && blas.hasDynamicMesh));
 
                 if (triangleWindings == 0x3)
                 {
@@ -2459,9 +2559,7 @@ namespace Falcor
             auto& blas = mBlasData[blasDataIndex++];
             blas.geomDescs.resize(mCurveDesc.size());
             blas.hasProceduralPrimitives = true;
-
-            blas.hasAnimatedVertexCache |= mpAnimationController->hasAnimatedVertexCaches();
-            mHasAnimatedVertexCache |= blas.hasAnimatedVertexCache;
+            blas.hasDynamicCurve |= mpAnimationController->hasAnimatedCurveCaches();
 
             uint32_t geomIndexOffset = 0;
 
@@ -2568,7 +2666,7 @@ namespace Falcor
             // TODO: Add compaction on/off switch for profiling.
             // TODO: Disable compaction for skinned meshes if update performance becomes a problem.
             blas.updateMode = mBlasUpdateMode;
-            blas.useCompaction = (!blas.hasSkinnedMesh && !blas.hasAnimatedVertexCache) || blas.updateMode != UpdateMode::Rebuild;
+            blas.useCompaction = (!blas.hasDynamicGeometry()) || blas.updateMode != UpdateMode::Rebuild;
 
             // Setup build parameters.
             RtAccelerationStructureBuildInputs& inputs = blas.buildInputs;
@@ -2582,7 +2680,7 @@ namespace Falcor
             {
                 inputs.flags |= RtAccelerationStructureBuildFlags::AllowCompaction;
             }
-            if ((blas.hasSkinnedMesh || blas.hasProceduralPrimitives) && blas.updateMode == UpdateMode::Refit)
+            if ((blas.hasDynamicGeometry() || blas.hasProceduralPrimitives) && blas.updateMode == UpdateMode::Refit)
             {
                 inputs.flags |= RtAccelerationStructureBuildFlags::AllowUpdate;
             }
@@ -2593,6 +2691,11 @@ namespace Falcor
             //{
             //    inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
             //}
+
+            if (blas.hasDynamicGeometry())
+            {
+                inputs.flags |= RtAccelerationStructureBuildFlags::PreferFastBuild;
+            }
 
             // Get prebuild info.
             blas.prebuildInfo = RtAccelerationStructure::getPrebuildInfo(inputs);
@@ -2737,7 +2840,7 @@ namespace Falcor
         if (mRebuildBlas)
         {
             // Invalidate any previous TLASes as they won't be valid anymore.
-            mTlasCache.clear();
+            invalidateTlasCache();
 
             if (mBlasData.empty())
             {
@@ -2796,7 +2899,7 @@ namespace Falcor
                 currentSizeInfoPoolDesc.elementCount = (uint32_t)maxBlasCount;
                 RtAccelerationStructurePostBuildInfoPool::SharedPtr currentSizeInfoPool = RtAccelerationStructurePostBuildInfoPool::create(currentSizeInfoPoolDesc);
 
-                bool hasSkinnedMesh = false;
+                bool hasDynamicGeometry = false;
                 bool hasProceduralPrimitives = false;
 
                 mBlasObjects.resize(mBlasData.size());
@@ -2824,7 +2927,7 @@ namespace Falcor
                         const uint32_t blasId = group.blasIndices[i];
                         const auto& blas = mBlasData[blasId];
 
-                        hasSkinnedMesh |= blas.hasSkinnedMesh;
+                        hasDynamicGeometry |= blas.hasDynamicGeometry();
                         hasProceduralPrimitives |= blas.hasProceduralPrimitives;
 
                         RtAccelerationStructure::Desc createDesc = {};
@@ -2929,7 +3032,7 @@ namespace Falcor
                 }
 
                 // Release scratch buffer if there is no animated content. We will not need it.
-                if (!hasSkinnedMesh && !hasProceduralPrimitives) mpBlasScratch.reset();
+                if (!hasDynamicGeometry && !hasProceduralPrimitives) mpBlasScratch.reset();
             }
 
             updateRaytracingBLASStats();
@@ -2952,7 +3055,7 @@ namespace Falcor
             {
                 const auto& blas = mBlasData[blasId];
                 if (blas.hasProceduralPrimitives && updateProcedural) needsUpdate = true;
-                if (!blas.hasProceduralPrimitives && blas.hasSkinnedMesh) needsUpdate = true;
+                if (!blas.hasProceduralPrimitives && blas.hasDynamicGeometry()) needsUpdate = true;
             }
 
             if (!needsUpdate) continue;
@@ -2971,7 +3074,7 @@ namespace Falcor
 
                 // Skip BLASes that do not need to be updated.
                 if (blas.hasProceduralPrimitives && !updateProcedural) continue;
-                if (!blas.hasProceduralPrimitives && !blas.hasSkinnedMesh) continue;
+                if (!blas.hasProceduralPrimitives && !blas.hasDynamicGeometry()) continue;
 
                 // Rebuild/update BLAS.
                 RtAccelerationStructure::BuildDesc asDesc = {};
@@ -3201,6 +3304,14 @@ namespace Falcor
         }
     }
 
+    void Scene::invalidateTlasCache()
+    {
+        for (auto& tlas : mTlasCache)
+        {
+            tlas.second.pTlasObject = nullptr;
+        }
+    }
+
     void Scene::buildTlas(RenderContext* pContext, uint32_t rayCount, bool perMeshHitEntry)
     {
         FALCOR_PROFILE("buildTlas");
@@ -3248,13 +3359,26 @@ namespace Falcor
         // If first time building this TLAS
         if (tlas.pTlasObject == nullptr)
         {
-            FALCOR_ASSERT(tlas.pInstanceDescs == nullptr); // Instance desc should also be null if no TLAS
-            tlas.pTlasBuffer = Buffer::create(mTlasPrebuildInfo.resultDataMaxSize, Buffer::BindFlags::AccelerationStructure, Buffer::CpuAccess::None);
-            tlas.pTlasBuffer->setName("Scene TLAS buffer");
+            {
+                // Allocate a new buffer for the TLAS only if the existing buffer isn't big enough.
+                if (!tlas.pTlasBuffer || tlas.pTlasBuffer->getSize() < mTlasPrebuildInfo.resultDataMaxSize)
+                {
+                    tlas.pTlasBuffer = Buffer::create(mTlasPrebuildInfo.resultDataMaxSize, Buffer::BindFlags::AccelerationStructure, Buffer::CpuAccess::None);
+                    tlas.pTlasBuffer->setName("Scene TLAS buffer");
+                }
+            }
             if (!mInstanceDescs.empty())
             {
-                tlas.pInstanceDescs = Buffer::create((uint32_t)mInstanceDescs.size() * sizeof(RtInstanceDesc), Buffer::BindFlags::None, Buffer::CpuAccess::Write, mInstanceDescs.data());
-                tlas.pInstanceDescs->setName("Scene instance descs buffer");
+                // Allocate a new buffer for the TLAS instance desc input only if the existing buffer isn't big enough.
+                if (!tlas.pInstanceDescs || tlas.pInstanceDescs->getSize() < mInstanceDescs.size() * sizeof(RtInstanceDesc))
+                {
+                    tlas.pInstanceDescs = Buffer::create((uint32_t)mInstanceDescs.size() * sizeof(RtInstanceDesc), Buffer::BindFlags::None, Buffer::CpuAccess::Write, mInstanceDescs.data());
+                    tlas.pInstanceDescs->setName("Scene instance descs buffer");
+                }
+                else
+                {
+                    tlas.pInstanceDescs->setBlob(mInstanceDescs.data(), 0, mInstanceDescs.size() * sizeof(RtInstanceDesc));
+                }
             }
 
             RtAccelerationStructure::Desc asCreateDesc = {};
@@ -3316,7 +3440,7 @@ namespace Falcor
         // Note that for DXR 1.1 ray queries, the shader table is not used and the ray type count doesn't matter and can be set to zero.
         //
         auto tlasIt = mTlasCache.find(rayTypeCount);
-        if (tlasIt == mTlasCache.end())
+        if (tlasIt == mTlasCache.end() || !tlasIt->second.pTlasObject)
         {
             // We need a hit entry per mesh right now to pass GeometryIndex()
             buildTlas(pContext, rayTypeCount, true);
@@ -3324,10 +3448,10 @@ namespace Falcor
             // If new TLAS was just created, get it so the iterator is valid
             if (tlasIt == mTlasCache.end()) tlasIt = mTlasCache.find(rayTypeCount);
         }
-
         FALCOR_ASSERT(mpSceneBlock);
 
         // Bind TLAS.
+        FALCOR_ASSERT(tlasIt != mTlasCache.end() && tlasIt->second.pTlasObject)
         mpSceneBlock["rtAccel"].setAccelerationStructure(tlasIt->second.pTlasObject);
 
         // Bind Scene parameter block.
@@ -3409,12 +3533,12 @@ namespace Falcor
         mEnvMapChanged = true;
     }
 
-    bool Scene::loadEnvMap(const std::string& filename)
+    bool Scene::loadEnvMap(const std::filesystem::path& path)
     {
-        auto pEnvMap = EnvMap::createFromFile(filename);
+        auto pEnvMap = EnvMap::createFromFile(path);
         if (!pEnvMap)
         {
-            logWarning("Failed to load environment map from '{}'.", filename);
+            logWarning("Failed to load environment map from '{}'.", path);
             return false;
         }
         setEnvMap(pEnvMap);
@@ -3451,23 +3575,48 @@ namespace Falcor
 
     bool Scene::onMouseEvent(const MouseEvent& mouseEvent)
     {
-        return mpCamCtrl->onMouseEvent(mouseEvent);
+        if (mCameraControlsEnabled)
+        {
+            return mpCamCtrl->onMouseEvent(mouseEvent);
+        }
+
+        return false;
     }
 
     bool Scene::onKeyEvent(const KeyboardEvent& keyEvent)
     {
         if (keyEvent.type == KeyboardEvent::Type::KeyPressed)
         {
-            if (!(keyEvent.mods.isAltDown || keyEvent.mods.isCtrlDown || keyEvent.mods.isShiftDown))
+            if (keyEvent.mods == Input::ModifierFlags::None)
             {
-                if (keyEvent.key == KeyboardEvent::Key::F3)
+                if (keyEvent.key == Input::Key::F3)
                 {
                     addViewpoint();
                     return true;
                 }
             }
         }
-        return mpCamCtrl->onKeyEvent(keyEvent);
+        if (mCameraControlsEnabled)
+        {
+            return mpCamCtrl->onKeyEvent(keyEvent);
+        }
+
+        return false;
+    }
+
+    bool Scene::onGamepadEvent(const GamepadEvent& gamepadEvent)
+    {
+        return false;
+    }
+
+    bool Scene::onGamepadState(const GamepadState& gamepadState)
+    {
+        if (mCameraControlsEnabled)
+        {
+            return mpCamCtrl->onGamepadState(gamepadState);
+        }
+
+        return false;
     }
 
     std::string Scene::getScript(const std::string& sceneVar)
@@ -3512,6 +3661,15 @@ namespace Falcor
         }
 
         return c;
+    }
+
+    void Scene::updateNodeTransform(uint32_t nodeID, const float4x4& transform)
+    {
+        FALCOR_ASSERT(nodeID < mSceneGraph.size());
+
+        Node& node = mSceneGraph[nodeID];
+        node.transform = validateTransformMatrix(transform);
+        mpAnimationController->setNodeEdited(nodeID);
     }
 
     pybind11::dict Scene::SceneStats::toPython() const
@@ -3617,7 +3775,7 @@ namespace Falcor
         scene.def_property(kRenderSettings.c_str(), pybind11::overload_cast<void>(&Scene::getRenderSettings, pybind11::const_), &Scene::setRenderSettings);
         scene.def_property(kUpdateCallback.c_str(), &Scene::getUpdateCallback, &Scene::setUpdateCallback);
 
-        scene.def(kSetEnvMap.c_str(), &Scene::loadEnvMap, "filename"_a);
+        scene.def(kSetEnvMap.c_str(), &Scene::loadEnvMap, "path"_a);
         scene.def(kGetLight.c_str(), &Scene::getLight, "index"_a);
         scene.def(kGetLight.c_str(), &Scene::getLightByName, "name"_a);
         scene.def(kGetMaterial.c_str(), &Scene::getMaterial, "index"_a);

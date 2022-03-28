@@ -43,6 +43,7 @@
     <ShaderSource Include="Params.slang" />
     <ShaderSource Include="PathState.slang" />
     <ShaderSource Include="PathTracer.slang" />
+    <ShaderSource Include="PathTracerNRD.slang" />
     <ShaderSource Include="ReflectTypes.cs.slang" />
     <ShaderSource Include="ResolvePass.cs.slang" />
     <ShaderSource Include="ColorType.slang" />

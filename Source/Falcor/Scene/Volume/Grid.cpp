@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -71,27 +71,26 @@ namespace Falcor
         return SharedPtr(new Grid(std::move(handle)));
     }
 
-    Grid::SharedPtr Grid::createFromFile(const std::string& filename, const std::string& gridname)
+    Grid::SharedPtr Grid::createFromFile(const std::filesystem::path& path, const std::string& gridname)
     {
-        std::string fullpath;
-        if (!findFileInDataDirectories(filename, fullpath))
+        std::filesystem::path fullPath;
+        if (!findFileInDataDirectories(path, fullPath))
         {
-            logWarning("Error when loading grid. Can't find grid file '{}'.", filename);
+            logWarning("Error when loading grid. Can't find grid file '{}'.", path);
             return nullptr;
         }
 
-        auto ext = getExtensionFromFile(fullpath);
-        if (ext == "nvdb")
+        if (hasExtension(fullPath, "nvdb"))
         {
-            return createFromNanoVDBFile(fullpath, gridname);
+            return createFromNanoVDBFile(fullPath, gridname);
         }
-        else if (ext == "vdb")
+        else if (hasExtension(fullPath, "vdb"))
         {
-            return createFromOpenVDBFile(fullpath, gridname);
+            return createFromOpenVDBFile(fullPath, gridname);
         }
         else
         {
-            logWarning("Error when loading grid. Unsupported grid file '{}'.", filename);
+            logWarning("Error when loading grid. Unsupported grid file '{}'.", fullPath);
             return nullptr;
         }
     }
@@ -208,15 +207,15 @@ namespace Falcor
         mBrickedGrid = NanoVDBGridConverter(mpFloatGrid).convert();
     }
 
-    Grid::SharedPtr Grid::createFromNanoVDBFile(const std::string& path, const std::string& gridname)
+    Grid::SharedPtr Grid::createFromNanoVDBFile(const std::filesystem::path& path, const std::string& gridname)
     {
-        if (!nanovdb::io::hasGrid(path, gridname))
+        if (!nanovdb::io::hasGrid(path.string(), gridname))
         {
             logWarning("Error when loading grid. Can't find grid '{}' in '{}'.", gridname, path);
             return nullptr;
         }
 
-        auto handle = nanovdb::io::readGrid(path, gridname);
+        auto handle = nanovdb::io::readGrid(path.string(), gridname);
         if (!handle)
         {
             logWarning("Error when loading grid.");
@@ -239,11 +238,11 @@ namespace Falcor
         return SharedPtr(new Grid(std::move(handle)));
     }
 
-    Grid::SharedPtr Grid::createFromOpenVDBFile(const std::string& path, const std::string& gridname)
+    Grid::SharedPtr Grid::createFromOpenVDBFile(const std::filesystem::path& path, const std::string& gridname)
     {
         openvdb::initialize();
 
-        openvdb::io::File file(path);
+        openvdb::io::File file(path.string());
         file.open();
 
         openvdb::GridBase::Ptr baseGrid;
@@ -296,6 +295,6 @@ namespace Falcor
 
         grid.def_static("createSphere", &Grid::createSphere, "radius"_a, "voxelSize"_a, "blendRange"_a = 3.f);
         grid.def_static("createBox", &Grid::createBox, "width"_a, "height"_a, "depth"_a, "voxelSize"_a, "blendRange"_a = 3.f);
-        grid.def_static("createFromFile", &Grid::createFromFile, "filename"_a, "gridname"_a);
+        grid.def_static("createFromFile", &Grid::createFromFile, "path"_a, "gridname"_a);
     }
 }

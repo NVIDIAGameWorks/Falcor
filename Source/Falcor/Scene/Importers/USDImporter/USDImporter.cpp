@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -53,16 +53,6 @@
 
 namespace Falcor
 {
-    namespace
-    {
-        enum class CurveTessellationOutput
-        {
-            LinearSweptSphere,
-            Mesh,
-        };
-        const CurveTessellationOutput kCurveTessellationOutput = CurveTessellationOutput::LinearSweptSphere;
-    }
-
     // Traverse scene graph, converting supported prims from USD to Falcor equivalents
     void traversePrims(const UsdPrim& rootPrim, ImporterContext& ctx)
     {
@@ -130,26 +120,12 @@ namespace Falcor
                 }
                 else if (prim.IsA<UsdGeomBasisCurves>())
                 {
-                    if (kCurveTessellationOutput == CurveTessellationOutput::LinearSweptSphere)
-                    {
-                        logDebug("Adding curve '{}' for linear swept sphere tessellation.", primName);
-                        ctx.addCurve(prim);
+                    logDebug("Adding curve '{}' for linear swept sphere tessellation.", primName);
+                    ctx.addCurve(prim);
 
-                        // TODO: Add support for curve instancing
-                        // Now we assume each curve has only one instance.
-                        ctx.addCurveInstance(primName, prim, glm::identity<glm::mat4>(), ctx.nodeStack.back());
-                    }
-                    else if (kCurveTessellationOutput == CurveTessellationOutput::Mesh)
-                    {
-                        logDebug("Tessellating curve '{}' to mesh.", primName);
-                        ctx.addMesh(prim);
-                        float4x4 bindXform = ctx.getGeomBindTransform(prim);
-                        ctx.addGeomInstance(primName, prim, glm::identity<glm::mat4>(), bindXform);
-                    }
-                    else
-                    {
-                        throw ImporterError(ctx.filename, "Invalid curve tessellation output.");
-                    }
+                    // TODO: Add support for curve instancing
+                    // Now we assume each curve has only one instance.
+                    ctx.addCurveInstance(primName, prim, float4x4(1.f), ctx.nodeStack.back());
                 }
                 else if (prim.IsA<UsdSkelRoot>())
                 {
@@ -295,13 +271,13 @@ namespace Falcor
         return meta;
     }
 
-    void USDImporter::import(const std::string& filename, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict)
+    void USDImporter::import(const std::filesystem::path& path, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict)
     {
         TimeReport timeReport;
 
         if (!instances.empty())
         {
-            throw ImporterError(filename, "USD importer does not support instancing.");
+            throw ImporterError(path, "USD importer does not support instancing.");
         }
 
         DiagDelegate diagnosticDelegate;
@@ -310,23 +286,23 @@ namespace Falcor
         // Remove the diagnostic delegate from the TfDiagnosticMgr upon return.
         ScopeGuard removeDiagDelegate{ [&]() { TfDiagnosticMgr::GetInstance().RemoveDelegate(&diagnosticDelegate); } };
 
-        std::string fullpath;
-        if (findFileInDataDirectories(filename, fullpath) == false)
+        std::filesystem::path fullPath;
+        if (findFileInDataDirectories(path, fullPath) == false)
         {
-            throw ImporterError(filename, "File not found.");
+            throw ImporterError(path, "File not found.");
         }
 
-        ArGetResolver().ConfigureResolverForAsset(fullpath);
+        ArGetResolver().ConfigureResolverForAsset(fullPath.string());
 
-        UsdStageRefPtr pStage = UsdStage::Open(fullpath);
+        UsdStageRefPtr pStage = UsdStage::Open(fullPath.string());
         if (!pStage)
         {
-            throw ImporterError(filename, "Failed to open USD stage.");
+            throw ImporterError(path, "Failed to open USD stage.");
         }
 
         timeReport.measure("Open stage");
 
-        ImporterContext ctx(filename, pStage, builder, dict, timeReport);
+        ImporterContext ctx(path, pStage, builder, dict, timeReport);
 
         // Falcor uses meter scene unit; scale if necessary. Note that Omniverse uses cm by default.
         ctx.metersPerUnit = float(UsdGeomGetStageMetersPerUnit(pStage));
@@ -346,7 +322,10 @@ namespace Falcor
         GfVec3d stageSize = stageBound.GetRange().GetSize();
 
         float stageDiagonal = (float)sqrt(stageSize[0] * stageSize[0] + stageSize[1] * stageSize[1] + stageSize[2] * stageSize[2]);
-        ctx.builder.setCameraSpeed(0.025f * stageDiagonal * ctx.metersPerUnit);
+        if (isfinite(stageDiagonal) && stageDiagonal > 0.f)
+        {
+            ctx.builder.setCameraSpeed(0.025f * stageDiagonal * ctx.metersPerUnit);
+        }
 
         Scene::Metadata metadata = createMetadata(pStage);
         ctx.builder.setMetadata(metadata);

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -42,7 +42,7 @@ void ModelViewer::setModelString(double loadTime)
     //mModelString += std::to_string(pModel->getBufferCount()) + " buffers.\n";
 }
 
-void ModelViewer::loadModelFromFile(const std::string& filename, ResourceFormat fboFormat)
+void ModelViewer::loadModelFromFile(const std::filesystem::path& path, ResourceFormat fboFormat)
 {
     CpuTimer timer;
     timer.update();
@@ -54,7 +54,7 @@ void ModelViewer::loadModelFromFile(const std::string& filename, ResourceFormat 
 
     try
     {
-        mpScene = SceneBuilder::create(filename, flags)->getScene();
+        mpScene = SceneBuilder::create(path, flags)->getScene();
     }
     catch (const std::exception& e)
     {
@@ -74,10 +74,10 @@ void ModelViewer::loadModelFromFile(const std::string& filename, ResourceFormat 
 
 void ModelViewer::loadModel(ResourceFormat fboFormat)
 {
-    std::string Filename;
-    if(openFileDialog(Scene::getFileExtensionFilters(), Filename))
+    std::filesystem::path path;
+    if(openFileDialog(Scene::getFileExtensionFilters(), path))
     {
-        loadModelFromFile(Filename, fboFormat);
+        loadModelFromFile(path, fboFormat);
     }
 }
 
@@ -122,7 +122,7 @@ void ModelViewer::onGuiRender(Gui* pGui)
 
 void ModelViewer::onLoad(RenderContext* pRenderContext)
 {
-    mpProgram = GraphicsProgram::createFromFile("Samples/ModelViewer/ModelViewer.ps.slang", "", "main");
+    mpProgram = GraphicsProgram::createFromFile("Samples/ModelViewer/ModelViewer.3d.slang", "vsMain", "psMain");
     mpGraphicsState = GraphicsState::create();
     mpGraphicsState->setProgram(mpProgram);
 
@@ -182,7 +182,7 @@ bool ModelViewer::onKeyEvent(const KeyboardEvent& keyEvent)
 {
     if (mpScene && mpScene->onKeyEvent(keyEvent)) return true;
 
-    if ((keyEvent.type == KeyboardEvent::Type::KeyPressed) && (keyEvent.key == KeyboardEvent::Key::R))
+    if ((keyEvent.type == KeyboardEvent::Type::KeyPressed) && (keyEvent.key == Input::Key::R))
     {
         resetCamera();
         return true;

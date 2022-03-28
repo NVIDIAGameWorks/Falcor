@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -40,15 +40,41 @@ namespace Falcor
         std::filesystem::create_directories(target / "test");
 
         // Create junction from junction_link to junction_target
-        EXPECT_EQ(createJunction(link.string(), target.string()), true);
+        EXPECT_EQ(createJunction(link, target), true);
         // Check that junction was successfully created by accessing junction_link/test
         EXPECT_EQ(std::filesystem::exists(link / "test"), true);
         // Delete junction
-        EXPECT_EQ(deleteJunction(link.string()), true);
+        EXPECT_EQ(deleteJunction(link), true);
         // Check that junction was deleted
         EXPECT_EQ(std::filesystem::exists(link), false);
 
         // Delete junction_target/test
         std::filesystem::remove_all(target);
     }
+
+    CPU_TEST(HasExtension)
+    {
+        EXPECT_EQ(hasExtension("foo.exr", "exr"), true);
+        EXPECT_EQ(hasExtension("foo.exr", ".exr"), true);
+        EXPECT_EQ(hasExtension("foo.Exr", "exr"), true);
+        EXPECT_EQ(hasExtension("foo.Exr", ".exr"), true);
+        EXPECT_EQ(hasExtension("foo.Exr", "exR"), true);
+        EXPECT_EQ(hasExtension("foo.Exr", ".exR"), true);
+        EXPECT_EQ(hasExtension("foo.EXR", "exr"), true);
+        EXPECT_EQ(hasExtension("foo.EXR", ".exr"), true);
+        EXPECT_EQ(hasExtension("foo.xr", "exr"), false);
+        EXPECT_EQ(hasExtension("/foo/png", ""), true);
+        EXPECT_EQ(hasExtension("/foo/png", "exr"), false);
+        EXPECT_EQ(hasExtension("/foo/.profile", ""), true);
+    }
+
+    CPU_TEST(GetExtensionFromPath)
+    {
+        EXPECT_EQ(getExtensionFromPath("foo.exr"), "exr");
+        EXPECT_EQ(getExtensionFromPath("foo.Exr"), "exr");
+        EXPECT_EQ(getExtensionFromPath("foo.EXR"), "exr");
+        EXPECT_EQ(getExtensionFromPath("foo"), "");
+        EXPECT_EQ(getExtensionFromPath("/foo/.profile"), "");
+    }
+
 }

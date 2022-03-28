@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -58,8 +58,6 @@ namespace Falcor
     {
         return mDesc.mBuffer->getGpuAddress() + mDesc.mOffset;
     }
-
-    RtAccelerationStructure::~RtAccelerationStructure() = default;
 
     RtInstanceDesc& RtInstanceDesc::setTransform(const glm::mat4& matrix)
     {

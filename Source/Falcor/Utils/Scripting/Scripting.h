@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -140,12 +140,12 @@ namespace Falcor
         static RunResult runScript(const std::string& script, Context& context = getDefaultContext(), bool captureOutput = false);
 
         /** Run a script from a file.
-            \param[in] filename Filename of the script to run.
+            \param[in] path Path of the script to run.
             \param[in] context Script execution context.
             \param[in] captureOutput Enable capturing stdout/stderr and returning it in RunResult.
             \return Returns the captured output if enabled.
         */
-        static RunResult runScriptFromFile(const std::string& filename, Context& context = getDefaultContext(), bool captureOutput = false);
+        static RunResult runScriptFromFile(const std::filesystem::path& path, Context& context = getDefaultContext(), bool captureOutput = false);
 
         /** Interpret a script and return the evaluated result.
             \param[in] script Script to run.

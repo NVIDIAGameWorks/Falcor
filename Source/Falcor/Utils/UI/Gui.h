@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,6 +30,7 @@
 #include "Core/API/Texture.h"
 #include "Core/API/FBO.h"
 #include "Core/API/RenderContext.h"
+#include "Utils/Color/SampledSpectrum.h"
 
 struct ImFont;
 
@@ -39,6 +40,8 @@ namespace Falcor
     struct KeyboardEvent;
 
     class GuiImpl;
+
+    template<typename T> class SpectrumUI;
 
     // Helper to check if a class is a vector
     template<typename T, typename = void>
@@ -318,6 +321,22 @@ namespace Falcor
             */
             void graph(const char label[], GraphCallback func, void* pUserData, uint32_t sampleCount, int32_t sampleOffset, float yMin = FLT_MAX, float yMax = FLT_MAX, uint32_t width = 0, uint32_t height = 100);
 
+            /** Adds a Spectrum user interface. Since there is no SpectrumUI class as input, this call will only disply the spectrum curve and its points and final RGB color.
+                Use the spectrum() function below with a SpectrumUI parameters as well if you want to have the spectrum UI as well.
+                \param[in] label The name of the widget.
+                \param[in] spectrum The spectrum to be visualized (and possibly edited).
+            */
+            template<typename T>
+            bool spectrum(const char label[], SampledSpectrum<T>& spectrum);
+
+            /** Adds a Spectrum user interface.
+                \param[in] label The name of the widget.
+                \param[in] spectrum The spectrum to be visualized (and possibly edited).
+                \param[in] spectrumUI The spectrum UI with modifiable parameters.
+            */
+            template<typename T>
+            bool spectrum(const char label[], SampledSpectrum<T>& spectrum, SpectrumUI<T>& spectrumUI);
+
             Gui* gui() const { return mpGui; }
 
         protected:
@@ -505,7 +524,7 @@ namespace Falcor
 
         /** Add a font
         */
-        void addFont(const std::string& name, const std::string& filename);
+        void addFont(const std::string& name, const std::filesystem::path& path);
 
         /** Set the active font
         */
@@ -539,6 +558,15 @@ namespace Falcor
     private:
         Gui() = default;
         GuiImpl* mpWrapper = nullptr;
+    };
+
+    /** Helper class to create a scope for ImGui IDs using PushID/PopID.
+    */
+    class FALCOR_API IDScope
+    {
+    public:
+        IDScope(const void* id);
+        ~IDScope();
     };
 
     FALCOR_ENUM_CLASS_OPERATORS(Gui::WindowFlags);

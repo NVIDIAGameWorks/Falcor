@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -132,6 +132,11 @@ namespace Falcor
 #endif
         static SharedPtr getNullView(Dimension dimension);
 
+        /** Get the D3D12 CPU descriptor handle representing this resource view.
+            Valid only when D3D12 is the underlying API.
+        */
+        D3D12DescriptorCpuHandle getD3D12CpuHeapHandle() const;
+
     private:
         ShaderResourceView(ResourceWeakPtr pResource, ApiHandle handle, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
             : ResourceView(pResource, handle, mostDetailedMip, mipCount, firstArraySlice, arraySize) {}
@@ -152,6 +157,10 @@ namespace Falcor
 
         static SharedPtr getNullView(Dimension dimension);
 
+        /** Get the D3D12 CPU descriptor handle representing this resource view.
+            Valid only when D3D12 is the underlying API.
+        */
+        D3D12DescriptorCpuHandle getD3D12CpuHeapHandle() const;
     private:
         DepthStencilView(ResourceWeakPtr pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
             ResourceView(pResource, handle, mipLevel, 1, firstArraySlice, arraySize) {}
@@ -168,6 +177,11 @@ namespace Falcor
         static SharedPtr create(Dimension dimension);
 
         static SharedPtr getNullView(Dimension dimension);
+
+        /** Get the D3D12 CPU descriptor handle representing this resource view.
+            Valid only when D3D12 is the underlying API.
+        */
+        D3D12DescriptorCpuHandle getD3D12CpuHeapHandle() const;
 
     private:
         UnorderedAccessView(ResourceWeakPtr pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
@@ -187,6 +201,11 @@ namespace Falcor
 
         static SharedPtr getNullView(Dimension dimension);
 
+        /** Get the D3D12 CPU descriptor handle representing this resource view.
+            Valid only when D3D12 is the underlying API.
+        */
+        D3D12DescriptorCpuHandle getD3D12CpuHeapHandle() const;
+
         ~RenderTargetView();
 
     private:
@@ -203,6 +222,11 @@ namespace Falcor
         static SharedPtr create();
 
         static SharedPtr getNullView();
+
+        /** Get the D3D12 CPU descriptor handle representing this resource view.
+            Valid only when D3D12 is the underlying API.
+        */
+        D3D12DescriptorCpuHandle getD3D12CpuHeapHandle() const;
 
     private:
         ConstantBufferView(ResourceWeakPtr pResource, ApiHandle handle) :

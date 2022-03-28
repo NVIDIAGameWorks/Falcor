@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -35,15 +35,15 @@ namespace Falcor
     public:
         /** Import a graph from a file.
             \param[in] graphName The name of the graph to import
-            \param[in] filename  The graphs filename. If the string is empty, the function will search for a file called `<graphName>.py`
-            \param[in] funcName  The function name inside the graph script. If the string is empty, will try invoking a function called `render_graph_<graphName>()`
+            \param[in] path The graphs file path. If the path is empty, the function will search for a file called `<graphName>.py`
+            \param[in] funcName The function name inside the graph script. If the string is empty, will try invoking a function called `render_graph_<graphName>()`
             \return A new render-graph object or nullptr if something went horribly wrong
         */
-        static RenderGraph::SharedPtr import(std::string graphName, std::string filename = {}, std::string funcName = {});
+        static RenderGraph::SharedPtr import(std::string graphName, std::filesystem::path path = {}, std::string funcName = {});
 
         /** Import all the graphs found in the script's global namespace
         */
-        static std::vector <RenderGraph::SharedPtr> importAllGraphs(const std::string& filename);
+        static std::vector <RenderGraph::SharedPtr> importAllGraphs(const std::filesystem::path& path);
     };
 
     class FALCOR_API RenderGraphExporter
@@ -51,6 +51,6 @@ namespace Falcor
     public:
         static std::string getIR(const RenderGraph::SharedPtr& pGraph);
         static std::string getFuncName(const std::string& graphName);
-        static bool save(const RenderGraph::SharedPtr& pGraph, std::string filename = {});
+        static bool save(const RenderGraph::SharedPtr& pGraph, std::filesystem::path path = {});
     };
 }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -97,8 +97,8 @@ ErrorMeasurePass::ErrorMeasurePass(const Dictionary& dict)
 {
     for (const auto& [key, value] : dict)
     {
-        if (key == kReferenceImagePath) mReferenceImagePath = value.operator std::string();
-        else if (key == kMeasurementsFilePath) mMeasurementsFilePath = value.operator std::string();
+        if (key == kReferenceImagePath) mReferenceImagePath = value.operator std::filesystem::path();
+        else if (key == kMeasurementsFilePath) mMeasurementsFilePath = value.operator std::filesystem::path();
         else if (key == kIgnoreBackground) mIgnoreBackground = value;
         else if (key == kComputeSquaredDifference) mComputeSquaredDifference = value;
         else if (key == kComputeAverage) mComputeAverage = value;
@@ -240,9 +240,9 @@ void ErrorMeasurePass::runReductionPasses(RenderContext* pRenderContext, const R
 
 void ErrorMeasurePass::renderUI(Gui::Widgets& widget)
 {
-    const auto getFilename = [](const std::string& path)
+    const auto getFilename = [](const std::filesystem::path& path)
     {
-        return path.empty() ? "N/A" : getFilenameFromPath(path);
+        return path.empty() ? "N/A" : path.filename().string();
     };
 
     // Create a button for loading the reference image.
@@ -251,10 +251,10 @@ void ErrorMeasurePass::renderUI(Gui::Widgets& widget)
         FileDialogFilterVec filters;
         filters.push_back({ "exr", "High Dynamic Range" });
         filters.push_back({ "pfm", "Portable Float Map" });
-        std::string filename;
-        if (openFileDialog(filters, filename))
+        std::filesystem::path path;
+        if (openFileDialog(filters, path))
         {
-            mReferenceImagePath = filename;
+            mReferenceImagePath = path;
             loadReference();
         }
     }
@@ -264,10 +264,10 @@ void ErrorMeasurePass::renderUI(Gui::Widgets& widget)
     {
         FileDialogFilterVec filters;
         filters.push_back({ "csv", "CSV Files" });
-        std::string filename;
-        if (saveFileDialog(filters, filename))
+        std::filesystem::path path;
+        if (saveFileDialog(filters, path))
         {
-            mMeasurementsFilePath = filename;
+            mMeasurementsFilePath = path;
             openMeasurementsFile();
         }
     }
@@ -302,7 +302,7 @@ void ErrorMeasurePass::renderUI(Gui::Widgets& widget)
     widget.text(referenceText);
     if (!mReferenceImagePath.empty())
     {
-        widget.tooltip(mReferenceImagePath);
+        widget.tooltip(mReferenceImagePath.string());
     }
 
     // Display the filename of the measurement file.
@@ -310,7 +310,7 @@ void ErrorMeasurePass::renderUI(Gui::Widgets& widget)
     widget.text(outputText);
     if (!mMeasurementsFilePath.empty())
     {
-        widget.tooltip(mMeasurementsFilePath);
+        widget.tooltip(mMeasurementsFilePath.string());
     }
 
     // Print numerical error (scalar and RGB).
@@ -341,9 +341,9 @@ void ErrorMeasurePass::renderUI(Gui::Widgets& widget)
 
 bool ErrorMeasurePass::onKeyEvent(const KeyboardEvent& keyEvent)
 {
-    if (keyEvent.type == KeyboardEvent::Type::KeyPressed && keyEvent.key == KeyboardEvent::Key::O)
+    if (keyEvent.type == KeyboardEvent::Type::KeyPressed && keyEvent.key == Input::Key::O)
     {
-        int32_t ofs = keyEvent.mods.isShiftDown ? -1 : 1;
+        int32_t ofs = keyEvent.hasModifier(Input::Modifier::Shift) ? -1 : 1;
         int32_t index = (int32_t)mSelectedOutputId;
         index = (index + ofs + (int32_t)OutputId::Count) % (int32_t)OutputId::Count;
         mSelectedOutputId = (OutputId)index;
@@ -361,8 +361,8 @@ void ErrorMeasurePass::loadReference()
     mpReferenceTexture = Texture::createFromFile(mReferenceImagePath, false /* no MIPs */, false /* linear color */);
     if (!mpReferenceTexture)
     {
-        reportError("Failed to load texture " + mReferenceImagePath);
-        mReferenceImagePath = "";
+        reportError(fmt::format("Failed to load texture from '{}'", mReferenceImagePath));
+        mReferenceImagePath.clear();
     }
 
     mUseLoadedReference = mpReferenceTexture != nullptr;
@@ -381,8 +381,8 @@ void ErrorMeasurePass::openMeasurementsFile()
     mMeasurementsFile = std::ofstream(mMeasurementsFilePath, std::ios::trunc);
     if (!mMeasurementsFile)
     {
-        reportError("Failed to open file " + mMeasurementsFilePath);
-        mMeasurementsFilePath = "";
+        reportError(fmt::format("Failed to open file '{}'.", mMeasurementsFilePath));
+        mMeasurementsFilePath.clear();
     }
     else
     {

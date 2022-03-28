@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -156,7 +156,7 @@ struct SDFSVS : SDFGridBase, ISDFGrid
         float3 voxelUnitSpaceRayOrigin = calculteVoxelUnitCoords(pLocal, pMin, pMax);
 
         float tLocal;
-        if (SDFVoxelHitUtils::intersectSDFVoxel(voxelUnitSpaceRayOrigin, rayDirLocal, origInsideAABB, values0xx, values1xx, (tMaxLocal - t) / voxelExtent, kSolverMaxStepCount, tLocal))
+        if (SDFVoxelHitUtils::intersectSDFVoxel(voxelUnitSpaceRayOrigin, rayDirLocal, origInsideAABB, values0xx, values1xx, kSnormErrorTolerance + (tMaxLocal - t) / voxelExtent, kSolverMaxStepCount, tLocal))
         {
             t += tLocal * voxelExtent;
             t *= inverseDirLength;
@@ -212,7 +212,7 @@ struct SDFSVS : SDFGridBase, ISDFGrid
         // Convert the ray origin to voxel unit coords.
         float3 voxelUnitSpaceRayOrigin = calculteVoxelUnitCoords(pLocal, pMin, pMax);
 
-        return SDFVoxelHitUtils::intersectSDFVoxelAny(voxelUnitSpaceRayOrigin, rayDirLocal, origInsideAABB, values0xx, values1xx, (tMaxLocal - tMinLocal) / voxelExtent, kSolverMaxStepCount);
+        return SDFVoxelHitUtils::intersectSDFVoxelAny(voxelUnitSpaceRayOrigin, rayDirLocal, origInsideAABB, values0xx, values1xx, kSnormErrorTolerance + (tMaxLocal - tMinLocal) / voxelExtent, kSolverMaxStepCount);
     }
 
     void decodeHit(const SDFGridHitData hitData, const float3 hitPosition, out float3 gradient)

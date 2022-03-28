@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,9 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "D3D12DescriptorSet.h"
-#include "D3D12DescriptorPool.h"
-#include "D3D12DescriptorData.h"
+
+#include "Core/API/Shared/D3D12DescriptorSet.h"
+#include "Core/API/Shared/D3D12DescriptorPool.h"
+#include "Core/API/Shared/D3D12DescriptorData.h"
 #include "Core/API/Device.h"
 #include "Core/API/CopyContext.h"
 
@@ -60,37 +61,43 @@ namespace Falcor
     void setCpuHandle(D3D12DescriptorSet* pSet, uint32_t rangeIndex, uint32_t descIndex, const D3D12DescriptorSet::CpuHandle& handle)
     {
         auto dstHandle = pSet->getCpuHandle(rangeIndex, descIndex);
-        gpDevice->getApiHandle()->CopyDescriptorsSimple(1, dstHandle, handle, falcorToDxDescType(pSet->getRange(rangeIndex).type));
+        gpDevice->getD3D12Handle()->CopyDescriptorsSimple(1, dstHandle, handle, falcorToDxDescType(pSet->getRange(rangeIndex).type));
     }
 
     void D3D12DescriptorSet::setSrv(uint32_t rangeIndex, uint32_t descIndex, const ShaderResourceView* pSrv)
     {
-        setCpuHandle(this, rangeIndex, descIndex, pSrv->getApiHandle()->getCpuHandle(0));
+        auto type = getRange(rangeIndex).type;
+        checkInvariant(type == Type::TextureSrv || type == Type::RawBufferSrv || type == Type::TypedBufferSrv || type == Type::StructuredBufferSrv || type == Type::AccelerationStructureSrv, "Unexpected descriptor range type in setSrv()");
+        setCpuHandle(this, rangeIndex, descIndex, pSrv->getD3D12CpuHeapHandle());
     }
 
     void D3D12DescriptorSet::setUav(uint32_t rangeIndex, uint32_t descIndex, const UnorderedAccessView* pUav)
     {
-        setCpuHandle(this, rangeIndex, descIndex, pUav->getApiHandle()->getCpuHandle(0));
+        auto type = getRange(rangeIndex).type;
+        checkInvariant(type == Type::TextureUav || type == Type::RawBufferUav || type == Type::TypedBufferUav || type == Type::StructuredBufferUav, "Unexpected descriptor range type in setUav()");
+        setCpuHandle(this, rangeIndex, descIndex, pUav->getD3D12CpuHeapHandle());
     }
 
     void D3D12DescriptorSet::setSampler(uint32_t rangeIndex, uint32_t descIndex, const Sampler* pSampler)
     {
-        setCpuHandle(this, rangeIndex, descIndex, pSampler->getApiHandle()->getCpuHandle(0));
+        checkInvariant(getRange(rangeIndex).type == Type::Sampler, "Unexpected descriptor range type in setSampler()");
+        setCpuHandle(this, rangeIndex, descIndex, pSampler->getD3D12CpuHeapHandle());
     }
 
     void D3D12DescriptorSet::bindForGraphics(CopyContext* pCtx, const D3D12RootSignature* pRootSig, uint32_t rootIndex)
     {
-        pCtx->getLowLevelData()->getCommandList()->SetGraphicsRootDescriptorTable(rootIndex, getGpuHandle(0));
+        pCtx->getLowLevelData()->getD3D12CommandList()->SetGraphicsRootDescriptorTable(rootIndex, getGpuHandle(0));
     }
 
     void D3D12DescriptorSet::bindForCompute(CopyContext* pCtx, const D3D12RootSignature* pRootSig, uint32_t rootIndex)
     {
-        pCtx->getLowLevelData()->getCommandList()->SetComputeRootDescriptorTable(rootIndex, getGpuHandle(0));
+        pCtx->getLowLevelData()->getD3D12CommandList()->SetComputeRootDescriptorTable(rootIndex, getGpuHandle(0));
     }
 
     void D3D12DescriptorSet::setCbv(uint32_t rangeIndex, uint32_t descIndex, ConstantBufferView* pView)
     {
-        setCpuHandle(this, rangeIndex, descIndex, pView->getApiHandle()->getCpuHandle(0));
+        checkInvariant(getRange(rangeIndex).type == Type::Cbv, "Unexpected descriptor range type in setCbv()");
+        setCpuHandle(this, rangeIndex, descIndex, pView->getD3D12CpuHeapHandle());
     }
 
     D3D12DescriptorSet::SharedPtr D3D12DescriptorSet::create(const D3D12DescriptorPool::SharedPtr& pPool, const Layout& layout)

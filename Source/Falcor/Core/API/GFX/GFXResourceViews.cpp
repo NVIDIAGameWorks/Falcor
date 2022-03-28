@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -33,8 +33,15 @@
 #include "Core/API/Device.h"
 namespace Falcor
 {
+    template<>
+    ResourceView<CbvHandle>::~ResourceView<CbvHandle>()
+    {
+    }
     template<typename T>
-    ResourceView<T>::~ResourceView() = default;
+    ResourceView<T>::~ResourceView()
+    {
+        gpDevice->releaseResource(mApiHandle);
+    }
 
     ShaderResourceView::SharedPtr ShaderResourceView::create(ConstTextureSharedPtrRef pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
     {
@@ -46,20 +53,17 @@ namespace Falcor
         desc.subresourceRange.layerCount = arraySize;
         desc.subresourceRange.mipLevel = mostDetailedMip;
         desc.subresourceRange.mipLevelCount = mipCount;
-        gfx_call(gpDevice->getApiHandle()->createTextureView(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), desc, handle.writeRef()));
+        FALCOR_GFX_CALL(gpDevice->getApiHandle()->createTextureView(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), desc, handle.writeRef()));
         return SharedPtr(new ShaderResourceView(pTexture, handle, mostDetailedMip, mipCount, firstArraySlice, arraySize));
     }
 
-    ShaderResourceView::SharedPtr ShaderResourceView::create(ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount)
+    static void fillBufferViewDesc(gfx::IResourceView::Desc& desc, ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount)
     {
-        Slang::ComPtr<gfx::IResourceView> handle;
-        gfx::IResourceView::Desc desc = {};
         auto format = depthToColorFormat(pBuffer->getFormat());
         desc.format = getGFXFormat(format);
-        desc.type = gfx::IResourceView::Type::ShaderResource;
 
         uint32_t bufferElementSize = 0;
-        uint32_t bufferElementCount = 0;
+        uint64_t bufferElementCount = 0;
         if (pBuffer->isTyped())
         {
             FALCOR_ASSERT(getFormatPixelsPerBlock(format) == 1);
@@ -76,23 +80,24 @@ namespace Falcor
         else
         {
             desc.format = gfx::Format::Unknown;
-            bufferElementSize = 0;
-            bufferElementCount = (uint32_t)(pBuffer->getSize());
+            bufferElementSize = 4;
+            bufferElementCount = pBuffer->getSize();
         }
 
         bool useDefaultCount = (elementCount == ShaderResourceView::kMaxPossible);
         FALCOR_ASSERT(useDefaultCount || (firstElement + elementCount) <= bufferElementCount); // Check range
         desc.bufferRange.firstElement = firstElement;
         desc.bufferRange.elementCount = useDefaultCount ? (bufferElementCount - firstElement) : elementCount;
+    }
 
-        // Views that extend to close to 4GB or beyond the base address are not supported by D3D12, so
-        // we report an error here.
-        if (bufferElementSize > 0 && desc.bufferRange.firstElement + desc.bufferRange.elementCount > ((1ull << 32) / bufferElementSize - 8))
-        {
-            throw RuntimeError("Buffer SRV exceeds the maximum supported size");
-        }
+    ShaderResourceView::SharedPtr ShaderResourceView::create(ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount)
+    {
+        Slang::ComPtr<gfx::IResourceView> handle;
+        gfx::IResourceView::Desc desc = {};
+        desc.type = gfx::IResourceView::Type::ShaderResource;
+        fillBufferViewDesc(desc, pBuffer, firstElement, elementCount);
 
-        gfx_call(gpDevice->getApiHandle()->createBufferView(static_cast<gfx::IBufferResource*>(pBuffer->getApiHandle().get()), desc, handle.writeRef()));
+        FALCOR_GFX_CALL(gpDevice->getApiHandle()->createBufferView(static_cast<gfx::IBufferResource*>(pBuffer->getApiHandle().get()), nullptr, desc, handle.writeRef()));
         return SharedPtr(new ShaderResourceView(pBuffer, handle, firstElement, elementCount));
     }
 
@@ -100,6 +105,21 @@ namespace Falcor
     {
         // Create a null view of the specified dimension.
         return SharedPtr(new ShaderResourceView(std::weak_ptr<Resource>(), nullptr, 0, 0));
+    }
+
+    D3D12DescriptorCpuHandle ShaderResourceView::getD3D12CpuHeapHandle() const
+    {
+#if FALCOR_D3D12_AVAILABLE
+        gfx::InteropHandle handle;
+        FALCOR_GFX_CALL(mApiHandle->getNativeHandle(&handle));
+        FALCOR_ASSERT(handle.api == gfx::InteropHandleAPI::D3D12CpuDescriptorHandle);
+
+        D3D12DescriptorCpuHandle result;
+        result.ptr = handle.handleValue;
+        return result;
+#else
+        throw RuntimeError("getD3D12CpuHeapHandle() is not available.");
+#endif
     }
 
     DepthStencilView::SharedPtr DepthStencilView::create(ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
@@ -114,18 +134,30 @@ namespace Falcor
         desc.subresourceRange.layerCount = arraySize;
         desc.subresourceRange.mipLevel = mipLevel;
         desc.subresourceRange.mipLevelCount = 1;
+        desc.subresourceRange.aspectMask = gfx::TextureAspect::Depth;
         desc.renderTarget.shape = gfxTexture->getDesc()->type;
-        desc.renderTarget.arrayIndex = firstArraySlice;
-        desc.renderTarget.arraySize = arraySize;
-        desc.renderTarget.mipSlice = mipLevel;
-        desc.renderTarget.planeIndex = 0;
-        gfx_call(gpDevice->getApiHandle()->createTextureView(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), desc, handle.writeRef()));
+        FALCOR_GFX_CALL(gpDevice->getApiHandle()->createTextureView(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), desc, handle.writeRef()));
         return SharedPtr(new DepthStencilView(pTexture, handle, mipLevel, firstArraySlice, arraySize));
     }
 
     DepthStencilView::SharedPtr DepthStencilView::create(Dimension dimension)
     {
         return SharedPtr(new DepthStencilView(std::weak_ptr<Resource>(), nullptr, 0, 0, 0));
+    }
+
+    D3D12DescriptorCpuHandle DepthStencilView::getD3D12CpuHeapHandle() const
+    {
+#if FALCOR_D3D12_AVAILABLE
+        gfx::InteropHandle handle;
+        FALCOR_GFX_CALL(mApiHandle->getNativeHandle(&handle));
+        FALCOR_ASSERT(handle.api == gfx::InteropHandleAPI::D3D12CpuDescriptorHandle);
+
+        D3D12DescriptorCpuHandle result;
+        result.ptr = handle.handleValue;
+        return result;
+#else
+        throw RuntimeError("getD3D12CpuHeapHandle() is not available.");
+#endif
     }
 
     UnorderedAccessView::SharedPtr UnorderedAccessView::create(ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
@@ -138,7 +170,7 @@ namespace Falcor
         desc.subresourceRange.layerCount = arraySize;
         desc.subresourceRange.mipLevel = mipLevel;
         desc.subresourceRange.mipLevelCount = 1;
-        gfx_call(gpDevice->getApiHandle()->createTextureView(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), desc, handle.writeRef()));
+        FALCOR_GFX_CALL(gpDevice->getApiHandle()->createTextureView(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), desc, handle.writeRef()));
         return SharedPtr(new UnorderedAccessView(pTexture, handle, mipLevel, firstArraySlice, arraySize));
     }
 
@@ -146,19 +178,34 @@ namespace Falcor
     {
         Slang::ComPtr<gfx::IResourceView> handle;
         gfx::IResourceView::Desc desc = {};
-        desc.format = getGFXFormat(pBuffer->getFormat());
         desc.type = gfx::IResourceView::Type::UnorderedAccess;
-        desc.bufferRange.firstElement = firstElement;
-
-        bool useDefaultCount = (elementCount == UnorderedAccessView::kMaxPossible);
-        desc.bufferRange.elementCount = useDefaultCount ? pBuffer->getElementCount() - firstElement : elementCount;
-        gfx_call(gpDevice->getApiHandle()->createBufferView(static_cast<gfx::IBufferResource*>(pBuffer->getApiHandle().get()), desc, handle.writeRef()));
+        fillBufferViewDesc(desc, pBuffer, firstElement, elementCount);
+        FALCOR_GFX_CALL(gpDevice->getApiHandle()->createBufferView(
+            static_cast<gfx::IBufferResource*>(pBuffer->getApiHandle().get()),
+            pBuffer->getUAVCounter() ? static_cast<gfx::IBufferResource*>(pBuffer->getUAVCounter()->getApiHandle().get()) : nullptr,
+            desc,
+            handle.writeRef()));
         return SharedPtr(new UnorderedAccessView(pBuffer, handle, firstElement, elementCount));
     }
 
     UnorderedAccessView::SharedPtr UnorderedAccessView::create(Dimension dimension)
     {
         return SharedPtr(new UnorderedAccessView(std::weak_ptr<Resource>(), nullptr, 0, 0));
+    }
+
+    D3D12DescriptorCpuHandle UnorderedAccessView::getD3D12CpuHeapHandle() const
+    {
+#if FALCOR_D3D12_AVAILABLE
+        gfx::InteropHandle handle;
+        FALCOR_GFX_CALL(mApiHandle->getNativeHandle(&handle));
+        FALCOR_ASSERT(handle.api == gfx::InteropHandleAPI::D3D12CpuDescriptorHandle);
+
+        D3D12DescriptorCpuHandle result;
+        result.ptr = handle.handleValue;
+        return result;
+#else
+        throw RuntimeError("getD3D12CpuHeapHandle() is not available.");
+#endif
     }
 
     RenderTargetView::~RenderTargetView() = default;
@@ -170,31 +217,125 @@ namespace Falcor
         gfx::IResourceView::Desc desc = {};
         desc.format = getGFXFormat(pTexture->getFormat());
         desc.type = gfx::IResourceView::Type::RenderTarget;
-        desc.renderTarget.arrayIndex = firstArraySlice;
-        desc.renderTarget.arraySize = arraySize;
-        desc.renderTarget.mipSlice = mipLevel;
-        desc.renderTarget.planeIndex = 0;
+        desc.subresourceRange.baseArrayLayer = firstArraySlice;
+        desc.subresourceRange.layerCount = arraySize;
+        desc.subresourceRange.mipLevel = mipLevel;
+        desc.subresourceRange.mipLevelCount = 1;
+        desc.subresourceRange.aspectMask = gfx::TextureAspect::Color;
         desc.renderTarget.shape = gfxTexture->getDesc()->type;
-        gfx_call(gpDevice->getApiHandle()->createTextureView(gfxTexture, desc, handle.writeRef()));
+        FALCOR_GFX_CALL(gpDevice->getApiHandle()->createTextureView(gfxTexture, desc, handle.writeRef()));
         return SharedPtr(new RenderTargetView(pTexture, handle, mipLevel, firstArraySlice, arraySize));
+    }
+
+    gfx::IResource::Type getGFXResourceType(RenderTargetView::Dimension dim)
+    {
+        switch (dim)
+        {
+        case RenderTargetView::Dimension::Buffer:
+            return gfx::IResource::Type::Buffer;
+        case RenderTargetView::Dimension::Texture1D:
+        case RenderTargetView::Dimension::Texture1DArray:
+            return gfx::IResource::Type::Texture1D;
+        case RenderTargetView::Dimension::Texture2D:
+        case RenderTargetView::Dimension::Texture2DMS:
+        case RenderTargetView::Dimension::Texture2DMSArray:
+        case RenderTargetView::Dimension::Texture2DArray:
+            return gfx::IResource::Type::Texture2D;
+        case RenderTargetView::Dimension::Texture3D:
+            return gfx::IResource::Type::Texture3D;
+        case RenderTargetView::Dimension::TextureCube:
+        case RenderTargetView::Dimension::TextureCubeArray:
+            return gfx::IResource::Type::TextureCube;
+        default:
+            FALCOR_UNREACHABLE();
+            return gfx::IResource::Type::Texture2D;
+        }
     }
 
     RenderTargetView::SharedPtr RenderTargetView::create(Dimension dimension)
     {
-        return SharedPtr(new RenderTargetView(std::weak_ptr<Resource>(), nullptr, 0, 0, 0));
+        Slang::ComPtr<gfx::IResourceView> handle;
+        gfx::IResourceView::Desc desc = {};
+        desc.format = gfx::Format::R8G8B8A8_UNORM;
+        desc.type = gfx::IResourceView::Type::RenderTarget;
+        desc.subresourceRange.baseArrayLayer = 0;
+        desc.subresourceRange.layerCount = 1;
+        desc.subresourceRange.mipLevel = 0;
+        desc.subresourceRange.mipLevelCount = 1;
+        desc.subresourceRange.aspectMask = gfx::TextureAspect::Color;
+        desc.renderTarget.shape = getGFXResourceType(dimension);
+        FALCOR_GFX_CALL(gpDevice->getApiHandle()->createTextureView(nullptr, desc, handle.writeRef()));
+        return SharedPtr(new RenderTargetView(std::weak_ptr<Resource>(), handle, 0, 0, 0));
     }
+
+    D3D12DescriptorCpuHandle RenderTargetView::getD3D12CpuHeapHandle() const
+    {
+#if FALCOR_D3D12_AVAILABLE
+        gfx::InteropHandle handle;
+        FALCOR_GFX_CALL(mApiHandle->getNativeHandle(&handle));
+        FALCOR_ASSERT(handle.api == gfx::InteropHandleAPI::D3D12CpuDescriptorHandle);
+
+        D3D12DescriptorCpuHandle result;
+        result.ptr = handle.handleValue;
+        return result;
+#else
+        throw RuntimeError("getD3D12CpuHeapHandle() is not available.");
+#endif
+    }
+
+#if FALCOR_D3D12_AVAILABLE
+    D3D12DescriptorSet::SharedPtr createCbvDescriptor(const D3D12_CONSTANT_BUFFER_VIEW_DESC& desc, Resource::ApiHandle resHandle)
+    {
+        D3D12DescriptorSet::Layout layout;
+        layout.addRange(ShaderResourceType::Cbv, 0, 1);
+        D3D12DescriptorSet::SharedPtr handle = D3D12DescriptorSet::create(gpDevice->getD3D12CpuDescriptorPool(), layout);
+        gpDevice->getD3D12Handle()->CreateConstantBufferView(&desc, handle->getCpuHandle(0));
+
+        return handle;
+    }
+#endif // FALCOR_D3D12_AVAILABLE
 
     ConstantBufferView::SharedPtr ConstantBufferView::create(ConstBufferSharedPtrRef pBuffer)
     {
-        // TODO: GFX doesn't support constant buffer view. Consider remove this from public interface.
+        // GFX doesn't need constant buffer view.
+        // We provide a raw D3D12 implementation for applications
+        // that wish to use the raw D3D12DescriptorSet API.
+#if FALCOR_D3D12_AVAILABLE
         FALCOR_ASSERT(pBuffer);
-        return nullptr;
+        D3D12_CONSTANT_BUFFER_VIEW_DESC desc = {};
+        desc.BufferLocation = pBuffer->getGpuAddress();
+        desc.SizeInBytes = (uint32_t)pBuffer->getSize();
+        Resource::ApiHandle resHandle = pBuffer->getApiHandle();
+
+        return SharedPtr(new ConstantBufferView(pBuffer, createCbvDescriptor(desc, resHandle)));
+#else
+        FALCOR_ASSERT(pBuffer);
+        throw RuntimeError("ConstantBufferView is not supported in GFX.");
+#endif // FALCOR_D3D12_AVAILABLE
     }
 
     ConstantBufferView::SharedPtr ConstantBufferView::create()
     {
-        // TODO: GFX doesn't support constant buffer view. Consider remove this from public interface.
-        return nullptr;
+        // GFX doesn't support constant buffer view.
+        // We provide a raw D3D12 implementation for applications
+        // that wish to use the raw D3D12DescriptorSet API.
+#if FALCOR_D3D12_AVAILABLE
+        // Create a null view.
+        D3D12_CONSTANT_BUFFER_VIEW_DESC desc = {};
+
+        return SharedPtr(new ConstantBufferView(std::weak_ptr<Resource>(), createCbvDescriptor(desc, nullptr)));
+#else
+        return SharedPtr(new ConstantBufferView(std::weak_ptr<Resource>(), nullptr));
+#endif // FALCOR_D3D12_AVAILABLE
+    }
+
+    D3D12DescriptorCpuHandle ConstantBufferView::getD3D12CpuHeapHandle() const
+    {
+#if FALCOR_D3D12_AVAILABLE
+        return mApiHandle->getCpuHandle(0);
+#else
+        throw RuntimeError("ConstantBufferView is not supported in GFX.");
+#endif // FALCOR_D3D12_AVAILABLE
     }
 
     using ResourceViewImpl = ResourceView<Slang::ComPtr<gfx::IResourceView>>;

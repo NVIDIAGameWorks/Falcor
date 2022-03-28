@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -50,12 +50,12 @@ namespace Falcor
         BinaryFileStream() {};
 
         /** Constructor that opens a file
-            \param[in] filename Name of file to open or create
+            \param[in] path Path of file to open or create
             \param[in] mode Mode to open file as
         */
-        BinaryFileStream(const std::string& filename, Mode mode = Mode::ReadWrite)
+        BinaryFileStream(const std::filesystem::path& path, Mode mode = Mode::ReadWrite)
         {
-            open(filename, mode);
+            open(path, mode);
         }
 
         /** Destructor
@@ -66,16 +66,16 @@ namespace Falcor
         }
 
         /** Opens a file stream. Fails if a file is already open.
-            \param[in] filename Name of file to open or create
+            \param[in] path Path of file to open or create
             \param[in] mode Mode to open file as
         */
-        void open(const std::string& filename, Mode mode = Mode::ReadWrite)
+        void open(const std::filesystem::path& path, Mode mode = Mode::ReadWrite)
         {
             std::ios::openmode iosMode = std::ios::binary;
             iosMode |= ((mode == Mode::Read) || (mode == Mode::ReadWrite)) ? std::ios::in : (std::ios::openmode)0;
             iosMode |= ((mode == Mode::Write) || (mode == Mode::ReadWrite))? std::ios::out : (std::ios::openmode)0;
-            mStream.open(filename.c_str(), iosMode);
-            mFilename = filename;
+            mStream.open(path, iosMode);
+            mPath = path;
         }
 
         /** Close the file stream.
@@ -97,23 +97,23 @@ namespace Falcor
         */
         void remove()
         {
-            if(mStream.is_open())
+            if (mStream.is_open())
             {
                 close();
             }
-            std::remove(mFilename.c_str());
+            std::filesystem::remove(mPath);
         }
 
         /** Calculates amount of remaining data in the file.
             \return Number of bytes remaining in the stream
         */
         uint32_t getRemainingStreamSize()
-        {    
+        {
             std::streamoff currentPos = mStream.tellg();
             mStream.seekg(0, mStream.end);
             std::streamoff length = mStream.tellg();
             mStream.seekg(currentPos);
-            return (uint32_t)(length - currentPos); 
+            return (uint32_t)(length - currentPos);
         }
 
         /** Checks for validity of the stream
@@ -164,6 +164,6 @@ namespace Falcor
 
     private:
         std::fstream mStream;
-        std::string mFilename;
+        std::filesystem::path mPath;
     };
 }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 
 import Scene.Shading;
 import Utils.Math.MathHelpers;
+import Utils.Sampling.UniformSampleGenerator;
 
 /** Utility for integrating an isotropic BSDF over the hemisphere.
 
@@ -85,6 +86,7 @@ struct BSDFIntegrator
         // The samples are currently placed at the center of each strata.
         float3 value = {};
 
+        UniformSampleGenerator sg = UniformSampleGenerator(threadID, 0);
         for (uint sy = 0; sy < kSampleCount.y; sy++)
         {
             for (uint sx = 0; sx < kSampleCount.x; sx++)
@@ -97,7 +99,7 @@ struct BSDFIntegrator
                 float3 wo = sample_cosine_hemisphere_concentric(u, pdf);
 
                 // Evaluate BSDF divided by pdf.
-                value += pdf > 0.f ? bsdf.eval(sd, wo) / pdf : float3(0.f);
+                value += pdf > 0.f ? bsdf.eval(sd, wo, sg) / pdf : float3(0.f);
             }
         }
         value *= 1.f / (kSampleCount.x * kSampleCount.y);

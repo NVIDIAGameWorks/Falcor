@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -57,7 +57,7 @@ namespace Falcor
 
         mpFrameFence = GpuFence::create();
 
-#ifdef FALCOR_D3D12
+#if FALCOR_D3D12_AVAILABLE
         // Create the descriptor pools
         D3D12DescriptorPool::Desc poolDesc;
         poolDesc.setDescCount(ShaderResourceType::TextureSrv, 1000000).setDescCount(ShaderResourceType::Sampler, 2048).setShaderVisible(true);
@@ -163,10 +163,10 @@ namespace Falcor
             mDeferredReleases.pop();
         }
 
-#ifdef FALCOR_D3D12
+#ifdef FALCOR_D3D12_AVAILABLE
         mpD3D12CpuDescPool->executeDeferredReleases();
         mpD3D12GpuDescPool->executeDeferredReleases();
-#endif // FALCOR_D3D12
+#endif // FALCOR_D3D12_AVAILABLE
     }
 
     void Device::toggleVSync(bool enable)
@@ -196,17 +196,6 @@ namespace Falcor
 
         destroyApiObjects();
         mpWindow.reset();
-    }
-
-    void Device::present()
-    {
-        mpRenderContext->resourceBarrier(mpSwapChainFbos[mCurrentBackBufferIndex]->getColorTexture(0).get(), Resource::State::Present);
-        mpRenderContext->flush();
-        apiPresent();
-        mpFrameFence->gpuSignal(mpRenderContext->getLowLevelData()->getCommandQueue());
-        if (mpFrameFence->getCpuValue() >= kSwapChainBuffersCount) mpFrameFence->syncCpu(mpFrameFence->getCpuValue() - kSwapChainBuffersCount);
-        executeDeferredReleases();
-        mFrameID++;
     }
 
     void Device::flushAndSync()

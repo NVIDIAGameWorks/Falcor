@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -34,6 +34,6 @@
 #define FALCOR_ENABLE_CUDA              0 // Set this to 1 to enable CUDA use and CUDA/DX interoperation. Make sure you have the CUDA SDK package in your 'Externals' directory. View the readme for more information.
 #define FALCOR_ENABLE_OPTIX             0 // Set this to 1 to enable OptiX. Make sure you have the OptiX SDK package in your 'Externals' directory. View the readme for more information.
 #define FALCOR_ENABLE_D3D12_AGILITY_SDK 1 // Set this to 1 to enable D3D12 Agility SDK. Make sure you have the Agility SDK package in your `Externals` directory. View the readme for more information.
-#define FALCOR_ENABLE_NRD               0 // Set this to 1 to enable NRD. Make sure you have the NRD SDK package in your `Externals` directory. View the readme for more information.
-#define FALCOR_ENABLE_DLSS              0 // Set this to 1 to enable DLSS. Make sure you have the DLSS SDK package in your `Externals` directory. View the readme for more information.
-#define FALCOR_ENABLE_RTXDI             0 // Set this to 1 to enable RTXDI. Make sure you have the RTXDI SDK package in your `Externals` directory. View the readme for more information.
+#define FALCOR_ENABLE_NRD               1 // Set this to 1 to enable NRD. Make sure you have the NRD SDK package in your `Externals` directory. View the readme for more information.
+#define FALCOR_ENABLE_DLSS              1 // Set this to 1 to enable DLSS. Make sure you have the DLSS SDK package in your `Externals` directory. View the readme for more information.
+#define FALCOR_ENABLE_RTXDI             1 // Set this to 1 to enable RTXDI. Make sure you have the RTXDI SDK package in your `Externals` directory. View the readme for more information.

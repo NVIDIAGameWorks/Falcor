@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -40,10 +40,10 @@ namespace Falcor
         {
             std::string getTitle() const
             {
-                return getFilenameFromPath(filename) + "/" + name + " (" + (cpuFunc ? "CPU" : "GPU") + ")";
+                return path.filename().string() + "/" + name + " (" + (cpuFunc ? "CPU" : "GPU") + ")";
             }
 
-            std::string filename;
+            std::filesystem::path path;
             std::string name;
             std::string skipMessage;
             CPUTestFunc cpuFunc;
@@ -72,18 +72,18 @@ namespace Falcor
 
     }   // end anonymous namespace
 
-    void registerCPUTest(const std::string& filename, const std::string& name,
+    void registerCPUTest(const std::filesystem::path& path, const std::string& name,
                          const std::string& skipMessage, CPUTestFunc func)
     {
         if (!testRegistry) testRegistry = new std::vector<Test>;
-        testRegistry->push_back({ filename, name, skipMessage, std::move(func), {} });
+        testRegistry->push_back({ path, name, skipMessage, std::move(func), {} });
     }
 
-    void registerGPUTest(const std::string& filename, const std::string& name,
+    void registerGPUTest(const std::filesystem::path& path, const std::string& name,
                          const std::string& skipMessage, GPUTestFunc func)
     {
         if (!testRegistry) testRegistry = new std::vector<Test>;
-        testRegistry->push_back({ filename, name, skipMessage, {}, std::move(func) });
+        testRegistry->push_back({ path, name, skipMessage, {}, std::move(func) });
     }
 
     inline TestResult runTest(const Test& test, RenderContext* pRenderContext)
@@ -158,7 +158,7 @@ namespace Falcor
         std::sort(tests.begin(), tests.end(),
             [](const Test &a, const Test &b)
         {
-            return (a.filename + "/" + a.name) < (b.filename + "/" + b.name);
+            return (a.path / a.name).string() < (b.path / b.name).string();
         });
 
         stream << "Running " << std::to_string(tests.size()) << " tests" << std::endl;
@@ -194,7 +194,7 @@ namespace Falcor
 
     ///////////////////////////////////////////////////////////////////////////
 
-    void GPUUnitTestContext::createProgram(const std::string& path,
+    void GPUUnitTestContext::createProgram(const std::filesystem::path& path,
                                            const std::string& entry,
                                            const Program::DefineList& programDefines,
                                            Shader::CompilerFlags flags,

@@ -52,16 +52,16 @@ class falcor.**Renderer**
 | `videoCapture`  | `VideoCapture`  | Video capture.                  |
 | `timingCapture` | `TimingCapture` | Timing capture.                 |
 
-| Method                                                      | Description                                                     |
-|-------------------------------------------------------------|-----------------------------------------------------------------|
-| `script(filename)`                                          | Run a script.                                                   |
-| `loadScene(filename, buildFlags=SceneBuilderFlags.Default)` | Load a scene. See available build flags below.                  |
-| `unloadScene()`                                             | Explicitly unload the scene to free memory.                     |
-| `saveConfig(filename)`                                      | Save the current state to a config file.                        |
-| `addGraph(graph)`                                           | Add a render graph.                                             |
-| `removeGraph(graph)`                                        | Remove a render graph. `graph` can be a render graph or a name. |
-| `getGraph(name)`                                            | Get a render graph by name.                                     |
-| `resizeSwapChain(width, height)`                            | Resize the window/swapchain.                                    |
+| Method                                                  | Description                                                     |
+|---------------------------------------------------------|-----------------------------------------------------------------|
+| `script(path)`                                          | Run a script.                                                   |
+| `loadScene(path, buildFlags=SceneBuilderFlags.Default)` | Load a scene. See available build flags below.                  |
+| `unloadScene()`                                         | Explicitly unload the scene to free memory.                     |
+| `saveConfig(path)`                                      | Save the current state to a config file.                        |
+| `addGraph(graph)`                                       | Add a render graph.                                             |
+| `removeGraph(graph)`                                    | Remove a render graph. `graph` can be a render graph or a name. |
+| `getGraph(name)`                                        | Get a render graph by name.                                     |
+| `resizeSwapChain(width, height)`                        | Resize the window/swapchain.                                    |
 
 #### Clock
 
@@ -252,9 +252,9 @@ m.videoCapture.addRanges(m.activeGraph, [[30, 300]])
 
 class falcor.**TimingCapture**
 
-| Method                       | Description                                      |
-|------------------------------|--------------------------------------------------|
-| `captureFrameTime(filename)` | Start writing frame times to the given filename. |
+| Method                   | Description                                       |
+|--------------------------|---------------------------------------------------|
+| `captureFrameTime(path)` | Start writing frame times to the given file path. |
 
 Example:
 ```python
@@ -399,7 +399,7 @@ class falcor.**Scene**
 
 | Method                               | Description                                            |
 |--------------------------------------|--------------------------------------------------------|
-| `setEnvMap(filename)`                | Load an environment map from an image.                 |
+| `setEnvMap(path)`                    | Load an environment map from an image.                 |
 | `getLight(index)`                    | Return a light by index.                               |
 | `getLight(name)`                     | Return a light by name.                                |
 | `getMaterial(index)`                 | Return a material by index.                            |
@@ -438,15 +438,15 @@ class falcor.**Camera**
 
 class falcor.**EnvMap**
 
-| Property    | Type     | Description                                    |
-|-------------|----------|------------------------------------------------|
-| `filename`  | `str`    | Filename of loaded environment map (readonly). |
-| `rotation`  | `float3` | Rotation angles in degrees (XYZ).              |
-| `intensity` | `float`  | Intensity (scalar multiplier).                 |
+| Property    | Type     | Description                                     |
+|-------------|----------|-------------------------------------------------|
+| `path`      | `str`    | File path of loaded environment map (readonly). |
+| `rotation`  | `float3` | Rotation angles in degrees (XYZ).               |
+| `intensity` | `float`  | Intensity (scalar multiplier).                  |
 
-| Static method              | Description                           |
-|----------------------------|---------------------------------------|
-| `createFromFile(filename)` | Create a environment map from a file. |
+| Static method          | Description                           |
+|------------------------|---------------------------------------|
+| `createFromFile(path)` | Create a environment map from a file. |
 
 #### Material
 
@@ -493,10 +493,10 @@ class falcor.**StandardMaterial**
 | `displacementScale`    | `float`        | Displacement mapping scale value.                    |
 | `displacementOffset`   | `float`        | Displacement mapping offset value.                   |
 
-| Method                                      | Description                                |
-|---------------------------------------------|--------------------------------------------|
-| `clearTexture(slot)`                        | Clears one of the texture slots.           |
-| `loadTexture(slot, filename, useSrgb=True)` | Load one of the texture slots from a file. |
+| Method                                  | Description                                |
+|-----------------------------------------|--------------------------------------------|
+| `clearTexture(slot)`                    | Clears one of the texture slots.           |
+| `loadTexture(slot, path, useSrgb=True)` | Load one of the texture slots from a file. |
 
 #### HairMaterial
 
@@ -530,7 +530,7 @@ class falcor.**Grid**
 |--------------------------------------------------------------|---------------------------------------------|
 | `createSphere(radius, voxelSize, blendRange=2.0)`            | Create a sphere grid.                       |
 | `createBox(width, height, depth, voxelSize, blendRange=2.0)` | Create a box grid.                          |
-| `createFromFile(filename, gridname)`                         | Create a grid from an OpenVDB/NanoVDB file. |
+| `createFromFile(path, gridname)`                             | Create a grid from an OpenVDB/NanoVDB file. |
 
 #### Volume
 
@@ -564,11 +564,11 @@ class falcor.**GridVolume**
 | `emissionMode`        | `EmissionMode` | Emission mode (Direct, Blackbody).                      |
 | `emissionTemperature` | `float`        | Emission base temperature (K).                          |
 
-| Method                                        | Description                                                                         |
-|-----------------------------------------------|-------------------------------------------------------------------------------------|
-| `loadGrid(slot, filename, gridname)`          | Load a grid slot from an OpenVDB/NanoVDB file.                                      |
-| `loadGridSequence(slot, filenames, gridname)` | Load a grid slot from a sequence of OpenVDB/NanoVDB files.                          |
-| `loadGridSequence(slot, path, gridname)`      | Load a grid slot from a sequence of OpenVDB/NanoVDB files contained in a directory. |
+| Method                                    | Description                                                                         |
+|-------------------------------------------|-------------------------------------------------------------------------------------|
+| `loadGrid(slot, path, gridname)`          | Load a grid slot from an OpenVDB/NanoVDB file.                                      |
+| `loadGridSequence(slot, paths, gridname)` | Load a grid slot from a sequence of OpenVDB/NanoVDB files.                          |
+| `loadGridSequence(slot, path, gridname)`  | Load a grid slot from a sequence of OpenVDB/NanoVDB files contained in a directory. |
 
 #### Light
 
@@ -681,7 +681,7 @@ class falcor.**TriangleMesh**
 | `createQuad(size=float2(1))`                         | Creates a quad mesh, centered at the origin with normal pointing in positive Y direction.                                                         |
 | `createCube(size=float3(1))`                         | Creates a cube mesh, centered at the origin.                                                                                                      |
 | `createSphere(radius=1, segmentsU=32, segmentsV=16)` | Creates a UV sphere mesh, centered at the origin with poles in positive/negative Y direction.                                                     |
-| `createFromFile(filename,smoothNormals=False)`       | Creates a triangle mesh from a file. If no normals are defined in the file, `smoothNormals` can be used generate smooth instead of facet normals. |
+| `createFromFile(path, smoothNormals=False)`          | Creates a triangle mesh from a file. If no normals are defined in the file, `smoothNormals` can be used generate smooth instead of facet normals. |
 
 #### SceneBuiler
 
@@ -724,26 +724,26 @@ class falcor.**SceneBuilder**
 | `selectedCamera` | `Camera`              | Default selected camera.                         |
 | `cameraSpeed`    | `float`               | Speed of the interactive camera.                 |
 
-| Method                                          | Description                                                                                                     |
-|-------------------------------------------------|-----------------------------------------------------------------------------------------------------------------|
-| `importScene(filename, dict, instances)`        | Load a scene from an asset file. `dict` contains optional data. `instances` is an optional list of `Transform`. |
-| `addTriangleMesh(triangleMesh, material)`       | Add a triangle mesh to the scene and return its ID.                                                             |
-| `addMaterial(material)`                         | Add a material and return its ID.                                                                               |
-| `getMaterial(name)`                             | Return a material by name. The first material with matching name is returned or `None` if none was found.       |
-| `loadMaterialTexture(material, slot, filename)` | Request loading a material texture asynchronously. Use `Material.loadTexture` for synchronous loading.          |
-| `waitForMaterialTextureLoading()`               | Wait until all material textures are loaded.                                                                    |
-| `addVolume(volume)`                             | **DEPRECATED**: Use `addGridVolume` instead.                                                                    |
-| `addGridVolume(gridVolume)`                     | Add a grid volume and return its ID.                                                                            |
-| `getVolume(name)`                               | **DEPRECATED**: Use `getGridVolume` instead.                                                                    |
-| `getGridVolume(name)`                           | Return a grid volume by name. The first volume with matching name is returned or `None` if none was found.      |
-| `addLight(light)`                               | Add a light and return its ID.                                                                                  |
-| `getLight(name)`                                | Return a light by name. The first light with matching name is returned or `None` if none was found.             |
-| `addCamera(camera)`                             | Add a camera and return its ID.                                                                                 |
-| `addAnimation(animation)`                       | Add an animation.                                                                                               |
-| `createAnimation(animatable, name, duration)`   | Create an animation for an animatable object. Returns the new animation or `None` if one already exists.        |
-| `addNode(name, transform, parent)`              | Add a node and return its ID.                                                                                   |
-| `addMeshInstance(nodeID, meshID)`               | Add a mesh instance.                                                                                            |
-| `addCustomPrimitive(userID, aabb)`              | Add a custom primitive. 'aabb' is an AABB specifying its bounds.                                                |
+| Method                                        | Description                                                                                                     |
+|-----------------------------------------------|-----------------------------------------------------------------------------------------------------------------|
+| `importScene(path, dict, instances)`          | Load a scene from an asset file. `dict` contains optional data. `instances` is an optional list of `Transform`. |
+| `addTriangleMesh(triangleMesh, material)`     | Add a triangle mesh to the scene and return its ID.                                                             |
+| `addMaterial(material)`                       | Add a material and return its ID.                                                                               |
+| `getMaterial(name)`                           | Return a material by name. The first material with matching name is returned or `None` if none was found.       |
+| `loadMaterialTexture(material, slot, path)`   | Request loading a material texture asynchronously. Use `Material.loadTexture` for synchronous loading.          |
+| `waitForMaterialTextureLoading()`             | Wait until all material textures are loaded.                                                                    |
+| `addVolume(volume)`                           | **DEPRECATED**: Use `addGridVolume` instead.                                                                    |
+| `addGridVolume(gridVolume)`                   | Add a grid volume and return its ID.                                                                            |
+| `getVolume(name)`                             | **DEPRECATED**: Use `getGridVolume` instead.                                                                    |
+| `getGridVolume(name)`                         | Return a grid volume by name. The first volume with matching name is returned or `None` if none was found.      |
+| `addLight(light)`                             | Add a light and return its ID.                                                                                  |
+| `getLight(name)`                              | Return a light by name. The first light with matching name is returned or `None` if none was found.             |
+| `addCamera(camera)`                           | Add a camera and return its ID.                                                                                 |
+| `addAnimation(animation)`                     | Add an animation.                                                                                               |
+| `createAnimation(animatable, name, duration)` | Create an animation for an animatable object. Returns the new animation or `None` if one already exists.        |
+| `addNode(name, transform, parent)`            | Add a node and return its ID.                                                                                   |
+| `addMeshInstance(nodeID, meshID)`             | Add a mesh instance.                                                                                            |
+| `addCustomPrimitive(userID, aabb)`            | Add a custom primitive. 'aabb' is an AABB specifying its bounds.                                                |
 
 
 ### Render Pass Helpers

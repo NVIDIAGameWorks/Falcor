@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -33,68 +33,65 @@ namespace Falcor
 {
     struct ShaderData
     {
-        Slang::ComPtr<ISlangBlob> pBlob;
-    };
-
-    std::string getTargetString(ShaderType type, const std::string& shaderModel)
-    {
-        switch (type)
+        Shader::Blob pBlob;
+        Slang::ComPtr<slang::IComponentType> pLinkedSlangEntryPoint;
+        ISlangBlob* getBlob()
         {
-        case ShaderType::Vertex:
-            return "vs_" + shaderModel;
-        case ShaderType::Pixel:
-            return "ps_" + shaderModel;
-        case ShaderType::Hull:
-            return "hs_" + shaderModel;
-        case ShaderType::Domain:
-            return "ds_" + shaderModel;
-        case ShaderType::Geometry:
-            return "gs_" + shaderModel;
-        case ShaderType::Compute:
-            return "cs_" + shaderModel;
-        default:
-            FALCOR_UNREACHABLE();
-            return "";
+            if (!pBlob)
+            {
+                Slang::ComPtr<ISlangBlob> pSlangBlob;
+                Slang::ComPtr<ISlangBlob> pDiagnostics;
+
+                if (SLANG_FAILED(pLinkedSlangEntryPoint->getEntryPointCode(0, 0, pSlangBlob.writeRef(), pDiagnostics.writeRef())))
+                {
+                    throw RuntimeError(std::string("Shader compilation failed. \n") + (const char*)pDiagnostics->getBufferPointer());
+                }
+                pBlob = Shader::Blob(pSlangBlob.get());
+            }
+            return pBlob.get();
         }
-    }
+    };
 
     Shader::Shader(ShaderType type) : mType(type)
     {
-        mpPrivateData = nullptr;
+        mpPrivateData = std::make_unique<ShaderData>();
     }
 
     Shader::~Shader()
     {
-        ShaderData* pData = (ShaderData*)mpPrivateData;
-        safe_delete(pData);
     }
 
-    bool Shader::init(const Blob& shaderBlob, const std::string& entryPointName, CompilerFlags flags, std::string& log)
+    bool Shader::init(ComPtr<slang::IComponentType> slangEntryPoint, const std::string& entryPointName, CompilerFlags flags, std::string& log)
     {
-        // Compile the shader
-        ShaderData* pData = (ShaderData*)mpPrivateData;
-        pData->pBlob = shaderBlob.get();
-
-        if (pData->pBlob == nullptr)
-        {
-            return false;
-        }
-        return true;
+        // In GFX, we do not generate actual shader code at program creation.
+        // The actual shader code will only be generated and cached when all specialization arguments
+        // are known, which is right before a draw/dispatch command is issued, and this is done
+        // internally within GFX.
+        // The `Shader` implementation here serves as a helper utility for application code that
+        // uses raw graphics API to get shader kernel code from an ordinary slang source.
+        // Since most users/render-passes do not need to get shader kernel code, we defer
+        // the call to slang's `getEntryPointCode` function until it is actually needed.
+        // to avoid redundant shader compiler invocation.
+        mpPrivateData->pBlob = nullptr;
+        mpPrivateData->pLinkedSlangEntryPoint = slangEntryPoint;
+        return slangEntryPoint != nullptr;
     }
+
+#ifdef FALCOR_D3D12_AVAILABLE
+    ID3DBlobPtr Shader::getD3DBlob() const
+    {
+        ID3DBlobPtr result = mpPrivateData->getBlob();
+        return result;
+    }
+#endif
 
     Shader::BlobData Shader::getBlobData() const
     {
-        ShaderData* pData = (ShaderData*)mpPrivateData;
+        auto blob = mpPrivateData->getBlob();
+
         BlobData result;
-        result.data = pData->pBlob->getBufferPointer();
-        result.size = pData->pBlob->getBufferSize();
+        result.data = blob->getBufferPointer();
+        result.size = blob->getBufferSize();
         return result;
     }
-
-    const Shader::ApiHandle& Shader::getApiHandle() const
-    {
-        UNSUPPORTED_IN_GFX("Shader doesn't have an API handle");
-        throw "unimplemented";
-    }
-
 }

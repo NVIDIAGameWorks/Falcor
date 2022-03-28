@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -46,6 +46,9 @@ namespace Falcor
     {
         gSamplerData.objectCount--;
         if (gSamplerData.objectCount <= 1) gSamplerData.pDefaultSampler = nullptr;
+#ifdef FALCOR_GFX
+        gpDevice->releaseResource(mApiHandle);
+#endif
     }
 
     Sampler::Desc& Sampler::Desc::setFilterMode(Filter minFilter, Filter magFilter, Filter mipFilter)

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -63,15 +63,6 @@ namespace Falcor
         IDXGISwapChain3Ptr pSwapChain = nullptr;
         bool isWindowOccluded = false;
     };
-
-    void d3dTraceHR(const std::string& msg, HRESULT hr)
-    {
-        char hr_msg[512];
-        FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, hr, 0, hr_msg, ARRAYSIZE(hr_msg), nullptr);
-
-        std::string error_msg = msg + ".\nError! " + hr_msg;
-        reportError(error_msg);
-    }
 
     D3D_FEATURE_LEVEL getD3DFeatureLevel(uint32_t majorVersion, uint32_t minorVersion)
     {
@@ -329,6 +320,17 @@ namespace Falcor
             supported |= Device::SupportedFeatures::RasterizerOrderedViews;
         }
 
+        D3D12_FEATURE_DATA_D3D12_OPTIONS1 features1;
+        hr = pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1, &features1, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS1));
+        if (FAILED(hr) || !features1.WaveOps)
+        {
+            logWarning("Wave operations are not supported on this device.");
+        }
+        else
+        {
+            supported |= Device::SupportedFeatures::WaveOperations;
+        }
+
         D3D12_FEATURE_DATA_D3D12_OPTIONS2 features2;
         hr = pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS2, &features2, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS2));
         if (FAILED(hr) || features2.ProgrammableSamplePositionsTier == D3D12_PROGRAMMABLE_SAMPLE_POSITIONS_TIER_NOT_SUPPORTED)
@@ -444,6 +446,8 @@ namespace Falcor
         return true;
     }
 
+    const D3D12DeviceHandle Device::getD3D12Handle() { return mApiHandle; }
+
     void Device::toggleFullScreen(bool fullscreen)
     {
         mpApiData->pSwapChain->SetFullscreenState(fullscreen, nullptr);
@@ -455,10 +459,16 @@ namespace Falcor
         mpWindow.reset();
     }
 
-    void Device::apiPresent()
+    void Device::present()
     {
+        mpRenderContext->resourceBarrier(mpSwapChainFbos[mCurrentBackBufferIndex]->getColorTexture(0).get(), Resource::State::Present);
+        mpRenderContext->flush();
         mpApiData->pSwapChain->Present(mDesc.enableVsync ? 1 : 0, 0);
         mCurrentBackBufferIndex = (mCurrentBackBufferIndex + 1) % kSwapChainBuffersCount;
+        mpFrameFence->gpuSignal(mpRenderContext->getLowLevelData()->getCommandQueue());
+        if (mpFrameFence->getCpuValue() >= kSwapChainBuffersCount) mpFrameFence->syncCpu(mpFrameFence->getCpuValue() - kSwapChainBuffersCount);
+        executeDeferredReleases();
+        mFrameID++;
     }
 
     bool Device::apiInit()

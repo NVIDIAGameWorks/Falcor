@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -87,7 +87,6 @@ namespace Falcor
 
     ProgramKernels::ProgramKernels(
         const ProgramVersion* pVersion,
-        slang::IComponentType* pSpecializedSlangProgram,
         const ProgramReflection::SharedPtr& pReflector,
         const ProgramKernels::UniqueEntryPointGroups& uniqueEntryPointGroups,
         const std::string& name)
@@ -103,16 +102,61 @@ namespace Falcor
 
     ProgramKernels::SharedPtr ProgramKernels::create(
         const ProgramVersion* pVersion,
-        slang::IComponentType* pSpecializedSlangProgram,
+        slang::IComponentType* pSpecializedSlangGlobalScope,
+        const std::vector<slang::IComponentType*>& pTypeConformanceSpecializedEntryPoints,
         const ProgramReflection::SharedPtr& pReflector,
         const ProgramKernels::UniqueEntryPointGroups& uniqueEntryPointGroups,
         std::string& log,
         const std::string& name)
     {
-        SharedPtr pProgram = SharedPtr(new ProgramKernels(pVersion, pSpecializedSlangProgram, pReflector, uniqueEntryPointGroups, name));
+        SharedPtr pProgram = SharedPtr(new ProgramKernels(pVersion, pReflector, uniqueEntryPointGroups, name));
 #ifdef FALCOR_GFX
         gfx::IShaderProgram::Desc programDesc = {};
-        programDesc.slangProgram = pSpecializedSlangProgram;
+        programDesc.linkingStyle = gfx::IShaderProgram::LinkingStyle::SeparateEntryPointCompilation;
+        programDesc.slangGlobalScope = pSpecializedSlangGlobalScope;
+
+        // Check if we are creating program kernels for ray tracing pipeline.
+        bool isRayTracingProgram = false;
+        if (pTypeConformanceSpecializedEntryPoints.size())
+        {
+            auto stage = pTypeConformanceSpecializedEntryPoints[0]->getLayout()->getEntryPointByIndex(0)->getStage();
+            switch (stage)
+            {
+            case SLANG_STAGE_ANY_HIT:
+            case SLANG_STAGE_RAY_GENERATION:
+            case SLANG_STAGE_CLOSEST_HIT:
+            case SLANG_STAGE_CALLABLE:
+            case SLANG_STAGE_INTERSECTION:
+            case SLANG_STAGE_MISS:
+                isRayTracingProgram = true;
+                break;
+            default:
+                break;
+            }
+        }
+        // Deduplicate entry points by name for ray tracing program.
+        std::vector<slang::IComponentType*> deduplicatedEntryPoints;
+        if (isRayTracingProgram)
+        {
+            std::set<std::string> entryPointNames;
+            for (auto entryPoint : pTypeConformanceSpecializedEntryPoints)
+            {
+                auto compiledEntryPointName = std::string(entryPoint->getLayout()->getEntryPointByIndex(0)->getNameOverride());
+                if (entryPointNames.find(compiledEntryPointName) == entryPointNames.end())
+                {
+                    entryPointNames.insert(compiledEntryPointName);
+                    deduplicatedEntryPoints.push_back(entryPoint);
+                }
+            }
+            programDesc.entryPointCount = (uint32_t)deduplicatedEntryPoints.size();
+            programDesc.slangEntryPoints = (slang::IComponentType**)deduplicatedEntryPoints.data();
+        }
+        else
+        {
+            programDesc.entryPointCount = (uint32_t)pTypeConformanceSpecializedEntryPoints.size();
+            programDesc.slangEntryPoints = (slang::IComponentType**)pTypeConformanceSpecializedEntryPoints.data();
+        }
+
         Slang::ComPtr<ISlangBlob> diagnostics;
         if (SLANG_FAILED(gpDevice->getApiHandle()->createProgram(programDesc, pProgram->mApiHandle.writeRef(), diagnostics.writeRef())))
         {
@@ -151,14 +195,12 @@ namespace Falcor
 
     void ProgramVersion::init(
         const DefineList&                                   defineList,
-        const TypeConformanceList&                          typeConformanceList,
         const ProgramReflection::SharedPtr&                 pReflector,
         const std::string&                                  name,
         std::vector<ComPtr<slang::IComponentType>> const&   pSlangEntryPoints)
     {
         FALCOR_ASSERT(pReflector);
         mDefines = defineList;
-        mTypeConformances = typeConformanceList;
         mpReflector = pReflector;
         mName = name;
         mpSlangEntryPoints = pSlangEntryPoints;

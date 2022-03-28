@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -67,7 +67,7 @@ namespace Falcor
         bool captureUI() const { return mCaptureUI; }
         float getStartTime() const { return mStartTime; }
         float getEndTime() const { return mEndTime; }
-        const std::string& getFilename() const { return mFilename; }
+        const std::filesystem::path& getPath() const { return mPath; }
 
     private:
         VideoEncoderUI(CallbackStart startCaptureCB, CallbackEnd endCaptureCB);
@@ -90,7 +90,7 @@ namespace Falcor
         float mStartTime = 0;
         float mEndTime = 4.f;
 
-        std::string mFilename;
+        std::filesystem::path mPath;
         float mBitrate = 30.f;
         uint32_t mGopSize = 10;
     };

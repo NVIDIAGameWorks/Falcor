@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -34,6 +34,7 @@
 #include "Utils/UI/Gui.h"
 #include "Utils/UI/TextRenderer.h"
 #include "Utils/UI/PixelZoom.h"
+#include "Utils/UI/InputState.h"
 #include "Utils/Video/VideoEncoderUI.h"
 #include <set>
 #include <optional>
@@ -57,13 +58,13 @@ namespace Falcor
         static void run(const SampleConfig& config, IRenderer::UniquePtr& pRenderer, uint32_t argc = 0, char** argv = nullptr);
 
         /** Entry-point to Sample. User should call this to start processing.
-            \param[in] filename A filename containing the sample configuration. If the file is not found, the sample will issue an error and lunch with the default configuration.
+            \param[in] path Path to the sample configuration. If the file is not found, the sample will issue an error and lunch with the default configuration.
             \param[in] pRenderer The user's renderer. The Sample takes ownership of the renderer.
             \param[in] argc Optional. The number of strings in `argv`.
             \param[in] argv Optional. The command line arguments.
             Note that when running a Windows application (with WinMain()), the command line arguments will be retrieved and parsed even if argc and argv are nullptr.
         */
-        static void run(const std::string& filename, IRenderer::UniquePtr& pRenderer, uint32_t argc = 0, char** argv = nullptr);
+        static void run(const std::filesystem::path& path, IRenderer::UniquePtr& pRenderer, uint32_t argc = 0, char** argv = nullptr);
 
         virtual ~Sample();
     protected:
@@ -77,12 +78,12 @@ namespace Falcor
         FrameRate& getFrameRate() override { return mFrameRate; }
         void resizeSwapChain(uint32_t width, uint32_t height) override;
         void renderFrame() override;
-        bool isKeyPressed(const KeyboardEvent::Key& key) override;
+        const InputState& getInputState() override { return mInputState; }
         void toggleUI(bool showUI) override { mShowUI = showUI; }
         bool isUiEnabled() override { return mShowUI; }
         void pauseRenderer(bool pause) override { mRendererPaused = pause; }
         bool isRendererPaused() override { return mRendererPaused; }
-        std::string captureScreen(const std::string explicitFilename = "", const std::string explicitOutputDirectory = "") override;
+        std::filesystem::path captureScreen(const std::string explicitFilename = "", const std::filesystem::path explicitDirectory = "") override;
         void shutdown() override { if (mpWindow) { mpWindow->shutdown(); } }
         SampleConfig getConfig() override;
         void renderGlobalUI(Gui* pGui) override;
@@ -101,7 +102,9 @@ namespace Falcor
         void handleRenderFrame() override;
         void handleKeyboardEvent(const KeyboardEvent& keyEvent) override;
         void handleMouseEvent(const MouseEvent& mouseEvent) override;
-        void handleDroppedFile(const std::string& filename) override;
+        void handleGamepadEvent(const GamepadEvent& gamepadEvent) override;
+        void handleGamepadState(const GamepadState& gamepadState) override;
+        void handleDroppedFile(const std::filesystem::path& path) override;
 
         void initVideoCapture();
 
@@ -140,7 +143,7 @@ namespace Falcor
 
         ProfilerUI::UniquePtr mpProfilerUI;
 
-        std::set<KeyboardEvent::Key> mPressedKeys;
+        InputState mInputState;
         PixelZoom::SharedPtr mpPixelZoom;
 
         Sample(IRenderer::UniquePtr& pRenderer) : mpRenderer(std::move(pRenderer)) {}

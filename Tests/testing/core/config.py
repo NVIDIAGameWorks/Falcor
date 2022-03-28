@@ -31,10 +31,10 @@ if os.name == 'nt':
         'DebugD3D12': {
             'build_dir': 'Bin/x64/Debug'
         },
-        'ReleaseVK': {
+        'ReleaseGFX': {
             'build_dir': 'Bin/x64/Release'
         },
-        'DebugVK': {
+        'DebugGFX': {
             'build_dir': 'Bin/x64/Debug'
         }
     }

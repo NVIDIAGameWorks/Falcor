@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -195,12 +195,15 @@ namespace Falcor
 
         mutable std::vector<MeshLightTriangle>  mMeshLightTriangles;    ///< List of all pre-processed mesh light triangles.
         mutable std::vector<uint32_t>           mActiveTriangleList;    ///< List of active (non-culled) emissive triangles.
+        mutable std::vector<uint32_t>           mTriToActiveList;       ///< Mapping of all light triangles to index in mActiveTriangleList.
+
         mutable MeshLightStats                  mMeshLightStats;        ///< Stats before/after pre-processing of mesh lights. Do not access this directly, use getStats() which ensures the stats are up-to-date.
         mutable bool                            mStatsValid = false;    ///< True when stats are valid.
 
         // GPU resources for the mesh lights and emissive triangles.
         Buffer::SharedPtr                       mpTriangleData;         ///< Per-triangle geometry data for emissive triangles (mTriangleCount elements).
         Buffer::SharedPtr                       mpActiveTriangleList;   ///< List of active (non-culled) emissive triangle.
+        Buffer::SharedPtr                       mpTriToActiveList;      ///< Mapping of all light triangles to index in mActiveTriangleList.
         Buffer::SharedPtr                       mpFluxData;             ///< Per-triangle flux data for emissive triangles (mTriangleCount elements).
         Buffer::SharedPtr                       mpMeshData;             ///< Per-mesh data for emissive meshes (mMeshLights.size() elements).
         Buffer::SharedPtr                       mpPerMeshInstanceOffset; ///< Per-mesh instance offset into emissive triangles array (Scene::getMeshInstanceCount() elements).

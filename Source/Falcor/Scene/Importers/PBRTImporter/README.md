@@ -1,0 +1,236 @@
+# PBRTImporter
+
+This is a scene importer for pbrt-v4 scene files.
+Falcor only supports a very limited subset of the features implemented in pbrt-v4,
+therefore the scene conversion is far from perfect. The list below is an overview
+of the objects and parameters currently supported in this importer.
+
+## Supported objects / parameters
+
+- Cameras
+  - [x] `perspective`
+    - [x] `lensradius`
+    - [x] `focaldistance`
+    - [ ] `frameaspectratio`
+    - [ ] `screenwindow`
+  - [ ] `orthographic`
+    - [ ] `lensradius`
+    - [ ] `focaldistance`
+    - [ ] `frameaspectratio`
+    - [ ] `screenwindow`
+  - [ ] `realistic`
+    - [ ] `lensfile`
+    - [ ] `aperturediameter`
+    - [ ] `focusdistance`
+    - [ ] `aperture`
+  - [ ] `spherical`
+    - [ ] `lensradius`
+    - [ ] `focaldistance`
+    - [ ] `frameaspectratio`
+    - [ ] `screenwindow`
+    - [ ] `mapping`
+- Lights
+  - [ ] `point`
+    - [ ] `I`
+    - [ ] `scale`
+    - [ ] `power`
+    - [ ] `from`
+  - [ ] `spot`
+    - [ ] `I`
+    - [ ] `scale`
+    - [ ] `power`
+    - [ ] `coneangle`
+    - [ ] `conedeltaangle`
+    - [ ] `from`
+    - [ ] `to`
+  - [ ] `goniometric`
+    - [ ] `I`
+    - [ ] `scale`
+    - [ ] `filename`
+    - [ ] `power`
+  - [ ] `projection`
+    - [ ]`scale`
+    - [ ]`power`
+    - [ ]`fov`
+    - [ ]`filename`
+  - [x] `distant`
+    - [x] `L`
+    - [x] `scale`
+    - [x] `from`
+    - [x] `to`
+    - [x] `illuminance`
+  - [x] `infinite`
+    - [x] `L`
+    - [x] `scale`
+    - [ ] `portal`
+    - [x] `filename`
+    - [ ] `illuminance`
+- Textures
+  - [x] `constant`
+    - [x] `value`
+  - [ ] `scale`
+    - [ ] `tex`
+    - [ ] `scale`
+  - [ ] `mix`
+    - [ ] `tex1`
+    - [ ] `tex2`
+    - [ ] `amount`
+  - [ ] `directionmix`
+    - [ ] `tex1`
+    - [ ] `tex2`
+    - [ ] `dir`
+  - [ ] `bilerp`
+    - [ ] `v00`
+    - [ ] `v01`
+    - [ ] `v10`
+    - [ ] `v11`
+  - [x] `imagemap`
+    - [x] `filename`
+    - [x] `filter` (supported: `bilinear`, `trilinear`, unsupported: `ewa`, `point`)
+    - [x] `encoding` (supported: `linear`, `sRGB`, unsupported: `gamma X`)
+    - [ ] `maxanisotropy`
+    - [ ] `wrap`
+    - [ ] `scale`
+    - [ ] `invert`
+  - [ ] `checkerboard`
+    - [ ] `tex1`
+    - [ ] `tex2`
+    - [ ] `dimension`
+  - [ ] `dots`
+    - [ ] `inside`
+    - [ ] `outside`
+  - [ ] `marble`
+    - [ ] `octaves`
+    - [ ] `roughness`
+    - [ ] `scale`
+    - [ ] `variation`
+  - [ ] `fbm`
+    - [ ] `octaves`
+    - [ ] `roughness`
+  - [ ] `wrinkled`
+    - [ ] `octaves`
+    - [ ] `roughness`
+  - [ ] `windy`
+  - [ ] `ptex`
+    - [ ] `filename`
+    - [ ] `encoding`
+    - [ ] `scale`
+- Materials
+  - [x] `diffuse`
+    - [x] `reflectance`
+  - [x] `coateddiffuse`
+    - [x] `reflectance`
+    - [x] `uroughness` / `vroughness` / `roughness` / `remaproughness` (only constant isotropic values are supported)
+    - [ ] `thickness`
+    - [ ] `eta`
+    - [ ] `maxdepth`
+    - [ ] `nsamples`
+    - [ ] `g`
+    - [ ] `albedo`
+    - [ ] `displacement`
+  - [x] `conductor`
+    - [x] `eta` (only costant value is supported)
+    - [x] `k` (only costant value is supported)
+    - [x] `reflectance` (only costant value is supported)
+    - [x] `uroughness` / `vroughness` / `roughness` / `remaproughness` (only constant isotropic values are supported)
+    - [ ] `displacement`
+  - [ ] `coatedconductor`
+    - [ ] `interface.uroughness` / `interface.vroughness` / `interface.roughness`
+    - [ ] `thickness`
+    - [ ] `interface.eta`
+    - [ ] `conductor.uroughness` / `conductor.vroughness` / `conductor.roughness`
+    - [ ] `conductor.eta` / `conductor.k`
+    - [ ] `reflectance`
+    - [ ] `maxdepth`
+    - [ ] `nsamples`
+    - [ ] `g`
+    - [ ] `albedo`
+    - [ ] `displacement`
+    - [ ] `remaproughness`
+  - [x] `dielectric`
+    - [x] `eta`
+    - [x] `uroughness` / `vroughness` / `roughness` / `remaproughness` (only constant isotropic values are supported)
+    - [ ] `displacement`
+  - [x] `thindielectric`
+    - [x] `eta`
+    - [ ] `displacement`
+  - [ ] `diffusetransmission`
+    - [ ] `reflectance`
+    - [ ] `transmittance`
+    - [ ] `scale`
+    - [ ] `displacement`
+  - [ ] `subsurface`
+  - [ ] `measured`
+  - [ ] `hair`
+  - [ ] `mix`
+- Media
+  - [ ] `homogeneous`
+    - [ ] `preset`
+    - [ ] `sigma_a`
+    - [ ] `sigma_s`
+    - [ ] `Le`
+    - [ ] `Lescale`
+    - [ ] `scale`
+    - [ ] `g`
+  - [ ] `uniformgrid`
+  - [ ] `rgbgrid`
+  - [ ] `cloud`
+  - [ ] `nanovdb`
+- Area lights
+  - [x] `diffuse`
+    - [x] `L`
+    - [x] `scale`
+    - [ ] `twosided`
+    - [ ] `power`
+    - [ ] `filename`
+- Shapes
+  - General attributes
+    - [ ] `alpha`
+  - [x] `sphere`
+    - [x] `radius`
+    - [ ] `zmin`
+    - [ ] `zmax`
+    - [ ] `phimax`
+  - [ ] `cylinder`
+    - [ ] `radius`
+    - [ ] `zmin`
+    - [ ] `zmax`
+    - [ ] `phimax`
+  - [x] `disk`
+    - [x] `radius`
+    - [x] `height`
+    - [ ] `innerradius`
+    - [ ] `phimax`
+  - [ ] `bilinearmesh`
+    - [ ] `indices`
+    - [ ] `P`
+    - [ ] `uv`
+    - [ ] `N`
+    - [ ] `faceIndices`
+    - [ ] `emissionfilename`
+  - [ ] `curve`
+    - [ ] `width`
+    - [ ] `width0`
+    - [ ] `width1`
+    - [ ] `degree`
+    - [ ] `basis`
+    - [ ] `P`
+    - [ ] `type`
+    - [ ] `N`
+    - [ ] `splitdepth`
+  - [x] `trianglemesh`
+    - [x] `indices`
+    - [x] `P`
+    - [x] `N`
+    - [x] `uv`
+    - [ ] `S`
+    - [ ] `faceIndices`
+  - [x] `plymesh`
+    - [x] `filename`
+    - [ ] `displacement`
+    - [ ] `displacement.edgelength`
+  - [x] `loopsubdiv`
+    - [x] `levels`
+    - [x] `indices`
+    - [x] `P`
+    - [ ] `scheme` (also not supported in pbrt-v4)

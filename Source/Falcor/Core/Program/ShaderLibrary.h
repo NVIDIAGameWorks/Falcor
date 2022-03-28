@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -33,14 +33,14 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<ShaderLibrary>;
-        static SharedPtr create(const std::string& filename)
+        static SharedPtr create(const std::filesystem::path& path)
         {
-            return SharedPtr(new ShaderLibrary(filename));
+            return SharedPtr(new ShaderLibrary(path));
         }
 
-        const std::string& getFilename() const { return mFilename; }
+        const std::filesystem::path& getPath() const { return mPath; }
     private:
-        ShaderLibrary(const std::string& filename) : mFilename(filename) {}
-        std::string mFilename;
+        ShaderLibrary(const std::filesystem::path& path) : mPath(path) {}
+        std::filesystem::path mPath;
     };
 }

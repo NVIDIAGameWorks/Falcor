@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -46,10 +46,10 @@ namespace Falcor
         return SharedPtr(new RasterScenePass(pScene, progDesc, dl));
     }
 
-    RasterScenePass::SharedPtr RasterScenePass::create(const Scene::SharedPtr& pScene, const std::string& filename, const std::string& vsEntry, const std::string& psEntry, const Program::DefineList& programDefines)
+    RasterScenePass::SharedPtr RasterScenePass::create(const Scene::SharedPtr& pScene, const std::filesystem::path& path, const std::string& vsEntry, const std::string& psEntry, const Program::DefineList& programDefines)
     {
         Program::Desc d;
-        d.addShaderLibrary(filename).vsEntry(vsEntry).psEntry(psEntry);
+        d.addShaderLibrary(path).vsEntry(vsEntry).psEntry(psEntry);
         return create(pScene, d, programDefines);
     }
 

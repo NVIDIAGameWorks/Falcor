@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -108,7 +108,7 @@ bool SplitScreenPass::onMouseEvent(const MouseEvent& mouseEvent)
     mMousePos = glm::clamp(mMousePos, int2(0, 0), int2(pDstFbo->getWidth() - 1, pDstFbo->getHeight() - 1));
 
     // Actually process our events
-    if (mMouseOverDivider && mouseEvent.type == MouseEvent::Type::LeftButtonDown)
+    if (mMouseOverDivider && mouseEvent.type == MouseEvent::Type::ButtonDown && mouseEvent.button == Input::MouseButton::Left)
     {
         mDividerGrabbed = true;
         handled = true;
@@ -118,7 +118,7 @@ bool SplitScreenPass::onMouseEvent(const MouseEvent& mouseEvent)
     }
     else if (mDividerGrabbed)
     {
-        if (mouseEvent.type == MouseEvent::Type::LeftButtonUp)
+        if (mouseEvent.type == MouseEvent::Type::ButtonUp && mouseEvent.button == Input::MouseButton::Left)
         {
             mDividerGrabbed = false;
             handled = true;

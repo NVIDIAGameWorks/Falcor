@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -39,12 +39,12 @@ namespace Falcor
         virtual ~FullScreenPass();
 
         /** Create a new fullscreen pass from file.
-            \param[in] filename Pixel shader filename. This method expects a pixel shader named "main()" in the file.
+            \param[in] path Pixel shader file path. This method expects a pixel shader named "main()" in the file.
             \param[in] defines Optional list of macro definitions to set into the program.
             \param[in] viewportMask Optional value to initialize viewport mask with. Useful for multi-projection passes.
             \return A new object, or throws an exception if creation failed.
         */
-        static SharedPtr create(const std::string& filename, const Program::DefineList& defines = Program::DefineList(), uint32_t viewportMask = 0);
+        static SharedPtr create(const std::filesystem::path& path, const Program::DefineList& defines = Program::DefineList(), uint32_t viewportMask = 0);
 
         /** Create a new fullscreen pass.
             \param[in] desc The program description.

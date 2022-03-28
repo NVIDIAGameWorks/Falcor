@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,7 +27,7 @@
  **************************************************************************/
 #pragma once
 
-#include "Scene/SDFs/SDF3DPrimitive.slang"
+#include "Scene/SDFs/SDF3DPrimitiveCommon.slang"
 
 namespace Falcor
 {
@@ -69,11 +69,52 @@ namespace Falcor
             SparseVoxelOctree = 4,
         };
 
+        /** Flags indicating if and what was updated in the SDF grid.
+        */
+        enum class UpdateFlags : uint32_t
+        {
+            None = 0x0,                 ///< Nothing happened
+            AABBsChanged = 0x1,         ///< AABBs changed, requires a BLAS update.
+            BuffersReallocated = 0x2,   ///< Buffers were reallocated requiring them to be rebound.
+
+            All = AABBsChanged | BuffersReallocated,
+        };
+
         virtual ~SDFGrid() = default;
 
-        /** Set the the SDF primitives to be used to construct the SDF grid.
+        /** Set SDF primitives to be used to construct the SDF grid.
+            \param[in] primitives The SDF primitives that define the SDF grid.
+            \param[in] gridWidth The targeted width of the SDF grid, the resulting grid may have a larger width.
         */
         void setPrimitives(const std::vector<SDF3DPrimitive>& primitives, uint32_t gridWidth);
+
+        /** Set SDF primitives to be used to construct the SDF grid.
+            \param[in] primitives The SDF primitives that define the SDF grid.
+            \param[in] gridWidth The targeted width of the SDF grid, the resulting grid may have a larger width.
+            \param[out] basePrimitiveID The primitive ID assigned to primitives[0], consecutive primitives are assigned consecutive primitive IDs.
+        */
+        void setPrimitives(const std::vector<SDF3DPrimitive>& primitives, uint32_t gridWidth, uint32_t& basePrimitiveID);
+
+        /** Adds SDF primitives to be used to construct the SDF grid.
+            \param[in] primitives The SDF primitives that define the SDF grid.
+        */
+        void addPrimitives(const std::vector<SDF3DPrimitive>& primitives);
+
+        /** Adds SDF primitives to be used to construct the SDF grid.
+            \param[in] primitives The SDF primitives that define the SDF grid.
+            \param[out] basePrimitiveID The primitive ID assigned to primitives[0], consecutive primitives are assigned consecutive primitive IDs.
+        */
+        void addPrimitives(const std::vector<SDF3DPrimitive>& primitives, uint32_t& basePrimitiveID);
+
+        /** Remove SDF primitives.
+            \param[in] primitiveIDs Primitive IDs to remove from the SDF grid.
+        */
+        void removePrimitives(const std::vector<uint32_t>& primitiveIDs);
+
+        /** Updates the specified SDF primitives.
+            \param[in] primitives A vector of primitive IDs and primitives.
+        */
+        void updatePrimitives(const std::vector<std::pair<uint32_t, SDF3DPrimitive>>& primitives);
 
         /** Set the signed distance values of the SDF grid, values are expected to be at the corners of voxels.
             \param[in] cornerValues The corner values for all voxels in the grid.
@@ -82,10 +123,10 @@ namespace Falcor
         void setValues(const std::vector<float>& cornerValues, uint32_t gridWidth);
 
         /** Set the signed distance values of the SDF grid from a file.
-            \param[in] filename The name of a .sdfg file.
+            \param[in] path The path of a .sdfg file.
             \return true if the values could be set, otherwise false.
         */
-        bool loadValuesFromFile(const std::string& filename);
+        bool loadValuesFromFile(const std::filesystem::path& path);
 
         /** Set the signed distance values of the SDF grid to represent a swiss cheese like shape.
             \param[in] gridWidth The grid width, note that this represents the grid width in voxels, not in values, i.e., cornerValues should have a size of (gridWidth + 1)^3.
@@ -100,12 +141,23 @@ namespace Falcor
         bool writeValuesFromPrimitivesToFile(const std::string& filePath, RenderContext* pRenderContext = nullptr);
 
         /** Reads primitives from file and initializes the SDF grid.
-            \param[in] filename The name to the input file.
+            \param[in] path The path to the input file.
             \param[in] gridWidth The targeted width of the SDF grid, the resulting grid may have a larger width.
             \param[in] dir A directory path, if this is empty, the file will be searched for in data directories.
             \return The number of primitives loaded.
         */
-        uint32_t loadPrimitivesFromFile(const std::string& filename, uint32_t gridWidth, const std::string& dir = "");
+        uint32_t loadPrimitivesFromFile(const std::filesystem::path& path, uint32_t gridWidth, const std::filesystem::path& dir);
+
+        /** Write the primitives to file.
+            \param[in] path The path to the output file.
+            return true if the primitives could be successfully written to file.
+        */
+        bool writePrimitivesToFile(const std::filesystem::path& path);
+
+        /** Updates the SDF grid and applies changes to it.
+            \return A combination of flags that signify what changes were made to the SDF grid.
+        */
+        virtual UpdateFlags update(RenderContext* pRenderContext) { return UpdateFlags::None; };
 
         /** Get the name of the SDF grid.
             \return Returns the name.
@@ -120,6 +172,14 @@ namespace Falcor
         /** Returns the width of the grid in voxels.
         */
         uint32_t getGridWidth() const { return mGridWidth; }
+
+        /** Returns the number of primitives in the SDF grid.
+        */
+        uint32_t getPrimitiveCount() const { return (uint32_t)mPrimitives.size(); }
+
+        /** Returns the primitive corresponding to the given primitiveID.
+        */
+        const SDF3DPrimitive& getPrimitive(uint32_t primitiveID) const;
 
         /** Returns the byte size of the SDF grid.
         */
@@ -149,6 +209,8 @@ namespace Falcor
         */
         virtual void setShaderData(const ShaderVar& var) const = 0;
 
+        static std::string getTypeName(Type type);
+
     protected:
         virtual void setValuesInternal(const std::vector<float>& cornerValues) = 0;
 
@@ -160,8 +222,13 @@ namespace Falcor
 
         // Primitive data.
         std::vector<SDF3DPrimitive> mPrimitives;
+        std::unordered_map<uint32_t, uint32_t> mPrimitiveIDToIndex;
+        uint32_t mNextPrimitiveID = 0;
+        bool mPrimitivesDirty = false;
         Buffer::SharedPtr mpPrimitivesBuffer;
 
         ComputePass::SharedPtr mpEvaluatePrimitivesPass;
     };
+
+    FALCOR_ENUM_CLASS_OPERATORS(SDFGrid::UpdateFlags);
 }

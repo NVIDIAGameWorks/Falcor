@@ -38,8 +38,11 @@ rem Set the Falcor Backend according to the Build Configuration.
 if /I "%6"=="DebugD3D12" set falcor_backend=FALCOR_D3D12
 if /I "%6"=="ReleaseD3D12" set falcor_backend=FALCOR_D3D12
 
-if /I "%6"=="DebugGFX" set falcor_backend=FALCOR_GFX
-if /I "%6"=="ReleaseGFX" set falcor_backend=FALCOR_GFX
+if /I "%6"=="DebugGFX-D3D12" set falcor_backend=FALCOR_GFX_D3D12
+if /I "%6"=="ReleaseGFX-D3D12" set falcor_backend=FALCOR_GFX_D3D12
+
+if /I "%6"=="DebugGFX-VK" set falcor_backend=FALCOR_GFX_VK
+if /I "%6"=="ReleaseGFX-VK" set falcor_backend=FALCOR_GFX_VK
 
 rem Call Update Dependencies - Runs packman.
 call %~dp0\update_dependencies.bat %1\Falcor\dependencies.xml

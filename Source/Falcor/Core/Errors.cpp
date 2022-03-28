@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -32,10 +32,6 @@ namespace Falcor
 {
     FALCOR_SCRIPT_BINDING(Errors)
     {
-        pybind11::class_<Exception> exception(m);
-        exception.def_property_readonly("what", &Exception::what);
-
-        pybind11::register_exception<Exception>(m, "Exception");
         pybind11::register_exception<RuntimeError>(m, "RuntimeError");
         pybind11::register_exception<ArgumentError>(m, "ArgumentError");
     }

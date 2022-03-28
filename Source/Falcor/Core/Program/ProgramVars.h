@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -175,10 +175,14 @@ namespace Falcor
         */
         static SharedPtr create(const RtProgram::SharedPtr& pProgram, const RtBindingTable::SharedPtr& pBindingTable);
 
+#ifdef FALCOR_D3D12
         bool apply(RenderContext* pCtx, RtStateObject* pRtso);
+#endif
+#ifdef FALCOR_GFX
+        bool prepareShaderTable(RenderContext* pCtx, RtStateObject* pRtso);
+#endif
 
-        ShaderTable::SharedPtr getShaderTable() const { return mpShaderTable; }
-
+        ShaderTablePtr getShaderTable() const { return mpShaderTable; }
         uint32_t getMissVarsCount() const { return uint32_t(mMissVars.size()); }
         uint32_t getTotalHitVarsCount() const { return uint32_t(mHitVars.size()); }
         uint32_t getRayTypeCount() const { return mRayTypeCount; }
@@ -189,8 +193,12 @@ namespace Falcor
     private:
         struct EntryPointGroupInfo
         {
+#ifdef FALCOR_D3D12
             EntryPointGroupVars::SharedPtr pVars;
             ChangeEpoch lastObservedChangeEpoch = 0;
+#elif defined(FALCOR_GFX)
+            int32_t entryPointGroupIndex = -1;
+#endif
         };
 
         using VarsVector = std::vector<EntryPointGroupInfo>;
@@ -198,14 +206,21 @@ namespace Falcor
         RtProgramVars(const RtProgram::SharedPtr& pProgram, const RtBindingTable::SharedPtr& pBindingTable);
 
         void init(const RtBindingTable::SharedPtr& pBindingTable);
+
+#ifdef FALCOR_D3D12
         bool applyVarsToTable(ShaderTable::SubTableType type, uint32_t tableOffset, VarsVector& varsVec, const RtStateObject* pRtso);
+#endif
+        static RtEntryPointGroupKernels* getUniqueRtEntryPointGroupKernels(const ProgramKernels::SharedConstPtr& pKernels, int32_t uniqueEntryPointGroupIndex);
 
         uint32_t mRayTypeCount = 0;                         ///< Number of ray types (= number of hit groups per geometry).
         uint32_t mGeometryCount = 0;                        ///< Number of geometries.
         std::vector<int32_t> mUniqueEntryPointGroupIndices; ///< Indices of all unique entry point groups that we use in the associated program.
 
-        mutable ShaderTable::SharedPtr mpShaderTable;       ///< GPU shader table.
+        mutable ShaderTablePtr mpShaderTable;       ///< GPU shader table.
 
+#ifdef FALCOR_GFX
+        mutable RtStateObject* mpCurrentRtStateObject = nullptr; ///< The RtStateObject used to create the current shader table.
+#endif
         VarsVector mRayGenVars;
         VarsVector mMissVars;
         VarsVector mHitVars;

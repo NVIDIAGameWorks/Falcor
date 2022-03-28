@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -384,7 +384,7 @@ void BSDFViewer::renderUI(Gui::Widgets& widget)
         // Envmap lighting
         if (mpEnvMap)
         {
-            dirty |= lightGroup.checkbox(("Environment map: " + mpEnvMap->getFilename()).c_str(), mUseEnvMap);
+            dirty |= lightGroup.checkbox(("Environment map: " + mpEnvMap->getPath().string()).c_str(), mUseEnvMap);
             lightGroup.tooltip("When enabled the specified environment map is used as light source. Enabling this option turns off directional lighting.", true);
 
             if (mUseEnvMap)
@@ -399,17 +399,17 @@ void BSDFViewer::renderUI(Gui::Widgets& widget)
 
         if (lightGroup.button("Load environment map"))
         {
-            std::string filename;
-            if (openFileDialog(Bitmap::getFileDialogFilters(), filename))
+            std::filesystem::path path;
+            if (openFileDialog(Bitmap::getFileDialogFilters(), path))
             {
-                if (loadEnvMap(filename))
+                if (loadEnvMap(path))
                 {
                     mParams.useDirectionalLight = false;
                     dirty = true;
                 }
                 else
                 {
-                    msgBox(fmt::format("Failed to load environment map from '{}'.", filename), MsgBoxType::Ok, MsgBoxIcon::Warning);
+                    msgBox(fmt::format("Failed to load environment map from '{}'.", path), MsgBoxType::Ok, MsgBoxIcon::Warning);
                 }
             }
         }
@@ -477,7 +477,7 @@ void BSDFViewer::renderUI(Gui::Widgets& widget)
 
 bool BSDFViewer::onMouseEvent(const MouseEvent& mouseEvent)
 {
-    if (mouseEvent.type == MouseEvent::Type::LeftButtonDown)
+    if (mouseEvent.type == MouseEvent::Type::ButtonDown && mouseEvent.button == Input::MouseButton::Left)
     {
         mParams.selectedPixel = glm::clamp((int2)(mouseEvent.pos * (float2)mParams.frameDim), { 0,0 }, (int2)mParams.frameDim - 1);
     }
@@ -489,12 +489,12 @@ bool BSDFViewer::onKeyEvent(const KeyboardEvent& keyEvent)
 {
     if (keyEvent.type == KeyboardEvent::Type::KeyPressed)
     {
-        if (keyEvent.key == KeyboardEvent::Key::Left || keyEvent.key == KeyboardEvent::Key::Right)
+        if (keyEvent.key == Input::Key::Left || keyEvent.key == Input::Key::Right)
         {
             uint32_t id = mParams.materialID;
             uint32_t lastId = mMaterialList.size() > 0 ? (uint32_t)mMaterialList.size() - 1 : 0;
-            if (keyEvent.key == KeyboardEvent::Key::Left) id = id > 0 ? id - 1 : lastId;
-            else if (keyEvent.key == KeyboardEvent::Key::Right) id = id < lastId ? id + 1 : 0;
+            if (keyEvent.key == Input::Key::Left) id = id > 0 ? id - 1 : lastId;
+            else if (keyEvent.key == Input::Key::Right) id = id < lastId ? id + 1 : 0;
 
             if (id != mParams.materialID) mOptionsChanged = true; // Triggers reset of accumulation
             mParams.materialID = id;
@@ -504,12 +504,12 @@ bool BSDFViewer::onKeyEvent(const KeyboardEvent& keyEvent)
     return false;
 }
 
-bool BSDFViewer::loadEnvMap(const std::string& filename)
+bool BSDFViewer::loadEnvMap(const std::filesystem::path& path)
 {
-    auto pEnvMap = EnvMap::createFromFile(filename);
+    auto pEnvMap = EnvMap::createFromFile(path);
     if (!pEnvMap)
     {
-        logWarning("Failed to load environment map from '{}'.", filename);
+        logWarning("Failed to load environment map from '{}'.", path);
         return false;
     }
     mpEnvMap = pEnvMap;

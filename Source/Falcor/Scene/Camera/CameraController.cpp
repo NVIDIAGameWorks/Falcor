@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,12 +27,19 @@
  **************************************************************************/
 #include "stdafx.h"
 #include "CameraController.h"
-#include "Utils/UI/UserInput.h"
+#include "Utils/UI/InputTypes.h"
 #include "Utils/Math/FalcorMath.h"
 #include "Camera.h"
 
 namespace Falcor
 {
+    namespace
+    {
+        const float kGamepadDeadZone = 0.1f;        ///< Gamepad dead zone.
+        const float kGamepadPowerCurve = 1.2f;      ///< Gamepad power curve exponent.
+        const float kGamepadRotationSpeed = 2.5f;   ///< Gamepad camera rotation speed.
+    }
+
     float2 convertCamPosRange(const float2 pos)
     {
         // Convert [0,1] range to [-1, 1], and inverse the Y (screen-space y==0 is top)
@@ -61,14 +68,20 @@ namespace Falcor
             mbDirty = true;
             handled = true;
             break;
-        case MouseEvent::Type::LeftButtonDown:
-            mLastVector = project2DCrdToUnitSphere(convertCamPosRange(mouseEvent.pos));
-            mIsLeftButtonDown = true;
-            handled = true;
+        case MouseEvent::Type::ButtonDown:
+            if (mouseEvent.button == Input::MouseButton::Left)
+            {
+                mLastVector = project2DCrdToUnitSphere(convertCamPosRange(mouseEvent.pos));
+                mIsLeftButtonDown = true;
+                handled = true;
+            }
             break;
-        case MouseEvent::Type::LeftButtonUp:
-            handled = mIsLeftButtonDown;
-            mIsLeftButtonDown = false;
+        case MouseEvent::Type::ButtonUp:
+            if (mouseEvent.button == Input::MouseButton::Left)
+            {
+                handled = mIsLeftButtonDown;
+                mIsLeftButtonDown = false;
+            }
             break;
         case MouseEvent::Type::Move:
             if(mIsLeftButtonDown)
@@ -127,27 +140,27 @@ namespace Falcor
 
             switch(event.key)
             {
-            case KeyboardEvent::Key::W:
+            case Input::Key::W:
                 mMovement[Direction::Forward] = keyPressed;
                 handled = true;
                 break;
-            case KeyboardEvent::Key::S:
+            case Input::Key::S:
                 mMovement[Direction::Backward] = keyPressed;
                 handled = true;
                 break;
-            case KeyboardEvent::Key::A:
+            case Input::Key::A:
                 mMovement[Direction::Right] = keyPressed;
                 handled = true;
                 break;
-            case KeyboardEvent::Key::D:
+            case Input::Key::D:
                 mMovement[Direction::Left] = keyPressed;
                 handled = true;
                 break;
-            case KeyboardEvent::Key::Q:
+            case Input::Key::Q:
                 mMovement[Direction::Down] = keyPressed;
                 handled = true;
                 break;
-            case KeyboardEvent::Key::E:
+            case Input::Key::E:
                 mMovement[Direction::Up] = keyPressed;
                 handled = true;
                 break;
@@ -156,11 +169,53 @@ namespace Falcor
             }
 
             mSpeedModifier = 1.0f;
-            if (event.mods.isCtrlDown) mSpeedModifier = 0.25f;
-            else if (event.mods.isShiftDown) mSpeedModifier = 10.0f;
+            if (event.hasModifier(Input::Modifier::Ctrl)) mSpeedModifier = 0.25f;
+            else if (event.hasModifier(Input::Modifier::Shift)) mSpeedModifier = 10.0f;
         }
 
         return handled;
+    }
+
+    inline float applyDeadZone(const float v, const float deadZone)
+    {
+        return v * std::max(v - deadZone, 0.f) / (1.f - deadZone);
+    }
+    inline float2 applyDeadZone(const float2 v, const float deadZone)
+    {
+        return v * std::max(length(v) - deadZone, 0.f) / (1.f - deadZone);
+    }
+    inline float applyPowerCurve(const float v, const float power)
+    {
+        return std::powf(std::fabs(v), power) * (v < 0.f ? -1.f : 1.f);
+    }
+    inline float2 applyPowerCurve(const float2 v, const float power)
+    {
+        return float2(applyPowerCurve(v.x, power), applyPowerCurve(v.y, power));
+    };
+
+    template<bool b6DoF>
+    bool FirstPersonCameraControllerCommon<b6DoF>::onGamepadState(const GamepadState& gamepadState)
+    {
+        mGamepadPresent = true;
+
+        mGamepadLeftStick = float2(gamepadState.leftX, gamepadState.leftY);
+        mGamepadRightStick = float2(gamepadState.rightX, gamepadState.rightY);
+        mGamepadLeftTrigger = gamepadState.leftTrigger;
+        mGamepadRightTrigger = gamepadState.rightTrigger;
+
+        // Apply dead zone.
+        mGamepadLeftStick = applyDeadZone(mGamepadLeftStick, kGamepadDeadZone);
+        mGamepadRightStick = applyDeadZone(mGamepadRightStick, kGamepadDeadZone);
+        mGamepadLeftTrigger = applyDeadZone(mGamepadLeftTrigger, kGamepadDeadZone);
+        mGamepadRightTrigger = applyDeadZone(mGamepadRightTrigger, kGamepadDeadZone);
+
+        // Apply power curve.
+        mGamepadLeftStick = applyPowerCurve(mGamepadLeftStick, kGamepadPowerCurve);
+        mGamepadRightStick = applyPowerCurve(mGamepadRightStick, kGamepadPowerCurve);
+        mGamepadLeftTrigger = applyPowerCurve(mGamepadLeftTrigger, kGamepadPowerCurve);
+        mGamepadRightTrigger = applyPowerCurve(mGamepadRightTrigger, kGamepadPowerCurve);
+
+        return (length(mGamepadLeftStick) > 0.f || length(mGamepadRightStick) > 0.f || mGamepadLeftTrigger > 0.f || mGamepadRightTrigger > 0.f);
     }
 
     template<bool b6DoF>
@@ -168,28 +223,39 @@ namespace Falcor
     {
         mTimer.update();
 
+        // Clamp elapsed time to avoid huge jumps at long frame times (e.g. loading).
+        float elapsedTime = std::min(0.1f, (float)mTimer.delta());
+
         bool dirty = false;
-        if(mpCamera)
+        if (mpCamera)
         {
-            if(mShouldRotate)
+            bool anyGamepadMovement = mGamepadPresent && (length(mGamepadLeftStick) > 0.f || mGamepadLeftTrigger > 0.f || mGamepadRightTrigger > 0.f);
+            bool anyGamepadRotation = mGamepadPresent && (length(mGamepadRightStick) > 0.f);
+
+            if (mShouldRotate || anyGamepadRotation)
             {
                 float3 camPos = mpCamera->getPosition();
                 float3 camTarget = mpCamera->getTarget();
                 float3 camUp = b6DoF ? mpCamera->getUpVector() : float3(0, 1, 0);;
 
                 float3 viewDir = glm::normalize(camTarget - camPos);
-                if(mIsLeftButtonDown)
+
+                if (mIsLeftButtonDown || anyGamepadRotation)
                 {
                     float3 sideway = glm::cross(viewDir, normalize(camUp));
 
+                    float2 mouseRotation = mIsLeftButtonDown ? mMouseDelta * mSpeedModifier : float2(0.f);
+                    float2 gamepadRotation = anyGamepadRotation ? mGamepadRightStick * kGamepadRotationSpeed * elapsedTime : float2(0.f);
+                    float2 rotation = mouseRotation + gamepadRotation;
+
                     // Rotate around x-axis
-                    glm::quat qy = glm::angleAxis(mMouseDelta.y * mSpeedModifier, sideway);
+                    glm::quat qy = glm::angleAxis(rotation.y, sideway);
                     glm::mat3 rotY(qy);
                     viewDir = viewDir * rotY;
                     camUp = camUp * rotY;
 
                     // Rotate around y-axis
-                    glm::quat qx = glm::angleAxis(mMouseDelta.x * mSpeedModifier, camUp);
+                    glm::quat qx = glm::angleAxis(rotation.x, camUp);
                     glm::mat3 rotX(qx);
                     viewDir = viewDir * rotX;
 
@@ -198,7 +264,7 @@ namespace Falcor
                     dirty = true;
                 }
 
-                if(b6DoF && mIsRightButtonDown)
+                if (b6DoF && mIsRightButtonDown)
                 {
                     // Rotate around x-axis
                     glm::quat q = glm::angleAxis(mMouseDelta.x * mSpeedModifier, viewDir);
@@ -211,7 +277,7 @@ namespace Falcor
                 mShouldRotate = false;
             }
 
-            if(mMovement.any())
+            if (mMovement.any() || anyGamepadMovement)
             {
                 float3 movement(0, 0, 0);
                 movement.z += mMovement.test(Direction::Forward) ? 1 : 0;
@@ -221,14 +287,20 @@ namespace Falcor
                 movement.y += mMovement.test(Direction::Up) ? 1 : 0;
                 movement.y += mMovement.test(Direction::Down) ? -1 : 0;
 
+                if (anyGamepadMovement)
+                {
+                    movement.x += mGamepadLeftStick.x;
+                    movement.z -= mGamepadLeftStick.y;
+                    movement.y -= mGamepadLeftTrigger;
+                    movement.y += mGamepadRightTrigger;
+                }
+
                 float3 camPos = mpCamera->getPosition();
                 float3 camTarget = mpCamera->getTarget();
                 float3 camUp = mpCamera->getUpVector();
 
                 float3 viewDir = normalize(camTarget - camPos);
                 float3 sideway = glm::cross(viewDir, normalize(camUp));
-
-                float elapsedTime = (float)mTimer.delta();
 
                 float curMove = mSpeedModifier * mSpeed * elapsedTime;
                 camPos += movement.z * curMove * viewDir;
@@ -243,6 +315,9 @@ namespace Falcor
             }
         }
 
+        // Will be set true in next call to onGamepadState().
+        mGamepadPresent = false;
+
         return dirty;
     }
 
@@ -252,23 +327,31 @@ namespace Falcor
         bool handled = false;
         switch(event.type)
         {
-        case MouseEvent::Type::LeftButtonDown:
-            mLastMousePos = event.pos;
-            mIsLeftButtonDown = true;
-            handled = true;
+        case MouseEvent::Type::ButtonDown:
+            if (event.button == Input::MouseButton::Left)
+            {
+                mLastMousePos = event.pos;
+                mIsLeftButtonDown = true;
+                handled = true;
+            }
+            else if (event.button == Input::MouseButton::Right)
+            {
+                mLastMousePos = event.pos;
+                mIsRightButtonDown = true;
+                handled = true;
+            }
             break;
-        case MouseEvent::Type::LeftButtonUp:
-            handled = mIsLeftButtonDown;
-            mIsLeftButtonDown = false;
-            break;
-        case MouseEvent::Type::RightButtonDown:
-            mLastMousePos = event.pos;
-            mIsRightButtonDown = true;
-            handled = true;
-            break;
-        case MouseEvent::Type::RightButtonUp:
-            handled = mIsRightButtonDown;
-            mIsRightButtonDown = false;
+        case MouseEvent::Type::ButtonUp:
+            if (event.button == Input::MouseButton::Left)
+            {
+                handled = mIsLeftButtonDown;
+                mIsLeftButtonDown = false;
+            }
+            else if (event.button == Input::MouseButton::Right)
+            {
+                handled = mIsRightButtonDown;
+                mIsRightButtonDown = false;
+            }
             break;
         case MouseEvent::Type::Move:
             if(mIsLeftButtonDown || mIsRightButtonDown)
