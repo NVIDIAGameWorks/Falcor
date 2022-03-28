@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -33,5 +33,6 @@ BEGIN_NAMESPACE_FALCOR
 
 static const float kNRDDepthRange = 10000.0f;
 static const float kNRDInvalidPathLength = HLF_MAX;
+static const float kNRDMinReflectance = 0.04f;
 
 END_NAMESPACE_FALCOR

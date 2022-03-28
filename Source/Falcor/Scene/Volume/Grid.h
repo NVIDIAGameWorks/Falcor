@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -33,6 +33,9 @@
 #include <nanovdb/util/HostBuffer.h>
 #pragma warning(pop)
 #include "BrickedGrid.h"
+
+#include <filesystem>
+
 namespace Falcor
 {
     /** Voxel grid based on NanoVDB.
@@ -62,11 +65,11 @@ namespace Falcor
 
         /** Create a grid from a file.
             Currently only OpenVDB and NanoVDB grids of type float are supported.
-            \param[in] filename Filename of the grid. Can also include a full path or relative path from a data directory.
+            \param[in] path File path of the grid. Can also include a full path or relative path from a data directory.
             \param[in] gridname Name of the grid to load.
             \return A new grid, or nullptr if the grid failed to load.
         */
-        static SharedPtr createFromFile(const std::string& filename, const std::string& gridname);
+        static SharedPtr createFromFile(const std::filesystem::path& path, const std::string& gridname);
 
         /** Render the UI.
         */
@@ -126,8 +129,8 @@ namespace Falcor
     private:
         Grid(nanovdb::GridHandle<nanovdb::HostBuffer> gridHandle);
 
-        static SharedPtr createFromNanoVDBFile(const std::string& path, const std::string& gridname);
-        static SharedPtr createFromOpenVDBFile(const std::string& path, const std::string& gridname);
+        static SharedPtr createFromNanoVDBFile(const std::filesystem::path& path, const std::string& gridname);
+        static SharedPtr createFromOpenVDBFile(const std::filesystem::path& path, const std::string& gridname);
 
         // Host data.
         nanovdb::GridHandle<nanovdb::HostBuffer> mGridHandle;

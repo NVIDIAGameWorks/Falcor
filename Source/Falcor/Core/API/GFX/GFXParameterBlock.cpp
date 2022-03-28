@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -103,7 +103,7 @@ namespace Falcor
         : mpReflector(pReflector->getDefaultParameterBlock())
         , mpProgramVersion(pReflector->getProgramVersion())
     {
-        gfx_call(gpDevice->getApiHandle()->createMutableRootShaderObject(
+        FALCOR_GFX_CALL(gpDevice->getApiHandle()->createMutableRootShaderObject(
             pReflector->getProgramVersion()->getKernels(nullptr)->getApiHandle(),
             mpShaderObject.writeRef()));
         createConstantBuffers(getRootVar());
@@ -115,9 +115,8 @@ namespace Falcor
         : mpReflector(pReflection)
         , mpProgramVersion(pProgramVersion)
     {
-        gfx_call(gpDevice->getApiHandle()->createMutableShaderObject(
-            pReflection->getElementType()->getSlangTypeLayout()->getType(),
-            gfx::ShaderObjectContainerType::None,
+        FALCOR_GFX_CALL(gpDevice->getApiHandle()->createMutableShaderObjectFromTypeLayout(
+            pReflection->getElementType()->getSlangTypeLayout(),
             mpShaderObject.writeRef()));
         createConstantBuffers(getRootVar());
     }
@@ -227,12 +226,6 @@ namespace Falcor
     }
 
 #define set_constant_by_offset(_t) template FALCOR_API bool ParameterBlock::setVariable(UniformShaderVarOffset offset, const _t& value)
-
-    set_constant_by_offset(bool);
-    set_constant_by_offset(bool2);
-    set_constant_by_offset(bool3);
-    set_constant_by_offset(bool4);
-
     set_constant_by_offset(uint32_t);
     set_constant_by_offset(uint2);
     set_constant_by_offset(uint3);
@@ -279,12 +272,14 @@ namespace Falcor
             auto pUAV = pTexture ? pTexture->getUAV() : UnorderedAccessView::getNullView(bindingInfo.dimension);
             mpShaderObject->setResource(gfxOffset, pUAV->getApiHandle());
             mUAVs[gfxOffset] = pUAV;
+            mResources[gfxOffset] = pTexture;
         }
         else if (isSrvType(bindLocation.getType()))
         {
             auto pSRV = pTexture ? pTexture->getSRV() : ShaderResourceView::getNullView(bindingInfo.dimension);
             mpShaderObject->setResource(gfxOffset, pSRV->getApiHandle());
             mSRVs[gfxOffset] = pSRV;
+            mResources[gfxOffset] = pTexture;
         }
         else
         {
@@ -329,6 +324,7 @@ namespace Falcor
         {
             mpShaderObject->setResource(gfxOffset, pSrv ? pSrv->getApiHandle() : nullptr);
             mSRVs[gfxOffset] = pSrv;
+            mResources[gfxOffset] = pSrv ? pSrv->getResource() : nullptr;
         }
         else
         {
@@ -345,6 +341,7 @@ namespace Falcor
         {
             mpShaderObject->setResource(gfxOffset, pUav ? pUav->getApiHandle() : nullptr);
             mUAVs[gfxOffset] = pUav;
+            mResources[gfxOffset] = pUav ? pUav->getResource() : nullptr;
         }
         else
         {
@@ -467,6 +464,7 @@ namespace Falcor
 
     void ParameterBlock::markUniformDataDirty() const
     {
+        throw "unimplemented";
     }
 
     void const* ParameterBlock::getRawData() const

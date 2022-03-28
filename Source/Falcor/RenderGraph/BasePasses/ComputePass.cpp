@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -39,10 +39,10 @@ namespace Falcor
         FALCOR_ASSERT(pProg && mpState && (!createVars || mpVars));
     }
 
-    ComputePass::SharedPtr ComputePass::create(const std::string& filename, const std::string& csEntry, const Program::DefineList& defines, bool createVars)
+    ComputePass::SharedPtr ComputePass::create(const std::filesystem::path& path, const std::string& csEntry, const Program::DefineList& defines, bool createVars)
     {
         Program::Desc d;
-        d.addShaderLibrary(filename).csEntry(csEntry);
+        d.addShaderLibrary(path).csEntry(csEntry);
         return create(d, defines, createVars);
     }
 

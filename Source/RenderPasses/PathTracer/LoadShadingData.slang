@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -64,14 +64,12 @@ void computeDerivativesAtPrimaryTriangleHit(const TriangleHit hit, uint2 pixel, 
     \param[in] rayOrigin Ray origin.
     \param[in] rayDir Normalized ray direction.
     \param[out] materialID Material ID.
-    \param[out] curveSphereRadius Curve sphere radius.
     \return VertexData struct.
 */
-VertexData loadVertexData(const HitInfo hit, const float3 rayOrigin, const float3 rayDir, out uint materialID, out float curveSphereRadius)
+VertexData loadVertexData(const HitInfo hit, const float3 rayOrigin, const float3 rayDir, out uint materialID)
 {
     VertexData v = {};
     materialID = {};
-    curveSphereRadius = {};
 #if SCENE_HAS_GEOMETRY_TYPE(GEOMETRY_TYPE_TRIANGLE_MESH)
 #if SCENE_HAS_PROCEDURAL_GEOMETRY()
     if (hit.getType() == HitType::Triangle)
@@ -99,7 +97,7 @@ VertexData loadVertexData(const HitInfo hit, const float3 rayOrigin, const float
     if (hit.getType() == HitType::Curve)
     {
         const CurveHit curveHit = hit.getCurveHit();
-        v = gScene.getVertexDataFromCurve(curveHit, curveSphereRadius);
+        v = gScene.getVertexDataFromCurve(curveHit);
         materialID = gScene.getMaterialID(curveHit.instanceID);
     }
 #endif
@@ -117,18 +115,11 @@ VertexData loadVertexData(const HitInfo hit, const float3 rayOrigin, const float
 /** Adjust ShadingData
     \param[in,out] sd Shading data to update.
     \param[in] hit Hit information.
-    \param[in] curveSphereRadius Curve sphere radius.
     \param[in] v Vertex data.
     \param[in] isPrimary True if this is the primary hit point.
 */
-void adjustShadingData(inout ShadingData sd, const HitInfo hit, const float curveSphereRadius, const VertexData v, const bool isPrimary)
+void adjustShadingData(inout ShadingData sd, const HitInfo hit, const VertexData v, const bool isPrimary)
 {
-    // Set sphere radius at the curve intersection point.
-    // Reuse the metallic field.
-#if SCENE_HAS_GEOMETRY_TYPE(GEOMETRY_TYPE_CURVE)
-    if (hit.getType() == HitType::Curve) sd.curveSphereRadius = curveSphereRadius;
-#endif
-
 #if GBUFFER_ADJUST_SHADING_NORMALS
     if (kAdjustShadingNormals || isPrimary) adjustShadingNormal(sd, v);
 #else
@@ -147,10 +138,9 @@ void adjustShadingData(inout ShadingData sd, const HitInfo hit, const float curv
 ShadingData loadShadingData(const HitInfo hit, const float3 rayOrigin, const float3 rayDir, const bool isPrimary, const ITextureSampler lod)
 {
     uint materialID = {};
-    float curveSphereRadius = {};
 
-    VertexData v = loadVertexData(hit, rayOrigin, rayDir, materialID, curveSphereRadius);
+    VertexData v = loadVertexData(hit, rayOrigin, rayDir, materialID);
     ShadingData sd = gScene.materials.prepareShadingData(v, materialID, -rayDir, lod);
-    adjustShadingData(sd, hit, curveSphereRadius, v, isPrimary);
+    adjustShadingData(sd, hit, v, isPrimary);
     return sd;
 }

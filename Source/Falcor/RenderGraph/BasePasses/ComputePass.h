@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -37,13 +37,13 @@ namespace Falcor
         using SharedPtr = ParameterBlockSharedPtr<ComputePass>;
 
         /** Create a new compute pass from file.
-            \param[in] filename Compute program filename.
+            \param[in] path Compute program file path.
             \param[in] csEntry Name of the entry point in the program. If not specified "main" will be used.
             \param[in] defines Optional list of macro definitions to set into the program.
             \param[in] createVars Create program vars automatically, otherwise use setVars().
             \return A new object, or throws an exception if creation failed.
         */
-        static SharedPtr create(const std::string& filename, const std::string& csEntry = "main", const Program::DefineList& defines = Program::DefineList(), bool createVars = true);
+        static SharedPtr create(const std::filesystem::path& path, const std::string& csEntry = "main", const Program::DefineList& defines = Program::DefineList(), bool createVars = true);
 
         /** Create a new compute pass.
             \param[in] desc The program's description.

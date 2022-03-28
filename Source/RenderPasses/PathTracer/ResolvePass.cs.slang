@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,10 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+import RenderPasses.Shared.Denoising.NRDData;
 import ColorType;
 import GuideData;
 import Params;
-import RenderPasses.Shared.Denoising.NRDData;
 
 /** Compute shader implementing a sample resolve pass.
 
@@ -58,9 +58,12 @@ struct ResolvePass
     RWTexture2D<float4> outputIndirectAlbedo;               ///< Output resolved indirect albedo. Only valid if kOutputGuideData == true.
     RWTexture2D<float4> outputNormal;                       ///< Output resolved normal. Only valid if kOutputGuideData == true.
     RWTexture2D<float4> outputReflectionPosW;               ///< Output resolved reflection pos. Only valid if kOutputGuideData == true.
-    RWTexture2D<float4> outputNRDDiffuseRadianceHitDist;    ///< Output resolved diffuse color in .rgb and hit distance in .a for NRD. Only valid if kOutputNRDData == true.
-    RWTexture2D<float4> outputNRDSpecularRadianceHitDist;   ///< Output resolved specular color in .rgb and hit distance in .a for NRD. Only valid if kOutputNRDData == true.
-    RWTexture2D<float4> outputNRDResidualRadianceHitDist;   ///< Output resolved residual color in .rgb and hit distance in .a for NRD. Only valid if kOutputNRDData == true.
+
+    RWTexture2D<float4> outputNRDDiffuseRadianceHitDist;            ///< Output resolved diffuse radiance in .rgb and hit distance in .a for NRD. Only valid if kOutputNRDData == true.
+    RWTexture2D<float4> outputNRDSpecularRadianceHitDist;           ///< Output resolved specular radiance in .rgb and hit distance in .a for NRD. Only valid if kOutputNRDData == true.
+    RWTexture2D<float4> outputNRDDeltaReflectionRadianceHitDist;    ///< Output resolved delta reflection radiance in .rgb and hit distance in .a for NRD. Only valid if kOutputNRDData == true.
+    RWTexture2D<float4> outputNRDDeltaTransmissionRadianceHitDist;  ///< Output resolved delta transmission radiance in .rgb and hit distance in .a for NRD. Only valid if kOutputNRDData == true.
+    RWTexture2D<float4> outputNRDResidualRadianceHitDist;           ///< Output resolved residual radiance in .rgb and hit distance in .a for NRD. Only valid if kOutputNRDData == true.
 
     static const bool kOutputGuideData = OUTPUT_GUIDE_DATA;
     static const bool kOutputNRDData = OUTPUT_NRD_DATA;
@@ -127,6 +130,8 @@ struct ResolvePass
         {
             float3 diffuseRadiance = 0.f;
             float3 specularRadiance = 0.f;
+            float3 deltaReflectionRadiance = 0.f;
+            float3 deltaTransmissionRadiance = 0.f;
             float3 residualRadiance = 0.f;
             float hitDist = 0.f;
 
@@ -139,7 +144,6 @@ struct ResolvePass
                 const float3 radiance = radianceData.getRadiance();
 
                 float3 reflectance = sampleNRDReflectance[idx].rgb;
-                reflectance = max(0.04f, reflectance);
                 float3 emission = sampleNRDEmission[idx].rgb;
                 float3 demodulatedRadiance = max(0.f, (radiance - emission)) / reflectance;
 
@@ -150,6 +154,12 @@ struct ResolvePass
                     break;
                 case NRDPathType::Specular:
                     specularRadiance += demodulatedRadiance;
+                    break;
+                case NRDPathType::DeltaReflection:
+                    deltaReflectionRadiance += demodulatedRadiance;
+                    break;
+                case NRDPathType::DeltaTransmission:
+                    deltaTransmissionRadiance += demodulatedRadiance;
                     break;
                 default:
                     // Do not demodulate residual.
@@ -162,7 +172,9 @@ struct ResolvePass
 
             outputNRDDiffuseRadianceHitDist[pixel] = float4(invSpp * diffuseRadiance, invSpp * hitDist);
             outputNRDSpecularRadianceHitDist[pixel] = float4(invSpp * specularRadiance, invSpp * hitDist);
-            outputNRDResidualRadianceHitDist[pixel] = float4(invSpp * residualRadiance, invSpp * hitDist);
+            outputNRDDeltaReflectionRadianceHitDist[pixel] = float4(invSpp * deltaReflectionRadiance, 0.f);
+            outputNRDDeltaTransmissionRadianceHitDist[pixel] = float4(invSpp * deltaTransmissionRadiance, 0.f);
+            outputNRDResidualRadianceHitDist[pixel] = float4(invSpp * residualRadiance, hitDist);
         }
     }
 };

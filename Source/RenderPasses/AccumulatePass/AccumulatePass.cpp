@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -165,6 +165,10 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
                     auto excluded = Camera::Changes::Jitter | Camera::Changes::History;
                     auto cameraChanges = mpScene->getCamera()->getChanges();
                     if ((cameraChanges & ~excluded) != Camera::Changes::None) reset();
+                }
+                if (is_set(sceneUpdates, Scene::UpdateFlags::SDFGeometryChanged))
+                {
+                    reset();
                 }
             }
         }

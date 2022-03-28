@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -99,5 +99,15 @@ namespace Falcor
         mpAllocator = mpApiData->pAllocatorPool->newObject();
         FALCOR_D3D_CALL(mpAllocator->Reset());
         FALCOR_D3D_CALL(mpList->Reset(mpAllocator, nullptr));
+    }
+
+    const D3D12CommandListHandle& LowLevelContextData::getD3D12CommandList() const
+    {
+        return mpList;
+    }
+
+    const D3D12CommandQueueHandle& LowLevelContextData::getD3D12CommandQueue() const
+    {
+        return mpQueue;
     }
 }

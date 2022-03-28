@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -46,13 +46,13 @@ namespace Falcor
 
         /** Create a new object.
             \param[in] pScene The scene object
-            \param[in] filename Program filename.
+            \param[in] path Program file path.
             \param[in] vsEntry Vertex shader entry point. If this string is empty (""), it will use a default vertex shader which transforms and outputs all default vertex attributes.
             \param[in] psEntry Pixel shader entry point.
             \param[in] programDefines Optional list of macro definitions to set into the program. The macro definitions will be set on all shader stages.
             \return A new object, or throws an exception if creation failed.
         */
-        static SharedPtr create(const Scene::SharedPtr& pScene, const std::string& filename, const std::string& vsEntry, const std::string& psEntry, const Program::DefineList& programDefines = Program::DefineList());
+        static SharedPtr create(const Scene::SharedPtr& pScene, const std::filesystem::path& path, const std::string& vsEntry, const std::string& psEntry, const Program::DefineList& programDefines = Program::DefineList());
 
         /** Render the scene into the dst FBO
         */

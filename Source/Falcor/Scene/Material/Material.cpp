@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -177,7 +177,7 @@ namespace Falcor
         return mTextureSlotData[(size_t)slot].pTexture;
     }
 
-    void Material::loadTexture(TextureSlot slot, const std::string& filename, bool useSrgb)
+    void Material::loadTexture(TextureSlot slot, const std::filesystem::path& path, bool useSrgb)
     {
         if (!hasTextureSlot(slot))
         {
@@ -185,10 +185,10 @@ namespace Falcor
             return;
         }
 
-        std::string fullpath;
-        if (findFileInDataDirectories(filename, fullpath))
+        std::filesystem::path fullPath;
+        if (findFileInDataDirectories(path, fullPath))
         {
-            auto texture = Texture::createFromFile(fullpath, true, useSrgb && getTextureSlotInfo(slot).srgb);
+            auto texture = Texture::createFromFile(fullPath, true, useSrgb && getTextureSlotInfo(slot).srgb);
             if (texture)
             {
                 setTexture(slot, texture);
@@ -322,7 +322,7 @@ namespace Falcor
         material.def_property("nestedPriority", &Material::getNestedPriority, &Material::setNestedPriority);
         material.def_property("textureTransform", pybind11::overload_cast<void>(&Material::getTextureTransform, pybind11::const_), &Material::setTextureTransform);
 
-        material.def("loadTexture", &Material::loadTexture, "slot"_a, "filename"_a, "useSrgb"_a = true);
+        material.def("loadTexture", &Material::loadTexture, "slot"_a, "path"_a, "useSrgb"_a = true);
         material.def("clearTexture", &Material::clearTexture, "slot"_a);
     }
 }

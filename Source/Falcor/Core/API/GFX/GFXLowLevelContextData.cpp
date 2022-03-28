@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -51,19 +51,42 @@ namespace Falcor
 
     LowLevelContextData::~LowLevelContextData()
     {
+        if (mpApiData->mIsCommandBufferOpen)
+        {
+            closeCommandBuffer();
+        }
         safe_delete(mpApiData);
     }
 
     void LowLevelContextData::closeCommandBuffer()
     {
+        mpApiData->mIsCommandBufferOpen = false;
         mpApiData->closeEncoders();
         mpApiData->pCommandBuffer->close();
+#if FALCOR_D3D12_AVAILABLE
+        mpApiData->mpD3D12CommandListHandle = nullptr;
+#endif
     }
 
     void LowLevelContextData::openCommandBuffer()
     {
+        mpApiData->mIsCommandBufferOpen = true;
         auto transientHeap = gpDevice->getApiData()->pTransientResourceHeaps[gpDevice->getCurrentBackBufferIndex()].get();
         mpApiData->pCommandBuffer = transientHeap->createCommandBuffer();
+#if FALCOR_D3D12_AVAILABLE
+        mpApiData->mUsingCustomDescriptorHeap = false;
+#endif
+    }
+
+    void LowLevelContextData::beginDebugEvent(const char* name)
+    {
+        float blackColor[3] = { 0.0f, 0.0f, 0.0f };
+        mpApiData->getResourceCommandEncoder()->beginDebugEvent(name, blackColor);
+    }
+
+    void LowLevelContextData::endDebugEvent()
+    {
+        mpApiData->getResourceCommandEncoder()->endDebugEvent();
     }
 
     void LowLevelContextData::flush()
@@ -97,11 +120,49 @@ namespace Falcor
         }
     }
 
+    const D3D12CommandListHandle& LowLevelContextData::getD3D12CommandList() const
+    {
+#if FALCOR_D3D12_AVAILABLE
+        if (!mpApiData->mpD3D12CommandListHandle)
+        {
+            gfx::InteropHandle handle = {};
+            FALCOR_GFX_CALL(mpApiData->pCommandBuffer->getNativeHandle(&handle));
+            mpApiData->mpD3D12CommandListHandle = D3D12CommandListHandle(reinterpret_cast<ID3D12GraphicsCommandList*>(handle.handleValue));
+        }
+        return mpApiData->mpD3D12CommandListHandle;
+#else
+        throw RuntimeError("D3D12 is not available.");
+#endif
+    }
+
+    const D3D12CommandQueueHandle& LowLevelContextData::getD3D12CommandQueue() const
+    {
+#if FALCOR_D3D12_AVAILABLE
+        if (!mpApiData->mpD3D12CommandQueueHandle)
+        {
+            gfx::InteropHandle handle = {};
+            FALCOR_GFX_CALL(mpQueue->getNativeHandle(&handle));
+            mpApiData->mpD3D12CommandQueueHandle = D3D12CommandQueueHandle(reinterpret_cast<ID3D12CommandQueue*>(handle.handleValue));
+        }
+        return mpApiData->mpD3D12CommandQueueHandle;
+#else
+        throw RuntimeError("D3D12 is not available.");
+#endif
+    }
+
     gfx::IResourceCommandEncoder* LowLevelContextApiData::getResourceCommandEncoder()
     {
         if (mpResourceCommandEncoder)
         {
             return mpResourceCommandEncoder;
+        }
+        if (mpComputeCommandEncoder)
+        {
+            return mpComputeCommandEncoder;
+        }
+        if (mpRayTracingCommandEncoder)
+        {
+            return mpRayTracingCommandEncoder;
         }
         closeEncoders();
         mpResourceCommandEncoder = pCommandBuffer->encodeResourceCommands();

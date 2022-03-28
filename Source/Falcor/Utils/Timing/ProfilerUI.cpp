@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -232,10 +232,10 @@ namespace Falcor
                 auto pCapture = mpProfiler->endCapture();
                 FALCOR_ASSERT(pCapture);
                 FileDialogFilterVec filters {{ "json", "JSON" }};
-                std::string filename;
-                if (saveFileDialog(filters, filename))
+                std::filesystem::path path;
+                if (saveFileDialog(filters, path))
                 {
-                    pCapture->writeToFile(filename);
+                    pCapture->writeToFile(path);
                 }
             }
         }

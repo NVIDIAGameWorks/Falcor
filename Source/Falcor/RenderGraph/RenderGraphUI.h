@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -96,7 +96,7 @@ namespace Falcor
 
         /** Writes out all the changes made to the graph
         */
-        void writeUpdateScriptToFile(RenderContext* pRenderContext, const std::string& filePath, float lastFrameTimes);
+        void writeUpdateScriptToFile(RenderContext* pRenderContext, const std::filesystem::path& filePath, float lastFrameTimes);
 
         /** function used to add an edge for the internally referenced render graph and update ui data
          */

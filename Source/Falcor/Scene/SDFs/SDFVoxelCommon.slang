@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -176,7 +176,7 @@ struct SDFVoxelCommon
         values1xx[3] = unpackSnorm8((packedValues.y >> 24) & 0x000000ff);
     }
 
-    /** Checks if the voxel defined by the eight corner values contains part of the implicit surface.
+    /** Checks if the voxel defined by the eight corner values conservatively contains part of the implicit surface.
     */
     static bool containsSurface(const float4 values0xx, const float4 values1xx)
     {

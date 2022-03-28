@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -44,7 +44,7 @@ cbuffer PerFrameCB
     EnvMap gEnvMap;
 };
 
-void vs(float4 posL : POSITION, out float3 dir : NORMAL, out float4 posH : SV_POSITION)
+void vsMain(float4 posL : POSITION, out float3 dir : NORMAL, out float4 posH : SV_POSITION)
 {
     dir = posL.xyz;
     float4 viewPos = mul(mul(posL, gWorld), gViewMat);
@@ -53,7 +53,7 @@ void vs(float4 posL : POSITION, out float3 dir : NORMAL, out float4 posH : SV_PO
     posH.z = posH.w;
 }
 
-float4 ps(float3 dir : NORMAL) : SV_TARGET
+float4 psMain(float3 dir : NORMAL) : SV_TARGET
 {
 #if _USE_ENV_MAP
     float3 color = gEnvMap.eval(dir);

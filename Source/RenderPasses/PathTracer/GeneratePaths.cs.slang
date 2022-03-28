@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -32,6 +32,7 @@ import Rendering.RTXDI.RTXDI;
 import RenderPasses.Shared.Denoising.NRDBuffers;
 import RenderPasses.Shared.Denoising.NRDConstants;
 import LoadShadingData;
+import NRDHelpers;
 import PathTracer;
 import PathState;
 import ColorType;
@@ -245,6 +246,12 @@ struct PathGenerator
             outputNRD.primaryHitEmission[pixel] = float4(color, 1.f);
             outputNRD.primaryHitDiffuseReflectance[pixel] = 0.f;
             outputNRD.primaryHitSpecularReflectance[pixel] = 0.f;
+        }
+
+        if (kOutputNRDAdditionalData)
+        {
+            writeNRDDeltaReflectionGuideBuffers(outputNRD, kUseNRDDemodulation, pixel, 0.f, 0.f, -dir, 0.f, kNRDInvalidPathLength, kNRDInvalidPathLength);
+            writeNRDDeltaTransmissionGuideBuffers(outputNRD, kUseNRDDemodulation, pixel, 0.f, 0.f, -dir, 0.f, kNRDInvalidPathLength, 0.f);
         }
     }
 };

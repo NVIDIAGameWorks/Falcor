@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,7 +27,7 @@
  **************************************************************************/
 #include <Falcor.h>
 
-#ifdef FALCOR_D3D12
+#if FALCOR_D3D12_AVAILABLE
 #include "NRDPass.h"
 #include "RenderPasses/Shared/Denoising/NRDConstants.slang"
 #include <glm/gtc/type_ptr.hpp>
@@ -46,15 +46,23 @@ namespace
     // Input buffer names.
     const char kInputDiffuseRadianceHitDist[] = "diffuseRadianceHitDist";
     const char kInputSpecularRadianceHitDist[] = "specularRadianceHitDist";
+    const char kInputSpecularHitDist[] = "specularHitDist";
     const char kInputMotionVectors[] = "mvec";
     const char kInputNormalRoughnessMaterialID[] = "normWRoughnessMaterialID";
     const char kInputViewZ[] = "viewZ";
+    const char kInputDeltaPrimaryPosW[] = "deltaPrimaryPosW";
+    const char kInputDeltaSecondaryPosW[] = "deltaSecondaryPosW";
 
     // Output buffer names.
     const char kOutputFilteredDiffuseRadianceHitDist[] = "filteredDiffuseRadianceHitDist";
     const char kOutputFilteredSpecularRadianceHitDist[] = "filteredSpecularRadianceHitDist";
+    const char kOutputReflectionMotionVectors[] = "reflectionMvec";
+    const char kOutputDeltaMotionVectors[] = "deltaMvec";
 
     // Serialized parameters.
+
+    const char kEnabled[] = "enabled";
+    const char kMethod[] = "method";
 
     // Common settings.
     const char kWorldSpaceMotion[] = "worldSpaceMotion";
@@ -63,34 +71,46 @@ namespace
     // Pack radiance settings.
     const char kMaxIntensity[] = "maxIntensity";
 
-    // ReLAX settings.
-    const char kSpecularPrepassBlurRadius[] = "specularPrepassBlurRadius";
+    // ReLAX diffuse/specular settings.
     const char kDiffusePrepassBlurRadius[] = "diffusePrepassBlurRadius";
+    const char kSpecularPrepassBlurRadius[] = "specularPrepassBlurRadius";
     const char kDiffuseMaxAccumulatedFrameNum[] = "diffuseMaxAccumulatedFrameNum";
-    const char kDiffuseMaxFastAccumulatedFrameNum[] = "diffuseMaxFastAccumulatedFrameNum";
     const char kSpecularMaxAccumulatedFrameNum[] = "specularMaxAccumulatedFrameNum";
+    const char kDiffuseMaxFastAccumulatedFrameNum[] = "diffuseMaxFastAccumulatedFrameNum";
     const char kSpecularMaxFastAccumulatedFrameNum[] = "specularMaxFastAccumulatedFrameNum";
+    const char kDiffusePhiLuminance[] = "diffusePhiLuminance";
+    const char kSpecularPhiLuminance[] = "specularPhiLuminance";
+    const char kDiffuseLobeAngleFraction[] = "diffuseLobeAngleFraction";
+    const char kSpecularLobeAngleFraction[] = "specularLobeAngleFraction";
+    const char kRoughnessFraction[] = "roughnessFraction";
+    const char kDiffuseHistoryRejectionNormalThreshold[] = "diffuseHistoryRejectionNormalThreshold";
     const char kSpecularVarianceBoost[] = "specularVarianceBoost";
-    const char kEnableSkipReprojectionTestWithoutMotion[] = "enableSkipReprojectionTestWithoutMotion";
-    const char kEnableSpecularVirtualHistoryClamping[] = "enableSpecularVirtualHistoryClamping";
-    const char kEnableRoughnessBasedSpecularAccumulation[] = "enableRoughnessBasedSpecularAccumulation";
+    const char kSpecularLobeAngleSlack[] = "specularLobeAngleSlack";
     const char kDisocclusionFixEdgeStoppingNormalPower[] = "disocclusionFixEdgeStoppingNormalPower";
     const char kDisocclusionFixMaxRadius[] = "disocclusionFixMaxRadius";
     const char kDisocclusionFixNumFramesToFix[] = "disocclusionFixNumFramesToFix";
     const char kHistoryClampingColorBoxSigmaScale[] = "historyClampingColorBoxSigmaScale";
     const char kSpatialVarianceEstimationHistoryThreshold[] = "spatialVarianceEstimationHistoryThreshold";
-    const char kEnableAntiFirefly[] = "enableAntiFirefly";
     const char kAtrousIterationNum[] = "atrousIterationNum";
-    const char kPhiDepth[] = "phiDepth";
-    const char kPhiNormal[] = "phiNormal";
-    const char kDiffusePhiLuminance[] = "diffusePhiLuminance";
-    const char kSpecularPhiLuminance[] = "specularPhiLuminance";
-    const char kSpecularLobeAngleFraction[] = "specularLobeAngleFraction";
-    const char kSpecularLobeAngleSlack[] = "specularLobeAngleSlack";
-    const char kEnableRoughnessEdgeStopping[] = "enableRoughnessEdgeStopping";
+    const char kMinLuminanceWeight[] = "minLuminanceWeight";
+    const char kDepthThreshold[] = "depthThreshold";
     const char kRoughnessEdgeStoppingRelaxation[] = "roughnessEdgeStoppingRelaxation";
     const char kNormalEdgeStoppingRelaxation[] = "normalEdgeStoppingRelaxation";
     const char kLuminanceEdgeStoppingRelaxation[] = "luminanceEdgeStoppingRelaxation";
+    const char kEnableAntiFirefly[] = "enableAntiFirefly";
+    const char kEnableReprojectionTestSkippingWithoutMotion[] = "enableReprojectionTestSkippingWithoutMotion";
+    const char kEnableSpecularVirtualHistoryClamping[] = "enableSpecularVirtualHistoryClamping";
+    const char kEnableRoughnessEdgeStopping[] = "enableRoughnessEdgeStopping";
+    const char kEnableMaterialTestForDiffuse[] = "enableMaterialTestForDiffuse";
+    const char kEnableMaterialTestForSpecular[] = "enableMaterialTestForSpecular";
+
+    // Expose only togglable methods.
+    // There is no reason to expose runtime toggle for other methods.
+    const Gui::DropdownList kDenoisingMethod =
+    {
+        { (uint32_t)NRDPass::DenoisingMethod::RelaxDiffuseSpecular, "ReLAX" },
+        { (uint32_t)NRDPass::DenoisingMethod::ReblurDiffuseSpecular, "ReBLUR" },
+    };
 }
 
 NRDPass::SharedPtr NRDPass::create(RenderContext* pRenderContext, const Dictionary& dict)
@@ -102,56 +122,119 @@ NRDPass::NRDPass(const Dictionary& dict)
     : RenderPass(kInfo)
 {
 #if FALCOR_ENABLE_NRD
-    mpPackRadiancePass = ComputePass::create(kShaderPackRadiance);
+    Program::DefineList definesRelax;
+    definesRelax.add("NRD_USE_OCT_NORMAL_ENCODING", "1");
+    definesRelax.add("NRD_USE_MATERIAL_ID", "0");
+    definesRelax.add("NRD_METHOD", "0"); // NRD_METHOD_RELAX_DIFFUSE_SPECULAR
+    mpPackRadiancePassRelax = ComputePass::create(kShaderPackRadiance, "main", definesRelax);
+
+    Program::DefineList definesReblur;
+    definesReblur.add("NRD_USE_OCT_NORMAL_ENCODING", "1");
+    definesReblur.add("NRD_USE_MATERIAL_ID", "0");
+    definesReblur.add("NRD_METHOD", "1"); // NRD_METHOD_REBLUR_DIFFUSE_SPECULAR
+    mpPackRadiancePassReblur = ComputePass::create(kShaderPackRadiance, "main", definesReblur);
 
     // Override some defaults coming from the NRD SDK.
-    mRelaxSettings.diffuseMaxFastAccumulatedFrameNum = 2;
-    mRelaxSettings.specularMaxFastAccumulatedFrameNum = 2;
-    mRelaxSettings.enableSpecularVirtualHistoryClamping = false;
-    mRelaxSettings.enableRoughnessBasedSpecularAccumulation = false;
-    mRelaxSettings.phiDepth = 0.02f;
-    mRelaxSettings.phiNormal = 16.0f;
-    mRelaxSettings.specularLobeAngleFraction = 0.5f;
-    mRelaxSettings.specularLobeAngleSlack = 5.0f;
+    mRelaxDiffuseSpecularSettings.diffusePrepassBlurRadius = 16.0f;
+    mRelaxDiffuseSpecularSettings.specularPrepassBlurRadius = 16.0f;
+    mRelaxDiffuseSpecularSettings.diffuseMaxFastAccumulatedFrameNum = 2;
+    mRelaxDiffuseSpecularSettings.specularMaxFastAccumulatedFrameNum = 2;
+    mRelaxDiffuseSpecularSettings.diffuseLobeAngleFraction = 0.8f;
+    mRelaxDiffuseSpecularSettings.disocclusionFixMaxRadius = 32.0f;
+    mRelaxDiffuseSpecularSettings.enableSpecularVirtualHistoryClamping = false;
+    mRelaxDiffuseSpecularSettings.disocclusionFixNumFramesToFix = 4;
+    mRelaxDiffuseSpecularSettings.spatialVarianceEstimationHistoryThreshold = 4;
+    mRelaxDiffuseSpecularSettings.atrousIterationNum = 6;
+    mRelaxDiffuseSpecularSettings.depthThreshold = 0.02f;
+    mRelaxDiffuseSpecularSettings.roughnessFraction = 0.5f;
+    mRelaxDiffuseSpecularSettings.specularLobeAngleFraction = 0.9f;
+    mRelaxDiffuseSpecularSettings.specularLobeAngleSlack = 10.0f;
+
+    mRelaxDiffuseSettings.prepassBlurRadius = 16.0f;
+    mRelaxDiffuseSettings.diffuseMaxFastAccumulatedFrameNum = 2;
+    mRelaxDiffuseSettings.diffuseLobeAngleFraction = 0.8f;
+    mRelaxDiffuseSettings.disocclusionFixMaxRadius = 32.0f;
+    mRelaxDiffuseSettings.disocclusionFixNumFramesToFix = 4;
+    mRelaxDiffuseSettings.spatialVarianceEstimationHistoryThreshold = 4;
+    mRelaxDiffuseSettings.atrousIterationNum = 6;
+    mRelaxDiffuseSettings.depthThreshold = 0.02f;
 
     // Deserialize pass from dictionary.
     for (const auto& [key, value] : dict)
     {
+        if (key == kEnabled) mEnabled = value;
+        else if (key == kMethod) mDenoisingMethod = value;
+
         // Common settings.
-        if (key == kWorldSpaceMotion) mWorldSpaceMotion = value;
+        else if (key == kWorldSpaceMotion) mWorldSpaceMotion = value;
         else if (key == kDisocclusionThreshold) mDisocclusionThreshold = value;
 
         // Pack radiance settings.
         else if (key == kMaxIntensity) mMaxIntensity = value;
 
-        // ReLAX settings.
-        else if (key == kSpecularPrepassBlurRadius) mRelaxSettings.specularPrepassBlurRadius = value;
-        else if (key == kDiffusePrepassBlurRadius) mRelaxSettings.diffusePrepassBlurRadius = value;
-        else if (key == kDiffuseMaxAccumulatedFrameNum) mRelaxSettings.diffuseMaxAccumulatedFrameNum = value;
-        else if (key == kDiffuseMaxFastAccumulatedFrameNum) mRelaxSettings.diffuseMaxFastAccumulatedFrameNum = value;
-        else if (key == kSpecularMaxAccumulatedFrameNum) mRelaxSettings.specularMaxAccumulatedFrameNum = value;
-        else if (key == kSpecularMaxFastAccumulatedFrameNum) mRelaxSettings.specularMaxFastAccumulatedFrameNum = value;
-        else if (key == kSpecularVarianceBoost) mRelaxSettings.specularVarianceBoost = value;
-        else if (key == kEnableSkipReprojectionTestWithoutMotion) mRelaxSettings.enableSkipReprojectionTestWithoutMotion = value;
-        else if (key == kEnableSpecularVirtualHistoryClamping) mRelaxSettings.enableSpecularVirtualHistoryClamping = value;
-        else if (key == kEnableRoughnessBasedSpecularAccumulation) mRelaxSettings.enableRoughnessBasedSpecularAccumulation = value;
-        else if (key == kDisocclusionFixEdgeStoppingNormalPower) mRelaxSettings.disocclusionFixEdgeStoppingNormalPower = value;
-        else if (key == kDisocclusionFixMaxRadius) mRelaxSettings.disocclusionFixMaxRadius = value;
-        else if (key == kDisocclusionFixNumFramesToFix) mRelaxSettings.disocclusionFixNumFramesToFix = value;
-        else if (key == kHistoryClampingColorBoxSigmaScale) mRelaxSettings.historyClampingColorBoxSigmaScale = value;
-        else if (key == kSpatialVarianceEstimationHistoryThreshold) mRelaxSettings.spatialVarianceEstimationHistoryThreshold = value;
-        else if (key == kEnableAntiFirefly) mRelaxSettings.enableAntiFirefly = value;
-        else if (key == kAtrousIterationNum) mRelaxSettings.atrousIterationNum = value;
-        else if (key == kPhiDepth) mRelaxSettings.phiDepth = value;
-        else if (key == kPhiNormal) mRelaxSettings.phiNormal = value;
-        else if (key == kDiffusePhiLuminance) mRelaxSettings.diffusePhiLuminance = value;
-        else if (key == kSpecularPhiLuminance) mRelaxSettings.specularPhiLuminance = value;
-        else if (key == kSpecularLobeAngleFraction) mRelaxSettings.specularLobeAngleFraction = value;
-        else if (key == kSpecularLobeAngleSlack) mRelaxSettings.specularLobeAngleSlack = value;
-        else if (key == kEnableRoughnessEdgeStopping) mRelaxSettings.enableRoughnessEdgeStopping = value;
-        else if (key == kRoughnessEdgeStoppingRelaxation) mRelaxSettings.roughnessEdgeStoppingRelaxation = value;
-        else if (key == kNormalEdgeStoppingRelaxation) mRelaxSettings.normalEdgeStoppingRelaxation = value;
-        else if (key == kLuminanceEdgeStoppingRelaxation) mRelaxSettings.luminanceEdgeStoppingRelaxation = value;
+        // ReLAX diffuse/specular settings.
+        else if (mDenoisingMethod == DenoisingMethod::RelaxDiffuseSpecular || mDenoisingMethod == DenoisingMethod::ReblurDiffuseSpecular)
+        {
+            if (key == kDiffusePrepassBlurRadius) mRelaxDiffuseSpecularSettings.diffusePrepassBlurRadius = value;
+            else if (key == kSpecularPrepassBlurRadius) mRelaxDiffuseSpecularSettings.specularPrepassBlurRadius = value;
+            else if (key == kDiffuseMaxAccumulatedFrameNum) mRelaxDiffuseSpecularSettings.diffuseMaxAccumulatedFrameNum = value;
+            else if (key == kSpecularMaxAccumulatedFrameNum) mRelaxDiffuseSpecularSettings.specularMaxAccumulatedFrameNum = value;
+            else if (key == kDiffuseMaxFastAccumulatedFrameNum) mRelaxDiffuseSpecularSettings.diffuseMaxFastAccumulatedFrameNum = value;
+            else if (key == kSpecularMaxFastAccumulatedFrameNum) mRelaxDiffuseSpecularSettings.specularMaxFastAccumulatedFrameNum = value;
+            else if (key == kDiffusePhiLuminance) mRelaxDiffuseSpecularSettings.diffusePhiLuminance = value;
+            else if (key == kSpecularPhiLuminance) mRelaxDiffuseSpecularSettings.specularPhiLuminance = value;
+            else if (key == kDiffuseLobeAngleFraction) mRelaxDiffuseSpecularSettings.diffuseLobeAngleFraction = value;
+            else if (key == kSpecularLobeAngleFraction) mRelaxDiffuseSpecularSettings.specularLobeAngleFraction = value;
+            else if (key == kRoughnessFraction) mRelaxDiffuseSpecularSettings.roughnessFraction = value;
+            else if (key == kDiffuseHistoryRejectionNormalThreshold) mRelaxDiffuseSpecularSettings.diffuseHistoryRejectionNormalThreshold = value;
+            else if (key == kSpecularVarianceBoost) mRelaxDiffuseSpecularSettings.specularVarianceBoost = value;
+            else if (key == kSpecularLobeAngleSlack) mRelaxDiffuseSpecularSettings.specularLobeAngleSlack = value;
+            else if (key == kDisocclusionFixEdgeStoppingNormalPower) mRelaxDiffuseSpecularSettings.disocclusionFixEdgeStoppingNormalPower = value;
+            else if (key == kDisocclusionFixMaxRadius) mRelaxDiffuseSpecularSettings.disocclusionFixMaxRadius = value;
+            else if (key == kDisocclusionFixNumFramesToFix) mRelaxDiffuseSpecularSettings.disocclusionFixNumFramesToFix = value;
+            else if (key == kHistoryClampingColorBoxSigmaScale) mRelaxDiffuseSpecularSettings.historyClampingColorBoxSigmaScale = value;
+            else if (key == kSpatialVarianceEstimationHistoryThreshold) mRelaxDiffuseSpecularSettings.spatialVarianceEstimationHistoryThreshold = value;
+            else if (key == kAtrousIterationNum) mRelaxDiffuseSpecularSettings.atrousIterationNum = value;
+            else if (key == kMinLuminanceWeight) mRelaxDiffuseSpecularSettings.minLuminanceWeight = value;
+            else if (key == kDepthThreshold) mRelaxDiffuseSpecularSettings.depthThreshold = value;
+            else if (key == kLuminanceEdgeStoppingRelaxation) mRelaxDiffuseSpecularSettings.luminanceEdgeStoppingRelaxation = value;
+            else if (key == kNormalEdgeStoppingRelaxation) mRelaxDiffuseSpecularSettings.normalEdgeStoppingRelaxation = value;
+            else if (key == kRoughnessEdgeStoppingRelaxation) mRelaxDiffuseSpecularSettings.roughnessEdgeStoppingRelaxation = value;
+            else if (key == kEnableAntiFirefly) mRelaxDiffuseSpecularSettings.enableAntiFirefly = value;
+            else if (key == kEnableReprojectionTestSkippingWithoutMotion) mRelaxDiffuseSpecularSettings.enableReprojectionTestSkippingWithoutMotion = value;
+            else if (key == kEnableSpecularVirtualHistoryClamping) mRelaxDiffuseSpecularSettings.enableSpecularVirtualHistoryClamping = value;
+            else if (key == kEnableRoughnessEdgeStopping) mRelaxDiffuseSpecularSettings.enableRoughnessEdgeStopping = value;
+            else if (key == kEnableMaterialTestForDiffuse) mRelaxDiffuseSpecularSettings.enableMaterialTestForDiffuse = value;
+            else if (key == kEnableMaterialTestForSpecular) mRelaxDiffuseSpecularSettings.enableMaterialTestForSpecular = value;
+            else
+            {
+                logWarning("Unknown field '{}' in NRD dictionary.", key);
+            }
+        }
+        else if (mDenoisingMethod == DenoisingMethod::RelaxDiffuse)
+        {
+            if (key == kDiffusePrepassBlurRadius) mRelaxDiffuseSettings.prepassBlurRadius = value;
+            else if (key == kDiffuseMaxAccumulatedFrameNum) mRelaxDiffuseSettings.diffuseMaxAccumulatedFrameNum = value;
+            else if (key == kDiffuseMaxFastAccumulatedFrameNum) mRelaxDiffuseSettings.diffuseMaxFastAccumulatedFrameNum = value;
+            else if (key == kDiffusePhiLuminance) mRelaxDiffuseSettings.diffusePhiLuminance = value;
+            else if (key == kDiffuseLobeAngleFraction) mRelaxDiffuseSettings.diffuseLobeAngleFraction = value;
+            else if (key == kDiffuseHistoryRejectionNormalThreshold) mRelaxDiffuseSettings.diffuseHistoryRejectionNormalThreshold = value;
+            else if (key == kDisocclusionFixEdgeStoppingNormalPower) mRelaxDiffuseSettings.disocclusionFixEdgeStoppingNormalPower = value;
+            else if (key == kDisocclusionFixMaxRadius) mRelaxDiffuseSettings.disocclusionFixMaxRadius = value;
+            else if (key == kDisocclusionFixNumFramesToFix) mRelaxDiffuseSettings.disocclusionFixNumFramesToFix = value;
+            else if (key == kHistoryClampingColorBoxSigmaScale) mRelaxDiffuseSettings.historyClampingColorBoxSigmaScale = value;
+            else if (key == kSpatialVarianceEstimationHistoryThreshold) mRelaxDiffuseSettings.spatialVarianceEstimationHistoryThreshold = value;
+            else if (key == kAtrousIterationNum) mRelaxDiffuseSettings.atrousIterationNum = value;
+            else if (key == kMinLuminanceWeight) mRelaxDiffuseSettings.minLuminanceWeight = value;
+            else if (key == kDepthThreshold) mRelaxDiffuseSettings.depthThreshold = value;
+            else if (key == kEnableAntiFirefly) mRelaxDiffuseSettings.enableAntiFirefly = value;
+            else if (key == kEnableReprojectionTestSkippingWithoutMotion) mRelaxDiffuseSettings.enableReprojectionTestSkippingWithoutMotion = value;
+            else if (key == kEnableMaterialTestForDiffuse) mRelaxDiffuseSettings.enableMaterialTest = value;
+            else
+            {
+                logWarning("Unknown field '{}' in NRD dictionary.", key);
+            }
+        }
         else
         {
             logWarning("Unknown field '{}' in NRD dictionary.", key);
@@ -165,6 +248,9 @@ Falcor::Dictionary NRDPass::getScriptingDictionary()
     Dictionary dict;
 
 #if FALCOR_ENABLE_NRD
+    dict[kEnabled] = mEnabled;
+    dict[kMethod] = mDenoisingMethod;
+
     // Common settings.
     dict[kWorldSpaceMotion] = mWorldSpaceMotion;
     dict[kDisocclusionThreshold] = mDisocclusionThreshold;
@@ -172,34 +258,61 @@ Falcor::Dictionary NRDPass::getScriptingDictionary()
     // Pack radiance settings.
     dict[kMaxIntensity] = mMaxIntensity;
 
-    // ReLAX settings.
-    dict[kSpecularPrepassBlurRadius] = mRelaxSettings.specularPrepassBlurRadius;
-    dict[kDiffusePrepassBlurRadius] = mRelaxSettings.diffusePrepassBlurRadius;
-    dict[kDiffuseMaxAccumulatedFrameNum] = mRelaxSettings.diffuseMaxAccumulatedFrameNum;
-    dict[kDiffuseMaxFastAccumulatedFrameNum] = mRelaxSettings.diffuseMaxFastAccumulatedFrameNum;
-    dict[kSpecularMaxAccumulatedFrameNum] = mRelaxSettings.specularMaxAccumulatedFrameNum;
-    dict[kSpecularMaxFastAccumulatedFrameNum] = mRelaxSettings.specularMaxFastAccumulatedFrameNum;
-    dict[kSpecularVarianceBoost] = mRelaxSettings.specularVarianceBoost;
-    dict[kEnableSkipReprojectionTestWithoutMotion] = mRelaxSettings.enableSkipReprojectionTestWithoutMotion;
-    dict[kEnableSpecularVirtualHistoryClamping] = mRelaxSettings.enableSpecularVirtualHistoryClamping;
-    dict[kEnableRoughnessBasedSpecularAccumulation] = mRelaxSettings.enableRoughnessBasedSpecularAccumulation;
-    dict[kDisocclusionFixEdgeStoppingNormalPower] = mRelaxSettings.disocclusionFixEdgeStoppingNormalPower;
-    dict[kDisocclusionFixMaxRadius] = mRelaxSettings.disocclusionFixMaxRadius;
-    dict[kDisocclusionFixNumFramesToFix] = mRelaxSettings.disocclusionFixNumFramesToFix;
-    dict[kHistoryClampingColorBoxSigmaScale] = mRelaxSettings.historyClampingColorBoxSigmaScale;
-    dict[kSpatialVarianceEstimationHistoryThreshold] = mRelaxSettings.spatialVarianceEstimationHistoryThreshold;
-    dict[kEnableAntiFirefly] = mRelaxSettings.enableAntiFirefly;
-    dict[kAtrousIterationNum] = mRelaxSettings.atrousIterationNum;
-    dict[kPhiDepth] = mRelaxSettings.phiDepth;
-    dict[kPhiNormal] = mRelaxSettings.phiNormal;
-    dict[kDiffusePhiLuminance] = mRelaxSettings.diffusePhiLuminance;
-    dict[kSpecularPhiLuminance] = mRelaxSettings.specularPhiLuminance;
-    dict[kSpecularLobeAngleFraction] = mRelaxSettings.specularLobeAngleFraction;
-    dict[kSpecularLobeAngleSlack] = mRelaxSettings.specularLobeAngleSlack;
-    dict[kEnableRoughnessEdgeStopping] = mRelaxSettings.enableRoughnessEdgeStopping;
-    dict[kRoughnessEdgeStoppingRelaxation] = mRelaxSettings.roughnessEdgeStoppingRelaxation;
-    dict[kNormalEdgeStoppingRelaxation] = mRelaxSettings.normalEdgeStoppingRelaxation;
-    dict[kLuminanceEdgeStoppingRelaxation] = mRelaxSettings.luminanceEdgeStoppingRelaxation;
+    // ReLAX diffuse/specular settings.
+    if (mDenoisingMethod == DenoisingMethod::RelaxDiffuseSpecular || mDenoisingMethod == DenoisingMethod::ReblurDiffuseSpecular)
+    {
+        dict[kDiffusePrepassBlurRadius] = mRelaxDiffuseSpecularSettings.diffusePrepassBlurRadius;
+        dict[kSpecularPrepassBlurRadius] = mRelaxDiffuseSpecularSettings.specularPrepassBlurRadius;
+        dict[kDiffuseMaxAccumulatedFrameNum] = mRelaxDiffuseSpecularSettings.diffuseMaxAccumulatedFrameNum;
+        dict[kSpecularMaxAccumulatedFrameNum] = mRelaxDiffuseSpecularSettings.specularMaxAccumulatedFrameNum;
+        dict[kDiffuseMaxFastAccumulatedFrameNum] = mRelaxDiffuseSpecularSettings.diffuseMaxFastAccumulatedFrameNum;
+        dict[kSpecularMaxFastAccumulatedFrameNum] = mRelaxDiffuseSpecularSettings.specularMaxFastAccumulatedFrameNum;
+        dict[kDiffusePhiLuminance] = mRelaxDiffuseSpecularSettings.diffusePhiLuminance;
+        dict[kSpecularPhiLuminance] = mRelaxDiffuseSpecularSettings.specularPhiLuminance;
+        dict[kDiffuseLobeAngleFraction] = mRelaxDiffuseSpecularSettings.diffuseLobeAngleFraction;
+        dict[kSpecularLobeAngleFraction] = mRelaxDiffuseSpecularSettings.specularLobeAngleFraction;
+        dict[kRoughnessFraction] = mRelaxDiffuseSpecularSettings.roughnessFraction;
+        dict[kDiffuseHistoryRejectionNormalThreshold] = mRelaxDiffuseSpecularSettings.diffuseHistoryRejectionNormalThreshold;
+        dict[kSpecularVarianceBoost] = mRelaxDiffuseSpecularSettings.specularVarianceBoost;
+        dict[kSpecularLobeAngleSlack] = mRelaxDiffuseSpecularSettings.specularLobeAngleSlack;
+        dict[kDisocclusionFixEdgeStoppingNormalPower] = mRelaxDiffuseSpecularSettings.disocclusionFixEdgeStoppingNormalPower;
+        dict[kDisocclusionFixMaxRadius] = mRelaxDiffuseSpecularSettings.disocclusionFixMaxRadius;
+        dict[kDisocclusionFixNumFramesToFix] = mRelaxDiffuseSpecularSettings.disocclusionFixNumFramesToFix;
+        dict[kHistoryClampingColorBoxSigmaScale] = mRelaxDiffuseSpecularSettings.historyClampingColorBoxSigmaScale;
+        dict[kSpatialVarianceEstimationHistoryThreshold] = mRelaxDiffuseSpecularSettings.spatialVarianceEstimationHistoryThreshold;
+        dict[kAtrousIterationNum] = mRelaxDiffuseSpecularSettings.atrousIterationNum;
+        dict[kMinLuminanceWeight] = mRelaxDiffuseSpecularSettings.minLuminanceWeight;
+        dict[kDepthThreshold] = mRelaxDiffuseSpecularSettings.depthThreshold;
+        dict[kLuminanceEdgeStoppingRelaxation] = mRelaxDiffuseSpecularSettings.luminanceEdgeStoppingRelaxation;
+        dict[kNormalEdgeStoppingRelaxation] = mRelaxDiffuseSpecularSettings.normalEdgeStoppingRelaxation;
+        dict[kRoughnessEdgeStoppingRelaxation] = mRelaxDiffuseSpecularSettings.roughnessEdgeStoppingRelaxation;
+        dict[kEnableAntiFirefly] = mRelaxDiffuseSpecularSettings.enableAntiFirefly;
+        dict[kEnableReprojectionTestSkippingWithoutMotion] = mRelaxDiffuseSpecularSettings.enableReprojectionTestSkippingWithoutMotion;
+        dict[kEnableSpecularVirtualHistoryClamping] = mRelaxDiffuseSpecularSettings.enableSpecularVirtualHistoryClamping;
+        dict[kEnableRoughnessEdgeStopping] = mRelaxDiffuseSpecularSettings.enableRoughnessEdgeStopping;
+        dict[kEnableMaterialTestForDiffuse] = mRelaxDiffuseSpecularSettings.enableMaterialTestForDiffuse;
+        dict[kEnableMaterialTestForSpecular] = mRelaxDiffuseSpecularSettings.enableMaterialTestForSpecular;
+    }
+    else if (mDenoisingMethod == DenoisingMethod::RelaxDiffuse)
+    {
+        dict[kDiffusePrepassBlurRadius] = mRelaxDiffuseSettings.prepassBlurRadius;
+        dict[kDiffuseMaxAccumulatedFrameNum] = mRelaxDiffuseSettings.diffuseMaxAccumulatedFrameNum;
+        dict[kDiffuseMaxFastAccumulatedFrameNum] = mRelaxDiffuseSettings.diffuseMaxFastAccumulatedFrameNum;
+        dict[kDiffusePhiLuminance] = mRelaxDiffuseSettings.diffusePhiLuminance;
+        dict[kDiffuseLobeAngleFraction] = mRelaxDiffuseSettings.diffuseLobeAngleFraction;
+        dict[kDiffuseHistoryRejectionNormalThreshold] = mRelaxDiffuseSettings.diffuseHistoryRejectionNormalThreshold;
+        dict[kDisocclusionFixEdgeStoppingNormalPower] = mRelaxDiffuseSettings.disocclusionFixEdgeStoppingNormalPower;
+        dict[kDisocclusionFixMaxRadius] = mRelaxDiffuseSettings.disocclusionFixMaxRadius;
+        dict[kDisocclusionFixNumFramesToFix] = mRelaxDiffuseSettings.disocclusionFixNumFramesToFix;
+        dict[kHistoryClampingColorBoxSigmaScale] = mRelaxDiffuseSettings.historyClampingColorBoxSigmaScale;
+        dict[kSpatialVarianceEstimationHistoryThreshold] = mRelaxDiffuseSettings.spatialVarianceEstimationHistoryThreshold;
+        dict[kAtrousIterationNum] = mRelaxDiffuseSettings.atrousIterationNum;
+        dict[kMinLuminanceWeight] = mRelaxDiffuseSettings.minLuminanceWeight;
+        dict[kDepthThreshold] = mRelaxDiffuseSettings.depthThreshold;
+        dict[kEnableAntiFirefly] = mRelaxDiffuseSettings.enableAntiFirefly;
+        dict[kEnableReprojectionTestSkippingWithoutMotion] = mRelaxDiffuseSettings.enableReprojectionTestSkippingWithoutMotion;
+        dict[kEnableMaterialTestForDiffuse] = mRelaxDiffuseSettings.enableMaterialTest;
+    }
 #endif // FALCOR_ENABLE_NRD
 
     return dict;
@@ -208,14 +321,49 @@ Falcor::Dictionary NRDPass::getScriptingDictionary()
 RenderPassReflection NRDPass::reflect(const CompileData& compileData)
 {
     RenderPassReflection reflector;
-    reflector.addInput(kInputDiffuseRadianceHitDist, "Diffuse radiance and hit distance");
-    reflector.addInput(kInputSpecularRadianceHitDist, "Specular radiance and hit distance");
-    reflector.addInput(kInputViewZ, "View Z");
-    reflector.addInput(kInputNormalRoughnessMaterialID, "World normal, roughness, and material ID");
-    reflector.addInput(kInputMotionVectors, "Motion vectors");
 
-    reflector.addOutput(kOutputFilteredDiffuseRadianceHitDist, "Filtered diffuse radiance and hit distance").format(ResourceFormat::RGBA16Float);
-    reflector.addOutput(kOutputFilteredSpecularRadianceHitDist, "Filtered specular radiance and hit distance").format(ResourceFormat::RGBA16Float);
+    if (mDenoisingMethod == DenoisingMethod::RelaxDiffuseSpecular || mDenoisingMethod == DenoisingMethod::ReblurDiffuseSpecular)
+    {
+        reflector.addInput(kInputDiffuseRadianceHitDist, "Diffuse radiance and hit distance");
+        reflector.addInput(kInputSpecularRadianceHitDist, "Specular radiance and hit distance");
+        reflector.addInput(kInputViewZ, "View Z");
+        reflector.addInput(kInputNormalRoughnessMaterialID, "World normal, roughness, and material ID");
+        reflector.addInput(kInputMotionVectors, "Motion vectors");
+
+        reflector.addOutput(kOutputFilteredDiffuseRadianceHitDist, "Filtered diffuse radiance and hit distance").format(ResourceFormat::RGBA16Float);
+        reflector.addOutput(kOutputFilteredSpecularRadianceHitDist, "Filtered specular radiance and hit distance").format(ResourceFormat::RGBA16Float);
+    }
+    else if (mDenoisingMethod == DenoisingMethod::RelaxDiffuse)
+    {
+        reflector.addInput(kInputDiffuseRadianceHitDist, "Diffuse radiance and hit distance");
+        reflector.addInput(kInputViewZ, "View Z");
+        reflector.addInput(kInputNormalRoughnessMaterialID, "World normal, roughness, and material ID");
+        reflector.addInput(kInputMotionVectors, "Motion vectors");
+
+        reflector.addOutput(kOutputFilteredDiffuseRadianceHitDist, "Filtered diffuse radiance and hit distance").format(ResourceFormat::RGBA16Float);
+    }
+    else if (mDenoisingMethod == DenoisingMethod::SpecularReflectionMv)
+    {
+        reflector.addInput(kInputSpecularHitDist, "Specular hit distance");
+        reflector.addInput(kInputViewZ, "View Z");
+        reflector.addInput(kInputNormalRoughnessMaterialID, "World normal, roughness, and material ID");
+        reflector.addInput(kInputMotionVectors, "Motion vectors");
+
+        reflector.addOutput(kOutputReflectionMotionVectors, "Reflection motion vectors in screen space").format(ResourceFormat::RG16Float);
+    }
+    else if (mDenoisingMethod == DenoisingMethod::SpecularDeltaMv)
+    {
+        reflector.addInput(kInputDeltaPrimaryPosW, "Delta primary world position");
+        reflector.addInput(kInputDeltaSecondaryPosW, "Delta secondary world position");
+        reflector.addInput(kInputMotionVectors, "Motion vectors");
+
+        reflector.addOutput(kOutputDeltaMotionVectors, "Delta motion vectors in screen space").format(ResourceFormat::RG16Float);
+    }
+    else
+    {
+        FALCOR_UNREACHABLE();
+    }
+
     return reflector;
 }
 
@@ -232,12 +380,49 @@ void NRDPass::execute(RenderContext* pRenderContext, const RenderData& renderDat
 {
     if (!mpScene) return;
 
+    bool enabled = false;
 #if FALCOR_ENABLE_NRD
-    executeInternal(pRenderContext, renderData);
-#else
-    pRenderContext->blit(renderData[kInputDiffuseRadianceHitDist]->asTexture()->getSRV(), renderData[kOutputFilteredDiffuseRadianceHitDist]->asTexture()->getRTV());
-    pRenderContext->blit(renderData[kInputSpecularRadianceHitDist]->asTexture()->getSRV(), renderData[kOutputFilteredSpecularRadianceHitDist]->asTexture()->getRTV());
+    enabled = mEnabled;
 #endif
+
+    if (enabled)
+    {
+        executeInternal(pRenderContext, renderData);
+    }
+    else
+    {
+        if (mDenoisingMethod == DenoisingMethod::RelaxDiffuseSpecular || mDenoisingMethod == DenoisingMethod::ReblurDiffuseSpecular)
+        {
+            pRenderContext->blit(renderData[kInputDiffuseRadianceHitDist]->asTexture()->getSRV(), renderData[kOutputFilteredDiffuseRadianceHitDist]->asTexture()->getRTV());
+            pRenderContext->blit(renderData[kInputSpecularRadianceHitDist]->asTexture()->getSRV(), renderData[kOutputFilteredSpecularRadianceHitDist]->asTexture()->getRTV());
+        }
+        else if (mDenoisingMethod == DenoisingMethod::RelaxDiffuse)
+        {
+            pRenderContext->blit(renderData[kInputDiffuseRadianceHitDist]->asTexture()->getSRV(), renderData[kOutputFilteredDiffuseRadianceHitDist]->asTexture()->getRTV());
+        }
+        else if (mDenoisingMethod == DenoisingMethod::SpecularReflectionMv)
+        {
+            if (mWorldSpaceMotion)
+            {
+                pRenderContext->clearRtv(renderData[kOutputReflectionMotionVectors]->asTexture()->getRTV().get(), float4(0.f));
+            }
+            else
+            {
+                pRenderContext->blit(renderData[kInputMotionVectors]->asTexture()->getSRV(), renderData[kOutputReflectionMotionVectors]->asTexture()->getRTV());
+            }
+        }
+        else if (mDenoisingMethod == DenoisingMethod::SpecularDeltaMv)
+        {
+            if (mWorldSpaceMotion)
+            {
+                pRenderContext->clearRtv(renderData[kOutputDeltaMotionVectors]->asTexture()->getRTV().get(), float4(0.f));
+            }
+            else
+            {
+                pRenderContext->blit(renderData[kInputMotionVectors]->asTexture()->getSRV(), renderData[kOutputDeltaMotionVectors]->asTexture()->getRTV());
+            }
+        }
+    }
 }
 
 void NRDPass::renderUI(Gui::Widgets& widget)
@@ -248,50 +433,171 @@ void NRDPass::renderUI(Gui::Widgets& widget)
     _snprintf_s(name, 255, "NRD Library v%u.%u.%u", nrdLibraryDesc.versionMajor, nrdLibraryDesc.versionMinor, nrdLibraryDesc.versionBuild);
     widget.text(name);
 
-    widget.text("Common:");
-    widget.text(mWorldSpaceMotion ? "World space motion" : "Screen space motion");
-    widget.slider("Disocclusion threshold (%)", mDisocclusionThreshold, 0.0f, 5.0f, false, "%.2f");
+    widget.checkbox("Enabled", mEnabled);
 
-    widget.text("Pack radiance:");
-    widget.slider("Max intensity", mMaxIntensity, 0.f, 100000.f, false, "%.0f");
-
-    // ReLAX settings.
+    if (mDenoisingMethod == DenoisingMethod::RelaxDiffuseSpecular || mDenoisingMethod == DenoisingMethod::ReblurDiffuseSpecular)
     {
-        widget.text("ReLAX:");
-        widget.text("Prepass:");
-        widget.slider("Diffuse blur radius", mRelaxSettings.diffusePrepassBlurRadius, 0.0f, 100.0f, false, "%.0f");
-        widget.slider("Specular blur radius", mRelaxSettings.specularPrepassBlurRadius, 0.0f, 100.0f, false, "%.0f");
-        widget.text("Reprojection:");
-        widget.slider("Diffuse max accumulated frames", mRelaxSettings.diffuseMaxAccumulatedFrameNum, 0u, nrd::RELAX_MAX_HISTORY_FRAME_NUM);
-        widget.slider("Diffuse responsive max accumulated frames", mRelaxSettings.diffuseMaxFastAccumulatedFrameNum, 0u, nrd::RELAX_MAX_HISTORY_FRAME_NUM);
-        widget.slider("Specular max accumulated frames", mRelaxSettings.specularMaxAccumulatedFrameNum, 0u, nrd::RELAX_MAX_HISTORY_FRAME_NUM);
-        widget.slider("Specular responsive max accumulated frames", mRelaxSettings.specularMaxFastAccumulatedFrameNum, 0u, nrd::RELAX_MAX_HISTORY_FRAME_NUM);
-        widget.slider("Specular variance boost", mRelaxSettings.specularVarianceBoost, 0.0f, 8.0f, false, "%.1f");
-        widget.checkbox("Skip reprojection test without motion", mRelaxSettings.enableSkipReprojectionTestWithoutMotion);
-        widget.checkbox("Enable specular virtual history clamping", mRelaxSettings.enableSpecularVirtualHistoryClamping);
-        widget.checkbox("Enable roughness based specular accumulation", mRelaxSettings.enableRoughnessBasedSpecularAccumulation);
-        widget.text("Disocclusion fix:");
-        widget.slider("Edge stopping normal power", mRelaxSettings.disocclusionFixEdgeStoppingNormalPower, 0.0f, 128.0f, false, "%.1f");
-        widget.slider("Max kernel radius", mRelaxSettings.disocclusionFixMaxRadius, 0.0f, 100.0f, false, "%.0f");
-        widget.slider("Frames to fix", (uint32_t&)mRelaxSettings.disocclusionFixNumFramesToFix, 0u, 100u);
-        widget.text("History clamping & antilag:");
-        widget.slider("Color clamping sigma", mRelaxSettings.historyClampingColorBoxSigmaScale, 0.0f, 10.0f, false, "%.1f");
-        widget.text("Spatial variance estimation:");
-        widget.slider("History threshold", (uint32_t&)mRelaxSettings.spatialVarianceEstimationHistoryThreshold, 0u, 10u);
-        widget.text("Firefly filter:");
-        widget.checkbox("Enable firefly filter", (bool&)mRelaxSettings.enableAntiFirefly);
-        widget.text("Spatial filter:");
-        widget.slider("A-trous iterations", (uint32_t&)mRelaxSettings.atrousIterationNum, 2u, 8u);
-        widget.slider("Depth weight (relative fraction)", mRelaxSettings.phiDepth, 0.0f, 0.05f, false, "%.2f");
-        widget.slider("Normal weight (power)", mRelaxSettings.phiNormal, 1.0f, 256.0f, false, "%.0f");
-        widget.slider("Diffuse luminance weight (sigma scale)", mRelaxSettings.diffusePhiLuminance, 0.0f, 10.0f, false, "%.1f");
-        widget.slider("Specular normal weight (fraction of lobe)", mRelaxSettings.specularLobeAngleFraction, 0.0f, 2.0f, false, "%.0f");
-        widget.slider("Specular normal weight (degrees of slack)", mRelaxSettings.specularLobeAngleSlack, 0.0f, 180.0f, false, "%.0f");
-        widget.slider("Specular luminance weight (sigma scale)", mRelaxSettings.specularPhiLuminance, 0.0f, 10.0f, false, "%.1f");
-        widget.checkbox("Roughness edge stopping", mRelaxSettings.enableRoughnessEdgeStopping);
-        widget.slider("Roughness relaxation", mRelaxSettings.roughnessEdgeStoppingRelaxation, 0.0f, 1.0f, false, "%.2f");
-        widget.slider("Normal relaxation", mRelaxSettings.normalEdgeStoppingRelaxation, 0.0f, 1.0f, false, "%.2f");
-        widget.slider("Luminance relaxation", mRelaxSettings.luminanceEdgeStoppingRelaxation, 0.0f, 1.0f, false, "%.2f");
+        mRecreateDenoiser = widget.dropdown("Denoising method", kDenoisingMethod, reinterpret_cast<uint32_t&>(mDenoisingMethod));
+    }
+
+    if (mDenoisingMethod == DenoisingMethod::RelaxDiffuseSpecular)
+    {
+        widget.text("Common:");
+        widget.text(mWorldSpaceMotion ? "Motion: world space" : "Motion: screen space");
+        widget.slider("Disocclusion threshold (%)", mDisocclusionThreshold, 0.0f, 5.0f, false, "%.2f");
+
+        widget.text("Pack radiance:");
+        widget.slider("Max intensity", mMaxIntensity, 0.f, 100000.f, false, "%.0f");
+
+        // ReLAX diffuse/specular settings.
+        if (auto group = widget.group("ReLAX Diffuse/Specular"))
+        {
+            group.text("Prepass:");
+            group.slider("Specular blur radius", mRelaxDiffuseSpecularSettings.specularPrepassBlurRadius, 0.0f, 100.0f, false, "%.0f");
+            group.slider("Diffuse blur radius", mRelaxDiffuseSpecularSettings.diffusePrepassBlurRadius, 0.0f, 100.0f, false, "%.0f");
+            group.text("Reprojection:");
+            group.slider("Specular max accumulated frames", mRelaxDiffuseSpecularSettings.specularMaxAccumulatedFrameNum, 0u, nrd::RELAX_MAX_HISTORY_FRAME_NUM);
+            group.slider("Specular responsive max accumulated frames", mRelaxDiffuseSpecularSettings.specularMaxFastAccumulatedFrameNum, 0u, nrd::RELAX_MAX_HISTORY_FRAME_NUM);
+            group.slider("Diffuse max accumulated frames", mRelaxDiffuseSpecularSettings.diffuseMaxAccumulatedFrameNum, 0u, nrd::RELAX_MAX_HISTORY_FRAME_NUM);
+            group.slider("Diffuse responsive max accumulated frames", mRelaxDiffuseSpecularSettings.diffuseMaxFastAccumulatedFrameNum, 0u, nrd::RELAX_MAX_HISTORY_FRAME_NUM);
+            group.slider("Specular variance boost", mRelaxDiffuseSpecularSettings.specularVarianceBoost, 0.0f, 8.0f, false, "%.1f");
+            group.slider("Diffuse history rejection normal threshold", mRelaxDiffuseSpecularSettings.diffuseHistoryRejectionNormalThreshold, 0.0f, 1.0f, false, "%.2f");
+            group.checkbox("Reprojection test skipping without motion", mRelaxDiffuseSpecularSettings.enableReprojectionTestSkippingWithoutMotion);
+            group.checkbox("Specular virtual history clamping", mRelaxDiffuseSpecularSettings.enableSpecularVirtualHistoryClamping);
+            group.text("Disocclusion fix:");
+            group.slider("Edge stopping normal power", mRelaxDiffuseSpecularSettings.disocclusionFixEdgeStoppingNormalPower, 0.0f, 128.0f, false, "%.1f");
+            group.slider("Max kernel radius", mRelaxDiffuseSpecularSettings.disocclusionFixMaxRadius, 0.0f, 100.0f, false, "%.0f");
+            group.slider("Frames to fix", (uint32_t&)mRelaxDiffuseSpecularSettings.disocclusionFixNumFramesToFix, 0u, 100u);
+            group.text("History clamping & antilag:");
+            group.slider("Color clamping sigma", mRelaxDiffuseSpecularSettings.historyClampingColorBoxSigmaScale, 0.0f, 10.0f, false, "%.1f");
+            group.text("Spatial variance estimation:");
+            group.slider("History threshold", (uint32_t&)mRelaxDiffuseSpecularSettings.spatialVarianceEstimationHistoryThreshold, 0u, 10u);
+            group.text("Firefly filter:");
+            group.checkbox("Enable firefly filter", (bool&)mRelaxDiffuseSpecularSettings.enableAntiFirefly);
+            group.text("Spatial filter:");
+            group.slider("A-trous iterations", (uint32_t&)mRelaxDiffuseSpecularSettings.atrousIterationNum, 2u, 8u);
+            group.slider("Specular luminance weight (sigma scale)", mRelaxDiffuseSpecularSettings.specularPhiLuminance, 0.0f, 10.0f, false, "%.1f");
+            group.slider("Diffuse luminance weight (sigma scale)", mRelaxDiffuseSpecularSettings.diffusePhiLuminance, 0.0f, 10.0f, false, "%.1f");
+            group.slider("Min luminance weight", mRelaxDiffuseSpecularSettings.minLuminanceWeight, 0.0f, 1.0f, false, "%.2f");
+            group.slider("Depth weight (relative fraction)", mRelaxDiffuseSpecularSettings.depthThreshold, 0.0f, 0.05f, false, "%.2f");
+            group.slider("Roughness weight (relative fraction)", mRelaxDiffuseSpecularSettings.roughnessFraction, 0.0f, 2.0f, false, "%.2f");
+            group.slider("Diffuse lobe angle fraction", mRelaxDiffuseSpecularSettings.diffuseLobeAngleFraction, 0.0f, 2.0f, false, "%.1f");
+            group.slider("Specular loba angle fraction", mRelaxDiffuseSpecularSettings.specularLobeAngleFraction, 0.0f, 2.0f, false, "%.1f");
+            group.slider("Specular normal weight (degrees of slack)", mRelaxDiffuseSpecularSettings.specularLobeAngleSlack, 0.0f, 180.0f, false, "%.0f");
+            group.slider("Roughness relaxation", mRelaxDiffuseSpecularSettings.roughnessEdgeStoppingRelaxation, 0.0f, 1.0f, false, "%.2f");
+            group.slider("Normal relaxation", mRelaxDiffuseSpecularSettings.normalEdgeStoppingRelaxation, 0.0f, 1.0f, false, "%.2f");
+            group.slider("Luminance relaxation", mRelaxDiffuseSpecularSettings.luminanceEdgeStoppingRelaxation, 0.0f, 1.0f, false, "%.2f");
+            group.checkbox("Roughness edge stopping", mRelaxDiffuseSpecularSettings.enableRoughnessEdgeStopping);
+        }
+    }
+    else if (mDenoisingMethod == DenoisingMethod::RelaxDiffuse)
+    {
+        widget.text("Common:");
+        widget.text(mWorldSpaceMotion ? "Motion: world space" : "Motion: screen space");
+        widget.slider("Disocclusion threshold (%)", mDisocclusionThreshold, 0.0f, 5.0f, false, "%.2f");
+
+        widget.text("Pack radiance:");
+        widget.slider("Max intensity", mMaxIntensity, 0.f, 100000.f, false, "%.0f");
+
+        // ReLAX diffuse settings.
+        if (auto group = widget.group("ReLAX Diffuse"))
+        {
+            group.text("Prepass:");
+            group.slider("Diffuse blur radius", mRelaxDiffuseSettings.prepassBlurRadius, 0.0f, 100.0f, false, "%.0f");
+            group.text("Reprojection:");
+            group.slider("Diffuse max accumulated frames", mRelaxDiffuseSettings.diffuseMaxAccumulatedFrameNum, 0u, nrd::RELAX_MAX_HISTORY_FRAME_NUM);
+            group.slider("Diffuse responsive max accumulated frames", mRelaxDiffuseSettings.diffuseMaxFastAccumulatedFrameNum, 0u, nrd::RELAX_MAX_HISTORY_FRAME_NUM);
+            group.slider("Diffuse history rejection normal threshold", mRelaxDiffuseSettings.diffuseHistoryRejectionNormalThreshold, 0.0f, 1.0f, false, "%.2f");
+            group.checkbox("Reprojection test skipping without motion", mRelaxDiffuseSettings.enableReprojectionTestSkippingWithoutMotion);
+            group.text("Disocclusion fix:");
+            group.slider("Edge stopping normal power", mRelaxDiffuseSettings.disocclusionFixEdgeStoppingNormalPower, 0.0f, 128.0f, false, "%.1f");
+            group.slider("Max kernel radius", mRelaxDiffuseSettings.disocclusionFixMaxRadius, 0.0f, 100.0f, false, "%.0f");
+            group.slider("Frames to fix", (uint32_t&)mRelaxDiffuseSettings.disocclusionFixNumFramesToFix, 0u, 100u);
+            group.text("History clamping & antilag:");
+            group.slider("Color clamping sigma", mRelaxDiffuseSettings.historyClampingColorBoxSigmaScale, 0.0f, 10.0f, false, "%.1f");
+            group.text("Spatial variance estimation:");
+            group.slider("History threshold", (uint32_t&)mRelaxDiffuseSettings.spatialVarianceEstimationHistoryThreshold, 0u, 10u);
+            group.text("Firefly filter:");
+            group.checkbox("Enable firefly filter", (bool&)mRelaxDiffuseSettings.enableAntiFirefly);
+            group.text("Spatial filter:");
+            group.slider("A-trous iterations", (uint32_t&)mRelaxDiffuseSettings.atrousIterationNum, 2u, 8u);
+            group.slider("Diffuse luminance weight (sigma scale)", mRelaxDiffuseSettings.diffusePhiLuminance, 0.0f, 10.0f, false, "%.1f");
+            group.slider("Min luminance weight", mRelaxDiffuseSettings.minLuminanceWeight, 0.0f, 1.0f, false, "%.2f");
+            group.slider("Depth weight (relative fraction)", mRelaxDiffuseSettings.depthThreshold, 0.0f, 0.05f, false, "%.2f");
+            group.slider("Diffuse lobe angle fraction", mRelaxDiffuseSettings.diffuseLobeAngleFraction, 0.0f, 2.0f, false, "%.1f");
+        }
+    }
+    else if (mDenoisingMethod == DenoisingMethod::ReblurDiffuseSpecular)
+    {
+        widget.text("Common:");
+        widget.text(mWorldSpaceMotion ? "Motion: world space" : "Motion: screen space");
+        widget.slider("Disocclusion threshold (%)", mDisocclusionThreshold, 0.0f, 5.0f, false, "%.2f");
+
+        widget.text("Pack radiance:");
+        widget.slider("Max intensity", mMaxIntensity, 0.f, 100000.f, false, "%.0f");
+
+        if (auto group = widget.group("ReBLUR Diffuse/Specular"))
+        {
+            const float kEpsilon = 0.0001f;
+            if (auto group2 = group.group("Specular lobe trimming"))
+            {
+                group2.slider("A", mReblurSettings.specularLobeTrimmingParameters.A, -256.0f, 256.0f, false, "%.2f");
+                group2.slider("B", mReblurSettings.specularLobeTrimmingParameters.B, kEpsilon, 256.0f, false, "%.2f");
+                group2.slider("C", mReblurSettings.specularLobeTrimmingParameters.C, 1.0f, 256.0f, false, "%.2f");
+            }
+
+            if (auto group2 = group.group("Hit distance"))
+            {
+                group2.slider("A", mReblurSettings.hitDistanceParameters.A, -256.0f, 256.0f, false, "%.2f");
+                group2.slider("B", mReblurSettings.hitDistanceParameters.B, kEpsilon, 256.0f, false, "%.2f");
+                group2.slider("C", mReblurSettings.hitDistanceParameters.C, 1.0f, 256.0f, false, "%.2f");
+                group2.slider("D", mReblurSettings.hitDistanceParameters.D, -256.0f, 0.0f, false, "%.2f");
+            }
+
+            if (auto group2 = group.group("Antilag intensity"))
+            {
+                group2.slider("Threshold min", mReblurSettings.antilagIntensitySettings.thresholdMin, 0.0f, 1.0f, false, "%.2f");
+                group2.slider("Threshold max", mReblurSettings.antilagIntensitySettings.thresholdMax, 0.0f, 1.0f, false, "%.2f");
+                group2.slider("Sigma scale", mReblurSettings.antilagIntensitySettings.sigmaScale, kEpsilon, 16.0f, false, "%.2f");
+                group2.slider("Sensitivity to darkness", mReblurSettings.antilagIntensitySettings.sensitivityToDarkness, kEpsilon, 256.0f, false, "%.2f");
+                group2.checkbox("Enable", mReblurSettings.antilagIntensitySettings.enable);
+            }
+
+            if (auto group2 = group.group("Antilag hit distance"))
+            {
+                group2.slider("Threshold min", mReblurSettings.antilagHitDistanceSettings.thresholdMin, 0.0f, 1.0f, false, "%.2f");
+                group2.slider("Threshold max", mReblurSettings.antilagHitDistanceSettings.thresholdMax, 0.0f, 1.0f, false, "%.2f");
+                group2.slider("Sigma scale", mReblurSettings.antilagHitDistanceSettings.sigmaScale, kEpsilon, 16.0f, false, "%.2f");
+                group2.slider("Sensitivity to darkness", mReblurSettings.antilagHitDistanceSettings.sensitivityToDarkness, kEpsilon, 1.0f, false, "%.2f");
+                group2.checkbox("Enable", mReblurSettings.antilagHitDistanceSettings.enable);
+            }
+
+            group.slider("Max accumulated frame num", mReblurSettings.maxAccumulatedFrameNum, 0u, nrd::REBLUR_MAX_HISTORY_FRAME_NUM);
+            group.slider("Blur radius", mReblurSettings.blurRadius, 0.0f, 256.0f, false, "%.2f");
+            group.slider("Min converged state base radius scale", mReblurSettings.minConvergedStateBaseRadiusScale, 0.0f, 1.0f, false, "%.2f");
+            group.slider("Max adaptive radius scale", mReblurSettings.maxAdaptiveRadiusScale, 0.0f, 10.0f, false, "%.2f");
+            group.slider("Normal weight (fraction of lobe)", mReblurSettings.lobeAngleFraction, 0.0f, 1.0f, false, "%.2f");
+            group.slider("Roughness weight (fraction)", mReblurSettings.roughnessFraction, 0.0f, 1.0f, false, "%.2f");
+            group.slider("Responsive accumulation roughness threshold", mReblurSettings.responsiveAccumulationRoughnessThreshold, 0.0f, 1.0f, false, "%.2f");
+            group.slider("Stabilization strength", mReblurSettings.stabilizationStrength, 0.0f, 1.0f, false, "%.2f");
+            group.slider("History fix strength", mReblurSettings.historyFixStrength, 0.0f, 1.0f, false, "%.2f");
+            group.slider("Plane distance sensitivity", mReblurSettings.planeDistanceSensitivity, kEpsilon, 16.0f, false, "%.3f");
+            group.slider("Input mix", mReblurSettings.inputMix, 0.0f, 1.0f, false, "%.2f");
+            group.slider("Residual noise level", mReblurSettings.residualNoiseLevel, 0.01f, 0.1f, false, "%.2f");
+            group.checkbox("Antifirefly", mReblurSettings.enableAntiFirefly);
+            group.checkbox("Reference accumulation", mReblurSettings.enableReferenceAccumulation);
+            group.checkbox("Performance mode", mReblurSettings.enablePerformanceMode);
+            group.checkbox("Material test for diffuse", mReblurSettings.enableMaterialTestForDiffuse);
+            group.checkbox("Material test for specular", mReblurSettings.enableMaterialTestForSpecular);
+        }
+    }
+    else if (mDenoisingMethod == DenoisingMethod::SpecularReflectionMv)
+    {
+        widget.text(mWorldSpaceMotion ? "Motion: world space" : "Motion: screen space");
+    }
+    else if (mDenoisingMethod == DenoisingMethod::SpecularDeltaMv)
+    {
+        widget.text(mWorldSpaceMotion ? "Motion: world space" : "Motion: screen space");
     }
 #else // FALCOR_ENABLE_NRD
     widget.textWrapped("NRD is not setup and enabled in `Source/Core/FalcorConfig.h` so this pass is disabled. Please configure NRD and then recompile to use this pass.");
@@ -368,7 +674,23 @@ static Falcor::ResourceFormat getFalcorFormat(nrd::Format format)
     case nrd::Format::R10_G10_B10_A2_UINT:  return Falcor::ResourceFormat::RGB10A2Uint;
     case nrd::Format::R11_G11_B10_UFLOAT:   return Falcor::ResourceFormat::R11G11B10Float;
     case nrd::Format::R9_G9_B9_E5_UFLOAT:   return Falcor::ResourceFormat::RGB9E5Float;
-    default:                                return Falcor::ResourceFormat::Unknown;
+    default:
+        throw RuntimeError("Unsupported NRD format.");
+    }
+}
+
+static nrd::Method getNrdMethod(NRDPass::DenoisingMethod denoisingMethod)
+{
+    switch (denoisingMethod)
+    {
+    case NRDPass::DenoisingMethod::RelaxDiffuseSpecular:    return nrd::Method::RELAX_DIFFUSE_SPECULAR;
+    case NRDPass::DenoisingMethod::RelaxDiffuse:            return nrd::Method::RELAX_DIFFUSE;
+    case NRDPass::DenoisingMethod::ReblurDiffuseSpecular:   return nrd::Method::REBLUR_DIFFUSE_SPECULAR;
+    case NRDPass::DenoisingMethod::SpecularReflectionMv:        return nrd::Method::SPECULAR_REFLECTION_MV;
+    case NRDPass::DenoisingMethod::SpecularDeltaMv:     return nrd::Method::SPECULAR_DELTA_MV;
+    default:
+        FALCOR_UNREACHABLE();
+        return nrd::Method::RELAX_DIFFUSE_SPECULAR;
     }
 }
 
@@ -386,7 +708,7 @@ void NRDPass::reinit()
 
     const nrd::MethodDesc methods[] =
     {
-        { nrd::Method::RELAX_DIFFUSE_SPECULAR, uint16_t(mScreenSize.x), uint16_t(mScreenSize.y) }
+        { getNrdMethod(mDenoisingMethod), uint16_t(mScreenSize.x), uint16_t(mScreenSize.y) }
     };
 
     nrd::DenoiserCreationDesc denoiserCreationDesc;
@@ -468,15 +790,15 @@ void NRDPass::createPipelines()
 
         // Create Compute PSO for the NRD pass.
         {
-            std::string shaderFileName = "nrd/Shaders/" + std::string(nrdPipelineDesc.shaderFileName) + ".hlsl";
+            std::string shaderFileName = "nrd/Shaders/Source/" + std::string(nrdPipelineDesc.shaderFileName) + ".hlsl";
 
             Program::Desc programDesc;
             programDesc.addShaderLibrary(shaderFileName).csEntry(nrdPipelineDesc.shaderEntryPointName);
             programDesc.setCompilerFlags(Shader::CompilerFlags::MatrixLayoutColumnMajor);
             Program::DefineList defines;
-            defines.add("COMPILER_DXC");
-            defines.add("NRD_NORMAL_ENCODING", "1"); // NRD_NORMAL_ENCODING_OCT10
-            defines.add("NRD_USE_MATERIAL_ID_AWARE_FILTERING", "0");
+            defines.add("NRD_COMPILER_DXC");
+            defines.add("NRD_USE_OCT_NORMAL_ENCODING", "1");
+            defines.add("NRD_USE_MATERIAL_ID", "0");
             ComputePass::SharedPtr pPass = ComputePass::create(programDesc, defines);
 
             ComputeProgram::SharedPtr pProgram = pPass->getProgram();
@@ -560,30 +882,79 @@ void NRDPass::createResources()
         Falcor::ResourceBindFlags::Constant,
         Falcor::Buffer::CpuAccess::Write,
         nullptr);
-
-    // Textures for classic Falcor compute pass that packs radiance.
-    mpDiffuseRadianceHitDistPackedTexture = Texture::create2D(mScreenSize.x, mScreenSize.y, ResourceFormat::RGBA16Float, 1u, 1u, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
-    mpSpecularRadianceHitDistPackedTexture = Texture::create2D(mScreenSize.x, mScreenSize.y, ResourceFormat::RGBA16Float, 1u, 1u, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
 }
 
 void NRDPass::executeInternal(RenderContext* pRenderContext, const RenderData& renderData)
 {
     FALCOR_ASSERT(mpScene);
 
-    // Run classic Falcor compute pass to pack radiance.
+    if (mRecreateDenoiser)
     {
-        FALCOR_PROFILE("PackRadiance");
-        auto perImageCB = mpPackRadiancePass["PerImageCB"];
-
-        perImageCB["gMaxIntensity"] = mMaxIntensity;
-        perImageCB["gDiffuseRadianceHitDist"] = renderData[kInputDiffuseRadianceHitDist]->asTexture();
-        perImageCB["gSpecularRadianceHitDist"] = renderData[kInputSpecularRadianceHitDist]->asTexture();
-        perImageCB["gOutDiffuseRadianceHitDist"] = mpDiffuseRadianceHitDistPackedTexture;
-        perImageCB["gOutSpecularRadianceHitDist"] = mpSpecularRadianceHitDistPackedTexture;
-        mpPackRadiancePass->execute(pRenderContext, uint3(mScreenSize.x, mScreenSize.y, 1u));
+        reinit();
     }
 
-    nrd::SetMethodSettings(*mpDenoiser, nrd::Method::RELAX_DIFFUSE_SPECULAR, (void*)&mRelaxSettings);
+    if (mDenoisingMethod == DenoisingMethod::RelaxDiffuseSpecular)
+    {
+        // Run classic Falcor compute pass to pack radiance.
+        {
+            FALCOR_PROFILE("PackRadiance");
+            auto perImageCB = mpPackRadiancePassRelax["PerImageCB"];
+
+            perImageCB["gMaxIntensity"] = mMaxIntensity;
+            perImageCB["gDiffuseRadianceHitDist"] = renderData[kInputDiffuseRadianceHitDist]->asTexture();
+            perImageCB["gSpecularRadianceHitDist"] = renderData[kInputSpecularRadianceHitDist]->asTexture();
+            mpPackRadiancePassRelax->execute(pRenderContext, uint3(mScreenSize.x, mScreenSize.y, 1u));
+        }
+
+        nrd::SetMethodSettings(*mpDenoiser, nrd::Method::RELAX_DIFFUSE_SPECULAR, static_cast<void*>(&mRelaxDiffuseSpecularSettings));
+    }
+    else if (mDenoisingMethod == DenoisingMethod::RelaxDiffuse)
+    {
+        // Run classic Falcor compute pass to pack radiance and hit distance.
+        {
+            FALCOR_PROFILE("PackRadianceHitDist");
+            auto perImageCB = mpPackRadiancePassRelax["PerImageCB"];
+
+            perImageCB["gMaxIntensity"] = mMaxIntensity;
+            perImageCB["gDiffuseRadianceHitDist"] = renderData[kInputDiffuseRadianceHitDist]->asTexture();
+            mpPackRadiancePassRelax->execute(pRenderContext, uint3(mScreenSize.x, mScreenSize.y, 1u));
+        }
+
+        nrd::SetMethodSettings(*mpDenoiser, nrd::Method::RELAX_DIFFUSE, static_cast<void*>(&mRelaxDiffuseSettings));
+    }
+    else if (mDenoisingMethod == DenoisingMethod::ReblurDiffuseSpecular)
+    {
+        // Run classic Falcor compute pass to pack radiance and hit distance.
+        {
+            FALCOR_PROFILE("PackRadianceHitDist");
+            auto perImageCB = mpPackRadiancePassReblur["PerImageCB"];
+
+            perImageCB["gHitDistParams"].setBlob(mReblurSettings.hitDistanceParameters);
+            perImageCB["gMaxIntensity"] = mMaxIntensity;
+            perImageCB["gDiffuseRadianceHitDist"] = renderData[kInputDiffuseRadianceHitDist]->asTexture();
+            perImageCB["gSpecularRadianceHitDist"] = renderData[kInputSpecularRadianceHitDist]->asTexture();
+            perImageCB["gNormalRoughness"] = renderData[kInputNormalRoughnessMaterialID]->asTexture();
+            perImageCB["gViewZ"] = renderData[kInputViewZ]->asTexture();
+            mpPackRadiancePassReblur->execute(pRenderContext, uint3(mScreenSize.x, mScreenSize.y, 1u));
+        }
+
+        nrd::SetMethodSettings(*mpDenoiser, nrd::Method::REBLUR_DIFFUSE_SPECULAR, static_cast<void*>(&mReblurSettings));
+    }
+    else if (mDenoisingMethod == DenoisingMethod::SpecularReflectionMv)
+    {
+        nrd::SpecularReflectionMvSettings specularReflectionMvSettings;
+        nrd::SetMethodSettings(*mpDenoiser, nrd::Method::SPECULAR_REFLECTION_MV, static_cast<void*>(&specularReflectionMvSettings));
+    }
+    else if (mDenoisingMethod == DenoisingMethod::SpecularDeltaMv)
+    {
+        nrd::SpecularDeltaMvSettings specularDeltaMvSettings;
+        nrd::SetMethodSettings(*mpDenoiser, nrd::Method::SPECULAR_DELTA_MV, static_cast<void*>(&specularDeltaMvSettings));
+    }
+    else
+    {
+        FALCOR_UNREACHABLE();
+        return;
+    }
 
     // Initialize common settings.
     glm::mat4 viewMatrix = mpScene->getCamera()->getViewMatrix();
@@ -594,18 +965,17 @@ void NRDPass::executeInternal(RenderContext* pRenderContext, const RenderData& r
         mPrevProjMatrix = projMatrix;
     }
 
-    nrd::CommonSettings commonSettings;
-    copyMatrix(commonSettings.viewToClipMatrix, projMatrix);
-    copyMatrix(commonSettings.viewToClipMatrixPrev, mPrevProjMatrix);
-    copyMatrix(commonSettings.worldToViewMatrix, viewMatrix);
-    copyMatrix(commonSettings.worldToViewMatrixPrev, mPrevViewMatrix);
+    copyMatrix(mCommonSettings.viewToClipMatrix, projMatrix);
+    copyMatrix(mCommonSettings.viewToClipMatrixPrev, mPrevProjMatrix);
+    copyMatrix(mCommonSettings.worldToViewMatrix, viewMatrix);
+    copyMatrix(mCommonSettings.worldToViewMatrixPrev, mPrevViewMatrix);
     // NRD's convention for the jitter is: [-0.5; 0.5] sampleUv = pixelUv + cameraJitter
-    commonSettings.cameraJitter[0] = -mpScene->getCamera()->getJitterX();
-    commonSettings.cameraJitter[1] = mpScene->getCamera()->getJitterY();
-    commonSettings.denoisingRange = kNRDDepthRange;
-    commonSettings.disocclusionThreshold = mDisocclusionThreshold * 0.01f;
-    commonSettings.frameIndex = mFrameIndex;
-    commonSettings.isMotionVectorInWorldSpace = mWorldSpaceMotion;
+    mCommonSettings.cameraJitter[0] = -mpScene->getCamera()->getJitterX();
+    mCommonSettings.cameraJitter[1] = mpScene->getCamera()->getJitterY();
+    mCommonSettings.denoisingRange = kNRDDepthRange;
+    mCommonSettings.disocclusionThreshold = mDisocclusionThreshold * 0.01f;
+    mCommonSettings.frameIndex = mFrameIndex;
+    mCommonSettings.isMotionVectorInWorldSpace = mWorldSpaceMotion;
 
     mPrevViewMatrix = viewMatrix;
     mPrevProjMatrix = projMatrix;
@@ -614,7 +984,7 @@ void NRDPass::executeInternal(RenderContext* pRenderContext, const RenderData& r
     // Run NRD dispatches.
     const nrd::DispatchDesc* dispatchDescs = nullptr;
     uint32_t dispatchDescNum = 0;
-    nrd::Result result = nrd::GetComputeDispatches(*mpDenoiser, commonSettings, dispatchDescs, dispatchDescNum);
+    nrd::Result result = nrd::GetComputeDispatches(*mpDenoiser, mCommonSettings, dispatchDescs, dispatchDescNum);
     FALCOR_ASSERT(result == nrd::Result::SUCCESS);
 
     for (uint32_t i = 0; i < dispatchDescNum; i++)
@@ -671,16 +1041,31 @@ void NRDPass::dispatch(RenderContext* pRenderContext, const RenderData& renderDa
                 texture = renderData[kInputViewZ]->asTexture();
                 break;
             case nrd::ResourceType::IN_DIFF_RADIANCE_HITDIST:
-                texture = mpDiffuseRadianceHitDistPackedTexture->asTexture();
+                texture = renderData[kInputDiffuseRadianceHitDist]->asTexture();
                 break;
             case nrd::ResourceType::IN_SPEC_RADIANCE_HITDIST:
-                texture = mpSpecularRadianceHitDistPackedTexture->asTexture();
+                texture = renderData[kInputSpecularRadianceHitDist]->asTexture();
+                break;
+            case nrd::ResourceType::IN_SPEC_HITDIST:
+                texture = renderData[kInputSpecularHitDist]->asTexture();
+                break;
+            case nrd::ResourceType::IN_DELTA_PRIMARY_POS:
+                texture = renderData[kInputDeltaPrimaryPosW]->asTexture();
+                break;
+            case nrd::ResourceType::IN_DELTA_SECONDARY_POS:
+                texture = renderData[kInputDeltaSecondaryPosW]->asTexture();
                 break;
             case nrd::ResourceType::OUT_DIFF_RADIANCE_HITDIST:
                 texture = renderData[kOutputFilteredDiffuseRadianceHitDist]->asTexture();
                 break;
             case nrd::ResourceType::OUT_SPEC_RADIANCE_HITDIST:
                 texture = renderData[kOutputFilteredSpecularRadianceHitDist]->asTexture();
+                break;
+            case nrd::ResourceType::OUT_REFLECTION_MV:
+                texture = renderData[kOutputReflectionMotionVectors]->asTexture();
+                break;
+            case nrd::ResourceType::OUT_DELTA_MV:
+                texture = renderData[kOutputDeltaMotionVectors]->asTexture();
                 break;
             case nrd::ResourceType::TRANSIENT_POOL:
                 texture = mpTransientTextures[resource.indexInPool];
@@ -743,15 +1128,25 @@ void NRDPass::dispatch(RenderContext* pRenderContext, const RenderData& renderDa
         ComputeStateObject::SharedPtr pCSO = ComputeStateObject::create(desc);
         mpCSOs[dispatchDesc.pipelineIndex] = pCSO;
     }
-    pRenderContext->getLowLevelData()->getCommandList()->SetPipelineState(mpCSOs[dispatchDesc.pipelineIndex]->getApiHandle());
+    pRenderContext->getLowLevelData()->getD3D12CommandList()->SetPipelineState(mpCSOs[dispatchDesc.pipelineIndex]->getD3D12Handle());
 
     // Dispatch.
-    pRenderContext->getLowLevelData()->getCommandList()->Dispatch(dispatchDesc.gridWidth, dispatchDesc.gridHeight, 1);
+    pRenderContext->getLowLevelData()->getD3D12CommandList()->Dispatch(dispatchDesc.gridWidth, dispatchDesc.gridHeight, 1);
 }
 
 #endif FALCOR_ENABLE_NRD
 
-#endif // FALCOR_D3D12
+#endif // FALCOR_D3D12_AVAILABLE
+
+static void registerNRDPass(pybind11::module& m)
+{
+    pybind11::enum_<NRDPass::DenoisingMethod> profile(m, "NRDMethod");
+    profile.value("RelaxDiffuseSpecular", NRDPass::DenoisingMethod::RelaxDiffuseSpecular);
+    profile.value("RelaxDiffuse", NRDPass::DenoisingMethod::RelaxDiffuse);
+    profile.value("ReblurDiffuseSpecular", NRDPass::DenoisingMethod::ReblurDiffuseSpecular);
+    profile.value("SpecularReflectionMv", NRDPass::DenoisingMethod::SpecularReflectionMv);
+    profile.value("SpecularDeltaMv", NRDPass::DenoisingMethod::SpecularDeltaMv);
+}
 
 // Don't remove this. it's required for hot-reload to function properly.
 extern "C" FALCOR_API_EXPORT const char* getProjDir()
@@ -761,7 +1156,8 @@ extern "C" FALCOR_API_EXPORT const char* getProjDir()
 
 extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary & lib)
 {
-#ifdef FALCOR_D3D12
+#if FALCOR_D3D12_AVAILABLE
     lib.registerPass(NRDPass::kInfo, NRDPass::create);
+    ScriptBindings::registerBinding(registerNRDPass);
 #endif
 }

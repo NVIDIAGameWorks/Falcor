@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -40,8 +40,14 @@ namespace Falcor
         mpLowLevelData->getApiData()->getResourceCommandEncoder()->writeTimestamp(spHeap.lock()->getApiHandle(), mEnd);
     }
 
-    void GpuTimer::apiResolve(uint64_t result[2])
+    void GpuTimer::apiResolve()
     {
-        gfx_call(spHeap.lock()->getApiHandle()->getResult(mStart, 2, result));
+        // TODO: Copy to staging buffer for readback.
+    }
+
+    void GpuTimer::apiReadback(uint64_t result[2])
+    {
+        mpLowLevelData->flush();
+        FALCOR_GFX_CALL(spHeap.lock()->getApiHandle()->getResult(mStart, 2, result));
     }
 }

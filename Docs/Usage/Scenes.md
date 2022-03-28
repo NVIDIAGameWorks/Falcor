@@ -107,10 +107,10 @@ import Scene.Scene;
 
 **IMPORTANT:** Currently, the scene GPU data structure requires defines to work correctly. These defines can be retrieved from the scene itself when compiling shaders.
 ```c++
-SceneBuilder::SharedPtr pBuilder = SceneBuilder::create(filename, flags);
+SceneBuilder::SharedPtr pBuilder = SceneBuilder::create(path, flags);
 Scene::SharedPtr pScene = pBuilder->getScene();
 
-GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("pixel_shader.slang", "", "main");
+GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("Shader.3d.slang", "vsMain", "psMain");
 pProgram->addDefines(pScene->getSceneDefines()); // First add defines from the scene
 GraphicsVars::SharedPtr pProgramVars = GraphicsVars::create(pProgram->getReflector()); // Then use
 ```

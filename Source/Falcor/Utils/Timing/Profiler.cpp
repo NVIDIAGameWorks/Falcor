@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -127,6 +127,7 @@ namespace Falcor
         }
         frameData.pActiveTimer = frameData.pTimers[frameData.currentTimer++].get();
         frameData.pActiveTimer->begin();
+        frameData.valid = false;
     }
 
     void Profiler::Event::end(uint32_t frameIndex)
@@ -142,12 +143,27 @@ namespace Falcor
         FALCOR_ASSERT(frameData.pActiveTimer != nullptr);
         frameData.pActiveTimer->end();
         frameData.pActiveTimer = nullptr;
+        frameData.valid = true;
     }
 
     void Profiler::Event::endFrame(uint32_t frameIndex)
     {
+        // Resolve GPU timers for the current frame measurements.
+        // This is necessary before we readback of results next frame.
+        {
+            auto& frameData = mFrameData[frameIndex % 2];
+            for (auto& pTimer : frameData.pTimers)
+            {
+                pTimer->resolve();
+            }
+        }
+
         // Update CPU/GPU time from last frame measurement.
-        auto &frameData = mFrameData[(frameIndex + 1) % 2];
+        auto& frameData = mFrameData[(frameIndex + 1) % 2];
+
+        // Skip update if there are no measurements last frame.
+        if (!frameData.valid) return;
+
         mCpuTime = frameData.cpuTotalTime;
         mGpuTime = 0.f;
         for (size_t i = 0; i < frameData.currentTimer; ++i) mGpuTime += (float)frameData.pTimers[i]->getElapsedTime();
@@ -197,10 +213,10 @@ namespace Falcor
         return pybind11::cast<std::string>(dumps(toPython(), "indent"_a = 2));
     }
 
-    void Profiler::Capture::writeToFile(const std::string& filename) const
+    void Profiler::Capture::writeToFile(const std::filesystem::path& path) const
     {
         auto json = toJsonString();
-        std::ofstream ofs(filename.c_str());
+        std::ofstream ofs(path);
         ofs.write(json.data(), json.size());
     }
 
@@ -234,8 +250,10 @@ namespace Falcor
                 mLanes[i * 2 + 1].name = pEvent->getName() + "/gpuTime";
                 mLanes[i * 2 + 1].records.reserve(mReservedFrames);
             }
+            return; // Exit as no data is available on first capture.
         }
 
+        // Record CPU/GPU timing on subsequent captures.
         for (size_t i = 0; i < mEvents.size(); ++i)
         {
             auto& pEvent = mEvents[i];
@@ -282,12 +300,14 @@ namespace Falcor
                 mCurrentFrameEvents.push_back(pEvent);
             }
         }
-#ifdef FALCOR_D3D12
         if (is_set(flags, Flags::Pix))
         {
-            PIXBeginEvent((ID3D12GraphicsCommandList*)gpDevice->getRenderContext()->getLowLevelData()->getCommandList(), PIX_COLOR(0, 0, 0), name.c_str());
-        }
+#ifdef FALCOR_D3D12
+            PIXBeginEvent((ID3D12GraphicsCommandList*)gpDevice->getRenderContext()->getLowLevelData()->getD3D12CommandList(), PIX_COLOR(0, 0, 0), name.c_str());
+#else
+            gpDevice->getRenderContext()->getLowLevelData()->beginDebugEvent(name.c_str());
 #endif
+        }
     }
 
     void Profiler::endEvent(const std::string& name, Flags flags)
@@ -304,12 +324,14 @@ namespace Falcor
             mCurrentEventName.erase(mCurrentEventName.find_last_of("/"));
         }
 
-#ifdef FALCOR_D3D12
         if (is_set(flags, Flags::Pix))
         {
-            PIXEndEvent((ID3D12GraphicsCommandList*)gpDevice->getRenderContext()->getLowLevelData()->getCommandList());
-        }
+#ifdef FALCOR_D3D12
+            PIXEndEvent((ID3D12GraphicsCommandList*)gpDevice->getRenderContext()->getLowLevelData()->getD3D12CommandList());
+#else
+            gpDevice->getRenderContext()->getLowLevelData()->endDebugEvent();
 #endif
+        }
     }
 
     Profiler::Event* Profiler::getEvent(const std::string& name)
@@ -322,10 +344,20 @@ namespace Falcor
     {
         if (mPaused) return;
 
+        // Wait for GPU timings to be available from last frame.
+        // We use a single fence here instead of one per event, which gets too inefficient.
+        // TODO: This code should refactored to batch the resolve and readback of timestamps.
+        if (mFenceValue != uint64_t(-1)) mpFence->syncCpu();
+
         for (Event* pEvent : mCurrentFrameEvents)
         {
             pEvent->endFrame(mFrameIndex);
         }
+
+        // Flush and insert signal for synchronization of GPU timings.
+        auto pRenderContext = gpFramework->getRenderContext();
+        pRenderContext->flush(false);
+        mFenceValue = mpFence->gpuSignal(pRenderContext->getLowLevelData()->getCommandQueue());
 
         if (mpCapture) mpCapture->captureEvents(mCurrentFrameEvents);
 
@@ -380,6 +412,11 @@ namespace Falcor
         static Profiler::SharedPtr pInstance;
         if (!pInstance) pInstance = std::make_shared<Profiler>();
         return pInstance;
+    }
+
+    Profiler::Profiler()
+    {
+        mpFence = GpuFence::create();
     }
 
     Profiler::Event* Profiler::createEvent(const std::string& name)

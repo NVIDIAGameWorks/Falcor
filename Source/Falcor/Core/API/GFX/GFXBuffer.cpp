@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -35,6 +35,50 @@
 
 namespace Falcor
 {
+    namespace
+    {
+        void prepareGFXBufferDesc(gfx::IBufferResource::Desc& bufDesc, size_t size, Resource::BindFlags bindFlags, Buffer::CpuAccess cpuAccess)
+        {
+            bufDesc.sizeInBytes = size;
+            switch (cpuAccess)
+            {
+            case Buffer::CpuAccess::None:
+                bufDesc.memoryType = gfx::MemoryType::DeviceLocal;
+                break;
+            case Buffer::CpuAccess::Read:
+                bufDesc.memoryType = gfx::MemoryType::ReadBack;
+                break;
+            case Buffer::CpuAccess::Write:
+                bufDesc.memoryType = gfx::MemoryType::Upload;
+                break;
+            default:
+                FALCOR_UNREACHABLE();
+                break;
+            }
+            getGFXResourceState(bindFlags, bufDesc.defaultState, bufDesc.allowedStates);
+        }
+    }
+
+    Buffer::SharedPtr Buffer::createFromD3D12Handle(D3D12ResourceHandle handle, size_t size, Resource::BindFlags bindFlags, CpuAccess cpuAccess)
+    {
+#if FALCOR_D3D12_AVAILABLE
+        gfx::IBufferResource::Desc bufDesc = {};
+        prepareGFXBufferDesc(bufDesc, size, bindFlags, cpuAccess);
+
+        gfx::InteropHandle existingHandle = {};
+        existingHandle.api = gfx::InteropHandleAPI::D3D12;
+        existingHandle.handleValue = (uint64_t)handle.GetInterfacePtr();
+        Slang::ComPtr<gfx::IBufferResource> gfxBuffer;
+        FALCOR_GFX_CALL(gpDevice->getApiHandle()->createBufferFromNativeHandle(existingHandle, bufDesc, gfxBuffer.writeRef()));
+
+        Slang::ComPtr<gfx::IResource> apiHandle;
+        apiHandle = static_cast<gfx::IResource*>(gfxBuffer.get());
+        return Buffer::createFromApiHandle(apiHandle, size, bindFlags, cpuAccess);
+#else
+        throw RuntimeError("D3D12 is not available.");
+#endif
+    }
+
     Slang::ComPtr<gfx::IBufferResource> createBuffer(Buffer::State initState, size_t size, Buffer::BindFlags bindFlags, Buffer::CpuAccess cpuAccess)
     {
         FALCOR_ASSERT(gpDevice);
@@ -42,25 +86,7 @@ namespace Falcor
 
         // Create the buffer
         gfx::IBufferResource::Desc bufDesc = {};
-        // Pipe through element size and format?
-        bufDesc.sizeInBytes = size;
-        switch (cpuAccess)
-        {
-        case Buffer::CpuAccess::None:
-            bufDesc.memoryType = gfx::MemoryType::DeviceLocal;
-            break;
-        case Buffer::CpuAccess::Read:
-            bufDesc.memoryType = gfx::MemoryType::ReadBack;
-            break;
-        case Buffer::CpuAccess::Write:
-            bufDesc.memoryType = gfx::MemoryType::Upload;
-            break;
-        default:
-            FALCOR_UNREACHABLE();
-            break;
-        }
-
-        getGFXResourceState(bindFlags, bufDesc.defaultState, bufDesc.allowedStates);
+        prepareGFXBufferDesc(bufDesc, size, bindFlags, cpuAccess);
 
         Slang::ComPtr<gfx::IBufferResource> pApiHandle;
         pDevice->createBufferResource(bufDesc, nullptr, pApiHandle.writeRef());
@@ -78,7 +104,6 @@ namespace Falcor
 
         return GFX_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
     }
-
 
     void Buffer::apiInit(bool hasInitData)
     {

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -46,28 +46,36 @@ namespace Falcor
         ~AnimationController() = default;
 
         using StaticVertexVector = std::vector<PackedStaticVertexData>;
-        using DynamicVertexVector = std::vector<DynamicVertexData>;
+        using SkinningVertexVector = std::vector<SkinningVertexData>;
 
         /** Create a new object.
             \return A new object, or throws an exception if creation failed.
         */
-        static UniquePtr create(Scene* pScene, const StaticVertexVector& staticVertexData, const DynamicVertexVector& dynamicVertexData, const std::vector<Animation::SharedPtr>& animations);
+        static UniquePtr create(Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations);
 
         /** Add animated vertex caches (curves and meshes) to the controller.
         */
-        void addAnimatedVertexCaches(std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes);
+        void addAnimatedVertexCaches(std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes, const StaticVertexVector& staticVertexData);
 
         /** Returns true if controller contains animations.
         */
-        bool hasAnimations() const { return mAnimations.size() > 0; }
+        bool hasAnimations() const { return mAnimations.size() > 0 || hasAnimatedVertexCaches(); }
 
-        /** Returns true if controller contains animated vertex caches.
+        /** Returns true if controller is handling any skinned meshes.
         */
-        bool hasAnimatedVertexCaches() const { return hasAnimatedCurveCaches(); }
+        bool hasSkinnedMeshes() const { return mpSkinningPass != nullptr; }
+
+        /** Returns true if controller contains any animated vertex caches.
+        */
+        bool hasAnimatedVertexCaches() const { return hasAnimatedCurveCaches() || hasAnimatedMeshCaches(); }
 
         /** Returns true if controller contains animated curve caches.
         */
         bool hasAnimatedCurveCaches() const { return mpVertexCache && mpVertexCache->hasCurveAnimations(); }
+
+        /** Returns true if controller contains animated curve caches.
+        */
+        bool hasAnimatedMeshCaches() const { return mpVertexCache && mpVertexCache->hasMeshAnimations(); }
 
         /** Returns a list of all animations.
         */
@@ -113,6 +121,10 @@ namespace Falcor
         */
         const std::vector<glm::mat4>& getGlobalMatrices() const { return mGlobalMatrices; }
 
+        /** Get the transposed inverse global matrices.
+        */
+        const std::vector<glm::mat4>& getInvTransposeGlobalMatrices() const { return mInvTransposeGlobalMatrices; }
+
         /** Render the UI.
         */
         void renderUI(Gui::Widgets& widget);
@@ -133,7 +145,7 @@ namespace Falcor
 
     private:
         friend class SceneBuilder;
-        AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const DynamicVertexVector& dynamicVertexData, const std::vector<Animation::SharedPtr>& animations);
+        AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations);
 
         void initLocalMatrices();
         void updateLocalMatrices(double time);
@@ -142,7 +154,7 @@ namespace Falcor
 
         void bindBuffers();
 
-        void createSkinningPass(const std::vector<PackedStaticVertexData>& staticVertexData, const std::vector<DynamicVertexData>& dynamicVertexData);
+        void createSkinningPass(const std::vector<PackedStaticVertexData>& staticVertexData, const SkinningVertexVector& skinningVertexData);
         void executeSkinningPass(RenderContext* pContext, bool initPrev = false);
 
         // Animation
@@ -179,8 +191,8 @@ namespace Falcor
         Buffer::SharedPtr mpMeshInvBindMatricesBuffer;
         Buffer::SharedPtr mpSkinningMatricesBuffer;
         Buffer::SharedPtr mpInvTransposeSkinningMatricesBuffer;
-        Buffer::SharedPtr mpSkinningStaticVertexData;
-        Buffer::SharedPtr mpSkinningDynamicVertexData;
+        Buffer::SharedPtr mpStaticVertexData;
+        Buffer::SharedPtr mpSkinningVertexData;
         Buffer::SharedPtr mpPrevVertexData;
 
         // Animated vertex caches

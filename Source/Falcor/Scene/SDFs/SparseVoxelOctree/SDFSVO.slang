@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -49,13 +49,12 @@ struct StackData
 struct SDFSVO : SDFGridBase, ISDFGrid
 {
     static const uint kStackSize = 23;
-    static const float kEpsilon = 1.0f / exp2(-kStackSize);
+    static const float kEpsilon = 1.0f / exp2(kStackSize);
     static const float kCoarsestLevelNormalizationFactor = 0.5f * sqrt(3.0f);
 
 
     StructuredBuffer<SDFSVOVoxel> svo;
     uint levelCount;
-    uint svoElementCount;
 
     /** Removes the mirroring performed by the intersection algorithm given the octant mask.
     */
@@ -172,7 +171,7 @@ struct SDFSVO : SDFGridBase, ISDFGrid
                         float3 voxelUnitCoords = (pHit - undoMirroring(p, scale, octMask)) / scale;
 
                         float tLocal;
-                        if (SDFVoxelHitUtils::intersectSDFVoxel(voxelUnitCoords, d, origInsideAABB, values0xx, values1xx, (min(tvMax, tMaxFinal) - tMinLocal) / scale, kSolverMaxStepCount, tLocal))
+                        if (SDFVoxelHitUtils::intersectSDFVoxel(voxelUnitCoords, d, origInsideAABB, values0xx, values1xx, kSnormErrorTolerance + (min(tvMax, tMaxFinal) - tMinLocal) / scale, kSolverMaxStepCount, tLocal))
                         {
                             t = (nearFar.x + tMinLocal + tLocal * scale) * inverseDirLength;
 
@@ -346,7 +345,7 @@ struct SDFSVO : SDFGridBase, ISDFGrid
                         float3 pHit = o + tMinFinal * d;
                         float3 voxelUnitCoords = (pHit - undoMirroring(p, scale, octMask)) / scale;
 
-                        if (SDFVoxelHitUtils::intersectSDFVoxelAny(voxelUnitCoords, d, origInsideAABB, values0xx, values1xx, (min(tvMax, tMaxFinal) - tMinLocal) / scale, kSolverMaxStepCount))
+                        if (SDFVoxelHitUtils::intersectSDFVoxelAny(voxelUnitCoords, d, origInsideAABB, values0xx, values1xx, kSnormErrorTolerance + (min(tvMax, tMaxFinal) - tMinLocal) / scale, kSolverMaxStepCount))
                         {
                             break;
                         }

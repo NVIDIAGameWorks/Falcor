@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,11 +29,22 @@
 
 #include <slang/slang-gfx.h>
 
+#if FALCOR_D3D12_AVAILABLE
+#include "Core/API/Shared/D3D12DescriptorPool.h"
+#endif
+
 namespace Falcor
 {
     struct LowLevelContextApiData
     {
+#if FALCOR_D3D12_AVAILABLE
+        bool mUsingCustomDescriptorHeap = false;
+        D3D12CommandListHandle mpD3D12CommandListHandle;
+        D3D12CommandQueueHandle mpD3D12CommandQueueHandle;
+#endif
         Slang::ComPtr<gfx::ICommandBuffer> pCommandBuffer;
+        bool mIsCommandBufferOpen = false;
+
         gfx::IResourceCommandEncoder* getResourceCommandEncoder();
         gfx::IComputeCommandEncoder* getComputeCommandEncoder();
         gfx::IRenderCommandEncoder* getRenderCommandEncoder(gfx::IRenderPassLayout* renderPassLayout, gfx::IFramebuffer* framebuffer, bool& newEncoder);

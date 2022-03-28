@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -1234,7 +1234,7 @@ namespace Falcor
         {
             slang::EntryPointReflection* pSlangEntryPoint = pSlangEntryPointReflectors[pProgram->getGroupEntryPointIndex(groupIndex, ee)];
 
-            if(getUniformParameterCount(pSlangEntryPoint) > getUniformParameterCount(pBestEntryPoint))
+            if (getUniformParameterCount(pSlangEntryPoint) > getUniformParameterCount(pBestEntryPoint))
             {
                 pBestEntryPoint = pSlangEntryPoint;
             }
@@ -1623,11 +1623,8 @@ namespace Falcor
         auto pResult = createEmpty(pProgramVersion);
         pResult->setElementType(pElementType);
 
-#ifdef FALCOR_D3D12
+#if FALCOR_D3D12_AVAILABLE
         ReflectionStructType::BuildState counters;
-#elif defined(FALCOR_GFX)
-#else
-#error unimplemented graphics API
 #endif
 
         auto rangeCount = pElementType->getResourceRangeCount();
@@ -1640,7 +1637,7 @@ namespace Falcor
             uint32_t regIndex = 0;
             uint32_t regSpace = 0;
 
-#ifdef FALCOR_D3D12
+#if FALCOR_D3D12_AVAILABLE
             switch (rangeInfo.descriptorType)
             {
             case ShaderResourceType::Cbv:
@@ -1678,9 +1675,6 @@ namespace Falcor
                 FALCOR_UNREACHABLE();
                 break;
             }
-#elif defined(FALCOR_GFX)
-#else
-#error unimplemented graphics API
 #endif
 
             bindingInfo.regIndex = regIndex;
@@ -1767,7 +1761,7 @@ namespace Falcor
         mResourceRanges.push_back(bindingInfo);
     }
 
-#ifdef FALCOR_D3D12
+#if FALCOR_D3D12_AVAILABLE
     struct ParameterBlockReflectionFinalizer
     {
         struct SetIndex
@@ -1969,7 +1963,7 @@ namespace Falcor
             // TODO: Do we need to handle interface sub-object slots here?
         }
     };
-#endif // FALCOR_D3D12
+#endif // FALCOR_D3D12_AVAILABLE
     bool ParameterBlockReflection::hasDefaultConstantBuffer() const
     {
         // A parameter block needs a "default" constant buffer whenever its element type requires it to store ordinary/uniform data
@@ -1989,7 +1983,7 @@ namespace Falcor
     void ParameterBlockReflection::finalize()
     {
         FALCOR_ASSERT(getElementType()->getResourceRangeCount() == mResourceRanges.size());
-#ifdef FALCOR_D3D12
+#if FALCOR_D3D12_AVAILABLE
         ParameterBlockReflectionFinalizer finalizer;
         finalizer.finalize(this);
 #endif

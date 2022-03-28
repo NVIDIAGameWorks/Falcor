@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -33,11 +33,14 @@ namespace Falcor
 {
     const uint32_t kTransientHeapConstantBufferSize = 16 * 1024 * 1024;
 
+    class PipelineCreationAPIDispatcher;
+
     struct DeviceApiData
     {
         Slang::ComPtr<gfx::IDevice> pDevice;
         Slang::ComPtr<gfx::ISwapchain> pSwapChain;
         Slang::ComPtr<gfx::ICommandQueue> pQueue;
         Slang::ComPtr<gfx::ITransientResourceHeap> pTransientResourceHeaps[Device::kSwapChainBuffersCount];
+        PipelineCreationAPIDispatcher* pApiDispatcher = nullptr;
     };
 }

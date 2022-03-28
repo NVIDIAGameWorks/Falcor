@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,12 +28,13 @@
 #include "stdafx.h"
 #include "Gui.h"
 #include "dear_imgui/imgui.h"
-#include "UserInput.h"
+#include "InputTypes.h"
 #include "Core/API/RenderContext.h"
 #include "glm/gtc/type_ptr.hpp"
 #include "Utils/StringUtils.h"
+#include "Utils/UI/SpectrumUI.h"
 
-#pragma warning(disable : 4756) // overflow in constant arithmetic caused by calculating the setFloat*() functions (when calculating the step and min/max are +/- INF)
+#pragma warning(disable : 4756) // Overflow in constant arithmetic caused by calculating the setFloat*() functions (when calculating the step and min/max are +/- INF).
 
 namespace Falcor
 {
@@ -152,25 +153,25 @@ namespace Falcor
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-        io.KeyMap[ImGuiKey_Tab] = (uint32_t)KeyboardEvent::Key::Tab;
-        io.KeyMap[ImGuiKey_LeftArrow] = (uint32_t)KeyboardEvent::Key::Left;
-        io.KeyMap[ImGuiKey_RightArrow] = (uint32_t)KeyboardEvent::Key::Right;
-        io.KeyMap[ImGuiKey_UpArrow] = (uint32_t)KeyboardEvent::Key::Up;
-        io.KeyMap[ImGuiKey_DownArrow] = (uint32_t)KeyboardEvent::Key::Down;
-        io.KeyMap[ImGuiKey_PageUp] = (uint32_t)KeyboardEvent::Key::PageUp;
-        io.KeyMap[ImGuiKey_PageDown] = (uint32_t)KeyboardEvent::Key::PageDown;
-        io.KeyMap[ImGuiKey_Home] = (uint32_t)KeyboardEvent::Key::Home;
-        io.KeyMap[ImGuiKey_End] = (uint32_t)KeyboardEvent::Key::End;
-        io.KeyMap[ImGuiKey_Delete] = (uint32_t)KeyboardEvent::Key::Del;
-        io.KeyMap[ImGuiKey_Backspace] = (uint32_t)KeyboardEvent::Key::Backspace;
-        io.KeyMap[ImGuiKey_Enter] = (uint32_t)KeyboardEvent::Key::Enter;
-        io.KeyMap[ImGuiKey_Escape] = (uint32_t)KeyboardEvent::Key::Escape;
-        io.KeyMap[ImGuiKey_A] = (uint32_t)KeyboardEvent::Key::A;
-        io.KeyMap[ImGuiKey_C] = (uint32_t)KeyboardEvent::Key::C;
-        io.KeyMap[ImGuiKey_V] = (uint32_t)KeyboardEvent::Key::V;
-        io.KeyMap[ImGuiKey_X] = (uint32_t)KeyboardEvent::Key::X;
-        io.KeyMap[ImGuiKey_Y] = (uint32_t)KeyboardEvent::Key::Y;
-        io.KeyMap[ImGuiKey_Z] = (uint32_t)KeyboardEvent::Key::Z;
+        io.KeyMap[ImGuiKey_Tab] = (uint32_t)Input::Key::Tab;
+        io.KeyMap[ImGuiKey_LeftArrow] = (uint32_t)Input::Key::Left;
+        io.KeyMap[ImGuiKey_RightArrow] = (uint32_t)Input::Key::Right;
+        io.KeyMap[ImGuiKey_UpArrow] = (uint32_t)Input::Key::Up;
+        io.KeyMap[ImGuiKey_DownArrow] = (uint32_t)Input::Key::Down;
+        io.KeyMap[ImGuiKey_PageUp] = (uint32_t)Input::Key::PageUp;
+        io.KeyMap[ImGuiKey_PageDown] = (uint32_t)Input::Key::PageDown;
+        io.KeyMap[ImGuiKey_Home] = (uint32_t)Input::Key::Home;
+        io.KeyMap[ImGuiKey_End] = (uint32_t)Input::Key::End;
+        io.KeyMap[ImGuiKey_Delete] = (uint32_t)Input::Key::Del;
+        io.KeyMap[ImGuiKey_Backspace] = (uint32_t)Input::Key::Backspace;
+        io.KeyMap[ImGuiKey_Enter] = (uint32_t)Input::Key::Enter;
+        io.KeyMap[ImGuiKey_Escape] = (uint32_t)Input::Key::Escape;
+        io.KeyMap[ImGuiKey_A] = (uint32_t)Input::Key::A;
+        io.KeyMap[ImGuiKey_C] = (uint32_t)Input::Key::C;
+        io.KeyMap[ImGuiKey_V] = (uint32_t)Input::Key::V;
+        io.KeyMap[ImGuiKey_X] = (uint32_t)Input::Key::X;
+        io.KeyMap[ImGuiKey_Y] = (uint32_t)Input::Key::Y;
+        io.KeyMap[ImGuiKey_Z] = (uint32_t)Input::Key::Z;
         io.IniFilename = nullptr;
 
         ImGuiStyle& style = ImGui::GetStyle();
@@ -187,7 +188,7 @@ namespace Falcor
         mpPipelineState = GraphicsState::create();
 
         // Create the program
-        mpProgram = GraphicsProgram::createFromFile("Utils/UI/Gui.slang", "vs", "ps");
+        mpProgram = GraphicsProgram::createFromFile("Utils/UI/Gui.slang", "vsMain", "psMain");
         mpProgramVars = GraphicsVars::create(mpProgram->getReflector());
         mpPipelineState->setProgram(mpProgram);
 
@@ -928,17 +929,17 @@ namespace Falcor
         return float4(color.i32[0] % 1000 / 2000.0f, color.i32[1] % 1000 / 2000.0f, (color.i32[0] * color.i32[1]) % 1000 / 2000.0f, 1.0f);
     }
 
-    void Gui::addFont(const std::string& name, const std::string& filename)
+    void Gui::addFont(const std::string& name, const std::filesystem::path& path)
     {
-        std::string fullpath;
-        if (findFileInDataDirectories(filename, fullpath) == false)
+        std::filesystem::path fullPath;
+        if (!findFileInDataDirectories(path, fullPath))
         {
-            logWarning("Can't find font file '{}'.", filename);
+            logWarning("Can't find font file '{}'.", path);
             return;
         }
 
         float size = 14.0f * mpWrapper->mScaleFactor;
-        ImFont* pFont = ImGui::GetIO().Fonts->AddFontFromFileTTF(fullpath.c_str(), size);
+        ImFont* pFont = ImGui::GetIO().Fonts->AddFontFromFileTTF(fullPath.string().c_str(), size);
         mpWrapper->mFontMap[name] = pFont;
         mpWrapper->compileFonts();
     }
@@ -1034,6 +1035,7 @@ namespace Falcor
                     }
                     else
                     {
+                        mpWrapper->mpProgramVars->setSrv(mpWrapper->mGuiImageLoc, ShaderResourceView::getNullView(ReflectionResourceType::Dimensions::Texture2D));
                         mpWrapper->mpProgramVars["PerFrameCB"]["useGuiImage"] = false;
                     }
                     mpWrapper->mpPipelineState->setScissors(0, scissor);
@@ -1071,23 +1073,25 @@ namespace Falcor
         ImGuiIO& io = ImGui::GetIO();
         switch (event.type)
         {
-        case MouseEvent::Type::LeftButtonDown:
-            mpWrapper->mMouseEvents.buttonPressed[0] = true;
-            break;
-        case MouseEvent::Type::LeftButtonUp:
-            mpWrapper->mMouseEvents.buttonReleased[0] = true;
-            break;
-        case MouseEvent::Type::RightButtonDown:
-            mpWrapper->mMouseEvents.buttonPressed[1] = true;
-            break;
-        case MouseEvent::Type::RightButtonUp:
-            mpWrapper->mMouseEvents.buttonReleased[1] = true;
-            break;
-        case MouseEvent::Type::MiddleButtonDown:
-            mpWrapper->mMouseEvents.buttonPressed[2] = true;
-            break;
-        case MouseEvent::Type::MiddleButtonUp:
-            mpWrapper->mMouseEvents.buttonReleased[2] = true;
+        case MouseEvent::Type::ButtonDown:
+        case MouseEvent::Type::ButtonUp:
+            {
+                bool isDown = event.type == MouseEvent::Type::ButtonDown;
+                switch (event.button)
+                {
+                case Input::MouseButton::Left:
+                    mpWrapper->mMouseEvents.buttonPressed[0] = isDown;
+                    break;
+                case Input::MouseButton::Right:
+                    mpWrapper->mMouseEvents.buttonPressed[1] = isDown;
+                    break;
+                case Input::MouseButton::Middle:
+                    mpWrapper->mMouseEvents.buttonPressed[2] = isDown;
+                    break;
+                default:
+                    break;
+                }
+            }
             break;
         case MouseEvent::Type::Move:
             io.MousePos.x = event.pos.x * io.DisplaySize.x;
@@ -1115,7 +1119,7 @@ namespace Falcor
         }
         else
         {
-            uint32_t key = (uint32_t)(event.key == KeyboardEvent::Key::KeypadEnter ? KeyboardEvent::Key::Enter : event.key);
+            uint32_t key = (uint32_t)(event.key == Input::Key::KeypadEnter ? Input::Key::Enter : event.key);
 
             switch (event.type)
             {
@@ -1129,9 +1133,9 @@ namespace Falcor
                 FALCOR_UNREACHABLE();
             }
 
-            io.KeyCtrl = event.mods.isCtrlDown;
-            io.KeyAlt = event.mods.isAltDown;
-            io.KeyShift = event.mods.isShiftDown;
+            io.KeyCtrl = event.hasModifier(Input::Modifier::Ctrl);
+            io.KeyAlt = event.hasModifier(Input::Modifier::Alt);
+            io.KeyShift = event.hasModifier(Input::Modifier::Shift);
             io.KeySuper = false;
             return io.WantCaptureKeyboard;
         }
@@ -1509,4 +1513,32 @@ namespace Falcor
             mpGui = nullptr;
         }
     }
+
+    template<typename T>
+    bool Gui::Widgets::spectrum(const char label[], SampledSpectrum<T>& spectrum)
+    {
+        return renderSpectrumUI<T>(*this, spectrum, label);
+    }
+
+    template<typename T>
+    bool Gui::Widgets::spectrum(const char label[], SampledSpectrum<T>& spectrum, SpectrumUI<T>& spectrumUI)
+    {
+        return renderSpectrumUI<T>(*this, spectrum , spectrumUI, label);
+    }
+
+    template FALCOR_API bool Gui::Widgets::spectrum<float>(const char label[], SampledSpectrum<float>& spectrum);   // No need for a <float3> version, since this call does not save the state of the SpectrumUI, and we need a state to switch which of the three curves we edit.
+
+    template FALCOR_API bool Gui::Widgets::spectrum<float>(const char label[], SampledSpectrum<float>& spectrum, SpectrumUI<float>& spectrumUI);
+    template FALCOR_API bool Gui::Widgets::spectrum<float3>(const char label[], SampledSpectrum<float3>& spectrum, SpectrumUI<float3>& spectrumUI);
+
+    IDScope::IDScope(const void* id)
+    {
+        ImGui::PushID(id);
+    }
+
+    IDScope::~IDScope()
+    {
+        ImGui::PopID();
+    }
+
 }

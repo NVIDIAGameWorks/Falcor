@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,7 +31,7 @@
 #include "Core/Program/ComputeProgram.h"
 #include "Core/API/ComputeContext.h"
 #include "Core/API/RenderContext.h"
-#include "Core/API/D3D12/D3D12RootSignature.h"
+#include "Core/API/Shared/D3D12RootSignature.h"
 
 #include <slang/slang.h>
 
@@ -289,90 +289,6 @@ namespace Falcor
         auto pProgram = std::dynamic_pointer_cast<ComputeProgram>(getReflection()->getProgramVersion()->getProgram());
         FALCOR_ASSERT(pProgram);
         pProgram->dispatchCompute(pContext, this, threadGroupCount);
-    }
-
-    void RtProgramVars::init(const RtBindingTable::SharedPtr& pBindingTable)
-    {
-        mRayTypeCount = pBindingTable->getRayTypeCount();
-        mGeometryCount = pBindingTable->getGeometryCount();
-
-        // We must create sub-shader-objects for all the entry point
-        // groups that are used by the supplied binding table.
-        //
-        FALCOR_ASSERT(mpProgramVersion);
-        FALCOR_ASSERT(dynamic_cast<RtProgram*>(mpProgramVersion->getProgram().get()));
-        auto pProgram = static_cast<RtProgram*>(mpProgramVersion->getProgram().get());
-        auto pReflector = mpProgramVersion->getReflector();
-
-        auto& rtDesc = pProgram->getRtDesc();
-        std::set<int32_t> entryPointGroupIndices;
-
-        // Ray generation and miss programs are easy: we just allocate space
-        // for one parameter block per entry-point of the given type in the binding table.
-        //
-        const auto& info = pBindingTable->getRayGen();
-        FALCOR_ASSERT(info.isValid());
-        mRayGenVars.resize(1);
-        mRayGenVars[0].pVars = EntryPointGroupVars::create(pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
-        entryPointGroupIndices.insert(info.groupIndex);
-
-        uint32_t missCount = pBindingTable->getMissCount();
-        mMissVars.resize(missCount);
-
-        for (uint32_t i = 0; i < missCount; ++i)
-        {
-            const auto& info = pBindingTable->getMiss(i);
-            if (!info.isValid())
-            {
-                logWarning("Raytracing binding table has no shader at miss index {}. Is that intentional?", i);
-                continue;
-            }
-
-            mMissVars[i].pVars = EntryPointGroupVars::create(pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
-            entryPointGroupIndices.insert(info.groupIndex);
-        }
-
-        // Hit groups are more complicated than ray generation and miss shaders.
-        // We typically want a distinct parameter block per declared hit group
-        // and per geometry in the scene.
-        //
-        // We need to take this extra complexity into account when allocating
-        // space for the hit group parameter blocks.
-        //
-        uint32_t hitCount = mRayTypeCount * mGeometryCount;
-        mHitVars.resize(hitCount);
-
-        for (uint32_t rayType = 0; rayType < mRayTypeCount; rayType++)
-        {
-            for (uint32_t geometryID = 0; geometryID < mGeometryCount; geometryID++)
-            {
-                const auto& info = pBindingTable->getHitGroup(rayType, geometryID);
-                if (!info.isValid()) continue;
-
-                mHitVars[mRayTypeCount * geometryID + rayType].pVars = EntryPointGroupVars::create(pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
-                entryPointGroupIndices.insert(info.groupIndex);
-            }
-        }
-
-        mUniqueEntryPointGroupIndices.assign(entryPointGroupIndices.begin(), entryPointGroupIndices.end());
-        FALCOR_ASSERT(!mUniqueEntryPointGroupIndices.empty());
-
-        // Build list of vars for all entry point groups.
-        // Note that there may be nullptr entries, as not all hit groups need to be assigned.
-        FALCOR_ASSERT(mRayGenVars.size() == 1);
-        mpEntryPointGroupVars.push_back(mRayGenVars[0].pVars);
-        for (auto entryPointGroupInfo : mMissVars)
-            mpEntryPointGroupVars.push_back(entryPointGroupInfo.pVars);
-        for (auto entryPointGroupInfo : mHitVars)
-            mpEntryPointGroupVars.push_back(entryPointGroupInfo.pVars);
-    }
-
-    static RtEntryPointGroupKernels* getUniqueRtEntryPointGroupKernels(const ProgramKernels::SharedConstPtr& pKernels, uint32_t uniqueEntryPointGroupIndex)
-    {
-        if (uniqueEntryPointGroupIndex < 0) return nullptr;
-        auto pEntryPointGroup = pKernels->getUniqueEntryPointGroup(uniqueEntryPointGroupIndex);
-        FALCOR_ASSERT(dynamic_cast<RtEntryPointGroupKernels*>(pEntryPointGroup.get()));
-        return static_cast<RtEntryPointGroupKernels*>(pEntryPointGroup.get());
     }
 
     bool RtProgramVars::applyVarsToTable(ShaderTable::SubTableType type, uint32_t tableOffset, VarsVector& varsVec, const RtStateObject* pRtso)

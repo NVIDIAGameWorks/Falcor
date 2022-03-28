@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -86,6 +86,13 @@ struct PolymorphicLightSample
     float distance;     ///< Distance from the shading point to the light in world-space.
     float3 Li;          ///< Incident radiance at the shading point (unshadowed), pre-divided by the PDF.
     float pdf;          ///< PDF wrt. solid angle.
+    uint flags;         ///< Light type enum.
+
+    property PolymorphicLightType lightType
+    {
+        get() { return (PolymorphicLightType)flags; }
+        set() { flags = (uint)newValue; }
+    }
 
     // True if sample is valid.
     property bool valid
@@ -164,6 +171,7 @@ struct EmissiveLight : IPolymorphicLight
     PolymorphicLightSample calcSample(const float3 shadingPosition, const float2 u, const bool scalarLi)
     {
         PolymorphicLightSample ls = {};
+        ls.lightType = PolymorphicLightType::Emissive;
 
         // Uniformly sample the triangle's area by folding the random numbers such that u & v sum to less than 1.
         const float2 uv = ((u.x + u.y) <= 1.f) ? u : 1.f - u;
@@ -278,6 +286,7 @@ struct AnalyticLight : IPolymorphicLight
         }
 
         PolymorphicLightSample ls = {};
+        ls.lightType = PolymorphicLightType::Analytic;
         if (!valid) return ls;
 
         ls.position = als.posW;
@@ -316,6 +325,7 @@ struct EnvLight : IPolymorphicLight
     PolymorphicLightSample calcSample(const float3 shadingPosition, const float2 u, const bool scalarLi)
     {
         PolymorphicLightSample ls = {};
+        ls.lightType = PolymorphicLightType::Env;
 
         const float2 uv = u;
         float theta = (uv.y - 0.5f) * M_PI;

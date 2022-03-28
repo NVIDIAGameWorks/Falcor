@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -36,12 +36,18 @@ namespace
 
     const Falcor::ChannelList kInputChannels =
     {
-        { "emission",               "gEmission",                "Emission",                 true /* optional */ },
-        { "diffuseReflectance",     "gDiffuseReflectance",      "Diffuse Reflectance",      true /* optional */ },
-        { "diffuseRadiance",        "gDiffuseRadiance",         "Diffuse Radiance",         true /* optional */ },
-        { "specularReflectance",    "gSpecularReflectance",     "Specular Reflectance",     true /* optional */ },
-        { "specularRadiance",       "gSpecularRadiance",        "Specular Radiance",        true /* optional */ },
-        { "residualRadiance",       "gResidualRadiance",        "Residual Radiance",        true /* optional */ },
+        { "emission",                       "gEmission",                        "Emission",                         true /* optional */ },
+        { "diffuseReflectance",             "gDiffuseReflectance",              "Diffuse Reflectance",              true /* optional */ },
+        { "diffuseRadiance",                "gDiffuseRadiance",                 "Diffuse Radiance",                 true /* optional */ },
+        { "specularReflectance",            "gSpecularReflectance",             "Specular Reflectance",             true /* optional */ },
+        { "specularRadiance",               "gSpecularRadiance",                "Specular Radiance",                true /* optional */ },
+        { "deltaReflectionEmission",        "gDeltaReflectionEmission",         "Delta Reflection Emission",        true /* optional */ },
+        { "deltaReflectionReflectance",     "gDeltaReflectionReflectance",      "Delta Reflection Reflectance",     true /* optional */ },
+        { "deltaReflectionRadiance",        "gDeltaReflectionRadiance",         "Delta Reflection Radiance",        true /* optional */ },
+        { "deltaTransmissionEmission",      "gDeltaTransmissionEmission",       "Delta Transmission Emission",      true /* optional */ },
+        { "deltaTransmissionReflectance",   "gDeltaTransmissionReflectance",    "Delta Transmission Reflectance",   true /* optional */ },
+        { "deltaTransmissionRadiance",      "gDeltaTransmissionRadiance",       "Delta Transmission Radiance",      true /* optional */ },
+        { "residualRadiance",               "gResidualRadiance",                "Residual Radiance",                true /* optional */ },
     };
 
     const std::string kOutput = "output";
@@ -52,6 +58,12 @@ namespace
     const char kUseDiffuseRadiance[] = "useDiffuseRadiance";
     const char kUseSpecularReflectance[] = "useSpecularReflectance";
     const char kUseSpecularRadiance[] = "useSpecularRadiance";
+    const char kUseDeltaReflectionEmission[] = "useDeltaReflectionEmission";
+    const char kUseDeltaReflectionReflectance[] = "useDeltaReflectionReflectance";
+    const char kUseDeltaReflectionRadiance[] = "useDeltaReflectionRadiance";
+    const char kUseDeltaTransmissionEmission[] = "useDeltaTransmissionEmission";
+    const char kUseDeltaTransmissionReflectance[] = "useDeltaTransmissionReflectance";
+    const char kUseDeltaTransmissionRadiance[] = "useDeltaTransmissionRadiance";
     const char kUseResidualRadiance[] = "useResidualRadiance";
 }
 
@@ -84,6 +96,12 @@ ModulateIllumination::ModulateIllumination(const Dictionary& dict)
         else if (key == kUseDiffuseRadiance) mUseDiffuseRadiance = value;
         else if (key == kUseSpecularReflectance) mUseSpecularReflectance = value;
         else if (key == kUseSpecularRadiance) mUseSpecularRadiance = value;
+        else if (key == kUseDeltaReflectionEmission) mUseDeltaReflectionEmission = value;
+        else if (key == kUseDeltaReflectionReflectance) mUseDeltaReflectionReflectance = value;
+        else if (key == kUseDeltaReflectionRadiance) mUseDeltaReflectionRadiance = value;
+        else if (key == kUseDeltaTransmissionEmission) mUseDeltaTransmissionEmission = value;
+        else if (key == kUseDeltaTransmissionReflectance) mUseDeltaTransmissionReflectance = value;
+        else if (key == kUseDeltaTransmissionRadiance) mUseDeltaTransmissionRadiance = value;
         else if (key == kUseResidualRadiance) mUseResidualRadiance = value;
         else
         {
@@ -100,6 +118,12 @@ Falcor::Dictionary ModulateIllumination::getScriptingDictionary()
     dict[kUseDiffuseRadiance] = mUseDiffuseRadiance;
     dict[kUseSpecularReflectance] = mUseSpecularReflectance;
     dict[kUseSpecularRadiance] = mUseSpecularRadiance;
+    dict[kUseDeltaReflectionEmission] = mUseDeltaReflectionEmission;
+    dict[kUseDeltaReflectionReflectance] = mUseDeltaReflectionReflectance;
+    dict[kUseDeltaReflectionRadiance] = mUseDeltaReflectionRadiance;
+    dict[kUseDeltaTransmissionEmission] = mUseDeltaTransmissionEmission;
+    dict[kUseDeltaTransmissionReflectance] = mUseDeltaTransmissionReflectance;
+    dict[kUseDeltaTransmissionRadiance] = mUseDeltaTransmissionRadiance;
     dict[kUseResidualRadiance] = mUseResidualRadiance;
     return dict;
 }
@@ -131,6 +155,12 @@ void ModulateIllumination::execute(RenderContext* pRenderContext, const RenderDa
     if (!mUseDiffuseRadiance) defineList["is_valid_gDiffuseRadiance"] = "0";
     if (!mUseSpecularReflectance) defineList["is_valid_gSpecularReflectance"] = "0";
     if (!mUseSpecularRadiance) defineList["is_valid_gSpecularRadiance"] = "0";
+    if (!mUseDeltaReflectionEmission) defineList["is_valid_gDeltaReflectionEmission"] = "0";
+    if (!mUseDeltaReflectionReflectance) defineList["is_valid_gDeltaReflectionReflectance"] = "0";
+    if (!mUseDeltaReflectionRadiance) defineList["is_valid_gDeltaReflectionRadiance"] = "0";
+    if (!mUseDeltaTransmissionEmission) defineList["is_valid_gDeltaTransmissionEmission"] = "0";
+    if (!mUseDeltaTransmissionReflectance) defineList["is_valid_gDeltaTransmissionReflectance"] = "0";
+    if (!mUseDeltaTransmissionRadiance) defineList["is_valid_gDeltaTransmissionRadiance"] = "0";
     if (!mUseResidualRadiance) defineList["is_valid_gResidualRadiance"] = "0";
 
     if (mpModulateIlluminationPass->getProgram()->addDefines(defineList))
@@ -161,5 +191,11 @@ void ModulateIllumination::renderUI(Gui::Widgets& widget)
     widget.checkbox("Diffuse Radiance", mUseDiffuseRadiance);
     widget.checkbox("Specular Reflectance", mUseSpecularReflectance);
     widget.checkbox("Specular Radiance", mUseSpecularRadiance);
+    widget.checkbox("Delta Reflection Emission", mUseDeltaReflectionEmission);
+    widget.checkbox("Delta Reflection Reflectance", mUseDeltaReflectionReflectance);
+    widget.checkbox("Delta Reflection Radiance", mUseDeltaReflectionRadiance);
+    widget.checkbox("Delta Transmission Emission", mUseDeltaTransmissionEmission);
+    widget.checkbox("Delta Transmission Reflectance", mUseDeltaTransmissionReflectance);
+    widget.checkbox("Delta Transmission Radiance", mUseDeltaTransmissionRadiance);
     widget.checkbox("Residual Radiance", mUseResidualRadiance);
 }

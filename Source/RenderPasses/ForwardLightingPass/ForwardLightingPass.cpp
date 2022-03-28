@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -86,7 +86,7 @@ Dictionary ForwardLightingPass::getScriptingDictionary()
 ForwardLightingPass::ForwardLightingPass()
     : RenderPass(kInfo)
 {
-    GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile(kShaderFile, "", "ps");
+    GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile(kShaderFile, "vsMain", "psMain");
     mpState = GraphicsState::create();
     mpState->setProgram(pProgram);
 
@@ -196,10 +196,13 @@ void ForwardLightingPass::execute(RenderContext* pRenderContext, const RenderDat
     }
 
     mpVars["PerFrameCB"]["gRenderTargetDim"] = float2(mpFbo->getWidth(), mpFbo->getHeight());
+    mpVars["PerFrameCB"]["gFrameCount"] = mFrameCount;
     mpVars->setTexture(kVisBuffer, renderData[kVisBuffer]->asTexture());
 
     mpState->setFbo(mpFbo);
     mpScene->rasterize(pRenderContext, mpState.get(), mpVars.get());
+
+    mFrameCount++;
 }
 
 void ForwardLightingPass::renderUI(Gui::Widgets& widget)

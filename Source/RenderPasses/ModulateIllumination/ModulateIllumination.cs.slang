@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,7 +31,7 @@
 
 cbuffer CB
 {
-    uint2   frameDim;
+    uint2 frameDim;
 }
 
 Texture2D gEmission;
@@ -39,6 +39,12 @@ Texture2D gDiffuseReflectance;
 Texture2D gDiffuseRadiance;
 Texture2D gSpecularReflectance;
 Texture2D gSpecularRadiance;
+Texture2D gDeltaReflectionEmission;
+Texture2D gDeltaReflectionReflectance;
+Texture2D gDeltaReflectionRadiance;
+Texture2D gDeltaTransmissionEmission;
+Texture2D gDeltaTransmissionReflectance;
+Texture2D gDeltaTransmissionRadiance;
 Texture2D gResidualRadiance;
 
 RWTexture2D gOutput;
@@ -77,6 +83,40 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         }
 
         outputColor.rgb += specularColor;
+    }
+
+    if (is_valid(gDeltaReflectionEmission))
+    {
+        outputColor.rgb += gDeltaReflectionEmission[pixel].rgb;
+    }
+
+    if (is_valid(gDeltaReflectionRadiance))
+    {
+        float3 deltaReflectionColor = gDeltaReflectionRadiance[pixel].rgb;
+
+        if (is_valid(gDeltaReflectionReflectance))
+        {
+            deltaReflectionColor *= gDeltaReflectionReflectance[pixel].rgb;
+        }
+
+        outputColor.rgb += deltaReflectionColor;
+    }
+
+    if (is_valid(gDeltaTransmissionEmission))
+    {
+        outputColor.rgb += gDeltaTransmissionEmission[pixel].rgb;
+    }
+
+    if (is_valid(gDeltaTransmissionRadiance))
+    {
+        float3 deltaTransmissionColor = gDeltaTransmissionRadiance[pixel].rgb;
+
+        if (is_valid(gDeltaTransmissionReflectance))
+        {
+            deltaTransmissionColor *= gDeltaTransmissionReflectance[pixel].rgb;
+        }
+
+        outputColor.rgb += deltaTransmissionColor;
     }
 
     if (is_valid(gResidualRadiance))

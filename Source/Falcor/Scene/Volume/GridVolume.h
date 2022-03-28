@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,6 +29,8 @@
 #include "Grid.h"
 #include "GridVolumeData.slang"
 #include "Scene/Animation/Animatable.h"
+
+#include <filesystem>
 
 namespace Falcor
 {
@@ -103,21 +105,21 @@ namespace Falcor
         /** Load a single grid from a file to a grid slot.
             Note: This will replace any existing grid sequence for that slot with just a single grid.
             \param[in] slot Grid slot.
-            \param[in] filename Filename of the grid. Can also include a full path or relative path from a data directory.
+            \param[in] path File path of the grid. Can also include a full path or relative path from a data directory.
             \param[in] gridname Name of the grid to load.
             \return Returns true if grid was loaded successfully.
         */
-        bool loadGrid(GridSlot slot, const std::string& filename, const std::string& gridname);
+        bool loadGrid(GridSlot slot, const std::filesystem::path& path, const std::string& gridname);
 
         /** Load a sequence of grids from files to a grid slot.
             Note: This will replace any existing grid sequence for that slot.
             \param[in] slot Grid slot.
-            \param[in] filenames Filenames of the grids. Can also include a full path or relative path from a data directory.
+            \param[in] paths File paths of the grids. Can also include a full path or relative path from a data directory.
             \param[in] gridname Name of the grid to load.
             \param[in] keepEmpty Add empty (nullptr) grids to the sequence if one cannot be loaded from the file.
             \return Returns the length of the loaded sequence.
         */
-        uint32_t loadGridSequence(GridSlot slot, const std::vector<std::string>& filenames, const std::string& gridname, bool keepEmpty = true);
+        uint32_t loadGridSequence(GridSlot slot, const std::vector<std::filesystem::path>& paths, const std::string& gridname, bool keepEmpty = true);
 
         /** Load a sequence of grids from a directory to a grid slot.
             Note: This will replace any existing grid sequence for that slot.
@@ -127,7 +129,7 @@ namespace Falcor
             \param[in] keepEmpty Add empty (nullptr) grids to the sequence if one cannot be loaded from the file.
             \return Returns the length of the loaded sequence.
         */
-        uint32_t loadGridSequence(GridSlot slot, const std::string& path, const std::string& gridname, bool keepEmpty = true);
+        uint32_t loadGridSequence(GridSlot slot, const std::filesystem::path& path, const std::string& gridname, bool keepEmpty = true);
 
         /** Set the grid sequence for the specified slot.
         */

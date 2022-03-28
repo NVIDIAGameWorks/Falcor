@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -32,5 +32,55 @@ namespace Falcor
 {
     void RtStateObject::apiInit()
     {
+        auto pKernels = getKernels();
+        gfx::RayTracingPipelineStateDesc rtpDesc = {};
+        std::vector<gfx::HitGroupDesc> hitGroups;
+        // Loop over the hitgroups
+        for (const auto& pBaseEntryPointGroup : pKernels->getUniqueEntryPointGroups())
+        {
+            FALCOR_ASSERT(dynamic_cast<RtEntryPointGroupKernels*>(pBaseEntryPointGroup.get()));
+            auto pEntryPointGroup = static_cast<RtEntryPointGroupKernels*>(pBaseEntryPointGroup.get());
+            if (pBaseEntryPointGroup->getType() == EntryPointGroupKernels::Type::RtHitGroup)
+            {
+                const Shader* pIntersection = pEntryPointGroup->getShader(ShaderType::Intersection);
+                const Shader* pAhs = pEntryPointGroup->getShader(ShaderType::AnyHit);
+                const Shader* pChs = pEntryPointGroup->getShader(ShaderType::ClosestHit);
+
+                gfx::HitGroupDesc hitgroupDesc = {};
+                hitgroupDesc.anyHitEntryPoint = pAhs ? pAhs->getEntryPoint().c_str() : nullptr;
+                hitgroupDesc.closestHitEntryPoint = pChs ? pChs->getEntryPoint().c_str() : nullptr;
+                hitgroupDesc.intersectionEntryPoint = pIntersection ? pIntersection->getEntryPoint().c_str() : nullptr;
+                hitgroupDesc.hitGroupName = pEntryPointGroup->getExportName().c_str();
+                hitGroups.push_back(hitgroupDesc);
+            }
+        }
+
+        rtpDesc.hitGroupCount = (uint32_t)hitGroups.size();
+        rtpDesc.hitGroups = hitGroups.data();
+        rtpDesc.maxRecursion = mDesc.mMaxTraceRecursionDepth;
+
+        static_assert((uint32_t)gfx::RayTracingPipelineFlags::SkipProcedurals == (uint32_t)RtPipelineFlags::SkipProceduralPrimitives);
+        static_assert((uint32_t)gfx::RayTracingPipelineFlags::SkipTriangles == (uint32_t)RtPipelineFlags::SkipTriangles);
+
+        rtpDesc.flags = (gfx::RayTracingPipelineFlags::Enum)mDesc.mPipelineFlags;
+        auto rtProgram = std::dynamic_pointer_cast<RtProgram>(mDesc.mpKernels->getProgramVersion()->getProgram());
+        FALCOR_ASSERT(rtProgram);
+        rtpDesc.maxRayPayloadSize = rtProgram->getRtDesc().getMaxPayloadSize();
+        rtpDesc.maxAttributeSizeInBytes = rtProgram->getRtDesc().getMaxAttributeSize();
+        rtpDesc.program = mDesc.mpKernels->getApiHandle();
+
+        if (SLANG_FAILED(gpDevice->getApiHandle()->createRayTracingPipelineState(rtpDesc, mApiHandle.writeRef())))
+        {
+            throw RuntimeError("Cannot create ray-tracing pipeline state object.");
+        }
+
+        // Get shader identifiers.
+        // In GFX, a shader identifier is just the entry point group name.
+        for (const auto& pBaseEntryPointGroup : pKernels->getUniqueEntryPointGroups())
+        {
+            FALCOR_ASSERT(dynamic_cast<RtEntryPointGroupKernels*>(pBaseEntryPointGroup.get()));
+            auto pEntryPointGroup = static_cast<RtEntryPointGroupKernels*>(pBaseEntryPointGroup.get());
+            mEntryPointGroupExportNames.push_back(pEntryPointGroup->getExportName());
+        }
     }
 }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -82,9 +82,9 @@ namespace Falcor
         // Load reference data.
         std::ifstream fin;
 
-        std::string fullpath;
-        findFileInDataDirectories("pbrt_hair_bsdf.dat", fullpath);
-        fin.open(fullpath, std::ios::in | std::ios::binary);
+        std::filesystem::path fullPath;
+        findFileInDataDirectories("pbrt_hair_bsdf.dat", fullPath);
+        fin.open(fullPath, std::ios::in | std::ios::binary);
         if (!fin.is_open())
         {
             throw ErrorRunningTestException("Cannot find reference data file 'pbrt_hair_bsdf.dat'.");

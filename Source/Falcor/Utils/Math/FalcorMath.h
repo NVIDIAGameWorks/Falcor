@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -212,6 +212,18 @@ namespace Falcor
         float t = std::sqrt(1.0f - uv.x);
         float s = std::sqrt(1.0f - t * t);
         return float3(s * std::cos(phi), s * std::sin(phi), t);
+    }
+
+    inline float smoothstep(const float t)
+    {
+        const float s = std::clamp(t, 0.0f, 1.0f);
+        return s * s * (3.0f - 2.0f * s);
+    }
+
+    inline float smoothstep(const float start, const float end, const float t)
+    {
+        float s = (t - start) / (end - start);
+        return smoothstep(s);
     }
 
 #ifndef GLM_CLIP_SPACE_Y_TOPDOWN

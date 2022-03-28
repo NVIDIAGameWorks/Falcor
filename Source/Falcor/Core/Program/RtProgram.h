@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -92,15 +92,19 @@ namespace Falcor
 
             /** Add a raygen shader.
                 \param[in] raygen Entry point for the raygen shader.
+                \param[in] typeConformances Optional list of type conformances for the raygen shader.
+                \param[in] entryPointNameSuffix Optional suffix added to the entry point names in the generated code.
                 \return Shader ID for raygen shader. This is used when building the binding table.
             */
-            ShaderID addRayGen(const std::string& raygen);
+            ShaderID addRayGen(const std::string& raygen, const TypeConformanceList& typeConformances = TypeConformanceList(), const std::string& entryPointNameSuffix = "");
 
             /** Add a miss shader.
                 \param[in] miss Entry point for the miss shader.
+                \param[in] typeConformances Optional list of type conformances for the miss shader.
+                \param[in] entryPointNameSuffix Optional suffix added to the entry point names in the generated code.
                 \return Shader ID for miss shader. This is used when building the binding table.
             */
-            ShaderID addMiss(const std::string& miss);
+            ShaderID addMiss(const std::string& miss, const TypeConformanceList& typeConformances = TypeConformanceList(), const std::string& entryPointNameSuffix = "");
 
             /** Add a hit group.
                 A hit group consists of any combination of closest hit, any hit, and intersection shaders.
@@ -111,9 +115,11 @@ namespace Falcor
                 \param[in] closestHit Entry point for the closest hit shader.
                 \param[in] anyHit Entry point for the any hit shader.
                 \param[in] intersection Entry point for the intersection shader.
+                \param[in] typeConformances Optional list of type conformances for the hit group.
+                \param[in] entryPointNameSuffix Optional suffix added to the entry point names in the generated code.
                 \return Shader ID for hit group. This is used when building the binding table.
             */
-            ShaderID addHitGroup(const std::string& closestHit, const std::string& anyHit = "", const std::string& intersection = "");
+            ShaderID addHitGroup(const std::string& closestHit, const std::string& anyHit = "", const std::string& intersection = "", const TypeConformanceList& typeConformances = TypeConformanceList(), const std::string& entryPointNameSuffix = "");
 
             /** Get the max recursion depth.
             */
@@ -153,8 +159,9 @@ namespace Falcor
             */
             Desc& setPipelineFlags(RtPipelineFlags flags) { mPipelineFlags = flags; return *this; }
 
-            /** Add a list of type conformances. The type conformances are linked into all shaders in the program.
-                \param[in] conformances List of type conformances.
+            /** Add a list of type conformances.
+                The type conformances are linked into all shaders in the program.
+                \param[in] typeConformances List of type conformances.
             */
             Desc& addTypeConformances(const TypeConformanceList& typeConformances) { mBaseDesc.addTypeConformances(typeConformances); return *this; }
 
@@ -223,7 +230,7 @@ namespace Falcor
         RtProgram(RtProgram const&) = delete;
         RtProgram& operator=(RtProgram const&) = delete;
 
-        RtProgram(const Desc& desc);
+        RtProgram(const Desc& desc, const DefineList& programDefines);
 
         Desc mRtDesc;
 

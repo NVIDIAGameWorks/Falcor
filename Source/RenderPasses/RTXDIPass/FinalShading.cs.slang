@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@ import LoadShadingData;
 import Scene.RaytracingInline;
 import Rendering.Materials.Microfacet;
 import Rendering.RTXDI.RTXDI;
+import Utils.Sampling.TinyUniformSampleGenerator;
 
 RWTexture2D<float4> gColor;
 RWTexture2D<float4> gEmission;
@@ -93,11 +94,13 @@ struct FinalShading
             float3 specular = {};
             if (valid)
             {
+                TinyUniformSampleGenerator sg = TinyUniformSampleGenerator(pixel, gRTXDI.frameIndex);
+
                 sd.mtl.setActiveLobes((uint)LobeType::DiffuseReflection);
-                diffuse = bsdf.eval(sd, dir) * Li;
+                diffuse = bsdf.eval(sd, dir, sg) * Li;
 
                 sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection);
-                specular = bsdf.eval(sd, dir) * Li;
+                specular = bsdf.eval(sd, dir, sg) * Li;
 
                 hitT = distance;
             }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 #include "SceneBuilder.h"
 #include "SceneCache.h"
 #include "Importer.h"
+#include "Curves/CurveConfig.h"
 #include "Utils/Math/MathConstants.slangh"
 #include "Utils/Image/TextureAnalyzer.h"
 #include "Utils/Timing/TimeReport.h"
@@ -128,6 +129,7 @@ namespace Falcor
             using namespace glm;
             if (lhs.position != rhs.position) return false; // Position need to be exact to avoid cracks
             if (lhs.tangent.w != rhs.tangent.w) return false;
+            if (lhs.curveRadius != rhs.curveRadius) return false;
             if (lhs.boneIDs != rhs.boneIDs) return false;
             if (any(greaterThan(abs(lhs.normal - rhs.normal), float3(threshold)))) return false;
             if (any(greaterThan(abs(lhs.tangent.xyz - rhs.tangent.xyz), float3(threshold)))) return false;
@@ -150,11 +152,12 @@ namespace Falcor
             return indexData;
         }
 
-        SceneCache::Key computeSceneCacheKey(const std::string& scenePath, SceneBuilder::Flags buildFlags)
+        SceneCache::Key computeSceneCacheKey(const std::filesystem::path& path, SceneBuilder::Flags buildFlags)
         {
             SceneBuilder::Flags cacheFlags = buildFlags & (~(SceneBuilder::Flags::UseCache | SceneBuilder::Flags::RebuildCache));
             SHA1 sha1;
-            sha1.update(scenePath.data(), scenePath.size());
+            auto pathStr = path.string();
+            sha1.update(pathStr.data(), pathStr.size());
             sha1.update(&cacheFlags, sizeof(cacheFlags));
             return sha1.final();
 
@@ -173,12 +176,12 @@ namespace Falcor
         return SharedPtr(new SceneBuilder(flags));
     }
 
-    SceneBuilder::SharedPtr SceneBuilder::create(const std::string& filename, Flags buildFlags, const InstanceMatrices& instances)
+    SceneBuilder::SharedPtr SceneBuilder::create(const std::filesystem::path& path, Flags buildFlags, const InstanceMatrices& instances)
     {
-        std::string fullPath;
-        if (!findFileInDataDirectories(filename, fullPath))
+        std::filesystem::path fullPath;
+        if (!findFileInDataDirectories(path, fullPath))
         {
-            throw ImporterError(filename, "Can't find scene file '{}'.", filename);
+            throw ImporterError(path, "Can't find scene file '{}'.", path);
         }
 
         auto pBuilder = create(buildFlags);
@@ -204,18 +207,18 @@ namespace Falcor
             }
             catch (const std::exception& e)
             {
-                throw ImporterError(filename, "Failed to load scene cache: {}", e.what());
+                throw ImporterError(fullPath, "Failed to load scene cache: {}", e.what());
             }
         }
 
-        pBuilder->import(filename, instances);
+        pBuilder->import(path, instances);
         return pBuilder;
     }
 
-    void SceneBuilder::import(const std::string& filename, const InstanceMatrices& instances, const Dictionary& dict)
+    void SceneBuilder::import(const std::filesystem::path& path, const InstanceMatrices& instances, const Dictionary& dict)
     {
-        mSceneData.filename = filename;
-        Importer::import(filename, *this, instances, dict);
+        mSceneData.path = path;
+        Importer::import(path, *this, instances, dict);
     }
 
     Scene::SharedPtr SceneBuilder::getScene()
@@ -247,6 +250,7 @@ namespace Falcor
         prepareDisplacementMaps();
 
         prepareSceneGraph();
+        prepareMeshes();
         removeUnusedMeshes();
         flattenStaticMeshInstances();
         pretransformStaticMeshes();
@@ -348,7 +352,7 @@ namespace Falcor
         // Note the function needs to be thread safe. The following steps are performed:
         //  - Error checking
         //  - Compute tangent space if needed
-        //  - Merge identical vertices, compute new indices
+        //  - Merge identical vertices, compute new indices (optional)
         //  - Validate final vertex data
         //  - Compact vertices/indices into runtime format
 
@@ -435,56 +439,89 @@ namespace Falcor
         //
         const uint32_t invalidIndex = 0xffffffff;
         std::vector<std::pair<Mesh::Vertex, uint32_t>> vertices;
-        vertices.reserve(mesh.vertexCount);
         std::vector<uint32_t> indices(mesh.indexCount);
-        std::vector<uint32_t> heads(mesh.vertexCount, invalidIndex);
 
         if (pAttributeIndices)
         {
             pAttributeIndices->reserve(mesh.vertexCount);
         }
 
-        for (uint32_t face = 0; face < mesh.faceCount; face++)
+        if (mesh.mergeDuplicateVertices)
         {
-            for (uint32_t vert = 0; vert < 3; vert++)
+            vertices.reserve(mesh.vertexCount);
+
+            std::vector<uint32_t> heads(mesh.vertexCount, invalidIndex);
+
+            for (uint32_t face = 0; face < mesh.faceCount; face++)
             {
-                const Mesh::Vertex v = mesh.getVertex(face, vert);
-                const uint32_t origIndex = mesh.pIndices[face * 3 + vert];
-
-                // Iterate over vertex list to check if it already exists.
-                FALCOR_ASSERT(origIndex < heads.size());
-                uint32_t index = heads[origIndex];
-                bool found = false;
-
-                while (index != invalidIndex)
+                for (uint32_t vert = 0; vert < 3; vert++)
                 {
-                    if (compareVertices(v, vertices[index].first))
+                    const Mesh::Vertex v = mesh.getVertex(face, vert);
+                    const uint32_t origIndex = mesh.pIndices[face * 3 + vert];
+
+                    // Iterate over vertex list to check if it already exists.
+                    FALCOR_ASSERT(origIndex < heads.size());
+                    uint32_t index = heads[origIndex];
+                    bool found = false;
+
+                    while (index != invalidIndex)
                     {
-                        found = true;
-                        break;
+                        if (compareVertices(v, vertices[index].first))
+                        {
+                            found = true;
+                            break;
+                        }
+                        index = vertices[index].second;
                     }
-                    index = vertices[index].second;
-                }
 
-                // Insert new vertex if we couldn't find it.
-                if (!found)
+                    // Insert new vertex if we couldn't find it.
+                    if (!found)
+                    {
+                        FALCOR_ASSERT(vertices.size() < std::numeric_limits<uint32_t>::max());
+                        index = (uint32_t)vertices.size();
+                        vertices.push_back({ v, heads[origIndex] });
+
+                        if (pAttributeIndices)
+                        {
+                            pAttributeIndices->push_back(mesh.getAttributeIndices(face, vert));
+                            FALCOR_ASSERT(vertices.size() == pAttributeIndices->size());
+                        }
+
+                        heads[origIndex] = index;
+                    }
+
+                    // Store new vertex index.
+                    indices[face * 3 + vert] = index;
+                }
+            }
+        }
+        else
+        {
+            vertices = { mesh.vertexCount, std::make_pair(Mesh::Vertex{}, invalidIndex) };
+
+            for (uint32_t face = 0; face < mesh.faceCount; face++)
+            {
+                for (uint32_t vert = 0; vert < 3; vert++)
                 {
-                    FALCOR_ASSERT(vertices.size() < std::numeric_limits<uint32_t>::max());
-                    index = (uint32_t)vertices.size();
-                    vertices.push_back({ v, heads[origIndex] });
+                    const Mesh::Vertex v = mesh.getVertex(face, vert);
+                    const uint32_t index = mesh.getAttributeIndex(mesh.positions, face, vert);
+
+                    FALCOR_ASSERT(index < vertices.size());
+                    vertices[index].first = v;
 
                     if (pAttributeIndices)
                     {
                         pAttributeIndices->push_back(mesh.getAttributeIndices(face, vert));
-                        FALCOR_ASSERT(vertices.size() == pAttributeIndices->size());
                     }
-
-                    heads[origIndex] = index;
                 }
-
-                // Store new vertex index.
-                indices[face * 3 + vert] = index;
             }
+
+            if (pAttributeIndices)
+            {
+                FALCOR_ASSERT(vertices.size() == pAttributeIndices->size());
+            }
+
+            indices.assign(mesh.pIndices, mesh.pIndices + mesh.indexCount);
         }
 
         FALCOR_ASSERT(vertices.size() > 0);
@@ -520,7 +557,7 @@ namespace Falcor
 
         // Copy vertices into processed mesh.
         processedMesh.staticData.reserve(vertexCount);
-        if (mesh.hasBones()) processedMesh.dynamicData.reserve(vertexCount);
+        if (mesh.hasBones()) processedMesh.skinningData.reserve(vertexCount);
 
         for (uint32_t i = 0; i < vertexCount; i++)
         {
@@ -533,17 +570,18 @@ namespace Falcor
             s.normal = v.normal;
             s.texCrd = v.texCrd;
             s.tangent = v.tangent;
+            s.curveRadius = v.curveRadius;
             processedMesh.staticData.push_back(s);
 
             if (mesh.hasBones())
             {
-                DynamicVertexData d;
-                d.boneWeight = v.boneWeights;
-                d.boneID = v.boneIDs;
-                d.staticIndex = i; // This references the local vertex here and gets updated in addProcessedMesh().
-                d.bindMatrixID = 0; // This will be initialized in createMeshData().
-                d.skeletonMatrixID = 0; // This will be initialized in createMeshData().
-                processedMesh.dynamicData.push_back(d);
+                SkinningVertexData s;
+                s.boneWeight = v.boneWeights;
+                s.boneID = v.boneIDs;
+                s.staticIndex = i; // This references the local vertex here and gets updated in addProcessedMesh().
+                s.bindMatrixID = 0; // This will be initialized in createMeshData().
+                s.skeletonMatrixID = 0; // This will be initialized in createMeshData().
+                processedMesh.skinningData.push_back(s);
             }
         }
 
@@ -581,11 +619,11 @@ namespace Falcor
 
         spec.vertexCount = (uint32_t)mesh.staticData.size();
         spec.staticVertexCount = (uint32_t)mesh.staticData.size();
-        spec.dynamicVertexCount = (uint32_t)mesh.dynamicData.size();
+        spec.skinningVertexCount = (uint32_t)mesh.skinningData.size();
 
         spec.indexData = std::move(mesh.indexData);
         spec.staticData = std::move(mesh.staticData);
-        spec.dynamicData = std::move(mesh.dynamicData);
+        spec.skinningData = std::move(mesh.skinningData);
 
         if (isIndexed)
         {
@@ -593,9 +631,11 @@ namespace Falcor
             spec.use16BitIndices = mesh.use16BitIndices;
         }
 
-        if (!spec.dynamicData.empty())
+        if (!spec.skinningData.empty())
         {
-            spec.hasDynamicData = true;
+            FALCOR_ASSERT(spec.skinningVertexCount > 0);
+            spec.hasSkinningData = true;
+            spec.prevVertexCount = spec.skinningVertexCount;
         }
 
         mMeshes.push_back(spec);
@@ -606,6 +646,11 @@ namespace Falcor
         }
 
         return (uint32_t)(mMeshes.size() - 1);
+    }
+
+    void SceneBuilder::setCachedMeshes(std::vector<CachedMesh>&& cachedMeshes)
+    {
+        mSceneData.cachedMeshes = std::move(cachedMeshes);
     }
 
     void SceneBuilder::addCustomPrimitive(uint32_t userID, const AABB& aabb)
@@ -737,14 +782,14 @@ namespace Falcor
         return mSceneData.pMaterials->addMaterial(pMaterial);
     }
 
-    void SceneBuilder::loadMaterialTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const std::string& filename)
+    void SceneBuilder::loadMaterialTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const std::filesystem::path& path)
     {
         checkArgument(pMaterial != nullptr, "'pMaterial' is missing");
         if (!mpMaterialTextureLoader)
         {
             mpMaterialTextureLoader.reset(new MaterialTextureLoader(mSceneData.pMaterials->getTextureManager(), !is_set(mFlags, Flags::AssumeLinearSpaceTextures)));
         }
-        mpMaterialTextureLoader->loadTexture(pMaterial, slot, filename);
+        mpMaterialTextureLoader->loadTexture(pMaterial, slot, path);
     }
 
     void SceneBuilder::waitForMaterialTextureLoading()
@@ -1162,6 +1207,31 @@ namespace Falcor
         }
     }
 
+    void SceneBuilder::prepareMeshes()
+    {
+        // Initialize any mesh properties that depend on the scene modifications to be finished.
+
+        // Set mesh properties related to vertex animations
+        for (auto& m : mMeshes) m.isAnimated = false;
+        for (auto& cache : mSceneData.cachedMeshes)
+        {
+            auto& mesh = mMeshes[cache.meshID];
+            FALCOR_ASSERT(!mesh.isDynamic());
+            mesh.isAnimated = true;
+            mesh.prevVertexCount = mesh.staticVertexCount;
+        }
+        for (auto& cache : mSceneData.cachedCurves)
+        {
+            if (cache.tessellationMode != CurveTessellationMode::LinearSweptSphere)
+            {
+                auto& mesh = mMeshes[cache.geometryID];
+                FALCOR_ASSERT(!mesh.isDynamic());
+                mesh.isAnimated = true;
+                mesh.prevVertexCount = mesh.staticVertexCount;
+            }
+        }
+    }
+
     void SceneBuilder::removeUnusedMeshes()
     {
         // If the scene contained meshes that are not referenced by the scene graph,
@@ -1204,6 +1274,19 @@ namespace Falcor
                     std::replace(node.meshes.begin(), node.meshes.end(), meshID, newMeshID);
                 }
 
+                // Update the mesh IDs of cached meshes.
+                for (auto &cachedMesh : mSceneData.cachedMeshes)
+                {
+                    if (cachedMesh.meshID == meshID) cachedMesh.meshID = newMeshID;
+                }
+                for (auto& cache : mSceneData.cachedCurves)
+                {
+                    if (cache.tessellationMode != CurveTessellationMode::LinearSweptSphere)
+                    {
+                        if (cache.geometryID == meshID) cache.geometryID = newMeshID;
+                    }
+                }
+
                 meshes.push_back(std::move(mesh));
             }
 
@@ -1243,7 +1326,7 @@ namespace Falcor
             }
 
             FALCOR_ASSERT(!mesh.instances.empty());
-            FALCOR_ASSERT(mesh.dynamicData.empty() && mesh.dynamicVertexCount == 0);
+            FALCOR_ASSERT(mesh.skinningData.empty() && mesh.skinningVertexCount == 0);
 
             // i is the current index into mesh.instances in the loop below.
             // It is only incremented when skipping over an instance that is not being flattened.
@@ -1424,7 +1507,7 @@ namespace Falcor
             FALCOR_ASSERT(!mesh.instances.empty());
             if (mesh.instances.size() > 1 || isNodeAnimated(mesh.instances[0]) || mesh.isDynamic()) continue;
 
-            FALCOR_ASSERT(mesh.dynamicData.empty());
+            FALCOR_ASSERT(mesh.skinningData.empty());
             mesh.isStatic = true;
 
             // Compute the object->world transform for the node.
@@ -1461,6 +1544,8 @@ namespace Falcor
                     v.tangent.xyz = glm::normalize(transform3x3 * v.tangent.xyz);
                     // TODO: We should flip the sign of v.tangent.w if flippedWinding is true.
                     // Leaving that out for now for consistency with the shader code that needs the same fix.
+
+                    v.curveRadius = glm::length(transform3x3 * float3(v.curveRadius, 0.f, 0.f));
                 }
 
                 transformedMeshCount++;
@@ -1694,7 +1779,7 @@ namespace Falcor
             }
             else
             {
-                for (const auto& meshID : meshes) mMeshGroups.push_back(MeshGroup{ meshList({ meshID }), isStatic });
+                for (const auto& meshID : meshes) mMeshGroups.push_back(MeshGroup{ meshList({ meshID }), isStatic, isDisplaced });
             }
         };
 
@@ -1770,8 +1855,8 @@ namespace Falcor
             spec.isStatic = mesh.isStatic;
             spec.isFrontFaceCW = mesh.isFrontFaceCW;
             spec.instances = mesh.instances;
-            FALCOR_ASSERT(mesh.hasDynamicData == false);
-            FALCOR_ASSERT(mesh.dynamicVertexCount == 0);
+            FALCOR_ASSERT(mesh.isDynamic() == false);
+            FALCOR_ASSERT(mesh.skinningVertexCount == 0);
             return spec;
         };
 
@@ -1900,6 +1985,18 @@ namespace Falcor
     bool SceneBuilder::needsSplit(const MeshGroup& meshGroup, size_t& triangleCount) const
     {
         FALCOR_ASSERT(!meshGroup.meshList.empty());
+
+        for (auto meshID : meshGroup.meshList)
+        {
+            const auto& mesh = mMeshes[meshID];
+
+            // Groups with dynamic meshes are not supported.
+            if (mesh.isDynamic())
+            {
+                return false;
+            }
+        }
+
         triangleCount = countTriangles(meshGroup);
 
         if (triangleCount <= kMaxTrianglesPerBLAS)
@@ -2121,45 +2218,60 @@ namespace Falcor
                 meshList[i] = meshMap[meshList[i]];
             }
         }
+
+        // Remap cached meshes.
+        for (auto &cachedMesh : mSceneData.cachedMeshes)
+        {
+            cachedMesh.meshID = meshMap[cachedMesh.meshID];
+        }
+        for (auto& cache : mSceneData.cachedCurves)
+        {
+            if (cache.tessellationMode != CurveTessellationMode::LinearSweptSphere)
+            {
+                cache.geometryID = meshMap[cache.geometryID];
+            }
+        }
     }
 
     void SceneBuilder::createGlobalBuffers()
     {
         FALCOR_ASSERT(mSceneData.meshIndexData.empty());
         FALCOR_ASSERT(mSceneData.meshStaticData.empty());
-        FALCOR_ASSERT(mSceneData.meshDynamicData.empty());
+        FALCOR_ASSERT(mSceneData.meshSkinningData.empty());
 
         const bool isIndexed = !is_set(mFlags, Flags::NonIndexedVertices);
 
         // Count total number of vertex and index data elements.
         size_t totalIndexDataCount = 0;
         size_t totalStaticVertexCount = 0;
-        size_t totalDynamicVertexCount = 0;
+        size_t totalSkinningVertexCount = 0;
 
         for (const auto& mesh : mMeshes)
         {
             totalIndexDataCount += mesh.indexData.size();
             totalStaticVertexCount += mesh.staticData.size();
-            totalDynamicVertexCount += mesh.dynamicData.size();
+            totalSkinningVertexCount += mesh.skinningData.size();
+            mSceneData.prevVertexCount += mesh.prevVertexCount;
         }
 
         // Check the range. We currently use 32-bit offsets.
         if (totalIndexDataCount > std::numeric_limits<uint32_t>::max() ||
             totalStaticVertexCount > std::numeric_limits<uint32_t>::max() ||
-            totalDynamicVertexCount > std::numeric_limits<uint32_t>::max())
+            totalSkinningVertexCount > std::numeric_limits<uint32_t>::max())
         {
             throw RuntimeError("Trying to build a scene that exceeds supported mesh data size.");
         }
 
         mSceneData.meshIndexData.reserve(totalIndexDataCount);
         mSceneData.meshStaticData.reserve(totalStaticVertexCount);
-        mSceneData.meshDynamicData.reserve(totalDynamicVertexCount);
+        mSceneData.meshSkinningData.reserve(totalSkinningVertexCount);
 
         // Copy all vertex and index data into the global buffers.
         for (auto& mesh : mMeshes)
         {
             mesh.staticVertexOffset = (uint32_t)mSceneData.meshStaticData.size();
-            mesh.dynamicVertexOffset = (uint32_t)mSceneData.meshDynamicData.size();
+            mesh.skinningVertexOffset = (uint32_t)mSceneData.meshSkinningData.size();
+            mesh.prevVertexOffset = mesh.skinningVertexOffset;
 
             // Insert the static vertex data in the global array.
             // The vertices are automatically converted to their packed format in this step.
@@ -2171,22 +2283,40 @@ namespace Falcor
                 mSceneData.meshIndexData.insert(mSceneData.meshIndexData.end(), mesh.indexData.begin(), mesh.indexData.end());
             }
 
-            if (mesh.isDynamic())
+            if (mesh.isSkinned())
             {
-                FALCOR_ASSERT(!mesh.dynamicData.empty());
-                mSceneData.meshDynamicData.insert(mSceneData.meshDynamicData.end(), mesh.dynamicData.begin(), mesh.dynamicData.end());
+                FALCOR_ASSERT(!mesh.skinningData.empty());
+                mSceneData.meshSkinningData.insert(mSceneData.meshSkinningData.end(), mesh.skinningData.begin(), mesh.skinningData.end());
 
                 // Patch vertex index references.
-                for (uint32_t i = 0; i < mesh.dynamicData.size(); ++i)
+                for (uint32_t i = 0; i < mesh.skinningData.size(); ++i)
                 {
-                    mSceneData.meshDynamicData[mesh.dynamicVertexOffset + i].staticIndex += mesh.staticVertexOffset;
+                    mSceneData.meshSkinningData[mesh.skinningVertexOffset + i].staticIndex += mesh.staticVertexOffset;
                 }
             }
 
             // Free the mesh local data.
             mesh.indexData.clear();
             mesh.staticData.clear();
-            mesh.dynamicData.clear();
+            mesh.skinningData.clear();
+        }
+
+        // Initialize offsets for prev vertex data for vertex-animated meshes
+        uint32_t prevOffset = (uint32_t)mSceneData.meshSkinningData.size();
+        for (auto& cache : mSceneData.cachedMeshes)
+        {
+            auto& mesh = mMeshes[cache.meshID];
+            mesh.prevVertexOffset = prevOffset;
+            prevOffset += mesh.prevVertexCount;
+        }
+        for (auto& cache : mSceneData.cachedCurves)
+        {
+            if (cache.tessellationMode != CurveTessellationMode::LinearSweptSphere)
+            {
+                auto& mesh = mMeshes[cache.geometryID];
+                mesh.prevVertexOffset = prevOffset;
+                prevOffset += mesh.prevVertexCount;
+            }
         }
     }
 
@@ -2382,35 +2512,37 @@ namespace Falcor
             meshData[meshID].ibOffset = mesh.indexOffset;
             meshData[meshID].vertexCount = mesh.vertexCount;
             meshData[meshID].indexCount = mesh.indexCount;
-            meshData[meshID].dynamicVbOffset = mesh.hasDynamicData ? mesh.dynamicVertexOffset : 0;
-            FALCOR_ASSERT(mesh.dynamicVertexCount == 0 || mesh.dynamicVertexCount == mesh.staticVertexCount);
+            meshData[meshID].skinningVbOffset = mesh.hasSkinningData ? mesh.skinningVertexOffset : 0;
+            meshData[meshID].prevVbOffset = mesh.isDynamic() ? mesh.prevVertexOffset : 0;
+            FALCOR_ASSERT(mesh.skinningVertexCount == 0 || mesh.skinningVertexCount == mesh.staticVertexCount);
 
             mSceneData.meshNames.push_back(mesh.name);
 
             uint32_t meshFlags = 0;
             meshFlags |= mesh.use16BitIndices ? (uint32_t)MeshFlags::Use16BitIndices : 0;
-            meshFlags |= mesh.hasDynamicData ? (uint32_t)MeshFlags::HasDynamicData : 0;
+            meshFlags |= mesh.isSkinned() ? (uint32_t)MeshFlags::IsSkinned : 0;
             meshFlags |= mesh.isFrontFaceCW ? (uint32_t)MeshFlags::IsFrontFaceCW : 0;
             meshFlags |= mesh.isDisplaced ? (uint32_t)MeshFlags::IsDisplaced : 0;
+            meshFlags |= mesh.isAnimated ? (uint32_t)MeshFlags::IsAnimated : 0;
             meshData[meshID].flags = meshFlags;
 
             if (mesh.use16BitIndices) mSceneData.has16BitIndices = true;
             else mSceneData.has32BitIndices = true;
 
-            if (mesh.hasDynamicData)
+            if (mesh.isSkinned())
             {
                 // Dynamic (skinned) meshes can only be instanced if an explicit skeleton transform node is specified.
                 FALCOR_ASSERT(mesh.instances.size() == 1 || mesh.skeletonNodeID != kInvalidNode);
 
                 for (uint32_t i = 0; i < mesh.vertexCount; i++)
                 {
-                    DynamicVertexData& d = mSceneData.meshDynamicData[mesh.dynamicVertexOffset + i];
+                    SkinningVertexData& s = mSceneData.meshSkinningData[mesh.skinningVertexOffset + i];
 
                     // The bind matrix is per mesh, so just take it from the first instance
-                    d.bindMatrixID = (uint32_t)mesh.instances[0];
+                    s.bindMatrixID = (uint32_t)mesh.instances[0];
 
                     // If a skeleton's world transform node is not explicitly set, it is the same transform as the instance (Assimp behavior)
-                    d.skeletonMatrixID = mesh.skeletonNodeID == kInvalidNode ? (uint32_t)mesh.instances[0] : mesh.skeletonNodeID;
+                    s.skeletonMatrixID = mesh.skeletonNodeID == kInvalidNode ? (uint32_t)mesh.instances[0] : mesh.skeletonNodeID;
                 }
             }
         }
@@ -2490,7 +2622,7 @@ namespace Falcor
                     instance.vbOffset = mesh.staticVertexOffset;
                     instance.ibOffset = mesh.indexOffset;
                     instance.flags |= mesh.use16BitIndices ? (uint32_t)GeometryInstanceFlags::Use16BitIndices : 0;
-                    instance.flags |= mesh.hasDynamicData ? (uint32_t)GeometryInstanceFlags::HasDynamicData : 0;
+                    instance.flags |= mesh.isDynamic() ? (uint32_t)GeometryInstanceFlags::IsDynamic : 0;
                     instance.instanceIndex = tlasInstanceIndex;
                     instance.geometryIndex = blasGeometryIndex;
                     instanceData.push_back(instance);
@@ -2642,6 +2774,7 @@ namespace Falcor
         flags.value("DontOptimizeMaterials", SceneBuilder::Flags::DontOptimizeMaterials);
         flags.value("DontUseDisplacement", SceneBuilder::Flags::DontUseDisplacement);
         flags.value("UseCompressedHitInfo", SceneBuilder::Flags::UseCompressedHitInfo);
+        flags.value("TessellateCurvesIntoPolyTubes", SceneBuilder::Flags::TessellateCurvesIntoPolyTubes);
         flags.value("UseCache", SceneBuilder::Flags::UseCache);
         flags.value("RebuildCache", SceneBuilder::Flags::RebuildCache);
         ScriptBindings::addEnumBinaryOperators(flags);
@@ -2658,19 +2791,19 @@ namespace Falcor
         sceneBuilder.def_property("envMap", &SceneBuilder::getEnvMap, &SceneBuilder::setEnvMap);
         sceneBuilder.def_property("selectedCamera", &SceneBuilder::getSelectedCamera, &SceneBuilder::setSelectedCamera);
         sceneBuilder.def_property("cameraSpeed", &SceneBuilder::getCameraSpeed, &SceneBuilder::setCameraSpeed);
-        sceneBuilder.def("importScene", [] (SceneBuilder* pSceneBuilder, const std::string& filename, const pybind11::dict& dict, const std::vector<Transform>& instances) {
+        sceneBuilder.def("importScene", [] (SceneBuilder* pSceneBuilder, const std::filesystem::path& path, const pybind11::dict& dict, const std::vector<Transform>& instances) {
             SceneBuilder::InstanceMatrices instanceMatrices;
             for (const auto& instance : instances)
             {
                 instanceMatrices.push_back(instance.getMatrix());
             }
-            pSceneBuilder->import(filename, instanceMatrices, Dictionary(dict));
-        }, "filename"_a, "dict"_a = pybind11::dict(), "instances"_a = std::vector<Transform>());
+            pSceneBuilder->import(path, instanceMatrices, Dictionary(dict));
+        }, "path"_a, "dict"_a = pybind11::dict(), "instances"_a = std::vector<Transform>());
         sceneBuilder.def("addTriangleMesh", &SceneBuilder::addTriangleMesh, "triangleMesh"_a, "material"_a);
         sceneBuilder.def("addSDFGrid", &SceneBuilder::addSDFGrid, "sdfGrid"_a, "material"_a);
         sceneBuilder.def("addMaterial", &SceneBuilder::addMaterial, "material"_a);
         sceneBuilder.def("getMaterial", &SceneBuilder::getMaterial, "name"_a);
-        sceneBuilder.def("loadMaterialTexture", &SceneBuilder::loadMaterialTexture, "material"_a, "slot"_a, "filename"_a);
+        sceneBuilder.def("loadMaterialTexture", &SceneBuilder::loadMaterialTexture, "material"_a, "slot"_a, "path"_a);
         sceneBuilder.def("waitForMaterialTextureLoading", &SceneBuilder::waitForMaterialTextureLoading);
         sceneBuilder.def("addGridVolume", &SceneBuilder::addGridVolume, "gridVolume"_a, "nodeID"_a = SceneBuilder::kInvalidNode);
         sceneBuilder.def("addVolume", &SceneBuilder::addGridVolume, "gridVolume"_a, "nodeID"_a = SceneBuilder::kInvalidNode); // PYTHONDEPRECATED

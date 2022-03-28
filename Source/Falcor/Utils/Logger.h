@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -89,12 +89,12 @@ namespace Falcor
             \param[in] path Logfile path
             \return Returns true if path was set, false otherwise.
         */
-        static bool setLogFilePath(const std::string& filename);
+        static bool setLogFilePath(const std::filesystem::path& path);
 
         /** Get the path of the logfile.
             \return Returns the path of the logfile.
         */
-        static const std::string& getLogFilePath();
+        static const std::filesystem::path& getLogFilePath();
 
         /** Check if the logger is enabled.
         */

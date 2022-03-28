@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -45,14 +45,14 @@ namespace Falcor
 
         /** Create a new compute program from file.
             Note that this call merely creates a program object. The actual compilation and link happens at a later time.
-            \param[in] filename Compute program filename.
+            \param[in] path Compute program file path.
             \param[in] csEntry Name of the entry point in the program.
             \param[in] programDefines Optional list of macro definitions to set into the program.
             \param[in] flags Optional program compilation flags.
             \param[in] shaderModel Optional string describing which shader model to use.
             \return A new object, or an exception is thrown if creation failed.
         */
-        static SharedPtr createFromFile(const std::string& filename, const std::string& csEntry, const DefineList& programDefines = DefineList(), Shader::CompilerFlags flags = Shader::CompilerFlags::None, const std::string& shaderModel = "");
+        static SharedPtr createFromFile(const std::filesystem::path& path, const std::string& csEntry, const DefineList& programDefines = DefineList(), Shader::CompilerFlags flags = Shader::CompilerFlags::None, const std::string& shaderModel = "");
 
         /** Create a new compute program.
             Note that this call merely creates a program object. The actual compilation and link happens at a later time.
@@ -60,7 +60,7 @@ namespace Falcor
             \param[in] programDefines Optional list of macro definitions to set into the program.
             \return A new object, or an exception is thrown if creation failed.
         */
-        static SharedPtr create(const Program::Desc& desc, const DefineList& programDefines = DefineList());
+        static SharedPtr create(const Desc& desc, const DefineList& programDefines = DefineList());
 
         /** Dispatch the program using the argument values set in `pVars`.
         */
@@ -70,6 +70,6 @@ namespace Falcor
             uint3 const&    threadGroupCount);
 
     protected:
-        ComputeProgram() = default;
+        ComputeProgram(const Desc& desc, const DefineList& programDefines);
     };
 }

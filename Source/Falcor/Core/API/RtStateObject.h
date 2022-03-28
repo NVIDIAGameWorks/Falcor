@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -58,9 +58,11 @@ namespace Falcor
 
         const ProgramKernels::SharedConstPtr& getKernels() const { return mDesc.mpKernels; };
         uint32_t getMaxTraceRecursionDepth() const { return mDesc.mMaxTraceRecursionDepth; }
-
+#if defined(FALCOR_D3D12)
         void const* getShaderIdentifier(uint32_t index) const { return mShaderIdentifiers[index]; }
-
+#elif defined(FALCOR_GFX)
+        void const* getShaderIdentifier(uint32_t index) const { return mEntryPointGroupExportNames[index].c_str(); }
+#endif
         const Desc& getDesc() const { return mDesc; }
     private:
         RtStateObject(const Desc& desc);
@@ -68,6 +70,10 @@ namespace Falcor
 
         Desc mDesc;
         ApiHandle mApiHandle;
+#if defined(FALCOR_D3D12)
         std::vector<void const*> mShaderIdentifiers;
+#elif defined(FALCOR_GFX)
+        std::vector<std::string> mEntryPointGroupExportNames;
+#endif
     };
 }

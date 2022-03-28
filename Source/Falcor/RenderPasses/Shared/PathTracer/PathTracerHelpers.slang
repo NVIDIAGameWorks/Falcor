@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -326,7 +326,7 @@ bool generateShadowRay<S : ISampleGenerator>(const PathTracerParams params, cons
 
     if (valid && any(ls.Li > 0.f))
     {
-        float3 Lr = bsdf.eval(sd, ls.dir) * ls.Li * path.thp;
+        float3 Lr = bsdf.eval(sd, ls.dir, sg) * ls.Li * path.thp;
         if (any(Lr > 0.f))
         {
             // The sample is valid and has a non-zero contribution.

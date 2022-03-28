@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -521,12 +521,12 @@ namespace Falcor
             for (int j = 0; j < m; j++)
             {
                 float v = (j + 0.5f) / m;
-                float y = (1.f - v) * b.minPos.y + v * b.maxPos.y;
+                float y = lerp(b.minPos.y, b.maxPos.y, v);
 
                 for (int k = 0; k < m; k++)
                 {
                     float u = (k + 0.5f) / m;
-                    float x = (1.f - u) * b.minPos.x + u * b.maxPos.x;
+                    float x = lerp(b.minPos.x, b.maxPos.x, u);
 
                     if (t.isInside(float2(x, y))) hits++;
                 }

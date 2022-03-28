@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -58,7 +58,7 @@ float2 sdfTransform(float2 p, float2 scale, float rotationAngle, float2 translat
     return mul(inverseTransform, float3(p, 1.0f)).xy;
 }
 
-/** Filler function that may be used by signed distance functions. Returns alpha so you can bleand as you wish.
+/** Filler function that may be used by signed distance functions. Returns alpha so you can blend as you wish.
     Based on the JCGT article "Antialiased 2D Grid, Marker, and Arrow Shaders" by Rougier.
     http://jcgt.org/published/0003/04/01/
     \param[in] signedDistance The signed distance to the primitive.
@@ -116,7 +116,7 @@ float4 sdfDraw<SDF : ISDF2D>(const SDF sdf, float2 p, float2 scale, float rotati
     p = sdfTransform(p, scale, rotationAngle, translation);
     float signedDistance = sdf.eval(p);
     float4 color = sdfFilled(signedDistance, 0.0f, blendRadius / (0.5f * (scale.x + scale.y)), primitiveColor);
-    return  (1.0f - color.a) * backgroundColor + color.a * color;
+    return lerp(backgroundColor, color, color.a);
 }
 
 /** Draw function that blends the computed SDF primitive color with the background color.

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,34 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "Utils/HostDeviceShared.slangh"
-
-#ifndef HOST_CODE
 import Utils.Math.IntervalArithmetic;
-#endif
 
-BEGIN_NAMESPACE_FALCOR
-
-enum class SDFOperationType
-{
-    Union,
-    Subtraction,
-    Intersection,
-    SmoothUnion,
-    SmoothSubtraction,
-    SmoothIntersection ,
-
-    Count
-};
-
-#ifndef HOST_CODE
  /** Blending of two "objects" based on a radius. Equation 17.57 in RTR4, and also in the Graphics Codex by Morgan McGuire.
  */
 float sdfBlend(float distance1, float distance2, float radius)
 {
     float h = saturate(0.5f + 0.5f * (distance2 - distance1) / radius);
-    float d = (1.0f - h) * distance2 + h * distance1 - radius * h * (1.0f - h);
+    float d = lerp(distance2, distance1, h) - radius * h * (1.0f - h);
     return d;
 }
 
@@ -170,6 +150,3 @@ float2 sdfIntervalSmoothSubtraction(float2 a, float2 b, float k)
 {
     return intervalSMax(a, ivlNegate(b), k);
 }
-#endif
-
-END_NAMESPACE_FALCOR

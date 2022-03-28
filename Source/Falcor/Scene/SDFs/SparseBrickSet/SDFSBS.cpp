@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -45,6 +45,9 @@ namespace Falcor
         const std::string kCompactifyChunksShaderName = "Scene/SDFs/SparseBrickSet/SDFSBSCompactifyChunks.cs.slang";
         const std::string kPruneEmptyBricksShaderName = "Scene/SDFs/SparseBrickSet/SDFSBSPruneEmptyBricks.cs.slang";
         const std::string kCreateBricksFromChunksShaderName = "Scene/SDFs/SparseBrickSet/SDFSBSCreateBricksFromChunks.cs.slang";
+
+        const bool kEnableCoarseBrickPruning = true;
+        const bool kEnableFineBrickPruning = true;
     }
 
     SDFSBS::SharedPtr SDFSBS::create(uint32_t brickWidth, bool compressed)
@@ -73,6 +76,14 @@ namespace Falcor
     uint32_t SDFSBS::getMaxPrimitiveIDBits() const
     {
         return bitScanReverse(mBrickCount - 1) + 1;
+    }
+
+    SDFGrid::UpdateFlags SDFSBS::update(RenderContext* pRenderContext)
+    {
+        // If the SDF grid isn't dirty or isn't constructed from primitives then no update is performed.
+        if (!mPrimitivesDirty || mPrimitives.empty()) return UpdateFlags::None;
+
+        return createResourcesFromPrimitives(pRenderContext, false);
     }
 
     void SDFSBS::createResources(RenderContext* pRenderContext, bool deleteScratchData)
@@ -118,8 +129,11 @@ namespace Falcor
         var["normalizationFactor"] = 0.5f * glm::root_three<float>() / mGridWidth;
     }
 
-    void SDFSBS::createResourcesFromPrimitives(RenderContext* pRenderContext, bool deleteScratchData)
+    SDFGrid::UpdateFlags SDFSBS::createResourcesFromPrimitives(RenderContext* pRenderContext, bool deleteScratchData)
     {
+        // Assume AABBs will change.
+        UpdateFlags updateFlags = UpdateFlags::AABBsChanged;
+
         // Chunk width must be equal to 4 for now.
         static const uint32_t kChunkWidth = 4;
 
@@ -161,17 +175,26 @@ namespace Falcor
                 mpCompactifyChunks = ComputePass::create(desc);
             }
 
-            if (!mpPruneEmptyBricks)
+            if (!mpCoarselyPruneEmptyBricks)
             {
                 Program::Desc desc;
-                desc.addShaderLibrary(kPruneEmptyBricksShaderName).csEntry("main").setShaderModel("6_5");
+                desc.addShaderLibrary(kPruneEmptyBricksShaderName).csEntry("coarsePrune").setShaderModel("6_5");
 
                 Program::DefineList defines;
-                defines.add("CHUNK_WIDTH", std::to_string(kChunkWidth));
                 defines.add("BRICK_WIDTH", std::to_string(mBrickWidth));
-                defines.add("COMPRESS_BRICKS", mCompressed ? "1" : "0");
 
-                mpPruneEmptyBricks = ComputePass::create(desc, defines);
+                mpCoarselyPruneEmptyBricks = ComputePass::create(desc, defines);
+            }
+
+            if (!mpFinelyPruneEmptyBricks)
+            {
+                Program::Desc desc;
+                desc.addShaderLibrary(kPruneEmptyBricksShaderName).csEntry("finePrune").setShaderModel("6_5");
+
+                Program::DefineList defines;
+                defines.add("BRICK_WIDTH", std::to_string(mBrickWidth));
+
+                mpFinelyPruneEmptyBricks = ComputePass::create(desc, defines);
             }
 
             if (!mpCreateBricksFromChunks)
@@ -194,13 +217,13 @@ namespace Falcor
         {
             mpCreateRootChunksFromPrimitives["gPrimitives"] = mpPrimitivesBuffer;
             mpSubdivideChunksUsingPrimitives["gPrimitives"] = mpPrimitivesBuffer;
-            mpPruneEmptyBricks["gPrimitives"] = mpPrimitivesBuffer;
+            mpCoarselyPruneEmptyBricks["gPrimitives"] = mpPrimitivesBuffer;
+            mpFinelyPruneEmptyBricks["gPrimitives"] = mpPrimitivesBuffer;
             mpCreateBricksFromChunks["gPrimitives"] = mpPrimitivesBuffer;
         }
 
         uint32_t currentGridWidth = kChunkWidth;
         uint32_t currentSubChunkCount = currentGridWidth * currentGridWidth * currentGridWidth;
-
         if (!mpSubChunkValidityBuffer || mpSubChunkValidityBuffer->getSize() < currentSubChunkCount * sizeof(uint32_t))
         {
             mpSubChunkValidityBuffer = Buffer::create(currentSubChunkCount * sizeof(uint32_t));
@@ -287,6 +310,7 @@ namespace Falcor
                 if (!mpSubChunkValidityBuffer || mpSubChunkValidityBuffer->getSize() < currentSubChunkCount * sizeof(uint32_t))
                 {
                     mpSubChunkValidityBuffer = Buffer::create(currentSubChunkCount * sizeof(uint32_t));
+                    mpSubChunkValidityBuffer->setName("SDFSBS::subChunkValidityBuffer");
                 }
                 else
                 {
@@ -296,6 +320,7 @@ namespace Falcor
                 if (!mpSubChunkCoordsBuffer || mpSubChunkCoordsBuffer->getElementCount() < currentSubChunkCount * sizeof(uint3))
                 {
                     mpSubChunkCoordsBuffer = Buffer::create(currentSubChunkCount * sizeof(uint3));
+                    mpSubChunkCoordsBuffer->setName("SDFSBS::subChunkCoordsBuffer");
                 }
 
                 cb["gGridWidth"] = currentGridWidth;
@@ -317,16 +342,16 @@ namespace Falcor
                 mpChunkIndirectionBuffer = Buffer::create(mpSubChunkValidityBuffer->getSize());
             }
 
-            uint32_t finalChunkCount;
             // Execute prefix sum over validity buffer to set up indirection buffer and acquire total chunk count.
             {
                 pRenderContext->copyBufferRegion(mpChunkIndirectionBuffer.get(), 0, mpSubChunkValidityBuffer.get(), 0, currentSubChunkCount * sizeof(uint32_t));
-                mpPrefixSumPass->execute(pRenderContext, mpChunkIndirectionBuffer, currentSubChunkCount, &finalChunkCount, mpSubdivisionArgBuffer);
+                mpPrefixSumPass->execute(pRenderContext, mpChunkIndirectionBuffer, currentSubChunkCount, &mBrickCount, mpSubdivisionArgBuffer);
             }
 
-            if (!mpChunkCoordsBuffer || mpChunkCoordsBuffer->getSize() < finalChunkCount * sizeof(uint3))
+            if (!mpChunkCoordsBuffer || mpChunkCoordsBuffer->getSize() < mBrickCount * sizeof(uint3))
             {
-                mpChunkCoordsBuffer = Buffer::create(finalChunkCount * sizeof(uint3));
+                mpChunkCoordsBuffer = Buffer::create(mBrickCount * sizeof(uint3));
+                mpChunkCoordsBuffer->setName("SDFSBS::chunkCoordsBuffer");
             }
 
             // Compactify the chunk coords, removing invalid chunks.
@@ -340,46 +365,91 @@ namespace Falcor
                 mpCompactifyChunks->execute(pRenderContext, currentSubChunkCount, 1);
             }
 
-            // Prune empty bricks.
+            // Coarsely prune empty bricks.
+            if (kEnableCoarseBrickPruning)
             {
-                pRenderContext->clearUAV(mpSubChunkValidityBuffer->getUAV().get(), uint4(0));
-                pRenderContext->copyBufferRegion(mpSubChunkCoordsBuffer.get(), 0, mpChunkCoordsBuffer.get(), 0, finalChunkCount * sizeof(uint3));
+                uint32_t preCoarsePruningBrickCount = mBrickCount;
 
-                auto cb = mpPruneEmptyBricks["CB"];
-                cb["gPrimitiveCount"] = primitiveCount;
-                cb["gGridWidth"] = mGridWidth;
+                {
+                    pRenderContext->clearUAV(mpSubChunkValidityBuffer->getUAV().get(), uint4(0));
+                    pRenderContext->copyBufferRegion(mpSubChunkCoordsBuffer.get(), 0, mpChunkCoordsBuffer.get(), 0, preCoarsePruningBrickCount * sizeof(uint3));
 
-                mpPruneEmptyBricks["gChunkCoords"] = mpSubChunkCoordsBuffer;
-                mpPruneEmptyBricks["gChunkValidity"] = mpSubChunkValidityBuffer;
-                mpPruneEmptyBricks->executeIndirect(pRenderContext, mpSubdivisionArgBuffer.get());
+                    auto cb = mpCoarselyPruneEmptyBricks["CB"];
+                    cb["gPrimitiveCount"] = primitiveCount;
+                    cb["gGridWidth"] = mGridWidth;
+                    cb["gBrickCount"] = preCoarsePruningBrickCount;
+
+                    mpCoarselyPruneEmptyBricks["gChunkCoords"] = mpSubChunkCoordsBuffer;
+                    mpCoarselyPruneEmptyBricks["gChunkValidity"] = mpSubChunkValidityBuffer;
+                    mpCoarselyPruneEmptyBricks->execute(pRenderContext, preCoarsePruningBrickCount, 1);
+                }
+
+                // Execute another prefix sum over validity buffer to acquire coarsely pruned brick count.
+                {
+                    pRenderContext->copyBufferRegion(mpChunkIndirectionBuffer.get(), 0, mpSubChunkValidityBuffer.get(), 0, preCoarsePruningBrickCount * sizeof(uint32_t));
+                    mpPrefixSumPass->execute(pRenderContext, mpChunkIndirectionBuffer, preCoarsePruningBrickCount, &mBrickCount, mpSubdivisionArgBuffer);
+                }
+
+                // Compactify the brick coords, removing coarsely pruned bricks.
+                {
+                    mpCompactifyChunks["gChunkIndirection"] = mpChunkIndirectionBuffer;
+                    mpCompactifyChunks["gChunkValidity"] = mpSubChunkValidityBuffer;
+                    mpCompactifyChunks["gChunkCoords"] = mpSubChunkCoordsBuffer;
+                    mpCompactifyChunks["gCompactedChunkCoords"] = mpChunkCoordsBuffer;
+                    mpCompactifyChunks["CB"]["gChunkCount"] = preCoarsePruningBrickCount;
+
+                    mpCompactifyChunks->execute(pRenderContext, preCoarsePruningBrickCount, 1);
+                }
             }
 
-            // Execute another prefix sum over validity buffer to acquire pruned brick count.
+            // Finely prune empty bricks.
+            if (kEnableFineBrickPruning)
             {
-                pRenderContext->copyBufferRegion(mpChunkIndirectionBuffer.get(), 0, mpSubChunkValidityBuffer.get(), 0, finalChunkCount * sizeof(uint32_t));
-                mpPrefixSumPass->execute(pRenderContext, mpChunkIndirectionBuffer, finalChunkCount, &mBrickCount);
-            }
+                uint32_t preFinePruningBrickCount = mBrickCount;
 
-            // Compactify the brick coords, removing pruned bricks.
-            {
-                mpCompactifyChunks["gChunkIndirection"] = mpChunkIndirectionBuffer;
-                mpCompactifyChunks["gChunkValidity"] = mpSubChunkValidityBuffer;
-                mpCompactifyChunks["gChunkCoords"] = mpSubChunkCoordsBuffer;
-                mpCompactifyChunks["gCompactedChunkCoords"] = mpChunkCoordsBuffer;
-                mpCompactifyChunks["CB"]["gChunkCount"] = finalChunkCount;
+                {
+                    pRenderContext->clearUAV(mpSubChunkValidityBuffer->getUAV().get(), uint4(0));
+                    pRenderContext->copyBufferRegion(mpSubChunkCoordsBuffer.get(), 0, mpChunkCoordsBuffer.get(), 0, preFinePruningBrickCount * sizeof(uint3));
 
-                mpCompactifyChunks->execute(pRenderContext, finalChunkCount, 1);
+                    auto cb = mpFinelyPruneEmptyBricks["CB"];
+                    cb["gPrimitiveCount"] = primitiveCount;
+                    cb["gGridWidth"] = mGridWidth;
+                    cb["gBrickCount"] = preFinePruningBrickCount;
+
+                    mpFinelyPruneEmptyBricks["gChunkCoords"] = mpSubChunkCoordsBuffer;
+                    mpFinelyPruneEmptyBricks["gChunkValidity"] = mpSubChunkValidityBuffer;
+                    mpFinelyPruneEmptyBricks->executeIndirect(pRenderContext, mpSubdivisionArgBuffer.get());
+                }
+
+                // Execute another prefix sum over validity buffer to acquire finely pruned brick count.
+                {
+                    pRenderContext->copyBufferRegion(mpChunkIndirectionBuffer.get(), 0, mpSubChunkValidityBuffer.get(), 0, preFinePruningBrickCount * sizeof(uint32_t));
+                    mpPrefixSumPass->execute(pRenderContext, mpChunkIndirectionBuffer, preFinePruningBrickCount, &mBrickCount);
+                }
+
+                // Compactify the brick coords, removing finely pruned bricks.
+                {
+                    mpCompactifyChunks["gChunkIndirection"] = mpChunkIndirectionBuffer;
+                    mpCompactifyChunks["gChunkValidity"] = mpSubChunkValidityBuffer;
+                    mpCompactifyChunks["gChunkCoords"] = mpSubChunkCoordsBuffer;
+                    mpCompactifyChunks["gCompactedChunkCoords"] = mpChunkCoordsBuffer;
+                    mpCompactifyChunks["CB"]["gChunkCount"] = preFinePruningBrickCount;
+
+                    mpCompactifyChunks->execute(pRenderContext, preFinePruningBrickCount, 1);
+                }
             }
 
             // Allocate AABB buffer, indirection buffer and brick texture.
             if (!mpBrickAABBsBuffer || mpBrickAABBsBuffer->getElementCount() < mBrickCount)
             {
                 mpBrickAABBsBuffer = Buffer::createStructured(sizeof(AABB), mBrickCount, ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+                updateFlags |= UpdateFlags::BuffersReallocated;
             }
 
             if (!mpIndirectionTexture || mpIndirectionTexture->getWidth() < mVirtualBricksPerAxis)
             {
                 mpIndirectionTexture = Texture::create3D(mVirtualBricksPerAxis, mVirtualBricksPerAxis, mVirtualBricksPerAxis, ResourceFormat::R32Uint, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+                updateFlags |= UpdateFlags::BuffersReallocated;
             }
 
             pRenderContext->clearUAV(mpIndirectionTexture->getUAV().get(), uint4(std::numeric_limits<uint32_t>::max()));
@@ -392,6 +462,7 @@ namespace Falcor
             if (!mpBrickTexture || mBricksPerAxis.x < bricksAlongX || mBricksPerAxis.y < bricksAlongY)
             {
                 mBricksPerAxis = uint2(bricksAlongX, bricksAlongY);
+                updateFlags |= UpdateFlags::BuffersReallocated;
 
                 uint32_t textureWidth = brickWidthInValues * brickWidthInValues * bricksAlongX;
                 uint32_t textureHeight = brickWidthInValues * bricksAlongY;
@@ -435,7 +506,8 @@ namespace Falcor
             mpCreateRootChunksFromPrimitives.reset();
             mpSubdivideChunksUsingPrimitives.reset();
             mpCompactifyChunks.reset();
-            mpPruneEmptyBricks.reset();
+            mpCoarselyPruneEmptyBricks.reset();
+            mpFinelyPruneEmptyBricks.reset();
             mpCreateBricksFromChunks.reset();
 
             mpChunkIndirectionBuffer.reset();
@@ -444,6 +516,9 @@ namespace Falcor
             mpSubChunkCoordsBuffer.reset();
             mpSubdivisionArgBuffer.reset();
         }
+
+        mPrimitivesDirty = false;
+        return updateFlags;
     }
 
     void SDFSBS::createResourcesFromValues(RenderContext* pRenderContext, bool deleteScratchData)
@@ -601,8 +676,8 @@ namespace Falcor
             mpCreateBricksFromValuesPass["CB"]["gVirtualGridWidth"] = mGridWidth;
             mpCreateBricksFromValuesPass["CB"]["gVirtualBrickCount"] = virtualBrickCount;
             mpCreateBricksFromValuesPass["CB"]["gVirtualBricksPerAxis"] = mVirtualBricksPerAxis;
-            mpCreateBricksFromValuesPass["CB"]["gBrickWidthInVoxels"] = mBrickWidth;
             mpCreateBricksFromValuesPass["CB"]["gBrickCount"] = mBrickCount;
+            mpCreateBricksFromValuesPass["CB"]["gBrickWidthInVoxels"] = mBrickWidth;
             mpCreateBricksFromValuesPass["CB"]["gBricksPerAxis"] = mBricksPerAxis;
             mpCreateBricksFromValuesPass["gSDFGrid"] = mpSDFGridTexture;
             mpCreateBricksFromValuesPass["gIndirectionBuffer"] = mpIndirectionBuffer;

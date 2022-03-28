@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -46,9 +46,9 @@ namespace Falcor
         pVars->prepareDescriptorSets(this);
 
         auto computeEncoder = mpLowLevelData->getApiData()->getComputeCommandEncoder();
-        auto rootObject = computeEncoder->bindPipeline(pState->getCSO(pVars)->getApiHandle());
-        rootObject->copyFrom(pVars->getShaderObject(), gpDevice->getCurrentTransientResourceHeap());
+        FALCOR_GFX_CALL(computeEncoder->bindPipelineWithRootObject(pState->getCSO(pVars)->getApiHandle(), pVars->getShaderObject()));
         computeEncoder->dispatchCompute((int)dispatchSize.x, (int)dispatchSize.y, (int)dispatchSize.z);
+        mCommandsPending = true;
     }
 
     void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const float4& value)
@@ -59,6 +59,7 @@ namespace Falcor
         gfx::ClearValue clearValue = { };
         memcpy(clearValue.color.floatValues, &value, sizeof(float) * 4);
         resourceEncoder->clearResourceView(pUav->getApiHandle(), &clearValue, gfx::ClearResourceViewFlags::FloatClearValues);
+        mCommandsPending = true;
     }
 
     void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const uint4& value)
@@ -69,6 +70,7 @@ namespace Falcor
         gfx::ClearValue clearValue = { };
         memcpy(clearValue.color.uintValues, &value, sizeof(uint32_t) * 4);
         resourceEncoder->clearResourceView(pUav->getApiHandle(), &clearValue, gfx::ClearResourceViewFlags::None);
+        mCommandsPending = true;
     }
 
     void ComputeContext::clearUAVCounter(const Buffer::SharedPtr& pBuffer, uint32_t value)
@@ -81,17 +83,18 @@ namespace Falcor
             gfx::ClearValue clearValue = { };
             clearValue.color.uintValues[0] = clearValue.color.uintValues[1] = clearValue.color.uintValues[2] = clearValue.color.uintValues[3] = value;
             resourceEncoder->clearResourceView(pBuffer->getUAVCounter()->getUAV()->getApiHandle(), &clearValue, gfx::ClearResourceViewFlags::None);
+            mCommandsPending = true;
         }
     }
 
     void ComputeContext::dispatchIndirect(ComputeState* pState, ComputeVars* pVars, const Buffer* pArgBuffer, uint64_t argBufferOffset)
     {
-        resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
         pVars->prepareDescriptorSets(this);
+        resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
 
         auto computeEncoder = mpLowLevelData->getApiData()->getComputeCommandEncoder();
-        auto rootObject = computeEncoder->bindPipeline(pState->getCSO(pVars)->getApiHandle());
-        rootObject->copyFrom(pVars->getShaderObject(), gpDevice->getCurrentTransientResourceHeap());
+        FALCOR_GFX_CALL(computeEncoder->bindPipelineWithRootObject(pState->getCSO(pVars)->getApiHandle(), pVars->getShaderObject()));
         computeEncoder->dispatchComputeIndirect(static_cast<gfx::IBufferResource*>(pArgBuffer->getApiHandle().get()), argBufferOffset);
+        mCommandsPending = true;
     }
 }

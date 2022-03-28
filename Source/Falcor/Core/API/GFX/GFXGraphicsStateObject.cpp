@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -226,7 +226,8 @@ namespace Falcor
         gfx::GraphicsPipelineStateDesc desc = {};
         // Set blend state.
         auto blendState = mDesc.getBlendState();
-        std::vector<gfx::TargetBlendDesc> targetBlendDescs(blendState->getRtCount());
+        FALCOR_ASSERT(blendState->getRtCount() <= gfx::kMaxRenderTargetCount);
+        auto& targetBlendDescs = desc.blend.targets;
         {
             desc.blend.targetCount = blendState->getRtCount();
             for (gfx::UInt i = 0; i < desc.blend.targetCount; ++i)
@@ -249,7 +250,6 @@ namespace Falcor
                 if (rtDesc.writeMask.writeGreen) gfxRtDesc.writeMask |= gfx::RenderTargetWriteMask::EnableGreen;
                 if (rtDesc.writeMask.writeRed) gfxRtDesc.writeMask |= gfx::RenderTargetWriteMask::EnableRed;
             }
-            desc.blend.targets = targetBlendDescs.data();
         }
 
         // Set depth stencil state.
@@ -321,7 +321,7 @@ namespace Falcor
                 inputLayoutDesc.inputElements = inputElements.data();
                 inputLayoutDesc.vertexStreamCount = vertexStreams.size();
                 inputLayoutDesc.vertexStreams = vertexStreams.data();
-                gfx_call(gpDevice->getApiHandle()->createInputLayout(inputLayoutDesc, mpGFXInputLayout.writeRef()));
+                FALCOR_GFX_CALL(gpDevice->getApiHandle()->createInputLayout(inputLayoutDesc, mpGFXInputLayout.writeRef()));
             }
             desc.inputLayout = mpGFXInputLayout;
         }
@@ -348,7 +348,7 @@ namespace Falcor
                 }
             }
             gfxFbDesc.renderTargets = attachments.data();
-            gfx_call(gpDevice->getApiHandle()->createFramebufferLayout(gfxFbDesc, mpGFXFramebufferLayout.writeRef()));
+            FALCOR_GFX_CALL(gpDevice->getApiHandle()->createFramebufferLayout(gfxFbDesc, mpGFXFramebufferLayout.writeRef()));
             desc.framebufferLayout = mpGFXFramebufferLayout;
         }
 
@@ -377,12 +377,12 @@ namespace Falcor
                 colorAccess.storeOp = gfx::IRenderPassLayout::AttachmentStoreOp::Store;
             }
             renderPassDesc.renderTargetAccess = colorAccesses.data();
-            gfx_call(gpDevice->getApiHandle()->createRenderPassLayout(renderPassDesc, mpGFXRenderPassLayout.writeRef()));
+            FALCOR_GFX_CALL(gpDevice->getApiHandle()->createRenderPassLayout(renderPassDesc, mpGFXRenderPassLayout.writeRef()));
         }
 
         desc.primitiveType = getGFXPrimitiveType(mDesc.getPrimitiveType());
         desc.program = mDesc.getProgramKernels()->getApiHandle().get();
 
-        gfx_call(gpDevice->getApiHandle()->createGraphicsPipelineState(desc, mApiHandle.writeRef()));
+        FALCOR_GFX_CALL(gpDevice->getApiHandle()->createGraphicsPipelineState(desc, mApiHandle.writeRef()));
     }
 }

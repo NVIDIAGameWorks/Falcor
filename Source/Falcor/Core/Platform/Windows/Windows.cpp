@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -184,25 +184,6 @@ namespace Falcor
         return result;
     }
 
-    bool doesFileExist(const std::string& filename)
-    {
-        DWORD attr = GetFileAttributesA(filename.c_str());
-        return (attr != INVALID_FILE_ATTRIBUTES);
-    }
-
-    bool isDirectoryExists(const std::string& filename)
-    {
-        DWORD attr = GetFileAttributesA(filename.c_str());
-        return ((attr != INVALID_FILE_ATTRIBUTES) && (attr & FILE_ATTRIBUTE_DIRECTORY));
-    }
-
-    bool createDirectory(const std::string& path)
-    {
-        DWORD res = CreateDirectoryA(path.c_str(), NULL);
-
-        return res == TRUE;
-    }
-
     // As defined in ntifs.h
     typedef struct _REPARSE_DATA_BUFFER {
         ULONG  ReparseTag;
@@ -251,17 +232,17 @@ namespace Falcor
     #define FILE_OPEN_FOR_BACKUP_INTENT             0x00004000
     #define FILE_NO_COMPRESSION                     0x00008000
 
-    bool createJunction(const std::string& link, const std::string& target)
+    bool createJunction(const std::filesystem::path& link, const std::filesystem::path& target)
     {
         // Get absolute target.
-        CHAR absoluteTarget[MAX_PATH];
-        if (GetFullPathNameA(target.c_str(), MAX_PATH, absoluteTarget, NULL) == 0) return false;
+        WCHAR absoluteTarget[MAX_PATH];
+        if (GetFullPathNameW(target.native().c_str(), MAX_PATH, absoluteTarget, NULL) == 0) return false;
 
         // Create junction as normal directory.
-        if (!CreateDirectoryA(link.c_str(), NULL)) return false;
+        if (!CreateDirectoryW(link.native().c_str(), NULL)) return false;
 
         // Open file handle to junction directory.
-        HANDLE handle = CreateFileA(link.c_str(), GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS, NULL);
+        HANDLE handle = CreateFileW(link.native().c_str(), GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS, NULL);
         if (handle == INVALID_HANDLE_VALUE) return false;
 
         // Allocate reparse data.
@@ -269,8 +250,8 @@ namespace Falcor
         REPARSE_DATA_BUFFER& reparseData = *reinterpret_cast<REPARSE_DATA_BUFFER*>(tmp);
 
         // Setup reparse data.
-        std::wstring substituteName = string_2_wstring(std::string("\\??\\") + absoluteTarget);
-        std::wstring printName = string_2_wstring(absoluteTarget);
+        std::wstring substituteName = std::wstring(L"\\??\\") + absoluteTarget;
+        std::wstring printName = absoluteTarget;
 
         reparseData.ReparseTag = IO_REPARSE_TAG_MOUNT_POINT;
         reparseData.Reserved = 0;
@@ -296,10 +277,10 @@ namespace Falcor
         return success;
     }
 
-    bool deleteJunction(const std::string& link)
+    bool deleteJunction(const std::filesystem::path& link)
     {
         // Open file handle to junction directory.
-        HANDLE handle = CreateFileA(link.c_str(), GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_DELETE_ON_CLOSE | FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS, NULL);
+        HANDLE handle = CreateFileW(link.native().c_str(), GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_DELETE_ON_CLOSE | FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS, NULL);
         if (handle == INVALID_HANDLE_VALUE) return false;
 
         REPARSE_GUID_DATA_BUFFER rgdb = {0};
@@ -314,59 +295,34 @@ namespace Falcor
         return success;
     }
 
-    std::string getTempFilename()
+    const std::filesystem::path& getExecutablePath()
     {
-        char* error = nullptr;
-        return std::tmpnam(error);
-    }
-
-    const std::string& getExecutableDirectory()
-    {
-        static std::string folder;
-        if (folder.size() == 0)
+        static std::filesystem::path path;
+        if (path.empty())
         {
-            CHAR exeName[MAX_PATH];
-            GetModuleFileNameA(nullptr, exeName, ARRAYSIZE(exeName));
-            const std::string tmp(exeName);
-
-            auto last = tmp.find_last_of("/\\");
-            folder = tmp.substr(0, last);
+            CHAR pathStr[1024];
+            if (GetModuleFileNameA(nullptr, pathStr, ARRAYSIZE(pathStr)) == 0)
+            {
+                throw RuntimeError("Failed to get the executable path.");
+            }
+            path = pathStr;
         }
-        return folder;
+        return path;
     }
 
-    const std::string getWorkingDirectory()
+    const std::filesystem::path& getAppDataDirectory()
     {
-        CHAR curDir[MAX_PATH];
-        GetCurrentDirectoryA(MAX_PATH, curDir);
-        return std::string(curDir);
-    }
-
-    const std::string getAppDataDirectory()
-    {
-        PWSTR wpath;
-        HRESULT result = SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, NULL, &wpath);
-        if (SUCCEEDED(result))
+        static std::filesystem::path path;
+        if (path.empty())
         {
-            _bstr_t path(wpath);
-            return std::string((char*) path);
+            PWSTR pathStr;
+            if (!SUCCEEDED(SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, NULL, &pathStr)))
+            {
+                throw RuntimeError("Failed to get the application data directory.");
+            }
+            path = pathStr;
         }
-        return std::string();
-    }
-
-    const std::string& getExecutableName()
-    {
-        static std::string filename;
-        if (filename.size() == 0)
-        {
-            CHAR exeName[MAX_PATH];
-            GetModuleFileNameA(nullptr, exeName, ARRAYSIZE(exeName));
-            const std::string tmp(exeName);
-
-            auto last = tmp.find_last_of("/\\");
-            filename = tmp.substr(last + 1, std::string::npos);
-        }
-        return filename;
+        return path;
     }
 
     bool getEnvironmentVariable(const std::string& varName, std::string& value)
@@ -450,7 +406,7 @@ namespace Falcor
     };
 
     template<typename DialogType>
-    static bool fileDialogCommon(const FileDialogFilterVec& filters, std::string& filename, DWORD options, const CLSID clsid)
+    static bool fileDialogCommon(const FileDialogFilterVec& filters, std::filesystem::path& path, DWORD options, const CLSID clsid)
     {
         FilterSpec fs(filters, typeid(DialogType) == typeid(IFileOpenDialog));
 
@@ -465,11 +421,12 @@ namespace Falcor
             IShellItem* pItem;
             if (pDialog->GetResult(&pItem) == S_OK)
             {
-                PWSTR path;
-                if (pItem->GetDisplayName(SIGDN_FILESYSPATH, &path) == S_OK)
+                PWSTR pathStr;
+                if (pItem->GetDisplayName(SIGDN_FILESYSPATH, &pathStr) == S_OK)
                 {
-                    filename = wstring_2_string(std::wstring(path));
-                    CoTaskMemFree(path);
+                    path = pathStr;
+                    // filename = wstring_2_string(std::wstring(path)); // TODO
+                    CoTaskMemFree(pathStr);
                     return true;
                 }
             }
@@ -478,33 +435,33 @@ namespace Falcor
         return false;
     }
 
-    bool saveFileDialog(const FileDialogFilterVec& filters, std::string& filename)
+    bool saveFileDialog(const FileDialogFilterVec& filters, std::filesystem::path& path)
     {
-        return fileDialogCommon<IFileSaveDialog>(filters, filename, FOS_OVERWRITEPROMPT, CLSID_FileSaveDialog);
+        return fileDialogCommon<IFileSaveDialog>(filters, path, FOS_OVERWRITEPROMPT, CLSID_FileSaveDialog);
     }
 
-    bool openFileDialog(const FileDialogFilterVec& filters, std::string& filename)
+    bool openFileDialog(const FileDialogFilterVec& filters, std::filesystem::path& path)
     {
-        return fileDialogCommon<IFileOpenDialog>(filters, filename, FOS_FILEMUSTEXIST, CLSID_FileOpenDialog);
+        return fileDialogCommon<IFileOpenDialog>(filters, path, FOS_FILEMUSTEXIST, CLSID_FileOpenDialog);
     };
 
-    bool chooseFolderDialog(std::string& folder)
+    bool chooseFolderDialog(std::filesystem::path& path)
     {
-        return fileDialogCommon<IFileOpenDialog>({}, folder, FOS_PICKFOLDERS | FOS_PATHMUSTEXIST, CLSID_FileOpenDialog);
+        return fileDialogCommon<IFileOpenDialog>({}, path, FOS_PICKFOLDERS | FOS_PATHMUSTEXIST, CLSID_FileOpenDialog);
     }
 
-    void setWindowIcon(const std::string& iconFile, WindowHandle windowHandle)
+    void setWindowIcon(const std::filesystem::path& iconPath, WindowHandle windowHandle)
     {
-        std::string fullpath;
-        if (findFileInDataDirectories(iconFile, fullpath))
+        std::filesystem::path fullPath;
+        if (findFileInDataDirectories(iconPath, fullPath))
         {
-            HANDLE hIcon = LoadImageA(GetModuleHandle(NULL), fullpath.c_str(), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE | LR_LOADFROMFILE);
+            HANDLE hIcon = LoadImageW(GetModuleHandleW(NULL), fullPath.c_str(), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE | LR_LOADFROMFILE);
             HWND hWnd = windowHandle ? windowHandle : GetActiveWindow();
             SendMessage(hWnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
         }
         else
         {
-            logWarning("Error when loading icon. Can't find the file '{}'.", iconFile);
+            logWarning("Error when loading icon. Can't find the file '{}'.", iconPath);
         }
     }
 
@@ -601,14 +558,14 @@ namespace Falcor
         CloseHandle((HANDLE)processID);
     }
 
-    static std::unordered_map<std::string, std::pair<std::thread, bool> > fileThreads;
+    static std::unordered_map<std::wstring, std::pair<std::thread, bool> > fileThreads;
 
-    static void checkFileModifiedStatus(const std::string& filePath, const std::function<void()>& callback)
+    static void checkFileModifiedStatus(const std::filesystem::path& path, const std::function<void()>& callback)
     {
-        std::string fileName = getFilenameFromPath(filePath);
-        std::string dir = getDirectoryFromFile(filePath);
+        auto filename = path.filename();
+        auto dir = path.parent_path();
 
-        HANDLE hFile = CreateFileA(dir.c_str(), GENERIC_READ | FILE_LIST_DIRECTORY,
+        HANDLE hFile = CreateFileW(dir.native().c_str(), GENERIC_READ | FILE_LIST_DIRECTORY,
             FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, NULL);
         FALCOR_ASSERT(hFile != INVALID_HANDLE_VALUE);
 
@@ -625,18 +582,18 @@ namespace Falcor
             if (!ReadDirectoryChangesW(hFile, buffer.data(), static_cast<uint32_t>(sizeof(uint32_t) * buffer.size()), FALSE,
                 FILE_NOTIFY_CHANGE_LAST_WRITE, 0, &overlapped, nullptr))
             {
-                logError("Failed to read directory changes for shared file '{}'. Aborting monitoring.", filePath);
+                logError("Failed to read directory changes for shared file '{}'. Aborting monitoring.", path);
                 CloseHandle(hFile);
             }
 
             if (!GetOverlappedResult(hFile, &overlapped, (LPDWORD)&bytesReturned, true))
             {
-                logError("Failed to read directory changes for shared file '{}'. Aborting monitoring.", filePath);
+                logError("Failed to read directory changes for shared file '{}'. Aborting monitoring.", path);
                 CloseHandle(hFile);
             }
 
             // don't check for another overlapped result if main thread is closed
-            if (!fileThreads.at(filePath).second)
+            if (!fileThreads.at(path.native()).second)
             {
                 break;
             }
@@ -646,11 +603,9 @@ namespace Falcor
             while (offset < buffer.size())
             {
                 _FILE_NOTIFY_INFORMATION* pNotifyInformation = reinterpret_cast<_FILE_NOTIFY_INFORMATION*>(buffer.data());
-                std::string currentFileName;
-                currentFileName.resize(pNotifyInformation->FileNameLength / 2);
-                wcstombs(&currentFileName.front(), pNotifyInformation->FileName, pNotifyInformation->FileNameLength);
+                std::wstring currentFilename(pNotifyInformation->FileName, pNotifyInformation->FileName + pNotifyInformation->FileNameLength);
 
-                if (currentFileName == fileName && pNotifyInformation->Action == FILE_ACTION_MODIFIED)
+                if (currentFilename == filename && pNotifyInformation->Action == FILE_ACTION_MODIFIED)
                 {
                     callback();
                     break;
@@ -664,9 +619,9 @@ namespace Falcor
         CloseHandle(hFile);
     }
 
-    void monitorFileUpdates(const std::string& filePath, const std::function<void()>& callback)
+    void monitorFileUpdates(const std::filesystem::path& path, const std::function<void()>& callback)
     {
-        const auto& fileThreadsIt = fileThreads.find(filePath);
+        const auto& fileThreadsIt = fileThreads.find(path.native());
 
         // only have one thread waiting on file write
         if(fileThreadsIt != fileThreads.end())
@@ -677,13 +632,14 @@ namespace Falcor
             }
         }
 
-        fileThreads[filePath].first = std::thread(checkFileModifiedStatus, filePath, callback);
-        fileThreads[filePath].second = true;
+        auto pathStr = path.native();
+        fileThreads[pathStr].first = std::thread(checkFileModifiedStatus, path, callback);
+        fileThreads[pathStr].second = true;
     }
 
-    void closeSharedFile(const std::string& filePath)
+    void closeSharedFile(const std::filesystem::path& path)
     {
-        const auto& fileThreadsIt = fileThreads.find(filePath);
+        const auto& fileThreadsIt = fileThreads.find(path.native());
 
         // only have one thread waiting on file write
         if (fileThreadsIt != fileThreads.end())
@@ -691,32 +647,6 @@ namespace Falcor
             fileThreadsIt->second.second = false;
 
             fileThreadsIt->second.first.detach();
-        }
-    }
-
-    void enumerateFiles(std::string searchString, std::vector<std::string>& filenames)
-    {
-        WIN32_FIND_DATAA ffd;
-        HANDLE hFind = INVALID_HANDLE_VALUE;
-
-        char szFile[512];
-        strcpy_s(szFile, searchString.length() + 1, searchString.c_str());
-
-        hFind = FindFirstFileA(szFile, &ffd);
-
-        if (INVALID_HANDLE_VALUE == hFind)
-        {
-            return;
-        }
-        else
-        {
-            do
-            {
-                if ((ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
-                {
-                    filenames.push_back(std::string(ffd.cFileName));
-                }
-            } while (FindNextFileA(hFind, &ffd) != 0);
         }
     }
 
@@ -761,12 +691,12 @@ namespace Falcor
         }
     }
 
-    time_t getFileModifiedTime(const std::string& filename)
+    time_t getFileModifiedTime(const std::filesystem::path& path)
     {
         struct stat s;
-        if (stat(filename.c_str(), &s) != 0)
+        if (stat(path.string().c_str(), &s) != 0)
         {
-            throw RuntimeError("Can't get file time for '{}'.", filename);
+            throw RuntimeError("Can't get file time for '{}'.", path);
         }
 
         return s.st_mtime;
@@ -822,23 +752,23 @@ namespace Falcor
     }
 
 
-    DllHandle loadDll(const std::string& libPath)
+    SharedLibraryHandle loadSharedLibrary(const std::filesystem::path& path)
     {
-        return LoadLibraryA(libPath.c_str());
+        return LoadLibraryW(path.c_str());
     }
 
     /** Release a shared-library
     */
-    void releaseDll(DllHandle dll)
+    void releaseSharedLibrary(SharedLibraryHandle library)
     {
-        FreeLibrary(dll);
+        FreeLibrary(library);
     }
 
     /** Get a function pointer from a library
     */
-    void* getDllProcAddress(DllHandle dll, const std::string& funcName)
+    void* getProcAddress(SharedLibraryHandle library, const std::string& funcName)
     {
-        return GetProcAddress(dll, funcName.c_str());
+        return GetProcAddress(library, funcName.c_str());
     }
 
     void postQuitMessage(int32_t exitCode)

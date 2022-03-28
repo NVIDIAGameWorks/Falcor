@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,10 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "CpuTimer.h"
 #include <string>
 #include <vector>
 #include <utility>
-#include "CpuTimer.h"
 
 namespace Falcor
 {
@@ -44,6 +44,10 @@ namespace Falcor
         /** Resets the recorded measurements and the internal timer.
         */
         void reset();
+
+        /** Resets the the internal timer but not the recoreded measurements.
+        */
+        void resetTimer();
 
         /** Prints the recorded measurements to the logfile.
         */
@@ -63,5 +67,6 @@ namespace Falcor
     private:
         CpuTimer::TimePoint mLastMeasureTime;
         std::vector<std::pair<std::string, double>> mMeasurements;
+        double mTotal = 0.0;
     };
 }

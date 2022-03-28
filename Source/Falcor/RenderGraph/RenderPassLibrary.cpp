@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -77,7 +77,7 @@ namespace Falcor
         return *this;
     }
 
-    void RenderPassLibrary::registerInternal(const RenderPass::Info& info, CreateFunc func, DllHandle module)
+    void RenderPassLibrary::registerInternal(const RenderPass::Info& info, CreateFunc func, SharedLibraryHandle library)
     {
         if (mPasses.find(info.type) != mPasses.end())
         {
@@ -85,7 +85,7 @@ namespace Falcor
         }
         else
         {
-            mPasses[info.type] = ExtendedDesc(info, func, module);
+            mPasses[info.type] = ExtendedDesc(info, func, library);
         }
     }
 
@@ -123,76 +123,77 @@ namespace Falcor
         return v;
     }
 
-    RenderPassLibrary::StrVec RenderPassLibrary::enumerateLibraries()
+    std::vector<std::string> RenderPassLibrary::enumerateLibraries()
     {
-        StrVec libNames;
+        std::vector<std::string> result;
         for (const auto& lib : spInstance->mLibs)
         {
-            libNames.push_back(lib.first);
+            result.push_back(lib.first);
         }
-        return libNames;
+        return result;
     }
 
-    void copyDllFile(const std::string& fullpath)
+    void copySharedLibrary(const std::filesystem::path& srcPath, const std::filesystem::path& dstPath)
     {
-        std::ifstream src(fullpath, std::ios::binary);
+        std::ifstream src(srcPath, std::ios::binary);
         if (src.fail())
         {
-            reportError("Failed to open '" + fullpath + "' for reading.");
+            reportError(fmt::format("Failed to open '{}' for reading.", srcPath));
             return;
         }
 
-        std::ofstream dst(fullpath + kDllSuffix, std::ios::binary);
+        std::ofstream dst(dstPath, std::ios::binary);
         if (dst.fail())
         {
-            logWarning("Failed to open '{}' for writing. It is likely in use by another Falcor instance.", fullpath + kDllSuffix);
+            logWarning("Failed to open '{}' for writing. It is likely in use by another Falcor instance.", dstPath);
             return;
         }
 
         dst << src.rdbuf();
         if (dst.fail())
         {
-            reportError("An error occurred while copying '" + fullpath + "'.");
+            reportError(fmt::format("An error occurred while copying '{}' to '{}'.", srcPath, dstPath));
         }
     }
 
     void RenderPassLibrary::loadLibrary(const std::string& filename)
     {
-        std::string fullpath = getExecutableDirectory() + "/" + getFilenameFromPath(filename);
+        auto path = getExecutableDirectory() / filename;
+        auto copyPath = getExecutableDirectory() / (filename + kDllSuffix);
 
-        if (doesFileExist(fullpath) == false)
+        if (!std::filesystem::exists(path))
         {
-            logWarning("Can't load render-pass library '{}'. File not found.", fullpath);
+            logWarning("Can't load render-pass library '{}'. File not found.", path);
             return;
         }
 
-        if (mLibs.find(fullpath) != mLibs.end())
+        if (mLibs.find(filename) != mLibs.end())
         {
-            logInfo("Render-pass library '{}' already loaded. Ignoring 'loadLibrary()' call.", fullpath);
+            logInfo("Render-pass library '{}' already loaded. Ignoring 'loadLibrary()' call.", filename);
             return;
         }
 
         // Copy the library to a temp file
-        copyDllFile(fullpath);
+        copySharedLibrary(path, copyPath);
 
-        DllHandle l = loadDll(fullpath + kDllSuffix);
+        SharedLibraryHandle l = loadSharedLibrary(copyPath);
         if (l == nullptr)
         {
-            reportError("Failed to load render-pass library '" + fullpath + "'.");
+            reportError(fmt::format("Failed to load render-pass library '{}'.", filename));
             return;
         }
 
-        mLibs[fullpath] = { l, getFileModifiedTime(fullpath) };
-        auto func = (LibraryFunc)getDllProcAddress(l, "getPasses");
+        mLibs[filename] = { l, getFileModifiedTime(path) };
+        auto func = (LibraryFunc)getProcAddress(l, "getPasses");
 
         // Add the DLL project directory to the search paths
         if (isDevelopmentMode())
         {
-            auto libProjPath = (const char*(*)(void))getDllProcAddress(l, "getProjDir");
+            auto libProjPath = (const char*(*)(void))getProcAddress(l, "getProjDir");
             if (libProjPath)
             {
-                const char* projDir = libProjPath();
-                addDataDirectory(std::string(projDir) + "/Data/");
+                std::filesystem::path path(libProjPath());
+                addDataDirectory(path / "Data");
             }
         }
 
@@ -212,49 +213,52 @@ namespace Falcor
 
     void RenderPassLibrary::releaseLibrary(const std::string& filename)
     {
-        std::string fullpath = getExecutableDirectory() + "/" + getFilenameFromPath(filename);
+        auto path = getExecutableDirectory() / filename;
+        auto copyPath = getExecutableDirectory() / (filename + kDllSuffix);
 
-        auto libIt = mLibs.find(fullpath);
+        auto libIt = mLibs.find(filename);
         if (libIt == mLibs.end())
         {
-            logWarning("Can't unload render-pass library '{}'. The library wasn't loaded.", fullpath);
+            logWarning("Can't unload render-pass library '{}'. The library wasn't loaded.", filename);
             return;
         }
 
         gpDevice->flushAndSync();
 
-        // Delete all the classes that were owned by the module
-        DllHandle module = libIt->second.module;
+        // Delete all the classes that were owned by the library
+        SharedLibraryHandle library = libIt->second.library;
         for (auto it = mPasses.begin(); it != mPasses.end();)
         {
-            if (it->second.module == module) it = mPasses.erase(it);
+            if (it->second.library == library) it = mPasses.erase(it);
             else ++it;
         }
 
         // Remove the DLL project directory to the search paths
         if (isDevelopmentMode())
         {
-            auto libProjPath = (const char*(*)(void))getDllProcAddress(module, "getProjDir");
+            auto libProjPath = (const char*(*)(void))getProcAddress(library, "getProjDir");
             if (libProjPath)
             {
-                const char* projDir = libProjPath();
-                removeDataDirectory(std::string(projDir) + "/Data/");
+                std::filesystem::path path(libProjPath());
+                removeDataDirectory(path / "Data");
             }
         }
 
-        releaseDll(module);
-        std::remove((fullpath + kDllSuffix).c_str());
+        releaseSharedLibrary(library);
+        std::filesystem::remove(copyPath);
         mLibs.erase(libIt);
     }
 
-    void RenderPassLibrary::reloadLibrary(RenderContext* pRenderContext, std::string name)
+    void RenderPassLibrary::reloadLibrary(RenderContext* pRenderContext, const std::string& filename)
     {
         FALCOR_ASSERT(pRenderContext);
 
-        auto lastTime = getFileModifiedTime(name);
-        if ((lastTime == mLibs[name].lastModified) || (lastTime == 0)) return;
+        auto path = getExecutableDirectory() / filename;
 
-        DllHandle module = mLibs[name].module;
+        auto lastTime = getFileModifiedTime(path);
+        if ((lastTime == mLibs[filename].lastModified) || (lastTime == 0)) return;
+
+        SharedLibraryHandle library = mLibs[filename].library;
 
         struct PassesToReplace
         {
@@ -267,7 +271,7 @@ namespace Falcor
 
         for (auto& passDesc : mPasses)
         {
-            if (passDesc.second.module != module) continue;
+            if (passDesc.second.library != library) continue;
 
             // Go over all the graphs and remove this pass
             for (auto& pGraph : gRenderGraphs)
@@ -285,9 +289,9 @@ namespace Falcor
             }
         }
 
-        // OK, we removed all the passes. Reload the library
-        releaseLibrary(name);
-        loadLibrary(name);
+        // OK, we removed all the passes. Reload the library.
+        releaseLibrary(filename);
+        loadLibrary(filename);
 
         // Recreate the passes
         for (auto& r : passesToReplace)

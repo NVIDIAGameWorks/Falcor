@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -257,7 +257,7 @@ float3 evalDirectAnalytic(const ShadingData sd, const IBSDF bsdf, const float3 r
         {
             // Test visibility by tracing a shadow ray.
             bool V = traceShadowRay(rayOrigin, ls.dir, ls.distance);
-            contribution +=  V ? bsdf.eval(sd, ls.dir) * ls.Li * invPdf : float3(0);
+            contribution +=  V ? bsdf.eval(sd, ls.dir, sg) * ls.Li * invPdf : float3(0);
         }
     }
     return contribution;

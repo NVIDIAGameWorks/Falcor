@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -54,7 +54,7 @@ struct ShadingData
     float2  uv;                     ///< Texture mapping coordinates.
     float3  faceN;                  ///< Face normal in world space, always on the front-facing side.
     bool    frontFacing;            ///< True if primitive seen from the front-facing side.
-    float   curveSphereRadius;      ///< Sphere radius for curve hits.
+    float   curveRadius;            ///< Curve cross-sectional radius. Valid only for geometry generated from curves.
 
     // Material data
     MaterialHeader mtl;             ///< Material header data.

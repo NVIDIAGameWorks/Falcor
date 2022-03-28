@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -33,8 +33,8 @@
 #include "Core/API/GpuMemoryHeap.h"
 #include "Core/API/QueryHeap.h"
 
-#ifdef FALCOR_D3D12
-#include "Core/API/D3D12/D3D12DescriptorPool.h"
+#if FALCOR_D3D12_AVAILABLE
+#include "Core/API/Shared/D3D12DescriptorPool.h"
 #endif
 
 namespace Falcor
@@ -88,6 +88,7 @@ namespace Falcor
             ConservativeRasterizationTier2 = 0x40,        // On D3D12, conservative rasterization tier 2 is supported.
             ConservativeRasterizationTier3 = 0x80,        // On D3D12, conservative rasterization tier 3 is supported.
             RasterizerOrderedViews = 0x100,               // On D3D12, rasterizer ordered views (ROVs) are supported.
+            WaveOperations = 0x200,
         };
 
         enum class ShaderModel : uint32_t
@@ -142,9 +143,15 @@ namespace Falcor
         */
         ApiCommandQueueType getApiCommandQueueType(LowLevelContextData::CommandQueueType type) const;
 
-        /** Get the native API handle
+        /** Get the native API handle.
+            For D3D12 backend, this is a ID3D12Device*. For GFX backend, this is ComPtr<gfx::IDevice>.
         */
         const DeviceHandle& getApiHandle() { return mApiHandle; }
+
+        /** Get a D3D12 handle for user code that wants to call D3D12 directly.
+            \return A valid ID3D12Device* value for all backend that are using D3D12, otherwise nullptr.
+        */
+        const D3D12DeviceHandle getD3D12Handle();
 
         /** Present the back-buffer to the window
         */
@@ -174,10 +181,10 @@ namespace Falcor
         */
         std::weak_ptr<QueryHeap> createQueryHeap(QueryHeap::Type type, uint32_t count);
 
-#ifdef FALCOR_D3D12
+#if FALCOR_D3D12_AVAILABLE
         const D3D12DescriptorPool::SharedPtr& getD3D12CpuDescriptorPool() const { return mpD3D12CpuDescPool; }
         const D3D12DescriptorPool::SharedPtr& getD3D12GpuDescriptorPool() const { return mpD3D12GpuDescPool; }
-#endif // FALCOR_D3D12
+#endif // FALCOR_D3D12_AVAILABLE
 
         DeviceApiData* getApiData() const { return mpApiData; }
         const GpuMemoryHeap::SharedPtr& getUploadHeap() const { return mpUploadHeap; }
@@ -227,7 +234,7 @@ namespace Falcor
         Desc mDesc;
         ApiHandle mApiHandle;
         GpuMemoryHeap::SharedPtr mpUploadHeap;
-#ifdef FALCOR_D3D12
+#if FALCOR_D3D12_AVAILABLE
         D3D12DescriptorPool::SharedPtr mpD3D12CpuDescPool;
         D3D12DescriptorPool::SharedPtr mpD3D12GpuDescPool;
 #endif

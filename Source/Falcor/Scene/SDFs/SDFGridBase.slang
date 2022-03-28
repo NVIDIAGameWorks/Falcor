@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -70,6 +70,7 @@ interface ISDFGrid
 struct SDFGridBase
 {
     static const uint kSolverMaxStepCount = SCENE_SDF_SOLVER_MAX_ITERATION_COUNT;
+    static const float kSnormErrorTolerance = 0.6f / 256.0f; // Errors introduced by the 8-bit snorm format used by all SDF grids should be smaller than this, defined by D3D12_FLOAT32_TO_INTEGER_TOLERANCE_IN_ULP / (2^BITS).
 
     uint calculateGridWidthFromLevel(const uint level)
     {

@@ -19,5 +19,6 @@
     <ShaderSource Include="PathTracer.slang" />
     <ShaderSource Include="TracePass.rt.slang" />
     <ShaderSource Include="NRDHelpers.slang" />
+    <ShaderSource Include="PathTracerNRD.slang" />
   </ItemGroup>
 </Project>

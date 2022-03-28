@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -46,26 +46,27 @@ namespace Falcor
         */
         enum class Flags
         {
-            None                        = 0x0,    ///< None
-            DontMergeMaterials          = 0x1,    ///< Don't merge materials that have the same properties. Use this option to preserve the original material names.
-            UseOriginalTangentSpace     = 0x2,    ///< Use the original tangent space that was loaded with the mesh. By default, we will ignore it and use MikkTSpace to generate the tangent space. We will always generate tangent space if it is missing.
-            AssumeLinearSpaceTextures   = 0x4,    ///< By default, textures representing colors (diffuse/specular) are interpreted as sRGB data. Use this flag to force linear space for color textures.
-            DontMergeMeshes             = 0x8,    ///< Preserve the original list of meshes in the scene, don't merge meshes with the same material. This flag only applies to scenes imported by 'AssimpImporter'.
-            UseSpecGlossMaterials       = 0x10,   ///< Set materials to use Spec-Gloss shading model. Otherwise default is Spec-Gloss for OBJ, Metal-Rough for everything else.
-            UseMetalRoughMaterials      = 0x20,   ///< Set materials to use Metal-Rough shading model. Otherwise default is Spec-Gloss for OBJ, Metal-Rough for everything else.
-            NonIndexedVertices          = 0x40,   ///< Convert meshes to use non-indexed vertices. This requires more memory but may increase performance.
-            Force32BitIndices           = 0x80,   ///< Force 32-bit indices for all meshes. By default, 16-bit indices are used for small meshes.
-            RTDontMergeStatic           = 0x100,  ///< For raytracing, don't merge all static non-instanced meshes into single pre-transformed BLAS.
-            RTDontMergeDynamic          = 0x200,  ///< For raytracing, don't merge dynamic non-instanced meshes with identical transforms into single BLAS.
-            RTDontMergeInstanced        = 0x400,  ///< For raytracing, don't merge instanced meshes with identical instances into single BLAS.
-            FlattenStaticMeshInstances  = 0x800,  ///< Flatten static mesh instances by duplicating mesh data and composing transformations. Animated instances are not affected. Can lead to a large increase in memory use.
-            DontOptimizeGraph           = 0x1000, ///< Don't optimize the scene graph to remove unnecessary nodes.
-            DontOptimizeMaterials       = 0x2000, ///< Don't optimize materials by removing constant textures. The optimizations are lossless so should generally be enabled.
-            DontUseDisplacement         = 0x4000, ///< Don't use displacement mapping.
-            UseCompressedHitInfo        = 0x8000, ///< Use compressed hit info (on scenes with triangle meshes only).
+            None                            = 0x0,      ///< None
+            DontMergeMaterials              = 0x1,      ///< Don't merge materials that have the same properties. Use this option to preserve the original material names.
+            UseOriginalTangentSpace         = 0x2,      ///< Use the original tangent space that was loaded with the mesh. By default, we will ignore it and use MikkTSpace to generate the tangent space. We will always generate tangent space if it is missing.
+            AssumeLinearSpaceTextures       = 0x4,      ///< By default, textures representing colors (diffuse/specular) are interpreted as sRGB data. Use this flag to force linear space for color textures.
+            DontMergeMeshes                 = 0x8,      ///< Preserve the original list of meshes in the scene, don't merge meshes with the same material. This flag only applies to scenes imported by 'AssimpImporter'.
+            UseSpecGlossMaterials           = 0x10,     ///< Set materials to use Spec-Gloss shading model. Otherwise default is Spec-Gloss for OBJ, Metal-Rough for everything else.
+            UseMetalRoughMaterials          = 0x20,     ///< Set materials to use Metal-Rough shading model. Otherwise default is Spec-Gloss for OBJ, Metal-Rough for everything else.
+            NonIndexedVertices              = 0x40,     ///< Convert meshes to use non-indexed vertices. This requires more memory but may increase performance.
+            Force32BitIndices               = 0x80,     ///< Force 32-bit indices for all meshes. By default, 16-bit indices are used for small meshes.
+            RTDontMergeStatic               = 0x100,    ///< For raytracing, don't merge all static non-instanced meshes into single pre-transformed BLAS.
+            RTDontMergeDynamic              = 0x200,    ///< For raytracing, don't merge dynamic non-instanced meshes with identical transforms into single BLAS.
+            RTDontMergeInstanced            = 0x400,    ///< For raytracing, don't merge instanced meshes with identical instances into single BLAS.
+            FlattenStaticMeshInstances      = 0x800,    ///< Flatten static mesh instances by duplicating mesh data and composing transformations. Animated instances are not affected. Can lead to a large increase in memory use.
+            DontOptimizeGraph               = 0x1000,   ///< Don't optimize the scene graph to remove unnecessary nodes.
+            DontOptimizeMaterials           = 0x2000,   ///< Don't optimize materials by removing constant textures. The optimizations are lossless so should generally be enabled.
+            DontUseDisplacement             = 0x4000,   ///< Don't use displacement mapping.
+            UseCompressedHitInfo            = 0x8000,   ///< Use compressed hit info (on scenes with triangle meshes only).
+            TessellateCurvesIntoPolyTubes   = 0x10000,  ///< Tessellate curves into poly-tubes (the default is linear swept spheres).
 
-            UseCache                    = 0x10000000, ///< Enable scene caching. This caches the runtime scene representation on disk to reduce load time.
-            RebuildCache                = 0x20000000, ///< Rebuild scene cache.
+            UseCache                        = 0x10000000, ///< Enable scene caching. This caches the runtime scene representation on disk to reduce load time.
+            RebuildCache                    = 0x20000000, ///< Rebuild scene cache.
 
             Default = None
         };
@@ -105,11 +106,13 @@ namespace Falcor
             Attribute<float3> normals;                  ///< Array of vertex normals. This field is required.
             Attribute<float4> tangents;                 ///< Array of vertex tangents. This field is optional. If set to nullptr, or if BuildFlags::UseOriginalTangentSpace is not set, the tangent space will be generated using MikkTSpace.
             Attribute<float2> texCrds;                  ///< Array of vertex texture coordinates. This field is optional. If set to nullptr, all texCrds will be set to (0,0).
+            Attribute<float> curveRadii;                ///< Array of vertex curve radii. This field is optional.
             Attribute<uint4> boneIDs;                   ///< Array of bone IDs. This field is optional. If it's set, that means that the mesh is animated, in which case boneWeights is required.
             Attribute<float4> boneWeights;              ///< Array of bone weights. This field is optional. If it's set, that means that the mesh is animated, in which case boneIDs is required.
 
             bool isFrontFaceCW = false;                 ///< Indicate whether front-facing side has clockwise winding in object space.
             bool useOriginalTangentSpace = false;       ///< Indicate whether to use the original tangent space that was loaded with the mesh. By default, we will ignore it and use MikkTSpace to generate the tangent space.
+            bool mergeDuplicateVertices = true;         ///< Indicate whether to merge identical vertices and adjust indices.
             uint32_t skeletonNodeId = kInvalidNode;     ///< For skinned meshes, the node ID of the skeleton's world transform. If set to -1, the skeleton is based on the mesh's own world position (Assimp behavior pre-multiplies instance transform).
 
             template<typename T>
@@ -174,6 +177,7 @@ namespace Falcor
             float3 getNormal(uint32_t face, uint32_t vert) const { return get(normals, face, vert); }
             float4 getTangent(uint32_t face, uint32_t vert) const { return get(tangents, face, vert); }
             float2 getTexCrd(uint32_t face, uint32_t vert) const { return get(texCrds, face, vert); }
+            float getCurveRadii(uint32_t face, uint32_t vert) const { return get(curveRadii, face, vert); }
 
             struct Vertex
             {
@@ -181,6 +185,7 @@ namespace Falcor
                 float3 normal;
                 float4 tangent;
                 float2 texCrd;
+                float curveRadius;
                 uint4 boneIDs;
                 float4 boneWeights;
             };
@@ -191,6 +196,7 @@ namespace Falcor
                 uint32_t normalIdx;
                 uint32_t tangentIdx;
                 uint32_t texCrdIdx;
+                uint32_t curveRadiusIdx;
                 uint32_t boneIDsIdx;
                 uint32_t boneWeightsIdx;
             };
@@ -202,6 +208,7 @@ namespace Falcor
                 v.normal = get(normals, face, vert);
                 v.tangent = get(tangents, face, vert);
                 v.texCrd = get(texCrds, face, vert);
+                v.curveRadius = get(curveRadii, face, vert);
                 v.boneIDs = get(boneIDs, face, vert);
                 v.boneWeights = get(boneWeights, face, vert);
                 return v;
@@ -214,6 +221,7 @@ namespace Falcor
                 v.normal = get(normals, attributeIndices.normalIdx);
                 v.tangent = get(tangents, attributeIndices.tangentIdx);
                 v.texCrd = get(texCrds, attributeIndices.texCrdIdx);
+                v.curveRadius = get(curveRadii, attributeIndices.curveRadiusIdx);
                 v.boneIDs = get(boneIDs, attributeIndices.boneIDsIdx);
                 v.boneWeights = get(boneWeights, attributeIndices.boneWeightsIdx);
                 return v;
@@ -226,6 +234,7 @@ namespace Falcor
                 v.normalIdx = getAttributeIndex(normals, face, vert);
                 v.tangentIdx = getAttributeIndex(tangents, face, vert);
                 v.texCrdIdx = getAttributeIndex(texCrds, face, vert);
+                v.curveRadiusIdx = getAttributeIndex(curveRadii, face, vert);
                 v.boneIDsIdx = getAttributeIndex(boneIDs, face, vert);
                 v.boneWeightsIdx = getAttributeIndex(boneWeights, face, vert);
                 return v;
@@ -253,7 +262,7 @@ namespace Falcor
             bool isFrontFaceCW = false;         ///< Indicate whether front-facing side has clockwise winding in object space.
             std::vector<uint32_t> indexData;    ///< Vertex indices in either 32-bit or 16-bit format packed tightly, or empty if non-indexed.
             std::vector<StaticVertexData> staticData;
-            std::vector<DynamicVertexData> dynamicData;
+            std::vector<SkinningVertexData> skinningData;
         };
 
         using MeshAttributeIndices = std::vector<Mesh::VertexAttributeIndices>;
@@ -310,19 +319,19 @@ namespace Falcor
         static SharedPtr create(Flags mFlags = Flags::Default);
 
         /** Create a new builder and import a scene/model file
-            \param filename The filename to load
+            \param path The file path to load
             \param flags The build flags
             \param instances A list of instance matrices to load. This is optional, by default a single instance will be load
             \return A new object with the imported file already initialized, or throws an ImporterError if importing went wrong.
         */
-        static SharedPtr create(const std::string& filename, Flags buildFlags = Flags::Default, const InstanceMatrices& instances = InstanceMatrices());
+        static SharedPtr create(const std::filesystem::path& path, Flags buildFlags = Flags::Default, const InstanceMatrices& instances = InstanceMatrices());
 
         /** Import a scene/model file
-            \param filename The filename to load
+            \param path The file path to load
             \param instances A list of instance matrices to load. This is optional, by default a single instance will be load
             Throws an ImporterError if something went wrong.
         */
-        void import(const std::string& filename, const InstanceMatrices& instances = InstanceMatrices(), const Dictionary& dict = Dictionary());
+        void import(const std::filesystem::path& path, const InstanceMatrices& instances = InstanceMatrices(), const Dictionary& dict = Dictionary());
 
         /** Get the scene. Make sure to add all the objects before calling this function
             \return nullptr if something went wrong, otherwise a new Scene object
@@ -394,9 +403,9 @@ namespace Falcor
         uint32_t addProcessedMesh(const ProcessedMesh& mesh);
 
         /** Set mesh vertex cache for animation.
-            \param[in] cachedCurves The mesh vertex cache data.
+            \param[in] cachedCurves The mesh vertex cache data (will be moved from).
         */
-        void setCachedMeshes(const std::vector<CachedMesh>&& cachedMeshes) { mSceneData.cachedMeshes = cachedMeshes; }
+        void setCachedMeshes(std::vector<CachedMesh>&& cachedMeshes);
 
         // Custom primitives
 
@@ -464,9 +473,9 @@ namespace Falcor
         /** Request loading a material texture.
             \param[in] pMaterial Material to load texture into.
             \param[in] slot Slot to load texture into.
-            \param[in] filename Texture filename.
+            \param[in] path Texture file path.
         */
-        void loadMaterialTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const std::string& filename);
+        void loadMaterialTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const std::filesystem::path& path);
 
         /** Wait until all material textures are loaded.
         */
@@ -629,24 +638,27 @@ namespace Falcor
             uint32_t materialId = 0;                ///< Global material ID.
             uint32_t staticVertexOffset = 0;        ///< Offset into the shared 'staticData' array. This is calculated in createGlobalBuffers().
             uint32_t staticVertexCount = 0;         ///< Number of static vertices.
-            uint32_t dynamicVertexOffset = 0;       ///< Offset into the shared 'dynamicData' array. This is calculated in createGlobalBuffers().
-            uint32_t dynamicVertexCount = 0;        ///< Number of dynamic vertices.
+            uint32_t skinningVertexOffset = 0;      ///< Offset into the shared 'skinningData' array. This is calculated in createGlobalBuffers().
+            uint32_t skinningVertexCount = 0;       ///< Number of skinned vertices.
+            uint32_t prevVertexOffset = 0;          ///< Offset into the shared `prevVertices` array. This is calculated in createGlobalBuffers().
+            uint32_t prevVertexCount = 0;           ///< Number of previous vertices stored. This can be the static or skinned vertex count depending on animation type.
             uint32_t indexOffset = 0;               ///< Offset into the shared 'indexData' array. This is calculated in createGlobalBuffers().
             uint32_t indexCount = 0;                ///< Number of indices, or zero if non-indexed.
             uint32_t vertexCount = 0;               ///< Number of vertices.
             uint32_t skeletonNodeID = kInvalidNode; ///< Node ID of skeleton world transform. Forwarded from Mesh struct.
             bool use16BitIndices = false;           ///< True if the indices are in 16-bit format.
-            bool hasDynamicData = false;            ///< True if mesh has dynamic vertices.
+            bool hasSkinningData = false;           ///< True if mesh has skinned vertices.
             bool isStatic = false;                  ///< True if mesh is non-instanced and static (not dynamic or animated).
             bool isFrontFaceCW = false;             ///< Indicate whether front-facing side has clockwise winding in object space.
             bool isDisplaced = false;               ///< True if mesh has displacement map.
+            bool isAnimated = false;                ///< True if mesh has vertex animations.
             AABB boundingBox;                       ///< Mesh bounding-box in object space.
             std::vector<uint32_t> instances;        ///< Node IDs of all instances of this mesh.
 
             // Pre-processed vertex data.
             std::vector<uint32_t> indexData;    ///< Vertex indices in either 32-bit or 16-bit format packed tightly, or empty if non-indexed.
             std::vector<StaticVertexData> staticData;
-            std::vector<DynamicVertexData> dynamicData;
+            std::vector<SkinningVertexData> skinningData;
 
             uint32_t getTriangleCount() const
             {
@@ -660,10 +672,14 @@ namespace Falcor
                 return use16BitIndices ? reinterpret_cast<const uint16_t*>(indexData.data())[i] : indexData[i];
             }
 
+            bool isSkinned() const
+            {
+                return hasSkinningData;
+            }
+
             bool isDynamic() const
             {
-                FALCOR_ASSERT(hasDynamicData == dynamicVertexCount > 0);
-                return hasDynamicData;
+                return isSkinned() || isAnimated;
             }
         };
 
@@ -735,6 +751,7 @@ namespace Falcor
         // Post processing
         void prepareDisplacementMaps();
         void prepareSceneGraph();
+        void prepareMeshes();
         void removeUnusedMeshes();
         void flattenStaticMeshInstances();
         void optimizeSceneGraph();

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,7 +30,10 @@
 
 namespace Falcor
 {
+#ifdef FALCOR_D3D12
     /** GPU test for user-allocated constant buffers.
+        This test is disabled for GFX backend since getUnderlyingConstantBuffer
+        is no longer implemented there.
     */
     GPU_TEST(UserConstantBuffer)
     {
@@ -133,4 +136,5 @@ namespace Falcor
             ctx.unmapBuffer("result");
         }
     }
+#endif // FALCOR_D3D12
 }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -41,7 +41,7 @@ namespace Falcor
         assignTextures();
     }
 
-    void MaterialTextureLoader::loadTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const std::string& filename)
+    void MaterialTextureLoader::loadTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const std::filesystem::path& path)
     {
         FALCOR_ASSERT(pMaterial);
         if (!pMaterial->hasTextureSlot(slot))
@@ -53,7 +53,7 @@ namespace Falcor
         bool srgb = mUseSrgb && pMaterial->getTextureSlotInfo(slot).srgb;
 
         // Request texture to be loaded.
-        auto handle = mpTextureManager->loadTexture(filename, true, srgb);
+        auto handle = mpTextureManager->loadTexture(path, true, srgb);
 
         // Store assignment to material for later.
         mTextureAssignments.emplace_back(TextureAssignment{ pMaterial, slot, handle });

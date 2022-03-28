@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
+#include "Utils/Debug/PixelDebug.h"
 
 #if FALCOR_ENABLE_RTXDI
 #include "rtxdi/RTXDI.h"
@@ -95,7 +96,8 @@ namespace Falcor
         {
             Off         = 0, ///< Use (1/M) normalization, which is very biased but also very fast.
             Basic       = 1, ///< Use MIS-like normalization but assume that every sample is visible.
-            RayTraced   = 2, ///< Use MIS-like normalization with visibility rays. Unbiased.
+            Pairwise    = 2, ///< Use pairwise MIS normalization.  Assumes every sample is visibile.
+            RayTraced   = 3, ///< Use MIS-like normalization with visibility rays. Unbiased.
         };
 
         /** Configuration options, with generally reasonable defaults.
@@ -113,6 +115,8 @@ namespace Falcor
             uint32_t localLightCandidateCount = 24;     ///< Number of initial local light candidate samples.
             uint32_t infiniteLightCandidateCount = 8;   ///< Number of initial infinite light candidate samples.
             uint32_t envLightCandidateCount = 8;        ///< Number of initial environment light candidate samples.
+            uint32_t brdfCandidateCount = 1;            ///< Number of initial brdf candidate samples.
+            float brdfCutoff = 0.f;                     ///< Value in range[0, 1] to determine how much to shorten BRDF rays. 0 to disable shortening.
             bool testCandidateVisibility = true;        ///< Test visibility on selected candidate sample before doing resampling.
 
             // Resampling options.
@@ -206,6 +210,11 @@ namespace Falcor
         */
         void update(RenderContext* pRenderContext, const Texture::SharedPtr& pMotionVectors);
 
+        /** Get the pixel debug component.
+            \return Returns the pixel debug component.
+        */
+        const PixelDebug::SharedPtr& getPixelDebug() const { return mpPixelDebug; }
+
     private:
         RTXDI(const Scene::SharedPtr& pScene, const Options& options);
 
@@ -269,6 +278,8 @@ namespace Falcor
             bool    recompileShaders = true;                        ///< Set if shaders need recompilation on next beginFrame() call.
             bool    clearReservoirs = false;                        ///< Set if reservoirs need to be cleared on next beginFrame() call (useful when changing configuration).
         } mFlags;
+
+        PixelDebug::SharedPtr   mpPixelDebug;                       ///< Pixel debug component.
 
         // Resources.
 

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -107,14 +107,26 @@ struct MaterialSystem
     }
 
     /** Get a texture sampler by ID.
+        Note: the use of [__unsafeForceInlineEarly] causes Slang to inline this function in its output source.
+        Currently there is a bug in glslang/spv-out that generates invalid SPIRV code for functions that returns a SamplerState.
+        We workaround this issue by always inlining this function in our generated glsl code.
     */
+#ifdef FALCOR_VK
+    [__unsafeForceInlineEarly]
+#endif
     SamplerState getTextureSampler(const uint samplerID)
     {
         return materialSamplers[samplerID];
     }
 
     /** Get the default texture sampler for a material.
+        Note: the use of [__unsafeForceInlineEarly] causes Slang to inline this function in its output source.
+        Currently there is a bug in glslang/spv-out that generates invalid SPIRV code for functions that returns a SamplerState.
+        We workaround this issue by always inlining this function in our generated glsl code.
     */
+#ifdef FALCOR_VK
+    [__unsafeForceInlineEarly]
+#endif
     SamplerState getDefaultTextureSampler(const uint materialID)
     {
         uint samplerID = getMaterialHeader(materialID).getDefaultTextureSamplerID();

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -45,7 +45,8 @@ namespace Falcor
     {
         FALCOR_ASSERT(gpDevice);
 #ifdef FALCOR_D3D12
-        mpResolveBuffer = Buffer::create(sizeof(uint64_t) * 2, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
+        mpResolveBuffer = Buffer::create(sizeof(uint64_t) * 2, Buffer::BindFlags::None, Buffer::CpuAccess::None, nullptr);
+        mpResolveStagingBuffer = Buffer::create(sizeof(uint64_t) * 2, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
 #endif
         // Create timestamp query heap upon first use.
         // We're allocating pairs of adjacent queries, so need our own heap to meet this requirement.
@@ -101,26 +102,48 @@ namespace Falcor
         apiEnd();
     }
 
+    void GpuTimer::resolve()
+    {
+        if (mStatus == Status::Begin)
+        {
+            throw RuntimeError("GpuTimer::resolve() was called but the GpuTimer::end() wasn't called.");
+        }
+        else if (mStatus == Status::End)
+        {
+            apiResolve();
+
+            mDataPending = true;
+            mStatus = Status::Idle;
+        }
+        // If idle, do nothing.
+        FALCOR_ASSERT(mStatus == Status::Idle);
+    }
 
     double GpuTimer::getElapsedTime()
     {
         if (mStatus == Status::Begin)
         {
             logWarning("GpuTimer::getElapsedTime() was called but the GpuTimer::end() wasn't called. No data to fetch.");
-            return 0;
+            return 0.0;
         }
         else if (mStatus == Status::End)
         {
+            logWarning("GpuTimer::getElapsedTime() was called but the GpuTimer::resolve() wasn't called. No data to fetch.");
+            return 0.0;
+        }
+
+        FALCOR_ASSERT(mStatus == Status::Idle);
+        if (mDataPending)
+        {
             uint64_t result[2];
-            apiResolve(result);
+            apiReadback(result);
 
             double start = (double)result[0];
             double end = (double)result[1];
             double range = end - start;
             mElapsedTime = range * gpDevice->getGpuTimestampFrequency();
-            mStatus = Status::Idle;
+            mDataPending = false;
         }
-        FALCOR_ASSERT(mStatus == Status::Idle);
         return mElapsedTime;
     }
 

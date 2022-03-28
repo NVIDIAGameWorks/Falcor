@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -257,9 +257,7 @@ float calcShadowFactorWithCascadeIdx(CsmData csmData, uint32_t cascadeIndex, flo
     drvX = drvX * scale.xy;
     drvY = drvY * scale.xy;
 
-#ifdef FALCOR_D3D
     shadowPos.y = 1 - shadowPos.y;
-#endif
 
     // Calculate the texC
     shadowPos.z -= csmData.depthBias;

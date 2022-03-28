@@ -23,4 +23,10 @@ fi
 source "$PACKMAN_CMD" init
 export PYTHONPATH="${PM_MODULE_DIR}:${PYTHONPATH}"
 export PYTHONNOUSERSITE=1
+
+# workaround for our python not shipping with certs
+if [[ -z ${SSL_CERT_DIR:-} ]]; then
+    export SSL_CERT_DIR=/etc/ssl/certs/
+fi
+
 "${PM_PYTHON}" -u "$@"

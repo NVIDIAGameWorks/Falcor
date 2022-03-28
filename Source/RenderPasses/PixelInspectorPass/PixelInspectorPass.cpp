@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -378,7 +378,7 @@ bool PixelInspectorPass::onMouseEvent(const MouseEvent& mouseEvent)
     {
         mCursorPosition = mouseEvent.pos;
     }
-    else if (mouseEvent.type == MouseEvent::Type::LeftButtonDown)
+    else if (mouseEvent.type == MouseEvent::Type::ButtonDown && mouseEvent.button == Input::MouseButton::Left)
     {
         mSelectedCursorPosition = mouseEvent.pos;
     }

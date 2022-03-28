@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -67,7 +67,7 @@ namespace Mogwai
         }
     }
 
-    void Renderer::saveConfig(const std::string& filename) const
+    void Renderer::saveConfig(const std::filesystem::path& path) const
     {
         std::string s;
 
@@ -85,7 +85,7 @@ namespace Mogwai
         if (mpScene)
         {
             s += "# Scene\n";
-            s += ScriptWriter::makeMemberFunc(kRendererVar, kLoadScene, ScriptWriter::getFilenameString(mpScene->getFilename()));
+            s += ScriptWriter::makeMemberFunc(kRendererVar, kLoadScene, ScriptWriter::getPathString(mpScene->getPath()));
             const std::string sceneVar = kRendererVar + "." + kScene;
             s += mpScene->getScript(sceneVar);
             s += "\n";
@@ -109,16 +109,16 @@ namespace Mogwai
             }
         }
 
-        std::ofstream(filename) << s;
+        std::ofstream(path) << s;
     }
 
     void Renderer::registerScriptBindings(pybind11::module& m)
     {
         pybind11::class_<Renderer> renderer(m, "Renderer");
-        renderer.def(kRunScript.c_str(), &Renderer::loadScript, "filename"_a = std::string());
-        renderer.def(kLoadScene.c_str(), &Renderer::loadScene, "filename"_a = std::string(), "buildFlags"_a = SceneBuilder::Flags::Default);
+        renderer.def(kRunScript.c_str(), &Renderer::loadScript, "path"_a);
+        renderer.def(kLoadScene.c_str(), &Renderer::loadScene, "path"_a, "buildFlags"_a = SceneBuilder::Flags::Default);
         renderer.def(kUnloadScene.c_str(), &Renderer::unloadScene);
-        renderer.def(kSaveConfig.c_str(), &Renderer::saveConfig, "filename"_a);
+        renderer.def(kSaveConfig.c_str(), &Renderer::saveConfig, "path"_a);
         renderer.def(kAddGraph.c_str(), &Renderer::addGraph, "graph"_a);
         renderer.def(kRemoveGraph.c_str(), pybind11::overload_cast<const std::string&>(&Renderer::removeGraph), "name"_a);
         renderer.def(kRemoveGraph.c_str(), pybind11::overload_cast<const RenderGraph::SharedPtr&>(&Renderer::removeGraph), "graph"_a);

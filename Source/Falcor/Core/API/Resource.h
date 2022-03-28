@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -113,6 +113,8 @@ namespace Falcor
         */
         const ApiHandle& getApiHandle() const { return mApiHandle; }
 
+        const D3D12ResourceHandle& getD3D12Handle() const;
+
         /** Get a shared resource API handle.
 
             The handle will be created on-demand if it does not already exist.
@@ -194,6 +196,9 @@ namespace Falcor
         size_t mSize = 0;
         GpuAddress mGpuVaOffset = 0;
         std::string mName;
+#if defined(FALCOR_GFX) && FALCOR_D3D12_AVAILABLE
+        mutable D3D12ResourceHandle mpD3D12Handle;
+#endif
         mutable SharedResourceApiHandle mSharedApiHandle = 0;
 
         mutable std::unordered_map<ResourceViewInfo, ShaderResourceView::SharedPtr, ViewInfoHashFunc> mSrvs;

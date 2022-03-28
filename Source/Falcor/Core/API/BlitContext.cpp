@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -44,7 +44,7 @@ namespace Falcor
                 { "DST_INT", "0" },
             };
             Program::Desc d;
-            d.addShaderLibrary("Core/API/BlitReduction.slang").vsEntry("vs").psEntry("ps");
+            d.addShaderLibrary("Core/API/BlitReduction.3d.slang").vsEntry("vsMain").psEntry("psMain");
             pPass = FullScreenPass::create(d, defines);
             pFbo = Fbo::create();
             FALCOR_ASSERT(pPass && pFbo);

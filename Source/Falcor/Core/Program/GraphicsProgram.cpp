@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -32,18 +32,22 @@ namespace Falcor
 {
     GraphicsProgram::SharedPtr GraphicsProgram::create(const Desc& desc, const Program::DefineList& programDefines)
     {
-        SharedPtr pProg = SharedPtr(new GraphicsProgram);
         Desc d = desc;
-        d.addDefaultVertexShaderIfNeeded();
-        pProg->init(d, programDefines);
+        auto pProg = SharedPtr(new GraphicsProgram(d, programDefines));
+        registerProgramForReload(pProg);
         return pProg;
     }
 
-    GraphicsProgram::SharedPtr GraphicsProgram::createFromFile(const std::string& filename, const std::string& vsEntry, const std::string& psEntry, const DefineList& programDefines)
+    GraphicsProgram::SharedPtr GraphicsProgram::createFromFile(const std::filesystem::path& path, const std::string& vsEntry, const std::string& psEntry, const DefineList& programDefines)
     {
-        Desc d(filename);
-        d.vsEntry(vsEntry).psEntry(psEntry).addDefaultVertexShaderIfNeeded();
+        Desc d(path);
+        d.vsEntry(vsEntry).psEntry(psEntry);
         return create(d, programDefines);
+    }
+
+    GraphicsProgram::GraphicsProgram(const Desc& desc, const Program::DefineList& programDefines)
+        : Program(desc, programDefines)
+    {
     }
 
     FALCOR_SCRIPT_BINDING(GraphicsProgram)

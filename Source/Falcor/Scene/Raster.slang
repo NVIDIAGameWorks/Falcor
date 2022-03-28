@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -32,21 +32,21 @@ __exported import Scene.Shading;
 struct VSIn
 {
     // Packed vertex attributes, see PackedStaticVertexData
-    float3 pos                      : POSITION;
-    float3 packedNormalTangent      : PACKED_NORMAL_TANGENT;
-    float2 texC                     : TEXCOORD;
+    float3 pos                              : POSITION;
+    float3 packedNormalTangentCurveRadius   : PACKED_NORMAL_TANGENT_CURVE_RADIUS;
+    float2 texC                             : TEXCOORD;
 
     // Other vertex attributes
-    uint instanceID                 : DRAW_ID;
+    uint instanceID                         : DRAW_ID;
 
     // System values
-    uint vertexID                   : SV_VertexID;
+    uint vertexID                           : SV_VertexID;
 
     StaticVertexData unpack()
     {
         PackedStaticVertexData v;
         v.position = pos;
-        v.packedNormalTangent = packedNormalTangent;
+        v.packedNormalTangentCurveRadius = packedNormalTangentCurveRadius;
         v.texCrd = texC;
         return v.unpack();
     }
@@ -92,10 +92,10 @@ VSOut defaultVS(VSIn vIn)
     // Compute the vertex position in the previous frame.
     float3 prevPos = vIn.pos;
     GeometryInstanceData instance = gScene.getGeometryInstance(instanceID);
-    if (instance.hasDynamicData())
+    if (instance.isDynamic())
     {
-        uint dynamicVertexIndex = gScene.meshes[instance.geometryID].dynamicVbOffset + vIn.vertexID;
-        prevPos = gScene.prevVertices[dynamicVertexIndex].position;
+        uint prevVertexIndex = gScene.meshes[instance.geometryIndex].prevVbOffset + vIn.vertexID;
+        prevPos = gScene.prevVertices[prevVertexIndex].position;
     }
     float3 prevPosW = mul(float4(prevPos, 1.f), gScene.getPrevWorldMatrix(instanceID)).xyz;
     vOut.prevPosH = mul(float4(prevPosW, 1.f), gScene.camera.data.prevViewProjMatNoJitter);

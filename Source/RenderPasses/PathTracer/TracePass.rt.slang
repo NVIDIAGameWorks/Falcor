@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -35,6 +35,7 @@ import RenderPasses.Shared.Denoising.NRDConstants;
 import Utils.Math.PackedFormats;
 import Utils.Math.FormatConversion;
 import PathTracer;
+import PathTracerNRD;
 
 ParameterBlock<PathTracer> gPathTracer;
 Scheduler gScheduler;
@@ -148,8 +149,15 @@ struct Scheduler
         path.sceneLength += float16_t(hitT);
 
         gPathTracer.setupPathLogging(path);
+
+#if defined(DELTA_REFLECTION_PASS)
+        gPathTracer.handleDeltaReflectionHit(path);
+#elif defined(DELTA_TRANSMISSION_PASS)
+        gPathTracer.handleDeltaTransmissionHit(path);
+#else
         VisibilityQuery vq;
         gPathTracer.handleHit(path, vq);
+#endif
 
         payload = PathPayload::pack(path);
     }
@@ -187,8 +195,14 @@ struct Scheduler
         // Handle primary hit/miss.
         if (path.isHit())
         {
+#if defined(DELTA_REFLECTION_PASS)
+            gPathTracer.handleDeltaReflectionHit(path);
+#elif defined(DELTA_TRANSMISSION_PASS)
+            gPathTracer.handleDeltaTransmissionHit(path);
+#else
             VisibilityQuery vq;
             gPathTracer.handleHit(path, vq);
+#endif
         }
         else
         {
@@ -203,7 +217,9 @@ struct Scheduler
             nextHit(path);
         }
 
+#if !defined(DELTA_REFLECTION_PASS) && !defined(DELTA_TRANSMISSION_PASS)
         gPathTracer.writeOutput(path);
+#endif
     }
 
     /** Runs the path tracer for a single pixel.

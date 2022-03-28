@@ -22,7 +22,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ShaderSource Include="HelloDXR.ps.slang" />
+    <ShaderSource Include="HelloDXR.3d.slang" />
     <ShaderSource Include="HelloDXR.rt.slang" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

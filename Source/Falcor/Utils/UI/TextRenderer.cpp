@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -147,14 +147,14 @@ namespace Falcor
     {
         if (gTextData.init) return;
 
-        static const std::string kShaderFile("Utils/UI/TextRenderer.slang");
+        static const std::string kShaderFile("Utils/UI/TextRenderer.3d.slang");
 
         // Create a vertex buffer
         const uint32_t vbSize = (uint32_t)(sizeof(Vertex)*kMaxCharCount*arraysize(kVertexPos));
         gTextData.pVb = Buffer::create(vbSize, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, nullptr);
 
         // Create the RenderState
-        gTextData.pPass = RasterPass::create(kShaderFile, "vs", "ps");
+        gTextData.pPass = RasterPass::create(kShaderFile, "vsMain", "psMain");
         auto& pState = gTextData.pPass->getState();
         pState->setVao(createVAO(gTextData.pVb));
 

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -50,7 +50,7 @@ namespace Falcor
         ~AsyncTextureLoader();
 
         /** Request loading a texture.
-            \param[in] filename Filename of the texture. This can be a full path or a relative path from a data directory.
+            \param[in] path File path of the texture. This can be a full path or a relative path from a data directory.
             \param[in] generateMipLevels Whether the full mip-chain should be generated.
             \param[in] loadAsSRGB Load the texture as sRGB format if supported, otherwise linear color.
             \param[in] bindFlags The bind flags for the texture resource.
@@ -58,7 +58,7 @@ namespace Falcor
             \return A future to a new texture, or nullptr if the texture failed to load.
         */
         std::future<Texture::SharedPtr> loadFromFile(
-            const std::string& filename,
+            const std::filesystem::path& path,
             bool generateMipLevels,
             bool loadAsSRGB,
             Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource,
@@ -72,7 +72,7 @@ namespace Falcor
 
         struct LoadRequest
         {
-            std::string filename;
+            std::filesystem::path path;
             bool generateMipLevels;
             bool loadAsSRGB;
             Resource::BindFlags bindFlags;

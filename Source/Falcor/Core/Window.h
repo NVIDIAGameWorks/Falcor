@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -32,6 +32,8 @@ namespace Falcor
 {
     struct KeyboardEvent;
     struct MouseEvent;
+    struct GamepadEvent;
+    struct GamepadState;
 
     class FALCOR_API Window
     {
@@ -69,7 +71,9 @@ namespace Falcor
             virtual void handleRenderFrame() = 0;
             virtual void handleKeyboardEvent(const KeyboardEvent& keyEvent) = 0;
             virtual void handleMouseEvent(const MouseEvent& mouseEvent) = 0;
-            virtual void handleDroppedFile(const std::string& filename) = 0;
+            virtual void handleGamepadEvent(const GamepadEvent& gamepadEvent) = 0;
+            virtual void handleGamepadState(const GamepadState& gamepadState) = 0;
+            virtual void handleDroppedFile(const std::filesystem::path& path) = 0;
         };
 
         /** Create a new window.
@@ -101,6 +105,10 @@ namespace Falcor
         /** Force event polling. Useful if your rendering loop is slow and you would like to get a recent keyboard/mouse status
         */
         void pollForEvents();
+
+        /** Handle gamepad input.
+        */
+        void handleGamepadInput();
 
         /** Change the window's position
         */
@@ -134,5 +142,8 @@ namespace Falcor
         float2 mMouseScale;
         const float2& getMouseScale() const { return mMouseScale; }
         ICallbacks* mpCallbacks = nullptr;
+
+        struct GamepadData;
+        std::unique_ptr<GamepadData> mpGamepadData;
     };
 }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -48,7 +48,7 @@ namespace Mogwai
         pybind11::class_<TimingCapture> timingCapture(m, "TimingCapture");
 
         // Members
-        timingCapture.def(kCaptureFrameTime.c_str(), &TimingCapture::captureFrameTime, "filename"_a);
+        timingCapture.def(kCaptureFrameTime.c_str(), &TimingCapture::captureFrameTime, "path"_a);
     }
 
     std::string TimingCapture::getScriptVar() const
@@ -61,22 +61,22 @@ namespace Mogwai
         recordPreviousFrameTime();
     }
 
-    void TimingCapture::captureFrameTime(std::string filename)
+    void TimingCapture::captureFrameTime(std::filesystem::path path)
     {
         if (mFrameTimeFile.is_open())
             mFrameTimeFile.close();
 
-        if (!filename.empty())
+        if (!path.empty())
         {
-            if (doesFileExist(filename))
+            if (std::filesystem::exists(path))
             {
-                logWarning("Frame times in file '{}' will be overwritten.", filename);
+                logWarning("Frame times in file '{}' will be overwritten.", path);
             }
 
-            mFrameTimeFile.open(filename, std::ofstream::trunc);
+            mFrameTimeFile.open(path, std::ofstream::trunc);
             if (!mFrameTimeFile.is_open())
             {
-                logError("Failed to open file '{}' for writing. Ignoring call.", filename);
+                logError("Failed to open file '{}' for writing. Ignoring call.", path);
             }
         }
     }

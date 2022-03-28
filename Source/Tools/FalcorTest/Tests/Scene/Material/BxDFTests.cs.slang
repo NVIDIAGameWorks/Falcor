@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -157,7 +157,7 @@ struct SamplingTest
             uint lobe;
             if (bxdf.sample(wi, wo, pdf, weight, lobe, sg))
             {
-                float3 value = bxdf.eval(wi, wo);
+                float3 value = bxdf.eval(wi, wo, sg);
                 float pdfRef = bxdf.evalPdf(wi, wo);
                 float3 weightRef = pdfRef > 0.f ? (value / pdfRef) : float3(0.f);
 

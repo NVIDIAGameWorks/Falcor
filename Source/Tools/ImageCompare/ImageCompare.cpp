@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -35,6 +35,7 @@
 #include <stdexcept>
 #include <map>
 #include <functional>
+#include <filesystem>
 
 template<typename T>
 T sqr(T x) { return x * x; }
@@ -57,18 +58,20 @@ public:
 
     static SharedPtr create(uint32_t width, uint32_t height) { return SharedPtr(new Image(width, height)); }
 
-    static SharedPtr loadFromFile(const std::string& filename)
+    static SharedPtr loadFromFile(const std::filesystem::path& path)
     {
         FREE_IMAGE_FORMAT fifFormat = FIF_UNKNOWN;
 
+        auto pathStr = path.string();
+
         // Determine file format.
-        fifFormat = FreeImage_GetFileType(filename.c_str(), 0);
-        if (fifFormat == FIF_UNKNOWN) fifFormat = FreeImage_GetFIFFromFilename(filename.c_str());
+        fifFormat = FreeImage_GetFileType(pathStr.c_str(), 0);
+        if (fifFormat == FIF_UNKNOWN) fifFormat = FreeImage_GetFIFFromFilename(pathStr.c_str());
         if (fifFormat == FIF_UNKNOWN) throw std::runtime_error("Unknown image format");
         if (!FreeImage_FIFSupportsReading(fifFormat)) throw std::runtime_error("Unsupported image format");
 
         // Read image.
-        FIBITMAP* srcBitmap = FreeImage_Load(fifFormat, filename.c_str());
+        FIBITMAP* srcBitmap = FreeImage_Load(fifFormat, pathStr.c_str());
         if (!srcBitmap) throw std::runtime_error("Cannot read image");
 
         // Convert to RGBA32F.
@@ -85,12 +88,14 @@ public:
         return image;
     }
 
-    void saveToFile(const std::string& filename, bool writeAlpha = true) const
+    void saveToFile(const std::filesystem::path& path, bool writeAlpha = true) const
     {
         FREE_IMAGE_FORMAT fifFormat = FIF_UNKNOWN;
 
+        auto pathStr = path.string();
+
         // Determine file format.
-        fifFormat = FreeImage_GetFIFFromFilename(filename.c_str());
+        fifFormat = FreeImage_GetFIFFromFilename(pathStr.c_str());
         if (fifFormat == FIF_UNKNOWN) throw std::runtime_error("Unknown image format");
         if (!FreeImage_FIFSupportsWriting(fifFormat)) throw std::runtime_error("Unsupported image format");
 
@@ -143,7 +148,7 @@ public:
         }
 
         // Write image.
-        FreeImage_Save(fifFormat, bitmap, filename.c_str());
+        FreeImage_Save(fifFormat, bitmap, pathStr.c_str());
         FreeImage_Unload(bitmap);
     }
 
@@ -264,37 +269,37 @@ static Image::SharedPtr generateHeatMap(uint32_t width, uint32_t height, const f
     return image;
 }
 
-static bool compareImages(const std::string& filenameA, const std::string& filenameB, ErrorMetric metric, float threshold, bool alpha, const std::string& heatMapFilename)
+static bool compareImages(const std::filesystem::path& pathA, const std::filesystem::path& pathB, ErrorMetric metric, float threshold, bool alpha, const std::filesystem::path& heatMapPath)
 {
-    auto loadImage = [] (const std::string& filename)
+    auto loadImage = [] (const std::filesystem::path& path)
     {
         try
         {
-            return Image::loadFromFile(filename);
+            return Image::loadFromFile(path);
         }
         catch (const std::runtime_error& e)
         {
-            std::cerr << "Cannot load image from '" << filename << "' (Error: " << e.what() << ")." << std::endl;
+            std::cerr << "Cannot load image from '" << path.string() << "' (Error: " << e.what() << ")." << std::endl;
             return Image::SharedPtr();
         }
     };
 
-    auto saveImage = [] (const Image& image, const std::string& filename)
+    auto saveImage = [] (const Image& image, const std::filesystem::path& path)
     {
         try
         {
-            image.saveToFile(filename);
+            image.saveToFile(path);
         }
         catch (const std::runtime_error& e)
         {
-            std::cerr << "Cannot save image to '" << filename << "' (Error: " << e.what() << ")." << std::endl;
+            std::cerr << "Cannot save image to '" << path.string() << "' (Error: " << e.what() << ")." << std::endl;
         }
     };
 
     // Load images.
-    auto imageA = loadImage(filenameA);
+    auto imageA = loadImage(pathA);
     if (!imageA) return false;
-    auto imageB = loadImage(filenameB);
+    auto imageB = loadImage(pathB);
     if (!imageB) return false;
 
     // Check resolution.
@@ -308,14 +313,14 @@ static bool compareImages(const std::string& filenameA, const std::string& filen
     uint32_t height = imageB->getHeight();
 
     // Compare images.
-    std::unique_ptr<float[]> errorMap = heatMapFilename.empty() ? nullptr : std::make_unique<float[]>(width * height);
+    std::unique_ptr<float[]> errorMap = heatMapPath.empty() ? nullptr : std::make_unique<float[]>(width * height);
     double error = metric.compare(*imageA, *imageB, alpha, errorMap.get());
 
     // Generate heat map.
     if (errorMap)
     {
         auto heatMap = generateHeatMap(width, height, errorMap.get());
-        saveImage(*heatMap, heatMapFilename);
+        saveImage(*heatMap, heatMapPath);
     }
 
     std::cout << error << std::endl;

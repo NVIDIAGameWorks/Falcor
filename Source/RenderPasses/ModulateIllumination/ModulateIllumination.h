@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -57,5 +57,11 @@ private:
     bool                    mUseDiffuseRadiance = true;
     bool                    mUseSpecularReflectance = true;
     bool                    mUseSpecularRadiance = true;
+    bool                    mUseDeltaReflectionEmission = true;
+    bool                    mUseDeltaReflectionReflectance = true;
+    bool                    mUseDeltaReflectionRadiance = true;
+    bool                    mUseDeltaTransmissionEmission = true;
+    bool                    mUseDeltaTransmissionReflectance = true;
+    bool                    mUseDeltaTransmissionRadiance = true;
     bool                    mUseResidualRadiance = true;
 };

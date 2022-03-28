@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -324,11 +324,11 @@ namespace Falcor
 #endif
 
         // Loop over the programs
-        for (const auto& pBaseEntryPointGroup : pKernels->getUniqueEntryPointGroups() )
+        for (const auto& pBaseEntryPointGroup : pKernels->getUniqueEntryPointGroups())
         {
             FALCOR_ASSERT(dynamic_cast<RtEntryPointGroupKernels*>(pBaseEntryPointGroup.get()));
             auto pEntryPointGroup = static_cast<RtEntryPointGroupKernels*>(pBaseEntryPointGroup.get());
-            switch( pBaseEntryPointGroup->getType() )
+            switch (pBaseEntryPointGroup->getType())
             {
             case EntryPointGroupKernels::Type::RtHitGroup:
                 {

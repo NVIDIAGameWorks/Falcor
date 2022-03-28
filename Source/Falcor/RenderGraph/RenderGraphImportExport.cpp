@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -35,44 +35,46 @@ namespace Falcor
 {
     namespace
     {
-        void updateGraphStrings(std::string& graph, std::string& file, std::string& func)
+        void updateGraphStrings(std::string& graph, std::filesystem::path& path, std::string& func)
         {
             graph = graph.empty() ? "renderGraph" : graph;
-            file = file.empty() ? graph + ".py" : file;
+            path = path.empty() ? graph + ".py" : path;
             func = func.empty() ? RenderGraphIR::getFuncName(graph) : func;
         }
 
-        void runScriptFile(const std::string& filename, const std::string& custom)
+        void runScriptFile(const std::filesystem::path& path, const std::string& custom)
         {
-            std::string fullpath;
-            if (findFileInDataDirectories(filename, fullpath) == false)
+            std::filesystem::path fullPath;
+            if (findFileInDataDirectories(path, fullPath))
             {
-                throw RuntimeError("Can't find the file '{}'", filename);
+                std::string script = readFile(fullPath) + custom;
+                Scripting::runScript(script);
             }
-
-            std::string script = readFile(fullpath) + custom;
-            Scripting::runScript(script);
+            else
+            {
+                throw RuntimeError("Can't find the file '{}'", path);
+            }
         }
     }
 
-    bool loadFailed(std::exception e, const std::string& filename)
+    bool loadFailed(std::exception e, const std::filesystem::path& path)
     {
         logError(e.what());
-        auto res = msgBox(std::string("Error when importing graph from file '" + filename + "'\n" + e.what() + "\n\nWould you like to try and reload the file?").c_str(), MsgBoxType::YesNo);
+        auto res = msgBox(fmt::format("Error when importing graph from file '{}'\n{}\n\nWould you like to try and reload the file?", path.string(), e.what()), MsgBoxType::YesNo);
         return (res == MsgBoxButton::No);
     }
 
-    RenderGraph::SharedPtr RenderGraphImporter::import(std::string graphName, std::string filename, std::string funcName)
+    RenderGraph::SharedPtr RenderGraphImporter::import(std::string graphName, std::filesystem::path path, std::string funcName)
     {
         while(true)
         {
             try
             {
-                updateGraphStrings(graphName, filename, funcName);
+                updateGraphStrings(graphName, path, funcName);
                 std::string custom;
                 if (funcName.size()) custom += "\n" + graphName + '=' + funcName + "()";
                 // TODO: Rendergraph scripts should be executed in an isolated scripting context.
-                runScriptFile(filename, custom);
+                runScriptFile(path, custom);
 
                 auto pGraph = Scripting::getDefaultContext().getObject<RenderGraph::SharedPtr>(graphName);
                 if (!pGraph) throw("Unspecified error");
@@ -82,19 +84,19 @@ namespace Falcor
             }
             catch (const std::exception& e)
             {
-                if (loadFailed(e, filename)) return nullptr;
+                if (loadFailed(e, path)) return nullptr;
             }
         }
     }
 
-    std::vector<RenderGraph::SharedPtr> RenderGraphImporter::importAllGraphs(const std::string& filename)
+    std::vector<RenderGraph::SharedPtr> RenderGraphImporter::importAllGraphs(const std::filesystem::path& path)
     {
         while(true)
         {
             try
             {
                 // TODO: Rendergraph scripts should be executed in an isolated scripting context.
-                runScriptFile(filename, {});
+                runScriptFile(path, {});
                 auto scriptObj = Scripting::getDefaultContext().getObjects<RenderGraph::SharedPtr>();
                 std::vector<RenderGraph::SharedPtr> res;
                 res.reserve(scriptObj.size());
@@ -109,7 +111,7 @@ namespace Falcor
             }
             catch (const std::exception& e)
             {
-                if (loadFailed(e, filename)) return {};
+                if (loadFailed(e, path)) return {};
             }
         }
     }
@@ -127,7 +129,7 @@ namespace Falcor
         auto libNames = RenderPassLibrary::enumerateLibraries();
         for (const auto& libName : libNames)
         {
-            pIR->loadPassLibrary(getFilenameFromPath(libName));
+            pIR->loadPassLibrary(libName);
         }
 
         // Add the passes
@@ -161,15 +163,15 @@ namespace Falcor
         return pIR->getIR();
     }
 
-    bool RenderGraphExporter::save(const std::shared_ptr<RenderGraph>& pGraph, std::string filename)
+    bool RenderGraphExporter::save(const std::shared_ptr<RenderGraph>& pGraph, std::filesystem::path path)
     {
         std::string ir = getIR(pGraph);
         std::string funcName;
         std::string graphName = pGraph->getName();
-        updateGraphStrings(graphName, filename, funcName);
+        updateGraphStrings(graphName, path, funcName);
 
         // Save it to file
-        std::ofstream f(filename);
+        std::ofstream f(path);
         f << ir << std::endl;
         f << graphName << " = " << funcName + "()\n";
         // Try adding it to Mogwai

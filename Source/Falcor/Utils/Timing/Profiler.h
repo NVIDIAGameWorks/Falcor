@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -113,6 +113,8 @@ namespace Falcor
                 std::vector<GpuTimer::SharedPtr> pTimers;   ///< Pool of GPU timers.
                 size_t currentTimer = 0;                    ///< Next GPU timer to use from the pool.
                 GpuTimer *pActiveTimer = nullptr;           ///< Currently active GPU timer.
+
+                bool valid = false;                         ///< True when frame data is valid (after begin/end cycle).
             };
             FrameData mFrameData[2];                        ///< Double-buffered frame data to avoid GPU flushes.
 
@@ -137,7 +139,7 @@ namespace Falcor
             pybind11::dict toPython() const;
 
             std::string toJsonString() const;
-            void writeToFile(const std::string& filename) const;
+            void writeToFile(const std::filesystem::path& path) const;
 
         private:
             Capture(size_t reservedEvents, size_t reservedFrames);
@@ -146,7 +148,7 @@ namespace Falcor
             void captureEvents(const std::vector<Event*>& events);
             void finalize();
 
-            size_t mReservedFrames;
+            size_t mReservedFrames = 0;
             size_t mFrameCount = 0;
             std::vector<Event*> mEvents;
             std::vector<Lane> mLanes;
@@ -230,6 +232,8 @@ namespace Falcor
         */
         static Profiler& instance() { return *instancePtr(); }
 
+        Profiler();
+
     private:
         /** Create a new event.
             \param[in] name The event name.
@@ -254,6 +258,9 @@ namespace Falcor
         uint32_t mFrameIndex = 0;                           ///< Current frame index.
 
         Capture::SharedPtr mpCapture;                       ///< Currently active capture.
+
+        GpuFence::SharedPtr mpFence;
+        uint64_t mFenceValue = uint64_t(-1);
     };
 
     FALCOR_ENUM_CLASS_OPERATORS(Profiler::Flags);

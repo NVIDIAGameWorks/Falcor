@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -543,6 +543,7 @@ namespace Falcor
         std::map<gfx::ShaderOffset, ParameterBlock::SharedPtr> mParameterBlocks;
         std::map<gfx::ShaderOffset, ShaderResourceView::SharedPtr> mSRVs;
         std::map<gfx::ShaderOffset, UnorderedAccessView::SharedPtr> mUAVs;
+        std::map<gfx::ShaderOffset, Resource::SharedPtr> mResources;
         std::map<gfx::ShaderOffset, Sampler::SharedPtr> mSamplers;
         std::map<gfx::ShaderOffset, RtAccelerationStructure::SharedPtr> mAccelerationStructures;
 #endif // FALCOR_GFX

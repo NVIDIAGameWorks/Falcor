@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -42,7 +42,7 @@ namespace Falcor
         {
             sRunning = true;
 #ifdef _WIN32
-            static std::wstring pythonHome = string_2_wstring(getExecutableDirectory() + "/Python");
+            static std::wstring pythonHome = (getExecutableDirectory() / "Python").c_str();
             // Py_SetPythonHome in Python < 3.7 takes a non-const wstr*, but guarantees that the contents
             // will not be modified by Python. As such, casting away the const should be safe.
             Py_SetPythonHome(const_cast<wchar_t*>(pythonHome.c_str()));
@@ -137,17 +137,17 @@ namespace Falcor
         return Falcor::runScript(script, context.mGlobals, captureOutput);
     }
 
-    Scripting::RunResult Scripting::runScriptFromFile(const std::string& filename, Context& context, bool captureOutput)
+    Scripting::RunResult Scripting::runScriptFromFile(const std::filesystem::path& path, Context& context, bool captureOutput)
     {
-        if (std::filesystem::exists(filename))
+        if (std::filesystem::exists(path))
         {
-            std::string absFile = std::filesystem::absolute(filename).string();
+            std::string absFile = std::filesystem::absolute(path).string();
             context.setObject("__file__", absFile);
-            auto result = Scripting::runScript(readFile(filename), context, captureOutput);
+            auto result = Scripting::runScript(readFile(path), context, captureOutput);
             context.setObject("__file__", nullptr); // There seems to be no API on pybind11::dict to remove a key.
             return result;
         }
-        throw RuntimeError("Failed to run script. Can't find the file '{}'.", filename);
+        throw RuntimeError("Failed to run script. Can't find the file '{}'.", path);
     }
 
     std::string Scripting::interpretScript(const std::string& script, Context& context)

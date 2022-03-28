@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -100,15 +100,22 @@ namespace Falcor
         MeshAttributeIndicesList attributeIndices;  ///< For time-sampled meshes, list of attribute indices describing how mesh was processed
     };
 
-    /** Represents a curvePrim in the scene.
-        During curve processing, curveIDs is initialized with a list of scene builder curve IDs.
+    /** Represents a curvePrim in the USD scene.
+        During curve processing, geometryID is initialized with scene builder curve or mesh ID.
     */
     struct Curve
     {
+        static const uint32_t kInvalidID = std::numeric_limits<uint32_t>::max();
+
         UsdPrim curvePrim;                                          ///< Curve prim.
-        uint32_t curveID;                                           ///< Scene builder curve ID.
+        CurveTessellationMode tessellationMode;                     ///< Curve tessellation mode.
+
+        uint32_t geometryID = kInvalidID;                           ///< Geometry ID (curve or mesh, depending on tessellation mode).
+
         std::vector<double> timeSamples;                            ///< Time samples for animation.
         std::vector<SceneBuilder::ProcessedCurve> processedCurves;  ///< List of pre-processed curves per keyframe.
+
+        SceneBuilder::ProcessedMesh processedMesh;                  ///< Pre-processed mesh of the first keyframe (valid only for PolyTube tessellation mode).
     };
 
     /** Represents a prototype in the scene.
@@ -212,7 +219,7 @@ namespace Falcor
     // Importer data and helper functions
     struct ImporterContext
     {
-        ImporterContext(const std::string& filename, UsdStageRefPtr pStage, SceneBuilder& builder, const Dictionary& dict, TimeReport& timeReport, bool useInstanceProxies = false);
+        ImporterContext(const std::filesystem::path& path, UsdStageRefPtr pStage, SceneBuilder& builder, const Dictionary& dict, TimeReport& timeReport, bool useInstanceProxies = false);
 
         // Get pointer to default material for the given prim, based on its type, creating it if it doesn't already exist.
         // Thread-safe.
@@ -304,7 +311,7 @@ namespace Falcor
         */
         void finalize();
 
-        std::string filename;                                                                        ///< Filename of the USD stage being imported.
+        std::filesystem::path path;                                                                  ///< Path of the USD stage being imported.
         UsdStageRefPtr pStage;                                                                       ///< USD stage being imported.
         const Dictionary& dict;                                                                      ///< Input map from material path to material short name.
         TimeReport& timeReport;                                                                      ///< Timer object to use when importing.

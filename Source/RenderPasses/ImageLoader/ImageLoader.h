@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -50,12 +50,14 @@ public:
 private:
     ImageLoader(const Dictionary& dict);
 
+    bool loadImage(const std::filesystem::path& path);
+
     RenderPassHelpers::IOSize mOutputSizeSelection = RenderPassHelpers::IOSize::Default; ///< Selected output size.
     ResourceFormat mOutputFormat = ResourceFormat::Unknown;     ///< Current output resource format.
     uint2 mOutputSize = {};                                     ///< Current output size in pixels.
 
     Texture::SharedPtr mpTex;
-    std::string mImageName;
+    std::filesystem::path mImagePath;
     uint32_t mArraySlice = 0;
     uint32_t mMipLevel = 0;
     bool mGenerateMips = false;

@@ -7,6 +7,6 @@
     <ClInclude Include="ModelViewer.h" />
   </ItemGroup>
   <ItemGroup>
-    <ShaderSource Include="ModelViewer.ps.slang" />
+    <ShaderSource Include="ModelViewer.3d.slang" />
   </ItemGroup>
 </Project>

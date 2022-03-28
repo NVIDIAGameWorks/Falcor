@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,10 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include <numeric>
 #include "TimeReport.h"
 #include "Utils/Logger.h"
 #include "Utils/StringUtils.h"
+#include <numeric>
 
 namespace Falcor
 {
@@ -42,13 +42,20 @@ namespace Falcor
     {
         mLastMeasureTime = CpuTimer::getCurrentTimePoint();
         mMeasurements.clear();
+        mTotal = 0.0;
+    }
+
+    void TimeReport::resetTimer()
+    {
+        mLastMeasureTime = CpuTimer::getCurrentTimePoint();
+        mTotal = 0.0;
     }
 
     void TimeReport::printToLog()
     {
         for (const auto& [task, duration] : mMeasurements)
         {
-            logInfo(padStringToLength(task + ":", 25) + " " + std::to_string(duration) + " s");
+            logInfo(padStringToLength(task + ":", 25) + " " + std::to_string(duration) + " s" + (mTotal > 0.0 && !mMeasurements.empty() ? ", " + std::to_string(100.0 * duration / mTotal) + "% of total" : ""));
         }
     }
 
@@ -62,7 +69,7 @@ namespace Falcor
 
     void TimeReport::addTotal(const std::string name)
     {
-        double total = std::accumulate(mMeasurements.begin(), mMeasurements.end(), 0.0, [] (double t, auto &&m) { return t + m.second; });
-        mMeasurements.push_back({"Total", total});
+        mTotal = std::accumulate(mMeasurements.begin(), mMeasurements.end(), 0.0, [] (double t, auto &&m) { return t + m.second; });
+        mMeasurements.push_back({"Total", mTotal});
     }
 }

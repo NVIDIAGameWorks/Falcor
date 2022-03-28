@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -52,11 +52,13 @@ namespace Falcor
             \param[in] UVs Array of texture coordinates.
             \param[in] degree Polynomial degree of strand (linear -- cubic).
             \param[in] subdivPerSegment Number of sub-segments within each cubic bspline segment (defined by 4 control points).
-            \param[in] keepOneEveryXPerStrand Keep one of every X vertices in each curve strand.
+            \param[in] keepOneEveryXStrands Keep one of every X curve strands.
+            \param[in] keepOneEveryXVerticesPerStrand Keep one of every X vertices in each curve strand.
+            \param[in] widthScale Global scaling factor for curve width (normally set to 1.0).
             \param[in] xform Row-major 4x4 transformation matrix. We apply pre-transformation to curve geometry.
             \return Linear swept sphere segments.
         */
-        static SweptSphereResult convertToLinearSweptSphere(size_t strandCount, const int* vertexCountsPerStrand, const float3* controlPoints, const float* widths, const float2* UVs, uint32_t degree, uint32_t subdivPerSegment, uint32_t keepOneEveryXPerStrand, const glm::mat4& xform);
+        static SweptSphereResult convertToLinearSweptSphere(size_t strandCount, const int* vertexCountsPerStrand, const float3* controlPoints, const float* widths, const float2* UVs, uint32_t degree, uint32_t subdivPerSegment, uint32_t keepOneEveryXStrands, uint32_t keepOneEveryXVerticesPerStrand, float widthScale, const glm::mat4& xform);
 
         // Tessellated mesh
 
@@ -65,9 +67,10 @@ namespace Falcor
             std::vector<float3> vertices;
             std::vector<float3> normals;
             std::vector<float4> tangents;
+            std::vector<float2> texCrds;
+            std::vector<float> radii;
             std::vector<uint32_t> faceVertexCounts;
             std::vector<uint32_t> faceVertexIndices;
-            std::vector<float2> texCrds;
         };
 
         /** Tessellate cubic B-splines to a triangular mesh.
@@ -77,10 +80,13 @@ namespace Falcor
             \param[in] widths Array of curve widths, i.e., diameters of swept spheres.
             \param[in] UVs Array of texture coordinates.
             \param[in] subdivPerSegment Number of sub-segments within each cubic bspline segment (defined by 4 control points).
+            \param[in] keepOneEveryXStrands Keep one of every X curve strands.
+            \param[in] keepOneEveryXVerticesPerStrand Keep one of every X vertices in each curve strand.
+            \param[in] widthScale Global scaling factor for curve width (normally set to 1.0).
             \param[in] pointCountPerCrossSection Number of points sampled at each cross-section.
             \return Tessellated mesh.
         */
-        static MeshResult convertToMesh(size_t strandCount, const int* vertexCountsPerStrand, const float3* controlPoints, const float* widths, const float2* UVs, uint32_t subdivPerSegment, uint32_t pointCountPerCrossSection);
+        static MeshResult convertToMesh(size_t strandCount, const int* vertexCountsPerStrand, const float3* controlPoints, const float* widths, const float2* UVs, uint32_t subdivPerSegment, uint32_t keepOneEveryXStrands, uint32_t keepOneEveryXVerticesPerStrand, float widthScale, uint32_t pointCountPerCrossSection);
 
     private:
         CurveTessellation() = default;

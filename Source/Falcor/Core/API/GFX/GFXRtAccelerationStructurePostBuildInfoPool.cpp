@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -37,7 +37,7 @@ namespace Falcor
         gfx::IQueryPool::Desc queryPoolDesc = {};
         queryPoolDesc.count = desc.elementCount;
         queryPoolDesc.type = getGFXAccelerationStructurePostBuildQueryType(desc.queryType);
-        gfx_call(gpDevice->getApiHandle()->createQueryPool(queryPoolDesc, mpGFXQueryPool.writeRef()));
+        FALCOR_GFX_CALL(gpDevice->getApiHandle()->createQueryPool(queryPoolDesc, mpGFXQueryPool.writeRef()));
     }
 
     RtAccelerationStructurePostBuildInfoPool::~RtAccelerationStructurePostBuildInfoPool()
@@ -52,13 +52,13 @@ namespace Falcor
             mNeedFlush = false;
         }
         uint64_t result = 0;
-        gfx_call(mpGFXQueryPool->getResult(index, 1, &result));
+        FALCOR_GFX_CALL(mpGFXQueryPool->getResult(index, 1, &result));
         return result;
     }
 
     void RtAccelerationStructurePostBuildInfoPool::reset(CopyContext* pContext)
     {
-        gfx_call(mpGFXQueryPool->reset());
+        FALCOR_GFX_CALL(mpGFXQueryPool->reset());
         mNeedFlush = true;
     }
 }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -48,14 +48,14 @@ struct StandardBSDF : IBSDF
     StandardBSDFData data;      ///< BSDF parameters.
     float3 emission;            ///< Radiance emitted in the incident direction (wi).
 
-    float3 eval(const ShadingData sd, const float3 wo)
+    float3 eval<S : ISampleGenerator>(const ShadingData sd, const float3 wo, inout S sg)
     {
         float3 wiLocal = sd.toLocal(sd.V);
         float3 woLocal = sd.toLocal(wo);
 
         FalcorBSDF bsdf = FalcorBSDF(sd, data);
 
-        return bsdf.eval(wiLocal, woLocal);
+        return bsdf.eval(wiLocal, woLocal, sg);
     }
 
     bool sample<S : ISampleGenerator>(const ShadingData sd, inout S sg, out BSDFSample result, bool useImportanceSampling = true)
@@ -150,7 +150,7 @@ struct StandardBSDF : IBSDF
         FalcorBSDF bsdf = FalcorBSDF(sd, data);
 
         result.wo = sd.fromLocal(woLocal);
-        result.weight = bsdf.eval(wiLocal, woLocal) / result.pdf;
+        result.weight = bsdf.eval(wiLocal, woLocal, sg) / result.pdf;
         result.lobe = (uint)(woLocal.z > 0.f ? LobeType::DiffuseReflection : LobeType::DiffuseTransmission);
 
         return true;

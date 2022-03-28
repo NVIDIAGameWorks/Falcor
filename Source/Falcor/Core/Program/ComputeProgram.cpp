@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,20 +30,25 @@
 
 namespace Falcor
 {
-    ComputeProgram::SharedPtr ComputeProgram::createFromFile(const std::string& filename, const std::string& csEntry, const DefineList& programDefines, Shader::CompilerFlags flags, const std::string& shaderModel)
+    ComputeProgram::SharedPtr ComputeProgram::createFromFile(const std::filesystem::path& path, const std::string& csEntry, const DefineList& programDefines, Shader::CompilerFlags flags, const std::string& shaderModel)
     {
-        Desc d(filename);
+        Desc d(path);
         if (!shaderModel.empty()) d.setShaderModel(shaderModel);
         d.setCompilerFlags(flags);
         d.csEntry(csEntry);
         return create(d, programDefines);
     }
 
-    ComputeProgram::SharedPtr ComputeProgram::create(const Program::Desc& desc, const DefineList& programDefines)
+    ComputeProgram::SharedPtr ComputeProgram::create(const Desc& desc, const DefineList& programDefines)
     {
-        SharedPtr pProg = SharedPtr(new ComputeProgram);
-        pProg->init(desc, programDefines);
+        auto pProg = SharedPtr(new ComputeProgram(desc, programDefines));
+        registerProgramForReload(pProg);
         return pProg;
+    }
+
+    ComputeProgram::ComputeProgram(const Desc& desc, const DefineList& programDefines)
+        : Program(desc, programDefines)
+    {
     }
 
     void ComputeProgram::dispatchCompute(

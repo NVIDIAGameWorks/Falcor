@@ -14,3 +14,13 @@ OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITU
 OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+---
+
+This software links to the following components which are not licensed under the above license text.
+For details on the specific licenses please refer to the provided links.
+
+- DLSS: https://github.com/NVIDIA/DLSS/blob/main/LICENSE.txt
+- RTXGI: https://github.com/NVIDIAGameWorks/RTXGI/blob/main/License.txt
+- RTXDI: https://github.com/NVIDIAGameWorks/RTXDI/blob/main/LICENSE.txt
+- NRD: https://github.com/NVIDIAGameWorks/RayTracingDenoiser/blob/master/LICENSE.txt

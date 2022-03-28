@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -41,7 +41,7 @@ namespace
 
 void Visualization2D::onGuiRender(Gui* pGui)
 {
-    Gui::Window w(pGui, "Visualization 2D", { 400, 320 }, { 10, 10 });
+    Gui::Window w(pGui, "Visualization 2D", { 700, 900 }, { 10, 10 });
     bool changed = w.dropdown("Scene selection", kModeList, reinterpret_cast<uint32_t&>(mSelectedScene));
     if (changed)
     {
@@ -139,13 +139,13 @@ bool Visualization2D::onMouseEvent(const MouseEvent& mouseEvent)
     bool bHandled = false;
     switch (mouseEvent.type)
     {
-    case MouseEvent::Type::LeftButtonDown:
-        mLeftButtonDown = true;
-        bHandled = true;
-        break;
-    case MouseEvent::Type::LeftButtonUp:
-        mLeftButtonDown = false;
-        bHandled = true;
+    case MouseEvent::Type::ButtonDown:
+    case MouseEvent::Type::ButtonUp:
+        if (mouseEvent.button == Input::MouseButton::Left)
+        {
+            mLeftButtonDown = mouseEvent.type == MouseEvent::Type::ButtonDown;
+            bHandled = true;
+        }
         break;
     case MouseEvent::Type::Move:
         if (mLeftButtonDown)
@@ -168,15 +168,15 @@ void Visualization2D::onResizeSwapChain(uint32_t width, uint32_t height)
 {
 }
 
-int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
+int main(int argc, char** argv)
 {
 
     Visualization2D::UniquePtr pRenderer = std::make_unique<Visualization2D>();
     SampleConfig config;
     config.windowDesc.title = "Falcor 2D Visualization";
     config.windowDesc.resizableWindow = true;
-    config.windowDesc.width = 1024;
-    config.windowDesc.height = 800;
+    config.windowDesc.width = 1400;
+    config.windowDesc.height = 1000;
     config.deviceDesc.enableVsync = true;
 
     Sample::run(config, pRenderer);

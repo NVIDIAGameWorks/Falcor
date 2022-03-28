@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -142,5 +142,33 @@ namespace Falcor
         // Insert UAV barrier automatically if the resource is an UAV that is already in UnorderedAccess state.
         // Otherwise the user would have to insert barriers explicitly between passes accessing UAVs, which is easily forgotten.
         if (insertBarrier && isUav) pContext->uavBarrier(pResource);
+    }
+
+    // Template specialization to allow setting booleans on a parameter block.
+    // On the host side a bool is 1B and the device 4B. We cast bools to 32-bit integers here.
+    // Note that this applies to our boolN vectors as well, which are currently 1B per element.
+
+    template<> FALCOR_API bool ParameterBlock::setVariable(UniformShaderVarOffset offset, const bool& value)
+    {
+        int32_t v = value ? 1 : 0;
+        return setVariable(offset, v);
+    }
+
+    template<> FALCOR_API bool ParameterBlock::setVariable(UniformShaderVarOffset offset, const bool2& value)
+    {
+        int2 v = { value.x ? 1 : 0, value.y ? 1 : 0 };
+        return setVariable(offset, v);
+    }
+
+    template<> FALCOR_API bool ParameterBlock::setVariable(UniformShaderVarOffset offset, const bool3& value)
+    {
+        int3 v = { value.x ? 1 : 0, value.y ? 1 : 0, value.z ? 1 : 0 };
+        return setVariable(offset, v);
+    }
+
+    template<> FALCOR_API bool ParameterBlock::setVariable(UniformShaderVarOffset offset, const bool4& value)
+    {
+        int4 v = { value.x ? 1 : 0, value.y ? 1 : 0, value.z ? 1 : 0, value.w ? 1 : 0 };
+        return setVariable(offset, v);
     }
 }

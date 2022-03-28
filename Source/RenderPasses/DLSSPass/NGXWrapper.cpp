@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -38,7 +38,7 @@
 #pragma comment(lib, "nvsdk_ngx_d.lib")
 #endif
 
-#ifdef FALCOR_D3D12
+#if FALCOR_D3D12_AVAILABLE
 #include <d3d12.h>
 #endif
 
@@ -86,8 +86,8 @@ namespace Falcor
     {
         NVSDK_NGX_Result result = NVSDK_NGX_Result_Fail;
 
-#ifdef FALCOR_D3D12
-        result = NVSDK_NGX_D3D12_Init(kAppID, logFolder, mpDevice->getApiHandle());
+#if FALCOR_D3D12_AVAILABLE
+        result = NVSDK_NGX_D3D12_Init(kAppID, logFolder, mpDevice->getD3D12Handle());
 #endif
 
 #ifdef FALCOR_VK
@@ -111,7 +111,7 @@ namespace Falcor
 
         mInitialized = true;
 
-#ifdef FALCOR_D3D12
+#if FALCOR_D3D12_AVAILABLE
         result = NVSDK_NGX_D3D12_GetParameters(&mpParameters);
 #endif
 
@@ -164,7 +164,7 @@ namespace Falcor
 
             if (mpFeature != nullptr) releaseDLSS();
 
-#ifdef FALCOR_D3D12
+#if FALCOR_D3D12_AVAILABLE
             NVSDK_NGX_D3D12_Shutdown();
 #endif
 
@@ -204,10 +204,10 @@ namespace Falcor
         createParams.Feature.InPerfQualityValue = perfQuality;
         createParams.InFeatureCreateFlags = createFlags;
 
-#ifdef FALCOR_D3D12
+#if FALCOR_D3D12_AVAILABLE
         pRenderContext->flush();
 
-        ID3D12GraphicsCommandList* d3d12CommandList = pRenderContext->getLowLevelData()->getCommandList();
+        ID3D12GraphicsCommandList* d3d12CommandList = pRenderContext->getLowLevelData()->getD3D12CommandList();
 
         NVSDK_NGX_Result result = NGX_D3D12_CREATE_DLSS_EXT(d3d12CommandList, CreationNodeMask, VisibilityNodeMask, &mpFeature, mpParameters, &createParams);
         if (NVSDK_NGX_FAILED(result))
@@ -243,7 +243,7 @@ namespace Falcor
 
         if (mpFeature)
         {
-#ifdef FALCOR_D3D12
+#if FALCOR_D3D12_AVAILABLE
             NVSDK_NGX_D3D12_ReleaseFeature(mpFeature);
 #endif
 #ifdef FALCOR_VK
@@ -309,18 +309,18 @@ namespace Falcor
 
         bool success = true;
 
-#ifdef FALCOR_D3D12
+#if FALCOR_D3D12_AVAILABLE
         pRenderContext->resourceBarrier(pUnresolvedColor, Resource::State::ShaderResource);
         pRenderContext->resourceBarrier(pMotionVectors, Resource::State::ShaderResource);
         pRenderContext->resourceBarrier(pDepth, Resource::State::ShaderResource);
         pRenderContext->resourceBarrier(pResolvedColor, Resource::State::UnorderedAccess);
 
-        ID3D12GraphicsCommandList* d3dCommandList = pRenderContext->getLowLevelData()->getCommandList();
-        ID3D12Resource* unresolvedColorBuffer = pUnresolvedColor->getApiHandle();
-        ID3D12Resource* motionVectorsBuffer = pMotionVectors->getApiHandle();
-        ID3D12Resource* resolvedColorBuffer = pResolvedColor->getApiHandle();
-        ID3D12Resource* depthBuffer = pDepth->getApiHandle();
-        ID3D12Resource* exposureBuffer = pExposure ? pExposure->getApiHandle() : nullptr;
+        ID3D12GraphicsCommandList* d3dCommandList = pRenderContext->getLowLevelData()->getD3D12CommandList();
+        ID3D12Resource* unresolvedColorBuffer = pUnresolvedColor->getD3D12Handle();
+        ID3D12Resource* motionVectorsBuffer = pMotionVectors->getD3D12Handle();
+        ID3D12Resource* resolvedColorBuffer = pResolvedColor->getD3D12Handle();
+        ID3D12Resource* depthBuffer = pDepth->getD3D12Handle();
+        ID3D12Resource* exposureBuffer = pExposure ? pExposure->getD3D12Handle() : nullptr;
 
         NVSDK_NGX_D3D12_DLSS_Eval_Params evalParams = {};
 
@@ -349,7 +349,7 @@ namespace Falcor
         pRenderContext->uavBarrier(pResolvedColor);
         // TODO: Get rid of the flush
         pRenderContext->flush();
-#endif // FALCOR_D3D12
+#endif // FALCOR_D3D12_AVAILABLE
 
 #ifdef FALCOR_VK
         commandList->endTrackingTextureState(pUnresolvedColor, nvrhi::AllSubresources, nvrhi::ResourceStates::SHADER_RESOURCE);

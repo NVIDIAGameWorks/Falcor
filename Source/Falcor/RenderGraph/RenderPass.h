@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -33,7 +33,7 @@
 #include "Core/API/Texture.h"
 #include "Scene/Scene.h"
 #include "Utils/UI/Gui.h"
-#include "Utils/UI/UserInput.h"
+#include "Utils/UI/InputTypes.h"
 #include "Core/API/RenderContext.h"
 
 namespace Falcor

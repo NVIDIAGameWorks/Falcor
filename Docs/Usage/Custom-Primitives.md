@@ -11,7 +11,7 @@ Custom intersection primitives are supported when using DXR. To render them, you
 ## Adding Custom Primitives to the Scene
 Currently, custom Primitives must be manually added through the `SceneBuilder`:
 ```c++
-auto pSceneBuilder = SceneBuilder::create(filename);
+auto pSceneBuilder = SceneBuilder::create(path);
 pSceneBuilder->addCustomPrimitive(0, AABB(float3(-0.5f), float3(0.5f)));
 ```
 
@@ -39,7 +39,7 @@ Typically, each "AABB Hit Group" should match the behavior of its corresponding 
 ## Writing Shaders
 For details on the HLSL syntax for intersection shaders, see the DXR documentation [here](https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html#intersection-shader).
 
-On the shader side, user-defined Custom Primitives are represented by their world-space min and max points, their typeID, and their instance index. This is all stored in the scene data structure as `StructuredBuffer<CustomPrimitiveData> customPrimitives;`. 
+On the shader side, user-defined Custom Primitives are represented by their world-space min and max points, their typeID, and their instance index. This is all stored in the scene data structure as `StructuredBuffer<CustomPrimitiveData> customPrimitives;`.
 
 The instance index differentiates between primitives of the same type. It is zero-based and counted separately for each type. With `typeID` and `instanceIdx`, users can uniquely identify custom primitives and look up additional data needed to render them.
 
