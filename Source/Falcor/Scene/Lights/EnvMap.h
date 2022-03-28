@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -48,10 +48,10 @@ namespace Falcor
         static SharedPtr create(const Texture::SharedPtr& texture);
 
         /** Create a new environment map from file.
-            \param[in] filename The environment map texture filename.
+            \param[in] path The environment map texture file path.
             \return A new object, or nullptr if the environment map failed to load.
         */
-        static SharedPtr createFromFile(const std::string& filename);
+        static SharedPtr createFromFile(const std::filesystem::path& path);
 
         /** Render the GUI.
         */
@@ -85,9 +85,9 @@ namespace Falcor
         */
         float3 getTint() const { return mData.tint; }
 
-        /** Get the filename of the environment map texture.
+        /** Get the file path of the environment map texture.
         */
-        const std::string& getFilename() const { return mpEnvMap->getSourceFilename(); }
+        const std::filesystem::path& getPath() const { return mpEnvMap->getSourcePath(); }
 
         const Texture::SharedPtr& getEnvMap() const { return mpEnvMap; }
         const Sampler::SharedPtr& getEnvSampler() const { return mpEnvSampler; }

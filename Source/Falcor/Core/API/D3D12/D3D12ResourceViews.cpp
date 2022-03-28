@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -471,6 +471,11 @@ namespace Falcor
         return SharedPtr(new ShaderResourceView(pBuffer, handle));
     }
 
+    D3D12DescriptorCpuHandle ShaderResourceView::getD3D12CpuHeapHandle() const
+    {
+        return mApiHandle->getCpuHandle(0);
+    }
+
     DepthStencilView::ApiHandle createDsvDescriptor(const D3D12_DEPTH_STENCIL_VIEW_DESC& desc, Resource::ApiHandle resHandle)
     {
         D3D12DescriptorSet::Layout layout;
@@ -498,6 +503,11 @@ namespace Falcor
         desc.ViewDimension = getViewDimension<decltype(desc.ViewDimension)>(dimension);
 
         return SharedPtr(new DepthStencilView(std::weak_ptr<Resource>(), createDsvDescriptor(desc, nullptr), 0, 0, 1));
+    }
+
+    D3D12DescriptorCpuHandle DepthStencilView::getD3D12CpuHeapHandle() const
+    {
+        return mApiHandle->getCpuHandle(0);
     }
 
     UnorderedAccessView::ApiHandle createUavDescriptor(const D3D12_UNORDERED_ACCESS_VIEW_DESC& desc, Resource::ApiHandle resHandle, Resource::ApiHandle counterHandle)
@@ -543,6 +553,11 @@ namespace Falcor
         return SharedPtr(new UnorderedAccessView(std::weak_ptr<Resource>(), createUavDescriptor(desc, nullptr, nullptr), 0, 0));
     }
 
+    D3D12DescriptorCpuHandle UnorderedAccessView::getD3D12CpuHeapHandle() const
+    {
+        return mApiHandle->getCpuHandle(0);
+    }
+
     RenderTargetView::~RenderTargetView() = default;
 
     RenderTargetView::ApiHandle createRtvDescriptor(const D3D12_RENDER_TARGET_VIEW_DESC& desc, Resource::ApiHandle resHandle)
@@ -574,6 +589,11 @@ namespace Falcor
         return SharedPtr(new RenderTargetView(std::weak_ptr<Resource>(), createRtvDescriptor(desc, nullptr), 0, 0, 1));
     }
 
+    D3D12DescriptorCpuHandle RenderTargetView::getD3D12CpuHeapHandle() const
+    {
+        return mApiHandle->getCpuHandle(0);
+    }
+
     ConstantBufferView::ApiHandle createCbvDescriptor(const D3D12_CONSTANT_BUFFER_VIEW_DESC& desc, Resource::ApiHandle resHandle)
     {
         D3D12DescriptorSet::Layout layout;
@@ -601,5 +621,10 @@ namespace Falcor
         D3D12_CONSTANT_BUFFER_VIEW_DESC desc = {};
 
         return SharedPtr(new ConstantBufferView(std::weak_ptr<Resource>(), createCbvDescriptor(desc, nullptr)));
+    }
+
+    D3D12DescriptorCpuHandle ConstantBufferView::getD3D12CpuHeapHandle() const
+    {
+        return mApiHandle->getCpuHandle(0);
     }
 }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -69,14 +69,14 @@ namespace Falcor
         static UniqueConstPtr create(uint32_t width, uint32_t height, ResourceFormat format, const uint8_t* pData);
 
         /** Create a new object from file.
-            \param[in] filename Filename, including a path. If the file can't be found relative to the current directory, Falcor will search for it in the common directories.
+            \param[in] path Path to load from. If the file can't be found relative to the current directory, Falcor will search for it in the common directories.
             \param[in] isTopDown Control the memory layout of the image. If true, the top-left pixel is the first pixel in the buffer, otherwise the bottom-left pixel is first.
             \return If loading was successful, a new object. Otherwise, nullptr.
         */
-        static UniqueConstPtr createFromFile(const std::string& filename, bool isTopDown);
+        static UniqueConstPtr createFromFile(const std::filesystem::path& path, bool isTopDown);
 
         /** Store a memory buffer to a file.
-            \param[in] filename Output filename. Can include a path - absolute or relative to the executable directory.
+            \param[in] path Path to write to.
             \param[in] width The width of the image.
             \param[in] height The height of the image.
             \param[in] fileFormat The destination file format. See FileFormat enum above.
@@ -85,7 +85,7 @@ namespace Falcor
             \param[in] isTopDown Control the memory layout of the image. If true, the top-left pixel will be stored first, otherwise the bottom-left pixel will be stored first
             \param[in] pData Pointer to the buffer containing the image
         */
-        static void saveImage(const std::string& filename, uint32_t width, uint32_t height, FileFormat fileFormat, ExportFlags exportFlags, ResourceFormat resourceFormat, bool isTopDown, void* pData);
+        static void saveImage(const std::filesystem::path& path, uint32_t width, uint32_t height, FileFormat fileFormat, ExportFlags exportFlags, ResourceFormat resourceFormat, bool isTopDown, void* pData);
 
         /**  Open dialog to save image to a file
             \param[in] pTexture Texture to save to file

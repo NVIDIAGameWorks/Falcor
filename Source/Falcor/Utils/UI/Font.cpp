@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -32,12 +32,6 @@
 
 namespace Falcor
 {
-    static std::string GetFontFilename(const std::string& FontName, float size)
-    {
-        std::string Filename = FontName + std::to_string(size);
-        return Filename;
-    }
-
     Font::Font()
     {
         if (!loadFromFile("DejaVu Sans Mono", 14))
@@ -51,84 +45,76 @@ namespace Falcor
         return UniquePtr(new Font());
     }
 
-    static const uint32_t FontMagicNumber = 0xDEAD0001;
+    static const uint32_t kFontMagicNumber = 0xDEAD0001;
 
 #pragma pack(1)
     struct FontFileHeader
     {
-        uint32_t StructSize;
-        uint32_t CharDataSize;
-        uint32_t MagicNumber;
-        uint32_t CharCount;
-        float FontHeight;
-        float TabWidth;
-        float LetterSpacing;
+        uint32_t structSize;
+        uint32_t charDataSize;
+        uint32_t magicNumber;
+        uint32_t charCount;
+        float fontHeight;
+        float tabWidth;
+        float letterSpacing;
     };
 
 #pragma pack(1)
     struct FontCharData
     {
-        char Char;
-        float TopLeftX;
-        float TopLeftY;
-        float Width;
-        float Height;
+        char character;
+        float topLeftX;
+        float topLeftY;
+        float width;
+        float height;
     };
 
     Font::~Font() = default;
 
-    bool Font::loadFromFile(const std::string& FontName, float size)
+    bool Font::loadFromFile(const std::string& fontName, float size)
     {
-        std::string Filename = "Framework/Fonts/" + GetFontFilename(FontName, size);
-        std::string TextureFilename;
-        findFileInDataDirectories(Filename + ".dds", TextureFilename);
-        std::string DataFilename;
-        findFileInDataDirectories(Filename + ".bin", DataFilename);
-        if((doesFileExist(TextureFilename) == false) || (doesFileExist(DataFilename) == false))
-        {
-            return false;
-        }
+        std::string baseName = "Framework/Fonts/" + fontName + std::to_string(size);
+        std::filesystem::path texturePath;
+        std::filesystem::path dataPath;
+        if (!findFileInDataDirectories(baseName + ".dds", texturePath)) return false;
+        if (!findFileInDataDirectories(baseName + ".bin", dataPath)) return false;
 
         // Load the data
-        std::ifstream Data(DataFilename, std::ios::binary);
-        FontFileHeader Header;
+        std::ifstream data(dataPath, std::ios::binary);
+        FontFileHeader header;
         // Read the header
-        Data.read((char*)&Header, sizeof(Header));
-        bool bValid = (Header.StructSize == sizeof(Header));
-        bValid = bValid && (Header.MagicNumber == FontMagicNumber);
-        bValid = bValid && (Header.CharDataSize == sizeof(FontCharData));
-        bValid = bValid && (Header.CharCount == mCharCount);
+        data.read((char*)&header, sizeof(header));
+        bool valid = (header.structSize == sizeof(header));
+        valid = valid && (header.magicNumber == kFontMagicNumber);
+        valid = valid && (header.charDataSize == sizeof(FontCharData));
+        valid = valid && (header.charCount == mCharCount);
 
-        if(bValid == false)
-        {
-            Data.close();
-            return false;
-        }
+        if (!valid) return false;
 
-        mTabWidth = Header.TabWidth;
-        mFontHeight = Header.FontHeight;
+        mTabWidth = header.tabWidth;
+        mFontHeight = header.fontHeight;
 
         mLetterSpacing = 0;
         // Load the char data
         for(uint32_t i = 0; i < mCharCount; i++)
         {
-            FontCharData CharData;
-            Data.read((char*)&CharData, sizeof(FontCharData));
-            if(CharData.Char != i + mFirstChar)
+            FontCharData charData;
+            data.read((char*)&charData, sizeof(FontCharData));
+            if(charData.character != i + mFirstChar)
             {
-                Data.close();
+                data.close();
                 return false;
             }
 
-            mCharDesc[i].topLeft.x = CharData.TopLeftX;
-            mCharDesc[i].topLeft.y = CharData.TopLeftY;
-            mCharDesc[i].size.x = CharData.Width;
-            mCharDesc[i].size.y = CharData.Height;
-            mLetterSpacing = std::max(mLetterSpacing, CharData.Width);
+            mCharDesc[i].topLeft.x = charData.topLeftX;
+            mCharDesc[i].topLeft.y = charData.topLeftY;
+            mCharDesc[i].size.x = charData.width;
+            mCharDesc[i].size.y = charData.height;
+            mLetterSpacing = std::max(mLetterSpacing, charData.width);
         }
 
         // Load the texture
-        mpTexture = Texture::createFromFile(TextureFilename, false, false);
+        mpTexture = Texture::createFromFile(texturePath, false, false);
         return mpTexture != nullptr;
     }
 }

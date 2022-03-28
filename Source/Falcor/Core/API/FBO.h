@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,6 +31,10 @@
 
 namespace Falcor
 {
+    /** Forward declaration of backend implementation-specific FBO data.
+    */
+    struct FboData;
+
     /** Low level framebuffer object.
         This class abstracts the API's framebuffer creation and management.
     */
@@ -284,6 +288,6 @@ namespace Falcor
         mutable bool mIsZeroAttachment = false;
 
         mutable ApiHandle mApiHandle = {};
-        void* mpPrivateData = nullptr;
+        std::unique_ptr<FboData> mpPrivateData;
     };
 }

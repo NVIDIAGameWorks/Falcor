@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -60,31 +60,56 @@ namespace
     const std::string kOutputIndirectAlbedo = "indirectAlbedo";
     const std::string kOutputNormal = "normal";
     const std::string kOutputReflectionPosW = "reflectionPosW";
+    const std::string kOutputRayCount = "rayCount";
+    const std::string kOutputPathLength = "pathLength";
     const std::string kOutputNRDDiffuseRadianceHitDist = "nrdDiffuseRadianceHitDist";
     const std::string kOutputNRDSpecularRadianceHitDist = "nrdSpecularRadianceHitDist";
-    const std::string kOutputNRDResidualRadianceHitDist = "nrdResidualRadianceHitDist";
     const std::string kOutputNRDEmission = "nrdEmission";
     const std::string kOutputNRDDiffuseReflectance = "nrdDiffuseReflectance";
     const std::string kOutputNRDSpecularReflectance = "nrdSpecularReflectance";
-    const std::string kOutputRayCount = "rayCount";
-    const std::string kOutputPathLength = "pathLength";
+    const std::string kOutputNRDDeltaReflectionRadianceHitDist = "nrdDeltaReflectionRadianceHitDist";
+    const std::string kOutputNRDDeltaReflectionReflectance = "nrdDeltaReflectionReflectance";
+    const std::string kOutputNRDDeltaReflectionEmission = "nrdDeltaReflectionEmission";
+    const std::string kOutputNRDDeltaReflectionNormWRoughMaterialID = "nrdDeltaReflectionNormWRoughMaterialID";
+    const std::string kOutputNRDDeltaReflectionPathLength = "nrdDeltaReflectionPathLength";
+    const std::string kOutputNRDDeltaReflectionHitDist = "nrdDeltaReflectionHitDist";
+    const std::string kOutputNRDDeltaTransmissionRadianceHitDist = "nrdDeltaTransmissionRadianceHitDist";
+    const std::string kOutputNRDDeltaTransmissionReflectance = "nrdDeltaTransmissionReflectance";
+    const std::string kOutputNRDDeltaTransmissionEmission = "nrdDeltaTransmissionEmission";
+    const std::string kOutputNRDDeltaTransmissionNormWRoughMaterialID = "nrdDeltaTransmissionNormWRoughMaterialID";
+    const std::string kOutputNRDDeltaTransmissionPathLength = "nrdDeltaTransmissionPathLength";
+    const std::string kOutputNRDDeltaTransmissionPosW = "nrdDeltaTransmissionPosW";
+    const std::string kOutputNRDResidualRadianceHitDist = "nrdResidualRadianceHitDist";
 
     const Falcor::ChannelList kOutputChannels =
     {
-        { kOutputColor,                                 "gOutputColor",                                 "Output color (linear)", true /* optional */, ResourceFormat::RGBA32Float },
-        { kOutputAlbedo,                                "gOutputAlbedo",                                "Output albedo (linear)", true /* optional */, ResourceFormat::RGBA8Unorm },
-        { kOutputSpecularAlbedo,                        "gOutputSpecularAlbedo",                        "Output specular albedo (linear)", true /* optional */, ResourceFormat::RGBA8Unorm },
-        { kOutputIndirectAlbedo,                        "gOutputIndirectAlbedo",                        "Output indirect albedo (linear)", true /* optional */, ResourceFormat::RGBA8Unorm },
-        { kOutputNormal,                                "gOutputNormal",                                "Output normal (linear)", true /* optional */, ResourceFormat::RGBA16Float },
-        { kOutputReflectionPosW,                        "gOutputReflectionPosW",                        "Output reflection pos (world space)", true /* optional */, ResourceFormat::RGBA32Float },
-        { kOutputNRDDiffuseRadianceHitDist,             "gOutputNRDDiffuseRadianceHitDist",             "Output demodulated diffuse color (linear) and hit distance", true /* optional */, ResourceFormat::RGBA32Float },
-        { kOutputNRDSpecularRadianceHitDist,            "gOutputNRDSpecularRadianceHitDist",            "Output demodulated specular color (linear) and hit distance", true /* optional */, ResourceFormat::RGBA32Float },
-        { kOutputNRDResidualRadianceHitDist,            "gOutputNRDResidualRadianceHitDist",            "Output residual color (linear) and hit distance", true /* optional */, ResourceFormat::RGBA32Float },
-        { kOutputNRDEmission,                           "gOutputNRDEmission",                           "Output primary surface emission", true /* optional */, ResourceFormat::RGBA32Float },
-        { kOutputNRDDiffuseReflectance,                 "gOutputNRDDiffuseReflectance",                 "Output primary surface diffuse reflectance", true /* optional */, ResourceFormat::RGBA16Float },
-        { kOutputNRDSpecularReflectance,                "gOutputNRDSpecularReflectance",                "Output primary surface specular reflectance", true /* optional */, ResourceFormat::RGBA16Float },
-        { kOutputRayCount,                              "",                                             "Per-pixel ray count", true /* optional */, ResourceFormat::R32Uint },
-        { kOutputPathLength,                            "",                                             "Per-pixel path length", true /* optional */, ResourceFormat::R32Uint },
+        { kOutputColor,                                     "",     "Output color (linear)", true /* optional */, ResourceFormat::RGBA32Float },
+        { kOutputAlbedo,                                    "",     "Output albedo (linear)", true /* optional */, ResourceFormat::RGBA8Unorm },
+        { kOutputSpecularAlbedo,                            "",     "Output specular albedo (linear)", true /* optional */, ResourceFormat::RGBA8Unorm },
+        { kOutputIndirectAlbedo,                            "",     "Output indirect albedo (linear)", true /* optional */, ResourceFormat::RGBA8Unorm },
+        { kOutputNormal,                                    "",     "Output normal (linear)", true /* optional */, ResourceFormat::RGBA16Float },
+        { kOutputReflectionPosW,                            "",     "Output reflection pos (world space)", true /* optional */, ResourceFormat::RGBA32Float },
+        { kOutputRayCount,                                  "",     "Per-pixel ray count", true /* optional */, ResourceFormat::R32Uint },
+        { kOutputPathLength,                                "",     "Per-pixel path length", true /* optional */, ResourceFormat::R32Uint },
+        // NRD outputs
+        { kOutputNRDDiffuseRadianceHitDist,                 "",     "Output demodulated diffuse color (linear) and hit distance", true /* optional */, ResourceFormat::RGBA32Float },
+        { kOutputNRDSpecularRadianceHitDist,                "",     "Output demodulated specular color (linear) and hit distance", true /* optional */, ResourceFormat::RGBA32Float },
+        { kOutputNRDEmission,                               "",     "Output primary surface emission", true /* optional */, ResourceFormat::RGBA32Float },
+        { kOutputNRDDiffuseReflectance,                     "",     "Output primary surface diffuse reflectance", true /* optional */, ResourceFormat::RGBA16Float },
+        { kOutputNRDSpecularReflectance,                    "",     "Output primary surface specular reflectance", true /* optional */, ResourceFormat::RGBA16Float },
+        { kOutputNRDDeltaReflectionRadianceHitDist,         "",     "Output demodulated delta reflection color (linear)", true /* optional */, ResourceFormat::RGBA32Float },
+        { kOutputNRDDeltaReflectionReflectance,             "",     "Output delta reflection reflectance color (linear)", true /* optional */, ResourceFormat::RGBA16Float },
+        { kOutputNRDDeltaReflectionEmission,                "",     "Output delta reflection emission color (linear)", true /* optional */, ResourceFormat::RGBA32Float },
+        { kOutputNRDDeltaReflectionNormWRoughMaterialID,    "",     "Output delta reflection world normal, roughness, and material ID", true /* optional */, ResourceFormat::RGB10A2Unorm },
+        { kOutputNRDDeltaReflectionPathLength,              "",     "Output delta reflection path length", true /* optional */, ResourceFormat::R16Float },
+        { kOutputNRDDeltaReflectionHitDist,                 "",     "Output delta reflection hit distance", true /* optional */, ResourceFormat::R16Float },
+        { kOutputNRDDeltaTransmissionRadianceHitDist,       "",     "Output demodulated delta transmission color (linear)", true /* optional */, ResourceFormat::RGBA32Float },
+        { kOutputNRDDeltaTransmissionReflectance,           "",     "Output delta transmission reflectance color (linear)", true /* optional */, ResourceFormat::RGBA16Float },
+        { kOutputNRDDeltaTransmissionEmission,              "",     "Output delta transmission emission color (linear)", true /* optional */, ResourceFormat::RGBA32Float },
+        { kOutputNRDDeltaTransmissionNormWRoughMaterialID,  "",     "Output delta transmission world normal, roughness, and material ID", true /* optional */, ResourceFormat::RGB10A2Unorm },
+        { kOutputNRDDeltaTransmissionPathLength,            "",     "Output delta transmission path length", true /* optional */, ResourceFormat::R16Float },
+        { kOutputNRDDeltaTransmissionPosW,                  "",     "Output delta transmission position", true /* optional */, ResourceFormat::RGBA32Float },
+        { kOutputNRDResidualRadianceHitDist,                "",     "Output residual color (linear) and hit distance", true /* optional */, ResourceFormat::RGBA32Float },
     };
 
     // UI variables.
@@ -423,10 +448,13 @@ void PathTracer::setScene(RenderContext* pRenderContext, const Scene::SharedPtr&
     mParams.frameDim = {};
     mParams.screenTiles = {};
 
+    // Need to recreate the RTXDI module when the scene changes.
     mpRTXDI = nullptr;
 
-    // Need to recreate the trace pass because the shader binding table changes.
-    mTracePass.pProgram = nullptr;
+    // Need to recreate the trace passes because the shader binding table changes.
+    mpTracePass = nullptr;
+    mpTraceDeltaReflectionPass = nullptr;
+    mpTraceDeltaTransmissionPass = nullptr;
 
     resetLighting();
 
@@ -468,7 +496,16 @@ void PathTracer::execute(RenderContext* pRenderContext, const RenderData& render
     }
 
     // Trace pass.
-    tracePass(pRenderContext, renderData);
+    FALCOR_ASSERT(mpTracePass);
+    tracePass(pRenderContext, renderData, *mpTracePass);
+
+    // Launch separate passes to trace delta reflection and transmission paths to generate respective guide buffers.
+    if (mOutputNRDAdditionalData)
+    {
+        FALCOR_ASSERT(mpTraceDeltaReflectionPass && mpTraceDeltaTransmissionPass);
+        tracePass(pRenderContext, renderData, *mpTraceDeltaReflectionPass);
+        tracePass(pRenderContext, renderData, *mpTraceDeltaTransmissionPass);
+    }
 
     // Resolve pass.
     resolvePass(pRenderContext, renderData);
@@ -674,6 +711,79 @@ bool PathTracer::onMouseEvent(const MouseEvent& mouseEvent)
     return mpPixelDebug->onMouseEvent(mouseEvent);
 }
 
+PathTracer::TracePass::TracePass(const std::string& name, const std::string& passDefine, const Scene::SharedPtr& pScene, const Program::DefineList& defines, const Program::TypeConformanceList& globalTypeConformances)
+    : name(name)
+    , passDefine(passDefine)
+{
+    const uint32_t kRayTypeScatter = 0;
+    const uint32_t kMissScatter = 0;
+
+    RtProgram::Desc desc;
+    desc.addShaderLibrary(kTracePassFilename);
+    desc.setShaderModel(kShaderModel);
+    desc.setMaxPayloadSize(160); // This is conservative but the required minimum is 140 bytes.
+    desc.setMaxAttributeSize(pScene->getRaytracingMaxAttributeSize());
+    desc.setMaxTraceRecursionDepth(1);
+    if (!pScene->hasProceduralGeometry()) desc.setPipelineFlags(RtPipelineFlags::SkipProceduralPrimitives);
+
+    // Create ray tracing binding table.
+    pBindingTable = RtBindingTable::create(1, 1, pScene->getGeometryCount());
+
+    // Specify entry point for raygen and miss shaders.
+    // The raygen shader needs type conformances for *all* materials in the scene.
+    // The miss shader doesn't need type conformances as it doesn't access any materials.
+    pBindingTable->setRayGen(desc.addRayGen("rayGen", globalTypeConformances));
+    pBindingTable->setMiss(kMissScatter, desc.addMiss("scatterMiss"));
+
+    // Specify hit group entry points for every combination of geometry and material type.
+    // The code for each hit group gets specialized for the actual types it's operating on.
+    // First query which material types the scene has.
+    auto materialTypes = pScene->getMaterialSystem()->getMaterialTypes();
+
+    for (const auto materialType : materialTypes)
+    {
+        auto typeConformances = pScene->getMaterialSystem()->getTypeConformances(materialType);
+
+        // Add hit groups for triangles.
+        if (auto geometryIDs = pScene->getGeometryIDs(Scene::GeometryType::TriangleMesh, materialType); !geometryIDs.empty())
+        {
+            auto shaderID = desc.addHitGroup("scatterTriangleClosestHit", "scatterTriangleAnyHit", "", typeConformances, to_string(materialType));
+            pBindingTable->setHitGroup(kRayTypeScatter, geometryIDs, shaderID);
+        }
+
+        // Add hit groups for displaced triangle meshes.
+        if (auto geometryIDs = pScene->getGeometryIDs(Scene::GeometryType::DisplacedTriangleMesh, materialType); !geometryIDs.empty())
+        {
+            auto shaderID = desc.addHitGroup("scatterDisplacedTriangleMeshClosestHit", "", "displacedTriangleMeshIntersection", typeConformances, to_string(materialType));
+            pBindingTable->setHitGroup(kRayTypeScatter, geometryIDs, shaderID);
+        }
+
+        // Add hit groups for curves.
+        if (auto geometryIDs = pScene->getGeometryIDs(Scene::GeometryType::Curve, materialType); !geometryIDs.empty())
+        {
+            auto shaderID = desc.addHitGroup("scatterCurveClosestHit", "", "curveIntersection", typeConformances, to_string(materialType));
+            pBindingTable->setHitGroup(kRayTypeScatter, geometryIDs, shaderID);
+        }
+
+        // Add hit groups for SDF grids.
+        if (auto geometryIDs = pScene->getGeometryIDs(Scene::GeometryType::SDFGrid, materialType); !geometryIDs.empty())
+        {
+            auto shaderID = desc.addHitGroup("scatterSdfGridClosestHit", "", "sdfGridIntersection", typeConformances, to_string(materialType));
+            pBindingTable->setHitGroup(kRayTypeScatter, geometryIDs, shaderID);
+        }
+    }
+
+    pProgram = RtProgram::create(desc, defines);
+}
+
+void PathTracer::TracePass::prepareProgram(const Program::DefineList& defines)
+{
+    FALCOR_ASSERT(pProgram != nullptr && pBindingTable != nullptr);
+    pProgram->setDefines(defines);
+    if (!passDefine.empty()) pProgram->addDefine(passDefine);
+    pVars = RtProgramVars::create(pProgram, pBindingTable);
+}
+
 void PathTracer::updatePrograms()
 {
     FALCOR_ASSERT(mpScene);
@@ -681,68 +791,37 @@ void PathTracer::updatePrograms()
     if (mRecompile == false) return;
 
     auto defines = mStaticParams.getDefines(*this);
-    auto typeConformances = mStaticParams.getTypeConformances(*this);
+    auto globalTypeConformances = mpScene->getMaterialSystem()->getTypeConformances();
 
-    // Create trace pass lazily.
-    if (!mTracePass.pProgram)
+    // Create trace passes lazily.
+    if (!mpTracePass) mpTracePass = std::make_unique<TracePass>("tracePass", "", mpScene, defines, globalTypeConformances);
+    if (mOutputNRDAdditionalData)
     {
-        const uint32_t kRayTypeScatter = 0;
-        const uint32_t kMissScatter = 0;
-
-        RtProgram::Desc desc;
-        desc.addShaderLibrary(kTracePassFilename);
-        desc.setShaderModel(kShaderModel);
-        desc.setMaxPayloadSize(160); // This is conservative but the required minimum is 140 bytes.
-        desc.setMaxAttributeSize(mpScene->getRaytracingMaxAttributeSize());
-        desc.setMaxTraceRecursionDepth(1);
-        if (!mpScene->hasProceduralGeometry()) desc.setPipelineFlags(RtPipelineFlags::SkipProceduralPrimitives);
-        desc.addTypeConformances(typeConformances);
-
-        mTracePass.pBindingTable = RtBindingTable::create(1, 1, mpScene->getGeometryCount());
-        mTracePass.pBindingTable->setRayGen(desc.addRayGen("rayGen"));
-        mTracePass.pBindingTable->setMiss(kMissScatter, desc.addMiss("scatterMiss"));
-
-        // Add hit groups for triangles.
-        mTracePass.pBindingTable->setHitGroup(kRayTypeScatter, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), desc.addHitGroup("scatterTriangleClosestHit", "scatterTriangleAnyHit"));
-
-        // Add hit groups for displaced triangle meshes.
-        if (mpScene->hasGeometryType(Scene::GeometryType::DisplacedTriangleMesh))
-        {
-            mTracePass.pBindingTable->setHitGroup(kRayTypeScatter, mpScene->getGeometryIDs(Scene::GeometryType::DisplacedTriangleMesh), desc.addHitGroup("scatterDisplacedTriangleMeshClosestHit", "", "displacedTriangleMeshIntersection"));
-        }
-
-        // Add hit groups for curves.
-        if (mpScene->hasGeometryType(Scene::GeometryType::Curve))
-        {
-            mTracePass.pBindingTable->setHitGroup(kRayTypeScatter, mpScene->getGeometryIDs(Scene::GeometryType::Curve), desc.addHitGroup("scatterCurveClosestHit", "", "curveIntersection"));
-        }
-
-        // Add hit groups for SDF grids.
-        if (mpScene->hasGeometryType(Scene::GeometryType::SDFGrid))
-        {
-            mTracePass.pBindingTable->setHitGroup(kRayTypeScatter, mpScene->getGeometryIDs(Scene::GeometryType::SDFGrid), desc.addHitGroup("scatterSdfGridClosestHit", "", "sdfGridIntersection"));
-        }
-
-        mTracePass.pProgram = RtProgram::create(desc, defines);
+        if (!mpTraceDeltaReflectionPass) mpTraceDeltaReflectionPass = std::make_unique<TracePass>("traceDeltaReflectionPass", "DELTA_REFLECTION_PASS", mpScene, defines, globalTypeConformances);
+        if (!mpTraceDeltaTransmissionPass) mpTraceDeltaTransmissionPass = std::make_unique<TracePass>("traceDeltaTransmissionPass", "DELTA_TRANSMISSION_PASS", mpScene, defines, globalTypeConformances);
     }
 
-    FALCOR_ASSERT(mTracePass.pProgram != nullptr && mTracePass.pBindingTable != nullptr);
+    // Create program vars for trace programs.
+    // We only need to set defines for program specialization here. Type conformances have already been setup on construction.
+    mpTracePass->prepareProgram(defines);
+    if (mpTraceDeltaReflectionPass) mpTraceDeltaReflectionPass->prepareProgram(defines);
+    if (mpTraceDeltaTransmissionPass) mpTraceDeltaTransmissionPass->prepareProgram(defines);
 
-    // Prepare other programs.
+    // Perform program specialization.
+    // Note that we must use set instead of add functions to replace any stale state.
     auto prepareProgram = [&](Program::SharedPtr program)
     {
-        program->addDefines(defines);
-        program->setTypeConformances(typeConformances);
+        program->setDefines(defines);
+        program->setTypeConformances(globalTypeConformances);
     };
     prepareProgram(mpGeneratePaths->getProgram());
     prepareProgram(mpResolvePass->getProgram());
     prepareProgram(mpReflectTypes->getProgram());
-    prepareProgram(mTracePass.pProgram);
 
+    // Create program vars for the specialized programs.
     mpGeneratePaths->setVars(nullptr);
     mpResolvePass->setVars(nullptr);
     mpReflectTypes->setVars(nullptr);
-    mTracePass.pVars = RtProgramVars::create(mTracePass.pProgram, mTracePass.pBindingTable);
 
     mVarsChanged = true;
     mRecompile = false;
@@ -935,7 +1014,7 @@ bool PathTracer::prepareLighting(RenderContext* pRenderContext)
     {
         lightingChanged |= mpEmissiveSampler->update(pRenderContext);
         auto defines = mpEmissiveSampler->getDefines();
-        if (mTracePass.pProgram && mTracePass.pProgram->addDefines(defines)) mRecompile = true;
+        if (mpTracePass && mpTracePass->pProgram->addDefines(defines)) mRecompile = true;
     }
 
     return lightingChanged;
@@ -968,6 +1047,16 @@ void PathTracer::setNRDData(const ShaderVar& var, const RenderData& renderData) 
     var["primaryHitEmission"] = renderData[kOutputNRDEmission]->asTexture();
     var["primaryHitDiffuseReflectance"] = renderData[kOutputNRDDiffuseReflectance]->asTexture();
     var["primaryHitSpecularReflectance"] = renderData[kOutputNRDSpecularReflectance]->asTexture();
+    var["deltaReflectionReflectance"] = renderData[kOutputNRDDeltaReflectionReflectance]->asTexture();
+    var["deltaReflectionEmission"] = renderData[kOutputNRDDeltaReflectionEmission]->asTexture();
+    var["deltaReflectionNormWRoughMaterialID"] = renderData[kOutputNRDDeltaReflectionNormWRoughMaterialID]->asTexture();
+    var["deltaReflectionPathLength"] = renderData[kOutputNRDDeltaReflectionPathLength]->asTexture();
+    var["deltaReflectionHitDist"] = renderData[kOutputNRDDeltaReflectionHitDist]->asTexture();
+    var["deltaTransmissionReflectance"] = renderData[kOutputNRDDeltaTransmissionReflectance]->asTexture();
+    var["deltaTransmissionEmission"] = renderData[kOutputNRDDeltaTransmissionEmission]->asTexture();
+    var["deltaTransmissionNormWRoughMaterialID"] = renderData[kOutputNRDDeltaTransmissionNormWRoughMaterialID]->asTexture();
+    var["deltaTransmissionPathLength"] = renderData[kOutputNRDDeltaTransmissionPathLength]->asTexture();
+    var["deltaTransmissionPosW"] = renderData[kOutputNRDDeltaTransmissionPosW]->asTexture();
 }
 
 void PathTracer::setShaderData(const ShaderVar& var, const RenderData& renderData, bool useLightSampling) const
@@ -1102,6 +1191,23 @@ bool PathTracer::beginFrame(RenderContext* pRenderContext, const RenderData& ren
         || renderData[kOutputNRDDiffuseReflectance] != nullptr
         || renderData[kOutputNRDSpecularReflectance] != nullptr;
 
+    // Check if additional NRD data should be generated.
+    bool prevOutputNRDAdditionalData = mOutputNRDAdditionalData;
+    mOutputNRDAdditionalData =
+        renderData[kOutputNRDDeltaReflectionRadianceHitDist] != nullptr
+        || renderData[kOutputNRDDeltaTransmissionRadianceHitDist] != nullptr
+        || renderData[kOutputNRDDeltaReflectionReflectance] != nullptr
+        || renderData[kOutputNRDDeltaReflectionEmission] != nullptr
+        || renderData[kOutputNRDDeltaReflectionNormWRoughMaterialID] != nullptr
+        || renderData[kOutputNRDDeltaReflectionPathLength] != nullptr
+        || renderData[kOutputNRDDeltaReflectionHitDist] != nullptr
+        || renderData[kOutputNRDDeltaTransmissionReflectance] != nullptr
+        || renderData[kOutputNRDDeltaTransmissionEmission] != nullptr
+        || renderData[kOutputNRDDeltaTransmissionNormWRoughMaterialID] != nullptr
+        || renderData[kOutputNRDDeltaTransmissionPathLength] != nullptr
+        || renderData[kOutputNRDDeltaTransmissionPosW] != nullptr;
+    if (mOutputNRDAdditionalData != prevOutputNRDAdditionalData) mRecompile = true;
+
     // Enable pixel stats if rayCount or pathLength outputs are connected.
     if (renderData[kOutputRayCount] != nullptr || renderData[kOutputPathLength] != nullptr)
     {
@@ -1163,6 +1269,7 @@ void PathTracer::generatePaths(RenderContext* pRenderContext, const RenderData& 
     mpGeneratePaths->addDefine("USE_VIEW_DIR", (mpScene->getCamera()->getApertureRadius() > 0 && renderData[kInputViewDir] != nullptr) ? "1" : "0");
     mpGeneratePaths->addDefine("OUTPUT_GUIDE_DATA", mOutputGuideData ? "1" : "0");
     mpGeneratePaths->addDefine("OUTPUT_NRD_DATA", mOutputNRDData ? "1" : "0");
+    mpGeneratePaths->addDefine("OUTPUT_NRD_ADDITIONAL_DATA", mOutputNRDAdditionalData ? "1" : "0");
 
     // Bind resources.
     auto var = mpGeneratePaths->getRootVar()["CB"]["gPathGenerator"];
@@ -1177,30 +1284,33 @@ void PathTracer::generatePaths(RenderContext* pRenderContext, const RenderData& 
     mpGeneratePaths->execute(pRenderContext, { mParams.screenTiles.x * tileSize, mParams.screenTiles.y, 1u });
 }
 
-void PathTracer::tracePass(RenderContext* pRenderContext, const RenderData& renderData)
+void PathTracer::tracePass(RenderContext* pRenderContext, const RenderData& renderData, TracePass& tracePass)
 {
-    FALCOR_PROFILE("tracePass");
+    FALCOR_PROFILE(tracePass.name);
+
+    FALCOR_ASSERT(tracePass.pProgram != nullptr && tracePass.pBindingTable != nullptr && tracePass.pVars != nullptr);
 
     // Additional specialization. This shouldn't change resource declarations.
-    mTracePass.pProgram->addDefine("USE_VIEW_DIR", (mpScene->getCamera()->getApertureRadius() > 0 && renderData[kInputViewDir] != nullptr) ? "1" : "0");
-    mTracePass.pProgram->addDefine("OUTPUT_GUIDE_DATA", mOutputGuideData ? "1" : "0");
-    mTracePass.pProgram->addDefine("OUTPUT_NRD_DATA", mOutputNRDData ? "1" : "0");
+    tracePass.pProgram->addDefine("USE_VIEW_DIR", (mpScene->getCamera()->getApertureRadius() > 0 && renderData[kInputViewDir] != nullptr) ? "1" : "0");
+    tracePass.pProgram->addDefine("OUTPUT_GUIDE_DATA", mOutputGuideData ? "1" : "0");
+    tracePass.pProgram->addDefine("OUTPUT_NRD_DATA", mOutputNRDData ? "1" : "0");
+    tracePass.pProgram->addDefine("OUTPUT_NRD_ADDITIONAL_DATA", mOutputNRDAdditionalData ? "1" : "0");
 
     // Bind global resources.
-    auto var = mTracePass.pVars->getRootVar();
+    auto var = tracePass.pVars->getRootVar();
     mpScene->setRaytracingShaderData(pRenderContext, var);
 
     if (mVarsChanged) mpSampleGenerator->setShaderData(var);
     if (mpRTXDI) mpRTXDI->setShaderData(var);
 
-    mpPixelStats->prepareProgram(mTracePass.pProgram, var);
-    mpPixelDebug->prepareProgram(mTracePass.pProgram, var);
+    mpPixelStats->prepareProgram(tracePass.pProgram, var);
+    mpPixelDebug->prepareProgram(tracePass.pProgram, var);
 
     // Bind the path tracer.
     var["gPathTracer"] = mpPathTracerBlock;
 
     // Full screen dispatch.
-    mpScene->raytrace(pRenderContext, mTracePass.pProgram.get(), mTracePass.pVars, uint3(mParams.frameDim, 1));
+    mpScene->raytrace(pRenderContext, tracePass.pProgram.get(), tracePass.pVars, uint3(mParams.frameDim, 1));
 }
 
 void PathTracer::resolvePass(RenderContext* pRenderContext, const RenderData& renderData)
@@ -1231,6 +1341,8 @@ void PathTracer::resolvePass(RenderContext* pRenderContext, const RenderData& re
     var["outputReflectionPosW"] = renderData[kOutputReflectionPosW]->asTexture();
     var["outputNRDDiffuseRadianceHitDist"] = renderData[kOutputNRDDiffuseRadianceHitDist]->asTexture();
     var["outputNRDSpecularRadianceHitDist"] = renderData[kOutputNRDSpecularRadianceHitDist]->asTexture();
+    var["outputNRDDeltaReflectionRadianceHitDist"] = renderData[kOutputNRDDeltaReflectionRadianceHitDist]->asTexture();
+    var["outputNRDDeltaTransmissionRadianceHitDist"] = renderData[kOutputNRDDeltaTransmissionRadianceHitDist]->asTexture();
     var["outputNRDResidualRadianceHitDist"] = renderData[kOutputNRDResidualRadianceHitDist]->asTexture();
 
     if (mVarsChanged)
@@ -1300,15 +1412,4 @@ Program::DefineList PathTracer::StaticParams::getDefines(const PathTracer& owner
     defines.add("OUTPUT_NRD_ADDITIONAL_DATA", "0");
 
     return defines;
-}
-
-Program::TypeConformanceList PathTracer::StaticParams::getTypeConformances(const PathTracer& owner) const
-{
-    Program::TypeConformanceList typeConformances;
-
-    // Scene-specific configuration.
-    FALCOR_ASSERT(owner.mpScene);
-    typeConformances.add(owner.mpScene->getTypeConformances());
-
-    return typeConformances;
 }

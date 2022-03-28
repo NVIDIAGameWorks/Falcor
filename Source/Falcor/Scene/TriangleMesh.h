@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -96,11 +96,11 @@ namespace Falcor
         /** Creates a triangle mesh from a file.
             This is using ASSIMP to support a wide variety of asset formats.
             All geometry found in the asset is pre-transformed and merged into the same triangle mesh.
-            \param[in] filename File to load mesh from.
+            \param[in] path File path to load mesh from.
             \param[in] smoothNormals If no normals are defined in the model, generate smooth instead of facet normals.
             \return Returns the triangle mesh or nullptr if the mesh failed to load.
         */
-        static SharedPtr createFromFile(const std::string& filename, bool smoothNormals = false);
+        static SharedPtr createFromFile(const std::filesystem::path& path, bool smoothNormals = false);
 
         /** Get the name of the triangle mesh.
             \return Returns the name.
@@ -155,6 +155,11 @@ namespace Falcor
             \param[in] transform Transform to apply.
         */
         void applyTransform(const Transform& transform);
+
+        /** Applies a transform to the triangle mesh.
+            \param[in] transform Transform to apply.
+        */
+        void applyTransform(const glm::mat4& transform);
 
     private:
         TriangleMesh();

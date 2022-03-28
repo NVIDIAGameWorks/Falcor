@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -45,10 +45,10 @@ namespace Falcor
 
         /** Create a new MERL material.
             \param[in] name The material name.
-            \param[in] filename Name of BRDF file to load.
+            \param[in] path Path of BRDF file to load.
             \return A new object, or throws an exception if creation failed.
         */
-        static SharedPtr create(const std::string& name, const std::string& filename);
+        static SharedPtr create(const std::string& name, const std::filesystem::path& path);
 
         bool renderUI(Gui::Widgets& widget) override;
         Material::UpdateFlags update(MaterialSystem* pOwner) override;
@@ -56,14 +56,14 @@ namespace Falcor
         MaterialDataBlob getDataBlob() const override { return prepareDataBlob(mData); }
 
     protected:
-        MERLMaterial(const std::string& name, const std::string& filename);
+        MERLMaterial(const std::string& name, const std::filesystem::path& path);
 
-        bool loadBRDF(const std::string& filename);
+        bool loadBRDF(const std::filesystem::path& path);
         void prepareData(const int dims[3], const std::vector<double>& data);
         void prepareAlbedoLUT(RenderContext* pRenderContext);
         void computeAlbedoLUT(RenderContext* pRenderContext);
 
-        std::string mFilePath;              ///< Full path to the BRDF loaded.
+        std::filesystem::path mPath;        ///< Full path to the BRDF loaded.
         std::string mBRDFName;              ///< This is the file basename without extension.
 
         MERLMaterialData mData;             ///< Material parameters.

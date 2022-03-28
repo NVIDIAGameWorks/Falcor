@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -133,13 +133,13 @@ namespace Falcor
         class ImporterData
         {
         public:
-            ImporterData(const std::string& filename, const aiScene* pAiScene, SceneBuilder& sceneBuilder, const SceneBuilder::InstanceMatrices& modelInstances_)
-                : filename(filename)
+            ImporterData(const std::filesystem::path& path, const aiScene* pAiScene, SceneBuilder& sceneBuilder, const SceneBuilder::InstanceMatrices& modelInstances_)
+                : path(path)
                 , pScene(pAiScene)
                 , modelInstances(modelInstances_)
                 , builder(sceneBuilder)
             {}
-            std::string filename;
+            std::filesystem::path path;
             const aiScene* pScene;
             SceneBuilder& builder;
             std::map<uint32_t, Material::SharedPtr> materialMap;
@@ -615,10 +615,10 @@ namespace Falcor
             else return "local transform";
         }
 
-        void dumpSceneGraphHierarchy(ImporterData& data, const std::string& filename, aiNode* pRoot)
+        void dumpSceneGraphHierarchy(ImporterData& data, const std::filesystem::path& path, aiNode* pRoot)
         {
             std::ofstream dotfile;
-            dotfile.open(filename.c_str());
+            dotfile.open(path);
 
             std::function<void(const aiNode* pNode)> dumpNode = [&dotfile, &dumpNode, &data](const aiNode* pNode)
             {
@@ -734,7 +734,7 @@ namespace Falcor
             }
         }
 
-        void loadTextures(ImporterData& data, const aiMaterial* pAiMaterial, const std::string& folder, const Material::SharedPtr& pMaterial, ImportMode importMode)
+        void loadTextures(ImporterData& data, const aiMaterial* pAiMaterial, const std::filesystem::path& searchPath, const Material::SharedPtr& pMaterial, ImportMode importMode)
         {
             const auto& textureMappings = kTextureMappings[int(importMode)];
 
@@ -754,12 +754,12 @@ namespace Falcor
                 }
 
                 // Load the texture
-                std::string filename = canonicalizeFilename(folder + '/' + path);
-                data.builder.loadMaterialTexture(pMaterial, source.targetType, filename);
+                auto fullPath = searchPath / path;
+                data.builder.loadMaterialTexture(pMaterial, source.targetType, fullPath);
             }
         }
 
-        Material::SharedPtr createMaterial(ImporterData& data, const aiMaterial* pAiMaterial, const std::string& folder, ImportMode importMode)
+        Material::SharedPtr createMaterial(ImporterData& data, const aiMaterial* pAiMaterial, const std::filesystem::path& searchPath, ImportMode importMode)
         {
             aiString name;
             pAiMaterial->Get(AI_MATKEY_NAME, name);
@@ -786,7 +786,7 @@ namespace Falcor
             StandardMaterial::SharedPtr pMaterial = StandardMaterial::create(nameStr, shadingModel);
 
             // Load textures. Note that loading is affected by the current shading model.
-            loadTextures(data, pAiMaterial, folder, pMaterial, importMode);
+            loadTextures(data, pAiMaterial, searchPath, pMaterial, importMode);
 
             // Opacity
             float opacity = 1.f;
@@ -902,12 +902,12 @@ namespace Falcor
             return pMaterial;
         }
 
-        void createAllMaterials(ImporterData& data, const std::string& modelFolder, ImportMode importMode)
+        void createAllMaterials(ImporterData& data, const std::filesystem::path& searchPath, ImportMode importMode)
         {
             for (uint32_t i = 0; i < data.pScene->mNumMaterials; i++)
             {
                 const aiMaterial* pAiMaterial = data.pScene->mMaterials[i];
-                data.materialMap[i] = createMaterial(data, pAiMaterial, modelFolder, importMode);
+                data.materialMap[i] = createMaterial(data, pAiMaterial, searchPath, importMode);
             }
         }
 
@@ -962,12 +962,12 @@ namespace Falcor
                 {
                     if (meshInstances[b.second[i]].size() != 1)
                     {
-                        throw ImporterError(data.filename, fmt::format("Bone {} references a mesh with multiple instances.", b.first));
+                        throw ImporterError(data.path, "Bone {} references a mesh with multiple instances.", b.first);
                     }
 
                     if (i > 0 && meshInstances[b.second[i]][0]->mTransformation != meshInstances[b.second[i - 1]][0]->mTransformation)
                     {
-                        throw ImporterError(data.filename, fmt::format("Bone {} is contained within mesh instances with different world matrices.", b.first));
+                        throw ImporterError(data.path, "Bone {} is contained within mesh instances with different world matrices.", b.first);
                     }
                 }
             }
@@ -984,14 +984,14 @@ namespace Falcor
         }
     }
 
-    void AssimpImporter::import(const std::string& filename, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict)
+    void AssimpImporter::import(const std::filesystem::path& path, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict)
     {
         TimeReport timeReport;
 
-        std::string fullpath;
-        if (!findFileInDataDirectories(filename, fullpath))
+        std::filesystem::path fullPath;
+        if (!findFileInDataDirectories(path, fullPath))
         {
-            throw ImporterError(filename, "File not found.");
+            throw ImporterError(path, "File not found.");
         }
 
         const SceneBuilder::Flags builderFlags = builder.getFlags();
@@ -1015,25 +1015,24 @@ namespace Falcor
         Assimp::Importer importer;
         importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, removeFlags);
 
-        const aiScene* pScene = importer.ReadFile(fullpath, assimpFlags);
-        if (!pScene) throw ImporterError(filename, fmt::format("Failed to open scene: {}", importer.GetErrorString()));
+        const aiScene* pScene = importer.ReadFile(fullPath.string().c_str(), assimpFlags);
+        if (!pScene) throw ImporterError(path, "Failed to open scene: {}", importer.GetErrorString());
         timeReport.measure("Loading asset file");
 
-        ImporterData data(filename, pScene, builder, instances);
+        ImporterData data(path, pScene, builder, instances);
 
         validateScene(data);
         timeReport.measure("Verifying scene");
 
         // Extract the folder name
-        auto last = fullpath.find_last_of("/\\");
-        std::string modelFolder = fullpath.substr(0, last);
+        auto searchPath = fullPath.parent_path();
 
         // Enable special treatment for obj and gltf files
         ImportMode importMode = ImportMode::Default;
-        if (hasSuffix(filename, ".obj", false)) importMode = ImportMode::OBJ;
-        if (hasSuffix(filename, ".gltf", false) || hasSuffix(filename, ".glb", false)) importMode = ImportMode::GLTF2;
+        if (hasExtension(path, "obj")) importMode = ImportMode::OBJ;
+        if (hasExtension(path, "gltf") || hasExtension(path, "glb")) importMode = ImportMode::GLTF2;
 
-        createAllMaterials(data, modelFolder, importMode);
+        createAllMaterials(data, searchPath, importMode);
         timeReport.measure("Creating materials");
 
         createSceneGraph(data);

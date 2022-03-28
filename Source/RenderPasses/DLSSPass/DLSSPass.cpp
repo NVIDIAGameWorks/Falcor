@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -196,7 +196,7 @@ void DLSSPass::renderUI(Gui::Widgets& widget)
 
 void DLSSPass::initializeDLSS(RenderContext* pRenderContext)
 {
-    if (!mpNGXWrapper) mpNGXWrapper.reset(new NGXWrapper(gpDevice.get(), string_2_wstring(getExecutableDirectory()).c_str()));
+    if (!mpNGXWrapper) mpNGXWrapper.reset(new NGXWrapper(gpDevice.get(), getExecutableDirectory().c_str()));
 
     Texture* target = nullptr;  // Not needed for D3D12 implementation
     bool depthInverted = false;

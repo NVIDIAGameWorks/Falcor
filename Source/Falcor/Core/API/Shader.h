@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Core/Framework.h"
 #include <map>
 #include <initializer_list>
 
@@ -129,6 +130,10 @@ namespace Falcor
         T* mpObject;
     };
 
+    /** Forward declaration of backend implementation-specific Shader data.
+    */
+    struct ShaderData;
+
     /** Low-level shader object
         This class abstracts the API's shader creation and management
     */
@@ -137,7 +142,6 @@ namespace Falcor
     public:
         using SharedPtr = std::shared_ptr<Shader>;
         using SharedConstPtr = std::shared_ptr<const Shader>;
-        using ApiHandle = ShaderHandle;
 
         typedef ComPtr<ISlangBlob> Blob;
 
@@ -250,23 +254,19 @@ namespace Falcor
         };
 
         /** Create a shader object
-            \param[in] shaderBlog A blob containing the shader code
-            \param[in] Type The Type of the shader
+            \param[in] linkedSlangEntryPoint The Slang IComponentType that defines the shader entry point.
+            \param[in] type The Type of the shader
             \param[out] log This string will contain the error log message in case shader compilation failed
             \return If success, a new shader object, otherwise nullptr
         */
-        static SharedPtr create(const Blob& shaderBlob, ShaderType type, std::string const&  entryPointName, CompilerFlags flags, std::string& log)
+        static SharedPtr create(ComPtr<slang::IComponentType> linkedSlangEntryPoint, ShaderType type, std::string const&  entryPointName, CompilerFlags flags, std::string& log)
         {
             SharedPtr pShader = SharedPtr(new Shader(type));
             pShader->mEntryPointName = entryPointName;
-            return pShader->init(shaderBlob, entryPointName, flags, log) ? pShader : nullptr;
+            return pShader->init(linkedSlangEntryPoint, entryPointName, flags, log) ? pShader : nullptr;
         }
 
         virtual ~Shader();
-
-        /** Get the API handle.
-        */
-        const ApiHandle& getApiHandle() const;
 
         /** Get the shader Type
         */
@@ -276,21 +276,22 @@ namespace Falcor
         */
         const std::string& getEntryPoint() const { return mEntryPointName; }
 
-#ifdef FALCOR_D3D12
+#if FALCOR_D3D12_AVAILABLE
         ID3DBlobPtr getD3DBlob() const;
+        D3D12_SHADER_BYTECODE getD3D12ShaderByteCode() const
+        {
+            return D3D12_SHADER_BYTECODE{ getD3DBlob()->GetBufferPointer(), getD3DBlob()->GetBufferSize() };
+        }
 #endif
         BlobData getBlobData() const;
 
     protected:
         // API handle depends on the shader Type, so it stored be stored as part of the private data
-        bool init(const Blob& shaderBlob, const std::string&  entryPointName, CompilerFlags flags, std::string& log);
+        bool init(ComPtr<slang::IComponentType> linkedSlangEntryPoint, const std::string& entryPointName, CompilerFlags flags, std::string& log);
         Shader(ShaderType Type);
         ShaderType mType;
         std::string mEntryPointName;
-#ifdef FALCOR_D3D12
-        ApiHandle mApiHandle;
-#endif
-        void* mpPrivateData = nullptr;
+        std::unique_ptr<ShaderData> mpPrivateData;
     };
     FALCOR_ENUM_CLASS_OPERATORS(Shader::CompilerFlags);
 }

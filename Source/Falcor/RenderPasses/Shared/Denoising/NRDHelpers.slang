@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 import Rendering.Materials.Fresnel;
 import Rendering.Materials.IBSDF;
 import Rendering.Materials.Microfacet;
+import RenderPasses.Shared.Denoising.NRDConstants;
 import Scene.Scene;
 import Scene.ShadingData;
 
@@ -42,19 +43,23 @@ float3 getMaterialReflectanceForDeltaPaths(const MaterialType materialType, cons
 
         if (metallic == 0.f)
         {
-            return bsdfProperties.diffuseReflectionAlbedo;
+            const float3 diffuseReflectance = max(kNRDMinReflectance, bsdfProperties.diffuseReflectionAlbedo);
+            return diffuseReflectance;
         }
         // Handle only non-delta specular lobes.
         else if (metallic == 1.f && !hasDeltaLobes)
         {
-            float NdotV = saturate(dot(sd.N, sd.V));
-            float ggxAlpha = bsdfProperties.roughness * bsdfProperties.roughness;
-            return approxSpecularIntegralGGX(bsdfProperties.specularReflectionAlbedo, ggxAlpha, NdotV);
+            const float NdotV = saturate(dot(sd.N, sd.V));
+            const float ggxAlpha = bsdfProperties.roughness * bsdfProperties.roughness;
+            float3 specularReflectance = approxSpecularIntegralGGX(bsdfProperties.specularReflectionAlbedo, ggxAlpha, NdotV);
+            specularReflectance = max(kNRDMinReflectance, specularReflectance);
+            return specularReflectance;
         }
     }
     else if (materialType == MaterialType::Hair)
     {
-        return bsdfProperties.diffuseReflectionAlbedo;
+        const float3 reflectance = max(kNRDMinReflectance, bsdfProperties.diffuseReflectionAlbedo);
+        return reflectance;
     }
 
     return 1.f;

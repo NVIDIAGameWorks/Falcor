@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -44,7 +44,6 @@
     For such triangles, we approximate the average radiance as the average
     of the emission sampled at the three vertices.
 */
-#include "Utils/NVAPI.slangh" // We need this for 64-bit atomics.
 import Scene.Scene;
 import Utils.Geometry.GeometryHelpers;
 
@@ -184,12 +183,12 @@ void psMain(GsOut gsIn, uint innerCoverage : SV_InnerCoverage)
         uint64_t4 f = uint64_t4(val * scale);
 
         // Accumulate using 64-bit atomics.
-        // TODO: Use shader model 6.6 instead of NVAPI when available.
         uint address = gsIn.triIdx * 32;
-        NvInterlockedAddUint64(gTexelSum, address + 0, uint2(f.x, f.x >> 32));
-        NvInterlockedAddUint64(gTexelSum, address + 8, uint2(f.y, f.y >> 32));
-        NvInterlockedAddUint64(gTexelSum, address + 16, uint2(f.z, f.z >> 32));
-        NvInterlockedAddUint64(gTexelSum, address + 24, uint2(f.w, f.w >> 32));
+        uint64_t originalValue;
+        gTexelSum.InterlockedAdd64(address + 0, f.x, originalValue);
+        gTexelSum.InterlockedAdd64(address + 8, f.y, originalValue);
+        gTexelSum.InterlockedAdd64(address + 16, f.z, originalValue);
+        gTexelSum.InterlockedAdd64(address + 24, f.w, originalValue);
     }
 #else
     #error "Invalid value for INTEGRATOR_PASS"

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,13 +26,14 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#define FALCOR_D3D12_AVAILABLE 1
 #define NOMINMAX
 #include <d3d12.h>
 #include "Core/FalcorConfig.h"
 #include "Core/API/Formats.h"
-#include <comdef.h>
-#include <dxgi1_4.h>
+#include "Core/API/Shared/D3D12Handles.h"
 #include <dxgiformat.h>
+
 
 #if FALCOR_ENABLE_D3D12_AGILITY_SDK
 // To enable the D3D12 Agility SDK, this macro needs to be added to the main source file of the executable.
@@ -43,8 +44,6 @@
 #define FALCOR_EXPORT_D3D12_AGILITY_SDK
 #endif
 
-#define FALCOR_MAKE_SMART_COM_PTR(_a) _COM_SMARTPTR_TYPEDEF(_a, __uuidof(_a))
-
 #define FALCOR_D3D_CALL(_a) {HRESULT hr_ = _a; if (FAILED(hr_)) { Falcor::d3dTraceHR( #_a, hr_); }}
 
 #define FALCOR_GET_COM_INTERFACE(_base, _type, _var) FALCOR_MAKE_SMART_COM_PTR(_type); FALCOR_CONCAT_STRINGS(_type, Ptr) _var; FALCOR_D3D_CALL(_base->QueryInterface(IID_PPV_ARGS(&_var)));
@@ -53,6 +52,8 @@
 #pragma comment(lib, "d3d12.lib")
 
 #define FALCOR_UNSUPPORTED_IN_D3D(_msg) {Falcor::logWarning("{}  is not supported in D3D. Ignoring call.", _msg);}
+
+#define FALCOR_NVAPI_AVAILABLE FALCOR_ENABLE_NVAPI
 
 namespace Falcor
 {
@@ -149,34 +150,12 @@ namespace Falcor
     inline constexpr uint32_t getRaytracingMaxAttributeSize() { return D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES; }
 
     // DXGI
-    FALCOR_MAKE_SMART_COM_PTR(IDXGISwapChain3);
-    FALCOR_MAKE_SMART_COM_PTR(IDXGIDevice);
-    FALCOR_MAKE_SMART_COM_PTR(IDXGIAdapter1);
-    FALCOR_MAKE_SMART_COM_PTR(IDXGIFactory4);
-    FALCOR_MAKE_SMART_COM_PTR(ID3DBlob);
 
-    FALCOR_MAKE_SMART_COM_PTR(ID3D12StateObject);
-    FALCOR_MAKE_SMART_COM_PTR(ID3D12Device);
-    FALCOR_MAKE_SMART_COM_PTR(ID3D12GraphicsCommandList);
-    FALCOR_MAKE_SMART_COM_PTR(ID3D12Debug);
-    FALCOR_MAKE_SMART_COM_PTR(ID3D12CommandQueue);
-    FALCOR_MAKE_SMART_COM_PTR(ID3D12CommandAllocator);
-    FALCOR_MAKE_SMART_COM_PTR(ID3D12DescriptorHeap);
-    FALCOR_MAKE_SMART_COM_PTR(ID3D12Resource);
-    FALCOR_MAKE_SMART_COM_PTR(ID3D12Fence);
-    FALCOR_MAKE_SMART_COM_PTR(ID3D12PipelineState);
-    FALCOR_MAKE_SMART_COM_PTR(ID3D12RootSignature);
-    FALCOR_MAKE_SMART_COM_PTR(ID3D12QueryHeap);
-    FALCOR_MAKE_SMART_COM_PTR(ID3D12CommandSignature);
     FALCOR_MAKE_SMART_COM_PTR(IUnknown);
 
     using ApiObjectHandle = IUnknownPtr;
 
-    using HeapCpuHandle = D3D12_CPU_DESCRIPTOR_HANDLE;
-    using HeapGpuHandle = D3D12_GPU_DESCRIPTOR_HANDLE;
-
     class DescriptorHeapEntry;
-
     using WindowHandle = HWND;
     using DeviceHandle = ID3D12DevicePtr;
     using CommandListHandle = ID3D12GraphicsCommandListPtr;
@@ -202,11 +181,7 @@ namespace Falcor
     using GraphicsStateHandle = ID3D12PipelineStatePtr;
     using ComputeStateHandle = ID3D12PipelineStatePtr;
     using RaytracingStateHandle = ID3D12StateObjectPtr;
-
-    using ShaderHandle = D3D12_SHADER_BYTECODE;
-    using RootSignatureHandle = ID3D12RootSignaturePtr;
-    using DescriptorHeapHandle = ID3D12DescriptorHeapPtr;
-
+    
     using VaoHandle = void*;
     using VertexShaderHandle = void*;
     using FragmentShaderHandle = void*;

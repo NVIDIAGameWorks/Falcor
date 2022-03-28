@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -35,6 +35,10 @@ namespace Falcor
 {
     namespace
     {
+        // Curves tessellated to quad-tubes have the width somewhere between curveWidth and (curveWidth / sqrt(2)), depending on the viewing angle.
+        // This scaling factor is trying to bring their width on average back to curveWidth.
+        const float kMeshCompensationScale = 1.207f;
+
         float4 transformSphere(const glm::mat4& xform, const float4& sphere)
         {
             // Spheres are represented as (center.x, center.y, center.z, radius).
@@ -47,7 +51,7 @@ namespace Falcor
         }
     }
 
-    CurveTessellation::SweptSphereResult CurveTessellation::convertToLinearSweptSphere(size_t strandCount, const int* vertexCountsPerStrand, const float3* controlPoints, const float* widths, const float2* UVs, uint32_t degree, uint32_t subdivPerSegment, uint32_t keepOneEveryXPerStrand, const glm::mat4& xform)
+    CurveTessellation::SweptSphereResult CurveTessellation::convertToLinearSweptSphere(size_t strandCount, const int* vertexCountsPerStrand, const float3* controlPoints, const float* widths, const float2* UVs, uint32_t degree, uint32_t subdivPerSegment, uint32_t keepOneEveryXStrands, uint32_t keepOneEveryXVerticesPerStrand, float widthScale, const glm::mat4& xform)
     {
         SweptSphereResult result;
 
@@ -58,11 +62,13 @@ namespace Falcor
 
         uint32_t pointCounts = 0;
         uint32_t segCounts = 0;
-        for (uint32_t i = 0; i < strandCount; i++)
+        uint32_t maxVertexCountsPerStrand = 0;
+        for (uint32_t i = 0; i < strandCount; i += keepOneEveryXStrands)
         {
-            uint32_t tmpPointCount = (subdivPerSegment * (vertexCountsPerStrand[i] - 1) + keepOneEveryXPerStrand - 1) / keepOneEveryXPerStrand + 1;
+            uint32_t tmpPointCount = div_round_up(subdivPerSegment * (vertexCountsPerStrand[i] - 1), keepOneEveryXVerticesPerStrand) + 1;
             pointCounts += tmpPointCount;
             segCounts += tmpPointCount - 1;
+            maxVertexCountsPerStrand = std::max(maxVertexCountsPerStrand, static_cast<uint32_t>(vertexCountsPerStrand[i]));
         }
         result.indices.reserve(segCounts);
         result.points.reserve(pointCounts);
@@ -70,24 +76,55 @@ namespace Falcor
         result.texCrds.reserve(pointCounts);
 
         uint32_t pointOffset = 0;
-        for (uint32_t i = 0; i < strandCount; i++)
+
+        std::vector<float3> strandControlPoints;
+        std::vector<float> strandWidths;
+        std::vector<float2> strandUVs;
+
+        strandControlPoints.reserve(maxVertexCountsPerStrand);
+        strandWidths.reserve(maxVertexCountsPerStrand);
+        strandUVs.reserve(maxVertexCountsPerStrand);
+
+        for (uint32_t i = 0; i < strandCount; i += keepOneEveryXStrands)
         {
-            CubicSpline strandPoints(controlPoints + pointOffset, vertexCountsPerStrand[i]);
-            CubicSpline strandWidths(widths + pointOffset, vertexCountsPerStrand[i]);
+            strandControlPoints.clear();
+            strandWidths.clear();
+            strandUVs.clear();
+
+            // Optimize geometry by removing duplicates.
+            for (uint32_t j = 0; j < (uint32_t)vertexCountsPerStrand[i] - 1; j++)
+            {
+                if (controlPoints[pointOffset + j] != controlPoints[pointOffset + j + 1])
+                {
+                    strandControlPoints.push_back(controlPoints[pointOffset + j]);
+                    strandWidths.push_back(widths[pointOffset + j]);
+                    if (UVs) strandUVs.push_back(UVs[pointOffset + j]);
+                }
+            }
+
+            // Add the last control point.
+            strandControlPoints.push_back(controlPoints[pointOffset + vertexCountsPerStrand[i] - 1]);
+            strandWidths.push_back(widths[pointOffset + vertexCountsPerStrand[i] - 1]);
+            if (UVs) strandUVs.push_back(UVs[pointOffset + vertexCountsPerStrand[i] - 1]);
+
+            uint32_t optimizedVertexCount = static_cast<uint32_t>(strandControlPoints.size());
+
+            CubicSpline splinePoints(strandControlPoints.data(), optimizedVertexCount);
+            CubicSpline splineWidths(strandWidths.data(), optimizedVertexCount);
 
             uint32_t tmpCount = 0;
-            for (uint32_t j = 0; j < (uint32_t)vertexCountsPerStrand[i] - 1; j++)
+            for (uint32_t j = 0; j < optimizedVertexCount - 1; j++)
             {
                 for (uint32_t k = 0; k < subdivPerSegment; k++)
                 {
-                    // Always keep the last vertex.
-                    if (tmpCount % keepOneEveryXPerStrand == 0 || (j == vertexCountsPerStrand[i] - 1 && k == subdivPerSegment - 1))
+                    if (tmpCount % keepOneEveryXVerticesPerStrand == 0)
                     {
                         float t = (float)k / (float)subdivPerSegment;
                         result.indices.push_back((uint32_t)result.points.size());
 
                         // Pre-transform curve points.
-                        float4 sph = transformSphere(xform, float4(strandPoints.interpolate(j, t), strandWidths.interpolate(j, t) * 0.5f));
+                        float4 sph = transformSphere(xform, float4(splinePoints.interpolate(j, t), splineWidths.interpolate(j, t) * 0.5f * widthScale));
+
                         result.points.push_back(sph.xyz);
                         result.radius.push_back(sph.w);
                     }
@@ -95,99 +132,161 @@ namespace Falcor
                 }
             }
 
-            float4 sph = transformSphere(xform, float4(strandPoints.interpolate(vertexCountsPerStrand[i] - 2, 1.f), strandWidths.interpolate(vertexCountsPerStrand[i] - 2, 1.f) * 0.5f));
+            // Always keep the last vertex.
+            float4 sph = transformSphere(xform, float4(splinePoints.interpolate(optimizedVertexCount - 2, 1.f), splineWidths.interpolate(optimizedVertexCount - 2, 1.f) * 0.5f * widthScale));
             result.points.push_back(sph.xyz);
             result.radius.push_back(sph.w);
 
             // Texture coordinates.
             if (UVs)
             {
-                CubicSpline strandUVs(UVs + pointOffset, vertexCountsPerStrand[i]);
+                CubicSpline splineUVs(strandUVs.data(), optimizedVertexCount);
                 tmpCount = 0;
-                for (uint32_t j = 0; j < (uint32_t)vertexCountsPerStrand[i] - 1; j++)
+                for (uint32_t j = 0; j < optimizedVertexCount - 1; j++)
                 {
                     for (uint32_t k = 0; k < subdivPerSegment; k++)
                     {
-                        if (tmpCount % keepOneEveryXPerStrand == 0 || (j == vertexCountsPerStrand[i] - 1 && k == subdivPerSegment - 1))
+                        if (tmpCount % keepOneEveryXVerticesPerStrand == 0)
                         {
                             float t = (float)k / (float)subdivPerSegment;
-                            result.texCrds.push_back(strandUVs.interpolate(j, t));
+                            result.texCrds.push_back(splineUVs.interpolate(j, t));
                         }
                         tmpCount++;
                     }
                 }
-                result.texCrds.push_back(strandUVs.interpolate(vertexCountsPerStrand[i] - 2, 1.f));
+
+                // Always keep the last vertex.
+                result.texCrds.push_back(splineUVs.interpolate(optimizedVertexCount - 2, 1.f));
             }
 
-            pointOffset += vertexCountsPerStrand[i];
+            for (uint32_t j = i; j < std::min((uint32_t)strandCount, i + keepOneEveryXStrands); j++) pointOffset += vertexCountsPerStrand[j];
         }
 
         return result;
     }
 
-    CurveTessellation::MeshResult CurveTessellation::convertToMesh(size_t strandCount, const int* vertexCountsPerStrand, const float3* controlPoints, const float* widths, const float2* UVs, uint32_t subdivPerSegment, uint32_t pointCountPerCrossSection)
+    CurveTessellation::MeshResult CurveTessellation::convertToMesh(size_t strandCount, const int* vertexCountsPerStrand, const float3* controlPoints, const float* widths, const float2* UVs, uint32_t subdivPerSegment, uint32_t keepOneEveryXStrands, uint32_t keepOneEveryXVerticesPerStrand, float widthScale, uint32_t pointCountPerCrossSection)
     {
         MeshResult result;
         uint32_t vertexCounts = 0;
         uint32_t faceCounts = 0;
-        for (uint32_t i = 0; i < strandCount; i++)
+        uint32_t maxVertexCountsPerStrand = 0;
+        for (uint32_t i = 0; i < strandCount; i += keepOneEveryXStrands)
         {
-            vertexCounts += pointCountPerCrossSection * subdivPerSegment * (vertexCountsPerStrand[i] - 1) + 1;
-            faceCounts += 2 * pointCountPerCrossSection * subdivPerSegment * (vertexCountsPerStrand[i] - 1);
+            uint32_t tmpPointCount = div_round_up(subdivPerSegment * (vertexCountsPerStrand[i] - 1), keepOneEveryXVerticesPerStrand) + 1;
+            vertexCounts += pointCountPerCrossSection * tmpPointCount;
+            faceCounts += 2 * pointCountPerCrossSection * (tmpPointCount - 1);
+            maxVertexCountsPerStrand = std::max(maxVertexCountsPerStrand, static_cast<uint32_t>(vertexCountsPerStrand[i]));
         }
         result.vertices.reserve(vertexCounts);
         result.normals.reserve(vertexCounts);
         result.tangents.reserve(vertexCounts);
+        result.texCrds.reserve(vertexCounts);
+        result.radii.reserve(vertexCounts);
         result.faceVertexCounts.reserve(faceCounts);
         result.faceVertexIndices.reserve(faceCounts * 3);
-        result.texCrds.reserve(vertexCounts);
 
         uint32_t pointOffset = 0;
         uint32_t meshVertexOffset = 0;
-        for (uint32_t i = 0; i < strandCount; i++)
+
+        std::vector<float3> strandControlPoints;
+        std::vector<float> strandWidths;
+        std::vector<float2> strandUVs;
+
+        strandControlPoints.reserve(maxVertexCountsPerStrand);
+        strandWidths.reserve(maxVertexCountsPerStrand);
+        strandUVs.reserve(maxVertexCountsPerStrand);
+
+        for (uint32_t i = 0; i < strandCount; i += keepOneEveryXStrands)
         {
-            CubicSpline strandPoints(controlPoints + pointOffset, vertexCountsPerStrand[i]);
-            CubicSpline strandWidths(widths + pointOffset, vertexCountsPerStrand[i]);
+            strandControlPoints.clear();
+            strandWidths.clear();
+            strandUVs.clear();
 
-            std::vector<float3> curvePoints;
-            std::vector<float> curveRadius;
-            std::vector<float2> curveUVs;
-
-            curvePoints.push_back(strandPoints.interpolate(0, 0.f));
-            curveRadius.push_back(strandWidths.interpolate(0, 0.f) * 0.5f);
-
+            // Optimize geometry by removing duplicates.
             for (uint32_t j = 0; j < (uint32_t)vertexCountsPerStrand[i] - 1; j++)
             {
-                for (uint32_t k = 1; k <= subdivPerSegment; k++)
+                if (controlPoints[pointOffset + j] != controlPoints[pointOffset + j + 1])
                 {
-                    float t = (float)k / (float)subdivPerSegment;
-                    curvePoints.push_back(strandPoints.interpolate(j, t));
-                    curveRadius.push_back(strandWidths.interpolate(j, t) * 0.5f);
+                    strandControlPoints.push_back(controlPoints[pointOffset + j]);
+                    strandWidths.push_back(widths[pointOffset + j]);
+                    if (UVs) strandUVs.push_back(UVs[pointOffset + j]);
                 }
             }
+
+            // Add the last control point.
+            strandControlPoints.push_back(controlPoints[pointOffset + vertexCountsPerStrand[i] - 1]);
+            strandWidths.push_back(widths[pointOffset + vertexCountsPerStrand[i] - 1]);
+            if (UVs) strandUVs.push_back(UVs[pointOffset + vertexCountsPerStrand[i] - 1]);
+
+            uint32_t optimizedVertexCount = static_cast<uint32_t>(strandControlPoints.size());
+
+            CubicSpline splinePoints(strandControlPoints.data(), optimizedVertexCount);
+            CubicSpline splineWidths(strandWidths.data(), optimizedVertexCount);
+
+            std::vector<float3> curvePoints;
+            std::vector<float> curveWidths;
+
+            uint32_t tmpCount = 0;
+            for (uint32_t j = 0; j < optimizedVertexCount - 1; j++)
+            {
+                for (uint32_t k = 0; k < subdivPerSegment; k++)
+                {
+                    if (tmpCount % keepOneEveryXVerticesPerStrand == 0)
+                    {
+                        float t = (float)k / (float)subdivPerSegment;
+                        curvePoints.push_back(splinePoints.interpolate(j, t));
+                        curveWidths.push_back(kMeshCompensationScale * widthScale * splineWidths.interpolate(j, t));
+                    }
+                    tmpCount++;
+                }
+            }
+
+            // Always keep the last vertex.
+            curvePoints.push_back(splinePoints.interpolate(optimizedVertexCount - 2, 1.f));
+            curveWidths.push_back(kMeshCompensationScale * widthScale * splineWidths.interpolate(optimizedVertexCount - 2, 1.f));
+
+            std::vector<float2> curveUVs;
 
             // Texture coordinates.
             if (UVs)
             {
-                CubicSpline strandUVs(UVs + pointOffset, vertexCountsPerStrand[i]);
-                curveUVs.push_back(strandUVs.interpolate(0, 0.f));
-                for (uint32_t j = 0; j < (uint32_t)vertexCountsPerStrand[i] - 1; j++)
+                CubicSpline splineUVs(strandUVs.data(), optimizedVertexCount);
+                tmpCount = 0;
+                for (uint32_t j = 0; j < optimizedVertexCount - 1; j++)
                 {
-                    for (uint32_t k = 1; k <= subdivPerSegment; k++)
+                    for (uint32_t k = 0; k < subdivPerSegment; k++)
                     {
-                        float t = (float)k / (float)subdivPerSegment;
-                        curveUVs.push_back(strandUVs.interpolate(j, t));
+                        if (tmpCount % keepOneEveryXVerticesPerStrand == 0)
+                        {
+                            float t = (float)k / (float)subdivPerSegment;
+                            curveUVs.push_back(splineUVs.interpolate(j, t));
+                        }
+                        tmpCount++;
                     }
                 }
+
+                // Always keep the last vertex.
+                curveUVs.push_back(splineUVs.interpolate(optimizedVertexCount - 2, 1.f));
             }
 
-            pointOffset += vertexCountsPerStrand[i];
+            for (uint32_t j = i; j < std::min((uint32_t)strandCount, i + keepOneEveryXStrands); j++) pointOffset += vertexCountsPerStrand[j];
+
+            // Build the initial frame.
+            float3 prevFwd, s, t;
+            prevFwd = normalize(curvePoints[1] - curvePoints[0]);
+            buildFrame(prevFwd, s, t);
 
             // Create mesh.
             for (uint32_t j = 0; j < curvePoints.size(); j++)
             {
-                float3 fwd, s, t;
-                if (j < curvePoints.size() - 1)
+                float3 fwd;
+
+                if (j == 0)
+                {
+                    fwd = prevFwd;
+                }
+                else if (j < curvePoints.size() - 1)
                 {
                     fwd = normalize(curvePoints[j + 1] - curvePoints[j]);
                 }
@@ -195,7 +294,11 @@ namespace Falcor
                 {
                     fwd = normalize(curvePoints[j] - curvePoints[j - 1]);
                 }
-                buildFrame(fwd, s, t);
+
+                // Use quaternions to smoothly rotate the other vectors.
+                glm::quat rotQuat = glm::rotation(prevFwd, fwd);
+                s = glm::rotate(rotQuat, s);
+                t = glm::rotate(rotQuat, t);
 
                 // Mesh vertices, normals, tangents, and texCrds (if any).
                 for (uint32_t k = 0; k < pointCountPerCrossSection; k++)
@@ -203,9 +306,11 @@ namespace Falcor
                     float phi = (float)k / (float)pointCountPerCrossSection * (float)M_PI * 2.f;
                     float3 vNormal = std::cos(phi) * s + std::sin(phi) * t;
 
-                    result.vertices.push_back(curvePoints[j] + curveRadius[j] * vNormal);
+                    float curveRadius = 0.5f * curveWidths[j];
+                    result.vertices.push_back(curvePoints[j] + curveRadius * vNormal);
                     result.normals.push_back(vNormal);
                     result.tangents.push_back(float4(fwd.x, fwd.y, fwd.z, 1));
+                    result.radii.push_back(curveRadius);
 
                     if (UVs)
                     {
@@ -229,6 +334,8 @@ namespace Falcor
                         result.faceVertexIndices.push_back(meshVertexOffset + (j + 1) * pointCountPerCrossSection + k);
                     }
                 }
+
+                prevFwd = fwd;
             }
 
             meshVertexOffset += pointCountPerCrossSection * (uint32_t)curvePoints.size();

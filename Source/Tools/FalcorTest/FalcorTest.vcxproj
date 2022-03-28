@@ -57,6 +57,9 @@
     <ClCompile Include="Tests\Utils\BitonicSortTests.cpp" />
     <ClCompile Include="Tests\Utils\BitTricksTests.cpp" />
     <ClCompile Include="Tests\Utils\ColorUtilsTests.cpp" />
+    <ClCompile Include="Tests\Utils\Color\SampledSpectrumTests.cpp" />
+    <ClCompile Include="Tests\Utils\Color\SpectrumTests.cpp" />
+    <ClCompile Include="Tests\Utils\Color\SpectrumUtilsTests.cpp" />
     <ClCompile Include="Tests\Utils\CryptoUtilsTests.cpp" />
     <ClCompile Include="Tests\Utils\Float16TypesTests.cpp" />
     <ClCompile Include="Tests\Utils\GeometryHelpersTests.cpp" />
@@ -115,6 +118,7 @@
     <ShaderSource Include="Tests\Slang\WaveOps.cs.slang" />
     <ShaderSource Include="Tests\Utils\AABBTests.cs.slang" />
     <ShaderSource Include="Tests\Utils\BitTricksTests.cs.slang" />
+    <ShaderSource Include="Tests\Utils\Color\SpectrumUtilsTests.cs.slang" />
     <ShaderSource Include="Tests\Utils\GeometryHelpersTests.cs.slang" />
     <ShaderSource Include="Tests\Utils\HalfUtilsTests.cs.slang" />
     <ShaderSource Include="Tests\Utils\HashUtilsTests.cs.slang" />

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -55,8 +55,8 @@ namespace Mogwai
         void reset(const RenderGraph* pGraph = nullptr);
         void renderUI(Gui::Window& w);
 
-        void setOutputDirectory(const std::string& outDir);
-        const std::string& getOutputDirectory() const { return mOutputDir; }
+        void setOutputDirectory(const std::filesystem::path& path);
+        const std::filesystem::path& getOutputDirectory() const { return mOutputDir; }
 
         void setBaseFilename(const std::string& baseFilename);
         const std::string& getBaseFilename() const { return mBaseFilename; }
@@ -69,7 +69,7 @@ namespace Mogwai
         std::unordered_map<const RenderGraph*, range_vec> mGraphRanges;
 
         std::string mBaseFilename = "Mogwai";
-        std::string mOutputDir = ".";
+        std::filesystem::path mOutputDir = ".";
         bool mShowUI = false;
 
         struct

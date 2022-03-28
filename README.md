@@ -1,4 +1,6 @@
-# Falcor 5.0-preview
+![](Docs/images/teaser.png)
+
+# Falcor 5.1
 
 Falcor is a real-time rendering framework supporting DirectX 12. It aims to improve productivity of research and prototype projects.
 
@@ -9,8 +11,7 @@ Features include:
 * Python scripting
 * Common rendering effects such as shadows and post-processing effects
 * Unbiased path tracer
-
-The included path tracer requires NVAPI. Please make sure you have it set up properly, otherwise the path tracer won't work. You can find the instructions below.
+* Integration of various RTX SDKs: DLSS, RTXGI, RTXDI, NRD
 
 ## Prerequisites
 - Windows 10 version 20H2 (October 2020 Update) or newer, OS build revision .789 or newer
@@ -23,8 +24,15 @@ Optional:
 - Windows 10 Graphics Tools. To run DirectX 12 applications with the debug layer enabled, you must install this. There are two ways to install it:
     - Click the Windows button and type `Optional Features`, in the window that opens click `Add a feature` and select `Graphics Tools`.
     - Download an offline package from [here](https://docs.microsoft.com/en-us/windows-hardware/test/hlk/windows-hardware-lab-kit#supplemental-content-for-graphics-media-and-mean-time-between-failures-mtbf-tests). Choose a ZIP file that matches the OS version you are using (not the SDK version used for building Falcor). The ZIP includes a document which explains how to install the graphics tools.
-- NVAPI (see below)
-- RTXDI (see below)
+- NVAPI, CUDA, OptiX (see below)
+
+## Build Configurations
+Falcor comes with 2 rendering backends: Native D3D12 and Slang GFX (supporting D3D12 and Vulkan). The Slang GFX backend is fully functional but considered experimental. To select the backend, the following build configurations are available:
+- `ReleaseD3D12` / `DebugD3D12`: Native D3D12 backend (**recommended**)
+- `ReleaseGFX-D3D12` / `DebugGFX-D3D12`: Slang GFX backend using D3D12 (experimental)
+- `ReleaseGFX-VK` / `DebugGFX-VK`: Slang GFX backend using Vulkan (experimental)
+
+Note: Some render passes (RTXGI, RTXDI, DLSS in particular) are not fully working with the new Slang GFX backend.
 
 ## Microsoft DirectX 12 Agility SDK
 Falcor uses the [Microsoft DirectX 12 Agility SDK](https://devblogs.microsoft.com/directx/directx12agility/) to get access to the latest DirectX 12 features. Applications can enable the Agility SDK by putting `FALCOR_EXPORT_D3D12_AGILITY_SDK` in the main `.cpp` file. `Mogwai`, `FalcorTest` and `RenderGraphEditor` have the Agility SDK enabled by default.
@@ -55,30 +63,15 @@ Finally, set `FALCOR_ENABLE_OPTIX` to `1` in `Source/Falcor/Core/FalcorConfig.h`
 
 Note: You also need CUDA installed to compile the `OptixDenoiser` render pass, see above for details.
 
-## NRD
-If you want to use Falcor's NRD (NVidia Real-Time Denoiser) based denoiser (specifically the `NRDPass` render pass) register to access the [NRD SDK](https://developer.nvidia.com/nvidia-rt-denoiser/get-started). Next, clone the GitHub repository from https://github.com/NVIDIAGameWorks/RayTracingDenoiser (Falcor is currently tested against NRD version 2.10) and execute the following steps:
+## NVIDIA RTX SDKs
+Falcor ships with the following NVIDIA RTX SDKs:
 
-- Switch to the NRD SDK directory.
-- Run `1-Deploy.bat`.
-- Run `2-Build.bat` and make sure to build both the Release and Debug builds.
-- Run `3-Prepare NRD SDK.bat` and make sure to copy the shader source code.
-- Copy/move the content in the resulting `_NRD_SDK` folder over to `Source/Externals/.packman/nrd`.
+- DLSS (https://github.com/NVIDIA/DLSS)
+- RTXGI (https://github.com/NVIDIAGameWorks/RTXGI)
+- RTXDI (https://github.com/NVIDIAGameWorks/RTXDI)
+- NRD (https://github.com/NVIDIAGameWorks/RayTracingDenoiser)
 
-Finally, set `FALCOR_ENABLE_NRD` to `1` in `Source/Falcor/Core/FalcorConfig.h`
-
-## DLSS
-If you want to use Falcor's DLSS integration (specifically the `DLSSPass` render pass) download the [DLSS SDK](https://developer.nvidia.com/dlss-getting-started) (Falcor is currently tested against DLSS SDK version 2.3.1). Unpack the SDK and copy/move the content in the `nvngx_dlss_sdk` folder over to `Source/Externals/.packman/ngx`.
-
-Finally, set `FALCOR_ENABLE_DLSS` to `1` in `Source/Falcor/Core/FalcorConfig.h`.
-
-## RTXDI (RTX Direct Illumination)
-Falcor has an (optional) [RTXDI](https://developer.nvidia.com/rtxdi) integration that your applications and render passes can use to efficiently sample from thousands or millions of lights.
-
-Falcor does not come with RTXDI by default, as the SDK is distributed under a different license. Please [visit the RTXDI developer page](https://developer.nvidia.com/rtxdi) to register for access to the RTXDI source code, which you can [access on Github](https://github.com/NVIDIAGameWorks/RTXDI) after your access is approved. Falcor is currently tested against RTXDI version 1.2.1.
-
-After downloading RTXDI, place the code in `Source/Externals/.packman/rtxdi/` such that RTXDI repository maintains its relative file structure and the file `Source/Externals/.packman/rtxdi/rtxdi-sdk/src/RTXDI.cpp` exists. Also, set `FALCOR_ENABLE_RTXDI` to `1` in `Source/Falcor/Core/FalcorConfig.h`.
-
-A simple sample render pass that uses RTXDI to render direct lighting is provided in `Source/RenderPasses/RTXDIPass`.
+Note that these SDKs are not under the same license as Falcor, see [LICENSE.md](LICENSE.md) for details.
 
 ## Falcor Configuration
 `FalcorConfig.h` contains some flags which control Falcor's behavior.
@@ -90,7 +83,8 @@ A simple sample render pass that uses RTXDI to render direct lighting is provide
 - [Documentation](./Docs/index.md): Additional information and tutorials.
     - [Getting Started](./Docs/Getting-Started.md)
     - [Render Graph Tutorials](./Docs/Tutorials/index.md)
-- [ORCA](https://developer.nvidia.com/orca): A collection of high quality scenes and assets optimized for Falcor.
+- [Rendering Resources](https://benedikt-bitterli.me/resources) A collection of scenes loadable in Falcor (pbrt-v4 format).
+- [ORCA](https://developer.nvidia.com/orca): A collection of scenes and assets optimized for Falcor.
 - [Slang](https://github.com/shader-slang/slang): Falcor's shading language and compiler.
 
 ## Citation
@@ -98,11 +92,11 @@ If you use Falcor in a research project leading to a publication, please cite th
 The BibTex entry is
 
 ```bibtex
-@Misc{Kallweit21,
-   author =      {Simon Kallweit and Petrik Clarberg and Craig Kolb and Kai-Hwa Yao and Theresa Foley and Yong He and Lifan Wu and Lucy Chen and Tomas Akenine-M{\"o}ller and Chris Wyman and Cyril Crassin and Nir Benty},
+@Misc{Kallweit22,
+   author =      {Simon Kallweit and Petrik Clarberg and Craig Kolb and Tom{'a}{\v s} Davidovi{\v c} and Kai-Hwa Yao and Theresa Foley and Yong He and Lifan Wu and Lucy Chen and Tomas Akenine-M{\"o}ller and Chris Wyman and Cyril Crassin and Nir Benty},
    title =       {The {Falcor} Rendering Framework},
    year =        {2022},
-   month =       {1},
+   month =       {3},
    url =         {https://github.com/NVIDIAGameWorks/Falcor},
    note =        {\url{https://github.com/NVIDIAGameWorks/Falcor}}
 }

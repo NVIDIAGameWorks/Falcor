@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -64,6 +64,18 @@ public:
     static void registerBindings(pybind11::module& m);
 
 private:
+    struct TracePass
+    {
+        std::string name;
+        std::string passDefine;
+        RtProgram::SharedPtr pProgram;
+        RtBindingTable::SharedPtr pBindingTable;
+        RtProgramVars::SharedPtr pVars;
+
+        TracePass(const std::string& name, const std::string& passDefine, const Scene::SharedPtr& pScene, const Program::DefineList& defines, const Program::TypeConformanceList& globalTypeConformances);
+        void prepareProgram(const Program::DefineList& defines);
+    };
+
     PathTracer(const Dictionary& dict);
 
     void parseDictionary(const Dictionary& dict);
@@ -84,7 +96,7 @@ private:
     bool beginFrame(RenderContext* pRenderContext, const RenderData& renderData);
     void endFrame(RenderContext* pRenderContext, const RenderData& renderData);
     void generatePaths(RenderContext* pRenderContext, const RenderData& renderData);
-    void tracePass(RenderContext* pRenderContext, const RenderData& renderData);
+    void tracePass(RenderContext* pRenderContext, const RenderData& renderData, TracePass& tracePass);
     void resolvePass(RenderContext* pRenderContext, const RenderData& renderData);
 
     /** Static configuration. Changing any of these options require shader recompilation.
@@ -124,7 +136,6 @@ private:
         bool        useNRDDemodulation = true;                  ///< Global switch for NRD demodulation.
 
         Program::DefineList getDefines(const PathTracer& owner) const;
-        Program::TypeConformanceList getTypeConformances(const PathTracer& owner) const;
     };
 
     // Configuration
@@ -155,17 +166,15 @@ private:
     bool                            mFixedSampleCount = true;   ///< True if a fixed sample count per pixel is used. Otherwise load it from the pass sample count input.
     bool                            mOutputGuideData = false;   ///< True if guide data should be generated as outputs.
     bool                            mOutputNRDData = false;     ///< True if NRD diffuse/specular data should be generated as outputs.
+    bool                            mOutputNRDAdditionalData = false;   ///< True if NRD data from delta and residual paths should be generated as designated outputs rather than being included in specular NRD outputs.
 
     ComputePass::SharedPtr          mpGeneratePaths;            ///< Fullscreen compute pass generating paths starting at primary hits.
     ComputePass::SharedPtr          mpResolvePass;              ///< Sample resolve pass.
     ComputePass::SharedPtr          mpReflectTypes;             ///< Helper for reflecting structured buffer types.
 
-    struct
-    {
-        RtProgram::SharedPtr pProgram;
-        RtBindingTable::SharedPtr pBindingTable;
-        RtProgramVars::SharedPtr pVars;
-    } mTracePass;
+    std::unique_ptr<TracePass>      mpTracePass;                ///< Main trace pass.
+    std::unique_ptr<TracePass>      mpTraceDeltaReflectionPass; ///< Delta reflection trace pass (for NRD).
+    std::unique_ptr<TracePass>      mpTraceDeltaTransmissionPass;   ///< Delta transmission trace pass (for NRD).
 
     Texture::SharedPtr              mpSampleOffset;             ///< Output offset into per-sample buffers to where the samples for each pixel are stored (the offset is relative the start of the tile). Only used with non-fixed sample count.
     Buffer::SharedPtr               mpSampleColor;              ///< Compact per-sample color buffer. This is used only if spp > 1.

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -162,14 +162,13 @@ struct SDFSBS : SDFGridBase, ISDFGrid
                 float3 voxelHitP = brickHitP - brickLocalVoxelCoords;               // The hit position in the local space of the voxel, i.e., [0, 1).
 
                 float tVoxelLocal = 0.0f;
-                if (SDFVoxelHitUtils::intersectSDFVoxel(voxelHitP, d, origInsideAABB, values0xx, values1xx, min(tVoxelMax, tLocalNext) - tLocal, kSolverMaxStepCount, tVoxelLocal))
+                if (SDFVoxelHitUtils::intersectSDFVoxel(voxelHitP, d, origInsideAABB, values0xx, values1xx, kSnormErrorTolerance + min(tVoxelMax, tLocalNext) - tLocal, kSolverMaxStepCount, tVoxelLocal))
                 {
                     t += (tLocal + tVoxelLocal) * voxelWidth;
                     t *= inverseDirLength;
 
                     hitData.primitiveID = primitiveID;
                     hitData.hitT = t;
-
                     return true;
                 }
             }
@@ -264,7 +263,7 @@ struct SDFSBS : SDFGridBase, ISDFGrid
                 float3 brickHitP = (brickLocalHitP - brickMin) * virtualGridWidth;  // The hit position in the grid space of the brick, i.e., [0, hitBrickWidthInVoxels).
                 float3 voxelHitP = brickHitP - brickLocalVoxelCoords;               // The hit position in the local space of the voxel, i.e., [0, 1).
 
-                if (SDFVoxelHitUtils::intersectSDFVoxelAny(voxelHitP, d, origInsideAABB, values0xx, values1xx, min(tVoxelMax, tLocalNext) - tLocal, kSolverMaxStepCount))
+                if (SDFVoxelHitUtils::intersectSDFVoxelAny(voxelHitP, d, origInsideAABB, values0xx, values1xx, kSnormErrorTolerance + min(tVoxelMax, tLocalNext) - tLocal, kSolverMaxStepCount))
                 {
                     return true;
                 }

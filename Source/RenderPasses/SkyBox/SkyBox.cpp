@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -71,7 +71,7 @@ SkyBox::SkyBox()
 {
     mpCubeScene = Scene::create("cube.obj");
 
-    mpProgram = GraphicsProgram::createFromFile("RenderPasses/SkyBox/SkyBox.3d.slang", "vs", "ps");
+    mpProgram = GraphicsProgram::createFromFile("RenderPasses/SkyBox/SkyBox.3d.slang", "vsMain", "psMain");
     mpProgram->addDefines(mpCubeScene->getSceneDefines());
     mpVars = GraphicsVars::create(mpProgram->getReflector());
     mpFbo = Fbo::create();
@@ -101,17 +101,17 @@ SkyBox::SharedPtr SkyBox::create(RenderContext* pRenderContext, const Dictionary
     SharedPtr pSkyBox = SharedPtr(new SkyBox());
     for (const auto& [key, value] : dict)
     {
-        if (key == kTexName) pSkyBox->mTexName = value.operator std::string();
+        if (key == kTexName) pSkyBox->mTexPath = value.operator std::filesystem::path();
         else if (key == kLoadAsSrgb) pSkyBox->mLoadSrgb = value;
         else if (key == kFilter) pSkyBox->setFilter(value);
         else logWarning("Unknown field '{}' in a SkyBox dictionary.", key);
     }
 
     std::shared_ptr<Texture> pTexture;
-    if (pSkyBox->mTexName.size() != 0)
+    if (!pSkyBox->mTexPath.empty())
     {
-        pTexture = Texture::createFromFile(pSkyBox->mTexName, false, pSkyBox->mLoadSrgb);
-        if (pTexture == nullptr) throw RuntimeError("SkyBox: Failed to load skybox texture '{}'", pSkyBox->mTexName);
+        pTexture = Texture::createFromFile(pSkyBox->mTexPath, false, pSkyBox->mLoadSrgb);
+        if (pTexture == nullptr) throw RuntimeError("SkyBox: Failed to load skybox texture '{}'", pSkyBox->mTexPath);
         pSkyBox->setTexture(pTexture);
     }
     return pSkyBox;
@@ -120,7 +120,7 @@ SkyBox::SharedPtr SkyBox::create(RenderContext* pRenderContext, const Dictionary
 Dictionary SkyBox::getScriptingDictionary()
 {
     Dictionary dict;
-    dict[kTexName] = mTexName;
+    dict[kTexName] = mTexPath;
     dict[kLoadAsSrgb] = mLoadSrgb;
     dict[kFilter] = mFilter;
     return dict;
@@ -180,11 +180,11 @@ void SkyBox::renderUI(Gui::Widgets& widget)
 
 void SkyBox::loadImage()
 {
-    std::string filename;
+    std::filesystem::path path;
     FileDialogFilterVec filters = { {"bmp"}, {"jpg"}, {"dds"}, {"png"}, {"tiff"}, {"tif"}, {"tga"} };
-    if (openFileDialog(filters, filename))
+    if (openFileDialog(filters, path))
     {
-        mpTexture = Texture::createFromFile(filename, false, mLoadSrgb);
+        mpTexture = Texture::createFromFile(path, false, mLoadSrgb);
         setTexture(mpTexture);
     }
 }

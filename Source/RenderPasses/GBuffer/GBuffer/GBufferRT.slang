@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -161,7 +161,6 @@ struct GBufferRT
     {
         uint materialID = 0;
         VertexData v = {};
-        float curveRadius = 0.f;
         float3 prevPosW = {};
         float4 texGrads = {};
         float2 motionVector = {};
@@ -207,7 +206,7 @@ struct GBufferRT
             const CurveHit curveHit = hit.getCurveHit();
 
             materialID = gScene.getMaterialID(curveHit.instanceID);
-            v = gScene.getVertexDataFromCurve(curveHit, curveRadius);
+            v = gScene.getVertexDataFromCurve(curveHit);
             prevPosW = gScene.getPrevPosWFromCurve(curveHit);
         }
         else if (hit.getType() == HitType::SDFGrid)
@@ -251,8 +250,6 @@ struct GBufferRT
         let bsdf = gScene.materials.getBSDF(sd, lod);
 
         const GBufferData gbuf = prepareGBufferData(sd, bsdf);
-
-        if (hit.getType() == HitType::Curve) gbuf.posW.w = curveRadius;
 
         // GBuffer channels
         if (is_valid(gPosW))                gPosW[pixel]                = gbuf.posW;

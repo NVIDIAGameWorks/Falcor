@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -36,10 +36,9 @@ namespace Falcor
 {
     static bool isRGB32fSupported() { return false; } // FIX THIS
 
-    static void genWarning(const std::string& errMsg, const std::string& filename)
+    static void genWarning(const std::string& errMsg, const std::filesystem::path& path)
     {
-        std::string err = "Error when loading image file from '" + filename + "' (" + errMsg + ")";
-        logWarning(err);
+        logWarning("Error when loading image file from '{}': {}", path, errMsg);
     }
 
     static bool isConvertibleToRGBA32Float(ResourceFormat format)
@@ -180,26 +179,26 @@ namespace Falcor
         return Bitmap::UniqueConstPtr(new Bitmap(width, height, format, pData));
     }
 
-    Bitmap::UniqueConstPtr Bitmap::createFromFile(const std::string& filename, bool isTopDown)
+    Bitmap::UniqueConstPtr Bitmap::createFromFile(const std::filesystem::path& path, bool isTopDown)
     {
-        std::string fullpath;
-        if (findFileInDataDirectories(filename, fullpath) == false)
+        std::filesystem::path fullPath;
+        if (!findFileInDataDirectories(path, fullPath))
         {
-            logWarning("Error when loading image file. Can't find image file '{}'.", filename);
+            logWarning("Error when loading image file. Can't find image file '{}'.", path);
             return nullptr;
         }
 
         FREE_IMAGE_FORMAT fifFormat = FIF_UNKNOWN;
 
-        fifFormat = FreeImage_GetFileType(fullpath.c_str(), 0);
+        fifFormat = FreeImage_GetFileType(fullPath.string().c_str(), 0);
         if (fifFormat == FIF_UNKNOWN)
         {
             // Can't get the format from the file. Use file extension
-            fifFormat = FreeImage_GetFIFFromFilename(fullpath.c_str());
+            fifFormat = FreeImage_GetFIFFromFilename(fullPath.string().c_str());
 
             if (fifFormat == FIF_UNKNOWN)
             {
-                genWarning("Image type unknown", filename);
+                genWarning("Image type unknown", path);
                 return nullptr;
             }
         }
@@ -207,15 +206,15 @@ namespace Falcor
         // Check the library supports loading this image type
         if (FreeImage_FIFSupportsReading(fifFormat) == false)
         {
-            genWarning("Library doesn't support the file format", filename);
+            genWarning("Library doesn't support the file format", path);
             return nullptr;
         }
 
         // Read the DIB
-        FIBITMAP* pDib = FreeImage_Load(fifFormat, fullpath.c_str());
+        FIBITMAP* pDib = FreeImage_Load(fifFormat, fullPath.string().c_str());
         if (pDib == nullptr)
         {
-            genWarning("Can't read image file", filename);
+            genWarning("Can't read image file", path);
             return nullptr;
         }
 
@@ -225,7 +224,7 @@ namespace Falcor
 
         if (height == 0 || width == 0 || FreeImage_GetBits(pDib) == nullptr)
         {
-            genWarning("Invalid image", filename);
+            genWarning("Invalid image", path);
             return nullptr;
         }
 
@@ -239,7 +238,7 @@ namespace Falcor
 
             if (pDib == nullptr)
             {
-                genWarning("Failed to convert palettized image to RGBA format", filename);
+                genWarning("Failed to convert palettized image to RGBA format", path);
                 return nullptr;
             }
         }
@@ -273,7 +272,7 @@ namespace Falcor
             format = ResourceFormat::R8Unorm;
             break;
         default:
-            genWarning("Unknown bits-per-pixel", filename);
+            genWarning("Unknown bits-per-pixel", path);
             return nullptr;
         }
 
@@ -434,18 +433,18 @@ namespace Falcor
 
     void Bitmap::saveImageDialog(Texture* pTexture)
     {
-        std::string filePath;
+        std::filesystem::path path;
         auto supportExtensions = getFileDialogFilters(pTexture->getFormat());
 
-        if (saveFileDialog(supportExtensions, filePath))
+        if (saveFileDialog(supportExtensions, path))
         {
-            std::string ext = getExtensionFromFile(filePath);
+            std::string ext = getExtensionFromPath(path);
             auto format = getFormatFromFileExtension(ext);
-            pTexture->captureToFile(0, 0, filePath, format);
+            pTexture->captureToFile(0, 0, path, format);
         }
     }
 
-    void Bitmap::saveImage(const std::string& filename, uint32_t width, uint32_t height, FileFormat fileFormat, ExportFlags exportFlags, ResourceFormat resourceFormat, bool isTopDown, void* pData)
+    void Bitmap::saveImage(const std::filesystem::path& path, uint32_t width, uint32_t height, FileFormat fileFormat, ExportFlags exportFlags, ResourceFormat resourceFormat, bool isTopDown, void* pData)
     {
         if (pData == nullptr)
         {
@@ -627,7 +626,7 @@ namespace Falcor
             }
         }
 
-        if (!FreeImage_Save(toFreeImageFormat(fileFormat), pImage, filename.c_str(), flags))
+        if (!FreeImage_Save(toFreeImageFormat(fileFormat), pImage, path.string().c_str(), flags))
         {
             reportError("Bitmap::saveImage: FreeImage failed to save image");
         }

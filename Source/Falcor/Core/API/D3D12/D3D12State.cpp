@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
+
 #include "D3D12State.h"
 #include "Core/API/Sampler.h"
 #include "glm/gtc/type_ptr.hpp"
@@ -387,179 +388,16 @@ namespace Falcor
         memcpy(desc.BorderColor, glm::value_ptr(borderColor), sizeof(borderColor));
     }
 
-    D3D12_SHADER_VISIBILITY getShaderVisibility(ShaderVisibility visibility)
-    {
-        // D3D12 doesn't support a combination of flags, it's either ALL or a single stage
-        if (isPowerOf2((uint32_t)visibility) == false)
-        {
-            return D3D12_SHADER_VISIBILITY_ALL;
-        }
-        else if ((visibility & ShaderVisibility::Vertex) != ShaderVisibility::None)
-        {
-            return D3D12_SHADER_VISIBILITY_VERTEX;
-        }
-        else if ((visibility & ShaderVisibility::Pixel) != ShaderVisibility::None)
-        {
-            return D3D12_SHADER_VISIBILITY_PIXEL;
-        }
-        else if ((visibility & ShaderVisibility::Geometry) != ShaderVisibility::None)
-        {
-            return D3D12_SHADER_VISIBILITY_GEOMETRY;
-        }
-        else if ((visibility & ShaderVisibility::Domain) != ShaderVisibility::None)
-        {
-            return D3D12_SHADER_VISIBILITY_DOMAIN;
-        }
-        else if ((visibility & ShaderVisibility::Hull) != ShaderVisibility::None)
-        {
-            return D3D12_SHADER_VISIBILITY_HULL;
-        }
-        // If it was compute, it can't be anything else and so the first `if` would have handled it
-        FALCOR_UNREACHABLE();
-        return (D3D12_SHADER_VISIBILITY)-1;
-    }
-
-    D3D12_DESCRIPTOR_RANGE_TYPE getRootDescRangeType(D3D12RootSignature::DescType type)
-    {
-        switch (type)
-        {
-        case D3D12RootSignature::DescType::TextureSrv:
-        case D3D12RootSignature::DescType::RawBufferSrv:
-        case D3D12RootSignature::DescType::TypedBufferSrv:
-        case D3D12RootSignature::DescType::StructuredBufferSrv:
-        case D3D12RootSignature::DescType::AccelerationStructureSrv:
-            return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-        case D3D12RootSignature::DescType::TextureUav:
-        case D3D12RootSignature::DescType::RawBufferUav:
-        case D3D12RootSignature::DescType::TypedBufferUav:
-        case D3D12RootSignature::DescType::StructuredBufferUav:
-            return D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-        case D3D12RootSignature::DescType::Cbv:
-            return D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-        case D3D12RootSignature::DescType::Sampler:
-            return D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
-        default:
-            FALCOR_UNREACHABLE();
-            return (D3D12_DESCRIPTOR_RANGE_TYPE)-1;
-        }
-    }
-
-    void convertRootCbvSet(const D3D12RootSignature::DescriptorSetLayout& set, D3D12_ROOT_PARAMETER1& desc)
-    {
-        FALCOR_ASSERT(set.getRangeCount() == 1);
-        const auto& range = set.getRange(0);
-        FALCOR_ASSERT(range.type == D3D12RootSignature::DescType::Cbv && range.descCount == 1);
-
-        desc.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-        desc.Descriptor.RegisterSpace = range.regSpace;
-        desc.Descriptor.ShaderRegister = range.baseRegIndex;
-        desc.Descriptor.Flags = D3D12_ROOT_DESCRIPTOR_FLAG_NONE;
-        desc.ShaderVisibility = getShaderVisibility(set.getVisibility());
-    }
-
-    void convertRootDescTable(const D3D12RootSignature::DescriptorSetLayout& falcorSet, D3D12_ROOT_PARAMETER1& desc, std::vector<D3D12_DESCRIPTOR_RANGE1>& d3dRange)
-    {
-        desc.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-        desc.ShaderVisibility = getShaderVisibility(falcorSet.getVisibility());
-        d3dRange.resize(falcorSet.getRangeCount());
-        desc.DescriptorTable.NumDescriptorRanges = (uint32_t)falcorSet.getRangeCount();
-        desc.DescriptorTable.pDescriptorRanges = d3dRange.data();
-
-        for (size_t i = 0; i < falcorSet.getRangeCount(); i++)
-        {
-            const auto& falcorRange = falcorSet.getRange(i);
-            d3dRange[i].BaseShaderRegister = falcorRange.baseRegIndex;
-            d3dRange[i].NumDescriptors = falcorRange.descCount;
-            d3dRange[i].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-            d3dRange[i].RangeType = getRootDescRangeType(falcorRange.type);
-            d3dRange[i].RegisterSpace = falcorRange.regSpace;
-            d3dRange[i].Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;
-        }
-    }
-
-    void convertRootDescriptor(const D3D12RootSignature::RootDescriptorDesc& rootDesc, D3D12_ROOT_PARAMETER1& desc)
-    {
-        // Convert the descriptor type to a root parameter type.
-        // Only buffer SRV/UAVs are supported (CBVs take another path).
-        switch (rootDesc.type)
-        {
-        case D3D12RootSignature::DescType::RawBufferSrv:
-        case D3D12RootSignature::DescType::TypedBufferSrv:
-        case D3D12RootSignature::DescType::StructuredBufferSrv:
-        case D3D12RootSignature::DescType::AccelerationStructureSrv:
-            desc.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-            break;
-        case D3D12RootSignature::DescType::RawBufferUav:
-        case D3D12RootSignature::DescType::TypedBufferUav:
-        case D3D12RootSignature::DescType::StructuredBufferUav:
-            desc.ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
-            break;
-        default:
-            throw RuntimeError("Unsupported root descriptor type. Only buffer SRV/UAVs supported.");
-        }
-
-        desc.Descriptor.RegisterSpace = rootDesc.spaceIndex;
-        desc.Descriptor.ShaderRegister = rootDesc.regIndex;
-        desc.Descriptor.Flags = D3D12_ROOT_DESCRIPTOR_FLAG_NONE; // TODO: Add user api for specifying volatility
-        desc.ShaderVisibility = getShaderVisibility(rootDesc.visibility);
-    }
-
-    void initD3D12RootParams(const D3D12RootSignature::Desc& desc, RootSignatureParams& params)
-    {
-        const size_t numElements = desc.getSetsCount() + desc.getRootDescriptorCount() + desc.getRootConstantCount();
-        params.signatureSizeInBytes = 0;
-        params.d3dRanges.resize(desc.getSetsCount());
-        params.rootParams.resize(numElements);
-        params.elementByteOffset.resize(numElements);
-
-        size_t elementIndex = 0;
-        for (size_t i = 0; i < desc.getSetsCount(); i++)
-        {
-            const auto& set = desc.getSet(i);
-            convertRootDescTable(set, params.rootParams[elementIndex], params.d3dRanges[i]);
-            params.elementByteOffset[elementIndex] = params.signatureSizeInBytes;
-            params.signatureSizeInBytes += 8;
-            elementIndex++;
-        }
-
-        for (size_t i = 0; i < desc.getRootDescriptorCount(); i++)
-        {
-            const auto& rootDesc = desc.getRootDescriptorDesc(i);
-            convertRootDescriptor(rootDesc, params.rootParams[elementIndex]);
-            params.elementByteOffset[elementIndex] = params.signatureSizeInBytes;
-            params.signatureSizeInBytes += 8;
-            elementIndex++;
-        }
-
-        // Place root constants last so that we do not have to worry about padding,
-        // as addresses must be 8B aligned but we may have an odd number of root constants.
-        for (size_t i = 0; i < desc.getRootConstantCount(); i++)
-        {
-            const auto& rootConst = desc.getRootConstantDesc(i);
-            D3D12_ROOT_PARAMETER1& d3dDesc = params.rootParams[elementIndex];
-            d3dDesc.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-            d3dDesc.Constants.Num32BitValues = rootConst.count;
-            d3dDesc.Constants.RegisterSpace = rootConst.spaceIndex;
-            d3dDesc.Constants.ShaderRegister = rootConst.regIndex;
-            d3dDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-
-            params.elementByteOffset[elementIndex] = params.signatureSizeInBytes;
-            params.signatureSizeInBytes += 4 * rootConst.count;
-            elementIndex++;
-        }
-        FALCOR_ASSERT(elementIndex == numElements);
-    }
-
     void initD3D12GraphicsStateDesc(const GraphicsStateObject::Desc& gsoDesc, D3D12_GRAPHICS_PIPELINE_STATE_DESC& desc, InputLayoutDesc& layoutDesc)
     {
         desc = {};
         FALCOR_ASSERT(gsoDesc.getProgramKernels());
-#define get_shader_handle(_type) gsoDesc.getProgramKernels()->getShader(_type) ? gsoDesc.getProgramKernels()->getShader(_type)->getApiHandle() : D3D12_SHADER_BYTECODE{}
-        desc.VS = get_shader_handle(ShaderType::Vertex);
-        desc.PS = get_shader_handle(ShaderType::Pixel);
-        desc.GS = get_shader_handle(ShaderType::Geometry);
-        desc.HS = get_shader_handle(ShaderType::Hull);
-        desc.DS = get_shader_handle(ShaderType::Domain);
+#define GET_SHADER_BYTE_CODE(_type) gsoDesc.getProgramKernels()->getShader(_type) ? gsoDesc.getProgramKernels()->getShader(_type)->getD3D12ShaderByteCode() : D3D12_SHADER_BYTECODE{}
+        desc.VS = GET_SHADER_BYTE_CODE(ShaderType::Vertex);
+        desc.PS = GET_SHADER_BYTE_CODE(ShaderType::Pixel);
+        desc.GS = GET_SHADER_BYTE_CODE(ShaderType::Geometry);
+        desc.HS = GET_SHADER_BYTE_CODE(ShaderType::Hull);
+        desc.DS = GET_SHADER_BYTE_CODE(ShaderType::Domain);
 #undef get_shader_handle
 
         initD3D12BlendDesc(gsoDesc.getBlendState().get(), desc.BlendState);
@@ -593,3 +431,4 @@ namespace Falcor
         desc.PrimitiveTopologyType = getD3DPrimitiveType(gsoDesc.getPrimitiveType());
     }
 }
+

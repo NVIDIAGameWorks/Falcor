@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -97,14 +97,14 @@ namespace Falcor
             This will add the texture to the set of managed textures. The function returns a handle immediately.
             If asynchronous loading is requested, the texture data will not be available until loading completes.
             The returned handle is valid for the entire lifetime of the texture, until removeTexture() is called.
-            \param[in] filename Filename of the texture. This can be a full path or a relative path from a data directory.
+            \param[in] path File path of the texture. This can be a full path or a relative path from a data directory.
             \param[in] generateMipLevels Whether the full mip-chain should be generated.
             \param[in] loadAsSRGB Load the texture as sRGB format if supported, otherwise linear color.
             \param[in] bindFlags The bind flags for the texture resource.
             \param[in] async Load asynchronously, otherwise the function blocks until the texture data is loaded.
             \return Unique handle to the texture, or an invalid handle if the texture can't be found.
         */
-        TextureHandle loadTexture(const std::string& filename, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource, bool async = true);
+        TextureHandle loadTexture(const std::filesystem::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource, bool async = true);
 
         /** Wait for a requested texture to load.
             If the handle is valid, the call blocks until the texture is loaded (or failed to load).
@@ -154,12 +154,12 @@ namespace Falcor
         */
         struct TextureKey
         {
-            std::string fullPath;
+            std::filesystem::path fullPath;
             bool generateMipLevels;
             bool loadAsSRGB;
             Resource::BindFlags bindFlags;
 
-            TextureKey(const std::string& path, bool mips, bool srgb, Resource::BindFlags flags)
+            TextureKey(const std::filesystem::path& path, bool mips, bool srgb, Resource::BindFlags flags)
                 : fullPath(path), generateMipLevels(mips), loadAsSRGB(srgb), bindFlags(flags)
             {}
 

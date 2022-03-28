@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -126,6 +126,9 @@ void primaryClosestHit(inout PrimaryRayData hitData, BuiltInTriangleIntersection
 
     float3 color = bsdfProperties.emission;
 
+    uint3 launchIndex = DispatchRaysIndex();
+    TinyUniformSampleGenerator sg = TinyUniformSampleGenerator(launchIndex.xy, sampleIndex);
+
     // Direct lighting from analytic light sources.
     for (int i = 0; i < gScene.getLightCount(); i++)
     {
@@ -135,7 +138,7 @@ void primaryClosestHit(inout PrimaryRayData hitData, BuiltInTriangleIntersection
             RayDesc shadowRay = { sd.posW, 0.001f, ls.dir, ls.distance };
             if (!traceShadowRay(shadowRay))
             {
-                color += bsdf.eval(sd, ls.dir) * ls.Li;
+                color += bsdf.eval(sd, ls.dir, sg) * ls.Li;
             }
         }
     }

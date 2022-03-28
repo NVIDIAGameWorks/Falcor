@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -85,15 +85,17 @@ namespace Mogwai
         void onResizeSwapChain(uint32_t width, uint32_t height) override;
         bool onKeyEvent(const KeyboardEvent& e) override;
         bool onMouseEvent(const MouseEvent& e) override;
+        bool onGamepadEvent(const GamepadEvent& gamepadEvent) override;
+        bool onGamepadState(const GamepadState& gamepadState) override;
         void onGuiRender(Gui* pGui) override;
         void onHotReload(HotReloadFlags reloaded) override;
         void onShutdown() override;
-        void onDroppedFile(const std::string& filename) override;
+        void onDroppedFile(const std::filesystem::path& path) override;
         void loadScriptDialog();
-        void loadScriptDeferred(const std::string& filename);
-        void loadScript(const std::string& filename);
+        void loadScriptDeferred(const std::filesystem::path& path);
+        void loadScript(const std::filesystem::path& path);
         void saveConfigDialog();
-        void saveConfig(const std::string& filename) const;
+        void saveConfig(const std::filesystem::path& path) const;
         static std::string getVersionString();
 
         static void extend(Extension::CreateFunc func, const std::string& name);
@@ -140,7 +142,7 @@ namespace Mogwai
 
         void removeActiveGraph();
         void loadSceneDialog();
-        void loadScene(std::string filename, SceneBuilder::Flags buildFlags = SceneBuilder::Flags::Default);
+        void loadScene(std::filesystem::path path, SceneBuilder::Flags buildFlags = SceneBuilder::Flags::Default);
         void unloadScene();
         void setScene(const Scene::SharedPtr& pScene);
         Scene::SharedPtr getScene() const;
@@ -163,7 +165,7 @@ namespace Mogwai
         std::vector<GraphData> mGraphs;
         uint32_t mActiveGraph = 0;
         Sampler::SharedPtr mpSampler = nullptr;
-        std::string mScriptFilename;
+        std::filesystem::path mScriptPath;
 
         // Editor stuff
         void openEditor();
@@ -174,7 +176,7 @@ namespace Mogwai
 
         static const size_t kInvalidProcessId = -1; // We use this to know that the editor was launching the viewer
         size_t mEditorProcess = 0;
-        std::string mEditorTempFile;
+        std::filesystem::path mEditorTempPath;
         std::string mEditorScript;
 
         // Scripting

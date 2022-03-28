@@ -1,9 +1,8 @@
 <project toolsVersion="5.0">
     <remote name="github-slang-windows" type="https" packageLocation="github.com/shader-slang/slang/releases/download/v${version}/slang-${version}-win64.zip"/>
     <remote name="github-slang-linux" type="https" packageLocation="github.com/shader-slang/slang/releases/download/v${version}/slang-${version}-linux-x86_64.zip"/>
-    <remote name="nuget-agility-sdk" type="https" packageLocation="globalcdn.nuget.org/packages/microsoft.direct3d.d3d12.${version}.nupkg"/>
     <dependency name="falcor_dependencies" linkPath="../Externals/.packman/deps">
-        <package name="falcor_dependencies" version="6adad071-${platform}" platforms="windows-x86_64" />
+        <package name="falcor_dependencies" version="92e35712-${platform}" platforms="windows-x86_64" />
     </dependency>
     <dependency name="falcor_media" linkPath="../../Media">
         <package name="falcor_media" version="877c05c6" />
@@ -12,8 +11,8 @@
         <package name="dear_imgui" version="1.72WIP-docking-e5b9054" />
     </dependency>
     <dependency name="slang" linkPath="../Externals/.packman/slang">
-        <package name="slang" version="0.20.0" remotes="github-slang-windows" platforms="windows-x86_64"/>
-        <package name="slang" version="0.20.0" remotes="github-slang-linux" platforms="linux-x86_64" />
+        <package name="slang" version="0.23.7" remotes="github-slang-windows" platforms="windows-x86_64"/>
+        <package name="slang" version="0.23.7" remotes="github-slang-linux" platforms="linux-x86_64" />
     </dependency>
     <dependency name="WinPixEventRuntime" linkPath="../Externals/.packman/WinPixEventRuntime">
         <package name="WinPixEventRuntime" version="1.0.190604001" platforms="windows-x86_64" />
@@ -28,7 +27,7 @@
         <package name="dxcompiler" version="1.6.2106" />
     </dependency>
     <dependency name="agility-sdk" linkPath="../Externals/.packman/agility-sdk">
-        <package name="agility-sdk" version="1.4.10" remotes="nuget-agility-sdk" platforms="windows-x86_64"/>
+        <package name="agility-sdk" version="1.4.10" platforms="windows-x86_64"/>
     </dependency>
     <dependency name="nvtt" linkPath="../Externals/.packman/nvtt">
         <package name="nvtt" version="3.1.6-windows-x86_64" platforms="windows-x86_64" />
@@ -38,5 +37,17 @@
     </dependency>
     <dependency name="nv_usd_debug" linkPath="../Externals/.packman/nv-usd-debug">
         <package name="nv-usd" version="20.08.nv.1.1.2064.0ffb3647-win64_py37_debug-main" platforms="windows-x86_64" />
+    </dependency>
+    <dependency name="rtxdi" linkPath="../Externals/.packman/rtxdi">
+        <package name="rtxdi" version="1.3.0-falcor" platforms="windows-x86_64" />
+    </dependency>
+    <dependency name="rtxgi" linkPath="../Externals/.packman/rtxgi">
+        <package name="rtxgi" version="1.2.7"/>
+    </dependency>
+    <dependency name="nrd" linkPath="../Externals/.packman/nrd">
+        <package name="nrd" version="3.1.0-falcor-windows-x86_64" platforms="windows-x86_64" />
+    </dependency>
+    <dependency name="dlss" linkPath="../Externals/.packman/ngx">
+        <package name="dlss" version="2.4.0"/>
     </dependency>
 </project>

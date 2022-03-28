@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -50,17 +50,17 @@ namespace Falcor
         const ResourceFormat kAlbedoLUTFormat = ResourceFormat::RGBA32Float;
     }
 
-    MERLMaterial::SharedPtr MERLMaterial::create(const std::string& name, const std::string& filename)
+    MERLMaterial::SharedPtr MERLMaterial::create(const std::string& name, const std::filesystem::path& path)
     {
-        return SharedPtr(new MERLMaterial(name, filename));
+        return SharedPtr(new MERLMaterial(name, path));
     }
 
-    MERLMaterial::MERLMaterial(const std::string& name, const std::string& filename)
+    MERLMaterial::MERLMaterial(const std::string& name, const std::filesystem::path& path)
         : Material(name, MaterialType::MERL)
     {
-        if (!loadBRDF(filename))
+        if (!loadBRDF(path))
         {
-            throw RuntimeError("MERLMaterial() - Failed to load BRDF from '{}'.", filename);
+            throw RuntimeError("MERLMaterial() - Failed to load BRDF from '{}'.", path);
         }
 
         // Create resources for albedo lookup table.
@@ -76,7 +76,7 @@ namespace Falcor
     bool MERLMaterial::renderUI(Gui::Widgets& widget)
     {
         widget.text("MERL BRDF " + mBRDFName);
-        widget.tooltip("Full path the BRDF was loaded from:\n" + mFilePath, true);
+        widget.tooltip("Full path the BRDF was loaded from:\n" + mPath.string(), true);
 
         return false;
     }
@@ -113,24 +113,24 @@ namespace Falcor
         if (!other) return false;
 
         if (!isBaseEqual(*other)) return false;
-        if (mFilePath != other->mFilePath) return false;
+        if (mPath != other->mPath) return false;
 
         return true;
     }
 
-    bool MERLMaterial::loadBRDF(const std::string& filename)
+    bool MERLMaterial::loadBRDF(const std::filesystem::path& path)
     {
-        std::string fullPath;
-        if (!findFileInDataDirectories(filename, fullPath))
+        std::filesystem::path fullPath;
+        if (!findFileInDataDirectories(path, fullPath))
         {
-            logWarning("MERLMaterial::loadBRDF() - Can't find file '{}'.", filename);
+            logWarning("MERLMaterial::loadBRDF() - Can't find file '{}'.", path);
             return false;
         }
 
         std::ifstream ifs(fullPath, std::ios_base::in | std::ios_base::binary);
         if (!ifs.good())
         {
-            logWarning("MERLMaterial::loadBRDF() - Failed to open file '{}'.", filename);
+            logWarning("MERLMaterial::loadBRDF() - Failed to open file '{}'.", path);
             return false;
         }
 
@@ -141,7 +141,7 @@ namespace Falcor
         size_t n = (size_t)dims[0] * dims[1] * dims[2];
         if (n != kBRDFSamplingResThetaH * kBRDFSamplingResThetaD * kBRDFSamplingResPhiD / 2)
         {
-            logWarning("MERLMaterial::loadBRDF() - Dimensions don't match in file '{}'.", filename);
+            logWarning("MERLMaterial::loadBRDF() - Dimensions don't match in file '{}'.", path);
             return false;
         }
 
@@ -150,12 +150,12 @@ namespace Falcor
         ifs.read(reinterpret_cast<char*>(data.data()), sizeof(double) * 3 * n);
         if (!ifs.good())
         {
-            logWarning("MERLMaterial::loadBRDF() - Failed to load BRDF data from file '{}'.", filename);
+            logWarning("MERLMaterial::loadBRDF() - Failed to load BRDF data from file '{}'.", path);
             return false;
         }
 
-        mFilePath = fullPath;
-        mBRDFName = std::filesystem::path(fullPath).stem().string();
+        mPath = fullPath;
+        mBRDFName = fullPath.stem().string();
         prepareData(dims, data);
         markUpdates(Material::UpdateFlags::ResourcesChanged);
 
@@ -209,14 +209,14 @@ namespace Falcor
 
     void MERLMaterial::prepareAlbedoLUT(RenderContext* pRenderContext)
     {
-        const auto texPath = std::filesystem::path(mFilePath).replace_extension("dds");
+        const auto texPath = mPath.replace_extension("dds");
 
         // Try loading albedo lookup table.
         if (std::filesystem::is_regular_file(texPath))
         {
             // Load 1D texture in non-SRGB format, no mips.
             // If successful, verify dimensions/format/etc. match the expectations.
-            mpAlbedoLUT = Texture::createFromFile(texPath.string(), false, false, ResourceBindFlags::ShaderResource);
+            mpAlbedoLUT = Texture::createFromFile(texPath, false, false, ResourceBindFlags::ShaderResource);
 
             if (mpAlbedoLUT)
             {
@@ -236,11 +236,11 @@ namespace Falcor
 
         // Cache lookup table in texture on disk.
         // TODO: Capture texture to DDS is not yet supported. Calling ImageIO directly for now.
-        //mpAlbedoLUT->captureToFile(0, 0, texPath.string(), Bitmap::FileFormat::DdsFile, Bitmap::ExportFlags::Uncompressed);
+        //mpAlbedoLUT->captureToFile(0, 0, texPath, Bitmap::FileFormat::DdsFile, Bitmap::ExportFlags::Uncompressed);
         FALCOR_ASSERT(mpAlbedoLUT);
-        ImageIO::saveToDDS(gpFramework->getRenderContext(), texPath.string(), mpAlbedoLUT, ImageIO::CompressionMode::None, false);
+        ImageIO::saveToDDS(gpFramework->getRenderContext(), texPath, mpAlbedoLUT, ImageIO::CompressionMode::None, false);
 
-        logInfo("Saved albedo LUT to '{}'.", texPath.string());
+        logInfo("Saved albedo LUT to '{}'.", texPath);
     }
 
     void MERLMaterial::computeAlbedoLUT(RenderContext* pRenderContext)
@@ -281,6 +281,6 @@ namespace Falcor
         FALCOR_SCRIPT_BINDING_DEPENDENCY(Material)
 
         pybind11::class_<MERLMaterial, Material, MERLMaterial::SharedPtr> material(m, "MERLMaterial");
-        material.def(pybind11::init(&MERLMaterial::create), "name"_a, "filename"_a);
+        material.def(pybind11::init(&MERLMaterial::create), "name"_a, "path"_a);
     }
 }

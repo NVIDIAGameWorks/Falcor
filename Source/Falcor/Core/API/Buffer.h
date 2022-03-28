@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -171,6 +171,15 @@ namespace Falcor
             \return A pointer to a new buffer object, or throws an exception if creation failed.
         */
         static SharedPtr createFromApiHandle(ApiHandle handle, size_t size, Resource::BindFlags bindFlags, CpuAccess cpuAccess);
+
+        /** Create a new buffer from an existing D3D12 handle. Available only when D3D12 is the underlying graphics API.
+            \param[in] handle Handle of already allocated resource.
+            \param[in] size The size of the buffer in bytes.
+            \param[in] bindFlags Buffer bind flags. Flags must match the bind flags of the original resource.
+            \param[in] cpuAccess Flags indicating how the buffer can be updated. Flags must match those of the heap the original resource is allocated on.
+            \return A pointer to a new buffer object, or throws an exception if creation failed.
+        */
+        static SharedPtr createFromD3D12Handle(D3D12ResourceHandle handle, size_t size, Resource::BindFlags bindFlags, CpuAccess cpuAccess);
 
         /** Get a shader-resource view.
             \param[in] firstElement The first element of the view. For raw buffers, an element is a single float

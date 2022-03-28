@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -42,7 +42,7 @@ public:
 
 private:
     void loadModel(ResourceFormat fboFormat);
-    void loadModelFromFile(const std::string& Filename, ResourceFormat fboFormat);
+    void loadModelFromFile(const std::filesystem::path& path, ResourceFormat fboFormat);
     void resetCamera();
     void setModelString(double loadTime);
     void setCamController();

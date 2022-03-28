@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,7 +29,7 @@
 #include "Core/API/CopyContext.h"
 #include "Core/API/Device.h"
 #include "Core/API/Texture.h"
-#include "D3D12DescriptorData.h"
+#include "Core/API/Shared/D3D12DescriptorData.h"
 #include "D3D12Resource.h"
 
 namespace Falcor
@@ -280,6 +280,27 @@ namespace Falcor
         FALCOR_ASSERT(is_set(pResource->getBindFlags(), reqFlags));
         mpLowLevelData->getCommandList()->ResourceBarrier(1, &barrier);
         mCommandsPending = true;
+    }
+
+    void CopyContext::updateBuffer(const Buffer* pBuffer, const void* pData, size_t offset, size_t numBytes)
+    {
+        if (numBytes == 0)
+        {
+            numBytes = pBuffer->getSize() - offset;
+        }
+
+        if (pBuffer->adjustSizeOffsetParams(numBytes, offset) == false)
+        {
+            logWarning("CopyContext::updateBuffer() - size and offset are invalid. Nothing to update.");
+            return;
+        }
+
+        mCommandsPending = true;
+
+        // Allocate a buffer on the upload heap
+        Buffer::SharedPtr pUploadBuffer = Buffer::create(numBytes, Buffer::BindFlags::None, Buffer::CpuAccess::Write, pData);
+
+        copyBufferRegion(pBuffer, offset, pUploadBuffer.get(), 0, numBytes);
     }
 
     void CopyContext::copyResource(const Resource* pDst, const Resource* pSrc)

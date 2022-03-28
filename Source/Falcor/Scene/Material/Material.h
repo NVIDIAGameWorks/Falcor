@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -206,10 +206,10 @@ namespace Falcor
         /** Load one of the available texture slots.
             The call is ignored with a warning if the slot doesn't exist.
             \param[in] The texture slot.
-            \param[in] filename Filename to load texture from.
+            \param[in] path Path to load texture from.
             \param[in] useSrgb Load texture as sRGB format.
         */
-        virtual void loadTexture(const TextureSlot slot, const std::string& filename, bool useSrgb = true);
+        virtual void loadTexture(const TextureSlot slot, const std::filesystem::path& path, bool useSrgb = true);
 
         /** Clear one of the available texture slots.
             The call is ignored with a warning if the slot doesn't exist.

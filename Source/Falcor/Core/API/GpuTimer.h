@@ -33,7 +33,7 @@
 namespace Falcor
 {
     /** Abstracts GPU timer queries.
-        This class provides mechanism to get elapsed time in milliseconds between a pair of Begin()/End() calls.
+        This class provides mechanism to get elapsed time in milliseconds between a pair of begin()/end() calls.
     */
     class FALCOR_API GpuTimer
     {
@@ -50,18 +50,26 @@ namespace Falcor
         */
         ~GpuTimer();
 
-        /** Begin the capture window. \n
+        /** Begin the capture window.
             If begin() is called in the middle of a begin()/end() pair, it will be ignored and a warning will be logged.
         */
         void begin();
 
-        /** Begin the capture window. \n
+        /** End the capture window.
             If end() is called before a begin() was called, it will be ignored and a warning will be logged.
         */
         void end();
 
-        /** Get the elapsed time in milliseconds between a pair of Begin()/End() calls. \n
-            If this function called not after a Begin()/End() pair, zero will be returned and a warning will be logged.
+        /** Resolve time stamps.
+            This must be called after a pair of begin()/end() calls.
+            A new measurement can be started after calling resolve() even before getElapsedTime() is called.
+        */
+        void resolve();
+
+        /** Get the elapsed time in milliseconds for the last resolved pair of begin()/end() calls.
+            If this function called not after a begin()/end() pair, zero will be returned and a warning will be logged.
+            The resolve() function must be called prior to calling this function.
+            NOTE! The caller is responsible for inserting GPU synchronization between these two calls.
         */
         double getElapsedTime();
 
@@ -75,18 +83,22 @@ namespace Falcor
             Idle
         };
 
+        void apiBegin();
+        void apiEnd();
+        void apiResolve();
+        void apiReadback(uint64_t result[2]);
+
         static std::weak_ptr<QueryHeap> spHeap;
         LowLevelContextData::SharedPtr mpLowLevelData;
         Status mStatus = Status::Idle;
-        uint32_t mStart;
-        uint32_t mEnd;
-        double mElapsedTime;
-        void apiBegin();
-        void apiEnd();
-        void apiResolve(uint64_t result[2]);
+        uint32_t mStart = 0;
+        uint32_t mEnd = 0;
+        double mElapsedTime = 0.0;
+        bool mDataPending = false; ///< Set to true when resolved timings are available for readback.
 
 #ifdef FALCOR_D3D12
         Buffer::SharedPtr mpResolveBuffer; // Yes, I know it's against my policy to put API specific code in common headers, but it's not worth the complications
+        Buffer::SharedPtr mpResolveStagingBuffer; ///< CPU mappable memory for readback of resolved timings.
 #endif
     };
 }

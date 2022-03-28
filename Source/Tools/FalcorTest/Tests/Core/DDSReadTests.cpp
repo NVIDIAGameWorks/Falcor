@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -43,7 +43,7 @@ namespace Falcor
         {
             // Read input DDS file
             std::string ddsFileName(testName + ".dds");
-            std::string ddsFullPath;
+            std::filesystem::path ddsFullPath;
             findFileInDataDirectories(ddsFileName, ddsFullPath);
             EXPECT(!ddsFullPath.empty());
             if (ddsFullPath.empty())
@@ -77,7 +77,7 @@ namespace Falcor
 
             // Read reference image.  If no reference image exists, the test will fail, and a reference image will be output.
             std::string refFileName(testName + "-ref.png");
-            std::string refFullPath;
+            std::filesystem::path refFullPath;
             findFileInDataDirectories(refFileName, refFullPath);
             EXPECT(!refFullPath.empty());
 
@@ -149,7 +149,7 @@ namespace Falcor
                 EXPECT(result != nullptr);
 
                 Bitmap::UniqueConstPtr resultBitmap(Bitmap::create(dstDim.x, dstDim.y, ResourceFormat::RGBA8Unorm, (const uint8_t*)result));
-                std::string outRefPath(getExecutableDirectory() + "/Data/" + refFileName);
+                std::filesystem::path outRefPath = getExecutableDirectory() / "Data" / refFileName;
                 Bitmap::saveImage(outRefPath, dstDim.x, dstDim.y, Bitmap::FileFormat::PngFile, Bitmap::ExportFlags::Uncompressed | Bitmap::ExportFlags::ExportAlpha, ResourceFormat::RGBA8Unorm, false, (void*)result);
                 ctx.unmapBuffer("result");
             }

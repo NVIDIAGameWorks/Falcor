@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -60,7 +60,7 @@ namespace Falcor
             Codec codec = Codec::Raw;
             ResourceFormat format = ResourceFormat::BGRA8UnormSrgb;
             bool flipY = false;
-            std::string filename;
+            std::filesystem::path path;
         };
 
         ~VideoEncoder();
@@ -78,7 +78,7 @@ namespace Falcor
         static FileDialogFilterVec getSupportedContainerForCodec(Codec codec);
 
     private:
-        VideoEncoder(const std::string& filename);
+        VideoEncoder(const std::filesystem::path& path);
         bool init(const Desc& desc);
 
         AVFormatContext* mpOutputContext = nullptr;
@@ -87,7 +87,7 @@ namespace Falcor
         SwsContext*      mpSwsContext    = nullptr;
         AVCodecContext*  mpCodecContext = nullptr;
 
-        const std::string mFilename;
+        const std::filesystem::path mPath;
         ResourceFormat mFormat;
         uint32_t mRowPitch = 0;
         uint8_t* mpFlippedImage = nullptr; // Used in case the image memory layout if bottom->top

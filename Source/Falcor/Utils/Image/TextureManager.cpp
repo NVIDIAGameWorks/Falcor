@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -82,11 +82,11 @@ namespace Falcor
 
             // If texture was originally loaded from disk, add to key-to-handle map to avoid loading it again later if requested in loadTexture().
             // It's possible the user-provided texture has already been loaded by us. In that case, log a warning as the redundant load should be fixed.
-            if (!pTexture->getSourceFilename().empty())
+            if (!pTexture->getSourcePath().empty())
             {
                 bool hasMips = pTexture->getMipCount() > 1;
                 bool isSrgb = isSrgbFormat(pTexture->getFormat());
-                TextureKey textureKey(pTexture->getSourceFilename(), hasMips, isSrgb, pTexture->getBindFlags());
+                TextureKey textureKey(pTexture->getSourcePath().string(), hasMips, isSrgb, pTexture->getBindFlags());
 
                 if (mKeyToHandle.find(textureKey) == mKeyToHandle.end())
                 {
@@ -94,7 +94,7 @@ namespace Falcor
                 }
                 else
                 {
-                    logWarning("TextureManager::addTexture() - Texture loaded from '{}' appears to be identical to an already loaded texture. This could be optimized by getting it from TextureManager.", pTexture->getSourceFilename());
+                    logWarning("TextureManager::addTexture() - Texture loaded from '{}' appears to be identical to an already loaded texture. This could be optimized by getting it from TextureManager.", pTexture->getSourcePath());
                 }
             }
         }
@@ -102,15 +102,15 @@ namespace Falcor
         return handle;
     }
 
-    TextureManager::TextureHandle TextureManager::loadTexture(const std::string& filename, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags, bool async)
+    TextureManager::TextureHandle TextureManager::loadTexture(const std::filesystem::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags, bool async)
     {
         TextureHandle handle;
 
         // Find the full path to the texture.
-        std::string fullPath;
-        if (!findFileInDataDirectories(filename, fullPath))
+        std::filesystem::path fullPath;
+        if (!findFileInDataDirectories(path, fullPath))
         {
-            logWarning("Can't find texture file '{}'.", filename);
+            logWarning("Can't find texture file '{}'.", path);
             return handle;
         }
 

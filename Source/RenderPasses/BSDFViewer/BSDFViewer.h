@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -59,7 +59,7 @@ public:
 private:
     BSDFViewer(const Dictionary& dict);
     void parseDictionary(const Dictionary& dict);
-    bool loadEnvMap(const std::string& filename);
+    bool loadEnvMap(const std::filesystem::path& path);
     void readPixelData();
 
     // Internal state

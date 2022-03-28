@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,11 +27,11 @@
  **************************************************************************/
 #pragma once
 
-#ifdef FALCOR_D3D12
+#if FALCOR_D3D12_AVAILABLE
 
 #include <Falcor.h>
-#include "Core/API/D3D12/D3D12DescriptorSet.h"
-#include "Core/API/D3D12/D3D12RootSignature.h"
+#include "Core/API/Shared/D3D12DescriptorSet.h"
+#include "Core/API/Shared/D3D12RootSignature.h"
 
 #if FALCOR_ENABLE_NRD
 #include <NRD/Include/NRD.h>
@@ -45,6 +45,15 @@ public:
     using SharedPtr = std::shared_ptr<NRDPass>;
 
     static const Info kInfo;
+
+    enum class DenoisingMethod : uint32_t
+    {
+        RelaxDiffuseSpecular,
+        RelaxDiffuse,
+        ReblurDiffuseSpecular,
+        SpecularReflectionMv,
+        SpecularDeltaMv
+    };
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
@@ -71,10 +80,16 @@ private:
 
     nrd::Denoiser* mpDenoiser = nullptr;
 
+    bool mEnabled = true;
+    DenoisingMethod mDenoisingMethod = DenoisingMethod::RelaxDiffuseSpecular;
+    bool mRecreateDenoiser = false;
     bool mWorldSpaceMotion = true;
     float mMaxIntensity = 1000.f;
     float mDisocclusionThreshold = 2.f;
-    nrd::RelaxDiffuseSpecularSettings mRelaxSettings;
+    nrd::CommonSettings mCommonSettings = {};
+    nrd::RelaxDiffuseSpecularSettings mRelaxDiffuseSpecularSettings = {};
+    nrd::RelaxDiffuseSettings mRelaxDiffuseSettings = {};
+    nrd::ReblurSettings mReblurSettings = {};
 
     std::vector<Falcor::Sampler::SharedPtr> mpSamplers;
     std::vector<Falcor::D3D12DescriptorSet::Layout> mCBVSRVUAVdescriptorSetLayouts;
@@ -91,10 +106,9 @@ private:
     glm::mat4x4 mPrevProjMatrix;
 
     // Additional classic Falcor compute pass and resources for packing radiance and hitT for NRD.
-    ComputePass::SharedPtr mpPackRadiancePass;
-    Texture::SharedPtr mpDiffuseRadianceHitDistPackedTexture;
-    Texture::SharedPtr mpSpecularRadianceHitDistPackedTexture;
+    ComputePass::SharedPtr mpPackRadiancePassRelax;
+    ComputePass::SharedPtr mpPackRadiancePassReblur;
 #endif // FALCOR_ENABLE_NRD
 };
 
-#endif // FALCOR_D3D12
+#endif // FALCOR_D3D12_AVAILABLE

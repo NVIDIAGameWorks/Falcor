@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -95,6 +95,7 @@ extension MaterialSystem
         // Primitive data
         sd.faceN = v.faceNormalW;
         sd.frontFacing = dot(sd.V, sd.faceN) >= 0.f;
+        sd.curveRadius = v.curveRadius;
 
         // Material data
         const MaterialDataBlob m = materialData[materialID];

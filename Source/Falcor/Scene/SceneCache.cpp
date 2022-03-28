@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -38,7 +38,7 @@ namespace Falcor
         /** Specfies the current cache file version.
             This needs to be incremented every time the file format changes!
         */
-        const uint32_t kVersion = 23;
+        const uint32_t kVersion = 25;
 
         /** Scene cache directory (subdirectory in the application data directory).
         */
@@ -83,6 +83,12 @@ namespace Falcor
             uint64_t len = value.size();
             write(len);
             write(value.data(), len);
+        }
+
+        template<>
+        void write(const std::filesystem::path& path)
+        {
+            write(path.string());
         }
 
         template<typename T>
@@ -138,6 +144,14 @@ namespace Falcor
             read(value.data(), len);
         }
 
+        template<>
+        void read(std::filesystem::path& path)
+        {
+            std::string str;
+            read(str);
+            path = str;
+        }
+
         template<typename T>
         T read()
         {
@@ -191,14 +205,14 @@ namespace Falcor
     {
         auto cachePath = getCachePath(key);
 
-        logInfo("Writing scene cache to '{}'.", cachePath.string());
+        logInfo("Writing scene cache to '{}'.", cachePath);
 
         // Create directories if not existing.
         std::filesystem::create_directories(cachePath.parent_path());
 
         // Open file.
         std::ofstream fs(cachePath.c_str(), std::ios_base::binary);
-        if (fs.bad()) throw RuntimeError("Failed to create scene cache file '{}'.", cachePath.string());
+        if (fs.bad()) throw RuntimeError("Failed to create scene cache file '{}'.", cachePath);
 
         // Write header (uncompressed).
         Header header;
@@ -210,29 +224,29 @@ namespace Falcor
         lz4_stream::basic_ostream<kBlockSize> zs(fs);
         OutputStream stream(zs);
         writeSceneData(stream, sceneData);
-        if (fs.bad()) throw RuntimeError("Failed to write scene cache file to '{}'.", cachePath.string());
+        if (fs.bad()) throw RuntimeError("Failed to write scene cache file to '{}'.", cachePath);
     }
 
     Scene::SceneData SceneCache::readCache(const Key& key)
     {
         auto cachePath = getCachePath(key);
 
-        logInfo("Loading scene cache from '{}'.", cachePath.string());
+        logInfo("Loading scene cache from '{}'.", cachePath);
 
         // Open file.
         std::ifstream fs(cachePath.c_str(), std::ios_base::binary);
-        if (fs.bad()) throw RuntimeError("Failed to open scene cache file '{}'.", cachePath.string());
+        if (fs.bad()) throw RuntimeError("Failed to open scene cache file '{}'.", cachePath);
 
         // Read header (uncompressed).
         Header header;
         fs.read(reinterpret_cast<char*>(&header), sizeof(header));
-        if (!header.isValid()) throw RuntimeError("Invalid header in scene cache file '{}'.", cachePath.string());
+        if (!header.isValid()) throw RuntimeError("Invalid header in scene cache file '{}'.", cachePath);
 
         // Read cache (compressed).
         lz4_stream::basic_istream<kBlockSize, kBlockSize> zs(fs);
         InputStream stream(zs);
         auto sceneData = readSceneData(stream);
-        if (fs.bad()) throw RuntimeError("Failed to read scene cache file from '{}'.", cachePath.string());
+        if (fs.bad()) throw RuntimeError("Failed to read scene cache file from '{}'.", cachePath);
         return sceneData;
     }
 
@@ -241,15 +255,15 @@ namespace Falcor
         std::stringstream ss;
         ss << std::hex << std::setfill('0') << std::setw(2);
         for (auto c : key) ss << (int)c;
-        return std::filesystem::path(getAppDataDirectory()) / kDirectory / ss.str();
+        return getAppDataDirectory() / kDirectory / ss.str();
     }
 
     // SceneData
 
     void SceneCache::writeSceneData(OutputStream& stream, const Scene::SceneData& sceneData)
     {
-        writeMarker(stream, "Filename");
-        stream.write(sceneData.filename);
+        writeMarker(stream, "Path");
+        stream.write(sceneData.path);
 
         writeMarker(stream, "RenderSettings");
         stream.write(sceneData.renderSettings);
@@ -332,7 +346,7 @@ namespace Falcor
         stream.write(sceneData.meshDrawCount);
         stream.write(sceneData.meshIndexData);
         stream.write(sceneData.meshStaticData);
-        stream.write(sceneData.meshDynamicData);
+        stream.write(sceneData.meshSkinningData);
 
         writeMarker(stream, "Curves");
         stream.write(sceneData.curveDesc);
@@ -344,7 +358,8 @@ namespace Falcor
         stream.write((uint32_t)sceneData.cachedCurves.size());
         for (const auto& cachedCurve : sceneData.cachedCurves)
         {
-            stream.write(cachedCurve.curveID);
+            stream.write(cachedCurve.tessellationMode);
+            stream.write(cachedCurve.geometryID);
             stream.write(cachedCurve.timeSamples);
             stream.write(cachedCurve.indexData);
             stream.write((uint32_t)cachedCurve.vertexData.size());
@@ -363,8 +378,8 @@ namespace Falcor
         Scene::SceneData sceneData;
         sceneData.pMaterials = MaterialSystem::create();
 
-        readMarker(stream, "Filename");
-        stream.read(sceneData.filename);
+        readMarker(stream, "Path");
+        stream.read(sceneData.path);
 
         readMarker(stream, "RenderSettings");
         stream.read(sceneData.renderSettings);
@@ -452,7 +467,7 @@ namespace Falcor
         stream.read(sceneData.meshDrawCount);
         stream.read(sceneData.meshIndexData);
         stream.read(sceneData.meshStaticData);
-        stream.read(sceneData.meshDynamicData);
+        stream.read(sceneData.meshSkinningData);
 
         readMarker(stream, "Curves");
         stream.read(sceneData.curveDesc);
@@ -464,7 +479,8 @@ namespace Falcor
         sceneData.cachedCurves.resize(stream.read<uint32_t>());
         for (auto& cachedCurve : sceneData.cachedCurves)
         {
-            stream.read(cachedCurve.curveID);
+            stream.read(cachedCurve.tessellationMode);
+            stream.read(cachedCurve.geometryID);
             stream.read(cachedCurve.timeSamples);
             stream.read(cachedCurve.indexData);
             cachedCurve.vertexData.resize(stream.read<uint32_t>());
@@ -658,7 +674,7 @@ namespace Falcor
             stream.write(hasTexture);
             if (hasTexture)
             {
-                stream.write(pTexture->getSourceFilename());
+                stream.write(pTexture->getSourcePath());
             }
         };
 
@@ -732,8 +748,8 @@ namespace Falcor
             auto hasTexture = stream.read<bool>();
             if (hasTexture)
             {
-                auto filename = stream.read<std::string>();
-                materialTextureLoader.loadTexture(pMaterial, slot, filename);
+                auto path = stream.read<std::filesystem::path>();
+                materialTextureLoader.loadTexture(pMaterial, slot, path);
             }
         };
 
@@ -854,16 +870,16 @@ namespace Falcor
 
     void SceneCache::writeEnvMap(OutputStream& stream, const EnvMap::SharedPtr& pEnvMap)
     {
-        auto filename = pEnvMap->getEnvMap()->getSourceFilename();
-        stream.write(filename);
+        auto path = pEnvMap->getEnvMap()->getSourcePath();
+        stream.write(path);
         stream.write(pEnvMap->mData);
         stream.write(pEnvMap->mRotation);
     }
 
     EnvMap::SharedPtr SceneCache::readEnvMap(InputStream& stream)
     {
-        auto filename = stream.read<std::string>();
-        auto pEnvMap = EnvMap::createFromFile(filename);
+        auto path = stream.read<std::filesystem::path>();
+        auto pEnvMap = EnvMap::createFromFile(path);
         if (!pEnvMap) throw RuntimeError("Failed to load environment map");
         stream.read(pEnvMap->mData);
         stream.read(pEnvMap->mRotation);

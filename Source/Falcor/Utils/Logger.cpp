@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -34,16 +34,16 @@ namespace Falcor
     {
         Logger::Level sVerbosity = Logger::Level::Info;
         Logger::OutputFlags sOutputs = Logger::OutputFlags::Console | Logger::OutputFlags::File | Logger::OutputFlags::DebugWindow;
-        std::string sLogFilePath;
+        std::filesystem::path sLogFilePath;
 
 #if FALCOR_ENABLE_LOGGER
         bool sInitialized = false;
         FILE* sLogFile = nullptr;
 
-        std::string generateLogFilePath()
+        std::filesystem::path generateLogFilePath()
         {
             std::string prefix = getExecutableName();
-            std::string directory = getExecutableDirectory();
+            std::filesystem::path directory = getExecutableDirectory();
             return findAvailableFilename(prefix, directory, "log");
         }
 
@@ -56,7 +56,7 @@ namespace Falcor
                 sLogFilePath = generateLogFilePath();
             }
 
-            pFile = std::fopen(sLogFilePath.c_str(), "w");
+            pFile = std::fopen(sLogFilePath.string().c_str(), "w");
             if (pFile != nullptr)
             {
                 // Success
@@ -146,7 +146,7 @@ namespace Falcor
 #endif
     }
 
-    bool Logger::setLogFilePath(const std::string& path)
+    bool Logger::setLogFilePath(const std::filesystem::path& path)
     {
 #if FALCOR_ENABLE_LOGGER
         if (sLogFile)
@@ -169,5 +169,5 @@ namespace Falcor
     void Logger::setOutputs(OutputFlags outputs) { sOutputs = outputs; }
     Logger::OutputFlags Logger::getOutputs() { return sOutputs; }
 
-    const std::string& Logger::getLogFilePath() { return sLogFilePath; }
+    const std::filesystem::path& Logger::getLogFilePath() { return sLogFilePath; }
 }

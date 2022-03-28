@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -99,7 +99,7 @@ namespace Falcor
         if (ImGui::InputText("##console", mCmdBuffer, arraysize(mCmdBuffer), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory | ImGuiInputTextFlags_CallbackCharFilter, &inputTextCallback, this))
         {
             enterCommand();
-            ImGui::GetIO().KeysDown[(uint32_t)KeyboardEvent::Key::Enter] = false;
+            ImGui::GetIO().KeysDown[(uint32_t)Input::Key::Enter] = false;
         }
         // Stick focus to console text input.
         ImGui::SetWindowFocus();

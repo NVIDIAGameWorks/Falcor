@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,7 +30,7 @@
 #include "Core/API/BlitContext.h"
 #include "Core/API/Device.h"
 #include "glm/gtc/type_ptr.hpp"
-#include "D3D12State.h"
+#include "Core/API/D3D12/D3D12State.h"
 #include "Core/Program/RtProgram.h"
 #include "RenderGraph/BasePasses/FullScreenPass.h"
 #include "Core/API/D3D12/D3D12RtAccelerationStructure.h"
@@ -165,8 +165,8 @@ namespace Falcor
         // We're using 2D null views for any unused slots.
         uint32_t colorTargets = Fbo::getMaxColorTargetCount();
         auto pNullRtv = RenderTargetView::getNullView(RenderTargetView::Dimension::Texture2D);
-        std::vector<HeapCpuHandle> pRTV(colorTargets, pNullRtv->getApiHandle()->getCpuHandle(0));
-        HeapCpuHandle pDSV = DepthStencilView::getNullView(DepthStencilView::Dimension::Texture2D)->getApiHandle()->getCpuHandle(0);
+        std::vector<D3D12DescriptorCpuHandle> pRTV(colorTargets, pNullRtv->getApiHandle()->getCpuHandle(0));
+        D3D12DescriptorCpuHandle pDSV = DepthStencilView::getNullView(DepthStencilView::Dimension::Texture2D)->getApiHandle()->getCpuHandle(0);
 
         if (pFbo)
         {

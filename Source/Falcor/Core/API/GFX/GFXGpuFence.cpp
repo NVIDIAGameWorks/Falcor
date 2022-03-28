@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -34,6 +34,7 @@ namespace Falcor
     struct FenceApiData
     {
         Slang::ComPtr<gfx::IFence> gfxFence;
+        D3D12FenceHandle d3d12Handle;
     };
 
     GpuFence::~GpuFence()
@@ -54,6 +55,13 @@ namespace Falcor
         pFence->mApiHandle = pFence->mpApiData->gfxFence;
 
         pFence->mCpuValue++;
+
+#if FALCOR_D3D12_AVAILABLE
+        gfx::InteropHandle nativeHandle = {};
+        pFence->mpApiData->gfxFence->getNativeHandle(&nativeHandle);
+        FALCOR_ASSERT(nativeHandle.api == gfx::InteropHandleAPI::D3D12);
+        pFence->mpApiData->d3d12Handle = D3D12FenceHandle((ID3D12Fence*)nativeHandle.handleValue);
+#endif
         return pFence;
     }
 
@@ -87,10 +95,24 @@ namespace Falcor
         return currentValue;
     }
 
+    void GpuFence::setGpuValue(uint64_t val)
+    {
+        mpApiData->gfxFence->setCurrentValue(val);
+    }
+
     SharedResourceApiHandle GpuFence::getSharedApiHandle() const
     {
         gfx::InteropHandle sharedHandle;
         mpApiData->gfxFence->getSharedHandle(&sharedHandle);
         return (SharedResourceApiHandle)sharedHandle.handleValue;
+    }
+
+    const D3D12FenceHandle& GpuFence::getD3D12Handle() const
+    {
+#if FALCOR_D3D12_AVAILABLE
+        return mpApiData->d3d12Handle;
+#else
+        throw RuntimeError("D3D12 is not available.");
+#endif
     }
 }

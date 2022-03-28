@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -58,7 +58,7 @@ namespace Falcor
 
     SDFSVO::SharedPtr SDFSVO::create()
     {
-#if !FALCOR_ENABLE_NVAPI
+#if !FALCOR_NVAPI_AVAILABLE
         throw RuntimeError("SDFSVO requires NVAPI. See installation instructions in README.");
 #endif
 
@@ -383,7 +383,6 @@ namespace Falcor
 
         var["svo"] = mpSVOBuffer;
         var["levelCount"] = mLevelCount;
-        var["svoElementCount"] = mSVOElementCount;
     }
 
     void SDFSVO::setValuesInternal(const std::vector<float>& cornerValues)

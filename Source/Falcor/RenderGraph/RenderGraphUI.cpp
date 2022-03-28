@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -583,7 +583,7 @@ namespace Falcor
         mRebuildDisplayData = true;
     }
 
-    void RenderGraphUI::writeUpdateScriptToFile(RenderContext* pRenderContext, const std::string& filePath, float lastFrameTime)
+    void RenderGraphUI::writeUpdateScriptToFile(RenderContext* pRenderContext, const std::filesystem::path& filePath, float lastFrameTime)
     {
         if ((mTimeSinceLastUpdate += lastFrameTime) < kUpdateTimeInterval) return;
         mTimeSinceLastUpdate = 0.0f;

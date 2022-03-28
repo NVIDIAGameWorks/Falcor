@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -107,31 +107,32 @@ namespace Falcor
         */
         enum class UpdateFlags
         {
-            None                        = 0x0,      ///< Nothing happened
-            GeometryMoved               = 0x1,      ///< Geometry moved
-            CameraMoved                 = 0x2,      ///< The camera moved
-            CameraPropertiesChanged     = 0x4,      ///< Some camera properties changed, excluding position
-            CameraSwitched              = 0x8,      ///< Selected a different camera
-            LightsMoved                 = 0x10,     ///< Lights were moved
-            LightIntensityChanged       = 0x20,     ///< Light intensity changed
-            LightPropertiesChanged      = 0x40,     ///< Other light changes not included in LightIntensityChanged and LightsMoved
-            SceneGraphChanged           = 0x80,     ///< Any transform in the scene graph changed.
-            LightCollectionChanged      = 0x100,    ///< Light collection changed (mesh lights)
-            MaterialsChanged            = 0x200,    ///< Materials changed
-            EnvMapChanged               = 0x400,    ///< Environment map changed
-            EnvMapPropertiesChanged     = 0x800,    ///< Environment map properties changed (check EnvMap::getChanges() for more specific information)
-            LightCountChanged           = 0x1000,   ///< Number of active lights changed
-            RenderSettingsChanged       = 0x2000,   ///< Render settings changed
-            GridVolumesMoved            = 0x4000,   ///< Grid volumes were moved
-            GridVolumePropertiesChanged = 0x8000,   ///< Grid volume properties changed
-            GridVolumeGridsChanged      = 0x10000,  ///< Grid volume grids changed
-            GridVolumeBoundsChanged     = 0x20000,  ///< Grid volume bounds changed
-            CurvesMoved                 = 0x40000,  ///< Curves moved.
-            CustomPrimitivesMoved       = 0x80000,  ///< Custom primitives moved.
-            GeometryChanged             = 0x100000, ///< Scene geometry changed (added/removed).
-            DisplacementChanged         = 0x200000, ///< Displacement mapping parameters changed.
-            SDFGridConfigChanged        = 0x400000, ///< SDF grid config changed.
-
+            None                        = 0x0,          ///< Nothing happened
+            GeometryMoved               = 0x1,          ///< Geometry moved
+            CameraMoved                 = 0x2,          ///< The camera moved
+            CameraPropertiesChanged     = 0x4,          ///< Some camera properties changed, excluding position
+            CameraSwitched              = 0x8,          ///< Selected a different camera
+            LightsMoved                 = 0x10,         ///< Lights were moved
+            LightIntensityChanged       = 0x20,         ///< Light intensity changed
+            LightPropertiesChanged      = 0x40,         ///< Other light changes not included in LightIntensityChanged and LightsMoved
+            SceneGraphChanged           = 0x80,         ///< Any transform in the scene graph changed.
+            LightCollectionChanged      = 0x100,        ///< Light collection changed (mesh lights)
+            MaterialsChanged            = 0x200,        ///< Materials changed
+            EnvMapChanged               = 0x400,        ///< Environment map changed
+            EnvMapPropertiesChanged     = 0x800,        ///< Environment map properties changed (check EnvMap::getChanges() for more specific information)
+            LightCountChanged           = 0x1000,       ///< Number of active lights changed
+            RenderSettingsChanged       = 0x2000,       ///< Render settings changed
+            GridVolumesMoved            = 0x4000,       ///< Grid volumes were moved
+            GridVolumePropertiesChanged = 0x8000,       ///< Grid volume properties changed
+            GridVolumeGridsChanged      = 0x10000,      ///< Grid volume grids changed
+            GridVolumeBoundsChanged     = 0x20000,      ///< Grid volume bounds changed
+            CurvesMoved                 = 0x40000,      ///< Curves moved.
+            CustomPrimitivesMoved       = 0x80000,      ///< Custom primitives moved.
+            GeometryChanged             = 0x100000,     ///< Scene geometry changed (added/removed).
+            DisplacementChanged         = 0x200000,     ///< Displacement mapping parameters changed.
+            SDFGridConfigChanged        = 0x400000,     ///< SDF grid config changed.
+            SDFGeometryChanged          = 0x800000,     ///< SDF grid geometry changed.
+            MeshesChanged               = 0x1000000,    ///< Mesh data changed (skinning or vertex animations).
             All                         = -1
         };
 
@@ -274,7 +275,7 @@ namespace Falcor
         */
         struct SceneData
         {
-            std::string filename;                                   ///< Filename of the asset file the scene was loaded from.
+            std::filesystem::path path;                             ///< Path of the asset file the scene was loaded from.
             RenderSettings renderSettings;                          ///< Render settings.
             std::vector<Camera::SharedPtr> cameras;                 ///< List of cameras.
             uint32_t selectedCamera = 0;                            ///< Index of selected camera.
@@ -296,6 +297,7 @@ namespace Falcor
             std::vector<std::vector<uint32_t>> meshIdToInstanceIds; ///< Mapping of what instances belong to which mesh.
             std::vector<MeshGroup> meshGroups;                      ///< List of mesh groups. Each group maps to a BLAS for ray tracing.
             std::vector<CachedMesh> cachedMeshes;                   ///< Cached data for vertex-animated meshes.
+            uint32_t prevVertexCount = 0;                           ///< Number of vertices that the AnimationController needs to allocate to store previous frame vertices.
 
             bool useCompressedHitInfo = false;                      ///< True if scene should used compressed HitInfo (on scenes with triangles meshes only).
             bool has16BitIndices = false;                           ///< True if 16-bit mesh indices are used.
@@ -304,7 +306,7 @@ namespace Falcor
 
             std::vector<uint32_t> meshIndexData;                    ///< Vertex indices for all meshes in either 32-bit or 16-bit format packed tightly, decided per mesh.
             std::vector<PackedStaticVertexData> meshStaticData;     ///< Vertex attributes for all meshes in packed format.
-            std::vector<DynamicVertexData> meshDynamicData;         ///< Additional vertex attributes for dynamic (skinned) meshes.
+            std::vector<SkinningVertexData> meshSkinningData;       ///< Additional vertex attributes for skinned meshes.
 
             // Curve data
             std::vector<CurveDesc> curveDesc;                       ///< List of curve descriptors.
@@ -421,10 +423,10 @@ namespace Falcor
         static const FileDialogFilterVec& getFileExtensionFilters();
 
         /** Create scene from file.
-            \param[in] filename Import the scene from this file.
+            \param[in] path Import the scene from this file path.
             \return Scene object, or throws an ImporterError if import went wrong.
         */
-        static SharedPtr create(const std::string& filename);
+        static SharedPtr create(const std::filesystem::path& path);
 
         /** Create scene from in-memory representation.
             \param[in] sceneData All scene data.
@@ -550,6 +552,15 @@ namespace Falcor
         */
         void selectCamera(std::string name);
 
+        /** Sets whether the camera controls are enabled or disabled.
+        */
+        void setCameraControlsEnabled(bool value) { mCameraControlsEnabled = value; }
+
+        /** Get whether the camera controls are enabled or disabled.
+            \return True if camera controls are enabled else false.
+        */
+        bool getCameraControlsEnabled() { return mCameraControlsEnabled; }
+
         /** Add a new viewpoint to the list of viewpoints.
         */
         void addViewpoint(const float3& position, const float3& target, const float3& up, uint32_t cameraIndex = 0);
@@ -606,10 +617,17 @@ namespace Falcor
         const GeometryInstanceData &getGeometryInstance(uint32_t instanceID) const { return mGeometryInstanceData[instanceID]; }
 
         /** Get a list of all geometry IDs for a given geometry type.
-            \param[in] type The type to check for.
-            \return Returns a list of all geometry IDs.
+            \param[in] geometryType The geometry type.
+            \return List of geometry IDs.
         */
-        std::vector<uint32_t> getGeometryIDs(GeometryType type) const;
+        std::vector<uint32_t> getGeometryIDs(GeometryType geometryType) const;
+
+        /** Get a list of all geometry IDs for a given geometry and material type.
+            \param[in] geometryType The geometry type.
+            \param[in] materialType The material type.
+            \return List of geometry IDs.
+        */
+        std::vector<uint32_t> getGeometryIDs(GeometryType geometryType, MaterialType materialType) const;
 
         /** Get the type of a given geometry.
             \param[in] geometryID Global geometry ID.
@@ -643,7 +661,7 @@ namespace Falcor
         */
         SDFGrid::Type getSDFGridImplementation() const { return mSDFGridConfig.implementation; }
 
-        /** Returns the SDF grid implementation data used for this scene.
+        /** Returns shared SDF grid implementation data used for this scene.
         */
         const SDFGridConfig::ImplementationData& getSDFGridImplementationData() const { return mSDFGridConfig.implementationData; }
 
@@ -674,6 +692,22 @@ namespace Falcor
         /** Get the number of SDF grid geometries.
         */
         uint32_t getSDFGridGeometryCount() const;
+
+        /** Get an SDF grid ID from a geometry instanceID.
+        *   \param[in] instanceID Geometry instance ID.
+        *   \return SDF grid ID if found else UINT32_MAX.
+        */
+        uint32_t findSDFGridIDFromGeometryInstanceID(uint32_t instanceID) const;
+
+        /** Get geometry instance IDs by geometry type.
+        *   \param[in] type Geometry type to search for.
+        *   \return Vector of geometry instance IDs.
+        */
+        std::vector<uint32_t> getGeometryInstanceIDsByType(GeometryType type) const;
+
+        /** Updates a node in the graph.
+        */
+        void updateNodeTransform(uint32_t nodeID, const float4x4& transform);
 
         /** Get the number of custom primitives.
         */
@@ -901,10 +935,10 @@ namespace Falcor
         void setEnvMap(EnvMap::SharedPtr pEnvMap);
 
         /** Load an environment from an image.
-            \param[in] filename Texture filename.
+            \param[in] path Texture path.
             \return True if environmant map was successfully loaded.
         */
-        bool loadEnvMap(const std::string& filename);
+        bool loadEnvMap(const std::filesystem::path& path);
 
         /** Handle mouse events.
         */
@@ -914,9 +948,17 @@ namespace Falcor
         */
         bool onKeyEvent(const KeyboardEvent& keyEvent);
 
-        /** Get the filename that the scene was loaded from.
+        /** Handle gamepad events.
         */
-        const std::string& getFilename() const { return mFilename; }
+        bool onGamepadEvent(const GamepadEvent& gamepadEvent);
+
+        /** Handle gamepad state.
+        */
+        bool onGamepadState(const GamepadState& gamepadState);
+
+        /** Get the path that the scene was loaded from.
+        */
+        const std::filesystem::path& getPath() const { return mPath; }
 
         /** Get the animation controller.
         */
@@ -991,7 +1033,7 @@ namespace Falcor
         static constexpr uint32_t kDrawIdBufferIndex = kStaticDataBufferIndex + 1;
         static constexpr uint32_t kVertexBufferCount = kDrawIdBufferIndex + 1;
 
-        void createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& indexData, const std::vector<PackedStaticVertexData>& staticData, const std::vector<DynamicVertexData>& dynamicData);
+        void createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& indexData, const std::vector<PackedStaticVertexData>& staticData, const std::vector<SkinningVertexData>& skinningData);
         void createCurveVao(const std::vector<uint32_t>& indexData, const std::vector<StaticCurveVertexData>& staticData);
 
         Shader::DefineList getSceneSDFGridDefines() const;
@@ -1062,6 +1104,10 @@ namespace Falcor
         */
         void buildTlas(RenderContext* pContext, uint32_t rayCount, bool perMeshHitEntry);
 
+        /** Invalidates the TLAS cache.
+        */
+        void invalidateTlasCache();
+
         /** Check whether scene has an index buffer.
         */
         bool hasIndexBuffer() const { return mpMeshVao && mpMeshVao->getIndexBuffer() != nullptr; }
@@ -1087,6 +1133,7 @@ namespace Falcor
         UpdateFlags updateProceduralPrimitives(bool forceUpdate);
         UpdateFlags updateRaytracingAABBData(bool forceUpdate);
         UpdateFlags updateDisplacement(bool forceUpdate);
+        UpdateFlags updateSDFGrids(RenderContext* pRenderContext);
 
         void updateGeometryStats();
         void updateMaterialStats();
@@ -1203,6 +1250,7 @@ namespace Falcor
         uint32_t mSelectedCamera = 0;
         float mCameraSpeed = 1.0f;
         bool mCameraSwitched = false;
+        bool mCameraControlsEnabled = true;
 
         Gui::DropdownList mCameraList;
 
@@ -1261,10 +1309,15 @@ namespace Falcor
             uint64_t blasByteOffset = 0;                    ///< Offset into the final BLAS buffer.
 
             bool hasProceduralPrimitives = false;           ///< True if the BLAS contains procedural primitives. Otherwise it is triangles.
-            bool hasSkinnedMesh = false;                    ///< Whether the BLAS contains a skinned mesh, which means the BLAS may need to be updated.
-            bool hasAnimatedVertexCache = false;            ///< Whether the BLAS contains an animated vertex cache, which means the BLAS may need to be updated.
+            bool hasDynamicMesh = false;                    ///< Whether the BLAS contains a skinned or vertex-animated mesh, which means the BLAS may need to be updated.
+            bool hasDynamicCurve = false;                   ///< Whether the BLAS contains an animated curve cache, which means the BLAS may need to be updated.
             bool useCompaction = false;                     ///< Whether the BLAS should be compacted after build.
             UpdateMode updateMode = UpdateMode::Refit;      ///< Update mode this BLAS was created with.
+
+            bool hasDynamicGeometry() const
+            {
+                return hasDynamicMesh || hasDynamicCurve;
+            }
         };
 
         /** Describes a group of BLASes.
@@ -1288,10 +1341,8 @@ namespace Falcor
         Buffer::SharedPtr mpBlasStaticWorldMatrices;        ///< Object-to-world transform matrices in row-major format. Only valid for static meshes.
         bool mBlasDataValid = false;                        ///< Flag to indicate if the BLAS data is valid. This will be reset when geometry is changed.
         bool mRebuildBlas = true;                           ///< Flag to indicate BLASes need to be rebuilt.
-        bool mHasSkinnedMesh = false;                       ///< Whether the scene has a skinned mesh at all.
-        bool mHasAnimatedVertexCache = false;               ///< Whether the scene has an animated vertex cache at all.
 
-        std::string mFilename;
+        std::filesystem::path mPath;
         bool mFinalized = false;                            ///< True if scene is ready to be bound to the GPU.
     };
 

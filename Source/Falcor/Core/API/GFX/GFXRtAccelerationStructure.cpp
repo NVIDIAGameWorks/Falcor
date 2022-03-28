@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -33,10 +33,14 @@
 namespace Falcor
 {
 
-
     RtAccelerationStructure::RtAccelerationStructure(const RtAccelerationStructure::Desc& desc)
         : mDesc(desc)
     {
+    }
+
+    RtAccelerationStructure::~RtAccelerationStructure()
+    {
+        gpDevice->releaseResource(mApiHandle);
     }
 
     RtAccelerationStructurePrebuildInfo RtAccelerationStructure::getPrebuildInfo(const RtAccelerationStructureBuildInputs& inputs)
@@ -70,7 +74,7 @@ namespace Falcor
         case RtAccelerationStructureKind::BottomLevel:
             return gfx::IAccelerationStructure::Kind::BottomLevel;
         default:
-            should_not_get_here();
+            FALCOR_UNREACHABLE();
             return gfx::IAccelerationStructure::Kind::BottomLevel;
         }
     }

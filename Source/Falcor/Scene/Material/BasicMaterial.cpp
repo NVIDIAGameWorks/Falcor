@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -81,7 +81,7 @@ namespace Falcor
             else if (!colorConst && alphaConst) oss << " (alpha constant)";
             else if (colorConst && alphaConst) oss << " (color and alpha constant)"; // Shouldn't happen
 
-            widget.text("Base color: " + pTexture->getSourceFilename());
+            widget.text("Base color: " + pTexture->getSourcePath().string());
             widget.text(oss.str());
 
             if (colorConst || alphaConst)
@@ -101,7 +101,7 @@ namespace Falcor
 
         if (auto pTexture = getSpecularTexture())
         {
-            widget.text("Specular params: " + pTexture->getSourceFilename());
+            widget.text("Specular params: " + pTexture->getSourcePath().string());
             widget.text("Texture info: " + std::to_string(pTexture->getWidth()) + "x" + std::to_string(pTexture->getHeight()) + " (" + to_string(pTexture->getFormat()) + ")");
             widget.image("Specular params", pTexture, float2(100.f));
             if (widget.button("Remove texture##Specular")) setSpecularTexture(nullptr);
@@ -117,7 +117,7 @@ namespace Falcor
 
         if (auto pTexture = getNormalMap())
         {
-            widget.text("Normal map: " + pTexture->getSourceFilename());
+            widget.text("Normal map: " + pTexture->getSourcePath().string());
             widget.text("Texture info: " + std::to_string(pTexture->getWidth()) + "x" + std::to_string(pTexture->getHeight()) + " (" + to_string(pTexture->getFormat()) + ")");
             widget.image("Normal map", pTexture, float2(100.f));
             if (widget.button("Remove texture##NormalMap")) setNormalMap(nullptr);
@@ -125,7 +125,7 @@ namespace Falcor
 
         if (auto pTexture = getDisplacementMap())
         {
-            widget.text("Displacement map: " + pTexture->getSourceFilename());
+            widget.text("Displacement map: " + pTexture->getSourcePath().string());
             widget.text("Texture info: " + std::to_string(pTexture->getWidth()) + "x" + std::to_string(pTexture->getHeight()) + " (" + to_string(pTexture->getFormat()) + ")");
             widget.image("Displacement map", pTexture, float2(100.f));
             if (widget.button("Remove texture##DisplacementMap")) setDisplacementMap(nullptr);
@@ -139,7 +139,7 @@ namespace Falcor
 
         if (auto pTexture = getTransmissionTexture())
         {
-            widget.text("Transmission color: " + pTexture->getSourceFilename());
+            widget.text("Transmission color: " + pTexture->getSourcePath().string());
             widget.text("Texture info: " + std::to_string(pTexture->getWidth()) + "x" + std::to_string(pTexture->getHeight()) + " (" + to_string(pTexture->getFormat()) + ")");
             widget.image("Transmission color", pTexture, float2(100.f));
             if (widget.button("Remove texture##Transmission")) setTransmissionTexture(nullptr);
@@ -428,7 +428,7 @@ namespace Falcor
             break;
         }
         default:
-            throw ArgumentError("'slot' refers to unexpected texture slot {}", slot);
+            throw ArgumentError("'slot' refers to unexpected texture slot {}", (uint32_t)slot);
         }
     }
 

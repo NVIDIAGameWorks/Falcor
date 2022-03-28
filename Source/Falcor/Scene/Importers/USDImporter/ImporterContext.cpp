@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -67,11 +67,14 @@
 #include "pxr/usd/usdLux/blackbody.h"
 #pragma warning(pop)
 #include "glm/gtx/matrix_decompose.hpp"
+#include "Scene/Curves/CurveConfig.h"
 
 namespace Falcor
 {
     namespace
     {
+        const bool kLoadMeshVertexAnimations = true;
+
         // Default curve material parameters.
         const float kDefaultCurveIOR = 1.55f;
         const float kDefaultCurveLongitudinalRoughness = 0.125f;
@@ -100,11 +103,13 @@ namespace Falcor
             std::vector<float3> normals;                            // Normals; indexed iff normalInterp is vertex or varying
             std::vector<float4> tangents;                           // Tangents; optional and always indexed
             std::vector<float2> texCrds;                            // Texture coordinates, indexed iff texCrdsInterp is vertex or varying
+            std::vector<float> curveRadii;                          // Curve widths (always indexed; available if mesh was generated for a curve tessellated into triangles)
             std::vector<uint4> jointIndices;                        // Bone indices
             std::vector<float4> jointWeights;                       // Bone weights corresponding to the bones referenced in jointIndices
             std::vector<GeomSubset> geomSubsets;                    // Geometry subset data; one entry for entire mesh if no subsets are present
             AttributeFrequency normalInterp;                        // Normal interpolation mode
             AttributeFrequency texCrdsInterp;                       // Texture coordinate interpolation mode
+            size_t numReferencedPoints = 0;                         // Number of elements of points that are referenced by the point indices.
         };
 
         // CurveGeomData represents curve data using a single array for each of points, radius, tangents, normals and optionally texture coordinates.
@@ -261,6 +266,10 @@ namespace Falcor
             VtIntArray primitiveParams;
             meshUtil.ComputeTriangleIndices(&triangleIndices, &primitiveParams);
 
+            Hd_VertexAdjacency adjacency;
+            adjacency.BuildAdjacencyTable(&topology);
+            geomOut.numReferencedPoints = adjacency.GetNumPoints();
+
             // Get normals
             VtVec3fArray usdNormals;
 
@@ -292,8 +301,6 @@ namespace Falcor
             else
             {
                 // Generate smooth normals for this suddivided mesh
-                Hd_VertexAdjacency adjacency;
-                adjacency.BuildAdjacencyTable(&topology);
                 usdNormals = Hd_SmoothNormals::ComputeSmoothNormals(&adjacency, (int)usdPoints.size(), usdPoints.cdata());
                 geomOut.normalInterp = AttributeFrequency::Vertex;
             }
@@ -616,11 +623,19 @@ namespace Falcor
 
             const float2* pUsdUVs = usdUVs.empty() ? nullptr : (float2*)usdUVs.data();
 
+            // We subdivide each bspline curve segment into 2 linear swept sphere segments (could be more or less if memory/perf allows).
+            uint32_t subdivPerSegment = 2;
+            // Skip some hair strands, if necessary for memory/pref reasons.
+            uint32_t keepOneEveryXStrands = 1;
+            // Skip some hair vertices, if necessary for memory/perf reasons.
+            uint32_t keepOneEveryXVerticesPerStrand = 1;
+            // Perceptually, it is a good practice to increase width of hair strands if we render less of them than anticipated.
+            float widthScale = std::sqrt((float)keepOneEveryXStrands);
+
             if constexpr (std::is_same<T, CurveGeomData>::value)
             {
-                // Convert to linear swept sphere segments
-                // We subdivide each bspline curve segment into 2 linear swept sphere segments (could be more or less if memory/perf allows)
-                CurveTessellation::SweptSphereResult result = CurveTessellation::convertToLinearSweptSphere(strandCount, usdCurveVertexCounts.data(), (float3*)usdPoints.data(), usdCurveWidths.data(), pUsdUVs, 1, 2, 1, glm::identity<glm::float4x4>());
+                // Convert to linear swept sphere segments.
+                CurveTessellation::SweptSphereResult result = CurveTessellation::convertToLinearSweptSphere(strandCount, usdCurveVertexCounts.data(), (float3*)usdPoints.data(), usdCurveWidths.data(), pUsdUVs, 1, subdivPerSegment, keepOneEveryXStrands, keepOneEveryXVerticesPerStrand, widthScale, glm::identity<glm::float4x4>());
 
                 // Copy data
                 geomOut.id = curveName;
@@ -642,8 +657,8 @@ namespace Falcor
             }
             else if constexpr (std::is_same<T, MeshGeomData>::value)
             {
-                // Tessellation into mesh
-                CurveTessellation::MeshResult result = CurveTessellation::convertToMesh(strandCount, usdCurveVertexCounts.data(), (float3*)usdPoints.data(), usdCurveWidths.data(), pUsdUVs, 2, 4);
+                // Tessellation into poly-tube mesh.
+                CurveTessellation::MeshResult result = CurveTessellation::convertToMesh(strandCount, usdCurveVertexCounts.data(), (float3*)usdPoints.data(), usdCurveWidths.data(), pUsdUVs, subdivPerSegment, keepOneEveryXStrands, keepOneEveryXVerticesPerStrand, widthScale, 4);
 
                 // Copy data
                 geomOut.geomSubsets.resize(1);
@@ -653,10 +668,12 @@ namespace Falcor
                 geomOut.geomSubsets[0].material = ctx.getBoundMaterial(usdCurve);
 
                 geomOut.points = std::move(result.vertices);
+                geomOut.numReferencedPoints = geomOut.points.size();
                 geomOut.triangulatedIndices = std::move(result.faceVertexIndices);
                 geomOut.normals = std::move(result.normals);
                 geomOut.normalInterp = AttributeFrequency::Vertex;
                 geomOut.tangents = std::move(result.tangents);
+                geomOut.curveRadii = std::move(result.radii);
 
                 // Copy texture coordinates
                 if (result.texCrds.size() > 0)
@@ -692,11 +709,13 @@ namespace Falcor
             if (geomData.tangents.size() > 0)
             {
                 sbMesh.tangents.pData = geomData.tangents.data() + subset.normalIdx;
-                sbMesh.tangents.frequency = AttributeFrequency::Vertex;
                 sbMesh.useOriginalTangentSpace = true;
             }
+            sbMesh.tangents.frequency = AttributeFrequency::Vertex;
             sbMesh.texCrds.pData = (geomData.texCrds.size() > 0 ? geomData.texCrds.data() + subset.texCrdsIdx : nullptr);
             sbMesh.texCrds.frequency = geomData.texCrdsInterp;
+            sbMesh.curveRadii.pData = (geomData.curveRadii.size() > 0 ? geomData.curveRadii.data() : nullptr);
+            sbMesh.curveRadii.frequency = AttributeFrequency::Vertex;
             sbMesh.boneIDs.pData = geomData.jointIndices.size() > 0 ? geomData.jointIndices.data() : nullptr;
             sbMesh.boneIDs.frequency = AttributeFrequency::Vertex;
             sbMesh.boneWeights.pData = geomData.jointWeights.size() > 0 ? geomData.jointWeights.data() : nullptr;
@@ -761,6 +780,28 @@ namespace Falcor
             return true;
         }
 
+        void verifyMeshGeomData(const MeshGeomData& geomData, const std::filesystem::path& path, const std::string& primName)
+        {
+            // Basic sanity checks
+            if (geomData.normals.size() > 0)
+            {
+                size_t expectedNormals = computeElementCount(geomData.normalInterp, geomData.triangulatedIndices.size() / 3, geomData.numReferencedPoints);
+                if (expectedNormals != geomData.normals.size())
+                {
+                    throw ImporterError(path, "Conversion error on USD prim '{}'. Expected {} normals, created {}.", primName, expectedNormals, geomData.normals.size());
+                }
+            }
+
+            if (geomData.texCrds.size() > 0)
+            {
+                size_t expectedTexcoords = computeElementCount(geomData.texCrdsInterp, geomData.triangulatedIndices.size() / 3, geomData.points.size());
+                if (expectedTexcoords != geomData.texCrds.size())
+                {
+                    throw ImporterError(path, "Conversion error on USD prim '{}'. Expected {} texcoords, created {}.", primName, expectedTexcoords, geomData.texCrds.size());
+                }
+            }
+        }
+
         bool processMesh(Mesh& mesh, ImporterContext& ctx)
         {
             FALCOR_ASSERT(mesh.prim.IsA<UsdGeomMesh>() || mesh.prim.IsA<UsdGeomBasisCurves>());
@@ -790,30 +831,20 @@ namespace Falcor
                 return false;
             }
 
-            // Basic sanity checks
-            if (geomData.normals.size() > 0)
-            {
-                size_t expectedNormals = computeElementCount(geomData.normalInterp, geomData.triangulatedIndices.size() / 3, geomData.points.size());
-                if (expectedNormals != geomData.normals.size())
-                {
-                    throw ImporterError(ctx.filename, fmt::format("Conversion error on USD prim '{}'. Expected {} normals, created {}.", primName, expectedNormals, geomData.normals.size()));
-                }
-            }
-
-            if (geomData.texCrds.size() > 0)
-            {
-                size_t expectedTexcoords = computeElementCount(geomData.texCrdsInterp, geomData.triangulatedIndices.size() / 3, geomData.points.size());
-                if (expectedTexcoords != geomData.texCrds.size())
-                {
-                    throw ImporterError(ctx.filename, fmt::format("Conversion error on USD prim '{}'. Expected {} texcoords, created {}.", primName, expectedTexcoords, geomData.texCrds.size()));
-                }
-            }
+            verifyMeshGeomData(geomData, ctx.path, primName);
 
             // Finally, create a SceneBuilder::Mesh for each geomSubset in the MeshGeomData.
             mesh.processedMeshes.reserve(geomData.geomSubsets.size());
             if (isTimeSampled(UsdGeomPointBased(mesh.prim)))
             {
-                mesh.attributeIndices.resize(geomData.geomSubsets.size());
+                if (kLoadMeshVertexAnimations)
+                {
+                    mesh.attributeIndices.resize(geomData.geomSubsets.size());
+                }
+                else
+                {
+                    logWarning("Scene contains time-sampled mesh data, but their loading is disabled. See ImporterContext::kLoadMeshVertexAnimations");
+                }
             }
 
             for (size_t i = 0; i < geomData.geomSubsets.size(); ++i)
@@ -880,7 +911,7 @@ namespace Falcor
 
                 if (!mesh.processedMeshes[i].staticData.size() == indices.size())
                 {
-                    throw ImporterError(ctx.filename, "Keyframe {} for mesh '{}' does not match vertex count of original mesh.", sampleIdx, mesh.prim.GetName().GetString());
+                    throw ImporterError(ctx.path, "Keyframe {} for mesh '{}' does not match vertex count of original mesh.", sampleIdx, mesh.prim.GetName().GetString());
                 }
 
                 // Fill vertex data
@@ -953,6 +984,28 @@ namespace Falcor
                 curve.timeSamples[i] /= ctx.timeCodesPerSecond;
             }
 
+            // Process a mesh of the first keyframe.
+            if (curve.tessellationMode == CurveTessellationMode::PolyTube)
+            {
+                MeshGeomData geomData;
+                if (!convertCurveGeomData(geomCurve, UsdTimeCode::EarliestTime(), ctx, geomData))
+                {
+                    return false;
+                }
+
+                verifyMeshGeomData(geomData, ctx.path, primName);
+
+                // Finally, create a SceneBuilder::Mesh for the (single) geomSubset in the MeshGeomData.
+                FALCOR_ASSERT(geomData.geomSubsets.size() == 1);
+
+                SceneBuilder::Mesh sbMesh;
+                if (createSceneBuilderMesh(curve.curvePrim, geomData, geomData.geomSubsets[0], ctx, sbMesh))
+                {
+                    sbMesh.mergeDuplicateVertices = false;
+                    curve.processedMesh = ctx.builder.processMesh(sbMesh);
+                }
+            }
+
             return true;
         }
 
@@ -1023,43 +1076,46 @@ namespace Falcor
                 }
             }
 
-            // Allocate storage for mesh keyframe output
-            for (auto& m : ctx.meshes)
+            if (kLoadMeshVertexAnimations)
             {
-                if (m.timeSamples.size() > 1)
+                // Allocate storage for mesh keyframe output
+                for (auto& m : ctx.meshes)
                 {
-                    m.cachedMeshes.resize(m.processedMeshes.size());
-                    for (auto& c : m.cachedMeshes)
+                    if (m.timeSamples.size() > 1)
                     {
-                        c.vertexData.resize(m.timeSamples.size());
+                        m.cachedMeshes.resize(m.processedMeshes.size());
+                        for (auto& c : m.cachedMeshes)
+                        {
+                            c.vertexData.resize(m.timeSamples.size());
+                        }
                     }
                 }
-            }
 
-            // Process time-sampled mesh keyframes
-            NumericRange<size_t> keyframeRange(0, ctx.meshKeyframeTasks.size());
-            std::for_each(std::execution::par, keyframeRange.begin(), keyframeRange.end(),
-                [&](size_t i)
+                // Process time-sampled mesh keyframes
+                NumericRange<size_t> keyframeRange(0, ctx.meshKeyframeTasks.size());
+                std::for_each(std::execution::par, keyframeRange.begin(), keyframeRange.end(),
+                    [&](size_t i)
+                    {
+                        auto& task = ctx.meshKeyframeTasks[i];
+                        processMeshKeyframe(ctx.meshes[task.meshId], task.meshId, task.sampleIdx, ctx);
+                    }
+                );
+
+                // Gather keyframe data from all meshes
+                size_t totalMeshes = 0;
+                for (auto& m : ctx.meshes) totalMeshes += m.cachedMeshes.size();
+                std::vector<CachedMesh> cachedMeshes;
+                cachedMeshes.reserve(totalMeshes);
+
+                for (auto& m : ctx.meshes)
                 {
-                    auto& task = ctx.meshKeyframeTasks[i];
-                    processMeshKeyframe(ctx.meshes[task.meshId], task.meshId, task.sampleIdx, ctx);
+                    for (auto& c : m.cachedMeshes)
+                    {
+                        cachedMeshes.push_back(std::move(c));
+                    }
                 }
-            );
-
-            // Gather keyframe data from all meshes
-            size_t totalMeshes = 0;
-            for (auto& m : ctx.meshes) totalMeshes += m.cachedMeshes.size();
-            std::vector<CachedMesh> cachedMeshes;
-            cachedMeshes.reserve(totalMeshes);
-
-            for (auto& m : ctx.meshes)
-            {
-                for (auto& c : m.cachedMeshes)
-                {
-                    cachedMeshes.push_back(std::move(c));
-                }
+                ctx.builder.setCachedMeshes(std::move(cachedMeshes));
             }
-            ctx.builder.setCachedMeshes(std::move(cachedMeshes));
 
             timeReport.measure("Process meshes");
 
@@ -1162,6 +1218,7 @@ namespace Falcor
             timeReport.measure("Create instances");
         }
 
+        // Note that this function can also add meshes to scene builder (depending on curve tessellation mode).
         void addCurvesToSceneBuilder(ImporterContext& ctx, TimeReport& timeReport)
         {
             // Process collected curves.
@@ -1170,18 +1227,24 @@ namespace Falcor
                 [&](size_t i) { processCurve(ctx.curves[i], ctx); }
             );
 
-            // Add curve vertex cache (only has positions) to scene builder.
-            for (auto& curve : ctx.curves) ctx.addCachedCurve(curve);
-            ctx.builder.setCachedCurves(std::move(ctx.cachedCurves));
-
-            // Add processed curves (of the first keyframe) to scene builder.
+            // Add processed curves or meshes (of the first keyframe) to scene builder.
             // This is done sequentially after being processed in parallel to ensure a deterministic ordering.
             for (auto& curve : ctx.curves)
             {
-                FALCOR_ASSERT(!curve.processedCurves.empty());
-                uint32_t curveID = ctx.builder.addProcessedCurve(curve.processedCurves[0]);
-                curve.curveID = curveID;
+                if (curve.tessellationMode == CurveTessellationMode::LinearSweptSphere)
+                {
+                    FALCOR_ASSERT(!curve.processedCurves.empty());
+                    curve.geometryID = ctx.builder.addProcessedCurve(curve.processedCurves[0]);
+                }
+                else
+                {
+                    curve.geometryID = ctx.builder.addProcessedMesh(curve.processedMesh);
+                }
             }
+
+            // Add curve vertex cache (only has positions) to scene builder.
+            for (auto& curve : ctx.curves) ctx.addCachedCurve(curve);
+            ctx.builder.setCachedCurves(std::move(ctx.cachedCurves));
 
             timeReport.measure("Process curves");
 
@@ -1190,7 +1253,15 @@ namespace Falcor
             {
                 auto nodeId = ctx.builder.addNode(makeNode(instance.name, instance.xform, float4x4(1.f), instance.parentID));
                 const auto& curve = ctx.getCurve(instance.prim);
-                ctx.builder.addCurveInstance(nodeId, curve.curveID);
+
+                if (curve.tessellationMode == CurveTessellationMode::LinearSweptSphere)
+                {
+                    ctx.builder.addCurveInstance(nodeId, curve.geometryID);
+                }
+                else
+                {
+                    ctx.builder.addMeshInstance(nodeId, curve.geometryID);
+                }
             }
 
             timeReport.measure("Create curve instances");
@@ -1579,7 +1650,8 @@ namespace Falcor
     void ImporterContext::addCachedCurve(Curve& curve)
     {
         CachedCurve cachedCurve;
-        cachedCurve.curveID = curve.curveID;
+        cachedCurve.tessellationMode = curve.tessellationMode;
+        cachedCurve.geometryID = curve.geometryID;
 
         cachedCurve.timeSamples.resize(curve.timeSamples.size());
         std::memcpy(cachedCurve.timeSamples.data(), curve.timeSamples.data(), cachedCurve.timeSamples.size() * sizeof(double));
@@ -1607,7 +1679,7 @@ namespace Falcor
         }
         if (!isSameTopology)
         {
-            throw ImporterError(filename, "The topology/indexing of curves changes across keyframes. Only dynamic vertex positions are supported.");
+            throw ImporterError(path, "The topology/indexing of curves changes across keyframes. Only dynamic vertex positions are supported.");
         }
 
         cachedCurve.indexData.resize(refIndexData.size());
@@ -1632,8 +1704,8 @@ namespace Falcor
         cachedCurves.push_back(cachedCurve);
     }
 
-    ImporterContext::ImporterContext(const std::string& filename, UsdStageRefPtr pStage, SceneBuilder& builder, const Dictionary& dict, TimeReport& timeReport, bool useInstanceProxies /*= false*/)
-        : filename(filename)
+    ImporterContext::ImporterContext(const std::filesystem::path& path, UsdStageRefPtr pStage, SceneBuilder& builder, const Dictionary& dict, TimeReport& timeReport, bool useInstanceProxies /*= false*/)
+        : path(path)
         , pStage(pStage)
         , builder(builder)
         , dict(dict)
@@ -1676,7 +1748,7 @@ namespace Falcor
         }
         else
         {
-            throw ImporterError(filename, fmt::format("Conversion error on USD prim '{}'. Cannot create default material for non-mesh, non-curve prim.", prim.GetPath().GetString()));
+            throw ImporterError(path, "Conversion error on USD prim '{}'. Cannot create default material for non-mesh, non-curve prim.", prim.GetPath().GetString());
         }
 
         // If there is a displayColor attribute associated with this prim, use it as the default color.
@@ -1774,7 +1846,7 @@ namespace Falcor
                     // Add the default mesh (or first time-sample) to mesh tasks
                     if (i == 0) meshTasks.push_back(task);
 
-                    // If mesh has more than one time sample, add a task for generating keyframe data
+                    // Add task for processing keyframe
                     if(mesh.timeSamples.size() > 1) meshKeyframeTasks.push_back(task);
                 }
             }
@@ -2031,7 +2103,9 @@ namespace Falcor
         }
 
         uint32_t index = (uint32_t)curves.size();
-        curves.push_back(Curve{ curvePrim, index });
+        CurveTessellationMode mode = CurveTessellationMode::LinearSweptSphere;
+        if (is_set(builder.getFlags(), SceneBuilder::Flags::TessellateCurvesIntoPolyTubes)) mode = CurveTessellationMode::PolyTube;
+        curves.push_back(Curve{ curvePrim, mode });
         curveMap.emplace(curvePrim, index);
     }
 
@@ -2221,7 +2295,7 @@ namespace Falcor
         size_t origDepth = nodeStackStartDepth.back();
         if (origDepth != nodeStack.size())
         {
-            throw ImporterError(filename, "USDImporter transform stack error detected.");
+            throw ImporterError(path, "USDImporter transform stack error detected.");
         }
         nodeStackStartDepth.pop_back();
     }

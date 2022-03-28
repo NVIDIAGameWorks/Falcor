@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -103,11 +103,12 @@ namespace Falcor
             return var + "." + property + " = " + getArgString(arg) + "\n";
         }
 
-        static std::string getFilenameString(const std::string& s, bool stripDataDirs = true)
+        static std::string getPathString(std::filesystem::path path, bool stripDataDirs = true)
         {
-            std::string filename = stripDataDirs ? stripDataDirectories(s) : s;
-            std::replace(filename.begin(), filename.end(), '\\', '/');
-            return filename;
+            if (stripDataDirs) path = stripDataDirectories(path);
+            std::string str = path.string();
+            std::replace(str.begin(), str.end(), '\\', '/');
+            return str;
         }
     };
 }

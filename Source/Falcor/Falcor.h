@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -56,6 +56,7 @@
 #include "Core/API/Resource.h"
 #include "Core/API/GpuMemoryHeap.h"
 #include "Core/API/ResourceViews.h"
+#include "Core/API/RtStateObject.h"
 #include "Core/API/Sampler.h"
 #include "Core/API/Texture.h"
 #include "Core/API/VAO.h"
@@ -76,6 +77,7 @@
 #include "Core/Program/ProgramReflection.h"
 #include "Core/Program/ProgramVars.h"
 #include "Core/Program/ProgramVersion.h"
+#include "Core/Program/RtProgram.h"
 #include "Core/Program/ShaderLibrary.h"
 
 // Core/State
@@ -148,17 +150,12 @@
 #include "Utils/UI/Gui.h"
 #include "Utils/UI/PixelZoom.h"
 #include "Utils/UI/TextRenderer.h"
-#include "Utils/UI/UserInput.h"
+#include "Utils/UI/InputState.h"
 #include "Utils/Video/VideoEncoder.h"
 #include "Utils/Video/VideoEncoderUI.h"
 #include "Utils/Debug/DebugConsole.h"
 #include "Utils/Debug/PixelDebug.h"
 
-#ifdef FALCOR_D3D12
-#include "Core/API/RtStateObject.h"
-#include "Core/Program/RtProgram.h"
-#endif
-
 #define FALCOR_MAJOR_VERSION 5
-#define FALCOR_REVISION 0
-#define FALCOR_VERSION_STRING "5.0"
+#define FALCOR_REVISION 1
+#define FALCOR_VERSION_STRING "5.1"

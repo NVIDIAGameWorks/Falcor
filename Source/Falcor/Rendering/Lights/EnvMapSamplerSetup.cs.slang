@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -44,7 +44,6 @@ cbuffer CB
 SamplerState gEnvSampler;
 Texture2D<float4> gEnvMap;
 RWTexture2D<float> gImportanceMap;
-
 
 [numthreads(16, 16, 1)]
 void main(uint3 dispatchThreadID : SV_DispatchThreadID)

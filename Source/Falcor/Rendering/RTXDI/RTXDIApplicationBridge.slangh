@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -37,6 +37,9 @@ import Utils.Sampling.TinyUniformSampleGenerator;
 import Rendering.Materials.Microfacet;
 import Rendering.Materials.Fresnel;
 import SurfaceData;
+
+// Only sample specular lobe when BRDF sampling is enabled.
+static const bool kSampleSpecularOnly = false;
 
 // ------------------------------------------------------------------------------------------------
 // Types.
@@ -202,6 +205,79 @@ int RAB_TranslateLightIndex(uint lightIndex, bool currentToPrevious)
     return lightIndex;
 }
 
+/** Returns the direction and distance from the surface to the light sample.
+*/
+void RAB_GetLightDirDistance(RAB_Surface surface, RAB_LightSample lightSample,
+    out float3 o_lightDir,
+    out float o_lightDistance)
+{
+    o_lightDir = lightSample.direction;
+    o_lightDistance = lightSample.distance;
+}
+
+/** Returns true if the light sample comes from an analytic light
+    (e.g. a sphere or rectangle primitive) that cannot be sampled by BRDF rays.
+*/
+bool RAB_IsAnalyticLightSample(RAB_LightSample lightSample)
+{
+    return lightSample.lightType == PolymorphicLightType::Analytic;
+}
+
+/** Returns the solid angle PDF of the light sample.
+*/
+float RAB_LightSampleSolidAnglePdf(RAB_LightSample lightSample)
+{
+    return lightSample.pdf;
+}
+
+/** Computes the probability of a particular direction being sampled from the environment map
+    relative to all the other possible directions, based on the environment map PDF texture.
+*/
+float RAB_EvaluateEnvironmentMapSamplingPdf(float3 L)
+{
+    float2 uv = gScene.envMap.worldToUv(L);
+
+    uint2 pdfTextureSize;
+    gRTXDI.envLightPdfTexture.GetDimensions(pdfTextureSize.x, pdfTextureSize.y);
+    uint2 texelPosition = uint2(pdfTextureSize * uv);
+    float texelValue = gRTXDI.envLightPdfTexture.Load(uint3(texelPosition, 0)).x;
+
+    int lastMipLevel = max(0, int(floor(log2(max(pdfTextureSize.x, pdfTextureSize.y)))) - 1);
+    float averageValue = 0.5f * (
+        gRTXDI.envLightPdfTexture.Load(uint3(0, 0, lastMipLevel)).x +
+        gRTXDI.envLightPdfTexture.Load(uint3(1, 0, lastMipLevel)).x);
+
+    // the selection probability is multiplied by numTexels in RTXDI during presampling
+    // so actually numTexels cancels out in this case
+    //
+    // uint numTexels = pdfTextureSize.x * pdfTextureSize.y;
+    // float totalSum = averageWeight * numTexels;
+    // return numTexels * texelValue / totalSum;
+    return texelValue / averageValue;
+}
+
+/** Computes the probability of a particular light being sampled from the local light pool
+    with importance sampling, based on the local light PDF texture.
+*/
+float RAB_EvaluateLocalLightSourcePdf(RTXDI_ResamplingRuntimeParameters params, uint lightIndex)
+{
+    uint2 pdfTextureSize;
+    gRTXDI.localLightPdfTexture.GetDimensions(pdfTextureSize.x, pdfTextureSize.y);
+
+    uint2 texelPosition = RTXDI_LinearIndexToZCurve(lightIndex);
+    float texelValue = gRTXDI.localLightPdfTexture.Load(uint3(texelPosition, 0)).r;
+
+    int lastMipLevel = max(0, int(floor(log2(max(pdfTextureSize.x, pdfTextureSize.y)))) - 1);
+    float averageValue = 0.5f * (
+        gRTXDI.localLightPdfTexture.Load(uint3(0, 0, lastMipLevel)).x +
+        gRTXDI.localLightPdfTexture.Load(uint3(1, 0, lastMipLevel)).x);
+
+    // all light pdf weight
+    float sum = averageValue * pdfTextureSize.x * pdfTextureSize.y;
+
+    return texelValue / sum;
+}
+
 // ------------------------------------------------------------------------------------------------
 // Sampling functions.
 // ------------------------------------------------------------------------------------------------
@@ -255,6 +331,71 @@ float RAB_GetLightTargetPdfForVolume(RAB_LightInfo light, float3 volumeCenter, f
     return 0.f;
 }
 
+float3 worldToTangent(RAB_Surface surface, float3 w)
+{
+    // reconstruct tangent frame based off worldspace normal
+    // this is ok for isotropic BRDFs
+    // for anisotropic BRDFs, we need a user defined tangent
+    float3 bitangent = perp_stark(surface.normal);
+    float3 tangent = cross(bitangent, surface.normal);
+
+    return float3(dot(bitangent, w), dot(tangent, w), dot(surface.normal, w));
+}
+
+float3 tangentToWorld(RAB_Surface surface, float3 h)
+{
+    // reconstruct tangent frame based off worldspace normal
+    // this is ok for isotropic BRDFs
+    // for anisotropic BRDFs, we need a user defined tangent
+    float3 bitangent = perp_stark(surface.normal);
+    float3 tangent = cross(bitangent, surface.normal);
+
+    return bitangent * h.x + tangent * h.y + surface.normal * h.z;
+}
+
+/** Performs importance sampling of the surface's BRDF and returns the sampled direction.
+*/
+bool RAB_GetSurfaceBrdfSample(RAB_Surface surface, inout RAB_RandomSamplerState rng, out float3 dir)
+{
+    float3 rand;
+    rand.x = RAB_GetNextRandom(rng);
+    rand.y = RAB_GetNextRandom(rng);
+    rand.z = RAB_GetNextRandom(rng);
+    if (rand.x < surface.diffuseProb)
+    {
+        if (kSampleSpecularOnly)
+            return false;
+
+        // consistent eval order
+        float pdf;
+        float3 h = sample_cosine_hemisphere_concentric(rand.yz, pdf);
+        dir = tangentToWorld(surface, h);
+    }
+    else
+    {
+        float pdf;
+        float ggxAlpha = surface.roughness * surface.roughness;
+        float3 h = sampleGGX_NDF(ggxAlpha, rand.yz, pdf);
+        dir = reflect(-surface.viewDir, tangentToWorld(surface, h));
+    }
+
+    return dot(surface.normal, dir) > 0.f;
+}
+
+/** Computes the PDF of a particular direction being sampled by RAB_GetSurfaceBrdfSample.
+*/
+float RAB_GetSurfaceBrdfPdf(RAB_Surface surface, float3 dir)
+{
+    float cosTheta = saturate(dot(surface.normal, dir));
+    float diffusePdf = kSampleSpecularOnly ? 0.f : (cosTheta / M_PI);
+
+    float3 h = worldToTangent(surface, normalize(dir + surface.viewDir));
+    float ggxAlpha = surface.roughness * surface.roughness;
+    float specularPdf = evalPdfGGX_NDF(ggxAlpha, h.z) / (4.f * saturate(dot(h, worldToTangent(surface, surface.viewDir))));
+    float pdf = cosTheta > 0.f ? lerp(specularPdf, diffusePdf, surface.diffuseProb) : 0.f;
+    return pdf;
+}
+
 /** Samples a polymorphic light relative to the given receiver surface.
 */
 RAB_LightSample RAB_SamplePolymorphicLight(RAB_LightInfo lightInfo, RAB_Surface surface, float2 uv)
@@ -284,6 +425,54 @@ bool RAB_GetTemporalConservativeVisibility(RAB_Surface curSurface, RAB_Surface p
 {
     return RAB_GetConservativeVisibility(curSurface, lightSample);
 }
+
+/** Converts a world-space direction into a pair of numbers that, when passed into RAB_SamplePolymorphicLight
+    for the environment light, will make a sample at the same direction.
+*/
+float2 RAB_GetEnvironmentMapRandXYFromDir(float3 worldDir)
+{
+    return gScene.envMap.worldToUv(worldDir);
+}
+
+/** Traces a ray with the given parameters, looking for a light. If a local light is found, returns true
+    and fills the output parameters with the light sample information.
+    \param[out] o_lightIndex If hit, must be a valid light index for RAB_LoadLightInfo, otherwise RTXDI_InvalidLightIndex.
+    \param[out] o_randXY The randXY that corresponds to the hit location and is the same used for RAB_SamplePolymorphicLight.
+*/
+bool RAB_TraceRayForLocalLight(float3 origin, float3 direction, float tMin, float tMax,
+    out uint o_lightIndex, out float2 o_randXY)
+{
+    o_lightIndex = RTXDI_InvalidLightIndex;
+    o_randXY = 0;
+
+    float hitT;
+    HitInfo hit;
+    SceneRayQuery<0> rayQuery;
+
+    Ray ray = Ray(origin, direction, tMin, tMax);
+    bool hitAnything = rayQuery.traceRay(ray, hit, hitT, RAY_FLAG_CULL_NON_OPAQUE, 0xff);
+    if (gRTXDI.params.numLocalLights && hitAnything)
+    {
+        if (hit.getType() == HitType::Triangle)
+        {
+            const TriangleHit triangleHit = hit.getTriangleHit();
+            uint triangleIndex = gScene.lightCollection.getTriangleIndex(triangleHit.instanceID, triangleHit.primitiveIndex);
+            if (triangleIndex != LightCollection::kInvalidIndex)
+            {
+                uint activeLightIndex = gScene.lightCollection.getActiveTriangleIndex(triangleIndex);
+                if (activeLightIndex != LightCollection::kInvalidIndex)
+                {
+                    // hitUVs are mapped directly to randXY in Falcor see EmissiveLight::calcSample.
+                    o_randXY = triangleHit.barycentrics;
+                    o_lightIndex = activeLightIndex;
+                }
+            }
+        }
+    }
+
+    return hitAnything;
+}
+
 
 // ------------------------------------------------------------------------------------------------
 // Misc functions.

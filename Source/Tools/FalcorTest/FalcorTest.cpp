@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -34,7 +34,7 @@
 #include <string>
 #include <vector>
 
-#ifdef FALCOR_D3D12
+#if FALCOR_D3D12_AVAILABLE
 FALCOR_EXPORT_D3D12_AGILITY_SDK
 #endif
 
@@ -111,7 +111,12 @@ int main(int argc, char** argv)
     FalcorTest::UniquePtr pRenderer = std::make_unique<FalcorTest>(options);
     SampleConfig config;
     config.windowDesc.title = "FalcorTest";
+#ifdef FALCOR_D3D12_AVAILABLE
     config.windowDesc.mode = Window::WindowMode::Minimized;
+#else
+    // Vulkan does not allow creating a swapchain on a minimized window.
+    config.windowDesc.mode = Window::WindowMode::Normal;
+#endif
     config.windowDesc.resizableWindow = true;
     config.windowDesc.width = config.windowDesc.height = 2;
     if (enableDebugLayer) config.deviceDesc.enableDebugLayer = true;

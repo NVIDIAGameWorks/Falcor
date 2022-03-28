@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -120,6 +120,24 @@ namespace Falcor
             allowedStates.add(gfx::ResourceState::DepthWrite);
         }
 
+        if (is_set(flags, Resource::BindFlags::Vertex))
+        {
+            allowedStates.add(gfx::ResourceState::VertexBuffer);
+            allowedStates.add(gfx::ResourceState::AccelerationStructureBuildInput);
+        }
+        if (is_set(flags, Resource::BindFlags::Index))
+        {
+            allowedStates.add(gfx::ResourceState::IndexBuffer);
+            allowedStates.add(gfx::ResourceState::AccelerationStructureBuildInput);
+        }
+        if (is_set(flags, Resource::BindFlags::IndirectArg))
+        {
+            allowedStates.add(gfx::ResourceState::IndirectArgument);
+        }
+        if (is_set(flags, Resource::BindFlags::Constant))
+        {
+            allowedStates.add(gfx::ResourceState::ConstantBuffer);
+        }
         if (is_set(flags, Resource::BindFlags::AccelerationStructure))
         {
             allowedStates.add(gfx::ResourceState::AccelerationStructure);
@@ -129,5 +147,21 @@ namespace Falcor
         }
         allowedStates.add(gfx::ResourceState::CopyDestination);
         allowedStates.add(gfx::ResourceState::CopySource);
+    }
+
+    const D3D12ResourceHandle& Resource::getD3D12Handle() const
+    {
+#if FALCOR_D3D12_AVAILABLE
+        if (!mpD3D12Handle)
+        {
+            gfx::InteropHandle handle = {};
+            FALCOR_GFX_CALL(mApiHandle->getNativeResourceHandle(&handle));
+            FALCOR_ASSERT(handle.api == gfx::InteropHandleAPI::D3D12);
+            mpD3D12Handle = D3D12ResourceHandle(reinterpret_cast<ID3D12Resource*>(handle.handleValue));
+        }
+        return mpD3D12Handle;
+#else
+        throw RuntimeError("D3D12 is not available.");
+#endif
     }
 } // namespace Falcor

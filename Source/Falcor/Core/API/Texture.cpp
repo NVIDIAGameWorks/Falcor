@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -131,30 +131,30 @@ namespace Falcor
         return pTexture;
     }
 
-    Texture::SharedPtr Texture::createFromFile(const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags)
+    Texture::SharedPtr Texture::createFromFile(const std::filesystem::path& path, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags)
     {
-        std::string fullpath;
-        if (findFileInDataDirectories(filename, fullpath) == false)
+        std::filesystem::path fullPath;
+        if (!findFileInDataDirectories(path, fullPath))
         {
-            logWarning("Error when loading image file. Can't find image file '{}'.", filename);
+            logWarning("Error when loading image file. Can't find image file '{}'.", path);
             return nullptr;
         }
 
         Texture::SharedPtr pTex;
-        if (hasSuffix(filename, ".dds"))
+        if (hasExtension(fullPath, "dds"))
         {
             try
             {
-                pTex = ImageIO::loadTextureFromDDS(filename, loadAsSrgb);
+                pTex = ImageIO::loadTextureFromDDS(fullPath, loadAsSrgb);
             }
             catch (const std::exception& e)
             {
-                logWarning("Error loading '{}': {}", fullpath, e.what());
+                logWarning("Error loading '{}': {}", fullPath, e.what());
             }
         }
         else
         {
-            Bitmap::UniqueConstPtr pBitmap = Bitmap::createFromFile(fullpath, kTopDown);
+            Bitmap::UniqueConstPtr pBitmap = Bitmap::createFromFile(fullPath, kTopDown);
             if (pBitmap)
             {
                 ResourceFormat texFormat = pBitmap->getFormat();
@@ -169,7 +169,7 @@ namespace Falcor
 
         if (pTex != nullptr)
         {
-            pTex->setSourceFilename(fullpath);
+            pTex->setSourcePath(fullPath);
         }
 
         return pTex;
@@ -306,7 +306,7 @@ namespace Falcor
         return findViewCommon<ShaderResourceView>(this, mostDetailedMip, mipCount, firstArraySlice, arraySize, mSrvs, createFunc);
     }
 
-    void Texture::captureToFile(uint32_t mipLevel, uint32_t arraySlice, const std::string& filename, Bitmap::FileFormat format, Bitmap::ExportFlags exportFlags)
+    void Texture::captureToFile(uint32_t mipLevel, uint32_t arraySlice, const std::filesystem::path& path, Bitmap::FileFormat format, Bitmap::ExportFlags exportFlags)
     {
         if (format == Bitmap::FileFormat::DdsFile)
         {
@@ -339,7 +339,7 @@ namespace Falcor
         uint32_t height = getHeight(mipLevel);
         auto func = [=]()
         {
-            Bitmap::saveImage(filename, width, height, format, exportFlags, resourceFormat, true, (void*)textureData.data());
+            Bitmap::saveImage(path, width, height, format, exportFlags, resourceFormat, true, (void*)textureData.data());
         };
 
         Threading::dispatchTask(func);

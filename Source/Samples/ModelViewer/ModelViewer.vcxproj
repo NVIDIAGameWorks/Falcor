@@ -22,7 +22,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ShaderSource Include="ModelViewer.ps.slang" />
+    <ShaderSource Include="ModelViewer.3d.slang" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{7BFFD891-AAD6-4E5C-8ADC-611C2625DCD9}</ProjectGuid>

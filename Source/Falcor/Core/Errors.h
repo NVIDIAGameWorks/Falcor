@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -55,7 +55,7 @@ namespace Falcor
         {}
 
         template<typename... Args>
-        explicit Exception(const std::string& fmtString, Args&&... args)
+        explicit Exception(const std::string_view fmtString, Args&&... args)
             : Exception(fmt::format(fmtString, std::forward<Args>(args)...).c_str())
         {}
 
@@ -96,7 +96,7 @@ namespace Falcor
         {}
 
         template<typename... Args>
-        explicit RuntimeError(const std::string& fmtString, Args&&... args)
+        explicit RuntimeError(const std::string_view fmtString, Args&&... args)
             : Exception(fmtString, std::forward<Args>(args)...)
         {}
 
@@ -126,7 +126,7 @@ namespace Falcor
         {}
 
         template<typename... Args>
-        explicit ArgumentError(const std::string& fmtString, Args&&... args)
+        explicit ArgumentError(const std::string_view fmtString, Args&&... args)
             : Exception(fmtString, std::forward<Args>(args)...)
         {}
 
@@ -145,7 +145,7 @@ namespace Falcor
         \param[in] ... Arguments.
     */
     template<typename... Args>
-    void checkInvariant(bool condition, const std::string& fmtString, Args&&... args)
+    void checkInvariant(bool condition, const std::string_view fmtString, Args&&... args)
     {
         if (!condition) throw RuntimeError(fmtString, std::forward<Args>(args)...);
     }
@@ -156,7 +156,7 @@ namespace Falcor
         \param[in] ... Arguments.
     */
     template<typename... Args>
-    void checkArgument(bool condition, const std::string& fmtString, Args&&... args)
+    void checkArgument(bool condition, const std::string_view fmtString, Args&&... args)
     {
         if (!condition) throw ArgumentError(fmtString, std::forward<Args>(args)...);
     }

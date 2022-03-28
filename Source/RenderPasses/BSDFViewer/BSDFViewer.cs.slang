@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -218,7 +218,7 @@ struct BSDFViewer
     /** Evaluates the BSDF slice for a given viewport coordinate.
         \return Evaluated BSDF value.
     */
-    float3 evalBSDFSlice(const float2 uv, const ITextureSampler lod, inout SurfaceData data)
+    float3 evalBSDFSlice(const float2 uv, const ITextureSampler lod, inout SurfaceData data, inout SampleGenerator sg)
     {
         // Calculate geometry and incident/outgoing directions.
         VertexData v;
@@ -234,7 +234,7 @@ struct BSDFViewer
         data.bsdfProperties = bsdf.getProperties(data.sd);
 
         // Evaluate BSDF at shading point.
-        float3 f = bsdf.eval(data.sd, data.wo);
+        float3 f = bsdf.eval(data.sd, data.wo, sg);
 
         // Remove cosine term if it's disabled in the viewer.
         if (!params.applyNdotL)
@@ -260,7 +260,7 @@ struct BSDFViewer
         {
             // With directional light, disable BSDF sampling and just return a sample in the light's direction.
             s.wo = -normalize(params.lightDir);
-            s.weight = bsdf.eval(sd, s.wo);
+            s.weight = bsdf.eval(sd, s.wo, sg);
             s.pdf = 1.f;
             return dot(sd.N, s.wo) > 0.f;
         }
@@ -318,7 +318,7 @@ struct BSDFViewer
                 // Use computed pdf explicitly (for debugging).
                 if (params.usePdf)
                 {
-                    output = L * bsdf.eval(data.sd, s.wo) / s.pdf;
+                    output = L * bsdf.eval(data.sd, s.wo, sg) / s.pdf;
                 }
                 else
                 {
@@ -345,17 +345,17 @@ struct BSDFViewer
         // TODO: Implement texture level-of-detail. For now sample at mip 0.
         let lod = ExplicitLodTextureSampler(0.f);
 
+        SampleGenerator sg = SampleGenerator(pixel, params.frameCount);
         if (params.viewerMode == BSDFViewerMode::Slice)
         {
             if (all(uv >= 0.f && uv < 1.f))
             {
-                output = evalBSDFSlice(uv, lod, data);
+                output = evalBSDFSlice(uv, lod, data, sg);
             }
         }
         else if (params.viewerMode == BSDFViewerMode::Material)
         {
             // Create pseudorandom number generator.
-            SampleGenerator sg = SampleGenerator(pixel, params.frameCount);
             output = evalSphere(uv, lod, data, sg);
         }
 

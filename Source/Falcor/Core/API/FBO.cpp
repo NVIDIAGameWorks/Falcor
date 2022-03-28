@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -168,6 +168,12 @@ namespace Falcor
 
     void Fbo::attachDepthStencilTarget(const Texture::SharedPtr& pDepthStencil, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
     {
+        bool changed = (mDepthStencil.pTexture != pDepthStencil);
+        changed |= (mDepthStencil.mipLevel != mipLevel);
+        changed |= (mDepthStencil.firstArraySlice != firstArraySlice);
+        changed |= (mDepthStencil.arraySize != arraySize);
+        if (!changed) return;
+
         checkAttachArguments(pDepthStencil.get(), mipLevel, firstArraySlice, arraySize, true);
 
         mpDesc = nullptr;
@@ -188,6 +194,13 @@ namespace Falcor
     void Fbo::attachColorTarget(const Texture::SharedPtr& pTexture, uint32_t rtIndex, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
     {
         checkArgument(rtIndex < mColorAttachments.size(), "'rtIndex' ({}) is out of range. Only {} color targets are available.", rtIndex, mColorAttachments.size());
+
+        bool changed = (mColorAttachments[rtIndex].pTexture != pTexture);
+        changed |= (mColorAttachments[rtIndex].mipLevel != mipLevel);
+        changed |= (mColorAttachments[rtIndex].firstArraySlice != firstArraySlice);
+        changed |= (mColorAttachments[rtIndex].arraySize != arraySize);
+        if (!changed) return;
+
         checkAttachArguments(pTexture.get(), mipLevel, firstArraySlice, arraySize, false);
 
         mpDesc = nullptr;

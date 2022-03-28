@@ -176,6 +176,15 @@
     <ClCompile Include="Tests\Rendering\Materials\TestBSDFIntegrator.cpp">
       <Filter>Tests\Rendering\Materials</Filter>
     </ClCompile>
+    <ClCompile Include="Tests\Utils\Color\SpectrumUtilsTests.cpp">
+      <Filter>Tests\Utils\Color</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Utils\Color\SampledSpectrumTests.cpp">
+      <Filter>Tests\Utils\Color</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Utils\Color\SpectrumTests.cpp">
+      <Filter>Tests\Utils\Color</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FalcorTest.h" />
@@ -213,6 +222,9 @@
     </Filter>
     <Filter Include="Tests\Rendering\Materials">
       <UniqueIdentifier>{e348a5ee-c42c-49fb-8c4f-7baf622ffb8a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\Utils\Color">
+      <UniqueIdentifier>{d5835886-2ec4-47a3-937a-7d2e1cd3df09}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -353,6 +365,9 @@
     </ShaderSource>
     <ShaderSource Include="Tests\Slang\NestedStructs.cs.slang">
       <Filter>Tests\Slang</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Utils\Color\SpectrumUtilsTests.cs.slang">
+      <Filter>Tests\Utils\Color</Filter>
     </ShaderSource>
   </ItemGroup>
 </Project>

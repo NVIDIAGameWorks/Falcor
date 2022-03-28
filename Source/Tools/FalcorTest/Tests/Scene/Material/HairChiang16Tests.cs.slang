@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -68,7 +68,9 @@ void testPbrtReference(uint3 threadId : SV_DispatchThreadID)
     bcsdf.h = gH[idx];
     bcsdf.precompute();
 
-    gResultOurs[idx] = bcsdf.eval(gWi[idx], gWo[idx]);
+    SampleGenerator sg = SampleGenerator(threadId.xy, 0);
+
+    gResultOurs[idx] = bcsdf.eval(gWi[idx], gWo[idx], sg);
 }
 
 [numthreads(16, 1, 1)]
@@ -100,7 +102,7 @@ void testWhiteFurnaceUniform(uint3 threadId : SV_DispatchThreadID)
         bcsdf.precompute();
 
         float3 wo = sample_sphere(sampleNext2D(sg));
-        sum += bcsdf.eval(wi, wo);
+        sum += bcsdf.eval(wi, wo, sg);
     }
 
     result[threadId.x] = luminance(sum) / sampleCount * M_4PI;
@@ -229,7 +231,7 @@ void testSamplingConsistency(uint3 threadId : SV_DispatchThreadID)
 
         // Uniform sampling.
         wo = sample_sphere(sampleNext2D(sg));
-        fUniform += bcsdf.eval(wi, wo) * M_4PI * (wo.z * wo.z) / sampleCount;
+        fUniform += bcsdf.eval(wi, wo, sg) * M_4PI * (wo.z * wo.z) / sampleCount;
     }
 
     result[threadId.x] = abs(luminance(fIS) - luminance(fUniform)) / luminance(fUniform);

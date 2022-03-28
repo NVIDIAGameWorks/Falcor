@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -42,15 +42,13 @@ namespace Falcor
         {
         case Texture::Type::Texture1D:
             return gfx::IResource::Type::Texture1D;
-
         case Texture::Type::Texture2D:
         case Texture::Type::Texture2DMultisample:
             return gfx::IResource::Type::Texture2D;
         case Texture::Type::TextureCube:
             return gfx::IResource::Type::TextureCube;
-
         case Texture::Type::Texture3D:
-            return gfx::IResource::Type::TextureCube;
+            return gfx::IResource::Type::Texture3D;
         default:
             FALCOR_UNREACHABLE();
             return gfx::IResource::Type::Unknown;
@@ -153,6 +151,13 @@ namespace Falcor
         {
             uploadInitData(pData, autoGenMips);
         }
+
+#if FALCOR_D3D12_AVAILABLE
+        gfx::InteropHandle handle = {};
+        FALCOR_GFX_CALL(mApiHandle->getNativeResourceHandle(&handle));
+        FALCOR_ASSERT(handle.api == gfx::InteropHandleAPI::D3D12);
+        mpD3D12Handle = reinterpret_cast<ID3D12Resource*>(handle.handleValue);
+#endif
     }
 
     Texture::~Texture()

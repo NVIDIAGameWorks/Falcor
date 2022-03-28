@@ -1,19 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClInclude Include="Core\API\D3D12\D3D12DescriptorData.h">
-      <Filter>Core\API\D3D12</Filter>
-    </ClInclude>
-    <ClInclude Include="Core\API\D3D12\D3D12DescriptorHeap.h">
-      <Filter>Core\API\D3D12</Filter>
-    </ClInclude>
     <ClInclude Include="Core\API\D3D12\D3D12NvApiExDesc.h">
       <Filter>Core\API\D3D12</Filter>
     </ClInclude>
     <ClInclude Include="Core\API\D3D12\D3D12Resource.h">
-      <Filter>Core\API\D3D12</Filter>
-    </ClInclude>
-    <ClInclude Include="Core\API\D3D12\D3D12State.h">
       <Filter>Core\API\D3D12</Filter>
     </ClInclude>
     <ClInclude Include="Core\API\D3D12\FalcorD3D12.h">
@@ -176,7 +167,7 @@
     <ClInclude Include="Utils\UI\TextRenderer.h">
       <Filter>Utils\UI</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\UI\UserInput.h">
+    <ClInclude Include="Utils\UI\InputTypes.h">
       <Filter>Utils\UI</Filter>
     </ClInclude>
     <ClInclude Include="Utils\UI\Font.h">
@@ -564,15 +555,6 @@
     <ClInclude Include="Utils\Image\AsyncTextureLoader.h">
       <Filter>Utils\Image</Filter>
     </ClInclude>
-    <ClInclude Include="Core\API\D3D12\D3D12RootSignature.h">
-      <Filter>Core\API\D3D12</Filter>
-    </ClInclude>
-    <ClInclude Include="Core\API\D3D12\D3D12DescriptorPool.h">
-      <Filter>Core\API\D3D12</Filter>
-    </ClInclude>
-    <ClInclude Include="Core\API\D3D12\D3D12DescriptorSet.h">
-      <Filter>Core\API\D3D12</Filter>
-    </ClInclude>
     <ClInclude Include="Core\API\ShaderResourceType.h">
       <Filter>Core\API</Filter>
     </ClInclude>
@@ -635,6 +617,78 @@
     </ClInclude>
     <ClInclude Include="Rendering\RTXDI\RTXDI.h">
       <Filter>Rendering\RTXDI</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Color\SpectrumUtils.h">
+      <Filter>Utils\Color</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Color\SampledSpectrum.h">
+      <Filter>Utils\Color</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\SDFs\SDF3DPrimitiveFactory.h">
+      <Filter>Scene\SDFs</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\UI\SpectrumUI.h">
+      <Filter>Utils\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\API\Shared\D3D12DescriptorSet.h">
+      <Filter>Core\API\Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\API\Shared\D3D12RootSignature.h">
+      <Filter>Core\API\Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\API\Shared\D3D12Handles.h">
+      <Filter>Core\API\Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\API\D3D12\D3D12State.h">
+      <Filter>Core\API\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\API\Shared\MockedD3D12StagingBuffer.h">
+      <Filter>Core\API\Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Curves\CurveConfig.h">
+      <Filter>Scene\Curves</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\UI\InputState.h">
+      <Filter>Utils\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\API\Shared\D3D12DescriptorData.h">
+      <Filter>Core\API\Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\API\Shared\D3D12DescriptorHeap.h">
+      <Filter>Core\API\Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\API\Shared\D3D12DescriptorPool.h">
+      <Filter>Core\API\Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Color\Spectrum.h">
+      <Filter>Utils\Color</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Importers\PBRTImporter\PBRTImporter.h">
+      <Filter>Scene\Importers\PBRTImporter</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Importers\PBRTImporter\Parameters.h">
+      <Filter>Scene\Importers\PBRTImporter</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Importers\PBRTImporter\Types.h">
+      <Filter>Scene\Importers\PBRTImporter</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Importers\PBRTImporter\Parser.h">
+      <Filter>Scene\Importers\PBRTImporter</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Importers\PBRTImporter\Builder.h">
+      <Filter>Scene\Importers\PBRTImporter</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Importers\PBRTImporter\Helpers.h">
+      <Filter>Scene\Importers\PBRTImporter</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Importers\PBRTImporter\LoopSubdivide.h">
+      <Filter>Scene\Importers\PBRTImporter</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Importers\PBRTImporter\EnvMapConverter.h">
+      <Filter>Scene\Importers\PBRTImporter</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\RTXGI\RTXGIVolume.h">
+      <Filter>Rendering\RTXGI</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -812,17 +866,17 @@
     <Filter Include="Rendering\RTXDI">
       <UniqueIdentifier>{3adba9f2-c6c2-4f1d-9992-0034104817f9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Core\API\Shared">
+      <UniqueIdentifier>{b7906e44-5dfc-431c-8d56-946f8d540f0f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Scene\Importers\PBRTImporter">
+      <UniqueIdentifier>{c847b732-3383-465f-8410-1ea637648cab}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering\RTXGI">
+      <UniqueIdentifier>{44daa05f-64e2-4689-a953-005853ed107a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Core\API\D3D12\D3D12DescriptorHeap.cpp">
-      <Filter>Core\API\D3D12</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\D3D12\D3D12DescriptorPool.cpp">
-      <Filter>Core\API\D3D12</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\D3D12\D3D12DescriptorSet.cpp">
-      <Filter>Core\API\D3D12</Filter>
-    </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12Device.cpp">
       <Filter>Core\API\D3D12</Filter>
     </ClCompile>
@@ -856,13 +910,7 @@
     <ClCompile Include="Core\API\D3D12\D3D12ResourceViews.cpp">
       <Filter>Core\API\D3D12</Filter>
     </ClCompile>
-    <ClCompile Include="Core\API\D3D12\D3D12RootSignature.cpp">
-      <Filter>Core\API\D3D12</Filter>
-    </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12Sampler.cpp">
-      <Filter>Core\API\D3D12</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\D3D12\D3D12State.cpp">
       <Filter>Core\API\D3D12</Filter>
     </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12Texture.cpp">
@@ -1025,9 +1073,6 @@
       <Filter>Core\Platform\Linux</Filter>
     </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12Formats.cpp">
-      <Filter>Core\API\D3D12</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\D3D12\D3D12Shader.cpp">
       <Filter>Core\API\D3D12</Filter>
     </ClCompile>
     <ClCompile Include="Core\BufferTypes\VariablesBufferUI.cpp">
@@ -1337,9 +1382,6 @@
     <ClCompile Include="Core\API\D3D12\D3D12RtStateObject.cpp">
       <Filter>Core\API\D3D12</Filter>
     </ClCompile>
-    <ClCompile Include="Core\API\ShaderTable.cpp">
-      <Filter>Core\API</Filter>
-    </ClCompile>
     <ClCompile Include="Core\API\D3D12\D3D12ShaderTable.cpp">
       <Filter>Core\API\D3D12</Filter>
     </ClCompile>
@@ -1433,12 +1475,6 @@
     <ClCompile Include="Core\Program\ProgramVars.cpp">
       <Filter>Core\Program</Filter>
     </ClCompile>
-    <ClCompile Include="Core\API\GFX\GFXShader.cpp">
-      <Filter>Core\API\GFX</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\API\GFX\GFXShaderTable.cpp">
-      <Filter>Core\API\GFX</Filter>
-    </ClCompile>
     <ClCompile Include="Core\API\GFX\GFXRtAccelerationStructurePostBuildInfoPool.cpp">
       <Filter>Core\API\GFX</Filter>
     </ClCompile>
@@ -1486,6 +1522,72 @@
     </ClCompile>
     <ClCompile Include="Rendering\RTXDI\RTXDISDK.cpp">
       <Filter>Rendering\RTXDI</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Color\SpectrumUtils.cpp">
+      <Filter>Utils\Color</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\SDFs\SDF3DPrimitiveFactory.cpp">
+      <Filter>Scene\SDFs</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\Shared\D3D12RootSignature.cpp">
+      <Filter>Core\API\Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\D3D12\D3D12State.cpp">
+      <Filter>Core\API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\Shared\MockedD3D12StagingBuffer.cpp">
+      <Filter>Core\API\Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\Shared\D3D12Utils.cpp">
+      <Filter>Core\API\Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\UI\SpectrumUI.cpp">
+      <Filter>Utils\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\UI\InputState.cpp">
+      <Filter>Utils\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\D3D12\D3D12Shader.cpp">
+      <Filter>Core\API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXShader.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\D3D12\D3D12DescriptorSet.cpp">
+      <Filter>Core\API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\GFX\GFXD3D12DescriptorSet.cpp">
+      <Filter>Core\API\GFX</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\Shared\D3D12DescriptorHeap.cpp">
+      <Filter>Core\API\Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\API\Shared\D3D12DescriptorPool.cpp">
+      <Filter>Core\API\Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Color\Spectrum.cpp">
+      <Filter>Utils\Color</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Importers\PBRTImporter\PBRTImporter.cpp">
+      <Filter>Scene\Importers\PBRTImporter</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Importers\PBRTImporter\Parameters.cpp">
+      <Filter>Scene\Importers\PBRTImporter</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Importers\PBRTImporter\Parser.cpp">
+      <Filter>Scene\Importers\PBRTImporter</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Importers\PBRTImporter\Builder.cpp">
+      <Filter>Scene\Importers\PBRTImporter</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Importers\PBRTImporter\LoopSubdivide.cpp">
+      <Filter>Scene\Importers\PBRTImporter</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\RTXGI\RTXGIVolume.cpp">
+      <Filter>Rendering\RTXGI</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\RTXGI\RTXGISDK.cpp">
+      <Filter>Rendering\RTXGI</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -1555,7 +1657,7 @@
     <ShaderSource Include="Utils\Algorithm\ParallelReduction.ps.slang">
       <Filter>Utils\Algorithm</Filter>
     </ShaderSource>
-    <ShaderSource Include="Utils\UI\TextRenderer.slang">
+    <ShaderSource Include="Utils\UI\TextRenderer.3d.slang">
       <Filter>Utils\UI</Filter>
     </ShaderSource>
     <ShaderSource Include="Scene\SceneBlock.slang">
@@ -1753,7 +1855,7 @@
     <ShaderSource Include="Scene\Animation\UpdateCurveVertices.slang">
       <Filter>Scene\Animation</Filter>
     </ShaderSource>
-    <ShaderSource Include="Core\API\BlitReduction.slang">
+    <ShaderSource Include="Core\API\BlitReduction.3d.slang">
       <Filter>Core\API</Filter>
     </ShaderSource>
     <ShaderSource Include="Scene\Displacement\DisplacementMapping.slang">
@@ -2002,6 +2104,12 @@
     <ShaderSource Include="Scene\Displacement\DisplacementData.slang">
       <Filter>Scene\Displacement</Filter>
     </ShaderSource>
+    <ShaderSource Include="Scene\Animation\SharedTypes.slang">
+      <Filter>Scene\Animation</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\Animation\UpdateMeshVertices.slang">
+      <Filter>Scene\Animation</Filter>
+    </ShaderSource>
     <ShaderSource Include="Scene\Material\MaterialTypes.slang">
       <Filter>Scene\Material</Filter>
     </ShaderSource>
@@ -2097,6 +2205,42 @@
     </ShaderSource>
     <ShaderSource Include="Rendering\RTXDI\PolymorphicLight.slang">
       <Filter>Rendering\RTXDI</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Utils\Color\SpectrumUtils.slang">
+      <Filter>Utils\Color</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\SDFs\SDF3DPrimitiveCommon.slang">
+      <Filter>Scene\SDFs</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Utils\SDF\SDFOperationType.slang">
+      <Filter>Utils\SDF</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Utils\SDF\SDF2DShapeType.slang">
+      <Filter>Utils\SDF</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\Animation\UpdateCurvePolyTubeVertices.slang">
+      <Filter>Scene\Animation</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Utils\Math\Quaternion.slang">
+      <Filter>Utils\Math</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Scene\Importers\PBRTImporter\EnvMapConverter.cs.slang">
+      <Filter>Scene\Importers\PBRTImporter</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\RTXGI\DirectLighting.slang">
+      <Filter>Rendering\RTXGI</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\RTXGI\RTXGIDefines.slangh">
+      <Filter>Rendering\RTXGI</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\RTXGI\RTXGIVolume.slang">
+      <Filter>Rendering\RTXGI</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\RTXGI\UpdateProbes.rt.slang">
+      <Filter>Rendering\RTXGI</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Rendering\RTXGI\UpdateProbesDebugData.slang">
+      <Filter>Rendering\RTXGI</Filter>
     </ShaderSource>
   </ItemGroup>
 </Project>

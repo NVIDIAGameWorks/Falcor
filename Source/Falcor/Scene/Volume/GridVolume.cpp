@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -116,51 +116,56 @@ namespace Falcor
         return changed;
     }
 
-    bool GridVolume::loadGrid(GridSlot slot, const std::string& filename, const std::string& gridname)
+    bool GridVolume::loadGrid(GridSlot slot, const std::filesystem::path& path, const std::string& gridname)
     {
-        auto grid = Grid::createFromFile(filename, gridname);
+        auto grid = Grid::createFromFile(path, gridname);
         if (grid) setGrid(slot, grid);
         return grid != nullptr;
     }
 
-    uint32_t GridVolume::loadGridSequence(GridSlot slot, const std::vector<std::string>& filenames, const std::string& gridname, bool keepEmpty)
+    uint32_t GridVolume::loadGridSequence(GridSlot slot, const std::vector<std::filesystem::path>& paths, const std::string& gridname, bool keepEmpty)
     {
         GridSequence grids;
-        for (const auto& filename : filenames)
+        for (const auto& path : paths)
         {
-            auto grid = Grid::createFromFile(filename, gridname);
+            auto grid = Grid::createFromFile(path, gridname);
             if (keepEmpty || grid) grids.push_back(grid);
         }
         setGridSequence(slot, grids);
         return (uint32_t)grids.size();
     }
 
-    uint32_t GridVolume::loadGridSequence(GridSlot slot, const std::string& path, const std::string& gridname, bool keepEmpty)
+    uint32_t GridVolume::loadGridSequence(GridSlot slot, const std::filesystem::path& path, const std::string& gridname, bool keepEmpty)
     {
-        std::string fullpath;
-        if (!findFileInDataDirectories(path, fullpath))
+        std::filesystem::path fullPath;
+        if (!findFileInDataDirectories(path, fullPath))
         {
             logWarning("Cannot find directory '{}'.", path);
             return 0;
         }
-        if (!std::filesystem::is_directory(fullpath))
+        if (!std::filesystem::is_directory(fullPath))
         {
             logWarning("'{}' is not a directory.", path);
             return 0;
         }
 
         // Enumerate grid files.
-        std::vector<std::string> files;
-        for (auto p : std::filesystem::directory_iterator(fullpath))
+        std::vector<std::filesystem::path> paths;
+        for (auto p : std::filesystem::directory_iterator(fullPath))
         {
-            if (p.path().extension() == ".nvdb" || p.path().extension() == ".vdb") files.push_back(p.path().string());
+            const auto& path = p.path();
+            if (hasExtension(path, "nvdb") || hasExtension(path, "vdb")) paths.push_back(path);
         }
 
         // Sort by length first, then alpha-numerically.
-        auto cmp = [](const std::string& a, const std::string& b) { return a.length() != b.length() ? a.length() < b.length() : a < b; };
-        std::sort(files.begin(), files.end(), cmp);
+        auto cmp = [](const std::filesystem::path& a, const std::filesystem::path& b) {
+            auto sa = a.string();
+            auto sb = b.string();
+            return sa.length() != sb.length() ? sa.length() < sb.length() : sa < sb;
+        };
+        std::sort(paths.begin(), paths.end(), cmp);
 
-        return loadGridSequence(slot, files, gridname, keepEmpty);
+        return loadGridSequence(slot, paths, gridname, keepEmpty);
     }
 
     void GridVolume::setGridSequence(GridSlot slot, const GridSequence& grids)
@@ -374,12 +379,12 @@ namespace Falcor
         volume.def_property("emissionMode", &GridVolume::getEmissionMode, &GridVolume::setEmissionMode);
         volume.def_property("emissionTemperature", &GridVolume::getEmissionTemperature, &GridVolume::setEmissionTemperature);
         volume.def(pybind11::init(&GridVolume::create), "name"_a);
-        volume.def("loadGrid", &GridVolume::loadGrid, "slot"_a, "filename"_a, "gridname"_a);
+        volume.def("loadGrid", &GridVolume::loadGrid, "slot"_a, "path"_a, "gridname"_a);
         volume.def("loadGridSequence",
-            pybind11::overload_cast<GridVolume::GridSlot, const std::vector<std::string>&, const std::string&, bool>(&GridVolume::loadGridSequence),
-            "slot"_a, "filenames"_a, "gridname"_a, "keepEmpty"_a = true);
+            pybind11::overload_cast<GridVolume::GridSlot, const std::vector<std::filesystem::path>&, const std::string&, bool>(&GridVolume::loadGridSequence),
+            "slot"_a, "paths"_a, "gridname"_a, "keepEmpty"_a = true);
         volume.def("loadGridSequence",
-            pybind11::overload_cast<GridVolume::GridSlot, const std::string&, const std::string&, bool>(&GridVolume::loadGridSequence),
+            pybind11::overload_cast<GridVolume::GridSlot, const std::filesystem::path&, const std::string&, bool>(&GridVolume::loadGridSequence),
             "slot"_a, "path"_a, "gridnames"_a, "keepEmpty"_a = true);
 
         pybind11::enum_<GridVolume::GridSlot> gridSlot(volume, "GridSlot");

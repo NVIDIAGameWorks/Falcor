@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -42,7 +42,7 @@ extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
 
 namespace
 {
-    const std::string kProgramFile = "RenderPasses/DepthPass/DepthPass.ps.slang";
+    const std::string kProgramFile = "RenderPasses/DepthPass/DepthPass.3d.slang";
 
     const std::string kDepth = "depth";
     const std::string kDepthFormat = "depthFormat";
@@ -76,7 +76,7 @@ DepthPass::DepthPass(const Dictionary& dict)
     : RenderPass(kInfo)
 {
     Program::Desc desc;
-    desc.addShaderLibrary(kProgramFile).psEntry("main");
+    desc.addShaderLibrary(kProgramFile).vsEntry("vsMain").psEntry("psMain");
     GraphicsProgram::SharedPtr pProgram = GraphicsProgram::create(desc);
     mpState = GraphicsState::create();
     mpState->setProgram(pProgram);

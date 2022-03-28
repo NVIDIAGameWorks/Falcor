@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -38,15 +38,15 @@ namespace Mogwai
     public:
         AppData(const std::filesystem::path& path);
 
-        const std::vector<std::string>& getRecentScripts() const { return mRecentScripts; }
-        const std::vector<std::string>& getRecentScenes() const { return mRecentScenes; }
+        const std::vector<std::filesystem::path>& getRecentScripts() const { return mRecentScripts; }
+        const std::vector<std::filesystem::path>& getRecentScenes() const { return mRecentScenes; }
 
-        void addRecentScript(const std::string& filename);
-        void addRecentScene(const std::string& filename);
+        void addRecentScript(const std::filesystem::path& path);
+        void addRecentScene(const std::filesystem::path& path);
 
     private:
-        void addRecentFile(std::vector<std::string>& recentFiles, const std::string& filename);
-        void removeNonExistingFiles(std::vector<std::string>& files);
+        void addRecentPath(std::vector<std::filesystem::path>& paths, const std::filesystem::path& path);
+        void removeNonExistingPaths(std::vector<std::filesystem::path>& paths);
 
         void save();
 
@@ -55,7 +55,7 @@ namespace Mogwai
 
         std::filesystem::path mPath;
 
-        std::vector<std::string> mRecentScripts;
-        std::vector<std::string> mRecentScenes;
+        std::vector<std::filesystem::path> mRecentScripts;
+        std::vector<std::filesystem::path> mRecentScenes;
     };
 }

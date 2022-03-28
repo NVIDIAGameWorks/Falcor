@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -218,6 +218,7 @@ namespace Falcor
         mMaterialsChanged = true;
 
         // Update metadata.
+        mMaterialTypes.insert(pMaterial->getType());
         if (isSpecGloss(pMaterial)) mSpecGlossMaterialCount++;
 
         return materialID;
@@ -425,6 +426,7 @@ namespace Falcor
     {
         MaterialStats s = {};
 
+        s.materialTypeCount = mMaterialTypes.size();
         s.materialCount = mMaterials.size();
         s.materialOpaqueCount = 0;
         s.materialMemoryInBytes += mpMaterialDataBuffer ? mpMaterialDataBuffer->getSize() : 0;
@@ -481,22 +483,23 @@ namespace Falcor
     Program::TypeConformanceList MaterialSystem::getTypeConformances() const
     {
         Program::TypeConformanceList typeConformances;
-
-        if (getMaterialCountByType(MaterialType::Hair) > 0)
+        for (const auto type : mMaterialTypes)
         {
-            typeConformances.add("HairMaterial", "IMaterial", (uint32_t)MaterialType::Hair);
+            typeConformances.add(getTypeConformances(type));
         }
-        if (getMaterialCountByType(MaterialType::Cloth) > 0)
-        {
-            typeConformances.add("ClothMaterial", "IMaterial", (uint32_t)MaterialType::Cloth);
-        }
-        if (getMaterialCountByType(MaterialType::MERL) > 0)
-        {
-            typeConformances.add("MERLMaterial", "IMaterial", (uint32_t)MaterialType::MERL);
-        }
-        typeConformances.add("StandardMaterial", "IMaterial", (uint32_t)MaterialType::Standard);
-
         return typeConformances;
+    }
+
+    Program::TypeConformanceList MaterialSystem::getTypeConformances(const MaterialType type) const
+    {
+        switch (type)
+        {
+        case MaterialType::Standard: return Program::TypeConformanceList{ {{"StandardMaterial", "IMaterial"}, (uint32_t)MaterialType::Standard} };
+        case MaterialType::Hair: return Program::TypeConformanceList{ {{"HairMaterial", "IMaterial"}, (uint32_t)MaterialType::Hair} };
+        case MaterialType::Cloth: return Program::TypeConformanceList{ {{"ClothMaterial", "IMaterial"}, (uint32_t)MaterialType::Cloth} };
+        case MaterialType::MERL: return Program::TypeConformanceList{ {{"MERLMaterial", "IMaterial"}, (uint32_t)MaterialType::MERL} };
+        default: throw RuntimeError("Unsupported material type");
+        }
     }
 
     void MaterialSystem::createParameterBlock()

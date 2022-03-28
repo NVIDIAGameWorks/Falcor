@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -34,6 +34,7 @@ import Rendering.Materials.InteriorListHelpers;
 import Rendering.Volumes.HomogeneousVolumeSampler;
 import Rendering.Utils.PixelStats;
 import Rendering.RTXDI.RTXDI;
+import RenderPasses.Shared.Denoising.NRDConstants;
 import RenderPasses.Shared.Denoising.NRDBuffers;
 import RenderPasses.Shared.Denoising.NRDData;
 import RenderPasses.Shared.Denoising.NRDHelpers;
@@ -327,10 +328,39 @@ struct PathTracer
         if (valid) valid = generateScatterRay(result, sd, bsdf, path);
 
         // Ignore valid on purpose for now.
-        if (kOutputNRDData && path.getVertexIndex() == 1)
+        if (kOutputNRDData)
         {
-            path.setDiffusePrimaryHit(result.isLobe(LobeType::Diffuse));
-            path.setSpecularPrimaryHit(result.isLobe(LobeType::Specular));
+            const uint lobes = bsdf.getLobes(sd);
+            const bool hasDeltaTransmissionLobe = (lobes & (uint)LobeType::DeltaTransmission) != 0;
+            const bool hasNonDeltaLobes = (lobes & (uint)LobeType::NonDelta) != 0;
+
+            if (path.getVertexIndex() == 1)
+            {
+                path.setDiffusePrimaryHit(result.isLobe(LobeType::Diffuse));
+                path.setSpecularPrimaryHit(result.isLobe(LobeType::Specular));
+
+                if (kOutputNRDAdditionalData)
+                {
+                    // Mark path as delta-only if it followed delta lobe on the primary hit, even though there might have been non-delta lobes.
+                    path.setDeltaOnlyPath(result.isLobe(LobeType::DeltaReflection) || result.isLobe(LobeType::DeltaTransmission));
+
+                    path.setDeltaReflectionPrimaryHit(result.isLobe(LobeType::DeltaReflection));
+                    path.setDeltaTransmissionPath(result.isLobe(LobeType::DeltaTransmission));
+                }
+            }
+
+            if (path.getVertexIndex() > 1)
+            {
+                if (hasNonDeltaLobes) path.setDeltaOnlyPath(false);
+
+                if (kOutputNRDAdditionalData && path.isDeltaTransmissionPath() && path.isDeltaOnlyPath() && hasDeltaTransmissionLobe)
+                {
+                    if (result.isLobe(LobeType::DeltaReflection) && !isDeltaReflectionAllowedAlongDeltaTransmissionPath(sd))
+                    {
+                        path.setDeltaTransmissionPath(false);
+                    }
+                }
+            }
         }
 
         return valid;
@@ -819,7 +849,7 @@ struct PathTracer
         if (kUseCurves && isCurveHit)
         {
             // For curves, we set the new origin at the sphere center.
-            path.origin = sd.posW - sd.N * sd.curveSphereRadius;
+            path.origin = sd.posW - sd.N * sd.curveRadius;
         }
         else
         {
@@ -873,7 +903,7 @@ struct PathTracer
                     ls.Li *= evalMIS(1, ls.pdf, 1, scatterPdf);
                 }
 
-                float3 weight = bsdf.eval(sd, ls.dir);
+                float3 weight = bsdf.eval(sd, ls.dir, path.sg);
                 float3 Lr = weight * ls.Li;
                 if (any(Lr > 0.f))
                 {
@@ -890,6 +920,8 @@ struct PathTracer
         {
             if (terminatePathByRussianRoulette(path, sampleNext1D(path.sg))) return;
         }
+
+        const bool wasDeltaOnlyPathBeforeScattering = path.isDeltaOnlyPath();
 
         // Generate the next path segment or terminate.
         bool valid = generateScatterRay(sd, bsdf, path);
@@ -913,8 +945,8 @@ struct PathTracer
             setNRDPrimaryHitReflectance(outputNRD, kUseNRDDemodulation, path, pixel, isPrimaryHit, sd, bsdfProperties);
 
             setNRDSampleHitDist(outputNRD, path, outSampleIdx);
-            setNRDSampleEmission(outputNRD, kUseNRDDemodulation, path, outSampleIdx, isPrimaryHit, attenuatedEmission);
-            setNRDSampleReflectance(outputNRD, kUseNRDDemodulation, path, outSampleIdx, isPrimaryHit, sd, bsdfProperties);
+            setNRDSampleEmission(outputNRD, kUseNRDDemodulation, path, outSampleIdx, isPrimaryHit, attenuatedEmission, wasDeltaOnlyPathBeforeScattering);
+            setNRDSampleReflectance(outputNRD, kUseNRDDemodulation, path, outSampleIdx, isPrimaryHit, sd, bsdfProperties, lobes, wasDeltaOnlyPathBeforeScattering);
         }
 
         // Check if this is the last path vertex.
@@ -954,6 +986,8 @@ struct PathTracer
         // that RTXDI cannot handle, such as transmission, delta or volume scattering events.
         if (kUseRTXDI && path.getVertexIndex() == 2 && !path.isTransmission() && !path.isDelta()) computeEnv = false;
 
+        float3 emitterRadiance = 0.f;
+
         if (computeEnv)
         {
             logPathVertex();
@@ -973,7 +1007,8 @@ struct PathTracer
             }
 
             float3 Le = envMapSampler.eval(path.dir);
-            addToPathContribution(path, misWeight * Le);
+            emitterRadiance = misWeight * Le;
+            addToPathContribution(path, emitterRadiance);
 
             if (kOutputGuideData && path.getVertexIndex() == 2
                 && (path.getBounces(BounceType::Specular) == 1
@@ -996,6 +1031,26 @@ struct PathTracer
             const uint outSampleIdx = params.getSampleOffset(path.getPixel(), sampleOffset) + path.getSampleIdx();
             setNRDSampleHitDist(outputNRD, path, outSampleIdx);
         }
+
+#if defined(DELTA_REFLECTION_PASS)
+        if (path.isDeltaReflectionPrimaryHit())
+        {
+            writeNRDDeltaReflectionGuideBuffers(outputNRD, kUseNRDDemodulation, path.getPixel(), 0.f, path.thp * emitterRadiance, -path.dir, 0.f, kNRDInvalidPathLength, kNRDInvalidPathLength);
+        }
+        else
+        {
+            writeNRDDeltaReflectionGuideBuffers(outputNRD, kUseNRDDemodulation, path.getPixel(), 0.f, 0.f, -path.dir, 0.f, kNRDInvalidPathLength, kNRDInvalidPathLength);
+        }
+#elif defined(DELTA_TRANSMISSION_PASS)
+        if (path.isDeltaTransmissionPath())
+        {
+            writeNRDDeltaTransmissionGuideBuffers(outputNRD, kUseNRDDemodulation, path.getPixel(), 0.f, path.thp * emitterRadiance, -path.dir, 0.f, kNRDInvalidPathLength, path.origin + path.dir * kNRDInvalidPathLength);
+        }
+        else
+        {
+            writeNRDDeltaTransmissionGuideBuffers(outputNRD, kUseNRDDemodulation, path.getPixel(), 0.f, 0.f, -path.dir, 0.f, kNRDInvalidPathLength, 0.f);
+        }
+#endif
 
         path.terminate();
     }
@@ -1035,6 +1090,8 @@ struct PathTracer
 
             if (path.isDiffusePrimaryHit()) data.setPathType(NRDPathType::Diffuse);
             else if (path.isSpecularPrimaryHit()) data.setPathType(NRDPathType::Specular);
+            else if (path.isDeltaReflectionPrimaryHit()) data.setPathType(NRDPathType::DeltaReflection);
+            else if (path.isDeltaTransmissionPath()) data.setPathType(NRDPathType::DeltaTransmission);
             else data.setPathType(NRDPathType::Residual);
 
             data.setRadiance(path.L);

@@ -79,6 +79,15 @@ if exist %RtxdiSDKDir% (
     copy /y %RtxdiSDKDir%\RtxdiTypes.h %RtxdiSDKTargetDir% >nul
 )
 
+rem Copy RTXGI SDK shaders
+set RtxgiApiDir=%ExtDir%\rtxgi\rtxgi-sdk
+set RtxgiTargetDir=%OutDir%\Shaders\rtxgi
+if exist %RtxgiApiDir% (
+    if not exist %RtxgiTargetDir% mkdir %RtxgiTargetDir% >nul
+    robocopy %RtxgiApiDir%\include\ %RtxgiTargetDir%\include\ /s /r:0 >nul
+    robocopy %RtxgiApiDir%\shaders\ %RtxgiTargetDir%\shaders\ /s /r:0 >nul
+)
+
 rem Copy Agility SDK Runtime
 set AgilitySDKDir=%ExtDir%\agility-sdk
 set AgilitySDKTargetDir=%OutDir%\D3D12

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -56,32 +56,35 @@ namespace Mogwai
         loadFromFile(mPath);
     }
 
-    void AppData::addRecentScript(const std::string& filename)
+    void AppData::addRecentScript(const std::filesystem::path& path)
     {
-        addRecentFile(mRecentScripts, filename);
+        addRecentPath(mRecentScripts, path);
     }
 
-    void AppData::addRecentScene(const std::string& filename)
+    void AppData::addRecentScene(const std::filesystem::path& path)
     {
-        addRecentFile(mRecentScenes, filename);
+        addRecentPath(mRecentScenes, path);
     }
 
-    void AppData::addRecentFile(std::vector<std::string>& recentFiles, const std::string& filename)
+    void AppData::addRecentPath(std::vector<std::filesystem::path>& paths, const std::filesystem::path& path)
     {
-        std::filesystem::path path = std::filesystem::absolute(filename);
         if (!std::filesystem::exists(path)) return;
-        std::string entry = canonicalizeFilename(path.string());
-        recentFiles.erase(std::remove(recentFiles.begin(), recentFiles.end(), entry), recentFiles.end());
-        recentFiles.insert(recentFiles.begin(), entry);
-        if (recentFiles.size() > kMaxRecentFiles) recentFiles.resize(kMaxRecentFiles);
+        std::filesystem::path fullPath = std::filesystem::canonical(path);
+        paths.erase(std::remove(paths.begin(), paths.end(), fullPath), paths.end());
+        paths.insert(paths.begin(), fullPath);
+        if (paths.size() > kMaxRecentFiles) paths.resize(kMaxRecentFiles);
         save();
     }
 
-    void AppData::removeNonExistingFiles(std::vector<std::string>& files)
+    void AppData::removeNonExistingPaths(std::vector<std::filesystem::path>& paths)
     {
-        files.erase(std::remove_if(files.begin(), files.end(), [](const std::string& filename) {
-            return !doesFileExist(filename);
-        }), files.end());
+        paths.erase(std::remove_if(paths.begin(), paths.end(), [](const auto& path) {
+            // Remove path if file does not exist.
+            if (!std::filesystem::exists(path)) return true;
+            auto canonicalPath = std::filesystem::canonical(path);
+            // Remove path if not in canonical form.
+            return path != canonicalPath;
+        }), paths.end());
     }
 
     void AppData::save()
@@ -101,28 +104,28 @@ namespace Mogwai
 
         if (document.HasParseError())
         {
-            logWarning("Failed to parse Mogwai settings file '{}': {}", path.string(), rapidjson::GetParseError_En(document.GetParseError()));
+            logWarning("Failed to parse Mogwai settings file '{}': {}", path, rapidjson::GetParseError_En(document.GetParseError()));
             return;
         }
 
-        auto readStringArray = [](const rapidjson::Value& value)
+        auto readPathArray = [](const rapidjson::Value& value)
         {
-            std::vector<std::string> strings;
+            std::vector<std::filesystem::path> paths;
             if (value.IsArray())
             {
                 for (const auto& item : value.GetArray())
                 {
-                    if (item.IsString()) strings.push_back(item.GetString());
+                    if (item.IsString()) paths.push_back(item.GetString());
                 }
             }
-            return strings;
+            return paths;
         };
 
-        mRecentScripts = readStringArray(document[kRecentScripts]);
-        mRecentScenes = readStringArray(document[kRecentScenes]);
+        mRecentScripts = readPathArray(document[kRecentScripts]);
+        mRecentScenes = readPathArray(document[kRecentScenes]);
 
-        removeNonExistingFiles(mRecentScripts);
-        removeNonExistingFiles(mRecentScenes);
+        removeNonExistingPaths(mRecentScripts);
+        removeNonExistingPaths(mRecentScenes);
     }
 
     void AppData::saveToFile(const std::filesystem::path& path)
@@ -131,15 +134,15 @@ namespace Mogwai
         document.SetObject();
         auto& allocator = document.GetAllocator();
 
-        auto writeStringArray = [&allocator](const std::vector<std::string>& strings)
+        auto writePathArray = [&allocator](const std::vector<std::filesystem::path>& paths)
         {
             rapidjson::Value value(rapidjson::kArrayType);
-            for (const auto& item : strings) value.PushBack(rapidjson::StringRef(item), allocator);
+            for (const auto& path : paths) value.PushBack(rapidjson::Value(path.string(), allocator), allocator);
             return value;
         };
 
-        document.AddMember(kRecentScripts, writeStringArray(mRecentScripts), allocator);
-        document.AddMember(kRecentScenes, writeStringArray(mRecentScenes), allocator);
+        document.AddMember(kRecentScripts, writePathArray(mRecentScripts), allocator);
+        document.AddMember(kRecentScenes, writePathArray(mRecentScenes), allocator);
 
         std::ofstream ofs(path);
         if (!ofs.good()) return;

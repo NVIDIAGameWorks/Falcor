@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -133,7 +133,6 @@ ShadingData loadShadingData(const HitInfo hit, const float3 rayOrigin, const flo
 {
     VertexData v = {};
     uint materialID = {};
-    float curveSphereRadius = {};
 
 #if SCENE_HAS_GEOMETRY_TYPE(GEOMETRY_TYPE_TRIANGLE_MESH)
     if (hit.getType() == HitType::Triangle)
@@ -155,7 +154,7 @@ ShadingData loadShadingData(const HitInfo hit, const float3 rayOrigin, const flo
     if (hit.getType() == HitType::Curve)
     {
         const CurveHit curveHit = hit.getCurveHit();
-        v = gScene.getVertexDataFromCurve(curveHit, curveSphereRadius);
+        v = gScene.getVertexDataFromCurve(curveHit);
         materialID = gScene.getMaterialID(curveHit.instanceID);
     }
 #endif
@@ -169,13 +168,6 @@ ShadingData loadShadingData(const HitInfo hit, const float3 rayOrigin, const flo
 #endif
 
     ShadingData sd = gScene.materials.prepareShadingData(v, materialID, -rayDir, lod);
-
-#if SCENE_HAS_GEOMETRY_TYPE(GEOMETRY_TYPE_CURVE)
-    if (hit.getType() == HitType::Curve)
-    {
-        sd.curveSphereRadius = curveSphereRadius;
-    }
-#endif
 
     return sd;
 }
@@ -269,7 +261,7 @@ float3 evalDirectAnalytic(const ShadingData sd, const IBSDF bsdf, inout SampleGe
     if (!V) return float3(0.f);
 
     // Evaluate contribution.
-    return bsdf.eval(sd, ls.dir) * ls.Li * invPdf;
+    return bsdf.eval(sd, ls.dir, sg) * ls.Li * invPdf;
 }
 
 /** Generate a new scatter ray or terminate.
@@ -335,7 +327,7 @@ void handleHit(const HitInfo hit, inout ScatterRayData rayData)
     if (isCurveHit)
     {
         // For curves, we set the new origin at the sphere center.
-        rayOrigin = sd.posW - sd.curveSphereRadius * sd.N;
+        rayOrigin = sd.posW - sd.curveRadius * sd.N;
     }
     else
     {
@@ -406,7 +398,7 @@ float3 tracePath(const uint2 pixel, const uint2 frameDim)
         if (isCurveHit)
         {
             // For curves, we set the new origin at the sphere center.
-            rayOrigin = sd.posW - sd.curveSphereRadius * sd.N;
+            rayOrigin = sd.posW - sd.curveRadius * sd.N;
         }
         else
         {

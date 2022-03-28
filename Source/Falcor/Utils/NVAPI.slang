@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,7 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#if FALCOR_ENABLE_NVAPI
+#if FALCOR_NVAPI_AVAILABLE
 #define NV_SHADER_EXTN_SLOT u63
 #define NV_SHADER_EXTN_REGISTER_SPACE space0
 #include "NVAPI/nvHLSLExtns.h"

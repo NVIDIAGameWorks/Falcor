@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -113,7 +113,22 @@ namespace Falcor
         gfxDesc.reductionOp = (desc.mComparisonMode != Sampler::ComparisonMode::Disabled) ? gfx::TextureReductionOp::Comparison : getGFXReductionMode(desc.mReductionMode);
 
         Sampler::SharedPtr result = Sampler::SharedPtr(new Sampler(desc));
-        gfx_call(gpDevice->getApiHandle()->createSamplerState(gfxDesc, result->mApiHandle.writeRef()));
+        FALCOR_GFX_CALL(gpDevice->getApiHandle()->createSamplerState(gfxDesc, result->mApiHandle.writeRef()));
         return result;
+    }
+
+    D3D12DescriptorCpuHandle Sampler::getD3D12CpuHeapHandle() const
+    {
+#if FALCOR_D3D12_AVAILABLE
+        gfx::InteropHandle handle = {};
+        FALCOR_GFX_CALL(mApiHandle->getNativeHandle(&handle));
+        FALCOR_ASSERT(handle.api == gfx::InteropHandleAPI::D3D12CpuDescriptorHandle);
+
+        D3D12DescriptorCpuHandle resultHandle;
+        resultHandle.ptr = handle.handleValue;
+        return resultHandle;
+#else
+        return nullptr;
+#endif
     }
 }

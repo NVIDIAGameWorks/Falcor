@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -36,26 +36,29 @@ namespace Falcor
         mBaseDesc.setShaderModel("6_5");
     }
 
-    RtProgram::ShaderID RtProgram::Desc::addRayGen(const std::string& raygen)
+    RtProgram::ShaderID RtProgram::Desc::addRayGen(const std::string& raygen, const TypeConformanceList& typeConformances, const std::string& entryPointNameSuffix)
     {
-        mBaseDesc.beginEntryPointGroup();
+        mBaseDesc.beginEntryPointGroup(entryPointNameSuffix);
         mBaseDesc.entryPoint(ShaderType::RayGeneration, raygen);
+        mBaseDesc.addTypeConformancesToGroup(typeConformances);
 
         mRayGenCount++;
         return { mBaseDesc.mActiveGroup };
     }
 
-    RtProgram::ShaderID RtProgram::Desc::addMiss(const std::string& miss)
+    RtProgram::ShaderID RtProgram::Desc::addMiss(const std::string& miss, const TypeConformanceList& typeConformances, const std::string& entryPointNameSuffix)
     {
-        mBaseDesc.beginEntryPointGroup();
+        mBaseDesc.beginEntryPointGroup(entryPointNameSuffix);
         mBaseDesc.entryPoint(ShaderType::Miss, miss);
+        mBaseDesc.addTypeConformancesToGroup(typeConformances);
 
         return { mBaseDesc.mActiveGroup };
     }
 
-    RtProgram::ShaderID RtProgram::Desc::addHitGroup(const std::string& closestHit, const std::string& anyHit, const std::string& intersection)
+    RtProgram::ShaderID RtProgram::Desc::addHitGroup(const std::string& closestHit, const std::string& anyHit, const std::string& intersection, const TypeConformanceList& typeConformances, const std::string& entryPointNameSuffix)
     {
-        mBaseDesc.beginEntryPointGroup();
+        mBaseDesc.beginEntryPointGroup(entryPointNameSuffix);
+        mBaseDesc.addTypeConformancesToGroup(typeConformances);
         if (!closestHit.empty())
         {
             mBaseDesc.entryPoint(ShaderType::ClosestHit, closestHit);
@@ -74,14 +77,13 @@ namespace Falcor
 
     RtProgram::SharedPtr RtProgram::create(Desc desc, const DefineList& programDefines)
     {
-        SharedPtr pProg = SharedPtr(new RtProgram(desc));
-        pProg->init(desc.mBaseDesc, programDefines);
-        pProg->setTypeConformances(desc.mBaseDesc.mTypeConformances);
+        auto pProg = SharedPtr(new RtProgram(desc, programDefines));
+        registerProgramForReload(pProg);
         return pProg;
     }
 
-    RtProgram::RtProgram(const RtProgram::Desc& desc)
-        : Program()
+    RtProgram::RtProgram(const RtProgram::Desc& desc, const DefineList& programDefines)
+        : Program(desc.mBaseDesc, programDefines)
         , mRtDesc(desc)
     {
         if (desc.mRayGenCount == 0)

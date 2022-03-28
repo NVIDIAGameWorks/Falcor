@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -51,7 +51,9 @@ namespace Falcor
 
             if (auto passGroup = widget.group(p.name))
             {
-                // If you are thinking about displaying the profiler results next to the group label, it won't work. Since the times change every frame, IMGUI thinks it's a different group and will not expand it
+                // Create a unique ID scope per render pass so we can have multiple instances of a render render using the same widget IDs.
+                IDScope idScope(p.pPass.get());
+
                 const auto& desc = pPass->getDesc();
                 if (desc.size()) passGroup.tooltip(desc);
                 pPass->renderUI(passGroup);

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -39,7 +39,7 @@ namespace Falcor
         const std::string kPrevInverseTransposeWorldMatrices = "prevInverseTransposeWorldMatrices";
     }
 
-    AnimationController::AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const DynamicVertexVector& dynamicVertexData, const std::vector<Animation::SharedPtr>& animations)
+    AnimationController::AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations)
         : mpScene(pScene)
         , mAnimations(animations)
         , mNodesEdited(pScene->mSceneGraph.size())
@@ -64,7 +64,24 @@ namespace Falcor
             mpPrevInvTransposeWorldMatricesBuffer->setName("AnimationController::mpPrevInvTransposeWorldMatricesBuffer");
         }
 
-        createSkinningPass(staticVertexData, dynamicVertexData);
+        // An extra buffer is required to store the previous frame vertex data for skinned and vertex-animated meshes.
+        // The buffer contains data for skinned meshes first, followed by vertex-animated meshes.
+        //
+        // Initialize the previous positions for skinned vertices. AnimatedVertexCache will initialize the remaining data if necessary
+        // This ensures we have valid data in the buffer before the skinning pass runs for the first time.
+        if (prevVertexCount > 0)
+        {
+            std::vector<PrevVertexData> prevVertexData(prevVertexCount);
+            for (size_t i = 0; i < skinningVertexData.size(); i++)
+            {
+                uint32_t staticIndex = skinningVertexData[i].staticIndex;
+                prevVertexData[i].position = staticVertexData[staticIndex].position;
+            }
+            mpPrevVertexData = Buffer::createStructured(sizeof(PrevVertexData), prevVertexCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, prevVertexData.data(), false);
+            mpPrevVertexData->setName("AnimationController::mpPrevVertexData");
+        }
+
+        createSkinningPass(staticVertexData, skinningVertexData);
 
         // Determine length of global animation loop.
         for (const auto& pAnimation : mAnimations)
@@ -73,14 +90,76 @@ namespace Falcor
         }
     }
 
-    AnimationController::UniquePtr AnimationController::create(Scene* pScene, const StaticVertexVector& staticVertexData, const DynamicVertexVector& dynamicVertexData, const std::vector<Animation::SharedPtr>& animations)
+    AnimationController::UniquePtr AnimationController::create(Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations)
     {
-        return UniquePtr(new AnimationController(pScene, staticVertexData, dynamicVertexData, animations));
+        return UniquePtr(new AnimationController(pScene, staticVertexData, skinningVertexData, prevVertexCount, animations));
     }
 
-    void AnimationController::addAnimatedVertexCaches(std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes)
+    void AnimationController::addAnimatedVertexCaches(std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes, const StaticVertexVector& staticVertexData)
     {
-        mpVertexCache = AnimatedVertexCache::create(mpScene, std::move(cachedCurves), std::move(cachedMeshes));
+        size_t totalAnimatedMeshVertexCount = 0;
+
+        for (auto& cache : cachedMeshes)
+        {
+            totalAnimatedMeshVertexCount += mpScene->getMesh(cache.meshID).vertexCount;
+        }
+        for (auto& cache : cachedCurves)
+        {
+            if (cache.tessellationMode != CurveTessellationMode::LinearSweptSphere)
+            {
+                totalAnimatedMeshVertexCount += mpScene->getMesh(cache.geometryID).vertexCount;
+            }
+        }
+
+        if (totalAnimatedMeshVertexCount > 0)
+        {
+            // Initialize remaining previous position data
+            std::vector<PrevVertexData> prevVertexData;
+            prevVertexData.reserve(totalAnimatedMeshVertexCount);
+
+            for (auto& cache : cachedMeshes)
+            {
+                uint32_t offset = mpScene->getMesh(cache.meshID).vbOffset;
+                for (size_t i = 0; i < cache.vertexData.front().size(); i++)
+                {
+                    prevVertexData.push_back({ staticVertexData[offset + i].position });
+                }
+            }
+
+            for (auto& cache : cachedCurves)
+            {
+                if (cache.tessellationMode != CurveTessellationMode::LinearSweptSphere)
+                {
+                    uint32_t offset = mpScene->getMesh(cache.geometryID).vbOffset;
+                    uint32_t vertexCount = mpScene->getMesh(cache.geometryID).vertexCount;
+                    for (size_t i = 0; i < vertexCount; i++)
+                    {
+                        prevVertexData.push_back({ staticVertexData[offset + i].position });
+                    }
+                }
+            }
+
+            uint32_t byteOffset = 0;
+            if (!cachedMeshes.empty())
+            {
+                byteOffset = mpScene->getMesh(cachedMeshes.front().meshID).prevVbOffset * sizeof(PrevVertexData);
+            }
+            else // !cachedCurves.empty()
+            {
+                for (auto& cache : cachedCurves)
+                {
+                    if (cache.tessellationMode != CurveTessellationMode::LinearSweptSphere)
+                    {
+                        byteOffset = mpScene->getMesh(cache.geometryID).prevVbOffset * sizeof(PrevVertexData);
+                        break;
+                    }
+                }
+            }
+
+            mpPrevVertexData->setBlob(prevVertexData.data(), byteOffset, prevVertexData.size() * sizeof(PrevVertexData));
+        }
+
+        mpVertexCache = AnimatedVertexCache::create(mpScene, mpPrevVertexData, std::move(cachedCurves), std::move(cachedMeshes));
 
         // Note: It is a workaround to have two pre-infinity behaviors for the cached animation.
         // We need `Cycle` behavior when the length of cached animation is smaller than the length of mesh animation (e.g., tiger forest).
@@ -306,14 +385,14 @@ namespace Falcor
         m += mpSkinningMatricesBuffer ? mpSkinningMatricesBuffer->getSize() : 0;
         m += mpInvTransposeSkinningMatricesBuffer ? mpInvTransposeSkinningMatricesBuffer->getSize() : 0;
         m += mpMeshBindMatricesBuffer ? mpMeshBindMatricesBuffer->getSize() : 0;
-        m += mpSkinningStaticVertexData ? mpSkinningStaticVertexData->getSize() : 0;
-        m += mpSkinningDynamicVertexData ? mpSkinningDynamicVertexData->getSize() : 0;
+        m += mpStaticVertexData ? mpStaticVertexData->getSize() : 0;
+        m += mpSkinningVertexData ? mpSkinningVertexData->getSize() : 0;
         m += mpPrevVertexData ? mpPrevVertexData->getSize() : 0;
         m += mpVertexCache ? mpVertexCache->getMemoryUsageInBytes() : 0;
         return m;
     }
 
-    void AnimationController::createSkinningPass(const std::vector<PackedStaticVertexData>& staticVertexData, const std::vector<DynamicVertexData>& dynamicVertexData)
+    void AnimationController::createSkinningPass(const std::vector<PackedStaticVertexData>& staticVertexData, const std::vector<SkinningVertexData>& skinningVertexData)
     {
         if (staticVertexData.empty()) return;
 
@@ -323,7 +402,7 @@ namespace Falcor
         FALCOR_ASSERT(pVB->getSize() == staticVertexData.size() * sizeof(staticVertexData[0]));
         pVB->setBlob(staticVertexData.data(), 0, pVB->getSize());
 
-        if (!dynamicVertexData.empty())
+        if (!skinningVertexData.empty())
         {
             mSkinningMatrices.resize(mpScene->mSceneGraph.size());
             mInvTransposeSkinningMatrices.resize(mSkinningMatrices.size());
@@ -331,15 +410,6 @@ namespace Falcor
 
             mpSkinningPass = ComputePass::create("Scene/Animation/Skinning.slang");
             auto block = mpSkinningPass->getVars()["gData"];
-
-            // Initialize the previous positions for skinned vertices.
-            // This ensures we have valid data in the buffer before the skinning pass runs for the first time.
-            std::vector<PrevVertexData> prevVertexData(dynamicVertexData.size());
-            for (size_t i = 0; i < dynamicVertexData.size(); i++)
-            {
-                uint32_t staticIndex = dynamicVertexData[i].staticIndex;
-                prevVertexData[i].position = staticVertexData[staticIndex].position;
-            }
 
             // Initialize mesh bind transforms
             std::vector<float4x4> meshInvBindMatrices(mMeshBindMatrices.size());
@@ -351,16 +421,14 @@ namespace Falcor
 
             // Bind vertex data.
             FALCOR_ASSERT(staticVertexData.size() <= std::numeric_limits<uint32_t>::max());
-            FALCOR_ASSERT(dynamicVertexData.size() <= std::numeric_limits<uint32_t>::max());
-            mpSkinningStaticVertexData = Buffer::createStructured(block["staticData"], (uint32_t)staticVertexData.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, staticVertexData.data(), false);
-            mpSkinningStaticVertexData->setName("AnimationController::mpSkinningStaticVertexData");
-            mpSkinningDynamicVertexData = Buffer::createStructured(block["dynamicData"], (uint32_t)dynamicVertexData.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, dynamicVertexData.data(), false);
-            mpSkinningDynamicVertexData->setName("AnimationController::mpSkinningDynamicVertexData");
-            mpPrevVertexData = Buffer::createStructured(block["prevSkinnedVertices"], (uint32_t)dynamicVertexData.size(), ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, prevVertexData.data(), false);
-            mpPrevVertexData->setName("AnimationController::mpPrevVertexData");
+            FALCOR_ASSERT(skinningVertexData.size() <= std::numeric_limits<uint32_t>::max());
+            mpStaticVertexData = Buffer::createStructured(block["staticData"], (uint32_t)staticVertexData.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, staticVertexData.data(), false);
+            mpStaticVertexData->setName("AnimationController::mpStaticVertexData");
+            mpSkinningVertexData = Buffer::createStructured(block["skinningData"], (uint32_t)skinningVertexData.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, skinningVertexData.data(), false);
+            mpSkinningVertexData->setName("AnimationController::mpSkinningVertexData");
 
-            block["staticData"] = mpSkinningStaticVertexData;
-            block["dynamicData"] = mpSkinningDynamicVertexData;
+            block["staticData"] = mpStaticVertexData;
+            block["skinningData"] = mpSkinningVertexData;
             block["skinnedVertices"] = pVB;
             block["prevSkinnedVertices"] = mpPrevVertexData;
 
@@ -381,7 +449,7 @@ namespace Falcor
             block["meshBindMatrices"].setBuffer(mpMeshBindMatricesBuffer);
             block["meshInvBindMatrices"].setBuffer(mpMeshInvBindMatricesBuffer);
 
-            mSkinningDispatchSize = (uint32_t)dynamicVertexData.size();
+            mSkinningDispatchSize = (uint32_t)skinningVertexData.size();
         }
     }
 

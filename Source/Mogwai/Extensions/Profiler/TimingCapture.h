@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -43,9 +43,9 @@ namespace Mogwai
     protected:
         TimingCapture(Renderer *pRenderer) : Extension(pRenderer, "Timing Capture") {}
 
-        /** Start capture frame times to file, or end capture if filename is empty.
+        /** Start capture frame times to file, or end capture if path is empty.
         */
-        void captureFrameTime(std::string filename);
+        void captureFrameTime(std::filesystem::path path);
         void recordPreviousFrameTime();
 
         std::ofstream   mFrameTimeFile;     ///< Frame times are appended to this file when it's open.

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -79,7 +79,7 @@ struct DisplacedTriangleMeshIntersector
 */
 struct CurveIntersector
 {
-    static const bool kUseSphereJoints = false;
+    static const bool kUseSphereJoints = true;
 
     /** Intersection attributes.
     */
@@ -166,7 +166,6 @@ struct SDFGridIntersector
         // Convert ray origin and direction to local space.
         float3 rayOrigLocal = mul(worldInvTransposeMat, ray.origin - worldMat[3].xyz);
         float3 rayDirLocal = mul(worldInvTransposeMat, ray.dir);
-
 
         return sdfGrid.intersectSDF(rayOrigLocal, rayDirLocal, ray.tMin, ray.tMax, primitiveID, t, hitData);
     }

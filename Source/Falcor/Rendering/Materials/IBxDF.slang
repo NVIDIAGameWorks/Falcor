@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -49,9 +49,10 @@ interface IBxDF
     /** Evaluates the BxDF.
         \param[in] wi Incident direction.
         \param[in] wo Outgoing direction.
+        \param[in,out] sg Sample generator.
         \return Returns f(wi, wo) * dot(wo, n).
     */
-    float3 eval(const float3 wi, const float3 wo);
+    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg);
 
     /** Samples the BxDF.
         \param[in] wi Incident direction.

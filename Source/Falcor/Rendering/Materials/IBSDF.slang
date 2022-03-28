@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -116,9 +116,10 @@ interface IBSDF
     /** Evaluates the BSDF.
         \param[in] sd Shading data.
         \param[in] wo Outgoing direction.
+        \param[in,out] sg Sample generator.
         \return Returns f(wi, wo) * dot(wo, n).
     */
-    float3 eval(const ShadingData sd, const float3 wo);
+    float3 eval<S : ISampleGenerator>(const ShadingData sd, const float3 wo, inout S sg);
 
     /** Samples the BSDF.
         \param[in] sd Shading data.

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -47,7 +47,7 @@ namespace Mogwai
         const std::string kGraphFileSwitch = "--graph-file";
         const std::string kGraphNameSwitch = "--graph-name";
 
-        const std::string kAppDataPath = getAppDataDirectory() + "/NVIDIA/Falcor/Mogwai.json";
+        const std::filesystem::path kAppDataPath = getAppDataDirectory() / "NVIDIA/Falcor/Mogwai.json";
     }
 
     size_t Renderer::DebugWindow::index = 0;
@@ -259,18 +259,18 @@ namespace Mogwai
         }
     }
 
-    void Renderer::onDroppedFile(const std::string& filename)
+    void Renderer::onDroppedFile(const std::filesystem::path& path)
     {
-        std::string ext = getExtensionFromFile(filename);
+        std::string ext = getExtensionFromPath(path);
         if (ext == "py")
         {
-            loadScript(filename);
-            mAppData.addRecentScript(filename);
+            loadScript(path);
+            mAppData.addRecentScript(path);
         }
         else if (std::any_of(Scene::getFileExtensionFilters().begin(), Scene::getFileExtensionFilters().end(), [&ext](FileDialogFilter f) {return f.ext == ext; }))
         {
-            loadScene(filename);
-            mAppData.addRecentScene(filename);
+            loadScene(path);
+            mAppData.addRecentScene(path);
         }
         else
         {
@@ -280,7 +280,7 @@ namespace Mogwai
 
     void Renderer::editorFileChangeCB()
     {
-        mEditorScript = readFile(mEditorTempFile);
+        mEditorScript = readFile(mEditorTempPath);
     }
 
     void Renderer::openEditor()
@@ -289,16 +289,16 @@ namespace Mogwai
         // If the current graph output is not an original output, unmark it
         if (unmarkOut) mGraphs[mActiveGraph].pGraph->unmarkOutput(mGraphs[mActiveGraph].mainOutput);
 
-        mEditorTempFile = getTempFilename();
+        mEditorTempPath = getTempFilePath();
 
         // Save the graph
-        RenderGraphExporter::save(mGraphs[mActiveGraph].pGraph, mEditorTempFile);
+        RenderGraphExporter::save(mGraphs[mActiveGraph].pGraph, mEditorTempPath);
 
         // Register an update callback
-        monitorFileUpdates(mEditorTempFile, std::bind(&Renderer::editorFileChangeCB, this));
+        monitorFileUpdates(mEditorTempPath, std::bind(&Renderer::editorFileChangeCB, this));
 
         // Run the process
-        std::string commandLineArgs = kEditorSwitch + " " + kGraphFileSwitch + " " + mEditorTempFile + " " + kGraphNameSwitch + " " + mGraphs[mActiveGraph].pGraph->getName();
+        std::string commandLineArgs = kEditorSwitch + " " + kGraphFileSwitch + " " + mEditorTempPath.string() + " " + kGraphNameSwitch + " " + mGraphs[mActiveGraph].pGraph->getName();
         mEditorProcess = executeProcess(kEditorExecutableName, commandLineArgs);
 
         // Mark the output if it's required
@@ -309,8 +309,8 @@ namespace Mogwai
     {
         if (mEditorProcess)
         {
-            closeSharedFile(mEditorTempFile);
-            std::remove(mEditorTempFile.c_str());
+            closeSharedFile(mEditorTempPath);
+            std::filesystem::remove(mEditorTempPath);
             if (mEditorProcess != kInvalidProcessId)
             {
                 terminateProcess(mEditorProcess);
@@ -397,48 +397,48 @@ namespace Mogwai
 
     void Renderer::loadScriptDialog()
     {
-        std::string filename;
-        if (openFileDialog(Scripting::kFileExtensionFilters, filename))
+        std::filesystem::path path;
+        if (openFileDialog(Scripting::kFileExtensionFilters, path))
         {
-            loadScriptDeferred(filename);
-            mAppData.addRecentScript(filename);
+            loadScriptDeferred(path);
+            mAppData.addRecentScript(path);
         }
     }
 
-    void Renderer::loadScriptDeferred(const std::string& filename)
+    void Renderer::loadScriptDeferred(const std::filesystem::path& path)
     {
-        mScriptFilename = filename;
+        mScriptPath = path;
     }
 
-    void Renderer::loadScript(const std::string& filename)
+    void Renderer::loadScript(const std::filesystem::path& path)
     {
-        FALCOR_ASSERT(filename.size());
+        FALCOR_ASSERT(!path.empty());
 
         try
         {
             if (ProgressBar::isActive()) ProgressBar::show("Loading Configuration");
 
             // Add script directory to search paths (add it to the front to make it highest priority).
-            const std::string directory = getDirectoryFromFile(filename);
+            auto directory = path.parent_path();
             addDataDirectory(directory, true);
 
-            Scripting::runScriptFromFile(filename);
+            Scripting::runScriptFromFile(path);
 
             removeDataDirectory(directory);
         }
         catch (const std::exception& e)
         {
-            reportError("Error when loading configuration file: " + filename + "\n" + std::string(e.what()));
+            reportError(fmt::format("Error when loading configuration file: {}\n{}", path, e.what()));
         }
     }
 
     void Renderer::saveConfigDialog()
     {
-        std::string filename;
-        if (saveFileDialog(Scripting::kFileExtensionFilters, filename))
+        std::filesystem::path path;
+        if (saveFileDialog(Scripting::kFileExtensionFilters, path))
         {
-            saveConfig(filename);
-            mAppData.addRecentScript(filename);
+            saveConfig(path);
+            mAppData.addRecentScript(path);
         }
     }
 
@@ -466,15 +466,15 @@ namespace Mogwai
 
     void Renderer::loadSceneDialog()
     {
-        std::string filename;
-        if (openFileDialog(Scene::getFileExtensionFilters(), filename))
+        std::filesystem::path path;
+        if (openFileDialog(Scene::getFileExtensionFilters(), path))
         {
-            loadScene(filename);
-            mAppData.addRecentScene(filename);
+            loadScene(path);
+            mAppData.addRecentScene(path);
         }
     }
 
-    void Renderer::loadScene(std::string filename, SceneBuilder::Flags buildFlags)
+    void Renderer::loadScene(std::filesystem::path path, SceneBuilder::Flags buildFlags)
     {
         if (mOptions.useSceneCache) buildFlags |= SceneBuilder::Flags::UseCache;
         if (mOptions.rebuildSceneCache) buildFlags |= SceneBuilder::Flags::RebuildCache;
@@ -484,14 +484,14 @@ namespace Mogwai
             try
             {
                 TimeReport timeReport;
-                setScene(SceneBuilder::create(filename, buildFlags)->getScene());
+                setScene(SceneBuilder::create(path, buildFlags)->getScene());
                 timeReport.measure("Loading scene (total)");
                 timeReport.printToLog();
                 return;
             }
             catch (const ImporterError &e)
             {
-                reportErrorAndAllowRetry("Failed to load scene.\n\nError in " + e.filename() + "\n\n" + e.what());
+                reportErrorAndAllowRetry(fmt::format("Failed to load scene.\n\nError in {}\n\n{}", e.path(), e.what()));
             }
         }
     }
@@ -588,11 +588,11 @@ namespace Mogwai
 
     void Renderer::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
     {
-        if(mScriptFilename.size())
+        if (!mScriptPath.empty())
         {
-            std::string s = mScriptFilename;
-            mScriptFilename.clear();
-            loadScript(s);
+            auto path = mScriptPath;
+            mScriptPath.clear();
+            loadScript(path);
         }
 
         applyEditorChanges();
@@ -652,6 +652,16 @@ namespace Mogwai
         }
         if (mGraphs.size()) mGraphs[mActiveGraph].pGraph->onKeyEvent(keyEvent);
         return mpScene ? mpScene->onKeyEvent(keyEvent) : false;
+    }
+
+    bool Renderer::onGamepadEvent(const GamepadEvent& gamepadEvent)
+    {
+        return mpScene ? mpScene->onGamepadEvent(gamepadEvent) : false;
+    }
+
+    bool Renderer::onGamepadState(const GamepadState& gamepadState)
+    {
+        return mpScene ? mpScene->onGamepadState(gamepadState) : false;
     }
 
     void Renderer::onResizeSwapChain(uint32_t width, uint32_t height)

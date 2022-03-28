@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -38,6 +38,7 @@ namespace
     const uint32_t kMaxAttributeSizeBytes = 8;
     const uint32_t kMaxRecursionDepth = 1;
 
+    const char kMode[] = "mode";
     const char kOutput[] = "output";
 
     std::mt19937 rng;
@@ -53,12 +54,25 @@ void TestRtProgram::registerScriptBindings(pybind11::module& m)
 
 TestRtProgram::SharedPtr TestRtProgram::create(RenderContext* pRenderContext, const Dictionary& dict)
 {
-    return SharedPtr(new TestRtProgram());
+    return SharedPtr(new TestRtProgram(dict));
+}
+
+TestRtProgram::TestRtProgram(const Dictionary& dict)
+    : RenderPass(kInfo)
+{
+    for (const auto& [key, value] : dict)
+    {
+        if (key == kMode) mMode = value;
+        else logWarning("Unknown field '{}' in TestRtProgram dictionary.", key);
+    }
+    if (mMode > 1) throw RuntimeError("mode has to be 0 or 1");
 }
 
 Dictionary TestRtProgram::getScriptingDictionary()
 {
-    return Dictionary();
+    Dictionary dict;
+    dict[kMode] = mMode;
+    return dict;
 }
 
 RenderPassReflection TestRtProgram::reflect(const CompileData& compileData)
@@ -84,11 +98,11 @@ void TestRtProgram::setScene(RenderContext* pRenderContext, const Scene::SharedP
 void TestRtProgram::sceneChanged()
 {
     FALCOR_ASSERT(mpScene);
+    const uint32_t geometryCount = mpScene->getGeometryCount();
 
     //
     // Example creating a ray tracing program using the new interfaces.
     //
-    uint32_t geometryCount = mpScene->getGeometryCount();
 
     RtProgram::Desc desc;
     desc.addShaderLibrary(kShaderFilename);
@@ -96,67 +110,111 @@ void TestRtProgram::sceneChanged()
     desc.setMaxPayloadSize(kMaxPayloadSizeBytes);
     desc.setMaxAttributeSize(kMaxAttributeSizeBytes);
 
-    auto sbt = RtBindingTable::create(2, 2, mpScene->getGeometryCount());
+    RtBindingTable::SharedPtr sbt;
 
-    // Create miss shaders.
+    if (mMode == 0)
+    {
+        // In this mode we test having two different ray types traced against
+        // both triangles and custom primitives using intersection shaders.
+
+        sbt = RtBindingTable::create(2, 2, geometryCount);
+
+        // Create hit group shaders.
+        auto defaultMtl0 = desc.addHitGroup("closestHitMtl0", "anyHit", "");
+        auto defaultMtl1 = desc.addHitGroup("closestHitMtl1", "anyHit", "");
+
+        auto greenMtl = desc.addHitGroup("closestHitGreen", "", "");
+        auto redMtl = desc.addHitGroup("closestHitRed", "", "");
+
+        auto sphereDefaultMtl0 = desc.addHitGroup("closestHitSphereMtl0", "", "intersectSphere");
+        auto sphereDefaultMtl1 = desc.addHitGroup("closestHitSphereMtl1", "", "intersectSphere");
+
+        auto spherePurple = desc.addHitGroup("closestHitSpherePurple", "", "intersectSphere");
+        auto sphereYellow = desc.addHitGroup("closestHitSphereYellow", "", "intersectSphere");
+
+        // Assign default hit groups to all geometries.
+        sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), defaultMtl0);
+        sbt->setHitGroup(1, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), defaultMtl1);
+
+        sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::Custom), sphereDefaultMtl0);
+        sbt->setHitGroup(1, mpScene->getGeometryIDs(Scene::GeometryType::Custom), sphereDefaultMtl1);
+
+        // Override specific hit groups for some geometries.
+        for (uint geometryID = 0; geometryID < geometryCount; geometryID++)
+        {
+            auto type = mpScene->getGeometryType(geometryID);
+
+            if (type == Scene::GeometryType::TriangleMesh)
+            {
+                if (geometryID == 1)
+                {
+                    sbt->setHitGroup(0, geometryID, greenMtl);
+                    sbt->setHitGroup(1, geometryID, redMtl);
+                }
+                else if (geometryID == 3)
+                {
+                    sbt->setHitGroup(0, geometryID, redMtl);
+                    sbt->setHitGroup(1, geometryID, greenMtl);
+                }
+            }
+            else if (type == Scene::GeometryType::Custom)
+            {
+                uint32_t index = mpScene->getCustomPrimitiveIndex(geometryID);
+                uint32_t userID = mpScene->getCustomPrimitive(index).userID;
+
+                // Use non-default material for custom primitives with even userID.
+                if (userID % 2 == 0)
+                {
+                    sbt->setHitGroup(0, geometryID, spherePurple);
+                    sbt->setHitGroup(1, geometryID, sphereYellow);
+                }
+            }
+        }
+
+        // Add global type conformances.
+        desc.addTypeConformances(mpScene->getTypeConformances());
+    }
+    else
+    {
+        // In this mode we test specialization of a hit group using two different
+        // sets of type conformances. This functionality is normally used for specializing
+        // a hit group for different materials types created with createDynamicObject().
+
+        sbt = RtBindingTable::create(2, 1, geometryCount);
+
+        // Create type conformances.
+        Program::TypeConformanceList typeConformances0 = Program::TypeConformanceList{ {{"Mtl0", "IMtl"}, 0u} };
+        Program::TypeConformanceList typeConformances1 = Program::TypeConformanceList{ {{"Mtl1", "IMtl"}, 1u} };
+        Program::TypeConformanceList typeConformances2 = Program::TypeConformanceList{ {{"Mtl2", "IMtl"}, 2u} };
+
+        // Create hit group shaders.
+        // These are using the same entry points but are specialized using different type conformances.
+        // For each specialization we add a name suffix so that each generated entry point has a unique name.
+        RtProgram::ShaderID mtl[3];
+        mtl[0] = desc.addHitGroup("closestHit", "anyHit", "", typeConformances0, "Mtl0");
+        mtl[1] = desc.addHitGroup("closestHit", "anyHit", "", typeConformances1, "Mtl1");
+        mtl[2] = desc.addHitGroup("closestHit", "anyHit", "", typeConformances2, "Mtl2");
+
+        // Assign hit groups to all triangle geometries.
+        for (auto geometryID : mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh))
+        {
+            // Select hit group shader ID based on geometry ID.
+            // This will ensure that we use the correct specialized shader for each geometry.
+            auto shaderID = mtl[geometryID % 3];
+            sbt->setHitGroup(0 /* rayType*/, geometryID, shaderID);
+        }
+    }
+
+    // Create raygen and miss shaders.
     sbt->setRayGen(desc.addRayGen("rayGen"));
     sbt->setMiss(0, desc.addMiss("miss0"));
     sbt->setMiss(1, desc.addMiss("miss1"));
 
-    // Create hit group shaders.
-    auto defaultMtl0 = desc.addHitGroup("closestHitMtl0", "anyHit", "");
-    auto defaultMtl1 = desc.addHitGroup("closestHitMtl1", "anyHit", "");
+    Program::DefineList defines = mpScene->getSceneDefines();
+    defines.add("MODE", std::to_string(mMode));
 
-    auto greenMtl = desc.addHitGroup("closestHitGreen", "", "");
-    auto redMtl = desc.addHitGroup("closestHitRed", "", "");
-
-    auto sphereDefaultMtl0 = desc.addHitGroup("closestHitSphereMtl0", "", "intersectSphere");
-    auto sphereDefaultMtl1 = desc.addHitGroup("closestHitSphereMtl1", "", "intersectSphere");
-
-    auto spherePurple = desc.addHitGroup("closestHitSpherePurple", "", "intersectSphere");
-    auto sphereYellow = desc.addHitGroup("closestHitSphereYellow", "", "intersectSphere");
-
-    // Assign default hit groups to all geometries.
-    sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), defaultMtl0);
-    sbt->setHitGroup(1, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), defaultMtl1);
-
-    sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::Custom), sphereDefaultMtl0);
-    sbt->setHitGroup(1, mpScene->getGeometryIDs(Scene::GeometryType::Custom), sphereDefaultMtl1);
-
-    // Override specific hit groups for some geometries.
-    for (uint geometryID = 0; geometryID < geometryCount; geometryID++)
-    {
-        auto type = mpScene->getGeometryType(geometryID);
-
-        if (type == Scene::GeometryType::TriangleMesh)
-        {
-            if (geometryID == 1)
-            {
-                sbt->setHitGroup(0, geometryID, greenMtl);
-                sbt->setHitGroup(1, geometryID, redMtl);
-            }
-            else if (geometryID == 3)
-            {
-                sbt->setHitGroup(0, geometryID, redMtl);
-                sbt->setHitGroup(1, geometryID, greenMtl);
-            }
-        }
-        else if (type == Scene::GeometryType::Custom)
-        {
-            uint32_t index = mpScene->getCustomPrimitiveIndex(geometryID);
-            uint32_t userID = mpScene->getCustomPrimitive(index).userID;
-
-            // Use non-default material for custom primitives with even userID.
-            if (userID % 2 == 0)
-            {
-                sbt->setHitGroup(0, geometryID, spherePurple);
-                sbt->setHitGroup(1, geometryID, sphereYellow);
-            }
-        }
-    }
-
-    mRT.pProgram = RtProgram::create(desc, mpScene->getSceneDefines());
-    mRT.pProgram->setTypeConformances(mpScene->getTypeConformances());
+    // Create program and vars.
+    mRT.pProgram = RtProgram::create(desc, defines);
     mRT.pVars = RtProgramVars::create(mRT.pProgram, sbt);
 }
 
@@ -191,42 +249,47 @@ void TestRtProgram::renderUI(Gui::Widgets& widget)
         return;
     }
 
-    auto primCount = mpScene->getCustomPrimitiveCount();
-    widget.text("Custom primitives: " + std::to_string(primCount));
+    widget.text("Test mode: " + std::to_string(mMode));
 
-    mSelectedIdx = std::min(mSelectedIdx, primCount - 1);
-    widget.text("\nSelected primitive:");
-    widget.var("##idx", mSelectedIdx, 0u, primCount - 1);
-
-    if (mSelectedIdx != mPrevSelectedIdx)
+    if (mMode == 0)
     {
-        mPrevSelectedIdx = mSelectedIdx;
-        mSelectedAABB = mpScene->getCustomPrimitiveAABB(mSelectedIdx);
-    }
+        auto primCount = mpScene->getCustomPrimitiveCount();
+        widget.text("Custom primitives: " + std::to_string(primCount));
 
-    if (widget.button("Add"))
-    {
-        addCustomPrimitive();
-    }
+        mSelectedIdx = std::min(mSelectedIdx, primCount - 1);
+        widget.text("\nSelected primitive:");
+        widget.var("##idx", mSelectedIdx, 0u, primCount - 1);
 
-    if (primCount > 0)
-    {
-        if (widget.button("Remove", true))
+        if (mSelectedIdx != mPrevSelectedIdx)
         {
-            removeCustomPrimitive(mSelectedIdx);
+            mPrevSelectedIdx = mSelectedIdx;
+            mSelectedAABB = mpScene->getCustomPrimitiveAABB(mSelectedIdx);
         }
 
-        if (widget.button("Random move"))
+        if (widget.button("Add"))
         {
-            moveCustomPrimitive();
+            addCustomPrimitive();
         }
 
-        bool modified = false;
-        modified |= widget.var("Min", mSelectedAABB.minPoint);
-        modified |= widget.var("Max", mSelectedAABB.maxPoint);
-        if (widget.button("Update"))
+        if (primCount > 0)
         {
-            mpScene->updateCustomPrimitive(mSelectedIdx, mSelectedAABB);
+            if (widget.button("Remove", true))
+            {
+                removeCustomPrimitive(mSelectedIdx);
+            }
+
+            if (widget.button("Random move"))
+            {
+                moveCustomPrimitive();
+            }
+
+            bool modified = false;
+            modified |= widget.var("Min", mSelectedAABB.minPoint);
+            modified |= widget.var("Max", mSelectedAABB.maxPoint);
+            if (widget.button("Update"))
+            {
+                mpScene->updateCustomPrimitive(mSelectedIdx, mSelectedAABB);
+            }
         }
     }
 }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -75,7 +75,7 @@ ImageLoader::ImageLoader(const Dictionary& dict)
     {
         if (key == kOutputSize) mOutputSizeSelection = value;
         else if (key == kOutputFormat) mOutputFormat = value;
-        else if (key == kImage) mImageName = value.operator std::string();
+        else if (key == kImage) mImagePath = value.operator std::filesystem::path();
         else if (key == kSrgb) mLoadSRGB = value;
         else if (key == kMips) mGenerateMips = value;
         else if (key == kArraySlice) mArraySlice = value;
@@ -83,17 +83,12 @@ ImageLoader::ImageLoader(const Dictionary& dict)
         else logWarning("Unknown field '{}' in a ImageLoader dictionary.", key);
     }
 
-    if (!mImageName.empty())
+    if (!mImagePath.empty())
     {
-        // Find the full path of the specified image.
-        // We retain this for later as the search paths may change during execution.
-        std::string fullPath;
-        if (findFileInDataDirectories(mImageName, fullPath))
+        if (!loadImage(mImagePath))
         {
-            mImageName = fullPath;
-            mpTex = Texture::createFromFile(mImageName, mGenerateMips, mLoadSRGB);
+            throw RuntimeError("ImageLoader: Failed to load image from '{}'", mImagePath);
         }
-        if (!mpTex) throw RuntimeError("ImageLoader: Failed to load image from '{}'", mImageName);
     }
 }
 
@@ -102,7 +97,7 @@ Dictionary ImageLoader::getScriptingDictionary()
     Dictionary dict;
     dict[kOutputSize] = mOutputSizeSelection;
     if (mOutputFormat != ResourceFormat::Unknown) dict[kOutputFormat] = mOutputFormat;
-    dict[kImage] = stripDataDirectories(mImageName);
+    dict[kImage] = stripDataDirectories(mImagePath);
     dict[kMips] = mGenerateMips;
     dict[kSrgb] = mLoadSRGB;
     dict[kArraySlice] = mArraySlice;
@@ -142,13 +137,14 @@ void ImageLoader::renderUI(Gui::Widgets& widget)
         "'Fixed' means the output is always at the image's native size.\n"
         "If the output is of a different size than the native image resolution, the image will be rescaled bilinearly." , true);
 
-    bool reloadImage = widget.textbox("Image File", mImageName);
+    widget.text("Image File: " + mImagePath.string());
+    bool reloadImage = false;
     reloadImage |= widget.checkbox("Load As SRGB", mLoadSRGB);
     reloadImage |= widget.checkbox("Generate Mipmaps", mGenerateMips);
 
     if (widget.button("Load File"))
     {
-        reloadImage |= openFileDialog({}, mImageName);
+        reloadImage |= openFileDialog({}, mImagePath);
     }
 
     if (mpTex)
@@ -156,20 +152,22 @@ void ImageLoader::renderUI(Gui::Widgets& widget)
         if (mpTex->getMipCount() > 1) widget.slider("Mip Level", mMipLevel, 0u, mpTex->getMipCount() - 1);
         if (mpTex->getArraySize() > 1) widget.slider("Array Slice", mArraySlice, 0u, mpTex->getArraySize() - 1);
 
-        widget.image(mImageName.c_str(), mpTex, { 320, 320 });
+        widget.image(mImagePath.string().c_str(), mpTex, { 320, 320 });
         widget.text("Image format: " + to_string(mpTex->getFormat()));
         widget.text("Image size: (" + std::to_string(mpTex->getWidth()) + ", " + std::to_string(mpTex->getHeight()) + ")");
         widget.text("Output format: " + to_string(mOutputFormat));
         widget.text("Output size: (" + std::to_string(mOutputSize.x) + ", " + std::to_string(mOutputSize.y) + ")");
     }
 
-    if (reloadImage && !mImageName.empty())
+    if (reloadImage && !mImagePath.empty())
     {
         uint2 prevSize = {};
         if (mpTex) prevSize = { mpTex->getWidth(), mpTex->getHeight() };
 
-        mImageName = stripDataDirectories(mImageName);
-        mpTex = Texture::createFromFile(mImageName, mGenerateMips, mLoadSRGB);
+        if (!loadImage(mImagePath))
+        {
+            msgBox(fmt::format("Failed to load image from '{}'", mImagePath), MsgBoxType::Ok, MsgBoxIcon::Warning);
+        }
 
         // If output is set to native size and image dimensions have changed, we'll trigger a graph recompile to update the render pass I/O sizes.
         if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed && mpTex != nullptr &&
@@ -177,5 +175,24 @@ void ImageLoader::renderUI(Gui::Widgets& widget)
         {
             requestRecompile();
         }
+    }
+}
+
+bool ImageLoader::loadImage(const std::filesystem::path& path)
+{
+    if (path.empty()) return false;
+
+    // Find the full path of the specified image.
+    // We retain this for later as the search paths may change during execution.
+    std::filesystem::path fullPath;
+    if (findFileInDataDirectories(mImagePath, fullPath))
+    {
+        mImagePath = fullPath;
+        mpTex = Texture::createFromFile(mImagePath, mGenerateMips, mLoadSRGB);
+        return mpTex != nullptr;
+    }
+    else
+    {
+        return false;
     }
 }

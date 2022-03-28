@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -34,6 +34,27 @@ namespace Falcor
     {
         gfx::ComputePipelineStateDesc computePipelineDesc = {};
         computePipelineDesc.program = mDesc.mpProgram->getApiHandle();
-        gfx_call(gpDevice->getApiHandle()->createComputePipelineState(computePipelineDesc, mApiHandle.writeRef()));
+#if FALCOR_D3D12_AVAILABLE
+        computePipelineDesc.d3d12RootSignatureOverride =
+            mDesc.mpD3D12RootSignatureOverride ? (void*)mDesc.mpD3D12RootSignatureOverride->getApiHandle().GetInterfacePtr() : nullptr;
+#endif
+        FALCOR_GFX_CALL(gpDevice->getApiHandle()->createComputePipelineState(computePipelineDesc, mApiHandle.writeRef()));
+    }
+
+    const D3D12ComputeStateHandle& ComputeStateObject::getD3D12Handle()
+    {
+#if FALCOR_D3D12_AVAILABLE
+        if (!mpD3D12Handle)
+        {
+            // Get back raw d3d12 pipeline state handle.
+            gfx::InteropHandle handle = {};
+            FALCOR_GFX_CALL(mApiHandle->getNativeHandle(&handle));
+            FALCOR_ASSERT(handle.api == gfx::InteropHandleAPI::D3D12);
+            mpD3D12Handle = D3D12ComputeStateHandle(reinterpret_cast<ID3D12PipelineState*>(handle.handleValue));
+        }
+        return mpD3D12Handle;
+#else
+        throw RuntimeError("D3D12 is not available.");
+#endif
     }
 }

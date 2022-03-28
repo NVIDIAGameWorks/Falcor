@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,7 +30,7 @@
 #include <filesystem>
 #include <fstream>
 
-namespace fs = std::filesystem;
+#include <zlib.h>
 
 namespace Falcor
 {
@@ -61,48 +61,64 @@ namespace Falcor
         return 1 << bitScanReverse(a);
     }
 
-    inline std::vector<std::string> getInitialShaderDirectories()
+    const std::filesystem::path& getExecutableDirectory()
     {
-        std::vector<std::string> developmentDirectories =
+        static std::filesystem::path directory;
+        if (directory.empty()) directory = getExecutablePath().parent_path();
+        return directory;
+    }
+
+    const std::string& getExecutableName()
+    {
+        static std::string name;
+        if (name.empty()) name = getExecutablePath().filename().string();
+        return name;
+    }
+
+    inline std::vector<std::filesystem::path> getInitialShaderDirectories()
+    {
+        std::filesystem::path projectDir(_PROJECT_DIR_);
+
+        std::vector<std::filesystem::path> developmentDirectories =
         {
             // First we search in source folders.
-            std::string(_PROJECT_DIR_),
-            std::string(_PROJECT_DIR_) + "../",
-            std::string(_PROJECT_DIR_) + "../Tools/FalcorTest/",
+            projectDir,
+            projectDir / "..",
+            projectDir / ".." / "Tools" / "FalcorTest",
             // Then we search in deployment folder (necessary to pickup NVAPI and other third-party shaders).
-            getExecutableDirectory() + "/Shaders"
+            getExecutableDirectory() / "Shaders",
         };
 
-        std::vector<std::string> deploymentDirectories =
+        std::vector<std::filesystem::path> deploymentDirectories =
         {
-            getExecutableDirectory() + "/Shaders"
+            getExecutableDirectory() / "Shaders",
         };
 
         return isDevelopmentMode() ? developmentDirectories : deploymentDirectories;
     }
 
-    static std::vector<std::string> gShaderDirectories = getInitialShaderDirectories();
+    static std::vector<std::filesystem::path> gShaderDirectories = getInitialShaderDirectories();
 
-    inline std::vector<std::string> getInitialDataDirectories()
+    inline std::vector<std::filesystem::path> getInitialDataDirectories()
     {
-        std::vector<std::string> developmentDirectories =
+        std::vector<std::filesystem::path> developmentDirectories =
         {
-            std::string(_PROJECT_DIR_) + "/Data",
-            getExecutableDirectory() + "/Data",
+            std::filesystem::path(_PROJECT_DIR_) / "Data",
+            getExecutableDirectory() / "Data",
         };
 
-        std::vector<std::string> deploymentDirectories =
+        std::vector<std::filesystem::path> deploymentDirectories =
         {
-            getExecutableDirectory() + "/Data"
+            getExecutableDirectory() / "Data"
         };
 
-        std::vector<std::string> directories = isDevelopmentMode() ? developmentDirectories : deploymentDirectories;
+        std::vector<std::filesystem::path> directories = isDevelopmentMode() ? developmentDirectories : deploymentDirectories;
 
         // Add development media folder.
 #ifdef _MSC_VER
-        directories.push_back(getExecutableDirectory() + "/../../../Media"); // Relative to Visual Studio output folder
+        directories.push_back(getExecutableDirectory() / ".." / ".." / ".." / "Media"); // Relative to Visual Studio output folder
 #else
-        directories.push_back(getExecutableDirectory() + "/../Media"); // Relative to Makefile output folder
+        directories.push_back(getExecutableDirectory() / ".." / "Media"); // Relative to Makefile output folder
 #endif
 
         // Add additional media folders.
@@ -116,14 +132,14 @@ namespace Falcor
         return directories;
     }
 
-    static std::vector<std::string> gDataDirectories = getInitialDataDirectories();
+    static std::vector<std::filesystem::path> gDataDirectories = getInitialDataDirectories();
 
-    const std::vector<std::string>& getDataDirectoriesList()
+    const std::vector<std::filesystem::path>& getDataDirectoriesList()
     {
         return gDataDirectories;
     }
 
-    void addDataDirectory(const std::string& dir, bool addToFront)
+    void addDataDirectory(const std::filesystem::path& dir, bool addToFront)
     {
         if (std::find(gDataDirectories.begin(), gDataDirectories.end(), dir) == gDataDirectories.end())
         {
@@ -138,7 +154,7 @@ namespace Falcor
         }
     }
 
-    void removeDataDirectory(const std::string& dir)
+    void removeDataDirectory(const std::filesystem::path& dir)
     {
         auto it = std::find(gDataDirectories.begin(), gDataDirectories.end(), dir);
         if (it != gDataDirectories.end())
@@ -162,26 +178,25 @@ namespace Falcor
         return devMode;
     }
 
-    std::string canonicalizeFilename(const std::string& filename)
+    bool findFileInDataDirectories(const std::filesystem::path& path, std::filesystem::path& fullPath)
     {
-        fs::path path(replaceSubstring(filename, "\\", "/"));
-        return fs::exists(path) ? fs::canonical(path).string() : "";
-    }
-
-    bool findFileInDataDirectories(const std::string& filename, std::string& fullPath)
-    {
-        // Check if this is an absolute path
-        if (fs::path(filename).is_absolute())
+        // Check if this is an absolute path.
+        if (path.is_absolute())
         {
-            fullPath = canonicalizeFilename(filename);
-            return !fullPath.empty(); // Empty fullPath means path doesn't exist
+            if (std::filesystem::exists(path))
+            {
+                fullPath = std::filesystem::canonical(path);
+                return true;
+            }
         }
 
+        // Search in other paths.
         for (const auto& dir : gDataDirectories)
         {
-            fullPath = canonicalizeFilename((fs::path(dir) / filename).string());
-            if (doesFileExist(fullPath))
+            fullPath = dir / path;
+            if (std::filesystem::exists(fullPath))
             {
+                fullPath = std::filesystem::canonical(fullPath);
                 return true;
             }
         }
@@ -189,18 +204,30 @@ namespace Falcor
         return false;
     }
 
-    const std::vector<std::string>& getShaderDirectoriesList()
+    const std::vector<std::filesystem::path>& getShaderDirectoriesList()
     {
         return gShaderDirectories;
     }
 
-    bool findFileInShaderDirectories(const std::string& filename, std::string& fullPath)
+    bool findFileInShaderDirectories(const std::filesystem::path& path, std::filesystem::path& fullPath)
     {
+        // Check if this is an absolute path.
+        if (path.is_absolute())
+        {
+            if (std::filesystem::exists(path))
+            {
+                fullPath = std::filesystem::canonical(path);
+                return true;
+            }
+        }
+
+        // Search in other paths.
         for (const auto& dir : gShaderDirectories)
         {
-            fullPath = canonicalizeFilename((fs::path(dir) / filename).string());
-            if (doesFileExist(fullPath))
+            fullPath = dir / path;
+            if (std::filesystem::exists(fullPath))
             {
+                fullPath = std::filesystem::canonical(fullPath);
                 return true;
             }
         }
@@ -208,86 +235,122 @@ namespace Falcor
         return false;
     }
 
-    std::string findAvailableFilename(const std::string& prefix, const std::string& directory, const std::string& extension)
+    std::filesystem::path findAvailableFilename(const std::string& prefix, const std::filesystem::path& directory, const std::string& extension)
     {
         for (uint32_t i = 0; i < (uint32_t)-1; i++)
         {
             std::string newPrefix = prefix + '.' + std::to_string(i);
-            std::string filename = (fs::path(directory) / newPrefix).string() + "." + extension;
-            if (!doesFileExist(filename)) return filename;
+            std::filesystem::path path = directory / (newPrefix + "." + extension);
+            if (!std::filesystem::exists(path)) return path;
         }
         throw RuntimeError("Failed to find available filename.");
     }
 
-    std::string stripDataDirectories(const std::string& filename)
+    std::filesystem::path stripDataDirectories(const std::filesystem::path& path)
     {
-        std::string stripped = filename;
-        std::string canonFile = canonicalizeFilename(filename);
+        if (path.is_relative()) return path;
+
+        auto canonicalPath = std::filesystem::weakly_canonical(path);
+
         for (const auto& dir : gDataDirectories)
         {
-            std::string canonDir = canonicalizeFilename(dir);
-            if (canonDir.size() && hasPrefix(canonFile, canonDir, false))
+            auto canonicalDir = std::filesystem::weakly_canonical(dir);
+
+            if (hasPrefix(canonicalPath.string(), canonicalDir.string()))
             {
-                // canonicalizeFilename adds trailing \\ to drive letters and removes them from paths containing folders
-                // The entire prefix directory including the slash should be removed
-                bool trailingSlash = canonDir.back() == '\\' || canonDir.back() == '/';
-                size_t len = trailingSlash ? canonDir.length() : canonDir.length() + 1;
-                std::string tmp = canonFile.erase(0, len);
-                if (tmp.length() < stripped.length())
-                {
-                    stripped = tmp;
-                }
+                return std::filesystem::relative(canonicalPath, canonicalDir);
             }
         }
 
-        return stripped;
+        return path;
     }
 
-    std::string swapFileExtension(const std::string& str, const std::string& currentExtension, const std::string& newExtension)
+    bool hasExtension(const std::filesystem::path& path, std::string_view ext)
     {
-        if (hasSuffix(str, currentExtension))
-        {
-            std::string ret = str;
-            return (ret.erase(ret.rfind(currentExtension)) + newExtension);
-        }
-        else
-        {
-            return str;
-        }
+        // Remove leading '.' from ext.
+        if (ext.size() > 0 && ext[0] == '.') ext.remove_prefix(1);
+
+        std::string pathExt = getExtensionFromPath(path);
+
+        if (ext.size() != pathExt.size()) return false;
+
+        return std::equal(ext.rbegin(), ext.rend(), pathExt.rbegin(),
+            [](char a, char b) { return std::tolower(a) == std::tolower(b); });
     }
 
-    std::string getDirectoryFromFile(const std::string& filename)
+    std::string getExtensionFromPath(const std::filesystem::path& path)
     {
-        fs::path path = filename;
-        return path.has_filename() ? path.parent_path().string() : filename;
-    }
-
-    std::string getExtensionFromFile(const std::string& filename)
-    {
-        fs::path path = filename;
         std::string ext;
         if (path.has_extension())
         {
-            // remove the leading '.' that filesystem gives us
             ext = path.extension().string();
-            if (hasPrefix(ext, "."))   ext = ext.substr(1, ext.size());
+            // Remove the leading '.' from ext.
+            if (ext.size() > 0 && ext[0] == '.') ext.erase(0, 1);
+            // Convert to lower-case.
+            std::transform(ext.begin(), ext.end(), ext.begin(), [](char c) { return std::tolower(c); });
         }
         return ext;
     }
 
-    std::string getFilenameFromPath(const std::string& filename)
+    std::filesystem::path getTempFilePath()
     {
-        return fs::path(filename).filename().string();
+        static std::mutex mutex;
+        std::lock_guard<std::mutex> guard(mutex);
+        char* name = std::tmpnam(nullptr);
+        if (name == nullptr)
+        {
+            throw RuntimeError("Failed to create temporary file path.");
+        }
+        return name;
     }
 
-    std::string readFile(const std::string& filename)
+    std::string readFile(const std::filesystem::path& path)
     {
-        std::ifstream filestream(filename);
-        std::string str;
-        filestream.seekg(0, std::ios::end);
-        str.reserve(filestream.tellg());
-        filestream.seekg(0, std::ios::beg);
-        str.assign(std::istreambuf_iterator<char>(filestream), std::istreambuf_iterator<char>());
-        return str;
+        std::ifstream ifs(path, std::ios::binary);
+        if (!ifs) throw RuntimeError("Failed to read from file '{}'.", path);
+        return std::string((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
+    }
+
+    std::string decompressFile(const std::filesystem::path& path)
+    {
+        std::string compressed = readFile(path);
+
+        z_stream zs = {};
+        // MAX_WBITS | 32 to support both zlib or gzip files.
+        if (inflateInit2(&zs, MAX_WBITS | 32) != Z_OK) throw RuntimeError("inflateInit2 failed while decompressing.");
+
+        zs.next_in = reinterpret_cast<Bytef*>(compressed.data());
+        zs.avail_in = (uInt)compressed.size();
+
+        int ret;
+        std::vector<char> buffer(128 * 1024);
+        std::string decompressed;
+
+        // We can probably assume that the decompressed file is at least as large as the compressed one.
+        decompressed.reserve(compressed.size());
+
+        // Get the decompressed bytes blockwise using repeated calls to inflate.
+        do
+        {
+            zs.next_out = reinterpret_cast<Bytef*>(buffer.data());
+            zs.avail_out = (uInt)buffer.size();
+
+            ret = inflate(&zs, 0);
+
+            if (decompressed.size() < zs.total_out)
+            {
+                decompressed.append(buffer.data(), zs.total_out - decompressed.size());
+            }
+        } while (ret == Z_OK);
+
+        inflateEnd(&zs);
+
+        // Check for errors.
+        if (ret != Z_STREAM_END)
+        {
+            throw RuntimeError("Failure to decompress file '{}' (error: {}).", path, ret);
+        }
+
+        return decompressed;
     }
 }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -57,7 +57,7 @@ struct GpuTimer
     */
     static TimePoint getCurrentTimePoint()
     {
-#if FALCOR_ENABLE_NVAPI
+#if FALCOR_NVAPI_AVAILABLE
         return (TimePoint)NvGetSpecial(NV_SPECIALOP_GLOBAL_TIMER_LO);
 #else
         return 0;

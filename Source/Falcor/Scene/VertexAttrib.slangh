@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,29 +30,29 @@
 
 BEGIN_NAMESPACE_FALCOR
 
-#define VERTEX_POSITION_LOC                 0
-#define VERTEX_PACKED_NORMAL_TANGENT_LOC    1
-#define VERTEX_TEXCOORD_LOC                 2
-#define INSTANCE_DRAW_ID_LOC                3
+#define VERTEX_POSITION_LOC                             0
+#define VERTEX_PACKED_NORMAL_TANGENT_CURVE_RADIUS_LOC   1
+#define VERTEX_TEXCOORD_LOC                             2
+#define INSTANCE_DRAW_ID_LOC                            3
 
-#define VERTEX_LOCATION_COUNT               4
+#define VERTEX_LOCATION_COUNT                           4
 
-#define VERTEX_USER_ELEM_COUNT              4
-#define VERTEX_USER0_LOC                    (VERTEX_LOCATION_COUNT)
+#define VERTEX_USER_ELEM_COUNT                          4
+#define VERTEX_USER0_LOC                                (VERTEX_LOCATION_COUNT)
 
-#define VERTEX_POSITION_NAME                "POSITION"
-#define VERTEX_PACKED_NORMAL_TANGENT_NAME   "PACKED_NORMAL_TANGENT"
-#define VERTEX_TEXCOORD_NAME                "TEXCOORD"
-#define INSTANCE_DRAW_ID_NAME               "DRAW_ID"
+#define VERTEX_POSITION_NAME                            "POSITION"
+#define VERTEX_PACKED_NORMAL_TANGENT_CURVE_RADIUS_NAME  "PACKED_NORMAL_TANGENT_CURVE_RADIUS"
+#define VERTEX_TEXCOORD_NAME                            "TEXCOORD"
+#define INSTANCE_DRAW_ID_NAME                           "DRAW_ID"
 
-#define CURVE_VERTEX_POSITION_LOC           0
-#define CURVE_VERTEX_RADIUS_LOC             1
-#define CURVE_VERTEX_TEXCOORD_LOC           2
+#define CURVE_VERTEX_POSITION_LOC                       0
+#define CURVE_VERTEX_RADIUS_LOC                         1
+#define CURVE_VERTEX_TEXCOORD_LOC                       2
 
-#define CURVE_VERTEX_LOCATION_COUNT         3
+#define CURVE_VERTEX_LOCATION_COUNT                     3
 
-#define CURVE_VERTEX_POSITION_NAME          "POSITION"
-#define CURVE_VERTEX_RADIUS_NAME            "RADIUS"
-#define CURVE_VERTEX_TEXCOORD_NAME          "TEXCOORD"
+#define CURVE_VERTEX_POSITION_NAME                      "POSITION"
+#define CURVE_VERTEX_RADIUS_NAME                        "RADIUS"
+#define CURVE_VERTEX_TEXCOORD_NAME                      "TEXCOORD"
 
 END_NAMESPACE_FALCOR

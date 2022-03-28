@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Utils/UI/UserInput.h"
+#include "Utils/UI/InputState.h"
 
 namespace Falcor
 {
@@ -77,9 +77,9 @@ namespace Falcor
         */
         virtual void renderFrame() = 0;
 
-        /** Check if a key is pressed.
+        /** Retrieve the global input state.
         */
-        virtual bool isKeyPressed(const KeyboardEvent::Key& key) = 0;
+        virtual const InputState& getInputState() = 0;
 
         /** Show/hide the UI.
         */
@@ -91,7 +91,7 @@ namespace Falcor
 
         /** Takes and outputs a screenshot.
         */
-        virtual std::string captureScreen(const std::string explicitFilename = "", const std::string explicitOutputDirectory = "") = 0;
+        virtual std::filesystem::path captureScreen(const std::string explicitFilename = "", const std::filesystem::path explicitDirectory = "") = 0;
 
         /** Shutdown the app.
         */
@@ -157,16 +157,28 @@ namespace Falcor
         virtual void onHotReload(HotReloadFlags reloaded) {}
 
         /** Called every time a key event occurred.
-        \param[in] keyEvent The keyboard event
-        \return true if the event was consumed by the callback, otherwise false
+            \param[in] keyEvent The keyboard event.
+            \return true if the event was consumed by the callback, otherwise false.
         */
         virtual bool onKeyEvent(const KeyboardEvent& keyEvent) { return false; }
 
         /** Called every time a mouse event occurred.
-        \param[in] mouseEvent The mouse event
-        \return true if the event was consumed by the callback, otherwise false
+            \param[in] mouseEvent The mouse event.
+            \return true if the event was consumed by the callback, otherwise false.
         */
         virtual bool onMouseEvent(const MouseEvent& mouseEvent) { return false; }
+
+        /** Called every time a gamepad event occured.
+            \param[in] gamepadEvent The gamepad event.
+            \return true if the event was consumed by the callback, otherwise false.
+        */
+        virtual bool onGamepadEvent(const GamepadEvent& gamepadEvent) { return false; }
+
+        /** Called every time the gamepad state has changed.
+            \param[in] gamepadState The gamepad state.
+            \return true if the state was consumed by the callback, otherwise false.
+        */
+        virtual bool onGamepadState(const GamepadState& gamepadState) { return false; }
 
         /** Called after onFrameRender().
         It is highly recommended to use onGuiRender() exclusively for GUI handling. onGuiRender() will not be called when the GUI is hidden, which should help reduce CPU overhead.
@@ -174,9 +186,9 @@ namespace Falcor
         */
         virtual void onGuiRender(Gui* pGui) {};
 
-        /** Called when a file is dropped into the window
+        /** Called when a file is dropped into the window.
         */
-        virtual void onDroppedFile(const std::string& filename) {}
+        virtual void onDroppedFile(const std::filesystem::path& path) {}
 
         // Deleted copy operators (copy a pointer type!)
         IRenderer(const IRenderer&) = delete;

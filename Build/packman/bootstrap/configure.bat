@@ -12,7 +12,7 @@
 :: See the License for the specific language governing permissions and
 :: limitations under the License.
 
-set PM_PACKMAN_VERSION=6.15
+set PM_PACKMAN_VERSION=6.42
 
 :: Specify where packman command is rooted
 set PM_INSTALL_PATH=%~dp0..
@@ -48,7 +48,7 @@ echo.
 :: that may be needed in the path
 :ENSURE_DIR
 if not exist "%PM_PACKAGES_ROOT%" (
-	echo Creating directory %PM_PACKAGES_ROOT%
+	echo Creating packman packages cache at %PM_PACKAGES_ROOT%
 	mkdir "%PM_PACKAGES_ROOT%"
 )
 if %errorlevel% neq 0 ( goto ERROR_MKDIR_PACKAGES_ROOT )
@@ -59,7 +59,7 @@ if defined PM_PYTHON_EXT (
 	goto PACKMAN
 )
 
-set PM_PYTHON_VERSION=3.7.4-windows-x86_64
+set PM_PYTHON_VERSION=3.7.12-windows-x86_64
 set PM_PYTHON_BASE_DIR=%PM_PACKAGES_ROOT%\python
 set PM_PYTHON_DIR=%PM_PYTHON_BASE_DIR%\%PM_PYTHON_VERSION%
 set PM_PYTHON=%PM_PYTHON_DIR%\python.exe
@@ -70,8 +70,11 @@ if not exist "%PM_PYTHON_BASE_DIR%" call :CREATE_PYTHON_BASE_DIR
 set PM_PYTHON_PACKAGE=python@%PM_PYTHON_VERSION%.cab
 for /f "delims=" %%a in ('powershell -ExecutionPolicy ByPass -NoLogo -NoProfile -File "%~dp0\generate_temp_file_name.ps1"') do set TEMP_FILE_NAME=%%a
 set TARGET=%TEMP_FILE_NAME%.zip
-call "%~dp0fetch_file_from_s3.cmd" %PM_PYTHON_PACKAGE% "%TARGET%"
-if %errorlevel% neq 0 ( goto ERROR )
+call "%~dp0fetch_file_from_packman_bootstrap.cmd" %PM_PYTHON_PACKAGE% "%TARGET%"
+if %errorlevel% neq 0 (
+    echo !!! Error fetching python from CDN !!!
+    goto ERROR
+)
 
 for /f "delims=" %%a in ('powershell -ExecutionPolicy ByPass -NoLogo -NoProfile -File "%~dp0\generate_temp_folder.ps1" -parentPath "%PM_PYTHON_BASE_DIR%"') do set TEMP_FOLDER_NAME=%%a
 echo Unpacking Python interpreter ...
@@ -79,6 +82,7 @@ echo Unpacking Python interpreter ...
 del "%TARGET%"
 :: Failure during extraction to temp folder name, need to clean up and abort
 if %errorlevel% neq 0 (
+    echo !!! Error unpacking python !!!
     call :CLEAN_UP_TEMP_FOLDER
     goto ERROR
 )
@@ -95,6 +99,7 @@ if exist "%PM_PYTHON%" (
 rename "%TEMP_FOLDER_NAME%" "%PM_PYTHON_VERSION%" 1> nul
 :: Failure during move, need to clean up and abort
 if %errorlevel% neq 0 (
+    echo !!! Error renaming python !!!
     call :CLEAN_UP_TEMP_FOLDER
     goto ERROR
 )
@@ -107,19 +112,28 @@ if defined PM_MODULE_DIR_EXT (
     set PM_MODULE_DIR=%PM_PACKAGES_ROOT%\packman-common\%PM_PACKMAN_VERSION%
 )
 
-set PM_MODULE=%PM_MODULE_DIR%\packman.py
+set PM_MODULE=%PM_MODULE_DIR%\run.py
 
 if exist "%PM_MODULE%" goto ENSURE_7ZA
+
+:: Clean out broken PM_MODULE_DIR if it exists
+if exist "%PM_MODULE_DIR%" ( rd /s /q "%PM_MODULE_DIR%" > nul )
 
 set PM_MODULE_PACKAGE=packman-common@%PM_PACKMAN_VERSION%.zip
 for /f "delims=" %%a in ('powershell -ExecutionPolicy ByPass -NoLogo -NoProfile -File "%~dp0\generate_temp_file_name.ps1"') do set TEMP_FILE_NAME=%%a
 set TARGET=%TEMP_FILE_NAME%
-call "%~dp0fetch_file_from_s3.cmd" %PM_MODULE_PACKAGE% "%TARGET%"
-if %errorlevel% neq 0 ( goto ERROR )
+call "%~dp0fetch_file_from_packman_bootstrap.cmd" %PM_MODULE_PACKAGE% "%TARGET%"
+if %errorlevel% neq 0 (
+    echo !!! Error fetching packman from CDN !!!
+    goto ERROR
+)
 
 echo Unpacking ...
 "%PM_PYTHON%" -S -s -u -E "%~dp0\install_package.py" "%TARGET%" "%PM_MODULE_DIR%"
-if %errorlevel% neq 0 ( goto ERROR )
+if %errorlevel% neq 0 (
+    echo !!! Error unpacking packman !!!
+    goto ERROR
+)
 
 del "%TARGET%"
 
@@ -131,7 +145,10 @@ set PM_7Za_PATH=%PM_PACKAGES_ROOT%\chk\7za\%PM_7ZA_VERSION%
 if exist "%PM_7Za_PATH%" goto END
 
 "%PM_PYTHON%" -S -s -u -E "%PM_MODULE%" pull "%PM_MODULE_DIR%\deps.packman.xml"
-if %errorlevel% neq 0 ( goto ERROR )
+if %errorlevel% neq 0 (
+    echo !!! Error fetching packman dependencies !!!
+    goto ERROR
+)
 
 goto END
 

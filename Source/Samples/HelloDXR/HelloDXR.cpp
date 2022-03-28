@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -38,19 +38,19 @@ void HelloDXR::onGuiRender(Gui* pGui)
     w.checkbox("Use Depth of Field", mUseDOF);
     if (w.button("Load Scene"))
     {
-        std::string filename;
-        if (openFileDialog(Scene::getFileExtensionFilters(), filename))
+        std::filesystem::path path;
+        if (openFileDialog(Scene::getFileExtensionFilters(), path))
         {
-            loadScene(filename, gpFramework->getTargetFbo().get());
+            loadScene(path, gpFramework->getTargetFbo().get());
         }
     }
 
     mpScene->renderUI(w);
 }
 
-void HelloDXR::loadScene(const std::string& filename, const Fbo* pTargetFbo)
+void HelloDXR::loadScene(const std::filesystem::path& path, const Fbo* pTargetFbo)
 {
-    mpScene = Scene::create(filename);
+    mpScene = Scene::create(path);
     mpCamera = mpScene->getCamera();
 
     // Update the controllers
@@ -67,7 +67,7 @@ void HelloDXR::loadScene(const std::string& filename, const Fbo* pTargetFbo)
 
     // Create raster pass.
     // This utility wraps the creation of the program and vars, and sets the necessary scene defines.
-    mpRasterPass = RasterScenePass::create(mpScene, "Samples/HelloDXR/HelloDXR.ps.slang", "", "main");
+    mpRasterPass = RasterScenePass::create(mpScene, "Samples/HelloDXR/HelloDXR.3d.slang", "vsMain", "psMain");
     mpRasterPass->getProgram()->setTypeConformances(typeConformances);
 
     // We'll now create a raytracing program. To do that we need to setup two things:
@@ -153,7 +153,7 @@ void HelloDXR::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr
 
 bool HelloDXR::onKeyEvent(const KeyboardEvent& keyEvent)
 {
-    if (keyEvent.key == KeyboardEvent::Key::Space && keyEvent.type == KeyboardEvent::Type::KeyPressed)
+    if (keyEvent.key == Input::Key::Space && keyEvent.type == KeyboardEvent::Type::KeyPressed)
     {
         mRayTrace = !mRayTrace;
         return true;

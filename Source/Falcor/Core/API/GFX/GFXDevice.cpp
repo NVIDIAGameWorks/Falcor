@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,10 +31,194 @@
 #include "GFXFormats.h"
 #include "Core/Program/Program.h"
 
+#if FALCOR_ENABLE_NVAPI && FALCOR_D3D12_AVAILABLE
+#include "Core/API/D3D12/D3D12NvApiExDesc.h"
+#define FALCOR_NVAPI_AVAILABLE 1
+#else
+#define FALCOR_NVAPI_AVAILABLE 0
+#endif
+
 using namespace gfx;
 
 namespace Falcor
 {
+#if FALCOR_NVAPI_AVAILABLE
+    // To use NVAPI, we intercept the API calls in the gfx layer and dispatch into the NVAPI_Create*PipelineState
+    // functions instead if the shader uses NVAPI functionalities.
+    // We use the gfx API dispatcher mechanism to intercept and redirect the API call.
+    // This is done by defining an implementation of `IPipelineCreationAPIDispatcher` and passing an instance of this
+    // implementation to `gfxCreateDevice`.
+    class PipelineCreationAPIDispatcher : public gfx::IPipelineCreationAPIDispatcher
+    {
+    private:
+
+        bool findNvApiShaderParameter(slang::IComponentType* program, uint32_t& space, uint32_t& registerId)
+        {
+            auto globalTypeLayout = program->getLayout()->getGlobalParamsVarLayout()->getTypeLayout();
+            auto index = globalTypeLayout->findFieldIndexByName("g_NvidiaExt");
+            if (index != -1)
+            {
+                auto field = globalTypeLayout->getFieldByIndex((unsigned int)index);
+                space = field->getBindingSpace();
+                registerId = field->getBindingIndex();
+                return true;
+            }
+            return false;
+        }
+
+        void createNvApiUavSlotExDesc(NvApiPsoExDesc& ret, uint32_t space, uint32_t uavSlot)
+        {
+            ret.psoExtension = NV_PSO_SET_SHADER_EXTNENSION_SLOT_AND_SPACE;
+
+            auto& desc = ret.mExtSlotDesc;
+            std::memset(&desc, 0, sizeof(desc));
+
+            desc.psoExtension = NV_PSO_SET_SHADER_EXTNENSION_SLOT_AND_SPACE;
+            desc.version = NV_SET_SHADER_EXTENSION_SLOT_DESC_VER;
+            desc.baseVersion = NV_PSO_EXTENSION_DESC_VER;
+            desc.uavSlot = uavSlot;
+            desc.registerSpace = space;
+        }
+
+    public:
+        PipelineCreationAPIDispatcher()
+        {
+            if (NvAPI_Initialize() != NVAPI_OK)
+            {
+                throw RuntimeError("Failed to initialize NVAPI.");
+            }
+        }
+
+        ~PipelineCreationAPIDispatcher()
+        {
+            NvAPI_Unload();
+        }
+
+        virtual SLANG_NO_THROW SlangResult SLANG_MCALL queryInterface(SlangUUID const& uuid, void** outObject) override
+        {
+            if (uuid == SlangUUID SLANG_UUID_IPipelineCreationAPIDispatcher)
+            {
+                *outObject = static_cast<gfx::IPipelineCreationAPIDispatcher*>(this);
+                return SLANG_OK;
+            }
+            return SLANG_E_NO_INTERFACE;
+        }
+
+        // The lifetime of this dispatcher object will be managed by `Falcor::Device` so we don't need
+        // to actually implement reference counting here.
+        virtual SLANG_NO_THROW uint32_t SLANG_MCALL addRef() override
+        {
+            return 1;
+        }
+
+        virtual SLANG_NO_THROW uint32_t SLANG_MCALL release() override
+        {
+            return 1;
+        }
+
+        // This method will be called by the gfx layer to create an API object for a compute pipeline state.
+        virtual gfx::Result createComputePipelineState(gfx::IDevice* device, slang::IComponentType* program, void* pipelineDesc, void** outPipelineState)
+        {
+            gfx::IDevice::InteropHandles nativeHandle;
+            device->getNativeDeviceHandles(&nativeHandle);
+            ID3D12Device* pD3D12Device = reinterpret_cast<ID3D12Device*>(nativeHandle.handles[0].handleValue);
+
+            uint32_t space, registerId;
+            if (findNvApiShaderParameter(program, space, registerId))
+            {
+                NvApiPsoExDesc psoDesc = {};
+                createNvApiUavSlotExDesc(psoDesc, space, registerId);
+                const NVAPI_D3D12_PSO_EXTENSION_DESC* ppPSOExtensionsDesc[1] = { &psoDesc.mExtSlotDesc };
+                auto result = NvAPI_D3D12_CreateComputePipelineState(
+                    pD3D12Device,
+                    reinterpret_cast<D3D12_COMPUTE_PIPELINE_STATE_DESC*>(pipelineDesc),
+                    1,
+                    ppPSOExtensionsDesc,
+                    (ID3D12PipelineState**)outPipelineState);
+                return (result == NVAPI_OK) ? SLANG_OK : SLANG_FAIL;
+            }
+            else
+            {
+                ID3D12PipelineState* pState = nullptr;
+                SLANG_RETURN_ON_FAIL(pD3D12Device->CreateComputePipelineState(
+                    reinterpret_cast<D3D12_COMPUTE_PIPELINE_STATE_DESC*>(pipelineDesc), IID_PPV_ARGS(&pState)));
+                *outPipelineState = pState;
+            }
+            return SLANG_OK;
+        }
+
+        // This method will be called by the gfx layer to create an API object for a graphics pipeline state.
+        virtual gfx::Result createGraphicsPipelineState(gfx::IDevice* device, slang::IComponentType* program, void* pipelineDesc, void** outPipelineState)
+        {
+            gfx::IDevice::InteropHandles nativeHandle;
+            device->getNativeDeviceHandles(&nativeHandle);
+            ID3D12Device* pD3D12Device = reinterpret_cast<ID3D12Device*>(nativeHandle.handles[0].handleValue);
+
+            uint32_t space, registerId;
+            if (findNvApiShaderParameter(program, space, registerId))
+            {
+                NvApiPsoExDesc psoDesc = {};
+                createNvApiUavSlotExDesc(psoDesc, space, registerId);
+                const NVAPI_D3D12_PSO_EXTENSION_DESC* ppPSOExtensionsDesc[1] = { &psoDesc.mExtSlotDesc };
+
+                auto result = NvAPI_D3D12_CreateGraphicsPipelineState(
+                    pD3D12Device,
+                    reinterpret_cast<D3D12_GRAPHICS_PIPELINE_STATE_DESC*>(pipelineDesc),
+                    1,
+                    ppPSOExtensionsDesc,
+                    (ID3D12PipelineState**)outPipelineState);
+                return (result == NVAPI_OK) ? SLANG_OK : SLANG_FAIL;
+            }
+            else
+            {
+                ID3D12PipelineState* pState = nullptr;
+                SLANG_RETURN_ON_FAIL(pD3D12Device->CreateGraphicsPipelineState(
+                    reinterpret_cast<D3D12_GRAPHICS_PIPELINE_STATE_DESC*>(pipelineDesc), IID_PPV_ARGS(&pState)));
+                *outPipelineState = pState;
+            }
+            return SLANG_OK;
+        }
+
+        // This method will be called by the gfx layer right before creating a ray tracing state object.
+        virtual gfx::Result beforeCreateRayTracingState(gfx::IDevice* device, slang::IComponentType* program)
+        {
+            gfx::IDevice::InteropHandles nativeHandle;
+            device->getNativeDeviceHandles(&nativeHandle);
+            ID3D12Device* pD3D12Device = reinterpret_cast<ID3D12Device*>(nativeHandle.handles[0].handleValue);
+
+            uint32_t space, registerId;
+            if (findNvApiShaderParameter(program, space, registerId))
+            {
+                if (NvAPI_D3D12_SetNvShaderExtnSlotSpace(pD3D12Device, registerId, space) != NVAPI_OK)
+                {
+                    throw RuntimeError("Failed to set NvApi extension");
+                }
+            }
+
+            return SLANG_OK;
+        }
+
+        // This method will be called by the gfx layer right after creating a ray tracing state object.
+        virtual gfx::Result afterCreateRayTracingState(gfx::IDevice* device, slang::IComponentType* program)
+        {
+            gfx::IDevice::InteropHandles nativeHandle;
+            device->getNativeDeviceHandles(&nativeHandle);
+            ID3D12Device* pD3D12Device = reinterpret_cast<ID3D12Device*>(nativeHandle.handles[0].handleValue);
+
+            uint32_t space, registerId;
+            if (findNvApiShaderParameter(program, space, registerId))
+            {
+                if (NvAPI_D3D12_SetNvShaderExtnSlotSpace(pD3D12Device, 0xFFFFFFFF, 0) != NVAPI_OK)
+                {
+                    throw RuntimeError("Failed to set NvApi extension");
+                }
+            }
+            return SLANG_OK;
+        }
+
+    };
+#endif // FALCOR_NVAPI_AVAILABLE
+
     CommandQueueHandle Device::getCommandQueueHandle(LowLevelContextData::CommandQueueType type, uint32_t index) const
     {
         return mCmdQueues[(uint32_t)type][index];
@@ -78,6 +262,9 @@ namespace Falcor
 
     void Device::destroyApiObjects()
     {
+#if FALCOR_NVAPI_AVAILABLE
+        safe_delete(mpApiData->pApiDispatcher);
+#endif
         safe_delete(mpApiData);
     }
 
@@ -86,13 +273,26 @@ namespace Falcor
         return mpApiData->pTransientResourceHeaps[mCurrentBackBufferIndex].get();
     }
 
-    void Device::apiPresent()
+    void Device::present()
     {
+        mpRenderContext->resourceBarrier(mpSwapChainFbos[mCurrentBackBufferIndex]->getColorTexture(0).get(), Resource::State::Present);
+        mpRenderContext->flush();
         mpApiData->pSwapChain->present();
+        // Call to acquireNextImage will block until the next image in the swapchain is ready for present and all the
+        // GPU tasks associated with rendering the next image in the swapchain has already completed.
         mCurrentBackBufferIndex = mpApiData->pSwapChain->acquireNextImage();
-        this->mpRenderContext->getLowLevelData()->closeCommandBuffer();
-        getCurrentTransientResourceHeap()->synchronizeAndReset();
-        this->mpRenderContext->getLowLevelData()->openCommandBuffer();
+        if (mCurrentBackBufferIndex != -1)
+        {
+            mpRenderContext->getLowLevelData()->closeCommandBuffer();
+            getCurrentTransientResourceHeap()->synchronizeAndReset();
+            mpRenderContext->getLowLevelData()->openCommandBuffer();
+        }
+        // Since call to `acquireNextImage` already included a fence wait inside GFX, we don't need to wait again.
+        // Instead we just signal `mpFrameFence` from the host.
+        mpFrameFence->externalSignal();
+        if (mpFrameFence->getCpuValue() >= kSwapChainBuffersCount) mpFrameFence->setGpuValue(mpFrameFence->getCpuValue() - kSwapChainBuffersCount);
+        executeDeferredReleases();
+        mFrameID++;
     }
 
     Device::SupportedFeatures querySupportedFeatures(DeviceHandle pDevice)
@@ -171,12 +371,29 @@ namespace Falcor
         mpApiData = pData;
 
         IDevice::Desc desc = {};
+#if FALCOR_GFX_VK
+        desc.deviceType = DeviceType::Vulkan;
+#elif FALCOR_GFX_D3D12
         desc.deviceType = DeviceType::DirectX12;
+#endif
         desc.slang.slangGlobalSession = getSlangGlobalSession();
+
+        gfx::D3D12DeviceExtendedDesc extDesc = {};
+        extDesc.rootParameterShaderAttributeName = "root";
+        void* pExtDesc = &extDesc;
+        desc.extendedDescCount = 1;
+        desc.extendedDescs = &pExtDesc;
+
+#if FALCOR_NVAPI_AVAILABLE
+        mpApiData->pApiDispatcher = new PipelineCreationAPIDispatcher();
+        desc.apiCommandDispatcher = static_cast<ISlangUnknown*>(mpApiData->pApiDispatcher);
+#endif
+
         if (SLANG_FAILED(gfxCreateDevice(&desc, pData->pDevice.writeRef()))) return false;
 
         mApiHandle = pData->pDevice;
 
+        mGpuTimestampFrequency = 1000.0 / (double)mApiHandle->getDeviceInfo().timestampFrequency;
         mSupportedFeatures = querySupportedFeatures(mApiHandle);
         mSupportedShaderModel = querySupportedShaderModel(mApiHandle);
 
@@ -203,13 +420,21 @@ namespace Falcor
         {
             queue.push_back(pData->pQueue);
         }
+
+#if FALCOR_GFX_VK
+        if (mpWindow->getClientAreaSize().x == 0 || mpWindow->getClientAreaSize().y == 0)
+        {
+            logWarning("Attempting to initialize Vulkan device on a 0-sized window. The swapchain will be invalid and using it could lead to error.");
+        }
+#endif
+
         return createSwapChain(mDesc.colorFormat);
     }
 
     bool Device::createSwapChain(ResourceFormat colorFormat)
     {
         ISwapchain::Desc desc = { };
-        desc.format = getGFXFormat(srgbToLinearFormat(colorFormat));
+        desc.format = getGFXFormat(colorFormat);
         desc.imageCount = kSwapChainBuffersCount;
         auto clientSize = mpWindow->getClientAreaSize();
         desc.width = clientSize.x;
@@ -226,13 +451,34 @@ namespace Falcor
 
     void Device::apiResizeSwapChain(uint32_t width, uint32_t height, ResourceFormat colorFormat)
     {
-        FALCOR_ASSERT(mpApiData->pSwapChain && getGFXFormat(srgbToLinearFormat(colorFormat)) == mpApiData->pSwapChain->getDesc().format);
-        FALCOR_ASSERT(SLANG_SUCCEEDED(mpApiData->pSwapChain->resize(width, height)));
+        FALCOR_ASSERT(mpApiData->pSwapChain);
+        FALCOR_GFX_CALL(mpApiData->pSwapChain->resize(width, height));
         mCurrentBackBufferIndex = mpApiData->pSwapChain->acquireNextImage();
+        if (mCurrentBackBufferIndex != -1)
+        {
+            mpRenderContext->getLowLevelData()->closeCommandBuffer();
+            getCurrentTransientResourceHeap()->synchronizeAndReset();
+            mpRenderContext->getLowLevelData()->openCommandBuffer();
+        }
     }
 
     bool Device::isWindowOccluded() const
     {
-        return false;
+        return mCurrentBackBufferIndex == -1;
     }
+
+#if FALCOR_D3D12_AVAILABLE
+    const D3D12DeviceHandle Device::getD3D12Handle()
+    {
+        gfx::IDevice::InteropHandles interopHandles = {};
+        mApiHandle->getNativeDeviceHandles(&interopHandles);
+        FALCOR_ASSERT(interopHandles.handles[0].api == gfx::InteropHandleAPI::D3D12);
+        return reinterpret_cast<ID3D12Device*>(interopHandles.handles[0].handleValue);
+    }
+#else
+    const D3D12DeviceHandle Device::getD3D12Handle()
+    {
+        return nullptr;
+    }
+#endif // FALCOR_D3D12_AVAILABLE
 }
