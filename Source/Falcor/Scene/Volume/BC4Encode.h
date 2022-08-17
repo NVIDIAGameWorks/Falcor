@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,6 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include <algorithm>
+#include <cstdint>
+#include <climits>
 
 // this file exposes a single function, CompressAlphaDxt5, which encodes a 4x4 set of uint8 alpha values into a single 64 bit BC4 encoded block
 static void CompressAlphaDxt5(uint8_t* tile, void* block);

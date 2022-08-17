@@ -25,11 +25,31 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Core/API/Device.h"
+#include "Core/API/Raytracing.h"
+#include "Core/API/D3D12/D3D12API.h"
+#include "Core/Assert.h"
+#include "Core/Errors.h"
+#include "Utils/Logger.h"
+#include "Utils/StringUtils.h"
+#include <sstream>
 
 namespace Falcor
 {
+    static_assert((uint32_t)RayFlags::None == D3D12_RAY_FLAG_NONE);
+    static_assert((uint32_t)RayFlags::ForceOpaque == D3D12_RAY_FLAG_FORCE_OPAQUE);
+    static_assert((uint32_t)RayFlags::ForceNonOpaque == D3D12_RAY_FLAG_FORCE_NON_OPAQUE);
+    static_assert((uint32_t)RayFlags::AcceptFirstHitAndEndSearch == D3D12_RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH);
+    static_assert((uint32_t)RayFlags::SkipClosestHitShader == D3D12_RAY_FLAG_SKIP_CLOSEST_HIT_SHADER);
+    static_assert((uint32_t)RayFlags::CullBackFacingTriangles == D3D12_RAY_FLAG_CULL_BACK_FACING_TRIANGLES);
+    static_assert((uint32_t)RayFlags::CullFrontFacingTriangles == D3D12_RAY_FLAG_CULL_FRONT_FACING_TRIANGLES);
+    static_assert((uint32_t)RayFlags::CullOpaque == D3D12_RAY_FLAG_CULL_OPAQUE);
+    static_assert((uint32_t)RayFlags::CullNonOpaque == D3D12_RAY_FLAG_CULL_NON_OPAQUE);
+    static_assert((uint32_t)RayFlags::SkipTriangles == D3D12_RAY_FLAG_SKIP_TRIANGLES);
+    static_assert((uint32_t)RayFlags::SkipProceduralPrimitives == D3D12_RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES);
+
+    static_assert(getMaxViewportCount() <= (uint32_t)D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE);
+
     namespace
     {
         const uint32_t kDefaultVendorId = 0x10DE; ///< NVIDIA GPUs
@@ -48,13 +68,64 @@ namespace Falcor
             to_string_case(D3D_FEATURE_LEVEL_11_1)
             to_string_case(D3D_FEATURE_LEVEL_12_0)
             to_string_case(D3D_FEATURE_LEVEL_12_1)
-#if FALCOR_ENABLE_D3D12_AGILITY_SDK
+#if FALCOR_HAS_D3D12_AGILITY_SDK
             to_string_case(D3D_FEATURE_LEVEL_12_2)
 #endif
             default: FALCOR_UNREACHABLE(); return "";
             }
         }
 #undef to_string_case
+
+        D3D_FEATURE_LEVEL getD3DFeatureLevel(uint32_t majorVersion, uint32_t minorVersion)
+        {
+            if (majorVersion == 12)
+            {
+                switch (minorVersion)
+                {
+                case 0:
+                    return D3D_FEATURE_LEVEL_12_0;
+                case 1:
+                    return D3D_FEATURE_LEVEL_12_1;
+#if FALCOR_HAS_D3D12_AGILITY_SDK
+                case 2:
+                    return D3D_FEATURE_LEVEL_12_2;
+#endif
+                }
+            }
+            else if (majorVersion == 11)
+            {
+                switch (minorVersion)
+                {
+                case 0:
+                    return D3D_FEATURE_LEVEL_11_0;
+                case 1:
+                    return D3D_FEATURE_LEVEL_11_1;
+                }
+            }
+            else if (majorVersion == 10)
+            {
+                switch (minorVersion)
+                {
+                case 0:
+                    return D3D_FEATURE_LEVEL_10_0;
+                case 1:
+                    return D3D_FEATURE_LEVEL_10_1;
+                }
+            }
+            else if (majorVersion == 9)
+            {
+                switch (minorVersion)
+                {
+                case 1:
+                    return D3D_FEATURE_LEVEL_9_1;
+                case 2:
+                    return D3D_FEATURE_LEVEL_9_2;
+                case 3:
+                    return D3D_FEATURE_LEVEL_9_3;
+                }
+            }
+            return (D3D_FEATURE_LEVEL)0;
+        }
     }
 
     struct DeviceApiData
@@ -63,57 +134,6 @@ namespace Falcor
         IDXGISwapChain3Ptr pSwapChain = nullptr;
         bool isWindowOccluded = false;
     };
-
-    D3D_FEATURE_LEVEL getD3DFeatureLevel(uint32_t majorVersion, uint32_t minorVersion)
-    {
-        if (majorVersion == 12)
-        {
-            switch (minorVersion)
-            {
-            case 0:
-                return D3D_FEATURE_LEVEL_12_0;
-            case 1:
-                return D3D_FEATURE_LEVEL_12_1;
-#if FALCOR_ENABLE_D3D12_AGILITY_SDK
-            case 2:
-                return D3D_FEATURE_LEVEL_12_2;
-#endif
-            }
-        }
-        else if (majorVersion == 11)
-        {
-            switch (minorVersion)
-            {
-            case 0:
-                return D3D_FEATURE_LEVEL_11_0;
-            case 1:
-                return D3D_FEATURE_LEVEL_11_1;
-            }
-        }
-        else if (majorVersion == 10)
-        {
-            switch (minorVersion)
-            {
-            case 0:
-                return D3D_FEATURE_LEVEL_10_0;
-            case 1:
-                return D3D_FEATURE_LEVEL_10_1;
-            }
-        }
-        else if (majorVersion == 9)
-        {
-            switch (minorVersion)
-            {
-            case 1:
-                return D3D_FEATURE_LEVEL_9_1;
-            case 2:
-                return D3D_FEATURE_LEVEL_9_2;
-            case 3:
-                return D3D_FEATURE_LEVEL_9_3;
-            }
-        }
-        return (D3D_FEATURE_LEVEL)0;
-    }
 
     IDXGISwapChain3Ptr createDxgiSwapChain(IDXGIFactory4* pFactory, const Window* pWindow, ID3D12CommandQueue* pCommandQueue, ResourceFormat colorFormat, uint32_t bufferCount)
     {
@@ -149,7 +169,7 @@ namespace Falcor
         // Feature levels to try creating devices. Listed in descending order so the highest supported level is used.
         const static D3D_FEATURE_LEVEL kFeatureLevels[] =
         {
-#if FALCOR_ENABLE_D3D12_AGILITY_SDK
+#if FALCOR_HAS_D3D12_AGILITY_SDK
             D3D_FEATURE_LEVEL_12_2,
 #endif
             D3D_FEATURE_LEVEL_12_1,
@@ -184,9 +204,9 @@ namespace Falcor
         DeviceHandle pDevice;
         D3D_FEATURE_LEVEL selectedFeatureLevel;
 
-        auto createMaxFeatureLevel = [&](const D3D_FEATURE_LEVEL* pFeatureLevels, uint32_t featureLevelCount) -> bool
+        auto createMaxFeatureLevel = [&](const D3D_FEATURE_LEVEL* pFeatureLevels, size_t featureLevelCount) -> bool
         {
-            for (uint32_t i = 0; i < featureLevelCount; i++)
+            for (size_t i = 0; i < featureLevelCount; i++)
             {
                 logDebug("Trying to create D3D12 device with minimum feature level: {}", to_string(pFeatureLevels[i]));
                 if (SUCCEEDED(D3D12CreateDevice(pAdapter, pFeatureLevels[i], IID_PPV_ARGS(&pDevice))))
@@ -272,7 +292,7 @@ namespace Falcor
         // Retrieve the adapter that's been selected
         FALCOR_D3D_CALL(pFactory->EnumAdapters1(selectedAdapterIndex, &pAdapter));
 
-        if (requestedFeatureLevel == 0) createMaxFeatureLevel(kFeatureLevels, (uint32_t)arraysize(kFeatureLevels));
+        if (requestedFeatureLevel == 0) createMaxFeatureLevel(kFeatureLevels, std::size(kFeatureLevels));
         else createMaxFeatureLevel(&requestedFeatureLevel, 1);
 
         if (pDevice != nullptr)
@@ -411,6 +431,9 @@ namespace Falcor
         return Device::ShaderModel::Unknown;
     }
 
+    Device::Device(Window::SharedPtr pWindow, const Desc& desc) : mpWindow(pWindow), mDesc(desc) {}
+    Device::~Device() = default;
+
     CommandQueueHandle Device::getCommandQueueHandle(LowLevelContextData::CommandQueueType type, uint32_t index) const
     {
         return mCmdQueues[(uint32_t)type][index];
@@ -438,7 +461,7 @@ namespace Falcor
             HRESULT hr = mpApiData->pSwapChain->GetBuffer(i, IID_PPV_ARGS(&apiHandles[i]));
             if (FAILED(hr))
             {
-                d3dTraceHR("Failed to get back-buffer " + std::to_string(i) + " from the swap-chain", hr);
+                d3dTraceHR(fmt::format("Failed to get back-buffer {} from the swap-chain", i).c_str(), hr);
                 return false;
             }
         }
@@ -455,7 +478,7 @@ namespace Falcor
 
     void Device::destroyApiObjects()
     {
-        safe_delete(mpApiData);
+        mpApiData.reset();
         mpWindow.reset();
     }
 
@@ -473,8 +496,7 @@ namespace Falcor
 
     bool Device::apiInit()
     {
-        DeviceApiData* pData = new DeviceApiData;
-        mpApiData = pData;
+        mpApiData.reset(new DeviceApiData);
         UINT dxgiFlags = 0;
         if (mDesc.enableDebugLayer)
         {
@@ -516,7 +538,7 @@ namespace Falcor
                 D3D12_MESSAGE_ID_CLEARDEPTHSTENCILVIEW_MISMATCHINGCLEARVALUE,
             };
             D3D12_INFO_QUEUE_FILTER f = {};
-            f.DenyList.NumIDs = (UINT)arraysize(hideMessages);
+            f.DenyList.NumIDs = (UINT)std::size(hideMessages);
             f.DenyList.pIDList = hideMessages;
             pInfoQueue->AddStorageFilterEntries(&f);
 

@@ -73,12 +73,14 @@ void CudaInterop::onFrameRender(RenderContext* pRenderContext, const Fbo::Shared
     pRenderContext->blit(mpOutputTex->getSRV(), pTargetFbo->getRenderTargetView(0));
 }
 
-int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
+int main(int argc, char** argv)
 {
     CudaInterop::UniquePtr pRenderer = std::make_unique<CudaInterop>();
+
     SampleConfig config;
     config.windowDesc.title = "Falcor-Cuda Interop";
     config.windowDesc.resizableWindow = true;
 
     Sample::run(config, pRenderer);
+    return 0;
 }

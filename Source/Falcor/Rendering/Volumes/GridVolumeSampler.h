@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,11 +26,17 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Scene/Scene.h"
 #include "GridVolumeSamplerParams.slang"
+#include "Core/Macros.h"
+#include "Utils/UI/Gui.h"
+#include "Scene/Scene.h"
+#include <memory>
 
 namespace Falcor
 {
+    class RenderContext;
+    struct ShaderVar;
+
     /** Grid volume sampler.
         Utily class for evaluating transmittance and sampling scattering in grid volumes.
     */
@@ -46,6 +52,9 @@ namespace Falcor
             TransmittanceEstimator transmittanceEstimator = TransmittanceEstimator::RatioTrackingLocalMajorant;
             DistanceSampler distanceSampler = DistanceSampler::DeltaTrackingLocalMajorant;
             bool useBrickedGrid = true;
+
+            // Note: Empty constructor needed for clang due to the use of the nested struct constructor in the parent constructor.
+            Options() {}
         };
 
         virtual ~GridVolumeSampler() = default;

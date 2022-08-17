@@ -1,0 +1,14 @@
+@echo off
+setlocal enabledelayedexpansion
+
+for /l %%x in (1, 1, 10) do (
+    "${CMAKE_MT_ORIGINAL}" %*
+    if !errorlevel! equ 0 exit /b 0
+    echo mt.exe failed with error code !errorlevel!, retrying ...
+    rem workaround for waiting for 1 second
+    ping -n 0 127.0.0.1 >nul
+)
+
+endlocal
+
+exit /b !errorlevel!

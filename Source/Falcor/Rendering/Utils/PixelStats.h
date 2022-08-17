@@ -26,9 +26,15 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Falcor.h"
 #include "PixelStatsShared.slang"
+#include "Core/Macros.h"
+#include "Core/API/Buffer.h"
+#include "Core/API/Texture.h"
+#include "Core/API/GpuFence.h"
+#include "RenderGraph/BasePasses/ComputePass.h"
+#include "Utils/UI/Gui.h"
 #include "Utils/Algorithm/ComputeParallelReduction.h"
+#include <memory>
 
 namespace Falcor
 {

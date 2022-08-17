@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "Testing/UnitTest.h"
 #include "Utils/Math/Float16.h"
-#include "Utils/HostDeviceShared.slangh" // TODO: Replace by std::bit_cast when C++20 is available
+#include <fstd/bit.h> // TODO C++20: Replace with <bit>
 #include <random>
 
 namespace Falcor
@@ -105,7 +105,7 @@ namespace Falcor
         // Test cast to float for all bit patterns.
         for (uint32_t bits = 0; bits < 0x10000; bits++)
         {
-            const float16_t v = bit_cast<float16_t>((uint16_t)bits);
+            const float16_t v = fstd::bit_cast<float16_t>((uint16_t)bits);
             const float f = (float)v;
 
             uint s = bits >> 15;
@@ -117,9 +117,9 @@ namespace Falcor
             {
                 if (m == 0) // +-zero
                 {
-                    uint32_t expected = bit_cast<uint32_t>(s == 0 ? 0.f : -0.f);
+                    uint32_t expected = fstd::bit_cast<uint32_t>(s == 0 ? 0.f : -0.f);
                     EXPECT_EQ(f, 0.f);
-                    EXPECT_EQ(bit_cast<uint32_t>(f), expected);
+                    EXPECT_EQ(fstd::bit_cast<uint32_t>(f), expected);
                 }
                 else
                 {
@@ -131,9 +131,9 @@ namespace Falcor
             {
                 if (m == 0) // +-inf
                 {
-                    uint32_t expected = bit_cast<uint32_t>(s == 0 ? std::numeric_limits<float>::infinity() : -std::numeric_limits<float>::infinity());
+                    uint32_t expected = fstd::bit_cast<uint32_t>(s == 0 ? std::numeric_limits<float>::infinity() : -std::numeric_limits<float>::infinity());
                     EXPECT(std::isinf(f));
-                    EXPECT_EQ(bit_cast<uint32_t>(f), expected);
+                    EXPECT_EQ(fstd::bit_cast<uint32_t>(f), expected);
                 }
                 else // nan
                 {
@@ -150,11 +150,11 @@ namespace Falcor
         // Test cast to/from float for all bit patterns.
         for (uint32_t bits = 0; bits < 0x10000; bits++)
         {
-            float16_t expected = bit_cast<float16_t>((uint16_t)bits);
+            float16_t expected = fstd::bit_cast<float16_t>((uint16_t)bits);
             float f = (float)expected;
             float16_t result = (float16_t)f;
 
-            EXPECT_EQ(bit_cast<uint16_t>(result), bit_cast<uint16_t>(expected));
+            EXPECT_EQ(fstd::bit_cast<uint16_t>(result), fstd::bit_cast<uint16_t>(expected));
         }
     }
 }

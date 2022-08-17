@@ -25,7 +25,6 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "RtAccelerationStructure.h"
 
 namespace Falcor
@@ -59,10 +58,9 @@ namespace Falcor
         return mDesc.mBuffer->getGpuAddress() + mDesc.mOffset;
     }
 
-    RtInstanceDesc& RtInstanceDesc::setTransform(const glm::mat4& matrix)
+    RtInstanceDesc& RtInstanceDesc::setTransform(const rmcv::mat4& matrix)
     {
-        glm::mat4 transform4x4 = transpose(matrix);
-        std::memcpy(transform, &transform4x4, sizeof(transform));
+        std::memcpy(transform, &matrix, sizeof(transform));
         return *this;
     }
 }

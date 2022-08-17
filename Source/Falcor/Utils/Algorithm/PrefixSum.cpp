@@ -25,10 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "PrefixSum.h"
-#include <iostream>
-#include <iomanip>
+#include "Core/Assert.h"
+#include "Core/API/RenderContext.h"
+#include "Utils/Math/Common.h"
+#include "Utils/Timing/Profiler.h"
 
 namespace Falcor
 {
@@ -117,7 +118,7 @@ namespace Falcor
             {
                 // Compute number of thread groups. Each thread operates on one element.
                 // Note that we're skipping the first group of 2N elements, as no add is needed (their group sum is zero).
-                const uint dispatchSizeX = (numPrefixGroups - 1) * 2;
+                const uint32_t dispatchSizeX = (numPrefixGroups - 1) * 2;
                 FALCOR_ASSERT(dispatchSizeX > 0);
 
                 // Set constants and data.

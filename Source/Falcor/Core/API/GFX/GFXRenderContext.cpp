@@ -25,12 +25,15 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Core/API/RenderContext.h"
-#include "Core/API/BlitContext.h"
 #include "GFXLowLevelContextApiData.h"
 #include "GFXFormats.h"
 #include "GFXRtAccelerationStructure.h"
+#include "Core/API/BlitContext.h"
+#include "Core/API/GFX/GFXAPI.h"
+#include "Core/State/GraphicsState.h"
+#include "Core/Program/ProgramVars.h"
+#include <cstddef> // for offsetof
 
 namespace Falcor
 {

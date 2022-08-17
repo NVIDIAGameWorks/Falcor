@@ -27,6 +27,10 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
+#include "SDFEditorTypes.slang"
+#include "Marker2DSet.h"
+#include "SelectionWheel.h"
+#include "RenderGraph/BasePasses/FullScreenPass.h"
 
 using namespace Falcor;
 
@@ -49,10 +53,188 @@ public:
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override {}
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
-    virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override {}
-    virtual bool onMouseEvent(const MouseEvent& mouseEvent) override { return false; }
-    virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
+    virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
+    virtual bool onMouseEvent(const MouseEvent& mouseEvent) override;
+    virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override;
+
+    static void registerBindings(pybind11::module& m);
 
 private:
-    SDFEditor() : RenderPass(kInfo) {}
+    enum class TransformationState
+    {
+        None,
+        Translating,
+        Rotating,
+        Scaling
+    };
+
+    struct KeyboardButtonsPressed
+    {
+        bool undo = false;
+        bool redo = false;
+        bool shift = false;
+        bool control = false;
+        bool prevShift = false;
+        bool prevControl = false;
+
+        void registerCurrentStatesIntoPrevious()
+        {
+            prevShift = shift;
+            prevControl = control;
+        }
+    };
+
+    struct UI2D
+    {
+        bool                        recordStartingMousePos = false;
+        float                       scrollDelta = 0.0f;
+        KeyboardButtonsPressed      keyboardButtonsPressed;
+        float2                      startMousePosition = { 0.0f, 0.0f };
+        float2                      currentMousePosition = { 0.0f, 0.0f };
+        float2                      prevMousePosition = { 0.0f, 0.0f };
+        CpuTimer                    timer;
+        CpuTimer::TimePoint         timeOfReleaseMainGUIKey;
+        bool                        fadeAwayGUI = false;
+        bool                        drawCurrentModes = true;
+        Marker2DSet::SharedPtr      pMarker2DSet;
+        SelectionWheel::SharedPtr   pSelectionWheel;
+        float                       currentBlobbing = 0.0f;
+        SDF3DShapeType              currentEditingShape = SDF3DShapeType::Sphere;
+        SDFOperationType            currentEditingOperator = SDFOperationType::Union;
+        SDFBBRenderSettings         bbRenderSettings;
+        SDFGridPlane                previousGridPlane;
+        SDFGridPlane                gridPlane;
+        SDFGridPlane                previousSymmetryPlane;
+        SDFGridPlane                symmetryPlane;
+
+    };
+
+    struct CurrentEdit
+    {
+        uint32_t instanceID;
+        SdfGridID gridID;
+        SDFGrid::SharedPtr pSDFGrid;
+        SDF3DPrimitive primitive;
+        SDF3DPrimitive symmetryPrimitive;
+        uint32_t primitiveID = UINT32_MAX;
+        uint32_t symmetryPrimitiveID = UINT32_MAX;
+    };
+
+    struct SDFEdit
+    {
+        SdfGridID gridID;
+        uint32_t primitiveID;
+    };
+
+    struct UndoneSDFEdit
+    {
+        SdfGridID gridID;
+        SDF3DPrimitive primitive;
+    };
+
+private:
+    SDFEditor(const Dictionary& dict);
+
+    void setShaderData(const ShaderVar& var, const Texture::SharedPtr& pInputColor, const Texture::SharedPtr& pVBuffer);
+    void fetchPreviousVBufferAndZBuffer(RenderContext* pRenderContext, Texture::SharedPtr& pVBuffer, Texture::SharedPtr& pDepth);
+
+    // 2D GUI functions.
+    void setup2DGUI();
+    bool isMainGUIKeyDown() const;
+    void setupPrimitiveAndOperation(const float2& center, const float markerSize, const SDF3DShapeType editingPrimitive, const SDFOperationType editingOperator, const float4& color, const float alpha = 1.0f);
+    void setupCurrentModes2D();
+    void manipulateGridPlane(SDFGridPlane& gridPlane, SDFGridPlane& previousGridPlane, bool isTranslationKeyDown, bool isConstrainedManipulationKeyDown);
+    void rotateGridPlane(const float mouseDiff, const float3& rotationVector, const float3& inNormal, const float3& inRightVector, float3& outNormal, float3& outRightVector, const bool fromPreviousMouse = true);
+    void translateGridPlane(const float mouseDiff, const float3& translationVector, const float3& inPosition, float3& outPosition);
+    bool gridPlaneManipulated() const;
+    bool symmetryPlaneManipulated() const;
+
+    // Editing functions
+    void updateEditShapeType();
+    void updateEditOperationType();
+    void updateSymmetryPrimitive();
+    void addEditPrimitive(bool addToCurrentEdit, bool addToHistory);
+    void removeEditPrimitives();
+    void updateEditPrimitives();
+
+    // Input and actions
+    void handleActions();
+    void handleToggleSymmetryPlane();
+    void handleToggleEditing();
+    void handleEditMovement();
+    void handleAddPrimitive();
+    bool handlePicking(const float2& currentMousePos, float3& p);
+    uint32_t calcPrimitivesAffectedCount(uint32_t keyPressedCount);
+    void handleUndo();
+    void handleRedo();
+
+    void bakePrimitives();
+
+private:
+    Scene::SharedPtr            mpScene = nullptr;                          ///< The current scene.
+    Camera::SharedPtr           mpCamera = nullptr;                         ///< The camera.
+    FullScreenPass::SharedPtr   mpGUIPass = nullptr;                        ///< A full screen pass drawing the 2D GUI.
+    Fbo::SharedPtr              mpFbo = nullptr;                            ///< Frame buffer object.
+    Texture::SharedPtr          mpEditingVBuffer = nullptr;                 ///< A copy of the VBuffer used while moving/adding a primitive.
+    Texture::SharedPtr          mpEditingLinearZBuffer = nullptr;           ///< A copy of the linear Z buffer used while moving/adding a primitive.
+    Buffer::SharedPtr           mpSDFEditingDataBuffer;                     ///< A buffer that contain current Edit data for GUI visualization.
+
+    struct
+    {
+        TransformationState prevState = TransformationState::None;
+        TransformationState state = TransformationState::None;
+        Transform startInstanceTransform;
+        Transform startPrimitiveTransform;
+        SDF3DPrimitive startPrimitive;
+        float3 startPlanePos = { 0.0f, 0.0f, 0.0f };
+        float3 referencePlaneDir = { 0.0f, 0.0f, 0.0f };
+        SDFEditorAxis axis = SDFEditorAxis::All;
+        SDFEditorAxis prevAxis = SDFEditorAxis::All;
+        float2 startMousePos = { 0.0f, 0.0f };
+    } mPrimitiveTransformationEdit;
+
+    struct
+    {
+        TransformationState prevState = TransformationState::None;
+        TransformationState state = TransformationState::None;
+        Transform startTransform;
+        float3 startPlanePos = { 0.0f, 0.0f, 0.0f };
+        float3 referencePlaneDir = { 0.0f, 0.0f, 0.0f };
+        float prevScrollTotal = 0.0f;
+        float scrollTotal = 0.0f;
+        float2 startMousePos = { 0.0f, 0.0f };
+    } mInstanceTransformationEdit;
+
+    CurrentEdit                 mCurrentEdit;
+    std::vector<SDFEdit>        mPerformedSDFEdits;
+    std::vector<UndoneSDFEdit>  mUndoneSDFEdits;
+    bool                        mLMBDown = false;
+    bool                        mRMBDown = false;
+    bool                        mMMBDown = false;
+    bool                        mEditingKeyDown = false;
+    bool                        mGUIKeyDown = false;
+    bool                        mPreviewEnabled = true;
+    bool                        mAllowEditingOnOtherSurfaces = false;
+    bool                        mAutoBakingEnabled = true;
+
+    uint2                       mFrameDim = { 0, 0 };
+    UI2D                        mUI2D;
+
+    Buffer::SharedPtr           mpPickingInfo;                  ///< Buffer for reading back picking info from the GPU.
+    Buffer::SharedPtr           mpPickingInfoReadBack;          ///< Staging buffer for reading back picking info from the GPU.
+    GpuFence::SharedPtr         mpReadbackFence;                ///< GPU fence for synchronizing picking info readback.
+    SDFPickingInfo              mPickingInfo;
+
+    SDFEditingData              mGPUEditingData;
+
+    Buffer::SharedPtr           mpGridInstanceIDsBuffer;
+    uint32_t                    mGridInstanceCount = 0;
+
+    uint32_t                    mNonBakedPrimitiveCount = 0;
+    uint32_t                    mBakePrimitivesBatchSize = 5;   ///< The number of primitives to bake at a time.
+    uint32_t                    mPreservedHistoryCount = 100;   ///< Primitives that should not be baked.
+
+    // Undo/Redo
+    uint32_t                    mUndoPressedCount = 0;
+    uint32_t                    mRedoPressedCount = 0;
 };

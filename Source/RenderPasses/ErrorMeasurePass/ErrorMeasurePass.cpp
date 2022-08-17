@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "ErrorMeasurePass.h"
+#include "RenderGraph/RenderPassLibrary.h"
 #include <sstream>
 
 const RenderPass::Info ErrorMeasurePass::kInfo { "ErrorMeasurePass", "Measures error with respect to a reference image." };
@@ -148,8 +149,8 @@ RenderPassReflection ErrorMeasurePass::reflect(const CompileData& compileData)
 
 void ErrorMeasurePass::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    Texture::SharedPtr pSourceImageTexture = renderData[kInputChannelSourceImage]->asTexture();
-    Texture::SharedPtr pOutputImageTexture = renderData[kOutputChannelImage]->asTexture();
+    Texture::SharedPtr pSourceImageTexture = renderData.getTexture(kInputChannelSourceImage);
+    Texture::SharedPtr pOutputImageTexture = renderData.getTexture(kOutputChannelImage);
 
     // Create the texture for the difference image if this is our first
     // time through or if the source image resolution has changed.
@@ -196,8 +197,8 @@ void ErrorMeasurePass::execute(RenderContext* pRenderContext, const RenderData& 
 void ErrorMeasurePass::runDifferencePass(RenderContext* pRenderContext, const RenderData& renderData)
 {
     // Bind textures.
-    Texture::SharedPtr pSourceTexture = renderData[kInputChannelSourceImage]->asTexture();
-    Texture::SharedPtr pWorldPositionTexture = renderData[kInputChannelWorldPosition]->asTexture();
+    Texture::SharedPtr pSourceTexture = renderData.getTexture(kInputChannelSourceImage);
+    Texture::SharedPtr pWorldPositionTexture = renderData.getTexture(kInputChannelWorldPosition);
     mpErrorMeasurerPass["gReference"] = getReference(renderData);
     mpErrorMeasurerPass["gSource"] = pSourceTexture;
     mpErrorMeasurerPass["gWorldPosition"] = pWorldPositionTexture;
@@ -371,7 +372,7 @@ void ErrorMeasurePass::loadReference()
 
 Texture::SharedPtr ErrorMeasurePass::getReference(const RenderData& renderData) const
 {
-    return mUseLoadedReference ? mpReferenceTexture : renderData[kInputChannelReferenceImage]->asTexture();
+    return mUseLoadedReference ? mpReferenceTexture : renderData.getTexture(kInputChannelReferenceImage);
 }
 
 void ErrorMeasurePass::openMeasurementsFile()

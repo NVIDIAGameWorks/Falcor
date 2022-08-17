@@ -143,6 +143,22 @@ void Falcor::Marker2DSet::addArrowFromTwoTris(const float2& startPos, const floa
     addMarker(markerBlob);
 }
 
+void Falcor::Marker2DSet::addCircleSector(const float2& pos, const float rotation, const float angle, const float minRadius, const float maxRadius, const float4& color, const float4& borderColorXYZThicknessW, ExcludeBorderFlags excludeBorderFlags)
+{
+    Marker2DDataBlob markerBlob;
+    markerBlob.type = SDF2DShapeType::CircleSector;
+    CircleSectorMarker2DData* pMarker = reinterpret_cast<CircleSectorMarker2DData*>(markerBlob.payload.data);
+    pMarker->position = pos;
+    pMarker->rotation = rotation;
+    pMarker->angle = angle * 0.5f;
+    pMarker->maxRadius = maxRadius;
+    pMarker->minRadius = minRadius;
+    pMarker->color = color;
+    pMarker->borderColor = borderColorXYZThicknessW;
+    pMarker->excludeBorders = uint32_t(excludeBorderFlags);
+    addMarker(markerBlob);
+}
+
 void Falcor::Marker2DSet::setShaderData(const ShaderVar& var)
 {
     updateBuffer();

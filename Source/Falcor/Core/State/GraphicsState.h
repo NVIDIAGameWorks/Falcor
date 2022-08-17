@@ -26,17 +26,22 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Core/API/GraphicsStateObject.h"
 #include "StateGraph.h"
+#include "Core/Macros.h"
 #include "Core/API/FBO.h"
+#include "Core/API/VAO.h"
+#include "Core/API/DepthStencilState.h"
+#include "Core/API/RasterizerState.h"
+#include "Core/API/BlendState.h"
+#include "Core/API/GraphicsStateObject.h"
 #include "Core/Program/GraphicsProgram.h"
-#include "Core/Program/ProgramVars.h"
+#include <memory>
+#include <stack>
+#include <vector>
 
 namespace Falcor
 {
     class GraphicsVars;
-    class Vao;
-    class GraphicsProgram;
 
     /** Pipeline state.
         This class contains the entire state required by a single draw-call. It's not an immutable object - you can change it dynamically during rendering.

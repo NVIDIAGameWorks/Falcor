@@ -27,6 +27,7 @@
  **************************************************************************/
 #include "FalcorTest.h"
 #include "Testing/UnitTest.h"
+#include "RenderGraph/RenderPassLibrary.h"
 
 #include <args.hxx>
 
@@ -34,9 +35,7 @@
 #include <string>
 #include <vector>
 
-#if FALCOR_D3D12_AVAILABLE
 FALCOR_EXPORT_D3D12_AGILITY_SDK
-#endif
 
 static std::vector<std::string> librariesWithTests =
 {
@@ -58,17 +57,17 @@ void FalcorTest::onLoad(RenderContext* pRenderContext)
 
 void FalcorTest::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
-    sReturnCode = runTests(std::cout, pRenderContext, mOptions.filter, mOptions.repeat);
+    sReturnCode = runTests(std::cout, pRenderContext, mOptions.filter, mOptions.xmlReportPath, mOptions.repeat);
     gpFramework->shutdown();
 }
 
 int main(int argc, char** argv)
 {
-
     args::ArgumentParser parser("Falcor unit tests.");
     parser.helpParams.programName = "FalcorTest";
     args::HelpFlag helpFlag(parser, "help", "Display this help menu.", {'h', "help"});
     args::ValueFlag<std::string> filterFlag(parser, "filter", "Regular expression for filtering tests to run.", {'f', "filter"});
+    args::ValueFlag<std::string> xmlReportFlag(parser, "path", "XML report output file.", {'x', "xml-report"});
     args::ValueFlag<uint32_t> repeatFlag(parser, "N", "Number of times to repeat the test.", {'r', "repeat"});
     args::Flag enableDebugLayer(parser, "", "Enable debug layer (enabled by default in Debug build).", {"enable-debug-layer"});
     args::CompletionFlag completionFlag(parser, {"complete"});
@@ -106,12 +105,13 @@ int main(int argc, char** argv)
     FalcorTest::Options options;
 
     if (filterFlag) options.filter = args::get(filterFlag);
+    if (xmlReportFlag) options.xmlReportPath = args::get(xmlReportFlag);
     if (repeatFlag) options.repeat = args::get(repeatFlag);
 
     FalcorTest::UniquePtr pRenderer = std::make_unique<FalcorTest>(options);
     SampleConfig config;
     config.windowDesc.title = "FalcorTest";
-#ifdef FALCOR_D3D12_AVAILABLE
+#ifdef FALCOR_HAS_D3D12
     config.windowDesc.mode = Window::WindowMode::Minimized;
 #else
     // Vulkan does not allow creating a swapchain on a minimized window.

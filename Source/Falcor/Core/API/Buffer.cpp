@@ -25,9 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Buffer.h"
 #include "Device.h"
+#include "Core/Assert.h"
+#include "Core/Errors.h"
+#include "Core/Program/Program.h"
+#include "Core/Program/ShaderVar.h"
+#include "Utils/Logger.h"
+#include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
 {
@@ -143,7 +148,7 @@ namespace Falcor
 
     Buffer::SharedPtr Buffer::aliasResource(Resource::SharedPtr pBaseResource, GpuAddress offset, size_t size, Resource::BindFlags bindFlags)
     {
-        FALCOR_ASSERT(pBaseResource->asBuffer()); // Only aliasing buffers for now
+        FALCOR_ASSERT(pBaseResource && pBaseResource->asBuffer()); // Only aliasing buffers for now
         CpuAccess cpuAccess = pBaseResource->asBuffer() ? pBaseResource->asBuffer()->getCpuAccess() : CpuAccess::None;
         checkArgument(cpuAccess != CpuAccess::None, "'pBaseResource' has CpuAccess:{} which is illegal. Aliased resources must have CpuAccess::None.", to_string(cpuAccess));
         checkArgument((pBaseResource->getBindFlags() & bindFlags) != bindFlags, "'bindFlags' ({}) don't match aliased resource bind flags {}.", to_string(bindFlags), to_string(pBaseResource->getBindFlags()));
@@ -320,6 +325,23 @@ namespace Falcor
 
         throw RuntimeError("Inferring element size from resource format is not implemented");
     }
+
+    bool Buffer::adjustSizeOffsetParams(size_t& size, size_t& offset) const
+    {
+        if (offset >= mSize)
+        {
+            logWarning("Buffer::adjustSizeOffsetParams() - offset is larger than the buffer size.");
+            return false;
+        }
+
+        if (offset + size > mSize)
+        {
+            logWarning("Buffer::adjustSizeOffsetParams() - offset + size will cause an OOB access. Clamping size");
+            size = mSize - offset;
+        }
+        return true;
+    }
+
 
     FALCOR_SCRIPT_BINDING(Buffer)
     {

@@ -26,6 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "AccumulatePass.h"
+#include "RenderGraph/RenderPassLibrary.h"
+#include "RenderGraph/RenderPassStandardFlags.h"
 
 const RenderPass::Info AccumulatePass::kInfo { "AccumulatePass", "Temporal accumulation." };
 
@@ -175,8 +177,8 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
     }
 
     // Grab our input/output buffers.
-    Texture::SharedPtr pSrc = renderData[kInputChannel]->asTexture();
-    Texture::SharedPtr pDst = renderData[kOutputChannel]->asTexture();
+    Texture::SharedPtr pSrc = renderData.getTexture(kInputChannel);
+    Texture::SharedPtr pDst = renderData.getTexture(kOutputChannel);
     FALCOR_ASSERT(pSrc && pDst);
 
     const uint2 resolution = uint2(pSrc->getWidth(), pSrc->getHeight());
@@ -300,6 +302,8 @@ void AccumulatePass::renderUI(Gui::Widgets& widget)
     if (mEnabled)
     {
         if (widget.button("Reset", true)) reset();
+
+        widget.checkbox("Auto Reset", mAutoReset);
 
         if (widget.dropdown("Mode", kModeSelectorList, (uint32_t&)mPrecisionMode))
         {

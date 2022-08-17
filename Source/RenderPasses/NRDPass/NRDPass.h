@@ -27,15 +27,12 @@
  **************************************************************************/
 #pragma once
 
-#if FALCOR_D3D12_AVAILABLE
-
 #include <Falcor.h>
 #include "Core/API/Shared/D3D12DescriptorSet.h"
 #include "Core/API/Shared/D3D12RootSignature.h"
+#include "RenderGraph/RenderPassHelpers.h"
 
-#if FALCOR_ENABLE_NRD
-#include <NRD/Include/NRD.h>
-#endif
+#include <NRD.h>
 
 using namespace Falcor;
 
@@ -68,10 +65,10 @@ private:
     NRDPass(const Dictionary& dict);
 
     Scene::SharedPtr mpScene;
-    uint2 mScreenSize;
+    uint2 mScreenSize{};
     uint32_t mFrameIndex = 0;
+    RenderPassHelpers::IOSize  mOutputSizeSelection = RenderPassHelpers::IOSize::Default; ///< Selected output size.
 
-#if FALCOR_ENABLE_NRD
     void reinit();
     void createPipelines();
     void createResources();
@@ -102,13 +99,10 @@ private:
     std::vector<Falcor::Texture::SharedPtr> mpTransientTextures;
     Falcor::Buffer::SharedPtr mpConstantBuffer;
 
-    glm::mat4x4 mPrevViewMatrix;
-    glm::mat4x4 mPrevProjMatrix;
+    rmcv::mat4 mPrevViewMatrix;
+    rmcv::mat4 mPrevProjMatrix;
 
     // Additional classic Falcor compute pass and resources for packing radiance and hitT for NRD.
     ComputePass::SharedPtr mpPackRadiancePassRelax;
     ComputePass::SharedPtr mpPackRadiancePassReblur;
-#endif // FALCOR_ENABLE_NRD
 };
-
-#endif // FALCOR_D3D12_AVAILABLE

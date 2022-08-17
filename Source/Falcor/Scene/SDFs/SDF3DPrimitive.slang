@@ -49,15 +49,21 @@ extension SDF3DPrimitive
         return evalOperation(operationType, d, dShape, operationSmoothing);
     }
 
-    float2 evalInterval(float3 pMin, float3 pMax, float2 d)
+    float2 evalInterval(float3 pCenter, float3 pHalfExtent, float2 d)
     {
-        float2 dShape = evalIntervalShape(pMin, pMax, shapeType, shapeData, shapeBlobbing, translation, invRotationScale);
+        float2 dShape = evalIntervalShape(pCenter, pHalfExtent, shapeType, shapeData, shapeBlobbing, translation, invRotationScale);
         return evalIntervalOperation(operationType, d, dShape, operationSmoothing);
     }
 
     static float evalShape(float3 p, SDF3DShapeType shapeType, float3 shapeData, float blobbing, float3 translation, float3x3 invRotationScale)
     {
-        p = mul(invRotationScale, p - translation);
+        // OLD CODE: invRotationScale was tranpose w.r.t. CPU: p = mul(invRotationScale, p - translation);
+        // The old code did M.v, where M was actually transposed w.r.t. what was on the CPU because of the col-major CPU and row-major GPU.
+        // Matrices are now row-major on both, meaning there is no more any hidden tranpose.
+        // However, to keep the exact same semantic as before, we explicitly transpose the invRotationScale here.
+        // We choose to transpose rather than do v.M to make the weirdness even more obvious.
+        // tdavidovic: I think this is a bug and the transpose shouldn't be there, but don't have a test case with a ground truth to verify
+        p = mul(transpose(invRotationScale), p - translation);
         float d = FLT_MAX;
 
         switch (shapeType)
@@ -76,7 +82,13 @@ extension SDF3DPrimitive
 
     static float2 evalIntervalShape(float3 pCenter, float3 pHalfExtent, SDF3DShapeType shapeType, float3 shapeData, float blobbing, float3 translation, float3x3 invRotationScale)
     {
-        pCenter = mul(invRotationScale, pCenter - translation);
+        // OLD CODE: invRotationScale was tranpose w.r.t. CPU: pCenter = mul(invRotationScale, pCenter - translation);
+        // The old code did M.v, where M was actually transposed w.r.t. what was on the CPU because of the col-major CPU and row-major GPU.
+        // Matrices are now row-major on both, meaning there is no more any hidden tranpose.
+        // However, to keep the exact same semantic as before, we explicitly transpose the invRotationScale here.
+        // We choose to transpose rather than do v.M to make the weirdness even more obvious.
+        // tdavidovic: I think this is a bug and the transpose shouldn't be there, but don't have a test case with a ground truth to verify
+        pCenter = mul(transpose(invRotationScale), pCenter - translation);
         float3 pMin = pCenter - pHalfExtent;
         float3 pMax = pCenter + pHalfExtent;
 

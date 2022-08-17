@@ -25,21 +25,40 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Program.h"
+#include "ProgramVars.h"
+#include "Core/Platform/OS.h"
+#include "Core/API/Device.h"
+#include "Core/API/ParameterBlock.h"
 #include "Utils/StringUtils.h"
-#include <slang/slang.h>
+#include "Utils/Logger.h"
+#include "Utils/Timing/CpuTimer.h"
+#include "Utils/Scripting/ScriptBindings.h"
+
+#include <slang.h>
+
+#include <set>
 
 namespace Falcor
 {
     const std::string kSupportedShaderModels[] = { "6_0", "6_1", "6_2", "6_3", "6_4", "6_5"
-#if FALCOR_ENABLE_D3D12_AGILITY_SDK
+#if FALCOR_HAS_D3D12_AGILITY_SDK
         , "6_6"
 #endif
     };
 
     static Program::DefineList sGlobalDefineList;
     static bool sGenerateDebugInfo;
+    static Program::ForcedCompilerFlags sForcedCompilerFlags;
+
+    Program::Desc applyForcedCompilerFlags(Program::Desc desc)
+    {
+        Shader::CompilerFlags flags = desc.getCompilerFlags();
+        flags &= ~sForcedCompilerFlags.disabled;
+        flags |= sForcedCompilerFlags.enabled;
+        desc.setCompilerFlags(flags);
+        return desc;
+    }
 
     Program::Desc::Desc() = default;
 
@@ -48,20 +67,28 @@ namespace Falcor
         addShaderLibrary(path);
     }
 
-    Program::Desc& Program::Desc::addShaderLibrary(const std::filesystem::path& path)
+    Program::Desc& Program::Desc::addShaderModule(const ShaderModule& src)
     {
-        Source source(ShaderLibrary::create(path));
+        if (src.type == ShaderModule::Type::String && src.createTranslationUnit && src.moduleName.empty())
+        {
+            // Warn if module name is left empty when creating a new translation unit from string.
+            // This is valid, but unexpected so issue a warning.
+            logWarning("addShaderModule() - Creating a new translation unit, but missing module name. Is this intended?");
+        }
 
+        SourceEntryPoints source(src);
         mActiveSource = (int32_t)mSources.size();
         mSources.emplace_back(std::move(source));
+
         return *this;
     }
 
-    Program::Desc& Program::Desc::addShaderString(const std::string& shader)
+    Program::Desc& Program::Desc::addShaderModules(const ShaderModuleList& modules)
     {
-        mActiveSource = (int32_t)mSources.size();
-        mSources.emplace_back(shader);
-
+        for (const auto& module : modules)
+        {
+            addShaderModule(module);
+        }
         return *this;
     }
 
@@ -135,7 +162,7 @@ namespace Falcor
     {
         // Check that the model is supported
         bool b = false;
-        for (size_t i = 0; i < arraysize(kSupportedShaderModels); i++)
+        for (size_t i = 0; i < std::size(kSupportedShaderModels); i++)
         {
             if (kSupportedShaderModels[i] == sm)
             {
@@ -147,7 +174,7 @@ namespace Falcor
         if (b == false)
         {
             std::string warn = "Unsupported shader-model '" + sm + "' requested. Supported shader-models are ";
-            for (size_t i = 0; i < arraysize(kSupportedShaderModels); i++)
+            for (size_t i = 0; i < std::size(kSupportedShaderModels); i++)
             {
                 warn += kSupportedShaderModels[i];
                 warn += (i == kSupportedShaderModels->size() - 1) ? "." : ", ";
@@ -170,7 +197,7 @@ namespace Falcor
     }
 
     Program::Program(Desc const& desc, DefineList const& defineList)
-        : mDesc(desc)
+        : mDesc(applyForcedCompilerFlags(desc))
         , mDefineList(defineList)
         , mTypeConformanceList(desc.mTypeConformances)
     {
@@ -206,12 +233,12 @@ namespace Falcor
         {
             const auto& src = mDesc.mSources[i];
             if (i != 0) desc += " ";
-            switch (src.type)
+            switch (src.getType())
             {
-            case Desc::Source::Type::File:
-                desc += src.pLibrary->getPath().string();
+            case ShaderModule::Type::File:
+                desc += src.source.filePath.string();
                 break;
-            case Desc::Source::Type::String:
+            case ShaderModule::Type::String:
                 desc += "Created from string";
                 break;
             default:
@@ -604,24 +631,26 @@ namespace Falcor
 
         // Now lets add all our input shader code, one-by-one
         int translationUnitsAdded = 0;
+        int translationUnitIndex = -1;
 
-        // TODO: All of the sources in a program (or at least all of those
-        // in an entry point group) should be considered as a single
-        // translation unit for Slang (so that they can see and resolve
-        // definitions).
-        //
         for (auto src : mDesc.mSources)
         {
-            // Register the translation unit with Slang
-            int translationUnitIndex = spAddTranslationUnit(pSlangRequest, SLANG_SOURCE_LANGUAGE_SLANG, nullptr);
-            FALCOR_ASSERT(translationUnitIndex == translationUnitsAdded);
-            translationUnitsAdded++;
+            // Register new translation unit with Slang if needed.
+            if (translationUnitIndex < 0 || src.source.createTranslationUnit)
+            {
+                // If module name is empty, pass in nullptr to let Slang generate a name internally.
+                const char* name = !src.source.moduleName.empty() ? src.source.moduleName.c_str() : nullptr;
+                translationUnitIndex = spAddTranslationUnit(pSlangRequest, SLANG_SOURCE_LANGUAGE_SLANG, name);
+                FALCOR_ASSERT(translationUnitIndex == translationUnitsAdded);
+                translationUnitsAdded++;
+            }
+            FALCOR_ASSERT(translationUnitIndex >= 0);
 
             // Add source code to the translation unit
-            if (src.type == Desc::Source::Type::File)
+            if (src.getType() == ShaderModule::Type::File)
             {
                 // If this is not an HLSL or a SLANG file, display a warning
-                const auto& path = src.pLibrary->getPath();
+                const auto& path = src.source.filePath;
                 if (!(hasExtension(path, "hlsl") || hasExtension(path, "slang")))
                 {
                     logWarning("Compiling a shader file which is not a SLANG file or an HLSL file. This is not an error, but make sure that the file contains valid shaders");
@@ -629,7 +658,7 @@ namespace Falcor
                 std::filesystem::path fullPath;
                 if (!findFileInShaderDirectories(path, fullPath))
                 {
-                    reportError("Can't find file " + src.pLibrary->getPath().string());
+                    reportError("Can't find file " + path.string());
                     spDestroyCompileRequest(pSlangRequest);
                     return nullptr;
                 }
@@ -637,8 +666,8 @@ namespace Falcor
             }
             else
             {
-                FALCOR_ASSERT(src.type == Desc::Source::Type::String);
-                spAddTranslationUnitSourceString(pSlangRequest, translationUnitIndex, "", src.str.c_str());
+                FALCOR_ASSERT(src.getType() == ShaderModule::Type::String);
+                spAddTranslationUnitSourceString(pSlangRequest, translationUnitIndex, src.source.modulePath.c_str(), src.source.str.c_str());
             }
         }
 
@@ -742,7 +771,7 @@ namespace Falcor
 #endif
         // Create a composite component type that represents all type conformances
         // linked into the `ProgramVersion`.
-        auto createTypeConformanceComponentList = [&](const TypeConformanceList& typeConformances) -> ComPtr<slang::IComponentType>
+        auto createTypeConformanceComponentList = [&](const TypeConformanceList& typeConformances) -> std::optional<ComPtr<slang::IComponentType>>
         {
             ComPtr<slang::IComponentType> pTypeConformancesCompositeComponent;
             std::vector<ComPtr<slang::ITypeConformance>> typeConformanceComponentList;
@@ -751,21 +780,34 @@ namespace Falcor
             for (auto& typeConformance : typeConformances)
             {
                 ComPtr<slang::IBlob> pSlangDiagnostics;
-
                 ComPtr<slang::ITypeConformance> pTypeConformanceComponent;
+
+                // Look for the type and interface type specified by the type conformance.
+                // If not found we'll log an error and return.
                 auto slangType = pSlangGlobalScope->getLayout()->findTypeByName(typeConformance.first.mTypeName.c_str());
                 auto slangInterfaceType = pSlangGlobalScope->getLayout()->findTypeByName(typeConformance.first.mInterfaceName.c_str());
-                if (!slangType || !slangInterfaceType)
+                if (!slangType)
                 {
-                    // If the specified type is not in the current program context, quietly ignore the conformance.
-                    continue;
+                    log += fmt::format("Type '{}' in type conformance was not found.\n", typeConformance.first.mTypeName.c_str());
+                    return {};
                 }
-                pSlangSession->createTypeConformanceComponentType(
+                if (!slangInterfaceType)
+                {
+                    log += fmt::format("Interface type '{}' in type conformance was not found.\n", typeConformance.first.mInterfaceName.c_str());
+                    return {};
+                }
+
+                auto res = pSlangSession->createTypeConformanceComponentType(
                     slangType,
                     slangInterfaceType,
                     pTypeConformanceComponent.writeRef(),
                     (SlangInt)typeConformance.second,
                     pSlangDiagnostics.writeRef());
+                if (SLANG_FAILED(res))
+                {
+                    log += "Slang call createTypeConformanceComponentType() failed.\n";
+                    return {};
+                }
                 if (pSlangDiagnostics && pSlangDiagnostics->getBufferSize() > 0)
                 {
                     log += (char const*)pSlangDiagnostics->getBufferPointer();
@@ -779,11 +821,16 @@ namespace Falcor
             if (!typeConformanceComponentList.empty())
             {
                 ComPtr<slang::IBlob> pSlangDiagnostics;
-                pSlangSession->createCompositeComponentType(
+                auto res = pSlangSession->createCompositeComponentType(
                     &typeConformanceComponentRawPtrList[0],
                     (SlangInt)typeConformanceComponentRawPtrList.size(),
                     pTypeConformancesCompositeComponent.writeRef(),
                     pSlangDiagnostics.writeRef());
+                if (SLANG_FAILED(res))
+                {
+                    log += "Slang call createCompositeComponentType() failed.\n";
+                    return {};
+                }
             }
             return pTypeConformancesCompositeComponent;
         };
@@ -796,7 +843,10 @@ namespace Falcor
         {
             TypeConformanceList typeConformances = mTypeConformanceList;
             typeConformances.add(group.typeConformances);
-            typeConformancesCompositeComponents.emplace_back(createTypeConformanceComponentList(typeConformances));
+            if (auto typeConformanceComponentList = createTypeConformanceComponentList(typeConformances))
+                typeConformancesCompositeComponents.emplace_back(*typeConformanceComponentList);
+            else
+                return nullptr;
         }
 
         // Create a `IComponentType` for each entry point.
@@ -819,11 +869,16 @@ namespace Falcor
             if (typeConformancesCompositeComponents[groupIndex])
             {
                 slang::IComponentType* componentTypes[] = { pSlangEntryPoint, typeConformancesCompositeComponents[groupIndex] };
-                pSlangSession->createCompositeComponentType(
+                auto res = pSlangSession->createCompositeComponentType(
                     componentTypes,
                     2,
                     pTypeComformanceSpecializedEntryPoint.writeRef(),
                     pSlangDiagnostics.writeRef());
+                if (SLANG_FAILED(res))
+                {
+                    log += "Slang call createCompositeComponentType() failed.\n";
+                    return nullptr;
+                }
             }
             else
             {
@@ -836,11 +891,16 @@ namespace Falcor
             {
                 slang::IComponentType* componentTypes[] = { pSpecializedSlangGlobalScope, pTypeComformanceSpecializedEntryPoint };
 
-                pSlangSession->createCompositeComponentType(
+                auto res = pSlangSession->createCompositeComponentType(
                     componentTypes,
                     2,
                     pLinkedSlangEntryPoint.writeRef(),
                     pSlangDiagnostics.writeRef());
+                if (SLANG_FAILED(res))
+                {
+                    log += "Slang call createCompositeComponentType() failed.\n";
+                    return nullptr;
+                }
             }
             pLinkedEntryPoints.push_back(pLinkedSlangEntryPoint);
         }
@@ -910,10 +970,15 @@ namespace Falcor
                 }
             }
 
-            pSlangSession->createCompositeComponentType(
+            auto res = pSlangSession->createCompositeComponentType(
                 componentTypesForProgram.data(),
                 componentTypesForProgram.size(),
                 pSpecializedSlangProgram.writeRef());
+            if (SLANG_FAILED(res))
+            {
+                log += "Slang call createCompositeComponentType() failed.\n";
+                return nullptr;
+            }
         }
 
         ProgramReflection::SharedPtr pReflector;
@@ -1233,6 +1298,13 @@ namespace Falcor
     {
         return sGenerateDebugInfo;
     }
+
+    void Program::setForcedCompilerFlags(ForcedCompilerFlags forcedCompilerFlags)
+    {
+        sForcedCompilerFlags = forcedCompilerFlags;
+    }
+
+    Program::ForcedCompilerFlags Program::getForcedCompilerFlags() { return sForcedCompilerFlags; }
 
     FALCOR_SCRIPT_BINDING(Program)
     {

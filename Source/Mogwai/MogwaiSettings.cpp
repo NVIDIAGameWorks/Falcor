@@ -25,8 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor.h"
 #include "MogwaiSettings.h"
+#include "RenderGraph/RenderPassLibrary.h"
+#include "Utils/Scripting/Console.h"
+#include "Utils/Settings.h"
 #include <iomanip>
 #include <sstream>
 
@@ -95,8 +98,8 @@ namespace Mogwai
             };
 
             uint2 currentRes = gpFramework->getWindow()->getClientAreaSize();
-            static const Gui::DropdownList dropdownList = initDropDown(resolutions, (uint32_t)arraysize(resolutions));
-            uint32_t currentVal = initDropDownVal(resolutions, (uint32_t)arraysize(resolutions), currentRes);
+            static const Gui::DropdownList dropdownList = initDropDown(resolutions, (uint32_t)std::size(resolutions));
+            uint32_t currentVal = initDropDownVal(resolutions, (uint32_t)std::size(resolutions), currentRes);
             w.text("Window Size");
             w.tooltip("The Window Size refers to the renderable area size (Swap-Chain dimensions)");
 
@@ -161,6 +164,28 @@ namespace Mogwai
             if (exitFrame) s << (exitFrame - clock.getFrame()) << " frames";
             w.text(s.str());
         }
+    }
+
+    // DEMO21 Opera
+    void MogwaiSettings::selectNextGraph()
+    {
+        if (mpRenderer->mGraphs.size() < 2)
+        {
+            return;
+        }
+        // Get the index of the current graph
+        const RenderGraph* curGraph = mpRenderer->getActiveGraph();
+        uint32_t curIdx = 0;
+        while (curIdx < mpRenderer->mGraphs.size())
+        {
+            if (mpRenderer->mGraphs[curIdx].pGraph.get() == curGraph)
+            {
+                break;
+            }
+            ++curIdx;
+        }
+        assert(curIdx < mpRenderer->mGraphs.size());
+        mpRenderer->setActiveGraph((curIdx + 1) % mpRenderer->mGraphs.size());
     }
 
     void MogwaiSettings::renderGraphs(Gui* pGui)
@@ -242,8 +267,6 @@ namespace Mogwai
             if (file.item("Save Config")) mpRenderer->saveConfigDialog();
             if (file.item("Load Scene", "Ctrl+Shift+O")) mpRenderer->loadSceneDialog();
             // if (file.item("Reset Scene")) mpRenderer->setScene(nullptr);
-            file.separator();
-            if (file.item("Reload RenderGraph and Shaders", "F5")) RenderPassLibrary::instance().reloadLibraries(gpFramework->getRenderContext());
             file.separator();
 
             {
@@ -343,6 +366,9 @@ namespace Mogwai
                 case Input::Key::F9:
                     mShowTime = !mShowTime;
                     break;
+                case Input::Key::N:
+                    selectNextGraph();
+                    break;
                 default:
                     return false;
                 }
@@ -359,6 +385,32 @@ namespace Mogwai
             }
         }
         return false;
+    }
+
+    bool MogwaiSettings::gamepadEvent(const GamepadEvent& e)
+    {
+        if (e.type == GamepadEvent::Type::ButtonDown)
+        {
+            if (e.button == GamepadButton::Y)
+            {
+                selectNextGraph();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void MogwaiSettings::onOptionsChange(const Properties& options)
+    {
+        if (auto local = options.get<Properties>("MogwaiSettings"))
+        {
+            mAutoHideMenu = local->get("mAutoHideMenu", mAutoHideMenu);
+            mShowFps      = local->get("mShowFps", mShowFps);
+            mShowGraphUI  = local->get("mShowGraphUI", mShowGraphUI);
+            mShowConsole  = local->get("mShowConsole", mShowConsole);
+            mShowTime     = local->get("mShowTime", mShowTime);
+            mShowWinSize  = local->get("mShowWinSize", mShowWinSize);
+        }
     }
 
     MogwaiSettings::UniquePtr MogwaiSettings::create(Renderer* pRenderer)

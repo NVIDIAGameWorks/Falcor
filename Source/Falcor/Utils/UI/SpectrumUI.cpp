@@ -25,8 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include "Utils/UI/SpectrumUI.h"
+#include "SpectrumUI.h"
+
+#include "Core/Assert.h"
+#include "Utils/Color/SpectrumUtils.h"
+#include "Utils/Color/ColorHelpers.slang"
 
 namespace Falcor
 {
@@ -110,7 +113,7 @@ namespace Falcor
         ImGui::SetCursorPosX(pos.x - strWidth * 0.5f);
         ImGui::SetCursorPosY(pos.y);
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(color.x, color.y, color.z, color.w));
-        ImGui::Text(text.c_str());
+        ImGui::TextUnformatted(text.c_str());
         ImGui::PopStyleColor();
     }
 
@@ -122,7 +125,7 @@ namespace Falcor
         ImGui::SetCursorPosX(pos.x - strSize.x);
         ImGui::SetCursorPosY(pos.y - strSize.y * 0.5f);
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(color.x, color.y, color.z, color.w));
-        ImGui::Text(text.c_str());
+        ImGui::TextUnformatted(text.c_str());
         ImGui::PopStyleColor();
     }
 
@@ -217,50 +220,77 @@ namespace Falcor
         }
     }
 
+    // Based on "Nice Numbers for Graph Labels" by Paul Heckbert from "Graphics Gems", Academic Press, 1990.
+    template<typename T>
+    float SpectrumUI<T>::generateNiceNumber(const float x) const
+    {
+        float nf;				                                // Nice, rounded fraction.
+        const int expv = (int)std::floor(std::log10(x));        // Exponent of x.
+        const float f = x / std::pow(10.0f, float(expv));       // Between 1 and 10.
+        if (f < 1.5f)
+        {
+            nf = 1.0f;
+        }
+        else if (f < 3.0f)
+        {
+            nf = 2.0f;
+        }
+        else if (f < 7.0f)
+        {
+            nf = 5.0f;
+        }
+        else
+        {
+            nf = 10.0f;
+        }
+        return nf * std::pow(10.0f, float(expv));
+    }
+
+
     // Draw ticks on the x-axis and text below.
     template<typename T>
     void SpectrumUI<T>::drawTextWavelengthsAndTicks(ImDrawList* drawList, const float2& canvasPos, const float2& xAxisRange, const float2& yAxisRange, const float4& textColor, const float4& tickColor, const float4& gridColor)
     {
         const float halfTickSize = 4.0f;
-        auto spreadWavelengthTexts = [&](ImDrawList* drawList, const uint32_t numTicks, const float2& canvasPos, const float2& xAxisRange, const float2& yAxisRange)
+        auto renderTextAndTick = [&](ImDrawList* drawList, const float wavelength, const float2& canvasPos, const float2& xAxisRange, const float2& yAxisRange)
         {
-            for (uint32_t q = 0; q < numTicks; q++)
+            float x = toXCoord(wavelength, xAxisRange);
+            const auto str = fmt::format("{}", uint32_t(std::round(wavelength)));
+            textHorizontallyCentered(str, float2(x, yAxisRange.x + 2.0f), textColor);
+            if (mDrawGridX)
             {
-                float wavelength = q * (mWavelengthRange.y - mWavelengthRange.x) / (numTicks - 1.0f) + mWavelengthRange.x;
-                float x = toXCoord(wavelength, xAxisRange);
-                textHorizontallyCentered(std::to_string(uint32_t(wavelength)), float2(x, yAxisRange.x + 2.0f), textColor);
-                if (mDrawGridX)
-                {
-                    drawLine(drawList, canvasPos, float2(x, yAxisRange.x), float2(x, yAxisRange.y), gridColor, 1.0f);
-                }
-                drawLine(drawList, canvasPos, float2(x, yAxisRange.x - halfTickSize), float2(x, yAxisRange.x + halfTickSize), tickColor, 2.0f);
+                drawLine(drawList, canvasPos, float2(x, yAxisRange.x), float2(x, yAxisRange.y), gridColor, 1.0f);
             }
+            drawLine(drawList, canvasPos, float2(x, yAxisRange.x - halfTickSize), float2(x, yAxisRange.x + halfTickSize), tickColor, 2.0f);
+            return x;
         };
 
         float strWidth = ImGui::CalcTextSize("000").x;
         float w = xAxisRange.y - xAxisRange.x;
         float diff = mWavelengthRange.y - mWavelengthRange.x;
 
-        // The second argument to all spreadFrequencyTexts() below have been tailored especially for the case when the wavelengthXAxisRange = (350,750) and (400,700). Can be generalized.
-        if (w <= 4.0f * strWidth)
+        // Always render the mWavelengthRange.x and mWavelengthRange.y.
+        float xStart = renderTextAndTick(drawList, mWavelengthRange.x, canvasPos, xAxisRange, yAxisRange);
+        float xEnd = renderTextAndTick(drawList, mWavelengthRange.y, canvasPos, xAxisRange, yAxisRange);
+
+        const uint32_t approxNumTicks = uint32_t(std::floor(w / (2.0f * strWidth)));
+        if (approxNumTicks <= 1)
         {
-            spreadWavelengthTexts(drawList, 2, canvasPos, xAxisRange, yAxisRange);
+            return;
         }
-        else if (w <= 8.0f * strWidth)
+        const float approxWidth = diff / (approxNumTicks - 1.0f);
+        const float delta = generateNiceNumber(approxWidth);
+        float wavelength = std::floor(mWavelengthRange.x / delta) * delta + delta;
+        while (wavelength <= mWavelengthRange.y)
         {
-            spreadWavelengthTexts(drawList, 3, canvasPos, xAxisRange, yAxisRange);
-        }
-        else if (w <= 16.0f * strWidth)
-        {
-            spreadWavelengthTexts(drawList, diff <= 300.0f ? 4 : 5, canvasPos, xAxisRange, yAxisRange);
-        }
-        else if (w <= 32.0f * strWidth)
-        {
-            spreadWavelengthTexts(drawList, diff <= 300.0f ? 7 : (diff <= 350.0f ? 8 : 9), canvasPos, xAxisRange, yAxisRange);
-        }
-        else
-        {
-            spreadWavelengthTexts(drawList, diff <= 300.0f ? 13 : (diff <= 350.0f ? 15 : 17), canvasPos, xAxisRange, yAxisRange);
+            float x = toXCoord(wavelength, xAxisRange);
+            float diffStart = std::abs(x - xStart);
+            float diffEnd = std::abs(x - xEnd);
+            if ((diffStart < diffEnd && diffStart > strWidth * 1.5f) || (diffStart >= diffEnd && diffEnd > strWidth * 1.5f))
+            {
+                renderTextAndTick(drawList, wavelength, canvasPos, xAxisRange, yAxisRange);
+            }
+            wavelength += delta;
         }
     }
 
@@ -269,47 +299,45 @@ namespace Falcor
     void SpectrumUI<T>::drawTextSpectralIntensityAndTicks(ImDrawList* drawList, const float2& canvasPos, const float2& xAxisRange, const float2& yAxisRange, const float4& textColor, const float4& tickColor, const float4& gridColor)
     {
         const float halfTickSize = 4.0f;
-        const float strHeight = ImGui::CalcTextSize("0").y;
-        const float h = yAxisRange.x - yAxisRange.y;                                // In pixels (x >= y) since y points downwards.
-        const float sw = mSpectralIntensityRange.y - mSpectralIntensityRange.x;     // In pixels.
-        const uint32_t maxNumTicks = uint32_t(h / strHeight) / 2;                           // With spacing of one strHeight inbetween.
-        const uint32_t maxTicksIn0to1 = uint32_t(h / (sw * strHeight)) / 2;
-
-        uint32_t numTicks;
-        float delta;
-        if (maxTicksIn0to1 == 0)
+        auto renderTextAndTick = [&](ImDrawList* drawList, const float spectralIntensity, const float2& canvasPos, const float2& xAxisRange, const float2& yAxisRange, const bool first = false)
         {
-            numTicks = std::max(1u, maxNumTicks);
-            delta = float(uint32_t(sw)) / numTicks;
-        }
-        else if (maxTicksIn0to1 == 1)
-        {
-            numTicks = uint32_t(sw);
-            delta = 1.0f;
-        }
-        else if (maxTicksIn0to1 <= 9)
-        {
-            numTicks = uint32_t(sw * 2.0f);
-            delta = 0.5f;
-        }
-        else
-        {
-            numTicks = uint32_t(sw * 10.0f);
-            delta = 0.1f;
-        }
-
-        char str[20];
-        for (uint32_t q = 0; q < numTicks + 1; q++)
-        {
-            float spectralIntensity = q * delta + mSpectralIntensityRange.x;
+            const auto str = fmt::format("{:1.1f}", spectralIntensity);
             float y = toYCoord(spectralIntensity, yAxisRange);
-            sprintf_s(str, "%1.1f", spectralIntensity);
-            textVerticallyCenteredLeft(q == 0.0 ? "0" : std::string(str), float2(xAxisRange.x - (q == 0 ? 15.0f : 7.0f), y), textColor);
+            textVerticallyCenteredLeft(first ? "0" : str, float2(xAxisRange.x - (first ? 18.0f : 7.0f), y), textColor);
             if (mDrawGridY)
             {
                 drawLine(drawList, canvasPos, float2(xAxisRange.x, y), float2(xAxisRange.y, y), gridColor, 1.0f);
             }
             drawLine(drawList, canvasPos, float2(xAxisRange.x - halfTickSize, y), float2(xAxisRange.x + halfTickSize, y), tickColor, 2.0f);
+            return y;
+        };
+
+        const float strHeight = ImGui::CalcTextSize("0").y;
+        const float h = yAxisRange.x - yAxisRange.y;                                // In pixels (x >= y) since y points downwards.
+        const float diff = mSpectralIntensityRange.y - mSpectralIntensityRange.x;
+
+        // Always render the mSpectralIntensityRange.x and mSpectralIntensityRange.y.
+        float yStart = renderTextAndTick(drawList, mSpectralIntensityRange.x, canvasPos, xAxisRange, yAxisRange, true);
+        float yEnd = renderTextAndTick(drawList, mSpectralIntensityRange.y, canvasPos, xAxisRange, yAxisRange);
+
+        const uint32_t approxNumTicks = uint32_t(h / (2.0f * strHeight));
+        if (approxNumTicks <= 1)
+        {
+            return;
+        }
+        const float approxWidth = diff / (approxNumTicks - 1.0f);
+        const float delta = generateNiceNumber(approxWidth);
+        float spectralIntensity = std::floor(mSpectralIntensityRange.x / delta) * delta + delta;
+        while (spectralIntensity <= mSpectralIntensityRange.y)
+        {
+            float y = toYCoord(spectralIntensity, yAxisRange);
+            float diffStart = std::abs(y - yStart);
+            float diffEnd = std::abs(y - yEnd);
+            if ((diffStart < diffEnd && diffStart > strHeight * 1.5f) || (diffStart >= diffEnd && diffEnd > strHeight * 1.5f))
+            {
+                renderTextAndTick(drawList, spectralIntensity, canvasPos, xAxisRange, yAxisRange);
+            }
+            spectralIntensity += delta;
         }
     }
 
@@ -318,9 +346,11 @@ namespace Falcor
     void SpectrumUI<T>::drawSpectrumBar(ImDrawList* drawList, const float2& canvasPos, const float2& xAxisRange, const float2& yAxisRange, SampledSpectrum<T>* spectrum, const bool multiplyBySpectrum)
     {
         const float w = mWavelengthRange.y - mWavelengthRange.x;
-        uint32_t xs = uint32_t(xAxisRange.x + (xAxisRange.y - xAxisRange.x) * (std::max(spectrum->getWavelengthRange().x, mWavelengthRange.x) - mWavelengthRange.x) / w);
-        uint32_t xe = uint32_t(xAxisRange.x + (xAxisRange.y - xAxisRange.x) * (std::min(spectrum->getWavelengthRange().y, mWavelengthRange.y) - mWavelengthRange.x) / w);
-        for (uint32_t x = xs; x <= xe; x++)
+        if (w == 0.0f)
+        {
+            return;
+        }
+        for (float x = xAxisRange.x; x <= xAxisRange.y; x += 1.f)
         {
             float wavelength = w * (x - xAxisRange.x) / (xAxisRange.y - xAxisRange.x) + mWavelengthRange.x;
             float spectralIntensity = getSpectralIntensity(wavelength, spectrum, mEditSpectrumIndex);
@@ -415,12 +445,11 @@ namespace Falcor
             {
                 float2 p = toCoords(spectrum, mPointIndexToBeEdited, xAxisRange, yAxisRange, float3Index);
                 drawCircle(drawList, canvasPos, p, nearRadius, float4(1.0f, 1.0f, 1.0f, 0.1f));
-                char str[200];
-                sprintf_s(str, "%2.4f", getSpectralIntensity(mPointIndexToBeEdited, spectrum, float3Index));
+                const auto str = fmt::format("{:2.4f}", getSpectralIntensity(mPointIndexToBeEdited, spectrum, float3Index));
                 ImGui::SetCursorPosX(p.x + 20.0f);
                 ImGui::SetCursorPosY(p.y - ImGui::CalcTextSize("0").y * 0.5f);
                 ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32_WHITE);
-                ImGui::Text(str);
+                ImGui::TextUnformatted(str.c_str());
                 ImGui::PopStyleColor();
 
                 mMovePoint = ImGui::GetIO().MouseDown[0];       // Only let the user move the point, if the left mouse is down.
@@ -448,12 +477,11 @@ namespace Falcor
             float2 p = toCoords(spectrum, mPointIndexToBeEdited, xAxisRange, yAxisRange);
             drawCircle(drawList, canvasPos, p, nearRadius, float4(1.0f, 1.0f, 1.0f, 0.1f)); // Draw a circle around the point being moved.
 
-            char str[200];
-            sprintf_s(str, "%2.4f", getSpectralIntensity(mPointIndexToBeEdited, spectrum, float3Index));
+            const auto str = fmt::format("{:2.4f}", getSpectralIntensity(mPointIndexToBeEdited, spectrum, float3Index));
             ImGui::SetCursorPosX(p.x + 20.0f);
             ImGui::SetCursorPosY(p.y - ImGui::CalcTextSize("0").y * 0.5f);
             ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32_WHITE);
-            ImGui::Text(str);
+            ImGui::TextUnformatted(str.c_str());
             ImGui::PopStyleColor();
 
             mMovePoint = ImGui::GetIO().MouseDown[0];       // Only let the user continue to move the point, if the left mouse is down.
@@ -506,17 +534,16 @@ namespace Falcor
                 {
                     mWavelengthRange.y = mWavelengthRange.x + 5.0f;
                 }
-                changed |= guiGroup.var(makeUnique("Max spectral intensity").c_str(), mSpectralIntensityRange.y, 1.0f, 10.0f, 0.5f);
+                changed |= guiGroup.var(makeUnique("Max spectral intensity").c_str(), mSpectralIntensityRange.y, 1.0f, 20.0f, 0.5f);
 
                 guiGroup.release();
             }
         }
 
         // Draw colored boxes of the spectrum --> RGB for each in spectra and the RGB color in text below.
-        const float rgbWidth = ImGui::CalcTextSize("0.00, 0.00, 0.00").x;
+        const float rgbWidth = ImGui::CalcTextSize("00.00, 00.00, 00.00").x;
         const float rgbHeight = 20.0f;
         const float separation = 5.0f;
-        char str[200] = "";
         ImVec2 p = ImGui::GetCursorScreenPos();
         ImGui::Dummy(ImVec2(0, 20 + ImGui::CalcTextSize("0").y + separation));
         for (uint32_t q = 0; q < uint32_t(spectra.size()); q++)
@@ -524,10 +551,10 @@ namespace Falcor
             for (uint32_t index = 0; index < numComponents; index++)
             {
                 float3 c = SpectrumUtils::toRGB_D65<T>(*spectra[q], mInterpolationType, index);
-                sprintf_s(str, "%1.2f, %1.2f, %1.2f", c.x, c.y, c.z);
+                const auto str = fmt::format("{:1.2f}, {:1.2f}, {:1.2f}", c.x, c.y, c.z);
                 c = sRGBToLinear(c);
                 ImGui::GetWindowDrawList()->AddRectFilled(p, ImVec2(p.x + rgbWidth, p.y + rgbHeight), ImColor(c.r, c.g, c.b, 1.0f));
-                ImGui::GetWindowDrawList()->AddText(ImVec2(p.x, p.y + rgbHeight + separation), IM_COL32_WHITE, str);
+                ImGui::GetWindowDrawList()->AddText(ImVec2(p.x, p.y + rgbHeight + separation), IM_COL32_WHITE, str.c_str());
                 p.x += separation + rgbWidth;
             }
         }
@@ -539,8 +566,11 @@ namespace Falcor
         const float4 lightGray = float4(0.75f, 0.75f, 0.75f, 1.0f);
         const float4 gray = float4(0.5f, 0.5f, 0.5f, 1.0f);
 
+        const ImVec2 strSize = ImGui::CalcTextSize("000");
+
+
         // This is the main drawing area of the spectrum visualization.
-        ImGui::BeginChild(makeUnique("Spectrum visualization").c_str(), ImVec2(ImGui::GetWindowContentRegionWidth(), float(mDrawAreaHeight)), false, ImGuiWindowFlags_NoScrollWithMouse);
+        ImGui::BeginChild(makeUnique("Spectrum visualization").c_str(), ImVec2(ImGui::GetWindowContentRegionWidth() - strSize.x * 3 / 4, float(mDrawAreaHeight)), false, ImGuiWindowFlags_NoScrollWithMouse);
         {
             const float2 canvasPos = float2(ImGui::GetCursorScreenPos().x, ImGui::GetCursorScreenPos().y);            // ImDrawList API uses screen coordinates.
             const float2 canvasSize = float2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);

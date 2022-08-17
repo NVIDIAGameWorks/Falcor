@@ -25,9 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "ResourceCache.h"
 #include "Core/API/Texture.h"
+#include "Core/API/Buffer.h"
+#include "Utils/Logger.h"
 
 namespace Falcor
 {

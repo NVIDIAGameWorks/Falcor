@@ -27,9 +27,7 @@
  **************************************************************************/
 #include "ProjectTemplate.h"
 
-#if FALCOR_D3D12_AVAILABLE
 FALCOR_EXPORT_D3D12_AGILITY_SDK
-#endif
 
 uint32_t mSampleGuiWidth = 250;
 uint32_t mSampleGuiHeight = 200;
@@ -79,12 +77,14 @@ void ProjectTemplate::onResizeSwapChain(uint32_t width, uint32_t height)
 {
 }
 
-int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
+int main(int argc, char** argv)
 {
     ProjectTemplate::UniquePtr pRenderer = std::make_unique<ProjectTemplate>();
+
     SampleConfig config;
     config.windowDesc.title = "Falcor Project Template";
     config.windowDesc.resizableWindow = true;
     Sample::run(config, pRenderer);
+
     return 0;
 }

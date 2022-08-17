@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,11 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "stdafx.h"
 #include "Transform.h"
-#include "glm/gtc/quaternion.hpp"
-#include "glm/gtx/transform.hpp"
+#include "Utils/Scripting/ScriptBindings.h"
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/transform.hpp>
 
 namespace Falcor
 {
@@ -80,13 +79,13 @@ namespace Falcor
         mRotation = glm::quatLookAt(dir, up);
     }
 
-    const glm::float4x4& Transform::getMatrix() const
+    const rmcv::mat4& Transform::getMatrix() const
     {
         if (mDirty)
         {
-            glm::mat4 T = translate(mTranslation);
-            glm::mat4 R = mat4_cast(mRotation);
-            glm::mat4 S = scale(mScaling);
+            rmcv::mat4 T = rmcv::translate(mTranslation);
+            rmcv::mat4 R = rmcv::mat4_cast(mRotation);
+            rmcv::mat4 S = rmcv::scale(mScaling);
             mMatrix = T * R * S;
             mDirty = false;
         }
@@ -104,6 +103,8 @@ namespace Falcor
 
     FALCOR_SCRIPT_BINDING(Transform)
     {
+        using namespace pybind11::literals;
+
         auto init = [](const pybind11::kwargs& args)
         {
             Transform transform;

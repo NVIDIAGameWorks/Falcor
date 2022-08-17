@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,8 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Falcor.h"
-#include "Animation.h"
+#include "Core/Macros.h"
+#include "Scene/SceneIDs.h"
+#include "Utils/Math/Matrix.h"
+#include <memory>
 
 namespace Falcor
 {
@@ -40,7 +42,7 @@ namespace Falcor
         // for pybind11 bindings to work on inherited types.
         using SharedPtr = std::shared_ptr<Animatable>;
 
-        static const uint32_t kInvalidNode = -1;
+        virtual ~Animatable() {}
 
         /** Set if object has animation data.
         */
@@ -60,19 +62,19 @@ namespace Falcor
 
         /** Sets the node ID of the animated scene graph node.
         */
-        void setNodeID(uint32_t nodeID) { mNodeID = nodeID; }
+        void setNodeID(NodeID nodeID) { mNodeID = nodeID; }
 
         /** Gets the node ID of the animated scene graph node.
         */
-        uint32_t getNodeID() const { return mNodeID; }
+        NodeID getNodeID() const { return mNodeID; }
 
         /** Update the transform of the animatable object.
         */
-        virtual void updateFromAnimation(const glm::mat4& transform) = 0;
+        virtual void updateFromAnimation(const rmcv::mat4& transform) = 0;
 
     protected:
         bool mHasAnimation = false;
         bool mIsAnimated = true;
-        uint32_t mNodeID = kInvalidNode;
+        NodeID mNodeID{ NodeID::Invalid() };
     };
 }

@@ -27,12 +27,14 @@
  **************************************************************************/
 #pragma once
 #include "VideoEncoder.h"
+#include "Core/Macros.h"
+#include "Utils/UI/Gui.h"
+#include <filesystem>
 #include <functional>
+#include <memory>
 
 namespace Falcor
 {
-    class Gui;
-
     class FALCOR_API VideoEncoderUI
     {
     public:

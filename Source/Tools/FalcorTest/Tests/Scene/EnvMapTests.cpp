@@ -33,7 +33,7 @@ namespace Falcor
 {
     namespace
     {
-        // This file is located in the Media/ directory fetched by packman.
+        // This file is located in the media/ directory fetched by packman.
         const char kEnvMapFile[] = "LightProbes/20050806-03_hd.hdr";
     }
 

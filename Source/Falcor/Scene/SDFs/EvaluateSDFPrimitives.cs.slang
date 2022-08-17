@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -39,7 +39,23 @@ cbuffer CB
 };
 
 StructuredBuffer<SDF3DPrimitive> gPrimitives;
+Texture3D<float> gOldValues;
+
+#ifdef _USE_SD_FIELD_3D_TEXTURE
+RWTexture3D<float> gValues;
+#else
 RWBuffer<float> gValues;
+#endif
+
+void writeDistanceToValues(uint3 valueCoords, float sd)
+{
+#ifdef _USE_SD_FIELD_3D_TEXTURE
+    gValues[valueCoords] = sd;
+#else
+    uint writeLocation = flatten3D(valueCoords, gGridWidth + 1, gGridWidth + 1);
+    gValues[writeLocation] = sd;
+#endif
+}
 
 [numthreads(GROUP_WIDTH, GROUP_WIDTH, GROUP_WIDTH)]
 void main(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupThreadID)
@@ -54,12 +70,15 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV
     // Evaluate the signed distance value.
     float sd = FLT_MAX;
 
+#ifdef _MERGE_WITH_THE_SD_FIELD
+    sd = gOldValues[valueCoords];
+#endif
+
     for (uint primitiveID = 0; primitiveID < gPrimitiveCount; primitiveID++)
     {
         SDF3DPrimitive primitive = gPrimitives[primitiveID];
         sd = primitive.eval(p, sd);
     }
 
-    uint writeLocation = flatten3D(valueCoords, gGridWidth + 1, gGridWidth + 1);
-    gValues[writeLocation] = sd;
+    writeDistanceToValues(valueCoords, sd);
 }

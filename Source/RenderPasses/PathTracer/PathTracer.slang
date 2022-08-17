@@ -95,6 +95,7 @@ struct PathTracer
     static const bool kUseEmissiveLights = USE_EMISSIVE_LIGHTS;
     static const bool kUseAnalyticLights = USE_ANALYTIC_LIGHTS;
     static const bool kUseCurves = USE_CURVES;
+    static const bool kUseHairMaterial = USE_HAIR_MATERIAL;
 
     // Additional specialization.
     static const bool kOutputGuideData = OUTPUT_GUIDE_DATA;
@@ -375,7 +376,11 @@ struct PathTracer
     */
     bool generateScatterRay(const BSDFSample bs, const ShadingData sd, const IBSDF bsdf, inout PathState path)
     {
-        bool isCurveHit = path.hit.getType() == HitType::Curve;
+        const bool isTriangleHit = path.hit.getType() == HitType::Triangle;
+        const bool isCurveHit = kUseCurves && (path.hit.getType() == HitType::Curve);
+        const bool isHairMaterial = kUseHairMaterial && (sd.mtl.getMaterialType() == MaterialType::Hair);
+        // TODO: Decouple geometry from the material.
+        const bool isCurvePolyTubeHit = isTriangleHit && isHairMaterial;
 
         path.dir = bs.wo;
         updatePathThroughput(path, bs.weight);
@@ -413,7 +418,17 @@ struct PathTracer
             path.incrementBounces(BounceType::Transmission);
             path.setTransmission();
 
-            if (!kUseCurves || !isCurveHit)
+            if (isCurveHit)
+            {
+                // No need to offset the origin in this case.
+            }
+            else if (isCurvePolyTubeHit)
+            {
+                // For curves tessellated into poly-tubes, we make sure that the origin is on the same side as a scatter ray direction
+                // so there is no self-intersection.
+                path.origin = sd.posW - sd.N * sd.curveRadius * 2.1f;
+            }
+            else
             {
                 // Compute ray origin for next ray segment.
                 path.origin = sd.computeNewRayOrigin(false);
@@ -755,12 +770,16 @@ struct PathTracer
         const bool isPrimaryHit = path.getVertexIndex() == 1;
         const HitType hitType = path.hit.getType();
         const bool isTriangleHit = hitType == HitType::Triangle;
-        const bool isCurveHit = hitType == HitType::Curve;
+        const bool isCurveHit = kUseCurves && (hitType == HitType::Curve);
 
         let lod = createTextureSampler(path, isPrimaryHit, isTriangleHit);
 
         // Load shading data. This is a long latency operation.
         ShadingData sd = loadShadingData(path.hit, path.origin, path.dir, isPrimaryHit, lod);
+
+        const bool isHairMaterial = kUseHairMaterial && (sd.mtl.getMaterialType() == MaterialType::Hair);
+        // TODO: Decouple geometry from the material.
+        const bool isCurvePolyTubeHit = isTriangleHit && isHairMaterial;
 
         // Account for volume absorption.
         if (!path.interiorList.isEmpty())
@@ -846,10 +865,15 @@ struct PathTracer
         }
 
         // Compute origin for rays traced from this path vertex.
-        if (kUseCurves && isCurveHit)
+        if (isCurveHit)
         {
             // For curves, we set the new origin at the sphere center.
             path.origin = sd.posW - sd.N * sd.curveRadius;
+        }
+        else if (isCurvePolyTubeHit)
+        {
+            // For curves tessellated into poly-tubes, we offset the new origin away from the curve center.
+            path.origin = sd.posW + sd.N * sd.curveRadius * 0.1f;
         }
         else
         {
@@ -877,7 +901,7 @@ struct PathTracer
             {
                 // Query final sample from RTXDI.
                 validSample = gRTXDI.getFinalSample(path.getPixel(), ls.dir, ls.distance, ls.Li);
-                ls.origin = sd.computeNewRayOrigin();
+                ls.origin = path.origin;
             }
             else
             {
@@ -885,9 +909,9 @@ struct PathTracer
                 PathVertex vertex = PathVertex(path.getVertexIndex(), sd.posW, sd.N, sd.faceN);
 
                 // Determine if upper/lower hemispheres need to be sampled.
-                bool sampleUpperHemisphere = isCurveHit || ((lobes & (uint)LobeType::NonDeltaReflection) != 0);
+                bool sampleUpperHemisphere = isCurveHit || isCurvePolyTubeHit || ((lobes & (uint)LobeType::NonDeltaReflection) != 0);
                 if (!kUseLightsInDielectricVolumes && path.isInsideDielectricVolume()) sampleUpperHemisphere = false;
-                bool sampleLowerHemisphere = isCurveHit || ((lobes & (uint)LobeType::NonDeltaTransmission) != 0);
+                bool sampleLowerHemisphere = isCurveHit || isCurvePolyTubeHit || ((lobes & (uint)LobeType::NonDeltaTransmission) != 0);
 
                 // Sample a light.
                 validSample = generateLightSample(vertex, sampleUpperHemisphere, sampleLowerHemisphere, path.sg, ls);
@@ -907,7 +931,18 @@ struct PathTracer
                 float3 Lr = weight * ls.Li;
                 if (any(Lr > 0.f))
                 {
-                    const Ray ray = ls.getVisibilityRay();
+                    Ray ray = ls.getVisibilityRay();
+
+                    if (isCurvePolyTubeHit)
+                    {
+                        // For curves tessellated into poly-tubes, we make sure that the origin is on the same side as light
+                        // so there is no self-shadowing (transmission lobe of hair BSDF takes care of that).
+                        if (dot(sd.N, ray.dir) < 0.f)
+                        {
+                            ray.origin = ray.origin - sd.N * sd.curveRadius * 2.1f;
+                        }
+                    }
+
                     logTraceRay(PixelStatsRayType::Visibility);
                     bool visible = vq.traceVisibilityRay(ray);
                     if (visible) addToPathContribution(path, Lr);

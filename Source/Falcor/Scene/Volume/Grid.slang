@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -354,17 +354,17 @@ struct Grid
                 // of the lowest existing node to fetch data from later.
                 // TODO: Check if the down traversal can be avoided.
                 pnanovdb_root_tile_handle_t tile = pnanovdb_root_find_tile(gridType, grid.buf, accessor.root, ijk);
-                if (pnanovdb_root_tile_get_child_id(grid.buf, tile) >= 0)
+                if (!pnanovdb_int64_is_zero(pnanovdb_root_tile_get_child(grid.buf, tile)))
                 {
-                    pnanovdb_node2_handle_t node2 = pnanovdb_root_get_child(gridType, grid.buf, accessor.root, tile);
-                    pnanovdb_uint32_t n2 = pnanovdb_node2_coord_to_offset(ijk);
-                    if (pnanovdb_node2_get_child_mask(grid.buf, node2, n2))
+                    pnanovdb_upper_handle_t node2 = pnanovdb_root_get_child(gridType, grid.buf, accessor.root, tile);
+                    pnanovdb_uint32_t n2 = pnanovdb_upper_coord_to_offset(ijk);
+                    if (pnanovdb_upper_get_child_mask(grid.buf, node2, n2))
                     {
-                        pnanovdb_node1_handle_t node1 = pnanovdb_node2_get_child(gridType, grid.buf, node2, n2);
-                        pnanovdb_uint32_t n1 = pnanovdb_node1_coord_to_offset(ijk);
-                        if (pnanovdb_node1_get_child_mask(grid.buf, node1, n1))
+                        pnanovdb_lower_handle_t node1 = pnanovdb_upper_get_child(gridType, grid.buf, node2, n2);
+                        pnanovdb_uint32_t n1 = pnanovdb_lower_coord_to_offset(ijk);
+                        if (pnanovdb_lower_get_child_mask(grid.buf, node1, n1))
                         {
-                            pnanovdb_node0_handle_t node0 = pnanovdb_node1_get_child(gridType, grid.buf, node1, n1);
+                            pnanovdb_leaf_handle_t node0 = pnanovdb_lower_get_child(gridType, grid.buf, node1, n1);
                             cachedAddress = node0.address;
                             cachedAddressLevel = 0;
                             return true;
@@ -373,14 +373,14 @@ struct Grid
                         {
                             cachedAddress = node1.address;
                             cachedAddressLevel = 1;
-                            return pnanovdb_node1_get_value_mask(grid.buf, node1, n1);
+                            return pnanovdb_lower_get_value_mask(grid.buf, node1, n1);
                         }
                     }
                     else
                     {
                         cachedAddress = node2.address;
                         cachedAddressLevel = 2;
-                        return pnanovdb_node2_get_value_mask(grid.buf, node2, n2);
+                        return pnanovdb_upper_get_value_mask(grid.buf, node2, n2);
                     }
                 }
                 else
@@ -438,11 +438,11 @@ struct Grid
             {
                 // TODO: add configurability for specifying what leaf value is returned (max, min, ave, stddev).
                 if (cachedAddressLevel == 0)
-                    address = pnanovdb_node0_get_max_address(gridType, grid.buf, { cachedAddress } );
+                    address = pnanovdb_leaf_get_max_address(gridType, grid.buf, { cachedAddress } );
                 else if (cachedAddressLevel == 1)
-                    address = pnanovdb_node1_get_max_address(gridType, grid.buf, { cachedAddress } );
+                    address = pnanovdb_lower_get_max_address(gridType, grid.buf, { cachedAddress } );
                 else if (cachedAddressLevel == 2)
-                    address = pnanovdb_node2_get_max_address(gridType, grid.buf, { cachedAddress } );
+                    address = pnanovdb_upper_get_max_address(gridType, grid.buf, { cachedAddress } );
                 else
                     address = pnanovdb_root_get_max_address(gridType, grid.buf, { cachedAddress } );
             }

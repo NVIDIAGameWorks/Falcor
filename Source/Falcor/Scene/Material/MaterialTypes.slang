@@ -39,6 +39,13 @@ enum class MaterialType // : uint32_t
     Cloth,
     Hair,
     MERL,
+    PBRTDiffuse,
+    PBRTDiffuseTransmission,
+    PBRTConductor,
+    PBRTDielectric,
+    PBRTCoatedConductor,
+    PBRTCoatedDiffuse,
+    RGL,
 
     Count // Must be last
 };

@@ -26,6 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Testing/UnitTest.h"
+#include "Scene/Scene.h"
+#include "Scene/Material/StandardMaterial.h"
 #include "Rendering/Materials/BSDFIntegrator.h"
 
 namespace Falcor
@@ -55,7 +57,7 @@ namespace Falcor
         // Create and update scene containing the material.
         Scene::SceneData sceneData;
         sceneData.pMaterials = MaterialSystem::create();
-        uint materialID = sceneData.pMaterials->addMaterial(pMaterial);
+        MaterialID materialID = sceneData.pMaterials->addMaterial(pMaterial);
 
         Scene::SharedPtr pScene = Scene::create(std::move(sceneData));
         auto updateFlags = pScene->update(ctx.getRenderContext(), 0.0);

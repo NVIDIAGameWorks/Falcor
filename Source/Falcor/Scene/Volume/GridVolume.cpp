@@ -25,8 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "GridVolume.h"
+#include "Grid.h"
+#include "Utils/Logger.h"
+#include "Utils/Scripting/ScriptBindings.h"
+#include <set>
 #include <filesystem>
 
 namespace Falcor
@@ -50,8 +53,8 @@ namespace Falcor
 
     GridVolume::GridVolume(const std::string& name) : mName(name)
     {
-        mData.transform = glm::identity<glm::mat4>();
-        mData.invTransform = glm::identity<glm::mat4>();
+        mData.transform = rmcv::identity<rmcv::mat4>();
+        mData.invTransform = rmcv::identity<rmcv::mat4>();
     }
 
     GridVolume::SharedPtr GridVolume::create(const std::string& name)
@@ -308,12 +311,12 @@ namespace Falcor
         }
     }
 
-    void GridVolume::updateFromAnimation(const glm::mat4& transform)
+    void GridVolume::updateFromAnimation(const rmcv::mat4& transform)
     {
         if (mData.transform != transform)
         {
             mData.transform = transform;
-            mData.invTransform = glm::inverse(transform);
+            mData.invTransform = rmcv::inverse(transform);
             markUpdates(UpdateFlags::TransformChanged);
             updateBounds();
         }
@@ -361,6 +364,8 @@ namespace Falcor
 
     FALCOR_SCRIPT_BINDING(GridVolume)
     {
+        using namespace pybind11::literals;
+
         FALCOR_SCRIPT_BINDING_DEPENDENCY(Animatable)
         FALCOR_SCRIPT_BINDING_DEPENDENCY(Grid)
 

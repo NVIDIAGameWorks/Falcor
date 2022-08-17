@@ -25,8 +25,13 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "PixelDebug.h"
+#include "Core/API/RenderContext.h"
+#include "Core/Program/ComputeProgram.h"
+#include "Core/Program/ShaderVar.h"
+#include "Utils/Logger.h"
+#include "Utils/UI/InputTypes.h"
+#include <fstd/bit.h> // TODO: Replace with C++20 <bit> when available on all targets
 #include <sstream>
 #include <iomanip>
 
@@ -136,22 +141,25 @@ namespace Falcor
         }
     }
 
-    void PixelDebug::renderUI(Gui::Widgets& widget)
+    void PixelDebug::renderUI(Gui::Widgets* widget)
     {
         if (mRunning)
         {
             throw RuntimeError("PixelDebug::renderUI() - Logging is running, call end() before renderUI().");
         }
 
-        // Configure logging.
-        widget.checkbox("Pixel debug", mEnabled);
-        widget.tooltip("Enables shader debugging.\n\n"
-            "Left-mouse click on a pixel to select it.\n"
-            "Use print(value) or print(msg, value) in the shader to print values of basic types (int, float2, etc.) for the selected pixel.\n"
-            "Use assert(condition) or assert(condition, msg) in the shader to test a condition.", true);
-        if (mEnabled)
+        if (widget)
         {
-            widget.var("Selected pixel", mSelectedPixel);
+            // Configure logging.
+            widget->checkbox("Pixel debug", mEnabled);
+            widget->tooltip("Enables shader debugging.\n\n"
+                "Left-mouse click on a pixel to select it.\n"
+                "Use print(value) or print(msg, value) in the shader to print values of basic types (int, float2, etc.) for the selected pixel.\n"
+                "Use assert(condition) or assert(condition, msg) in the shader to test a condition.", true);
+            if (mEnabled)
+            {
+                widget->var("Selected pixel", mSelectedPixel);
+            }
         }
 
         // Fetch stats and show log if available.
@@ -185,8 +193,7 @@ namespace Falcor
                         oss << bits;
                         break;
                     case PixelLogValueType::Float:
-                        // TODO: Replace by std::bit_cast in C++20 when that is available.
-                        oss << *reinterpret_cast<float*>(&bits);
+                        oss << fstd::bit_cast<float>(bits);
                         break;
                     default:
                         oss << "INVALID VALUE";
@@ -211,7 +218,8 @@ namespace Falcor
                 }
             }
 
-            widget.text(oss.str());
+            if( widget )
+                widget->text(oss.str());
 
             bool isEmpty = mPixelLogData.empty() && mAssertLogData.empty();
             if (isNewData && !isEmpty) logInfo("\n" + oss.str());

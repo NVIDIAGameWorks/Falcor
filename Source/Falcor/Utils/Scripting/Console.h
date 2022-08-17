@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,14 +26,18 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "ScriptBindings.h"
-#include <functional>
+#include "Core/Macros.h"
+#include <optional>
+#include <string>
+#include <vector>
 
 // Forward declaration.
 struct ImGuiInputTextCallbackData;
 
 namespace Falcor
 {
+    class Gui;
+
     class FALCOR_API Console
     {
     public:

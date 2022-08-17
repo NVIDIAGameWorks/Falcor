@@ -25,10 +25,13 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Core/API/RtStateObject.h"
-#include "Core/API/D3D12/D3D12NvApiExDesc.h"
+#include "D3D12NvApiExDesc.h"
+#include "Core/API/Device.h"
+#include "Core/API/D3D12/D3D12API.h"
 #include "Utils/StringUtils.h"
+
+#include <set>
 
 namespace Falcor
 {
@@ -75,8 +78,8 @@ namespace Falcor
 
         void addShaderConfig(const std::wstring exportNames[], uint32_t count, uint32_t maxPayloadSizeInBytes, uint32_t maxAttributeSizeInBytes)
         {
-            ShaderConfig* pConfig = new ShaderConfig(maxPayloadSizeInBytes, maxAttributeSizeInBytes);
-            addSubobject<ExportAssociation>(exportNames, count, pConfig);
+            std::unique_ptr<ShaderConfig> pConfig(new ShaderConfig(maxPayloadSizeInBytes, maxAttributeSizeInBytes));
+            addSubobject<ExportAssociation>(exportNames, count, std::move(pConfig));
             mDirty = true;
         }
 
@@ -93,10 +96,6 @@ namespace Falcor
         void clear()
         {
             mSubobjects.clear();
-            for (auto& p : mBaseSubObjects)
-            {
-                safe_delete(p);
-            }
             mBaseSubObjects.clear();
             mDirty = true;
         }
@@ -197,7 +196,7 @@ namespace Falcor
 
         struct ExportAssociation : public RtStateSubobjectBase
         {
-            ExportAssociation(const std::wstring names[], uint32_t count, RtStateSubobjectBase* pSubobjectToAssociate) : exportNames(count)
+            ExportAssociation(const std::wstring names[], uint32_t count, std::unique_ptr<RtStateSubobjectBase> pSubobjectToAssociate) : exportNames(count)
             {
                 association.NumExports = count;
                 pName.resize(exportNames.size());
@@ -210,18 +209,15 @@ namespace Falcor
 
                 subobject.Type = D3D12_STATE_SUBOBJECT_TYPE_SUBOBJECT_TO_EXPORTS_ASSOCIATION;
                 subobject.pDesc = &association;
-                pAssociatedSubobject = pSubobjectToAssociate;
+                pAssociatedSubobject = std::move(pSubobjectToAssociate);
             }
 
-            virtual ~ExportAssociation()
-            {
-                safe_delete(pAssociatedSubobject);
-            }
+            virtual ~ExportAssociation() = default;
 
             std::vector<std::wstring> exportNames;
             std::vector<const WCHAR*> pName;
             D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION association = {};
-            RtStateSubobjectBase* pAssociatedSubobject = nullptr;
+            std::unique_ptr<RtStateSubobjectBase> pAssociatedSubobject;
 
             virtual void addToVector(SubobjectVector& vec) override
             {
@@ -259,13 +255,13 @@ namespace Falcor
 
         bool mDirty = false;
         SubobjectVector mSubobjects;
-        std::list<RtStateSubobjectBase*> mBaseSubObjects;
+        std::list<std::unique_ptr<RtStateSubobjectBase>> mBaseSubObjects;
 
         template<typename T, typename... Args>
-        RtStateSubobjectBase* addSubobject(Args... args)
+        RtStateSubobjectBase* addSubobject(Args&&... args)
         {
-            T* pSubobject = new T(args...);
-            mBaseSubObjects.emplace_back(pSubobject);
+            T* pSubobject = new T(std::forward<Args>(args)...);
+            mBaseSubObjects.emplace_back(std::unique_ptr<RtStateSubobjectBase>(pSubobject));
             return pSubobject;
         }
 
@@ -313,7 +309,7 @@ namespace Falcor
 
         auto pKernels = getKernels();
 
-#if FALCOR_ENABLE_NVAPI
+#if FALCOR_HAS_NVAPI
         // Enable NVAPI extension if required
         auto nvapiRegisterIndex = findNvApiShaderRegister(pKernels);
         if (nvapiRegisterIndex)
@@ -389,7 +385,7 @@ namespace Falcor
             mShaderIdentifiers.push_back(pShaderIdentifier);
         }
 
-#if FALCOR_ENABLE_NVAPI
+#if FALCOR_HAS_NVAPI
         if (nvapiRegisterIndex)
         {
             if (NvAPI_D3D12_SetNvShaderExtnSlotSpace(gpDevice->getApiHandle(), 0xFFFFFFFF, 0) != NVAPI_OK) throw RuntimeError("Failed to unset NvApi extension");

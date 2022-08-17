@@ -86,8 +86,8 @@ RenderPassReflection FXAA::reflect(const CompileData& compileData)
 
 void FXAA::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    auto pSrc = renderData[kSrc]->asTexture();
-    auto pDst = renderData[kDst]->asTexture();
+    auto pSrc = renderData.getTexture(kSrc);
+    auto pDst = renderData.getTexture(kDst);
     mpFbo->attachColorTarget(pDst, 0);
 
     mpPass["gSrc"] = pSrc;

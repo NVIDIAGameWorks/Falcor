@@ -25,34 +25,44 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "USDImporter.h"
-#include "glm/gtx/transform.hpp"
-
-#pragma warning(push)
-#pragma warning(disable : 4244) // Conversion possible loss of data
-#pragma warning(disable : 4267) // Conversion possible loss of data
-#pragma warning(disable : 4305) // Truncation double to float
-#pragma warning(disable : 5033) // 'register' storage class specifier deprecated
+#include "USDHelpers.h"
 #include "ImporterContext.h"
-#include "pxr/usd/usd/primRange.h"
-#include "pxr/usd/ar/resolver.h"
-#include "pxr/usd/usdGeom/bboxCache.h"
-#include "pxr/usd/usdGeom/camera.h"
-#include "pxr/usd/usdGeom/mesh.h"
-#include "pxr/usd/usdGeom/metrics.h"
-#include "pxr/usd/usdGeom/scope.h"
-#include "pxr/usd/usdLux/distantLight.h"
-#include "pxr/usd/usdLux/domeLight.h"
-#include "pxr/usd/usdLux/rectLight.h"
-#include "pxr/usd/usdLux/sphereLight.h"
-#include "pxr/usd/usdLux/diskLight.h"
-#include "pxr/usd/usdGeom/basisCurves.h"
-#include "pxr/usd/usdSkel/root.h"
-#pragma warning(pop)
+#include "Core/Platform/OS.h"
+#include "Utils/Timing/TimeReport.h"
+#include "Utils/Settings.h"
+#include "Scene/Importer.h"
+
+#include <glm/gtx/transform.hpp>
+
+BEGIN_DISABLE_USD_WARNINGS
+#include <pxr/usd/usd/primRange.h>
+#include <pxr/usd/ar/resolver.h>
+#include <pxr/usd/usdGeom/bboxCache.h>
+#include <pxr/usd/usdGeom/camera.h>
+#include <pxr/usd/usdGeom/mesh.h>
+#include <pxr/usd/usdGeom/metrics.h>
+#include <pxr/usd/usdGeom/scope.h>
+#include <pxr/usd/usdLux/distantLight.h>
+#include <pxr/usd/usdLux/domeLight.h>
+#include <pxr/usd/usdLux/rectLight.h>
+#include <pxr/usd/usdLux/sphereLight.h>
+#include <pxr/usd/usdLux/diskLight.h>
+#include <pxr/usd/usdGeom/basisCurves.h>
+#include <pxr/usd/usdSkel/root.h>
+END_DISABLE_USD_WARNINGS
 
 namespace Falcor
 {
+    bool checkPrim(const UsdPrim& prim)
+    {
+        std::string primName = prim.GetPath().GetString();
+        if (gpFramework->getSettings().getAttribute(primName, "usdImporter:dropPrim", false))
+            return false;
+
+        return true;
+    }
+
     // Traverse scene graph, converting supported prims from USD to Falcor equivalents
     void traversePrims(const UsdPrim& rootPrim, ImporterContext& ctx)
     {
@@ -89,6 +99,8 @@ namespace Falcor
 
                 if (prim.IsInstance() && !ctx.useInstanceProxies)
                 {
+                    if (!checkPrim(prim)) continue;
+
                     const UsdPrim protoPrim(prim.GetMaster());
 
                     if (protoPrim.IsValid())
@@ -107,25 +119,31 @@ namespace Falcor
                 }
                 else if (prim.IsA<UsdGeomPointInstancer>())
                 {
+                    if (!checkPrim(prim)) continue;
+
                     logDebug("Processing point instancer '{}'.", primName);
                     ctx.createPointInstances(prim);
                     it.PruneChildren();
                 }
                 else if (prim.IsA<UsdGeomMesh>())
                 {
+                    if (!checkPrim(prim)) continue;
+
                     logDebug("Adding mesh '{}'.", primName);
                     ctx.addMesh(prim);
-                    float4x4 bindXform = ctx.getGeomBindTransform(prim);
-                    ctx.addGeomInstance(primName, prim, float4x4(1.f), bindXform);
+                    rmcv::mat4 bindXform = ctx.getGeomBindTransform(prim);
+                    ctx.addGeomInstance(primName, prim, rmcv::mat4(1.f), bindXform);
                 }
                 else if (prim.IsA<UsdGeomBasisCurves>())
                 {
+                    if (!checkPrim(prim)) continue;
+
                     logDebug("Adding curve '{}' for linear swept sphere tessellation.", primName);
                     ctx.addCurve(prim);
 
                     // TODO: Add support for curve instancing
                     // Now we assume each curve has only one instance.
-                    ctx.addCurveInstance(primName, prim, float4x4(1.f), ctx.nodeStack.back());
+                    ctx.addCurveInstance(primName, prim, rmcv::mat4(1.f), ctx.nodeStack.back());
                 }
                 else if (prim.IsA<UsdSkelRoot>())
                 {
@@ -150,7 +168,14 @@ namespace Falcor
                 else if (prim.IsA<UsdLuxDiskLight>())
                 {
                     logDebug("Processing disk light '{}'.", primName);
-                    ctx.createDiskLight(prim);
+                    if (gpFramework->getSettings().getOption("usdImporter:meshDiskLight", false))
+                    {
+                        ctx.createMeshedDiskLight(prim);
+                    }
+                    else
+                    {
+                        ctx.createDiskLight(prim);
+                    }
                 }
                 else if (prim.IsA<UsdLuxDomeLight>())
                 {
@@ -340,6 +365,7 @@ namespace Falcor
             std::vector<UsdPrim> prototypes(pStage->GetMasters());
             for (const UsdPrim& rootPrim : prototypes)
             {
+                if (!checkPrim(rootPrim)) continue;
                 ctx.createPrototype(rootPrim);
             }
             ctx.popNodeStack();
@@ -348,10 +374,10 @@ namespace Falcor
 
         // Initialize stage-to-Falcor transformation based on specified stage up and unit scaling which
         // accounts for any differences in scene units and 'up' orientation between the stage and Falcor
-        float4x4 rootXform = glm::scale(float3(ctx.metersPerUnit));
+        rmcv::mat4 rootXform = rmcv::scale(float3(ctx.metersPerUnit));
         if (UsdGeomGetStageUpAxis(pStage) == UsdGeomTokens->z)
         {
-            rootXform = glm::eulerAngleX(glm::radians(-90.0f)) * rootXform;
+            rootXform = rmcv::eulerAngleX(glm::radians(-90.0f)) * rootXform;
         }
         else
         {

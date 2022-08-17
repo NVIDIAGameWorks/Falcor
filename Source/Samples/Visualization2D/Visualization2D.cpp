@@ -170,8 +170,8 @@ void Visualization2D::onResizeSwapChain(uint32_t width, uint32_t height)
 
 int main(int argc, char** argv)
 {
-
     Visualization2D::UniquePtr pRenderer = std::make_unique<Visualization2D>();
+
     SampleConfig config;
     config.windowDesc.title = "Falcor 2D Visualization";
     config.windowDesc.resizableWindow = true;

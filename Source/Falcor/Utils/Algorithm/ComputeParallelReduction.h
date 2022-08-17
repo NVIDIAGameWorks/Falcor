@@ -26,10 +26,12 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Core/Macros.h"
+#include "Core/API/Buffer.h"
+#include "Core/State/ComputeState.h"
 #include "Core/Program/ComputeProgram.h"
 #include "Core/Program/ProgramVars.h"
-#include "Core/State/ComputeState.h"
-#include "Utils/Math/Vector.h"
+#include <memory>
 
 namespace Falcor
 {

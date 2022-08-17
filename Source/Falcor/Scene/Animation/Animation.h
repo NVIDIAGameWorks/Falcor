@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,6 +26,13 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Core/Macros.h"
+#include "Scene/SceneIDs.h"
+#include "Utils/Math/Vector.h"
+#include "Utils/Math/Matrix.h"
+#include "Utils/UI/Gui.h"
+#include <memory>
+#include <string>
 #include <vector>
 
 namespace Falcor
@@ -65,7 +72,7 @@ namespace Falcor
             \param[in] Animation duration in seconds.
             \return Returns a new animation.
         */
-        static SharedPtr create(const std::string& name, uint32_t nodeID, double duration);
+        static SharedPtr create(const std::string& name, NodeID nodeID, double duration);
 
         /** Get the animation name.
         */
@@ -73,11 +80,11 @@ namespace Falcor
 
         /** Get the animated node.
         */
-        uint32_t getNodeID() const { return mNodeID; }
+        NodeID getNodeID() const { return mNodeID; }
 
         /** Set the animated node.
         */
-        void setNodeID(uint32_t id) { mNodeID = id; }
+        void setNodeID(NodeID id) { mNodeID = id; }
 
         /** Get the animation duration in seconds.
         */
@@ -138,20 +145,20 @@ namespace Falcor
             \param time The current time in seconds. This can be larger then the animation time, in which case the animation will loop.
             \return Returns the animation's transform matrix for the specified time.
         */
-        glm::mat4 animate(double currentTime);
+        rmcv::mat4 animate(double currentTime);
 
         /* Render the UI.
         */
         void renderUI(Gui::Widgets& widget);
 
     private:
-        Animation(const std::string& name, uint32_t nodeID, double duration);
+        Animation(const std::string& name, NodeID nodeID, double duration);
 
         Keyframe interpolate(InterpolationMode mode, double time) const;
         double calcSampleTime(double currentTime);
 
         std::string mName;
-        uint32_t mNodeID;
+        NodeID mNodeID;
         double mDuration; // Includes any time before the first keyframe. May be Assimp or FBX specific.
 
         Behavior mPreInfinityBehavior = Behavior::Constant; // How the animation behaves before the first keyframe

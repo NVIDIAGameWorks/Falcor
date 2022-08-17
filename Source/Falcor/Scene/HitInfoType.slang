@@ -40,7 +40,7 @@ enum class HitType : uint32_t
 
     DisplacedTriangle   = 3,    ///< Displaced triangle hit.
     Curve               = 4,    ///< Curve hit.
-    SDFGrid             = 5,    ///< SDF grid hit.
+    SDFGrid             = 6,    ///< SDF grid hit.
 
     //
     // Add new hit types here

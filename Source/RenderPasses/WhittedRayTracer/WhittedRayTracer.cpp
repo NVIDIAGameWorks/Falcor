@@ -26,7 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "WhittedRayTracer.h"
+#include "RenderGraph/RenderPassLibrary.h"
 #include "RenderGraph/RenderPassHelpers.h"
+#include "RenderGraph/RenderPassStandardFlags.h"
 
 const RenderPass::Info WhittedRayTracer::kInfo { "WhittedRayTracer", "Simple Whitted ray tracer." };
 
@@ -175,7 +177,7 @@ void WhittedRayTracer::execute(RenderContext* pRenderContext, const RenderData& 
     {
         for (auto it : kOutputChannels)
         {
-            Texture* pDst = renderData[it.name]->asTexture().get();
+            Texture* pDst = renderData.getTexture(it.name).get();
             if (pDst) pRenderContext->clearTexture(pDst);
         }
         return;
@@ -214,7 +216,7 @@ void WhittedRayTracer::execute(RenderContext* pRenderContext, const RenderData& 
     {
         if (!desc.texname.empty())
         {
-            var[desc.texname] = renderData[desc.name]->asTexture();
+            var[desc.texname] = renderData.getTexture(desc.name);
         }
     };
     for (auto channel : kInputChannels) bind(channel);
@@ -306,7 +308,9 @@ void WhittedRayTracer::setScene(RenderContext* pRenderContext, const Scene::Shar
 
         // Create ray tracing program.
         RtProgram::Desc desc;
+        desc.addShaderModules(mpScene->getShaderModules());
         desc.addShaderLibrary(kShaderFile);
+        desc.addTypeConformances(mpScene->getTypeConformances());
         desc.setMaxPayloadSize(kMaxPayloadSizeBytes);
         desc.setMaxAttributeSize(kMaxAttributeSizeBytes);
         desc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
@@ -329,7 +333,6 @@ void WhittedRayTracer::prepareVars()
 
     // Configure program.
     mTracer.pProgram->addDefines(mpSampleGenerator->getDefines());
-    mTracer.pProgram->setTypeConformances(mpScene->getTypeConformances());
 
     // Create program variables for the current program.
     // This may trigger shader compilation. If it fails, throw an exception to abort rendering.

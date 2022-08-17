@@ -25,10 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include "Core/API/RtAccelerationStructure.h"
 #include "GFXRtAccelerationStructure.h"
 #include "GFXFormats.h"
+#include "Core/API/RtAccelerationStructure.h"
+#include "Core/API/Device.h"
+#include "Core/API/GFX/GFXAPI.h"
 
 namespace Falcor
 {
@@ -121,7 +122,7 @@ namespace Falcor
 
                 case RtGeometryType::ProcedurePrimitives:
                     mGeomDescs[i].type = gfx::IAccelerationStructure::GeometryType::ProcedurePrimitives;
-                    mGeomDescs[i].content.proceduralAABBs.count = inputGeomDesc.content.proceduralAABBs.count;
+                    mGeomDescs[i].content.proceduralAABBs.count = static_cast<gfx::GfxCount>(inputGeomDesc.content.proceduralAABBs.count);
                     mGeomDescs[i].content.proceduralAABBs.data = inputGeomDesc.content.proceduralAABBs.data;
                     mGeomDescs[i].content.proceduralAABBs.stride = inputGeomDesc.content.proceduralAABBs.stride;
                     break;

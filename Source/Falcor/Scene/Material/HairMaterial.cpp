@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,11 +25,16 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "HairMaterial.h"
+#include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
 {
+    namespace
+    {
+        const char kShaderFile[] = "Rendering/Materials/HairMaterial.slang";
+    }
+
     HairMaterial::SharedPtr HairMaterial::create(const std::string& name)
     {
         return SharedPtr(new HairMaterial(name));
@@ -43,8 +48,39 @@ namespace Falcor
         mTextureSlotInfo[(uint32_t)TextureSlot::Specular] = { "specular", TextureChannelFlags::RGB, false };
     }
 
+    Program::ShaderModuleList HairMaterial::getShaderModules() const
+    {
+        return { Program::ShaderModule(kShaderFile) };
+    }
+
+    Program::TypeConformanceList HairMaterial::getTypeConformances() const
+    {
+        return { {{"HairMaterial", "IMaterial"}, (uint32_t)MaterialType::Hair} };
+    }
+
+    float3 HairMaterial::sigmaAFromConcentration(float ce, float cp)
+    {
+        float3 eumelaninSigmaA(0.419f, 0.697f, 1.37f);
+        float3 pheomelaninSigmaA(0.187f, 0.4f, 1.05f);
+        return ce * eumelaninSigmaA + cp * pheomelaninSigmaA;
+    }
+
+    float3 HairMaterial::sigmaAFromColor(float3 color, float betaN)
+    {
+        const float tmp = 5.969f - 0.215f * betaN + 2.532f * betaN * betaN - 10.73f * std::pow(betaN, 3) + 5.574f * std::pow(betaN, 4) + 0.245f * std::pow(betaN, 5);
+        float3 sqrtSigmaA = log(max(color, 1e-4f)) / tmp;
+        return sqrtSigmaA * sqrtSigmaA;
+    }
+
+    float3 HairMaterial::colorFromSigmaA(float3 sigmaA, float betaN)
+    {
+        const float tmp = 5.969f - 0.215f * betaN + 2.532f * betaN * betaN - 10.73f * std::pow(betaN, 3) + 5.574f * std::pow(betaN, 4) + 0.245f * std::pow(betaN, 5);
+        return exp(sqrt(sigmaA) * tmp);
+    }
+
     FALCOR_SCRIPT_BINDING(HairMaterial)
     {
+        using namespace pybind11::literals;
         FALCOR_SCRIPT_BINDING_DEPENDENCY(BasicMaterial)
 
         pybind11::class_<HairMaterial, BasicMaterial, HairMaterial::SharedPtr> material(m, "HairMaterial");

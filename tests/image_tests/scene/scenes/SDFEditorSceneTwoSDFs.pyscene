@@ -1,0 +1,55 @@
+# Create materials
+
+lightMaterial = Material('Light')
+lightMaterial.emissiveColor = float3(17, 12, 4)
+lightMaterial.emissiveFactor = 2
+
+floorMaterial = Material('Floor')
+floorMaterial.baseColor = float4(0.2, 0.2, 0.2, 1)
+floorMaterial.roughness = 0.2
+floorMaterial.metallic = 0.98
+
+sdfGridMaterial = Material('SDF Grid')
+sdfGridMaterial.baseColor = float4(1.0, 0.5, 0.5, 1.0)
+sdfGridMaterial.specularParams = float4(0.001)
+
+# Create geometry
+
+quadMesh = TriangleMesh.createQuad()
+
+sdfGrid2 = SDFGrid.createSBS()
+sdfGrid2.loadPrimitivesFromFile(path="test_primitives.sdf", gridWidth=256)
+
+sdfGrid = SDFGrid.createSBS()
+sdfGrid.loadValuesFromFile(path="one_primitive_edited.sdfg")
+
+# Create mesh instances
+
+sceneBuilder.addMeshInstance(
+    sceneBuilder.addNode('Floor', Transform(scaling=float3(10.0, 1.0, 10.0))),
+    sceneBuilder.addTriangleMesh(quadMesh, floorMaterial)
+)
+
+sceneBuilder.addMeshInstance(
+    sceneBuilder.addNode('Light', Transform(scaling=4.0, translation=float3(0, 4.0, 0), rotationEulerDeg=float3(180, 0, 0))),
+    sceneBuilder.addTriangleMesh(quadMesh, lightMaterial)
+)
+
+sceneBuilder.addSDFGridInstance(
+    sceneBuilder.addNode('SDFGrid', Transform(translation=float3(-0.5, 0.6, 0))),
+    sceneBuilder.addSDFGrid(sdfGrid, sdfGridMaterial)
+)
+
+sceneBuilder.addSDFGridInstance(
+    sceneBuilder.addNode('SDFGrid2', Transform(translation=float3(0.5, 0.6, 0))),
+    sceneBuilder.addSDFGrid(sdfGrid2, sdfGridMaterial)
+)
+
+# Create camera
+
+camera = Camera()
+camera.position = float3(0.0, 0.6, -1.0)
+camera.target = float3(0.0, 0.6, 1.0)
+camera.up = float3(0, 1, 0)
+camera.focalLength = 35.0
+sceneBuilder.addCamera(camera)

@@ -26,7 +26,12 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Core/Framework.h"
+#include "Core/Macros.h"
+#include "Core/FalcorConfig.h"
+#include "Utils/StringFormatters.h"
+#include <fmt/core.h>
+#include <string_view>
+#include <filesystem>
 
 namespace Falcor
 {
@@ -122,9 +127,9 @@ namespace Falcor
     }
 
     template<typename... Args>
-    inline void logDebug(const std::string_view fmtString, Args&&... args)
+    inline void logDebug(const std::string_view format, Args&&... args)
     {
-        Logger::log(Logger::Level::Debug, fmt::format(fmtString, std::forward<Args>(args)...));
+        Logger::log(Logger::Level::Debug, fmt::vformat(format, fmt::make_format_args(std::forward<Args>(args)...)));
     }
 
     inline void logInfo(const std::string_view msg)
@@ -133,9 +138,9 @@ namespace Falcor
     }
 
     template<typename... Args>
-    inline void logInfo(const std::string_view fmtString, Args&&... args)
+    inline void logInfo(const std::string_view format, Args&&... args)
     {
-        Logger::log(Logger::Level::Info, fmt::format(fmtString, std::forward<Args>(args)...));
+        Logger::log(Logger::Level::Info, fmt::vformat(format, fmt::make_format_args(std::forward<Args>(args)...)));
     }
 
     inline void logWarning(const std::string_view msg)
@@ -144,9 +149,9 @@ namespace Falcor
     }
 
     template<typename... Args>
-    inline void logWarning(const std::string_view fmtString, Args&&... args)
+    inline void logWarning(const std::string_view format, Args&&... args)
     {
-        Logger::log(Logger::Level::Warning, fmt::format(fmtString, std::forward<Args>(args)...));
+        Logger::log(Logger::Level::Warning, fmt::vformat(format, fmt::make_format_args(std::forward<Args>(args)...)));
     }
 
     inline void logError(const std::string_view msg)
@@ -155,9 +160,9 @@ namespace Falcor
     }
 
     template<typename... Args>
-    inline void logError(const std::string_view fmtString, Args&&... args)
+    inline void logError(const std::string_view format, Args&&... args)
     {
-        Logger::log(Logger::Level::Error, fmt::format(fmtString, std::forward<Args>(args)...));
+        Logger::log(Logger::Level::Error, fmt::vformat(format, fmt::make_format_args(std::forward<Args>(args)...)));
     }
 
     inline void logFatal(const std::string_view msg)
@@ -166,8 +171,8 @@ namespace Falcor
     }
 
     template<typename... Args>
-    inline void logFatal(const std::string_view fmtString, Args&&... args)
+    inline void logFatal(const std::string_view format, Args&&... args)
     {
-        Logger::log(Logger::Level::Fatal, fmt::format(fmtString, std::forward<Args>(args)...));
+        Logger::log(Logger::Level::Fatal, fmt::vformat(format, fmt::make_format_args(std::forward<Args>(args)...)));
     }
 }

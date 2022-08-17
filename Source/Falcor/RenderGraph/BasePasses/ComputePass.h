@@ -26,8 +26,14 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "../RenderPass.h"
+#include "Core/Macros.h"
+#include "Core/State/ComputeState.h"
+#include "Core/Program/ComputeProgram.h"
+#include "Core/Program/Program.h"
+#include "Core/Program/ProgramVars.h"
 #include "Core/Program/ShaderVar.h"
+#include <filesystem>
+#include <string>
 
 namespace Falcor
 {

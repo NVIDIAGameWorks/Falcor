@@ -26,13 +26,21 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "RenderPassReflection.h"
 #include "RenderGraph.h"
 #include "RenderGraphIR.h"
+#include "RenderPassReflection.h"
+#include "Core/Macros.h"
+#include <memory>
+#include <filesystem>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace Falcor
 {
     class NodeGraphEditorGui;
+    class RenderGraphUI;
+    class RenderContext;
 
     /** Class for drawing UI elements for a render pass in the render graph editor.
     */

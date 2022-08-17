@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,15 +25,16 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "AABB.h"
-
+#include "Utils/Scripting/ScriptBindings.h"
 #include <pybind11/operators.h>
 
 namespace Falcor
 {
     FALCOR_SCRIPT_BINDING(AABB)
     {
+        using namespace pybind11::literals;
+
         pybind11::class_<AABB> aabb(m, "AABB");
 
         aabb.def(pybind11::init<>());

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,6 +31,13 @@
  /** Utility functions for interval arithmetic.
      All interval functions operate on float2 where interval.x is the minimum value and interval.y is the maximum value.
  */
+
+/** Combine two intervals into one.
+*/
+float2 ivlCombine(float2 a, float2 b)
+{
+    return float2(min(a.x, b.x), max(a.y, b.y));
+}
 
 /** Checks if the interval is valid.
 */

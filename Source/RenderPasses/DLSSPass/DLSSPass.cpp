@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "DLSSPass.h"
+#include "RenderGraph/RenderPassLibrary.h"
 
 const RenderPass::Info DLSSPass::kInfo { "DLSSPass", "DL antialiasing/upscaling." };
 
@@ -143,19 +144,11 @@ void DLSSPass::execute(RenderContext* pRenderContext, const RenderData& renderDa
 {
     FALCOR_PROFILE("DLSSPass");
 
-#if FALCOR_ENABLE_DLSS
     executeInternal(pRenderContext, renderData);
-#else
-    const auto& pOutput = renderData[kOutput]->asTexture();
-    const auto& pColor = renderData[kColorInput]->asTexture();
-    FALCOR_ASSERT(pColor && pOutput);
-    pRenderContext->blit(pColor->getSRV(), pOutput->getRTV());
-#endif
 }
 
 void DLSSPass::renderUI(Gui::Widgets& widget)
 {
-#if FALCOR_ENABLE_DLSS
     widget.checkbox("Enable", mEnabled);
 
     // Controls for output size.
@@ -175,10 +168,10 @@ void DLSSPass::renderUI(Gui::Widgets& widget)
             "Absolute: Motion vectors are provided in absolute screen space length (pixels)\n"
             "Relative: Motion vectors are provided in relative screen space length (pixels divided by screen width/height).");
 
-        widget.checkbox("HDR", mIsHDR);
+        mRecreate |= widget.checkbox("HDR", mIsHDR);
         widget.tooltip("Enable if input color is HDR.");
 
-        widget.slider("Sharpness", mSharpness, 0.f, 1.f);
+        widget.slider("Sharpness", mSharpness, -1.f, 1.f);
         widget.tooltip("Sharpening value between 0.0 and 1.0.");
 
         if (widget.var("Exposure", mExposure, -10.f, 10.f, 0.01f)) mExposureUpdated = true;
@@ -187,12 +180,7 @@ void DLSSPass::renderUI(Gui::Widgets& widget)
         widget.text("DLSS output resolution: " + std::to_string(mDLSSOutputSize.x) + "x" + std::to_string(mDLSSOutputSize.y));
         widget.text("Pass output resolution: " + std::to_string(mPassOutputSize.x) + "x" + std::to_string(mPassOutputSize.y));
     }
-#else // FALCOR_ENABLE_DLSS
-    widget.textWrapped("DLSS is not setup and enabled in `Source/Core/FalcorConfig.h` so this pass is disabled. Please configure DLSS and then recompile to use this pass.");
-#endif // FALCOR_ENABLE_DLSS
 }
-
-#if FALCOR_ENABLE_DLSS
 
 void DLSSPass::initializeDLSS(RenderContext* pRenderContext)
 {
@@ -220,8 +208,8 @@ void DLSSPass::initializeDLSS(RenderContext* pRenderContext)
 void DLSSPass::executeInternal(RenderContext* pRenderContext, const RenderData& renderData)
 {
     // Determine pass I/O sizes based on bound textures.
-    const auto& pOutput = renderData[kOutput]->asTexture();
-    const auto& pColor = renderData[kColorInput]->asTexture();
+    const auto& pOutput = renderData.getTexture(kOutput);
+    const auto& pColor = renderData.getTexture(kColorInput);
     FALCOR_ASSERT(pColor && pOutput);
     mPassOutputSize = { pOutput->getWidth(), pOutput->getHeight() };
     const uint2 inputSize = { pColor->getWidth(), pColor->getHeight() };
@@ -256,7 +244,7 @@ void DLSSPass::executeInternal(RenderContext* pRenderContext, const RenderData& 
         // Fetch inputs and verify their dimensions.
         auto getInput = [=](const std::string& name)
         {
-            const auto& tex = renderData[name]->asTexture();
+            const auto& tex = renderData.getTexture(name);
             if (!tex)
             {
                 throw RuntimeError("DLSSPass: Missing input '{}'", name);
@@ -297,5 +285,3 @@ void DLSSPass::executeInternal(RenderContext* pRenderContext, const RenderData& 
         }
     }
 }
-
-#endif // FALCOR_ENABLE_DLSS

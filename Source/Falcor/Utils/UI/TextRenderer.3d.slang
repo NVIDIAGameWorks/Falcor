@@ -35,7 +35,7 @@ Texture2D gFontTex : register(t2);
 
 float4 transform(float2 posS)
 {
-	return mul(float4(posS, 0.5f, 1), gvpTransform);
+	return mul(gvpTransform, float4(posS, 0.5f, 1));
 }
 
 void vsMain(float2 posS : POSITION, inout float2 texC : TEXCOORD, out float4 posSV : SV_POSITION)

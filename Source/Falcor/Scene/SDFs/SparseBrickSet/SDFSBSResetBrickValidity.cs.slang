@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,25 +27,26 @@
  **************************************************************************/
 #include "Utils/Math/MathConstants.slangh"
 
-cbuffer CB
+struct ParamBlock
 {
-    uint gVirtualBrickCount;
+    uint virtualBrickCount;
+    Buffer<uint> brickValidity;
+    RWBuffer<uint> indirectionBuffer;
 };
 
-Buffer<uint> gBrickValidity;
-RWBuffer<uint> gIndirectionBuffer;
+ParameterBlock<ParamBlock> gParamBlock;
 
 [numthreads(256, 1, 1)]
 void main(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupThreadID)
 {
-    if (dispatchThreadID.x >= gVirtualBrickCount)
+    if (dispatchThreadID.x >= gParamBlock.virtualBrickCount)
         return;
 
     uint virtualBrickID = dispatchThreadID.x;
-    uint valid = gBrickValidity[virtualBrickID];
+    uint valid = gParamBlock.brickValidity[virtualBrickID];
 
     if (valid == 0)
     {
-        gIndirectionBuffer[virtualBrickID] = UINT32_MAX;
+        gParamBlock.indirectionBuffer[virtualBrickID] = UINT32_MAX;
     }
 }

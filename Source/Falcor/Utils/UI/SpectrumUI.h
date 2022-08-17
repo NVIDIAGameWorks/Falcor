@@ -26,12 +26,13 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Falcor.h"
-#include "dear_imgui/imgui.h"
+#include "Core/Macros.h"
+#include "Utils/Math/Vector.h"
 #include "Utils/Color/SampledSpectrum.h"
-#include "Utils/Color/SpectrumUtils.h"
-#include "Utils/Color/ColorHelpers.slang"
-#include "Utils/Color/ColorUtils.h"
+#include "Utils/UI/Gui.h"
+#include <imgui.h>
+#include <string>
+#include <vector>
 
 namespace Falcor
 {
@@ -73,8 +74,9 @@ namespace Falcor
         void        drawSpectrumBar(ImDrawList* drawList, const float2& canvasPos, const float2& xAxisRange, const float2& yAxisRange, SampledSpectrum<T>* spectrum, const bool multiplyBySpectrum);
         void        drawSpectrumCurve(ImDrawList* drawList, const float2& canvasPos, const float2& canvasSize, const float2& xAxisRange, const float2& yAxisRange, SampledSpectrum<T>* spectrum, const uint32_t spectrumIndex);
         bool        handleMouse(const float2& canvasPos, const float2& canvasSize, const float2& xAxisRange, const float2& yAxisRange, ImDrawList* drawList, SampledSpectrum<T>* spectrum, const uint32_t float3Index = 0);
+        float       generateNiceNumber(const float x) const;
     protected:
-        // UI parameters.        
+        // UI parameters.
         float2      mWavelengthRange = float2(350.0f, 750.0f);
         float2      mSpectralIntensityRange = float2(0.0f, 1.0f);
         uint32_t    mEditSpectrumIndex = 0;

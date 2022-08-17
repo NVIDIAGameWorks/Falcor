@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
+#include "RenderGraph/BasePasses/RasterScenePass.h"
 
 using namespace Falcor;
 

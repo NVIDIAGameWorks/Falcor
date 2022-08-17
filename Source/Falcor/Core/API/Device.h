@@ -26,16 +26,24 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Handles.h"
+#include "Formats.h"
+#include "QueryHeap.h"
+#include "LowLevelContextData.h"
+#include "FBO.h"
+#include "RenderContext.h"
+#include "GpuMemoryHeap.h"
+#include "Core/Macros.h"
 #include "Core/Window.h"
-#include "Core/API/Texture.h"
-#include "Core/API/FBO.h"
-#include "Core/API/RenderContext.h"
-#include "Core/API/GpuMemoryHeap.h"
-#include "Core/API/QueryHeap.h"
-
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
 #include "Core/API/Shared/D3D12DescriptorPool.h"
 #endif
+
+#include <array>
+#include <list>
+#include <memory>
+#include <queue>
+#include <vector>
 
 namespace Falcor
 {
@@ -103,6 +111,8 @@ namespace Falcor
             SM6_6,
             SM6_7,
         };
+
+        ~Device();
 
         /** Create a new device.
             \param[in] pWindow a previously-created window object
@@ -181,12 +191,12 @@ namespace Falcor
         */
         std::weak_ptr<QueryHeap> createQueryHeap(QueryHeap::Type type, uint32_t count);
 
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         const D3D12DescriptorPool::SharedPtr& getD3D12CpuDescriptorPool() const { return mpD3D12CpuDescPool; }
         const D3D12DescriptorPool::SharedPtr& getD3D12GpuDescriptorPool() const { return mpD3D12GpuDescPool; }
-#endif // FALCOR_D3D12_AVAILABLE
+#endif // FALCOR_HAS_D3D12
 
-        DeviceApiData* getApiData() const { return mpApiData; }
+        DeviceApiData* getApiData() const { return mpApiData.get(); }
         const GpuMemoryHeap::SharedPtr& getUploadHeap() const { return mpUploadHeap; }
         void releaseResource(ApiObjectHandle pResource);
 #ifdef FALCOR_GFX
@@ -225,7 +235,7 @@ namespace Falcor
         uint32_t mCurrentBackBufferIndex;
         Fbo::SharedPtr mpSwapChainFbos[kSwapChainBuffersCount];
 
-        Device(Window::SharedPtr pWindow, const Desc& desc) : mpWindow(pWindow), mDesc(desc) {}
+        Device(Window::SharedPtr pWindow, const Desc& desc);
         bool init();
         void executeDeferredReleases();
         void releaseFboData();
@@ -234,7 +244,7 @@ namespace Falcor
         Desc mDesc;
         ApiHandle mApiHandle;
         GpuMemoryHeap::SharedPtr mpUploadHeap;
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         D3D12DescriptorPool::SharedPtr mpD3D12CpuDescPool;
         D3D12DescriptorPool::SharedPtr mpD3D12GpuDescPool;
 #endif
@@ -242,7 +252,7 @@ namespace Falcor
         GpuFence::SharedPtr mpFrameFence;
 
         Window::SharedPtr mpWindow;
-        DeviceApiData* mpApiData;
+        std::unique_ptr<DeviceApiData> mpApiData;
         RenderContext::SharedPtr mpRenderContext;
         size_t mFrameID = 0;
         std::list<QueryHeap::SharedPtr> mTimestampQueryHeaps;
@@ -261,6 +271,8 @@ namespace Falcor
         void apiResizeSwapChain(uint32_t width, uint32_t height, ResourceFormat colorFormat);
         void toggleFullScreen(bool fullscreen);
     };
+
+    inline constexpr uint32_t getMaxViewportCount() { return 8; }
 
     FALCOR_API extern Device::SharedPtr gpDevice;
 

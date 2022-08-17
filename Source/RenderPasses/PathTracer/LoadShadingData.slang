@@ -66,23 +66,19 @@ void computeDerivativesAtPrimaryTriangleHit(const TriangleHit hit, uint2 pixel, 
     \param[out] materialID Material ID.
     \return VertexData struct.
 */
-VertexData loadVertexData(const HitInfo hit, const float3 rayOrigin, const float3 rayDir, out uint materialID)
+VertexData loadVertexData(const HitInfo hit, const float3 rayOrigin, const float3 rayDir, out uint materialID, out bool modifyNormals)
 {
     VertexData v = {};
     materialID = {};
+    modifyNormals = true;
+
 #if SCENE_HAS_GEOMETRY_TYPE(GEOMETRY_TYPE_TRIANGLE_MESH)
-#if SCENE_HAS_PROCEDURAL_GEOMETRY()
     if (hit.getType() == HitType::Triangle)
-#endif
     {
         const TriangleHit triangleHit = hit.getTriangleHit();
         StaticVertexData vertices[3];
         v = gScene.getVertexData(triangleHit, vertices);
         materialID = gScene.getMaterialID(triangleHit.instanceID);
-
-        bool isFrontFaceCW = gScene.isObjectFrontFaceCW(triangleHit.instanceID);
-        float4x4 worldMat = gScene.getWorldMatrix(triangleHit.instanceID);
-        float3x3 worldInvTransposeMat = gScene.getInverseTransposeWorldMatrix(triangleHit.instanceID);
     }
 #endif
 #if SCENE_HAS_GEOMETRY_TYPE(GEOMETRY_TYPE_DISPLACED_TRIANGLE_MESH)
@@ -120,11 +116,14 @@ VertexData loadVertexData(const HitInfo hit, const float3 rayOrigin, const float
 */
 void adjustShadingData(inout ShadingData sd, const HitInfo hit, const VertexData v, const bool isPrimary)
 {
+    if (hit.getType() == HitType::Triangle || hit.getType() == HitType::DisplacedTriangle)
+    {
 #if GBUFFER_ADJUST_SHADING_NORMALS
-    if (kAdjustShadingNormals || isPrimary) adjustShadingNormal(sd, v);
+        if (kAdjustShadingNormals || isPrimary) adjustShadingNormal(sd, v);
 #else
-    if (kAdjustShadingNormals && !isPrimary) adjustShadingNormal(sd, v);
+        if (kAdjustShadingNormals && !isPrimary) adjustShadingNormal(sd, v);
 #endif
+    }
 }
 
 /** Setup ShadingData based on loaded vertex/material attributes for a hit point.
@@ -138,9 +137,10 @@ void adjustShadingData(inout ShadingData sd, const HitInfo hit, const VertexData
 ShadingData loadShadingData(const HitInfo hit, const float3 rayOrigin, const float3 rayDir, const bool isPrimary, const ITextureSampler lod)
 {
     uint materialID = {};
+    bool modifyNormals = true;
 
-    VertexData v = loadVertexData(hit, rayOrigin, rayDir, materialID);
-    ShadingData sd = gScene.materials.prepareShadingData(v, materialID, -rayDir, lod);
+    VertexData v = loadVertexData(hit, rayOrigin, rayDir, materialID, modifyNormals);
+    ShadingData sd = gScene.materials.prepareShadingData(v, materialID, -rayDir, lod, modifyNormals);
     adjustShadingData(sd, hit, v, isPrimary);
     return sd;
 }

@@ -98,11 +98,11 @@ bool sampleRectAreaLight(const float3 shadingPosW, const LightData light, const 
     float3 pos = float3(u.x * 2.f - 1.f, u.y * 2.f - 1.f, 0.f);
 
     // Apply model to world transformation matrix.
-    ls.posW = mul(float4(pos, 1.f), light.transMat).xyz;
+    ls.posW = mul(light.transMat, float4(pos, 1.f)).xyz;
 
     // Setup world space normal.
     // TODO: normalW is not correctly oriented for mesh instances that have flipped triangle winding.
-    ls.normalW = normalize(mul(float4(0.f, 0.f, 1.f, 0.f), light.transMatIT).xyz);
+    ls.normalW = normalize(mul(light.transMatIT, float4(0.f, 0.f, 1.f, 0.f)).xyz);
 
     return finalizeAreaLightSample(shadingPosW, light, ls);
 }
@@ -121,10 +121,10 @@ bool sampleSphereAreaLight(const float3 shadingPosW, const LightData light, cons
     float3 pos = sample_sphere(u);
 
     // Apply model to world transformation matrix.
-    ls.posW = mul(float4(pos, 1.f), light.transMat).xyz;
+    ls.posW = mul(light.transMat, float4(pos, 1.f)).xyz;
 
     // Setup world space normal.
-    ls.normalW = normalize(mul(float4(pos, 0.f), light.transMatIT).xyz);
+    ls.normalW = normalize(mul(light.transMatIT, float4(pos, 0.f)).xyz);
 
     return finalizeAreaLightSample(shadingPosW, light, ls);
 }
@@ -143,10 +143,10 @@ bool sampleDiscAreaLight(const float3 shadingPosW, const LightData light, const 
     float3 pos = float3(sample_disk(u), 0.f);
 
     // Transform to world space.
-    ls.posW = mul(float4(pos, 1.f), light.transMat).xyz;
+    ls.posW = mul(light.transMat, float4(pos, 1.f)).xyz;
 
     // Setup world space normal.
-    ls.normalW = normalize(mul(float4(0.f, 0.f, 1.f, 0.f), light.transMatIT).xyz);
+    ls.normalW = normalize(mul(light.transMatIT, float4(0.f, 0.f, 1.f, 0.f)).xyz);
 
     return finalizeAreaLightSample(shadingPosW, light, ls);
 }
@@ -167,7 +167,7 @@ bool sampleDistantLight(const float3 shadingPosW, const LightData light, const f
     float3 dir = sample_cone(u, light.cosSubtendedAngle);
 
     // Transform sampled direction to world space
-    ls.dir = normalize(mul(dir, (float3x3)light.transMat));
+    ls.dir = normalize(mul((float3x3)light.transMat, dir));
     ls.normalW = -ls.dir;
     ls.distance = kMaxLightDistance;
 

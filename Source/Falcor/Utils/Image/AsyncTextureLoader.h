@@ -26,7 +26,17 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Core/Macros.h"
+#include "Core/API/Resource.h"
+#include "Core/API/Texture.h"
+#include <condition_variable>
+#include <filesystem>
+#include <functional>
 #include <future>
+#include <mutex>
+#include <queue>
+#include <thread>
+#include <vector>
 
 namespace Falcor
 {

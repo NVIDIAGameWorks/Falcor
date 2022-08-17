@@ -25,11 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include "Core/FalcorConfig.h"
-
-#if FALCOR_ENABLE_RTXDI
+#if FALCOR_HAS_RTXDI
 // If this include is not resolved this means that the RTXDI SDK is
 // not installed properly. See README for installation details.
-#include "rtxdi/rtxdi-sdk/src/RTXDI.cpp"
+#include "../../../../external/packman/rtxdi/rtxdi-sdk/src/RTXDI.cpp"
 #endif

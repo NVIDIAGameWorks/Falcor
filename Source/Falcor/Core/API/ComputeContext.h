@@ -27,11 +27,20 @@
  **************************************************************************/
 #pragma once
 #include "CopyContext.h"
-#include "Core/Program/ProgramVars.h"
-#include "Core/State/ComputeState.h"
+#include "Handles.h"
+#include "Buffer.h"
+#include "LowLevelContextData.h"
+#include "Core/Macros.h"
+#include "Utils/Math/Vector.h"
+#include <memory>
 
 namespace Falcor
 {
+    class ComputeState;
+    class ComputeVars;
+    class ProgramKernels;
+    class UnorderedAccessView;
+
     class FALCOR_API ComputeContext : public CopyContext
     {
     public:

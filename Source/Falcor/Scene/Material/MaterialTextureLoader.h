@@ -26,9 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Falcor.h"
+#include "Core/Macros.h"
 #include "Scene/Material/Material.h"
 #include "Utils/Image/TextureManager.h"
+#include <filesystem>
+#include <vector>
 
 namespace Falcor
 {

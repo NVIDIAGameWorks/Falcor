@@ -26,7 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "SkyBox.h"
-#include "glm/gtx/transform.hpp"
+#include "RenderGraph/RenderPassLibrary.h"
+#include <glm/gtx/transform.hpp>
 
 const RenderPass::Info SkyBox::kInfo { "SkyBox", "Render an environment map. The map can be provided by the user or taken from a scene." };
 
@@ -136,8 +137,8 @@ RenderPassReflection SkyBox::reflect(const CompileData& compileData)
 
 void SkyBox::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    mpFbo->attachColorTarget(renderData[kTarget]->asTexture(), 0);
-    mpFbo->attachDepthStencilTarget(renderData[kDepth]->asTexture());
+    mpFbo->attachColorTarget(renderData.getTexture(kTarget), 0);
+    mpFbo->attachDepthStencilTarget(renderData.getTexture(kDepth));
 
     pRenderContext->clearRtv(mpFbo->getRenderTargetView(0).get(), float4(0));
 
@@ -147,7 +148,7 @@ void SkyBox::execute(RenderContext* pRenderContext, const RenderData& renderData
     mpProgram->addDefine("_USE_ENV_MAP", pEnvMap ? "1" : "0");
     if (pEnvMap) pEnvMap->setShaderData(mpVars["PerFrameCB"]["gEnvMap"]);
 
-    glm::mat4 world = glm::translate(mpScene->getCamera()->getPosition());
+    rmcv::mat4 world = rmcv::translate(mpScene->getCamera()->getPosition());
     mpVars["PerFrameCB"]["gWorld"] = world;
     mpVars["PerFrameCB"]["gScale"] = mScale;
     mpVars["PerFrameCB"]["gViewMat"] = mpScene->getCamera()->getViewMatrix();

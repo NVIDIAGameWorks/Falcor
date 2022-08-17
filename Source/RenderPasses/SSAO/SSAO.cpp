@@ -26,7 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "SSAO.h"
-#include "glm/gtc/random.hpp"
+#include "RenderGraph/RenderPassLibrary.h"
+#include "Utils/Math/FalcorMath.h"
+#include <glm/gtc/random.hpp>
 
 const RenderPass::Info SSAO::kInfo { "SSAO", "Screen-space ambient occlusion. Can be used with and without a normal-map." };
 
@@ -164,11 +166,11 @@ void SSAO::execute(RenderContext* pRenderContext, const RenderData& renderData)
     if (!mpScene) return;
 
     // Run the AO pass
-    auto pDepth = renderData[kDepth]->asTexture();
-    auto pNormals = renderData[kNormals]->asTexture();
-    auto pColorOut = renderData[kColorOut]->asTexture();
-    auto pColorIn = renderData[kColorIn]->asTexture();
-    auto pAoMap = renderData[kAoMap]->asTexture();
+    auto pDepth = renderData.getTexture(kDepth);
+    auto pNormals = renderData.getTexture(kNormals);
+    auto pColorOut = renderData.getTexture(kColorOut);
+    auto pColorIn = renderData.getTexture(kColorIn);
+    auto pAoMap = renderData.getTexture(kAoMap);
 
     FALCOR_ASSERT(pColorOut != pColorIn);
     pAoMap = generateAOMap(pRenderContext, mpScene->getCamera().get(), pDepth, pNormals);

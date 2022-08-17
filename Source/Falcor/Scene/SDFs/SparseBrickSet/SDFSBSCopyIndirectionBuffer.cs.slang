@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,22 +25,23 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-cbuffer CB
+struct ParamBlock
 {
-    uint gVirtualBricksPerAxis;
+    uint virtualBricksPerAxis;
+    Buffer<uint> indirectionBuffer;
+    RWTexture3D<uint> indirectionTexture;
 };
 
-Buffer<uint> gIndirectionBuffer;
-RWTexture3D<uint> gIndirectionTexture;
+ParameterBlock<ParamBlock> gParamBlock;
 
 [numthreads(4, 4, 4)]
 void main(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupThreadID)
 {
-    if (any(dispatchThreadID >= gVirtualBricksPerAxis))
+    if (any(dispatchThreadID >= gParamBlock.virtualBricksPerAxis))
         return;
 
     const uint3 virtualBrickCoords = dispatchThreadID;
-    uint virtualBrickID = virtualBrickCoords.x + gVirtualBricksPerAxis * (virtualBrickCoords.y + gVirtualBricksPerAxis * virtualBrickCoords.z);
+    uint virtualBrickID = virtualBrickCoords.x + gParamBlock.virtualBricksPerAxis * (virtualBrickCoords.y + gParamBlock.virtualBricksPerAxis * virtualBrickCoords.z);
 
-    gIndirectionTexture[virtualBrickCoords] = gIndirectionBuffer[virtualBrickID];
+    gParamBlock.indirectionTexture[virtualBrickCoords] = gParamBlock.indirectionBuffer[virtualBrickID];
 }

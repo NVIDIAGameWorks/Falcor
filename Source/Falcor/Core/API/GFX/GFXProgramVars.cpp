@@ -25,13 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Core/Program/ProgramVars.h"
-#include "Core/Program/GraphicsProgram.h"
-#include "Core/Program/ComputeProgram.h"
+#include "GFXLowLevelContextApiData.h"
+#include "Core/API/Device.h"
 #include "Core/API/ComputeContext.h"
 #include "Core/API/RenderContext.h"
-#include "GFXLowLevelContextApiData.h"
+#include "Core/API/GFX/GFXAPI.h"
+#include "Core/Program/GraphicsProgram.h"
+#include "Core/Program/ComputeProgram.h"
 
 namespace Falcor
 {
@@ -70,7 +71,7 @@ namespace Falcor
 
         if (needShaderTableUpdate)
         {
-            auto getShaderNames = [&](VarsVector& varsVec, std::vector<const char*>& shaderNames, std::vector<gfx::IShaderTable::ShaderRecordOverwrite>* overwrites)
+            auto getShaderNames = [&](VarsVector& varsVec, std::vector<const char*>& shaderNames)
             {
                 for (uint32_t i = 0; i < (uint32_t)varsVec.size(); i++)
                 {
@@ -82,27 +83,21 @@ namespace Falcor
                     if (!pGroupKernels)
                     {
                         shaderNames.push_back(nullptr);
-                        if (overwrites)
-                        {
-                            overwrites->push_back(gfx::IShaderTable::ShaderRecordOverwrite{});
-                        }
                         continue;
                     }
 
                     shaderNames.push_back(static_cast<const char*>(pRtso->getShaderIdentifier(uniqueGroupIndex)));
-                    
                 }
             };
 
             std::vector<const char*> rayGenShaders;
-            getShaderNames(mRayGenVars, rayGenShaders, nullptr);
+            getShaderNames(mRayGenVars, rayGenShaders);
 
             std::vector<const char*> missShaders;
-            getShaderNames(mMissVars, missShaders, nullptr);
+            getShaderNames(mMissVars, missShaders);
 
             std::vector<const char*> hitgroupShaders;
-            std::vector<gfx::IShaderTable::ShaderRecordOverwrite> hitGroupRecordOverwrites;
-            getShaderNames(mHitVars, hitgroupShaders, &hitGroupRecordOverwrites);
+            getShaderNames(mHitVars, hitgroupShaders);
 
             gfx::IShaderTable::Desc desc = {};
             desc.rayGenShaderCount = (uint32_t)rayGenShaders.size();
@@ -111,8 +106,6 @@ namespace Falcor
             desc.missShaderEntryPointNames = missShaders.data();
             desc.hitGroupCount = (uint32_t)hitgroupShaders.size();
             desc.hitGroupNames = hitgroupShaders.data();
-            desc.hitGroupRecordOverwrites = hitGroupRecordOverwrites.data();
-            FALCOR_ASSERT(hitGroupRecordOverwrites.size() == desc.hitGroupCount);
             desc.program = pRtso->getKernels()->getApiHandle();
             if (SLANG_FAILED(gpDevice->getApiHandle()->createShaderTable(desc, mpShaderTable.writeRef())))
                 return false;

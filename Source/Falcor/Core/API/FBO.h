@@ -26,8 +26,14 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Core/API/Texture.h"
-#include "Core/API/ResourceViews.h"
+#include "Handles.h"
+#include "Formats.h"
+#include "ResourceViews.h"
+#include "Texture.h"
+#include "Core/Macros.h"
+#include <memory>
+#include <vector>
+#include <unordered_set>
 
 namespace Falcor
 {

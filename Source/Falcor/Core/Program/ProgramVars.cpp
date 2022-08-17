@@ -25,14 +25,16 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include "Core/Program/ProgramVars.h"
-#include "Core/Program/GraphicsProgram.h"
-#include "Core/Program/ComputeProgram.h"
+#include "ProgramVars.h"
+#include "GraphicsProgram.h"
+#include "ComputeProgram.h"
 #include "Core/API/ComputeContext.h"
 #include "Core/API/RenderContext.h"
+#include "Utils/Logger.h"
 
-#include <slang/slang.h>
+#include <slang.h>
+
+#include <set>
 
 namespace Falcor
 {

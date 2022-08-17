@@ -26,7 +26,12 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Core/Assert.h"
+#include "Utils/Logger.h"
+#include <memory>
 #include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 namespace Falcor
 {

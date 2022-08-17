@@ -26,8 +26,14 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Handles.h"
+#include "Formats.h"
 #include "ResourceViews.h"
+#include "Core/Macros.h"
+#include <memory>
+#include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace Falcor
 {
@@ -162,7 +168,7 @@ namespace Falcor
         std::shared_ptr<Texture> asTexture();
         std::shared_ptr<Buffer> asBuffer();
 
-#if FALCOR_ENABLE_CUDA
+#if FALCOR_HAS_CUDA
         /** Get the CUDA device address for this resource.
             \return CUDA device address.
             Throws an exception if the resource is not shared.
@@ -193,10 +199,10 @@ namespace Falcor
         void apiSetName();
 
         ApiHandle mApiHandle;
-        size_t mSize = 0;
+        size_t mSize = 0; ///< Size of the resource in bytes.
         GpuAddress mGpuVaOffset = 0;
         std::string mName;
-#if defined(FALCOR_GFX) && FALCOR_D3D12_AVAILABLE
+#if defined(FALCOR_GFX) && FALCOR_HAS_D3D12
         mutable D3D12ResourceHandle mpD3D12Handle;
 #endif
         mutable SharedResourceApiHandle mSharedApiHandle = 0;

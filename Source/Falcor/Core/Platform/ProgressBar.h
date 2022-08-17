@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,6 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Core/Macros.h"
+#include <memory>
+#include <string>
 #include <vector>
 
 namespace Falcor
@@ -64,8 +67,8 @@ namespace Falcor
 
     private:
         static std::weak_ptr<ProgressBar> spBar;
-        static ProgressBarData* spData;
-        ProgressBar() = default;
+        static std::unique_ptr<ProgressBarData> spData;
+        ProgressBar();
         void platformInit(const MessageList& list, uint32_t delayInMs);
     };
 }

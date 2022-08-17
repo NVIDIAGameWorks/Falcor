@@ -26,8 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "GaussianBlur.h"
-#define _USE_MATH_DEFINES
-#include <math.h>
+#include <cmath>
 
 const RenderPass::Info GaussianBlur::kInfo { "GaussianBlur", "Gaussian blur." };
 
@@ -134,8 +133,8 @@ void GaussianBlur::compile(RenderContext* pRenderContext, const CompileData& com
 
 void GaussianBlur::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    auto pSrc = renderData[kSrc]->asTexture();
-    mpFbo->attachColorTarget(renderData[kDst]->asTexture(), 0);
+    auto pSrc = renderData.getTexture(kSrc);
+    mpFbo->attachColorTarget(renderData.getTexture(kDst), 0);
     createTmpFbo(pSrc.get());
 
     // Horizontal pass

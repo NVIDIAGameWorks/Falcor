@@ -91,15 +91,8 @@ GBufferRaster::GBufferRaster(const Dictionary& dict)
 
     parseDictionary(dict);
 
-    // Create raster program
-    Program::Desc desc;
-    desc.addShaderLibrary(kProgramFile).vsEntry("vsMain").psEntry("psMain");
-    desc.setShaderModel(shaderModel);
-    mRaster.pProgram = GraphicsProgram::create(desc);
-
     // Initialize graphics state
     mRaster.pState = GraphicsState::create();
-    mRaster.pState->setProgram(mRaster.pProgram);
 
     // Set depth function
     DepthStencilState::Desc dsDesc;
@@ -126,6 +119,7 @@ void GBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedP
 {
     GBuffer::setScene(pRenderContext, pScene);
 
+    mRaster.pProgram = nullptr;
     mRaster.pVars = nullptr;
 
     if (pScene)
@@ -135,8 +129,15 @@ void GBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedP
             throw RuntimeError("GBufferRaster: Requires triangle list geometry due to usage of SV_Barycentrics.");
         }
 
-        mRaster.pProgram->addDefines(pScene->getSceneDefines());
-        mRaster.pProgram->setTypeConformances(pScene->getTypeConformances());
+        // Create raster program.
+        Program::Desc desc;
+        desc.addShaderModules(pScene->getShaderModules());
+        desc.addShaderLibrary(kProgramFile).vsEntry("vsMain").psEntry("psMain");
+        desc.addTypeConformances(pScene->getTypeConformances());
+        desc.setShaderModel(shaderModel);
+
+        mRaster.pProgram = GraphicsProgram::create(desc, pScene->getSceneDefines());
+        mRaster.pState->setProgram(mRaster.pProgram);
     }
 
     if (mpDepthPrePassGraph) mpDepthPrePassGraph->setScene(pScene);
@@ -147,7 +148,7 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     GBuffer::execute(pRenderContext, renderData);
 
     // Update frame dimension based on render pass output.
-    auto pDepth = renderData[kDepthName]->asTexture();
+    auto pDepth = renderData.getTexture(kDepthName);
     FALCOR_ASSERT(pDepth);
     updateFrameDim(uint2(pDepth->getWidth(), pDepth->getHeight()));
 

@@ -25,13 +25,13 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Core/API/Texture.h"
-#include "Core/API/Device.h"
-#include "Core/API/Formats.h"
-
 #include "GFXFormats.h"
 #include "GFXResource.h"
+#include "Core/API/Device.h"
+#include "Core/API/Formats.h"
+#include "Core/API/GFX/GFXAPI.h"
+#include "Utils/Math/Common.h"
 
 namespace Falcor
 {
@@ -152,7 +152,7 @@ namespace Falcor
             uploadInitData(pData, autoGenMips);
         }
 
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         gfx::InteropHandle handle = {};
         FALCOR_GFX_CALL(mApiHandle->getNativeResourceHandle(&handle));
         FALCOR_ASSERT(handle.api == gfx::InteropHandleAPI::D3D12);

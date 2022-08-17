@@ -26,7 +26,14 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Falcor.h"
+#include "Transform.h"
+#include "Core/Macros.h"
+#include "Utils/Math/Vector.h"
+#include "Utils/Math/Matrix.h"
+#include <filesystem>
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace Falcor
 {
@@ -159,7 +166,7 @@ namespace Falcor
         /** Applies a transform to the triangle mesh.
             \param[in] transform Transform to apply.
         */
-        void applyTransform(const glm::mat4& transform);
+        void applyTransform(const rmcv::mat4& transform);
 
     private:
         TriangleMesh();

@@ -25,10 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "HitInfo.h"
 #include "HitInfoType.slang"
 #include "Scene.h"
+#include "Utils/Logger.h"
 
 namespace Falcor
 {
@@ -62,19 +62,19 @@ namespace Falcor
 
         uint32_t maxPrimitiveCount = 0;
 
-        for (uint32_t meshID = 0; meshID < scene.getMeshCount(); meshID++)
+        for (MeshID meshID{ 0 }; meshID.get() < scene.getMeshCount(); ++meshID)
         {
             uint32_t triangleCount = scene.getMesh(meshID).getTriangleCount();
             maxPrimitiveCount = std::max(maxPrimitiveCount, triangleCount);
         }
-        for (uint32_t curveID = 0; curveID < scene.getCurveCount(); curveID++)
+        for (CurveID curveID{ 0 }; curveID.get() < scene.getCurveCount(); ++curveID)
         {
             uint32_t curveSegmentCount = scene.getCurve(curveID).getSegmentCount();
             maxPrimitiveCount = std::max(maxPrimitiveCount, curveSegmentCount);
         }
 
         mPrimitiveIndexBits = allocateBits(maxPrimitiveCount);
-        for (uint32_t sdfID = 0; sdfID < scene.getSDFGridCount(); sdfID++)
+        for (SdfGridID sdfID{ 0 } ; sdfID.get() < scene.getSDFGridCount(); ++sdfID)
         {
             uint32_t sdfGridMaxPrimitiveIDBits = scene.getSDFGrid(sdfID)->getMaxPrimitiveIDBits();
             mPrimitiveIndexBits = std::max(mPrimitiveIndexBits, sdfGridMaxPrimitiveIDBits);

@@ -84,15 +84,8 @@ VBufferRaster::VBufferRaster(const Dictionary& dict)
 
     parseDictionary(dict);
 
-    // Create raster program
-    Program::Desc desc;
-    desc.addShaderLibrary(kProgramFile).vsEntry("vsMain").psEntry("psMain");
-    desc.setShaderModel(kShaderModel);
-    mRaster.pProgram = GraphicsProgram::create(desc);
-
     // Initialize graphics state
     mRaster.pState = GraphicsState::create();
-    mRaster.pState->setProgram(mRaster.pProgram);
 
     // Set depth function
     DepthStencilState::Desc dsDesc;
@@ -106,6 +99,7 @@ void VBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedP
 {
     GBufferBase::setScene(pRenderContext, pScene);
 
+    mRaster.pProgram = nullptr;
     mRaster.pVars = nullptr;
 
     if (pScene)
@@ -115,8 +109,15 @@ void VBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedP
             throw RuntimeError("VBufferRaster: Requires triangle list geometry due to usage of SV_Barycentrics.");
         }
 
-        mRaster.pProgram->addDefines(pScene->getSceneDefines());
-        mRaster.pProgram->setTypeConformances(pScene->getTypeConformances());
+        // Create raster program.
+        Program::Desc desc;
+        desc.addShaderModules(pScene->getShaderModules());
+        desc.addShaderLibrary(kProgramFile).vsEntry("vsMain").psEntry("psMain");
+        desc.addTypeConformances(pScene->getTypeConformances());
+        desc.setShaderModel(kShaderModel);
+
+        mRaster.pProgram = GraphicsProgram::create(desc, pScene->getSceneDefines());
+        mRaster.pState->setProgram(mRaster.pProgram);
     }
 }
 
@@ -125,7 +126,7 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     GBufferBase::execute(pRenderContext, renderData);
 
     // Update frame dimension based on render pass output.
-    auto pOutput = renderData[kVBufferName]->asTexture();
+    auto pOutput = renderData.getTexture(kVBufferName);
     FALCOR_ASSERT(pOutput);
     updateFrameDim(uint2(pOutput->getWidth(), pOutput->getHeight()));
 

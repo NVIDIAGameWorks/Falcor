@@ -26,12 +26,21 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Macros.h"
+#include "Window.h"
+#include "HotReloadFlags.h"
+#include "Core/API/Device.h"
 #include "Utils/UI/InputState.h"
+#include <filesystem>
+#include <memory>
+#include <string>
 
 namespace Falcor
 {
     class Clock;
     class FrameRate;
+    class Gui;
+    class Settings;
 
     /** Sample configuration
     */
@@ -52,6 +61,15 @@ namespace Falcor
         /** Get the render-context for the current frame. This might change each frame.
         */
         virtual RenderContext* getRenderContext() = 0;
+
+        /** Get the Settings object for Options and Attributes
+        */
+        virtual const Settings& getSettings() const = 0;
+
+        /** Get the Settings object for Options and Attributes, accessible for writing.
+            Should only be done by input-parsers, whatever they might be.
+        */
+        virtual Settings& getSettings() = 0;
 
         /** Get the current FBO.
         */
@@ -138,6 +156,15 @@ namespace Falcor
         /** Called once right after context creation.
         */
         virtual void onLoad(RenderContext* pRenderContext) {}
+
+        /** Called after Options in settings have been changed.
+            This seems to be the only reasonable way to handle all the possible options from:
+            Mogwai starts, then script runs, then scene loads, then rendering happens.
+            Mogwai starts and loads script, in which scene is loaded and rendering happens.
+            In all the cases, we want the Options to take effect before any window is shown,
+            which means we pretty much have to be told just after the Options have been set.
+        */
+        virtual void onOptionsChange() {}
 
         /** Called on each frame render.
         */

@@ -26,11 +26,22 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-
+#include "Core/Macros.h"
+#include "Core/API/Buffer.h"
+#include "Core/API/Texture.h"
 #include "Scene/SDFs/SDF3DPrimitiveCommon.slang"
+#include "RenderGraph/BasePasses/ComputePass.h"
+#include <memory>
+#include <vector>
+#include <utility>
+#include <filesystem>
+#include <unordered_map>
 
 namespace Falcor
 {
+    class RenderContext;
+    struct ShaderVar;
+
     /** SDF grid base class, stored by distance values at grid cell/voxel corners.
         The local space of the SDF grid is [-0.5, 0.5]^3 meaning that initial distances used to create the SDF grid should be within the range of [-sqrt(3), sqrt(3)].
 
@@ -85,26 +96,15 @@ namespace Falcor
         /** Set SDF primitives to be used to construct the SDF grid.
             \param[in] primitives The SDF primitives that define the SDF grid.
             \param[in] gridWidth The targeted width of the SDF grid, the resulting grid may have a larger width.
+            \return The primitive ID assigned to primitives[0], consecutive primitives are assigned consecutive primitive IDs.
         */
-        void setPrimitives(const std::vector<SDF3DPrimitive>& primitives, uint32_t gridWidth);
-
-        /** Set SDF primitives to be used to construct the SDF grid.
-            \param[in] primitives The SDF primitives that define the SDF grid.
-            \param[in] gridWidth The targeted width of the SDF grid, the resulting grid may have a larger width.
-            \param[out] basePrimitiveID The primitive ID assigned to primitives[0], consecutive primitives are assigned consecutive primitive IDs.
-        */
-        void setPrimitives(const std::vector<SDF3DPrimitive>& primitives, uint32_t gridWidth, uint32_t& basePrimitiveID);
+        uint32_t setPrimitives(const std::vector<SDF3DPrimitive>& primitives, uint32_t gridWidth);
 
         /** Adds SDF primitives to be used to construct the SDF grid.
             \param[in] primitives The SDF primitives that define the SDF grid.
+            \return The primitive ID assigned to primitives[0], consecutive primitives are assigned consecutive primitive IDs.
         */
-        void addPrimitives(const std::vector<SDF3DPrimitive>& primitives);
-
-        /** Adds SDF primitives to be used to construct the SDF grid.
-            \param[in] primitives The SDF primitives that define the SDF grid.
-            \param[out] basePrimitiveID The primitive ID assigned to primitives[0], consecutive primitives are assigned consecutive primitive IDs.
-        */
-        void addPrimitives(const std::vector<SDF3DPrimitive>& primitives, uint32_t& basePrimitiveID);
+        uint32_t addPrimitives(const std::vector<SDF3DPrimitive>& primitives);
 
         /** Remove SDF primitives.
             \param[in] primitiveIDs Primitive IDs to remove from the SDF grid.
@@ -135,10 +135,10 @@ namespace Falcor
         void generateCheeseValues(uint32_t gridWidth, uint32_t seed);
 
         /** Evaluates the SDF grid primitives on to a grid and writes the grid to a file.
-            \param[in] filepath A path to the file that should store the values.
+            \param[in] path A path to the file that should store the values.
             \return true if the values could be written, otherwise false.
         */
-        bool writeValuesFromPrimitivesToFile(const std::string& filePath, RenderContext* pRenderContext = nullptr);
+        bool writeValuesFromPrimitivesToFile(const std::filesystem::path& path, RenderContext* pRenderContext = nullptr);
 
         /** Reads primitives from file and initializes the SDF grid.
             \param[in] path The path to the input file.
@@ -209,25 +209,54 @@ namespace Falcor
         */
         virtual void setShaderData(const ShaderVar& var) const = 0;
 
+        /** Return the scaling factor that represent how the grid resolution has changed from when it was loaded. The resolution can change if loaded by the SBS grid and then edited by the SDFEditor.
+        */
+        virtual float getResolutionScalingFactor() const { return 1.0f; };
+
+        /** Sets the resolution scaling factor to 1.0.
+        */
+        virtual void resetResolutionScalingFactor() {};
+
+        /** Bake primitives into the grid representation (sdfg-file).
+            \param[in] batchSize The number of primitives to bake.
+        */
+        void bakePrimitives(uint32_t batchSize);
+
+        /** Check if the grid was initialized with primitives.
+            \return True if the grid was initialized with primitives, else false.
+        */
+        bool wasInitializedWithPrimitives() const { return mInitializedWithPrimitives; };
+
+        /** Get the number of primitives that have been baked into the grid representation (sdfg-file).
+        */
+        uint32_t getBakedPrimitiveCount() const { return mBakedPrimitiveCount; };
+
         static std::string getTypeName(Type type);
 
     protected:
         virtual void setValuesInternal(const std::vector<float>& cornerValues) = 0;
 
+        void createEvaluatePrimitivesPass(bool writeToTexture3D, bool mergeWithSDField);
+
         void updatePrimitivesBuffer();
 
-        std::string mName;
-        uint32_t mOriginalGridWidth = 0;
-        uint32_t mGridWidth = 0;
+        std::string             mName;
+        uint32_t                mGridWidth = 0;
 
         // Primitive data.
         std::vector<SDF3DPrimitive> mPrimitives;
         std::unordered_map<uint32_t, uint32_t> mPrimitiveIDToIndex;
-        uint32_t mNextPrimitiveID = 0;
-        bool mPrimitivesDirty = false;
-        Buffer::SharedPtr mpPrimitivesBuffer;
+        uint32_t                mNextPrimitiveID = 0;
+        bool                    mPrimitivesDirty = false;           ///< True if the primitives have changed.
+        Buffer::SharedPtr       mpPrimitivesBuffer;                 ///< Holds the primitives that should be rendered.
+        uint32_t                mPrimitivesExcludedFromBuffer = 0;  ///< Number of primitives to exclude from the primitive buffer.
+        uint32_t                mBakedPrimitiveCount = 0;           ///< Number of primitives that will be baked into the value representation.
+        bool                    mBakePrimitives = false;            ///< True if the primitives should be baked into the value representation.
+        bool                    mHasGridRepresentation = false;     ///< True if a value representation exists.
+        bool                    mInitializedWithPrimitives = false; ///< True if the grid was initialized with primitives.
 
-        ComputePass::SharedPtr mpEvaluatePrimitivesPass;
+        Texture::SharedPtr      mpSDFGridTexture;                   ///< A texture on the GPU holding the value representation.
+        ComputePass::SharedPtr  mpEvaluatePrimitivesPass;
     };
 
     FALCOR_ENUM_CLASS_OPERATORS(SDFGrid::UpdateFlags);

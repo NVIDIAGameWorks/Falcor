@@ -25,12 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
 
 #include "Core/API/Device.h"
 #include "Core/API/CopyContext.h"
+#include "Core/API/GFX/GFXAPI.h"
 #include "Core/API/Shared/D3D12DescriptorSet.h"
 #include "Core/API/Shared/D3D12DescriptorData.h"
 
@@ -117,12 +116,14 @@ namespace Falcor
 
     void D3D12DescriptorSet::bindForGraphics(CopyContext* pCtx, const D3D12RootSignature* pRootSig, uint32_t rootIndex)
     {
+        FALCOR_ASSERT(mpApiData->pAllocation->getHeap()->getShaderVisible() == false && "DescriptorSet must be created on CPU heap for bind operation in GFX.");
         auto gpuHandle = copyDescriptorTableToGPU(mpApiData.get(), mLayout);
         pCtx->getLowLevelData()->getD3D12CommandList()->SetGraphicsRootDescriptorTable(rootIndex, gpuHandle);
     }
 
     void D3D12DescriptorSet::bindForCompute(CopyContext* pCtx, const D3D12RootSignature* pRootSig, uint32_t rootIndex)
     {
+        FALCOR_ASSERT(mpApiData->pAllocation->getHeap()->getShaderVisible() == false && "DescriptorSet must be created on CPU heap for bind operation in GFX.");
         auto gpuHandle = copyDescriptorTableToGPU(mpApiData.get(), mLayout);
         pCtx->getLowLevelData()->getD3D12CommandList()->SetComputeRootDescriptorTable(rootIndex, gpuHandle);
     }
@@ -136,6 +137,13 @@ namespace Falcor
     D3D12DescriptorSet::SharedPtr D3D12DescriptorSet::create(const D3D12DescriptorPool::SharedPtr& pPool, const Layout& layout)
     {
         return SharedPtr(new D3D12DescriptorSet(pPool, layout));
+    }
+
+    D3D12DescriptorSet::SharedPtr D3D12DescriptorSet::create(const Layout& layout, D3D12DescriptorSetBindingUsage bindingUsage)
+    {
+        return SharedPtr(new D3D12DescriptorSet(
+            bindingUsage == D3D12DescriptorSetBindingUsage::RootSignatureOffset ? gpDevice->getD3D12GpuDescriptorPool() : gpDevice->getD3D12CpuDescriptorPool(),
+            layout));
     }
 
     D3D12DescriptorSet::D3D12DescriptorSet(D3D12DescriptorPool::SharedPtr pPool, const Layout& layout)
@@ -191,4 +199,4 @@ namespace Falcor
     }
 }
 
-#endif // FALCOR_D3D12_AVAILABLE
+#endif // FALCOR_HAS_D3D12

@@ -25,7 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor.h"
 #include "TimingCapture.h"
 
 namespace Mogwai
@@ -45,6 +45,8 @@ namespace Mogwai
 
     void TimingCapture::registerScriptBindings(pybind11::module& m)
     {
+        using namespace pybind11::literals;
+
         pybind11::class_<TimingCapture> timingCapture(m, "TimingCapture");
 
         // Members

@@ -59,7 +59,6 @@ struct MaterialSystem
     ByteAddressBuffer materialBuffers[1]; // Zero-length arrays are not supported.
 #endif
 
-
     /** Get the total number of materials.
     */
     uint getMaterialCount()

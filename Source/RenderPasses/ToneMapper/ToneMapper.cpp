@@ -26,7 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "ToneMapper.h"
+#include "RenderGraph/RenderPassLibrary.h"
 #include "Utils/Color/ColorUtils.h"
+#include <fstd/bit.h> // TODO C++20: Replace with <bit>
 
 const RenderPass::Info ToneMapper::kInfo
 {
@@ -228,8 +230,8 @@ RenderPassReflection ToneMapper::reflect(const CompileData& compileData)
 
 void ToneMapper::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    auto pSrc = renderData[kSrc]->asTexture();
-    auto pDst = renderData[kDst]->asTexture();
+    auto pSrc = renderData.getTexture(kSrc);
+    auto pDst = renderData.getTexture(kDst);
     FALCOR_ASSERT(pSrc && pDst);
 
     // Issue warning if image will be resampled. The render pass supports this but image quality may suffer.
@@ -269,7 +271,7 @@ void ToneMapper::execute(RenderContext* pRenderContext, const RenderData& render
         ToneMapperParams params;
         params.whiteScale = mWhiteScale;
         params.whiteMaxLuminance = mWhiteMaxLuminance;
-        params.colorTransform = static_cast<float3x4>(mColorTransform);
+        params.colorTransform = static_cast<rmcv::matrix<3,4,float>>(mColorTransform);
         mpToneMapPass->getRootVar()["PerImageCB"]["gParams"].setBlob(&params, sizeof(params));
         mUpdateToneMapPass = false;
     }
@@ -294,8 +296,8 @@ void ToneMapper::createLuminanceFbo(const Texture::SharedPtr& pSrc)
 
     // Find the required texture size and format
     ResourceFormat luminanceFormat = (bytesPerChannel == 4) ? ResourceFormat::R32Float : ResourceFormat::R16Float;
-    uint32_t requiredHeight = getLowerPowerOf2(pSrc->getHeight());
-    uint32_t requiredWidth = getLowerPowerOf2(pSrc->getWidth());
+    uint32_t requiredHeight = fstd::bit_floor(pSrc->getHeight());
+    uint32_t requiredWidth = fstd::bit_floor(pSrc->getWidth());
 
     if (createFbo == false)
     {
@@ -538,9 +540,9 @@ void ToneMapper::createToneMapPass()
 void ToneMapper::updateWhiteBalanceTransform()
 {
     // Calculate color transform for the current white point.
-    mWhiteBalanceTransform = mWhiteBalance ? calculateWhiteBalanceTransformRGB_Rec709(mWhitePoint) : glm::identity<float3x3>();
+    mWhiteBalanceTransform = mWhiteBalance ? calculateWhiteBalanceTransformRGB_Rec709(mWhitePoint) : rmcv::identity<rmcv::mat3>();
     // Calculate source illuminant, i.e. the color that transforms to a pure white (1, 1, 1) output at the current color settings.
-    mSourceWhite = inverse(mWhiteBalanceTransform) * float3(1, 1, 1);
+    mSourceWhite = rmcv::inverse(mWhiteBalanceTransform) * float3(1, 1, 1);
 }
 
 void ToneMapper::updateColorTransform()

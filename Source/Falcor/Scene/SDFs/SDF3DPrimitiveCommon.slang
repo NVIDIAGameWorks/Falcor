@@ -57,6 +57,7 @@ struct SDF3DPrimitive
     SDFOperationType operationType;     ///< The operation type.
     float operationSmoothing;           ///< Smoothing that should be applied to the operation.
     float3 translation;                 ///< Translation.
+    // float3x3 here is okay, as this is not used in CB, only structured buffers, so no padding issues.
     float3x3 invRotationScale;          ///< Inverted rotation and scale matrix.
 };
 

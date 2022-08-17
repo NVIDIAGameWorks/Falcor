@@ -26,6 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "RTXDIPass.h"
+#include "RenderGraph/RenderPassLibrary.h"
+#include "RenderGraph/RenderPassHelpers.h"
+#include "RenderGraph/RenderPassStandardFlags.h"
 
 using namespace Falcor;
 
@@ -65,13 +68,13 @@ namespace
 
 
 // This is required for DLL and shader hot-reload to function properly
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" FALCOR_API_EXPORT const char* getProjDir()
 {
     return PROJECT_DIR;
 }
 
 // What passes does this DLL expose?  Register them here
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
 {
     lib.registerPass(RTXDIPass::kInfo, RTXDIPass::create);
 }
@@ -102,8 +105,8 @@ void RTXDIPass::execute(RenderContext* pRenderContext, const RenderData& renderD
 
     FALCOR_ASSERT(mpRTXDI);
 
-    const auto& pVBuffer = renderData[kInputVBuffer]->asTexture();
-    const auto& pMotionVectors = renderData[kInputMotionVectors]->asTexture();
+    const auto& pVBuffer = renderData.getTexture(kInputVBuffer);
+    const auto& pMotionVectors = renderData.getTexture(kInputMotionVectors);
 
     auto& dict = renderData.getDictionary();
 
@@ -200,6 +203,7 @@ void RTXDIPass::prepareSurfaceData(RenderContext* pRenderContext, const Texture:
     if (!mpPrepareSurfaceDataPass)
     {
         Program::Desc desc;
+        desc.addShaderModules(mpScene->getShaderModules());
         desc.addShaderLibrary(kPrepareSurfaceDataFile).setShaderModel(kShaderModel).csEntry("main");
         desc.addTypeConformances(mpScene->getTypeConformances());
 
@@ -233,6 +237,7 @@ void RTXDIPass::finalShading(RenderContext* pRenderContext, const Texture::Share
     if (!mpFinalShadingPass)
     {
         Program::Desc desc;
+        desc.addShaderModules(mpScene->getShaderModules());
         desc.addShaderLibrary(kFinalShadingFile).setShaderModel(kShaderModel).csEntry("main");
         desc.addTypeConformances(mpScene->getTypeConformances());
 
@@ -264,7 +269,7 @@ void RTXDIPass::finalShading(RenderContext* pRenderContext, const Texture::Share
     var = mpFinalShadingPass->getRootVar();
     auto bind = [&](const ChannelDesc& channel)
     {
-        Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
+        Texture::SharedPtr pTex = renderData.getTexture(channel.name);
         var[channel.texname] = pTex;
     };
     for (const auto& channel : kOutputChannels) bind(channel);

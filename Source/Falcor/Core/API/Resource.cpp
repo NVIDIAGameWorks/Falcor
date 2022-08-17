@@ -25,9 +25,12 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Resource.h"
 #include "Texture.h"
+#include "Core/Assert.h"
+#include "Core/API/Buffer.h"
+#include "Utils/Logger.h"
+#include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
 {
@@ -94,12 +97,16 @@ namespace Falcor
 
     std::shared_ptr<Texture> Resource::asTexture()
     {
-        return this ? std::dynamic_pointer_cast<Texture>(shared_from_this()) : nullptr;
+        // In the past, Falcor relied on undefined behavior checking `this` for nullptr, returning nullptr if `this` was nullptr.
+        FALCOR_ASSERT(this);
+        return std::dynamic_pointer_cast<Texture>(shared_from_this());
     }
 
     std::shared_ptr<Buffer> Resource::asBuffer()
     {
-        return this ? std::dynamic_pointer_cast<Buffer>(shared_from_this()) : nullptr;
+        // In the past, Falcor relied on undefined behavior checking `this` for nullptr, returning nullptr if `this` was nullptr.
+        FALCOR_ASSERT(this);
+        return std::dynamic_pointer_cast<Buffer>(shared_from_this());
     }
 
     Resource::State Resource::getGlobalState() const

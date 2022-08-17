@@ -25,14 +25,23 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Core/Platform/OS.h"
+#include "Core/Assert.h"
+#include "Core/Errors.h"
 #include "Utils/Logger.h"
-#include <shellscalingapi.h>
-#include <Psapi.h>
+#include "Utils/StringUtils.h"
+
+#include <commctrl.h>
 #include <commdlg.h>
-#include <ShlObj_core.h>
 #include <comutil.h>
+#include <psapi.h>
+#include <shellscalingapi.h>
+#include <ShlObj_core.h>
 #include <winioctl.h>
+
+#include <string>
+#include <vector>
+#include <filesystem>
 
 #define os_call(a) {auto hr_ = a; if(FAILED(hr_)) { reportError(#a); }}
 
@@ -328,8 +337,8 @@ namespace Falcor
     bool getEnvironmentVariable(const std::string& varName, std::string& value)
     {
         static char buff[4096];
-        int numChar = GetEnvironmentVariableA(varName.c_str(), buff, (DWORD)arraysize(buff)); //what is the best way to deal with wchar ?
-        FALCOR_ASSERT(numChar < arraysize(buff));
+        DWORD numChar = GetEnvironmentVariableA(varName.c_str(), buff, (DWORD)std::size(buff)); //what is the best way to deal with wchar ?
+        FALCOR_ASSERT(numChar < (DWORD)std::size(buff));
         if (numChar == 0)
         {
             return false;
@@ -768,7 +777,7 @@ namespace Falcor
     */
     void* getProcAddress(SharedLibraryHandle library, const std::string& funcName)
     {
-        return GetProcAddress(library, funcName.c_str());
+        return reinterpret_cast<void*>(GetProcAddress(library, funcName.c_str()));
     }
 
     void postQuitMessage(int32_t exitCode)
@@ -784,5 +793,21 @@ namespace Falcor
     void OSServices::stop()
     {
         CoUninitialize();
+    }
+
+    size_t getCurrentRSS()
+    {
+        PROCESS_MEMORY_COUNTERS memoryCounter;
+        if (GetProcessMemoryInfo(GetCurrentProcess(), &memoryCounter, sizeof(PROCESS_MEMORY_COUNTERS)))
+            return memoryCounter.WorkingSetSize;
+        return 0;
+    }
+
+    size_t getPeakRSS()
+    {
+        PROCESS_MEMORY_COUNTERS memoryCounter;
+        if (GetProcessMemoryInfo(GetCurrentProcess(), &memoryCounter, sizeof(PROCESS_MEMORY_COUNTERS)))
+            return memoryCounter.PeakWorkingSetSize;
+        return 0;
     }
 }

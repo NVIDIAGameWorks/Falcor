@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -52,7 +52,7 @@ float3 loadPosition(float2 UV, float depth)
     // NDC Y is bottom-to-top
     ndc.y = -ndc.y;
 #endif
-    float4 wsPos = mul(float4(ndc.x, ndc.y, depth, 1.f), gPass.invViewProj);
+    float4 wsPos = mul(gPass.invViewProj, float4(ndc.x, ndc.y, depth, 1.f));
     return wsPos.xyz / wsPos.w;
 }
 

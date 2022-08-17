@@ -26,9 +26,16 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "ProgramVersion.h"
+#include "Core/Macros.h"
 #include "Core/API/Shader.h"
-#include "Core/Program/ShaderLibrary.h"
-#include "Core/Program/ProgramVersion.h"
+#include <filesystem>
+#include <memory>
+#include <string_view>
+#include <string>
+#include <map>
+#include <unordered_map>
+#include <vector>
 
 namespace Falcor
 {
@@ -45,6 +52,29 @@ namespace Falcor
         using DefineList = Shader::DefineList;
         using ArgumentList = std::vector<std::string>;
         using TypeConformanceList = Shader::TypeConformanceList;
+
+        /** Shader module stored as a string or file.
+        */
+        struct FALCOR_API ShaderModule
+        {
+            enum class Type
+            {
+                String,
+                File
+            };
+
+            ShaderModule(const std::filesystem::path& path, bool createTranslationUnit = true) : filePath(path), createTranslationUnit(createTranslationUnit), type(Type::File) {};
+            ShaderModule(std::string_view str, std::string_view moduleName, std::string_view modulePath = "", bool createTranslationUnit = true) : str(str), moduleName(moduleName), modulePath(modulePath), createTranslationUnit(createTranslationUnit), type(Type::String) {};
+
+            Type type;
+            std::filesystem::path filePath; ///< File path to shader source.
+            std::string str;                ///< String of shader source.
+            std::string moduleName;         ///< Slang module name for module created from string. If not creating a new translation unit, this can be left empty.
+            std::string modulePath;         ///< Virtual file path to module created from string. This is just used for diagnostics purposesand can be left empty.
+            bool createTranslationUnit;     ///< Create new Slang translation unit for the module.
+        };
+
+        using ShaderModuleList = std::vector<ShaderModule>;
 
         /** Description of a program to be created.
         */
@@ -64,14 +94,32 @@ namespace Falcor
             /** Add a file of source code to use.
                 This also sets the given file as the "active" source for subsequent entry points.
                 \param[in] path Path to the source code.
+                \param[in] createTranslationUnit Whether a new Slang translation unit should be created, otherwise the source is added to the previous translation unit.
             */
-            Desc& addShaderLibrary(const std::filesystem::path& path);
+            Desc& addShaderLibrary(const std::filesystem::path& path, bool createTranslationUnit = true) { return addShaderModule(ShaderModule(path, createTranslationUnit)); }
 
             /** Add a string of source code to use.
                 This also sets the given string as the "active" source for subsequent entry points.
+                If `createTranslationUnit` is false, the source is directly visible to the previously added source.
+                If true, a new translation unit is created and the source has to be imported using the supplied `moduleName`.
+                Note that the source string has to be added *before* any source that imports it.
                 \param[in] shader Source code.
+                \param[in] moduleName Slang module name. If not creating a new translation unit, this can be left empty.
+                \param[in] modulePath Virtual file path to module created from string. This is just used for diagnostics purposes and can be left empty.
+                \param[in] createTranslationUnit Whether a new Slang translation unit should be created, otherwise the source is added to the previous translation unit.
             */
-            Desc& addShaderString(const std::string& shader);
+            Desc& addShaderString(std::string_view shader, std::string_view moduleName, std::string_view modulePath = "", bool createTranslationUnit = true) { return addShaderModule(ShaderModule(shader, moduleName, modulePath, createTranslationUnit)); }
+
+            /** Add a shader module.
+                This also sets the given module as "active" for subsequent entry points.
+                Note that the module has to be added *before* any module that imports it.
+            */
+            Desc& addShaderModule(const ShaderModule& module);
+
+            /** Add a list of shader modules.
+                Note that the modules have to be added *before* any module that imports them.
+            */
+            Desc& addShaderModules(const ShaderModuleList& modules);
 
             /** Adds an entry point based on the "active" source.
             */
@@ -128,22 +176,13 @@ namespace Falcor
             Desc& addTypeConformancesToGroup(const TypeConformanceList& typeConformances);
             uint32_t declareEntryPoint(ShaderType type, const std::string& name);
 
-            struct Source
+            struct SourceEntryPoints
             {
-                enum class Type
-                {
-                    String,
-                    File
-                };
+                SourceEntryPoints(const ShaderModule& src) : source(src) {}
+                ShaderModule::Type getType() const { return source.type; }
 
-                Source(ShaderLibrary::SharedPtr pLib) : pLibrary(pLib), type(Type::File) {};
-                Source(std::string s) : str(s), type(Type::String) {};
-
-                Type type;
-                ShaderLibrary::SharedPtr pLibrary;
-                std::string str;
-
-                std::vector<uint32_t> entryPoints;
+                ShaderModule source;                        ///< Shader module source stored as a string or file.
+                std::vector<uint32_t> entryPoints;          ///< Indices into `mEntryPoints` for all entry points in the module.
             };
 
             struct EntryPointGroup
@@ -162,7 +201,7 @@ namespace Falcor
                 int32_t groupIndex;                         ///< Entry point group index.
             };
 
-            std::vector<Source> mSources;
+            std::vector<SourceEntryPoints> mSources;
             std::vector<EntryPointGroup> mGroups;
             std::vector<EntryPoint> mEntryPoints;
             TypeConformanceList mTypeConformances;          ///< Type conformances linked into all shaders in the program.
@@ -182,6 +221,15 @@ namespace Falcor
             double programKernelsMaxTime = 0.0;
             double programVersionTotalTime = 0.0;
             double programKernelsTotalTime = 0.0;
+        };
+
+        /** Defines flags that should be forcefully disabled or enabled on all shaders.
+            When a flag is in both groups, it gets enabled.
+         */
+        struct ForcedCompilerFlags
+        {
+            Shader::CompilerFlags enabled; ///< Compiler flags forcefully enabled on all shaders
+            Shader::CompilerFlags disabled; ///< Compiler flags forcefully enabled on all shaders
         };
 
         virtual ~Program() = 0;
@@ -280,6 +328,18 @@ namespace Falcor
             \return Returns true if enabled.
         */
         static bool isGenerateDebugInfoEnabled();
+
+        /** Sets compiler flags that will always be forced on and forced off on each program.
+            If a flag is in both groups, it results in being forced on.
+            \param[in] forceOn Flags to be forced on.
+            \param[in] forceOff Flags to be forced off.
+        */
+        static void setForcedCompilerFlags(ForcedCompilerFlags forcedCompilerFlags);
+
+        /** Retrieve compiler flags that are always forced on all shaders.
+            \return The forced compiler flags.
+        */
+        static ForcedCompilerFlags getForcedCompilerFlags();
 
         /** Get the program reflection for the active program.
             \return Program reflection object, or an exception is thrown on failure.

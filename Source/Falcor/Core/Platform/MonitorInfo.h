@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,8 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-// #TODO Implement MonitorInfo cross-platform. GLFW?
-#ifdef _WIN32
+#include "Core/Macros.h"
+#include "Utils/Math/Vector.h"
+#include <string>
+#include <vector>
 
 namespace Falcor
 {
@@ -40,11 +42,11 @@ namespace Falcor
         */
         struct MonitorDesc
         {
-            std::string mIdentifier;
-            float2 mResolution;
-            float2 mPhysicalSize;
-            float mPpi;
-            bool mIsPrimary;
+            std::string identifier;     ///< Monitor identifier.
+            uint2 resolution;           ///< Resolution in pixels.
+            float2 physicalSize;        ///< Physical size in inches.
+            float ppi;                  ///< Pixel density (points per inch).
+            bool isPrimary;             ///< True if primary monitor.
         };
 
         /** Get a list of all monitors.
@@ -58,4 +60,3 @@ namespace Falcor
         static void displayMonitorInfo();
     };
 }
-#endif // _WIN32

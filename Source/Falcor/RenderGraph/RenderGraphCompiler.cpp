@@ -25,10 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "RenderGraphCompiler.h"
 #include "RenderGraph.h"
 #include "RenderPasses/ResolvePass.h"
+#include "Utils/Algorithm/DirectedGraphTraversal.h"
+#include "Utils/StringUtils.h"
 
 namespace Falcor
 {

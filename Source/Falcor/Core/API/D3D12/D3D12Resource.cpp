@@ -25,8 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "D3D12Resource.h"
+#include "Core/API/Device.h"
+#include "Core/API/D3D12/D3D12API.h"
 #include "Utils/StringUtils.h"
 
 namespace Falcor

@@ -27,6 +27,10 @@
  **************************************************************************/
 #pragma once
 #include "D3D12DescriptorPool.h"
+#include "Core/Macros.h"
+#include "Core/API/Shader.h"
+#include <memory>
+#include <vector>
 
 namespace Falcor
 {
@@ -51,6 +55,17 @@ namespace Falcor
     };
 
     FALCOR_ENUM_CLASS_OPERATORS(ShaderVisibility);
+
+    /// Specifies how a D3D12DescriptorSet will be bound.
+    /// A descriptor set created with `ExplicitBind` (default) must be bound explictly
+    /// with a `bindForGraphics` or `bindForCompute` call.
+    /// A descriptor set created with `RootSignatureOffset` will be accessed implicitly
+    /// from the GPU with baked-in descriptor heap offsets, and it is invalid to call `bindForGraphics` or `bindForCompute` on a descriptor set created with this usage.
+    enum class D3D12DescriptorSetBindingUsage
+    {
+        ExplicitBind, //< The descriptor set will be bound explicitly with a `bindForGraphics` or `bindForCompute` call.
+        RootSignatureOffset  //< The descriptor set will be implicitly bound via a root signature offsets.
+    };
 
     class FALCOR_API D3D12DescriptorSet
     {
@@ -91,6 +106,17 @@ namespace Falcor
             \return A new object, or throws an exception if creation failed.
         */
         static SharedPtr create(const D3D12DescriptorPool::SharedPtr& pPool, const Layout& layout);
+
+        /** Create a new descriptor set with a specified binding usage flag.
+            By default, a D3D12DescriptorSet must be bound explicitly with a call to `bindForGraphics`
+            or `bindForCompute` method. Alternatively, the user can create a descriptor set with
+            `D3D12DescriptorSetBindingUsage::RootSignatureOffset` flag to signify that the descriptor
+            set will not be bound explicitly, but will be accessed from root signature offsets.
+            \param[in] layout The layout.
+            \param[in] bindingUsage The mechanism that will be used to bind this descriptor set.
+            \return A new object, or throws an exception if creation failed.
+        */
+        static SharedPtr create(const Layout& layout, D3D12DescriptorSetBindingUsage bindingUsage = D3D12DescriptorSetBindingUsage::ExplicitBind);
 
         size_t getRangeCount() const { return mLayout.getRangeCount(); }
         const Layout::Range& getRange(uint32_t range) const { return mLayout.getRange(range); }

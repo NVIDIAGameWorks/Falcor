@@ -25,8 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include "Core/API/DepthStencilState.h"
+#include "DepthStencilState.h"
+#include "Core/Assert.h"
+#include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
 {

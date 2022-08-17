@@ -25,11 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-
 #include "Core/API/Shared/D3D12DescriptorSet.h"
 #include "Core/API/Shared/D3D12DescriptorPool.h"
 #include "Core/API/Shared/D3D12DescriptorData.h"
+#include "Core/API/D3D12/D3D12API.h"
 #include "Core/API/Device.h"
 #include "Core/API/CopyContext.h"
 
@@ -103,6 +102,11 @@ namespace Falcor
     D3D12DescriptorSet::SharedPtr D3D12DescriptorSet::create(const D3D12DescriptorPool::SharedPtr& pPool, const Layout& layout)
     {
         return SharedPtr(new D3D12DescriptorSet(pPool, layout));
+    }
+
+    D3D12DescriptorSet::SharedPtr D3D12DescriptorSet::create(const Layout& layout, D3D12DescriptorSetBindingUsage /*bindingUsage*/)
+    {
+        return SharedPtr(new D3D12DescriptorSet(gpDevice->getD3D12GpuDescriptorPool(), layout));
     }
 
     D3D12DescriptorSet::D3D12DescriptorSet(D3D12DescriptorPool::SharedPtr pPool, const Layout& layout)

@@ -25,8 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "LightBVHSampler.h"
+#include "Core/Assert.h"
+#include "Core/Errors.h"
+#include "Utils/Timing/Profiler.h"
+#include "Utils/Scripting/ScriptBindings.h"
 #include <glm/gtc/constants.hpp>
 #include <glm/gtx/io.hpp>
 #include <algorithm>

@@ -26,18 +26,23 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "RenderPassReflection.h"
-#include "Utils/Scripting/Dictionary.h"
-#include "Utils/InternalDictionary.h"
 #include "ResourceCache.h"
+#include "Core/Macros.h"
+#include "Core/HotReloadFlags.h"
+#include "Core/API/Resource.h"
 #include "Core/API/Texture.h"
-#include "Scene/Scene.h"
+#include "Utils/InternalDictionary.h"
+#include "Utils/Scripting/Dictionary.h"
 #include "Utils/UI/Gui.h"
-#include "Utils/UI/InputTypes.h"
-#include "Core/API/RenderContext.h"
+#include <functional>
+#include <memory>
+#include <string_view>
+#include <string>
 
 namespace Falcor
 {
+    class Scene;
+
     /** Helper class that's passed to the user during `RenderPass::execute()`
     */
     class FALCOR_API RenderData
@@ -47,13 +52,19 @@ namespace Falcor
             \param[in] name The name of the pass' resource (i.e. "outputColor"). No need to specify the pass' name
             \return If the name exists, a pointer to the resource. Otherwise, nullptr
         */
-        const Resource::SharedPtr& operator[](const std::string& name) const { return getResource(name); }
+        const Resource::SharedPtr& operator[](const std::string_view name) const { return getResource(name); }
 
         /** Get a resource
             \param[in] name The name of the pass' resource (i.e. "outputColor"). No need to specify the pass' name
             \return If the name exists, a pointer to the resource. Otherwise, nullptr
         */
-        const Resource::SharedPtr& getResource(const std::string& name) const;
+        const Resource::SharedPtr& getResource(const std::string_view name) const;
+
+        /** Get a texture
+            \param[in] name The name of the pass' texture (i.e. "outputColor"). No need to specify the pass' name
+            \return If the texture exists, a pointer to the texture. Otherwise, nullptr
+        */
+        Texture::SharedPtr getTexture(const std::string_view name) const;
 
         /** Get the global dictionary. You can use it to pass data between different passes
         */
@@ -167,6 +178,10 @@ namespace Falcor
             \param[in] reloaded Resources that have been reloaded.
         */
         virtual void onHotReload(HotReloadFlags reloaded) {}
+
+        /** Applies graph presets to this render pass.
+         */
+        virtual void applySettings(const Dictionary& dict) {}
 
         /** Get the current pass' name as defined in the graph
         */

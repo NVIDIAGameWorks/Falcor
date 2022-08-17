@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -54,7 +54,7 @@ namespace Falcor
     GPU_TEST(ShaderModel6_3) { test(ctx, "6_3"); }
     GPU_TEST(ShaderModel6_4) { test(ctx, "6_4"); }
     GPU_TEST(ShaderModel6_5) { test(ctx, "6_5"); }
-#if defined (FALCOR_D3D12) && FALCOR_ENABLE_D3D12_AGILITY_SDK
+#if defined (FALCOR_D3D12) && FALCOR_HAS_D3D12_AGILITY_SDK
     GPU_TEST(ShaderModel6_6) { test(ctx, "6_6"); }
 #endif
 }

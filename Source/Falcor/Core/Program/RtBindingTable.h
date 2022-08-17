@@ -27,6 +27,10 @@
  **************************************************************************/
 #pragma once
 #include "RtProgram.h"
+#include "Core/Macros.h"
+#include "Scene/SceneIDs.h"
+#include <memory>
+#include <vector>
 
 namespace Falcor
 {
@@ -70,7 +74,10 @@ namespace Falcor
             \param[in] shaderID The shader ID in the program.
         */
         void setHitGroup(uint32_t rayType, uint32_t geometryID, ShaderID shaderID);
-
+        void setHitGroup(uint32_t rayType, GlobalGeometryID geometryID, ShaderID shaderID)
+        {
+            setHitGroup(rayType, geometryID.get(), std::move(shaderID));
+        }
 
         /** Set hit group shader ID.
             \param[in] rayType The ray type.
@@ -78,6 +85,7 @@ namespace Falcor
             \param[in] shaderID The shader ID in the program.
         */
         void setHitGroup(uint32_t rayType, const std::vector<uint32_t>& geometryIDs, ShaderID shaderID);
+        void setHitGroup(uint32_t rayType, const std::vector<GlobalGeometryID>& geometryIDs, ShaderID shaderID);
 
         /** Get the raygen shader ID.
             \return The shader ID in the program.
@@ -96,7 +104,6 @@ namespace Falcor
             \return The shader ID in the program.
         */
         ShaderID getHitGroup(uint32_t rayType, uint32_t geometryID) const { return mShaderTable[getHitGroupOffset(rayType, geometryID)]; }
-
 
         uint32_t getMissCount() const { return mMissCount; }
         uint32_t getRayTypeCount() const { return mRayTypeCount; }

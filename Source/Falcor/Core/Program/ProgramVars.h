@@ -26,8 +26,12 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "ShaderVar.h"
 #include "RtBindingTable.h"
+#include "Core/Macros.h"
+#include "Core/API/ParameterBlock.h"
+#include "Core/API/ShaderTable.h"
+#include <memory>
+#include <vector>
 
 namespace Falcor
 {

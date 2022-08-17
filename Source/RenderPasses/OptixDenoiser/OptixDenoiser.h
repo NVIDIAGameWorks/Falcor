@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,7 +29,6 @@
 /** Requirements to use this pass:
     1) Have the OptiX 7.3 SDK installed (directly or via packman)
     2) Have NVIDIA driver 465.84 or later.
-    3) Set FALCOR_ENABLE_OPTIX to 1 in `Source/Core/FalcorConfig.h`
 
     When porting this pass, especially to older Falcor forks, it sometimes becomes
     dependent on the DLL cudart64_101.dll, which is generally not copied into the binary
@@ -65,10 +64,9 @@
 #pragma once
 
 #include "Falcor.h"
+#include "RenderGraph/BasePasses/FullScreenPass.h"
 
-#if FALCOR_ENABLE_CUDA && FALCOR_ENABLE_OPTIX
 #include "CudaUtils.h"
-#endif
 
 using namespace Falcor;
 
@@ -89,18 +87,15 @@ public:
     virtual void renderUI(Gui::Widgets& widget) override;
     virtual void setScene(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene) override;
 
-#if FALCOR_ENABLE_CUDA && FALCOR_ENABLE_OPTIX
     // Scripting functions
     bool getEnabled() const { return mEnabled; }
     void setEnabled(bool enabled) { mEnabled = enabled; }
-#endif
 
 private:
     OptixDenoiser_(const Dictionary& dict);
 
     Scene::SharedPtr mpScene;
 
-#if FALCOR_ENABLE_CUDA && FALCOR_ENABLE_OPTIX
     /** Initializes OptiX & CUDA contexts.  Returns true on success (if false, everything else will fail).
     */
     bool initializeOptix();
@@ -117,7 +112,7 @@ private:
         sharing of GPU memory between DX and OptiX.
     */
     void convertTexToBuf(RenderContext* pRenderContext, const Texture::SharedPtr& tex, const Buffer::SharedPtr& buf, const uint2& size);
-    void convertNormalsToBuf(RenderContext* pRenderContext, const Texture::SharedPtr& tex, const Buffer::SharedPtr& buf, const uint2& size, glm::mat4 viewIT);
+    void convertNormalsToBuf(RenderContext* pRenderContext, const Texture::SharedPtr& tex, const Buffer::SharedPtr& buf, const uint2& size, rmcv::mat4 viewIT);
     void convertBufToTex(RenderContext* pRenderContext, const Buffer::SharedPtr& buf, const Texture::SharedPtr& tex, const uint2& size);
     void convertMotionVectors(RenderContext* pRenderContext, const Texture::SharedPtr& tex, const Buffer::SharedPtr& buf, const uint2& size);
 
@@ -211,7 +206,4 @@ private:
     /** Get a device pointer from a buffer.  This wrapper gracefully handles nullptrs (i.e., if buf == nullptr)
     */
     void* exportBufferToCudaDevice(Buffer::SharedPtr& buf);
-
-
-#endif // FALCOR_ENABLE_CUDA && FALCOR_ENABLE_OPTIX
 };

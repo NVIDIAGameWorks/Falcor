@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -34,8 +34,8 @@ BEGIN_NAMESPACE_FALCOR
 #define GEOMETRY_TYPE_TRIANGLE_MESH             1
 #define GEOMETRY_TYPE_DISPLACED_TRIANGLE_MESH   2
 #define GEOMETRY_TYPE_CURVE                     3
-#define GEOMETRY_TYPE_SDF_GRID                  4
-#define GEOMETRY_TYPE_CUSTOM                    5
+#define GEOMETRY_TYPE_SDF_GRID                  5
+#define GEOMETRY_TYPE_CUSTOM                    6
 
 #define SCENE_HAS_GEOMETRY_TYPE(_type_) ((SCENE_GEOMETRY_TYPES & (1u << _type_)) != 0u)
 #define SCENE_HAS_PROCEDURAL_GEOMETRY() ((SCENE_GEOMETRY_TYPES & ~(1u << GEOMETRY_TYPE_TRIANGLE_MESH)) != 0u)

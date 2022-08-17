@@ -27,18 +27,10 @@
  **************************************************************************/
 #include "NGXWrapper.h"
 
-#if FALCOR_ENABLE_DLSS
-
 #include <nvsdk_ngx.h>
 #include <nvsdk_ngx_helpers.h>
 
-#ifdef _DEBUG
-#pragma comment(lib, "nvsdk_ngx_d_dbg.lib")
-#else
-#pragma comment(lib, "nvsdk_ngx_d.lib")
-#endif
-
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
 #include <d3d12.h>
 #endif
 
@@ -86,7 +78,7 @@ namespace Falcor
     {
         NVSDK_NGX_Result result = NVSDK_NGX_Result_Fail;
 
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         result = NVSDK_NGX_D3D12_Init(kAppID, logFolder, mpDevice->getD3D12Handle());
 #endif
 
@@ -111,7 +103,7 @@ namespace Falcor
 
         mInitialized = true;
 
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         result = NVSDK_NGX_D3D12_GetParameters(&mpParameters);
 #endif
 
@@ -164,7 +156,7 @@ namespace Falcor
 
             if (mpFeature != nullptr) releaseDLSS();
 
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
             NVSDK_NGX_D3D12_Shutdown();
 #endif
 
@@ -204,7 +196,7 @@ namespace Falcor
         createParams.Feature.InPerfQualityValue = perfQuality;
         createParams.InFeatureCreateFlags = createFlags;
 
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         pRenderContext->flush();
 
         ID3D12GraphicsCommandList* d3d12CommandList = pRenderContext->getLowLevelData()->getD3D12CommandList();
@@ -243,7 +235,7 @@ namespace Falcor
 
         if (mpFeature)
         {
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
             NVSDK_NGX_D3D12_ReleaseFeature(mpFeature);
 #endif
 #ifdef FALCOR_VK
@@ -270,7 +262,7 @@ namespace Falcor
         }
 
         // Depending on what version of DLSS DLL is being used, a sharpness of > 1.f was possible.
-        settings.sharpness = clamp(settings.sharpness, 0.01f, 1.f);
+        settings.sharpness = clamp(settings.sharpness, -1.f, 1.f);
 
         return settings;
     }
@@ -309,7 +301,7 @@ namespace Falcor
 
         bool success = true;
 
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         pRenderContext->resourceBarrier(pUnresolvedColor, Resource::State::ShaderResource);
         pRenderContext->resourceBarrier(pMotionVectors, Resource::State::ShaderResource);
         pRenderContext->resourceBarrier(pDepth, Resource::State::ShaderResource);
@@ -349,7 +341,7 @@ namespace Falcor
         pRenderContext->uavBarrier(pResolvedColor);
         // TODO: Get rid of the flush
         pRenderContext->flush();
-#endif // FALCOR_D3D12_AVAILABLE
+#endif // FALCOR_HAS_D3D12
 
 #ifdef FALCOR_VK
         commandList->endTrackingTextureState(pUnresolvedColor, nvrhi::AllSubresources, nvrhi::ResourceStates::SHADER_RESOURCE);
@@ -392,5 +384,3 @@ namespace Falcor
     }
 
 } // namespace Falcor
-
-#endif // FALCOR_ENABLE_DLSS

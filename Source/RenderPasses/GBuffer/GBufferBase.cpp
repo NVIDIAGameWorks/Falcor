@@ -30,6 +30,11 @@
 #include "GBuffer/GBufferRT.h"
 #include "VBuffer/VBufferRaster.h"
 #include "VBuffer/VBufferRT.h"
+#include "RenderGraph/RenderPassLibrary.h"
+#include "RenderGraph/RenderPassStandardFlags.h"
+#include "Utils/SampleGenerators/DxSamplePattern.h"
+#include "Utils/SampleGenerators/HaltonSamplePattern.h"
+#include "Utils/SampleGenerators/StratifiedSamplePattern.h"
 
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" FALCOR_API_EXPORT const char* getProjDir()
@@ -240,7 +245,7 @@ Texture::SharedPtr GBufferBase::getOutput(const RenderData& renderData, const st
 {
     // This helper fetches the render pass output with the given name and verifies it has the correct size.
     FALCOR_ASSERT(mFrameDim.x > 0 && mFrameDim.y > 0);
-    auto pTex = renderData[name]->asTexture();
+    auto pTex = renderData.getTexture(name);
     if (pTex && (pTex->getWidth() != mFrameDim.x || pTex->getHeight() != mFrameDim.y))
     {
         throw RuntimeError("GBufferBase: Pass output '{}' has mismatching size. All outputs must be of the same size.", name);

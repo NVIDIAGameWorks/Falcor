@@ -25,8 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "FullScreenPass.h"
+#include "Core/API/RenderContext.h"
 
 namespace Falcor
 {
@@ -65,7 +65,7 @@ namespace Falcor
         void initFullScreenData(Buffer::SharedPtr& pVB, Vao::SharedPtr& pVao)
         {
             // First time we got here. create VB and VAO
-            const uint32_t vbSize = (uint32_t)(sizeof(Vertex)*arraysize(kVertices));
+            const uint32_t vbSize = (uint32_t)(sizeof(Vertex)*std::size(kVertices));
             pVB = Buffer::create(vbSize, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, (void*)kVertices);
             FALCOR_ASSERT(pVB);
 
@@ -139,6 +139,6 @@ namespace Falcor
     void FullScreenPass::execute(RenderContext* pRenderContext, const Fbo::SharedPtr& pFbo, bool autoSetVpSc) const
     {
         mpState->setFbo(pFbo, autoSetVpSc);
-        pRenderContext->draw(mpState.get(), mpVars.get(), (uint32_t)arraysize(kVertices), 0);
+        pRenderContext->draw(mpState.get(), mpVars.get(), (uint32_t)std::size(kVertices), 0);
     }
 }

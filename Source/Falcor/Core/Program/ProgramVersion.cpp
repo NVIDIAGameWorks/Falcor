@@ -25,10 +25,16 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "ProgramVersion.h"
+#include "Program.h"
+#include "ProgramVars.h"
+#include "Core/API/Device.h"
+#include "Core/API/ParameterBlock.h"
+#include "Utils/Logger.h"
 
-#include <slang/slang.h>
+#include <slang.h>
+
+#include <set>
 
 namespace Falcor
 {

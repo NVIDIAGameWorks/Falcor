@@ -25,9 +25,20 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#pragma once
+#include "Core/Macros.h"
+#include "Core/Assert.h"
+#include "Core/Program/ProgramVersion.h"
+#if FALCOR_HAS_NVAPI
+#include <nvapi.h>
+#endif
+#include <optional>
+#include <string>
+#include <vector>
+
 namespace Falcor
 {
-#if FALCOR_ENABLE_NVAPI
+#if FALCOR_HAS_NVAPI
     struct NvApiPsoExDesc
     {
         NV_PSO_EXTENSION psoExtension;

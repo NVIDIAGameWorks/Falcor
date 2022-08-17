@@ -25,13 +25,16 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "ImageIO.h"
+#include "Core/Errors.h"
+#include "Core/API/CopyContext.h"
+#include "Utils/Logger.h"
 
-#include "dds_header/DDSHeader.h"
-#include "nvtt/nvtt.h"
+#include <dds_header/DDSHeader.h>
+#include <nvtt/nvtt.h>
 
 #include <filesystem>
+#include <fstream>
 
 namespace Falcor
 {

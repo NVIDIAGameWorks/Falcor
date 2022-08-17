@@ -26,7 +26,6 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Testing/UnitTest.h"
-#include <glm/gtx/io.hpp>
 
 namespace Falcor
 {
@@ -49,8 +48,8 @@ namespace Falcor
         // Setup and run GPU test.
         ctx.createProgram("Tests/Utils/AABBTests.cs.slang", "testAABB");
         ctx.allocateStructuredBuffer("result", resultSize);
-        ctx.allocateStructuredBuffer("testData", (uint32_t)arraysize(kTestData), kTestData, sizeof(kTestData));
-        ctx["CB"]["n"] = (uint32_t)arraysize(kTestData);
+        ctx.allocateStructuredBuffer("testData", (uint32_t)std::size(kTestData), kTestData, sizeof(kTestData));
+        ctx["CB"]["n"] = (uint32_t)std::size(kTestData);
         ctx.runProgram();
 
         // Verify results.

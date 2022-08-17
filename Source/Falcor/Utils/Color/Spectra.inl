@@ -1,5 +1,7 @@
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable : 4305) // allow float truncation
+#endif
 
 constexpr size_t kCIESampleCount = 471;
 
@@ -2264,4 +2266,6 @@ const float sony_ilce_9_b[] = {
     700.0, 0.00025558289999999995, 710.0, 0.00019394020000000018,
     720.0, 0.0005996684000000017};
 
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,6 +28,9 @@
 #pragma once
 #include "Falcor.h"
 #include "ToneMapperParams.slang"
+#include "RenderGraph/RenderPass.h"
+#include "RenderGraph/RenderPassHelpers.h"
+#include "RenderGraph/BasePasses/FullScreenPass.h"
 
 using namespace Falcor;
 
@@ -126,9 +129,9 @@ private:
     float mWhiteScale = 11.2f;          ///< Parameter used in Uc2Hable operator.
 
     // Pre-computed fields based on above settings
-    float3x3 mWhiteBalanceTransform;    ///< Color balance transform in RGB space.
+    rmcv::mat3 mWhiteBalanceTransform;    ///< Color balance transform in RGB space.
     float3 mSourceWhite;                ///< Source illuminant in RGB (the white point to which the image is transformed to conform to).
-    float3x3 mColorTransform;           ///< Final color transform with exposure value baked in.
+    rmcv::mat3 mColorTransform;           ///< Final color transform with exposure value baked in.
 
     bool mRecreateToneMapPass = true;
     bool mUpdateToneMapPass = true;

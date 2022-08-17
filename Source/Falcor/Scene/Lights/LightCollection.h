@@ -26,12 +26,24 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "RenderGraph/BasePasses/ComputePass.h"
 #include "MeshLightData.slang"
+#include "Core/Macros.h"
+#include "Core/API/Buffer.h"
+#include "Core/API/Sampler.h"
+#include "Core/API/GpuFence.h"
+#include "Core/State/GraphicsState.h"
+#include "Core/Program/GraphicsProgram.h"
+#include "Core/Program/ProgramVars.h"
+#include "Utils/Math/Vector.h"
+#include "RenderGraph/BasePasses/ComputePass.h"
+#include <memory>
+#include <vector>
 
 namespace Falcor
 {
     class Scene;
+    class RenderContext;
+    struct ShaderVar;
 
     /** Class that holds a collection of mesh lights for a scene.
 

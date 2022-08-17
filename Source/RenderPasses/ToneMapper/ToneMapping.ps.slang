@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -155,7 +155,7 @@ float4 main(float2 texC : TEXCOORD) : SV_TARGET0
 #endif
 
     // apply color grading
-    finalColor = mul(finalColor, (float3x3) gParams.colorTransform);
+    finalColor = mul((float3x3)gParams.colorTransform, finalColor);
 
     // apply tone mapping
     finalColor = toneMap(finalColor);

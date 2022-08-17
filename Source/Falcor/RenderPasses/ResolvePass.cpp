@@ -25,8 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "ResolvePass.h"
+#include "Core/API/RenderContext.h"
+#include "Utils/Logger.h"
 
 namespace Falcor
 {
@@ -52,8 +53,8 @@ namespace Falcor
 
     void ResolvePass::execute(RenderContext* pRenderContext, const RenderData& renderData)
     {
-        auto pSrcTex = renderData[kSrc]->asTexture();
-        auto pDstTex = renderData[kDst]->asTexture();
+        auto pSrcTex = renderData.getTexture(kSrc);
+        auto pDstTex = renderData.getTexture(kDst);
 
         if (pSrcTex && pDstTex)
         {

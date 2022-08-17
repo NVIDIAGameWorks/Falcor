@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -41,9 +41,15 @@
     compile-time constants should be evaluated at fp64 or higher precision.
 */
 
-#ifndef HOST_CODE
+#ifdef HOST_CODE
+// @skallweit: We should use a different way to make math constants available on the host.
+#include <cmath>
+#include <cstdint>
+#include <cfloat>
 
-// Constants from <math.h>
+#else
+
+// Constants from <cmath>
 #define M_E                 2.71828182845904523536  // e
 #define M_LOG2E             1.44269504088896340736  // log2(e)
 #define M_LOG10E            0.434294481903251827651 // log10(e)
@@ -67,12 +73,12 @@
 #define M_SQRTPI            1.77245385090551602730  // sqrt(pi)
 #define M_1_SQRT2           0.707106781186547524401 // 1/sqrt(2)
 
-// Numeric limits from <stdint.h>
+// Numeric limits from <cstdint>
 #define UINT32_MAX          4294967295
 #define INT32_MIN           -2147483648
 #define INT32_MAX           2147483647
 
-// Numeric limits from <float.h>
+// Numeric limits from <cfloat>
 #define DBL_DECIMAL_DIG     17                      // # of decimal digits of rounding precision
 #define DBL_DIG             15                      // # of decimal digits of precision
 #define DBL_EPSILON         2.2204460492503131e-016 // smallest such that 1.0+DBL_EPSILON != 1.0

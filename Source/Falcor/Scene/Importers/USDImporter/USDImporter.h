@@ -26,7 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Core/Macros.h"
+#include "Utils/Scripting/Dictionary.h"
 #include "Scene/SceneBuilder.h"
+#include <filesystem>
 
 namespace Falcor
 {

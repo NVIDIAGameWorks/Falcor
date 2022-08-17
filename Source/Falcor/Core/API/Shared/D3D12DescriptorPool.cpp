@@ -25,9 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
 
 #include "D3D12DescriptorPool.h"
 #include "D3D12DescriptorData.h"
@@ -68,7 +66,7 @@ namespace Falcor
 
     const D3D12DescriptorPool::ApiHandle& D3D12DescriptorPool::getApiHandle(uint32_t heapIndex) const
     {
-        FALCOR_ASSERT(heapIndex < arraysize(mpApiData->pHeaps));
+        FALCOR_ASSERT(heapIndex < std::size(mpApiData->pHeaps));
         return mpApiData->pHeaps[heapIndex]->getApiHandle();
     }
 
@@ -94,7 +92,7 @@ namespace Falcor
         descCount[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] += mDesc.mDescCount[(uint32_t)Type::AccelerationStructureSrv];
 
         mpApiData = std::make_shared<DescriptorPoolApiData>();
-        for (uint32_t i = 0; i < arraysize(mpApiData->pHeaps); i++)
+        for (uint32_t i = 0; i < std::size(mpApiData->pHeaps); i++)
         {
             if (descCount[i] > 0)
             {
@@ -123,4 +121,4 @@ namespace Falcor
     }
 }
 
-#endif // FALCOR_D3D12_AVAILABLE
+#endif // FALCOR_HAS_D3D12

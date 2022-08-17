@@ -25,9 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Console.h"
-#include "dear_imgui/imgui.h"
+#include "Core/Assert.h"
+#include "Utils/UI/InputTypes.h"
+#include "Utils/UI/Gui.h"
+#include "Utils/Scripting/Scripting.h"
+#include "Utils/Scripting/ScriptBindings.h"
+
+#include <imgui.h>
 
 namespace Falcor
 {
@@ -96,7 +101,7 @@ namespace Falcor
         ImGui::EndChild();
 
         ImGui::PushItemWidth(ImGui::GetWindowWidth());
-        if (ImGui::InputText("##console", mCmdBuffer, arraysize(mCmdBuffer), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory | ImGuiInputTextFlags_CallbackCharFilter, &inputTextCallback, this))
+        if (ImGui::InputText("##console", mCmdBuffer, std::size(mCmdBuffer), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory | ImGuiInputTextFlags_CallbackCharFilter, &inputTextCallback, this))
         {
             enterCommand();
             ImGui::GetIO().KeysDown[(uint32_t)Input::Key::Enter] = false;

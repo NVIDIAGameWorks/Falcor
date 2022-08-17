@@ -47,7 +47,7 @@ namespace Falcor
 
         virtual size_t getSize() const override;
         virtual uint32_t getMaxPrimitiveIDBits() const override;
-        virtual Type getType() const { return Type::NormalizedDenseGrid; }
+        virtual Type getType() const override { return Type::NormalizedDenseGrid; }
 
 
         virtual void createResources(RenderContext* pRenderContext, bool deleteScratchData = true) override;

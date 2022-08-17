@@ -25,7 +25,6 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "SDF3DPrimitiveFactory.h"
 
 using namespace Falcor;
@@ -39,7 +38,7 @@ SDF3DPrimitive SDF3DPrimitiveFactory::initCommon(SDF3DShapeType shapeType, const
     primitive.shapeBlobbing = blobbing;
     primitive.operationSmoothing = operationSmoothing;
     primitive.translation = transform.getTranslation();
-    primitive.invRotationScale = glm::inverse(float3x3(transform.getMatrix()));
+    primitive.invRotationScale = rmcv::inverse(rmcv::mat3(transform.getMatrix()));
     return primitive;
 }
 
@@ -124,7 +123,7 @@ AABB SDF3DPrimitiveFactory::computeAABB(const SDF3DPrimitive& primitive)
         throw RuntimeError("SDF Primitive has unknown primitive type");
     }
 
-    float3x3 xform = glm::inverse(glm::transpose(primitive.invRotationScale));
-    aabb.transform(glm::translate(float4x4(xform), primitive.translation));
-    return aabb;
+    rmcv::mat4 translate = rmcv::translate(rmcv::identity<rmcv::mat4>(), primitive.translation);
+    rmcv::mat4 rotScale = rmcv::inverse(rmcv::transpose(primitive.invRotationScale));
+    return aabb.transform(translate * rotScale);
 }

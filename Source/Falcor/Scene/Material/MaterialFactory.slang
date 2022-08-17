@@ -29,12 +29,6 @@ __exported import Rendering.Materials.IMaterial;
 import Scene.Material.ShadingUtils;
 import Scene.Material.AlphaTest;
 
-// All supported materials must be imported here for createDynamicObject() to work.
-import Rendering.Materials.StandardMaterial;
-import Rendering.Materials.HairMaterial;
-import Rendering.Materials.ClothMaterial;
-import Rendering.Materials.MERLMaterial;
-
 /** Extension to add shading and material factory to MaterialSystem.
     Making this an extension avoids a circular dependency on MaterialSystem.
 
@@ -68,7 +62,7 @@ extension MaterialSystem
         \return A BSDF instance.
     */
     IBSDF getBSDF<L:ITextureSampler>(const ShadingData sd, L lod)
-    {        
+    {
         let material = getMaterial(sd.materialID);
         return material.setupBSDF(this, sd, lod);
     }

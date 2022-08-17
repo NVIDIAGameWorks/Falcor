@@ -25,8 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Core/API/FBO.h"
+#include "Core/API/Device.h"
+#include "Core/API/GFX/GFXAPI.h"
 
 namespace Falcor
 {
@@ -39,6 +40,10 @@ namespace Falcor
     {
         void releaseFboHandleIfEmpty(FboHandle& apiHandle, Fbo::Attachment& depthStencil, std::vector<Fbo::Attachment>& colorAttachments)
         {
+            if (!apiHandle)
+            {
+                return;
+            }
             if (depthStencil.pTexture)
             {
                 return;
@@ -51,6 +56,7 @@ namespace Falcor
                 }
             }
             gpDevice->releaseResource(apiHandle);
+            apiHandle = nullptr;
         }
 
     }
@@ -97,44 +103,44 @@ namespace Falcor
         mpPrivateData->mHandleDirty = false;
 
         gfx::IFramebufferLayout::Desc layoutDesc = {};
-        std::vector<gfx::IFramebufferLayout::AttachmentLayout> attachmentLayouts;
-        gfx::IFramebufferLayout::AttachmentLayout depthAttachmentLayout = {};
+        std::vector<gfx::IFramebufferLayout::TargetLayout> targetLayouts;
+        gfx::IFramebufferLayout::TargetLayout depthTargetLayout = {};
         gfx::IFramebuffer::Desc desc = {};
         if (mDepthStencil.pTexture)
         {
             auto texture = static_cast<gfx::ITextureResource*>(mDepthStencil.pTexture->getApiHandle().get());
-            depthAttachmentLayout.format = texture->getDesc()->format;
-            depthAttachmentLayout.sampleCount = texture->getDesc()->sampleDesc.numSamples;
-            layoutDesc.depthStencil = &depthAttachmentLayout;
+            depthTargetLayout.format = texture->getDesc()->format;
+            depthTargetLayout.sampleCount = texture->getDesc()->sampleDesc.numSamples;
+            layoutDesc.depthStencil = &depthTargetLayout;
         }
         desc.depthStencilView = getDepthStencilView()->getApiHandle();
         desc.renderTargetCount = 0;
         std::vector<gfx::IResourceView*> renderTargetViews;
         for (uint32_t i = 0; i < static_cast<uint32_t>(mColorAttachments.size()); i++)
         {
-            gfx::IFramebufferLayout::AttachmentLayout renderAttachmentLayout = {};
+            gfx::IFramebufferLayout::TargetLayout renderTargetLayout = {};
 
             if (mColorAttachments[i].pTexture)
             {
                 auto texture = static_cast<gfx::ITextureResource*>(mColorAttachments[i].pTexture->getApiHandle().get());
-                renderAttachmentLayout.format = texture->getDesc()->format;
-                renderAttachmentLayout.sampleCount = texture->getDesc()->sampleDesc.numSamples;
-                attachmentLayouts.push_back(renderAttachmentLayout);
+                renderTargetLayout.format = texture->getDesc()->format;
+                renderTargetLayout.sampleCount = texture->getDesc()->sampleDesc.numSamples;
+                targetLayouts.push_back(renderTargetLayout);
                 renderTargetViews.push_back(getRenderTargetView(i)->getApiHandle());
                 desc.renderTargetCount = i + 1;
             }
             else
             {
                 auto dimension = mColorAttachments[i].arraySize > 1 ? RenderTargetView::Dimension::Texture2DArray : RenderTargetView::Dimension::Texture2D;
-                renderAttachmentLayout.format = gfx::Format::R8G8B8A8_UNORM;
-                renderAttachmentLayout.sampleCount = 1;
+                renderTargetLayout.format = gfx::Format::R8G8B8A8_UNORM;
+                renderTargetLayout.sampleCount = 1;
                 renderTargetViews.push_back(RenderTargetView::getNullView(dimension)->getApiHandle());
-                attachmentLayouts.push_back(renderAttachmentLayout);
+                targetLayouts.push_back(renderTargetLayout);
             }
         }
         desc.renderTargetViews = renderTargetViews.data();
         layoutDesc.renderTargetCount = desc.renderTargetCount;
-        layoutDesc.renderTargets = attachmentLayouts.data();
+        layoutDesc.renderTargets = targetLayouts.data();
 
         // Push FBO handle to deferred release queue so it remains valid
         // for pending GPU commands.

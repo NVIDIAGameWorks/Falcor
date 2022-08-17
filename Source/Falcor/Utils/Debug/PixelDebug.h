@@ -27,9 +27,19 @@
  **************************************************************************/
 #pragma once
 #include "PixelDebugTypes.slang"
+#include "Core/Macros.h"
+#include "Core/API/Buffer.h"
+#include "Core/API/GpuFence.h"
+#include "Core/Program/Program.h"
+#include "Utils/UI/Gui.h"
+#include <memory>
+#include <unordered_map>
+#include <vector>
 
 namespace Falcor
 {
+    class RenderContext;
+
     /** Helper class for shader debugging using print() and assert().
 
         Host-side integration:
@@ -71,8 +81,11 @@ namespace Falcor
         */
         void prepareProgram(const Program::SharedPtr& pProgram, const ShaderVar& var);
 
-        void renderUI(Gui::Widgets& widget);
+        void renderUI(Gui::Widgets& widget) { renderUI(&widget); }
+        void renderUI(Gui::Widgets* widget = nullptr);
         bool onMouseEvent(const MouseEvent& mouseEvent);
+
+        void enable() { mEnabled = true; }
 
     protected:
         PixelDebug(uint32_t logSize) : mLogSize(logSize) {}

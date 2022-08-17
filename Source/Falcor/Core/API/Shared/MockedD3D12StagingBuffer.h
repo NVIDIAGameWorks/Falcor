@@ -26,12 +26,18 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-
-#include "stdafx.h"
+#if FALCOR_HAS_D3D12
+#include "Core/Macros.h"
+#include "Core/API/Buffer.h"
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#include <d3d12.h>
+#include <vector>
 
 namespace Falcor
 {
-#ifdef FALCOR_D3D12_AVAILABLE
     // A mocked `ID3D12Resource` that supports mapped write and allow reading contents directly
     // from CPU memory.
     // This is currently used to call `DDGIVolume::Update` to receive the contents to write into
@@ -44,7 +50,7 @@ namespace Falcor
     // In `Unmap`, we update our internal GPU buffer with the contents that the SDK just wrote into.
     // In `GetGPUVirtualAddress`, we return the address of the GPU buffer, so the SDK can use it to
     // run its internal passes.
-    // 
+    //
     // With this class, we have a temporary solution that avoids the hackery around
     // `ParameterBlock::getUnderlyingConstantBuffer`.
     // When `DDGIVolume` provides a better interface to allow us to get the constant buffer data without
@@ -79,6 +85,5 @@ namespace Falcor
         std::vector<uint8_t> mData; // CPU Buffer.
         Buffer::SharedPtr mpGpuBuffer; // GPU Buffer.
     };
-
-#endif // FALCOR_D3D12_AVAILABLE
 }
+#endif // FALCOR_HAS_D3D12

@@ -25,9 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#if FALCOR_ENABLE_CUDA
+#if FALCOR_HAS_CUDA
 #include "CUDAProgram.h"
+#include "ProgramVersion.h"
+#include "ProgramVars.h"
 
 // This file implements the CUDA-specific logic that allows the `Program`,
 // `ProgramVars`, etc. types to support execution via CUDA.
@@ -41,10 +42,8 @@
 // We avoid including CUDA headers in other files because of conflicts
 // they can apparently create with the vector types that Falcor uses.
 //
-#include ".packman/Cuda/include/cuda.h"
-#include ".packman/Cuda/include/cuda_runtime_api.h"
-#pragma comment(lib, "cuda")
-#pragma comment(lib, "cudart")
+#include <cuda.h>
+#include <cuda_runtime_api.h>
 
 namespace Falcor
 {

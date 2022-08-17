@@ -25,8 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor.h"
 #include "CaptureTrigger.h"
+#include "Utils/Scripting/ScriptWriter.h"
 #include <filesystem>
 
 namespace Mogwai
@@ -173,6 +174,8 @@ namespace Mogwai
 
     void CaptureTrigger::registerScriptBindings(pybind11::module& m)
     {
+        using namespace pybind11::literals;
+
         if (pybind11::hasattr(m, "CaptureTrigger")) return;
 
         pybind11::class_<CaptureTrigger> captureTrigger(m, "CaptureTrigger");

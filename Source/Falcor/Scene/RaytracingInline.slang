@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -79,6 +79,7 @@ TriangleHit getCandidateTriangleHit<let Flags : int>(RayQuery<Flags> rayQuery)
     hit.barycentrics = rayQuery.CandidateTriangleBarycentrics();
     return hit;
 }
+
 
 // TODO: Pass UseAlphaTest as a template argument.
 bool traceSceneRayImpl<let Flags : int>(const bool useAlphaTest, RayQuery<Flags> rayQuery, const Ray ray, out HitInfo hit, out float hitT, uint rayFlags, uint instanceInclusionMask)
@@ -162,14 +163,13 @@ bool traceSceneRayImpl<let Flags : int>(const bool useAlphaTest, RayQuery<Flags>
     hit = {};
     hitT = 0.f;
 
-#if SCENE_HAS_GEOMETRY_TYPE(GEOMETRY_TYPE_TRIANGLE_MESH)
     if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT)
     {
         hit = HitInfo(getCommittedTriangleHit(rayQuery));
         hitT = rayQuery.CommittedRayT();
         return true;
     }
-#endif
+
 #if SCENE_HAS_PROCEDURAL_GEOMETRY()
     if (rayQuery.CommittedStatus() == COMMITTED_PROCEDURAL_PRIMITIVE_HIT)
     {

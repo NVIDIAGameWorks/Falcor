@@ -26,7 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "MinimalPathTracer.h"
+#include "RenderGraph/RenderPassLibrary.h"
 #include "RenderGraph/RenderPassHelpers.h"
+#include "RenderGraph/RenderPassStandardFlags.h"
 
 const RenderPass::Info MinimalPathTracer::kInfo { "MinimalPathTracer", "Minimal path tracer." };
 
@@ -130,7 +132,7 @@ void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData&
     {
         for (auto it : kOutputChannels)
         {
-            Texture* pDst = renderData[it.name]->asTexture().get();
+            Texture* pDst = renderData.getTexture(it.name).get();
             if (pDst) pRenderContext->clearTexture(pDst);
         }
         return;
@@ -184,7 +186,7 @@ void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData&
     {
         if (!desc.texname.empty())
         {
-            var[desc.texname] = renderData[desc.name]->asTexture();
+            var[desc.texname] = renderData.getTexture(desc.name);
         }
     };
     for (auto channel : kInputChannels) bind(channel);
@@ -242,6 +244,7 @@ void MinimalPathTracer::setScene(RenderContext* pRenderContext, const Scene::Sha
 
         // Create ray tracing program.
         RtProgram::Desc desc;
+        desc.addShaderModules(mpScene->getShaderModules());
         desc.addShaderLibrary(kShaderFile);
         desc.setMaxPayloadSize(kMaxPayloadSizeBytes);
         desc.setMaxAttributeSize(mpScene->getRaytracingMaxAttributeSize());

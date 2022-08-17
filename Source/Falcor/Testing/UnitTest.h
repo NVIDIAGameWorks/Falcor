@@ -26,22 +26,33 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Falcor.h"
+#include "Core/Assert.h"
+#include "Core/Errors.h"
+#include "Core/State/ComputeState.h"
+#include "Core/Program/ComputeProgram.h"
+#include "Core/Program/ProgramVars.h"
+#include "Core/Program/ShaderVar.h"
+#include "Utils/Math/Vector.h"
 
-#include <exception>
+#include <glm/gtx/io.hpp>
+
+#include <filesystem>
 #include <functional>
 #include <map>
 #include <sstream>
 #include <string>
-#include <tuple>
-#include <type_traits>
 #include <vector>
+
+// @skallweit: This is temporary to allow FalcorTest be compiled unmodified. Needs to be removed.
+#include "Core/API/RenderContext.h"
 
 /** This file defines both the user-visible API for the unit testing framework as well as the various classes that implement it
 */
 
 namespace Falcor
 {
+    class RenderContext;
+
     static constexpr int kMaxTestFailures = 25;
 
     class CPUUnitTestContext;
@@ -66,7 +77,7 @@ namespace Falcor
 
     FALCOR_API void registerCPUTest(const std::filesystem::path& path, const std::string& name, const std::string& skipMessage, CPUTestFunc func);
     FALCOR_API void registerGPUTest(const std::filesystem::path& path, const std::string& name, const std::string& skipMessage, GPUTestFunc func);
-    FALCOR_API int32_t runTests(std::ostream& stream, RenderContext* pRenderContext, const std::string& testFilterRegexp, uint32_t repeatCount = 1);
+    FALCOR_API int32_t runTests(std::ostream& stream, RenderContext* pRenderContext, const std::string& testFilterRegexp, const std::filesystem::path& xmlReportPath, uint32_t repeatCount = 1);
 
     class FALCOR_API UnitTestContext
     {
@@ -108,6 +119,12 @@ namespace Falcor
                            const Program::DefineList& programDefines = Program::DefineList(),
                            Shader::CompilerFlags flags = Shader::CompilerFlags::None,
                            const std::string& shaderModel = "",
+                           bool createShaderVars = true);
+
+        /** Create compute program based on program desc and defines.
+        */
+        void createProgram(const Program::Desc& desc,
+                           const Program::DefineList& programDefines = Program::DefineList(),
                            bool createShaderVars = true);
 
         /** (Re-)create the shader variables. Call this if vars were not
@@ -233,7 +250,7 @@ namespace Falcor
         template <typename T>
         StreamSink& operator<<(T&&s)
         {
-            if (mpCtx) mSs << std::move(s);
+            if (mpCtx) mSs << s;
             return *this;
         }
 
@@ -371,6 +388,22 @@ namespace Falcor
         }                                                                       \
     } RegisterGPUTest##Name;                                                    \
     static void GPUUnitTest##Name(GPUUnitTestContext& ctx) /* over to the user for the braces */
+
+/** Define GPU_TEST_D3D12 macro that defines a GPU unit test only supported on D3D12.
+*/
+#if FALCOR_HAS_D3D12
+#define GPU_TEST_D3D12(Name, ...) GPU_TEST(Name, __VA_ARGS__)
+#else
+#define GPU_TEST_D3D12(Name, ...) GPU_TEST(Name, "Not supported on Vulkan.")
+#endif
+
+/** Define GPU_TEST_VK macro that defines a GPU unit test only supported on Vulkan.
+*/
+#if FALCOR_HAS_VULKAN
+#define GPU_TEST_VK(Name, ...) GPU_TEST(Name, __VA_ARGS__)
+#else
+#define GPU_TEST_VK(Name, ...) GPU_TEST(Name, "Not supported on D3D12.")
+#endif
 
 /** Macro definitions for the GPU unit testing framework. Note that they
     are all a single statement (including any additional << printed

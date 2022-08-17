@@ -25,11 +25,15 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "TriangleMesh.h"
+#include "Core/Assert.h"
+#include "Core/Platform/OS.h"
+#include "Utils/Logger.h"
+#include "Utils/Scripting/ScriptBindings.h"
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+#include <cmath>
 
 namespace Falcor
 {
@@ -282,9 +286,9 @@ namespace Falcor
         applyTransform(transform.getMatrix());
     }
 
-    void TriangleMesh::applyTransform(const glm::mat4& transform)
+    void TriangleMesh::applyTransform(const rmcv::mat4& transform)
     {
-        auto invTranspose = (glm::mat3)glm::transpose(glm::inverse(transform));
+        auto invTranspose = (rmcv::mat3)rmcv::transpose(rmcv::inverse(transform));
 
         for (auto& vertex : mVertices)
         {
@@ -293,7 +297,7 @@ namespace Falcor
         }
 
         // Check if triangle winding has flipped and adjust winding order accordingly.
-        bool flippedWinding = glm::determinant((glm::mat3)transform) < 0.f;
+        bool flippedWinding = rmcv::determinant((rmcv::mat3)transform) < 0.f;
         if (flippedWinding) mFrontFaceCW = !mFrontFaceCW;
     }
 
@@ -308,12 +312,14 @@ namespace Falcor
 
     FALCOR_SCRIPT_BINDING(TriangleMesh)
     {
+        using namespace pybind11::literals;
+
         pybind11::class_<TriangleMesh, TriangleMesh::SharedPtr> triangleMesh(m, "TriangleMesh");
         triangleMesh.def_property("name", &TriangleMesh::getName, &TriangleMesh::setName);
         triangleMesh.def_property("frontFaceCW", &TriangleMesh::getFrontFaceCW, &TriangleMesh::setFrontFaceCW);
         triangleMesh.def_property_readonly("vertices", &TriangleMesh::getVertices);
         triangleMesh.def_property_readonly("indices", &TriangleMesh::getIndices);
-        triangleMesh.def(pybind11::init(pybind11::overload_cast<void>(&TriangleMesh::create)));
+        triangleMesh.def(pybind11::init(pybind11::overload_cast<>(&TriangleMesh::create)));
         triangleMesh.def("addVertex", &TriangleMesh::addVertex, "position"_a, "normal"_a, "texCoord"_a);
         triangleMesh.def("addTriangle", &TriangleMesh::addTriangle, "i0"_a, "i1"_a, "i2"_a);
         triangleMesh.def_static("createQuad", &TriangleMesh::createQuad, "size"_a = float2(1.f));

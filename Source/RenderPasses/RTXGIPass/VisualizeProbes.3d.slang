@@ -61,13 +61,13 @@ VertexOut vsMain(VSIn vIn, uint probeIndex : SV_InstanceID)
     float3 probePos = gRTXGIVolume.getProbeWorldPosition(probeIndex);
 
     float4x4 worldMat = gScene.getWorldMatrix(instanceID); // Should be identity transform
-    float3 posW = mul(float4(vIn.pos, 1.f), worldMat).xyz;
+    float3 posW = mul(worldMat, float4(vIn.pos, 1.f)).xyz;
     posW *= gProbeRadius;
     posW += probePos;
 
     vOut.posW = posW;
-    vOut.posH = mul(float4(posW, 1.f), gCamera.data.viewProjMat);
-    vOut.normalW = mul(vIn.unpack().normal, gScene.getInverseTransposeWorldMatrix(instanceID));
+    vOut.posH = mul(gCamera.data.viewProjMat, float4(posW, 1.f));
+    vOut.normalW = mul(gScene.getInverseTransposeWorldMatrix(instanceID), vIn.unpack().normal);
     vOut.probeIndex = probeIndex;
 
     return vOut;

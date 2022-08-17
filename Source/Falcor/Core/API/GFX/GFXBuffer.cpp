@@ -25,10 +25,12 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Core/API/Buffer.h"
-#include "Core/API/Resource.h"
 #include "GFXResource.h"
+#include "Core/API/Device.h"
+#include "Core/API/Resource.h"
+#include "Core/API/GFX/GFXAPI.h"
+#include "Utils/Math/Common.h"
 
 #define GFX_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT ( 256 )
 #define GFX_TEXTURE_DATA_PLACEMENT_ALIGNMENT ( 512 )
@@ -61,7 +63,7 @@ namespace Falcor
 
     Buffer::SharedPtr Buffer::createFromD3D12Handle(D3D12ResourceHandle handle, size_t size, Resource::BindFlags bindFlags, CpuAccess cpuAccess)
     {
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         gfx::IBufferResource::Desc bufDesc = {};
         prepareGFXBufferDesc(bufDesc, size, bindFlags, cpuAccess);
 
@@ -109,7 +111,7 @@ namespace Falcor
     {
         if (mCpuAccess != CpuAccess::None && is_set(mBindFlags, BindFlags::Shared))
         {
-            throw std::exception("Can't create shared resource with CPU access other than 'None'.");
+            throw RuntimeError("Can't create shared resource with CPU access other than 'None'.");
         }
 
         if (mBindFlags == BindFlags::Constant)
@@ -169,7 +171,7 @@ namespace Falcor
         }
     }
 
-#if FALCOR_ENABLE_CUDA
+#if FALCOR_HAS_CUDA
     void* Buffer::getCUDADeviceAddress() const
     {
         throw RuntimeError("Texture::getCUDADeviceAddress() - unimplemented");

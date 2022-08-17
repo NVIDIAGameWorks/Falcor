@@ -27,6 +27,11 @@
  **************************************************************************/
 #pragma once
 #include "Program.h"
+#include "Core/Macros.h"
+#include "Utils/Math/Vector.h"
+#include <filesystem>
+#include <memory>
+#include <string>
 
 namespace Falcor
 {

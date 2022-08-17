@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,7 +25,6 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "RenderPass.h"
 
 namespace Falcor
@@ -40,8 +39,15 @@ namespace Falcor
         if (!mpDictionary) mpDictionary = InternalDictionary::create();
     }
 
-    const Resource::SharedPtr& RenderData::getResource(const std::string& name) const
+    const Resource::SharedPtr& RenderData::getResource(const std::string_view name) const
     {
-        return mpResources->getResource(mName + '.' + name);
+        return mpResources->getResource(fmt::format("{}.{}", mName, name));
     }
+
+    Texture::SharedPtr RenderData::getTexture(const std::string_view name) const
+    {
+        auto pResource = getResource(name);
+        return pResource ? pResource->asTexture() : nullptr;
+    }
+
 }

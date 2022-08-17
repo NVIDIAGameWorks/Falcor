@@ -26,11 +26,15 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Utils/Image/Bitmap.h"
+#include "Bitmap.h"
+#include "Core/Macros.h"
 #include "Core/API/Texture.h"
+#include <filesystem>
 
 namespace Falcor
 {
+    class CopyContext;
+
     class FALCOR_API ImageIO
     {
     public:

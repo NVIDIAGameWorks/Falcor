@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,13 +26,22 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "ResourceCache.h"
-#include "Utils/InternalDictionary.h"
 #include "RenderPass.h"
+#include "ResourceCache.h"
+#include "Core/Macros.h"
+#include "Core/HotReloadFlags.h"
+#include "Core/API/Formats.h"
+#include "Utils/Math/Vector.h"
+#include "Utils/UI/Gui.h"
+#include "Utils/InternalDictionary.h"
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace Falcor
 {
     class RenderGraphCompiler;
+    class RenderContext;
 
     class FALCOR_API RenderGraphExe
     {

@@ -25,11 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "RenderGraph.h"
+#include "RenderGraphIR.h"
+#include "RenderGraphImportExport.h"
 #include "RenderPassLibrary.h"
-#include "Utils/Algorithm/DirectedGraphTraversal.h"
 #include "RenderGraphCompiler.h"
+#include "Core/Renderer.h"
+#include "Utils/Algorithm/DirectedGraphTraversal.h"
+#include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
 {
@@ -125,6 +128,21 @@ namespace Falcor
         const auto& removedEdges = mpGraph->removeNode(index);
         for (const auto& e : removedEdges) mEdgeData.erase(e);
         mRecompile = true;
+    }
+
+    void RenderGraph::applyPassSettings(const std::string& passName, const Dictionary& dict)
+    {
+        uint32_t index = getPassIndex(passName);
+        const auto pPassIt = mNodeData.find(index);
+
+        if (pPassIt == mNodeData.end())
+        {
+            logError("Error in RenderGraph::updatePass(). Unable to find pass " + passName);
+            return;
+        }
+        auto pPass = pPassIt->second.pPass;
+
+        pPass->applySettings(dict);
     }
 
     void RenderGraph::updatePass(RenderContext* pRenderContext, const std::string& passName, const Dictionary& dict)
@@ -660,6 +678,8 @@ namespace Falcor
 
     FALCOR_SCRIPT_BINDING(RenderGraph)
     {
+        using namespace pybind11::literals;
+
         FALCOR_SCRIPT_BINDING_DEPENDENCY(Formats);
 
         pybind11::class_<RenderGraph, RenderGraph::SharedPtr> renderGraph(m, "RenderGraph");

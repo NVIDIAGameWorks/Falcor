@@ -25,11 +25,17 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "SceneCache.h"
+#include "Material/StandardMaterial.h"
+#include "Material/HairMaterial.h"
+#include "Material/ClothMaterial.h"
 #include "Material/MaterialTextureLoader.h"
+#include "Utils/Logger.h"
 
 #include <lz4_stream/lz4_stream.h>
+
+#include <sstream>
+#include <fstream>
 
 namespace Falcor
 {
@@ -651,9 +657,9 @@ namespace Falcor
         uint32_t materialCount = pMaterials->getMaterialCount();
         stream.write(materialCount);
 
-        for (uint32_t i = 0; i < materialCount; i++)
+        for (MaterialID materialID{ 0 }; materialID.get() < materialCount; ++materialID)
         {
-            auto pMaterial = pMaterials->getMaterial(i);
+            auto pMaterial = pMaterials->getMaterial(materialID);
             writeMaterial(stream, pMaterial);
         }
     }
@@ -920,7 +926,7 @@ namespace Falcor
 
     Animation::SharedPtr SceneCache::readAnimation(InputStream& stream)
     {
-        Animation::SharedPtr pAnimation = Animation::create("", 0, 0.0);
+        Animation::SharedPtr pAnimation = Animation::create("", NodeID(), 0.0);
         stream.read(pAnimation->mName);
         stream.read(pAnimation->mNodeID);
         stream.read(pAnimation->mDuration);

@@ -9,7 +9,7 @@ def render_graph_HDRFLIPDemo():
     g = RenderGraph("HDRFLIPDemo")
     loadRenderPassLibrary("AccumulatePass.dll")
     loadRenderPassLibrary("GBuffer.dll")
-    loadRenderPassLibrary("MegakernelPathTracer.dll")
+    loadRenderPassLibrary("PathTracer.dll")
     loadRenderPassLibrary("SVGFPass.dll")
     loadRenderPassLibrary("FLIPPass.dll")
 
@@ -20,18 +20,12 @@ def render_graph_HDRFLIPDemo():
     ######################################################################################################
     ##########             Reference graph (accumulated path tracer results)                ##############
     ######################################################################################################
-    PathTracerReference = createPass("MegakernelPathTracer", {'params': PathTracerParams(useVBuffer=0), 'sampleGenerator': 0, 'emissiveSampler': EmissiveLightSamplerType.Uniform})
+    PathTracerReference = createPass("PathTracer")
     g.addPass(PathTracerReference, "PathTracerReference")
     AccumulatePass = createPass("AccumulatePass", {'enabled': True, 'precisionMode': AccumulatePrecision.Single, 'maxAccumulatedFrames': 2 ** 16})
     g.addPass(AccumulatePass, "AccumulatePass")
 
-    g.addEdge("GBufferRaster.posW", "PathTracerReference.posW")
-    g.addEdge("GBufferRaster.normW", "PathTracerReference.normalW")
-    g.addEdge("GBufferRaster.tangentW", "PathTracerReference.tangentW")
-    g.addEdge("GBufferRaster.faceNormalW", "PathTracerReference.faceNormalW")
-    g.addEdge("GBufferRaster.mtlData", "PathTracerReference.mtlData")
-    g.addEdge("GBufferRaster.texC", "PathTracerReference.texC")
-    g.addEdge("GBufferRaster.texGrads", "PathTracerReference.texGrads")
+    g.addEdge("GBufferRaster.vbuffer", "PathTracerReference.vbuffer")
     g.addEdge("PathTracerReference.color", "AccumulatePass.input")
 
 
@@ -39,19 +33,12 @@ def render_graph_HDRFLIPDemo():
     ##########              Test graph (SVGF on top of path tracer results)                 ##############
     ##########       NOTE: This graph can be replaced with your own rendering setup         ##############
     ######################################################################################################
-    PathTracerTest = createPass("MegakernelPathTracer", {'params': PathTracerParams(useVBuffer=0), 'sampleGenerator': 0, 'emissiveSampler': EmissiveLightSamplerType.Uniform})
+    PathTracerTest = createPass("PathTracer")
     g.addPass(PathTracerTest, "PathTracerTest")
     SVGFPass = createPass("SVGFPass", {'Enabled': True, 'Iterations': 4, 'FeedbackTap': 1, 'VarianceEpsilon': 1.0e-4, 'PhiColor': 10.0, 'PhiNormal': 128.0, 'Alpha': 0.05, 'MomentsAlpha': 0.2})
     g.addPass(SVGFPass, "SVGFPass")
 
-    g.addEdge("GBufferRaster.posW", "PathTracerTest.posW")
-    g.addEdge("GBufferRaster.normW", "PathTracerTest.normalW")
-    g.addEdge("GBufferRaster.tangentW", "PathTracerTest.tangentW")
-    g.addEdge("GBufferRaster.faceNormalW", "PathTracerTest.faceNormalW")
-    g.addEdge("GBufferRaster.mtlData", "PathTracerTest.mtlData")
-    g.addEdge("GBufferRaster.texC", "PathTracerTest.texC")
-    g.addEdge("GBufferRaster.texGrads", "PathTracerTest.texGrads")
-
+    g.addEdge("GBufferRaster.vbuffer", "PathTracerTest.vbuffer")
     g.addEdge("GBufferRaster.emissive", "SVGFPass.Emission")
     g.addEdge("GBufferRaster.posW", "SVGFPass.WorldPosition")
     g.addEdge("GBufferRaster.normW", "SVGFPass.WorldNormal")

@@ -25,8 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "MERLMaterial.h"
+#include "Core/Renderer.h"
+#include "Utils/Logger.h"
+#include "Utils/Image/ImageIO.h"
+#include "Utils/Scripting/ScriptBindings.h"
 #include "Rendering/Materials/BSDFIntegrator.h"
 #include <fstream>
 
@@ -35,6 +38,8 @@ namespace Falcor
     namespace
     {
         static_assert((sizeof(MaterialHeader) + sizeof(MERLMaterialData)) <= sizeof(MaterialDataBlob), "MERLMaterialData is too large");
+
+        const char kShaderFile[] = "Rendering/Materials/MERLMaterial.slang";
 
         // Angular sampling resolution of the measured data.
         const size_t kBRDFSamplingResThetaH = 90;
@@ -116,6 +121,16 @@ namespace Falcor
         if (mPath != other->mPath) return false;
 
         return true;
+    }
+
+    Program::ShaderModuleList MERLMaterial::getShaderModules() const
+    {
+        return { Program::ShaderModule(kShaderFile) };
+    }
+
+    Program::TypeConformanceList MERLMaterial::getTypeConformances() const
+    {
+        return { {{"MERLMaterial", "IMaterial"}, (uint32_t)MaterialType::MERL} };
     }
 
     bool MERLMaterial::loadBRDF(const std::filesystem::path& path)
@@ -256,7 +271,7 @@ namespace Falcor
         // Create and update scene containing the material.
         Scene::SceneData sceneData;
         sceneData.pMaterials = MaterialSystem::create();
-        uint materialID = sceneData.pMaterials->addMaterial(pMaterial);
+        MaterialID materialID = sceneData.pMaterials->addMaterial(pMaterial);
 
         Scene::SharedPtr pScene = Scene::create(std::move(sceneData));
         pScene->update(pRenderContext, 0.0);
@@ -278,6 +293,8 @@ namespace Falcor
 
     FALCOR_SCRIPT_BINDING(MERLMaterial)
     {
+        using namespace pybind11::literals;
+
         FALCOR_SCRIPT_BINDING_DEPENDENCY(Material)
 
         pybind11::class_<MERLMaterial, Material, MERLMaterial::SharedPtr> material(m, "MERLMaterial");

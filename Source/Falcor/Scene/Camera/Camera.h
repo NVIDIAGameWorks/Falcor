@@ -27,16 +27,20 @@
  **************************************************************************/
 #pragma once
 #include "CameraData.slang"
-#include "Scene/Animation/Animatable.h"
-#include "Utils/SampleGenerators/CPUSampleGenerator.h"
-#include "Core/API/ParameterBlock.h"
+#include "Core/Macros.h"
+#include "Utils/Math/Vector.h"
+#include "Utils/Math/Matrix.h"
 #include "Utils/Math/AABB.h"
+#include "Utils/Math/Ray.h"
+#include "Utils/SampleGenerators/CPUSampleGenerator.h"
+#include "Utils/UI/Gui.h"
+#include "Scene/Animation/Animatable.h"
+#include <memory>
+#include <string>
 
 namespace Falcor
 {
-    struct BoundingBox;
-    class ParameterBlock;
-    class Gui;
+    struct ShaderVar;
 
     /** Camera class.
     */
@@ -194,37 +198,46 @@ namespace Falcor
         */
         float computeScreenSpacePixelSpreadAngle(const uint32_t winHeightPixels) const;
 
+        /** Computes a camera ray for a given pixel assuming a pinhole camera model.
+            The camera jitter is taken into account to compute the sample position on the image plane.
+            \param[in] pixel Pixel coordinates with origin in top-left.
+            \param[in] frameDim Image plane dimensions in pixels.
+            \param[in] applyJitter True if jitter should be applied else false.
+            \return Returns the camera ray.
+        */
+        Ray computeRayPinhole(uint2 pixel, uint2 frameDim, bool applyJitter) const;
+
         /** Get the view matrix.
         */
-        const glm::mat4& getViewMatrix() const;
+        const rmcv::mat4 getViewMatrix() const;
 
         /** Get the previous frame view matrix, which possibly includes the previous frame's camera jitter.
         */
-        const glm::mat4& getPrevViewMatrix() const;
+        const rmcv::mat4 getPrevViewMatrix() const;
 
         /** Get the projection matrix.
         */
-        const glm::mat4& getProjMatrix() const;
+        const rmcv::mat4 getProjMatrix() const;
 
         /** Get the view-projection matrix.
         */
-        const glm::mat4& getViewProjMatrix() const;
+        const rmcv::mat4 getViewProjMatrix() const;
 
         /** Get the view-projection matrix, without jittering.
         */
-        const glm::mat4& getViewProjMatrixNoJitter() const;
+        const rmcv::mat4 getViewProjMatrixNoJitter() const;
 
         /** Get the inverse of the view-projection matrix.
         */
-        const glm::mat4& getInvViewProjMatrix() const;
+        const rmcv::mat4 getInvViewProjMatrix() const;
 
         /** Set the persistent projection matrix and sets camera to use the persistent matrix instead of calculating the matrix from its other settings.
         */
-        void setProjectionMatrix(const glm::mat4& proj);
+        void setProjectionMatrix(const rmcv::mat4& proj);
 
         /** Set the persistent view matrix and sets camera to use the persistent matrix instead of calculating the matrix from its other settings.
         */
-        void setViewMatrix(const glm::mat4& view);
+        void setViewMatrix(const rmcv::mat4& view);
 
         /** Enable or disable usage of persistent projection matrix
             \param[in] persistent whether to set it persistent
@@ -245,7 +258,7 @@ namespace Falcor
         */
         const CameraData& getData() const { calculateCameraParameters(); return mData; }
 
-        void updateFromAnimation(const glm::mat4& transform) override;
+        void updateFromAnimation(const rmcv::mat4& transform) override;
 
         /** Render the UI
         */
@@ -275,6 +288,7 @@ namespace Falcor
 
         std::string getScript(const std::string& cameraVar);
 
+        void dumpProperties();
     private:
         Camera(const std::string& name);
         Changes mChanges = Changes::None;
@@ -282,8 +296,8 @@ namespace Falcor
         mutable bool mDirty = true;
         mutable bool mEnablePersistentProjMat = false;
         mutable bool mEnablePersistentViewMat = false;
-        mutable glm::mat4 mPersistentProjMat;
-        mutable glm::mat4 mPersistentViewMat;
+        mutable rmcv::mat4 mPersistentProjMat;
+        mutable rmcv::mat4 mPersistentViewMat;
 
         std::string mName;
         bool mPreserveHeight = true;    ///< If true, preserve frame height on change of aspect ratio. Otherwise, preserve width.

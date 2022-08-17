@@ -25,8 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Device.h"
+#include "Core/Assert.h"
+#include "Core/Errors.h"
+#include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
 {
@@ -57,14 +59,14 @@ namespace Falcor
 
         mpFrameFence = GpuFence::create();
 
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         // Create the descriptor pools
         D3D12DescriptorPool::Desc poolDesc;
         poolDesc.setDescCount(ShaderResourceType::TextureSrv, 1000000).setDescCount(ShaderResourceType::Sampler, 2048).setShaderVisible(true);
         mpD3D12GpuDescPool = D3D12DescriptorPool::create(poolDesc, mpFrameFence);
         poolDesc.setShaderVisible(false).setDescCount(ShaderResourceType::Rtv, 16 * 1024).setDescCount(ShaderResourceType::Dsv, 1024);
         mpD3D12CpuDescPool = D3D12DescriptorPool::create(poolDesc, mpFrameFence);
-#endif // FALCOR_D3D12
+#endif // FALCOR_HAS_D3D12
 
         mpUploadHeap = GpuMemoryHeap::create(GpuMemoryHeap::Type::Upload, 1024 * 1024 * 2, mpFrameFence);
         createNullViews();
@@ -163,10 +165,10 @@ namespace Falcor
             mDeferredReleases.pop();
         }
 
-#ifdef FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         mpD3D12CpuDescPool->executeDeferredReleases();
         mpD3D12GpuDescPool->executeDeferredReleases();
-#endif // FALCOR_D3D12_AVAILABLE
+#endif // FALCOR_HAS_D3D12
     }
 
     void Device::toggleVSync(bool enable)
@@ -179,7 +181,7 @@ namespace Falcor
         toggleFullScreen(false);
         mpRenderContext->flush(true);
         // Release all the bound resources. Need to do that before deleting the RenderContext
-        for (uint32_t i = 0; i < arraysize(mCmdQueues); i++) mCmdQueues[i].clear();
+        for (size_t i = 0; i < std::size(mCmdQueues); i++) mCmdQueues[i].clear();
         for (uint32_t i = 0; i < kSwapChainBuffersCount; i++) mpSwapChainFbos[i].reset();
         mDeferredReleases = decltype(mDeferredReleases)();
         releaseNullViews();

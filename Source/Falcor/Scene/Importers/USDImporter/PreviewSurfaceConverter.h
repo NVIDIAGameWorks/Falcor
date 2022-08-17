@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,11 +26,23 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Falcor.h"
 #include "Utils.h"
+#include "USDHelpers.h"
+#include "Core/API/Texture.h"
+#include "Core/API/Sampler.h"
+#include "RenderGraph/BasePasses/ComputePass.h"
+#include "Scene/Material/Material.h"
+#include "Scene/Material/StandardMaterial.h"
 
-#include "pxr/usd/usd/prim.h"
-#include "pxr/usd/usdShade/material.h"
+BEGIN_DISABLE_USD_WARNINGS
+#include <pxr/usd/usd/prim.h>
+#include <pxr/usd/usdShade/material.h>
+END_DISABLE_USD_WARNINGS
+
+#include <condition_variable>
+#include <mutex>
+#include <string>
+#include <unordered_map>
 
 namespace Falcor
 {

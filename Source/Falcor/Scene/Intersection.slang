@@ -31,6 +31,7 @@ import Scene.SDFs.SDFGrid;
 import Utils.Geometry.IntersectionHelpers;
 import Utils.Geometry.GeometryHelpers;
 __exported import Utils.Math.Ray;
+import Utils.Math.MatrixUtils;
 
 /** Helper for intersecting rays against displaced triangle meshes.
 */
@@ -164,8 +165,9 @@ struct SDFGridIntersector
         float3x3 worldInvTransposeMat = gScene.loadInverseTransposeWorldMatrix(instance.globalMatrixID);
 
         // Convert ray origin and direction to local space.
-        float3 rayOrigLocal = mul(worldInvTransposeMat, ray.origin - worldMat[3].xyz);
-        float3 rayDirLocal = mul(worldInvTransposeMat, ray.dir);
+        // Multiplying v.M to perform the intended (M^T).v
+        float3 rayOrigLocal = mul(ray.origin - extractTranslate(worldMat), worldInvTransposeMat);
+        float3 rayDirLocal = mul(ray.dir, worldInvTransposeMat);
 
         return sdfGrid.intersectSDF(rayOrigLocal, rayDirLocal, ray.tMin, ray.tMax, primitiveID, t, hitData);
     }
@@ -187,8 +189,9 @@ struct SDFGridIntersector
         float3x3 worldInvTransposeMat = gScene.loadInverseTransposeWorldMatrix(instance.globalMatrixID);
 
         // Convert ray origin and direction to local space.
-        float3 rayOrigLocal = mul(worldInvTransposeMat, ray.origin - worldMat[3].xyz);
-        float3 rayDirLocal = mul(worldInvTransposeMat, ray.dir);
+        // Multiplying v.M to perform the intended (M^T).v
+        float3 rayOrigLocal = mul(ray.origin - extractTranslate(worldMat), worldInvTransposeMat);
+        float3 rayDirLocal = mul(ray.dir, worldInvTransposeMat);
 
 #if SCENE_SDF_OPTIMIZE_VISIBILITY_RAYS
         return sdfGrid.intersectSDFAny(rayOrigLocal, rayDirLocal, ray.tMin, ray.tMax, primitiveID);

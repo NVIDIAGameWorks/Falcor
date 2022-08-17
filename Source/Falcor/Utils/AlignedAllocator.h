@@ -26,8 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Core/Assert.h"
+#include "Utils/Math/Common.h"
 #include <new>
 #include <utility>
+#include <vector>
 
 namespace Falcor
 {

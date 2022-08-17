@@ -27,10 +27,13 @@
  **************************************************************************/
 #pragma once
 #include "LightBVH.h"
+#include "Core/Macros.h"
 #include "Utils/Math/AABB.h"
 #include "Utils/Math/Vector.h"
 #include "Utils/UI/Gui.h"
+#include <functional>
 #include <limits>
+#include <memory>
 #include <vector>
 
 namespace Falcor

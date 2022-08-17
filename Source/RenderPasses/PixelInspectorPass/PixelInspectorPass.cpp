@@ -27,6 +27,7 @@
  **************************************************************************/
 #include "PixelInspectorPass.h"
 #include "PixelInspectorData.slang"
+#include "RenderGraph/RenderPassLibrary.h"
 #include "RenderGraph/RenderPassHelpers.h"
 
 const RenderPass::Info PixelInspectorPass::kInfo
@@ -81,9 +82,7 @@ PixelInspectorPass::PixelInspectorPass()
         mAvailableInputs[it.name] = false;
     }
 
-    mpProgram = ComputeProgram::createFromFile(kShaderFile, "main", Program::DefineList(), Shader::CompilerFlags::TreatWarningsAsErrors);
     mpState = ComputeState::create();
-    mpState->setProgram(mpProgram);
 }
 
 RenderPassReflection PixelInspectorPass::reflect(const CompileData& compileData)
@@ -134,7 +133,7 @@ void PixelInspectorPass::execute(RenderContext* pRenderContext, const RenderData
     {
         if (mAvailableInputs[it.name])
         {
-            Texture::SharedPtr pSrc = renderData[it.name]->asTexture();
+            Texture::SharedPtr pSrc = renderData.getTexture(it.name);
             mpVars[it.texname] = pSrc;
 
             // If the texture has a different resolution, we need to scale the sampling coordinates accordingly.
@@ -338,8 +337,7 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
             {
                 auto instanceData = mpScene->getGeometryInstance(pixelData.instanceID);
                 uint32_t matrixID = instanceData.globalMatrixID;
-                glm::mat4 M = mpScene->getAnimationController()->getGlobalMatrices()[matrixID];
-                M = glm::transpose(M); // Note glm is column-major, but we display the matrix using standard mathematical notation.
+                rmcv::mat4 M = mpScene->getAnimationController()->getGlobalMatrices()[matrixID];
 
                 visGroup.text("Transform:");
                 visGroup.matrix("##mat", M);
@@ -362,13 +360,20 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
 void PixelInspectorPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
 {
     mpScene = pScene;
+    mpProgram = nullptr;
     mpVars = nullptr;
     mpPixelDataBuffer = nullptr;
 
     if (mpScene)
     {
-        mpProgram->addDefines(mpScene->getSceneDefines());
-        mpProgram->setTypeConformances(mpScene->getTypeConformances());
+        Program::Desc desc;
+        desc.addShaderModules(mpScene->getShaderModules());
+        desc.addShaderLibrary(kShaderFile).csEntry("main");
+        desc.addTypeConformances(mpScene->getTypeConformances());
+        desc.setCompilerFlags(Shader::CompilerFlags::TreatWarningsAsErrors);
+
+        mpProgram = ComputeProgram::create(desc, mpScene->getSceneDefines());
+        mpState->setProgram(mpProgram);
     }
 }
 

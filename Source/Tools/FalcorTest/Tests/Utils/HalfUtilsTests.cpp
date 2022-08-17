@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Testing/UnitTest.h"
+#include "Utils/HostDeviceShared.slangh"
 
 /** Notes on IEEE 754 fp16 floating-point representation:
 
@@ -256,10 +257,12 @@ namespace Falcor
         }
     }
 
+#if FALCOR_HAS_D3D12
     /** Test our GPU-side utils for f32tof16 conversion with conservative rounding.
         The test is written so that the conversion to fp16 is done on the GPU and the conversion
         back to fp32 on the CPU, to avoid shader compiler optimizations for interfering with the results.
     */
+    // TODO: This test is currently disabled on Vulkan due to incorrect compiler optimization.
     GPU_TEST(FP32ToFP16ConservativeRoundingGPU)
     {
         std::vector<float> testData = generateFP16TestData(ctx);
@@ -292,6 +295,7 @@ namespace Falcor
 
         ctx.unmapBuffer("resultUint");
     }
+#endif
 
     // TODO: Currently disabled until we figure out the rounding modes and have a matching CPU library. See #391.
     // TODO: Look into the spec (is it even strictly spec'ed in HLSL?) and add utility function to detect the mode used.

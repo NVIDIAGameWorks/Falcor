@@ -25,15 +25,12 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Core/Program/ProgramVars.h"
 #include "Core/Program/GraphicsProgram.h"
 #include "Core/Program/ComputeProgram.h"
 #include "Core/API/ComputeContext.h"
 #include "Core/API/RenderContext.h"
 #include "Core/API/Shared/D3D12RootSignature.h"
-
-#include <slang/slang.h>
 
 namespace Falcor
 {
@@ -79,7 +76,7 @@ namespace Falcor
     template<bool forGraphics>
     void bindRootDescriptor(CopyContext* pContext, uint32_t rootIndex, const Resource::SharedPtr& pResource, bool isUav)
     {
-        auto pBuffer = pResource->asBuffer();
+        auto pBuffer = pResource ? pResource->asBuffer() : nullptr;
         FALCOR_ASSERT(!pResource || pBuffer); // If a resource is bound, it must be a buffer
         uint64_t gpuAddress = pBuffer ? pBuffer->getGpuAddress() : 0;
 
@@ -314,7 +311,6 @@ namespace Falcor
 
             auto pShaderIdentifier = pRtso->getShaderIdentifier(uniqueGroupIndex);
             memcpy(pRecord, pShaderIdentifier, mpShaderTable->getShaderIdentifierSize());
-
 
             varsInfo.lastObservedChangeEpoch = getEpochOfLastChange(pBlock);
         }

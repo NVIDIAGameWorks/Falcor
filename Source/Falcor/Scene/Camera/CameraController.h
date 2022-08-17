@@ -26,13 +26,19 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include <bitset>
 #include "Camera.h"
+#include "Core/Macros.h"
+#include "Utils/Math/Vector.h"
+#include "Utils/Math/Matrix.h"
+#include "Utils/Timing/CpuTimer.h"
+#include <bitset>
+#include <memory>
 
 namespace Falcor
 {
     struct MouseEvent;
     struct KeyboardEvent;
+    struct GamepadState;
 
     /** Camera controller interface. Camera controllers should inherit from this object.
     */
@@ -40,6 +46,12 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<CameraController>;
+
+        enum class UpDirection
+        {
+            XPos, XNeg, YPos, YNeg, ZPos, ZNeg,
+        };
+
         virtual ~CameraController() = default;
 
         /** Handle mouse events
@@ -59,15 +71,41 @@ namespace Falcor
         */
         virtual bool update() = 0;
 
+        /** Set the world up-direction.
+        */
+        void setUpDirection(UpDirection upDirection) { mUpDirection = upDirection; }
+
+        /** Get the world up-direction.
+        */
+        UpDirection getUpDirection() const { return mUpDirection; }
+
         /** Set the camera's speed
             \param[in] Speed Camera speed. Measured in WorldUnits per second.
         */
         void setCameraSpeed(float speed) { mSpeed = speed; }
 
+        /** Get the camera's speed.
+        */
+        float getCameraSpeed() const { return mSpeed; }
+
+        /** Reset the key, mouse, and gamepad states to release all buttons.
+        */
+        virtual void resetInputState() {};
+
+        /** Set the camera's bounds
+            \param[in] aabb Camera bound AABB; position will be clipped to the interior.
+        */
+        void setCameraBounds(const AABB& aabb) { mBounds = aabb; }
+
     protected:
         CameraController(const Camera::SharedPtr& pCamera) : mpCamera(pCamera) {}
+
+        float3 getUpVector() const;
+
         Camera::SharedPtr mpCamera = nullptr;
+        UpDirection mUpDirection = UpDirection::YPos;
         float mSpeed = 1;
+        AABB mBounds;
     };
 
     /** An orbiter camera controller. Orbits around a given point.
@@ -101,13 +139,17 @@ namespace Falcor
         */
         bool update() override;
 
+        /** Reset the mouse state to release all mouse buttons.
+        */
+        void resetInputState() override;
+
     private:
         float3 mModelCenter;
         float mModelRadius;
         float mCameraDistance;
         bool mbDirty;
 
-        glm::mat3x3 mRotation;
+        rmcv::mat3 mRotation;
         float3 mLastVector;
         bool mIsLeftButtonDown = false;
         bool mShouldRotate = false;
@@ -150,6 +192,10 @@ namespace Falcor
             \return Whether the camera was updated/changed
         */
         bool update() override;
+
+        /** Reset the key, mouse, and gamepad states to release all buttons.
+        */
+        void resetInputState() override;
 
     private:
         bool mIsLeftButtonDown = false;

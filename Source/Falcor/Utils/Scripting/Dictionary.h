@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,6 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include <pybind11/pytypes.h>
+#include <memory>
+#include <string>
+#include <utility>
 
 namespace Falcor
 {
@@ -43,6 +47,13 @@ namespace Falcor
         public:
             Value(const Container& container, const std::string& name) : mContainer(container), mName(name) {};
             Value(const Container& container = {}) : Value(container, std::string()) {}
+
+            Value& operator=(const Value& rhs)
+            {
+                mName = rhs.mName;
+                mContainer[mName.c_str()] = rhs.mContainer[mName.c_str()];
+                return *this;
+            }
 
             template<typename T>
             void operator=(const T& t) { mContainer[mName.c_str()] = t; }
@@ -86,6 +97,29 @@ namespace Falcor
 
         Value operator[](const std::string& name) { return Value(mMap, name); }
         const Value operator[](const std::string& name) const { return Value(mMap, name); }
+
+        template<typename T>
+        T get(const std::string_view& name, const T& default) const
+        {
+            if (!mMap.contains(name.data()))
+                return default;
+            return mMap[name.data()].cast<T>();
+        }
+
+        template<typename T>
+        std::optional<T> get(const std::string_view& name) const
+        {
+            if (!mMap.contains(name.data()))
+                return std::optional<T>();
+            return std::optional<T>(mMap[name.data()].cast<T>());
+        }
+
+        // Avoid forcing std::string creation if Value would be just temporary
+        template<typename T>
+        T get(const std::string_view& name) const
+        {
+            return mMap[name.data()].cast<T>();
+        }
 
         ConstIterator begin() const { return ConstIterator(&mMap, mMap.begin()); }
         ConstIterator end() const { return ConstIterator(&mMap, mMap.end()); }

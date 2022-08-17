@@ -31,13 +31,17 @@
 // The pbrt source code is licensed under the Apache License, Version 2.0.
 // SPDX: Apache-2.0
 
-#include "stdafx.h"
 #include "LoopSubdivide.h"
+#include "Core/Assert.h"
+#include "Core/Errors.h"
 
 #include <algorithm>
 #include <map>
-#include <set>
+#include <memory>
 #include <memory_resource>
+#include <set>
+
+#include <cmath>
 
 namespace Falcor
 {

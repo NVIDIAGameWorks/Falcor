@@ -27,10 +27,14 @@
  **************************************************************************/
 #pragma once
 #include "GpuFence.h"
-
-#if FALCOR_D3D12_AVAILABLE
-#include "Core/API/Shared/D3D12DescriptorPool.h"
+#include "Handles.h"
+#include "Shared/D3D12Handles.h"
+#if FALCOR_HAS_D3D12
+#include "Shared/D3D12DescriptorPool.h"
 #endif
+#include "Core/Macros.h"
+#include <memory>
+
 
 namespace Falcor
 {
@@ -67,7 +71,7 @@ namespace Falcor
         const D3D12CommandQueueHandle& getD3D12CommandQueue() const;
         const CommandAllocatorHandle& getCommandAllocator() const { return mpAllocator; }
         const GpuFence::SharedPtr& getFence() const { return mpFence; }
-        LowLevelContextApiData* getApiData() const { return mpApiData; }
+        LowLevelContextApiData* getApiData() const { return mpApiData.get(); }
 
 #ifdef FALCOR_D3D12
         // Used in DXR
@@ -81,7 +85,7 @@ namespace Falcor
 #endif
     protected:
         LowLevelContextData(CommandQueueType type, CommandQueueHandle queue);
-        LowLevelContextApiData* mpApiData = nullptr;
+        std::unique_ptr<LowLevelContextApiData> mpApiData;
         CommandQueueType mType;
         CommandListHandle mpList;
         CommandQueueHandle mpQueue; // Can be nullptr

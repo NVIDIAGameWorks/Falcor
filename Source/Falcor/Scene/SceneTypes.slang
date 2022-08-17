@@ -105,7 +105,7 @@ struct GeometryInstanceData
     static const uint kTypeOffset = 32 - kTypeBits;
 
     uint flags;             ///< Upper kTypeBits bits are reserved for storing the type.
-    uint globalMatrixID;
+    uint globalMatrixID;    ///< This is actually CPU-side NodeID, with a confusing name.
     uint materialID;
     uint geometryID;
 

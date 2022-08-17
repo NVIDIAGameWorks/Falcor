@@ -25,11 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#if FALCOR_HAS_D3D12
+
 #include "MockedD3D12StagingBuffer.h"
 #include "Core/API/Buffer.h"
-
-#if FALCOR_D3D12_AVAILABLE
 
 namespace Falcor
 {
@@ -117,4 +116,4 @@ namespace Falcor
     }
 }
 
-#endif // FALCOR_D3D12_AVAILABLE
+#endif // FALCOR_HAS_D3D12

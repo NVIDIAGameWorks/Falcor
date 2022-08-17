@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,14 +26,16 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Core/API/RenderContext.h"
-#include "Core/API/Sampler.h"
-#include "Core/Program/ProgramVersion.h"
-#include "Core/Framework.h"
-#include "RenderGraph/BasePasses/FullScreenPass.h"
+#include "Sampler.h"
+#include "FBO.h"
+#include "ParameterBlock.h"
+#include "Utils/Math/Vector.h"
+#include <memory>
 
 namespace Falcor
 {
+    class FullScreenPass;
+
     struct BlitContext
     {
         std::shared_ptr<FullScreenPass> pPass;

@@ -25,29 +25,43 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Core/API/GpuTimer.h"
 #include "GFXLowLevelContextApiData.h"
+#include "Core/API/Device.h"
+#include "Core/API/GFX/GFXAPI.h"
 
 namespace Falcor
 {
     void GpuTimer::apiBegin()
     {
-        mpLowLevelData->getApiData()->getResourceCommandEncoder()->writeTimestamp(spHeap.lock()->getApiHandle(), mStart);
+        if (auto lowLevelData = mpLowLevelData.lock())
+        {
+            lowLevelData->getApiData()->getResourceCommandEncoder()->writeTimestamp(spHeap.lock()->getApiHandle(), mStart);
+        }
     }
 
     void GpuTimer::apiEnd()
     {
-        mpLowLevelData->getApiData()->getResourceCommandEncoder()->writeTimestamp(spHeap.lock()->getApiHandle(), mEnd);
+        if (auto lowLevelData = mpLowLevelData.lock())
+        {
+            lowLevelData->getApiData()->getResourceCommandEncoder()->writeTimestamp(spHeap.lock()->getApiHandle(), mEnd);
+        }
     }
 
     void GpuTimer::apiResolve()
     {
-        // TODO: Copy to staging buffer for readback.
-    }
+        if (auto lowLevelData = mpLowLevelData.lock())
+        {
+            // TODO: The code here is inefficient as it resolves each timer individually.
+            // This should be batched across all active timers and results copied into a single staging buffer once per frame instead.
 
-    void GpuTimer::apiReadback(uint64_t result[2])
-    {
-        mpLowLevelData->flush();
-        FALCOR_GFX_CALL(spHeap.lock()->getApiHandle()->getResult(mStart, 2, result));
+            // Resolve timestamps into buffer.
+            auto encoder = lowLevelData->getApiData()->getResourceCommandEncoder();
+
+            encoder->resolveQuery(spHeap.lock()->getApiHandle(), mStart, 2, static_cast<gfx::IBufferResource*>(mpResolveBuffer->getApiHandle().get()), 0);
+
+            // Copy resolved timestamps to staging buffer for readback. This inserts the necessary barriers.
+            gpDevice->getRenderContext()->copyResource(mpResolveStagingBuffer.get(), mpResolveBuffer.get());
+        }
     }
 }

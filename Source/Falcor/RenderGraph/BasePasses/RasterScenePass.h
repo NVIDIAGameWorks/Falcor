@@ -27,7 +27,10 @@
  **************************************************************************/
 #pragma once
 #include "BaseGraphicsPass.h"
-#include "../RenderPass.h"
+#include "Scene/Scene.h"
+#include <filesystem>
+#include <memory>
+#include <string>
 
 namespace Falcor
 {

@@ -25,8 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Core/API/Sampler.h"
+#include "Core/API/Device.h"
+#include "Core/API/GFX/GFXAPI.h"
+#include "Core/Assert.h"
 
 namespace Falcor
 {
@@ -119,7 +121,7 @@ namespace Falcor
 
     D3D12DescriptorCpuHandle Sampler::getD3D12CpuHeapHandle() const
     {
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         gfx::InteropHandle handle = {};
         FALCOR_GFX_CALL(mApiHandle->getNativeHandle(&handle));
         FALCOR_ASSERT(handle.api == gfx::InteropHandleAPI::D3D12CpuDescriptorHandle);

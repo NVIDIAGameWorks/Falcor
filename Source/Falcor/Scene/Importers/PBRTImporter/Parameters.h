@@ -34,7 +34,8 @@
 #pragma once
 
 #include "Types.h"
-
+#include "Utils/Math/Vector.h"
+#include "Utils/Color/Spectrum.h"
 #include <string>
 #include <string_view>
 #include <vector>

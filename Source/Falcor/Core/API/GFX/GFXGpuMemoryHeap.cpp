@@ -25,8 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Core/API/GpuMemoryHeap.h"
+#include "Core/API/Buffer.h"
+#include "Core/API/GFX/GFXAPI.h"
 
 namespace Falcor
 {

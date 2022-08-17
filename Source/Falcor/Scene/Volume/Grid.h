@@ -26,18 +26,33 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+
+#include "BrickedGrid.h"
+#include "Core/Macros.h"
+#include "Core/API/Buffer.h"
+#include "Utils/Math/AABB.h"
+#include "Utils/Math/Matrix.h"
+#include "Utils/UI/Gui.h"
+
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable : 4244 4267)
+#endif
 #include <nanovdb/NanoVDB.h>
 #include <nanovdb/util/GridHandle.h>
 #include <nanovdb/util/HostBuffer.h>
+#ifdef _MSC_VER
 #pragma warning(pop)
-#include "BrickedGrid.h"
+#endif
 
 #include <filesystem>
+#include <memory>
+#include <string>
 
 namespace Falcor
 {
+    struct ShaderVar;
+
     /** Voxel grid based on NanoVDB.
     */
     class FALCOR_API Grid
@@ -120,11 +135,11 @@ namespace Falcor
 
         /** Get the (affine) NanoVDB transformation matrix.
         */
-        glm::mat4 getTransform() const;
+        rmcv::mat4 getTransform() const;
 
         /** Get the inverse (affine) NanoVDB transformation matrix.
         */
-        glm::mat4 getInvTransform() const;
+        rmcv::mat4 getInvTransform() const;
 
     private:
         Grid(nanovdb::GridHandle<nanovdb::HostBuffer> gridHandle);

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,13 +26,14 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Core/Program/ProgramReflection.h"
-
+#include "Core/Macros.h"
+#include "Utils/UI/Gui.h"
+#include <string>
+#include <unordered_map>
 namespace Falcor
 {
-    // Forward declares for gui draw func
-    class Gui;
     class ParameterBlock;
+    struct ShaderVar;
 
     class FALCOR_API VariablesBufferUI
     {

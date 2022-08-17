@@ -47,7 +47,7 @@ struct ShadingData
 {
     // Geometry data
     float3  posW;                   ///< Shading hit position in world space.
-    float3  V;                      ///< Direction to the eye at shading hit.
+    float3  V;                      ///< View direction, -incident direction (-ray.dir)
     float3  N;                      ///< Shading normal at shading hit.
     float3  T;                      ///< Shading tangent at shading hit.
     float3  B;                      ///< Shading bitangent at shading hit.
@@ -58,7 +58,7 @@ struct ShadingData
 
     // Material data
     MaterialHeader mtl;             ///< Material header data.
-    uint    materialID;             ///< Material ID at shading location.    
+    uint    materialID;             ///< Material ID at shading location.
     float   opacity;                ///< Opacity value in [0,1]. This is used for alpha testing.
     float   IoR;                    ///< Index of refraction for the medium on the front-facing side (i.e. "outside" the material at the hit).
 

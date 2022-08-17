@@ -25,8 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Scripting.h"
+#include "Core/Errors.h"
+#include "Utils/StringUtils.h"
+#include "Utils/StringFormatters.h"
 #include <pybind11/embed.h>
 #include <filesystem>
 
@@ -41,12 +43,14 @@ namespace Falcor
         if (!sRunning)
         {
             sRunning = true;
-#ifdef _WIN32
+#if FALCOR_WINDOWS
             static std::wstring pythonHome = (getExecutableDirectory() / "Python").c_str();
+#else
+            static std::wstring pythonHome = string_2_wstring((getExecutableDirectory() / "python").string());
+#endif
             // Py_SetPythonHome in Python < 3.7 takes a non-const wstr*, but guarantees that the contents
             // will not be modified by Python. As such, casting away the const should be safe.
             Py_SetPythonHome(const_cast<wchar_t*>(pythonHome.c_str()));
-#endif
 
             try
             {

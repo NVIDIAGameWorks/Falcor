@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,28 +25,34 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#ifdef _WIN32
 #include "MonitorInfo.h"
-#include <SetupApi.h>
-#include <cfgmgr32.h>
 #include "Utils/StringUtils.h"
 
-#pragma comment(lib, "setupapi.lib")
+#if FALCOR_WINDOWS
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#include <setupapi.h>
+#include <cfgmgr32.h>
+#elif FALCOR_LINUX
+#include "Core/GLFW.h"
+#endif
 
-// With some inspiration from:
-//     http://ofekshilon.com/2011/11/13/reading-monitor-physical-dimensions-or-getting-the-edid-the-right-way/
-//     http://ofekshilon.com/2014/06/19/reading-specific-monitor-dimensions/
-
-#define NAME_SIZE 128
 
 namespace Falcor
 {
+#if FALCOR_WINDOWS
+    // With some inspiration from:
+    // http://ofekshilon.com/2011/11/13/reading-monitor-physical-dimensions-or-getting-the-edid-the-right-way/
+    // http://ofekshilon.com/2014/06/19/reading-specific-monitor-dimensions/
     // Assumes hDevRegKey is valid
     bool GetMonitorSizeFromEDID(const HKEY hDevRegKey, short& WidthMm, short& HeightMm);
     bool GetSizeForDevID(const std::wstring& TargetDevID, short& WidthMm, short& HeightMm);
 
     const GUID GUID_CLASS_MONITOR = { 0x4d36e96e, 0xe325, 0x11ce, 0xbf, 0xc1, 0x08, 0x00, 0x2b, 0xe1, 0x03, 0x18 };
+
+#define NAME_SIZE 128
 
     // Assumes hDevRegKey is valid
     bool GetMonitorSizeFromEDID(const HKEY hDevRegKey, short& WidthMm, short& HeightMm)
@@ -187,19 +193,19 @@ namespace Falcor
 
             float wInch = float(WidthMm ) / 25.4f;
             float hInch = float(HeightMm) / 25.4f;
-            float diag = std::sqrt(wInch * wInch + hInch * hInch);
 
             MonitorInfo::MonitorDesc desc;
-            desc.mIdentifier = wstring_2_string(DeviceID);
-            desc.mResolution = float2(
+            desc.identifier = wstring_2_string(DeviceID);
+            desc.resolution = uint2(
                 std::abs(info.rcMonitor.left - info.rcMonitor.right),
                 std::abs(info.rcMonitor.top  - info.rcMonitor.bottom));
 
-            //printf("%fx%f mm\n", WidthMm, HeightMm );
-            desc.mPhysicalSize = float2(wInch, hInch);
-            auto vPpi = desc.mResolution / desc.mPhysicalSize;
-            desc.mPpi = (vPpi.x + vPpi.y) * 0.5f;
-            desc.mIsPrimary = (info.dwFlags & MONITORINFOF_PRIMARY);
+            desc.physicalSize = float2(wInch, hInch);
+
+            auto vPpi = float2(desc.resolution) / desc.physicalSize;
+            desc.ppi = (vPpi.x + vPpi.y) * 0.5f;
+
+            desc.isPrimary = (info.dwFlags & MONITORINFOF_PRIMARY);
 
             internalDescs.push_back(desc);
         }
@@ -212,20 +218,66 @@ namespace Falcor
         EnumDisplayMonitors(NULL, NULL, MonitorEnumProc, 0);
         return internalDescs;
     }
+#endif // FALCOR_WINDOWS
+
+#if FALCOR_LINUX
+    std::vector<MonitorInfo::MonitorDesc> MonitorInfo::getMonitorDescs()
+    {
+        std::vector<MonitorDesc> descs;
+
+        int monitorCount;
+        GLFWmonitor** monitors = glfwGetMonitors(&monitorCount);
+
+        for (int i = 0; i < monitorCount; ++i)
+        {
+            auto monitor = monitors[i];
+
+            MonitorDesc desc;
+            desc.identifier = glfwGetMonitorName(monitor);
+
+            // Determine monitor resolution.
+            desc.resolution = uint2(0);
+            int modeCount;
+            const GLFWvidmode* modes = glfwGetVideoModes(monitor, &modeCount);
+            for (int j = 0; j < modeCount; ++j)
+            {
+                const auto& mode = modes[j];
+                if (mode.width * mode.height > desc.resolution.x * desc.resolution.y)
+                {
+                    desc.resolution = uint2(mode.width, mode.height);
+                }
+            }
+
+            // Get physical size in mm and convert to inches.
+            int width, height;
+            glfwGetMonitorPhysicalSize(monitor, &width, &height);
+            desc.physicalSize = float2(width, height) / 25.4f;
+
+            // Compute pixel density.
+            auto vPpi = float2(desc.resolution) / desc.physicalSize;
+            desc.ppi = (vPpi.x + vPpi.y) * 0.5f;
+
+            desc.isPrimary = monitor == glfwGetPrimaryMonitor();
+
+            descs.push_back(desc);
+        }
+
+        return descs;
+    }
+#endif // FALCOR_LINUX
 
     void MonitorInfo::displayMonitorInfo()
     {
-        for(const auto& desc : getMonitorDescs())
+        for (const auto& desc : getMonitorDescs())
         {
-            printf("%s%s: %0.0f x %0.0f pix, %0.1f x %0.1f in, %0.2f ppi\n",
-                desc.mIdentifier.c_str(),
-                desc.mIsPrimary ? " (Primary) " : " ",
-                desc.mResolution.x, desc.mResolution.y,
-                desc.mPhysicalSize.x, desc.mPhysicalSize.y,
-                desc.mPpi);
+            fmt::print("{}{}: {} x {} pix, {:0.1f} x {:0.1f} in, {:0.2f} ppi\n",
+                desc.identifier,
+                desc.isPrimary ? " (Primary) " : " ",
+                desc.resolution.x, desc.resolution.y,
+                desc.physicalSize.x, desc.physicalSize.y,
+                desc.ppi);
         }
     }
 
 }
 
-#endif // _WIN32

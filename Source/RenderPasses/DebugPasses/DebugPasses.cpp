@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 #include "InvalidPixelDetectionPass/InvalidPixelDetectionPass.h"
 #include "SideBySidePass/SideBySidePass.h"
 #include "ColorMapPass/ColorMapPass.h"
+#include "RenderGraph/RenderPassLibrary.h"
 
 extern "C" FALCOR_API_EXPORT const char* getProjDir()
 {

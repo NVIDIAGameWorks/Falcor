@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Core/Errors.h"
 #include <utility>
 #include <stdexcept>
 
@@ -41,9 +42,15 @@ namespace Falcor
     class NumericRange<T, typename std::enable_if<std::is_integral<T>::value>::type> final
     {
     public:
-        class Iterator : public std::iterator<std::forward_iterator_tag, T, T, const T*, T>
+        class Iterator
         {
         public:
+            using iterator_category = std::forward_iterator_tag;
+            using value_type = T;
+            using difference_type = T;
+            using pointer = const T*;
+            using reference = T;
+
             explicit Iterator(const T& value = T(0)) : mValue(value) {}
             const Iterator& operator++() { ++mValue; return *this; }
             bool operator!=(const Iterator& other) const { return other.mValue != mValue; }

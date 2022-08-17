@@ -44,6 +44,7 @@ static const float kMinCosTheta = 1e-6f;
     - The outgoing direction (wo) is sampled.
     - Evaluating the BxDF always includes the foreshortening term (dot(wo, n) = wo.z).
 */
+[anyValueSize(40)]
 interface IBxDF
 {
     /** Evaluates the BxDF.

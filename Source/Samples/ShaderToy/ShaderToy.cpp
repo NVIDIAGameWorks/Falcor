@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -98,25 +98,17 @@ void ShaderToy::onResizeSwapChain(uint32_t width, uint32_t height)
     mAspectRatio = (float(width) / float(height));
 }
 
-#ifdef _WIN32
-int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
-#else
 int main(int argc, char** argv)
-#endif
 {
     ShaderToy::UniquePtr pRenderer = std::make_unique<ShaderToy>();
+
     SampleConfig config;
     config.windowDesc.width = 1280;
     config.windowDesc.height = 720;
     config.deviceDesc.enableVsync = true;
     config.windowDesc.resizableWindow = true;
     config.windowDesc.title = "Falcor Shader Toy";
-#ifdef _WIN32
+
     Sample::run(config, pRenderer);
-#else
-    config.argc = (uint32_t)argc;
-    config.argv = argv;
-    Sample::run(config, pRenderer);
-#endif
     return 0;
 }

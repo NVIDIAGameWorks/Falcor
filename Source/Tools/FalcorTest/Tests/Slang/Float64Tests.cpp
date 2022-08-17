@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,6 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Testing/UnitTest.h"
+#include "Utils/HostDeviceShared.slangh"
+#include <fstd/bit.h> // TODO C++20: Replace with <bit>
+#include <random>
 
 namespace Falcor
 {
@@ -49,7 +52,7 @@ namespace Falcor
             ctx.allocateStructuredBuffer("result", kNumElems);
 
             std::vector<uint64_t> elems(kNumElems);
-            for (auto& v : elems) v = bit_cast<uint64_t, double>(u(r));
+            for (auto& v : elems) v = fstd::bit_cast<uint64_t>(u(r));
             auto var = ctx.vars().getRootVar();
             auto pBuf = Buffer::createStructured(var["data"], kNumElems, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, elems.data());
             var["data"] = pBuf;

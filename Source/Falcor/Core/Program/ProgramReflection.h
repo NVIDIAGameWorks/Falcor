@@ -26,13 +26,21 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Core/Framework.h"
+#include "Core/Assert.h"
+#include "Core/Macros.h"
 #include "Core/API/ShaderResourceType.h"
-#if FALCOR_D3D12_AVAILABLE
+#include "Utils/Math/Vector.h"
+#if FALCOR_HAS_D3D12
 #include "Core/API/Shared/D3D12DescriptorSet.h"
 #endif
-#include <slang/slang.h>
+
+#include <slang.h>
+
 #include <map>
+#include <memory>
+#include <string>
+#include <vector>
+#include <unordered_map>
 
 namespace Falcor
 {
@@ -945,6 +953,16 @@ namespace Falcor
             Float16_3,
             Float16_4,
 
+            Float16_2x2,
+            Float16_2x3,
+            Float16_2x4,
+            Float16_3x2,
+            Float16_3x3,
+            Float16_3x4,
+            Float16_4x2,
+            Float16_4x3,
+            Float16_4x4,
+
             Float,
             Float2,
             Float3,
@@ -1242,7 +1260,7 @@ namespace Falcor
         */
         BindLocation getResourceBinding(const std::string& name) const;
 
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         /// Information on how a particular descriptor set should be filled in.
         ///
         /// A single `ParameterBlock` may map to zero or more distinct descriptor
@@ -1294,7 +1312,7 @@ namespace Falcor
         /** Get the layout for the `index`th descriptor set that needs to be created for an object of this type.
         */
         const D3D12DescriptorSet::Layout& getD3D12DescriptorSetLayout(uint32_t index) const { return mDescriptorSets[index].layout; }
-#endif // FALCOR_D3D12_AVAILABLE
+#endif // FALCOR_HAS_D3D12
 
         /** Describes binding information for a resource range.
 
@@ -1399,7 +1417,7 @@ namespace Falcor
         ///
         std::vector<ResourceRangeBindingInfo> mResourceRanges;
 
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         /// Layout and binding information for all descriptor sets that
         /// must be created to represent the state of a parameter block
         /// using this reflector.

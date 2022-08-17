@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,9 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Core/API/LowLevelContextData.h"
-#include "Core/API/QueryHeap.h"
-#include "Core/API/Buffer.h"
+#include "LowLevelContextData.h"
+#include "QueryHeap.h"
+#include "Buffer.h"
+#include "Core/Macros.h"
+#include <memory>
 
 namespace Falcor
 {
@@ -86,19 +88,17 @@ namespace Falcor
         void apiBegin();
         void apiEnd();
         void apiResolve();
-        void apiReadback(uint64_t result[2]);
+
 
         static std::weak_ptr<QueryHeap> spHeap;
-        LowLevelContextData::SharedPtr mpLowLevelData;
+        std::weak_ptr<LowLevelContextData> mpLowLevelData;
         Status mStatus = Status::Idle;
         uint32_t mStart = 0;
         uint32_t mEnd = 0;
         double mElapsedTime = 0.0;
         bool mDataPending = false; ///< Set to true when resolved timings are available for readback.
 
-#ifdef FALCOR_D3D12
-        Buffer::SharedPtr mpResolveBuffer; // Yes, I know it's against my policy to put API specific code in common headers, but it's not worth the complications
+        Buffer::SharedPtr mpResolveBuffer; ///< GPU memory used as destination for resolving timestamp queries.
         Buffer::SharedPtr mpResolveStagingBuffer; ///< CPU mappable memory for readback of resolved timings.
-#endif
     };
 }

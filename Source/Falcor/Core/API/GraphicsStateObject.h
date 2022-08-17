@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,13 +26,15 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Handles.h"
+#include "Core/Macros.h"
 #include "Core/API/VertexLayout.h"
 #include "Core/API/FBO.h"
-#include "Core/Program/ProgramVersion.h"
 #include "Core/API/RasterizerState.h"
 #include "Core/API/DepthStencilState.h"
 #include "Core/API/BlendState.h"
-#include "Core/API/VAO.h"
+#include "Core/Program/ProgramVersion.h"
+#include <memory>
 
 namespace Falcor
 {

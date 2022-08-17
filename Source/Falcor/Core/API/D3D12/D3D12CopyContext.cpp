@@ -25,12 +25,13 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Core/API/CopyContext.h"
+#include "D3D12Resource.h"
 #include "Core/API/Device.h"
 #include "Core/API/Texture.h"
+#include "Core/API/D3D12/D3D12API.h"
 #include "Core/API/Shared/D3D12DescriptorData.h"
-#include "D3D12Resource.h"
+#include "Utils/Math/Common.h"
 
 namespace Falcor
 {
@@ -40,7 +41,7 @@ namespace Falcor
         const D3D12DescriptorPool::ApiData* pData = pGpuPool->getApiData();
         ID3D12DescriptorHeap* pHeaps[D3D12DescriptorPool::ApiData::kHeapCount];
         uint32_t heapCount = 0;
-        for (uint32_t i = 0; i < arraysize(pData->pHeaps); i++)
+        for (uint32_t i = 0; i < std::size(pData->pHeaps); i++)
         {
             if (pData->pHeaps[i])
             {

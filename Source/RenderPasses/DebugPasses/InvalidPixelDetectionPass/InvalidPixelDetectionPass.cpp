@@ -88,7 +88,7 @@ void InvalidPixelDetectionPass::compile(RenderContext* pRenderContext, const Com
 
 void InvalidPixelDetectionPass::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    const auto& pSrc = renderData[kSrc]->asTexture();
+    const auto& pSrc = renderData.getTexture(kSrc);
     mFormat = ResourceFormat::Unknown;
     if (pSrc)
     {
@@ -100,7 +100,7 @@ void InvalidPixelDetectionPass::execute(RenderContext* pRenderContext, const Ren
     }
 
     mpInvalidPixelDetectPass["gTexture"] = pSrc;
-    mpFbo->attachColorTarget(renderData[kDst]->asTexture(), 0);
+    mpFbo->attachColorTarget(renderData.getTexture(kDst), 0);
     mpInvalidPixelDetectPass->getState()->setFbo(mpFbo);
     mpInvalidPixelDetectPass->execute(pRenderContext, mpFbo);
 }

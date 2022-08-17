@@ -26,8 +26,13 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-
+#include "D3D12Handles.h"
+#include "Core/Assert.h"
+#include <d3d12.h>
+#include <memory>
 #include <queue>
+#include <set>
+#include <vector>
 
 namespace Falcor
 {
@@ -53,6 +58,7 @@ namespace Falcor
 
         CpuHandle getBaseCpuHandle() const { return mCpuHeapStart; }
         GpuHandle getBaseGpuHandle() const;
+        bool getShaderVisible() { return mShaderVisible; }
 
     private:
         struct Chunk;
@@ -67,7 +73,7 @@ namespace Falcor
             uint32_t getHeapEntryIndex(uint32_t index) const { FALCOR_ASSERT(index < mDescCount); return index + mBaseIndex; }
             CpuHandle getCpuHandle(uint32_t index) const { return mpHeap->getCpuHandle(getHeapEntryIndex(index)); } // Index is relative to the allocation
             GpuHandle getGpuHandle(uint32_t index) const { return mpHeap->getGpuHandle(getHeapEntryIndex(index)); } // Index is relative to the allocation
-
+            D3D12DescriptorHeap* getHeap() { return mpHeap.get(); }
         private:
             friend D3D12DescriptorHeap;
             static SharedPtr create(D3D12DescriptorHeap::SharedPtr pHeap, uint32_t baseIndex, uint32_t descCount, std::shared_ptr<Chunk> pChunk);

@@ -26,8 +26,12 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include <vector>
 #include "VertexLayout.h"
+#include "Buffer.h"
+#include "Core/Macros.h"
+#include "Core/Assert.h"
+#include <memory>
+#include <vector>
 
 namespace Falcor
 {

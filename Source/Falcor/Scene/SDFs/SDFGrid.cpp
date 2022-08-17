@@ -25,17 +25,25 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "SDFGrid.h"
-#include "Scene/SDFs/NormalizedDenseSDFGrid/NDSDFGrid.h"
-#include "Scene/SDFs/SparseVoxelSet/SDFSVS.h"
-#include "Scene/SDFs/SparseBrickSet/SDFSBS.h"
-#include "Scene/SDFs/SparseVoxelOctree/SDFSVO.h"
-#include "rapidjson/rapidjson.h"
-#include "rapidjson/document.h"
-#include "rapidjson/prettywriter.h"
-#include "rapidjson/stringbuffer.h"
-#include "rapidjson/error/en.h"
+#include "NormalizedDenseSDFGrid/NDSDFGrid.h"
+#include "SparseVoxelSet/SDFSVS.h"
+#include "SparseBrickSet/SDFSBS.h"
+#include "SparseVoxelOctree/SDFSVO.h"
+#include "Core/Assert.h"
+#include "Core/Errors.h"
+#include "Core/API/Device.h"
+#include "Core/API/RenderContext.h"
+#include "Utils/Logger.h"
+#include "Utils/Math/Common.h"
+#include "Utils/Scripting/ScriptBindings.h"
+#include <rapidjson/rapidjson.h>
+#include <rapidjson/document.h>
+#include <rapidjson/prettywriter.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/error/en.h>
+#include <random>
+#include <fstream>
 
 namespace Falcor
 {
@@ -75,19 +83,14 @@ namespace Falcor
             jsonWriter.EndArray();
         };
 
-        void serializeFloat3x3(const char* pKey, const float3x3& value, rapidjson::PrettyWriter<rapidjson::StringBuffer>& jsonWriter)
+        void serializeFloat3x3(const char* pKey, const rmcv::mat3& value, rapidjson::PrettyWriter<rapidjson::StringBuffer>& jsonWriter)
         {
+            // matrices stored col-major for backwards compatibility
+            rmcv::mat3 m = value.getTranspose();
             jsonWriter.String(pKey);
             jsonWriter.StartArray();
-            jsonWriter.Double((double)value[0][0]);
-            jsonWriter.Double((double)value[0][1]);
-            jsonWriter.Double((double)value[0][2]);
-            jsonWriter.Double((double)value[1][0]);
-            jsonWriter.Double((double)value[1][1]);
-            jsonWriter.Double((double)value[1][2]);
-            jsonWriter.Double((double)value[2][0]);
-            jsonWriter.Double((double)value[2][1]);
-            jsonWriter.Double((double)value[2][2]);
+            for(int i = 0; i < 9; ++i)
+                jsonWriter.Double((double)m.data()[i]);
             jsonWriter.EndArray();
         };
 
@@ -163,7 +166,7 @@ namespace Falcor
             return true;
         };
 
-        bool deserializeFloat3x3(const char* pKey, const rapidjson::Value& jsonPrimitive, float3x3& value)
+        bool deserializeFloat3x3(const char* pKey, const rapidjson::Value& jsonPrimitive, rmcv::mat3& value)
         {
             const auto jsonMember = jsonPrimitive.FindMember(pKey);
 
@@ -189,39 +192,33 @@ namespace Falcor
                     return false;
                 }
 
-                value[i / 3][i % 3] = jsonValue.GetFloat();
+                /// matrices stored col-major for backwards compatibility
+                value[i % 3][i / 3] = jsonValue.GetFloat();
             }
 
             return true;
         };
     }
 
-    void SDFGrid::setPrimitives(const std::vector<SDF3DPrimitive>& primitives, uint32_t gridWidth)
+    uint32_t SDFGrid::setPrimitives(const std::vector<SDF3DPrimitive>& primitives, uint32_t gridWidth)
     {
-        uint32_t dummyBasePrimitiveID;
-        setPrimitives(primitives, gridWidth, dummyBasePrimitiveID);
-    }
+        // All types except SBS need to have a gridWidth that is a power of 2.
+        Type type = getType();
+        if (type != Type::SparseBrickSet)
+        {
+            // TODO: Expand the grid to match a grid size that is a power of 2 instead of throwing an exception.
+            checkArgument(isPowerOf2(gridWidth), "'gridWidth' ({}) must be a power of 2 for SDFGrid type of {}", gridWidth, getTypeName(type));
+        }
 
-    void SDFGrid::setPrimitives(const std::vector<SDF3DPrimitive>& primitives, uint32_t gridWidth, uint32_t& basePrimitiveID)
-    {
-        checkArgument(isPowerOf2(gridWidth), "'gridWidth' ({}) must be a power of 2.", gridWidth);
-
-        mOriginalGridWidth = gridWidth;
         mGridWidth = gridWidth;
         mPrimitives.clear();
         mPrimitiveIDToIndex.clear();
         mNextPrimitiveID = 0;
 
-        addPrimitives(primitives, basePrimitiveID);
+        return addPrimitives(primitives);
     }
 
-    void SDFGrid::addPrimitives(const std::vector<SDF3DPrimitive>& primitives)
-    {
-        uint32_t dummyBasePrimitiveID;
-        addPrimitives(primitives, dummyBasePrimitiveID);
-    }
-
-    void SDFGrid::addPrimitives(const std::vector<SDF3DPrimitive>& primitives, uint32_t& basePrimitiveID)
+    uint32_t SDFGrid::addPrimitives(const std::vector<SDF3DPrimitive>& primitives)
     {
         // Copy primitives.
         uint32_t primitivesStartOffset = (uint32_t)mPrimitives.size();
@@ -230,7 +227,7 @@ namespace Falcor
 
         // Assign indirection.
         mPrimitiveIDToIndex.reserve(mPrimitives.size());
-        basePrimitiveID = mNextPrimitiveID;
+        uint32_t basePrimitiveID = mNextPrimitiveID;
 
         for (uint32_t idx = primitivesStartOffset; idx < mPrimitives.size(); idx++)
         {
@@ -240,16 +237,17 @@ namespace Falcor
         std::unordered_set<uint32_t> indexSet;
         for (const auto& [id, index] : mPrimitiveIDToIndex)
         {
-            if (indexSet.count(index))
+            if (!indexSet.insert(index).second)
             {
                 throw RuntimeError("Multiple copies of index {}!", index);
             }
-            indexSet.insert(index);
         }
 
         mPrimitivesDirty = true;
 
         updatePrimitivesBuffer();
+
+        return basePrimitiveID;
     }
 
     void SDFGrid::removePrimitives(const std::vector<uint32_t>& primitiveIDs)
@@ -267,8 +265,15 @@ namespace Falcor
             // Mark as dirty.
             mPrimitivesDirty = true;
 
-            // Erase the index from the indirection map.
+            // Baked primitives cannot be removed.
             uint32_t idx = idxIt->second;
+            if (idx < mBakedPrimitiveCount)
+            {
+                logWarning("Primitive with ID {} has been baked, cannot remove it!", primitiveID);
+                continue;
+            }
+
+            // Erase the index from the indirection map.
             mPrimitiveIDToIndex.erase(idxIt);
 
             // Compactify the primitive list.
@@ -290,11 +295,10 @@ namespace Falcor
         std::unordered_set<uint32_t> indexSet;
         for (const auto& [id, index] : mPrimitiveIDToIndex)
         {
-            if (indexSet.count(index))
+            if (!indexSet.insert(index).second)
             {
                 throw RuntimeError("Multiple copies of index {}!", index);
             }
-            indexSet.insert(index);
         }
 
         updatePrimitivesBuffer();
@@ -326,9 +330,13 @@ namespace Falcor
 
     void SDFGrid::setValues(const std::vector<float>& cornerValues, uint32_t gridWidth)
     {
-        checkArgument(isPowerOf2(gridWidth), "'gridWidth' ({}) must be a power of 2.", gridWidth);
+        // All types except SBS need to have a gridWidth that is a power of 2.
+        Type type = getType();
+        if (type != Type::SparseBrickSet)
+        {
+            checkArgument(isPowerOf2(gridWidth), "'gridWidth' ({}) must be a power of 2 for SDFGrid type of {}", gridWidth, getTypeName(type));
+        }
 
-        mOriginalGridWidth = gridWidth;
         mGridWidth = gridWidth;
 
         setValuesInternal(cornerValues);
@@ -352,6 +360,8 @@ namespace Falcor
 
                 file.close();
                 setValues(cornerValues, gridWidth);
+
+                mInitializedWithPrimitives = false;
                 return true;
             }
         }
@@ -412,44 +422,37 @@ namespace Falcor
         setValues(cornerValues, gridWidth);
     }
 
-    bool SDFGrid::writeValuesFromPrimitivesToFile(const std::string& filePath, RenderContext* pRenderContext)
+    bool SDFGrid::writeValuesFromPrimitivesToFile(const std::filesystem::path& path, RenderContext* pRenderContext)
     {
         if (!pRenderContext) pRenderContext = gpDevice->getRenderContext();
 
-        if (!mpEvaluatePrimitivesPass)
-        {
-            Program::Desc desc;
-            desc.addShaderLibrary(kEvaluateSDFPrimitivesShaderName).csEntry("main").setShaderModel("6_5");
-            mpEvaluatePrimitivesPass = ComputePass::create(desc);
-        }
+        createEvaluatePrimitivesPass(false, mHasGridRepresentation);
 
-        if (!mpPrimitivesBuffer || mpPrimitivesBuffer->getElementCount() < (uint32_t)mPrimitives.size())
-        {
-            mpPrimitivesBuffer = Buffer::createStructured(sizeof(SDF3DPrimitive), (uint32_t)mPrimitives.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, mPrimitives.data(), false);
-        }
+        updatePrimitivesBuffer();
 
-        uint32_t gridWidthInValues = mOriginalGridWidth + 1;
+        uint32_t gridWidthInValues = mGridWidth + 1;
         uint32_t valueCount = gridWidthInValues * gridWidthInValues * gridWidthInValues;
         Buffer::SharedPtr pValuesBuffer = Buffer::createTyped<float>(valueCount);
         Buffer::SharedPtr pValuesStagingBuffer = Buffer::createTyped<float>(valueCount, Resource::BindFlags::None, Buffer::CpuAccess::Read);
         GpuFence::SharedPtr pFence = GpuFence::create();
 
-        mpEvaluatePrimitivesPass["CB"]["gGridWidth"] = mOriginalGridWidth;
-        mpEvaluatePrimitivesPass["CB"]["gPrimitiveCount"] = (uint32_t)mPrimitives.size();
+        mpEvaluatePrimitivesPass["CB"]["gGridWidth"] = mGridWidth;
+        mpEvaluatePrimitivesPass["CB"]["gPrimitiveCount"] = (uint32_t)mPrimitives.size() - mBakedPrimitiveCount;
         mpEvaluatePrimitivesPass["gPrimitives"] = mpPrimitivesBuffer;
+        mpEvaluatePrimitivesPass["gOldValues"] = mHasGridRepresentation ? mpSDFGridTexture : nullptr;
         mpEvaluatePrimitivesPass["gValues"] = pValuesBuffer;
-        mpEvaluatePrimitivesPass->execute(pRenderContext, uint3(mOriginalGridWidth + 1));
+        mpEvaluatePrimitivesPass->execute(pRenderContext, uint3(gridWidthInValues));
         pRenderContext->copyResource(pValuesStagingBuffer.get(), pValuesBuffer.get());
         pRenderContext->flush(false);
         pFence->gpuSignal(pRenderContext->getLowLevelData()->getCommandQueue());
         pFence->syncCpu();
         const float* pValues = reinterpret_cast<const float*>(pValuesStagingBuffer->map(Buffer::MapType::Read));
 
-        std::ofstream file(filePath, std::ios::out | std::ios::binary);
+        std::ofstream file(path, std::ios::out | std::ios::binary);
 
         if (file.is_open())
         {
-            file.write(reinterpret_cast<const char*>(&mOriginalGridWidth), sizeof(uint32_t));
+            file.write(reinterpret_cast<const char*>(&mGridWidth), sizeof(uint32_t));
             file.write(reinterpret_cast<const char*>(pValues), valueCount * sizeof(float));
             file.close();
         }
@@ -517,6 +520,7 @@ namespace Falcor
 
         setPrimitives(primitives, gridWidth);
 
+        mInitializedWithPrimitives = true;
         return (uint32_t)mPrimitives.size();
     }
 
@@ -577,6 +581,15 @@ namespace Falcor
         return mPrimitives[it->second];
     }
 
+    void SDFGrid::bakePrimitives(uint32_t batchSize)
+    {
+        // The baking is deferred, and occurs in the SDFSBS class.
+        mBakedPrimitiveCount = std::min(mBakedPrimitiveCount + batchSize, (uint32_t)mPrimitives.size());
+
+        // Tell the SDFSBS grid to bake the primitives when its update function is called.
+        mBakePrimitives = true;
+    }
+
     std::string SDFGrid::getTypeName(Type type)
     {
         switch (type)
@@ -591,9 +604,12 @@ namespace Falcor
 
     FALCOR_SCRIPT_BINDING(SDFGrid)
     {
+        using namespace pybind11::literals;
+
         auto createSBS = [](const pybind11::kwargs& args)
         {
             uint32_t brickWidth = 7;
+            uint32_t defaultGridWidth = 256;
             bool compressed = false;
 
             for (auto a : args)
@@ -608,12 +624,16 @@ namespace Falcor
                 {
                     brickWidth = pybind11::cast<uint32_t>(value);
                 }
+                if (key == "defaultGridWidth" && isInt)
+                {
+                    defaultGridWidth = pybind11::cast<uint32_t>(value);
+                }
                 else if (key == "compressed" && isBool)
                 {
                     compressed = pybind11::cast<bool>(value);
                 }
             }
-            return SDFGrid::SharedPtr(SDFSBS::create(brickWidth, compressed));
+            return SDFGrid::SharedPtr(SDFSBS::create(brickWidth, compressed, defaultGridWidth));
         };
 
         pybind11::class_<SDFGrid, SDFGrid::SharedPtr> sdfGrid(m, "SDFGrid");
@@ -627,15 +647,47 @@ namespace Falcor
         sdfGrid.def_property("name", &SDFGrid::getName, &SDFGrid::setName);
     }
 
-    void SDFGrid::updatePrimitivesBuffer()
+    void SDFGrid::createEvaluatePrimitivesPass(bool writeToTexture3D, bool mergeWithSDField)
     {
-        if (!mpPrimitivesBuffer || mpPrimitivesBuffer->getElementCount() < (uint32_t)mPrimitives.size())
+        if (!mpEvaluatePrimitivesPass)
         {
-            mpPrimitivesBuffer = Buffer::createStructured(sizeof(SDF3DPrimitive), (uint32_t)mPrimitives.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, mPrimitives.data(), false);
+            Program::Desc desc;
+            desc.addShaderLibrary(kEvaluateSDFPrimitivesShaderName).csEntry("main").setShaderModel("6_5");
+            mpEvaluatePrimitivesPass = ComputePass::create(desc);
+        }
+
+        if (writeToTexture3D)
+        {
+            mpEvaluatePrimitivesPass->addDefine("_USE_SD_FIELD_3D_TEXTURE");
         }
         else
         {
-            mpPrimitivesBuffer->setBlob(mPrimitives.data(), 0, mPrimitives.size() * sizeof(SDF3DPrimitive));
+            mpEvaluatePrimitivesPass->removeDefine("_USE_SD_FIELD_3D_TEXTURE");
+        }
+
+        if (mergeWithSDField)
+        {
+            mpEvaluatePrimitivesPass->addDefine("_MERGE_WITH_THE_SD_FIELD");
+        }
+        else
+        {
+            mpEvaluatePrimitivesPass->removeDefine("_MERGE_WITH_THE_SD_FIELD");
+        }
+    }
+
+    void SDFGrid::updatePrimitivesBuffer()
+    {
+        if (mPrimitives.empty() || mPrimitives.size() <= mPrimitivesExcludedFromBuffer) return;
+
+        uint32_t count = (uint32_t)mPrimitives.size() - mPrimitivesExcludedFromBuffer;
+        void* pData = (void*)&mPrimitives[mPrimitivesExcludedFromBuffer];
+        if (!mpPrimitivesBuffer || mpPrimitivesBuffer->getElementCount() < count)
+        {
+            mpPrimitivesBuffer = Buffer::createStructured(sizeof(SDF3DPrimitive), count, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, pData, false);
+        }
+        else
+        {
+            mpPrimitivesBuffer->setBlob(pData, 0, count * sizeof(SDF3DPrimitive));
         }
     }
 }

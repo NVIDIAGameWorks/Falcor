@@ -26,18 +26,27 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "USDHelpers.h"
+#include "Utils/Logger.h"
 #include "Utils/Math/Vector.h"
-#include "pxr/base/gf/vec3f.h"
-#include "pxr/base/gf/vec3d.h"
-#include "pxr/base/gf/matrix4d.h"
-#include "pxr/usd/usd/object.h"
-#include "pxr/usd/usd/attribute.h"
-#include "pxr/usd/usdGeom/tokens.h"
-#include "pxr/usd/usdSkel/tokens.h"
-#include "pxr/usd/usdGeom/basisCurves.h"
-#include "pxr/usd/usdGeom/imageable.h"
-#include "pxr/usd/usdGeom/mesh.h"
-#include "pxr/usd/usdGeom/primvarsAPI.h"
+#include "Scene/SceneBuilder.h"
+
+BEGIN_DISABLE_USD_WARNINGS
+#include <pxr/base/gf/vec3f.h>
+#include <pxr/base/gf/vec3d.h>
+#include <pxr/base/gf/matrix4d.h>
+#include <pxr/usd/usd/object.h>
+#include <pxr/usd/usd/attribute.h>
+#include <pxr/usd/usdGeom/tokens.h>
+#include <pxr/usd/usdSkel/tokens.h>
+#include <pxr/usd/usdGeom/basisCurves.h>
+#include <pxr/usd/usdGeom/imageable.h>
+#include <pxr/usd/usdGeom/mesh.h>
+#include <pxr/usd/usdGeom/primvarsAPI.h>
+END_DISABLE_USD_WARNINGS
+
+#include <string>
+#include <functional>
 
 using namespace pxr;
 
@@ -76,33 +85,36 @@ namespace Falcor
         return float3(v[0], v[1], v[2]);
     }
 
-    inline float4x4 toGlm(const GfMatrix4d& m)
+    inline rmcv::mat4 toRMCV(const GfMatrix4d& m)
     {
-        // USD uses row vectors, which are pre-multiplied (v * M) with a matrix to perform a transformation.
-        // Falcor uses column vectors, which are post-multiplied (M * v).
+        // USD uses row-major matrices and row vectors, which are pre-multiplied (v * M) with a matrix to perform a transformation.
+        // Falcor RMCV uses row-major matrices and column vectors, which are post-multiplied (M * v).
         // As such, we transpose USD matrices upon import.
-        return float4x4(m[0][0], m[0][1], m[0][2], m[0][3],
-            m[1][0], m[1][1], m[1][2], m[1][3],
-            m[2][0], m[2][1], m[2][2], m[2][3],
-            m[3][0], m[3][1], m[3][2], m[3][3]);
+        // (Same as for GLM, except we have to write the values actually transposed, rather than using the col-major layout of the constructor)
+        return rmcv::mat4({
+            m[0][0], m[1][0], m[2][0], m[3][0],
+            m[0][1], m[1][1], m[2][1], m[3][1],
+            m[0][2], m[1][2], m[2][2], m[3][2],
+            m[0][3], m[1][3], m[2][3], m[3][3]
+            });
     }
 
-    inline SceneBuilder::Node makeNode(const std::string& name, uint32_t parentId = SceneBuilder::kInvalidNode)
+    inline SceneBuilder::Node makeNode(const std::string& name, NodeID parentId = NodeID::Invalid())
     {
-        return SceneBuilder::Node{name, float4x4(1.f), float4x4(1.f), float4x4(1.f), parentId};
+        return SceneBuilder::Node{name, rmcv::mat4(1.f), rmcv::mat4(1.f), rmcv::mat4(1.f), parentId};
     }
 
-    inline SceneBuilder::Node makeNode(const std::string& name, const float4x4& xform, const float4x4& bindTransform, uint32_t parentId = SceneBuilder::kInvalidNode)
+    inline SceneBuilder::Node makeNode(const std::string& name, const rmcv::mat4& xform, const rmcv::mat4& bindTransform, NodeID parentId = NodeID::Invalid())
     {
-        return SceneBuilder::Node{name, xform, bindTransform, float4x4(1.f), parentId};
+        return SceneBuilder::Node{name, xform, bindTransform, rmcv::mat4(1.f), parentId};
     }
 
-    inline bool getLocalTransform(const UsdGeomXformable& xformable, float4x4& xform)
+    inline bool getLocalTransform(const UsdGeomXformable& xformable, rmcv::mat4& xform)
     {
         bool resets = false;
         GfMatrix4d transform;
         xformable.GetLocalTransformation(&transform, &resets, UsdTimeCode::EarliestTime());
-        xform = toGlm(transform);
+        xform = toRMCV(transform);
 
         return resets;
     }

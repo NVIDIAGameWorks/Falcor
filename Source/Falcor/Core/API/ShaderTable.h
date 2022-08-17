@@ -27,12 +27,22 @@
  **************************************************************************/
 #pragma once
 
+#if defined(FALCOR_D3D12)
+#include "Buffer.h"
+#include "Core/Macros.h"
+#include <memory>
+#include <vector>
+#elif defined(FALCOR_GFX)
+#include <slang-gfx.h>
+#endif
+
 namespace Falcor
 {
     class Scene;
     class Program;
     class RtStateObject;
     class RtProgramVars;
+    class RenderContext;
 
     /** This class represents the GPU shader table for raytracing programs.
         We are using the following layout for the shader table:
@@ -51,7 +61,7 @@ namespace Falcor
         User provided local root signatures are currently not supported for performance reasons. Managing and updating data for custom root signatures results in significant overhead.
         To get the root signature that matches this table, call the static function getRootSignature().
     */
-#ifdef FALCOR_D3D12
+#if defined(FALCOR_D3D12)
     class FALCOR_API ShaderTable
     {
     public:
@@ -151,7 +161,7 @@ namespace Falcor
     };
     using ShaderTablePtr = ShaderTable::SharedPtr;
 
-#elif defined (FALCOR_GFX)
+#elif defined(FALCOR_GFX)
     // In GFX, we use gfx::IShaderTable directly.
     using ShaderTablePtr = Slang::ComPtr<gfx::IShaderTable>;
 #endif

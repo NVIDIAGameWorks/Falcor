@@ -25,88 +25,73 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-// #include "Utils/StringUtils.h"
-// #include "Utils/Platform/OS.h"
-// #include "Utils/Logger.h"
-//
-// #include <sys/types.h>
-// #include <sys/stat.h>
-// #include <sys/ptrace.h>
-// #include <gtk/gtk.h>
-// #include <fstream>
-// #include <fcntl.h>
-// #include <libgen.h>
-// #include <errno.h>
-// #include <algorithm>
-// #include <experimental/filesystem>
-// #include <dlfcn.h>
+#include "Core/Platform/OS.h"
+#include "Core/Assert.h"
+#include "Core/GLFW.h"
+#include "Utils/Logger.h"
+#include "Utils/StringUtils.h"
+
+#include <gtk/gtk.h>
+
+#include <iostream>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <pwd.h>
+#include <dlfcn.h>
 
 namespace Falcor
 {
-    enum class MsgResponseId
-    {
-        Cancel,
-        Retry,
-        Abort,
-        Ignore
-    };
+    extern std::string gMsgBoxTitle;
 
-    MsgBoxButton msgBox(const std::string& msg, MsgBoxType mbType)
+    void setMainWindowHandle(WindowHandle windowHandle)
     {
-        if (!gtk_init_check(0, nullptr))
+    }
+
+    MsgBoxButton msgBox(const std::string& msg, MsgBoxType type, MsgBoxIcon icon)
+    {
+        const MsgBoxCustomButton buttonOk{uint32_t(MsgBoxButton::Ok), "Ok"};
+        const MsgBoxCustomButton buttonRetry{uint32_t(MsgBoxButton::Retry), "Retry"};
+        const MsgBoxCustomButton buttonCancel{uint32_t(MsgBoxButton::Cancel), "Cancel"};
+        const MsgBoxCustomButton buttonAbort{uint32_t(MsgBoxButton::Abort), "Abort"};
+        const MsgBoxCustomButton buttonIgnore{uint32_t(MsgBoxButton::Ignore), "Ignore"};
+        const MsgBoxCustomButton buttonYes{uint32_t(MsgBoxButton::Yes), "Yes"};
+        const MsgBoxCustomButton buttonNo{uint32_t(MsgBoxButton::No), "No"};
+
+        std::vector<MsgBoxCustomButton> buttons;
+        switch (type)
         {
-            FALCOR_UNREACHABLE();
+        case MsgBoxType::Ok: buttons = { buttonOk }; break;
+        case MsgBoxType::OkCancel: buttons = { buttonOk, buttonCancel }; break;
+        case MsgBoxType::RetryCancel: buttons = { buttonRetry, buttonCancel }; break;
+        case MsgBoxType::AbortRetryIgnore: buttons = { buttonAbort, buttonRetry, buttonIgnore }; break;
+        case MsgBoxType::YesNo: buttons = { buttonYes, buttonNo }; break;
+        default: FALCOR_UNREACHABLE();
         }
 
-        GtkButtonsType buttonType = GTK_BUTTONS_NONE;
-        switch (mbType)
-        {
-        case MsgBoxType::Ok:
-            buttonType = GTK_BUTTONS_OK;
-            break;
-        case MsgBoxType::OkCancel:
-            buttonType = GTK_BUTTONS_OK_CANCEL;
-            break;
-        case MsgBoxType::RetryCancel:
-        case MsgBoxType::AbortRetryIgnore:
-            buttonType = GTK_BUTTONS_NONE;
-            break;
-        case MsgBoxType::YesNo:
-            buttonType = GTK_BUTTONS_YES_NO;
-            break;
-        default:
-            FALCOR_UNREACHABLE();
-            break;
-        }
+        return (MsgBoxButton)msgBox(msg, buttons, icon);
+    }
+
+    uint32_t msgBox(const std::string& msg, std::vector<MsgBoxCustomButton> buttons, MsgBoxIcon icon, uint32_t defaultButtonId)
+    {
+        FALCOR_ASSERT(gtk_init_check(0, nullptr));
 
         GtkWidget* pParent = gtk_window_new(GTK_WINDOW_TOPLEVEL);
         GtkWidget* pDialog = gtk_message_dialog_new(
             GTK_WINDOW(pParent),
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_INFO,
-            buttonType,
+            GTK_BUTTONS_NONE,
             "%s",
             msg.c_str()
         );
 
-        // If custom button layout needed
-        if (buttonType == GTK_BUTTONS_NONE)
+        for (const auto& button : buttons)
         {
-            if (mbType == MsgBoxType::RetryCancel)
-            {
-                gtk_dialog_add_button(GTK_DIALOG(pDialog), "Retry", gint(MsgResponseId::Retry));
-                gtk_dialog_add_button(GTK_DIALOG(pDialog), "Cancel", gint(MsgResponseId::Cancel));
-            }
-            else if (mbType == MsgBoxType::AbortRetryIgnore)
-            {
-                gtk_dialog_add_button(GTK_DIALOG(pDialog), "Abort", gint(MsgResponseId::Abort));
-                gtk_dialog_add_button(GTK_DIALOG(pDialog), "Retry", gint(MsgResponseId::Retry));
-                gtk_dialog_add_button(GTK_DIALOG(pDialog), "Ignore", gint(MsgResponseId::Ignore));
-            }
+            gtk_dialog_add_button(GTK_DIALOG(pDialog), button.title.c_str(), (gint)button.id);
         }
 
-        gtk_window_set_title(GTK_WINDOW(pDialog), gMsgBoxTitle);
+        gtk_window_set_title(GTK_WINDOW(pDialog), gMsgBoxTitle.c_str());
         gint result = gtk_dialog_run(GTK_DIALOG(pDialog));
         gtk_widget_destroy(pDialog);
         gtk_widget_destroy(pParent);
@@ -115,26 +100,7 @@ namespace Falcor
             gtk_main_iteration();
         }
 
-        switch (result)
-        {
-        case GTK_RESPONSE_OK:
-            return MsgBoxButton::Ok;
-        case GTK_RESPONSE_CANCEL:
-            return MsgBoxButton::Cancel;
-        case GTK_RESPONSE_YES:
-            return MsgBoxButton::Yes;
-        case GTK_RESPONSE_NO:
-            return MsgBoxButton::No;
-        case gint(MsgResponseId::Retry):
-            return MsgBoxButton::Retry;
-        case gint(MsgResponseId::Abort):
-            return MsgBoxButton::Abort;
-        case gint(MsgResponseId::Ignore):
-            return MsgBoxButton::Ignore;
-        default:
-            FALCOR_UNREACHABLE();
-            return MsgBoxButton::Cancel;
-        }
+        return result;
     }
 
     size_t executeProcess(const std::string& appName, const std::string& commandLineArgs)
@@ -168,27 +134,49 @@ namespace Falcor
 
     bool isProcessRunning(size_t processID)
     {
-        // TODO
+        FALCOR_UNIMPLEMENTED();
         return static_cast<bool>(processID);
     }
 
     void terminateProcess(size_t processID)
     {
         (void)processID;
-        FALCOR_UNREACHABLE();
+        FALCOR_UNIMPLEMENTED();
     }
 
     void monitorFileUpdates(const std::filesystem::path& path, const std::function<void()>& callback)
     {
         (void)path;
         (void)callback;
-        FALCOR_UNREACHABLE();
+        FALCOR_UNIMPLEMENTED();
     }
 
     void closeSharedFile(const std::filesystem::path& path)
     {
         (void)path;
-        FALCOR_UNREACHABLE();
+        FALCOR_UNIMPLEMENTED();
+    }
+
+    bool createJunction(const std::filesystem::path& link, const std::filesystem::path& target)
+    {
+        std::error_code ec;
+        std::filesystem::create_directory_symlink(target, link, ec);
+        if (ec)
+        {
+            logWarning("Failed to create symlink {} to {}: {}", link, target, ec.value());
+        }
+        return !ec;
+    }
+
+    bool deleteJunction(const std::filesystem::path& link)
+    {
+        std::error_code ec;
+        std::filesystem::remove(link, ec);
+        if (ec)
+        {
+            logWarning("Failed to remove symlink {}: {}", link, ec.value());
+        }
+        return !ec;
     }
 
     const std::filesystem::path& getExecutablePath()
@@ -208,8 +196,15 @@ namespace Falcor
 
     const std::filesystem::path& getAppDataDirectory()
     {
-        FALCOR_ASSERT(0);
         static std::filesystem::path path;
+        if (path.empty()) {
+            const char* homeDir;
+            if ((homeDir = getenv("HOME")) == nullptr)
+            {
+                homeDir = getpwuid(getuid())->pw_dir;
+            }
+            path = std::filesystem::path(homeDir) / ".falcor";
+        }
         return path;
     }
 
@@ -280,7 +275,7 @@ namespace Falcor
             if (result == GTK_RESPONSE_ACCEPT)
             {
                 char* gtkFilename = gtk_file_chooser_get_filename(pAsChooser);
-                filename = std::string(gtkFilename);
+                path = std::filesystem::path(gtkFilename);
                 g_free(gtkFilename);
                 success = true;
             }
@@ -305,25 +300,23 @@ namespace Falcor
         return fileDialogCommon<false>(filters, path);
     }
 
-    void setActiveWindowIcon(const std::string& iconFile)
+    bool chooseFolderDialog(std::filesystem::path& path)
     {
-        // #TODO Not yet implemented
-    }
-
-    int getDisplayDpi()
-    {
-        // #TODO Not yet implemented
-        return int(200);
+        FALCOR_UNIMPLEMENTED();
     }
 
     float getDisplayScaleFactor()
     {
-        return 1;
+        float xscale = 1.f;
+        float yscale = 1.f;
+        auto monitor = glfwGetPrimaryMonitor();
+        if (monitor) glfwGetMonitorContentScale(monitor, &xscale, &yscale);
+        return 0.5f * (xscale + yscale);
     }
 
     bool isDebuggerPresent()
     {
-#ifdef _DEBUG
+#if 0 // TODO: Implement
         static bool debuggerAttached = false;
         static bool isChecked = false;
         if (isChecked == false)
@@ -459,7 +452,7 @@ namespace Falcor
 
     SharedLibraryHandle loadSharedLibrary(const std::filesystem::path& path)
     {
-        return dlopen(libPath.c_str(), RTLD_LAZY);
+        return dlopen(path.c_str(), RTLD_LAZY);
     }
 
     void releaseSharedLibrary(SharedLibraryHandle library)
@@ -472,5 +465,30 @@ namespace Falcor
     void* getProcAddress(SharedLibraryHandle library, const std::string& funcName)
     {
         return dlsym(library, funcName.c_str());
+    }
+
+    void postQuitMessage(int32_t exitCode)
+    {
+        std::exit(exitCode);
+    }
+
+    void OSServices::start()
+    {
+    }
+
+    void OSServices::stop()
+    {
+    }
+
+    size_t getCurrentRSS()
+    {
+        FALCOR_UNIMPLEMENTED();
+        return 0;
+    }
+
+    size_t getPeakRSS()
+    {
+        FALCOR_UNIMPLEMENTED();
+        return 0;
     }
 }

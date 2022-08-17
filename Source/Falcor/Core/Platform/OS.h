@@ -26,14 +26,14 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "PlatformHandles.h"
+#include "Core/Macros.h"
 #include <thread>
 #include <functional>
 #include <filesystem>
 
 namespace Falcor
 {
-    class Window;
-
     /*!
     *  \addtogroup Falcor
     *  @{
@@ -358,6 +358,14 @@ namespace Falcor
     */
     FALCOR_API uint64_t  getProcessUsedVirtualMemory();
 
+    /** Returns the current resident/working set size, how much memory does the process actually use.
+     */
+    FALCOR_API uint64_t getCurrentRSS();
+
+    /** Returns the peak resident/working set size, how much memory has the processes maximally occupy during its runtime.
+     */
+    FALCOR_API uint64_t getPeakRSS();
+
     /** Returns index of most significant set bit, or 0 if no bits were set.
     */
     FALCOR_API uint32_t bitScanReverse(uint32_t a);
@@ -365,14 +373,6 @@ namespace Falcor
     /** Returns index of least significant set bit, or 0 if no bits were set.
     */
     FALCOR_API uint32_t bitScanForward(uint32_t a);
-
-    /** Gets the closest power of two to a number, rounded up.
-    */
-    FALCOR_API uint32_t getNextPowerOf2(uint32_t a);
-
-    /** Gets the closest power of two to a number, rounded down.
-    */
-    FALCOR_API uint32_t getLowerPowerOf2(uint32_t a);
 
     /** Gets the number of set bits.
     */

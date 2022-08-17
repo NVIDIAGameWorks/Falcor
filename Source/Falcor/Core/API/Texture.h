@@ -26,9 +26,14 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include <map>
+#include "Handles.h"
+#include "Formats.h"
 #include "Resource.h"
+#include "ResourceViews.h"
+#include "Core/Macros.h"
 #include "Utils/Image/Bitmap.h"
+#include <memory>
+#include <filesystem>
 
 namespace Falcor
 {
@@ -180,7 +185,7 @@ namespace Falcor
         */
         virtual UnorderedAccessView::SharedPtr getUAV() override;
 
-#if FALCOR_ENABLE_CUDA
+#if FALCOR_HAS_CUDA
         /** Get the CUDA device address for this resource.
             \return CUDA device address.
             Throws an exception if the resource is not (or cannot be) shared with CUDA.

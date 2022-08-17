@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,8 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Framework.h"
-
+#include "Macros.h"
 #include <string>
 
 namespace Falcor
@@ -59,5 +58,5 @@ namespace Falcor
         If message boxes are disabled, this will terminate the application after logging the error.
         \param msg Error message.
     */
-    FALCOR_API void reportFatalError(const std::string& msg);
+    [[noreturn]] FALCOR_API void reportFatalError(const std::string& msg);
 }

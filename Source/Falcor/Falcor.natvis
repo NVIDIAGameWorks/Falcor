@@ -17,8 +17,12 @@
       </Synthetic>
     </Expand>
   </Type>
+  <Type Name="Falcor::ObjectID&lt;*,*,*&gt;">
+      <DisplayString Condition="mID != kInvalidID">{mID}</DisplayString>
+      <DisplayString Condition="mID == kInvalidID">InvalidID</DisplayString>
+  </Type>
 
-  <!-- These were copied from https://github.com/g-truc/glm/blob/master/util/glm.natvis -->
+    <!-- These were copied from https://github.com/g-truc/glm/blob/master/util/glm.natvis -->
   <!-- License: https://github.com/g-truc/glm/blob/master/manual.md#section0 -->
   <Type Name="glm::tvec1&lt;*&gt;">
     <DisplayString>{x}</DisplayString>

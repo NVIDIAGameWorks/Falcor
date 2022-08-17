@@ -2,23 +2,16 @@
 root = false
 
 # Set default editor config for all files:
+# - use utf-8 as default
 # - 4 spaces, no trailing whitespaces
 # - final newline for slightly cleaner diffs when changing the last line
-# - native end-of-line in case we want to open a file elsewhere, git converts to LF for non-Windows
-# - use utf-8 as default
 [*]
+charset = utf-8
 indent_size = 4
 indent_style = space
 trim_trailing_whitespace = true
 insert_final_newline = true
-end_of_line = crlf
-charset = utf-8
 
 # Override trailing whitespace setting for Markdown since there it's actually useful
 [*.{md}]
 trim_trailing_whitespace = false
-
-# Override settings for project files to use the same settings as Visual Studio
-[*.{vcxproj,vcxproj.filters}]
-indent_size = 2
-insert_final_newline = false

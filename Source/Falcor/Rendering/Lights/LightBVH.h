@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,11 +27,14 @@
  **************************************************************************/
 #pragma once
 #include "LightBVHTypes.slang"
+#include "Core/Macros.h"
+#include "Core/API/Buffer.h"
 #include "Scene/Lights/LightCollection.h"
 #include "Utils/Math/AABB.h"
 #include "Utils/Math/Vector.h"
 #include "Utils/UI/Gui.h"
-#include <limits>
+#include <functional>
+#include <memory>
 #include <vector>
 
 namespace Falcor

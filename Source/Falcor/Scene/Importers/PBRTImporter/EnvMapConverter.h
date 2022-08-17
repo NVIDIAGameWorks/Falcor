@@ -27,7 +27,10 @@
  **************************************************************************/
 #pragma once
 
-#include "Falcor.h"
+#include "Core/API/Formats.h"
+#include "Core/API/Sampler.h"
+#include "Core/API/RenderContext.h"
+#include "RenderGraph/BasePasses/ComputePass.h"
 
 namespace Falcor
 {

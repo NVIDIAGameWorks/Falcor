@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "*.pyscene": "python"
+    },
+    "cmake.configureOnEdit": false
+}

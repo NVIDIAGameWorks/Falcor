@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "TemporalDelayPass.h"
+#include "RenderGraph/RenderPassLibrary.h"
 
 const RenderPass::Info TemporalDelayPass::kInfo { "TemporalDelayPass", "Delays frame rendering by a specified amount of frames." };
 

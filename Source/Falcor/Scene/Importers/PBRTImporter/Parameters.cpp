@@ -31,9 +31,9 @@
 // The pbrt source code is licensed under the Apache License, Version 2.0.
 // SPDX: Apache-2.0
 
-#include "stdafx.h"
 #include "Parameters.h"
 #include "Helpers.h"
+#include "Core/Assert.h"
 
 namespace Falcor
 {
@@ -474,7 +474,7 @@ namespace Falcor
             {
                 if (param.name != name || param.type != traits::typeName) continue;
 
-                return returnArray<traits::ReturnType>(param, traits::getValues(param), traits::perItemCount, traits::convert);
+                return returnArray<typename traits::ReturnType>(param, traits::getValues(param), traits::perItemCount, traits::convert);
             }
 
             return {};

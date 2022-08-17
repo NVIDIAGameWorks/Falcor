@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,11 +25,36 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "StringUtils.h"
+
+#include <string>
+#include <utility>
 
 namespace Falcor
 {
+    std::string formatByteSize(size_t size)
+    {
+        std::array<std::pair<size_t, std::string>, 5> memorySizes =
+        {
+            std::make_pair(UINT64_C(1), "B"),
+            std::make_pair(UINT64_C(1024), "kB"),
+            std::make_pair(UINT64_C(1048576), "MB"),
+            std::make_pair(UINT64_C(1073741824), "GB"),
+            std::make_pair(UINT64_C(1073741824)*1024, "TB")
+        };
+
+        // We could use some tricks to count zero bits from the left for a non-looped version,
+        // but this is fast enough and obvious enough
+        unsigned chosenSize = 0;
+        for(; chosenSize < memorySizes.size() - 1; ++chosenSize)
+        {
+            if (memorySizes[chosenSize].first < size && size < memorySizes[chosenSize + 1].first)
+                break;
+        }
+
+        return fmt::format("{:.3f} {}", double(size) / memorySizes[chosenSize].first, memorySizes[chosenSize].second);
+    }
+
     std::string encodeBase64(const void* data, size_t len)
     {
         // based on https://gist.github.com/tomykaira/f0fd86b6c73063283afe550bc5d77594

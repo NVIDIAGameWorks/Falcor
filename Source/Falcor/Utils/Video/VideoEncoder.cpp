@@ -25,13 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "VideoEncoder.h"
+#include "Utils/Logger.h"
+#include "Utils/Scripting/ScriptBindings.h"
 
 extern "C"
 {
-#include "libavformat/avformat.h"
-#include "libswscale/swscale.h"
+#include <libavformat/avformat.h>
+#include <libswscale/swscale.h>
 }
 
 namespace Falcor
@@ -288,7 +289,7 @@ namespace Falcor
         mRowPitch = getFormatBytesPerBlock(desc.format) * desc.width;
         if(desc.flipY)
         {
-            mpFlippedImage = new uint8_t[desc.height * mRowPitch];
+            mpFlippedImage.reset(new uint8_t[desc.height * mRowPitch]);
         }
 
         FALCOR_ASSERT(isFormatSupported(desc.format));
@@ -350,7 +351,7 @@ namespace Falcor
             mpOutputContext = nullptr;
             mpOutputStream = nullptr;
         }
-        safe_delete(mpFlippedImage);
+        mpFlippedImage.reset();
     }
 
     void VideoEncoder::appendFrame(const void* pData)
@@ -361,11 +362,11 @@ namespace Falcor
             for(int32_t h = 0; h < mpCodecContext->height; h++)
             {
                 const uint8_t* pSrc = (uint8_t*)pData + h * mRowPitch;
-                uint8_t* pDst = mpFlippedImage + (mpCodecContext->height - 1 - h) * mRowPitch;
+                uint8_t* pDst = mpFlippedImage.get() + (mpCodecContext->height - 1 - h) * mRowPitch;
                 memcpy(pDst, pSrc, mRowPitch);
             }
 
-            pData = mpFlippedImage;
+            pData = mpFlippedImage.get();
         }
 
         uint8_t* src[AV_NUM_DATA_POINTERS] = {0};

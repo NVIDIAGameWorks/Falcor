@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,11 +25,15 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "ScriptBindings.h"
+#include "Utils/Scripting/Scripting.h"
+#include "Utils/Math/Float16.h"
+#include "Utils/Math/Matrix/Matrix.h"
 #include <pybind11/embed.h>
 #include <pybind11/operators.h>
 #include <algorithm>
+
+using namespace pybind11::literals;
 
 namespace pybind11::detail
 {
@@ -264,8 +268,8 @@ namespace Falcor::ScriptBindings
 
         // float3x3, float4x4
         // Note: We register these as simple data types without any operations because semantics may change in the future.
-        pybind11::class_<glm::float3x3>(m, "float3x3");
-        pybind11::class_<glm::float4x4>(m, "float4x4");
+        pybind11::class_<rmcv::mat3>(m, "float3x3");
+        pybind11::class_<rmcv::mat4>(m, "float4x4");
 
         // float16_t types
         addVecType<float16_t2, false>(m, "float16_t2");

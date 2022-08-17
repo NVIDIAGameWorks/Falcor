@@ -1,0 +1,255 @@
+{
+    "version": 3,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 15,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "base",
+            "description": "Base configuration inherited by all presets.",
+            "hidden": true,
+            "cacheVariables": {},
+            "cmakeExecutable": "${sourceDir}/tools/.packman/cmake/bin/cmake",
+            "binaryDir": "${sourceDir}/build/${presetName}"
+        },
+        {
+            "name": "d3d12",
+            "description": "Native D3D12 rendering backend.",
+            "hidden": true,
+            "cacheVariables": {
+                "FALCOR_RENDER_BACKEND": "D3D12"
+            }
+        },
+        {
+            "name": "gfx-d3d12",
+            "description": "Slang GFX D3D12 rendering backend.",
+            "hidden": true,
+            "cacheVariables": {
+                "FALCOR_RENDER_BACKEND": "GFX-D3D12"
+            }
+        },
+        {
+            "name": "gfx-vk",
+            "description": "Slang GFX Vulkan rendering backend.",
+            "hidden": true,
+            "cacheVariables": {
+                "FALCOR_RENDER_BACKEND": "GFX-VK"
+            }
+        },
+        {
+            "name": "windows-base",
+            "description": "Base Windows configuration for specifying Windows SDK.",
+            "hidden": true,
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_SYSTEM_VERSION": "10.0.19041.0"
+            }
+        },
+        {
+            "name": "windows-vs2019-base",
+            "description": "Base Visual Studio 2019 configuration.",
+            "hidden": true,
+            "inherits": "windows-base",
+            "generator": "Visual Studio 16 2019",
+            "architecture": {
+                "value": "x64",
+                "strategy": "set"
+            },
+            "toolset": {
+                "value": "host=x86",
+                "strategy": "set"
+            }
+        },
+        {
+            "name": "windows-vs2019-d3d12",
+            "displayName": "Windows VS2019 D3D12",
+            "inherits": [
+                "windows-vs2019-base",
+                "d3d12"
+            ]
+        },
+        {
+            "name": "windows-vs2019-gfx-d3d12",
+            "displayName": "Windows VS2019 GFX-D3D12",
+            "inherits": [
+                "windows-vs2019-base",
+                "gfx-d3d12"
+            ]
+        },
+        {
+            "name": "windows-vs2019-gfx-vk",
+            "displayName": "Windows VS2019 GFX-VK",
+            "inherits": [
+                "windows-vs2019-base",
+                "gfx-vk"
+            ]
+        },
+        {
+            "name": "windows-vs2022-base",
+            "description": "Base Visual Studio 2022 configuration.",
+            "hidden": true,
+            "inherits": "windows-base",
+            "generator": "Visual Studio 17 2022",
+            "architecture": {
+                "value": "x64",
+                "strategy": "set"
+            },
+            "toolset": {
+                "value": "host=x86",
+                "strategy": "set"
+            }
+        },
+        {
+            "name": "windows-vs2022-d3d12",
+            "displayName": "Windows VS2022 D3D12",
+            "inherits": [
+                "windows-vs2022-base",
+                "d3d12"
+            ]
+        },
+        {
+            "name": "windows-vs2022-gfx-d3d12",
+            "displayName": "Windows VS2022 GFX-D3D12",
+            "inherits": [
+                "windows-vs2022-base",
+                "d3d12"
+            ]
+        },
+        {
+            "name": "windows-vs2022-gfx-vk",
+            "displayName": "Windows VS2022 GFX-VK",
+            "inherits": [
+                "windows-vs2022-base",
+                "gfx-vk"
+            ]
+        },
+        {
+            "name": "windows-ninja-msvc-base",
+            "description": "Base Ninja configuration using MSVC.",
+            "hidden": true,
+            "inherits": "windows-base",
+            "generator": "Ninja Multi-Config",
+            "architecture": {
+                "value": "x64",
+                "strategy": "external"
+            },
+            "toolset": {
+                "value": "host=x86,version=14.29",
+                "strategy": "external"
+            },
+            "cacheVariables": {
+                "CMAKE_MAKE_PROGRAM": "${sourceDir}/tools/.packman/ninja/ninja.exe",
+                "CMAKE_CXX_COMPILER": "cl"
+            },
+            "vendor": {
+                "microsoft.com/VisualStudioSettings/CMake/1.0": {
+                    "hostOS": [
+                        "Windows"
+                    ]
+                }
+            }
+        },
+        {
+            "name": "windows-ninja-msvc-d3d12",
+            "displayName": "Windows Ninja/MSVC D3D12",
+            "inherits": [
+                "windows-ninja-msvc-base",
+                "d3d12"
+            ]
+        },
+        {
+            "name": "windows-ninja-msvc-gfx-d3d12",
+            "displayName": "Windows Ninja/MSVC GFX-D3D12",
+            "inherits": [
+                "windows-ninja-msvc-base",
+                "gfx-d3d12"
+            ]
+        },
+        {
+            "name": "windows-ninja-msvc-gfx-vk",
+            "displayName": "Windows Ninja/MSVC GFX-VK",
+            "inherits": [
+                "windows-ninja-msvc-base",
+                "gfx-vk"
+            ]
+        },
+        {
+            "name": "linux-base",
+            "description": "Base Linux configuration.",
+            "hidden": true,
+            "inherits": "base"
+        },
+        {
+            "name": "linux-ninja-clang-base",
+            "description": "Base Linux/Clang configuration.",
+            "hidden": true,
+            "inherits": "linux-base",
+            "generator": "Ninja Multi-Config",
+            "cacheVariables": {
+                "CMAKE_MAKE_PROGRAM": "${sourceDir}/tools/.packman/ninja/ninja",
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++"
+            }
+        },
+        {
+            "name": "linux-ninja-clang-gfx-vk",
+            "displayName": "Linux Ninja/Clang GFX-VK",
+            "inherits": [
+                "linux-ninja-clang-base",
+                "gfx-vk"
+            ]
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "windows-ninja-msvc-d3d12-release",
+            "displayName": "Release",
+            "configurePreset": "windows-ninja-msvc-d3d12",
+            "configuration": "Release"
+        },
+        {
+            "name": "windows-ninja-msvc-d3d12-debug",
+            "displayName": "Debug",
+            "configurePreset": "windows-ninja-msvc-d3d12",
+            "configuration": "Debug"
+        },
+        {
+            "name": "windows-ninja-msvc-gfx-d3d12-release",
+            "displayName": "Release",
+            "configurePreset": "windows-ninja-msvc-gfx-d3d12",
+            "configuration": "Release"
+        },
+        {
+            "name": "windows-ninja-msvc-gfx-d3d12-debug",
+            "displayName": "Debug",
+            "configurePreset": "windows-ninja-msvc-gfx-d3d12",
+            "configuration": "Debug"
+        },
+        {
+            "name": "windows-ninja-msvc-gfx-vk-release",
+            "displayName": "Release",
+            "configurePreset": "windows-ninja-msvc-gfx-vk",
+            "configuration": "Release"
+        },
+        {
+            "name": "windows-ninja-msvc-gfx-vk-debug",
+            "displayName": "Debug",
+            "configurePreset": "windows-ninja-msvc-gfx-vk",
+            "configuration": "Debug"
+        },
+        {
+            "name": "linux-ninja-clang-gfx-vk-release",
+            "displayName": "Release",
+            "configurePreset": "linux-ninja-clang-gfx-vk",
+            "configuration": "Release"
+        },
+        {
+            "name": "linux-ninja-clang-gfx-vk-debug",
+            "displayName": "Debug",
+            "configurePreset": "linux-ninja-clang-gfx-vk",
+            "configuration": "Debug"
+        }
+    ]
+}

@@ -25,17 +25,12 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include <Falcor.h>
+#include "Falcor.h"
+#include "RenderGraph/RenderPassLibrary.h"
 
-#if FALCOR_D3D12_AVAILABLE
 #include "NRDPass.h"
 #include "RenderPasses/Shared/Denoising/NRDConstants.slang"
-#include <glm/gtc/type_ptr.hpp>
 #include <sstream>
-
-#if FALCOR_ENABLE_NRD
-#pragma comment(lib, "NRD.lib")
-#endif
 
 const RenderPass::Info NRDPass::kInfo { "NRD", "NRD denoiser." };
 
@@ -63,6 +58,7 @@ namespace
 
     const char kEnabled[] = "enabled";
     const char kMethod[] = "method";
+    const char kOutputSize[] = "outputSize";
 
     // Common settings.
     const char kWorldSpaceMotion[] = "worldSpaceMotion";
@@ -121,7 +117,6 @@ NRDPass::SharedPtr NRDPass::create(RenderContext* pRenderContext, const Dictiona
 NRDPass::NRDPass(const Dictionary& dict)
     : RenderPass(kInfo)
 {
-#if FALCOR_ENABLE_NRD
     Program::DefineList definesRelax;
     definesRelax.add("NRD_USE_OCT_NORMAL_ENCODING", "1");
     definesRelax.add("NRD_USE_MATERIAL_ID", "0");
@@ -164,6 +159,7 @@ NRDPass::NRDPass(const Dictionary& dict)
     {
         if (key == kEnabled) mEnabled = value;
         else if (key == kMethod) mDenoisingMethod = value;
+        else if (key == kOutputSize) mOutputSizeSelection = value;
 
         // Common settings.
         else if (key == kWorldSpaceMotion) mWorldSpaceMotion = value;
@@ -240,16 +236,15 @@ NRDPass::NRDPass(const Dictionary& dict)
             logWarning("Unknown field '{}' in NRD dictionary.", key);
         }
     }
-#endif // FALCOR_ENABLE_NRD
 }
 
 Falcor::Dictionary NRDPass::getScriptingDictionary()
 {
     Dictionary dict;
 
-#if FALCOR_ENABLE_NRD
     dict[kEnabled] = mEnabled;
     dict[kMethod] = mDenoisingMethod;
+    dict[kOutputSize] = mOutputSizeSelection;
 
     // Common settings.
     dict[kWorldSpaceMotion] = mWorldSpaceMotion;
@@ -313,7 +308,6 @@ Falcor::Dictionary NRDPass::getScriptingDictionary()
         dict[kEnableReprojectionTestSkippingWithoutMotion] = mRelaxDiffuseSettings.enableReprojectionTestSkippingWithoutMotion;
         dict[kEnableMaterialTestForDiffuse] = mRelaxDiffuseSettings.enableMaterialTest;
     }
-#endif // FALCOR_ENABLE_NRD
 
     return dict;
 }
@@ -321,6 +315,8 @@ Falcor::Dictionary NRDPass::getScriptingDictionary()
 RenderPassReflection NRDPass::reflect(const CompileData& compileData)
 {
     RenderPassReflection reflector;
+
+    const uint2 sz = RenderPassHelpers::calculateIOSize(mOutputSizeSelection, mScreenSize, compileData.defaultTexDims);
 
     if (mDenoisingMethod == DenoisingMethod::RelaxDiffuseSpecular || mDenoisingMethod == DenoisingMethod::ReblurDiffuseSpecular)
     {
@@ -330,8 +326,8 @@ RenderPassReflection NRDPass::reflect(const CompileData& compileData)
         reflector.addInput(kInputNormalRoughnessMaterialID, "World normal, roughness, and material ID");
         reflector.addInput(kInputMotionVectors, "Motion vectors");
 
-        reflector.addOutput(kOutputFilteredDiffuseRadianceHitDist, "Filtered diffuse radiance and hit distance").format(ResourceFormat::RGBA16Float);
-        reflector.addOutput(kOutputFilteredSpecularRadianceHitDist, "Filtered specular radiance and hit distance").format(ResourceFormat::RGBA16Float);
+        reflector.addOutput(kOutputFilteredDiffuseRadianceHitDist, "Filtered diffuse radiance and hit distance").format(ResourceFormat::RGBA16Float).texture2D(sz.x, sz.y);
+        reflector.addOutput(kOutputFilteredSpecularRadianceHitDist, "Filtered specular radiance and hit distance").format(ResourceFormat::RGBA16Float).texture2D(sz.x, sz.y);
     }
     else if (mDenoisingMethod == DenoisingMethod::RelaxDiffuse)
     {
@@ -340,7 +336,7 @@ RenderPassReflection NRDPass::reflect(const CompileData& compileData)
         reflector.addInput(kInputNormalRoughnessMaterialID, "World normal, roughness, and material ID");
         reflector.addInput(kInputMotionVectors, "Motion vectors");
 
-        reflector.addOutput(kOutputFilteredDiffuseRadianceHitDist, "Filtered diffuse radiance and hit distance").format(ResourceFormat::RGBA16Float);
+        reflector.addOutput(kOutputFilteredDiffuseRadianceHitDist, "Filtered diffuse radiance and hit distance").format(ResourceFormat::RGBA16Float).texture2D(sz.x, sz.y);
     }
     else if (mDenoisingMethod == DenoisingMethod::SpecularReflectionMv)
     {
@@ -349,7 +345,7 @@ RenderPassReflection NRDPass::reflect(const CompileData& compileData)
         reflector.addInput(kInputNormalRoughnessMaterialID, "World normal, roughness, and material ID");
         reflector.addInput(kInputMotionVectors, "Motion vectors");
 
-        reflector.addOutput(kOutputReflectionMotionVectors, "Reflection motion vectors in screen space").format(ResourceFormat::RG16Float);
+        reflector.addOutput(kOutputReflectionMotionVectors, "Reflection motion vectors in screen space").format(ResourceFormat::RG16Float).texture2D(sz.x, sz.y);
     }
     else if (mDenoisingMethod == DenoisingMethod::SpecularDeltaMv)
     {
@@ -357,7 +353,7 @@ RenderPassReflection NRDPass::reflect(const CompileData& compileData)
         reflector.addInput(kInputDeltaSecondaryPosW, "Delta secondary world position");
         reflector.addInput(kInputMotionVectors, "Motion vectors");
 
-        reflector.addOutput(kOutputDeltaMotionVectors, "Delta motion vectors in screen space").format(ResourceFormat::RG16Float);
+        reflector.addOutput(kOutputDeltaMotionVectors, "Delta motion vectors in screen space").format(ResourceFormat::RG16Float).texture2D(sz.x, sz.y);
     }
     else
     {
@@ -369,11 +365,11 @@ RenderPassReflection NRDPass::reflect(const CompileData& compileData)
 
 void NRDPass::compile(RenderContext* pRenderContext, const CompileData& compileData)
 {
-    mScreenSize = compileData.defaultTexDims;
+    mScreenSize = RenderPassHelpers::calculateIOSize(mOutputSizeSelection, mScreenSize, compileData.defaultTexDims);
+    if (mScreenSize.x == 0 || mScreenSize.y == 0)
+        mScreenSize = compileData.defaultTexDims;
     mFrameIndex = 0;
-#if FALCOR_ENABLE_NRD
     reinit();
-#endif
 }
 
 void NRDPass::execute(RenderContext* pRenderContext, const RenderData& renderData)
@@ -381,9 +377,7 @@ void NRDPass::execute(RenderContext* pRenderContext, const RenderData& renderDat
     if (!mpScene) return;
 
     bool enabled = false;
-#if FALCOR_ENABLE_NRD
     enabled = mEnabled;
-#endif
 
     if (enabled)
     {
@@ -393,33 +387,33 @@ void NRDPass::execute(RenderContext* pRenderContext, const RenderData& renderDat
     {
         if (mDenoisingMethod == DenoisingMethod::RelaxDiffuseSpecular || mDenoisingMethod == DenoisingMethod::ReblurDiffuseSpecular)
         {
-            pRenderContext->blit(renderData[kInputDiffuseRadianceHitDist]->asTexture()->getSRV(), renderData[kOutputFilteredDiffuseRadianceHitDist]->asTexture()->getRTV());
-            pRenderContext->blit(renderData[kInputSpecularRadianceHitDist]->asTexture()->getSRV(), renderData[kOutputFilteredSpecularRadianceHitDist]->asTexture()->getRTV());
+            pRenderContext->blit(renderData.getTexture(kInputDiffuseRadianceHitDist)->getSRV(), renderData.getTexture(kOutputFilteredDiffuseRadianceHitDist)->getRTV());
+            pRenderContext->blit(renderData.getTexture(kInputSpecularRadianceHitDist)->getSRV(), renderData.getTexture(kOutputFilteredSpecularRadianceHitDist)->getRTV());
         }
         else if (mDenoisingMethod == DenoisingMethod::RelaxDiffuse)
         {
-            pRenderContext->blit(renderData[kInputDiffuseRadianceHitDist]->asTexture()->getSRV(), renderData[kOutputFilteredDiffuseRadianceHitDist]->asTexture()->getRTV());
+            pRenderContext->blit(renderData.getTexture(kInputDiffuseRadianceHitDist)->getSRV(), renderData.getTexture(kOutputFilteredDiffuseRadianceHitDist)->getRTV());
         }
         else if (mDenoisingMethod == DenoisingMethod::SpecularReflectionMv)
         {
             if (mWorldSpaceMotion)
             {
-                pRenderContext->clearRtv(renderData[kOutputReflectionMotionVectors]->asTexture()->getRTV().get(), float4(0.f));
+                pRenderContext->clearRtv(renderData.getTexture(kOutputReflectionMotionVectors)->getRTV().get(), float4(0.f));
             }
             else
             {
-                pRenderContext->blit(renderData[kInputMotionVectors]->asTexture()->getSRV(), renderData[kOutputReflectionMotionVectors]->asTexture()->getRTV());
+                pRenderContext->blit(renderData.getTexture(kInputMotionVectors)->getSRV(), renderData.getTexture(kOutputReflectionMotionVectors)->getRTV());
             }
         }
         else if (mDenoisingMethod == DenoisingMethod::SpecularDeltaMv)
         {
             if (mWorldSpaceMotion)
             {
-                pRenderContext->clearRtv(renderData[kOutputDeltaMotionVectors]->asTexture()->getRTV().get(), float4(0.f));
+                pRenderContext->clearRtv(renderData.getTexture(kOutputDeltaMotionVectors)->getRTV().get(), float4(0.f));
             }
             else
             {
-                pRenderContext->blit(renderData[kInputMotionVectors]->asTexture()->getSRV(), renderData[kOutputDeltaMotionVectors]->asTexture()->getRTV());
+                pRenderContext->blit(renderData.getTexture(kInputMotionVectors)->getSRV(), renderData.getTexture(kOutputDeltaMotionVectors)->getRTV());
             }
         }
     }
@@ -427,7 +421,6 @@ void NRDPass::execute(RenderContext* pRenderContext, const RenderData& renderDat
 
 void NRDPass::renderUI(Gui::Widgets& widget)
 {
-#if FALCOR_ENABLE_NRD
     const nrd::LibraryDesc& nrdLibraryDesc = nrd::GetLibraryDesc();
     char name[256];
     _snprintf_s(name, 255, "NRD Library v%u.%u.%u", nrdLibraryDesc.versionMajor, nrdLibraryDesc.versionMinor, nrdLibraryDesc.versionBuild);
@@ -599,17 +592,12 @@ void NRDPass::renderUI(Gui::Widgets& widget)
     {
         widget.text(mWorldSpaceMotion ? "Motion: world space" : "Motion: screen space");
     }
-#else // FALCOR_ENABLE_NRD
-    widget.textWrapped("NRD is not setup and enabled in `Source/Core/FalcorConfig.h` so this pass is disabled. Please configure NRD and then recompile to use this pass.");
-#endif // FALCOR_ENABLE_NRD
 }
 
 void NRDPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
 {
     mpScene = pScene;
 }
-
-#if FALCOR_ENABLE_NRD
 
 static void* nrdAllocate(void* userArg, size_t size, size_t alignment)
 {
@@ -694,10 +682,14 @@ static nrd::Method getNrdMethod(NRDPass::DenoisingMethod denoisingMethod)
     }
 }
 
-static void copyMatrix(float* dstMatrix, const glm::mat4x4& srcMatrix)
+/// Copies into col-major layout, as the NRD library works in column major layout,
+/// while Falcor uses row-major layout
+static void copyMatrix(float* dstMatrix, const rmcv::mat4& srcMatrix)
 {
-    memcpy(dstMatrix, static_cast<const float*>(glm::value_ptr(srcMatrix)), sizeof(glm::mat4x4));
+    auto col_major = rmcv::transpose(srcMatrix);
+    memcpy(dstMatrix, static_cast<const float*>(col_major.data()), sizeof(rmcv::mat4));
 }
+
 
 void NRDPass::reinit()
 {
@@ -744,7 +736,7 @@ void NRDPass::createPipelines()
     {
         SamplersDescriptorSetLayout.addRange(ShaderResourceType::Sampler, denoiserDesc.staticSamplers[j].registerIndex, 1);
     }
-    mpSamplersDescriptorSet = Falcor::D3D12DescriptorSet::create(gpDevice->getD3D12GpuDescriptorPool(), SamplersDescriptorSetLayout);
+    mpSamplersDescriptorSet = Falcor::D3D12DescriptorSet::create(SamplersDescriptorSetLayout, D3D12DescriptorSetBindingUsage::ExplicitBind);
 
     // Set sampler descriptors right away.
     for (uint32_t j = 0; j < denoiserDesc.staticSamplerNum; j++)
@@ -901,8 +893,8 @@ void NRDPass::executeInternal(RenderContext* pRenderContext, const RenderData& r
             auto perImageCB = mpPackRadiancePassRelax["PerImageCB"];
 
             perImageCB["gMaxIntensity"] = mMaxIntensity;
-            perImageCB["gDiffuseRadianceHitDist"] = renderData[kInputDiffuseRadianceHitDist]->asTexture();
-            perImageCB["gSpecularRadianceHitDist"] = renderData[kInputSpecularRadianceHitDist]->asTexture();
+            perImageCB["gDiffuseRadianceHitDist"] = renderData.getTexture(kInputDiffuseRadianceHitDist);
+            perImageCB["gSpecularRadianceHitDist"] = renderData.getTexture(kInputSpecularRadianceHitDist);
             mpPackRadiancePassRelax->execute(pRenderContext, uint3(mScreenSize.x, mScreenSize.y, 1u));
         }
 
@@ -916,7 +908,7 @@ void NRDPass::executeInternal(RenderContext* pRenderContext, const RenderData& r
             auto perImageCB = mpPackRadiancePassRelax["PerImageCB"];
 
             perImageCB["gMaxIntensity"] = mMaxIntensity;
-            perImageCB["gDiffuseRadianceHitDist"] = renderData[kInputDiffuseRadianceHitDist]->asTexture();
+            perImageCB["gDiffuseRadianceHitDist"] = renderData.getTexture(kInputDiffuseRadianceHitDist);
             mpPackRadiancePassRelax->execute(pRenderContext, uint3(mScreenSize.x, mScreenSize.y, 1u));
         }
 
@@ -931,10 +923,10 @@ void NRDPass::executeInternal(RenderContext* pRenderContext, const RenderData& r
 
             perImageCB["gHitDistParams"].setBlob(mReblurSettings.hitDistanceParameters);
             perImageCB["gMaxIntensity"] = mMaxIntensity;
-            perImageCB["gDiffuseRadianceHitDist"] = renderData[kInputDiffuseRadianceHitDist]->asTexture();
-            perImageCB["gSpecularRadianceHitDist"] = renderData[kInputSpecularRadianceHitDist]->asTexture();
-            perImageCB["gNormalRoughness"] = renderData[kInputNormalRoughnessMaterialID]->asTexture();
-            perImageCB["gViewZ"] = renderData[kInputViewZ]->asTexture();
+            perImageCB["gDiffuseRadianceHitDist"] = renderData.getTexture(kInputDiffuseRadianceHitDist);
+            perImageCB["gSpecularRadianceHitDist"] = renderData.getTexture(kInputSpecularRadianceHitDist);
+            perImageCB["gNormalRoughness"] = renderData.getTexture(kInputNormalRoughnessMaterialID);
+            perImageCB["gViewZ"] = renderData.getTexture(kInputViewZ);
             mpPackRadiancePassReblur->execute(pRenderContext, uint3(mScreenSize.x, mScreenSize.y, 1u));
         }
 
@@ -957,8 +949,8 @@ void NRDPass::executeInternal(RenderContext* pRenderContext, const RenderData& r
     }
 
     // Initialize common settings.
-    glm::mat4 viewMatrix = mpScene->getCamera()->getViewMatrix();
-    glm::mat4 projMatrix = mpScene->getCamera()->getData().projMatNoJitter;
+    rmcv::mat4 viewMatrix = mpScene->getCamera()->getViewMatrix();
+    rmcv::mat4 projMatrix = mpScene->getCamera()->getData().projMatNoJitter;
     if (mFrameIndex == 0)
     {
         mPrevViewMatrix = viewMatrix;
@@ -1010,7 +1002,7 @@ void NRDPass::dispatch(RenderContext* pRenderContext, const RenderData& renderDa
     mpConstantBuffer->setBlob(dispatchDesc.constantBufferData, 0, dispatchDesc.constantBufferDataSize);
 
     // Create descriptor set for the NRD pass.
-    Falcor::D3D12DescriptorSet::SharedPtr CBVSRVUAVDescriptorSet = Falcor::D3D12DescriptorSet::create(gpDevice->getD3D12GpuDescriptorPool(), mCBVSRVUAVdescriptorSetLayouts[dispatchDesc.pipelineIndex]);
+    Falcor::D3D12DescriptorSet::SharedPtr CBVSRVUAVDescriptorSet = Falcor::D3D12DescriptorSet::create(mCBVSRVUAVdescriptorSetLayouts[dispatchDesc.pipelineIndex], D3D12DescriptorSetBindingUsage::ExplicitBind);
 
     // Set CBV.
     CBVSRVUAVDescriptorSet->setCbv(0 /* NB: range #0 is CBV range */, denoiserDesc.constantBufferDesc.registerIndex, mpConstantBuffer->getCBV().get());
@@ -1032,40 +1024,40 @@ void NRDPass::dispatch(RenderContext* pRenderContext, const RenderData& renderDa
             switch (resource.type)
             {
             case nrd::ResourceType::IN_MV:
-                texture = renderData[kInputMotionVectors]->asTexture();
+                texture = renderData.getTexture(kInputMotionVectors);
                 break;
             case nrd::ResourceType::IN_NORMAL_ROUGHNESS:
-                texture = renderData[kInputNormalRoughnessMaterialID]->asTexture();
+                texture = renderData.getTexture(kInputNormalRoughnessMaterialID);
                 break;
             case nrd::ResourceType::IN_VIEWZ:
-                texture = renderData[kInputViewZ]->asTexture();
+                texture = renderData.getTexture(kInputViewZ);
                 break;
             case nrd::ResourceType::IN_DIFF_RADIANCE_HITDIST:
-                texture = renderData[kInputDiffuseRadianceHitDist]->asTexture();
+                texture = renderData.getTexture(kInputDiffuseRadianceHitDist);
                 break;
             case nrd::ResourceType::IN_SPEC_RADIANCE_HITDIST:
-                texture = renderData[kInputSpecularRadianceHitDist]->asTexture();
+                texture = renderData.getTexture(kInputSpecularRadianceHitDist);
                 break;
             case nrd::ResourceType::IN_SPEC_HITDIST:
-                texture = renderData[kInputSpecularHitDist]->asTexture();
+                texture = renderData.getTexture(kInputSpecularHitDist);
                 break;
             case nrd::ResourceType::IN_DELTA_PRIMARY_POS:
-                texture = renderData[kInputDeltaPrimaryPosW]->asTexture();
+                texture = renderData.getTexture(kInputDeltaPrimaryPosW);
                 break;
             case nrd::ResourceType::IN_DELTA_SECONDARY_POS:
-                texture = renderData[kInputDeltaSecondaryPosW]->asTexture();
+                texture = renderData.getTexture(kInputDeltaSecondaryPosW);
                 break;
             case nrd::ResourceType::OUT_DIFF_RADIANCE_HITDIST:
-                texture = renderData[kOutputFilteredDiffuseRadianceHitDist]->asTexture();
+                texture = renderData.getTexture(kOutputFilteredDiffuseRadianceHitDist);
                 break;
             case nrd::ResourceType::OUT_SPEC_RADIANCE_HITDIST:
-                texture = renderData[kOutputFilteredSpecularRadianceHitDist]->asTexture();
+                texture = renderData.getTexture(kOutputFilteredSpecularRadianceHitDist);
                 break;
             case nrd::ResourceType::OUT_REFLECTION_MV:
-                texture = renderData[kOutputReflectionMotionVectors]->asTexture();
+                texture = renderData.getTexture(kOutputReflectionMotionVectors);
                 break;
             case nrd::ResourceType::OUT_DELTA_MV:
-                texture = renderData[kOutputDeltaMotionVectors]->asTexture();
+                texture = renderData.getTexture(kOutputDeltaMotionVectors);
                 break;
             case nrd::ResourceType::TRANSIENT_POOL:
                 texture = mpTransientTextures[resource.indexInPool];
@@ -1134,10 +1126,6 @@ void NRDPass::dispatch(RenderContext* pRenderContext, const RenderData& renderDa
     pRenderContext->getLowLevelData()->getD3D12CommandList()->Dispatch(dispatchDesc.gridWidth, dispatchDesc.gridHeight, 1);
 }
 
-#endif FALCOR_ENABLE_NRD
-
-#endif // FALCOR_D3D12_AVAILABLE
-
 static void registerNRDPass(pybind11::module& m)
 {
     pybind11::enum_<NRDPass::DenoisingMethod> profile(m, "NRDMethod");
@@ -1156,8 +1144,6 @@ extern "C" FALCOR_API_EXPORT const char* getProjDir()
 
 extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary & lib)
 {
-#if FALCOR_D3D12_AVAILABLE
     lib.registerPass(NRDPass::kInfo, NRDPass::create);
     ScriptBindings::registerBinding(registerNRDPass);
-#endif
 }

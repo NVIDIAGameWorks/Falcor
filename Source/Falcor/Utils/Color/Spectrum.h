@@ -26,9 +26,15 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-
-#include "Falcor.h"
-#include "ColorUtils.h"
+#include "Core/Macros.h"
+#include "Utils/Math/Common.h"
+#include "Utils/Math/Vector.h"
+#include "Utils/Color/ColorUtils.h"
+#include <fstd/span.h> // TODO C++20: Replace with <span>
+#include <algorithm>
+#include <filesystem>
+#include <optional>
+#include <vector>
 
 namespace Falcor
 {

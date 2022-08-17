@@ -112,7 +112,7 @@ struct SceneDebugger
     {
         uint instanceID = PixelData::kInvalidID;
         uint materialID = PixelData::kInvalidID;
-
+        uint primitiveID = PixelData::kInvalidID;
         uint geometryID = PixelData::kInvalidID;
         uint blasID = PixelData::kInvalidID;
 
@@ -125,6 +125,7 @@ struct SceneDebugger
             const TriangleHit triangleHit = hit.getTriangleHit();
             instanceID = triangleHit.instanceID.index;
             geometryID = gScene.getGeometryInstance(triangleHit.instanceID).geometryID;
+            primitiveID = triangleHit.primitiveIndex;
             blasID = meshToBlasID[geometryID];
             materialID = gScene.getMaterialID(triangleHit.instanceID);
 
@@ -218,6 +219,8 @@ struct SceneDebugger
             return pseudocolor(instanceID);
         case SceneDebuggerMode::MaterialID:
             return pseudocolor(materialID);
+        case SceneDebuggerMode::PrimitiveID:
+            return pseudocolor(primitiveID);
         case SceneDebuggerMode::GeometryID:
             return pseudocolor(geometryID);
         case SceneDebuggerMode::BlasID:
@@ -235,6 +238,14 @@ struct SceneDebugger
                 // For non-triangle geometry, return grayscale color to indicate instancing status is not available.
                 return float3(v, v, v);
             }
+        }
+        case SceneDebuggerMode::FlatShaded:
+        {
+            // DEMO21:
+            // FIXME: Parameterize this
+            const float3 frontN = faceforward(sd.faceN, dir, sd.faceN);
+            const float v = 0.8f * saturate(dot(-frontN, dir)) + 0.2;
+            return float3(v, v, v);
         }
         default:
             // Should not happen.
@@ -278,8 +289,8 @@ struct SceneDebugger
         Grid::Accessor accessor = densityGrid.createAccessor();
 
         // Transform to index-space.
-        const float3 ipos = mul(float4(pos, 1.f), gridVolume.data.invTransform).xyz;
-        const float3 idir = mul(float4(dir, 0.f), gridVolume.data.invTransform).xyz;
+        const float3 ipos = mul(gridVolume.data.invTransform, float4(pos, 1.f)).xyz;
+        const float3 idir = mul(gridVolume.data.invTransform, float4(dir, 0.f)).xyz;
 
         // Evaluate transmittance using ray-marching.
         const uint kSteps = 500;

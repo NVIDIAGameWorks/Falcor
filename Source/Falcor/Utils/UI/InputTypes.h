@@ -26,7 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-
+#include "Core/Macros.h"
+#include "Utils/Math/Vector.h"
 #include <bitset>
 
 namespace Falcor
@@ -212,6 +213,7 @@ namespace Falcor
         {
             KeyPressed,     ///< Key was pressed.
             KeyReleased,    ///< Key was released.
+            KeyRepeated,    ///< Key is repeatedly down.
             Input           ///< Character input
         };
 

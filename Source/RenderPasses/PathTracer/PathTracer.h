@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
+#include "RenderGraph/RenderPassHelpers.h"
 #include "Utils/Debug/PixelDebug.h"
 #include "Utils/Sampling/SampleGenerator.h"
 #include "Rendering/Lights/LightBVHSampler.h"

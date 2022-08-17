@@ -82,9 +82,9 @@ RenderPassReflection TAA::reflect(const CompileData& compileData)
 
 void TAA::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    const auto& pColorIn = renderData[kColorIn]->asTexture();
-    const auto& pColorOut = renderData[kColorOut]->asTexture();
-    const auto& pMotionVec = renderData[kMotionVec]->asTexture();
+    const auto& pColorIn = renderData.getTexture(kColorIn);
+    const auto& pColorOut = renderData.getTexture(kColorOut);
+    const auto& pMotionVec = renderData.getTexture(kMotionVec);
     allocatePrevColor(pColorOut.get());
     mpFbo->attachColorTarget(pColorOut, 0);
 

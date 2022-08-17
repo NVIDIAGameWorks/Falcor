@@ -25,9 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor.h"
 #include "Mogwai.h"
 #include "MogwaiSettings.h"
+#include "RenderGraph/RenderGraphImportExport.h"
+#include "RenderGraph/RenderPassLibrary.h"
+#include "RenderGraph/RenderPassStandardFlags.h"
+#include "Utils/Timing/TimeReport.h"
+#include "Utils/Settings.h"
 
 #include <args.hxx>
 
@@ -40,7 +45,7 @@ namespace Mogwai
 {
     namespace
     {
-        std::map<std::string, Extension::CreateFunc>* gExtensions; // Map ensures ordering
+        std::unique_ptr<std::map<std::string, Extension::CreateFunc>> gExtensions; // Map ensures ordering
 
         const std::string kEditorExecutableName = "RenderGraphEditor";
         const std::string kEditorSwitch = "--editor";
@@ -61,7 +66,7 @@ namespace Mogwai
 
     void Renderer::extend(Extension::CreateFunc func, const std::string& name)
     {
-        if (!gExtensions) gExtensions = new std::map<std::string, Extension::CreateFunc>();
+        if (!gExtensions) gExtensions.reset(new std::map<std::string, Extension::CreateFunc>());
         if (gExtensions->find(name) != gExtensions->end())
         {
             throw RuntimeError("Extension '{}' is already registered.", name);
@@ -74,6 +79,8 @@ namespace Mogwai
         resetEditor();
         gpDevice->flushAndSync(); // Need to do that because clearing the graphs will try to release some state objects which might be in use
         mGraphs.clear();
+        if (mPipedOutput)
+            _pclose(mPipedOutput);
     }
 
     void Renderer::onLoad(RenderContext* pRenderContext)
@@ -82,7 +89,7 @@ namespace Mogwai
         if (gExtensions)
         {
             for (auto& f : (*gExtensions)) mpExtensions.push_back(f.second(this));
-            safe_delete(gExtensions);
+            gExtensions.reset();
         }
 
         auto regBinding = [this](pybind11::module& m) {this->registerScriptBindings(m); };
@@ -91,7 +98,14 @@ namespace Mogwai
         // Load script provided via command line.
         if (!mOptions.scriptFile.empty())
         {
-            loadScript(mOptions.scriptFile);
+            if (mOptions.deferredLoad)
+            {
+                loadScriptDeferred(mOptions.scriptFile);
+            }
+            else
+            {
+                loadScript(mOptions.scriptFile);
+            }
             // Add script to recent files only if not in silent mode (which is used during image tests).
             if (!mOptions.silentMode) mAppData.addRecentScript(mOptions.scriptFile);
         }
@@ -105,6 +119,13 @@ namespace Mogwai
         }
 
         Scene::nullTracePass(pRenderContext, uint2(1024));
+    }
+
+    void Renderer::onOptionsChange()
+    {
+        FALCOR_ASSERT(gpFramework);
+        for (auto& pe : mpExtensions)
+            pe->onOptionsChange(gpFramework->getSettings().getOptions());
     }
 
     RenderGraph* Renderer::getActiveGraph() const
@@ -324,6 +345,7 @@ namespace Mogwai
         RenderGraph* pOld = getActiveGraph();
         mActiveGraph = active;
         RenderGraph* pNew = getActiveGraph();
+
         if (pOld != pNew)
         {
             for (auto& e : mpExtensions) e->activeGraphChanged(pNew, pOld);
@@ -462,6 +484,19 @@ namespace Mogwai
             }
         }
         initGraph(pGraph, pGraphData);
+    }
+
+    void Renderer::setActiveGraph(const RenderGraph::SharedPtr& pGraph)
+    {
+        size_t index = 0;
+        for (; index < mGraphs.size(); ++index)
+            if (mGraphs[index].pGraph == pGraph)
+                break;
+
+        if (index == mGraphs.size())
+            addGraph(pGraph);
+
+        setActiveGraph((uint32_t)index);
     }
 
     void Renderer::loadSceneDialog()
@@ -628,6 +663,30 @@ namespace Mogwai
                 FALCOR_ASSERT(pOutTex);
                 pRenderContext->blit(pOutTex->getSRV(), pTargetFbo->getRenderTargetView(0));
             }
+
+            if (gpFramework->getSettings().getOption("PipedOutput:enable", false))
+            {
+                // DEMO21 Opera -- this specific string should probably disappear
+                static std::string defaultFFMPEGCmd("ffmpeg -r 30 -f rawvideo -pix_fmt rgba -s 1920x1080 -i - "
+                    "-threads 0 -preset medium -y -pix_fmt yuv420p -crf 20 -vf colorchannelmixer=rr=0:rb=1:br=1:bb=0 output.mp4");
+                if (!mPipedOutput)
+                {
+                    std::string ffmepgCmd = gpFramework->getSettings().getOption("PipedOutput:cmd", defaultFFMPEGCmd);
+
+                    mPipedOutput = _popen(ffmepgCmd.c_str(), "wb");
+
+                    if (!mPipedOutput)
+                        logError("Failed to create piped output with cmd `{}`. Piped output disabled.", ffmepgCmd);
+                }
+
+                if (mPipedOutput)
+                {
+                    Falcor::Texture::SharedPtr framebufferTexture = pTargetFbo->getColorTexture(0);
+                    uint32_t subresource = framebufferTexture->getSubresourceIndex(0, 0);
+                    std::vector<uint8_t> framebufferData = pRenderContext->readTextureSubresource(framebufferTexture.get(), subresource);
+                    fwrite(&framebufferData[0], 4 * pTargetFbo->getWidth() * pTargetFbo->getHeight(), 1, mPipedOutput);
+                }
+            }
         }
 
         endFrame(pRenderContext, pTargetFbo);
@@ -651,11 +710,23 @@ namespace Mogwai
             if (pe->keyboardEvent(keyEvent)) return true;
         }
         if (mGraphs.size()) mGraphs[mActiveGraph].pGraph->onKeyEvent(keyEvent);
-        return mpScene ? mpScene->onKeyEvent(keyEvent) : false;
+        if (mpScene && mpScene->onKeyEvent(keyEvent)) return true;
+        // DEMO21 Opera
+        if (mKeyCallback)
+        {
+            if (keyEvent.type == KeyboardEvent::Type::KeyPressed && mKeyCallback(true, (uint32_t)keyEvent.key)) return true;
+            if (keyEvent.type == KeyboardEvent::Type::KeyReleased && mKeyCallback(false, (uint32_t)keyEvent.key)) return true;
+        }
+        return false;
     }
 
     bool Renderer::onGamepadEvent(const GamepadEvent& gamepadEvent)
     {
+        for (auto& pe : mpExtensions)
+        {
+            if (pe->gamepadEvent(gamepadEvent)) return true;
+        }
+
         return mpScene ? mpScene->onGamepadEvent(gamepadEvent) : false;
     }
 
@@ -677,7 +748,9 @@ namespace Mogwai
 
     void Renderer::onHotReload(HotReloadFlags reloaded)
     {
+#if FALCOR_ENABLE_RENDER_PASS_HOT_RELOAD
         RenderPassLibrary::instance().reloadLibraries(gpFramework->getRenderContext());
+#endif
         RenderGraph* pActiveGraph = getActiveGraph();
         if (pActiveGraph) pActiveGraph->onHotReload(reloaded);
     }
@@ -699,11 +772,11 @@ namespace Mogwai
 
 int main(int argc, char** argv)
 {
-
     args::ArgumentParser parser("Mogwai render application.");
     parser.helpParams.programName = "Mogwai";
     args::HelpFlag helpFlag(parser, "help", "Display this help menu.", {'h', "help"});
     args::ValueFlag<std::string> scriptFlag(parser, "path", "Python script file to run.", {'s', "script"});
+    args::Flag deferredFlag(parser, "deferred", "The script is loaded deferred.", {"deferred"});
     args::ValueFlag<std::string> sceneFlag(parser, "path", "Scene file (for example, a .pyscene file) to open.", { 'S', "scene" });
     args::ValueFlag<std::string> logfileFlag(parser, "path", "File to write log into.", {'l', "logfile"});
     args::ValueFlag<int32_t> verbosityFlag(parser, "verbosity", "Logging verbosity (0=disabled, 1=fatal errors, 2=errors, 3=warnings, 4=infos, 5=debugging)", { 'v', "verbosity" }, 4);
@@ -714,6 +787,7 @@ int main(int argc, char** argv)
     args::Flag rebuildSceneCacheFlag(parser, "", "Rebuild the scene cache.", {"rebuild-cache"});
     args::Flag generateShaderDebugInfo(parser, "", "Generate shader debug info.", {'d', "debug-shaders"});
     args::Flag enableDebugLayer(parser, "", "Enable debug layer (enabled by default in Debug build).", {"enable-debug-layer"});
+    args::Flag preciseProgram(parser, "", "Force all slang programs to run in precise mode", { "precise" });
 
     args::CompletionFlag completionFlag(parser, {"complete"});
 
@@ -763,6 +837,7 @@ int main(int argc, char** argv)
     Mogwai::Renderer::Options options;
 
     if (scriptFlag) options.scriptFile = args::get(scriptFlag);
+    if (deferredFlag) options.deferredLoad = true;
     if (sceneFlag) options.sceneFile = args::get(sceneFlag);
     if (silentFlag) options.silentMode = true;
     if (useSceneCacheFlag) options.useSceneCache = true;
@@ -777,6 +852,7 @@ int main(int argc, char** argv)
         SampleConfig config;
         config.windowDesc.title = "Mogwai";
         if (enableDebugLayer) config.deviceDesc.enableDebugLayer = true;
+        if (preciseProgram) Program::setForcedCompilerFlags({ Shader::CompilerFlags::FloatingPointModePrecise, Shader::CompilerFlags::FloatingPointModeFast });
 
         if (silentFlag)
         {

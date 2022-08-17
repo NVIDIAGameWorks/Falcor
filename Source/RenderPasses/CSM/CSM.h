@@ -29,6 +29,9 @@
 #include "Falcor.h"
 #include "CSMData.slang"
 #include "../Utils/GaussianBlur/GaussianBlur.h"
+#include "RenderGraph/RenderGraph.h"
+#include "RenderGraph/RenderPass.h"
+#include "Utils/Algorithm/ParallelReduction.h"
 
 using namespace Falcor;
 
@@ -170,7 +173,7 @@ private:
         // and remove this field.
         int3 padding;
 #endif
-        glm::mat4 camInvViewProj;
+        rmcv::mat4 camInvViewProj;
         uint2 screenDim = { 0, 0 };
         uint32_t mapBitsPerChannel = 32;
     } mVisibilityPassData;

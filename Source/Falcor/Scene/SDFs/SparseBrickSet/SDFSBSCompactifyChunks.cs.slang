@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,29 +25,29 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-cbuffer CB
+struct ParamBlock
 {
-    uint gChunkCount;
+    uint chunkCount;
+    ByteAddressBuffer chunkIndirection;
+    ByteAddressBuffer chunkValidity;
+    ByteAddressBuffer chunkCoords;
+    RWByteAddressBuffer compactedChunkCoords;
 };
 
-ByteAddressBuffer gChunkIndirection;
-ByteAddressBuffer gChunkValidity;
-ByteAddressBuffer gChunkCoords;
-
-RWByteAddressBuffer gCompactedChunkCoords;
+ParameterBlock<ParamBlock> gParamBlock;
 
 [numthreads(256, 1, 1)]
 void main(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
     const uint index = dispatchThreadID.x;
-    if (index >= gChunkCount) return;
+    if (index >= gParamBlock.chunkCount) return;
 
     const uint readAddress = index << 2;
-    const bool valid = gChunkValidity.Load(readAddress) != 0;
+    const bool valid = gParamBlock.chunkValidity.Load(readAddress) != 0;
     if (!valid) return;
 
-    const uint compactedIndex = gChunkIndirection.Load(readAddress);
-    const uint3 coords = gChunkCoords.Load3(3 * readAddress);
+    const uint compactedIndex = gParamBlock.chunkIndirection.Load(readAddress);
+    const uint3 coords = gParamBlock.chunkCoords.Load3(3 * readAddress);
 
-    gCompactedChunkCoords.Store3(3 * (compactedIndex << 2), coords);
+    gParamBlock.compactedChunkCoords.Store3(3 * (compactedIndex << 2), coords);
 }

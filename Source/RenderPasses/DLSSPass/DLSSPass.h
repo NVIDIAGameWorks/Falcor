@@ -28,7 +28,7 @@
 #pragma once
 
 #include "Falcor.h"
-
+#include "RenderGraph/RenderPassHelpers.h"
 #include "NGXWrapper.h"
 
 using namespace Falcor;
@@ -64,10 +64,8 @@ public:
 private:
     DLSSPass(const Dictionary& dict);
 
-#if FALCOR_ENABLE_DLSS
     void initializeDLSS(RenderContext* pRenderContext);
     void executeInternal(RenderContext* pRenderContext, const RenderData& renderData);
-#endif
 
     // Options
     bool                        mEnabled = true;
@@ -88,7 +86,5 @@ private:
     Texture::SharedPtr          mpOutput;                   ///< Internal output buffer. This is used if format/size conversion upon output is needed.
     Texture::SharedPtr          mpExposure;                 ///< Texture of size 1x1 holding exposure value.
 
-#if FALCOR_ENABLE_DLSS
     std::unique_ptr<NGXWrapper> mpNGXWrapper;
-#endif
 };

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,19 +26,23 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Core/Macros.h"
 #include "Core/State/ComputeState.h"
 #include "Core/Program/ComputeProgram.h"
 #include "Core/Program/ProgramVars.h"
+#include <memory>
 
 namespace Falcor
 {
+    class RenderContext;
+
     /** In-place bitonic sort in chunks of N elements.
 
         This sort method is efficient for sorting shorter sequences.
         The time complexity is O(N*log^2(N)), but it parallelizes very well and has practically no branching.
         The sort is implemented using horizontal operations within warps, and shared memory across warps.
 
-        This code requires an NVIDIA GPU and NVAPI. Set FALCOR_ENABLE_NVAPI to true in FalcorConfig.h.
+        This code requires an NVIDIA GPU and NVAPI.
     */
     class FALCOR_API BitonicSort
     {

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Scene/Material/BasicMaterial.h"
+#include "BasicMaterial.h"
 
 namespace Falcor
 {
@@ -56,6 +56,9 @@ namespace Falcor
             \param[in] name The material name.
         */
         static SharedPtr create(const std::string& name = "");
+
+        Program::ShaderModuleList getShaderModules() const override;
+        Program::TypeConformanceList getTypeConformances() const override;
 
         /** Set the roughness.
         */

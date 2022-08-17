@@ -26,11 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "RTXGIPass.h"
+#include "RenderGraph/RenderPassLibrary.h"
 #include "RenderGraph/RenderPassHelpers.h"
+#include "RenderGraph/RenderPassStandardFlags.h"
 
-#if FALCOR_D3D12_AVAILABLE
 const RenderPass::Info RTXGIPass::kInfo { "RTXGIPass", "Indirect diffuse lighing using RTXGI." };
-#endif
 
 namespace
 {
@@ -99,12 +99,8 @@ extern "C" FALCOR_API_EXPORT const char* getProjDir()
 
 extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary & lib)
 {
-#if FALCOR_D3D12_AVAILABLE
     lib.registerPass(RTXGIPass::kInfo, RTXGIPass::create);
-#endif
 }
-
-#if FALCOR_D3D12_AVAILABLE
 
 RTXGIPass::SharedPtr RTXGIPass::create(RenderContext* pRenderContext, const Dictionary& dict)
 {
@@ -123,19 +119,12 @@ RTXGIPass::RTXGIPass(const Dictionary& dict)
 
 void RTXGIPass::init()
 {
-    // Create program for the indirect illumination pass.
-    Program::DefineList defines = { {"USE_VBUFFER", mUseVBuffer ? "1" : "0"} };
-    mpComputeIndirectPass = ComputePass::create(kComputeIndirectPassFilename, "main", defines, false);
-
     // Load scene with a single unit sphere to use as probe proxy.
     mpSphereScene = SceneBuilder::create(kSphereMeshFilename, SceneBuilder::Flags::Force32BitIndices)->getScene();
     if (mpSphereScene->getGeometryInstanceCount() != 1)
     {
         throw RuntimeError("RTXGIPass: Expected sphere scene to have one mesh instance");
     }
-
-    // Create background visualization pass.
-    mpVisualizeBackground = ComputePass::create(kVisualizeBackgroundFilename, "main", defines, false);
 
     // Create probe visualization pass.
     Program::Desc progDesc;
@@ -214,6 +203,9 @@ void RTXGIPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& 
     mpVolume = nullptr;
 
     // Clear old data and vars to trigger re-creation.
+    mpVisualizeBackground = nullptr;
+    mpComputeIndirectPass = nullptr;
+    mVisualizeDirect.pProgram = nullptr;
     mVisualizeDirect.pVars = nullptr;
 
     if (mpScene)
@@ -223,26 +215,39 @@ void RTXGIPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& 
             logWarning("RTXGIPass: This render pass only supports triangles. Other types of geometry will be ignored.");
         }
 
-        // Prepare our programs for the scene.
-        // This invalidates the reflection so vars have to be re-created.
-        Shader::DefineList defines = mpScene->getSceneDefines();
+        auto shaderModules = mpScene->getShaderModules();
         auto typeConformances = mpScene->getTypeConformances();
+        Shader::DefineList defines = mpScene->getSceneDefines();
 
-        mpVisualizeBackground->getProgram()->addDefines(defines);
-        mpVisualizeBackground->getProgram()->setTypeConformances(typeConformances);
+        // Create background visualization pass.
+        {
+            Program::Desc desc;
+            desc.addShaderModules(shaderModules);
+            desc.addShaderLibrary(kVisualizeBackgroundFilename).csEntry("main");
+            desc.addTypeConformances(typeConformances);
+            mpVisualizeBackground = ComputePass::create(desc, defines, false);
+        }
 
-        mpComputeIndirectPass->getProgram()->addDefines(defines);
-        mpComputeIndirectPass->getProgram()->setTypeConformances(typeConformances);
+        // Both programs below optionally use the V-buffer. Configure its usage via a define.
+        defines.add("USE_VBUFFER", mUseVBuffer ? "1" : "0");
+
+        // Create program for the indirect illumination pass.
+        {
+            Program::Desc desc;
+            desc.addShaderModules(shaderModules);
+            desc.addShaderLibrary(kComputeIndirectPassFilename).csEntry("main");
+            desc.addTypeConformances(typeConformances);
+            mpComputeIndirectPass = ComputePass::create(desc, defines, false);
+        }
 
         // Create direct lighting visualization pass.
         RtProgram::Desc desc;
+        desc.addShaderModules(mpScene->getShaderModules());
         desc.addShaderLibrary(kVisualizeDirectFilename);
+        desc.addTypeConformances(typeConformances);
         desc.setMaxPayloadSize(kMaxPayloadSizeBytes);
         desc.setMaxAttributeSize(kMaxAttributeSizeBytes);
         desc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
-        desc.addTypeConformances(typeConformances);
-
-        defines.add("USE_VBUFFER", mUseVBuffer ? "1" : "0");
 
         mVisualizeDirect.pBindingTable = RtBindingTable::create(1, 1, mpScene->getGeometryCount());
         auto& sbt = mVisualizeDirect.pBindingTable;
@@ -264,7 +269,7 @@ void RTXGIPass::execute(RenderContext* pRenderContext, const RenderData& renderD
 {
     if (mEnablePass == false || mpScene == nullptr)
     {
-        Texture::SharedPtr pOutput = renderData[kOutput.name]->asTexture();
+        Texture::SharedPtr pOutput = renderData.getTexture(kOutput.name);
         pRenderContext->clearRtv(pOutput->getRTV().get(), float4(0));
         return;
     }
@@ -332,11 +337,11 @@ void RTXGIPass::bindPassIO(ShaderVar var, const RenderData& renderData) const
         // Only bind if variable exists, we don't need all G-buffer channels
         if (!it.texname.empty() && var.findMember(it.texname).isValid())
         {
-            var[it.texname] = renderData[it.name]->asTexture();
+            var[it.texname] = renderData.getTexture(it.name);
         }
     }
 
-    Texture::SharedPtr pOutput = renderData[kOutput.name]->asTexture();
+    Texture::SharedPtr pOutput = renderData.getTexture(kOutput.name);
     var[kOutput.texname] = pOutput;
 }
 
@@ -344,8 +349,8 @@ void RTXGIPass::probeVisualizerPass(RenderContext* pRenderContext, const RenderD
 {
     FALCOR_PROFILE("probeVisualizerPass");
 
-    Texture::SharedPtr pOutput = renderData[kOutput.name]->asTexture();
-    Texture::SharedPtr pDepthStencil = renderData[kDepthChannel]->asTexture();
+    Texture::SharedPtr pOutput = renderData.getTexture(kOutput.name);
+    Texture::SharedPtr pDepthStencil = renderData.getTexture(kDepthChannel);
 
     if (pDepthStencil == nullptr)
     {
@@ -440,7 +445,7 @@ void RTXGIPass::probeVisualizerPass(RenderContext* pRenderContext, const RenderD
         // Draw probe visualization mesh with one instance per probe.
         // Note we can't use Scene::render() as it only draws a single instance.
         uint32_t probeCount = mpVolume->getProbeCount();
-        auto mesh = mpSphereScene->getMesh(0);
+        const auto& mesh = mpSphereScene->getMesh(MeshID{ 0 });
         FALCOR_ASSERT(mesh.indexCount > 0);
         // TODO: We're drawing more instances here than the VAO is setup for so we will get validation errors.
         pRenderContext->drawIndexedInstanced(mVisualizeProbes.pState.get(), mVisualizeProbes.pVars.get(), mesh.indexCount, probeCount, mesh.ibOffset, mesh.vbOffset, 0);
@@ -542,5 +547,3 @@ void RTXGIPass::renderVisualizerUI(Gui::Widgets& widget)
         }
     }
 }
-
-#endif // FALCOR_D3D12_AVAILABLE

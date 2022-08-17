@@ -25,8 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor.h"
 #include "FrameCapture.h"
+#include "Utils/Scripting/ScriptWriter.h"
 #include <filesystem>
 
 namespace Mogwai
@@ -81,6 +82,8 @@ namespace Mogwai
 
     void FrameCapture::registerScriptBindings(pybind11::module& m)
     {
+        using namespace pybind11::literals;
+
         CaptureTrigger::registerScriptBindings(m);
 
         pybind11::class_<FrameCapture, CaptureTrigger> frameCapture(m, "FrameCapture");
@@ -104,6 +107,10 @@ namespace Mogwai
         auto getUI = [](FrameCapture* pFC) { return pFC->mShowUI; };
         auto setUI = [](FrameCapture* pFC, bool show) { pFC->mShowUI = show; };
         frameCapture.def_property(kUI.c_str(), getUI, setUI);
+
+        frameCapture.def_property("captureAllOutputs",
+            [](FrameCapture* pFC){ return pFC->mCaptureAllOutputs;},
+            [](FrameCapture* pFC, bool all){ pFC->mCaptureAllOutputs = all; });
     }
 
     std::string FrameCapture::getScriptVar() const

@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "ForwardLightingPass.h"
+#include "RenderGraph/RenderPassLibrary.h"
 
 const RenderPass::Info ForwardLightingPass::kInfo
 {
@@ -86,10 +87,7 @@ Dictionary ForwardLightingPass::getScriptingDictionary()
 ForwardLightingPass::ForwardLightingPass()
     : RenderPass(kInfo)
 {
-    GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile(kShaderFile, "vsMain", "psMain");
     mpState = GraphicsState::create();
-    mpState->setProgram(pProgram);
-
     mpFbo = Fbo::create();
 
     DepthStencilState::Desc dsDesc;
@@ -127,10 +125,14 @@ void ForwardLightingPass::setScene(RenderContext* pRenderContext, const Scene::S
 
     if (mpScene)
     {
-        mpState->getProgram()->addDefines(mpScene->getSceneDefines());
-        mpState->getProgram()->setTypeConformances(mpScene->getTypeConformances());
+        Program::Desc desc;
+        desc.addShaderModules(mpScene->getShaderModules());
+        desc.addShaderLibrary(kShaderFile).vsEntry("vsMain").psEntry("psMain");
+        desc.addTypeConformances(mpScene->getTypeConformances());
+        GraphicsProgram::SharedPtr pProgram = GraphicsProgram::create(desc, mpScene->getSceneDefines());
 
-        mpVars = GraphicsVars::create(mpState->getProgram()->getReflector());
+        mpVars = GraphicsVars::create(pProgram->getReflector());
+        mpState->setProgram(pProgram);
 
         Sampler::Desc samplerDesc;
         samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
@@ -140,7 +142,7 @@ void ForwardLightingPass::setScene(RenderContext* pRenderContext, const Scene::S
 
 void ForwardLightingPass::initDepth(const RenderData& renderData)
 {
-    const auto& pTexture = renderData[kDepth]->asTexture();
+    const auto& pTexture = renderData.getTexture(kDepth);
 
     if (pTexture)
     {
@@ -160,9 +162,9 @@ void ForwardLightingPass::initDepth(const RenderData& renderData)
 
 void ForwardLightingPass::initFbo(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    mpFbo->attachColorTarget(renderData[kColor]->asTexture(), 0);
-    mpFbo->attachColorTarget(renderData[kNormals]->asTexture(), 1);
-    mpFbo->attachColorTarget(renderData[kMotionVecs]->asTexture(), 2);
+    mpFbo->attachColorTarget(renderData.getTexture(kColor), 0);
+    mpFbo->attachColorTarget(renderData.getTexture(kNormals), 1);
+    mpFbo->attachColorTarget(renderData.getTexture(kMotionVecs), 2);
 
     for (uint32_t i = 1; i < 3; i++)
     {
@@ -171,7 +173,7 @@ void ForwardLightingPass::initFbo(RenderContext* pRenderContext, const RenderDat
     }
 
     // TODO Matt (not really matt, just need to fix that since if depth is not bound the pass crashes
-    if (mUsePreGenDepth == false) pRenderContext->clearDsv(renderData[kDepth]->asTexture()->getDSV().get(), 1, 0);
+    if (mUsePreGenDepth == false) pRenderContext->clearDsv(renderData.getTexture(kDepth)->getDSV().get(), 1, 0);
 }
 
 void ForwardLightingPass::execute(RenderContext* pRenderContext, const RenderData& renderData)
@@ -180,6 +182,25 @@ void ForwardLightingPass::execute(RenderContext* pRenderContext, const RenderDat
     initFbo(pRenderContext, renderData);
 
     if (!mpScene) return;
+
+    // Prepare program.
+    if (mEnableSuperSampling)
+    {
+        mpState->getProgram()->addDefine("INTERPOLATION_MODE", "sample");
+    }
+    else
+    {
+        mpState->getProgram()->removeDefine("INTERPOLATION_MODE");
+    }
+
+    if (mMotionVecFormat != ResourceFormat::Unknown)
+    {
+        mpState->getProgram()->addDefine("_OUTPUT_MOTION_VECTORS");
+    }
+    else
+    {
+        mpState->getProgram()->removeDefine("_OUTPUT_MOTION_VECTORS");
+    }
 
     // Update env map lighting
     const auto& pEnvMap = mpScene->getEnvMap();
@@ -197,7 +218,7 @@ void ForwardLightingPass::execute(RenderContext* pRenderContext, const RenderDat
 
     mpVars["PerFrameCB"]["gRenderTargetDim"] = float2(mpFbo->getWidth(), mpFbo->getHeight());
     mpVars["PerFrameCB"]["gFrameCount"] = mFrameCount;
-    mpVars->setTexture(kVisBuffer, renderData[kVisBuffer]->asTexture());
+    mpVars->setTexture(kVisBuffer, renderData.getTexture(kVisBuffer));
 
     mpState->setFbo(mpFbo);
     mpScene->rasterize(pRenderContext, mpState.get(), mpVars.get());
@@ -236,14 +257,6 @@ ForwardLightingPass& ForwardLightingPass::setNormalMapFormat(ResourceFormat form
 ForwardLightingPass& ForwardLightingPass::setMotionVecFormat(ResourceFormat format)
 {
     mMotionVecFormat = format;
-    if (mMotionVecFormat != ResourceFormat::Unknown)
-    {
-        mpState->getProgram()->addDefine("_OUTPUT_MOTION_VECTORS");
-    }
-    else
-    {
-        mpState->getProgram()->removeDefine("_OUTPUT_MOTION_VECTORS");
-    }
     requestRecompile();
     return *this;
 }
@@ -258,15 +271,6 @@ ForwardLightingPass& ForwardLightingPass::setSampleCount(uint32_t samples)
 ForwardLightingPass& ForwardLightingPass::setSuperSampling(bool enable)
 {
     mEnableSuperSampling = enable;
-    if (mEnableSuperSampling)
-    {
-        mpState->getProgram()->addDefine("INTERPOLATION_MODE", "sample");
-    }
-    else
-    {
-        mpState->getProgram()->removeDefine("INTERPOLATION_MODE");
-    }
-
     return *this;
 }
 

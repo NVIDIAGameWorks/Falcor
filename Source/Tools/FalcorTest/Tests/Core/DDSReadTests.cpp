@@ -31,14 +31,14 @@
 
 namespace Falcor
 {
+    std::ostream& operator<<(std::ostream& os, const ResourceFormat fmt)
+    {
+        os << to_string(fmt);
+        return os;
+    }
+
     namespace
     {
-        std::ostream& operator<<(std::ostream& os, const ResourceFormat fmt)
-        {
-            os << to_string(fmt);
-            return os;
-        }
-
         void testDDS(GPUUnitTestContext& ctx, const std::string& testName, ResourceFormat fmt, bool expectLoadFailure)
         {
             // Read input DDS file

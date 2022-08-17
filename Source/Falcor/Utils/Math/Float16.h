@@ -26,9 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Core/Framework.h"
+#include "Core/Assert.h"
 #include "Vector.h"
-#include "glm/detail/type_half.hpp"
+#include <glm/detail/type_half.hpp>
+#include <string>
 
 namespace Falcor
 {

@@ -30,6 +30,7 @@
 #include "Scene/SDFs/SDFGrid.h"
 #include "Core/API/Buffer.h"
 #include "Core/API/Texture.h"
+#include "RenderGraph/BasePasses/ComputePass.h"
 
 namespace Falcor
 {

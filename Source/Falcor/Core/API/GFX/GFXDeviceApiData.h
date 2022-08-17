@@ -26,8 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-
-#include <slang/slang-gfx.h>
+#include "Core/Macros.h"
+#include "Core/API/Device.h"
+#include <slang-gfx.h>
+#include <cstdint>
 
 namespace Falcor
 {
@@ -41,6 +43,8 @@ namespace Falcor
         Slang::ComPtr<gfx::ISwapchain> pSwapChain;
         Slang::ComPtr<gfx::ICommandQueue> pQueue;
         Slang::ComPtr<gfx::ITransientResourceHeap> pTransientResourceHeaps[Device::kSwapChainBuffersCount];
-        PipelineCreationAPIDispatcher* pApiDispatcher = nullptr;
+#if FALCOR_NVAPI_AVAILABLE
+        std::unique_ptr<PipelineCreationAPIDispatcher> pApiDispatcher;
+#endif
     };
 }

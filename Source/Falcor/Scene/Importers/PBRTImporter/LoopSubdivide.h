@@ -32,6 +32,9 @@
 // SPDX: Apache-2.0
 
 #pragma once
+#include "Utils/Math/Vector.h"
+#include <fstd/span.h> // TODO C++20: Replace with <span>
+#include <vector>
 
 namespace Falcor
 {

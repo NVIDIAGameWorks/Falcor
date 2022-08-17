@@ -25,9 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "EnvMapSampler.h"
-#include "glm/gtc/integer.hpp"
+#include "Core/Assert.h"
+#include "Core/API/RenderContext.h"
+#include "RenderGraph/BasePasses/ComputePass.h"
+#include <glm/gtc/integer.hpp>
 
 namespace Falcor
 {

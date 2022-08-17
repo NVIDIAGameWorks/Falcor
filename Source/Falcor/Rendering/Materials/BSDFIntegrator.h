@@ -26,6 +26,14 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Core/Macros.h"
+#include "Core/API/Buffer.h"
+#include "Core/API/GpuFence.h"
+#include "Utils/Math/Vector.h"
+#include "RenderGraph/BasePasses/ComputePass.h"
+#include "Scene/Scene.h"
+#include "Scene/SceneIDs.h"
+#include <memory>
 
 namespace Falcor
 {
@@ -45,7 +53,7 @@ namespace Falcor
             \param[in] cosTheta Cosine theta angle of incident direction.
             \return The integral value.
         */
-        float3 integrateIsotropic(RenderContext* pRenderContext, const uint32_t materialID, const float cosTheta);
+        float3 integrateIsotropic(RenderContext* pRenderContext, const MaterialID materialID, const float cosTheta);
 
         /** Integrate the BSDF for a material given an array of incident directions.
             The BSDF is assumed to be isotropic and is integrated over outgoing directions in the upper hemisphere.
@@ -54,12 +62,12 @@ namespace Falcor
             \param[in] cosThetas Cosine theta angles of incident directions.
             \return Array of integral values.
         */
-        std::vector<float3> integrateIsotropic(RenderContext* pRenderContext, const uint32_t materialID, const std::vector<float>& cosThetas);
+        std::vector<float3> integrateIsotropic(RenderContext* pRenderContext, const MaterialID materialID, const std::vector<float>& cosThetas);
 
     private:
         BSDFIntegrator(RenderContext* pRenderContext, const Scene::SharedPtr& pScene);
 
-        void integrationPass(RenderContext* pRenderContext, const uint32_t materialID, const uint32_t gridCount) const;
+        void integrationPass(RenderContext* pRenderContext, const MaterialID materialID, const uint32_t gridCount) const;
         void finalPass(RenderContext* pRenderContext, const uint32_t gridCount) const;
 
         Scene::SharedPtr mpScene;

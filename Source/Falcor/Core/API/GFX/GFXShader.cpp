@@ -25,9 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Core/API/Shader.h"
-#include <slang/slang.h>
+#include "Core/API/GFX/GFXAPI.h"
 
 namespace Falcor
 {
@@ -77,7 +76,7 @@ namespace Falcor
         return slangEntryPoint != nullptr;
     }
 
-#ifdef FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
     ID3DBlobPtr Shader::getD3DBlob() const
     {
         ID3DBlobPtr result = mpPrivateData->getBlob();

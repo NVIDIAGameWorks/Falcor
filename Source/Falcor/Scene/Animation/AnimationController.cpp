@@ -25,8 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "AnimationController.h"
+#include "Core/API/RenderContext.h"
+#include "Utils/Timing/Profiler.h"
+#include "Scene/Scene.h"
 #include <fstream>
 
 namespace Falcor
@@ -49,18 +51,17 @@ namespace Falcor
         , mMatricesChanged(pScene->mSceneGraph.size())
     {
         // Create GPU resources.
-        FALCOR_ASSERT(mLocalMatrices.size() * 4 <= std::numeric_limits<uint32_t>::max());
-        uint32_t float4Count = (uint32_t)mLocalMatrices.size() * 4;
+        FALCOR_ASSERT(mLocalMatrices.size() <= std::numeric_limits<uint32_t>::max());
 
-        if (float4Count > 0)
+        if (!mLocalMatrices.empty())
         {
-            mpWorldMatricesBuffer = Buffer::createStructured(sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+            mpWorldMatricesBuffer = Buffer::createStructured(sizeof(float4x4), (uint32_t)mLocalMatrices.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
             mpWorldMatricesBuffer->setName("AnimationController::mpWorldMatricesBuffer");
-            mpPrevWorldMatricesBuffer = Buffer::createStructured(sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+            mpPrevWorldMatricesBuffer = Buffer::createStructured(sizeof(float4x4), (uint32_t)mLocalMatrices.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
             mpPrevWorldMatricesBuffer->setName("AnimationController::mpPrevWorldMatricesBuffer");
-            mpInvTransposeWorldMatricesBuffer = Buffer::createStructured(sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+            mpInvTransposeWorldMatricesBuffer = Buffer::createStructured(sizeof(float4x4), (uint32_t)mLocalMatrices.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
             mpInvTransposeWorldMatricesBuffer->setName("AnimationController::mpInvTransposeWorldMatricesBuffer");
-            mpPrevInvTransposeWorldMatricesBuffer = Buffer::createStructured(sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+            mpPrevInvTransposeWorldMatricesBuffer = Buffer::createStructured(sizeof(float4x4), (uint32_t)mLocalMatrices.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
             mpPrevInvTransposeWorldMatricesBuffer->setName("AnimationController::mpPrevInvTransposeWorldMatricesBuffer");
         }
 
@@ -107,7 +108,7 @@ namespace Falcor
         {
             if (cache.tessellationMode != CurveTessellationMode::LinearSweptSphere)
             {
-                totalAnimatedMeshVertexCount += mpScene->getMesh(cache.geometryID).vertexCount;
+                totalAnimatedMeshVertexCount += mpScene->getMesh(MeshID{ cache.geometryID }).vertexCount;
             }
         }
 
@@ -130,8 +131,8 @@ namespace Falcor
             {
                 if (cache.tessellationMode != CurveTessellationMode::LinearSweptSphere)
                 {
-                    uint32_t offset = mpScene->getMesh(cache.geometryID).vbOffset;
-                    uint32_t vertexCount = mpScene->getMesh(cache.geometryID).vertexCount;
+                    uint32_t offset = mpScene->getMesh(MeshID{ cache.geometryID }).vbOffset;
+                    uint32_t vertexCount = mpScene->getMesh(MeshID{ cache.geometryID }).vertexCount;
                     for (size_t i = 0; i < vertexCount; i++)
                     {
                         prevVertexData.push_back({ staticVertexData[offset + i].position });
@@ -150,7 +151,7 @@ namespace Falcor
                 {
                     if (cache.tessellationMode != CurveTessellationMode::LinearSweptSphere)
                     {
-                        byteOffset = mpScene->getMesh(cache.geometryID).prevVbOffset * sizeof(PrevVertexData);
+                        byteOffset = mpScene->getMesh(MeshID{ cache.geometryID }).prevVbOffset * sizeof(PrevVertexData);
                         break;
                     }
                 }
@@ -293,10 +294,10 @@ namespace Falcor
     {
         for (auto& pAnimation : mAnimations)
         {
-            uint32_t nodeID = pAnimation->getNodeID();
-            FALCOR_ASSERT(nodeID < mLocalMatrices.size());
-            mLocalMatrices[nodeID] = pAnimation->animate(time);
-            mMatricesChanged[nodeID] = true;
+            NodeID nodeID = pAnimation->getNodeID();
+            FALCOR_ASSERT(nodeID.get() < mLocalMatrices.size());
+            mLocalMatrices[nodeID.get()] = pAnimation->animate(time);
+            mMatricesChanged[nodeID.get()] = true;
         }
     }
 
@@ -307,18 +308,18 @@ namespace Falcor
         for (size_t i = 0; i < mGlobalMatrices.size(); i++)
         {
             // Propagate matrix change flag to children.
-            if (sceneGraph[i].parent != SceneBuilder::kInvalidNode)
+            if (sceneGraph[i].parent != NodeID::Invalid())
             {
-                mMatricesChanged[i] = mMatricesChanged[i] || mMatricesChanged[sceneGraph[i].parent];
+                mMatricesChanged[i] = mMatricesChanged[i] || mMatricesChanged[sceneGraph[i].parent.get()];
             }
 
             if (!mMatricesChanged[i] && !updateAll) continue;
 
             mGlobalMatrices[i] = mLocalMatrices[i];
 
-            if (mpScene->mSceneGraph[i].parent != SceneBuilder::kInvalidNode)
+            if (mpScene->mSceneGraph[i].parent != NodeID::Invalid())
             {
-                mGlobalMatrices[i] = mGlobalMatrices[sceneGraph[i].parent] * mGlobalMatrices[i];
+                mGlobalMatrices[i] = mGlobalMatrices[sceneGraph[i].parent.get()] * mGlobalMatrices[i];
             }
 
             mInvTransposeGlobalMatrices[i] = transpose(inverse(mGlobalMatrices[i]));
@@ -416,7 +417,7 @@ namespace Falcor
             for (size_t i = 0; i < mpScene->mSceneGraph.size(); i++)
             {
                 mMeshBindMatrices[i] = mpScene->mSceneGraph[i].meshBind;
-                meshInvBindMatrices[i] = glm::inverse(mMeshBindMatrices[i]);
+                meshInvBindMatrices[i] = rmcv::inverse(mMeshBindMatrices[i]);
             }
 
             // Bind vertex data.
@@ -433,15 +434,14 @@ namespace Falcor
             block["prevSkinnedVertices"] = mpPrevVertexData;
 
             // Bind transforms.
-            FALCOR_ASSERT(mSkinningMatrices.size() * 4 < std::numeric_limits<uint32_t>::max());
-            uint32_t float4Count = (uint32_t)mSkinningMatrices.size() * 4;
-            mpMeshBindMatricesBuffer = Buffer::createStructured(sizeof(float4), float4Count, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, mMeshBindMatrices.data(), false);
+            FALCOR_ASSERT(mSkinningMatrices.size() < std::numeric_limits<uint32_t>::max());
+            mpMeshBindMatricesBuffer = Buffer::createStructured(sizeof(float4x4), (uint32_t)mSkinningMatrices.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, mMeshBindMatrices.data(), false);
             mpMeshBindMatricesBuffer->setName("AnimationController::mpMeshBindMatricesBuffer");
-            mpMeshInvBindMatricesBuffer = Buffer::createStructured(sizeof(float4), float4Count, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, meshInvBindMatrices.data(), false);
+            mpMeshInvBindMatricesBuffer = Buffer::createStructured(sizeof(float4x4), (uint32_t)mSkinningMatrices.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, meshInvBindMatrices.data(), false);
             mpMeshInvBindMatricesBuffer->setName("AnimationController::mpMeshInvBindMatricesBuffer");
-            mpSkinningMatricesBuffer = Buffer::createStructured(sizeof(float4), float4Count, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+            mpSkinningMatricesBuffer = Buffer::createStructured(sizeof(float4x4), (uint32_t)mSkinningMatrices.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
             mpSkinningMatricesBuffer->setName("AnimationController::mpSkinningMatricesBuffer");
-            mpInvTransposeSkinningMatricesBuffer = Buffer::createStructured(sizeof(float4), float4Count, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+            mpInvTransposeSkinningMatricesBuffer = Buffer::createStructured(sizeof(float4x4), (uint32_t)mSkinningMatrices.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
             mpInvTransposeSkinningMatricesBuffer->setName("AnimationController::mpInvTransposeSkinningMatricesBuffer");
 
             block["boneMatrices"].setBuffer(mpSkinningMatricesBuffer);

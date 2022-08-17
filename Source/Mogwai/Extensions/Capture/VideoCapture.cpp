@@ -25,8 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor.h"
 #include "VideoCapture.h"
+#include "Utils/Scripting/ScriptWriter.h"
 
 namespace Mogwai
 {
@@ -133,6 +134,8 @@ namespace Mogwai
 
     void VideoCapture::registerScriptBindings(pybind11::module& m)
     {
+        using namespace pybind11::literals;
+
         CaptureTrigger::registerScriptBindings(m);
 
         pybind11::class_<VideoCapture, CaptureTrigger> videoCapture(m, "VideoCapture");

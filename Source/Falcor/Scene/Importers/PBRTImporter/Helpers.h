@@ -26,28 +26,33 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Types.h"
+#include "Core/Errors.h"
+#include "Utils/Logger.h"
+#include <fmt/format.h>
+#include <string_view>
 
 namespace Falcor
 {
     namespace pbrt
     {
         template<typename... Args>
-        [[noreturn]] inline void throwError(const std::string_view fmtString, Args&&... args)
+        [[noreturn]] inline void throwError(const std::string_view format, Args&&... args)
         {
-            throw RuntimeError(fmtString, std::forward<Args>(args)...);
+            throw RuntimeError(format, std::forward<Args>(args)...);
         }
 
         template<typename... Args>
-        [[noreturn]] inline void throwError(const FileLoc& loc, const std::string_view fmtString, Args&&... args)
+        [[noreturn]] inline void throwError(const FileLoc& loc, const std::string_view format, Args&&... args)
         {
-            auto msg = fmt::format(fmtString, std::forward<Args>(args)...);
+            auto msg = fmt::vformat(format, fmt::make_format_args(std::forward<Args>(args)...));
             throw RuntimeError("{}: {}", loc.toString(), msg);
         }
 
         template<typename... Args>
-        inline void logWarning(const FileLoc& loc, const std::string_view fmtString, Args&&... args)
+        inline void logWarning(const FileLoc& loc, const std::string_view format, Args&&... args)
         {
-            auto msg = fmt::format(fmtString, std::forward<Args>(args)...);
+            auto msg = fmt::vformat(format, fmt::make_format_args(std::forward<Args>(args)...));
             Falcor::logWarning("{}: {}", loc.toString(), msg);
         }
     }

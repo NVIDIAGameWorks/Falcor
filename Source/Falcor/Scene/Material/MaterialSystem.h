@@ -27,7 +27,17 @@
  **************************************************************************/
 #pragma once
 #include "Material.h"
+#include "Core/Macros.h"
+#include "Core/API/Shader.h"
+#include "Core/API/ParameterBlock.h"
+#include "Core/API/Buffer.h"
+#include "Core/API/Sampler.h"
+#include "Core/Program/Program.h"
 #include "Utils/Image/TextureManager.h"
+#include "Utils/UI/Gui.h"
+#include <memory>
+#include <vector>
+#include <set>
 
 namespace Falcor
 {
@@ -98,11 +108,17 @@ namespace Falcor
         */
         Program::TypeConformanceList getTypeConformances() const;
 
-        /** Get type conformances for a given material type.
+        /** Get type conformances for a given material type in use.
             \param[in] type Material type.
             \return List of type conformances.
         */
         Program::TypeConformanceList getTypeConformances(const MaterialType type) const;
+
+        /** Get shader modules for all materials in use.
+            The shader modules must be added to any program using the material system.
+            \return List of shader modules.
+        */
+        Program::ShaderModuleList getShaderModules() const { return mShaderModules; }
 
         /** Get the parameter block with all material resources.
             The update() function must have been called before calling this function.
@@ -134,6 +150,12 @@ namespace Falcor
         */
         uint32_t addBuffer(const Buffer::SharedPtr& pBuffer);
 
+        /** Replace a previously managed buffer by a new buffer.
+            \param[in] id The ID of the buffer.
+            \param[in] pBuffer The buffer.
+        */
+        void replaceBuffer(uint32_t id, const Buffer::SharedPtr& pBuffer);
+
         /** Get the total number of managed buffers.
         */
         uint32_t getBufferCount() const { return (uint32_t)mBuffers.size(); }
@@ -143,7 +165,7 @@ namespace Falcor
             \param[in] pMaterial The material.
             \return The ID of the material.
         */
-        uint32_t addMaterial(const Material::SharedPtr& pMaterial);
+        MaterialID addMaterial(const Material::SharedPtr& pMaterial);
 
         /** Get a list of all materials.
         */
@@ -161,9 +183,13 @@ namespace Falcor
         */
         std::set<MaterialType> getMaterialTypes() const { return mMaterialTypes; }
 
+        /** Check if material of the given type is used.
+        */
+        bool hasMaterialType(MaterialType type) const { return mMaterialTypes.find(type) != mMaterialTypes.end(); }
+
         /** Get a material by ID.
         */
-        const Material::SharedPtr& getMaterial(const uint32_t materialID) const;
+        const Material::SharedPtr& getMaterial(const MaterialID materialID) const;
 
         /** Get a material by name.
             \return The material, or nullptr if material doesn't exist.
@@ -174,7 +200,7 @@ namespace Falcor
             \param[in] idMap Vector that holds for each material the ID of the material that replaces it.
             \return The number of materials removed.
         */
-        size_t removeDuplicateMaterials(std::vector<uint32_t>& idMap);
+        size_t removeDuplicateMaterials(std::vector<MaterialID>& idMap);
 
         /** Optimize materials.
             This function analyzes textures and replaces constant textures by uniform material parameters.
@@ -203,6 +229,9 @@ namespace Falcor
         TextureManager::SharedPtr mpTextureManager;                 ///< Texture manager holding all material textures.
         size_t mTextureDescCount = 0;                               ///< Number of texture descriptors in GPU descriptor array. This variable is for book-keeping until unbounded descriptor arrays are supported (see #1321).
         size_t mBufferDescCount = 0;                                ///< Number of buffer descriptors in GPU descriptor array. This variable is for book-keeping until unbounded descriptor arrays are supported (see #1321).
+
+        Program::ShaderModuleList mShaderModules;                   ///< Shader modules for all materials in use.
+        std::map<MaterialType, Program::TypeConformanceList> mTypeConformances; ///< Type conformances for each material type in use.
 
         bool mSamplersChanged = false;                              ///< Flag indicating if samplers were added/removed since last update.
         bool mBuffersChanged = false;                               ///< Flag indicating if buffers were added/removed since last update.

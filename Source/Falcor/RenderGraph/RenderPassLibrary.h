@@ -26,11 +26,18 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Utils/Scripting/Dictionary.h"
 #include "RenderPass.h"
+#include "Core/Macros.h"
+#include "Utils/Scripting/Dictionary.h"
+#include <functional>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace Falcor
 {
+    class RenderContext;
+
     class FALCOR_API RenderPassLibrary
     {
     public:
@@ -98,7 +105,7 @@ namespace Falcor
         static std::vector<std::string> enumerateLibraries();
 
     private:
-        static RenderPassLibrary* spInstance;
+        static std::unique_ptr<RenderPassLibrary> spInstance;
 
         struct ExtendedDesc : RenderPassDesc
         {

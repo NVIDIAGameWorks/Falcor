@@ -26,7 +26,13 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Utils/Color/ColorUtils.h"
+#include "Core/Assert.h"
+#include "Core/Errors.h"
+#include "Utils/Math/Common.h"
+#include "Utils/Math/Vector.h"
+#include <type_traits>
+#include <vector>
+#include <cmath>
 
 namespace Falcor
 {
@@ -34,7 +40,7 @@ namespace Falcor
     {
         Linear, ///< Piecewise linear interpolation of the two nearest samples, and zero outside of the end points.
     };
-    
+
     /** Represents a uniformly sampled spectrum.
         This class is templated on the value type stored at each sample.
         The first sample is centered at lambdaStart and the last sample is centered at lambdaEnd.

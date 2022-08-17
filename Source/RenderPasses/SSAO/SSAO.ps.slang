@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,6 +27,8 @@
  **************************************************************************/
 import Scene.Camera.Camera;
 import SSAOData;
+
+import Utils.Math.MatrixUtils;
 
 cbuffer StaticCB
 {
@@ -57,7 +59,7 @@ float4 getPosition(float2 uv)
     pos.z = gDepthTex.SampleLevel(gTextureSampler, uv, 0).r;
     pos.w = 1.0f;
 
-    float4 posW = mul(pos, gCamera.data.invViewProj);
+    float4 posW = mul(gCamera.data.invViewProj, pos);
     posW /= posW.w;
 
     return posW;
@@ -78,20 +80,20 @@ float4 main(float2 texC : TEXCOORD) : SV_TARGET0
 
     float3 tangent = normalize(randDir - normal * dot(randDir, normal));
     float3 bitangent = cross(normal, tangent);
-    float3x3 tbn = float3x3(tangent, bitangent, normal);
+    float3x3 tbn = float3x3FromCols(tangent, bitangent, normal);
 
     float occlusion = 0.0f;
     for (uint i = 0; i < gData.kernelSize; i++)
     {
         // Orient sample
-        float3 kernelPos = mul(gData.sampleKernel[i].xyz, tbn);
+        float3 kernelPos = mul(tbn, gData.sampleKernel[i].xyz);
 
         // Calculate sample world space pos
         float3 samplePosW = posW + (kernelPos * gData.radius);
         float sampleDepth = length(samplePosW - gCamera.data.posW);
 
         // Get screen space pos of sample
-        float4 samplePosProj = mul(float4(samplePosW, 1.0f), gCamera.data.viewProjMat);
+        float4 samplePosProj = mul(gCamera.data.viewProjMat, float4(samplePosW, 1.0f));
         samplePosProj /= samplePosProj.w;
 
         // Sample depth buffer at the same place as sample

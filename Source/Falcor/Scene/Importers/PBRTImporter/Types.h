@@ -32,9 +32,14 @@
 // SPDX: Apache-2.0
 
 #pragma once
-
-#include "Falcor.h"
+#include "Utils/Math/Vector.h"
 #include "Utils/Color/Spectrum.h"
+#include <fmt/format.h>
+#include <filesystem>
+#include <functional>
+#include <string_view>
+#include <string>
+#include <variant>
 
 namespace Falcor
 {
