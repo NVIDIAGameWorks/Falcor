@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,11 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "EnvMapLighting.h"
 #include "RenderGraph/BasePasses/FullScreenPass.h"
-#include "Core/API/RenderContext.h"
 #include "Core/API/Device.h"
+#include "Core/API/RenderContext.h"
+#include "Utils/Logger.h"
 
 namespace Falcor
 {

@@ -25,11 +25,12 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "RenderContext.h"
 #include "FBO.h"
 #include "Texture.h"
 #include "BlitContext.h"
+#include "Utils/Logger.h"
+#include "RenderGraph/BasePasses/FullScreenPass.h"
 
 namespace Falcor
 {

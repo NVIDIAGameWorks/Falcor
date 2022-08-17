@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,10 +27,16 @@
  **************************************************************************/
 #pragma once
 #include "ProgramReflection.h"
+#include "Core/Macros.h"
 #include "Core/API/Texture.h"
 #include "Core/API/Sampler.h"
 #include "Core/API/Buffer.h"
+#include "Core/API/ResourceViews.h"
 #include "Core/API/RtAccelerationStructure.h"
+#include "Utils/Math/Vector.h"
+#include <memory>
+#include <string>
+#include <cstddef>
 
 namespace Falcor
 {
@@ -77,7 +83,7 @@ namespace Falcor
 
         /** Create a null/invalid shader variable pointer.
         */
-        ShaderVar(nullptr_t) : ShaderVar() {};
+        ShaderVar(std::nullptr_t) : ShaderVar() {};
 
         /** Copy constructor.
         */

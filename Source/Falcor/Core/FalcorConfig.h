@@ -30,10 +30,9 @@
 #define FALCOR_ENABLE_LOGGER            1 // Set this to 1 to enable logging.
 #define FALCOR_ENABLE_PROFILER          1 // Set this to 1 to enable CPU/GPU profiling.
 
-#define FALCOR_ENABLE_NVAPI             0 // Set this to 1 to enable NVIDIA specific DX extensions. Make sure you have the NVAPI package in your 'Externals' directory. View the readme for more information.
-#define FALCOR_ENABLE_CUDA              0 // Set this to 1 to enable CUDA use and CUDA/DX interoperation. Make sure you have the CUDA SDK package in your 'Externals' directory. View the readme for more information.
-#define FALCOR_ENABLE_OPTIX             0 // Set this to 1 to enable OptiX. Make sure you have the OptiX SDK package in your 'Externals' directory. View the readme for more information.
-#define FALCOR_ENABLE_D3D12_AGILITY_SDK 1 // Set this to 1 to enable D3D12 Agility SDK. Make sure you have the Agility SDK package in your `Externals` directory. View the readme for more information.
-#define FALCOR_ENABLE_NRD               1 // Set this to 1 to enable NRD. Make sure you have the NRD SDK package in your `Externals` directory. View the readme for more information.
-#define FALCOR_ENABLE_DLSS              1 // Set this to 1 to enable DLSS. Make sure you have the DLSS SDK package in your `Externals` directory. View the readme for more information.
-#define FALCOR_ENABLE_RTXDI             1 // Set this to 1 to enable RTXDI. Make sure you have the RTXDI SDK package in your `Externals` directory. View the readme for more information.
+/** Render pass hot reloading is currently unused, so we disable it here
+    to avoid creating/loading temporary copies of render pass DLL files.
+    This allows multiple instances of Falcor to be run in parallel on the
+    same machine, something we currently need for running image tests.
+*/
+#define FALCOR_ENABLE_RENDER_PASS_HOT_RELOAD 0

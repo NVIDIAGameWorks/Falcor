@@ -28,8 +28,19 @@
 #pragma once
 #include "MaterialData.slang"
 #include "TextureHandle.slang"
-#include "Scene/Transform.h"
+#include "Core/Macros.h"
+#include "Core/Errors.h"
+#include "Core/API/Formats.h"
+#include "Core/API/Texture.h"
+#include "Core/API/Sampler.h"
 #include "Utils/Image/TextureAnalyzer.h"
+#include "Utils/UI/Gui.h"
+#include "Scene/Transform.h"
+#include <array>
+#include <filesystem>
+#include <functional>
+#include <memory>
+#include <string>
 
 namespace Falcor
 {
@@ -50,9 +61,10 @@ namespace Falcor
         enum class UpdateFlags : uint32_t
         {
             None                = 0x0,  ///< Nothing updated.
-            DataChanged         = 0x1,  ///< Material data (parameters) changed.
-            ResourcesChanged    = 0x2,  ///< Material resources (textures, samplers) changed.
-            DisplacementChanged = 0x4,  ///< Displacement mapping parameters changed (only for materials that support displacement).
+            CodeChanged         = 0x1,  ///< Material shader code changed.
+            DataChanged         = 0x2,  ///< Material data (parameters) changed.
+            ResourcesChanged    = 0x4,  ///< Material resources (textures, samplers) changed.
+            DisplacementChanged = 0x8,  ///< Displacement mapping parameters changed (only for materials that support displacement).
         };
 
         /** Texture slots available for use.
@@ -263,18 +275,25 @@ namespace Falcor
         */
         virtual MaterialDataBlob getDataBlob() const = 0;
 
+        /** Get shader modules for the material.
+            The shader modules must be added to any program using the material.
+            \return List of shader modules.
+        */
+        virtual Program::ShaderModuleList getShaderModules() const = 0;
+
+        /** Get type conformances for the material.
+            The type conformances must be set on any program using the material.
+        */
+        virtual Program::TypeConformanceList getTypeConformances() const = 0;
+
+        /** Get the number of buffers used by this material.
+        */
+        virtual int getBufferCount() const { return 0; }
+
         // Temporary convenience function to downcast Material to BasicMaterial.
         // This is because a large portion of the interface hasn't been ported to the Material base class yet.
         // TODO: Remove this helper later
-        std::shared_ptr<BasicMaterial> toBasicMaterial()
-        {
-            if (mHeader.isBasicMaterial())
-            {
-                FALCOR_ASSERT(std::dynamic_pointer_cast<BasicMaterial>(shared_from_this()));
-                return std::static_pointer_cast<BasicMaterial>(shared_from_this());
-            }
-            return nullptr;
-        }
+        std::shared_ptr<BasicMaterial> toBasicMaterial();
 
     protected:
         Material(const std::string& name, MaterialType type);
@@ -322,6 +341,13 @@ namespace Falcor
             tostr(Cloth);
             tostr(Hair);
             tostr(MERL);
+            tostr(PBRTDiffuse);
+            tostr(PBRTDiffuseTransmission);
+            tostr(PBRTConductor);
+            tostr(PBRTDielectric);
+            tostr(PBRTCoatedConductor);
+            tostr(PBRTCoatedDiffuse);
+            tostr(RGL);
 #undef tostr
         default:
             throw ArgumentError("Invalid material type");

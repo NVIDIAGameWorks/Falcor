@@ -25,13 +25,17 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Core/API/ParameterBlock.h"
-#include "Utils/StringUtils.h"
 #include "Core/API/CopyContext.h"
 #include "Core/API/Device.h"
+#include "Core/Program/ProgramVersion.h"
+#include "Utils/Logger.h"
+#include "Utils/StringUtils.h"
+#include "Utils/Math/Matrix.h"
 
-#include <slang/slang.h>
+#include <slang.h>
+
+#include <set>
 
 // TODO: We can probably remove this switch after refactoring error handling.
 #define ENABLE_STRICT_VERIFICATION 1
@@ -248,7 +252,7 @@ namespace Falcor
 
     ParameterBlock::~ParameterBlock()
     {
-#if FALCOR_ENABLE_CUDA
+#if FALCOR_HAS_CUDA
         if (mUnderlyingCUDABuffer.kind == CUDABufferKind::Host)
         {
             if (auto pData = mUnderlyingCUDABuffer.pData)
@@ -665,7 +669,8 @@ namespace Falcor
     {
         if (!bindLocation.isValid()) return nullptr;
 
-        return getResourceSrvUavCommon(bindLocation, "getBuffer()")->asBuffer();
+        auto pResource = getResourceSrvUavCommon(bindLocation, "getBuffer()");
+        return pResource ? pResource->asBuffer() : nullptr;
     }
 
     bool ParameterBlock::setSampler(const BindLocation& bindLocation, const Sampler::SharedPtr& pSampler)
@@ -761,7 +766,10 @@ namespace Falcor
 
     Texture::SharedPtr ParameterBlock::getTexture(const BindLocation& bindLocation) const
     {
-        return getResourceSrvUavCommon(bindLocation, "getTexture()")->asTexture();
+        if (!bindLocation.isValid()) return nullptr;
+
+        auto pResource = getResourceSrvUavCommon(bindLocation, "getTexture()");
+        return pResource ? pResource->asTexture() : nullptr;
     }
 
     bool ParameterBlock::setSrv(const BindLocation& bindLocation, const ShaderResourceView::SharedPtr& pSrv)
@@ -891,17 +899,15 @@ namespace Falcor
         c_to_prog(float3, Float3);
         c_to_prog(float4, Float4);
 
-        c_to_prog(glm::mat2,   Float2x2);
-        c_to_prog(glm::mat2x3, Float2x3);
-        c_to_prog(glm::mat2x4, Float2x4);
-
-        c_to_prog(glm::mat3  , Float3x3);
-        c_to_prog(glm::mat3x2, Float3x2);
-        c_to_prog(glm::mat3x4, Float3x4);
-
-        c_to_prog(glm::mat4,   Float4x4);
-        c_to_prog(glm::mat4x2, Float4x2);
-        c_to_prog(glm::mat4x3, Float4x3);
+        c_to_prog(rmcv::mat2x2, Float2x2);
+        c_to_prog(rmcv::mat3x2, Float3x2);
+        c_to_prog(rmcv::mat4x2, Float4x2);
+        c_to_prog(rmcv::mat2x3, Float2x3);
+        c_to_prog(rmcv::mat3x3, Float3x3);
+        c_to_prog(rmcv::mat4x3, Float4x3);
+        c_to_prog(rmcv::mat2x4, Float2x4);
+        c_to_prog(rmcv::mat3x4, Float3x4);
+        c_to_prog(rmcv::mat4x4, Float4x4);
 
 #undef c_to_prog
         FALCOR_UNREACHABLE();
@@ -1128,7 +1134,7 @@ namespace Falcor
     {
 #if ENABLE_STRICT_VERIFICATION
         auto callType = getReflectionTypeFromCType<VarType>();
-        const ReflectionBasicType* pBasicType = pShaderType->asBasicType();
+        const ReflectionBasicType* pBasicType = pShaderType ? pShaderType->asBasicType() : nullptr;
         ReflectionBasicType::Type shaderType = pBasicType ? pBasicType->getType() : ReflectionBasicType::Type::Unknown;
         // Check that the types match
         if (callType != shaderType)
@@ -1144,9 +1150,72 @@ namespace Falcor
         return true;
     }
 
+    namespace
+    {
+        bool checkBasicType(size_t offset, const ReflectionType* pReflection, const ReflectionBasicType::Type type)
+        {
+            TypedShaderVarOffset bindLoc;
+            ReflectionType::SharedConstPtr reflection = pReflection->shared_from_this();
+            while (true)
+            {
+                bindLoc = reflection->findMemberByOffset(offset);
+                if (!bindLoc.isValid())
+                    return false;
+                auto asBasicType = bindLoc.getType()->asBasicType();
+                if (asBasicType)
+                    return asBasicType->getType() == type;
+
+                auto asStructType = bindLoc.getType()->asStructType();
+                if (!asStructType)
+                    return false;
+                reflection = asStructType->shared_from_this();
+                offset -= bindLoc.getByteOffset();
+            }
+            return false;
+        }
+
+        bool checkStructType(size_t offset, const ReflectionType* pReflection, std::string_view structName)
+        {
+            TypedShaderVarOffset bindLoc;
+            ReflectionType::SharedConstPtr reflection = pReflection->shared_from_this();
+            while (true)
+            {
+                bindLoc = reflection->findMemberByOffset(offset);
+                if (!bindLoc.isValid())
+                    return false;
+                auto asStructType = bindLoc.getType()->asStructType();
+                if (!asStructType)
+                    return false;
+                if (asStructType->getName() == structName)
+                    return true;
+                reflection = asStructType->shared_from_this();
+                offset -= bindLoc.getByteOffset();
+            }
+            return false;
+        }
+
+        // by default we do nothing
+        template<typename VarType>
+        bool checkMatrixType(size_t offset, const ReflectionType* pReflection)
+        {
+            return true;
+        }
+
+        template<> bool checkMatrixType<float4x4>(size_t offset, const ReflectionType* pReflection)
+        {
+            bool ok = checkStructType(offset, pReflection, "float4x4");
+            if (!ok)
+            {
+                logError("Check matrix failed on float4x4\n");
+            }
+            return ok;
+        }
+    }
+
     template<typename VarType>
     bool checkVariableByOffset(size_t offset, size_t count, const ReflectionType* pReflection)
     {
+        //FALCOR_ASSERT(checkMatrixType<VarType>(offset, pReflection));
 #if ENABLE_STRICT_VERIFICATION
         // Make sure the first element matches what is expected
         TypedShaderVarOffset bindLoc = pReflection->findMemberByOffset(offset);
@@ -1192,17 +1261,10 @@ namespace Falcor
     set_constant_by_offset(float3);
     set_constant_by_offset(float4);
 
-    set_constant_by_offset(glm::mat2);
-    set_constant_by_offset(glm::mat2x3);
-    set_constant_by_offset(glm::mat2x4);
-
-    set_constant_by_offset(glm::mat3);
-    set_constant_by_offset(glm::mat3x2);
-    set_constant_by_offset(glm::mat3x4);
-
-    set_constant_by_offset(glm::mat4);
-    set_constant_by_offset(glm::mat4x2);
-    set_constant_by_offset(glm::mat4x3);
+    set_constant_by_offset(rmcv::mat1x4);
+    set_constant_by_offset(rmcv::mat2x4);
+    set_constant_by_offset(rmcv::mat3x4);
+    set_constant_by_offset(rmcv::mat4x4);
 
     set_constant_by_offset(uint64_t);
 
@@ -1528,12 +1590,12 @@ namespace Falcor
         std::set<Resource*> srvBuffers;
         for (auto& srv : mSRVs)
         {
-            auto pBuffer = srv.pResource->asBuffer().get();
+            auto pBuffer = srv.pResource ? srv.pResource->asBuffer().get() : nullptr;
             if (pBuffer) srvBuffers.insert(pBuffer);
         }
         for (auto& uav : mUAVs)
         {
-            auto pBuffer = uav.pResource->asBuffer().get();
+            auto pBuffer = uav.pResource ? uav.pResource->asBuffer().get() : nullptr;
             if (pBuffer && srvBuffers.find(pBuffer) != srvBuffers.end())
             {
                 throw RuntimeError("Buffer '{}' of size {} bytes is simultaneously bound as SRV and UAV.", pBuffer->getName(), pBuffer->getSize());

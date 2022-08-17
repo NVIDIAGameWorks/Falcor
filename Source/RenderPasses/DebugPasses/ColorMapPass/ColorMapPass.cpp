@@ -107,8 +107,8 @@ RenderPassReflection ColorMapPass::reflect(const CompileData& compileData)
 
 void ColorMapPass::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    const auto& inputTexture = renderData[kInput]->asTexture();
-    const auto& outputTexture = renderData[kOutput]->asTexture();
+    const auto& inputTexture = renderData.getTexture(kInput);
+    const auto& outputTexture = renderData.getTexture(kOutput);
 
     FormatType inputType = inputTexture ? getFormatType(inputTexture->getFormat()) : FormatType::Float;
 

@@ -27,18 +27,17 @@
  **************************************************************************/
 #pragma once
 
-#include <slang/slang-gfx.h>
-
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
 #include "Core/API/Shared/D3D12DescriptorPool.h"
 #endif
+
+#include <slang-gfx.h>
 
 namespace Falcor
 {
     struct LowLevelContextApiData
     {
-#if FALCOR_D3D12_AVAILABLE
-        bool mUsingCustomDescriptorHeap = false;
+#if FALCOR_HAS_D3D12
         D3D12CommandListHandle mpD3D12CommandListHandle;
         D3D12CommandQueueHandle mpD3D12CommandQueueHandle;
 #endif

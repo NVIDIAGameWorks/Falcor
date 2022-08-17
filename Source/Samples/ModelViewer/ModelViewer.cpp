@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "ModelViewer.h"
+#include "Utils/UI/TextRenderer.h"
 
 void ModelViewer::setModelString(double loadTime)
 {
@@ -62,9 +63,15 @@ void ModelViewer::loadModelFromFile(const std::filesystem::path& path, ResourceF
         return;
     }
 
-    mpProgram->addDefines(mpScene->getSceneDefines());
-    mpProgram->setTypeConformances(mpScene->getTypeConformances());
+    Program::Desc desc;
+    desc.addShaderModules(mpScene->getShaderModules());
+    desc.addShaderLibrary("Samples/ModelViewer/ModelViewer.3d.slang").vsEntry("vsMain").psEntry("psMain");
+    desc.addTypeConformances(mpScene->getTypeConformances());
+
+    mpProgram = GraphicsProgram::create(desc, mpScene->getSceneDefines());
     mpProgramVars = GraphicsVars::create(mpProgram->getReflector());
+    mpGraphicsState->setProgram(mpProgram);
+
     mpScene->getMaterialSystem()->setDefaultTextureSampler(mUseTriLinearFiltering ? mpLinearSampler : mpPointSampler);
     setCamController();
 
@@ -75,7 +82,7 @@ void ModelViewer::loadModelFromFile(const std::filesystem::path& path, ResourceF
 void ModelViewer::loadModel(ResourceFormat fboFormat)
 {
     std::filesystem::path path;
-    if(openFileDialog(Scene::getFileExtensionFilters(), path))
+    if (openFileDialog(Scene::getFileExtensionFilters(), path))
     {
         loadModelFromFile(path, fboFormat);
     }
@@ -122,9 +129,7 @@ void ModelViewer::onGuiRender(Gui* pGui)
 
 void ModelViewer::onLoad(RenderContext* pRenderContext)
 {
-    mpProgram = GraphicsProgram::createFromFile("Samples/ModelViewer/ModelViewer.3d.slang", "vsMain", "psMain");
     mpGraphicsState = GraphicsState::create();
-    mpGraphicsState->setProgram(mpProgram);
 
     // Create rasterizer state
     RasterizerState::Desc wireframeDesc;
@@ -215,23 +220,14 @@ void ModelViewer::resetCamera()
     }
 }
 
-#ifdef _WIN32
-int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
-#else
 int main(int argc, char** argv)
-#endif
 {
     ModelViewer::UniquePtr pRenderer = std::make_unique<ModelViewer>();
 
     SampleConfig config;
     config.windowDesc.title = "Falcor Model Viewer";
     config.windowDesc.resizableWindow = true;
-#ifdef _WIN32
+
     Sample::run(config, pRenderer);
-#else
-    config.argc = (uint32_t)argc;
-    config.argv = argv;
-    Sample::run(config, pRenderer);
-#endif
     return 0;
 }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -40,7 +40,7 @@ namespace Falcor
             SHA1 sha1;
             sha1.update(str1.data(), str1.size());
             sha1.update(str2.data(), str2.size());
-            EXPECT(sha1.final() == md);
+            EXPECT(sha1.finalize() == md);
         }
 
         {

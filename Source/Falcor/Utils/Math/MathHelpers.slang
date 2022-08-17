@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -435,3 +435,11 @@ float3 perp_stark(float3 u)
     float3 v = normalize(cross(u, float3(xm, ym, zm)));
     return v;
 }
+
+float  sqr(float  v) { return v*v; }
+
+float2 sqr(float2 v) { return v*v; }
+
+float3 sqr(float3 v) { return v*v; }
+
+float4 sqr(float4 v) { return v*v; }

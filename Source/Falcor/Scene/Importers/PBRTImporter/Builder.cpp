@@ -31,11 +31,10 @@
 // The pbrt source code is licensed under the Apache License, Version 2.0.
 // SPDX: Apache-2.0
 
-#include "stdafx.h"
 #include "Builder.h"
 #include "Helpers.h"
-
-#include <glm/gtx/transform.hpp>
+#include "Core/Assert.h"
+#include "Utils/Logger.h"
 
 namespace Falcor
 {
@@ -226,12 +225,12 @@ namespace Falcor
 
         void BasicSceneBuilder::onIdentity(FileLoc loc)
         {
-            mGraphicsState.forActiveTransforms([](auto t) { return glm::identity<glm::mat4>(); });
+            mGraphicsState.forActiveTransforms([](auto t) { return rmcv::identity<rmcv::mat4>(); });
         }
 
         void BasicSceneBuilder::onTranslate(Float dx, Float dy, Float dz, FileLoc loc)
         {
-            mGraphicsState.forActiveTransforms([=](auto t) { return t * glm::translate(float3(dx, dy, dz)); });
+            mGraphicsState.forActiveTransforms([=](auto t) { return t * rmcv::translate(float3(dx, dy, dz)); });
         }
 
         void BasicSceneBuilder::onCoordinateSystem(const std::string& name, FileLoc loc)
@@ -328,7 +327,7 @@ namespace Falcor
             // Reset graphics state.
             for (uint32_t i = 0; i < kMaxTransforms; ++i)
             {
-                mGraphicsState.ctm[i] = glm::identity<glm::mat4>();
+                mGraphicsState.ctm[i] = rmcv::identity<rmcv::mat4>();
             }
             mGraphicsState.activeTransformBits = kAllTransformsBits;
             mNamedCoordinateSystems["world"] = mGraphicsState.ctm;
@@ -473,39 +472,43 @@ namespace Falcor
 
         void BasicSceneBuilder::onTransform(Float tr[16], FileLoc loc)
         {
-            glm::mat4 m(
+            // The PBRT file-format has matrices for row-vectors (v.M), so needs transpose
+            rmcv::mat4 m = rmcv::transpose(rmcv::mat4({
                 tr[0], tr[1], tr[2], tr[3],
                 tr[4], tr[5], tr[6], tr[7],
                 tr[8], tr[9], tr[10], tr[11],
                 tr[12], tr[13], tr[14], tr[15]
-            );
+                }));
+
             mGraphicsState.forActiveTransforms([=](auto t) { return m; });
         }
 
         void BasicSceneBuilder::onConcatTransform(Float tr[16], FileLoc loc)
         {
-            glm::mat4 m(
+            // The PBRT file-format has matrices for row-vectors (v.M), so needs transpose
+            rmcv::mat4 m = rmcv::transpose(rmcv::mat4({
                 tr[0], tr[1], tr[2], tr[3],
                 tr[4], tr[5], tr[6], tr[7],
                 tr[8], tr[9], tr[10], tr[11],
                 tr[12], tr[13], tr[14], tr[15]
-            );
+                }));
+
             mGraphicsState.forActiveTransforms([=](auto t) { return t * m; });
         }
 
         void BasicSceneBuilder::onRotate(Float angle, Float dx, Float dy, Float dz, FileLoc loc)
         {
-            mGraphicsState.forActiveTransforms([=](auto t) { return t * glm::rotate(glm::radians(angle), float3(dx, dy, dz)); });
+            mGraphicsState.forActiveTransforms([=](auto t) { return t * rmcv::rotate(glm::radians(angle), float3(dx, dy, dz)); });
         }
 
         void BasicSceneBuilder::onScale(Float sx, Float sy, Float sz, FileLoc loc)
         {
-            mGraphicsState.forActiveTransforms([=](auto t) { return t * glm::scale(float3(sx, sy, sz)); });
+            mGraphicsState.forActiveTransforms([=](auto t) { return t * rmcv::scale(float3(sx, sy, sz)); });
         }
 
         void BasicSceneBuilder::onLookAt(Float ex, Float ey, Float ez, Float lx, Float ly, Float lz, Float ux, Float uy, Float uz, FileLoc loc)
         {
-            auto lookAt = glm::lookAtLH(float3(ex, ey, ez), float3(lx, ly, lz), float3(ux, uy, uz));
+            auto lookAt = rmcv::lookAtLH(float3(ex, ey, ez), float3(lx, ly, lz), float3(ux, uy, uz));
             mGraphicsState.forActiveTransforms([=](auto t) { return t * lookAt; });
         }
 

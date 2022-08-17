@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "Testing/UnitTest.h"
 #include "Utils/Algorithm/ComputeParallelReduction.h"
-#include "glm/detail/type_half.hpp"
+#include <glm/detail/type_half.hpp>
 #include <random>
 
 namespace Falcor

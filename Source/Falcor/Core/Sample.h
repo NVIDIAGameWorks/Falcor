@@ -27,20 +27,24 @@
  **************************************************************************/
 #pragma once
 #include "Window.h"
-#include "API/Device.h"
 #include "Renderer.h"
+#include "Core/Macros.h"
 #include "Utils/Timing/FrameRate.h"
 #include "Utils/Timing/ProfilerUI.h"
 #include "Utils/UI/Gui.h"
-#include "Utils/UI/TextRenderer.h"
 #include "Utils/UI/PixelZoom.h"
 #include "Utils/UI/InputState.h"
 #include "Utils/Video/VideoEncoderUI.h"
-#include <set>
-#include <optional>
+#include "Utils/Scripting/ScriptBindings.h"
+#include <filesystem>
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace Falcor
 {
+    class Settings;
+
     /** Bootstrapper class for Falcor
         Call Sample::run() to start the sample.
         The render loop will then call the user's Renderer object
@@ -67,6 +71,9 @@ namespace Falcor
         static void run(const std::filesystem::path& path, IRenderer::UniquePtr& pRenderer, uint32_t argc = 0, char** argv = nullptr);
 
         virtual ~Sample();
+
+        const Settings& getSettings() const override { return *mpSettings; }
+        Settings& getSettings() override { return *mpSettings; }
     protected:
         /************************************************************************/
         /* Callback inherited from ICallbacks                                   */
@@ -146,7 +153,9 @@ namespace Falcor
         InputState mInputState;
         PixelZoom::SharedPtr mpPixelZoom;
 
-        Sample(IRenderer::UniquePtr& pRenderer) : mpRenderer(std::move(pRenderer)) {}
+        std::unique_ptr<Settings> mpSettings;
+
+        Sample(IRenderer::UniquePtr& pRenderer);
         Sample(const Sample&) = delete;
         Sample& operator=(const Sample&) = delete;
     };

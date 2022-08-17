@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,9 +26,15 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-
 #include "RenderPass.h"
+#include "RenderPassReflection.h"
+#include "Core/Macros.h"
+#include "Core/API/Formats.h"
+#include "Core/API/RenderContext.h"
 #include "Core/Program/Program.h"
+#include "Utils/UI/Gui.h"
+#include <string>
+#include <vector>
 
 namespace Falcor
 {
@@ -156,7 +162,7 @@ namespace Falcor
     {
         for (const auto& channel : channels)
         {
-            auto pTex = renderData[channel.name]->asTexture();
+            auto pTex = renderData.getTexture(channel.name);
             if (pTex)
             {
                 if (isIntegerFormat(pTex->getFormat()))

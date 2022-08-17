@@ -27,7 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "InputTypes.h"
-
+#include "Core/Macros.h"
 #include <bitset>
 
 namespace Falcor
@@ -36,7 +36,7 @@ namespace Falcor
         Like this:
             cosnt InputState& inputState = gpFramework->getInputState()
         The class does not tell Falcor that it has handled the input when the user calls the functions.
-        It is up to the user to tell Falcor that the input event was handled by returning true in the input event callbacks. 
+        It is up to the user to tell Falcor that the input event was handled by returning true in the input event callbacks.
     */
     class Sample;
     class FALCOR_API InputState

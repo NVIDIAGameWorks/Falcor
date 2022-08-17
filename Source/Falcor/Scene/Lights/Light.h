@@ -27,11 +27,18 @@
  **************************************************************************/
 #pragma once
 #include "LightData.slang"
+#include "Core/Macros.h"
+#include "Utils/Math/Vector.h"
+#include "Utils/Math/Matrix.h"
+#include "Utils/UI/Gui.h"
 #include "Scene/Animation/Animatable.h"
+#include <memory>
+#include <string>
 
 namespace Falcor
 {
     class Scene;
+    struct ShaderVar;
 
     /** Base class for light sources. All light sources should inherit from this.
     */
@@ -109,7 +116,7 @@ namespace Falcor
         */
         Changes getChanges() const { return mChanges; }
 
-        void updateFromAnimation(const glm::mat4& transform) override {}
+        void updateFromAnimation(const rmcv::mat4& transform) override {}
 
     protected:
         Light(const std::string& name, LightType type);
@@ -191,7 +198,7 @@ namespace Falcor
         */
         float getOpeningAngle() const { return mData.openingAngle; }
 
-        void updateFromAnimation(const glm::mat4& transform) override;
+        void updateFromAnimation(const rmcv::mat4& transform) override;
 
     private:
         PointLight(const std::string& name);
@@ -230,7 +237,7 @@ namespace Falcor
         */
         float getPower() const override { return 0.f; }
 
-        void updateFromAnimation(const glm::mat4& transform) override;
+        void updateFromAnimation(const rmcv::mat4& transform) override;
 
     private:
         DirectionalLight(const std::string& name);
@@ -274,7 +281,7 @@ namespace Falcor
         */
         float getPower() const override { return 0.f; }
 
-        void updateFromAnimation(const glm::mat4& transform) override;
+        void updateFromAnimation(const rmcv::mat4& transform) override;
 
     private:
         DistantLight(const std::string& name);
@@ -310,13 +317,13 @@ namespace Falcor
         /** Set transform matrix
             \param[in] mtx object to world space transform matrix
         */
-        void setTransformMatrix(const glm::mat4& mtx) { mTransformMatrix = mtx; update();  }
+        void setTransformMatrix(const rmcv::mat4& mtx) { mTransformMatrix = mtx; update();  }
 
         /** Get transform matrix
         */
-        glm::mat4 getTransformMatrix() const { return mTransformMatrix; }
+        rmcv::mat4 getTransformMatrix() const { return mTransformMatrix; }
 
-        void updateFromAnimation(const glm::mat4& transform) override { setTransformMatrix(transform); }
+        void updateFromAnimation(const rmcv::mat4& transform) override { setTransformMatrix(transform); }
 
     protected:
         AnalyticAreaLight(const std::string& name, LightType type);
@@ -324,7 +331,7 @@ namespace Falcor
         virtual void update();
 
         float3 mScaling;                ///< Scaling, controls the size of the light
-        glm::mat4 mTransformMatrix;     ///< Transform matrix minus scaling component
+        rmcv::mat4 mTransformMatrix;     ///< Transform matrix minus scaling component
 
         friend class SceneCache;
     };

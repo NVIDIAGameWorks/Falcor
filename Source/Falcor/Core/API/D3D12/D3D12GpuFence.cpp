@@ -25,9 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Core/API/GpuFence.h"
 #include "Core/API/Device.h"
+#include "Core/API/D3D12/D3D12API.h"
+#include "Core/Assert.h"
 
 namespace Falcor
 {
@@ -36,16 +37,16 @@ namespace Falcor
         HANDLE eventHandle = INVALID_HANDLE_VALUE;
     };
 
+    GpuFence::GpuFence() : mCpuValue(0) {}
     GpuFence::~GpuFence()
     {
         CloseHandle(mpApiData->eventHandle);
-        safe_delete(mpApiData);
     }
 
     GpuFence::SharedPtr GpuFence::create(bool shared)
     {
         SharedPtr pFence = SharedPtr(new GpuFence());
-        pFence->mpApiData = new FenceApiData;
+        pFence->mpApiData.reset(new FenceApiData);
         pFence->mpApiData->eventHandle = CreateEvent(nullptr, FALSE, FALSE, nullptr);
         if (pFence->mpApiData->eventHandle == nullptr) throw RuntimeError("Failed to create an event object");
 

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,10 +27,17 @@
  **************************************************************************/
 #pragma once
 #include "EmissiveLightSampler.h"
+#include "Core/Macros.h"
 #include "Scene/Lights/LightCollection.h"
+#include <memory>
+#include <random>
+#include <vector>
 
 namespace Falcor
 {
+    class RenderContext;
+    struct ShaderVar;
+
     /** Sample geometry proportionally to its emissive power.
     */
     class FALCOR_API EmissivePowerSampler : public EmissiveLightSampler

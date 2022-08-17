@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,6 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Core/Macros.h"
+#include "Utils/Math/Vector.h"
+#include <cstdint>
 
 namespace Falcor
 {
@@ -46,4 +49,25 @@ namespace Falcor
         float3 min;
         float3 max;
     };
+
+    /** Flags passed to TraceRay(). These must match the device side.
+    */
+    enum class RayFlags : uint32_t
+    {
+        None,
+        ForceOpaque = 0x1,
+        ForceNonOpaque = 0x2,
+        AcceptFirstHitAndEndSearch = 0x4,
+        SkipClosestHitShader = 0x8,
+        CullBackFacingTriangles = 0x10,
+        CullFrontFacingTriangles = 0x20,
+        CullOpaque = 0x40,
+        CullNonOpaque = 0x80,
+        SkipTriangles = 0x100,
+        SkipProceduralPrimitives = 0x200,
+    };
+    FALCOR_ENUM_CLASS_OPERATORS(RayFlags);
+
+    // Maximum raytracing attribute size.
+    inline constexpr uint32_t getRaytracingMaxAttributeSize() { return 32; }
 }

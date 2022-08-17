@@ -25,11 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "SpectrumUtils.h"
-#include "xyzcurves/ciexyzCurves1931_1nm.h"
-#include "illuminants/D65_5nm.h"
 #include "Utils/Color/ColorUtils.h"
+
+#include <xyzcurves/ciexyzCurves1931_1nm.h>
+#include <illuminants/D65_5nm.h>
 
 namespace Falcor
 {

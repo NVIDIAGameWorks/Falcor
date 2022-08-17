@@ -25,15 +25,22 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Sample.h"
+#include "Macros.h"
+#include "Platform/ProgressBar.h"
+#include "Program/Program.h"
+#include "Utils/Threading.h"
+#include "Utils/Logger.h"
+#include "Utils/Scripting/Console.h"
+#include "Utils/Scripting/Scripting.h"
+#include "Utils/UI/TextRenderer.h"
+#include "Utils/Settings.h"
 #include "RenderGraph/RenderPassLibrary.h"
-#include "Core/Platform/ProgressBar.h"
-#include "Utils/StringUtils.h"
+
+#include <imgui.h>
+
 #include <sstream>
 #include <fstream>
-#include "Utils/Threading.h"
-#include "dear_imgui/imgui.h"
 
 namespace Falcor
 {
@@ -175,11 +182,16 @@ namespace Falcor
         if (mpRenderer) mpRenderer->onDroppedFile(path);
     }
 
+    Sample::Sample(IRenderer::UniquePtr& pRenderer) : mpRenderer(std::move(pRenderer)) {}
+
     // Sample functions
     Sample::~Sample()
     {
         mpRenderer.reset();
         if (mVideoCapture.pVideoCapture) endVideoCapture();
+
+        // contains Python dictionaries, needs to be terminated before Scripting::shutdown()
+        mpSettings.reset();
 
         Clock::shutdown();
         Threading::shutdown();
@@ -260,6 +272,8 @@ namespace Falcor
         OSServices::start();
         Threading::start();
 
+        mpSettings.reset(new Settings);
+
         mSuppressInput = config.suppressInput;
         mShowUI = config.showUI;
         mClock.setTimeScale(config.timeScale);
@@ -278,7 +292,9 @@ namespace Falcor
         gpDevice = Device::create(mpWindow, config.deviceDesc);
 
         // Set global shader defines
-        Program::DefineList globalDefines = {{ "FALCOR_NVAPI_AVAILABLE", FALCOR_NVAPI_AVAILABLE ? "1" : "0" }};
+        Program::DefineList globalDefines = {
+            { "FALCOR_NVAPI_AVAILABLE", FALCOR_NVAPI_AVAILABLE ? "1" : "0" },
+        };
         Program::addGlobalDefines(globalDefines);
 
         Clock::start();
@@ -291,7 +307,7 @@ namespace Falcor
         initUI();
         mpPixelZoom = PixelZoom::create(mpTargetFBO.get());
 
-#ifdef _WIN32
+#if FALCOR_WINDOWS
         // Set the icon
         setWindowIcon("Framework/Nvidia.ico", mpWindow->getApiHandle());
 #endif
@@ -340,8 +356,8 @@ namespace Falcor
             return 0u;
         };
 
-        static const Gui::DropdownList dropdownList = initDropDown(resolutions, (uint32_t)arraysize(resolutions));
-        uint32_t currentVal = initDropDownVal(resolutions, (uint32_t)arraysize(resolutions), screenDims);
+        static const Gui::DropdownList dropdownList = initDropDown(resolutions, (uint32_t)std::size(resolutions));
+        uint32_t currentVal = initDropDownVal(resolutions, (uint32_t)std::size(resolutions), screenDims);
 
         widget.var("Screen Resolution", screenDims);
         if (widget.dropdown("Change Resolution", dropdownList, currentVal) && (currentVal != 0)) gpFramework->resizeSwapChain(resolutions[currentVal].x, resolutions[currentVal].y);
@@ -498,7 +514,7 @@ namespace Falcor
             if (mCaptureScreen) captureScreen();
 
             {
-                FALCOR_PROFILE("present", Profiler::Flags::Internal);
+                FALCOR_PROFILE_CUSTOM("present", Profiler::Flags::Internal);
                 gpDevice->present();
             }
         }
@@ -641,6 +657,8 @@ namespace Falcor
 
     void Sample::registerScriptBindings(pybind11::module& m)
     {
+        using namespace pybind11::literals;
+
         ScriptBindings::SerializableStruct<SampleConfig> sampleConfig(m, "SampleConfig");
 #define field(f_) field(#f_, &SampleConfig::f_)
         sampleConfig.field(windowDesc);

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,7 +27,11 @@
  **************************************************************************/
 #pragma once
 #include "CpuTimer.h"
+#include "Core/Macros.h"
 #include "Utils/UI/Gui.h"
+#include <optional>
+#include <string>
+#include <cstdint>
 
 namespace Falcor
 {
@@ -101,6 +105,18 @@ namespace Falcor
         */
         bool shouldExit() const;
 
+        /** Sets the start time of an endless time loop. Needs end time to be set to work correctly.
+            Time then loops from Start Time to End Time (jumping back rather than reverting)
+        */
+        bool setStartTime(double startTime);
+        double getStartTime() const { return mStartTime; }
+
+        /** Sets the end time of an endless time loop. Needs start time to be set to work correctly.
+            Time then loops from Start Time to End Time (jumping back rather than reverting)
+        */
+        bool setEndTime(double endTime);
+        double getEndTime() const { return mEndTime; }
+
         /** Tick the clock. Calling this function has no effect if the clock is paused
         */
         Clock& tick();
@@ -164,6 +180,7 @@ namespace Falcor
             void update(double time)
             {
                 delta = time - now;
+                if (delta < 0) delta = 0;
                 now = time;
             }
         } mRealtime, mTime;
@@ -183,5 +200,13 @@ namespace Falcor
 
         void updateTimer();
         void resetDeferredObjects();
+        double mStartTime = 0;
+        double mEndTime = -1;
+        double clampTime(double time)
+        {
+            if (time < mStartTime)
+                return mStartTime;
+            return (mEndTime < 0 || time < mEndTime) ? time : mStartTime + time - mEndTime;
+        }
     };
 }

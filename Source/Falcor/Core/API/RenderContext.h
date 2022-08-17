@@ -26,21 +26,43 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include <stack>
-#include <vector>
 #include "ComputeContext.h"
+#include "Handles.h"
+#include "FBO.h"
 #include "Sampler.h"
-#include "Core/State/GraphicsState.h"
-#include "Core/API/RtAccelerationStructure.h"
-#include "Core/API/RtAccelerationStructurePostBuildInfoPool.h"
+#include "Texture.h"
+#include "RtAccelerationStructure.h"
+#include "RtAccelerationStructurePostBuildInfoPool.h"
+#include "Core/Macros.h"
+#include "Utils/Math/Vector.h"
+#include <memory>
+#include <limits>
 
 namespace Falcor
 {
+    class GraphicsState;
+    class GraphicsVars;
+
+    class RenderTargetView;
+
     class RtProgram;
     class RtProgramVars;
 
-    class FullScreenPass;
     struct BlitContext;
+
+    /** Framebuffer target flags. Used for clears and copy operations
+    */
+    enum class FboAttachmentType
+    {
+        None    = 0,    ///< Nothing. Here just for completeness
+        Color   = 1,    ///< Operate on the color buffer.
+        Depth   = 2,    ///< Operate on the the depth buffer.
+        Stencil = 4,    ///< Operate on the the stencil buffer.
+
+        All = Color | Depth | Stencil ///< Operate on all targets
+    };
+
+    FALCOR_ENUM_CLASS_OPERATORS(FboAttachmentType);
 
     /** The rendering context. Use it to bind state and dispatch calls to the GPU
     */

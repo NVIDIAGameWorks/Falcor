@@ -26,8 +26,13 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-
-#include "Core/Framework.h"
+#include "Handles.h"
+#include "Formats.h"
+#include "Buffer.h"
+#include "ResourceViews.h"
+#include "Utils/Math/Matrix/Matrix.h"
+#include "Core/Macros.h"
+#include <cstdint>
 
 namespace Falcor
 {
@@ -61,12 +66,11 @@ namespace Falcor
         RtGeometryInstanceFlags flags : 8;
         DeviceAddress accelerationStructure;
 
-        /** Sets the transform matrix using a glm::mat4 value.
-            This function will perform a transpose because the instance desc expects row-major
-            layout while a glm matrix is column-major.
+        /** Sets the transform matrix using a rmcv::mat4 value.
+            If this accepted GLM, it would have to transpose, but RMCV is row major so it doesn't
             \param[in] matrix A 4x4 matrix to set into transform.
         */
-        RtInstanceDesc& setTransform(const glm::mat4& matrix);
+        RtInstanceDesc& setTransform(const rmcv::mat4& matrix);
     };
 
     enum class RtAccelerationStructureKind

@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "TestRtProgram.h"
+#include <random>
 
 const RenderPass::Info TestRtProgram::kInfo { "TestRtProgram", "Test pass for RtProgram." };
 
@@ -105,6 +106,7 @@ void TestRtProgram::sceneChanged()
     //
 
     RtProgram::Desc desc;
+    desc.addShaderModules(mpScene->getShaderModules());
     desc.addShaderLibrary(kShaderFilename);
     desc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
     desc.setMaxPayloadSize(kMaxPayloadSizeBytes);
@@ -142,7 +144,7 @@ void TestRtProgram::sceneChanged()
         // Override specific hit groups for some geometries.
         for (uint geometryID = 0; geometryID < geometryCount; geometryID++)
         {
-            auto type = mpScene->getGeometryType(geometryID);
+            auto type = mpScene->getGeometryType(GlobalGeometryID{ geometryID });
 
             if (type == Scene::GeometryType::TriangleMesh)
             {
@@ -159,7 +161,7 @@ void TestRtProgram::sceneChanged()
             }
             else if (type == Scene::GeometryType::Custom)
             {
-                uint32_t index = mpScene->getCustomPrimitiveIndex(geometryID);
+                uint32_t index = mpScene->getCustomPrimitiveIndex(GlobalGeometryID{ geometryID });
                 uint32_t userID = mpScene->getCustomPrimitive(index).userID;
 
                 // Use non-default material for custom primitives with even userID.
@@ -200,7 +202,7 @@ void TestRtProgram::sceneChanged()
         {
             // Select hit group shader ID based on geometry ID.
             // This will ensure that we use the correct specialized shader for each geometry.
-            auto shaderID = mtl[geometryID % 3];
+            auto shaderID = mtl[geometryID.get() % 3];
             sbt->setHitGroup(0 /* rayType*/, geometryID, shaderID);
         }
     }
@@ -222,7 +224,7 @@ void TestRtProgram::execute(RenderContext* pRenderContext, const RenderData& ren
 {
     const uint2 frameDim = renderData.getDefaultTextureDims();
 
-    auto pOutput = renderData[kOutput]->asTexture();
+    auto pOutput = renderData.getTexture(kOutput);
     pRenderContext->clearUAV(pOutput->getUAV().get(), float4(0, 0, 0, 1));
 
     if (!mpScene) return;

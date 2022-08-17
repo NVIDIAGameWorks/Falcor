@@ -26,12 +26,16 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include <string>
-#include <sstream>
-#include <iomanip>
+#include "Core/Macros.h"
+#include "Core/Assert.h"
 #include <algorithm>
-#include <locale>
 #include <codecvt>
+#include <iomanip>
+#include <locale>
+#include <sstream>
+#include <string>
+#include <vector>
+#include <fmt/format.h>
 
 namespace Falcor
 {
@@ -265,20 +269,7 @@ namespace Falcor
         \param[in] size Size in bytes
         \return Returns a human readable string.
     */
-    inline std::string formatByteSize(size_t size)
-    {
-        std::ostringstream oss;
-        oss << std::fixed << std::setprecision(2);
-
-        const size_t KB = 1000, MB = KB * KB, GB = MB * KB, TB = GB * KB;
-        if (size < KB) oss << size << " B";
-        else if (size < MB) oss << (size / (double)KB) << " KB";
-        else if (size < GB) oss << (size / (double)MB) << " MB";
-        else if (size < TB) oss << (size / (double)GB) << " GB";
-        else oss << (size / (double)TB) << " TB";
-
-        return oss.str();
-    }
+    std::string formatByteSize(size_t size);
 
     /** Convert an ASCII string to a UTF-8 wstring
     */
@@ -302,11 +293,7 @@ namespace Falcor
     */
     inline std::string utf32ToUtf8(uint32_t codepoint)
     {
-#ifdef _WIN32
-        std::wstring_convert<std::codecvt_utf8<uint32_t>, uint32_t> cvt;
-#else
         std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> cvt;
-#endif
         return cvt.to_bytes(codepoint);
     }
 

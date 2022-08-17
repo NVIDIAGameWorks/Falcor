@@ -28,20 +28,38 @@
 #pragma once
 
 #include "Utils.h"
-#include "Scene/Curves/CurveTessellation.h"
-#include "glm/gtx/euler_angles.hpp"
-#include <filesystem>
-#include <numeric>
-#include <execution>
-
-#include "pxr/usd/usdGeom/xformCommonAPI.h"
-#include "pxr/usd/usd/prim.h"
-#include "pxr/usd/usdGeom/xform.h"
-#include "pxr/usd/usdShade/materialBindingAPI.h"
-#include "pxr/usd/usdSkel/cache.h"
-#include "pxr/usd/usdGeom/pointInstancer.h"
-
+#include "USDHelpers.h"
 #include "PreviewSurfaceConverter.h"
+#include "Scene/SceneIDs.h"
+#include "Scene/SceneBuilder.h"
+#include "Scene/Animation/Animation.h"
+#include "Scene/Curves/CurveTessellation.h"
+#include "Utils/Math/Vector.h"
+#include "Utils/Math/Matrix.h"
+#include "Utils/Timing/TimeReport.h"
+#include "Utils/Scripting/Dictionary.h"
+
+BEGIN_DISABLE_USD_WARNINGS
+#include <pxr/usd/usdGeom/xformCommonAPI.h>
+#include <pxr/usd/usd/prim.h>
+#include <pxr/usd/usdGeom/xform.h>
+#include <pxr/usd/usdShade/materialBindingAPI.h>
+#include <pxr/usd/usdSkel/cache.h>
+#include <pxr/usd/usdGeom/pointInstancer.h>
+END_DISABLE_USD_WARNINGS
+
+#include <glm/gtx/euler_angles.hpp>
+
+#include <execution>
+#include <filesystem>
+#include <limits>
+#include <memory>
+#include <mutex>
+#include <numeric>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
 
 using namespace pxr;
 
@@ -55,9 +73,9 @@ namespace Falcor
     {
         std::string name;                               ///< Instance name.
         UsdPrim prim;                                   ///< Reference to mesh prim.
-        float4x4 xform;                                 ///< Instance world transform
-        float4x4 bindTransform;                         ///< If mesh is skinned, its bind-time transform.
-        uint32_t parentID;                              ///< SceneBuilder node ID of parent
+        rmcv::mat4 xform;                                 ///< Instance world transform
+        rmcv::mat4 bindTransform;                         ///< If mesh is skinned, its bind-time transform.
+        NodeID parentID;                                ///< SceneBuilder node ID of parent
     };
 
     /** Represents an instance of a prototype in the scene.
@@ -66,8 +84,8 @@ namespace Falcor
     {
         std::string name;                               ///< Instance name.
         UsdPrim protoPrim;                              ///< Reference to prototype prim.
-        uint32_t parentID = SceneBuilder::kInvalidNode; ///< SceneBuilder parent node id.
-        float4x4 xform = float4x4(1.f);                 ///< Instance transformation.
+        NodeID parentID{ NodeID::kInvalidID };          ///< SceneBuilder parent node id.
+        rmcv::mat4 xform = rmcv::mat4(1.f);                 ///< Instance transformation.
         std::vector<Animation::Keyframe> keyframes;     ///< Keyframes for animated instance transformation, if any.
     };
 
@@ -96,7 +114,7 @@ namespace Falcor
         // Per GeomSubset
         ProcessedMeshList processedMeshes;          ///< Temporary list of pre-processed meshes
         std::vector<CachedMesh> cachedMeshes;       ///< Keyframe data for vertex-animated meshes per processed mesh
-        std::vector<uint32_t> meshIDs;              ///< List of scene builder mesh IDs.
+        std::vector<MeshID> meshIDs;                ///< List of scene builder mesh IDs.
         MeshAttributeIndicesList attributeIndices;  ///< For time-sampled meshes, list of attribute indices describing how mesh was processed
     };
 
@@ -110,7 +128,7 @@ namespace Falcor
         UsdPrim curvePrim;                                          ///< Curve prim.
         CurveTessellationMode tessellationMode;                     ///< Curve tessellation mode.
 
-        uint32_t geometryID = kInvalidID;                           ///< Geometry ID (curve or mesh, depending on tessellation mode).
+        CurveOrMeshID geometryID{ CurveOrMeshID::kInvalidID };      ///< Geometry ID (curve or mesh, depending on tessellation mode).
 
         std::vector<double> timeSamples;                            ///< Time samples for animation.
         std::vector<SceneBuilder::ProcessedCurve> processedCurves;  ///< List of pre-processed curves per keyframe.
@@ -126,7 +144,7 @@ namespace Falcor
         struct AnimationKeyframes
         {
             std::vector<Animation::Keyframe> keyframes;
-            uint32_t targetNodeID = SceneBuilder::kInvalidNode;
+            NodeID targetNodeID{ NodeID::kInvalidID };
         };
 
         UsdPrim protoPrim;                                          ///< Prototype prim.
@@ -134,7 +152,7 @@ namespace Falcor
         std::vector<PrototypeInstance> prototypeInstances;          ///< Prototype instances contained in the prototype.
         std::vector<SceneBuilder::Node> nodes;                      ///< Prototype subgraph nodes.
         std::vector<AnimationKeyframes> animations;                 ///< Animations targeting subgraph nodes, if any.
-        std::vector<uint32_t> nodeStack;                            ///< Current node stack.
+        std::vector<NodeID> nodeStack;                              ///< Current node stack.
         double timeCodesPerSecond;                                  ///< For use when creating animations.
 
         PrototypeGeom(const UsdPrim& prim, double timeCodesPerSecond)
@@ -143,13 +161,13 @@ namespace Falcor
         {
             SceneBuilder::Node node;
             node.name = prim.GetPath().GetString();
-            node.transform = float4x4(1.f);
-            node.parent = SceneBuilder::kInvalidNode;
+            node.transform = rmcv::mat4(1.f);
+            node.parent = NodeID::Invalid();
             nodes.push_back(node);
-            nodeStack.push_back(0);
+            nodeStack.push_back(NodeID{ 0 });
         }
 
-        void addGeomInstance(const std::string& name, UsdPrim prim, const float4x4& xform, const float4x4& bindXform)
+        void addGeomInstance(const std::string& name, UsdPrim prim, const rmcv::mat4& xform, const rmcv::mat4& bindXform)
         {
             geomInstances.push_back(GeomInstance{name, prim, xform, bindXform, nodeStack.back()});
         }
@@ -169,14 +187,14 @@ namespace Falcor
             {
                 // The node stack should at least contain the root node.
                 FALCOR_ASSERT(nodeStack.size() > 0);
-                float4x4 localTransform;
+                rmcv::mat4 localTransform;
                 bool resets = getLocalTransform(prim, localTransform);
 
                 SceneBuilder::Node node;
                 node.name = prim.GetPath().GetString();
                 node.transform = localTransform;
-                node.parent = resets ? 0UL : nodeStack.back();
-                uint32_t nodeID = nodes.size();
+                node.parent = resets ? NodeID{ 0 } : nodeStack.back();
+                NodeID nodeID{ nodes.size() };
                 nodes.push_back(node);
                 nodeStack.push_back(nodeID);
             }
@@ -203,14 +221,14 @@ namespace Falcor
             std::unordered_map<UsdObject, std::vector<uint32_t>, UsdObjHash> skinnedMeshes; ///< Map from a prim to its joint index mapping data
 
             // Skeleton Data
-            std::vector<SceneBuilder::Node> bones;          ///< Local transforms of each bone
-            std::vector<Animation::SharedPtr> animations;   ///< Animations per bone
-            uint32_t nodeOffset = Scene::kInvalidNode;      ///< Where this skeleton's nodes start in the SceneBuilder
+            std::vector<SceneBuilder::Node> bones;           ///< Local transforms of each bone
+            std::vector<Animation::SharedPtr> animations;    ///< Animations per bone
+            NodeID::IntType nodeOffset{ NodeID::kInvalidID };///< Where this skeleton's nodes start in the SceneBuilder
         };
 
         std::string name;                                   ///< SkelRoot prim name
-        uint32_t parentID = Scene::kInvalidNode;            ///< Parent node ID
-        uint32_t nodeID = Scene::kInvalidNode;              ///< Node ID of skeleton world transform in the scene graph
+        NodeID parentID{ NodeID::kInvalidID };              ///< Parent node ID
+        NodeID nodeID{ NodeID::kInvalidID };                ///< Node ID of skeleton world transform in the scene graph
         std::vector<SubSkeleton> subskeletons;
     };
 
@@ -239,7 +257,7 @@ namespace Falcor
         // Meshes
         void addMesh(const UsdPrim& prim);
         const Mesh& getMesh(const UsdPrim& meshPrim) { return meshes[geomMap.at(meshPrim)]; }
-        void addGeomInstance(const std::string& name, const UsdPrim& prim, const float4x4& xform, const float4x4& bindxform);
+        void addGeomInstance(const std::string& name, const UsdPrim& prim, const rmcv::mat4& xform, const rmcv::mat4& bindxform);
 
         // Prototypes
         void createPrototype(const UsdPrim& rootPrim);
@@ -250,16 +268,17 @@ namespace Falcor
         // Curves
         void addCurve(const UsdPrim& curvePrim);
         const Curve& getCurve(const UsdPrim& curvePrim) { return curves[curveMap.at(curvePrim)]; }
-        void addCurveInstance(const std::string& name, const UsdPrim& curvePrim, const float4x4& xform, uint32_t parentID);
+        void addCurveInstance(const std::string& name, const UsdPrim& curvePrim, const rmcv::mat4& xform, NodeID parentID);
         void addCachedCurve(Curve& curve);
 
         // Add USD Objects
         void createEnvMap(const UsdPrim& lightPrim);
-        void addLight(const UsdPrim& lightPrim, Light::SharedPtr pLight, uint32_t parentId);
+        void addLight(const UsdPrim& lightPrim, Light::SharedPtr pLight, NodeID parentId);
         void createDistantLight(const UsdPrim& lightPrim);
         void createRectLight(const UsdPrim& lightPrim);
         void createSphereLight(const UsdPrim& lightPrim);
         void createDiskLight(const UsdPrim& lightPrim);
+        void createMeshedDiskLight(const UsdPrim& lightPrim);
         bool createCamera(const UsdPrim& cameraPrim);
         void createPointInstances(const UsdPrim& prim, PrototypeGeom* proto = nullptr);
         void createSkeleton(const UsdPrim& prim);
@@ -267,7 +286,7 @@ namespace Falcor
         // Animation
 
         // Create animation from time-sampled transforms on a prim, such as for rigid body animations.
-        uint32_t createAnimation(const UsdGeomXformable& xformable);
+        NodeID createAnimation(const UsdGeomXformable& xformable);
 
         // Initialize a vector of keyframes, one for each instance in a point instancer.
         // Returns false, and does not initialize keyframes, if the instance transforms are not animated.
@@ -281,13 +300,13 @@ namespace Falcor
 
             This should only be called once during importer initialization and only when the nodeStack is empty.
         */
-        void setRootXform(const float4x4& xform);
-        float4x4 getLocalToWorldXform(const UsdGeomXformable& prim, UsdTimeCode time = UsdTimeCode::EarliestTime());
+        void setRootXform(const rmcv::mat4& xform);
+        rmcv::mat4 getLocalToWorldXform(const UsdGeomXformable& prim, UsdTimeCode time = UsdTimeCode::EarliestTime());
         size_t getNodeStackDepth() const { return nodeStack.size(); }
         void pushNode(const UsdGeomXformable& prim);
         void popNode() { nodeStack.pop_back(); }
-        uint32_t getRootNodeID() const { return nodeStack[nodeStackStartDepth.back()]; }
-        float4x4 getGeomBindTransform(const UsdPrim& usdPrim) const;
+        NodeID getRootNodeID() const { return nodeStack[nodeStackStartDepth.back()]; }
+        rmcv::mat4 getGeomBindTransform(const UsdPrim& usdPrim) const;
 
         /** Start a new node stack.
 
@@ -299,7 +318,7 @@ namespace Falcor
             We also maintain a stack of the starting depths of each pushed stack to aid in error checking, and to
             allow determining the current root node id.
         */
-        void pushNodeStack(uint32_t nodeID = SceneBuilder::kInvalidNode);           ///< Start a new node stack using the given nodeID as the root
+        void pushNodeStack(NodeID nodeID = NodeID::Invalid());           ///< Start a new node stack using the given nodeID as the root
 
         // Pop the current node stack
         void popNodeStack();
@@ -314,14 +333,15 @@ namespace Falcor
         std::filesystem::path path;                                                                  ///< Path of the USD stage being imported.
         UsdStageRefPtr pStage;                                                                       ///< USD stage being imported.
         const Dictionary& dict;                                                                      ///< Input map from material path to material short name.
+        std::map<std::string, std::string> localDict;                                                ///< Local input map from material path to
         TimeReport& timeReport;                                                                      ///< Timer object to use when importing.
         SceneBuilder& builder;                                                                       ///< Scene builder for this import session.
-        std::vector<uint32_t> nodeStack;                                                             ///< Stack of SceneBuilder node IDs
+        std::vector<NodeID> nodeStack;                                                               ///< Stack of SceneBuilder node IDs
         std::vector<size_t> nodeStackStartDepth;                                                     ///< Stack depth at time of new node stack creation
         float metersPerUnit = .01f;                                                                  ///< Meters per unit scene distance.
         double timeCodesPerSecond = 24.0;                                                            ///< Time code unit scaling for time-sampled data. USD default is 24.
-        float4x4 rootXform;                                                                          ///< Pseudoroot xform, correcting for world unit scaling and up vector orientation.
-        uint32_t rootXformNodeId = Scene::kInvalidNode;                                              ///< Get the node ID containing the scene root transform in the builder's scene graph
+        rmcv::mat4 rootXform;                                                                          ///< Pseudoroot xform, correcting for world unit scaling and up vector orientation.
+        NodeID rootXformNodeId{ NodeID::kInvalidID };                                                ///< Get the node ID containing the scene root transform in the builder's scene graph
         bool useInstanceProxies = false;                                                             ///< If true, traverse instances as if they were non-instances (debugging feature).
 
         std::unordered_map<std::string, Material::SharedPtr> materialMap;                            ///< Created material instances, indexed by material instance name.

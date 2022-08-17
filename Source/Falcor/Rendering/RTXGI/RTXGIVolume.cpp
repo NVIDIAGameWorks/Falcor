@@ -25,13 +25,19 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "RTXGIVolume.h"
 
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
 
-#include "Core/API/Shared/D3D12DescriptorData.h"
 #include "UpdateProbesDebugData.slang"
+#include "Core/API/API.h"
+#include "Core/API/Device.h"
+#include "Core/API/RenderContext.h"
+#include "Core/API/Shared/D3D12DescriptorData.h"
+#include "Utils/Logger.h"
+#include "Utils/Timing/Profiler.h"
+#include "Utils/Scripting/ScriptBindings.h"
+#include "Rendering/Lights/LightBVHSampler.h"
 
 namespace Falcor
 {
@@ -132,10 +138,15 @@ namespace Falcor
             FALCOR_GET_COM_INTERFACE(pRenderContext->getLowLevelData()->getD3D12CommandList(), ID3D12GraphicsCommandList4, pList4);
 
             rtxgi::d3d12::DDGIVolume* pDDGIVolumes[1] = { mpDDGIVolume.get() };
-
+#ifdef FALCOR_GFX
+            pRenderContext->bindCustomGPUDescriptorPool();
+#endif
             rtxgi::d3d12::UpdateDDGIVolumeProbes(pList4, 1, pDDGIVolumes);
             rtxgi::d3d12::RelocateDDGIVolumeProbes(pList4, 1, pDDGIVolumes);
             rtxgi::d3d12::ClassifyDDGIVolumeProbes(pList4, 1, pDDGIVolumes);
+#ifdef FALCOR_GFX
+            pRenderContext->unbindCustomGPUDescriptorPool();
+#endif
         }
 
         // Flush command queue.
@@ -328,11 +339,12 @@ namespace Falcor
 
         // Create program for probe radiance update.
         RtProgram::Desc desc;
+        desc.addShaderModules(mpScene->getShaderModules());
         desc.addShaderLibrary(kProbeRadianceUpdateFilename);
+        desc.addTypeConformances(mpScene->getTypeConformances());
         desc.setMaxPayloadSize(kMaxPayloadSizeBytes);
         desc.setMaxAttributeSize(kMaxAttributeSizeBytes);
         desc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
-        desc.addTypeConformances(mpScene->getTypeConformances());
 
         mpRtBindingTable = RtBindingTable::create(2, 2, pScene->getGeometryCount());
         auto& sbt = mpRtBindingTable;
@@ -516,13 +528,13 @@ namespace Falcor
         uint32_t numSRVDescriptors = rtxgi::GetDDGIVolumeNumSRVDescriptors();
 
         // Root index 0: Root Constants. Not required to be set by us.
-        // Root index 1: Volume Constant Buffer. tdavidovic: Now must be set by us, as GetDDGIVolumeRootSignatureDesc requires it?
+        // Root index 1: Volume Constant Buffer.
         // Root index 2: Descriptor Set. Must be set by us.
         D3D12DescriptorSet::Layout layout;
         layout.addRange(ShaderResourceType::StructuredBufferSrv,  0,                     1,                 1); // StructuredBuffer : register(t0, space1);
         layout.addRange(ShaderResourceType::TextureUav,           1,                     numUAVDescriptors, 1); // RWTexture2D      : register(u0 ... uN, space1);
         layout.addRange(ShaderResourceType::TextureSrv,           1 + numUAVDescriptors, numSRVDescriptors, 1); // Texture2D        : register(t1 ... tN+1, space1);
-        mpSet = D3D12DescriptorSet::create(gpDevice->getD3D12GpuDescriptorPool(), layout);
+        mpSet = D3D12DescriptorSet::create(layout, D3D12DescriptorSetBindingUsage::RootSignatureOffset);
 
         // Use the unmanaged resources (managed by Falcor rather than RTXGI)
         mDDGIResources.unmanaged.enabled = true;
@@ -821,4 +833,4 @@ namespace Falcor
     }
 }
 
-#endif // FALCOR_D3D12_AVAILABLE
+#endif // FALCOR_HAS_D3D12

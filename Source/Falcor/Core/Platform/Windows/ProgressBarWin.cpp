@@ -25,10 +25,15 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include "Core/Platform/ProgressBar.h"
+#include "../ProgressBar.h"
+#include "../OS.h"
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
 #include <CommCtrl.h>
 #include <random>
+#include <thread>
 
 namespace Falcor
 {
@@ -41,6 +46,7 @@ namespace Falcor
         std::thread thread;
         bool running = true;
     };
+    std::unique_ptr<ProgressBarData> ProgressBar::spData;
 
     void ProgressBar::close()
     {
@@ -49,13 +55,19 @@ namespace Falcor
             spData->running = false;
             spData->thread.join();
             DestroyWindow(spData->hwnd);
-            safe_delete(spData);
+            spData.reset();
         }
+    }
+
+    ProgressBar::ProgressBar() = default;
+    ProgressBar::~ProgressBar()
+    {
+        close();
     }
 
     bool ProgressBar::isActive()
     {
-        return spData != nullptr;
+        return (bool)spData;
     }
 
     void progressBarThread(ProgressBarData* pData, const ProgressBar::MessageList& msgList, uint32_t delayInMs)
@@ -112,7 +124,7 @@ namespace Falcor
 
     void ProgressBar::platformInit(const MessageList& list, uint32_t delayInMs)
     {
-        spData = new ProgressBarData;
+        spData.reset(new ProgressBarData);
 
         // Initialize the common controls
         INITCOMMONCONTROLSEX init;
@@ -121,7 +133,7 @@ namespace Falcor
         InitCommonControlsEx(&init);
 
         // Start the thread
-        spData->thread = std::thread(progressBarThread, spData, list, delayInMs);
+        spData->thread = std::thread(progressBarThread, spData.get(), list, delayInMs);
 
     }
 }

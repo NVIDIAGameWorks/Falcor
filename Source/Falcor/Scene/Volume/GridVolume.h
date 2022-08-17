@@ -28,9 +28,16 @@
 #pragma once
 #include "Grid.h"
 #include "GridVolumeData.slang"
+#include "Core/Macros.h"
+#include "Utils/Math/AABB.h"
+#include "Utils/Math/Matrix.h"
+#include "Utils/UI/Gui.h"
 #include "Scene/Animation/Animatable.h"
-
+#include <array>
 #include <filesystem>
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace Falcor
 {
@@ -257,7 +264,7 @@ namespace Falcor
         */
         const AABB& getBounds() const { return mBounds; }
 
-        void updateFromAnimation(const glm::mat4& transform) override;
+        void updateFromAnimation(const rmcv::mat4& transform) override;
 
     private:
         GridVolume(const std::string& name);

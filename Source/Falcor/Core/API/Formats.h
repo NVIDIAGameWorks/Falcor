@@ -26,11 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-
-#if __has_include(<dxgiformat.h>)
-#include <dxgiformat.h>
-#define FALCOR_HAS_DXGI_FORMAT_HEADER 1
-#endif
+#include "DXGIFormats.h"
+#include "Core/Assert.h"
+#include "Core/Macros.h"
+#include <string>
+#include <cstdint>
 
 namespace Falcor
 {
@@ -483,8 +483,6 @@ namespace Falcor
         return s;
     }
 
-#ifdef FALCOR_HAS_DXGI_FORMAT_HEADER
-
     /** Convert from Falcor to DXGI format
     */
     DXGI_FORMAT FALCOR_API getDxgiFormat(ResourceFormat format);
@@ -493,6 +491,6 @@ namespace Falcor
     */
     ResourceFormat FALCOR_API getResourceFormat(DXGI_FORMAT format);
     DXGI_FORMAT FALCOR_API getTypelessFormatFromDepthFormat(ResourceFormat format);
-#endif
+
     /*! @} */
 }

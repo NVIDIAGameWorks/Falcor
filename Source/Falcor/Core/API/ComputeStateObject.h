@@ -26,9 +26,12 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Handles.h"
+#include "Shared/D3D12Handles.h"
+#include "Core/Macros.h"
 #include "Core/Program/ProgramVersion.h"
 
-#ifdef FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
 #include "Core/API/Shared/D3D12RootSignature.h"
 #endif
 
@@ -45,7 +48,7 @@ namespace Falcor
         {
         public:
             Desc& setProgramKernels(const ProgramKernels::SharedConstPtr& pProgram) { mpProgram = pProgram; return *this; }
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
             /** Set a D3D12 root signature to use instead of the one that comes with the program kernel.
                 This function is supported on D3D12 only.
                 \param[in] pRootSignature An overriding D3D12RootSignature object to use in the compute state.
@@ -58,7 +61,7 @@ namespace Falcor
         private:
             friend class ComputeStateObject;
             ProgramKernels::SharedConstPtr mpProgram;
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
             D3D12RootSignature::SharedConstPtr mpD3D12RootSignatureOverride;
 #endif
         };
@@ -84,7 +87,7 @@ namespace Falcor
         Desc mDesc;
         ApiHandle mApiHandle;
 
-#if defined(FALCOR_GFX) && FALCOR_D3D12_AVAILABLE
+#if defined(FALCOR_GFX) && FALCOR_HAS_D3D12
         D3D12ComputeStateHandle mpD3D12Handle;
 #endif
     };

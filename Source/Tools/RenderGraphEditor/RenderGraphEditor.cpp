@@ -26,17 +26,18 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "RenderGraphEditor.h"
-#include "dear_imgui/imgui.h"
-#include "dear_imgui/imgui_internal.h"
+#include "RenderGraph/RenderGraph.h"
+#include "RenderGraph/RenderGraphImportExport.h"
+#include "RenderGraph/RenderPassLibrary.h"
 
 #include <args.hxx>
+#include <imgui.h>
+#include <imgui_internal.h>
 
 #include <fstream>
 #include <filesystem>
 
-#if FALCOR_D3D12_AVAILABLE
 FALCOR_EXPORT_D3D12_AGILITY_SDK
-#endif
 
 namespace
 {
@@ -379,13 +380,19 @@ void RenderGraphEditor::onGuiRender(Gui* pGui)
 
 void RenderGraphEditor::loadAllPassLibraries()
 {
+#if FALCOR_WINDOWS
+    static const std::string kLibraryExtension = "dll";
+#elif FALCOR_LINUX
+    static const std::string kLibraryExtension = "so";
+#endif
+
     auto executableDirectory = getExecutableDirectory();
 
     // iterate through and find all render pass libraries
     for (auto& it : std::filesystem::directory_iterator(executableDirectory))
     {
         const auto& path = it.path();
-        if (hasExtension(path, "dll"))
+        if (hasExtension(path, kLibraryExtension))
         {
             // check for addPasses()
             SharedLibraryHandle l = loadSharedLibrary(path);
@@ -503,13 +510,12 @@ void RenderGraphEditor::onResizeSwapChain(uint32_t width, uint32_t height)
     mResetGuiWindows = true;
 }
 
-#ifdef _WIN32
+#if FALCOR_WINDOWS
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
 #else
 int main(int argc, char** argv)
 #endif
 {
-
     args::ArgumentParser parser("Render graph editor.");
     parser.helpParams.programName = "RenderGraphEditor";
     args::HelpFlag helpFlag(parser, "help", "Display this help menu.", {'h', "help"});
@@ -520,7 +526,7 @@ int main(int argc, char** argv)
 
     try
     {
-#ifdef _WIN32
+#if FALCOR_WINDOWS
         parser.ParseCLI(__argc, __argv);
 #else
         parser.ParseCLI(argc, argv);

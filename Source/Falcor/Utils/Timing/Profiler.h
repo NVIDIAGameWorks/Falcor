@@ -26,17 +26,18 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include <stack>
-#include <unordered_map>
-#include <memory>
 #include "CpuTimer.h"
+#include "Core/Macros.h"
 #include "Core/API/GpuTimer.h"
-#include "Utils/Scripting/ScriptBindings.h"
+#include <pybind11/pytypes.h>
+#include <filesystem>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace Falcor
 {
-    class GpuTimer;
-
     /** Container class for CPU/GPU profiling.
         This class uses the most accurately available CPU and GPU timers to profile given events.
         It automatically creates event hierarchies based on the order and nesting of the calls made.
@@ -292,7 +293,9 @@ namespace Falcor
 }
 
 #if FALCOR_ENABLE_PROFILER
-#define FALCOR_PROFILE(_name, ...) Falcor::ProfilerEvent _profileEvent##__LINE__(_name, __VA_ARGS__)
+#define FALCOR_PROFILE(_name) Falcor::ProfilerEvent _profileEvent##__LINE__(_name)
+#define FALCOR_PROFILE_CUSTOM(_name, _flags) Falcor::ProfilerEvent _profileEvent##__LINE__(_name, _flags)
 #else
-#define FALCOR_PROFILE(_name, ...)
+#define FALCOR_PROFILE(_name)
+#define FALCOR_PROFILE_CUSTOM(_name, _flags)
 #endif

@@ -26,8 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-
 #include "D3D12DescriptorHeap.h"
+#include <memory>
+#include <vector>
+#include <cstdint>
 
 namespace Falcor
 {

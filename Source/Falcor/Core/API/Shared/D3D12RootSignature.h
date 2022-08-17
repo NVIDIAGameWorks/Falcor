@@ -26,9 +26,13 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-
-#include "Core/Framework.h"
+#include "D3D12Handles.h"
 #include "D3D12DescriptorSet.h"
+#include "Core/Macros.h"
+#include "Core/API/ShaderResourceType.h"
+#include <d3d12.h>
+#include <memory>
+#include <vector>
 
 namespace Falcor
 {

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,9 +27,16 @@
  **************************************************************************/
 #pragma once
 #include "EmissiveLightSamplerType.slangh"
+#include "Core/Macros.h"
+#include "Core/Program/Program.h"
+#include "Scene/Scene.h"
+#include <memory>
 
 namespace Falcor
 {
+    class RenderContext;
+    struct ShaderVar;
+
     /** Base class for emissive light sampler implementations.
 
         All light samplers follows the same interface to make them interchangeable.

@@ -28,6 +28,12 @@
 #pragma once
 #include "Falcor.h"
 #include "AppData.h"
+#include "RenderGraph/RenderGraph.h"
+
+namespace Falcor
+{
+    class Properties;
+}
 
 using namespace Falcor;
 
@@ -51,12 +57,15 @@ namespace Mogwai
         virtual void renderUI(Gui* pGui) {};
         virtual bool mouseEvent(const MouseEvent& e) { return false; }
         virtual bool keyboardEvent(const KeyboardEvent& e) { return false; }
+        virtual bool gamepadEvent(const GamepadEvent& e) { return false; }
         virtual void registerScriptBindings(pybind11::module& m) {};
         virtual std::string getScriptVar() const { return {}; }
         virtual std::string getScript(const std::string& var) const { return {}; }
         virtual void addGraph(RenderGraph* pGraph) {};
+        virtual void setActiveGraph(RenderGraph* pGraph) {};
         virtual void removeGraph(RenderGraph* pGraph) {};
         virtual void activeGraphChanged(RenderGraph* pNewGraph, RenderGraph* pPrevGraph) {};
+        virtual void onOptionsChange(const Properties& settings){}
 
     protected:
         Extension(Renderer* pRenderer, const std::string& name) : mpRenderer(pRenderer), mName(name) {}
@@ -71,6 +80,7 @@ namespace Mogwai
         struct Options
         {
             std::string scriptFile;
+            bool deferredLoad = false;
             std::string sceneFile;
             bool silentMode = false;
             bool useSceneCache = false;
@@ -78,9 +88,12 @@ namespace Mogwai
             bool generateShaderDebugInfo = false;
         };
 
+        using KeyCallback = std::function<bool(bool pressed, uint32_t key)>;
+
         Renderer(const Options& options);
 
         void onLoad(RenderContext* pRenderContext) override;
+        void onOptionsChange() override;
         void onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
         void onResizeSwapChain(uint32_t width, uint32_t height) override;
         bool onKeyEvent(const KeyboardEvent& e) override;
@@ -107,6 +120,11 @@ namespace Mogwai
         AppData& getAppData() { return mAppData; }
 
         RenderGraph* getActiveGraph() const;
+
+        uint32_t getActiveGraphIndex() const { return mActiveGraph; }
+
+        KeyCallback getKeyCallback() const { return mKeyCallback; }
+        void setKeyCallback(KeyCallback keyCallback) { mKeyCallback = keyCallback; }
 
 //    private: // MOGWAI
         friend class Extension;
@@ -135,6 +153,7 @@ namespace Mogwai
         Scene::SharedPtr mpScene;
 
         void addGraph(const RenderGraph::SharedPtr& pGraph);
+        void setActiveGraph(const RenderGraph::SharedPtr& pGraph);
         void removeGraph(const RenderGraph::SharedPtr& pGraph);
         void removeGraph(const std::string& graphName);
         RenderGraph::SharedPtr getGraph(const std::string& graphName) const;
@@ -179,8 +198,13 @@ namespace Mogwai
         std::filesystem::path mEditorTempPath;
         std::string mEditorScript;
 
+        KeyCallback mKeyCallback;
+        FILE*       mPipedOutput = nullptr;
+
         // Scripting
         void registerScriptBindings(pybind11::module& m);
+
+        void handleGamepadInput(float deltaTimeSeconds);
     };
 
 #define MOGWAI_EXTENSION(Name)                         \

@@ -25,11 +25,13 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Animation.h"
 #include "AnimationController.h"
-#include "glm/gtc/quaternion.hpp"
-#include "glm/gtx/transform.hpp"
+#include "Utils/Math/Common.h"
+#include "Utils/Scripting/ScriptBindings.h"
+#include "Scene/Transform.h"
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/transform.hpp>
 
 namespace Falcor
 {
@@ -104,18 +106,18 @@ namespace Falcor
         }
     }
 
-    Animation::SharedPtr Animation::create(const std::string& name, uint32_t nodeID, double duration)
+    Animation::SharedPtr Animation::create(const std::string& name, NodeID nodeID, double duration)
     {
         return SharedPtr(new Animation(name, nodeID, duration));
     }
 
-    Animation::Animation(const std::string& name, uint32_t nodeID, double duration)
+    Animation::Animation(const std::string& name, NodeID nodeID, double duration)
         : mName(name)
         , mNodeID(nodeID)
         , mDuration(duration)
     {}
 
-    glm::mat4 Animation::animate(double currentTime)
+    rmcv::mat4 Animation::animate(double currentTime)
     {
         // Calculate the sample time.
         double time = currentTime;
@@ -151,10 +153,10 @@ namespace Falcor
             interpolated = interpolate(mInterpolationMode, time);
         }
 
-        glm::mat4 T = translate(interpolated.translation);
-        glm::mat4 R = mat4_cast(interpolated.rotation);
-        glm::mat4 S = scale(interpolated.scaling);
-        glm::mat4 transform = T * R * S;
+        rmcv::mat4 T = rmcv::translate(interpolated.translation);
+        rmcv::mat4 R = rmcv::mat4_cast(interpolated.rotation);
+        rmcv::mat4 S = rmcv::scale(interpolated.scaling);
+        rmcv::mat4 transform = T * R * S;
 
         return transform;
     }
@@ -324,6 +326,8 @@ namespace Falcor
 
     FALCOR_SCRIPT_BINDING(Animation)
     {
+        using namespace pybind11::literals;
+
         FALCOR_SCRIPT_BINDING_DEPENDENCY(Transform)
 
         pybind11::class_<Animation, Animation::SharedPtr> animation(m, "Animation");

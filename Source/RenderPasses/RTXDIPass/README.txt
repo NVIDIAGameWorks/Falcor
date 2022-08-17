@@ -14,13 +14,10 @@ A Simple Example Using RTXDI:
 
 A sample render script that configures Falcor to use this render pass is in:
    `Source\Mogwai\Data\RTXDI.py`
-or, after building the solution, it is also available as:
-   `Bin\x64\Release\Data\RTXDI.py`
 
 To test this simple example:
 
-1) Make sure you open the `Falcor.sln` Visual Studio project and build the *entire* solution,
-preferrably in release mode (aka `ReleaseD3D12` in the Visual Studio GUI).
+1) Build Falcor (see main README for help).
 
 2) Run Mogwai.exe, which allows you to load Falcor scenes and render scripts.
 
@@ -30,6 +27,6 @@ via the Mogwai command line, from the menu after running Mogwai, or dragging & d
 
 4) Load an appropriate scene. After building, Visual Studio will have pulled a default scene
 as part of the package dependencies it downloads. You can use this scene, located in:
-    `Media\Arcade\Arcade.pyscene`
+    `media\Arcade\Arcade.pyscene`
 You can (also) load this scene via the Mogwai command line, from the menu after running Mogwai,
 or by dragging and dropping the `.pyscene` into a running Mogwai window.

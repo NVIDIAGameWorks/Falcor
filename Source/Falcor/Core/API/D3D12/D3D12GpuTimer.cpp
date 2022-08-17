@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,38 +25,40 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Core/API/GpuTimer.h"
+#include "Core/API/Device.h"
+#include "Core/API/D3D12/D3D12API.h"
 
 namespace Falcor
 {
     void GpuTimer::apiBegin()
     {
-        mpLowLevelData->getCommandList()->EndQuery(spHeap.lock()->getApiHandle(), D3D12_QUERY_TYPE_TIMESTAMP, mStart);
+        if (auto lowLevelData = mpLowLevelData.lock())
+        {
+            lowLevelData->getCommandList()->EndQuery(spHeap.lock()->getApiHandle(), D3D12_QUERY_TYPE_TIMESTAMP, mStart);
+        }
     }
 
     void GpuTimer::apiEnd()
     {
-        mpLowLevelData->getCommandList()->EndQuery(spHeap.lock()->getApiHandle(), D3D12_QUERY_TYPE_TIMESTAMP, mEnd);
+        if (auto lowLevelData = mpLowLevelData.lock())
+        {
+            lowLevelData->getCommandList()->EndQuery(spHeap.lock()->getApiHandle(), D3D12_QUERY_TYPE_TIMESTAMP, mEnd);
+        }
     }
 
     void GpuTimer::apiResolve()
     {
-        // TODO: The code here is inefficient as it resolves each timer individually.
-        // This should be batched across all active timers and results copied into a single staging buffer once per frame instead.
+        if (auto lowLevelData = mpLowLevelData.lock())
+        {
+            // TODO: The code here is inefficient as it resolves each timer individually.
+            // This should be batched across all active timers and results copied into a single staging buffer once per frame instead.
 
-        // Resolve timestamps into buffer.
-        mpLowLevelData->getCommandList()->ResolveQueryData(spHeap.lock()->getApiHandle(), D3D12_QUERY_TYPE_TIMESTAMP, mStart, 2, mpResolveBuffer->getApiHandle(), 0);
+            // Resolve timestamps into buffer.
+            lowLevelData->getCommandList()->ResolveQueryData(spHeap.lock()->getApiHandle(), D3D12_QUERY_TYPE_TIMESTAMP, mStart, 2, mpResolveBuffer->getApiHandle(), 0);
 
-        // Copy resolved timestamps to staging buffer for readback. This inserts the necessary barriers.
-        gpDevice->getRenderContext()->copyResource(mpResolveStagingBuffer.get(), mpResolveBuffer.get());
-    }
-
-    void GpuTimer::apiReadback(uint64_t result[2])
-    {
-        uint64_t* pRes = (uint64_t*)mpResolveStagingBuffer->map(Buffer::MapType::Read);
-        result[0] = pRes[0];
-        result[1] = pRes[1];
-        mpResolveStagingBuffer->unmap();
+            // Copy resolved timestamps to staging buffer for readback. This inserts the necessary barriers.
+            gpDevice->getRenderContext()->copyResource(mpResolveStagingBuffer.get(), mpResolveBuffer.get());
+        }
     }
 }

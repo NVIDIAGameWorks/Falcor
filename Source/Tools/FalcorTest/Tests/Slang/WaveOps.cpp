@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Testing/UnitTest.h"
+#include <random>
 
 namespace Falcor
 {
@@ -172,7 +173,8 @@ namespace Falcor
         EXPECT_LE(laneCount, 128u);
     }
 
-    GPU_TEST(WaveMatch)
+    // WaveMatch intrinsic is available only on D3D12.
+    GPU_TEST_D3D12(WaveMatch)
     {
         ctx.createProgram(kShaderFilename, "testWaveMatch", Program::DefineList(), Shader::CompilerFlags::None, "6_5");
         ctx.allocateStructuredBuffer("result", kNumElems);

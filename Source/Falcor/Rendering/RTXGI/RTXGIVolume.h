@@ -26,18 +26,22 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Falcor.h"
-
-#if FALCOR_D3D12_AVAILABLE
-#include "Utils/Sampling/SampleGenerator.h"
+#if FALCOR_HAS_D3D12
+#include "Core/Macros.h"
+#include "Core/API/Texture.h"
+#include "Core/API/Buffer.h"
+#include "Core/API/ParameterBlock.h"
 #include "Core/API/Shared/D3D12DescriptorSet.h"
-#include "Core/API/Shared/MockedD3D12StagingBuffer.h"
-#include "Rendering/Lights/LightBVHSampler.h"
+#include "Utils/Scripting/Dictionary.h"
+#include "Utils/Sampling/SampleGenerator.h"
 #include "Rendering/Lights/EnvMapSampler.h"
+#include "Rendering/Lights/EmissiveLightSampler.h"
 
 #include "RTXGIDefines.slangh"
-#include "rtxgi/rtxgi-sdk/include/RTXGI/ddgi/DDGIVolume.h"
-#include "rtxgi/rtxgi-sdk/include/RTXGI/ddgi/gfx/DDGIVolume_D3D12.h"
+#include <rtxgi/ddgi/DDGIVolume.h>
+#include <rtxgi/ddgi/gfx/DDGIVolume_D3D12.h>
+
+#include <memory>
 
 namespace Falcor
 {
@@ -89,6 +93,9 @@ namespace Falcor
             bool enableAnalyticLights = true;           ///< Compute direct lighting from analytic lights.
             bool enableEmissiveLights = true;           ///< Compute direct lighting from emissive lights.
             uint32_t emissiveSampleCount = 1;           ///< Number of samples for emissive lights.
+
+            // Note: Empty constructor needed for clang due to the use of the nested struct constructor in the parent constructor.
+            Options() {}
         };
 
         /** Creates a RTXGIVolume for a given scene.
@@ -235,4 +242,4 @@ namespace Falcor
     };
 }
 
-#endif // FALCOR_D3D12_AVAILABLE
+#endif // FALCOR_HAS_D3D12

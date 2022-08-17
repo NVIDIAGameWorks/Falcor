@@ -25,10 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "LightCollection.h"
 #include "LightCollectionShared.slang"
+#include "Core/API/Device.h"
 #include "Scene/Scene.h"
+#include "Scene/Material/BasicMaterial.h"
+#include "Utils/Logger.h"
+#include "Utils/Timing/TimeReport.h"
+#include "Utils/Timing/Profiler.h"
 #include <sstream>
 
 namespace Falcor
@@ -98,7 +102,7 @@ namespace Falcor
             UpdateFlags updateFlags = UpdateFlags::None;
 
             // Check if instance transform changed.
-            if (pScene->getAnimationController()->isMatrixChanged(instanceData.globalMatrixID)) updateFlags |= UpdateFlags::MatrixChanged;
+            if (pScene->getAnimationController()->isMatrixChanged(NodeID{ instanceData.globalMatrixID })) updateFlags |= UpdateFlags::MatrixChanged;
 
             // Store update status.
             if (updateFlags != UpdateFlags::None) updatedLights.push_back(lightIdx);
@@ -185,10 +189,10 @@ namespace Falcor
             // We only support triangle meshes.
             if (instanceData.getType() != GeometryType::TriangleMesh) continue;
 
-            const MeshDesc& meshData = scene.getMesh(instanceData.geometryID);
+            const MeshDesc& meshData = scene.getMesh(MeshID::fromSlang( instanceData.geometryID ));
 
             // Only mesh lights with basic materials are supported.
-            auto pMaterial = scene.getMaterial(instanceData.materialID)->toBasicMaterial();
+            auto pMaterial = scene.getMaterial(MaterialID::fromSlang( instanceData.materialID ))->toBasicMaterial();
 
             if (pMaterial && pMaterial->isEmissive())
             {
@@ -421,7 +425,7 @@ namespace Falcor
         uint32_t trianglesTotal = 0;
         for (const auto& meshLight : mMeshLights)
         {
-            auto pMaterial = pScene->getMaterial(meshLight.materialID)->toBasicMaterial();
+            auto pMaterial = pScene->getMaterial(MaterialID::fromSlang(meshLight.materialID))->toBasicMaterial();
             FALCOR_ASSERT(pMaterial);
             bool isTextured = pMaterial->getEmissiveTexture() != nullptr;
 
@@ -446,7 +450,7 @@ namespace Falcor
             {
                 // TODO: Currently we don't detect uniform radiance for textured lights, so just look at whether the mesh light is textured or not.
                 // This code will change when we tag individual triangles as textured vs non-textured.
-                auto pMaterial = pScene->getMaterial(mMeshLights[tri.lightIdx].materialID)->toBasicMaterial();
+                auto pMaterial = pScene->getMaterial(MaterialID::fromSlang(mMeshLights[tri.lightIdx].materialID))->toBasicMaterial();
                 FALCOR_ASSERT(pMaterial);
                 bool isTextured = pMaterial->getEmissiveTexture() != nullptr;
 

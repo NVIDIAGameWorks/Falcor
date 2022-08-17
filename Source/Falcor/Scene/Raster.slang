@@ -77,17 +77,17 @@ VSOut defaultVS(VSIn vIn)
     const GeometryInstanceID instanceID = { vIn.instanceID };
 
     float4x4 worldMat = gScene.getWorldMatrix(instanceID);
-    float3 posW = mul(float4(vIn.pos, 1.f), worldMat).xyz;
+    float3 posW = mul(worldMat, float4(vIn.pos, 1.f)).xyz;
     vOut.posW = posW;
-    vOut.posH = mul(float4(posW, 1.f), gScene.camera.getViewProj());
+    vOut.posH = mul(gScene.camera.getViewProj(), float4(posW, 1.f));
 
     vOut.instanceID = instanceID;
     vOut.materialID = gScene.getMaterialID(instanceID);
 
     vOut.texC = vIn.texC;
-    vOut.normalW = mul(vIn.unpack().normal, gScene.getInverseTransposeWorldMatrix(instanceID));
+    vOut.normalW = mul(gScene.getInverseTransposeWorldMatrix(instanceID), vIn.unpack().normal);
     float4 tangent = vIn.unpack().tangent;
-    vOut.tangentW = float4(mul(tangent.xyz, (float3x3)gScene.getWorldMatrix(instanceID)), tangent.w);
+    vOut.tangentW = float4(mul((float3x3)gScene.getWorldMatrix(instanceID), tangent.xyz), tangent.w);
 
     // Compute the vertex position in the previous frame.
     float3 prevPos = vIn.pos;
@@ -97,8 +97,8 @@ VSOut defaultVS(VSIn vIn)
         uint prevVertexIndex = gScene.meshes[instance.geometryIndex].prevVbOffset + vIn.vertexID;
         prevPos = gScene.prevVertices[prevVertexIndex].position;
     }
-    float3 prevPosW = mul(float4(prevPos, 1.f), gScene.getPrevWorldMatrix(instanceID)).xyz;
-    vOut.prevPosH = mul(float4(prevPosW, 1.f), gScene.camera.data.prevViewProjMatNoJitter);
+    float3 prevPosW = mul(gScene.getPrevWorldMatrix(instanceID), float4(prevPos, 1.f)).xyz;
+    vOut.prevPosH = mul(gScene.camera.data.prevViewProjMatNoJitter, float4(prevPosW, 1.f));
 
     return vOut;
 }

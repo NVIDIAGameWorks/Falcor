@@ -26,7 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Handles.h"
+#include "Core/Assert.h"
+#include "Core/Macros.h"
 #include <deque>
+#include <memory>
 
 namespace Falcor
 {

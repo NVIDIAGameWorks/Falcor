@@ -25,8 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "BSDFIntegrator.h"
+#include "Core/Assert.h"
+#include "Core/Errors.h"
+#include "Core/API/RenderContext.h"
+#include "Utils/Logger.h"
 
 namespace Falcor
 {
@@ -53,6 +56,7 @@ namespace Falcor
         // Create programs.
         Program::Desc desc;
         desc.setShaderModel("6_6");
+        desc.addShaderModules(pScene->getShaderModules());
         desc.addShaderLibrary(kShaderFile);
         desc.addTypeConformances(pScene->getTypeConformances());
         auto defines = pScene->getSceneDefines();
@@ -77,17 +81,17 @@ namespace Falcor
         mpFence = GpuFence::create();
     }
 
-    float3 BSDFIntegrator::integrateIsotropic(RenderContext* pRenderContext, const uint32_t materialID, float cosTheta)
+    float3 BSDFIntegrator::integrateIsotropic(RenderContext* pRenderContext, const MaterialID materialID, float cosTheta)
     {
         std::vector<float> cosThetas(1, cosTheta);
         auto results = integrateIsotropic(pRenderContext, materialID, cosThetas);
         return results[0];
     }
 
-    std::vector<float3> BSDFIntegrator::integrateIsotropic(RenderContext* pRenderContext, const uint32_t materialID, const std::vector<float>& cosThetas)
+    std::vector<float3> BSDFIntegrator::integrateIsotropic(RenderContext* pRenderContext, const MaterialID materialID, const std::vector<float>& cosThetas)
     {
         FALCOR_ASSERT(mpScene);
-        checkArgument(materialID < mpScene->getMaterialCount(), "'materialID' is out of range");
+        checkArgument(materialID.get() < mpScene->getMaterialCount(), "'materialID' is out of range");
         checkArgument(!cosThetas.empty(), "'cosThetas' array is empty");
 
         CpuTimer timer;
@@ -141,14 +145,14 @@ namespace Falcor
         return output;
     }
 
-    void BSDFIntegrator::integrationPass(RenderContext* pRenderContext, const uint32_t materialID, const uint32_t gridCount) const
+    void BSDFIntegrator::integrationPass(RenderContext* pRenderContext, const MaterialID materialID, const uint32_t gridCount) const
     {
         FALCOR_ASSERT(mpIntegrationPass);
         auto var = mpIntegrationPass->getRootVar()[kParameterBlock];
         var["gridSize"] = kGridSize;
         var["gridCount"] = gridCount;
         var["resultCount"] = mResultCount;
-        var["materialID"] = materialID;
+        var["materialID"] = materialID.getSlang();
         var["cosThetas"] = mpCosThetaBuffer;
         var["results"] = mpResultBuffer;
 

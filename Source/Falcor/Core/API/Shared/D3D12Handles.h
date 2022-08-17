@@ -27,8 +27,7 @@
  **************************************************************************/
 #pragma once
 
-#if FALCOR_D3D12_AVAILABLE
-#define NOMINMAX
+#if FALCOR_HAS_D3D12
 #include <d3d12.h>
 #include <dxgi1_4.h>
 #include <comdef.h>
@@ -38,7 +37,7 @@
 
 namespace Falcor
 {
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
     FALCOR_MAKE_SMART_COM_PTR(IDXGISwapChain3);
     FALCOR_MAKE_SMART_COM_PTR(IDXGIDevice);
     FALCOR_MAKE_SMART_COM_PTR(IDXGIAdapter1);

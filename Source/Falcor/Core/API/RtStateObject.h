@@ -26,7 +26,13 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Handles.h"
 #include "Raytracing.h"
+#include "Core/Macros.h"
+#include "Core/Program/ProgramVersion.h"
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace Falcor
 {

@@ -25,8 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "RTXDI.h"
+#include "Core/Assert.h"
+#include "Core/API/RenderContext.h"
+#include "Utils/Logger.h"
+#include "Utils/Math/Common.h"
+#include "Utils/Timing/Profiler.h"
+#include "Utils/Scripting/ScriptBindings.h"
+#include <fstd/bit.h> // TODO C++20: Replace with <bit>
 
 namespace Falcor
 {
@@ -87,7 +93,7 @@ namespace Falcor
         {
             if (value < minValue || value > maxValue)
             {
-                logWarning("RTXDI: '{}' is {}. Clamping to [{},{}].", value, minValue, maxValue);
+                logWarning("RTXDI: '{}' is {}. Clamping to [{},{}].", name, value, minValue, maxValue);
                 value = clamp(value, minValue, maxValue);
             }
         };
@@ -132,7 +138,7 @@ namespace Falcor
         validateRange(newOptions.maxHistoryLength, kMinMaxHistoryLength, kMaxMaxHistoryLength, "maxHistoryLength");
         validateRange(newOptions.boilingFilterStrength, 0.f, 1.f, "boilingFilterStrength");
 
-#if FALCOR_ENABLE_RTXDI
+#if FALCOR_HAS_RTXDI
         if (newOptions.mode != mOptions.mode)
         {
             mFlags.clearReservoirs = true;
@@ -162,7 +168,7 @@ namespace Falcor
     Program::DefineList RTXDI::getDefines() const
     {
         Program::DefineList defines;
-#if FALCOR_ENABLE_RTXDI
+#if FALCOR_HAS_RTXDI
         defines.add("RTXDI_INSTALLED", "1");
 #else
         defines.add("RTXDI_INSTALLED", "0");
@@ -172,14 +178,14 @@ namespace Falcor
 
     void RTXDI::setShaderData(const ShaderVar& rootVar)
     {
-#if FALCOR_ENABLE_RTXDI
+#if FALCOR_HAS_RTXDI
         setShaderDataInternal(rootVar, nullptr);
 #endif
     }
 
     void RTXDI::beginFrame(RenderContext* pRenderContext, const uint2& frameDim)
     {
-#if FALCOR_ENABLE_RTXDI
+#if FALCOR_HAS_RTXDI
         // Make sure the light collection is created.
         mpScene->getLightCollection(pRenderContext);
 
@@ -229,28 +235,28 @@ namespace Falcor
             mFlags.updateEmissiveLightsFlux = true;
             mFlags.updateEnvLight = true;
         }
-#endif
 
         mpPixelDebug->beginFrame(pRenderContext, mFrameDim);
+#endif
     }
 
     void RTXDI::endFrame(RenderContext* pRenderContext)
     {
-#if FALCOR_ENABLE_RTXDI
+#if FALCOR_HAS_RTXDI
         // Increment our frame counter and swap surface buffers.
         mFrameIndex++;
         mCurrentSurfaceBufferIndex = 1 - mCurrentSurfaceBufferIndex;
 
         // Remember this frame's camera data for use next frame.
         mPrevCameraData = mpScene->getCamera()->getData();
-#endif
 
         mpPixelDebug->endFrame(pRenderContext);
+#endif
     }
 
     void RTXDI::update(RenderContext* pRenderContext, const Texture::SharedPtr& pMotionVectors)
     {
-#if FALCOR_ENABLE_RTXDI
+#if FALCOR_HAS_RTXDI
         FALCOR_PROFILE("RTXDI::update");
 
         // Create a PDF texture for our primitive lights (for now, just triangles)
@@ -294,7 +300,7 @@ namespace Falcor
 #endif
     }
 
-#if FALCOR_ENABLE_RTXDI
+#if FALCOR_HAS_RTXDI
 
     void RTXDI::setShaderDataInternal(const ShaderVar& rootVar, const Texture::SharedPtr& pMotionVectors)
     {
@@ -511,8 +517,8 @@ namespace Falcor
             auto& pPdfTexture = mpEnvLightPdfTexture;
 
             // RTXDI expects power-of-two textures.
-            uint32_t width = getNextPowerOf2(pEnvMap->getWidth());
-            uint32_t height = getNextPowerOf2(pEnvMap->getHeight());
+            uint32_t width = fstd::bit_ceil(pEnvMap->getWidth());
+            uint32_t height = fstd::bit_ceil(pEnvMap->getHeight());
 
             // Create luminance texture if it doesn't exist yet or has the wrong dimensions.
             if (!pLuminanceTexture || pLuminanceTexture->getWidth() != width || pLuminanceTexture->getHeight() != height)
@@ -657,6 +663,7 @@ namespace Falcor
 
     void RTXDI::loadShaders()
     {
+        FALCOR_ASSERT(mpScene);
         mpReflectTypes = ComputePass::create(kReflectTypesShaderFile);
 
         // Issue warnings if packed types are not aligned to 16B for best performance.
@@ -672,6 +679,7 @@ namespace Falcor
             defines.add("RTXDI_INSTALLED", "1");
 
             Program::Desc desc;
+            desc.addShaderModules(mpScene->getShaderModules());
             desc.addShaderLibrary(file);
             desc.setShaderModel(kShaderModel);
             desc.csEntry(entryPoint);
@@ -800,13 +808,13 @@ namespace Falcor
         mpRTXDIContext->FillRuntimeParameters(mRTXDIShaderParams, frameParameters);
     }
 
-#endif // FALCOR_ENABLE_RTXDI
+#endif // FALCOR_HAS_RTXDI
 
     bool RTXDI::renderUI(Gui::Widgets& widget)
     {
         bool changed = false;
 
-#if FALCOR_ENABLE_RTXDI
+#if FALCOR_HAS_RTXDI
         // Edit a copy of the options and use setOptions() to validate the changes and trigger required
         // actions due to changing them. This unifies the logic independent of using the UI or setOptions() directly.
         Options options = mOptions;

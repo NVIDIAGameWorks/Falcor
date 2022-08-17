@@ -26,17 +26,20 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-
+#include "Macros.h"
+#include <fmt/format.h> // TODO C++20: Replace with <format>
 #include <exception>
 #include <memory>
 #include <string>
-#include <fmt/format.h> // TODO: Replace with <format> when switching to C++20
+#include <string_view>
 
 namespace Falcor
 {
 
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable : 4275) // allow dllexport on classes dervied from STL
+#endif
 
     /** Base class for all Falcor exceptions.
     */
@@ -55,8 +58,8 @@ namespace Falcor
         {}
 
         template<typename... Args>
-        explicit Exception(const std::string_view fmtString, Args&&... args)
-            : Exception(fmt::format(fmtString, std::forward<Args>(args)...).c_str())
+        explicit Exception(const std::string_view format, Args&&... args)
+            : Exception(fmt::vformat(format, fmt::make_format_args(std::forward<Args>(args)...)).c_str())
         {}
 
         Exception(const Exception& other) noexcept
@@ -77,7 +80,9 @@ namespace Falcor
         std::shared_ptr<std::string> mpWhat;
     };
 
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif
 
     /** Exception to be thrown when an error happens at runtime.
     */
@@ -96,8 +101,8 @@ namespace Falcor
         {}
 
         template<typename... Args>
-        explicit RuntimeError(const std::string_view fmtString, Args&&... args)
-            : Exception(fmtString, std::forward<Args>(args)...)
+        explicit RuntimeError(const std::string_view format, Args&&... args)
+            : Exception(format, std::forward<Args>(args)...)
         {}
 
         RuntimeError(const RuntimeError& other) noexcept
@@ -126,8 +131,8 @@ namespace Falcor
         {}
 
         template<typename... Args>
-        explicit ArgumentError(const std::string_view fmtString, Args&&... args)
-            : Exception(fmtString, std::forward<Args>(args)...)
+        explicit ArgumentError(const std::string_view format, Args&&... args)
+            : Exception(format, std::forward<Args>(args)...)
         {}
 
         virtual ~ArgumentError() override
@@ -141,23 +146,23 @@ namespace Falcor
 
     /** Check that an invariant holds and throw a RuntimeError if it doesn't.
         \param[in] condition Invariant condition that must hold.
-        \param[in] fmtString Format string.
+        \param[in] format Format string.
         \param[in] ... Arguments.
     */
     template<typename... Args>
-    void checkInvariant(bool condition, const std::string_view fmtString, Args&&... args)
+    void checkInvariant(bool condition, const std::string_view format, Args&&... args)
     {
-        if (!condition) throw RuntimeError(fmtString, std::forward<Args>(args)...);
+        if (!condition) throw RuntimeError(format, std::forward<Args>(args)...);
     }
 
     /** Check if a function argument meets some condition and throws an ArgumentError if it doesn't.
         \param[in] condition Argument condition that must hold.
-        \param[in] fmtString Format string.
+        \param[in] format Format string.
         \param[in] ... Arguments.
     */
     template<typename... Args>
-    void checkArgument(bool condition, const std::string_view fmtString, Args&&... args)
+    void checkArgument(bool condition, const std::string_view format, Args&&... args)
     {
-        if (!condition) throw ArgumentError(fmtString, std::forward<Args>(args)...);
+        if (!condition) throw ArgumentError(format, std::forward<Args>(args)...);
     }
 }

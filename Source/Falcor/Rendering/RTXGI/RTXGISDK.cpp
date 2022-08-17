@@ -25,10 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include "Core/FalcorConfig.h"
-
+#if FALCOR_HAS_D3D12
 #include "RTXGIDefines.slangh"
-#include "rtxgi/rtxgi-sdk/src/Math.cpp"
-#include "rtxgi/rtxgi-sdk/src/ddgi/DDGIVolume.cpp"
-#include "rtxgi/rtxgi-sdk/src/ddgi/gfx/DDGIVolume_D3D12.cpp"
+#include "../../../../external/packman/rtxgi/rtxgi-sdk/src/Math.cpp"
+#include "../../../../external/packman/rtxgi/rtxgi-sdk/src/ddgi/DDGIVolume.cpp"
+#include "../../../../external/packman/rtxgi/rtxgi-sdk/src/ddgi/gfx/DDGIVolume_D3D12.cpp"
+#endif

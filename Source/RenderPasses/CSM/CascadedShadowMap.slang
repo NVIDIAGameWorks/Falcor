@@ -239,7 +239,7 @@ float calcShadowFactorWithCascadeIdx(CsmData csmData, uint32_t cascadeIndex, flo
     //posW.xyz += calcNormalOffset(csmData, normal, cascadeIndex);
 
     // Get the global shadow space position
-    float4 shadowPos = mul(float4(posW, 1), csmData.globalMat);
+    float4 shadowPos = mul(csmData.globalMat, float4(posW, 1));
     shadowPos /= shadowPos.w;
 
     // Calculate the texC derivatives. We need to do that before applying the scale and offset - the cascadeIndex can be different for pixels in the same quad, resulting in wrong derivatives

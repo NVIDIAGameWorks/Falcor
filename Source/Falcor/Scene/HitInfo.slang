@@ -39,9 +39,9 @@ __exported import Scene.SDFs.SDFGridHitData;
     A zero initialized value represent hit type 'None'.
 
     HitInfo stores data for one of the following type specific structs:
-    TriangleHit, DisplacedTriangleHit, CurveHit, SDFGridHit, VolumeHit
+    TriangleHit, DisplacedTriangleHit, CurveHit, CurveOTSHit, SDFGridHit, VolumeHit
 
-    TriangleHit, DisplacedTriangleHit and CurveHit all store the hit point in terms of
+    TriangleHit, DisplacedTriangleHit, CurveHit, and CurveOTSHit all store the hit point in terms of
     an instance ID and a primitive index, together with barycentrics.
 
     DisplacedTriangleHit additionally stores the displacement offset.
@@ -188,6 +188,7 @@ struct CurveHit : GeometryHit
         return packed;
     }
 };
+
 
 /** SDF grid hit information.
 
@@ -351,6 +352,7 @@ struct HitInfo
         data = curveHit.pack();
     }
 
+
     /** Initialize hit info from a SDF grid hit.
         \param[in] sdfGridHit Curve hit information.
     */
@@ -405,6 +407,7 @@ struct HitInfo
         return CurveHit(data);
     }
 
+
     /** Return the SDF grid hit.
         Only valid if type is HitType::SDFGrid.
     */
@@ -427,6 +430,28 @@ struct HitInfo
     PackedHitInfo getData()
     {
         return data;
+    }
+
+    /** Get the geometry instance id from the packed header.
+        \return The geometry instance id.
+    */
+    GeometryInstanceID getInstanceID()
+    {
+        GeometryInstanceID instanceID;
+        uint primitiveIndex;
+        unpackHeader(data, instanceID, primitiveIndex);
+        return instanceID;
+    }
+
+    /** Get the primitive index from the packed header.
+        \return The primitive index.
+    */
+    uint getPrimitiveIndex()
+    {
+        GeometryInstanceID instanceID;
+        uint primitiveIndex;
+        unpackHeader(data, instanceID, primitiveIndex);
+        return primitiveIndex;
     }
 
     static void packHeader(inout PackedHitInfo packed, const HitType type)

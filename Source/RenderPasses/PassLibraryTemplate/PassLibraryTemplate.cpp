@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "PassLibraryTemplate.h"
+#include "RenderGraph/RenderPassLibrary.h"
 
 const RenderPass::Info RenderPassTemplate::kInfo { "RenderPassTemplate", "Insert pass description here." };
 
@@ -63,7 +64,7 @@ RenderPassReflection RenderPassTemplate::reflect(const CompileData& compileData)
 void RenderPassTemplate::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
     // renderData holds the requested resources
-    // auto& pTexture = renderData["src"]->asTexture();
+    // auto& pTexture = renderData.getTexture("src");
 }
 
 void RenderPassTemplate::renderUI(Gui::Widgets& widget)

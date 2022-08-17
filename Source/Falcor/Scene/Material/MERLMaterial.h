@@ -54,6 +54,10 @@ namespace Falcor
         Material::UpdateFlags update(MaterialSystem* pOwner) override;
         bool isEqual(const Material::SharedPtr& pOther) const override;
         MaterialDataBlob getDataBlob() const override { return prepareDataBlob(mData); }
+        Program::ShaderModuleList getShaderModules() const override;
+        Program::TypeConformanceList getTypeConformances() const override;
+
+        int getBufferCount() const override { return 1; }
 
     protected:
         MERLMaterial(const std::string& name, const std::filesystem::path& path);

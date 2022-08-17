@@ -26,11 +26,17 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#if FALCOR_ENABLE_CUDA
+#if FALCOR_HAS_CUDA
 #include "ComputeProgram.h"
+#include "Core/Macros.h"
+#include <filesystem>
+#include <memory>
+#include <string>
 
 namespace Falcor
 {
+    class ComputeContext;
+
     class FALCOR_API CUDAProgram : public ComputeProgram
     {
     public:

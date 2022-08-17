@@ -28,6 +28,7 @@
 #pragma once
 #include "Falcor.h"
 #include "Utils/Algorithm/ComputeParallelReduction.h"
+#include <fstream>
 
 using namespace Falcor;
 

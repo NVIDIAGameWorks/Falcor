@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "BlitPass.h"
+#include "RenderGraph/RenderPassLibrary.h"
 
 const RenderPass::Info BlitPass::kInfo { "BlitPass", "Blit a texture into a different texture." };
 
@@ -91,8 +92,8 @@ Dictionary BlitPass::getScriptingDictionary()
 
 void BlitPass::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    const auto& pSrcTex = renderData[kSrc]->asTexture();
-    const auto& pDstTex = renderData[kDst]->asTexture();
+    const auto& pSrcTex = renderData.getTexture(kSrc);
+    const auto& pDstTex = renderData.getTexture(kDst);
 
     if (pSrcTex && pDstTex)
     {

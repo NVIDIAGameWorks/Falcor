@@ -29,6 +29,7 @@
 #include "Utils/Sampling/SampleGenerator.h"
 #include <random>
 #include <fstream>
+#include <iostream>
 
 namespace Falcor
 {

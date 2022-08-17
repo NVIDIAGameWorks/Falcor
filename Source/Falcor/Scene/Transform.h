@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,7 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Falcor.h"
+#include "Core/Macros.h"
+#include "Utils/Math/Vector.h"
+#include "Utils/Math/Matrix.h"
 
 namespace Falcor
 {
@@ -56,7 +58,7 @@ namespace Falcor
 
         void lookAt(const float3& position, const float3& target, const float3& up);
 
-        const glm::float4x4& getMatrix() const;
+        const rmcv::mat4& getMatrix() const;
 
         bool operator==(const Transform& other) const;
         bool operator!=(const Transform& other) const { return !((*this) == other); }
@@ -67,7 +69,7 @@ namespace Falcor
         glm::quat mRotation = glm::identity<glm::quat>();
 
         mutable bool mDirty = true;
-        mutable glm::float4x4 mMatrix;
+        mutable rmcv::mat4 mMatrix;
 
         friend class SceneCache;
     };

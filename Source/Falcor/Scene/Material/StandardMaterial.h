@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Scene/Material/BasicMaterial.h"
+#include "BasicMaterial.h"
 
 namespace Falcor
 {
@@ -81,6 +81,9 @@ namespace Falcor
         */
         bool renderUI(Gui::Widgets& widget) override;
 
+        Program::ShaderModuleList getShaderModules() const override;
+        Program::TypeConformanceList getTypeConformances() const override;
+
         /** Get the shading model.
         */
         ShadingModel getShadingModel() const { return mData.getShadingModel(); }
@@ -115,14 +118,22 @@ namespace Falcor
 
         /** Get the emissive color.
         */
-        float3 getEmissiveColor() const { return (float3)mData.emissive; }
+        float3 getEmissiveColor() const { return mData.emissive; }
 
         /** Get the emissive factor.
         */
         float getEmissiveFactor() const { return mData.emissiveFactor; }
 
+        // DEMO21: The mesh will use the global IES profile (LightProfile) to modulate its emission
+        void setLightProfileEnabled( bool enabled )
+        {
+            mHeader.setEnableLightProfile( enabled );
+        }
+
     protected:
         StandardMaterial(const std::string& name, ShadingModel shadingModel);
+
+        void updateDeltaSpecularFlag() override;
 
         void renderSpecularUI(Gui::Widgets& widget) override;
         void setShadingModel(ShadingModel model);

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -46,9 +46,10 @@ import Utils.Math.MathHelpers;
 */
 float3 computeRayOrigin(float3 pos, float3 normal)
 {
-    const float origin = 1.f / 32.f;
-    const float fScale = 1.f / 65536.f;
-    const float iScale = 256.f;
+
+    const float origin = 1.f / 16.f;
+    const float fScale = 3.f / 65536.f;
+    const float iScale = 3 * 256.f;
 
     // Per-component integer offset to bit representation of fp32 position.
     int3 iOff = int3(normal * iScale);
@@ -513,6 +514,7 @@ float extractScaleFromTransform(const float4x4 xform)
     return sqrt(xform[0][0] * xform[0][0] + xform[0][1] * xform[0][1] + xform[0][2] * xform[0][2]);
 }
 
+
 /** Transform a sphere at curve's end.
 
     \param[in] sphere Sphere (3D position + radius) at curve's end point.
@@ -522,6 +524,6 @@ float extractScaleFromTransform(const float4x4 xform)
 float4 transformSphere(const float4 sphere, const float4x4 worldMat)
 {
     float scaleFactor = extractScaleFromTransform(worldMat);
-    float3 worldPos = mul(float4(sphere.xyz, 1.f), worldMat).xyz;
+    float3 worldPos = mul(worldMat, float4(sphere.xyz, 1.f)).xyz;
     return float4(worldPos, sphere.w * scaleFactor);
 }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,10 +28,6 @@
 #pragma once
 
 #include "Falcor.h"
-#if FALCOR_ENABLE_CUDA && FALCOR_ENABLE_OPTIX
-
-#pragma comment(lib, "cuda.lib")
-#pragma comment(lib, "cudart_static.lib")
 
 #include <optix.h>
 #include <optix_stubs.h>
@@ -82,5 +78,3 @@ private:
     size_t  mSizeBytes  = 0;
     void*   mpDevicePtr = nullptr;
 };
-
-#endif // FALCOR_ENABLE_CUDA && FALCOR_ENABLE_OPTIX

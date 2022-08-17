@@ -25,10 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Core/API/LowLevelContextData.h"
-#include "Core/API/Device.h"
 #include "D3D12ApiData.h"
+#include "Core/API/Device.h"
+#include "Core/API/D3D12/D3D12API.h"
+#include "Core/Assert.h"
 
 namespace Falcor
 {
@@ -58,7 +59,7 @@ namespace Falcor
         , mpQueue(queue)
     {
         mpFence = GpuFence::create();
-        mpApiData = new LowLevelContextApiData;
+        mpApiData.reset(new LowLevelContextApiData);
         FALCOR_ASSERT(mpFence && mpApiData);
 
         // Create a command allocator
@@ -84,10 +85,7 @@ namespace Falcor
         FALCOR_ASSERT(mpList);
     }
 
-    LowLevelContextData::~LowLevelContextData()
-    {
-        safe_delete(mpApiData);
-    }
+    LowLevelContextData::~LowLevelContextData() = default;
 
     void LowLevelContextData::flush()
     {

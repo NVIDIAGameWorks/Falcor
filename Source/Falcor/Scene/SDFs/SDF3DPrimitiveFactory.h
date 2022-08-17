@@ -26,8 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-
 #include "SDF3DPrimitiveCommon.slang"
+#include "Core/Macros.h"
+#include "Utils/Math/AABB.h"
+#include "Utils/Math/Vector.h"
 #include "Utils/SDF/SDFOperationType.slang"
 #include "Scene/Transform.h"
 

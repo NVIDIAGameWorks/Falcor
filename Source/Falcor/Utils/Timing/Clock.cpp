@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,8 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Clock.h"
+#include "Utils/Logger.h"
+#include "Utils/Scripting/ScriptBindings.h"
+#include "Utils/Scripting/ScriptWriter.h"
 
 namespace Falcor
 {
@@ -38,6 +40,8 @@ namespace Falcor
         constexpr char kTimeScale[] = "timeScale";
         constexpr char kExitTime[] = "exitTime";
         constexpr char kExitFrame[] = "exitFrame";
+        constexpr char kStartTime[] = "startTime";
+        constexpr char kEndTime[] = "endTime";
         constexpr char kPause[] = "pause";
         constexpr char kPlay[] = "play";
         constexpr char kStop[] = "stop";
@@ -138,6 +142,31 @@ namespace Falcor
         return *this;
     }
 
+    bool Clock::setStartTime(double time)
+    {
+        if (time <= 0.)
+        {
+            mStartTime = 0.;
+            return true;
+        }
+        if (mEndTime < 0. || time < mEndTime)
+        {
+            mStartTime = time;
+            return true;
+        }
+        return false;
+    }
+
+    bool Clock::setEndTime(double time)
+    {
+        if (time < 0. || mStartTime <= 0.f || time > mStartTime)
+        {
+            mEndTime = time;
+            return true;
+        }
+        return false;
+    }
+
     void Clock::updateTimer()
     {
         mTimer.update();
@@ -154,6 +183,8 @@ namespace Falcor
     {
         resetDeferredObjects();
 
+        seconds = clampTime(seconds);
+
         if (deferToNextTick)
         {
             mDeferredTime = seconds;
@@ -167,6 +198,7 @@ namespace Falcor
                 seconds = timeFromFrame(mFrames, mTicksPerFrame);
             }
             else mFrames = 0;
+            if (mTime.delta < 0) mTime.delta = 0;
 
             mTime.delta = mTime.now - seconds;
             mTime.now = seconds;
@@ -188,9 +220,17 @@ namespace Falcor
             mFrames = f;
             if (mFramerate)
             {
-                double secs = timeFromFrame(mFrames, mTicksPerFrame);
-                mTime.delta = mTime.now - secs;
-                mTime.now = secs;
+                double orgSecs = timeFromFrame(mFrames, mTicksPerFrame);
+                // TODO: The clamping really should be on ticks, as should everything else
+                // except when we actually ask for the actual floating time (e.g., for interpolation).
+                // Otherwise the rounding will be a terrible mess.
+                double newSecs = clampTime(orgSecs);
+                if (newSecs != orgSecs)
+                    mFrames = frameFromTime(newSecs, mTicksPerFrame);
+
+                mTime.delta = mTime.now - newSecs;
+                if (mTime.delta < 0) mTime.delta = 0;
+                mTime.now = newSecs;
             }
         }
         return *this;
@@ -210,6 +250,7 @@ namespace Falcor
 
         updateTimer();
         double t = isSimulatingFps() ? timeFromFrame(mFrames, mTicksPerFrame) : ((mTimer.delta() * mScale) + mTime.now);
+        t = clampTime(t);
         mTime.update(t);
         return *this;
     }
@@ -252,6 +293,8 @@ namespace Falcor
 
     FALCOR_SCRIPT_BINDING(Clock)
     {
+        using namespace pybind11::literals;
+
         pybind11::class_<Clock> clock(m, "Clock");
 
         auto setTime = [](Clock* pClock, double t) {pClock->setTime(t, true); };
@@ -260,6 +303,8 @@ namespace Falcor
         clock.def_property(kFrame, &Clock::getFrame, setFrame);
         clock.def_property(kFramerate, &Clock::getFramerate, &Clock::setFramerate);
         clock.def_property(kTimeScale, &Clock::getTimeScale, &Clock::setTimeScale);
+        clock.def_property(kStartTime, &Clock::getStartTime, &Clock::setStartTime);
+        clock.def_property(kEndTime, &Clock::getEndTime, &Clock::setEndTime);
         clock.def_property(kExitTime, &Clock::getExitTime, &Clock::setExitTime);
         clock.def_property(kExitFrame, &Clock::getExitFrame, &Clock::setExitFrame);
 

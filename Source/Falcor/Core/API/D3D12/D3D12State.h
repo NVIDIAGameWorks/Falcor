@@ -28,6 +28,8 @@
 #pragma once
 #include "Core/API/VAO.h"
 #include "Core/API/GraphicsStateObject.h"
+#include <d3d12.h>
+#include <memory>
 #include <vector>
 
 namespace Falcor

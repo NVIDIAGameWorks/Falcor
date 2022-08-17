@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,6 +27,9 @@
  **************************************************************************/
 #pragma once
 #include <functional>
+#include <memory>
+#include <vector>
+#include <unordered_map>
 
 namespace Falcor
 {
@@ -49,7 +52,7 @@ namespace Falcor
             return SharedPtr(new StateGraph());
         }
 
-        bool isEdgeExists(const EdgeType& e) const 
+        bool isEdgeExists(const EdgeType& e) const
         {
             return (getEdgeIt(e) != mGraph[mCurrentNode].edges.end());
         }
@@ -71,7 +74,7 @@ namespace Falcor
                 return false;
             }
         }
-        
+
         const NodeType& getCurrentNode() const
         {
             return mGraph[mCurrentNode].data;
@@ -111,7 +114,7 @@ namespace Falcor
 
     private:
         using edge_map = std::unordered_map<EdgeType, uint32_t, EdgeHashType>;
-        
+
         const auto getEdgeIt(const EdgeType& e) const
         {
             const Node& n = mGraph[mCurrentNode];

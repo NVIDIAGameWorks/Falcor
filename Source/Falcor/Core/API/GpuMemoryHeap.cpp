@@ -25,9 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "GpuMemoryHeap.h"
 #include "GpuFence.h"
+#include "Core/Assert.h"
+#include "Utils/Math/Common.h"
 
 namespace Falcor
 {

@@ -25,14 +25,21 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Gui.h"
-#include "dear_imgui/imgui.h"
 #include "InputTypes.h"
+
+#include "Core/API/VAO.h"
+#include "Core/API/VertexLayout.h"
 #include "Core/API/RenderContext.h"
-#include "glm/gtc/type_ptr.hpp"
+#include "Core/State/GraphicsState.h"
+#include "Core/Program/GraphicsProgram.h"
+#include "Core/Program/ProgramVars.h"
+#include "Utils/Logger.h"
 #include "Utils/StringUtils.h"
 #include "Utils/UI/SpectrumUI.h"
+
+#include <glm/gtc/type_ptr.hpp>
+#include <imgui.h>
 
 #pragma warning(disable : 4756) // Overflow in constant arithmetic caused by calculating the setFloat*() functions (when calculating the step and min/max are +/- INF).
 
@@ -141,8 +148,8 @@ namespace Falcor
         template<typename T>
         bool addVecSlider(const char label[], T& var, typename T::value_type minVal = std::numeric_limits<typename T::value_type>::lowest(), typename T::value_type maxVal = std::numeric_limits<typename T::value_type>::max(), bool sameLine = false, const char* displayFormat = nullptr);
 
-        template <typename MatrixType>
-        bool addMatrixVar(const char label[], MatrixType& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
+        template <int R, int C, typename T>
+        bool addMatrixVar(const char label[], rmcv::matrix<R, C, T>& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
 
         void addGraph(const char label[], Gui::GraphCallback func, void* pUserData, uint32_t sampleCount, int32_t sampleOffset, float yMin = FLT_MAX, float yMax = FLT_MAX, uint32_t width = 0, uint32_t height = 100);
     };
@@ -286,7 +293,7 @@ namespace Falcor
 
     void GuiImpl::resetMouseEvents()
     {
-        for (uint32_t i = 0; i < arraysize(mMouseEvents.buttonPressed); i++)
+        for (size_t i = 0; i < std::size(mMouseEvents.buttonPressed); i++)
         {
             if (mMouseEvents.buttonReleased[i])
             {
@@ -715,7 +722,7 @@ namespace Falcor
         }
         else
         {
-            static_assert(false, "Unsupported data type");
+            static_assert(!sizeof(T), "Unsupported data type");
         }
     }
 
@@ -758,7 +765,7 @@ namespace Falcor
         }
         else
         {
-            static_assert(false, "Unsupported data type");
+            static_assert(!sizeof(T), "Unsupported data type");
         }
     }
 
@@ -776,33 +783,33 @@ namespace Falcor
     template<typename T>
     bool GuiImpl::addVecVar(const char label[], T& var, typename T::value_type minVal, typename T::value_type maxVal, float step, bool sameLine, const char* displayFormat)
     {
-        if constexpr (std::is_same<T::value_type, int32_t>::value)
+        if constexpr (std::is_same<typename T::value_type, int32_t>::value)
         {
             return addVecVarHelper(label, var, ImGuiDataType_S32, minVal, maxVal, step, sameLine, displayFormat);
         }
-        else if constexpr (std::is_same<T::value_type, uint32_t>::value)
+        else if constexpr (std::is_same<typename T::value_type, uint32_t>::value)
         {
             return addVecVarHelper(label, var, ImGuiDataType_U32, minVal, maxVal, step, sameLine, displayFormat);
         }
-        else if constexpr (std::is_same<T::value_type, int64_t>::value)
+        else if constexpr (std::is_same<typename T::value_type, int64_t>::value)
         {
             return addVecVarHelper(label, var, ImGuiDataType_S64, minVal, maxVal, step, sameLine, displayFormat);
         }
-        else if constexpr (std::is_same<T::value_type, uint64_t>::value)
+        else if constexpr (std::is_same<typename T::value_type, uint64_t>::value)
         {
             return addVecVarHelper(label, var, ImGuiDataType_U64, minVal, maxVal, step, sameLine, displayFormat);
         }
-        else if constexpr (std::is_same<T::value_type, float>::value)
+        else if constexpr (std::is_same<typename T::value_type, float>::value)
         {
             return addVecVarHelper(label, var, ImGuiDataType_Float, minVal, maxVal, step, sameLine, displayFormat);
         }
-        else if constexpr (std::is_same<T::value_type, uint64_t>::value)
+        else if constexpr (std::is_same<typename T::value_type, uint64_t>::value)
         {
             return addVecVarHelper(label, var, ImGuiDataType_U64, minVal, maxVal, step, sameLine, displayFormat);
         }
         else
         {
-            static_assert(false, "Unsupported data type");
+            static_assert(!sizeof(T), "Unsupported data type");
         }
     }
 
@@ -819,35 +826,36 @@ namespace Falcor
     template<typename T>
     bool GuiImpl::addVecSlider(const char label[], T& var, typename T::value_type minVal, typename T::value_type maxVal, bool sameLine, const char* displayFormat)
     {
-        if constexpr (std::is_same<T::value_type, int32_t>::value)
+        if constexpr (std::is_same<typename T::value_type, int32_t>::value)
         {
             return addVecSliderHelper(label, var, ImGuiDataType_S32, minVal, maxVal, sameLine, displayFormat);
         }
-        else if constexpr (std::is_same<T::value_type, uint32_t>::value)
+        else if constexpr (std::is_same<typename T::value_type, uint32_t>::value)
         {
             return addVecSliderHelper(label, var, ImGuiDataType_U32, minVal, maxVal, sameLine, displayFormat);
         }
-        else if constexpr (std::is_same<T::value_type, int64_t>::value)
+        else if constexpr (std::is_same<typename T::value_type, int64_t>::value)
         {
             return addVecSliderHelper(label, var, ImGuiDataType_S64, minVal, maxVal, sameLine, displayFormat);
         }
-        else if constexpr (std::is_same<T::value_type, uint64_t>::value)
+        else if constexpr (std::is_same<typename T::value_type, uint64_t>::value)
         {
             return addVecSliderHelper(label, var, ImGuiDataType_U64, minVal, maxVal, sameLine, displayFormat);
         }
-        else if constexpr (std::is_same<T::value_type, float>::value)
+        else if constexpr (std::is_same<typename T::value_type, float>::value)
         {
             return addVecSliderHelper(label, var, ImGuiDataType_Float, minVal, maxVal, sameLine, displayFormat);
         }
         else
         {
-            static_assert(false, "Unsupported data type");
+            static_assert(!sizeof(T), "Unsupported data type");
         }
     }
 
-    template<typename MatrixType>
-    bool GuiImpl::addMatrixVar(const char label[], MatrixType& var, float minVal, float maxVal, bool sameLine)
+    template<int R, int C, typename T>
+    bool GuiImpl::addMatrixVar(const char label[], rmcv::matrix<R, C, T>& var, float minVal, float maxVal, bool sameLine)
     {
+        using MatrixType = rmcv::matrix<R, C, T>;
         std::string labelString(label);
         std::string hiddenLabelString("##");
         hiddenLabelString += labelString + "[0]";
@@ -857,16 +865,19 @@ namespace Falcor
 
         bool b = false;
 
-        for (uint32_t i = 0; i < static_cast<uint32_t>(var.length()); ++i)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(var.getColCount()); ++i)
         {
             std::string& stringToDisplay = hiddenLabelString;
             hiddenLabelString[hiddenLabelString.size() - 2] = '0' + static_cast<int32_t>(i);
-            if (i == var.length() - 1)
+            if (i == var.getColCount() - 1)
             {
                 stringToDisplay = labelString;
             }
 
-            b |= addVecVar<typename MatrixType::col_type>(stringToDisplay.c_str(), var[i], minVal, maxVal, 0.001f, sameLine);
+            // Just to keep the parity with GLM
+            auto col = var.getCol(i);
+            b |= addVecVar<typename MatrixType::ColType>(stringToDisplay.c_str(), col, minVal, maxVal, 0.001f, sameLine);
+            var.setCol(i, col);
 
             if (i == 0)
             {
@@ -884,7 +895,7 @@ namespace Falcor
             }
             else if (i == 1)
             {
-                bottomRight.y = topLeft.y + (bottomRight.y - topLeft.y) * (var.length());
+                bottomRight.y = topLeft.y + (bottomRight.y - topLeft.y) * (var.getColCount());
                 bottomRight.x -= ImGui::GetStyle().ItemInnerSpacing.x * 3 - 1;
                 bottomRight.y -= ImGui::GetStyle().ItemInnerSpacing.y - 1;
                 topLeft.x -= 1; topLeft.y -= 1;
@@ -1123,6 +1134,7 @@ namespace Falcor
 
             switch (event.type)
             {
+            case KeyboardEvent::Type::KeyRepeated:
             case KeyboardEvent::Type::KeyPressed:
                 io.KeysDown[key] = true;
                 break;
@@ -1356,15 +1368,8 @@ namespace Falcor
 
 #define add_matrix_var(TypeName) template FALCOR_API bool Gui::Widgets::matrix<TypeName>(const char[], TypeName&, float, float, bool)
 
-    add_matrix_var(glm::mat2x2);
-    add_matrix_var(glm::mat2x3);
-    add_matrix_var(glm::mat2x4);
-    add_matrix_var(glm::mat3x2);
-    add_matrix_var(glm::mat3x3);
-    add_matrix_var(glm::mat3x4);
-    add_matrix_var(glm::mat4x2);
-    add_matrix_var(glm::mat4x3);
-    add_matrix_var(glm::mat4x4);
+    add_matrix_var(rmcv::mat3);
+    add_matrix_var(rmcv::mat4);
 
 #undef add_matrix_var
 

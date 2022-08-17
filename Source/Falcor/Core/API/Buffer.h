@@ -26,8 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Resource.h"
 #include "GpuMemoryHeap.h"
+#include "Core/Macros.h"
+#include "Resource.h"
+#include "ResourceViews.h"
+#include <memory>
 
 namespace Falcor
 {
@@ -201,7 +204,7 @@ namespace Falcor
         */
         virtual UnorderedAccessView::SharedPtr getUAV() override;
 
-#if FALCOR_ENABLE_CUDA
+#if FALCOR_HAS_CUDA
         /** Get the CUDA device address for this resource.
             \return CUDA device address.
             Throws an exception if the buffer is not shared.
@@ -241,7 +244,7 @@ namespace Falcor
         */
         uint64_t getGpuAddress() const;
 
-        /** Get the size of the buffer
+        /** Get the size of the buffer in bytes.
         */
         size_t getSize() const { return mSize; }
 
@@ -277,21 +280,7 @@ namespace Falcor
 
         /** Get safe offset and size values
         */
-        bool adjustSizeOffsetParams(size_t& size, size_t& offset) const
-        {
-            if (offset >= mSize)
-            {
-                logWarning("Buffer::adjustSizeOffsetParams() - offset is larger than the buffer size.");
-                return false;
-            }
-
-            if (offset + size > mSize)
-            {
-                logWarning("Buffer::adjustSizeOffsetParams() - offset + size will cause an OOB access. Clamping size");
-                size = mSize - offset;
-            }
-            return true;
-        }
+        bool adjustSizeOffsetParams(size_t& size, size_t& offset) const;
 
         /** Get the CPU access flags
         */

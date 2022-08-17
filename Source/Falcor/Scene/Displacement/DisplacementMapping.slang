@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -588,13 +588,13 @@ bool intersectDisplacedTriangle(const Ray ray, StaticVertexData vertices[3], con
     result = {};
 
     float3 vertPosTr[3];
-    vertPosTr[0] = mul(float4(vertices[0].position, 1.f), worldMat).xyz;
-    vertPosTr[1] = mul(float4(vertices[1].position, 1.f), worldMat).xyz;
-    vertPosTr[2] = mul(float4(vertices[2].position, 1.f), worldMat).xyz;
+    vertPosTr[0] = mul(worldMat, float4(vertices[0].position, 1.f)).xyz;
+    vertPosTr[1] = mul(worldMat, float4(vertices[1].position, 1.f)).xyz;
+    vertPosTr[2] = mul(worldMat, float4(vertices[2].position, 1.f)).xyz;
     // Compute real-length normals.
-    vertices[0].normal = mul(float4(vertices[0].position + vertices[0].normal, 1.f), worldMat).xyz - vertPosTr[0];
-    vertices[1].normal = mul(float4(vertices[1].position + vertices[1].normal, 1.f), worldMat).xyz - vertPosTr[1];
-    vertices[2].normal = mul(float4(vertices[2].position + vertices[2].normal, 1.f), worldMat).xyz - vertPosTr[2];
+    vertices[0].normal = mul(worldMat, float4(vertices[0].position + vertices[0].normal, 1.f)).xyz - vertPosTr[0];
+    vertices[1].normal = mul(worldMat, float4(vertices[1].position + vertices[1].normal, 1.f)).xyz - vertPosTr[1];
+    vertices[2].normal = mul(worldMat, float4(vertices[2].position + vertices[2].normal, 1.f)).xyz - vertPosTr[2];
     vertices[0].position = vertPosTr[0];
     vertices[1].position = vertPosTr[1];
     vertices[2].position = vertPosTr[2];
@@ -657,9 +657,9 @@ float3 computeDisplacedTriangleNormal(const float3 barycentrics, const StaticVer
 {
     // Transform vertices to world space.
     const TriangleVertex verticesW[3] = {
-        mul(float4(vertices[0].position, 1.f), worldMat).xyz, mul(float4(vertices[0].position + vertices[0].normal, 1.f), worldMat).xyz - mul(float4(vertices[0].position, 1.f), worldMat).xyz, vertices[0].texCrd,
-        mul(float4(vertices[1].position, 1.f), worldMat).xyz, mul(float4(vertices[1].position + vertices[1].normal, 1.f), worldMat).xyz - mul(float4(vertices[1].position, 1.f), worldMat).xyz, vertices[1].texCrd,
-        mul(float4(vertices[2].position, 1.f), worldMat).xyz, mul(float4(vertices[2].position + vertices[2].normal, 1.f), worldMat).xyz - mul(float4(vertices[2].position, 1.f), worldMat).xyz, vertices[2].texCrd
+        mul(worldMat, float4(vertices[0].position, 1.f)).xyz, mul(worldMat, float4(vertices[0].position + vertices[0].normal, 1.f)).xyz - mul(worldMat, float4(vertices[0].position, 1.f)).xyz, vertices[0].texCrd,
+        mul(worldMat, float4(vertices[1].position, 1.f)).xyz, mul(worldMat, float4(vertices[1].position + vertices[1].normal, 1.f)).xyz - mul(worldMat, float4(vertices[1].position, 1.f)).xyz, vertices[1].texCrd,
+        mul(worldMat, float4(vertices[2].position, 1.f)).xyz, mul(worldMat, float4(vertices[2].position + vertices[2].normal, 1.f)).xyz - mul(worldMat, float4(vertices[2].position, 1.f)).xyz, vertices[2].texCrd
     };
 
     float2 baryDelta = float2(1.0) / float2(length((vertices[1].texCrd - (vertices[0].texCrd + vertices[2].texCrd) * 0.5) * displacementData.size), length((vertices[2].texCrd - (vertices[0].texCrd + vertices[1].texCrd) * 0.5) * displacementData.size));
@@ -697,3 +697,4 @@ float3 computeDisplacedTriangleNormal(const float3 barycentrics, const StaticVer
         return normalize(cross(vPtDu.position - vPt.position, vPtDv.position - vPt.position));
     }
 }
+

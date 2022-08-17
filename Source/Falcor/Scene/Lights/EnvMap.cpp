@@ -25,10 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "EnvMap.h"
-#include "glm/gtc/integer.hpp"
-#include "glm/gtx/euler_angles.hpp"
+#include "Core/Program/ShaderVar.h"
+#include "Utils/Scripting/ScriptBindings.h"
+#include <glm/gtc/integer.hpp>
+#include <glm/gtx/euler_angles.hpp>
 
 namespace Falcor
 {
@@ -60,10 +61,10 @@ namespace Falcor
         {
             mRotation = degreesXYZ;
 
-            auto transform = glm::eulerAngleXYZ(glm::radians(mRotation.x), glm::radians(mRotation.y), glm::radians(mRotation.z));
+            rmcv::mat4 transform = rmcv::eulerAngleXYZ(glm::radians(mRotation.x), glm::radians(mRotation.y), glm::radians(mRotation.z));
 
-            mData.transform = static_cast<float3x4>(transform);
-            mData.invTransform = static_cast<float3x4>(glm::inverse(transform));
+            mData.transform = transform;
+            mData.invTransform = rmcv::inverse(transform);
         }
     }
 
@@ -123,6 +124,8 @@ namespace Falcor
 
     FALCOR_SCRIPT_BINDING(EnvMap)
     {
+        using namespace pybind11::literals;
+
         pybind11::class_<EnvMap, EnvMap::SharedPtr> envMap(m, "EnvMap");
         envMap.def(pybind11::init(pybind11::overload_cast<const std::filesystem::path&>(&EnvMap::createFromFile)), "path"_a);
         envMap.def_static("createFromFile", &EnvMap::createFromFile, "path"_a);

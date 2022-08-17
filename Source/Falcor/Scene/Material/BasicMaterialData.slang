@@ -30,6 +30,7 @@
 
 #ifdef HOST_CODE
 #include "Scene/Material/TextureHandle.slang"
+#include "Scene/Material/MaterialData.slang"
 #else
 __exported import Scene.Material.TextureHandle;
 __exported import Scene.Material.MaterialData;
@@ -53,7 +54,7 @@ struct BasicMaterialData
     float16_t4  baseColor               = float16_t4(1.f);  ///< Material base color (RGB) and opacity (A).
     float16_t4  specular                = float16_t4(0.f);  ///< Material specular channel encoding occlusion (R), roughness (G), metallic (B) in the default MetalRough mode. In SpecGloss mode specular color (RGB) and glossiness (A).
 
-    float16_t3  emissive                = float16_t3(0.f);  ///< Emissive color (RGB).
+    float3      emissive                = float3(0.f);      ///< Emissive color (RGB).
     float16_t   specularTransmission    = float16_t(0.f);   ///< Specular transmission. Range [0,1].
     float16_t3  transmission            = float16_t3(1.f);  ///< Transmission color.
     float16_t   diffuseTransmission     = float16_t(0.f);   ///< Diffuse transmission. Range [0,1].

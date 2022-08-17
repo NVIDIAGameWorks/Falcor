@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,11 +26,23 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Scene.h"
+#include "Animation/Animation.h"
+#include "Camera/Camera.h"
+#include "Lights/EnvMap.h"
+#include "Lights/Light.h"
+#include "Volume/Grid.h"
+#include "Volume/GridVolume.h"
 #include "Material/BasicMaterial.h"
+#include "Material/MaterialSystem.h"
 #include "Material/MaterialTextureLoader.h"
+
+#include "Core/Macros.h"
 #include "Utils/CryptoUtils.h"
 
 #include <filesystem>
+#include <string>
+#include <vector>
 
 namespace Falcor
 {

@@ -129,30 +129,30 @@ of the objects and parameters currently supported in this importer.
     - [ ] `albedo`
     - [ ] `displacement`
   - [x] `conductor`
-    - [x] `eta` (only costant value is supported)
-    - [x] `k` (only costant value is supported)
-    - [x] `reflectance` (only costant value is supported)
+    - [x] `eta` (only constant value is supported)
+    - [x] `k` (only constant value is supported)
+    - [x] `reflectance` (only constant value is supported)
     - [x] `uroughness` / `vroughness` / `roughness` / `remaproughness` (only constant isotropic values are supported)
     - [ ] `displacement`
-  - [ ] `coatedconductor`
-    - [ ] `interface.uroughness` / `interface.vroughness` / `interface.roughness`
+  - [x] `coatedconductor`
+    - [x] `interface.uroughness` / `interface.vroughness` / `interface.roughness` (only constant isotropic values are supported)
     - [ ] `thickness`
-    - [ ] `interface.eta`
-    - [ ] `conductor.uroughness` / `conductor.vroughness` / `conductor.roughness`
-    - [ ] `conductor.eta` / `conductor.k`
-    - [ ] `reflectance`
+    - [x] `interface.eta` (only constant value is supported)
+    - [x] `conductor.uroughness` / `conductor.vroughness` / `conductor.roughness` (only constant isotropic values are supported)
+    - [x] `conductor.eta` / `conductor.k` (only constant value is supported)
+    - [x] `reflectance` (only constant value is supported)
     - [ ] `maxdepth`
     - [ ] `nsamples`
     - [ ] `g`
     - [ ] `albedo`
     - [ ] `displacement`
-    - [ ] `remaproughness`
+    - [x] `remaproughness`
   - [x] `dielectric`
-    - [x] `eta`
+    - [x] `eta` (only constant value is supported)
     - [x] `uroughness` / `vroughness` / `roughness` / `remaproughness` (only constant isotropic values are supported)
     - [ ] `displacement`
   - [x] `thindielectric`
-    - [x] `eta`
+    - [x] `eta` (only constant value is supported)
     - [ ] `displacement`
   - [ ] `diffusetransmission`
     - [ ] `reflectance`

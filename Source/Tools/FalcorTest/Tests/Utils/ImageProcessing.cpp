@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
  **************************************************************************/
 #include "Testing/UnitTest.h"
 #include "Utils/Image/ImageProcessing.h"
+#include "Utils/Math/Float16.h"
 
 namespace Falcor
 {

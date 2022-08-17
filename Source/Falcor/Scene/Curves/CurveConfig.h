@@ -32,6 +32,6 @@ namespace Falcor
     enum class CurveTessellationMode
     {
         LinearSweptSphere,
-        PolyTube
+        PolyTube,
     };
 }

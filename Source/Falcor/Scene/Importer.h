@@ -27,6 +27,15 @@
  **************************************************************************/
 #pragma once
 #include "SceneBuilder.h"
+#include "Core/Macros.h"
+#include "Core/Errors.h"
+#include "Core/Platform/OS.h"
+#include "Utils/Scripting/Dictionary.h"
+#include <filesystem>
+#include <functional>
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace Falcor
 {
@@ -49,8 +58,8 @@ namespace Falcor
         {}
 
         template<typename... Args>
-        explicit ImporterError(const std::filesystem::path& path, const std::string_view fmtString, Args&&... args)
-            : ImporterError(path, fmt::format(fmtString, std::forward<Args>(args)...).c_str())
+        explicit ImporterError(const std::filesystem::path& path, const std::string_view format, Args&&... args)
+            : ImporterError(path, fmt::vformat(format, fmt::make_format_args(std::forward<Args>(args)...)).c_str())
         {}
 
         virtual ~ImporterError() override

@@ -25,14 +25,15 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-
 #include "D3D12State.h"
 #include "Core/API/Sampler.h"
-#include "glm/gtc/type_ptr.hpp"
+#include "Core/API/D3D12/D3D12API.h"
+#include <glm/gtc/type_ptr.hpp>
 
 namespace Falcor
 {
+    inline BOOL dxBool(bool b) { return b ? TRUE : FALSE; }
+
     D3D12_BLEND getD3D12BlendFunc(BlendState::BlendFunc func)
     {
         switch (func)

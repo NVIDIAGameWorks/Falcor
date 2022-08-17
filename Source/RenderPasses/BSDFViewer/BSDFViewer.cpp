@@ -26,6 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "BSDFViewer.h"
+#include "RenderGraph/RenderPassLibrary.h"
+#include "RenderGraph/RenderPassStandardFlags.h"
 #include "Rendering/Materials/BxDFConfig.slangh"
 
 const RenderPass::Info BSDFViewer::kInfo { "BSDFViewer", "BSDF inspection utility." };
@@ -83,13 +85,6 @@ BSDFViewer::BSDFViewer(const Dictionary& dict)
     // Create a high-quality pseudorandom number generator.
     mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
 
-    // Set defines for the program. The defines are updated later if a scene is loaded.
-    Program::DefineList defines;
-    defines.add(mpSampleGenerator->getDefines());
-
-    // Create program.
-    mpViewerPass = ComputePass::create(kFileViewerPass, "main", defines, false);
-
     mpPixelDebug = PixelDebug::create();
     mpFence = GpuFence::create();
 }
@@ -146,14 +141,23 @@ void BSDFViewer::setScene(RenderContext* pRenderContext, const Scene::SharedPtr&
 {
     mpScene = pScene;
     mpEnvMap = nullptr;
+    mpViewerPass = nullptr;
     mMaterialList.clear();
     mPixelDataValid = mPixelDataAvailable = false;
 
     if (mpScene != nullptr)
     {
-        // Configure program for the scene.
-        mpViewerPass->getProgram()->addDefines(mpScene->getSceneDefines());
-        mpViewerPass->getProgram()->setTypeConformances(mpScene->getTypeConformances());
+        // Create program.
+        Program::Desc desc;
+        desc.addShaderModules(mpScene->getShaderModules());
+        desc.addShaderLibrary(kFileViewerPass).csEntry("main");
+        desc.addTypeConformances(mpScene->getTypeConformances());
+
+        Program::DefineList defines;
+        defines.add(mpSampleGenerator->getDefines());
+        defines.add(mpScene->getSceneDefines());
+
+        mpViewerPass = ComputePass::create(desc, defines, false);
 
         // Compile program and bind the scene.
         mpViewerPass->setVars(nullptr); // Trigger vars creation
@@ -174,7 +178,7 @@ void BSDFViewer::setScene(RenderContext* pRenderContext, const Scene::SharedPtr&
         mMaterialList.reserve(materialCount);
         for (uint32_t i = 0; i < materialCount; i++)
         {
-            auto mtl = mpScene->getMaterial(i);
+            auto mtl = mpScene->getMaterial(MaterialID{ i });
             std::string name = std::to_string(i) + ": " + mtl->getName();
             mMaterialList.push_back({ i, name });
         }
@@ -192,7 +196,7 @@ void BSDFViewer::execute(RenderContext* pRenderContext, const RenderData& render
         mOptionsChanged = false;
     }
 
-    auto pOutput = renderData[kOutput]->asTexture();
+    auto pOutput = renderData.getTexture(kOutput);
     if (!mpScene || mpScene->getMaterialCount() == 0)
     {
         pRenderContext->clearUAV(pOutput->getUAV().get(), uint4(0));
@@ -302,7 +306,7 @@ void BSDFViewer::renderUI(Gui::Widgets& widget)
         FALCOR_ASSERT(mMaterialList.size() > 0);
         dirty |= mtlGroup.dropdown("Materials", mMaterialList, mParams.materialID);
 
-        auto type = mpScene->getMaterial(mParams.materialID)->getType();
+        auto type = mpScene->getMaterial(MaterialID{ mParams.materialID })->getType();
         mtlGroup.text("Material type: " + to_string(type));
 
         dirty |= mtlGroup.checkbox("Normal mapping", mParams.useNormalMapping);

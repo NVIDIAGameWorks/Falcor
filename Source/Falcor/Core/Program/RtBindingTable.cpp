@@ -25,8 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "RtBindingTable.h"
+#include "Core/Errors.h"
 
 namespace Falcor
 {
@@ -94,12 +94,20 @@ namespace Falcor
         mShaderTable[getHitGroupOffset(rayType, geometryID)] = shaderID;
     }
 
-
     void RtBindingTable::setHitGroup(uint32_t rayType, const std::vector<uint32_t>& geometryIDs, ShaderID shaderID)
     {
         for (uint32_t geometryID : geometryIDs)
         {
             setHitGroup(rayType, geometryID, shaderID);
+        }
+    }
+
+    void RtBindingTable::setHitGroup(uint32_t rayType, const std::vector<GlobalGeometryID>& geometryIDs, ShaderID shaderID)
+    {
+        static_assert(std::is_same_v<GlobalGeometryID::IntType, uint32_t>);
+        for (GlobalGeometryID geometryID : geometryIDs)
+        {
+            setHitGroup(rayType, geometryID.get(), shaderID);
         }
     }
 }

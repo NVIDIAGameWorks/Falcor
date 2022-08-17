@@ -26,14 +26,28 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include <execution>
+#include "BrickedGrid.h"
+#include "BC4Encode.h"
+#include "Core/API/Formats.h"
+#include "Utils/Logger.h"
+#include "Utils/HostDeviceShared.slangh"
+#include "Utils/NumericRange.h"
+#include "Utils/Math/Vector.h"
+#include "Utils/Timing/CpuTimer.h"
+
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable : 4244 4267)
+#endif
 #include <nanovdb/NanoVDB.h>
+#ifdef _MSC_VER
 #pragma warning(pop)
-#include "BC4Encode.h"
-#include "Utils/NumericRange.h"
-#include "BrickedGrid.h"
+#endif
+
+#include <algorithm>
+#include <atomic>
+#include <execution>
+#include <vector>
 
 namespace Falcor
 {
@@ -52,15 +66,15 @@ namespace Falcor
         BrickedGrid convert();
 
     private:
-        const static uint kBrickSize = 8; // Must be 8, to match both NanoVDB leaf size.
-        const static int kBC4Compress = kBitsPerTexel == 4;
+        const static uint32_t kBrickSize = 8; // Must be 8, to match both NanoVDB leaf size.
+        const static int32_t kBC4Compress = kBitsPerTexel == 4;
 
         void convertSlice(int z);
         void computeMip(int mip);
 
         inline uint3 getAtlasSizeBricks() const { return mAtlasSizeBricks; }
         inline uint3 getAtlasSizePixels() const { return mAtlasSizeBricks * kBrickSize; }
-        inline uint getAtlasMaxBrick() const { return mAtlasSizeBricks.x * mAtlasSizeBricks.y * mAtlasSizeBricks.z; }
+        inline uint32_t getAtlasMaxBrick() const { return mAtlasSizeBricks.x * mAtlasSizeBricks.y * mAtlasSizeBricks.z; }
 
         inline ResourceFormat getAtlasFormat() {
             switch (kBitsPerTexel) {
@@ -149,7 +163,7 @@ namespace Falcor
                 if (leaf)
                 {
                     // Nanovdb only stores minorant/majorant for active voxels, but we need all of them... Grab the central 8x8x8 first the quick way.
-                    const float* data = leaf->voxels();
+                    const float* data = leaf->data()->mValues;
                     for (int i = 0; i < kBrickSize * kBrickSize * kBrickSize; ++i) expandMinorantMajorant(data[i], minorant, majorant);
                     // We also need the 1-halo from neighbouring bricks. Fetch them in an order that maximises nanovdb's internal cache reuse.
                     for (int j = -1; j <= kBrickSize; ++j) for (int i = 0; i < kBrickSize; ++i) expandMinorantMajorant(a.getValue(ijk + nanovdb::Coord(i, j, -1)), minorant, majorant);
@@ -172,7 +186,7 @@ namespace Falcor
                 }
                 else
                 {
-                    const float* data = leaf->voxels();
+                    const float* data = leaf->data()->mValues;
                     majorant = f16tof32(f32tof16(majorant) + 1);
                     minorant = f16tof32(f32tof16(minorant));
                     *rangedst++ = f32tof16(majorant) + (f32tof16(minorant) << 16);
@@ -268,7 +282,7 @@ namespace Falcor
         } // z
     }
 
-    template <typename TexelType, unsigned int kBitsPerTexel> typename
+    template <typename TexelType, unsigned int kBitsPerTexel>
     BrickedGrid NanoVDBToBricksConverter<TexelType, kBitsPerTexel>::convert()
     {
         auto t0 = CpuTimer::getCurrentTimePoint();

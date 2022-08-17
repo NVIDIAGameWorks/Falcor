@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "GFXResource.h"
+#include "Core/API/GFX/GFXAPI.h"
 #include "Utils/StringUtils.h"
 
 namespace Falcor
@@ -37,7 +38,9 @@ namespace Falcor
 
     SharedResourceApiHandle Resource::getSharedApiHandle() const
     {
-        return SharedResourceApiHandle();
+        gfx::InteropHandle handle = {};
+        FALCOR_GFX_CALL(mApiHandle->getSharedHandle(&handle));
+        return (SharedResourceApiHandle)handle.handleValue;
     }
 
     gfx::ResourceState getGFXResourceState(Resource::State state)
@@ -151,7 +154,7 @@ namespace Falcor
 
     const D3D12ResourceHandle& Resource::getD3D12Handle() const
     {
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         if (!mpD3D12Handle)
         {
             gfx::InteropHandle handle = {};

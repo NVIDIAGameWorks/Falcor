@@ -25,55 +25,65 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-
-#pragma warning(push)
-#pragma warning(disable : 4244) // Conversion possible loss of data
-#pragma warning(disable : 4267) // Conversion possible loss of data
-#pragma warning(disable : 4305) // Truncation double to float
-#pragma warning(disable : 5033) // 'register' storage class specifier deprecated
 #include "ImporterContext.h"
-#include "pxr/usd/usd/primRange.h"
-#include "pxr/usd/usd/stage.h"
-#include "pxr/usd/usdGeom/mesh.h"
-#include "pxr/usd/usdGeom/basisCurves.h"
-#include "pxr/usd/usdGeom/xform.h"
-#include "pxr/usd/usdGeom/primvar.h"
-#include "pxr/usd/usdGeom/primvarsAPI.h"
-#include "pxr/usd/usdGeom/camera.h"
-#include "pxr/usd/usdGeom/xformCache.h"
-#include "pxr/usd/usdSkel/skeleton.h"
-#include "pxr/usd/usdSkel/animation.h"
-#include "pxr/usd/usdSkel/root.h"
-#include "pxr/usd/usdSkel/binding.h"
-#include "pxr/usd/usdSkel/bindingAPI.h"
-#include "pxr/usd/usdSkel/tokens.h"
-#include "pxr/usd/usdSkel/skeletonQuery.h"
-#include "pxr/usd/usdSkel/topology.h"
-#include "pxr/usd/usdSkel/animQuery.h"
-#include "pxr/imaging/hd/meshTopology.h"
-#include "pxr/imaging/hd/meshUtil.h"
-#include "pxr/imaging/hd/vertexAdjacency.h"
-#include "pxr/imaging/hd/flatNormals.h"
-#include "pxr/imaging/hd/smoothNormals.h"
-#include "pxr/imaging/hd/sceneDelegate.h"
-#include "pxr/usd/usdGeom/scope.h"
-#include "pxr/usd/usdShade/material.h"
-#include "pxr/usd/usdLux/distantLight.h"
-#include "pxr/usd/usdLux/domeLight.h"
-#include "pxr/usd/usdLux/rectLight.h"
-#include "pxr/usd/usdLux/sphereLight.h"
-#include "pxr/usd/usdLux/diskLight.h"
-#include "pxr/usd/usdLux/blackbody.h"
-#pragma warning(pop)
-#include "glm/gtx/matrix_decompose.hpp"
+#include "USDHelpers.h"
+#include "Core/API/Device.h"
+#include "Utils/NumericRange.h"
+#include "Scene/Importer.h"
 #include "Scene/Curves/CurveConfig.h"
+#include "Scene/Material/HairMaterial.h"
+#include "Scene/Material/StandardMaterial.h"
+#include "Utils/Settings.h"
+
+#include <glm/gtx/matrix_decompose.hpp>
+
+BEGIN_DISABLE_USD_WARNINGS
+#include <pxr/usd/usd/primRange.h>
+#include <pxr/usd/usd/stage.h>
+#include <pxr/usd/usdGeom/mesh.h>
+#include <pxr/usd/usdGeom/basisCurves.h>
+#include <pxr/usd/usdGeom/xform.h>
+#include <pxr/usd/usdGeom/primvar.h>
+#include <pxr/usd/usdGeom/primvarsAPI.h>
+#include <pxr/usd/usdGeom/camera.h>
+#include <pxr/usd/usdGeom/xformCache.h>
+#include <pxr/usd/usdSkel/skeleton.h>
+#include <pxr/usd/usdSkel/animation.h>
+#include <pxr/usd/usdSkel/root.h>
+#include <pxr/usd/usdSkel/binding.h>
+#include <pxr/usd/usdSkel/bindingAPI.h>
+#include <pxr/usd/usdSkel/tokens.h>
+#include <pxr/usd/usdSkel/skeletonQuery.h>
+#include <pxr/usd/usdSkel/topology.h>
+#include <pxr/usd/usdSkel/animQuery.h>
+#include <pxr/imaging/hd/meshTopology.h>
+#include <pxr/imaging/hd/meshUtil.h>
+#include <pxr/imaging/hd/vertexAdjacency.h>
+#include <pxr/imaging/hd/flatNormals.h>
+#include <pxr/imaging/hd/smoothNormals.h>
+#include <pxr/imaging/hd/sceneDelegate.h>
+#include <pxr/usd/usdGeom/scope.h>
+#include <pxr/usd/usdShade/material.h>
+#include <pxr/usd/usdLux/distantLight.h>
+#include <pxr/usd/usdLux/domeLight.h>
+#include <pxr/usd/usdLux/rectLight.h>
+#include <pxr/usd/usdLux/sphereLight.h>
+#include <pxr/usd/usdLux/diskLight.h>
+#include <pxr/usd/usdLux/blackbody.h>
+END_DISABLE_USD_WARNINGS
 
 namespace Falcor
 {
     namespace
     {
         const bool kLoadMeshVertexAnimations = true;
+
+        // Subdivide each bspline curve segment into a single linear swept sphere segments (could be more if memory/perf allows).
+        uint32_t kCurveSubdivPerSegment = 1;
+        // Skip some hair strands, if necessary for memory/pref reasons.
+        uint32_t kCurveKeepOneEveryXStrands = 1;
+        // Skip some hair vertices, if necessary for memory/perf reasons.
+        uint32_t kCurveKeepOneEveryXVerticesPerStrand = 1;
 
         // Default curve material parameters.
         const float kDefaultCurveIOR = 1.55f;
@@ -369,7 +379,7 @@ namespace Falcor
                         remapMeshJointIndices(ctx, subskel, usdMesh.GetPrim(), jointIndices);
 
                         // Load per vertex bone influences
-                        geomOut.jointIndices.resize(usdPoints.size(), uint4(Scene::kInvalidBone));
+                        geomOut.jointIndices.resize(usdPoints.size(), uint4(NodeID::kInvalidID));
                         geomOut.jointWeights.resize(usdPoints.size(), float4(0.0f));
                         for (uint32_t i = 0; i < usdPoints.size(); i++)
                         {
@@ -551,9 +561,7 @@ namespace Falcor
             return true;
         }
 
-        // Convert a UsdGeomBasisCurves into a CurveGeomData (curve primitive) or a MeshGeomData (mesh)
-        template <class T>
-        bool convertCurveGeomData(const UsdGeomBasisCurves& usdCurve, const UsdTimeCode& timeCode, ImporterContext& ctx, T& geomOut)
+        bool extractCurveData(const UsdGeomBasisCurves& usdCurve, const UsdTimeCode& timeCode, VtVec3fArray& usdPoints, VtIntArray& usdCurveVertexCounts, VtFloatArray& usdCurveWidths, VtVec2fArray& usdUVs)
         {
             std::string curveName = usdCurve.GetPath().GetString();
 
@@ -578,7 +586,6 @@ namespace Falcor
                 logWarning("Curve '{}' does not specify control points. Ignoring.", curveName);
                 return false;
             }
-            VtVec3fArray usdPoints;
             pointsAttr.Get(&usdPoints, timeCode);
 
             UsdAttribute curveVertexCountsAttr = usdCurve.GetCurveVertexCountsAttr();
@@ -587,7 +594,6 @@ namespace Falcor
                 logWarning("Curve '{}' has no vertices. Ignoring.", curveName);
                 return false;
             }
-            VtIntArray usdCurveVertexCounts;
             curveVertexCountsAttr.Get(&usdCurveVertexCounts, timeCode);
 
             UsdAttribute widthsAttr = usdCurve.GetWidthsAttr();
@@ -596,13 +602,11 @@ namespace Falcor
                 logWarning("Curve '{}' has no width attribute. Ignoring.", curveName);
                 return false;
             }
-            VtFloatArray usdCurveWidths;
             widthsAttr.Get(&usdCurveWidths, timeCode);
 
             // Get curve texture coordinates, if any.
             const TfToken uvVarName("primvars:st");
             UsdGeomPrimvar uvPrimvar(primvarApi.GetPrimvar(uvVarName));
-            VtVec2fArray usdUVs;
             if (!uvPrimvar)
             {
                 // "st_0" seems a common choice of texcoord primvar name when there are multiple uv sets, so check for it as well
@@ -615,6 +619,23 @@ namespace Falcor
                 uvPrimvar.ComputeFlattened(&usdUVs, timeCode);
             }
 
+            return true;
+        }
+
+        // Convert a UsdGeomBasisCurves into a CurveGeomData (curve primitive).
+        bool convertToCurveGeomData(const UsdGeomBasisCurves& usdCurve, const UsdTimeCode& timeCode, ImporterContext& ctx, CurveGeomData& geomOut)
+        {
+            std::string curveName = usdCurve.GetPath().GetString();
+
+            VtVec3fArray usdPoints;
+            VtIntArray usdCurveVertexCounts;
+            VtFloatArray usdCurveWidths;
+            VtVec2fArray usdUVs;
+            if (!extractCurveData(usdCurve, timeCode, usdPoints, usdCurveVertexCounts, usdCurveWidths, usdUVs))
+            {
+                return false;
+            }
+
             size_t strandCount = usdCurveVertexCounts.size();
             size_t vertexCount = std::accumulate(usdCurveVertexCounts.begin(), usdCurveVertexCounts.end(), 0);
             FALCOR_ASSERT(vertexCount == usdPoints.size());
@@ -623,72 +644,104 @@ namespace Falcor
 
             const float2* pUsdUVs = usdUVs.empty() ? nullptr : (float2*)usdUVs.data();
 
-            // We subdivide each bspline curve segment into 2 linear swept sphere segments (could be more or less if memory/perf allows).
-            uint32_t subdivPerSegment = 2;
-            // Skip some hair strands, if necessary for memory/pref reasons.
-            uint32_t keepOneEveryXStrands = 1;
-            // Skip some hair vertices, if necessary for memory/perf reasons.
-            uint32_t keepOneEveryXVerticesPerStrand = 1;
+            uint32_t subdivPerSegment                = gpFramework->getSettings().getAttribute(curveName, "curves:subdivPerSegment", kCurveSubdivPerSegment);
+            uint32_t keepOneEveryXStrands            = gpFramework->getSettings().getAttribute(curveName, "curves:keepOneEveryXStrands", kCurveKeepOneEveryXStrands);
+            uint32_t keepOneEveryXVerticesPerStrand  = gpFramework->getSettings().getAttribute(curveName, "curves:keepOneEveryXVerticesPerStrand", kCurveKeepOneEveryXVerticesPerStrand);
+
             // Perceptually, it is a good practice to increase width of hair strands if we render less of them than anticipated.
             float widthScale = std::sqrt((float)keepOneEveryXStrands);
 
-            if constexpr (std::is_same<T, CurveGeomData>::value)
+            // Convert to linear swept sphere segments.
+            CurveTessellation::SweptSphereResult result = CurveTessellation::convertToLinearSweptSphere(strandCount, reinterpret_cast<const uint32_t*>(usdCurveVertexCounts.data()),
+                (float3*)usdPoints.data(), usdCurveWidths.data(), pUsdUVs, 1,
+                subdivPerSegment, keepOneEveryXStrands, keepOneEveryXVerticesPerStrand, widthScale, rmcv::identity<rmcv::mat4x4>());
+
+            // Copy data.
+            geomOut.id = curveName;
+            geomOut.degree = result.degree;
+            geomOut.indices = std::move(result.indices);
+            geomOut.points = std::move(result.points);
+            geomOut.radius = std::move(result.radius);
+            geomOut.material = ctx.getBoundMaterial(usdCurve);
+
+            // Copy texture coordinates.
+            if (result.texCrds.size() > 0)
             {
-                // Convert to linear swept sphere segments.
-                CurveTessellation::SweptSphereResult result = CurveTessellation::convertToLinearSweptSphere(strandCount, usdCurveVertexCounts.data(), (float3*)usdPoints.data(), usdCurveWidths.data(), pUsdUVs, 1, subdivPerSegment, keepOneEveryXStrands, keepOneEveryXVerticesPerStrand, widthScale, glm::identity<glm::float4x4>());
-
-                // Copy data
-                geomOut.id = curveName;
-                geomOut.degree = result.degree;
-                geomOut.indices = std::move(result.indices);
-                geomOut.points = std::move(result.points);
-                geomOut.radius = std::move(result.radius);
-                geomOut.material = ctx.getBoundMaterial(usdCurve);
-
-                // Copy texture coordinates
-                if (result.texCrds.size() > 0)
-                {
-                    geomOut.texCrds = std::move(result.texCrds);
-                }
-                else
-                {
-                    logWarning("Curve '{}' has no texture coordinates.", curveName);
-                }
-            }
-            else if constexpr (std::is_same<T, MeshGeomData>::value)
-            {
-                // Tessellation into poly-tube mesh.
-                CurveTessellation::MeshResult result = CurveTessellation::convertToMesh(strandCount, usdCurveVertexCounts.data(), (float3*)usdPoints.data(), usdCurveWidths.data(), pUsdUVs, subdivPerSegment, keepOneEveryXStrands, keepOneEveryXVerticesPerStrand, widthScale, 4);
-
-                // Copy data
-                geomOut.geomSubsets.resize(1);
-                geomOut.geomSubsets[0].triIdx = 0;
-                geomOut.geomSubsets[0].triCount = (uint32_t)result.faceVertexIndices.size() / 3;
-                geomOut.geomSubsets[0].id = curveName;
-                geomOut.geomSubsets[0].material = ctx.getBoundMaterial(usdCurve);
-
-                geomOut.points = std::move(result.vertices);
-                geomOut.numReferencedPoints = geomOut.points.size();
-                geomOut.triangulatedIndices = std::move(result.faceVertexIndices);
-                geomOut.normals = std::move(result.normals);
-                geomOut.normalInterp = AttributeFrequency::Vertex;
-                geomOut.tangents = std::move(result.tangents);
-                geomOut.curveRadii = std::move(result.radii);
-
-                // Copy texture coordinates
-                if (result.texCrds.size() > 0)
-                {
-                    geomOut.texCrds = std::move(result.texCrds);
-                    geomOut.texCrdsInterp = AttributeFrequency::Vertex;
-                }
-                else
-                {
-                    logWarning("Curve '{}' has no texture coordinates.", curveName);
-                }
+                geomOut.texCrds = std::move(result.texCrds);
             }
             else
             {
-                static_assert(false, "Unsupported geometry output type in convertCurveGeomData");
+                logWarning("Curve '{}' has no texture coordinates.", curveName);
+            }
+
+            return true;
+        }
+
+        // Convert a UsdGeomBasisCurves into a MeshGeomData (mesh).
+        bool convertToMeshGeomData(const UsdGeomBasisCurves& usdCurve, const UsdTimeCode& timeCode, ImporterContext& ctx, CurveTessellationMode tessellationMode, MeshGeomData& geomOut)
+        {
+            std::string curveName = usdCurve.GetPath().GetString();
+
+            VtVec3fArray usdPoints;
+            VtIntArray usdCurveVertexCounts;
+            VtFloatArray usdCurveWidths;
+            VtVec2fArray usdUVs;
+            if (!extractCurveData(usdCurve, timeCode, usdPoints, usdCurveVertexCounts, usdCurveWidths, usdUVs))
+            {
+                return false;
+            }
+
+            size_t strandCount = usdCurveVertexCounts.size();
+            size_t vertexCount = std::accumulate(usdCurveVertexCounts.begin(), usdCurveVertexCounts.end(), 0);
+            FALCOR_ASSERT(vertexCount == usdPoints.size());
+            FALCOR_ASSERT(vertexCount == usdCurveWidths.size());
+            FALCOR_ASSERT(vertexCount == usdUVs.size() || usdUVs.size() == 0);
+
+            const float2* pUsdUVs = usdUVs.empty() ? nullptr : (float2*)usdUVs.data();
+
+            uint32_t subdivPerSegment                = gpFramework->getSettings().getAttribute(curveName, "curves:subdivPerSegment", kCurveSubdivPerSegment);
+            uint32_t keepOneEveryXStrands            = gpFramework->getSettings().getAttribute(curveName, "curves:keepOneEveryXStrands", kCurveKeepOneEveryXStrands);
+            uint32_t keepOneEveryXVerticesPerStrand  = gpFramework->getSettings().getAttribute(curveName, "curves:keepOneEveryXVerticesPerStrand", kCurveKeepOneEveryXVerticesPerStrand);
+
+            // Perceptually, it is a good practice to increase width of hair strands if we render less of them than anticipated.
+            float widthScale = std::sqrt((float)keepOneEveryXStrands);
+
+            // Tessellation into mesh.
+            CurveTessellation::MeshResult result;
+
+            if (tessellationMode == CurveTessellationMode::PolyTube)
+            {
+                result = CurveTessellation::convertToPolytube(strandCount, reinterpret_cast<const uint32_t*>(usdCurveVertexCounts.data()), (float3*)usdPoints.data(), usdCurveWidths.data(), pUsdUVs, subdivPerSegment, keepOneEveryXStrands, keepOneEveryXVerticesPerStrand, widthScale, 4);
+            }
+            else
+            {
+                FALCOR_UNREACHABLE();
+            }
+
+            // Copy data.
+            geomOut.geomSubsets.resize(1);
+            geomOut.geomSubsets[0].triIdx = 0;
+            geomOut.geomSubsets[0].triCount = (uint32_t)result.faceVertexIndices.size() / 3;
+            geomOut.geomSubsets[0].id = curveName;
+            geomOut.geomSubsets[0].material = ctx.getBoundMaterial(usdCurve);
+
+            geomOut.points = std::move(result.vertices);
+            geomOut.numReferencedPoints = geomOut.points.size();
+            geomOut.triangulatedIndices = std::move(result.faceVertexIndices);
+            geomOut.normals = std::move(result.normals);
+            geomOut.normalInterp = AttributeFrequency::Vertex;
+            geomOut.tangents = std::move(result.tangents);
+            geomOut.curveRadii = std::move(result.radii);
+
+            // Copy texture coordinates.
+            if (result.texCrds.size() > 0)
+            {
+                geomOut.texCrds = std::move(result.texCrds);
+                geomOut.texCrdsInterp = AttributeFrequency::Vertex;
+            }
+            else
+            {
+                logWarning("Curve '{}' has no texture coordinates.", curveName);
             }
 
             return true;
@@ -819,13 +872,6 @@ namespace Falcor
                     return false;
                 }
             }
-            else if (mesh.prim.IsA<UsdGeomBasisCurves>())
-            {
-                if (!convertCurveGeomData(UsdGeomBasisCurves(mesh.prim), UsdTimeCode(mesh.timeSamples[0]), ctx, geomData))
-                {
-                    return false;
-                }
-            }
             else
             {
                 return false;
@@ -837,7 +883,7 @@ namespace Falcor
             mesh.processedMeshes.reserve(geomData.geomSubsets.size());
             if (isTimeSampled(UsdGeomPointBased(mesh.prim)))
             {
-                if (kLoadMeshVertexAnimations)
+                if (gpFramework->getSettings().getOption("usdImporter:loadMeshVertexAnimations", kLoadMeshVertexAnimations))
                 {
                     mesh.attributeIndices.resize(geomData.geomSubsets.size());
                 }
@@ -876,15 +922,6 @@ namespace Falcor
                     return false;
                 }
             }
-            else if (mesh.prim.IsA<UsdGeomBasisCurves>())
-            {
-                UsdGeomBasisCurves geomCurve(mesh.prim);
-
-                if (!convertCurveGeomData(geomCurve, UsdTimeCode(mesh.timeSamples[sampleIdx]), ctx, geomData))
-                {
-                    return false;
-                }
-            }
             else
             {
                 return false;
@@ -909,7 +946,7 @@ namespace Falcor
 
                 auto& indices = mesh.attributeIndices[i];
 
-                if (!mesh.processedMeshes[i].staticData.size() == indices.size())
+                if (!(mesh.processedMeshes[i].staticData.size() == indices.size()))
                 {
                     throw ImporterError(ctx.path, "Keyframe {} for mesh '{}' does not match vertex count of original mesh.", sampleIdx, mesh.prim.GetName().GetString());
                 }
@@ -946,6 +983,9 @@ namespace Falcor
             // Assume the point attribute has a complete set of time samples (shared by other attributes such as vertex count).
             geomCurve.GetPointsAttr().GetTimeSamples(&(curve.timeSamples));
 
+            if (!gpFramework->getSettings().getAttribute(primName, "usdImporter:enableMotion", true))
+                curve.timeSamples.clear();
+
             // Remove frames with timeCode < 1.
             // TODO: We can remove this once the assets do not have these redundant keyframes.
             while (curve.timeSamples.size() > 0 && curve.timeSamples.front() < 1.0)
@@ -969,7 +1009,7 @@ namespace Falcor
             for (size_t i = 0; i < timeCodes.size(); i++)
             {
                 CurveGeomData curveData;
-                if (!convertCurveGeomData(geomCurve, timeCodes[i], ctx, curveData))
+                if (!convertToCurveGeomData(geomCurve, timeCodes[i], ctx, curveData))
                 {
                     return false;
                 }
@@ -984,11 +1024,11 @@ namespace Falcor
                 curve.timeSamples[i] /= ctx.timeCodesPerSecond;
             }
 
-            // Process a mesh of the first keyframe.
-            if (curve.tessellationMode == CurveTessellationMode::PolyTube)
+            bool processFirstKeyframeMesh = curve.tessellationMode == CurveTessellationMode::PolyTube;
+            if (processFirstKeyframeMesh)
             {
                 MeshGeomData geomData;
-                if (!convertCurveGeomData(geomCurve, UsdTimeCode::EarliestTime(), ctx, geomData))
+                if (!convertToMeshGeomData(geomCurve, UsdTimeCode::EarliestTime(), ctx, curve.tessellationMode, geomData))
                 {
                     return false;
                 }
@@ -1027,7 +1067,7 @@ namespace Falcor
                     // Add skeleton bones and their animations.
                     for (size_t i = 0; i < bones.size(); i++)
                     {
-                        if (bones[i].parent == Scene::kInvalidNode)
+                        if (bones[i].parent == NodeID::Invalid())
                         {
                             // If this is the root bone, connect it to the skeleton base
                             bones[i].parent = skel.nodeID;
@@ -1035,16 +1075,16 @@ namespace Falcor
                         else
                         {
                             // Shift node ID so they still hook up to the right node after being added to the SceneBuilder
-                            bones[i].parent += subskel.nodeOffset;
+                            bones[i].parent = NodeID{ bones[i].parent.get() + subskel.nodeOffset };
                         }
 
-                        uint32_t nodeID = ctx.builder.addNode(bones[i]);
+                        NodeID nodeID = ctx.builder.addNode(bones[i]);
 
                         // FIXME: Handle unanimated case
                         if (animations.size() > 0)
                         {
                             // Animation and bones array correspond 1:1, so set the Animation nodeId to wherever the bone node index is
-                            FALCOR_ASSERT(animations[i]->getNodeID() + subskel.nodeOffset == nodeID);
+                            FALCOR_ASSERT_EQ(animations[i]->getNodeID().get() + subskel.nodeOffset, nodeID.get());
                             animations[i]->setNodeID(nodeID);
                             ctx.builder.addAnimation(animations[i]);
                         }
@@ -1076,7 +1116,7 @@ namespace Falcor
                 }
             }
 
-            if (kLoadMeshVertexAnimations)
+            if (gpFramework->getSettings().getOption("usdImporter:loadMeshVertexAnimations", kLoadMeshVertexAnimations))
             {
                 // Allocate storage for mesh keyframe output
                 for (auto& m : ctx.meshes)
@@ -1120,12 +1160,12 @@ namespace Falcor
             timeReport.measure("Process meshes");
 
             // Helper function to add all submeshes associated with the given UsdGeomMesh to SceneBuilder
-            auto addSubmeshes = [&](const UsdPrim& meshPrim, const std::string& name, const float4x4& xform, const float4x4& bindXform, uint32_t parentId)
+            auto addSubmeshes = [&](const UsdPrim& meshPrim, const std::string& name, const rmcv::mat4& xform, const rmcv::mat4& bindXform, NodeID parentId)
             {
                 auto subNodeId = ctx.builder.addNode(makeNode(name, xform, bindXform, parentId));
                 FALCOR_ASSERT(meshPrim.IsA<UsdGeomMesh>());
                 const auto& mesh = ctx.getMesh(meshPrim);
-                for (uint32_t meshID : mesh.meshIDs)
+                for (MeshID meshID : mesh.meshIDs)
                 {
                     ctx.builder.addMeshInstance(subNodeId, meshID);
                 }
@@ -1134,7 +1174,7 @@ namespace Falcor
             // Add individual instances of prepocessed geometry to scene builder. Each mesh may contain more than one submesh, each corresponding to a UsdGeomSubset.
             for (const auto& instance : ctx.geomInstances)
             {
-                addSubmeshes(instance.prim, instance.name, float4x4(1.f), instance.bindTransform, instance.parentID);
+                addSubmeshes(instance.prim, instance.name, rmcv::mat4(1.f), instance.bindTransform, instance.parentID);
             }
 
             // Add instances of prototypes to scene builder. Because SceneBuilder only supports instanced meshes, and not
@@ -1142,15 +1182,15 @@ namespace Falcor
             // if all of the transformations are static, but time-sampled transformations require us to use a more general approach.
             for (const auto& inst : ctx.prototypeInstances)
             {
-                std::vector<std::pair<PrototypeInstance, uint32_t>> protoInstanceStack = { std::make_pair(inst, inst.parentID) };
+                std::vector<std::pair<PrototypeInstance, NodeID>> protoInstanceStack = { std::make_pair(inst, inst.parentID) };
                 while (!protoInstanceStack.empty())
                 {
                     PrototypeInstance protoInstance = protoInstanceStack.back().first;
-                    uint32_t parentID = protoInstanceStack.back().second;
+                    NodeID parentID = protoInstanceStack.back().second;
                     protoInstanceStack.pop_back();
 
                     // Add root node for this prototype instance, parented appropriately.
-                    uint32_t rootNodeID = ctx.builder.addNode(makeNode(protoInstance.name, protoInstance.xform, float4x4(1.f), parentID));
+                    NodeID rootNodeID = ctx.builder.addNode(makeNode(protoInstance.name, protoInstance.xform, rmcv::mat4(1.f), parentID));
 
                     // If there are keyframes, create an animation from them targeting the root node we just created.
                     // This could be more cleanly addressed if a Falcor::Animation could target more than one node.
@@ -1176,12 +1216,12 @@ namespace Falcor
                     // Parent IDs of nodes in the PrototypeGeom are relative to the ID of the prototype's root, zero.
                     // Get the current builder node count, which will be the SceneBuilder node ID of the prototype root node.
                     // We use this value to map from protoGeom node IDs to SceneBuilder node IDs.
-                    uint32_t protoRootID = ctx.builder.getNodeCount();
+                    NodeID protoRootID{ ctx.builder.getNodeCount() };
 
                     for (const auto& node : protoGeom.nodes)
                     {
                         SceneBuilder::Node builderNode = node;
-                        builderNode.parent = (node.parent == SceneBuilder::kInvalidNode) ? rootNodeID : node.parent + protoRootID;
+                        builderNode.parent = (node.parent == NodeID::Invalid()) ? rootNodeID : NodeID{ node.parent.get() + protoRootID.get() };
                         ctx.builder.addNode(builderNode);
                     }
 
@@ -1191,8 +1231,8 @@ namespace Falcor
                     {
                         // Use the name of the target node as the animation name. Note that this will result in multiple animations with the same name
                         // if the prototype is instantiated multiple times.
-                        std::string animationName = protoGeom.nodes[animation.targetNodeID].name;
-                        uint32_t targetNodeID = animation.targetNodeID + protoRootID;
+                        std::string animationName = protoGeom.nodes[animation.targetNodeID.get()].name;
+                        NodeID targetNodeID{ animation.targetNodeID.get() + protoRootID.get() };
                         Animation::SharedPtr pAnimation = Animation::create(animationName, targetNodeID, animation.keyframes.back().time);
                         for (const auto& keyframe : animation.keyframes)
                         {
@@ -1204,13 +1244,13 @@ namespace Falcor
                     // Add all of the prototype's geom instances (currently limited to meshes)
                     for (const auto& meshInstance : protoGeom.geomInstances)
                     {
-                        addSubmeshes(meshInstance.prim, protoInstance.name + "/" + meshInstance.name, meshInstance.xform, float4x4(1.f), meshInstance.parentID + protoRootID);
+                        addSubmeshes(meshInstance.prim, protoInstance.name + "/" + meshInstance.name, meshInstance.xform, rmcv::mat4(1.f), NodeID{ meshInstance.parentID.get() + protoRootID.get() });
                     }
 
                     // Push child prototype instances, and the current nodeID as the parent, onto the stack. Do so in reverse order to maintain traversal ordering.
                     for (auto it = protoGeom.prototypeInstances.rbegin(); it != protoGeom.prototypeInstances.rend(); ++it)
                     {
-                        protoInstanceStack.push_back(std::make_pair(*it, it->parentID + protoRootID));
+                        protoInstanceStack.push_back(std::make_pair(*it, NodeID{ it->parentID.get() + protoRootID.get() }));
                     }
                 }
             }
@@ -1234,11 +1274,11 @@ namespace Falcor
                 if (curve.tessellationMode == CurveTessellationMode::LinearSweptSphere)
                 {
                     FALCOR_ASSERT(!curve.processedCurves.empty());
-                    curve.geometryID = ctx.builder.addProcessedCurve(curve.processedCurves[0]);
+                    curve.geometryID = CurveOrMeshID{ ctx.builder.addProcessedCurve(curve.processedCurves[0]) };
                 }
                 else
                 {
-                    curve.geometryID = ctx.builder.addProcessedMesh(curve.processedMesh);
+                    curve.geometryID = CurveOrMeshID{ ctx.builder.addProcessedMesh(curve.processedMesh) };
                 }
             }
 
@@ -1251,16 +1291,16 @@ namespace Falcor
             // Add instances to scene builder.
             for (const auto& instance : ctx.curveInstances)
             {
-                auto nodeId = ctx.builder.addNode(makeNode(instance.name, instance.xform, float4x4(1.f), instance.parentID));
+                auto nodeId = ctx.builder.addNode(makeNode(instance.name, instance.xform, rmcv::mat4(1.f), instance.parentID));
                 const auto& curve = ctx.getCurve(instance.prim);
 
                 if (curve.tessellationMode == CurveTessellationMode::LinearSweptSphere)
                 {
-                    ctx.builder.addCurveInstance(nodeId, curve.geometryID);
+                    ctx.builder.addCurveInstance(nodeId, CurveID{ curve.geometryID });
                 }
                 else
                 {
-                    ctx.builder.addMeshInstance(nodeId, curve.geometryID);
+                    ctx.builder.addMeshInstance(nodeId, MeshID{ curve.geometryID });
                 }
             }
 
@@ -1352,7 +1392,7 @@ namespace Falcor
             animation.keyframes.push_back(keyframe);
         }
 
-        uint32_t nodeID = (uint32_t)nodes.size();
+        NodeID nodeID{ nodes.size() };
         animation.targetNodeID = nodeID;
         animations.push_back(std::move(animation));
         nodes.push_back(makeNode(xformable.GetPath().GetString(), nodeStack.back()));
@@ -1418,18 +1458,18 @@ namespace Falcor
         // between USD dome light orientation (up=+Z) and Falcor env map orientation (up=+Y), as well as
         // a 90-degree around Y in world space to account for differences if longitudinal mapping.
         // FIXME: This assumes a static local to world xform. Should support rigid body animation
-        float4x4 xform = glm::eulerAngleY(glm::radians(90.f)) * getLocalToWorldXform(UsdGeomXformable(lightPrim)) * glm::eulerAngleX(glm::radians(90.f));
+        rmcv::mat4 xform = rmcv::eulerAngleY(glm::radians(90.f)) * getLocalToWorldXform(UsdGeomXformable(lightPrim)) * rmcv::eulerAngleX(glm::radians(90.f));
 
         float3 rotation;
         // Extract rotation from the computed transform
-        glm::extractEulerAngleXYZ(xform, rotation.x, rotation.y, rotation.z);
+        rmcv::extractEulerAngleXYZ(xform, rotation.x, rotation.y, rotation.z);
         pEnvMap->setRotation(glm::degrees(rotation));
         builder.setEnvMap(pEnvMap);
     }
 
-    void ImporterContext::addLight(const UsdPrim& lightPrim, Light::SharedPtr pLight, uint32_t parentId)
+    void ImporterContext::addLight(const UsdPrim& lightPrim, Light::SharedPtr pLight, NodeID parentId)
     {
-        uint32_t nodeId = builder.addNode(makeNode(lightPrim.GetName(), parentId));
+        NodeID nodeId = builder.addNode(makeNode(lightPrim.GetName(), parentId));
         pLight->setNodeID(nodeId);
         pLight->setHasAnimation(builder.isNodeAnimated(parentId));
         builder.addLight(pLight);
@@ -1501,6 +1541,69 @@ namespace Falcor
         addLight(lightPrim, pLight, nodeStack.back());
     }
 
+    // DEMO21 Opera -- tdavidovic: I see no problem with tessellating lights
+    void ImporterContext::createMeshedDiskLight(const UsdPrim& lightPrim)
+    {
+        UsdLuxDiskLight diskLight(lightPrim);
+
+        float3 intensity = getLightIntensity(diskLight);
+
+        float radius = getAttribute(diskLight.GetRadiusAttr(), 0.5f);
+
+        // Demo hack: Replace disc analytic light with mesh, bind magic IES material
+        VtArray<GfVec3f> points;
+        VtArray<GfVec3f> normals;
+        VtArray<int> vertexCounts;
+        VtArray<int> vertexIndices;
+
+        const uint32_t vertexCount = 32;
+        for (uint32_t i = 0; i < vertexCount; ++i)
+        {
+            float theta = (float)(2. * M_PI * i) / vertexCount;
+            float x = radius * cosf(theta);
+            float y = radius * sinf(theta);
+            GfVec3f v(x, y, 0.f);
+            points.push_back(v);
+
+            vertexCounts.push_back(3);
+            vertexIndices.push_back((i + 1) % vertexCount);
+            vertexIndices.push_back(i);
+            vertexIndices.push_back(vertexCount - 1);
+        }
+
+        // Disc center
+        points.push_back(GfVec3f(0.f, 0.f, 0.f));
+
+        // Constant normal
+        normals.push_back(GfVec3f(0.f, 0.f, -1.f));
+
+        SdfPath newPath(lightPrim.GetPath().AppendPath(SdfPath("mesh")));
+        UsdGeomMesh mesh = UsdGeomMesh::Define(pStage, newPath);
+        logWarning("Replacing analytic disc light '" + mesh.GetPath().GetString() + "' with mesh + IES material.");
+
+        mesh.CreateSubdivisionSchemeAttr(VtValue(UsdGeomTokens->none));
+        mesh.CreatePointsAttr(VtValue(points));
+        mesh.SetNormalsInterpolation(UsdGeomTokens->constant);
+        mesh.CreateNormalsAttr(VtValue(normals));
+        mesh.CreateFaceVertexCountsAttr(VtValue(vertexCounts));
+        mesh.CreateFaceVertexIndicesAttr(VtValue(vertexIndices));
+
+        UsdShadeMaterial material = UsdShadeMaterial::Define(pStage, newPath.AppendPath(SdfPath("IES")));
+        UsdShadeMaterialBindingAPI(mesh).Bind(material);
+
+        auto materialName = material.GetPath().GetString();
+        auto pMaterial = StandardMaterial::create(materialName);
+        pMaterial->setEmissiveColor(intensity);
+        pMaterial->setLightProfileEnabled(true);
+
+        std::lock_guard<std::mutex> lock(materialMutex);
+        builder.addMaterial(std::move(pMaterial));
+        localDict[materialName] = materialName;
+
+        addMesh(mesh.GetPrim());
+        addGeomInstance(lightPrim.GetName(), mesh.GetPrim(), float4x4(), float4x4());
+    }
+
     bool ImporterContext::createCamera(const UsdPrim& cameraPrim)
     {
         const UsdGeomCamera camera(cameraPrim);
@@ -1508,12 +1611,12 @@ namespace Falcor
 
         Camera::SharedPtr pCamera = Camera::create(cameraPrim.GetName());
 
-        uint32_t nodeId = builder.addNode(makeNode(cameraPrim.GetName(), nodeStack.back()));
+        NodeID nodeId = builder.addNode(makeNode(cameraPrim.GetName(), nodeStack.back()));
         pCamera->setNodeID(nodeId);
         pCamera->setHasAnimation(builder.isNodeAnimated(nodeId));
 
         float focalDistance = std::max(1.f, cam.GetFocusDistance());
-        float4x4 view(toGlm(cam.GetTransform()));
+        rmcv::mat4 view(toRMCV(cam.GetTransform()));
 
         float3 pos = view * float4(0.f, 0.f, 0.f, 1.f);
         float3 target = view * float4(0.f, 0.f, -focalDistance, 1.f);
@@ -1609,11 +1712,11 @@ namespace Falcor
             for (uint32_t j = 0; j < matrices.size(); ++j)
             {
                 const auto& matrix = matrices[j];
-                float4x4 glmMat = toGlm(matrix);
+                rmcv::mat4 glmMat = toRMCV(matrix);
                 Animation::Keyframe keyframe;
                 float3 skew;
                 float4 persp;
-                glm::decompose(glmMat, keyframe.scaling, keyframe.rotation, keyframe.translation, skew, persp);
+                rmcv::decompose(glmMat, keyframe.scaling, keyframe.rotation, keyframe.translation, skew, persp);
                 keyframe.time = time / timeCodesPerSecond;
                 keyframes[j].push_back(keyframe);
             }
@@ -1622,7 +1725,7 @@ namespace Falcor
         return true;
     }
 
-    uint32_t ImporterContext::createAnimation(const UsdGeomXformable& xformable)
+    NodeID ImporterContext::createAnimation(const UsdGeomXformable& xformable)
     {
         logDebug("Creating animation for '{}'.", xformable.GetPath().GetString());
         FALCOR_ASSERT(xformable.TransformMightBeTimeVarying());
@@ -1633,7 +1736,7 @@ namespace Falcor
         auto xformAPI = UsdGeomXformCommonAPI(xformable);
 
         // Gather keyframes
-        auto pAnimation = Animation::create(xformable.GetPath().GetString(), Scene::kInvalidNode, times.back() / timeCodesPerSecond);
+        auto pAnimation = Animation::create(xformable.GetPath().GetString(), NodeID::Invalid(), times.back() / timeCodesPerSecond);
 
         for (double t : times)
         {
@@ -1641,7 +1744,7 @@ namespace Falcor
             pAnimation->addKeyframe(keyframe);
         }
 
-        uint32_t nodeID = builder.addNode(makeNode(xformable.GetPath().GetString(), nodeStack.back()));
+        NodeID nodeID = builder.addNode(makeNode(xformable.GetPath().GetString(), nodeStack.back()));
         pAnimation->setNodeID(nodeID);
         builder.addAnimation(pAnimation);
         return nodeID;
@@ -1831,6 +1934,9 @@ namespace Falcor
             UsdGeomPointBased geomPointBased(prim);
             geomPointBased.GetPointsAttr().GetTimeSamples(&mesh.timeSamples);
 
+            if (!gpFramework->getSettings().getAttribute(prim.GetPath().GetString(), "usdImporter:enableMotion", true))
+                mesh.timeSamples.clear();
+
             if (mesh.timeSamples.size() == 0)
             {
                 mesh.timeSamples.push_back(0.0);
@@ -1913,7 +2019,7 @@ namespace Falcor
                 {
                     logDebug("Adding mesh '{}'.", primName);
                     addMesh(prim);
-                    proto.addGeomInstance(primName, prim, float4x4(1.f), float4x4(1.f));
+                    proto.addGeomInstance(primName, prim, rmcv::mat4(1.f), rmcv::mat4(1.f));
                 }
                 else if (prim.IsA<UsdSkelRoot>() ||
                     prim.IsA<UsdSkelSkeleton>() ||
@@ -1975,7 +2081,7 @@ namespace Falcor
         return prototypeGeomMap.find(protoPrim) != prototypeGeomMap.end();
     }
 
-    void ImporterContext::addGeomInstance(const std::string& name, const UsdPrim& prim, const float4x4& xform, const float4x4& bindXform)
+    void ImporterContext::addGeomInstance(const std::string& name, const UsdPrim& prim, const rmcv::mat4& xform, const rmcv::mat4& bindXform)
     {
         geomInstances.push_back(GeomInstance{ name, prim, xform, bindXform, nodeStack.back()});
     }
@@ -2079,7 +2185,7 @@ namespace Falcor
             }
             else
             {
-                protoInst.xform = toGlm(instXforms[i]);
+                protoInst.xform = toRMCV(instXforms[i]);
             }
 
             if (proto)
@@ -2103,8 +2209,25 @@ namespace Falcor
         }
 
         uint32_t index = (uint32_t)curves.size();
+
         CurveTessellationMode mode = CurveTessellationMode::LinearSweptSphere;
-        if (is_set(builder.getFlags(), SceneBuilder::Flags::TessellateCurvesIntoPolyTubes)) mode = CurveTessellationMode::PolyTube;
+
+        if (is_set(builder.getFlags(), SceneBuilder::Flags::TessellateCurvesIntoPolyTubes))
+        {
+            mode = CurveTessellationMode::PolyTube;
+        }
+
+        // Example of Attribute
+        {
+            if(auto strMode = gpFramework->getSettings().getAttribute<std::string>(curvePrim.GetPath().GetString(), "curves:mode"))
+            {
+                if(strMode == "lss")
+                    mode = CurveTessellationMode::LinearSweptSphere;
+                else if(strMode == "polytube")
+                    mode = CurveTessellationMode::PolyTube;
+            }
+        }
+
         curves.push_back(Curve{ curvePrim, mode });
         curveMap.emplace(curvePrim, index);
     }
@@ -2203,9 +2326,9 @@ namespace Falcor
             {
                 SceneBuilder::Node n;
                 n.name = joints[i].GetString();
-                n.transform = toGlm(restTransform[i]);
-                n.localToBindPose = inverse(toGlm(bindTransform[i]));
-                n.parent = skelTopo.IsRoot(i) ? Scene::kInvalidNode : skelTopo.GetParent(i);
+                n.transform = toRMCV(restTransform[i]);
+                n.localToBindPose = rmcv::inverse(toRMCV(bindTransform[i]));
+                n.parent = skelTopo.IsRoot(i) ? NodeID::Invalid() : NodeID{ skelTopo.GetParent(i) };
                 subskeleton.bones.push_back(n);
             }
 
@@ -2215,7 +2338,7 @@ namespace Falcor
             // Init Animations
             for (uint32_t i = 0; i < uint32_t(subskeleton.bones.size()); i++)
             {
-                subskeleton.animations.push_back(Animation::create(subskeleton.bones[i].name, i, times.back() / timeCodesPerSecond));
+                subskeleton.animations.push_back(Animation::create(subskeleton.bones[i].name, NodeID{ i }, times.back() / timeCodesPerSecond));
             }
 
             // Load animation data
@@ -2242,15 +2365,15 @@ namespace Falcor
         }
     }
 
-    float4x4 ImporterContext::getLocalToWorldXform(const UsdGeomXformable& prim, UsdTimeCode timeCode)
+    rmcv::mat4 ImporterContext::getLocalToWorldXform(const UsdGeomXformable& prim, UsdTimeCode timeCode)
     {
-        float4x4 localToWorld = toGlm(prim.ComputeLocalToWorldTransform(timeCode));
+        rmcv::mat4 localToWorld = toRMCV(prim.ComputeLocalToWorldTransform(timeCode));
         return rootXform * localToWorld;
     }
 
     void ImporterContext::pushNode(const UsdGeomXformable& prim)
     {
-        uint32_t nodeID;
+        NodeID nodeID;
         if (prim.TransformMightBeTimeVarying())
         {
             nodeID = createAnimation(prim);
@@ -2259,7 +2382,7 @@ namespace Falcor
         {
             // The node stack should at least contain the root node.
             FALCOR_ASSERT(nodeStack.size() > 0);
-            float4x4 localTransform;
+            rmcv::mat4 localTransform;
             bool resets = getLocalTransform(prim, localTransform);
             SceneBuilder::Node node;
             node.name = prim.GetPath().GetString();
@@ -2270,7 +2393,7 @@ namespace Falcor
         nodeStack.push_back(nodeID);
     }
 
-    float4x4 ImporterContext::getGeomBindTransform(const UsdPrim& usdPrim) const
+    rmcv::mat4 ImporterContext::getGeomBindTransform(const UsdPrim& usdPrim) const
     {
         GfMatrix4d bindXform(1.0);
         UsdGeomPrimvar geomBindTransform(UsdGeomPrimvarsAPI(usdPrim).GetPrimvar(UsdSkelTokens->primvarsSkelGeomBindTransform));
@@ -2279,10 +2402,10 @@ namespace Falcor
             geomBindTransform.Get(&bindXform, UsdTimeCode::EarliestTime());
         }
 
-        return toGlm(bindXform);
+        return toRMCV(bindXform);
     }
 
-    void ImporterContext::pushNodeStack(uint32_t rootNode)
+    void ImporterContext::pushNodeStack(NodeID rootNode)
     {
         nodeStackStartDepth.push_back(nodeStack.size());
         nodeStack.push_back(rootNode);
@@ -2300,9 +2423,9 @@ namespace Falcor
         nodeStackStartDepth.pop_back();
     }
 
-    void ImporterContext::setRootXform(const float4x4& xform)
+    void ImporterContext::setRootXform(const rmcv::mat4& xform)
     {
-        if (rootXformNodeId != Scene::kInvalidIndex)
+        if (rootXformNodeId != NodeID::Invalid())
         {
             throw RuntimeError("ImporterContext::setRootXform() - Root xform has already been set.");
         }
@@ -2322,9 +2445,9 @@ namespace Falcor
         pushNodeStack(rootXformNodeId);
     }
 
-    void ImporterContext::addCurveInstance(const std::string& name, const UsdPrim& curvePrim, const float4x4& xform, uint32_t parentID)
+    void ImporterContext::addCurveInstance(const std::string& name, const UsdPrim& curvePrim, const rmcv::mat4& xform, NodeID parentID)
     {
-        curveInstances.push_back(GeomInstance{ name, curvePrim, xform, glm::float4x4(1.f), parentID });
+        curveInstances.push_back(GeomInstance{ name, curvePrim, xform, rmcv::mat4(1.f), parentID });
     }
 
     void ImporterContext::finalize()

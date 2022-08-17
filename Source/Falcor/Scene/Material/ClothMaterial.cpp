@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,11 +25,16 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "ClothMaterial.h"
+#include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
 {
+    namespace
+    {
+        const char kShaderFile[] = "Rendering/Materials/ClothMaterial.slang";
+    }
+
     ClothMaterial::SharedPtr ClothMaterial::create(const std::string& name)
     {
         return SharedPtr(new ClothMaterial(name));
@@ -42,6 +47,16 @@ namespace Falcor
         mTextureSlotInfo[(uint32_t)TextureSlot::BaseColor] = { "baseColor", TextureChannelFlags::RGBA, true };
         mTextureSlotInfo[(uint32_t)TextureSlot::Specular] = { "specular", TextureChannelFlags::Green, false };
         mTextureSlotInfo[(uint32_t)TextureSlot::Normal] = { "normal", TextureChannelFlags::RGB, false };
+    }
+
+    Program::ShaderModuleList ClothMaterial::getShaderModules() const
+    {
+        return { Program::ShaderModule(kShaderFile) };
+    }
+
+    Program::TypeConformanceList ClothMaterial::getTypeConformances() const
+    {
+        return { {{"ClothMaterial", "IMaterial"}, (uint32_t)MaterialType::Cloth} };
     }
 
     void ClothMaterial::renderSpecularUI(Gui::Widgets& widget)
@@ -61,6 +76,8 @@ namespace Falcor
 
     FALCOR_SCRIPT_BINDING(ClothMaterial)
     {
+        using namespace pybind11::literals;
+
         FALCOR_SCRIPT_BINDING_DEPENDENCY(BasicMaterial)
 
         pybind11::class_<ClothMaterial, BasicMaterial, ClothMaterial::SharedPtr> material(m, "ClothMaterial");

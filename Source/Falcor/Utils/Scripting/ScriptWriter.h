@@ -26,8 +26,12 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "ScriptBindings.h"
+#include "Dictionary.h"
 #include "Core/Platform/OS.h"
-#include "Utils/Scripting/Dictionary.h"
+#include <algorithm>
+#include <filesystem>
+#include <string>
 
 namespace Falcor
 {
@@ -53,22 +57,7 @@ namespace Falcor
         }
 
         template<typename T>
-        static std::string getArgString(const T& arg)
-        {
-            return ScriptBindings::repr(arg);
-        }
-
-        template<>
-        static std::string getArgString(const Dictionary& dictionary)
-        {
-            return dictionary.toString();
-        }
-
-        template<>
-        static std::string getArgString(const VariableName& varName)
-        {
-            return varName.name;
-        }
+        static std::string getArgString(const T& arg);
 
         template<typename Arg, typename...Args>
         static std::string makeFunc(const std::string& func, Arg first, Args...args)
@@ -111,4 +100,24 @@ namespace Falcor
             return str;
         }
     };
+
+
+    template<typename T>
+    std::string ScriptWriter::getArgString(const T& arg)
+    {
+        return ScriptBindings::repr(arg);
+    }
+
+    template<>
+    inline std::string ScriptWriter::getArgString(const Dictionary& dictionary)
+    {
+        return dictionary.toString();
+    }
+
+    template<>
+    inline std::string ScriptWriter::getArgString(const ScriptWriter::VariableName& varName)
+    {
+        return varName.name;
+    }
+
 }

@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "../../Mogwai.h"
+#include <fstream>
 
 namespace Mogwai
 {

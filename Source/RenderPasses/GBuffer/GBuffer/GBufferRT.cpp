@@ -98,7 +98,7 @@ void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
     // In this pass all outputs are optional, so we must first find one that exists.
     Texture::SharedPtr pOutput;
     auto findOutput = [&](const std::string& name) {
-        auto pTex = renderData[name]->asTexture();
+        auto pTex = renderData.getTexture(name);
         if (pTex && !pOutput) pOutput = pTex;
     };
     for (const auto& channel : kGBufferChannels) findOutput(channel.name);
@@ -204,11 +204,12 @@ void GBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData&
 
         // Create ray tracing program.
         RtProgram::Desc desc;
+        desc.addShaderModules(mpScene->getShaderModules());
         desc.addShaderLibrary(kProgramRaytraceFile);
+        desc.addTypeConformances(mpScene->getTypeConformances());
         desc.setMaxPayloadSize(kMaxPayloadSizeBytes);
         desc.setMaxAttributeSize(mpScene->getRaytracingMaxAttributeSize());
         desc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
-        desc.addTypeConformances(mpScene->getTypeConformances());
 
         RtBindingTable::SharedPtr sbt = RtBindingTable::create(1, 1, mpScene->getGeometryCount());
         sbt->setRayGen(desc.addRayGen("rayGen"));
@@ -263,7 +264,8 @@ void GBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
     if (!mpComputePass)
     {
     	Program::Desc desc;
-    	desc.addShaderLibrary(kProgramComputeFile).csEntry("main").setShaderModel("6_5");
+        desc.addShaderModules(mpScene->getShaderModules());
+        desc.addShaderLibrary(kProgramComputeFile).csEntry("main").setShaderModel("6_5");
         desc.addTypeConformances(mpScene->getTypeConformances());
 
         Program::DefineList defines;

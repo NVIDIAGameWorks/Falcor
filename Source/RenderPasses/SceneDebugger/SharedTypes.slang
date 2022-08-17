@@ -45,6 +45,8 @@ enum class SceneDebuggerMode : uint32_t
     GeometryID,
     BlasID,
     InstancedGeometry,
+    PrimitiveID,
+    FlatShaded
 };
 
 struct SceneDebuggerParams

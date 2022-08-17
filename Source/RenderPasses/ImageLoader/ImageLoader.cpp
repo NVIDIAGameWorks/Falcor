@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "ImageLoader.h"
+#include "RenderGraph/RenderPassLibrary.h"
 
 const RenderPass::Info ImageLoader::kInfo { "ImageLoader", "Load an image into a texture." };
 
@@ -112,7 +113,7 @@ void ImageLoader::compile(RenderContext* pRenderContext, const CompileData& comp
 
 void ImageLoader::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    const auto& pDstTex = renderData[kDst]->asTexture();
+    const auto& pDstTex = renderData.getTexture(kDst);
     FALCOR_ASSERT(pDstTex);
     mOutputFormat = pDstTex->getFormat();
     mOutputSize = { pDstTex->getWidth(), pDstTex->getHeight() };

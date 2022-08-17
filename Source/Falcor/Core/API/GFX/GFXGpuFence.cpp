@@ -25,9 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Core/API/GpuFence.h"
-#include <slang/slang-gfx.h>
+#include "Core/API/Device.h"
+#include "Core/API/GFX/GFXAPI.h"
+#include "Core/Assert.h"
+#include "Core/Errors.h"
 
 namespace Falcor
 {
@@ -37,16 +39,14 @@ namespace Falcor
         D3D12FenceHandle d3d12Handle;
     };
 
-    GpuFence::~GpuFence()
-    {
-        safe_delete(mpApiData);
-    }
+    GpuFence::GpuFence() : mCpuValue(0) {}
+    GpuFence::~GpuFence() = default;
 
     GpuFence::SharedPtr GpuFence::create(bool shared)
     {
         FALCOR_ASSERT(gpDevice);
         SharedPtr pFence = SharedPtr(new GpuFence());
-        pFence->mpApiData = new FenceApiData;
+        pFence->mpApiData.reset(new FenceApiData);
         gfx::IFence::Desc fenceDesc = {};
         if (SLANG_FAILED(gpDevice->getApiHandle()->createFence(fenceDesc, pFence->mpApiData->gfxFence.writeRef())))
         {
@@ -56,7 +56,7 @@ namespace Falcor
 
         pFence->mCpuValue++;
 
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         gfx::InteropHandle nativeHandle = {};
         pFence->mpApiData->gfxFence->getNativeHandle(&nativeHandle);
         FALCOR_ASSERT(nativeHandle.api == gfx::InteropHandleAPI::D3D12);
@@ -109,7 +109,7 @@ namespace Falcor
 
     const D3D12FenceHandle& GpuFence::getD3D12Handle() const
     {
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         return mpApiData->d3d12Handle;
 #else
         throw RuntimeError("D3D12 is not available.");

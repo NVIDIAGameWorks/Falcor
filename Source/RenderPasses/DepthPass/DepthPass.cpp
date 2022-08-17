@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "DepthPass.h"
+#include "RenderGraph/RenderPassLibrary.h"
 
 const RenderPass::Info DepthPass::kInfo { "DepthPass", "Creates a depth-buffer using the scene's active camera." };
 
@@ -75,11 +76,7 @@ DepthPass::SharedPtr DepthPass::create(RenderContext* pRenderContext, const Dict
 DepthPass::DepthPass(const Dictionary& dict)
     : RenderPass(kInfo)
 {
-    Program::Desc desc;
-    desc.addShaderLibrary(kProgramFile).vsEntry("vsMain").psEntry("psMain");
-    GraphicsProgram::SharedPtr pProgram = GraphicsProgram::create(desc);
     mpState = GraphicsState::create();
-    mpState->setProgram(pProgram);
     mpFbo = Fbo::create();
 
     parseDictionary(dict);
@@ -99,17 +96,23 @@ void DepthPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& 
 
     if (mpScene)
     {
-        auto pProgram = mpState->getProgram();
-        pProgram->addDefines(mpScene->getSceneDefines());
-        pProgram->addDefine("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
-        pProgram->setTypeConformances(mpScene->getTypeConformances());
+        auto defines = mpScene->getSceneDefines();
+        defines.add("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
+
+        Program::Desc desc;
+        desc.addShaderModules(mpScene->getShaderModules());
+        desc.addShaderLibrary(kProgramFile).vsEntry("vsMain").psEntry("psMain");
+        desc.addTypeConformances(mpScene->getTypeConformances());
+        GraphicsProgram::SharedPtr pProgram = GraphicsProgram::create(desc, defines);
+
         mpVars = GraphicsVars::create(pProgram->getReflector());
+        mpState->setProgram(pProgram);
     }
 }
 
 void DepthPass::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    const auto& pDepth = renderData[kDepth]->asTexture();
+    const auto& pDepth = renderData.getTexture(kDepth);
     mpFbo->attachDepthStencilTarget(pDepth);
 
     mpState->setFbo(mpFbo);

@@ -25,8 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "MaterialSystem.h"
+#include "StandardMaterial.h"
+#include "Core/API/Device.h"
+#include "Utils/Logger.h"
+#include "Utils/StringUtils.h"
 #include <numeric>
 
 namespace Falcor
@@ -85,7 +88,12 @@ namespace Falcor
         // so there is some room for adding materials at runtime after scene creation until running into this limit.
         // TODO: Remove this when unbounded descriptor arrays are supported (#1321).
         mTextureDescCount = getMaterialCount() * (size_t)Material::TextureSlot::Count;
-        mBufferDescCount = getMaterialCount() * kMaxBufferCountPerMaterial;
+
+        mBufferDescCount = 0;
+        for (const auto& material : mMaterials)
+        {
+            mBufferDescCount += material->getBufferCount();
+        }
     }
 
     void MaterialSystem::renderUI(Gui::Widgets& widget)
@@ -191,14 +199,23 @@ namespace Falcor
         return bufferID;
     }
 
-    uint32_t MaterialSystem::addMaterial(const Material::SharedPtr& pMaterial)
+    void MaterialSystem::replaceBuffer(uint32_t id, const Buffer::SharedPtr& pBuffer)
+    {
+        FALCOR_ASSERT(pBuffer);
+        checkArgument(id < mBuffers.size(), "'id' is out of bounds.");
+
+        mBuffers[id] = pBuffer;
+        mBuffersChanged = true;
+    }
+
+    MaterialID MaterialSystem::addMaterial(const Material::SharedPtr& pMaterial)
     {
         FALCOR_ASSERT(pMaterial);
 
         // Reuse previously added materials.
         if (auto it = std::find(mMaterials.begin(), mMaterials.end(), pMaterial); it != mMaterials.end())
         {
-            return (uint32_t)std::distance(mMaterials.begin(), it);
+            return MaterialID{(size_t)std::distance(mMaterials.begin(), it) };
         }
 
         // Add material.
@@ -206,7 +223,7 @@ namespace Falcor
         {
             throw RuntimeError("Too many materials");
         }
-        const uint32_t materialID = static_cast<uint32_t>(mMaterials.size());
+        const MaterialID materialID{ mMaterials.size() };
 
         if (pMaterial->getDefaultTextureSampler() == nullptr)
         {
@@ -231,10 +248,10 @@ namespace Falcor
         return mMaterialCountByType[index];
     }
 
-    const Material::SharedPtr& MaterialSystem::getMaterial(const uint32_t materialID) const
+    const Material::SharedPtr& MaterialSystem::getMaterial(const MaterialID materialID) const
     {
-        FALCOR_ASSERT(materialID < mMaterials.size());
-        return mMaterials[materialID];
+        FALCOR_ASSERT_LT(materialID.get(), mMaterials.size());
+        return mMaterials[materialID.get()];
     }
 
     Material::SharedPtr MaterialSystem::getMaterialByName(const std::string& name) const
@@ -246,25 +263,25 @@ namespace Falcor
         return nullptr;
     }
 
-    size_t MaterialSystem::removeDuplicateMaterials(std::vector<uint32_t>& idMap)
+    size_t MaterialSystem::removeDuplicateMaterials(std::vector<MaterialID>& idMap)
     {
         std::vector<Material::SharedPtr> uniqueMaterials;
         idMap.resize(mMaterials.size());
 
         // Find unique set of materials.
-        for (uint32_t id = 0; id < mMaterials.size(); ++id)
+        for (MaterialID id{ 0 }; id.get() < mMaterials.size(); ++id)
         {
-            const auto& pMaterial = mMaterials[id];
+            const auto& pMaterial = mMaterials[id.get()];
             auto it = std::find_if(uniqueMaterials.begin(), uniqueMaterials.end(), [&pMaterial](const auto& m) { return m->isEqual(pMaterial); });
             if (it == uniqueMaterials.end())
             {
-                idMap[id] = (uint32_t)uniqueMaterials.size();
+                idMap[id.get()] = MaterialID{ uniqueMaterials.size() };
                 uniqueMaterials.push_back(pMaterial);
             }
             else
             {
                 logInfo("Removing duplicate material '{}' (duplicate of '{}').", pMaterial->getName(), (*it)->getName());
-                idMap[id] = (uint32_t)std::distance(uniqueMaterials.begin(), it);
+                idMap[id.get()] = MaterialID{ (size_t)std::distance(uniqueMaterials.begin(), it) };
 
                 // Update metadata.
                 if (isSpecGloss(pMaterial)) mSpecGlossMaterialCount--;
@@ -414,6 +431,26 @@ namespace Falcor
             for (size_t i = 0; i < mBuffers.size(); i++) var[i] = mBuffers[i];
         }
 
+        // Update shader modules and type conformances.
+        // This is done by iterating over all materials to query their properties.
+        // We de-duplicate the result to store the unique set of shader modules and type conformances needed.
+        if (forceUpdate || is_set(flags, Material::UpdateFlags::CodeChanged))
+        {
+            mShaderModules.clear();
+            mTypeConformances.clear();
+
+            for (const auto& pMaterial : mMaterials)
+            {
+                const auto materialType = pMaterial->getType();
+                if (mTypeConformances.find(materialType) == mTypeConformances.end())
+                {
+                    auto modules = pMaterial->getShaderModules();
+                    mShaderModules.insert(mShaderModules.end(), modules.begin(), modules.end());
+                    mTypeConformances[materialType] = pMaterial->getTypeConformances();
+                }
+            }
+        }
+
         mSamplersChanged = false;
         mBuffersChanged = false;
         mMaterialsChanged = false;
@@ -483,23 +520,21 @@ namespace Falcor
     Program::TypeConformanceList MaterialSystem::getTypeConformances() const
     {
         Program::TypeConformanceList typeConformances;
-        for (const auto type : mMaterialTypes)
+        for (const auto& it : mTypeConformances)
         {
-            typeConformances.add(getTypeConformances(type));
+            typeConformances.add(it.second);
         }
         return typeConformances;
     }
 
     Program::TypeConformanceList MaterialSystem::getTypeConformances(const MaterialType type) const
     {
-        switch (type)
+        auto it = mTypeConformances.find(type);
+        if (it == mTypeConformances.end())
         {
-        case MaterialType::Standard: return Program::TypeConformanceList{ {{"StandardMaterial", "IMaterial"}, (uint32_t)MaterialType::Standard} };
-        case MaterialType::Hair: return Program::TypeConformanceList{ {{"HairMaterial", "IMaterial"}, (uint32_t)MaterialType::Hair} };
-        case MaterialType::Cloth: return Program::TypeConformanceList{ {{"ClothMaterial", "IMaterial"}, (uint32_t)MaterialType::Cloth} };
-        case MaterialType::MERL: return Program::TypeConformanceList{ {{"MERLMaterial", "IMaterial"}, (uint32_t)MaterialType::MERL} };
-        default: throw RuntimeError("Unsupported material type");
+            throw RuntimeError(fmt::format("No type conformances for material type '{}'.", to_string(type)));
         }
+        return it->second;
     }
 
     void MaterialSystem::createParameterBlock()

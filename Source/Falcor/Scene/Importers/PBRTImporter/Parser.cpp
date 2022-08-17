@@ -31,10 +31,15 @@
 // The pbrt source code is licensed under the Apache License, Version 2.0.
 // SPDX: Apache-2.0
 
-#include "stdafx.h"
 #include "Parser.h"
 #include "Helpers.h"
+#include "Core/Assert.h"
+#include "Core/Platform/OS.h"
+#include "Utils/Logger.h"
 
+#include <fast_float/fast_float.h>
+
+#include <atomic>
 #include <charconv>
 
 namespace Falcor
@@ -251,10 +256,11 @@ namespace Falcor
 
             auto begin = t.token.data();
             auto end = t.token.data() + t.token.size();
-            // Skip '+' character, std::from_chars doesn't handle '+'.
+            // Skip '+' character, std::from_chars (and fast_float::from_chars) doesn't handle '+'.
             if (*begin == '+') begin++;
             Float value;
-            auto result = std::from_chars(begin, end, value);
+            // Note: We currently use fast_float::from_chars because std::from_chars for float/double is not well supported yet.
+            auto result = fast_float::from_chars(begin, end, value);
             if (result.ptr != end)
             {
                 throwError(t.loc, "'{}': Expected a number.", t.token);
@@ -269,7 +275,7 @@ namespace Falcor
 
         static std::string_view dequoteString(const Token& t)
         {
-            if (!isQuotedString(t.token)) throwError(t.loc, "'{}' is not a quoted string.");
+            if (!isQuotedString(t.token)) throwError(t.loc, "'{}' is not a quoted string.", t.token);
             std::string_view str = t.token;
             str.remove_prefix(1);
             str.remove_suffix(1);

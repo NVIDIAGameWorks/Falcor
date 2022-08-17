@@ -49,17 +49,21 @@
 #define SETTER_DECL
 #define CONST_FUNCTION const
 
+#define FALCOR_STATIC_ASSERT( cond ) static_assert( cond )
+#define FALCOR_STATIC_ASSERT_MSG( cond, msg ) static_assert( cond, msg )
+
 #include "Utils/Math/Vector.h"
 #include "Utils/Math/Float16.h"
-#include "glm/packing.hpp"
+#include <fstd/bit.h> // TODO C++20: Replace with <bit>
+#include <glm/packing.hpp>
 #include <algorithm>
+#include "Utils/Math/Matrix/Matrix.h"
 
 namespace Falcor
 {
-    using uint = uint32_t;
-    using float3x3 = glm::float3x3;
-    using float3x4 = glm::float3x4;
-    using float4x4 = glm::float4x4;
+    using float3x3 = rmcv::mat3;
+    using float4x4 = rmcv::mat4;
+    using float3x4 = rmcv::matrix<3,4, float>;
 
     inline float f16tof32(uint v) { return glm::unpackHalf2x16(v).x; }
     inline float2 f16tof32(uint2 v) { return { f16tof32(v.x), f16tof32(v.y) }; };
@@ -76,24 +80,12 @@ namespace Falcor
     inline float3 saturate(float3 v) { return float3(saturate(v.x), saturate(v.y), saturate(v.z)); }
     inline float4 saturate(float4 v) { return float4(saturate(v.x), saturate(v.y), saturate(v.z), saturate(v.w)); }
 
-    /** Generic reinterpret/bit cast.
-        TODO: Replace by std::bit_cast<T> when it is available in Visual Studio.
-    */
-    template<typename T, typename F>
-    const T bit_cast(const F& from) noexcept
-    {
-        static_assert(sizeof(T) == sizeof(F));
-        T result;
-        memcpy(&result, &from, sizeof(from));
-        return result;
-    }
-
-    inline float asfloat(uint32_t i) { return bit_cast<float>(i); }
-    inline float asfloat(int32_t i) { return bit_cast<float>(i); }
-    inline float16_t asfloat16(uint16_t i) { return bit_cast<float16_t>(i); }
-    inline uint32_t asuint(float f) { return bit_cast<uint32_t>(f); }
-    inline int32_t asint(float f) { return bit_cast<int32_t>(f); }
-    inline uint16_t asuint16(float16_t f) { return bit_cast<uint16_t>(f); }
+    inline float asfloat(uint32_t i) { return fstd::bit_cast<float>(i); }
+    inline float asfloat(int32_t i) { return fstd::bit_cast<float>(i); }
+    inline float16_t asfloat16(uint16_t i) { return fstd::bit_cast<float16_t>(i); }
+    inline uint32_t asuint(float f) { return fstd::bit_cast<uint32_t>(f); }
+    inline int32_t asint(float f) { return fstd::bit_cast<int32_t>(f); }
+    inline uint16_t asuint16(float16_t f) { return fstd::bit_cast<uint16_t>(f); }
 }
 
 #else // HOST_CODE
@@ -106,5 +98,8 @@ namespace Falcor
 #define BEGIN_NAMESPACE_FALCOR
 #define END_NAMESPACE_FALCOR
 #define CONST_FUNCTION
+
+#define FALCOR_STATIC_ASSERT( cond )
+#define FALCOR_STATIC_ASSERT_MSG( cond, msg )
 
 #endif // HOST_CODE

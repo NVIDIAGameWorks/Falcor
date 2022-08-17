@@ -26,12 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "glm/gtc/quaternion.hpp"
-#include "glm/geometric.hpp"
-#include "glm/gtc/matrix_transform.hpp"
-#include "glm/gtx/quaternion.hpp"
-#define _USE_MATH_DEFINES
-#include <math.h>
+
+#include "Utils/Math/Matrix/Matrix.h"
+#include "Vector.h"
+#include "Core/Errors.h"
+#include "Utils/Logger.h"
 
 namespace Falcor
 {
@@ -69,12 +68,12 @@ namespace Falcor
         \param[in] matrix The matrix to check.
         \return True if valid else false.
     */
-    template<glm::length_t C, glm::length_t R, typename T, glm::qualifier Q>
-    inline bool isMatrixValid(const glm::mat<C, R, T, Q>& matrix)
+    template<int R, int C, typename T>
+    inline bool isMatrixValid(const rmcv::matrix<R, C, T>& m)
     {
-        for (glm::length_t c = 0; c < C; c++)
+        for (int r = 0; r < R; r++)
         {
-            if (glm::any(glm::isinf(matrix[c])) || glm::any(glm::isnan(matrix[c])))
+            if (glm::any(glm::isinf(m[r])) || glm::any(glm::isnan(m[r])))
                 return false;
         }
         return true;
@@ -84,34 +83,33 @@ namespace Falcor
         \param[in] matrix The matrix to check.
         \return True if affine else false.
     */
-    template<glm::length_t C, glm::length_t R, typename T, glm::qualifier Q>
-    inline bool isMatrixAffine(const glm::mat<C, R, T, Q>& matrix)
+    template<int R, int C, typename T>
+    inline bool isMatrixAffine(const rmcv::matrix<R, C, T>& m)
     {
         GLM_STATIC_ASSERT(std::numeric_limits<T>::is_iec559 || GLM_CONFIG_UNRESTRICTED_GENTYPE, "'isMatrixAffine' only accept floating-point inputs");
 
-        const glm::length_t lastRow = R - 1;
-        const glm::length_t lastCol = C - 1;
+        const int lastRow = R - 1;
+        const int lastCol = C - 1;
 
-        bool affine = true;
-        for (glm::length_t c = 0; c < lastCol; c++)
+        for (int c = 0; c < lastCol; c++)
         {
-            if (matrix[c][lastRow] != 0.f)
-                affine = false;
+            if (m[lastRow][c] != 0.f)
+                return false;
         }
 
-        if (matrix[lastCol][lastRow] != 1.f)
-            affine = false;
+        if (m[lastRow][lastCol] != 1.f)
+            return false;
 
-        return affine;
+        return true;
     }
 
     /** Check if transform matrix have no inf/nan values and if it is affine. If it is not affine, it will return an affine matrix and if it is not valid, it will throw a runtime error.
         \param[in] transform Transform matrix.
         \return A copy of the matrix that is affine.
     */
-    inline glm::mat4x4 validateTransformMatrix(const glm::mat4x4& transform)
+    inline rmcv::mat4 validateTransformMatrix(const rmcv::mat4& transform)
     {
-        glm::mat4x4 newMatrix(transform);
+        rmcv::mat4 newMatrix(transform);
 
         if (!isMatrixValid(newMatrix))
         {
@@ -121,8 +119,7 @@ namespace Falcor
         if (!isMatrixAffine(newMatrix))
         {
             logWarning("Transform matrix is not affine. Setting last row to (0,0,0,1).");
-            newMatrix[0][3] = newMatrix[1][3] = newMatrix[2][3] = 0.f;
-            newMatrix[3][3] = 1.f;
+            newMatrix[3] = rmcv::vec4(0, 0, 0, 1);
         }
 
         return newMatrix;

@@ -25,18 +25,27 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include "assimp/Importer.hpp"
-#include "assimp/postprocess.h"
-#include "assimp/scene.h"
-#include "assimp/pbrmaterial.h"
 #include "AssimpImporter.h"
-#include "Utils/StringUtils.h"
-#include "Utils/Timing/TimeReport.h"
+#include "Core/Assert.h"
 #include "Core/API/Device.h"
+#include "Utils/Logger.h"
+#include "Utils/StringUtils.h"
+#include "Utils/NumericRange.h"
+#include "Utils/Timing/TimeReport.h"
+#include "Utils/Math/Common.h"
+#include "Utils/Math/FalcorMath.h"
+#include "Scene/Importer.h"
 #include "Scene/SceneBuilder.h"
+#include "Scene/Material/Material.h"
+#include "Scene/Material/StandardMaterial.h"
+
+#include <assimp/Importer.hpp>
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
+#include <assimp/pbrmaterial.h>
 
 #include <execution>
+#include <fstream>
 
 namespace Falcor
 {
@@ -65,15 +74,16 @@ namespace Falcor
             GLTF2,
         };
 
-        glm::mat4 aiCast(const aiMatrix4x4& aiMat)
+        rmcv::mat4 aiCast(const aiMatrix4x4& aiMat)
         {
-            glm::mat4 glmMat;
-            glmMat[0][0] = aiMat.a1; glmMat[0][1] = aiMat.a2; glmMat[0][2] = aiMat.a3; glmMat[0][3] = aiMat.a4;
-            glmMat[1][0] = aiMat.b1; glmMat[1][1] = aiMat.b2; glmMat[1][2] = aiMat.b3; glmMat[1][3] = aiMat.b4;
-            glmMat[2][0] = aiMat.c1; glmMat[2][1] = aiMat.c2; glmMat[2][2] = aiMat.c3; glmMat[2][3] = aiMat.c4;
-            glmMat[3][0] = aiMat.d1; glmMat[3][1] = aiMat.d2; glmMat[3][2] = aiMat.d3; glmMat[3][3] = aiMat.d4;
+            rmcv::mat4 m{
+            aiMat.a1, aiMat.a2, aiMat.a3, aiMat.a4,
+            aiMat.b1, aiMat.b2, aiMat.b3, aiMat.b4,
+            aiMat.c1, aiMat.c2, aiMat.c3, aiMat.c4,
+            aiMat.d1, aiMat.d2, aiMat.d3, aiMat.d4
+            };
 
-            return transpose(glmMat);
+            return m;
         }
 
         float3 aiCast(const aiColor3D& ai)
@@ -143,16 +153,16 @@ namespace Falcor
             const aiScene* pScene;
             SceneBuilder& builder;
             std::map<uint32_t, Material::SharedPtr> materialMap;
-            std::map<uint32_t, uint32_t> meshMap; // Assimp mesh index to Falcor mesh ID
+            std::map<uint32_t, MeshID> meshMap; // Assimp mesh index to Falcor mesh ID
             const SceneBuilder::InstanceMatrices& modelInstances;
-            std::map<std::string, glm::mat4> localToBindPoseMatrices;
+            std::map<std::string, rmcv::mat4> localToBindPoseMatrices;
 
-            uint32_t getFalcorNodeID(const aiNode* pNode) const
+            NodeID getFalcorNodeID(const aiNode* pNode) const
             {
                 return mAiToFalcorNodeID.at(pNode);
             }
 
-            uint32_t getFalcorNodeID(const std::string& aiNodeName, uint32_t index) const
+            NodeID getFalcorNodeID(const std::string& aiNodeName, uint32_t index) const
             {
                 try
                 {
@@ -160,7 +170,7 @@ namespace Falcor
                 }
                 catch (const std::exception&)
                 {
-                    return SceneBuilder::kInvalidNode;
+                    return NodeID::Invalid();
                 }
             }
 
@@ -169,7 +179,7 @@ namespace Falcor
                 return (uint32_t)mAiNodes.at(nodeName).size();
             }
 
-            void addAiNode(const aiNode* pNode, uint32_t falcorNodeID)
+            void addAiNode(const aiNode* pNode, NodeID falcorNodeID)
             {
                 FALCOR_ASSERT(mAiToFalcorNodeID.find(pNode) == mAiToFalcorNodeID.end());
                 mAiToFalcorNodeID[pNode] = falcorNodeID;
@@ -182,7 +192,7 @@ namespace Falcor
             }
 
         private:
-            std::map<const aiNode*, uint32_t> mAiToFalcorNodeID;
+            std::map<const aiNode*, NodeID> mAiToFalcorNodeID;
             std::map<const std::string, std::vector<const aiNode*>> mAiNodes;
 
         };
@@ -297,16 +307,16 @@ namespace Falcor
                 pCamera->setAspectRatio(aspectRatio);
                 pCamera->setDepthRange(pAiCamera->mClipPlaneNear, pAiCamera->mClipPlaneFar);
 
-                uint32_t nodeID = data.getFalcorNodeID(pAiCamera->mName.C_Str(), 0);
+                NodeID nodeID = data.getFalcorNodeID(pAiCamera->mName.C_Str(), 0);
 
-                if (nodeID != SceneBuilder::kInvalidNode)
+                if (nodeID != NodeID::Invalid())
                 {
                     SceneBuilder::Node n;
                     n.name = "Camera.BaseMatrix";
                     n.parent = nodeID;
                     n.transform = pCamera->getViewMatrix();
                     // GLTF2 already uses -Z view direction convention in Assimp, FBX does not
-                    if (importMode != ImportMode::GLTF2) n.transform[2] = -n.transform[2];
+                    if (importMode != ImportMode::GLTF2) n.transform.setCol(2,-n.transform.getCol(2));
                     nodeID = data.builder.addNode(n);
                     pCamera->setNodeID(nodeID);
                     if (data.builder.isNodeAnimated(nodeID))
@@ -320,14 +330,14 @@ namespace Falcor
             }
         }
 
-        void addLightCommon(const Light::SharedPtr& pLight, const glm::mat4& baseMatrix, ImporterData& data, const aiLight* pAiLight)
+        void addLightCommon(const Light::SharedPtr& pLight, const rmcv::mat4& baseMatrix, ImporterData& data, const aiLight* pAiLight)
         {
             FALCOR_ASSERT(pAiLight->mColorDiffuse == pAiLight->mColorSpecular);
             pLight->setIntensity(aiCast(pAiLight->mColorSpecular));
 
             // Find if the light is affected by a node
-            uint32_t nodeID = data.getFalcorNodeID(pAiLight->mName.C_Str(), 0);
-            if (nodeID != SceneBuilder::kInvalidNode)
+            NodeID nodeID = data.getFalcorNodeID(pAiLight->mName.C_Str(), 0);
+            if (nodeID != NodeID::Invalid())
             {
                 SceneBuilder::Node n;
                 n.name = pLight->getName() + ".BaseMatrix";
@@ -345,8 +355,8 @@ namespace Falcor
             DirectionalLight::SharedPtr pLight = DirectionalLight::create(pAiLight->mName.C_Str());
             float3 direction = normalize(aiCast(pAiLight->mDirection));
             pLight->setWorldDirection(direction);
-            glm::mat4 base;
-            base[2] = float4(-direction, 0);
+            rmcv::mat4 base;
+            base.setCol(2, float4(-direction, 0));
             addLightCommon(pLight, base, data, pAiLight);
         }
 
@@ -367,11 +377,12 @@ namespace Falcor
             pLight->setPenumbraAngle(pAiLight->mAngleOuterCone - pAiLight->mAngleInnerCone);
 
             float3 right = cross(direction, up);
-            glm::mat4 base;
-            base[0] = float4(right, 0);
-            base[1] = float4(up, 0);
-            base[2] = float4(-direction, 0);
-            base[3] = float4(position, 1);
+            rmcv::mat4 base;
+            // Set it as rows here, really?
+            base.setCol(0, float4(right, 0));
+            base.setCol(1, float4(up, 0));
+            base.setCol(2, float4(-direction, 0));
+            base.setCol(3, float4(position, 1));
 
             addLightCommon(pLight, base, data, pAiLight);
         }
@@ -454,13 +465,14 @@ namespace Falcor
             ids.resize(vertexCount);
 
             std::fill(weights.begin(), weights.end(), float4(0.f));
-            std::fill(ids.begin(), ids.end(), uint4(Scene::kInvalidBone));
+            std::fill(ids.begin(), ids.end(), uint4(NodeID::kInvalidID));
+            static_assert(sizeof(uint4) == 4 * sizeof(NodeID::IntType));
 
             for (uint32_t bone = 0; bone < pAiMesh->mNumBones; bone++)
             {
                 const aiBone* pAiBone = pAiMesh->mBones[bone];
                 FALCOR_ASSERT(data.getNodeInstanceCount(pAiBone->mName.C_Str()) == 1);
-                uint32_t aiBoneID = data.getFalcorNodeID(pAiBone->mName.C_Str(), 0);
+                NodeID aiBoneID = data.getFalcorNodeID(pAiBone->mName.C_Str(), 0);
 
                 // The way Assimp works, the weights holds the IDs of the vertices it affects.
                 // We loop over all the weights, initializing the vertices data along the way
@@ -480,9 +492,9 @@ namespace Falcor
                     bool emptySlotFound = false;
                     for (uint32_t j = 0; j < Scene::kMaxBonesPerVertex; j++)
                     {
-                        if (vertexIds[j] == Scene::kInvalidBone)
+                        if (vertexIds[j] == NodeID::kInvalidID)
                         {
-                            vertexIds[j] = aiBoneID;
+                            vertexIds[j] = aiBoneID.getSlang();
                             vertexWeights[j] = aiWeight.mWeight;
                             emptySlotFound = true;
                             break;
@@ -598,7 +610,7 @@ namespace Falcor
             uint32_t i = 0;
             for (const auto& mesh : processedMeshes)
             {
-                uint32_t meshID = data.builder.addProcessedMesh(mesh);
+                MeshID meshID = data.builder.addProcessedMesh(mesh);
                 data.meshMap[i++] = meshID;
             }
         }
@@ -627,10 +639,10 @@ namespace Falcor
                     const aiNode* pChild = pNode->mChildren[i];
                     std::string parent = pNode->mName.C_Str();
                     std::string parentType = getNodeType(data, pNode);
-                    std::string parentID = std::to_string(data.getFalcorNodeID(pNode));
+                    std::string parentID = to_string(data.getFalcorNodeID(pNode));
                     std::string me = pChild->mName.C_Str();
                     std::string myType = getNodeType(data, pChild);
-                    std::string myID = std::to_string(data.getFalcorNodeID(pChild));
+                    std::string myID = to_string(data.getFalcorNodeID(pChild));
                     std::replace(parent.begin(), parent.end(), '.', '_');
                     std::replace(me.begin(), me.end(), '.', '_');
                     std::replace(parent.begin(), parent.end(), '$', '_');
@@ -650,9 +662,9 @@ namespace Falcor
             dotfile.close();
         }
 
-        glm::mat4 getLocalToBindPoseMatrix(ImporterData& data, const std::string& name)
+        rmcv::mat4 getLocalToBindPoseMatrix(ImporterData& data, const std::string& name)
         {
-            return isBone(data, name) ? data.localToBindPoseMatrices[name] : glm::identity<glm::mat4>();
+            return isBone(data, name) ? data.localToBindPoseMatrices[name] : rmcv::identity<rmcv::mat4>();
         }
 
         void parseNode(ImporterData& data, const aiNode* pCurrent, bool hasBoneAncestor)
@@ -662,7 +674,7 @@ namespace Falcor
             bool currentIsBone = isBone(data, n.name);
             FALCOR_ASSERT(currentIsBone == false || pCurrent->mNumMeshes == 0);
 
-            n.parent = pCurrent->mParent ? data.getFalcorNodeID(pCurrent->mParent) : SceneBuilder::kInvalidNode;
+            n.parent = pCurrent->mParent ? data.getFalcorNodeID(pCurrent->mParent) : NodeID::Invalid();
             n.transform = aiCast(pCurrent->mTransformation);
             n.localToBindPose = getLocalToBindPoseMatrix(data, n.name);
 
@@ -702,21 +714,21 @@ namespace Falcor
 
         void addMeshInstances(ImporterData& data, aiNode* pNode)
         {
-            uint32_t nodeID = data.getFalcorNodeID(pNode);
+            NodeID nodeID = data.getFalcorNodeID(pNode);
             for (uint32_t mesh = 0; mesh < pNode->mNumMeshes; mesh++)
             {
-                uint32_t meshID = data.meshMap.at(pNode->mMeshes[mesh]);
+                MeshID meshID = data.meshMap.at(pNode->mMeshes[mesh]);
 
                 if (data.modelInstances.size())
                 {
                     for(size_t instance = 0; instance < data.modelInstances.size(); instance++)
                     {
-                        uint32_t instanceNodeID = nodeID;
-                        if(data.modelInstances[instance] != glm::mat4())
+                        NodeID instanceNodeID = nodeID;
+                        if(data.modelInstances[instance] != rmcv::mat4())
                         {
                             // Add nodes
                             SceneBuilder::Node n;
-                            n.name = "Node" + std::to_string(nodeID) + ".instance" + std::to_string(instance);
+                            n.name = "Node" + to_string(nodeID) + ".instance" + std::to_string(instance);
                             n.parent = nodeID;
                             n.transform = data.modelInstances[instance];
                             instanceNodeID = data.builder.addNode(n);
@@ -747,6 +759,8 @@ namespace Falcor
                 aiString aiPath;
                 pAiMaterial->GetTexture(source.aiType, source.aiIndex, &aiPath);
                 std::string path(aiPath.data);
+                // Assets may contain windows native paths, replace '\' with '/' to make compatible on Linux.
+                std::replace(path.begin(), path.end(), '\\', '/');
                 if (path.empty())
                 {
                     logWarning("AssimpImporter: Texture has empty file name, ignoring.");

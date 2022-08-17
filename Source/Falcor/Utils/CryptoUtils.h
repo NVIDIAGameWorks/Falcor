@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,8 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Core/Macros.h"
 #include <array>
 #include <cstdint>
+#include <cstdlib>
 
 namespace Falcor
 {
@@ -39,9 +41,13 @@ namespace Falcor
         using MD = std::array<uint8_t, 20>; ///< Message digest.
 
         SHA1();
-        ~SHA1();
 
-        /** Update hash using the given data.
+        /** Update hash by adding one byte.
+            \param[in] value Value to hash.
+        */
+        void update(uint8_t value);
+
+        /** Update hash by adding the given data.
             \param[in] data Data to hash.
             \param[in] len Length of data in bytes.
         */
@@ -50,7 +56,7 @@ namespace Falcor
         /** Return final message digest.
             \return Returns the SHA-1 message digest.
         */
-        MD final();
+        MD finalize();
 
         /** Compute SHA-1 hash over the given data.
             \param[in] data Data to hash.
@@ -60,6 +66,12 @@ namespace Falcor
         static MD compute(const void* data, size_t len);
 
     private:
-        void* mpCtx;
+        void addByte(uint8_t x);
+        void processBlock(const uint8_t* ptr);
+
+        uint32_t mIndex;
+        uint64_t mBits;
+        uint32_t mState[5];
+        uint8_t mBuf[64];
     };
 };

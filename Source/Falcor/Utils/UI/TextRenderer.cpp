@@ -25,9 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "TextRenderer.h"
 #include "Core/API/RenderContext.h"
+#include "RenderGraph/BasePasses/RasterPass.h"
+#include "Utils/UI/Font.h"
 
 namespace Falcor
 {
@@ -80,16 +81,15 @@ namespace Falcor
             float height = (float)pDstFbo->getHeight();
 
             // Set the matrix
-            glm::mat4 vpTransform;
+            rmcv::mat4 vpTransform;
             vpTransform[0][0] = 2 / width;
             vpTransform[1][1] = -2 / height;
-            vpTransform[3][0] = -1;
-            vpTransform[3][1] = 1;
+            vpTransform[0][3] = -1;
+            vpTransform[1][3] = 1;
 #ifdef FALCOR_FLIP_Y
             vpTransform[1][1] *= -1.0f;
             vpTransform[3][1] *= -1.0f;
 #endif
-
             // Update the program variables
             gTextData.pPass["PerFrameCB"]["gvpTransform"] = vpTransform;
             gTextData.pPass["PerFrameCB"]["gFontColor"] = gTextData.color;
@@ -119,7 +119,7 @@ namespace Falcor
                 {
                     // Regular character
                     const Font::CharTexCrdDesc& desc = gTextData.pFont->getCharDesc(c);
-                    for (uint32_t i = 0; i < arraysize(kVertexPos); i++, vertexCount++)
+                    for (uint32_t i = 0; i < std::size(kVertexPos); i++, vertexCount++)
                     {
                         float2 posScale = kVertexPos[i];
                         float2 charPos = desc.size * posScale;
@@ -150,7 +150,7 @@ namespace Falcor
         static const std::string kShaderFile("Utils/UI/TextRenderer.3d.slang");
 
         // Create a vertex buffer
-        const uint32_t vbSize = (uint32_t)(sizeof(Vertex)*kMaxCharCount*arraysize(kVertexPos));
+        const uint32_t vbSize = (uint32_t)(sizeof(Vertex)*kMaxCharCount*std::size(kVertexPos));
         gTextData.pVb = Buffer::create(vbSize, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, nullptr);
 
         // Create the RenderState

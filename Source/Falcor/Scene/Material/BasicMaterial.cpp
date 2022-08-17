@@ -25,11 +25,17 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "BasicMaterial.h"
+#include "MaterialSystem.h"
+#include "Core/API/Device.h"
+#include "Core/API/RenderContext.h"
 #include "Core/Program/GraphicsProgram.h"
 #include "Core/Program/ProgramVars.h"
+#include "Utils/Logger.h"
+#include "Utils/Math/Common.h"
 #include "Utils/Color/ColorHelpers.slang"
+#include "Utils/Scripting/ScriptBindings.h"
+#include <sstream>
 
 namespace Falcor
 {
@@ -56,6 +62,7 @@ namespace Falcor
         updateAlphaMode();
         updateNormalMapType();
         updateEmissiveFlag();
+        updateDeltaSpecularFlag();
     }
 
     bool BasicMaterial::renderUI(Gui::Widgets& widget)
@@ -298,6 +305,10 @@ namespace Falcor
                 mIsTexturedBaseColorConstant = mIsTexturedAlphaConstant = false;
             }
             updateAlphaMode();
+            updateDeltaSpecularFlag();
+            break;
+        case TextureSlot::Specular:
+            updateDeltaSpecularFlag();
             break;
         case TextureSlot::Normal:
             updateNormalMapType();
@@ -498,6 +509,7 @@ namespace Falcor
             mData.baseColor = (float16_t4)color;
             markUpdates(UpdateFlags::DataChanged);
             updateAlphaMode();
+            updateDeltaSpecularFlag();
         }
     }
 
@@ -507,6 +519,7 @@ namespace Falcor
         {
             mData.specular = (float16_t4)color;
             markUpdates(UpdateFlags::DataChanged);
+            updateDeltaSpecularFlag();
         }
     }
 
@@ -525,6 +538,7 @@ namespace Falcor
         {
             mData.diffuseTransmission = (float16_t)diffuseTransmission;
             markUpdates(UpdateFlags::DataChanged);
+            updateDeltaSpecularFlag();
         }
     }
 
@@ -534,6 +548,7 @@ namespace Falcor
         {
             mData.specularTransmission = (float16_t)specularTransmission;
             markUpdates(UpdateFlags::DataChanged);
+            updateDeltaSpecularFlag();
         }
     }
 
@@ -659,7 +674,7 @@ namespace Falcor
         bool isEmissive = false;
         if (mData.emissiveFactor > 0.f)
         {
-            isEmissive = hasTextureSlotData(Material::TextureSlot::Emissive) || (float3)mData.emissive != float3(0.f);
+            isEmissive = hasTextureSlotData(Material::TextureSlot::Emissive) || mData.emissive != float3(0.f);
         }
         if (mHeader.isEmissive() != isEmissive)
         {

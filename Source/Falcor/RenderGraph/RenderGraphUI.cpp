@@ -25,13 +25,16 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "RenderGraphUI.h"
-#include "dear_imgui/imgui.h"
-#include "dear_imgui_addons/imguinodegrapheditor/imguinodegrapheditor.h"
-#include "dear_imgui/imgui_internal.h"
-#include <fstream>
 #include "RenderPassLibrary.h"
+#include "Utils/Algorithm/DirectedGraphTraversal.h"
+#include "Utils/Scripting/Scripting.h"
+
+#include <imgui.h>
+#include <imgui_internal.h>
+#include <imguinodegrapheditor/imguinodegrapheditor.h>
+
+#include <fstream>
 
 namespace Falcor
 {

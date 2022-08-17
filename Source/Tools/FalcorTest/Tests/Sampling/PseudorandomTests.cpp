@@ -38,20 +38,49 @@
 namespace Falcor
 {
     // Reference implementation of the xoshiro128** algorithm.
+    // See http://xoshiro.di.unimi.it/xoshiro128starstar.c
     namespace xoshiro128starstar
     {
-        // This sources is unmodified from the author's website.
-        // We import it into a namespace to be able to use it from the test function.
-        #include "xoshiro/xoshiro128starstar.c"
+        static inline uint32_t rotl(const uint32_t x, int k)
+        {
+            return (x << k) | (x >> (32 - k));
+        }
+
+        static uint32_t s[4];
+
+        uint32_t next()
+        {
+            const uint32_t result_starstar = rotl(s[0] * 5, 7) * 9;
+
+            const uint32_t t = s[1] << 9;
+
+            s[2] ^= s[0];
+            s[3] ^= s[1];
+            s[1] ^= s[2];
+            s[0] ^= s[3];
+
+            s[2] ^= t;
+
+            s[3] = rotl(s[3], 11);
+
+            return result_starstar;
+        }
     }
 
     // Reference implementation of the SplitMix64 algorithm.
+    // See http://xoshiro.di.unimi.it/splitmix64.c
     namespace splitmix64
     {
-        // This sources is unmodified from the author's website.
-        // We import it into a namespace to be able to use it from the test function.
-        #include "xoshiro/splitmix64.c"
-    }
+        static uint64_t x;
+
+        uint64_t next()
+        {
+            uint64_t z = (x += 0x9e3779b97f4a7c15);
+            z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9;
+            z = (z ^ (z >> 27)) * 0x94d049bb133111eb;
+            return z ^ (z >> 31);
+        }
+    };
 
     // Reference implementation of the LCG from Numerical Recipes.
     // See https://en.wikipedia.org/wiki/Linear_congruential_generator

@@ -64,7 +64,7 @@ namespace
         PSECURITY_DESCRIPTOR mWinPSecurityDescriptor;
 
     public:
-        WindowsSecurityAttributes::WindowsSecurityAttributes()
+        WindowsSecurityAttributes()
         {
             mWinPSecurityDescriptor = (PSECURITY_DESCRIPTOR)calloc(1, SECURITY_DESCRIPTOR_MIN_LENGTH + 2 * sizeof(void**));
             FALCOR_ASSERT(mWinPSecurityDescriptor != (PSECURITY_DESCRIPTOR)NULL);
@@ -95,7 +95,7 @@ namespace
             mWinSecurityAttributes.bInheritHandle = TRUE;
         }
 
-        WindowsSecurityAttributes::~WindowsSecurityAttributes()
+        ~WindowsSecurityAttributes()
         {
             PSID* ppSID = (PSID*)((PBYTE)mWinPSecurityDescriptor + SECURITY_DESCRIPTOR_MIN_LENGTH);
             PACL* ppACL = (PACL*)((PBYTE)ppSID + sizeof(PSID*));

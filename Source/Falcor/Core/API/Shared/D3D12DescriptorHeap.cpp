@@ -25,9 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
 
 #include "D3D12DescriptorHeap.h"
 #include "Core/API/Device.h"
@@ -49,13 +47,6 @@ namespace Falcor
     {
         FALCOR_ASSERT(gpDevice);
         D3D12DeviceHandle pDevice = gpDevice->getD3D12Handle();
-
-#ifdef FALCOR_GFX
-        // In GFX we will always allocate descriptor tables from CPU visible heap
-        // and copy them to transient per-frame GPU heap (maintained by gfx) before
-        // each draw/dispatch command.
-        shaderVisible = false;
-#endif
 
         uint32_t chunkCount = (descCount + kDescPerChunk - 1) / kDescPerChunk;
         D3D12DescriptorHeap::SharedPtr pHeap = SharedPtr(new D3D12DescriptorHeap(type, chunkCount, shaderVisible));
@@ -190,4 +181,4 @@ namespace Falcor
     }
 }
 
-#endif // FALCOR_D3D12_AVAILABLE
+#endif // FALCOR_HAS_D3D12

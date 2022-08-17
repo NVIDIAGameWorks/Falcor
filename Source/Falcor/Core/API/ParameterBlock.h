@@ -26,19 +26,28 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Buffer.h"
+#include "Texture.h"
+#include "Sampler.h"
+#include "RtAccelerationStructure.h"
+#include "Core/Macros.h"
 #include "Core/Program/ProgramReflection.h"
-#include "Core/API/Buffer.h"
-#include "Core/API/Texture.h"
-#include "Core/API/Sampler.h"
-#include "Core/API/RtAccelerationStructure.h"
 #include "Core/Program/ShaderVar.h"
 #include "Utils/UI/Gui.h"
 
-#include <slang/slang.h>
+#include <slang.h>
+
+#include <memory>
+#include <string>
+#include <utility>
+#include <variant>
+#include <vector>
+#include <cstddef>
 
 namespace Falcor
 {
     class ProgramVersion;
+    class CopyContext;
 
     /** Shared pointer class for `ParameterBlock` and derived classes.
         This smart pointer type adds syntax sugar for `operator[]` so that it implicitly operates on a `ShaderVar` derived from the contents of the buffer.
@@ -49,7 +58,7 @@ namespace Falcor
     public:
         ParameterBlockSharedPtr() : std::shared_ptr<T>() {}
         explicit ParameterBlockSharedPtr(T* pObject) : std::shared_ptr<T>(pObject) {}
-        constexpr ParameterBlockSharedPtr(nullptr_t) : std::shared_ptr<T>(nullptr) {}
+        constexpr ParameterBlockSharedPtr(std::nullptr_t) : std::shared_ptr<T>(nullptr) {}
         ParameterBlockSharedPtr(const std::shared_ptr<T>& pObject) : std::shared_ptr<T>(pObject) {}
 
         /** Implicitly convert a `ShaderVar` to a `ParameterBlock` pointer.
@@ -358,7 +367,7 @@ namespace Falcor
         */
         const Buffer::SharedPtr& getUnderlyingConstantBuffer() const;
 
-#if FALCOR_ENABLE_CUDA
+#if FALCOR_HAS_CUDA
         /** Get a host-memory pointer that represents the contents of this shader object
             as a CUDA-compatible buffer.
 
@@ -548,7 +557,7 @@ namespace Falcor
         std::map<gfx::ShaderOffset, RtAccelerationStructure::SharedPtr> mAccelerationStructures;
 #endif // FALCOR_GFX
 
-#if FALCOR_ENABLE_CUDA
+#if FALCOR_HAS_CUDA
 
         // The following members pertain to the issue of exposing the
         // current state/contents of a shader object to CUDA kernels.

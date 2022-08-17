@@ -25,22 +25,18 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-
-#pragma warning(push)
-#pragma warning(disable : 4244) // Conversion possible loss of data
-#pragma warning(disable : 4267) // Conversion possible loss of data
-#pragma warning(disable : 4305) // Truncation double to float
-#pragma warning(disable : 5033) // 'register' storage class specifier deprecated
 #include "PreviewSurfaceConverter.h"
-#include "pxr/usd/usdGeom/xformCommonAPI.h"
-#include "pxr/usd/usdRender/tokens.h"
-#include "pxr/usdImaging/usdImaging/tokens.h"
-#include "pxr/usd/ar/resolver.h"
-#include "pxr/usd/sdf/layerUtils.h"
-#pragma warning(pop)
-
 #include "Utils.h"
+#include "USDHelpers.h"
+#include "Core/API/RenderContext.h"
+
+BEGIN_DISABLE_USD_WARNINGS
+#include <pxr/usd/usdGeom/xformCommonAPI.h>
+#include <pxr/usd/usdRender/tokens.h>
+#include <pxr/usdImaging/usdImaging/tokens.h>
+#include <pxr/usd/ar/resolver.h>
+#include <pxr/usd/sdf/layerUtils.h>
+END_DISABLE_USD_WARNINGS
 
 using namespace pxr;
 

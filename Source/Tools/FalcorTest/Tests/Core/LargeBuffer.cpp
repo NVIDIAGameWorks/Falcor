@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Testing/UnitTest.h"
+#include <random>
 
 namespace Falcor
 {
@@ -269,12 +270,14 @@ namespace Falcor
         testReadRaw(ctx, true, 3ull << 30); // 3GB
     }
 
-    GPU_TEST(LargeBufferReadRawRoot2)
+    // Enabled for D3D12 only since Vulkan doesn't support buffers larger than 2^32-1.
+    GPU_TEST_D3D12(LargeBufferReadRawRoot2)
     {
         testReadRaw(ctx, true, 4ull << 30); // 4GB
     }
 
-    GPU_TEST(LargeBufferReadRawRoot3, "Disabled due to 4GB buffer limit")
+    // Enabled for D3D12 only since Vulkan doesn't support buffers larger than 2^32-1.
+    GPU_TEST_D3D12(LargeBufferReadRawRoot3, "Disabled due to 4GB buffer limit")
     {
         testReadRaw(ctx, true, 5ull << 30); // 5GB
     }
@@ -290,12 +293,14 @@ namespace Falcor
         testReadStructured(ctx, true, 3ull << 30); // 3GB
     }
 
-    GPU_TEST(LargeBufferReadStructuredRoot2)
+    // Enabled for D3D12 only since Vulkan doesn't support buffers larger than 2^32-1.
+    GPU_TEST_D3D12(LargeBufferReadStructuredRoot2)
     {
         testReadStructured(ctx, true, 4ull << 30); // 4GB
     }
 
-    GPU_TEST(LargeBufferReadStructuredRoot3, "Disabled due to 4GB buffer limit")
+    // Enabled for D3D12 only since Vulkan doesn't support buffers larger than 2^32-1.
+    GPU_TEST_D3D12(LargeBufferReadStructuredRoot3, "Disabled due to 4GB buffer limit")
     {
         testReadStructured(ctx, true, 5ull << 30); // 5GB
     }

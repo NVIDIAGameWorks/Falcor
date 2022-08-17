@@ -25,13 +25,17 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Profiler.h"
+#include "Core/Renderer.h"
+#include "Core/API/Device.h"
 #include "Core/API/GpuTimer.h"
-#include <sstream>
+#include "Utils/Logger.h"
+#include "Utils/Scripting/ScriptBindings.h"
 #include <fstream>
-#define USE_PIX
-#include "WinPixEventRuntime/Include/WinPixEventRuntime/pix3.h"
+
+#ifdef FALCOR_D3D12
+#include <WinPixEventRuntime/pix3.h>
+#endif
 
 namespace Falcor
 {
@@ -207,6 +211,8 @@ namespace Falcor
 
     std::string Profiler::Capture::toJsonString() const
     {
+        using namespace pybind11::literals;
+
         // We use pythons JSON encoder to encode the python dictionary to a JSON string.
         pybind11::module json = pybind11::module::import("json");
         pybind11::object dumps = json.attr("dumps");
@@ -434,6 +440,8 @@ namespace Falcor
 
     FALCOR_SCRIPT_BINDING(Profiler)
     {
+        using namespace pybind11::literals;
+
         auto endCapture = [] (Profiler* pProfiler) {
             std::optional<pybind11::dict> result;
             auto pCapture = pProfiler->endCapture();

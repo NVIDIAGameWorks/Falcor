@@ -35,7 +35,7 @@ import Rendering.Materials.BxDF;
 struct SamplingTest
 {
     // Avoid sampling the poles of the spherical domain due to numerical precision.
-    static double kCosThetaMargin = 1e-3;
+    static float kCosThetaMargin = 1e-3f;
 
     uint testCount;
     uint phiBinCount;
@@ -77,8 +77,8 @@ struct SamplingTest
             {
                 if (wo.z < -1.f + kCosThetaMargin || wo.z > 1.f - kCosThetaMargin) continue;
                 uint cosThetaBin = clamp((uint)floor(((double)wo.z * 0.5 + 0.5) * cosThetaBinCount), 0, cosThetaBinCount - 1);
-                double scaledPhi = atan2((double)wo.y, (double)wo.x) * M_1_2PI;
-                if (scaledPhi < 0.0) scaledPhi += 1.0;
+                float scaledPhi = atan2(wo.y, wo.x) * M_1_2PI;
+                if (scaledPhi < 0.f) scaledPhi += 1.f;
                 uint phiBin = clamp((uint)floor(scaledPhi * phiBinCount), 0, phiBinCount - 1);
 
                 uint binIndex = testIndex * (phiBinCount * cosThetaBinCount) + cosThetaBin * phiBinCount + phiBin;
@@ -100,23 +100,23 @@ struct SamplingTest
         TEST_BxDF bxdf;
         TEST_BxDF_INIT;
 
-        double phiStart =  phiBin      * M_2PI / phiBinCount;
-        double phiEnd   = (phiBin + 1) * M_2PI / phiBinCount;
+        float phiStart =  phiBin      * M_2PI / phiBinCount;
+        float phiEnd   = (phiBin + 1) * M_2PI / phiBinCount;
 
-        double cosThetaStart = -1.0 +  cosThetaBin      * 2.0 / cosThetaBinCount;
-        double cosThetaEnd   = -1.0 + (cosThetaBin + 1) * 2.0 / cosThetaBinCount;
+        float cosThetaStart = -1.f +  cosThetaBin      * 2.f / cosThetaBinCount;
+        float cosThetaEnd   = -1.f + (cosThetaBin + 1) * 2.f / cosThetaBinCount;
 
-        cosThetaStart = max(cosThetaStart, -1.0 + kCosThetaMargin);
-        cosThetaEnd = min(cosThetaEnd, 1.0 - kCosThetaMargin);
+        cosThetaStart = max(cosThetaStart, -1.f + kCosThetaMargin);
+        cosThetaEnd = min(cosThetaEnd, 1.f - kCosThetaMargin);
 
-        double pdf = 0.0;
+        float pdf = 0.f;
 
         for (uint ix = 0; ix < binSampleCount; ++ix)
         {
             for (uint iy = 0; iy < binSampleCount; ++iy)
             {
-                double phi = lerp(phiStart, phiEnd, ((double)ix + 0.5) / (double)binSampleCount);
-                double cosTheta = lerp(cosThetaStart, cosThetaEnd, ((double)iy + 0.5) / (double)binSampleCount);
+                float phi = lerp(phiStart, phiEnd, (ix + 0.5f) / binSampleCount);
+                float cosTheta = lerp(cosThetaStart, cosThetaEnd, (iy + 0.5f) / binSampleCount);
 
                 float sinTheta = sqrt(1.f - cosTheta * cosTheta);
                 float sinPhi = sin(phi);
@@ -127,7 +127,7 @@ struct SamplingTest
             }
         }
 
-        pdf *= (cosThetaEnd - cosThetaStart) * (phiEnd - phiStart) / (double)(binSampleCount * binSampleCount);
+        pdf *= (cosThetaEnd - cosThetaStart) * (phiEnd - phiStart) / (binSampleCount * binSampleCount);
 
         uint binIndex = testIndex * (phiBinCount * cosThetaBinCount) + cosThetaBin * phiBinCount + phiBin;
         histogramPdf[binIndex] = pdf * sampleCount;
@@ -167,8 +167,8 @@ struct SamplingTest
                 float pdfError = abs(pdf - pdfRef) / (pdfRef > 0.f ? pdfRef : 1.f);
 
                 uint cosThetaBin = clamp((uint)floor(((double)wo.z * 0.5 + 0.5) * cosThetaBinCount), 0, cosThetaBinCount - 1);
-                double scaledPhi = atan2((double)wo.y, (double)wo.x) * M_1_2PI;
-                if (scaledPhi < 0.0) scaledPhi += 1.0;
+                float scaledPhi = atan2(wo.y, wo.x) * M_1_2PI;
+                if (scaledPhi < 0.f) scaledPhi += 1.f;
                 uint phiBin = clamp((uint)floor(scaledPhi * phiBinCount), 0, phiBinCount - 1);
 
                 uint binIndex = testIndex * (phiBinCount * cosThetaBinCount) + cosThetaBin * phiBinCount + phiBin;

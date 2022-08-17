@@ -26,10 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Testing/UnitTest.h"
+#include <hypothesis/hypothesis.h>
 #include <random>
 #include <fstream>
-
-#include "hypothesis/hypothesis.h"
+#include <iostream>
 
 namespace Falcor
 {

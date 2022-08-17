@@ -25,10 +25,12 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Light.h"
+#include "Core/Program/ShaderVar.h"
+#include "Utils/Logger.h"
 #include "Utils/UI/Gui.h"
 #include "Utils/Color/ColorHelpers.slang"
+#include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
 {
@@ -226,10 +228,10 @@ namespace Falcor
         mData.penumbraAngle = angle;
     }
 
-    void PointLight::updateFromAnimation(const glm::mat4& transform)
+    void PointLight::updateFromAnimation(const rmcv::mat4& transform)
     {
-        float3 fwd = float3(-transform[2]);
-        float3 pos = float3(transform[3]);
+        float3 fwd = float3(-transform.getCol(2));
+        float3 pos = float3(transform.getCol(3));
         setWorldPosition(pos);
         setWorldDirection(fwd);
     }
@@ -267,9 +269,9 @@ namespace Falcor
         mData.dirW = normalize(dir);
     }
 
-    void DirectionalLight::updateFromAnimation(const glm::mat4& transform)
+    void DirectionalLight::updateFromAnimation(const rmcv::mat4& transform)
     {
-        float3 fwd = float3(-transform[2]);
+        float3 fwd = float3(-transform.getCol(2));
         setWorldDirection(fwd);
     }
 
@@ -333,18 +335,18 @@ namespace Falcor
         if (sinTheta > 0.f)
         {
             float cosTheta = glm::dot(up, -mData.dirW);
-            mData.transMat = glm::rotate(glm::mat4(), std::acos(cosTheta), vec);
+            mData.transMat = rmcv::rotate(rmcv::mat4(), std::acos(cosTheta), vec);
         }
         else
         {
-            mData.transMat = glm::mat4();
+            mData.transMat = rmcv::mat4(1.f);
         }
-        mData.transMatIT = glm::inverse(glm::transpose(mData.transMat));
+        mData.transMatIT = rmcv::inverse(rmcv::transpose(mData.transMat));
     }
 
-    void DistantLight::updateFromAnimation(const glm::mat4& transform)
+    void DistantLight::updateFromAnimation(const rmcv::mat4& transform)
     {
-        float3 fwd = float3(-transform[2]);
+        float3 fwd = float3(-transform.getCol(2));
         setWorldDirection(fwd);
     }
 
@@ -370,8 +372,8 @@ namespace Falcor
     void AnalyticAreaLight::update()
     {
         // Update matrix
-        mData.transMat = mTransformMatrix * glm::scale(glm::mat4(), mScaling);
-        mData.transMatIT = glm::inverse(glm::transpose(mData.transMat));
+        mData.transMat = mTransformMatrix * rmcv::scale(rmcv::mat4(), mScaling);
+        mData.transMatIT = rmcv::inverse(rmcv::transpose(mData.transMat));
     }
 
     // RectLight
@@ -428,6 +430,8 @@ namespace Falcor
 
     FALCOR_SCRIPT_BINDING(Light)
     {
+        using namespace pybind11::literals;
+
         FALCOR_SCRIPT_BINDING_DEPENDENCY(Animatable)
 
         pybind11::class_<Light, Animatable, Light::SharedPtr> light(m, "Light");

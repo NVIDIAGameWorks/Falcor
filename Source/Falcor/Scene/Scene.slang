@@ -32,6 +32,7 @@ __exported import Scene.SceneTypes;
 __exported import Scene.Camera.Camera;
 __exported import Scene.Lights.LightData;
 __exported import Scene.Lights.LightCollection;
+__exported import Scene.Lights.LightProfile;
 __exported import Scene.Lights.EnvMap;
 __exported import Scene.Material.MaterialSystem;
 __exported import Scene.Volume.GridVolume;
@@ -39,6 +40,7 @@ __exported import Scene.SDFs.SDFGrid;
 
 import Utils.Attributes;
 import Utils.Math.MathHelpers;
+import Utils.Math.MatrixUtils;
 import Utils.Geometry.GeometryHelpers;
 import Scene.SDFs.SDFVoxelCommon;
 import Scene.Displacement.DisplacementMapping;
@@ -54,14 +56,21 @@ import Rendering.Materials.TexLODHelpers;
 */
 struct Scene
 {
+#ifdef SCENE_USE_LIGHT_PROFILE // DEMO21
+    static bool kUseLightProfile = SCENE_USE_LIGHT_PROFILE;
+#else
+    static bool kUseLightProfile = false;
+#endif
+
+
     // Raytracing
     [root] RaytracingAccelerationStructure rtAccel;
 
     // Instance transforms
-    [root] StructuredBuffer<float4> worldMatrices;
-    [root] StructuredBuffer<float4> inverseTransposeWorldMatrices; // TODO: Make this 3x3 matrices (stored as 4x3). See #795.
-    StructuredBuffer<float4> prevWorldMatrices;
-    StructuredBuffer<float4> prevInverseTransposeWorldMatrices;
+    [root] StructuredBuffer<float4x4> worldMatrices;
+    [root] StructuredBuffer<float4x4> inverseTransposeWorldMatrices; // TODO: Make this 3x3 matrices (stored as 4x3). See #795.
+    StructuredBuffer<float4x4> prevWorldMatrices;
+    StructuredBuffer<float4x4> prevInverseTransposeWorldMatrices;
 
     // Instances
     [root] StructuredBuffer<GeometryInstanceData> geometryInstances;
@@ -105,6 +114,7 @@ struct Scene
     uint lightCount;
     StructuredBuffer<LightData> lights;
     LightCollection lightCollection;
+    LightProfile lightProfile;
     EnvMap envMap;
     Camera camera;
 
@@ -133,48 +143,22 @@ struct Scene
 
     float4x4 loadWorldMatrix(const uint matrixID)
     {
-        float4x4 m =
-        {
-            worldMatrices[matrixID * 4 + 0],
-            worldMatrices[matrixID * 4 + 1],
-            worldMatrices[matrixID * 4 + 2],
-            worldMatrices[matrixID * 4 + 3]
-        };
-        return m;
+        return worldMatrices[matrixID];
     }
 
     float4x4 loadPrevWorldMatrix(const uint matrixID)
     {
-        float4x4 m =
-        {
-            prevWorldMatrices[matrixID * 4 + 0],
-            prevWorldMatrices[matrixID * 4 + 1],
-            prevWorldMatrices[matrixID * 4 + 2],
-            prevWorldMatrices[matrixID * 4 + 3]
-        };
-        return m;
+        return prevWorldMatrices[matrixID];
     }
 
     float3x3 loadInverseTransposeWorldMatrix(const uint matrixID)
     {
-        float3x3 m =
-        {
-            inverseTransposeWorldMatrices[matrixID * 4 + 0].xyz,
-            inverseTransposeWorldMatrices[matrixID * 4 + 1].xyz,
-            inverseTransposeWorldMatrices[matrixID * 4 + 2].xyz
-        };
-        return m;
+        return float3x3(inverseTransposeWorldMatrices[matrixID]);
     }
 
     float3x3 loadPrevInverseTransposeWorldMatrix(const uint matrixID)
     {
-        float3x3 m =
-        {
-            prevInverseTransposeWorldMatrices[matrixID * 4 + 0].xyz,
-            prevInverseTransposeWorldMatrices[matrixID * 4 + 1].xyz,
-            prevInverseTransposeWorldMatrices[matrixID * 4 + 2].xyz
-        };
-        return m;
+        return float3x3(prevInverseTransposeWorldMatrices[matrixID]);
     }
 
     float4x4 getWorldMatrix(const GeometryInstanceID instanceID)
@@ -376,7 +360,7 @@ struct Scene
         float3 N = cross(p1 - p0, p2 - p0);
         if (isObjectFrontFaceCW(instanceID)) N = -N;
         float3x3 worldInvTransposeMat = getInverseTransposeWorldMatrix(instanceID);
-        return normalize(mul(N, worldInvTransposeMat));
+        return normalize(mul(worldInvTransposeMat, N));
     }
 
     /** Returns a triangle's area in world space.
@@ -431,7 +415,7 @@ struct Scene
         for (int i = 0; i < 3; i++)
         {
             p[i] = vertices[vtxIndices[i]].position;
-            p[i] = mul(float4(p[i], 1.f), getWorldMatrix(instanceID)).xyz;
+            p[i] = mul(getWorldMatrix(instanceID), float4(p[i], 1.f)).xyz;
         }
 
         return computeFaceNormalAndAreaW(instanceID, p, triangleArea);
@@ -472,11 +456,11 @@ struct Scene
 
         v.faceNormalW = getFaceNormalInObjectSpace(vertices, isFrontFaceCW);
 
-        v.posW = mul(float4(v.posW, 1.f), worldMat).xyz;
-        v.normalW = mul(v.normalW, worldInvTransposeMat);
-        v.faceNormalW = mul(v.faceNormalW, worldInvTransposeMat);
-        v.tangentW.xyz = mul(v.tangentW.xyz, (float3x3)worldMat);
-        v.curveRadius = length(mul(float3(v.curveRadius, 0.f, 0.f), (float3x3)worldMat));
+        v.posW = mul(worldMat, float4(v.posW, 1.f)).xyz;
+        v.normalW = mul(worldInvTransposeMat, v.normalW);
+        v.faceNormalW = mul(worldInvTransposeMat, v.faceNormalW);
+        v.tangentW.xyz = mul((float3x3)worldMat, v.tangentW.xyz);
+        v.curveRadius = length(mul((float3x3)worldMat, float3(v.curveRadius, 0.f, 0.f)));
 
         v.normalW = normalize(v.normalW);
         v.faceNormalW = normalize(v.faceNormalW);
@@ -573,6 +557,7 @@ struct Scene
         return v;
     }
 
+
     /** Returns interpolated vertex attributes in a ray tracing hit program when ray cones are used for texture LOD.
        \param[in] instanceID Geometry instance ID of the mesh.
        \param[in] triangleIndex Index of the triangle in the given mesh.
@@ -639,7 +624,7 @@ struct Scene
         }
 
         const float4x4 prevWorldMat = loadPrevWorldMatrix(instance.globalMatrixID);
-        return mul(float4(prevPos, 1.f), prevWorldMat).xyz;
+        return mul(prevWorldMat, float4(prevPos, 1.f)).xyz;
     }
 
     /** Returns interpolated position on a triangle in world space for the previous frame.
@@ -679,8 +664,9 @@ struct Scene
         prevPos += prevNormal * (hit.displacement * DisplacementData::kSurfaceSafetyScaleBias.x + DisplacementData::kSurfaceSafetyScaleBias.y);
 
         const float4x4 prevWorldMat = loadPrevWorldMatrix(instance.globalMatrixID);
-        return mul(float4(prevPos, 1.f), prevWorldMat).xyz;
+        return mul(prevWorldMat, float4(prevPos, 1.f)).xyz;
     }
+
 
     /** Returns a triangle's vertex positions in world space.
         \param[in] instanceID Geometry instance ID of the mesh.
@@ -696,7 +682,7 @@ struct Scene
         for (int i = 0; i < 3; i++)
         {
             p[i] = vertices[vtxIndices[i]].position;
-            p[i] = mul(float4(p[i], 1.f), worldMat).xyz;
+            p[i] = mul(worldMat, float4(p[i], 1.f)).xyz;
         }
     }
 
@@ -850,13 +836,14 @@ struct Scene
         const float4x4 worldMat = loadWorldMatrix(instance.globalMatrixID);
         const float3x3 worldInvTransposeMat = loadInverseTransposeWorldMatrix(instance.globalMatrixID);
 
-        const float3 hitPosition = mul(worldInvTransposeMat, posW - worldMat[3].xyz);
+        // Multiplying v.M to perform the intended (M^T).v
+        const float3 hitPosition = mul(posW - extractTranslate(worldMat), worldInvTransposeMat);
 
         float3 gradient;
         sdfGrid.decodeHit(hit.hitData, hitPosition, gradient);
 
         v.posW = posW;
-        v.normalW = normalize(mul(normalize(gradient), worldInvTransposeMat));
+        v.normalW = normalize(mul(worldInvTransposeMat, normalize(gradient)));
         v.tangentW = float4(perp_stark(v.normalW), 1.0f);
         v.faceNormalW = v.normalW;
 
@@ -891,7 +878,10 @@ struct Scene
         const float3x3 worldInvTransposeMat = loadInverseTransposeWorldMatrix(instance.globalMatrixID);
         const float4x4 prevWorldMat = loadPrevWorldMatrix(instance.globalMatrixID);
 
-        return mul(float4(mul(worldInvTransposeMat, posW - worldMat[3].xyz), 1.0f), prevWorldMat).xyz;
+        /// Multiplying v.M to perform the intended (M^T).v
+        const float4 hitPosition = float4(mul(posW - extractTranslate(worldMat), worldInvTransposeMat), 1.0f);
+
+        return mul(prevWorldMat, hitPosition).xyz;
     }
 
     // Custom primitive access

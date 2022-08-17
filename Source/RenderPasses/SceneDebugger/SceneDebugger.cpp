@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "SceneDebugger.h"
+#include "RenderGraph/RenderPassLibrary.h"
 
 const RenderPass::Info SceneDebugger::kInfo { "SceneDebugger", "Scene debugger for identifying asset issues." };
 
@@ -49,9 +50,11 @@ namespace
         { (uint32_t)SceneDebuggerMode::HitType, "Hit type" },
         { (uint32_t)SceneDebuggerMode::InstanceID, "Instance ID" },
         { (uint32_t)SceneDebuggerMode::MaterialID, "Material ID" },
+        { (uint32_t)SceneDebuggerMode::PrimitiveID, "Primitive ID" },
         { (uint32_t)SceneDebuggerMode::GeometryID, "Geometry ID" },
         { (uint32_t)SceneDebuggerMode::BlasID, "BLAS ID" },
         { (uint32_t)SceneDebuggerMode::InstancedGeometry, "Instanced geometry" },
+        { (uint32_t)SceneDebuggerMode::FlatShaded, "Flat shaded" },
     };
 
     std::string getModeDesc(SceneDebuggerMode mode)
@@ -79,6 +82,8 @@ namespace
             "Instance ID in pseudocolor";
         case SceneDebuggerMode::MaterialID: return
             "Material ID in pseudocolor";
+        case SceneDebuggerMode::PrimitiveID: return
+            "Primitive ID in pseudocolor";
         case SceneDebuggerMode::GeometryID: return
             "Geometry ID in pseudocolor";
         case SceneDebuggerMode::BlasID: return
@@ -86,6 +91,8 @@ namespace
         case SceneDebuggerMode::InstancedGeometry: return
             "Green = instanced geometry\n"
             "Red = non-instanced geometry";
+        case SceneDebuggerMode::FlatShaded: return
+            "Flat shaded";
         default:
             FALCOR_UNREACHABLE();
             return "";
@@ -109,9 +116,11 @@ namespace
         mode.value("HitType", SceneDebuggerMode::HitType);
         mode.value("InstanceID", SceneDebuggerMode::InstanceID);
         mode.value("MaterialID", SceneDebuggerMode::MaterialID);
+        mode.value("PrimitiveID", SceneDebuggerMode::PrimitiveID);
         mode.value("GeometryID", SceneDebuggerMode::GeometryID);
         mode.value("BlasID", SceneDebuggerMode::BlasID);
         mode.value("InstancedGeometry", SceneDebuggerMode::InstancedGeometry);
+        mode.value("FlatShaded", SceneDebuggerMode::FlatShaded);
 
         pybind11::class_<SceneDebugger, RenderPass, SceneDebugger::SharedPtr> pass(m, "SceneDebugger");
         pass.def_property(kMode, &SceneDebugger::getMode, &SceneDebugger::setMode);
@@ -151,9 +160,6 @@ SceneDebugger::SceneDebugger(const Dictionary& dict)
         else logWarning("Unknown field '{}' in a SceneDebugger dictionary.", key);
     }
 
-    Program::Desc desc;
-    desc.addShaderLibrary(kShaderFile).csEntry("main").setShaderModel(kShaderModel);
-    mpDebugPass = ComputePass::create(desc, Program::DefineList(), false);
     mpFence = GpuFence::create();
 }
 
@@ -182,15 +188,17 @@ void SceneDebugger::setScene(RenderContext* pRenderContext, const Scene::SharedP
 {
     mpScene = pScene;
     mpMeshToBlasID = nullptr;
+    mpDebugPass = nullptr;
 
     if (mpScene)
     {
         // Prepare our programs for the scene.
-        Shader::DefineList defines = mpScene->getSceneDefines();
-
-        mpDebugPass->getProgram()->addDefines(defines);
-        mpDebugPass->getProgram()->setTypeConformances(mpScene->getTypeConformances());
-        mpDebugPass->setVars(nullptr); // Trigger recompile
+        Program::Desc desc;
+        desc.addShaderModules(mpScene->getShaderModules());
+        desc.addShaderLibrary(kShaderFile).csEntry("main");
+        desc.addTypeConformances(mpScene->getTypeConformances());
+        desc.setShaderModel(kShaderModel);
+        mpDebugPass = ComputePass::create(desc, mpScene->getSceneDefines());
 
         // Create lookup table for mesh to BLAS ID.
         auto blasIDs = mpScene->getMeshBlasIDs();
@@ -218,13 +226,15 @@ void SceneDebugger::setScene(RenderContext* pRenderContext, const Scene::SharedP
 void SceneDebugger::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
     mPixelDataAvailable = false;
-    const auto& pOutput = renderData[kOutput]->asTexture();
+    const auto& pOutput = renderData.getTexture(kOutput);
 
     if (mpScene == nullptr)
     {
         pRenderContext->clearUAV(pOutput->getUAV().get(), float4(0.f));
         return;
     }
+    // DEMO21:
+    //mpScene->getCamera()->setJitter(0.f, 0.f);
 
     mpScene->setRaytracingShaderData(pRenderContext, mpDebugPass->getRootVar());
 
@@ -287,38 +297,38 @@ void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
     mpFence->syncCpu();
     const PixelData& data = *reinterpret_cast<const PixelData*>(mpPixelDataStaging->map(Buffer::MapType::Read));
 
-    std::ostringstream oss;
-
     switch ((HitType)data.hitType)
     {
     case HitType::Triangle:
-        oss << "Mesh ID: " << data.geometryID << std::endl
-            << "Mesh name: " << (mpScene->hasMesh(data.geometryID) ? mpScene->getMeshName(data.geometryID) : "unknown") << std::endl
-            << "Instance ID: " << data.instanceID << std::endl
-            << "Material ID: " << data.materialID << std::endl
-            << "BLAS ID: " << data.blasID << std::endl;
-
-        widget.text(oss.str());
-        widget.dummy("#spacer2", { 1, 10 });
+        {
+            std::string text;
+            text += fmt::format("Mesh ID: {}\n", data.geometryID);
+            text += fmt::format("Mesh name: {}\n", mpScene->hasMesh(data.geometryID) ? mpScene->getMeshName(data.geometryID) : "unknown");
+            text += fmt::format("Instance ID: {}\n", data.instanceID);
+            text += fmt::format("Material ID: {}\n", data.materialID);
+            text += fmt::format("BLAS ID: {}\n", data.blasID);
+            widget.text(text);
+            widget.dummy("#spacer2", { 1, 10 });
+        }
 
         // Show mesh details.
         if (auto g = widget.group("Mesh info"); g.open())
         {
             FALCOR_ASSERT(data.geometryID < mpScene->getMeshCount());
-            const auto& mesh = mpScene->getMesh(data.geometryID);
-            std::ostringstream oss;
-            oss << "flags: " << std::hex << std::showbase << mesh.flags << std::dec << std::noshowbase << std::endl
-                << "materialID: " << mesh.materialID << std::endl
-                << "vertexCount: " << mesh.vertexCount << std::endl
-                << "indexCount: " << mesh.indexCount << std::endl
-                << "triangleCount: " << mesh.getTriangleCount() << std::endl
-                << "vbOffset: " << mesh.vbOffset << std::endl
-                << "ibOffset: " << mesh.ibOffset << std::endl
-                << "skinningVbOffset: " << mesh.skinningVbOffset << std::endl
-                << "prevVbOffset: " << mesh.prevVbOffset << std::endl
-                << "use16BitIndices: " << mesh.use16BitIndices() << std::endl
-                << "isFrontFaceCW: " << mesh.isFrontFaceCW() << std::endl;
-            g.text(oss.str());
+            const auto& mesh = mpScene->getMesh(MeshID{ data.geometryID });
+            std::string text;
+            text += fmt::format("flags: 0x{:08x}\n", mesh.flags);
+            text += fmt::format("materialID: {}\n", mesh.materialID);
+            text += fmt::format("vertexCount: {}\n", mesh.vertexCount);
+            text += fmt::format("indexCount: {}\n", mesh.indexCount);
+            text += fmt::format("triangleCount: {}\n", mesh.getTriangleCount());
+            text += fmt::format("vbOffset: {}\n", mesh.vbOffset);
+            text += fmt::format("ibOffset: {}\n", mesh.ibOffset);
+            text += fmt::format("skinningVbOffset: {}\n", mesh.skinningVbOffset);
+            text += fmt::format("prevVbOffset: {}\n", mesh.prevVbOffset);
+            text += fmt::format("use16BitIndices: {}\n", mesh.use16BitIndices());
+            text += fmt::format("isFrontFaceCW: {}\n", mesh.isFrontFaceCW());
+            g.text(text);
         }
 
         // Show mesh instance info.
@@ -326,20 +336,20 @@ void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
         {
             FALCOR_ASSERT(data.instanceID < mpScene->getGeometryInstanceCount());
             const auto& instance = mpScene->getGeometryInstance(data.instanceID);
-            std::ostringstream oss;
-            oss << "flags: " << std::hex << std::showbase << instance.flags << std::dec << std::noshowbase << std::endl
-                << "nodeID: " << instance.globalMatrixID << std::endl
-                << "meshID: " << instance.geometryID << std::endl
-                << "materialID: " << instance.materialID << std::endl
-                << "vbOffset: " << instance.vbOffset << std::endl
-                << "ibOffset: " << instance.ibOffset << std::endl
-                << "isDynamic: " << instance.isDynamic() << std::endl;
-            g.text(oss.str());
+            std::string text;
+            text += fmt::format("flags: 0x{:08x}\n", instance.flags);
+            text += fmt::format("nodeID: {}\n", instance.globalMatrixID);
+            text += fmt::format("meshID: {}\n", instance.geometryID);
+            text += fmt::format("materialID: {}\n", instance.materialID);
+            text += fmt::format("vbOffset: {}\n", instance.vbOffset);
+            text += fmt::format("ibOffset: {}\n", instance.ibOffset);
+            text += fmt::format("isDynamic: {}\n", instance.isDynamic());
+            g.text(text);
 
             // Print the list of scene graph nodes affecting this mesh instance.
-            std::vector<uint32_t> nodes;
-            auto nodeID = instance.globalMatrixID;
-            while (nodeID != Scene::kInvalidNode)
+            std::vector<NodeID> nodes;
+            NodeID nodeID{ instance.globalMatrixID };
+            while (nodeID != NodeID::Invalid())
             {
                 nodes.push_back(nodeID);
                 nodeID = mpScene->getParentNodeID(nodeID);
@@ -351,90 +361,86 @@ void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
             for (auto it = nodes.rbegin(); it != nodes.rend(); it++)
             {
                 auto nodeID = *it;
-                glm::mat4 mat = glm::transpose(localMatrices[nodeID]);
-                if (auto nodeGroup = widget.group("ID " + std::to_string(nodeID)); nodeGroup.open())
+                rmcv::mat4 mat = localMatrices[nodeID.get()];
+                if (auto nodeGroup = widget.group("ID " + to_string(nodeID)); nodeGroup.open())
                 {
                     g.matrix("", mat);
                 }
             }
         }
-
-        // Show material info.
-        if (auto g = widget.group("Material info"); g.open())
-        {
-            const auto& material = *mpScene->getMaterial(data.materialID);
-            std::ostringstream oss;
-            oss << "name: " << material.getName() << std::endl
-                << "emissive: " << (material.isEmissive() ? "true" : "false") << std::endl
-                << std::endl
-                << "See Scene Settings->Materials for more details" << std::endl;
-            g.text(oss.str());
-        }
         break;
     case HitType::Curve:
-        oss << "Curve ID: " << data.geometryID << std::endl
-            << "Instance ID: " << data.instanceID << std::endl
-            << "Material ID: " << data.materialID << std::endl
-            << "BLAS ID: " << data.blasID << std::endl;
-
-        widget.text(oss.str());
-        widget.dummy("#spacer2", { 1, 10 });
+        {
+            std::string text;
+            text += fmt::format("Curve ID: {}\n", data.geometryID);
+            text += fmt::format("Instance ID: {}\n", data.instanceID);
+            text += fmt::format("Material ID: {}\n", data.materialID);
+            text += fmt::format("BLAS ID: {}\n", data.blasID);
+            widget.text(text);
+            widget.dummy("#spacer2", { 1, 10 });
+        }
 
         // Show mesh details.
         if (auto g = widget.group("Curve info"); g.open())
         {
-            const auto& curve = mpScene->getCurve(data.geometryID);
-            std::ostringstream oss;
-            oss << "degree: " << curve.degree << std::endl
-                << "vertexCount: " << curve.vertexCount << std::endl
-                << "indexCount: " << curve.indexCount << std::endl
-                << "vbOffset: " << curve.vbOffset << std::endl
-                << "ibOffset: " << curve.ibOffset << std::endl;
-            g.text(oss.str());
-        }
-
-        // Show material info.
-        if (auto g = widget.group("Material info"); g.open())
-        {
-            const auto& material = *mpScene->getMaterial(data.materialID);
-            std::ostringstream oss;
-            oss << "name: " << material.getName() << std::endl
-                << std::endl
-                << "See Scene Settings->Materials for more details" << std::endl;
-            g.text(oss.str());
+            const auto& curve = mpScene->getCurve(CurveID{ data.geometryID });
+            std::string text;
+            text += fmt::format("degree: {}\n", curve.degree);
+            text += fmt::format("vertexCount: {}\n", curve.vertexCount);
+            text += fmt::format("indexCount: {}\n", curve.indexCount);
+            text += fmt::format("vbOffset: {}\n", curve.vbOffset);
+            text += fmt::format("ibOffset: {}\n", curve.ibOffset);
+            g.text(text);
         }
         break;
     case HitType::SDFGrid:
-        oss << "SDF Grid ID: " << data.geometryID << std::endl
-            << "Instance ID: " << data.instanceID << std::endl
-            << "Material ID: " << data.materialID << std::endl
-            << "BLAS ID: " << data.blasID << std::endl;
-        widget.text(oss.str());
-        widget.dummy("#spacer2", { 1, 10 });
+        {
+            std::string text;
+            text += fmt::format("SDF Grid ID: {}\n", data.geometryID);
+            text += fmt::format("Instance ID: {}\n", data.instanceID);
+            text += fmt::format("Material ID: {}\n", data.materialID);
+            text += fmt::format("BLAS ID: {}\n", data.blasID);
+            widget.text(text);
+            widget.dummy("#spacer2", { 1, 10 });
+        }
 
         // Show SDF grid details.
         if (auto g = widget.group("SDF grid info"); g.open())
         {
-            const SDFGrid::SharedPtr& pSDFGrid = mpScene->getSDFGrid(data.geometryID);
-            std::ostringstream oss;
-            oss << "gridWidth: " << pSDFGrid->getGridWidth() << std::endl;
-            g.text(oss.str());
-        }
-
-        // Show material info.
-        if (auto g = widget.group("Material info"); g.open())
-        {
-            const auto& material = *mpScene->getMaterial(data.materialID);
-            std::ostringstream oss;
-            oss << "name: " << material.getName() << std::endl
-                << std::endl
-                << "See Scene Settings->Materials for more details" << std::endl;
-            g.text(oss.str());
+            const SDFGrid::SharedPtr& pSDFGrid = mpScene->getSDFGrid(SdfGridID{ data.geometryID });
+            std::string text;
+            text += fmt::format("gridWidth: {}\n", pSDFGrid->getGridWidth());
+            g.text(text);
         }
         break;
     default:
-        oss << "Background pixel" << std::endl;
+        widget.text("Background pixel");
         break;
+    }
+
+    // Show material info.
+    if (data.materialID != PixelData::kInvalidID)
+    {
+        if (auto g = widget.group("Material info"); g.open())
+        {
+            const auto& material = *mpScene->getMaterial(MaterialID{ data.materialID });
+            const auto& header = material.getHeader();
+            std::string text;
+            text += fmt::format("name: {}\n", material.getName());
+            text += fmt::format("materialType: {}\n", to_string(header.getMaterialType()));
+            text += fmt::format("alphaMode: {}\n", (uint32_t)header.getAlphaMode());
+            text += fmt::format("alphaThreshold: {}\n", (float)header.getAlphaThreshold());
+            text += fmt::format("nestedPriority: {}\n", header.getNestedPriority());
+            text += fmt::format("activeLobes: 0x{:08x}\n", (uint32_t)header.getActiveLobes());
+            text += fmt::format("defaultTextureSamplerID: {}\n", header.getDefaultTextureSamplerID());
+            text += fmt::format("doubleSided: {}\n", header.isDoubleSided());
+            text += fmt::format("thinSurface: {}\n", header.isThinSurface());
+            text += fmt::format("emissive: {}\n", header.isEmissive());
+            text += fmt::format("basicMaterial: {}\n", header.isBasicMaterial());
+            text += fmt::format("lightProfileEnabled: {}\n", header.isLightProfileEnabled());
+            text += fmt::format("deltaSpecular: {}\n", header.isDeltaSpecular());
+            g.text(text);
+        }
     }
 
     mpPixelDataStaging->unmap();

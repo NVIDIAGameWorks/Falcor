@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -138,6 +138,7 @@ void curveClosestHit(inout RayData hitData, CurveIntersector::Attribs attribs)
     uint2 launchIndex = DispatchRaysIndex().xy;
     gGBufferRT.writeHit(launchIndex, WorldRayOrigin(), WorldRayDirection(), HitInfo(curveHit), RayTCurrent());
 }
+
 
 //
 // Shader entry points for SDFGrid hit groups.

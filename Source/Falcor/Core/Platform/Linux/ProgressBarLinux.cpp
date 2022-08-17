@@ -25,10 +25,13 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Core/Platform/ProgressBar.h"
-// #include <chrono>
-// #include <gtk/gtk.h>
+#include "Core/Assert.h"
+
+#include <gtk/gtk.h>
+
+#include <chrono>
+#include <thread>
 
 namespace Falcor
 {
@@ -47,18 +50,33 @@ namespace Falcor
         bool running = true;
         std::thread thread;
     };
+    std::unique_ptr<ProgressBarData> ProgressBar::spData;
 
+    ProgressBar::ProgressBar() = default;
     ProgressBar::~ProgressBar()
     {
-        gtk_window_close(GTK_WINDOW(mpData->pWindow));
-        mpData->running = false;
+        close();
+    }
 
-        g_source_remove(mpData->progressUpdateId);
-        g_source_remove(mpData->pulseTimerId);
-        gtk_widget_destroy(mpData->pWindow);
+    void ProgressBar::close()
+    {
+        if (spData)
+        {
+            gtk_window_close(GTK_WINDOW(spData->pWindow));
+            spData->running = false;
 
-        mpData->thread.join();
-        safe_delete(mpData);
+            g_source_remove(spData->progressUpdateId);
+            g_source_remove(spData->pulseTimerId);
+            gtk_widget_destroy(spData->pWindow);
+
+            spData->thread.join();
+            spData.reset();
+        }
+    }
+
+    bool ProgressBar::isActive()
+    {
+        return (bool)spData;
     }
 
     void progressBarThread(ProgressBarData* pData)
@@ -92,8 +110,8 @@ namespace Falcor
 
     void ProgressBar::platformInit(const MessageList& list, uint32_t delayInMs)
     {
-        mpData = new ProgressBarData;
-        mpData->msgList = list;
+        spData.reset(new ProgressBarData);
+        spData->msgList = list;
 
         if (!gtk_init_check(0, nullptr))
         {
@@ -101,28 +119,28 @@ namespace Falcor
         }
 
         // Create window
-        mpData->pWindow = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-        gtk_window_set_position(GTK_WINDOW(mpData->pWindow), GTK_WIN_POS_CENTER_ALWAYS);
-        gtk_window_set_decorated(GTK_WINDOW(mpData->pWindow), FALSE);
+        spData->pWindow = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+        gtk_window_set_position(GTK_WINDOW(spData->pWindow), GTK_WIN_POS_CENTER_ALWAYS);
+        gtk_window_set_decorated(GTK_WINDOW(spData->pWindow), FALSE);
 
         GtkWidget* pVBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-        gtk_container_add(GTK_CONTAINER(mpData->pWindow), pVBox);
+        gtk_container_add(GTK_CONTAINER(spData->pWindow), pVBox);
 
         // Create label for messages
         std::string initialMsg = (list.size() > 0) ? list[0] : "Loading...";
-        mpData->pLabel = gtk_label_new(initialMsg.c_str());
-        gtk_label_set_justify(GTK_LABEL(mpData->pLabel), GTK_JUSTIFY_CENTER);
-        gtk_label_set_lines(GTK_LABEL(mpData->pLabel), 1);
-        gtk_box_pack_start(GTK_BOX(pVBox), mpData->pLabel, TRUE, FALSE, 0);
+        spData->pLabel = gtk_label_new(initialMsg.c_str());
+        gtk_label_set_justify(GTK_LABEL(spData->pLabel), GTK_JUSTIFY_CENTER);
+        gtk_label_set_lines(GTK_LABEL(spData->pLabel), 1);
+        gtk_box_pack_start(GTK_BOX(pVBox), spData->pLabel, TRUE, FALSE, 0);
 
         // Create and attach progress bar
-        mpData->pBar = gtk_progress_bar_new();
-        gtk_box_pack_start(GTK_BOX(pVBox), mpData->pBar, TRUE, FALSE, 0);
+        spData->pBar = gtk_progress_bar_new();
+        gtk_box_pack_start(GTK_BOX(pVBox), spData->pBar, TRUE, FALSE, 0);
 
-        mpData->pulseTimerId = g_timeout_add(100, progressBarPulseeCB, mpData);
-        mpData->progressUpdateId = g_timeout_add(delayInMs, progressBarUpdateCB, mpData);
+        spData->pulseTimerId = g_timeout_add(100, progressBarPulseeCB, spData.get());
+        spData->progressUpdateId = g_timeout_add(delayInMs, progressBarUpdateCB, spData.get());
 
-        gtk_widget_show_all(mpData->pWindow);
-        mpData->thread = std::thread(progressBarThread, mpData);
+        gtk_widget_show_all(spData->pWindow);
+        spData->thread = std::thread(progressBarThread, spData.get());
     }
 }

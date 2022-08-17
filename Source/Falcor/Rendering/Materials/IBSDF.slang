@@ -90,7 +90,7 @@ struct BSDFProperties
     This interface allows evaluation and sampling of the BSDF, and associated functionality.
     Implementations of the interface has all material properties evaluated at the shading location.
     BSDF instances are created and initialized by the corresponding material.
-   
+
     The shading location and its attributes are described by a ShadingData struct.
     The ShadingData view direction field specifies the direction from which the
     shading location is seen. By convention we call this the incident direction (wi).
@@ -110,7 +110,7 @@ struct BSDFProperties
      - The maximum size can be increased if needed, but it should be kept as small as possible
        to reduce register pressure in case the compiler fails to optimize.
 */
-[anyValueSize(68)] // TODO: Reduce to 64B
+[anyValueSize(76)] // TODO: Reduce to 64B
 interface IBSDF
 {
     /** Evaluates the BSDF.

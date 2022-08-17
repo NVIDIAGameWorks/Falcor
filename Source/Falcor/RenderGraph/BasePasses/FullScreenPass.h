@@ -27,7 +27,9 @@
  **************************************************************************/
 #pragma once
 #include "BaseGraphicsPass.h"
-#include "../RenderPass.h"
+#include "Core/Macros.h"
+#include "Core/Program/Program.h"
+#include <filesystem>
 
 namespace Falcor
 {

@@ -26,11 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "glm/gtc/quaternion.hpp"
-#include "glm/geometric.hpp"
-#include "glm/gtc/matrix_transform.hpp"
-#define _USE_MATH_DEFINES
-#include <math.h>
+#include "Vector.h"
+#include "Matrix.h"
+#include "Core/Assert.h"
+#include <algorithm>
+#include <cmath>
 
 namespace Falcor
 {
@@ -50,7 +50,7 @@ namespace Falcor
         float3 nTo = glm::normalize(to);
 
         float dot = glm::dot(nFrom, nTo);
-        dot = clamp(dot, -1.0f, 1.0f);
+        dot = std::clamp(dot, -1.0f, 1.0f);
         if(dot != 1)
         {
             float angle = std::acos(dot);
@@ -70,7 +70,7 @@ namespace Falcor
         \param[in] projMat Projection matrix from the camera.
         \return World space ray direction coming from the camera position in the direction of the mouse position
     */
-    inline float3 mousePosToWorldRay(const float2& mousePos, const glm::mat4& viewMat, const glm::mat4& projMat)
+    inline float3 mousePosToWorldRay(const float2& mousePos, const rmcv::mat4& viewMat, const rmcv::mat4& projMat)
     {
         // Convert from [0, 1] to [-1, 1] range
         const float x = mousePos.x * 2.0f - 1.0f;
@@ -87,12 +87,12 @@ namespace Falcor
         float4 ray(x, y, -1.0f, 1.0f);
 
         // View
-        ray = glm::inverse(projMat) * ray;
+        ray = rmcv::inverse(projMat) * ray;
         ray.z = -1.0f;
         ray.w = 0.0f;
 
         // World
-        return glm::normalize(glm::inverse(viewMat) * ray);
+        return glm::normalize(rmcv::inverse(viewMat) * ray);
     }
 
     /** Creates a rotation matrix from individual basis vectors.
@@ -100,13 +100,13 @@ namespace Falcor
         \param[in] up Up vector.
         \return 3x3 rotation matrix.
     */
-    inline glm::mat3 createMatrixFromBasis(const float3& forward, const float3& up)
+    inline rmcv::mat3 createMatrixFromBasis(const float3& forward, const float3& up)
     {
         float3 f = glm::normalize(forward);
         float3 s = glm::normalize(glm::cross(up, forward));
         float3 u = glm::cross(f, s);
 
-        return glm::mat3(s, u, f);
+        return rmcv::make_mat3_fromCols(s, u, f);
     }
 
     /** Creates a rotation matrix from look-at coordinates.
@@ -115,7 +115,7 @@ namespace Falcor
         \param[in] up Object's up vector.
         \return 3x3 rotation matrix.
     */
-    inline glm::mat3 createMatrixFromLookAt(const float3& position, const float3& target, const float3& up)
+    inline rmcv::mat3 createMatrixFromLookAt(const float3& position, const float3& target, const float3& up)
     {
         return createMatrixFromBasis(target - position, up);
     }
@@ -225,10 +225,6 @@ namespace Falcor
         float s = (t - start) / (end - start);
         return smoothstep(s);
     }
-
-#ifndef GLM_CLIP_SPACE_Y_TOPDOWN
-#error GLM_CLIP_SPACE_Y_TOPDOWN is undefined. It means the custom fix we did in GLM to support Vulkan NDC space is missing. Look at GLMs 'setup.hpp' and 'glm\etc\matrix_clip_space.inl'
-#endif
 
 /*! @} */
 }

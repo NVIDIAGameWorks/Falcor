@@ -26,6 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Core/Macros.h"
+#include "Core/API/Formats.h"
+#include "Core/Platform/OS.h"
+#include <filesystem>
+#include <memory>
 
 struct AVFormatContext;
 struct AVStream;
@@ -90,6 +95,6 @@ namespace Falcor
         const std::filesystem::path mPath;
         ResourceFormat mFormat;
         uint32_t mRowPitch = 0;
-        uint8_t* mpFlippedImage = nullptr; // Used in case the image memory layout if bottom->top
+        std::unique_ptr<uint8_t[]> mpFlippedImage; // Used in case the image memory layout if bottom->top
     };
 }

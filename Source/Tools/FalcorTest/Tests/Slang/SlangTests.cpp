@@ -172,7 +172,7 @@ namespace Falcor
         test("6_2");
         test("6_3");
         test("6_5");
-#if defined(FALCOR_D3D12) && FALCOR_ENABLE_D3D12_AGILITY_SDK
+#if defined(FALCOR_D3D12) && FALCOR_HAS_D3D12_AGILITY_SDK
         test("6_6");
 #endif
     }

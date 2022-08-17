@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "CSM.h"
+#include "RenderGraph/RenderPassLibrary.h"
 
 const RenderPass::Info CSM::kInfo { "CSM", "Generates a visibility map for a single light source using the CSM technique." };
 
@@ -214,15 +215,15 @@ protected:
 };
 #endif
 
-static void createShadowMatrix(const DirectionalLight* pLight, const float3& center, float radius, glm::mat4& shadowVP)
+static void createShadowMatrix(const DirectionalLight* pLight, const float3& center, float radius, rmcv::mat4& shadowVP)
 {
-    glm::mat4 view = glm::lookAt(center, center + pLight->getWorldDirection(), float3(0, 1, 0));
-    glm::mat4 proj = glm::ortho(-radius, radius, -radius, radius, -radius, radius);
+    rmcv::mat4 view = rmcv::lookAt(center, center + pLight->getWorldDirection(), float3(0, 1, 0));
+    rmcv::mat4 proj = rmcv::ortho(-radius, radius, -radius, radius, -radius, radius);
 
     shadowVP = proj * view;
 }
 
-static void createShadowMatrix(const PointLight* pLight, const float3& center, float radius, float fboAspectRatio, glm::mat4& shadowVP)
+static void createShadowMatrix(const PointLight* pLight, const float3& center, float radius, float fboAspectRatio, rmcv::mat4& shadowVP)
 {
     const float3 lightPos = pLight->getWorldPosition();
     const float3 lookat = pLight->getWorldDirection() + lightPos;
@@ -232,17 +233,17 @@ static void createShadowMatrix(const PointLight* pLight, const float3& center, f
         up = float3(1, 0, 0);
     }
 
-    glm::mat4 view = glm::lookAt(lightPos, lookat, up);
+    rmcv::mat4 view = rmcv::lookAt(lightPos, lookat, up);
     float distFromCenter = glm::length(lightPos - center);
     float nearZ = std::max(0.1f, distFromCenter - radius);
     float maxZ = std::min(radius * 2, distFromCenter + radius);
     float angle = pLight->getOpeningAngle() * 2;
-    glm::mat4 proj = glm::perspective(angle, fboAspectRatio, nearZ, maxZ);
+    rmcv::mat4 proj = rmcv::perspective(angle, fboAspectRatio, nearZ, maxZ);
 
     shadowVP = proj * view;
 }
 
-static void createShadowMatrix(const Light* pLight, const float3& center, float radius, float fboAspectRatio, glm::mat4& shadowVP)
+static void createShadowMatrix(const Light* pLight, const float3& center, float radius, float fboAspectRatio, rmcv::mat4& shadowVP)
 {
     switch (pLight->getType())
     {
@@ -445,7 +446,7 @@ void camClipSpaceToWorldSpace(const Camera* pCamera, float3 viewFrustum[8], floa
         float3(-1.0f, -1.0f, 1.0f),
     };
 
-    glm::mat4 invViewProj = pCamera->getInvViewProjMatrix();
+    rmcv::mat4 invViewProj = pCamera->getInvViewProjMatrix();
     center = float3(0, 0, 0);
 
     for (uint32_t i = 0; i < 8; i++)
@@ -486,7 +487,7 @@ FALCOR_FORCEINLINE float calcPssmPartitionEnd(float nearPlane, float camDepthRan
     return distance;
 }
 
-void getCascadeCropParams(const float3 crd[8], const glm::mat4& lightVP, float4& scale, float4& offset)
+void getCascadeCropParams(const float3 crd[8], const rmcv::mat4& lightVP, float4& scale, float4& offset)
 {
     // Transform the frustum into light clip-space and calculate min-max
     float4 maxCS(-1, -1, 0, 1);
@@ -653,9 +654,9 @@ void CSM::reduceDepthSdsmMinMax(RenderContext* pRenderCtx, const Camera* pCamera
     float2 distanceRange = float2(mSdsmData.minMaxReduction->reduce(pRenderCtx, pDepthBuffer));
 
     // Convert to linear
-    glm::mat4 camProj = pCamera->getProjMatrix();
-    distanceRange = camProj[2][2] - distanceRange * camProj[2][3];
-    distanceRange = camProj[3][2] / distanceRange;
+    rmcv::mat4 camProj = pCamera->getProjMatrix();
+    distanceRange = camProj[2][2] - distanceRange * camProj[3][2];
+    distanceRange = camProj[2][3] / distanceRange;
     distanceRange = (distanceRange - pCamera->getNearPlane()) / (pCamera->getFarPlane() - pCamera->getNearPlane());
     distanceRange = glm::clamp(distanceRange, float2(0), float2(1));
     mSdsmData.sdsmResult = distanceRange;
@@ -731,8 +732,8 @@ void CSM::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
     if (!mpLight || !mpScene) return;
 
-    setupVisibilityPassFbo(renderData[kVisibility]->asTexture());
-    const auto& pDepth = renderData[kDepth]->asTexture();
+    setupVisibilityPassFbo(renderData.getTexture(kVisibility));
+    const auto& pDepth = renderData.getTexture(kDepth);
     const auto pCamera = mpScene->getCamera().get();
     //const auto pCamera = mpCsmSceneRenderer->getScene()->getActiveCamera().get();
 

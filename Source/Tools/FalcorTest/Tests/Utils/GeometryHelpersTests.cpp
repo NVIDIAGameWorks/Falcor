@@ -26,8 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Testing/UnitTest.h"
-#include <random>
+#include "Utils/HostDeviceShared.slangh"
+#include "Utils/Math/Common.h"
 #include <glm/gtx/io.hpp>
+#include <random>
+#include <cmath>
 
 namespace Falcor
 {
@@ -35,11 +38,13 @@ namespace Falcor
     {
         const char kShaderFilename[] = "Tests/Utils/GeometryHelpersTests.cs.slang";
 
-        /** Unmodified reference code from Ray Tracing Gems, Chapter 6.
-        */
-        constexpr float origin() { return 1.0f / 32.0f; }
-        constexpr float float_scale() { return 1.0f / 65536.0f; }
-        constexpr float int_scale() { return 256.0f; }
+        /** Modified reference code from Ray Tracing Gems, Chapter 6.
+
+            Modified after discussion with Carsten Waechter, see comment in the implementation
+         */
+        constexpr float origin() { return 1.0f / 16.0f; }
+        constexpr float float_scale() { return 3.0f / 65536.0f; }
+        constexpr float int_scale() { return 3 * 256.0f; }
 
         // Normal points outward for rays exiting the surface, else is flipped.
         float3 offset_ray(const float3 p, const float3 n)
@@ -133,13 +138,15 @@ namespace Falcor
 
         void testRandomBBoxes(GPUUnitTestContext& ctx, const char* entrypoint)
         {
+            const int nTests = 1 << 16;
+
             // Generate test data.
             std::vector<BBoxTestCase> testCases;
-            std::random_device rd;
-            std::mt19937 gen(rd());
+            std::mt19937 gen;
             std::uniform_real_distribution<> posAndNegDist(-100.f, 100.f);
             std::uniform_real_distribution<> posDist(1e-4f, 100.f);
-            for (int i = 0; i < 256; ++i)
+
+            for (int i = 0; i < nTests; ++i)
             {
                 // Random origins and bounding boxes.
                 float3 origin(posAndNegDist(gen), posAndNegDist(gen), posAndNegDist(gen));
@@ -194,33 +201,33 @@ namespace Falcor
 
     GPU_TEST(ComputeRayOrigin)
     {
-        const uint32_t n = 1 << 16;
+        const uint32_t nTests = 1 << 16;
 
         std::mt19937 rng;
         auto dist = std::uniform_real_distribution<float>(-1.f, 1.f);
         auto r = [&]() -> float { return dist(rng); };
 
         // Create random test data.
-        std::vector<float3> testPositions(n);
-        std::vector<float3> testNormals(n);
-        for (uint32_t i = 0; i < n; i++)
+        std::vector<float3> testPositions(nTests);
+        std::vector<float3> testNormals(nTests);
+        for (uint32_t i = 0; i < nTests; i++)
         {
-            float scale = std::pow(10.f, (float)i / n * 60.f - 30.f); // 1e-30..1e30
+            float scale = std::pow(10.f, (float)i / nTests * 60.f - 30.f); // 1e-30..1e30
             testPositions[i] = float3(r(), r(), r()) * scale;
             testNormals[i] = glm::normalize(float3(r(), r(), r()));
         }
 
         // Setup and run GPU test.
-        ctx.createProgram(kShaderFilename, "testComputeRayOrigin");
-        ctx.allocateStructuredBuffer("result", n);
-        ctx.allocateStructuredBuffer("pos", n, testPositions.data(), testPositions.size() * sizeof(float3));
-        ctx.allocateStructuredBuffer("normal", n, testNormals.data(), testNormals.size() * sizeof(float3));
-        ctx["CB"]["n"] = n;
-        ctx.runProgram(n);
+        ctx.createProgram(kShaderFilename, "testComputeRayOrigin", Program::DefineList(), Shader::CompilerFlags::FloatingPointModePrecise);
+        ctx.allocateStructuredBuffer("result", nTests);
+        ctx.allocateStructuredBuffer("pos", nTests, testPositions.data(), testPositions.size() * sizeof(float3));
+        ctx.allocateStructuredBuffer("normal", nTests, testNormals.data(), testNormals.size() * sizeof(float3));
+        ctx["CB"]["n"] = nTests;
+        ctx.runProgram(nTests);
 
         // Verify results.
         const float3* result = ctx.mapBuffer<const float3>("result");
-        for (uint32_t i = 0; i < n; i++)
+        for (uint32_t i = 0; i < nTests; i++)
         {
             float3 ref = offset_ray(testPositions[i], testNormals[i]);
             EXPECT_EQ(result[i], ref) << "i = " << i;

@@ -25,11 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include "Core/API/Device.h"
 #include "Core/API/LowLevelContextData.h"
 #include "GFXDeviceApiData.h"
 #include "GFXLowLevelContextApiData.h"
+#include "Core/API/Device.h"
+#include "Core/API/GFX/GFXAPI.h"
 
 namespace Falcor
 {
@@ -43,7 +43,7 @@ namespace Falcor
         , mpQueue(queue)
     {
         mpFence = GpuFence::create();
-        mpApiData = new LowLevelContextApiData;
+        mpApiData.reset(new LowLevelContextApiData);
         FALCOR_ASSERT(mpFence && mpApiData);
 
         openCommandBuffer();
@@ -55,7 +55,6 @@ namespace Falcor
         {
             closeCommandBuffer();
         }
-        safe_delete(mpApiData);
     }
 
     void LowLevelContextData::closeCommandBuffer()
@@ -63,7 +62,7 @@ namespace Falcor
         mpApiData->mIsCommandBufferOpen = false;
         mpApiData->closeEncoders();
         mpApiData->pCommandBuffer->close();
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         mpApiData->mpD3D12CommandListHandle = nullptr;
 #endif
     }
@@ -73,9 +72,6 @@ namespace Falcor
         mpApiData->mIsCommandBufferOpen = true;
         auto transientHeap = gpDevice->getApiData()->pTransientResourceHeaps[gpDevice->getCurrentBackBufferIndex()].get();
         mpApiData->pCommandBuffer = transientHeap->createCommandBuffer();
-#if FALCOR_D3D12_AVAILABLE
-        mpApiData->mUsingCustomDescriptorHeap = false;
-#endif
     }
 
     void LowLevelContextData::beginDebugEvent(const char* name)
@@ -122,7 +118,7 @@ namespace Falcor
 
     const D3D12CommandListHandle& LowLevelContextData::getD3D12CommandList() const
     {
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         if (!mpApiData->mpD3D12CommandListHandle)
         {
             gfx::InteropHandle handle = {};
@@ -137,7 +133,7 @@ namespace Falcor
 
     const D3D12CommandQueueHandle& LowLevelContextData::getD3D12CommandQueue() const
     {
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         if (!mpApiData->mpD3D12CommandQueueHandle)
         {
             gfx::InteropHandle handle = {};

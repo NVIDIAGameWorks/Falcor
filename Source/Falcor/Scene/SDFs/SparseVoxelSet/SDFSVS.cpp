@@ -25,10 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "SDFSVS.h"
-#include "Scene/SDFs/SDFVoxelTypes.slang"
+#include "Core/API/Device.h"
+#include "Core/API/RenderContext.h"
 #include "Utils/Math/MathHelpers.h"
+#include "Scene/SDFs/SDFVoxelTypes.slang"
 
 namespace Falcor
 {

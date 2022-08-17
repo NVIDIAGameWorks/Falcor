@@ -61,7 +61,7 @@ namespace Mogwai
         void setBaseFilename(const std::string& baseFilename);
         const std::string& getBaseFilename() const { return mBaseFilename; }
 
-        std::string getScript(const std::string& var) const;
+        std::string getScript(const std::string& var) const override;
         std::filesystem::path getOutputPath() const;
         std::string getOutputNamePrefix(const std::string& output) const;
 

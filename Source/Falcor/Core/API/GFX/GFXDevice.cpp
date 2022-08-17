@@ -25,23 +25,36 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-
 #include "GFXDeviceApiData.h"
 #include "GFXFormats.h"
+#include "Core/Macros.h"
+#include "Core/API/Raytracing.h"
+#include "Core/API/GFX/GFXAPI.h"
 #include "Core/Program/Program.h"
+#include "Utils/Logger.h"
 
-#if FALCOR_ENABLE_NVAPI && FALCOR_D3D12_AVAILABLE
+#if FALCOR_NVAPI_AVAILABLE
 #include "Core/API/D3D12/D3D12NvApiExDesc.h"
-#define FALCOR_NVAPI_AVAILABLE 1
-#else
-#define FALCOR_NVAPI_AVAILABLE 0
 #endif
 
 using namespace gfx;
 
 namespace Falcor
 {
+    static_assert((uint32_t)RayFlags::None == 0);
+    static_assert((uint32_t)RayFlags::ForceOpaque == 0x1);
+    static_assert((uint32_t)RayFlags::ForceNonOpaque == 0x2);
+    static_assert((uint32_t)RayFlags::AcceptFirstHitAndEndSearch == 0x4);
+    static_assert((uint32_t)RayFlags::SkipClosestHitShader == 0x8);
+    static_assert((uint32_t)RayFlags::CullBackFacingTriangles == 0x10);
+    static_assert((uint32_t)RayFlags::CullFrontFacingTriangles == 0x20);
+    static_assert((uint32_t)RayFlags::CullOpaque == 0x40);
+    static_assert((uint32_t)RayFlags::CullNonOpaque == 0x80);
+    static_assert((uint32_t)RayFlags::SkipTriangles == 0x100);
+    static_assert((uint32_t)RayFlags::SkipProceduralPrimitives == 0x200);
+
+    static_assert(getMaxViewportCount() <= 8);
+
 #if FALCOR_NVAPI_AVAILABLE
     // To use NVAPI, we intercept the API calls in the gfx layer and dispatch into the NVAPI_Create*PipelineState
     // functions instead if the shader uses NVAPI functionalities.
@@ -219,6 +232,30 @@ namespace Falcor
     };
 #endif // FALCOR_NVAPI_AVAILABLE
 
+    class GFXDebugCallBack : public IDebugCallback
+    {
+        virtual SLANG_NO_THROW void SLANG_MCALL handleMessage(DebugMessageType type, DebugMessageSource source, const char* message) override
+        {
+            if (type == DebugMessageType::Error)
+            {
+                logError("GFX Error: {}", message);
+            }
+            else if (type == DebugMessageType::Warning)
+            {
+                logWarning("GFX Warning: {}", message);
+            }
+            else
+            {
+                logDebug("GFX Info: {}", message);
+            }
+        }
+    };
+
+    GFXDebugCallBack gGFXDebugCallBack;
+
+    Device::Device(Window::SharedPtr pWindow, const Desc& desc) : mpWindow(pWindow), mDesc(desc) {}
+    Device::~Device() = default;
+
     CommandQueueHandle Device::getCommandQueueHandle(LowLevelContextData::CommandQueueType type, uint32_t index) const
     {
         return mCmdQueues[(uint32_t)type][index];
@@ -244,11 +281,11 @@ namespace Falcor
         for (uint32_t i = 0; i < kSwapChainBuffersCount; i++)
         {
             Slang::ComPtr<gfx::ITextureResource> imageHandle;
-            HRESULT hr = mpApiData->pSwapChain->getImage(i, imageHandle.writeRef());
+            gfx::Result hr = mpApiData->pSwapChain->getImage(i, imageHandle.writeRef());
             apiHandles[i] = imageHandle.get();
-            if (FAILED(hr))
+            if (SLANG_FAILED(hr))
             {
-                logError("Failed to get back-buffer " + std::to_string(i) + " from the swap-chain", hr);
+                logError("Failed to get back-buffer {} from swap-chain, error: {}", i, hr);
                 return false;
             }
         }
@@ -263,9 +300,9 @@ namespace Falcor
     void Device::destroyApiObjects()
     {
 #if FALCOR_NVAPI_AVAILABLE
-        safe_delete(mpApiData->pApiDispatcher);
+        mpApiData->pApiDispatcher.reset();
 #endif
-        safe_delete(mpApiData);
+        mpApiData.reset();
     }
 
     gfx::ITransientResourceHeap* Device::getCurrentTransientResourceHeap()
@@ -367,8 +404,8 @@ namespace Falcor
     {
         const uint32_t kTransientHeapConstantBufferSize = 16 * 1024 * 1024;
 
-        DeviceApiData* pData = new DeviceApiData;
-        mpApiData = pData;
+        mpApiData.reset(new DeviceApiData);
+        DeviceApiData* pData = mpApiData.get();
 
         IDevice::Desc desc = {};
 #if FALCOR_GFX_VK
@@ -385,13 +422,14 @@ namespace Falcor
         desc.extendedDescs = &pExtDesc;
 
 #if FALCOR_NVAPI_AVAILABLE
-        mpApiData->pApiDispatcher = new PipelineCreationAPIDispatcher();
-        desc.apiCommandDispatcher = static_cast<ISlangUnknown*>(mpApiData->pApiDispatcher);
+        mpApiData->pApiDispatcher.reset(new PipelineCreationAPIDispatcher());
+        desc.apiCommandDispatcher = static_cast<ISlangUnknown*>(mpApiData->pApiDispatcher.get());
 #endif
+        gfxSetDebugCallback(&gGFXDebugCallBack);
 
-        if (SLANG_FAILED(gfxCreateDevice(&desc, pData->pDevice.writeRef()))) return false;
+        if (SLANG_FAILED(gfxCreateDevice(&desc, mpApiData->pDevice.writeRef()))) return false;
 
-        mApiHandle = pData->pDevice;
+        mApiHandle = mpApiData->pDevice;
 
         mGpuTimestampFrequency = 1000.0 / (double)mApiHandle->getDeviceInfo().timestampFrequency;
         mSupportedFeatures = querySupportedFeatures(mApiHandle);
@@ -441,7 +479,11 @@ namespace Falcor
         desc.height = clientSize.y;
         desc.enableVSync = mDesc.enableVsync;
         desc.queue = mpApiData->pQueue.get();
+#if FALCOR_WINDOWS
         if (SLANG_FAILED(mpApiData->pDevice->createSwapchain(desc, gfx::WindowHandle::FromHwnd(mpWindow->getApiHandle()), mpApiData->pSwapChain.writeRef())))
+#elif FALCOR_LINUX
+        if (SLANG_FAILED(mpApiData->pDevice->createSwapchain(desc, gfx::WindowHandle::FromXWindow(mpWindow->getApiHandle().pDisplay, mpWindow->getApiHandle().window), mpApiData->pSwapChain.writeRef())))
+#endif
         {
             return false;
         }
@@ -467,7 +509,7 @@ namespace Falcor
         return mCurrentBackBufferIndex == -1;
     }
 
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
     const D3D12DeviceHandle Device::getD3D12Handle()
     {
         gfx::IDevice::InteropHandles interopHandles = {};
@@ -480,5 +522,5 @@ namespace Falcor
     {
         return nullptr;
     }
-#endif // FALCOR_D3D12_AVAILABLE
+#endif // FALCOR_HAS_D3D12
 }

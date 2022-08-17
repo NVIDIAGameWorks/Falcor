@@ -26,15 +26,16 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "ScriptBindings.h"
-#include "ScriptWriter.h"
-
-using namespace pybind11::literals;
+#include "Core/Macros.h"
+#include "Core/Platform/OS.h"
+#include <pybind11/pybind11.h>
+#include <exception>
+#include <filesystem>
+#include <string>
+#include <vector>
 
 namespace Falcor
 {
-    class Gui;
-
     class FALCOR_API Scripting
     {
     public:

@@ -28,10 +28,24 @@
 #pragma once
 #include "Scene.h"
 #include "SceneCache.h"
+#include "SceneIDs.h"
 #include "Transform.h"
 #include "TriangleMesh.h"
-#include "Material/MaterialTextureLoader.h"
 #include "VertexAttrib.slangh"
+#include "SceneTypes.slang"
+#include "Material/MaterialTextureLoader.h"
+
+#include "Core/Macros.h"
+#include "Core/API/VAO.h"
+#include "Utils/Math/AABB.h"
+#include "Utils/Math/Vector.h"
+#include "Utils/Math/Matrix.h"
+#include "Utils/Scripting/Dictionary.h"
+
+#include <filesystem>
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace Falcor
 {
@@ -39,8 +53,6 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<SceneBuilder>;
-
-        static const uint32_t kInvalidNode = Animatable::kInvalidNode;
 
         /** Flags that control how the scene will be built. They can be combined together.
         */
@@ -113,7 +125,7 @@ namespace Falcor
             bool isFrontFaceCW = false;                 ///< Indicate whether front-facing side has clockwise winding in object space.
             bool useOriginalTangentSpace = false;       ///< Indicate whether to use the original tangent space that was loaded with the mesh. By default, we will ignore it and use MikkTSpace to generate the tangent space.
             bool mergeDuplicateVertices = true;         ///< Indicate whether to merge identical vertices and adjust indices.
-            uint32_t skeletonNodeId = kInvalidNode;     ///< For skinned meshes, the node ID of the skeleton's world transform. If set to -1, the skeleton is based on the mesh's own world position (Assimp behavior pre-multiplies instance transform).
+            NodeID skeletonNodeId{ NodeID::Invalid() }; ///< For skinned meshes, the node ID of the skeleton's world transform. If invalid, the skeleton is based on the mesh's own world position (Assimp behavior pre-multiplies instance transform).
 
             template<typename T>
             uint32_t getAttributeIndex(const Attribute<T>& attribute, uint32_t face, uint32_t vert) const
@@ -131,7 +143,7 @@ namespace Falcor
                 default:
                     FALCOR_UNREACHABLE();
                 }
-                return Scene::kInvalidIndex;
+                return Scene::kInvalidAttributeIndex;
             }
 
             template<typename T>
@@ -255,7 +267,7 @@ namespace Falcor
             std::string name;
             Vao::Topology topology = Vao::Topology::Undefined;
             Material::SharedPtr pMaterial;
-            uint32_t skeletonNodeId = kInvalidNode; ///< Forwarded from Mesh struct.
+            NodeID skeletonNodeId{ NodeID::Invalid() }; ///< Forwarded from Mesh struct.
 
             uint64_t indexCount = 0;            ///< Number of indices, or zero if non-indexed.
             bool use16BitIndices = false;       ///< True if the indices are in 16-bit format.
@@ -306,13 +318,13 @@ namespace Falcor
         struct Node
         {
             std::string name;
-            float4x4 transform;
-            float4x4 meshBind;          // For skinned meshes. World transform at bind time.
-            float4x4 localToBindPose;   // For bones. Inverse bind transform.
-            uint32_t parent = kInvalidNode;
+            rmcv::mat4 transform;
+            rmcv::mat4 meshBind;          // For skinned meshes. World transform at bind time.
+            rmcv::mat4 localToBindPose;   // For bones. Inverse bind transform.
+            NodeID parent{ NodeID::Invalid() };
         };
 
-        using InstanceMatrices = std::vector<float4x4>;
+        using InstanceMatrices = std::vector<rmcv::mat4>;
 
         /** Create a new object
         */
@@ -373,14 +385,14 @@ namespace Falcor
             \param mesh The mesh to add.
             \return The ID of the mesh in the scene. Note that all of the instances share the same mesh ID.
         */
-        uint32_t addMesh(const Mesh& mesh);
+        MeshID addMesh(const Mesh& mesh);
 
         /** Add a triangle mesh.
             \param The triangle mesh to add.
             \param pMaterial The material to use for the mesh.
             \return The ID of the mesh in the scene.
         */
-        uint32_t addTriangleMesh(const TriangleMesh::SharedPtr& pTriangleMesh, const Material::SharedPtr& pMaterial);
+        MeshID addTriangleMesh(const TriangleMesh::SharedPtr& pTriangleMesh, const Material::SharedPtr& pMaterial);
 
         /** Pre-process a mesh into the data format that is used in the global scene buffers.
             Throws an exception if something went wrong.
@@ -400,7 +412,7 @@ namespace Falcor
             \param mesh The pre-processed mesh.
             \return The ID of the mesh in the scene. Note that all of the instances share the same mesh ID.
         */
-        uint32_t addProcessedMesh(const ProcessedMesh& mesh);
+        MeshID addProcessedMesh(const ProcessedMesh& mesh);
 
         /** Set mesh vertex cache for animation.
             \param[in] cachedCurves The mesh vertex cache data (will be moved from).
@@ -422,7 +434,7 @@ namespace Falcor
             \param curve The curve to add.
             \return The ID of the curve in the scene. Note that all of the instances share the same curve ID.
         */
-        uint32_t addCurve(const Curve& curve);
+        CurveID addCurve(const Curve& curve);
 
         /** Pre-process a curve into the data format that is used in the global scene buffers.
             Throws an exception if something went wrong.
@@ -435,7 +447,7 @@ namespace Falcor
             \param curve The pre-processed curve.
             \return The ID of the curve in the scene. Note that all of the instances share the same curve ID.
         */
-        uint32_t addProcessedCurve(const ProcessedCurve& curve);
+        CurveID addProcessedCurve(const ProcessedCurve& curve);
 
         /** Set curve vertex cache for animation.
             \param[in] cachedCurves The dynamic curve vertex cache data.
@@ -449,7 +461,7 @@ namespace Falcor
             \param pMaterial The material to be used by this SDF grid.
             \return The ID of the SDG grid desc in the scene.
         */
-        uint32_t addSDFGrid(const SDFGrid::SharedPtr& pSDFGrid, const Material::SharedPtr& pMaterial);
+        SdfDescID addSDFGrid(const SDFGrid::SharedPtr& pSDFGrid, const Material::SharedPtr& pMaterial);
 
         // Materials
 
@@ -468,7 +480,7 @@ namespace Falcor
             \param pMaterial The material.
             \return The ID of the material in the scene.
         */
-        uint32_t addMaterial(const Material::SharedPtr& pMaterial);
+        MaterialID addMaterial(const Material::SharedPtr& pMaterial);
 
         /** Request loading a material texture.
             \param[in] pMaterial Material to load texture into.
@@ -499,7 +511,7 @@ namespace Falcor
             \param nodeID The node to attach the volume to (optional).
             \return The ID of the volume in the scene.
         */
-        uint32_t addGridVolume(const GridVolume::SharedPtr& pGridVolume, uint32_t nodeID = kInvalidNode);
+        VolumeID addGridVolume(const GridVolume::SharedPtr& pGridVolume, NodeID nodeID = NodeID{ NodeID::Invalid() } );
 
         // Lights
 
@@ -518,7 +530,11 @@ namespace Falcor
             \param pLight The light object.
             \return The light ID
         */
-        uint32_t addLight(const Light::SharedPtr& pLight);
+        LightID addLight(const Light::SharedPtr& pLight);
+
+        /** DEMO21: Load global light profile.
+        */
+        void loadLightProfile(const std::string& filename, bool normalize = true);
 
         // Environment map
 
@@ -541,7 +557,7 @@ namespace Falcor
             \param pCamera Camera to be added.
             \return The camera ID
         */
-        uint32_t addCamera(const Camera::SharedPtr& pCamera);
+        CameraID addCamera(const Camera::SharedPtr& pCamera);
 
         /** Get the selected camera.
         */
@@ -584,7 +600,7 @@ namespace Falcor
         /** Adds a node to the graph.
             \return The node ID.
         */
-        uint32_t addNode(const Node& node);
+        NodeID addNode(const Node& node);
 
         /** Get how many nodes have been added to the scene graph.
             \return The node count.
@@ -593,24 +609,24 @@ namespace Falcor
 
         /** Add a mesh instance to a node
         */
-        void addMeshInstance(uint32_t nodeID, uint32_t meshID);
+        void addMeshInstance(NodeID nodeID, MeshID meshID);
 
         /** Add a curve instance to a node.
         */
-        void addCurveInstance(uint32_t nodeID, uint32_t curveID);
+        void addCurveInstance(NodeID nodeID, CurveID curveID);
 
         /** Add an SDF grid instance to a node.
         */
-        void addSDFGridInstance(uint32_t nodeID, uint32_t sdfGridID);
+        void addSDFGridInstance(NodeID nodeID, SdfDescID sdfGridID);
 
         /** Check if a scene node is animated. This check is done recursively through parent nodes.
             \return Returns true if node is animated.
         */
-        bool isNodeAnimated(uint32_t nodeID) const;
+        bool isNodeAnimated(NodeID nodeID) const;
 
         /** Set the animation interpolation mode for a given scene node. This sets the mode recursively for all parent nodes.
         */
-        void setNodeInterpolationMode(uint32_t nodeID, Animation::InterpolationMode interpolationMode, bool enableWarping);
+        void setNodeInterpolationMode(NodeID nodeID, Animation::InterpolationMode interpolationMode, bool enableWarping);
 
     private:
         SceneBuilder(Flags buildFlags);
@@ -619,12 +635,12 @@ namespace Falcor
         {
             InternalNode() = default;
             InternalNode(const Node& n) : Node(n) {}
-            std::vector<uint32_t> children;         ///< Node IDs of all child nodes.
-            std::vector<uint32_t> meshes;           ///< Mesh IDs of all meshes this node transforms.
-            std::vector<uint32_t> curves;           ///< Curve IDs of all curves this node transforms.
-            std::vector<uint32_t> sdfGrids;         ///< SDF grid IDs of all SDF grids this node transforms.
-            std::vector<Animatable*> animatable;    ///< Pointers to all animatable objects attached to this node.
-            bool dontOptimize = false;              ///< Whether node should be ignored in optimization passes
+            std::vector<NodeID> children;          ///< Node IDs of all child nodes.
+            std::vector<MeshID> meshes;            ///< Mesh IDs of all meshes this node transforms.
+            std::vector<CurveID> curves;           ///< Curve IDs of all curves this node transforms.
+            std::vector<SdfGridID> sdfGrids;       ///< SDF grid IDs of all SDF grids this node transforms.
+            std::vector<Animatable*> animatable;   ///< Pointers to all animatable objects attached to this node.
+            bool dontOptimize = false;             ///< Whether node should be ignored in optimization passes
 
             /** Returns true if node has any attached scene objects.
             */
@@ -635,7 +651,7 @@ namespace Falcor
         {
             std::string name;
             Vao::Topology topology = Vao::Topology::Undefined;
-            uint32_t materialId = 0;                ///< Global material ID.
+            MaterialID materialId{ 0 };             ///< Global material ID.
             uint32_t staticVertexOffset = 0;        ///< Offset into the shared 'staticData' array. This is calculated in createGlobalBuffers().
             uint32_t staticVertexCount = 0;         ///< Number of static vertices.
             uint32_t skinningVertexOffset = 0;      ///< Offset into the shared 'skinningData' array. This is calculated in createGlobalBuffers().
@@ -645,7 +661,7 @@ namespace Falcor
             uint32_t indexOffset = 0;               ///< Offset into the shared 'indexData' array. This is calculated in createGlobalBuffers().
             uint32_t indexCount = 0;                ///< Number of indices, or zero if non-indexed.
             uint32_t vertexCount = 0;               ///< Number of vertices.
-            uint32_t skeletonNodeID = kInvalidNode; ///< Node ID of skeleton world transform. Forwarded from Mesh struct.
+            NodeID  skeletonNodeID{ NodeID::Invalid() }; ///< Node ID of skeleton world transform. Forwarded from Mesh struct.
             bool use16BitIndices = false;           ///< True if the indices are in 16-bit format.
             bool hasSkinningData = false;           ///< True if mesh has skinned vertices.
             bool isStatic = false;                  ///< True if mesh is non-instanced and static (not dynamic or animated).
@@ -653,7 +669,7 @@ namespace Falcor
             bool isDisplaced = false;               ///< True if mesh has displacement map.
             bool isAnimated = false;                ///< True if mesh has vertex animations.
             AABB boundingBox;                       ///< Mesh bounding-box in object space.
-            std::vector<uint32_t> instances;        ///< Node IDs of all instances of this mesh.
+            std::vector<NodeID> instances;          ///< Node IDs of all instances of this mesh.
 
             // Pre-processed vertex data.
             std::vector<uint32_t> indexData;    ///< Vertex indices in either 32-bit or 16-bit format packed tightly, or empty if non-indexed.
@@ -688,14 +704,14 @@ namespace Falcor
         {
             std::string name;
             Vao::Topology topology;
-            uint32_t materialId = 0;            ///< Global material ID.
+            MaterialID materialId{ 0 };         ///< Global material ID.
             uint32_t staticVertexOffset = 0;    ///< Offset into the shared 'staticData' array. This is calculated in createCurveGlobalBuffers().
             uint32_t staticVertexCount = 0;     ///< Number of static curve vertices.
             uint32_t indexOffset = 0;           ///< Offset into the shared 'indexData' array. This is calculated in createCurveGlobalBuffers().
             uint32_t indexCount = 0;            ///< Number of indices.
             uint32_t vertexCount = 0;           ///< Number of vertices.
             uint32_t degree = 1;                ///< Polynomial degree of curve; linear (1) by default.
-            std::vector<uint32_t> instances;    ///< Node IDs of all instances of this curve.
+            std::vector<NodeID> instances;      ///< Node IDs of all instances of this curve.
 
             // Pre-processed curve vertex data.
             std::vector<uint32_t> indexData;    ///< Vertex indices in 32-bit.
@@ -725,17 +741,17 @@ namespace Falcor
         GpuFence::SharedPtr mpFence;
 
         // Helpers
-        bool doesNodeHaveAnimation(uint32_t nodeID) const;
-        void updateLinkedObjects(uint32_t oldNodeID, uint32_t newNodeID);
-        bool collapseNodes(uint32_t parentNodeID, uint32_t childNodeID);
-        bool mergeNodes(uint32_t dstNodeID, uint32_t srcNodeID);
+        bool doesNodeHaveAnimation(NodeID nodeID) const;
+        void updateLinkedObjects(NodeID oldNodeID, NodeID newNodeID);
+        bool collapseNodes(NodeID parentNodeID, NodeID childNodeID);
+        bool mergeNodes(NodeID dstNodeID, NodeID srcNodeID);
         void flipTriangleWinding(MeshSpec& mesh);
-        void updateSDFGridID(uint32_t oldID, uint32_t newID);
+        void updateSDFGridID(SdfGridID oldID, SdfGridID newID);
 
         /** Split a mesh by the given axis-aligned splitting plane.
             \return Pair of optional mesh IDs for the meshes on the left and right side, respectively.
         */
-        std::pair<std::optional<uint32_t>, std::optional<uint32_t>> splitMesh(uint32_t meshID, const int axis, const float pos);
+        std::pair<std::optional<MeshID>, std::optional<MeshID>> splitMesh(MeshID meshID, const int axis, const float pos);
 
         void splitIndexedMesh(const MeshSpec& mesh, MeshSpec& leftMesh, MeshSpec& rightMesh, const int axis, const float pos);
         void splitNonIndexedMesh(const MeshSpec& mesh, MeshSpec& leftMesh, MeshSpec& rightMesh, const int axis, const float pos);

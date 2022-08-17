@@ -25,9 +25,12 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "ComputeParallelReduction.h"
 #include "ParallelReductionType.slangh"
+#include "Core/Assert.h"
+#include "Core/API/RenderContext.h"
+#include "Utils/Math/Common.h"
+#include "Utils/Timing/Profiler.h"
 
 namespace Falcor
 {
@@ -104,9 +107,9 @@ namespace Falcor
 
         // Check that reduction type T is compatible with the resource format.
         if (sizeof(typename T::value_type) != 4 ||     // The shader is written for 32-bit types
-            (formatType == FORMAT_TYPE_FLOAT && !std::is_floating_point<T::value_type>::value) ||
-            (formatType == FORMAT_TYPE_SINT && (!std::is_integral<T::value_type>::value || !std::is_signed<T::value_type>::value)) ||
-            (formatType == FORMAT_TYPE_UINT && (!std::is_integral<T::value_type>::value || !std::is_unsigned<T::value_type>::value)))
+            (formatType == FORMAT_TYPE_FLOAT && !std::is_floating_point<typename T::value_type>::value) ||
+            (formatType == FORMAT_TYPE_SINT && (!std::is_integral<typename T::value_type>::value || !std::is_signed<typename T::value_type>::value)) ||
+            (formatType == FORMAT_TYPE_UINT && (!std::is_integral<typename T::value_type>::value || !std::is_unsigned<typename T::value_type>::value)))
         {
             throw RuntimeError("ComputeParallelReduction::execute() - Template type T is not compatible with resource format.");
         }
@@ -161,8 +164,8 @@ namespace Falcor
         pRenderContext->dispatch(mpState.get(), mpVars.get(), numGroups);
 
         // Final pass(es): Reduction by a factor N for each pass.
-        uint elems = numTiles.x * numTiles.y;
-        uint inputsBufferIndex = 0;
+        uint32_t elems = numTiles.x * numTiles.y;
+        uint32_t inputsBufferIndex = 0;
 
         while (elems > 1)
         {

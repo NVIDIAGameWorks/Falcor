@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "SimplePostFX.h"
+#include "RenderGraph/RenderPassLibrary.h"
 
 const RenderPass::Info SimplePostFX::kInfo { "SimplePostFX", "Simple set of post effects." };
 
@@ -165,8 +166,8 @@ RenderPassReflection SimplePostFX::reflect(const CompileData& compileData)
 
 void SimplePostFX::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    auto pSrc = renderData[kSrc]->asTexture();
-    auto pDst = renderData[kDst]->asTexture();
+    auto pSrc = renderData.getTexture(kSrc);
+    auto pDst = renderData.getTexture(kDst);
     FALCOR_ASSERT(pSrc && pDst);
 
     // Issue error and disable pass if I/O size doesn't match. The user can hit continue and fix the config or abort.

@@ -27,9 +27,10 @@
  **************************************************************************/
 #pragma once
 #include "CpuTimer.h"
+#include "Core/Macros.h"
 #include <string>
-#include <vector>
 #include <utility>
+#include <vector>
 
 namespace Falcor
 {

@@ -26,6 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "HelloDXR.h"
+#include "Utils/Math/FalcorMath.h"
+#include "Utils/UI/TextRenderer.h"
 
 static const float4 kClearColor(0.38f, 0.52f, 0.10f, 1);
 static const std::string kDefaultScene = "Arcade/Arcade.pyscene";
@@ -61,14 +63,22 @@ void HelloDXR::loadScene(const std::filesystem::path& path, const Fbo* pTargetFb
     mpCamera->setDepthRange(nearZ, farZ);
     mpCamera->setAspectRatio((float)pTargetFbo->getWidth() / (float)pTargetFbo->getHeight());
 
-    // Get type conformances for types used by the scene.
-    // These need to be set on the program in order to fully use Falcor's material system.
+    // Get shader modules and type conformances for types used by the scene.
+    // These need to be set on the program in order to use Falcor's material system.
+    auto shaderModules = mpScene->getShaderModules();
     auto typeConformances = mpScene->getTypeConformances();
+
+    // Get scene defines. These need to be set on any program using the scene.
+    auto defines = mpScene->getSceneDefines();
 
     // Create raster pass.
     // This utility wraps the creation of the program and vars, and sets the necessary scene defines.
-    mpRasterPass = RasterScenePass::create(mpScene, "Samples/HelloDXR/HelloDXR.3d.slang", "vsMain", "psMain");
-    mpRasterPass->getProgram()->setTypeConformances(typeConformances);
+    Program::Desc rasterProgDesc;
+    rasterProgDesc.addShaderModules(shaderModules);
+    rasterProgDesc.addShaderLibrary("Samples/HelloDXR/HelloDXR.3d.slang").vsEntry("vsMain").psEntry("psMain");
+    rasterProgDesc.addTypeConformances(typeConformances);
+
+    mpRasterPass = RasterScenePass::create(mpScene, rasterProgDesc, defines);
 
     // We'll now create a raytracing program. To do that we need to setup two things:
     // - A program description (RtProgram::Desc). This holds all shader entry points, compiler flags, macro defintions, etc.
@@ -79,7 +89,9 @@ void HelloDXR::loadScene(const std::filesystem::path& path, const Fbo* pTargetFb
     // needs to be re-created when switching scene. In this example, we re-create both the program and vars when a scene is loaded.
 
     RtProgram::Desc rtProgDesc;
+    rtProgDesc.addShaderModules(shaderModules);
     rtProgDesc.addShaderLibrary("Samples/HelloDXR/HelloDXR.rt.slang");
+    rtProgDesc.addTypeConformances(typeConformances);
     rtProgDesc.setMaxTraceRecursionDepth(3); // 1 for calling TraceRay from RayGen, 1 for calling it from the primary-ray ClosestHit shader for reflections, 1 for reflection ray tracing a shadow ray
     rtProgDesc.setMaxPayloadSize(24); // The largest ray payload struct (PrimaryRayData) is 24 bytes. The payload size should be set as small as possible for maximum performance.
 
@@ -92,8 +104,7 @@ void HelloDXR::loadScene(const std::filesystem::path& path, const Fbo* pTargetFb
     sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), primary);
     sbt->setHitGroup(1, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), shadow);
 
-    mpRaytraceProgram = RtProgram::create(rtProgDesc, mpScene->getSceneDefines());
-    mpRaytraceProgram->setTypeConformances(typeConformances);
+    mpRaytraceProgram = RtProgram::create(rtProgDesc, defines);
     mpRtVars = RtProgramVars::create(mpRaytraceProgram, sbt);
 }
 
@@ -111,7 +122,7 @@ void HelloDXR::setPerFrameVars(const Fbo* pTargetFbo)
 {
     FALCOR_PROFILE("setPerFrameVars");
     auto cb = mpRtVars["PerFrameCB"];
-    cb["invView"] = glm::inverse(mpCamera->getViewMatrix());
+    cb["invView"] = rmcv::inverse(mpCamera->getViewMatrix());
     cb["viewportDims"] = float2(pTargetFbo->getWidth(), pTargetFbo->getHeight());
     float fovY = focalLengthToFovY(mpCamera->getFocalLength(), Camera::kDefaultFrameHeight);
     cb["tanHalfFovY"] = std::tan(fovY * 0.5f);
@@ -182,12 +193,14 @@ void HelloDXR::onResizeSwapChain(uint32_t width, uint32_t height)
     mpRtOut = Texture::create2D(width, height, ResourceFormat::RGBA16Float, 1, 1, nullptr, Resource::BindFlags::UnorderedAccess | Resource::BindFlags::ShaderResource);
 }
 
-int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
+int main(int argc, char** argv)
 {
     HelloDXR::UniquePtr pRenderer = std::make_unique<HelloDXR>();
+
     SampleConfig config;
     config.windowDesc.title = "HelloDXR";
     config.windowDesc.resizableWindow = true;
 
     Sample::run(config, pRenderer);
+    return 0;
 }

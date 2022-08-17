@@ -25,11 +25,17 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "StandardMaterial.h"
+#include "Utils/Logger.h"
+#include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
 {
+    namespace
+    {
+        const char kShaderFile[] = "Rendering/Materials/StandardMaterial.slang";
+    }
+
     StandardMaterial::SharedPtr StandardMaterial::create(const std::string& name, ShadingModel shadingModel)
     {
         return SharedPtr(new StandardMaterial(name, shadingModel));
@@ -84,6 +90,31 @@ namespace Falcor
         return changed;
     }
 
+    void StandardMaterial::updateDeltaSpecularFlag()
+    {
+        // Check if material has no diffuse lobe.
+        bool isNonDiffuse = !hasTextureSlotData(TextureSlot::BaseColor) && float3(getBaseColor()) == float3(0.f) && getDiffuseTransmission() == 0.f;
+
+        // Check if material is fully specular transmissive.
+        bool isFullyTransmissive = getSpecularTransmission() >= 1.f;
+
+        // Check if material only has delta reflection/transmission.
+        bool isDelta = false;
+        if (getShadingModel() == ShadingModel::MetalRough && !hasTextureSlotData(TextureSlot::Specular))
+        {
+            isDelta = getSpecularParams().g == 0.f; // Green component stores roughness in MetalRough mode.
+            if (getSpecularParams().b >= 1.f) isNonDiffuse = true; // Blue component stores metallic in MetalRough mode. If 1.0 there is no diffuse lobe.
+        }
+
+        bool isDeltaSpecular = isDelta && (isNonDiffuse || isFullyTransmissive);
+
+        if (mHeader.isDeltaSpecular() != isDeltaSpecular)
+        {
+            mHeader.setDeltaSpecular(isDeltaSpecular);
+            markUpdates(UpdateFlags::DataChanged);
+        }
+    }
+
     void StandardMaterial::renderSpecularUI(Gui::Widgets& widget)
     {
         if (getShadingModel() == ShadingModel::MetalRough)
@@ -96,6 +127,16 @@ namespace Falcor
         }
     }
 
+    Program::ShaderModuleList StandardMaterial::getShaderModules() const
+    {
+        return { Program::ShaderModule(kShaderFile) };
+    }
+
+    Program::TypeConformanceList StandardMaterial::getTypeConformances() const
+    {
+        return { {{"StandardMaterial", "IMaterial"}, (uint32_t)MaterialType::Standard} };
+    }
+
     void StandardMaterial::setShadingModel(ShadingModel model)
     {
         checkArgument(model == ShadingModel::MetalRough || model == ShadingModel::SpecGloss, "'model' must be MetalRough or SpecGloss");
@@ -104,6 +145,7 @@ namespace Falcor
         {
             mData.setShadingModel(model);
             markUpdates(UpdateFlags::DataChanged);
+            updateDeltaSpecularFlag();
         }
     }
 
@@ -119,6 +161,7 @@ namespace Falcor
         {
             mData.specular[1] = (float16_t)roughness;
             markUpdates(UpdateFlags::DataChanged);
+            updateDeltaSpecularFlag();
         }
     }
 
@@ -134,14 +177,15 @@ namespace Falcor
         {
             mData.specular[2] = (float16_t)metallic;
             markUpdates(UpdateFlags::DataChanged);
+            updateDeltaSpecularFlag();
         }
     }
 
     void StandardMaterial::setEmissiveColor(const float3& color)
     {
-        if (mData.emissive != (float16_t3)color)
+        if (mData.emissive != color)
         {
-            mData.emissive = (float16_t3)color;
+            mData.emissive = color;
             markUpdates(UpdateFlags::DataChanged);
             updateEmissiveFlag();
         }
@@ -159,6 +203,8 @@ namespace Falcor
 
     FALCOR_SCRIPT_BINDING(StandardMaterial)
     {
+        using namespace pybind11::literals;
+
         FALCOR_SCRIPT_BINDING_DEPENDENCY(BasicMaterial)
 
         pybind11::enum_<ShadingModel> shadingModel(m, "ShadingModel");

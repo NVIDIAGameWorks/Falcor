@@ -35,24 +35,49 @@ static const uint kBrickWidthInVoxels = BRICK_WIDTH;
 static const uint kBrickWidthInValues = BRICK_WIDTH + 1;
 static const float kRootThree = sqrt(3.0f);
 
-cbuffer CB
+struct ParamBlock
 {
-    uint gPrimitiveCount;
-    uint gGridWidth;
-    uint gBrickCount;
+    uint primitiveCount;
+    uint gridWidth;
+    uint brickCount;
+    StructuredBuffer<SDF3DPrimitive> primitives;
+    ByteAddressBuffer chunkCoords;
+    RWByteAddressBuffer chunkValidity;
+    Texture3D<float> sdfGrid;
 };
 
-StructuredBuffer<SDF3DPrimitive> gPrimitives;
-ByteAddressBuffer gChunkCoords;
-
-RWByteAddressBuffer gChunkValidity;
+ParameterBlock<ParamBlock> gParamBlock;
 
 groupshared float gGroupBrickValues[kBrickWidthInValues * kBrickWidthInValues * kBrickWidthInValues];
 groupshared bool gGroupBrickValidity[kBrickWidthInVoxels * kBrickWidthInVoxels * kBrickWidthInVoxels];
 
+#ifdef _BUILD_WITH_SD_FIELD
+float fetchGridDistance(const float3 p)
+{
+    float3 coordsF = (p + 0.5f) * gParamBlock.gridWidth; // Voxel coords.
+    uint3 voxelCoords = uint3(floor(coordsF)); // Truncate coords to the lower voxel position.
+
+    // Fetch gird distances for the voxel.
+    float4 values0xx;
+    float4 values1xx;
+    values0xx[0] = gParamBlock.sdfGrid[voxelCoords].x;
+    values0xx[1] = gParamBlock.sdfGrid[voxelCoords + uint3(0, 0, 1)].x;
+    values0xx[2] = gParamBlock.sdfGrid[voxelCoords + uint3(0, 1, 0)].x;
+    values0xx[3] = gParamBlock.sdfGrid[voxelCoords + uint3(0, 1, 1)].x;
+    values1xx[0] = gParamBlock.sdfGrid[voxelCoords + uint3(1, 0, 0)].x;
+    values1xx[1] = gParamBlock.sdfGrid[voxelCoords + uint3(1, 0, 1)].x;
+    values1xx[2] = gParamBlock.sdfGrid[voxelCoords + uint3(1, 1, 0)].x;
+    values1xx[3] = gParamBlock.sdfGrid[voxelCoords + uint3(1, 1, 1)].x;
+
+    // Interpolate depending on the fractional part of the voxel coords.
+    float3 voxelUnitCoords = frac(coordsF);
+    return SDFVoxelCommon::sdfVoxelTrilin(values0xx, values1xx, voxelUnitCoords);
+}
+#endif
+
 float evalCoords(const uint3 coord)
 {
-    const float3 p = -0.5f + float3(coord) / gGridWidth;
+    const float3 p = -0.5f + float3(coord) / gParamBlock.gridWidth;
     return evalPos(p);
 }
 
@@ -60,13 +85,19 @@ float evalPos(const float3 p)
 {
     float sd = FLT_MAX;
 
-    for (uint primitiveID = 0; primitiveID < gPrimitiveCount; primitiveID++)
+#ifdef _BUILD_WITH_SD_FIELD
+    sd = fetchGridDistance(p);
+#endif
+
+    for (uint primitiveID = 0; primitiveID < gParamBlock.primitiveCount; primitiveID++)
     {
-        SDF3DPrimitive primitive = gPrimitives[primitiveID];
+        SDF3DPrimitive primitive = gParamBlock.primitives[primitiveID];
         sd = primitive.eval(p, sd);
     }
 
-    return sd * 2.0f * gGridWidth / kRootThree;
+    sd = clamp(sd * 2.0f * gParamBlock.gridWidth / kRootThree, -1.0f, 1.0f);
+
+    return sd;
 }
 
 [numthreads(256, 1, 1)]
@@ -75,19 +106,19 @@ void coarsePrune(uint3 dispatchThreadID : SV_DispatchThreadID)
     // Load virtual brick coords.
     const uint brickID = dispatchThreadID.x;
 
-    if (brickID >= gBrickCount) return;
+    if (brickID >= gParamBlock.brickCount) return;
 
-    const uint3 virtualBrickCoords = gChunkCoords.Load3((3 * brickID) << 2);
+    const uint3 virtualBrickCoords = gParamBlock.chunkCoords.Load3((3 * brickID) << 2);
 
     // Calculate brick grid coords.
     const uint3 brickGridCoords = virtualBrickCoords * kBrickWidthInVoxels;
-    const float3 brickCenterPos = -0.5f + (float3(brickGridCoords) + 0.5f * float(kBrickWidthInVoxels)) / gGridWidth;
+    const float3 brickCenterPos = -0.5f + (float3(brickGridCoords) + 0.5f * float(kBrickWidthInVoxels)) / gParamBlock.gridWidth;
 
     float centerValue = evalPos(brickCenterPos);
 
     // We don't do abs here since some signed distance functions aren't bounded on the interior.
     bool valid = centerValue <= float(kBrickWidthInVoxels);
-    gChunkValidity.Store(brickID << 2, valid ? 1 : 0);
+    gParamBlock.chunkValidity.Store(brickID << 2, valid ? 1 : 0);
 }
 
 [numthreads(kBrickWidthInValues, kBrickWidthInValues, kBrickWidthInValues)]
@@ -95,7 +126,7 @@ void finePrune(uint3 groupID : SV_GroupID, uint3 brickLocalValueCoords : SV_Grou
 {
     // Load virtual brick coords.
     const uint brickID = groupID.x;
-    const uint3 virtualBrickCoords = gChunkCoords.Load3((3 * brickID) << 2);
+    const uint3 virtualBrickCoords = gParamBlock.chunkCoords.Load3((3 * brickID) << 2);
 
     // Calculate brick grid coords.
     const uint3 brickGridCoords = virtualBrickCoords * kBrickWidthInVoxels;
@@ -131,7 +162,7 @@ void finePrune(uint3 groupID : SV_GroupID, uint3 brickLocalValueCoords : SV_Grou
         {
             if (gGroupBrickValidity[voxelID])
             {
-                gChunkValidity.Store(brickID << 2, 1);
+                gParamBlock.chunkValidity.Store(brickID << 2, 1);
                 return;
             }
         }

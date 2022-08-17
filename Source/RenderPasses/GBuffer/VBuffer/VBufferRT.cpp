@@ -82,7 +82,7 @@ void VBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
     GBufferBase::execute(pRenderContext, renderData);
 
     // Update frame dimension based on render pass output.
-    auto pOutput = renderData[kVBufferName]->asTexture();
+    auto pOutput = renderData.getTexture(kVBufferName);
     FALCOR_ASSERT(pOutput);
     updateFrameDim(uint2(pOutput->getWidth(), pOutput->getHeight()));
 
@@ -164,11 +164,12 @@ void VBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData&
 
         // Create ray tracing program.
         RtProgram::Desc desc;
+        desc.addShaderModules(mpScene->getShaderModules());
         desc.addShaderLibrary(kProgramRaytraceFile);
+        desc.addTypeConformances(mpScene->getTypeConformances());
         desc.setMaxPayloadSize(kMaxPayloadSizeBytes);
         desc.setMaxAttributeSize(mpScene->getRaytracingMaxAttributeSize());
         desc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
-        desc.addTypeConformances(mpScene->getTypeConformances());
 
         RtBindingTable::SharedPtr sbt = RtBindingTable::create(1, 1, mpScene->getGeometryCount());
         sbt->setRayGen(desc.addRayGen("rayGen"));
@@ -192,8 +193,6 @@ void VBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData&
         {
             sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::SDFGrid), desc.addHitGroup("sdfGridClosestHit", "", "sdfGridIntersection"));
         }
-
-        // Add hit groups for for other procedural primitives here.
 
         mRaytrace.pProgram = RtProgram::create(desc, defines);
         mRaytrace.pVars = RtProgramVars::create(mRaytrace.pProgram, sbt);
@@ -223,6 +222,7 @@ void VBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
     if (!mpComputePass)
     {
     	Program::Desc desc;
+        desc.addShaderModules(mpScene->getShaderModules());
     	desc.addShaderLibrary(kProgramComputeFile).csEntry("main").setShaderModel("6_5");
         desc.addTypeConformances(mpScene->getTypeConformances());
 

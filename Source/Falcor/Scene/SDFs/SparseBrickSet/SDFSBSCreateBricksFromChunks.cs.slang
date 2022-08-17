@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -39,62 +39,71 @@ static const uint kBrickWidthInValues = BRICK_WIDTH + 1;
 static const uint kCompressionWidth = 4;
 static const float kRootThree = sqrt(3.0f);
 
-cbuffer CB
+struct ParamBlock
 {
-    uint gPrimitiveCount;
-    uint gGridWidth;
-    uint gBrickCount;
-    uint2 gBricksPerAxis;
+    uint primitiveCount;
+    uint gridWidth;
+    uint brickCount;
+    uint2 bricksPerAxis;
+
+    StructuredBuffer<SDF3DPrimitive> primitives;
+    ByteAddressBuffer chunkCoords;
+
+    RWStructuredBuffer<AABB> brickAABBs;
+    RWTexture3D<uint> indirectionBuffer;
+#if COMPRESS_BRICKS
+    RWTexture2D<uint2> bricks;
+#else
+    RWTexture2D<float> bricks;
+#endif
+
+    Texture3D<float> sdfGrid;
 };
 
-StructuredBuffer<SDF3DPrimitive> gPrimitives;
-ByteAddressBuffer gChunkCoords;
-
-RWStructuredBuffer<AABB> gBrickAABBs;
-RWTexture3D<uint> gIndirectionBuffer;
-#if COMPRESS_BRICKS
-RWTexture2D<uint2> gBricks;
-#else
-RWTexture2D<float> gBricks;
-#endif
+ParameterBlock<ParamBlock> gParamBlock;
 
 float evalCoords(const uint3 coords)
 {
-    const float3 p = -0.5f + float3(coords) / gGridWidth;
+    const float3 p = -0.5f + float3(coords) / gParamBlock.gridWidth;
 
     float sd = FLT_MAX;
 
-    for (uint primitiveID = 0; primitiveID < gPrimitiveCount; primitiveID++)
+#ifdef _BUILD_WITH_SD_FIELD
+    sd = gParamBlock.sdfGrid[coords];
+#endif
+    
+    for (uint primitiveID = 0; primitiveID < gParamBlock.primitiveCount; primitiveID++)
     {
-        SDF3DPrimitive primitive = gPrimitives[primitiveID];
+        SDF3DPrimitive primitive = gParamBlock.primitives[primitiveID];
         sd = primitive.eval(p, sd);
     }
 
-    return clamp(sd * 2.0f * gGridWidth / kRootThree, -1.0f, 1.0f);
+    // Normalize the distance such that +-1 represent the half voxel distance to its diagonal. Any other distance greater than that is clamped to +-1.
+    return clamp(sd * 2.0f * gParamBlock.gridWidth / kRootThree, -1.0f, 1.0f);
 }
 
 [numthreads(256, 1, 1)]
 void main(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
     const uint brickID = dispatchThreadID.x;
-    if (brickID >= gBrickCount) return;
+    if (brickID >= gParamBlock.brickCount) return;
 
     // Load global virtualBrickCoords.
-    const uint3 virtualBrickCoords = gChunkCoords.Load3((3 * brickID) << 2);
+    const uint3 virtualBrickCoords = gParamBlock.chunkCoords.Load3((3 * brickID) << 2);
 
     // Calculate brick grid coords.
     uint3 brickGridCoords = virtualBrickCoords * kBrickWidthInVoxels;
 
     // Calculate the AABB min and max corners for the brick.
-    float3 brickAABBMin = -0.5f + float3(brickGridCoords) / float(gGridWidth);
-    float3 brickAABBMax = min(brickAABBMin + kBrickWidthInVoxels / float(gGridWidth), 0.5f);
-    gBrickAABBs[brickID] = AABB(brickAABBMin, brickAABBMax);
+    float3 brickAABBMin = -0.5f + float3(brickGridCoords) / float(gParamBlock.gridWidth);
+    float3 brickAABBMax = min(brickAABBMin + kBrickWidthInVoxels / float(gParamBlock.gridWidth), 0.5f);
+    gParamBlock.brickAABBs[brickID] = AABB(brickAABBMin, brickAABBMax);
 
     // Write the brickID to the indirection buffer.
-    gIndirectionBuffer[virtualBrickCoords] = brickID;
+    gParamBlock.indirectionBuffer[virtualBrickCoords] = brickID;
 
     // Calculate the min corner of the brick in the brick texture.
-    uint2 brickTextureCoords = uint2(brickID % gBricksPerAxis.x, brickID / gBricksPerAxis.x) * uint2(kBrickWidthInValues * kBrickWidthInValues, kBrickWidthInValues);
+    uint2 brickTextureCoords = uint2(brickID % gParamBlock.bricksPerAxis.x, brickID / gParamBlock.bricksPerAxis.x) * uint2(kBrickWidthInValues * kBrickWidthInValues, kBrickWidthInValues);
 
     // Write brick values.
     for (uint z = 0; z < kBrickWidthInValues; ++z)
@@ -116,7 +125,7 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
                         uint3 voxelGridCoords = blockGridCoords + uint3(bX, bY, 0);
 
 #if COMPRESS_BRICKS
-                        if (all(voxelGridCoords < gGridWidth))
+                        if (all(voxelGridCoords < gParamBlock.gridWidth))
                         {
                             const float sd = evalCoords(voxelGridCoords);
 
@@ -129,21 +138,21 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
                             block[bY][bX] = 127;
                         }
 #else
-                        if (all(voxelGridCoords < gGridWidth))
+                        if (all(voxelGridCoords < gParamBlock.gridWidth))
                         {
                             const float sd = evalCoords(voxelGridCoords);
-                            gBricks[voxelTextureCoords + uint2(bX, bY)] = sd;
+                            gParamBlock.bricks[voxelTextureCoords + uint2(bX, bY)] = sd;
                         }
                         else
                         {
-                            gBricks[voxelTextureCoords + uint2(bX, bY)] = 1.0f;
+                            gParamBlock.bricks[voxelTextureCoords + uint2(bX, bY)] = 1.0f;
                         }
 #endif
                     }
                 }
 
 #if COMPRESS_BRICKS
-                gBricks[blockTextureCoords] = compressBlock(block);
+                gParamBlock.bricks[blockTextureCoords] = compressBlock(block);
 #endif
             }
         }

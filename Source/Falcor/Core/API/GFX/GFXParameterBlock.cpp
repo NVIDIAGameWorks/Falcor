@@ -25,8 +25,12 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Core/API/ParameterBlock.h"
+#include "Core/API/Device.h"
+#include "Core/API/GFX/GFXAPI.h"
+#include "Core/Program/ProgramVersion.h"
+#include "Utils/Logger.h"
+
 namespace Falcor
 {
     namespace
@@ -176,13 +180,15 @@ namespace Falcor
         {
             auto iter = mUAVs.find(gfxOffset);
             if (iter == mUAVs.end()) return nullptr;
-            return iter->second->getResource()->asBuffer();
+            auto pResource = iter->second->getResource();
+            return pResource ? pResource->asBuffer() : nullptr;
         }
         else if (isSrvType(bindLoc.getType()))
         {
             auto iter = mSRVs.find(gfxOffset);
             if (iter == mSRVs.end()) return nullptr;
-            return iter->second->getResource()->asBuffer();
+            auto pResource = iter->second->getResource();
+            return pResource ? pResource->asBuffer() : nullptr;
         }
         else
         {
@@ -241,17 +247,10 @@ namespace Falcor
     set_constant_by_offset(float3);
     set_constant_by_offset(float4);
 
-    set_constant_by_offset(glm::mat2);
-    set_constant_by_offset(glm::mat2x3);
-    set_constant_by_offset(glm::mat2x4);
-
-    set_constant_by_offset(glm::mat3);
-    set_constant_by_offset(glm::mat3x2);
-    set_constant_by_offset(glm::mat3x4);
-
-    set_constant_by_offset(glm::mat4);
-    set_constant_by_offset(glm::mat4x2);
-    set_constant_by_offset(glm::mat4x3);
+    set_constant_by_offset(rmcv::mat1x4);
+    set_constant_by_offset(rmcv::mat2x4);
+    set_constant_by_offset(rmcv::mat3x4);
+    set_constant_by_offset(rmcv::mat4x4);
 
     set_constant_by_offset(uint64_t);
 
@@ -302,13 +301,15 @@ namespace Falcor
         {
             auto iter = mUAVs.find(gfxOffset);
             if (iter == mUAVs.end()) return nullptr;
-            return iter->second->getResource()->asTexture();
+            auto pResource = iter->second->getResource();
+            return pResource ? pResource->asTexture() : nullptr;
         }
         else if (isSrvType(bindLocation.getType()))
         {
             auto iter = mSRVs.find(gfxOffset);
             if (iter == mSRVs.end()) return nullptr;
-            return iter->second->getResource()->asTexture();
+            auto pResource = iter->second->getResource();
+            return pResource ? pResource->asTexture() : nullptr;
         }
         else
         {
@@ -477,7 +478,7 @@ namespace Falcor
         throw "unimplemented";
     }
 
-#if FALCOR_ENABLE_CUDA
+#if FALCOR_HAS_CUDA
     void* ParameterBlock::getCUDAHostBuffer(size_t& outSize)
     {
         return nullptr;

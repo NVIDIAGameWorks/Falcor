@@ -1,0 +1,67 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    //
+    // Note: These launch configurations rely on the ms-vscode.cmake-tools extension
+    // to provide ${command:cmake.launchTargetPath} and ${command:cmake.launchTargetDirectory}.
+    //
+    "version": "0.2.0",
+    "configurations": [
+        {
+            // Launch configuration for currently selected target.
+            "name": "Selected CMake Target",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${command:cmake.launchTargetDirectory}",
+            "environment": [
+                {
+                    "name": "FALCOR_DEVMODE",
+                    "value": "1"
+                }
+            ],
+            "visualizerFile": "${workspaceFolder}/Source/Falcor/Falcor.natvis"
+        },
+        {
+            // Launch configuration for Mogwai.
+            "name": "Mogwai",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "windows": {
+                "program": "${command:cmake.launchTargetDirectory}/Mogwai.exe"
+            },
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${command:cmake.launchTargetDirectory}",
+            "environment": [
+                {
+                    "name": "FALCOR_DEVMODE",
+                    "value": "1"
+                }
+            ],
+            "visualizerFile": "${workspaceFolder}/Source/Falcor/Falcor.natvis"
+        },
+        {
+            // Launch configuration for FalcorTest.
+            "name": "FalcorTest",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "windows": {
+                "program": "${command:cmake.launchTargetDirectory}/FalcorTest.exe"
+            },
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${command:cmake.launchTargetDirectory}",
+            "environment": [
+                {
+                    "name": "FALCOR_DEVMODE",
+                    "value": "1"
+                }
+            ],
+            "visualizerFile": "${workspaceFolder}/Source/Falcor/Falcor.natvis"
+        }
+    ]
+}

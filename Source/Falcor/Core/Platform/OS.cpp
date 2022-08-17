@@ -25,12 +25,15 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "OS.h"
+#include "Core/Errors.h"
 #include "Utils/StringUtils.h"
+#include "Utils/StringFormatters.h"
+#include <zlib.h>
 #include <filesystem>
 #include <fstream>
+#include <mutex>
 
-#include <zlib.h>
 
 namespace Falcor
 {
@@ -39,26 +42,6 @@ namespace Falcor
     void msgBoxTitle(const std::string& title)
     {
         gMsgBoxTitle = title;
-    }
-
-    uint32_t getNextPowerOf2(uint32_t a)
-    {
-        // TODO: With C++20 we could use std::bit_ceil instead.
-        a--;
-        a |= a >> 1;
-        a |= a >> 2;
-        a |= a >> 4;
-        a |= a >> 8;
-        a |= a >> 16;
-        a++;
-        return a;
-    }
-
-    uint32_t getLowerPowerOf2(uint32_t a)
-    {
-        // TODO: With C++20 we could use std::bit_floor instead.
-        FALCOR_ASSERT(a != 0);
-        return 1 << bitScanReverse(a);
     }
 
     const std::filesystem::path& getExecutableDirectory()
@@ -101,9 +84,11 @@ namespace Falcor
 
     inline std::vector<std::filesystem::path> getInitialDataDirectories()
     {
+        std::filesystem::path projectDir(_PROJECT_DIR_);
+
         std::vector<std::filesystem::path> developmentDirectories =
         {
-            std::filesystem::path(_PROJECT_DIR_) / "Data",
+            projectDir / "Data",
             getExecutableDirectory() / "Data",
         };
 
@@ -115,11 +100,7 @@ namespace Falcor
         std::vector<std::filesystem::path> directories = isDevelopmentMode() ? developmentDirectories : deploymentDirectories;
 
         // Add development media folder.
-#ifdef _MSC_VER
-        directories.push_back(getExecutableDirectory() / ".." / ".." / ".." / "Media"); // Relative to Visual Studio output folder
-#else
-        directories.push_back(getExecutableDirectory() / ".." / "Media"); // Relative to Makefile output folder
-#endif
+        directories.push_back(projectDir / ".." / ".." / "media");
 
         // Add additional media folders.
         std::string mediaFolders;

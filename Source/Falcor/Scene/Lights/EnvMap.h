@@ -26,12 +26,19 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-
-#include "Falcor.h"
 #include "EnvMapData.slang"
+#include "Core/Macros.h"
+#include "Core/API/Texture.h"
+#include "Core/API/Sampler.h"
+#include "Utils/Math/Vector.h"
+#include "Utils/UI/Gui.h"
+#include <memory>
+#include <filesystem>
 
 namespace Falcor
 {
+    struct ShaderVar;
+
     /** Environment map based radiance probe.
         Utily class for evaluating radiance stored in an lat-long environment map.
     */

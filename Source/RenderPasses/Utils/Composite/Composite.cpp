@@ -99,7 +99,7 @@ void Composite::compile(RenderContext* pRenderContext, const CompileData& compil
 void Composite::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
     // Prepare program.
-    const auto& pOutput = renderData[kOutput]->asTexture();
+    const auto& pOutput = renderData.getTexture(kOutput);
     FALCOR_ASSERT(pOutput);
     mOutputFormat = pOutput->getFormat();
 
@@ -114,8 +114,8 @@ void Composite::execute(RenderContext* pRenderContext, const RenderData& renderD
     var["scaleA"] = mScaleA;
     var["scaleB"] = mScaleB;
 
-    mCompositePass["A"] = renderData[kInputA]->asTexture(); // Can be nullptr
-    mCompositePass["B"] = renderData[kInputB]->asTexture(); // Can be nullptr
+    mCompositePass["A"] = renderData.getTexture(kInputA); // Can be nullptr
+    mCompositePass["B"] = renderData.getTexture(kInputB); // Can be nullptr
     mCompositePass["output"] = pOutput;
     mCompositePass->execute(pRenderContext, mFrameDim.x, mFrameDim.y);
 }

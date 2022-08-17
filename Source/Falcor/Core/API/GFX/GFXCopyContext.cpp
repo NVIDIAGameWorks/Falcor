@@ -25,16 +25,51 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Core/API/CopyContext.h"
 #include "GFXLowLevelContextApiData.h"
 #include "GFXFormats.h"
 #include "GFXResource.h"
+#include "Core/API/Device.h"
+#include "Core/API/Texture.h"
+#if FALCOR_HAS_D3D12
+#include "Core/API/Shared/D3D12DescriptorPool.h"
+#include "Core/API/Shared/D3D12DescriptorData.h"
+#endif
+#include "Utils/Logger.h"
+#include "Utils/Math/Common.h"
 
 namespace Falcor
 {
     void CopyContext::bindDescriptorHeaps()
     {
+    }
+
+    void CopyContext::bindCustomGPUDescriptorPool()
+    {
+#if FALCOR_HAS_D3D12
+        const D3D12DescriptorPool* pGpuPool = gpDevice->getD3D12GpuDescriptorPool().get();
+        const D3D12DescriptorPool::ApiData* pData = pGpuPool->getApiData();
+        ID3D12DescriptorHeap* pHeaps[D3D12DescriptorPool::ApiData::kHeapCount];
+        uint32_t heapCount = 0;
+        for (uint32_t i = 0; i < std::size(pData->pHeaps); i++)
+        {
+            if (pData->pHeaps[i])
+            {
+                pHeaps[heapCount] = pData->pHeaps[i]->getApiHandle();
+                heapCount++;
+            }
+        }
+        mpLowLevelData->getD3D12CommandList()->SetDescriptorHeaps(heapCount, pHeaps);
+#endif
+    }
+
+    void CopyContext::unbindCustomGPUDescriptorPool()
+    {
+#if FALCOR_HAS_D3D12
+        ComPtr<gfx::ICommandBufferD3D12> d3d12CommandBuffer;
+        mpLowLevelData->getApiData()->pCommandBuffer->queryInterface(SlangUUID SLANG_UUID_ICommandBufferD3D12, reinterpret_cast<void**>(d3d12CommandBuffer.writeRef()));
+        d3d12CommandBuffer->invalidateDescriptorHeapBinding();
+#endif
     }
 
     void CopyContext::updateTextureSubresources(const Texture* pTexture, uint32_t firstSubresource, uint32_t subresourceCount, const void* pData, const uint3& offset, const uint3& size)
@@ -45,26 +80,26 @@ namespace Falcor
         FALCOR_ASSERT(subresourceCount == 1 || (copyRegion == false));
         uint8_t* dataPtr = (uint8_t*)pData;
         auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
-        gfx::ITextureResource::Offset3D gfxOffset = { offset.x, offset.y, offset.z };
-        gfx::ITextureResource::Size gfxSize = { (int)size.x, (int)size.y, (int)size.z };
+        gfx::ITextureResource::Offset3D gfxOffset = { static_cast<gfx::GfxIndex>(offset.x), static_cast<gfx::GfxIndex>(offset.y), static_cast<gfx::GfxIndex>(offset.z) };
+        gfx::ITextureResource::Extents gfxSize = { static_cast<gfx::GfxCount>(size.x), static_cast<gfx::GfxCount>(size.y), static_cast<gfx::GfxCount>(size.z) };
         gfx::FormatInfo formatInfo = {};
         gfx::gfxGetFormatInfo(getGFXFormat(pTexture->getFormat()), &formatInfo);
         for (uint32_t index = firstSubresource; index < firstSubresource + subresourceCount; index++)
         {
             gfx::SubresourceRange subresourceRange = {};
-            subresourceRange.baseArrayLayer = pTexture->getSubresourceArraySlice(index);
-            subresourceRange.mipLevel = pTexture->getSubresourceMipLevel(index);
+            subresourceRange.baseArrayLayer = static_cast<gfx::GfxIndex>(pTexture->getSubresourceArraySlice(index));
+            subresourceRange.mipLevel = static_cast<gfx::GfxIndex>(pTexture->getSubresourceMipLevel(index));
             subresourceRange.layerCount = 1;
             subresourceRange.mipLevelCount = 1;
             if (!copyRegion)
             {
-                gfxSize.width = align_to(formatInfo.blockWidth, pTexture->getWidth(subresourceRange.mipLevel));
-                gfxSize.height = align_to(formatInfo.blockHeight, pTexture->getHeight(subresourceRange.mipLevel));
-                gfxSize.depth = pTexture->getDepth(subresourceRange.mipLevel);
+                gfxSize.width = align_to(formatInfo.blockWidth, static_cast<gfx::GfxCount>(pTexture->getWidth(subresourceRange.mipLevel)));
+                gfxSize.height = align_to(formatInfo.blockHeight, static_cast<gfx::GfxCount>(pTexture->getHeight(subresourceRange.mipLevel)));
+                gfxSize.depth = static_cast<gfx::GfxCount>(pTexture->getDepth(subresourceRange.mipLevel));
             }
             gfx::ITextureResource::SubresourceData data = {};
             data.data = dataPtr;
-            data.strideY = (int64_t)(gfxSize.width) / formatInfo.blockWidth * formatInfo.blockSizeInBytes;
+            data.strideY = static_cast<int64_t>(gfxSize.width) / formatInfo.blockWidth * formatInfo.blockSizeInBytes;
             data.strideZ = data.strideY * (gfxSize.height / formatInfo.blockHeight);
             dataPtr += data.strideZ * gfxSize.depth;
             resourceEncoder->uploadTextureData(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), subresourceRange, gfxOffset, gfxSize, &data, 1);
@@ -81,7 +116,7 @@ namespace Falcor
         gfx::gfxGetFormatInfo(srcTexture->getDesc()->format, &formatInfo);
 
         auto mipLevel = pTexture->getSubresourceMipLevel(subresourceIndex);
-        pThis->mActualRowSize = (pTexture->getWidth(mipLevel) + formatInfo.blockWidth - 1) / formatInfo.blockWidth * formatInfo.blockSizeInBytes;
+        pThis->mActualRowSize = uint32_t((pTexture->getWidth(mipLevel) + formatInfo.blockWidth - 1) / formatInfo.blockWidth * formatInfo.blockSizeInBytes);
         size_t rowAlignment = 1;
         gpDevice->getApiHandle()->getTextureRowAlignment(&rowAlignment);
         pThis->mRowSize = align_to(static_cast<uint32_t>(rowAlignment), pThis->mActualRowSize);
@@ -108,7 +143,7 @@ namespace Falcor
             gfx::ResourceState::CopySource,
             srcSubresource,
             gfx::ITextureResource::Offset3D(0, 0, 0),
-            gfx::ITextureResource::Size{ (int)pTexture->getWidth(mipLevel), (int)pTexture->getHeight(mipLevel), (int)pTexture->getDepth(mipLevel) });
+            gfx::ITextureResource::Extents{ static_cast<gfx::GfxIndex>(pTexture->getWidth(mipLevel)), static_cast<gfx::GfxIndex>(pTexture->getHeight(mipLevel)), static_cast<gfx::GfxIndex>(pTexture->getDepth(mipLevel)) });
         pCtx->setPendingCommands(true);
 
         // Create a fence and signal
@@ -240,7 +275,7 @@ namespace Falcor
             gfx::ITextureResource* srcTexture = static_cast<gfx::ITextureResource*>(pSrc->getApiHandle().get());
             gfx::SubresourceRange subresourceRange = {};
             resourceEncoder->copyTexture(dstTexture, gfx::ResourceState::CopyDestination, subresourceRange, gfx::ITextureResource::Offset3D(0, 0, 0),
-                srcTexture, gfx::ResourceState::CopySource, subresourceRange, gfx::ITextureResource::Offset3D(0, 0, 0), gfx::ITextureResource::Size{ 0,0,0 });
+                srcTexture, gfx::ResourceState::CopySource, subresourceRange, gfx::ITextureResource::Offset3D(0, 0, 0), gfx::ITextureResource::Extents{ 0,0,0 });
         }
         mCommandsPending = true;
     }
@@ -307,7 +342,7 @@ namespace Falcor
         srcSubresource.mipLevel = pSrc->getSubresourceMipLevel(srcSubresourceIdx);
         srcSubresource.mipLevelCount = 1;
 
-        gfx::ITextureResource::Size copySize = { (int)size.x, (int)size.y, (int)size.z };
+        gfx::ITextureResource::Extents copySize = { (int)size.x, (int)size.y, (int)size.z };
 
         if (size.x == glm::uint(-1))
         {

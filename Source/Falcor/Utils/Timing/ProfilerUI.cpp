@@ -25,10 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "ProfilerUI.h"
+#include "Core/Platform/OS.h"
 
-#include "dear_imgui/imgui.h"
+#include <imgui.h>
 
 namespace Falcor
 {
@@ -117,7 +117,7 @@ namespace Falcor
         for (size_t col = 0; col < kColumnCount; ++col)
         {
             ImGui::SetColumnWidth((int)col, columnWidth[col]);
-            ImGui::Text(kColumnTitle[col]);
+            ImGui::TextUnformatted(kColumnTitle[col]);
             ImGui::Dummy(ImVec2(0.f, kHeaderSpacing));
 
             if (col == 0) startY = ImGui::GetCursorPosY();
@@ -132,7 +132,7 @@ namespace Falcor
                     float indent = eventData.level * kIndentWidth;
                     if (indent > 0.f) ImGui::Indent(indent);
                     auto color = (i == mHighlightIndex) ? ImColor(kHighlightColor) : ImColor(ImGui::GetStyleColorVec4(ImGuiCol_Text));
-                    ImGui::TextColored(color, eventData.name.c_str());
+                    ImGui::TextColored(color, "%s", eventData.name.c_str());
                     if (indent > 0.f) ImGui::Unindent(indent);
                 }
                 else if (col == 1) // CPU time
@@ -377,6 +377,8 @@ namespace Falcor
                 break;
             case GraphMode::GpuTime:
                 event.graphValue = event.gpuTime;
+                break;
+            case GraphMode::Count:
                 break;
             }
 

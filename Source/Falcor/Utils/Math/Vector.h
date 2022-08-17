@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,8 +29,9 @@
 #define GLM_FORCE_CTOR_INIT
 #define GLM_ENABLE_EXPERIMENTAL
 #define GLM_FORCE_SWIZZLE
-#include "glm/glm.hpp"
-#include "glm/gtx/compatibility.hpp"
+#include <glm/glm.hpp>
+#include <glm/gtx/compatibility.hpp>
+#include <string>
 
 namespace Falcor
 {
@@ -38,6 +39,7 @@ namespace Falcor
     using float3 = glm::vec3;
     using float4 = glm::vec4;
 
+    using uint = glm::uint;
     using uint2 = glm::uvec2;
     using uint3 = glm::uvec3;
     using uint4 = glm::uvec4;

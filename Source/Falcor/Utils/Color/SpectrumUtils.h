@@ -26,6 +26,14 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "SampledSpectrum.h"
+#include "Core/Macros.h"
+#include "Core/Assert.h"
+#include "Utils/Math/Vector.h"
+#include "Utils/Color/ColorUtils.h"
+#include <algorithm>
+#include <functional>
+#include <type_traits>
 
 namespace Falcor
 {
@@ -102,7 +110,7 @@ namespace Falcor
         */
         template<typename T>
         static float3 toXYZ(SampledSpectrum<T>& spectrum, const SpectrumInterpolation interpolationType = SpectrumInterpolation::Linear, const uint32_t componentIndex = 0, const uint32_t integrationSteps = 1)
-        {            
+        {
             return integrate<T, float3>(spectrum, interpolationType,
                 [](float wavelength) -> float3 { return SpectrumUtils::wavelengthToXYZ_CIE1931(wavelength); },
                 componentIndex, integrationSteps);

@@ -25,14 +25,29 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Scene.h"
 #include "SceneDefines.slangh"
-#include "Scene/Curves/CurveConfig.h"
+#include "SceneBuilder.h"
+#include "Importer.h"
+#include "Curves/CurveConfig.h"
+#include "SDFs/SDFGrid.h"
+#include "SDFs/NormalizedDenseSDFGrid/NDSDFGrid.h"
+#include "SDFs/SparseBrickSet/SDFSBS.h"
+#include "SDFs/SparseVoxelOctree/SDFSVO.h"
+#include "SDFs/SparseVoxelSet/SDFSVS.h"
+#include "Core/API/Device.h"
+#include "Core/API/RenderContext.h"
+#include "Core/API/IndirectCommands.h"
+#include "Utils/StringUtils.h"
+#include "Utils/Math/Common.h"
 #include "Utils/Math/MathHelpers.h"
+#include "Utils/Timing/Profiler.h"
+#include "Utils/UI/InputTypes.h"
+#include "Utils/Scripting/ScriptWriter.h"
 
-#include <sstream>
+#include <fstream>
 #include <numeric>
+#include <sstream>
 
 namespace Falcor
 {
@@ -70,7 +85,9 @@ namespace Falcor
         const std::string kCamera = "camera";
         const std::string kCameras = "cameras";
         const std::string kCameraSpeed = "cameraSpeed";
+        const std::string kSetCameraBounds = "setCameraBounds";
         const std::string kLights = "lights";
+        const std::string kLightProfile = "lightProfile";
         const std::string kAnimated = "animated";
         const std::string kRenderSettings = "renderSettings";
         const std::string kUpdateCallback = "updateCallback";
@@ -85,10 +102,27 @@ namespace Falcor
         const std::string kRemoveViewpoint = "kRemoveViewpoint";
         const std::string kSelectViewpoint = "selectViewpoint";
 
-        // Checks if the transform flips the coordinate system handedness (its determinant is negative).
-        bool doesTransformFlip(const glm::mat4& m)
+        const Gui::DropdownList kUpDirectionList =
         {
-            return glm::determinant((glm::mat3)m) < 0.f;
+            { (uint32_t)Scene::UpDirection::XPos, "X+" },
+            { (uint32_t)Scene::UpDirection::XNeg, "X-" },
+            { (uint32_t)Scene::UpDirection::YPos, "Y+" },
+            { (uint32_t)Scene::UpDirection::YNeg, "Y-" },
+            { (uint32_t)Scene::UpDirection::ZPos, "Z+" },
+            { (uint32_t)Scene::UpDirection::ZNeg, "Z-" },
+        };
+
+        const Gui::DropdownList kCameraControllerTypeList =
+        {
+            { (uint32_t)Scene::CameraControllerType::FirstPerson, "First Person" },
+            { (uint32_t)Scene::CameraControllerType::Orbiter, "Orbiter" },
+            { (uint32_t)Scene::CameraControllerType::SixDOF, "6-DOF" },
+        };
+
+        // Checks if the transform flips the coordinate system handedness (its determinant is negative).
+        bool doesTransformFlip(const rmcv::mat4& m)
+        {
+            return rmcv::determinant((rmcv::mat3)m) < 0.f;
         }
     }
 
@@ -111,6 +145,7 @@ namespace Falcor
         mGridVolumes = std::move(sceneData.gridVolumes);
         mGrids = std::move(sceneData.grids);
         mpEnvMap = sceneData.pEnvMap;
+        mpLightProfile = sceneData.pLightProfile;
         mSceneGraph = std::move(sceneData.sceneGraph);
         mMetadata = std::move(sceneData.metadata);
 
@@ -173,18 +208,18 @@ namespace Falcor
         }
         for (const auto &mesh : sceneData.cachedMeshes)
         {
-            if (!mMeshDesc[mesh.meshID].isAnimated()) throw RuntimeError("Cached Mesh Animation: Referenced mesh ID is not dynamic");
+            if (!mMeshDesc[mesh.meshID.get()].isAnimated()) throw RuntimeError("Cached Mesh Animation: Referenced mesh ID is not dynamic");
             if (mesh.timeSamples.size() != mesh.vertexData.size()) throw RuntimeError("Cached Mesh Animation: Time sample count mismatch.");
             for (const auto &vertices : mesh.vertexData)
             {
-                if (vertices.size() != mMeshDesc[mesh.meshID].vertexCount) throw RuntimeError("Cached Mesh Animation: Vertex count mismatch.");
+                if (vertices.size() != mMeshDesc[mesh.meshID.get()].vertexCount) throw RuntimeError("Cached Mesh Animation: Vertex count mismatch.");
             }
         }
         for (const auto& cache : sceneData.cachedCurves)
         {
             if (cache.tessellationMode != CurveTessellationMode::LinearSweptSphere)
             {
-                if (!mMeshDesc[cache.geometryID].isAnimated()) throw RuntimeError("Cached Curve Animation: Referenced mesh ID is not dynamic");
+                if (!mMeshDesc[cache.geometryID.get()].isAnimated()) throw RuntimeError("Cached Curve Animation: Referenced mesh ID is not dynamic");
             }
         }
 
@@ -214,6 +249,7 @@ namespace Falcor
         defines.add("SCENE_HAS_INDEXED_VERTICES", "0");
         defines.add("SCENE_HAS_16BIT_INDICES", "0");
         defines.add("SCENE_HAS_32BIT_INDICES", "0");
+        defines.add("SCENE_USE_LIGHT_PROFILE", "0");
 
         defines.add(MaterialSystem::getDefaultDefines());
 
@@ -228,6 +264,7 @@ namespace Falcor
         defines.add("SCENE_HAS_INDEXED_VERTICES", hasIndexBuffer() ? "1" : "0");
         defines.add("SCENE_HAS_16BIT_INDICES", mHas16BitIndices ? "1" : "0");
         defines.add("SCENE_HAS_32BIT_INDICES", mHas32BitIndices ? "1" : "0");
+        defines.add("SCENE_USE_LIGHT_PROFILE", mpLightProfile != nullptr ? "1" : "0");
 
         defines.add(mHitInfo.getDefines());
         defines.add(mpMaterials->getDefines());
@@ -267,6 +304,11 @@ namespace Falcor
     Program::TypeConformanceList Scene::getTypeConformances() const
     {
         return mpMaterials->getTypeConformances();
+    }
+
+    Program::ShaderModuleList Scene::getShaderModules() const
+    {
+        return mpMaterials->getShaderModules();
     }
 
     const LightCollection::SharedPtr& Scene::getLightCollection(RenderContext* pContext)
@@ -333,9 +375,11 @@ namespace Falcor
         FALCOR_PROFILE("raytraceScene");
 
         FALCOR_ASSERT(pContext && pProgram && pVars);
-        if (pVars->getRayTypeCount() > 0 && pVars->getGeometryCount() != getGeometryCount())
+        // Check for valid number of geometries.
+        // We either expect a single geometry (used for "dummy shared binding tables") or matching the number of geometries in the scene.
+        if (pVars->getRayTypeCount() > 0 && pVars->getGeometryCount() != 1 && pVars->getGeometryCount() != getGeometryCount())
         {
-            throw RuntimeError("RtProgramVars geometry count mismatch");
+            logWarning("RtProgramVars geometry count mismatch");
         }
 
         uint32_t rayTypeCount = pVars->getRayTypeCount();
@@ -680,7 +724,7 @@ namespace Falcor
 
         for (const auto& inst : mGeometryInstanceData)
         {
-            const glm::mat4& transform = globalMatrices[inst.globalMatrixID];
+            const rmcv::mat4& transform = globalMatrices[inst.globalMatrixID];
             switch (inst.getType())
             {
             case GeometryType::TriangleMesh:
@@ -698,11 +742,11 @@ namespace Falcor
             }
             case GeometryType::SDFGrid:
             {
-                float3x3 transform3x3 = glm::mat3(transform);
+                rmcv::mat3 transform3x3 = rmcv::mat3(transform);
                 transform3x3[0] = glm::abs(transform3x3[0]);
                 transform3x3[1] = glm::abs(transform3x3[1]);
                 transform3x3[2] = glm::abs(transform3x3[2]);
-                float3 center = transform[3];
+                float3 center = transform.getCol(3);
                 float3 halfExtent = transform3x3 * float3(0.5f);
                 mSceneBB |= AABB(center - halfExtent, center + halfExtent);
                 break;
@@ -735,9 +779,9 @@ namespace Falcor
                 uint32_t prevFlags = inst.flags;
 
                 FALCOR_ASSERT(inst.globalMatrixID < globalMatrices.size());
-                const glm::mat4& transform = globalMatrices[inst.globalMatrixID];
+                const rmcv::mat4& transform = globalMatrices[inst.globalMatrixID];
                 bool isTransformFlipped = doesTransformFlip(transform);
-                bool isObjectFrontFaceCW = getMesh(inst.geometryID).isFrontFaceCW();
+                bool isObjectFrontFaceCW = getMesh(MeshID::fromSlang(inst.geometryID)).isFrontFaceCW();
                 bool isWorldFrontFaceCW = isObjectFrontFaceCW ^ isTransformFlipped;
 
                 if (isTransformFlipped) inst.flags |= (uint32_t)GeometryInstanceFlags::TransformFlipped;
@@ -1044,6 +1088,13 @@ namespace Falcor
         updateGeometry(true); // Requires scene defines
         updateGeometryInstances(true);
 
+        // DEMO21: Setup light profile.
+        if (mpLightProfile)
+        {
+            mpLightProfile->bake(gpDevice->getRenderContext());
+            mpLightProfile->setShaderData(mpSceneBlock[kLightProfile]);
+        }
+
         updateBounds();
         createDrawList();
         if (mCameras.size() == 0)
@@ -1121,18 +1172,18 @@ namespace Falcor
             case GeometryType::DisplacedTriangleMesh:
             {
                 s.meshInstanceCount++;
-                const auto& mesh = getMesh(instance.geometryID);
+                const auto& mesh = getMesh(MeshID::fromSlang(instance.geometryID));
                 s.instancedVertexCount += mesh.vertexCount;
                 s.instancedTriangleCount += mesh.getTriangleCount();
 
-                auto pMaterial = getMaterial(instance.materialID);
+                auto pMaterial = getMaterial(MaterialID::fromSlang(instance.materialID));
                 if (pMaterial->isOpaque()) s.meshInstanceOpaqueCount++;
                 break;
             }
             case GeometryType::Curve:
             {
                 s.curveInstanceCount++;
-                const auto& curve = getCurve(instance.geometryID);
+                const auto& curve = getCurve(CurveID::fromSlang(instance.geometryID));
                 s.instancedCurvePointCount += curve.vertexCount;
                 s.instancedCurveSegmentCount += curve.getSegmentCount();
                 break;
@@ -1145,14 +1196,14 @@ namespace Falcor
             }
         }
 
-        for (uint32_t meshID = 0; meshID < getMeshCount(); meshID++)
+        for (MeshID meshID{ 0 }; meshID.get() < getMeshCount(); ++meshID)
         {
             const auto& mesh = getMesh(meshID);
             s.uniqueVertexCount += mesh.vertexCount;
             s.uniqueTriangleCount += mesh.getTriangleCount();
         }
 
-        for (uint32_t curveID = 0; curveID < getCurveCount(); curveID++)
+        for (CurveID curveID{ 0 }; curveID.get() < getCurveCount(); ++curveID)
         {
             const auto& curve = getCurve(curveID);
             s.uniqueCurvePointCount += curve.vertexCount;
@@ -1278,6 +1329,7 @@ namespace Falcor
         s.pointLightCount = 0;
         s.directionalLightCount = 0;
         s.rectLightCount = 0;
+        s.discLightCount = 0;
         s.sphereLightCount = 0;
         s.distantLightCount = 0;
 
@@ -1293,6 +1345,9 @@ namespace Falcor
                 break;
             case LightType::Rect:
                 s.rectLightCount++;
+                break;
+            case LightType::Disc:
+                s.discLightCount++;
                 break;
             case LightType::Sphere:
                 s.sphereLightCount++;
@@ -1326,18 +1381,18 @@ namespace Falcor
 
     bool Scene::updateAnimatable(Animatable& animatable, const AnimationController& controller, bool force)
     {
-        uint32_t nodeID = animatable.getNodeID();
+        NodeID nodeID = animatable.getNodeID();
 
         // It is possible for this to be called on an object with no associated node in the scene graph (kInvalidNode),
         // e.g. non-animated lights. This check ensures that we return immediately instead of trying to check
         // matrices for a non-existent node.
-        if (nodeID == kInvalidNode) return false;
+        if (nodeID == NodeID::Invalid()) return false;
 
         if (force || (animatable.hasAnimation() && animatable.isAnimated()))
         {
             if (!controller.isMatrixChanged(nodeID) && !force) return false;
 
-            glm::mat4 transform = controller.getGlobalMatrices()[nodeID];
+            rmcv::mat4 transform = controller.getGlobalMatrices()[nodeID.get()];
             animatable.updateFromAnimation(transform);
             return true;
         }
@@ -1456,8 +1511,8 @@ namespace Falcor
             {
                 // Fetch copy of volume data.
                 auto data = pGridVolume->getData();
-                data.densityGrid = pGridVolume->getDensityGrid() ? mGridIDs.at(pGridVolume->getDensityGrid()) : kInvalidGrid;
-                data.emissionGrid = pGridVolume->getEmissionGrid() ? mGridIDs.at(pGridVolume->getEmissionGrid()) : kInvalidGrid;
+                data.densityGrid = (pGridVolume->getDensityGrid() ? mGridIDs.at(pGridVolume->getDensityGrid()) : SdfGridID::Invalid()).getSlang();
+                data.emissionGrid = (pGridVolume->getEmissionGrid() ? mGridIDs.at(pGridVolume->getEmissionGrid()) : SdfGridID::Invalid()).getSlang();
                 // Merge grid and volume transforms.
                 const auto& densityGrid = pGridVolume->getDensityGrid();
                 if (densityGrid)
@@ -1565,7 +1620,7 @@ namespace Falcor
 
             for (const auto& inst : mGeometryInstanceData)
             {
-                if (mpAnimationController->isMatrixChanged(inst.globalMatrixID))
+                if (mpAnimationController->isMatrixChanged(NodeID{ inst.globalMatrixID }))
                 {
                     mUpdates |= UpdateFlags::GeometryMoved;
                 }
@@ -1650,6 +1705,18 @@ namespace Falcor
         {
             bool isAnimated = camera->isAnimated();
             if (widget.checkbox("Animate Camera", isAnimated)) camera->setIsAnimated(isAnimated);
+        }
+
+        auto upDirection = getUpDirection();
+        if (widget.dropdown("Up Direction", kUpDirectionList, reinterpret_cast<uint32_t&>(upDirection)))
+        {
+            setUpDirection(upDirection);
+        }
+
+        auto cameraControllerType = getCameraControllerType();
+        if (widget.dropdown("Camera Controller", kCameraControllerTypeList, reinterpret_cast<uint32_t&>(cameraControllerType)))
+        {
+            setCameraController(cameraControllerType);
         }
 
         if (widget.var("Camera Speed", mCameraSpeed, 0.f, std::numeric_limits<float>::max(), 0.01f))
@@ -1777,6 +1844,14 @@ namespace Falcor
             }
         }
 
+        if (mpLightProfile)
+        {
+            if (auto lightProfileGroup = widget.group("Light Profile"))
+            {
+                mpLightProfile->renderUI(lightProfileGroup);
+            }
+        }
+
         if (auto materialsGroup = widget.group("Materials"))
         {
             mpMaterials->renderUI(materialsGroup);
@@ -1874,6 +1949,7 @@ namespace Falcor
                 << "  Point light count: " << s.pointLightCount << std::endl
                 << "  Directional light count: " << s.directionalLightCount << std::endl
                 << "  Rect light count: " << s.rectLightCount << std::endl
+                << "  Disc light count: " << s.discLightCount << std::endl
                 << "  Sphere light count: " << s.sphereLightCount << std::endl
                 << "  Distant light count: " << s.distantLightCount << std::endl
                 << "  Analytic lights memory: " << formatByteSize(s.lightsMemoryInBytes) << std::endl
@@ -1989,6 +2065,14 @@ namespace Falcor
         setCameraController(mCamCtrlType);
     }
 
+    void Scene::setCameraControlsEnabled(bool value)
+    {
+        mCameraControlsEnabled = value;
+
+        // Reset the stored input state of the camera controller.
+        if (!value) mpCamCtrl->resetInputState();
+    }
+
     void Scene::resetCamera(bool resetDepthRange)
     {
         auto camera = getCamera();
@@ -2009,6 +2093,12 @@ namespace Falcor
     {
         mCameraSpeed = clamp(speed, 0.f, std::numeric_limits<float>::max());
         mpCamCtrl->setCameraSpeed(speed);
+    }
+
+    void Scene::setCameraBounds(const AABB& aabb)
+    {
+        mCameraBounds = aabb;
+        mpCamCtrl->setCameraBounds(aabb);
     }
 
     void Scene::addViewpoint()
@@ -2058,30 +2148,30 @@ namespace Falcor
         // We calculate the total number of geometries as the sum of the respective kind.
 
         size_t totalGeometries = mMeshDesc.size() + mCurveDesc.size() + mCustomPrimitiveDesc.size() + getSDFGridGeometryCount();
-        FALCOR_ASSERT(totalGeometries < std::numeric_limits<uint32_t>::max());
+        FALCOR_ASSERT_LT(totalGeometries, std::numeric_limits<uint32_t>::max());
         return (uint32_t)totalGeometries;
     }
 
-    std::vector<uint32_t> Scene::getGeometryIDs(GeometryType geometryType) const
+    std::vector<GlobalGeometryID> Scene::getGeometryIDs(GeometryType geometryType) const
     {
         if (!hasGeometryType(geometryType)) return {};
 
-        std::vector<uint32_t> geometryIDs;
+        std::vector<GlobalGeometryID> geometryIDs;
         uint32_t geometryCount = getGeometryCount();
-        for (uint32_t geometryID = 0; geometryID < geometryCount; geometryID++)
+        for (GlobalGeometryID geometryID{ 0 }; geometryID.get() < geometryCount; ++geometryID)
         {
             if (getGeometryType(geometryID) == geometryType) geometryIDs.push_back(geometryID);
         }
         return geometryIDs;
     }
 
-    std::vector<uint32_t> Scene::getGeometryIDs(GeometryType geometryType, MaterialType materialType) const
+    std::vector<GlobalGeometryID> Scene::getGeometryIDs(GeometryType geometryType, MaterialType materialType) const
     {
         if (!hasGeometryType(geometryType)) return {};
 
-        std::vector<uint32_t> geometryIDs;
+        std::vector<GlobalGeometryID> geometryIDs;
         uint32_t geometryCount = getGeometryCount();
-        for (uint32_t geometryID = 0; geometryID < geometryCount; geometryID++)
+        for (GlobalGeometryID geometryID{ 0 }; geometryID.get() < geometryCount; ++geometryID)
         {
             auto pMaterial = getGeometryMaterial(geometryID);
             if (getGeometryType(geometryID) == geometryType && pMaterial && pMaterial->getType() == materialType)
@@ -2092,13 +2182,17 @@ namespace Falcor
         return geometryIDs;
     }
 
-    Scene::GeometryType Scene::getGeometryType(uint32_t geometryID) const
+    Scene::GeometryType Scene::getGeometryType(GlobalGeometryID geometryID) const
     {
         // Map global geometry ID to which type of geometry it represents.
-        if (geometryID < mMeshDesc.size()) return mMeshDesc[geometryID].isDisplaced() ? GeometryType::DisplacedTriangleMesh : GeometryType::TriangleMesh;
-        else if (geometryID < mMeshDesc.size() + mCurveDesc.size()) return GeometryType::Curve;
-        else if (geometryID < mMeshDesc.size() + mCurveDesc.size() + mSDFGridDesc.size()) return GeometryType::SDFGrid;
-        else if (geometryID < mMeshDesc.size() + mCurveDesc.size() + mSDFGridDesc.size() + mCustomPrimitiveDesc.size()) return GeometryType::Custom;
+        if (geometryID.get() < mMeshDesc.size())
+        {
+            if (mMeshDesc[geometryID.get()].isDisplaced()) return GeometryType::DisplacedTriangleMesh;
+            else return GeometryType::TriangleMesh;
+        }
+        else if (geometryID.get() < mMeshDesc.size() + mCurveDesc.size()) return GeometryType::Curve;
+        else if (geometryID.get() < mMeshDesc.size() + mCurveDesc.size() + mSDFGridDesc.size()) return GeometryType::SDFGrid;
+        else if (geometryID.get() < mMeshDesc.size() + mCurveDesc.size() + mSDFGridDesc.size() + mCustomPrimitiveDesc.size()) return GeometryType::Custom;
         else throw ArgumentError("'geometryID' is invalid.");
     }
 
@@ -2120,17 +2214,19 @@ namespace Falcor
         }
     }
 
-    uint32_t Scene::findSDFGridIDFromGeometryInstanceID(uint32_t instanceID) const
+    SdfGridID Scene::findSDFGridIDFromGeometryInstanceID(uint32_t geometryInstanceID) const
     {
+        NodeID nodeID{ getGeometryInstance(geometryInstanceID).globalMatrixID };
+
         for (const auto& sdf : mSDFGridDesc)
         {
-            auto instanceIt = std::find(sdf.instances.begin(), sdf.instances.end(), instanceID);
+            auto instanceIt = std::find(sdf.instances.begin(), sdf.instances.end(), nodeID);
             if (instanceIt != sdf.instances.end())
             {
                 return sdf.sdfGridID;
             }
         }
-        return UINT32_MAX;
+        return SdfGridID::Invalid();
     }
 
     std::vector<uint32_t> Scene::getGeometryInstanceIDsByType(GeometryType type) const
@@ -2144,36 +2240,37 @@ namespace Falcor
         return instanceIDs;
     }
 
-    Material::SharedPtr Scene::getGeometryMaterial(uint32_t geometryID) const
+    Material::SharedPtr Scene::getGeometryMaterial(GlobalGeometryID geometryID) const
     {
-        if (geometryID < mMeshDesc.size())
+        GlobalGeometryID::IntType geometryIdx = geometryID.get();
+        if (geometryIdx < mMeshDesc.size())
         {
-            return mpMaterials->getMaterial(mMeshDesc[geometryID].materialID);
+            return mpMaterials->getMaterial(MaterialID::fromSlang(mMeshDesc[geometryIdx].materialID));
         }
-        geometryID -= (uint32_t)mMeshDesc.size();
+        geometryIdx -= (uint32_t)mMeshDesc.size();
 
-        if (geometryID < mCurveDesc.size())
+        if (geometryIdx < mCurveDesc.size())
         {
-            return mpMaterials->getMaterial(mCurveDesc[geometryID].materialID);
+            return mpMaterials->getMaterial(MaterialID::fromSlang(mCurveDesc[geometryIdx].materialID));
         }
-        geometryID -= (uint32_t)mCurveDesc.size();
+        geometryIdx -= (uint32_t)mCurveDesc.size();
 
-        if (geometryID < mSDFGridDesc.size())
+        if (geometryIdx < mSDFGridDesc.size())
         {
-            return mpMaterials->getMaterial(mSDFGridDesc[geometryID].materialID);
+            return mpMaterials->getMaterial(mSDFGridDesc[geometryIdx].materialID);
         }
-        geometryID -= (uint32_t)mSDFGridDesc.size();
+        geometryIdx -= (uint32_t)mSDFGridDesc.size();
 
-        if (geometryID < mCustomPrimitiveDesc.size())
+        if (geometryIdx < mCustomPrimitiveDesc.size())
         {
             return nullptr;
         }
-        geometryID -= (uint32_t)mCustomPrimitiveDesc.size();
+        geometryIdx -= (uint32_t)mCustomPrimitiveDesc.size();
 
         throw ArgumentError("'geometryID' is invalid.");
     }
 
-    uint32_t Scene::getCustomPrimitiveIndex(uint32_t geometryID) const
+    uint32_t Scene::getCustomPrimitiveIndex(GlobalGeometryID geometryID) const
     {
         if (getGeometryType(geometryID) != GeometryType::Custom)
         {
@@ -2181,8 +2278,8 @@ namespace Falcor
         }
 
         size_t customPrimitiveOffset = mMeshDesc.size() + mCurveDesc.size() + mSDFGridDesc.size();
-        FALCOR_ASSERT(geometryID >= (uint32_t)customPrimitiveOffset && geometryID < getGeometryCount());
-        return geometryID - (uint32_t)customPrimitiveOffset;
+        FALCOR_ASSERT(geometryID.get() >= (uint32_t)customPrimitiveOffset && geometryID.get() < getGeometryCount());
+        return geometryID.get() - (uint32_t)customPrimitiveOffset;
     }
 
     const CustomPrimitiveDesc& Scene::getCustomPrimitive(uint32_t index) const
@@ -2410,9 +2507,9 @@ namespace Falcor
             {
                 if (!mpBlasStaticWorldMatrices)
                 {
-                    std::vector<glm::mat4> transposedMatrices;
+                    std::vector<rmcv::mat4> transposedMatrices;
                     transposedMatrices.reserve(globalMatrices.size());
-                    for (const auto& m : globalMatrices) transposedMatrices.push_back(glm::transpose(m));
+                    for (const auto& m : globalMatrices) transposedMatrices.push_back(rmcv::transpose(m));
 
                     uint32_t float4Count = (uint32_t)transposedMatrices.size() * 4;
                     mpBlasStaticWorldMatrices = Buffer::createStructured(sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, transposedMatrices.data(), false);
@@ -2442,8 +2539,8 @@ namespace Falcor
 
                 for (size_t j = 0; j < meshList.size(); j++)
                 {
-                    const uint32_t meshID = meshList[j];
-                    const MeshDesc& mesh = mMeshDesc[meshID];
+                    const MeshID meshID = meshList[j];
+                    const MeshDesc& mesh = mMeshDesc[meshID.get()];
                     bool frontFaceCW = mesh.isFrontFaceCW();
                     blas.hasDynamicMesh |= mesh.isDynamic();
 
@@ -2458,24 +2555,24 @@ namespace Falcor
                         {
                             // Static meshes will be pre-transformed when building the BLAS.
                             // Lookup the matrix ID here. If it is an identity matrix, no action is needed.
-                            FALCOR_ASSERT(mMeshIdToInstanceIds[meshID].size() == 1);
-                            uint32_t instanceID = mMeshIdToInstanceIds[meshID][0];
+                            FALCOR_ASSERT(mMeshIdToInstanceIds[meshID.get()].size() == 1);
+                            uint32_t instanceID = mMeshIdToInstanceIds[meshID.get()][0];
                             FALCOR_ASSERT(instanceID < mGeometryInstanceData.size());
                             uint32_t matrixID = mGeometryInstanceData[instanceID].globalMatrixID;
 
                             FALCOR_ASSERT(matrixID < globalMatrices.size());
-                            if (globalMatrices[matrixID] != glm::identity<glm::mat4>())
+                            if (globalMatrices[matrixID] != rmcv::identity<rmcv::mat4>())
                             {
                                 // Get the GPU address of the transform in row-major format.
                                 desc.content.triangles.transform3x4 = getStaticMatricesBuffer()->getGpuAddress() + matrixID * 64ull;
 
-                                if (glm::determinant(globalMatrices[matrixID]) < 0.f) frontFaceCW = !frontFaceCW;
+                                if (rmcv::determinant(globalMatrices[matrixID]) < 0.f) frontFaceCW = !frontFaceCW;
                             }
                         }
                         triangleWindings |= frontFaceCW ? 1 : 2;
 
                         // If this is an opaque mesh, set the opaque flag
-                        auto pMaterial = mpMaterials->getMaterial(mesh.materialID);
+                        auto pMaterial = mpMaterials->getMaterial(MaterialID::fromSlang(mesh.materialID));
                         desc.flags = pMaterial->isOpaque() ? RtGeometryFlags::Opaque : RtGeometryFlags::None;
 
                         // Set the position data
@@ -2497,7 +2594,7 @@ namespace Falcor
                         else
                         {
                             FALCOR_ASSERT(mesh.indexCount == 0);
-                            desc.content.triangles.indexData = NULL;
+                            desc.content.triangles.indexData = 0;
                             desc.content.triangles.indexCount = 0;
                             desc.content.triangles.indexFormat = ResourceFormat::Unknown;
                         }
@@ -2508,8 +2605,8 @@ namespace Falcor
                         desc.type = RtGeometryType::ProcedurePrimitives;
                         desc.flags = RtGeometryFlags::Opaque;
 
-                        desc.content.proceduralAABBs.count = mDisplacement.meshData[meshID].AABBCount;
-                        uint64_t bbStartOffset = mDisplacement.meshData[meshID].AABBOffset * sizeof(RtAABB);
+                        desc.content.proceduralAABBs.count = mDisplacement.meshData[meshID.get()].AABBCount;
+                        uint64_t bbStartOffset = mDisplacement.meshData[meshID.get()].AABBOffset * sizeof(RtAABB);
                         desc.content.proceduralAABBs.data = mDisplacement.pAABBBuffer->getGpuAddress() + bbStartOffset;
                         desc.content.proceduralAABBs.stride = sizeof(RtAABB);
                     }
@@ -3101,7 +3198,7 @@ namespace Falcor
         }
     }
 
-    void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_t rayCount, bool perMeshHitEntry) const
+    void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_t rayTypeCount, bool perMeshHitEntry) const
     {
         instanceDescs.clear();
         uint32_t instanceContributionToHitGroupIndex = 0;
@@ -3121,14 +3218,14 @@ namespace Falcor
             desc.instanceMask = 0xFF;
             desc.instanceContributionToHitGroupIndex = perMeshHitEntry ? instanceContributionToHitGroupIndex : 0;
 
-            instanceContributionToHitGroupIndex += rayCount * (uint32_t)meshList.size();
+            instanceContributionToHitGroupIndex += rayTypeCount * (uint32_t)meshList.size();
 
             // We expect all meshes in a group to have identical triangle winding. Verify that assumption here.
             FALCOR_ASSERT(!meshList.empty());
-            const bool frontFaceCW = mMeshDesc[meshList[0]].isFrontFaceCW();
+            const bool frontFaceCW = mMeshDesc[meshList[0].get()].isFrontFaceCW();
             for (size_t i = 1; i < meshList.size(); i++)
             {
-                FALCOR_ASSERT(mMeshDesc[meshList[i]].isFrontFaceCW() == frontFaceCW);
+                FALCOR_ASSERT(mMeshDesc[meshList[i].get()].isFrontFaceCW() == frontFaceCW);
             }
 
             // Set the triangle winding for the instance if it differs from the default.
@@ -3149,7 +3246,7 @@ namespace Falcor
             // - The global matrices are the same for all meshes in an instance.
             //
             FALCOR_ASSERT(!meshList.empty());
-            size_t instanceCount = mMeshIdToInstanceIds[meshList[0]].size();
+            size_t instanceCount = mMeshIdToInstanceIds[meshList[0].get()].size();
 
             FALCOR_ASSERT(instanceCount > 0);
             for (size_t instanceIdx = 0; instanceIdx < instanceCount; instanceIdx++)
@@ -3158,7 +3255,7 @@ namespace Falcor
                 // InstanceID() + GeometryIndex() should look up the correct mesh instance.
                 for (uint32_t geometryIndex = 0; geometryIndex < (uint32_t)meshList.size(); geometryIndex++)
                 {
-                    const auto& instances = mMeshIdToInstanceIds[meshList[geometryIndex]];
+                    const auto& instances = mMeshIdToInstanceIds[meshList[geometryIndex].get()];
                     FALCOR_ASSERT(instances.size() == instanceCount);
                     FALCOR_ASSERT(instances[instanceIdx] == instanceID + geometryIndex);
                 }
@@ -3166,13 +3263,13 @@ namespace Falcor
                 desc.instanceID = instanceID;
                 instanceID += (uint32_t)meshList.size();
 
-                glm::mat4 transform4x4 = glm::identity<glm::mat4>();
+                rmcv::mat4 transform4x4 = rmcv::identity<rmcv::mat4>();
                 if (!isStatic)
                 {
                     // For non-static meshes, the matrices for all meshes in an instance are guaranteed to be the same.
                     // Just pick the matrix from the first mesh.
                     const uint32_t matrixId = mGeometryInstanceData[desc.instanceID].globalMatrixID;
-                    transform4x4 = transpose(mpAnimationController->getGlobalMatrices()[matrixId]);
+                    transform4x4 = mpAnimationController->getGlobalMatrices()[matrixId];
 
                     // Verify that all meshes have matching tranforms.
                     for (uint32_t geometryIndex = 0; geometryIndex < (uint32_t)meshList.size(); geometryIndex++)
@@ -3214,7 +3311,7 @@ namespace Falcor
             // Start procedural primitive hit group after the triangle hit groups.
             desc.instanceContributionToHitGroupIndex = perMeshHitEntry ? instanceContributionToHitGroupIndex : 0;
 
-            instanceContributionToHitGroupIndex += rayCount * (uint32_t)mCurveDesc.size();
+            instanceContributionToHitGroupIndex += rayTypeCount * (uint32_t)mCurveDesc.size();
 
             // For cached curves, the matrices for all curves in an instance are guaranteed to be the same.
             // Just pick the matrix from the first curve.
@@ -3277,7 +3374,7 @@ namespace Falcor
             }
 
             blasDataIndex += (sdfGridInstancesHaveUniqueBLASes ? mSDFGrids.size() : 1);
-            instanceContributionToHitGroupIndex += rayCount * (uint32_t)mSDFGridDesc.size();
+            instanceContributionToHitGroupIndex += rayTypeCount * (uint32_t)mSDFGridDesc.size();
         }
 
         // One instance with identity transform for custom primitives.
@@ -3296,9 +3393,9 @@ namespace Falcor
             // Start procedural primitive hit group after the curve hit group.
             desc.instanceContributionToHitGroupIndex = perMeshHitEntry ? instanceContributionToHitGroupIndex : 0;
 
-            instanceContributionToHitGroupIndex += rayCount * (uint32_t)mCustomPrimitiveDesc.size();
+            instanceContributionToHitGroupIndex += rayTypeCount * (uint32_t)mCustomPrimitiveDesc.size();
 
-            glm::mat4 identityMat = glm::identity<glm::mat4>();
+            rmcv::mat4 identityMat = rmcv::identity<rmcv::mat4>();
             std::memcpy(desc.transform, &identityMat, sizeof(desc.transform));
             instanceDescs.push_back(desc);
         }
@@ -3312,17 +3409,17 @@ namespace Falcor
         }
     }
 
-    void Scene::buildTlas(RenderContext* pContext, uint32_t rayCount, bool perMeshHitEntry)
+    void Scene::buildTlas(RenderContext* pContext, uint32_t rayTypeCount, bool perMeshHitEntry)
     {
         FALCOR_PROFILE("buildTlas");
 
         TlasData tlas;
-        auto it = mTlasCache.find(rayCount);
+        auto it = mTlasCache.find(rayTypeCount);
         if (it != mTlasCache.end()) tlas = it->second;
 
         // Prepare instance descs.
         // Note if there are no instances, we'll build an empty TLAS.
-        fillInstanceDesc(mInstanceDescs, rayCount, perMeshHitEntry);
+        fillInstanceDesc(mInstanceDescs, rayTypeCount, perMeshHitEntry);
 
         RtAccelerationStructureBuildInputs inputs = {};
         inputs.kind = RtAccelerationStructureKind::TopLevel;
@@ -3421,7 +3518,7 @@ namespace Falcor
         pContext->buildAccelerationStructure(asDesc, 0, nullptr);
         pContext->uavBarrier(tlas.pTlasBuffer.get());
 
-        mTlasCache[rayCount] = tlas;
+        mTlasCache[rayTypeCount] = tlas;
         updateRaytracingTLASStats();
     }
 
@@ -3468,8 +3565,8 @@ namespace Falcor
         {
             for (auto meshID : mMeshGroups[blasID].meshList)
             {
-                FALCOR_ASSERT(meshID < blasIDs.size());
-                blasIDs[meshID] = blasID;
+                FALCOR_ASSERT_LT(meshID.get(), blasIDs.size());
+                blasIDs[meshID.get()] = blasID;
             }
         }
 
@@ -3477,10 +3574,10 @@ namespace Falcor
         return blasIDs;
     }
 
-    uint32_t Scene::getParentNodeID(uint32_t nodeID) const
+    NodeID Scene::getParentNodeID(NodeID nodeID) const
     {
-        if (nodeID >= mSceneGraph.size()) throw ArgumentError("'nodeID' ({}) is out of range", nodeID);
-        return mSceneGraph[nodeID].parent;
+        if (nodeID.get() >= mSceneGraph.size()) throw ArgumentError("'nodeID' ({}) is out of range", nodeID);
+        return mSceneGraph[nodeID.get()].parent;
     }
 
     void Scene::nullTracePass(RenderContext* pContext, const uint2& dim)
@@ -3550,6 +3647,12 @@ namespace Falcor
         getCamera()->setAspectRatio(ratio);
     }
 
+    void Scene::setUpDirection(UpDirection upDirection)
+    {
+        mUpDirection = upDirection;
+        mpCamCtrl->setUpDirection((CameraController::UpDirection)upDirection);
+    }
+
     void Scene::setCameraController(CameraControllerType type)
     {
         if (!mCameraSwitched && mCamCtrlType == type && mpCamCtrl) return;
@@ -3570,14 +3673,23 @@ namespace Falcor
         default:
             FALCOR_UNREACHABLE();
         }
+        mpCamCtrl->setUpDirection((CameraController::UpDirection)mUpDirection);
         mpCamCtrl->setCameraSpeed(mCameraSpeed);
+        mpCamCtrl->setCameraBounds(mCameraBounds);
+        mCamCtrlType = type;
     }
 
     bool Scene::onMouseEvent(const MouseEvent& mouseEvent)
     {
         if (mCameraControlsEnabled)
         {
-            return mpCamCtrl->onMouseEvent(mouseEvent);
+            // DEMO21, but I think it makes sense, if the camera did anything, stop the animation for it.
+            if (mpCamCtrl->onMouseEvent(mouseEvent))
+            {
+                auto& camera = mCameras[mSelectedCamera];
+                camera->setIsAnimated(false);
+                return true;
+            }
         }
 
         return false;
@@ -3595,10 +3707,28 @@ namespace Falcor
                     return true;
                 }
             }
+            // DEMO21, but I think it makes sense, to have these controls
+            else if (keyEvent.key == Input::Key::C || keyEvent.key == Input::Key::F7)
+            {
+                // Force camera animation on.
+                auto camera = mCameras[mSelectedCamera];
+                camera->setIsAnimated(true);
+                return true;
+            }
+            else if (keyEvent.key == Input::Key::F8)
+            {
+                auto camera = mCameras[mSelectedCamera];
+            }
         }
         if (mCameraControlsEnabled)
         {
-            return mpCamCtrl->onKeyEvent(keyEvent);
+            // DEMO21, but I think it makes sense, if the camera did anything, stop the animation for it.
+            if (mpCamCtrl->onKeyEvent(keyEvent))
+            {
+                auto& camera = mCameras[mSelectedCamera];
+                camera->setIsAnimated(false);
+                return true;
+            }
         }
 
         return false;
@@ -3663,7 +3793,7 @@ namespace Falcor
         return c;
     }
 
-    void Scene::updateNodeTransform(uint32_t nodeID, const float4x4& transform)
+    void Scene::updateNodeTransform(uint32_t nodeID, const rmcv::mat4& transform)
     {
         FALCOR_ASSERT(nodeID < mSceneGraph.size());
 
@@ -3737,6 +3867,7 @@ namespace Falcor
         d["pointLightCount"] = pointLightCount;
         d["directionalLightCount"] = directionalLightCount;
         d["rectLightCount"] = rectLightCount;
+        d["discLightCount"] = discLightCount;
         d["sphereLightCount"] = sphereLightCount;
         d["distantLightCount"] = distantLightCount;
         d["lightsMemoryInBytes"] = lightsMemoryInBytes;
@@ -3757,6 +3888,8 @@ namespace Falcor
 
     FALCOR_SCRIPT_BINDING(Scene)
     {
+        using namespace pybind11::literals;
+
         pybind11::class_<Scene, Scene::SharedPtr> scene(m, "Scene");
 
         scene.def_property_readonly(kStats.c_str(), [](const Scene* pScene) { return pScene->getSceneStats().toPython(); });
@@ -3772,7 +3905,7 @@ namespace Falcor
         scene.def_property(kCameraSpeed.c_str(), &Scene::getCameraSpeed, &Scene::setCameraSpeed);
         scene.def_property(kAnimated.c_str(), &Scene::isAnimated, &Scene::setIsAnimated);
         scene.def_property(kLoopAnimations.c_str(), &Scene::isLooped, &Scene::setIsLooped);
-        scene.def_property(kRenderSettings.c_str(), pybind11::overload_cast<void>(&Scene::getRenderSettings, pybind11::const_), &Scene::setRenderSettings);
+        scene.def_property(kRenderSettings.c_str(), pybind11::overload_cast<>(&Scene::getRenderSettings, pybind11::const_), &Scene::setRenderSettings);
         scene.def_property(kUpdateCallback.c_str(), &Scene::getUpdateCallback, &Scene::setUpdateCallback);
 
         scene.def(kSetEnvMap.c_str(), &Scene::loadEnvMap, "path"_a);
@@ -3784,6 +3917,9 @@ namespace Falcor
         scene.def(kGetGridVolume.c_str(), &Scene::getGridVolumeByName, "name"_a);
         scene.def("getVolume", &Scene::getGridVolume, "index"_a); // PYTHONDEPRECATED
         scene.def("getVolume", &Scene::getGridVolumeByName, "name"_a); // PYTHONDEPRECATED
+        scene.def(kSetCameraBounds.c_str(), [](Scene* pScene, const float3& minPoint, const float3& maxPoint) {
+            pScene->setCameraBounds(AABB(minPoint, maxPoint));
+            }, "minPoint"_a, "maxPoint"_a);
 
         // Viewpoints
         scene.def(kAddViewpoint.c_str(), pybind11::overload_cast<>(&Scene::addViewpoint)); // add current camera as viewpoint

@@ -58,29 +58,48 @@
 */
 
 
-#include "stdafx.h"
 #include "PBRTImporter.h"
 #include "Parser.h"
 #include "Builder.h"
 #include "Helpers.h"
 #include "LoopSubdivide.h"
 #include "EnvMapConverter.h"
+#include "Core/Assert.h"
+#include "Core/Errors.h"
+#include "Core/Renderer.h"
+#include "Core/API/Device.h"
+#include "Utils/Settings.h"
+#include "Utils/Logger.h"
+#include "Utils/Timing/TimeReport.h"
+#include "Utils/Math/FalcorMath.h"
+#include "Utils/Math/FNVHash.h"
+#include "Scene/Importer.h"
+#include "Scene/Material/Material.h"
+#include "Scene/Material/StandardMaterial.h"
+#include "Scene/Material/RGLMaterial.h"
+#include "Scene/Material/HairMaterial.h"
+#include "Scene/Material/PBRT/PBRTDiffuseMaterial.h"
+#include "Scene/Material/PBRT/PBRTCoatedDiffuseMaterial.h"
+#include "Scene/Material/PBRT/PBRTConductorMaterial.h"
+#include "Scene/Material/PBRT/PBRTCoatedConductorMaterial.h"
+#include "Scene/Material/PBRT/PBRTDielectricMaterial.h"
+#include "Scene/Material/PBRT/PBRTDiffuseTransmissionMaterial.h"
+#include "Scene/Curves/CurveTessellation.h"
 
-#include <glm/gtx/transform.hpp>
-#include <glm/gtx/euler_angles.hpp>
+#include <unordered_map>
 
 namespace Falcor
 {
     namespace pbrt
     {
-        const glm::mat4 kYtoZ = {
+        const rmcv::mat4 kYtoZ = {
             1.f, 0.f, 0.f, 0.f,
             0.f, 0.f, 1.f, 0.f,
             0.f, 1.f, 0.f, 0.f,
             0.f, 0.f, 0.f, 1.f,
         };
 
-        const glm::mat4 kInvertZ = {
+        const rmcv::mat4 kInvertZ = {
             1.f, 0.f, 0.f, 0.f,
             0.f, 1.f, 0.f, 0.f,
             0.f, 0.f, -1.f, 0.f,
@@ -92,7 +111,7 @@ namespace Falcor
         struct Camera
         {
             Falcor::Camera::SharedPtr pCamera;
-            glm::mat4 transform;
+            rmcv::mat4 transform;
         };
 
         /** Holds the results from creating a light.
@@ -110,7 +129,7 @@ namespace Falcor
         struct FloatTexture
         {
             std::variant<std::monostate, float, Falcor::Texture::SharedPtr> texture;
-            glm::mat4 transform = glm::identity<glm::mat4>();
+            rmcv::mat4 transform = rmcv::identity<rmcv::mat4>();
 
             bool isConstant() const { return std::holds_alternative<float>(texture); }
             float getConstant() const { FALCOR_ASSERT(isConstant()); return std::get<float>(texture); }
@@ -124,7 +143,7 @@ namespace Falcor
         {
             SpectrumType spectrumType = SpectrumType::Albedo;
             std::variant<std::monostate, Spectrum, Falcor::Texture::SharedPtr> texture;
-            glm::mat4 transform = glm::identity<glm::mat4>();
+            rmcv::mat4 transform = rmcv::identity<rmcv::mat4>();
 
             bool isConstant() const { return std::holds_alternative<Spectrum>(texture); }
             Spectrum getConstant() const { FALCOR_ASSERT(isConstant()); return std::get<Spectrum>(texture); }
@@ -139,14 +158,39 @@ namespace Falcor
         struct Shape
         {
             Falcor::TriangleMesh::SharedPtr pTriangleMesh;
-            glm::mat4 transform;
+            rmcv::mat4 transform;
             Falcor::Material::SharedPtr pMaterial;
+        };
+
+        /** Holds a list of aggregated curve shapes (strands).
+            PBRT's curve shape only contains a single strand.
+            We aggregate strands that have the same transform/material
+            so we can process them as a collection.
+        */
+        struct CurveAggregate
+        {
+            using Key = std::tuple<rmcv::mat4, const Falcor::Material*>;
+            struct KeyHash
+            {
+                std::size_t operator()(const Key& key) const
+                {
+                    return fnvHashArray64(&key, sizeof(key));
+                }
+            };
+
+            rmcv::mat4 transform;
+            Falcor::Material::SharedPtr pMaterial;
+            uint32_t splitDepth;
+
+            std::vector<uint32_t> strands;  ///< Contains the number of points in each strand.
+            std::vector<float3> points;     ///< Concatenated list of points of all strands.
+            std::vector<float> widths;      ///< Concatenated list of widths of all strands.
         };
 
         struct InstanceDefinition
         {
-            std::vector<std::pair<uint32_t, glm::mat4>> meshes; // List of meshID + transform
-            std::vector<std::pair<uint32_t, glm::mat4>> curves; // List of curveID + transfrom
+            std::vector<std::pair<MeshID,  rmcv::mat4>> meshes; // List of meshID + transform
+            std::vector<std::pair<CurveID, rmcv::mat4>> curves; // List of curveID + transfrom
         };
 
         struct BuilderContext
@@ -164,9 +208,13 @@ namespace Falcor
 
             Falcor::Material::SharedPtr pDefaultMaterial;
 
+            std::unordered_map<CurveAggregate::Key, CurveAggregate, CurveAggregate::KeyHash> curveAggregates;
+
             std::map<std::string, InstanceDefinition> instanceDefinitions;
 
             size_t curveCount = 0;
+
+            bool usePBRTMaterials = false;
 
             Falcor::Material::SharedPtr getMaterial(const MaterialRef& materialRef)
             {
@@ -333,7 +381,21 @@ namespace Falcor
             return floatTexture;
         }
 
-        float getScalarRoughness(BuilderContext& ctx, const SceneEntity& entity,
+        float getFloatTextureConstantOnly(BuilderContext& ctx, const ParameterDictionary& params, const std::string& name, float def)
+        {
+            if (auto floatTexture = getFloatTextureOrNull(ctx, params, name))
+            {
+                if (floatTexture->isConstant())
+                {
+                    return floatTexture->getConstant();
+                }
+                logWarning(params.getParameterLoc(name), "Non-constant '{}' is currently not supported. Using constant value of '{}'.", name, def);
+            }
+            return def;
+        }
+
+        // Note: This function returns roughness as an NDF "alpha" value.
+        float2 getRoughness(BuilderContext& ctx, const SceneEntity& entity,
             const std::string& roughnessName = "roughness",
             const std::string& uroughnessName = "uroughness",
             const std::string& vroughnessName = "vroughness")
@@ -348,23 +410,34 @@ namespace Falcor
 
             if (!uroughness->isConstant() || !vroughness->isConstant())
             {
-                float fallback = 0.f;
-                logWarning(entity.loc, "Non-constant roughness is currently not supported. Using constant roughness of {} instead.", fallback);
+                float2 fallback { 0.5f };
+                logWarning(entity.loc, "Non-constant roughness is currently not supported. Using constant roughness of {},{} instead.", fallback.x, fallback.y);
                 return fallback;
             }
 
-            if (uroughness->getConstant() != vroughness->getConstant())
+            float2 roughness { uroughness->getConstant() + vroughness->getConstant() };
+
+            // "remaproughness" determines if roughness represents a "linear" roughness value and should be converted to the NDF "alpha" value.
+            // PBRT always uses the Trowbridge-Reitz / GGX NDF.
+            if (remaproughness) roughness = sqrt(roughness);
+
+            return roughness;
+        }
+
+        // Note: This function returns roughness as an NDF "alpha" value.
+        float getScalarRoughness(BuilderContext& ctx, const SceneEntity& entity,
+            const std::string& roughnessName = "roughness",
+            const std::string& uroughnessName = "uroughness",
+            const std::string& vroughnessName = "vroughness")
+        {
+            float2 roughness = getRoughness(ctx, entity, roughnessName, uroughnessName, vroughnessName);
+
+            if (roughness.x != roughness.y)
             {
                 logWarning(entity.loc, "Anisotropic roughness is currently not supported. Using average of u and v instead.");
             }
 
-            float roughness = 0.5f * (uroughness->getConstant() + vroughness->getConstant());
-
-            // "remaproughness" determines if roughness represents a "linear" roughness value and should be converted to the NDF "alpha" value.
-            // PBRT always uses the Trowbridge-Reitz / GGX NDF.
-            if (!remaproughness) roughness = std::sqrt(roughness);
-
-            return roughness;
+            return 0.5f * (roughness.x + roughness.y);
         }
 
         float getScalarEta(BuilderContext& ctx, const SceneEntity& entity,
@@ -404,7 +477,7 @@ namespace Falcor
             return 0.5f * (Rp + Rs);
         }
 
-        float3 getSpecularAlbedo(BuilderContext& ctx, const SceneEntity& entity,
+        std::pair<float3, float3> getConductorEtaK(BuilderContext& ctx, const SceneEntity& entity,
             const std::string& reflectanceName = "reflectance",
             const std::string& etaName = "eta",
             const std::string& kName = "k")
@@ -422,27 +495,35 @@ namespace Falcor
 
             if (reflectance)
             {
-                if (!reflectance->isConstant())
+                float3 r(0.5f);
+                if (reflectance->isConstant())
                 {
-                    float3 fallback = float3(0.5f);
-                    logWarning(entity.loc, "Non-constant '{}' is not currently supported. Using constant {},{},{} instead.", reflectanceName, fallback.x, fallback.y, fallback.z);
-                    return fallback;
+                    r = spectrumToRGB(reflectance->getConstant(), SpectrumType::Albedo);
                 }
-                return spectrumToRGB(reflectance->getConstant(), SpectrumType::Albedo);
+                else
+                {
+                    logWarning(entity.loc, "Non-constant '{}' is not currently supported. Using constant {},{},{} instead.", reflectanceName, r.x, r.y, r.z);
+                }
+
+                // Avoid r == 1 NaN case.
+                r = clamp(r, float3(0.f), float3(0.9999f));
+                float3 etaRgb(1.f);
+                float3 kRgb = 2.f * sqrt(r) / sqrt(1.f - r);
+                return { etaRgb, kRgb };
             }
 
-            float3 etaRgb = spectrumToRGB(Spectrum(*Spectra::getNamedSpectrum("metal-Cu-eta")), SpectrumType::Unbounded);
-            float3 kRgb = spectrumToRGB(Spectrum(*Spectra::getNamedSpectrum("metal-Cu-k")), SpectrumType::Unbounded);
+            Spectrum etas = Spectrum(*Spectra::getNamedSpectrum("metal-Cu-eta"));
+            Spectrum ks = Spectrum(*Spectra::getNamedSpectrum("metal-Cu-k"));
 
             if (eta)
             {
                 if (eta->isConstant())
                 {
-                    etaRgb = spectrumToRGB(eta->getConstant(), SpectrumType::Unbounded);
+                    etas = eta->getConstant();
                 }
                 else
                 {
-                    logWarning(entity.loc, "Non-constant '{}' is not currently supported. Using constant {},{},{} instead.", etaName, etaRgb.r, etaRgb.g, etaRgb.b);
+                    logWarning(entity.loc, "Non-constant '{}' is not currently supported. Using constant 'metal-Cu-eta' spectrum instead.", etaName);
                 }
             }
 
@@ -450,16 +531,26 @@ namespace Falcor
             {
                 if (k->isConstant())
                 {
-                    kRgb = spectrumToRGB(k->getConstant(), SpectrumType::Unbounded);
+                    ks = k->getConstant();
                 }
                 else
                 {
-                    logWarning(entity.loc, "Non-constant '{}' is not currently supported. Using constant {},{},{} instead.", kName, kRgb.r, kRgb.g, kRgb.b);
+                    logWarning(entity.loc, "Non-constant '{}' is not currently supported. Using constant 'metal-Cu-k' spectrum instead.", kName);
                 }
             }
 
+            return { spectrumToRGB(etas, SpectrumType::Unbounded), spectrumToRGB(ks, SpectrumType::Unbounded) };
+        }
+
+        float3 getConductorSpecularAlbedo(BuilderContext& ctx, const SceneEntity& entity,
+            const std::string& reflectanceName = "reflectance",
+            const std::string& etaName = "eta",
+            const std::string& kName = "k")
+        {
+            auto [eta, k] = getConductorEtaK(ctx, entity, reflectanceName, etaName, kName);
+
             // Approximate by reflectance at incident angle.
-            return fresnelDieletricConductor(etaRgb, kRgb, 1.f);
+            return fresnelDieletricConductor(eta, k, 1.f);
         }
 
         Camera createCamera(BuilderContext& ctx, const CameraSceneEntity& entity)
@@ -565,7 +656,7 @@ namespace Falcor
                 intensity *= scale;
                 if (illuminance > 0.f) intensity *= illuminance;
 
-                float3 direction = normalize(glm::mat3(entity.transform) * (to - from));
+                float3 direction = normalize(rmcv::mat3(entity.transform) * (to - from));
 
                 auto pDirectionalLight = Falcor::DirectionalLight::create("DirectionalLight");
                 pDirectionalLight->setIntensity(intensity);
@@ -610,7 +701,7 @@ namespace Falcor
                     pEnvMap->setIntensity(scale);
 
                     float3 rotation;
-                    glm::extractEulerAngleXYZ(entity.transform, rotation.x, rotation.y, rotation.z);
+                    rmcv::extractEulerAngleXYZ(entity.transform, rotation.x, rotation.y, rotation.z);
                     pEnvMap->setRotation(glm::degrees(rotation));
 
                     light.pEnvMap = pEnvMap;
@@ -634,7 +725,7 @@ namespace Falcor
             FloatTexture floatTexture;
 
             floatTexture.transform = entity.transform;
-            if (floatTexture.transform != glm::identity<glm::mat4>())
+            if (floatTexture.transform != rmcv::identity<rmcv::mat4>())
             {
                 logWarning(entity.loc, "Texture transforms are currently not supported and ignored.");
             }
@@ -683,7 +774,7 @@ namespace Falcor
                 // "ewa", "point" filter is not currently supported.
                 if (filter != "bilinear" && filter != "trilinear")
                 {
-                    logWarning(entity.loc, "Filter '{}' is currently not supported, using 'bilinear' instead.");
+                    logWarning(entity.loc, "Filter '{}' is currently not supported, using 'bilinear' instead.", filter);
                     filter = "bilinear";
                 }
                 bool generateMips = filter == "trilinear";
@@ -753,7 +844,7 @@ namespace Falcor
 
             spectrumTexture.spectrumType = SpectrumType::Albedo;
             spectrumTexture.transform = entity.transform;
-            if (spectrumTexture.transform != glm::identity<glm::mat4>())
+            if (spectrumTexture.transform != rmcv::identity<rmcv::mat4>())
             {
                 logWarning(entity.loc, "Texture transforms are currently not supported and ignored.");
             }
@@ -802,7 +893,7 @@ namespace Falcor
                 // "ewa", "point" filter is not currently supported.
                 if (filter != "bilinear" && filter != "trilinear")
                 {
-                    logWarning(entity.loc, "Filter '{}' is currently not supported, using 'bilinear' instead.");
+                    logWarning(entity.loc, "Filter '{}' is currently not supported, using 'bilinear' instead.", filter);
                     filter = "bilinear";
                 }
                 bool generateMips = filter == "trilinear";
@@ -851,7 +942,7 @@ namespace Falcor
             return spectrumTexture;
         }
 
-        Falcor::Material::SharedPtr createMaterial(BuilderContext& ctx, const MaterialSceneEntity& entity)
+        Falcor::Material::SharedPtr createMaterial(BuilderContext& ctx, const MaterialSceneEntity& entity, bool isAreaLight = false)
         {
             const auto& type = entity.type;
             const auto& params = entity.params;
@@ -877,15 +968,28 @@ namespace Falcor
 
                 auto reflectance = getSpectrumTexture(ctx, params, "reflectance", float3(0.5f), SpectrumType::Albedo);
 
-                auto pStandardMaterial = StandardMaterial::create(entity.name);
-                pStandardMaterial->setMetallic(0.f);
-                pStandardMaterial->setRoughness(1.f);
-                assignSpectrumTexture(reflectance,
-                    [&](float3 rgb) { pStandardMaterial->setBaseColor(float4(rgb, 1.f)); },
-                    [&](Falcor::Texture::SharedPtr pTexture) { pStandardMaterial->setBaseColorTexture(pTexture); }
-                );
-                pStandardMaterial->setDoubleSided(true);
-                pMaterial = pStandardMaterial;
+                if (ctx.usePBRTMaterials && !isAreaLight)
+                {
+                    auto pPBRTMaterial = PBRTDiffuseMaterial::create(entity.name);
+                    assignSpectrumTexture(reflectance,
+                        [&](float3 rgb) { pPBRTMaterial->setBaseColor(float4(rgb, 1.f)); },
+                        [&](Falcor::Texture::SharedPtr pTexture) { pPBRTMaterial->setBaseColorTexture(pTexture); }
+                    );
+                    pPBRTMaterial->setDoubleSided(true);
+                    pMaterial = pPBRTMaterial;
+                }
+                else
+                {
+                    auto pStandardMaterial = StandardMaterial::create(entity.name);
+                    pStandardMaterial->setMetallic(0.f);
+                    pStandardMaterial->setRoughness(1.f);
+                    assignSpectrumTexture(reflectance,
+                        [&](float3 rgb) { pStandardMaterial->setBaseColor(float4(rgb, 1.f)); },
+                        [&](Falcor::Texture::SharedPtr pTexture) { pStandardMaterial->setBaseColorTexture(pTexture); }
+                    );
+                    pStandardMaterial->setDoubleSided(true);
+                    pMaterial = pStandardMaterial;
+                }
             }
             else if (type == "coateddiffuse")
             {
@@ -897,17 +1001,34 @@ namespace Falcor
                 warnUnsupportedParameters(params, { "thickness", "eta", "maxdepth", "nsamples", "g", "albedo", "displacement" });
 
                 auto reflectance = getSpectrumTexture(ctx, params, "reflectance", float3(0.5f), SpectrumType::Albedo);
-                float roughness = getScalarRoughness(ctx, entity);
 
-                auto pStandardMaterial = StandardMaterial::create(entity.name);
-                pStandardMaterial->setMetallic(0.f);
-                pStandardMaterial->setRoughness(roughness);
-                assignSpectrumTexture(reflectance,
-                    [&](float3 rgb) { pStandardMaterial->setBaseColor(float4(rgb, 1.f)); },
-                    [&](Falcor::Texture::SharedPtr pTexture) { pStandardMaterial->setBaseColorTexture(pTexture); }
-                );
-                pStandardMaterial->setDoubleSided(true);
-                pMaterial = pStandardMaterial;
+                if (ctx.usePBRTMaterials && !isAreaLight)
+                {
+                    float2 roughness = getRoughness(ctx, entity);
+
+                    auto pPBRTMaterial = PBRTCoatedDiffuseMaterial::create(entity.name);
+                    pPBRTMaterial->setRoughness(roughness);
+                    assignSpectrumTexture(reflectance,
+                        [&](float3 rgb) { pPBRTMaterial->setBaseColor(float4(rgb, 1.f)); },
+                        [&](Falcor::Texture::SharedPtr pTexture) { pPBRTMaterial->setBaseColorTexture(pTexture); }
+                    );
+                    pPBRTMaterial->setDoubleSided(true);
+                    pMaterial = pPBRTMaterial;
+                }
+                else
+                {
+                    float roughness = getScalarRoughness(ctx, entity);
+
+                    auto pStandardMaterial = StandardMaterial::create(entity.name);
+                    pStandardMaterial->setMetallic(0.f);
+                    pStandardMaterial->setRoughness(std::sqrt(roughness));
+                    assignSpectrumTexture(reflectance,
+                        [&](float3 rgb) { pStandardMaterial->setBaseColor(float4(rgb, 1.f)); },
+                        [&](Falcor::Texture::SharedPtr pTexture) { pStandardMaterial->setBaseColorTexture(pTexture); }
+                    );
+                    pStandardMaterial->setDoubleSided(true);
+                    pMaterial = pStandardMaterial;
+                }
             }
             else if (type == "conductor")
             {
@@ -917,19 +1038,73 @@ namespace Falcor
                 // FloatTexture displacement
                 warnUnsupportedParameters(params, { "displacement"});
 
-                float3 specularAlbedo = getSpecularAlbedo(ctx, entity);
-                float roughness = getScalarRoughness(ctx, entity);
+                if (ctx.usePBRTMaterials && !isAreaLight)
+                {
+                    auto [eta, k] = getConductorEtaK(ctx, entity);
+                    float2 roughness = getRoughness(ctx, entity);
 
-                auto pStandardMaterial = StandardMaterial::create(entity.name);
-                pStandardMaterial->setBaseColor(float4(specularAlbedo, 1.f));
-                pStandardMaterial->setMetallic(1.f);
-                pStandardMaterial->setRoughness(roughness);
-                pStandardMaterial->setDoubleSided(true);
-                pMaterial = pStandardMaterial;
+                    auto pPBRTMaterial = PBRTConductorMaterial::create(entity.name);
+                    pPBRTMaterial->setBaseColor(float4(eta, 1.f));
+                    pPBRTMaterial->setTransmissionColor(k);
+                    pPBRTMaterial->setRoughness(roughness);
+                    pPBRTMaterial->setDoubleSided(true);
+                    pMaterial = pPBRTMaterial;
+                }
+                else
+                {
+                    float3 specularAlbedo = getConductorSpecularAlbedo(ctx, entity);
+                    float roughness = getScalarRoughness(ctx, entity);
+
+                    auto pStandardMaterial = StandardMaterial::create(entity.name);
+                    pStandardMaterial->setBaseColor(float4(specularAlbedo, 1.f));
+                    pStandardMaterial->setMetallic(1.f);
+                    pStandardMaterial->setRoughness(std::sqrt(roughness));
+                    pStandardMaterial->setDoubleSided(true);
+                    pMaterial = pStandardMaterial;
+                }
             }
             else if (type == "coatedconductor")
             {
-                warnUnsupported();
+                // Parameters:
+                // FloatTexture interface.roughness, FloatTexture interface.uroughness, FloatTexture interface.vroughness, Spectrum interface.eta
+                // FloatTexture conductor.roughness, FloatTexture conductor.uroughness, FloatTexture conductor.vroughness, Spectrum conductor.eta
+                // SpectrumTexture conductor.eta, SpectrumTexture conductor.k, SpectrumTexture conductor.reflectance
+                // Bool remaproughness
+                // Int maxdepth, Int nsamples
+                // FloatTexture g, SpectrumTexture albedo
+                // FloatTexture displacement
+
+                if (ctx.usePBRTMaterials && !isAreaLight)
+                {
+                    warnUnsupportedParameters(params, { "maxdepth", "nsamples", "g", "albedo", "displacement"});
+
+                    float2 interfaceRoughness = getRoughness(ctx, entity, "interface.roughness", "interface.uroughness", "interface.vroughness");
+                    float interfaceEta = getScalarEta(ctx, entity, "interface.eta");
+                    auto [eta, k] = getConductorEtaK(ctx, entity, "conductor.reflectance", "conductor.eta", "conductor.k");
+                    float2 conductorRoughness = getRoughness(ctx, entity, "conductor.roughness", "conductor.uroughness", "conductor.vroughness");
+
+                    auto pPBRTMaterial = PBRTCoatedConductorMaterial::create(entity.name);
+                    pPBRTMaterial->setBaseColor(float4(eta, 1.f));
+                    pPBRTMaterial->setTransmissionColor(k);
+                    pPBRTMaterial->setSpecularParams(float4(interfaceRoughness, conductorRoughness));
+                    pPBRTMaterial->setIndexOfRefraction(interfaceEta);
+                    pPBRTMaterial->setDoubleSided(true);
+                    pMaterial = pPBRTMaterial;
+                }
+                else
+                {
+                    warnUnsupportedParameters(params, { "interface.roughness", "interface.uroughness", "interface.vroughness", "interface.eta", "maxdepth", "nsamples", "g", "albedo", "displacement"});
+
+                    float3 specularAlbedo = getConductorSpecularAlbedo(ctx, entity, "conductor.reflectance", "conductor.eta", "conductor.k");
+                    float roughness = getScalarRoughness(ctx, entity, "conductor.roughness", "conductor.uroughness", "conductor.vroughness");
+
+                    auto pStandardMaterial = StandardMaterial::create(entity.name);
+                    pStandardMaterial->setBaseColor(float4(specularAlbedo, 1.f));
+                    pStandardMaterial->setMetallic(1.f);
+                    pStandardMaterial->setRoughness(std::sqrt(roughness));
+                    pStandardMaterial->setDoubleSided(true);
+                    pMaterial = pStandardMaterial;
+                }
             }
             else if (type == "dielectric")
             {
@@ -939,15 +1114,28 @@ namespace Falcor
                 // FloatTexture displacement
                 warnUnsupportedParameters(params, { "displacement" });
 
-                float roughness = getScalarRoughness(ctx, entity);
-                float eta = getScalarEta(ctx, entity);
+                if (ctx.usePBRTMaterials && !isAreaLight)
+                {
+                    float2 roughness = getRoughness(ctx, entity);
+                    float eta = getScalarEta(ctx, entity);
 
-                auto pStandardMaterial = StandardMaterial::create(entity.name);
-                pStandardMaterial->setMetallic(0.f);
-                pStandardMaterial->setRoughness(roughness);
-                pStandardMaterial->setIndexOfRefraction(eta);
-                pStandardMaterial->setSpecularTransmission(1.f);
-                pMaterial = pStandardMaterial;
+                    auto pPBRTMaterial = PBRTDielectricMaterial::create(entity.name);
+                    pPBRTMaterial->setRoughness(roughness);
+                    pPBRTMaterial->setIndexOfRefraction(eta);
+                    pMaterial = pPBRTMaterial;
+                }
+                else
+                {
+                    float roughness = getScalarRoughness(ctx, entity);
+                    float eta = getScalarEta(ctx, entity);
+
+                    auto pStandardMaterial = StandardMaterial::create(entity.name);
+                    pStandardMaterial->setMetallic(0.f);
+                    pStandardMaterial->setRoughness(std::sqrt(roughness));
+                    pStandardMaterial->setIndexOfRefraction(eta);
+                    pStandardMaterial->setSpecularTransmission(1.f);
+                    pMaterial = pStandardMaterial;
+                }
             }
             else if (type == "thindielectric")
             {
@@ -974,30 +1162,111 @@ namespace Falcor
                 warnUnsupportedParameters(params, { "displacement", "scale" });
 
                 auto reflectance = getSpectrumTexture(ctx, params, "reflectance", float3(0.25f), SpectrumType::Albedo);
-                auto transmission = getSpectrumTexture(ctx, params, "transmission", float3(0.25f), SpectrumType::Albedo);
+                auto transmittance = getSpectrumTexture(ctx, params, "transmittance", float3(0.25f), SpectrumType::Albedo);
 
-                auto pStandardMaterial = StandardMaterial::create(entity.name);
-                pStandardMaterial->setMetallic(0.f);
-                pStandardMaterial->setRoughness(1.f);
-                pStandardMaterial->setDiffuseTransmission(0.5f);
-                assignSpectrumTexture(reflectance,
-                    [&](float3 rgb) { pStandardMaterial->setBaseColor(float4(rgb, 1.f)); },
-                    [&](Falcor::Texture::SharedPtr pTexture) { pStandardMaterial->setBaseColorTexture(pTexture); }
-                );
-                assignSpectrumTexture(transmission,
-                    [&](float3 rgb) { pStandardMaterial->setTransmissionColor(rgb); },
-                    [&](Falcor::Texture::SharedPtr pTexture) { pStandardMaterial->setTransmissionTexture(pTexture); }
-                );
-                pStandardMaterial->setDoubleSided(true);
-                pMaterial = pStandardMaterial;
+                if (ctx.usePBRTMaterials && !isAreaLight)
+                {
+                    auto pPBRTMaterial = PBRTDiffuseTransmissionMaterial::create(entity.name);
+                    assignSpectrumTexture(reflectance,
+                        [&](float3 rgb) { pPBRTMaterial->setBaseColor(float4(rgb, 1.f)); },
+                        [&](Falcor::Texture::SharedPtr pTexture) { pPBRTMaterial->setBaseColorTexture(pTexture); }
+                    );
+                    assignSpectrumTexture(transmittance,
+                        [&](float3 rgb) { pPBRTMaterial->setTransmissionColor(rgb); },
+                        [&](Falcor::Texture::SharedPtr pTexture) { pPBRTMaterial->setTransmissionTexture(pTexture); }
+                    );
+                    pMaterial = pPBRTMaterial;
+                }
+                else
+                {
+                    auto pStandardMaterial = StandardMaterial::create(entity.name);
+                    pStandardMaterial->setMetallic(0.f);
+                    pStandardMaterial->setRoughness(1.f);
+                    pStandardMaterial->setDiffuseTransmission(0.5f);
+                    assignSpectrumTexture(reflectance,
+                        [&](float3 rgb) { pStandardMaterial->setBaseColor(float4(rgb, 1.f)); },
+                        [&](Falcor::Texture::SharedPtr pTexture) { pStandardMaterial->setBaseColorTexture(pTexture); }
+                    );
+                    assignSpectrumTexture(transmittance,
+                        [&](float3 rgb) { pStandardMaterial->setTransmissionColor(rgb); },
+                        [&](Falcor::Texture::SharedPtr pTexture) { pStandardMaterial->setTransmissionTexture(pTexture); }
+                    );
+                    pStandardMaterial->setDoubleSided(true);
+                    pMaterial = pStandardMaterial;
+                }
             }
             else if (type == "hair")
             {
-                warnUnsupported();
+                // Parameters:
+                // SpectrumTexture sigma_a, SpectrumTexture reflectance, SpectrumTexture color,
+                // FloatTexture eumelanin, FloatTexture pheomelanin
+                // FloatTexture eta, FloatTexture beta_m, FloatTexture beta_n, FloatTexture alpha
+
+                auto sigma_a = getSpectrumTextureOrNull(ctx, params, "sigma_a", SpectrumType::Unbounded);
+                auto reflectance = getSpectrumTextureOrNull(ctx, params, "reflectance", SpectrumType::Albedo);
+                if (!reflectance)
+                {
+                    reflectance = getSpectrumTextureOrNull(ctx, params, "color", SpectrumType::Albedo);
+                }
+                auto eumelanin = getFloatTextureOrNull(ctx, params, "eumelanin");
+                auto pheomelanin = getFloatTextureOrNull(ctx, params, "pheomelanin");
+
+                float eta = getFloatTextureConstantOnly(ctx, params, "eta", 1.55f);
+                float beta_m = getFloatTextureConstantOnly(ctx, params, "beta_m", 0.3f);
+                float beta_n = getFloatTextureConstantOnly(ctx, params, "beta_n", 0.3f);
+                float alpha = getFloatTextureConstantOnly(ctx, params, "alpha", 2.f);
+
+                HairMaterial::SharedPtr pHairMaterial = HairMaterial::create(entity.name);
+                float3 baseColor = HairMaterial::colorFromSigmaA(HairMaterial::sigmaAFromConcentration(0.5f, 0.2f), beta_n);
+                pHairMaterial->setBaseColor(float4(baseColor, 1.f));
+                pHairMaterial->setSpecularParams(float4(beta_m, beta_n, alpha, 0.f));
+                pHairMaterial->setIndexOfRefraction(eta);
+
+                if (sigma_a)
+                {
+                    if (reflectance) logWarning(entity.loc, "Ignoring 'reflectance' parameter since 'sigma_a' was provided.");
+                    if (eumelanin) logWarning(entity.loc, "Ignoring 'eumelanin' parameter since 'sigma_a' was provided.");
+                    if (pheomelanin) logWarning(entity.loc, "Ignoring 'pheomelanin' parameter since 'sigma_a' was provided.");
+
+                    assignSpectrumTexture(*sigma_a,
+                        [&](float3 constant) { pHairMaterial->setBaseColor(float4(HairMaterial::colorFromSigmaA(constant, beta_n), 1.f)); },
+                        [&](Falcor::Texture::SharedPtr pTexture) { logWarning(entity.loc, "Non-constant 'sigma_a' is currently not supported. Using default color instead."); }
+                    );
+                }
+                else if (reflectance)
+                {
+                    if (eumelanin) logWarning(entity.loc, "Ignoring 'eumelanin' parameter since 'reflectance' was provided.");
+                    if (pheomelanin) logWarning(entity.loc, "Ignoring 'pheomelanin' parameter since 'reflectance' was provided.");
+
+                    assignSpectrumTexture(*reflectance,
+                        [&](float3 constant) { pHairMaterial->setBaseColor(float4(constant, 1.f)); },
+                        [&](Falcor::Texture::SharedPtr pTexture) { pHairMaterial->setBaseColorTexture(pTexture); }
+                    );
+                }
+                else if (eumelanin || pheomelanin)
+                {
+                    float eumelaninValue = getFloatTextureConstantOnly(ctx, params, "eumelanin", 0.3f);
+                    float pheomelaninValue = getFloatTextureConstantOnly(ctx, params, "pheomelanin", 0.3f);
+                    float3 baseColor = HairMaterial::colorFromSigmaA(HairMaterial::sigmaAFromConcentration(eumelaninValue, pheomelaninValue), beta_n);
+                    pHairMaterial->setBaseColor(float4(baseColor, 1.f));
+                }
+
+                pMaterial = pHairMaterial;
             }
             else if (type == "measured")
             {
-                warnUnsupported();
+                // Parameters:
+                // String filename
+                auto path = ctx.resolver(params.getString("filename", ""));
+                try
+                {
+                auto pRGLMaterial = RGLMaterial::create(entity.name, path);
+                pMaterial = pRGLMaterial;
+            }
+                catch (const RuntimeError& e)
+                {
+                    logWarning(entity.loc, "Failed to load 'measured' material: {}", e.what());
+                }
             }
             else if (type == "subsurface")
             {
@@ -1129,7 +1398,7 @@ namespace Falcor
 
                 shape.pTriangleMesh = Falcor::TriangleMesh::createDisk(radius);
                 shape.pTriangleMesh->setName("disk");
-                glm::mat4 transform = glm::translate(float3(0.f, 0.f, height)) * kYtoZ;
+                rmcv::mat4 transform = rmcv::translate(float3(0.f, 0.f, height)) * kYtoZ;
                 shape.pTriangleMesh->applyTransform(transform);
             }
             else if (type == "bilinearmesh")
@@ -1143,15 +1412,52 @@ namespace Falcor
                 // Parameters:
                 // Float width, Float width0, Float width1, Int degree, String basis,
                 // Point3[] P, String type, Normal3[] N, Int splitdepth
-                // PBRT scenes typically contain thousands of curve shapes (each shape is just a segment) so we skip warnings.
-                ctx.curveCount++;
-                if (ctx.curveCount < 10)
+                warnUnsupportedParameters(params, { "degree", "N" });
+
+                auto splitdepth = params.getInt("splitdepth", 1);
+
+                auto width = params.getFloat("width", 1.f);
+                auto width0 = params.getFloat("width0", width);
+                auto width1 = params.getFloat("width1", width);
+
+                auto basis = params.getString("basis", "bezier");
+                if (basis != "bspline")
                 {
-                    warnUnsupported();
+                    logWarning(entity.loc, "Basis '{}' is not supported. Using 'bspline' basis instead.", basis);
                 }
-                else if (ctx.curveCount == 10)
+
+                auto type = params.getString("type", "flat");
+                if (type != "cylinder")
                 {
-                    Falcor::logWarning("Skipping additional warnings on unsupported curves.");
+                    logWarning(entity.loc, "Curve type '{}' is not supported. Using 'cylinder' type instead.", type);
+                }
+
+                auto P = params.getPoint3Array("P");
+
+                // Create or get existing curve aggregate.
+                auto pMaterial = ctx.getMaterial(entity.materialRef);
+                CurveAggregate::Key key { entity.transform, pMaterial.get() };
+                auto it = ctx.curveAggregates.find(key);
+                if (it == ctx.curveAggregates.end())
+                {
+                    it = ctx.curveAggregates.emplace(key, CurveAggregate{}).first;
+                    it->second.transform = entity.transform;
+                    it->second.pMaterial = pMaterial;
+                    it->second.splitDepth = splitdepth;
+                }
+                CurveAggregate &aggregate = it->second;
+
+                // Append curve to aggregate.
+                size_t pointCount = P.size();
+                size_t offset = aggregate.points.size();
+                aggregate.strands.push_back(pointCount);
+                aggregate.points.resize(aggregate.points.size() + pointCount);
+                aggregate.widths.resize(aggregate.widths.size() + pointCount);
+                for (size_t i = 0; i < pointCount; ++i)
+                {
+                    float t = float(i) / pointCount;
+                    aggregate.points[offset + i] = P[i];
+                    aggregate.widths[offset + i] = lerp(width0, width1, t);
                 }
             }
             else if (type == "trianglemesh")
@@ -1286,7 +1592,7 @@ namespace Falcor
                 // Create a new material as we may already use it for other shapes with no area light attached to it.
                 if (!std::holds_alternative<std::monostate>(entity.materialRef))
                 {
-                    shape.pMaterial = createMaterial(ctx, ctx.scene.getMaterial(entity.materialRef));
+                    shape.pMaterial = createMaterial(ctx, ctx.scene.getMaterial(entity.materialRef), true);
                     shape.pMaterial->setName(shape.pMaterial->getName() + "_" + nameSuffix);
                 }
                 else
@@ -1303,18 +1609,106 @@ namespace Falcor
             return shape;
         }
 
+        /** Create curve geometry from a curve aggregate.
+            This can either result in mesh or curve geometry depending on the tesselation mode.
+        */
+        std::variant<Falcor::MeshID, Falcor::CurveID> createCurveGeometry(BuilderContext& ctx, const CurveAggregate& curveAggregate)
+        {
+            CurveTessellationMode mode = CurveTessellationMode::LinearSweptSphere;
+
+            if (is_set(ctx.builder.getFlags(), SceneBuilder::Flags::TessellateCurvesIntoPolyTubes))
+            {
+                mode = CurveTessellationMode::PolyTube;
+            }
+
+            uint32_t subdivPerSegment = 1u << curveAggregate.splitDepth;
+
+            if (mode == CurveTessellationMode::LinearSweptSphere)
+            {
+                auto result = CurveTessellation::convertToLinearSweptSphere(
+                    curveAggregate.strands.size(), curveAggregate.strands.data(),
+                    curveAggregate.points.data(), curveAggregate.widths.data(), nullptr,
+                    1, subdivPerSegment, 1, 1, 1.f, rmcv::mat4());
+
+                Falcor::SceneBuilder::Curve curve;
+                curve.degree = result.degree;
+                curve.vertexCount = result.points.size();
+                curve.indexCount = result.indices.size();
+                curve.pIndices = result.indices.data();
+                curve.pMaterial = curveAggregate.pMaterial;
+                curve.positions.pData = result.points.data();
+                curve.radius.pData = result.radius.data();
+
+                return ctx.builder.addCurve(curve);
+            }
+            else
+            {
+                Falcor::CurveTessellation::MeshResult result;
+                if (mode == CurveTessellationMode::PolyTube)
+                {
+                    result = CurveTessellation::convertToPolytube(
+                        curveAggregate.strands.size(), curveAggregate.strands.data(),
+                        curveAggregate.points.data(), curveAggregate.widths.data(), nullptr,
+                        subdivPerSegment, 1, 1, 1.f, 4);
+                }
+                else
+                {
+                    FALCOR_UNREACHABLE();
+                }
+
+                Falcor::SceneBuilder::Mesh mesh;
+                mesh.faceCount = result.faceVertexIndices.size() / 3;
+                mesh.vertexCount = result.vertices.size();
+                mesh.indexCount = result.faceVertexIndices.size();
+                mesh.pIndices = result.faceVertexIndices.data();
+                mesh.topology = Vao::Topology::TriangleList;
+                mesh.pMaterial = curveAggregate.pMaterial;
+                mesh.positions.pData = result.vertices.data();
+                mesh.positions.frequency = Falcor::SceneBuilder::Mesh::AttributeFrequency::Vertex;
+                mesh.normals.pData = result.normals.data();
+                mesh.normals.frequency = Falcor::SceneBuilder::Mesh::AttributeFrequency::Vertex;
+                mesh.tangents.pData = result.tangents.data();
+                mesh.tangents.frequency = Falcor::SceneBuilder::Mesh::AttributeFrequency::Vertex;
+                mesh.texCrds.pData = result.texCrds.data();
+                mesh.texCrds.frequency = Falcor::SceneBuilder::Mesh::AttributeFrequency::Vertex;
+                mesh.curveRadii.pData = result.radii.data();
+                mesh.curveRadii.frequency = Falcor::SceneBuilder::Mesh::AttributeFrequency::Vertex;
+
+                return ctx.builder.addMesh(mesh);
+            }
+        }
+
         InstanceDefinition createInstanceDefinition(BuilderContext& ctx, const InstanceDefinitionSceneEntity& entity)
         {
             InstanceDefinition instanceDefinition;
 
             for (const auto& shapeEntity : entity.shapes)
             {
+                // Process shapes and create meshes.
                 auto shape = createShape(ctx, shapeEntity);
                 if (shape.pTriangleMesh)
                 {
                     auto meshID = ctx.builder.addTriangleMesh(shape.pTriangleMesh, shape.pMaterial);
                     instanceDefinition.meshes.emplace_back(meshID, shape.transform);
                 }
+
+                // Create curves from curve aggregates assembled during the processing step above.
+                for (const auto& [_, curveAggregate] : ctx.curveAggregates)
+                {
+                    auto meshOrCurveID = createCurveGeometry(ctx, curveAggregate);
+                    if (auto meshID = std::get_if<Falcor::MeshID>(&meshOrCurveID))
+                    {
+                        instanceDefinition.meshes.emplace_back(*meshID, curveAggregate.transform);
+                    }
+                    else if (auto curveID = std::get_if<Falcor::CurveID>(&meshOrCurveID))
+                    {
+                        instanceDefinition.curves.emplace_back(*curveID, curveAggregate.transform);
+                    }
+                    {
+                        FALCOR_UNREACHABLE();
+                    }
+                }
+                ctx.curveAggregates.clear();
             }
 
             return instanceDefinition;
@@ -1381,7 +1775,7 @@ namespace Falcor
                 }
             }
 
-            // Create shapes.
+            // Process shapes and create meshes.
             for (const auto& entity : ctx.scene.getShapes())
             {
                 auto shape = createShape(ctx, entity);
@@ -1393,6 +1787,26 @@ namespace Falcor
                 }
             }
 
+            // Create curves from curve aggregates assembled during the processing step above.
+            for (const auto& [_, curveAggregate] : ctx.curveAggregates)
+            {
+                auto nodeID = ctx.builder.addNode({ "curves", curveAggregate.transform });
+                auto meshOrCurveID = createCurveGeometry(ctx, curveAggregate);
+                if (auto meshID = std::get_if<Falcor::MeshID>(&meshOrCurveID))
+                {
+                    ctx.builder.addMeshInstance(nodeID, *meshID);
+                }
+                else if (auto curveID = std::get_if<Falcor::CurveID>(&meshOrCurveID))
+                {
+                    ctx.builder.addCurveInstance(nodeID, *curveID);
+                }
+                else
+                {
+                    FALCOR_UNREACHABLE();
+                }
+            }
+            ctx.curveAggregates.clear();
+
             auto getInstanceDefinition = [&ctx](const InstanceSceneEntity& entity)
             {
                 auto it = ctx.instanceDefinitions.find(entity.name);
@@ -1403,8 +1817,7 @@ namespace Falcor
                     {
                         throwError(entity.loc, "Object instance '{}' not defined.", entity.name);
                     }
-                    ctx.instanceDefinitions.emplace(entity.name, createInstanceDefinition(ctx, it2->second));
-                    it = ctx.instanceDefinitions.find(entity.name);
+                    it = ctx.instanceDefinitions.emplace(entity.name, createInstanceDefinition(ctx, it2->second)).first;
                 }
                 return it->second;
             };
@@ -1447,6 +1860,7 @@ namespace Falcor
             timeReport.measure("Parsing pbrt scene");
 
             pbrt::BuilderContext ctx { pbrtScene, builder };
+            ctx.usePBRTMaterials = gpFramework->getSettings().getOption("PBRTImporter:usePBRTMaterials", false);
             pbrt::buildScene(ctx);
             timeReport.measure("Building pbrt scene");
             timeReport.printToLog();

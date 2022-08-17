@@ -25,19 +25,34 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Grid.h"
+#include "GridConverter.h"
+#include "Core/Program/ShaderVar.h"
+#include "Utils/StringUtils.h"
+#include "Utils/Logger.h"
+#include "Utils/Scripting/ScriptBindings.h"
+#include "Utils/Math/Common.h"
+#include "Utils/Math/Vector.h"
+#include "Utils/Math/Matrix.h"
+
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable : 4146 4244 4267 4275 4996)
+#endif
 #include <nanovdb/util/IO.h>
 #include <nanovdb/util/GridStats.h>
+// TODO: GridBuilder.h uses the std::result_of type trait which is deprecated in C++17 and
+// removed in C++20. This is an ugly workaround to use C++20's invoke_result type trait.
+// This really should be fixed in nanovdb instead!
+#define result_of invoke_result
 #include <nanovdb/util/GridBuilder.h>
+#undef result_of
+#include <nanovdb/util/Primitives.h>
 #include <nanovdb/util/OpenToNanoVDB.h>
 #include <openvdb/openvdb.h>
+#ifdef _MSC_VER
 #pragma warning(pop)
-#include <glm/gtc/type_ptr.hpp>
-#include "GridConverter.h"
-
+#endif
 
 namespace Falcor
 {
@@ -61,13 +76,13 @@ namespace Falcor
 
     Grid::SharedPtr Grid::createSphere(float radius, float voxelSize, float blendRange)
     {
-        auto handle = nanovdb::createFogVolumeSphere(radius, nanovdb::Vec3R(0.0), voxelSize, blendRange);
+        auto handle = nanovdb::createFogVolumeSphere<float>(radius, nanovdb::Vec3f(0.f), voxelSize, blendRange);
         return SharedPtr(new Grid(std::move(handle)));
     }
 
     Grid::SharedPtr Grid::createBox(float width, float height, float depth, float voxelSize, float blendRange)
     {
-        auto handle = nanovdb::createFogVolumeBox(width, height, depth, nanovdb::Vec3R(0.0), voxelSize, blendRange);
+        auto handle = nanovdb::createFogVolumeBox<float>(width, height, depth, nanovdb::Vec3f(0.f), voxelSize, blendRange);
         return SharedPtr(new Grid(std::move(handle)));
     }
 
@@ -131,12 +146,12 @@ namespace Falcor
 
     float Grid::getMinValue() const
     {
-        return mpFloatGrid->tree().root().valueMin();
+        return mpFloatGrid->tree().root().minimum();
     }
 
     float Grid::getMaxValue() const
     {
-        return mpFloatGrid->tree().root().valueMax();
+        return mpFloatGrid->tree().root().maximum();
     }
 
     uint64_t Grid::getVoxelCount() const
@@ -169,20 +184,20 @@ namespace Falcor
         return mGridHandle;
     }
 
-    glm::mat4 Grid::getTransform() const
+    rmcv::mat4 Grid::getTransform() const
     {
         const auto& gridMap = mGridHandle.gridMetaData()->map();
-        const float3x3 affine = glm::make_mat3(gridMap.mMatF);
+        const rmcv::mat3 affine = rmcv::make_mat3(gridMap.mMatF);
         const float3 translation = float3(gridMap.mVecF[0], gridMap.mVecF[1], gridMap.mVecF[2]);
-        return glm::translate(float4x4(affine), translation);
+        return rmcv::translate(rmcv::mat4(affine), translation);
     }
 
-    glm::mat4 Grid::getInvTransform() const
+    rmcv::mat4 Grid::getInvTransform() const
     {
         const auto& gridMap = mGridHandle.gridMetaData()->map();
-        const float3x3 invAffine = glm::make_mat3(gridMap.mInvMatF);
+        const rmcv::mat3 invAffine = rmcv::make_mat3(gridMap.mInvMatF);
         const float3 translation = float3(gridMap.mVecF[0], gridMap.mVecF[1], gridMap.mVecF[2]);
-        return glm::translate(float4x4(invAffine), -translation);
+        return rmcv::translate(rmcv::mat4(invAffine), -translation);
     }
 
     Grid::Grid(nanovdb::GridHandle<nanovdb::HostBuffer> gridHandle)
@@ -284,6 +299,8 @@ namespace Falcor
 
     FALCOR_SCRIPT_BINDING(Grid)
     {
+        using namespace pybind11::literals;
+
         pybind11::class_<Grid, Grid::SharedPtr> grid(m, "Grid");
         grid.def_property_readonly("voxelCount", &Grid::getVoxelCount);
         grid.def_property_readonly("minIndex", &Grid::getMinIndex);

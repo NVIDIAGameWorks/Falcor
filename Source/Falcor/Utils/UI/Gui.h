@@ -26,16 +26,22 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include <unordered_map>
+#include "Core/Macros.h"
 #include "Core/API/Texture.h"
 #include "Core/API/FBO.h"
-#include "Core/API/RenderContext.h"
+#include "Utils/Math/Vector.h"
 #include "Utils/Color/SampledSpectrum.h"
+#include <filesystem>
+#include <memory>
+#include <string>
+#include <vector>
 
 struct ImFont;
 
 namespace Falcor
 {
+    class RenderContext;
+
     struct MouseEvent;
     struct KeyboardEvent;
 

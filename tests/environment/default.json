@@ -1,0 +1,7 @@
+{
+    "name": "Default Environment",
+    "image_tests": {
+        "result_dir": "${project_dir}/tests/data/results/${branch}/${build_config}",
+        "ref_dir": "${project_dir}/tests/data/refs/${branch}/${build_config}"
+    }
+}

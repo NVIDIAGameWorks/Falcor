@@ -25,16 +25,28 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
 
 #include "D3D12RootSignature.h"
+#include "Core/API/API.h"
 #include "Core/API/Device.h"
 #include "Core/Program/ProgramReflection.h"
+#include "Utils/Math/Common.h"
 
 namespace Falcor
 {
+    namespace
+    {
+        template<typename BlobType>
+        std::string convertBlobToString(BlobType* pBlob)
+        {
+            std::vector<char> infoLog(pBlob->GetBufferSize() + 1);
+            memcpy(infoLog.data(), pBlob->GetBufferPointer(), pBlob->GetBufferSize());
+            infoLog[pBlob->GetBufferSize()] = 0;
+            return std::string(infoLog.data());
+        }
+    }
+
     D3D12RootSignature::SharedPtr D3D12RootSignature::spEmptySig;
     uint64_t D3D12RootSignature::sObjCount = 0;
 
@@ -439,4 +451,4 @@ namespace Falcor
     }
 }
 
-#endif // FALCOR_D3D12_AVAILABLE
+#endif // FALCOR_HAS_D3D12

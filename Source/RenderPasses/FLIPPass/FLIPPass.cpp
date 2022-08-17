@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "FLIPPass.h"
+#include "RenderGraph/RenderPassLibrary.h"
 #include "Utils/Algorithm/ComputeParallelReduction.h"
 
 const RenderPass::Info FLIPPass::kInfo
@@ -126,8 +127,8 @@ FLIPPass::FLIPPass(const Dictionary& dict)
     {
         // Assume first monitor is used.
         size_t monitorIndex = 0;
-        if (monitorDescs[monitorIndex].mResolution.x > 0) mMonitorWidthPixels = uint(monitorDescs[0].mResolution.x);
-        if (monitorDescs[monitorIndex].mPhysicalSize.x > 0) mMonitorWidthMeters = monitorDescs[0].mPhysicalSize.x * 0.0254f; //< Convert from inches to meters
+        if (monitorDescs[monitorIndex].resolution.x > 0) mMonitorWidthPixels = monitorDescs[0].resolution.x;
+        if (monitorDescs[monitorIndex].physicalSize.x > 0) mMonitorWidthMeters = monitorDescs[0].physicalSize.x * 0.0254f; //< Convert from inches to meters
     }
 
 }
@@ -212,7 +213,7 @@ static void solveSecondDegree(const float a, const float b, float c, float& xMin
     }
 
     float d1 = -0.5f * (b / a);
-    float d2 = std::sqrtf((d1 * d1) - (c / a));
+    float d2 = std::sqrt((d1 * d1) - (c / a));
     xMin = d1 - d2;
     xMax = d1 + d2;
 }
@@ -276,11 +277,11 @@ void FLIPPass::execute(RenderContext* pRenderContext, const RenderData& renderDa
     if (!mEnabled) return;
 
     // Pick up resources from render graph.
-    const auto& pTestImageInput = renderData[kTestImageInput];
-    const auto& pReferenceImageInput = renderData[kReferenceImageInput];
-    const auto& pErrorMapOutput = renderData[kErrorMapOutput];
-    const auto& pErrorMapDisplayOutput = renderData[kErrorMapDisplayOutput];
-    const auto& pExposureMapDisplayOutput = renderData[kExposureMapDisplayOutput];
+    const auto& pTestImageInput = renderData.getTexture(kTestImageInput);
+    const auto& pReferenceImageInput = renderData.getTexture(kReferenceImageInput);
+    const auto& pErrorMapOutput = renderData.getTexture(kErrorMapOutput);
+    const auto& pErrorMapDisplayOutput = renderData.getTexture(kErrorMapDisplayOutput);
+    const auto& pExposureMapDisplayOutput = renderData.getTexture(kExposureMapDisplayOutput);
 
     updatePrograms();
 
@@ -292,7 +293,7 @@ void FLIPPass::execute(RenderContext* pRenderContext, const RenderData& renderDa
     }
 
     // Refresh internal high precision buffer for FLIP results.
-    uint2 outputResolution = uint2(pReferenceImageInput->asTexture()->getWidth(), pReferenceImageInput->asTexture()->getHeight());
+    uint2 outputResolution = uint2(pReferenceImageInput->getWidth(), pReferenceImageInput->getHeight());
     if (!mpFLIPErrorMapDisplay || !mpExposureMapDisplay || mpFLIPErrorMapDisplay->getWidth() != outputResolution.x || mpFLIPErrorMapDisplay->getHeight() != outputResolution.y)
     {
         mpFLIPErrorMapDisplay = Texture::create2D(outputResolution.x, outputResolution.y, ResourceFormat::RGBA32Float, 1, 1, nullptr, Resource::BindFlags::UnorderedAccess | Resource::BindFlags::ShaderResource);
@@ -305,11 +306,11 @@ void FLIPPass::execute(RenderContext* pRenderContext, const RenderData& renderDa
     }
 
     // Bind resources.
-    mpFLIPPass["gTestImage"] = pTestImageInput->asTexture();
-    mpFLIPPass["gReferenceImage"] = pReferenceImageInput->asTexture();
-    mpFLIPPass["gFLIPErrorMap"] = pErrorMapOutput->asTexture();
-    mpFLIPPass["gFLIPErrorMapDisplay"] = mpFLIPErrorMapDisplay->asTexture();
-    mpFLIPPass["gExposureMapDisplay"] = mpExposureMapDisplay->asTexture();
+    mpFLIPPass["gTestImage"] = pTestImageInput;
+    mpFLIPPass["gReferenceImage"] = pReferenceImageInput;
+    mpFLIPPass["gFLIPErrorMap"] = pErrorMapOutput;
+    mpFLIPPass["gFLIPErrorMapDisplay"] = mpFLIPErrorMapDisplay;
+    mpFLIPPass["gExposureMapDisplay"] = mpExposureMapDisplay;
 
     // Bind CB settings.
     auto var = mpFLIPPass["PerFrameCB"];
@@ -328,7 +329,7 @@ void FLIPPass::execute(RenderContext* pRenderContext, const RenderData& renderDa
     if (!mUseCustomExposureParameters && mIsHDR)
     {
         // Bind resources.
-        mpComputeLuminancePass["gInputImage"] = pReferenceImageInput->asTexture();
+        mpComputeLuminancePass["gInputImage"] = pReferenceImageInput;
         mpComputeLuminancePass["gOutputLuminance"] = mpLuminance;
         // Bind CB settings.
         mpComputeLuminancePass["PerFrameCB"]["gResolution"] = outputResolution;
@@ -348,15 +349,15 @@ void FLIPPass::execute(RenderContext* pRenderContext, const RenderData& renderDa
     mpFLIPPass->execute(pRenderContext, outputResolution.x, outputResolution.y);
 
     // Convert display output to sRGB and reduce precision.
-    pRenderContext->blit(mpFLIPErrorMapDisplay->getSRV(), pErrorMapDisplayOutput->asTexture()->getRTV());
-    pRenderContext->blit(mpExposureMapDisplay->getSRV(), pExposureMapDisplayOutput->asTexture()->getRTV());
+    pRenderContext->blit(mpFLIPErrorMapDisplay->getSRV(), pErrorMapDisplayOutput->getRTV());
+    pRenderContext->blit(mpExposureMapDisplay->getSRV(), pExposureMapDisplayOutput->getRTV());
 
     // Compute mean, min, and max using parallel reduction.
     if (mComputePooledFLIPValues)
     {
         float4 FLIPSum, FLIPMinMax[2];
-        mpParallelReduction->execute<float4>(pRenderContext, pErrorMapOutput->asTexture(), ComputeParallelReduction::Type::Sum, &FLIPSum);
-        mpParallelReduction->execute<float4>(pRenderContext, pErrorMapOutput->asTexture(), ComputeParallelReduction::Type::MinMax, &FLIPMinMax[0]);
+        mpParallelReduction->execute<float4>(pRenderContext, pErrorMapOutput, ComputeParallelReduction::Type::Sum, &FLIPSum);
+        mpParallelReduction->execute<float4>(pRenderContext, pErrorMapOutput, ComputeParallelReduction::Type::MinMax, &FLIPMinMax[0]);
         pRenderContext->flush(true);
 
         // Extract metrics from readback values. RGB channels contain magma mapping, and the alpa channel contains FLIP value.

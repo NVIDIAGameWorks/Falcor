@@ -26,6 +26,13 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Macros.h"
+#include "Platform/PlatformHandles.h"
+#include "Utils/Math/Vector.h"
+#include <memory>
+#include <string>
+#include <filesystem>
+
 struct GLFWwindow;
 
 namespace Falcor

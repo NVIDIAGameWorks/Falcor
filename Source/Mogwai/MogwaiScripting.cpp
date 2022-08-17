@@ -25,7 +25,13 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor.h"
+#include "Mogwai.h"
+#include "RenderGraph/RenderGraphIR.h"
+#include "RenderGraph/RenderGraphImportExport.h"
+#include "Utils/Scripting/ScriptWriter.h"
+#include "Utils/Settings.h"
+#include <fstream>
 
 namespace Mogwai
 {
@@ -36,9 +42,11 @@ namespace Mogwai
         const std::string kUnloadScene = "unloadScene";
         const std::string kSaveConfig = "saveConfig";
         const std::string kAddGraph = "addGraph";
+        const std::string kSetActiveGraph = "setActiveGraph";
         const std::string kRemoveGraph = "removeGraph";
         const std::string kGetGraph = "getGraph";
         const std::string kUI = "ui";
+        const std::string kKeyCallback = "keyCallback";
         const std::string kResizeSwapChain = "resizeSwapChain";
         const std::string kRenderFrame = "renderFrame";
         const std::string kActiveGraph = "activeGraph";
@@ -114,12 +122,19 @@ namespace Mogwai
 
     void Renderer::registerScriptBindings(pybind11::module& m)
     {
+        using namespace pybind11::literals;
+
         pybind11::class_<Renderer> renderer(m, "Renderer");
         renderer.def(kRunScript.c_str(), &Renderer::loadScript, "path"_a);
         renderer.def(kLoadScene.c_str(), &Renderer::loadScene, "path"_a, "buildFlags"_a = SceneBuilder::Flags::Default);
         renderer.def(kUnloadScene.c_str(), &Renderer::unloadScene);
         renderer.def(kSaveConfig.c_str(), &Renderer::saveConfig, "path"_a);
         renderer.def(kAddGraph.c_str(), &Renderer::addGraph, "graph"_a);
+        renderer.def(kSetActiveGraph.c_str(),
+            [](Renderer* pRenderer, const RenderGraph::SharedPtr& pGraph)
+            {
+                pRenderer->setActiveGraph(pGraph);
+            }, "graph"_a);
         renderer.def(kRemoveGraph.c_str(), pybind11::overload_cast<const std::string&>(&Renderer::removeGraph), "name"_a);
         renderer.def(kRemoveGraph.c_str(), pybind11::overload_cast<const RenderGraph::SharedPtr&>(&Renderer::removeGraph), "graph"_a);
         renderer.def(kGetGraph.c_str(), &Renderer::getGraph, "name"_a);
@@ -138,6 +153,8 @@ namespace Mogwai
         auto getUI = [](Renderer* pRenderer) { return gpFramework->isUiEnabled(); };
         auto setUI = [](Renderer* pRenderer, bool show) { gpFramework->toggleUI(show); };
         renderer.def_property(kUI.c_str(), getUI, setUI);
+
+        renderer.def_property(kKeyCallback.c_str(), &Renderer::getKeyCallback, &Renderer::setKeyCallback);
 
         for (auto& pe : mpExtensions)
         {
@@ -179,5 +196,24 @@ namespace Mogwai
         Scripting::getDefaultContext().setObject("fc", findExtension("Frame Capture")); // PYTHONDEPRECATED
         Scripting::getDefaultContext().setObject("vc", findExtension("Video Capture")); // PYTHONDEPRECATED
         Scripting::getDefaultContext().setObject("tc", findExtension("Timing Capture")); // PYTHONDEPRECATED
+
+        renderer.def("addOptions", [](Renderer* r, pybind11::dict d = {})
+        {
+            gpFramework->getSettings().addOptions(Dictionary(d));
+            r->onOptionsChange();
+        }, "dict"_a = pybind11::dict());
+        renderer.def("addFilteredAttributes", [](Renderer* r, pybind11::dict d = {})
+        {
+            gpFramework->getSettings().addFilteredAttributes(Dictionary(d));
+        }, "dict"_a = pybind11::dict());
+        renderer.def("clearOptions", [](Renderer* r)
+        {
+            gpFramework->getSettings().clearOptions();
+            r->onOptionsChange();
+        });
+        renderer.def("clearFilteredAttributes", [](Renderer* r)
+        {
+            gpFramework->getSettings().clearFilteredAttributes();
+        });
     }
 }

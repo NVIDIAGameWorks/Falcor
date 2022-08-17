@@ -25,12 +25,13 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include "GFXFormats.h"
 #include "Core/API/ResourceViews.h"
+#include "GFXFormats.h"
 #include "Core/API/Texture.h"
 #include "Core/API/Buffer.h"
 #include "Core/API/Device.h"
+#include "Core/API/GFX/GFXAPI.h"
+
 namespace Falcor
 {
     template<>
@@ -109,7 +110,7 @@ namespace Falcor
 
     D3D12DescriptorCpuHandle ShaderResourceView::getD3D12CpuHeapHandle() const
     {
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         gfx::InteropHandle handle;
         FALCOR_GFX_CALL(mApiHandle->getNativeHandle(&handle));
         FALCOR_ASSERT(handle.api == gfx::InteropHandleAPI::D3D12CpuDescriptorHandle);
@@ -147,7 +148,7 @@ namespace Falcor
 
     D3D12DescriptorCpuHandle DepthStencilView::getD3D12CpuHeapHandle() const
     {
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         gfx::InteropHandle handle;
         FALCOR_GFX_CALL(mApiHandle->getNativeHandle(&handle));
         FALCOR_ASSERT(handle.api == gfx::InteropHandleAPI::D3D12CpuDescriptorHandle);
@@ -195,7 +196,7 @@ namespace Falcor
 
     D3D12DescriptorCpuHandle UnorderedAccessView::getD3D12CpuHeapHandle() const
     {
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         gfx::InteropHandle handle;
         FALCOR_GFX_CALL(mApiHandle->getNativeHandle(&handle));
         FALCOR_ASSERT(handle.api == gfx::InteropHandleAPI::D3D12CpuDescriptorHandle);
@@ -270,7 +271,7 @@ namespace Falcor
 
     D3D12DescriptorCpuHandle RenderTargetView::getD3D12CpuHeapHandle() const
     {
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         gfx::InteropHandle handle;
         FALCOR_GFX_CALL(mApiHandle->getNativeHandle(&handle));
         FALCOR_ASSERT(handle.api == gfx::InteropHandleAPI::D3D12CpuDescriptorHandle);
@@ -283,7 +284,7 @@ namespace Falcor
 #endif
     }
 
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
     D3D12DescriptorSet::SharedPtr createCbvDescriptor(const D3D12_CONSTANT_BUFFER_VIEW_DESC& desc, Resource::ApiHandle resHandle)
     {
         D3D12DescriptorSet::Layout layout;
@@ -293,14 +294,14 @@ namespace Falcor
 
         return handle;
     }
-#endif // FALCOR_D3D12_AVAILABLE
+#endif // FALCOR_HAS_D3D12
 
     ConstantBufferView::SharedPtr ConstantBufferView::create(ConstBufferSharedPtrRef pBuffer)
     {
         // GFX doesn't need constant buffer view.
         // We provide a raw D3D12 implementation for applications
         // that wish to use the raw D3D12DescriptorSet API.
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         FALCOR_ASSERT(pBuffer);
         D3D12_CONSTANT_BUFFER_VIEW_DESC desc = {};
         desc.BufferLocation = pBuffer->getGpuAddress();
@@ -311,7 +312,7 @@ namespace Falcor
 #else
         FALCOR_ASSERT(pBuffer);
         throw RuntimeError("ConstantBufferView is not supported in GFX.");
-#endif // FALCOR_D3D12_AVAILABLE
+#endif // FALCOR_HAS_D3D12
     }
 
     ConstantBufferView::SharedPtr ConstantBufferView::create()
@@ -319,30 +320,30 @@ namespace Falcor
         // GFX doesn't support constant buffer view.
         // We provide a raw D3D12 implementation for applications
         // that wish to use the raw D3D12DescriptorSet API.
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         // Create a null view.
         D3D12_CONSTANT_BUFFER_VIEW_DESC desc = {};
 
         return SharedPtr(new ConstantBufferView(std::weak_ptr<Resource>(), createCbvDescriptor(desc, nullptr)));
 #else
         return SharedPtr(new ConstantBufferView(std::weak_ptr<Resource>(), nullptr));
-#endif // FALCOR_D3D12_AVAILABLE
+#endif // FALCOR_HAS_D3D12
     }
 
     D3D12DescriptorCpuHandle ConstantBufferView::getD3D12CpuHeapHandle() const
     {
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         return mApiHandle->getCpuHandle(0);
 #else
         throw RuntimeError("ConstantBufferView is not supported in GFX.");
-#endif // FALCOR_D3D12_AVAILABLE
+#endif // FALCOR_HAS_D3D12
     }
 
     using ResourceViewImpl = ResourceView<Slang::ComPtr<gfx::IResourceView>>;
     template ResourceSharedPtr ResourceViewImpl::getResource() const;
     template const ResourceViewImpl::ApiHandle& ResourceViewImpl::getApiHandle() const;
     template const ResourceViewInfo& ResourceViewImpl::getViewInfo() const;
-#if FALCOR_ENABLE_CUDA
+#if FALCOR_HAS_CUDA
     template void* ResourceViewImpl::getCUDADeviceAddress() const;
 #endif
 }

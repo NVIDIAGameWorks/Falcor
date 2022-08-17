@@ -1,21 +1,28 @@
-Bin/*
+# Build folder.
+/build/
+
+# Test output folder.
+/tests/data/
+
+# Media folder.
+/media
+
+# Packman folders.
+/external/packman/
+/tools/.packman/
+
+# IDE folders.
+/.vs/
+/.vscode/
+
+# File types.
 *.user
-*.sdf
-*.opensdf
 *.suo
-*.ptx
 *.pyc
 *.VC.db
 *.VC.opendb
-.vs/*
-.vscode/
 *.pyc
-*.o
 *slang-dump-*
 *.mp4
-Source/Externals/.packman/*
-Media
-Tools/.packman
-Tests/data
 *.tlog
-/Source/Falcor/dependencies.user.xml
+*.bak

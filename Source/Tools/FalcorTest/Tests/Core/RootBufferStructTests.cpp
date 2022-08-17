@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -37,10 +37,11 @@ namespace Falcor
 
         std::mt19937 rng;
         auto dist = std::uniform_int_distribution<uint32_t>(0, 100);
-        auto r = [&]() -> uint32_t { return dist(rng); };
 
         void testRootBufferInStruct(GPUUnitTestContext& ctx, const std::string& shaderModel, bool useUav)
         {
+            auto r = [&]() -> uint32_t { return dist(rng); };
+
             Program::DefineList defines = { {"USE_UAV", useUav ? "1" : "0"} };
             Shader::CompilerFlags compilerFlags = Shader::CompilerFlags::None;
 

@@ -30,6 +30,7 @@
 #include "Scene/SDFs/SDFGrid.h"
 #include "Core/API/Buffer.h"
 #include "Core/API/Texture.h"
+#include "RenderGraph/BasePasses/ComputePass.h"
 
 namespace Falcor
 {
@@ -47,7 +48,7 @@ namespace Falcor
 
         virtual size_t getSize() const override;
         virtual uint32_t getMaxPrimitiveIDBits() const override;
-        virtual Type getType() const { return Type::SparseVoxelSet; }
+        virtual Type getType() const override { return Type::SparseVoxelSet; }
 
         virtual void createResources(RenderContext* pRenderContext, bool deleteScratchData = true) override;
 

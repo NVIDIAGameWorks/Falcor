@@ -37,6 +37,9 @@
 #include <functional>
 #include <filesystem>
 
+#include <cmath>
+#include <cstring>
+
 template<typename T>
 T sqr(T x) { return x * x; }
 

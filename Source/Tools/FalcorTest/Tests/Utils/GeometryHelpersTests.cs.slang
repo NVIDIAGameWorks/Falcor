@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -54,7 +54,7 @@ void testComputeRayOrigin(uint3 threadId : SV_DispatchThreadID)
 Buffer<float4> spheres;   // xyz: center, w: radius
 RWStructuredBuffer<float> sinTheta, cosTheta;
 
-[numthreads(1, 1, 1)]
+[numthreads(256, 1, 1)]
 void testBoundSphereAngle(uint3 threadId : SV_DispatchThreadID)
 {
     const uint index = threadId.x;
@@ -66,7 +66,7 @@ void testBoundSphereAngle(uint3 threadId : SV_DispatchThreadID)
 Buffer<float3> origin, aabbMin, aabbMax;
 RWStructuredBuffer<float3> coneDir;
 
-[numthreads(1, 1, 1)]
+[numthreads(256, 1, 1)]
 void testBoundingConeAngleAverage(uint3 threadId : SV_DispatchThreadID)
 {
     const uint index = threadId.x;
@@ -74,7 +74,7 @@ void testBoundingConeAngleAverage(uint3 threadId : SV_DispatchThreadID)
                                       coneDir[index], sinTheta[index], cosTheta[index]);
 }
 
-[numthreads(1, 1, 1)]
+[numthreads(256, 1, 1)]
 void testBoundingConeAngleCenter(uint3 threadId : SV_DispatchThreadID)
 {
     const uint index = threadId.x;

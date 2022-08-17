@@ -27,6 +27,10 @@
  **************************************************************************/
 #pragma once
 #include "RenderGraph.h"
+#include "Core/Macros.h"
+#include <filesystem>
+#include <string>
+#include <vector>
 
 namespace Falcor
 {
@@ -43,7 +47,7 @@ namespace Falcor
 
         /** Import all the graphs found in the script's global namespace
         */
-        static std::vector <RenderGraph::SharedPtr> importAllGraphs(const std::filesystem::path& path);
+        static std::vector<RenderGraph::SharedPtr> importAllGraphs(const std::filesystem::path& path);
     };
 
     class FALCOR_API RenderGraphExporter

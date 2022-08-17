@@ -27,7 +27,16 @@
  **************************************************************************/
 #pragma once
 #include "AsyncTextureLoader.h"
+#include "Core/Macros.h"
+#include "Core/API/Resource.h"
+#include "Core/API/Texture.h"
+#include "Core/Program/ShaderVar.h"
+#include <condition_variable>
+#include <limits>
+#include <map>
+#include <memory>
 #include <mutex>
+#include <thread>
 
 namespace Falcor
 {

@@ -29,7 +29,6 @@
 #include "Falcor.h"
 #include <memory>
 
-#if FALCOR_ENABLE_DLSS
 #define NGX_ENABLE_DEPRECATED_GET_PARAMETERS
 #include <nvsdk_ngx.h>
 
@@ -106,5 +105,3 @@ namespace Falcor
         NVSDK_NGX_Handle* mpFeature = nullptr;
     };
 }
-
-#endif // FALCOR_ENABLE_DLSS

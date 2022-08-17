@@ -32,6 +32,7 @@ __exported import Marker2DTypes;
 __exported import Utils.SDF.SDF2DDraw;
 __exported import Utils.SDF.SDF2DPrimitives;
 __exported import Utils.SDF.SDFOperations;
+import Utils.Math.MathHelpers;
 
 /** Struct for a 2D marker that is being set on the CPU side, and sent to the shader for rendering.
     It works by holding a blob of data and a type. The blob of data can be set manually or cast to a specific marker type.
@@ -150,6 +151,67 @@ extension Marker2DDataBlob
         return (1 - newcolor.a) * inColor + newcolor.a * newcolor;
     }
 
+    /** Render a circle sector.
+        \param[in] pixelPos The pixel position.
+        \param[in] inColor  The color of the shapes.
+        \param[in] blendRadius The antialising width.
+        \return The color at the pixel position.
+    */
+    float4 renderCircleSector(const uint2 pixelPos, const float4 inColor, const float blendRadius = 1.0f)
+    {
+        CircleSectorMarker2DData marker = reinterpret<CircleSectorMarker2DData, Marker2DPayload>(this.payload);
+
+        // Inspiered from sdf functions for pie and line segment of https://iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
+        float2 newPos = float2(pixelPos);
+        newPos = sdfTransform(newPos, float2(1.0f), marker.rotation, marker.position);
+        float2 oldPos = newPos;
+        newPos.x = abs(newPos.x);
+        float2 c = float2(sin(marker.angle), cos(marker.angle));
+        float circleMin = marker.minRadius - length(newPos);
+        float circleMax = length(newPos) - marker.maxRadius;
+        float m = length(newPos - c*clamp(dot(c,newPos), marker.minRadius, marker.maxRadius));
+        float s = sign(c.y * newPos.x - c.x * newPos.y);
+        float distance = max(m*s, max(circleMin, circleMax));
+        float4 newColor = sdfFilled(distance, 0.0f, blendRadius, marker.color);
+        distance = marker.borderColor.w+10.0f;
+
+        // Calc distance to borders
+        float4 borderColor = float4(marker.borderColor.xyz, newColor.a);
+
+        // Top
+        if ((marker.excludeBorders & uint(ExcludeBorderFlags::Top)) == 0)
+        {
+            float m = length(newPos - c*marker.maxRadius);
+            distance = max(abs(circleMax), m*s);
+        }
+
+        // Bottom
+        if ((marker.excludeBorders & uint(ExcludeBorderFlags::Bottom)) == 0)
+        {
+            float m = length(newPos - c*marker.minRadius);
+            distance = min(distance, max(abs(circleMin), m*s));
+        }
+
+        // Sides
+        bool isLeft = (marker.excludeBorders & uint(ExcludeBorderFlags::Left)) == 0;
+        bool isRight = (marker.excludeBorders & uint(ExcludeBorderFlags::Right)) == 0;
+        if (isLeft || isRight)
+        {
+            if (!isLeft) oldPos.x = -oldPos.x;
+            if (isLeft && isRight) oldPos.x = abs(oldPos.x);
+            float2 a = c*marker.minRadius;
+            float2 b = c*marker.maxRadius;
+            float2 pa = oldPos - a, ba = b - a;
+            float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+            distance = min(distance, length(pa - h*ba));
+        }
+
+        // Apply border color
+        newColor = lerp(newColor, borderColor, smoothstep(marker.borderColor.w, marker.borderColor.w-2.0f, abs(distance)));
+
+        return lerp(inColor, newColor, newColor.a);
+    }
+
     /** Internal helper function to render a simple marker2D object.
     */
     float4 sdfDrawSimpleMarker<SDF : ISDF2D>(const SDF sdf, const uint2 pixelPos, const SimpleMarker2DData marker, const float4 backgroundColor, const float blendRadius)
@@ -241,6 +303,10 @@ extension Marker2DDataBlob
         else if (this.type == SDF2DShapeType::ArrowFromTwoTris)
         {
             finalColor = renderArrowFromTwoTris(pixelPos, inColor, blendRadius);
+        }
+        else if (this.type == SDF2DShapeType::CircleSector)
+        {
+            finalColor = renderCircleSector(pixelPos, inColor, blendRadius);
         }
         
         return finalColor;

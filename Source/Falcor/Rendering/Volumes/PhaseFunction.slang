@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -55,6 +55,7 @@ struct IsotropicPhaseFunction : IPhaseFunction
 };
 
 /** Henyey-Greenstein phase function.
+    Note: The incident and outgoing directions are assumed to be pointing away from the scattering position.
     Note: This function reduces to isotropic phase function at g = 0 and has singularities at g = -1 and g = 1.
 */
 struct HenyeyGreensteinPhaseFunction : IPhaseFunction
@@ -68,7 +69,7 @@ struct HenyeyGreensteinPhaseFunction : IPhaseFunction
 
     float eval(const float3 wi, const float3 wo)
     {
-        return evalHenyeyGreenstein(dot(-wi, wo), g);
+        return evalHenyeyGreenstein(dot(wi, wo), g);
     }
 
     bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float weight, inout S sg)
@@ -102,7 +103,7 @@ struct HenyeyGreensteinPhaseFunction : IPhaseFunction
 
     float evalPdf(const float3 wi, const float3 wo)
     {
-        return evalHenyeyGreenstein(dot(-wi, wo), g);
+        return evalHenyeyGreenstein(dot(wi, wo), g);
     }
 };
 

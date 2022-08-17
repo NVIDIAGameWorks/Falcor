@@ -27,22 +27,29 @@
  **************************************************************************/
 #pragma once
 #include "Animation.h"
-#include "RenderGraph/BasePasses/ComputePass.h"
+#include "SharedTypes.slang"
+#include "Core/API/Buffer.h"
 #include "Scene/Curves/CurveConfig.h"
 #include "Scene/SceneTypes.slang"
-#include "SharedTypes.slang"
+#include "Scene/SceneIDs.h"
+#include "Utils/Sampling/SampleGenerator.h"
+#include "RenderGraph/BasePasses/ComputePass.h"
+
+#include <algorithm>
+#include <limits>
+#include <memory>
+#include <vector>
 
 namespace Falcor
 {
     class Scene;
-    class Model;
 
     struct CachedCurve
     {
         static const uint32_t kInvalidID = std::numeric_limits<uint32_t>::max();
 
         CurveTessellationMode tessellationMode = CurveTessellationMode::LinearSweptSphere;  ///< Curve tessellation mode.
-        uint32_t geometryID = kInvalidID;                                                   ///< ID of the curve or mesh this data is animating.
+        CurveOrMeshID geometryID{ CurveOrMeshID::kInvalidID };                              ///< ID of the curve or mesh this data is animating.
 
         std::vector<double> timeSamples;
 
@@ -56,9 +63,7 @@ namespace Falcor
 
     struct CachedMesh
     {
-        static const uint32_t kInvalidID = std::numeric_limits<uint32_t>::max();
-
-        uint32_t meshID = kInvalidID; ///< ID of the mesh this data is animating.
+        MeshID meshID{ MeshID::kInvalidID }; ///< ID of the mesh this data is animating.
 
         std::vector<double> timeSamples;
 
@@ -124,6 +129,7 @@ namespace Falcor
 
         void executeCurvePolyTubeVertexUpdatePass(RenderContext* pContext, const InterpolationInfo& info, bool copyPrev = false);
 
+
         bool mLoopAnimations = true;
         double mGlobalCurveAnimationLength = 0;
         double mGlobalMeshAnimationLength = 0;
@@ -159,6 +165,7 @@ namespace Falcor
         Buffer::SharedPtr mpCurvePolyTubeStrandIndexBuffer;
         Buffer::SharedPtr mpCurvePolyTubeCurveMetadataBuffer;
         Buffer::SharedPtr mpCurvePolyTubeMeshMetadataBuffer;
+
 
         // Cached mesh animations
         ComputePass::SharedPtr mpMeshVertexUpdatePass;

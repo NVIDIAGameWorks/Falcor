@@ -1,0 +1,29 @@
+[
+    {
+        "shape_type": 0,
+        "shape_data": [
+            0.1,
+            0.0,
+            0.0
+        ],
+        "shape_blobbing": 0.0,
+        "operation_type": 0,
+        "operation_smoothing": 0.0,
+        "translation": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "inv_rot_scale": [
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+        ]
+    }
+]

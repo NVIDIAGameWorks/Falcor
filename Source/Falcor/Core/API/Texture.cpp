@@ -25,11 +25,15 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Texture.h"
 #include "Device.h"
 #include "RenderContext.h"
+#include "Core/Assert.h"
+#include "Core/Errors.h"
+#include "Utils/Logger.h"
 #include "Utils/Threading.h"
+#include "Utils/Image/ImageIO.h"
+#include "Utils/Scripting/ScriptBindings.h"
 #include "RenderGraph/BasePasses/FullScreenPass.h"
 
 #include <mutex>
@@ -274,7 +278,7 @@ namespace Falcor
         return getUAV(0);
     }
 
-#if FALCOR_ENABLE_CUDA
+#if FALCOR_HAS_CUDA
     void* Texture::getCUDADeviceAddress() const
     {
         throw RuntimeError("Texture::getCUDADeviceAddress() unimplemented");
@@ -445,6 +449,8 @@ namespace Falcor
 
     FALCOR_SCRIPT_BINDING(Texture)
     {
+        using namespace pybind11::literals;
+
         pybind11::class_<Texture, Texture::SharedPtr> texture(m, "Texture");
         texture.def_property_readonly("width", &Texture::getWidth);
         texture.def_property_readonly("height", &Texture::getHeight);

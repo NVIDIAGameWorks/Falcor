@@ -26,13 +26,17 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Core/Macros.h"
 #include "Core/API/Buffer.h"
 #include "Core/State/ComputeState.h"
 #include "Core/Program/ComputeProgram.h"
 #include "Core/Program/ProgramVars.h"
+#include <memory>
 
 namespace Falcor
 {
+    class RenderContext;
+
     /** Computes the parallel prefix sum on the GPU.
 
         The prefix sum is computed in place using exclusive scan.

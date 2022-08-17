@@ -25,8 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Formats.h"
+#include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
 {
@@ -116,7 +116,7 @@ namespace Falcor
         {ResourceFormat::BC7UnormSrgb,       "BC7UnormSrgb",    16,             4,  FormatType::UnormSrgb,  {false,  false, true, },        {4, 4},                                                  {128, 0, 0, 0  }},
     };
 
-    static_assert(arraysize(kFormatDesc) == (uint32_t)ResourceFormat::BC7UnormSrgb + 1, "Format desc table has a wrong size");
+    static_assert(std::size(kFormatDesc) == (size_t)ResourceFormat::BC7UnormSrgb + 1, "Format desc table has a wrong size");
 
     FALCOR_SCRIPT_BINDING(Formats)
     {
@@ -137,7 +137,6 @@ namespace Falcor
         textureChannels.value("RGBA", TextureChannelFlags::RGBA);
     }
 
-#ifdef FALCOR_HAS_DXGI_FORMAT_HEADER
     struct DxgiFormatDesc
     {
         ResourceFormat falcorFormat;
@@ -225,7 +224,7 @@ namespace Falcor
         {ResourceFormat::BC7UnormSrgb,                  DXGI_FORMAT_BC7_UNORM_SRGB},
     };
 
-    static_assert(arraysize(kDxgiFormatDesc) == (size_t)ResourceFormat::Count, "DXGI format desc table has a wrong size");
+    static_assert(std::size(kDxgiFormatDesc) == (size_t)ResourceFormat::Count, "DXGI format desc table has a wrong size");
 
     DXGI_FORMAT getDxgiFormat(ResourceFormat format)
     {
@@ -260,5 +259,4 @@ namespace Falcor
             return kDxgiFormatDesc[(uint32_t)format].dxgiFormat;
         }
     }
-#endif
 }

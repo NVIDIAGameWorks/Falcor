@@ -25,14 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Core/API/ComputeStateObject.h"
 #include "D3D12NvApiExDesc.h"
 #include "Core/API/Device.h"
+#include "Core/API/D3D12/D3D12API.h"
 
 namespace Falcor
 {
-#if FALCOR_ENABLE_NVAPI
+#if FALCOR_HAS_NVAPI
     void getNvApiComputePsoDesc(const ComputeStateObject::Desc& desc, std::vector<NvApiPsoExDesc>& nvApiPsoExDescs)
     {
         if (NvAPI_Initialize() != NVAPI_OK)

@@ -26,6 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Handles.h"
+#include "Shared/D3D12Handles.h"
+#include "Core/Macros.h"
+#include <memory>
 #include <optional>
 
 namespace Falcor
@@ -88,11 +92,11 @@ namespace Falcor
         */
         SharedResourceApiHandle getSharedApiHandle() const;
     private:
-        GpuFence() : mCpuValue(0) {}
+        GpuFence();
         uint64_t mCpuValue;
 
         ApiHandle mApiHandle;
-        FenceApiData* mpApiData = nullptr;
+        std::unique_ptr<FenceApiData> mpApiData;
         mutable SharedResourceApiHandle mSharedApiHandle = 0;
     };
 }

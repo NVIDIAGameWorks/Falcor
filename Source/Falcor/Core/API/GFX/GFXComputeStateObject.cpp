@@ -25,8 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Core/API/ComputeStateObject.h"
+#include "Core/API/Device.h"
+#include "Core/API/GFX/GFXAPI.h"
 
 namespace Falcor
 {
@@ -34,7 +35,7 @@ namespace Falcor
     {
         gfx::ComputePipelineStateDesc computePipelineDesc = {};
         computePipelineDesc.program = mDesc.mpProgram->getApiHandle();
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         computePipelineDesc.d3d12RootSignatureOverride =
             mDesc.mpD3D12RootSignatureOverride ? (void*)mDesc.mpD3D12RootSignatureOverride->getApiHandle().GetInterfacePtr() : nullptr;
 #endif
@@ -43,7 +44,7 @@ namespace Falcor
 
     const D3D12ComputeStateHandle& ComputeStateObject::getD3D12Handle()
     {
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         if (!mpD3D12Handle)
         {
             // Get back raw d3d12 pipeline state handle.

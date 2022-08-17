@@ -26,15 +26,21 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Falcor.h"
+#include "Core/Macros.h"
 #include "Utils/Debug/PixelDebug.h"
+#include "Scene/Scene.h"
+#include <memory>
+#include <type_traits>
+#include <vector>
 
-#if FALCOR_ENABLE_RTXDI
+#if FALCOR_HAS_RTXDI
 #include "rtxdi/RTXDI.h"
 #endif
 
 namespace Falcor
 {
+    class RenderContext;
+
     /** Wrapper module for RTXDI. This allows easy integration of RTXDI into our path tracer.
 
         Usage requires a copy of the RTXDI SDK. See README for installation details.
@@ -96,7 +102,7 @@ namespace Falcor
         {
             Off         = 0, ///< Use (1/M) normalization, which is very biased but also very fast.
             Basic       = 1, ///< Use MIS-like normalization but assume that every sample is visible.
-            Pairwise    = 2, ///< Use pairwise MIS normalization.  Assumes every sample is visibile.
+            Pairwise    = 2, ///< Use pairwise MIS normalization.  Assumes every sample is visible.
             RayTraced   = 3, ///< Use MIS-like normalization with visibility rays. Unbiased.
         };
 
@@ -148,6 +154,9 @@ namespace Falcor
 
             bool enableVisibilityShortcut = false;      ///< Reuse visibility across frames to reduce cost; requires careful setup to avoid bias / numerical blowups.
             bool enablePermutationSampling = false;     ///< Enables permuting the pixels sampled from the previous frame (noisier but more denoiser friendly).
+
+            // Note: Empty constructor needed for clang due to the use of the nested struct constructor in the parent constructor.
+            Options() {}
         };
 
         static_assert(std::is_trivially_copyable<Options>() , "Options needs to be trivially copyable");
@@ -155,7 +164,7 @@ namespace Falcor
         /** Check if the RTXDI SDK is installed.
             \return True if the RTXDI SDK is installed.
         */
-        static bool isInstalled() { return (bool)FALCOR_ENABLE_RTXDI; }
+        static bool isInstalled() { return (bool)FALCOR_HAS_RTXDI; }
 
         /** Create a new instance of the RTXDI sampler.
             \param[in] pScene Scene.
@@ -221,9 +230,11 @@ namespace Falcor
         Scene::SharedPtr                    mpScene;                ///< Scene (set on initialization).
         Options                             mOptions;               ///< Configuration options.
 
+        PixelDebug::SharedPtr               mpPixelDebug;           ///< Pixel debug component.
+
         // If the SDK is not installed, we leave out most of the implementation.
 
-#if FALCOR_ENABLE_RTXDI
+#if FALCOR_HAS_RTXDI
 
         // RTXDI state.
 
@@ -279,8 +290,6 @@ namespace Falcor
             bool    clearReservoirs = false;                        ///< Set if reservoirs need to be cleared on next beginFrame() call (useful when changing configuration).
         } mFlags;
 
-        PixelDebug::SharedPtr   mpPixelDebug;                       ///< Pixel debug component.
-
         // Resources.
 
         Buffer::SharedPtr       mpAnalyticLightIDBuffer;            ///< Buffer storing a list of analytic light IDs used in the scene.
@@ -335,6 +344,6 @@ namespace Falcor
         void prepareResources(RenderContext* pRenderContext);
         void setRTXDIFrameParameters();
 
-#endif // FALCOR_ENABLE_RTXDI
+#endif // FALCOR_HAS_RTXDI
     };
 }

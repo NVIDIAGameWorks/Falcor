@@ -25,10 +25,12 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Core/API/ComputeContext.h"
-#include "glm/gtc/type_ptr.hpp"
 #include "Core/API/Device.h"
+#include "Core/API/D3D12/D3D12API.h"
+#include "Core/State/ComputeState.h"
+#include "Core/Program/ProgramVars.h"
+#include <glm/gtc/type_ptr.hpp>
 
 namespace Falcor
 {

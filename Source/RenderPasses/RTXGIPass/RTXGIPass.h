@@ -33,8 +33,6 @@
 
 using namespace Falcor;
 
-#if FALCOR_D3D12_AVAILABLE
-
 /** Diffuse indirect illumination using RTXGI.
 
     The default output is a fullscreen buffer containing the indirect illumination.
@@ -121,5 +119,3 @@ private:
         VisualizerProbeMode probeMode = VisualizerProbeMode::Irradiance;
     } mVisualizerOptions;
 };
-
-#endif // FALCOR_D3D12_AVAILABLE

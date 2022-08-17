@@ -25,12 +25,19 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "UnitTest.h"
+#include "Core/API/Device.h"
+#include "Core/API/RenderContext.h"
+#include "Utils/StringUtils.h"
+#include "Utils/TermColor.h"
+#include "Utils/Logger.h"
+#include "Utils/Math/Common.h"
 #include <algorithm>
 #include <chrono>
 #include <regex>
 #include <inttypes.h>
+
+#include <pugixml.hpp>
 
 namespace Falcor
 {
@@ -84,6 +91,45 @@ namespace Falcor
     {
         if (!testRegistry) testRegistry = new std::vector<Test>;
         testRegistry->push_back({ path, name, skipMessage, {}, std::move(func) });
+    }
+
+    /** Write a test report in JUnit's XML format.
+        \param[in] path File path.
+        \param[in] report List of tests/results.
+    */
+    inline void writeXmlReport(const std::filesystem::path& path, const std::vector<std::pair<Test, TestResult>>& report)
+    {
+        pugi::xml_document doc;
+
+        pugi::xml_node testsuitesNode = doc.append_child("testsuites");
+
+        pugi::xml_node testsuiteNode = testsuitesNode.append_child("testsuite");
+        testsuiteNode.append_attribute("name").set_value("Falcor");
+
+        for (const auto& [test, result] : report)
+        {
+            pugi::xml_node testcaseNode = testsuiteNode.append_child("testcase");
+            testcaseNode.append_attribute("name").set_value(test.getTitle().c_str());
+            testcaseNode.append_attribute("time").set_value(result.elapsedMS / 1000.0);
+
+            switch (result.status)
+            {
+            case TestResult::Status::Passed:
+                break;
+            case TestResult::Status::Skipped:
+                testcaseNode.append_child("skipped");
+                break;
+            case TestResult::Status::Failed:
+            default:
+                {
+                    std::string message = joinStrings(result.messages, "\n");
+                    testcaseNode.append_child("failure").append_attribute("message").set_value(message.c_str());
+                }
+                break;
+            }
+        }
+
+        doc.save_file(path.native().c_str());
     }
 
     inline TestResult runTest(const Test& test, RenderContext* pRenderContext)
@@ -140,11 +186,12 @@ namespace Falcor
         return result;
     }
 
-    int32_t runTests(std::ostream& stream, RenderContext* pRenderContext, const std::string &testFilter, uint32_t repeatCount)
+    int32_t runTests(std::ostream& stream, RenderContext* pRenderContext, const std::string &testFilter, const std::filesystem::path& xmlReportPath, uint32_t repeatCount)
     {
         if (testRegistry == nullptr) return 0;
 
         std::vector<Test> tests;
+        std::vector<std::pair<Test, TestResult>> report;
 
         // Filter tests.
         std::regex testFilterRegex(testFilter, std::regex::icase | std::regex::basic);
@@ -161,7 +208,8 @@ namespace Falcor
             return (a.path / a.name).string() < (b.path / b.name).string();
         });
 
-        stream << "Running " << std::to_string(tests.size()) << " tests" << std::endl;
+        stream << fmt::format("Running {} tests:\n", tests.size());
+        logInfo("Running {} tests.", tests.size());
 
         int32_t failureCount = 0;
 
@@ -169,25 +217,45 @@ namespace Falcor
         {
             for (uint32_t repeatIndex = 0; repeatIndex < repeatCount; ++repeatIndex)
             {
-                stream << "  " << padStringToLength(test.getTitle(), 60) << ": ";
-                if (repeatCount > 1) stream << "[" << (repeatIndex + 1) << "/" << repeatCount << "] ";
+                stream << fmt::format("  {:80}: ", test.getTitle());
+                if (repeatCount > 1) stream << fmt::format("[{}/{}] ", repeatIndex + 1, repeatCount);
                 stream << std::flush;
+                logInfo("Running test '{}'.", test.getTitle());
 
                 TestResult result = runTest(test, pRenderContext);
+                report.emplace_back(test, result);
+
+                std::string statusTag;
+                TermColor statusColor;
 
                 switch (result.status)
                 {
-                case TestResult::Status::Passed: stream << colored("PASSED", TermColor::Green, stream); break;
-                case TestResult::Status::Failed: stream << colored("FAILED", TermColor::Red, stream); break;
-                case TestResult::Status::Skipped: stream << colored("SKIPPED", TermColor::Yellow, stream); break;
+                case TestResult::Status::Passed:
+                    statusTag = "PASSED";
+                    statusColor = TermColor::Green;
+                    break;
+                case TestResult::Status::Failed:
+                    statusTag = "FAILED";
+                    statusColor = TermColor::Red;
+                    break;
+                case TestResult::Status::Skipped:
+                    statusTag = "SKIPPED";
+                    statusColor = TermColor::Yellow;
+                    break;
                 }
 
-                stream << " (" << std::to_string(result.elapsedMS) << " ms)" << std::endl;
-                for (const auto& m : result.messages) stream << "    "  << m << std::endl;
+                stream << colored(statusTag, statusColor, stream);
+                stream << fmt::format(" ({} ms)\n", result.elapsedMS);
+                for (const auto& m : result.messages) stream << fmt::format("    {}\n", m);
+
+                logInfo("Finished test '{}' in {} ms with status {}.", test.getTitle(), result.elapsedMS, statusTag);
+                for (const auto& m : result.messages) logInfo("    {}", m);
 
                 if (result.status == TestResult::Status::Failed) ++failureCount;
             }
         }
+
+        if (!xmlReportPath.empty()) writeXmlReport(xmlReportPath, report);
 
         return failureCount;
     }
@@ -210,6 +278,19 @@ namespace Falcor
         if (createShaderVars) createVars();
     }
 
+    void GPUUnitTestContext::createProgram(const Program::Desc& desc,
+                                           const Program::DefineList& programDefines,
+                                           bool createShaderVars)
+    {
+        // Create program.
+        mpProgram = ComputeProgram::create(desc, programDefines);
+        mpState = ComputeState::create();
+        mpState->setProgram(mpProgram);
+
+        // Create vars unless it should be deferred.
+        if (createShaderVars) createVars();
+    }
+
     void GPUUnitTestContext::createVars()
     {
         // Create shader variables.
@@ -225,7 +306,7 @@ namespace Falcor
 
     void GPUUnitTestContext::allocateStructuredBuffer(const std::string& name, uint32_t nElements, const void* pInitData, size_t initDataSize)
     {
-        FALCOR_ASSERT(mpVars);
+        checkInvariant(mpVars != nullptr, "Program vars not created");
         mStructuredBuffers[name].pBuffer = Buffer::createStructured(mpProgram.get(), name, nElements);
         FALCOR_ASSERT(mStructuredBuffers[name].pBuffer);
         if (pInitData)
@@ -239,7 +320,7 @@ namespace Falcor
 
     void GPUUnitTestContext::runProgram(const uint3& dimensions)
     {
-        FALCOR_ASSERT(mpVars);
+        checkInvariant(mpVars != nullptr, "Program vars not created");
         for (const auto& buffer : mStructuredBuffers)
         {
             mpVars->setBuffer(buffer.first, buffer.second.pBuffer);

@@ -25,8 +25,12 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Material.h"
+#include "BasicMaterial.h"
+#include "MaterialSystem.h"
+#include "Core/API/Device.h"
+#include "Utils/Logger.h"
+#include "Utils/Scripting/ScriptBindings.h"
 #include "Rendering/Materials/LobeType.slang"
 
 namespace Falcor
@@ -216,6 +220,16 @@ namespace Falcor
         mTextureTransform = textureTransform;
     }
 
+    std::shared_ptr<BasicMaterial> Material::toBasicMaterial()
+    {
+        if (mHeader.isBasicMaterial())
+        {
+            FALCOR_ASSERT(std::dynamic_pointer_cast<BasicMaterial>(shared_from_this()));
+            return std::static_pointer_cast<BasicMaterial>(shared_from_this());
+        }
+        return nullptr;
+    }
+
     void Material::markUpdates(UpdateFlags updates)
     {
         // Mark updates locally in this material.
@@ -289,6 +303,8 @@ namespace Falcor
 
     FALCOR_SCRIPT_BINDING(Material)
     {
+        using namespace pybind11::literals;
+
         FALCOR_SCRIPT_BINDING_DEPENDENCY(Transform)
 
         pybind11::enum_<MaterialType> materialType(m, "MaterialType");
@@ -296,6 +312,13 @@ namespace Falcor
         materialType.value("Cloth", MaterialType::Cloth);
         materialType.value("Hair", MaterialType::Hair);
         materialType.value("MERL", MaterialType::MERL);
+        materialType.value("PBRTDiffuse", MaterialType::PBRTDiffuse);
+        materialType.value("PBRTDiffuseTransmission", MaterialType::PBRTDiffuseTransmission);
+        materialType.value("PBRTConductor", MaterialType::PBRTConductor);
+        materialType.value("PBRTDielectric", MaterialType::PBRTDielectric);
+        materialType.value("PBRTCoatedConductor", MaterialType::PBRTCoatedConductor);
+        materialType.value("PBRTCoatedDiffuse", MaterialType::PBRTCoatedDiffuse);
+        materialType.value("RGL", MaterialType::RGL);
 
         pybind11::enum_<AlphaMode> alphaMode(m, "AlphaMode");
         alphaMode.value("Opaque", AlphaMode::Opaque);
@@ -320,7 +343,7 @@ namespace Falcor
         material.def_property("alphaMode", &Material::getAlphaMode, &Material::setAlphaMode);
         material.def_property("alphaThreshold", &Material::getAlphaThreshold, &Material::setAlphaThreshold);
         material.def_property("nestedPriority", &Material::getNestedPriority, &Material::setNestedPriority);
-        material.def_property("textureTransform", pybind11::overload_cast<void>(&Material::getTextureTransform, pybind11::const_), &Material::setTextureTransform);
+        material.def_property("textureTransform", pybind11::overload_cast<>(&Material::getTextureTransform, pybind11::const_), &Material::setTextureTransform);
 
         material.def("loadTexture", &Material::loadTexture, "slot"_a, "path"_a, "useSrgb"_a = true);
         material.def("clearTexture", &Material::clearTexture, "slot"_a);

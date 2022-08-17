@@ -25,8 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "ComputePass.h"
+#include "Core/API/ComputeContext.h"
+#include "Utils/Math/Common.h"
 
 namespace Falcor
 {

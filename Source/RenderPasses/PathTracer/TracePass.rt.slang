@@ -333,6 +333,7 @@ void scatterCurveClosestHit(inout PathPayload payload, CurveIntersector::Attribs
     gScheduler.handleHit(payload, HitInfo(curveHit), RayTCurrent());
 }
 
+
 //
 // Shader entry points for SDFGrid hit groups.
 //

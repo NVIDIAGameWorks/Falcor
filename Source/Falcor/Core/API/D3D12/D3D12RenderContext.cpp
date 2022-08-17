@@ -25,15 +25,15 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Core/API/RenderContext.h"
 #include "Core/API/BlitContext.h"
 #include "Core/API/Device.h"
-#include "glm/gtc/type_ptr.hpp"
 #include "Core/API/D3D12/D3D12State.h"
+#include "Core/API/D3D12/D3D12RtAccelerationStructure.h"
+#include "Core/API/D3D12/D3D12API.h"
 #include "Core/Program/RtProgram.h"
 #include "RenderGraph/BasePasses/FullScreenPass.h"
-#include "Core/API/D3D12/D3D12RtAccelerationStructure.h"
+#include <glm/gtc/type_ptr.hpp>
 
 namespace Falcor
 {
@@ -155,7 +155,7 @@ namespace Falcor
             }
         }
 
-        pList->IASetVertexBuffers(0, (uint32_t)arraysize(vb), vb);
+        pList->IASetVertexBuffers(0, (uint32_t)std::size(vb), vb);
         pList->IASetIndexBuffer(&ib);
     }
 

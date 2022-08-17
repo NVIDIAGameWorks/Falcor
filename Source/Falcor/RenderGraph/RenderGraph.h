@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,13 +26,19 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "RenderPassReflection.h"
-#include "ResourceCache.h"
-#include "Scene/Scene.h"
 #include "RenderPass.h"
-#include "Utils/Algorithm/DirectedGraph.h"
 #include "RenderGraphExe.h"
 #include "RenderGraphCompiler.h"
+#include "Core/Macros.h"
+#include "Core/API/Formats.h"
+#include "Utils/UI/Gui.h"
+#include "Utils/Algorithm/DirectedGraph.h"
+#include "Scene/Scene.h"
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 namespace Falcor
 {
@@ -77,6 +83,10 @@ namespace Falcor
         /** Update render pass using the specified dictionary. This function recreates the pass in place.
         */
         void updatePass(RenderContext* pRenderContext, const std::string& passName, const Dictionary& dict);
+
+        /** Update render pass using the specified dictionary. This function calls the pass' applySettings method.
+        */
+        void applyPassSettings(const std::string& passName, const Dictionary& dict);
 
         /** Insert an edge from a render pass' output to a different render pass input.
             The render passes must be different, the graph must be a DAG.

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -76,8 +76,8 @@ struct GridVolumeSampler
         \param[out] rayDirIndex Ray direction in index space (non-normalized!).
     */
     void transformRayToIndexSpace(const GridVolume gridVolume, const Grid densityGrid, const float3 rayOriginWorld, const float3 rayDirWorld, out float3 rayOriginIndex, out float3 rayDirIndex) {
-        rayOriginIndex = mul(float4(rayOriginWorld, 1.f), gridVolume.data.invTransform).xyz;
-        rayDirIndex = mul(float4(rayDirWorld, 0.f), gridVolume.data.invTransform).xyz;
+        rayOriginIndex = mul(gridVolume.data.invTransform, float4(rayOriginWorld, 1.f)).xyz;
+        rayDirIndex = mul(gridVolume.data.invTransform, float4(rayDirWorld, 0.f)).xyz;
 #if GRID_VOLUME_SAMPLER_USE_BRICKEDGRID
         // NanoVDB allows for negative indices, while textures require positive indices.
         // Thus, we simply translate the index-space box, matching a shift we do at grid conversion time on the host.

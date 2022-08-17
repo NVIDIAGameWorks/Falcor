@@ -25,9 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Core/API/GraphicsStateObject.h"
 #include "GFXFormats.h"
+#include "Core/API/Device.h"
+#include "Core/API/GFX/GFXAPI.h"
 
 namespace Falcor
 {
@@ -305,7 +306,7 @@ namespace Falcor
                         elementDesc.format = getGFXFormat(bufferLayout->getElementFormat(j));
                         elementDesc.offset = bufferLayout->getElementOffset(j);
                         elementDesc.semanticName = bufferLayout->getElementName(j).c_str();
-                        elementDesc.bufferSlotIndex = i;
+                        elementDesc.bufferSlotIndex = static_cast<gfx::GfxIndex>(i);
 
                         for (uint32_t arrayIndex = 0; arrayIndex < bufferLayout->getElementArraySize(j); arrayIndex++)
                         {
@@ -317,9 +318,9 @@ namespace Falcor
                 }
 
                 gfx::IInputLayout::Desc inputLayoutDesc = {};
-                inputLayoutDesc.inputElementCount = inputElements.size();
+                inputLayoutDesc.inputElementCount = static_cast<gfx::GfxCount>(inputElements.size());
                 inputLayoutDesc.inputElements = inputElements.data();
-                inputLayoutDesc.vertexStreamCount = vertexStreams.size();
+                inputLayoutDesc.vertexStreamCount = static_cast<gfx::GfxCount>(vertexStreams.size());
                 inputLayoutDesc.vertexStreams = vertexStreams.data();
                 FALCOR_GFX_CALL(gpDevice->getApiHandle()->createInputLayout(inputLayoutDesc, mpGFXInputLayout.writeRef()));
             }
@@ -330,8 +331,8 @@ namespace Falcor
         gfx::IFramebufferLayout::Desc gfxFbDesc = {};
         {
             auto fboDesc = mDesc.getFboDesc();
-            gfx::IFramebufferLayout::AttachmentLayout depthAttachment = {};
-            std::vector<gfx::IFramebufferLayout::AttachmentLayout> attachments(Fbo::getMaxColorTargetCount());
+            gfx::IFramebufferLayout::TargetLayout depthAttachment = {};
+            std::vector<gfx::IFramebufferLayout::TargetLayout> attachments(Fbo::getMaxColorTargetCount());
             if (mDesc.getFboDesc().getDepthStencilFormat() != ResourceFormat::Unknown)
             {
                 depthAttachment.format = getGFXFormat(fboDesc.getDepthStencilFormat());
@@ -355,26 +356,26 @@ namespace Falcor
         // Create render pass layout.
         {
             gfx::IRenderPassLayout::Desc renderPassDesc = {};
-            gfx::IRenderPassLayout::AttachmentAccessDesc depthAccess = {};
+            gfx::IRenderPassLayout::TargetAccessDesc depthAccess = {};
             depthAccess.initialState = gfx::ResourceState::DepthWrite;
             depthAccess.finalState = gfx::ResourceState::DepthWrite;
-            depthAccess.loadOp = gfx::IRenderPassLayout::AttachmentLoadOp::Load;
-            depthAccess.stencilLoadOp = gfx::IRenderPassLayout::AttachmentLoadOp::Load;
-            depthAccess.stencilStoreOp = gfx::IRenderPassLayout::AttachmentStoreOp::Store;
-            depthAccess.storeOp = gfx::IRenderPassLayout::AttachmentStoreOp::Store;
+            depthAccess.loadOp = gfx::IRenderPassLayout::TargetLoadOp::Load;
+            depthAccess.stencilLoadOp = gfx::IRenderPassLayout::TargetLoadOp::Load;
+            depthAccess.stencilStoreOp = gfx::IRenderPassLayout::TargetStoreOp::Store;
+            depthAccess.storeOp = gfx::IRenderPassLayout::TargetStoreOp::Store;
             if (this->mDesc.getFboDesc().getDepthStencilFormat() != ResourceFormat::Unknown)
             {
                 renderPassDesc.depthStencilAccess = &depthAccess;
             }
             renderPassDesc.framebufferLayout = mpGFXFramebufferLayout.get();
             renderPassDesc.renderTargetCount = gfxFbDesc.renderTargetCount;
-            std::vector<gfx::IRenderPassLayout::AttachmentAccessDesc> colorAccesses(renderPassDesc.renderTargetCount);
+            std::vector<gfx::IRenderPassLayout::TargetAccessDesc> colorAccesses(renderPassDesc.renderTargetCount);
             for (auto& colorAccess : colorAccesses)
             {
                 colorAccess.initialState = gfx::ResourceState::RenderTarget;
                 colorAccess.finalState = gfx::ResourceState::RenderTarget;
-                colorAccess.loadOp = gfx::IRenderPassLayout::AttachmentLoadOp::Load;
-                colorAccess.storeOp = gfx::IRenderPassLayout::AttachmentStoreOp::Store;
+                colorAccess.loadOp = gfx::IRenderPassLayout::TargetLoadOp::Load;
+                colorAccess.storeOp = gfx::IRenderPassLayout::TargetStoreOp::Store;
             }
             renderPassDesc.renderTargetAccess = colorAccesses.data();
             FALCOR_GFX_CALL(gpDevice->getApiHandle()->createRenderPassLayout(renderPassDesc, mpGFXRenderPassLayout.writeRef()));

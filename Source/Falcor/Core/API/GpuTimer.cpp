@@ -25,12 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "GpuTimer.h"
 #include "Buffer.h"
 #include "Device.h"
 #include "QueryHeap.h"
 #include "RenderContext.h"
+#include "Core/Assert.h"
+#include "Utils/Logger.h"
+#include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
 {
@@ -44,10 +46,10 @@ namespace Falcor
     GpuTimer::GpuTimer()
     {
         FALCOR_ASSERT(gpDevice);
-#ifdef FALCOR_D3D12
+
         mpResolveBuffer = Buffer::create(sizeof(uint64_t) * 2, Buffer::BindFlags::None, Buffer::CpuAccess::None, nullptr);
         mpResolveStagingBuffer = Buffer::create(sizeof(uint64_t) * 2, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
-#endif
+
         // Create timestamp query heap upon first use.
         // We're allocating pairs of adjacent queries, so need our own heap to meet this requirement.
         if (spHeap.expired())
@@ -136,7 +138,10 @@ namespace Falcor
         if (mDataPending)
         {
             uint64_t result[2];
-            apiReadback(result);
+            uint64_t* pRes = (uint64_t*)mpResolveStagingBuffer->map(Buffer::MapType::Read);
+            result[0] = pRes[0];
+            result[1] = pRes[1];
+            mpResolveStagingBuffer->unmap();
 
             double start = (double)result[0];
             double end = (double)result[1];

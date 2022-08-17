@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,8 +26,6 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "CudaUtils.h"
-
-#if FALCOR_ENABLE_CUDA && FALCOR_ENABLE_OPTIX
 
 #include <cuda_runtime.h>
 #include <sstream>
@@ -214,5 +212,3 @@ bool freeSharedDevicePtr(void* ptr)
     if (!ptr) return false;
     return cudaSuccess == cudaFree(ptr);
 }
-
-#endif // FALCOR_ENABLE_CUDA && FALCOR_ENABLE_OPTIX

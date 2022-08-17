@@ -25,8 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Spectrum.h"
+#include "Core/Assert.h"
+#include "Core/Errors.h"
+#include <fstd/span.h> // TODO C++20: Replace with <span>
+#include <unordered_map>
 
 namespace Falcor
 {

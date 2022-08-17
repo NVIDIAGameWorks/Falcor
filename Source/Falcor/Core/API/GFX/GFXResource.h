@@ -28,7 +28,8 @@
 #pragma once
 
 #include "Core/API/Resource.h"
-#include <slang/slang-gfx.h>
+
+#include <slang-gfx.h>
 
 namespace Falcor
 {

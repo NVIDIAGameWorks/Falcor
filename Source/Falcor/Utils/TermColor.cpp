@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,17 +25,21 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "TermColor.h"
+#include "Core/Macros.h"
 
 #include <iostream>
 #include <unordered_map>
 
-#if _WIN32
+#if FALCOR_WINDOWS
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
 #include <io.h>
 #define ISATTY _isatty
 #define FILENO _fileno
-#else
+#elif FALCOR_LINUX
 #include <unistd.h>
 #define ISATTY isatty
 #define FILENO fileno
@@ -43,7 +47,7 @@
 
 namespace Falcor
 {
-#if _WIN32
+#if FALCOR_WINDOWS
     /** The Windows console does not have ANSI support by default,
         but it can be enabled through SetConsoleMode().
         We use static initialization to do so.
@@ -67,7 +71,7 @@ namespace Falcor
     };
 
     static EnableVirtualTerminal sEnableVirtualTerminal;
-#endif
+#endif // FALCOR_WINDOWS
 
     static const std::unordered_map<TermColor, std::string> kBeginTag =
     {

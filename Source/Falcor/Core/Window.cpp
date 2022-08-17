@@ -25,29 +25,13 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include "Core/Window.h"
+#include "Window.h"
+#include "Assert.h"
+#include "GLFW.h"
+#include "Platform/OS.h"
+#include "Utils/Logger.h"
 #include "Utils/UI/InputTypes.h"
-
-// Don't include GL/GLES headers
-#define GLFW_INCLUDE_NONE
-
-#ifdef _WIN32
-#define GLFW_EXPOSE_NATIVE_WIN32
-#include "GLFW/glfw3.h"
-#include "GLFW/glfw3native.h"
-#else // LINUX
-
-// Replace the defines we undef'd in FalcorVK.h, because glfw will need them when it includes Xlib
-#define None 0L
-#define Bool int
-#define Status int
-#define Always 2
-
-#define GLFW_EXPOSE_NATIVE_X11
-#include "GLFW/glfw3.h"
-#include "GLFW/glfw3native.h"
-#endif
+#include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
 {
@@ -139,7 +123,7 @@ namespace Falcor
             if (pWindow != nullptr)
             {
                 // Modifiers
-                event.mods = getInputModifiers(modifiers);
+                event.mods = getModifierFlags(modifiers);
                 double x, y;
                 glfwGetCursorPos(pGlfwWindow, &x, &y);
                 event.pos = calcMousePos(x, y, pWindow->getMouseScale());
@@ -316,14 +300,27 @@ namespace Falcor
             }
         }
 
-        static inline Input::ModifierFlags getInputModifiers(int mask)
+        static inline Input::ModifierFlags getModifierFlags(int modifiers)
         {
             // The GLFW mods should match the Input::ModifierFlags, but this is used for now to be safe if it changes in the future.
-            Input::ModifierFlags mods = Input::ModifierFlags::None;
-            if (mask & GLFW_MOD_ALT) mods |= Input::ModifierFlags::Alt;
-            if (mask & GLFW_MOD_CONTROL) mods |= Input::ModifierFlags::Ctrl;
-            if (mask & GLFW_MOD_SHIFT) mods |= Input::ModifierFlags::Shift;
-            return mods;
+            Input::ModifierFlags flags = Input::ModifierFlags::None;
+            if (modifiers & GLFW_MOD_ALT) flags |= Input::ModifierFlags::Alt;
+            if (modifiers & GLFW_MOD_CONTROL) flags |= Input::ModifierFlags::Ctrl;
+            if (modifiers & GLFW_MOD_SHIFT) flags |= Input::ModifierFlags::Shift;
+            return flags;
+        }
+
+        /** GLFW reports modifiers inconsistently on different platforms.
+            To make modifiers consistent we check the key action and adjust
+            the modifiers due to changes from the current action.
+        */
+        static int fixGLFWModifiers(int modifiers, int key, int action)
+        {
+            int bit = 0;
+            if (key == GLFW_KEY_LEFT_SHIFT || key == GLFW_KEY_RIGHT_SHIFT) bit = GLFW_MOD_SHIFT;
+            if (key == GLFW_KEY_LEFT_CONTROL || key == GLFW_KEY_RIGHT_CONTROL) bit = GLFW_MOD_CONTROL;
+            if (key == GLFW_KEY_LEFT_ALT || key == GLFW_KEY_RIGHT_ALT) bit = GLFW_MOD_ALT;
+            return (action == GLFW_RELEASE) ? modifiers & (~bit) : modifiers | bit;
         }
 
         static inline float2 calcMousePos(double xPos, double yPos, const float2& mouseScale)
@@ -335,14 +332,30 @@ namespace Falcor
 
         static inline bool prepareKeyboardEvent(int key, int action, int modifiers, KeyboardEvent& event)
         {
-            if (action == GLFW_REPEAT || key == GLFW_KEY_UNKNOWN)
+            if (key == GLFW_KEY_UNKNOWN)
             {
                 return false;
             }
 
-            event.type = (action == GLFW_RELEASE ? KeyboardEvent::Type::KeyReleased : KeyboardEvent::Type::KeyPressed);
+            modifiers = fixGLFWModifiers(modifiers, key, action);
+
+            switch(action)
+            {
+            case GLFW_RELEASE:
+                event.type = KeyboardEvent::Type::KeyReleased;
+                break;
+            case GLFW_PRESS:
+                event.type = KeyboardEvent::Type::KeyPressed;
+                break;
+            case GLFW_REPEAT:
+                event.type = KeyboardEvent::Type::KeyRepeated;
+                break;
+            default:
+                FALCOR_UNREACHABLE();
+                break;
+            }
             event.key = glfwToFalcorKey(key);
-            event.mods = getInputModifiers(modifiers);
+            event.mods = getModifierFlags(modifiers);
             return true;
         }
     };
@@ -411,6 +424,8 @@ namespace Falcor
         {
             // Start with window being invisible
             glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+            glfwWindowHint(GLFW_FOCUS_ON_SHOW, GLFW_FALSE);
+            glfwWindowHint(GLFW_FOCUSED, GLFW_FALSE);
         }
 
         if (desc.resizableWindow == false)
@@ -428,10 +443,10 @@ namespace Falcor
 
         // Init handles
         pWindow->mpGLFWWindow = pGLFWWindow;
-#ifdef _WIN32
+#if FALCOR_WINDOWS
         pWindow->mApiHandle = glfwGetWin32Window(pGLFWWindow);
         FALCOR_ASSERT(pWindow->mApiHandle);
-#else
+#elif FALCOR_LINUX
         pWindow->mApiHandle.pDisplay = glfwGetX11Display();
         pWindow->mApiHandle.window = glfwGetX11Window(pGLFWWindow);
         FALCOR_ASSERT(pWindow->mApiHandle.pDisplay != nullptr);

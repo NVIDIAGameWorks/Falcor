@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "SVGFPass.h"
+#include "RenderGraph/RenderPassLibrary.h"
 
 /*
 TODO:
@@ -180,16 +181,16 @@ void SVGFPass::compile(RenderContext* pRenderContext, const CompileData& compile
 
 void SVGFPass::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    Texture::SharedPtr pAlbedoTexture = renderData[kInputBufferAlbedo]->asTexture();
-    Texture::SharedPtr pColorTexture = renderData[kInputBufferColor]->asTexture();
-    Texture::SharedPtr pEmissionTexture = renderData[kInputBufferEmission]->asTexture();
-    Texture::SharedPtr pWorldPositionTexture = renderData[kInputBufferWorldPosition]->asTexture();
-    Texture::SharedPtr pWorldNormalTexture = renderData[kInputBufferWorldNormal]->asTexture();
-    Texture::SharedPtr pPosNormalFwidthTexture = renderData[kInputBufferPosNormalFwidth]->asTexture();
-    Texture::SharedPtr pLinearZTexture = renderData[kInputBufferLinearZ]->asTexture();
-    Texture::SharedPtr pMotionVectorTexture = renderData[kInputBufferMotionVector]->asTexture();
+    Texture::SharedPtr pAlbedoTexture = renderData.getTexture(kInputBufferAlbedo);
+    Texture::SharedPtr pColorTexture = renderData.getTexture(kInputBufferColor);
+    Texture::SharedPtr pEmissionTexture = renderData.getTexture(kInputBufferEmission);
+    Texture::SharedPtr pWorldPositionTexture = renderData.getTexture(kInputBufferWorldPosition);
+    Texture::SharedPtr pWorldNormalTexture = renderData.getTexture(kInputBufferWorldNormal);
+    Texture::SharedPtr pPosNormalFwidthTexture = renderData.getTexture(kInputBufferPosNormalFwidth);
+    Texture::SharedPtr pLinearZTexture = renderData.getTexture(kInputBufferLinearZ);
+    Texture::SharedPtr pMotionVectorTexture = renderData.getTexture(kInputBufferMotionVector);
 
-    Texture::SharedPtr pOutputTexture = renderData[kOutputBufferFilteredImage]->asTexture();
+    Texture::SharedPtr pOutputTexture = renderData.getTexture(kOutputBufferFilteredImage);
 
     FALCOR_ASSERT(mpFilteredIlluminationFbo &&
            mpFilteredIlluminationFbo->getWidth() == pAlbedoTexture->getWidth() &&
@@ -212,7 +213,7 @@ void SVGFPass::execute(RenderContext* pRenderContext, const RenderData& renderDa
         // Stores the result as well as initial moments and an updated
         // per-pixel history length in mpCurReprojFbo.
         Texture::SharedPtr pPrevLinearZAndNormalTexture =
-            renderData[kInternalBufferPreviousLinearZAndNormal]->asTexture();
+            renderData.getTexture(kInternalBufferPreviousLinearZAndNormal);
         computeReprojection(pRenderContext, pAlbedoTexture, pColorTexture, pEmissionTexture,
                             pMotionVectorTexture, pPosNormalFwidthTexture,
                             pPrevLinearZAndNormalTexture);
@@ -294,9 +295,9 @@ void SVGFPass::clearBuffers(RenderContext* pRenderContext, const RenderData& ren
     pRenderContext->clearFbo(mpPrevReprojFbo.get(), float4(0), 1.0f, 0, FboAttachmentType::All);
     pRenderContext->clearFbo(mpFilteredIlluminationFbo.get(), float4(0), 1.0f, 0, FboAttachmentType::All);
 
-    pRenderContext->clearTexture(renderData[kInternalBufferPreviousLinearZAndNormal]->asTexture().get());
-    pRenderContext->clearTexture(renderData[kInternalBufferPreviousLighting]->asTexture().get());
-    pRenderContext->clearTexture(renderData[kInternalBufferPreviousMoments]->asTexture().get());
+    pRenderContext->clearTexture(renderData.getTexture(kInternalBufferPreviousLinearZAndNormal).get());
+    pRenderContext->clearTexture(renderData.getTexture(kInternalBufferPreviousLighting).get());
+    pRenderContext->clearTexture(renderData.getTexture(kInternalBufferPreviousMoments).get());
 }
 
 // Extracts linear z and its derivative from the linear Z texture and packs

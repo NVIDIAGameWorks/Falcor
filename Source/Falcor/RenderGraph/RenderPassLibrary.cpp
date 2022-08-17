@@ -25,11 +25,12 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "RenderPassLibrary.h"
+#include "RenderGraph.h"
 #include "RenderPasses/ResolvePass.h"
 #include "Core/API/Device.h"
-#include "RenderGraph.h"
+#include "Utils/Scripting/Scripting.h"
+#include "Utils/Scripting/ScriptBindings.h"
 #include <fstream>
 
 namespace Falcor
@@ -37,14 +38,14 @@ namespace Falcor
     extern std::vector<RenderGraph*> gRenderGraphs;
     static const std::string kDllSuffix = ".falcor";
 
-    RenderPassLibrary* RenderPassLibrary::spInstance = nullptr;
+    std::unique_ptr<RenderPassLibrary> RenderPassLibrary::spInstance;
 
     template<typename Pass>
     using PassFunc = typename Pass::SharedPtr(*)(RenderContext* pRenderContext, const Dictionary&);
 
     RenderPassLibrary& RenderPassLibrary::instance()
     {
-        if (!spInstance) spInstance = new RenderPassLibrary;
+        if (!spInstance) spInstance.reset(new RenderPassLibrary);
         return *spInstance;
     }
 
@@ -56,7 +57,7 @@ namespace Falcor
 
     void RenderPassLibrary::shutdown()
     {
-        safe_delete(spInstance);
+        spInstance.reset();
     }
 
     static bool addBuiltinPasses()
@@ -91,9 +92,9 @@ namespace Falcor
 
     std::shared_ptr<RenderPass> RenderPassLibrary::createPass(RenderContext* pRenderContext, const std::string& type, const Dictionary& dict)
     {
-#ifdef _MSC_VER
+#if FALCOR_WINDOWS
         static const std::string kDllType = ".dll";
-#else
+#elif FALCOR_LINUX
         static const std::string kDllType = ".so";
 #endif
 
@@ -159,7 +160,9 @@ namespace Falcor
     void RenderPassLibrary::loadLibrary(const std::string& filename)
     {
         auto path = getExecutableDirectory() / filename;
-        auto copyPath = getExecutableDirectory() / (filename + kDllSuffix);
+#if FALCOR_LINUX
+        if (path.extension() == ".dll") path.replace_extension(".so");
+#endif
 
         if (!std::filesystem::exists(path))
         {
@@ -173,10 +176,14 @@ namespace Falcor
             return;
         }
 
+#if FALCOR_ENABLE_RENDER_PASS_HOT_RELOAD
         // Copy the library to a temp file
+        auto copyPath = getExecutableDirectory() / (filename + kDllSuffix);
         copySharedLibrary(path, copyPath);
-
         SharedLibraryHandle l = loadSharedLibrary(copyPath);
+#else
+        SharedLibraryHandle l = loadSharedLibrary(path);
+#endif
         if (l == nullptr)
         {
             reportError(fmt::format("Failed to load render-pass library '{}'.", filename));
@@ -213,9 +220,6 @@ namespace Falcor
 
     void RenderPassLibrary::releaseLibrary(const std::string& filename)
     {
-        auto path = getExecutableDirectory() / filename;
-        auto copyPath = getExecutableDirectory() / (filename + kDllSuffix);
-
         auto libIt = mLibs.find(filename);
         if (libIt == mLibs.end())
         {
@@ -245,13 +249,21 @@ namespace Falcor
         }
 
         releaseSharedLibrary(library);
+#if FALCOR_ENABLE_RENDER_PASS_HOT_RELOAD
+        auto copyPath = getExecutableDirectory() / (filename + kDllSuffix);
         std::filesystem::remove(copyPath);
+#endif
         mLibs.erase(libIt);
     }
 
     void RenderPassLibrary::reloadLibrary(RenderContext* pRenderContext, const std::string& filename)
     {
         FALCOR_ASSERT(pRenderContext);
+
+#if !FALCOR_ENABLE_RENDER_PASS_HOT_RELOAD
+        logWarning("Render pass hot reloading is disabled. Check FALCOR_ENABLE_RENDER_PASS_HOT_RELOAD.");
+        return;
+#endif
 
         auto path = getExecutableDirectory() / filename;
 
@@ -303,6 +315,11 @@ namespace Falcor
 
     void RenderPassLibrary::reloadLibraries(RenderContext* pRenderContext)
     {
+#if !FALCOR_ENABLE_RENDER_PASS_HOT_RELOAD
+        logWarning("Render pass hot reloading is disabled. Check FALCOR_ENABLE_RENDER_PASS_HOT_RELOAD.");
+        return;
+#endif
+
         // Copy the libs vector so we don't screw up the iterator
         auto libs = mLibs;
         for (const auto& l : libs) reloadLibrary(pRenderContext, l.first);

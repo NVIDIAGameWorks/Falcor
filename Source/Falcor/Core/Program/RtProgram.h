@@ -26,11 +26,15 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Core/Program/Program.h"
+#include "Program.h"
+#include "Core/Macros.h"
 #include "Core/State/StateGraph.h"
-#include "Core/API/RtStateObject.h"
 #include "Core/API/Raytracing.h"
-#include "Core/API/ShaderTable.h"
+#include "Core/API/RtStateObject.h"
+#include <memory>
+#include <string_view>
+#include <string>
+#include <vector>
 
 namespace Falcor
 {
@@ -86,9 +90,24 @@ namespace Falcor
 
             /** Add a string of source code to use.
                 This also sets the given string as the "active" source for subsequent entry points.
+                Note that the source string has to be added *before* any source that imports it.
                 \param[in] shader Source code.
+                \param[in] moduleName Slang module name. If not creating a new translation unit, this can be left empty.
+                \param[in] modulePath Virtual file path to module created from string. This is just used for diagnostics purposes and can be left empty.
+                \param[in] createTranslationUnit Whether a new Slang translation unit should be created, otherwise the source is added to the previous translation unit.
             */
-            Desc& addShaderString(const std::string& shader) { mBaseDesc.addShaderString(shader); return *this; }
+            Desc& addShaderString(std::string_view shader, std::string_view moduleName, std::string_view modulePath = "", bool createTranslationUnit = true) { mBaseDesc.addShaderString(shader, moduleName, modulePath, createTranslationUnit); return *this; }
+
+            /** Add a shader module.
+                This also sets the given module as "active" for subsequent entry points.
+                Note that the module has to be added *before* any module that imports it.
+            */
+            Desc& addShaderModule(const ShaderModule& module) { mBaseDesc.addShaderModule(module); return *this; }
+
+            /** Add a list of shader modules.
+                Note that the modules have to be added *before* any module that imports them.
+            */
+            Desc& addShaderModules(const ShaderModuleList& modules) { mBaseDesc.addShaderModules(modules); return *this; }
 
             /** Add a raygen shader.
                 \param[in] raygen Entry point for the raygen shader.

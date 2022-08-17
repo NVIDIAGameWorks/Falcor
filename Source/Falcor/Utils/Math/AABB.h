@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,7 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Core/Macros.h"
 #include "Core/API/Raytracing.h"
+#include "Utils/Math/Matrix.h"
 #include "Utils/Math/Vector.h"
 #include <limits>
 
@@ -154,9 +156,11 @@ namespace Falcor
             \param[in] mat Transform matrix
             \return Bounding box after transformation.
         */
-        AABB transform(const glm::mat4& mat) const
+        AABB transform(const rmcv::mat4& rmcv_mat) const
         {
             if (!valid()) return {};
+
+            auto mat = rmcv::toGLM(rmcv_mat);
 
             float3 xa = float3(mat[0] * minPoint.x);
             float3 xb = float3(mat[0] * maxPoint.x);

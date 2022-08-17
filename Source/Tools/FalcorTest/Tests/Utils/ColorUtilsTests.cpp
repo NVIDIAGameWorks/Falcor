@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -52,8 +52,8 @@ namespace Falcor
         auto dist = std::uniform_real_distribution<float>();
         auto u = [&]() -> float { return dist(rng); };
 
-        const glm::mat3 LMS_CAT02 = kColorTransform_LMStoXYZ_CAT02 * kColorTransform_XYZtoLMS_CAT02;
-        const glm::mat3 LMS_Bradford = kColorTransform_LMStoXYZ_Bradford * kColorTransform_XYZtoLMS_Bradford;
+        const rmcv::mat3 LMS_CAT02 = kColorTransform_LMStoXYZ_CAT02 * kColorTransform_XYZtoLMS_CAT02;
+        const rmcv::mat3 LMS_Bradford = kColorTransform_LMStoXYZ_Bradford * kColorTransform_XYZtoLMS_Bradford;
 
         // Run test code that transforms random colors between different spaces.
         for (uint32_t i = 0; i < n; i++)

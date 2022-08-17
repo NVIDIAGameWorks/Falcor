@@ -25,10 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "RenderGraphImportExport.h"
 #include "RenderPassLibrary.h"
 #include "RenderGraphIR.h"
+#include "Utils/Scripting/Scripting.h"
 #include <fstream>
 
 namespace Falcor
@@ -38,7 +38,7 @@ namespace Falcor
         void updateGraphStrings(std::string& graph, std::filesystem::path& path, std::string& func)
         {
             graph = graph.empty() ? "renderGraph" : graph;
-            path = path.empty() ? graph + ".py" : path;
+            path = path.empty() ? std::filesystem::path(graph + ".py") : path;
             func = func.empty() ? RenderGraphIR::getFuncName(graph) : func;
         }
 

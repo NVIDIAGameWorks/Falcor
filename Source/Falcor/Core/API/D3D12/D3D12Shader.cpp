@@ -25,9 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Core/API/Shader.h"
-#include <slang/slang.h>
+
+#include <slang.h>
 
 namespace Falcor
 {

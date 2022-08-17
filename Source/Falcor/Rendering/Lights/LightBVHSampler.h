@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,12 +26,14 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Utils/Math/AABB.h"
 #include "EmissiveLightSampler.h"
 #include "LightBVH.h"
 #include "LightBVHBuilder.h"
 #include "LightBVHSamplerSharedDefinitions.slang"
+#include "Core/Macros.h"
+#include "Utils/Math/AABB.h"
 #include "Scene/Lights/LightCollection.h"
+#include <memory>
 
 namespace Falcor
 {
@@ -67,6 +69,9 @@ namespace Falcor
             bool        useUniformTriangleSampling = true;  ///< Use uniform sampling to select a triangle within the sampled leaf node.
 
             SolidAngleBoundMethod solidAngleBoundMethod = SolidAngleBoundMethod::Sphere; ///< Method to use to bound the solid angle subtended by a cluster.
+
+            // Note: Empty constructor needed for clang due to the use of the nested struct constructor in the parent constructor.
+            Options() {}
         };
 
         virtual ~LightBVHSampler() = default;

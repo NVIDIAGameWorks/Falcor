@@ -25,8 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "VariablesBufferUI.h"
+#include "Core/API/ParameterBlock.h"
+#include "Core/Program/ShaderVar.h"
 #include "Utils/UI/Gui.h"
 
 namespace Falcor
@@ -101,33 +102,6 @@ namespace Falcor
             break;
         case ReflectionBasicType::Type::Float4:
             to_gui_widget(var, float4);
-            break;
-        case ReflectionBasicType::Type::Float2x2:
-            to_gui_widget_matrix(matrix, glm::mat2x2);
-            break;
-        case ReflectionBasicType::Type::Float2x3:
-            to_gui_widget_matrix(matrix, glm::mat2x3);
-            break;
-        case ReflectionBasicType::Type::Float2x4:
-            to_gui_widget_matrix(matrix, glm::mat2x4);
-            break;
-        case ReflectionBasicType::Type::Float3x2:
-            to_gui_widget_matrix(matrix, glm::mat3x2);
-            break;
-        case ReflectionBasicType::Type::Float3x3:
-            to_gui_widget_matrix(matrix, glm::mat3x3);
-            break;
-        case ReflectionBasicType::Type::Float3x4:
-            to_gui_widget_matrix(matrix, glm::mat3x4);
-            break;
-        case ReflectionBasicType::Type::Float4x2:
-            to_gui_widget_matrix(matrix, glm::mat4x2);
-            break;
-        case ReflectionBasicType::Type::Float4x3:
-            to_gui_widget_matrix(matrix, glm::mat4x3);
-            break;
-        case ReflectionBasicType::Type::Float4x4:
-            to_gui_widget_matrix(matrix, glm::mat4x4);
             break;
         case ReflectionBasicType::Type::Unknown:
             break;

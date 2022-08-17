@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,8 +26,15 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Handles.h"
 #include "Resource.h"
+#include "ResourceViews.h"
+#include "Buffer.h"
 #include "LowLevelContextData.h"
+#include "Core/Macros.h"
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace Falcor
 {
@@ -143,6 +150,16 @@ namespace Falcor
         /** Bind the descriptor heaps from the device into the command list.
         */
         void bindDescriptorHeaps();
+
+#ifdef FALCOR_GFX
+        /** Binds the GPU descriptor pool for passes that need to access descriptors directly from root signatures.
+        */
+        void bindCustomGPUDescriptorPool();
+
+        /** Unbinds the GPU descriptor pool for passes that need to access descriptors directly from root signatures.
+        */
+        void unbindCustomGPUDescriptorPool();
+#endif
 
     protected:
         CopyContext(LowLevelContextData::CommandQueueType type, CommandQueueHandle queue);

@@ -25,8 +25,12 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "LightBVHBuilder.h"
+#include "Core/Assert.h"
+#include "Core/Errors.h"
+#include "Utils/Logger.h"
+#include "Utils/Timing/Profiler.h"
+#include "Utils/Scripting/ScriptBindings.h"
 #include <algorithm>
 
 namespace
@@ -172,7 +176,7 @@ namespace
         else
         {
             // Rotate aDir by an angle of rTheta around the axis rDir.
-            const glm::mat4 rotationMatrix = glm::rotate(glm::mat4(), rTheta, rDir);
+            const rmcv::mat4 rotationMatrix = rmcv::rotate(rmcv::mat4(), rTheta, rDir);
             dir = rotationMatrix * float4(aDir, 0);
             cosResult = std::cos(oTheta);
         }

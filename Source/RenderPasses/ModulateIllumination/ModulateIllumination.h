@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
+#include "RenderGraph/RenderPassHelpers.h"
 
 using namespace Falcor;
 
@@ -48,7 +49,8 @@ public:
 private:
     ModulateIllumination(const Dictionary& dict);
 
-    uint2                   mFrameDim = { 0, 0 };
+    uint2                      mFrameDim = { 0, 0 };
+    RenderPassHelpers::IOSize  mOutputSizeSelection = RenderPassHelpers::IOSize::Default; ///< Selected output size.
 
     ComputePass::SharedPtr  mpModulateIlluminationPass;
 

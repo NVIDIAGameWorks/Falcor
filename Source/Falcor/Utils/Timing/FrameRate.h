@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,8 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include <vector>
 #include "Clock.h"
+#include "Core/Macros.h"
+#include <algorithm>
+#include <string>
+#include <vector>
 
 namespace Falcor
 {
@@ -38,7 +41,7 @@ namespace Falcor
     public:
         FrameRate()
         {
-            mFrameTimes.resize(sFrameWindow);
+            mFrameTimes.resize(kFrameWindow);
             reset();
         }
 
@@ -57,7 +60,7 @@ namespace Falcor
         void newFrame()
         {
             mFrameCount++;
-            mFrameTimes[mFrameCount % sFrameWindow] = mClock.tick().getRealTimeDelta();
+            mFrameTimes[mFrameCount % kFrameWindow] = mClock.tick().getRealTimeDelta();
             mClock.setTime(0).tick();
         }
 
@@ -65,7 +68,7 @@ namespace Falcor
         */
         double getAverageFrameTime() const
         {
-            uint64_t frames = std::min(mFrameCount, sFrameWindow);
+            uint64_t frames = std::min(mFrameCount, kFrameWindow);
             double elapsedTime = 0;
             for(uint64_t i = 0; i < frames; i++) elapsedTime += mFrameTimes[i];
             double time = elapsedTime / double(frames) * 1000;
@@ -76,7 +79,7 @@ namespace Falcor
         */
         double getLastFrameTime() const
         {
-            return mFrameTimes[mFrameCount % sFrameWindow];
+            return mFrameTimes[mFrameCount % kFrameWindow];
         }
 
         /** Get the frame count (= number of times newFrame() has been called).
@@ -91,7 +94,7 @@ namespace Falcor
         Clock mClock;
         std::vector<double> mFrameTimes;
         uint64_t mFrameCount = 0;
-        static const uint64_t sFrameWindow = 60;
+        static constexpr uint64_t kFrameWindow = 60;
     };
 
     inline std::string to_string(const FrameRate& fr, bool vsyncOn = false) { return fr.getMsg(vsyncOn); }

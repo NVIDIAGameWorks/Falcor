@@ -25,9 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "Bitmap.h"
 #include "Core/API/Texture.h"
+#include "Utils/Logger.h"
 #include "Utils/StringUtils.h"
 
 #include <FreeImage.h>
@@ -378,7 +378,7 @@ namespace Falcor
             /* DdsFile */ "dds"
         };
 
-        for (uint32_t i = 0 ; i < arraysize(kExtensions) ; i++)
+        for (size_t i = 0 ; i < std::size(kExtensions) ; i++)
         {
             if (kExtensions[i] == ext) return Bitmap::FileFormat(i);
         }

@@ -26,8 +26,12 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Handles.h"
+#include "Shared/D3D12Handles.h"
+#include "Core/Macros.h"
 #include "Core/Program/ProgramReflection.h"
 #include <vector>
+#include <memory>
 
 namespace Falcor
 {
@@ -103,7 +107,7 @@ namespace Falcor
         */
         ResourceSharedPtr getResource() const { return mpResource.lock(); }
 
-#if FALCOR_ENABLE_CUDA
+#if FALCOR_HAS_CUDA
         /** Get the CUDA device address for this view.
         */
         void* getCUDADeviceAddress() const

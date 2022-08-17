@@ -26,14 +26,20 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Core/Program/ProgramReflection.h"
+#include "ProgramReflection.h"
+#include "Core/Macros.h"
 #include "Core/API/Shader.h"
+#include "Core/API/Handles.h"
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
 #include "Core/API/Shared/D3D12RootSignature.h"
 #endif
 
-#include <slang/slang.h>
+#include <slang.h>
 
 namespace Falcor
 {

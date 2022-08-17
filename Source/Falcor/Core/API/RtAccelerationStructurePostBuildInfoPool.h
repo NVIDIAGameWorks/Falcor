@@ -26,16 +26,19 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-
-#include "Core/Framework.h"
-#include "Core/API/CopyContext.h"
-
+#include "Core/Macros.h"
 #ifdef FALCOR_D3D12
 #include "Core/API/Buffer.h"
 #endif
+#ifdef FALCOR_GFX
+#include <slang-gfx.h>
+#endif
+#include <memory>
 
 namespace Falcor
 {
+    class CopyContext;
+
     enum class RtAccelerationStructurePostBuildInfoQueryType
     {
         CompactedSize,

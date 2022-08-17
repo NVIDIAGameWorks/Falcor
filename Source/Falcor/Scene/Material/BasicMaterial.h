@@ -265,6 +265,7 @@ namespace Falcor
         void updateAlphaMode();
         void updateNormalMapType();
         void updateEmissiveFlag();
+        virtual void updateDeltaSpecularFlag() {}
 
         virtual void renderSpecularUI(Gui::Widgets& widget) {}
         virtual void setEmissiveColor(const float3& color) {}

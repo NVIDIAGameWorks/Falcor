@@ -26,9 +26,20 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Core/Framework.h"
-#include <map>
+#include "Core/Macros.h"
+#include "Core/Assert.h"
+#include "Core/API/Shared/D3D12Handles.h"
+
+#include <slang.h>
+#if FALCOR_HAS_D3D12
+#include <d3d12.h>
+#endif
+
 #include <initializer_list>
+#include <memory>
+#include <map>
+#include <string>
+#include <cstddef> // std::nullptr_t
 
 struct ISlangBlob;
 
@@ -45,7 +56,7 @@ namespace Falcor
 
         /// Initialize to a null pointer.
         ComPtr() : mpObject(nullptr) {}
-        ComPtr(nullptr_t) : mpObject(nullptr) {}
+        ComPtr(std::nullptr_t) : mpObject(nullptr) {}
 
         /// Release reference to the pointed-to object.
         ~ComPtr() { if (mpObject) (mpObject)->Release(); }
@@ -129,6 +140,66 @@ namespace Falcor
         /// The underlying raw object pointer
         T* mpObject;
     };
+
+    /** Falcor shader types
+    */
+    enum class ShaderType
+    {
+        Vertex,         ///< Vertex shader
+        Pixel,          ///< Pixel shader
+        Geometry,       ///< Geometry shader
+        Hull,           ///< Hull shader (AKA Tessellation control shader)
+        Domain,         ///< Domain shader (AKA Tessellation evaluation shader)
+        Compute,        ///< Compute shader
+
+        RayGeneration,  ///< Ray generation shader
+        Intersection,   ///< Intersection shader
+        AnyHit,         ///< Any hit shader
+        ClosestHit,     ///< Closest hit shader
+        Miss,           ///< Miss shader
+        Callable,       ///< Callable shader
+        Count           ///< Shader Type count
+    };
+
+    /** Converts ShaderType enum elements to a string.
+        \param[in] type Type to convert to string
+        \return Shader type as a string
+    */
+    inline const std::string to_string(ShaderType Type)
+    {
+        switch(Type)
+        {
+        case ShaderType::Vertex:
+            return "vertex";
+        case ShaderType::Pixel:
+            return "pixel";
+        case ShaderType::Hull:
+            return "hull";
+        case ShaderType::Domain:
+            return "domain";
+        case ShaderType::Geometry:
+            return "geometry";
+        case ShaderType::Compute:
+            return "compute";
+#ifdef FALCOR_D3D12
+        case ShaderType::RayGeneration:
+            return "raygeneration";
+        case ShaderType::Intersection:
+            return "intersection";
+        case ShaderType::AnyHit:
+            return "anyhit";
+        case ShaderType::ClosestHit:
+            return "closesthit";
+        case ShaderType::Miss:
+            return "miss";
+        case ShaderType::Callable:
+            return "callable";
+#endif
+        default:
+            FALCOR_UNREACHABLE();
+            return "";
+        }
+    }
 
     /** Forward declaration of backend implementation-specific Shader data.
     */
@@ -276,7 +347,7 @@ namespace Falcor
         */
         const std::string& getEntryPoint() const { return mEntryPointName; }
 
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         ID3DBlobPtr getD3DBlob() const;
         D3D12_SHADER_BYTECODE getD3D12ShaderByteCode() const
         {

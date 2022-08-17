@@ -25,11 +25,15 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "ProgramReflection.h"
+#include "Program.h"
+#include "ProgramVersion.h"
 #include "Utils/StringUtils.h"
-#include <slang/slang.h>
+
+#include <slang.h>
+
 #include <map>
+
 using namespace slang;
 
 namespace Falcor
@@ -427,13 +431,41 @@ namespace Falcor
             }
             break;
         case TypeReflection::ScalarType::Float16:
-            FALCOR_ASSERT(rows == 1);
-            switch (columns)
+            switch (rows)
             {
-            case 1: return ReflectionBasicType::Type::Float16;
-            case 2: return ReflectionBasicType::Type::Float16_2;
-            case 3: return ReflectionBasicType::Type::Float16_3;
-            case 4: return ReflectionBasicType::Type::Float16_4;
+            case 1:
+                switch (columns)
+                {
+                case 1: return ReflectionBasicType::Type::Float16;
+                case 2: return ReflectionBasicType::Type::Float16_2;
+                case 3: return ReflectionBasicType::Type::Float16_3;
+                case 4: return ReflectionBasicType::Type::Float16_4;
+                }
+                break;
+            case 2:
+                switch (columns)
+                {
+                case 2: return ReflectionBasicType::Type::Float16_2x2;
+                case 3: return ReflectionBasicType::Type::Float16_2x3;
+                case 4: return ReflectionBasicType::Type::Float16_2x4;
+                }
+                break;
+            case 3:
+                switch (columns)
+                {
+                case 2: return ReflectionBasicType::Type::Float16_3x2;
+                case 3: return ReflectionBasicType::Type::Float16_3x3;
+                case 4: return ReflectionBasicType::Type::Float16_3x4;
+                }
+                break;
+            case 4:
+                switch (columns)
+                {
+                case 2: return ReflectionBasicType::Type::Float16_4x2;
+                case 3: return ReflectionBasicType::Type::Float16_4x3;
+                case 4: return ReflectionBasicType::Type::Float16_4x4;
+                }
+                break;
             }
             break;
         case TypeReflection::ScalarType::Float32:
@@ -1623,7 +1655,7 @@ namespace Falcor
         auto pResult = createEmpty(pProgramVersion);
         pResult->setElementType(pElementType);
 
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         ReflectionStructType::BuildState counters;
 #endif
 
@@ -1637,7 +1669,7 @@ namespace Falcor
             uint32_t regIndex = 0;
             uint32_t regSpace = 0;
 
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
             switch (rangeInfo.descriptorType)
             {
             case ShaderResourceType::Cbv:
@@ -1761,7 +1793,7 @@ namespace Falcor
         mResourceRanges.push_back(bindingInfo);
     }
 
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
     struct ParameterBlockReflectionFinalizer
     {
         struct SetIndex
@@ -1963,7 +1995,7 @@ namespace Falcor
             // TODO: Do we need to handle interface sub-object slots here?
         }
     };
-#endif // FALCOR_D3D12_AVAILABLE
+#endif // FALCOR_HAS_D3D12
     bool ParameterBlockReflection::hasDefaultConstantBuffer() const
     {
         // A parameter block needs a "default" constant buffer whenever its element type requires it to store ordinary/uniform data
@@ -1983,7 +2015,7 @@ namespace Falcor
     void ParameterBlockReflection::finalize()
     {
         FALCOR_ASSERT(getElementType()->getResourceRangeCount() == mResourceRanges.size());
-#if FALCOR_D3D12_AVAILABLE
+#if FALCOR_HAS_D3D12
         ParameterBlockReflectionFinalizer finalizer;
         finalizer.finalize(this);
 #endif
@@ -2064,27 +2096,37 @@ namespace Falcor
 
     const ReflectionResourceType* ReflectionType::asResourceType() const
     {
-        return this && this->getKind() == ReflectionType::Kind::Resource ? static_cast<const ReflectionResourceType*>(this) : nullptr;
+        // In the past, Falcor relied on undefined behavior checking `this` for nullptr, returning nullptr if `this` was nullptr.
+        FALCOR_ASSERT(this);
+        return this->getKind() == ReflectionType::Kind::Resource ? static_cast<const ReflectionResourceType*>(this) : nullptr;
     }
 
     const ReflectionBasicType* ReflectionType::asBasicType() const
     {
-        return this && this->getKind() == ReflectionType::Kind::Basic ? static_cast<const ReflectionBasicType*>(this) : nullptr;
+        // In the past, Falcor relied on undefined behavior checking `this` for nullptr, returning nullptr if `this` was nullptr.
+        FALCOR_ASSERT(this);
+        return this->getKind() == ReflectionType::Kind::Basic ? static_cast<const ReflectionBasicType*>(this) : nullptr;
     }
 
     const ReflectionStructType* ReflectionType::asStructType() const
     {
-        return this && this->getKind() == ReflectionType::Kind::Struct ? static_cast<const ReflectionStructType*>(this) : nullptr;
+        // In the past, Falcor relied on undefined behavior checking `this` for nullptr, returning nullptr if `this` was nullptr.
+        FALCOR_ASSERT(this);
+        return this->getKind() == ReflectionType::Kind::Struct ? static_cast<const ReflectionStructType*>(this) : nullptr;
     }
 
     const ReflectionArrayType* ReflectionType::asArrayType() const
     {
-        return this && this->getKind() == ReflectionType::Kind::Array ? static_cast<const ReflectionArrayType*>(this) : nullptr;
+        // In the past, Falcor relied on undefined behavior checking `this` for nullptr, returning nullptr if `this` was nullptr.
+        FALCOR_ASSERT(this);
+        return this->getKind() == ReflectionType::Kind::Array ? static_cast<const ReflectionArrayType*>(this) : nullptr;
     }
 
     const ReflectionInterfaceType* ReflectionType::asInterfaceType() const
     {
-        return this && this->getKind() == ReflectionType::Kind::Interface ? static_cast<const ReflectionInterfaceType*>(this) : nullptr;
+        // In the past, Falcor relied on undefined behavior checking `this` for nullptr, returning nullptr if `this` was nullptr.
+        FALCOR_ASSERT(this);
+        return this->getKind() == ReflectionType::Kind::Interface ? static_cast<const ReflectionInterfaceType*>(this) : nullptr;
     }
 
     const ReflectionType* ReflectionType::unwrapArray() const

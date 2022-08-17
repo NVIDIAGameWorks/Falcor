@@ -113,6 +113,18 @@ namespace Falcor
         */
         void addVector(const float2& posA, const float2& posB, const float lineWidth, const float arrowHeight, const float4& color);
 
+        /** Add a circle sector. Can also be cut by setting the minRadius to a value larger than zero.
+            \param[in] pos The center position of the circle sector as if it was a full circle.
+            \param[in] rotation The rotation of the circle sector.
+            \param[in] angle The angle of the sircle sector.
+            \param[in] minRadius The minimum radius where it si going to cut at. Everything with a lower radius than this will not be seen.
+            \param[in] maxRadius The maximum radius of the circle sector.
+            \param[in] color Color of the circle sector.
+            \param[in] borderColorXYZThicknessW Border color in the x, y, and z components and its thickness in the w component.
+            \param[in] excludeBorderFlags Flags for which borders should be excluded from rendering.
+        */
+        void addCircleSector(const float2& pos, const float rotation, const float angle, const float minRadius, const float maxRadius, const float4& color, const float4& borderColorXYZThicknessW, ExcludeBorderFlags excludeBorderFlags);
+
         /** Retrive the list of marker objects.
             \return The list of markers.
         */

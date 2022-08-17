@@ -25,8 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
 #include "BitonicSort.h"
+#include "Core/Macros.h"
+#include "Core/API/RenderContext.h"
+#include "Utils/Math/Common.h"
+#include "Utils/Timing/Profiler.h"
 
 namespace Falcor
 {

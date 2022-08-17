@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,41 +30,49 @@
 import Scene.SDFs.SDF3DPrimitive;
 import Utils.Math.IntervalArithmetic;
 import Utils.Math.PackedFormats;
+import Utils.SDF.SDFOperations;
 
 static const uint kGroupWidth = CHUNK_WIDTH;
 static const uint kChunkSize = CHUNK_WIDTH * CHUNK_WIDTH * CHUNK_WIDTH;
 static const uint kBrickWidth = BRICK_WIDTH;
 
-cbuffer CB
+struct ParamBlock
 {
-    uint gPrimitiveCount;
-    uint gGridWidth;
-    uint gGroupCount;
+    uint primitiveCount;
+    uint currentGridWidth;
+    uint groupCount;
+    StructuredBuffer<SDF3DPrimitive> primitives;
+    ByteAddressBuffer chunkCoords;
+    RWByteAddressBuffer subChunkValidity;
+    RWByteAddressBuffer subChunkCoords;
+    Texture3D<float2> intervalValues;
 };
 
-StructuredBuffer<SDF3DPrimitive> gPrimitives;
-ByteAddressBuffer gChunkCoords;
-
-RWByteAddressBuffer gSubChunkValidity;
-RWByteAddressBuffer gSubChunkCoords;
+ParameterBlock<ParamBlock> gParamBlock;
 
 groupshared uint gGroupSubChunkValidity[kChunkSize];
 groupshared uint3 gGroupSubChunkCoords[kChunkSize];
 
 void calculateSubChunkBounds(const uint3 coords, out float3 pCenter, out float3 pHalfExtent)
 {
-    pHalfExtent = 0.5f / float(gGridWidth);
-    pCenter = -0.5f + (float3(coords) + 0.5f) / float(gGridWidth);
+    pHalfExtent = 0.5f / float(gParamBlock.currentGridWidth);
+    pCenter = -0.5f + (float3(coords) + 0.5f) / float(gParamBlock.currentGridWidth);
 }
 
-bool evalSubChunk(float3 pCenter, float3 pHalfExtent)
+bool evalSubChunk(const uint3 coords, float3 pCenter, float3 pHalfExtent)
 {
+    const float kEpsilon = 1e-3f; // Used to include surfaces that would be removed due to floating point precision issues. The value was experimentally chosen.
     float2 sd = FLT_MAX;
 
-    for (uint primitiveID = 0; primitiveID < gPrimitiveCount; primitiveID++)
+#ifdef _BUILD_WITH_SD_FIELD
+    sd = gParamBlock.intervalValues[coords];
+#endif
+
+    // Does not need to normalize this because we only want to check if it contains zero or not.
+    for (uint primitiveID = 0; primitiveID < gParamBlock.primitiveCount; primitiveID++)
     {
-        SDF3DPrimitive primitive = gPrimitives[primitiveID];
-        sd = primitive.evalInterval(pCenter, pHalfExtent, sd);
+        SDF3DPrimitive primitive = gParamBlock.primitives[primitiveID];
+        sd = primitive.evalInterval(pCenter, pHalfExtent + kEpsilon, sd);
     }
 
     return ivlContainsZero(sd);
@@ -79,7 +87,7 @@ void rootEntryPoint(uint3 globalSubChunkCoords : SV_DispatchThreadID, uint subCh
     calculateSubChunkBounds(globalSubChunkCoords, pCenter, pHalfExtent);
 
     // Evaluate primitives for the current sub chunk.
-    bool valid = evalSubChunk(pCenter, pHalfExtent);
+    bool valid = evalSubChunk(globalSubChunkCoords, pCenter, pHalfExtent);
     gGroupSubChunkValidity[subChunkID] = valid ? 1 : 0;
     gGroupSubChunkCoords[subChunkID] = valid ? globalSubChunkCoords : uint3(UINT32_MAX);
 
@@ -90,17 +98,17 @@ void rootEntryPoint(uint3 globalSubChunkCoords : SV_DispatchThreadID, uint subCh
     {
         for (uint i = 0; i < kChunkSize; i += 4)
         {
-            gSubChunkValidity.Store4(
+            gParamBlock.subChunkValidity.Store4(
                 i << 2,
                 uint4(gGroupSubChunkValidity[i],
                       gGroupSubChunkValidity[i + 1],
                       gGroupSubChunkValidity[i + 2],
                       gGroupSubChunkValidity[i + 3]));
 
-            gSubChunkCoords.Store3((3 * i) << 2,      gGroupSubChunkCoords[i]);
-            gSubChunkCoords.Store3((3 * i + 3) << 2,  gGroupSubChunkCoords[i + 1]);
-            gSubChunkCoords.Store3((3 * i + 6) << 2,  gGroupSubChunkCoords[i + 2]);
-            gSubChunkCoords.Store3((3 * i + 9) << 2,  gGroupSubChunkCoords[i + 3]);
+            gParamBlock.subChunkCoords.Store3((3 * i) << 2,      gGroupSubChunkCoords[i]);
+            gParamBlock.subChunkCoords.Store3((3 * i + 3) << 2,  gGroupSubChunkCoords[i + 1]);
+            gParamBlock.subChunkCoords.Store3((3 * i + 6) << 2,  gGroupSubChunkCoords[i + 2]);
+            gParamBlock.subChunkCoords.Store3((3 * i + 9) << 2,  gGroupSubChunkCoords[i + 3]);
         }
     }
 }
@@ -110,7 +118,7 @@ void subdivideEntryPoint(uint3 groupID : SV_GroupID, uint3 localSubChunkCoords :
 {
     // Load global chunk coords.
     const uint chunkID = groupID.x;
-    const uint3 chunkCoords = gChunkCoords.Load3((3 * chunkID) << 2);
+    const uint3 chunkCoords = gParamBlock.chunkCoords.Load3((3 * chunkID) << 2);
 
     // Calculate virtual sub chunk coords
     const uint3 virtualSubChunkCoords = (chunkCoords << 2) + localSubChunkCoords;
@@ -120,7 +128,7 @@ void subdivideEntryPoint(uint3 groupID : SV_GroupID, uint3 localSubChunkCoords :
     calculateSubChunkBounds(virtualSubChunkCoords, pCenter, pHalfExtent);
 
     // Evaluate primitives for the current sub chunk.
-    bool valid = evalSubChunk(pCenter, pHalfExtent);
+    bool valid = evalSubChunk(virtualSubChunkCoords, pCenter, pHalfExtent);
     gGroupSubChunkValidity[subChunkID] = valid ? 1 : 0;
     gGroupSubChunkCoords[subChunkID] = valid ? virtualSubChunkCoords : uint3(UINT32_MAX);
 
@@ -135,17 +143,17 @@ void subdivideEntryPoint(uint3 groupID : SV_GroupID, uint3 localSubChunkCoords :
         {
             const uint offset = chunkOffset + i;
 
-            gSubChunkValidity.Store4(
+            gParamBlock.subChunkValidity.Store4(
                 offset << 2,
                 uint4(gGroupSubChunkValidity[i],
                       gGroupSubChunkValidity[i + 1],
                       gGroupSubChunkValidity[i + 2],
                       gGroupSubChunkValidity[i + 3]));
 
-            gSubChunkCoords.Store3((3 * offset) << 2,      gGroupSubChunkCoords[i]);
-            gSubChunkCoords.Store3((3 * offset + 3) << 2,  gGroupSubChunkCoords[i + 1]);
-            gSubChunkCoords.Store3((3 * offset + 6) << 2,  gGroupSubChunkCoords[i + 2]);
-            gSubChunkCoords.Store3((3 * offset + 9) << 2,  gGroupSubChunkCoords[i + 3]);
+            gParamBlock.subChunkCoords.Store3((3 * offset) << 2,      gGroupSubChunkCoords[i]);
+            gParamBlock.subChunkCoords.Store3((3 * offset + 3) << 2,  gGroupSubChunkCoords[i + 1]);
+            gParamBlock.subChunkCoords.Store3((3 * offset + 6) << 2,  gGroupSubChunkCoords[i + 2]);
+            gParamBlock.subChunkCoords.Store3((3 * offset + 9) << 2,  gGroupSubChunkCoords[i + 3]);
         }
     }
 }

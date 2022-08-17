@@ -32,13 +32,19 @@
 // SPDX: Apache-2.0
 
 #pragma once
-#include "Falcor.h"
 #include "Types.h"
 #include "Parser.h"
+#include "Core/Assert.h"
+#include "Utils/Math/Matrix.h"
 
 #include <glm/gtx/string_cast.hpp>
 
+#include <filesystem>
 #include <map>
+#include <set>
+#include <string>
+#include <variant>
+#include <vector>
 
 namespace Falcor
 {
@@ -86,30 +92,30 @@ namespace Falcor
         struct TransformedSceneEntity : public SceneEntity
         {
             TransformedSceneEntity() = default;
-            TransformedSceneEntity(const std::string& name, ParameterDictionary params, FileLoc loc, const glm::mat4& transform)
+            TransformedSceneEntity(const std::string& name, ParameterDictionary params, FileLoc loc, const rmcv::mat4& transform)
                 : SceneEntity(name, params, loc)
                 , transform(transform)
             {}
 
             std::string toString() const
             {
-                return fmt::format("TransformedSceneEntity(name='{}', params={}, transform={})", name, params.toString(), glm::to_string(transform));
+                return fmt::format("TransformedSceneEntity(name='{}', params={}, transform={})", name, params.toString(), rmcv::to_string(transform));
             }
 
-            glm::mat4 transform;
+            rmcv::mat4 transform;
         };
 
         struct CameraSceneEntity : public TransformedSceneEntity
         {
             CameraSceneEntity() = default;
-            CameraSceneEntity(const std::string& name, ParameterDictionary params, FileLoc loc, const glm::mat4& transform, const std::string& medium)
+            CameraSceneEntity(const std::string& name, ParameterDictionary params, FileLoc loc, const rmcv::mat4& transform, const std::string& medium)
                 : TransformedSceneEntity(name, params, loc, transform)
                 , medium(medium)
             {}
 
             std::string toString() const
             {
-                return fmt::format("CameraSceneEntity(name='{}', params={}, transform={}, medium='{}')", name, params.toString(), glm::to_string(transform), medium);
+                return fmt::format("CameraSceneEntity(name='{}', params={}, transform={}, medium='{}')", name, params.toString(), rmcv::to_string(transform), medium);
             }
 
             std::string medium;
@@ -118,14 +124,14 @@ namespace Falcor
         struct LightSceneEntity : public TransformedSceneEntity
         {
             LightSceneEntity() = default;
-            LightSceneEntity(const std::string& name, ParameterDictionary params, FileLoc loc, const glm::mat4& transform, const std::string& medium)
+            LightSceneEntity(const std::string& name, ParameterDictionary params, FileLoc loc, const rmcv::mat4& transform, const std::string& medium)
                 : TransformedSceneEntity(name, params, loc, transform)
                 , medium(medium)
             {}
 
             std::string toString() const
             {
-                return fmt::format("LightSceneEntity(name='{}', params={}, transform={}, medium='{}')", name, params.toString(), glm::to_string(transform), medium);
+                return fmt::format("LightSceneEntity(name='{}', params={}, transform={}, medium='{}')", name, params.toString(), rmcv::to_string(transform), medium);
             }
 
             std::string medium;
@@ -134,33 +140,33 @@ namespace Falcor
         struct MediumSceneEntity : public TransformedSceneEntity
         {
             MediumSceneEntity() = default;
-            MediumSceneEntity(const std::string& name, ParameterDictionary params, FileLoc loc, const glm::mat4& transform)
+            MediumSceneEntity(const std::string& name, ParameterDictionary params, FileLoc loc, const rmcv::mat4& transform)
                 : TransformedSceneEntity(name, params, loc, transform)
             {}
 
             std::string toString() const
             {
-                return fmt::format("MediumSceneEntity(name='{}', params={}, transform={})", name, params.toString(), glm::to_string(transform));
+                return fmt::format("MediumSceneEntity(name='{}', params={}, transform={})", name, params.toString(), rmcv::to_string(transform));
             }
         };
 
         struct TextureSceneEntity : public TransformedSceneEntity
         {
             TextureSceneEntity() = default;
-            TextureSceneEntity(const std::string& name, ParameterDictionary params, FileLoc loc, const glm::mat4& transform)
+            TextureSceneEntity(const std::string& name, ParameterDictionary params, FileLoc loc, const rmcv::mat4& transform)
                 : TransformedSceneEntity(name, params, loc, transform)
             {}
 
             std::string toString() const
             {
-                return fmt::format("TextureSceneEntity(name='{}', params={}, transform={})", name, params.toString(), glm::to_string(transform));
+                return fmt::format("TextureSceneEntity(name='{}', params={}, transform={})", name, params.toString(), rmcv::to_string(transform));
             }
         };
 
         struct ShapeSceneEntity : public TransformedSceneEntity
         {
             ShapeSceneEntity() = default;
-            ShapeSceneEntity(const std::string& name, ParameterDictionary params, FileLoc loc, const glm::mat4& transform,
+            ShapeSceneEntity(const std::string& name, ParameterDictionary params, FileLoc loc, const rmcv::mat4& transform,
                              bool reverseOrientation, MaterialRef materialRef, int lightIndex,
                              const std::string& insideMedium, const std::string& outsideMedium)
                 : TransformedSceneEntity(name, params, loc, transform),
@@ -175,7 +181,7 @@ namespace Falcor
             {
                 return fmt::format("ShapeSceneEntity(name='{}', params={}, transform={}, reverseOrientation={}, "
                     "materialRef={}. lightIndex={}, insideMedium='{}', outsideMedium='{}')",
-                    name, params.toString(), glm::to_string(transform), reverseOrientation,
+                    name, params.toString(), rmcv::to_string(transform), reverseOrientation,
                     to_string(materialRef), lightIndex, insideMedium, outsideMedium);
             }
 
@@ -206,7 +212,7 @@ namespace Falcor
         struct InstanceSceneEntity
         {
             InstanceSceneEntity() = default;
-            InstanceSceneEntity(const std::string& name, FileLoc loc, const glm::mat4& transform)
+            InstanceSceneEntity(const std::string& name, FileLoc loc, const rmcv::mat4& transform)
                 : name(name)
                 , loc(loc)
                 , transform(transform)
@@ -214,12 +220,12 @@ namespace Falcor
 
             std::string toString() const
             {
-                return fmt::format("InstanceSceneEntity(name='{}', transform='{}')", name, glm::to_string(transform));
+                return fmt::format("InstanceSceneEntity(name='{}', transform='{}')", name, rmcv::to_string(transform));
             }
 
             std::string name;
             FileLoc loc;
-            glm::mat4 transform;
+            rmcv::mat4 transform;
         };
 
         class BasicScene
@@ -288,13 +294,13 @@ namespace Falcor
 
         constexpr uint32_t kMaxTransforms = 2;
 
-        using Transform = glm::mat4;
+        using Transform = rmcv::mat4;
 
         struct TransformSet
         {
             TransformSet()
             {
-                for (uint32_t i = 0; i < kMaxTransforms; ++i) t[i] = glm::identity<glm::mat4>();
+                for (uint32_t i = 0; i < kMaxTransforms; ++i) t[i] = rmcv::identity<rmcv::mat4>();
             }
 
             Transform& operator[](uint32_t i)
@@ -314,7 +320,7 @@ namespace Falcor
                 TransformSet tInv;
                 for (uint32_t i = 0; i < kMaxTransforms; ++i)
                 {
-                    tInv.t[i] = glm::inverse(ts.t[i]);
+                    tInv.t[i] = rmcv::inverse(ts.t[i]);
                 }
                 return tInv;
             }
@@ -379,7 +385,7 @@ namespace Falcor
             void onEndOfFiles() override;
 
         private:
-            glm::mat4 getTransform() const { return mGraphicsState.ctm[0]; }
+            rmcv::mat4 getTransform() const { return mGraphicsState.ctm[0]; }
 
             static constexpr int kStartTransformBits = 1 << 0;
             static constexpr int kEndTransformBits = 1 << 1;

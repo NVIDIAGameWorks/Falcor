@@ -28,14 +28,17 @@
 #pragma once
 #include "Animation.h"
 #include "AnimatedVertexCache.h"
+#include "Core/Macros.h"
+#include "Core/API/Buffer.h"
+#include "Utils/Math/Matrix.h"
 #include "RenderGraph/BasePasses/ComputePass.h"
 #include "Scene/SceneTypes.slang"
+#include <memory>
+#include <vector>
 
 namespace Falcor
 {
     class Scene;
-    class Model;
-    class AssimpModelImporter;
 
     class FALCOR_API AnimationController
     {
@@ -109,21 +112,21 @@ namespace Falcor
 
         /** Check if a matrix changed since last frame.
         */
-        bool isMatrixChanged(size_t matrixID) const { return mMatricesChanged[matrixID]; }
+        bool isMatrixChanged(NodeID matrixID) const { return mMatricesChanged[matrixID.get()]; }
 
         /** Get the local matrices.
             These represent the current local transform for each scene graph node.
         */
-        const std::vector<glm::mat4>& getLocalMatrices() const { return mLocalMatrices; }
+        const std::vector<float4x4>& getLocalMatrices() const { return mLocalMatrices; }
 
         /** Get the global matrices.
             These represent the current object-to-world space transform for each scene graph node.
         */
-        const std::vector<glm::mat4>& getGlobalMatrices() const { return mGlobalMatrices; }
+        const std::vector<float4x4>& getGlobalMatrices() const { return mGlobalMatrices; }
 
         /** Get the transposed inverse global matrices.
         */
-        const std::vector<glm::mat4>& getInvTransposeGlobalMatrices() const { return mInvTransposeGlobalMatrices; }
+        const std::vector<float4x4>& getInvTransposeGlobalMatrices() const { return mInvTransposeGlobalMatrices; }
 
         /** Render the UI.
         */
