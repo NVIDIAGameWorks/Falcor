@@ -852,6 +852,7 @@ target_compile_options(Falcor
         $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/W2>      # increase warning level
         $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/WX>      # warnings as errors
         $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/wd4251>  # 'type' : class 'type1' needs to have dll-interface to be used by clients of class 'type2'
+        $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/wd4819>  # The file contains a character that cannot be represented in the current code page (932)
         $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/MP>      # enable multi-processor compilation
         # Clang flags.
         $<$<CXX_COMPILER_ID:Clang>:-fms-extensions>     # enable MS extensions (among other things allow glm swizzle to work)
