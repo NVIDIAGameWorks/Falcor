@@ -4,6 +4,11 @@ on:
   pull_request:
     branches: ["master"]
 
+env:
+    CMAKE_EXE: tools/.packman/cmake/bin/cmake.exe
+    CMAKE_BUILD_PRESET: windows-ninja-msvc
+    CMAKE_BUILD_CONFIG: Release
+
 jobs:
   windows:
     name: Windows/MSVC
@@ -16,3 +21,14 @@ jobs:
       - name: Setup
         run: setup.bat
         shell: cmd
+      - name: Build
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+          sdk: 10.0.19041.0
+          toolset: 14.29
+        run: |
+          %CMAKE_EXE% --preset %CMAKE_BUILD_PRESET%
+          %CMAKE_EXE% --build build\%CMAKE_BUILD_PRESET% --config %CMAKE_BULID_CONFIG%
+        shell: cmd
+
