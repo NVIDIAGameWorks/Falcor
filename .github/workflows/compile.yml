@@ -21,14 +21,14 @@ jobs:
       - name: Setup
         run: setup.bat
         shell: cmd
-      - name: Build
+      - name: Setup MSVC
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
           sdk: 10.0.19041.0
           toolset: 14.29
+      - name: Build
         run: |
           %CMAKE_EXE% --preset %CMAKE_BUILD_PRESET%
           %CMAKE_EXE% --build build\%CMAKE_BUILD_PRESET% --config %CMAKE_BULID_CONFIG%
         shell: cmd
-
