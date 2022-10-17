@@ -162,7 +162,8 @@ namespace Falcor
             mData.projMat = jitterMat * mData.projMat;
 
             mData.viewProjMat = mData.projMat * mData.viewMat;
-            mData.invViewProj = rmcv::inverse(mData.viewProjMat);
+            mData.invView = rmcv::inverse(mData.viewMat);
+            mData.invProj = rmcv::inverse(mData.projMat);
 
             // Extract camera space frustum planes from the VP matrix
             // See: https://fgiesen.wordpress.com/2012/08/31/frustum-planes-from-the-projection-matrix/
@@ -222,10 +223,16 @@ namespace Falcor
         return mData.viewProjMatNoJitter;
     }
 
-    const rmcv::mat4 Camera::getInvViewProjMatrix() const
+    const rmcv::mat4 Camera::getInvViewMatrix() const
     {
         calculateCameraParameters();
-        return mData.invViewProj;
+        return mData.invView;
+    }
+
+    const rmcv::mat4 Camera::getInvProjMatrix() const
+    {
+        calculateCameraParameters();
+        return mData.invProj;
     }
 
     void Camera::setProjectionMatrix(const rmcv::mat4& proj)

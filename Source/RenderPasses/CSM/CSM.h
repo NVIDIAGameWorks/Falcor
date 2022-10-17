@@ -175,7 +175,8 @@ private:
         // and remove this field.
         int3 padding;
 #endif
-        rmcv::mat4 camInvViewProj;
+        rmcv::mat4 camInvView;
+        rmcv::mat4 camInvProj;
         uint2 screenDim = { 0, 0 };
         uint32_t mapBitsPerChannel = 32;
     } mVisibilityPassData;

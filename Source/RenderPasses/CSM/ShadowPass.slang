@@ -67,7 +67,7 @@ ShadowPassVSOut vsMain(VSIn vIn)
     float4x4 worldMat = gScene.getWorldMatrix(instanceID);
     vOut.pos = mul(worldMat, float4(vIn.pos, 1.f));
 #ifdef _APPLY_PROJECTION
-    vOut.pos = mul(gScene.camera.getViewProj(), vOut.pos);
+    vOut.pos = mul(gScene.camera.getProj(), mul(gScene.camera.getView(), vOut.pos));
 #endif
 
     vOut.texC = vIn.texC;
@@ -86,7 +86,7 @@ void gsMain(triangle ShadowPassVSOut input[3], uint InstanceID : SV_GSInstanceID
 
     for(int i = 0 ; i < 3 ; i++)
     {
-        outputData.pos = mul(gCsmData.globalMat, input[i].pos);
+        outputData.pos = mul(gCsmData.shadowProj, mul(gCsmData.shadowView, input[i].pos));
         outputData.pos.xyz /= input[i].pos.w;
         outputData.pos.xyz *= gCsmData.cascadeScale[InstanceID].xyz;
         outputData.pos.xyz += gCsmData.cascadeOffset[InstanceID].xyz;

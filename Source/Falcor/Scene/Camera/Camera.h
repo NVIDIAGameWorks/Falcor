@@ -227,9 +227,13 @@ namespace Falcor
         */
         const rmcv::mat4 getViewProjMatrixNoJitter() const;
 
-        /** Get the inverse of the view-projection matrix.
+        /** Get the inverse of the view matrix.
         */
-        const rmcv::mat4 getInvViewProjMatrix() const;
+        const rmcv::mat4 getInvViewMatrix() const;
+
+        /** Get the inverse of the projection matrix.
+        */
+        const rmcv::mat4 getInvProjMatrix() const;
 
         /** Set the persistent projection matrix and sets camera to use the persistent matrix instead of calculating the matrix from its other settings.
         */

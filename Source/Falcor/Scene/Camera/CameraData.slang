@@ -38,7 +38,8 @@ struct CameraData
     float4x4 prevViewMat;               ///< Camera view matrix associated to previous frame.
     float4x4 projMat;                   ///< Camera projection matrix.
     float4x4 viewProjMat;               ///< Camera view-projection matrix.
-    float4x4 invViewProj;               ///< Camera inverse view-projection matrix.
+    float4x4 invView;                   ///< Camera inverse view matrix.
+    float4x4 invProj;                   ///< Camera inverse projection matrix.
     float4x4 viewProjMatNoJitter;       ///< Camera view-projection matrix. No jittering is applied!
     float4x4 prevViewProjMatNoJitter;   ///< Camera view-projection matrix associated to previous frame. No jittering is applied!
     float4x4 projMatNoJitter;           ///< Camera projection matrix. No jittering is applied!

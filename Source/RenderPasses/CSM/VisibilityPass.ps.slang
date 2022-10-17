@@ -30,7 +30,8 @@ import RenderPasses.CSM.CascadedShadowMap;
 struct VisibilityPassData
 {
     bool visualizeCascades;
-    float4x4 invViewProj;
+    float4x4 invView;
+    float4x4 invProj;
     uint2 screenDimension;
     uint mapBitsPerChannel;
 };
@@ -52,7 +53,7 @@ float3 loadPosition(float2 UV, float depth)
     // NDC Y is bottom-to-top
     ndc.y = -ndc.y;
 #endif
-    float4 wsPos = mul(gPass.invViewProj, float4(ndc.x, ndc.y, depth, 1.f));
+    float4 wsPos = mul(gPass.invView, mul(gPass.invProj, float4(ndc.x, ndc.y, depth, 1.f)));
     return wsPos.xyz / wsPos.w;
 }
 

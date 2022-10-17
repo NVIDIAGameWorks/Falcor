@@ -79,7 +79,7 @@ VSOut defaultVS(VSIn vIn)
     float4x4 worldMat = gScene.getWorldMatrix(instanceID);
     float3 posW = mul(worldMat, float4(vIn.pos, 1.f)).xyz;
     vOut.posW = posW;
-    vOut.posH = mul(gScene.camera.getViewProj(), float4(posW, 1.f));
+    vOut.posH = mul(gScene.camera.getProj(), mul(gScene.camera.getView(), float4(posW, 1.f)));
 
     vOut.instanceID = instanceID;
     vOut.materialID = gScene.getMaterialID(instanceID);

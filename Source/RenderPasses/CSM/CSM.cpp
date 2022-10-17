@@ -215,15 +215,16 @@ protected:
 };
 #endif
 
-static void createShadowMatrix(const DirectionalLight* pLight, const float3& center, float radius, rmcv::mat4& shadowVP)
+static void createShadowMatrix(const DirectionalLight* pLight, const float3& center, float radius, rmcv::mat4& shadowView, rmcv::mat4& shadowProj)
 {
     rmcv::mat4 view = rmcv::lookAt(center, center + pLight->getWorldDirection(), float3(0, 1, 0));
     rmcv::mat4 proj = rmcv::ortho(-radius, radius, -radius, radius, -radius, radius);
 
-    shadowVP = proj * view;
+    shadowView = view;
+    shadowProj = proj;
 }
 
-static void createShadowMatrix(const PointLight* pLight, const float3& center, float radius, float fboAspectRatio, rmcv::mat4& shadowVP)
+static void createShadowMatrix(const PointLight* pLight, const float3& center, float radius, float fboAspectRatio, rmcv::mat4& shadowView, rmcv::mat4& shadowProj)
 {
     const float3 lightPos = pLight->getWorldPosition();
     const float3 lookat = pLight->getWorldDirection() + lightPos;
@@ -240,17 +241,18 @@ static void createShadowMatrix(const PointLight* pLight, const float3& center, f
     float angle = pLight->getOpeningAngle() * 2;
     rmcv::mat4 proj = rmcv::perspective(angle, fboAspectRatio, nearZ, maxZ);
 
-    shadowVP = proj * view;
+    shadowView = view;
+    shadowProj = proj;
 }
 
-static void createShadowMatrix(const Light* pLight, const float3& center, float radius, float fboAspectRatio, rmcv::mat4& shadowVP)
+static void createShadowMatrix(const Light* pLight, const float3& center, float radius, float fboAspectRatio, rmcv::mat4& shadowView, rmcv::mat4& shadowProj)
 {
     switch (pLight->getType())
     {
     case LightType::Directional:
-        return createShadowMatrix((DirectionalLight*)pLight, center, radius, shadowVP);
+        return createShadowMatrix((DirectionalLight*)pLight, center, radius, shadowView, shadowProj);
     case LightType::Point:
-        return createShadowMatrix((PointLight*)pLight, center, radius, fboAspectRatio, shadowVP);
+        return createShadowMatrix((PointLight*)pLight, center, radius, fboAspectRatio, shadowView, shadowProj);
     default:
         FALCOR_UNREACHABLE();
     }
@@ -446,16 +448,17 @@ void camClipSpaceToWorldSpace(const Camera* pCamera, float3 viewFrustum[8], floa
         float3(-1.0f, -1.0f, 1.0f),
     };
 
-    rmcv::mat4 invViewProj = pCamera->getInvViewProjMatrix();
-    center = float3(0, 0, 0);
+    rmcv::mat4 invView = rmcv::inverse(pCamera->getViewMatrix());
+    rmcv::mat4 invProj = rmcv::inverse(pCamera->getProjMatrix());
 
+    // First, computing center and radius in view space
+    center = float3(0, 0, 0);
     for (uint32_t i = 0; i < 8; i++)
     {
-        float4 crd = invViewProj * float4(clipSpace[i], 1);
+        float4 crd = invProj * float4(clipSpace[i], 1);
         viewFrustum[i] = float3(crd) / crd.w;
         center += viewFrustum[i];
     }
-
     center *= (1.0f / 8.0f);
 
     // Calculate bounding sphere radius
@@ -465,6 +468,15 @@ void camClipSpaceToWorldSpace(const Camera* pCamera, float3 viewFrustum[8], floa
         float d = glm::length(center - viewFrustum[i]);
         radius = std::max(d, radius);
     }
+    
+    // Then, transform back to world space to avoid float-point precision error in a large scene
+    for (uint32_t i = 0; i < 8; i++)
+    {
+        float4 crd = invView * float4(viewFrustum[i], 1);
+        viewFrustum[i] = float4(crd) / crd.w;
+    }
+    float4 crd = invView * float4(center, 1);
+    center = float4(crd) / crd.w;
 }
 
 FALCOR_FORCEINLINE float calcPssmPartitionEnd(float nearPlane, float camDepthRange, const float2& distanceRange, float linearBlend, uint32_t cascade, uint32_t cascadeCount)
@@ -487,14 +499,14 @@ FALCOR_FORCEINLINE float calcPssmPartitionEnd(float nearPlane, float camDepthRan
     return distance;
 }
 
-void getCascadeCropParams(const float3 crd[8], const rmcv::mat4& lightVP, float4& scale, float4& offset)
+void getCascadeCropParams(const float3 crd[8], const rmcv::mat4& lightView, const rmcv::mat4& lightProj, float4& scale, float4& offset)
 {
     // Transform the frustum into light clip-space and calculate min-max
     float4 maxCS(-1, -1, 0, 1);
     float4 minCS(1, 1, 1, 1);
     for (uint32_t i = 0; i < 8; i++)
     {
-        float4 c = lightVP * float4(crd[i], 1.0f);
+        float4 c = lightProj * (lightView * float4(crd[i], 1.0f));
         c /= c.w;
         maxCS = glm::max(maxCS, c);
         minCS = glm::min(minCS, c);
@@ -523,7 +535,7 @@ void CSM::partitionCascades(const Camera* pCamera, const float2& distanceRange)
     camClipSpaceToWorldSpace(pCamera, camFrustum.crd, camFrustum.center, camFrustum.radius);
 
     // Create the global shadow space
-    createShadowMatrix(mpLight.get(), camFrustum.center, camFrustum.radius, mShadowPass.fboAspectRatio, mCsmData.globalMat);
+    createShadowMatrix(mpLight.get(), camFrustum.center, camFrustum.radius, mShadowPass.fboAspectRatio, mCsmData.shadowView, mCsmData.shadowProj);
 
     if (mCsmData.cascadeCount == 1)
     {
@@ -587,7 +599,7 @@ void CSM::partitionCascades(const Camera* pCamera, const float2& distanceRange)
             cascadeFrust[i + 4] = camFrustum.crd[i] + end;
         }
 
-        getCascadeCropParams(cascadeFrust, mCsmData.globalMat, mCsmData.cascadeScale[c], mCsmData.cascadeOffset[c]);
+        getCascadeCropParams(cascadeFrust, mCsmData.shadowView, mCsmData.shadowProj, mCsmData.cascadeScale[c], mCsmData.cascadeOffset[c]);
     }
 }
 
@@ -595,7 +607,8 @@ void CSM::renderScene(RenderContext* pCtx)
 {
     auto pCB = mShadowPass.pVars->getParameterBlock(mPerLightCbLoc);
 #define check_offset(_a) FALCOR_ASSERT(pCB["gCsmData"][#_a].getByteOffset() == offsetof(CsmData, _a))
-    check_offset(globalMat);
+    check_offset(shadowView);
+    check_offset(shadowProj);
     check_offset(cascadeScale);
     check_offset(cascadeOffset);
     check_offset(cascadeRange);
@@ -610,7 +623,8 @@ void CSM::renderScene(RenderContext* pCtx)
 #undef check_offset
 
     pCB->setBlob(&mCsmData, 0, sizeof(mCsmData));
-    mpLightCamera->setProjectionMatrix(mCsmData.globalMat);
+    mpLightCamera->setViewMatrix(mCsmData.shadowView);
+    mpLightCamera->setProjectionMatrix(mCsmData.shadowProj);
     if (mControls.depthClamp)
     {
         mpScene->rasterize(pCtx, mShadowPass.pState.get(), mShadowPass.pVars.get(), mShadowPass.pRsStateCW, mShadowPass.pRsStateCCW);
@@ -781,7 +795,8 @@ void CSM::execute(RenderContext* pRenderContext, const RenderData& renderData)
 
     auto visibilityVars = mVisibilityPass.pPass->getVars().getRootVar();
     setDataIntoVars(visibilityVars, visibilityVars["PerFrameCB"]["gCsmData"]);
-    mVisibilityPassData.camInvViewProj = pCamera->getInvViewProjMatrix();
+    mVisibilityPassData.camInvView = rmcv::inverse(pCamera->getViewMatrix());
+    mVisibilityPassData.camInvProj = rmcv::inverse(pCamera->getProjMatrix());
     mVisibilityPassData.screenDim = uint2(mVisibilityPass.pFbo->getWidth(), mVisibilityPass.pFbo->getHeight());
     mVisibilityPass.pPass["PerFrameCB"][mVisibilityPass.mPassDataOffset].setBlob(mVisibilityPassData);
 

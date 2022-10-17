@@ -45,7 +45,8 @@ struct CsmData
 {
     static const uint32_t kMaxCascades = 8;
 
-    float4x4 globalMat;
+    float4x4 shadowView;
+    float4x4 shadowProj;
     float4 cascadeScale[kMaxCascades];
     float4 cascadeOffset[kMaxCascades];
 
