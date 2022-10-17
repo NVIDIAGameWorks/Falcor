@@ -337,8 +337,8 @@ void CSM::createShadowPassResources()
 
     RasterizerState::Desc rsDesc;
     rsDesc.setDepthClamp(true);
-    RasterizerState::SharedPtr rsState = RasterizerState::create(rsDesc);
-    mShadowPass.pState->setRasterizerState(rsState);
+    mShadowPass.pRsStateCW = RasterizerState::create(rsDesc.setFrontCounterCW(false).setCullMode(RasterizerState::CullMode::Back));
+    mShadowPass.pRsStateCCW = RasterizerState::create(rsDesc.setFrontCounterCW(true).setCullMode(RasterizerState::CullMode::Back));
 }
 
 CSM::CSM()
@@ -611,7 +611,14 @@ void CSM::renderScene(RenderContext* pCtx)
 
     pCB->setBlob(&mCsmData, 0, sizeof(mCsmData));
     mpLightCamera->setProjectionMatrix(mCsmData.globalMat);
-    mpScene->rasterize(pCtx, mShadowPass.pState.get(), mShadowPass.pVars.get());
+    if (mControls.depthClamp)
+    {
+        mpScene->rasterize(pCtx, mShadowPass.pState.get(), mShadowPass.pVars.get(), mShadowPass.pRsStateCW, mShadowPass.pRsStateCCW);
+    }
+    else
+    {
+        mpScene->rasterize(pCtx, mShadowPass.pState.get(), mShadowPass.pVars.get());
+    }
     //        mpCsmSceneRenderer->renderScene(pCtx, mShadowPass.pState.get(), mShadowPass.pVars.get(), mpLightCamera.get());
 }
 

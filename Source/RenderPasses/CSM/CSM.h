@@ -123,6 +123,8 @@ private:
         GraphicsProgram::SharedPtr pProgram;
         GraphicsVars::SharedPtr pVars;
         GraphicsState::SharedPtr pState;
+        RasterizerState::SharedPtr pRsStateCW;
+        RasterizerState::SharedPtr pRsStateCCW;
         float2 mapSize;
     } mShadowPass;
 
