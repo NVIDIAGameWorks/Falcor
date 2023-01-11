@@ -24,6 +24,7 @@ Run Mogwai from within Visual Studio (by pressing Ctrl+F5), or from the command 
 
       -h, --help                        Display this help menu.
       -s[path], --script=[path]         Python script file to run.
+      --deferred                        The script is loaded deferred.
       -S[path], --scene=[path]          Scene file (for example, a .pyscene
                                         file) to open.
       -l[path], --logfile=[path]        File to write log into.
@@ -42,6 +43,8 @@ Run Mogwai from within Visual Studio (by pressing Ctrl+F5), or from the command 
       -d, --debug-shaders               Generate shader debug info.
       --enable-debug-layer              Enable debug layer (enabled by default
                                         in Debug build).
+      --precise                         Force all slang programs to run in
+                                        precise mode
 ```
 
 Using `--silent` together with `--script` allows to run Mogwai for rendering in the background.
