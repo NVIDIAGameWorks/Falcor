@@ -66,6 +66,16 @@ WireframePass::WireframePass() : RenderPass(kInfo) {
     mpGraphicsState->setRasterizerState(mpRasterState);
 }
 ```
+## `reflect()`
+As in the Implementing a Render Pass tutorial, you simply set the Output for the Wireframe view.
+```
+RenderPassReflection WireframePass::reflect(const CompileData &compileData)
+{
+    RenderPassReflection reflector;
+    reflector.addOutput("output", "Wireframe view texture");
+    return reflector;
+}
+```
 
 ### `setScene()`
 Our first render pass had no need for a `Scene` object; however, this pass does and will need this function to set `mpScene`. We first need to set `mpScene` to the scene that's passed in then add all scene defines to `mpProgram`. We then create our `GraphicsVars` so that we can bind shader variables later in `execute()`. These are done like so:
@@ -110,9 +120,7 @@ void WireframePass::execute(RenderContext *pRenderContext, const RenderData &ren
     const float4 clearColor(0, 0, 0, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
     mpGraphicsState->setFbo(pTargetFbo);
-    mpGraphicsState->setDepthStencilState(mpNoDepthDS);
     if (mpScene) {
-        // Set render state
         mpVars["PerFrameCB"]["gColor"] = float4(0, 1, 0, 1);
 
         mpScene->rasterize(pRenderContext, mpGraphicsState.get(), mpVars.get(), mpRasterState, mpRasterState);
@@ -122,16 +130,16 @@ void WireframePass::execute(RenderContext *pRenderContext, const RenderData &ren
 
 And you need to create CMakeLists.txt to include your C++ and Slang files in the build target.
 ```CMake
-add_renderpass(Wireframe)
+add_renderpass(WireframePass)
 
-target_sources(Wireframe PRIVATE
-        WireframePass.cpp
-        WireframePass.h
-        WireframePass.3d.slang
-        )
-target_copy_shaders(Wireframe RenderPasses/Wireframe)
+target_sources(WireframePass PRIVATE
+    WireframePass.cpp
+    WireframePass.h
+    WireframePass.3d.slang
+)
+target_copy_shaders(WireframePass RenderPasses/WireframePass)
 
-target_source_group(Wireframe "RenderPasses")
+target_source_group(WireframePass "RenderPasses")
 ```
 
 
