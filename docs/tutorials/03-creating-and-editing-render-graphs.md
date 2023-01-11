@@ -61,7 +61,7 @@ Creating a render graph through scripting follows similar steps as creating it t
     - `markOutput()` takes an optional `mask` parameter specifying which color channels to output for frame capture.
     - Multiple calls to `markOutput()` with different masks can be made, frame capture will generate separate output files.
 
-*For more information on the scripting API, you can find the documentation [here](../Usage/Scripting.md).*
+*For more information on the scripting API, you can find the documentation [here](../usage/scripting.md).*
 
 To create a render graph through scripting:
 1. Create a function to contain the commands. This is not required, but recommended.

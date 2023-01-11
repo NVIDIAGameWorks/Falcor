@@ -82,4 +82,4 @@ You can adjust the description of the render pass library by adjusting the follo
 const RenderPass::Info ExampleBlitPass::kInfo { "ExampleBlitPass", "Blits a texture into another texture." };
 ```
 
-We will ignore further details regarding render passes and their implementation for the purposes of this tutorial. Additional information can be found [here](../Usage/Render-Passes.md).
+We will ignore further details regarding render passes and their implementation for the purposes of this tutorial. Additional information can be found [here](../usage/render-passes.md).
