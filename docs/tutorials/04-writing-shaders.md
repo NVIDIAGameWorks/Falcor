@@ -104,9 +104,9 @@ mpGraphicsState->setFbo(pTargetFbo);
 ```
 
 #### Binding the shader
-Binding shader values is also fairly straightforward as Falcor allows you to set shader values in the `GraphicsVars` object in the same way as you would set values in an array. Our shader requires a single color value, `gColor`, which is located inside the `perFrameCB` constant buffer. This step should look like this:
+Binding shader values is also fairly straightforward as Falcor allows you to set shader values in the `GraphicsVars` object in the same way as you would set values in a dictionary. Our shader requires a single color value, `gColor`, which is located inside the `PerFrameCB` constant buffer. This step should look like this:
 ```c++
-mpVars["perFrameCB"]["gColor"] = float4(0, 1, 0, 1);
+mpVars["PerFrameCB"]["gColor"] = float4(0, 1, 0, 1);
 ```
 
 #### Rendering a Scene Using the Shader
