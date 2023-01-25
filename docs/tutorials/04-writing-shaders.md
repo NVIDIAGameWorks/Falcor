@@ -67,7 +67,7 @@ WireframePass::WireframePass() : RenderPass(kInfo)
     mpGraphicsState->setRasterizerState(mpRasterState);
 }
 ```
-## `reflect()`
+### `reflect()`
 As in the Implementing a Render Pass tutorial, you simply set the Output for the Wireframe view.
 ```c++
 RenderPassReflection WireframePass::reflect(const CompileData& compileData)
