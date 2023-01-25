@@ -53,7 +53,8 @@ While `create()` does not need to do more than calling the constructor and retur
 
 The constructor should look similar to this:
 ```c++
-WireframePass::WireframePass() : RenderPass(kInfo) {
+WireframePass::WireframePass() : RenderPass(kInfo)
+{
     mpProgram = GraphicsProgram::createFromFile("RenderPasses/Wireframe/Wireframe.3d.slang", "vsMain",
                                                 "psMain");
     RasterizerState::Desc wireframeDesc;
@@ -68,8 +69,8 @@ WireframePass::WireframePass() : RenderPass(kInfo) {
 ```
 ## `reflect()`
 As in the Implementing a Render Pass tutorial, you simply set the Output for the Wireframe view.
-```
-RenderPassReflection WireframePass::reflect(const CompileData &compileData)
+```c++
+RenderPassReflection WireframePass::reflect(const CompileData& compileData)
 {
     RenderPassReflection reflector;
     reflector.addOutput("output", "Wireframe view texture");
@@ -115,12 +116,14 @@ mpScene->rasterize(pRenderContext, mpGraphicsState.get(), mpVars.get(), mpRaster
 ```
 Your `execute()` function should now look like this, with a check for `mpScene` so we avoid accessing the scene when it isn't set:
 ```c++
-void WireframePass::execute(RenderContext *pRenderContext, const RenderData &renderData) {
+void WireframePass::execute(RenderContext* pRenderContext, const RenderData& renderData)
+{
     auto pTargetFbo = Fbo::create({renderData.getTexture("output")});
     const float4 clearColor(0, 0, 0, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
     mpGraphicsState->setFbo(pTargetFbo);
-    if (mpScene) {
+    if (mpScene)
+    {
         mpVars["PerFrameCB"]["gColor"] = float4(0, 1, 0, 1);
 
         mpScene->rasterize(pRenderContext, mpGraphicsState.get(), mpVars.get(), mpRasterState, mpRasterState);
