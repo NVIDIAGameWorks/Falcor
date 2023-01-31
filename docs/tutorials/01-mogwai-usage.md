@@ -24,6 +24,7 @@ Run Mogwai from within Visual Studio (by pressing Ctrl+F5), or from the command 
 
       -h, --help                        Display this help menu.
       -s[path], --script=[path]         Python script file to run.
+      --deferred                        The script is loaded deferred.
       -S[path], --scene=[path]          Scene file (for example, a .pyscene
                                         file) to open.
       -l[path], --logfile=[path]        File to write log into.
@@ -42,6 +43,8 @@ Run Mogwai from within Visual Studio (by pressing Ctrl+F5), or from the command 
       -d, --debug-shaders               Generate shader debug info.
       --enable-debug-layer              Enable debug layer (enabled by default
                                         in Debug build).
+      --precise                         Force all slang programs to run in
+                                        precise mode
 ```
 
 Using `--silent` together with `--script` allows to run Mogwai for rendering in the background.
@@ -53,7 +56,7 @@ If you start it without specifying any options, Mogwai starts with a blank scree
 With Mogwai up and running, we'll proceed to loading something. You can load two kinds of files: scripts (which usually contain some global settings and render graphs) and scenes.
 
 ### Loading a Script (.py)
-Open the load script dialog by either going to `File -> Load Script` or hitting `Ctrl + O`. Navigate to the location of the script you wish to run and select it to load and run it. Alternatively, dragging-and-dropping a script into Mogwai will also work. Note that scripts intended for use with Mogwai must be written in Python. Full scripting documentation can be found [here](../Usage/Scripting.md).
+Open the load script dialog by either going to `File -> Load Script` or hitting `Ctrl + O`. Navigate to the location of the script you wish to run and select it to load and run it. Alternatively, dragging-and-dropping a script into Mogwai will also work. Note that scripts intended for use with Mogwai must be written in Python. Full scripting documentation can be found [here](../usage/scripting.md).
 
 Here, we'll load the Forward Renderer, located at `Source/Mogwai/Data/ForwardRenderer.py`.
 
