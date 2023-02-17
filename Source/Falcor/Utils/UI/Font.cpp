@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -32,17 +32,15 @@
 
 namespace Falcor
 {
-    Font::Font()
+    Font::Font(Device* pDevice, const std::filesystem::path& path)
     {
-        if (!loadFromFile("DejaVu Sans Mono", 14))
-        {
+        if (!loadFromFile(pDevice, path))
             throw RuntimeError("Failed to create font resource");
-        }
     }
 
-    Font::UniquePtr Font::create()
+    Font::UniquePtr Font::create(Device* pDevice, const std::filesystem::path& path)
     {
-        return UniquePtr(new Font());
+        return UniquePtr(new Font(pDevice, path));
     }
 
     static const uint32_t kFontMagicNumber = 0xDEAD0001;
@@ -71,13 +69,15 @@ namespace Falcor
 
     Font::~Font() = default;
 
-    bool Font::loadFromFile(const std::string& fontName, float size)
+    bool Font::loadFromFile(Device* pDevice, const std::filesystem::path& path)
     {
-        std::string baseName = "Framework/Fonts/" + fontName + std::to_string(size);
-        std::filesystem::path texturePath;
-        std::filesystem::path dataPath;
-        if (!findFileInDataDirectories(baseName + ".dds", texturePath)) return false;
-        if (!findFileInDataDirectories(baseName + ".bin", dataPath)) return false;
+        std::filesystem::path texturePath = path;
+        texturePath.replace_extension(".dds");
+        std::filesystem::path dataPath = path;
+        dataPath.replace_extension(".bin");
+
+        if (!std::filesystem::exists(texturePath) || !std::filesystem::exists(dataPath))
+            return false;
 
         // Load the data
         std::ifstream data(dataPath, std::ios::binary);
@@ -114,7 +114,7 @@ namespace Falcor
         }
 
         // Load the texture
-        mpTexture = Texture::createFromFile(texturePath, false, false);
+        mpTexture = Texture::createFromFile(pDevice, texturePath, false, false);
         return mpTexture != nullptr;
     }
 }

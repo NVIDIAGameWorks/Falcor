@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,54 +27,70 @@
  **************************************************************************/
 #pragma once
 #include "Core/Macros.h"
-#include "Core/API/CopyContext.h"
-#include "RenderGraph/BasePasses/FullScreenPass.h"
+#include "Core/API/Buffer.h"
+#include "Core/State/ComputeState.h"
+#include "Core/Program/ComputeProgram.h"
+#include "Core/Program/ProgramVars.h"
 #include <memory>
-#include <vector>
 
 namespace Falcor
 {
-    class RenderContext;
+    /** Class that performs parallel reduction over all pixels in a texture.
 
+        The reduction is done on recursively on blocks of n = 1024 elements.
+        The total number of iterations is ceil(log2(N)/10), where N is the
+        total number of elements (pixels).
+
+        The numerical error for the summation operation lies between pairwise
+        summation (blocks of size n = 2) and naive running summation.
+    */
     class FALCOR_API ParallelReduction
     {
     public:
-        using UniquePtr = std::unique_ptr<ParallelReduction>;
-
         enum class Type
         {
-            MinMax
+            Sum,
+            MinMax,
         };
 
-        /** Create a new parallel reduction object.
-            \param[in] reductionType The reduction operator.
-            \param[in] readbackLatency The result is returned after this many calls to reduce().
-            \param[in] width Width in pixels of the texture that will be used.
-            \param[in] height Height in pixels of the texture that will be used.
-            \param[in] sampleCount Multi-sample count for the texture that will be used.
-            \return New object, or throws an exception if creation failed.
-        */
-        static UniquePtr create(Type reductionType, uint32_t readbackLatency, uint32_t width, uint32_t height, uint32_t sampleCount = 1);
+        /// Constructor. Throws an exception on failure.
+        ParallelReduction(std::shared_ptr<Device> pDevice);
 
-        float4 reduce(RenderContext* pRenderCtx, Texture::SharedPtr pInput);
+        /** Perform parallel reduction.
+            The computations are performed in type T, which must be compatible with the texture format:
+            - float4 for floating-point texture formats (float, snorm, unorm).
+            - uint4 for unsigned integer texture formats.
+            - int4 for signed integer texture formats.
+
+            For the Sum operation, unused components are set to zero if texture format has < 4 components.
+
+            For performance reasons, it is advisable to store the result in a buffer on the GPU,
+            and then issue an asynchronous readback in user code to avoid a full GPU flush.
+
+            The size of the result buffer depends on the executed operation:
+            - Sum needs 16B
+            - MinMax needs 32B
+
+            \param[in] pRenderContext The render context.
+            \param[in] pInput Input texture.
+            \param[in] operation Reduction operation.
+            \param[out] pResult (Optional) The result of the reduction operation is stored here if non-nullptr. Note that this requires a GPU flush!
+            \param[out] pResultBuffer (Optional) Buffer on the GPU to which the result is copied (16B or 32B).
+            \param[out] resultOffset (Optional) Byte offset into pResultBuffer to where the result should be stored.
+        */
+        template<typename T>
+        void execute(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, T* pResult = nullptr, Buffer::SharedPtr pResultBuffer = nullptr, uint64_t resultOffset = 0);
 
     private:
-        ParallelReduction(Type reductionType, uint32_t readbackLatency, uint32_t width, uint32_t height, uint32_t sampleCount);
-        FullScreenPass::SharedPtr mpFirstIterProg;
-        FullScreenPass::SharedPtr mpRestIterProg;
+        void allocate(uint32_t elementCount, uint32_t elementSize);
 
-        struct ResultData
-        {
-            CopyContext::ReadTextureTask::SharedPtr pReadTask;
-            Fbo::SharedPtr pFbo;
-        };
-        std::vector<ResultData> mResultData;
+        std::shared_ptr<Device>             mpDevice;
 
-        uint32_t mCurFbo = 0;
-        Type mReductionType;
-        Sampler::SharedPtr mpPointSampler;
+        ComputeState::SharedPtr             mpState;
+        ComputeProgram::SharedPtr           mpInitialProgram;
+        ComputeProgram::SharedPtr           mpFinalProgram;
+        ComputeVars::SharedPtr              mpVars;
 
-        std::vector<Fbo::SharedPtr> mpTmpResultFbo;
-        static const uint32_t kTileSize = 16;
+        Buffer::SharedPtr                   mpBuffers[2];       ///< Intermediate buffers for reduction iterations.
     };
 }

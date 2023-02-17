@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -38,7 +38,7 @@ namespace Falcor
 
     bool EmissivePowerSampler::update(RenderContext* pRenderContext)
     {
-        FALCOR_PROFILE("EmissivePowerSampler::update");
+        FALCOR_PROFILE(pRenderContext, "EmissivePowerSampler::update");
 
         bool samplerChanged = false;;
 
@@ -53,7 +53,7 @@ namespace Falcor
         {
             // Get global list of emissive triangles.
             FALCOR_ASSERT(mpLightCollection);
-            const auto& triangles = mpLightCollection->getMeshLightTriangles();
+            const auto& triangles = mpLightCollection->getMeshLightTriangles(pRenderContext);
 
             const size_t numTris = triangles.size();
             std::vector<float> weights(numTris);
@@ -167,7 +167,7 @@ namespace Falcor
         {
             float(sum),
             N,
-            Buffer::createTyped<uint2>(N),
+            Buffer::createTyped<uint2>(mpScene->getDevice().get(), N),
         };
 
         result.fullTable->setBlob(&fullTable[0], 0, N * sizeof(uint2));

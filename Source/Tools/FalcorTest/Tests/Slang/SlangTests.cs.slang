@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -33,20 +33,20 @@ RWStructuredBuffer<uint> result;
 void testEnum()
 {
     // Store the enum values cast to uint.
-    result[0] = (uint) Type1::A;
-    result[1] = (uint) Type1::B;
-    result[2] = (uint) Type1::C;
-    result[3] = (uint) Type1::D;
+    result[0] = (uint)Type1::A;
+    result[1] = (uint)Type1::B;
+    result[2] = (uint)Type1::C;
+    result[3] = (uint)Type1::D;
 
-    result[4] = (uint) Type2::A;
-    result[5] = (uint) Type2::B;
-    result[6] = (uint) Type2::C;
-    result[7] = (uint) Type2::D;
+    result[4] = (uint)Type2::A;
+    result[5] = (uint)Type2::B;
+    result[6] = (uint)Type2::C;
+    result[7] = (uint)Type2::D;
 
-    result[8] = (uint) Type3::A;
-    result[9] = (uint) Type3::B;
-    result[10] = (uint) Type3::C;
-    result[11] = (uint) Type3::D;
+    result[8] = (uint)Type3::A;
+    result[9] = (uint)Type3::B;
+    result[10] = (uint)Type3::C;
+    result[11] = (uint)Type3::D;
 }
 
 [numthreads(1, 1, 1)]
@@ -74,8 +74,8 @@ void testScalarTypes()
 
     // 16/32/64-bit integer
     {
-        int16_t a = 30000;      // 0x00007530 -> 0x7530 (30000) in 16-bit.
-        int16_t b = -200000;    // 0xfffcf2c0 -> Truncated to 0xf2c0 (-3392) in 16-bit.
+        int16_t a = 30000;   // 0x00007530 -> 0x7530 (30000) in 16-bit.
+        int16_t b = -200000; // 0xfffcf2c0 -> Truncated to 0xf2c0 (-3392) in 16-bit.
         result[i++] = asuint((int)a);
         result[i++] = asuint((int)b);
     }
@@ -95,8 +95,8 @@ void testScalarTypes()
 
     // 16/32/64-bit unsigned integer
     {
-        uint16_t a = 59123;     // 0x0000e6f3 -> Truncated to 0xe6f3 (59123)
-        uint16_t b = -10;       // 0xfffffff6 -> Truncated to 0xfff6 (65526)
+        uint16_t a = 59123; // 0x0000e6f3 -> Truncated to 0xe6f3 (59123)
+        uint16_t b = -10;   // 0xfffffff6 -> Truncated to 0xfff6 (65526)
         result[i++] = (uint)a;
         result[i++] = (uint)b;
     }
@@ -171,11 +171,13 @@ void testDefaultInitializers()
         double a = 1, b = 2, c = {};
         a = {};
         b = c;
-        asuint(a, result[i], result[i + 1]); i += 2;
-        asuint(b, result[i], result[i + 1]); i += 2;
-        asuint(c, result[i], result[i + 1]); i += 2;
+        asuint(a, result[i], result[i + 1]);
+        i += 2;
+        asuint(b, result[i], result[i + 1]);
+        i += 2;
+        asuint(c, result[i], result[i + 1]);
+        i += 2;
     }
-
 
     // Vector/matrix types (i=15)
     {

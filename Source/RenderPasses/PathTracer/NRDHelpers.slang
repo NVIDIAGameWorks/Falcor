@@ -25,8 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-import Rendering.Materials.IBSDF;
-import Rendering.Materials.Microfacet;
+import Rendering.Materials.IMaterialInstance;
+import Rendering.Materials.IsotropicGGX;
 import RenderPasses.Shared.Denoising.NRDBuffers;
 import RenderPasses.Shared.Denoising.NRDConstants;
 import RenderPasses.Shared.Denoising.NRDHelpers;
@@ -59,10 +59,12 @@ void setNRDPrimaryHitReflectance(NRDBuffers outputNRD, const bool useNRDDemodula
         // Generate primary hit guide buffers.
         if (useNRDDemodulation)
         {
-            const float3 diffuseReflectance = max(kNRDMinReflectance, bsdfProperties.diffuseReflectionAlbedo);
+            // Use sum of reflection/transmission albedo as they are denoised together.
+            const float3 diffuseReflectance = max(kNRDMinReflectance, bsdfProperties.diffuseReflectionAlbedo + bsdfProperties.diffuseTransmissionAlbedo);
             outputNRD.primaryHitDiffuseReflectance[pixel] = float4(diffuseReflectance, 1.f);
 
-            const float NdotV = saturate(dot(sd.N, sd.V));
+            // We use an approximate shading model with a single specular lobe.
+            const float NdotV = saturate(dot(bsdfProperties.guideNormal, sd.V));
             const float ggxAlpha = bsdfProperties.roughness * bsdfProperties.roughness;
             float3 specularReflectance = approxSpecularIntegralGGX(bsdfProperties.specularReflectionAlbedo, ggxAlpha, NdotV);
             specularReflectance = max(kNRDMinReflectance, specularReflectance);
@@ -82,6 +84,21 @@ void setNRDSampleHitDist(NRDBuffers outputNRD, const PathState path, const uint 
     if (path.getVertexIndex() == 2)
     {
         outputNRD.sampleHitDist[outSampleIdx] = float(path.sceneLength);
+    }
+}
+
+void setNRDPrimaryHitSeparatedRadiance(NRDBuffers outputNRD, const bool useNRDDemodulation, const PathState path, const bool isPrimaryHit, const uint outSampleIdx)
+{
+    if (isPrimaryHit)
+    {
+        if (useNRDDemodulation && path.isDeltaReflectionPrimaryHit())
+        {
+            outputNRD.samplePrimaryHitNEEOnDelta[outSampleIdx] = float4(path.L, 0);
+        }
+        else
+        {
+            outputNRD.samplePrimaryHitNEEOnDelta[outSampleIdx] = float4(0.f);
+        }
     }
 }
 
@@ -112,25 +129,27 @@ void setNRDSampleEmission(NRDBuffers outputNRD, const bool useNRDDemodulation, c
     }
 }
 
-void setNRDSampleReflectance(NRDBuffers outputNRD, const bool useNRDDemodulation, const PathState path, const uint outSampleIdx, const bool isPrimaryHit, const ShadingData sd, const BSDFProperties bsdfProperties, const uint lobes, const bool wasDeltaOnlyPathBeforeScattering)
+void setNRDSampleReflectance(NRDBuffers outputNRD, const bool useNRDDemodulation, const PathState path, const uint outSampleIdx, const bool isPrimaryHit, const ShadingData sd, const BSDFProperties bsdfProperties, const uint lobeTypes, const bool wasDeltaOnlyPathBeforeScattering)
 {
     // Demodulate reflectance.
     if (useNRDDemodulation)
     {
-        const bool hasDeltaLobes = (lobes & (uint)LobeType::Delta) != 0;
-        const bool hasNonDeltaLobes = (lobes & (uint)LobeType::NonDelta) != 0;
+        const bool hasDeltaLobes = (lobeTypes & (uint)LobeType::Delta) != 0;
+        const bool hasNonDeltaLobes = (lobeTypes & (uint)LobeType::NonDelta) != 0;
 
         // Always demodulate reflectance from diffuse and specular paths on the primary hit (it seconds as a clear).
         if (isPrimaryHit)
         {
             if (path.isDiffusePrimaryHit())
             {
-                const float3 diffuseReflectance = max(kNRDMinReflectance, bsdfProperties.diffuseReflectionAlbedo);
+                // Use sum of reflection/transmission albedo as they are denoised together.
+                const float3 diffuseReflectance = max(kNRDMinReflectance, bsdfProperties.diffuseReflectionAlbedo + bsdfProperties.specularTransmissionAlbedo);
                 outputNRD.sampleReflectance[outSampleIdx] = float4(diffuseReflectance, 1.f);
             }
             else if (path.isSpecularPrimaryHit())
             {
-                const float NdotV = saturate(dot(sd.N, sd.V));
+                // We use an approximate shading model with a single specular lobe.
+                const float NdotV = saturate(dot(bsdfProperties.guideNormal, sd.V));
                 const float ggxAlpha = bsdfProperties.roughness * bsdfProperties.roughness;
                 float3 specularReflectance = approxSpecularIntegralGGX(bsdfProperties.specularReflectionAlbedo, ggxAlpha, NdotV);
                 specularReflectance = max(kNRDMinReflectance, specularReflectance);
@@ -145,7 +164,7 @@ void setNRDSampleReflectance(NRDBuffers outputNRD, const bool useNRDDemodulation
         else if (path.isDeltaReflectionPrimaryHit() && wasDeltaOnlyPathBeforeScattering && hasNonDeltaLobes)
         {
             const MaterialType materialType = sd.mtl.getMaterialType();
-            const bool hasDeltaLobes = (lobes & (uint)LobeType::Delta) != 0;
+            const bool hasDeltaLobes = (lobeTypes & (uint)LobeType::Delta) != 0;
             float3 deltaReflectance = getMaterialReflectanceForDeltaPaths(materialType, hasDeltaLobes, sd, bsdfProperties);
 
             outputNRD.sampleReflectance[outSampleIdx] = float4(deltaReflectance, 1.f);
@@ -154,7 +173,7 @@ void setNRDSampleReflectance(NRDBuffers outputNRD, const bool useNRDDemodulation
         else if (path.isDeltaTransmissionPath() && wasDeltaOnlyPathBeforeScattering && hasNonDeltaLobes)
         {
             const MaterialType materialType = sd.mtl.getMaterialType();
-            const bool hasDeltaLobes = (lobes & (uint)LobeType::Delta) != 0;
+            const bool hasDeltaLobes = (lobeTypes & (uint)LobeType::Delta) != 0;
             float3 deltaReflectance = getMaterialReflectanceForDeltaPaths(materialType, hasDeltaLobes, sd, bsdfProperties);
 
             outputNRD.sampleReflectance[outSampleIdx] = float4(deltaReflectance, 1.f);

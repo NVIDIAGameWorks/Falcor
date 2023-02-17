@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -84,9 +84,10 @@ namespace Falcor
         };
 
         /** Create a new volume.
+            \param[in] pDevice GPU device.
             \param[in] name The volume name.
         */
-        static SharedPtr create(const std::string& name);
+        static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& name);
 
         /** Render the UI.
             \return True if the volume was modified.
@@ -267,7 +268,7 @@ namespace Falcor
         void updateFromAnimation(const rmcv::mat4& transform) override;
 
     private:
-        GridVolume(const std::string& name);
+        GridVolume(std::shared_ptr<Device> pDevice, const std::string& name);
 
         void updateSequence();
         void updateBounds();
@@ -275,6 +276,7 @@ namespace Falcor
         void markUpdates(UpdateFlags updates);
         void setFlags(uint32_t flags);
 
+        std::shared_ptr<Device> mpDevice;
         std::string mName;
         std::array<GridSequence, (size_t)GridSlot::Count> mGrids;
         uint32_t mGridFrame = 0;

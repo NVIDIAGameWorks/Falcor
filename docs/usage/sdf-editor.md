@@ -7,8 +7,8 @@
 ## Getting Started
 1. Build Falcor.
 2. Launch Mogwai.
-3. Load the script `Source\RenderPasses\SDFEditor\Data\SDFEditor.py`. This uses the `PathTracer`, `AccumulatePass`, `ToneMapper`, and there is an `SDFEditor` pass at the end.
-4. Load the scene `Source\RenderPasses\SDFEditor\Data\SDFEditorStartScene.pyscene`. You should see a single sphere in the center of the windows. Now you can start using the SDF editor. Pull down the GUI for the `SDFEditor` `RenderPass`. Hoover with the mouse over the tooltop, i.e., the "(?)" at the top to get instructions on how to use the editor.
+3. Load the script `data/sdf-editor/SDFEditor.py`. This uses the `PathTracer`, `AccumulatePass`, `ToneMapper`, and there is an `SDFEditor` pass at the end.
+4. Load the scene `data/sdf-editor/SDFEditorStartScene.pyscene`. You should see a single sphere in the center of the windows. Now you can start using the SDF editor. Pull down the GUI for the `SDFEditor` `RenderPass`. Hoover with the mouse over the tooltop, i.e., the "(?)" at the top to get instructions on how to use the editor.
     - `ALT` lets you add/subtract geometry while pressing the left mouse button.
     - `TAB` brings up the GUI for selecting which primitive and which primitive operation.
 
@@ -31,7 +31,7 @@ The SDF Editor is implemented as a render pass, the inputs and outputs are as fo
 | `inputColor` | Input | Color texture from a previous render pass. |
 | `output` | Output | Final color texture. |
 
-A simple render script with the SDF Editor using the path tracer can be seen in `Source/RenderPasses/SDFEditor/Data/SDFEditor.py`.
+A simple render script with the SDF Editor using the path tracer can be seen in `data/sdf-editor/SDFEditor.py`.
 
 To begin editing with the SDF editor, you need to have at least one SDF grid instance of the type SBS in the scene. The SDF grid is created by calling `SDFGrid.createSBS()`. It takes two optional arguments. One for the brick width (`brickWidth`), which is the number of voxels it should pack into one AABB to be ray traced, the other argument is if it should compress the data or not (`compressed`). The create function returns a SBS grid object that can be added to the scene by calling `addSDFGrid()` from the SceneBuilder.
 

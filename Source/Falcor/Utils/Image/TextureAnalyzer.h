@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -95,7 +95,7 @@ namespace Falcor
         /** Create a new texture analyzer.
             \return A new object, or throws an exception if creation failed.
         */
-        static SharedPtr create();
+        static SharedPtr create(std::shared_ptr<Device> pDevice);
 
         /** Analyze 2D texture to check if it has a constant color.
             Throws an exception if the input texture is of unsupported format or dimension.
@@ -134,9 +134,10 @@ namespace Falcor
         static size_t getResultSize();
 
     private:
-        TextureAnalyzer();
+        TextureAnalyzer(std::shared_ptr<Device> pDevice);
         void checkFormatSupport(const Texture::SharedPtr pInput, uint32_t mipLevel, uint32_t arraySlice) const;
 
+        std::shared_ptr<Device> mpDevice;
         ComputePass::SharedPtr mpClearPass;
         ComputePass::SharedPtr mpAnalyzePass;
     };

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,15 +26,13 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "BlitPass.h"
-#include "RenderGraph/RenderPassLibrary.h"
-
-const RenderPass::Info BlitPass::kInfo { "BlitPass", "Blit a texture into a different texture." };
 
 namespace
 {
     const char kDst[] = "dst";
     const char kSrc[] = "src";
     const char kFilter[] = "filter";
+    const char kOutputFormat[] = "outputFormat";
 
     void regBlitPass(pybind11::module& m)
     {
@@ -43,22 +41,16 @@ namespace
     }
 }
 
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" FALCOR_API_EXPORT const char* getProjDir()
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
-    return PROJECT_DIR;
-}
-
-extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
-{
-    lib.registerPass(BlitPass::kInfo, BlitPass::create);
+    registry.registerClass<RenderPass, BlitPass>();
     ScriptBindings::registerBinding(regBlitPass);
 }
 
 RenderPassReflection BlitPass::reflect(const CompileData& compileData)
 {
     RenderPassReflection r;
-    r.addOutput(kDst, "The destination texture");
+    r.addOutput(kDst, "The destination texture").format(mOutputFormat);
     r.addInput(kSrc, "The source texture");
     return r;
 }
@@ -68,17 +60,18 @@ void BlitPass::parseDictionary(const Dictionary& dict)
     for (const auto& [key, value] : dict)
     {
         if (key == kFilter) setFilter(value);
+        if (key == kOutputFormat) mOutputFormat = value;
         else logWarning("Unknown field '{}' in a BlitPass dictionary.", key);
     }
 }
 
-BlitPass::SharedPtr BlitPass::create(RenderContext* pRenderContext, const Dictionary& dict)
+BlitPass::SharedPtr BlitPass::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
-    return SharedPtr(new BlitPass(dict));
+    return SharedPtr(new BlitPass(std::move(pDevice), dict));
 }
 
-BlitPass::BlitPass(const Dictionary& dict)
-    : RenderPass(kInfo)
+BlitPass::BlitPass(std::shared_ptr<Device> pDevice, const Dictionary& dict)
+    : RenderPass(std::move(pDevice))
 {
     parseDictionary(dict);
 }
@@ -87,6 +80,7 @@ Dictionary BlitPass::getScriptingDictionary()
 {
     Dictionary d;
     d[kFilter] = mFilter;
+    if (mOutputFormat != ResourceFormat::Unknown) d[kOutputFormat] = mOutputFormat;
     return d;
 }
 

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,142 +27,62 @@
  **************************************************************************/
 #pragma once
 
-#if defined(FALCOR_D3D12)
-#include "Buffer.h"
-#include "Core/Macros.h"
-#include <memory>
-#include <vector>
-#elif defined(FALCOR_GFX)
+#include "Device.h"
 #include <slang-gfx.h>
-#endif
 
 namespace Falcor
 {
-    class Scene;
-    class Program;
-    class RtStateObject;
-    class RtProgramVars;
-    class RenderContext;
+class Scene;
+class Program;
+class RtStateObject;
+class RtProgramVars;
+class RenderContext;
 
-    /** This class represents the GPU shader table for raytracing programs.
-        We are using the following layout for the shader table:
+// clang-format off
+/**
+ * This class represents the GPU shader table for raytracing programs.
+ * We are using the following layout for the shader table:
+ *
+ * +------------+--------+--------+-----+--------+---------+--------+-----+--------+--------+-----+--------+-----+---------+---------+-----+---------+
+ * |            |        |        | ... |        |         |        | ... |        |        | ... |        | ... |         |         | ... |         |
+ * |   RayGen   |  Miss  |  Miss  | ... |  Miss  |  Hit    |  Hit   | ... |  Hit   |  Hit   | ... |  Hit   | ... |  Hit    |  Hit    | ... |  Hit    |
+ * |   Entry    |  Idx0  |  Idx1  | ... | IdxM-1 |  Ray0   |  Ray1  | ... | RayK-1 |  Ray0  | ... | RayK-1 | ... |  Ray0   |  Ray1   | ... | RayK-1  |
+ * |            |        |        | ... |        |  Geom0  |  Geom0 | ... |  Geom0 |  Geom1 | ... |  Geom1 | ... | GeomN-1 | GeomN-1 | ... | GeomN-1 |
+ * +------------+--------+--------+-----+--------+---------+--------+-----+--------+--------+-----+--------+-----+---------+---------+-----+---------+
+ *
+ * The first record is the ray gen record, followed by the M miss records, followed by the geometry hit group records.
+ * For each of the N geometries in the scene we have K hit group records, where K is the number of ray types (the same for all geometries).
+ * The size of each record is based on the requirements of the local root signatures. By default, raygen, miss, and hit group records
+ * contain only the program identifier (32B).
+ *
+ * User provided local root signatures are currently not supported for performance reasons. Managing and updating data for custom root
+ * signatures results in significant overhead. To get the root signature that matches this table, call the static function
+ * getRootSignature().
+ */
+// clang-format on
 
-        +------------+--------+--------+-----+--------+---------+--------+-----+--------+--------+-----+--------+-----+---------+---------+-----+---------+
-        |            |        |        | ... |        |         |        | ... |        |        | ... |        | ... |         |         | ... |         |
-        |   RayGen   |  Miss  |  Miss  | ... |  Miss  |  Hit    |  Hit   | ... |  Hit   |  Hit   | ... |  Hit   | ... |  Hit    |  Hit    | ... |  Hit    |
-        |   Entry    |  Idx0  |  Idx1  | ... | IdxM-1 |  Ray0   |  Ray1  | ... | RayK-1 |  Ray0  | ... | RayK-1 | ... |  Ray0   |  Ray1   | ... | RayK-1  |
-        |            |        |        | ... |        |  Geom0  |  Geom0 | ... |  Geom0 |  Geom1 | ... |  Geom1 | ... | GeomN-1 | GeomN-1 | ... | GeomN-1 |
-        +------------+--------+--------+-----+--------+---------+--------+-----+--------+--------+-----+--------+-----+---------+---------+-----+---------+
+// In GFX, we use gfx::IShaderTable directly. We wrap
+// the ComPtr with `ShaderTablePtr` class so it will be freed
+// with the deferred release mechanism.
+class ShaderTablePtr
+{
+public:
+    ShaderTablePtr(std::shared_ptr<Device> pDevice) : mpDevice(std::move(pDevice)) {}
 
-        The first record is the ray gen record, followed by the M miss records, followed by the geometry hit group records.
-        For each of the N geometries in the scene we have K hit group records, where K is the number of ray types (the same for all geometries).
-        The size of each record is based on the requirements of the local root signatures. By default, raygen, miss, and hit group records contain only the program identifier (32B).
+    gfx::IShaderTable& operator*() { return *mTable; }
 
-        User provided local root signatures are currently not supported for performance reasons. Managing and updating data for custom root signatures results in significant overhead.
-        To get the root signature that matches this table, call the static function getRootSignature().
-    */
-#if defined(FALCOR_D3D12)
-    class FALCOR_API ShaderTable
-    {
-    public:
-        using SharedPtr = std::shared_ptr<ShaderTable>;
+    gfx::IShaderTable* operator->() { return mTable; }
 
-        /** Create a new object
-        */
-        static SharedPtr create();
+    gfx::IShaderTable* get() { return mTable.get(); }
 
-        /** Update the shader table.
-            This function doesn't do any early out. If it's called, it will always update the table.
-            Call it only when the RtStateObject changed or when the program was recompiled
-        */
-        void update(
-            RenderContext*          pCtx,
-            RtStateObject*          pRtso,
-            RtProgramVars const*    pVars);
+    gfx::IShaderTable** writeRef() { return mTable.writeRef(); }
 
-        void flushBuffer(
-            RenderContext*          pCtx);
+    operator gfx::IShaderTable*() { return mTable.get(); }
 
-        struct SubTableInfo
-        {
-            uint32_t recordSize = 0;
-            uint32_t recordCount = 0;
-            uint32_t offset = 0;
-        };
+    ~ShaderTablePtr() { mpDevice->releaseResource(mTable); }
 
-        enum class SubTableType
-        {
-            RayGen,
-            Miss,
-            Hit,
-            Count,
-        };
-
-        SubTableInfo getSubTableInfo(SubTableType type) const { return mSubTables[int32_t(type)]; }
-        uint32_t getRecordSize(SubTableType type) const { return getSubTableInfo(type).recordSize; }
-        uint32_t getRecordCount(SubTableType type) const { return getSubTableInfo(type).recordCount; }
-        uint32_t getOffset(SubTableType type) const { return getSubTableInfo(type).offset; }
-
-        uint8_t* getRecordPtr(SubTableType type, uint32_t index);
-
-        uint32_t getShaderIdentifierSize() const { return mShaderIdentifierSize; }
-
-        /** Get the buffer
-        */
-        const Buffer::SharedPtr& getBuffer() const { return mpBuffer; }
-
-        /** Get the size of the RayGen record
-        */
-        uint32_t getRayGenRecordSize() const { return getRecordSize(SubTableType::RayGen); }
-
-        /** Get the offset of the RayGen table
-        */
-        uint32_t getRayGenTableOffset() const { return getOffset(SubTableType::RayGen); }
-
-        /** Get the size of the miss record
-        */
-        uint32_t getMissRecordSize() const { return getRecordSize(SubTableType::Miss); }
-
-        /** Get the number of miss records
-        */
-        uint32_t getMissRecordCount() const { return getRecordCount(SubTableType::Miss); }
-
-        /** Get the offset to the miss table
-        */
-        uint32_t getMissTableOffset() const { return getOffset(SubTableType::Miss); }
-
-        /** Get the size of the hit record
-        */
-        uint32_t getHitRecordSize() const { return getRecordSize(SubTableType::Hit); }
-
-        /** Get the number of hit entries
-        */
-        uint32_t getHitRecordCount() const { return getRecordCount(SubTableType::Hit); }
-
-        /** Get the offset to the first hit table
-        */
-        uint32_t getHitTableOffset() const { return getOffset(SubTableType::Hit); }
-
-        RtStateObject* getRtso() const { return mpRtso; }
-
-    private:
-        ShaderTable();
-        void apiInit();
-
-        SubTableInfo mSubTables[int(SubTableType::Count)];
-
-        RtStateObject*          mpRtso = nullptr;
-        Buffer::SharedPtr       mpBuffer;
-        std::vector<uint8_t>    mData;
-
-        uint32_t mShaderIdentifierSize = 0;
-        uint32_t mShaderRecordAlignment = 0;
-        uint32_t mShaderTableAlignment = 0;
-    };
-    using ShaderTablePtr = ShaderTable::SharedPtr;
-
-#elif defined(FALCOR_GFX)
-    // In GFX, we use gfx::IShaderTable directly.
-    using ShaderTablePtr = Slang::ComPtr<gfx::IShaderTable>;
-#endif
-}
+private:
+    std::shared_ptr<Device> mpDevice;
+    Slang::ComPtr<gfx::IShaderTable> mTable;
+};
+} // namespace Falcor

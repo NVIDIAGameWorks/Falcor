@@ -2,11 +2,6 @@ from falcor import *
 
 def render_graph_PathTracer():
     g = RenderGraph("PathTracer")
-    loadRenderPassLibrary("AccumulatePass.dll")
-    loadRenderPassLibrary("GBuffer.dll")
-    loadRenderPassLibrary("PathTracer.dll")
-    loadRenderPassLibrary("ToneMapper.dll")
-
     PathTracer = createPass("PathTracer", {'samplesPerPixel': 1})
     g.addPass(PathTracer, "PathTracer")
     VBufferRT = createPass("VBufferRT", {'samplePattern': SamplePattern.Center, 'sampleCount': 16, 'useAlphaTest': True})
@@ -29,7 +24,7 @@ def render_graph_PathTracer():
     g.markOutput("PathTracer.albedo")
     g.markOutput("PathTracer.specularAlbedo")
     g.markOutput("PathTracer.indirectAlbedo")
-    g.markOutput("PathTracer.normal")
+    g.markOutput("PathTracer.guideNormal")
     g.markOutput("PathTracer.reflectionPosW")
     g.markOutput("PathTracer.rayCount")
     g.markOutput("PathTracer.pathLength")

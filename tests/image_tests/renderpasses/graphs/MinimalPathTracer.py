@@ -2,10 +2,6 @@ from falcor import *
 
 def render_graph_MinimalPathTracer():
     g = RenderGraph("MinimalPathTracer")
-    loadRenderPassLibrary("AccumulatePass.dll")
-    loadRenderPassLibrary("GBuffer.dll")
-    loadRenderPassLibrary("MinimalPathTracer.dll")
-    loadRenderPassLibrary("ToneMapper.dll")
     MinimalPathTracer = createPass("MinimalPathTracer")
     g.addPass(MinimalPathTracer, "MinimalPathTracer")
     VBufferRT = createPass("VBufferRT")

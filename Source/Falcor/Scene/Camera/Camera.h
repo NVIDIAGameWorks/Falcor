@@ -48,7 +48,6 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<Camera>;
-        using SharedConstPtr = std::shared_ptr<const Camera>;
 
         // Default dimensions of full frame cameras and 35mm film
         static const float kDefaultFrameHeight;

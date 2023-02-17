@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -38,6 +38,8 @@
 
 namespace Falcor
 {
+    class RenderContext;
+
     /** Container class for CPU/GPU profiling.
         This class uses the most accurately available CPU and GPU timers to profile given events.
         It automatically creates event hierarchies based on the order and nesting of the calls made.
@@ -47,8 +49,6 @@ namespace Falcor
     class FALCOR_API Profiler
     {
     public:
-        using SharedPtr = std::shared_ptr<Profiler>;
-
         enum class Flags
         {
             None        = 0x0,
@@ -87,7 +87,7 @@ namespace Falcor
         private:
             Event(const std::string& name);
 
-            void start(uint32_t frameIndex);
+            void start(Profiler& profiler, uint32_t frameIndex);
             void end(uint32_t frameIndex);
             void endFrame(uint32_t frameIndex);
 
@@ -158,6 +158,10 @@ namespace Falcor
             friend class Profiler;
         };
 
+        /** Constructor.
+        */
+        Profiler(Device* pDevice);
+
         /** Check if the profiler is enabled.
             \return Returns true if the profiler is enabled.
         */
@@ -196,19 +200,21 @@ namespace Falcor
         /** Finish profiling for the entire frame.
             Note: Must be called once at the end of each frame.
         */
-        void endFrame();
+        void endFrame(RenderContext* pRenderContext);
 
         /** Start profiling a new event and update the events hierarchies.
+            \param[in] pRenderContext Render context for measuring GPU time.
             \param[in] name The event name.
             \param[in] flags The event flags.
         */
-        void startEvent(const std::string& name, Flags flags = Flags::Default);
+        void startEvent(RenderContext* pRenderContext, const std::string& name, Flags flags = Flags::Default);
 
         /** Finish profiling a new event and update the events hierarchies.
+            \param[in] pRenderContext Render context for measuring GPU time.
             \param[in] name The event name.
             \param[in] flags The event flags.
         */
-        void endEvent(const std::string& name, Flags flags = Flags::Default);
+        void endEvent(RenderContext* pRenderContext, const std::string& name, Flags flags = Flags::Default);
 
         /** Get the event, or create a new one if the event does not yet exist.
             This is a public interface to facilitate more complicated construction of event names and finegrained control over the profiled region.
@@ -225,16 +231,6 @@ namespace Falcor
         */
         pybind11::dict getPythonEvents() const;
 
-        /** Global profiler instance pointer.
-        */
-        static const Profiler::SharedPtr& instancePtr();
-
-        /** Global profiler instance.
-        */
-        static Profiler& instance() { return *instancePtr(); }
-
-        Profiler();
-
     private:
         /** Create a new event.
             \param[in] name The event name.
@@ -247,6 +243,8 @@ namespace Falcor
             \return Returns the event or nullptr if none was found.
         */
         Event* findEvent(const std::string& name);
+
+        Device* mpDevice;
 
         bool mEnabled = false;
         bool mPaused = false;
@@ -271,31 +269,23 @@ namespace Falcor
         The FALCOR_PROFILE macro wraps creation of local ProfilerEvent objects when profiling is enabled,
         and does nothing when profiling is disabled, so should be used instead of directly creating ProfilerEvent objects.
     */
-    class ProfilerEvent
+    class FALCOR_API ScopedProfilerEvent
     {
     public:
-        ProfilerEvent(const std::string& name, Profiler::Flags flags = Profiler::Flags::Default)
-            : mName(name)
-            , mFlags(flags)
-        {
-            Profiler::instance().startEvent(mName, mFlags);
-        }
-
-        ~ProfilerEvent()
-        {
-            Profiler::instance().endEvent(mName, mFlags);
-        }
+        ScopedProfilerEvent(RenderContext* pRenderContext, const std::string& name, Profiler::Flags flags = Profiler::Flags::Default);
+        ~ScopedProfilerEvent();
 
     private:
+        RenderContext* mpRenderContext;
         const std::string mName;
         Profiler::Flags mFlags;
     };
 }
 
 #if FALCOR_ENABLE_PROFILER
-#define FALCOR_PROFILE(_name) Falcor::ProfilerEvent _profileEvent##__LINE__(_name)
-#define FALCOR_PROFILE_CUSTOM(_name, _flags) Falcor::ProfilerEvent _profileEvent##__LINE__(_name, _flags)
+#define FALCOR_PROFILE(_pRenderContext, _name) Falcor::ScopedProfilerEvent _profileEvent##__LINE__(_pRenderContext, _name)
+#define FALCOR_PROFILE_CUSTOM(_pRenderContext, _name, _flags) Falcor::ScopedProfilerEvent _profileEvent##__LINE__(_pRenderContext, _name, _flags)
 #else
-#define FALCOR_PROFILE(_name)
-#define FALCOR_PROFILE_CUSTOM(_name, _flags)
+#define FALCOR_PROFILE(_pRenderContext, _name)
+#define FALCOR_PROFILE_CUSTOM(_pRenderContext, _name, _flags)
 #endif

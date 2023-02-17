@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "Falcor.h"
 #include "MogwaiSettings.h"
-#include "RenderGraph/RenderPassLibrary.h"
+#include "Core/Program/ProgramManager.h"
 #include "Utils/Scripting/Console.h"
 #include "Utils/Settings.h"
 #include <iomanip>
@@ -46,25 +46,24 @@ namespace Mogwai
                 "F10 - Show/hide the FPS\n"
                 "F11 - Enable/disable main menu auto-hiding\n"
                 "\n";
-            msgBox(help + gpFramework->getKeyboardShortcutsStr());
+            msgBox("Help", help + SampleApp::getKeyboardShortcutsStr());
         }
 
         void about()
         {
             std::string s = Renderer::getVersionString() + "\n";
-            s += "Powered by Falcor ";
-            s += FALCOR_VERSION_STRING;
-            msgBox(s);
+            s += "Powered by Falcor " + Falcor::getLongVersionString();
+            msgBox("About", s);
         }
 
-        void showFps(Gui* pGui)
+        void showFps(Gui* pGui, Renderer* pRenderer)
         {
             Gui::Window w(pGui, "##FPS", { 0, 0 }, { 10, 25 }, Gui::WindowFlags::AllowMove | Gui::WindowFlags::AutoResize | Gui::WindowFlags::SetFocus);
-            std::string msg = gpFramework->getFrameRate().getMsg(gpFramework->isVsyncEnabled());
+            std::string msg = pRenderer->getFrameRate().getMsg(pRenderer->isVsyncEnabled());
             w.text(msg);
         }
 
-        void winSizeUI(Gui::Window& w)
+        void winSizeUI(Gui::Window& w, Renderer* pRenderer)
         {
             static const uint2 resolutions[] =
             {
@@ -97,7 +96,7 @@ namespace Mogwai
                 return kCustomIndex;
             };
 
-            uint2 currentRes = gpFramework->getWindow()->getClientAreaSize();
+            uint2 currentRes = pRenderer->getWindow()->getClientAreaSize();
             static const Gui::DropdownList dropdownList = initDropDown(resolutions, (uint32_t)std::size(resolutions));
             uint32_t currentVal = initDropDownVal(resolutions, (uint32_t)std::size(resolutions), currentRes);
             w.text("Window Size");
@@ -116,7 +115,7 @@ namespace Mogwai
                 else
                 {
                     customSize = {};
-                    gpFramework->resizeSwapChain(resolutions[currentVal].x, resolutions[currentVal].y);
+                    pRenderer->resizeFrameBuffer(resolutions[currentVal].x, resolutions[currentVal].y);
                 }
             }
 
@@ -127,7 +126,7 @@ namespace Mogwai
                 w.var("##custres", customSize);
                 if (w.button("Apply##custres", true))
                 {
-                    gpFramework->resizeSwapChain(customSize.x, customSize.y);
+                    pRenderer->resizeFrameBuffer(customSize.x, customSize.y);
                     forceCustom = false;
                 }
                 if (w.button("Cancel##custres", true))
@@ -142,14 +141,14 @@ namespace Mogwai
     void MogwaiSettings::renderWindowSettings(Gui* pGui)
     {
         Gui::Window w(pGui, "Window", mShowWinSize, { 0, 0 }, { 350, 300 }, Gui::WindowFlags::AllowMove | Gui::WindowFlags::AutoResize | Gui::WindowFlags::ShowTitleBar | Gui::WindowFlags::CloseButton);
-        winSizeUI(w);
+        winSizeUI(w, mpRenderer);
     }
 
     void MogwaiSettings::renderTimeSettings(Gui* pGui)
     {
         Gui::Window w(pGui, "Time", mShowTime, { 0, 0 }, { 350, 25 }, Gui::WindowFlags::AllowMove | Gui::WindowFlags::AutoResize | Gui::WindowFlags::ShowTitleBar | Gui::WindowFlags::CloseButton);
 
-        Clock& clock = gpFramework->getGlobalClock();
+        Clock& clock = mpRenderer->getGlobalClock();
         clock.renderUI(w);
         w.separator(2);
 
@@ -192,7 +191,7 @@ namespace Mogwai
     {
         if (!mShowGraphUI || mpRenderer->mGraphs.empty()) return;
 
-        Gui::Window w(pGui, "Graphs", mShowGraphUI, { 300, 400 }, { 10, 80 }, Gui::WindowFlags::Default);
+        Gui::Window w(pGui, "Graphs", mShowGraphUI, { 300, 600 }, { 10, 80 }, Gui::WindowFlags::Default);
         if (!mShowGraphUI) return;
 
         if (mpRenderer->mEditorProcess == 0)
@@ -223,7 +222,7 @@ namespace Mogwai
         {
             g.text("Program compilation:\n");
 
-            const auto& s = Program::getGlobalCompilationStats();
+            const auto& s = mpRenderer->getDevice()->getProgramManager()->getCompilationStats();
             std::ostringstream oss;
             oss << "Program version count: " << s.programVersionCount << std::endl
                 << "Program kernels count: " << s.programKernelsCount << std::endl
@@ -233,7 +232,8 @@ namespace Mogwai
                 << "Program kernels time (max): " << s.programKernelsMaxTime << " s" << std::endl;
             g.text(oss.str());
 
-            if (g.button("Reset")) Program::resetGlobalCompilationStats();
+            if (g.button("Reset"))
+                mpRenderer->getDevice()->getProgramManager()->resetCompilationStats();
         }
 
         // Scene UI
@@ -252,7 +252,7 @@ namespace Mogwai
 
         // Graph UI
         auto pActiveGraph = mpRenderer->mGraphs[mpRenderer->mActiveGraph].pGraph;
-        pActiveGraph->renderUI(w);
+        pActiveGraph->renderUI(mpRenderer->getRenderContext(), w);
     }
 
     void MogwaiSettings::renderMainMenu(Gui* pGui)
@@ -328,10 +328,10 @@ namespace Mogwai
         Gui* pGui = (Gui*)pGui__;
         renderMainMenu(pGui);
         renderGraphs(pGui);
-        if (mShowFps) showFps(pGui);
+        if (mShowFps) showFps(pGui, mpRenderer);
         if (mShowTime) renderTimeSettings(pGui);
         if (mShowWinSize) renderWindowSettings(pGui);
-        Console::instance().render(pGui__, mShowConsole);
+        mpRenderer->getConsole().render(pGui__, mShowConsole);
     }
 
     bool MogwaiSettings::mouseEvent(const MouseEvent& e)
@@ -400,9 +400,9 @@ namespace Mogwai
         return false;
     }
 
-    void MogwaiSettings::onOptionsChange(const Properties& options)
+    void MogwaiSettings::onOptionsChange(const SettingsProperties& options)
     {
-        if (auto local = options.get<Properties>("MogwaiSettings"))
+        if (auto local = options.get<SettingsProperties>("MogwaiSettings"))
         {
             mAutoHideMenu = local->get("mAutoHideMenu", mAutoHideMenu);
             mShowFps      = local->get("mShowFps", mShowFps);

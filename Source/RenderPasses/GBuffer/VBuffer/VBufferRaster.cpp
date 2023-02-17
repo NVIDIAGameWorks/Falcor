@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,8 +30,6 @@
 #include "RenderGraph/RenderPassHelpers.h"
 #include "RenderGraph/RenderPassStandardFlags.h"
 
-const RenderPass::Info VBufferRaster::kInfo { "VBufferRaster", "Rasterized V-buffer generation pass." };
-
 namespace
 {
     const std::string kProgramFile = "RenderPasses/GBuffer/VBuffer/VBufferRaster.3d.slang";
@@ -44,6 +42,7 @@ namespace
     const ChannelList kVBufferExtraChannels =
     {
         { "mvec",           "gMotionVector",    "Motion vector",                true /* optional */, ResourceFormat::RG32Float   },
+        { "mask",           "gMask",            "Mask",                         true /* optional */, ResourceFormat::R32Float    },
     };
 
     const std::string kDepthName = "depth";
@@ -64,20 +63,20 @@ RenderPassReflection VBufferRaster::reflect(const CompileData& compileData)
     return reflector;
 }
 
-VBufferRaster::SharedPtr VBufferRaster::create(RenderContext* pRenderContext, const Dictionary& dict)
+VBufferRaster::SharedPtr VBufferRaster::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
-    return SharedPtr(new VBufferRaster(dict));
+    return SharedPtr(new VBufferRaster(std::move(pDevice), dict));
 }
 
-VBufferRaster::VBufferRaster(const Dictionary& dict)
-    : GBufferBase(kInfo)
+VBufferRaster::VBufferRaster(std::shared_ptr<Device> pDevice, const Dictionary& dict)
+    : GBufferBase(std::move(pDevice))
 {
     // Check for required features.
-    if (!gpDevice->isFeatureSupported(Device::SupportedFeatures::Barycentrics))
+    if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::Barycentrics))
     {
         throw RuntimeError("VBufferRaster: Pixel shader barycentrics are not supported by the current device");
     }
-    if (!gpDevice->isFeatureSupported(Device::SupportedFeatures::RasterizerOrderedViews))
+    if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RasterizerOrderedViews))
     {
         throw RuntimeError("VBufferRaster: Rasterizer ordered views (ROVs) are not supported by the current device");
     }
@@ -85,14 +84,14 @@ VBufferRaster::VBufferRaster(const Dictionary& dict)
     parseDictionary(dict);
 
     // Initialize graphics state
-    mRaster.pState = GraphicsState::create();
+    mRaster.pState = GraphicsState::create(mpDevice);
 
     // Set depth function
     DepthStencilState::Desc dsDesc;
     dsDesc.setDepthFunc(DepthStencilState::Func::LessEqual).setDepthWriteMask(true);
     mRaster.pState->setDepthStencilState(DepthStencilState::create(dsDesc));
 
-    mpFbo = Fbo::create();
+    mpFbo = Fbo::create(mpDevice.get());
 }
 
 void VBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
@@ -116,7 +115,7 @@ void VBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedP
         desc.addTypeConformances(pScene->getTypeConformances());
         desc.setShaderModel(kShaderModel);
 
-        mRaster.pProgram = GraphicsProgram::create(desc, pScene->getSceneDefines());
+        mRaster.pProgram = GraphicsProgram::create(mpDevice, desc, pScene->getSceneDefines());
         mRaster.pState->setProgram(mRaster.pProgram);
     }
 }
@@ -154,7 +153,7 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     // Create program vars.
     if (!mRaster.pVars)
     {
-        mRaster.pVars = GraphicsVars::create(mRaster.pProgram.get());
+        mRaster.pVars = GraphicsVars::create(mpDevice, mRaster.pProgram.get());
     }
 
     mpFbo->attachColorTarget(pOutput, 0);

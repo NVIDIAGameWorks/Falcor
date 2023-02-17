@@ -27,12 +27,13 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
+#include "Core/SampleApp.h"
 #include "RenderGraph/RenderGraph.h"
 #include "RenderGraph/RenderGraphUI.h"
 
 using namespace Falcor;
 
-class RenderGraphEditor : public IRenderer
+class RenderGraphEditor : public SampleApp
 {
 public:
     struct Options
@@ -42,12 +43,12 @@ public:
         bool runFromMogwai = false;
     };
 
-    RenderGraphEditor(const Options& options);
+    RenderGraphEditor(const SampleAppConfig& config, const Options& options);
     ~RenderGraphEditor();
 
     void onLoad(RenderContext* pRenderContext) override;
     void onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
-    void onResizeSwapChain(uint32_t width, uint32_t height) override;
+    void onResize(uint32_t width, uint32_t height) override;
     void onGuiRender(Gui* pGui) override;
     void onDroppedFile(const std::filesystem::path& path) override;
 
@@ -57,7 +58,6 @@ private:
     void serializeRenderGraph(const std::filesystem::path& path);
     void deserializeRenderGraph(const std::filesystem::path& path);
     void renderLogWindow(Gui::Widgets& widget);
-    void loadAllPassLibraries();
 
     Options mOptions;
 

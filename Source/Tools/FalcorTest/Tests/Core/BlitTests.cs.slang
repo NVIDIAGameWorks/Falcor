@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -39,9 +39,10 @@ cbuffer CB
 }
 
 [numthreads(16, 16, 1)]
-void readback(uint3 threadId : SV_DispatchThreadID)
+void readback(uint3 threadId: SV_DispatchThreadID)
 {
-    if (any(threadId.xy >= sz)) return;
+    if (any(threadId.xy >= sz))
+        return;
 
     uint idx = threadId.y * sz.x + threadId.x;
 #if FLOAT_FORMAT

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -37,10 +37,12 @@ using namespace Falcor;
 class ToneMapper : public RenderPass
 {
 public:
+    FALCOR_PLUGIN_CLASS(ToneMapper, "ToneMapper", {
+        "Tone-map a color-buffer. The resulting buffer is always in the [0, 1] range. The pass supports auto-exposure and eye-adaptation."
+    });
+
     using SharedPtr = std::shared_ptr<ToneMapper>;
     using Operator = ToneMapperOperator;
-
-    static const Info kInfo;
 
     enum class ExposureMode
     {
@@ -48,9 +50,7 @@ public:
         ShutterPriority,        // Keep shutter constant when modifying EV
     };
 
-    /** Create a new object
-    */
-    static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
@@ -88,7 +88,7 @@ public:
     ExposureMode getExposureMode() const { return mExposureMode; }
 
 private:
-    ToneMapper(const Dictionary& dict);
+    ToneMapper(std::shared_ptr<Device> pDevice, const Dictionary& dict);
     void parseDictionary(const Dictionary& dict);
 
     void createToneMapPass();

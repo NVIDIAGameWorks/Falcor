@@ -1,4 +1,4 @@
-add_renderpass(WhittedRayTracer)
+add_plugin(WhittedRayTracer)
 
 target_sources(WhittedRayTracer PRIVATE
     WhittedRayTracer.cpp
@@ -8,6 +8,5 @@ target_sources(WhittedRayTracer PRIVATE
 )
 
 target_copy_shaders(WhittedRayTracer RenderPasses/WhittedRayTracer)
-target_copy_data_folder(WhittedRayTracer RenderPasses/WhittedRayTracer)
 
 target_source_group(WhittedRayTracer "RenderPasses")

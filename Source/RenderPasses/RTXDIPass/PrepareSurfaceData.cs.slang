@@ -48,14 +48,14 @@ struct PrepareSurfaceData
 
         if (isValidSurface)
         {
-            // Create BSDF instance and query its properties.
-            let bsdf = gScene.materials.getBSDF(sd, lod);
-            let bsdfProperties = bsdf.getProperties(sd);
+            // Create material instance and query its properties.
+            let mi = gScene.materials.getMaterialInstance(sd, lod);
+            let bsdfProperties = mi.getProperties(sd);
 
             // RTXDI uses a simple material model with only diffuse and specular reflection lobes.
             // We query the BSDF for the diffuse albedo and specular reflectance, and use their luminances as weights.
             // Note: Final shading uses the full material model, the simplified model is only used for resampling purposes.
-            gRTXDI.setSurfaceData(pixel, sd.computeNewRayOrigin(), sd.N, bsdfProperties.diffuseReflectionAlbedo, bsdfProperties.specularReflectance, bsdfProperties.roughness);
+            gRTXDI.setSurfaceData(pixel, sd.computeNewRayOrigin(), bsdfProperties.guideNormal, bsdfProperties.diffuseReflectionAlbedo, bsdfProperties.specularReflectance, bsdfProperties.roughness);
         }
         else
         {

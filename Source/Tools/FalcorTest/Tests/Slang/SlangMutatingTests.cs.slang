@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -33,7 +33,8 @@ struct Data
     uint a;
     uint b;
 
-    [mutating] void decode(uint2 packed)
+    [mutating]
+    void decode(uint2 packed)
     {
         a = packed.x;
         b = packed.y;

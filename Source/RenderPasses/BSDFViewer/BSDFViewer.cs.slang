@@ -208,11 +208,11 @@ struct BSDFViewer
     */
     uint getActiveLobes()
     {
-        uint lobes = 0;
-        if (params.enableDiffuse) lobes |= (uint)LobeType::DiffuseReflection;
-        if (params.enableSpecular) lobes |= (uint)LobeType::SpecularReflection | (uint)LobeType::DeltaReflection;
+        uint lobeTypes = 0;
+        if (params.enableDiffuse) lobeTypes |= (uint)LobeType::DiffuseReflection;
+        if (params.enableSpecular) lobeTypes |= (uint)LobeType::SpecularReflection | (uint)LobeType::DeltaReflection;
         // TODO: Viewer doesn't support transmission lobes yet
-        return lobes;
+        return lobeTypes;
     }
 
     /** Evaluates the BSDF slice for a given viewport coordinate.
@@ -230,11 +230,11 @@ struct BSDFViewer
         data.wo = lightDir;
 
         // Create BSDF instance.
-        let bsdf = gScene.materials.getBSDF(data.sd, lod);
-        data.bsdfProperties = bsdf.getProperties(data.sd);
+        let mi = gScene.materials.getMaterialInstance(data.sd, lod);
+        data.bsdfProperties = mi.getProperties(data.sd);
 
         // Evaluate BSDF at shading point.
-        float3 f = bsdf.eval(data.sd, data.wo, sg);
+        float3 f = mi.eval(data.sd, data.wo, sg);
 
         // Remove cosine term if it's disabled in the viewer.
         if (!params.applyNdotL)
@@ -249,24 +249,24 @@ struct BSDFViewer
     /** Samples the BSDF to evaluate incident illumination.
         This is done differently depending on the configuration.
         \param[in] sd Shading data.
-        \param[in] bsdf BSDF instance.
+        \param[in] mi BSDF instance.
         \param[in,out] sg Sample generator.
         \param[out] s Generated sample. Only valid if true is returned.
         \return True if a sample was generated, false otherwise.
     */
-    bool generateBSDFSample(const ShadingData sd, const IBSDF bsdf, inout SampleGenerator sg, out BSDFSample s)
+    bool generateBSDFSample(const ShadingData sd, const IMaterialInstance mi, inout SampleGenerator sg, out BSDFSample s)
     {
         if (params.useDirectionalLight)
         {
             // With directional light, disable BSDF sampling and just return a sample in the light's direction.
             s.wo = -normalize(params.lightDir);
-            s.weight = bsdf.eval(sd, s.wo, sg);
+            s.weight = mi.eval(sd, s.wo, sg);
             s.pdf = 1.f;
             return dot(sd.N, s.wo) > 0.f;
         }
         else
         {
-            return bsdf.sample(sd, sg, s, params.useImportanceSampling);
+            return mi.sample(sd, sg, s, params.useImportanceSampling);
         }
     }
 
@@ -297,8 +297,8 @@ struct BSDFViewer
         data = prepareShadingData(v, -rayDir, lod);
 
         // Create BSDF instance.
-        let bsdf = gScene.materials.getBSDF(data.sd, lod);
-        data.bsdfProperties = bsdf.getProperties(data.sd);
+        let mi = gScene.materials.getMaterialInstance(data.sd, lod);
+        data.bsdfProperties = mi.getProperties(data.sd);
 
         float3 output = 0;
         if (params.outputAlbedo & (uint)AlbedoSelection::ShowAlbedo)
@@ -310,7 +310,7 @@ struct BSDFViewer
             // Sample BSDF at shading point.
             BSDFSample s = {};
 
-            if (generateBSDFSample(data.sd, bsdf, sg, s))
+            if (generateBSDFSample(data.sd, mi, sg, s))
             {
                 data.wo = s.wo;
                 float3 L = evalLighting(s.wo);
@@ -318,7 +318,7 @@ struct BSDFViewer
                 // Use computed pdf explicitly (for debugging).
                 if (params.usePdf)
                 {
-                    output = L * bsdf.eval(data.sd, s.wo, sg) / s.pdf;
+                    output = L * mi.eval(data.sd, s.wo, sg) / s.pdf;
                 }
                 else
                 {
@@ -375,6 +375,7 @@ struct BSDFViewer
             px.output = output;
 
             // BSDF properties
+            px.guideNormal = data.bsdfProperties.guideNormal;
             px.emission = data.bsdfProperties.emission;
             px.roughness = data.bsdfProperties.roughness;
             px.diffuseReflectionAlbedo = data.bsdfProperties.diffuseReflectionAlbedo;

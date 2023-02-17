@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,84 +30,82 @@
 
 namespace Falcor
 {
-    namespace
+namespace
+{
+// Define API limitations.
+// See https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html
+const uint32_t kMaxMissCount = (1 << 16);
+const uint32_t kMaxRayTypeCount = (1 << 4);
+} // namespace
+
+RtBindingTable::SharedPtr RtBindingTable::create(uint32_t missCount, uint32_t rayTypeCount, uint32_t geometryCount)
+{
+    return SharedPtr(new RtBindingTable(missCount, rayTypeCount, geometryCount));
+}
+
+RtBindingTable::RtBindingTable(uint32_t missCount, uint32_t rayTypeCount, uint32_t geometryCount)
+    : mMissCount(missCount), mRayTypeCount(rayTypeCount), mGeometryCount(geometryCount)
+{
+    if (missCount > kMaxMissCount)
     {
-        // Define API limitations.
-        // See https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html
-        const uint32_t kMaxMissCount = (1 << 16);
-        const uint32_t kMaxRayTypeCount = (1 << 4);
+        throw ArgumentError("'missCount' exceeds the maximum supported ({})", kMaxMissCount);
+    }
+    if (rayTypeCount > kMaxRayTypeCount)
+    {
+        throw ArgumentError("'rayTypeCount' exceeds the maximum supported ({})", kMaxRayTypeCount);
     }
 
-    RtBindingTable::SharedPtr RtBindingTable::create(uint32_t missCount, uint32_t rayTypeCount, uint32_t geometryCount)
+    size_t recordCount = 1ull + missCount + rayTypeCount * geometryCount;
+    if (recordCount > std::numeric_limits<uint32_t>::max())
     {
-        return SharedPtr(new RtBindingTable(missCount, rayTypeCount, geometryCount));
+        throw ArgumentError("Raytracing binding table is too large");
     }
 
-    RtBindingTable::RtBindingTable(uint32_t missCount, uint32_t rayTypeCount, uint32_t geometryCount)
-        : mMissCount(missCount)
-        , mRayTypeCount(rayTypeCount)
-        , mGeometryCount(geometryCount)
+    // Create the binding table. All entries will be assigned a null shader initially.
+    mShaderTable.resize(recordCount);
+}
+
+void RtBindingTable::setRayGen(ShaderID shaderID)
+{
+    mShaderTable[0] = shaderID;
+}
+
+void RtBindingTable::setMiss(uint32_t missIndex, ShaderID shaderID)
+{
+    if (missIndex >= mMissCount)
     {
-        if (missCount > kMaxMissCount)
-        {
-            throw ArgumentError("'missCount' exceeds the maximum supported ({})", kMaxMissCount);
-        }
-        if (rayTypeCount > kMaxRayTypeCount)
-        {
-            throw ArgumentError("'rayTypeCount' exceeds the maximum supported ({})", kMaxRayTypeCount);
-        }
-
-        size_t recordCount = 1ull + missCount + rayTypeCount * geometryCount;
-        if (recordCount > std::numeric_limits<uint32_t>::max())
-        {
-            throw ArgumentError("Raytracing binding table is too large");
-        }
-
-        // Create the binding table. All entries will be assigned a null shader initially.
-        mShaderTable.resize(recordCount);
+        throw ArgumentError("'missIndex' is out of range");
     }
+    mShaderTable[getMissOffset(missIndex)] = shaderID;
+}
 
-    void RtBindingTable::setRayGen(ShaderID shaderID)
+void RtBindingTable::setHitGroup(uint32_t rayType, uint32_t geometryID, ShaderID shaderID)
+{
+    if (rayType >= mRayTypeCount)
     {
-        mShaderTable[0] = shaderID;
+        throw ArgumentError("'rayType' is out of range");
     }
-
-    void RtBindingTable::setMiss(uint32_t missIndex, ShaderID shaderID)
+    if (geometryID >= mGeometryCount)
     {
-        if (missIndex >= mMissCount)
-        {
-            throw ArgumentError("'missIndex' is out of range");
-        }
-        mShaderTable[getMissOffset(missIndex)] = shaderID;
+        throw ArgumentError("'geometryID' is out of range");
     }
+    mShaderTable[getHitGroupOffset(rayType, geometryID)] = shaderID;
+}
 
-    void RtBindingTable::setHitGroup(uint32_t rayType, uint32_t geometryID, ShaderID shaderID)
+void RtBindingTable::setHitGroup(uint32_t rayType, const std::vector<uint32_t>& geometryIDs, ShaderID shaderID)
+{
+    for (uint32_t geometryID : geometryIDs)
     {
-        if (rayType >= mRayTypeCount)
-        {
-            throw ArgumentError("'rayType' is out of range");
-        }
-        if (geometryID >= mGeometryCount)
-        {
-            throw ArgumentError("'geometryID' is out of range");
-        }
-        mShaderTable[getHitGroupOffset(rayType, geometryID)] = shaderID;
-    }
-
-    void RtBindingTable::setHitGroup(uint32_t rayType, const std::vector<uint32_t>& geometryIDs, ShaderID shaderID)
-    {
-        for (uint32_t geometryID : geometryIDs)
-        {
-            setHitGroup(rayType, geometryID, shaderID);
-        }
-    }
-
-    void RtBindingTable::setHitGroup(uint32_t rayType, const std::vector<GlobalGeometryID>& geometryIDs, ShaderID shaderID)
-    {
-        static_assert(std::is_same_v<GlobalGeometryID::IntType, uint32_t>);
-        for (GlobalGeometryID geometryID : geometryIDs)
-        {
-            setHitGroup(rayType, geometryID.get(), shaderID);
-        }
+        setHitGroup(rayType, geometryID, shaderID);
     }
 }
+
+void RtBindingTable::setHitGroup(uint32_t rayType, const std::vector<GlobalGeometryID>& geometryIDs, ShaderID shaderID)
+{
+    static_assert(std::is_same_v<GlobalGeometryID::IntType, uint32_t>);
+    for (GlobalGeometryID geometryID : geometryIDs)
+    {
+        setHitGroup(rayType, geometryID.get(), shaderID);
+    }
+}
+} // namespace Falcor

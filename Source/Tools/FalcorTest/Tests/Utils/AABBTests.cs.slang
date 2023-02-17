@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -32,11 +32,11 @@ RWStructuredBuffer<float3> result;
 
 cbuffer CB
 {
-    uint n;     // Number of elements in testData
+    uint n; // Number of elements in testData
 };
 
 [numthreads(1, 1, 1)]
-void testAABB(uint3 threadId : SV_DispatchThreadID)
+void testAABB(uint3 threadId: SV_DispatchThreadID)
 {
     const uint idx = threadId.x;
     uint i = 0;
@@ -110,8 +110,9 @@ void testAABB(uint3 threadId : SV_DispatchThreadID)
         result[i++] = b.contains(testData[1]) ? 1 : 0; // expect 0
 
         b.invalidate();
-        for (uint i = 0; i < n; i++) b.include(testData[i]);
-        result[i++] = b.contains(float3( 1.00f, 1.00f, 1.00f)) ? 1 : 0; // expect 1
+        for (uint i = 0; i < n; i++)
+            b.include(testData[i]);
+        result[i++] = b.contains(float3(1.00f, 1.00f, 1.00f)) ? 1 : 0;  // expect 1
         result[i++] = b.contains(float3(-3.50f, 1.00f, 1.00f)) ? 1 : 0; // expect 1
         result[i++] = b.contains(float3(-3.50f, 2.75f, 4.50f)) ? 1 : 0; // expect 1
         result[i++] = b.contains(float3(-3.50f, 2.76f, 4.50f)) ? 1 : 0; // expect 0
@@ -136,7 +137,8 @@ void testAABB(uint3 threadId : SV_DispatchThreadID)
         result[i++] = b.radius();
 
         b.invalidate();
-        for (uint i = 0; i < n; i++) b.include(testData[i]);
+        for (uint i = 0; i < n; i++)
+            b.include(testData[i]);
         result[i++] = b.center();
         result[i++] = b.extent();
         result[i++] = b.area();
@@ -187,14 +189,14 @@ void testAABB(uint3 threadId : SV_DispatchThreadID)
         a.set(testData[0]);     // {  1.00f,  2.50f, -0.50f }
         a.include(testData[1]); // { -3.50f, -0.00f, -1.25f }
 
-        result[i++] = a.minDistance(float3( 0.0f, 1.0f, -1.0f)); // Expect 0.0 (point fully inside)
-        result[i++] = a.minDistance(float3( 1.0f, 1.0f, -1.0f)); // Expect 0.0 (point on side)
+        result[i++] = a.minDistance(float3(0.0f, 1.0f, -1.0f));  // Expect 0.0 (point fully inside)
+        result[i++] = a.minDistance(float3(1.0f, 1.0f, -1.0f));  // Expect 0.0 (point on side)
         result[i++] = a.minDistance(float3(-3.5f, 0.0f, -0.5f)); // Expect 0.0 (point on corner)
-        result[i++] = a.minDistance(float3( 3.0f, 0.0f, -0.5f)); // Expect 2.0 (along axis from corner)
-        result[i++] = a.minDistance(float3( 3.5f, 1.0f, -1.0f)); // Expect 2.5 (along axis from side)
-        result[i++] = a.minDistance(float3( 5.0f,-3.0f, -0.5f)); // Expect 5.0 (diagonal from corner)
-        result[i++] = a.minDistance(float3( 5.0f,-3.0f, -1.0f)); // Expect 5.0 (diagonal from side)
-        result[i++] = a.minDistance(float3( 5.0f,-3.0f, 11.5f)); // Expect 13.0 (diagonal from corner)
+        result[i++] = a.minDistance(float3(3.0f, 0.0f, -0.5f));  // Expect 2.0 (along axis from corner)
+        result[i++] = a.minDistance(float3(3.5f, 1.0f, -1.0f));  // Expect 2.5 (along axis from side)
+        result[i++] = a.minDistance(float3(5.0f, -3.0f, -0.5f)); // Expect 5.0 (diagonal from corner)
+        result[i++] = a.minDistance(float3(5.0f, -3.0f, -1.0f)); // Expect 5.0 (diagonal from side)
+        result[i++] = a.minDistance(float3(5.0f, -3.0f, 11.5f)); // Expect 13.0 (diagonal from corner)
     }
 
     // Test 8: minDistance(box)
@@ -204,16 +206,16 @@ void testAABB(uint3 threadId : SV_DispatchThreadID)
         a.include(testData[1]); // { -3.50f, -0.00f, -1.25f }
 
         // For these expect 0.0 (boxes that touch or intersect).
-        b.set(float3(-5.0f,-5.0f, -5.0f), float3( 5.0f, 5.0f, 5.0f));
+        b.set(float3(-5.0f, -5.0f, -5.0f), float3(5.0f, 5.0f, 5.0f));
         result[i++] = a.minDistance(b);
         b.set(float3(-4.0f, 2.5f, -0.5f), float3(-3.5f, 3.0f, 0.0f));
         result[i++] = a.minDistance(b);
-        b.set(float3( 1.0f, 1.0f, -1.0f), float3( 2.0f, 1.5f, 0.0f));
+        b.set(float3(1.0f, 1.0f, -1.0f), float3(2.0f, 1.5f, 0.0f));
         result[i++] = a.minDistance(b);
-        b.set(float3( 1.0f,-5.0f, -5.0f), float3( 1.0f, 5.0f, 5.0f));
+        b.set(float3(1.0f, -5.0f, -5.0f), float3(1.0f, 5.0f, 5.0f));
         result[i++] = a.minDistance(b);
 
-        b.set(float3( 2.0f, 0.5f, -1.0f), float3( 2.5f, 1.5f,-0.75f));
+        b.set(float3(2.0f, 0.5f, -1.0f), float3(2.5f, 1.5f, -0.75f));
         result[i++] = a.minDistance(b); // Expect 1.0
         b.set(float3(-7.5f, 6.5f, -2.0f), float3(-6.5f, 7.5f, 5.0f));
         result[i++] = a.minDistance(b); // Expect 5.0

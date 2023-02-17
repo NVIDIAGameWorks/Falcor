@@ -53,10 +53,9 @@ While `create()` does not need to do more than calling the constructor and retur
 
 The constructor should look similar to this:
 ```c++
-WireframePass::WireframePass() : RenderPass(kInfo)
+WireframePass::WireframePass()
 {
-    mpProgram = GraphicsProgram::createFromFile("RenderPasses/Wireframe/Wireframe.3d.slang", "vsMain",
-                                                "psMain");
+    mpProgram = GraphicsProgram::createFromFile("RenderPasses/Wireframe/Wireframe.3d.slang", "vsMain", "psMain");
     RasterizerState::Desc wireframeDesc;
     wireframeDesc.setFillMode(RasterizerState::FillMode::Wireframe);
     wireframeDesc.setCullMode(RasterizerState::CullMode::None);
@@ -67,9 +66,10 @@ WireframePass::WireframePass() : RenderPass(kInfo)
     mpGraphicsState->setRasterizerState(mpRasterState);
 }
 ```
+
 ### `reflect()`
-As in the Implementing a Render Pass tutorial, you simply set the Output for the Wireframe view.
-```c++
+As in the _Implementing a Render Pass_ tutorial, you simply define the output for the wireframe view.
+```
 RenderPassReflection WireframePass::reflect(const CompileData& compileData)
 {
     RenderPassReflection reflector;
@@ -104,9 +104,9 @@ mpGraphicsState->setFbo(pTargetFbo);
 ```
 
 #### Binding the shader
-Binding shader values is also fairly straightforward as Falcor allows you to set shader values in the `GraphicsVars` object in the same way as you would set values in a dictionary. Our shader requires a single color value, `gColor`, which is located inside the `PerFrameCB` constant buffer. This step should look like this:
+Binding shader values is also fairly straightforward as Falcor allows you to set shader values in the `GraphicsVars` object in the same way as you would set values in a dictionary. Our shader requires a single color value, `gColor`, which is located inside the `perFrameCB` constant buffer. This step should look like this:
 ```c++
-mpVars["PerFrameCB"]["gColor"] = float4(0, 1, 0, 1);
+mpVars["perFrameCB"]["gColor"] = float4(0, 1, 0, 1);
 ```
 
 #### Rendering a Scene Using the Shader
@@ -122,6 +122,7 @@ void WireframePass::execute(RenderContext* pRenderContext, const RenderData& ren
     const float4 clearColor(0, 0, 0, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
     mpGraphicsState->setFbo(pTargetFbo);
+
     if (mpScene)
     {
         mpVars["PerFrameCB"]["gColor"] = float4(0, 1, 0, 1);
@@ -131,8 +132,9 @@ void WireframePass::execute(RenderContext* pRenderContext, const RenderData& ren
 }
 ```
 
-And you need to create CMakeLists.txt to include your C++ and Slang files in the build target.
-```CMake
+And you need to create a `CMakeLists.txt` to include the new render pass in the build.
+
+```cmake
 add_renderpass(WireframePass)
 
 target_sources(WireframePass PRIVATE
@@ -145,8 +147,10 @@ target_copy_shaders(WireframePass RenderPasses/WireframePass)
 target_source_group(WireframePass "RenderPasses")
 ```
 
+Also add a `add_subdirectory(WireframePass)` in the parent directory `CMakeList.txt`.
 
 Using the Render Graph Editor, create a graph solely containing this pass then launch it in Mogwai, or create a python script.
+
 ```python
 from falcor import *
 
@@ -163,6 +167,6 @@ try: m.addGraph(WireframePass)
 except NameError: None
 ```
 
- You should see a green screen as there is no scene currently loaded. Load a scene by going to `File -> Load Scene`, and you should now see the wireframe for the scene you selected. We used `media/Arcade/Arcade.pyscene`, which looks like this:
+You should see a green screen as there is no scene currently loaded. Load a scene by going to `File -> Load Scene`, and you should now see the wireframe for the scene you selected. We used `media/Arcade/Arcade.pyscene`, which looks like this:
 
 ![WireframePass](./images/wireframe-pass.png)

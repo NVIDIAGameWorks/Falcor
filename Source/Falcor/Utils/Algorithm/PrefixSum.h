@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -45,14 +45,8 @@ namespace Falcor
     class FALCOR_API PrefixSum
     {
     public:
-        using SharedPtr = std::shared_ptr<PrefixSum>;
-        using SharedConstPtr = std::shared_ptr<const PrefixSum>;
-        virtual ~PrefixSum() = default;
-
-        /** Create a new prefix sum object.
-            \return New object, or throws an exception if creation failed.
-        */
-        static SharedPtr create();
+        /// Constructor. Throws an exception if creation failed.
+        PrefixSum(std::shared_ptr<Device> pDevice);
 
         /** Computes the parallel prefix sum over an array of uint32_t elements.
             \param[in] pRenderContext The render context.
@@ -64,8 +58,8 @@ namespace Falcor
         */
         void execute(RenderContext* pRenderContext, Buffer::SharedPtr pData, uint32_t elementCount, uint32_t* pTotalSum = nullptr, Buffer::SharedPtr pTotalSumBuffer = nullptr, uint64_t pTotalSumOffset = 0);
 
-    protected:
-        PrefixSum();
+    private:
+        std::shared_ptr<Device>     mpDevice;
 
         ComputeState::SharedPtr     mpComputeState;
 

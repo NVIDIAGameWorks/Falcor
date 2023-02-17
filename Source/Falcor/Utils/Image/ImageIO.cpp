@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,13 +28,14 @@
 #include "ImageIO.h"
 #include "Core/Errors.h"
 #include "Core/API/CopyContext.h"
+#include "Core/API/NativeFormats.h"
+#include "Core/Platform/MemoryMappedFile.h"
 #include "Utils/Logger.h"
 
 #include <dds_header/DDSHeader.h>
 #include <nvtt/nvtt.h>
 
 #include <filesystem>
-#include <fstream>
 
 namespace Falcor
 {
@@ -157,12 +158,6 @@ namespace Falcor
         // Returns the corresponding NVTT input format for the provided ResourceFormat. Should only be used to convert formats for non-compressed textures.
         nvtt::InputFormat convertToNvttInputFormat(ResourceFormat format)
         {
-            // Special case for R32FloatX32 as this is otherwise indistinguishable from RG32Float
-            if (format == ResourceFormat::R32FloatX32)
-            {
-                throw RuntimeError("Image is in an unsupported ResourceFormat.");
-            }
-
             uint32_t channelCount = getFormatChannelCount(format);
             uint32_t xBits = getNumChannelBits(format, 0);
             uint32_t yBits = getNumChannelBits(format, 1);
@@ -435,7 +430,7 @@ namespace Falcor
                     data.width = pHeader->width;
                     data.height = pHeader->height;
                     data.depth = 1;
-                    if (pDX10Header->miscFlag && DDS_RESOURCE_MISC_TEXTURECUBE)
+                    if ((pDX10Header->miscFlag & DDS_RESOURCE_MISC_TEXTURECUBE) != 0)
                     {
                         data.type = Resource::Type::TextureCube;
                         data.arraySize *= 6;
@@ -500,25 +495,13 @@ namespace Falcor
         // Loads the information and data for the specified image. This function does not handle creation of the texture for the image.
         void loadDDS(const std::filesystem::path& path, bool loadAsSrgb, ImportData& data)
         {
-            std::ifstream file(path, std::ios::in | std::ios::binary | std::ios::ate);
-            if (!file)
+            MemoryMappedFile file(path, MemoryMappedFile::kWholeFile, MemoryMappedFile::AccessHint::SequentialScan);
+            if (!file.isOpen())
             {
                 throw RuntimeError("Failed to open file.");
             }
 
-            // Check image file length
-            std::streampos fileLen = file.tellg();
-            if (file.fail())
-            {
-                throw RuntimeError("Failed to read stream position.");
-            }
-            file.seekg(0, std::ios::beg);
-            if (file.fail())
-            {
-                throw RuntimeError("Failed to set stream position.");
-            }
-            size_t filesize = fileLen;
-            if (filesize < (sizeof(uint32_t) + sizeof(DDS_HEADER)))
+            if (file.getSize() < (sizeof(uint32_t) + sizeof(DDS_HEADER)))
             {
                 throw RuntimeError("Failed to read DDS header (file too small).");
             }
@@ -529,48 +512,27 @@ namespace Falcor
             size_t headerSize = maxHeaderSize;
 
             // The actual header size may be smaller than the max size; be sure not to read past the end of the file.
-            file.read(reinterpret_cast<char*>(header), std::min<size_t>(filesize, headerSize));
-            if (file.fail())
-            {
-                throw RuntimeError("Failed to read DDS header.");
-            }
-
+            std::memcpy(header, file.getData(), std::min<size_t>(file.getSize(), headerSize));
             readDDSHeader(data, header, headerSize, loadAsSrgb);
 
-            // Save the rest of the data after the header
-            if (filesize <= headerSize)
+            if (file.getSize() <= headerSize)
             {
                 throw RuntimeError("No image data after DDS header.");
             }
 
-            size_t imageSize = filesize - headerSize;
+            // Read image data.
+            size_t imageSize = file.getSize() - headerSize;
             data.imageData.resize(imageSize);
-            file.seekg(headerSize, std::ios::beg);
-            if (file.fail())
-            {
-                throw RuntimeError("Failed to set stream position.");
-            }
-            file.read(reinterpret_cast<char*>(data.imageData.data()), imageSize);
-            if (file.fail())
-            {
-                throw RuntimeError("Failed to read image data.");
-            }
+            std::memcpy(data.imageData.data(), reinterpret_cast<const uint8_t*>(file.getData()) + headerSize, imageSize);
         }
     }
 
     Bitmap::UniqueConstPtr ImageIO::loadBitmapFromDDS(const std::filesystem::path& path)
     {
-        std::filesystem::path fullPath;
-        if (!findFileInDataDirectories(path, fullPath))
-        {
-            logWarning("Failed to load DDS image from '{}': Can't find file.", path);
-            return nullptr;
-        }
-
         ImportData data;
         try
         {
-            loadDDS(fullPath, false, data);
+            loadDDS(path, false, data);
         }
         catch (const RuntimeError& e)
         {
@@ -588,19 +550,12 @@ namespace Falcor
         return Bitmap::create(data.width, data.height, data.format, data.imageData.data());
     }
 
-    Texture::SharedPtr ImageIO::loadTextureFromDDS(const std::filesystem::path& path, bool loadAsSrgb)
+    Texture::SharedPtr ImageIO::loadTextureFromDDS(Device* pDevice, const std::filesystem::path& path, bool loadAsSrgb)
     {
-        std::filesystem::path fullPath;
-        if (!findFileInDataDirectories(path, fullPath))
-        {
-            logWarning("Failed to load DDS image from '{}': Can't find file.", path);
-            return nullptr;
-        }
-
         ImportData data;
         try
         {
-            loadDDS(fullPath, loadAsSrgb, data);
+            loadDDS(path, loadAsSrgb, data);
         }
         catch (const RuntimeError& e)
         {
@@ -613,16 +568,16 @@ namespace Falcor
         switch (data.type)
         {
         case Resource::Type::Texture1D:
-            pTex = Texture::create1D(data.width, data.format, data.arraySize, data.mipLevels, data.imageData.data());
+            pTex = Texture::create1D(pDevice, data.width, data.format, data.arraySize, data.mipLevels, data.imageData.data());
             break;
         case Resource::Type::Texture2D:
-            pTex = Texture::create2D(data.width, data.height, data.format, data.arraySize, data.mipLevels, data.imageData.data());
+            pTex = Texture::create2D(pDevice, data.width, data.height, data.format, data.arraySize, data.mipLevels, data.imageData.data());
             break;
         case Resource::Type::TextureCube:
-            pTex = Texture::createCube(data.width, data.height, data.format, data.arraySize / 6, data.mipLevels, data.imageData.data());
+            pTex = Texture::createCube(pDevice, data.width, data.height, data.format, data.arraySize / 6, data.mipLevels, data.imageData.data());
             break;
         case Resource::Type::Texture3D:
-            pTex = Texture::create3D(data.width, data.height, data.depth, data.format, data.mipLevels, data.imageData.data());
+            pTex = Texture::create3D(pDevice, data.width, data.height, data.depth, data.format, data.mipLevels, data.imageData.data());
             break;
         default:
             logWarning("Failed to load DDS image from '{}': Unrecognized texture type.", path);
@@ -631,7 +586,7 @@ namespace Falcor
 
         if (pTex != nullptr)
         {
-            pTex->setSourcePath(fullPath);
+            pTex->setSourcePath(path);
         }
 
         return pTex;

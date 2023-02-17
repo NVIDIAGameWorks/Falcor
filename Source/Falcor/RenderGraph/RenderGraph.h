@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,10 +30,12 @@
 #include "RenderGraphExe.h"
 #include "RenderGraphCompiler.h"
 #include "Core/Macros.h"
+#include "Core/API/fwd.h"
 #include "Core/API/Formats.h"
 #include "Utils/UI/Gui.h"
 #include "Utils/Algorithm/DirectedGraph.h"
 #include "Scene/Scene.h"
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -56,10 +58,22 @@ namespace Falcor
         ~RenderGraph();
 
         /** Create a new render graph.
+            \param[in] pDevice GPU device.
             \param[in] name Name of the render graph.
             \return New object, or throws an exception if creation failed.
         */
-        static SharedPtr create(const std::string& name = "");
+        static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& name = "");
+
+        /** Create a render graph from loading a python render graph script.
+            \param[in] pDevice GPU device.
+            \param[in] path Path to the script.
+            \return New object, or throws an exception if creation failed.
+        */
+        static SharedPtr createFromFile(std::shared_ptr<Device> pDevice, const std::filesystem::path& path);
+
+        /** Return the associated GPU device.
+        */
+        const std::shared_ptr<Device>& getDevice() const { return mpDevice; }
 
         /** Set a scene.
             \param[in] pScene New scene. This may be nullptr to unset the scene.
@@ -82,7 +96,7 @@ namespace Falcor
 
         /** Update render pass using the specified dictionary. This function recreates the pass in place.
         */
-        void updatePass(RenderContext* pRenderContext, const std::string& passName, const Dictionary& dict);
+        void updatePass(const std::string& passName, const Dictionary& dict);
 
         /** Update render pass using the specified dictionary. This function calls the pass' applySettings method.
         */
@@ -199,7 +213,13 @@ namespace Falcor
 
         /** Render the graph UI.
         */
-        void renderUI(Gui::Widgets& widget);
+        void renderUI(RenderContext* pRenderContext, Gui::Widgets& widget);
+
+        /** Called upon scene updates.
+            \param[in] pRenderContext The render context.
+            \param[in] sceneUpdates Accumulated scene update flags.
+        */
+        void onSceneUpdates(RenderContext* pRenderContext, Scene::UpdateFlags sceneUpdates);
 
         /** Mouse event handler.
             \return True if the event was handled by the object, false otherwise.
@@ -234,7 +254,7 @@ namespace Falcor
         bool compile(RenderContext* pRenderContext) { std::string s; return compile(pRenderContext, s); }
 
     private:
-        RenderGraph(const std::string& name);
+        RenderGraph(std::shared_ptr<Device> pDevice, const std::string& name);
 
         struct EdgeData
         {
@@ -271,6 +291,8 @@ namespace Falcor
         void autoConnectPasses(const NodeData* pSrcNode, const RenderPassReflection& srcReflection, const NodeData* pDestNode, std::vector<RenderPassReflection::Field>& unsatisfiedInputs);
         bool isGraphOutput(const GraphOut& graphOut) const;
 
+        std::shared_ptr<Device> mpDevice;
+
         std::string mName;                                          ///< Name of render graph.
         Scene::SharedPtr mpScene;                                   ///< Current scene. This may be nullptr.
 
@@ -287,7 +309,6 @@ namespace Falcor
 
         friend class RenderGraphUI;
         friend class RenderGraphExporter;
-        friend class RenderPassLibrary;
         friend class RenderGraphCompiler;
     };
 }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -108,20 +108,17 @@ namespace Falcor
         */
         const Options& getOptions() const { return mOptions; }
 
-        /** Returns the light BVH acceleration structure.
-            \return Light BVH object or nullptr if BVH is not valid.
-        */
-        LightBVH::SharedConstPtr getBVH() const;
-
     protected:
         LightBVHSampler(RenderContext* pRenderContext, Scene::SharedPtr pScene, const Options& options);
 
-        // Configuration
-        Options                         mOptions;               ///< Current configuration options.
+        /// Configuration options.
+        Options mOptions;
 
         // Internal state
-        LightBVHBuilder::SharedPtr      mpBVHBuilder;           ///< The light BVH builder.
-        LightBVH::SharedPtr             mpBVH;                  ///< The light BVH.
-        bool                            mNeedsRebuild = true;   ///< Trigger rebuild on the next call to update(). We should always build on the first call, so the initial value is true.
+        std::unique_ptr<LightBVHBuilder> mpBVHBuilder;
+        std::unique_ptr<LightBVH> mpBVH;
+
+        /// Trigger rebuild on the next call to update(). We should always build on the first call, so the initial value is true.
+        bool mNeedsRebuild = true;
     };
 }

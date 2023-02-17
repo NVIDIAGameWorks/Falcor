@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -37,85 +37,104 @@
 
 namespace Falcor
 {
-    class FALCOR_API ComputePass
+class FALCOR_API ComputePass
+{
+public:
+    using SharedPtr = ParameterBlockSharedPtr<ComputePass>;
+
+    /** Create a new compute pass from file.
+        \param[in] pDevice GPU device.
+        \param[in] path Compute program file path.
+        \param[in] csEntry Name of the entry point in the program. If not specified "main" will be used.
+        \param[in] defines Optional list of macro definitions to set into the program.
+        \param[in] createVars Create program vars automatically, otherwise use setVars().
+        \return A new object, or throws an exception if creation failed.
+    */
+    static SharedPtr create(
+        std::shared_ptr<Device> pDevice,
+        const std::filesystem::path& path,
+        const std::string& csEntry = "main",
+        const Program::DefineList& defines = Program::DefineList(),
+        bool createVars = true
+    );
+
+    /** Create a new compute pass.
+        \param[in] pDevice GPU device.
+        \param[in] desc The program's description.
+        \param[in] defines Optional list of macro definitions to set into the program.
+        \param[in] createVars Create program vars automatically, otherwise use setVars().
+        \return A new object, or throws an exception if creation failed.
+    */
+    static SharedPtr create(
+        std::shared_ptr<Device> pDevice,
+        const Program::Desc& desc,
+        const Program::DefineList& defines = Program::DefineList(),
+        bool createVars = true
+    );
+
+    /** Execute the pass using the given compute-context
+        \param[in] pContext The compute context
+        \param[in] nThreadX The number of threads to dispatch in the X dimension (note that this is not the number of thread groups)
+        \param[in] nThreadY The number of threads to dispatch in the Y dimension (note that this is not the number of thread groups)
+        \param[in] nThreadZ The number of threads to dispatch in the Z dimension (note that this is not the number of thread groups)
+    */
+    virtual void execute(ComputeContext* pContext, uint32_t nThreadX, uint32_t nThreadY, uint32_t nThreadZ = 1);
+
+    /** Execute the pass using the given compute-context
+        \param[in] pContext The compute context
+        \param[in] nThreads The number of threads to dispatch in the XYZ dimensions (note that this is not the number of thread groups)
+    */
+    virtual void execute(ComputeContext* pContext, const uint3& nThreads) { execute(pContext, nThreads.x, nThreads.y, nThreads.z); }
+
+    /** Execute the pass using indirect dispatch given the compute-context and argument buffer
+        \param[in] pContext The compute context
+        \param[in] pArgBuffer Argument buffer
+        \param[in] argBufferOffset Offset in argument buffer
+    */
+    virtual void executeIndirect(ComputeContext* context, const Buffer* pArgBuffer, uint64_t argBufferOffset = 0);
+
+    /** Check if a vars object exists. If not, use setVars() to set or create a new vars object.
+        \return True if a vars object exists.
+    */
+    bool hasVars() const { return mpVars != nullptr; }
+
+    /** Get the vars.
+     */
+    const ComputeVars::SharedPtr& getVars() const
     {
-    public:
-        using SharedPtr = ParameterBlockSharedPtr<ComputePass>;
-
-        /** Create a new compute pass from file.
-            \param[in] path Compute program file path.
-            \param[in] csEntry Name of the entry point in the program. If not specified "main" will be used.
-            \param[in] defines Optional list of macro definitions to set into the program.
-            \param[in] createVars Create program vars automatically, otherwise use setVars().
-            \return A new object, or throws an exception if creation failed.
-        */
-        static SharedPtr create(const std::filesystem::path& path, const std::string& csEntry = "main", const Program::DefineList& defines = Program::DefineList(), bool createVars = true);
-
-        /** Create a new compute pass.
-            \param[in] desc The program's description.
-            \param[in] defines Optional list of macro definitions to set into the program.
-            \param[in] createVars Create program vars automatically, otherwise use setVars().
-            \return A new object, or throws an exception if creation failed.
-        */
-        static SharedPtr create(const Program::Desc& desc, const Program::DefineList& defines = Program::DefineList(), bool createVars = true);
-
-        /** Execute the pass using the given compute-context
-            \param[in] pContext The compute context
-            \param[in] nThreadX The number of threads to dispatch in the X dimension (note that this is not the number of thread groups)
-            \param[in] nThreadY The number of threads to dispatch in the Y dimension (note that this is not the number of thread groups)
-            \param[in] nThreadZ The number of threads to dispatch in the Z dimension (note that this is not the number of thread groups)
-        */
-        virtual void execute(ComputeContext* pContext, uint32_t nThreadX, uint32_t nThreadY, uint32_t nThreadZ = 1);
-
-        /** Execute the pass using the given compute-context
-            \param[in] pContext The compute context
-            \param[in] nThreads The number of threads to dispatch in the XYZ dimensions (note that this is not the number of thread groups)
-        */
-        virtual void execute(ComputeContext* pContext, const uint3& nThreads) { execute(pContext, nThreads.x, nThreads.y, nThreads.z); }
-
-        /** Execute the pass using indirect dispatch given the compute-context and argument buffer
-            \param[in] pContext The compute context
-            \param[in] pArgBuffer Argument buffer
-            \param[in] argBufferOffset Offset in argument buffer
-        */
-        virtual void executeIndirect(ComputeContext* context, const Buffer* pArgBuffer, uint64_t argBufferOffset = 0);
-
-        /** Check if a vars object exists. If not, use setVars() to set or create a new vars object.
-            \return True if a vars object exists.
-        */
-        bool hasVars() const { return mpVars != nullptr; }
-
-        /** Get the vars.
-        */
-        const ComputeVars::SharedPtr& getVars() const { FALCOR_ASSERT(mpVars); return mpVars; };
-
-        ShaderVar getRootVar() const { return mpVars->getRootVar(); }
-
-        /** Add a define
-        */
-        void addDefine(const std::string& name, const std::string& value = "", bool updateVars = false);
-
-        /** Remove a define
-        */
-        void removeDefine(const std::string& name, bool updateVars = false);
-
-        /** Get the program
-        */
-        ComputeProgram::SharedPtr getProgram() const { return mpState->getProgram(); }
-
-        /** Set a vars object. Allows the user to override the internal vars, for example when one wants to share a vars object between different passes.
-            The function throws an exception on error.
-            \param[in] pVars The new GraphicsVars object. If this is nullptr, then the pass will automatically create a new vars object.
-        */
-        void setVars(const ComputeVars::SharedPtr& pVars);
-
-        /** Get the thread group size from the program
-        */
-        uint3 getThreadGroupSize() const { return mpState->getProgram()->getReflector()->getThreadGroupSize(); }
-
-    protected:
-        ComputePass(const Program::Desc& desc, const Program::DefineList& defines, bool createVars);
-        ComputeVars::SharedPtr mpVars;
-        ComputeState::SharedPtr mpState;
+        FALCOR_ASSERT(mpVars);
+        return mpVars;
     };
-}
+
+    ShaderVar getRootVar() const { return mpVars->getRootVar(); }
+
+    /** Add a define
+     */
+    void addDefine(const std::string& name, const std::string& value = "", bool updateVars = false);
+
+    /** Remove a define
+     */
+    void removeDefine(const std::string& name, bool updateVars = false);
+
+    /** Get the program
+     */
+    ComputeProgram::SharedPtr getProgram() const { return mpState->getProgram(); }
+
+    /** Set a vars object. Allows the user to override the internal vars, for example when one wants to share a vars object between
+       different passes. The function throws an exception on error.
+        \param[in] pVars The new GraphicsVars object. If this is nullptr, then the pass will automatically create a new vars object.
+    */
+    void setVars(const ComputeVars::SharedPtr& pVars);
+
+    /** Get the thread group size from the program
+     */
+    uint3 getThreadGroupSize() const { return mpState->getProgram()->getReflector()->getThreadGroupSize(); }
+
+protected:
+    ComputePass(std::shared_ptr<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines, bool createVars);
+
+    std::shared_ptr<Device> mpDevice;
+    ComputeVars::SharedPtr mpVars;
+    ComputeState::SharedPtr mpState;
+};
+} // namespace Falcor

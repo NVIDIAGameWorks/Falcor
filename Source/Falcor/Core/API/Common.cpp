@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,17 +30,17 @@
 
 namespace Falcor
 {
-    FALCOR_SCRIPT_BINDING(ComparisonFunc)
-    {
-        pybind11::enum_<ComparisonFunc> comparisonFunc(m, "ComparisonFunc");
-        comparisonFunc.value("Disabled", ComparisonFunc::Disabled);
-        comparisonFunc.value("LessEqual", ComparisonFunc::LessEqual);
-        comparisonFunc.value("GreaterEqual", ComparisonFunc::GreaterEqual);
-        comparisonFunc.value("Less", ComparisonFunc::Less);
-        comparisonFunc.value("Greater", ComparisonFunc::Greater);
-        comparisonFunc.value("Equal", ComparisonFunc::Equal);
-        comparisonFunc.value("NotEqual", ComparisonFunc::NotEqual);
-        comparisonFunc.value("Always", ComparisonFunc::Always);
-        comparisonFunc.value("Never", ComparisonFunc::Never);
-    }
+FALCOR_SCRIPT_BINDING(ComparisonFunc)
+{
+    pybind11::enum_<ComparisonFunc> comparisonFunc(m, "ComparisonFunc");
+    comparisonFunc.value("Disabled", ComparisonFunc::Disabled);
+    comparisonFunc.value("LessEqual", ComparisonFunc::LessEqual);
+    comparisonFunc.value("GreaterEqual", ComparisonFunc::GreaterEqual);
+    comparisonFunc.value("Less", ComparisonFunc::Less);
+    comparisonFunc.value("Greater", ComparisonFunc::Greater);
+    comparisonFunc.value("Equal", ComparisonFunc::Equal);
+    comparisonFunc.value("NotEqual", ComparisonFunc::NotEqual);
+    comparisonFunc.value("Always", ComparisonFunc::Always);
+    comparisonFunc.value("Never", ComparisonFunc::Never);
 }
+} // namespace Falcor

@@ -2,9 +2,6 @@ from falcor import *
 
 def render_graph_RTXDI():
     g = RenderGraph("RTXDI")
-    loadRenderPassLibrary("GBuffer.dll")
-    loadRenderPassLibrary("RTXDIPass.dll")
-    loadRenderPassLibrary("ToneMapper.dll")
     ToneMappingPass = createPass("ToneMapper", {'autoExposure': False, 'exposureCompensation': 0.0})
     g.addPass(ToneMappingPass, "ToneMappingPass")
     RTXDIPass = createPass("RTXDIPass", {'useVBuffer': False})

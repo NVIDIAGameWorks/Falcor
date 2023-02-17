@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -41,11 +41,11 @@ using namespace Falcor;
 class WhittedRayTracer : public RenderPass
 {
 public:
+    FALCOR_PLUGIN_CLASS(WhittedRayTracer, "WhittedRayTracer", "Simple Whitted ray tracer.");
+
     using SharedPtr = std::shared_ptr<WhittedRayTracer>;
 
-    static const Info kInfo;
-
-    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
@@ -70,7 +70,7 @@ public:
     static void registerBindings(pybind11::module& m);
 
 private:
-    WhittedRayTracer(const Dictionary& dict);
+    WhittedRayTracer(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     void prepareVars();
     void setStaticParams(RtProgram* pProgram) const;

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,27 +30,27 @@
 
 namespace Falcor
 {
-    RasterScenePass::RasterScenePass(const Scene::SharedPtr& pScene, const Program::Desc& progDesc, const Program::DefineList& programDefines)
-        : BaseGraphicsPass(progDesc, programDefines), mpScene(pScene)
+    RasterScenePass::RasterScenePass(std::shared_ptr<Device> pDevice, const Scene::SharedPtr& pScene, const Program::Desc& progDesc, const Program::DefineList& programDefines)
+        : BaseGraphicsPass(std::move(pDevice), progDesc, programDefines), mpScene(pScene)
     {
         FALCOR_ASSERT(pScene);
     }
 
-    RasterScenePass::SharedPtr RasterScenePass::create(const Scene::SharedPtr& pScene, const Program::Desc& progDesc, const Program::DefineList& programDefines)
+    RasterScenePass::SharedPtr RasterScenePass::create(std::shared_ptr<Device> pDevice, const Scene::SharedPtr& pScene, const Program::Desc& progDesc, const Program::DefineList& programDefines)
     {
         if (pScene == nullptr) throw ArgumentError("Can't create a RasterScenePass object without a scene");
 
         Program::DefineList dl = programDefines;
         dl.add(pScene->getSceneDefines());
 
-        return SharedPtr(new RasterScenePass(pScene, progDesc, dl));
+        return SharedPtr(new RasterScenePass(std::move(pDevice), pScene, progDesc, dl));
     }
 
-    RasterScenePass::SharedPtr RasterScenePass::create(const Scene::SharedPtr& pScene, const std::filesystem::path& path, const std::string& vsEntry, const std::string& psEntry, const Program::DefineList& programDefines)
+    RasterScenePass::SharedPtr RasterScenePass::create(std::shared_ptr<Device> pDevice, const Scene::SharedPtr& pScene, const std::filesystem::path& path, const std::string& vsEntry, const std::string& psEntry, const Program::DefineList& programDefines)
     {
         Program::Desc d;
         d.addShaderLibrary(path).vsEntry(vsEntry).psEntry(psEntry);
-        return create(pScene, d, programDefines);
+        return create(std::move(pDevice), pScene, d, programDefines);
     }
 
     void RasterScenePass::renderScene(RenderContext* pRenderContext, const Fbo::SharedPtr& pDstFbo)

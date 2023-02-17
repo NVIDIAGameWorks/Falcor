@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,14 +30,14 @@ import Utils.Sampling.Pseudorandom.SplitMix64;
 import Utils.Sampling.Pseudorandom.LCG;
 
 ByteAddressBuffer seed;
-RWStructuredBuffer<uint> result;        // Result buffer for 32-bit generators.
-RWStructuredBuffer<uint64_t> result64;  // Result buffer for 64-bit generators.
+RWStructuredBuffer<uint> result;       // Result buffer for 32-bit generators.
+RWStructuredBuffer<uint64_t> result64; // Result buffer for 64-bit generators.
 
 #define kInstances 256
 #define kDimensions 64
 
 [numthreads(kInstances, 1, 1)]
-void testXoshiro(uint3 threadId : SV_DispatchThreadID)
+void testXoshiro(uint3 threadId: SV_DispatchThreadID)
 {
     const uint i = threadId.x;
 
@@ -55,7 +55,7 @@ void testXoshiro(uint3 threadId : SV_DispatchThreadID)
 }
 
 [numthreads(kInstances, 1, 1)]
-void testSplitMix(uint3 threadId : SV_DispatchThreadID)
+void testSplitMix(uint3 threadId: SV_DispatchThreadID)
 {
     const uint i = threadId.x;
 
@@ -72,7 +72,7 @@ void testSplitMix(uint3 threadId : SV_DispatchThreadID)
 }
 
 [numthreads(kInstances, 1, 1)]
-void testLCG(uint3 threadId : SV_DispatchThreadID)
+void testLCG(uint3 threadId: SV_DispatchThreadID)
 {
     const uint i = threadId.x;
 

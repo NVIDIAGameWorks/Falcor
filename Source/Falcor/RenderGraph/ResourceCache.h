@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 #pragma once
 #include "RenderPassReflection.h"
 #include "Core/Macros.h"
+#include "Core/API/fwd.h"
 #include "Core/API/Resource.h"
 #include <memory>
 #include <string>
@@ -81,7 +82,7 @@ namespace Falcor
         /** Allocate all resources that need to be created/updated.
             This includes new resources, resources whose properties have been updated since last allocation call.
         */
-        void allocateResources(const DefaultProperties& params);
+        void allocateResources(Device* pDevice, const DefaultProperties& params);
 
         /** Clears all registered field/resource properties and allocated resources.
         */

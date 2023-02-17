@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,8 +31,6 @@
 
 namespace Falcor
 {
-    const RenderPass::Info ResolvePass::kInfo { "ResolvePass", "Resolve a multi-sampled texture." };
-
     static const std::string kDst = "dst";
     static const std::string kSrc = "src";
 
@@ -44,12 +42,14 @@ namespace Falcor
         return reflector;
     }
 
-    ResolvePass::SharedPtr ResolvePass::create(RenderContext* pRenderContext, const Dictionary& dictionary)
+    ResolvePass::SharedPtr ResolvePass::create(std::shared_ptr<Device> pDevice, const Dictionary& dictionary)
     {
-        return SharedPtr(new ResolvePass());
+        return SharedPtr(new ResolvePass(pDevice));
     }
 
-    ResolvePass::ResolvePass() : RenderPass(kInfo) {}
+    ResolvePass::ResolvePass(std::shared_ptr<Device> pDevice)
+        : RenderPass(std::move(pDevice))
+    {}
 
     void ResolvePass::execute(RenderContext* pRenderContext, const RenderData& renderData)
     {

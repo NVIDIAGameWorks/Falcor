@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,7 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "Utils/Algorithm/ComputeParallelReduction.h"
+#include "Utils/Algorithm/ParallelReduction.h"
 #include <fstream>
 
 using namespace Falcor;
@@ -35,9 +35,9 @@ using namespace Falcor;
 class ErrorMeasurePass : public RenderPass
 {
 public:
-    using SharedPtr = std::shared_ptr<ErrorMeasurePass>;
+    FALCOR_PLUGIN_CLASS(ErrorMeasurePass, "ErrorMeasurePass", "Measures error with respect to a reference image.");
 
-    static const Info kInfo;
+    using SharedPtr = std::shared_ptr<ErrorMeasurePass>;
 
     enum class OutputId
     {
@@ -47,7 +47,7 @@ public:
         Count
     };
 
-    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
@@ -56,7 +56,7 @@ public:
     virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override;
 
 private:
-    ErrorMeasurePass(const Dictionary& dict);
+    ErrorMeasurePass(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     bool init(RenderContext* pRenderContext, const Dictionary& dict);
 
@@ -69,7 +69,7 @@ private:
     void runReductionPasses(RenderContext* pRenderContext, const RenderData& renderData);
 
     ComputePass::SharedPtr mpErrorMeasurerPass;
-    ComputeParallelReduction::SharedPtr mpParallelReduction;
+    std::unique_ptr<ParallelReduction> mpParallelReduction;
 
     struct
     {

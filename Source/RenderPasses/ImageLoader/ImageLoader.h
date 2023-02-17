@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -34,13 +34,13 @@ using namespace Falcor;
 class ImageLoader : public RenderPass
 {
 public:
-    using SharedPtr = std::shared_ptr<ImageLoader>;
+    FALCOR_PLUGIN_CLASS(ImageLoader, "ImageLoader", "Load an image into a texture.");
 
-    static const Info kInfo;
+    using SharedPtr = std::shared_ptr<ImageLoader>;
 
     /** Create a new object
     */
-    static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
@@ -49,7 +49,7 @@ public:
     virtual Dictionary getScriptingDictionary() override;
 
 private:
-    ImageLoader(const Dictionary& dict);
+    ImageLoader(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     bool loadImage(const std::filesystem::path& path);
 

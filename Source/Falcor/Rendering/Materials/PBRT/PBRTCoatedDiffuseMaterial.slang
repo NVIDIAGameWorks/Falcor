@@ -26,18 +26,17 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 __exported import Rendering.Materials.IMaterial;
-__exported import Rendering.Materials.PBRT.PBRTCoatedDiffuseBSDF;
+__exported import Rendering.Materials.PBRT.PBRTCoatedDiffuseMaterialInstance;
 import Scene.Material.BasicMaterialData;
 import Scene.Material.ShadingUtils;
 
-struct PBRTCoatedDiffuseMaterial : IMaterial
+struct PBRTCoatedDiffuseMaterial : MaterialBase, IMaterial
 {
-    MaterialHeader header;
     BasicMaterialData data;
 
-    typedef PBRTCoatedDiffuseBSDF BSDF;
+    typedef PBRTCoatedDiffuseMaterialInstance MaterialInstance;
 
-    PBRTCoatedDiffuseBSDF setupBSDF(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod)
+    PBRTCoatedDiffuseMaterialInstance setupMaterialInstance(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints)
     {
         SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
 
@@ -45,17 +44,20 @@ struct PBRTCoatedDiffuseMaterial : IMaterial
         // RG: Interface X&Y roughness
         const float2 roughness = ms.sampleTexture(data.texSpecular, s, sd.uv, data.specular, lod).rg;
         float eta = 1.0f / data.IoR;
-        
-        PBRTCoatedDiffuseBSDF brdf = {AnisotropicGGX(roughness), eta, baseColor, 32};
+
+        // Compute final shading frame.
+        ShadingFrame sf = ShadingFrame(sd);
+
+        PBRTCoatedDiffuseMaterialInstance brdf = {sf, AnisotropicGGX(roughness), eta, baseColor, 32};
 
         return brdf;
     }
 
-    void modifyTangentSpace(const MaterialSystem ms, const float4 tangentW, const ITextureSampler lod, inout ShadingData sd)
+    void modifyTangentSpace(const MaterialSystem ms, const ITextureSampler lod, inout ShadingData sd)
     {
         SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
         float3 encodedNormal = ms.sampleTexture(data.texNormalMap, s, sd.uv, float4(0.f), lod).rgb;
-        applyNormalMap(sd, data.getNormalMapType(), encodedNormal, tangentW);
+        applyNormalMap(sd, data.getNormalMapType(), encodedNormal);
     }
 
     float evalOpacity(const MaterialSystem ms, const VertexData v, const ITextureSampler lod)

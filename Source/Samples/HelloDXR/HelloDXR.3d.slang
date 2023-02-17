@@ -34,18 +34,19 @@ VSOut vsMain(VSIn vIn)
     return defaultVS(vIn);
 }
 
-float4 psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) : SV_TARGET
+float4 psMain(VSOut vsOut, uint triangleIndex: SV_PrimitiveID) : SV_TARGET
 {
     let lod = ImplicitLodTextureSampler();
-    if (alphaTest(vsOut, triangleIndex, lod)) discard;
+    if (alphaTest(vsOut, triangleIndex, lod))
+        discard;
 
     float3 viewDir = normalize(gScene.camera.getPosition() - vsOut.posW);
     ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir, lod);
 
-    // Create BSDF instance.
-    let bsdf = gScene.materials.getBSDF(sd, lod);
+    // Create material instance.
+    let mi = gScene.materials.getMaterialInstance(sd, lod);
 
-    float3 color = bsdf.getProperties(sd).emission;
+    float3 color = mi.getProperties(sd).emission;
 
     uint3 launchIndex = DispatchRaysIndex();
     TinyUniformSampleGenerator sg = TinyUniformSampleGenerator(launchIndex.xy, 0);
@@ -55,7 +56,7 @@ float4 psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) : SV_TARGET
     {
         AnalyticLightSample ls;
         evalLightApproximate(sd.posW, gScene.getLight(i), ls);
-        color += bsdf.eval(sd, ls.dir, sg) * ls.Li;
+        color += mi.eval(sd, ls.dir, sg) * ls.Li;
     }
 
     return float4(color, 1.f);

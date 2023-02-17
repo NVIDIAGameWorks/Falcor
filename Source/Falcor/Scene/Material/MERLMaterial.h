@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,6 +31,8 @@
 
 namespace Falcor
 {
+    class MERLFile;
+
     /** Class representing a measured material from the MERL BRDF database.
 
         For details refer to:
@@ -48,7 +50,7 @@ namespace Falcor
             \param[in] path Path of BRDF file to load.
             \return A new object, or throws an exception if creation failed.
         */
-        static SharedPtr create(const std::string& name, const std::filesystem::path& path);
+        static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& name, const std::filesystem::path& path);
 
         bool renderUI(Gui::Widgets& widget) override;
         Material::UpdateFlags update(MaterialSystem* pOwner) override;
@@ -60,12 +62,10 @@ namespace Falcor
         int getBufferCount() const override { return 1; }
 
     protected:
-        MERLMaterial(const std::string& name, const std::filesystem::path& path);
+        MERLMaterial(std::shared_ptr<Device> pDevice, const std::string& name, const std::filesystem::path& path);
+        MERLMaterial(std::shared_ptr<Device> pDevice, const MERLFile& merlFile);
 
-        bool loadBRDF(const std::filesystem::path& path);
-        void prepareData(const int dims[3], const std::vector<double>& data);
-        void prepareAlbedoLUT(RenderContext* pRenderContext);
-        void computeAlbedoLUT(RenderContext* pRenderContext);
+        void init(const MERLFile& merlFile);
 
         std::filesystem::path mPath;        ///< Full path to the BRDF loaded.
         std::string mBRDFName;              ///< This is the file basename without extension.
@@ -74,5 +74,7 @@ namespace Falcor
         Buffer::SharedPtr mpBRDFData;       ///< GPU buffer holding all BRDF data as float3 array.
         Texture::SharedPtr mpAlbedoLUT;     ///< Precomputed albedo lookup table.
         Sampler::SharedPtr mpLUTSampler;    ///< Sampler for accessing the LUT texture.
+
+        friend class MERLFile;
     };
 }

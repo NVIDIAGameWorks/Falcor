@@ -29,4 +29,4 @@
 
 namespace Falcor
 {
-}
+} // namespace Falcor

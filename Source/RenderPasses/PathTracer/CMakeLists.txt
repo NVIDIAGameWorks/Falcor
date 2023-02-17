@@ -1,4 +1,4 @@
-add_renderpass(PathTracer)
+add_plugin(PathTracer)
 
 target_sources(PathTracer PRIVATE
     ColorType.slang

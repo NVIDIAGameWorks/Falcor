@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,24 +26,26 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 __exported import Rendering.Materials.IMaterial;
-__exported import Rendering.Materials.MERLBSDF;
+__exported import Rendering.Materials.MERLMaterialInstance;
 import Scene.Material.MERLMaterialData;
 
 /** Implementation of measured MERL material.
-*/
-struct MERLMaterial : IMaterial
+ */
+struct MERLMaterial : MaterialBase, IMaterial
 {
-    MaterialHeader header;
     MERLMaterialData data;
 
-    // Specify that the associated `BSDF` type is `MERLBSDF`.
-    typedef MERLBSDF BSDF;
+    // Specify that the associated `MaterialInstance` type is `MERLMaterialInstance`.
+    typedef MERLMaterialInstance MaterialInstance;
 
-    MERLBSDF setupBSDF(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod)
+    MERLMaterialInstance setupMaterialInstance(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints)
     {
+        // Compute final shading frame.
+        ShadingFrame sf = ShadingFrame(sd);
+
         // Evaluate the albedo for the current incident (view) direction.
         float3 albedo = {};
-        float cosTheta = dot(sd.N, sd.V);
+        float cosTheta = dot(sf.N, sd.V);
 
         if (cosTheta >= kMinCosTheta)
         {
@@ -57,11 +59,11 @@ struct MERLMaterial : IMaterial
             albedo = ms.sampleTexture(data.texAlbedoLUT, s, float2(u, 0.5f), float4(0.5f), explicitLod).rgb;
         }
 
-        return MERLBSDF(data.bufferID, albedo);
+        return MERLMaterialInstance(sf, data.bufferID, albedo, data.extraData);
     }
 
     // Normal mapping is not supported by this material.
-    void modifyTangentSpace(const MaterialSystem ms, const float4 tangentW, const ITextureSampler lod, inout ShadingData sd) {}
+    void modifyTangentSpace(const MaterialSystem ms, const ITextureSampler lod, inout ShadingData sd) {}
 
     // Alpha testing is not supported by this material.
     float evalOpacity(const MaterialSystem ms, const VertexData v, const ITextureSampler lod) { return 1.f; }

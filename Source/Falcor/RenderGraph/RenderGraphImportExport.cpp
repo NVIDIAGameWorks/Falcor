@@ -26,7 +26,6 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "RenderGraphImportExport.h"
-#include "RenderPassLibrary.h"
 #include "RenderGraphIR.h"
 #include "Utils/Scripting/Scripting.h"
 #include <fstream>
@@ -60,7 +59,7 @@ namespace Falcor
     bool loadFailed(std::exception e, const std::filesystem::path& path)
     {
         logError(e.what());
-        auto res = msgBox(fmt::format("Error when importing graph from file '{}'\n{}\n\nWould you like to try and reload the file?", path.string(), e.what()), MsgBoxType::YesNo);
+        auto res = msgBox("Error", fmt::format("Error when importing graph from file '{}'\n{}\n\nWould you like to try and reload the file?", path.string(), e.what()), MsgBoxType::YesNo);
         return (res == MsgBoxButton::No);
     }
 
@@ -124,13 +123,6 @@ namespace Falcor
     std::string RenderGraphExporter::getIR(const RenderGraph::SharedPtr& pGraph)
     {
         RenderGraphIR::SharedPtr pIR = RenderGraphIR::create(pGraph->getName());
-
-        // Register passes that are loaded from dlls
-        auto libNames = RenderPassLibrary::enumerateLibraries();
-        for (const auto& libName : libNames)
-        {
-            pIR->loadPassLibrary(libName);
-        }
 
         // Add the passes
         for (const auto& node : pGraph->mNodeData)

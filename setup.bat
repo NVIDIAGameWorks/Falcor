@@ -13,6 +13,7 @@ if errorlevel 1 (
     echo Cannot find git on PATH! Please initialize submodules manually and rerun.
     exit /b 1
 ) ELSE (
+    git submodule sync --recursive
     git submodule update --init --recursive
 )
 

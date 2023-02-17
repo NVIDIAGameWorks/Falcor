@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -68,10 +68,11 @@ namespace Falcor
         virtual ~PixelDebug() = default;
 
         /** Create debug object.
+            \param[in] pDevice GPU device.
             \param[in] logSize Number of shader print() and assert() statements per frame.
             \return New object, or throws an exception on error.
         */
-        static SharedPtr create(uint32_t logSize = 100);
+        static SharedPtr create(std::shared_ptr<Device> pDevice, uint32_t logSize = 100);
 
         void beginFrame(RenderContext* pRenderContext, const uint2& frameDim);
         void endFrame(RenderContext* pRenderContext);
@@ -88,10 +89,11 @@ namespace Falcor
         void enable() { mEnabled = true; }
 
     protected:
-        PixelDebug(uint32_t logSize) : mLogSize(logSize) {}
+        PixelDebug(std::shared_ptr<Device> pDevice, uint32_t logSize) : mpDevice(std::move(pDevice)), mLogSize(logSize) {}
         bool copyDataToCPU();
 
         // Internal state
+        std::shared_ptr<Device>     mpDevice;
         Program::SharedPtr          mpReflectProgram;               ///< Program for reflection of types.
         Buffer::SharedPtr           mpPixelLog;                     ///< Pixel log on the GPU with UAV counter.
         Buffer::SharedPtr           mpAssertLog;                    ///< Assert log on the GPU with UAV counter.

@@ -1,4 +1,4 @@
-add_renderpass(ErrorMeasurePass)
+add_plugin(ErrorMeasurePass)
 
 target_sources(ErrorMeasurePass PRIVATE
     ErrorMeasurePass.cpp

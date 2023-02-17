@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -41,7 +41,11 @@ namespace Falcor
         }
     }
 
-    RenderGraphCompiler::RenderGraphCompiler(RenderGraph& graph, const Dependencies& dependencies) : mGraph(graph), mDependencies(dependencies) {}
+    RenderGraphCompiler::RenderGraphCompiler(RenderGraph& graph, const Dependencies& dependencies)
+        : mGraph(graph)
+        , mpDevice(graph.getDevice())
+        , mDependencies(dependencies)
+    {}
 
     RenderGraphExe::SharedPtr RenderGraphCompiler::compile(RenderGraph& graph, RenderContext* pRenderContext, const Dependencies& dependencies)
     {
@@ -55,7 +59,7 @@ namespace Falcor
         c.compilePasses(pRenderContext);
         if (c.insertAutoPasses()) c.resolveExecutionOrder();
         c.validateGraph();
-        c.allocateResources(pResourcesCache.get());
+        c.allocateResources(pRenderContext->getDevice(), pResourcesCache.get());
 
         auto pExe = RenderGraphExe::create();
         pExe->mExecutionList.reserve(c.mExecutionList.size());
@@ -209,7 +213,7 @@ namespace Falcor
                 if (dstFieldNames.size() > 0)
                 {
                     // One resolve pass is made for every output that requires it
-                    auto pResolvePass = ResolvePass::create();
+                    auto pResolvePass = ResolvePass::create(mpDevice);
                     pResolvePass->setFormat(srcField.getFormat()); // Match input texture format
 
                     // Create pass and attach src to it
@@ -238,7 +242,7 @@ namespace Falcor
         return addedPasses;
     }
 
-    void RenderGraphCompiler::allocateResources(ResourceCache* pResourceCache)
+    void RenderGraphCompiler::allocateResources(Device* pDevice, ResourceCache* pResourceCache)
     {
         // Build list to look up execution order index from the pass
         std::unordered_map<RenderPass*, uint32_t> passToIndex;
@@ -314,7 +318,7 @@ namespace Falcor
             }
         }
 
-        pResourceCache->allocateResources(mDependencies.defaultResourceProps);
+        pResourceCache->allocateResources(pDevice, mDependencies.defaultResourceProps);
     }
 
 

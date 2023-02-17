@@ -26,6 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "CryptoUtils.h"
+#include <iomanip>
+#include <sstream>
 
 namespace Falcor
 {
@@ -106,6 +108,14 @@ namespace Falcor
         SHA1 sha1;
         sha1.update(data, len);
         return sha1.finalize();
+    }
+
+    std::string SHA1::toString(const SHA1::MD& sha1)
+    {
+        std::stringstream ss;
+        ss << std::hex << std::setfill('0') << std::setw(2);
+        for (auto c : sha1) ss << (int)c;
+        return ss.str();
     }
 
     void SHA1::addByte(uint8_t byte)

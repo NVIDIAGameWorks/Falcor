@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.15)
 cmake_policy(SET CMP0077 NEW)
 cmake_policy(SET CMP0091 NEW)
 cmake_policy(SET CMP0104 NEW)
+cmake_policy(SET CMP0057 NEW)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
@@ -15,9 +16,15 @@ project(Falcor
 # Configuration options
 # -----------------------------------------------------------------------------
 
-# Rendering backend.
-set(FALCOR_RENDER_BACKEND D3D12 CACHE STRING "Falcor rendering backend")
-set_property(CACHE FALCOR_RENDER_BACKEND PROPERTY STRINGS D3D12 GFX-D3D12 GFX-VK)
+# Enable/disable reporting Falcor exceptions as fatal errors before actually throwing them.
+# This allows to break into the debugger at the location where an exception is thrown.
+set(FALCOR_REPORT_EXCEPTION_AS_ERROR OFF CACHE BOOL "Report Falcor exceptions as fatal errors (and break into debugger)")
+
+# Enable/disable using system Python distribution. This requires Python 3.7 to be available.
+set(FALCOR_USE_SYSTEM_PYTHON OFF CACHE BOOL "Use system Python distribution")
+
+# Enable/disable USD.
+set(FALCOR_ENABLE_USD ON CACHE BOOL "Enable USD")
 
 
 # Header validation.
@@ -27,20 +34,6 @@ set(FALCOR_VALIDATE_HEADERS OFF CACHE BOOL "Enable header validation")
 # Precompiled headers.
 # If enabled, precompiled headers are used to speed up compilation.
 set(FALCOR_PRECOMPILED_HEADERS ON CACHE BOOL "Enable precompiled headers")
-
-# Check if D3D12 is available.
-if(FALCOR_RENDER_BACKEND STREQUAL "D3D12" OR FALCOR_RENDER_BACKEND STREQUAL "GFX-D3D12")
-    set(FALCOR_HAS_D3D12 ON)
-else()
-    set(FALCOR_HAS_D3D12 OFF)
-endif()
-
-# Check if Vulkan is available.
-if(FALCOR_RENDER_BACKEND STREQUAL "GFX-VK")
-    set(FALCOR_HAS_VULKAN ON)
-else()
-    set(FALCOR_HAS_VULKAN OFF)
-endif()
 
 # -----------------------------------------------------------------------------
 # Check platform
@@ -56,6 +49,10 @@ else()
     message(FATAL_ERROR "Unsupported platform!")
 endif()
 message(STATUS "Platform: ${FALCOR_PLATFORM}")
+
+# Check if D3D12/Vulkan are available.
+set(FALCOR_HAS_D3D12 ${FALCOR_WINDOWS})
+set(FALCOR_HAS_VULKAN ON)
 
 # -----------------------------------------------------------------------------
 # git submodules
@@ -102,6 +99,10 @@ execute_process(
 # Setup workaround for re-running mt.exe when it fails due to a race condition with AV software.
 include(mt-retry)
 
+# Embed git information.
+include(git_version)
+git_version_setup()
+
 # On Linux, we build with RPATH set to $ORIGIN to make build relocatable.
 if(FALCOR_LINUX)
     set(CMAKE_INSTALL_RPATH $ORIGIN)
@@ -132,23 +133,21 @@ else()
 endif()
 
 # -----------------------------------------------------------------------------
-# External dependencies
+# Python
 # -----------------------------------------------------------------------------
 
-add_subdirectory(external)
+if(FALCOR_USE_SYSTEM_PYTHON)
+    find_package(Python 3.7 EXACT COMPONENTS Interpreter Development REQUIRED)
+else()
+    set(Python_ROOT_DIR ${CMAKE_SOURCE_DIR}/external/packman/python)
+    find_package(Python COMPONENTS Interpreter Development REQUIRED)
+endif()
 
-message(STATUS "Feature flags:")
-message(STATUS "FALCOR_HAS_D3D12: ${FALCOR_HAS_D3D12}")
-message(STATUS "FALCOR_HAS_VULKAN: ${FALCOR_HAS_VULKAN}")
-message(STATUS "FALCOR_HAS_NVAPI: ${FALCOR_HAS_NVAPI}")
-message(STATUS "FALCOR_HAS_PIX: ${FALCOR_HAS_PIX}")
-message(STATUS "FALCOR_HAS_CUDA: ${FALCOR_HAS_CUDA}")
-message(STATUS "FALCOR_HAS_OPTIX: ${FALCOR_HAS_OPTIX}")
-message(STATUS "FALCOR_HAS_D3D12_AGILITY_SDK: ${FALCOR_HAS_D3D12_AGILITY_SDK}")
-message(STATUS "FALCOR_HAS_NRD: ${FALCOR_HAS_NRD}")
-message(STATUS "FALCOR_HAS_DLSS: ${FALCOR_HAS_DLSS}")
-message(STATUS "FALCOR_HAS_NV_USD: ${FALCOR_HAS_NV_USD}")
-message(STATUS "FALCOR_HAS_MDL_SDK: ${FALCOR_HAS_MDL_SDK}")
+if(FALCOR_WINDOWS)
+    set(TOOLS_PYTHON ${CMAKE_SOURCE_DIR}/tools/.packman/python/python)
+elseif(FALCOR_LINUX)
+    set(TOOLS_PYTHON ${Python_EXECUTABLE})
+endif()
 
 # -----------------------------------------------------------------------------
 # Global setup
@@ -186,8 +185,29 @@ else()
     set(FALCOR_OUTPUT_DIRECTORY ${FALCOR_RUNTIME_OUTPUT_DIRECTORY})
 endif()
 
-set(FALCOR_SHADER_OUTPUT_DIRECTORY ${FALCOR_OUTPUT_DIRECTORY}/Shaders)
-set(FALCOR_DATA_OUTPUT_DIRECTORY ${FALCOR_OUTPUT_DIRECTORY}/Data)
+set(FALCOR_SHADER_OUTPUT_DIRECTORY ${FALCOR_OUTPUT_DIRECTORY}/shaders)
+set(FALCOR_PLUGIN_OUTPUT_DIRECTORY ${FALCOR_OUTPUT_DIRECTORY}/plugins)
+
+# -----------------------------------------------------------------------------
+# External dependencies
+# -----------------------------------------------------------------------------
+
+add_subdirectory(external)
+
+message(STATUS "Feature flags:")
+message(STATUS "FALCOR_HAS_D3D12: ${FALCOR_HAS_D3D12}")
+message(STATUS "FALCOR_HAS_VULKAN: ${FALCOR_HAS_VULKAN}")
+message(STATUS "FALCOR_HAS_NVAPI: ${FALCOR_HAS_NVAPI}")
+message(STATUS "FALCOR_HAS_PIX: ${FALCOR_HAS_PIX}")
+message(STATUS "FALCOR_HAS_CUDA: ${FALCOR_HAS_CUDA}")
+message(STATUS "FALCOR_HAS_OPTIX: ${FALCOR_HAS_OPTIX}")
+message(STATUS "FALCOR_HAS_D3D12_AGILITY_SDK: ${FALCOR_HAS_D3D12_AGILITY_SDK}")
+message(STATUS "FALCOR_HAS_NRD: ${FALCOR_HAS_NRD}")
+message(STATUS "FALCOR_HAS_DLSS: ${FALCOR_HAS_DLSS}")
+message(STATUS "FALCOR_HAS_NV_USD: ${FALCOR_HAS_NV_USD}")
+message(STATUS "FALCOR_HAS_MDL_SDK: ${FALCOR_HAS_MDL_SDK}")
+message(STATUS "FALCOR_HAS_OPENSUBDIV: ${FALCOR_HAS_OPENSUBDIV}")
+message(STATUS "FALCOR_ENABLE_USD: ${FALCOR_ENABLE_USD}")
 
 # -----------------------------------------------------------------------------
 # Packman dependencies
@@ -243,19 +263,15 @@ endfunction()
 # Data file handling
 # -----------------------------------------------------------------------------
 
-# Setup a post-build rule to copy the data folder of a target to the output directory.
-# TODO: Take an optional argument for specifying a sub directory.
-macro(target_copy_data_folder target)
-    get_target_property(target_source_dir ${target} SOURCE_DIR)
-    set(target_output_dir ${FALCOR_DATA_OUTPUT_DIRECTORY})
+add_custom_target(copy_data_folder ALL
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data ${FALCOR_OUTPUT_DIRECTORY}/data
+)
+set_target_properties(copy_data_folder PROPERTIES FOLDER "Misc")
 
-    # Support both upper and lower case data folders.
-    if(EXISTS ${target_source_dir}/Data)
-        add_custom_command(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory ${target_source_dir}/Data ${target_output_dir})
-    elseif(EXISTS ${target_source_dir}/data)
-        add_custom_command(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory ${target_source_dir}/data ${target_output_dir})
-    endif()
-endmacro()
+add_custom_target(copy_scripts_folder ALL
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/scripts ${FALCOR_OUTPUT_DIRECTORY}/scripts
+)
+set_target_properties(copy_scripts_folder PROPERTIES FOLDER "Misc")
 
 # -----------------------------------------------------------------------------
 # Falcor applications
@@ -273,28 +289,27 @@ function(add_falcor_executable target)
 endfunction()
 
 # -----------------------------------------------------------------------------
-# Renderpasses
+# Plugins
 # -----------------------------------------------------------------------------
 
 # Global render pass target list.
-set_property(GLOBAL PROPERTY FALCOR_RENDERPASS_TARGETS)
+set_property(GLOBAL PROPERTY FALCOR_PLUGIN_TARGETS)
 
-# Create a Falcor renderpass.
-function(add_renderpass target)
+# Create a Falcor plugin.
+function(add_plugin target)
     add_library(${target} SHARED)
 
     target_link_libraries(${target} PRIVATE Falcor)
 
-    target_compile_definitions(${target} PRIVATE PROJECT_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
-
     set_target_properties(${target} PROPERTIES
         PREFIX ""
-        RUNTIME_OUTPUT_DIRECTORY ${FALCOR_RUNTIME_OUTPUT_DIRECTORY}
-        LIBRARY_OUTPUT_DIRECTORY ${FALCOR_LIBRARY_OUTPUT_DIRECTORY}
+        RUNTIME_OUTPUT_DIRECTORY ${FALCOR_PLUGIN_OUTPUT_DIRECTORY}
+        LIBRARY_OUTPUT_DIRECTORY ${FALCOR_PLUGIN_OUTPUT_DIRECTORY}
+        INSTALL_RPATH "\$ORIGIN/../"
     )
 
-    # Add target to global renderpass target list.
-    set_property(GLOBAL APPEND PROPERTY FALCOR_RENDERPASS_TARGETS ${target})
+    # Add target to global plugin target list.
+    set_property(GLOBAL APPEND PROPERTY FALCOR_PLUGIN_TARGETS ${target})
 endfunction()
 
 # -----------------------------------------------------------------------------
@@ -325,11 +340,11 @@ file(TO_NATIVE_PATH ${output_dir} output_dir)
 
 if(FALCOR_WINDOWS)
     add_custom_target(deploy_dependencies ALL
-        COMMAND ${CMAKE_SOURCE_DIR}/build_scripts/deploycommon.bat ${source_dir} ${output_dir} $<CONFIG>
+        COMMAND ${CMAKE_SOURCE_DIR}/build_scripts/deploycommon.bat ${source_dir} ${output_dir} $<CONFIG> ${FALCOR_SLANG_CONFIG} ${FALCOR_DLSS_DIR}
     )
 elseif(FALCOR_LINUX)
     add_custom_target(deploy_dependencies ALL
-        COMMAND ${CMAKE_SOURCE_DIR}/build_scripts/deploycommon.sh ${source_dir} ${output_dir} $<CONFIG>
+        COMMAND ${CMAKE_SOURCE_DIR}/build_scripts/deploycommon.sh ${source_dir} ${output_dir} $<CONFIG> ${FALCOR_SLANG_CONFIG} ${FALCOR_DLSS_DIR}
     )
 endif()
 set_target_properties(deploy_dependencies PROPERTIES FOLDER "Misc")
@@ -340,23 +355,25 @@ set_target_properties(deploy_dependencies PROPERTIES FOLDER "Misc")
 # -----------------------------------------------------------------------------
 
 # Helper function to validate header files of a target to be self sufficient.
-# This creates a new target with "ValidateHeaders" suffix that compiles one
+# This creates a new target with "VH" suffix that compiles one
 # translation unit for each header file found in the supplied targets sources list.
 function(validate_headers target)
     if(NOT FALCOR_VALIDATE_HEADERS)
         return()
     endif()
 
+    cmake_parse_arguments(PARSE_ARGV 1 validate_header_args "" "" "IGNORE")
+    set(ignore_files ${validate_header_args_IGNORE})
+
     message(STATUS "Setting up header validation for target: ${target}")
 
     # Create a new target for validating headers.
-    set(validate_target ${target}ValidateHeaders)
-    add_library(${validate_target})
+    set(validate_target ${target}VH)
+    add_library(${validate_target} OBJECT)
 
     # Copy properties from original target.
     foreach(property INCLUDE_DIRECTORIES LINK_LIBRARIES COMPILE_DEFINITIONS COMPILE_FEATURES)
         get_target_property(value ${target} ${property})
-        # message(STATUS "${property}: ${value}")
         if(value)
             set_property(TARGET ${validate_target} PROPERTY ${property} ${value})
         endif()
@@ -372,15 +389,18 @@ function(validate_headers target)
     # Create a list of CPP files, each including one header.
     set(validate_sources "")
     foreach(file ${sources})
-        if(${file} MATCHES "^[^.][^.].*\\.h$")
-            # message(STATUS ${file})
-            string(MAKE_C_IDENTIFIER ${file} id)
+        if(${file} MATCHES "^[^.][^.].*\\.h$" AND NOT ${file} IN_LIST ignore_files)
+            string(SHA1 id ${file})
+            # shorten to help avoid super long file names
+            string(SUBSTRING ${id} 0, 8, id)
             set(cpp_file ${validate_target}/${id}.cpp)
             set(cpp_content "#include \"${file}\"\n")
             file(CONFIGURE OUTPUT ${cpp_file} CONTENT ${cpp_content})
             list(APPEND validate_sources ${CMAKE_CURRENT_BINARY_DIR}/${cpp_file})
         endif()
     endforeach()
+
+    target_compile_options(${validate_target} PRIVATE $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/bigobj>)
 
     target_sources(${validate_target} PRIVATE ${validate_sources})
     set_target_properties(${validate_target} PROPERTIES FOLDER "Validation")
@@ -392,9 +412,9 @@ endfunction()
 
 if(${CMAKE_GENERATOR} MATCHES "Ninja")
     add_custom_target(ninja_log_analyzer ALL
-        COMMAND ${CMAKE_SOURCE_DIR}/tools/.packman/python/python ${CMAKE_SOURCE_DIR}/tools/ninja_log_analyzer.py ${CMAKE_CURRENT_BINARY_DIR}/.ninja_log -c 10
+        COMMAND ${TOOLS_PYTHON} ${CMAKE_SOURCE_DIR}/tools/ninja_log_analyzer.py ${CMAKE_CURRENT_BINARY_DIR}/.ninja_log -c 10
     )
-    add_dependencies(ninja_log_analyzer Falcor FalcorTest Mogwai ${renderpass_targets})
+    add_dependencies(ninja_log_analyzer Falcor FalcorPython FalcorTest Mogwai ${plugin_targets})
     set_target_properties(ninja_log_analyzer PROPERTIES FOLDER "Misc")
 endif()
 
@@ -404,17 +424,37 @@ endif()
 
 add_subdirectory(Source/Falcor)
 add_subdirectory(Source/Mogwai)
+add_subdirectory(Source/plugins)
 add_subdirectory(Source/RenderPasses)
 add_subdirectory(Source/Samples)
 add_subdirectory(Source/Tools)
 
+add_dependencies(Falcor copy_data_folder copy_scripts_folder)
+
 # Make Falcor core library depend on deploying all dependencies.
 add_dependencies(Falcor deploy_dependencies)
 
-# Make Mogwai depend on all render passes to have them built prior to running Mogwai.
-get_property(renderpass_targets GLOBAL PROPERTY FALCOR_RENDERPASS_TARGETS)
-if(renderpass_targets)
-    add_dependencies(Mogwai ${renderpass_targets})
+# Get list of all plugin targets.
+get_property(plugin_targets GLOBAL PROPERTY FALCOR_PLUGIN_TARGETS)
+
+# Generate plugins.json file.
+if(plugin_targets)
+    set(json ${plugin_targets})
+    list(TRANSFORM json PREPEND "\"")
+    list(TRANSFORM json APPEND "\"")
+    list(JOIN json ", " json)
+    string(PREPEND json "[ ")
+    string(APPEND json " ]")
+    file(GENERATE OUTPUT ${FALCOR_PLUGIN_OUTPUT_DIRECTORY}/plugins.json CONTENT ${json})
+endif()
+
+# Generate settings.toml file.
+file(GENERATE OUTPUT ${FALCOR_OUTPUT_DIRECTORY}/settings.json CONTENT "{ \"standardsearchpath\" : { \"media\" : \"\${FALCOR_MEDIA_FOLDERS}\"}}")
+
+# Make Mogwai and FalcorPython depend on all plugins.
+if(plugin_targets)
+    add_dependencies(Mogwai ${plugin_targets})
+    add_dependencies(FalcorPython ${plugin_targets})
 endif()
 
 # Make Mogwai the default startup project in VS.

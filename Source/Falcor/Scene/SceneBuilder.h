@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -41,6 +41,7 @@
 #include "Utils/Math/Vector.h"
 #include "Utils/Math/Matrix.h"
 #include "Utils/Scripting/Dictionary.h"
+#include "Utils/Settings.h"
 
 #include <filesystem>
 #include <memory>
@@ -324,31 +325,30 @@ namespace Falcor
             NodeID parent{ NodeID::Invalid() };
         };
 
-        using InstanceMatrices = std::vector<rmcv::mat4>;
-
         /** Create a new object
         */
-        static SharedPtr create(Flags mFlags = Flags::Default);
+        static SharedPtr create(std::shared_ptr<Device> pDevice, const Settings& settings, Flags flags = Flags::Default);
 
         /** Create a new builder and import a scene/model file
-            \param path The file path to load
-            \param flags The build flags
-            \param instances A list of instance matrices to load. This is optional, by default a single instance will be load
             \return A new object with the imported file already initialized, or throws an ImporterError if importing went wrong.
         */
-        static SharedPtr create(const std::filesystem::path& path, Flags buildFlags = Flags::Default, const InstanceMatrices& instances = InstanceMatrices());
+        static SharedPtr create(std::shared_ptr<Device> pDevice, const std::filesystem::path& path, const Settings& settings, Flags flags = Flags::Default);
 
         /** Import a scene/model file
             \param path The file path to load
-            \param instances A list of instance matrices to load. This is optional, by default a single instance will be load
             Throws an ImporterError if something went wrong.
         */
-        void import(const std::filesystem::path& path, const InstanceMatrices& instances = InstanceMatrices(), const Dictionary& dict = Dictionary());
+        void import(const std::filesystem::path& path, const Dictionary& dict = Dictionary());
 
         /** Get the scene. Make sure to add all the objects before calling this function
             \return nullptr if something went wrong, otherwise a new Scene object
         */
         Scene::SharedPtr getScene();
+
+        const std::shared_ptr<Device>& getDevice() const { return mpDevice; }
+
+        const Settings& getSettings() const { return mSettings; }
+        Settings& getSettings() { return mSettings; }
 
         /** Get the build flags
         */
@@ -481,6 +481,12 @@ namespace Falcor
             \return The ID of the material in the scene.
         */
         MaterialID addMaterial(const Material::SharedPtr& pMaterial);
+
+        /** Replace a material.
+            \param pMaterial The material to replace.
+            \param pReplacement The material to replace it with.
+        */
+        void replaceMaterial(const Material::SharedPtr& pMaterial, const Material::SharedPtr& pReplacement);
 
         /** Request loading a material texture.
             \param[in] pMaterial Material to load texture into.
@@ -629,7 +635,7 @@ namespace Falcor
         void setNodeInterpolationMode(NodeID nodeID, Animation::InterpolationMode interpolationMode, bool enableWarping);
 
     private:
-        SceneBuilder(Flags buildFlags);
+        SceneBuilder(std::shared_ptr<Device> pDevice, const Settings& settings, Flags buildFlags);
 
         struct InternalNode : Node
         {
@@ -646,7 +652,6 @@ namespace Falcor
             */
             bool hasObjects() const { return !meshes.empty() || !curves.empty() || !sdfGrids.empty() || !animatable.empty(); }
         };
-
         struct MeshSpec
         {
             std::string name;
@@ -669,7 +674,7 @@ namespace Falcor
             bool isDisplaced = false;               ///< True if mesh has displacement map.
             bool isAnimated = false;                ///< True if mesh has vertex animations.
             AABB boundingBox;                       ///< Mesh bounding-box in object space.
-            std::vector<NodeID> instances;          ///< Node IDs of all instances of this mesh.
+            std::set<NodeID> instances;             ///< IDs of all nodes that instantiate this mesh.
 
             // Pre-processed vertex data.
             std::vector<uint32_t> indexData;    ///< Vertex indices in either 32-bit or 16-bit format packed tightly, or empty if non-indexed.
@@ -711,7 +716,7 @@ namespace Falcor
             uint32_t indexCount = 0;            ///< Number of indices.
             uint32_t vertexCount = 0;           ///< Number of vertices.
             uint32_t degree = 1;                ///< Polynomial degree of curve; linear (1) by default.
-            std::vector<NodeID> instances;      ///< Node IDs of all instances of this curve.
+            std::set<NodeID> instances;         ///< IDs of all nodes that instantiate this curve.
 
             // Pre-processed curve vertex data.
             std::vector<uint32_t> indexData;    ///< Vertex indices in 32-bit.
@@ -724,13 +729,18 @@ namespace Falcor
         using MeshGroupList = std::vector<MeshGroup>;
         using CurveList = std::vector<CurveSpec>;
 
+        std::shared_ptr<Device> mpDevice;
+
+        /// Local copy of settings used to create the SceneBuilder. Edits do not propagate to the parent.
+        Settings mSettings;
+        const Flags mFlags;
+
         Scene::SceneData mSceneData;
         Scene::SharedPtr mpScene;
         SceneCache::Key mSceneCacheKey;
         bool mWriteSceneCache = false;  ///< True if scene cache should be written after import.
 
         SceneGraph mSceneGraph;
-        const Flags mFlags;
 
         MeshList mMeshes;
         MeshGroupList mMeshGroups; ///< Groups of meshes. Each group represents all the geometries in a BLAS for ray tracing.

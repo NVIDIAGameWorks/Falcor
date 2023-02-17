@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 #pragma once
 #include "MaterialData.slang"
 #include "TextureHandle.slang"
+#include "MaterialTypeRegistry.h"
 #include "Core/Macros.h"
 #include "Core/Errors.h"
 #include "Core/API/Formats.h"
@@ -36,6 +37,7 @@
 #include "Utils/Image/TextureAnalyzer.h"
 #include "Utils/UI/Gui.h"
 #include "Scene/Transform.h"
+#include "MaterialTypeRegistry.h"
 #include <array>
 #include <filesystem>
 #include <functional>
@@ -63,7 +65,7 @@ namespace Falcor
             None                = 0x0,  ///< Nothing updated.
             CodeChanged         = 0x1,  ///< Material shader code changed.
             DataChanged         = 0x2,  ///< Material data (parameters) changed.
-            ResourcesChanged    = 0x4,  ///< Material resources (textures, samplers) changed.
+            ResourcesChanged    = 0x4,  ///< Material resources (textures, buffers, samplers) changed.
             DisplacementChanged = 0x8,  ///< Displacement mapping parameters changed (only for materials that support displacement).
         };
 
@@ -78,6 +80,7 @@ namespace Falcor
             Normal,
             Transmission,
             Displacement,
+            Index, // For MERLMix material
 
             Count // Must be last
         };
@@ -220,8 +223,9 @@ namespace Falcor
             \param[in] The texture slot.
             \param[in] path Path to load texture from.
             \param[in] useSrgb Load texture as sRGB format.
+            \return True if the texture was successfully loaded, false otherwise.
         */
-        virtual void loadTexture(const TextureSlot slot, const std::filesystem::path& path, bool useSrgb = true);
+        virtual bool loadTexture(const TextureSlot slot, const std::filesystem::path& path, bool useSrgb = true);
 
         /** Clear one of the available texture slots.
             The call is ignored with a warning if the slot doesn't exist.
@@ -286,17 +290,35 @@ namespace Falcor
         */
         virtual Program::TypeConformanceList getTypeConformances() const = 0;
 
+        /** Get shader defines for the material.
+            The defines must be set on any program using the material.
+        */
+        virtual Program::DefineList getDefines() const { return {}; }
+
         /** Get the number of buffers used by this material.
         */
         virtual int getBufferCount() const { return 0; }
+
+        /** Returns the maximum number of textures this material will use.
+            By default we use the number of texture slots. The reason for this is that,
+            for now, once the MaterialSystem has been set up with some number of texture slots,
+            it is not possible to allocate more. This limitation will be lifted in the future.
+        */
+        virtual size_t getMaxTextureCount() const { return (size_t)Material::TextureSlot::Count; }
 
         // Temporary convenience function to downcast Material to BasicMaterial.
         // This is because a large portion of the interface hasn't been ported to the Material base class yet.
         // TODO: Remove this helper later
         std::shared_ptr<BasicMaterial> toBasicMaterial();
 
+        /** Size of the material instance the material produces.
+            Used to set `anyValueSize` on `IMaterialInstance` above the default (128B), for exceptionally large materials.
+            Large material instances can have a singificant performance impact.
+        */
+        virtual size_t getMaterialInstanceByteSize() { return 128; }
+
     protected:
-        Material(const std::string& name, MaterialType type);
+        Material(std::shared_ptr<Device> pDevice, const std::string& name, MaterialType type);
 
         using UpdateCallback = std::function<void(Material::UpdateFlags)>;
         void registerUpdateCallback(const UpdateCallback& updateCallback) { mUpdateCallback = updateCallback; }
@@ -306,6 +328,8 @@ namespace Falcor
         void updateTextureHandle(MaterialSystem* pOwner, const TextureSlot slot, TextureHandle& handle);
         void updateDefaultTextureSamplerID(MaterialSystem* pOwner, const Sampler::SharedPtr& pSampler);
         bool isBaseEqual(const Material& other) const;
+
+        static NormalMapType detectNormalMapType(const Texture::SharedPtr& pNormalMap);
 
         template<typename T>
         MaterialDataBlob prepareDataBlob(const T& data) const
@@ -317,6 +341,8 @@ namespace Falcor
             std::memcpy(&blob.payload, &data, sizeof(data));
             return blob;
         }
+
+        std::shared_ptr<Device> mpDevice;
 
         std::string mName;                          ///< Name of the material.
         MaterialHeader mHeader;                     ///< Material header data available in all material types.
@@ -332,28 +358,6 @@ namespace Falcor
         friend class SceneCache;
     };
 
-    inline std::string to_string(MaterialType type)
-    {
-        switch (type)
-        {
-#define tostr(t_) case MaterialType::t_: return #t_;
-            tostr(Standard);
-            tostr(Cloth);
-            tostr(Hair);
-            tostr(MERL);
-            tostr(PBRTDiffuse);
-            tostr(PBRTDiffuseTransmission);
-            tostr(PBRTConductor);
-            tostr(PBRTDielectric);
-            tostr(PBRTCoatedConductor);
-            tostr(PBRTCoatedDiffuse);
-            tostr(RGL);
-#undef tostr
-        default:
-            throw ArgumentError("Invalid material type");
-        }
-    }
-
     inline std::string to_string(Material::TextureSlot slot)
     {
         switch (slot)
@@ -365,6 +369,7 @@ namespace Falcor
             tostr(Normal);
             tostr(Transmission);
             tostr(Displacement);
+            tostr(Index);
 #undef tostr
         default:
             throw ArgumentError("Invalid texture slot");

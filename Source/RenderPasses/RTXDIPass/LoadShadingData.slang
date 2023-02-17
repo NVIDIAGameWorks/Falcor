@@ -60,7 +60,7 @@ bool loadShadingData(const uint2 pixel, const uint2 frameDim, const Camera camer
 
         // Adjust shading normals if GBuffer pass has flag enabled.
 #if GBUFFER_ADJUST_SHADING_NORMALS
-        adjustShadingNormal(sd, v);
+        adjustShadingNormal(sd);
 #endif
         valid = true;
     }

@@ -29,19 +29,13 @@
 #include "InvalidPixelDetectionPass/InvalidPixelDetectionPass.h"
 #include "SideBySidePass/SideBySidePass.h"
 #include "ColorMapPass/ColorMapPass.h"
-#include "RenderGraph/RenderPassLibrary.h"
 
-extern "C" FALCOR_API_EXPORT const char* getProjDir()
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
-    return PROJECT_DIR;
-}
-
-extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
-{
-    lib.registerPass(SplitScreenPass::kInfo, SplitScreenPass::create);
-    lib.registerPass(InvalidPixelDetectionPass::kInfo, InvalidPixelDetectionPass::create);
-    lib.registerPass(SideBySidePass::kInfo, SideBySidePass::create);
-    lib.registerPass(ColorMapPass::kInfo, ColorMapPass::create);
+    registry.registerClass<RenderPass, SplitScreenPass>();
+    registry.registerClass<RenderPass, InvalidPixelDetectionPass>();
+    registry.registerClass<RenderPass, SideBySidePass>();
+    registry.registerClass<RenderPass, ColorMapPass>();
 
     ScriptBindings::registerBinding(ColorMapPass::registerScriptBindings);
 }

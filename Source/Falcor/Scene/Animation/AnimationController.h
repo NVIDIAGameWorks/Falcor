@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -54,7 +54,7 @@ namespace Falcor
         /** Create a new object.
             \return A new object, or throws an exception if creation failed.
         */
-        static UniquePtr create(Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations);
+        static UniquePtr create(std::shared_ptr<Device> pDevice, Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations);
 
         /** Add animated vertex caches (curves and meshes) to the controller.
         */
@@ -108,7 +108,7 @@ namespace Falcor
         /** Run the animation system.
             \return true if a change occurred, otherwise false.
         */
-        bool animate(RenderContext* pContext, double currentTime);
+        bool animate(RenderContext* pRenderContext, double currentTime);
 
         /** Check if a matrix changed since last frame.
         */
@@ -148,7 +148,7 @@ namespace Falcor
 
     private:
         friend class SceneBuilder;
-        AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations);
+        AnimationController(std::shared_ptr<Device> pDevice, Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations);
 
         void initLocalMatrices();
         void updateLocalMatrices(double time);
@@ -158,7 +158,9 @@ namespace Falcor
         void bindBuffers();
 
         void createSkinningPass(const std::vector<PackedStaticVertexData>& staticVertexData, const SkinningVertexVector& skinningVertexData);
-        void executeSkinningPass(RenderContext* pContext, bool initPrev = false);
+        void executeSkinningPass(RenderContext* pRenderContext, bool initPrev = false);
+
+        std::shared_ptr<Device> mpDevice;
 
         // Animation
         std::vector<Animation::SharedPtr> mAnimations;

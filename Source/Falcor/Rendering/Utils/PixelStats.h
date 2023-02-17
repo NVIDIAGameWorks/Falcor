@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -33,7 +33,7 @@
 #include "Core/API/GpuFence.h"
 #include "RenderGraph/BasePasses/ComputePass.h"
 #include "Utils/UI/Gui.h"
-#include "Utils/Algorithm/ComputeParallelReduction.h"
+#include "Utils/Algorithm/ParallelReduction.h"
 #include <memory>
 
 namespace Falcor
@@ -69,7 +69,7 @@ namespace Falcor
         using SharedPtr = std::shared_ptr<PixelStats>;
         virtual ~PixelStats() = default;
 
-        static SharedPtr create();
+        static SharedPtr create(std::shared_ptr<Device> pDevice);
 
         void setEnabled(bool enabled) { mEnabled = enabled; }
         bool isEnabled() const { return mEnabled; }
@@ -112,14 +112,16 @@ namespace Falcor
         const Texture::SharedPtr getVolumeLookupCountTexture() const;
 
     protected:
-        PixelStats();
+        PixelStats(std::shared_ptr<Device> pDevice);
         void copyStatsToCPU();
         void computeRayCountTexture(RenderContext* pRenderContext);
 
         static const uint32_t kRayTypeCount = (uint32_t)PixelStatsRayType::Count;
 
+        std::shared_ptr<Device>             mpDevice;
+
         // Internal state
-        ComputeParallelReduction::SharedPtr mpParallelReduction;            ///< Helper for parallel reduction on the GPU.
+        std::unique_ptr<ParallelReduction>  mpParallelReduction;            ///< Helper for parallel reduction on the GPU.
         Buffer::SharedPtr                   mpReductionResult;              ///< Results buffer for stats readback (CPU mappable).
         GpuFence::SharedPtr                 mpFence;                        ///< GPU fence for sychronizing readback.
 

@@ -45,7 +45,7 @@ A material with a higher `nestedPriority` property takes precedence.
 
 **Note:** The default value `nestedPriority = 0` is reserved to mean the highest possible priority.
 
-Example of material configuration in a .pyscene file (see [Scripting](Scripting.md) for details on the Python API):
+Example of material configuration in a .pyscene file (see [Scripting](scripting.md) for details on the Python API):
 
 ```python
 # Absorption coefficients (or extinction coefficient in absence of scattering)

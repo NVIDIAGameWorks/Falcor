@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,27 +31,27 @@
 
 namespace Falcor
 {
-    struct DispatchArguments
-    {
-        uint32_t ThreadGroupCountX;
-        uint32_t ThreadGroupCountY;
-        uint32_t ThreadGroupCountZ;
-    };
+struct DispatchArguments
+{
+    uint32_t ThreadGroupCountX;
+    uint32_t ThreadGroupCountY;
+    uint32_t ThreadGroupCountZ;
+};
 
-    struct DrawArguments
-    {
-        uint32_t VertexCountPerInstance;
-        uint32_t InstanceCount;
-        uint32_t StartVertexLocation;
-        uint32_t StartInstanceLocation;
-    };
+struct DrawArguments
+{
+    uint32_t VertexCountPerInstance;
+    uint32_t InstanceCount;
+    uint32_t StartVertexLocation;
+    uint32_t StartInstanceLocation;
+};
 
-    struct DrawIndexedArguments
-    {
-        uint32_t IndexCountPerInstance;
-        uint32_t InstanceCount;
-        uint32_t StartIndexLocation;
-        int32_t  BaseVertexLocation;
-        uint32_t StartInstanceLocation;
-    };
-}
+struct DrawIndexedArguments
+{
+    uint32_t IndexCountPerInstance;
+    uint32_t InstanceCount;
+    uint32_t StartIndexLocation;
+    int32_t BaseVertexLocation;
+    uint32_t StartInstanceLocation;
+};
+} // namespace Falcor

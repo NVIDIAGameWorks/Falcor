@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -46,7 +46,7 @@ namespace Falcor
     public:
         using SharedPtr = std::shared_ptr<LightProfile>;
 
-        static SharedPtr createFromIesProfile(const std::filesystem::path& filename, bool normalize);
+        static SharedPtr createFromIesProfile(std::shared_ptr<Device> pDevice, const std::filesystem::path& filename, bool normalize);
 
         void bake(RenderContext* pRenderContext);
 
@@ -59,8 +59,9 @@ namespace Falcor
         void renderUI(Gui::Widgets& widget);
 
     private:
-        LightProfile(const std::string& name, const std::vector<float>& rawData);
+        LightProfile(std::shared_ptr<Device> pDevice, const std::string& name, const std::vector<float>& rawData);
 
+        std::shared_ptr<Device> mpDevice;
         std::string mName;
         std::vector<float> mRawData;
         Texture::SharedPtr mpTexture;

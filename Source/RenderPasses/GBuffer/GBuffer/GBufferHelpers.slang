@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,7 +31,7 @@
 
 import Scene.SceneTypes;
 import Scene.ShadingData;
-import Rendering.Materials.IBSDF;
+import Rendering.Materials.IMaterialInstance;
 import Utils.Math.MathHelpers;
 import Utils.Math.FormatConversion;
 __exported import Scene.Material.ShadingUtils;
@@ -42,6 +42,7 @@ struct GBufferData
     float4 normW;
     float4 tangentW;
     float4 faceNormalW;
+    float4 guideNormalW;
     float2 texC;
     uint4  mtlData;
 
@@ -53,24 +54,21 @@ struct GBufferData
 
 /** Helper function to prepare G-buffer data.
 */
-GBufferData prepareGBufferData(const ShadingData sd, const IBSDF bsdf)
+GBufferData prepareGBufferData(const ShadingData sd, const VertexData v, const IMaterialInstance mi, const BSDFProperties bsdfProperties)
 {
-    GBufferData gbuf;
+    GBufferData gbuf = {};
 
-    // We store the final normal and tangent in the G-buffer.
-    // In order to reconstruct the bitangent later, we also need to store its handedness (sign).
-    float3 B = cross(sd.N, sd.T);
-    float bitangentSign = dot(sd.B, B) >= 0.f ? 1.f : -1.f;
+    // We store the final normal in the G-buffer but pass along the original geometric tangent and its handedness (sign) unmodified.
+    // This is needed for correctly orthonormalizing the tangent frame and computing the bitangent in passes that consume the G-buffer data.
+    float bitangentSign = sd.getHandednessSign();
 
     gbuf.posW           = float4(sd.posW, 1.f);
     gbuf.normW          = float4(sd.N, 0.f);
-    gbuf.tangentW       = float4(sd.T, bitangentSign);
+    gbuf.tangentW       = v.tangentW;
     gbuf.faceNormalW    = float4(sd.faceN, 0.f);
+    gbuf.guideNormalW   = float4(bsdfProperties.guideNormal, 0.f);
     gbuf.texC           = sd.uv;
-    gbuf.mtlData        = uint4(sd.materialID, sd.mtl.packedData.x, sd.mtl.packedData.y, 0);
-
-    // Get BSDF properties.
-    let bsdfProperties = bsdf.getProperties(sd);
+    gbuf.mtlData        = uint4(sd.materialID, sd.mtl.packedData.x, sd.mtl.packedData.y, mi.getLobeTypes(sd));
 
     // Setup legacy material channels.
     gbuf.diffuseOpacity = float4(bsdfProperties.diffuseReflectionAlbedo, sd.opacity);

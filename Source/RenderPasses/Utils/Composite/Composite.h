@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -40,9 +40,9 @@ using namespace Falcor;
 class Composite : public RenderPass
 {
 public:
-    using SharedPtr = std::shared_ptr<Composite>;
+    FALCOR_PLUGIN_CLASS(Composite, "Composite", "Composite pass.");
 
-    static const Info kInfo;
+    using SharedPtr = std::shared_ptr<Composite>;
 
     /** Composite modes.
     */
@@ -52,7 +52,7 @@ public:
         Multiply,
     };
 
-    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
@@ -63,7 +63,7 @@ public:
     static void registerBindings(pybind11::module& m);
 
 private:
-    Composite(const Dictionary& dict);
+    Composite(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     Program::DefineList getDefines() const;
 

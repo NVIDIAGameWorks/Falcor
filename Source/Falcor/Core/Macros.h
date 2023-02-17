@@ -27,105 +27,118 @@
  **************************************************************************/
 #pragma once
 
-/** Version.
-*/
-#define FALCOR_MAJOR_VERSION 5
-#define FALCOR_REVISION 2
-#define FALCOR_VERSION_STRING "5.2"
+/**
+ * Compilers.
+ */
+#define FALCOR_COMPILER_MSVC 1
+#define FALCOR_COMPILER_CLANG 2
+#define FALCOR_COMPILER_GCC 3
 
-/** Compilers.
-*/
-#define FALCOR_COMPILER_MSVC    1
-#define FALCOR_COMPILER_CLANG   2
-#define FALCOR_COMPILER_GCC     3
-
-/** Determine the compiler in use.
-    http://sourceforge.net/p/predef/wiki/Compilers/
-*/
+/**
+ * Determine the compiler in use.
+ * http://sourceforge.net/p/predef/wiki/Compilers/
+ */
 #ifndef FALCOR_COMPILER
-#   if defined(_MSC_VER)
-#       define FALCOR_COMPILER FALCOR_COMPILER_MSVC
-#   elif defined(__clang__)
-#       define FALCOR_COMPILER FALCOR_COMPILER_CLANG
-#   elif defined(__GNUC__)
-#       define FALCOR_COMPILER FALCOR_COMPILER_GCC
-#   else
-#       error "Unsupported compiler"
-#   endif
+#if defined(_MSC_VER)
+#define FALCOR_COMPILER FALCOR_COMPILER_MSVC
+#elif defined(__clang__)
+#define FALCOR_COMPILER FALCOR_COMPILER_CLANG
+#elif defined(__GNUC__)
+#define FALCOR_COMPILER FALCOR_COMPILER_GCC
+#else
+#error "Unsupported compiler"
+#endif
 #endif // FALCOR_COMPILER
 
-#define FALCOR_MSVC     (FALCOR_COMPILER == FALCOR_COMPILER_MSVC)
-#define FALCOR_CLANG    (FALCOR_COMPILER == FALCOR_COMPILER_CLANG)
-#define FALCOR_GCC      (FALCOR_COMPILER == FALCOR_COMPILER_GCC)
+#define FALCOR_MSVC (FALCOR_COMPILER == FALCOR_COMPILER_MSVC)
+#define FALCOR_CLANG (FALCOR_COMPILER == FALCOR_COMPILER_CLANG)
+#define FALCOR_GCC (FALCOR_COMPILER == FALCOR_COMPILER_GCC)
 
-/** Platforms.
-*/
+/**
+ * Platforms.
+ */
 #define FALCOR_PLATFORM_WINDOWS 1
-#define FALCOR_PLATFORM_LINUX   2
+#define FALCOR_PLATFORM_LINUX 2
 
-/** Determine the target platform in use.
-    http://sourceforge.net/p/predef/wiki/OperatingSystems/
-*/
+/**
+ * Determine the target platform in use.
+ * http://sourceforge.net/p/predef/wiki/OperatingSystems/
+ */
 #ifndef FALCOR_PLATFORM
-#   if defined(_WIN64)
-#       define FALCOR_PLATFORM FALCOR_PLATFORM_WINDOWS
-#   elif defined(__linux__)
-#       define FALCOR_PLATFORM FALCOR_PLATFORM_LINUX
-#   else
-#       error "Unsupported target platform"
-#   endif
+#if defined(_WIN64)
+#define FALCOR_PLATFORM FALCOR_PLATFORM_WINDOWS
+#elif defined(__linux__)
+#define FALCOR_PLATFORM FALCOR_PLATFORM_LINUX
+#else
+#error "Unsupported target platform"
+#endif
 #endif // FALCOR_PLATFORM
 
-#define FALCOR_WINDOWS  (FALCOR_PLATFORM == FALCOR_PLATFORM_WINDOWS)
-#define FALCOR_LINUX    (FALCOR_PLATFORM == FALCOR_PLATFORM_LINUX)
+#define FALCOR_WINDOWS (FALCOR_PLATFORM == FALCOR_PLATFORM_WINDOWS)
+#define FALCOR_LINUX (FALCOR_PLATFORM == FALCOR_PLATFORM_LINUX)
 
-/** D3D12 Agility SDK.
-*/
+/**
+ * D3D12 Agility SDK.
+ */
 #if FALCOR_HAS_D3D12_AGILITY_SDK
+#define FALCOR_D3D12_AGILITY_SDK_VERSION 4
+#define FALCOR_D3D12_AGILITY_SDK_PATH ".\\D3D12\\"
 // To enable the D3D12 Agility SDK, this macro needs to be added to the main source file of the executable.
-#define FALCOR_EXPORT_D3D12_AGILITY_SDK                                                     \
-    extern "C" { FALCOR_API_EXPORT extern const UINT D3D12SDKVersion = 4;}              \
-    extern "C" { FALCOR_API_EXPORT extern const char* D3D12SDKPath = reinterpret_cast<const char*>(u8".\\D3D12\\"); }
+#define FALCOR_EXPORT_D3D12_AGILITY_SDK                                                         \
+    extern "C"                                                                                  \
+    {                                                                                           \
+        FALCOR_API_EXPORT extern const UINT D3D12SDKVersion = FALCOR_D3D12_AGILITY_SDK_VERSION; \
+    }                                                                                           \
+    extern "C"                                                                                  \
+    {                                                                                           \
+        FALCOR_API_EXPORT extern const char* D3D12SDKPath = FALCOR_D3D12_AGILITY_SDK_PATH;      \
+    }
 #else
 #define FALCOR_EXPORT_D3D12_AGILITY_SDK
 #endif
 
-/** Define for checking if NVAPI is available.
-*/
-#define FALCOR_NVAPI_AVAILABLE  (FALCOR_HAS_D3D12 && FALCOR_HAS_NVAPI)
+/**
+ * Define for checking if NVAPI is available.
+ */
+#define FALCOR_NVAPI_AVAILABLE (FALCOR_HAS_D3D12 && FALCOR_HAS_NVAPI)
 
-/** Shared library (DLL) export and import.
-*/
+/**
+ * Shared library (DLL) export and import.
+ */
 #if FALCOR_WINDOWS
 #define FALCOR_API_EXPORT __declspec(dllexport)
 #define FALCOR_API_IMPORT __declspec(dllimport)
 #elif FALCOR_LINUX
-#define FALCOR_API_EXPORT __attribute__ ((visibility ("default")))
+#define FALCOR_API_EXPORT __attribute__((visibility("default")))
 #define FALCOR_API_IMPORT
 #endif
 
 #ifdef FALCOR_DLL
 #define FALCOR_API FALCOR_API_EXPORT
-#else   // FALCOR_DLL
+#else // FALCOR_DLL
 #define FALCOR_API FALCOR_API_IMPORT
 #endif // FALCOR_DLL
 
-/** Force inline.
-*/
+/**
+ * Force inline.
+ */
 #if FALCOR_MSVC
 #define FALCOR_FORCEINLINE __forceinline
 #elif FALCOR_CLANG | FALCOR_GCC
 #define FALCOR_FORCEINLINE __attribute__((always_inline))
 #endif
 
-/** Preprocessor stringification.
-*/
+/**
+ * Preprocessor stringification.
+ */
 #define FALCOR_STRINGIZE(a) #a
 #define FALCOR_CONCAT_STRINGS_(a, b) a##b
 #define FALCOR_CONCAT_STRINGS(a, b) FALCOR_CONCAT_STRINGS_(a, b)
 
-/** Implement logical operators on a class enum for making it usable as a flags enum.
-*/
+/**
+ * Implement logical operators on a class enum for making it usable as a flags enum.
+ */
+// clang-format off
 #define FALCOR_ENUM_CLASS_OPERATORS(e_) \
     inline e_ operator& (e_ a, e_ b) { return static_cast<e_>(static_cast<int>(a)& static_cast<int>(b)); } \
     inline e_ operator| (e_ a, e_ b) { return static_cast<e_>(static_cast<int>(a)| static_cast<int>(b)); } \
@@ -134,3 +147,4 @@
     inline e_  operator~ (e_ a) { return static_cast<e_>(~static_cast<int>(a)); } \
     inline bool is_set(e_ val, e_ flag) { return (val & flag) != static_cast<e_>(0); } \
     inline void flip_bit(e_& val, e_ flag) { val = is_set(val, flag) ? (val & (~flag)) : (val | flag); }
+// clang-format on

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -43,14 +43,11 @@ namespace Falcor
         const uint2 kGridSize = { 512, 512 };
     }
 
-    BSDFIntegrator::SharedPtr BSDFIntegrator::create(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
+    BSDFIntegrator::BSDFIntegrator(std::shared_ptr<Device> pDevice, const Scene::SharedPtr& pScene)
+        : mpDevice(std::move(pDevice))
+        , mpScene(pScene)
     {
-        return SharedPtr(new BSDFIntegrator(pRenderContext, pScene));
-    }
-
-    BSDFIntegrator::BSDFIntegrator(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
-        : mpScene(pScene)
-    {
+        checkArgument(mpScene != nullptr, "'pDevice' must be a valid device");
         checkArgument(pScene != nullptr, "'pScene' must be a valid scene");
 
         // Create programs.
@@ -63,9 +60,9 @@ namespace Falcor
         Program::Desc descFinal = desc;
 
         desc.csEntry("mainIntegration");
-        mpIntegrationPass = ComputePass::create(desc, defines);
+        mpIntegrationPass = ComputePass::create(mpDevice, desc, defines);
         descFinal.csEntry("mainFinal");
-        mpFinalPass = ComputePass::create(descFinal, defines);
+        mpFinalPass = ComputePass::create(mpDevice, descFinal, defines);
 
         // Compute number of intermediate results.
         uint3 groupSize = mpIntegrationPass->getThreadGroupSize();
@@ -78,7 +75,7 @@ namespace Falcor
         FALCOR_ASSERT(finalGroupSize.x == 256 && finalGroupSize.y == 1 && finalGroupSize.z == 1);
         FALCOR_ASSERT(finalGroupSize.x == mResultCount);
 
-        mpFence = GpuFence::create();
+        mpFence = GpuFence::create(mpDevice.get());
     }
 
     float3 BSDFIntegrator::integrateIsotropic(RenderContext* pRenderContext, const MaterialID materialID, float cosTheta)
@@ -103,7 +100,7 @@ namespace Falcor
 
         if (!mpCosThetaBuffer || mpCosThetaBuffer->getElementCount() < gridCount)
         {
-            mpCosThetaBuffer = Buffer::createStructured(sizeof(float), gridCount, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, cosThetas.data(), false);
+            mpCosThetaBuffer = Buffer::createStructured(mpDevice.get(), sizeof(float), gridCount, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, cosThetas.data(), false);
         }
         else
         {
@@ -114,12 +111,12 @@ namespace Falcor
         uint32_t elemCount = gridCount * mResultCount;
         if (!mpResultBuffer || mpResultBuffer->getElementCount() < elemCount)
         {
-            mpResultBuffer = Buffer::createStructured(sizeof(float3), elemCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+            mpResultBuffer = Buffer::createStructured(mpDevice.get(), sizeof(float3), elemCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
         }
         if (!mpFinalResultBuffer || mpFinalResultBuffer->getElementCount() < gridCount)
         {
-            mpFinalResultBuffer = Buffer::createStructured(sizeof(float3), gridCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
-            mpStagingBuffer = Buffer::createStructured(sizeof(float3), gridCount, ResourceBindFlags::None, Buffer::CpuAccess::Read, nullptr, false);
+            mpFinalResultBuffer = Buffer::createStructured(mpDevice.get(), sizeof(float3), gridCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+            mpStagingBuffer = Buffer::createStructured(mpDevice.get(), sizeof(float3), gridCount, ResourceBindFlags::None, Buffer::CpuAccess::Read, nullptr, false);
         }
 
         // Execute GPU passes.

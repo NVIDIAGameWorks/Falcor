@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -49,7 +49,7 @@ namespace Falcor
             \param[in] path Path of BRDF file to load.
             \return A new object, or throws an exception if creation failed.
         */
-        static SharedPtr create(const std::string& name, const std::filesystem::path& path);
+        static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& name, const std::filesystem::path& path);
 
         bool renderUI(Gui::Widgets& widget) override;
         Material::UpdateFlags update(MaterialSystem* pOwner) override;
@@ -63,7 +63,7 @@ namespace Falcor
         bool loadBRDF(const std::filesystem::path& path);
 
     protected:
-        RGLMaterial(const std::string& name, const std::filesystem::path& path);
+        RGLMaterial(std::shared_ptr<Device> pDevice, const std::string& name, const std::filesystem::path& path);
 
         void prepareData(const int dims[3], const std::vector<double>& data);
         void prepareAlbedoLUT(RenderContext* pRenderContext);

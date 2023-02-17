@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,32 +26,42 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "GraphicsProgram.h"
+#include "ProgramManager.h"
+#include "Core/API/Device.h"
 #include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
 {
-    GraphicsProgram::SharedPtr GraphicsProgram::create(const Desc& desc, const Program::DefineList& programDefines)
-    {
-        Desc d = desc;
-        auto pProg = SharedPtr(new GraphicsProgram(d, programDefines));
-        registerProgramForReload(pProg);
-        return pProg;
-    }
-
-    GraphicsProgram::SharedPtr GraphicsProgram::createFromFile(const std::filesystem::path& path, const std::string& vsEntry, const std::string& psEntry, const DefineList& programDefines)
-    {
-        Desc d(path);
-        d.vsEntry(vsEntry).psEntry(psEntry);
-        return create(d, programDefines);
-    }
-
-    GraphicsProgram::GraphicsProgram(const Desc& desc, const Program::DefineList& programDefines)
-        : Program(desc, programDefines)
-    {
-    }
-
-    FALCOR_SCRIPT_BINDING(GraphicsProgram)
-    {
-        pybind11::class_<GraphicsProgram, GraphicsProgram::SharedPtr>(m, "GraphicsProgram");
-    }
+GraphicsProgram::SharedPtr GraphicsProgram::create(
+    std::shared_ptr<Device> pDevice,
+    const Desc& desc,
+    const Program::DefineList& programDefines
+)
+{
+    auto pProgram = SharedPtr(new GraphicsProgram(pDevice, desc, programDefines));
+    pDevice->getProgramManager()->registerProgramForReload(pProgram);
+    return pProgram;
 }
+
+GraphicsProgram::SharedPtr GraphicsProgram::createFromFile(
+    std::shared_ptr<Device> pDevice,
+    const std::filesystem::path& path,
+    const std::string& vsEntry,
+    const std::string& psEntry,
+    const DefineList& programDefines
+)
+{
+    Desc d(path);
+    d.vsEntry(vsEntry).psEntry(psEntry);
+    return create(std::move(pDevice), d, programDefines);
+}
+
+GraphicsProgram::GraphicsProgram(std::shared_ptr<Device> pDevice, const Desc& desc, const Program::DefineList& programDefines)
+    : Program(std::move(pDevice), desc, programDefines)
+{}
+
+FALCOR_SCRIPT_BINDING(GraphicsProgram)
+{
+    pybind11::class_<GraphicsProgram, GraphicsProgram::SharedPtr>(m, "GraphicsProgram");
+}
+} // namespace Falcor

@@ -1,8 +1,6 @@
 from falcor import *
 
 def render_graph_VBufferRaster():
-    loadRenderPassLibrary("GBuffer.dll")
-
     g = RenderGraph("VBufferRaster")
     g.addPass(createPass("VBufferRaster"), "VBufferRaster")
 

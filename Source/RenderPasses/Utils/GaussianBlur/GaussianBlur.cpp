@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,8 +28,6 @@
 #include "GaussianBlur.h"
 #include <cmath>
 
-const RenderPass::Info GaussianBlur::kInfo { "GaussianBlur", "Gaussian blur." };
-
 namespace
 {
     const char kSrc[] = "src";
@@ -48,18 +46,18 @@ void GaussianBlur::registerBindings(pybind11::module& m)
     pass.def_property(kSigma, &GaussianBlur::getSigma, &GaussianBlur::setSigma);
 }
 
-GaussianBlur::GaussianBlur()
-    : RenderPass(kInfo)
+GaussianBlur::GaussianBlur(std::shared_ptr<Device> pDevice)
+    : RenderPass(std::move(pDevice))
 {
-    mpFbo = Fbo::create();
+    mpFbo = Fbo::create(mpDevice.get());
     Sampler::Desc samplerDesc;
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
-    mpSampler = Sampler::create(samplerDesc);
+    mpSampler = Sampler::create(mpDevice.get(), samplerDesc);
 }
 
-GaussianBlur::SharedPtr GaussianBlur::create(RenderContext* pRenderContext, const Dictionary& dict)
+GaussianBlur::SharedPtr GaussianBlur::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
-    SharedPtr pBlur = SharedPtr(new GaussianBlur);
+    SharedPtr pBlur = SharedPtr(new GaussianBlur(std::move(pDevice)));
     for (const auto& [key, value] : dict)
     {
         if (key == kKernelWidth) pBlur->mKernelWidth = value;
@@ -120,10 +118,10 @@ void GaussianBlur::compile(RenderContext* pRenderContext, const CompileData& com
 
     uint32_t layerMask = (arraySize > 1) ? ((1 << arraySize) - 1) : 0;
     defines.add("_HORIZONTAL_BLUR");
-    mpHorizontalBlur = FullScreenPass::create(kShaderFilename, defines, layerMask);
+    mpHorizontalBlur = FullScreenPass::create(mpDevice, kShaderFilename, defines, layerMask);
     defines.remove("_HORIZONTAL_BLUR");
     defines.add("_VERTICAL_BLUR");
-    mpVerticalBlur = FullScreenPass::create(kShaderFilename, defines, layerMask);
+    mpVerticalBlur = FullScreenPass::create(mpDevice, kShaderFilename, defines, layerMask);
 
     // Make the programs share the vars
     mpVerticalBlur->setVars(mpHorizontalBlur->getVars());
@@ -164,7 +162,7 @@ void GaussianBlur::createTmpFbo(const Texture* pSrc)
     {
         Fbo::Desc fboDesc;
         fboDesc.setColorTarget(0, srcFormat);
-        mpTmpFbo = Fbo::create2D(pSrc->getWidth(), pSrc->getHeight(), fboDesc, pSrc->getArraySize());
+        mpTmpFbo = Fbo::create2D(mpDevice.get(), pSrc->getWidth(), pSrc->getHeight(), fboDesc, pSrc->getArraySize());
     }
 }
 
@@ -207,7 +205,7 @@ void GaussianBlur::updateKernel()
         sum += (i == 0) ? weights[i] : 2 * weights[i];
     }
 
-    Buffer::SharedPtr pBuf = Buffer::createTyped<float>(mKernelWidth, Resource::BindFlags::ShaderResource);
+    Buffer::SharedPtr pBuf = Buffer::createTyped<float>(mpDevice.get(), mKernelWidth, Resource::BindFlags::ShaderResource);
 
     for (uint32_t i = 0; i <= center; i++)
     {

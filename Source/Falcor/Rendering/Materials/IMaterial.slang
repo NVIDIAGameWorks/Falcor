@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,9 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-__exported import Rendering.Materials.IBSDF;
+__exported import Rendering.Materials.IMaterialInstance;
 __exported import Scene.Material.MaterialSystem;
 __exported import Scene.Material.TextureSampler;
+__exported import Scene.Material.VolumeProperties;
+import Rendering.Volumes.PhaseFunction;
 __exported import Scene.ShadingData;
 
 /** Interface for materials.
@@ -35,11 +37,11 @@ __exported import Scene.ShadingData;
     Implementations of this interface hold all data describing the material properties.
     Material instances are created and initialized with data by `MaterialSystem`.
 
-    When querying a material for the BSDF at a given shading point, a BSDF instance implementing
-    the IBSDF interface is returned. This has all material properties evaluated at the shading point.
+    When querying a material at a given shading point, a material instance implementing
+    the IMaterialInstance interface is returned. This has all material properties evaluated at the shading point.
     The process of creating this instance is referred to as "pattern generation". The returned
     instance can be used for evaluation and sampling of the BSDF, and associated functionality.
-    
+
     Note:
      - The [anyValueSize(n)] attribute specifies the maximum size in bytes an implementation type
        to `IMaterial` can be. Slang compiler will check the implementation types and emits an error
@@ -49,29 +51,29 @@ __exported import Scene.ShadingData;
 [anyValueSize(128)]
 interface IMaterial
 {
-    // Requires an implementation to define a type named `BSDF` that
-    // conforms to the `IBSDF` interface.
-    associatedtype BSDF : IBSDF;
+    // Requires an implementation to define a type named `MaterialInstance` that
+    // conforms to the `IMaterialInstance` interface.
+    associatedtype MaterialInstance : IMaterialInstance;
 
-    /** Return a BSDF instance for the given shading point.
+    /** Return a MaterialInstance for the given shading point.
         This operation performs pattern generation and may sample textures etc.
         \param[in] ms Material system. This provides the resources for pattern generation.
         \param[in] sd Shading data.
         \param[in] lod Method for computing texture level-of-detail, must implement the `ITextureSampler` interface.
-        \return BSDF instance implementing the `IBSDF` interface.
+        \param[in] hints Optional hints to control the behavior of the material instance. Combination of `MaterialInstanceHints` flags.
+        \return MaterialInstance implementing the `IMaterialInstance` interface.
     */
-    BSDF setupBSDF(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod);
+    MaterialInstance setupMaterialInstance(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints = (uint)MaterialInstanceHints::None);
 
     /** Modify the tangent space at the given shading point.
         This function is called by the material system when preparing the `ShadingData` struct.
         It allows materials to implement normal mapping and other techniques that modify the local surface geometry.
         Materials that do not need to modify the default tangent frame should leave the shading data unchanged.
         \param[in] ms Material system. This provides the resources for pattern generation.
-        \param[in] tangent Tangent in world space (xyz) and bitangent sign (w). The tangent is *only* valid when w != 0.
         \param[in] lod Method to use for computing texture level of detail, must implement the `ITextureSampler` interface.
         \param[in,out] sd Shading data.
     */
-    void modifyTangentSpace(const MaterialSystem ms, const float4 tangentW, const ITextureSampler lod, inout ShadingData sd);
+    void modifyTangentSpace(const MaterialSystem ms, const ITextureSampler lod, inout ShadingData sd);
 
     /** Evaluate opacity at the given shading point.
         \param[in] ms Material system. This provides the resources for opacity evaluation.
@@ -80,4 +82,24 @@ interface IMaterial
         \return Opacity value in range 0..1.
     */
     float evalOpacity(const MaterialSystem ms, const VertexData v, const ITextureSampler lod);
+
+    /** Returns volume properties that are homogeneous for the whole volume (do not depend on the hitpoint).
+     */
+    VolumeProperties getHomogeneousVolumeProperties(const MaterialSystem ms, const uint materialID);
+}
+
+[open]
+struct MaterialBase
+{
+    MaterialHeader header;
+
+    VolumeProperties getHomogeneousVolumeProperties(const MaterialSystem ms, const uint materialID)
+    {
+        if (header.isBasicMaterial())
+        {
+            const BasicMaterialData md = ms.getBasicMaterialData(materialID);
+            return { md.volumeAbsorption, md.volumeScattering, HenyeyGreensteinPhaseFunction(md.volumeAnisotropy) };
+        }
+        return { float3(0.f), float3(0.f), NullPhaseFunction() };
+    }
 }

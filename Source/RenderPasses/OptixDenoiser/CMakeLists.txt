@@ -2,7 +2,7 @@ if(NOT (FALCOR_HAS_CUDA AND FALCOR_HAS_OPTIX))
     return()
 endif()
 
-add_renderpass(OptixDenoiser)
+add_plugin(OptixDenoiser)
 
 target_sources(OptixDenoiser PRIVATE
     BootstrapUtils.cpp

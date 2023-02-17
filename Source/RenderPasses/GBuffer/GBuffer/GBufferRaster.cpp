@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,11 +29,10 @@
 #include "RenderGraph/RenderPassStandardFlags.h"
 #include "GBufferRaster.h"
 
-const RenderPass::Info GBufferRaster::kInfo { "GBufferRaster", "Rasterized G-buffer generation pass." };
-
 namespace
 {
-    const std::string kProgramFile = "RenderPasses/GBuffer/GBuffer/GBufferRaster.3d.slang";
+    const std::string kDepthPassProgramFile = "RenderPasses/GBuffer/GBuffer/DepthPass.3d.slang";
+    const std::string kGBufferPassProgramFile = "RenderPasses/GBuffer/GBuffer/GBufferRaster.3d.slang";
     const std::string shaderModel = "6_2";
     const RasterizerState::CullMode kDefaultCullMode = RasterizerState::CullMode::Back;
 
@@ -43,12 +42,14 @@ namespace
     const ChannelList kGBufferExtraChannels =
     {
         { kVBufferName,     "gVBuffer",             "Visibility buffer",                        true /* optional */, ResourceFormat::Unknown /* set at runtime */ },
+        { "guideNormalW",   "gGuideNormalW",        "Guide normal in world space",              true /* optional */, ResourceFormat::RGBA32Float },
         { "diffuseOpacity", "gDiffOpacity",         "Diffuse reflection albedo and opacity",    true /* optional */, ResourceFormat::RGBA32Float },
         { "specRough",      "gSpecRough",           "Specular reflectance and roughness",       true /* optional */, ResourceFormat::RGBA32Float },
         { "emissive",       "gEmissive",            "Emissive color",                           true /* optional */, ResourceFormat::RGBA32Float },
         { "viewW",          "gViewW",               "View direction in world space",            true /* optional */, ResourceFormat::RGBA32Float }, // TODO: Switch to packed 2x16-bit snorm format.
-        { "pnFwidth",       "gPosNormalFwidth",     "Position and normal filter width",         true /* optional */, ResourceFormat::RG32Float   },
+        { "pnFwidth",       "gPosNormalFwidth",     "Position and guide normal filter width",   true /* optional */, ResourceFormat::RG32Float   },
         { "linearZ",        "gLinearZAndDeriv",     "Linear z (and derivative)",                true /* optional */, ResourceFormat::RG32Float   },
+        { "mask",           "gMask",                "Mask",                                     true /* optional */, ResourceFormat::R32Float    },
     };
 
     const std::string kDepthName = "depth";
@@ -71,20 +72,20 @@ RenderPassReflection GBufferRaster::reflect(const CompileData& compileData)
     return reflector;
 }
 
-GBufferRaster::SharedPtr GBufferRaster::create(RenderContext* pRenderContext, const Dictionary& dict)
+GBufferRaster::SharedPtr GBufferRaster::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
-    return SharedPtr(new GBufferRaster(dict));
+    return SharedPtr(new GBufferRaster(std::move(pDevice), dict));
 }
 
-GBufferRaster::GBufferRaster(const Dictionary& dict)
-    : GBuffer(kInfo)
+GBufferRaster::GBufferRaster(std::shared_ptr<Device> pDevice, const Dictionary& dict)
+    : GBuffer(std::move(pDevice))
 {
     // Check for required features.
-    if (!gpDevice->isFeatureSupported(Device::SupportedFeatures::Barycentrics))
+    if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::Barycentrics))
     {
         throw RuntimeError("GBufferRaster: Pixel shader barycentrics are not supported by the current device");
     }
-    if (!gpDevice->isFeatureSupported(Device::SupportedFeatures::RasterizerOrderedViews))
+    if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RasterizerOrderedViews))
     {
         throw RuntimeError("GBufferRaster: Rasterizer ordered views (ROVs) are not supported by the current device");
     }
@@ -92,35 +93,32 @@ GBufferRaster::GBufferRaster(const Dictionary& dict)
     parseDictionary(dict);
 
     // Initialize graphics state
-    mRaster.pState = GraphicsState::create();
+    mDepthPass.pState = GraphicsState::create(mpDevice);
+    mGBufferPass.pState = GraphicsState::create(mpDevice);
 
     // Set depth function
     DepthStencilState::Desc dsDesc;
     dsDesc.setDepthFunc(DepthStencilState::Func::Equal).setDepthWriteMask(false);
     DepthStencilState::SharedPtr pDsState = DepthStencilState::create(dsDesc);
-    mRaster.pState->setDepthStencilState(pDsState);
+    mGBufferPass.pState->setDepthStencilState(pDsState);
 
-    mpFbo = Fbo::create();
+    mpFbo = Fbo::create(mpDevice.get());
 }
 
 void GBufferRaster::compile(RenderContext* pRenderContext, const CompileData& compileData)
 {
     GBuffer::compile(pRenderContext, compileData);
-
-    mpDepthPrePassGraph = RenderGraph::create("Depth Pre-Pass");
-    mpDepthPrePass = DepthPass::create(pRenderContext);
-    mpDepthPrePass->setDepthBufferFormat(ResourceFormat::D32Float);
-    mpDepthPrePassGraph->addPass(mpDepthPrePass, "DepthPrePass");
-    mpDepthPrePassGraph->markOutput("DepthPrePass.depth");
-    mpDepthPrePassGraph->setScene(mpScene);
 }
 
 void GBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
 {
     GBuffer::setScene(pRenderContext, pScene);
 
-    mRaster.pProgram = nullptr;
-    mRaster.pVars = nullptr;
+    mDepthPass.pProgram = nullptr;
+    mDepthPass.pVars = nullptr;
+
+    mGBufferPass.pProgram = nullptr;
+    mGBufferPass.pVars = nullptr;
 
     if (pScene)
     {
@@ -129,18 +127,34 @@ void GBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedP
             throw RuntimeError("GBufferRaster: Requires triangle list geometry due to usage of SV_Barycentrics.");
         }
 
-        // Create raster program.
-        Program::Desc desc;
-        desc.addShaderModules(pScene->getShaderModules());
-        desc.addShaderLibrary(kProgramFile).vsEntry("vsMain").psEntry("psMain");
-        desc.addTypeConformances(pScene->getTypeConformances());
-        desc.setShaderModel(shaderModel);
+        // Create depth pass program.
+        {
+            Program::Desc desc;
+            desc.addShaderModules(pScene->getShaderModules());
+            desc.addShaderLibrary(kDepthPassProgramFile).vsEntry("vsMain").psEntry("psMain");
+            desc.addTypeConformances(pScene->getTypeConformances());
+            desc.setShaderModel(shaderModel);
 
-        mRaster.pProgram = GraphicsProgram::create(desc, pScene->getSceneDefines());
-        mRaster.pState->setProgram(mRaster.pProgram);
+            mDepthPass.pProgram = GraphicsProgram::create(mpDevice, desc, pScene->getSceneDefines());
+            mDepthPass.pState->setProgram(mDepthPass.pProgram);
+        }
+
+        // Create GBuffer pass program.
+        {
+            Program::Desc desc;
+            desc.addShaderModules(pScene->getShaderModules());
+            desc.addShaderLibrary(kGBufferPassProgramFile).vsEntry("vsMain").psEntry("psMain");
+            desc.addTypeConformances(pScene->getTypeConformances());
+            desc.setShaderModel(shaderModel);
+
+            mGBufferPass.pProgram = GraphicsProgram::create(mpDevice, desc, pScene->getSceneDefines());
+            mGBufferPass.pState->setProgram(mGBufferPass.pProgram);
+        }
     }
+}
 
-    if (mpDepthPrePassGraph) mpDepthPrePassGraph->setScene(pScene);
+void GBufferRaster::onSceneUpdates(RenderContext* pRenderContext, Scene::UpdateFlags sceneUpdates)
+{
 }
 
 void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& renderData)
@@ -151,6 +165,9 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     auto pDepth = renderData.getTexture(kDepthName);
     FALCOR_ASSERT(pDepth);
     updateFrameDim(uint2(pDepth->getWidth(), pDepth->getHeight()));
+
+    // Clear depth buffer.
+    pRenderContext->clearDsv(pDepth->getDSV().get(), 1.f, 0);
 
     // Bind primary channels as render targets and clear them.
     for (size_t i = 0; i < kGBufferChannels.size(); ++i)
@@ -166,50 +183,54 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     // If there is no scene, clear depth buffer and return.
     if (mpScene == nullptr)
     {
-        pRenderContext->clearDsv(pDepth->getDSV().get(), 1.f, 0);
         return;
     }
 
-    // Set program defines.
-    mRaster.pProgram->addDefine("ADJUST_SHADING_NORMALS", mAdjustShadingNormals ? "1" : "0");
-    mRaster.pProgram->addDefine("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
-
-    // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
-    // TODO: This should be moved to a more general mechanism using Slang.
-    mRaster.pProgram->addDefines(getValidResourceDefines(kGBufferChannels, renderData));
-    mRaster.pProgram->addDefines(getValidResourceDefines(kGBufferExtraChannels, renderData));
-
-    // Create program vars.
-    if (!mRaster.pVars)
-    {
-        mRaster.pVars = GraphicsVars::create(mRaster.pProgram.get());
-    }
-
-    // Setup depth pass to use same configuration as this pass.
     RasterizerState::CullMode cullMode = mForceCullMode ? mCullMode : kDefaultCullMode;
-    mpDepthPrePass->setCullMode(cullMode);
-    mpDepthPrePass->setOutputSize(mFrameDim);
-    mpDepthPrePass->setAlphaTest(mUseAlphaTest);
 
-    // Execute depth pass and copy depth buffer.
-    mpDepthPrePassGraph->execute(pRenderContext);
-    auto pPreDepth = mpDepthPrePassGraph->getOutput("DepthPrePass.depth")->asTexture();
-    FALCOR_ASSERT(pPreDepth && pPreDepth->getWidth() == mFrameDim.x && pPreDepth->getHeight() == mFrameDim.y);
-    mpFbo->attachDepthStencilTarget(pPreDepth);
-    pRenderContext->copyResource(pDepth.get(), pPreDepth.get());
-
-    // Bind extra channels as UAV buffers.
-    for (const auto& channel : kGBufferExtraChannels)
+    // Depth pass.
     {
-        Texture::SharedPtr pTex = getOutput(renderData, channel.name);
-        mRaster.pVars[channel.texname] = pTex;
+        // Set program defines.
+        mDepthPass.pState->getProgram()->addDefine("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
+
+        // Create program vars.
+        if (!mDepthPass.pVars)
+            mDepthPass.pVars = GraphicsVars::create(mpDevice, mDepthPass.pProgram.get());
+
+        mpFbo->attachDepthStencilTarget(pDepth);
+        mDepthPass.pState->setFbo(mpFbo);
+
+        mpScene->rasterize(pRenderContext, mDepthPass.pState.get(), mDepthPass.pVars.get(), cullMode);
     }
 
-    mRaster.pVars["PerFrameCB"]["gFrameDim"] = mFrameDim;
-    mRaster.pState->setFbo(mpFbo); // Sets the viewport
+    // GBuffer pass.
+    {
+        // Set program defines.
+        mGBufferPass.pProgram->addDefine("ADJUST_SHADING_NORMALS", mAdjustShadingNormals ? "1" : "0");
+        mGBufferPass.pProgram->addDefine("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
 
-    // Rasterize the scene.
-    mpScene->rasterize(pRenderContext, mRaster.pState.get(), mRaster.pVars.get(), cullMode);
+        // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
+        // TODO: This should be moved to a more general mechanism using Slang.
+        mGBufferPass.pProgram->addDefines(getValidResourceDefines(kGBufferChannels, renderData));
+        mGBufferPass.pProgram->addDefines(getValidResourceDefines(kGBufferExtraChannels, renderData));
+
+        // Create program vars.
+        if (!mGBufferPass.pVars)
+            mGBufferPass.pVars = GraphicsVars::create(mpDevice, mGBufferPass.pProgram.get());
+
+        // Bind extra channels as UAV buffers.
+        for (const auto& channel : kGBufferExtraChannels)
+        {
+            Texture::SharedPtr pTex = getOutput(renderData, channel.name);
+            mGBufferPass.pVars[channel.texname] = pTex;
+        }
+
+        mGBufferPass.pVars["PerFrameCB"]["gFrameDim"] = mFrameDim;
+        mGBufferPass.pState->setFbo(mpFbo); // Sets the viewport
+
+        // Rasterize the scene.
+        mpScene->rasterize(pRenderContext, mGBufferPass.pState.get(), mGBufferPass.pVars.get(), cullMode);
+    }
 
     mFrameCount++;
 }

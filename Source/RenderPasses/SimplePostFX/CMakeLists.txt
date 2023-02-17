@@ -1,4 +1,4 @@
-add_renderpass(SimplePostFX)
+add_plugin(SimplePostFX)
 
 target_sources(SimplePostFX PRIVATE
     SimplePostFX.cpp

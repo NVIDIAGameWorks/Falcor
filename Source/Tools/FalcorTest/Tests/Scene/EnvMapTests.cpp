@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,37 +31,40 @@
 
 namespace Falcor
 {
-    namespace
-    {
-        // This file is located in the media/ directory fetched by packman.
-        const char kEnvMapFile[] = "LightProbes/20050806-03_hd.hdr";
-    }
+namespace
+{
+// This file is located in the media/ directory fetched by packman.
+const char kEnvMapFile[] = "LightProbes/20050806-03_hd.hdr";
+} // namespace
 
-    GPU_TEST(EnvMap)
-    {
-        // Test loading a light probe.
-        // This call runs setup code on the GPU to precompute the importance map.
-        // If it succeeds, we at least know the code compiles and run.
-        EnvMap::SharedPtr pEnvMap = EnvMap::createFromFile(kEnvMapFile);
-        EXPECT_NE(pEnvMap, nullptr);
-        if (pEnvMap == nullptr) return;
+GPU_TEST(EnvMap)
+{
+    // Test loading a light probe.
+    // This call runs setup code on the GPU to precompute the importance map.
+    // If it succeeds, we at least know the code compiles and run.
+    EnvMap::SharedPtr pEnvMap = EnvMap::createFromFile(ctx.getDevice(), kEnvMapFile);
+    EXPECT_NE(pEnvMap, nullptr);
+    if (pEnvMap == nullptr)
+        return;
 
-        EnvMapSampler::SharedPtr pEnvMapSampler = EnvMapSampler::create(ctx.getRenderContext(), pEnvMap);
-        EXPECT_NE(pEnvMapSampler, nullptr);
-        if (pEnvMapSampler == nullptr) return;
+    EnvMapSampler::SharedPtr pEnvMapSampler = EnvMapSampler::create(ctx.getDevice(), pEnvMap);
+    EXPECT_NE(pEnvMapSampler, nullptr);
+    if (pEnvMapSampler == nullptr)
+        return;
 
-        // Check that the importance map exists and is a square power-of-two
-        // texture with a full mip map hierarchy.
-        auto pImportanceMap = pEnvMapSampler->getImportanceMap();
-        EXPECT_NE(pImportanceMap, nullptr);
-        if (pImportanceMap == nullptr) return;
+    // Check that the importance map exists and is a square power-of-two
+    // texture with a full mip map hierarchy.
+    auto pImportanceMap = pEnvMapSampler->getImportanceMap();
+    EXPECT_NE(pImportanceMap, nullptr);
+    if (pImportanceMap == nullptr)
+        return;
 
-        uint32_t w = pImportanceMap->getWidth();
-        uint32_t h = pImportanceMap->getHeight();
-        uint32_t mipCount = pImportanceMap->getMipCount();
+    uint32_t w = pImportanceMap->getWidth();
+    uint32_t h = pImportanceMap->getHeight();
+    uint32_t mipCount = pImportanceMap->getMipCount();
 
-        EXPECT(isPowerOf2(w) && w > 0);
-        EXPECT_EQ(w, h);
-        EXPECT_EQ(w, 1 << (mipCount - 1));
-    }
+    EXPECT(isPowerOf2(w) && w > 0);
+    EXPECT_EQ(w, h);
+    EXPECT_EQ(w, 1 << (mipCount - 1));
 }
+} // namespace Falcor

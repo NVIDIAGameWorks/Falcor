@@ -103,12 +103,12 @@ struct MaterialHeader
     */
     uint getNestedPriority() CONST_FUNCTION { return EXTRACT_BITS(kNestedPriorityBits, kNestedPriorityOffset, packedData.x); }
 
-    /** Set active BxDF lobes.
+    /** Set active BSDF lobes.
         \param[in] activeLobes Bit mask of active lobes. See LobeType.
     */
     SETTER_DECL void setActiveLobes(uint activeLobes) { packedData.x = PACK_BITS(kLobeTypeBits, kLobeTypeOffset, packedData.x, activeLobes); }
 
-    /** Get active BxDF lobes.
+    /** Get active BSDF lobes.
         \return Bit mask of active lobes. See LobeType.
     */
     uint getActiveLobes() CONST_FUNCTION { return EXTRACT_BITS(kLobeTypeBits, kLobeTypeOffset, packedData.x); }

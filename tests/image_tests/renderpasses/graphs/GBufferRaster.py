@@ -1,8 +1,6 @@
 from falcor import *
 
 def render_graph_GBufferRaster():
-    loadRenderPassLibrary("GBuffer.dll")
-
     g = RenderGraph("GBufferRaster")
     g.addPass(createPass("GBufferRaster"), "GBufferRaster")
 
@@ -21,6 +19,7 @@ def render_graph_GBufferRaster():
     g.markOutput("GBufferRaster.vbuffer")
     g.markOutput("GBufferRaster.vbuffer", TextureChannelFlags.Alpha)
     g.markOutput("GBufferRaster.depth")
+    g.markOutput("GBufferRaster.guideNormalW")
     g.markOutput("GBufferRaster.diffuseOpacity")
     g.markOutput("GBufferRaster.diffuseOpacity", TextureChannelFlags.Alpha)
     g.markOutput("GBufferRaster.specRough")
@@ -29,6 +28,7 @@ def render_graph_GBufferRaster():
     g.markOutput("GBufferRaster.viewW")
     g.markOutput("GBufferRaster.pnFwidth")
     g.markOutput("GBufferRaster.linearZ")
+    g.markOutput("GBufferRaster.mask")
 
     return g
 

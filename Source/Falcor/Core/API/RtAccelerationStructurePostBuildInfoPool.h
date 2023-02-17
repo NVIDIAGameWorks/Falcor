@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,66 +26,50 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "fwd.h"
 #include "Core/Macros.h"
-#ifdef FALCOR_D3D12
-#include "Core/API/Buffer.h"
-#endif
-#ifdef FALCOR_GFX
 #include <slang-gfx.h>
-#endif
 #include <memory>
 
 namespace Falcor
 {
-    class CopyContext;
+enum class RtAccelerationStructurePostBuildInfoQueryType
+{
+    CompactedSize,
+    SerializationSize,
+    CurrentSize,
+};
 
-    enum class RtAccelerationStructurePostBuildInfoQueryType
+class FALCOR_API RtAccelerationStructurePostBuildInfoPool
+{
+public:
+    using SharedPtr = std::shared_ptr<RtAccelerationStructurePostBuildInfoPool>;
+
+    struct Desc
     {
-        CompactedSize,
-        SerializationSize,
-        CurrentSize,
+        RtAccelerationStructurePostBuildInfoQueryType queryType;
+        uint32_t elementCount;
     };
+    static SharedPtr create(Device* pDevice, const Desc& desc);
+    ~RtAccelerationStructurePostBuildInfoPool();
+    uint64_t getElement(CopyContext* pContext, uint32_t index);
+    void reset(CopyContext* pContext);
+    gfx::IQueryPool* getGFXQueryPool() const { return mpGFXQueryPool.get(); }
 
-    class FALCOR_API RtAccelerationStructurePostBuildInfoPool
-    {
-    public:
-        using SharedPtr = std::shared_ptr<RtAccelerationStructurePostBuildInfoPool>;
+protected:
+    RtAccelerationStructurePostBuildInfoPool(std::shared_ptr<Device> pDevice, const Desc& desc);
 
-        struct Desc
-        {
-            RtAccelerationStructurePostBuildInfoQueryType queryType;
-            uint32_t elementCount;
-        };
-        static SharedPtr create(const Desc& desc);
-        ~RtAccelerationStructurePostBuildInfoPool();
-        uint64_t getElement(CopyContext* pContext, uint32_t index);
-        void reset(CopyContext* pContext);
-#if defined(FALCOR_D3D12)
-        uint64_t getBufferAddress(uint32_t index);
-#elif defined(FALCOR_GFX)
-        gfx::IQueryPool* getGFXQueryPool() const { return mpGFXQueryPool.get(); }
-#endif
-    protected:
-        RtAccelerationStructurePostBuildInfoPool(const Desc& desc);
-    private:
-        Desc mDesc;
-#if defined(FALCOR_D3D12)
-        size_t mElementSize = 0;
-        Buffer::SharedPtr mpPostbuildInfoBuffer;
-        Buffer::SharedPtr mpPostbuildInfoStagingBuffer;
-        const void* mMappedPostBuildInfo = nullptr;
-        bool mStagingBufferUpToDate = false;
-#elif defined(FALCOR_GFX)
-        Slang::ComPtr<gfx::IQueryPool> mpGFXQueryPool;
-        bool mNeedFlush = true;
-#endif
-    };
+private:
+    Desc mDesc;
+    Slang::ComPtr<gfx::IQueryPool> mpGFXQueryPool;
+    bool mNeedFlush = true;
+};
 
-    struct RtAccelerationStructurePostBuildInfoDesc
-    {
-        RtAccelerationStructurePostBuildInfoQueryType type;
-        RtAccelerationStructurePostBuildInfoPool* pool;
-        uint32_t index;
-    };
+struct RtAccelerationStructurePostBuildInfoDesc
+{
+    RtAccelerationStructurePostBuildInfoQueryType type;
+    RtAccelerationStructurePostBuildInfoPool* pool;
+    uint32_t index;
+};
 
-}
+} // namespace Falcor

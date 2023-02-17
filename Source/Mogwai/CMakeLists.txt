@@ -19,6 +19,6 @@ target_sources(Mogwai PRIVATE
     Extensions/Profiler/TimingCapture.h
 )
 
-target_copy_data_folder(Mogwai)
+target_link_libraries(Mogwai PRIVATE args)
 
 target_source_group(Mogwai "/")

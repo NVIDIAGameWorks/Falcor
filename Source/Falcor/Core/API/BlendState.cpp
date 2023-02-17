@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,44 +31,58 @@
 
 namespace Falcor
 {
-    BlendState::SharedPtr BlendState::create(const Desc& desc)
-    {
-        return SharedPtr(new BlendState(desc));
-    }
-
-    BlendState::Desc::Desc()
-    {
-        mRtDesc.resize(Fbo::getMaxColorTargetCount());
-    }
-
-    BlendState::~BlendState() = default;
-
-    BlendState::Desc& BlendState::Desc::setRtParams(uint32_t rtIndex, BlendOp rgbOp, BlendOp alphaOp, BlendFunc srcRgbFunc, BlendFunc dstRgbFunc, BlendFunc srcAlphaFunc, BlendFunc dstAlphaFunc)
-    {
-        checkArgument(rtIndex < mRtDesc.size(), "'rtIndex' ({}) is out of range.  Must be smaller than {}.", rtIndex, mRtDesc.size());
-
-        mRtDesc[rtIndex].rgbBlendOp = rgbOp;
-        mRtDesc[rtIndex].alphaBlendOp = alphaOp;
-        mRtDesc[rtIndex].srcRgbFunc = srcRgbFunc;
-        mRtDesc[rtIndex].dstRgbFunc = dstRgbFunc;
-        mRtDesc[rtIndex].srcAlphaFunc = srcAlphaFunc;
-        mRtDesc[rtIndex].dstAlphaFunc = dstAlphaFunc;
-        return *this;
-    }
-
-    BlendState::Desc& BlendState::Desc::setRenderTargetWriteMask(uint32_t rtIndex, bool writeRed, bool writeGreen, bool writeBlue, bool writeAlpha)
-    {
-        checkArgument(rtIndex < mRtDesc.size(), "'rtIndex' ({}) is out of range.  Must be smaller than {}.", rtIndex, mRtDesc.size());
-
-        mRtDesc[rtIndex].writeMask.writeRed = writeRed;
-        mRtDesc[rtIndex].writeMask.writeGreen = writeGreen;
-        mRtDesc[rtIndex].writeMask.writeBlue = writeBlue;
-        mRtDesc[rtIndex].writeMask.writeAlpha = writeAlpha;
-        return *this;
-    }
-
-    FALCOR_SCRIPT_BINDING(BlendState)
-    {
-        pybind11::class_<BlendState, BlendState::SharedPtr>(m, "BlendState");
-    }
+BlendState::SharedPtr BlendState::create(const Desc& desc)
+{
+    return SharedPtr(new BlendState(desc));
 }
+
+BlendState::Desc::Desc()
+{
+    mRtDesc.resize(Fbo::getMaxColorTargetCount());
+}
+
+BlendState::~BlendState() = default;
+
+BlendState::Desc& BlendState::Desc::setRtParams(
+    uint32_t rtIndex,
+    BlendOp rgbOp,
+    BlendOp alphaOp,
+    BlendFunc srcRgbFunc,
+    BlendFunc dstRgbFunc,
+    BlendFunc srcAlphaFunc,
+    BlendFunc dstAlphaFunc
+)
+{
+    checkArgument(rtIndex < mRtDesc.size(), "'rtIndex' ({}) is out of range.  Must be smaller than {}.", rtIndex, mRtDesc.size());
+
+    mRtDesc[rtIndex].rgbBlendOp = rgbOp;
+    mRtDesc[rtIndex].alphaBlendOp = alphaOp;
+    mRtDesc[rtIndex].srcRgbFunc = srcRgbFunc;
+    mRtDesc[rtIndex].dstRgbFunc = dstRgbFunc;
+    mRtDesc[rtIndex].srcAlphaFunc = srcAlphaFunc;
+    mRtDesc[rtIndex].dstAlphaFunc = dstAlphaFunc;
+    return *this;
+}
+
+BlendState::Desc& BlendState::Desc::setRenderTargetWriteMask(
+    uint32_t rtIndex,
+    bool writeRed,
+    bool writeGreen,
+    bool writeBlue,
+    bool writeAlpha
+)
+{
+    checkArgument(rtIndex < mRtDesc.size(), "'rtIndex' ({}) is out of range.  Must be smaller than {}.", rtIndex, mRtDesc.size());
+
+    mRtDesc[rtIndex].writeMask.writeRed = writeRed;
+    mRtDesc[rtIndex].writeMask.writeGreen = writeGreen;
+    mRtDesc[rtIndex].writeMask.writeBlue = writeBlue;
+    mRtDesc[rtIndex].writeMask.writeAlpha = writeAlpha;
+    return *this;
+}
+
+FALCOR_SCRIPT_BINDING(BlendState)
+{
+    pybind11::class_<BlendState, BlendState::SharedPtr>(m, "BlendState");
+}
+} // namespace Falcor

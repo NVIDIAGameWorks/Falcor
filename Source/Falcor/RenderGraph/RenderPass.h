@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,11 +28,14 @@
 #pragma once
 #include "ResourceCache.h"
 #include "Core/Macros.h"
+#include "Core/Plugin.h"
 #include "Core/HotReloadFlags.h"
 #include "Core/API/Resource.h"
 #include "Core/API/Texture.h"
+#include "Scene/Scene.h"
 #include "Utils/InternalDictionary.h"
 #include "Utils/Scripting/Dictionary.h"
+#include "Utils/Scripting/ScriptBindings.h"
 #include "Utils/UI/Gui.h"
 #include <functional>
 #include <memory>
@@ -41,8 +44,6 @@
 
 namespace Falcor
 {
-    class Scene;
-
     /** Helper class that's passed to the user during `RenderPass::execute()`
     */
     class FALCOR_API RenderData
@@ -108,15 +109,15 @@ namespace Falcor
     class FALCOR_API RenderPass
     {
     public:
-        using SharedPtr = std::shared_ptr<RenderPass>;
-        virtual ~RenderPass() = default;
-
-        // Render pass info.
-        struct Info
+        using PluginCreate = std::function<std::shared_ptr<RenderPass>(std::shared_ptr<Device> pDevice, const Dictionary& dict)>;
+        struct PluginInfo
         {
-            std::string type;   ///< Type name of the render pass. In general this should match the name of the class implementing the render pass.
-            std::string desc;   ///< Brief textural description of what the render pass does.
+            std::string desc; ///< Brief textual description of what the render pass does.
         };
+
+        FALCOR_PLUGIN_BASE_CLASS(RenderPass);
+
+        using SharedPtr = std::shared_ptr<RenderPass>;
 
         struct CompileData
         {
@@ -125,17 +126,21 @@ namespace Falcor
             RenderPassReflection connectedResources;    ///< Reflection data for connected resources, if available. This field may be empty when reflect() is called.
         };
 
-        /** Get the render pass info data.
+        /** Create a render pass object of the given type.
+            Uses the plugin manager to create the render pass.
+            If the type is not yet registered, it tries to load a plugin of the same name as the render pass type.
         */
-        const Info& getInfo() const { return mInfo; }
+        static SharedPtr create(std::string_view type, std::shared_ptr<Device> pDevice, const Dictionary& dict = {}, PluginManager& pm = PluginManager::instance());
+
+        virtual ~RenderPass() = default;
 
         /** Get the render pass type.
         */
-        const std::string& getType() const { return mInfo.type; }
+        const std::string& getType() const { return getPluginType(); }
 
         /** Get the render pass description.
         */
-        const std::string& getDesc() const { return mInfo.desc; }
+        const std::string& getDesc() const { return getPluginInfo().desc; }
 
         /** Called before render graph compilation. Describes I/O requirements of the pass.
             The function may be called repeatedly and should not perform any expensive operations.
@@ -157,12 +162,28 @@ namespace Falcor
         virtual Dictionary getScriptingDictionary() { return {}; }
 
         /** Render the pass's UI
+        *   Note: This is deprecated.
         */
         virtual void renderUI(Gui::Widgets& widget) {}
 
-        /** Set a scene into the render-pass
+        /** Render the pass's UI
+        */
+        virtual void renderUI(RenderContext* pRenderContext, Gui::Widgets& widget) { renderUI(widget); }
+
+        /** Set a scene into the render pass.
+            This function is called when a new scene is loaded.
+            \param[in] pRenderContext The render context.
+            \param[in] pScene New scene, or nullptr if no scene.
         */
         virtual void setScene(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene) {}
+
+        /** Called upon scene updates.
+            This function is called when the loaded scene changes. The pass is responsible for handling
+            scene changes that affect its internal resources, for example, shader programs and data structures.
+            \param[in] pRenderContext The render context.
+            \param[in] sceneUpdates Accumulated scene update flags since the last call, or since `setScene()` for a new scene.
+        */
+        virtual void onSceneUpdates(RenderContext* pRenderContext, Scene::UpdateFlags sceneUpdates) {}
 
         /** Mouse event handler.
             Returns true if the event was handled by the object, false otherwise
@@ -188,7 +209,7 @@ namespace Falcor
         const std::string& getName() const { return mName; }
 
     protected:
-        RenderPass(const Info& info) : mInfo(info) {}
+        RenderPass(std::shared_ptr<Device> pDevice) : mpDevice(std::move(pDevice)) {}
 
         /** Request a recompilation of the render graph.
             Call this function if the I/O requirements of the pass have changed.
@@ -196,7 +217,8 @@ namespace Falcor
         */
         void requestRecompile() { mPassChangedCB(); }
 
-        const Info mInfo;
+        std::shared_ptr<Device> mpDevice;
+
         std::string mName;
 
         std::function<void(void)> mPassChangedCB = [] {};

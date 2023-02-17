@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 #pragma once
 #include "Core/Macros.h"
 #include <array>
+#include <string>
 #include <cstdint>
 #include <cstdlib>
 
@@ -53,6 +54,16 @@ namespace Falcor
         */
         void update(const void* data, size_t len);
 
+        /** Update hash by adding one value of fundamental type T.
+            \param[in] Value to hash.
+        */
+        template<typename T, std::enable_if_t<std::is_fundamental<T>::value, bool> = true>
+        void update(const T& value) { update(&value, sizeof(value)); }
+
+        /** Update hash by adding the given string view.
+        */
+        void update(const std::string_view str) { update(str.data(), str.size()); }
+
         /** Return final message digest.
             \return Returns the SHA-1 message digest.
         */
@@ -64,6 +75,10 @@ namespace Falcor
             \return Returns the SHA-1 message digest.
         */
         static MD compute(const void* data, size_t len);
+
+        /** Convert SHA-1 hash to 40-character string in hexadecimal notation.
+        */
+        static std::string toString(const MD& sha1);
 
     private:
         void addByte(uint8_t x);

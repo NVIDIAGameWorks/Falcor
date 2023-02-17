@@ -26,13 +26,25 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Errors.h"
+#include "Platform/OS.h"
 #include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
 {
-    FALCOR_SCRIPT_BINDING(Errors)
-    {
-        pybind11::register_exception<RuntimeError>(m, "RuntimeError");
-        pybind11::register_exception<ArgumentError>(m, "ArgumentError");
-    }
+Exception::Exception(const char* what) : mpWhat(std::make_shared<std::string>(what))
+{
+    // Append stack trace.
+    (*mpWhat) += "\n\nStacktrace:\n" + getStackTrace(3);
+
+    // Report exception as error.
+#if FALCOR_REPORT_EXCEPTION_AS_ERROR
+    reportFatalError(*mpWhat, false);
+#endif
 }
+
+FALCOR_SCRIPT_BINDING(Errors)
+{
+    pybind11::register_exception<RuntimeError>(m, "RuntimeError");
+    pybind11::register_exception<ArgumentError>(m, "ArgumentError");
+}
+} // namespace Falcor

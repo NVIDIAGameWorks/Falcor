@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,259 +26,276 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Utils/Math/MathConstants.slangh"
-#include "BxDFConfig.slangh"
+#include "BSDFConfig.slangh"
 
-/** Evaluates the GGX (Trowbridge-Reitz) normal distribution function (D).
+import Utils.Math.MathHelpers;
+__exported import Rendering.Materials.NDF;
 
-    Introduced by Trowbridge and Reitz, "Average irregularity representation of a rough surface for ray reflection", Journal of the Optical Society of America, vol. 65(5), 1975.
-    See the correct normalization factor in Walter et al. https://dl.acm.org/citation.cfm?id=2383874
-    We use the simpler, but equivalent expression in Eqn 19 from http://blog.selfshadow.com/publications/s2012-shading-course/hoffman/s2012_pbs_physics_math_notes.pdf
+/** General microfacet normal distribution function, including support for
+    elliptical anisotropy.
 
-    For microfacet models, D is evaluated for the direction h to find the density of potentially active microfacets (those for which microfacet normal m = h).
-    The 'alpha' parameter is the standard GGX width, e.g., it is the square of the linear roughness parameter in Disney's BRDF.
-    Note there is a singularity (0/0 = NaN) at NdotH = 1 and alpha = 0, so alpha should be clamped to some epsilon.
-
-    \param[in] alpha GGX width parameter (should be clamped to small epsilon beforehand).
-    \param[in] cosTheta Dot product between shading normal and half vector, in positive hemisphere.
-    \return D(h)
+    Should be specialized by a specific (shape invariant) NDF.
 */
-float evalNdfGGX(float alpha, float cosTheta)
+struct Microfacet
 {
-    float a2 = alpha * alpha;
-    float d = ((cosTheta * a2 - cosTheta) * cosTheta + 1);
-    return a2 / (d * d * M_PI);
-}
+    INDF ndf;                      ///< Underlying normal distribution function.
+    float2 alpha;                  ///< Anisotropic roughness parameter.
+    float rho, sqrtOneMinusRhoSqr; ///< Encodes elliptical anisotropy axis in tangent space.
 
-/** Evaluates the PDF for sampling the GGX normal distribution function using Walter et al. 2007's method.
-    See https://www.cs.cornell.edu/~srm/publications/EGSR07-btdf.pdf
+    /** Initialize an isotropic microfacet distribution.
 
-    \param[in] alpha GGX width parameter (should be clamped to small epsilon beforehand).
-    \param[in] cosTheta Dot product between shading normal and half vector, in positive hemisphere.
-    \return D(h) * cosTheta
-*/
-float evalPdfGGX_NDF(float alpha, float cosTheta)
-{
-    return evalNdfGGX(alpha, cosTheta) * cosTheta;
-}
+        \param[in] ndf Underlying NDF to be used.
+        \param[in] alpha Isotropic surface roughness. Should be clamped to small epsilon.
+    */
+    __init(INDF ndf, float alpha)
+    {
+        // See "Photorealistic Surface Rendering with Microfacet Theory"
+        // by Jonathan Dupuy 2015, Eq. 2.29 - 2.31, simplified for the isotropic case.
+        this.ndf = ndf;
+        this.alpha = float2(alpha);
+        this.rho = 0.f;
+        this.sqrtOneMinusRhoSqr = 1.f;
+    }
 
-/** Samples the GGX (Trowbridge-Reitz) normal distribution function (D) using Walter et al. 2007's method.
-    Note that the sampled half vector may lie in the negative hemisphere. Such samples should be discarded.
-    See Eqn 35 & 36 in https://www.cs.cornell.edu/~srm/publications/EGSR07-btdf.pdf
-    See Listing A.1 in https://seblagarde.files.wordpress.com/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
+    /** Initialize an anisotropic microfacet distribution.
 
-    \param[in] alpha GGX width parameter (should be clamped to small epsilon beforehand).
-    \param[in] u Uniform random number (2D).
-    \param[out] pdf Sampling probability.
-    \return Sampled half vector in local space.
-*/
-float3 sampleGGX_NDF(float alpha, float2 u, out float pdf)
-{
-    float alphaSqr = alpha * alpha;
-    float phi = u.y * (2 * M_PI);
-    float tanThetaSqr = alphaSqr * u.x / (1 - u.x);
-    float cosTheta = 1 / sqrt(1 + tanThetaSqr);
-    float r = sqrt(max(1 - cosTheta * cosTheta, 0));
+        \param[in] ndf Underlying NDF to be used.
+        \param[in] alpha Anisotropic surface roughness. Should be clamped to small epsilon.
+        \param[in] phi Anisotropy rotation in radians. Measured counterclockwise from the x-axis in the local frame. (Default: 0)
+    */
+    __init(INDF ndf, float2 alpha, float phi = 0.0f)
+    {
+        // See "Photorealistic Surface Rendering with Microfacet Theory"
+        // by Jonathan Dupuy 2015, Eq. 2.29 - 2.31.
+        this.ndf = ndf;
+        float2 alpha2 = alpha * alpha;
+        float tmp = (alpha2.x - alpha2.y) * cos(2.0f * phi);
+        this.alpha = { sqrt(0.5f * (alpha2.x + alpha2.y + tmp)), sqrt(0.5f * (alpha2.x + alpha2.y - tmp)) };
+        this.rho = (alpha2.x - alpha2.y) / (this.alpha.x * this.alpha.y) * cos(phi) * sin(phi);
+        this.sqrtOneMinusRhoSqr = sqrt(1 - this.rho * this.rho);
+    }
 
-    pdf = evalPdfGGX_NDF(alpha, cosTheta);
-    return float3(cos(phi) * r, sin(phi) * r, cosTheta);
-}
+    /** A 'singular' distribution is one which would be more ideally treated as an
+        ideal mirror. It can't be sampled reliably.
+    */
+    bool isSingular()
+    {
+        return all(alpha < 1e-3f);
+    }
 
-/** Evaluates the PDF for sampling the GGX distribution of visible normals (VNDF).
-    See http://jcgt.org/published/0007/04/01/paper.pdf
+    /** Returns the isotropic roughness, i.e. the maximum along one of the tangent directions.
+        */
+    float getIsotropicRoughness()
+    {
+        return max(alpha.x, alpha.y);
+    }
 
-    \param[in] alpha GGX width parameter (should be clamped to small epsilon beforehand).
-    \param[in] wi Incident direction in local space, in the positive hemisphere.
-    \param[in] h Half vector in local space, in the positive hemisphere.
-    \return D_V(h) = G1(wi) * D(h) * max(0,dot(wi,h)) / wi.z
-*/
-float evalPdfGGX_VNDF(float alpha, float3 wi, float3 h)
-{
-    float G1 = evalG1GGX(alpha * alpha, wi.z);
-    float D = evalNdfGGX(alpha, h.z);
-    return G1 * D * max(0.f, dot(wi, h)) / wi.z;
-}
+    /** Evaluates the NDF (D) for a given microfacet normal.
+        This returns the density of potentially active microfacets (those for which the microfacet normal matches
+        the half-vector).
 
-/** Samples the GGX (Trowbridge-Reitz) using the distribution of visible normals (VNDF).
-    The GGX VDNF yields significant variance reduction compared to sampling of the GGX NDF.
-    See http://jcgt.org/published/0007/04/01/paper.pdf
+        \param[in] wm Microfacet normal in local space, in the positive hemisphere.
+        \return D(wm).
+    */
+    float evalD(float3 wm)
+    {
+        if (wm.z <= 0.0f)
+        {
+            return 0.0f;
+        }
 
-    \param[in] alpha Isotropic GGX width parameter (should be clamped to small epsilon beforehand).
-    \param[in] wi Incident direction in local space, in the positive hemisphere.
-    \param[in] u Uniform random number (2D).
-    \param[out] pdf Sampling probability.
-    \return Sampled half vector in local space, in the positive hemisphere.
-*/
-float3 sampleGGX_VNDF(float alpha, float3 wi, float2 u, out float pdf)
-{
-    float alpha_x = alpha, alpha_y = alpha;
+        // Transform microfacet normal to slope space.
+        float2 slope = { -wm.x / wm.z, -wm.y / wm.z };
 
-    // Transform the view vector to the hemisphere configuration.
-    float3 Vh = normalize(float3(alpha_x * wi.x, alpha_y * wi.y, wi.z));
+        // Stretch slope into the standard configuration, see
+        // "Photorealistic Surface Rendering with Microfacet Theory"
+        // by Jonathan Dupuy 2015, Eq. 2.27.
+        float nrm = 1.0f / (alpha.x * alpha.y * sqrtOneMinusRhoSqr);
+        float2 slopeStd = { slope.x / alpha.x, (alpha.x * slope.y - rho * alpha.y * slope.x) * nrm };
 
-    // Construct orthonormal basis (Vh,T1,T2).
-    float3 T1 = (Vh.z < 0.9999f) ? normalize(cross(float3(0, 0, 1), Vh)) : float3(1, 0, 0); // TODO: fp32 precision
-    float3 T2 = cross(Vh, T1);
+        // Eval slope distribution of standard configuration.
+        float p22Std = ndf.evalP22Std(slopeStd);
 
-    // Parameterization of the projected area of the hemisphere.
-    float r = sqrt(u.x);
-    float phi = (2.f * M_PI) * u.y;
-    float t1 = r * cos(phi);
-    float t2 = r * sin(phi);
-    float s = 0.5f * (1.f + Vh.z);
-    t2 = (1.f - s) * sqrt(1.f - t1 * t1) + s * t2;
+        // Transform back from slope to normal distribution.
+        float p22 = p22Std * nrm;
+        float cosTheta2 = wm.z * wm.z;
+        float cosTheta4 = cosTheta2 * cosTheta2;
+        return p22 / cosTheta4;
+    }
 
-    // Reproject onto hemisphere.
-    float3 Nh = t1 * T1 + t2 * T2 + sqrt(max(0.f, 1.f - t1 * t1 - t2 * t2)) * Vh;
+    /** Evaluates the PDF of sampling the NDF, see also `sampleFull`.
 
-    // Transform the normal back to the ellipsoid configuration. This is our half vector.
-    float3 h = normalize(float3(alpha_x * Nh.x, alpha_y * Nh.y, max(0.f, Nh.z)));
+        \param[in] wm Microfacet normal in local space, in the positive hemisphere.
+        \return D(wm) * dot(wm, n).
+    */
+    float evalPdfFull(float3 wm)
+    {
+        return evalD(wm) * wm.z;
+    }
 
-    pdf = evalPdfGGX_VNDF(alpha, wi, h);
-    return h;
-}
+    /** Evaluates the PDF of sampling the visible NDF, see also `sampleVisible`.
 
-/** Evaluates the Smith masking function (G1) for the GGX normal distribution.
-    See Eq 34 in https://www.cs.cornell.edu/~srm/publications/EGSR07-btdf.pdf
+        \param[in] wi Incident direction in local space.
+        \param[in] wm Microfacet normal in local space, in the positive hemisphere.
+        \return D_wi(wm) = dot(wm, wi) * D(wm) / sigma(-wi).
+    */
+    float evalPdfVisible(float3 wi, float3 wm)
+    {
+        return max(0.0f, dot(wm, wi)) * evalD(wm) / evalSigma(-wi);
+    }
 
-    The evaluated direction is assumed to be in the positive hemisphere relative the half vector.
-    This is the case when both incident and outgoing direction are in the same hemisphere, but care should be taken with transmission.
+    /** Samples a microfacet normal proportionally to D(wm) * dot(wm, n).
 
-    \param[in] alphaSqr Squared GGX width parameter.
-    \param[in] cosTheta Dot product between shading normal and evaluated direction, in the positive hemisphere.
-*/
-float evalG1GGX(float alphaSqr, float cosTheta)
-{
-    if (cosTheta <= 0) return 0;
-    float cosThetaSqr = cosTheta * cosTheta;
-    float tanThetaSqr = max(1 - cosThetaSqr, 0) / cosThetaSqr;
-    return 2 / (1 + sqrt(1 + alphaSqr * tanThetaSqr));
-}
+        \param[in,out] sg Sample generator.
+        \param[out] pdf Sampling density.
+        \return Sampled microfacet normal in local space, in the positive hemisphere.
+    */
+    float3 sampleFull<S : ISampleGenerator>(inout S sg, out float pdf)
+    {
+        // Sample a slope in the standard configuration.
+        float2 slopeStd = ndf.sampleP22Std(sg);
 
-/** Evaluates the Smith lambda function for the GGX normal distribution.
-    See Eq 72 in http://jcgt.org/published/0003/02/03/paper.pdf
+        // Stretch the slope based on the surface roughness, see
+        // "Photorealistic Surface Rendering with Microfacet Theory"
+        // by Jonathan Dupuy 2015, Eq. 2.35.
+        float2 slope = { alpha.x * slopeStd.x, alpha.y * (rho * slopeStd.x + sqrtOneMinusRhoSqr * slopeStd.y) };
 
-    \param[in] alphaSqr Squared GGX width parameter.
-    \param[in] cosTheta Dot product between shading normal and the evaluated direction, in the positive hemisphere.
-*/
-float evalLambdaGGX(float alphaSqr, float cosTheta)
-{
-    if (cosTheta <= 0) return 0;
-    float cosThetaSqr = cosTheta * cosTheta;
-    float tanThetaSqr = max(1 - cosThetaSqr, 0) / cosThetaSqr;
-    return 0.5 * (-1 + sqrt(1 + alphaSqr * tanThetaSqr));
-}
+        // Transform slope to normal.
+        float3 wm = normalize(float3(-slope.x, -slope.y, 1.0f));
 
-/** Evaluates the separable form of the masking-shadowing function for the GGX normal distribution, using Smith's approximation.
-    See Eq 98 in http://jcgt.org/published/0003/02/03/paper.pdf
+        pdf = evalPdfFull(wm);
+        return wm;
+    }
 
-    \param[in] alpha GGX width parameter (should be clamped to small epsilon beforehand).
-    \param[in] cosThetaI Dot product between shading normal and incident direction, in positive hemisphere.
-    \param[in] cosThetaO Dot product between shading normal and outgoing direction, in positive hemisphere.
-    \return G(cosThetaI, cosThetaO)
-*/
-float evalMaskingSmithGGXSeparable(float alpha, float cosThetaI, float cosThetaO)
-{
-    float alphaSqr = alpha * alpha;
-    float lambdaI = evalLambdaGGX(alphaSqr, cosThetaI);
-    float lambdaO = evalLambdaGGX(alphaSqr, cosThetaO);
-    return 1 / ((1 + lambdaI) * (1 + lambdaO));
-}
+    /** Samples a microfacet normal proportionally to D_wi(wm).
+        This yields significant variance reduction compared to sampling of the full distribution.
 
-/** Evaluates the height-correlated form of the masking-shadowing function for the GGX normal distribution, using Smith's approximation.
-    See Eq 99 in http://jcgt.org/published/0003/02/03/paper.pdf
+        \param[in] wi Incident direction in local space.
+        \param[in,out] sg Sample generator.
+        \param[out] pdf Sampling density.
+        \return Sampled microfacet normal in local space, in the positive hemisphere.
+    */
+    float3 sampleVisible<S : ISampleGenerator>(float3 wi, inout S sg, out float pdf)
+    {
+        // Stretch view direction into the standard configuration, see
+        // "Photorealistic Surface Rendering with Microfacet Theory"
+        // by Jonathan Dupuy 2015, page 28.
+        float3 wiStd = normalize(float3(alpha.x * wi.x + rho * alpha.y * wi.y, alpha.y * wi.y * sqrtOneMinusRhoSqr, wi.z));
 
-    Eric Heitz recommends using it in favor of the separable form as it is more accurate and of similar complexity.
-    The function is only valid for cosThetaI > 0 and cosThetaO > 0  and should be clamped to 0 otherwise.
+        // Sample visible slope in standard configuration.
+        float2 slopeStd = ndf.sampleVisibleP22Std(wiStd, sg);
 
-    \param[in] alpha GGX width parameter (should be clamped to small epsilon beforehand).
-    \param[in] cosThetaI Dot product between shading normal and incident direction, in positive hemisphere.
-    \param[in] cosThetaO Dot product between shading normal and outgoing direction, in positive hemisphere.
-    \return G(cosThetaI, cosThetaO)
-*/
-float evalMaskingSmithGGXCorrelated(float alpha, float cosThetaI, float cosThetaO)
-{
-    float alphaSqr = alpha * alpha;
-    float lambdaI = evalLambdaGGX(alphaSqr, cosThetaI);
-    float lambdaO = evalLambdaGGX(alphaSqr, cosThetaO);
-    return 1 / (1 + lambdaI + lambdaO);
-}
+        // Stretch the slope based on the surface roughness, see
+        // "Photorealistic Surface Rendering with Microfacet Theory"
+        // by Jonathan Dupuy 2015, Eq. 2.35.
+        float2 slope = { alpha.x * slopeStd.x, alpha.y * (rho * slopeStd.x + sqrtOneMinusRhoSqr * slopeStd.y) };
 
-/** Approximate pre-integrated specular BRDF. The approximation assumes GGX VNDF and Schlick's approximation.
-    See Eq 4 in [Ray Tracing Gems, Chapter 32]
+        // Transform slope to normal.
+        float3 wm = normalize(float3(-slope.x, -slope.y, 1.0f));
 
-    \param[in] specularReflectance Reflectance from a direction parallel to the normal.
-    \param[in] alpha GGX width parameter (should be clamped to small epsilon beforehand).
-    \param[in] cosTheta Dot product between shading normal and evaluated direction, in the positive hemisphere.
-*/
-float3 approxSpecularIntegralGGX(float3 specularReflectance, float alpha, float cosTheta)
-{
-    cosTheta = abs(cosTheta);
+        pdf = evalPdfVisible(wi, wm);
+        return wm;
+    }
 
-    float4 X;
-    X.x = 1.f;
-    X.y = cosTheta;
-    X.z = cosTheta * cosTheta;
-    X.w = cosTheta * X.z;
+    /** Evaluates the Smith masking function (G1).
 
-    float4 Y;
-    Y.x = 1.f;
-    Y.y = alpha;
-    Y.z = alpha * alpha;
-    Y.w = alpha * Y.z;
+        The function returns the same value for incident directions that lie in either hemisphere.
 
-    // Select coefficients based on BRDF version being in use (either separable or correlated G term)
-#if SpecularMaskingFunction == SpecularMaskingFunctionSmithGGXSeparable
-    float2x2 M1 = float2x2(
-        0.99044f, -1.28514f,
-        1.29678f, -0.755907f
-    );
+        \param[in] w Evaluated direction, in local space.
+    */
+    float evalG1(float3 w)
+    {
+        return abs(w.z) / evalSigma(-sign(w.z) * w);
+    }
 
-    float3x3 M2 = float3x3(
-        1.0f, 2.92338f, 59.4188f,
-        20.3225f, -27.0302f, 222.592f,
-        121.563f, 626.13f, 316.627f
-    );
+    /** Evaluates the separable form of the Smith shadowing-masking function.
 
-    float2x2 M3 = float2x2(
-        0.0365463f, 3.32707f,
-        9.0632f, -9.04756f
-    );
+        The function returns the same value for incident/outgoing directions that lie in either hemisphere.
 
-    float3x3 M4 = float3x3(
-        1.0f, 3.59685f, -1.36772f,
-        9.04401f, -16.3174f, 9.22949f,
-        5.56589f, 19.7886f, -20.2123f
-    );
-#elif SpecularMaskingFunction == SpecularMaskingFunctionSmithGGXCorrelated
-    float2x2 M1 = float2x2(
-        0.995367f, -1.38839f,
-        -0.24751f, 1.97442f
-    );
+        \param[in] wi Incident direction in local space.
+        \param[in] wo Outgoing direction in local space.
+        \return G2_separable(wi, wo).
+    */
+    float evalG2Separable(float3 wi, float3 wo)
+    {
+        return evalG1(wi) * evalG1(wo);
+    }
 
-    float3x3 M2 = float3x3(
-        1.0f, 2.68132f, 52.366f,
-        16.0932f, -3.98452f, 59.3013f,
-        -5.18731f, 255.259f, 2544.07f
-    );
+    /** Evaluates the height-correlated form of the Smith shadowing-masking function.
 
-    float2x2 M3 = float2x2(
-        -0.0564526f, 3.82901f,
-        16.91f, -11.0303f
-    );
+        Correctly accounts for the different cases of reflection (both directions lie in the same hemisphere)
+        and transmission (both directions lie in opposite hemispheres).
 
-    float3x3 M4 = float3x3(
-        1.0f, 4.11118f, -1.37886f,
-        19.3254f, -28.9947f, 16.9514f,
-        0.545386f, 96.0994f, -79.4492f
-    );
-#endif
+        \param[in] wi Incident direction in local space.
+        \param[in] wo Outgoing direction in local space.
+        \return G2_correlated(wi, wo).
+    */
+    float evalG2Correlated(float3 wi, float3 wo)
+    {
+        float gi = evalG1(wi);
+        float go = evalG1(wo);
+        if (wi.z * wo.z > 0.0f)
+        {
+            // Reflection case, see
+            // See "Photorealistic Surface Rendering with Microfacet Theory"
+            // by Jonathan Dupuy 2015, Eq. 2.13.
+            return gi * go / (gi + go - gi * go);
+        }
+        else
+        {
+            // Transmission case, see
+            // "Multiple-Scattering Microfacet BSDFs with the Smith Model"
+            // by Heitz et al. 2016, Eq. 8.
+            float LambdaI = (1.0f - gi) / gi;
+            float LambdaO = (1.0f - go) / go;
+            return beta(1.0f + LambdaI, 1.0f + LambdaO);
+        }
+    }
 
-    float bias = dot(mul(M1, X.xy), Y.xy) * rcp(dot(mul(M2, X.xyw), Y.xyw));
-    float scale = dot(mul(M3, X.xy), Y.xy) * rcp(dot(mul(M4, X.xzw), Y.xyw));
+    /** Evaluates the projected area (sigma) of the heighfield along a given direction.
 
-    // This is a hack for specular reflectance of 0
-    float specularReflectanceLuma = dot(specularReflectance, float3(1.f / 3.f));
-    bias *= saturate(specularReflectanceLuma * 50.0f);
+        Note that it is non-symmetric (sigma(dir) != sigma(-dir)).
+        It holds that:
+            sigma([0, 0, -1]) = 1, i.e. the full surface is visible when going straight down.
+            sigma([0, 0, 1])  = 0, i.e. nothing is in the way when escaping the heightfield along the surface
+        normal.
 
-    return mad(specularReflectance, max(0.0, scale), max(0.0, bias));
+        \param[in] dir Evaluated direction in local space.
+        \return sigma(dir).
+    */
+    float evalSigma(float3 dir)
+    {
+        // Stretch direction into the standard configuration, see
+        // "Photorealistic Surface Rendering with Microfacet Theory"
+        // by Jonathan Dupuy 2015, page 28.
+        float3 dirStd = { alpha.x * dir.x + rho * alpha.y * dir.y, alpha.y * dir.y * sqrtOneMinusRhoSqr, dir.z };
+        float nrm = length(dirStd);
+        dirStd /= nrm;
+
+        // Eval projected area of standard configuration.
+        float sigmaStd = ndf.evalSigmaStd(dirStd);
+
+        // Transform back based on surface roughness.
+        return nrm * sigmaStd;
+    }
+
+    /** Evaluates the Smith Lambda function.
+
+        Like `evalSigma`, this function is non-symmetric and it holds that
+        Lambda(-dir) = 1 + Lambda(dir) for upward travelling directions (i.e. dir.z > 0).
+
+        \param[in] dir Evaluated direction in local space.
+        \return Lambda(dir).
+    */
+    float evalLambda(float3 dir)
+    {
+        if (dir.z > 0.0f)
+        {
+            return evalSigma(dir) / abs(dir.z);
+        }
+        else
+        {
+            return 1.0f + evalSigma(-dir) / abs(dir.z);
+        }
+    }
 }

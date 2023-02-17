@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -32,18 +32,18 @@ namespace Falcor
 {
     void RenderGraphExe::execute(const Context& ctx)
     {
-        FALCOR_PROFILE("RenderGraphExe::execute()");
+        FALCOR_PROFILE(ctx.pRenderContext, "RenderGraphExe::execute()");
 
         for (const auto& pass : mExecutionList)
         {
-            FALCOR_PROFILE(pass.name);
+            FALCOR_PROFILE(ctx.pRenderContext, pass.name);
 
             RenderData renderData(pass.name, mpResourceCache, ctx.pGraphDictionary, ctx.defaultTexDims, ctx.defaultTexFormat);
             pass.pPass->execute(ctx.pRenderContext, renderData);
         }
     }
 
-    void RenderGraphExe::renderUI(Gui::Widgets& widget)
+    void RenderGraphExe::renderUI(RenderContext* pRenderContext, Gui::Widgets& widget)
     {
         for (const auto& p : mExecutionList)
         {
@@ -56,7 +56,7 @@ namespace Falcor
 
                 const auto& desc = pPass->getDesc();
                 if (desc.size()) passGroup.tooltip(desc);
-                pPass->renderUI(passGroup);
+                pPass->renderUI(pRenderContext, passGroup);
             }
         }
     }

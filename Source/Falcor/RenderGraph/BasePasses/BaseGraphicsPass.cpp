@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,30 +29,31 @@
 
 namespace Falcor
 {
-    BaseGraphicsPass::BaseGraphicsPass(const Program::Desc& progDesc, const Program::DefineList& programDefines)
+    BaseGraphicsPass::BaseGraphicsPass(std::shared_ptr<Device> pDevice, const Program::Desc& progDesc, const Program::DefineList& programDefines)
+        : mpDevice(std::move(pDevice))
     {
-        auto pProg = GraphicsProgram::create(progDesc, programDefines);
+        auto pProg = GraphicsProgram::create(mpDevice, progDesc, programDefines);
 
-        mpState = GraphicsState::create();
+        mpState = GraphicsState::create(mpDevice);
         mpState->setProgram(pProg);
 
-        mpVars = GraphicsVars::create(pProg.get());
+        mpVars = GraphicsVars::create(mpDevice, pProg.get());
     }
 
     void BaseGraphicsPass::addDefine(const std::string& name, const std::string& value, bool updateVars)
     {
         mpState->getProgram()->addDefine(name, value);
-        if (updateVars) mpVars = GraphicsVars::create(mpState->getProgram().get());
+        if (updateVars) mpVars = GraphicsVars::create(mpDevice, mpState->getProgram().get());
     }
 
     void BaseGraphicsPass::removeDefine(const std::string& name, bool updateVars)
     {
         mpState->getProgram()->removeDefine(name);
-        if (updateVars) mpVars = GraphicsVars::create(mpState->getProgram().get());
+        if (updateVars) mpVars = GraphicsVars::create(mpDevice, mpState->getProgram().get());
     }
 
     void BaseGraphicsPass::setVars(const GraphicsVars::SharedPtr& pVars)
     {
-        mpVars = pVars ? pVars : GraphicsVars::create(mpState->getProgram().get());
+        mpVars = pVars ? pVars : GraphicsVars::create(mpDevice, mpState->getProgram().get());
     }
 }

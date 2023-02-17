@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,8 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "LightProfile.h"
-#include "Utils/Algorithm/ComputeParallelReduction.h"
 #include "Core/Platform/OS.h"
+#include "Core/API/RenderContext.h"
+#include "Utils/Logger.h"
+#include "Utils/Algorithm/ParallelReduction.h"
+#include "RenderGraph/BasePasses/ComputePass.h"
 
 #include <filesystem>
 #include <fstream>
@@ -178,12 +181,13 @@ namespace Falcor
     }
 
 
-    LightProfile::LightProfile(const std::string& name, const std::vector<float>& rawData)
-        : mName(name)
+    LightProfile::LightProfile(std::shared_ptr<Device> pDevice, const std::string& name, const std::vector<float>& rawData)
+        : mpDevice(std::move(pDevice))
+        , mName(name)
         , mRawData(rawData)
     {}
 
-    LightProfile::SharedPtr LightProfile::createFromIesProfile(const std::filesystem::path& filename, bool normalize)
+    LightProfile::SharedPtr LightProfile::createFromIesProfile(std::shared_ptr<Device> pDevice, const std::filesystem::path& filename, bool normalize)
     {
         std::filesystem::path fullpath;
         if (!findFileInDataDirectories(filename, fullpath))
@@ -217,19 +221,19 @@ namespace Falcor
 
         std::string name = fullpath.filename().string();
 
-        return SharedPtr(new LightProfile(name, numericData));
+        return SharedPtr(new LightProfile(std::move(pDevice), name, numericData));
     }
 
     void LightProfile::bake(RenderContext* pRenderContext)
     {
         if (!pBakePass)
         {
-            pBakePass = ComputePass::create(kBakeIesProfileFile, "main");
+            pBakePass = ComputePass::create(mpDevice, kBakeIesProfileFile, "main");
         }
 
-        auto pBuffer = Buffer::createTyped<float>((uint32_t)mRawData.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, mRawData.data());
-        mpTexture = Texture::create2D(kBakeResolution, kBakeResolution, ResourceFormat::R16Float, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
-        auto pFluxTexture = Texture::create2D(kBakeResolution, kBakeResolution, ResourceFormat::R32Float, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+        auto pBuffer = Buffer::createTyped<float>(mpDevice.get(), (uint32_t)mRawData.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, mRawData.data());
+        mpTexture = Texture::create2D(mpDevice.get(), kBakeResolution, kBakeResolution, ResourceFormat::R16Float, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+        auto pFluxTexture = Texture::create2D(mpDevice.get(), kBakeResolution, kBakeResolution, ResourceFormat::R32Float, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
 
         auto var = pBakePass->getRootVar();
         var["gIesData"] = pBuffer;
@@ -239,13 +243,13 @@ namespace Falcor
         pBakePass->execute(pRenderContext, kBakeResolution, kBakeResolution);
 
         float4 fluxFactor;
-        auto pReduction = ComputeParallelReduction::create();
-        pReduction->execute<float4>(pRenderContext, pFluxTexture, ComputeParallelReduction::Type::Sum, &fluxFactor);
+        ParallelReduction reduction(mpDevice);
+        reduction.execute<float4>(pRenderContext, pFluxTexture, ParallelReduction::Type::Sum, &fluxFactor);
         mFluxFactor = fluxFactor.x;
 
         Sampler::Desc desc;
         desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-        mpSampler = Sampler::create(desc);
+        mpSampler = Sampler::create(mpDevice.get(), desc);
     }
 
     void LightProfile::setShaderData(const ShaderVar& var) const

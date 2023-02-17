@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,25 +31,26 @@
 
 namespace Falcor
 {
-    ComputePass::ComputePass(const Program::Desc& desc, const Program::DefineList& defines, bool createVars)
+    ComputePass::ComputePass(std::shared_ptr<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines, bool createVars)
+        : mpDevice(std::move(pDevice))
     {
-        auto pProg = ComputeProgram::create(desc, defines);
-        mpState = ComputeState::create();
+        auto pProg = ComputeProgram::create(mpDevice, desc, defines);
+        mpState = ComputeState::create(mpDevice);
         mpState->setProgram(pProg);
-        if (createVars) mpVars = ComputeVars::create(pProg.get());
-        FALCOR_ASSERT(pProg && mpState && (!createVars || mpVars));
+        if (createVars) mpVars = ComputeVars::create(mpDevice, pProg.get());
+        FALCOR_ASSERT(pProg && mpState && (!createVars || mpVars)) ;
     }
 
-    ComputePass::SharedPtr ComputePass::create(const std::filesystem::path& path, const std::string& csEntry, const Program::DefineList& defines, bool createVars)
+    ComputePass::SharedPtr ComputePass::create(std::shared_ptr<Device> pDevice, const std::filesystem::path& path, const std::string& csEntry, const Program::DefineList& defines, bool createVars)
     {
-        Program::Desc d;
-        d.addShaderLibrary(path).csEntry(csEntry);
-        return create(d, defines, createVars);
+        Program::Desc desc;
+        desc.addShaderLibrary(path).csEntry(csEntry);
+        return create(pDevice, desc, defines, createVars);
     }
 
-    ComputePass::SharedPtr ComputePass::create(const Program::Desc& desc, const Program::DefineList& defines, bool createVars)
+    ComputePass::SharedPtr ComputePass::create(std::shared_ptr<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines, bool createVars)
     {
-        return SharedPtr(new ComputePass(desc, defines, createVars));
+        return SharedPtr(new ComputePass(std::move(pDevice), desc,defines, createVars));
     }
 
     void ComputePass::execute(ComputeContext* pContext, uint32_t nThreadX, uint32_t nThreadY, uint32_t nThreadZ)
@@ -69,18 +70,18 @@ namespace Falcor
     void ComputePass::addDefine(const std::string& name, const std::string& value, bool updateVars)
     {
         mpState->getProgram()->addDefine(name, value);
-        if (updateVars) mpVars = ComputeVars::create(mpState->getProgram().get());
+        if (updateVars) mpVars = ComputeVars::create(mpDevice, mpState->getProgram().get());
     }
 
     void ComputePass::removeDefine(const std::string& name, bool updateVars)
     {
         mpState->getProgram()->removeDefine(name);
-        if (updateVars) mpVars = ComputeVars::create(mpState->getProgram().get());
+        if (updateVars) mpVars = ComputeVars::create(mpDevice, mpState->getProgram().get());
     }
 
     void ComputePass::setVars(const ComputeVars::SharedPtr& pVars)
     {
-        mpVars = pVars ? pVars : ComputeVars::create(mpState->getProgram().get());
+        mpVars = pVars ? pVars : ComputeVars::create(mpDevice, mpState->getProgram().get());
         FALCOR_ASSERT(mpVars);
     }
 }

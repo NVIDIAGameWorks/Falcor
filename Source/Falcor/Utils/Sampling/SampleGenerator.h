@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -36,6 +36,8 @@
 
 namespace Falcor
 {
+    class RenderContext;
+
     /** Utility class for sample generators on the GPU.
 
         This class has functions for configuring the shader program and
@@ -46,15 +48,15 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<SampleGenerator>;
-        using SharedConstPtr = std::shared_ptr<const SampleGenerator>;
 
         virtual ~SampleGenerator() = default;
 
         /** Factory function for creating a sample generator of the specified type.
+            \param[in] pDevice GPU device.
             \param[in] type The type of sample generator. See SampleGeneratorType.slangh.
             \return New object, or throws an exception on error.
         */
-        static SharedPtr create(uint32_t type);
+        static SharedPtr create(std::shared_ptr<Device> pDevice, uint32_t type);
 
         /** Get macro definitions for this sample generator.
             \return Macro definitions that must be set on the shader program that uses this sampler.
@@ -66,6 +68,25 @@ namespace Falcor
         */
         virtual void setShaderData(ShaderVar const& var) const {}
 
+        /** Render the sampler's UI.
+        */
+        virtual void renderUI(Gui::Widgets& widget) {}
+
+        /** Begin a frame.
+            This should be called at the beginning of each frame for samplers that do extra setup for each frame.
+            \param[in] pRenderContext Render context.
+            \param[in] frameDim Current frame dimension.
+            \return Returns true if internal state has changed and setShaderData() should be called before using the sampler.
+        */
+        virtual bool beginFrame(RenderContext* pRenderContext, const uint2& frameDim) { return false; }
+
+        /** End a frame.
+            This should be called at the end of each frame for samplers that do extra setup for each frame.
+            \param[in] pRenderContext Render context.
+            \param[in] pRenderOutput Rendered output.
+        */
+        virtual void endFrame(RenderContext* pRenderContext, const Texture::SharedPtr& pRenderOutput) {}
+
         /** Returns a GUI dropdown list of all available sample generators.
         */
         static const Gui::DropdownList& getGuiDropdownList();
@@ -75,11 +96,12 @@ namespace Falcor
             \param[in] name Descriptive name used in the UI.
             \param[in] createFunc Function to create an instance of the sample generator.
         */
-        static void registerType(uint32_t type, const std::string& name, std::function<SharedPtr()> createFunc);
+        static void registerType(uint32_t type, const std::string& name, std::function<SharedPtr(std::shared_ptr<Device>)> createFunc);
 
     protected:
-        SampleGenerator(uint32_t type) : mType(type) {}
+        SampleGenerator(std::shared_ptr<Device> pDevice, uint32_t type) : mpDevice(std::move(pDevice)), mType(type) {}
 
+        std::shared_ptr<Device> mpDevice;
         const uint32_t mType;       ///< Type of sample generator. See SampleGeneratorType.slangh.
 
     private:

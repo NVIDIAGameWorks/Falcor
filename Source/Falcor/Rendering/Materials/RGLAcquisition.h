@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -43,16 +43,14 @@ namespace Falcor
     class FALCOR_API RGLAcquisition
     {
     public:
-        using SharedPtr = std::shared_ptr<RGLAcquisition>;
-
-        static SharedPtr create(RenderContext* pRenderContext, const Scene::SharedPtr& pScene);
+        /// Constructor.
+        RGLAcquisition(std::shared_ptr<Device> pDevice, const Scene::SharedPtr& pScene);
 
         void acquireIsotropic(RenderContext* pRenderContext, const MaterialID materialID);
         RGLFile toRGLFile();
 
     private:
-        RGLAcquisition(RenderContext* pRenderContext, const Scene::SharedPtr& pScene);
-
+        std::shared_ptr<Device> mpDevice;
         Scene::SharedPtr mpScene;
         ComputePass::SharedPtr mpRetroReflectionPass;
         ComputePass::SharedPtr mpBuildKernelPass;

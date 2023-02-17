@@ -1,0 +1,26 @@
+# This script adds Falcor to the current path on Linux.
+# It must be executed via the 'source' command so that
+# it can modify the relevant environment variables.
+
+FALCOR_DIR=""
+
+if [ "$BASH_VERSION" ]; then
+    if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+        FALCOR_DIR=$(dirname "$BASH_SOURCE")
+        FALCOR_DIR=$(builtin cd "$FALCOR_DIR"; builtin pwd)
+    fi
+elif [ "$ZSH_VERSION" ]; then
+    if [[ -n ${(M)zsh_eval_context:#file} ]]; then
+        FALCOR_DIR=$(dirname "$0:A")
+    fi
+fi
+
+if [ -z "$FALCOR_DIR" ]; then
+    echo "This script must be executed via the 'source' command, i.e.:"
+    echo "$ source ${0}"
+    exit 0
+fi
+
+export PYTHONPATH="$FALCOR_DIR/python:$PYTHONPATH"
+export PATH="$FALCOR_DIR:$PATH"
+export LD_LIBRARY_PATH="$FALCOR_DIR:$LD_LIBRARY_PATH"

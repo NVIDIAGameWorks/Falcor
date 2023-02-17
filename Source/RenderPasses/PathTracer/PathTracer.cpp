@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,12 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "PathTracer.h"
-#include "RenderGraph/RenderPassLibrary.h"
 #include "RenderGraph/RenderPassHelpers.h"
 #include "RenderGraph/RenderPassStandardFlags.h"
 #include "Rendering/Lights/EmissiveUniformSampler.h"
-
-const RenderPass::Info PathTracer::kInfo { "PathTracer", "Reference path tracer." };
 
 namespace
 {
@@ -60,7 +57,7 @@ namespace
     const std::string kOutputAlbedo = "albedo";
     const std::string kOutputSpecularAlbedo = "specularAlbedo";
     const std::string kOutputIndirectAlbedo = "indirectAlbedo";
-    const std::string kOutputNormal = "normal";
+    const std::string kOutputGuideNormal = "guideNormal";
     const std::string kOutputReflectionPosW = "reflectionPosW";
     const std::string kOutputRayCount = "rayCount";
     const std::string kOutputPathLength = "pathLength";
@@ -89,7 +86,7 @@ namespace
         { kOutputAlbedo,                                    "",     "Output albedo (linear)", true /* optional */, ResourceFormat::RGBA8Unorm },
         { kOutputSpecularAlbedo,                            "",     "Output specular albedo (linear)", true /* optional */, ResourceFormat::RGBA8Unorm },
         { kOutputIndirectAlbedo,                            "",     "Output indirect albedo (linear)", true /* optional */, ResourceFormat::RGBA8Unorm },
-        { kOutputNormal,                                    "",     "Output normal (linear)", true /* optional */, ResourceFormat::RGBA16Float },
+        { kOutputGuideNormal,                               "",     "Output guide normal (linear)", true /* optional */, ResourceFormat::RGBA16Float },
         { kOutputReflectionPosW,                            "",     "Output reflection pos (world space)", true /* optional */, ResourceFormat::RGBA32Float },
         { kOutputRayCount,                                  "",     "Per-pixel ray count", true /* optional */, ResourceFormat::R32Uint },
         { kOutputPathLength,                                "",     "Per-pixel path length", true /* optional */, ResourceFormat::R32Uint },
@@ -177,15 +174,9 @@ namespace
     const std::string kUseNRDDemodulation = "useNRDDemodulation";
 }
 
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" FALCOR_API_EXPORT const char* getProjDir()
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
-    return PROJECT_DIR;
-}
-
-extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
-{
-    lib.registerPass(PathTracer::kInfo, PathTracer::create);
+    registry.registerClass<RenderPass, PathTracer>();
     ScriptBindings::registerBinding(PathTracer::registerBindings);
 }
 
@@ -213,19 +204,19 @@ void PathTracer::registerBindings(pybind11::module& m)
     );
 }
 
-PathTracer::SharedPtr PathTracer::create(RenderContext* pRenderContext, const Dictionary& dict)
+PathTracer::SharedPtr PathTracer::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
-    return SharedPtr(new PathTracer(dict));
+    return SharedPtr(new PathTracer(std::move(pDevice), dict));
 }
 
-PathTracer::PathTracer(const Dictionary& dict)
-    : RenderPass(kInfo)
+PathTracer::PathTracer(std::shared_ptr<Device> pDevice, const Dictionary& dict)
+    : RenderPass(std::move(pDevice))
 {
-    if (!gpDevice->isShaderModelSupported(Device::ShaderModel::SM6_5))
+    if (!mpDevice->isShaderModelSupported(Device::ShaderModel::SM6_5))
     {
         throw RuntimeError("PathTracer: Shader Model 6.5 is not supported by the current device");
     }
-    if (!gpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1))
+    if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1))
     {
         throw RuntimeError("PathTracer: Raytracing Tier 1.1 is not supported by the current device");
     }
@@ -234,16 +225,16 @@ PathTracer::PathTracer(const Dictionary& dict)
     validateOptions();
 
     // Create sample generator.
-    mpSampleGenerator = SampleGenerator::create(mStaticParams.sampleGenerator);
+    mpSampleGenerator = SampleGenerator::create(mpDevice, mStaticParams.sampleGenerator);
 
     // Create resolve pass. This doesn't depend on the scene so can be created here.
     auto defines = mStaticParams.getDefines(*this);
-    mpResolvePass = ComputePass::create(Program::Desc(kResolvePassFilename).setShaderModel(kShaderModel).csEntry("main"), defines, false);
+    mpResolvePass = ComputePass::create(mpDevice, Program::Desc(kResolvePassFilename).setShaderModel(kShaderModel).csEntry("main"), defines, false);
 
     // Note: The other programs are lazily created in updatePrograms() because a scene needs to be present when creating them.
 
-    mpPixelStats = PixelStats::create();
-    mpPixelDebug = PixelDebug::create();
+    mpPixelStats = PixelStats::create(mpDevice);
+    mpPixelDebug = PixelDebug::create(mpDevice);
 }
 
 void PathTracer::parseDictionary(const Dictionary& dict)
@@ -569,7 +560,7 @@ bool PathTracer::renderRenderingUI(Gui::Widgets& widget)
 
     if (widget.dropdown("Sample generator", SampleGenerator::getGuiDropdownList(), mStaticParams.sampleGenerator))
     {
-        mpSampleGenerator = SampleGenerator::create(mStaticParams.sampleGenerator);
+        mpSampleGenerator = SampleGenerator::create(mpDevice, mStaticParams.sampleGenerator);
         dirty = true;
     }
 
@@ -712,7 +703,7 @@ bool PathTracer::onMouseEvent(const MouseEvent& mouseEvent)
     return mpPixelDebug->onMouseEvent(mouseEvent);
 }
 
-PathTracer::TracePass::TracePass(const std::string& name, const std::string& passDefine, const Scene::SharedPtr& pScene, const Program::DefineList& defines, const Program::TypeConformanceList& globalTypeConformances)
+PathTracer::TracePass::TracePass(std::shared_ptr<Device> pDevice, const std::string& name, const std::string& passDefine, const Scene::SharedPtr& pScene, const Program::DefineList& defines, const Program::TypeConformanceList& globalTypeConformances)
     : name(name)
     , passDefine(passDefine)
 {
@@ -775,15 +766,15 @@ PathTracer::TracePass::TracePass(const std::string& name, const std::string& pas
         }
     }
 
-    pProgram = RtProgram::create(desc, defines);
+    pProgram = RtProgram::create(pDevice, desc, defines);
 }
 
-void PathTracer::TracePass::prepareProgram(const Program::DefineList& defines)
+void PathTracer::TracePass::prepareProgram(std::shared_ptr<Device> pDevice, const Program::DefineList& defines)
 {
     FALCOR_ASSERT(pProgram != nullptr && pBindingTable != nullptr);
     pProgram->setDefines(defines);
     if (!passDefine.empty()) pProgram->addDefine(passDefine);
-    pVars = RtProgramVars::create(pProgram, pBindingTable);
+    pVars = RtProgramVars::create(pDevice, pProgram, pBindingTable);
 }
 
 void PathTracer::updatePrograms()
@@ -796,18 +787,18 @@ void PathTracer::updatePrograms()
     auto globalTypeConformances = mpScene->getMaterialSystem()->getTypeConformances();
 
     // Create trace passes lazily.
-    if (!mpTracePass) mpTracePass = std::make_unique<TracePass>("tracePass", "", mpScene, defines, globalTypeConformances);
+    if (!mpTracePass) mpTracePass = std::make_unique<TracePass>(mpDevice, "tracePass", "", mpScene, defines, globalTypeConformances);
     if (mOutputNRDAdditionalData)
     {
-        if (!mpTraceDeltaReflectionPass) mpTraceDeltaReflectionPass = std::make_unique<TracePass>("traceDeltaReflectionPass", "DELTA_REFLECTION_PASS", mpScene, defines, globalTypeConformances);
-        if (!mpTraceDeltaTransmissionPass) mpTraceDeltaTransmissionPass = std::make_unique<TracePass>("traceDeltaTransmissionPass", "DELTA_TRANSMISSION_PASS", mpScene, defines, globalTypeConformances);
+        if (!mpTraceDeltaReflectionPass) mpTraceDeltaReflectionPass = std::make_unique<TracePass>(mpDevice, "traceDeltaReflectionPass", "DELTA_REFLECTION_PASS", mpScene, defines, globalTypeConformances);
+        if (!mpTraceDeltaTransmissionPass) mpTraceDeltaTransmissionPass = std::make_unique<TracePass>(mpDevice, "traceDeltaTransmissionPass", "DELTA_TRANSMISSION_PASS", mpScene, defines, globalTypeConformances);
     }
 
     // Create program vars for trace programs.
     // We only need to set defines for program specialization here. Type conformances have already been setup on construction.
-    mpTracePass->prepareProgram(defines);
-    if (mpTraceDeltaReflectionPass) mpTraceDeltaReflectionPass->prepareProgram(defines);
-    if (mpTraceDeltaTransmissionPass) mpTraceDeltaTransmissionPass->prepareProgram(defines);
+    mpTracePass->prepareProgram(mpDevice, defines);
+    if (mpTraceDeltaReflectionPass) mpTraceDeltaReflectionPass->prepareProgram(mpDevice, defines);
+    if (mpTraceDeltaTransmissionPass) mpTraceDeltaTransmissionPass->prepareProgram(mpDevice, defines);
 
     // Create compute passes.
     Program::Desc baseDesc;
@@ -819,13 +810,13 @@ void PathTracer::updatePrograms()
     {
         Program::Desc desc = baseDesc;
         desc.addShaderLibrary(kGeneratePathsFilename).csEntry("main");
-        mpGeneratePaths = ComputePass::create(desc, defines, false);
+        mpGeneratePaths = ComputePass::create(mpDevice, desc, defines, false);
     }
     if (!mpReflectTypes)
     {
         Program::Desc desc = baseDesc;
         desc.addShaderLibrary(kReflectTypesFile).csEntry("main");
-        mpReflectTypes = ComputePass::create(desc, defines, false);
+        mpReflectTypes = ComputePass::create(mpDevice, desc, defines, false);
     }
 
     // Perform program specialization.
@@ -866,7 +857,7 @@ void PathTracer::prepareResources(RenderContext* pRenderContext, const RenderDat
         if (!mpSampleOffset || mpSampleOffset->getWidth() != mParams.frameDim.x || mpSampleOffset->getHeight() != mParams.frameDim.y)
         {
             FALCOR_ASSERT(kScreenTileDim.x * kScreenTileDim.y * kMaxSamplesPerPixel <= (1u << 16));
-            mpSampleOffset = Texture::create2D(mParams.frameDim.x, mParams.frameDim.y, ResourceFormat::R16Uint, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+            mpSampleOffset = Texture::create2D(mpDevice.get(), mParams.frameDim.x, mParams.frameDim.y, ResourceFormat::R16Uint, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
             mVarsChanged = true;
         }
     }
@@ -879,23 +870,24 @@ void PathTracer::prepareResources(RenderContext* pRenderContext, const RenderDat
     {
         if (!mpSampleColor || mpSampleColor->getElementCount() < sampleCount || mVarsChanged)
         {
-            mpSampleColor = Buffer::createStructured(var["sampleColor"], sampleCount, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+            mpSampleColor = Buffer::createStructured(mpDevice.get(), var["sampleColor"], sampleCount, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
             mVarsChanged = true;
         }
     }
 
     if (mOutputGuideData && (!mpSampleGuideData || mpSampleGuideData->getElementCount() < sampleCount || mVarsChanged))
     {
-        mpSampleGuideData = Buffer::createStructured(var["sampleGuideData"], sampleCount, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+        mpSampleGuideData = Buffer::createStructured(mpDevice.get(), var["sampleGuideData"], sampleCount, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
         mVarsChanged = true;
     }
 
     if (mOutputNRDData && (!mpSampleNRDRadiance || mpSampleNRDRadiance->getElementCount() < sampleCount || mVarsChanged))
     {
-        mpSampleNRDRadiance = Buffer::createStructured(var["sampleNRDRadiance"], sampleCount, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
-        mpSampleNRDHitDist = Buffer::createStructured(var["sampleNRDHitDist"], sampleCount, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
-        mpSampleNRDEmission = Buffer::createStructured(var["sampleNRDEmission"], sampleCount, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
-        mpSampleNRDReflectance = Buffer::createStructured(var["sampleNRDReflectance"], sampleCount, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+        mpSampleNRDRadiance = Buffer::createStructured(mpDevice.get(), var["sampleNRDRadiance"], sampleCount, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+        mpSampleNRDHitDist = Buffer::createStructured(mpDevice.get(), var["sampleNRDHitDist"], sampleCount, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+        mpSampleNRDPrimaryHitNeeOnDelta = Buffer::createStructured(mpDevice.get(), var["sampleNRDPrimaryHitNeeOnDelta"], sampleCount, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+        mpSampleNRDEmission = Buffer::createStructured(mpDevice.get(), var["sampleNRDEmission"], sampleCount, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+        mpSampleNRDReflectance = Buffer::createStructured(mpDevice.get(), var["sampleNRDReflectance"], sampleCount, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
         mVarsChanged = true;
     }
 }
@@ -906,7 +898,7 @@ void PathTracer::preparePathTracer(const RenderData& renderData)
     if (!mpPathTracerBlock || mVarsChanged)
     {
         auto reflector = mpReflectTypes->getProgram()->getReflector()->getParameterBlock("pathTracer");
-        mpPathTracerBlock = ParameterBlock::create(reflector);
+        mpPathTracerBlock = ParameterBlock::create(mpDevice.get(), reflector);
         FALCOR_ASSERT(mpPathTracerBlock);
         mVarsChanged = true;
     }
@@ -967,7 +959,7 @@ bool PathTracer::prepareLighting(RenderContext* pRenderContext)
     {
         if (!mpEnvMapSampler)
         {
-            mpEnvMapSampler = EnvMapSampler::create(pRenderContext, mpScene->getEnvMap());
+            mpEnvMapSampler = EnvMapSampler::create(mpDevice, mpScene->getEnvMap());
             lightingChanged = true;
             mRecompile = true;
         }
@@ -993,7 +985,7 @@ bool PathTracer::prepareLighting(RenderContext* pRenderContext)
         if (!mpEmissiveSampler)
         {
             const auto& pLights = mpScene->getLightCollection(pRenderContext);
-            FALCOR_ASSERT(pLights && pLights->getActiveLightCount() > 0);
+            FALCOR_ASSERT(pLights && pLights->getActiveLightCount(pRenderContext) > 0);
             FALCOR_ASSERT(!mpEmissiveSampler);
 
             switch (mStaticParams.emissiveSampler)
@@ -1062,6 +1054,7 @@ void PathTracer::setNRDData(const ShaderVar& var, const RenderData& renderData) 
 {
     var["sampleRadiance"] = mpSampleNRDRadiance;
     var["sampleHitDist"] = mpSampleNRDHitDist;
+    var["samplePrimaryHitNEEOnDelta"] = mpSampleNRDPrimaryHitNeeOnDelta;
     var["sampleEmission"] = mpSampleNRDEmission;
     var["sampleReflectance"] = mpSampleNRDReflectance;
     var["primaryHitEmission"] = renderData.getTexture(kOutputNRDEmission);
@@ -1199,7 +1192,7 @@ bool PathTracer::beginFrame(RenderContext* pRenderContext, const RenderData& ren
 
     // Check if guide data should be generated.
     mOutputGuideData = renderData[kOutputAlbedo] != nullptr || renderData[kOutputSpecularAlbedo] != nullptr
-        || renderData[kOutputIndirectAlbedo] != nullptr || renderData[kOutputNormal] != nullptr
+        || renderData[kOutputIndirectAlbedo] != nullptr || renderData[kOutputGuideNormal] != nullptr
         || renderData[kOutputReflectionPosW] != nullptr;
 
     // Check if NRD data should be generated.
@@ -1275,7 +1268,7 @@ void PathTracer::endFrame(RenderContext* pRenderContext, const RenderData& rende
 
 void PathTracer::generatePaths(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    FALCOR_PROFILE("generatePaths");
+    FALCOR_PROFILE(pRenderContext, "generatePaths");
 
     // Check shader assumptions.
     // We launch one thread group per screen tile, with threads linearly indexed.
@@ -1306,7 +1299,7 @@ void PathTracer::generatePaths(RenderContext* pRenderContext, const RenderData& 
 
 void PathTracer::tracePass(RenderContext* pRenderContext, const RenderData& renderData, TracePass& tracePass)
 {
-    FALCOR_PROFILE(tracePass.name);
+    FALCOR_PROFILE(pRenderContext, tracePass.name);
 
     FALCOR_ASSERT(tracePass.pProgram != nullptr && tracePass.pBindingTable != nullptr && tracePass.pVars != nullptr);
 
@@ -1337,7 +1330,7 @@ void PathTracer::resolvePass(RenderContext* pRenderContext, const RenderData& re
 {
     if (!mOutputGuideData && !mOutputNRDData && mFixedSampleCount && mStaticParams.samplesPerPixel == 1) return;
 
-    FALCOR_PROFILE("resolvePass");
+    FALCOR_PROFILE(pRenderContext, "resolvePass");
 
     // This pass is executed when multiple samples per pixel are used.
     // We launch one thread per pixel that computes the resolved color by iterating over the samples.
@@ -1357,7 +1350,7 @@ void PathTracer::resolvePass(RenderContext* pRenderContext, const RenderData& re
     var["outputAlbedo"] = renderData.getTexture(kOutputAlbedo);
     var["outputSpecularAlbedo"] = renderData.getTexture(kOutputSpecularAlbedo);
     var["outputIndirectAlbedo"] = renderData.getTexture(kOutputIndirectAlbedo);
-    var["outputNormal"] = renderData.getTexture(kOutputNormal);
+    var["outputGuideNormal"] = renderData.getTexture(kOutputGuideNormal);
     var["outputReflectionPosW"] = renderData.getTexture(kOutputReflectionPosW);
     var["outputNRDDiffuseRadianceHitDist"] = renderData.getTexture(kOutputNRDDiffuseRadianceHitDist);
     var["outputNRDSpecularRadianceHitDist"] = renderData.getTexture(kOutputNRDSpecularRadianceHitDist);
@@ -1374,6 +1367,9 @@ void PathTracer::resolvePass(RenderContext* pRenderContext, const RenderData& re
         var["sampleNRDHitDist"] = mpSampleNRDHitDist;
         var["sampleNRDEmission"] = mpSampleNRDEmission;
         var["sampleNRDReflectance"] = mpSampleNRDReflectance;
+
+        var["sampleNRDPrimaryHitNeeOnDelta"] = mpSampleNRDPrimaryHitNeeOnDelta;
+        var["primaryHitDiffuseReflectance"] = renderData.getTexture(kOutputNRDDiffuseReflectance);
     }
 
     // Launch one thread per pixel.

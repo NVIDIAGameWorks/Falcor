@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -185,8 +185,8 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV
             InterlockedAdd(gGroupNumAddedVoxels, 1, insertIndex);
 
             float3 p = float3(voxelCoords) - float(gVirtualGridWidth) * 0.5f;
-            gGroupVoxelAABBs[insertIndex] = AABB(p / float(gVirtualGridWidth), (p + 1.0f) / float(gVirtualGridWidth));
-
+            AABB voxelBox = AABB(p / float(gVirtualGridWidth), (p + 1.0f) / float(gVirtualGridWidth));
+            gGroupVoxelAABBs[insertIndex] = voxelBox;
             SDFSVSVoxel voxel;
             voxel.packedValuesSlices[0] = loadAndPackSlice(voxelCoords, -1);
             voxel.packedValuesSlices[1] = loadAndPackSlice(voxelCoords, 0);

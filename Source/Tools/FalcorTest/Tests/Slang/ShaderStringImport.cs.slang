@@ -34,7 +34,7 @@ import Tests.Slang.ShaderStringUtil;
 RWStructuredBuffer<uint> result;
 
 [numthreads(32, 1, 1)]
-void main(uint3 threadID : SV_DispatchThreadID)
+void main(uint3 threadID: SV_DispatchThreadID)
 {
     // The code for f() is generated into the same translation unit.
     // The generated code calls a function imported from another module.

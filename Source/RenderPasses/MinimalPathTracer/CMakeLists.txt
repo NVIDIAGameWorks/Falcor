@@ -1,4 +1,4 @@
-add_renderpass(MinimalPathTracer)
+add_plugin(MinimalPathTracer)
 
 target_sources(MinimalPathTracer PRIVATE
     MinimalPathTracer.cpp

@@ -114,6 +114,7 @@ struct PixelData
     float3 output;
 
     // BSDF properties
+    float3 guideNormal;
     float3 emission;
     float  roughness;
     float3 diffuseReflectionAlbedo;

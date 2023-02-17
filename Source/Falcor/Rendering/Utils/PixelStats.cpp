@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -39,14 +39,15 @@ namespace Falcor
         const char kComputeRayCountFilename[] = "Rendering/Utils/PixelStats.cs.slang";
     }
 
-    PixelStats::SharedPtr PixelStats::create()
+    PixelStats::SharedPtr PixelStats::create(std::shared_ptr<Device> pDevice)
     {
-        return SharedPtr(new PixelStats());
+        return SharedPtr(new PixelStats(pDevice));
     }
 
-    PixelStats::PixelStats()
+    PixelStats::PixelStats(std::shared_ptr<Device> pDevice)
+        : mpDevice(std::move(pDevice))
     {
-        mpComputeRayCount = ComputePass::create(kComputeRayCountFilename, "main");
+        mpComputeRayCount = ComputePass::create(mpDevice, kComputeRayCountFilename, "main");
     }
 
     void PixelStats::beginFrame(RenderContext* pRenderContext, const uint2& frameDim)
@@ -68,8 +69,8 @@ namespace Falcor
             // Create parallel reduction helper.
             if (!mpParallelReduction)
             {
-                mpParallelReduction = ComputeParallelReduction::create();
-                mpReductionResult = Buffer::create((kRayTypeCount + 3) * sizeof(uint4), ResourceBindFlags::None, Buffer::CpuAccess::Read);
+                mpParallelReduction = std::make_unique<ParallelReduction>(mpDevice);
+                mpReductionResult = Buffer::create(mpDevice.get(), (kRayTypeCount + 3) * sizeof(uint4), ResourceBindFlags::None, Buffer::CpuAccess::Read);
             }
 
             // Prepare stats buffers.
@@ -77,11 +78,11 @@ namespace Falcor
             {
                 for (uint32_t i = 0; i < kRayTypeCount; i++)
                 {
-                    mpStatsRayCount[i] = Texture::create2D(frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+                    mpStatsRayCount[i] = Texture::create2D(mpDevice.get(), frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
                 }
-                mpStatsPathLength = Texture::create2D(frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
-                mpStatsPathVertexCount = Texture::create2D(frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
-                mpStatsVolumeLookupCount = Texture::create2D(frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+                mpStatsPathLength = Texture::create2D(mpDevice.get(), frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+                mpStatsPathVertexCount = Texture::create2D(mpDevice.get(), frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+                mpStatsVolumeLookupCount = Texture::create2D(mpDevice.get(), frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
             }
 
             for (uint32_t i = 0; i < kRayTypeCount; i++)
@@ -102,16 +103,16 @@ namespace Falcor
         if (mEnabled)
         {
             // Create fence first time we need it.
-            if (!mpFence) mpFence = GpuFence::create();
+            if (!mpFence) mpFence = GpuFence::create(mpDevice.get());
 
             // Sum of the per-pixel counters. The results are copied to a GPU buffer.
             for (uint32_t i = 0; i < kRayTypeCount; i++)
             {
-                mpParallelReduction->execute<uint4>(pRenderContext, mpStatsRayCount[i], ComputeParallelReduction::Type::Sum, nullptr, mpReductionResult, i * sizeof(uint4));
+                mpParallelReduction->execute<uint4>(pRenderContext, mpStatsRayCount[i], ParallelReduction::Type::Sum, nullptr, mpReductionResult, i * sizeof(uint4));
             }
-            mpParallelReduction->execute<uint4>(pRenderContext, mpStatsPathLength, ComputeParallelReduction::Type::Sum, nullptr, mpReductionResult, kRayTypeCount * sizeof(uint4));
-            mpParallelReduction->execute<uint4>(pRenderContext, mpStatsPathVertexCount, ComputeParallelReduction::Type::Sum, nullptr, mpReductionResult, (kRayTypeCount + 1) * sizeof(uint4));
-            mpParallelReduction->execute<uint4>(pRenderContext, mpStatsVolumeLookupCount, ComputeParallelReduction::Type::Sum, nullptr, mpReductionResult, (kRayTypeCount + 2) * sizeof(uint4));
+            mpParallelReduction->execute<uint4>(pRenderContext, mpStatsPathLength, ParallelReduction::Type::Sum, nullptr, mpReductionResult, kRayTypeCount * sizeof(uint4));
+            mpParallelReduction->execute<uint4>(pRenderContext, mpStatsPathVertexCount, ParallelReduction::Type::Sum, nullptr, mpReductionResult, (kRayTypeCount + 1) * sizeof(uint4));
+            mpParallelReduction->execute<uint4>(pRenderContext, mpStatsVolumeLookupCount, ParallelReduction::Type::Sum, nullptr, mpReductionResult, (kRayTypeCount + 2) * sizeof(uint4));
 
             // Submit command list and insert signal.
             pRenderContext->flush(false);
@@ -214,7 +215,7 @@ namespace Falcor
         FALCOR_ASSERT(mStatsBuffersValid);
         if (!mpStatsRayCountTotal || mpStatsRayCountTotal->getWidth() != mFrameDim.x || mpStatsRayCountTotal->getHeight() != mFrameDim.y)
         {
-            mpStatsRayCountTotal = Texture::create2D(mFrameDim.x, mFrameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+            mpStatsRayCountTotal = Texture::create2D(mpDevice.get(), mFrameDim.x, mFrameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
         }
 
         auto var = mpComputeRayCount->getRootVar();

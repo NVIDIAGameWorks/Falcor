@@ -1,4 +1,4 @@
-add_renderpass(RTXDIPass)
+add_plugin(RTXDIPass)
 
 target_sources(RTXDIPass PRIVATE
     FinalShading.cs.slang

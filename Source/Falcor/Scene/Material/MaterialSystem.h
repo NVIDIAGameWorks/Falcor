@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 #pragma once
 #include "Material.h"
 #include "Core/Macros.h"
+#include "Core/API/fwd.h"
 #include "Core/API/Shader.h"
 #include "Core/API/ParameterBlock.h"
 #include "Core/API/Buffer.h"
@@ -50,7 +51,7 @@ namespace Falcor
         The matching shader side Slang module holds all GPU resources and
         has interfaces for preparing the material at a shading point.
 
-        The update() function must be called before using the materials.
+        The update() function must be called before using the material system.
         It ensures all GPU data is uploaded and ready for use.
     */
     class FALCOR_API MaterialSystem
@@ -67,24 +68,14 @@ namespace Falcor
             uint64_t textureCount = 0;                  ///< Number of unique textures. A texture can be referenced by multiple materials.
             uint64_t textureCompressedCount = 0;        ///< Number of unique compressed textures.
             uint64_t textureTexelCount = 0;             ///< Total number of texels in all textures.
+            uint64_t textureTexelChannelCount = 0;      ///< Total number of texel channels in all textures.
             uint64_t textureMemoryInBytes = 0;          ///< Total memory in bytes used by the textures.
         };
 
         /** Create a material system.
             \return New object, or throws an exception if creation failed.
         */
-        static SharedPtr create();
-
-        /** Get default shader defines.
-            This is the minimal set of defines needed for a program to compile that imports the material system module.
-            Note that the actual defines need to be set at runtime, call getDefines() to query them.
-        */
-        static Shader::DefineList getDefaultDefines();
-
-        /** Finalize material system before use.
-            This function will be removed when unbounded descriptor arrays are supported (see #1321).
-        */
-        void finalize();
+        static SharedPtr create(std::shared_ptr<Device> pDevice);
 
         /** Render the UI.
         */
@@ -103,7 +94,6 @@ namespace Falcor
         /** Get type conformances for all material types used.
             These need to be set on a program before using the material system in shaders
             that need to create a material of *any* type, such as compute or raygen shaders.
-            The update() function must have been called before calling this function.
             \return List of type conformances.
         */
         Program::TypeConformanceList getTypeConformances() const;
@@ -118,12 +108,11 @@ namespace Falcor
             The shader modules must be added to any program using the material system.
             \return List of shader modules.
         */
-        Program::ShaderModuleList getShaderModules() const { return mShaderModules; }
+        Program::ShaderModuleList getShaderModules() const;
 
         /** Get the parameter block with all material resources.
-            The update() function must have been called before calling this function.
         */
-        const ParameterBlock::SharedPtr& getParameterBlock() const { return mpMaterialsBlock; }
+        const ParameterBlock::SharedPtr& getParameterBlock() const;
 
         /** Set a default texture sampler to use for all materials.
         */
@@ -167,6 +156,12 @@ namespace Falcor
         */
         MaterialID addMaterial(const Material::SharedPtr& pMaterial);
 
+        /** Replace a material.
+            \param pMaterial The material to replace.
+            \param pReplacement The material to replace it with.
+        */
+        void replaceMaterial(const Material::SharedPtr& pMaterial, const Material::SharedPtr& pReplacement);
+
         /** Get a list of all materials.
         */
         const std::vector<Material::SharedPtr>& getMaterials() const { return mMaterials; }
@@ -181,13 +176,21 @@ namespace Falcor
 
         /** Get the set of all material types used.
         */
-        std::set<MaterialType> getMaterialTypes() const { return mMaterialTypes; }
+        std::set<MaterialType> getMaterialTypes() const;
 
         /** Check if material of the given type is used.
         */
-        bool hasMaterialType(MaterialType type) const { return mMaterialTypes.find(type) != mMaterialTypes.end(); }
+        bool hasMaterialType(MaterialType type) const;
+
+        /** Check if a material with the given ID exists.
+            \param[in] materialID The material ID.
+            \return True if the material exists.
+        */
+        bool hasMaterial(const MaterialID materialID) const;
 
         /** Get a material by ID.
+            \param[in] materialID The material ID.
+            \return The material, or throws if the material doesn't exist.
         */
         const Material::SharedPtr& getMaterial(const MaterialID materialID) const;
 
@@ -215,27 +218,35 @@ namespace Falcor
         */
         const TextureManager::SharedPtr& getTextureManager() { return mpTextureManager; }
 
-    private:
-        MaterialSystem();
 
+    private:
+        MaterialSystem(std::shared_ptr<Device> pDevice);
+
+        void updateMetadata();
         void updateUI();
         void createParameterBlock();
         void uploadMaterial(const uint32_t materialID);
 
-        std::vector<Material::SharedPtr> mMaterials;                ///< List of all materials.
-        std::vector<uint32_t> mMaterialCountByType;                 ///< Number of materials of each type, indexed by MaterialType.
-        std::set<MaterialType> mMaterialTypes;                      ///< Set of all material types used.
-        uint32_t mSpecGlossMaterialCount = 0;                       ///< Number of standard materials using the SpecGloss shading model.
-        TextureManager::SharedPtr mpTextureManager;                 ///< Texture manager holding all material textures.
-        size_t mTextureDescCount = 0;                               ///< Number of texture descriptors in GPU descriptor array. This variable is for book-keeping until unbounded descriptor arrays are supported (see #1321).
-        size_t mBufferDescCount = 0;                                ///< Number of buffer descriptors in GPU descriptor array. This variable is for book-keeping until unbounded descriptor arrays are supported (see #1321).
+        std::shared_ptr<Device> mpDevice;
 
+        std::vector<Material::SharedPtr> mMaterials;                ///< List of all materials.
+        std::vector<Material::UpdateFlags> mMaterialsUpdateFlags;   ///< List of all material update flags, after the update() calls
+        TextureManager::SharedPtr mpTextureManager;                 ///< Texture manager holding all material textures.
         Program::ShaderModuleList mShaderModules;                   ///< Shader modules for all materials in use.
         std::map<MaterialType, Program::TypeConformanceList> mTypeConformances; ///< Type conformances for each material type in use.
+
+
+        // Metadata
+        size_t mTextureDescCount = 0;                               ///< Number of texture descriptors in GPU descriptor array. This variable is for book-keeping until unbounded descriptor arrays are supported (see #1321).
+        size_t mBufferDescCount = 0;                                ///< Number of buffer descriptors in GPU descriptor array. This variable is for book-keeping until unbounded descriptor arrays are supported (see #1321).
+        std::vector<uint32_t> mMaterialCountByType;                 ///< Number of materials of each type, indexed by MaterialType.
+        std::set<MaterialType> mMaterialTypes;                      ///< Set of all material types used.
+        bool mHasSpecGlossStandardMaterial = false;                 ///< True if standard materials using the SpecGloss shading model exist.
 
         bool mSamplersChanged = false;                              ///< Flag indicating if samplers were added/removed since last update.
         bool mBuffersChanged = false;                               ///< Flag indicating if buffers were added/removed since last update.
         bool mMaterialsChanged = false;                             ///< Flag indicating if materials were added/removed since last update. Per-material updates are tracked by each material's update flags.
+
         Material::UpdateFlags mMaterialUpdates = Material::UpdateFlags::None; ///< Material updates across all materials since last update.
 
         // GPU resources

@@ -1,8 +1,6 @@
 from falcor import *
 
 def render_graph_VBufferRaster():
-    loadRenderPassLibrary("GBuffer.dll")
-
     g = RenderGraph("VBufferRaster")
     g.addPass(createPass("VBufferRaster"), "VBufferRaster")
 
@@ -10,6 +8,7 @@ def render_graph_VBufferRaster():
     g.markOutput("VBufferRaster.vbuffer", TextureChannelFlags.Alpha)
     g.markOutput("VBufferRaster.depth")
     g.markOutput("VBufferRaster.mvec")
+    g.markOutput("VBufferRaster.mask")
 
     return g
 

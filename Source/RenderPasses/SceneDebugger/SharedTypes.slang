@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -32,13 +32,7 @@ BEGIN_NAMESPACE_FALCOR
 
 enum class SceneDebuggerMode : uint32_t
 {
-    FaceNormal,
-    ShadingNormal,
-    ShadingTangent,
-    ShadingBitangent,
-    FrontFacingFlag,
-    BackfacingShadingNormal,
-    TexCoords,
+    // Geometry
     HitType,
     InstanceID,
     MaterialID,
@@ -46,12 +40,23 @@ enum class SceneDebuggerMode : uint32_t
     BlasID,
     InstancedGeometry,
     PrimitiveID,
-    FlatShaded
+    // Shading data
+    FaceNormal,
+    ShadingNormal,
+    ShadingTangent,
+    ShadingBitangent,
+    FrontFacingFlag,
+    BackfacingShadingNormal,
+    TexCoords,
+    // Material properties
+    GuideNormal,
+    Roughness,
+    FlatShaded,
 };
 
 struct SceneDebuggerParams
 {
-    uint mode = 0;                  ///< Current visualization mode. See SceneDebuggerMode.
+    uint mode = (uint)SceneDebuggerMode::FaceNormal; ///< Current visualization mode. See SceneDebuggerMode.
     uint2 frameDim = { 0, 0 };
     uint frameCount = 0;
 
@@ -68,11 +73,24 @@ struct PixelData
 {
     static const uint kInvalidID = 0xffffffff;
 
+    // Geometry
     uint hitType;
     uint instanceID;
     uint materialID;
     uint geometryID;
     uint blasID;
+
+    // ShadingData
+    float3 posW;
+    float3 V;
+    float3 N;
+    float3 T;
+    float3 B;
+    float2 uv;
+    float3 faceN;
+    float4 tangentW;
+    uint frontFacing;
+    float curveRadius;
 };
 
 enum class InstanceInfoFlags : uint32_t

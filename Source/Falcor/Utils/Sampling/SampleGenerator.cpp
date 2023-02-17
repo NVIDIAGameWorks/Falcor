@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,14 +29,14 @@
 
 namespace Falcor
 {
-    static std::map<uint32_t, std::function<SampleGenerator::SharedPtr()>> sFactory;
+    static std::map<uint32_t, std::function<SampleGenerator::SharedPtr(std::shared_ptr<Device>)>> sFactory;
     static Gui::DropdownList sGuiDropdownList;
 
-    SampleGenerator::SharedPtr SampleGenerator::create(uint32_t type)
+    SampleGenerator::SharedPtr SampleGenerator::create(std::shared_ptr<Device> pDevice, uint32_t type)
     {
         if (auto it = sFactory.find(type); it != sFactory.end())
         {
-            return it->second();
+            return it->second(std::move(pDevice));
         }
         else
         {
@@ -56,7 +56,7 @@ namespace Falcor
         return sGuiDropdownList;
     }
 
-    void SampleGenerator::registerType(uint32_t type, const std::string& name, std::function<SharedPtr()> createFunc)
+    void SampleGenerator::registerType(uint32_t type, const std::string& name, std::function<SharedPtr(std::shared_ptr<Device>)> createFunc)
     {
         sGuiDropdownList.push_back({ type, name });
         sFactory[type] = createFunc;
@@ -64,8 +64,8 @@ namespace Falcor
 
     void SampleGenerator::registerAll()
     {
-        registerType(SAMPLE_GENERATOR_TINY_UNIFORM, "Tiny uniform (32-bit)", [] () { return SharedPtr(new SampleGenerator(SAMPLE_GENERATOR_TINY_UNIFORM)); });
-        registerType(SAMPLE_GENERATOR_UNIFORM, "Uniform (128-bit)", [] () { return SharedPtr(new SampleGenerator(SAMPLE_GENERATOR_UNIFORM)); });
+        registerType(SAMPLE_GENERATOR_TINY_UNIFORM, "Tiny uniform (32-bit)", [] (std::shared_ptr<Device> pDevice) { return SharedPtr(new SampleGenerator(std::move(pDevice), SAMPLE_GENERATOR_TINY_UNIFORM)); });
+        registerType(SAMPLE_GENERATOR_UNIFORM, "Uniform (128-bit)", [] (std::shared_ptr<Device> pDevice) { return SharedPtr(new SampleGenerator(std::move(pDevice), SAMPLE_GENERATOR_UNIFORM)); });
     }
 
     // Automatically register basic sampler types.

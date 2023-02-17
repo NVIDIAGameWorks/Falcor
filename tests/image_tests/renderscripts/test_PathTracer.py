@@ -3,7 +3,7 @@ sys.path.append('..')
 from falcor import *
 from helpers import render_frames
 
-exec(open('../../../Source/Mogwai/Data/PathTracer.py').read())
+exec(open('../../../scripts/PathTracer.py').read())
 
 # default
 render_frames(m, 'default', frames=[64])

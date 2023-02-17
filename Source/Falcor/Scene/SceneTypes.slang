@@ -172,6 +172,11 @@ struct MeshDesc
         return (flags & (uint)MeshFlags::Use16BitIndices) != 0;
     }
 
+    bool useVertexIndices() CONST_FUNCTION
+    {
+        return indexCount > 0;
+    }
+
     bool isSkinned() CONST_FUNCTION
     {
         return (flags & (uint)MeshFlags::IsSkinned) != 0;
@@ -254,8 +259,9 @@ struct PackedStaticVertexData
         packedNormalTangentCurveRadius.y = asfloat((t_w << 16) | n.z);
         packedNormalTangentCurveRadius.z = asfloat(encodeNormal2x16(v.tangent.xyz));
     }
+#endif
 
-    StaticVertexData unpack()
+    StaticVertexData unpack() CONST_FUNCTION
     {
         StaticVertexData v;
         v.position = position;
@@ -274,7 +280,6 @@ struct PackedStaticVertexData
 
         return v;
     }
-#endif
 };
 
 struct PrevVertexData

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,12 +27,14 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "AppData.h"
+#include "Core/SampleApp.h"
+#include "Scene/SceneBuilder.h"
 #include "RenderGraph/RenderGraph.h"
+#include "AppData.h"
 
 namespace Falcor
 {
-    class Properties;
+    class SettingsProperties;
 }
 
 using namespace Falcor;
@@ -65,7 +67,7 @@ namespace Mogwai
         virtual void setActiveGraph(RenderGraph* pGraph) {};
         virtual void removeGraph(RenderGraph* pGraph) {};
         virtual void activeGraphChanged(RenderGraph* pNewGraph, RenderGraph* pPrevGraph) {};
-        virtual void onOptionsChange(const Properties& settings){}
+        virtual void onOptionsChange(const SettingsProperties& settings){}
 
     protected:
         Extension(Renderer* pRenderer, const std::string& name) : mpRenderer(pRenderer), mName(name) {}
@@ -74,7 +76,7 @@ namespace Mogwai
         std::string mName;
     };
 
-    class Renderer : public IRenderer
+    class Renderer : public SampleApp
     {
     public:
         struct Options
@@ -85,17 +87,17 @@ namespace Mogwai
             bool silentMode = false;
             bool useSceneCache = false;
             bool rebuildSceneCache = false;
-            bool generateShaderDebugInfo = false;
         };
 
         using KeyCallback = std::function<bool(bool pressed, uint32_t key)>;
 
-        Renderer(const Options& options);
+        Renderer(const SampleAppConfig& config, const Options& options);
+        ~Renderer();
 
         void onLoad(RenderContext* pRenderContext) override;
         void onOptionsChange() override;
         void onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
-        void onResizeSwapChain(uint32_t width, uint32_t height) override;
+        void onResize(uint32_t width, uint32_t height) override;
         bool onKeyEvent(const KeyboardEvent& e) override;
         bool onMouseEvent(const MouseEvent& e) override;
         bool onGamepadEvent(const GamepadEvent& gamepadEvent) override;
@@ -148,6 +150,7 @@ namespace Mogwai
             std::vector<std::string> originalOutputs;
             std::vector<DebugWindow> debugWindows;
             std::unordered_map<std::string, uint32_t> graphOutputRefs;
+            Scene::UpdateFlags sceneUpdates = Scene::UpdateFlags::None;
         };
 
         Scene::SharedPtr mpScene;
@@ -177,7 +180,7 @@ namespace Mogwai
         void eraseDebugWindow(size_t id);
         void unmarkOutput(const std::string& name);
         void markOutput(const std::string& name);
-        size_t findGraph(std::string_view name);
+        size_t findGraph(const std::string_view name);
 
         AppData mAppData;
 

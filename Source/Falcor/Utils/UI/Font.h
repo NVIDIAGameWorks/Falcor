@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,8 +27,10 @@
  **************************************************************************/
 #pragma once
 #include "Core/Assert.h"
+#include "Core/API/fwd.h"
 #include "Core/API/Texture.h"
 #include "Utils/Math/Vector.h"
+#include <filesystem>
 #include <memory>
 #include <string>
 
@@ -46,9 +48,10 @@ namespace Falcor
         ~Font();
 
         /** Create a font object.
+            \param[in] path File path without extension.
             \return New object, or throws an exception if creation failed.
         */
-        static UniquePtr create();
+        static UniquePtr create(Device* pDevice, const std::filesystem::path& path);
 
         /** The structs contains information on the location of the character in the texture
         */
@@ -83,11 +86,11 @@ namespace Falcor
         float getLettersSpacing() const { return mLetterSpacing; }
 
     private:
-        Font();
+        Font(Device* pDevice, const std::filesystem::path& path);
         Font(const Font&) = delete;
         Font& operator=(const Font&) = delete;
 
-        bool loadFromFile(const std::string& fontName, float size);
+        bool loadFromFile(Device* pDevice, const std::filesystem::path& path);
 
         static const char mFirstChar = '!';
         static const char mLastChar = '~';

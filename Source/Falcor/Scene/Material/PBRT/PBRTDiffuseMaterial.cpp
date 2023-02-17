@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
  **************************************************************************/
 #include "PBRTDiffuseMaterial.h"
 #include "Utils/Scripting/ScriptBindings.h"
+#include "Scene/SceneBuilderAccess.h"
 
 namespace Falcor
 {
@@ -35,13 +36,13 @@ namespace Falcor
         const char kShaderFile[] = "Rendering/Materials/PBRT/PBRTDiffuseMaterial.slang";
     }
 
-    PBRTDiffuseMaterial::SharedPtr PBRTDiffuseMaterial::create(const std::string& name)
+    PBRTDiffuseMaterial::SharedPtr PBRTDiffuseMaterial::create(std::shared_ptr<Device> pDevice, const std::string& name)
     {
-        return SharedPtr(new PBRTDiffuseMaterial(name));
+        return SharedPtr(new PBRTDiffuseMaterial(std::move(pDevice), name));
     }
 
-    PBRTDiffuseMaterial::PBRTDiffuseMaterial(const std::string& name)
-        : BasicMaterial(name, MaterialType::PBRTDiffuse)
+    PBRTDiffuseMaterial::PBRTDiffuseMaterial(std::shared_ptr<Device> pDevice, const std::string& name)
+        : BasicMaterial(std::move(pDevice), name, MaterialType::PBRTDiffuse)
     {
         // Setup additional texture slots.
         mTextureSlotInfo[(uint32_t)TextureSlot::BaseColor] = { "baseColor", TextureChannelFlags::RGBA, true };
@@ -65,6 +66,10 @@ namespace Falcor
         FALCOR_SCRIPT_BINDING_DEPENDENCY(BasicMaterial)
 
         pybind11::class_<PBRTDiffuseMaterial, BasicMaterial, PBRTDiffuseMaterial::SharedPtr> material(m, "PBRTDiffuseMaterial");
-        material.def(pybind11::init(&PBRTDiffuseMaterial::create), "name"_a = "");
+        auto create = [] (const std::string& name)
+        {
+            return PBRTDiffuseMaterial::create(getActivePythonSceneBuilder().getDevice(), name);
+        };
+        material.def(pybind11::init(create), "name"_a = ""); // PYTHONDEPRECATED
     }
 }

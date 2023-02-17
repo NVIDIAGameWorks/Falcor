@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -34,52 +34,65 @@
 
 namespace Falcor
 {
-    class ComputeVars;
+class ComputeVars;
 
-    /** Compute state.
-        This class contains the entire state required by a single dispatch call. It's not an immutable object - you can change it dynamically during rendering.
-        The recommended way to use it is to create multiple ComputeState objects (ideally, a single object per program)
-    */
-    class FALCOR_API ComputeState
+/**
+ * Compute state.
+ * This class contains the entire state required by a single dispatch call. It's not an immutable object - you can change it dynamically
+ * during rendering. The recommended way to use it is to create multiple ComputeState objects (ideally, a single object per program)
+ */
+class FALCOR_API ComputeState
+{
+public:
+    using SharedPtr = std::shared_ptr<ComputeState>;
+
+    ~ComputeState() = default;
+
+    /**
+     * Create a new state object.
+     * @param pDevice GPU device.
+     * @return A new object, or an exception is thrown if creation failed.
+     */
+    static SharedPtr create(std::shared_ptr<Device> pDevice);
+
+    /**
+     * Copy constructor. Useful if you need to make minor changes to an already existing object
+     */
+    SharedPtr operator=(const SharedPtr& other);
+
+    /**
+     * Bind a program to the pipeline
+     */
+    ComputeState& setProgram(const ComputeProgram::SharedPtr& pProgram)
     {
-    public:
-        using SharedPtr = std::shared_ptr<ComputeState>;
-        using SharedConstPtr = std::shared_ptr<const ComputeState>;
-        ~ComputeState() = default;
+        mpProgram = pProgram;
+        return *this;
+    }
 
-        /** Create a new state object.
-            \return A new object, or an exception is thrown if creation failed.
-        */
-        static SharedPtr create() { return SharedPtr(new ComputeState()); }
+    /**
+     * Get the currently bound program
+     */
+    ComputeProgram::SharedPtr getProgram() const { return mpProgram; }
 
-        /** Copy constructor. Useful if you need to make minor changes to an already existing object
-        */
-        SharedPtr operator=(const SharedPtr& other);
+    /**
+     * Get the active compute state object
+     */
+    ComputeStateObject::SharedPtr getCSO(const ComputeVars* pVars);
 
-        /** Bind a program to the pipeline
-        */
-        ComputeState& setProgram(const ComputeProgram::SharedPtr& pProgram) { mpProgram = pProgram; return *this; }
+private:
+    ComputeState(std::shared_ptr<Device> pDevice);
 
-        /** Get the currently bound program
-        */
-        ComputeProgram::SharedPtr getProgram() const { return mpProgram; }
+    std::shared_ptr<Device> mpDevice;
+    ComputeProgram::SharedPtr mpProgram;
+    ComputeStateObject::Desc mDesc;
 
-        /** Get the active compute state object
-        */
-        ComputeStateObject::SharedPtr getCSO(const ComputeVars* pVars);
-
-    private:
-        ComputeState();
-        ComputeProgram::SharedPtr mpProgram;
-        ComputeStateObject::Desc mDesc;
-
-        struct CachedData
-        {
-            const ProgramKernels* pProgramKernels = nullptr;
-        };
-        CachedData mCachedData;
-
-        using StateGraph = StateGraph<ComputeStateObject::SharedPtr, void*>;
-        StateGraph::SharedPtr mpCsoGraph;
+    struct CachedData
+    {
+        const ProgramKernels* pProgramKernels = nullptr;
     };
-}
+    CachedData mCachedData;
+
+    using StateGraph = StateGraph<ComputeStateObject::SharedPtr, void*>;
+    StateGraph::SharedPtr mpCsoGraph;
+};
+} // namespace Falcor

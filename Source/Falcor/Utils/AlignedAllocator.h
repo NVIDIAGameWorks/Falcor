@@ -119,30 +119,31 @@ namespace Falcor
     private:
         void computeAndAllocatePadding(size_t size)
         {
-            const size_t currentOffset = mBuffer.size();
+            size_t currentOffset = mBuffer.size();
+
+            if (mMinAlignment > 0 && (currentOffset % mMinAlignment) != 0)
+            {
+                // We're not at the minimum alignment; get aligned.
+                currentOffset += mMinAlignment - (currentOffset % mMinAlignment);
+            }
 
             if (mCacheLineSize > 0)
             {
                 const size_t cacheLineOffset = currentOffset % mCacheLineSize;
-                if (size < mCacheLineSize && cacheLineOffset + size > mCacheLineSize)
+                if (size <= mCacheLineSize && cacheLineOffset + size > mCacheLineSize)
                 {
-                    // The allocation is smaller than a cache line but
-                    // would span two cache lines; move to the start of the
-                    // next cache line.
-                    const size_t pad = mCacheLineSize - cacheLineOffset;
-                    (void)allocInternal(pad);
-                    // There's need to worry about any further alignment
-                    // issues now.
-                    return;
+                    // The allocation is smaller than or equal to a cache line but
+                    // would span two cache lines; move to the start of the next cache line.
+                    currentOffset += mCacheLineSize - cacheLineOffset;
                 }
             }
 
-            if (mMinAlignment > 0 && currentOffset % mMinAlignment)
+            size_t pad = currentOffset - mBuffer.size();
+            if (pad > 0)
             {
-                // We're not at the minimum alignment; get aligned.
-                const size_t pad = mMinAlignment - (currentOffset % mMinAlignment);
-                (void)allocInternal(pad);
+                allocInternal(pad);
             }
+            FALCOR_ASSERT(mMinAlignment == 0 || mBuffer.size() % mMinAlignment == 0);
         }
 
         void* allocInternal(size_t size)

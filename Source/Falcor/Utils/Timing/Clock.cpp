@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -84,7 +84,7 @@ namespace Falcor
             Texture::SharedPtr pStop;
             Texture::SharedPtr pNextFrame;
             Texture::SharedPtr pPrevFrame;
-        } gClockTextures;
+        } gClockTextures; // TODO: REMOVEGLOBAL
 
         constexpr uint64_t kTicksPerSecond = 14400 * (1 << 16); // 14400 is a common multiple of our supported frame-rates. 2^16 gives 64K intra-frame steps
 
@@ -314,20 +314,20 @@ namespace Falcor
         clock.def(kStep, &Clock::step, "frames"_a = 1);
     }
 
-    void Clock::start()
+    void Clock::start(Device* pDevice)
     {
-        auto loadTexture = [](const std::string& tex)
+        auto loadTexture = [pDevice](const std::string& tex)
         {
-            auto pTex = Texture::createFromFile("Framework/Textures/" + tex, false, true);
+            auto pTex = Texture::createFromFile(pDevice, "framework/images/" + tex, false, true);
             if (!pTex) throw RuntimeError("Failed to load texture");
             return pTex;
         };
-        gClockTextures.pRewind = loadTexture("Rewind.jpg");
-        gClockTextures.pPlay = loadTexture("Play.jpg");
-        gClockTextures.pPause = loadTexture("Pause.jpg");
-        gClockTextures.pStop = loadTexture("Stop.jpg");
-        gClockTextures.pNextFrame = loadTexture("NextFrame.jpg");
-        gClockTextures.pPrevFrame = loadTexture("PrevFrame.jpg");
+        gClockTextures.pRewind = loadTexture("rewind.jpg");
+        gClockTextures.pPlay = loadTexture("play.jpg");
+        gClockTextures.pPause = loadTexture("pause.jpg");
+        gClockTextures.pStop = loadTexture("stop.jpg");
+        gClockTextures.pNextFrame = loadTexture("next-frame.jpg");
+        gClockTextures.pPrevFrame = loadTexture("prev-frame.jpg");
     }
 
     void Clock::shutdown()

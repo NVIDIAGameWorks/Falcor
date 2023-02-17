@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,106 +26,182 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "ParallelReduction.h"
+#include "ParallelReductionType.slangh"
 #include "Core/Assert.h"
 #include "Core/API/RenderContext.h"
+#include "Utils/Math/Common.h"
+#include "Utils/Timing/Profiler.h"
 
 namespace Falcor
 {
-    static const char* psFilename = "Utils/Algorithm/ParallelReduction.ps.slang";
+    static const char kShaderFile[] = "Utils/Algorithm/ParallelReduction.cs.slang";
 
-    ParallelReduction::ParallelReduction(ParallelReduction::Type reductionType, uint32_t readbackLatency, uint32_t width, uint32_t height, uint32_t sampleCount)
-        : mReductionType(reductionType)
+    ParallelReduction::ParallelReduction(std::shared_ptr<Device> pDevice)
+        : mpDevice(std::move(pDevice))
     {
-        FALCOR_ASSERT(width > 0 && height > 0 && sampleCount > 0);
-        ResourceFormat texFormat;
-        Program::DefineList defines;
-        defines.add("_SAMPLE_COUNT", std::to_string(sampleCount));
-        defines.add("_TILE_SIZE", std::to_string(kTileSize));
-        switch(reductionType)
+        // Create the programs.
+        // Set defines to avoid compiler warnings about undefined macros. Proper values will be assigned at runtime.
+        Program::DefineList defines = { { "REDUCTION_TYPE", "1" }, { "FORMAT_CHANNELS", "1" }, { "FORMAT_TYPE", "1" } };
+        mpInitialProgram = ComputeProgram::createFromFile(mpDevice, kShaderFile, "initialPass", defines, Shader::CompilerFlags::None);
+        mpFinalProgram = ComputeProgram::createFromFile(mpDevice, kShaderFile, "finalPass", defines, Shader::CompilerFlags::None);
+        mpVars = ComputeVars::create(mpDevice, mpInitialProgram.get());
+
+        // Check assumptions on thread group sizes. The initial pass is a 2D dispatch, the final pass a 1D.
+        FALCOR_ASSERT(mpInitialProgram->getReflector()->getThreadGroupSize().z == 1);
+        FALCOR_ASSERT(mpFinalProgram->getReflector()->getThreadGroupSize().y == 1 && mpFinalProgram->getReflector()->getThreadGroupSize().z == 1);
+
+        mpState = ComputeState::create(mpDevice);
+    }
+
+    void ParallelReduction::allocate(uint32_t elementCount, uint32_t elementSize)
+    {
+        if (mpBuffers[0] == nullptr || mpBuffers[0]->getElementCount() < elementCount * elementSize)
         {
-        case Type::MinMax:
-           texFormat = ResourceFormat::RG32Float;
-           defines.add("_MIN_MAX_REDUCTION");
-           break;
+            // Buffer 0 has one element per tile.
+            mpBuffers[0] = Buffer::createTyped<uint4>(mpDevice.get(), elementCount * elementSize);
+            mpBuffers[0]->setName("ParallelReduction::mpBuffers[0]");
+
+            // Buffer 1 has one element per N elements in buffer 0.
+            const uint32_t numElem1 = div_round_up(elementCount, mpFinalProgram->getReflector()->getThreadGroupSize().x);
+            if (mpBuffers[1] == nullptr || mpBuffers[1]->getElementCount() < numElem1 * elementSize)
+            {
+                mpBuffers[1] = Buffer::createTyped<uint4>(mpDevice.get(), numElem1 * elementSize);
+                mpBuffers[1]->setName("ParallelReduction::mpBuffers[1]");
+            }
+        }
+    }
+
+    template<typename T>
+    void ParallelReduction::execute(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, T* pResult, Buffer::SharedPtr pResultBuffer, uint64_t resultOffset)
+    {
+        FALCOR_PROFILE(pRenderContext, "ParallelReduction::execute");
+
+        // Check texture array/mip/sample count.
+        if (pInput->getArraySize() != 1 || pInput->getMipCount() != 1 || pInput->getSampleCount() != 1)
+        {
+            throw RuntimeError("ParallelReduction::execute() - Input texture is unsupported.");
+        }
+
+        // Check texture format.
+        uint32_t formatType = FORMAT_TYPE_UNKNOWN;
+        switch (getFormatType(pInput->getFormat()))
+        {
+        case FormatType::Float:
+        case FormatType::Unorm:
+        case FormatType::Snorm:
+            formatType = FORMAT_TYPE_FLOAT;
+            break;
+        case FormatType::Sint:
+            formatType = FORMAT_TYPE_SINT;
+            break;
+        case FormatType::Uint:
+            formatType = FORMAT_TYPE_UINT;
+            break;
         default:
-            throw ArgumentError("Unknown parallel reduction operator");
+            throw RuntimeError("ParallelReduction::execute() - Input texture format unsupported.");
         }
 
-        Sampler::Desc samplerDesc;
-        samplerDesc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp).setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point).setLodParams(0, 0, 0);
-        mpPointSampler = Sampler::create(samplerDesc);
-
-        mResultData.resize(readbackLatency + 1);
-        for(auto& res : mResultData)
+        // Check that reduction type T is compatible with the resource format.
+        if (sizeof(typename T::value_type) != 4 ||     // The shader is written for 32-bit types
+            (formatType == FORMAT_TYPE_FLOAT && !std::is_floating_point<typename T::value_type>::value) ||
+            (formatType == FORMAT_TYPE_SINT && (!std::is_integral<typename T::value_type>::value || !std::is_signed<typename T::value_type>::value)) ||
+            (formatType == FORMAT_TYPE_UINT && (!std::is_integral<typename T::value_type>::value || !std::is_unsigned<typename T::value_type>::value)))
         {
-            Fbo::Desc fboDesc;
-            fboDesc.setColorTarget(0, texFormat);
-            res.pFbo = Fbo::create2D(1, 1, fboDesc);
+            throw RuntimeError("ParallelReduction::execute() - Template type T is not compatible with resource format.");
         }
-        mpFirstIterProg = FullScreenPass::create(psFilename, defines);
-        mpFirstIterProg->addDefine("_FIRST_ITERATION");
-        mpRestIterProg = FullScreenPass::create(psFilename, defines);
 
-        // Calculate the number of reduction passes
-        if(width > kTileSize || height > kTileSize)
+        uint32_t reductionType = REDUCTION_TYPE_UNKNOWN;
+        uint32_t elementSize = 0;
+        switch (operation)
         {
-            while(width > 1 || height > 1)
+        case Type::Sum:
+            reductionType = REDUCTION_TYPE_SUM;
+            elementSize = 1;
+            break;
+        case Type::MinMax:
+            reductionType = REDUCTION_TYPE_MINMAX;
+            elementSize = 2;
+            break;
+        default:
+            throw RuntimeError("ParallelReduction::execute() - Unknown reduction type.");
+        }
+
+        // Allocate intermediate buffers if needed.
+        const uint2 resolution = uint2(pInput->getWidth(), pInput->getHeight());
+        FALCOR_ASSERT(resolution.x > 0 && resolution.y > 0);
+        FALCOR_ASSERT(elementSize > 0);
+
+        const uint2 numTiles = div_round_up(resolution, uint2(mpInitialProgram->getReflector()->getThreadGroupSize()));
+        allocate(numTiles.x * numTiles.y, elementSize);
+        FALCOR_ASSERT(mpBuffers[0]);
+        FALCOR_ASSERT(mpBuffers[1]);
+
+        // Configure program.
+        const uint32_t channelCount = getFormatChannelCount(pInput->getFormat());
+        FALCOR_ASSERT(channelCount >= 1 && channelCount <= 4);
+
+        Program::DefineList defines;
+        defines.add("REDUCTION_TYPE", std::to_string(reductionType));
+        defines.add("FORMAT_CHANNELS", std::to_string(channelCount));
+        defines.add("FORMAT_TYPE", std::to_string(formatType));
+
+        mpInitialProgram->addDefines(defines);
+        mpFinalProgram->addDefines(defines);
+
+        // Initial pass: Reduction over tiles of pixels in input texture.
+        mpVars["PerFrameCB"]["gResolution"] = resolution;
+        mpVars["PerFrameCB"]["gNumTiles"] = numTiles;
+        mpVars["gInput"] = pInput;
+        mpVars->setBuffer("gInputBuffer", nullptr); // Unbind previously bound buffer from last call to execute()
+        mpVars->setBuffer("gResult", mpBuffers[0]);
+
+        mpState->setProgram(mpInitialProgram);
+        uint3 numGroups = div_round_up(uint3(resolution.x, resolution.y, 1), mpInitialProgram->getReflector()->getThreadGroupSize());
+        pRenderContext->dispatch(mpState.get(), mpVars.get(), numGroups);
+
+        // Final pass(es): Reduction by a factor N for each pass.
+        uint32_t elems = numTiles.x * numTiles.y;
+        uint32_t inputsBufferIndex = 0;
+
+        while (elems > 1)
+        {
+            mpVars["PerFrameCB"]["gElems"] = elems;
+            mpVars->setBuffer("gInputBuffer", mpBuffers[inputsBufferIndex]);
+            mpVars->setBuffer("gResult", mpBuffers[1 - inputsBufferIndex]);
+
+            mpState->setProgram(mpFinalProgram);
+            uint32_t numGroups = div_round_up(elems, mpFinalProgram->getReflector()->getThreadGroupSize().x);
+            pRenderContext->dispatch(mpState.get(), mpVars.get(), { numGroups, 1, 1 });
+
+            inputsBufferIndex = 1 - inputsBufferIndex;
+            elems = numGroups;
+        }
+
+        size_t resultSize = elementSize * 16;
+
+        // Copy the result to GPU buffer.
+        if (pResultBuffer)
+        {
+            if (resultOffset + resultSize > pResultBuffer->getSize())
             {
-                width = (width + kTileSize - 1) / kTileSize;;
-                height = (height + kTileSize - 1) / kTileSize;;
-
-                width = std::max(width, 1u);
-                height = std::max(height, 1u);
-
-                Fbo::Desc fboDesc;
-                fboDesc.setColorTarget(0, texFormat);
-                mpTmpResultFbo.push_back(Fbo::create2D(width, height, fboDesc));
+                throw RuntimeError("ParallelReduction::execute() - Results buffer is too small.");
             }
+
+            pRenderContext->copyBufferRegion(pResultBuffer.get(), resultOffset, mpBuffers[inputsBufferIndex].get(), 0, resultSize);
         }
-    }
 
-    ParallelReduction::UniquePtr ParallelReduction::create(Type reductionType, uint32_t readbackLatency, uint32_t width, uint32_t height, uint32_t sampleCount)
-    {
-        return ParallelReduction::UniquePtr(new ParallelReduction(reductionType, readbackLatency, width, height, sampleCount));
-    }
-
-    void runProgram(RenderContext* pRenderCtx, Texture::SharedPtr pInput, const FullScreenPass::SharedPtr& pPass, Fbo::SharedPtr pDst, Sampler::SharedPtr pPointSampler)
-    {
-        pPass["gInputTex"] = pInput;
-        pPass["gSampler"] = pPointSampler;
-        pPass->execute(pRenderCtx, pDst);
-     }
-
-    float4 ParallelReduction::reduce(RenderContext* pRenderCtx, Texture::SharedPtr pInput)
-    {
-        FullScreenPass::SharedPtr pPass = mpFirstIterProg;
-
-        for(size_t i = 0; i < mpTmpResultFbo.size(); i++)
+        // Read back the result to the CPU.
+        if (pResult)
         {
-            runProgram(pRenderCtx, pInput, pPass, mpTmpResultFbo[i], mpPointSampler);
-            pPass = mpRestIterProg;
-            pInput = mpTmpResultFbo[i]->getColorTexture(0);
+            const T* pBuf = static_cast<const T*>(mpBuffers[inputsBufferIndex]->map(Buffer::MapType::Read));
+            FALCOR_ASSERT(pBuf);
+            std::memcpy(pResult, pBuf, resultSize);
+            mpBuffers[inputsBufferIndex]->unmap();
         }
-
-        runProgram(pRenderCtx, pInput, pPass, mResultData[mCurFbo].pFbo, mpPointSampler);
-        mResultData[mCurFbo].pReadTask = pRenderCtx->asyncReadTextureSubresource(mResultData[mCurFbo].pFbo->getColorTexture(0).get(), 0);
-        // Read back the results
-        mCurFbo = (mCurFbo + 1) % mResultData.size();
-        float4 result(0);
-        if(mResultData[mCurFbo].pReadTask)
-        {
-            auto texData = mResultData[mCurFbo].pReadTask->getData();
-            mResultData[mCurFbo].pReadTask = nullptr;
-
-            switch (mReductionType)
-            {
-            case Type::MinMax:
-                result = float4(*reinterpret_cast<float2*>(texData.data()), 0, 0);
-                break;
-            default:
-                FALCOR_UNREACHABLE();
-            }
-        }
-        return result;
     }
+
+    // Explicit template instantiation of the supported types.
+    template FALCOR_API void ParallelReduction::execute<float4>(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, float4* pResult, Buffer::SharedPtr pResultBuffer, uint64_t resultOffset);
+    template FALCOR_API void ParallelReduction::execute<int4>(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, int4* pResult, Buffer::SharedPtr pResultBuffer, uint64_t resultOffset);
+    template FALCOR_API void ParallelReduction::execute<uint4>(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, uint4* pResult, Buffer::SharedPtr pResultBuffer, uint64_t resultOffset);
 }

@@ -26,7 +26,6 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "RenderGraphUI.h"
-#include "RenderPassLibrary.h"
 #include "Utils/Algorithm/DirectedGraphTraversal.h"
 #include "Utils/Scripting/Scripting.h"
 
@@ -427,14 +426,14 @@ namespace Falcor
         const auto passUIIt = mRenderPassUI.find(outputPass);
         if (passUIIt == mRenderPassUI.end())
         {
-            msgBox("Error setting graph output. Can't find node name.");
+            msgBox("Error", "Error setting graph output. Can't find node name.");
             return;
         }
         auto& passUI = passUIIt->second;
         const auto outputIt = passUI.mNameToIndexOutput.find(outputField);
         if (outputIt == passUI.mNameToIndexOutput.end())
         {
-            msgBox("Error setting graph output. Can't find output name.");
+            msgBox("Error", "Error setting graph output. Can't find output name.");
             return;
         }
         passUI.mOutputPins[outputIt->second].mIsGraphOutput = true;
@@ -461,7 +460,7 @@ namespace Falcor
     bool RenderGraphUI::autoResolveWarning(const std::string& srcString, const std::string& dstString)
     {
         std::string warningMsg = std::string("Warning: Edge ") + srcString + " - " + dstString + " can auto-resolve.\n";
-        MsgBoxButton button = msgBox(warningMsg, MsgBoxType::OkCancel);
+        MsgBoxButton button = msgBox("Warning", warningMsg, MsgBoxType::OkCancel);
 
         if (button == MsgBoxButton::Ok)
         {
@@ -794,7 +793,7 @@ namespace Falcor
         bool isPopupOpen = false;
         bool first = false;
 
-        if (!(isPopupOpen = ImGui::IsPopupOpen(ImGui::GetCurrentWindow()->GetID("PinMenu"))))
+        if (!(isPopupOpen = ImGui::IsPopupOpen("PinMenu")))
         {
             ImGui::OpenPopup("PinMenu");
             first = true;
@@ -945,7 +944,7 @@ namespace Falcor
         }
         else
         {
-            if (ImGui::IsPopupOpen(ImGui::GetCurrentWindow()->GetID("PinMenu")))
+            if (ImGui::IsPopupOpen("PinMenu"))
             {
                 ImGui::CloseCurrentPopup();
             }

@@ -27,22 +27,25 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
+#include "Core/SampleApp.h"
+#include "Testing/UnitTest.h"
 
 using namespace Falcor;
 
-class FalcorTest : public IRenderer
+class FalcorTest : public SampleApp
 {
 public:
     struct Options
     {
+        UnitTestCategoryFlags categoryFlags = UnitTestCategoryFlags::All;
         std::string filter;
         std::filesystem::path xmlReportPath;
         uint32_t repeat = 1;
     };
 
-    FalcorTest(const Options& options) : mOptions(options) {}
+    FalcorTest(const SampleAppConfig& config, const Options& options);
+    ~FalcorTest();
 
-    void onLoad(RenderContext* pRenderContext) override;
     void onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
 
 private:

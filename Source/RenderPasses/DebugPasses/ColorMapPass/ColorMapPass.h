@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,7 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "Utils/Algorithm/ComputeParallelReduction.h"
+#include "Utils/Algorithm/ParallelReduction.h"
 #include "RenderGraph/BasePasses/FullScreenPass.h"
 #include "ColorMapParams.slang"
 
@@ -36,13 +36,13 @@ using namespace Falcor;
 class ColorMapPass : public RenderPass
 {
 public:
-    using SharedPtr = std::shared_ptr<ColorMapPass>;
+    FALCOR_PLUGIN_CLASS(ColorMapPass, "ColorMapPass", "Pass that applies a color map to the input.");
 
-    static const Info kInfo;
+    using SharedPtr = std::shared_ptr<ColorMapPass>;
 
     /** Create a new object
     */
-    static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
@@ -52,7 +52,7 @@ public:
     static void registerScriptBindings(pybind11::module& m);
 
 private:
-    ColorMapPass(const Dictionary& dict);
+    ColorMapPass(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     ColorMap mColorMap = ColorMap::Jet;
     uint32_t mChannel = 0;
@@ -67,12 +67,12 @@ private:
     class AutoRanging
     {
     public:
-        AutoRanging();
+        AutoRanging(std::shared_ptr<Device> pDevice);
 
         std::optional<std::pair<double, double>> getMinMax(RenderContext* pRenderContext, const Texture::SharedPtr& texture, uint32_t channel);
 
     private:
-        ComputeParallelReduction::SharedPtr mpParallelReduction;
+        std::unique_ptr<ParallelReduction> mpParallelReduction;
         Buffer::SharedPtr mpReductionResult;
         GpuFence::SharedPtr mpFence;
         bool mReductionAvailable = false;

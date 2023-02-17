@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -50,15 +50,17 @@ namespace Falcor
         virtual ~EnvMap() = default;
 
         /** Create a new environment map.
+            \param[in] pDevice GPU device.
             \param[in] texture The environment map texture.
         */
-        static SharedPtr create(const Texture::SharedPtr& texture);
+        static SharedPtr create(std::shared_ptr<Device> pDevice, const Texture::SharedPtr& texture);
 
         /** Create a new environment map from file.
+            \param[in] pDevice GPU device.
             \param[in] path The environment map texture file path.
             \return A new object, or nullptr if the environment map failed to load.
         */
-        static SharedPtr createFromFile(const std::filesystem::path& path);
+        static SharedPtr createFromFile(std::shared_ptr<Device> pDevice, const std::filesystem::path& path);
 
         /** Render the GUI.
         */
@@ -124,8 +126,9 @@ namespace Falcor
         uint64_t getMemoryUsageInBytes() const;
 
     protected:
-        EnvMap(const Texture::SharedPtr& texture);
+        EnvMap(std::shared_ptr<Device> pDevice, const Texture::SharedPtr& texture);
 
+        std::shared_ptr<Device> mpDevice;
         Texture::SharedPtr      mpEnvMap;           ///< Loaded environment map (RGB).
         Sampler::SharedPtr      mpEnvSampler;
 

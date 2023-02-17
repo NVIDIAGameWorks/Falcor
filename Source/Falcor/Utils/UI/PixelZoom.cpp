@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -57,24 +57,20 @@ namespace Falcor
         }
     }
 
-    PixelZoom::PixelZoom(const Fbo* pBackbuffer)
+    PixelZoom::PixelZoom(std::shared_ptr<Device> pDevice, const Fbo* pBackbuffer)
+        : mpDevice(std::move(pDevice))
     {
-        onResizeSwapChain(pBackbuffer);
+        onResize(pBackbuffer);
     }
 
-    PixelZoom::SharedPtr PixelZoom::create(const Fbo* pBackbuffer)
-    {
-        return SharedPtr(new PixelZoom(pBackbuffer));
-    }
-
-    void PixelZoom::onResizeSwapChain(const Fbo* pBackbuffer)
+    void PixelZoom::onResize(const Fbo* pBackbuffer)
     {
         FALCOR_ASSERT(pBackbuffer);
         const Fbo::Desc& desc = pBackbuffer->getDesc();
-        mpSrcBlitFbo = Fbo::create2D(pBackbuffer->getWidth(), pBackbuffer->getHeight(), desc);
+        mpSrcBlitFbo = Fbo::create2D(mpDevice.get(), pBackbuffer->getWidth(), pBackbuffer->getHeight(), desc);
         if (mpDstBlitFbo == nullptr)
         {
-            mpDstBlitFbo = Fbo::create2D(mDstZoomSize, mDstZoomSize, desc);
+            mpDstBlitFbo = Fbo::create2D(mpDevice.get(), mDstZoomSize, mDstZoomSize, desc);
         }
     }
 

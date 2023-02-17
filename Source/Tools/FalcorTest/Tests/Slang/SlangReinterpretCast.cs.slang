@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,10 +28,10 @@
 #pragma once
 #include "Utils/HostDeviceShared.slangh"
 
- /** This tests uses Slang's 'reinterpret' call to cast a fixed-size struct
-     between different struct types containing a mix of 16/32-bit basic types.
-     Note all 4B types are 4B aligned to avoid issues due to packing rules.
- */
+/** This tests uses Slang's 'reinterpret' call to cast a fixed-size struct
+    between different struct types containing a mix of 16/32-bit basic types.
+    Note all 4B types are 4B aligned to avoid issues due to packing rules.
+*/
 
 BEGIN_NAMESPACE_FALCOR
 
@@ -84,7 +84,7 @@ struct E
 
 struct F
 {
-    int a;   
+    int a;
     float16_t4 b[5];
     uint16_t c;
     float16_t d;
@@ -101,7 +101,7 @@ RWStructuredBuffer<E> resultE;
 RWStructuredBuffer<F> resultF;
 
 [numthreads(32, 1, 1)]
-void main(uint3 threadID : SV_DispatchThreadID)
+void main(uint3 threadID: SV_DispatchThreadID)
 {
     const uint i = threadID.x;
 

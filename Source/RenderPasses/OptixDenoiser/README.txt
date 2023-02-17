@@ -7,9 +7,6 @@ See the main README on how to install OptiX.
 
 When using this pass in a Python render graph:
 
-* Make sure to add to your Python script:
-    - loadRenderPassLibrary("OptixDenoiser.dll")
-
 * Create a pass something like this:  (Default settings are pretty good, see config options below.)
     - graph.addPass(createPass("OptixDenoiser", {}), "Denoiser")
 

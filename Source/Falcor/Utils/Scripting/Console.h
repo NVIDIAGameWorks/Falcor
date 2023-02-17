@@ -59,14 +59,7 @@ namespace Falcor
         */
         bool flush();
 
-        /** Global console instance.
-            \return Returns the global console instance.
-        */
-        static Console& instance();
-
     private:
-        Console() = default;
-
         void enterCommand();
         std::optional<std::string> browseHistory(bool upOrDown);
         static int inputTextCallback(ImGuiInputTextCallbackData* data);

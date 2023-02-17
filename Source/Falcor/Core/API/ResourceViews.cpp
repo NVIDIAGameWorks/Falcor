@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,109 +26,273 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "ResourceViews.h"
+#include "Texture.h"
+#include "Buffer.h"
 #include "Device.h"
+#include "GFXHelpers.h"
+#include "GFXAPI.h"
+#include "NativeHandleTraits.h"
 #include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
 {
-    namespace
+
+NativeHandle ResourceView::getNativeHandle() const
+{
+    gfx::InteropHandle gfxNativeHandle = {};
+    FALCOR_GFX_CALL(mGfxResourceView->getNativeHandle(&gfxNativeHandle));
+#if FALCOR_HAS_D3D12
+    if (mpDevice->getType() == Device::Type::D3D12)
+        return NativeHandle(D3D12_CPU_DESCRIPTOR_HANDLE{gfxNativeHandle.handleValue});
+#endif
+#if FALCOR_HAS_VULKAN
+    if (mpDevice->getType() == Device::Type::Vulkan)
     {
-        struct NullResourceViews
+        if (auto pResource = mpResource.lock())
         {
-            std::array<ShaderResourceView::SharedPtr, (size_t)ShaderResourceView::Dimension::Count> srv;
-            std::array<UnorderedAccessView::SharedPtr, (size_t)UnorderedAccessView::Dimension::Count> uav;
-            std::array<DepthStencilView::SharedPtr, (size_t)DepthStencilView::Dimension::Count> dsv;
-            std::array<RenderTargetView::SharedPtr, (size_t)RenderTargetView::Dimension::Count> rtv;
-            ConstantBufferView::SharedPtr cbv;
-        };
-
-        NullResourceViews gNullViews;
-    }
-
-    void createNullViews()
-    {
-        gNullViews.srv[(size_t)ShaderResourceView::Dimension::Buffer] = ShaderResourceView::create(ShaderResourceView::Dimension::Buffer);
-        gNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture1D] = ShaderResourceView::create(ShaderResourceView::Dimension::Texture1D);
-        gNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture1DArray] = ShaderResourceView::create(ShaderResourceView::Dimension::Texture1DArray);
-        gNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture2D] = ShaderResourceView::create(ShaderResourceView::Dimension::Texture2D);
-        gNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture2DArray] = ShaderResourceView::create(ShaderResourceView::Dimension::Texture2DArray);
-        gNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture2DMS] = ShaderResourceView::create(ShaderResourceView::Dimension::Texture2DMS);
-        gNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture2DMSArray] = ShaderResourceView::create(ShaderResourceView::Dimension::Texture2DMSArray);
-        gNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture3D] = ShaderResourceView::create(ShaderResourceView::Dimension::Texture3D);
-        gNullViews.srv[(size_t)ShaderResourceView::Dimension::TextureCube] = ShaderResourceView::create(ShaderResourceView::Dimension::TextureCube);
-        gNullViews.srv[(size_t)ShaderResourceView::Dimension::TextureCubeArray] = ShaderResourceView::create(ShaderResourceView::Dimension::TextureCubeArray);
-
-        if (gpDevice->isFeatureSupported(Device::SupportedFeatures::Raytracing))
-        {
-            gNullViews.srv[(size_t)ShaderResourceView::Dimension::AccelerationStructure] = ShaderResourceView::create(ShaderResourceView::Dimension::AccelerationStructure);
+            if (pResource->getType() == Resource::Type::Buffer)
+            {
+                if (mGfxResourceView->getViewDesc()->format == gfx::Format::Unknown)
+                    return NativeHandle(reinterpret_cast<VkBuffer>(gfxNativeHandle.handleValue));
+                else
+                    return NativeHandle(reinterpret_cast<VkBufferView>(gfxNativeHandle.handleValue));
+            }
+            else
+            {
+                return NativeHandle(reinterpret_cast<VkImageView>(gfxNativeHandle.handleValue));
+            }
         }
+    }
+#endif
+    return {};
+}
 
-        gNullViews.uav[(size_t)UnorderedAccessView::Dimension::Buffer] = UnorderedAccessView::create(UnorderedAccessView::Dimension::Buffer);
-        gNullViews.uav[(size_t)UnorderedAccessView::Dimension::Texture1D] = UnorderedAccessView::create(UnorderedAccessView::Dimension::Texture1D);
-        gNullViews.uav[(size_t)UnorderedAccessView::Dimension::Texture1DArray] = UnorderedAccessView::create(UnorderedAccessView::Dimension::Texture1DArray);
-        gNullViews.uav[(size_t)UnorderedAccessView::Dimension::Texture2D] = UnorderedAccessView::create(UnorderedAccessView::Dimension::Texture2D);
-        gNullViews.uav[(size_t)UnorderedAccessView::Dimension::Texture2DArray] = UnorderedAccessView::create(UnorderedAccessView::Dimension::Texture2DArray);
-        gNullViews.uav[(size_t)UnorderedAccessView::Dimension::Texture3D] = UnorderedAccessView::create(UnorderedAccessView::Dimension::Texture3D);
+ResourceView::~ResourceView()
+{
+    mpDevice->releaseResource(mGfxResourceView);
+}
 
-        gNullViews.dsv[(size_t)DepthStencilView::Dimension::Texture1D] = DepthStencilView::create(DepthStencilView::Dimension::Texture1D);
-        gNullViews.dsv[(size_t)DepthStencilView::Dimension::Texture1DArray] = DepthStencilView::create(DepthStencilView::Dimension::Texture1DArray);
-        gNullViews.dsv[(size_t)DepthStencilView::Dimension::Texture2D] = DepthStencilView::create(DepthStencilView::Dimension::Texture2D);
-        gNullViews.dsv[(size_t)DepthStencilView::Dimension::Texture2DArray] = DepthStencilView::create(DepthStencilView::Dimension::Texture2DArray);
-        gNullViews.dsv[(size_t)DepthStencilView::Dimension::Texture2DMS] = DepthStencilView::create(DepthStencilView::Dimension::Texture2DMS);
-        gNullViews.dsv[(size_t)DepthStencilView::Dimension::Texture2DMSArray] = DepthStencilView::create(DepthStencilView::Dimension::Texture2DMSArray);
+ShaderResourceView::SharedPtr ShaderResourceView::create(
+    Device* pDevice,
+    ConstTextureSharedPtrRef pTexture,
+    uint32_t mostDetailedMip,
+    uint32_t mipCount,
+    uint32_t firstArraySlice,
+    uint32_t arraySize
+)
+{
+    Slang::ComPtr<gfx::IResourceView> handle;
+    gfx::IResourceView::Desc desc = {};
+    desc.format = getGFXFormat(depthToColorFormat(pTexture->getFormat()));
+    desc.type = gfx::IResourceView::Type::ShaderResource;
+    desc.subresourceRange.baseArrayLayer = firstArraySlice;
+    desc.subresourceRange.layerCount = arraySize;
+    desc.subresourceRange.mipLevel = mostDetailedMip;
+    desc.subresourceRange.mipLevelCount = mipCount;
+    FALCOR_GFX_CALL(pDevice->getGfxDevice()->createTextureView(pTexture->getGfxTextureResource(), desc, handle.writeRef()));
+    return SharedPtr(
+        new ShaderResourceView(pDevice->shared_from_this(), pTexture, handle, mostDetailedMip, mipCount, firstArraySlice, arraySize)
+    );
+}
 
-        gNullViews.rtv[(size_t)RenderTargetView::Dimension::Buffer] = RenderTargetView::create(RenderTargetView::Dimension::Buffer);
-        gNullViews.rtv[(size_t)RenderTargetView::Dimension::Texture1D] = RenderTargetView::create(RenderTargetView::Dimension::Texture1D);
-        gNullViews.rtv[(size_t)RenderTargetView::Dimension::Texture1DArray] = RenderTargetView::create(RenderTargetView::Dimension::Texture1DArray);
-        gNullViews.rtv[(size_t)RenderTargetView::Dimension::Texture2D] = RenderTargetView::create(RenderTargetView::Dimension::Texture2D);
-        gNullViews.rtv[(size_t)RenderTargetView::Dimension::Texture2DArray] = RenderTargetView::create(RenderTargetView::Dimension::Texture2DArray);
-        gNullViews.rtv[(size_t)RenderTargetView::Dimension::Texture2DMS] = RenderTargetView::create(RenderTargetView::Dimension::Texture2DMS);
-        gNullViews.rtv[(size_t)RenderTargetView::Dimension::Texture2DMSArray] = RenderTargetView::create(RenderTargetView::Dimension::Texture2DMSArray);
-        gNullViews.rtv[(size_t)RenderTargetView::Dimension::Texture3D] = RenderTargetView::create(RenderTargetView::Dimension::Texture3D);
+static void fillBufferViewDesc(
+    gfx::IResourceView::Desc& desc,
+    ConstBufferSharedPtrRef pBuffer,
+    uint32_t firstElement,
+    uint32_t elementCount
+)
+{
+    auto format = depthToColorFormat(pBuffer->getFormat());
+    desc.format = getGFXFormat(format);
 
-        gNullViews.cbv = ConstantBufferView::create();
+    uint32_t bufferElementSize = 0;
+    uint64_t bufferElementCount = 0;
+    if (pBuffer->isTyped())
+    {
+        FALCOR_ASSERT(getFormatPixelsPerBlock(format) == 1);
+        bufferElementSize = getFormatBytesPerBlock(format);
+        bufferElementCount = pBuffer->getElementCount();
+    }
+    else if (pBuffer->isStructured())
+    {
+        bufferElementSize = pBuffer->getStructSize();
+        bufferElementCount = pBuffer->getElementCount();
+        desc.format = gfx::Format::Unknown;
+        desc.bufferElementSize = bufferElementSize;
+    }
+    else
+    {
+        desc.format = gfx::Format::Unknown;
+        bufferElementSize = 4;
+        bufferElementCount = pBuffer->getSize();
     }
 
-    void releaseNullViews()
-    {
-        gNullViews = {};
-    }
+    bool useDefaultCount = (elementCount == ShaderResourceView::kMaxPossible);
+    FALCOR_ASSERT(useDefaultCount || (firstElement + elementCount) <= bufferElementCount); // Check range
+    desc.bufferRange.firstElement = firstElement;
+    desc.bufferRange.elementCount = useDefaultCount ? (bufferElementCount - firstElement) : elementCount;
+}
 
-    ShaderResourceView::SharedPtr ShaderResourceView::getNullView(ShaderResourceView::Dimension dimension)
-    {
-        FALCOR_ASSERT((size_t)dimension < gNullViews.srv.size() && gNullViews.srv[(size_t)dimension]);
-        return gNullViews.srv[(size_t)dimension];
-    }
+ShaderResourceView::SharedPtr ShaderResourceView::create(
+    Device* pDevice,
+    ConstBufferSharedPtrRef pBuffer,
+    uint32_t firstElement,
+    uint32_t elementCount
+)
+{
+    Slang::ComPtr<gfx::IResourceView> handle;
+    gfx::IResourceView::Desc desc = {};
+    desc.type = gfx::IResourceView::Type::ShaderResource;
+    fillBufferViewDesc(desc, pBuffer, firstElement, elementCount);
 
-    UnorderedAccessView::SharedPtr UnorderedAccessView::getNullView(UnorderedAccessView::Dimension dimension)
-    {
-        FALCOR_ASSERT((size_t)dimension < gNullViews.uav.size() && gNullViews.uav[(size_t)dimension]);
-        return gNullViews.uav[(size_t)dimension];
-    }
+    FALCOR_GFX_CALL(pDevice->getGfxDevice()->createBufferView(pBuffer->getGfxBufferResource(), nullptr, desc, handle.writeRef()));
+    return SharedPtr(new ShaderResourceView(pDevice->shared_from_this(), pBuffer, handle, firstElement, elementCount));
+}
 
-    DepthStencilView::SharedPtr DepthStencilView::getNullView(DepthStencilView::Dimension dimension)
-    {
-        FALCOR_ASSERT((size_t)dimension < gNullViews.dsv.size() && gNullViews.dsv[(size_t)dimension]);
-        return gNullViews.dsv[(size_t)dimension];
-    }
+ShaderResourceView::SharedPtr ShaderResourceView::create(Device* pDevice, Dimension dimension)
+{
+    // Create a null view of the specified dimension.
+    return SharedPtr(new ShaderResourceView(pDevice->shared_from_this(), std::weak_ptr<Resource>(), nullptr, 0, 0));
+}
 
-    RenderTargetView::SharedPtr RenderTargetView::getNullView(RenderTargetView::Dimension dimension)
-    {
-        FALCOR_ASSERT((size_t)dimension < gNullViews.rtv.size() && gNullViews.rtv[(size_t)dimension]);
-        return gNullViews.rtv[(size_t)dimension];
-    }
+DepthStencilView::SharedPtr DepthStencilView::create(
+    Device* pDevice,
+    ConstTextureSharedPtrRef pTexture,
+    uint32_t mipLevel,
+    uint32_t firstArraySlice,
+    uint32_t arraySize
+)
+{
+    Slang::ComPtr<gfx::IResourceView> handle;
+    gfx::IResourceView::Desc desc = {};
+    desc.format = getGFXFormat(pTexture->getFormat());
+    desc.type = gfx::IResourceView::Type::DepthStencil;
+    desc.subresourceRange.baseArrayLayer = firstArraySlice;
+    desc.subresourceRange.layerCount = arraySize;
+    desc.subresourceRange.mipLevel = mipLevel;
+    desc.subresourceRange.mipLevelCount = 1;
+    desc.subresourceRange.aspectMask = gfx::TextureAspect::Depth;
+    desc.renderTarget.shape = pTexture->getGfxTextureResource()->getDesc()->type;
+    FALCOR_GFX_CALL(pDevice->getGfxDevice()->createTextureView(pTexture->getGfxTextureResource(), desc, handle.writeRef()));
+    return SharedPtr(new DepthStencilView(pDevice->shared_from_this(), pTexture, handle, mipLevel, firstArraySlice, arraySize));
+}
 
-    ConstantBufferView::SharedPtr ConstantBufferView::getNullView()
-    {
-        return gNullViews.cbv;
-    }
+DepthStencilView::SharedPtr DepthStencilView::create(Device* pDevice, Dimension dimension)
+{
+    return SharedPtr(new DepthStencilView(pDevice->shared_from_this(), std::weak_ptr<Resource>(), nullptr, 0, 0, 0));
+}
 
-    FALCOR_SCRIPT_BINDING(ResourceView)
+UnorderedAccessView::SharedPtr UnorderedAccessView::create(
+    Device* pDevice,
+    ConstTextureSharedPtrRef pTexture,
+    uint32_t mipLevel,
+    uint32_t firstArraySlice,
+    uint32_t arraySize
+)
+{
+    Slang::ComPtr<gfx::IResourceView> handle;
+    gfx::IResourceView::Desc desc = {};
+    desc.format = getGFXFormat(pTexture->getFormat());
+    desc.type = gfx::IResourceView::Type::UnorderedAccess;
+    desc.subresourceRange.baseArrayLayer = firstArraySlice;
+    desc.subresourceRange.layerCount = arraySize;
+    desc.subresourceRange.mipLevel = mipLevel;
+    desc.subresourceRange.mipLevelCount = 1;
+    FALCOR_GFX_CALL(pDevice->getGfxDevice()->createTextureView(pTexture->getGfxTextureResource(), desc, handle.writeRef()));
+    return SharedPtr(new UnorderedAccessView(pDevice->shared_from_this(), pTexture, handle, mipLevel, firstArraySlice, arraySize));
+}
+
+UnorderedAccessView::SharedPtr UnorderedAccessView::create(
+    Device* pDevice,
+    ConstBufferSharedPtrRef pBuffer,
+    uint32_t firstElement,
+    uint32_t elementCount
+)
+{
+    Slang::ComPtr<gfx::IResourceView> handle;
+    gfx::IResourceView::Desc desc = {};
+    desc.type = gfx::IResourceView::Type::UnorderedAccess;
+    fillBufferViewDesc(desc, pBuffer, firstElement, elementCount);
+    FALCOR_GFX_CALL(pDevice->getGfxDevice()->createBufferView(
+        pBuffer->getGfxBufferResource(), pBuffer->getUAVCounter() ? pBuffer->getUAVCounter()->getGfxBufferResource() : nullptr, desc,
+        handle.writeRef()
+    ));
+    return SharedPtr(new UnorderedAccessView(pDevice->shared_from_this(), pBuffer, handle, firstElement, elementCount));
+}
+
+UnorderedAccessView::SharedPtr UnorderedAccessView::create(Device* pDevice, Dimension dimension)
+{
+    return SharedPtr(new UnorderedAccessView(pDevice->shared_from_this(), std::weak_ptr<Resource>(), nullptr, 0, 0));
+}
+
+RenderTargetView::SharedPtr RenderTargetView::create(
+    Device* pDevice,
+    ConstTextureSharedPtrRef pTexture,
+    uint32_t mipLevel,
+    uint32_t firstArraySlice,
+    uint32_t arraySize
+)
+{
+    Slang::ComPtr<gfx::IResourceView> handle;
+    gfx::IResourceView::Desc desc = {};
+    desc.format = getGFXFormat(pTexture->getFormat());
+    desc.type = gfx::IResourceView::Type::RenderTarget;
+    desc.subresourceRange.baseArrayLayer = firstArraySlice;
+    desc.subresourceRange.layerCount = arraySize;
+    desc.subresourceRange.mipLevel = mipLevel;
+    desc.subresourceRange.mipLevelCount = 1;
+    desc.subresourceRange.aspectMask = gfx::TextureAspect::Color;
+    desc.renderTarget.shape = pTexture->getGfxTextureResource()->getDesc()->type;
+    FALCOR_GFX_CALL(pDevice->getGfxDevice()->createTextureView(pTexture->getGfxTextureResource(), desc, handle.writeRef()));
+    return SharedPtr(new RenderTargetView(pDevice->shared_from_this(), pTexture, handle, mipLevel, firstArraySlice, arraySize));
+}
+
+gfx::IResource::Type getGFXResourceType(RenderTargetView::Dimension dim)
+{
+    switch (dim)
     {
-        pybind11::class_<ShaderResourceView, ShaderResourceView::SharedPtr>(m, "ShaderResourceView");
-        pybind11::class_<RenderTargetView, RenderTargetView::SharedPtr>(m, "RenderTargetView");
-        pybind11::class_<UnorderedAccessView, UnorderedAccessView::SharedPtr>(m, "UnorderedAccessView");
-        pybind11::class_<ConstantBufferView, ConstantBufferView::SharedPtr>(m, "ConstantBufferView");
-        pybind11::class_<DepthStencilView, DepthStencilView::SharedPtr>(m, "DepthStencilView");
+    case RenderTargetView::Dimension::Buffer:
+        return gfx::IResource::Type::Buffer;
+    case RenderTargetView::Dimension::Texture1D:
+    case RenderTargetView::Dimension::Texture1DArray:
+        return gfx::IResource::Type::Texture1D;
+    case RenderTargetView::Dimension::Texture2D:
+    case RenderTargetView::Dimension::Texture2DMS:
+    case RenderTargetView::Dimension::Texture2DMSArray:
+    case RenderTargetView::Dimension::Texture2DArray:
+        return gfx::IResource::Type::Texture2D;
+    case RenderTargetView::Dimension::Texture3D:
+        return gfx::IResource::Type::Texture3D;
+    case RenderTargetView::Dimension::TextureCube:
+    case RenderTargetView::Dimension::TextureCubeArray:
+        return gfx::IResource::Type::TextureCube;
+    default:
+        FALCOR_UNREACHABLE();
+        return gfx::IResource::Type::Texture2D;
     }
 }
+
+RenderTargetView::SharedPtr RenderTargetView::create(Device* pDevice, Dimension dimension)
+{
+    Slang::ComPtr<gfx::IResourceView> handle;
+    gfx::IResourceView::Desc desc = {};
+    desc.format = gfx::Format::R8G8B8A8_UNORM;
+    desc.type = gfx::IResourceView::Type::RenderTarget;
+    desc.subresourceRange.baseArrayLayer = 0;
+    desc.subresourceRange.layerCount = 1;
+    desc.subresourceRange.mipLevel = 0;
+    desc.subresourceRange.mipLevelCount = 1;
+    desc.subresourceRange.aspectMask = gfx::TextureAspect::Color;
+    desc.renderTarget.shape = getGFXResourceType(dimension);
+    FALCOR_GFX_CALL(pDevice->getGfxDevice()->createTextureView(nullptr, desc, handle.writeRef()));
+    return SharedPtr(new RenderTargetView(pDevice->shared_from_this(), std::weak_ptr<Resource>(), handle, 0, 0, 0));
+}
+
+FALCOR_SCRIPT_BINDING(ResourceView)
+{
+    pybind11::class_<ShaderResourceView, ShaderResourceView::SharedPtr>(m, "ShaderResourceView");
+    pybind11::class_<RenderTargetView, RenderTargetView::SharedPtr>(m, "RenderTargetView");
+    pybind11::class_<UnorderedAccessView, UnorderedAccessView::SharedPtr>(m, "UnorderedAccessView");
+    pybind11::class_<DepthStencilView, DepthStencilView::SharedPtr>(m, "DepthStencilView");
+}
+} // namespace Falcor

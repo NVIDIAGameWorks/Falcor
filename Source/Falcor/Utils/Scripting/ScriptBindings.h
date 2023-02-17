@@ -36,7 +36,17 @@
 
 namespace Falcor::ScriptBindings
 {
+    /** Callback function to add python bindings to a module.
+    */
     using RegisterBindingFunc = std::function<void(pybind11::module& m)>;
+
+    /** Initialize the binding module.
+        This is called from the pybind11 module to initialize bindings (see FalcorPython.cpp).
+        First, this function will go through the list of all deferred bindings and execute them.
+        Next, it stores a reference to the python module to allow further bindings to be added at runtime.
+        The reference to the module is automatically released when the module is unloaded.
+    */
+    FALCOR_API void initModule(pybind11::module& m);
 
     /** Register a script binding function.
         The binding function will be called when scripting is initialized.
@@ -253,7 +263,6 @@ namespace Falcor::ScriptBindings
 #else
 #define FALCOR_SCRIPT_BINDING(_name) static_assert(false, "Using FALCOR_SCRIPT_BINDING() in a static-library is not supported. The C++ linker usually doesn't pull static-initializers into the EXE. " \
     "Call 'registerBinding()' yourself from a code that is guarenteed to run.");
-
-#endif // _library
+#endif // _staticlibrary
 
 }

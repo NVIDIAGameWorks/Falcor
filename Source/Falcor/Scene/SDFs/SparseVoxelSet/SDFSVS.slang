@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -40,8 +40,8 @@ struct SDFSVS : SDFGridBase, ISDFGrid
     StructuredBuffer<AABB> aabbs;
     StructuredBuffer<SDFSVSVoxel> voxels;
 
-    uint virtualGridLevel;
     uint virtualGridWidth;
+    float oneDivVirtualGridWidth;
     float normalizationFactor;
 
     /** Unpacks 4 distance values from a 4x4 x-slice.
@@ -91,7 +91,7 @@ struct SDFSVS : SDFGridBase, ISDFGrid
 
     /** Calculates the voxel unit coords of grid local position p using the bounds of a voxel.
     */
-    float3 calculteVoxelUnitCoords(const float3 p, const float3 aabbMin, const float3 aabbMax)
+    float3 calculateVoxelUnitCoords(const float3 p, const float3 aabbMin, const float3 aabbMax)
     {
         float3 sides = aabbMax - aabbMin;
         float3 delta = p - aabbMin;
@@ -153,7 +153,8 @@ struct SDFSVS : SDFGridBase, ISDFGrid
         unpackCenterValues(voxel.packedValuesSlices[1], voxel.packedValuesSlices[2], values0xx, values1xx);
 
         // Convert the ray origin to voxel unit coords.
-        float3 voxelUnitSpaceRayOrigin = calculteVoxelUnitCoords(pLocal, pMin, pMax);
+        float3 voxelUnitSpaceRayOrigin;
+        voxelUnitSpaceRayOrigin = calculateVoxelUnitCoords(pLocal, pMin, pMax);
 
         float tLocal;
         if (SDFVoxelHitUtils::intersectSDFVoxel(voxelUnitSpaceRayOrigin, rayDirLocal, origInsideAABB, values0xx, values1xx, kSnormErrorTolerance + (tMaxLocal - t) / voxelExtent, kSolverMaxStepCount, tLocal))
@@ -210,8 +211,8 @@ struct SDFSVS : SDFGridBase, ISDFGrid
         unpackCenterValues(voxel.packedValuesSlices[1], voxel.packedValuesSlices[2], values0xx, values1xx);
 
         // Convert the ray origin to voxel unit coords.
-        float3 voxelUnitSpaceRayOrigin = calculteVoxelUnitCoords(pLocal, pMin, pMax);
-
+        float3 voxelUnitSpaceRayOrigin;
+        voxelUnitSpaceRayOrigin = calculateVoxelUnitCoords(pLocal, pMin, pMax);
         return SDFVoxelHitUtils::intersectSDFVoxelAny(voxelUnitSpaceRayOrigin, rayDirLocal, origInsideAABB, values0xx, values1xx, kSnormErrorTolerance + (tMaxLocal - tMinLocal) / voxelExtent, kSolverMaxStepCount);
     }
 
@@ -239,7 +240,7 @@ struct SDFSVS : SDFGridBase, ISDFGrid
         float4 values1xx;
         unpackCenterValues(voxel.packedValuesSlices[1], voxel.packedValuesSlices[2], values0xx, values1xx);
 
-        const float offset = 0.2f / virtualGridWidth;
+        const float offset = 0.2f * oneDivVirtualGridWidth;
         gradient = SDFVoxelHitUtils::computeNumericGradient(voxelUnitCoords, offset, values0xx, values1xx);
 #endif
 

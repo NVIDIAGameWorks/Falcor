@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -74,7 +74,7 @@ namespace Falcor
             \param[in] name The material name.
             \param[in] model Shading model.
         */
-        static SharedPtr create(const std::string& name = "", ShadingModel shadingModel = ShadingModel::MetalRough);
+        static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& name = "", ShadingModel shadingModel = ShadingModel::MetalRough);
 
         /** Render the UI.
             \return True if the material was modified.
@@ -131,7 +131,7 @@ namespace Falcor
         }
 
     protected:
-        StandardMaterial(const std::string& name, ShadingModel shadingModel);
+        StandardMaterial(std::shared_ptr<Device> pDevice, const std::string& name, ShadingModel shadingModel);
 
         void updateDeltaSpecularFlag() override;
 

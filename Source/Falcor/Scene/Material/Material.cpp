@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -41,7 +41,7 @@ namespace Falcor
         static_assert(sizeof(MaterialHeader) == 8);
         static_assert(sizeof(MaterialPayload) == 120);
         static_assert(sizeof(MaterialDataBlob) == 128);
-        static_assert(static_cast<uint32_t>(MaterialType::Count) <= (1u << MaterialHeader::kMaterialTypeBits), "MaterialType count exceeds the maximum");
+        static_assert(static_cast<uint32_t>(MaterialType::BuiltinCount) <= (1u << MaterialHeader::kMaterialTypeBits), "MaterialType count exceeds the maximum");
         static_assert(static_cast<uint32_t>(AlphaMode::Count) <= (1u << MaterialHeader::kAlphaModeBits), "AlphaMode bit count exceeds the maximum");
         static_assert(static_cast<uint32_t>(LobeType::All) < (1u << MaterialHeader::kLobeTypeBits), "LobeType bit count exceeds the maximum");
         static_assert(static_cast<uint32_t>(TextureHandle::Mode::Count) <= (1u << TextureHandle::kModeBits), "TextureHandle::Mode bit count exceeds the maximum");
@@ -55,8 +55,9 @@ namespace Falcor
         return lhs.packedData == rhs.packedData;
     }
 
-    Material::Material(const std::string& name, MaterialType type)
-        : mName(name)
+    Material::Material(std::shared_ptr<Device> pDevice, const std::string& name, MaterialType type)
+        : mpDevice(std::move(pDevice))
+        , mName(name)
     {
         mHeader.setMaterialType(type);
         mHeader.setAlphaMode(AlphaMode::Opaque);
@@ -181,27 +182,29 @@ namespace Falcor
         return mTextureSlotData[(size_t)slot].pTexture;
     }
 
-    void Material::loadTexture(TextureSlot slot, const std::filesystem::path& path, bool useSrgb)
+    bool Material::loadTexture(TextureSlot slot, const std::filesystem::path& path, bool useSrgb)
     {
         if (!hasTextureSlot(slot))
         {
             logWarning("Material '{}' does not have texture slot '{}'. Ignoring call to loadTexture().", getName(), to_string(slot));
-            return;
+            return false;
         }
 
         std::filesystem::path fullPath;
         if (findFileInDataDirectories(path, fullPath))
         {
-            auto texture = Texture::createFromFile(fullPath, true, useSrgb && getTextureSlotInfo(slot).srgb);
+            auto texture = Texture::createFromFile(mpDevice.get(), fullPath, true, useSrgb && getTextureSlotInfo(slot).srgb);
             if (texture)
             {
                 setTexture(slot, texture);
                 // Flush and sync in order to prevent the upload heap from growing too large. Doing so after
                 // every texture creation is overly conservative, and will likely lead to performance issues
                 // due to the forced CPU/GPU sync.
-                gpDevice->flushAndSync();
+                mpDevice->flushAndSync();
+                return true;
             }
         }
+        return false;
     }
 
     uint2 Material::getMaxTextureDimensions() const
@@ -249,11 +252,13 @@ namespace Falcor
             auto h = pOwner->getTextureManager()->addTexture(pTexture);
             FALCOR_ASSERT(h);
             handle.setTextureID(h.getID());
+            handle.setMode(TextureHandle::Mode::Texture);
         }
         else
         {
             handle.setMode(TextureHandle::Mode::Uniform);
         }
+        handle.setUdimEnabled(false);
 
         if (handle != prevHandle) mUpdates |= Material::UpdateFlags::DataChanged;
     }
@@ -301,6 +306,27 @@ namespace Falcor
         return true;
     }
 
+    NormalMapType Material::detectNormalMapType(const Texture::SharedPtr& pNormalMap)
+    {
+        NormalMapType type = NormalMapType::None;
+        if (pNormalMap != nullptr)
+        {
+            switch (getFormatChannelCount(pNormalMap->getFormat()))
+            {
+            case 2:
+                type = NormalMapType::RG;
+                break;
+            case 3:
+            case 4: // Some texture formats don't support RGB, only RGBA. We have no use for the alpha channel in the normal map.
+                type = NormalMapType::RGB;
+                break;
+            default:
+                logWarning("Unsupported normal map format: ", to_string(pNormalMap->getFormat()));
+            }
+        }
+        return type;
+    }
+
     FALCOR_SCRIPT_BINDING(Material)
     {
         using namespace pybind11::literals;
@@ -312,6 +338,7 @@ namespace Falcor
         materialType.value("Cloth", MaterialType::Cloth);
         materialType.value("Hair", MaterialType::Hair);
         materialType.value("MERL", MaterialType::MERL);
+        materialType.value("MERLMix", MaterialType::MERLMix);
         materialType.value("PBRTDiffuse", MaterialType::PBRTDiffuse);
         materialType.value("PBRTDiffuseTransmission", MaterialType::PBRTDiffuseTransmission);
         materialType.value("PBRTConductor", MaterialType::PBRTConductor);
@@ -331,6 +358,7 @@ namespace Falcor
         textureSlot.value("Normal", Material::TextureSlot::Normal);
         textureSlot.value("Transmission", Material::TextureSlot::Transmission);
         textureSlot.value("Displacement", Material::TextureSlot::Displacement);
+        textureSlot.value("Index", Material::TextureSlot::Index);
 
         // Register Material base class as IMaterial in python to allow deprecated script syntax.
         // TODO: Remove workaround when all scripts have been updated to create derived Material classes.
@@ -345,6 +373,8 @@ namespace Falcor
         material.def_property("nestedPriority", &Material::getNestedPriority, &Material::setNestedPriority);
         material.def_property("textureTransform", pybind11::overload_cast<>(&Material::getTextureTransform, pybind11::const_), &Material::setTextureTransform);
 
+        material.def("setTexture", &Material::setTexture, "slot"_a, "texture"_a);
+        material.def("getTexture", &Material::getTexture, "slot"_a);
         material.def("loadTexture", &Material::loadTexture, "slot"_a, "path"_a, "useSrgb"_a = true);
         material.def("clearTexture", &Material::clearTexture, "slot"_a);
     }

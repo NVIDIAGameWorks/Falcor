@@ -1,8 +1,6 @@
 from falcor import *
 
 def render_graph_GBufferRT():
-    loadRenderPassLibrary("GBuffer.dll")
-
     g = RenderGraph("GBufferRT")
     g.addPass(createPass("GBufferRT"), "GBufferRT")
 
@@ -25,6 +23,7 @@ def render_graph_GBufferRT():
     g.markOutput("GBufferRT.mvecW")
     g.markOutput("GBufferRT.normWRoughnessMaterialID")
     g.markOutput("GBufferRT.normWRoughnessMaterialID", TextureChannelFlags.Alpha)
+    g.markOutput("GBufferRT.guideNormalW")
     g.markOutput("GBufferRT.diffuseOpacity")
     g.markOutput("GBufferRT.diffuseOpacity", TextureChannelFlags.Alpha)
     g.markOutput("GBufferRT.specRough")
@@ -32,6 +31,7 @@ def render_graph_GBufferRT():
     g.markOutput("GBufferRT.emissive")
     g.markOutput("GBufferRT.viewW")
     g.markOutput("GBufferRT.disocclusion")
+    g.markOutput("GBufferRT.mask")
 
     return g
 

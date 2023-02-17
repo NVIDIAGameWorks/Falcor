@@ -1,11 +1,6 @@
 from falcor import *
 
 def render_graph_HalfRes():
-    loadRenderPassLibrary("GBuffer.dll")
-    loadRenderPassLibrary('ToneMapper.dll')
-    loadRenderPassLibrary("SimplePostFX.dll")
-    loadRenderPassLibrary("AccumulatePass.dll")
-
     g = RenderGraph('HalfRes')
 
     GBuffer = createPass("GBufferRaster", {'outputSize': IOSize.Half, 'samplePattern': SamplePattern.Stratified})
@@ -22,7 +17,7 @@ def render_graph_HalfRes():
     g.addEdge('ToneMapper.dst', 'SimplePostFX.src')
 
     g.markOutput('SimplePostFX.dst')
-    g.markOutput('GBuffer.normW')    
+    g.markOutput('GBuffer.normW')
     g.markOutput('AccumulatePass.output')
     g.markOutput('ToneMapper.dst')
 

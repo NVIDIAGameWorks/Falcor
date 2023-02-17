@@ -32,9 +32,7 @@
 
 namespace Falcor
 {
-    /** A class that hold the state of the current inputs such as Keys and mouse events. This class can be fetched from the gpFramework pointer in the Sample class.
-        Like this:
-            cosnt InputState& inputState = gpFramework->getInputState()
+    /** A class that hold the state of the current inputs such as Keys and mouse events.
         The class does not tell Falcor that it has handled the input when the user calls the functions.
         It is up to the user to tell Falcor that the input event was handled by returning true in the input event callbacks.
     */
@@ -133,6 +131,6 @@ namespace Falcor
 
         bool mMouseMoving = false;
 
-        friend class Sample;
+        friend class SampleApp;
     };
 }

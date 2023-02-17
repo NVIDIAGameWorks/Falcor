@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -119,26 +119,32 @@ extension float : IPrintable
 
         This is a lower-level worker routine used by `print()`.
     */
+    [ForceInline]
     void _print(String msg, PixelLogValueType valueType, int count, uint4 data)
     {
-        if (!all(gPixelDebugPixel == gPixelLogSelected)) return;
-
-        uint i = gPixelLog.IncrementCounter();
-        if (i < gPixelLogSize)
+        // TODO: Previously this was an early out:
+        // if (all(gPixelDebugPixel == gPixelLogSelected)) return;
+        // Due to a bug in slang this leads to expontentially growing compile times.
+        // This will be fixed in the compiler. Once it is, we should revert this workaround.
+        if (all(gPixelDebugPixel == gPixelLogSelected))
         {
-            PixelLogValue val = {};
-            val.msgHash = getStringHash(msg);
-            val.type = (uint)valueType;
-            val.count = count;
-            val.data = data;
-            gPixelLog[i] = val;
+            uint i = gPixelLog.IncrementCounter();
+            if (i < gPixelLogSize)
+            {
+                PixelLogValue val = {};
+                val.msgHash = getStringHash(msg);
+                val.type = (uint)valueType;
+                val.count = count;
+                val.data = data;
+                gPixelLog[i] = val;
+            }
         }
     }
-
     /** Print a value if the current pixel is the selected one.
         \param[in] msg A string message to accompany the value.
         \param[in] v The value to print
     */
+    [ForceInline]
     void print<T : IPrintable>(String msg, T v)
     {
         vector<uint,4> u = 0;
@@ -150,6 +156,7 @@ extension float : IPrintable
         \param[in] msg A string message to accompany the value.
         \param[in] v The value to print
     */
+    [ForceInline]
     void print<T : IPrintable, let N : int>(String msg, vector<T,N> v)
     {
         vector<uint,4> u = 0;
@@ -163,6 +170,7 @@ extension float : IPrintable
     /** Shader assert.
         \param[in] condition If false, the current pixel is recorded in the log.
     */
+    [ForceInline]
     void assert(bool condition, String msg = "")
     {
         if (!condition)
@@ -183,12 +191,15 @@ extension float : IPrintable
     /** Define null functions if debugging is disabled.
     */
 
+    [ForceInline]
     void print<T : IPrintable, let N : int>(String msg, vector<T,N> v)
     {}
 
+    [ForceInline]
     void print<T : IPrintable>(String msg, T v)
     {}
 
+    [ForceInline]
     void assert(bool condition, String msg = "") {}
 
 #endif // !_PIXEL_DEBUG_ENABLED

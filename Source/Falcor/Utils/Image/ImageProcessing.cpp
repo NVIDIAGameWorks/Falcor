@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -36,22 +36,9 @@ namespace Falcor
         const char kCopyColorChannelShader[] = "Utils/Image/CopyColorChannel.cs.slang";
     }
 
-    ImageProcessing::SharedData ImageProcessing::sSharedData;
-
-    ImageProcessing::SharedPtr ImageProcessing::create()
+    ImageProcessing::ImageProcessing(std::shared_ptr<Device> pDevice)
+        : mpDevice(std::move(pDevice))
     {
-        return SharedPtr(new ImageProcessing());
-    }
-
-    ImageProcessing::ImageProcessing()
-    {
-        sSharedData.refCount++;
-    }
-
-    ImageProcessing::~ImageProcessing()
-    {
-        sSharedData.refCount--;
-        if (sSharedData.refCount == 0) sSharedData = {};
     }
 
     void ImageProcessing::copyColorChannel(RenderContext* pRenderContext, const ShaderResourceView::SharedPtr& pSrc, const UnorderedAccessView::SharedPtr& pDst, const TextureChannelFlags srcMask)
@@ -87,13 +74,15 @@ namespace Falcor
         ComputePass::SharedPtr pPass;
         if (srcIsInt)
         {
-            if (!sSharedData.pCopyIntPass) sSharedData.pCopyIntPass = ComputePass::create(kCopyColorChannelShader, "main", { {"TEXTURE_FORMAT", "uint4"} });
-            pPass = sSharedData.pCopyIntPass;
+            if (!mpCopyIntPass)
+                mpCopyIntPass = ComputePass::create(mpDevice, kCopyColorChannelShader, "main", { {"TEXTURE_FORMAT", "uint4"} });
+            pPass = mpCopyIntPass;
         }
         else
         {
-            if (!sSharedData.pCopyFloatPass) sSharedData.pCopyFloatPass = ComputePass::create(kCopyColorChannelShader, "main", { {"TEXTURE_FORMAT", "float4"} });
-            pPass = sSharedData.pCopyFloatPass;
+            if (!mpCopyFloatPass)
+                mpCopyFloatPass = ComputePass::create(mpDevice, kCopyColorChannelShader, "main", { {"TEXTURE_FORMAT", "float4"} });
+            pPass = mpCopyFloatPass;
         }
 
         auto var = pPass->getRootVar();

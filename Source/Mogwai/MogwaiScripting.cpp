@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -47,7 +47,7 @@ namespace Mogwai
         const std::string kGetGraph = "getGraph";
         const std::string kUI = "ui";
         const std::string kKeyCallback = "keyCallback";
-        const std::string kResizeSwapChain = "resizeSwapChain";
+        const std::string kResizeFrameBuffer = "resizeFrameBuffer";
         const std::string kRenderFrame = "renderFrame";
         const std::string kActiveGraph = "activeGraph";
         const std::string kScene = "scene";
@@ -64,12 +64,11 @@ namespace Mogwai
             "\trenderFrame()      Render a frame. If the clock is not paused, it will advance by one tick. You can use it inside for loops, for example to loop over a specific time-range.\n" +
             "\texit()             Terminate.\n";
 
-        std::string windowConfig()
+        std::string windowConfig(const SampleAppConfig& c)
         {
             std::string s;
-            SampleConfig c = gpFramework->getConfig();
             s += "# Window Configuration\n";
-            s += ScriptWriter::makeMemberFunc(kRendererVar, kResizeSwapChain, c.windowDesc.width, c.windowDesc.height);
+            s += ScriptWriter::makeMemberFunc(kRendererVar, kResizeFrameBuffer, c.windowDesc.width, c.windowDesc.height);
             s += ScriptWriter::makeSetProperty(kRendererVar, kUI, c.showUI);
             return s;
         }
@@ -99,12 +98,12 @@ namespace Mogwai
             s += "\n";
         }
 
-        s += windowConfig() + "\n";
+        s += windowConfig(getConfig()) + "\n";
 
         {
             s += "# Clock Settings\n";
             const std::string clockVar = kRendererVar + "." + kClock;
-            s += gpFramework->getGlobalClock().getScript(clockVar) + "\n";
+            s += getGlobalClock().getScript(clockVar) + "\n";
         }
 
         for (auto& pe : mpExtensions)
@@ -139,19 +138,20 @@ namespace Mogwai
         renderer.def(kRemoveGraph.c_str(), pybind11::overload_cast<const RenderGraph::SharedPtr&>(&Renderer::removeGraph), "graph"_a);
         renderer.def(kGetGraph.c_str(), &Renderer::getGraph, "name"_a);
 
-        auto resizeSwapChain = [](Renderer* pRenderer, uint32_t width, uint32_t height) { gpFramework->resizeSwapChain(width, height); };
-        renderer.def(kResizeSwapChain.c_str(), resizeSwapChain);
+        auto resizeFrameBuffer = [](Renderer* pRenderer, uint32_t width, uint32_t height) { pRenderer->resizeFrameBuffer(width, height); };
+        renderer.def(kResizeFrameBuffer.c_str(), resizeFrameBuffer);
+        renderer.def("resizeSwapChain", resizeFrameBuffer); // PYTHONDEPRECATED
 
-        auto renderFrame = [](Renderer* pRenderer) { ProgressBar::close(); gpFramework->renderFrame(); };
+        auto renderFrame = [](Renderer* pRenderer) { pRenderer->getProgressBar().close(); pRenderer->renderFrame(); };
         renderer.def(kRenderFrame.c_str(), renderFrame);
 
         renderer.def_property_readonly(kScene.c_str(), &Renderer::getScene);
         renderer.def_property_readonly(kActiveGraph.c_str(), &Renderer::getActiveGraph);
-        renderer.def_property_readonly(kClock.c_str(), [] (Renderer* pRenderer) { return &gpFramework->getGlobalClock(); });
-        renderer.def_property_readonly(kProfiler.c_str(), [] (Renderer* pRenderer) { return Profiler::instancePtr(); });
+        renderer.def_property_readonly(kClock.c_str(), [] (Renderer* pRenderer) { return &pRenderer->getGlobalClock(); });
+        renderer.def_property_readonly(kProfiler.c_str(), [] (Renderer* pRenderer) { return pRenderer->getDevice()->getProfiler(); });
 
-        auto getUI = [](Renderer* pRenderer) { return gpFramework->isUiEnabled(); };
-        auto setUI = [](Renderer* pRenderer, bool show) { gpFramework->toggleUI(show); };
+        auto getUI = [](Renderer* pRenderer) { return pRenderer->isUiEnabled(); };
+        auto setUI = [](Renderer* pRenderer, bool show) { pRenderer->toggleUI(show); };
         renderer.def_property(kUI.c_str(), getUI, setUI);
 
         renderer.def_property(kKeyCallback.c_str(), &Renderer::getKeyCallback, &Renderer::setKeyCallback);
@@ -166,7 +166,7 @@ namespace Mogwai
         }
 
         // Replace the `help` function
-        auto globalHelp = [this]() { pybind11::print(kGlobalHelp); };
+        auto globalHelp = []() { pybind11::print(kGlobalHelp); };
         m.def("help", globalHelp);
 
         auto objectHelp = [](pybind11::object o)
@@ -181,7 +181,7 @@ namespace Mogwai
         Scripting::getDefaultContext().setObject(kRendererVar, this);
 
         // Register deprecated global variables.
-        Scripting::getDefaultContext().setObject("t", &gpFramework->getGlobalClock()); // PYTHONDEPRECATED
+        Scripting::getDefaultContext().setObject("t", &getGlobalClock()); // PYTHONDEPRECATED
 
         auto findExtension = [this](const std::string& name)
         {
@@ -197,23 +197,25 @@ namespace Mogwai
         Scripting::getDefaultContext().setObject("vc", findExtension("Video Capture")); // PYTHONDEPRECATED
         Scripting::getDefaultContext().setObject("tc", findExtension("Timing Capture")); // PYTHONDEPRECATED
 
+        renderer.def("getSettings", pybind11::overload_cast<>(&Renderer::getSettings), pybind11::return_value_policy::reference);
+
         renderer.def("addOptions", [](Renderer* r, pybind11::dict d = {})
         {
-            gpFramework->getSettings().addOptions(Dictionary(d));
+            r->getSettings().addOptions(d);
             r->onOptionsChange();
         }, "dict"_a = pybind11::dict());
         renderer.def("addFilteredAttributes", [](Renderer* r, pybind11::dict d = {})
         {
-            gpFramework->getSettings().addFilteredAttributes(Dictionary(d));
+            r->getSettings().addFilteredAttributes(d);
         }, "dict"_a = pybind11::dict());
         renderer.def("clearOptions", [](Renderer* r)
         {
-            gpFramework->getSettings().clearOptions();
+            r->getSettings().clearOptions();
             r->onOptionsChange();
         });
         renderer.def("clearFilteredAttributes", [](Renderer* r)
         {
-            gpFramework->getSettings().clearFilteredAttributes();
+            r->getSettings().clearFilteredAttributes();
         });
     }
 }
