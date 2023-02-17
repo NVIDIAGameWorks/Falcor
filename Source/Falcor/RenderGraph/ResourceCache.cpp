@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "ResourceCache.h"
+#include "Core/API/Device.h"
 #include "Core/API/Texture.h"
 #include "Core/API/Buffer.h"
 #include "Utils/Logger.h"
@@ -116,7 +117,7 @@ namespace Falcor
         }
     }
 
-    Resource::SharedPtr createResourceForPass(const ResourceCache::DefaultProperties& params, const RenderPassReflection::Field& field, bool resolveBindFlags, const std::string& resourceName)
+    inline Resource::SharedPtr createResourceForPass(Device* pDevice, const ResourceCache::DefaultProperties& params, const RenderPassReflection::Field& field, bool resolveBindFlags, const std::string& resourceName)
     {
         uint32_t width = field.getWidth() ? field.getWidth() : params.dims.x;
         uint32_t height = field.getHeight() ? field.getHeight() : params.dims.y;
@@ -137,7 +138,7 @@ namespace Falcor
                 bool isOutput = is_set(field.getVisibility(), RenderPassReflection::Field::Visibility::Output);
                 bool isInternal = is_set(field.getVisibility(), RenderPassReflection::Field::Visibility::Internal);
                 if (isOutput || isInternal) mask |= Resource::BindFlags::DepthStencil | Resource::BindFlags::RenderTarget;
-                auto supported = getFormatBindFlags(format);
+                auto supported = pDevice->getFormatBindFlags(format);
                 mask &= supported;
                 bindFlags |= mask;
             }
@@ -151,26 +152,26 @@ namespace Falcor
         switch (field.getType())
         {
         case RenderPassReflection::Field::Type::RawBuffer:
-            pResource = Buffer::create(width, bindFlags, Buffer::CpuAccess::None);
+            pResource = Buffer::create(pDevice, width, bindFlags, Buffer::CpuAccess::None);
             break;
         case RenderPassReflection::Field::Type::Texture1D:
-            pResource = Texture::create1D(width, format, arraySize, mipLevels, nullptr, bindFlags);
+            pResource = Texture::create1D(pDevice, width, format, arraySize, mipLevels, nullptr, bindFlags);
             break;
         case RenderPassReflection::Field::Type::Texture2D:
             if (sampleCount > 1)
             {
-                pResource = Texture::create2DMS(width, height, format, sampleCount, arraySize, bindFlags);
+                pResource = Texture::create2DMS(pDevice, width, height, format, sampleCount, arraySize, bindFlags);
             }
             else
             {
-                pResource = Texture::create2D(width, height, format, arraySize, mipLevels, nullptr, bindFlags);
+                pResource = Texture::create2D(pDevice, width, height, format, arraySize, mipLevels, nullptr, bindFlags);
             }
             break;
         case RenderPassReflection::Field::Type::Texture3D:
-            pResource = Texture::create3D(width, height, depth, format, mipLevels, nullptr, bindFlags);
+            pResource = Texture::create3D(pDevice, width, height, depth, format, mipLevels, nullptr, bindFlags);
             break;
         case RenderPassReflection::Field::Type::TextureCube:
-            pResource = Texture::createCube(width, height, format, arraySize, mipLevels, nullptr, bindFlags);
+            pResource = Texture::createCube(pDevice, width, height, format, arraySize, mipLevels, nullptr, bindFlags);
             break;
         default:
             FALCOR_UNREACHABLE();
@@ -180,13 +181,13 @@ namespace Falcor
         return pResource;
     }
 
-    void ResourceCache::allocateResources(const DefaultProperties& params)
+    void ResourceCache::allocateResources(Device* pDevice, const DefaultProperties& params)
     {
         for (auto& data : mResourceData)
         {
             if ((data.pResource == nullptr) && (data.field.isValid()))
             {
-                data.pResource = createResourceForPass(params, data.field, data.resolveBindFlags, data.name);
+                data.pResource = createResourceForPass(pDevice, params, data.field, data.resolveBindFlags, data.name);
             }
         }
     }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
  **************************************************************************/
 #include "PBRTDielectricMaterial.h"
 #include "Utils/Scripting/ScriptBindings.h"
+#include "Scene/SceneBuilderAccess.h"
 
 namespace Falcor
 {
@@ -35,13 +36,13 @@ namespace Falcor
         const char kShaderFile[] = "Rendering/Materials/PBRT/PBRTDielectricMaterial.slang";
     }
 
-    PBRTDielectricMaterial::SharedPtr PBRTDielectricMaterial::create(const std::string& name)
+    PBRTDielectricMaterial::SharedPtr PBRTDielectricMaterial::create(std::shared_ptr<Device> pDevice, const std::string& name)
     {
-        return SharedPtr(new PBRTDielectricMaterial(name));
+        return SharedPtr(new PBRTDielectricMaterial(std::move(pDevice), name));
     }
 
-    PBRTDielectricMaterial::PBRTDielectricMaterial(const std::string& name)
-        : BasicMaterial(name, MaterialType::PBRTDielectric)
+    PBRTDielectricMaterial::PBRTDielectricMaterial(std::shared_ptr<Device> pDevice, const std::string& name)
+        : BasicMaterial(std::move(pDevice), name, MaterialType::PBRTDielectric)
     {
         // Setup additional texture slots.
         mTextureSlotInfo[(uint32_t)TextureSlot::Specular] = { "specular", TextureChannelFlags::Red | TextureChannelFlags::Green, false };
@@ -82,7 +83,11 @@ namespace Falcor
         FALCOR_SCRIPT_BINDING_DEPENDENCY(BasicMaterial)
 
         pybind11::class_<PBRTDielectricMaterial, BasicMaterial, PBRTDielectricMaterial::SharedPtr> material(m, "PBRTDielectricMaterial");
-        material.def(pybind11::init(&PBRTDielectricMaterial::create), "name"_a = "");
+        auto create = [] (const std::string& name)
+        {
+            return PBRTDielectricMaterial::create(getActivePythonSceneBuilder().getDevice(), name);
+        };
+        material.def(pybind11::init(create), "name"_a = ""); // PYTHONDEPRECATED
 
         material.def_property("roughness", &PBRTDielectricMaterial::getRoughness, &PBRTDielectricMaterial::setRoughness);
     }

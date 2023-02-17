@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,7 +29,7 @@
 /** Compute shader for computing luminance of an RGB image.
   */
 
-#include "flip.hlsli"
+import Utils.Color.ColorHelpers;
 
 cbuffer PerFrameCB
 {
@@ -47,5 +47,5 @@ void computeLuminance(uint3 dispatchThreadId : SV_DispatchThreadID)
 
     const float3 color = gInputImage[pixelPos].xyz;
 
-    gOutputLuminance[pixelPos.x + gResolution.x * pixelPos.y] = linearRGB2Luminance(color);
+    gOutputLuminance[pixelPos.x + gResolution.x * pixelPos.y] = luminance(color);
 }

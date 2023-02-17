@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,89 +28,131 @@
 #include "ErrorHandling.h"
 #include "Platform/OS.h"
 #include "Utils/Logger.h"
+#include <atomic>
 
 namespace Falcor
 {
-    static bool sShowMessageBoxOnError = true;
+static bool sShowMessageBoxOnError = false; // TODO: REMOVEGLOBAL
 
-    void setShowMessageBoxOnError(bool enable) { sShowMessageBoxOnError = enable; }
-    bool getShowMessageBoxOnError() { return sShowMessageBoxOnError;  }
-
-    void reportError(const std::string& msg)
-    {
-        logError(msg);
-
-        if (sShowMessageBoxOnError)
-        {
-            enum ButtonId {
-                Continue,
-                Debug,
-                Abort
-            };
-
-            // Setup message box buttons
-            std::vector<MsgBoxCustomButton> buttons;
-            buttons.push_back({ Continue, "Continue" });
-            if (isDebuggerPresent()) buttons.push_back({ Debug, "Debug" });
-            buttons.push_back({ Abort, "Abort" });
-
-            // Show message box
-            auto result = msgBox(msg, buttons, MsgBoxIcon::Error);
-            if (result == Continue) return;
-            if (result == Debug) debugBreak();
-        }
-
-        std::quick_exit(1);
-    }
-
-    void reportErrorAndAllowRetry(const std::string& msg)
-    {
-        logError(msg);
-
-        if (sShowMessageBoxOnError)
-        {
-            enum ButtonId {
-                Retry,
-                Debug,
-                Abort
-            };
-
-            // Setup message box buttons
-            std::vector<MsgBoxCustomButton> buttons;
-            buttons.push_back({ Retry, "Retry" });
-            if (isDebuggerPresent()) buttons.push_back({ Debug, "Debug" });
-            buttons.push_back({ Abort, "Abort" });
-
-            // Show message box
-            auto result = msgBox(msg, buttons, MsgBoxIcon::Error);
-            if (result == Retry) return;
-            if (result == Debug) debugBreak();
-        }
-
-        std::quick_exit(1);
-    }
-
-    [[noreturn]] void reportFatalError(const std::string& msg)
-    {
-        logFatal(msg);
-
-        if (sShowMessageBoxOnError)
-        {
-            enum ButtonId {
-                Debug,
-                Abort
-            };
-
-            // Setup message box buttons
-            std::vector<MsgBoxCustomButton> buttons;
-            if (isDebuggerPresent()) buttons.push_back({ Debug, "Debug" });
-            buttons.push_back({ Abort, "Abort" });
-
-            // Show message box
-            auto result = msgBox(msg, buttons, MsgBoxIcon::Error);
-            if (result == Debug) debugBreak();
-        }
-
-        std::quick_exit(1);
-    }
+void setShowMessageBoxOnError(bool enable)
+{
+    sShowMessageBoxOnError = enable;
 }
+bool getShowMessageBoxOnError()
+{
+    return sShowMessageBoxOnError;
+}
+
+void reportError(const std::string& msg)
+{
+    logError(msg);
+
+    if (sShowMessageBoxOnError)
+    {
+        enum ButtonId
+        {
+            Continue,
+            Debug,
+            Abort
+        };
+
+        // Setup message box buttons
+        std::vector<MsgBoxCustomButton> buttons;
+        buttons.push_back({Continue, "Continue"});
+        if (isDebuggerPresent())
+            buttons.push_back({Debug, "Debug"});
+        buttons.push_back({Abort, "Abort"});
+
+        // Show message box
+        auto result = msgBox("Error", msg, buttons, MsgBoxIcon::Error);
+        if (result == Continue)
+            return;
+        if (result == Debug)
+            debugBreak();
+    }
+    else
+    {
+        if (isDebuggerPresent())
+            debugBreak();
+    }
+
+    std::quick_exit(1);
+}
+
+void reportErrorAndAllowRetry(const std::string& msg)
+{
+    logError(msg);
+
+    if (sShowMessageBoxOnError)
+    {
+        enum ButtonId
+        {
+            Retry,
+            Debug,
+            Abort
+        };
+
+        // Setup message box buttons
+        std::vector<MsgBoxCustomButton> buttons;
+        buttons.push_back({Retry, "Retry"});
+        if (isDebuggerPresent())
+            buttons.push_back({Debug, "Debug"});
+        buttons.push_back({Abort, "Abort"});
+
+        // Show message box
+        auto result = msgBox("Error", msg, buttons, MsgBoxIcon::Error);
+        if (result == Retry)
+            return;
+        if (result == Debug)
+            debugBreak();
+    }
+    else
+    {
+        if (isDebuggerPresent())
+            debugBreak();
+    }
+
+    std::quick_exit(1);
+}
+
+[[noreturn]] void reportFatalError(const std::string& msg, bool showStackTrace)
+{
+    // Immediately terminate on re-entry.
+    static std::atomic<bool> entered;
+    if (entered.exchange(true) == true)
+        std::quick_exit(1);
+
+    std::string extendedMsg = msg;
+    if (showStackTrace)
+        extendedMsg += "\n\nStacktrace:\n" + getStackTrace(3);
+
+    logFatal(extendedMsg);
+
+    if (sShowMessageBoxOnError)
+    {
+        enum ButtonId
+        {
+            Debug,
+            Abort
+        };
+
+        // Setup message box buttons
+        std::vector<MsgBoxCustomButton> buttons;
+        if (isDebuggerPresent())
+            buttons.push_back({Debug, "Debug"});
+        buttons.push_back({Abort, "Abort"});
+
+        // Show message box
+        auto result = msgBox("Fatal Error", extendedMsg, buttons, MsgBoxIcon::Error);
+        if (result == Debug)
+            debugBreak();
+    }
+    else
+    {
+        if (isDebuggerPresent())
+            debugBreak();
+    }
+
+    std::quick_exit(1);
+}
+} // namespace Falcor

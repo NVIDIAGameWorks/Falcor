@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -53,7 +53,7 @@ namespace Falcor
         /** Create a new hair material.
             \param[in] name The material name.
         */
-        static SharedPtr create(const std::string& name = "");
+        static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& name = "");
 
         Program::ShaderModuleList getShaderModules() const override;
         Program::TypeConformanceList getTypeConformances() const override;
@@ -71,6 +71,6 @@ namespace Falcor
         static float3 colorFromSigmaA(float3 sigmaA, float betaN);
 
     protected:
-        HairMaterial(const std::string& name);
+        HairMaterial(std::shared_ptr<Device> pDevice, const std::string& name);
     };
 }

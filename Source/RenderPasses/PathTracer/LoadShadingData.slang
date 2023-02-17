@@ -111,17 +111,16 @@ VertexData loadVertexData(const HitInfo hit, const float3 rayOrigin, const float
 /** Adjust ShadingData
     \param[in,out] sd Shading data to update.
     \param[in] hit Hit information.
-    \param[in] v Vertex data.
     \param[in] isPrimary True if this is the primary hit point.
 */
-void adjustShadingData(inout ShadingData sd, const HitInfo hit, const VertexData v, const bool isPrimary)
+void adjustShadingData(inout ShadingData sd, const HitInfo hit, const bool isPrimary)
 {
     if (hit.getType() == HitType::Triangle || hit.getType() == HitType::DisplacedTriangle)
     {
 #if GBUFFER_ADJUST_SHADING_NORMALS
-        if (kAdjustShadingNormals || isPrimary) adjustShadingNormal(sd, v);
+        if (kAdjustShadingNormals || isPrimary) adjustShadingNormal(sd);
 #else
-        if (kAdjustShadingNormals && !isPrimary) adjustShadingNormal(sd, v);
+        if (kAdjustShadingNormals && !isPrimary) adjustShadingNormal(sd);
 #endif
     }
 }
@@ -141,6 +140,6 @@ ShadingData loadShadingData(const HitInfo hit, const float3 rayOrigin, const flo
 
     VertexData v = loadVertexData(hit, rayOrigin, rayDir, materialID, modifyNormals);
     ShadingData sd = gScene.materials.prepareShadingData(v, materialID, -rayDir, lod, modifyNormals);
-    adjustShadingData(sd, hit, v, isPrimary);
+    adjustShadingData(sd, hit, isPrimary);
     return sd;
 }

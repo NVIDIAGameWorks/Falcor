@@ -1,0 +1,21 @@
+Source/Falcor/RenderGraph
+Source/Falcor/Rendering
+Source/Falcor/RenderPasses
+Source/Falcor/Scene
+Source/Falcor/Utils
+Source/Mogwai
+Source/plugins/importers/USDImporter
+Source/RenderPasses
+
+# Explicitly whitelisted files
+!Source/Falcor/Utils/PathResolving.cpp
+!Source/Falcor/Utils/PathResolving.h
+!Source/Falcor/Utils/Settings.cpp
+!Source/Falcor/Utils/Settings.h
+!Source/Falcor/Utils/StringFormatters.h
+!Source/Falcor/Utils/Math/Rectangle.cpp
+!Source/Falcor/Utils/Math/Rectangle.h
+!Source/Falcor/Utils/Algorithm/UnionFind.h
+!Source/Falcor/Rendering/Materials/BSDFs
+!Source/RenderPasses/DLSSPass/
+

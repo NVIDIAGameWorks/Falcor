@@ -1,9 +1,10 @@
 import sys
 sys.path.append('..')
 from helpers import render_frames
+from graphs.SceneDebugger import SceneDebugger as g
 from falcor import *
 
-exec(open('../../../Source/Mogwai/Data/ForwardRenderer.py').read())
+m.addGraph(g)
 m.loadScene("TestScenes/AnimatedCubes/AnimatedCubes.pyscene")
 
 # preInfinityBehavior (behavior before first keyframe)

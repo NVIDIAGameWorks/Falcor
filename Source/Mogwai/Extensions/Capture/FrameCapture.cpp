@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -62,7 +62,7 @@ namespace Mogwai
     FrameCapture::FrameCapture(Renderer* pRenderer)
         : CaptureTrigger(pRenderer, "Frame Capture")
     {
-        mpImageProcessing = ImageProcessing::create();
+        mpImageProcessing = std::make_unique<ImageProcessing>(pRenderer->getDevice());
     }
 
     void FrameCapture::renderUI(Gui* pGui)
@@ -71,7 +71,7 @@ namespace Mogwai
         {
             auto w = Gui::Window(pGui, mName.c_str(), mShowUI, {}, { 800, 400 });
 
-            CaptureTrigger::renderUI(w);
+            CaptureTrigger::renderBaseUI(w);
 
             w.checkbox("Capture All Outputs", mCaptureAllOutputs);
             w.tooltip("Capture all available outputs instead of the marked ones only.");
@@ -159,7 +159,7 @@ namespace Mogwai
     void FrameCapture::captureOutput(RenderContext* pRenderContext, RenderGraph* pGraph, const uint32_t outputIndex)
     {
         const std::string outputName = pGraph->getOutputName(outputIndex);
-        const std::string basename = getOutputNamePrefix(outputName) + std::to_string(gpFramework->getGlobalClock().getFrame());
+        const std::string basename = getOutputNamePrefix(outputName) + std::to_string(mpRenderer->getGlobalClock().getFrame());
 
         const Texture::SharedPtr pOutput = pGraph->getOutput(outputIndex)->asTexture();
         if (!pOutput) throw RuntimeError("Graph output {} is not a texture", outputName);
@@ -237,7 +237,7 @@ namespace Mogwai
                 }
 
                 // Copy color channel into temporary texture.
-                pTex = Texture::create2D(pOutput->getWidth(), pOutput->getHeight(), outputFormat, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+                pTex = Texture::create2D(mpRenderer->getDevice().get(), pOutput->getWidth(), pOutput->getHeight(), outputFormat, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
                 mpImageProcessing->copyColorChannel(pRenderContext, pOutput->getSRV(0, 1, 0, 1), pTex->getUAV(), mask);
             }
 
@@ -276,7 +276,7 @@ namespace Mogwai
     {
         auto pGraph = mpRenderer->getActiveGraph();
         if (!pGraph) return;
-        uint64_t frameID = gpFramework->getGlobalClock().getFrame();
-        triggerFrame(gpDevice->getRenderContext(), pGraph, frameID);
+        uint64_t frameID = mpRenderer->getGlobalClock().getFrame();
+        triggerFrame(mpRenderer->getRenderContext(), pGraph, frameID);
     }
 }

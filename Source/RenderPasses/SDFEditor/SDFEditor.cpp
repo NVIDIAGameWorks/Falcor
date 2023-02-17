@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,14 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "SDFEditor.h"
-#include "RenderGraph/RenderPassLibrary.h"
 #include "RenderGraph/RenderPassHelpers.h"
 #include "Scene/SDFs/SDF3DPrimitiveFactory.h"
 #include <glm/gtx/string_cast.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtx/rotate_vector.hpp>
-
-const RenderPass::Info SDFEditor::kInfo { "SDFEditor", "Signed distance function (SDF) editor" };
 
 namespace
 {
@@ -102,15 +99,9 @@ namespace
     }
 }
 
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" FALCOR_API_EXPORT const char* getProjDir()
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
-    return PROJECT_DIR;
-}
-
-extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
-{
-    lib.registerPass(SDFEditor::kInfo, SDFEditor::create);
+    registry.registerClass<RenderPass, SDFEditor>();
     ScriptBindings::registerBinding(SDFEditor::registerBindings);
 }
 
@@ -119,25 +110,25 @@ void SDFEditor::registerBindings(pybind11::module& m)
     // None at the moment.
 }
 
-SDFEditor::SharedPtr SDFEditor::create(RenderContext* pRenderContext, const Dictionary& dict)
+SDFEditor::SharedPtr SDFEditor::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
-    SharedPtr pPass = SharedPtr(new SDFEditor(dict));
+    SharedPtr pPass = SharedPtr(new SDFEditor(std::move(pDevice), dict));
     return pPass;
 }
 
-SDFEditor::SDFEditor(const Dictionary& dict)
-    : RenderPass(kInfo)
+SDFEditor::SDFEditor(std::shared_ptr<Device> pDevice, const Dictionary& dict)
+    : RenderPass(std::move(pDevice))
 {
-    mpFbo = Fbo::create();
+    mpFbo = Fbo::create(mpDevice.get());
 
-    mpPickingInfo = Buffer::createStructured(sizeof(SDFPickingInfo), 1, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
-    mpPickingInfoReadBack = Buffer::createStructured(sizeof(SDFPickingInfo), 1, Resource::BindFlags::None, Buffer::CpuAccess::Read);
-    mpReadbackFence = GpuFence::create();
+    mpPickingInfo = Buffer::createStructured(mpDevice.get(), sizeof(SDFPickingInfo), 1, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
+    mpPickingInfoReadBack = Buffer::createStructured(mpDevice.get(), sizeof(SDFPickingInfo), 1, Resource::BindFlags::None, Buffer::CpuAccess::Read);
+    mpReadbackFence = GpuFence::create(mpDevice.get());
 
-    mUI2D.pMarker2DSet = Marker2DSet::create(100);
+    mUI2D.pMarker2DSet = Marker2DSet::create(mpDevice, 100);
     mUI2D.pSelectionWheel = SelectionWheel::create(mUI2D.pMarker2DSet);
 
-    mpSDFEditingDataBuffer = Buffer::createStructured(sizeof(SDFEditingData), 1);
+    mpSDFEditingDataBuffer = Buffer::createStructured(mpDevice.get(), sizeof(SDFEditingData), 1);
 
     mUI2D.symmetryPlane.normal = float3(1.0f, 0.0f, 0.0f);
     mUI2D.symmetryPlane.rightVector = float3(0.0f, 0.0f, -1.0f);
@@ -158,7 +149,7 @@ void SDFEditor::setShaderData(const ShaderVar& var, const Texture::SharedPtr& pI
     {
         mGridInstanceCount = mpScene->getSDFGridCount(); // This is safe because the SDF Editor only supports SDFGrid type of SBS for now.
         std::vector<uint32_t> instanceIDs = mpScene->getGeometryInstanceIDsByType(Scene::GeometryType::SDFGrid);
-        mpGridInstanceIDsBuffer = Buffer::createStructured(sizeof(uint32_t), mGridInstanceCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, instanceIDs.data(), false);
+        mpGridInstanceIDsBuffer = Buffer::createStructured(mpDevice.get(), sizeof(uint32_t), mGridInstanceCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, instanceIDs.data(), false);
     }
 
     auto rootVar = mpGUIPass->getRootVar();
@@ -186,12 +177,12 @@ void SDFEditor::fetchPreviousVBufferAndZBuffer(RenderContext* pRenderContext, Te
 {
     if (!mpEditingVBuffer || mpEditingVBuffer->getWidth() != pVBuffer->getWidth() || mpEditingVBuffer->getHeight() != pVBuffer->getHeight())
     {
-        mpEditingVBuffer = Texture::create2D(pVBuffer->getWidth(), pVBuffer->getHeight(), pVBuffer->getFormat(), 1, 1);
+        mpEditingVBuffer = Texture::create2D(mpDevice.get(), pVBuffer->getWidth(), pVBuffer->getHeight(), pVBuffer->getFormat(), 1, 1);
     }
 
     if (!mpEditingLinearZBuffer || mpEditingLinearZBuffer->getWidth() != pDepth->getWidth() || mpEditingLinearZBuffer->getHeight() != pDepth->getHeight())
     {
-        mpEditingLinearZBuffer = Texture::create2D(pDepth->getWidth(), pDepth->getHeight(), ResourceFormat::RG32Float, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+        mpEditingLinearZBuffer = Texture::create2D(mpDevice.get(), pDepth->getWidth(), pDepth->getHeight(), ResourceFormat::RG32Float, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
     }
 
     pRenderContext->copySubresourceRegion(mpEditingVBuffer.get(), 0, pVBuffer.get(), pVBuffer->getSubresourceIndex(0, 0));
@@ -210,7 +201,7 @@ void SDFEditor::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& 
     if (!mpScene) return;
 
     mpCamera = mpScene->getCamera();
-    mpGUIPass = FullScreenPass::create(Program::Desc(kGUIPassShaderFilename).psEntry("psMain"), mpScene->getSceneDefines());
+    mpGUIPass = FullScreenPass::create(mpDevice, Program::Desc(kGUIPassShaderFilename).psEntry("psMain"), mpScene->getSceneDefines());
 
     // Initialize editing primitive.
     {
@@ -1139,7 +1130,7 @@ void SDFEditor::execute(RenderContext* pRenderContext, const RenderData& renderD
     }
 }
 
-void SDFEditor::renderUI(Gui::Widgets& widget)
+void SDFEditor::renderUI(RenderContext* pRenderContext, Gui::Widgets& widget)
 {
     widget.text("Help:");
     widget.tooltip(
@@ -1202,7 +1193,7 @@ void SDFEditor::renderUI(Gui::Widgets& widget)
             std::filesystem::path filePath = "sdfGrid.sdfg";
             if (saveFileDialog(kSDFGridFileExtensionFilters, filePath))
             {
-                mCurrentEdit.pSDFGrid->writeValuesFromPrimitivesToFile(filePath);
+                mCurrentEdit.pSDFGrid->writeValuesFromPrimitivesToFile(filePath, pRenderContext);
             }
         }
     }

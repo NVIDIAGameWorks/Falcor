@@ -15,27 +15,13 @@
             "binaryDir": "${sourceDir}/build/${presetName}"
         },
         {
-            "name": "d3d12",
-            "description": "Native D3D12 rendering backend.",
+            "name": "ci",
+            "description": "Enable additional options used for continous integration.",
             "hidden": true,
             "cacheVariables": {
-                "FALCOR_RENDER_BACKEND": "D3D12"
-            }
-        },
-        {
-            "name": "gfx-d3d12",
-            "description": "Slang GFX D3D12 rendering backend.",
-            "hidden": true,
-            "cacheVariables": {
-                "FALCOR_RENDER_BACKEND": "GFX-D3D12"
-            }
-        },
-        {
-            "name": "gfx-vk",
-            "description": "Slang GFX Vulkan rendering backend.",
-            "hidden": true,
-            "cacheVariables": {
-                "FALCOR_RENDER_BACKEND": "GFX-VK"
+                "FALCOR_ENABLE_NRC": "ON",
+                "FALCOR_VALIDATE_HEADERS": "ON",
+                "FALCOR_PRECOMPILED_HEADERS": "OFF"
             }
         },
         {
@@ -63,27 +49,18 @@
             }
         },
         {
-            "name": "windows-vs2019-d3d12",
-            "displayName": "Windows VS2019 D3D12",
+            "name": "windows-vs2019",
+            "displayName": "Windows VS2019",
             "inherits": [
-                "windows-vs2019-base",
-                "d3d12"
+                "windows-vs2019-base"
             ]
         },
         {
-            "name": "windows-vs2019-gfx-d3d12",
-            "displayName": "Windows VS2019 GFX-D3D12",
+            "name": "windows-vs2019-ci",
+            "displayName": "Windows VS2019 (CI)",
             "inherits": [
                 "windows-vs2019-base",
-                "gfx-d3d12"
-            ]
-        },
-        {
-            "name": "windows-vs2019-gfx-vk",
-            "displayName": "Windows VS2019 GFX-VK",
-            "inherits": [
-                "windows-vs2019-base",
-                "gfx-vk"
+                "ci"
             ]
         },
         {
@@ -102,27 +79,18 @@
             }
         },
         {
-            "name": "windows-vs2022-d3d12",
-            "displayName": "Windows VS2022 D3D12",
+            "name": "windows-vs2022",
+            "displayName": "Windows VS2022",
             "inherits": [
-                "windows-vs2022-base",
-                "d3d12"
+                "windows-vs2022-base"
             ]
         },
         {
-            "name": "windows-vs2022-gfx-d3d12",
-            "displayName": "Windows VS2022 GFX-D3D12",
+            "name": "windows-vs2022-ci",
+            "displayName": "Windows VS2022 (CI)",
             "inherits": [
                 "windows-vs2022-base",
-                "d3d12"
-            ]
-        },
-        {
-            "name": "windows-vs2022-gfx-vk",
-            "displayName": "Windows VS2022 GFX-VK",
-            "inherits": [
-                "windows-vs2022-base",
-                "gfx-vk"
+                "ci"
             ]
         },
         {
@@ -152,27 +120,18 @@
             }
         },
         {
-            "name": "windows-ninja-msvc-d3d12",
-            "displayName": "Windows Ninja/MSVC D3D12",
+            "name": "windows-ninja-msvc",
+            "displayName": "Windows Ninja/MSVC",
             "inherits": [
-                "windows-ninja-msvc-base",
-                "d3d12"
+                "windows-ninja-msvc-base"
             ]
         },
         {
-            "name": "windows-ninja-msvc-gfx-d3d12",
-            "displayName": "Windows Ninja/MSVC GFX-D3D12",
+            "name": "windows-ninja-msvc-ci",
+            "displayName": "Windows Ninja/MSVC (CI)",
             "inherits": [
                 "windows-ninja-msvc-base",
-                "gfx-d3d12"
-            ]
-        },
-        {
-            "name": "windows-ninja-msvc-gfx-vk",
-            "displayName": "Windows Ninja/MSVC GFX-VK",
-            "inherits": [
-                "windows-ninja-msvc-base",
-                "gfx-vk"
+                "ci"
             ]
         },
         {
@@ -194,61 +153,68 @@
             }
         },
         {
-            "name": "linux-ninja-clang-gfx-vk",
-            "displayName": "Linux Ninja/Clang GFX-VK",
+            "name": "linux-ninja-clang",
+            "displayName": "Linux Ninja/Clang",
+            "inherits": [
+                "linux-ninja-clang-base"
+            ]
+        },
+        {
+            "name": "linux-ninja-clang-ci",
+            "displayName": "Linux Ninja/Clang (CI)",
             "inherits": [
                 "linux-ninja-clang-base",
-                "gfx-vk"
+                "ci"
             ]
         }
     ],
     "buildPresets": [
         {
-            "name": "windows-ninja-msvc-d3d12-release",
+            "name": "windows-ninja-msvc-release",
             "displayName": "Release",
-            "configurePreset": "windows-ninja-msvc-d3d12",
+            "configurePreset": "windows-ninja-msvc",
             "configuration": "Release"
         },
         {
-            "name": "windows-ninja-msvc-d3d12-debug",
+            "name": "windows-ninja-msvc-debug",
             "displayName": "Debug",
-            "configurePreset": "windows-ninja-msvc-d3d12",
+            "configurePreset": "windows-ninja-msvc",
             "configuration": "Debug"
         },
         {
-            "name": "windows-ninja-msvc-gfx-d3d12-release",
+            "name": "windows-ninja-msvc-ci-release",
             "displayName": "Release",
-            "configurePreset": "windows-ninja-msvc-gfx-d3d12",
+            "configurePreset": "windows-ninja-msvc-ci",
             "configuration": "Release"
         },
         {
-            "name": "windows-ninja-msvc-gfx-d3d12-debug",
+            "name": "windows-ninja-msvc-ci-debug",
             "displayName": "Debug",
-            "configurePreset": "windows-ninja-msvc-gfx-d3d12",
+            "configurePreset": "windows-ninja-msvc-ci",
             "configuration": "Debug"
         },
         {
-            "name": "windows-ninja-msvc-gfx-vk-release",
+            "name": "linux-ninja-clang-release",
             "displayName": "Release",
-            "configurePreset": "windows-ninja-msvc-gfx-vk",
+            "configurePreset": "linux-ninja-clang",
             "configuration": "Release"
         },
         {
-            "name": "windows-ninja-msvc-gfx-vk-debug",
+            "name": "linux-ninja-clang-debug",
             "displayName": "Debug",
-            "configurePreset": "windows-ninja-msvc-gfx-vk",
+            "configurePreset": "linux-ninja-clang",
             "configuration": "Debug"
         },
         {
-            "name": "linux-ninja-clang-gfx-vk-release",
+            "name": "linux-ninja-clang-ci-release",
             "displayName": "Release",
-            "configurePreset": "linux-ninja-clang-gfx-vk",
+            "configurePreset": "linux-ninja-clang-ci",
             "configuration": "Release"
         },
         {
-            "name": "linux-ninja-clang-gfx-vk-debug",
+            "name": "linux-ninja-clang-ci-debug",
             "displayName": "Debug",
-            "configurePreset": "linux-ninja-clang-gfx-vk",
+            "configurePreset": "linux-ninja-clang-ci",
             "configuration": "Debug"
         }
     ]

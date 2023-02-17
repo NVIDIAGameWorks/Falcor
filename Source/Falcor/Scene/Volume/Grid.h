@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -61,14 +61,16 @@ namespace Falcor
         using SharedPtr = std::shared_ptr<Grid>;
 
         /** Create a sphere voxel grid.
+            \param[in] pDevice GPU device.
             \param[in] radius Radius of the sphere in world units.
             \param[in] voxelSize Size of a voxel in world units.
             \param[in] blendRange Range in voxels to blend from 0 to 1 (starting at surface inwards).
             \return A new grid.
         */
-        static SharedPtr createSphere(float radius, float voxelSize, float blendRange = 2.f);
+        static SharedPtr createSphere(std::shared_ptr<Device> pDevice, float radius, float voxelSize, float blendRange = 2.f);
 
         /** Create a box voxel grid.
+            \param[in] pDevice GPU device.
             \param[in] width Width of the box in world units.
             \param[in] height Height of the box in world units.
             \param[in] depth Depth of the box in world units.
@@ -76,15 +78,16 @@ namespace Falcor
             \param[in] blendRange Range in voxels to blend from 0 to 1 (starting at surface inwards).
             \return A new grid.
         */
-        static SharedPtr createBox(float width, float height, float depth, float voxelSize, float blendRange = 2.f);
+        static SharedPtr createBox(std::shared_ptr<Device> pDevice, float width, float height, float depth, float voxelSize, float blendRange = 2.f);
 
         /** Create a grid from a file.
             Currently only OpenVDB and NanoVDB grids of type float are supported.
+            \param[in] pDevice GPU device.
             \param[in] path File path of the grid. Can also include a full path or relative path from a data directory.
             \param[in] gridname Name of the grid to load.
             \return A new grid, or nullptr if the grid failed to load.
         */
-        static SharedPtr createFromFile(const std::filesystem::path& path, const std::string& gridname);
+        static SharedPtr createFromFile(std::shared_ptr<Device> pDevice, const std::filesystem::path& path, const std::string& gridname);
 
         /** Render the UI.
         */
@@ -142,10 +145,12 @@ namespace Falcor
         rmcv::mat4 getInvTransform() const;
 
     private:
-        Grid(nanovdb::GridHandle<nanovdb::HostBuffer> gridHandle);
+        Grid(std::shared_ptr<Device> pDevice, nanovdb::GridHandle<nanovdb::HostBuffer> gridHandle);
 
-        static SharedPtr createFromNanoVDBFile(const std::filesystem::path& path, const std::string& gridname);
-        static SharedPtr createFromOpenVDBFile(const std::filesystem::path& path, const std::string& gridname);
+        static SharedPtr createFromNanoVDBFile(std::shared_ptr<Device>, const std::filesystem::path& path, const std::string& gridname);
+        static SharedPtr createFromOpenVDBFile(std::shared_ptr<Device>, const std::filesystem::path& path, const std::string& gridname);
+
+        std::shared_ptr<Device> mpDevice;
 
         // Host data.
         nanovdb::GridHandle<nanovdb::HostBuffer> mGridHandle;

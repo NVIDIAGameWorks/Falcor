@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -34,7 +34,7 @@ StructuredBuffer<float64_t> data;
 #endif
 
 [numthreads(16, 1, 1)]
-void testFloat64(uint3 threadID : SV_DispatchThreadID)
+void testFloat64(uint3 threadID: SV_DispatchThreadID)
 {
     uint i = threadID.x;
 

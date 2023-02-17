@@ -30,35 +30,28 @@
 #include "GBuffer/GBufferRT.h"
 #include "VBuffer/VBufferRaster.h"
 #include "VBuffer/VBufferRT.h"
-#include "RenderGraph/RenderPassLibrary.h"
 #include "RenderGraph/RenderPassStandardFlags.h"
 #include "Utils/SampleGenerators/DxSamplePattern.h"
 #include "Utils/SampleGenerators/HaltonSamplePattern.h"
 #include "Utils/SampleGenerators/StratifiedSamplePattern.h"
 
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" FALCOR_API_EXPORT const char* getProjDir()
-{
-    return PROJECT_DIR;
-}
-
-extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
-{
-    lib.registerPass(GBufferRaster::kInfo, GBufferRaster::create);
-    lib.registerPass(GBufferRT::kInfo, GBufferRT::create);
-    lib.registerPass(VBufferRaster::kInfo, VBufferRaster::create);
-    lib.registerPass(VBufferRT::kInfo, VBufferRT::create);
-
-    Falcor::ScriptBindings::registerBinding(GBufferBase::registerBindings);
-}
-
-void GBufferBase::registerBindings(pybind11::module& m)
+static void registerBindings(pybind11::module& m)
 {
     pybind11::enum_<GBufferBase::SamplePattern> samplePattern(m, "SamplePattern");
     samplePattern.value("Center", GBufferBase::SamplePattern::Center);
     samplePattern.value("DirectX", GBufferBase::SamplePattern::DirectX);
     samplePattern.value("Halton", GBufferBase::SamplePattern::Halton);
     samplePattern.value("Stratified", GBufferBase::SamplePattern::Stratified);
+}
+
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
+{
+    registry.registerClass<RenderPass, GBufferRaster>();
+    registry.registerClass<RenderPass, GBufferRT>();
+    registry.registerClass<RenderPass, VBufferRaster>();
+    registry.registerClass<RenderPass, VBufferRT>();
+
+    Falcor::ScriptBindings::registerBinding(registerBindings);
 }
 
 namespace

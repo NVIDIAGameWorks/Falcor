@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,10 +26,18 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Bitmap.h"
+#include "Core/Macros.h"
 #include "Core/API/Texture.h"
+#include "Core/Platform/MemoryMappedFile.h"
 #include "Utils/Logger.h"
 #include "Utils/StringUtils.h"
 
+#if FALCOR_WINDOWS
+#ifndef WINDOWS_LEAN_AND_MEAN
+#define WINDOWS_LEAN_AND_MEAN
+#endif
+#include <Windows.h>
+#endif
 #include <FreeImage.h>
 
 namespace Falcor
@@ -210,8 +218,18 @@ namespace Falcor
             return nullptr;
         }
 
-        // Read the DIB
-        FIBITMAP* pDib = FreeImage_Load(fifFormat, fullPath.string().c_str());
+        // Read file using memory mapped access which is much faster than regular file IO.
+        MemoryMappedFile file(fullPath, MemoryMappedFile::kWholeFile, MemoryMappedFile::AccessHint::SequentialScan);
+        if (!file.isOpen())
+        {
+            genWarning("Can't open image file {}", path);
+            return nullptr;
+        }
+        FIMEMORY* memory = FreeImage_OpenMemory((BYTE *)file.getData(), file.getSize());
+        FIBITMAP* pDib = FreeImage_LoadFromMemory(fifFormat, memory);
+        FreeImage_CloseMemory(memory);
+        file.close();
+
         if (pDib == nullptr)
         {
             genWarning("Can't read image file", path);
@@ -255,9 +273,6 @@ namespace Falcor
             break;
         case 64:
             format = ResourceFormat::RGBA16Float;    // 4xfloat16 HDR format
-            break;
-        case 48:
-            format = ResourceFormat::RGB16Float;     // 3xfloat16 HDR format
             break;
         case 32:
             format = ResourceFormat::BGRA8Unorm;
@@ -304,8 +319,8 @@ namespace Falcor
     Bitmap::Bitmap(uint32_t width, uint32_t height, ResourceFormat format)
         : mWidth(width)
         , mHeight(height)
-        , mFormat(format)
         , mRowPitch(getFormatRowPitch(format, width))
+        , mFormat(format)
     {
         if (isCompressedFormat(format))
         {

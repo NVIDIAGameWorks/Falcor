@@ -7,6 +7,6 @@ target_sources(RenderGraphEditor PRIVATE
     RenderGraphEditor.h
 )
 
-target_copy_data_folder(RenderGraphEditor)
+target_link_libraries(RenderGraphEditor PRIVATE args)
 
 target_source_group(RenderGraphEditor "Tools")

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -48,9 +48,6 @@ namespace Falcor
     class FALCOR_API LightBVHBuilder
     {
     public:
-        using SharedPtr = std::shared_ptr<LightBVHBuilder>;
-        using SharedConstPtr = std::shared_ptr<const LightBVHBuilder>;
-
         enum class SplitHeuristic : uint32_t
         {
             Equal = 0u,         ///< Split the input into two equal partitions.
@@ -76,17 +73,17 @@ namespace Falcor
             bool           useLightingCones = true;                              ///< Use lighting cones when computing the splits. Only valid when using the BinnedSAOH split heuristic.
         };
 
-        /** Creates a new object.
+        /** Constructor.
             \param[in] options The options to use for building the BVH.
         */
-        static SharedPtr create(const Options& options);
+        LightBVHBuilder(const Options& options);
 
         /** Build the BVH.
             \param[in,out] bvh The light BVH to build.
         */
-        void build(LightBVH& bvh);
+        void build(RenderContext* pRenderContext, LightBVH& bvh);
 
-        virtual bool renderUI(Gui::Widgets& widget);
+        bool renderUI(Gui::Widgets& widget);
 
         const Options& getOptions() const { return mOptions; }
 
@@ -141,8 +138,6 @@ namespace Falcor
             \param[in] parameters Various parameters defining how the building should occur.
         */
         using SplitHeuristicFunction = std::function<SplitResult(const BuildingData& data, const Range& triangleRange, const AABB& nodeBounds, const Options& parameters)>;
-
-        LightBVHBuilder(const Options& options);
 
         /** Renders the UI with builder options.
         */

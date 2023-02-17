@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,29 +29,30 @@
 
 namespace Falcor
 {
-    GPU_TEST(UnboundedDescriptorArray, "Unbounded arrays are not yet supported")
+GPU_TEST(UnboundedDescriptorArray, "Unbounded arrays are not yet supported")
+{
+    Device* pDevice = ctx.getDevice().get();
+
+    const uint32_t kTexCount = 4;
+
+    ctx.createProgram("Tests/Slang/UnboundedDescriptorArray.cs.slang", "main", Program::DefineList(), Shader::CompilerFlags::None, "6_5");
+    ctx.allocateStructuredBuffer("result", kTexCount);
+
+    auto var = ctx.vars().getRootVar()["resources"];
+    for (size_t i = 0; i < kTexCount; i++)
     {
-        const uint32_t kTexCount = 4;
-
-        ctx.createProgram("Tests/Slang/UnboundedDescriptorArray.cs.slang", "main", Program::DefineList(), Shader::CompilerFlags::None, "6_5");
-        ctx.allocateStructuredBuffer("result", kTexCount);
-
-        auto var = ctx.vars().getRootVar()["resources"];
-        for (size_t i = 0; i < kTexCount; i++)
-        {
-            float initData = (float)(i + 1);
-            var["textures"][i] = Texture::create2D(1, 1, ResourceFormat::R32Float, 1, 1, &initData);
-        }
-
-        ctx.runProgram(kTexCount, 1, 1);
-
-        const float* result = ctx.mapBuffer<const float>("result");
-        for (size_t i = 0; i < kTexCount; i++)
-        {
-            float expected = (float)(i + 1);
-            EXPECT_EQ(result[i], expected) << "i = " << i;
-
-        }
-        ctx.unmapBuffer("result");
+        float initData = (float)(i + 1);
+        var["textures"][i] = Texture::create2D(pDevice, 1, 1, ResourceFormat::R32Float, 1, 1, &initData);
     }
+
+    ctx.runProgram(kTexCount, 1, 1);
+
+    const float* result = ctx.mapBuffer<const float>("result");
+    for (size_t i = 0; i < kTexCount; i++)
+    {
+        float expected = (float)(i + 1);
+        EXPECT_EQ(result[i], expected) << "i = " << i;
+    }
+    ctx.unmapBuffer("result");
 }
+} // namespace Falcor

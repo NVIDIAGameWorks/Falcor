@@ -43,8 +43,8 @@ namespace Falcor
         Ray() = default;
         explicit Ray(float3 origin, float3 dir, float tMin = 0.f, float tMax = std::numeric_limits<float>::max())
             : origin(origin)
-            , dir(dir)
             , tMin(tMin)
+            , dir(dir)
             , tMax(tMax)
         {}
     };

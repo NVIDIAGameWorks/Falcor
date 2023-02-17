@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -61,8 +61,6 @@ namespace Falcor
     class FALCOR_API Gui
     {
     public:
-        using UniquePtr = std::unique_ptr<Gui>;
-        using UniqueConstPtr = std::unique_ptr<const Gui>;
         using GraphCallback = float(*)(void*, int32_t index);
 
         /** These structs used to initialize dropdowns
@@ -520,9 +518,8 @@ namespace Falcor
             void release();
         };
 
-        /** Create a new GUI object. Each object is essentially a container for a GUI window
-        */
-        static UniquePtr create(uint32_t width, uint32_t height, float scaleFactor = 1.0f);
+        /// Constructor.
+        Gui(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, float scaleFactor = 1.f);
 
         ~Gui();
 
@@ -562,8 +559,7 @@ namespace Falcor
         */
         bool onKeyboardEvent(const KeyboardEvent& event);
     private:
-        Gui() = default;
-        GuiImpl* mpWrapper = nullptr;
+        std::unique_ptr<GuiImpl> mpWrapper;
     };
 
     /** Helper class to create a scope for ImGui IDs using PushID/PopID.

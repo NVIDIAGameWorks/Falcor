@@ -44,7 +44,6 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<EmissivePowerSampler>;
-        using SharedConstPtr = std::shared_ptr<const EmissivePowerSampler>;
 
         struct AliasTable
         {

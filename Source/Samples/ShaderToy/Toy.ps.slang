@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -46,12 +46,13 @@ float2 rand2(float2 p)
 
 float4 getRBCColor(float x)
 {
-    float poly = 0.0347197 * x +
-        0.247408  * x*x +
-        5.69306   * x*x*x -
-        19.1026   * x*x*x*x +
-        28.6689   * x*x*x*x*x -
-        15.5415   * x*x*x*x*x*x + 0.2;
+    float poly = 0.0347197 * x +                   //
+                 0.247408 * x * x +                //
+                 5.69306 * x * x * x -             //
+                 19.1026 * x * x * x * x +         //
+                 28.6689 * x * x * x * x * x -     //
+                 15.5415 * x * x * x * x * x * x + //
+                 0.2;
     return lerp(v4DarkRed, v4LightRed, poly);
 }
 
@@ -63,38 +64,30 @@ float4 mainImage(float2 fragCoord)
     float gap = 1. / freq;
     float2 param_pos = (uv + float2(iGlobalTime / 5.0, 0.0));
 
-    //param_pos = uv;
-
     float2 closest_center = floor(param_pos * freq + float2(0.5, 0.5)) / freq;
 
     float ballrad = (0.25 + 0.1 * rand(closest_center.x + 37.0 + closest_center.y)) * gap;
     float jitterrad = 0.5 * gap - ballrad;
     float far = (0.35 * gap - ballrad) / 0.1;
 
-    float black_or_white = 0.5 + 0.5 * sin(
-        2.0 * 3.14159 *
-        (rand((closest_center.x + 347.0) * (closest_center.y + 129.0)) + iGlobalTime * 1.0));
+    float black_or_white =
+        0.5 + 0.5 * sin(2.0 * 3.14159 * (rand((closest_center.x + 347.0) * (closest_center.y + 129.0)) + iGlobalTime * 1.0));
 
     closest_center = closest_center + jitterrad * 1.0 *
-        sin((iGlobalTime * 0.1 + rand2(closest_center)) * 6.28 +
-            sin((iGlobalTime * 0.2 + rand2(closest_center.yx)) * 6.28) +
-            sin((iGlobalTime * 0.5 + rand2(closest_center.xy * 93.0 + 127.0)) * 6.28)
-            );
+                                          sin((iGlobalTime * 0.1 + rand2(closest_center)) * 6.28 +
+                                              sin((iGlobalTime * 0.2 + rand2(closest_center.yx)) * 6.28) +
+                                              sin((iGlobalTime * 0.5 + rand2(closest_center.xy * 93.0 + 127.0)) * 6.28));
 
     float dist = length(param_pos - closest_center);
 
     float s = (dist * dist) / (ballrad * ballrad);
 
-    float4 color = lerp(
-        lerp(getRBCColor(dist / ballrad), v4DarkRed, far),
-        v4DarkRed,
-        smoothstep(ballrad*0.95, ballrad*1.05, dist));
+    float4 color = lerp(lerp(getRBCColor(dist / ballrad), v4DarkRed, far), v4DarkRed, smoothstep(ballrad * 0.95, ballrad * 1.05, dist));
 
     return color;
-    //fragColor.rgb = pow(fragColor.rgb, 2.0f);
 }
 
-float4 main(float2 texC : TEXCOORD) : SV_TARGET
+float4 main(float2 texC: TEXCOORD) : SV_TARGET
 {
     return mainImage(texC * iResolution);
 }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,22 +29,24 @@
 
 namespace Falcor
 {
-    /** Minimal GPU test for constant buffer in ParameterBlock.
-    */
-    GPU_TEST(ParamBlockCB)
-    {
-        ctx.createProgram("Tests/Core/ParamBlockCB.cs.slang", "main", Program::DefineList(), Shader::CompilerFlags::None);
-        ctx.allocateStructuredBuffer("result", 1);
+/** Minimal GPU test for constant buffer in ParameterBlock.
+ */
+GPU_TEST(ParamBlockCB)
+{
+    Device* pDevice = ctx.getDevice().get();
 
-        auto pBlockReflection = ctx.getProgram()->getReflector()->getParameterBlock("gParamBlock");
-        auto pParamBlock = ParameterBlock::create(pBlockReflection);
-        pParamBlock["a"] = 42.1f;
+    ctx.createProgram("Tests/Core/ParamBlockCB.cs.slang", "main", Program::DefineList(), Shader::CompilerFlags::None);
+    ctx.allocateStructuredBuffer("result", 1);
 
-        ctx["gParamBlock"] = pParamBlock;
-        ctx.runProgram(1, 1, 1);
+    auto pBlockReflection = ctx.getProgram()->getReflector()->getParameterBlock("gParamBlock");
+    auto pParamBlock = ParameterBlock::create(pDevice, pBlockReflection);
+    pParamBlock["a"] = 42.1f;
 
-        const float* result = ctx.mapBuffer<const float>("result");
-        EXPECT_EQ(result[0], 42.1f);
-        ctx.unmapBuffer("result");
-    }
+    ctx["gParamBlock"] = pParamBlock;
+    ctx.runProgram(1, 1, 1);
+
+    const float* result = ctx.mapBuffer<const float>("result");
+    EXPECT_EQ(result[0], 42.1f);
+    ctx.unmapBuffer("result");
 }
+} // namespace Falcor

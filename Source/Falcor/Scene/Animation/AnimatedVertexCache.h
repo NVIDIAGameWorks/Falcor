@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -78,7 +78,7 @@ namespace Falcor
         using UniqueConstPtr = std::unique_ptr<const AnimatedVertexCache>;
         ~AnimatedVertexCache() = default;
 
-        static UniquePtr create(Scene* pScene, const Buffer::SharedPtr& pPrevVertexData, std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes);
+        static UniquePtr create(std::shared_ptr<Device> pDevice, Scene* pScene, const Buffer::SharedPtr& pPrevVertexData, std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes);
 
         void setIsLooped(bool looped) { mLoopAnimations = looped; }
 
@@ -103,7 +103,7 @@ namespace Falcor
         uint64_t getMemoryUsageInBytes() const;
 
     private:
-        AnimatedVertexCache(Scene* pScene, const Buffer::SharedPtr& pPrevVertexData, std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes);
+        AnimatedVertexCache(std::shared_ptr<Device> pDevice, Scene* pScene, const Buffer::SharedPtr& pPrevVertexData, std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes);
 
         void initCurveKeyframes();
         void bindCurveLSSBuffers();
@@ -129,6 +129,8 @@ namespace Falcor
 
         void executeCurvePolyTubeVertexUpdatePass(RenderContext* pContext, const InterpolationInfo& info, bool copyPrev = false);
 
+
+        std::shared_ptr<Device> mpDevice;
 
         bool mLoopAnimations = true;
         double mGlobalCurveAnimationLength = 0;

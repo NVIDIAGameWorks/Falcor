@@ -26,14 +26,14 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Utils/Math/MathConstants.slangh"
-#include "BxDFConfig.slangh"
+#include "BSDFConfig.slangh"
 
-import Scene.ShadingData;
+import Scene.Material.MaterialData;
 import Utils.Math.MathHelpers;
 import Utils.Color.ColorHelpers;
 import Rendering.Materials.Fresnel;
-import Rendering.Materials.Microfacet;
-__exported import Rendering.Materials.IBxDF;
+import Rendering.Materials.IsotropicGGX;
+__exported import Rendering.Materials.IBSDF;
 
 // Enable support for delta reflection/transmission.
 #define EnableDeltaBSDF         1
@@ -56,7 +56,7 @@ static const float kMinGGXAlpha = 0.0064f;
 /** Lambertian diffuse reflection.
     f_r(wi, wo) = albedo / pi
 */
-struct DiffuseReflectionLambert : IBxDF
+struct DiffuseReflectionLambert : IBSDF
 {
     float3 albedo;  ///< Diffuse albedo.
 
@@ -67,10 +67,10 @@ struct DiffuseReflectionLambert : IBxDF
         return M_1_PI * albedo * wo.z;
     }
 
-    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobe, inout S sg)
+    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg)
     {
         wo = sample_cosine_hemisphere_concentric(sampleNext2D(sg), pdf);
-        lobe = (uint)LobeType::DiffuseReflection;
+        lobeType = (uint)LobeType::DiffuseReflection;
 
         if (min(wi.z, wo.z) < kMinCosTheta)
         {
@@ -88,12 +88,24 @@ struct DiffuseReflectionLambert : IBxDF
 
         return M_1_PI * wo.z;
     }
+
+    AlbedoContributions evalAlbedo(const float3 wi, const LobeType lobetype)
+    {
+        return AlbedoContributions(albedo, 1.f - albedo, 0.f, 0.f);
+    }
+
+    RoughnessInformation getRoughnessInformation(const float3 wi)
+    {
+        RoughnessInformation r;
+        r.roughnessBSDFNotation = float2(0.5f, 0.5f);
+        return r;
+    }
 };
 
 /** Disney's diffuse reflection.
     Based on https://blog.selfshadow.com/publications/s2012-shading-course/burley/s2012_pbs_disney_brdf_notes_v3.pdf
 */
-struct DiffuseReflectionDisney : IBxDF
+struct DiffuseReflectionDisney : IBSDF
 {
     float3 albedo;          ///< Diffuse albedo.
     float roughness;        ///< Roughness before remapping.
@@ -105,10 +117,10 @@ struct DiffuseReflectionDisney : IBxDF
         return evalWeight(wi, wo) * M_1_PI * wo.z;
     }
 
-    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobe, inout S sg)
+    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg)
     {
         wo = sample_cosine_hemisphere_concentric(sampleNext2D(sg), pdf);
-        lobe = (uint)LobeType::DiffuseReflection;
+        lobeType = (uint)LobeType::DiffuseReflection;
 
         if (min(wi.z, wo.z) < kMinCosTheta)
         {
@@ -140,13 +152,25 @@ struct DiffuseReflectionDisney : IBxDF
         float woScatter = evalFresnelSchlick(fd0, fd90, wo.z);
         return albedo * wiScatter * woScatter;
     }
+
+    AlbedoContributions evalAlbedo(const float3 wi, const LobeType lobetype)
+    {
+        return AlbedoContributions(albedo, 1.f - albedo, 0.f, 0.f);
+    }
+
+    RoughnessInformation getRoughnessInformation(const float3 wi)
+    {
+        RoughnessInformation r;
+        r.roughnessBSDFNotation = float2(0.5f, 0.5f);
+        return r;
+    }
 };
 
 /** Frostbites's diffuse reflection.
     This is Disney's diffuse BRDF with an ad-hoc normalization factor to ensure energy conservation.
     Based on https://seblagarde.files.wordpress.com/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
 */
-struct DiffuseReflectionFrostbite : IBxDF
+struct DiffuseReflectionFrostbite : IBSDF
 {
     float3 albedo;          ///< Diffuse albedo.
     float roughness;        ///< Roughness before remapping.
@@ -158,10 +182,10 @@ struct DiffuseReflectionFrostbite : IBxDF
         return evalWeight(wi, wo) * M_1_PI * wo.z;
     }
 
-    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobe, inout S sg)
+    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg)
     {
         wo = sample_cosine_hemisphere_concentric(sampleNext2D(sg), pdf);
-        lobe = (uint)LobeType::DiffuseReflection;
+        lobeType = (uint)LobeType::DiffuseReflection;
 
         if (min(wi.z, wo.z) < kMinCosTheta)
         {
@@ -195,11 +219,23 @@ struct DiffuseReflectionFrostbite : IBxDF
         float woScatter = evalFresnelSchlick(fd0, fd90, wo.z);
         return albedo * wiScatter * woScatter * energyFactor;
     }
+
+    AlbedoContributions evalAlbedo(const float3 wi, const LobeType lobetype)
+    {
+        return AlbedoContributions(albedo, 1.f - albedo, 0.f, 0.f);
+    }
+
+    RoughnessInformation getRoughnessInformation(const float3 wi)
+    {
+        RoughnessInformation r;
+        r.roughnessBSDFNotation = float2(0.5f, 0.5f);
+        return r;
+    }
 };
 
 /** Lambertian diffuse transmission.
 */
-struct DiffuseTransmissionLambert : IBxDF
+struct DiffuseTransmissionLambert : IBSDF
 {
     float3 albedo;  ///< Diffuse albedo.
 
@@ -210,11 +246,11 @@ struct DiffuseTransmissionLambert : IBxDF
         return M_1_PI * albedo * -wo.z;
     }
 
-    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobe, inout S sg)
+    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg)
     {
         wo = sample_cosine_hemisphere_concentric(sampleNext2D(sg), pdf);
         wo.z = -wo.z;
-        lobe = (uint)LobeType::DiffuseTransmission;
+        lobeType = (uint)LobeType::DiffuseTransmission;
 
         if (min(wi.z, -wo.z) < kMinCosTheta)
         {
@@ -232,17 +268,29 @@ struct DiffuseTransmissionLambert : IBxDF
 
         return M_1_PI * -wo.z;
     }
+
+    AlbedoContributions evalAlbedo(const float3 wi, const LobeType lobetype)
+    {
+        return AlbedoContributions(0.f, 0.f, albedo, 1.f - albedo);
+    }
+
+    RoughnessInformation getRoughnessInformation(const float3 wi)
+    {
+        RoughnessInformation r;
+        r.roughnessBSDFNotation = float2(0.5f, 0.5f);
+        return r;
+    }
 }
 
 /** Specular reflection using microfacets.
 */
-struct SpecularReflectionMicrofacet : IBxDF
+struct SpecularReflectionMicrofacet : IBSDF
 {
     float3 albedo;      ///< Specular albedo.
     float alpha;        ///< GGX width parameter.
     uint activeLobes;   ///< BSDF lobes to include for sampling and evaluation. See LobeType.slang.
 
-    bool hasLobe(LobeType lobe) { return (activeLobes & (uint)lobe) != 0; }
+    bool hasLobe(LobeType lobeType) { return (activeLobes & (uint)lobeType) != 0; }
 
     float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
     {
@@ -268,13 +316,13 @@ struct SpecularReflectionMicrofacet : IBxDF
         return F * D * G * 0.25f / wi.z;
     }
 
-    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobe, inout S sg)
+    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg)
     {
         // Default initialization to avoid divergence at returns.
         wo = {};
         weight = {};
         pdf = 0.f;
-        lobe = (uint)LobeType::SpecularReflection;
+        lobeType = (uint)LobeType::SpecularReflection;
 
         if (wi.z < kMinCosTheta) return false;
 
@@ -287,7 +335,7 @@ struct SpecularReflectionMicrofacet : IBxDF
             wo = float3(-wi.x, -wi.y, wi.z);
             pdf = 0.f;
             weight = evalFresnelSchlick(albedo, 1.f, wi.z);
-            lobe = (uint)LobeType::DeltaReflection;
+            lobeType = (uint)LobeType::DeltaReflection;
             return true;
         }
 #endif
@@ -310,7 +358,7 @@ struct SpecularReflectionMicrofacet : IBxDF
         // For testing.
         pdf = evalPdf(wi, wo);
         weight = eval(wi, wo, sg) / pdf;
-        lobe = (uint)LobeType::SpecularReflection;
+        lobeType = (uint)LobeType::SpecularReflection;
         return true;
 #endif
 
@@ -329,7 +377,7 @@ struct SpecularReflectionMicrofacet : IBxDF
 #else
         weight = F * G * wiDotH / (wi.z * h.z);
 #endif
-        lobe = (uint)LobeType::SpecularReflection;
+        lobeType = (uint)LobeType::SpecularReflection;
         return true;
     }
 
@@ -353,18 +401,32 @@ struct SpecularReflectionMicrofacet : IBxDF
 #endif
         return pdf / (4.f * wiDotH);
     }
+
+    AlbedoContributions evalAlbedo(const float3 wi, const LobeType lobetype)
+    {
+        float3 r = evalFresnelSchlick(albedo, 1.f, wi.z);
+        // The energy needs to go somewhere. This is a reflection-only BSDF --> put it into R
+        return AlbedoContributions(r, 1.f - r, 0.f, 0.f);
+    }
+
+    RoughnessInformation getRoughnessInformation(const float3 wi)
+    {
+        RoughnessInformation r;
+        r.roughnessBSDFNotation = float2(alpha);
+        return r;
+    }
 };
 
 /** Specular reflection and transmission using microfacets.
 */
-struct SpecularReflectionTransmissionMicrofacet : IBxDF
+struct SpecularReflectionTransmissionMicrofacet : IBSDF
 {
     float3 transmissionAlbedo;  ///< Transmission albedo.
     float alpha;                ///< GGX width parameter.
     float eta;                  ///< Relative index of refraction (etaI / etaT).
     uint activeLobes;           ///< BSDF lobes to include for sampling and evaluation. See LobeType.slang.
 
-    bool hasLobe(LobeType lobe) { return (activeLobes & (uint)lobe) != 0; }
+    bool hasLobe(LobeType lobeType) { return (activeLobes & (uint)lobeType) != 0; }
 
     float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
     {
@@ -407,13 +469,13 @@ struct SpecularReflectionTransmissionMicrofacet : IBxDF
         }
     }
 
-    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobe, inout S sg)
+    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg)
     {
         // Default initialization to avoid divergence at returns.
         wo = {};
         weight = {};
         pdf = 0.f;
-        lobe = (uint)LobeType::SpecularReflection;
+        lobeType = (uint)LobeType::SpecularReflection;
 
         if (wi.z < kMinCosTheta) return false;
 
@@ -445,7 +507,7 @@ struct SpecularReflectionTransmissionMicrofacet : IBxDF
             weight = isReflection ? float3(1.f) : transmissionAlbedo;
             if (!(hasReflection && hasTransmission)) weight *= float3(isReflection ? F : 1.f - F);
             wo = isReflection ? float3(-wi.x, -wi.y, wi.z) : float3(-wi.x * eta, -wi.y * eta, -cosThetaT);
-            lobe = isReflection ? (uint)LobeType::DeltaReflection : (uint)LobeType::DeltaTransmission;
+            lobeType = isReflection ? (uint)LobeType::DeltaReflection : (uint)LobeType::DeltaTransmission;
 
             if (abs(wo.z) < kMinCosTheta || (wo.z > 0.f != isReflection)) return false;
 
@@ -488,7 +550,7 @@ struct SpecularReflectionTransmissionMicrofacet : IBxDF
 
         float woDotH = dot(wo, h);
 
-        lobe = isReflection ? (uint)LobeType::SpecularReflection : (uint)LobeType::SpecularTransmission;
+        lobeType = isReflection ? (uint)LobeType::SpecularReflection : (uint)LobeType::SpecularTransmission;
 
 #if ExplicitSampleWeights
         // For testing.
@@ -582,11 +644,25 @@ struct SpecularReflectionTransmissionMicrofacet : IBxDF
 
         return pdf;
     }
+
+    AlbedoContributions evalAlbedo(const float3 wi, const LobeType lobetype)
+    {
+        float3 r = evalFresnelDielectric(eta, wi.z);
+        // The energy needs to go somewhere. This is a transmission-only BSDF --> put it into AT
+        return AlbedoContributions(0.f, 0.f, 1.f - r, r);
+    }
+
+    RoughnessInformation getRoughnessInformation(const float3 wi)
+    {
+        RoughnessInformation r;
+        r.roughnessBSDFNotation = float2(alpha);
+        return r;
+    }
 };
 
 // TODO: Reduce to 52B
-/** BSDF parameters for the standard BSDF.
-    These are needed for initializing a `FalcorBSDF` instance.
+/** BSDF parameters for the standard MaterialInstance.
+    These are needed for initializing a `StandardBSDF` instance.
 */
 struct StandardBSDFData
 {
@@ -605,7 +681,7 @@ struct StandardBSDFData
     This consists of a diffuse and specular BRDF.
     A specular BSDF is mixed in using the specularTransmission parameter.
 */
-struct FalcorBSDF : IBxDF
+struct StandardBSDF : IBSDF
 {
 #if DiffuseBrdf == DiffuseBrdfLambert
     DiffuseReflectionLambert diffuseReflection;
@@ -628,17 +704,18 @@ struct FalcorBSDF : IBxDF
     float pSpecularReflectionTransmission;  ///< Probability for sampling the specular BSDF.
 
     /** Initialize a new instance.
-        \param[in] sd Shading data.
+        \param[in] wi Incident direction in the local frame.
+        \param[in] mtl Material header.
         \param[in] data BSDF parameters.
     */
-    __init(const ShadingData sd, const StandardBSDFData data)
+    __init(const float3 wi, const MaterialHeader mtl, const StandardBSDFData data)
     {
         // TODO: Currently specular reflection and transmission lobes are not properly separated.
         // This leads to incorrect behaviour if only the specular reflection or transmission lobe is selected.
         // Things work fine as long as both or none are selected.
 
         // Use square root if we can assume the shaded object is intersected twice.
-        float3 transmissionAlbedo = sd.mtl.isThinSurface() ? data.transmission : sqrt(data.transmission);
+        float3 transmissionAlbedo = mtl.isThinSurface() ? data.transmission : sqrt(data.transmission);
 
         // Setup lobes.
         diffuseReflection.albedo = data.diffuse;
@@ -655,7 +732,7 @@ struct FalcorBSDF : IBxDF
 #else
         alpha = max(alpha, kMinGGXAlpha);
 #endif
-        const uint activeLobes = sd.mtl.getActiveLobes();
+        const uint activeLobes = mtl.getActiveLobes();
 
         specularReflection.albedo = data.specular;
         specularReflection.alpha = alpha;
@@ -676,7 +753,7 @@ struct FalcorBSDF : IBxDF
         float specularBSDF = specTrans;
 
         float diffuseWeight = luminance(data.diffuse);
-        float specularWeight = luminance(evalFresnelSchlick(data.specular, 1.f, dot(sd.V, sd.N)));
+        float specularWeight = luminance(evalFresnelSchlick(data.specular, 1.f, wi.z));
 
         pDiffuseReflection = (activeLobes & (uint)LobeType::DiffuseReflection) ? diffuseWeight * dielectricBSDF * (1.f - diffTrans) : 0.f;
         pDiffuseTransmission = (activeLobes & (uint)LobeType::DiffuseTransmission) ? diffuseWeight * dielectricBSDF * diffTrans : 0.f;
@@ -698,7 +775,7 @@ struct FalcorBSDF : IBxDF
         \param[in] data BSDF parameters.
         \return Returns a set of lobes (see LobeType.slang).
     */
-    static uint getLobes(const StandardBSDFData data)
+    static uint getLobeTypes(const StandardBSDFData data)
     {
 #if EnableDeltaBSDF
         float alpha = data.roughness * data.roughness;
@@ -709,15 +786,15 @@ struct FalcorBSDF : IBxDF
         float diffTrans = data.diffuseTransmission;
         float specTrans = data.specularTransmission;
 
-        uint lobes = isDelta ? (uint)LobeType::DeltaReflection : (uint)LobeType::SpecularReflection;
+        uint lobeTypes = isDelta ? (uint)LobeType::DeltaReflection : (uint)LobeType::SpecularReflection;
         if (any(data.diffuse > 0.f) && specTrans < 1.f)
         {
-            if (diffTrans < 1.f) lobes |= (uint)LobeType::DiffuseReflection;
-            if (diffTrans > 0.f) lobes |= (uint)LobeType::DiffuseTransmission;
+            if (diffTrans < 1.f) lobeTypes |= (uint)LobeType::DiffuseReflection;
+            if (diffTrans > 0.f) lobeTypes |= (uint)LobeType::DiffuseTransmission;
         }
-        if (specTrans > 0.f) lobes |= (isDelta ? (uint)LobeType::DeltaTransmission : (uint)LobeType::SpecularTransmission);
+        if (specTrans > 0.f) lobeTypes |= (isDelta ? (uint)LobeType::DeltaTransmission : (uint)LobeType::SpecularTransmission);
 
-        return lobes;
+        return lobeTypes;
     }
 
     float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
@@ -730,13 +807,13 @@ struct FalcorBSDF : IBxDF
         return result;
     }
 
-    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobe, inout S sg)
+    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg)
     {
         // Default initialization to avoid divergence at returns.
         wo = {};
         weight = {};
         pdf = 0.f;
-        lobe = (uint)LobeType::DiffuseReflection;
+        lobeType = (uint)LobeType::DiffuseReflection;
 
         bool valid = false;
         float uSelect = sampleNext1D(sg);
@@ -745,7 +822,7 @@ struct FalcorBSDF : IBxDF
 
         if (uSelect < pDiffuseReflection)
         {
-            valid = diffuseReflection.sample(wi, wo, pdf, weight, lobe, sg);
+            valid = diffuseReflection.sample(wi, wo, pdf, weight, lobeType, sg);
             weight /= pDiffuseReflection;
             weight *= (1.f - specTrans) * (1.f - diffTrans);
             pdf *= pDiffuseReflection;
@@ -755,7 +832,7 @@ struct FalcorBSDF : IBxDF
         }
         else if (uSelect < pDiffuseReflection + pDiffuseTransmission)
         {
-            valid = diffuseTransmission.sample(wi, wo, pdf, weight, lobe, sg);
+            valid = diffuseTransmission.sample(wi, wo, pdf, weight, lobeType, sg);
             weight /= pDiffuseTransmission;
             weight *= (1.f - specTrans) * diffTrans;
             pdf *= pDiffuseTransmission;
@@ -765,7 +842,7 @@ struct FalcorBSDF : IBxDF
         }
         else if (uSelect < pDiffuseReflection + pDiffuseTransmission + pSpecularReflection)
         {
-            valid = specularReflection.sample(wi, wo, pdf, weight, lobe, sg);
+            valid = specularReflection.sample(wi, wo, pdf, weight, lobeType, sg);
             weight /= pSpecularReflection;
             weight *= (1.f - specTrans);
             pdf *= pSpecularReflection;
@@ -775,7 +852,7 @@ struct FalcorBSDF : IBxDF
         }
         else if (pSpecularReflectionTransmission > 0.f)
         {
-            valid = specularReflectionTransmission.sample(wi, wo, pdf, weight, lobe, sg);
+            valid = specularReflectionTransmission.sample(wi, wo, pdf, weight, lobeType, sg);
             weight /= pSpecularReflectionTransmission;
             weight *= specTrans;
             pdf *= pSpecularReflectionTransmission;
@@ -795,5 +872,25 @@ struct FalcorBSDF : IBxDF
         if (pSpecularReflection > 0.f) pdf += pSpecularReflection * specularReflection.evalPdf(wi, wo);
         if (pSpecularReflectionTransmission > 0.f) pdf += pSpecularReflectionTransmission * specularReflectionTransmission.evalPdf(wi, wo);
         return pdf;
+    }
+
+    AlbedoContributions evalAlbedo(const float3 wi, const LobeType lobetype)
+    {
+        AlbedoContributions a = { 0.0f, 0.0f, 0.0f, 0.0f };
+
+        if (pDiffuseReflection > 0.f) a += (1.f - specTrans) * (1.f - diffTrans) * diffuseReflection.evalAlbedo(wi, lobetype);
+        if (pDiffuseTransmission > 0.f) a += (1.f - specTrans) * diffTrans * diffuseTransmission.evalAlbedo(wi, lobetype);
+        if (pSpecularReflection > 0.f) a += (1.f - specTrans) * specularReflection.evalAlbedo(wi, lobetype);
+        if (pSpecularReflectionTransmission > 0.f) a += specTrans * specularReflectionTransmission.evalAlbedo(wi, lobetype);
+
+        return a;
+    }
+
+    RoughnessInformation getRoughnessInformation(const float3 wi)
+    {
+        RoughnessInformation r;
+        float alpha = specularReflection.alpha;
+        r.roughnessBSDFNotation = float2(alpha < kMinGGXAlpha ? 0.f : alpha);
+        return r;
     }
 };

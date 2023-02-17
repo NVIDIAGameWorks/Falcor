@@ -1,4 +1,4 @@
-add_renderpass(TestPasses)
+add_plugin(TestPasses)
 
 target_sources(TestPasses PRIVATE
     TestPasses.cpp

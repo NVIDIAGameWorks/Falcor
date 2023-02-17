@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -120,11 +120,12 @@ namespace Falcor
 
         /** Creates a light collection for the given scene.
             Note that update() must be called before the collection is ready to use.
+            \param[in] pDevice GPU device.
             \param[in] pRenderContext The render context.
             \param[in] pScene The scene.
             \return A pointer to a new light collection object, or throws an exception if creation failed.
         */
-        static SharedPtr create(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene);
+        static SharedPtr create(std::shared_ptr<Device> pDevice, RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene);
 
         /** Updates the light collection to the current state of the scene.
             \param[in] pRenderContext The render context.
@@ -140,7 +141,7 @@ namespace Falcor
 
         /** Returns the total number of active (non-culled) triangle lights.
         */
-        uint32_t getActiveLightCount() const { return getStats().trianglesActive; }
+        uint32_t getActiveLightCount(RenderContext* pRenderContext) const { return getStats(pRenderContext).trianglesActive; }
 
         /** Returns the total number of triangle lights (may include culled triangles).
         */
@@ -148,13 +149,13 @@ namespace Falcor
 
         /** Returns stats.
         */
-        const MeshLightStats& getStats() const { computeStats(); return mMeshLightStats; }
+        const MeshLightStats& getStats(RenderContext* pRenderContext) const { computeStats(pRenderContext); return mMeshLightStats; }
 
         /** Returns a CPU buffer with all emissive triangles in world space.
             Note that update() must have been called before for the data to be valid.
             Call prepareSyncCPUData() ahead of time to avoid stalling the GPU.
         */
-        const std::vector<MeshLightTriangle>& getMeshLightTriangles() const { syncCPUData(); return mMeshLightTriangles; }
+        const std::vector<MeshLightTriangle>& getMeshLightTriangles(RenderContext* pRenderContext) const { syncCPUData(pRenderContext); return mMeshLightTriangles; }
 
         /** Returns a CPU buffer with all mesh lights.
             Note that update() must have been called before for the data to be valid.
@@ -183,23 +184,24 @@ namespace Falcor
         };
 
     protected:
-        LightCollection(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene);
+        LightCollection(std::shared_ptr<Device> pDevice, RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene);
 
-        void initIntegrator(const Scene& scene);
+        void initIntegrator(RenderContext* pRenderContext, const Scene& scene);
         void setupMeshLights(const Scene& scene);
         void build(RenderContext* pRenderContext, const Scene& scene);
         void prepareTriangleData(RenderContext* pRenderContext, const Scene& scene);
         void prepareMeshData(const Scene& scene);
         void integrateEmissive(RenderContext* pRenderContext, const Scene& scene);
-        void computeStats() const;
+        void computeStats(RenderContext* pRenderContext) const;
         void buildTriangleList(RenderContext* pRenderContext, const Scene& scene);
-        void updateActiveTriangleList();
+        void updateActiveTriangleList(RenderContext* pRenderContext);
         void updateTrianglePositions(RenderContext* pRenderContext, const Scene& scene, const std::vector<uint32_t>& updatedLights);
 
         void copyDataToStagingBuffer(RenderContext* pRenderContext) const;
-        void syncCPUData() const;
+        void syncCPUData(RenderContext* pRenderContext) const;
 
         // Internal state
+        std::shared_ptr<Device>                 mpDevice;
         std::weak_ptr<Scene>                    mpScene;                ///< Weak pointer to scene (scene owns LightCollection).
 
         std::vector<MeshLightData>              mMeshLights;            ///< List of all mesh lights.

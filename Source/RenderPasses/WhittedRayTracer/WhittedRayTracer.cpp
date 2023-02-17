@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,17 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "WhittedRayTracer.h"
-#include "RenderGraph/RenderPassLibrary.h"
 #include "RenderGraph/RenderPassHelpers.h"
 #include "RenderGraph/RenderPassStandardFlags.h"
-
-const RenderPass::Info WhittedRayTracer::kInfo { "WhittedRayTracer", "Simple Whitted ray tracer." };
-
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" FALCOR_API_EXPORT const char* getProjDir()
-{
-    return PROJECT_DIR;
-}
 
 namespace
 {
@@ -93,9 +84,9 @@ namespace
     };
 };
 
-extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary & lib)
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
-    lib.registerPass(WhittedRayTracer::kInfo, WhittedRayTracer::create);
+    registry.registerClass<RenderPass, WhittedRayTracer>();
     ScriptBindings::registerBinding(WhittedRayTracer::registerBindings);
 }
 
@@ -113,13 +104,13 @@ void WhittedRayTracer::registerBindings(pybind11::module& m)
     rayConeFilterMode.value("AnisotropicWhenRefraction", RayFootprintFilterMode::AnisotropicWhenRefraction);
 }
 
-WhittedRayTracer::SharedPtr WhittedRayTracer::create(RenderContext* pRenderContext, const Dictionary& dict)
+WhittedRayTracer::SharedPtr WhittedRayTracer::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
-    return SharedPtr(new WhittedRayTracer(dict));
+    return SharedPtr(new WhittedRayTracer(std::move(pDevice), dict));
 }
 
-WhittedRayTracer::WhittedRayTracer(const Dictionary& dict)
-    : RenderPass(kInfo)
+WhittedRayTracer::WhittedRayTracer(std::shared_ptr<Device> pDevice, const Dictionary& dict)
+    : RenderPass(std::move(pDevice))
 {
     // Parse dictionary.
     for (const auto& [key, value] : dict)
@@ -134,9 +125,8 @@ WhittedRayTracer::WhittedRayTracer(const Dictionary& dict)
     }
 
     // Create a sample generator.
-    mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
+    mpSampleGenerator = SampleGenerator::create(mpDevice, SAMPLE_GENERATOR_UNIFORM);
     FALCOR_ASSERT(mpSampleGenerator);
-
 }
 
 Dictionary WhittedRayTracer::getScriptingDictionary()
@@ -323,7 +313,7 @@ void WhittedRayTracer::setScene(RenderContext* pRenderContext, const Scene::Shar
         sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), desc.addHitGroup("scatterClosestHit", "scatterAnyHit"));
         sbt->setHitGroup(1, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), desc.addHitGroup("", "shadowAnyHit"));
 
-        mTracer.pProgram = RtProgram::create(desc, mpScene->getSceneDefines());
+        mTracer.pProgram = RtProgram::create(mpDevice, desc, mpScene->getSceneDefines());
     }
 }
 
@@ -336,7 +326,7 @@ void WhittedRayTracer::prepareVars()
 
     // Create program variables for the current program.
     // This may trigger shader compilation. If it fails, throw an exception to abort rendering.
-    mTracer.pVars = RtProgramVars::create(mTracer.pProgram, mTracer.pBindingTable);
+    mTracer.pVars = RtProgramVars::create(mpDevice, mTracer.pProgram, mTracer.pBindingTable);
 
     // Bind utility classes into shared data.
     auto var = mTracer.pVars->getRootVar();

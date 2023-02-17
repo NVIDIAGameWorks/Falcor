@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,13 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Falcor.h"
-#include "RenderGraph/RenderPassLibrary.h"
+#include "Core/API/NativeHandleTraits.h"
 
 #include "NRDPass.h"
 #include "RenderPasses/Shared/Denoising/NRDConstants.slang"
 #include <sstream>
-
-const RenderPass::Info NRDPass::kInfo { "NRD", "NRD denoiser." };
 
 namespace
 {
@@ -109,25 +107,27 @@ namespace
     };
 }
 
-NRDPass::SharedPtr NRDPass::create(RenderContext* pRenderContext, const Dictionary& dict)
+NRDPass::SharedPtr NRDPass::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
-    return SharedPtr(new NRDPass(dict));
+    return SharedPtr(new NRDPass(std::move(pDevice), dict));
 }
 
-NRDPass::NRDPass(const Dictionary& dict)
-    : RenderPass(kInfo)
+NRDPass::NRDPass(std::shared_ptr<Device> pDevice, const Dictionary& dict)
+    : RenderPass(std::move(pDevice))
 {
+    mpDevice->requireD3D12();
+
     Program::DefineList definesRelax;
     definesRelax.add("NRD_USE_OCT_NORMAL_ENCODING", "1");
     definesRelax.add("NRD_USE_MATERIAL_ID", "0");
     definesRelax.add("NRD_METHOD", "0"); // NRD_METHOD_RELAX_DIFFUSE_SPECULAR
-    mpPackRadiancePassRelax = ComputePass::create(kShaderPackRadiance, "main", definesRelax);
+    mpPackRadiancePassRelax = ComputePass::create(mpDevice, kShaderPackRadiance, "main", definesRelax);
 
     Program::DefineList definesReblur;
     definesReblur.add("NRD_USE_OCT_NORMAL_ENCODING", "1");
     definesReblur.add("NRD_USE_MATERIAL_ID", "0");
     definesReblur.add("NRD_METHOD", "1"); // NRD_METHOD_REBLUR_DIFFUSE_SPECULAR
-    mpPackRadiancePassReblur = ComputePass::create(kShaderPackRadiance, "main", definesReblur);
+    mpPackRadiancePassReblur = ComputePass::create(mpDevice, kShaderPackRadiance, "main", definesReblur);
 
     // Override some defaults coming from the NRD SDK.
     mRelaxDiffuseSpecularSettings.diffusePrepassBlurRadius = 16.0f;
@@ -730,13 +730,13 @@ void NRDPass::createPipelines()
     const nrd::DenoiserDesc& denoiserDesc = nrd::GetDenoiserDesc(*mpDenoiser);
 
     // Create samplers descriptor layout and set.
-    Falcor::D3D12RootSignature::DescriptorSetLayout SamplersDescriptorSetLayout;
+    Falcor::D3D12DescriptorSetLayout SamplersDescriptorSetLayout;
 
     for (uint32_t j = 0; j < denoiserDesc.staticSamplerNum; j++)
     {
         SamplersDescriptorSetLayout.addRange(ShaderResourceType::Sampler, denoiserDesc.staticSamplers[j].registerIndex, 1);
     }
-    mpSamplersDescriptorSet = Falcor::D3D12DescriptorSet::create(SamplersDescriptorSetLayout, D3D12DescriptorSetBindingUsage::ExplicitBind);
+    mpSamplersDescriptorSet = Falcor::D3D12DescriptorSet::create(mpDevice.get(), SamplersDescriptorSetLayout, D3D12DescriptorSetBindingUsage::ExplicitBind);
 
     // Set sampler descriptors right away.
     for (uint32_t j = 0; j < denoiserDesc.staticSamplerNum; j++)
@@ -751,7 +751,7 @@ void NRDPass::createPipelines()
         const nrd::ComputeShader& nrdComputeShader = nrdPipelineDesc.computeShaderDXIL;
 
         // Initialize descriptor set.
-        Falcor::D3D12RootSignature::DescriptorSetLayout CBVSRVUAVdescriptorSetLayout;
+        Falcor::D3D12DescriptorSetLayout CBVSRVUAVdescriptorSetLayout;
 
         // Add constant buffer to descriptor set.
         CBVSRVUAVdescriptorSetLayout.addRange(ShaderResourceType::Cbv, denoiserDesc.constantBufferDesc.registerIndex, 1);
@@ -776,7 +776,7 @@ void NRDPass::createPipelines()
 
         const Falcor::D3D12RootSignature::Desc& desc = rootSignatureDesc;
 
-        Falcor::D3D12RootSignature::SharedPtr pRootSig = Falcor::D3D12RootSignature::create(desc);
+        Falcor::D3D12RootSignature::SharedPtr pRootSig = Falcor::D3D12RootSignature::create(mpDevice.get(), desc);
 
         mpRootSignatures.push_back(pRootSig);
 
@@ -791,16 +791,16 @@ void NRDPass::createPipelines()
             defines.add("NRD_COMPILER_DXC");
             defines.add("NRD_USE_OCT_NORMAL_ENCODING", "1");
             defines.add("NRD_USE_MATERIAL_ID", "0");
-            ComputePass::SharedPtr pPass = ComputePass::create(programDesc, defines);
+            ComputePass::SharedPtr pPass = ComputePass::create(mpDevice, programDesc, defines);
 
             ComputeProgram::SharedPtr pProgram = pPass->getProgram();
-            ProgramKernels::SharedConstPtr pProgramKernels = pProgram->getActiveVersion()->getKernels(pPass->getVars().get());
+            ProgramKernels::SharedConstPtr pProgramKernels = pProgram->getActiveVersion()->getKernels(mpDevice.get(), pPass->getVars().get());
 
             ComputeStateObject::Desc csoDesc;
             csoDesc.setProgramKernels(pProgramKernels);
             csoDesc.setD3D12RootSignatureOverride(pRootSig);
 
-            ComputeStateObject::SharedPtr pCSO = ComputeStateObject::create(csoDesc);
+            ComputeStateObject::SharedPtr pCSO = ComputeStateObject::create(mpDevice.get(), csoDesc);
 
             mpPasses.push_back(pPass);
             mpCachedProgramKernels.push_back(pProgramKernels);
@@ -845,7 +845,7 @@ void NRDPass::createResources()
             samplerDesc.setFilterMode(Falcor::Sampler::Filter::Linear, Falcor::Sampler::Filter::Linear, Falcor::Sampler::Filter::Point);
         }
 
-        mpSamplers.push_back(Falcor::Sampler::create(samplerDesc));
+        mpSamplers.push_back(Falcor::Sampler::create(mpDevice.get(), samplerDesc));
     }
 
     // Texture pool.
@@ -860,7 +860,12 @@ void NRDPass::createResources()
 
         // Create texture.
         Falcor::ResourceFormat textureFormat = getFalcorFormat(nrdTextureDesc.format);
-        Falcor::Texture::SharedPtr pTexture = Texture::create2D(nrdTextureDesc.width, nrdTextureDesc.height, textureFormat, 1u, nrdTextureDesc.mipNum, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+        Falcor::Texture::SharedPtr pTexture = Texture::create2D(
+            mpDevice.get(),
+            nrdTextureDesc.width, nrdTextureDesc.height,
+            textureFormat, 1u, nrdTextureDesc.mipNum,
+            nullptr,
+            ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
 
         if (isPermanent)
             mpPermanentTextures.push_back(pTexture);
@@ -870,6 +875,7 @@ void NRDPass::createResources()
 
     // Constant buffer.
     mpConstantBuffer = Buffer::create(
+        mpDevice.get(),
         denoiserDesc.constantBufferDesc.maxDataSize,
         Falcor::ResourceBindFlags::Constant,
         Falcor::Buffer::CpuAccess::Write,
@@ -889,7 +895,7 @@ void NRDPass::executeInternal(RenderContext* pRenderContext, const RenderData& r
     {
         // Run classic Falcor compute pass to pack radiance.
         {
-            FALCOR_PROFILE("PackRadiance");
+            FALCOR_PROFILE(pRenderContext, "PackRadiance");
             auto perImageCB = mpPackRadiancePassRelax["PerImageCB"];
 
             perImageCB["gMaxIntensity"] = mMaxIntensity;
@@ -904,7 +910,7 @@ void NRDPass::executeInternal(RenderContext* pRenderContext, const RenderData& r
     {
         // Run classic Falcor compute pass to pack radiance and hit distance.
         {
-            FALCOR_PROFILE("PackRadianceHitDist");
+            FALCOR_PROFILE(pRenderContext, "PackRadianceHitDist");
             auto perImageCB = mpPackRadiancePassRelax["PerImageCB"];
 
             perImageCB["gMaxIntensity"] = mMaxIntensity;
@@ -918,7 +924,7 @@ void NRDPass::executeInternal(RenderContext* pRenderContext, const RenderData& r
     {
         // Run classic Falcor compute pass to pack radiance and hit distance.
         {
-            FALCOR_PROFILE("PackRadianceHitDist");
+            FALCOR_PROFILE(pRenderContext, "PackRadianceHitDist");
             auto perImageCB = mpPackRadiancePassReblur["PerImageCB"];
 
             perImageCB["gHitDistParams"].setBlob(mReblurSettings.hitDistanceParameters);
@@ -982,7 +988,7 @@ void NRDPass::executeInternal(RenderContext* pRenderContext, const RenderData& r
     for (uint32_t i = 0; i < dispatchDescNum; i++)
     {
         const nrd::DispatchDesc& dispatchDesc = dispatchDescs[i];
-        FALCOR_PROFILE(dispatchDesc.name);
+        FALCOR_PROFILE(pRenderContext, dispatchDesc.name);
         dispatch(pRenderContext, renderData, dispatchDesc);
     }
 
@@ -1002,10 +1008,11 @@ void NRDPass::dispatch(RenderContext* pRenderContext, const RenderData& renderDa
     mpConstantBuffer->setBlob(dispatchDesc.constantBufferData, 0, dispatchDesc.constantBufferDataSize);
 
     // Create descriptor set for the NRD pass.
-    Falcor::D3D12DescriptorSet::SharedPtr CBVSRVUAVDescriptorSet = Falcor::D3D12DescriptorSet::create(mCBVSRVUAVdescriptorSetLayouts[dispatchDesc.pipelineIndex], D3D12DescriptorSetBindingUsage::ExplicitBind);
+    D3D12DescriptorSet::SharedPtr CBVSRVUAVDescriptorSet = D3D12DescriptorSet::create(mpDevice.get(), mCBVSRVUAVdescriptorSetLayouts[dispatchDesc.pipelineIndex], D3D12DescriptorSetBindingUsage::ExplicitBind);
 
     // Set CBV.
-    CBVSRVUAVDescriptorSet->setCbv(0 /* NB: range #0 is CBV range */, denoiserDesc.constantBufferDesc.registerIndex, mpConstantBuffer->getCBV().get());
+    mpCBV = D3D12ConstantBufferView::create(mpDevice.get(), mpConstantBuffer);
+    CBVSRVUAVDescriptorSet->setCbv(0 /* NB: range #0 is CBV range */, denoiserDesc.constantBufferDesc.registerIndex, mpCBV.get());
 
     uint32_t resourceIndex = 0;
     for (uint32_t descriptorRangeIndex = 0; descriptorRangeIndex < pipelineDesc.descriptorRangeNum; descriptorRangeIndex++)
@@ -1105,7 +1112,7 @@ void NRDPass::dispatch(RenderContext* pRenderContext, const RenderData& renderDa
     // Set pipeline state.
     ComputePass::SharedPtr pPass = mpPasses[dispatchDesc.pipelineIndex];
     ComputeProgram::SharedPtr pProgram = pPass->getProgram();
-    ProgramKernels::SharedConstPtr pProgramKernels = pProgram->getActiveVersion()->getKernels(pPass->getVars().get());
+    ProgramKernels::SharedConstPtr pProgramKernels = pProgram->getActiveVersion()->getKernels(mpDevice.get(), pPass->getVars().get());
 
     // Check if anything changed.
     bool newProgram = (pProgramKernels.get() != mpCachedProgramKernels[dispatchDesc.pipelineIndex].get());
@@ -1117,13 +1124,16 @@ void NRDPass::dispatch(RenderContext* pRenderContext, const RenderData& renderDa
         desc.setProgramKernels(pProgramKernels);
         desc.setD3D12RootSignatureOverride(mpRootSignatures[dispatchDesc.pipelineIndex]);
 
-        ComputeStateObject::SharedPtr pCSO = ComputeStateObject::create(desc);
+        ComputeStateObject::SharedPtr pCSO = ComputeStateObject::create(mpDevice.get(), desc);
         mpCSOs[dispatchDesc.pipelineIndex] = pCSO;
     }
-    pRenderContext->getLowLevelData()->getD3D12CommandList()->SetPipelineState(mpCSOs[dispatchDesc.pipelineIndex]->getD3D12Handle());
+    ID3D12GraphicsCommandList* pCommandList = pRenderContext->getLowLevelData()->getCommandBufferNativeHandle().as<ID3D12GraphicsCommandList*>();
+    ID3D12PipelineState* pPipelineState = mpCSOs[dispatchDesc.pipelineIndex]->getNativeHandle().as<ID3D12PipelineState*>();
+
+    pCommandList->SetPipelineState(pPipelineState);
 
     // Dispatch.
-    pRenderContext->getLowLevelData()->getD3D12CommandList()->Dispatch(dispatchDesc.gridWidth, dispatchDesc.gridHeight, 1);
+    pCommandList->Dispatch(dispatchDesc.gridWidth, dispatchDesc.gridHeight, 1);
 }
 
 static void registerNRDPass(pybind11::module& m)
@@ -1136,14 +1146,8 @@ static void registerNRDPass(pybind11::module& m)
     profile.value("SpecularDeltaMv", NRDPass::DenoisingMethod::SpecularDeltaMv);
 }
 
-// Don't remove this. it's required for hot-reload to function properly.
-extern "C" FALCOR_API_EXPORT const char* getProjDir()
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
-    return PROJECT_DIR;
-}
-
-extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary & lib)
-{
-    lib.registerPass(NRDPass::kInfo, NRDPass::create);
+    registry.registerClass<RenderPass, NRDPass>();
     ScriptBindings::registerBinding(registerNRDPass);
 }

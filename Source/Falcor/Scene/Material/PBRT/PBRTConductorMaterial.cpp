@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
  **************************************************************************/
 #include "PBRTConductorMaterial.h"
 #include "Utils/Scripting/ScriptBindings.h"
+#include "Scene/SceneBuilderAccess.h"
 
 namespace Falcor
 {
@@ -35,13 +36,13 @@ namespace Falcor
         const char kShaderFile[] = "Rendering/Materials/PBRT/PBRTConductorMaterial.slang";
     }
 
-    PBRTConductorMaterial::SharedPtr PBRTConductorMaterial::create(const std::string& name)
+    PBRTConductorMaterial::SharedPtr PBRTConductorMaterial::create(std::shared_ptr<Device> pDevice, const std::string& name)
     {
-        return SharedPtr(new PBRTConductorMaterial(name));
+        return SharedPtr(new PBRTConductorMaterial(std::move(pDevice), name));
     }
 
-    PBRTConductorMaterial::PBRTConductorMaterial(const std::string& name)
-        : BasicMaterial(name, MaterialType::PBRTConductor)
+    PBRTConductorMaterial::PBRTConductorMaterial(std::shared_ptr<Device> pDevice, const std::string& name)
+        : BasicMaterial(std::move(pDevice), name, MaterialType::PBRTConductor)
     {
         // Setup additional texture slots.
         mTextureSlotInfo[(uint32_t)TextureSlot::BaseColor] = { "baseColor", TextureChannelFlags::RGBA, false };
@@ -84,7 +85,11 @@ namespace Falcor
         FALCOR_SCRIPT_BINDING_DEPENDENCY(BasicMaterial)
 
         pybind11::class_<PBRTConductorMaterial, BasicMaterial, PBRTConductorMaterial::SharedPtr> material(m, "PBRTConductorMaterial");
-        material.def(pybind11::init(&PBRTConductorMaterial::create), "name"_a = "");
+        auto create = [] (const std::string& name)
+        {
+            return PBRTConductorMaterial::create(getActivePythonSceneBuilder().getDevice(), name);
+        };
+        material.def(pybind11::init(create), "name"_a = ""); // PYTHONDEPRECATED
 
         material.def_property("roughness", &PBRTConductorMaterial::getRoughness, &PBRTConductorMaterial::setRoughness);
     }

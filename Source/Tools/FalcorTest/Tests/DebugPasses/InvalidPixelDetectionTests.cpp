@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,47 +26,59 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Testing/UnitTest.h"
-#include "RenderGraph/RenderPassLibrary.h"
 #include "RenderGraph/RenderGraph.h"
 
 namespace Falcor
 {
-    GPU_TEST(InvalidPixelDetectionPass)
-    {
-        RenderPassLibrary::instance().loadLibrary("DebugPasses.dll");
-        float pInitData[8] = {std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::signaling_NaN(), std::numeric_limits<float>::infinity(),
-            -1 * std::numeric_limits<float>::infinity(), 0.0f, 255.0f, 125.8f, 1.0f};
-        RenderContext* pRenderContext = ctx.getRenderContext();
-        Texture::SharedPtr pInput = Texture::create2D(2, 4, ResourceFormat::R32Float, 1, Resource::kMaxPossible, pInitData);
-        RenderGraph::SharedPtr pGraph = RenderGraph::create("Invalid Pixel Detection");
-        RenderPass::SharedPtr pPass = RenderPassLibrary::instance().createPass(pRenderContext, "InvalidPixelDetectionPass");
-        if (!pPass) throw RuntimeError("Could not create render pass 'InvalidPixelDetectionPass'");
-        pGraph->addPass(pPass, "InvalidPixelDetectionPass");
-        pGraph->setInput("InvalidPixelDetectionPass.src", pInput);
-        pGraph->markOutput("InvalidPixelDetectionPass.dst");
-        pGraph->execute(pRenderContext);
-        Resource::SharedPtr pOutput = pGraph->getOutput("InvalidPixelDetectionPass.dst");
-        std::vector<uint8_t> color = pRenderContext->readTextureSubresource(pOutput->asTexture().get(), 0);
-        uint32_t* output = (uint32_t*)color.data();
+GPU_TEST(InvalidPixelDetectionPass)
+{
+    Device* pDevice = ctx.getDevice().get();
 
-        for (uint32_t i = 0; i < 8; ++i)
+    float pInitData[8] = {
+        std::numeric_limits<float>::quiet_NaN(),
+        std::numeric_limits<float>::signaling_NaN(),
+        std::numeric_limits<float>::infinity(),
+        -1 * std::numeric_limits<float>::infinity(),
+        0.0f,
+        255.0f,
+        125.8f,
+        1.0f,
+    };
+
+    RenderContext* pRenderContext = ctx.getRenderContext();
+    Fbo* pTargetFbo = ctx.getTargetFbo();
+    Texture::SharedPtr pInput = Texture::create2D(pDevice, 2, 4, ResourceFormat::R32Float, 1, Resource::kMaxPossible, pInitData);
+    RenderGraph::SharedPtr pGraph = RenderGraph::create(ctx.getDevice(), "Invalid Pixel Detection");
+    RenderPass::SharedPtr pPass = RenderPass::create("InvalidPixelDetectionPass", ctx.getDevice());
+    if (!pPass)
+        throw RuntimeError("Could not create render pass 'InvalidPixelDetectionPass'");
+    pGraph->addPass(pPass, "InvalidPixelDetectionPass");
+    pGraph->setInput("InvalidPixelDetectionPass.src", pInput);
+    pGraph->markOutput("InvalidPixelDetectionPass.dst");
+    pGraph->onResize(pTargetFbo);
+    pGraph->execute(pRenderContext);
+    Resource::SharedPtr pOutput = pGraph->getOutput("InvalidPixelDetectionPass.dst");
+    std::vector<uint8_t> color = pRenderContext->readTextureSubresource(pOutput->asTexture().get(), 0);
+    uint32_t* output = (uint32_t*)color.data();
+
+    for (uint32_t i = 0; i < 8; ++i)
+    {
+        uint32_t expected;
+        switch (i)
         {
-            uint32_t expected;
-            switch (i)
-            {
-            case 0:
-            case 1:
-                expected = 0xFFFF0000;
-                break;
-            case 2:
-            case 3:
-                expected = 0xFF00FF00;
-                break;
-            default:
-                expected = 0xFF000000;
-                break;
-            }
-            EXPECT_EQ(output[i], expected);
+        case 0:
+        case 1:
+            expected = 0xFFFF0000;
+            break;
+        case 2:
+        case 3:
+            expected = 0xFF00FF00;
+            break;
+        default:
+            expected = 0xFF000000;
+            break;
         }
+        EXPECT_EQ(output[i], expected);
     }
 }
+} // namespace Falcor

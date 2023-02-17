@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,15 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "ToneMapper.h"
-#include "RenderGraph/RenderPassLibrary.h"
 #include "Utils/Color/ColorUtils.h"
 #include <fstd/bit.h> // TODO C++20: Replace with <bit>
-
-const RenderPass::Info ToneMapper::kInfo
-{
-    "ToneMapper",
-    "Tone-map a color-buffer. The resulting buffer is always in the [0, 1] range. The pass supports auto-exposure and eye-adaptation."
-};
 
 namespace
 {
@@ -103,12 +96,6 @@ namespace
     const float kWhitePointMax = 25000.f;
 }
 
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" FALCOR_API_EXPORT const char* getProjDir()
-{
-    return PROJECT_DIR;
-}
-
 static void regToneMapper(pybind11::module& m)
 {
     pybind11::class_<ToneMapper, RenderPass, ToneMapper::SharedPtr> pass(m, "ToneMapper");
@@ -139,19 +126,19 @@ static void regToneMapper(pybind11::module& m)
     exposureMode.value("ShutterPriority", ToneMapper::ExposureMode::ShutterPriority);
 }
 
-extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
-    lib.registerPass(ToneMapper::kInfo, ToneMapper::create);
+    registry.registerClass<RenderPass, ToneMapper>();
     ScriptBindings::registerBinding(regToneMapper);
 }
 
-ToneMapper::SharedPtr ToneMapper::create(RenderContext* pRenderContext, const Dictionary& dict)
+ToneMapper::SharedPtr ToneMapper::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
-    return ToneMapper::SharedPtr(new ToneMapper(dict));
+    return ToneMapper::SharedPtr(new ToneMapper(std::move(pDevice), dict));
 }
 
-ToneMapper::ToneMapper(const Dictionary& dict)
-    : RenderPass(kInfo)
+ToneMapper::ToneMapper(std::shared_ptr<Device> pDevice, const Dictionary& dict)
+    : RenderPass(std::move(pDevice))
 {
     parseDictionary(dict);
 
@@ -162,9 +149,9 @@ ToneMapper::ToneMapper(const Dictionary& dict)
 
     Sampler::Desc samplerDesc;
     samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
-    mpPointSampler = Sampler::create(samplerDesc);
+    mpPointSampler = Sampler::create(mpDevice.get(), samplerDesc);
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point);
-    mpLinearSampler = Sampler::create(samplerDesc);
+    mpLinearSampler = Sampler::create(mpDevice.get(), samplerDesc);
 }
 
 void ToneMapper::parseDictionary(const Dictionary& dict)
@@ -240,7 +227,7 @@ void ToneMapper::execute(RenderContext* pRenderContext, const RenderData& render
         logWarning("ToneMapper pass I/O has different dimensions. The image will be resampled.");
     }
 
-    Fbo::SharedPtr pFbo = Fbo::create();
+    Fbo::SharedPtr pFbo = Fbo::create(mpDevice.get());
     pFbo->attachColorTarget(pDst, 0);
 
     // Run luminance pass if auto exposure is enabled
@@ -310,7 +297,7 @@ void ToneMapper::createLuminanceFbo(const Texture::SharedPtr& pSrc)
     {
         Fbo::Desc desc;
         desc.setColorTarget(0, luminanceFormat);
-        mpLuminanceFbo = Fbo::create2D(requiredWidth, requiredHeight, desc, 1, Fbo::kAttachEntireMipLevel);
+        mpLuminanceFbo = Fbo::create2D(mpDevice.get(), requiredWidth, requiredHeight, desc, 1, Fbo::kAttachEntireMipLevel);
     }
 }
 
@@ -524,7 +511,7 @@ void ToneMapper::setExposureMode(ExposureMode mode)
 
 void ToneMapper::createLuminancePass()
 {
-    mpLuminancePass = FullScreenPass::create(kLuminanceFile);
+    mpLuminancePass = FullScreenPass::create(mpDevice, kLuminanceFile);
 }
 
 void ToneMapper::createToneMapPass()
@@ -534,7 +521,7 @@ void ToneMapper::createToneMapPass()
     if (mAutoExposure) defines.add("_TONE_MAPPER_AUTO_EXPOSURE");
     if (mClamp) defines.add("_TONE_MAPPER_CLAMP");
 
-    mpToneMapPass = FullScreenPass::create(kToneMappingFile, defines);
+    mpToneMapPass = FullScreenPass::create(mpDevice, kToneMappingFile, defines);
 }
 
 void ToneMapper::updateWhiteBalanceTransform()

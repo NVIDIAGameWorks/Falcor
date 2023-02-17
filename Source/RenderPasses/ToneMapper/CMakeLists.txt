@@ -1,4 +1,4 @@
-add_renderpass(ToneMapper)
+add_plugin(ToneMapper)
 
 target_sources(ToneMapper PRIVATE
     Luminance.ps.slang

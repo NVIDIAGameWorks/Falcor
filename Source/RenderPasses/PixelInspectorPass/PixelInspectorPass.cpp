@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,26 +27,11 @@
  **************************************************************************/
 #include "PixelInspectorPass.h"
 #include "PixelInspectorData.slang"
-#include "RenderGraph/RenderPassLibrary.h"
 #include "RenderGraph/RenderPassHelpers.h"
 
-const RenderPass::Info PixelInspectorPass::kInfo
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
-    "PixelInspectorPass",
-
-    "Inspect geometric and material properties at a given pixel.\n"
-    "Left-mouse click on a pixel to select it.\n"
-};
-
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" FALCOR_API_EXPORT const char* getProjDir()
-{
-    return PROJECT_DIR;
-}
-
-extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
-{
-    lib.registerPass(PixelInspectorPass::kInfo, PixelInspectorPass::create);
+    registry.registerClass<RenderPass, PixelInspectorPass>();
 }
 
 namespace
@@ -69,20 +54,20 @@ namespace
     const char kOutputChannel[] = "gPixelDataBuffer";
 }
 
-PixelInspectorPass::SharedPtr PixelInspectorPass::create(RenderContext* pRenderContext, const Dictionary& dict)
+PixelInspectorPass::SharedPtr PixelInspectorPass::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
-    return SharedPtr(new PixelInspectorPass);
+    return SharedPtr(new PixelInspectorPass(std::move(pDevice)));
 }
 
-PixelInspectorPass::PixelInspectorPass()
-    : RenderPass(kInfo)
+PixelInspectorPass::PixelInspectorPass(std::shared_ptr<Device> pDevice)
+    : RenderPass(std::move(pDevice))
 {
     for (auto it : kInputChannels)
     {
         mAvailableInputs[it.name] = false;
     }
 
-    mpState = ComputeState::create();
+    mpState = ComputeState::create(mpDevice);
 }
 
 RenderPassReflection PixelInspectorPass::reflect(const CompileData& compileData)
@@ -107,8 +92,8 @@ void PixelInspectorPass::execute(RenderContext* pRenderContext, const RenderData
 
     if (!mpVars)
     {
-        mpVars = ComputeVars::create(mpProgram->getReflector());
-        mpPixelDataBuffer = Buffer::createStructured(mpProgram.get(), kOutputChannel, 1);
+        mpVars = ComputeVars::create(mpDevice, mpProgram->getReflector());
+        mpPixelDataBuffer = Buffer::createStructured(mpDevice.get(), mpProgram.get(), kOutputChannel, 1);
     }
 
     // Bind the scene.
@@ -283,6 +268,10 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
             materialGroup.var("Roughness", pixelData.roughness, 0.f, std::numeric_limits<float>::max(), 0.001f, false, "%.6f");
         });
 
+        displayedData |= displayValues(requiredInputs, { "GuideNormal" }, [&materialGroup](PixelData& pixelData) {
+            materialGroup.var("GuideNormal", pixelData.guideNormal, 0.f, std::numeric_limits<float>::max(), 0.001f, false, "%.6f");
+        });
+
         displayedData |= displayValues(requiredInputs, { "DiffuseReflectionAlbedo" }, [&materialGroup](PixelData& pixelData) {
             materialGroup.var("DiffuseReflectionAlbedo", pixelData.diffuseReflectionAlbedo, 0.f, std::numeric_limits<float>::max(), 0.001f, false, "%.6f");
         });
@@ -372,7 +361,7 @@ void PixelInspectorPass::setScene(RenderContext* pRenderContext, const Scene::Sh
         desc.addTypeConformances(mpScene->getTypeConformances());
         desc.setCompilerFlags(Shader::CompilerFlags::TreatWarningsAsErrors);
 
-        mpProgram = ComputeProgram::create(desc, mpScene->getSceneDefines());
+        mpProgram = ComputeProgram::create(mpDevice, desc, mpScene->getSceneDefines());
         mpState->setProgram(mpProgram);
     }
 }

@@ -2,7 +2,7 @@ if(NOT (FALCOR_HAS_NRD AND FALCOR_HAS_D3D12))
     return()
 endif()
 
-add_renderpass(NRDPass)
+add_plugin(NRDPass)
 
 target_sources(NRDPass PRIVATE
     NRDPass.cpp

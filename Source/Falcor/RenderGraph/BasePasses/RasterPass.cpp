@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,20 +30,20 @@
 
 namespace Falcor
 {
-    RasterPass::SharedPtr RasterPass::create(const Program::Desc& desc, const Program::DefineList& defines)
+    RasterPass::SharedPtr RasterPass::create(std::shared_ptr<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines)
     {
-        return SharedPtr(new RasterPass(desc, defines));
+        return SharedPtr(new RasterPass(std::move(pDevice), desc, defines));
     }
 
-    RasterPass::SharedPtr RasterPass::create(const std::filesystem::path& path, const std::string& vsEntry, const std::string& psEntry, const Program::DefineList& defines)
+    RasterPass::SharedPtr RasterPass::create(std::shared_ptr<Device> pDevice, const std::filesystem::path& path, const std::string& vsEntry, const std::string& psEntry, const Program::DefineList& defines)
     {
-        Program::Desc d;
-        d.addShaderLibrary(path).vsEntry(vsEntry).psEntry(psEntry);
-        return create(d, defines);
+        Program::Desc desc;
+        desc.addShaderLibrary(path).vsEntry(vsEntry).psEntry(psEntry);
+        return create(std::move(pDevice), desc, defines);
     }
 
-    RasterPass::RasterPass(const Program::Desc& progDesc, const Program::DefineList& programDefines)
-        : BaseGraphicsPass(progDesc, programDefines)
+    RasterPass::RasterPass(std::shared_ptr<Device> pDevice, const Program::Desc& progDesc, const Program::DefineList& programDefines)
+        : BaseGraphicsPass(std::move(pDevice), progDesc, programDefines)
     {
     }
 

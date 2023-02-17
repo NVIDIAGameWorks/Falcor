@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -39,9 +39,9 @@ void Falcor::Marker2DSet::addMarker(const Marker2DDataBlob& newMarker)
     mDirtyBuffer = true;
 }
 
-Falcor::Marker2DSet::SharedPtr Falcor::Marker2DSet::create(uint32_t maxMarkerCount)
+Falcor::Marker2DSet::SharedPtr Falcor::Marker2DSet::create(std::shared_ptr<Device> pDevice, uint32_t maxMarkerCount)
 {
-    return SharedPtr(new Marker2DSet(maxMarkerCount));
+    return SharedPtr(new Marker2DSet(std::move(pDevice), maxMarkerCount));
 }
 
 void Falcor::Marker2DSet::clear()
@@ -162,7 +162,7 @@ void Falcor::Marker2DSet::addCircleSector(const float2& pos, const float rotatio
 void Falcor::Marker2DSet::setShaderData(const ShaderVar& var)
 {
     updateBuffer();
-    
+
     var["markers"] = mpMarkerBuffer;
     var["markerCount"] = (uint32_t)mMarkers.size();
 }
@@ -181,11 +181,11 @@ void Falcor::Marker2DSet::updateBuffer()
         // Create a new buffer if it does not exist or if the size is too small for the markers.
         else if (!mpMarkerBuffer || mpMarkerBuffer->getElementCount() < (uint32_t)mMarkers.size())
         {
-            mpMarkerBuffer = Buffer::createStructured(sizeof(Marker2DDataBlob), (uint32_t)mMarkers.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, mMarkers.data(), false);
+            mpMarkerBuffer = Buffer::createStructured(mpDevice.get(), sizeof(Marker2DDataBlob), (uint32_t)mMarkers.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, mMarkers.data(), false);
             mpMarkerBuffer->setName("Marker2DSet::mpMarkerBuffer");
         }
         // Else update the existing buffer.
-        else  
+        else
         {
             mpMarkerBuffer->setBlob(mMarkers.data(), 0, mMarkers.size() * sizeof(Marker2DDataBlob));
         }

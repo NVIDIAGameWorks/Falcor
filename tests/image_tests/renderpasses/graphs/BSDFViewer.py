@@ -2,8 +2,6 @@ from falcor import *
 
 def render_graph_BSDFViewer():
     g = RenderGraph("BSDFViewerGraph")
-    loadRenderPassLibrary("AccumulatePass.dll")
-    loadRenderPassLibrary("BSDFViewer.dll")
     BSDFViewer = createPass("BSDFViewer")
     g.addPass(BSDFViewer, "BSDFViewer")
     AccumulatePass = createPass("AccumulatePass")

@@ -33,6 +33,6 @@ BEGIN_NAMESPACE_FALCOR
 
 static const float kNRDDepthRange = 10000.0f;
 static const float kNRDInvalidPathLength = HLF_MAX;
-static const float kNRDMinReflectance = 0.04f;
+static const float kNRDMinReflectance = 0.01f;
 
 END_NAMESPACE_FALCOR

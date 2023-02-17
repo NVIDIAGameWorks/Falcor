@@ -35,7 +35,7 @@ cbuffer CB
 };
 
 [numthreads(256, 1, 1)]
-void testPermutedTms(uint3 threadId : SV_DispatchThreadID)
+void testPermutedTms(uint3 threadId: SV_DispatchThreadID)
 {
     const uint i = threadId.x;
     result[i] = generatePermutedTms(i, m);

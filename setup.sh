@@ -2,7 +2,7 @@
 
 # This script is fetching all dependencies via packman.
 
-if [ $OSTYPE == "msys" ]; then
+if [ "$OSTYPE" = "msys" ]; then
     echo "Do not use "$0" on Windows, use setup.bat instead."
     exit 1
 fi
@@ -17,6 +17,7 @@ if ! [ -x "$(command -v git)" ]; then
     echo "Cannot find git on PATH! Please initialize submodules manually and rerun."
     exit 1
 else
+    git submodule sync --recursive
     git submodule update --init --recursive
 fi
 
@@ -37,5 +38,9 @@ fi
 # This changes the actual packman package, but for now, this is the easiest solution.
 echo "Patching NVTT package ..."
 cp -fp ${BASE_DIR}/external/packman/nvtt/libnvtt.so.30106 ${BASE_DIR}/external/packman/nvtt/libnvtt.so
+
+# HACK: Copy libtbb.so from release to debug so we can have a proper import target.
+echo "Patching falcor_deps package ..."
+cp -fp ${BASE_DIR}/external/packman/deps/lib/libtbb.so* ${BASE_DIR}/external/packman/deps/debug/lib
 
 exit 0

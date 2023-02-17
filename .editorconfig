@@ -15,6 +15,3 @@ insert_final_newline = true
 # Override trailing whitespace setting for Markdown since there it's actually useful
 [*.{md}]
 trim_trailing_whitespace = false
-
-[*.{yml}]
-indent_size = 2

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -35,30 +35,26 @@ namespace Falcor
 {
     static const char kShaderFilename[] = "Utils/Algorithm/BitonicSort.cs.slang";
 
-    BitonicSort::BitonicSort()
+    BitonicSort::BitonicSort(std::shared_ptr<Device> pDevice)
+        : mpDevice(std::move(pDevice))
     {
 #if !FALCOR_NVAPI_AVAILABLE
         throw RuntimeError("BitonicSort requires NVAPI. See installation instructions in README.");
 #endif
-        mSort.pState = ComputeState::create();
+        mSort.pState = ComputeState::create(mpDevice);
 
         // Create shaders
         Program::DefineList defines;
         defines.add("CHUNK_SIZE", "256");   // Dummy values just so we can get reflection data. We'll set the actual values in execute().
         defines.add("GROUP_SIZE", "256");
-        mSort.pProgram = ComputeProgram::createFromFile(kShaderFilename, "main", defines);
+        mSort.pProgram = ComputeProgram::createFromFile(mpDevice, kShaderFilename, "main", defines);
         mSort.pState->setProgram(mSort.pProgram);
-        mSort.pVars = ComputeVars::create(mSort.pProgram.get());
-    }
-
-    BitonicSort::SharedPtr BitonicSort::create()
-    {
-        return SharedPtr(new BitonicSort());
+        mSort.pVars = ComputeVars::create(mpDevice, mSort.pProgram.get());
     }
 
     bool BitonicSort::execute(RenderContext* pRenderContext, Buffer::SharedPtr pData, uint32_t totalSize, uint32_t chunkSize, uint32_t groupSize)
     {
-        FALCOR_PROFILE("BitonicSort::execute");
+        FALCOR_PROFILE(pRenderContext, "BitonicSort::execute");
 
         // Validate inputs.
         FALCOR_ASSERT(pRenderContext);

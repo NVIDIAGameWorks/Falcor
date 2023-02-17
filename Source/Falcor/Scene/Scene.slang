@@ -42,6 +42,7 @@ import Utils.Attributes;
 import Utils.Math.MathHelpers;
 import Utils.Math.MatrixUtils;
 import Utils.Geometry.GeometryHelpers;
+import Utils.SlangUtils;
 import Scene.SDFs.SDFVoxelCommon;
 import Scene.Displacement.DisplacementMapping;
 import Rendering.Materials.TexLODHelpers;
@@ -56,19 +57,16 @@ import Rendering.Materials.TexLODHelpers;
 */
 struct Scene
 {
-#ifdef SCENE_USE_LIGHT_PROFILE // DEMO21
+    // DEMO21
     static bool kUseLightProfile = SCENE_USE_LIGHT_PROFILE;
-#else
-    static bool kUseLightProfile = false;
-#endif
-
+    static float kDiffuseAlbedoMultiplier = SCENE_DIFFUSE_ALBEDO_MULTIPLIER;
 
     // Raytracing
     [root] RaytracingAccelerationStructure rtAccel;
 
     // Instance transforms
     [root] StructuredBuffer<float4x4> worldMatrices;
-    [root] StructuredBuffer<float4x4> inverseTransposeWorldMatrices; // TODO: Make this 3x3 matrices (stored as 4x3). See #795.
+    [root] StructuredBuffer<float4x4> inverseTransposeWorldMatrices;
     StructuredBuffer<float4x4> prevWorldMatrices;
     StructuredBuffer<float4x4> prevInverseTransposeWorldMatrices;
 
@@ -92,11 +90,7 @@ struct Scene
     ByteAddressBuffer curveIndices;
 
     // SDF Grids
-#if SCENE_SDF_GRID_COUNT > 0
-    SDFGrid sdfGrids[SCENE_SDF_GRID_COUNT];
-#else
-    SDFGrid sdfGrids[1]; // Zero-length arrays are not supported.
-#endif
+    SDFGrid sdfGrids[ArrayMax<1, SCENE_SDF_GRID_COUNT>.value]; // Zero-length arrays are not supported.
 
     // Procedural primitives
     StructuredBuffer<AABB> proceduralPrimitiveAABBs;                ///< Global list of AABBs for procedural primitives (curves, custom primitives, etc.).
@@ -121,11 +115,7 @@ struct Scene
     // Grid volumes
     uint gridVolumeCount;
     StructuredBuffer<GridVolume> gridVolumes;
-#if SCENE_GRID_COUNT > 0
-    Grid grids[SCENE_GRID_COUNT];
-#else
-    Grid grids[1]; // Zero-length arrays are not supported.
-#endif
+    Grid grids[ArrayMax<1, SCENE_GRID_COUNT>.value]; // Zero-length arrays are not supported.
 
     // Geometry access
 
@@ -140,6 +130,28 @@ struct Scene
     }
 
     // Mesh and instance data access
+
+    float4x4 loadWorldFromInstance(const uint matrixID)
+    {
+        return loadWorldMatrix(matrixID);
+    }
+
+    float4x4 loadInstanceFromWorld(const uint matrixID)
+    {
+        return transpose(inverseTransposeWorldMatrices[matrixID]);
+    }
+
+    float4x4 getWorldFromInstance(const GeometryInstanceID instanceID)
+    {
+        const uint matrixID = geometryInstances[instanceID.index].globalMatrixID;
+        return loadWorldFromInstance(matrixID);
+    }
+
+    float4x4 getInstanceFromWorld(const GeometryInstanceID instanceID)
+    {
+        const uint matrixID = geometryInstances[instanceID.index].globalMatrixID;
+        return loadInstanceFromWorld(matrixID);
+    }
 
     float4x4 loadWorldMatrix(const uint matrixID)
     {
@@ -761,7 +773,7 @@ struct Scene
         v.faceNormalW = v.normalW;
 
         // Note that the tangent direction is not perpendicular to the normal direction.
-        // It will be fixed by computeTangentSpace() in Scene.Shading later.
+        // The tangent space will be orthonormalized later when preparing ShadingData.
         v.tangentW = float4(normalize(sphereB.xyz - sphereA.xyz), 1.f);
 
         // All curve segments in a strand share the same texture coordinates (i.e., determined at the root of the strand).

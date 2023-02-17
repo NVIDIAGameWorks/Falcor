@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -32,15 +32,6 @@ namespace Falcor
 {
     namespace
     {
-        struct FullScreenPassData
-        {
-            Buffer::SharedPtr pVertexBuffer;
-            Vao::SharedPtr pVao;
-            uint64_t objectCount = 0;
-        };
-
-        FullScreenPassData gFullScreenData;
-
         struct Vertex
         {
             float2 screenPos;
@@ -62,57 +53,81 @@ namespace Falcor
         };
 #undef ADJUST_Y
 
-        void initFullScreenData(Buffer::SharedPtr& pVB, Vao::SharedPtr& pVao)
+        struct FullScreenPassData
         {
-            // First time we got here. create VB and VAO
-            const uint32_t vbSize = (uint32_t)(sizeof(Vertex)*std::size(kVertices));
-            pVB = Buffer::create(vbSize, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, (void*)kVertices);
-            FALCOR_ASSERT(pVB);
+            Buffer::SharedPtr pVertexBuffer;
+            Vao::SharedPtr pVao;
+            uint64_t objectCount = 0;
 
-            // Create VAO
-            VertexLayout::SharedPtr pLayout = VertexLayout::create();
-            VertexBufferLayout::SharedPtr pBufLayout = VertexBufferLayout::create();
-            pBufLayout->addElement("POSITION", 0, ResourceFormat::RG32Float, 1, 0);
-            pBufLayout->addElement("TEXCOORD", 8, ResourceFormat::RG32Float, 1, 1);
-            pLayout->addBufferLayout(0, pBufLayout);
+            void init(Device* pDevice)
+            {
+                // First time we got here. create VB and VAO
+                const uint32_t vbSize = (uint32_t)(sizeof(Vertex)*std::size(kVertices));
+                pVertexBuffer = Buffer::create(pDevice, vbSize, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, (void*)kVertices);
 
-            Vao::BufferVec buffers{ pVB };
-            pVao = Vao::create(Vao::Topology::TriangleStrip, pLayout, buffers);
-            FALCOR_ASSERT(pVao);
-        }
+                // Create VAO
+                VertexLayout::SharedPtr pLayout = VertexLayout::create();
+                VertexBufferLayout::SharedPtr pBufLayout = VertexBufferLayout::create();
+                pBufLayout->addElement("POSITION", 0, ResourceFormat::RG32Float, 1, 0);
+                pBufLayout->addElement("TEXCOORD", 8, ResourceFormat::RG32Float, 1, 1);
+                pLayout->addBufferLayout(0, pBufLayout);
+
+                Vao::BufferVec buffers{ pVertexBuffer };
+                pVao = Vao::create(Vao::Topology::TriangleStrip, pLayout, buffers);
+            }
+
+            void free()
+            {
+                pVertexBuffer.reset();
+                pVao.reset();
+            }
+
+            static std::map<Device*, FullScreenPassData>& getCache()
+            {
+                static std::map<Device*, FullScreenPassData> data;
+                return data;
+            }
+
+            static FullScreenPassData* acquire(Device* pDevice)
+            {
+                auto& cache = getCache();
+                FullScreenPassData& data = cache[pDevice];
+                if (data.objectCount == 0)
+                    data.init(pDevice);
+                data.objectCount++;
+                return &data;
+            }
+
+            static void release(Device* pDevice)
+            {
+                auto& cache = getCache();
+                FullScreenPassData& data = cache[pDevice];
+                FALCOR_ASSERT(data.objectCount > 0);
+                data.objectCount--;
+                if (data.objectCount == 0)
+                    data.free();
+            }
+        };
     }
 
-    FullScreenPass::FullScreenPass(const Program::Desc& progDesc, const Program::DefineList& programDefines)
-        : BaseGraphicsPass(progDesc, programDefines)
+    FullScreenPass::FullScreenPass(std::shared_ptr<Device> pDevice, const Program::Desc& progDesc, const Program::DefineList& programDefines)
+        : BaseGraphicsPass(std::move(pDevice), progDesc, programDefines)
     {
-        gFullScreenData.objectCount++;
-
         // Create depth stencil state
         FALCOR_ASSERT(mpState);
         auto pDsState = DepthStencilState::create(DepthStencilState::Desc().setDepthEnabled(false));
         mpState->setDepthStencilState(pDsState);
 
-        if (gFullScreenData.pVertexBuffer == nullptr)
-        {
-            initFullScreenData(gFullScreenData.pVertexBuffer, gFullScreenData.pVao);
-        }
-        FALCOR_ASSERT(gFullScreenData.pVao);
-        mpState->setVao(gFullScreenData.pVao);
+        FullScreenPassData* data = FullScreenPassData::acquire(mpDevice.get());
+        mpState->setVao(data->pVao);
     }
 
     FullScreenPass::~FullScreenPass()
     {
-        FALCOR_ASSERT(gFullScreenData.objectCount > 0);
-
-        gFullScreenData.objectCount--;
-        if (gFullScreenData.objectCount == 0)
-        {
-            gFullScreenData.pVao = nullptr;
-            gFullScreenData.pVertexBuffer = nullptr;
-        }
+        FullScreenPassData::release(mpDevice.get());
     }
 
-    FullScreenPass::SharedPtr FullScreenPass::create(const Program::Desc& desc, const Program::DefineList& defines, uint32_t viewportMask)
+    FullScreenPass::SharedPtr FullScreenPass::create(std::shared_ptr<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines, uint32_t viewportMask)
     {
         Program::Desc d = desc;
         Program::DefineList defs = defines;
@@ -126,14 +141,14 @@ namespace Falcor
         }
         if (!d.hasEntryPoint(ShaderType::Vertex)) d.addShaderLibrary("RenderGraph/BasePasses/FullScreenPass.vs.slang").vsEntry("main");
 
-        return SharedPtr(new FullScreenPass(d, defs));
+        return SharedPtr(new FullScreenPass(std::move(pDevice), d, defs));
     }
 
-    FullScreenPass::SharedPtr FullScreenPass::create(const std::filesystem::path& path, const Program::DefineList& defines, uint32_t viewportMask)
+    FullScreenPass::SharedPtr FullScreenPass::create(std::shared_ptr<Device> pDevice, const std::filesystem::path& path, const Program::DefineList& defines, uint32_t viewportMask)
     {
-        Program::Desc d;
-        d.addShaderLibrary(path).psEntry("main");
-        return create(d, defines, viewportMask);
+        Program::Desc desc;
+        desc.addShaderLibrary(path).psEntry("main");
+        return create(std::move(pDevice), desc, defines, viewportMask);
     }
 
     void FullScreenPass::execute(RenderContext* pRenderContext, const Fbo::SharedPtr& pFbo, bool autoSetVpSc) const

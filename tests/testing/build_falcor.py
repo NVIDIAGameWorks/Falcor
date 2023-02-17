@@ -13,7 +13,7 @@ def build_falcor(env, rebuild=False):
     Builds Falcor. Optionally issues a full rebuild.
     '''
     args = [
-        str(env.cmake_exr),
+        str(env.cmake_exe),
         "--build", str(env.cmake_dir),
         "--config", str(env.cmake_config)
     ]
@@ -30,17 +30,17 @@ def main():
     parser.add_argument('--list-configs', action='store_true', help='List available build configurations.')
     args = parser.parse_args()
 
+    # List build configurations.
+    if args.list_configs:
+        print('Available build configurations:\n' + '\n'.join(config.BUILD_CONFIGS.keys()))
+        sys.exit(0)
+
     # Load environment.
     try:
         env = Environment(args.environment, args.config)
     except Exception as e:
         print(e)
         sys.exit(1)
-
-    # List build configurations.
-    if args.list_configs:
-        print('Available build configurations:\n' + '\n'.join(config.BUILD_CONFIGS.keys()))
-        sys.exit(0)
 
     # Build.
     success = build_falcor(env, args.rebuild)

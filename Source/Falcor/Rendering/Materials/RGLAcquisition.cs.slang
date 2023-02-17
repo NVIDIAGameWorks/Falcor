@@ -95,13 +95,13 @@ struct RGLAcquisition
         ShadingData sd = buildShadingData(wi);
         
         let lod = ExplicitLodTextureSampler(0.f);
-        let bsdf = gScene.materials.getBSDF(sd, lod);
+        let mi = gScene.materials.getMaterialInstance(sd, lod);
         
         // TODO: We should probably take multiple samples if eval is actually probabilistic.
         // No way currently to find out if eval is deterministic or not.
         UniformSampleGenerator sg = UniformSampleGenerator(threadID, 0);
         // The paper measures at lambda=532nm. Just grab the green channel to approximate this.
-        float retro = bsdf.eval(sd, wi, sg).g;
+        float retro = mi.eval(sd, wi, sg).g;
         
         uint idx = threadID.x + threadID.y * ndfSize.x;
         ndfDirections[idx] = wi;
@@ -270,13 +270,13 @@ struct RGLAcquisition
             ShadingData sd = buildShadingData(wi);
             
             let lod = ExplicitLodTextureSampler(0.0f);
-            let bsdf = gScene.materials.getBSDF(sd, lod);
+            let mi = gScene.materials.getMaterialInstance(sd, lod);
             
             // TODO: We should probably take multiple samples if eval is actually probabilistic.
             // No way currently to find out if eval is deterministic or not.
             UniformSampleGenerator sg = UniformSampleGenerator(uint2(threadID.x * lumiSize.y + threadID.y, threadID.z), 0);
             
-            fr = bsdf.eval(sd, wo, sg);
+            fr = mi.eval(sd, wo, sg);
         }
         else
         {

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,4 +27,10 @@
  **************************************************************************/
 #include <cuda_runtime.h>
 
-extern void launchCopySurface(cudaSurfaceObject_t input, cudaSurfaceObject_t output, unsigned int width, unsigned int height, unsigned int format);
+extern void launchCopySurface(
+    cudaSurfaceObject_t input,
+    cudaSurfaceObject_t output,
+    unsigned int width,
+    unsigned int height,
+    unsigned int format
+);

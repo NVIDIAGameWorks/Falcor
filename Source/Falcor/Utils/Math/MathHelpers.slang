@@ -84,6 +84,20 @@ float2 cartesian_to_spherical_rad(float3 p)
     return sph;
 }
 
+/** Converts spherical coordinates (radians) to Cartesian coordinates.
+    Inverse of cartesian_to_spherical_rad.
+    \param[in] sph Spherical coordinates (theta,phi).
+    \return Cartesian coordinates (x,y,z).
+*/
+float3 spherical_to_cartesian_rad(float2 sph)
+{
+    float3 p;
+    p.x = -cos(sph.y - M_PI) * sin(sph.x);
+    p.y = -sin(sph.y - M_PI) * sin(sph.x);
+    p.z = cos(sph.x);
+    return p;
+}
+
 /** Convert world space direction to (u,v) coord in latitude-longitude map (unsigned normalized).
     The map is centered around the -z axis and wrapping around in clockwise order (left to right).
     \param[in] dir World space direction (unnormalized).
@@ -270,6 +284,17 @@ float3 sample_sphere(float2 u)
     return float3(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta);
 }
 
+/** Uniform sampling of the unit hemisphere using sphere sampling.
+    \param[in] u Uniform random numbers in [0,1)^2.
+    \return Sampled point on the unit hemisphere.
+*/
+float3 sample_hemisphere(float2 u)
+{
+    float3 w = sample_sphere(u);
+    w.z = abs(w.z);
+    return w;
+}
+
 /** Uniform sampling of the unit disk using Shirley's concentric mapping.
     \param[in] u Uniform random numbers in [0,1)^2.
     \return Sampled point on the unit disk.
@@ -383,8 +408,8 @@ float2x2 inverse(float2x2 M)
     float invdet = 1.0f / determinant(M);
     inv[0][0] = M[1][1] * invdet;
     inv[1][1] = M[0][0] * invdet;
-    inv[0][1] = -M[1][0] * invdet;
-    inv[1][0] = -M[0][1] * invdet;
+    inv[0][1] = -M[0][1] * invdet;
+    inv[1][0] = -M[1][0] * invdet;
     return inv;
 }
 
@@ -443,3 +468,175 @@ float2 sqr(float2 v) { return v*v; }
 float3 sqr(float3 v) { return v*v; }
 
 float4 sqr(float4 v) { return v*v; }
+
+/** Error function.
+*/
+float erf(float x)
+{
+    // From "Numerical Recipes in C, The Art of Scientific Computing"
+    // (Second Edition) by Press et al. 1992. Page 221.
+    // Maxiumum error: 1.2 x 10^-7.
+    float t = 1.0f / (1.0f + 0.5f * abs(x));
+    float p =  0.17087277f;
+    p = -0.82215223f + p * t;
+    p =  1.48851587f + p * t;
+    p = -1.13520398f + p * t;
+    p =  0.27886807f + p * t;
+    p = -0.18628806f + p * t;
+    p =  0.09678418f + p * t;
+    p =  0.37409196f + p * t;
+    p =  1.00002368f + p * t;
+    p = -1.26551223f + p * t;
+    float tau = t * exp(-x * x + p);
+    return x >= 0.0f ? 1.0f - tau : tau - 1.0f;
+}
+
+/** Inverse error function.
+*/
+float erfinv(float x)
+{
+    // From "Approximating the erfinv function" by Mike Giles 2012.
+    // Maximum error: 7 x 10^-7.
+    if (x <= -1.0f)
+    {
+        return -1.0f / 0.0f;
+    }
+    else if (x >= 1.0f)
+    {
+        return 1.0f / 0.0f;
+    }
+
+    float w = - log((1.0f - x) * (1.0f + x));
+    float p;
+    if (w < 5.0f)
+    {
+        w = w - 2.5f;
+        p =  2.81022636e-08f;
+        p =  3.43273939e-07f + p * w;
+        p = -3.5233877e-06f  + p * w;
+        p = -4.39150654e-06f + p * w;
+        p =  0.00021858087f  + p * w;
+        p = -0.00125372503f  + p * w;
+        p = -0.00417768164f  + p * w;
+        p =  0.246640727f    + p * w;
+        p =  1.50140941f     + p * w;
+    }
+    else
+    {
+        w = sqrt(w) - 3.0f;
+        p = -0.000200214257f;
+        p =  0.000100950558f + p * w;
+        p =  0.00134934322f  + p * w;
+        p = -0.00367342844f  + p * w;
+        p =  0.00573950773f  + p * w;
+        p = -0.0076224613f   + p * w;
+        p =  0.00943887047f  + p * w;
+        p =  1.00167406f     + p * w;
+        p =  2.83297682f     + p * w;
+    }
+    return p * x;
+}
+
+/** Logarithm of the Gamma function.
+*/
+float lgamma(float x_)
+{
+    // Lanczos approximation from
+    // "Numerical Recipes in C, The Art of Scientific Computing"
+    // (Second Edition) by Press et al. 1992. Page 214.
+    // Maxiumum error: 2 x 10^-10.
+    const float g = 5.0;
+    const float coeffs[7] = {
+          1.000000000190015,
+         76.18009172947146,
+        -86.50532032941677,
+         24.01409824083091,
+         -1.231739572450155,
+          0.1208650973866179e-2,
+         -0.5395239384953e-5
+    };
+
+    bool reflect = x_ < 0.5f;
+    float x = reflect ? -x_ : x_ - 1.0f;
+    float base = x + g + 0.5f;
+
+    float s = 0.0f;
+    for (int i = 6; i >= 1; --i)
+    {
+        s += coeffs[i] / (x + (float) i);
+    }
+    s += coeffs[0];
+
+    float res = ((log(sqrt(2*M_PI)) + log(s)) - base) + log(base) * (x + 0.5f);
+    if (reflect)
+    {
+        // Apply the Gamma reflection formula (in log-space).
+        res = log(abs(M_PI / sin(M_PI * x_))) - res;
+    }
+    return res;
+}
+
+/** Gamma function.
+*/
+float gamma(float x)
+{
+    return exp(lgamma(x));
+}
+
+/** Beta function.
+*/
+float beta(float x, float y)
+{
+    return gamma(x) * gamma(y) / gamma(x + y);
+}
+
+/** Given two vectors, will orthonormalized them, preserving v1 and v2.
+    Vector v1 must be already normalized, v2 will be renormalized as part of the adjustment.
+    Vector v2 is assumed to be non-zero and already somewhat orthogonal to v1, as this code does not handle v2=0 or v2=v1
+
+    \param[in] v1 A normalized vector to orthogonalize v2 to.
+    \param[in,out] v2 Vector to be adjusted to be orthonormal to v2.
+*/
+void orthogonalizeVectors(const float3 v1, inout float3 v2)
+{
+    v2 = normalize(v2 - dot(v1, v2) * v1);
+}
+
+/** Rotate a 3D vector counterclockwise around the X-axis.
+    The rotation angle is positive for a rotation that is counterclockwise when looking along the x-axis towards the origin.
+    \param[in] v Original vector.
+    \param[in] angle Angle in radians.
+    \return Transformed vector.
+*/
+float3 rotate_x(const float3 v, const float angle)
+{
+    float c, s;
+    sincos(angle, s, c);
+    return float3(v.x, v.y * c - v.z * s, v.y * s + v.z * c);
+}
+
+/** Rotate a 3D vector counterclockwise around the Y-axis.
+    The rotation angle is positive for a rotation that is counterclockwise when looking along the y-axis towards the origin.
+    \param[in] v Original vector.
+    \param[in] angle Angle in radians.
+    \return Transformed vector.
+*/
+float3 rotate_y(const float3 v, const float angle)
+{
+    float c, s;
+    sincos(angle, s, c);
+    return float3(v.x * c + v.z * s, v.y, -v.x * s + v.z * c);
+}
+
+/** Rotate a 3D vector counterclockwise around the Z-axis.
+    The rotation angle is positive for a rotation that is counterclockwise when looking along the z-axis towards the origin.
+    \param[in] v Original vector.
+    \param[in] angle Angle in radians.
+    \return Transformed vector.
+*/
+float3 rotate_z(const float3 v, const float angle)
+{
+    float c, s;
+    sincos(angle, s, c);
+    return float3(v.x * c - v.y * s, v.x * s + v.y * c, v.z);
+}

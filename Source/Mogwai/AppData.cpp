@@ -27,13 +27,10 @@
  **************************************************************************/
 #include "Falcor.h"
 #include "AppData.h"
-#define RAPIDJSON_HAS_STDSTRING 1
-#include <rapidjson/document.h>
-#include <rapidjson/istreamwrapper.h>
-#include <rapidjson/ostreamwrapper.h>
-#include <rapidjson/prettywriter.h>
-#include <rapidjson/error/en.h>
+#include <nlohmann/json.hpp>
 #include <fstream>
+
+using json = nlohmann::json;
 
 using namespace Falcor;
 
@@ -94,35 +91,27 @@ namespace Mogwai
 
     void AppData::loadFromFile(const std::filesystem::path& path)
     {
-        rapidjson::Document document;
-
         std::ifstream ifs(path);
         if (!ifs.good()) return;
 
-        rapidjson::IStreamWrapper isw(ifs);
-        document.ParseStream(isw);
-
-        if (document.HasParseError())
+        auto readPathArray = [](const json& j)
         {
-            logWarning("Failed to parse Mogwai settings file '{}': {}", path, rapidjson::GetParseError_En(document.GetParseError()));
-            return;
-        }
-
-        auto readPathArray = [](const rapidjson::Value& value)
-        {
+            std::vector<std::string> strings = j.get<std::vector<std::string>>();
             std::vector<std::filesystem::path> paths;
-            if (value.IsArray())
-            {
-                for (const auto& item : value.GetArray())
-                {
-                    if (item.IsString()) paths.push_back(item.GetString());
-                }
-            }
+            std::transform(strings.begin(), strings.end(), std::back_inserter(paths), [](const std::string& str) { return str; });
             return paths;
         };
 
-        mRecentScripts = readPathArray(document[kRecentScripts]);
-        mRecentScenes = readPathArray(document[kRecentScenes]);
+        try
+        {
+            const json j = json::parse(ifs);
+            mRecentScripts = readPathArray(j[kRecentScripts]);
+            mRecentScenes = readPathArray(j[kRecentScenes]);
+        }
+        catch (const std::exception& e)
+        {
+            logWarning("Failed to parse Mogwai settings file '{}': {}", path, e.what());
+        }
 
         removeNonExistingPaths(mRecentScripts);
         removeNonExistingPaths(mRecentScenes);
@@ -130,25 +119,20 @@ namespace Mogwai
 
     void AppData::saveToFile(const std::filesystem::path& path)
     {
-        rapidjson::Document document;
-        document.SetObject();
-        auto& allocator = document.GetAllocator();
-
-        auto writePathArray = [&allocator](const std::vector<std::filesystem::path>& paths)
+        auto getPathArray = [](const std::vector<std::filesystem::path>& paths)
         {
-            rapidjson::Value value(rapidjson::kArrayType);
-            for (const auto& path : paths) value.PushBack(rapidjson::Value(path.string(), allocator), allocator);
-            return value;
+            std::vector<std::string> strings;
+            std::transform(paths.begin(), paths.end(), std::back_inserter(strings), [](const std::filesystem::path& path) { return path.string(); });
+            return json(strings);
         };
 
-        document.AddMember(kRecentScripts, writePathArray(mRecentScripts), allocator);
-        document.AddMember(kRecentScenes, writePathArray(mRecentScenes), allocator);
+        json j = json::object();
+        j[kRecentScripts] = getPathArray(mRecentScripts);
+        j[kRecentScenes] = getPathArray(mRecentScenes);
 
         std::ofstream ofs(path);
         if (!ofs.good()) return;
 
-        rapidjson::OStreamWrapper osw(ofs);
-        rapidjson::PrettyWriter<rapidjson::OStreamWrapper> writer(osw);
-        document.Accept(writer);
+        ofs << j.dump(4);
     }
 }

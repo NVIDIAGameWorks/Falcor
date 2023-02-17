@@ -4,28 +4,26 @@
 
 # Render Passes
 
-Note: This page will cover more complex elements of render passes. Basic elements are covered in the tutorial [here](../Tutorials/02-Implementing-a-Render-Pass.md).
+Note: This page will cover more complex elements of render passes. Basic elements are covered in the tutorial [here](../tutorials/02-implementing-a-render-pass.md).
 
-## Exporting as a DLL
+## Registering classes
 
-Falcor will look for a function called `getPasses()` in your DLL. The signature is as follows:
+Falcor will look for a function called `registerPlugin()` in your shared library. The signature is as follows:
 
 ```c++
-extern "C" FALCOR_API_EXPORT void getPasses(RenderPassLibrary& lib);
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry);
 ```
 
-This function should register all the passes that the DLL exports:
+This function should register all the render pass classes that the library exports:
 
 ```c++
-extern "C" FALCOR_API_EXPORT void getPasses(RenderPassLibrary& lib)
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
-    lib.registerPass(ExamplePass::kInfo, ExamplePass::create);
+    registry.registerClass<RenderPass, ExamplePass>();
 }
 ```
 
-Generally, `getPasses()` will reside in the same source file as the render pass it exports. For DLLs that export multiple passes, this function as well as `getProjDir()` should be located in a separate source file that shares a name with the project (e.g. a DLL named `Antialiasing` that contains some number of render passes should contain these functions within the source file `Antialiasing.cpp`).
-
-If using scripting, make sure to include the appropriate DLLs through calls to `loadRenderPassLibrary()` at the beginning of your graph script. These are generally DLLs that do not share a name with the render passes that they contain; all others will be found automatically.
+Generally, `registerPlugin()` will reside in the same source file as the render pass it exports. For libraries that export multiple passes, this function should be located in a separate source file that shares a name with the project (e.g. a library named `Antialiasing` that contains some number of render passes should contain these functions within the source file `Antialiasing.cpp`).
 
 ## Render Pass Resource Allocation and Lifetime
 
@@ -110,9 +108,9 @@ static void regExamplePass(pybind11::module& m)
     // register classes, properties, and enums here
 }
 
-extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
-    lib.registerPass(ExamplePass::kInfo, ExamplePass::create);
+    registry.registerClass<RenderPass, ExamplePass>();
     ScriptBindings::registerBinding(regExamplePass);
 }
 ```

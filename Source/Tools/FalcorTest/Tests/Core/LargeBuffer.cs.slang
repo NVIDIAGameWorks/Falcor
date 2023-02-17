@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -35,9 +35,12 @@ struct S
 };
 
 #if USE_ROOT_DESC
-[root] ByteAddressBuffer buffer;
-[root] StructuredBuffer<S> structuredBuffer;
-[root] StructuredBuffer<uint> structuredBufferUint;
+[root]
+ByteAddressBuffer buffer;
+[root]
+StructuredBuffer<S> structuredBuffer;
+[root]
+StructuredBuffer<uint> structuredBufferUint;
 #else
 ByteAddressBuffer buffer;
 StructuredBuffer<S> structuredBuffer;
@@ -50,7 +53,7 @@ cbuffer CB
 }
 
 [numthreads(256, 1, 1)]
-void testReadRaw(uint3 threadId : SV_DispatchThreadID)
+void testReadRaw(uint3 threadId: SV_DispatchThreadID)
 {
     // Copy the last 256 elements of the buffer.
     uint i = threadId.x;
@@ -59,7 +62,7 @@ void testReadRaw(uint3 threadId : SV_DispatchThreadID)
 }
 
 [numthreads(256, 1, 1)]
-void testReadStructured(uint3 threadId : SV_DispatchThreadID)
+void testReadStructured(uint3 threadId: SV_DispatchThreadID)
 {
     // Copy the last 256 elements of the buffer.
     uint i = threadId.x;
@@ -68,7 +71,7 @@ void testReadStructured(uint3 threadId : SV_DispatchThreadID)
 }
 
 [numthreads(256, 1, 1)]
-void testReadStructuredUint(uint3 threadId : SV_DispatchThreadID)
+void testReadStructuredUint(uint3 threadId: SV_DispatchThreadID)
 {
     // Copy the last 256 elements of the buffer.
     uint i = threadId.x;

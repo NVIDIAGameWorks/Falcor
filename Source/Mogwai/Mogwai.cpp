@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,8 +28,8 @@
 #include "Falcor.h"
 #include "Mogwai.h"
 #include "MogwaiSettings.h"
+#include "Scene/Importer.h"
 #include "RenderGraph/RenderGraphImportExport.h"
-#include "RenderGraph/RenderPassLibrary.h"
 #include "RenderGraph/RenderPassStandardFlags.h"
 #include "Utils/Timing/TimeReport.h"
 #include "Utils/Settings.h"
@@ -57,11 +57,15 @@ namespace Mogwai
 
     size_t Renderer::DebugWindow::index = 0;
 
-    Renderer::Renderer(const Options& options)
-        : mOptions(options)
+    Renderer::Renderer(const SampleAppConfig& config, const Options& options)
+        : SampleApp(config)
+        , mOptions(options)
         , mAppData(kAppDataPath)
     {
-        Program::setGenerateDebugInfoEnabled(options.generateShaderDebugInfo);
+    }
+
+    Renderer::~Renderer()
+    {
     }
 
     void Renderer::extend(Extension::CreateFunc func, const std::string& name)
@@ -77,14 +81,23 @@ namespace Mogwai
     void Renderer::onShutdown()
     {
         resetEditor();
-        gpDevice->flushAndSync(); // Need to do that because clearing the graphs will try to release some state objects which might be in use
+        getDevice()->flushAndSync(); // Need to do that because clearing the graphs will try to release some state objects which might be in use
         mGraphs.clear();
         if (mPipedOutput)
+        {
+#if FALCOR_WINDOWS
             _pclose(mPipedOutput);
+#elif FALCOR_LINUX
+            pclose(mPipedOutput);
+#endif
+        }
     }
 
     void Renderer::onLoad(RenderContext* pRenderContext)
     {
+        // Load all plugins
+        PluginManager::instance().loadAllPlugins();
+
         mpExtensions.push_back(MogwaiSettings::create(this));
         if (gExtensions)
         {
@@ -123,9 +136,8 @@ namespace Mogwai
 
     void Renderer::onOptionsChange()
     {
-        FALCOR_ASSERT(gpFramework);
         for (auto& pe : mpExtensions)
-            pe->onOptionsChange(gpFramework->getSettings().getOptions());
+            pe->onOptionsChange(getSettings().getOptions());
     }
 
     RenderGraph* Renderer::getActiveGraph() const
@@ -255,7 +267,7 @@ namespace Mogwai
 
         if (graphOuts.size())
         {
-            uint2 dims(gpFramework->getTargetFbo()->getWidth(), gpFramework->getTargetFbo()->getHeight());
+            uint2 dims(getTargetFbo()->getWidth(), getTargetFbo()->getHeight());
 
             for (size_t i = 0; i < mGraphs[mActiveGraph].debugWindows.size();)
             {
@@ -403,8 +415,10 @@ namespace Mogwai
         }
         GraphData& data = *pData;
 
-        // Set input image if it exists.
+        // Setup graph data.
+        data = {};
         data.pGraph = pGraph;
+        data.pGraph->onResize(getTargetFbo().get());
         data.pGraph->setScene(mpScene);
         if (data.pGraph->getOutputCount() != 0)
         {
@@ -438,10 +452,10 @@ namespace Mogwai
 
         try
         {
-            if (ProgressBar::isActive()) ProgressBar::show("Loading Configuration");
+            if (getProgressBar().isActive()) getProgressBar().show("Loading Configuration");
 
             // Add script directory to search paths (add it to the front to make it highest priority).
-            auto directory = path.parent_path();
+            auto directory = std::filesystem::absolute(path).parent_path();
             addDataDirectory(directory, true);
 
             Scripting::runScriptFromFile(path);
@@ -519,7 +533,7 @@ namespace Mogwai
             try
             {
                 TimeReport timeReport;
-                setScene(SceneBuilder::create(path, buildFlags)->getScene());
+                setScene(SceneBuilder::create(getDevice(), path, getSettings(), buildFlags)->getScene());
                 timeReport.measure("Loading scene (total)");
                 timeReport.printToLog();
                 return;
@@ -542,7 +556,7 @@ namespace Mogwai
 
         if (mpScene)
         {
-            const auto& pFbo = gpFramework->getTargetFbo();
+            const auto& pFbo = getTargetFbo();
             float ratio = float(pFbo->getWidth()) / float(pFbo->getHeight());
             mpScene->setCameraAspectRatio(ratio);
 
@@ -552,13 +566,17 @@ namespace Mogwai
                 Sampler::Desc desc;
                 desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
                 desc.setMaxAnisotropy(8);
-                mpSampler = Sampler::create(desc);
+                mpSampler = Sampler::create(getDevice().get(), desc);
             }
             mpScene->getMaterialSystem()->setDefaultTextureSampler(mpSampler);
         }
 
-        for (auto& g : mGraphs) g.pGraph->setScene(mpScene);
-        gpFramework->getGlobalClock().setTime(0);
+        for (auto& g : mGraphs)
+        {
+            g.pGraph->setScene(mpScene);
+            g.sceneUpdates = Scene::UpdateFlags::None;
+        }
+        getGlobalClock().setTime(0);
     }
 
     Scene::SharedPtr Renderer::getScene() const
@@ -604,7 +622,16 @@ namespace Mogwai
     void Renderer::executeActiveGraph(RenderContext* pRenderContext)
     {
         if (mGraphs.empty()) return;
-        auto& pGraph = mGraphs[mActiveGraph].pGraph;
+
+        auto& data = mGraphs[mActiveGraph];
+        auto& pGraph = data.pGraph;
+
+        // Notify active graph of any scene updates.
+        if (data.sceneUpdates != Scene::UpdateFlags::None)
+        {
+            pGraph->onSceneUpdates(pRenderContext, data.sceneUpdates);
+            data.sceneUpdates = Scene::UpdateFlags::None;
+        }
 
         // Execute graph.
         (*pGraph->getPassesDictionary())[kRenderPassRefreshFlags] = RenderPassRefreshFlags::None;
@@ -651,7 +678,14 @@ namespace Mogwai
             // Update scene and camera.
             if (mpScene)
             {
-                mpScene->update(pRenderContext, gpFramework->getGlobalClock().getTime());
+                auto sceneUpdates = mpScene->update(pRenderContext, getGlobalClock().getTime());
+
+                // Accumulate scene update flags for each graph.
+                // The update flags are passed to the active graph, or accumulated until a graph becomes active to avoid missing updates.
+                for (auto& g : mGraphs)
+                {
+                    g.sceneUpdates |= sceneUpdates;
+                }
             }
 
             executeActiveGraph(pRenderContext);
@@ -664,16 +698,19 @@ namespace Mogwai
                 pRenderContext->blit(pOutTex->getSRV(), pTargetFbo->getRenderTargetView(0));
             }
 
-            if (gpFramework->getSettings().getOption("PipedOutput:enable", false))
+            if (getSettings().getOption("PipedOutput:enable", false))
             {
                 // DEMO21 Opera -- this specific string should probably disappear
                 static std::string defaultFFMPEGCmd("ffmpeg -r 30 -f rawvideo -pix_fmt rgba -s 1920x1080 -i - "
                     "-threads 0 -preset medium -y -pix_fmt yuv420p -crf 20 -vf colorchannelmixer=rr=0:rb=1:br=1:bb=0 output.mp4");
                 if (!mPipedOutput)
                 {
-                    std::string ffmepgCmd = gpFramework->getSettings().getOption("PipedOutput:cmd", defaultFFMPEGCmd);
-
+                    std::string ffmepgCmd = getSettings().getOption("PipedOutput:cmd", defaultFFMPEGCmd);
+#if FALCOR_WINDOWS
                     mPipedOutput = _popen(ffmepgCmd.c_str(), "wb");
+#elif FALCOR_LINUX
+                    mPipedOutput = popen(ffmepgCmd.c_str(), "wb");
+#endif
 
                     if (!mPipedOutput)
                         logError("Failed to create piped output with cmd `{}`. Piped output disabled.", ffmepgCmd);
@@ -735,11 +772,11 @@ namespace Mogwai
         return mpScene ? mpScene->onGamepadState(gamepadState) : false;
     }
 
-    void Renderer::onResizeSwapChain(uint32_t width, uint32_t height)
+    void Renderer::onResize(uint32_t width, uint32_t height)
     {
         for (auto& g : mGraphs)
         {
-            g.pGraph->onResize(gpFramework->getTargetFbo().get());
+            g.pGraph->onResize(getTargetFbo().get());
             Scene::SharedPtr graphScene = g.pGraph->getScene();
             if (graphScene) graphScene->setCameraAspectRatio((float)width / (float)height);
         }
@@ -748,14 +785,11 @@ namespace Mogwai
 
     void Renderer::onHotReload(HotReloadFlags reloaded)
     {
-#if FALCOR_ENABLE_RENDER_PASS_HOT_RELOAD
-        RenderPassLibrary::instance().reloadLibraries(gpFramework->getRenderContext());
-#endif
         RenderGraph* pActiveGraph = getActiveGraph();
         if (pActiveGraph) pActiveGraph->onHotReload(reloaded);
     }
 
-    size_t Renderer::findGraph(std::string_view name)
+    size_t Renderer::findGraph(const std::string_view name)
     {
         for (size_t i = 0; i < mGraphs.size(); i++)
         {
@@ -775,19 +809,25 @@ int main(int argc, char** argv)
     args::ArgumentParser parser("Mogwai render application.");
     parser.helpParams.programName = "Mogwai";
     args::HelpFlag helpFlag(parser, "help", "Display this help menu.", {'h', "help"});
+    args::ValueFlag<std::string> deviceTypeFlag(parser, "d3d12|vulkan", "Graphics device type.", {'d', "device-type"});
+    args::Flag listGPUsFlag(parser, "", "List available GPUs", {"list-gpus"});
+    args::ValueFlag<uint32_t> gpuFlag(parser, "index", "Select specific GPU to use", {"gpu"});
+    args::Flag headlessFlag(parser, "", "Start without opening a window and handling user input.", {"headless"});
     args::ValueFlag<std::string> scriptFlag(parser, "path", "Python script file to run.", {'s', "script"});
     args::Flag deferredFlag(parser, "deferred", "The script is loaded deferred.", {"deferred"});
     args::ValueFlag<std::string> sceneFlag(parser, "path", "Scene file (for example, a .pyscene file) to open.", { 'S', "scene" });
+    args::ValueFlag<std::string> shaderCacheFlag(parser, "shadercache", "Path to the GFX shader cache.", { "shadercache" });
     args::ValueFlag<std::string> logfileFlag(parser, "path", "File to write log into.", {'l', "logfile"});
     args::ValueFlag<int32_t> verbosityFlag(parser, "verbosity", "Logging verbosity (0=disabled, 1=fatal errors, 2=errors, 3=warnings, 4=infos, 5=debugging)", { 'v', "verbosity" }, 4);
-    args::Flag silentFlag(parser, "", "Starts Mogwai with a minimized window and disables mouse/keyboard input as well as error message dialogs.", {"silent"});
+    args::Flag silentFlag(parser, "", "Start without opening a window and handling user input (deprecated: use --headless).", {"silent"});
+    args::Flag fullscreenFlag(parser, "", "Start in fullscreen mode instead of windowed.", {"fullscreen"});
     args::ValueFlag<uint32_t> widthFlag(parser, "pixels", "Initial window width.", {"width"});
     args::ValueFlag<uint32_t> heightFlag(parser, "pixels", "Initial window height.", {"height"});
     args::Flag useSceneCacheFlag(parser, "", "Use scene cache to improve scene load times.", {'c', "use-cache"});
     args::Flag rebuildSceneCacheFlag(parser, "", "Rebuild the scene cache.", {"rebuild-cache"});
-    args::Flag generateShaderDebugInfo(parser, "", "Generate shader debug info.", {'d', "debug-shaders"});
-    args::Flag enableDebugLayer(parser, "", "Enable debug layer (enabled by default in Debug build).", {"enable-debug-layer"});
-    args::Flag preciseProgram(parser, "", "Force all slang programs to run in precise mode", { "precise" });
+    args::Flag generateShaderDebugInfoFlag(parser, "", "Generate shader debug info.", {"debug-shaders"});
+    args::Flag enableDebugLayerFlag(parser, "", "Enable debug layer (enabled by default in Debug build).", {"enable-debug-layer"});
+    args::Flag preciseProgramFlag(parser, "", "Force all slang programs to run in precise mode", { "precise" });
 
     args::CompletionFlag completionFlag(parser, {"complete"});
 
@@ -834,45 +874,69 @@ int main(int argc, char** argv)
         Logger::setLogFilePath(logfile);
     }
 
-    Mogwai::Renderer::Options options;
+    SampleAppConfig config;
+    if (deviceTypeFlag)
+    {
+        if (args::get(deviceTypeFlag) == "d3d12")
+            config.deviceDesc.type = Device::Type::D3D12;
+        else if (args::get(deviceTypeFlag) == "vulkan")
+            config.deviceDesc.type = Device::Type::Vulkan;
+        else
+        {
+            std::cerr << "Invalid device type, use 'd3d12' or 'vulkan'" << std::endl;
+            return 1;
+        }
+    }
+    if (listGPUsFlag)
+    {
+        const auto gpus = Device::getGPUs(config.deviceDesc.type);
+        for (size_t i = 0; i < gpus.size(); ++i)
+            fmt::print("GPU {}: {}\n", i, gpus[i].name);
+        return 0;
+    }
+    if (gpuFlag)
+        config.deviceDesc.gpu = args::get(gpuFlag);
+    if (headlessFlag)
+        config.headless = true;
+    if (shaderCacheFlag)
+        config.deviceDesc.shaderCachePath = args::get(shaderCacheFlag);
+    if (enableDebugLayerFlag)
+        config.deviceDesc.enableDebugLayer = true;
+    if (generateShaderDebugInfoFlag)
+        config.generateShaderDebugInfo = true;
+    if (preciseProgramFlag)
+        config.shaderPreciseFloat = true;
 
+    config.windowDesc.title = "Mogwai";
+    if (widthFlag)
+        config.windowDesc.width = args::get(widthFlag);
+    if (heightFlag)
+        config.windowDesc.height = args::get(heightFlag);
+    if (fullscreenFlag)
+        config.windowDesc.mode = Window::WindowMode::Fullscreen;
+    if (silentFlag)
+    {
+        logWarning("The --silent flag is deprecated. Use --headless instead.");
+        config.headless = true;
+    }
+
+    Mogwai::Renderer::Options options;
     if (scriptFlag) options.scriptFile = args::get(scriptFlag);
     if (deferredFlag) options.deferredLoad = true;
     if (sceneFlag) options.sceneFile = args::get(sceneFlag);
     if (silentFlag) options.silentMode = true;
     if (useSceneCacheFlag) options.useSceneCache = true;
     if (rebuildSceneCacheFlag) options.rebuildSceneCache = true;
-    if (generateShaderDebugInfo) options.generateShaderDebugInfo = true;
 
     try
     {
-        msgBoxTitle("Mogwai");
-
-        IRenderer::UniquePtr pRenderer = std::make_unique<Mogwai::Renderer>(options);
-        SampleConfig config;
-        config.windowDesc.title = "Mogwai";
-        if (enableDebugLayer) config.deviceDesc.enableDebugLayer = true;
-        if (preciseProgram) Program::setForcedCompilerFlags({ Shader::CompilerFlags::FloatingPointModePrecise, Shader::CompilerFlags::FloatingPointModeFast });
-
-        if (silentFlag)
-        {
-            config.suppressInput = true;
-            config.showMessageBoxOnError = false;
-            config.windowDesc.mode = Window::WindowMode::Minimized;
-
-            // Set early to not show message box on errors that occur before setting the sample configuration.
-            setShowMessageBoxOnError(false);
-        }
-
-        if (widthFlag) config.windowDesc.width = args::get(widthFlag);
-        if (heightFlag) config.windowDesc.height = args::get(heightFlag);
-
-        Sample::run(config, pRenderer, 0, nullptr);
+        Mogwai::Renderer renderer(config, options);
+        return renderer.run();
     }
     catch (const std::exception& e)
     {
-        // Note: This can only trigger from the setup code above. Sample::run() handles all exceptions internally.
-        reportFatalError("Mogwai crashed unexpectedly...\n" + std::string(e.what()));
+        // Note: This can only trigger from the setup code above. SampleApp::run() handles all exceptions internally.
+        reportFatalError("Mogwai crashed unexpectedly...\n" + std::string(e.what()), false);
     }
-    return 0;
+    return 1;
 }

@@ -1,4 +1,4 @@
-add_renderpass(Utils)
+add_plugin(Utils)
 
 target_sources(Utils PRIVATE
     Utils.cpp
@@ -14,7 +14,5 @@ target_sources(Utils PRIVATE
 )
 
 target_copy_shaders(Utils RenderPasses/Utils)
-
-target_compile_definitions(Utils PRIVATE BUILD_GAUSSIAN_PASS)
 
 target_source_group(Utils "RenderPasses")

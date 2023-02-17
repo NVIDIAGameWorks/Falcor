@@ -27,12 +27,5 @@
  **************************************************************************/
 #pragma once
 
-#define FALCOR_ENABLE_LOGGER            1 // Set this to 1 to enable logging.
-#define FALCOR_ENABLE_PROFILER          1 // Set this to 1 to enable CPU/GPU profiling.
-
-/** Render pass hot reloading is currently unused, so we disable it here
-    to avoid creating/loading temporary copies of render pass DLL files.
-    This allows multiple instances of Falcor to be run in parallel on the
-    same machine, something we currently need for running image tests.
-*/
-#define FALCOR_ENABLE_RENDER_PASS_HOT_RELOAD 0
+#define FALCOR_ENABLE_LOGGER 1   // Set this to 1 to enable logging.
+#define FALCOR_ENABLE_PROFILER 1 // Set this to 1 to enable CPU/GPU profiling.

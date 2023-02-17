@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -43,11 +43,12 @@ namespace Falcor
 
         /** Create an alias table.
             The weights don't need to be normalized to sum up to 1.
+            \param[in] pDevice GPU device.
             \param[in] weights The weights we'd like to sample each entry proportional to.
             \param[in] rng The random number generator to use when creating the table.
             \returns The alias table.
         */
-        static SharedPtr create(std::vector<float> weights, std::mt19937& rng);
+        static SharedPtr create(Device* pDevice, std::vector<float> weights, std::mt19937& rng);
 
         /** Bind the alias table data to a given shader var.
             \param[in] var The shader variable to set the data into.
@@ -63,7 +64,7 @@ namespace Falcor
         double getWeightSum() const { return mWeightSum; }
 
     private:
-        AliasTable(std::vector<float> weights, std::mt19937& rng);
+        AliasTable(Device* pDevice, std::vector<float> weights, std::mt19937& rng);
 
         // Item structure for the mpItems buffer.
         struct Item

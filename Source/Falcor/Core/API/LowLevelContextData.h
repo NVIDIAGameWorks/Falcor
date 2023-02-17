@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,68 +28,79 @@
 #pragma once
 #include "GpuFence.h"
 #include "Handles.h"
-#include "Shared/D3D12Handles.h"
-#if FALCOR_HAS_D3D12
-#include "Shared/D3D12DescriptorPool.h"
-#endif
+#include "NativeHandle.h"
 #include "Core/Macros.h"
 #include <memory>
 
-
 namespace Falcor
 {
-    struct LowLevelContextApiData;
+// TODO(@skallweit): This type should be removed.
+// We only keep it to have LowLevelContextData::getCommandQueue() working as before.
+using CommandQueueHandle = gfx::ICommandQueue*;
 
-    class FALCOR_API LowLevelContextData
-    {
-    public:
-        using SharedPtr = std::shared_ptr<LowLevelContextData>;
-        using SharedConstPtr = std::shared_ptr<const LowLevelContextData>;
+class FALCOR_API LowLevelContextData
+{
+public:
+    /**
+     * Constructor. Throws an exception if creation failed.
+     * @param[in] pDevice Device.
+     * @param[in] pQueue Command queue.
+     */
+    LowLevelContextData(Device* pDevice, gfx::ICommandQueue* pQueue);
+    ~LowLevelContextData();
 
-        enum class CommandQueueType
-        {
-            Copy,
-            Compute,
-            Direct,
-            Count
-        };
+    gfx::ICommandQueue* getGfxCommandQueue() const { return mpGfxCommandQueue; }
+    gfx::ICommandBuffer* getGfxCommandBuffer() const { return mGfxCommandBuffer; }
 
-        ~LowLevelContextData();
+    /**
+     * Returns the native API handle for the command queue:
+     * - D3D12: ID3D12CommandQueue*
+     * - Vulkan: VkQueue (Vulkan)
+     */
+    NativeHandle getCommandQueueNativeHandle() const;
 
-        /** Create a new low-level context data object.
-            \param[in] type Command queue type.
-            \param[in] queue Command queue handle. Can be nullptr.
-            \return A new object, or throws an exception if creation failed.
-        */
-        static SharedPtr create(CommandQueueType type, CommandQueueHandle queue);
+    /**
+     * Returns the native API handle for the command buffer:
+     * - D3D12: ID3D12GraphicsCommandList*
+     * - Vulkan: VkCommandBuffer
+     */
+    NativeHandle getCommandBufferNativeHandle() const;
 
-        void flush();
+    // TODO(@skallweit): This should be removed.
+    CommandQueueHandle getCommandQueue() const { return mpGfxCommandQueue; }
+    const GpuFence::SharedPtr& getFence() const { return mpFence; }
 
-        const CommandListHandle& getCommandList() const { return mpList; }
-        const CommandQueueHandle& getCommandQueue() const { return mpQueue; }
-        const D3D12CommandListHandle& getD3D12CommandList() const;
-        const D3D12CommandQueueHandle& getD3D12CommandQueue() const;
-        const CommandAllocatorHandle& getCommandAllocator() const { return mpAllocator; }
-        const GpuFence::SharedPtr& getFence() const { return mpFence; }
-        LowLevelContextApiData* getApiData() const { return mpApiData.get(); }
+    void closeCommandBuffer();
+    void openCommandBuffer();
+    void flush();
 
-#ifdef FALCOR_D3D12
-        // Used in DXR
-        void setCommandList(CommandListHandle pList) { mpList = pList; }
-#endif
-#ifdef FALCOR_GFX
-        void closeCommandBuffer();
-        void openCommandBuffer();
-        void beginDebugEvent(const char* name);
-        void endDebugEvent();
-#endif
-    protected:
-        LowLevelContextData(CommandQueueType type, CommandQueueHandle queue);
-        std::unique_ptr<LowLevelContextApiData> mpApiData;
-        CommandQueueType mType;
-        CommandListHandle mpList;
-        CommandQueueHandle mpQueue; // Can be nullptr
-        CommandAllocatorHandle mpAllocator;
-        GpuFence::SharedPtr mpFence;
-    };
-}
+    gfx::IResourceCommandEncoder* getResourceCommandEncoder();
+    gfx::IComputeCommandEncoder* getComputeCommandEncoder();
+    gfx::IRenderCommandEncoder* getRenderCommandEncoder(
+        gfx::IRenderPassLayout* renderPassLayout,
+        gfx::IFramebuffer* framebuffer,
+        bool& newEncoder
+    );
+    gfx::IRayTracingCommandEncoder* getRayTracingCommandEncoder();
+    void closeEncoders();
+
+    void beginDebugEvent(const char* name);
+    void endDebugEvent();
+
+private:
+    Device* mpDevice;
+    gfx::ICommandQueue* mpGfxCommandQueue;
+    Slang::ComPtr<gfx::ICommandBuffer> mGfxCommandBuffer;
+    GpuFence::SharedPtr mpFence;
+
+    gfx::ICommandBuffer* mpCommandBuffer = nullptr;
+    bool mIsCommandBufferOpen = false;
+
+    gfx::IFramebuffer* mpFramebuffer = nullptr;
+    gfx::IRenderPassLayout* mpRenderPassLayout = nullptr;
+    gfx::IResourceCommandEncoder* mpResourceCommandEncoder = nullptr;
+    gfx::IComputeCommandEncoder* mpComputeCommandEncoder = nullptr;
+    gfx::IRenderCommandEncoder* mpRenderCommandEncoder = nullptr;
+    gfx::IRayTracingCommandEncoder* mpRayTracingCommandEncoder = nullptr;
+};
+} // namespace Falcor

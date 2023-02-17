@@ -1,8 +1,6 @@
 from falcor import *
 
 def render_graph_MVecRaster():
-    loadRenderPassLibrary("GBuffer.dll")
-
     g = RenderGraph("MVecRaster")
     g.addPass(createPass("GBufferRaster", {'samplePattern': SamplePattern.Stratified, 'sampleCount': 16}), "GBufferRaster")
 

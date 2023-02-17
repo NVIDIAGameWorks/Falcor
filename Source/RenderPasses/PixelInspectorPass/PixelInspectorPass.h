@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -35,13 +35,16 @@ using namespace Falcor;
 class PixelInspectorPass : public RenderPass
 {
 public:
-    using SharedPtr = std::shared_ptr<PixelInspectorPass>;
+    FALCOR_PLUGIN_CLASS(PixelInspectorPass, "PixelInspectorPass", {
+        "Inspect geometric and material properties at a given pixel.\n"
+        "Left-mouse click on a pixel to select it.\n"
+    });
 
-    static const Info kInfo;
+    using SharedPtr = std::shared_ptr<PixelInspectorPass>;
 
     /** Create a new object
     */
-    static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict = {});
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict = {});
 
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
@@ -50,7 +53,7 @@ public:
     virtual bool onMouseEvent(const MouseEvent& mouseEvent) override;
 
 private:
-    PixelInspectorPass();
+    PixelInspectorPass(std::shared_ptr<Device> pDevice);
 
     // Internal state
     Scene::SharedPtr                      mpScene;

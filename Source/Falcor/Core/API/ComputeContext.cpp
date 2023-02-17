@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,19 +26,82 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "ComputeContext.h"
+#include "GFXAPI.h"
+#include "Core/State/ComputeState.h"
+#include "Core/Program/ProgramVars.h"
 
 namespace Falcor
 {
-    ComputeContext::SharedPtr ComputeContext::create(CommandQueueHandle queue)
-    {
-        auto pCtx = SharedPtr(new ComputeContext(LowLevelContextData::CommandQueueType::Compute, queue));
-        pCtx->bindDescriptorHeaps(); // TODO: Should this be done here?
-        return pCtx;
-    }
+ComputeContext::ComputeContext(Device* pDevice, gfx::ICommandQueue* pQueue) : CopyContext(pDevice, pQueue)
+{
+    bindDescriptorHeaps(); // TODO: Should this be done here?
+}
 
-    void ComputeContext::flush(bool wait)
+ComputeContext::~ComputeContext() {}
+
+void ComputeContext::dispatch(ComputeState* pState, ComputeVars* pVars, const uint3& dispatchSize)
+{
+    pVars->prepareDescriptorSets(this);
+
+    auto computeEncoder = mpLowLevelData->getComputeCommandEncoder();
+    FALCOR_GFX_CALL(computeEncoder->bindPipelineWithRootObject(pState->getCSO(pVars)->getGfxPipelineState(), pVars->getShaderObject()));
+    computeEncoder->dispatchCompute((int)dispatchSize.x, (int)dispatchSize.y, (int)dispatchSize.z);
+    mCommandsPending = true;
+}
+
+void ComputeContext::dispatchIndirect(ComputeState* pState, ComputeVars* pVars, const Buffer* pArgBuffer, uint64_t argBufferOffset)
+{
+    pVars->prepareDescriptorSets(this);
+    resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
+
+    auto computeEncoder = mpLowLevelData->getComputeCommandEncoder();
+    FALCOR_GFX_CALL(computeEncoder->bindPipelineWithRootObject(pState->getCSO(pVars)->getGfxPipelineState(), pVars->getShaderObject()));
+    computeEncoder->dispatchComputeIndirect(pArgBuffer->getGfxBufferResource(), argBufferOffset);
+    mCommandsPending = true;
+}
+
+void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const float4& value)
+{
+    resourceBarrier(pUav->getResource().get(), Resource::State::UnorderedAccess);
+
+    auto resourceEncoder = mpLowLevelData->getResourceCommandEncoder();
+    gfx::ClearValue clearValue = {};
+    memcpy(clearValue.color.floatValues, &value, sizeof(float) * 4);
+    resourceEncoder->clearResourceView(pUav->getGfxResourceView(), &clearValue, gfx::ClearResourceViewFlags::FloatClearValues);
+    mCommandsPending = true;
+}
+
+void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const uint4& value)
+{
+    resourceBarrier(pUav->getResource().get(), Resource::State::UnorderedAccess);
+
+    auto resourceEncoder = mpLowLevelData->getResourceCommandEncoder();
+    gfx::ClearValue clearValue = {};
+    memcpy(clearValue.color.uintValues, &value, sizeof(uint32_t) * 4);
+    resourceEncoder->clearResourceView(pUav->getGfxResourceView(), &clearValue, gfx::ClearResourceViewFlags::None);
+    mCommandsPending = true;
+}
+
+void ComputeContext::clearUAVCounter(const Buffer::SharedPtr& pBuffer, uint32_t value)
+{
+    if (pBuffer->getUAVCounter())
     {
-        CopyContext::flush(wait);
-        mpLastBoundComputeVars = nullptr;
+        resourceBarrier(pBuffer->getUAVCounter().get(), Resource::State::UnorderedAccess);
+
+        auto resourceEncoder = mpLowLevelData->getResourceCommandEncoder();
+        gfx::ClearValue clearValue = {};
+        clearValue.color.uintValues[0] = clearValue.color.uintValues[1] = clearValue.color.uintValues[2] = clearValue.color.uintValues[3] =
+            value;
+        resourceEncoder->clearResourceView(
+            pBuffer->getUAVCounter()->getUAV()->getGfxResourceView(), &clearValue, gfx::ClearResourceViewFlags::None
+        );
+        mCommandsPending = true;
     }
 }
+
+void ComputeContext::flush(bool wait)
+{
+    CopyContext::flush(wait);
+    mpLastBoundComputeVars = nullptr;
+}
+} // namespace Falcor

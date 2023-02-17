@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,8 +29,6 @@
 #include "RenderGraph/RenderPassStandardFlags.h"
 #include "GBufferRT.h"
 
-const RenderPass::Info GBufferRT::kInfo { "GBufferRT", "Ray traced G-buffer generation pass." };
-
 namespace
 {
     const std::string kProgramRaytraceFile = "RenderPasses/GBuffer/GBuffer/GBufferRT.rt.slang";
@@ -58,23 +56,25 @@ namespace
     const std::string kVBufferName = "vbuffer";
     const ChannelList kGBufferExtraChannels =
     {
-        { kVBufferName,                 "gVBuffer",                     "Visibility buffer",                                    true /* optional */, ResourceFormat::Unknown /* set at runtime */ },
-        { "depth",                      "gDepth",                       "Depth buffer (NDC)",                                   true /* optional */, ResourceFormat::R32Float     },
-        { "linearZ",                    "gLinearZ",                     "Linear Z and slope",                                   true /* optional */, ResourceFormat::RG32Float    },
-        { "mvecW",                      "gMotionVectorW",               "Motion vector in world space",                         true /* optional */, ResourceFormat::RGBA16Float  },
-        { "normWRoughnessMaterialID",   "gNormalWRoughnessMaterialID",  "Normal in world space, roughness, and material ID",    true /* optional */, ResourceFormat::RGB10A2Unorm },
-        { "diffuseOpacity",             "gDiffOpacity",                 "Diffuse reflection albedo and opacity",                true /* optional */, ResourceFormat::RGBA32Float  },
-        { "specRough",                  "gSpecRough",                   "Specular reflectance and roughness",                   true /* optional */, ResourceFormat::RGBA32Float  },
-        { "emissive",                   "gEmissive",                    "Emissive color",                                       true /* optional */, ResourceFormat::RGBA32Float  },
-        { "viewW",                      "gViewW",                       "View direction in world space",                        true /* optional */, ResourceFormat::RGBA32Float  }, // TODO: Switch to packed 2x16-bit snorm format.
-        { "time",                       "gTime",                        "Per-pixel execution time",                             true /* optional */, ResourceFormat::R32Uint      },
-        { "disocclusion",               "gDisocclusion",                "Disocclusion mask",                                    true /* optional */, ResourceFormat::R32Float     },
+        { kVBufferName,                 "gVBuffer",                     "Visibility buffer",                                       true /* optional */, ResourceFormat::Unknown /* set at runtime */ },
+        { "depth",                      "gDepth",                       "Depth buffer (NDC)",                                      true /* optional */, ResourceFormat::R32Float     },
+        { "linearZ",                    "gLinearZ",                     "Linear Z and slope",                                      true /* optional */, ResourceFormat::RG32Float    },
+        { "mvecW",                      "gMotionVectorW",               "Motion vector in world space",                            true /* optional */, ResourceFormat::RGBA16Float  },
+        { "normWRoughnessMaterialID",   "gNormalWRoughnessMaterialID",  "Guide normal in world space, roughness, and material ID", true /* optional */, ResourceFormat::RGB10A2Unorm },
+        { "guideNormalW",               "gGuideNormalW",                "Guide normal in world space",                             true /* optional */, ResourceFormat::RGBA32Float  },
+        { "diffuseOpacity",             "gDiffOpacity",                 "Diffuse reflection albedo and opacity",                   true /* optional */, ResourceFormat::RGBA32Float  },
+        { "specRough",                  "gSpecRough",                   "Specular reflectance and roughness",                      true /* optional */, ResourceFormat::RGBA32Float  },
+        { "emissive",                   "gEmissive",                    "Emissive color",                                          true /* optional */, ResourceFormat::RGBA32Float  },
+        { "viewW",                      "gViewW",                       "View direction in world space",                           true /* optional */, ResourceFormat::RGBA32Float  }, // TODO: Switch to packed 2x16-bit snorm format.
+        { "time",                       "gTime",                        "Per-pixel execution time",                                true /* optional */, ResourceFormat::R32Uint      },
+        { "disocclusion",               "gDisocclusion",                "Disocclusion mask",                                       true /* optional */, ResourceFormat::R32Float     },
+        { "mask",                       "gMask",                        "Mask",                                                    true /* optional */, ResourceFormat::R32Float     },
     };
 };
 
-GBufferRT::SharedPtr GBufferRT::create(RenderContext* pRenderContext, const Dictionary& dict)
+GBufferRT::SharedPtr GBufferRT::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
-    return SharedPtr(new GBufferRT(dict));
+    return SharedPtr(new GBufferRT(std::move(pDevice), dict));
 }
 
 RenderPassReflection GBufferRT::reflect(const CompileData& compileData)
@@ -236,8 +236,8 @@ void GBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData&
 
         // Add hit groups for for other procedural primitives here.
 
-        mRaytrace.pProgram = RtProgram::create(desc, defines);
-        mRaytrace.pVars = RtProgramVars::create(mRaytrace.pProgram, sbt);
+        mRaytrace.pProgram = RtProgram::create(mpDevice, desc, defines);
+        mRaytrace.pVars = RtProgramVars::create(mpDevice, mRaytrace.pProgram, sbt);
 
         // Bind static resources.
         ShaderVar var = mRaytrace.pVars->getRootVar();
@@ -255,11 +255,6 @@ void GBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData&
 
 void GBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    if (!gpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1))
-    {
-        throw RuntimeError("GBufferRT: Raytracing Tier 1.1 is not supported by the current device");
-    }
-
     // Create compute pass.
     if (!mpComputePass)
     {
@@ -273,7 +268,7 @@ void GBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
         defines.add(mpSampleGenerator->getDefines());
         defines.add(getShaderDefines(renderData));
 
-    	mpComputePass = ComputePass::create(desc, defines, true);
+    	mpComputePass = ComputePass::create(mpDevice, desc, defines, true);
 
         // Bind static resources
         ShaderVar var = mpComputePass->getRootVar();
@@ -312,6 +307,7 @@ Program::DefineList GBufferRT::getShaderDefines(const RenderData& renderData) co
 
 void GBufferRT::setShaderData(const ShaderVar& var, const RenderData& renderData)
 {
+    FALCOR_ASSERT(mpScene && mpScene->getCamera());
     var["gGBufferRT"]["frameDim"] = mFrameDim;
     var["gGBufferRT"]["invFrameDim"] = mInvFrameDim;
     var["gGBufferRT"]["frameCount"] = mFrameCount;
@@ -327,13 +323,18 @@ void GBufferRT::setShaderData(const ShaderVar& var, const RenderData& renderData
     for (const auto& channel : kGBufferExtraChannels) bind(channel);
 }
 
-GBufferRT::GBufferRT(const Dictionary& dict)
-    : GBuffer(kInfo)
+GBufferRT::GBufferRT(std::shared_ptr<Device> pDevice, const Dictionary& dict)
+    : GBuffer(std::move(pDevice))
 {
+    if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1))
+    {
+        throw RuntimeError("GBufferRT: Raytracing Tier 1.1 is not supported by the current device");
+    }
+
     parseDictionary(dict);
 
     // Create random engine
-    mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_DEFAULT);
+    mpSampleGenerator = SampleGenerator::create(mpDevice, SAMPLE_GENERATOR_DEFAULT);
 }
 
 void GBufferRT::parseDictionary(const Dictionary& dict)

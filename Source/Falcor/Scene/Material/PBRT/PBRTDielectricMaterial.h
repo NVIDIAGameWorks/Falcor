@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -34,9 +34,9 @@ namespace Falcor
         surface has both (uncolored) reflection and refraction lobes.
         The material can be act like an ideal smooth surface
         (if roughness is 0), or a (potentially anisotropic) GGX microfacet.
-        
+
         This class perfectly matches the PBRT "dielectric" material.
-        
+
         Texture channel layout:
 
             Specular
@@ -57,7 +57,7 @@ namespace Falcor
         /** Create a new PBRTDielectric material.
             \param[in] name The material name.
         */
-        static SharedPtr create(const std::string& name = "");
+        static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& name = "");
 
         Program::ShaderModuleList getShaderModules() const override;
         Program::TypeConformanceList getTypeConformances() const override;
@@ -71,7 +71,7 @@ namespace Falcor
         float2 getRoughness() const { return float2(mData.specular[0], mData.specular[1]); }
 
     protected:
-        PBRTDielectricMaterial(const std::string& name);
+        PBRTDielectricMaterial(std::shared_ptr<Device> pDevice, const std::string& name);
 
         void renderSpecularUI(Gui::Widgets& widget) override;
     };

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,9 +27,6 @@
  **************************************************************************/
 #include "OptixDenoiser.h"
 #include "CudaUtils.h"
-#include "RenderGraph/RenderPassLibrary.h"
-
-const RenderPass::Info OptixDenoiser_::kInfo { "OptixDenoiser", "Apply the OptiX AI Denoiser." };
 
 namespace
 {
@@ -65,20 +62,14 @@ static void regOptixDenoiser(pybind11::module& m)
     model.value("Temporal", OptixDenoiserModelKind::OPTIX_DENOISER_MODEL_KIND_TEMPORAL);
 }
 
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" FALCOR_API_EXPORT const char* getProjDir()
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
-    return PROJECT_DIR;
-}
-
-extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
-{
-    lib.registerPass(OptixDenoiser_::kInfo, OptixDenoiser_::create);
+    registry.registerClass<RenderPass, OptixDenoiser_>();
     ScriptBindings::registerBinding(regOptixDenoiser);
 }
 
-OptixDenoiser_::OptixDenoiser_(const Dictionary& dict)
-    : RenderPass(kInfo)
+OptixDenoiser_::OptixDenoiser_(std::shared_ptr<Device> pDevice, const Dictionary& dict)
+    : RenderPass(std::move(pDevice))
 {
     for (const auto& [key, value] : dict)
     {
@@ -93,16 +84,16 @@ OptixDenoiser_::OptixDenoiser_(const Dictionary& dict)
         else logWarning("Unknown field '{}' in a OptixDenoiser dictionary.", key);
     }
 
-    mpConvertTexToBuf = ComputePass::create(kConvertTexToBufFile, "main");
-    mpConvertNormalsToBuf = ComputePass::create(kConvertNormalsToBufFile, "main");
-    mpConvertMotionVectors = ComputePass::create(kConvertMotionVecFile, "main");
-    mpConvertBufToTex = FullScreenPass::create(kConvertBufToTexFile);
-    mpFbo = Fbo::create();
+    mpConvertTexToBuf = ComputePass::create(mpDevice, kConvertTexToBufFile, "main");
+    mpConvertNormalsToBuf = ComputePass::create(mpDevice, kConvertNormalsToBufFile, "main");
+    mpConvertMotionVectors = ComputePass::create(mpDevice, kConvertMotionVecFile, "main");
+    mpConvertBufToTex = FullScreenPass::create(mpDevice, kConvertBufToTexFile);
+    mpFbo = Fbo::create(mpDevice.get());
 }
 
-OptixDenoiser_::SharedPtr OptixDenoiser_::create(RenderContext* pRenderContext, const Dictionary& dict)
+OptixDenoiser_::SharedPtr OptixDenoiser_::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
-    return SharedPtr(new OptixDenoiser_(dict));
+    return SharedPtr(new OptixDenoiser_(std::move(pDevice), dict));
 }
 
 Dictionary OptixDenoiser_::getScriptingDictionary()
@@ -258,7 +249,7 @@ void OptixDenoiser_::allocateStagingBuffer(RenderContext* pRenderContext, Intero
     if (interop.devicePtr) freeSharedDevicePtr((void*)interop.devicePtr);
 
     // Create a new DX <-> CUDA shared buffer using the Falcor API to create, then find its CUDA pointer.
-    interop.buffer = Buffer::createTyped(falcorFormat,
+    interop.buffer = Buffer::createTyped(mpDevice.get(), falcorFormat,
         mBufferSize.x * mBufferSize.y,
         Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess | Resource::BindFlags::RenderTarget | Resource::BindFlags::Shared);
     interop.devicePtr = (CUdeviceptr)exportBufferToCudaDevice(interop.buffer);

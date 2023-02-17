@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,10 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "ErrorMeasurePass.h"
-#include "RenderGraph/RenderPassLibrary.h"
 #include <sstream>
-
-const RenderPass::Info ErrorMeasurePass::kInfo { "ErrorMeasurePass", "Measures error with respect to a reference image." };
 
 namespace
 {
@@ -64,15 +61,9 @@ static void regErrorMeasurePass(pybind11::module& m)
     op.value("Difference", ErrorMeasurePass::OutputId::Difference);
 }
 
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" FALCOR_API_EXPORT const char* getProjDir()
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
-    return PROJECT_DIR;
-}
-
-extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
-{
-    lib.registerPass(ErrorMeasurePass::kInfo, ErrorMeasurePass::create);
+    registry.registerClass<RenderPass, ErrorMeasurePass>();
     ScriptBindings::registerBinding(regErrorMeasurePass);
 }
 
@@ -88,13 +79,13 @@ const Gui::RadioButtonGroup ErrorMeasurePass::sOutputSelectionButtonsSourceOnly 
     { (uint32_t)OutputId::Source, "Source", true }
 };
 
-ErrorMeasurePass::SharedPtr ErrorMeasurePass::create(RenderContext* pRenderContext, const Dictionary& dict)
+ErrorMeasurePass::SharedPtr ErrorMeasurePass::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
-    return SharedPtr(new ErrorMeasurePass(dict));
+    return SharedPtr(new ErrorMeasurePass(std::move(pDevice), dict));
 }
 
-ErrorMeasurePass::ErrorMeasurePass(const Dictionary& dict)
-    : RenderPass(kInfo)
+ErrorMeasurePass::ErrorMeasurePass(std::shared_ptr<Device> pDevice, const Dictionary& dict)
+    : RenderPass(std::move(pDevice))
 {
     for (const auto& [key, value] : dict)
     {
@@ -117,8 +108,8 @@ ErrorMeasurePass::ErrorMeasurePass(const Dictionary& dict)
     loadReference();
     openMeasurementsFile();
 
-    mpParallelReduction = ComputeParallelReduction::create();
-    mpErrorMeasurerPass = ComputePass::create(kErrorComputationShaderFile);
+    mpParallelReduction = std::make_unique<ParallelReduction>(mpDevice);
+    mpErrorMeasurerPass = ComputePass::create(mpDevice, kErrorComputationShaderFile);
 }
 
 Dictionary ErrorMeasurePass::getScriptingDictionary()
@@ -158,7 +149,7 @@ void ErrorMeasurePass::execute(RenderContext* pRenderContext, const RenderData& 
     if (!mpDifferenceTexture || mpDifferenceTexture->getWidth() != width ||
         mpDifferenceTexture->getHeight() != height)
     {
-        mpDifferenceTexture = Texture::create2D(width, height, ResourceFormat::RGBA32Float, 1, 1, nullptr,
+        mpDifferenceTexture = Texture::create2D(mpDevice.get(), width, height, ResourceFormat::RGBA32Float, 1, 1, nullptr,
                                                 Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
         FALCOR_ASSERT(mpDifferenceTexture);
     }
@@ -219,7 +210,7 @@ void ErrorMeasurePass::runDifferencePass(RenderContext* pRenderContext, const Re
 void ErrorMeasurePass::runReductionPasses(RenderContext* pRenderContext, const RenderData& renderData)
 {
     float4 error;
-    mpParallelReduction->execute(pRenderContext, mpDifferenceTexture, ComputeParallelReduction::Type::Sum, &error);
+    mpParallelReduction->execute(pRenderContext, mpDifferenceTexture, ParallelReduction::Type::Sum, &error);
 
     const float pixelCountf = static_cast<float>(mpDifferenceTexture->getWidth() * mpDifferenceTexture->getHeight());
     mMeasurements.error = error / pixelCountf;
@@ -359,7 +350,7 @@ void ErrorMeasurePass::loadReference()
     if (mReferenceImagePath.empty()) return;
 
     // TODO: it would be nice to also be able to take the reference image as an input.
-    mpReferenceTexture = Texture::createFromFile(mReferenceImagePath, false /* no MIPs */, false /* linear color */);
+    mpReferenceTexture = Texture::createFromFile(mpDevice.get(), mReferenceImagePath, false /* no MIPs */, false /* linear color */);
     if (!mpReferenceTexture)
     {
         reportError(fmt::format("Failed to load texture from '{}'", mReferenceImagePath));

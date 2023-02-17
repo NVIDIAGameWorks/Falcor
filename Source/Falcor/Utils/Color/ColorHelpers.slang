@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -178,6 +178,130 @@ inline float computeMichelsonContrast(float iMin, float iMax)
 {
     if (iMin == 0.0f && iMax == 0.0f) return 0.0f;
     else return (iMax - iMin) / (iMax + iMin);
+}
+
+static const float3 kD65ReferenceIlluminant = float3(0.950428545, 1.000000000, 1.088900371);
+static const float3 kInvD65ReferenceIlluminant = float3(1.052156925, 1.000000000, 0.918357670);
+
+inline float3 linearRGBToXYZ(float3 linColor)
+{
+    // Source: https://www.image-engineering.de/library/technotes/958-how-to-convert-between-srgb-and-ciexyz
+    // Assumes D65 standard illuminant.
+    const float a11 = 10135552.0f / 24577794.0f;
+    const float a12 = 8788810.0f / 24577794.0f;
+    const float a13 = 4435075.0f / 24577794.0f;
+    const float a21 = 2613072.0f / 12288897.0f;
+    const float a22 = 8788810.0f / 12288897.0f;
+    const float a23 = 887015.0f / 12288897.0f;
+    const float a31 = 1425312.0f / 73733382.0f;
+    const float a32 = 8788810.0f / 73733382.0f;
+    const float a33 = 70074185.0f / 73733382.0f;
+
+    float3 xyzColor;
+    xyzColor.r = a11 * linColor.r + a12 * linColor.g + a13 * linColor.b;
+    xyzColor.g = a21 * linColor.r + a22 * linColor.g + a23 * linColor.b;
+    xyzColor.b = a31 * linColor.r + a32 * linColor.g + a33 * linColor.b;
+
+    return xyzColor;
+}
+
+inline float3 XYZToLinearRGB(float3 xyzColor)
+{
+    // Return values in linear RGB, assuming D65 standard illuminant.
+    const float a11 = 3.241003275f;
+    const float a12 = -1.537398934f;
+    const float a13 = -0.498615861f;
+    const float a21 = -0.969224334f;
+    const float a22 = 1.875930071f;
+    const float a23 = 0.041554224f;
+    const float a31 = 0.055639423f;
+    const float a32 = -0.204011202f;
+    const float a33 = 1.057148933f;
+
+    float3 linColor;
+    linColor.r = a11 * xyzColor.r + a12 * xyzColor.g + a13 * xyzColor.b;
+    linColor.g = a21 * xyzColor.r + a22 * xyzColor.g + a23 * xyzColor.b;
+    linColor.b = a31 * xyzColor.r + a32 * xyzColor.g + a33 * xyzColor.b;
+
+    return linColor;
+}
+
+inline float3 XYZToCIELab(float3 xyzColor, const float3 invReferenceIlluminant = kInvD65ReferenceIlluminant)
+{
+    // The default illuminant is D65.
+    float3 tmpColor = xyzColor * invReferenceIlluminant;
+
+    float delta = 6.0f / 29.0f;
+    float deltaSquare = delta * delta;
+    float deltaCube = delta * deltaSquare;
+    float factor = 1.0f / (3.0f * deltaSquare);
+    float term = 4.0f / 29.0f;
+
+    tmpColor.r = (tmpColor.r > deltaCube ? pow(tmpColor.r, 1.0f / 3.0f) : factor * tmpColor.r + term);
+    tmpColor.g = (tmpColor.g > deltaCube ? pow(tmpColor.g, 1.0f / 3.0f) : factor * tmpColor.g + term);
+    tmpColor.b = (tmpColor.b > deltaCube ? pow(tmpColor.b, 1.0f / 3.0f) : factor * tmpColor.b + term);
+
+    float3 labColor;
+    labColor.r = 116.0f * tmpColor.g - 16.0f;
+    labColor.g = 500.0f * (tmpColor.r - tmpColor.g);
+    labColor.b = 200.0f * (tmpColor.g - tmpColor.b);
+
+    return labColor;
+}
+
+inline float3 CIELabToXYZ(float3 labColor, const float3 referenceIlluminant = kD65ReferenceIlluminant)
+{
+    // The default illuminant is D65.
+    float Y = (labColor.r + 16.0f) / 116.0f;
+    float X = labColor.g / 500.0f + Y;
+    float Z = Y - labColor.b / 200.0f;
+
+    float delta = 6.0f / 29.0f;
+    float factor = 3.0f * delta * delta;
+    float term = 4.0f / 29.0f;
+    X = ((X > delta) ? X * X * X : (X - term) * factor);
+    Y = ((Y > delta) ? Y * Y * Y : (Y - term) * factor);
+    Z = ((Z > delta) ? Z * Z * Z : (Z - term) * factor);
+
+    return float3(X, Y, Z) * referenceIlluminant;
+}
+
+inline float3 XYZToYCxCz(float3 xyzColor, const float3 invReferenceIlluminant = kInvD65ReferenceIlluminant)
+{
+    // The default illuminant is D65.
+    float3 tmpColor = xyzColor * invReferenceIlluminant;
+
+    float3 ycxczColor;
+    ycxczColor.x = 116.0f * tmpColor.g - 16.0f;
+    ycxczColor.y = 500.0f * (tmpColor.r - tmpColor.g);
+    ycxczColor.z = 200.0f * (tmpColor.g - tmpColor.b);
+
+    return ycxczColor;
+}
+
+inline float3 YCxCzToXYZ(float3 ycxczColor, const float3 referenceIlluminant = kD65ReferenceIlluminant)
+{
+    // The default illuminant is D65.
+    float Y = (ycxczColor.r + 16.0f) / 116.0f;
+    float X = ycxczColor.g / 500.0f + Y;
+    float Z = Y - ycxczColor.b / 200.0f;
+
+    return float3(X, Y, Z) * referenceIlluminant;
+}
+
+inline float3 linearRGBToCIELab(float3 lColor)
+{
+    return XYZToCIELab(linearRGBToXYZ(lColor));
+}
+
+inline float3 YCxCzToLinearRGB(float3 ycxczColor)
+{
+    return XYZToLinearRGB(YCxCzToXYZ(ycxczColor));
+}
+
+inline float3 linearRGBToYCxCz(float3 lColor)
+{
+    return XYZToYCxCz(linearRGBToXYZ(lColor));
 }
 
 END_NAMESPACE_FALCOR

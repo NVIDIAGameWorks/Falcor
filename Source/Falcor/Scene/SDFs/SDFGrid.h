@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -91,6 +91,7 @@ namespace Falcor
             All = AABBsChanged | BuffersReallocated,
         };
 
+        SDFGrid(std::shared_ptr<Device> pDevice);
         virtual ~SDFGrid() = default;
 
         /** Set SDF primitives to be used to construct the SDF grid.
@@ -138,7 +139,7 @@ namespace Falcor
             \param[in] path A path to the file that should store the values.
             \return true if the values could be written, otherwise false.
         */
-        bool writeValuesFromPrimitivesToFile(const std::filesystem::path& path, RenderContext* pRenderContext = nullptr);
+        bool writeValuesFromPrimitivesToFile(const std::filesystem::path& path, RenderContext* pRenderContext);
 
         /** Reads primitives from file and initializes the SDF grid.
             \param[in] path The path to the input file.
@@ -240,6 +241,8 @@ namespace Falcor
 
         void updatePrimitivesBuffer();
 
+        std::shared_ptr<Device> mpDevice;
+
         std::string             mName;
         uint32_t                mGridWidth = 0;
 
@@ -260,4 +263,23 @@ namespace Falcor
     };
 
     FALCOR_ENUM_CLASS_OPERATORS(SDFGrid::UpdateFlags);
+
+    inline std::string to_string(SDFGrid::Type t)
+    {
+#define a2s(gt_)             \
+    case SDFGrid::Type::gt_: \
+        return #gt_;
+
+        switch (t)
+        {
+            a2s(None);
+            a2s(NormalizedDenseGrid);
+            a2s(SparseVoxelSet);
+            a2s(SparseBrickSet);
+            a2s(SparseVoxelOctree);
+        default:
+            FALCOR_UNREACHABLE();
+            return "";
+        }
+    }
 }

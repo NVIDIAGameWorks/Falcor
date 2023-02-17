@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,37 +28,55 @@
 #include "RenderGraph.h"
 #include "RenderGraphIR.h"
 #include "RenderGraphImportExport.h"
-#include "RenderPassLibrary.h"
 #include "RenderGraphCompiler.h"
-#include "Core/Renderer.h"
+#include "Core/API/Device.h"
 #include "Utils/Algorithm/DirectedGraphTraversal.h"
+#include "Utils/Scripting/Scripting.h"
 #include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
 {
-    std::vector<RenderGraph*> gRenderGraphs;
     const FileDialogFilterVec RenderGraph::kFileExtensionFilters = { { "py", "Render Graph Files"} };
 
-    RenderGraph::SharedPtr RenderGraph::create(const std::string& name)
+    RenderGraph::SharedPtr RenderGraph::create(std::shared_ptr<Device> pDevice, const std::string& name)
     {
-        return SharedPtr(new RenderGraph(name));
+        return SharedPtr(new RenderGraph(std::move(pDevice), name));
     }
 
-    RenderGraph::RenderGraph(const std::string& name)
-        : mName(name)
+    RenderGraph::SharedPtr RenderGraph::createFromFile(std::shared_ptr<Device> pDevice, const std::filesystem::path& path)
     {
-        if (gpFramework == nullptr) throw RuntimeError("Can't construct RenderGraph - framework is not initialized");
+        using namespace pybind11::literals;
+
+        RenderGraph::SharedPtr pGraph;
+
+        // Setup a temporary scripting context that defines a local variable 'm' that
+        // has a 'addGraph' function exposed. This mimmicks the old Mogwai Python API
+        // allowing to load python based render graph scripts.
+        auto addGraph = pybind11::cpp_function([&pGraph] (RenderGraph::SharedPtr graph) {
+            pGraph = graph;
+        });
+
+        auto SimpleNamespace = pybind11::module_::import("types").attr("SimpleNamespace");
+        pybind11::object m = SimpleNamespace("addGraph"_a = addGraph);
+
+        Scripting::Context ctx;
+        ctx.setObject("m", m);
+
+        Scripting::runScriptFromFile(path, ctx);
+
+        return pGraph;
+    }
+
+    RenderGraph::RenderGraph(std::shared_ptr<Device> pDevice, const std::string& name)
+        : mpDevice(std::move(pDevice))
+        , mName(name)
+    {
         mpGraph = DirectedGraph::create();
         mpPassDictionary = InternalDictionary::create();
-        gRenderGraphs.push_back(this);
-        onResize(gpFramework->getTargetFbo().get());
     }
 
     RenderGraph::~RenderGraph()
     {
-        auto it = std::find(gRenderGraphs.begin(), gRenderGraphs.end(), this);
-        FALCOR_ASSERT(it != gRenderGraphs.end());
-        gRenderGraphs.erase(it);
     }
 
     uint32_t RenderGraph::getPassIndex(const std::string& name) const
@@ -71,10 +89,12 @@ namespace Falcor
     {
         if (mpScene == pScene) return;
 
+        // @skallweit: check that scene resides on the same GPU device
+
         mpScene = pScene;
         for (auto& it : mNodeData)
         {
-            it.second.pPass->setScene(gpDevice->getRenderContext(), pScene);
+            it.second.pPass->setScene(mpDevice->getRenderContext(), pScene);
         }
         mRecompile = true;
     }
@@ -97,7 +117,7 @@ namespace Falcor
         pPass->mPassChangedCB = [this]() { mRecompile = true; };
         pPass->mName = passName;
 
-        if (mpScene) pPass->setScene(gpDevice->getRenderContext(), mpScene);
+        if (mpScene) pPass->setScene(mpDevice->getRenderContext(), mpScene);
         mNodeData[passIndex] = { passName, pPass };
         mRecompile = true;
         return passIndex;
@@ -145,7 +165,7 @@ namespace Falcor
         pPass->applySettings(dict);
     }
 
-    void RenderGraph::updatePass(RenderContext* pRenderContext, const std::string& passName, const Dictionary& dict)
+    void RenderGraph::updatePass(const std::string& passName, const Dictionary& dict)
     {
         uint32_t index = getPassIndex(passName);
         const auto pPassIt = mNodeData.find(index);
@@ -159,12 +179,12 @@ namespace Falcor
         // Recreate pass without changing graph using new dictionary
         auto pOldPass = pPassIt->second.pPass;
         std::string passTypeName = pOldPass->getType();
-        auto pPass = RenderPassLibrary::instance().createPass(pRenderContext, passTypeName.c_str(), dict);
+        auto pPass = RenderPass::create(passTypeName, mpDevice, dict);
         pPassIt->second.pPass = pPass;
         pPass->mPassChangedCB = [this]() { mRecompile = true; };
         pPass->mName = pOldPass->getName();
 
-        if (mpScene) pPass->setScene(gpDevice->getRenderContext(), mpScene);
+        if (mpScene) pPass->setScene(mpDevice->getRenderContext(), mpScene);
         mRecompile = true;
     }
 
@@ -173,7 +193,7 @@ namespace Falcor
         uint32_t index = getPassIndex(name);
         if (index == kInvalidIndex)
         {
-            static RenderPass::SharedPtr pNull;
+            static const RenderPass::SharedPtr pNull;
             reportError("RenderGraph::getRenderPass() - can't find a pass named '" + name + "'");
             return pNull;
         }
@@ -656,9 +676,19 @@ namespace Falcor
             src.getSampleCount() == dst.getSampleCount();
     }
 
-    void RenderGraph::renderUI(Gui::Widgets& widget)
+    void RenderGraph::renderUI(RenderContext* pRenderContext, Gui::Widgets& widget)
     {
-        if (mpExe) mpExe->renderUI(widget);
+        if (mpExe) mpExe->renderUI(pRenderContext, widget);
+    }
+
+    void RenderGraph::onSceneUpdates(RenderContext* pRenderContext, Scene::UpdateFlags sceneUpdates)
+    {
+        // Notify all passes in graph about scene updates.
+        // Note we don't rely on `mpExe` here because it is not created until the graph is compiled in `execute()`.
+        for (auto& it : mNodeData)
+        {
+            it.second.pPass->onSceneUpdates(pRenderContext, sceneUpdates);
+        }
     }
 
     bool RenderGraph::onMouseEvent(const MouseEvent& mouseEvent)
@@ -683,12 +713,28 @@ namespace Falcor
         FALCOR_SCRIPT_BINDING_DEPENDENCY(Formats);
 
         pybind11::class_<RenderGraph, RenderGraph::SharedPtr> renderGraph(m, "RenderGraph");
-        renderGraph.def(pybind11::init(&RenderGraph::create));
+
+        auto create = [] (const std::string& name)
+        {
+            auto pDevice = getGlobalDevice();
+            if (!pDevice)
+                throw RuntimeError("Can't construct RenderGraph - GPU device is not initialized");
+            return RenderGraph::create(pDevice, name);
+        };
+        renderGraph.def(pybind11::init(create), "name"_a); // PYTHONDEPRECATED
+        auto createFromFile = [] (const std::filesystem::path& path)
+        {
+            auto pDevice = getGlobalDevice();
+            if (!pDevice)
+                throw RuntimeError("Can't construct RenderGraph - GPU device is not initialized");
+            return RenderGraph::createFromFile(pDevice, path);
+        };
+        renderGraph.def_static("createFromFile", createFromFile, "path"_a); // PYTHONDEPRECATED
         renderGraph.def_property("name", &RenderGraph::getName, &RenderGraph::setName);
-        renderGraph.def(RenderGraphIR::kAddPass, &RenderGraph::addPass, "pass"_a, "name"_a);
+        renderGraph.def(RenderGraphIR::kAddPass, &RenderGraph::addPass, "pass_"_a, "name"_a);
         renderGraph.def(RenderGraphIR::kRemovePass, &RenderGraph::removePass, "name"_a);
         renderGraph.def(RenderGraphIR::kAddEdge, &RenderGraph::addEdge, "src"_a, "dst"_a);
-        renderGraph.def(RenderGraphIR::kRemoveEdge, pybind11::overload_cast<const std::string&, const std::string&>(&RenderGraph::removeEdge), "src"_a, "src"_a);
+        renderGraph.def(RenderGraphIR::kRemoveEdge, pybind11::overload_cast<const std::string&, const std::string&>(&RenderGraph::removeEdge), "src"_a, "dst"_a);
         renderGraph.def(RenderGraphIR::kMarkOutput, &RenderGraph::markOutput, "name"_a, "mask"_a = TextureChannelFlags::RGB);
         renderGraph.def(RenderGraphIR::kUnmarkOutput, &RenderGraph::unmarkOutput, "name"_a);
         renderGraph.def("getPass", &RenderGraph::getPass, "name"_a);
@@ -705,23 +751,27 @@ namespace Falcor
         renderPass.def("getDictionary", getDictionary);
 
         // RenderPassLibrary
-        const auto& createRenderPass = [](const std::string& passName, pybind11::dict d = {})
+        const auto& createRenderPass = [](const std::string& type, pybind11::dict d = {})
         {
-            auto pPass = RenderPassLibrary::instance().createPass(gpDevice->getRenderContext(), passName, Dictionary(d));
-            if (!pPass) throw RuntimeError("Can't create a render pass named '{}'. Make sure the required DLL was loaded.", passName);
+            std::shared_ptr<Device> pDevice = getGlobalDevice();
+            if (!pDevice)
+                throw RuntimeError("Can't create render pass without a device being initialized.");
+            auto pPass = RenderPass::create(type, pDevice, Dictionary(d));
+            if (!pPass)
+                throw RuntimeError("Can't create a render pass of type '{}'. Make sure the required plugin library was loaded.", type);
             return pPass;
         };
-        m.def("createPass", createRenderPass, "name"_a, "dict"_a = pybind11::dict());
+        m.def("createPass", createRenderPass, "type"_a, "dict"_a = pybind11::dict()); // PYTHONDEPRECATED
 
         const auto& loadPassLibrary = [](const std::string& library)
         {
-            return RenderPassLibrary::instance().loadLibrary(library);
+            PluginManager::instance().loadPluginByName(library);
         };
-        m.def(RenderGraphIR::kLoadPassLibrary, loadPassLibrary, "name"_a);
+        m.def(RenderGraphIR::kLoadPassLibrary, loadPassLibrary, "name"_a); // PYTHONDEPRECATED
 
         const auto& updateRenderPass = [](const RenderGraph::SharedPtr& pGraph, const std::string& passName, pybind11::dict d)
         {
-            pGraph->updatePass(gpDevice->getRenderContext(), passName, Dictionary(d));
+            pGraph->updatePass(passName, Dictionary(d));
         };
         renderGraph.def(RenderGraphIR::kUpdatePass, updateRenderPass, "name"_a, "dict"_a);
     }

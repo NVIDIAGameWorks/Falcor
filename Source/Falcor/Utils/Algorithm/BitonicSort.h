@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -47,14 +47,8 @@ namespace Falcor
     class FALCOR_API BitonicSort
     {
     public:
-        using SharedPtr = std::shared_ptr<BitonicSort>;
-        using SharedConstPtr = std::shared_ptr<const BitonicSort>;
-        virtual ~BitonicSort() = default;
-
-        /** Create a new bitonic sort object.
-            \return New object, or throws an exception on error.
-        */
-        static SharedPtr create();
+        /// Constructor. Throws an exception on error.
+        BitonicSort(std::shared_ptr<Device> pDevice);
 
         /** In-place bitonic sort in chunks of N elements. Each chunk is sorted in ascending order.
             \param[in] pRenderContext The render context.
@@ -66,8 +60,8 @@ namespace Falcor
         */
         bool execute(RenderContext* pRenderContext, Buffer::SharedPtr pData, uint32_t totalSize, uint32_t chunkSize, uint32_t groupSize = 256);
 
-    protected:
-        BitonicSort();
+    private:
+        std::shared_ptr<Device> mpDevice;
 
         struct
         {

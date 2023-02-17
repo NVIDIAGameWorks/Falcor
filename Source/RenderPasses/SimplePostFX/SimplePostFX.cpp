@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,9 +26,6 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "SimplePostFX.h"
-#include "RenderGraph/RenderPassLibrary.h"
-
-const RenderPass::Info SimplePostFX::kInfo { "SimplePostFX", "Simple set of post effects." };
 
 namespace
 {
@@ -57,12 +54,6 @@ namespace
     const char kShaderFile[] = "RenderPasses/SimplePostFX/SimplePostFX.cs.slang";
 }
 
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" FALCOR_API_EXPORT const char* getProjDir()
-{
-    return PROJECT_DIR;
-}
-
 static void regSimplePostFX(pybind11::module& m)
 {
     pybind11::class_<SimplePostFX, RenderPass, SimplePostFX::SharedPtr> pass(m, "SimplePostFX");
@@ -83,15 +74,15 @@ static void regSimplePostFX(pybind11::module& m)
     pass.def_property(kColorPowerScalar, &SimplePostFX::getColorPowerScalar, &SimplePostFX::setColorPowerScalar);
 }
 
-extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary & lib)
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
-    lib.registerPass(SimplePostFX::kInfo, SimplePostFX::create);
+    registry.registerClass<RenderPass, SimplePostFX>();
     ScriptBindings::registerBinding(regSimplePostFX);
 }
 
-SimplePostFX::SharedPtr SimplePostFX::create(RenderContext* pRenderContext, const Dictionary& dict)
+SimplePostFX::SharedPtr SimplePostFX::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
-    return SharedPtr(new SimplePostFX(dict));
+    return SharedPtr(new SimplePostFX(std::move(pDevice), dict));
 }
 
 Dictionary SimplePostFX::getScriptingDictionary()
@@ -117,8 +108,8 @@ Dictionary SimplePostFX::getScriptingDictionary()
     return dict;
 }
 
-SimplePostFX::SimplePostFX(const Dictionary& dict)
-    : RenderPass(kInfo)
+SimplePostFX::SimplePostFX(std::shared_ptr<Device> pDevice, const Dictionary& dict)
+    : RenderPass(std::move(pDevice))
 {
     // Deserialize pass from dictionary.
     for (const auto& [key, value] : dict)
@@ -146,12 +137,12 @@ SimplePostFX::SimplePostFX(const Dictionary& dict)
     Sampler::Desc samplerDesc;
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point);
     samplerDesc.setAddressingMode(Sampler::AddressMode::Border, Sampler::AddressMode::Border, Sampler::AddressMode::Border);
-    mpLinearSampler = Sampler::create(samplerDesc);
+    mpLinearSampler = Sampler::create(mpDevice.get(), samplerDesc);
 
     Program::DefineList defines;
-    mpDownsamplePass = ComputePass::create(kShaderFile, "downsample", defines);
-    mpUpsamplePass = ComputePass::create(kShaderFile, "upsample", defines);
-    mpPostFXPass = ComputePass::create(kShaderFile, "runPostFX", defines);
+    mpDownsamplePass = ComputePass::create(mpDevice, kShaderFile, "downsample", defines);
+    mpUpsamplePass = ComputePass::create(mpDevice, kShaderFile, "upsample", defines);
+    mpPostFXPass = ComputePass::create(mpDevice, kShaderFile, "runPostFX", defines);
 }
 
 RenderPassReflection SimplePostFX::reflect(const CompileData& compileData)
@@ -280,7 +271,7 @@ void SimplePostFX::preparePostFX(RenderContext* pRenderContext, uint32_t width, 
             uint32_t h = std::max(1u, height >> res);
             if (!pBuf || pBuf->getWidth() != w || pBuf->getHeight() != h)
             {
-                pBuf = Texture::create2D(w, h, ResourceFormat::RGBA16Float, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+                pBuf = Texture::create2D(mpDevice.get(), w, h, ResourceFormat::RGBA16Float, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
                 FALCOR_ASSERT(pBuf);
             }
         }

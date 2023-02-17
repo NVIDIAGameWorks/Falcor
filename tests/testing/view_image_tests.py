@@ -403,7 +403,7 @@ def main():
     # Load environment.
     try:
         # TODO: Hardcoded build configuration
-        env = Environment(args.environment, 'windows-ninja-msvc-d3d12-Release')
+        env = Environment(args.environment, 'windows-ninja-msvc-Release')
     except Exception as e:
         print(e)
         sys.exit(1)

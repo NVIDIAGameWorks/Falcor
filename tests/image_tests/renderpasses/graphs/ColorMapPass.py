@@ -1,7 +1,6 @@
 from falcor import *
 
 def test_ColorMapPass():
-    loadRenderPassLibrary("DebugPasses.dll")
     imageLoader = createPass("ImageLoader", {'filename' : "LightProbes/hallstatt4_hd.hdr", 'mips': False, 'srgb': False, 'outputFormat': ResourceFormat.RGBA32Float})
     colorMap = createPass("ColorMapPass")
 

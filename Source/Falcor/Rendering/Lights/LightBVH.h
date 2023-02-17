@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -57,9 +57,6 @@ namespace Falcor
     class FALCOR_API LightBVH
     {
     public:
-        using SharedPtr = std::shared_ptr<LightBVH>;
-        using SharedConstPtr = std::shared_ptr<const LightBVH>;
-
         struct NodeLocation
         {
             uint32_t nodeIndex;
@@ -75,10 +72,11 @@ namespace Falcor
         */
         using NodeFunction = std::function<bool(const NodeLocation& location)>;
 
-        /** Creates an empty LightBVH object. Use a LightBVHBuilder to build the BVH.
+        /** Constructor.
+            \param[in] pDevice GPU device.
             \param[in] pLightCollection The light collection around which the BVH will be built.
         */
-        static SharedPtr create(const LightCollection::SharedConstPtr& pLightCollection);
+        LightBVH(std::shared_ptr<Device> pDevice, const LightCollection::SharedConstPtr& pLightCollection);
 
         /** Refit all the BVH nodes to the underlying geometry, without changing the hierarchy.
             The BVH needs to have been built before trying to refit it.
@@ -113,20 +111,18 @@ namespace Falcor
         /** Is the BVH valid.
             \return true if the BVH is ready for use.
         */
-        virtual bool isValid() const { return mIsValid; }
+        bool isValid() const { return mIsValid; }
 
         /** Render the UI. This default implementation just shows the stats.
         */
-        virtual void renderUI(Gui::Widgets& widget);
+        void renderUI(Gui::Widgets& widget);
 
         /** Bind the light BVH into a shader variable.
             \param[in] var The shader variable to set the data into.
         */
-        virtual void setShaderData(ShaderVar const& var) const;
+        void setShaderData(ShaderVar const& var) const;
 
     protected:
-        LightBVH(const LightCollection::SharedConstPtr& pLightCollection);
-
         void finalize();
         void computeStats();
         void updateNodeIndices();
@@ -137,7 +133,7 @@ namespace Falcor
 
         /** Invalidate the BVH.
         */
-        virtual void clear();
+        void clear();
 
         struct RefitEntryInfo
         {
@@ -146,6 +142,7 @@ namespace Falcor
         };
 
         // Internal state
+        std::shared_ptr<Device>               mpDevice;
         const LightCollection::SharedConstPtr mpLightCollection;
 
         ComputePass::SharedPtr                mLeafUpdater;             ///< Compute pass for refitting the leaf nodes.

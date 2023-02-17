@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,34 +31,39 @@
 
 namespace Falcor
 {
-    namespace
+namespace
+{
+const uint32_t kNumElems = 256;
+std::mt19937 r;
+std::uniform_real_distribution u;
+} // namespace
+
+GPU_TEST(CastFloat16)
+{
+    Device* pDevice = ctx.getDevice().get();
+
+    ctx.createProgram("Tests/Slang/CastFloat16.cs.slang", "testCastFloat16", Program::DefineList(), Shader::CompilerFlags::None, "6_5");
+    ctx.allocateStructuredBuffer("result", kNumElems);
+
+    std::vector<uint16_t> elems(kNumElems * 2);
+    for (auto& v : elems)
+        v = f32tof16(float(u(r)));
+    auto var = ctx.vars().getRootVar();
+    var["data"] = Buffer::createStructured(
+        pDevice, var["data"], (uint32_t)elems.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, elems.data()
+    );
+
+    ctx.runProgram(kNumElems, 1, 1);
+
+    // Verify results.
+    const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
+    for (uint32_t i = 0; i < kNumElems; i++)
     {
-        const uint32_t kNumElems = 256;
-        std::mt19937 r;
-        std::uniform_real_distribution u;
+        uint16_t ix = elems[2 * i];
+        uint16_t iy = elems[2 * i + 1];
+        uint32_t expected = (uint32_t(iy) << 16) | ix;
+        EXPECT_EQ(result[i], expected) << "i = " << i;
     }
-
-    GPU_TEST(CastFloat16)
-    {
-        ctx.createProgram("Tests/Slang/CastFloat16.cs.slang", "testCastFloat16", Program::DefineList(), Shader::CompilerFlags::None, "6_5");
-        ctx.allocateStructuredBuffer("result", kNumElems);
-
-        std::vector<uint16_t> elems(kNumElems * 2);
-        for (auto& v : elems) v = f32tof16(float(u(r)));
-        auto var = ctx.vars().getRootVar();
-        var["data"] = Buffer::createStructured(var["data"], (uint32_t)elems.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, elems.data());
-
-        ctx.runProgram(kNumElems, 1, 1);
-
-        // Verify results.
-        const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
-        for (uint32_t i = 0; i < kNumElems; i++)
-        {
-            uint16_t ix = elems[2 * i];
-            uint16_t iy = elems[2 * i + 1];
-            uint32_t expected = (uint32_t(iy) << 16) | ix;
-            EXPECT_EQ(result[i], expected) << "i = " << i;
-        }
-        ctx.unmapBuffer("result");
-    }
+    ctx.unmapBuffer("result");
 }
+} // namespace Falcor

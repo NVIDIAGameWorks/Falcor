@@ -1,4 +1,4 @@
-add_renderpass(DebugPasses)
+add_plugin(DebugPasses)
 
 target_sources(DebugPasses PRIVATE
     Comparison.ps.slang

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,123 +30,165 @@
 
 namespace Falcor
 {
-    namespace
+namespace
+{
+const uint32_t kNumElems = 256;
+const std::string kRootBufferName = "testBuffer";
+
+std::mt19937 rng;
+auto dist = std::uniform_int_distribution<uint32_t>(0, 100);
+
+uint32_t c0 = 31;
+float c1 = 2.5f;
+
+struct S
+{
+    float a;
+    uint32_t b;
+};
+
+void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, bool useUav)
+{
+    Device* pDevice = ctx.getDevice().get();
+
+    auto r = [&]() -> uint32_t { return dist(rng); };
+
+    Program::DefineList defines = {{"USE_UAV", useUav ? "1" : "0"}};
+    Shader::CompilerFlags compilerFlags = Shader::CompilerFlags::None;
+
+    ctx.createProgram("Tests/Core/RootBufferTests.cs.slang", "main", defines, compilerFlags, shaderModel);
+    ctx.allocateStructuredBuffer("result", kNumElems);
+
+    auto var = ctx.vars().getRootVar();
+    var["CB"]["c0"] = c0;
+    var["CB"]["c1"] = c1;
+
+    // Bind some regular buffers.
+    std::vector<uint32_t> rawBuffer(kNumElems);
     {
-        const uint32_t kNumElems = 256;
-        const std::string kRootBufferName = "testBuffer";
-
-        std::mt19937 rng;
-        auto dist = std::uniform_int_distribution<uint32_t>(0, 100);
-
-        uint32_t c0 = 31;
-        float c1 = 2.5f;
-
-        struct S
-        {
-            float a;
-            uint32_t b;
-        };
-
-        void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, bool useUav)
-        {
-            auto r = [&]() -> uint32_t { return dist(rng); };
-
-            Program::DefineList defines = { {"USE_UAV", useUav ? "1" : "0"} };
-            Shader::CompilerFlags compilerFlags = Shader::CompilerFlags::None;
-
-            ctx.createProgram("Tests/Core/RootBufferTests.cs.slang", "main", defines, compilerFlags, shaderModel);
-            ctx.allocateStructuredBuffer("result", kNumElems);
-
-            auto var = ctx.vars().getRootVar();
-            var["CB"]["c0"] = c0;
-            var["CB"]["c1"] = c1;
-
-            // Bind some regular buffers.
-            std::vector<uint32_t> rawBuffer(kNumElems);
-            {
-                for (uint32_t i = 0; i < kNumElems; i++) rawBuffer[i] = r();
-                var["rawBuffer"] = Buffer::create(kNumElems * sizeof(uint32_t), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, rawBuffer.data());
-            }
-
-            std::vector<S> structBuffer(kNumElems);
-            {
-                for (uint32_t i = 0; i < kNumElems; i++) structBuffer[i] = { r() + 0.5f, r() };
-                var["structBuffer"] = Buffer::createStructured(var["structBuffer"], kNumElems, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, structBuffer.data());
-            }
-
-            std::vector<uint32_t> typedBufferUint(kNumElems);
-            {
-                for (uint32_t i = 0; i < kNumElems; i++) typedBufferUint[i] = r();
-                var["typedBufferUint"] = Buffer::createTyped<uint32_t>(kNumElems, ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, typedBufferUint.data());
-            }
-
-            std::vector<float4> typedBufferFloat4(kNumElems);
-            {
-                for (uint32_t i = 0; i < kNumElems; i++) typedBufferFloat4[i] = { r() * 0.25f, r() * 0.5f, r() * 0.75f, r() };
-                var["typedBufferFloat4"] = Buffer::createTyped<float4>(kNumElems, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, typedBufferFloat4.data());
-            }
-
-            // Test binding buffer to root descriptor.
-            std::vector<uint32_t> testBuffer(kNumElems);
-            {
-                for (uint32_t i = 0; i < kNumElems; i++) testBuffer[i] = r();
-                auto pTestBuffer = Buffer::create(kNumElems * sizeof(uint32_t), useUav ? ResourceBindFlags::UnorderedAccess : ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, testBuffer.data());
-                var[kRootBufferName] = pTestBuffer;
-
-                Buffer::SharedPtr pBoundBuffer = var[kRootBufferName];
-                EXPECT_EQ(pBoundBuffer, pTestBuffer);
-            }
-
-            auto verifyResults = [&](auto str) {
-                const float* result = ctx.mapBuffer<const float>("result");
-                for (uint32_t i = 0; i < kNumElems; i++)
-                {
-                    float r = 0.f;
-                    r += c0;
-                    r += c1;
-                    r += rawBuffer[i];
-                    r += typedBufferUint[i] * 2;
-                    r += typedBufferFloat4[i].z * 3;
-                    r += structBuffer[i].a * 4;
-                    r += structBuffer[i].b * 5;
-                    r += testBuffer[i] * 6;
-                    EXPECT_EQ(result[i], r) << "i = " << i << " (" << str << ")";
-                }
-                ctx.unmapBuffer("result");
-            };
-
-            // Run the program to test that we can access the buffer.
-            ctx.runProgram(kNumElems, 1, 1);
-            verifyResults("step 1");
-
-            // Change the binding of other resources to test that the root buffer stays correctly bound.
-            for (uint32_t i = 0; i < kNumElems; i++) rawBuffer[i] = r();
-            var["rawBuffer"] = Buffer::create(kNumElems * sizeof(uint32_t), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, rawBuffer.data());
-            for (uint32_t i = 0; i < kNumElems; i++) typedBufferFloat4[i] = { r() * 0.25f, r() * 0.5f, r() * 0.75f, r() };
-            var["typedBufferFloat4"] = Buffer::createTyped<float4>(kNumElems, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, typedBufferFloat4.data());
-            var["CB"]["c0"] = ++c0;
-
-            ctx.runProgram(kNumElems, 1, 1);
-            verifyResults("step 2");
-
-            // Test binding a new root buffer.
-            {
-                for (uint32_t i = 0; i < kNumElems; i++) testBuffer[i] = r();
-                auto pTestBuffer = Buffer::create(kNumElems * sizeof(uint32_t), useUav ? ResourceBindFlags::UnorderedAccess : ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, testBuffer.data());
-                var[kRootBufferName] = pTestBuffer;
-
-                Buffer::SharedPtr pBoundBuffer = var[kRootBufferName];
-                EXPECT_EQ(pBoundBuffer, pTestBuffer);
-            }
-
-            ctx.runProgram(kNumElems, 1, 1);
-            verifyResults("step 3");
-        }
+        for (uint32_t i = 0; i < kNumElems; i++)
+            rawBuffer[i] = r();
+        var["rawBuffer"] = Buffer::create(
+            pDevice, kNumElems * sizeof(uint32_t), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, rawBuffer.data()
+        );
     }
 
-    GPU_TEST(RootBufferSRV_6_0) { testRootBuffer(ctx, "6_0", false); }
-    GPU_TEST(RootBufferUAV_6_0) { testRootBuffer(ctx, "6_0", true); }
+    std::vector<S> structBuffer(kNumElems);
+    {
+        for (uint32_t i = 0; i < kNumElems; i++)
+            structBuffer[i] = {r() + 0.5f, r()};
+        var["structBuffer"] = Buffer::createStructured(
+            pDevice, var["structBuffer"], kNumElems, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, structBuffer.data()
+        );
+    }
 
-    GPU_TEST(RootBufferSRV_6_3) { testRootBuffer(ctx, "6_3", false); }
-    GPU_TEST(RootBufferUAV_6_3) { testRootBuffer(ctx, "6_3", true); }
+    std::vector<uint32_t> typedBufferUint(kNumElems);
+    {
+        for (uint32_t i = 0; i < kNumElems; i++)
+            typedBufferUint[i] = r();
+        var["typedBufferUint"] = Buffer::createTyped<uint32_t>(
+            pDevice, kNumElems, ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, typedBufferUint.data()
+        );
+    }
+
+    std::vector<float4> typedBufferFloat4(kNumElems);
+    {
+        for (uint32_t i = 0; i < kNumElems; i++)
+            typedBufferFloat4[i] = {r() * 0.25f, r() * 0.5f, r() * 0.75f, r()};
+        var["typedBufferFloat4"] = Buffer::createTyped<float4>(
+            pDevice, kNumElems, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, typedBufferFloat4.data()
+        );
+    }
+
+    // Test binding buffer to root descriptor.
+    std::vector<uint32_t> testBuffer(kNumElems);
+    {
+        for (uint32_t i = 0; i < kNumElems; i++)
+            testBuffer[i] = r();
+        auto pTestBuffer = Buffer::create(
+            pDevice, kNumElems * sizeof(uint32_t), useUav ? ResourceBindFlags::UnorderedAccess : ResourceBindFlags::ShaderResource,
+            Buffer::CpuAccess::None, testBuffer.data()
+        );
+        var[kRootBufferName] = pTestBuffer;
+
+        Buffer::SharedPtr pBoundBuffer = var[kRootBufferName];
+        EXPECT_EQ(pBoundBuffer, pTestBuffer);
+    }
+
+    auto verifyResults = [&](auto str)
+    {
+        const float* result = ctx.mapBuffer<const float>("result");
+        for (uint32_t i = 0; i < kNumElems; i++)
+        {
+            float r = 0.f;
+            r += c0;
+            r += c1;
+            r += rawBuffer[i];
+            r += typedBufferUint[i] * 2;
+            r += typedBufferFloat4[i].z * 3;
+            r += structBuffer[i].a * 4;
+            r += structBuffer[i].b * 5;
+            r += testBuffer[i] * 6;
+            EXPECT_EQ(result[i], r) << "i = " << i << " (" << str << ")";
+        }
+        ctx.unmapBuffer("result");
+    };
+
+    // Run the program to test that we can access the buffer.
+    ctx.runProgram(kNumElems, 1, 1);
+    verifyResults("step 1");
+
+    // Change the binding of other resources to test that the root buffer stays correctly bound.
+    for (uint32_t i = 0; i < kNumElems; i++)
+        rawBuffer[i] = r();
+    var["rawBuffer"] =
+        Buffer::create(pDevice, kNumElems * sizeof(uint32_t), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, rawBuffer.data());
+    for (uint32_t i = 0; i < kNumElems; i++)
+        typedBufferFloat4[i] = {r() * 0.25f, r() * 0.5f, r() * 0.75f, r()};
+    var["typedBufferFloat4"] = Buffer::createTyped<float4>(
+        pDevice, kNumElems, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, typedBufferFloat4.data()
+    );
+    var["CB"]["c0"] = ++c0;
+
+    ctx.runProgram(kNumElems, 1, 1);
+    verifyResults("step 2");
+
+    // Test binding a new root buffer.
+    {
+        for (uint32_t i = 0; i < kNumElems; i++)
+            testBuffer[i] = r();
+        auto pTestBuffer = Buffer::create(
+            pDevice, kNumElems * sizeof(uint32_t), useUav ? ResourceBindFlags::UnorderedAccess : ResourceBindFlags::ShaderResource,
+            Buffer::CpuAccess::None, testBuffer.data()
+        );
+        var[kRootBufferName] = pTestBuffer;
+
+        Buffer::SharedPtr pBoundBuffer = var[kRootBufferName];
+        EXPECT_EQ(pBoundBuffer, pTestBuffer);
+    }
+
+    ctx.runProgram(kNumElems, 1, 1);
+    verifyResults("step 3");
 }
+} // namespace
+
+GPU_TEST(RootBufferSRV_6_0)
+{
+    testRootBuffer(ctx, "6_0", false);
+}
+
+GPU_TEST(RootBufferUAV_6_0)
+{
+    testRootBuffer(ctx, "6_0", true);
+}
+
+GPU_TEST(RootBufferSRV_6_3)
+{
+    testRootBuffer(ctx, "6_3", false);
+}
+
+GPU_TEST(RootBufferUAV_6_3)
+{
+    testRootBuffer(ctx, "6_3", true);
+}
+} // namespace Falcor

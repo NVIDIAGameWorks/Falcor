@@ -61,20 +61,20 @@ extension PathTracer
         // Reject false hits in nested dielectrics.
         if (!handleNestedDielectrics(sd, path)) return;
 
-        // Create BSDF instance and query its properties.
-        let bsdf = gScene.materials.getBSDF(sd, lod);
-        let bsdfProperties = bsdf.getProperties(sd);
+        // Create material instance and query its properties.
+        let mi = gScene.materials.getMaterialInstance(sd, lod);
+        let bsdfProperties = mi.getProperties(sd);
 
         // Query BSDF lobes.
-        const uint lobes = bsdf.getLobes(sd);
-        const bool hasDeltaLobes = (lobes & (uint)LobeType::Delta) != 0;
+        const uint lobeTypes = mi.getLobeTypes(sd);
+        const bool hasDeltaLobes = (lobeTypes & (uint)LobeType::Delta) != 0;
 
         const MaterialType materialType = sd.mtl.getMaterialType();
 
         if (isPrimaryHit)
         {
             // Terminate without the write-out if the path doesn't start as delta reflection.
-            bool hasDeltaReflectionLobe = ((lobes & (uint)LobeType::DeltaReflection) != 0);
+            bool hasDeltaReflectionLobe = ((lobeTypes & (uint)LobeType::DeltaReflection) != 0);
             if (!hasDeltaReflectionLobe)
             {
                 writeNRDDeltaReflectionGuideBuffers(outputNRD, kUseNRDDemodulation, pixel, 0.f, 0.f, viewDir, 0.f, kNRDInvalidPathLength, kNRDInvalidPathLength);
@@ -99,7 +99,7 @@ extension PathTracer
 
             // Terminate after scatter ray on last vertex has been processed or non-delta lobe exists.
             const bool lastVertex = hasFinishedSurfaceBounces(path);
-            const bool hasNonDeltaLobes = (lobes & (uint)LobeType::NonDelta) != 0;
+            const bool hasNonDeltaLobes = (lobeTypes & (uint)LobeType::NonDelta) != 0;
             const bool isEmissive = any(bsdfProperties.emission > 0.f);
 
             if (lastVertex || hasNonDeltaLobes || isEmissive)
@@ -134,7 +134,7 @@ extension PathTracer
         float primaryHitDist = path.pdf;
 
         // Generate the next path segment or terminate.
-        bool valid = generateScatterRay(sd, bsdf, path);
+        bool valid = generateScatterRay(sd, mi, path);
 
         path.pdf = primaryHitDist;
 
@@ -197,14 +197,14 @@ extension PathTracer
         // Reject false hits in nested dielectrics.
         if (!handleNestedDielectrics(sd, path)) return;
 
-        // Create BSDF instance and query its properties.
-        let bsdf = gScene.materials.getBSDF(sd, lod);
-        let bsdfProperties = bsdf.getProperties(sd);
+        // Create material instance and query its properties.
+        let mi = gScene.materials.getMaterialInstance(sd, lod);
+        let bsdfProperties = mi.getProperties(sd);
 
-        const uint lobes = bsdf.getLobes(sd);
+        const uint lobeTypes = mi.getLobeTypes(sd);
 
         // Terminate without the write-out if the path doesn't start as delta transmission.
-        const bool hasDeltaTransmissionLobe = ((lobes & (uint)LobeType::DeltaTransmission) != 0);
+        const bool hasDeltaTransmissionLobe = ((lobeTypes & (uint)LobeType::DeltaTransmission) != 0);
         if (isPrimaryHit && !hasDeltaTransmissionLobe)
         {
             writeNRDDeltaTransmissionGuideBuffers(outputNRD, kUseNRDDemodulation, pixel, 0.f, 0.f, viewDir, 0.f, kNRDInvalidPathLength, 0.f);
@@ -226,7 +226,7 @@ extension PathTracer
 
         // Terminate the delta transmission path.
         const bool lastVertex = hasFinishedSurfaceBounces(path);
-        const bool hasNonDeltaLobes = (lobes & (uint)LobeType::NonDelta) != 0;
+        const bool hasNonDeltaLobes = (lobeTypes & (uint)LobeType::NonDelta) != 0;
 
         // Fetch volume absorption from the material. This field only exist in basic materials for now.
         bool semiOpaque = false;
@@ -238,7 +238,7 @@ extension PathTracer
         }
 
         const MaterialType materialType = sd.mtl.getMaterialType();
-        const bool hasDeltaLobes = (lobes & (uint)LobeType::Delta) != 0;
+        const bool hasDeltaLobes = (lobeTypes & (uint)LobeType::Delta) != 0;
 
         if (lastVertex || semiOpaque)
         {
@@ -256,13 +256,13 @@ extension PathTracer
         sd.mtl.setActiveLobes((uint)LobeType::DeltaTransmission);
 
         // Generate the next path segment or terminate.
-        bool valid = generateScatterRay(sd, bsdf, path);
+        bool valid = generateScatterRay(sd, mi, path);
 
         // Delta transmission was not possible, fallback to delta reflection if it's allowed.
         if (!valid && isDeltaReflectionAllowedAlongDeltaTransmissionPath(sd))
         {
             sd.mtl.setActiveLobes((uint)LobeType::DeltaTransmission | (uint)LobeType::DeltaReflection);
-            valid = generateScatterRay(sd, bsdf, path);
+            valid = generateScatterRay(sd, mi, path);
         }
 
         if (!valid)

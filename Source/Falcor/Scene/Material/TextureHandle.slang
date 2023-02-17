@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -51,10 +51,12 @@ struct TextureHandle
         Count // Must be last
     };
 
-    static const uint kTextureIDBits = 30;
+    static const uint kTextureIDBits = 29;
     static const uint kModeBits = 2;
+    static const uint kUdimEnabledBits = 1;
 
     static const uint kModeOffset = kTextureIDBits;
+    static const uint kUdimEnabledOffset = kModeOffset + kModeBits;
 
     /** Set mode.
     */
@@ -65,12 +67,20 @@ struct TextureHandle
     Mode getMode() CONST_FUNCTION { return Mode(EXTRACT_BITS(kModeBits, kModeOffset, packedData)); }
 
     /** Set texture ID. This sets mode to Mode::Texture.
-    */
-    SETTER_DECL void setTextureID(uint texID) { packedData = ((uint)Mode::Texture << kModeOffset) | texID; }
+     */
+    SETTER_DECL void setTextureID(uint texID) { setMode(Mode::Texture); packedData = PACK_BITS(kTextureIDBits, 0, packedData, texID); }
 
     /** Get texture ID. This operation is only valid if mode is Mode::Texture.
     */
     uint getTextureID() CONST_FUNCTION { return EXTRACT_BITS(kTextureIDBits, 0, packedData); }
+
+    /** Set whether the texture uses udim or not.
+     */
+    SETTER_DECL void setUdimEnabled(bool udimEnabled) { packedData = PACK_BITS(kUdimEnabledBits, kUdimEnabledOffset, packedData, udimEnabled ? 1 : 0); }
+
+    /** Set whether the texture uses udim or not.
+     */
+    bool getUdimEnabled() { return IS_BIT_SET(packedData, kUdimEnabledOffset); }
 
 #ifdef HOST_CODE
     bool operator==(const TextureHandle& rhs) const { return packedData == rhs.packedData; }

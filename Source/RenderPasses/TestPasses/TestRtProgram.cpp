@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,8 +28,6 @@
 #include "TestRtProgram.h"
 #include <random>
 
-const RenderPass::Info TestRtProgram::kInfo { "TestRtProgram", "Test pass for RtProgram." };
-
 namespace
 {
     const char kShaderFilename[] = "RenderPasses/TestPasses/TestRtProgram.rt.slang";
@@ -53,13 +51,13 @@ void TestRtProgram::registerScriptBindings(pybind11::module& m)
     pass.def("moveCustomPrimitive", &TestRtProgram::moveCustomPrimitive);
 }
 
-TestRtProgram::SharedPtr TestRtProgram::create(RenderContext* pRenderContext, const Dictionary& dict)
+TestRtProgram::SharedPtr TestRtProgram::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
-    return SharedPtr(new TestRtProgram(dict));
+    return SharedPtr(new TestRtProgram(std::move(pDevice), dict));
 }
 
-TestRtProgram::TestRtProgram(const Dictionary& dict)
-    : RenderPass(kInfo)
+TestRtProgram::TestRtProgram(std::shared_ptr<Device> pDevice, const Dictionary& dict)
+    : RenderPass(std::move(pDevice))
 {
     for (const auto& [key, value] : dict)
     {
@@ -216,8 +214,8 @@ void TestRtProgram::sceneChanged()
     defines.add("MODE", std::to_string(mMode));
 
     // Create program and vars.
-    mRT.pProgram = RtProgram::create(desc, defines);
-    mRT.pVars = RtProgramVars::create(mRT.pProgram, sbt);
+    mRT.pProgram = RtProgram::create(mpDevice, desc, defines);
+    mRT.pVars = RtProgramVars::create(mpDevice, mRT.pProgram, sbt);
 }
 
 void TestRtProgram::execute(RenderContext* pRenderContext, const RenderData& renderData)

@@ -46,7 +46,6 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<Light>;
-        using SharedConstPtr = std::shared_ptr<const Light>;
 
         virtual ~Light() = default;
 
@@ -150,7 +149,6 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<PointLight>;
-        using SharedConstPtr = std::shared_ptr<const PointLight>;
 
         static SharedPtr create(const std::string& name = "");
         ~PointLight() = default;
@@ -211,7 +209,6 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<DirectionalLight>;
-        using SharedConstPtr = std::shared_ptr<const DirectionalLight>;
 
         static SharedPtr create(const std::string& name = "");
         ~DirectionalLight() = default;
@@ -250,7 +247,6 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<DistantLight>;
-        using SharedConstPtr = std::shared_ptr<const DistantLight>;
 
         static SharedPtr create(const std::string& name = "");
         ~DistantLight() = default;
@@ -297,7 +293,6 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<AnalyticAreaLight>;
-        using SharedConstPtr = std::shared_ptr<const AnalyticAreaLight>;
 
         ~AnalyticAreaLight() = default;
 
@@ -342,7 +337,6 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<RectLight>;
-        using SharedConstPtr = std::shared_ptr<const RectLight>;
 
         static SharedPtr create(const std::string& name = "");
         ~RectLight() = default;
@@ -359,7 +353,6 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<DiscLight>;
-        using SharedConstPtr = std::shared_ptr<const DiscLight>;
 
         static SharedPtr create(const std::string& name = "");
         ~DiscLight() = default;
@@ -376,7 +369,6 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<SphereLight>;
-        using SharedConstPtr = std::shared_ptr<const SphereLight>;
 
         static SharedPtr create(const std::string& name = "");
         ~SphereLight() = default;

@@ -120,9 +120,9 @@ void primaryClosestHit(inout PrimaryRayData hitData, BuiltInTriangleIntersection
     uint materialID = gScene.getMaterialID(instanceID);
     ShadingData sd = gScene.materials.prepareShadingData(v, materialID, -rayDirW, lod);
 
-    // Create BSDF instance and query its properties.
-    let bsdf = gScene.materials.getBSDF(sd, lod);
-    let bsdfProperties = bsdf.getProperties(sd);
+    // Create material instance and query its properties.
+    let mi = gScene.materials.getMaterialInstance(sd, lod);
+    let bsdfProperties = mi.getProperties(sd);
 
     float3 color = bsdfProperties.emission;
 
@@ -138,7 +138,7 @@ void primaryClosestHit(inout PrimaryRayData hitData, BuiltInTriangleIntersection
             RayDesc shadowRay = { sd.posW, 0.001f, ls.dir, ls.distance };
             if (!traceShadowRay(shadowRay))
             {
-                color += bsdf.eval(sd, ls.dir, sg) * ls.Li;
+                color += mi.eval(sd, ls.dir, sg) * ls.Li;
             }
         }
     }

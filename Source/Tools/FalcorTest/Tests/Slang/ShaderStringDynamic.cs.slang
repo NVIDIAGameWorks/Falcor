@@ -35,7 +35,7 @@ cbuffer CB
 RWStructuredBuffer<uint> result;
 
 [numthreads(32, 1, 1)]
-void main(uint3 threadID : SV_DispatchThreadID)
+void main(uint3 threadID: SV_DispatchThreadID)
 {
     // Dynamically create an instance of the given type.
     // Note we don't need any data so passing in a dummy int.

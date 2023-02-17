@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -36,14 +36,14 @@ uint pack(uint2 v)
 }
 
 [numthreads(256, 1, 1)]
-void testBitInterleave(uint3 threadId : SV_DispatchThreadID)
+void testBitInterleave(uint3 threadId: SV_DispatchThreadID)
 {
     const uint idx = threadId.x;
-    const uint data = testData.Load(idx * 4);               // data = [ y15..y0 x15..x0 ]
+    const uint data = testData.Load(idx * 4); // data = [ y15..y0 x15..x0 ]
 
     // Use hi/lo words of each dword in the test set as input:
-    const uint2 bits = uint2(data & 0xffff, data >> 16);    // bits.x = [ 0..0 x15..x0 ], bits.y = [ 0..0 y15..y0 ]
-    const uint interleavedBits = interleave_32bit(bits);    // interleavedBits = [y15 x15 .. y0 x0]
+    const uint2 bits = uint2(data & 0xffff, data >> 16); // bits.x = [ 0..0 x15..x0 ], bits.y = [ 0..0 y15..y0 ]
+    const uint interleavedBits = interleave_32bit(bits); // interleavedBits = [y15 x15 .. y0 x0]
 
     // Test bit interleave.
     // Put bogus data in the unused bits to test that it doesn't change the result.

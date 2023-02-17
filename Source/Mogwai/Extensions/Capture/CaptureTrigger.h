@@ -53,7 +53,7 @@ namespace Mogwai
 
         void addRange(const RenderGraph* pGraph, uint64_t startFrame, uint64_t count);
         void reset(const RenderGraph* pGraph = nullptr);
-        void renderUI(Gui::Window& w);
+        void renderBaseUI(Gui::Window& w);
 
         void setOutputDirectory(const std::filesystem::path& path);
         const std::filesystem::path& getOutputDirectory() const { return mOutputDir; }

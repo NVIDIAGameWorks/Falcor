@@ -25,13 +25,13 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-cbuffer PerFrameCB : register(b0)
+cbuffer PerFrameCB
 {
 	float4x4 gvpTransform;
 	float3 gFontColor;
 };
 
-Texture2D gFontTex : register(t2);
+Texture2D gFontTex;
 
 float4 transform(float2 posS)
 {

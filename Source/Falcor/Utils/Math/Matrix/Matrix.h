@@ -38,9 +38,12 @@
 #include <glm/gtx/euler_angles.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtx/matrix_operation.hpp>
+#include <fmt/format.h>
 #include "glm/packing.hpp"
+#include "Utils/Math/Vector.h"
 
 #include <array>
+#include <ostream>
 
 namespace Falcor
 {
@@ -89,8 +92,8 @@ namespace rmcv
                 mRows[i][i] = diagonal;
         }
 
-        template<typename T>
-        matrix(std::initializer_list<T> v)
+        template<typename U>
+        matrix(std::initializer_list<U> v)
         {
             float* f = &mRows[0][0];
             for (auto it = v.begin(); it != v.end(); ++it, ++f)
@@ -129,12 +132,10 @@ namespace rmcv
         RowType& operator[](unsigned r) { FALCOR_ASSERT_LT(r, TRowCount); return mRows[r]; }
         const RowType& operator[](unsigned r) const { FALCOR_ASSERT_LT(r, TRowCount); return mRows[r]; }
 
-        // Doing this instead of [], since Falcor heavily uses [] on GLM to obtain the column
-        //RowType& getRow(int row) { return mRows[row]; } // don't want write access even more than getters, for now
+        RowType& getRow(int r) { FALCOR_ASSERT_LT(r, TRowCount); return mRows[r]; }
+        const RowType& getRow(int r) const { FALCOR_ASSERT_LT(r, TRowCount); return mRows[r]; }
 
-        //const RowType& getRow(int row) const { return mRows[row]; }
-
-        //void setRow(int row, const RowType& v) { mRows[row] = v; }
+        void setRow(int r, const RowType& v) { FALCOR_ASSERT_LT(r, TRowCount); mRows[r] = v; }
 
         ColType getCol(int col) const
         {
@@ -149,9 +150,6 @@ namespace rmcv
             for (int r = 0; r < TRowCount; ++r)
                 mRows[r][col] = v[r];
         }
-
-        //RowType& operator[](int row) { return mRows[row]; }
-        //const RowType& operator[](int row) const { return mRows[row]; }
 
         matrix<TColCount, TRowCount, T> getTranspose() const
         {
@@ -441,4 +439,23 @@ namespace rmcv
     }
 }
 
+};
+
+template<int TRowCount, int TColCount, typename T>
+struct ::fmt::formatter<Falcor::rmcv::matrix<TRowCount, TColCount, T>> : formatter<typename Falcor::rmcv::matrix<TRowCount, TColCount, T>::RowType>
+{
+    using MatrixRowType = typename Falcor::rmcv::matrix<TRowCount, TColCount, T>::RowType;
+
+    template<typename FormatContext>
+    auto format(const Falcor::rmcv::matrix<TRowCount, TColCount, T>& matrix, FormatContext& ctx) const
+    {
+        auto out = ctx.out();
+        for (int r = 0; r < TRowCount; ++r)
+        {
+            out = ::fmt::format_to(out, "{}", (r == 0) ? "{" : ", ");
+            out = formatter<MatrixRowType>::format(matrix.getRow(r), ctx);
+        }
+        out = ::fmt::format_to(out, "}}");
+        return out;
+    }
 };

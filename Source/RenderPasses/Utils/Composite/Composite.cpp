@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,8 +28,6 @@
 #include "Composite.h"
 #include "CompositeMode.slangh"
 
-const RenderPass::Info Composite::kInfo { "Composite", "Composite pass." };
-
 namespace
 {
     const std::string kShaderFile("RenderPasses/Utils/Composite/Composite.cs.slang");
@@ -50,13 +48,13 @@ namespace
     };
 }
 
-Composite::SharedPtr Composite::create(RenderContext* pRenderContext, const Dictionary& dict)
+Composite::SharedPtr Composite::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
-    return SharedPtr(new Composite(dict));
+    return SharedPtr(new Composite(std::move(pDevice), dict));
 }
 
-Composite::Composite(const Dictionary& dict)
-    : RenderPass(kInfo)
+Composite::Composite(std::shared_ptr<Device> pDevice, const Dictionary& dict)
+    : RenderPass(std::move(pDevice))
 {
     // Parse dictionary.
     for (const auto& [key, value] : dict)
@@ -69,7 +67,7 @@ Composite::Composite(const Dictionary& dict)
     }
 
     // Create resources.
-    mCompositePass = ComputePass::create(kShaderFile, "main", Program::DefineList(), false);
+    mCompositePass = ComputePass::create(mpDevice, kShaderFile, "main", Program::DefineList(), false);
 }
 
 Dictionary Composite::getScriptingDictionary()

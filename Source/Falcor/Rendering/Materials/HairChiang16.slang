@@ -31,7 +31,7 @@ import Scene.ShadingData;
 import Utils.Math.MathHelpers;
 import Utils.Color.ColorHelpers;
 import Rendering.Materials.Fresnel;
-__exported import Rendering.Materials.IBxDF;
+__exported import Rendering.Materials.IBSDF;
 
 // Enable explicitly computing sampling weights using eval(wo, wi) / evalPdf(wo, wi).
 // This is for testing only, as many terms of the equation cancel out allowing to save on computation.
@@ -40,7 +40,7 @@ __exported import Rendering.Materials.IBxDF;
 /** BSDF parameters for the hair BSDF.
     These are needed for initializing a `HairChiang16` instance.
 */
-struct HairBSDFData
+struct HairChiang16Data
 {
     float3 baseColor;               ///< Base color.
     float betaM;
@@ -53,7 +53,7 @@ struct HairBSDFData
 /** Hair BCSDF from "A Practical and Controllable Hair and Fur Model for Production Path Tracing", Chiang et al. 2016.
     Implementation is adapted from pbrt-v3.
 */
-struct HairChiang16 : IBxDF
+struct HairChiang16 : IBSDF
 {
     // Max number of scattering events that are explicitly computed.
     // All higher-order scattering terms (>= kMaxScatterEvents) will be represented by a single one.
@@ -100,7 +100,7 @@ struct HairChiang16 : IBxDF
         \param[in] sd Shading data.
         \param[in] data BSDF parameters.
     */
-    __init(const ShadingData sd, const HairBSDFData data)
+    __init(const ShadingData sd, const HairChiang16Data data)
     {
         betaM = data.betaM;
         betaN = data.betaN;
@@ -182,13 +182,13 @@ struct HairChiang16 : IBxDF
         return result;
     }
 
-    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobe, inout S sg)
+    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg)
     {
 #if !USE_BCSDF_IMPORTANCE_SAMPLING
         wo = sample_sphere(sampleNext2D(sg));
         pdf = M_1_4PI;
         weight = eval(wi, wo, sg) / pdf;
-        lobe = wo.z > 0 ? (uint)LobeType::DiffuseReflection : (uint)LobeType::DiffuseTransmission;
+        lobeType = wo.z > 0 ? (uint)LobeType::DiffuseReflection : (uint)LobeType::DiffuseTransmission;
         return true;
 #endif
 
@@ -272,7 +272,7 @@ struct HairChiang16 : IBxDF
 
         // TODO: Determine whether it should be a diffuse lobe or a specular lobe according to the roughness.
         // Now we assume they are all diffuse lobes (for animal fur).
-        lobe = wo.z > 0 ? (uint)LobeType::DiffuseReflection : (uint)LobeType::DiffuseTransmission;
+        lobeType = wo.z > 0 ? (uint)LobeType::DiffuseReflection : (uint)LobeType::DiffuseTransmission;
 
         // Compute pdf.
         pdf = 0;
@@ -378,6 +378,19 @@ struct HairChiang16 : IBxDF
 
         pdf = isnan(pdf) ? 0.f : pdf;
         return pdf;
+    }
+
+    AlbedoContributions evalAlbedo(const float3 wi, const LobeType lobetype)
+    {
+        // TODO: Figure out albedo for hair
+        return AlbedoContributions(1.f, 0.f, 0.f, 0.f);
+    }
+
+    RoughnessInformation getRoughnessInformation(const float3 wi)
+    {
+        RoughnessInformation r;
+        r.roughnessBSDFNotation = float2(0.5f);
+        return r;
     }
 
     // private

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -93,7 +93,7 @@ namespace Falcor
             \param[in] loadAsSrgb If true, convert the image format property to a corresponding sRGB format if available. Image data is not changed.
             \return Texture object containing image data if loading was successful. Otherwise, nullptr.
         */
-        static Texture::SharedPtr loadTextureFromDDS(const std::filesystem::path& path, bool loadAsSrgb);
+        static Texture::SharedPtr loadTextureFromDDS(Device* pDevice, const std::filesystem::path& path, bool loadAsSrgb);
 
         /** Saves a bitmap to a DDS file.
             Throws an exception if path is invalid or the image cannot be saved.

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -40,11 +40,11 @@ using namespace Falcor;
 class VBufferRT : public GBufferBase
 {
 public:
+    FALCOR_PLUGIN_CLASS(VBufferRT, "VBufferRT", "Ray traced V-buffer generation pass.");
+
     using SharedPtr = std::shared_ptr<VBufferRT>;
 
-    static const Info kInfo;
-
-    static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     RenderPassReflection reflect(const CompileData& compileData) override;
     void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
@@ -60,7 +60,7 @@ private:
     void setShaderData(const ShaderVar& var, const RenderData& renderData);
     void recreatePrograms();
 
-    VBufferRT(const Dictionary& dict);
+    VBufferRT(std::shared_ptr<Device> pDevice, const Dictionary& dict);
     void parseDictionary(const Dictionary& dict) override;
 
     // Internal state

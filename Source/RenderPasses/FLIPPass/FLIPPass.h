@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,7 +28,7 @@
 #pragma once
 #include "Falcor.h"
 #include "Core/Platform/MonitorInfo.h"
-#include "Utils/Algorithm/ComputeParallelReduction.h"
+#include "Utils/Algorithm/ParallelReduction.h"
 #include "ToneMappers.slang"
 
 using namespace Falcor;
@@ -36,16 +36,23 @@ using namespace Falcor;
 class FLIPPass : public RenderPass
 {
 public:
+    FALCOR_PLUGIN_CLASS(FLIPPass, "FLIPPass", {
+        "FLIP Metric Pass.\n\n"
+        "If the input has high dynamic range, check the \"Compute HDR-FLIP\" box below.\n\n"
+        "The errorMapDisplay shows the FLIP error map. When HDR-FLIP is computed, the user may also show the HDR-FLIP exposure map.\n\n"
+        "When \"List all output\" is checked, the user may also store the errorMap. This is a high-precision, linear buffer "
+        "which is transformed to sRGB before display. NOTE: This sRGB transform will make the displayed output look different compared "
+        "to the errorMapDisplay. The transform is only added before display, however, and will NOT affect the output when it is saved to disk."
+    });
+
     using SharedPtr = std::shared_ptr<FLIPPass>;
 
-    static const Info kInfo;
-
     /** Create a new render pass object.
-        \param[in] pRenderContext The render context.
+        \param[in] pDevice GPU device.
         \param[in] dict Dictionary of serialized parameters.
         \return A new object, or an exception is thrown if creation failed.
     */
-    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
@@ -60,7 +67,7 @@ protected:
     void parseDictionary(const Dictionary& dict);
 
 private:
-    FLIPPass(const Dictionary& dict);
+    FLIPPass(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     bool                                mEnabled = true;                        ///< Enables FLIP calculation.
 
@@ -83,7 +90,7 @@ private:
     Buffer::SharedPtr                   mpLuminance;                            ///< Internal buffer for temporary luminance.
     ComputePass::SharedPtr              mpFLIPPass;                             ///< Compute pass to calculate FLIP.
     ComputePass::SharedPtr              mpComputeLuminancePass;                 ///< Compute pass for computing the luminance of an image.
-    ComputeParallelReduction::SharedPtr mpParallelReduction;                    ///< Helper for parallel reduction on the GPU.
+    std::unique_ptr<ParallelReduction> mpParallelReduction;                    ///< Helper for parallel reduction on the GPU.
 
     bool                                mComputePooledFLIPValues = false;       ///< Enable to use parallel reduction to compute FLIP mean/min/max across whole frame.
     float                               mAverageFLIP;                           ///< Average FLIP value across whole frame.

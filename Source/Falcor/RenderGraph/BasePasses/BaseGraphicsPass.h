@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -70,12 +70,14 @@ namespace Falcor
 
     protected:
         /** Create a new object.
+            \param[in] pDevice GPU device.
             \param[in] progDesc The program description.
             \param[in] programDefines List of macro definitions to set into the program. The macro definitions will be set on all shader stages.
             \return A new object, or an exception is thrown if creation failed.
         */
-        BaseGraphicsPass(const Program::Desc& progDesc, const Program::DefineList& programDefines);
+        BaseGraphicsPass(std::shared_ptr<Device> pDevice, const Program::Desc& progDesc, const Program::DefineList& programDefines);
 
+        std::shared_ptr<Device> mpDevice;
         GraphicsVars::SharedPtr mpVars;
         GraphicsState::SharedPtr mpState;
     };

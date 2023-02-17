@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,7 +26,6 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "ComparisonPass.h"
-#include "RenderGraph/RenderPassLibrary.h"
 #include "Utils/UI/TextRenderer.h"
 
 namespace
@@ -92,7 +91,7 @@ void ComparisonPass::execute(RenderContext* pRenderContext, const RenderData& re
     // Get references to our input, output, and temporary accumulation texture
     pLeftSrcTex = renderData.getTexture(kLeftInput);
     pRightSrcTex = renderData.getTexture(kRightInput);
-    pDstFbo = Fbo::create({ renderData.getTexture(kOutput) });
+    pDstFbo = Fbo::create(mpDevice.get(), { renderData.getTexture(kOutput) });
 
     // If we haven't initialized the split location, split the screen in half by default
     if (mSplitLoc < 0) mSplitLoc = 0.5f;

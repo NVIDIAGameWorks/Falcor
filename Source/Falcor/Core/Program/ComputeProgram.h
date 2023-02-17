@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -35,46 +35,55 @@
 
 namespace Falcor
 {
-    class ComputeContext;
-    class ComputeVars;
+class ComputeContext;
+class ComputeVars;
 
-    /** Compute program. See GraphicsProgram to manage graphics programs.
-    */
-    class FALCOR_API ComputeProgram : public Program
-    {
-    public:
-        using SharedPtr = std::shared_ptr<ComputeProgram>;
-        using SharedConstPtr = std::shared_ptr<const ComputeProgram>;
+/**
+ * Compute program. See GraphicsProgram to manage graphics programs.
+ */
+class FALCOR_API ComputeProgram : public Program
+{
+public:
+    using SharedPtr = std::shared_ptr<ComputeProgram>;
 
-        ~ComputeProgram() = default;
+    ~ComputeProgram() = default;
 
-        /** Create a new compute program from file.
-            Note that this call merely creates a program object. The actual compilation and link happens at a later time.
-            \param[in] path Compute program file path.
-            \param[in] csEntry Name of the entry point in the program.
-            \param[in] programDefines Optional list of macro definitions to set into the program.
-            \param[in] flags Optional program compilation flags.
-            \param[in] shaderModel Optional string describing which shader model to use.
-            \return A new object, or an exception is thrown if creation failed.
-        */
-        static SharedPtr createFromFile(const std::filesystem::path& path, const std::string& csEntry, const DefineList& programDefines = DefineList(), Shader::CompilerFlags flags = Shader::CompilerFlags::None, const std::string& shaderModel = "");
+    /**
+     * Create a new compute program from file.
+     * Note that this call merely creates a program object. The actual compilation and link happens at a later time.
+     * @param[in] pDevice GPU device.
+     * @param[in] path Compute program file path.
+     * @param[in] csEntry Name of the entry point in the program.
+     * @param[in] programDefines Optional list of macro definitions to set into the program.
+     * @param[in] flags Optional program compilation flags.
+     * @param[in] shaderModel Optional string describing which shader model to use.
+     * @return A new object, or an exception is thrown if creation failed.
+     */
+    static SharedPtr createFromFile(
+        std::shared_ptr<Device> pDevice,
+        const std::filesystem::path& path,
+        const std::string& csEntry,
+        const DefineList& programDefines = DefineList(),
+        Shader::CompilerFlags flags = Shader::CompilerFlags::None,
+        const std::string& shaderModel = ""
+    );
 
-        /** Create a new compute program.
-            Note that this call merely creates a program object. The actual compilation and link happens at a later time.
-            \param[in] desc The program description.
-            \param[in] programDefines Optional list of macro definitions to set into the program.
-            \return A new object, or an exception is thrown if creation failed.
-        */
-        static SharedPtr create(const Desc& desc, const DefineList& programDefines = DefineList());
+    /**
+     * Create a new compute program.
+     * Note that this call merely creates a program object. The actual compilation and link happens at a later time.
+     * @param[in] pDevice GPU device.
+     * @param[in] desc The program description.
+     * @param[in] programDefines Optional list of macro definitions to set into the program.
+     * @return A new object, or an exception is thrown if creation failed.
+     */
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Desc& desc, const DefineList& programDefines = DefineList());
 
-        /** Dispatch the program using the argument values set in `pVars`.
-        */
-        virtual void dispatchCompute(
-            ComputeContext* pContext,
-            ComputeVars*    pVars,
-            uint3 const&    threadGroupCount);
+    /**
+     * Dispatch the program using the argument values set in `pVars`.
+     */
+    virtual void dispatchCompute(ComputeContext* pContext, ComputeVars* pVars, uint3 const& threadGroupCount);
 
-    protected:
-        ComputeProgram(const Desc& desc, const DefineList& programDefines);
-    };
-}
+protected:
+    ComputeProgram(std::shared_ptr<Device> pDevice, const Desc& desc, const DefineList& programDefines);
+};
+} // namespace Falcor

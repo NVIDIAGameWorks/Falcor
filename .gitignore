@@ -15,6 +15,9 @@
 /.vs/
 /.vscode/
 
+# User files.
+/CMakeUserPresets.json
+
 # File types.
 *.user
 *.suo

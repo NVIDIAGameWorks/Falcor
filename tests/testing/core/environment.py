@@ -68,7 +68,7 @@ class Environment:
         self.name = env['name']
         self.project_dir = Path(__file__).parents[3].resolve()
         self.build_dir = self.project_dir / config.BUILD_CONFIGS[build_config]['build_dir']
-        self.cmake_exr = self.project_dir / config.CMAKE_EXE
+        self.cmake_exe = self.project_dir / config.CMAKE_EXE
         # Ideally this information would be parsed from CMakePresets.json, rather than this roundabout way
         self.cmake_dir = self.build_dir.parents[1].resolve()
         self.cmake_config = self.build_dir.parts[-1]

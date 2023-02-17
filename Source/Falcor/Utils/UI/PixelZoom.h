@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -41,13 +41,8 @@ namespace Falcor
     class PixelZoom
     {
     public:
-        using SharedPtr = std::shared_ptr<PixelZoom>;
-
-        /** Create a new object
-            \param[in] pBackBuffer Pointer to the back buffer FBO
-            \return New object, or throws an exception if creation failed.
-        */
-        static SharedPtr create(const Fbo* pBackbuffer);
+        /// Constructor. Throws an exception if creation failed.
+        PixelZoom(std::shared_ptr<Device> pDevice, const Fbo* pBackbuffer);
 
         /** Does zoom operation if mShouldZoom is true (if ctrl+alt pressed this frame)
             \param pCtx Pointer to the render context
@@ -67,10 +62,10 @@ namespace Falcor
 
         /** Handle resize events
         */
-        void onResizeSwapChain(const Fbo* pBackbuffer);
+        void onResize(const Fbo* pBackbuffer);
 
     private:
-        PixelZoom(const Fbo* pBackbuffer);
+        std::shared_ptr<Device> mpDevice;
 
         int32_t mSrcZoomSize = 5;
         const uint32_t mDstZoomSize = 200;

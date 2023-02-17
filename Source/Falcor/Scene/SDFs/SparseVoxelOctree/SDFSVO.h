@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -44,7 +44,7 @@ namespace Falcor
         /** Create a new, empty SDFSVO.
             \return SDFSVO object, or nullptr if errors occurred.
         */
-        static SharedPtr create();
+        static SharedPtr create(std::shared_ptr<Device> pDevice);
 
         uint32_t getSVOIndexBitCount() const { return mSVOIndexBitCount; }
 
@@ -64,7 +64,7 @@ namespace Falcor
         virtual void setValuesInternal(const std::vector<float>& cornerValues) override;
 
     private:
-        SDFSVO() = default;
+        SDFSVO(std::shared_ptr<Device> pDevice) : SDFGrid(std::move(pDevice)) {}
 
         // CPU data.
         std::vector<int8_t> mValues;
@@ -79,7 +79,7 @@ namespace Falcor
         Buffer::SharedPtr mpSVOBuffer;
 
         // Resources shared among all SDFSVOs.
-        static Buffer::SharedPtr spSDFSVOGridUnitAABBBuffer;
+        static Buffer::SharedPtr spSDFSVOGridUnitAABBBuffer; // TODO: REMOVEGLOBAL
 
         // Compute passes used to build the SVO.
         ComputePass::SharedPtr mpCountSurfaceVoxelsPass;

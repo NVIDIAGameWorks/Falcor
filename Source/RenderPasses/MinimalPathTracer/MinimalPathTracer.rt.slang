@@ -229,11 +229,11 @@ void traceScatterRay(inout ScatterRayData rayData)
 /** Evaluates the direct illumination from analytic lights.
     This function samples Falcor's light list uniformly with one shadow ray.
     \param[in] sd Shading data.
-    \param[in] bsdf BSDF instance.
+    \param[in] mi Material instance.
     \param[in,out] sg SampleGenerator object.
     \return Outgoing radiance in view direction.
 */
-float3 evalDirectAnalytic(const ShadingData sd, const IBSDF bsdf, inout SampleGenerator sg)
+float3 evalDirectAnalytic(const ShadingData sd, const IMaterialInstance mi, inout SampleGenerator sg)
 {
     const uint lightCount = gScene.getLightCount();
     if (lightCount == 0) return float3(0.f);
@@ -247,9 +247,9 @@ float3 evalDirectAnalytic(const ShadingData sd, const IBSDF bsdf, inout SampleGe
     if (!sampleLight(sd.posW, gScene.getLight(lightIndex), sg, ls)) return float3(0.f);
 
     // Reject sample if not in the hemisphere of a BSDF lobe.
-    const uint lobes = bsdf.getLobes(sd);
-    const bool hasReflection = lobes & uint(LobeType::Reflection);
-    const bool hasTransmission = lobes & uint(LobeType::Transmission);
+    const uint lobeTypes = mi.getLobeTypes(sd);
+    const bool hasReflection = lobeTypes & uint(LobeType::Reflection);
+    const bool hasTransmission = lobeTypes & uint(LobeType::Transmission);
     if (dot(ls.dir, sd.N) <= kMinCosTheta && !hasTransmission) return float3(0.f);
     if (dot(ls.dir, sd.N) >= -kMinCosTheta && !hasReflection) return float3(0.f);
 
@@ -261,22 +261,22 @@ float3 evalDirectAnalytic(const ShadingData sd, const IBSDF bsdf, inout SampleGe
     if (!V) return float3(0.f);
 
     // Evaluate contribution.
-    return bsdf.eval(sd, ls.dir, sg) * ls.Li * invPdf;
+    return mi.eval(sd, ls.dir, sg) * ls.Li * invPdf;
 }
 
 /** Generate a new scatter ray or terminate.
     \param[in] sd Shading data.
-    \param[in] bsdf BSDF instance.
+    \param[in] mi Material instance.
     \param[in] isCurveHit True if on curve hit.
     \param[in] rayOrigin Ray origin for the new ray.
     \param[in,out] rayData Ray payload.
     \return True if the path continues.
 */
-bool generateScatterRay(const ShadingData sd, const IBSDF bsdf, bool isCurveHit, float3 rayOrigin, inout ScatterRayData rayData)
+bool generateScatterRay(const ShadingData sd, const IMaterialInstance mi, bool isCurveHit, float3 rayOrigin, inout ScatterRayData rayData)
 {
     // Sample material.
     BSDFSample bsdfSample;
-    if (bsdf.sample(sd, rayData.sg, bsdfSample, kUseImportanceSampling))
+    if (mi.sample(sd, rayData.sg, bsdfSample, kUseImportanceSampling))
     {
         rayData.origin = rayOrigin;
         if (!isCurveHit && bsdfSample.isLobe(LobeType::Transmission))
@@ -306,13 +306,13 @@ void handleHit(const HitInfo hit, inout ScatterRayData rayData)
     // Load shading data.
     ShadingData sd = loadShadingData(hit, rayData.origin, rayData.direction, lod);
 
-    // Create BSDF instance.
-    let bsdf = gScene.materials.getBSDF(sd, lod);
+    // Create material instance.
+    let mi = gScene.materials.getMaterialInstance(sd, lod);
 
     // Add emitted light.
     if (kUseEmissiveLights && (kComputeDirect || rayData.pathLength > 0))
     {
-        rayData.radiance += rayData.thp * bsdf.getProperties(sd).emission;
+        rayData.radiance += rayData.thp * mi.getProperties(sd).emission;
     }
 
     // Check whether to terminate based on max depth.
@@ -337,13 +337,13 @@ void handleHit(const HitInfo hit, inout ScatterRayData rayData)
     // Add contribution of direct light from analytic lights.
     if (kUseAnalyticLights)
     {
-        float3 Lr = evalDirectAnalytic(sd, bsdf, rayData.sg);
+        float3 Lr = evalDirectAnalytic(sd, mi, rayData.sg);
         rayData.radiance += rayData.thp * Lr;
     }
 
     // Generate scatter ray for the next path segment.
     // The raygen shader will continue the path based on the returned payload.
-    if (!generateScatterRay(sd, bsdf, isCurveHit, rayOrigin, rayData))
+    if (!generateScatterRay(sd, mi, isCurveHit, rayOrigin, rayData))
     {
         rayData.terminated = true;
         return;
@@ -383,8 +383,8 @@ float3 tracePath(const uint2 pixel, const uint2 frameDim)
         // Load shading data.
         ShadingData sd = loadShadingData(hit, primaryRayOrigin, primaryRayDir, lod);
 
-        // Create BSDF instance at shading point.
-        let bsdf = gScene.materials.getBSDF(sd, lod);
+        // Create material instance at shading point.
+        let mi = gScene.materials.getMaterialInstance(sd, lod);
 
         // Create sample generator.
         SampleGenerator sg = SampleGenerator(pixel, gFrameCount);
@@ -408,18 +408,18 @@ float3 tracePath(const uint2 pixel, const uint2 frameDim)
         if (kComputeDirect)
         {
             // Always output directly emitted light, independent of whether emissive materials are treated as light sources or not.
-            outColor += bsdf.getProperties(sd).emission;
+            outColor += mi.getProperties(sd).emission;
 
             // Add contribution of direct light from analytic lights.
             // Light probe and mesh lights are handled by the scatter ray hit/miss shaders.
-            outColor += kUseAnalyticLights ? evalDirectAnalytic(sd, bsdf, sg) : float3(0.f);
+            outColor += kUseAnalyticLights ? evalDirectAnalytic(sd, mi, sg) : float3(0.f);
         }
 
         // Prepare ray payload.
         ScatterRayData rayData = ScatterRayData(sg);
 
         // Generate scatter ray.
-        if (!generateScatterRay(sd, bsdf, isCurveHit, rayOrigin, rayData)) rayData.terminated = true;
+        if (!generateScatterRay(sd, mi, isCurveHit, rayOrigin, rayData)) rayData.terminated = true;
 
         // Follow path into the scene and compute its total contribution.
         for (uint depth = 0; depth <= kMaxBounces && !rayData.terminated; depth++)

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -36,7 +36,8 @@ namespace Falcor
         constexpr size_t kUploadsPerFlush = 16; ///< Number of texture uploads before issuing a flush (to keep upload heap from growing).
     }
 
-    AsyncTextureLoader::AsyncTextureLoader(size_t threadCount)
+    AsyncTextureLoader::AsyncTextureLoader(std::shared_ptr<Device> pDevice, size_t threadCount)
+        : mpDevice(std::move(pDevice))
     {
         runWorkers(threadCount);
     }
@@ -45,7 +46,7 @@ namespace Falcor
     {
         terminateWorkers();
 
-        gpDevice->flushAndSync();
+        mpDevice->flushAndSync();
     }
 
     std::future<Texture::SharedPtr> AsyncTextureLoader::loadFromFile(const std::filesystem::path& path, bool generateMipLevels, bool loadAsSrgb, Resource::BindFlags bindFlags, LoadCallback callback)
@@ -60,7 +61,7 @@ namespace Falcor
     {
         // Create a barrier to synchronize worker threads before issuing a global flush.
         mFlushBarrier = std::make_shared<Barrier>(threadCount, [&]() {
-            gpDevice->flushAndSync();
+            mpDevice->flushAndSync();
             mFlushPending = false;
             mUploadCounter = 0;
             });
@@ -106,7 +107,7 @@ namespace Falcor
             lock.unlock();
 
             // Load the textures (this part is running in parallel).
-            Texture::SharedPtr pTexture = Texture::createFromFile(request.path, request.generateMipLevels, request.loadAsSRGB, request.bindFlags);
+            Texture::SharedPtr pTexture = Texture::createFromFile(mpDevice.get(), request.path, request.generateMipLevels, request.loadAsSRGB, request.bindFlags);
             request.promise.set_value(pTexture);
 
             if (request.callback)

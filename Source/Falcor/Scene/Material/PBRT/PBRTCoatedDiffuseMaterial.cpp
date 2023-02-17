@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
  **************************************************************************/
 #include "PBRTCoatedDiffuseMaterial.h"
 #include "Utils/Scripting/ScriptBindings.h"
+#include "Scene/SceneBuilderAccess.h"
 
 namespace Falcor
 {
@@ -35,13 +36,13 @@ namespace Falcor
         const char kShaderFile[] = "Rendering/Materials/PBRT/PBRTCoatedDiffuseMaterial.slang";
     }
 
-    PBRTCoatedDiffuseMaterial::SharedPtr PBRTCoatedDiffuseMaterial::create(const std::string& name)
+    PBRTCoatedDiffuseMaterial::SharedPtr PBRTCoatedDiffuseMaterial::create(std::shared_ptr<Device> pDevice, const std::string& name)
     {
-        return SharedPtr(new PBRTCoatedDiffuseMaterial(name));
+        return SharedPtr(new PBRTCoatedDiffuseMaterial(std::move(pDevice), name));
     }
 
-    PBRTCoatedDiffuseMaterial::PBRTCoatedDiffuseMaterial(const std::string& name)
-        : BasicMaterial(name, MaterialType::PBRTCoatedDiffuse)
+    PBRTCoatedDiffuseMaterial::PBRTCoatedDiffuseMaterial(std::shared_ptr<Device> pDevice, const std::string& name)
+        : BasicMaterial(std::move(pDevice), name, MaterialType::PBRTCoatedDiffuse)
     {
         // Setup additional texture slots.
         mTextureSlotInfo[(uint32_t)TextureSlot::BaseColor] = { "baseColor", TextureChannelFlags::RGBA, true };
@@ -83,7 +84,11 @@ namespace Falcor
         FALCOR_SCRIPT_BINDING_DEPENDENCY(BasicMaterial)
 
         pybind11::class_<PBRTCoatedDiffuseMaterial, BasicMaterial, PBRTCoatedDiffuseMaterial::SharedPtr> material(m, "PBRTCoatedDiffuseMaterial");
-        material.def(pybind11::init(&PBRTCoatedDiffuseMaterial::create), "name"_a = "");
+        auto create = [] (const std::string& name)
+        {
+            return PBRTCoatedDiffuseMaterial::create(getActivePythonSceneBuilder().getDevice(), name);
+        };
+        material.def(pybind11::init(create), "name"_a = ""); // PYTHONDEPRECATED
 
         material.def_property("roughness", &PBRTCoatedDiffuseMaterial::getRoughness, &PBRTCoatedDiffuseMaterial::setRoughness);
     }

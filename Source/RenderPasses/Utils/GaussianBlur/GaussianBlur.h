@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,20 +31,14 @@
 
 using namespace Falcor;
 
-#ifdef BUILD_GAUSSIAN_PASS
-#define PASS_API FALCOR_API_EXPORT
-#else
-#define PASS_API FALCOR_API_IMPORT
-#endif
-
-class PASS_API GaussianBlur : public RenderPass
+class GaussianBlur : public RenderPass
 {
 public:
+    FALCOR_PLUGIN_CLASS(GaussianBlur, "GaussianBlur", "Gaussian blur.");
+
     using SharedPtr = std::shared_ptr<GaussianBlur>;
 
-    static const Info kInfo;
-
-    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
@@ -60,7 +54,7 @@ public:
     static void registerBindings(pybind11::module& m);
 
 private:
-    GaussianBlur();
+    GaussianBlur(std::shared_ptr<Device> pDevice);
     uint32_t mKernelWidth = 5;
     float mSigma = 2.0f;
     bool mReady = false;
@@ -73,5 +67,3 @@ private:
     Fbo::SharedPtr mpTmpFbo;
     Sampler::SharedPtr mpSampler;
 };
-
-#undef PASS_API

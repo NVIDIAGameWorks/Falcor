@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,16 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Profiler.h"
-#include "Core/Renderer.h"
 #include "Core/API/Device.h"
 #include "Core/API/GpuTimer.h"
 #include "Utils/Logger.h"
 #include "Utils/Scripting/ScriptBindings.h"
 #include <fstream>
-
-#ifdef FALCOR_D3D12
-#include <WinPixEventRuntime/pix3.h>
-#endif
 
 namespace Falcor
 {
@@ -109,7 +104,7 @@ namespace Falcor
         return Stats::compute(mGpuTimeHistory.data(), mHistorySize);
     }
 
-    void Profiler::Event::start(uint32_t frameIndex)
+    void Profiler::Event::start(Profiler& profiler, uint32_t frameIndex)
     {
         if (++mTriggered > 1)
         {
@@ -127,7 +122,7 @@ namespace Falcor
         FALCOR_ASSERT(frameData.currentTimer <= frameData.pTimers.size());
         if (frameData.currentTimer == frameData.pTimers.size())
         {
-            frameData.pTimers.push_back(GpuTimer::create());
+            frameData.pTimers.push_back(GpuTimer::create(profiler.mpDevice));
         }
         frameData.pActiveTimer = frameData.pTimers[frameData.currentTimer++].get();
         frameData.pActiveTimer->begin();
@@ -284,7 +279,13 @@ namespace Falcor
 
     // Profiler
 
-    void Profiler::startEvent(const std::string& name, Flags flags)
+    Profiler::Profiler(Device* pDevice)
+        : mpDevice(pDevice)
+    {
+        mpFence = GpuFence::create(mpDevice);
+    }
+
+    void Profiler::startEvent(RenderContext* pRenderContext, const std::string& name, Flags flags)
     {
         if (mEnabled && is_set(flags, Flags::Internal))
         {
@@ -299,7 +300,7 @@ namespace Falcor
 
             Event* pEvent = getEvent(mCurrentEventName);
             FALCOR_ASSERT(pEvent != nullptr);
-            if (!mPaused) pEvent->start(mFrameIndex);
+            if (!mPaused) pEvent->start(*this, mFrameIndex);
 
             if (std::find(mCurrentFrameEvents.begin(), mCurrentFrameEvents.end(), pEvent) == mCurrentFrameEvents.end())
             {
@@ -308,15 +309,12 @@ namespace Falcor
         }
         if (is_set(flags, Flags::Pix))
         {
-#ifdef FALCOR_D3D12
-            PIXBeginEvent((ID3D12GraphicsCommandList*)gpDevice->getRenderContext()->getLowLevelData()->getD3D12CommandList(), PIX_COLOR(0, 0, 0), name.c_str());
-#else
-            gpDevice->getRenderContext()->getLowLevelData()->beginDebugEvent(name.c_str());
-#endif
+            FALCOR_ASSERT(pRenderContext);
+            pRenderContext->getLowLevelData()->beginDebugEvent(name.c_str());
         }
     }
 
-    void Profiler::endEvent(const std::string& name, Flags flags)
+    void Profiler::endEvent(RenderContext* pRenderContext, const std::string& name, Flags flags)
     {
         if (mEnabled && is_set(flags, Flags::Internal))
         {
@@ -332,11 +330,8 @@ namespace Falcor
 
         if (is_set(flags, Flags::Pix))
         {
-#ifdef FALCOR_D3D12
-            PIXEndEvent((ID3D12GraphicsCommandList*)gpDevice->getRenderContext()->getLowLevelData()->getD3D12CommandList());
-#else
-            gpDevice->getRenderContext()->getLowLevelData()->endDebugEvent();
-#endif
+            FALCOR_ASSERT(pRenderContext)
+            pRenderContext->getLowLevelData()->endDebugEvent();
         }
     }
 
@@ -346,7 +341,7 @@ namespace Falcor
         return event ? event : createEvent(name);
     }
 
-    void Profiler::endFrame()
+    void Profiler::endFrame(RenderContext* pRenderContext)
     {
         if (mPaused) return;
 
@@ -361,7 +356,6 @@ namespace Falcor
         }
 
         // Flush and insert signal for synchronization of GPU timings.
-        auto pRenderContext = gpFramework->getRenderContext();
         pRenderContext->flush(false);
         mFenceValue = mpFence->gpuSignal(pRenderContext->getLowLevelData()->getCommandQueue());
 
@@ -413,18 +407,6 @@ namespace Falcor
         return result;
     }
 
-    const Profiler::SharedPtr& Profiler::instancePtr()
-    {
-        static Profiler::SharedPtr pInstance;
-        if (!pInstance) pInstance = std::make_shared<Profiler>();
-        return pInstance;
-    }
-
-    Profiler::Profiler()
-    {
-        mpFence = GpuFence::create();
-    }
-
     Profiler::Event* Profiler::createEvent(const std::string& name)
     {
         auto pEvent = std::shared_ptr<Event>(new Event(name));
@@ -438,6 +420,21 @@ namespace Falcor
         return (event == mEvents.end()) ? nullptr : event->second.get();
     }
 
+
+    ScopedProfilerEvent::ScopedProfilerEvent(RenderContext* pRenderContext, const std::string& name, Profiler::Flags flags)
+        : mpRenderContext(pRenderContext)
+        , mName(name)
+        , mFlags(flags)
+    {
+        FALCOR_ASSERT(mpRenderContext);
+        mpRenderContext->getProfiler()->startEvent(mpRenderContext, mName, mFlags);
+    }
+
+    ScopedProfilerEvent::~ScopedProfilerEvent()
+    {
+        mpRenderContext->getProfiler()->endEvent(mpRenderContext, mName, mFlags);
+    }
+
     FALCOR_SCRIPT_BINDING(Profiler)
     {
         using namespace pybind11::literals;
@@ -449,7 +446,7 @@ namespace Falcor
             return result;
         };
 
-        pybind11::class_<Profiler, Profiler::SharedPtr> profiler(m, "Profiler");
+        pybind11::class_<Profiler> profiler(m, "Profiler");
         profiler.def_property("enabled", &Profiler::isEnabled, &Profiler::setEnabled);
         profiler.def_property("paused", &Profiler::isPaused, &Profiler::setPaused);
         profiler.def_property_readonly("isCapturing", &Profiler::isCapturing);

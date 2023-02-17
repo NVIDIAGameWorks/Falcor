@@ -18,6 +18,7 @@ import concurrent.futures
 import multiprocessing
 import signal
 import threading
+from xml.etree import ElementTree as ET
 
 from build_falcor import build_falcor
 
@@ -119,21 +120,16 @@ class Test:
 
     process_controller = None
 
-    def __init__(self, script_file, root_dir):
+    def __init__(self, script_file, root_dir, device_type, header):
         self.script_file = script_file
+        self.device_type = device_type
+        self.header = header
+
+        # Test name.
+        self.name = str(self.script_file.relative_to(root_dir).with_suffix('').as_posix()) + f"_{self.device_type}"
 
         # Test directory relative to root directory.
-        self.test_dir = self.script_file.relative_to(root_dir).with_suffix('')
-
-        # Test name derived from test directory.
-        self.name = str(self.test_dir.as_posix())
-
-        # Read script header.
-        try:
-            self.header = read_header(script_file)
-        except Exception as e:
-            print(e)
-            sys.exit(1)
+        self.test_dir = Path(self.name)
 
         # Get tags.
         self.tags = self.header.get('tags', ['default'])
@@ -178,7 +174,7 @@ class Test:
         '''
         # Bail out if test is skipped.
         if self.skipped:
-            return Test.Result.SKIPPED, [self.skip_message] if self.skip_message != '' else []
+            return Test.Result.SKIPPED, [self.skip_message] if self.skip_message != '' else [], {}
 
         # Determine full output directory.
         output_dir = output_dir / self.test_dir
@@ -201,31 +197,35 @@ class Test:
         # Run Mogwai to generate images.
         args = [
             str(mogwai_exe),
+            '--device-type', str(self.device_type),
             '--script', str(relative_to_cwd(generate_file)),
             '--logfile', str(output_dir / 'log.txt'),
-            '--silent',
+            '--headless',
             '--precise'
         ]
+        rerun_env = {}
+        rerun_env["cwd"] = str(cwd)
+        rerun_env["args"] = args[1:]
         p = subprocess.Popen(args, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if not self.process_controller.add_process(self.name + ":run", p):
-            return Test.Result.FAILED, ['Process killed due to global exit']
+            return Test.Result.FAILED, ['Process killed due to global exit'], rerun_env
         try:
             outs, errs = p.communicate(timeout=self.timeout)
         except subprocess.TimeoutExpired:
             p.kill()
-            return Test.Result.FAILED, ['Process killed due to timeout']
+            return Test.Result.FAILED, ['Process killed due to timeout'], rerun_env
 
         # Check for success.
         if p.returncode != 0:
             # Generate list of errors from stderr.
             errors = list(map(lambda l: l.rstrip(), errs.decode('utf-8').splitlines()))
-            return Test.Result.FAILED, errors + [f'{mogwai_exe} exited with return code {p.returncode}']
+            return Test.Result.FAILED, errors + [f'{mogwai_exe} exited with return code {p.returncode}'], rerun_env
 
         # Bail out if no images have been generated.
         if len(self.collect_images(output_dir)) == 0:
-            return Test.Result.FAILED, ['Test did not generate any images.']
+            return Test.Result.FAILED, ['Test did not generate any images.'], rerun_env
 
-        return Test.Result.PASSED, []
+        return Test.Result.PASSED, [], rerun_env
 
     def compare_images(self, ref_dir, result_dir, image_compare_exe):
         '''
@@ -321,10 +321,11 @@ class Test:
         start_time = time.time()
         result = Test.Result.PASSED
         messages = []
+        rerun_env = {}
 
         # Generate results images.
         if not compare_only:
-            result, messages = self.generate_images(result_dir, mogwai_exe)
+            result, messages, rerun_env = self.generate_images(result_dir, mogwai_exe)
 
         # Compare to references.
         if result == Test.Result.PASSED:
@@ -334,6 +335,7 @@ class Test:
         report['result'] = Test.RESULT_STRING[result]
         report['messages'] = messages
         report['duration'] = time.time() - start_time
+        report['rerun_env'] = rerun_env
 
         # Write JSON report.
         report_dir = result_dir / self.test_dir
@@ -351,9 +353,9 @@ def generate_ref(env, test, ref_dir, process_controller):
         print(f'  {test.name:<60} : STARTED')
     test.process_controller = process_controller
     start_time = time.time()
-    result, messages = test.generate_images(ref_dir, env.mogwai_exe)
+    result, messages, rerun_env = test.generate_images(ref_dir, env.mogwai_exe)
     elapsed_time = time.time() - start_time
-    return {"name": test.name, "elapsed_time": elapsed_time, "result": result, "messages": messages}
+    return {"name": test.name, "elapsed_time": elapsed_time, "result": result, "messages": messages, "rerun_env": rerun_env}
 
 
 def generate_refs(env, tests, ref_dir, process_controller):
@@ -419,7 +421,7 @@ def run_test(env, test, compare_only, ref_dir, result_dir, min_tolerance, proces
     elapsed_time = time.time() - start_time
     return {"name": test.name, "elapsed_time": elapsed_time, "result": result, "messages": messages}
 
-def run_tests(env, tests, compare_only, ref_dir, result_dir, min_tolerance, process_controller):
+def run_tests(env, tests, compare_only, ref_dir, result_dir, min_tolerance, xml_report, process_controller):
     '''
     Runs a set of tests, stores them into result_dir and compares them to ref_dir.
     '''
@@ -432,6 +434,7 @@ def run_tests(env, tests, compare_only, ref_dir, result_dir, min_tolerance, proc
     success = True
     run_date = datetime.datetime.now()
     run_start_time = time.time()
+    run_results = []
     total_elapsed_time = 0
 
     try:
@@ -443,6 +446,9 @@ def run_tests(env, tests, compare_only, ref_dir, result_dir, min_tolerance, proc
                     run_result   = future.result()
                     if run_result == None:
                         continue
+
+                    run_results.append(run_result)
+
                     test_name    = run_result["name"]
                     elapsed_time = run_result["elapsed_time"]
                     result       = run_result["result"]
@@ -483,6 +489,20 @@ def run_tests(env, tests, compare_only, ref_dir, result_dir, min_tolerance, proc
     with open(report_file, 'w') as f:
         json.dump(report, f, indent=4)
 
+    # Write XML report.
+    if xml_report:
+        testsuites = ET.Element("testsuites")
+        suite = ET.SubElement(testsuites, "testsuite", name="Image Tests")
+        for run_result in run_results:
+            testcase = ET.SubElement(suite, "testcase", name=run_result["name"], time="%.3f" % run_result["elapsed_time"])
+            if run_result["result"] == Test.Result.SKIPPED:
+                ET.SubElement(testcase, "skipped")
+            elif run_result["result"] == Test.Result.FAILED:
+                ET.SubElement(testcase, "failure", message="\n".join(run_result["messages"]))
+
+        tree = ET.ElementTree(testsuites)
+        tree.write(xml_report)
+
     return success
 
 def list_tests(tests):
@@ -498,16 +518,29 @@ def collect_tests(root_dir, filter_regex, tags):
     Collect a list of all tests found in root_dir that are matching the filter_regex and tags.
     A test script needs to be named test_*.py to be detected.
     '''
-    print(root_dir)
     # Find all script files.
     script_files = list(root_dir.glob('**/test_*.py'))
+
+    # Create tests.
+    tests = []
+    for script_file in script_files:
+        try:
+            header = read_header(script_file)
+        except Exception as e:
+            print(e)
+            sys.exit(1)
+
+        # For now we default to d3d12 as we bring in image tests on vulkan.
+        # We should later switch this default to ["d3d12", "vulkan"].
+        device_types = header.get("device_types", ["d3d12"])
+        device_types = [d for d in device_types if d in config.SUPPORTED_DEVICE_TYPES]
+        for device_type in device_types:
+            tests.append(Test(script_file, root_dir, device_type, header))
 
     # Filter using regex.
     if filter_regex != '':
         regex = re.compile(filter_regex or '')
-        script_files = list(filter(lambda f: regex.search(str(f.as_posix())) != None, script_files))
-
-    tests = list(map(lambda f: Test(f, root_dir), script_files))
+        tests = list(filter(lambda t: regex.search(t.name) != None, tests))
 
     # Filter using tags.
     tags = tags.split(',')
@@ -548,6 +581,7 @@ def main():
     parser.add_argument('-l', '--list', action='store_true', help='List available tests')
     parser.add_argument('-t', '--tags', type=str, action='store', help='Comma separated list of tags for filtering tests to run', default='default')
     parser.add_argument('-f', '--filter', type=str, action='store', help='Regular expression for filtering tests to run')
+    parser.add_argument('-x', '--xml-report', type=str, action='store', help='XML report output file')
     parser.add_argument('-b', '--ref-branch', help='Reference branch to compare against (defaults to master branch)', default='master')
     parser.add_argument('--compare-only', action='store_true', help='Compare previous results against references without generating new images')
     parser.add_argument('--gen-refs', action='store_true', help='Generate reference images instead of running tests')
@@ -566,17 +600,17 @@ def main():
 
     process_controller = ProcessController(args.parallel)
 
+    # List build configurations.
+    if args.list_configs:
+        print('Available build configurations:\n' + '\n'.join(config.BUILD_CONFIGS.keys()))
+        sys.exit(0)
+
     # Load environment.
     try:
         env = Environment(args.environment, args.config)
     except Exception as e:
         print(e)
         sys.exit(1)
-
-    # List build configurations.
-    if args.list_configs:
-        print('Available build configurations:\n' + '\n'.join(config.BUILD_CONFIGS.keys()))
-        sys.exit(0)
 
     # Build before running tests.
     if not (args.skip_build or args.list):
@@ -636,7 +670,7 @@ def main():
             sys.exit(1)
 
         # Run tests.
-        if not run_tests(env, tests, args.compare_only, ref_dir, result_dir, args.tolerance, process_controller):
+        if not run_tests(env, tests, args.compare_only, ref_dir, result_dir, args.tolerance, args.xml_report, process_controller):
             sys.exit(1)
 
     sys.exit(0)

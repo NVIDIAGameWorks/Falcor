@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,67 +31,72 @@
 
 namespace Falcor
 {
-    namespace
+namespace
+{
+// Sort the 'data' array in ascending order within chunks of 'chunkSize' elements.
+void bitonicSortRef(std::vector<uint32_t>& data, const uint32_t chunkSize)
+{
+    if (chunkSize <= 1)
+        return;
+    for (size_t first = 0; first < data.size(); first += chunkSize)
     {
-        // Sort the 'data' array in ascending order within chunks of 'chunkSize' elements.
-        void sort(std::vector<uint32_t>& data, const uint32_t chunkSize)
-        {
-            if (chunkSize <= 1) return;
-            for (size_t first = 0; first < data.size(); first += chunkSize)
-            {
-                size_t last = std::min(first + chunkSize, data.size());
-                std::sort(data.begin() + first, data.begin() + last);
-            }
-        }
-
-        void testGpuSort(GPUUnitTestContext& ctx, BitonicSort* pSort, const uint32_t n, const uint32_t chunkSize)
-        {
-            // Create a buffer of random data to use as test data.
-            std::vector<uint32_t> testData(n);
-            std::mt19937 r;
-            for (auto& it : testData) it = r();
-
-            Buffer::SharedPtr pTestDataBuffer = Buffer::create(n * sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, testData.data());
-
-            // Execute sort on the GPU.
-            uint32_t groupSize = std::max(chunkSize, 256u);
-            bool retval = pSort->execute(ctx.getRenderContext(), pTestDataBuffer, n, chunkSize, groupSize);
-            EXPECT_EQ(retval, true);
-
-            // Sort the test data on the CPU for comparison.
-            sort(testData, chunkSize);
-
-            // Compare results.
-            const uint32_t* result = (const uint32_t*)pTestDataBuffer->map(Buffer::MapType::Read);
-            FALCOR_ASSERT(result);
-            for (uint32_t i = 0; i < n; i++)
-            {
-                EXPECT_EQ(testData[i], result[i]) << "i = " << i;
-            }
-            pTestDataBuffer->unmap();
-        }
-    }
-
-#if FALCOR_NVAPI_AVAILABLE
-    GPU_TEST(BitonicSort)
-#else
-    GPU_TEST(BitonicSort, "Requires NVAPI")
-#endif
-    {
-        // Create utility class for sorting.
-        BitonicSort::SharedPtr pSort = BitonicSort::create();
-
-        // Test different parameters.
-        // The chunk size(last param) must  be a pow-of-two <= 1024.
-        testGpuSort(ctx, pSort.get(), 100, 1);
-        testGpuSort(ctx, pSort.get(), 19, 2);
-        testGpuSort(ctx, pSort.get(), 1024, 4);
-        testGpuSort(ctx, pSort.get(), 11025, 8);
-        testGpuSort(ctx, pSort.get(), 290, 16);
-        testGpuSort(ctx, pSort.get(), 1500, 32);
-        testGpuSort(ctx, pSort.get(), 20000, 64);
-        testGpuSort(ctx, pSort.get(), 2001, 128);
-        testGpuSort(ctx, pSort.get(), 16384, 256);
-        testGpuSort(ctx, pSort.get(), 3103, 1024);
+        size_t last = std::min(first + chunkSize, data.size());
+        std::sort(data.begin() + first, data.begin() + last);
     }
 }
+
+void testGpuSort(GPUUnitTestContext& ctx, BitonicSort& bitonicSort, const uint32_t n, const uint32_t chunkSize)
+{
+    Device* pDevice = ctx.getDevice().get();
+
+    // Create a buffer of random data to use as test data.
+    std::vector<uint32_t> testData(n);
+    std::mt19937 r;
+    for (auto& it : testData)
+        it = r();
+
+    Buffer::SharedPtr pTestDataBuffer =
+        Buffer::create(pDevice, n * sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, testData.data());
+
+    // Execute sort on the GPU.
+    uint32_t groupSize = std::max(chunkSize, 256u);
+    bool retval = bitonicSort.execute(ctx.getRenderContext(), pTestDataBuffer, n, chunkSize, groupSize);
+    EXPECT_EQ(retval, true);
+
+    // Sort the test data on the CPU for comparison.
+    bitonicSortRef(testData, chunkSize);
+
+    // Compare results.
+    const uint32_t* result = (const uint32_t*)pTestDataBuffer->map(Buffer::MapType::Read);
+    FALCOR_ASSERT(result);
+    for (uint32_t i = 0; i < n; i++)
+    {
+        EXPECT_EQ(testData[i], result[i]) << "i = " << i;
+    }
+    pTestDataBuffer->unmap();
+}
+} // namespace
+
+#if FALCOR_NVAPI_AVAILABLE
+GPU_TEST_D3D12(BitonicSort)
+#else
+GPU_TEST_D3D12(BitonicSort, "Requires NVAPI")
+#endif
+{
+    // Create utility class for sorting.
+    BitonicSort bitonicSort(ctx.getDevice());
+
+    // Test different parameters.
+    // The chunk size(last param) must  be a pow-of-two <= 1024.
+    testGpuSort(ctx, bitonicSort, 100, 1);
+    testGpuSort(ctx, bitonicSort, 19, 2);
+    testGpuSort(ctx, bitonicSort, 1024, 4);
+    testGpuSort(ctx, bitonicSort, 11025, 8);
+    testGpuSort(ctx, bitonicSort, 290, 16);
+    testGpuSort(ctx, bitonicSort, 1500, 32);
+    testGpuSort(ctx, bitonicSort, 20000, 64);
+    testGpuSort(ctx, bitonicSort, 2001, 128);
+    testGpuSort(ctx, bitonicSort, 16384, 256);
+    testGpuSort(ctx, bitonicSort, 3103, 1024);
+}
+} // namespace Falcor

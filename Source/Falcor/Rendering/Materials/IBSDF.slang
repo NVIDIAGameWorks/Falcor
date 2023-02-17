@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,128 +25,133 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Utils/HostDeviceShared.slangh" // For bit packing macros
-
-__exported import Scene.ShadingData;
-__exported import Rendering.Materials.IBxDF; // For kMinCosTheta
 __exported import Rendering.Materials.LobeType;
 __exported import Utils.Sampling.SampleGeneratorInterface;
 
-/** Describes a BSDF sample.
-*/
-struct BSDFSample
-{
-    float3  wo;             ///< Sampled direction in world space (normalized).
-    float   pdf;            ///< pdf with respect to solid angle for the sampled direction (wo).
-    float3  weight;         ///< Sample weight f(wi, wo) * dot(wo, n) / pdf(wo).
-    uint    lobe;           ///< Sampled lobe. This is a combination of LobeType flags (see LobeType.slang).
+// Minimum cos(theta) for the incident and outgoing vectors.
+// Some BSDF functions are not robust for cos(theta) == 0.0,
+// so using a small epsilon for consistency.
+// TODO: Move into IBSDF if possible
+static const float kMinCosTheta = 1e-6f;
 
-    bool isLobe(LobeType type)
-    {
-        return (lobe & uint(type)) != 0;
-    }
-};
-
-/** Describes BSDF properties.
-
-    These properties may be useful as input to denoisers and other perceptual techniques.
-    The BSDF implementations are expected to provide a best fit approximation.
-*/
-struct BSDFProperties
-{
-    float3  emission;                       ///< Radiance emitted in the incident direction (wi).
-    float   roughness;                      ///< Surface roughness on a perceptually linear scale, where 0.0 = perfectly smooth and 1.0 = maximum roughness.
-
-    // Approximate directional-hemispherical reflectance/transmittance of the BSDF (black-sky albedo).
-    // The exact values are given by the integrals of the BSDF over wo given an incident direction wi.
-    // The terms are separated into diffuse and non-diffuse components. Due to energy conservation, the sum is expected to be <= 1.0.
-    float3  diffuseReflectionAlbedo;        ///< Directional-hemispherical diffuse reflectance. This is the ratio of total energy diffusely reflected to the energy incident along wi.
-    float3  diffuseTransmissionAlbedo;      ///< Directional-hemispherical diffuse transmittance. This is the ratio of total energy diffusely transmitted to the energy incident along wi.
-    float3  specularReflectionAlbedo;       ///< Directional-hemispherical specular reflectance. This is the ratio of total energy non-diffusely reflected to the energy incident along wi.
-    float3  specularTransmissionAlbedo;     ///< Directional-hemispherical specular transmittance. This is the ratio of total energy non-diffusely transmitted to the energy incident along wi.
-
-    // Approximate specular reflectance. This is the color of specular reflection.
-    // The diffuse reflectance is approximated as a Lambertian given by the diffuse albedo above.
-    float3  specularReflectance;            ///< Specular reflectance at normal incidence (F0). This is in the range [0,1].
-
-    uint    flags;                          ///< Flags storing additional properties.
-
-    enum Flags : uint
-    {
-        IsTransmissive = 0x1,
-    };
-
-    property isTransmissive : bool
-    {
-        get { return (flags & (uint)Flags::IsTransmissive) != 0; }
-    }
-};
-
-/** Interface for a bidirection scattering distribution function (BSDF).
-
-    The term BSDF is used here in a broad sense for the mathematical function which
-    describes the scattering of light at a shading location.
-
-    This interface allows evaluation and sampling of the BSDF, and associated functionality.
-    Implementations of the interface has all material properties evaluated at the shading location.
-    BSDF instances are created and initialized by the corresponding material.
-
-    The shading location and its attributes are described by a ShadingData struct.
-    The ShadingData view direction field specifies the direction from which the
-    shading location is seen. By convention we call this the incident direction (wi).
-    The outgoing direction (wo) is the direction in which the transported quantity
-    (radiance or importance) is scattered in.
+/** Low-level interface for BSDF functions.
 
     Conventions:
-     - The incident and outgoing direction point away from the shading location.
-     - The incident direction (wi) is given by ShadingData.
-     - The outgoing direction (wo) is sampled.
-     - The foreshortening term with respect to the sampled direction is always included.
-
-    Note:
-     - The [anyValueSize(n)] attribute specifies the maximum size in bytes an implementation type
-       to IBSDF can be. Slang compiler will check the implementation types and emits an error
-       if an implementation exceeds this size.
-     - The maximum size can be increased if needed, but it should be kept as small as possible
-       to reduce register pressure in case the compiler fails to optimize.
+    - All operations are done in a local coordinate frame.
+    - The local frame has normal N=(0,0,1), tangent T=(1,0,0) and bitangent B=(0,1,0).
+    - The incident and outgoing direction point away from the shading location.
+    - The incident direction (wi) is always in the positive hemisphere.
+    - The outgoing direction (wo) is sampled.
+    - Evaluating the BSDF always includes the foreshortening term (dot(wo, n) = wo.z).
 */
-[anyValueSize(76)] // TODO: Reduce to 64B
+
+/** Albedo is split into four components. They have to sum up to 1.0.
+*/
+
+struct AlbedoContributions
+{
+    float3  reflection;     ///< Energy reflected into upper hemisphere
+    float3  absorptionR;    ///< Energy absorbed upper hemisphere
+    float3  transmission;   ///< Energy transmitted into upper hemisphere
+    float3  absorptionT;    ///< Energy absorbed lower hemisphere
+
+    __init(float3 r, float3 ar, float3 t, float3 at)
+    {
+        reflection = r;
+        absorptionR = ar;
+        transmission = t;
+        absorptionT = at;
+    }
+}
+
+AlbedoContributions operator+(const AlbedoContributions a, const AlbedoContributions b)
+{
+    return AlbedoContributions(
+        a.reflection + b.reflection,
+        a.absorptionR + b.absorptionR,
+        a.transmission + b.transmission,
+        a.absorptionT + b.absorptionT );
+}
+
+AlbedoContributions operator*(const AlbedoContributions a, const AlbedoContributions b)
+{
+    return AlbedoContributions(
+        a.reflection * b.reflection,
+        a.absorptionR * b.absorptionR,
+        a.transmission * b.transmission,
+        a.absorptionT * b.absorptionT);
+}
+
+AlbedoContributions operator*(const float f, const AlbedoContributions b)
+{
+    return AlbedoContributions(
+        f * b.reflection,
+        f * b.absorptionR,
+        f * b.transmission,
+        f * b.absorptionT);
+}
+
+AlbedoContributions operator+=(AlbedoContributions a, const AlbedoContributions b)
+{
+    a.reflection += b.reflection;
+    a.absorptionR += b.absorptionR;
+    a.transmission += b.transmission;
+    a.absorptionT += b.absorptionT;
+
+    return a;
+}
+
+struct RoughnessInformation
+{
+    float2  roughnessBSDFNotation;     ///< This is the (mostly meaningless) non-universal roughness of the BSDF
+    float3  scratch;
+
+    __init()
+    {
+        roughnessBSDFNotation = float2(0.f);
+        scratch = float3(0.f);
+    }
+}
+
+[anyValueSize(96)]
 interface IBSDF
 {
     /** Evaluates the BSDF.
-        \param[in] sd Shading data.
+        \param[in] wi Incident direction.
         \param[in] wo Outgoing direction.
         \param[in,out] sg Sample generator.
         \return Returns f(wi, wo) * dot(wo, n).
     */
-    float3 eval<S : ISampleGenerator>(const ShadingData sd, const float3 wo, inout S sg);
+    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg);
 
     /** Samples the BSDF.
-        \param[in] sd Shading data.
+        \param[in] wi Incident direction.
+        \param[out] wo Outgoing direction.
+        \param[out] pdf pdf with respect to solid angle for sampling outgoing direction wo (0 if a delta event is sampled).
+        \param[out] weight Sample weight f(wi, wo) * dot(wo, n) / pdf(wo).
+        \param[out] lobeType Sampled lobeType (see LobeType).
         \param[in,out] sg Sample generator.
-        \param[out] result Generated sample. Only valid if true is returned.
-        \param[in] useImportanceSampling Hint to use importance sampling, else default to reference implementation if available.
-        \return True if a sample was generated, false otherwise.
+        \return Returns true if successful.
     */
-    bool sample<S : ISampleGenerator>(const ShadingData sd, inout S sg, out BSDFSample result, bool useImportanceSampling = true);
+    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg);
 
-    /** Evaluates the directional pdf for sampling the given direction.
-        \param[in] sd Shading data.
+    /** Evaluates the BSSDF directional pdf for sampling outgoing direction wo.
+        \param[in] wi Incident direction.
         \param[in] wo Outgoing direction.
-        \param[in] useImportanceSampling Hint to use importance sampling, else default to reference implementation if available.
-        \return PDF with respect to solid angle for sampling direction wo (0 for delta events).
+        \return Returns the pdf with respect to solid angle for sampling outgoing direction wo (0 for delta events).
     */
-    float evalPdf(const ShadingData sd, const float3 wo, bool useImportanceSampling = true);
+    float evalPdf(const float3 wi, const float3 wo);
 
-    /** Return BSDF properties.
-        \param[in] sd Shading data.
-        \return A struct with properties.
+    /** Albedo (hemispherical reflectance) of the BSDF. Relfection+transmission hemisphere should be <= 1.0.
+    \param[in] wi Incident direction.
+    \param[in] lobetype lobe types to be evaluated
+    \return Returns the albedo.
     */
-    BSDFProperties getProperties(const ShadingData sd);
+    AlbedoContributions evalAlbedo(const float3 wi, const LobeType lobetype);
 
-    /** Return the set of available BSDF lobes.
-        \param[in] sd Shading data.
-        \return A combination of LobeType flags (see LobeType.slang).
+    /** Information about roughness of the BSDF in (various) forms.
+    \param[in] wi Incident direction.
+    \return Returns the roughness.
     */
-    uint getLobes(const ShadingData sd);
+    RoughnessInformation getRoughnessInformation(const float3 wi);
 }

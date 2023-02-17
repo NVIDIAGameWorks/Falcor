@@ -95,7 +95,7 @@ namespace Mogwai
     {
         RenderGraph* pGraph = mpRenderer->getActiveGraph();
         if (!pGraph) return;
-        uint64_t frameId = gpFramework->getGlobalClock().getFrame();
+        uint64_t frameId = mpRenderer->getGlobalClock().getFrame();
         if (mGraphRanges.find(pGraph) == mGraphRanges.end()) return;
         const auto& ranges = mGraphRanges.at(pGraph);
 
@@ -121,7 +121,7 @@ namespace Mogwai
     void CaptureTrigger::endFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
     {
         if (!mCurrent.pGraph) return;
-        uint64_t frameId = gpFramework->getGlobalClock().getFrame();
+        uint64_t frameId = mpRenderer->getGlobalClock().getFrame();
         const auto& ranges = mGraphRanges.at(mCurrent.pGraph);
 
         triggerFrame(pRenderContext, mCurrent.pGraph, frameId);
@@ -143,11 +143,11 @@ namespace Mogwai
         }
     }
 
-    void CaptureTrigger::renderUI(Gui::Window& w)
+    void CaptureTrigger::renderBaseUI(Gui::Window& w)
     {
         w.textbox("Base Filename", mBaseFilename);
         w.text("Output Directory\n" + mOutputDir.string());
-        w.tooltip("Relative paths are treated as relative to the executable directory (" + getExecutableDirectory().string() + ").");
+        w.tooltip("Relative paths are treated as relative to the runtime directory (" + getRuntimeDirectory().string() + ").");
         if (w.button("Change Folder"))
         {
             std::filesystem::path path;
@@ -161,7 +161,7 @@ namespace Mogwai
         if (path.is_absolute())
         {
             // Use relative path to executable directory if possible.
-            auto relativePath = path.lexically_relative(getExecutableDirectory());
+            auto relativePath = path.lexically_relative(getRuntimeDirectory());
             if (!relativePath.empty() && relativePath.string().find("..") == std::string::npos) path = relativePath;
         }
         mOutputDir = path;
@@ -199,7 +199,7 @@ namespace Mogwai
     std::filesystem::path CaptureTrigger::getOutputPath() const
     {
         auto path = mOutputDir;
-        if (!path.is_absolute()) path = std::filesystem::absolute(getExecutableDirectory() / path);
+        if (!path.is_absolute()) path = std::filesystem::absolute(getRuntimeDirectory() / path);
         return path;
     }
 

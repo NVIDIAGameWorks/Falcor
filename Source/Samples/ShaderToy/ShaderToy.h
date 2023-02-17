@@ -27,27 +27,26 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
+#include "Core/SampleApp.h"
 #include "RenderGraph/BasePasses/FullScreenPass.h"
 
 using namespace Falcor;
 
-class ShaderToy : public IRenderer
+class ShaderToy : public SampleApp
 {
 public:
+    ShaderToy(const SampleAppConfig& config);
     ~ShaderToy();
 
     void onLoad(RenderContext* pRenderContext) override;
+    void onResize(uint32_t width, uint32_t height) override;
     void onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
-    void onShutdown() override;
-    void onResizeSwapChain(uint32_t width, uint32_t height) override;
-    bool onKeyEvent(const KeyboardEvent& keyEvent) override;
-    bool onMouseEvent(const MouseEvent& mouseEvent) override;
 
 private:
-    Sampler::SharedPtr              mpLinearSampler;
-    float                           mAspectRatio = 0;
-    RasterizerState::SharedPtr      mpNoCullRastState;
-    DepthStencilState::SharedPtr    mpNoDepthDS;
-    BlendState::SharedPtr           mpOpaqueBS;
-    FullScreenPass::SharedPtr       mpMainPass;
+    Sampler::SharedPtr mpLinearSampler;
+    float mAspectRatio = 0;
+    RasterizerState::SharedPtr mpNoCullRastState;
+    DepthStencilState::SharedPtr mpNoDepthDS;
+    BlendState::SharedPtr mpOpaqueBS;
+    FullScreenPass::SharedPtr mpMainPass;
 };

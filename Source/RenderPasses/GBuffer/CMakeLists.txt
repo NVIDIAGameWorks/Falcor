@@ -1,9 +1,10 @@
-add_renderpass(GBuffer)
+add_plugin(GBuffer)
 
 target_sources(GBuffer PRIVATE
     GBufferBase.cpp
     GBufferBase.h
 
+    GBuffer/DepthPass.3d.slang
     GBuffer/GBuffer.cpp
     GBuffer/GBuffer.h
     GBuffer/GBufferHelpers.slang
@@ -27,7 +28,5 @@ target_sources(GBuffer PRIVATE
 )
 
 target_copy_shaders(GBuffer RenderPasses/GBuffer)
-
-target_link_libraries(GBuffer PRIVATE DepthPass)
 
 target_source_group(GBuffer "RenderPasses")

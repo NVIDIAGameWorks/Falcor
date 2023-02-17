@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,9 +26,6 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "SceneDebugger.h"
-#include "RenderGraph/RenderPassLibrary.h"
-
-const RenderPass::Info SceneDebugger::kInfo { "SceneDebugger", "Scene debugger for identifying asset issues." };
 
 namespace
 {
@@ -40,13 +37,7 @@ namespace
     // UI elements
     const Gui::DropdownList kModeList =
     {
-        { (uint32_t)SceneDebuggerMode::FaceNormal, "Face normal" },
-        { (uint32_t)SceneDebuggerMode::ShadingNormal, "Shading normal" },
-        { (uint32_t)SceneDebuggerMode::ShadingTangent, "Shading tangent" },
-        { (uint32_t)SceneDebuggerMode::ShadingBitangent, "Shading bitangent" },
-        { (uint32_t)SceneDebuggerMode::FrontFacingFlag, "Front-facing flag" },
-        { (uint32_t)SceneDebuggerMode::BackfacingShadingNormal, "Back-facing shading normal" },
-        { (uint32_t)SceneDebuggerMode::TexCoords, "Texture coordinates" },
+        // Geometry
         { (uint32_t)SceneDebuggerMode::HitType, "Hit type" },
         { (uint32_t)SceneDebuggerMode::InstanceID, "Instance ID" },
         { (uint32_t)SceneDebuggerMode::MaterialID, "Material ID" },
@@ -54,6 +45,17 @@ namespace
         { (uint32_t)SceneDebuggerMode::GeometryID, "Geometry ID" },
         { (uint32_t)SceneDebuggerMode::BlasID, "BLAS ID" },
         { (uint32_t)SceneDebuggerMode::InstancedGeometry, "Instanced geometry" },
+        // Shading data
+        { (uint32_t)SceneDebuggerMode::FaceNormal, "Face normal" },
+        { (uint32_t)SceneDebuggerMode::ShadingNormal, "Shading normal" },
+        { (uint32_t)SceneDebuggerMode::ShadingTangent, "Shading tangent" },
+        { (uint32_t)SceneDebuggerMode::ShadingBitangent, "Shading bitangent" },
+        { (uint32_t)SceneDebuggerMode::FrontFacingFlag, "Front-facing flag" },
+        { (uint32_t)SceneDebuggerMode::BackfacingShadingNormal, "Back-facing shading normal" },
+        { (uint32_t)SceneDebuggerMode::TexCoords, "Texture coordinates" },
+        // Material properties
+        { (uint32_t)SceneDebuggerMode::GuideNormal, "Guide normal" },
+        { (uint32_t)SceneDebuggerMode::Roughness, "Roughness" },
         { (uint32_t)SceneDebuggerMode::FlatShaded, "Flat shaded" },
     };
 
@@ -61,21 +63,7 @@ namespace
     {
         switch (mode)
         {
-        case SceneDebuggerMode::FaceNormal: return
-            "Face normal in RGB color";
-        case SceneDebuggerMode::ShadingNormal: return
-            "Shading normal in RGB color";
-        case SceneDebuggerMode::ShadingTangent: return
-            "Shading tangent in RGB color";
-        case SceneDebuggerMode::ShadingBitangent: return
-            "Shading bitangent in RGB color";
-        case SceneDebuggerMode::FrontFacingFlag: return
-            "Green = front-facing\n"
-            "Red = back-facing";
-        case SceneDebuggerMode::BackfacingShadingNormal: return
-            "Pixels where the shading normal is back-facing with respect to view vector are highlighted";
-        case SceneDebuggerMode::TexCoords: return
-            "Texture coordinates in RG color wrapped to [0,1]";
+        // Geometry
         case SceneDebuggerMode::HitType: return
             "Hit type in pseudocolor";
         case SceneDebuggerMode::InstanceID: return
@@ -91,6 +79,27 @@ namespace
         case SceneDebuggerMode::InstancedGeometry: return
             "Green = instanced geometry\n"
             "Red = non-instanced geometry";
+        // Shading data
+        case SceneDebuggerMode::FaceNormal: return
+            "Face normal in RGB color";
+        case SceneDebuggerMode::ShadingNormal: return
+            "Shading normal in RGB color";
+        case SceneDebuggerMode::ShadingTangent: return
+            "Shading tangent in RGB color";
+        case SceneDebuggerMode::ShadingBitangent: return
+            "Shading bitangent in RGB color";
+        case SceneDebuggerMode::FrontFacingFlag: return
+            "Green = front-facing\n"
+            "Red = back-facing";
+        case SceneDebuggerMode::BackfacingShadingNormal: return
+            "Pixels where the shading normal is back-facing with respect to view vector are highlighted";
+        case SceneDebuggerMode::TexCoords: return
+            "Texture coordinates in RG color wrapped to [0,1]";
+        // Material properties
+        case SceneDebuggerMode::GuideNormal: return
+            "Guide normal in RGB color";
+        case SceneDebuggerMode::Roughness: return
+            "Material roughness estimate";
         case SceneDebuggerMode::FlatShaded: return
             "Flat shaded";
         default:
@@ -106,13 +115,7 @@ namespace
     void registerBindings(pybind11::module& m)
     {
         pybind11::enum_<SceneDebuggerMode> mode(m, "SceneDebuggerMode");
-        mode.value("FaceNormal", SceneDebuggerMode::FaceNormal);
-        mode.value("ShadingNormal", SceneDebuggerMode::ShadingNormal);
-        mode.value("ShadingTangent", SceneDebuggerMode::ShadingTangent);
-        mode.value("ShadingBitangent", SceneDebuggerMode::ShadingBitangent);
-        mode.value("FrontFacingFlag", SceneDebuggerMode::FrontFacingFlag);
-        mode.value("BackfacingShadingNormal", SceneDebuggerMode::BackfacingShadingNormal);
-        mode.value("TexCoords", SceneDebuggerMode::TexCoords);
+        // Geometry
         mode.value("HitType", SceneDebuggerMode::HitType);
         mode.value("InstanceID", SceneDebuggerMode::InstanceID);
         mode.value("MaterialID", SceneDebuggerMode::MaterialID);
@@ -120,6 +123,17 @@ namespace
         mode.value("GeometryID", SceneDebuggerMode::GeometryID);
         mode.value("BlasID", SceneDebuggerMode::BlasID);
         mode.value("InstancedGeometry", SceneDebuggerMode::InstancedGeometry);
+        // Shading data
+        mode.value("FaceNormal", SceneDebuggerMode::FaceNormal);
+        mode.value("ShadingNormal", SceneDebuggerMode::ShadingNormal);
+        mode.value("ShadingTangent", SceneDebuggerMode::ShadingTangent);
+        mode.value("ShadingBitangent", SceneDebuggerMode::ShadingBitangent);
+        mode.value("FrontFacingFlag", SceneDebuggerMode::FrontFacingFlag);
+        mode.value("BackfacingShadingNormal", SceneDebuggerMode::BackfacingShadingNormal);
+        mode.value("TexCoords", SceneDebuggerMode::TexCoords);
+        // Material properties
+        mode.value("GuideNormal", SceneDebuggerMode::GuideNormal);
+        mode.value("Roughness", SceneDebuggerMode::Roughness);
         mode.value("FlatShaded", SceneDebuggerMode::FlatShaded);
 
         pybind11::class_<SceneDebugger, RenderPass, SceneDebugger::SharedPtr> pass(m, "SceneDebugger");
@@ -127,27 +141,21 @@ namespace
     }
 }
 
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" FALCOR_API_EXPORT const char* getProjDir()
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
-    return PROJECT_DIR;
-}
-
-extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
-{
-    lib.registerPass(SceneDebugger::kInfo, SceneDebugger::create);
+    registry.registerClass<RenderPass, SceneDebugger>();
     Falcor::ScriptBindings::registerBinding(registerBindings);
 }
 
-SceneDebugger::SharedPtr SceneDebugger::create(RenderContext* pRenderContext, const Dictionary& dict)
+SceneDebugger::SharedPtr SceneDebugger::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
-    return SharedPtr(new SceneDebugger(dict));
+    return SharedPtr(new SceneDebugger(std::move(pDevice), dict));
 }
 
-SceneDebugger::SceneDebugger(const Dictionary& dict)
-    : RenderPass(kInfo)
+SceneDebugger::SceneDebugger(std::shared_ptr<Device> pDevice, const Dictionary& dict)
+    : RenderPass(std::move(pDevice))
 {
-    if (!gpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1))
+    if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1))
     {
         throw RuntimeError("SceneDebugger: Raytracing Tier 1.1 is not supported by the current device");
     }
@@ -160,7 +168,7 @@ SceneDebugger::SceneDebugger(const Dictionary& dict)
         else logWarning("Unknown field '{}' in a SceneDebugger dictionary.", key);
     }
 
-    mpFence = GpuFence::create();
+    mpFence = GpuFence::create(mpDevice.get());
 }
 
 Dictionary SceneDebugger::getScriptingDictionary()
@@ -198,13 +206,13 @@ void SceneDebugger::setScene(RenderContext* pRenderContext, const Scene::SharedP
         desc.addShaderLibrary(kShaderFile).csEntry("main");
         desc.addTypeConformances(mpScene->getTypeConformances());
         desc.setShaderModel(kShaderModel);
-        mpDebugPass = ComputePass::create(desc, mpScene->getSceneDefines());
+        mpDebugPass = ComputePass::create(mpDevice, desc, mpScene->getSceneDefines());
 
         // Create lookup table for mesh to BLAS ID.
         auto blasIDs = mpScene->getMeshBlasIDs();
         if (!blasIDs.empty())
         {
-            mpMeshToBlasID = Buffer::createStructured(sizeof(uint32_t), (uint32_t)blasIDs.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, blasIDs.data(), false);
+            mpMeshToBlasID = Buffer::createStructured(mpDevice.get(), sizeof(uint32_t), (uint32_t)blasIDs.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, blasIDs.data(), false);
         }
 
         // Create instance metadata.
@@ -214,8 +222,8 @@ void SceneDebugger::setScene(RenderContext* pRenderContext, const Scene::SharedP
         auto var = mpDebugPass->getRootVar()["CB"]["gSceneDebugger"];
         if (!mpPixelData)
         {
-            mpPixelData = Buffer::createStructured(var["pixelData"], 1, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
-            mpPixelDataStaging = Buffer::createStructured(var["pixelData"], 1, ResourceBindFlags::None, Buffer::CpuAccess::Read, nullptr, false);
+            mpPixelData = Buffer::createStructured(mpDevice.get(), var["pixelData"], 1, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+            mpPixelDataStaging = Buffer::createStructured(mpDevice.get(), var["pixelData"], 1, ResourceBindFlags::None, Buffer::CpuAccess::Read, nullptr, false);
         }
         var["pixelData"] = mpPixelData;
         var["meshToBlasID"] = mpMeshToBlasID;
@@ -261,6 +269,7 @@ void SceneDebugger::renderUI(Gui::Widgets& widget)
     widget.tooltip("Clamp pixel values to [0,1] before output.");
 
     if ((SceneDebuggerMode)mParams.mode == SceneDebuggerMode::FaceNormal ||
+        (SceneDebuggerMode)mParams.mode == SceneDebuggerMode::GuideNormal ||
         (SceneDebuggerMode)mParams.mode == SceneDebuggerMode::ShadingNormal ||
         (SceneDebuggerMode)mParams.mode == SceneDebuggerMode::ShadingTangent ||
         (SceneDebuggerMode)mParams.mode == SceneDebuggerMode::ShadingBitangent ||
@@ -413,9 +422,32 @@ void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
             g.text(text);
         }
         break;
-    default:
+    case HitType::None:
         widget.text("Background pixel");
         break;
+    default:
+        widget.text("Unsupported hit type");
+        break;
+    }
+
+    // Show shading data.
+    if ((HitType)data.hitType != HitType::None)
+    {
+        if (auto g = widget.group("Shading data"); g.open())
+        {
+            std::string text;
+            text += fmt::format("posW: {}\n", data.posW);
+            text += fmt::format("V: {}\n", data.V);
+            text += fmt::format("N: {}\n", data.N);
+            text += fmt::format("T: {}\n", data.T);
+            text += fmt::format("B: {}\n", data.B);
+            text += fmt::format("uv: {}\n", data.uv);
+            text += fmt::format("faceN: {}\n", data.faceN);
+            text += fmt::format("tangentW: {}\n", data.tangentW);
+            text += fmt::format("frontFacing: {}\n", data.frontFacing);
+            text += fmt::format("curveRadius: {}\n", data.curveRadius);
+            g.text(text);
+        }
     }
 
     // Show material info.
@@ -491,5 +523,5 @@ void SceneDebugger::initInstanceInfo()
     }
 
     // Create GPU buffer.
-    mpInstanceInfo = Buffer::createStructured(sizeof(InstanceInfo), (uint32_t)instanceInfo.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, instanceInfo.data(), false);
+    mpInstanceInfo = Buffer::createStructured(mpDevice.get(), sizeof(InstanceInfo), (uint32_t)instanceInfo.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, instanceInfo.data(), false);
 }

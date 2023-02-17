@@ -1,4 +1,4 @@
-add_renderpass(AccumulatePass)
+add_plugin(AccumulatePass)
 
 target_sources(AccumulatePass PRIVATE
     Accumulate.cs.slang

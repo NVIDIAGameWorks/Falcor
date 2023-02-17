@@ -26,15 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "TestRtProgram.h"
-#include "RenderGraph/RenderPassLibrary.h"
 
-extern "C" FALCOR_API_EXPORT const char* getProjDir()
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
-    return PROJECT_DIR;
-}
-
-extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
-{
-    lib.registerPass(TestRtProgram::kInfo, TestRtProgram::create);
+    registry.registerClass<RenderPass, TestRtProgram>();
     ScriptBindings::registerBinding(TestRtProgram::registerScriptBindings);
 }

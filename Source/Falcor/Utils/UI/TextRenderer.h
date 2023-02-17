@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -48,7 +48,7 @@ namespace Falcor
         /** Initialize the text-renderer
             This class is not thread-safe!
         */
-        static void start();
+        static void start(Device* pDevice);
 
         /** End batching. This will cause the render queue to flush and display the message to the screen.
         */

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,8 +30,6 @@
 #include "RenderGraph/RenderPassStandardFlags.h"
 #include "RenderGraph/RenderPassHelpers.h"
 
-const RenderPass::Info VBufferRT::kInfo { "VBufferRT", "Ray traced V-buffer generation pass." };
-
 namespace
 {
     const std::string kProgramRaytraceFile = "RenderPasses/GBuffer/VBuffer/VBufferRT.rt.slang";
@@ -55,12 +53,13 @@ namespace
         { "mvec",           "gMotionVector",    "Motion vector",                    true /* optional */, ResourceFormat::RG32Float   },
         { "viewW",          "gViewW",           "View direction in world space",    true /* optional */, ResourceFormat::RGBA32Float }, // TODO: Switch to packed 2x16-bit snorm format.
         { "time",           "gTime",            "Per-pixel execution time",         true /* optional */, ResourceFormat::R32Uint     },
+        { "mask",           "gMask",            "Mask",                             true /* optional */, ResourceFormat::R32Float    },
     };
 };
 
-VBufferRT::SharedPtr VBufferRT::create(RenderContext* pRenderContext, const Dictionary& dict)
+VBufferRT::SharedPtr VBufferRT::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
-    return SharedPtr(new VBufferRT(dict));
+    return SharedPtr(new VBufferRT(std::move(pDevice), dict));
 }
 
 RenderPassReflection VBufferRT::reflect(const CompileData& compileData)
@@ -194,8 +193,8 @@ void VBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData&
             sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::SDFGrid), desc.addHitGroup("sdfGridClosestHit", "", "sdfGridIntersection"));
         }
 
-        mRaytrace.pProgram = RtProgram::create(desc, defines);
-        mRaytrace.pVars = RtProgramVars::create(mRaytrace.pProgram, sbt);
+        mRaytrace.pProgram = RtProgram::create(mpDevice, desc, defines);
+        mRaytrace.pVars = RtProgramVars::create(mpDevice, mRaytrace.pProgram, sbt);
 
         // Bind static resources.
         ShaderVar var = mRaytrace.pVars->getRootVar();
@@ -213,11 +212,6 @@ void VBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData&
 
 void VBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    if (!gpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1))
-    {
-        throw RuntimeError("VBufferRT: Raytracing Tier 1.1 is not supported by the current device");
-    }
-
     // Create compute pass.
     if (!mpComputePass)
     {
@@ -231,7 +225,7 @@ void VBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
         defines.add(mpSampleGenerator->getDefines());
         defines.add(getShaderDefines(renderData));
 
-    	mpComputePass = ComputePass::create(desc, defines, true);
+    	mpComputePass = ComputePass::create(mpDevice, desc, defines, true);
 
         // Bind static resources
         ShaderVar var = mpComputePass->getRootVar();
@@ -282,13 +276,18 @@ void VBufferRT::setShaderData(const ShaderVar& var, const RenderData& renderData
     for (const auto& channel : kVBufferExtraChannels) bind(channel);
 }
 
-VBufferRT::VBufferRT(const Dictionary& dict)
-    : GBufferBase(kInfo)
+VBufferRT::VBufferRT(std::shared_ptr<Device> pDevice, const Dictionary& dict)
+    : GBufferBase(std::move(pDevice))
 {
+    if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1))
+    {
+        throw RuntimeError("VBufferRT: Raytracing Tier 1.1 is not supported by the current device");
+    }
+
     parseDictionary(dict);
 
     // Create sample generator
-    mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_DEFAULT);
+    mpSampleGenerator = SampleGenerator::create(mpDevice, SAMPLE_GENERATOR_DEFAULT);
 }
 
 void VBufferRT::parseDictionary(const Dictionary& dict)

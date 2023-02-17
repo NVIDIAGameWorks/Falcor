@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,9 +31,9 @@ import Utils.SDF.SDFOperations;
 
 cbuffer Visual2DCB
 {
-    float2  iResolution;
-    float2  iMousePosition;
-    float   iGlobalTime;
+    float2 iResolution;
+    float2 iMousePosition;
+    float iGlobalTime;
 };
 
 static const float side = 0.1;
@@ -47,20 +47,19 @@ static const float4 blueAlpha = float4(0, 0, 1, 0.5);
 static const float4 orange = float4(1.0, 0.5, 0.0, 1);
 static const float4 black = float4(0.0, 0.0, 0.0, 1.0);
 
-
-float4 main(float2 texC : TEXCOORD) : SV_TARGET
+float4 main(float2 texC: TEXCOORD) : SV_TARGET
 {
     const float blendRadius = 1.0 / min(iResolution.x, iResolution.y);
     const float circleSize = 0.01;
     const float lineSize = 0.0005;
 
-    float4 color = float4(0.95, 0.95, 0.95, 1.0);                       // Init with background color.
-    float2 pixelCoords = float2(texC.x, 1.0 - texC.y) * iResolution;    // X is right, Y is up.
+    float4 color = float4(0.95, 0.95, 0.95, 1.0);                    // Init with background color.
+    float2 pixelCoords = float2(texC.x, 1.0 - texC.y) * iResolution; // X is right, Y is up.
 
     float2 mouseCoords = float2(iMousePosition.x, iResolution.y - 1 - iMousePosition.y) / iResolution.x;
     float2 coords = pixelCoords / iResolution.x;
 
-    float angle = iGlobalTime ;
+    float angle = iGlobalTime;
 
     // Test all the simple primitives.
     color = sdfDraw(SDF2DCircle(0.025), coords, float2(1.0), 0.0, float2(0.1, 0.4), black, color, blendRadius);
@@ -99,11 +98,13 @@ float4 main(float2 texC : TEXCOORD) : SV_TARGET
     // Do it yourself blending. Smooth union of two discs, then a smooth subtraction of a smaller disc.
     center = float2(0.65, 0.2);
     float d1 = sdfCircle(sdfTransform(coords, float2(1.0), 0.0, center), 0.05);
-    float d2 = sdfCircle(sdfTransform(coords, float2(1.0), 0.0, center + 0.09 * float2(cos(0.8 * iGlobalTime), sin(0.6 * iGlobalTime))), 0.02);
-    float d3 = sdfCircle(sdfTransform(coords, float2(1.0), 0.0, center + 0.075 * float2(cos(0.5 * iGlobalTime), sin(1.1 * iGlobalTime))), 0.0125);
+    float d2 =
+        sdfCircle(sdfTransform(coords, float2(1.0), 0.0, center + 0.09 * float2(cos(0.8 * iGlobalTime), sin(0.6 * iGlobalTime))), 0.02);
+    float d3 =
+        sdfCircle(sdfTransform(coords, float2(1.0), 0.0, center + 0.075 * float2(cos(0.5 * iGlobalTime), sin(1.1 * iGlobalTime))), 0.0125);
     float d = sdfSmoothSubtraction(sdfSmoothUnion(d1, d2, 0.1), d3, 0.1f);
     float4 blendcolor = sdfFilled(d, 0.0f, blendRadius * 2.0, orange);
-    color =  (1 - blendcolor.a) * color + blendcolor.a * blendcolor;
+    color = (1 - blendcolor.a) * color + blendcolor.a * blendcolor;
 
     return color;
 }

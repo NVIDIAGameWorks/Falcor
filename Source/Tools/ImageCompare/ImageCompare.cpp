@@ -41,13 +41,22 @@
 #include <cstring>
 
 template<typename T>
-T sqr(T x) { return x * x; }
+T sqr(T x)
+{
+    return x * x;
+}
 
 template<typename T>
-T lerp(T a, T b, T t) { return a + t * (b - a); }
+T lerp(T a, T b, T t)
+{
+    return a + t * (b - a);
+}
 
 template<typename T>
-T clamp(T x, T lo, T hi) { return std::max(lo, std::min(hi, x)); }
+T clamp(T x, T lo, T hi)
+{
+    return std::max(lo, std::min(hi, x));
+}
 
 class Image
 {
@@ -69,23 +78,31 @@ public:
 
         // Determine file format.
         fifFormat = FreeImage_GetFileType(pathStr.c_str(), 0);
-        if (fifFormat == FIF_UNKNOWN) fifFormat = FreeImage_GetFIFFromFilename(pathStr.c_str());
-        if (fifFormat == FIF_UNKNOWN) throw std::runtime_error("Unknown image format");
-        if (!FreeImage_FIFSupportsReading(fifFormat)) throw std::runtime_error("Unsupported image format");
+        if (fifFormat == FIF_UNKNOWN)
+            fifFormat = FreeImage_GetFIFFromFilename(pathStr.c_str());
+        if (fifFormat == FIF_UNKNOWN)
+            throw std::runtime_error("Unknown image format");
+        if (!FreeImage_FIFSupportsReading(fifFormat))
+            throw std::runtime_error("Unsupported image format");
 
         // Read image.
         FIBITMAP* srcBitmap = FreeImage_Load(fifFormat, pathStr.c_str());
-        if (!srcBitmap) throw std::runtime_error("Cannot read image");
+        if (!srcBitmap)
+            throw std::runtime_error("Cannot read image");
 
         // Convert to RGBA32F.
         FIBITMAP* floatBitmap = FreeImage_ConvertToRGBAF(srcBitmap);
         FreeImage_Unload(srcBitmap);
-        if (!floatBitmap) throw std::runtime_error("Cannot convert to RGBA float format");
+        if (!floatBitmap)
+            throw std::runtime_error("Cannot convert to RGBA float format");
 
         // Create image.
         auto image = create(FreeImage_GetWidth(floatBitmap), FreeImage_GetHeight(floatBitmap));
         int bytesPerPixel = 4 * sizeof(float);
-        FreeImage_ConvertToRawBits(reinterpret_cast<BYTE*>(image->getData()), floatBitmap, bytesPerPixel * image->getWidth(), bytesPerPixel * 8, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK, true);
+        FreeImage_ConvertToRawBits(
+            reinterpret_cast<BYTE*>(image->getData()), floatBitmap, bytesPerPixel * image->getWidth(), bytesPerPixel * 8, FI_RGBA_RED_MASK,
+            FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK, true
+        );
         FreeImage_Unload(floatBitmap);
 
         return image;
@@ -99,11 +116,14 @@ public:
 
         // Determine file format.
         fifFormat = FreeImage_GetFIFFromFilename(pathStr.c_str());
-        if (fifFormat == FIF_UNKNOWN) throw std::runtime_error("Unknown image format");
-        if (!FreeImage_FIFSupportsWriting(fifFormat)) throw std::runtime_error("Unsupported image format");
+        if (fifFormat == FIF_UNKNOWN)
+            throw std::runtime_error("Unknown image format");
+        if (!FreeImage_FIFSupportsWriting(fifFormat))
+            throw std::runtime_error("Unsupported image format");
 
         bool writeFloat = fifFormat == FIF_EXR || fifFormat == FIF_PFM || fifFormat == FIF_HDR;
-        if (fifFormat != FIF_EXR && fifFormat != FIF_PNG) writeAlpha = false;
+        if (fifFormat != FIF_EXR && fifFormat != FIF_PNG)
+            writeAlpha = false;
 
         // Create bitmap.
         FIBITMAP* bitmap;
@@ -143,7 +163,8 @@ public:
                     dst[2] = clamp(int(src[0] * 255.f), 0, 255);
                     dst[1] = clamp(int(src[1] * 255.f), 0, 255);
                     dst[0] = clamp(int(src[2] * 255.f), 0, 255);
-                    if (writeAlpha) dst[3] = clamp(int(src[3] * 255.f), 0, 255);
+                    if (writeAlpha)
+                        dst[3] = clamp(int(src[3] * 255.f), 0, 255);
                     dst += writeAlpha ? 4 : 3;
                     src += 4;
                 }
@@ -160,11 +181,7 @@ private:
     uint32_t mHeight;
     std::unique_ptr<float[]> mData;
 
-    Image(uint32_t width, uint32_t height)
-        : mWidth(width)
-        , mHeight(height)
-        , mData(std::make_unique<float[]>(width * height * 4))
-    {}
+    Image(uint32_t width, uint32_t height) : mWidth(width), mHeight(height), mData(std::make_unique<float[]>(width * height * 4)) {}
 };
 
 struct MSE
@@ -172,7 +189,8 @@ struct MSE
     double operator()(const float* a, const float* b, size_t count) const
     {
         double error = 0.0;
-        for (size_t i = 0; i < count; ++i) { error += sqr(a[i] - b[i]); }
+        for (size_t i = 0; i < count; ++i)
+            error += sqr(a[i] - b[i]);
         return error / count;
     }
 };
@@ -182,7 +200,8 @@ struct RMSE
     double operator()(const float* a, const float* b, size_t count) const
     {
         double error = 0.0;
-        for (size_t i = 0; i < count; ++i) { error += sqr(a[i] - b[i]) / (sqr(a[i]) + 1e-3); }
+        for (size_t i = 0; i < count; ++i)
+            error += sqr(a[i] - b[i]) / (sqr(a[i]) + 1e-3);
         return error / count;
     }
 };
@@ -192,7 +211,8 @@ struct MAE
     double operator()(const float* a, const float* b, size_t count) const
     {
         double error = 0.0;
-        for (size_t i = 0; i < count; ++i) { error += std::fabs(sqr(a[i] - b[i])); }
+        for (size_t i = 0; i < count; ++i)
+            error += std::fabs(sqr(a[i] - b[i]));
         return error / count;
     }
 };
@@ -202,7 +222,8 @@ struct MAPE
     double operator()(const float* a, const float* b, size_t count) const
     {
         double error = 0.0;
-        for (size_t i = 0; i < count; ++i) { error += std::fabs((a[i] - b[i]) / (a[i] + 1e-3)); }
+        for (size_t i = 0; i < count; ++i)
+            error += std::fabs((a[i] - b[i]) / (a[i] + 1e-3));
         return 100.0 * error / count;
     }
 };
@@ -218,7 +239,8 @@ double compare(const Image& imageA, const Image& imageB, bool alpha, float* erro
     for (size_t i = 0; i < count; ++i)
     {
         double error = metric(a, b, alpha ? 4 : 3);
-        if (errorMap) *errorMap++ = float(error);
+        if (errorMap)
+            *errorMap++ = float(error);
         sum += error;
         a += 4;
         b += 4;
@@ -233,28 +255,28 @@ struct ErrorMetric
     std::function<double(const Image& imageA, const Image& imageB, bool alpha, float* errorMap)> compare;
 };
 
-static const std::vector<ErrorMetric> errorMetrics =
-{
-    { "mse", "Mean Squared Error", compare<MSE> },
-    { "rmse", "Relative Mean Squared Error", compare<RMSE> },
-    { "mae", "Mean Absolute Error", compare<MAE> },
-    { "mape", "Mean Absolute Percentage Error", compare<MAPE> },
+static const std::vector<ErrorMetric> errorMetrics = {
+    {"mse", "Mean Squared Error", compare<MSE>},
+    {"rmse", "Relative Mean Squared Error", compare<RMSE>},
+    {"mae", "Mean Absolute Error", compare<MAE>},
+    {"mape", "Mean Absolute Percentage Error", compare<MAPE>},
 };
 
 static Image::SharedPtr generateHeatMap(uint32_t width, uint32_t height, const float* errorMap)
 {
-    auto writeColor = [] (float t, float* dst)
+    auto writeColor = [](float t, float* dst)
     {
         static const float colors[5][3] = {
-            { 0.f, 0.f, 1.f },
-            { 0.f, 1.f, 1.f },
-            { 0.f, 1.f, 0.f },
-            { 1.f, 1.f, 0.f },
-            { 1.f, 0.f, 0.f },
+            {0.f, 0.f, 1.f}, // blue
+            {0.f, 1.f, 1.f}, // teal
+            {0.f, 1.f, 0.f}, // green
+            {1.f, 1.f, 0.f}, // yellow
+            {1.f, 0.f, 0.f}, // red
         };
 
         int c = clamp(int(std::floor(t * 4.f)), 0, 3);
-        for (size_t i = 0; i < 3; ++i) *dst++ = lerp(colors[c][i], colors[c + 1][i], t * 4.f - c);
+        for (size_t i = 0; i < 3; ++i)
+            *dst++ = lerp(colors[c][i], colors[c + 1][i], t * 4.f - c);
         *dst++ = 1.f;
     };
 
@@ -272,9 +294,16 @@ static Image::SharedPtr generateHeatMap(uint32_t width, uint32_t height, const f
     return image;
 }
 
-static bool compareImages(const std::filesystem::path& pathA, const std::filesystem::path& pathB, ErrorMetric metric, float threshold, bool alpha, const std::filesystem::path& heatMapPath)
+static bool compareImages(
+    const std::filesystem::path& pathA,
+    const std::filesystem::path& pathB,
+    ErrorMetric metric,
+    float threshold,
+    bool alpha,
+    const std::filesystem::path& heatMapPath
+)
 {
-    auto loadImage = [] (const std::filesystem::path& path)
+    auto loadImage = [](const std::filesystem::path& path)
     {
         try
         {
@@ -287,7 +316,7 @@ static bool compareImages(const std::filesystem::path& pathA, const std::filesys
         }
     };
 
-    auto saveImage = [] (const Image& image, const std::filesystem::path& path)
+    auto saveImage = [](const Image& image, const std::filesystem::path& path)
     {
         try
         {
@@ -301,9 +330,11 @@ static bool compareImages(const std::filesystem::path& pathA, const std::filesys
 
     // Load images.
     auto imageA = loadImage(pathA);
-    if (!imageA) return false;
+    if (!imageA)
+        return false;
     auto imageB = loadImage(pathB);
-    if (!imageB) return false;
+    if (!imageB)
+        return false;
 
     // Check resolution.
     if (imageA->getWidth() != imageB->getWidth() || imageA->getHeight() != imageB->getHeight())
@@ -329,12 +360,13 @@ static bool compareImages(const std::filesystem::path& pathA, const std::filesys
     std::cout << error << std::endl;
 
     // Treat nans and infs as errors.
-    if (std::isnan(error) || std::isinf(error)) return false;
+    if (std::isnan(error) || std::isinf(error))
+        return false;
 
     return error <= threshold;
 }
 
-static void printMetrics(std::ostream &stream = std::cout)
+static void printMetrics(std::ostream& stream = std::cout)
 {
     stream << "Available error metrics:" << std::endl;
     for (const auto& metric : errorMetrics)
@@ -394,7 +426,8 @@ int main(int argc, char** argv)
     if (metricFlag)
     {
         auto name = args::get(metricFlag);
-        auto it = std::find_if(errorMetrics.begin(), errorMetrics.end(), [&name] (const ErrorMetric& metric) { return metric.name == name; });
+        auto it =
+            std::find_if(errorMetrics.begin(), errorMetrics.end(), [&name](const ErrorMetric& metric) { return metric.name == name; });
         if (it == errorMetrics.end())
         {
             std::cerr << "Unknown error metric '" << args::get(metricFlag) << "'." << std::endl;
@@ -404,12 +437,9 @@ int main(int argc, char** argv)
         metric = *it;
     }
 
-    return compareImages(
-        args::get(image1),
-        args::get(image2),
-        metric,
-        thresholdFlag ? args::get(thresholdFlag) : 0.f,
-        alphaFlag ? args::get(alphaFlag) : false,
-        heatMapFlag ? args::get(heatMapFlag) : ""
-    ) ? 0 : 1;
+    bool success = compareImages(
+        args::get(image1), args::get(image2), metric, thresholdFlag ? args::get(thresholdFlag) : 0.f,
+        alphaFlag ? args::get(alphaFlag) : false, heatMapFlag ? args::get(heatMapFlag) : ""
+    );
+    return success ? 0 : 1;
 }

@@ -1,0 +1,97 @@
+# C++ formatting
+
+Language: Cpp
+BasedOnStyle: Chromium
+IndentWidth: 4
+ColumnLimit: 140
+AccessModifierOffset: -4
+SortIncludes: false
+SortUsingDeclarations: false
+SpaceAfterTemplateKeyword: false
+DerivePointerAlignment: false
+PointerAlignment: Left
+FixNamespaceComments: true
+
+AllowAllConstructorInitializersOnNextLine: true
+BreakConstructorInitializers: BeforeComma
+AlwaysBreakTemplateDeclarations: true
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortEnumsOnASingleLine: true
+BreakBeforeBraces: Custom
+BraceWrapping:
+    AfterCaseLabel: true
+    AfterClass: true
+    AfterControlStatement: Always
+    AfterEnum: true
+    AfterFunction: true
+    AfterNamespace: true
+    AfterStruct: true
+    AfterUnion: true
+    AfterExternBlock: true
+    BeforeCatch: true
+    BeforeElse: true
+    BeforeLambdaBody: true
+    BeforeWhile: false
+    SplitEmptyFunction: false
+    SplitEmptyRecord: false
+    SplitEmptyNamespace: false
+IndentCaseLabels: false
+
+ReflowComments: true
+CommentPragmas: '^\\.+'
+SpacesBeforeTrailingComments: 1
+PenaltyBreakComment: 0
+AlignAfterOpenBracket: BlockIndent
+IndentPPDirectives: None
+PenaltyReturnTypeOnItsOwnLine: 100000
+PenaltyBreakTemplateDeclaration: 100000
+
+---
+
+# Slang formatting
+
+Language: CSharp
+BasedOnStyle: Chromium
+IndentWidth: 4
+ColumnLimit: 140
+AccessModifierOffset: -4
+SortIncludes: false
+SortUsingDeclarations: false
+SpaceAfterTemplateKeyword: false
+DerivePointerAlignment: false
+PointerAlignment: Left
+FixNamespaceComments: true
+
+AllowAllConstructorInitializersOnNextLine: true
+BreakConstructorInitializers: BeforeComma
+AlwaysBreakTemplateDeclarations: true
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortEnumsOnASingleLine: true
+BreakBeforeBraces: Custom
+BraceWrapping:
+    AfterCaseLabel: true
+    AfterClass: true
+    AfterControlStatement: Always
+    AfterEnum: true
+    AfterFunction: true
+    AfterNamespace: true
+    AfterStruct: true
+    AfterUnion: true
+    AfterExternBlock: true
+    BeforeCatch: true
+    BeforeElse: true
+    BeforeLambdaBody: true
+    BeforeWhile: false
+    SplitEmptyFunction: false
+    SplitEmptyRecord: false
+    SplitEmptyNamespace: false
+IndentCaseLabels: false
+
+ReflowComments: true
+CommentPragmas: '^\\.+'
+SpacesBeforeTrailingComments: 1
+PenaltyBreakComment: 0
+AlignAfterOpenBracket: BlockIndent
+IndentPPDirectives: None
+PenaltyReturnTypeOnItsOwnLine: 100000
+PenaltyBreakTemplateDeclaration: 100000

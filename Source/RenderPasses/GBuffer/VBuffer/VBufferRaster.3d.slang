@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@ import Scene.Raster;
 import Utils.Math.MathHelpers;
 
 RasterizerOrderedTexture2D<float2> gMotionVector;
+RasterizerOrderedTexture2D<float>  gMask;
 
 cbuffer PerFrameCB
 {
@@ -103,6 +104,8 @@ VBufferPSOut psMain(VBufferVSOut vsOut, uint triangleIndex : SV_PrimitiveID, flo
 
     if (gScene.materials.alphaTest(v, vsOut.materialID, lod)) discard;
 #endif
+
+    if (is_valid(gMask)) gMask[ipos] = 1.f;
 
     // Note on barycentrics:
     // The barycentric weights provided to pixel shader correspond to vertices A, B, C of the rasterized triangle.

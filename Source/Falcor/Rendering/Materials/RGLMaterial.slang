@@ -26,26 +26,28 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 __exported import Rendering.Materials.IMaterial;
-__exported import Rendering.Materials.RGLBSDF;
+__exported import Rendering.Materials.RGLMaterialInstance;
 import Rendering.Materials.RGLCommon;
 import Scene.Material.RGLMaterialData;
 import Scene.Scene;
 
 /** Implementation of measured RGL material.
-*/
-struct RGLMaterial : IMaterial
+ */
+struct RGLMaterial : MaterialBase, IMaterial
 {
-    MaterialHeader header;
     RGLMaterialData data;
 
-    // Specify that the associated `BSDF` type is `RGLBSDF`.
-    typedef RGLBSDF BSDF;
+    // Specify that the associated `MaterialInstance` type is `RGLMaterialInstance`.
+    typedef RGLMaterialInstance MaterialInstance;
 
-    RGLBSDF setupBSDF(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod)
+    RGLMaterialInstance setupMaterialInstance(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints)
     {
+        // Compute final shading frame.
+        ShadingFrame sf = ShadingFrame(sd);
+
         // Evaluate the albedo for the current incident (view) direction.
         float3 albedo = {};
-        float cosTheta = dot(sd.N, sd.V);
+        float cosTheta = dot(sf.N, sd.V);
         float2 slice = {};
         float sigmaEval = 0.0f;
 
@@ -59,23 +61,23 @@ struct RGLMaterial : IMaterial
             SamplerState s = ms.getTextureSampler(data.samplerID);
             let explicitLod = ExplicitLodTextureSampler(0.f);
             albedo = ms.sampleTexture(data.texAlbedoLUT, s, float2(u, 0.5f), float4(0.5f), explicitLod).rgb;
-            
+
             // Precompute the unwarped coordinates from wi to the UV coordinates defined by the measured phi/theta angles.
             let sigma = Brick2D.fromManagedBuffers(data.sigmaSize, data.sigmaBufID);
             let warp = CoordinateWarp.fromManagedBuffers(uint2(data.phiSize, data.thetaSize), data.phiBufID, data.thetaBufID);
-            float3 wiLocal = sd.toLocal(sd.V);
+            float3 wiLocal = sf.toLocal(sd.V);
             float2 sphericalI = toSpherical(wiLocal);
             float2 unitI = sphericalToUnit(sphericalI);
             slice = warp.warp(sphericalI.yx);
             // Pre-evaluate projected area of microfacets (wi is fixed, and so is sigma).
             sigmaEval = sigma.eval(unitI);
         }
-        
-        return RGLBSDF(slice, sigmaEval, albedo, data);
+
+        return RGLMaterialInstance(sf, slice, sigmaEval, albedo, data);
     }
 
     // Normal mapping is not supported by this material.
-    void modifyTangentSpace(const MaterialSystem ms, const float4 tangentW, const ITextureSampler lod, inout ShadingData sd) {}
+    void modifyTangentSpace(const MaterialSystem ms, const ITextureSampler lod, inout ShadingData sd) {}
 
     // Alpha testing is not supported by this material.
     float evalOpacity(const MaterialSystem ms, const VertexData v, const ITextureSampler lod) { return 1.f; }

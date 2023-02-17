@@ -26,32 +26,35 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 __exported import Rendering.Materials.IMaterial;
-__exported import Rendering.Materials.PBRT.PBRTDiffuseBSDF;
+__exported import Rendering.Materials.PBRT.PBRTDiffuseMaterialInstance;
 import Scene.Material.BasicMaterialData;
 import Scene.Material.ShadingUtils;
 
-struct PBRTDiffuseMaterial : IMaterial
+struct PBRTDiffuseMaterial : MaterialBase, IMaterial
 {
-    MaterialHeader header;
     BasicMaterialData data;
 
-    typedef PBRTDiffuseBSDF BSDF;
+    typedef PBRTDiffuseMaterialInstance MaterialInstance;
 
-    PBRTDiffuseBSDF setupBSDF(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod)
+    PBRTDiffuseMaterialInstance setupMaterialInstance(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints)
     {
         SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
 
         const float3 baseColor = ms.sampleTexture(data.texBaseColor, s, sd.uv, data.baseColor, lod).rgb;
-        PBRTDiffuseBSDF brdf = {{baseColor}};
 
-        return brdf;
+        // Compute final shading frame.
+        ShadingFrame sf = ShadingFrame(sd);
+
+        PBRTDiffuseMaterialInstance mi = {sf, {baseColor}};
+
+        return mi;
     }
 
-    void modifyTangentSpace(const MaterialSystem ms, const float4 tangentW, const ITextureSampler lod, inout ShadingData sd)
+    void modifyTangentSpace(const MaterialSystem ms, const ITextureSampler lod, inout ShadingData sd)
     {
         SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
         float3 encodedNormal = ms.sampleTexture(data.texNormalMap, s, sd.uv, float4(0.f), lod).rgb;
-        applyNormalMap(sd, data.getNormalMapType(), encodedNormal, tangentW);
+        applyNormalMap(sd, data.getNormalMapType(), encodedNormal);
     }
 
     float evalOpacity(const MaterialSystem ms, const VertexData v, const ITextureSampler lod)

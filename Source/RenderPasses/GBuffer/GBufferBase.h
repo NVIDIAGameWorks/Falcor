@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,12 +27,9 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "RenderGraph/RenderPassLibrary.h"
 #include "RenderGraph/RenderPassHelpers.h"
 
 using namespace Falcor;
-
-extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib);
 
 /** Base class for the different types of G-buffer passes (including V-buffer).
 */
@@ -53,7 +50,7 @@ public:
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
 
 protected:
-    GBufferBase(const Info& info) : RenderPass(info) {}
+    GBufferBase(std::shared_ptr<Device> pDevice) : RenderPass(std::move(pDevice)) {}
     virtual void parseDictionary(const Dictionary& dict);
     virtual void setCullMode(RasterizerState::CullMode mode) { mCullMode = mode; }
     void updateFrameDim(const uint2 frameDim);
@@ -80,7 +77,4 @@ protected:
     RasterizerState::CullMode       mCullMode = RasterizerState::CullMode::Back;    ///< Cull mode to use for when mForceCullMode is true.
 
     bool                            mOptionsChanged = false;                        ///< Indicates whether any options that affect the output have changed since last frame.
-
-    static void registerBindings(pybind11::module& m);
-    friend void getPasses(Falcor::RenderPassLibrary& lib);
 };

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,9 +30,9 @@
 
 namespace Falcor
 {
-    AliasTable::SharedPtr AliasTable::create(std::vector<float> weights, std::mt19937& rng)
+    AliasTable::SharedPtr AliasTable::create(Device* pDevice, std::vector<float> weights, std::mt19937& rng)
     {
-        return SharedPtr(new AliasTable(std::move(weights), rng));
+        return SharedPtr(new AliasTable(pDevice, std::move(weights), rng));
     }
 
     void AliasTable::setShaderData(const ShaderVar& var) const
@@ -57,7 +57,7 @@ namespace Falcor
     // The main complexity is dealing with corner cases, thanks to numerical precision issues, where you don't
     // have 2 valid entries to combine.  By definition, in these corner cases, all remaining unhandled samples
     // actually have the average weight (within numerical precision limits)
-    AliasTable::AliasTable(std::vector<float> weights, std::mt19937& rng)
+    AliasTable::AliasTable(Device* pDevice, std::vector<float> weights, std::mt19937& rng)
         : mCount((uint32_t)weights.size())
     {
         // Use >= since we reserve 0xFFFFFFFFu as an invalid flag marker during construction.
@@ -65,7 +65,7 @@ namespace Falcor
 
         std::uniform_int_distribution<uint32_t> rngDist;
 
-        mpWeights = Buffer::createStructured(sizeof(float), mCount, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, weights.data());
+        mpWeights = Buffer::createStructured(pDevice, sizeof(float), mCount, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, weights.data());
 
         // Our working set / intermediate buffers (underweight & overweight); initialize to "invalid"
         std::vector<uint32_t> lowIdx(mCount, 0xFFFFFFFFu);
@@ -143,6 +143,6 @@ namespace Falcor
         // correct location in the alias table.
 
         // Stash the alias table in our GPU buffer
-        mpItems = Buffer::createStructured(sizeof(AliasTable::Item), mCount, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, items.data());
+        mpItems = Buffer::createStructured(pDevice, sizeof(AliasTable::Item), mCount, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, items.data());
     }
 }

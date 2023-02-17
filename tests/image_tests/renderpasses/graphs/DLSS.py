@@ -2,8 +2,6 @@ from falcor import *
 
 def render_graph_DLSS():
     g = RenderGraph("DLSS")
-    loadRenderPassLibrary("DLSSPass.dll")
-    loadRenderPassLibrary("GBuffer.dll")
     GBufferRaster = createPass("GBufferRaster", {'samplePattern': SamplePattern.Halton})
     g.addPass(GBufferRaster, "GBufferRaster")
     DLSSPass = createPass("DLSSPass", {'motionVectorScale': DLSSMotionVectorScale.Relative})

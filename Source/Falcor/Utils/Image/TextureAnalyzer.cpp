@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -46,15 +46,16 @@ namespace Falcor
 
     size_t TextureAnalyzer::getResultSize() { return sizeof(TextureAnalyzer::Result); }
 
-    TextureAnalyzer::SharedPtr TextureAnalyzer::create()
+    TextureAnalyzer::SharedPtr TextureAnalyzer::create(std::shared_ptr<Device> pDevice)
     {
-        return SharedPtr(new TextureAnalyzer());
+        return SharedPtr(new TextureAnalyzer(std::move(pDevice)));
     }
 
-    TextureAnalyzer::TextureAnalyzer()
+    TextureAnalyzer::TextureAnalyzer(std::shared_ptr<Device> pDevice)
+        : mpDevice(std::move(pDevice))
     {
-        mpClearPass = ComputePass::create(kShaderFilename, "clear");
-        mpAnalyzePass = ComputePass::create(kShaderFilename, "analyze");
+        mpClearPass = ComputePass::create(mpDevice, kShaderFilename, "clear");
+        mpAnalyzePass = ComputePass::create(mpDevice, kShaderFilename, "analyze");
     }
 
     void TextureAnalyzer::analyze(RenderContext* pRenderContext, const Texture::SharedPtr pInput, uint32_t mipLevel, uint32_t arraySlice, Buffer::SharedPtr pResult, uint64_t resultOffset, bool clearResult)

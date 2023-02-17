@@ -27,19 +27,12 @@
  **************************************************************************/
 #include "Composite/Composite.h"
 #include "GaussianBlur/GaussianBlur.h"
-#include "RenderGraph/RenderPassLibrary.h"
 
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" FALCOR_API_EXPORT const char* getProjDir()
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
-    return PROJECT_DIR;
-}
-
-extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
-{
-    lib.registerPass(Composite::kInfo, Composite::create);
+    registry.registerClass<RenderPass, Composite>();
     ScriptBindings::registerBinding(Composite::registerBindings);
 
-    lib.registerPass(GaussianBlur::kInfo, GaussianBlur::create);
+    registry.registerClass<RenderPass, GaussianBlur>();
     ScriptBindings::registerBinding(GaussianBlur::registerBindings);
 }

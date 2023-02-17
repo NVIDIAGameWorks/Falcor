@@ -26,34 +26,36 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 __exported import Rendering.Materials.IMaterial;
-__exported import Rendering.Materials.PBRT.PBRTDielectricBSDF;
+__exported import Rendering.Materials.PBRT.PBRTDielectricMaterialInstance;
 import Scene.Material.BasicMaterialData;
 import Scene.Material.ShadingUtils;
 
-struct PBRTDielectricMaterial : IMaterial
+struct PBRTDielectricMaterial : MaterialBase, IMaterial
 {
-    MaterialHeader header;
     BasicMaterialData data;
 
-    typedef PBRTDielectricBSDF BSDF;
+    typedef PBRTDielectricMaterialInstance MaterialInstance;
 
-    PBRTDielectricBSDF setupBSDF(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod)
+    PBRTDielectricMaterialInstance setupMaterialInstance(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints)
     {
         SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
 
         const float2 roughness = ms.sampleTexture(data.texSpecular, s, sd.uv, data.specular, lod).rg;
-        float eta = 1.0f / data.IoR;
+        float eta = !sd.frontFacing ? 1.0f / data.IoR : data.IoR;
 
-        PBRTDielectricBSDF brdf = {{AnisotropicGGX(roughness), eta}};
+        // Compute final shading frame.
+        ShadingFrame sf = ShadingFrame(sd);
 
-        return brdf;
+        PBRTDielectricMaterialInstance mi = {sf, {AnisotropicGGX(roughness), eta}};
+
+        return mi;
     }
 
-    void modifyTangentSpace(const MaterialSystem ms, const float4 tangentW, const ITextureSampler lod, inout ShadingData sd)
+    void modifyTangentSpace(const MaterialSystem ms, const ITextureSampler lod, inout ShadingData sd)
     {
         SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
         float3 encodedNormal = ms.sampleTexture(data.texNormalMap, s, sd.uv, float4(0.f), lod).rgb;
-        applyNormalMap(sd, data.getNormalMapType(), encodedNormal, tangentW);
+        applyNormalMap(sd, data.getNormalMapType(), encodedNormal);
     }
 
     float evalOpacity(const MaterialSystem ms, const VertexData v, const ITextureSampler lod)

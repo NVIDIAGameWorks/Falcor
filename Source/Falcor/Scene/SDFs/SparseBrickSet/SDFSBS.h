@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -46,7 +46,7 @@ namespace Falcor
             \param[in] defaultGridWidth The grid width used if the data was not loaded from a file (it is empty).
             \return SDFSBS object, or nullptr if errors occurred.
         */
-        static SharedPtr create(uint32_t brickWidth = 7, bool compressed = false, uint32_t defaultGridWidth = 256);
+        static SharedPtr create(std::shared_ptr<Device> pDevice, uint32_t brickWidth = 7, bool compressed = false, uint32_t defaultGridWidth = 256);
 
         virtual UpdateFlags update(RenderContext* pRenderContext) override;
 
@@ -79,18 +79,17 @@ namespace Falcor
 
         virtual void setValuesInternal(const std::vector<float>& cornerValues) override;
 
-        void createSDFGridTexture(RenderContext* pRenderContext, const std::vector<int16_t>& sdField);
+        void createSDFGridTexture(RenderContext* pRenderContext, const std::vector<int8_t>& sdField);
 
-        uint32_t calcMaxBrickCountPerAxis() const;
         uint32_t fetchCount(RenderContext* pRenderContext, const Buffer::SharedPtr& pBuffer);
 
         void compactifyChunks(RenderContext* pRenderContext, uint32_t chunkCount);
 
     private:
-        SDFSBS(uint32_t brickWidth, bool compressed, uint32_t defaultGridWidth);
+        SDFSBS(std::shared_ptr<Device> pDevice, uint32_t brickWidth, bool compressed, uint32_t defaultGridWidth);
 
         // CPU data.
-        std::vector<int16_t> mSDField;
+        std::vector<int8_t> mSDField;
 
         // Specs.
         uint32_t mDefaultGridWidth = 0;                 ///< The grid width used if the grid was not loaded from a file (it is empty).
@@ -115,7 +114,7 @@ namespace Falcor
         Texture::SharedPtr mpBrickTexture;              ///< A texture of SDF bricks with data at corners.
 
         // Sampler, shared among all SDFSBS instances.
-        static Sampler::SharedPtr spSDFSBSSampler;
+        static Sampler::SharedPtr spSDFSBSSampler; // TODO: REMOVEGLOBAL
 
         // Compute passes used to build the SBS from signed distance field.
         ComputePass::SharedPtr mpAssignBrickValidityPass;
@@ -137,7 +136,7 @@ namespace Falcor
         ComputePass::SharedPtr mpExpandSDFieldPass;
 
         // Compute passes used to build the SBS from both the SD Field and primitives.
-        PrefixSum::SharedPtr mpPrefixSumPass;
+        std::unique_ptr<PrefixSum> mpPrefixSumPass;
 
         // Scratch data used for building from signed distance field.
         Texture::SharedPtr mpBrickScratchTexture;

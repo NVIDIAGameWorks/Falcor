@@ -28,17 +28,34 @@
 #pragma once
 #include <fmt/format.h>
 #include <filesystem>
+#include <optional>
 #include <string>
 
 namespace fmt
 {
-    template<>
-    struct formatter<std::filesystem::path> : formatter<std::string>
+template<>
+struct formatter<std::filesystem::path> : formatter<std::string>
+{
+    template<typename FormatContext>
+    auto format(const std::filesystem::path& p, FormatContext& ctx)
     {
-        template <typename FormatContext>
-        auto format(const std::filesystem::path& p, FormatContext& ctx)
+        return formatter<std::string>::format(p.string(), ctx);
+    }
+};
+
+template<typename T>
+struct formatter<std::optional<T>> : fmt::formatter<T>
+{
+    template<typename FormatContext>
+    auto format(const std::optional<T>& opt, FormatContext& ctx)
+    {
+        if (opt)
         {
-            return formatter<std::string>::format(p.string(), ctx);
+            fmt::formatter<T>::format(*opt, ctx);
+            return ctx.out();
         }
-    };
-}
+        return fmt::format_to(ctx.out(), "nullopt");
+    }
+};
+
+} // namespace fmt

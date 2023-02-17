@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -50,4 +50,12 @@ namespace Falcor
         return pResource ? pResource->asTexture() : nullptr;
     }
 
+    RenderPass::SharedPtr RenderPass::create(std::string_view type, std::shared_ptr<Device> pDevice, const Dictionary& dict, PluginManager& pm)
+    {
+        // Try to load a plugin of the same name, if render pass class is not registered yet.
+        if (!pm.hasClass<RenderPass>(type))
+            pm.loadPluginByName(type);
+
+        return pm.createClass<RenderPass>(type, std::move(pDevice), dict);
+    }
 }

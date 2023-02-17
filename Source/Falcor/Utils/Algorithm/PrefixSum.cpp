@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -39,21 +39,22 @@ namespace Falcor
         const uint32_t kGroupSize = 1024;
     }
 
-    PrefixSum::PrefixSum()
+    PrefixSum::PrefixSum(std::shared_ptr<Device> pDevice)
+        : mpDevice(std::move(pDevice))
     {
         // Create shaders and state.
         Program::DefineList defines = { {"GROUP_SIZE", std::to_string(kGroupSize)} };
-        mpPrefixSumGroupProgram = ComputeProgram::createFromFile(kShaderFile, "groupScan", defines);
-        mpPrefixSumGroupVars = ComputeVars::create(mpPrefixSumGroupProgram.get());
-        mpPrefixSumFinalizeProgram = ComputeProgram::createFromFile(kShaderFile, "finalizeGroups", defines);
-        mpPrefixSumFinalizeVars = ComputeVars::create(mpPrefixSumFinalizeProgram.get());
+        mpPrefixSumGroupProgram = ComputeProgram::createFromFile(mpDevice, kShaderFile, "groupScan", defines);
+        mpPrefixSumGroupVars = ComputeVars::create(mpDevice, mpPrefixSumGroupProgram.get());
+        mpPrefixSumFinalizeProgram = ComputeProgram::createFromFile(mpDevice, kShaderFile, "finalizeGroups", defines);
+        mpPrefixSumFinalizeVars = ComputeVars::create(mpDevice, mpPrefixSumFinalizeProgram.get());
 
-        mpComputeState = ComputeState::create();
+        mpComputeState = ComputeState::create(mpDevice);
 
         // Create and bind buffer for per-group sums and total sum.
-        mpPrefixGroupSums = Buffer::create(kGroupSize * sizeof(uint32_t), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
-        mpTotalSum = Buffer::create(sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
-        mpPrevTotalSum = Buffer::create(sizeof(uint32_t), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr);
+        mpPrefixGroupSums = Buffer::create(mpDevice.get(), kGroupSize * sizeof(uint32_t), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
+        mpTotalSum = Buffer::create(mpDevice.get(), sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
+        mpPrevTotalSum = Buffer::create(mpDevice.get(), sizeof(uint32_t), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr);
 
         mpPrefixSumGroupVars["gPrefixGroupSums"] = mpPrefixGroupSums;
         mpPrefixSumGroupVars["gTotalSum"] = mpTotalSum;
@@ -63,14 +64,9 @@ namespace Falcor
         mpPrefixSumFinalizeVars["gPrevTotalSum"] = mpPrevTotalSum;
     }
 
-    PrefixSum::SharedPtr PrefixSum::create()
-    {
-        return SharedPtr(new PrefixSum());
-    }
-
     void PrefixSum::execute(RenderContext* pRenderContext, Buffer::SharedPtr pData, uint32_t elementCount, uint32_t* pTotalSum, Buffer::SharedPtr pTotalSumBuffer, uint64_t pTotalSumOffset)
     {
-        FALCOR_PROFILE("PrefixSum::execute");
+        FALCOR_PROFILE(pRenderContext, "PrefixSum::execute");
 
         FALCOR_ASSERT(pRenderContext);
         FALCOR_ASSERT(elementCount > 0);

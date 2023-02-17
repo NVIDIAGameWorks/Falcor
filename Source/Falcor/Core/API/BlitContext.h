@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -34,33 +34,34 @@
 
 namespace Falcor
 {
-    class FullScreenPass;
+class Device;
+class FullScreenPass;
 
-    struct BlitContext
-    {
-        std::shared_ptr<FullScreenPass> pPass;
-        Fbo::SharedPtr pFbo;
+struct BlitContext
+{
+    std::shared_ptr<FullScreenPass> pPass;
+    Fbo::SharedPtr pFbo;
 
-        Sampler::SharedPtr pLinearSampler;
-        Sampler::SharedPtr pPointSampler;
-        Sampler::SharedPtr pLinearMinSampler;
-        Sampler::SharedPtr pPointMinSampler;
-        Sampler::SharedPtr pLinearMaxSampler;
-        Sampler::SharedPtr pPointMaxSampler;
+    Sampler::SharedPtr pLinearSampler;
+    Sampler::SharedPtr pPointSampler;
+    Sampler::SharedPtr pLinearMinSampler;
+    Sampler::SharedPtr pPointMinSampler;
+    Sampler::SharedPtr pLinearMaxSampler;
+    Sampler::SharedPtr pPointMaxSampler;
 
-        ParameterBlock::SharedPtr pBlitParamsBuffer;
-        float2 prevSrcRectOffset = float2(0, 0);
-        float2 prevSrcReftScale = float2(0, 0);
+    ParameterBlock::SharedPtr pBlitParamsBuffer;
+    float2 prevSrcRectOffset = float2(0, 0);
+    float2 prevSrcReftScale = float2(0, 0);
 
-        // Variable offsets in constant buffer
-        UniformShaderVarOffset offsetVarOffset;
-        UniformShaderVarOffset scaleVarOffset;
-        ProgramReflection::BindLocation texBindLoc;
+    // Variable offsets in constant buffer
+    UniformShaderVarOffset offsetVarOffset;
+    UniformShaderVarOffset scaleVarOffset;
+    ProgramReflection::BindLocation texBindLoc;
 
-        // Parameters for complex blit
-        float4 prevComponentsTransform[4] = { float4(0), float4(0), float4(0), float4(0) };
-        UniformShaderVarOffset compTransVarOffset[4];
-        void init();
-        void release();
-    };
-}
+    // Parameters for complex blit
+    float4 prevComponentsTransform[4] = {float4(0), float4(0), float4(0), float4(0)};
+    UniformShaderVarOffset compTransVarOffset[4];
+
+    BlitContext(Device* pDevice);
+};
+} // namespace Falcor

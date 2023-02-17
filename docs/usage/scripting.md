@@ -8,15 +8,15 @@
 
 #### Global functions
 
-| Function                         | Description                                                              |
-|----------------------------------|--------------------------------------------------------------------------|
-| `loadRenderPassLibrary(name)`    | Load a render pass library.                                              |
-| `createPass(name, dict)`         | Create a new render pass with configuration options in `dict`.           |
-| `renderFrame()`                  | Render a frame. If the clock is not paused, it will advance by one tick. |
-| `setWindowPos(x, y)`             | Set the window's position in pixels.                                     |
-| `resizeSwapChain(width, height)` | Resize the window/swapchain.                                             |
-| `exit(errorCode=0)`              | Terminate the application with the given error code.                     |
-| `cls()`                          | Clear the console.                                                       |
+| Function                           | Description                                                                   |
+|------------------------------------|-------------------------------------------------------------------------------|
+| `loadRenderPassLibrary(name)`      | Load a render pass library.                                                   |
+| `createPass(name, dict)`           | Create a new render pass with configuration options in `dict`.                |
+| `renderFrame()`                    | Render a frame. If the clock is not paused, it will advance by one tick.      |
+| `setWindowPos(x, y)`               | Set the window's position in pixels.                                          |
+| `resizeFrameBuffer(width, height)` | Resize the main frame buffer.                                                 |
+| `resizeSwapChain(width, height)`   | Resize the window/swapchain. **DEPRECATED**: Use `resizeFrameBuffer` instead. |
+| `exit(errorCode=0)`                | Terminate the application with the given error code.                          |
 
 ## Mogwai API
 
@@ -52,16 +52,17 @@ class falcor.**Renderer**
 | `videoCapture`  | `VideoCapture`  | Video capture.                  |
 | `timingCapture` | `TimingCapture` | Timing capture.                 |
 
-| Method                                                  | Description                                                     |
-|---------------------------------------------------------|-----------------------------------------------------------------|
-| `script(path)`                                          | Run a script.                                                   |
-| `loadScene(path, buildFlags=SceneBuilderFlags.Default)` | Load a scene. See available build flags below.                  |
-| `unloadScene()`                                         | Explicitly unload the scene to free memory.                     |
-| `saveConfig(path)`                                      | Save the current state to a config file.                        |
-| `addGraph(graph)`                                       | Add a render graph.                                             |
-| `removeGraph(graph)`                                    | Remove a render graph. `graph` can be a render graph or a name. |
-| `getGraph(name)`                                        | Get a render graph by name.                                     |
-| `resizeSwapChain(width, height)`                        | Resize the window/swapchain.                                    |
+| Method                                                  | Description                                                                   |
+|---------------------------------------------------------|-------------------------------------------------------------------------------|
+| `script(path)`                                          | Run a script.                                                                 |
+| `loadScene(path, buildFlags=SceneBuilderFlags.Default)` | Load a scene. See available build flags below.                                |
+| `unloadScene()`                                         | Explicitly unload the scene to free memory.                                   |
+| `saveConfig(path)`                                      | Save the current state to a config file.                                      |
+| `addGraph(graph)`                                       | Add a render graph.                                                           |
+| `removeGraph(graph)`                                    | Remove a render graph. `graph` can be a render graph or a name.               |
+| `getGraph(name)`                                        | Get a render graph by name.                                                   |
+| `resizeFrameBuffer(width, height)`                      | Resize the main frame buffer.                                                 |
+| `resizeSwapChain(width, height)`                        | Resize the window/swapchain. **DEPRECATED**: Use `resizeFrameBuffer` instead. |
 
 #### Clock
 

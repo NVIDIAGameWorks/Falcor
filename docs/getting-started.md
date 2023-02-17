@@ -23,7 +23,7 @@ The `Source/RenderPasses` folder contains a number of components (shared librari
 There are two main workflows when using Falcor:
 
 ### Render Graphs
-The recommended workflow when prototyping or implementing rendering techniques is to create render passes, render graphs, then render them with Mogwai. The [tutorials](./Tutorials/index.md) focus on this workflow.
+The recommended workflow when prototyping or implementing rendering techniques is to create render passes, render graphs, then render them with Mogwai. The [tutorials](./tutorials/index.md) focus on this workflow.
 
 #### To run a sample Render Graph:
 1. Build Falcor
@@ -36,13 +36,13 @@ The recommended workflow when prototyping or implementing rendering techniques i
 Scenes and Render Graphs can also be loaded through drag and drop.
 
 #### To create a Render Pass Library:
-Run `tools/make_new_render_pass_library.bat <LibraryName>` to create a new render pass library.
+Run `tools/make_new_render_pass.bat <Name>` to create a new render pass library.
 
 ### Sample Applications
 In some cases, users may still prefer to create an application using Falcor directly. The `Renderer` class is the bootstrapper for Falcor applications. You should inherit from it and override its protected methods which serve as the callback functions. A good place to start looking for examples would be the `ModelViewer` sample.
 
 #### To create a new Sample Application:
-Run `tools/make_new_sample.bat <ProjectName>` to create a new sample application.
+Run `tools/make_new_sample_app.bat <Name>` to create a new sample application.
 
 -----------------------
 

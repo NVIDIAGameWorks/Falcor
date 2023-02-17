@@ -1,9 +1,6 @@
 from falcor import *
 
 def render_graph_SimplePostFX():
-    loadRenderPassLibrary("ImageLoader.dll")
-    loadRenderPassLibrary("BlitPass.dll")
-    loadRenderPassLibrary("SimplePostFX.dll")
     testSimplePostFX = RenderGraph("SimplePostFX")
     ImageLoader = createPass("ImageLoader", {'filename' : "LightProbes/20060807_wells6_hd.hdr", 'mips': False, 'srgb': False})
     testSimplePostFX.addPass(ImageLoader, "ImageLoader")

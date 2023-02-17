@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,9 +26,6 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "ImageLoader.h"
-#include "RenderGraph/RenderPassLibrary.h"
-
-const RenderPass::Info ImageLoader::kInfo { "ImageLoader", "Load an image into a texture." };
 
 namespace
 {
@@ -43,15 +40,9 @@ namespace
     const std::string kMipLevel = "mipLevel";
 }
 
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" FALCOR_API_EXPORT const char* getProjDir()
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
-    return PROJECT_DIR;
-}
-
-extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
-{
-    lib.registerPass(ImageLoader::kInfo, ImageLoader::create);
+    registry.registerClass<RenderPass, ImageLoader>();
 }
 
 RenderPassReflection ImageLoader::reflect(const CompileData& compileData)
@@ -64,13 +55,13 @@ RenderPassReflection ImageLoader::reflect(const CompileData& compileData)
     return reflector;
 }
 
-ImageLoader::SharedPtr ImageLoader::create(RenderContext* pRenderContext, const Dictionary& dict)
+ImageLoader::SharedPtr ImageLoader::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
-    return SharedPtr(new ImageLoader(dict));
+    return SharedPtr(new ImageLoader(std::move(pDevice), dict));
 }
 
-ImageLoader::ImageLoader(const Dictionary& dict)
-    : RenderPass(kInfo)
+ImageLoader::ImageLoader(std::shared_ptr<Device> pDevice, const Dictionary& dict)
+    : RenderPass(std::move(pDevice))
 {
     for (const auto& [key, value] : dict)
     {
@@ -167,7 +158,7 @@ void ImageLoader::renderUI(Gui::Widgets& widget)
 
         if (!loadImage(mImagePath))
         {
-            msgBox(fmt::format("Failed to load image from '{}'", mImagePath), MsgBoxType::Ok, MsgBoxIcon::Warning);
+            msgBox("Error", fmt::format("Failed to load image from '{}'", mImagePath), MsgBoxType::Ok, MsgBoxIcon::Warning);
         }
 
         // If output is set to native size and image dimensions have changed, we'll trigger a graph recompile to update the render pass I/O sizes.
@@ -189,7 +180,7 @@ bool ImageLoader::loadImage(const std::filesystem::path& path)
     if (findFileInDataDirectories(mImagePath, fullPath))
     {
         mImagePath = fullPath;
-        mpTex = Texture::createFromFile(mImagePath, mGenerateMips, mLoadSRGB);
+        mpTex = Texture::createFromFile(mpDevice.get(), mImagePath, mGenerateMips, mLoadSRGB);
         return mpTex != nullptr;
     }
     else

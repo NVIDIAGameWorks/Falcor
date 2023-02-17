@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,8 +26,6 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "SplitScreenPass.h"
-
-const RenderPass::Info SplitScreenPass::kInfo { "SplitScreenPass", "Allows the user to split the screen between two inputs." };
 
 namespace
 {
@@ -59,17 +57,16 @@ namespace
     const std::string kSplitShader = "RenderPasses/DebugPasses/SplitScreenPass/SplitScreen.ps.slang";
 }
 
-SplitScreenPass::SplitScreenPass()
-    : ComparisonPass(kInfo)
+SplitScreenPass::SplitScreenPass(std::shared_ptr<Device> pDevice)
+    : ComparisonPass(std::move(pDevice))
 {
-    mpArrowTex = Texture::create2D(16, 16, ResourceFormat::R8Unorm, 1, Texture::kMaxPossible, kArrowArray);
-    mClock = gpFramework->getGlobalClock();
+    mpArrowTex = Texture::create2D(mpDevice.get(), 16, 16, ResourceFormat::R8Unorm, 1, Texture::kMaxPossible, kArrowArray);
     createProgram();
 }
 
-SplitScreenPass::SharedPtr SplitScreenPass::create(RenderContext* pRenderContext, const Dictionary& dict)
+SplitScreenPass::SharedPtr SplitScreenPass::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
-    SharedPtr pPass = SharedPtr(new SplitScreenPass());
+    SharedPtr pPass = SharedPtr(new SplitScreenPass(std::move(pDevice)));
     for (const auto& [key, value] : dict)
     {
         if (!pPass->parseKeyValuePair(key, value))
@@ -83,7 +80,7 @@ SplitScreenPass::SharedPtr SplitScreenPass::create(RenderContext* pRenderContext
 void SplitScreenPass::createProgram()
 {
     // Create our shader that splits the screen.
-    mpSplitShader = FullScreenPass::create(kSplitShader);
+    mpSplitShader = FullScreenPass::create(mpDevice, kSplitShader);
 }
 
 void SplitScreenPass::execute(RenderContext* pRenderContext, const RenderData& renderData)
@@ -113,8 +110,8 @@ bool SplitScreenPass::onMouseEvent(const MouseEvent& mouseEvent)
         mDividerGrabbed = true;
         handled = true;
 
-        if (mClock.getTime() - mTimeOfLastClick < 0.1f) mSplitLoc = 0.5f;
-        else mTimeOfLastClick = mClock.getTime();
+        if (CpuTimer::calcDuration(mTimeOfLastClick, CpuTimer::getCurrentTimePoint()) < 100.0) mSplitLoc = 0.5f;
+        else mTimeOfLastClick = CpuTimer::getCurrentTimePoint();
     }
     else if (mDividerGrabbed)
     {

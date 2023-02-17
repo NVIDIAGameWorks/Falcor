@@ -33,44 +33,59 @@
 
 #ifdef _DEBUG
 
-#define FALCOR_ASSERT(a)\
-    if (!(a)) {\
-        std::string str = fmt::format("assertion failed( {} )\n{}({})", #a, __FILE__, __LINE__); \
-        Falcor::reportFatalError(str);\
+#define FALCOR_ASSERT(a)                                                                      \
+    if (!(a))                                                                                 \
+    {                                                                                         \
+        std::string str = fmt::format("Assertion failed: {}\n{}:{}", #a, __FILE__, __LINE__); \
+        Falcor::reportFatalError(str);                                                        \
     }
-#define FALCOR_ASSERT_MSG(a, msg)\
-    if (!(a)) {\
-        std::string str = fmt::format("assertion failed( {} ): {}\n{}({})", #a, msg, __FILE__, __LINE__); \
-        Falcor::reportFatalError(str); \
+#define FALCOR_ASSERT_MSG(a, msg)                                                                       \
+    if (!(a))                                                                                           \
+    {                                                                                                   \
+        std::string str = fmt::format("Assertion failed: {} ({})\n{}:{}", #a, msg, __FILE__, __LINE__); \
+        Falcor::reportFatalError(str);                                                                  \
     }
-#define FALCOR_ASSERT_OP(a, b, OP)\
-    if (!(a OP b)) {\
-        std::string str = fmt::format("assertion failed( {} {} {} ({} {} {}) )\n{}({})", #a, #OP, #b, a, #OP, b, __FILE__, __LINE__); \
-        Falcor::reportFatalError(str); \
+#define FALCOR_ASSERT_OP(a, b, OP)                                                                                                 \
+    if (!(a OP b))                                                                                                                 \
+    {                                                                                                                              \
+        std::string str = fmt::format("Assertion failed: {} {} {} ({} {} {})\n{}:{}", #a, #OP, #b, a, #OP, b, __FILE__, __LINE__); \
+        Falcor::reportFatalError(str);                                                                                             \
     }
-#define FALCOR_ASSERT_EQ(a, b) FALCOR_ASSERT_OP(a, b, == )
-#define FALCOR_ASSERT_NE(a, b) FALCOR_ASSERT_OP(a, b, != )
-#define FALCOR_ASSERT_GE(a, b) FALCOR_ASSERT_OP(a, b, >= )
-#define FALCOR_ASSERT_GT(a, b) FALCOR_ASSERT_OP(a, b, > )
-#define FALCOR_ASSERT_LE(a, b) FALCOR_ASSERT_OP(a, b, <= )
-#define FALCOR_ASSERT_LT(a, b) FALCOR_ASSERT_OP(a, b, < )
+#define FALCOR_ASSERT_EQ(a, b) FALCOR_ASSERT_OP(a, b, ==)
+#define FALCOR_ASSERT_NE(a, b) FALCOR_ASSERT_OP(a, b, !=)
+#define FALCOR_ASSERT_GE(a, b) FALCOR_ASSERT_OP(a, b, >=)
+#define FALCOR_ASSERT_GT(a, b) FALCOR_ASSERT_OP(a, b, >)
+#define FALCOR_ASSERT_LE(a, b) FALCOR_ASSERT_OP(a, b, <=)
+#define FALCOR_ASSERT_LT(a, b) FALCOR_ASSERT_OP(a, b, <)
 
 #else // _DEBUG
 
-#define FALCOR_ASSERT(a) {}
-#define FALCOR_ASSERT_MSG(a, msg) {}
-#define FALCOR_ASSERT_OP(a, b, OP) {}
-#define FALCOR_ASSERT_EQ(a, b) FALCOR_ASSERT_OP(a, b, == )
-#define FALCOR_ASSERT_NE(a, b) FALCOR_ASSERT_OP(a, b, != )
-#define FALCOR_ASSERT_GE(a, b) FALCOR_ASSERT_OP(a, b, >= )
-#define FALCOR_ASSERT_GT(a, b) FALCOR_ASSERT_OP(a, b, > )
-#define FALCOR_ASSERT_LE(a, b) FALCOR_ASSERT_OP(a, b, <= )
-#define FALCOR_ASSERT_LT(a, b) FALCOR_ASSERT_OP(a, b, < )
+#define FALCOR_ASSERT(a) \
+    {}
+#define FALCOR_ASSERT_MSG(a, msg) \
+    {}
+#define FALCOR_ASSERT_OP(a, b, OP) \
+    {}
+#define FALCOR_ASSERT_EQ(a, b) FALCOR_ASSERT_OP(a, b, ==)
+#define FALCOR_ASSERT_NE(a, b) FALCOR_ASSERT_OP(a, b, !=)
+#define FALCOR_ASSERT_GE(a, b) FALCOR_ASSERT_OP(a, b, >=)
+#define FALCOR_ASSERT_GT(a, b) FALCOR_ASSERT_OP(a, b, >)
+#define FALCOR_ASSERT_LE(a, b) FALCOR_ASSERT_OP(a, b, <=)
+#define FALCOR_ASSERT_LT(a, b) FALCOR_ASSERT_OP(a, b, <)
 
 #endif // _DEBUG
 
-#define FALCOR_UNIMPLEMENTED() do{ FALCOR_ASSERT_MSG(false, "Not implemented"); throw Falcor::RuntimeError("Not implemented"); } while(0)
+#define FALCOR_UNIMPLEMENTED()                         \
+    do                                                 \
+    {                                                  \
+        FALCOR_ASSERT_MSG(false, "Not implemented");   \
+        throw Falcor::RuntimeError("Not implemented"); \
+    } while (0)
 
 #define FALCOR_UNREACHABLE() FALCOR_ASSERT(false)
 
-#define FALCOR_PRINT( x ) do { Falcor::logInfo("{} = {}", #x, x); } while(0)
+#define FALCOR_PRINT(x)                    \
+    do                                     \
+    {                                      \
+        Falcor::logInfo("{} = {}", #x, x); \
+    } while (0)

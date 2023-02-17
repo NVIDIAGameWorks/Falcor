@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -43,9 +43,11 @@ struct S
     Buffer<uint> buf;
     RWBuffer<uint> rwBuf;
 #if USE_UAV
-    [root] RWStructuredBuffer<T> rootBuf;   // Buffer bound to root descriptor (UAV)
+    [root]
+    RWStructuredBuffer<T> rootBuf; // Buffer bound to root descriptor (UAV)
 #else
-    [root] StructuredBuffer<T> rootBuf;     // Buffer bound to root descriptor (SRV)
+    [root]
+    StructuredBuffer<T> rootBuf; // Buffer bound to root descriptor (SRV)
 #endif
 };
 
@@ -55,7 +57,7 @@ cbuffer CB
 }
 
 [numthreads(256, 1, 1)]
-void main(uint3 threadId : SV_DispatchThreadID)
+void main(uint3 threadId: SV_DispatchThreadID)
 {
     const uint i = threadId.x;
 

@@ -44,18 +44,22 @@ namespace Falcor
         {
             sRunning = true;
 #if FALCOR_WINDOWS
-            static std::wstring pythonHome = (getExecutableDirectory() / "Python").c_str();
+            static std::wstring pythonHome = (getRuntimeDirectory() / "pythondist").c_str();
 #else
-            static std::wstring pythonHome = string_2_wstring((getExecutableDirectory() / "python").string());
+            static std::wstring pythonHome = string_2_wstring((getRuntimeDirectory() / "pythondist").string());
 #endif
-            // Py_SetPythonHome in Python < 3.7 takes a non-const wstr*, but guarantees that the contents
-            // will not be modified by Python. As such, casting away the const should be safe.
-            Py_SetPythonHome(const_cast<wchar_t*>(pythonHome.c_str()));
+            Py_SetPythonHome(pythonHome.c_str());
 
             try
             {
                 pybind11::initialize_interpreter();
                 sDefaultContext.reset(new Context());
+                // Extend python search path with the directory containing the falcor python module.
+                std::string pythonPath = (getRuntimeDirectory() / "python").generic_string();
+                Scripting::runScript(fmt::format("import sys; sys.path.append(\"{}\")\n", pythonPath));
+                // Set an environment variable to inform the falcor module that it's being loaded from an embedded interpreter.
+                Scripting::runScript("import os; os.environ[\"FALCOR_EMBEDDED_PYTHON\"] = \"1\"");
+
                 // Import falcor into default scripting context.
                 Scripting::runScript("from falcor import *");
             }

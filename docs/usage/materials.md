@@ -88,9 +88,9 @@ The first data field in the material module has to be the material header. This 
 material payload as declared for the material type. For example, the standard material is declared:
 
 ```c++
-struct StandardMaterial : IMaterial
+struct StandardMaterial : MaterialBase, IMaterial
 {
-    MaterialHeader header;
+    // MaterialHeader header; -- comes from the MaterialBase
     BasicMaterialData data;
     ...
 };

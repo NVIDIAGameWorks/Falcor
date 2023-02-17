@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -66,14 +66,11 @@ namespace Falcor
         const uint kVNDFN = kVNDFSize.x * kVNDFSize.y * kVNDFSize.z * kVNDFSize.w;
     }
 
-    RGLAcquisition::SharedPtr RGLAcquisition::create(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
+    RGLAcquisition::RGLAcquisition(std::shared_ptr<Device> pDevice, const Scene::SharedPtr& pScene)
+        : mpDevice(std::move(pDevice))
+        , mpScene(pScene)
     {
-        return SharedPtr(new RGLAcquisition(pRenderContext, pScene));
-    }
-
-    RGLAcquisition::RGLAcquisition(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
-        : mpScene(pScene)
-    {
+        checkArgument(mpDevice != nullptr, "'pDevice' must be a valid device");
         checkArgument(pScene != nullptr, "'pScene' must be a valid scene");
 
         Program::Desc descBase;
@@ -86,7 +83,7 @@ namespace Falcor
         {
             auto desc = descBase;
             desc.csEntry(name);
-            return ComputePass::create(desc, defines);
+            return ComputePass::create(mpDevice, desc, defines);
         };
 
         mpRetroReflectionPass = addEntryPoint("measureRetroreflection");
@@ -101,6 +98,7 @@ namespace Falcor
         auto createStructured = [&](size_t elemSize, size_t count, const void* srcData = nullptr)
         {
             return Buffer::createStructured(
+                mpDevice.get(),
                 uint32_t(elemSize),
                 uint32_t(count),
                 ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
@@ -260,6 +258,6 @@ namespace Falcor
         mpRGBBuffer  ->unmap();
         mpLumiBuffer ->unmap();
 
-        return std::move(result);
+        return result;
     }
 }

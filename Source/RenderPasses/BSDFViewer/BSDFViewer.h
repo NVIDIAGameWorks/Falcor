@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -37,13 +37,13 @@ using namespace Falcor;
 class BSDFViewer : public RenderPass
 {
 public:
-    using SharedPtr = std::shared_ptr<BSDFViewer>;
+    FALCOR_PLUGIN_CLASS(BSDFViewer, "BSDFViewer", "BSDF inspection utility.");
 
-    static const Info kInfo;
+    using SharedPtr = std::shared_ptr<BSDFViewer>;
 
     /** Create a new object
     */
-    static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
@@ -57,7 +57,7 @@ public:
     static void registerBindings(pybind11::module& m);
 
 private:
-    BSDFViewer(const Dictionary& dict);
+    BSDFViewer(std::shared_ptr<Device> pDevice, const Dictionary& dict);
     void parseDictionary(const Dictionary& dict);
     bool loadEnvMap(const std::filesystem::path& path);
     void readPixelData();

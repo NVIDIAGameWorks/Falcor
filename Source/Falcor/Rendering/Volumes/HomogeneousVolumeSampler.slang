@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,7 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-__exported import Scene.Material.HomogeneousVolumeData;
+__exported import Scene.Material.VolumeProperties;
 __exported import Utils.Sampling.SampleGeneratorInterface;
 
 /** Helper class for sampling homogeneous volumes.
@@ -123,9 +123,9 @@ struct HomogeneousVolumeSampler
         \param[out] ds Distance sample.
         \return Returns true if a scattering distance was sampled (false if medium does not scatter).
     */
-    static bool sampleDistance<S : ISampleGenerator>(const HomogeneousVolumeData vd, const float3 thp, inout S sg, out DistanceSample ds)
+    static bool sampleDistance<S : ISampleGenerator>(const VolumeProperties vp, const float3 thp, inout S sg, out DistanceSample ds)
     {
-        return sampleDistance(vd.sigmaA, vd.sigmaS, thp, sg, ds);
+        return sampleDistance(vp.sigmaA, vp.sigmaS, thp, sg, ds);
     }
 
     /** Evaluate transmittance through a homogeneous medium.
@@ -143,8 +143,8 @@ struct HomogeneousVolumeSampler
         \param[in] distance Distance through the medium.
         \return Returns the transmittance.
     */
-    static float3 evalTransmittance(const HomogeneousVolumeData vd, const float distance)
+    static float3 evalTransmittance(const VolumeProperties vp, const float distance)
     {
-        return evalTransmittance(vd.sigmaA + vd.sigmaS, distance);
+        return evalTransmittance(vp.sigmaA + vp.sigmaS, distance);
     }
 }

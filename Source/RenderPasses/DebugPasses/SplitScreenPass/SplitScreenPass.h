@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
+#include "Utils/Timing/CpuTimer.h"
 #include "../ComparisonPass.h"
 
 using namespace Falcor;
@@ -34,17 +35,17 @@ using namespace Falcor;
 class SplitScreenPass : public ComparisonPass
 {
 public:
+    FALCOR_PLUGIN_CLASS(SplitScreenPass, "SplitScreenPass", "Allows the user to split the screen between two inputs.");
+
     using SharedPtr = std::shared_ptr<SplitScreenPass>;
 
-    static const Info kInfo;
-
-    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual bool onMouseEvent(const MouseEvent& mouseEvent) override;
     virtual void renderUI(Gui::Widgets& widget) override;
 
 private:
-    SplitScreenPass();
+    SplitScreenPass(std::shared_ptr<Device> pDevice);
     virtual void createProgram() override;
     Texture::SharedPtr mpArrowTex; // A texture storing a 16x16 grayscale arrow
 
@@ -56,6 +57,5 @@ private:
     bool mDrawArrows = false; ///< When hovering over divider, show arrows?
 
     // Double-click detection Parameters
-    Clock mClock; ///< Global clock used to track click times
-    double mTimeOfLastClick = 0; ///< Time since mouse was last clicked
+    CpuTimer::TimePoint mTimeOfLastClick {}; ///< Time since mouse was last clicked
 };

@@ -27,40 +27,48 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
+#include "Core/SampleApp.h"
 #include "RenderGraph/BasePasses/FullScreenPass.h"
 
 using namespace Falcor;
 
 struct VoxelNormalsGUI
 {
-    bool    showNormalField = false;
-    bool    showBoxes = true;
-    bool    showBoxDiagonals = true;
-    bool    showBorderLines = false;
-    bool    showBoxAroundPoint = false;
+    bool showNormalField = false;
+    bool showBoxes = true;
+    bool showBoxDiagonals = true;
+    bool showBorderLines = false;
+    bool showBoxAroundPoint = false;
 };
 
-class Visualization2D : public IRenderer
+class Visualization2D : public SampleApp
 {
 public:
+    Visualization2D(const SampleAppConfig& config);
+    ~Visualization2D();
+
     void onLoad(RenderContext* pRenderContext) override;
     void onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
-    void onShutdown() override;
-    void onResizeSwapChain(uint32_t width, uint32_t height) override;
+    void onGuiRender(Gui* pGui) override;
     bool onKeyEvent(const KeyboardEvent& keyEvent) override;
     bool onMouseEvent(const MouseEvent& mouseEvent) override;
-    void onHotReload(HotReloadFlags reloaded) override;
-    void onGuiRender(Gui* pGui) override;
+
 public:
-    enum Scene { MarkerDemo, VoxelNormals };
+    enum Scene
+    {
+        MarkerDemo,
+        VoxelNormals
+    };
+
 private:
     void createRenderPass();
+
 private:
-    FullScreenPass::SharedPtr       mpMainPass;
+    FullScreenPass::SharedPtr mpMainPass;
 
-    bool                            mLeftButtonDown = false;
-    float2                          mMousePosition = float2(0.2f, 0.1f);
+    bool mLeftButtonDown = false;
+    float2 mMousePosition = float2(0.2f, 0.1f);
 
-    VoxelNormalsGUI                 mVoxelNormalsGUI;
-    Scene                           mSelectedScene = Scene::MarkerDemo;
+    VoxelNormalsGUI mVoxelNormalsGUI;
+    Scene mSelectedScene = Scene::MarkerDemo;
 };

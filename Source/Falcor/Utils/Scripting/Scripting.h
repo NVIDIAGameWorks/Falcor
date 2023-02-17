@@ -156,7 +156,7 @@ namespace Falcor
         static std::string interpretScript(const std::string& script, Context& context = getDefaultContext());
 
     private:
-        static bool sRunning;
-        static std::unique_ptr<Context> sDefaultContext;
+        static bool sRunning; // TODO: REMOVEGLOBAL
+        static std::unique_ptr<Context> sDefaultContext; // TODO: REMOVEGLOBAL
     };
 }

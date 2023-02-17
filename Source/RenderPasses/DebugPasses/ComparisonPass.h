@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -42,7 +42,7 @@ public:
     virtual void renderUI(Gui::Widgets& widget) override;
 
 protected:
-    ComparisonPass(const Info& info) : RenderPass(info) {}
+    ComparisonPass(std::shared_ptr<Device> pDevice) : RenderPass(std::move(pDevice)) {}
     virtual void createProgram() = 0;
     bool parseKeyValuePair(const std::string key, const Dictionary::Value val);
 

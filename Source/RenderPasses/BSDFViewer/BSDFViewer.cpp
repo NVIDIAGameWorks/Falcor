@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,21 +26,12 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "BSDFViewer.h"
-#include "RenderGraph/RenderPassLibrary.h"
 #include "RenderGraph/RenderPassStandardFlags.h"
-#include "Rendering/Materials/BxDFConfig.slangh"
+#include "Rendering/Materials/BSDFConfig.slangh"
 
-const RenderPass::Info BSDFViewer::kInfo { "BSDFViewer", "BSDF inspection utility." };
-
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" FALCOR_API_EXPORT const char* getProjDir()
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
-    return PROJECT_DIR;
-}
-
-extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
-{
-    lib.registerPass(BSDFViewer::kInfo, BSDFViewer::create);
+    registry.registerClass<RenderPass, BSDFViewer>();
     ScriptBindings::registerBinding(BSDFViewer::registerBindings);
 }
 
@@ -72,21 +63,21 @@ void BSDFViewer::registerBindings(pybind11::module& m)
     mode.value("Slice", BSDFViewerMode::Slice);
 }
 
-BSDFViewer::SharedPtr BSDFViewer::create(RenderContext* pRenderContext, const Dictionary& dict)
+BSDFViewer::SharedPtr BSDFViewer::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
-    return SharedPtr(new BSDFViewer(dict));
+    return SharedPtr(new BSDFViewer(std::move(pDevice), dict));
 }
 
-BSDFViewer::BSDFViewer(const Dictionary& dict)
-    : RenderPass(kInfo)
+BSDFViewer::BSDFViewer(std::shared_ptr<Device> pDevice, const Dictionary& dict)
+    : RenderPass(std::move(pDevice))
 {
     parseDictionary(dict);
 
     // Create a high-quality pseudorandom number generator.
-    mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
+    mpSampleGenerator = SampleGenerator::create(mpDevice, SAMPLE_GENERATOR_UNIFORM);
 
-    mpPixelDebug = PixelDebug::create();
-    mpFence = GpuFence::create();
+    mpPixelDebug = PixelDebug::create(mpDevice);
+    mpFence = GpuFence::create(mpDevice.get());
 }
 
 void BSDFViewer::parseDictionary(const Dictionary& dict)
@@ -157,7 +148,7 @@ void BSDFViewer::setScene(RenderContext* pRenderContext, const Scene::SharedPtr&
         defines.add(mpSampleGenerator->getDefines());
         defines.add(mpScene->getSceneDefines());
 
-        mpViewerPass = ComputePass::create(desc, defines, false);
+        mpViewerPass = ComputePass::create(mpDevice, desc, defines, false);
 
         // Compile program and bind the scene.
         mpViewerPass->setVars(nullptr); // Trigger vars creation
@@ -222,8 +213,8 @@ void BSDFViewer::execute(RenderContext* pRenderContext, const RenderData& render
 
     if (!mpPixelDataBuffer)
     {
-        mpPixelDataBuffer = Buffer::createStructured(var["pixelData"], 1, ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
-        mpPixelStagingBuffer = Buffer::createStructured(var["pixelData"], 1, ResourceBindFlags::None, Buffer::CpuAccess::Read, nullptr, false);
+        mpPixelDataBuffer = Buffer::createStructured(mpDevice.get(), var["pixelData"], 1, ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+        mpPixelStagingBuffer = Buffer::createStructured(mpDevice.get(), var["pixelData"], 1, ResourceBindFlags::None, Buffer::CpuAccess::Read, nullptr, false);
     }
 
     var["params"].setBlob(mParams);
@@ -309,7 +300,8 @@ void BSDFViewer::renderUI(Gui::Widgets& widget)
         auto type = mpScene->getMaterial(MaterialID{ mParams.materialID })->getType();
         mtlGroup.text("Material type: " + to_string(type));
 
-        dirty |= mtlGroup.checkbox("Normal mapping", mParams.useNormalMapping);
+        dirty |= mtlGroup.checkbox("Use normal mapping", mParams.useNormalMapping);
+        mtlGroup.tooltip("This is a hint that normal mapping should be used if supported by the material.", true);
         dirty |= mtlGroup.checkbox("Fixed tex coords", mParams.useFixedTexCoords);
         dirty |= mtlGroup.var("Tex coords", mParams.texCoords, -std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 0.01f);
     }
@@ -413,7 +405,7 @@ void BSDFViewer::renderUI(Gui::Widgets& widget)
                 }
                 else
                 {
-                    msgBox(fmt::format("Failed to load environment map from '{}'.", path), MsgBoxType::Ok, MsgBoxIcon::Warning);
+                    msgBox("Error", fmt::format("Failed to load environment map from '{}'.", path), MsgBoxType::Ok, MsgBoxIcon::Warning);
                 }
             }
         }
@@ -453,6 +445,7 @@ void BSDFViewer::renderUI(Gui::Widgets& widget)
             pixelGroup.var("output", mPixelData.output, 0.f, std::numeric_limits<float>::max(), 0.f, false, "%.4f");
 
             pixelGroup.text("BSDF properties:");
+            pixelGroup.var("guideNormal", mPixelData.guideNormal, -1.f, 1.f, 0.f, false, "%.4f");
             pixelGroup.var("emission", mPixelData.emission, 0.f, 1.f, 0.f, false, "%.4f");
             pixelGroup.var("roughness", mPixelData.roughness, 0.f, 1.f, 0.f, false, "%.4f");
             pixelGroup.var("diffuseReflectionAlbedo", mPixelData.diffuseReflectionAlbedo, 0.f, std::numeric_limits<float>::max(), 0.f, false, "%.4f");
@@ -510,7 +503,7 @@ bool BSDFViewer::onKeyEvent(const KeyboardEvent& keyEvent)
 
 bool BSDFViewer::loadEnvMap(const std::filesystem::path& path)
 {
-    auto pEnvMap = EnvMap::createFromFile(path);
+    auto pEnvMap = EnvMap::createFromFile(mpDevice, path);
     if (!pEnvMap)
     {
         logWarning("Failed to load environment map from '{}'.", path);

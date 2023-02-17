@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -39,9 +39,11 @@ struct TestBlock
     RWBuffer<float> bufB[3];
 
 #if USE_UAV
-    [root] RWByteAddressBuffer testBuffer;  // Buffer bound to root descriptor (UAV)
+    [root]
+    RWByteAddressBuffer testBuffer; // Buffer bound to root descriptor (UAV)
 #else
-    [root] ByteAddressBuffer testBuffer;    // Buffer bound to root descriptor (SRV)
+    [root]
+    ByteAddressBuffer testBuffer; // Buffer bound to root descriptor (SRV)
 #endif
 
     Buffer<uint> bufC[4];

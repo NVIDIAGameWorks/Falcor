@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,7 +29,7 @@ RWStructuredBuffer<uint> result;
 ByteAddressBuffer buffer;
 
 [numthreads(256, 1, 1)]
-void readback(uint3 threadId : SV_DispatchThreadID)
+void readback(uint3 threadId: SV_DispatchThreadID)
 {
     uint i = threadId.x;
     result[i] = buffer.Load(i * 4);

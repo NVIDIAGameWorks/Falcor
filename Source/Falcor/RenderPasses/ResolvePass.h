@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -40,17 +40,19 @@ namespace Falcor
     class FALCOR_API ResolvePass : public RenderPass
     {
     public:
+        // This pass is not dynamically loaded from a plugin library,
+        // but we still need to provide plugin type and info fields.
+        FALCOR_PLUGIN_CLASS(ResolvePass, "ResolvePass", "Resolve a multi-sampled texture.");
+
         using SharedPtr = std::shared_ptr<ResolvePass>;
 
-        static const Info kInfo;
-
-        static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dictionary = {});
+        static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dictionary = {});
 
         void setFormat(ResourceFormat format) { mFormat = format; }
         virtual RenderPassReflection reflect(const CompileData& compileData) override;
         virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     private:
-        ResolvePass();
+        ResolvePass(std::shared_ptr<Device> pDevice);
         ResourceFormat mFormat = ResourceFormat::Unknown;
     };
 }

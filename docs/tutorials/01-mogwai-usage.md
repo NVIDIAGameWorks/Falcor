@@ -23,24 +23,31 @@ Run Mogwai from within Visual Studio (by pressing Ctrl+F5), or from the command 
   OPTIONS:
 
       -h, --help                        Display this help menu.
+      -d[d3d12|vulkan],
+      --device-type=[d3d12|vulkan]      Graphics device type.
+      --list-gpus                       List available GPUs
+      --gpu=[index]                     Select specific GPU to use
+      --headless                        Start without opening a window and
+                                        handling user input.
       -s[path], --script=[path]         Python script file to run.
       --deferred                        The script is loaded deferred.
       -S[path], --scene=[path]          Scene file (for example, a .pyscene
                                         file) to open.
+      --shadercache=[shadercache]       Path to the GFX shader cache.
       -l[path], --logfile=[path]        File to write log into.
       -v[verbosity],
       --verbosity=[verbosity]           Logging verbosity (0=disabled, 1=fatal
                                         errors, 2=errors, 3=warnings, 4=infos,
                                         5=debugging)
-      --silent                          Starts Mogwai with a minimized window
-                                        and disables mouse/keyboard input as
-                                        well as error message dialogs.
+      --silent                          Start without opening a window and
+                                        handling user input (deprecated: use
+                                        --headless).
       --width=[pixels]                  Initial window width.
       --height=[pixels]                 Initial window height.
       -c, --use-cache                   Use scene cache to improve scene load
                                         times.
       --rebuild-cache                   Rebuild the scene cache.
-      -d, --debug-shaders               Generate shader debug info.
+      --debug-shaders                   Generate shader debug info.
       --enable-debug-layer              Enable debug layer (enabled by default
                                         in Debug build).
       --precise                         Force all slang programs to run in

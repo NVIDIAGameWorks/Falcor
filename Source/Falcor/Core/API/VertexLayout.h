@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -32,170 +32,165 @@
 
 namespace Falcor
 {
-    /** Describes the layout of a vertex buffer that will be bound to a render operation as part of a VAO.
-    */
-    class FALCOR_API VertexBufferLayout
+/**
+ * Describes the layout of a vertex buffer that will be bound to a render operation as part of a VAO.
+ */
+class FALCOR_API VertexBufferLayout
+{
+public:
+    using SharedPtr = std::shared_ptr<VertexBufferLayout>;
+    using SharedConstPtr = std::shared_ptr<const VertexBufferLayout>;
+
+    enum class InputClass
     {
-    public:
-        using SharedPtr = std::shared_ptr<VertexBufferLayout>;
-        using SharedConstPtr = std::shared_ptr<const VertexBufferLayout>;
-
-        enum class InputClass
-        {
-            PerVertexData,      ///< Buffer elements will represent per-vertex data
-            PerInstanceData     ///< Buffer elements will represent per-instance data
-        };
-
-        /** Create a new vertex buffer layout object.
-            \return New object, or throws an exception on error.
-        */
-        static SharedPtr create()
-        {
-            return SharedPtr(new VertexBufferLayout());
-        }
-
-        /** Add a new element to the layout.
-            \param name The semantic name of the element. In OpenGL this is just a descriptive field. In DX, this is the semantic name used to match the element with the shader input signature.
-            \param offset Offset in bytes of the element from the start of the vertex.
-            \param format The format of each channel in the element.
-            \param arraySize The array size of the input element. Must be at least 1.
-            \param shaderLocation The attribute binding location in the shader.
-        */
-        void addElement(const std::string& name, uint32_t offset, ResourceFormat format, uint32_t arraySize, uint32_t shaderLocation)
-        {
-            Element Elem;
-            Elem.offset = offset;
-            Elem.format = format;
-            Elem.shaderLocation = shaderLocation;
-            Elem.name = name;
-            Elem.arraySize = arraySize;
-            mElements.push_back(Elem);
-            mVertexStride += getFormatBytesPerBlock(Elem.format) * Elem.arraySize;
-        }
-
-        /** Return the element offset pointed to by Index
-        */
-        uint32_t getElementOffset(uint32_t index) const
-        {
-            return mElements[index].offset;
-        }
-
-        /** Return the element format pointed to by Index
-        */
-        ResourceFormat getElementFormat(uint32_t index) const
-        {
-            return mElements[index].format;
-        }
-
-        /** Return the semantic name of the element
-        */
-        const std::string& getElementName(uint32_t index) const
-        {
-            return mElements[index].name;
-        }
-
-        /** Return the array size the element
-        */
-        const uint32_t getElementArraySize(uint32_t index) const
-        {
-            return mElements[index].arraySize;
-        }
-
-        /** Return the element shader binding location pointed to by Index
-        */
-        uint32_t getElementShaderLocation(uint32_t index) const
-        {
-            return mElements[index].shaderLocation;
-        }
-
-        /** Return the number of elements in the object
-        */
-        uint32_t getElementCount() const
-        {
-            return (uint32_t)mElements.size();
-        }
-
-        /** Return the total stride of all elements in bytes
-        */
-        uint32_t getStride() const { return mVertexStride; }
-
-        /** Return the input classification
-        */
-        InputClass getInputClass() const
-        {
-            return mClass;
-        }
-
-        /** Returns the per-instance data step rate
-        */
-        uint32_t getInstanceStepRate() const
-        {
-            return mInstanceStepRate;
-        }
-
-        /** Set the input class and the data step rate
-            \param inputClass Specifies is this layout object holds per-vertex or per-instance data
-            \param instanceStepRate For per-instance data, specifies how many instance to draw using the same per-instance data. If this is zero, it behaves as if the class is PerVertexData
-        */
-        void setInputClass(InputClass inputClass, uint32_t stepRate) { mClass = inputClass; mInstanceStepRate = stepRate; }
-
-        static const uint32_t kInvalidShaderLocation = uint32_t(-1);
-    private:
-        VertexBufferLayout() = default;
-
-        struct Element
-        {
-            uint32_t offset = 0;
-            ResourceFormat format = ResourceFormat::Unknown;
-            uint32_t shaderLocation = kInvalidShaderLocation;
-            std::string name;
-            uint32_t arraySize;
-            uint32_t vbIndex;
-        };
-
-        std::vector<Element> mElements;
-        InputClass mClass = InputClass::PerVertexData;
-        uint32_t mInstanceStepRate = 0;
-        uint32_t mVertexStride = 0;
+        PerVertexData,  ///< Buffer elements will represent per-vertex data
+        PerInstanceData ///< Buffer elements will represent per-instance data
     };
 
-    /** Container to hold layouts for every vertex layout that will be bound at once to a VAO.
-    */
-    class VertexLayout
+    /**
+     * Create a new vertex buffer layout object.
+     * @return New object, or throws an exception on error.
+     */
+    static SharedPtr create() { return SharedPtr(new VertexBufferLayout()); }
+
+    /**
+     * Add a new element to the layout.
+     * @param name The semantic name of the element. In OpenGL this is just a descriptive field. In DX, this is the semantic name used to
+     * match the element with the shader input signature.
+     * @param offset Offset in bytes of the element from the start of the vertex.
+     * @param format The format of each channel in the element.
+     * @param arraySize The array size of the input element. Must be at least 1.
+     * @param shaderLocation The attribute binding location in the shader.
+     */
+    void addElement(const std::string& name, uint32_t offset, ResourceFormat format, uint32_t arraySize, uint32_t shaderLocation)
     {
-    public:
-        using SharedPtr = std::shared_ptr<VertexLayout>;
-        using SharedConstPtr = std::shared_ptr<const VertexLayout>;
+        Element Elem;
+        Elem.offset = offset;
+        Elem.format = format;
+        Elem.shaderLocation = shaderLocation;
+        Elem.name = name;
+        Elem.arraySize = arraySize;
+        mElements.push_back(Elem);
+        mVertexStride += getFormatBytesPerBlock(Elem.format) * Elem.arraySize;
+    }
 
-        /** Create a new vertex layout object.
-            \return New object, or throws an exception on error.
-        */
-        static SharedPtr create() { return SharedPtr(new VertexLayout()); }
+    /**
+     * Return the element offset pointed to by Index
+     */
+    uint32_t getElementOffset(uint32_t index) const { return mElements[index].offset; }
 
-        /** Add a layout description for a buffer.
-        */
-        void addBufferLayout(uint32_t index, VertexBufferLayout::SharedConstPtr pLayout)
-        {
-            if (mpBufferLayouts.size() <= index)
-            {
-                mpBufferLayouts.resize(index + 1);
-            }
-            mpBufferLayouts[index] = pLayout;
-        }
+    /**
+     * Return the element format pointed to by Index
+     */
+    ResourceFormat getElementFormat(uint32_t index) const { return mElements[index].format; }
 
-        /** Get a buffer layout.
-        */
-        const VertexBufferLayout::SharedConstPtr& getBufferLayout(size_t index) const
-        {
-            return mpBufferLayouts[index];
-        }
+    /**
+     * Return the semantic name of the element
+     */
+    const std::string& getElementName(uint32_t index) const { return mElements[index].name; }
 
-        /** Get how many buffer descriptions there are.
-        */
-        size_t getBufferCount() const { return mpBufferLayouts.size(); }
+    /**
+     * Return the array size the element
+     */
+    const uint32_t getElementArraySize(uint32_t index) const { return mElements[index].arraySize; }
 
-    private:
-        VertexLayout() { mpBufferLayouts.reserve(16); }
-        std::vector<VertexBufferLayout::SharedConstPtr> mpBufferLayouts;
+    /**
+     * Return the element shader binding location pointed to by Index
+     */
+    uint32_t getElementShaderLocation(uint32_t index) const { return mElements[index].shaderLocation; }
+
+    /**
+     * Return the number of elements in the object
+     */
+    uint32_t getElementCount() const { return (uint32_t)mElements.size(); }
+
+    /**
+     * Return the total stride of all elements in bytes
+     */
+    uint32_t getStride() const { return mVertexStride; }
+
+    /**
+     * Return the input classification
+     */
+    InputClass getInputClass() const { return mClass; }
+
+    /**
+     * Returns the per-instance data step rate
+     */
+    uint32_t getInstanceStepRate() const { return mInstanceStepRate; }
+
+    /**
+     * Set the input class and the data step rate
+     * @param inputClass Specifies is this layout object holds per-vertex or per-instance data
+     * @param instanceStepRate For per-instance data, specifies how many instance to draw using the same per-instance data. If this is zero,
+     * it behaves as if the class is PerVertexData
+     */
+    void setInputClass(InputClass inputClass, uint32_t stepRate)
+    {
+        mClass = inputClass;
+        mInstanceStepRate = stepRate;
+    }
+
+    static const uint32_t kInvalidShaderLocation = uint32_t(-1);
+
+private:
+    VertexBufferLayout() = default;
+
+    struct Element
+    {
+        uint32_t offset = 0;
+        ResourceFormat format = ResourceFormat::Unknown;
+        uint32_t shaderLocation = kInvalidShaderLocation;
+        std::string name;
+        uint32_t arraySize;
+        uint32_t vbIndex;
     };
-}
+
+    std::vector<Element> mElements;
+    InputClass mClass = InputClass::PerVertexData;
+    uint32_t mInstanceStepRate = 0;
+    uint32_t mVertexStride = 0;
+};
+
+/**
+ * Container to hold layouts for every vertex layout that will be bound at once to a VAO.
+ */
+class VertexLayout
+{
+public:
+    using SharedPtr = std::shared_ptr<VertexLayout>;
+    using SharedConstPtr = std::shared_ptr<const VertexLayout>;
+
+    /**
+     * Create a new vertex layout object.
+     * @return New object, or throws an exception on error.
+     */
+    static SharedPtr create() { return SharedPtr(new VertexLayout()); }
+
+    /**
+     * Add a layout description for a buffer.
+     */
+    void addBufferLayout(uint32_t index, VertexBufferLayout::SharedConstPtr pLayout)
+    {
+        if (mpBufferLayouts.size() <= index)
+        {
+            mpBufferLayouts.resize(index + 1);
+        }
+        mpBufferLayouts[index] = pLayout;
+    }
+
+    /**
+     * Get a buffer layout.
+     */
+    const VertexBufferLayout::SharedConstPtr& getBufferLayout(size_t index) const { return mpBufferLayouts[index]; }
+
+    /**
+     * Get how many buffer descriptions there are.
+     */
+    size_t getBufferCount() const { return mpBufferLayouts.size(); }
+
+private:
+    VertexLayout() { mpBufferLayouts.reserve(16); }
+    std::vector<VertexBufferLayout::SharedConstPtr> mpBufferLayouts;
+};
+} // namespace Falcor

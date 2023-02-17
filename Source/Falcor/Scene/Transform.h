@@ -39,6 +39,18 @@ namespace Falcor
     class FALCOR_API Transform
     {
     public:
+        enum class CompositionOrder
+        {
+            Unknown = 0,
+            ScaleRotateTranslate,
+            ScaleTranslateRotate,
+            RotateScaleTranslate,
+            RotateTranslateScale,
+            TranslateRotateScale,
+            TranslateScaleRotate,
+            Default = ScaleRotateTranslate
+        };
+
         Transform();
 
         const float3& getTranslation() const { return mTranslation; }
@@ -58,15 +70,21 @@ namespace Falcor
 
         void lookAt(const float3& position, const float3& target, const float3& up);
 
+        CompositionOrder getCompositionOrder() const { return mCompositionOrder; } ;
+        void setCompositionOrder(const CompositionOrder& order) { mCompositionOrder = order; mDirty = true; }
+
         const rmcv::mat4& getMatrix() const;
 
         bool operator==(const Transform& other) const;
         bool operator!=(const Transform& other) const { return !((*this) == other); }
 
+        static CompositionOrder getInverseOrder(const CompositionOrder& order);
+
     private:
         float3 mTranslation = float3(0.f);
         float3 mScaling = float3(1.f);
         glm::quat mRotation = glm::identity<glm::quat>();
+        CompositionOrder mCompositionOrder = CompositionOrder::Default;
 
         mutable bool mDirty = true;
         mutable rmcv::mat4 mMatrix;

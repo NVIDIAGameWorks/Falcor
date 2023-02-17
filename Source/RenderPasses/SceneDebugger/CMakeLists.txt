@@ -1,4 +1,4 @@
-add_renderpass(SceneDebugger)
+add_plugin(SceneDebugger)
 
 target_sources(SceneDebugger PRIVATE
     SceneDebugger.cpp

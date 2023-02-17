@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,11 +26,21 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Core/Macros.h"
+#include "Core/Platform/PlatformHandles.h"
+#include <slang.h>
+#include <slang-gfx.h>
+#include <slang-com-ptr.h>
+#include <memory>
 
-#if defined(FALCOR_D3D12)
-#include "Core/API/D3D12/D3D12Handles.h"
-#elif defined(FALCOR_GFX)
-#include "Core/API/GFX/GFXHandles.h"
-#else
-#error "Undefined rendering backend!"
+namespace Falcor
+{
+using GpuAddress = uint64_t;
+#if FALCOR_WINDOWS
+using SharedResourceApiHandle = HANDLE;
+using SharedFenceApiHandle = HANDLE;
+#elif FALCOR_LINUX
+using SharedResourceApiHandle = void*;
+using SharedFenceApiHandle = void*;
 #endif
+} // namespace Falcor

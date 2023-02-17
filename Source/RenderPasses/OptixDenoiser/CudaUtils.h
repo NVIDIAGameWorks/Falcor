@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -40,7 +40,7 @@
 // Initializes OptiX.  Returns true on success.
 bool initOptix(OptixDeviceContext& optixContext);
 
-// This takes a Windows Handle (e.g., from Falcor::Resource::getApiHandle()) on a resource
+// This takes a Windows Handle (e.g., from Falcor::Resource::getSharedApiHandle()) on a resource
 //    that has been declared "shared" [with Resource::BindFlags::Shared] plus a size of that
 //    resource in bytes and returns a CUDA device pointer from that resource that can be
 //    passed into OptiX or CUDA.  This pointer is a value returned from

@@ -30,7 +30,6 @@
 #include "Utils/UI/InputTypes.h"
 #include "Utils/UI/Gui.h"
 #include "Utils/Scripting/Scripting.h"
-#include "Utils/Scripting/ScriptBindings.h"
 
 #include <imgui.h>
 
@@ -89,32 +88,38 @@ namespace Falcor
 
         ConsoleWindow w(pGui);
 
+        ImGui::SetNextWindowFocus();
         ImGui::BeginChild("log", {0, w.height - ImGui::GetTextLineHeight() - 5});
         ImGui::PushTextWrapPos();
         ImGui::TextUnformatted(mLog.c_str());
         ImGui::PopTextWrapPos();
         if (mScrollToBottom)
         {
-            ImGui::SetScrollHere(1.0f);
+            ImGui::SetScrollHereY(1.f);
             mScrollToBottom = false;
         }
         ImGui::EndChild();
 
         ImGui::PushItemWidth(ImGui::GetWindowWidth());
+        // Stick focus to console text input.
+        ImGui::SetKeyboardFocusHere();
         if (ImGui::InputText("##console", mCmdBuffer, std::size(mCmdBuffer), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory | ImGuiInputTextFlags_CallbackCharFilter, &inputTextCallback, this))
         {
             enterCommand();
             ImGui::GetIO().KeysDown[(uint32_t)Input::Key::Enter] = false;
         }
-        // Stick focus to console text input.
-        ImGui::SetWindowFocus();
-        ImGui::SetKeyboardFocusHere();
         pGui->setActiveFont("");
     }
 
     bool Console::flush()
     {
         if (mCmdPending.empty()) return false;
+
+        if (mCmdPending == "cls")
+        {
+            clear();
+            return false;
+        }
 
         try
         {
@@ -128,13 +133,6 @@ namespace Falcor
         mCmdPending.clear();
 
         return true;
-    }
-
-    Console& Console::instance()
-    {
-        static std::unique_ptr<Console> pInstance;
-        if (!pInstance) pInstance = std::unique_ptr<Console>(new Console());
-        return *pInstance;
     }
 
     void Console::enterCommand()
@@ -191,11 +189,5 @@ namespace Falcor
             }
         }
         return 0;
-    }
-
-    FALCOR_SCRIPT_BINDING(Console)
-    {
-        auto cls = []() { Console::instance().clear(); };
-        m.def("cls", cls);
     }
 }

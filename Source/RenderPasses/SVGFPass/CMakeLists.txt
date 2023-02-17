@@ -1,4 +1,4 @@
-add_renderpass(SVGFPass)
+add_plugin(SVGFPass)
 
 target_sources(SVGFPass PRIVATE
     SVGFAtrous.ps.slang

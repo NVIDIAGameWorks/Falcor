@@ -49,6 +49,9 @@ struct ResolvePass
     StructuredBuffer<float4>      sampleNRDEmission;        ///< Input per-sample NRD emission data. Only valid if kOutputNRDData == true.
     StructuredBuffer<float4>      sampleNRDReflectance;     ///< Input per-sample NRD reflectance data. Only valid if kOutputNRDData == true.
 
+    StructuredBuffer<float4> sampleNRDPrimaryHitNeeOnDelta; ///< Output per-sample NEE on paths classified as delta, from delta+diffuse materials. Only valid if kOutputNRDData == true.
+    Texture2D<float4> primaryHitDiffuseReflectance;         ///< Output per-pixel primary hit diffuse reflectance. Only valid if kOutputNRDData == true.
+
     Texture2D<uint> sampleCount;                            ///< Optional input sample count buffer. Only valid when kSamplesPerPixel == 0.
     Texture2D<uint> sampleOffset;                           ///< Output offset into per-sample buffers. Only valid when kSamplesPerPixel == 0.
 
@@ -56,7 +59,7 @@ struct ResolvePass
     RWTexture2D<float4> outputAlbedo;                       ///< Output resolved albedo. Only valid if kOutputGuideData == true.
     RWTexture2D<float4> outputSpecularAlbedo;               ///< Output resolved specular albedo. Only valid if kOutputGuideData == true.
     RWTexture2D<float4> outputIndirectAlbedo;               ///< Output resolved indirect albedo. Only valid if kOutputGuideData == true.
-    RWTexture2D<float4> outputNormal;                       ///< Output resolved normal. Only valid if kOutputGuideData == true.
+    RWTexture2D<float4> outputGuideNormal;                  ///< Output resolved guide normal. Only valid if kOutputGuideData == true.
     RWTexture2D<float4> outputReflectionPosW;               ///< Output resolved reflection pos. Only valid if kOutputGuideData == true.
 
     RWTexture2D<float4> outputNRDDiffuseRadianceHitDist;            ///< Output resolved diffuse radiance in .rgb and hit distance in .a for NRD. Only valid if kOutputNRDData == true.
@@ -105,7 +108,7 @@ struct ResolvePass
             float3 albedo = float3(0.f);
             float3 specularAlbedo = float3(0.f);
             float3 indirectAlbedo = float3(0.f);
-            float3 normal = float3(0.f);
+            float3 guideNormal = float3(0.f);
             float3 reflectionPosW = float3(0.f);
 
             for (uint sampleIdx = 0; sampleIdx < spp; sampleIdx++)
@@ -114,14 +117,14 @@ struct ResolvePass
                 albedo += sampleGuideData[idx].getAlbedo();
                 specularAlbedo += sampleGuideData[idx].getSpecularAlbedo();
                 indirectAlbedo += sampleGuideData[idx].getIndirectAlbedo();
-                normal += sampleGuideData[idx].getNormal();
+                guideNormal += sampleGuideData[idx].getGuideNormal();
                 reflectionPosW += sampleGuideData[idx].getReflectionPos();
             }
 
             outputAlbedo[pixel] = float4(invSpp * albedo, 0.f);
             outputSpecularAlbedo[pixel] = float4(invSpp * specularAlbedo, 0.f);
             outputIndirectAlbedo[pixel] = float4(invSpp * indirectAlbedo, 0.f);
-            outputNormal[pixel] = float4(invSpp * normal, 0.f);
+            outputGuideNormal[pixel] = float4(invSpp * guideNormal, 0.f);
             outputReflectionPosW[pixel] = float4(invSpp * reflectionPosW, 0.f);
         }
 
@@ -143,9 +146,15 @@ struct ResolvePass
                 const NRDPathType pathType = radianceData.getPathType();
                 const float3 radiance = radianceData.getRadiance();
 
+                // neeOnDelta is non-zero for primary hits on surfaces with a diffuse and a delta reflection lobe.
+                // It contains the radiance estimate from NEE and only contains energy from the diffuse lobe as
+                // the reflection lobe is a delta function. We subtract the NEE part from the sample radiance
+                // value to get the energy from the delta reflection lobe and instead add it to the diffuse radiance.
+                // This is a crude way to split the reflected radiance on primary hits into diffuse / delta reflection.
+                float3 neeOnDelta = sampleNRDPrimaryHitNeeOnDelta[idx].rgb;
                 float3 reflectance = sampleNRDReflectance[idx].rgb;
                 float3 emission = sampleNRDEmission[idx].rgb;
-                float3 demodulatedRadiance = max(0.f, (radiance - emission)) / reflectance;
+                float3 demodulatedRadiance = max(0.f, (radiance - emission - neeOnDelta)) / reflectance;
 
                 switch (pathType)
                 {
@@ -157,6 +166,7 @@ struct ResolvePass
                     break;
                 case NRDPathType::DeltaReflection:
                     deltaReflectionRadiance += demodulatedRadiance;
+                    diffuseRadiance += primaryHitDiffuseReflectance[pixel].rgb > 0.f ? (neeOnDelta / primaryHitDiffuseReflectance[pixel].rgb) : float3(0.f);
                     break;
                 case NRDPathType::DeltaTransmission:
                     deltaTransmissionRadiance += demodulatedRadiance;

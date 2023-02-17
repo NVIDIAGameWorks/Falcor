@@ -26,7 +26,5 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #if FALCOR_NVAPI_AVAILABLE
-#define NV_SHADER_EXTN_SLOT u63
-#define NV_SHADER_EXTN_REGISTER_SPACE space0
-#include "NVAPI/nvHLSLExtns.h"
+#include "nvapi/nvHLSLExtns.h"
 #endif

@@ -29,7 +29,7 @@ import Rendering.Lights.EnvMapSampler;
 import Rendering.Lights.EmissiveLightSampler;
 import Rendering.Lights.EmissiveLightSamplerHelpers;
 import Rendering.Lights.LightHelpers;
-import Rendering.Materials.Microfacet;
+import Rendering.Materials.IsotropicGGX;
 import Rendering.Materials.InteriorListHelpers;
 import Rendering.Volumes.HomogeneousVolumeSampler;
 import Rendering.Utils.PixelStats;
@@ -163,7 +163,7 @@ struct PathTracer
     {
         if (kOutputGuideData)
         {
-            guideData.setNormal(-dir);
+            guideData.setGuideNormal(-dir);
             // Compress dynamic range similar to UE4.
             const float3 compressedColor = pow(Le / (Le + 1.f), 0.454545f);
             guideData.setAlbedo(compressedColor);
@@ -179,13 +179,15 @@ struct PathTracer
     {
         if (kOutputGuideData)
         {
-            guideData.setNormal(sd.N);
-            guideData.setAlbedo(bsdfProperties.diffuseReflectionAlbedo);
+            guideData.setGuideNormal(bsdfProperties.guideNormal);
+            // Use sum of reflection/transmission albedo as they are denoised together.
+            guideData.setAlbedo(bsdfProperties.diffuseReflectionAlbedo + bsdfProperties.diffuseTransmissionAlbedo);
             guideData.setReflectionPos(sd.posW);
 
-            const float NdotV = saturate(dot(sd.N, sd.V));
+            const float NdotV = saturate(dot(bsdfProperties.guideNormal, sd.V));
             const float ggxAlpha = bsdfProperties.roughness * bsdfProperties.roughness;
 
+            // We use an approximate shading model with a single specular lobe.
             // TODO: Generalize this to arbitrary materials.
             if (sd.mtl.getMaterialType() == MaterialType::Hair)
             {
@@ -213,7 +215,8 @@ struct PathTracer
         }
         else
         {
-            guideData.setIndirectAlbedo(bsdfProperties.diffuseReflectionAlbedo);
+            // Use sum of reflection/transmission albedo as they are denoised together.
+            guideData.setIndirectAlbedo(bsdfProperties.diffuseReflectionAlbedo + bsdfProperties.diffuseTransmissionAlbedo);
         }
         guideData.setReflectionPos(sd.posW);
     }
@@ -318,22 +321,22 @@ struct PathTracer
 
     /** Generates a new scatter ray using BSDF importance sampling.
         \param[in] sd Shading data.
-        \param[in] bsdf BSDF at the shading point.
+        \param[in] mi Material instance at the shading point.
         \param[in,out] path The path state.
         \return True if a ray was generated, false otherwise.
     */
-    bool generateScatterRay(const ShadingData sd, const IBSDF bsdf, inout PathState path)
+    bool generateScatterRay(const ShadingData sd, const IMaterialInstance mi, inout PathState path)
     {
         BSDFSample result;
-        bool valid = bsdf.sample(sd, path.sg, result, kUseBSDFSampling);
-        if (valid) valid = generateScatterRay(result, sd, bsdf, path);
+        bool valid = mi.sample(sd, path.sg, result, kUseBSDFSampling);
+        if (valid) valid = generateScatterRay(result, sd, mi, path);
 
         // Ignore valid on purpose for now.
         if (kOutputNRDData)
         {
-            const uint lobes = bsdf.getLobes(sd);
-            const bool hasDeltaTransmissionLobe = (lobes & (uint)LobeType::DeltaTransmission) != 0;
-            const bool hasNonDeltaLobes = (lobes & (uint)LobeType::NonDelta) != 0;
+            const uint lobeTypes = mi.getLobeTypes(sd);
+            const bool hasDeltaTransmissionLobe = (lobeTypes & (uint)LobeType::DeltaTransmission) != 0;
+            const bool hasNonDeltaLobes = (lobeTypes & (uint)LobeType::NonDelta) != 0;
 
             if (path.getVertexIndex() == 1)
             {
@@ -370,11 +373,11 @@ struct PathTracer
     /** Generates a new scatter ray given a valid BSDF sample.
         \param[in] bs BSDF sample (assumed to be valid).
         \param[in] sd Shading data.
-        \param[in] bsdf BSDF at the shading point.
+        \param[in] mi Material instance at the shading point.
         \param[in,out] path The path state.
         \return True if a ray was generated, false otherwise.
     */
-    bool generateScatterRay(const BSDFSample bs, const ShadingData sd, const IBSDF bsdf, inout PathState path)
+    bool generateScatterRay(const BSDFSample bs, const ShadingData sd, const IMaterialInstance mi, inout PathState path)
     {
         const bool isTriangleHit = path.hit.getType() == HitType::Triangle;
         const bool isCurveHit = kUseCurves && (path.hit.getType() == HitType::Curve);
@@ -392,7 +395,7 @@ struct PathTracer
         if (bs.isLobe(LobeType::Reflection))
         {
             // We classify specular events as diffuse if the roughness is above some threshold.
-            float roughness = bsdf.getProperties(sd).roughness;
+            float roughness = mi.getProperties(sd).roughness;
             bool isDiffuse = bs.isLobe(LobeType::DiffuseReflection) || roughness > params.specularRoughnessThreshold;
 
             if (isDiffuse)
@@ -785,8 +788,9 @@ struct PathTracer
         if (!path.interiorList.isEmpty())
         {
             const uint materialID = path.interiorList.getTopMaterialID();
-            const HomogeneousVolumeData hvd = gScene.materials.getHomogeneousVolumeData(materialID);
-            updatePathThroughput(path, HomogeneousVolumeSampler::evalTransmittance(hvd, length(sd.posW - path.origin)));
+            let material = gScene.materials.getMaterial(materialID);
+            let vp = material.getHomogeneousVolumeProperties(gScene.materials, materialID);
+            updatePathThroughput(path, HomogeneousVolumeSampler::evalTransmittance(vp, length(sd.posW - path.origin)));
         }
 
         // Reject false hits in nested dielectrics.
@@ -795,8 +799,8 @@ struct PathTracer
         logPathVertex();
 
         // Create BSDF instance and query its properties.
-        const IBSDF bsdf = gScene.materials.getBSDF(sd, lod);
-        BSDFProperties bsdfProperties = bsdf.getProperties(sd);
+        const IMaterialInstance mi = gScene.materials.getMaterialInstance(sd, lod);
+        BSDFProperties bsdfProperties = mi.getProperties(sd);
 
         // Disable specular lobes if caustics are disabled and path already contains a diffuse vertex.
         bool isSpecular = bsdfProperties.roughness <= params.specularRoughnessThreshold;
@@ -881,8 +885,8 @@ struct PathTracer
         }
 
         // Determine if BSDF has non-delta lobes.
-        const uint lobes = bsdf.getLobes(sd);
-        const bool hasNonDeltaLobes = (lobes & (uint)LobeType::NonDelta) != 0;
+        const uint lobeTypes = mi.getLobeTypes(sd);
+        const bool hasNonDeltaLobes = (lobeTypes & (uint)LobeType::NonDelta) != 0;
 
         // Check if we should apply NEE.
         const bool applyNEE = kUseNEE && hasNonDeltaLobes;
@@ -909,9 +913,9 @@ struct PathTracer
                 PathVertex vertex = PathVertex(path.getVertexIndex(), sd.posW, sd.N, sd.faceN);
 
                 // Determine if upper/lower hemispheres need to be sampled.
-                bool sampleUpperHemisphere = isCurveHit || isCurvePolyTubeHit || ((lobes & (uint)LobeType::NonDeltaReflection) != 0);
+                bool sampleUpperHemisphere = isCurveHit || isCurvePolyTubeHit || ((lobeTypes & (uint)LobeType::NonDeltaReflection) != 0);
                 if (!kUseLightsInDielectricVolumes && path.isInsideDielectricVolume()) sampleUpperHemisphere = false;
-                bool sampleLowerHemisphere = isCurveHit || isCurvePolyTubeHit || ((lobes & (uint)LobeType::NonDeltaTransmission) != 0);
+                bool sampleLowerHemisphere = isCurveHit || isCurvePolyTubeHit || ((lobeTypes & (uint)LobeType::NonDeltaTransmission) != 0);
 
                 // Sample a light.
                 validSample = generateLightSample(vertex, sampleUpperHemisphere, sampleLowerHemisphere, path.sg, ls);
@@ -923,11 +927,11 @@ struct PathTracer
                 // Apply MIS weight.
                 if (kUseMIS && !applyRTXDI && ls.lightType != (uint)LightType::Analytic)
                 {
-                    float scatterPdf = bsdf.evalPdf(sd, ls.dir, kUseBSDFSampling);
+                    float scatterPdf = mi.evalPdf(sd, ls.dir, kUseBSDFSampling);
                     ls.Li *= evalMIS(1, ls.pdf, 1, scatterPdf);
                 }
 
-                float3 weight = bsdf.eval(sd, ls.dir, path.sg);
+                float3 weight = mi.eval(sd, ls.dir, path.sg);
                 float3 Lr = weight * ls.Li;
                 if (any(Lr > 0.f))
                 {
@@ -959,7 +963,7 @@ struct PathTracer
         const bool wasDeltaOnlyPathBeforeScattering = path.isDeltaOnlyPath();
 
         // Generate the next path segment or terminate.
-        bool valid = generateScatterRay(sd, bsdf, path);
+        bool valid = generateScatterRay(sd, mi, path);
 
         // Output guide data.
         if (path.getVertexIndex() == 1)
@@ -981,7 +985,8 @@ struct PathTracer
 
             setNRDSampleHitDist(outputNRD, path, outSampleIdx);
             setNRDSampleEmission(outputNRD, kUseNRDDemodulation, path, outSampleIdx, isPrimaryHit, attenuatedEmission, wasDeltaOnlyPathBeforeScattering);
-            setNRDSampleReflectance(outputNRD, kUseNRDDemodulation, path, outSampleIdx, isPrimaryHit, sd, bsdfProperties, lobes, wasDeltaOnlyPathBeforeScattering);
+            setNRDSampleReflectance(outputNRD, kUseNRDDemodulation, path, outSampleIdx, isPrimaryHit, sd, bsdfProperties, lobeTypes, wasDeltaOnlyPathBeforeScattering);
+            setNRDPrimaryHitSeparatedRadiance(outputNRD, kUseNRDDemodulation, path, isPrimaryHit, outSampleIdx);
         }
 
         // Check if this is the last path vertex.
@@ -1058,7 +1063,7 @@ struct PathTracer
 
         if (kOutputGuideData && path.getVertexIndex() == 1)
         {
-            path.guideData.setNormal(-path.dir);
+            path.guideData.setGuideNormal(-path.dir);
         }
 
         if (kOutputNRDData)

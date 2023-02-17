@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -34,11 +34,11 @@ using namespace Falcor;
 class SVGFPass : public RenderPass
 {
 public:
+    FALCOR_PLUGIN_CLASS(SVGFPass, "SVGFPass", "SVGF denoising pass.");
+
     using SharedPtr = std::shared_ptr<SVGFPass>;
 
-    static const Info kInfo;
-
-    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
@@ -47,7 +47,7 @@ public:
     virtual void renderUI(Gui::Widgets& widget) override;
 
 private:
-    SVGFPass(const Dictionary& dict);
+    SVGFPass(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     bool init(const Dictionary& dict);
     void allocateFbos(uint2 dim, RenderContext* pRenderContext);

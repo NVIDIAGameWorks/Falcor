@@ -52,10 +52,11 @@ cbuffer TestCB
 };
 
 [numthreads(1024, 1, 1)]
-void testPbrtReference(uint3 threadId : SV_DispatchThreadID)
+void testPbrtReference(uint3 threadId: SV_DispatchThreadID)
 {
     uint idx = threadId.x;
-    if (idx >= resultSize) return;
+    if (idx >= resultSize)
+        return;
 
     // Setup BCSDF.
     HairChiang16 bcsdf;
@@ -74,9 +75,10 @@ void testPbrtReference(uint3 threadId : SV_DispatchThreadID)
 }
 
 [numthreads(16, 1, 1)]
-void testWhiteFurnaceUniform(uint3 threadId : SV_DispatchThreadID)
+void testWhiteFurnaceUniform(uint3 threadId: SV_DispatchThreadID)
 {
-    if (threadId.x >= resultSize) return;
+    if (threadId.x >= resultSize)
+        return;
 
     // Setup BCSDF.
     float betaM = roughness[threadId.x].x;
@@ -109,9 +111,10 @@ void testWhiteFurnaceUniform(uint3 threadId : SV_DispatchThreadID)
 }
 
 [numthreads(16, 1, 1)]
-void testWhiteFurnaceImportanceSampling(uint3 threadId : SV_DispatchThreadID)
+void testWhiteFurnaceImportanceSampling(uint3 threadId: SV_DispatchThreadID)
 {
-    if (threadId.x >= resultSize) return;
+    if (threadId.x >= resultSize)
+        return;
 
     // Setup BCSDF.
     float betaM = roughness[threadId.x].x;
@@ -138,9 +141,9 @@ void testWhiteFurnaceImportanceSampling(uint3 threadId : SV_DispatchThreadID)
 
         float3 wo, weight;
         float pdf;
-        uint lobe;
+        uint lobeType;
 
-        if (bcsdf.sample(wi, wo, pdf, weight, lobe, sg))
+        if (bcsdf.sample(wi, wo, pdf, weight, lobeType, sg))
         {
             sum += weight;
         }
@@ -150,9 +153,10 @@ void testWhiteFurnaceImportanceSampling(uint3 threadId : SV_DispatchThreadID)
 }
 
 [numthreads(16, 16, 1)]
-void testImportanceSamplingWeights(uint3 threadId : SV_DispatchThreadID)
+void testImportanceSamplingWeights(uint3 threadId: SV_DispatchThreadID)
 {
-    if (threadId.x >= resultSize || threadId.y >= sampleCount) return;
+    if (threadId.x >= resultSize || threadId.y >= sampleCount)
+        return;
 
     // Setup BCSDF.
     float betaM = roughness[threadId.x].x;
@@ -175,8 +179,8 @@ void testImportanceSamplingWeights(uint3 threadId : SV_DispatchThreadID)
     float3 wi = sample_sphere(sampleNext2D(sg));
     float3 wo, weight;
     float pdf;
-    uint lobe;
-    if (bcsdf.sample(wi, wo, pdf, weight, lobe, sg))
+    uint lobeType;
+    if (bcsdf.sample(wi, wo, pdf, weight, lobeType, sg))
     {
         result[threadId.x * sampleCount + threadId.y] = luminance(weight);
     }
@@ -187,9 +191,10 @@ void testImportanceSamplingWeights(uint3 threadId : SV_DispatchThreadID)
 }
 
 [numthreads(16, 1, 1)]
-void testSamplingConsistency(uint3 threadId : SV_DispatchThreadID)
+void testSamplingConsistency(uint3 threadId: SV_DispatchThreadID)
 {
-    if (threadId.x >= resultSize) return;
+    if (threadId.x >= resultSize)
+        return;
 
     // Setup BCSDF.
     float betaM = roughness[threadId.x].x;
@@ -219,12 +224,12 @@ void testSamplingConsistency(uint3 threadId : SV_DispatchThreadID)
 
         float3 wo, weight;
         float pdf;
-        uint lobe;
+        uint lobeType;
 
         // Assume Li = wo.z * wo.z.
 
         // Importance sampling.
-        if (bcsdf.sample(wi, wo, pdf, weight, lobe, sg))
+        if (bcsdf.sample(wi, wo, pdf, weight, lobeType, sg))
         {
             fIS += weight * (wo.z * wo.z) / sampleCount;
         }

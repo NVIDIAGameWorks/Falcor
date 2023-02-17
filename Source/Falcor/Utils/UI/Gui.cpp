@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -48,7 +48,7 @@ namespace Falcor
     class GuiImpl
     {
     public:
-        GuiImpl() = default;
+        GuiImpl(std::shared_ptr<Device> pDevice, float scaleFactor);
 
     private:
         friend class Gui;
@@ -77,6 +77,7 @@ namespace Falcor
         void setIoMouseEvents();
         void resetMouseEvents();
 
+        std::shared_ptr<Device> mpDevice;
         Vao::SharedPtr mpVao;
         VertexLayout::SharedPtr mpLayout;
         GraphicsState::SharedPtr mpPipelineState;
@@ -154,13 +155,67 @@ namespace Falcor
         void addGraph(const char label[], Gui::GraphCallback func, void* pUserData, uint32_t sampleCount, int32_t sampleOffset, float yMin = FLT_MAX, float yMax = FLT_MAX, uint32_t width = 0, uint32_t height = 100);
     };
 
-    void GuiImpl::init(Gui* pGui, float scaleFactor)
+    GuiImpl::GuiImpl(std::shared_ptr<Device> pDevice, float scaleFactor)
+        : mpDevice(std::move(pDevice))
+        , mScaleFactor(scaleFactor)
     {
-        mScaleFactor = scaleFactor;
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+        io.KeyMap[ImGuiKey_Space] = (uint32_t)Input::Key::Space;
+        io.KeyMap[ImGuiKey_Apostrophe] = (uint32_t)Input::Key::Apostrophe;
+        io.KeyMap[ImGuiKey_Comma] = (uint32_t)Input::Key::Comma;
+        io.KeyMap[ImGuiKey_Minus] = (uint32_t)Input::Key::Minus;
+        io.KeyMap[ImGuiKey_Period] = (uint32_t)Input::Key::Period;
+        io.KeyMap[ImGuiKey_Slash] = (uint32_t)Input::Key::Slash;
+        io.KeyMap[ImGuiKey_0] = (uint32_t)Input::Key::Key0;
+        io.KeyMap[ImGuiKey_1] = (uint32_t)Input::Key::Key1;
+        io.KeyMap[ImGuiKey_2] = (uint32_t)Input::Key::Key2;
+        io.KeyMap[ImGuiKey_3] = (uint32_t)Input::Key::Key3;
+        io.KeyMap[ImGuiKey_4] = (uint32_t)Input::Key::Key4;
+        io.KeyMap[ImGuiKey_5] = (uint32_t)Input::Key::Key5;
+        io.KeyMap[ImGuiKey_6] = (uint32_t)Input::Key::Key6;
+        io.KeyMap[ImGuiKey_7] = (uint32_t)Input::Key::Key7;
+        io.KeyMap[ImGuiKey_8] = (uint32_t)Input::Key::Key8;
+        io.KeyMap[ImGuiKey_9] = (uint32_t)Input::Key::Key9;
+        io.KeyMap[ImGuiKey_Semicolon] = (uint32_t)Input::Key::Semicolon;
+        io.KeyMap[ImGuiKey_Equal] = (uint32_t)Input::Key::Equal;
+        io.KeyMap[ImGuiKey_A] = (uint32_t)Input::Key::A;
+        io.KeyMap[ImGuiKey_B] = (uint32_t)Input::Key::B;
+        io.KeyMap[ImGuiKey_C] = (uint32_t)Input::Key::C;
+        io.KeyMap[ImGuiKey_D] = (uint32_t)Input::Key::D;
+        io.KeyMap[ImGuiKey_E] = (uint32_t)Input::Key::E;
+        io.KeyMap[ImGuiKey_F] = (uint32_t)Input::Key::F;
+        io.KeyMap[ImGuiKey_G] = (uint32_t)Input::Key::G;
+        io.KeyMap[ImGuiKey_H] = (uint32_t)Input::Key::H;
+        io.KeyMap[ImGuiKey_I] = (uint32_t)Input::Key::I;
+        io.KeyMap[ImGuiKey_J] = (uint32_t)Input::Key::J;
+        io.KeyMap[ImGuiKey_K] = (uint32_t)Input::Key::K;
+        io.KeyMap[ImGuiKey_L] = (uint32_t)Input::Key::L;
+        io.KeyMap[ImGuiKey_M] = (uint32_t)Input::Key::M;
+        io.KeyMap[ImGuiKey_N] = (uint32_t)Input::Key::N;
+        io.KeyMap[ImGuiKey_O] = (uint32_t)Input::Key::O;
+        io.KeyMap[ImGuiKey_P] = (uint32_t)Input::Key::P;
+        io.KeyMap[ImGuiKey_Q] = (uint32_t)Input::Key::Q;
+        io.KeyMap[ImGuiKey_R] = (uint32_t)Input::Key::R;
+        io.KeyMap[ImGuiKey_S] = (uint32_t)Input::Key::S;
+        io.KeyMap[ImGuiKey_T] = (uint32_t)Input::Key::T;
+        io.KeyMap[ImGuiKey_U] = (uint32_t)Input::Key::U;
+        io.KeyMap[ImGuiKey_V] = (uint32_t)Input::Key::V;
+        io.KeyMap[ImGuiKey_W] = (uint32_t)Input::Key::W;
+        io.KeyMap[ImGuiKey_X] = (uint32_t)Input::Key::X;
+        io.KeyMap[ImGuiKey_Y] = (uint32_t)Input::Key::Y;
+        io.KeyMap[ImGuiKey_Z] = (uint32_t)Input::Key::Z;
+        io.KeyMap[ImGuiKey_LeftBracket] = (uint32_t)Input::Key::LeftBracket;
+        io.KeyMap[ImGuiKey_Backslash] = (uint32_t)Input::Key::Backslash;
+        io.KeyMap[ImGuiKey_RightBracket] = (uint32_t)Input::Key::RightBracket;
+        io.KeyMap[ImGuiKey_GraveAccent] = (uint32_t)Input::Key::GraveAccent;
+        io.KeyMap[ImGuiKey_Escape] = (uint32_t)Input::Key::Escape;
         io.KeyMap[ImGuiKey_Tab] = (uint32_t)Input::Key::Tab;
+        io.KeyMap[ImGuiKey_Enter] = (uint32_t)Input::Key::Enter;
+        io.KeyMap[ImGuiKey_Backspace] = (uint32_t)Input::Key::Backspace;
+        io.KeyMap[ImGuiKey_Insert] = (uint32_t)Input::Key::Insert;
+        io.KeyMap[ImGuiKey_Delete] = (uint32_t)Input::Key::Del;
         io.KeyMap[ImGuiKey_LeftArrow] = (uint32_t)Input::Key::Left;
         io.KeyMap[ImGuiKey_RightArrow] = (uint32_t)Input::Key::Right;
         io.KeyMap[ImGuiKey_UpArrow] = (uint32_t)Input::Key::Up;
@@ -169,16 +224,47 @@ namespace Falcor
         io.KeyMap[ImGuiKey_PageDown] = (uint32_t)Input::Key::PageDown;
         io.KeyMap[ImGuiKey_Home] = (uint32_t)Input::Key::Home;
         io.KeyMap[ImGuiKey_End] = (uint32_t)Input::Key::End;
-        io.KeyMap[ImGuiKey_Delete] = (uint32_t)Input::Key::Del;
-        io.KeyMap[ImGuiKey_Backspace] = (uint32_t)Input::Key::Backspace;
-        io.KeyMap[ImGuiKey_Enter] = (uint32_t)Input::Key::Enter;
-        io.KeyMap[ImGuiKey_Escape] = (uint32_t)Input::Key::Escape;
-        io.KeyMap[ImGuiKey_A] = (uint32_t)Input::Key::A;
-        io.KeyMap[ImGuiKey_C] = (uint32_t)Input::Key::C;
-        io.KeyMap[ImGuiKey_V] = (uint32_t)Input::Key::V;
-        io.KeyMap[ImGuiKey_X] = (uint32_t)Input::Key::X;
-        io.KeyMap[ImGuiKey_Y] = (uint32_t)Input::Key::Y;
-        io.KeyMap[ImGuiKey_Z] = (uint32_t)Input::Key::Z;
+        io.KeyMap[ImGuiKey_CapsLock] = (uint32_t)Input::Key::CapsLock;
+        io.KeyMap[ImGuiKey_ScrollLock] = (uint32_t)Input::Key::ScrollLock;
+        io.KeyMap[ImGuiKey_NumLock] = (uint32_t)Input::Key::NumLock;
+        io.KeyMap[ImGuiKey_PrintScreen] = (uint32_t)Input::Key::PrintScreen;
+        io.KeyMap[ImGuiKey_Pause] = (uint32_t)Input::Key::Pause;
+        io.KeyMap[ImGuiKey_F1] = (uint32_t)Input::Key::F1;
+        io.KeyMap[ImGuiKey_F2] = (uint32_t)Input::Key::F2;
+        io.KeyMap[ImGuiKey_F3] = (uint32_t)Input::Key::F3;
+        io.KeyMap[ImGuiKey_F4] = (uint32_t)Input::Key::F4;
+        io.KeyMap[ImGuiKey_F5] = (uint32_t)Input::Key::F5;
+        io.KeyMap[ImGuiKey_F6] = (uint32_t)Input::Key::F6;
+        io.KeyMap[ImGuiKey_F7] = (uint32_t)Input::Key::F7;
+        io.KeyMap[ImGuiKey_F8] = (uint32_t)Input::Key::F8;
+        io.KeyMap[ImGuiKey_F9] = (uint32_t)Input::Key::F9;
+        io.KeyMap[ImGuiKey_F10] = (uint32_t)Input::Key::F10;
+        io.KeyMap[ImGuiKey_F11] = (uint32_t)Input::Key::F11;
+        io.KeyMap[ImGuiKey_F12] = (uint32_t)Input::Key::F12;
+        io.KeyMap[ImGuiKey_Keypad0] = (uint32_t)Input::Key::Keypad0;
+        io.KeyMap[ImGuiKey_Keypad1] = (uint32_t)Input::Key::Keypad1;
+        io.KeyMap[ImGuiKey_Keypad2] = (uint32_t)Input::Key::Keypad2;
+        io.KeyMap[ImGuiKey_Keypad3] = (uint32_t)Input::Key::Keypad3;
+        io.KeyMap[ImGuiKey_Keypad4] = (uint32_t)Input::Key::Keypad4;
+        io.KeyMap[ImGuiKey_Keypad5] = (uint32_t)Input::Key::Keypad5;
+        io.KeyMap[ImGuiKey_Keypad6] = (uint32_t)Input::Key::Keypad6;
+        io.KeyMap[ImGuiKey_Keypad7] = (uint32_t)Input::Key::Keypad7;
+        io.KeyMap[ImGuiKey_Keypad8] = (uint32_t)Input::Key::Keypad8;
+        io.KeyMap[ImGuiKey_Keypad9] = (uint32_t)Input::Key::Keypad9;
+        io.KeyMap[ImGuiKey_KeypadDivide] = (uint32_t)Input::Key::KeypadDivide;
+        io.KeyMap[ImGuiKey_KeypadMultiply] = (uint32_t)Input::Key::KeypadMultiply;
+        io.KeyMap[ImGuiKey_KeypadSubtract] = (uint32_t)Input::Key::KeypadSubtract;
+        io.KeyMap[ImGuiKey_KeypadAdd] = (uint32_t)Input::Key::KeypadAdd;
+        io.KeyMap[ImGuiKey_KeypadEnter] = (uint32_t)Input::Key::KeypadEnter;
+        io.KeyMap[ImGuiKey_LeftShift] = (uint32_t)Input::Key::LeftShift;
+        io.KeyMap[ImGuiKey_LeftCtrl] = (uint32_t)Input::Key::LeftControl;
+        io.KeyMap[ImGuiKey_LeftAlt] = (uint32_t)Input::Key::LeftAlt;
+        io.KeyMap[ImGuiKey_LeftSuper] = (uint32_t)Input::Key::LeftSuper;
+        io.KeyMap[ImGuiKey_RightShift] = (uint32_t)Input::Key::RightShift;
+        io.KeyMap[ImGuiKey_RightCtrl] = (uint32_t)Input::Key::RightControl;
+        io.KeyMap[ImGuiKey_RightAlt] = (uint32_t)Input::Key::RightAlt;
+        io.KeyMap[ImGuiKey_RightSuper] = (uint32_t)Input::Key::RightSuper;
+        io.KeyMap[ImGuiKey_Menu] = (uint32_t)Input::Key::Menu;
         io.IniFilename = nullptr;
 
         ImGuiStyle& style = ImGui::GetStyle();
@@ -192,17 +278,12 @@ namespace Falcor
         style.ScaleAllSizes(scaleFactor);
 
         // Create the pipeline state cache
-        mpPipelineState = GraphicsState::create();
+        mpPipelineState = GraphicsState::create(mpDevice);
 
         // Create the program
-        mpProgram = GraphicsProgram::createFromFile("Utils/UI/Gui.slang", "vsMain", "psMain");
-        mpProgramVars = GraphicsVars::create(mpProgram->getReflector());
+        mpProgram = GraphicsProgram::createFromFile(mpDevice, "Utils/UI/Gui.slang", "vsMain", "psMain");
+        mpProgramVars = GraphicsVars::create(mpDevice, mpProgram->getReflector());
         mpPipelineState->setProgram(mpProgram);
-
-        // Add the default font
-        pGui->addFont("", "Framework/Fonts/trebucbd.ttf");
-        pGui->addFont("monospace", "Framework/Fonts/consolab.ttf");
-        pGui->setActiveFont("");
 
         // Create the blend state
         BlendState::Desc blendDesc;
@@ -253,8 +334,8 @@ namespace Falcor
 
         // Need to create a new VAO
         std::vector<Buffer::SharedPtr> pVB(1);
-        pVB[0] = createVB ? Buffer::create(requiredVbSize + sizeof(ImDrawVert) * 1000, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, nullptr) : mpVao->getVertexBuffer(0);
-        Buffer::SharedPtr pIB = createIB ? Buffer::create(requiredIbSize, Buffer::BindFlags::Index, Buffer::CpuAccess::Write, nullptr) : mpVao->getIndexBuffer();
+        pVB[0] = createVB ? Buffer::create(mpDevice.get(), requiredVbSize + sizeof(ImDrawVert) * 1000, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, nullptr) : mpVao->getVertexBuffer(0);
+        Buffer::SharedPtr pIB = createIB ? Buffer::create(mpDevice.get(), requiredIbSize, Buffer::BindFlags::Index, Buffer::CpuAccess::Write, nullptr) : mpVao->getIndexBuffer();
         mpVao = Vao::create(Vao::Topology::TriangleList, mpLayout, pVB, pIB, ResourceFormat::R16Uint);
     }
 
@@ -265,7 +346,7 @@ namespace Falcor
 
         // Initialize font data
         ImGui::GetIO().Fonts->GetTexDataAsAlpha8(&pFontData, &width, &height);
-        Texture::SharedPtr pTexture = Texture::create2D(width, height, ResourceFormat::R8Unorm, 1, 1, pFontData);
+        Texture::SharedPtr pTexture = Texture::create2D(mpDevice.get(), width, height, ResourceFormat::R8Unorm, 1, 1, pFontData);
         mpProgramVars->setTexture("gFont", pTexture);
     }
 
@@ -354,10 +435,8 @@ namespace Falcor
             }
         }
 
-        float2 posFloat(pos);
-        posFloat *= mScaleFactor;
-        ImVec2 fPos(posFloat.x, posFloat.y);
-        ImVec2 fSize(float(size.x), float(size.y));
+        ImVec2 fPos(pos.x * mScaleFactor, pos.y * mScaleFactor);
+        ImVec2 fSize(size.x * mScaleFactor, size.y * mScaleFactor);
         ImGui::SetNextWindowSize(fSize, ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowPos(fPos, ImGuiCond_FirstUseEver);
         int imguiFlags = 0;
@@ -615,7 +694,7 @@ namespace Falcor
 
     bool GuiImpl::addMultiTextbox(const char label[], const std::vector<std::string>& textLabels, std::vector<std::string>& textEntries)
     {
-        static uint32_t sIdOffset = 0;
+        static uint32_t sIdOffset = 0; // TODO: REMOVEGLOBAL
         bool result = false;
 
         for (uint32_t i = 0; i < textEntries.size(); ++i)
@@ -913,18 +992,22 @@ namespace Falcor
         ImGui::PlotLines(label, func, pUserData, (int32_t)sampleCount, sampleOffset, nullptr, yMin, yMax, imSize);
     }
 
-    Gui::~Gui()
+    Gui::Gui(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, float scaleFactor)
     {
-        ImGui::DestroyContext();
+        mpWrapper = std::make_unique<GuiImpl>(std::move(pDevice), scaleFactor);
+
+        // Add the default font
+        addFont("", getRuntimeDirectory() / "data/framework/fonts/trebucbd.ttf");
+        addFont("monospace", getRuntimeDirectory() / "data/framework/fonts/consolab.ttf");
+        setActiveFont("");
+
+        onWindowResize(width, height);
     }
 
-    Gui::UniquePtr Gui::create(uint32_t width, uint32_t height, float scaleFactor)
+    Gui::~Gui()
     {
-        UniquePtr pGui = UniquePtr(new Gui);
-        pGui->mpWrapper = new GuiImpl;
-        pGui->mpWrapper->init(pGui.get(), scaleFactor);
-        pGui->onWindowResize(width, height);
-        return pGui;
+        mpWrapper.reset();
+        ImGui::DestroyContext();
     }
 
     float4 Gui::pickUniqueColor(const std::string& key)
@@ -942,15 +1025,10 @@ namespace Falcor
 
     void Gui::addFont(const std::string& name, const std::filesystem::path& path)
     {
-        std::filesystem::path fullPath;
-        if (!findFileInDataDirectories(path, fullPath))
-        {
-            logWarning("Can't find font file '{}'.", path);
-            return;
-        }
-
         float size = 14.0f * mpWrapper->mScaleFactor;
-        ImFont* pFont = ImGui::GetIO().Fonts->AddFontFromFileTTF(fullPath.string().c_str(), size);
+        ImFont* pFont = ImGui::GetIO().Fonts->AddFontFromFileTTF(path.string().c_str(), size);
+        if (!pFont)
+            throw RuntimeError("Failed to load font from '{}'.", path);
         mpWrapper->mFontMap[name] = pFont;
         mpWrapper->compileFonts();
     }
@@ -1046,7 +1124,7 @@ namespace Falcor
                     }
                     else
                     {
-                        mpWrapper->mpProgramVars->setSrv(mpWrapper->mGuiImageLoc, ShaderResourceView::getNullView(ReflectionResourceType::Dimensions::Texture2D));
+                        mpWrapper->mpProgramVars->setSrv(mpWrapper->mGuiImageLoc, nullptr);
                         mpWrapper->mpProgramVars["PerFrameCB"]["useGuiImage"] = false;
                     }
                     mpWrapper->mpPipelineState->setScissors(0, scissor);
