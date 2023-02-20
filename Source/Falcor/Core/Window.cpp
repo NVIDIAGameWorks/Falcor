@@ -117,7 +117,7 @@ public:
             break;
         default:
             // Other keys are not supported
-            break;
+            return;
         }
 
         Window* pWindow = (Window*)glfwGetWindowUserPointer(pGlfwWindow);
