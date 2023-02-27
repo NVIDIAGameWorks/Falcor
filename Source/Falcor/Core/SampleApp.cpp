@@ -417,7 +417,7 @@ void SampleApp::renderGlobalUI(Gui* pGui)
             mClock.setTime(0.0);
         bool timePaused = mClock.isPaused();
         if (controlsGroup.button(timePaused ? "Play" : "Pause", true))
-            timePaused ? mClock.pause() : mClock.play();
+            timePaused ? mClock.play() : mClock.pause();
         if (controlsGroup.button("Stop", true))
             mClock.stop();
 
