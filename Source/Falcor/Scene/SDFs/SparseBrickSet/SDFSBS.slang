@@ -55,7 +55,7 @@ struct SDFSBS : SDFGridBase, ISDFGrid
     bool calculateBrickCoords(float3 pLocal, float3 brickMinLocal, float3 brickMaxLocal, out uint3 virtualBrickCoords, out uint2 brickTexelCoords, out float3 virtualVoxelBrickPos, out float3 voxelUnitCoords, out int3 brickLocalMinCoords, out int3 brickLocalMaxCoords)
     {
         // Important note, the grid in "brick space" might be larger than the grid in "voxel space":
-        // |-----------------------|--| 
+        // |-----------------------|--|
         // |-----------------------|--| <--- These additional slivers on the top and right are in brick space [0, virtualBricksPerAxis * brickWidth)
         // |                       |  |      Brick space is the same size as voxel space if virtualBricksPerAxis * brickWidth = virtualGridWidth.
         // |                       |  |
@@ -201,7 +201,7 @@ struct SDFSBS : SDFGridBase, ISDFGrid
         stepSign.x = d.x < 0.0f ? -1 : 1;
         stepSign.y = d.y < 0.0f ? -1 : 1;
         stepSign.z = d.z < 0.0f ? -1 : 1;
- 
+
         float voxelWidth = 1.0f / virtualGridWidth;
         float normalizedVoxelDiagonal = sqrt(3.0f * voxelWidth * voxelWidth) / normalizationFactor;
         float3 invDir = 1.0f / d;
@@ -305,7 +305,7 @@ struct SDFSBS : SDFGridBase, ISDFGrid
         stepSign.x = d.x < 0.0f ? -1 : 1;
         stepSign.y = d.y < 0.0f ? -1 : 1;
         stepSign.z = d.z < 0.0f ? -1 : 1;
- 
+
         float voxelWidth = 1.0f / virtualGridWidth;
         float normalizedVoxelDiagonal = sqrt(3.0f * voxelWidth * voxelWidth) / normalizationFactor;
         float3 invDir = 1.0f / d;
@@ -364,7 +364,7 @@ struct SDFSBS : SDFGridBase, ISDFGrid
         uint2 brickTexelCoords;
         int3 brickLocalVoxelCoords;
         float3 voxelUnitCoords;
-        calculateBrickCoords(hitPosLocal, virtualBrickCoords, brickTexelCoords, brickLocalVoxelCoords, voxelUnitCoords);
+        calculateBrickCoordsApprox(hitPosLocal, virtualBrickCoords, brickTexelCoords, brickLocalVoxelCoords, voxelUnitCoords);
 
         float4 values0xx;
         float4 values1xx;

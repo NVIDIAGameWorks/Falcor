@@ -98,7 +98,7 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV
                 uint2 blockTextureCoords = voxelTextureCoords / kCompressionWidth;
 
                 uint3 blockGridCoords = brickGridCoords + uint3(x, y, z);
-                    
+
                 int4x4 block;
                 for (uint bY = 0; bY < kCompressionWidth && bY + y < brickWidthInValues; ++bY)
                 {
