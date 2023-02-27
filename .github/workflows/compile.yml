@@ -6,7 +6,7 @@ on:
 
 env:
   CMAKE_EXE: tools\.packman\cmake\bin\cmake.exe
-  CMAKE_BUILD_PRESET: windows-ninja-msvc-ci
+  CMAKE_BUILD_PRESET: windows-ninja-msvc
   CMAKE_BUILD_CONFIG: Release
 
 jobs:
