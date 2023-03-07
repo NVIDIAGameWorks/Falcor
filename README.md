@@ -5,13 +5,13 @@
 Falcor is a real-time rendering framework supporting DirectX 12 and Vulkan. It aims to improve productivity of research and prototype projects.
 
 Features include:
-* Abstracting many common graphics operations, such as shader compilation, model loading, and scene rendering
-* DirectX Raytracing abstraction
-* Render Graph system
-* Python scripting
-* Common rendering effects such as shadows and post-processing effects
-* Unbiased path tracer
-* Integration of various RTX SDKs: DLSS, RTXGI, RTXDI, NRD
+* Abstraction of common graphics operations: Falcor abstracts many common graphics operations, such as shader compilation, model loading, and   scene rendering, allowing developers to focus on the creative aspects of their projects rather than the low-level details of rendering.
+* DirectX Raytracing abstraction: Falcor provides a high-level abstraction for DirectX Raytracing, making it easier for developers to take       advantage of this powerful technology in their applications.
+* Render Graph system: The Render Graph system in Falcor provides a flexible and efficient way to manage the rendering of complex scenes,       allowing developers to create more advanced rendering pipelines.
+* Python scripting: Falcor includes built-in support for Python scripting, which can be used to automate tasks and create custom tools for       working with the framework
+* Common rendering effects: Falcor includes support for common rendering effects such as shadows and post-processing effects, making it easier   for developers to create visually appealing scenes.
+* Unbiased path tracer: Falcor includes an unbiased path tracer, which can be used to create physically accurate renders of complex scenes.
+* Integration of various RTX SDKs: Falcor integrates various RTX (Real-Time Ray Tracing) SDKs, including DLSS (Deep Learning Super Sampling),   RTXGI (Real-Time Global Illumination), RTXDI (Real-Time Denoising), and NRD (NVIDIA Refraction Denoiser). This makes it easier for             developers to incorporate these advanced technologies into their applications.
 
 ## Prerequisites
 - Windows 10 version 20H2 (October 2020 Update) or newer, OS build revision .789 or newer
