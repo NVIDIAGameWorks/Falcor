@@ -41,6 +41,11 @@ add_subdirectory(glfw)
 message(STATUS "Configure glm")
 add_subdirectory(glm)
 
+# gli
+message(STATUS "Configure gli")
+set(GLI_TEST_ENABLE OFF)
+add_subdirectory(gli)
+
 # imgui
 add_library(imgui INTERFACE)
 target_include_directories(imgui INTERFACE imgui)

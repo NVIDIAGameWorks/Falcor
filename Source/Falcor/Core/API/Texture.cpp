@@ -39,7 +39,9 @@
 #include "Utils/Image/ImageIO.h"
 #include "Utils/Scripting/ScriptBindings.h"
 #include "RenderGraph/BasePasses/FullScreenPass.h"
+#include "NativeFormats.h"
 
+#include <gli/gli.hpp>
 #include <pybind11/numpy.h>
 
 #include <mutex>
@@ -441,15 +443,40 @@ void Texture::captureToFile(
     Bitmap::ExportFlags exportFlags
 )
 {
+    RenderContext* pContext = mpDevice->getRenderContext();
+    
     if (format == Bitmap::FileFormat::DdsFile)
     {
-        throw RuntimeError("Texture::captureToFile does not yet support saving to DDS.");
+        gli::dx dxc;
+        auto dxgiFormat = getDxgiFormat(mFormat);
+        auto gliFormat = dxc.find(gli::dx::D3DFMT_DX10, gli::dx::dxgiFormat{ gli::dx::dxgi_format_dds(dxgiFormat) });
+
+        if (mType != Type::Texture2D) throw RuntimeError("Texture::captureToFile dds files must be texture 2d");
+        gli::texture2d_array gliTex = gli::texture2d_array(
+            gliFormat,
+            gli::extent2d(mWidth, mHeight),
+            mArraySize, mMipLevels);
+
+        // transfer data
+        for (uint32_t level = 0; level < mMipLevels; ++level)
+        {
+            const auto size = gliTex.size(level);
+            for (uint32_t layer = 0; layer < mArraySize; ++layer)
+            {
+                auto subresourceIndex = getSubresourceIndex(layer, mipLevel);
+                auto srcData = pContext->readTextureSubresource(this, subresourceIndex);
+                auto dstData = gliTex.data(layer, 0, level);
+                assert(size <= srcData.size());
+                memcpy(dstData, srcData.data(), size);
+            }
+        }
+
+        gli::save_dds(gliTex, path.string());
+        return;
     }
 
     if (mType != Type::Texture2D)
         throw RuntimeError("Texture::captureToFile only supported for 2D textures.");
-
-    RenderContext* pContext = mpDevice->getRenderContext();
 
     // Handle the special case where we have an HDR texture with less then 3 channels.
     FormatType type = getFormatType(mFormat);

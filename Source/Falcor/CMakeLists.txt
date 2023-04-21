@@ -850,7 +850,7 @@ target_link_libraries(Falcor
     PRIVATE
         git_version
         FreeImage assimp ffmpeg OpenEXR OpenVDB lz4 zlib pugixml
-        glfw mikktspace nvtt
+        gli glfw mikktspace nvtt
         $<$<BOOL:${FALCOR_HAS_D3D12}>:d3d12>
         $<$<BOOL:${FALCOR_HAS_D3D12_AGILITY_SDK}>:agility-sdk>
         $<$<BOOL:${FALCOR_HAS_NVAPI}>:nvapi>

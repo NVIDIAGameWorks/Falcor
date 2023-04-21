@@ -19,3 +19,6 @@
 [submodule "external/vulkan-headers"]
 	path = external/vulkan-headers
 	url = https://github.com/KhronosGroup/Vulkan-Headers
+[submodule "external/gli"]
+	path = external/gli
+	url = https://github.com/g-truc/gli.git
