@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -42,9 +42,8 @@ namespace Falcor
     class FALCOR_API BSDFIntegrator
     {
     public:
-        using SharedPtr = std::shared_ptr<BSDFIntegrator>;
-
-        static SharedPtr create(RenderContext* pRenderContext, const Scene::SharedPtr& pScene);
+        /// Constructor.
+        BSDFIntegrator(std::shared_ptr<Device> pDevice, const Scene::SharedPtr& pScene);
 
         /** Integrate the BSDF for a material given a single incident direction.
             The BSDF is assumed to be isotropic and is integrated over outgoing directions in the upper hemisphere.
@@ -65,11 +64,10 @@ namespace Falcor
         std::vector<float3> integrateIsotropic(RenderContext* pRenderContext, const MaterialID materialID, const std::vector<float>& cosThetas);
 
     private:
-        BSDFIntegrator(RenderContext* pRenderContext, const Scene::SharedPtr& pScene);
-
         void integrationPass(RenderContext* pRenderContext, const MaterialID materialID, const uint32_t gridCount) const;
         void finalPass(RenderContext* pRenderContext, const uint32_t gridCount) const;
 
+        std::shared_ptr<Device> mpDevice;
         Scene::SharedPtr mpScene;
         ComputePass::SharedPtr mpIntegrationPass;   ///< Integration pass.
         ComputePass::SharedPtr mpFinalPass;         ///< Final reduction pass.

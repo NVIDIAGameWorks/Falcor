@@ -6,9 +6,9 @@
 Now that you've successfully loaded a render graph into Mogwai through a script, let's create one. A render graph is formed from a number of component render passes. This tutorial will focus on creating render passes through an example pass that blits a source texture into a destination texture; graph creation and editing will be the subject of the next.
 
 ## Creating a Render Pass Library
-All render passes are contained in `Source/RenderPasses` and are shared libraries. Render pass libraries can contain any number of passes, though we suggest keeping a limit on the number of passes per library.
+All render passes are contained in `Source/RenderPasses` and are compiled as shared libraries (plugins). Render pass libraries can contain any number of passes (plugin classes), though we suggest keeping a limit on the number of passes per library.
 
-Run `tools/make_new_render_pass_library.bat <LibraryName>` to create a new render pass library. This will create a new subfolder containing the new render pass library and adjust the build scripts.
+Run `tools/make_new_render_pass.bat <Name>` to create a new render pass library. This will create a new subfolder containing the new render pass library and adjust the build scripts.
 
 ## Implementing a Render Pass
 If you open the header and source files, you'll notice your pass already implements some functions inherited from `RenderPass`. There are other optional functions you can inherit, which you can find in `RenderPass.h`. The following are required for all render passes:
@@ -68,18 +68,18 @@ void ExampleBlitPass::execute(RenderContext* pRenderContext, const RenderData& r
 
 ## Registering Render Passes
 
-Every render pass library project contains a `getPasses()` function which registers all render passes implemented in the project.
+Every render pass library project contains a `registerPlugin()` function which registers all render pass classes implemented in the library.
 ```c++
-extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
-    lib.registerPass(ExampleBlitPass::kInfo, ExampleBlitPass::create);
+    registry.registerClass<RenderPass, ExampleBlitPass>();
 }
 ```
 
-You can adjust the description of the render pass library by adjusting the following line:
+You can adjust the description of the render pass library by adjusting the following line in the header file:
 
 ```c++
-const RenderPass::Info ExampleBlitPass::kInfo { "ExampleBlitPass", "Blits a texture into another texture." };
+FALCOR_PLUGIN_CLASS(ExampleBlitPass, "ExampleBlitPass", "Blits a texture into another texture.");
 ```
 
-We will ignore further details regarding render passes and their implementation for the purposes of this tutorial. Additional information can be found [here](../Usage/Render-Passes.md).
+We will ignore further details regarding render passes and their implementation for the purposes of this tutorial. Additional information can be found [here](../usage/render-passes.md).

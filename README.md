@@ -1,8 +1,8 @@
 ![](docs/images/teaser.png)
 
-# Falcor 5.2
+# Falcor
 
-Falcor is a real-time rendering framework supporting DirectX 12. It aims to improve productivity of research and prototype projects.
+Falcor is a real-time rendering framework supporting DirectX 12 and Vulkan. It aims to improve productivity of research and prototype projects.
 
 Features include:
 * Abstracting many common graphics operations, such as shader compilation, model loading, and scene rendering
@@ -30,12 +30,11 @@ Optional:
 Falcor uses the [CMake](https://cmake.org) build system. Additional information on how to use Falcor with CMake is available in the [CMake](docs/development/cmake.md) development documetation page.
 
 ### Visual Studio
-If you are working with Visual Studio, you can setup a native Visual Studio solution by running `setup_vs2019.bat` (or `setup_vs2022.bat`, same process) after cloning this repository. The solution files are written to `build/windows-vs2019-d3d12` and the binary output is located in `build/windows-vs2019-d3d12/bin`.
+If you are working with Visual Studio, you can setup a native Visual Studio solution by running `setup_vs2019.bat` (or `setup_vs2022.bat`, same process) after cloning this repository. The solution files are written to `build/windows-vs2019` and the binary output is located in `build/windows-vs2019/bin`.
 
-By default, the solution is configured to use the native D3D12 rendering backend. Alternatively, you can setup additional solutions for the GFX backends by running `setup_vs2019.bat gfx-d3d12` or `setup_vs2019.bat gfx-vk`. Note that each configuration is setting up a separate build tree, so it's easy to switch between different backends during development.
 
 ### Visual Studio Code
-If you are working with Visual Studio Code, run `setup.bat` after cloning this repository. This will setup a VS Code workspace in the `.vscode` folder with sensible defaults (only if `.vscode` does not exist yet). When opening the project folder in VS Code, it will prompt to install recommended extensions. We recommend you do, but at least make sure that _CMake Tools_ is installed. To build Falcor, you can select the configure preset by executing the _CMake: Select Configure Preset_ action (Ctrl+Shift+P). Choose the _Windows Ninja/MSVC D3D12_ preset (or one for a different rendering backend). Then simply hit _Build_ (or press F7) to build the project. The binary output is located in `build/windows-ninja-msvc-d3d12/bin`.
+If you are working with Visual Studio Code, run `setup.bat` after cloning this repository. This will setup a VS Code workspace in the `.vscode` folder with sensible defaults (only if `.vscode` does not exist yet). When opening the project folder in VS Code, it will prompt to install recommended extensions. We recommend you do, but at least make sure that _CMake Tools_ is installed. To build Falcor, you can select the configure preset by executing the _CMake: Select Configure Preset_ action (Ctrl+Shift+P). Choose the _Windows Ninja/MSVC_ preset (or one for a different rendering backend). Then simply hit _Build_ (or press F7) to build the project. The binary output is located in `build/windows-ninja-msvc/bin`.
 
 Warning: Do not start VS Code from _Git Bash_, it will modify the `PATH` environment variable to an incompatible format, leading to issues with CMake.
 
@@ -46,15 +45,10 @@ Falcor uses _CMake Presets_ store in `CMakePresets.json` to provide a set of com
 $ cmake --list-presets
 Available configure presets:
 
-  "windows-vs2019-d3d12"         - Windows VS2019 D3D12
-  "windows-vs2019-gfx-d3d12"     - Windows VS2019 GFX-D3D12
-  "windows-vs2019-gfx-vk"        - Windows VS2019 GFX-VK
-  "windows-vs2022-d3d12"         - Windows VS2022 D3D12
-  "windows-vs2022-gfx-d3d12"     - Windows VS2022 GFX-D3D12
-  "windows-vs2022-gfx-vk"        - Windows VS2022 GFX-VK
-  "windows-ninja-msvc-d3d12"     - Windows Ninja/MSVC D3D12
-  "windows-ninja-msvc-gfx-d3d12" - Windows Ninja/MSVC GFX-D3D12
-  "windows-ninja-msvc-gfx-vk"    - Windows Ninja/MSVC GFX-VK
+  "windows-vs2019"           - Windows VS2019
+  "windows-vs2022"           - Windows VS2022
+  "windows-ninja-msvc"       - Windows Ninja/MSVC
+  "linux-ninja-clang"        - Linux Ninja/Clang
 ```
 
 Use `cmake --preset <preset name>` to generate the build tree for a given preset. The build tree is written to the `build/<preset name>` folder and the binary output files are in `build/<preset name>/bin`.
@@ -67,8 +61,8 @@ Note: Some render passes (RTXGI, RTXDI, DLSS in particular) are not fully workin
 Falcor uses the [Microsoft DirectX 12 Agility SDK](https://devblogs.microsoft.com/directx/directx12agility/) to get access to the latest DirectX 12 features. Applications can enable the Agility SDK by putting `FALCOR_EXPORT_D3D12_AGILITY_SDK` in the main `.cpp` file. `Mogwai`, `FalcorTest` and `RenderGraphEditor` have the Agility SDK enabled by default.
 
 ## NVAPI
-To enable NVAPI support, head over to https://developer.nvidia.com/nvapi and download the latest version of NVAPI (this build is tested against version R470).
-Extract the content of the zip file into `external/packman/` and rename `R470-developer` to `nvapi`.
+To enable NVAPI support, head over to https://developer.nvidia.com/nvapi and download the latest version of NVAPI (this build is tested against version R520).
+Extract the content of the zip file into `external/packman/` and rename `R520-developer` to `nvapi`.
 
 ## CUDA
 To enable CUDA support, download and install [CUDA 11.6.2](https://developer.nvidia.com/cuda-11-6-2-download-archive) or later and reconfigure the build.

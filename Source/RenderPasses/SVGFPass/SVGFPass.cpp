@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,7 +26,6 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "SVGFPass.h"
-#include "RenderGraph/RenderPassLibrary.h"
 
 /*
 TODO:
@@ -35,8 +34,6 @@ TODO:
 - handle skybox pixels
 - enum for fbo channel indices
 */
-
-const RenderPass::Info SVGFPass::kInfo { "SVGFPass", "SVGF denoising pass." };
 
 namespace
 {
@@ -76,24 +73,18 @@ namespace
     const char kOutputBufferFilteredImage[] = "Filtered image";
 }
 
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" FALCOR_API_EXPORT const char* getProjDir()
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
-    return PROJECT_DIR;
+    registry.registerClass<RenderPass, SVGFPass>();
 }
 
-extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
+SVGFPass::SharedPtr SVGFPass::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
-    lib.registerPass(SVGFPass::kInfo, SVGFPass::create);
+    return SharedPtr(new SVGFPass(std::move(pDevice), dict));
 }
 
-SVGFPass::SharedPtr SVGFPass::create(RenderContext* pRenderContext, const Dictionary& dict)
-{
-    return SharedPtr(new SVGFPass(dict));
-}
-
-SVGFPass::SVGFPass(const Dictionary& dict)
-    : RenderPass(kInfo)
+SVGFPass::SVGFPass(std::shared_ptr<Device> pDevice, const Dictionary& dict)
+    : RenderPass(std::move(pDevice))
 {
     for (const auto& [key, value] : dict)
     {
@@ -108,11 +99,11 @@ SVGFPass::SVGFPass(const Dictionary& dict)
         else logWarning("Unknown field '{}' in SVGFPass dictionary.", key);
     }
 
-    mpPackLinearZAndNormal = FullScreenPass::create(kPackLinearZAndNormalShader);
-    mpReprojection = FullScreenPass::create(kReprojectShader);
-    mpAtrous = FullScreenPass::create(kAtrousShader);
-    mpFilterMoments = FullScreenPass::create(kFilterMomentShader);
-    mpFinalModulate = FullScreenPass::create(kFinalModulateShader);
+    mpPackLinearZAndNormal = FullScreenPass::create(mpDevice, kPackLinearZAndNormalShader);
+    mpReprojection = FullScreenPass::create(mpDevice, kReprojectShader);
+    mpAtrous = FullScreenPass::create(mpDevice, kAtrousShader);
+    mpFilterMoments = FullScreenPass::create(mpDevice, kFilterMomentShader);
+    mpFinalModulate = FullScreenPass::create(mpDevice, kFinalModulateShader);
     FALCOR_ASSERT(mpPackLinearZAndNormal && mpReprojection && mpAtrous && mpFilterMoments && mpFinalModulate);
 }
 
@@ -260,26 +251,26 @@ void SVGFPass::allocateFbos(uint2 dim, RenderContext* pRenderContext)
         desc.setColorTarget(0, Falcor::ResourceFormat::RGBA32Float); // illumination
         desc.setColorTarget(1, Falcor::ResourceFormat::RG32Float);   // moments
         desc.setColorTarget(2, Falcor::ResourceFormat::R16Float);    // history length
-        mpCurReprojFbo  = Fbo::create2D(dim.x, dim.y, desc);
-        mpPrevReprojFbo = Fbo::create2D(dim.x, dim.y, desc);
+        mpCurReprojFbo  = Fbo::create2D(mpDevice.get(), dim.x, dim.y, desc);
+        mpPrevReprojFbo = Fbo::create2D(mpDevice.get(), dim.x, dim.y, desc);
     }
 
     {
         // Screen-size RGBA32F buffer for linear Z, derivative, and packed normal
         Fbo::Desc desc;
         desc.setColorTarget(0, Falcor::ResourceFormat::RGBA32Float);
-        mpLinearZAndNormalFbo = Fbo::create2D(dim.x, dim.y, desc);
+        mpLinearZAndNormalFbo = Fbo::create2D(mpDevice.get(), dim.x, dim.y, desc);
     }
 
     {
         // Screen-size FBOs with 1 RGBA32F buffer
         Fbo::Desc desc;
         desc.setColorTarget(0, Falcor::ResourceFormat::RGBA32Float);
-        mpPingPongFbo[0]  = Fbo::create2D(dim.x, dim.y, desc);
-        mpPingPongFbo[1]  = Fbo::create2D(dim.x, dim.y, desc);
-        mpFilteredPastFbo = Fbo::create2D(dim.x, dim.y, desc);
-        mpFilteredIlluminationFbo       = Fbo::create2D(dim.x, dim.y, desc);
-        mpFinalFbo        = Fbo::create2D(dim.x, dim.y, desc);
+        mpPingPongFbo[0]  = Fbo::create2D(mpDevice.get(), dim.x, dim.y, desc);
+        mpPingPongFbo[1]  = Fbo::create2D(mpDevice.get(), dim.x, dim.y, desc);
+        mpFilteredPastFbo = Fbo::create2D(mpDevice.get(), dim.x, dim.y, desc);
+        mpFilteredIlluminationFbo       = Fbo::create2D(mpDevice.get(), dim.x, dim.y, desc);
+        mpFinalFbo        = Fbo::create2D(mpDevice.get(), dim.x, dim.y, desc);
     }
 
     mBuffersNeedClear = true;

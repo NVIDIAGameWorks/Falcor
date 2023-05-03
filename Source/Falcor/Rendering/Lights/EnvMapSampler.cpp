@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -42,9 +42,9 @@ namespace Falcor
         const uint32_t kDefaultSpp = 64;
     }
 
-    EnvMapSampler::SharedPtr EnvMapSampler::create(RenderContext* pRenderContext, EnvMap::SharedPtr pEnvMap)
+    EnvMapSampler::SharedPtr EnvMapSampler::create(std::shared_ptr<Device> pDevice, EnvMap::SharedPtr pEnvMap)
     {
-        return SharedPtr(new EnvMapSampler(pRenderContext, pEnvMap));
+        return SharedPtr(new EnvMapSampler(std::move(pDevice), pEnvMap));
     }
 
     void EnvMapSampler::setShaderData(const ShaderVar& var) const
@@ -61,22 +61,23 @@ namespace Falcor
         var["importanceSampler"] = mpImportanceSampler;
     }
 
-    EnvMapSampler::EnvMapSampler(RenderContext* pRenderContext, EnvMap::SharedPtr pEnvMap)
-        : mpEnvMap(pEnvMap)
+    EnvMapSampler::EnvMapSampler(std::shared_ptr<Device> pDevice, EnvMap::SharedPtr pEnvMap)
+        : mpDevice(std::move(pDevice))
+        , mpEnvMap(pEnvMap)
     {
         FALCOR_ASSERT(pEnvMap);
 
         // Create compute program for the setup phase.
-        mpSetupPass = ComputePass::create(kShaderFilenameSetup, "main");
+        mpSetupPass = ComputePass::create(mpDevice, kShaderFilenameSetup, "main");
 
         // Create sampler.
         Sampler::Desc samplerDesc;
         samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
         samplerDesc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
-        mpImportanceSampler = Sampler::create(samplerDesc);
+        mpImportanceSampler = Sampler::create(mpDevice.get(), samplerDesc);
 
         // Create hierarchical importance map for sampling.
-        if (!createImportanceMap(pRenderContext, kDefaultDimension, kDefaultSpp))
+        if (!createImportanceMap(mpDevice->getRenderContext(), kDefaultDimension, kDefaultSpp))
         {
             throw RuntimeError("Failed to create importance map");
         }
@@ -93,10 +94,11 @@ namespace Falcor
         FALCOR_ASSERT(mips > 1 && mips <= 12);     // Shader constant limits max resolution, increase if needed.
 
         // Create importance map. We have to set the RTV flag to be able to use generateMips().
-        mpImportanceMap = Texture::create2D(dimension, dimension, ResourceFormat::R32Float, 1, mips, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess);
+        mpImportanceMap = Texture::create2D(mpDevice.get(), dimension, dimension, ResourceFormat::R32Float, 1, mips, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess);
         FALCOR_ASSERT(mpImportanceMap);
 
         mpSetupPass["gEnvMap"] = mpEnvMap->getEnvMap();
+        mpSetupPass["gEnvSampler"] = mpEnvMap->getEnvSampler();
         mpSetupPass["gImportanceMap"] = mpImportanceMap;
 
         uint32_t samplesX = std::max(1u, (uint32_t)std::sqrt(samples));

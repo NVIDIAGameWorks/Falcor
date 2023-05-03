@@ -77,9 +77,9 @@ struct BSDFIntegrator
         float sinTheta = sqrt(1.f - cosTheta * cosTheta);
         sd.V = float3(sinTheta, 0.f, cosTheta);
 
-        // Create BSDF.
+        // Create MaterialInstance.
         let lod = ExplicitLodTextureSampler(0.f);
-        let bsdf = gScene.materials.getBSDF(sd, lod);
+        let mi = gScene.materials.getMaterialInstance(sd, lod);
 
         // Approximate integral of the BSDF over grid cell.
         // We take multiple stratified samples to reduce the integration error.
@@ -99,7 +99,7 @@ struct BSDFIntegrator
                 float3 wo = sample_cosine_hemisphere_concentric(u, pdf);
 
                 // Evaluate BSDF divided by pdf.
-                value += pdf > 0.f ? bsdf.eval(sd, wo, sg) / pdf : float3(0.f);
+                value += pdf > 0.f ? mi.eval(sd, wo, sg) / pdf : float3(0.f);
             }
         }
         value *= 1.f / (kSampleCount.x * kSampleCount.y);

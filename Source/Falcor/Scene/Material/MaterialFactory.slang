@@ -52,19 +52,20 @@ extension MaterialSystem
         return createDynamicObject<IMaterial, MaterialDataBlob>(int(type), materialData[materialID]);
     }
 
-    /** Create a `IBSDF` instance for the given shading location.
-        This operation first creates a material instance for the shading location.
-        Then the material is queried to create the BSDF instance, in which step
+    /** Create a `IMaterialInstance` instance for the given shading location.
+        This operation first creates a material for the shading location.
+        Then the material is queried to create the material instance, in which step
         pattern generation is performed to pre-compute all material parameters.
         This may involve sampling textures, executing procedural functions, etc.
         \param[in] sd Shading data.
         \param[in] lod Method for computing texture level-of-detail, must implement the `ITextureSampler` interface.
-        \return A BSDF instance.
+        \param[in] hints Optional hints to control the behavior of the material instance. Combination of `MaterialInstanceHints` flags.
+        \return A material instance.
     */
-    IBSDF getBSDF<L:ITextureSampler>(const ShadingData sd, L lod)
-    {
+    IMaterialInstance getMaterialInstance<L:ITextureSampler>(const ShadingData sd, L lod, const uint hints = (uint)MaterialInstanceHints::None)
+    {        
         let material = getMaterial(sd.materialID);
-        return material.setupBSDF(this, sd, lod);
+        return material.setupMaterialInstance(this, sd, lod, hints);
     }
 
     /** Prepares shading data at a hit point.
@@ -84,7 +85,10 @@ extension MaterialSystem
         sd.V = viewDir;
         sd.N = v.normalW;
 
+        // Compute shading frame based on the interpolated normal and given tangent (xyz) and sign (w).
+        // We keep around the original tangent for later orthogonalization operations if valid, otherwise the invented tangent.
         const bool validTangentSpace = computeTangentSpace(sd, v.tangentW);
+        sd.tangentW = validTangentSpace ? v.tangentW : float4(sd.T, 1.f);
 
         // Primitive data
         sd.faceN = v.faceNormalW;
@@ -112,12 +116,12 @@ extension MaterialSystem
             // Apply normal mapping only if we have a valid tangent space.
             if (validTangentSpace)
             {
-                material.modifyTangentSpace(this, v.tangentW, lod, sd);
+                material.modifyTangentSpace(this, lod, sd);
             }
 
             // Finalize the normal.
             // We currently flip the shading normal for back-facing hits on double-sided materials.
-            // This convention will eventually go away when the material setup code handles it instead.
+            // This convention will eventually go away when the materials handle double-sidedness internally.
             if (!sd.frontFacing && sd.mtl.isDoubleSided())
             {
                 sd.N = -sd.N;

@@ -27,7 +27,7 @@
  **************************************************************************/
 import LoadShadingData;
 import Scene.RaytracingInline;
-import Rendering.Materials.Microfacet;
+import Rendering.Materials.IsotropicGGX;
 import Rendering.RTXDI.RTXDI;
 import Utils.Sampling.TinyUniformSampleGenerator;
 
@@ -67,9 +67,9 @@ struct FinalShading
         let lod = ExplicitLodTextureSampler(0.f); // TODO: Implement texture level-of-detail.
         if (loadShadingData(pixel, frameDim, gScene.camera, vbuffer, lod, sd))
         {
-            // Create BSDF instance and query its properties.
-            let bsdf = gScene.materials.getBSDF(sd, lod);
-            let bsdfProperties = bsdf.getProperties(sd);
+            // Create material instance and query its properties.
+            let mi = gScene.materials.getMaterialInstance(sd, lod);
+            let bsdfProperties = mi.getProperties(sd);
 
             // Get final sample from RTXDI.
             float3 dir;
@@ -97,10 +97,10 @@ struct FinalShading
                 TinyUniformSampleGenerator sg = TinyUniformSampleGenerator(pixel, gRTXDI.frameIndex);
 
                 sd.mtl.setActiveLobes((uint)LobeType::DiffuseReflection);
-                diffuse = bsdf.eval(sd, dir, sg) * Li;
+                diffuse = mi.eval(sd, dir, sg) * Li;
 
                 sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection);
-                specular = bsdf.eval(sd, dir, sg) * Li;
+                specular = mi.eval(sd, dir, sg) * Li;
 
                 hitT = distance;
             }
@@ -117,7 +117,8 @@ struct FinalShading
             diffuseIllumination = diffuse * diffuseFactor;
 
             // Demodulate preintegrated specular reflectance from specular color.
-            float NdotV = saturate(dot(sd.N, sd.V));
+            // We use an approximate shading model with a single specular lobe.
+            float NdotV = saturate(dot(bsdfProperties.guideNormal, sd.V));
             float ggxAlpha = bsdfProperties.roughness * bsdfProperties.roughness;
             specularReflectance = approxSpecularIntegralGGX(bsdfProperties.specularReflectance, ggxAlpha, NdotV);
             float3 specularFactor = specularReflectance <= 0.f ? 0.f : 1.f / specularReflectance;

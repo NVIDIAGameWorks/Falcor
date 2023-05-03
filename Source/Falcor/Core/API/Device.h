@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,21 +27,22 @@
  **************************************************************************/
 #pragma once
 #include "Handles.h"
+#include "NativeHandle.h"
 #include "Formats.h"
 #include "QueryHeap.h"
 #include "LowLevelContextData.h"
-#include "FBO.h"
 #include "RenderContext.h"
 #include "GpuMemoryHeap.h"
 #include "Core/Macros.h"
-#include "Core/Window.h"
+
 #if FALCOR_HAS_D3D12
-#include "Core/API/Shared/D3D12DescriptorPool.h"
+#include <guiddef.h>
 #endif
 
 #include <array>
 #include <list>
 #include <memory>
+#include <mutex>
 #include <queue>
 #include <vector>
 
@@ -53,228 +54,313 @@ namespace Falcor
 #define FALCOR_DEFAULT_ENABLE_DEBUG_LAYER false
 #endif
 
-    struct DeviceApiData;
+#if FALCOR_HAS_D3D12
+class D3D12DescriptorPool;
+#endif
 
-    class FALCOR_API Device
+class PipelineCreationAPIDispatcher;
+class ProgramManager;
+class Profiler;
+
+class FALCOR_API Device : public std::enable_shared_from_this<Device>
+{
+public:
+    /**
+     * Maximum number of in-flight frames.
+     * Typically there are at least two frames, one being rendered to, the other being presented.
+     * We add one more to be on the save side.
+     */
+    static constexpr uint32_t kInFlightFrameCount = 3;
+
+    /// Device type.
+    enum Type
     {
-    public:
-        using SharedPtr = std::shared_ptr<Device>;
-        using SharedConstPtr = std::shared_ptr<const Device>;
-        using ApiHandle = DeviceHandle;
-        static const uint32_t kQueueTypeCount = (uint32_t)LowLevelContextData::CommandQueueType::Count;
-        static constexpr uint32_t kSwapChainBuffersCount = 3;
-
-        /** Device configuration
-        */
-        struct Desc
-        {
-            ResourceFormat colorFormat = ResourceFormat::BGRA8UnormSrgb;    ///< The color buffer format
-            ResourceFormat depthFormat = ResourceFormat::D32Float;          ///< The depth buffer format
-            uint32_t apiMajorVersion = 0;                                   ///< Requested API major version. If specified, device creation will fail if not supported. Otherwise, the highest supported version will be automatically selected.
-            uint32_t apiMinorVersion = 0;                                   ///< Requested API minor version. If specified, device creation will fail if not supported. Otherwise, the highest supported version will be automatically selected.
-            bool enableVsync = false;                                       ///< Controls vertical-sync
-            bool enableDebugLayer = FALCOR_DEFAULT_ENABLE_DEBUG_LAYER;      ///< Enable the debug layer. The default for release build is false, for debug build it's true.
-
-            static_assert((uint32_t)LowLevelContextData::CommandQueueType::Direct == 2, "Default initialization of cmdQueues assumes that Direct queue index is 2");
-            std::array<uint32_t, kQueueTypeCount> cmdQueues = { 0, 0, 1 };  ///< Command queues to create. If no direct-queues are created, mpRenderContext will not be initialized
-
-#ifdef FALCOR_D3D12
-            // GUID list for experimental features
-            std::vector<UUID> experimentalFeatures;
-#endif
-        };
-
-        enum class SupportedFeatures
-        {
-            None = 0x0,
-            ProgrammableSamplePositionsPartialOnly = 0x1, // On D3D12, this means tier 1 support. Allows one sample position to be set.
-            ProgrammableSamplePositionsFull = 0x2,        // On D3D12, this means tier 2 support. Allows up to 4 sample positions to be set.
-            Barycentrics = 0x4,                           // On D3D12, pixel shader barycentrics are supported.
-            Raytracing = 0x8,                             // On D3D12, DirectX Raytracing is supported. It is up to the user to not use raytracing functions when not supported.
-            RaytracingTier1_1 = 0x10,                     // On D3D12, DirectX Raytracing Tier 1.1 is supported.
-            ConservativeRasterizationTier1 = 0x20,        // On D3D12, conservative rasterization tier 1 is supported.
-            ConservativeRasterizationTier2 = 0x40,        // On D3D12, conservative rasterization tier 2 is supported.
-            ConservativeRasterizationTier3 = 0x80,        // On D3D12, conservative rasterization tier 3 is supported.
-            RasterizerOrderedViews = 0x100,               // On D3D12, rasterizer ordered views (ROVs) are supported.
-            WaveOperations = 0x200,
-        };
-
-        enum class ShaderModel : uint32_t
-        {
-            Unknown,
-            SM6_0,
-            SM6_1,
-            SM6_2,
-            SM6_3,
-            SM6_4,
-            SM6_5,
-            SM6_6,
-            SM6_7,
-        };
-
-        ~Device();
-
-        /** Create a new device.
-            \param[in] pWindow a previously-created window object
-            \param[in] desc Device configuration descriptor.
-            \return A pointer to a new device object, or throws an exception if creation failed.
-        */
-        static SharedPtr create(Window::SharedPtr& pWindow, const Desc& desc);
-
-        /** Acts as the destructor for Device. Some resources use gpDevice in their cleanup.
-            Cleaning up the SharedPtr directly would clear gpDevice before calling destructors.
-        */
-        void cleanup();
-
-        /** Enable/disable vertical sync
-        */
-        void toggleVSync(bool enable);
-
-        /** Check if the window is occluded
-        */
-        bool isWindowOccluded() const;
-
-        /** Get the FBO object associated with the swap-chain.
-            This can change each frame, depending on the API used
-        */
-        Fbo::SharedPtr getSwapChainFbo() const;
-
-        /** Get the default render-context.
-            The default render-context is managed completely by the device. The user should just queue commands into it, the device will take care of allocation, submission and synchronization
-        */
-        RenderContext* getRenderContext() const { return mpRenderContext.get(); }
-
-        /** Get the command queue handle
-        */
-        CommandQueueHandle getCommandQueueHandle(LowLevelContextData::CommandQueueType type, uint32_t index) const;
-
-        /** Get the API queue type.
-            \return API queue type, or throws an exception if type is unknown.
-        */
-        ApiCommandQueueType getApiCommandQueueType(LowLevelContextData::CommandQueueType type) const;
-
-        /** Get the native API handle.
-            For D3D12 backend, this is a ID3D12Device*. For GFX backend, this is ComPtr<gfx::IDevice>.
-        */
-        const DeviceHandle& getApiHandle() { return mApiHandle; }
-
-        /** Get a D3D12 handle for user code that wants to call D3D12 directly.
-            \return A valid ID3D12Device* value for all backend that are using D3D12, otherwise nullptr.
-        */
-        const D3D12DeviceHandle getD3D12Handle();
-
-        /** Present the back-buffer to the window
-        */
-        void present();
-
-        /** Flushes pipeline, releases resources, and blocks until completion
-        */
-        void flushAndSync();
-
-        /** Check if vertical sync is enabled
-        */
-        bool isVsyncEnabled() const { return mDesc.enableVsync; }
-
-        /** Resize the swap-chain
-            \return A new FBO object
-        */
-        Fbo::SharedPtr resizeSwapChain(uint32_t width, uint32_t height);
-
-        /** Get the desc
-        */
-        const Desc& getDesc() const { return mDesc; }
-
-        /** Create a new query heap.
-            \param[in] type Type of queries.
-            \param[in] count Number of queries.
-            \return New query heap.
-        */
-        std::weak_ptr<QueryHeap> createQueryHeap(QueryHeap::Type type, uint32_t count);
-
-#if FALCOR_HAS_D3D12
-        const D3D12DescriptorPool::SharedPtr& getD3D12CpuDescriptorPool() const { return mpD3D12CpuDescPool; }
-        const D3D12DescriptorPool::SharedPtr& getD3D12GpuDescriptorPool() const { return mpD3D12GpuDescPool; }
-#endif // FALCOR_HAS_D3D12
-
-        DeviceApiData* getApiData() const { return mpApiData.get(); }
-        const GpuMemoryHeap::SharedPtr& getUploadHeap() const { return mpUploadHeap; }
-        void releaseResource(ApiObjectHandle pResource);
-#ifdef FALCOR_GFX
-        void releaseResource(ISlangUnknown* pResource) { releaseResource(ApiObjectHandle(pResource)); }
-#endif
-        double getGpuTimestampFrequency() const { return mGpuTimestampFrequency; } // ms/tick
-
-        /** Check if features are supported by the device
-        */
-        bool isFeatureSupported(SupportedFeatures flags) const;
-
-        /** Check if a shader model is supported by the device
-        */
-        bool isShaderModelSupported(ShaderModel shaderModel) const;
-
-        /** Return the highest supported shader model by the device
-        */
-        ShaderModel getSupportedShaderModel() const { return mSupportedShaderModel; }
-
-        /** Return the current index of the back buffer being rendered to.
-        */
-        uint32_t getCurrentBackBufferIndex() const { return mCurrentBackBufferIndex; }
-
-#ifdef FALCOR_GFX
-        gfx::ITransientResourceHeap* getCurrentTransientResourceHeap();
-#endif
-
-    private:
-        struct ResourceRelease
-        {
-            size_t frameID;
-            ApiObjectHandle pApiObject;
-        };
-        std::queue<ResourceRelease> mDeferredReleases;
-
-        uint32_t mCurrentBackBufferIndex;
-        Fbo::SharedPtr mpSwapChainFbos[kSwapChainBuffersCount];
-
-        Device(Window::SharedPtr pWindow, const Desc& desc);
-        bool init();
-        void executeDeferredReleases();
-        void releaseFboData();
-        bool updateDefaultFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat);
-
-        Desc mDesc;
-        ApiHandle mApiHandle;
-        GpuMemoryHeap::SharedPtr mpUploadHeap;
-#if FALCOR_HAS_D3D12
-        D3D12DescriptorPool::SharedPtr mpD3D12CpuDescPool;
-        D3D12DescriptorPool::SharedPtr mpD3D12GpuDescPool;
-#endif
-        bool mIsWindowOccluded = false;
-        GpuFence::SharedPtr mpFrameFence;
-
-        Window::SharedPtr mpWindow;
-        std::unique_ptr<DeviceApiData> mpApiData;
-        RenderContext::SharedPtr mpRenderContext;
-        size_t mFrameID = 0;
-        std::list<QueryHeap::SharedPtr> mTimestampQueryHeaps;
-        double mGpuTimestampFrequency;
-        std::vector<CommandQueueHandle> mCmdQueues[kQueueTypeCount];
-
-        SupportedFeatures mSupportedFeatures = SupportedFeatures::None;
-        ShaderModel mSupportedShaderModel = ShaderModel::Unknown;
-
-        // API specific functions
-        bool getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle apiHandles[kSwapChainBuffersCount], uint32_t& currentBackBufferIndex);
-        void destroyApiObjects();
-        void apiPresent();
-        bool apiInit();
-        bool createSwapChain(ResourceFormat colorFormat);
-        void apiResizeSwapChain(uint32_t width, uint32_t height, ResourceFormat colorFormat);
-        void toggleFullScreen(bool fullscreen);
+        Default, ///< Default device type, favors D3D12 over Vulkan.
+        D3D12,
+        Vulkan,
     };
 
-    inline constexpr uint32_t getMaxViewportCount() { return 8; }
+    /// Device descriptor.
+    struct Desc
+    {
+        /// The device type (D3D12/Vulkan).
+        Type type = Type::Default;
 
-    FALCOR_API extern Device::SharedPtr gpDevice;
+        /// GPU index (indexing into GPU list returned by getGPUList()).
+        uint32_t gpu = 0;
 
-    FALCOR_ENUM_CLASS_OPERATORS(Device::SupportedFeatures);
+        /// Enable the debug layer. The default for release build is false, for debug build it's true.
+        bool enableDebugLayer = FALCOR_DEFAULT_ENABLE_DEBUG_LAYER;
+
+        /// The maximum number of entries allowable in the shader cache. A value of 0 indicates no limit.
+        uint32_t maxShaderCacheEntryCount = 1000;
+
+        /// The full path to the root directory for the shader cache. An empty string will disable the cache.
+        std::string shaderCachePath = (getRuntimeDirectory() / ".shadercache").string();
+
+#if FALCOR_HAS_D3D12
+        /// GUID list for experimental features
+        std::vector<GUID> experimentalFeatures;
+#endif
+    };
+
+    struct Limits
+    {
+        uint3 maxComputeDispatchThreadGroups;
+        uint32_t maxShaderVisibleSamplers;
+    };
+
+    enum class SupportedFeatures
+    {
+        // clang-format off
+        None = 0x0,
+        ProgrammableSamplePositionsPartialOnly = 0x1,   ///< On D3D12, this means tier 1 support. Allows one sample position to be set.
+        ProgrammableSamplePositionsFull = 0x2,          ///< On D3D12, this means tier 2 support. Allows up to 4 sample positions to be set.
+        Barycentrics = 0x4,                             ///< On D3D12, pixel shader barycentrics are supported.
+        Raytracing = 0x8,                               ///< On D3D12, DirectX Raytracing is supported. It is up to the user to not use raytracing functions when not supported.
+        RaytracingTier1_1 = 0x10,                       ///< On D3D12, DirectX Raytracing Tier 1.1 is supported.
+        ConservativeRasterizationTier1 = 0x20,          ///< On D3D12, conservative rasterization tier 1 is supported.
+        ConservativeRasterizationTier2 = 0x40,          ///< On D3D12, conservative rasterization tier 2 is supported.
+        ConservativeRasterizationTier3 = 0x80,          ///< On D3D12, conservative rasterization tier 3 is supported.
+        RasterizerOrderedViews = 0x100,                 ///< On D3D12, rasterizer ordered views (ROVs) are supported.
+        WaveOperations = 0x200,
+        ShaderExecutionReorderingAPI = 0x400,           ///< On D3D12, this means SER API is available (in the future this will be part of the shader model).
+        RaytracingReordering = 0x800,                   ///< On D3D12, this means SER is supported on the hardware.
+
+        // clang-format on
+    };
+
+    enum class ShaderModel : uint32_t
+    {
+        Unknown,
+        SM6_0,
+        SM6_1,
+        SM6_2,
+        SM6_3,
+        SM6_4,
+        SM6_5,
+        SM6_6,
+        SM6_7,
+    };
+
+    /**
+     * Create a new device.
+     * @param[in] desc Device configuration descriptor.
+     * @return A pointer to a new device object, or throws an exception if creation failed.
+     */
+    static std::shared_ptr<Device> create(const Desc& desc);
+
+    Device(const Desc& desc);
+    ~Device();
+
+    /**
+     * Acts as the destructor for Device. Some resources use the global device pointer their cleanup.
+     */
+    void cleanup();
+
+    ProgramManager* getProgramManager() const { return mpProgramManager.get(); }
+
+    Profiler* getProfiler() const { return mpProfiler.get(); }
+
+    /**
+     * Get the default render-context.
+     * The default render-context is managed completely by the device. The user should just queue commands into it, the device will take
+     * care of allocation, submission and synchronization
+     */
+    RenderContext* getRenderContext() const { return mpRenderContext.get(); }
+
+    /// Returns the global slang session.
+    slang::IGlobalSession* getSlangGlobalSession() const { return mSlangGlobalSession; }
+
+    /// Return the GFX define.
+    gfx::IDevice* getGfxDevice() const { return mGfxDevice; }
+
+    /// Return the GFX command queue.
+    gfx::ICommandQueue* getGfxCommandQueue() const { return mGfxCommandQueue; }
+
+    /**
+     * Returns the native API handle:
+     * - D3D12: ID3D12Device* (0)
+     * - Vulkan: VkInstance (0), VkPhysicalDevice (1), VkDevice (2)
+     */
+    NativeHandle getNativeHandle(uint32_t index = 0) const;
+
+    /**
+     * End a frame.
+     * This closes the current command buffer, switches to a new heap for transient resources and opens a new command buffer.
+     * This also executes deferred releases of resources from past frames.
+     */
+    void endFrame();
+
+    /**
+     * Flushes pipeline, releases resources, and blocks until completion
+     */
+    void flushAndSync();
+
+    /**
+     * Get the desc
+     */
+    const Desc& getDesc() const { return mDesc; }
+
+    /**
+     * Get the device type.
+     */
+    Type getType() const { return mDesc.type; }
+
+    /**
+     * Throws an exception if the device is not a D3D12 device.
+     */
+    void requireD3D12() const;
+
+    /**
+     * Throws an exception if the device is not a Vulkan device.
+     */
+    void requireVulkan() const;
+
+    /**
+     * Get an object that represents a default sampler.
+     */
+    std::shared_ptr<Sampler> getDefaultSampler() const { return mpDefaultSampler; }
+
+    /**
+     * Create a new query heap.
+     * @param[in] type Type of queries.
+     * @param[in] count Number of queries.
+     * @return New query heap.
+     */
+    std::weak_ptr<QueryHeap> createQueryHeap(QueryHeap::Type type, uint32_t count);
+
+#if FALCOR_HAS_D3D12
+    const std::shared_ptr<D3D12DescriptorPool>& getD3D12CpuDescriptorPool() const
+    {
+        requireD3D12();
+        return mpD3D12CpuDescPool;
+    }
+    const std::shared_ptr<D3D12DescriptorPool>& getD3D12GpuDescriptorPool() const
+    {
+        requireD3D12();
+        return mpD3D12GpuDescPool;
+    }
+#endif // FALCOR_HAS_D3D12
+
+    const GpuMemoryHeap::SharedPtr& getUploadHeap() const { return mpUploadHeap; }
+    void releaseResource(ISlangUnknown* pResource);
+
+    double getGpuTimestampFrequency() const { return mGpuTimestampFrequency; } // ms/tick
+
+    /**
+     * Get the device limits.
+     */
+    const Limits& getLimits() const { return mLimits; }
+
+    /**
+     * Check if features are supported by the device
+     */
+    bool isFeatureSupported(SupportedFeatures flags) const;
+
+    /**
+     * Check if a shader model is supported by the device
+     */
+    bool isShaderModelSupported(ShaderModel shaderModel) const;
+
+    /**
+     * Return the highest supported shader model by the device
+     */
+    ShaderModel getSupportedShaderModel() const { return mSupportedShaderModel; }
+
+    gfx::ITransientResourceHeap* getCurrentTransientResourceHeap();
+
+    /**
+     * Get the supported bind-flags for a specific format.
+     */
+    ResourceBindFlags getFormatBindFlags(ResourceFormat format);
+
+    /// Report live objects in GFX.
+    /// This is useful for checking clean shutdown where all resources are properly released.
+    static void reportLiveObjects();
+
+    /**
+     * Try to enable D3D12 Agility SDK at runtime.
+     * Note: This must be called before creating a device to have any effect.
+     *
+     * Prefer adding FALCOR_EXPORT_D3D12_AGILITY_SDK to the main translation unit of executables
+     * to tag the application binary to load the D3D12 Agility SDK.
+     *
+     * If loading Falcor as a library only (the case when loading Falcor as a Python module)
+     * tagging the main application (Python interpreter) is not possible. The alternative is
+     * to use the D3D12SDKConfiguration API introduced in Windows SDK 20348. This however
+     * requires "Developer Mode" to be enabled and the executed Python interpreter to be
+     * stored on the same drive as Falcor.
+     *
+     * @return Return true if D3D12 Agility SDK was successfully enabled.
+     */
+    static bool enableAgilitySDK();
+
+    /**
+     * Get a list of all available GPUs.
+     */
+    static std::vector<gfx::AdapterInfo> getGPUs(Type deviceType);
+
+    /**
+     * Get the global device mutex.
+     * WARNING: Falcor is generally not thread-safe. This mutex is used in very specific
+     * places only, currently only for doing parallel texture loading.
+     */
+    std::mutex& getGlobalGfxMutex() { return mGlobalGfxMutex; }
+
+private:
+    struct ResourceRelease
+    {
+        uint64_t fenceValue;
+        Slang::ComPtr<ISlangUnknown> mObject;
+    };
+    std::queue<ResourceRelease> mDeferredReleases;
+
+    bool init();
+    void executeDeferredReleases();
+
+    Desc mDesc;
+    Slang::ComPtr<slang::IGlobalSession> mSlangGlobalSession;
+    Slang::ComPtr<gfx::IDevice> mGfxDevice;
+    Slang::ComPtr<gfx::ICommandQueue> mGfxCommandQueue;
+    Slang::ComPtr<gfx::ITransientResourceHeap> mpTransientResourceHeaps[kInFlightFrameCount];
+    uint32_t mCurrentTransientResourceHeapIndex = 0;
+
+    std::shared_ptr<Sampler> mpDefaultSampler;
+
+    GpuMemoryHeap::SharedPtr mpUploadHeap;
+#if FALCOR_HAS_D3D12
+    std::shared_ptr<D3D12DescriptorPool> mpD3D12CpuDescPool;
+    std::shared_ptr<D3D12DescriptorPool> mpD3D12GpuDescPool;
+#endif
+    GpuFence::SharedPtr mpFrameFence;
+
+    std::unique_ptr<RenderContext> mpRenderContext;
+    std::list<QueryHeap::SharedPtr> mTimestampQueryHeaps;
+    double mGpuTimestampFrequency;
+
+    Limits mLimits;
+    SupportedFeatures mSupportedFeatures = SupportedFeatures::None;
+    ShaderModel mSupportedShaderModel = ShaderModel::Unknown;
+
+#if FALCOR_NVAPI_AVAILABLE
+    std::unique_ptr<PipelineCreationAPIDispatcher> mpAPIDispatcher;
+#endif
+
+    std::unique_ptr<ProgramManager> mpProgramManager;
+    std::unique_ptr<Profiler> mpProfiler;
+
+    std::mutex mGlobalGfxMutex;
+};
+
+inline constexpr uint32_t getMaxViewportCount()
+{
+    return 8;
 }
+
+/// !!! DO NOT USE THIS !!!
+/// This is only available during the migration away from having only a single global GPU device in Falcor.
+FALCOR_API std::shared_ptr<Device>& getGlobalDevice();
+
+FALCOR_ENUM_CLASS_OPERATORS(Device::SupportedFeatures);
+} // namespace Falcor

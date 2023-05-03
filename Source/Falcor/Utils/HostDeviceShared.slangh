@@ -37,6 +37,8 @@
 
 // TODO: Replace by bit packing functions
 #define EXTRACT_BITS(bits, offset, value) (((value) >> (offset)) & ((1 << (bits)) - 1))
+#define IS_BIT_SET(value, bitOffset)  ((value & (1 << bitOffset)) != 0)
+// TODO: Add check that "value" fits into "bits"
 #define PACK_BITS(bits, offset, flags, value) ((((value) & ((1 << (bits)) - 1)) << (offset)) | ((flags) & (~(((1 << (bits)) - 1) << (offset)))))
 #define PACK_BITS_UNSAFE(bits, offset, flags, value) (((value) << (offset)) | ((flags) & (~(((1 << (bits)) - 1) << (offset)))))
 
@@ -48,9 +50,6 @@
 #define END_NAMESPACE_FALCOR }
 #define SETTER_DECL
 #define CONST_FUNCTION const
-
-#define FALCOR_STATIC_ASSERT( cond ) static_assert( cond )
-#define FALCOR_STATIC_ASSERT_MSG( cond, msg ) static_assert( cond, msg )
 
 #include "Utils/Math/Vector.h"
 #include "Utils/Math/Float16.h"
@@ -86,6 +85,8 @@ namespace Falcor
     inline uint32_t asuint(float f) { return fstd::bit_cast<uint32_t>(f); }
     inline int32_t asint(float f) { return fstd::bit_cast<int32_t>(f); }
     inline uint16_t asuint16(float16_t f) { return fstd::bit_cast<uint16_t>(f); }
+
+    inline float sign(float f) { return std::copysign(f, 1.f); };
 }
 
 #else // HOST_CODE
@@ -98,8 +99,5 @@ namespace Falcor
 #define BEGIN_NAMESPACE_FALCOR
 #define END_NAMESPACE_FALCOR
 #define CONST_FUNCTION
-
-#define FALCOR_STATIC_ASSERT( cond )
-#define FALCOR_STATIC_ASSERT_MSG( cond, msg )
 
 #endif // HOST_CODE

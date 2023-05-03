@@ -34,7 +34,7 @@
 */
 
 import Utils.Sampling.TinyUniformSampleGenerator;
-import Rendering.Materials.Microfacet;
+import Rendering.Materials.IsotropicGGX;
 import Rendering.Materials.Fresnel;
 import SurfaceData;
 
@@ -423,7 +423,7 @@ bool RAB_GetConservativeVisibility(RAB_Surface surface, RAB_LightSample lightSam
 */
 bool RAB_GetTemporalConservativeVisibility(RAB_Surface curSurface, RAB_Surface prevSurface, RAB_LightSample lightSample)
 {
-    return RAB_GetConservativeVisibility(curSurface, lightSample);
+    return RAB_GetConservativeVisibility(prevSurface, lightSample);
 }
 
 /** Converts a world-space direction into a pair of numbers that, when passed into RAB_SamplePolymorphicLight

@@ -127,9 +127,9 @@ namespace Falcor
     }
 
     template<typename... Args>
-    inline void logDebug(const std::string_view format, Args&&... args)
+    inline void logDebug(fmt::format_string<Args...> format, Args&&... args)
     {
-        Logger::log(Logger::Level::Debug, fmt::vformat(format, fmt::make_format_args(std::forward<Args>(args)...)));
+        Logger::log(Logger::Level::Debug, fmt::format(format, std::forward<Args>(args)...));
     }
 
     inline void logInfo(const std::string_view msg)
@@ -138,9 +138,9 @@ namespace Falcor
     }
 
     template<typename... Args>
-    inline void logInfo(const std::string_view format, Args&&... args)
+    inline void logInfo(fmt::format_string<Args...> format, Args&&... args)
     {
-        Logger::log(Logger::Level::Info, fmt::vformat(format, fmt::make_format_args(std::forward<Args>(args)...)));
+        Logger::log(Logger::Level::Info, fmt::format(format, std::forward<Args>(args)...));
     }
 
     inline void logWarning(const std::string_view msg)
@@ -149,9 +149,9 @@ namespace Falcor
     }
 
     template<typename... Args>
-    inline void logWarning(const std::string_view format, Args&&... args)
+    inline void logWarning(fmt::format_string<Args...> format, Args&&... args)
     {
-        Logger::log(Logger::Level::Warning, fmt::vformat(format, fmt::make_format_args(std::forward<Args>(args)...)));
+        Logger::log(Logger::Level::Warning, fmt::format(format, std::forward<Args>(args)...));
     }
 
     inline void logError(const std::string_view msg)
@@ -160,9 +160,9 @@ namespace Falcor
     }
 
     template<typename... Args>
-    inline void logError(const std::string_view format, Args&&... args)
+    inline void logError(fmt::format_string<Args...> format, Args&&... args)
     {
-        Logger::log(Logger::Level::Error, fmt::vformat(format, fmt::make_format_args(std::forward<Args>(args)...)));
+        Logger::log(Logger::Level::Error, fmt::format(format, std::forward<Args>(args)...));
     }
 
     inline void logFatal(const std::string_view msg)
@@ -171,8 +171,8 @@ namespace Falcor
     }
 
     template<typename... Args>
-    inline void logFatal(const std::string_view format, Args&&... args)
+    inline void logFatal(fmt::format_string<Args...> format, Args&&... args)
     {
-        Logger::log(Logger::Level::Fatal, fmt::vformat(format, fmt::make_format_args(std::forward<Args>(args)...)));
+        Logger::log(Logger::Level::Fatal, fmt::format(format, std::forward<Args>(args)...));
     }
 }

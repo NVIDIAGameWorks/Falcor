@@ -1,8 +1,6 @@
 from falcor import *
 
 def render_graph_VBufferRT():
-    loadRenderPassLibrary("GBuffer.dll")
-
     g = RenderGraph("VBufferRT")
     g.addPass(createPass("VBufferRT"), "VBufferRT")
 
@@ -11,6 +9,7 @@ def render_graph_VBufferRT():
     g.markOutput("VBufferRT.depth")
     g.markOutput("VBufferRT.mvec")
     g.markOutput("VBufferRT.viewW")
+    g.markOutput("VBufferRT.mask")
 
     return g
 

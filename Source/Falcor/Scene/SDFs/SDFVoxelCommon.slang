@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,6 +28,8 @@
 #include "Utils/Math/MathConstants.slangh"
 
 import Utils.Math.FormatConversion;
+import Utils.Math.AABB;
+
 
 struct SDFVoxelCommon
 {
@@ -192,4 +194,6 @@ struct SDFVoxelCommon
         float2 cYs = lerp(cXs.xy, cXs.zw, voxelUnitCoords.y);
         return lerp(cYs.x, cYs.y, voxelUnitCoords.z);
     }
+
+
 };

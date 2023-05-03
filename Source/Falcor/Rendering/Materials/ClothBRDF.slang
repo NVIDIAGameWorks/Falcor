@@ -29,7 +29,7 @@
 
 import Scene.ShadingData;
 import Utils.Math.MathHelpers;
-__exported import Rendering.Materials.IBxDF;
+__exported import Rendering.Materials.IBSDF;
 
 // Uncomment to enable subsurface scattering approximation.
 // Note we need framework support for supplying a subsurface color before it's useful.
@@ -40,14 +40,14 @@ __exported import Rendering.Materials.IBxDF;
     - Estevez and Kulla 2017, "Production Friendly Microfacet Sheen BRDF".
     - Google Filament.
 */
-struct ClothBRDF : IBxDF
+struct ClothBRDF : IBSDF
 {
     float roughness;            ///< Linear roughness.
     float3 f0;                  ///< Specular reflectance at normal incidence.
     float3 diffuseColor;        ///< Diffuse albedo.
     float3 subsurfaceColor;     ///< Subsurface color.
 
-    // Implementation of IBxDF interface
+    // Implementation of IBSDF interface
 
     float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
     {
@@ -56,10 +56,10 @@ struct ClothBRDF : IBxDF
         return evalWeight(wi, wo) * M_1_PI * wo.z;
     }
 
-    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobe, inout S sg)
+    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg)
     {
         wo = sample_cosine_hemisphere_concentric(sampleNext2D(sg), pdf);
-        lobe = (uint)LobeType::DiffuseReflection;
+        lobeType = (uint)LobeType::DiffuseReflection;
 
         if (min(wi.z, wo.z) < kMinCosTheta)
         {
@@ -78,6 +78,18 @@ struct ClothBRDF : IBxDF
         return M_1_PI * wo.z;
     }
 
+    AlbedoContributions evalAlbedo(const float3 wi, const LobeType lobetype)
+    {
+        // this is not entirely correct, we need to include the sheen as well
+        return AlbedoContributions(diffuseColor, 1.f - diffuseColor, 0.f, 0.f);
+    }
+
+    RoughnessInformation getRoughnessInformation(const float3 wi)
+    {
+        RoughnessInformation r;
+        r.roughnessBSDFNotation = (roughness + 1.f) * 0.5f;
+        return r;
+    }
 
     // Additional functions
 

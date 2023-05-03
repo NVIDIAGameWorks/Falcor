@@ -7,7 +7,7 @@
 
 if(WIN32 AND CMAKE_GENERATOR MATCHES "Ninja")
     message(STATUS "Setting up mt-retry workaround.")
-    set(CMAKE_MT_ORIGINAL ${CMAKE_MT} CACHE FILEPATH "" FORCE)
+    set(CMAKE_MT_ORIGINAL ${CMAKE_MT} CACHE FILEPATH "")
     # Write out a wrapper batch script to re-run mt.exe when it fails.
     configure_file(${CMAKE_CURRENT_LIST_DIR}/mt-retry.bat.in ${CMAKE_CURRENT_BINARY_DIR}/mt-retry.bat)
     # Set CMAKE_MT to execute the wrapper batch script.

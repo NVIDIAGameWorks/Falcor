@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -35,78 +35,78 @@
 
 namespace Falcor
 {
-    template<typename ObjectType>
-    class FALCOR_API FencedPool
+template<typename ObjectType>
+class FALCOR_API FencedPool
+{
+public:
+    using SharedPtr = std::shared_ptr<FencedPool<ObjectType>>;
+    using NewObjectFuncType = ObjectType (*)(void*);
+
+    /**
+     * Create a new fenced pool.
+     * @param[in] pFence GPU fence to use for synchronization.
+     * @param[in] newFunc Ptr to function called to create new objects.
+     * @param[in] pUserData Optional ptr to user data passed to the object creation function.
+     * @return A new object, or throws an exception if creation failed.
+     */
+    static SharedPtr create(GpuFence::SharedConstPtr pFence, NewObjectFuncType newFunc, void* pUserData = nullptr)
     {
-    public:
-        using SharedPtr = std::shared_ptr<FencedPool<ObjectType>>;
-        using SharedConstPtr = std::shared_ptr<const FencedPool<ObjectType>>;
-        using NewObjectFuncType = ObjectType(*)(void*);
+        return SharedPtr(new FencedPool(pFence, newFunc, pUserData));
+    }
 
-        /** Create a new fenced pool.
-            \param[in] pFence GPU fence to use for synchronization.
-            \param[in] newFunc Ptr to function called to create new objects.
-            \param[in] pUserData Optional ptr to user data passed to the object creation function.
-            \return A new object, or throws an exception if creation failed.
-        */
-        static SharedPtr create(GpuFence::SharedConstPtr pFence, NewObjectFuncType newFunc, void* pUserData = nullptr)
+    /**
+     * Return an object.
+     * @return An object, or throws an exception on failure.
+     */
+    ObjectType newObject()
+    {
+        // Retire the active object
+        Data data;
+        data.alloc = mActiveObject;
+        data.timestamp = mpFence->getCpuValue();
+        mQueue.push(data);
+
+        // The queue is sorted based on time. Check if the first object is free
+        data = mQueue.front();
+        if (data.timestamp <= mpFence->getGpuValue())
         {
-            return SharedPtr(new FencedPool(pFence, newFunc, pUserData));
+            mQueue.pop();
+        }
+        else
+        {
+            data.alloc = createObject();
         }
 
-        /** Return an object.
-            \return An object, or throws an exception on failure.
-        */
-        ObjectType newObject()
-        {
-            // Retire the active object
-            Data data;
-            data.alloc = mActiveObject;
-            data.timestamp = mpFence->getCpuValue();
-            mQueue.push(data);
+        mActiveObject = data.alloc;
+        return mActiveObject;
+    }
 
-            // The queue is sorted based on time. Check if the first object is free
-            data = mQueue.front();
-            if (data.timestamp <= mpFence->getGpuValue())
-            {
-                mQueue.pop();
-            }
-            else
-            {
-                data.alloc = createObject();
-            }
+private:
+    FencedPool(GpuFence::SharedConstPtr pFence, NewObjectFuncType newFunc, void* pUserData)
+        : mNewObjFunc(newFunc), mpFence(pFence), mpUserData(pUserData)
+    {
+        FALCOR_ASSERT(pFence && newFunc);
+        mActiveObject = createObject();
+    }
 
-            mActiveObject = data.alloc;
-            return mActiveObject;
-        }
+    ObjectType createObject()
+    {
+        ObjectType pObj = mNewObjFunc(mpUserData);
+        if (pObj == nullptr)
+            throw RuntimeError("Failed to create new object in fenced pool");
+        return pObj;
+    }
 
-    private:
-        FencedPool(GpuFence::SharedConstPtr pFence, NewObjectFuncType newFunc, void* pUserData)
-            : mpUserData(pUserData)
-            , mpFence(pFence)
-            , mNewObjFunc(newFunc)
-        {
-            FALCOR_ASSERT(pFence && newFunc);
-            mActiveObject = createObject();
-        }
-
-        ObjectType createObject()
-        {
-            ObjectType pObj = mNewObjFunc(mpUserData);
-            if (pObj == nullptr) throw RuntimeError("Failed to create new object in fenced pool");
-            return pObj;
-        }
-
-        struct Data
-        {
-            ObjectType alloc;
-            uint64_t timestamp;
-        };
-
-        ObjectType mActiveObject;
-        NewObjectFuncType mNewObjFunc = nullptr;
-        std::queue<Data> mQueue;
-        GpuFence::SharedConstPtr mpFence;
-        void* mpUserData;
+    struct Data
+    {
+        ObjectType alloc;
+        uint64_t timestamp;
     };
-}
+
+    ObjectType mActiveObject;
+    NewObjectFuncType mNewObjFunc = nullptr;
+    std::queue<Data> mQueue;
+    GpuFence::SharedConstPtr mpFence;
+    void* mpUserData;
+};
+} // namespace Falcor

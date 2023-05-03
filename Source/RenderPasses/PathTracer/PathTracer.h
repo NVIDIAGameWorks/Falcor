@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -46,11 +46,11 @@ using namespace Falcor;
 class PathTracer : public RenderPass
 {
 public:
+    FALCOR_PLUGIN_CLASS(PathTracer, "PathTracer", "Reference path tracer.");
+
     using SharedPtr = std::shared_ptr<PathTracer>;
 
-    static const Info kInfo;
-
-    static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
@@ -73,11 +73,11 @@ private:
         RtBindingTable::SharedPtr pBindingTable;
         RtProgramVars::SharedPtr pVars;
 
-        TracePass(const std::string& name, const std::string& passDefine, const Scene::SharedPtr& pScene, const Program::DefineList& defines, const Program::TypeConformanceList& globalTypeConformances);
-        void prepareProgram(const Program::DefineList& defines);
+        TracePass(std::shared_ptr<Device> pDevice, const std::string& name, const std::string& passDefine, const Scene::SharedPtr& pScene, const Program::DefineList& defines, const Program::TypeConformanceList& globalTypeConformances);
+        void prepareProgram(std::shared_ptr<Device> pDevice, const Program::DefineList& defines);
     };
 
-    PathTracer(const Dictionary& dict);
+    PathTracer(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     void parseDictionary(const Dictionary& dict);
     void validateOptions();
@@ -182,6 +182,7 @@ private:
     Buffer::SharedPtr               mpSampleGuideData;          ///< Compact per-sample denoiser guide data.
     Buffer::SharedPtr               mpSampleNRDRadiance;        ///< Compact per-sample NRD radiance data.
     Buffer::SharedPtr               mpSampleNRDHitDist;         ///< Compact per-sample NRD hit distance data.
+    Buffer::SharedPtr               mpSampleNRDPrimaryHitNeeOnDelta;///< Compact per-sample NEE on delta primary vertices data.
     Buffer::SharedPtr               mpSampleNRDEmission;        ///< Compact per-sample NRD emission data.
     Buffer::SharedPtr               mpSampleNRDReflectance;     ///< Compact per-sample NRD reflectance data.
 };

@@ -86,11 +86,56 @@ namespace Falcor
             rmcv::mat4 T = rmcv::translate(mTranslation);
             rmcv::mat4 R = rmcv::mat4_cast(mRotation);
             rmcv::mat4 S = rmcv::scale(mScaling);
-            mMatrix = T * R * S;
+            switch (mCompositionOrder)
+            {
+             case CompositionOrder::ScaleRotateTranslate:
+                mMatrix = T * R * S;
+                break;
+            case CompositionOrder::ScaleTranslateRotate:
+                mMatrix = R * T * S;
+                break;
+            case CompositionOrder::RotateScaleTranslate:
+                mMatrix = T * S * R;
+                break;
+            case CompositionOrder::RotateTranslateScale:
+                mMatrix = S * T * R;
+                break;
+            case CompositionOrder::TranslateRotateScale:
+                mMatrix = S * R * T;
+                break;
+            case CompositionOrder::TranslateScaleRotate:
+                mMatrix = R * S * T;
+                break;
+            case CompositionOrder::Unknown:
+                throw RuntimeError("Unknown transform composition order.");
+                break;
+            }
             mDirty = false;
         }
 
         return mMatrix;
+    }
+
+    Transform::CompositionOrder Transform::getInverseOrder(const Transform::CompositionOrder& order)
+    {
+        switch (order)
+        {
+        case Transform::CompositionOrder::ScaleRotateTranslate:
+            return Transform::CompositionOrder::TranslateRotateScale;
+        case Transform::CompositionOrder::ScaleTranslateRotate:
+            return Transform::CompositionOrder::RotateTranslateScale;
+        case Transform::CompositionOrder::RotateScaleTranslate:
+            return Transform::CompositionOrder::TranslateScaleRotate;
+        case Transform::CompositionOrder::RotateTranslateScale:
+            return Transform::CompositionOrder::ScaleTranslateRotate;
+        case Transform::CompositionOrder::TranslateRotateScale:
+            return Transform::CompositionOrder::ScaleRotateTranslate;
+        case Transform::CompositionOrder::TranslateScaleRotate:
+            return Transform::CompositionOrder::RotateScaleTranslate;
+        case Transform::CompositionOrder::Unknown:
+            throw RuntimeError("Cannot invert unknown transform composition order.");
+        }
+        return Transform::CompositionOrder::Unknown;
     }
 
     bool Transform::operator==(const Transform& other) const
@@ -156,6 +201,10 @@ namespace Falcor
                 {
                     if (isFloat3) up = float3Value;
                 }
+                else if (key == "order")
+                {
+                    transform.setCompositionOrder(pybind11::cast<Transform::CompositionOrder>(value));
+                }
             }
 
             if (position && target && up)
@@ -166,12 +215,25 @@ namespace Falcor
             return transform;
         };
 
+        pybind11::enum_<Transform::CompositionOrder> order(m, "CompositionOrder");
+        order.value("Default", Transform::CompositionOrder::Default);
+        order.value("SRT", Transform::CompositionOrder::ScaleRotateTranslate);
+        order.value("STR", Transform::CompositionOrder::ScaleTranslateRotate);
+        order.value("RST", Transform::CompositionOrder::RotateScaleTranslate);
+        order.value("RTS", Transform::CompositionOrder::RotateTranslateScale);
+        order.value("TRS", Transform::CompositionOrder::TranslateRotateScale);
+        order.value("TSR", Transform::CompositionOrder::TranslateScaleRotate);
+
         pybind11::class_<Transform> transform(m, "Transform");
         transform.def(pybind11::init(init));
+        // Dummy repr to generate correct python stub files.
+        auto repr = [](const Transform& t) { return "Transform()"; };
+        transform.def("__repr__", repr);
         transform.def_property("translation", &Transform::getTranslation, &Transform::setTranslation);
         transform.def_property("rotationEuler", &Transform::getRotationEuler, &Transform::setRotationEuler);
         transform.def_property("rotationEulerDeg", &Transform::getRotationEulerDeg, &Transform::setRotationEulerDeg);
         transform.def_property("scaling", &Transform::getScaling, &Transform::setScaling);
+        transform.def_property("order", &Transform::getCompositionOrder, &Transform::setCompositionOrder);
         transform.def_property_readonly("matrix", &Transform::getMatrix);
         transform.def("lookAt", &Transform::lookAt, "position"_a, "target"_a, "up"_a);
     }

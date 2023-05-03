@@ -50,7 +50,7 @@ You can also leverage Falcor's scripting system to build scenes. This can be use
 
 ### Basic Usage
 
-When a Python scene file is executed, the script has access to a global variable `sceneBuilder` of type `SceneBuilder`. As the name suggests, the `SceneBuilder` class is used to build the scene. For a full reference see the [scripting documentation](./Scripting.md).
+When a Python scene file is executed, the script has access to a global variable `sceneBuilder` of type `SceneBuilder`. As the name suggests, the `SceneBuilder` class is used to build the scene. For a full reference see the [scripting documentation](./scripting.md).
 
 A very basic Python scene file might just load an asset:
 
@@ -143,7 +143,7 @@ Each vertex has a _position_, _normal_ and _texCoord_ attribute. Triangles are d
 #### Create Materials
 
 Next we need to define at least one material to use for our meshes.
-For more examples, see [Materials](./Materials.md).
+For more examples, see [Materials](./materials.md).
 
 ```python
 # Create materials

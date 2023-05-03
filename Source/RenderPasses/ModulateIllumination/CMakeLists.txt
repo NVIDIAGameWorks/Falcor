@@ -1,4 +1,4 @@
-add_renderpass(ModulateIllumination)
+add_plugin(ModulateIllumination)
 
 target_sources(ModulateIllumination PRIVATE
     ModulateIllumination.cpp

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,8 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-import Rendering.Materials.IBxDF;
 import Scene.Material.MaterialData;
+import Scene.HitInfo;
 import Utils.Geometry.GeometryHelpers;
 
 /** This struct holds information needed for shading a hit point.
@@ -39,8 +39,8 @@ import Utils.Geometry.GeometryHelpers;
     - Index of refraction of the surrounding medium.
 
     Based on a ShadingData struct, the material system can be queried
-    for a BSDF instance at the hit using `gScene.materials.getBSDF()`.
-    The BSDF has interfaces for sampling and evaluation, as well as for
+    for a material instance at the hit using `gScene.materials.getMaterialInstance()`.
+    The material instance has interfaces for sampling and evaluation, as well as for
     querying its properties at the hit.
 */
 struct ShadingData
@@ -48,11 +48,14 @@ struct ShadingData
     // Geometry data
     float3  posW;                   ///< Shading hit position in world space.
     float3  V;                      ///< View direction, -incident direction (-ray.dir)
-    float3  N;                      ///< Shading normal at shading hit.
-    float3  T;                      ///< Shading tangent at shading hit.
-    float3  B;                      ///< Shading bitangent at shading hit.
+    // N,T,B is an orthonormal basis representing the interpolated shading frame in world space at the shading point.
+    // Handedness is determined by the MikkTSpace library and stored in tangentW.w on the mesh, where B = cross(N, T) * tangentW.w.
+    float3  N;                      ///< Shading normal at shading hit. Normalized.
+    float3  T;                      ///< Shading tangent at shading hit. Normalized.
+    float3  B;                      ///< Shading bitangent at shading hit. Normalized.
     float2  uv;                     ///< Texture mapping coordinates.
     float3  faceN;                  ///< Face normal in world space, always on the front-facing side.
+    float4  tangentW;               ///< Geometric tangent (xyz) and sign (w) in world space. This is used for orthogonalization. Not normalized, but it is guaranteed to be nonzero and sign (w) is +-1.0.
     bool    frontFacing;            ///< True if primitive seen from the front-facing side.
     float   curveRadius;            ///< Curve cross-sectional radius. Valid only for geometry generated from curves.
 
@@ -92,5 +95,13 @@ struct ShadingData
     float3 toLocal(float3 v)
     {
         return float3(dot(v, T), dot(v, B), dot(v, N));
+    }
+
+    /** Returns sign that gets applied to such that B = cross(N, T) * getHandednessSign();
+        \return +1 for right handed, and -1 for left handed frames.
+    */
+    float getHandednessSign()
+    {
+        return dot(cross(N, T), B) >= 0.f ? 1.f : -1.f;
     }
 };

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,7 +30,7 @@
 
 BEGIN_NAMESPACE_FALCOR
 
-/** Flags representing the various lobes of a BxDF.
+/** Flags representing the various lobes of a BSDF.
 */
 // TODO: Specify the backing type when Slang issue has been resolved
 enum class LobeType // : uint32_t

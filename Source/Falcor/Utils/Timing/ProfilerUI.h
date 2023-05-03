@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -43,8 +43,6 @@ namespace Falcor
     class FALCOR_API ProfilerUI
     {
     public:
-        using UniquePtr = std::unique_ptr<ProfilerUI>;
-
         enum class GraphMode : uint32_t
         {
             Off,
@@ -53,10 +51,9 @@ namespace Falcor
             Count,
         };
 
-        /** Create a profiler UI instance.
-            \param[in] pProfiler Profiler.
-        */
-        static UniquePtr create(const Profiler::SharedPtr& pProfiler);
+        /** Constructor.
+         */
+        ProfilerUI(Profiler* pProfiler) : mpProfiler(pProfiler) {}
 
         /** Render the profiler UI.
             Note: This must be called within a valid ImGui window.
@@ -64,7 +61,6 @@ namespace Falcor
         void render();
 
     private:
-        ProfilerUI(const Profiler::SharedPtr& pProfiler) : mpProfiler(pProfiler) {}
 
         /** Render the profiler options.
         */
@@ -91,7 +87,7 @@ namespace Falcor
         */
         void clearGraphData();
 
-        Profiler::SharedPtr mpProfiler;         ///< Profiler instance.
+        Profiler* mpProfiler;                   ///< Profiler instance.
 
         GraphMode mGraphMode = GraphMode::Off;  ///< Graph mode.
         bool mEnableAverage = true;             ///< Use averaged time values (EMA).

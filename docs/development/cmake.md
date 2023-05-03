@@ -16,11 +16,11 @@ Note: After changing a `CMakeLists.txt` file, the next build will detect that ch
 
 ## Creating a new sample application
 
-Run `tools/make_new_sample.bat <SampleName>` to create a new sample application and adjust the build files.
+Run `tools/make_new_sample_app.bat <Name>` to create a new sample application and adjust the build files.
 
 ## Creating a new render pass
 
-Run `tools/make_new_render_pass_library.bat <LibraryName>` to create a new render pass library and adjust the build files.
+Run `tools/make_new_render_pass.bat <Name>` to create a new render pass library and adjust the build files.
 
 ## Falcor specific CMake functions
 

@@ -16,7 +16,7 @@ This covers the basic coding conventions and guidelines for all C++ and Slang co
 - Code is a medium for communication. When in doubt, favor code that is readable and maintainable.
 - When in doubt, make your additions/edits fit in with the style of the code around it. It should not be possible to see where code switches from one programmer to another.
 - In particular, resist the urge to _clean up_ code from other developers when doing an edit/merge, *even if* such cleanup brings the code more in line with the official style in this document. Seemingly innocent code cleanup can complicate subsequent merges by making diffs more complicated. Cleanup changes should be handled as separate edits and should take into account potential conflict with in-progress feature work.
-- Follow the [error handling policy](./Error-Handling.md) described separately.
+- Follow the [error handling policy](./error-handling.md) described separately.
 
 ## Documentation and Comments
 
@@ -55,26 +55,30 @@ This covers the basic coding conventions and guidelines for all C++ and Slang co
 - Slang files that are intended to be imported as modules should be named `.slang`
 - Slang files that for some reason cannot be imported and must be included should be named `.slangh`
 - Slang files that contain program entry points should include a suffix: `.rt.slang` for ray tracing, `.cs.slang` for compute, and `.3d.slang` for graphics programs (if the file has only a single shader stage, it is fine to name it according to that stage, for example `.ps.slang`). These suffices make it easier to find the entry points and prevent accidental `import` of a module that cannot be imported.
+- Slang files that contain program entry points should never `__export import` another Slang file, since they are not to be imported.
 - Slang files should be placed alongside the host source files in the directory tree.
 - Slang files that are included as headers (on the host or device) must include the preprocessor directive `#pragma once` to only include a header file once.
 - Slang files that are imported as modules should _not_ include the preprocessor directive `#pragma once`.
+
 
 ## Namespaces
 
 - Namespaces should be named with **PascalCase**.
 - All code in the folder `Falcor` should be in namespace `Falcor`.
-- Code in render pass DLLs should be in the global scope.
 - `using namespace` is only allowed inside source files. It should never be used in header files.
 - `using namespace std` is disallowed even in source files. If you want to save some work, alias the type you need from the std namespace, or use `auto`.
 - Prefer anonymous namespaces to `static` functions and variables in `.cpp` files (`static` should be omitted inside anonymous namespaces).
+- Do not indent code inside namespaces.
 
 ## Naming Guidelines
 
 - When there are multiple choices, favor US English spellings (e.g., `Color` instead of `Colour`, `Gray` instead of `Grey`). This isn't a value judgement, but we need a way for programmers to be able to predict how a function/type name will be spelled.
 - Names that involve acronyms (e.g. NASA) or initialisms (e.g. BRDF, AABB) and which are conventionally written in all capitals in English, should be written either in all caps or all lowercase, depending on where they appear in a name, rather than force awkward capitalizations like `Brdf`.
 - In extreme cases where multiple initialisms/acronyms must appear consecutively, it is okay to break with this convention for overall readability (so `XmlHttpRpc` instead of `XMLHTTPRPC`), but you probably shouldn't be giving things names like that anyway.
-- Markers for dimensionality (e.g. `2D`, `3D`) are effectively initialisms (they are pronounced as such in English), as is the term `ID` when used to mean "identifier" or "identification" (as opposed to the company or pyschological concept of Id).
+- Markers for dimensionality (e.g. `2D`, `3D`) are effectively initialisms (they are pronounced as such in English).
+- The term `ID` is also pronounced as initialism, and is used as part of other all caps types such as `UID`, `UUID`, and `GUID`, which have a long standard all caps style. Therefore, the `ID` itself shall also be all caps.
 - Abbreviations should be applied consistently across type/function names: either a term is *always* abbreviated, or it *never* is.
+    - As a general rule, acronyms should be used only if they're understandable to people who are well versed in the general topic of graphs on the GPU, but not with Falcor itself.
 - Specific terms that should always be abbreviated in type/function names:
     - `ID` for "identifier"
     - `Desc` for "description" or "descriptor" (in the sense of a value used to describe a thing to be constructed, but *not* in the case of a resource/binding "descriptor" in Vulkan/D3D12).
@@ -169,6 +173,7 @@ The following table outlines the naming prefixing and casing used:
 | macros | `UPPER_SNAKE_CASE` |
 
 In addition `p` prefix is used for pointers. This applies to all kinds of variables, e.g. `mpSomePtr`, `spSomePointer` etc.
+The prefix `p` is not strictly required in self-contained new code.
 
 ### Variables
 
@@ -178,26 +183,38 @@ In addition `p` prefix is used for pointers. This applies to all kinds of variab
 ### Macros
 
 - The use of macros should be minimized.
-- Global macros should be prefixed with `FALCOR_` to avoid collisions.
-- Arguments in macros should be prefixed with an `_` to avoid collisions.
-
+- Macros in header files should be prefixed with `FALCOR_` to avoid collisions.
 
 ## Language
 
 - Use `using` declaration instead of `typedef` (e.g. `using IndexVector = std::vector<uint32_t>;`).
 - Use sized types such as `int32_t`, `uint32_t`, `int16_t`. Conceptually, `bool` has unknown size, so no size equivalent. `char` is special and can be used only for C strings (use `int8_t` otherwise).
+    - Avoid using `std::vector<bool>`. It behaves differently from all other `std::vector` types, and only should be used when the memory pressure makes it absolutely necessary.
 - Use `nullptr` instead of `NULL` or `0`.
 - Use `enum class` instead of `enum`.
 
 ### Rules for C++ classes/interfaces
 
 - Classes with shared ownership:
-    - Must define a `SharedPtr` (e.g. `using SharedPtr = std::shared_ptr<MyClass>;`).
-    - Must expose a `SharedPtr create(...);` function. All constructors must be private/protected.
+    - Are generally expected to live on heap and owned via a `std::shared_ptr<MyClass>`.
+    - Should be used sparingly and only in justified cases, as shared ownership often has other implied assumptions on lifetimes of either objects or data in those objects.
+    - If classes define an alias for the `std::shared_ptr`, it shall be in the form:
+        - `using MyClassSharedPtr = std::shared_ptr<MyClass>;` outside the class.
+            - This is preferred as it can be easily forward declared
+        - `using SharedPtr = std::shared_ptr<MyClass>;` inside the class.
+            - This is only permitted for compatibility with older code that assumes the in-class definition.
+        - When in doubt whether a header should use the `SharedPtr` alias and bring in the full `MyClass.h` header, or it should use `std::shared_ptr<MyClass>` instead, always do the latter.
+    - Other types of smart pointers use aliases `ConstSharedPtr = std::shared_ptr<const MyClass>` and `WeakPtr = std::weak_ptr` follows the same patterns as `SharedPtr`
+    - These aliases must be only for `std` versions of smart pointers, it is not permissible to use `SharedPtr` for `boost::shared_ptr` or any other non-standard smart pointer.
+    - Are recommended to expose convenience `SharedPtr create(...);` factory functions.
+        - The former ban on public constructors has been lifted, to allow using `std::make_shared`.
 - Passing arguments:
-    - Use a (const) reference or raw-pointer if the argument is used only during the function's lifetime (i.e. the function doesn't store it in a member variable for future use).
-    - Use `const SomeObject::SharedPtr&` if the called function takes ownership of the object (i.e. store it in a member variable for future use). We use a const reference to avoid incrementing the reference count.
-- Prefer using `std::shared_ptr` over `std::unique_ptr`. Not to say that you can't use `std::unique_ptr`, but if you do you better have a good reason to do so.
+    - Use a (const) reference or (const) raw-pointer if the argument is used only during the function's lifetime (i.e. the function doesn't store it in a member variable for future use).
+    - Passing shared pointers to function that can take ownership can be done by either by value `SomeObject::SharedPtr` or by const reference `const SomeObject::SharedPtr&`.
+        - The first is preferred if the function takes ownership, as it allows efficient use of `std::move` (which should be used to take the actual ownership of the shared pointer)
+        - The latter is preferred if the function takes ownership only conditionally, as it avoid incrementing reference count in case the ownership is not taken.
+- Prefer using `std::shared_ptr` and `std::unique_ptr` over raw pointers to denote ownership. Raw pointers should generally only be used either in classes that explicitly implement some form of smart pointer (e.g., pointer aliased with data), or when the code cannot reasonably use references (e.g., the class needs to be copied, or the underlying APIs require pointers).
+    - Use `std::unique_ptr` unless the ownership of an object is truly shared, it is the more efficient smart pointer.
 - Use the `override` specifier on all overridden virtual methods. It helps catch bugs.
 - Avoid using `friend` unless absolutely needed.
 
@@ -214,7 +231,11 @@ In addition `p` prefix is used for pointers. This applies to all kinds of variab
 - Prefer member functions over global functions.
 - Prefer enums instead of using macros or global constants.
 - All entry points for a ray tracing or graphics program should be defined in the same file.
-
+- Use the `1.f, 1.5f` format for floating point numbers.
+    - Slang accepts both `1.f` and `1.0` as float, but some slang files are actually included in C++ files, where the latter becomes a double.
+    - Using the form that's common between Slang and C++ avoids any possible hidden performance issues.
+    - Slang uses `1.l, 1.L` for double. In C++, `1.l` (lowercase L) is `long double`, so using lowercase L for double literals is also safe.
+    - Please beware of the performance implications of using doubles.
 
 ## Code Formatting
 
@@ -224,30 +245,32 @@ In addition `p` prefix is used for pointers. This applies to all kinds of variab
 ### Indentation
 
 - Use **4 spaces**, no tabs.
+- All braces `{` `}` are on a new line (except empty `{}` blocks which can be put on a single line).
 - Indent next line after all braces `{` `}`.
 - Move code after braces `{` `}` to the next line.
 - Always indent the next line of any condition statement line:
 
 ```c++
 if (box.isEmpty())
-{
     return;
-}
 ```
-
+- `if`/`while`/`for` with a single statement do not have to use braces, if they are highly unlikely to be expanded to multiple statements.
 ```c++
 for (size_t i = 0; i < count; ++i)
 {
     if (distance(sphere, points[i]) > sphere.radius)
     {
-        return false;
+        return false; //< OK, prefer when odds are the block will be expanded
     }
+
+    if (std::isnan(distance(sphere, points[i])))
+        return false; //< Also OK, prefer when the block is a trivial statement, e.g., error checking.
 }
 ```
-- Single line statements without braces are OK in rare cases:
+- It is OK to have single line getters and setters with trivial (single statement) bodies.
 
 ```c++
-if (box.isEmpty()) return;
+int getValue() const { return mValue; }
 ```
 
 ### Spacing
@@ -292,6 +315,52 @@ return sqrt((point.x - sphere.center.x) * (point.x - sphere.center.x) +
 
 ### Comments
 
+- Commenting style has been changed for better utilization of available tools.
+    - Some of the existing code still uses the previous guidelines, refer to "Old style" section below.
+- First reason is that the auto-reflow of comments in clang-format (which is needed to avoid awkward breaks in the actual code) cannot handle the current style, and requiring manual touchups after automated reformat is just waste of human time.
+- Second reason is that both Visual Studio and Visual Studio Code have mechanisms to generate doxygen-style function comments, but the style is different from the old comment style. And again, given the choice between automating the work and keeping the current standard, we opt to save everyone's time and just change the standard.
+
+#### New style
+- Use the following syntax for adding comments to functions:
+
+```c++
+/**
+ * @brief Colorize a string for writing to a terminal.
+ * Detailed description. Can be an empty line.
+ * @tparam TParam1 First template argument
+ * @tparam TParam2 Second template argument
+ * @param Param1 First normal argument
+ * @param Param2 Second normal argument
+ * @return Only when non-void
+ */
+```
+
+- The `@brief` is optional. Doxygen will automatically end the brief section when it encounters `.`. As such, it is ok to use `.` even when the brief isn't a well formed sentence.
+- The parameters can have `@param[in]` and `@param[out]`, but it is not mandatory and not necessary when the direction is obvious, e.g., parameters passed by value or const references and pointers.
+
+- You can use `///` if the comment is short, i.e., if most of the lines of the comment were taken by the `/**` and `*/`
+    - Examples are variable comments that do not fit after the declaration (`///<` is still the preferred way).
+    - Short enum descriptions.
+- Trivial functions that are self-commenting (e.g., getters and setters) do not require comments.
+- Use `//` for inline comments:
+```c++
+// Find next empty slot.
+auto it = find_if(list.begin(), list.end(), [] (const Slot& slot) { return slot.isEmpty(); });
+```
+
+- Use `///<` for commenting struct fields:
+
+```c++
+struct Info
+{
+    float distance; ///< Distance to nearest point.
+    uint32_t index; ///< Index of nearest point.
+};
+```
+
+#### Old style
+- This style is now obsolete for new files and libraries.
+- This style shall still be used when doing small touch-ups in files that already use this style, to maintain a consistent look.
 - Use the following syntax for adding comments to functions:
 
 ```c++
@@ -303,6 +372,7 @@ return sqrt((point.x - sphere.center.x) * (point.x - sphere.center.x) +
 ```
 
 - Use `\param[in]`, `\param[out]` and `\param[in,out]` to specify how the function uses the arguments.
+- Trivial functions that are self-commenting (e.g., getters and setters) do not require comments.
 - Use `//` for inline comments:
 
 ```c++

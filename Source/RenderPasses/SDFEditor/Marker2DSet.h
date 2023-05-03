@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -41,7 +41,7 @@ namespace Falcor
     public:
         using SharedPtr = std::shared_ptr<Marker2DSet>;
 
-        static SharedPtr create(uint32_t maxMarkerCount);
+        static SharedPtr create(std::shared_ptr<Device> pDevice, uint32_t maxMarkerCount);
 
         /** Resets the marker index to the first position. This will allow the next add-calls to add markers from the beginning again.
         */
@@ -140,7 +140,7 @@ namespace Falcor
 
     protected:
 
-        Marker2DSet(uint32_t maxMarkerCount) : mMaxMarkerCount(maxMarkerCount) {}
+        Marker2DSet(std::shared_ptr<Device> pDevice, uint32_t maxMarkerCount) : mpDevice(std::move(pDevice)), mMaxMarkerCount(maxMarkerCount) {}
 
         /** Adds a Marker2D object to the buffer. Throws a runtime error when marker count exceeds the maximum marker count.
         */
@@ -151,6 +151,7 @@ namespace Falcor
         void updateBuffer();
 
     private:
+        std::shared_ptr<Device>         mpDevice;
         uint32_t                        mMaxMarkerCount;
         std::vector<Marker2DDataBlob>   mMarkers;
         Buffer::SharedPtr               mpMarkerBuffer;

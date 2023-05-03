@@ -1,4 +1,4 @@
-add_renderpass(BlitPass)
+add_plugin(BlitPass)
 
 target_sources(BlitPass PRIVATE
     BlitPass.cpp

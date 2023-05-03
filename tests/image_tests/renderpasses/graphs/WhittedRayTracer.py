@@ -2,9 +2,6 @@ from falcor import *
 
 def render_graph_WhittedRayTracer():
     g = RenderGraph("WhittedRayTracer")
-    loadRenderPassLibrary("GBuffer.dll")
-    loadRenderPassLibrary("WhittedRayTracer.dll")
-    loadRenderPassLibrary("ToneMapper.dll")
     WhittedRayTracer = createPass("WhittedRayTracer", {'maxBounces': 7, 'texLODMode': TexLODMode.RayCones, 'rayConeMode': RayConeMode.Unified, 'rayConeFilterMode': RayFootprintFilterMode.AnisotropicWhenRefraction, 'useRoughnessToVariance': False})
     g.addPass(WhittedRayTracer, "WhittedRayTracer")
     GBufferRT = createPass("GBufferRT", {'samplePattern': SamplePattern.Center, 'sampleCount': 1})

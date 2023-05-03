@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -43,7 +43,7 @@ namespace Falcor
             \param[in] narrowBandThickness NDSDFGrids operate on normalized distances, the distances are normalized so that a normalized distance of +- 1 represents a distance of "narrowBandThickness" voxel diameters. Should not be less than 1.
             \return NDSDFGrid object, or nullptr if errors occurred.
         */
-        static SharedPtr create(float narrowBandThickness);
+        static SharedPtr create(std::shared_ptr<Device> pDevice, float narrowBandThickness);
 
         virtual size_t getSize() const override;
         virtual uint32_t getMaxPrimitiveIDBits() const override;
@@ -61,7 +61,7 @@ namespace Falcor
         float calculateNormalizationFactor(uint32_t gridWidth) const;
 
     private:
-        NDSDFGrid(float narrowBandThickness);
+        NDSDFGrid(std::shared_ptr<Device> pDevice, float narrowBandThickness);
 
         // CPU data.
         std::vector<std::vector<int8_t>> mValues;
@@ -72,8 +72,8 @@ namespace Falcor
         float mNarrowBandThickness = 0.0f;
 
         // Resources shared among all NDSDFGrids.
-        static Sampler::SharedPtr spNDSDFGridSampler;
-        static Buffer::SharedPtr spNDSDFGridUnitAABBBuffer;
+        static Sampler::SharedPtr spNDSDFGridSampler; // TODO: REMOVEGLOBAL
+        static Buffer::SharedPtr spNDSDFGridUnitAABBBuffer; // TODO: REMOVEGLOBAL
 
         // GPU data.
         std::vector<Texture::SharedPtr> mNDSDFTextures;

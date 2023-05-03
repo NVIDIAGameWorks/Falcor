@@ -1,8 +1,6 @@
 from falcor import *
 
 def render_graph_MVecRT():
-    loadRenderPassLibrary("GBuffer.dll")
-
     g = RenderGraph("MVecRT")
     g.addPass(createPass("GBufferRT", {'samplePattern': SamplePattern.Stratified, 'sampleCount': 16}), "GBufferRT")
 

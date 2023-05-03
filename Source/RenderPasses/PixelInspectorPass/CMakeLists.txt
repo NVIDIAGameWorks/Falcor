@@ -1,4 +1,4 @@
-add_renderpass(PixelInspectorPass)
+add_plugin(PixelInspectorPass)
 
 target_sources(PixelInspectorPass PRIVATE
     PixelInspector.cs.slang
@@ -8,6 +8,5 @@ target_sources(PixelInspectorPass PRIVATE
 )
 
 target_copy_shaders(PixelInspectorPass RenderPasses/PixelInspectorPass)
-target_copy_data_folder(PixelInspectorPass RenderPasses/PixelInspectorPass)
 
 target_source_group(PixelInspectorPass "RenderPasses")

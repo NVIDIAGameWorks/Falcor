@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -368,13 +368,13 @@ namespace Falcor
         if (widget.var("Depth Range", depth, 0.f, FLT_MAX, 0.1f)) setDepthRange(depth.x, depth.y);
 
         float3 pos = getPosition();
-        if (widget.var("Position", pos, -FLT_MAX, FLT_MAX, 0.001f)) setPosition(pos);
+        if (widget.var("Position", pos, -FLT_MAX, FLT_MAX, 0.001f, false, "%.4f")) setPosition(pos);
 
         float3 target = getTarget();
-        if (widget.var("Target", target, -FLT_MAX, FLT_MAX, 0.001f)) setTarget(target);
+        if (widget.var("Target", target, -FLT_MAX, FLT_MAX, 0.001f, false, "%.4f")) setTarget(target);
 
         float3 up = getUpVector();
-        if (widget.var("Up", up, -FLT_MAX, FLT_MAX, 0.001f)) setUpVector(up);
+        if (widget.var("Up", up, -FLT_MAX, FLT_MAX, 0.001f, false, "%.4f")) setUpVector(up);
 
         if (widget.button("Dump")) dumpProperties();
     }

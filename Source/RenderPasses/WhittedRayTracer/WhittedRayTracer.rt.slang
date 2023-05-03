@@ -234,12 +234,12 @@ void traceScatterRay(inout ScatterRayData rayData)
 /** Evaluates the direct illumination from all analytic lights.
     This function samples Falcor's light list uniformly with one shadow ray per light.
     \param[in] sd Shading data.
-    \param[in] bsdf BSDF at the shading point.
+    \param[in] mi Material instance at the shading point.
     \param[in] rayOrigin Ray origin for the shadow ray.
     \param[in] sg SampleGenerator object.
     \return Outgoing radiance in view direction.
 */
-float3 evalDirectAnalytic(const ShadingData sd, const IBSDF bsdf, const float3 rayOrigin, inout SampleGenerator sg)
+float3 evalDirectAnalytic(const ShadingData sd, const IMaterialInstance mi, const float3 rayOrigin, inout SampleGenerator sg)
 {
     // Use all analytic light sources.
     const uint lightCount = gScene.getLightCount();
@@ -257,7 +257,7 @@ float3 evalDirectAnalytic(const ShadingData sd, const IBSDF bsdf, const float3 r
         {
             // Test visibility by tracing a shadow ray.
             bool V = traceShadowRay(rayOrigin, ls.dir, ls.distance);
-            contribution +=  V ? bsdf.eval(sd, ls.dir, sg) * ls.Li * invPdf : float3(0);
+            contribution +=  V ? mi.eval(sd, ls.dir, sg) * ls.Li * invPdf : float3(0);
         }
     }
     return contribution;
@@ -440,9 +440,9 @@ void scatterClosestHit(inout ScatterRayData rayData : SV_RayPayload, BuiltInTria
         }
     }
 
-    // Create BSDF instance and query its properties.
-    let bsdf = gScene.materials.getBSDF(sd, lod);
-    let bsdfProperties = bsdf.getProperties(sd);
+    // Create material instance and query its properties.
+    let mi = gScene.materials.getMaterialInstance(sd, lod);
+    let bsdfProperties = mi.getProperties(sd);
 
     // Update ray cones.
     // This has to be done after creating the BSDF instance because we need to query it
@@ -487,7 +487,7 @@ void scatterClosestHit(inout ScatterRayData rayData : SV_RayPayload, BuiltInTria
     // Add contribution of direct light from analytic lights.
     if (kUseAnalyticLights)
     {
-        float3 Lr = evalDirectAnalytic(sd, bsdf, rayOriginAtHitPoint, rayData.sg);
+        float3 Lr = evalDirectAnalytic(sd, mi, rayOriginAtHitPoint, rayData.sg);
         rayData.radiance += rayData.thp * Lr;
     }
 
@@ -573,9 +573,9 @@ void rayGen()
         const ShadingData sd = loadShadingData(launchIndex, worldPos.xyz, rayDir, lod);
         const float eta = computeEta(sd);
 
-        // Create BSDF instance and query its properties.
-        let bsdf = gScene.materials.getBSDF(sd, lod);
-        let bsdfProperties = bsdf.getProperties(sd);
+        // Create material instance and query its properties.
+        let mi = gScene.materials.getMaterialInstance(sd, lod);
+        let bsdfProperties = mi.getProperties(sd);
 
         // Create sample generator.
         SampleGenerator sg = SampleGenerator(launchIndex, gFrameCount);
@@ -592,7 +592,7 @@ void rayGen()
 
         // Add contribution of direct light from analytic lights.
         // Light probe and mesh lights are handled by the scatter ray hit/miss shaders.
-        outColor += kUseAnalyticLights ? evalDirectAnalytic(sd, bsdf, rayOriginAtHitPoint, sg) : float3(0.f);
+        outColor += kUseAnalyticLights ? evalDirectAnalytic(sd, mi, rayOriginAtHitPoint, sg) : float3(0.f);
 
         // Prepare ray payload.
         ScatterRayData rayData = ScatterRayData(sg);

@@ -26,8 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 import Rendering.Materials.Fresnel;
-import Rendering.Materials.IBSDF;
-import Rendering.Materials.Microfacet;
+import Rendering.Materials.IMaterialInstance;
+import Rendering.Materials.IsotropicGGX;
 import RenderPasses.Shared.Denoising.NRDConstants;
 import Scene.Scene;
 import Scene.ShadingData;
@@ -41,15 +41,17 @@ float3 getMaterialReflectanceForDeltaPaths(const MaterialType materialType, cons
         const BasicMaterialData md = gScene.materials.getBasicMaterialData(sd.materialID);
         const float metallic = md.specular.b; // Blue component stores metallic in MetalRough mode.
 
-        if (metallic == 0.f)
+        if (metallic < 1.f)
         {
-            const float3 diffuseReflectance = max(kNRDMinReflectance, bsdfProperties.diffuseReflectionAlbedo);
+            // Use sum of reflection/transmission albedo as they are denoised together.
+            const float3 diffuseReflectance = max(kNRDMinReflectance, bsdfProperties.diffuseReflectionAlbedo + bsdfProperties.diffuseTransmissionAlbedo);
             return diffuseReflectance;
         }
         // Handle only non-delta specular lobes.
-        else if (metallic == 1.f && !hasDeltaLobes)
+        // We use an approximate shading model with a single specular lobe.
+        else if (!hasDeltaLobes)
         {
-            const float NdotV = saturate(dot(sd.N, sd.V));
+            const float NdotV = saturate(dot(bsdfProperties.guideNormal, sd.V));
             const float ggxAlpha = bsdfProperties.roughness * bsdfProperties.roughness;
             float3 specularReflectance = approxSpecularIntegralGGX(bsdfProperties.specularReflectionAlbedo, ggxAlpha, NdotV);
             specularReflectance = max(kNRDMinReflectance, specularReflectance);
@@ -58,7 +60,8 @@ float3 getMaterialReflectanceForDeltaPaths(const MaterialType materialType, cons
     }
     else if (materialType == MaterialType::Hair)
     {
-        const float3 reflectance = max(kNRDMinReflectance, bsdfProperties.diffuseReflectionAlbedo);
+        // Use sum of reflection/transmission albedo as they are denoised together.
+        const float3 reflectance = max(kNRDMinReflectance, bsdfProperties.diffuseReflectionAlbedo + bsdfProperties.diffuseTransmissionAlbedo);
         return reflectance;
     }
 

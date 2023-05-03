@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -44,10 +44,10 @@ namespace Mogwai
         const std::string kPrint = "print";
         const std::string kOutputs = "outputs";
 
-        Texture::SharedPtr createTextureForBlit(const Texture* pSource)
+        Texture::SharedPtr createTextureForBlit(Device* pDevice, const Texture* pSource)
         {
             FALCOR_ASSERT(pSource->getType() == Texture::Type::Texture2D);
-            return Texture::create2D(pSource->getWidth(), pSource->getHeight(), ResourceFormat::RGBA8UnormSrgb, 1, 1, nullptr, Texture::BindFlags::RenderTarget);
+            return Texture::create2D(pDevice, pSource->getWidth(), pSource->getHeight(), ResourceFormat::RGBA8UnormSrgb, 1, 1, nullptr, Texture::BindFlags::RenderTarget);
         }
     }
 
@@ -68,7 +68,7 @@ namespace Mogwai
         if (mShowUI)
         {
             auto w = Gui::Window(pGui, "Video Capture", mShowUI, { 800, 400 });
-            CaptureTrigger::renderUI(w);
+            CaptureTrigger::renderBaseUI(w);
             w.separator();
             mpEncoderUI->render(w, true);
         }
@@ -96,9 +96,9 @@ namespace Mogwai
             auto texFormat = pTex->getFormat();
             if (VideoEncoder::isFormatSupported(texFormat) == false)
             {
-                auto res = msgBox("Trying to record graph output " + outputName + " but the resource format is not supported by the video encoder.\nWould you like to capture the output as an RGBA8Srgb resource?\n\nFor HDR textures, this operation will clamp the results", MsgBoxType::YesNo);
+                auto res = msgBox("Error", "Trying to record graph output " + outputName + " but the resource format is not supported by the video encoder.\nWould you like to capture the output as an RGBA8Srgb resource?\n\nFor HDR textures, this operation will clamp the results", MsgBoxType::YesNo);
                 if(res == MsgBoxButton::No) continue;
-                encoder.pBlitTex = createTextureForBlit(pTex.get());
+                encoder.pBlitTex = createTextureForBlit(mpRenderer->getDevice().get(), pTex.get());
                 pTex = encoder.pBlitTex;
             }
 

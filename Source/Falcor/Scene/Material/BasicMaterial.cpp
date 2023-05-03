@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -50,8 +50,8 @@ namespace Falcor
         const float kMaxVolumeAnisotropy = 0.99f;
     }
 
-    BasicMaterial::BasicMaterial(const std::string& name, MaterialType type)
-        : Material(name, type)
+    BasicMaterial::BasicMaterial(std::shared_ptr<Device> pDevice, const std::string& name, MaterialType type)
+        : Material(std::move(pDevice), name, type)
     {
         mHeader.setIsBasicMaterial(true);
 
@@ -281,9 +281,9 @@ namespace Falcor
             Sampler::Desc desc = pSampler->getDesc();
             desc.setMaxAnisotropy(16); // Set 16x anisotropic filtering for improved min/max precision per triangle.
             desc.setReductionMode(Sampler::ReductionMode::Min);
-            mpDisplacementMinSampler = Sampler::create(desc);
+            mpDisplacementMinSampler = Sampler::create(mpDevice.get(), desc);
             desc.setReductionMode(Sampler::ReductionMode::Max);
-            mpDisplacementMaxSampler = Sampler::create(desc);
+            mpDisplacementMaxSampler = Sampler::create(mpDevice.get(), desc);
 
             markUpdates(UpdateFlags::ResourcesChanged);
         }
@@ -452,6 +452,8 @@ namespace Falcor
     {
         if (auto pDisplacementMap = getDisplacementMap(); pDisplacementMap && mDisplacementMapChanged)
         {
+            RenderContext* pRenderContext = mpDevice->getRenderContext();
+
             // Creates RGBA texture with MIP pyramid containing average, min, max values.
             Falcor::ResourceFormat oldFormat = pDisplacementMap->getFormat();
 
@@ -460,10 +462,9 @@ namespace Falcor
             {
                 Falcor::ResourceFormat newFormat = ResourceFormat::RGBA16Float;
                 Resource::BindFlags bf = pDisplacementMap->getBindFlags() | Resource::BindFlags::UnorderedAccess | Resource::BindFlags::RenderTarget;
-                Texture::SharedPtr newDisplacementTex = Texture::create2D(pDisplacementMap->getWidth(), pDisplacementMap->getHeight(), newFormat, pDisplacementMap->getArraySize(), Resource::kMaxPossible, nullptr, bf);
+                Texture::SharedPtr newDisplacementTex = Texture::create2D(mpDevice.get(), pDisplacementMap->getWidth(), pDisplacementMap->getHeight(), newFormat, pDisplacementMap->getArraySize(), Resource::kMaxPossible, nullptr, bf);
 
                 // Copy base level.
-                RenderContext* pContext = gpDevice->getRenderContext();
                 uint32_t arraySize = pDisplacementMap->getArraySize();
                 for (uint32_t a = 0; a < arraySize; a++)
                 {
@@ -471,7 +472,7 @@ namespace Falcor
                     auto rtv = newDisplacementTex->getRTV(0, a, 1);
                     const Sampler::ReductionMode redModes[] = { Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard };
                     const float4 componentsTransform[] = { float4(1.0f, 0.0f, 0.0f, 0.0f), float4(1.0f, 0.0f, 0.0f, 0.0f), float4(1.0f, 0.0f, 0.0f, 0.0f), float4(1.0f, 0.0f, 0.0f, 0.0f) };
-                    pContext->blit(srv, rtv, RenderContext::kMaxRect, RenderContext::kMaxRect, Sampler::Filter::Linear, redModes, componentsTransform);
+                    pRenderContext->blit(srv, rtv, RenderContext::kMaxRect, RenderContext::kMaxRect, Sampler::Filter::Linear, redModes, componentsTransform);
                 }
 
                 pDisplacementMap = newDisplacementTex;
@@ -479,7 +480,7 @@ namespace Falcor
             }
 
             // Build min/max MIPS.
-            pDisplacementMap->generateMips(gpDevice->getRenderContext(), true);
+            pDisplacementMap->generateMips(pRenderContext, true);
         }
         mDisplacementMapChanged = false;
     }
@@ -643,25 +644,7 @@ namespace Falcor
 
     void BasicMaterial::updateNormalMapType()
     {
-        NormalMapType type = NormalMapType::None;
-
-        if (auto pNormalMap = getNormalMap())
-        {
-            switch (getFormatChannelCount(pNormalMap->getFormat()))
-            {
-            case 2:
-                type = NormalMapType::RG;
-                break;
-            case 3:
-            case 4: // Some texture formats don't support RGB, only RGBA. We have no use for the alpha channel in the normal map.
-                type = NormalMapType::RGB;
-                break;
-            default:
-                FALCOR_UNREACHABLE();
-                logWarning("Unsupported normal map format for material '{}'.", mName);
-            }
-        }
-
+        NormalMapType type = detectNormalMapType(getNormalMap());
         if (mData.getNormalMapType() != type)
         {
             mData.setNormalMapType(type);

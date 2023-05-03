@@ -27,7 +27,6 @@
  **************************************************************************/
 import Utils.Attributes;
 import Scene.SceneTypes;
-import Scene.ShadingData;
 __exported import Scene.Lights.LightCollectionShared;
 __exported import Scene.Lights.MeshLightData;
 

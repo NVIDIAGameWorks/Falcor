@@ -88,7 +88,7 @@ namespace Mogwai
         if (!mFrameTimeFile.is_open()) return;
 
         // The FrameRate object is updated at the start of each frame, the first valid time is available on the second frame.
-        auto& frameRate = gpFramework->getFrameRate();
+        auto& frameRate = mpRenderer->getFrameRate();
         if (frameRate.getFrameCount() > 1)
             mFrameTimeFile << frameRate.getLastFrameTime() << std::endl;
     }

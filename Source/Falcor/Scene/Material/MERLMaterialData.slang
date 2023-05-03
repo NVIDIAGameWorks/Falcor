@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,8 +30,10 @@
 
 #ifdef HOST_CODE
 #include "Scene/Material/TextureHandle.slang"
+#include "Scene/Material/DiffuseSpecularData.slang"
 #else
 __exported import Scene.Material.TextureHandle;
+__exported import Scene.Material.DiffuseSpecularData;
 #endif
 
 BEGIN_NAMESPACE_FALCOR
@@ -41,9 +43,10 @@ BEGIN_NAMESPACE_FALCOR
 struct MERLMaterialData
 {
     // MaterialHeader (8B) is stored just before this struct in memory.
-    uint bufferID = 0;              ///< Buffer ID in material system where BRDF data is stored.
-    uint samplerID = 0;             ///< Texture sampler ID for LUT sampler.
-    TextureHandle texAlbedoLUT;     ///< Texture handle for albedo LUT.
+    uint bufferID = 0;                  ///< Buffer ID in material system where BRDF data is stored.
+    uint samplerID = 0;                 ///< Texture sampler ID for LUT sampler.
+    DiffuseSpecularData extraData = {}; ///< Parameters for a best fit BRDF approximation.
+    TextureHandle texAlbedoLUT;         ///< Texture handle for albedo LUT.
 
     static const uint kAlbedoLUTSize = 256;
 };

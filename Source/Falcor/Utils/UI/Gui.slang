@@ -29,7 +29,7 @@ SamplerState gSampler;
 Texture2D gFont;
 Texture2D guiImage;
 
-cbuffer PerFrameCB : register(b0)
+cbuffer PerFrameCB
 {
     float2 scale;
     float2 offset;

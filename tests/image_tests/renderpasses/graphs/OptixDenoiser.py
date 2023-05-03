@@ -2,11 +2,6 @@ from falcor import *
 
 def render_graph_OptixDenoiser():
     g = RenderGraph("OptixDenoiser")
-    loadRenderPassLibrary("AccumulatePass.dll")
-    loadRenderPassLibrary("GBuffer.dll")
-    loadRenderPassLibrary("OptixDenoiser.dll")
-    loadRenderPassLibrary("PathTracer.dll")
-    loadRenderPassLibrary("ToneMapper.dll")
     VBufferRT = createPass("VBufferRT")
     g.addPass(VBufferRT, "VBufferRT")
     AccumulatePass = createPass("AccumulatePass")
@@ -22,7 +17,7 @@ def render_graph_OptixDenoiser():
     g.addEdge("AccumulatePass.output", "ToneMappingPass.src")
     g.addEdge("ToneMappingPass.dst", "OptixDenoiser.color")
     g.addEdge("PathTracer.albedo", "OptixDenoiser.albedo")
-    g.addEdge("PathTracer.normal", "OptixDenoiser.normal")
+    g.addEdge("PathTracer.guideNormal", "OptixDenoiser.normal")
     g.addEdge("VBufferRT.mvec", "OptixDenoiser.mvec")
 
     # Color outputs
@@ -32,7 +27,7 @@ def render_graph_OptixDenoiser():
     # OptixDenoiser inputs
     g.markOutput("ToneMappingPass.dst")
     g.markOutput("PathTracer.albedo")
-    g.markOutput("PathTracer.normal")
+    g.markOutput("PathTracer.guideNormal")
     g.markOutput("VBufferRT.mvec")
 
     return g

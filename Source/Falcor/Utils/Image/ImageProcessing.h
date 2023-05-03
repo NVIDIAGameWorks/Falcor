@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -41,13 +41,8 @@ namespace Falcor
     class FALCOR_API ImageProcessing
     {
     public:
-        using SharedPtr = std::shared_ptr<ImageProcessing>;
-        ~ImageProcessing();
-
-        /** Create image processing utility.
-            \return New object.
-        */
-        static SharedPtr create();
+        /// Constructor.
+        ImageProcessing(std::shared_ptr<Device> pDevice);
 
         /** Copy single mip level and color channel from source to destination.
             The views must have matching dimension and format type (float vs integer).
@@ -61,14 +56,8 @@ namespace Falcor
         void copyColorChannel(RenderContext* pRenderContxt, const ShaderResourceView::SharedPtr& pSrc, const UnorderedAccessView::SharedPtr& pDst, const TextureChannelFlags srcMask);
 
     private:
-        ImageProcessing();
-
-        struct SharedData
-        {
-            size_t refCount = 0;
-            ComputePass::SharedPtr pCopyFloatPass;
-            ComputePass::SharedPtr pCopyIntPass;
-        };
-        static SharedData sSharedData;
+        std::shared_ptr<Device> mpDevice;
+        ComputePass::SharedPtr mpCopyFloatPass;
+        ComputePass::SharedPtr mpCopyIntPass;
     };
 }

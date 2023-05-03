@@ -1,8 +1,6 @@
 from falcor import *
 
 def render_graph_VBufferRT():
-    loadRenderPassLibrary("GBuffer.dll")
-
     g = RenderGraph("VBufferRT")
     g.addPass(createPass("VBufferRT", {"useTraceRayInline": True}), "VBufferRT")
 

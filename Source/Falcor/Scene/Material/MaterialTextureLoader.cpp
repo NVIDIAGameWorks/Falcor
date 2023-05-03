@@ -31,8 +31,8 @@
 namespace Falcor
 {
     MaterialTextureLoader::MaterialTextureLoader(const TextureManager::SharedPtr& pTextureManager, bool useSrgb)
-        : mpTextureManager(pTextureManager)
-        , mUseSrgb(useSrgb)
+        : mUseSrgb(useSrgb)
+        , mpTextureManager(pTextureManager)
     {
     }
 

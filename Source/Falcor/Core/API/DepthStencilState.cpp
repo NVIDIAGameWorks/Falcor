@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,62 +31,67 @@
 
 namespace Falcor
 {
-    DepthStencilState::SharedPtr DepthStencilState::create(const Desc& desc)
-    {
-        return SharedPtr(new DepthStencilState(desc));
-    }
-
-    DepthStencilState::~DepthStencilState() = default;
-
-    DepthStencilState::Desc& DepthStencilState::Desc::setStencilWriteMask(uint8_t mask)
-    {
-        mStencilWriteMask = mask;
-        return *this;
-    }
-
-    DepthStencilState::Desc& DepthStencilState::Desc::setStencilReadMask(uint8_t mask)
-    {
-        mStencilReadMask = mask;
-        return *this;
-    }
-
-    DepthStencilState::Desc& DepthStencilState::Desc::setStencilFunc(Face face, Func func)
-    {
-        if(face == Face::FrontAndBack)
-        {
-            setStencilFunc(Face::Front, func);
-            setStencilFunc(Face::Back, func);
-            return *this;
-        }
-        StencilDesc& Desc = (face == Face::Front) ? mStencilFront : mStencilBack;
-        Desc.func = func;
-        return *this;
-    }
-
-    DepthStencilState::Desc& DepthStencilState::Desc::setStencilOp(Face face, StencilOp stencilFail, StencilOp depthFail, StencilOp depthStencilPass)
-    {
-        if(face == Face::FrontAndBack)
-        {
-            setStencilOp(Face::Front, stencilFail, depthFail, depthStencilPass);
-            setStencilOp(Face::Back, stencilFail, depthFail, depthStencilPass);
-            return *this;
-        }
-        StencilDesc& Desc = (face == Face::Front) ? mStencilFront : mStencilBack;
-        Desc.stencilFailOp = stencilFail;
-        Desc.depthFailOp = depthFail;
-        Desc.depthStencilPassOp = depthStencilPass;
-
-        return *this;
-    }
-
-    const DepthStencilState::StencilDesc& DepthStencilState::getStencilDesc(Face face) const
-    {
-        FALCOR_ASSERT(face != Face::FrontAndBack);
-        return (face == Face::Front) ? mDesc.mStencilFront : mDesc.mStencilBack;
-    }
-
-    FALCOR_SCRIPT_BINDING(DepthStencilState)
-    {
-        pybind11::class_<DepthStencilState, DepthStencilState::SharedPtr>(m, "DepthStencilState");
-    }
+DepthStencilState::SharedPtr DepthStencilState::create(const Desc& desc)
+{
+    return SharedPtr(new DepthStencilState(desc));
 }
+
+DepthStencilState::~DepthStencilState() = default;
+
+DepthStencilState::Desc& DepthStencilState::Desc::setStencilWriteMask(uint8_t mask)
+{
+    mStencilWriteMask = mask;
+    return *this;
+}
+
+DepthStencilState::Desc& DepthStencilState::Desc::setStencilReadMask(uint8_t mask)
+{
+    mStencilReadMask = mask;
+    return *this;
+}
+
+DepthStencilState::Desc& DepthStencilState::Desc::setStencilFunc(Face face, Func func)
+{
+    if (face == Face::FrontAndBack)
+    {
+        setStencilFunc(Face::Front, func);
+        setStencilFunc(Face::Back, func);
+        return *this;
+    }
+    StencilDesc& Desc = (face == Face::Front) ? mStencilFront : mStencilBack;
+    Desc.func = func;
+    return *this;
+}
+
+DepthStencilState::Desc& DepthStencilState::Desc::setStencilOp(
+    Face face,
+    StencilOp stencilFail,
+    StencilOp depthFail,
+    StencilOp depthStencilPass
+)
+{
+    if (face == Face::FrontAndBack)
+    {
+        setStencilOp(Face::Front, stencilFail, depthFail, depthStencilPass);
+        setStencilOp(Face::Back, stencilFail, depthFail, depthStencilPass);
+        return *this;
+    }
+    StencilDesc& Desc = (face == Face::Front) ? mStencilFront : mStencilBack;
+    Desc.stencilFailOp = stencilFail;
+    Desc.depthFailOp = depthFail;
+    Desc.depthStencilPassOp = depthStencilPass;
+
+    return *this;
+}
+
+const DepthStencilState::StencilDesc& DepthStencilState::getStencilDesc(Face face) const
+{
+    FALCOR_ASSERT(face != Face::FrontAndBack);
+    return (face == Face::Front) ? mDesc.mStencilFront : mDesc.mStencilBack;
+}
+
+FALCOR_SCRIPT_BINDING(DepthStencilState)
+{
+    pybind11::class_<DepthStencilState, DepthStencilState::SharedPtr>(m, "DepthStencilState");
+}
+} // namespace Falcor

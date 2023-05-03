@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -36,14 +36,48 @@
 #include "Core/API/RenderContext.h"
 #include "Utils/Logger.h"
 #include "Utils/Math/Common.h"
+#include "Utils/Math/Matrix/Matrix.h"
 #include "Utils/Scripting/ScriptBindings.h"
-#include <rapidjson/rapidjson.h>
-#include <rapidjson/document.h>
-#include <rapidjson/prettywriter.h>
-#include <rapidjson/stringbuffer.h>
-#include <rapidjson/error/en.h>
+#include "Scene/SceneBuilderAccess.h"
+#include <nlohmann/json.hpp>
 #include <random>
 #include <fstream>
+
+using json = nlohmann::json;
+
+namespace glm
+{
+    void to_json(json& j, const glm::vec3& v)
+    {
+        j = { v.x, v.y, v.z };
+    }
+
+    void from_json(const json& j, glm::vec3& v)
+    {
+        j[0].get_to(v.x);
+        j[1].get_to(v.y);
+        j[2].get_to(v.z);
+    }
+}
+
+namespace Falcor::rmcv
+{
+    void to_json(json& j, const Falcor::rmcv::mat3& m)
+    {
+        for (uint32_t i = 0; i < 9; ++i)
+        {
+            j[i] = m[i / 3][i % 3];
+        }
+    }
+
+    void from_json(const json& j, Falcor::rmcv::mat3& m)
+    {
+        for (uint32_t i = 0; i < 9; ++i)
+        {
+            j[i].get_to(m[i / 3][i % 3]);
+        }
+    }
+}
 
 namespace Falcor
 {
@@ -60,145 +94,65 @@ namespace Falcor
 
         const char kPrimitiveTranslationJSONKey[] = "translation";
         const char kPrimitiveInvRotationScaleJSONKey[] = "inv_rot_scale";
-
-        void serializeUint(const char* pKey, uint32_t value, rapidjson::PrettyWriter<rapidjson::StringBuffer>& jsonWriter)
-        {
-            jsonWriter.String(pKey);
-            jsonWriter.Uint(value);
-        };
-
-        void serializeFloat(const char* pKey, float value, rapidjson::PrettyWriter<rapidjson::StringBuffer>& jsonWriter)
-        {
-            jsonWriter.String(pKey);
-            jsonWriter.Double((double)value);
-        };
-
-        void serializeFloat3(const char* pKey, const float3& value, rapidjson::PrettyWriter<rapidjson::StringBuffer>& jsonWriter)
-        {
-            jsonWriter.String(pKey);
-            jsonWriter.StartArray();
-            jsonWriter.Double((double)value.x);
-            jsonWriter.Double((double)value.y);
-            jsonWriter.Double((double)value.z);
-            jsonWriter.EndArray();
-        };
-
-        void serializeFloat3x3(const char* pKey, const rmcv::mat3& value, rapidjson::PrettyWriter<rapidjson::StringBuffer>& jsonWriter)
-        {
-            // matrices stored col-major for backwards compatibility
-            rmcv::mat3 m = value.getTranspose();
-            jsonWriter.String(pKey);
-            jsonWriter.StartArray();
-            for(int i = 0; i < 9; ++i)
-                jsonWriter.Double((double)m.data()[i]);
-            jsonWriter.EndArray();
-        };
-
-        bool deserializeUint(const char* pKey, const rapidjson::Value& jsonPrimitive, uint32_t& value)
-        {
-            const auto jsonMember = jsonPrimitive.FindMember(pKey);
-
-            if (jsonMember == jsonPrimitive.MemberEnd())
-            {
-                logWarning("JSON member '{}' could not be found!", pKey);
-                return false;
-            }
-
-            if (!jsonMember->value.IsUint())
-            {
-                logWarning("JSON member '{}' is not of type uint!", pKey);
-                return false;
-            }
-
-            value = jsonMember->value.GetUint();
-            return true;
-        };
-
-        bool deserializeFloat(const char* pKey, const rapidjson::Value& jsonPrimitive, float& value)
-        {
-            const auto jsonMember = jsonPrimitive.FindMember(pKey);
-
-            if (jsonMember == jsonPrimitive.MemberEnd())
-            {
-                logWarning("JSON member '{}' could not be found!", pKey);
-                return false;
-            }
-
-            if (!jsonMember->value.IsNumber())
-            {
-                logWarning("JSON member '{}' is not a number!", pKey);
-                return false;
-            }
-
-            value = jsonMember->value.GetFloat();
-            return true;
-        };
-
-        bool deserializeFloat3(const char* pKey, const rapidjson::Value& jsonPrimitive, float3& value)
-        {
-            const auto jsonMember = jsonPrimitive.FindMember(pKey);
-
-            if (jsonMember == jsonPrimitive.MemberEnd())
-            {
-                logWarning("JSON member '{}' could not be found!", pKey);
-                return false;
-            }
-
-            if (!jsonMember->value.IsArray())
-            {
-                logWarning("JSON member '{}' is not of type float!", pKey);
-                return false;
-            }
-
-            for (uint32_t i = 0; i < 3; i++)
-            {
-                const rapidjson::Value& jsonValue = jsonMember->value[i];
-
-                if (!jsonValue.IsNumber())
-                {
-                    logWarning("JSON vector index {} of member '{}' is not a number!", i, pKey);
-                    return false;
-                }
-
-                value[i] = jsonValue.GetFloat();
-            }
-
-            return true;
-        };
-
-        bool deserializeFloat3x3(const char* pKey, const rapidjson::Value& jsonPrimitive, rmcv::mat3& value)
-        {
-            const auto jsonMember = jsonPrimitive.FindMember(pKey);
-
-            if (jsonMember == jsonPrimitive.MemberEnd())
-            {
-                logWarning("JSON member '{}' could not be found!", pKey);
-                return false;
-            }
-
-            if (!jsonMember->value.IsArray())
-            {
-                logWarning("JSON member '{}' is not of type float!", pKey);
-                return false;
-            }
-
-            for (uint32_t i = 0; i < 9; i++)
-            {
-                const rapidjson::Value& jsonValue = jsonMember->value[i];
-
-                if (!jsonValue.IsNumber())
-                {
-                    logWarning("JSON matrix index '{}' of member is not a number!", i, pKey);
-                    return false;
-                }
-
-                /// matrices stored col-major for backwards compatibility
-                value[i % 3][i / 3] = jsonValue.GetFloat();
-            }
-
-            return true;
-        };
     }
+
+    NLOHMANN_JSON_SERIALIZE_ENUM(SDF3DShapeType, {
+        { SDF3DShapeType::Sphere, "sphere" },
+        { SDF3DShapeType::Ellipsoid, "ellipsoid" },
+        { SDF3DShapeType::Box, "box" },
+        { SDF3DShapeType::Torus, "torus" },
+        { SDF3DShapeType::Cone, "cone" },
+        { SDF3DShapeType::Capsule, "capsule" },
+    })
+
+    NLOHMANN_JSON_SERIALIZE_ENUM(SDFOperationType, {
+        { SDFOperationType::Union, "union" },
+        { SDFOperationType::Subtraction, "subtraction" },
+        { SDFOperationType::Intersection, "intersection" },
+        { SDFOperationType::SmoothUnion, "smooth_union" },
+        { SDFOperationType::SmoothSubtraction, "smooth_subtraction" },
+        { SDFOperationType::SmoothIntersection, "smooth_intersection" },
+    })
+
+    void to_json(json& j, const SDF3DPrimitive& primitive)
+    {
+        j[kPrimitiveShapeTypeJSONKey] = primitive.shapeType;
+        j[kPrimitiveShapeDataJSONKey] = primitive.shapeData;
+        j[kPrimitiveShapeBlobbingJSONKey] = primitive.shapeBlobbing;
+        j[kPrimitiveOperationTypeJSONKey] = primitive.operationType;
+        j[kPrimitiveOperationSmoothingJSONKey] = primitive.operationSmoothing;
+        j[kPrimitiveTranslationJSONKey] = primitive.translation;
+        j[kPrimitiveInvRotationScaleJSONKey] = primitive.invRotationScale;
+    }
+
+    void from_json(const json& j, SDF3DPrimitive& primitive)
+    {
+        // Note: Previous serialization code stored shapeType as an uint.
+        if (j[kPrimitiveShapeTypeJSONKey].is_number_unsigned())
+        {
+            j[kPrimitiveShapeTypeJSONKey].get_to<uint32_t>(reinterpret_cast<uint32_t&>(primitive.shapeType));
+        }
+        else
+        {
+            j[kPrimitiveShapeTypeJSONKey].get_to(primitive.shapeType);
+        }
+        j[kPrimitiveShapeDataJSONKey].get_to(primitive.shapeData);
+        j[kPrimitiveShapeBlobbingJSONKey].get_to(primitive.shapeBlobbing);
+        // Note: Previous serialization code stored operationType as an uint.
+        if (j[kPrimitiveShapeTypeJSONKey].is_number_unsigned())
+        {
+            j[kPrimitiveOperationTypeJSONKey].get_to<uint32_t>(reinterpret_cast<uint32_t&>(primitive.operationType));
+        }
+        else
+        {
+            j[kPrimitiveOperationTypeJSONKey].get_to(primitive.operationType);
+        }
+        j[kPrimitiveOperationSmoothingJSONKey].get_to(primitive.operationSmoothing);
+        j[kPrimitiveTranslationJSONKey].get_to(primitive.translation);
+        j[kPrimitiveInvRotationScaleJSONKey].get_to(primitive.invRotationScale);
+    }
+
+    SDFGrid::SDFGrid(std::shared_ptr<Device> pDevice) : mpDevice(std::move(pDevice)) {}
 
     uint32_t SDFGrid::setPrimitives(const std::vector<SDF3DPrimitive>& primitives, uint32_t gridWidth)
     {
@@ -424,7 +378,7 @@ namespace Falcor
 
     bool SDFGrid::writeValuesFromPrimitivesToFile(const std::filesystem::path& path, RenderContext* pRenderContext)
     {
-        if (!pRenderContext) pRenderContext = gpDevice->getRenderContext();
+        FALCOR_ASSERT(pRenderContext);
 
         createEvaluatePrimitivesPass(false, mHasGridRepresentation);
 
@@ -432,9 +386,9 @@ namespace Falcor
 
         uint32_t gridWidthInValues = mGridWidth + 1;
         uint32_t valueCount = gridWidthInValues * gridWidthInValues * gridWidthInValues;
-        Buffer::SharedPtr pValuesBuffer = Buffer::createTyped<float>(valueCount);
-        Buffer::SharedPtr pValuesStagingBuffer = Buffer::createTyped<float>(valueCount, Resource::BindFlags::None, Buffer::CpuAccess::Read);
-        GpuFence::SharedPtr pFence = GpuFence::create();
+        Buffer::SharedPtr pValuesBuffer = Buffer::createTyped<float>(mpDevice.get(), valueCount);
+        Buffer::SharedPtr pValuesStagingBuffer = Buffer::createTyped<float>(mpDevice.get(), valueCount, Resource::BindFlags::None, Buffer::CpuAccess::Read);
+        GpuFence::SharedPtr pFence = GpuFence::create(mpDevice.get());
 
         mpEvaluatePrimitivesPass["CB"]["gGridWidth"] = mGridWidth;
         mpEvaluatePrimitivesPass["CB"]["gPrimitiveCount"] = (uint32_t)mPrimitives.size() - mBakedPrimitiveCount;
@@ -477,45 +431,23 @@ namespace Falcor
             fullPath = dir / path;
         }
 
-        std::string jsonData = readFile(fullPath);
-        rapidjson::StringStream jsonStream(jsonData.c_str());
-
-        rapidjson::Document jsonDocument;
-        jsonDocument.ParseStream(jsonStream);
-
-        if (jsonDocument.HasParseError())
+        std::ifstream ifs(fullPath);
+        if (!ifs.good())
         {
-            size_t line;
-            line = std::count(jsonData.begin(), jsonData.begin() + jsonDocument.GetErrorOffset(), '\n');
-            logWarning("Error when deserializing SDF grid from '{}'. JSON Parse error in line {}: {}", fullPath, line, rapidjson::GetParseError_En(jsonDocument.GetParseError()));
-            return 0;
+            logWarning("Failed to open SDF grid file '{}' for reading.", fullPath);
+            return false;
         }
-
-        if (!jsonDocument.IsArray())
-        {
-            logWarning("Error when deserializing SDF grid from '{}'. JSON document is not of array type!");
-            return 0;
-        }
-
-        const auto& jsonPrimitivesArray = jsonDocument.GetArray();
 
         std::vector<SDF3DPrimitive> primitives;
-        primitives.resize(jsonPrimitivesArray.Size());
-
-        for (uint32_t i = 0; i < jsonPrimitivesArray.Size(); i++)
+        try
         {
-            const rapidjson::Value& jsonPrimitive = jsonPrimitivesArray[i];
-            SDF3DPrimitive& primitive = primitives[i];
-
-            if (!deserializeUint(kPrimitiveShapeTypeJSONKey, jsonPrimitive, reinterpret_cast<uint32_t&>(primitive.shapeType))) return 0;
-            if (!deserializeFloat3(kPrimitiveShapeDataJSONKey, jsonPrimitive, primitive.shapeData)) return 0;
-            if (!deserializeFloat(kPrimitiveShapeBlobbingJSONKey, jsonPrimitive, primitive.shapeBlobbing)) return 0;
-
-            if (!deserializeUint(kPrimitiveOperationTypeJSONKey, jsonPrimitive, reinterpret_cast<uint32_t&>(primitive.operationType))) return 0;
-            if (!deserializeFloat(kPrimitiveOperationSmoothingJSONKey, jsonPrimitive, primitive.operationSmoothing)) return 0;
-
-            if (!deserializeFloat3(kPrimitiveTranslationJSONKey, jsonPrimitive, primitive.translation)) return 0;
-            if (!deserializeFloat3x3(kPrimitiveInvRotationScaleJSONKey, jsonPrimitive, primitive.invRotationScale)) return 0;
+            json j = json::parse(ifs);
+            primitives = j;
+        }
+        catch (const std::exception& e)
+        {
+            logWarning("Error when deserializing SDF grid from '{}': {}", fullPath, e.what());
+            return 0;
         }
 
         setPrimitives(primitives, gridWidth);
@@ -526,51 +458,18 @@ namespace Falcor
 
     bool SDFGrid::writePrimitivesToFile(const std::filesystem::path& path)
     {
-        std::ofstream file(path, std::ios::out | std::ios::trunc);
-
-        if (!file.is_open())
+        std::ofstream ofs(path);
+        if (!ofs.good())
         {
-            logWarning("Failed to open SDF grid file '{}'.", path);
+            logWarning("Failed to open SDF grid file '{}' for writing.", path);
             return false;
         }
 
-        rapidjson::StringBuffer jsonStringBuffer;
-        rapidjson::PrettyWriter<rapidjson::StringBuffer> jsonWriter(jsonStringBuffer);
+        json j = mPrimitives;
+        ofs << j.dump(4);
 
-        // Serialize primitives into JSON array.
-        jsonWriter.StartArray();
-        for (const SDF3DPrimitive& primitive : mPrimitives)
-        {
-            jsonWriter.StartObject();
-            {
-                // Shape Type.
-                serializeUint(kPrimitiveShapeTypeJSONKey, (uint32_t)primitive.shapeType, jsonWriter);
+        ofs.close();
 
-                // Shape Data.
-                serializeFloat3(kPrimitiveShapeDataJSONKey, primitive.shapeData, jsonWriter);
-
-                // Shape Blobbing.
-                serializeFloat(kPrimitiveShapeBlobbingJSONKey, primitive.shapeBlobbing, jsonWriter);
-
-                // Operation Type.
-                serializeUint(kPrimitiveOperationTypeJSONKey, (uint32_t)primitive.operationType, jsonWriter);
-
-                // Operation Smoothing.
-                serializeFloat(kPrimitiveOperationSmoothingJSONKey, primitive.operationSmoothing, jsonWriter);
-
-                // Translation.
-                serializeFloat3(kPrimitiveTranslationJSONKey, primitive.translation, jsonWriter);
-
-                // Inverse Rotation Scale.
-                serializeFloat3x3(kPrimitiveInvRotationScaleJSONKey, primitive.invRotationScale, jsonWriter);
-            }
-            jsonWriter.EndObject();
-        }
-        jsonWriter.EndArray();
-
-        // Write JSON string to file.
-        file << jsonStringBuffer.GetString();
-        file.close();
         return true;
     }
 
@@ -633,14 +532,14 @@ namespace Falcor
                     compressed = pybind11::cast<bool>(value);
                 }
             }
-            return SDFGrid::SharedPtr(SDFSBS::create(brickWidth, compressed, defaultGridWidth));
+            return SDFGrid::SharedPtr(SDFSBS::create(getActivePythonSceneBuilder().getDevice(), brickWidth, compressed, defaultGridWidth));
         };
 
         pybind11::class_<SDFGrid, SDFGrid::SharedPtr> sdfGrid(m, "SDFGrid");
-        sdfGrid.def_static("createNDGrid", [](float narrowBandThickness) { return SDFGrid::SharedPtr(NDSDFGrid::create(narrowBandThickness)); }, "narrowBandThickness"_a);
-        sdfGrid.def_static("createSVS", [](){ return SDFGrid::SharedPtr(SDFSVS::create()); });
-        sdfGrid.def_static("createSBS", createSBS);
-        sdfGrid.def_static("createSVO", [](){ return SDFGrid::SharedPtr(SDFSVO::create()); });
+        sdfGrid.def_static("createNDGrid", [](float narrowBandThickness) { return SDFGrid::SharedPtr(NDSDFGrid::create(getActivePythonSceneBuilder().getDevice(), narrowBandThickness)); }, "narrowBandThickness"_a); // PYTHONDEPRECATED
+        sdfGrid.def_static("createSVS", [](){ return SDFGrid::SharedPtr(SDFSVS::create(getActivePythonSceneBuilder().getDevice())); }); // PYTHONDEPRECATED
+        sdfGrid.def_static("createSBS", createSBS); // PYTHONDEPRECATED
+        sdfGrid.def_static("createSVO", [](){ return SDFGrid::SharedPtr(SDFSVO::create(getActivePythonSceneBuilder().getDevice())); }); // PYTHONDEPRECATED
         sdfGrid.def("loadValuesFromFile", &SDFGrid::loadValuesFromFile, "path"_a);
         sdfGrid.def("loadPrimitivesFromFile", &SDFGrid::loadPrimitivesFromFile, "path"_a, "gridWidth"_a, "dir"_a = "");
         sdfGrid.def("generateCheeseValues", &SDFGrid::generateCheeseValues, "gridWidth"_a, "seed"_a);
@@ -653,7 +552,7 @@ namespace Falcor
         {
             Program::Desc desc;
             desc.addShaderLibrary(kEvaluateSDFPrimitivesShaderName).csEntry("main").setShaderModel("6_5");
-            mpEvaluatePrimitivesPass = ComputePass::create(desc);
+            mpEvaluatePrimitivesPass = ComputePass::create(mpDevice, desc);
         }
 
         if (writeToTexture3D)
@@ -683,7 +582,7 @@ namespace Falcor
         void* pData = (void*)&mPrimitives[mPrimitivesExcludedFromBuffer];
         if (!mpPrimitivesBuffer || mpPrimitivesBuffer->getElementCount() < count)
         {
-            mpPrimitivesBuffer = Buffer::createStructured(sizeof(SDF3DPrimitive), count, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, pData, false);
+            mpPrimitivesBuffer = Buffer::createStructured(mpDevice.get(), sizeof(SDF3DPrimitive), count, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, pData, false);
         }
         else
         {

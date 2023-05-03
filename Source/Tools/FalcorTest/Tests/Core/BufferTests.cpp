@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,125 +30,154 @@
 
 namespace Falcor
 {
-    namespace
+namespace
+{
+const uint32_t kIterations = 4;
+
+enum class Type
+{
+    ByteAddressBuffer = 0,
+    TypedBuffer = 1,
+    StructuredBuffer = 2,
+};
+
+template<Type type>
+void testBuffer(GPUUnitTestContext& ctx, uint32_t numElems, uint32_t index = 0, uint32_t count = 0)
+{
+    static_assert(type == Type::ByteAddressBuffer || type == Type::TypedBuffer || type == Type::StructuredBuffer);
+
+    Device* pDevice = ctx.getDevice().get();
+
+    numElems = div_round_up(numElems, 256u) * 256u; // Make sure we run full thread groups.
+
+    // Create a data blob for the test.
+    // We fill it some numbers that don't overlap with the test buffers values.
+    std::vector<uint32_t> blob;
+    if (count > 0)
     {
-        const uint32_t kIterations = 4;
-
-        enum class Type
-        {
-            ByteAddressBuffer = 0,
-            TypedBuffer = 1,
-            StructuredBuffer = 2,
-        };
-
-        template <Type type>
-        void testBuffer(GPUUnitTestContext& ctx, uint32_t numElems, uint32_t index = 0, uint32_t count = 0)
-        {
-            static_assert(type == Type::ByteAddressBuffer || type == Type::TypedBuffer || type == Type::StructuredBuffer);
-
-            numElems = div_round_up(numElems, 256u) * 256u; // Make sure we run full thread groups.
-
-            // Create a data blob for the test.
-            // We fill it some numbers that don't overlap with the test buffers values.
-            std::vector<uint32_t> blob;
-            if (count > 0)
-            {
-                blob.resize(count);
-                for (uint32_t i = 0; i < blob.size(); i++) blob[i] = (count - i) * 3;
-            }
-
-            // Create clear program.
-            Program::DefineList defines = { { "TYPE", std::to_string((uint32_t)type) } };
-            ctx.createProgram("Tests/Core/BufferTests.cs.slang", "clearBuffer", defines);
-
-            // Create test buffer.
-            Buffer::SharedPtr pBuffer;
-            if constexpr (type == Type::ByteAddressBuffer) pBuffer = Buffer::create(numElems * sizeof(uint32_t), ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None);
-            else if constexpr (type == Type::TypedBuffer) pBuffer = Buffer::createTyped<uint32_t>(numElems, ResourceBindFlags::UnorderedAccess);
-            else if constexpr (type == Type::StructuredBuffer) pBuffer = Buffer::createStructured(ctx.getProgram(), "buffer", numElems, ResourceBindFlags::UnorderedAccess);
-
-            ctx["buffer"] = pBuffer;
-
-            // Run kernel to clear the buffer.
-            // We clear explicitly instead of using clearUAV() as the latter is not compatible with RWStructuredBuffer.
-            ctx.runProgram(numElems, 1, 1);
-
-            // Create update program.
-            ctx.createProgram("Tests/Core/BufferTests.cs.slang", "updateBuffer", defines);
-            ctx["buffer"] = pBuffer;
-
-            // Run kernel N times to update the buffer (RMW).
-            for (uint32_t i = 0; i < kIterations; i++) ctx.runProgram(numElems, 1, 1);
-
-            // Use setBlob() to update part of the buffer from the CPU.
-            if (count > 0)
-            {
-                FALCOR_ASSERT(index + blob.size() <= numElems);
-                pBuffer->setBlob(blob.data(), index * sizeof(uint32_t), blob.size() * sizeof(uint32_t));
-            }
-
-            // Run kernel N times to update the buffer (RMW).
-            for (uint32_t i = 0; i < kIterations; i++) ctx.runProgram(numElems, 1, 1);
-
-            // Run kernel to read values in the buffer.
-            ctx.createProgram("Tests/Core/BufferTests.cs.slang", "readBuffer", defines);
-            ctx.allocateStructuredBuffer("result", numElems);
-            ctx["buffer"] = pBuffer;
-
-            ctx.runProgram(numElems, 1, 1);
-
-            // Verify results.
-            const uint32_t* pResult = ctx.mapBuffer<const uint32_t>("result");
-            for (uint32_t i = 0; i < numElems; i++)
-            {
-                // Each RMW pass adds i+1 to the element at index i.
-                // We run kIterations passes, then replace part of the buffer, followed by kIterations more passes.
-                uint32_t expected = (i + 1) * kIterations * 2;
-                if (i >= index && i < index + blob.size()) expected = blob[i - index] + (i + 1) * kIterations;
-                uint32_t result = pResult[i];
-
-                EXPECT_EQ(result, expected) << "i = " << i << " (numElems = " << numElems << " index = " << index << " count = " << count << ")";
-            }
-            ctx.unmapBuffer("result");
-        }
+        blob.resize(count);
+        for (uint32_t i = 0; i < blob.size(); i++)
+            blob[i] = (count - i) * 3;
     }
 
-    GPU_TEST(RawBuffer)
+    // Create clear program.
+    Program::DefineList defines = {{"TYPE", std::to_string((uint32_t)type)}};
+    ctx.createProgram("Tests/Core/BufferTests.cs.slang", "clearBuffer", defines);
+
+    // Create test buffer.
+    Buffer::SharedPtr pBuffer;
+    if constexpr (type == Type::ByteAddressBuffer)
+        pBuffer = Buffer::create(pDevice, numElems * sizeof(uint32_t), ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None);
+    else if constexpr (type == Type::TypedBuffer)
+        pBuffer = Buffer::createTyped<uint32_t>(pDevice, numElems, ResourceBindFlags::UnorderedAccess);
+    else if constexpr (type == Type::StructuredBuffer)
+        pBuffer = Buffer::createStructured(pDevice, ctx.getProgram(), "buffer", numElems, ResourceBindFlags::UnorderedAccess);
+
+    ctx["buffer"] = pBuffer;
+
+    // Run kernel to clear the buffer.
+    // We clear explicitly instead of using clearUAV() as the latter is not compatible with RWStructuredBuffer.
+    ctx.runProgram(numElems, 1, 1);
+
+    // Create update program.
+    ctx.createProgram("Tests/Core/BufferTests.cs.slang", "updateBuffer", defines);
+    ctx["buffer"] = pBuffer;
+
+    // Run kernel N times to update the buffer (RMW).
+    for (uint32_t i = 0; i < kIterations; i++)
+        ctx.runProgram(numElems, 1, 1);
+
+    // Use setBlob() to update part of the buffer from the CPU.
+    if (count > 0)
     {
-        auto testFunc = testBuffer<Type::ByteAddressBuffer>;
-        for (uint32_t numElems = 1u << 8; numElems <= (1u << 16); numElems <<= 4)
-        {
-            testFunc(ctx, numElems, 0, 0);
-            testFunc(ctx, numElems, 0, 1);
-            testFunc(ctx, numElems, 0, numElems / 2);
-            testFunc(ctx, numElems, 1, 1);
-            testFunc(ctx, numElems, numElems / 2 + 3, numElems / 4 - 1);
-        }
+        FALCOR_ASSERT(index + blob.size() <= numElems);
+        pBuffer->setBlob(blob.data(), index * sizeof(uint32_t), blob.size() * sizeof(uint32_t));
     }
 
-    GPU_TEST(TypedBuffer)
-    {
-        auto testFunc = testBuffer<Type::TypedBuffer>;
-        for (uint32_t numElems = 1u << 8; numElems <= (1u << 16); numElems <<= 4)
-        {
-            testFunc(ctx, numElems, 0, 0);
-            testFunc(ctx, numElems, 0, 1);
-            testFunc(ctx, numElems, 0, numElems / 2);
-            testFunc(ctx, numElems, 1, 1);
-            testFunc(ctx, numElems, numElems / 2 + 3, numElems / 4 - 1);
-        }
-    }
+    // Run kernel N times to update the buffer (RMW).
+    for (uint32_t i = 0; i < kIterations; i++)
+        ctx.runProgram(numElems, 1, 1);
 
-    GPU_TEST(StructuredBuffer)
+    // Run kernel to read values in the buffer.
+    ctx.createProgram("Tests/Core/BufferTests.cs.slang", "readBuffer", defines);
+    ctx.allocateStructuredBuffer("result", numElems);
+    ctx["buffer"] = pBuffer;
+
+    ctx.runProgram(numElems, 1, 1);
+
+    // Verify results.
+    const uint32_t* pResult = ctx.mapBuffer<const uint32_t>("result");
+    for (uint32_t i = 0; i < numElems; i++)
     {
-        auto testFunc = testBuffer<Type::StructuredBuffer>;
-        for (uint32_t numElems = 1u << 8; numElems <= (1u << 16); numElems <<= 4)
-        {
-            testFunc(ctx, numElems, 0, 0);
-            testFunc(ctx, numElems, 0, 1);
-            testFunc(ctx, numElems, 0, numElems / 2);
-            testFunc(ctx, numElems, 1, 1);
-            testFunc(ctx, numElems, numElems / 2 + 3, numElems / 4 - 1);
-        }
+        // Each RMW pass adds i+1 to the element at index i.
+        // We run kIterations passes, then replace part of the buffer, followed by kIterations more passes.
+        uint32_t expected = (i + 1) * kIterations * 2;
+        if (i >= index && i < index + blob.size())
+            expected = blob[i - index] + (i + 1) * kIterations;
+        uint32_t result = pResult[i];
+
+        EXPECT_EQ(result, expected) << "i = " << i << " (numElems = " << numElems << " index = " << index << " count = " << count << ")";
+    }
+    ctx.unmapBuffer("result");
+}
+} // namespace
+
+GPU_TEST(RawBuffer)
+{
+    auto testFunc = testBuffer<Type::ByteAddressBuffer>;
+    for (uint32_t numElems = 1u << 8; numElems <= (1u << 16); numElems <<= 4)
+    {
+        testFunc(ctx, numElems, 0, 0);
+        testFunc(ctx, numElems, 0, 1);
+        testFunc(ctx, numElems, 0, numElems / 2);
+        testFunc(ctx, numElems, 1, 1);
+        testFunc(ctx, numElems, numElems / 2 + 3, numElems / 4 - 1);
     }
 }
+
+GPU_TEST(TypedBuffer)
+{
+    auto testFunc = testBuffer<Type::TypedBuffer>;
+    for (uint32_t numElems = 1u << 8; numElems <= (1u << 16); numElems <<= 4)
+    {
+        testFunc(ctx, numElems, 0, 0);
+        testFunc(ctx, numElems, 0, 1);
+        testFunc(ctx, numElems, 0, numElems / 2);
+        testFunc(ctx, numElems, 1, 1);
+        testFunc(ctx, numElems, numElems / 2 + 3, numElems / 4 - 1);
+    }
+}
+
+GPU_TEST(StructuredBuffer)
+{
+    auto testFunc = testBuffer<Type::StructuredBuffer>;
+    for (uint32_t numElems = 1u << 8; numElems <= (1u << 16); numElems <<= 4)
+    {
+        testFunc(ctx, numElems, 0, 0);
+        testFunc(ctx, numElems, 0, 1);
+        testFunc(ctx, numElems, 0, numElems / 2);
+        testFunc(ctx, numElems, 1, 1);
+        testFunc(ctx, numElems, numElems / 2 + 3, numElems / 4 - 1);
+    }
+}
+
+GPU_TEST(BufferUpdate)
+{
+    const uint4 a = {1, 2, 3, 4};
+    const uint4 b = {5, 6, 7, 8};
+
+    auto pBuffer = Buffer::create(ctx.getDevice().get(), 16);
+
+    pBuffer->setBlob(&a, 0, 16);
+
+    uint4 resA = *reinterpret_cast<const uint4*>(pBuffer->map(Buffer::MapType::Read));
+    pBuffer->unmap();
+    EXPECT_EQ(a, resA);
+
+    pBuffer->setBlob(&b, 0, 16);
+
+    uint4 resB = *reinterpret_cast<const uint4*>(pBuffer->map(Buffer::MapType::Read));
+    pBuffer->unmap();
+    EXPECT_EQ(b, resB);
+}
+} // namespace Falcor

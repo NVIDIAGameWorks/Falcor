@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,22 +29,22 @@
 
 namespace Falcor
 {
-    enum class ShaderResourceType
-    {
-        TextureSrv,
-        TextureUav,
-        RawBufferSrv,
-        RawBufferUav,
-        TypedBufferSrv,
-        TypedBufferUav,
-        Cbv,
-        StructuredBufferUav,
-        StructuredBufferSrv,
-        AccelerationStructureSrv,
-        Dsv,
-        Rtv,
-        Sampler,
+enum class ShaderResourceType
+{
+    TextureSrv,
+    TextureUav,
+    RawBufferSrv,
+    RawBufferUav,
+    TypedBufferSrv,
+    TypedBufferUav,
+    Cbv,
+    StructuredBufferUav,
+    StructuredBufferSrv,
+    AccelerationStructureSrv,
+    Dsv,
+    Rtv,
+    Sampler,
 
-        Count
-    };
+    Count
+};
 }

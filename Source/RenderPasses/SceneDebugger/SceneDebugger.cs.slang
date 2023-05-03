@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -52,11 +52,13 @@ struct SceneDebugger
         // Initialize pixel data for the selected pixel.
         if (all(pixel == params.selectedPixel))
         {
-            pixelData[0].hitType = PixelData::kInvalidID;
-            pixelData[0].instanceID = PixelData::kInvalidID;
-            pixelData[0].materialID = PixelData::kInvalidID;
-            pixelData[0].geometryID = PixelData::kInvalidID;
-            pixelData[0].blasID = PixelData::kInvalidID;
+            PixelData d = {};
+            d.hitType = (uint)HitType::None;
+            d.instanceID = PixelData::kInvalidID;
+            d.materialID = PixelData::kInvalidID;
+            d.geometryID = PixelData::kInvalidID;
+            d.blasID = PixelData::kInvalidID;
+            pixelData[0] = d;
         }
 
         // Trace primary ray.
@@ -177,14 +179,35 @@ struct SceneDebugger
         // Load shading data.
         const ShadingData sd = gScene.materials.prepareShadingData(v, materialID, -dir, lod);
 
+        // Create material instance and query its properties.
+        let mi = gScene.materials.getMaterialInstance(sd, lod);
+        let bsdfProperties = mi.getProperties(sd);
+
         // Write pixel data for the selected pixel.
         if (all(pixel == params.selectedPixel))
         {
-            pixelData[0].hitType = uint(hit.getType());
-            pixelData[0].instanceID = instanceID;
-            pixelData[0].materialID = materialID;
-            pixelData[0].geometryID = geometryID;
-            pixelData[0].blasID = blasID;
+            PixelData d = {};
+
+            // Geometry
+            d.hitType = uint(hit.getType());
+            d.instanceID = instanceID;
+            d.materialID = materialID;
+            d.geometryID = geometryID;
+            d.blasID = blasID;
+
+            // ShadingData
+            d.posW = sd.posW;
+            d.V = sd.V;
+            d.N = sd.N;
+            d.T = sd.T;
+            d.B = sd.B;
+            d.uv = sd.uv;
+            d.faceN = sd.faceN;
+            d.tangentW = sd.tangentW;
+            d.frontFacing = sd.frontFacing ? 1 : 0;
+            d.curveRadius = sd.curveRadius;
+
+            pixelData[0] = d;
         }
 
         // Compute zebra stripes.
@@ -192,27 +215,7 @@ struct SceneDebugger
 
         switch ((SceneDebuggerMode)params.mode)
         {
-        case SceneDebuggerMode::FaceNormal:
-            return remapVector(sd.faceN);
-        case SceneDebuggerMode::ShadingNormal:
-            return remapVector(sd.N);
-        case SceneDebuggerMode::ShadingTangent:
-            return remapVector(sd.T);
-        case SceneDebuggerMode::ShadingBitangent:
-            return remapVector(sd.B);
-        case SceneDebuggerMode::FrontFacingFlag:
-        {
-            float v = 0.75f * luminance(abs(sd.faceN)) + 0.25f;
-            return sd.frontFacing ? float3(0, v, 0) : float3(v, 0, 0);
-        }
-        case SceneDebuggerMode::BackfacingShadingNormal:
-        {
-            float v = 0.75f * luminance(abs(sd.faceN)) + 0.25f;
-            bool backFacing = dot(sd.N, sd.V) <= 0.f;
-            return backFacing ? float3(z, z, 0) : float3(v, v, v);
-        }
-        case SceneDebuggerMode::TexCoords:
-            return float3(frac(remapVector(sd.uv)), 0.f);
+        // Geometry
         case SceneDebuggerMode::HitType:
             return pseudocolor(uint(hit.getType()));
         case SceneDebuggerMode::InstanceID:
@@ -239,6 +242,33 @@ struct SceneDebugger
                 return float3(v, v, v);
             }
         }
+        // Shading data
+        case SceneDebuggerMode::FaceNormal:
+            return remapVector(sd.faceN);
+        case SceneDebuggerMode::ShadingNormal:
+            return remapVector(sd.N);
+        case SceneDebuggerMode::ShadingTangent:
+            return remapVector(sd.T);
+        case SceneDebuggerMode::ShadingBitangent:
+            return remapVector(sd.B);
+        case SceneDebuggerMode::FrontFacingFlag:
+        {
+            float v = 0.75f * luminance(abs(sd.faceN)) + 0.25f;
+            return sd.frontFacing ? float3(0, v, 0) : float3(v, 0, 0);
+        }
+        case SceneDebuggerMode::BackfacingShadingNormal:
+        {
+            float v = 0.75f * luminance(abs(sd.faceN)) + 0.25f;
+            bool backFacing = dot(sd.N, sd.V) <= 0.f;
+            return backFacing ? float3(z, z, 0) : float3(v, v, v);
+        }
+        case SceneDebuggerMode::TexCoords:
+            return float3(frac(remapVector(sd.uv)), 0.f);
+        // Material properties
+        case SceneDebuggerMode::GuideNormal:
+            return remapVector(bsdfProperties.guideNormal);
+        case SceneDebuggerMode::Roughness:
+            return float3(bsdfProperties.roughness);
         case SceneDebuggerMode::FlatShaded:
         {
             // DEMO21:

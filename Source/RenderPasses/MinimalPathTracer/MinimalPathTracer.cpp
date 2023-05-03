@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,21 +26,12 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "MinimalPathTracer.h"
-#include "RenderGraph/RenderPassLibrary.h"
 #include "RenderGraph/RenderPassHelpers.h"
 #include "RenderGraph/RenderPassStandardFlags.h"
 
-const RenderPass::Info MinimalPathTracer::kInfo { "MinimalPathTracer", "Minimal path tracer." };
-
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" FALCOR_API_EXPORT const char* getProjDir()
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
-    return PROJECT_DIR;
-}
-
-extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
-{
-    lib.registerPass(MinimalPathTracer::kInfo, MinimalPathTracer::create);
+    registry.registerClass<RenderPass, MinimalPathTracer>();
 }
 
 namespace
@@ -70,18 +61,18 @@ namespace
     const char kUseImportanceSampling[] = "useImportanceSampling";
 }
 
-MinimalPathTracer::SharedPtr MinimalPathTracer::create(RenderContext* pRenderContext, const Dictionary& dict)
+MinimalPathTracer::SharedPtr MinimalPathTracer::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
-    return SharedPtr(new MinimalPathTracer(dict));
+    return SharedPtr(new MinimalPathTracer(std::move(pDevice), dict));
 }
 
-MinimalPathTracer::MinimalPathTracer(const Dictionary& dict)
-    : RenderPass(kInfo)
+MinimalPathTracer::MinimalPathTracer(std::shared_ptr<Device> pDevice, const Dictionary& dict)
+    : RenderPass(std::move(pDevice))
 {
     parseDictionary(dict);
 
     // Create a sample generator.
-    mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
+    mpSampleGenerator = SampleGenerator::create(mpDevice, SAMPLE_GENERATOR_UNIFORM);
     FALCOR_ASSERT(mpSampleGenerator);
 }
 
@@ -280,7 +271,7 @@ void MinimalPathTracer::setScene(RenderContext* pRenderContext, const Scene::Sha
             sbt->setHitGroup(1, mpScene->getGeometryIDs(Scene::GeometryType::SDFGrid), desc.addHitGroup("", "", "sdfGridIntersection"));
         }
 
-        mTracer.pProgram = RtProgram::create(desc, mpScene->getSceneDefines());
+        mTracer.pProgram = RtProgram::create(mpDevice, desc, mpScene->getSceneDefines());
     }
 }
 
@@ -295,7 +286,7 @@ void MinimalPathTracer::prepareVars()
 
     // Create program variables for the current program.
     // This may trigger shader compilation. If it fails, throw an exception to abort rendering.
-    mTracer.pVars = RtProgramVars::create(mTracer.pProgram, mTracer.pBindingTable);
+    mTracer.pVars = RtProgramVars::create(mpDevice, mTracer.pProgram, mTracer.pBindingTable);
 
     // Bind utility classes into shared data.
     auto var = mTracer.pVars->getRootVar();

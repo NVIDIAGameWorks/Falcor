@@ -12,12 +12,15 @@ target_sources(FalcorTest PRIVATE
     Tests/Core/ConstantBufferTests.cs.slang
     Tests/Core/DDSReadTests.cpp
     Tests/Core/DDSReadTests.cs.slang
+    Tests/Core/ResourceAliasing.cpp
+    Tests/Core/ResourceAliasing.cs.slang
     Tests/Core/LargeBuffer.cpp
     Tests/Core/LargeBuffer.cs.slang
     Tests/Core/ParamBlockCB.cpp
     Tests/Core/ParamBlockCB.cs.slang
     Tests/Core/ParamBlockDefinition.slang
     Tests/Core/ParamBlockReflection.cs.slang
+    Tests/Core/PluginTests.cpp
     Tests/Core/RootBufferParamBlockTests.cpp
     Tests/Core/RootBufferParamBlockTests.cs.slang
     Tests/Core/RootBufferStructTests.cpp
@@ -26,16 +29,19 @@ target_sources(FalcorTest PRIVATE
     Tests/Core/RootBufferTests.cs.slang
     Tests/Core/TextureTests.cpp
     Tests/Core/TextureTests.cs.slang
-    Tests/Core/UserConstantBufferTests.cpp
-    Tests/Core/UserConstantBufferTests.cs.slang
+    Tests/Core/TextureLoadTests.cs.slang
 
     Tests/DebugPasses/InvalidPixelDetectionTests.cpp
 
+    Tests/Platform/LockFileTests.cpp
+    Tests/Platform/MemoryMappedFileTests.cpp
     Tests/Platform/MonitorInfoTests.cpp
     Tests/Platform/OSTests.cpp
 
-    Tests/Rendering/Materials/TestBSDFIntegrator.cpp
-    Tests/Rendering/Materials/TestRGLAcquisition.cpp
+    Tests/Rendering/Materials/BSDFIntegratorTests.cpp
+    Tests/Rendering/Materials/RGLAcquisitionTests.cpp
+    Tests/Rendering/Materials/MicrofacetTests.cpp
+    Tests/Rendering/Materials/MicrofacetTests.cs.slang
 
     Tests/Sampling/AliasTableTests.cpp
     Tests/Sampling/AliasTableTests.cs.slang
@@ -50,10 +56,11 @@ target_sources(FalcorTest PRIVATE
 
     Tests/Scene/EnvMapTests.cpp
 
-    Tests/Scene/Material/BxDFTests.cpp
-    Tests/Scene/Material/BxDFTests.cs.slang
+    Tests/Scene/Material/BSDFTests.cpp
+    Tests/Scene/Material/BSDFTests.cs.slang
     Tests/Scene/Material/HairChiang16Tests.cpp
     Tests/Scene/Material/HairChiang16Tests.cs.slang
+    Tests/Scene/Material/MERLFileTests.cpp
 
     Tests/Slang/CastFloat16.cpp
     Tests/Slang/CastFloat16.cs.slang
@@ -61,6 +68,8 @@ target_sources(FalcorTest PRIVATE
     Tests/Slang/Float16Tests.cs.slang
     Tests/Slang/Float64Tests.cpp
     Tests/Slang/Float64Tests.cs.slang
+    Tests/Slang/InheritanceTests.cpp
+    Tests/Slang/InheritanceTests.cs.slang
     Tests/Slang/Int64Tests.cpp
     Tests/Slang/Int64Tests.cs.slang
     Tests/Slang/NestedStructs.cpp
@@ -85,8 +94,6 @@ target_sources(FalcorTest PRIVATE
     Tests/Slang/SlangShared.slang
     Tests/Slang/SlangTests.cpp
     Tests/Slang/SlangTests.cs.slang
-    Tests/Slang/SlangToCUDA.cpp
-    Tests/Slang/SlangToCUDA.slang
     Tests/Slang/StructuredBufferMatrix.cpp
     Tests/Slang/StructuredBufferMatrix.cs.slang
     Tests/Slang/TemplatedLoad.cpp
@@ -105,12 +112,18 @@ target_sources(FalcorTest PRIVATE
     Tests/Utils/Color/SpectrumUtilsTests.cpp
     Tests/Utils/Color/SpectrumUtilsTests.cs.slang
 
+    Tests/Utils/Debug/WarpProfilerTests.cpp
+    Tests/Utils/Debug/WarpProfilerTests.cs.slang
+
+    Tests/Utils/Image/BitmapTests.cpp
+
     Tests/Utils/AABBTests.cpp
     Tests/Utils/AABBTests.cs.slang
     Tests/Utils/AlignedAllocatorTests.cpp
     Tests/Utils/BitonicSortTests.cpp
     Tests/Utils/BitTricksTests.cpp
     Tests/Utils/BitTricksTests.cs.slang
+    Tests/Utils/BufferAllocatorTests.cpp
     Tests/Utils/ColorUtilsTests.cpp
     Tests/Utils/CryptoUtilsTests.cpp
     Tests/Utils/Float16TypesTests.cpp
@@ -125,17 +138,23 @@ target_sources(FalcorTest PRIVATE
     Tests/Utils/IntersectionHelpersTests.cs.slang
     Tests/Utils/MathHelpersTests.cpp
     Tests/Utils/MathHelpersTests.cs.slang
+    Tests/Utils/MatrixTests.cpp
     Tests/Utils/PackedFormatsTests.cpp
     Tests/Utils/PackedFormatsTests.cs.slang
     Tests/Utils/ParallelReductionTests.cpp
+    Tests/Utils/PathResolvingTests.cpp
     Tests/Utils/PrefixSumTests.cpp
-    Tests/Utils/SettingsTest.cpp
+    Tests/Utils/RectangleTests.cpp
+    Tests/Utils/SettingsTests.cpp
     Tests/Utils/StringUtilsTests.cpp
     Tests/Utils/TextureAnalyzerTests.cpp
+    Tests/Utils/UnionFindTests.cpp
+    Tests/Utils/VectorTests.cpp
 )
 
 
+target_link_libraries(FalcorTest PRIVATE args)
+
 target_copy_shaders(FalcorTest .)
-target_copy_data_folder(FalcorTest)
 
 target_source_group(FalcorTest "Tools")

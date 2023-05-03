@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,6 +28,9 @@
 #include "TextureManager.h"
 #include "Core/API/Device.h"
 #include "Utils/Logger.h"
+#include "Utils/NumericRange.h"
+
+#include <execution>
 
 // Temporarily disable asynchronous texture loader until Falcor supports parallel GPU work submission.
 // Until then `TextureManager` should only called from the main thread.
@@ -41,14 +44,15 @@ namespace Falcor
         static_assert(TextureManager::TextureHandle::kInvalidID >= kMaxTextureHandleCount);
     }
 
-    TextureManager::SharedPtr TextureManager::create(size_t maxTextureCount, size_t threadCount)
+    TextureManager::SharedPtr TextureManager::create(std::shared_ptr<Device> pDevice, size_t maxTextureCount, size_t threadCount)
     {
-        return SharedPtr(new TextureManager(maxTextureCount, threadCount));
+        return SharedPtr(new TextureManager(pDevice, maxTextureCount, threadCount));
     }
 
-    TextureManager::TextureManager(size_t maxTextureCount, size_t threadCount)
-        : mMaxTextureCount(std::min(maxTextureCount, kMaxTextureHandleCount))
-        , mAsyncTextureLoader(threadCount)
+    TextureManager::TextureManager(std::shared_ptr<Device> pDevice, size_t maxTextureCount, size_t threadCount)
+        : mpDevice(pDevice)
+        , mAsyncTextureLoader(pDevice, threadCount)
+        , mMaxTextureCount(std::min(maxTextureCount, kMaxTextureHandleCount))
     {
     }
 
@@ -103,13 +107,84 @@ namespace Falcor
         return handle;
     }
 
-    TextureManager::TextureHandle TextureManager::loadTexture(const std::filesystem::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags, bool async)
+    TextureManager::TextureHandle TextureManager::loadUdimTexture(const std::filesystem::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags, bool async, const SearchDirectories* searchDirectories, size_t* loadedTextureCount)
     {
+        std::string filename = path.filename().string();
+        auto pos = filename.find("<UDIM>");
+        if (pos == std::string::npos)
+            return loadTexture(path, generateMipLevels, loadAsSRGB, bindFlags, async);
+
+        std::filesystem::path dirpath = path.parent_path();
+        filename.replace(pos, 6, "[1-9][0-9][0-9][0-9]");
+        std::regex udimRegex(filename);
+        std::vector<std::filesystem::path> texturePaths;
+        // Find the first directory containing the pattern, in case the UDIM set lives in multiple available directories
+        if (searchDirectories)
+            texturePaths = globFilesInDirectories(dirpath, udimRegex, *searchDirectories, true /* firstHitOnly */);
+        else
+            texturePaths = globFilesInDataDirectories(dirpath, udimRegex, true /* firstHitOnly */);
+
+        // nothing found, return an invalid handle
+        if (texturePaths.empty())
+        {
+            logWarning("Can't find UDIM texture files '{}'.", path);
+            return TextureHandle();
+        }
+
+        // Now load all the files from that directory
+        std::filesystem::path loadedDir = texturePaths[0].parent_path();
+        texturePaths = globFilesInDirectory(loadedDir, udimRegex);
+
+        if (loadedTextureCount)
+            *loadedTextureCount = texturePaths.size();
+
+        std::vector<size_t> udimIndices;
+        std::vector<TextureHandle> handles;
+        size_t maxIndex = 0;
+        for (auto& it : texturePaths)
+        {
+            std::string filename = it.filename().string();
+            std::string udimStr = filename.substr(pos, 4); // the 4 digits;
+            size_t udim = std::stol(udimStr);
+            maxIndex = std::max<size_t>(maxIndex, udim);
+            udimIndices.push_back(udim);
+            handles.push_back(loadTexture(it, generateMipLevels, loadAsSRGB, bindFlags, async));
+
+            FALCOR_CHECK_ARG_GE_MSG(udim, 1001, "Texture {} is not a valid UDIM texture, as it violates the valid UDIM range of 1001-9999", it);
+        }
+
+        // UDIM range needs to cover all numbers from 1001 to maxIndex inclusive, so 1001, 1002, 1003 needs 3 indices
+        size_t rangeStart = getUdimRange(maxIndex - 1001 + 1);
+
+        for (size_t i = 0; i < texturePaths.size(); ++i)
+        {
+            size_t index = udimIndices[i] - 1001;
+            mUdimIndirection[rangeStart + index] = handles[i].getID();
+        }
+
+        return TextureManager::TextureHandle(rangeStart, true);
+    }
+
+
+    TextureManager::TextureHandle TextureManager::loadTexture(const std::filesystem::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags, bool async, const SearchDirectories* searchDirectories, size_t* loadedTextureCount)
+    {
+        if (path.string().find("<UDIM>") != std::string::npos)
+            return loadUdimTexture(path, generateMipLevels, loadAsSRGB, bindFlags, async, searchDirectories, loadedTextureCount);
+
         TextureHandle handle;
 
         // Find the full path to the texture.
         std::filesystem::path fullPath;
-        if (!findFileInDataDirectories(path, fullPath))
+        bool found = false;
+        if (searchDirectories)
+            found = findFileInDirectories(path, fullPath, *searchDirectories);
+        else
+            found = findFileInDataDirectories(path, fullPath);
+
+        if (loadedTextureCount)
+            *loadedTextureCount = found ? 1 : 0;
+
+        if (!found)
         {
             logWarning("Can't find texture file '{}'.", path);
             return handle;
@@ -125,6 +200,19 @@ namespace Falcor
         }
         else
         {
+            if (mUseDeferredLoading)
+            {
+                // Add new texture desc.
+                TextureDesc desc = { TextureState::Referenced, nullptr };
+                handle = addDesc(desc);
+
+                // Add to key-to-handle map.
+                mKeyToHandle[textureKey] = handle;
+
+                // Return early.
+                return handle;
+            }
+
 #ifndef DISABLE_ASYNC_TEXTURE_LOADER
             mLoadRequestsInProgress++;
 
@@ -157,7 +245,7 @@ namespace Falcor
             mAsyncTextureLoader.loadFromFile(fullPath, generateMipLevels, loadAsSRGB, bindFlags, callback);
 #else
             // Load texture from main thread.
-            Texture::SharedPtr pTexture = Texture::createFromFile(fullPath, generateMipLevels, loadAsSRGB, bindFlags);
+            Texture::SharedPtr pTexture = Texture::createFromFile(mpDevice.get(), fullPath, generateMipLevels, loadAsSRGB, bindFlags);
 
             // Add new texture desc.
             TextureDesc desc = { TextureState::Loaded, pTexture };
@@ -191,7 +279,7 @@ namespace Falcor
         std::unique_lock<std::mutex> lock(mMutex);
         mCondition.wait(lock, [&]() { return getDesc(handle).state == TextureState::Loaded; });
 
-        gpDevice->flushAndSync();
+        mpDevice->flushAndSync();
     }
 
     void TextureManager::waitForAllTexturesLoading()
@@ -200,11 +288,67 @@ namespace Falcor
         std::unique_lock<std::mutex> lock(mMutex);
         mCondition.wait(lock, [&]() { return mLoadRequestsInProgress == 0; });
 
-        gpDevice->flushAndSync();
+        mpDevice->flushAndSync();
+    }
+
+    void TextureManager::beginDeferredLoading()
+    {
+        mUseDeferredLoading = true;
+    }
+
+    void TextureManager::endDeferredLoading()
+    {
+        struct Job {
+            TextureKey key;
+            TextureHandle handle;
+        };
+
+        // Get a list of textures to load.
+        std::vector<Job> jobs;
+        for (auto& [key, handle] : mKeyToHandle)
+        {
+            auto& desc = getDesc(handle);
+            if (desc.state == TextureState::Referenced)
+                jobs.push_back(Job{key, handle});
+        }
+
+        // Load textures in parallel.
+        std::atomic<size_t> texturesLoaded;
+        NumericRange<size_t> jobRange(0, jobs.size());
+        std::for_each(std::execution::par_unseq, jobRange.begin(), jobRange.end(),
+            [&](size_t i)
+            {
+                const auto& job = jobs[i];
+                auto& desc = getDesc(job.handle);
+                desc.pTexture = Texture::createFromFile(mpDevice.get(), job.key.fullPath, job.key.generateMipLevels, job.key.loadAsSRGB, job.key.bindFlags);
+                logDebug("Loading texture from '{}'", job.key.fullPath);
+                if (texturesLoaded.fetch_add(1) % 10 == 9)
+                {
+                    logDebug("Flush");
+                    std::lock_guard<std::mutex> lock(mpDevice->getGlobalGfxMutex());
+                    mpDevice->flushAndSync();
+                }
+            }
+        );
+        mpDevice->flushAndSync();
+
+        // Mark loaded textures and add them to lookup table.
+        for (const auto& job : jobs)
+        {
+            auto& desc = getDesc(job.handle);
+            desc.state = desc.pTexture ? TextureState::Loaded : TextureState::Invalid;
+            mTextureToHandle[desc.pTexture.get()] = job.handle;
+        }
+
+        mUseDeferredLoading = false;
     }
 
     void TextureManager::removeTexture(const TextureHandle& handle)
     {
+        if (handle.isUdim())
+        {
+            removeUdimTexture(handle);
+        }
         if (!handle) return;
 
         waitForTextureLoading(handle);
@@ -235,11 +379,14 @@ namespace Falcor
 
     TextureManager::TextureDesc TextureManager::getTextureDesc(const TextureHandle& handle) const
     {
+        if (handle.isUdim())
+            return getTextureDesc(resolveUdimTexture(handle));
+
         if (!handle) return {};
 
         std::lock_guard<std::mutex> lock(mMutex);
-        FALCOR_ASSERT(handle && handle.id < mTextureDescs.size());
-        return mTextureDescs[handle.id];
+        FALCOR_ASSERT(handle && handle.getID() < mTextureDescs.size());
+        return mTextureDescs[handle.getID()];
     }
 
     size_t TextureManager::getTextureDescCount() const
@@ -248,24 +395,63 @@ namespace Falcor
         return mTextureDescs.size();
     }
 
-    void TextureManager::setShaderData(const ShaderVar& var, const size_t descCount) const
+    void TextureManager::setShaderData(const ShaderVar& texturesVar, const size_t descCount, const ShaderVar& udimsVar) const
     {
         std::lock_guard<std::mutex> lock(mMutex);
 
         if (mTextureDescs.size() > descCount)
         {
-            throw RuntimeError("Descriptor array is too small");
+            throw RuntimeError("Descriptor array size ({}) is too small for the required number of textures ({})", descCount, mTextureDescs.size());
         }
 
         Texture::SharedPtr nullTexture;
         for (size_t i = 0; i < mTextureDescs.size(); i++)
         {
-            var[i] = mTextureDescs[i].pTexture;
+            texturesVar[i] = mTextureDescs[i].pTexture;
         }
         for (size_t i = mTextureDescs.size(); i < descCount; i++)
         {
-            var[i] = nullTexture;
+            texturesVar[i] = nullTexture;
         }
+
+        if (mUdimIndirection.empty())
+        {
+            mpUdimIndirection.reset();
+            mUdimIndirectionDirty = false;
+            return;
+        }
+
+        if (!mpUdimIndirection || mUdimIndirection.size() > mpUdimIndirection->getElementCount())
+        {
+            mpUdimIndirection = Buffer::createStructured(mpDevice.get(), sizeof(int32_t), mUdimIndirection.size(), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None,
+                mUdimIndirection.data(), false);
+            mUdimIndirectionDirty = false;
+        }
+
+        if (mUdimIndirectionDirty)
+        {
+            mpUdimIndirection->setBlob(mUdimIndirection.data(), 0, mUdimIndirection.size() * sizeof(int32_t));
+        }
+
+        udimsVar = mpUdimIndirection;
+    }
+
+    TextureManager::Stats TextureManager::getStats() const
+    {
+        TextureManager::Stats s;
+        for (const auto& t : mTextureDescs)
+        {
+            if (!t.pTexture)
+                continue;
+            uint64_t texelCount = t.pTexture->getTexelCount();
+            uint32_t channelCount = getFormatChannelCount(t.pTexture->getFormat());
+            s.textureCount++;
+            s.textureTexelCount += texelCount;
+            s.textureTexelChannelCount += texelCount * channelCount;
+            s.textureMemoryInBytes += t.pTexture->getTextureSizeInBytes();
+            if (isCompressedFormat(t.pTexture->getFormat())) s.textureCompressedCount++;
+        }
+        return s;
     }
 
     TextureManager::TextureHandle TextureManager::addDesc(const TextureDesc& desc)
@@ -285,7 +471,7 @@ namespace Falcor
             {
                 throw RuntimeError("Out of texture handles");
             }
-            handle = { static_cast<uint32_t>(mTextureDescs.size()) };
+            handle = TextureHandle{ static_cast<uint32_t>(mTextureDescs.size()) };
             mTextureDescs.emplace_back(desc);
         }
 
@@ -294,7 +480,87 @@ namespace Falcor
 
     TextureManager::TextureDesc& TextureManager::getDesc(const TextureHandle& handle)
     {
-        FALCOR_ASSERT(handle && handle.id < mTextureDescs.size());
-        return mTextureDescs[handle.id];
+        if (handle.isUdim())
+            return getDesc(resolveUdimTexture(handle));
+
+        FALCOR_ASSERT(handle && handle.getID() < mTextureDescs.size());
+        return mTextureDescs[handle.getID()];
+    }
+
+    size_t TextureManager::getUdimRange(size_t requiredSize)
+    {
+        // But first look in the freed ranges for the smallest one that we can reuse
+        size_t smallestFound = std::numeric_limits<size_t>::max();
+        int64_t foundIndex = -1;
+        for (size_t i = 0; i < mFreeUdimRanges.size(); ++i)
+        {
+            size_t rangeSize = mUdimIndirectionSize[mFreeUdimRanges[i]];
+            if (requiredSize <= rangeSize && rangeSize < smallestFound)
+            {
+                foundIndex = i;
+                smallestFound = rangeSize;
+            }
+            // If we found an exact match, no need to look further
+            if (smallestFound == requiredSize)
+                break;
+        }
+
+        // haven't found any reusable, just add a new one
+        if (foundIndex == -1)
+        {
+            const size_t rangeStart = mUdimIndirection.size();
+            mUdimIndirection.resize(rangeStart + requiredSize, -1);
+            mUdimIndirectionSize.resize(rangeStart + requiredSize, 0);
+            mUdimIndirectionSize[rangeStart] = requiredSize;
+            return rangeStart;
+        }
+
+        mUdimIndirectionDirty = true;
+
+        // Range is already filled with -1 from the deletion
+        const size_t rangeStart = mFreeUdimRanges[foundIndex];
+        mFreeUdimRanges[foundIndex] = mFreeUdimRanges.back();
+        mFreeUdimRanges.pop_back();
+        return rangeStart;
+    }
+
+    void TextureManager::freeUdimRange(size_t rangeStart)
+    {
+        mUdimIndirectionDirty = true;
+        mFreeUdimRanges.push_back(rangeStart);
+    }
+
+    void TextureManager::removeUdimTexture(const TextureHandle& handle)
+    {
+        size_t rangeStart = handle.getID();
+        size_t rangeSize = mUdimIndirectionSize[rangeStart];
+        for (size_t i = rangeStart; i < rangeStart + rangeSize; ++i)
+        {
+            if (mUdimIndirection[i] < 0)
+                continue;
+            TextureHandle texHandle(mUdimIndirection[i]);
+            removeTexture(texHandle);
+            mUdimIndirection[i] = -1;
+        }
+
+        freeUdimRange(rangeStart);
+    }
+
+    TextureManager::TextureHandle TextureManager::resolveUdimTexture(const TextureHandle& handle) const
+    {
+        return resolveUdimTexture(handle, float2(0.f));
+    }
+
+    TextureManager::TextureHandle TextureManager::resolveUdimTexture(const TextureHandle& handle, const float2& uv) const
+    {
+        if (!handle.isUdim())
+            return handle;
+        size_t rangeStart = handle.getID();
+        size_t udim = uint(uv[0]) + 10 * uint(uv[1]);
+        FALCOR_ASSERT_LT(udim, mUdimIndirectionSize[rangeStart]);
+
+        if (mUdimIndirection[rangeStart + udim] >= 0)
+            return TextureHandle(mUdimIndirection[rangeStart + udim]);
+        return TextureHandle();
     }
 }

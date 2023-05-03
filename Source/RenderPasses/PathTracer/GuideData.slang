@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -48,12 +48,12 @@ struct GuideData
         data[0] = packR11G11B10(albedo);
     }
 
-    float3 getNormal()
+    float3 getGuideNormal()
     {
         return decodeNormal2x16(data[1]);
     }
 
-    [mutating] void setNormal(float3 normal)
+    [mutating] void setGuideNormal(float3 normal)
     {
         data[1] = encodeNormal2x16(normal);
     }

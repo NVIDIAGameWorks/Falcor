@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -38,6 +38,7 @@
 #include "Material/MaterialTextureLoader.h"
 
 #include "Core/Macros.h"
+#include "Core/API/fwd.h"
 #include "Utils/CryptoUtils.h"
 
 #include <filesystem>
@@ -68,10 +69,11 @@ namespace Falcor
         static void writeCache(const Scene::SceneData& sceneData, const Key& key);
 
         /** Read a scene cache.
+            \param[in] pDevice GPU device.
             \param[in] key Cache key.
             \return Returns the loaded scene data.
         */
-        static Scene::SceneData readCache(const Key& key);
+        static Scene::SceneData readCache(std::shared_ptr<Device> pDevice, const Key& key);
 
     private:
         class OutputStream;
@@ -80,7 +82,7 @@ namespace Falcor
         static std::filesystem::path getCachePath(const Key& key);
 
         static void writeSceneData(OutputStream& stream, const Scene::SceneData& sceneData);
-        static Scene::SceneData readSceneData(InputStream& stream);
+        static Scene::SceneData readSceneData(InputStream& stream, std::shared_ptr<Device> pDevice);
 
         static void writeMetadata(OutputStream& stream, const Scene::Metadata& metadata);
         static Scene::Metadata readMetadata(InputStream& stream);
@@ -94,21 +96,21 @@ namespace Falcor
         static void writeMaterials(OutputStream& stream, const MaterialSystem::SharedPtr& pMaterials);
         static void writeMaterial(OutputStream& stream, const Material::SharedPtr& pMaterial);
         static void writeBasicMaterial(OutputStream& stream, const BasicMaterial::SharedPtr& pMaterial);
-        static void readMaterials(InputStream& stream, const MaterialSystem::SharedPtr& pMaterials, MaterialTextureLoader& materialTextureLoader);
-        static Material::SharedPtr readMaterial(InputStream& stream, MaterialTextureLoader& materialTextureLoader);
-        static void readBasicMaterial(InputStream& stream, MaterialTextureLoader& materialTextureLoader, const BasicMaterial::SharedPtr& pMaterial);
+        static void readMaterials(InputStream& stream, const MaterialSystem::SharedPtr& pMaterials, MaterialTextureLoader& materialTextureLoader, std::shared_ptr<Device> pDevice);
+        static Material::SharedPtr readMaterial(InputStream& stream, MaterialTextureLoader& materialTextureLoader, std::shared_ptr<Device> pDevice);
+        static void readBasicMaterial(InputStream& stream, MaterialTextureLoader& materialTextureLoader, const BasicMaterial::SharedPtr& pMaterial, std::shared_ptr<Device> pDevice);
 
         static void writeSampler(OutputStream& stream, const Sampler::SharedPtr& pSampler);
-        static Sampler::SharedPtr readSampler(InputStream& stream);
+        static Sampler::SharedPtr readSampler(InputStream& stream, Device* pDevice);
 
         static void writeGridVolume(OutputStream& stream, const GridVolume::SharedPtr& pVolume, const std::vector<Grid::SharedPtr>& grids);
-        static GridVolume::SharedPtr readGridVolume(InputStream& stream, const std::vector<Grid::SharedPtr>& grids);
+        static GridVolume::SharedPtr readGridVolume(InputStream& stream, const std::vector<Grid::SharedPtr>& grids, std::shared_ptr<Device> pDevice);
 
         static void writeGrid(OutputStream& stream, const Grid::SharedPtr& pGrid);
-        static Grid::SharedPtr readGrid(InputStream& stream);
+        static Grid::SharedPtr readGrid(InputStream& stream, std::shared_ptr<Device> pDevice);
 
         static void writeEnvMap(OutputStream& stream, const EnvMap::SharedPtr& pEnvMap);
-        static EnvMap::SharedPtr readEnvMap(InputStream& stream);
+        static EnvMap::SharedPtr readEnvMap(InputStream& stream, std::shared_ptr<Device> pDevice);
 
         static void writeTransform(OutputStream& stream, const Transform& transform);
         static Transform readTransform(InputStream& stream);

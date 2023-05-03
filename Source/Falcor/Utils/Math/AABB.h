@@ -110,6 +110,22 @@ namespace Falcor
             return *this;
         }
 
+        /** Returns true if the two AABBs have any overlap.
+        */
+        bool overlaps(AABB b)
+        {
+            b.intersection(*this);
+            return b.valid() && b.volume() > 0.f;
+        }
+
+        /** Returns true if the AABB `b` is fully contained within this AABB.
+        */
+        bool contains(const AABB& b)
+        {
+            AABB temp = *this;
+            return temp.include(b) == *this;
+        }
+
         /** Returns the box center.
             \return Center of the box if valid, undefined otherwise.
         */

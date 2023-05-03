@@ -41,7 +41,6 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<EmissiveUniformSampler>;
-        using SharedConstPtr = std::shared_ptr<const EmissiveUniformSampler>;
 
         /** EmissiveUniformSampler configuration.
             Note if you change options, please update FALCOR_SCRIPT_BINDING in EmissiveUniformSampler.cpp

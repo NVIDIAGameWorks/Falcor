@@ -37,7 +37,7 @@ namespace Falcor
             bool initialized = false;
             std::vector<std::thread> threads;
             uint32_t current;
-        } gData;
+        } gData; // TODO: REMOVEGLOBAL
     }
 
     void Threading::start(uint32_t threadCount)

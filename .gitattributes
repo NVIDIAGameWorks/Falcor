@@ -1,2 +1,5 @@
 # Set the default behavior, in case people don't have core.autocrlf set.
 * text=auto
+# Format slang files as HLSL.
+*.slang gitlab-language=hlsl
+*.slangh gitlab-language=hlsl

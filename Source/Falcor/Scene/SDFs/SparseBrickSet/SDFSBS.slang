@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -35,6 +35,8 @@ import Utils.Math.FormatConversion;
 import Utils.Math.PackedFormats;
 import Utils.Geometry.IntersectionHelpers;
 
+#define USE_GATHER 1
+
 struct SDFSBS : SDFGridBase, ISDFGrid
 {
 
@@ -50,9 +52,60 @@ struct SDFSBS : SDFGridBase, ISDFGrid
     uint brickWidth;
     float normalizationFactor;
 
-    bool calculateBrickCoords(float3 pLocal, out uint3 virtualBrickCoords, out uint2 brickTexelCoords, out int3 brickLocalVoxelCoords, out float3 voxelUnitCoords)
+    bool calculateBrickCoords(float3 pLocal, float3 brickMinLocal, float3 brickMaxLocal, out uint3 virtualBrickCoords, out uint2 brickTexelCoords, out float3 virtualVoxelBrickPos, out float3 voxelUnitCoords, out int3 brickLocalMinCoords, out int3 brickLocalMaxCoords)
+    {
+        // Important note, the grid in "brick space" might be larger than the grid in "voxel space":
+        // |-----------------------|--|
+        // |-----------------------|--| <--- These additional slivers on the top and right are in brick space [0, virtualBricksPerAxis * brickWidth)
+        // |                       |  |      Brick space is the same size as voxel space if virtualBricksPerAxis * brickWidth = virtualGridWidth.
+        // |                       |  |
+        // |                       |  |
+        // |      Voxel Space      |  |
+        // | [0, virtualGridWidth) |  |
+        // |                       |  |
+        // |                       |  |
+        // |-----------------------|--|
+        // 0      Local Space      1
+
+        // We have the AABB of the brick that we hit, use the center of that
+        // to calculate brick coordinates.
+        float3 brickCenterLocal = (brickMinLocal + brickMaxLocal) * 0.5f;
+
+        // Calculate the bricks center position in the virtual brick grid: [0, virtualBricksPerAxis),
+        // we can't multiply by virtualBricksPerAxis as brickCenterLocal is in the local space of the SDF
+        // which may be smaller than the brick space, see comment above.
+        float3 brickCenterInVirtualBrickGrid = brickCenterLocal * float(virtualGridWidth) / brickWidth;
+
+        // Floor to get virtual brick coords.
+        virtualBrickCoords = uint3(brickCenterInVirtualBrickGrid);
+        int3 brickCoordsInVirtualVoxelGrid = virtualBrickCoords * brickWidth;
+
+        // Calculate the position that in the virtual voxel grid.
+        float3 hitPosInVirtualVoxelGrid = pLocal * virtualGridWidth;
+
+        // Precision issues may cause hitPosInVirtualVoxelGrid to appear in the wrong brick.
+        // We need to clamp the voxel to be within the brick we hit.
+        // We need to take into account that bricks may not be the full brickWidth in size.
+        // We can convert the brick AABB to voxel dimensions and "round up".
+        int3 brickMinCoordsInVirtualVoxelGrid = int3(floor(brickMinLocal * virtualGridWidth));
+        int3 brickMaxCoordsInVirtualVoxelGrid = int3(ceil(brickMaxLocal * virtualGridWidth) - 1);
+
+        // When DDAing through the brick, never allow it to access voxels outside these bounds.
+        brickLocalMinCoords = brickMinCoordsInVirtualVoxelGrid - brickCoordsInVirtualVoxelGrid;
+        brickLocalMaxCoords = brickMaxCoordsInVirtualVoxelGrid - brickCoordsInVirtualVoxelGrid;
+
+        uint3 clampedHitCoordsInVirtualVoxelGrid = clamp(uint3(hitPosInVirtualVoxelGrid), brickMinCoordsInVirtualVoxelGrid, brickMaxCoordsInVirtualVoxelGrid);
+        // Calculate the voxel unit coords from the difference between the actual hit position and the base of the voxel we hit.
+        virtualVoxelBrickPos = hitPosInVirtualVoxelGrid - brickCoordsInVirtualVoxelGrid;
+        voxelUnitCoords = hitPosInVirtualVoxelGrid - clampedHitCoordsInVirtualVoxelGrid;
+
+        return calculateBrickTexelCoords(virtualBrickCoords, brickTexelCoords);
+    }
+
+    bool calculateBrickCoordsApprox(float3 pLocal, out uint3 virtualBrickCoords, out uint2 brickTexelCoords, out int3 brickLocalVoxelCoords, out float3 voxelUnitCoords)
     {
         float3 virtualGridPos = clamp(pLocal * virtualGridWidth, 0.0f, float(virtualGridWidth));
+
         uint3 virtualVoxelCoords = uint3(virtualGridPos);
         voxelUnitCoords = virtualGridPos - virtualVoxelCoords;
         brickLocalVoxelCoords = virtualVoxelCoords % brickWidth;
@@ -79,11 +132,21 @@ struct SDFSBS : SDFGridBase, ISDFGrid
         uint2 voxelPos = brickTexelCoords + uint2(brickLocalVoxelCoords.x + brickLocalVoxelCoords.z * brickWidthInValues, brickLocalVoxelCoords.y);
         float2 texCoords = (voxelPos + 1.0f) / brickTextureDimensions;
 
+#if USE_GATHER
         float4 valuesxx0 = bricks.Gather(sampler, texCoords);
         float4 valuesxx1 = bricks.Gather(sampler, texCoords + float2(float(brickWidthInValues) / brickTextureDimensions.x, 0.0f));
-        
         values0xx = float4(valuesxx0.w, valuesxx1.w, valuesxx0.x, valuesxx1.x);
         values1xx = float4(valuesxx0.z, valuesxx1.z, valuesxx0.y, valuesxx1.y);
+#else
+        values0xx = float4(bricks[voxelPos + uint2(0, 0)],
+                           bricks[voxelPos + uint2(brickWidthInValues + 0, 0)],
+                           bricks[voxelPos + uint2(0, 1)],
+                           bricks[voxelPos + uint2(brickWidthInValues + 0, 1)]);
+        values1xx = float4(bricks[voxelPos + uint2(1, 0)],
+                           bricks[voxelPos + uint2(brickWidthInValues + 1, 0)],
+                           bricks[voxelPos + uint2(1, 1)],
+                           bricks[voxelPos + uint2(brickWidthInValues + 1, 1)]);
+#endif
     }
 
     bool intersectSDF(const float3 rayOrigin, const float3 rayDir, const float tMin, const float tMax, const uint primitiveID, out float t, out SDFGridHitData hitData)
@@ -103,16 +166,15 @@ struct SDFSBS : SDFGridBase, ISDFGrid
 
         float2 nearFar;
         if (!intersectRayAABB(rayOrigin, d, aabb.minPoint, aabb.maxPoint, nearFar))
+        {
             return false;
-
-        uint3 hitBrickWidthInVoxels = uint3(round(aabb.extent() * virtualGridWidth));
-
+        }
         // Add 0.5f to origin so that it is in [0, 1] instead of [-0.5, 0.5].
         float3 rayOrigLocal = rayOrigin + 0.5f;
 
         // Compute min and max local position to avoid rounding errors.
-        float3 brickMin = aabb.minPoint + 0.5f + FLT_EPSILON;
-        float3 brickMax = aabb.maxPoint + 0.5f - FLT_EPSILON;
+        float3 brickMin = aabb.minPoint + 0.5f;
+        float3 brickMax = aabb.maxPoint + 0.5f;
 
         // Set up t, o, and tVoxelMax.
         t = max(tMin * dirLength, nearFar.x);
@@ -121,20 +183,25 @@ struct SDFSBS : SDFGridBase, ISDFGrid
         // Check that the ray segment overlaps the AABB.
         if (tVoxelMax < 0.0f) return false;
 
-        const float3 o = clamp(rayOrigLocal + t * d, brickMin, brickMax);
+        const float3 o = rayOrigLocal + t * d;
 
         // Find current brick coords.
         uint3 virtualBrickCoords;
         uint2 brickTexelCoords;
-        int3 brickLocalVoxelCoords;
+        float3 virtualVoxelBrickPos;
         float3 voxelUnitCoords;
-        calculateBrickCoords(o, virtualBrickCoords, brickTexelCoords, brickLocalVoxelCoords, voxelUnitCoords);
+        int3 brickLocalMinCoords;
+        int3 brickLocalMaxCoords;
+        if (!calculateBrickCoords(o, brickMin, brickMax, virtualBrickCoords, brickTexelCoords, virtualVoxelBrickPos, voxelUnitCoords, brickLocalMinCoords, brickLocalMaxCoords))
+            return false;
+
+        int3 brickLocalVoxelCoords = clamp(int3(virtualVoxelBrickPos), brickLocalMinCoords, brickLocalMaxCoords);
 
         int3 stepSign;
         stepSign.x = d.x < 0.0f ? -1 : 1;
         stepSign.y = d.y < 0.0f ? -1 : 1;
         stepSign.z = d.z < 0.0f ? -1 : 1;
- 
+
         float voxelWidth = 1.0f / virtualGridWidth;
         float normalizedVoxelDiagonal = sqrt(3.0f * voxelWidth * voxelWidth) / normalizationFactor;
         float3 invDir = 1.0f / d;
@@ -147,7 +214,7 @@ struct SDFSBS : SDFGridBase, ISDFGrid
         // If the ray origin is inside the brick and we intersect with a voxel on the first iteration then we are inside that voxel.
         bool origInsideAABB = all(rayOrigLocal >= brickMin && rayOrigLocal <= brickMax);
         // DDA to surface containing voxel.
-        while (all(brickLocalVoxelCoords >= 0) && all(brickLocalVoxelCoords < hitBrickWidthInVoxels) && tLocal <= tVoxelMax)
+        while (all(brickLocalVoxelCoords >= brickLocalMinCoords) && all(brickLocalVoxelCoords <= brickLocalMaxCoords) && tLocal <= tVoxelMax)
         {
             // Load the voxel corner values.
             float4 values0xx;
@@ -157,12 +224,12 @@ struct SDFSBS : SDFGridBase, ISDFGrid
             // Todo: Optimize this check, valid bit per voxel?.
             if (SDFVoxelCommon::containsSurface(values0xx, values1xx))
             {
-                float3 brickLocalHitP = o + tLocal * voxelWidth * d;                // The hit position in the local space of the brick, i.e., [0, 1).
-                float3 brickHitP = (brickLocalHitP - brickMin) * virtualGridWidth;  // The hit position in the grid space of the brick, i.e., [0, hitBrickWidthInVoxels).
-                float3 voxelHitP = brickHitP - brickLocalVoxelCoords;               // The hit position in the local space of the voxel, i.e., [0, 1).
+                float3 brickLocalHitP = virtualVoxelBrickPos + tLocal * d;                // The hit position in the local space of the virtual brick, i.e., [0, hitBrickWidthInVoxels).
+                float3 voxelHitP = brickLocalHitP - brickLocalVoxelCoords;               // The hit position in the local space of the voxel, i.e., [0, 1).
 
                 float tVoxelLocal = 0.0f;
-                if (SDFVoxelHitUtils::intersectSDFVoxel(voxelHitP, d, origInsideAABB, values0xx, values1xx, kSnormErrorTolerance + min(tVoxelMax, tLocalNext) - tLocal, kSolverMaxStepCount, tVoxelLocal))
+                const float tVoxelLocalMax = kSnormErrorTolerance + min(tVoxelMax, tLocalNext) - tLocal;
+                if (SDFVoxelHitUtils::intersectSDFVoxel(voxelHitP, d, origInsideAABB, values0xx, values1xx, tVoxelLocalMax, kSolverMaxStepCount, tVoxelLocal))
                 {
                     t += (tLocal + tVoxelLocal) * voxelWidth;
                     t *= inverseDirLength;
@@ -206,14 +273,12 @@ struct SDFSBS : SDFGridBase, ISDFGrid
         if (!intersectRayAABB(rayOrigin, d, aabb.minPoint, aabb.maxPoint, nearFar))
             return false;
 
-        uint3 hitBrickWidthInVoxels = uint3(round(aabb.extent() * virtualGridWidth));
-
         // Add 0.5f to origin so that it is in [0, 1] instead of [-0.5, 0.5].
         float3 rayOrigLocal = rayOrigin + 0.5f;
 
         // Compute min and max local position to avoid rounding errors.
-        float3 brickMin = aabb.minPoint + 0.5f + FLT_EPSILON;
-        float3 brickMax = aabb.maxPoint + 0.5f - FLT_EPSILON;
+        float3 brickMin = aabb.minPoint + 0.5f;
+        float3 brickMax = aabb.maxPoint + 0.5f;
 
         // Set up t, o, and tVoxelMax.
         float t = max(tMin * dirLength, nearFar.x);
@@ -227,15 +292,20 @@ struct SDFSBS : SDFGridBase, ISDFGrid
         // Find current brick coords.
         uint3 virtualBrickCoords;
         uint2 brickTexelCoords;
-        int3 brickLocalVoxelCoords;
+        float3 virtualVoxelBrickPos;
         float3 voxelUnitCoords;
-        calculateBrickCoords(o, virtualBrickCoords, brickTexelCoords, brickLocalVoxelCoords, voxelUnitCoords);
+        int3 brickLocalMinCoords;
+        int3 brickLocalMaxCoords;
+        if (!calculateBrickCoords(o, brickMin, brickMax, virtualBrickCoords, brickTexelCoords, virtualVoxelBrickPos, voxelUnitCoords, brickLocalMinCoords, brickLocalMaxCoords))
+            return false;
+
+        int3 brickLocalVoxelCoords = int3(virtualVoxelBrickPos);
 
         int3 stepSign;
         stepSign.x = d.x < 0.0f ? -1 : 1;
         stepSign.y = d.y < 0.0f ? -1 : 1;
         stepSign.z = d.z < 0.0f ? -1 : 1;
- 
+
         float voxelWidth = 1.0f / virtualGridWidth;
         float normalizedVoxelDiagonal = sqrt(3.0f * voxelWidth * voxelWidth) / normalizationFactor;
         float3 invDir = 1.0f / d;
@@ -249,7 +319,7 @@ struct SDFSBS : SDFGridBase, ISDFGrid
         bool origInsideAABB = all(rayOrigLocal >= brickMin && rayOrigLocal <= brickMax);
 
         // DDA to surface containing voxel.
-        while (all(brickLocalVoxelCoords >= 0) && all(brickLocalVoxelCoords < hitBrickWidthInVoxels) && tLocal <= tVoxelMax)
+        while (all(brickLocalVoxelCoords >= brickLocalMinCoords) && all(brickLocalVoxelCoords <= brickLocalMaxCoords) && tLocal <= tVoxelMax)
         {
             // Load the voxel corner values.
             float4 values0xx;
@@ -259,11 +329,11 @@ struct SDFSBS : SDFGridBase, ISDFGrid
             // Todo: Optimize this check, valid bit per voxel?.
             if (SDFVoxelCommon::containsSurface(values0xx, values1xx))
             {
-                float3 brickLocalHitP = o + tLocal * voxelWidth * d;                // The hit position in the local space of the brick, i.e., [0, 1).
-                float3 brickHitP = (brickLocalHitP - brickMin) * virtualGridWidth;  // The hit position in the grid space of the brick, i.e., [0, hitBrickWidthInVoxels).
-                float3 voxelHitP = brickHitP - brickLocalVoxelCoords;               // The hit position in the local space of the voxel, i.e., [0, 1).
+                float3 brickLocalHitP = virtualVoxelBrickPos + tLocal * d;                // The hit position in the local space of the virtual brick, i.e., [0, hitBrickWidthInVoxels).
+                float3 voxelHitP = brickLocalHitP - brickLocalVoxelCoords;               // The hit position in the local space of the voxel, i.e., [0, 1).
 
-                if (SDFVoxelHitUtils::intersectSDFVoxelAny(voxelHitP, d, origInsideAABB, values0xx, values1xx, kSnormErrorTolerance + min(tVoxelMax, tLocalNext) - tLocal, kSolverMaxStepCount))
+                const float tVoxelLocalMax = kSnormErrorTolerance + min(tVoxelMax, tLocalNext) - tLocal;
+                if (SDFVoxelHitUtils::intersectSDFVoxelAny(voxelHitP, d, origInsideAABB, values0xx, values1xx, tVoxelLocalMax, kSolverMaxStepCount))
                 {
                     return true;
                 }
@@ -294,7 +364,7 @@ struct SDFSBS : SDFGridBase, ISDFGrid
         uint2 brickTexelCoords;
         int3 brickLocalVoxelCoords;
         float3 voxelUnitCoords;
-        calculateBrickCoords(hitPosLocal, virtualBrickCoords, brickTexelCoords, brickLocalVoxelCoords, voxelUnitCoords);
+        calculateBrickCoordsApprox(hitPosLocal, virtualBrickCoords, brickTexelCoords, brickLocalVoxelCoords, voxelUnitCoords);
 
         float4 values0xx;
         float4 values1xx;

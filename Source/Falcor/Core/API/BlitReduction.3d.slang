@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -53,7 +53,7 @@ struct VsOut
     float4 posH : SV_POSITION;
 };
 
-VsOut vsMain(float4 posS : POSITION, float2 texC : TEXCOORD)
+VsOut vsMain(float4 posS: POSITION, float2 texC: TEXCOORD)
 {
     VsOut vOut;
     vOut.texC = texC * gScale + gOffset;
@@ -62,16 +62,16 @@ VsOut vsMain(float4 posS : POSITION, float2 texC : TEXCOORD)
 }
 
 #if DST_INT
-uint4 psMain(float2 texC : TEXCOORD) : SV_TARGET
+uint4 psMain(float2 texC: TEXCOORD) : SV_TARGET
 #else
-float4 psMain(float2 texC : TEXCOORD) : SV_TARGET
+float4 psMain(float2 texC: TEXCOORD) : SV_TARGET
 #endif
 {
 #if SAMPLE_COUNT <= 1
 
 #if COMPLEX_BLIT
 #if SRC_INT
-    #error Complex blit not supported for integer source format
+#error Complex blit not supported for integer source format
 #else
     float4 srcR = gTex.Sample(gSamplerR, texC);
     float4 srcG = gTex.Sample(gSamplerG, texC);
@@ -98,10 +98,10 @@ float4 psMain(float2 texC : TEXCOORD) : SV_TARGET
 #else // SAMPLE_COUNT > 1
 
 #if COMPLEX_BLIT
-    #error Complex blit not supported for sample count > 1
+#error Complex blit not supported for sample count > 1
 #else // !COMPLEX_BLIT
 #if SRC_INT
-    #error Blit for sample count > 1 not supported for integer source format
+#error Blit for sample count > 1 not supported for integer source format
 #else
     uint3 dims;
     gTex.GetDimensions(dims.x, dims.y, dims.z);

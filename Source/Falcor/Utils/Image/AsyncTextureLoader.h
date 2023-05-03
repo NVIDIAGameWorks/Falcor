@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Core/Macros.h"
+#include "Core/API/fwd.h"
 #include "Core/API/Resource.h"
 #include "Core/API/Texture.h"
 #include <condition_variable>
@@ -52,7 +53,7 @@ namespace Falcor
         /** Constructor.
             \param[in] threadCount Number of worker threads.
         */
-        AsyncTextureLoader(size_t threadCount = std::thread::hardware_concurrency());
+        AsyncTextureLoader(std::shared_ptr<Device> pDevice, size_t threadCount = std::thread::hardware_concurrency());
 
         /** Destructor.
             Blocks until all threads have terminated.
@@ -89,6 +90,8 @@ namespace Falcor
             LoadCallback callback;
             std::promise<Texture::SharedPtr> promise;
         };
+
+        std::shared_ptr<Device> mpDevice;
 
         std::mutex mMutex;                          ///< Mutex for synchronizing access to shared resources.
         std::condition_variable mCondition;         ///< Condition variable for workers to wait on.

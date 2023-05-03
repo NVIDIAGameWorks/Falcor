@@ -15,9 +15,14 @@ target_sources(Falcor PRIVATE
     Core/GLFW.h
     Core/HotReloadFlags.h
     Core/Macros.h
-    Core/Renderer.h
-    Core/Sample.cpp
-    Core/Sample.h
+    Core/Plugin.cpp
+    Core/Plugin.h
+    Core/SampleApp.cpp
+    Core/SampleApp.h
+    Core/Testbed.cpp
+    Core/Testbed.h
+    Core/Version.cpp
+    Core/Version.h
     Core/Window.cpp
     Core/Window.h
 
@@ -40,12 +45,16 @@ target_sources(Falcor PRIVATE
     Core/API/DepthStencilState.h
     Core/API/Device.cpp
     Core/API/Device.h
-    Core/API/DXGIFormats.h
     Core/API/FBO.cpp
     Core/API/FBO.h
     Core/API/FencedPool.h
     Core/API/Formats.cpp
     Core/API/Formats.h
+    Core/API/GFXAPI.cpp
+    Core/API/GFXAPI.h
+    Core/API/GFXHelpers.cpp
+    Core/API/GFXHelpers.h
+    Core/API/GpuFence.cpp
     Core/API/GpuFence.h
     Core/API/GpuMemoryHeap.cpp
     Core/API/GpuMemoryHeap.h
@@ -53,9 +62,15 @@ target_sources(Falcor PRIVATE
     Core/API/GpuTimer.h
     Core/API/GraphicsStateObject.cpp
     Core/API/GraphicsStateObject.h
+    Core/API/LowLevelContextData.cpp
     Core/API/LowLevelContextData.h
+    Core/API/NativeFormats.h
+    Core/API/NativeHandle.h
+    Core/API/NativeHandleTraits.h
+    Core/API/NvApiExDesc.h
     Core/API/ParameterBlock.cpp
     Core/API/ParameterBlock.h
+    Core/API/QueryHeap.cpp
     Core/API/QueryHeap.h
     Core/API/RasterizerState.cpp
     Core/API/RasterizerState.h
@@ -74,9 +89,12 @@ target_sources(Falcor PRIVATE
     Core/API/RtStateObject.h
     Core/API/Sampler.cpp
     Core/API/Sampler.h
+    Core/API/Shader.cpp
     Core/API/Shader.h
     Core/API/ShaderResourceType.h
     Core/API/ShaderTable.h
+    Core/API/Swapchain.cpp
+    Core/API/Swapchain.h
     Core/API/Texture.cpp
     Core/API/Texture.h
     Core/API/VAO.cpp
@@ -84,9 +102,10 @@ target_sources(Falcor PRIVATE
     Core/API/VertexLayout.cpp
     Core/API/VertexLayout.h
 
-    Core/BufferTypes/VariablesBufferUI.cpp
-    Core/BufferTypes/VariablesBufferUI.h
-
+    Core/Platform/LockFile.cpp
+    Core/Platform/LockFile.h
+    Core/Platform/MemoryMappedFile.cpp
+    Core/Platform/MemoryMappedFile.h
     Core/Platform/MonitorInfo.cpp
     Core/Platform/MonitorInfo.h
     Core/Platform/OS.cpp
@@ -94,15 +113,16 @@ target_sources(Falcor PRIVATE
     Core/Platform/PlatformHandles.h
     Core/Platform/ProgressBar.cpp
     Core/Platform/ProgressBar.h
+    Core/Platform/SearchDirectories.h
 
     Core/Program/ComputeProgram.cpp
     Core/Program/ComputeProgram.h
-    Core/Program/CUDAProgram.cpp
-    Core/Program/CUDAProgram.h
     Core/Program/GraphicsProgram.cpp
     Core/Program/GraphicsProgram.h
     Core/Program/Program.cpp
     Core/Program/Program.h
+    Core/Program/ProgramManager.cpp
+    Core/Program/ProgramManager.h
     Core/Program/ProgramReflection.cpp
     Core/Program/ProgramReflection.h
     Core/Program/ProgramVars.cpp
@@ -138,8 +158,6 @@ target_sources(Falcor PRIVATE
     RenderGraph/RenderPass.h
     RenderGraph/RenderPassHelpers.cpp
     RenderGraph/RenderPassHelpers.h
-    RenderGraph/RenderPassLibrary.cpp
-    RenderGraph/RenderPassLibrary.h
     RenderGraph/RenderPassReflection.cpp
     RenderGraph/RenderPassReflection.h
     RenderGraph/RenderPassStandardFlags.h
@@ -171,10 +189,6 @@ target_sources(Falcor PRIVATE
     Rendering/Lights/EmissiveUniformSampler.cpp
     Rendering/Lights/EmissiveUniformSampler.h
     Rendering/Lights/EmissiveUniformSampler.slang
-    Rendering/Lights/EnvMapIntegration.ps.slang
-    Rendering/Lights/EnvMapLighting.cpp
-    Rendering/Lights/EnvMapLighting.h
-    Rendering/Lights/EnvMapLighting.slang
     Rendering/Lights/EnvMapSampler.cpp
     Rendering/Lights/EnvMapSampler.h
     Rendering/Lights/EnvMapSampler.slang
@@ -198,48 +212,67 @@ target_sources(Falcor PRIVATE
     Rendering/Materials/BSDFIntegrator.cs.slang
     Rendering/Materials/BSDFIntegrator.h
     Rendering/Materials/BxDF.slang
-    Rendering/Materials/BxDFConfig.slangh
+    Rendering/Materials/BSDFConfig.slangh
     Rendering/Materials/ClothBRDF.slang
-    Rendering/Materials/ClothBSDF.slang
+    Rendering/Materials/ClothMaterialInstance.slang
     Rendering/Materials/ClothMaterial.slang
     Rendering/Materials/Fresnel.slang
-    Rendering/Materials/HairBSDF.slang
+    Rendering/Materials/HairMaterialInstance.slang
     Rendering/Materials/HairChiang16.slang
     Rendering/Materials/HairMaterial.slang
+    Rendering/Materials/IMaterialInstance.slang
     Rendering/Materials/IBSDF.slang
-    Rendering/Materials/IBxDF.slang
     Rendering/Materials/IMaterial.slang
+    Rendering/Materials/INDF.slang
     Rendering/Materials/InteriorList.slang
     Rendering/Materials/InteriorListHelpers.slang
-    Rendering/Materials/LayeredBxDF.slang
+    Rendering/Materials/IsotropicGGX.slang
+    Rendering/Materials/LayeredBSDF.slang
     Rendering/Materials/LobeType.slang
-    Rendering/Materials/MERLBSDF.slang
+    Rendering/Materials/MERLCommon.slang
+    Rendering/Materials/MERLMaterialInstance.slang
     Rendering/Materials/MERLMaterial.slang
+    Rendering/Materials/MERLMixMaterialInstance.slang
+    Rendering/Materials/MERLMixMaterial.slang
     Rendering/Materials/Microfacet.slang
+    Rendering/Materials/NDF.slang
     Rendering/Materials/RGLAcquisition.cpp
     Rendering/Materials/RGLAcquisition.cs.slang
     Rendering/Materials/RGLAcquisition.h
-    Rendering/Materials/RGLBSDF.slang
+    Rendering/Materials/RGLMaterialInstance.slang
     Rendering/Materials/RGLCommon.slang
     Rendering/Materials/RGLMaterial.slang
-    Rendering/Materials/StandardBSDF.slang
+    Rendering/Materials/StandardMaterialInstance.slang
     Rendering/Materials/StandardMaterial.slang
     Rendering/Materials/TexLODHelpers.slang
     Rendering/Materials/TexLODTypes.cpp
     Rendering/Materials/TexLODTypes.slang
 
     Rendering/Materials/PBRT/PBRTDiffuseMaterial.slang
-    Rendering/Materials/PBRT/PBRTDiffuseBSDF.slang
+    Rendering/Materials/PBRT/PBRTDiffuseMaterialInstance.slang
     Rendering/Materials/PBRT/PBRTDiffuseTransmissionMaterial.slang
-    Rendering/Materials/PBRT/PBRTDiffuseTransmissionBSDF.slang
+    Rendering/Materials/PBRT/PBRTDiffuseTransmissionMaterialInstance.slang
     Rendering/Materials/PBRT/PBRTConductorMaterial.slang
-    Rendering/Materials/PBRT/PBRTConductorBSDF.slang
+    Rendering/Materials/PBRT/PBRTConductorMaterialInstance.slang
     Rendering/Materials/PBRT/PBRTDielectricMaterial.slang
-    Rendering/Materials/PBRT/PBRTDielectricBSDF.slang
+    Rendering/Materials/PBRT/PBRTDielectricMaterialInstance.slang
     Rendering/Materials/PBRT/PBRTCoatedConductorMaterial.slang
-    Rendering/Materials/PBRT/PBRTCoatedConductorBSDF.slang
+    Rendering/Materials/PBRT/PBRTCoatedConductorMaterialInstance.slang
     Rendering/Materials/PBRT/PBRTCoatedDiffuseMaterial.slang
-    Rendering/Materials/PBRT/PBRTCoatedDiffuseBSDF.slang
+    Rendering/Materials/PBRT/PBRTCoatedDiffuseMaterialInstance.slang
+
+    Rendering/Materials/BSDFs/BeerBTDF.slang
+    Rendering/Materials/BSDFs/DielectricPlateBSDF.slang
+    Rendering/Materials/BSDFs/DiffuseSpecularBRDF.slang
+    Rendering/Materials/BSDFs/DisneyDiffuseBRDF.slang
+    Rendering/Materials/BSDFs/FrostbiteDiffuseBRDF.slang
+    Rendering/Materials/BSDFs/LambertDiffuseBRDF.slang
+    Rendering/Materials/BSDFs/LambertDiffuseBTDF.slang
+    Rendering/Materials/BSDFs/OrenNayarBRDF.slang
+    Rendering/Materials/BSDFs/SheenBSDF.slang
+    Rendering/Materials/BSDFs/SimpleBTDF.slang
+    Rendering/Materials/BSDFs/SpecularMicrofacet.slang
+    Rendering/Materials/BSDFs/StandardBSDF.slang
 
     Rendering/RTXDI/EnvLightUpdater.cs.slang
     Rendering/RTXDI/LightUpdater.cs.slang
@@ -253,15 +286,6 @@ target_sources(Falcor PRIVATE
     Rendering/RTXDI/RTXDISDK.cpp
     Rendering/RTXDI/RTXDISetup.cs.slang
     Rendering/RTXDI/SurfaceData.slang
-
-    Rendering/RTXGI/DirectLighting.slang
-    Rendering/RTXGI/RTXGIDefines.slangh
-    Rendering/RTXGI/RTXGISDK.cpp
-    Rendering/RTXGI/RTXGIVolume.cpp
-    Rendering/RTXGI/RTXGIVolume.h
-    Rendering/RTXGI/RTXGIVolume.slang
-    Rendering/RTXGI/UpdateProbes.rt.slang
-    Rendering/RTXGI/UpdateProbesDebugData.slang
 
     Rendering/Utils/PixelStats.cpp
     Rendering/Utils/PixelStats.cs.slang
@@ -302,6 +326,7 @@ target_sources(Falcor PRIVATE
     Scene/SceneBlock.slang
     Scene/SceneBuilder.cpp
     Scene/SceneBuilder.h
+    Scene/SceneBuilderAccess.h
     Scene/SceneCache.cpp
     Scene/SceneCache.h
     Scene/SceneDefines.slangh
@@ -347,26 +372,6 @@ target_sources(Falcor PRIVATE
     Scene/Displacement/DisplacementUpdate.cs.slang
     Scene/Displacement/DisplacementUpdateTask.slang
 
-    Scene/Importers/AssimpImporter.cpp
-    Scene/Importers/AssimpImporter.h
-    Scene/Importers/PythonImporter.cpp
-    Scene/Importers/PythonImporter.h
-
-    Scene/Importers/PBRTImporter/Builder.cpp
-    Scene/Importers/PBRTImporter/Builder.h
-    Scene/Importers/PBRTImporter/EnvMapConverter.cs.slang
-    Scene/Importers/PBRTImporter/EnvMapConverter.h
-    Scene/Importers/PBRTImporter/Helpers.h
-    Scene/Importers/PBRTImporter/LoopSubdivide.cpp
-    Scene/Importers/PBRTImporter/LoopSubdivide.h
-    Scene/Importers/PBRTImporter/Parameters.cpp
-    Scene/Importers/PBRTImporter/Parameters.h
-    Scene/Importers/PBRTImporter/Parser.cpp
-    Scene/Importers/PBRTImporter/Parser.h
-    Scene/Importers/PBRTImporter/PBRTImporter.cpp
-    Scene/Importers/PBRTImporter/PBRTImporter.h
-    Scene/Importers/PBRTImporter/Types.h
-
     Scene/Lights/BakeIesProfile.cs.slang
     Scene/Lights/BuildTriangleList.cs.slang
     Scene/Lights/EmissiveIntegrator.3d.slang
@@ -394,9 +399,12 @@ target_sources(Falcor PRIVATE
     Scene/Material/BasicMaterialData.slang
     Scene/Material/ClothMaterial.cpp
     Scene/Material/ClothMaterial.h
+    Scene/Material/DiffuseSpecularData.slang
+    Scene/Material/DiffuseSpecularUtils.cpp
+    Scene/Material/DiffuseSpecularUtils.h
     Scene/Material/HairMaterial.cpp
     Scene/Material/HairMaterial.h
-    Scene/Material/HomogeneousVolumeData.slang
+    Scene/Material/VolumeProperties.slang
     Scene/Material/Material.cpp
     Scene/Material/Material.h
     Scene/Material/MaterialData.slang
@@ -406,10 +414,17 @@ target_sources(Falcor PRIVATE
     Scene/Material/MaterialSystem.slang
     Scene/Material/MaterialTextureLoader.cpp
     Scene/Material/MaterialTextureLoader.h
+    Scene/Material/MaterialTypeRegistry.cpp
+    Scene/Material/MaterialTypeRegistry.h
     Scene/Material/MaterialTypes.slang
+    Scene/Material/MERLFile.cpp
+    Scene/Material/MERLFile.h
     Scene/Material/MERLMaterial.cpp
     Scene/Material/MERLMaterial.h
     Scene/Material/MERLMaterialData.slang
+    Scene/Material/MERLMixMaterial.cpp
+    Scene/Material/MERLMixMaterial.h
+    Scene/Material/MERLMixMaterialData.slang
     Scene/Material/RGLCommon.cpp
     Scene/Material/RGLCommon.h
     Scene/Material/RGLFile.cpp
@@ -503,6 +518,8 @@ target_sources(Falcor PRIVATE
     Utils/AlignedAllocator.h
     Utils/Attributes.slang
     Utils/BinaryFileStream.h
+    Utils/BufferAllocator.cpp
+    Utils/BufferAllocator.h
     Utils/CryptoUtils.cpp
     Utils/CryptoUtils.h
     Utils/HostDeviceShared.slangh
@@ -513,7 +530,11 @@ target_sources(Falcor PRIVATE
     Utils/NVAPI.slang
     Utils/NVAPI.slangh
     Utils/ObjectID.h
+    Utils/PathResolving.cpp
+    Utils/PathResolving.h
+    Utils/Settings.cpp
     Utils/Settings.h
+    Utils/SlangUtils.slang
     Utils/StringFormatters.h
     Utils/StringUtils.cpp
     Utils/StringUtils.h
@@ -525,18 +546,16 @@ target_sources(Falcor PRIVATE
     Utils/Algorithm/BitonicSort.cpp
     Utils/Algorithm/BitonicSort.cs.slang
     Utils/Algorithm/BitonicSort.h
-    Utils/Algorithm/ComputeParallelReduction.cpp
-    Utils/Algorithm/ComputeParallelReduction.h
     Utils/Algorithm/DirectedGraph.h
     Utils/Algorithm/DirectedGraphTraversal.h
     Utils/Algorithm/ParallelReduction.cpp
     Utils/Algorithm/ParallelReduction.cs.slang
     Utils/Algorithm/ParallelReduction.h
-    Utils/Algorithm/ParallelReduction.ps.slang
     Utils/Algorithm/ParallelReductionType.slangh
     Utils/Algorithm/PrefixSum.cpp
     Utils/Algorithm/PrefixSum.cs.slang
     Utils/Algorithm/PrefixSum.h
+    Utils/Algorithm/UnionFind.h
 
     Utils/Color/ColorHelpers.slang
     Utils/Color/ColorMap.slang
@@ -554,6 +573,9 @@ target_sources(Falcor PRIVATE
     Utils/Debug/PixelDebug.slang
     Utils/Debug/PixelDebugTypes.slang
     Utils/Debug/ReflectPixelDebugTypes.cs.slang
+    Utils/Debug/WarpProfiler.cpp
+    Utils/Debug/WarpProfiler.h
+    Utils/Debug/WarpProfiler.slang
 
     Utils/Geometry/GeometryHelpers.slang
     Utils/Geometry/IntersectionHelpers.slang
@@ -596,15 +618,12 @@ target_sources(Falcor PRIVATE
     Utils/Math/Quaternion.slang
     Utils/Math/Ray.h
     Utils/Math/Ray.slang
+    Utils/Math/Rectangle.cpp
+    Utils/Math/Rectangle.h
     Utils/Math/SphericalHarmonics.slang
     Utils/Math/Vector.h
 
     Utils/Math/Matrix/Matrix.h
-
-    Utils/Perception/Experiment.cpp
-    Utils/Perception/Experiment.h
-    Utils/Perception/SingleThresholdMeasurement.cpp
-    Utils/Perception/SingleThresholdMeasurement.h
 
     Utils/SampleGenerators/CPUSampleGenerator.h
     Utils/SampleGenerators/DxSamplePattern.cpp
@@ -697,123 +716,22 @@ if(FALCOR_LINUX)
     )
 endif()
 
-if(FALCOR_RENDER_BACKEND STREQUAL "D3D12")
-    target_compile_definitions(Falcor PUBLIC FALCOR_D3D12)
-    target_sources(Falcor PRIVATE
-        Core/API/D3D12/D3D12API.cpp
-        Core/API/D3D12/D3D12API.h
-        Core/API/D3D12/D3D12ApiData.h
-        Core/API/D3D12/D3D12Buffer.cpp
-        Core/API/D3D12/D3D12ComputeContext.cpp
-        Core/API/D3D12/D3D12ComputeStateObject.cpp
-        Core/API/D3D12/D3D12CopyContext.cpp
-        Core/API/D3D12/D3D12DescriptorSet.cpp
-        Core/API/D3D12/D3D12Device.cpp
-        Core/API/D3D12/D3D12Fbo.cpp
-        Core/API/D3D12/D3D12Formats.cpp
-        Core/API/D3D12/D3D12GpuFence.cpp
-        Core/API/D3D12/D3D12GpuMemoryHeap.cpp
-        Core/API/D3D12/D3D12GpuTimer.cpp
-        Core/API/D3D12/D3D12GraphicsStateObject.cpp
-        Core/API/D3D12/D3D12IndirectCommands.cpp
-        Core/API/D3D12/D3D12LowLevelContextData.cpp
-        Core/API/D3D12/D3D12NvApiExDesc.h
-        Core/API/D3D12/D3D12ParameterBlock.cpp
-        Core/API/D3D12/D3D12ProgramVars.cpp
-        Core/API/D3D12/D3D12QueryHeap.cpp
-        Core/API/D3D12/D3D12RasterizerState.cpp
-        Core/API/D3D12/D3D12RenderContext.cpp
-        Core/API/D3D12/D3D12Resource.cpp
-        Core/API/D3D12/D3D12Resource.h
-        Core/API/D3D12/D3D12ResourceViews.cpp
-        Core/API/D3D12/D3D12RtAccelerationStructure.cpp
-        Core/API/D3D12/D3D12RtAccelerationStructure.h
-        Core/API/D3D12/D3D12RtAccelerationStructurePostBuildInfoPool.cpp
-        Core/API/D3D12/D3D12RtStateObject.cpp
-        Core/API/D3D12/D3D12Sampler.cpp
-        Core/API/D3D12/D3D12Shader.cpp
-        Core/API/D3D12/D3D12ShaderTable.cpp
-        Core/API/D3D12/D3D12State.cpp
-        Core/API/D3D12/D3D12State.h
-        Core/API/D3D12/D3D12Texture.cpp
-        Core/API/D3D12/D3D12Vao.cpp
-    )
-endif()
-
-if(FALCOR_RENDER_BACKEND STREQUAL "GFX-D3D12" OR FALCOR_RENDER_BACKEND STREQUAL "GFX-VK")
-    if(FALCOR_RENDER_BACKEND STREQUAL "GFX-D3D12")
-        target_compile_definitions(Falcor PUBLIC FALCOR_GFX FALCOR_GFX_D3D12)
-    endif()
-    if(FALCOR_RENDER_BACKEND STREQUAL "GFX-VK")
-        target_compile_definitions(Falcor PUBLIC FALCOR_GFX FALCOR_GFX_VK)
-    endif()
-
-    target_sources(Falcor PRIVATE
-        Core/API/GFX/GFXBuffer.cpp
-        Core/API/GFX/GFXComputeContext.cpp
-        Core/API/GFX/GFXComputeStateObject.cpp
-        Core/API/GFX/GFXCopyContext.cpp
-        Core/API/GFX/GFXD3D12DescriptorSet.cpp
-        Core/API/GFX/GFXDevice.cpp
-        Core/API/GFX/GFXDeviceApiData.h
-        Core/API/GFX/GFXFbo.cpp
-        Core/API/GFX/GFXFormats.cpp
-        Core/API/GFX/GFXFormats.h
-        Core/API/GFX/GFXGpuFence.cpp
-        Core/API/GFX/GFXGpuMemoryHeap.cpp
-        Core/API/GFX/GFXGpuTimer.cpp
-        Core/API/GFX/GFXGraphicsStateObject.cpp
-        Core/API/GFX/GFXLowLevelContextApiData.h
-        Core/API/GFX/GFXLowLevelContextData.cpp
-        Core/API/GFX/GFXParameterBlock.cpp
-        Core/API/GFX/GFXProgramVars.cpp
-        Core/API/GFX/GFXQueryHeap.cpp
-        Core/API/GFX/GFXRasterizerState.cpp
-        Core/API/GFX/GFXRenderContext.cpp
-        Core/API/GFX/GFXResource.cpp
-        Core/API/GFX/GFXResource.h
-        Core/API/GFX/GFXResourceViews.cpp
-        Core/API/GFX/GFXRtAccelerationStructure.cpp
-        Core/API/GFX/GFXRtAccelerationStructure.h
-        Core/API/GFX/GFXRtAccelerationStructurePostBuildInfoPool.cpp
-        Core/API/GFX/GFXRtStateObject.cpp
-        Core/API/GFX/GFXSampler.cpp
-        Core/API/GFX/GFXShader.cpp
-        Core/API/GFX/GFXTexture.cpp
-        Core/API/GFX/GFXVao.cpp
-    )
-endif()
-
 if(FALCOR_HAS_D3D12)
     target_sources(Falcor PRIVATE
+        Core/API/Shared/D3D12ConstantBufferView.h
+        Core/API/Shared/D3D12ConstantBufferView.cpp
         Core/API/Shared/D3D12DescriptorData.h
         Core/API/Shared/D3D12DescriptorHeap.cpp
         Core/API/Shared/D3D12DescriptorHeap.h
         Core/API/Shared/D3D12DescriptorPool.cpp
         Core/API/Shared/D3D12DescriptorPool.h
+        Core/API/Shared/D3D12DescriptorSet.cpp
         Core/API/Shared/D3D12DescriptorSet.h
         Core/API/Shared/D3D12Handles.h
         Core/API/Shared/D3D12RootSignature.cpp
         Core/API/Shared/D3D12RootSignature.h
         Core/API/Shared/MockedD3D12StagingBuffer.cpp
         Core/API/Shared/MockedD3D12StagingBuffer.h
-    )
-endif()
-
-if(FALCOR_HAS_NV_USD)
-    target_sources(Falcor PRIVATE
-        Scene/Importers/USDImporter/CreateSpecularTexture.cs.slang
-        Scene/Importers/USDImporter/CreateSpecularTransmissionTexture.cs.slang
-        Scene/Importers/USDImporter/ImporterContext.cpp
-        Scene/Importers/USDImporter/ImporterContext.h
-        Scene/Importers/USDImporter/PackBaseColorAlpha.cs.slang
-        Scene/Importers/USDImporter/PreviewSurfaceConverter.cpp
-        Scene/Importers/USDImporter/PreviewSurfaceConverter.h
-        Scene/Importers/USDImporter/SampleTexture.slang
-        Scene/Importers/USDImporter/USDHelpers.h
-        Scene/Importers/USDImporter/USDImporter.cpp
-        Scene/Importers/USDImporter/USDImporter.h
-        Scene/Importers/USDImporter/Utils.h
     )
 endif()
 
@@ -831,12 +749,12 @@ target_sources(Falcor PRIVATE
     ../../external/imgui/imgui.cpp
     ../../external/imgui/imgui_draw.cpp
     ../../external/imgui/imgui_widgets.cpp
+    ../../external/imgui/imgui_tables.cpp
     ../../external/imgui_addons/imguinodegrapheditor/imguinodegrapheditor.h
     ../../external/imgui_addons/imguinodegrapheditor/imguinodegrapheditor.cpp
 )
 
 target_copy_shaders(Falcor .)
-target_copy_data_folder(Falcor)
 
 target_compile_features(Falcor
     PUBLIC
@@ -849,14 +767,27 @@ target_compile_options(Falcor
     PUBLIC
         # MSVC flags.
         $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Zi>      # generate debug symbols
-        $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/W2>      # increase warning level
         $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/WX>      # warnings as errors
-        $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/wd4251>  # 'type' : class 'type1' needs to have dll-interface to be used by clients of class 'type2'
+        $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/W3>      # increase warning level
         $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/wd4819>  # The file contains a character that cannot be represented in the current code page (932)
+        $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/w15038>  # data member 'member1' will be initialized after data member 'member2'
+        $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/wd4251>  # 'type' : class 'type1' needs to have dll-interface to be used by clients of class 'type2'
+        $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/wd4244>  # 'conversion' conversion from 'type1' to 'type2', possible loss of data
+        $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/wd4267>  # 'var' : conversion from 'size_t' to 'type', possible loss of data
         $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/MP>      # enable multi-processor compilation
         # Clang flags.
         $<$<CXX_COMPILER_ID:Clang>:-fms-extensions>     # enable MS extensions (among other things allow glm swizzle to work)
         $<$<CXX_COMPILER_ID:Clang>:-fvisibility=hidden> # hide symbols by default
+        $<$<CXX_COMPILER_ID:Clang>:-Wall>               # set warning level
+        $<$<CXX_COMPILER_ID:Clang>:-Wno-unused-function>
+        $<$<CXX_COMPILER_ID:Clang>:-Wno-unused-variable>
+        $<$<CXX_COMPILER_ID:Clang>:-Wno-unused-but-set-variable>
+        $<$<CXX_COMPILER_ID:Clang>:-Wno-unused-private-field>
+        $<$<CXX_COMPILER_ID:Clang>:-Wno-switch>
+        $<$<CXX_COMPILER_ID:Clang>:-Wno-missing-braces>
+        $<$<CXX_COMPILER_ID:Clang>:-Wno-braced-scalar-init>
+        $<$<CXX_COMPILER_ID:Clang>:-Wno-invalid-offsetof>
+        $<$<CXX_COMPILER_ID:Clang>:-Wno-self-assign-overloaded>
     PRIVATE
         $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/bigobj>  # big object files
     )
@@ -886,10 +817,9 @@ target_compile_definitions(Falcor
         $<$<CXX_COMPILER_ID:MSVC>:_USE_MATH_DEFINES>
         $<$<CXX_COMPILER_ID:MSVC>:_SCL_SECURE_NO_WARNINGS>
         $<$<CXX_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS>
+        $<$<CXX_COMPILER_ID:MSVC>:_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING>
         # Clang.
         $<$<CXX_COMPILER_ID:Clang>:_MSC_EXTENSIONS> # enable MS extensions
-        # TBB.
-        $<$<CONFIG:Debug>:TBB_USE_DEBUG=0>
         # Falcor feature flags.
         FALCOR_HAS_D3D12=$<BOOL:${FALCOR_HAS_D3D12}>
         FALCOR_HAS_VULKAN=$<BOOL:${FALCOR_HAS_VULKAN}>
@@ -902,31 +832,28 @@ target_compile_definitions(Falcor
         #$<$<CONFIG:Debug>:_ITERATOR_DEBUG_LEVEL=0>
         _PROJECT_DIR_="${CMAKE_CURRENT_SOURCE_DIR}/"
         FALCOR_DLL
+        FALCOR_REPORT_EXCEPTION_AS_ERROR=$<BOOL:${FALCOR_REPORT_EXCEPTION_AS_ERROR}>
         $<$<PLATFORM_ID:Windows>:IMGUI_API=__declspec\(dllexport\)>
         $<$<PLATFORM_ID:Linux>:IMGUI_API=__attribute__\(\(visibility\("default"\)\)\)>
 )
 
 target_link_libraries(Falcor
     PUBLIC
-        fmt pybind11::embed args glm
-        falcor_deps
-        python
+        fmt pybind11::embed glm Vulkan::Headers
         slang slang-gfx
         imgui imgui_addons
         nanovdb
-        nvtt
         external_includes
         rtxdi
-        rtxgi
-        $<$<BOOL:${FALCOR_HAS_D3D12}>:d3d12>
         $<$<BOOL:${FALCOR_HAS_CUDA}>:CUDA::cuda_driver>
         $<$<BOOL:${FALCOR_HAS_CUDA}>:CUDA::cudart_static>
+    PRIVATE
+        git_version
+        FreeImage assimp ffmpeg OpenEXR OpenVDB lz4 zlib pugixml
+        glfw mikktspace nvtt
+        $<$<BOOL:${FALCOR_HAS_D3D12}>:d3d12>
         $<$<BOOL:${FALCOR_HAS_D3D12_AGILITY_SDK}>:agility-sdk>
         $<$<BOOL:${FALCOR_HAS_NVAPI}>:nvapi>
-        $<$<BOOL:${FALCOR_HAS_PIX}>:pix>
-        $<$<BOOL:${FALCOR_HAS_NV_USD}>:nv-usd>
-    PRIVATE
-        glfw mikktspace
         # Windows system libraries.
         $<$<PLATFORM_ID:Windows>:shcore.lib>
         $<$<PLATFORM_ID:Windows>:shlwapi.lib>
@@ -950,3 +877,40 @@ set_target_properties(Falcor PROPERTIES
 add_dependencies(Falcor packman_dependencies)
 
 validate_headers(Falcor)
+
+# Falcor python module
+
+pybind11_add_module(FalcorPython FalcorPython.cpp)
+
+target_link_libraries(FalcorPython PRIVATE Falcor)
+
+set_target_properties(FalcorPython PROPERTIES
+    OUTPUT_NAME falcor
+    ARCHIVE_OUTPUT_NAME FalcorPython # Visual Studio generator clashes with the main Falcor library otherwise
+    RUNTIME_OUTPUT_DIRECTORY ${FALCOR_OUTPUT_DIRECTORY}/python
+    LIBRARY_OUTPUT_DIRECTORY ${FALCOR_OUTPUT_DIRECTORY}/python
+)
+
+# Generate python stub files.
+if(FALCOR_WINDOWS)
+    add_custom_command(
+        TARGET FalcorPython POST_BUILD
+        COMMAND ${FALCOR_OUTPUT_DIRECTORY}/setpath.bat & ${Python_EXECUTABLE} ${CMAKE_SOURCE_DIR}/build_scripts/generate_stubs.py ${FALCOR_OUTPUT_DIRECTORY}/python
+        )
+endif()
+if(FALCOR_LINUX)
+    add_custom_command(
+        TARGET FalcorPython POST_BUILD
+        WORKING_DIRECTORY ${FALCOR_OUTPUT_DIRECTORY}
+        COMMAND ${CMAKE_SOURCE_DIR}/build_scripts/wrap_setpath.sh ${Python_EXECUTABLE} ${CMAKE_SOURCE_DIR}/build_scripts/generate_stubs.py ${FALCOR_OUTPUT_DIRECTORY}/python
+    )
+endif()
+
+# Generate setpath scripts.
+if(FALCOR_WINDOWS)
+    file(GENERATE OUTPUT ${FALCOR_OUTPUT_DIRECTORY}/setpath.bat INPUT ${CMAKE_SOURCE_DIR}/build_scripts/setpath.bat.in)
+    file(GENERATE OUTPUT ${FALCOR_OUTPUT_DIRECTORY}/setpath.ps1 INPUT ${CMAKE_SOURCE_DIR}/build_scripts/setpath.ps1.in)
+endif()
+if(FALCOR_LINUX)
+    file(GENERATE OUTPUT ${FALCOR_OUTPUT_DIRECTORY}/setpath.sh INPUT ${CMAKE_SOURCE_DIR}/build_scripts/setpath.sh.in)
+endif()

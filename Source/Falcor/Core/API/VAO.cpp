@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,51 +26,61 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "VAO.h"
+#include "GFXAPI.h"
 #include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
 {
-    Vao::Vao(const BufferVec& pVBs, const VertexLayout::SharedPtr& pLayout, const Buffer::SharedPtr& pIB, ResourceFormat ibFormat, Topology topology)
-        : mIbFormat(ibFormat)
-        , mpVBs(pVBs)
-        , mpIB(pIB)
-        , mpVertexLayout(pLayout)
-        , mTopology(topology)
-    {
-    }
+Vao::Vao(
+    const BufferVec& pVBs,
+    const VertexLayout::SharedPtr& pLayout,
+    const Buffer::SharedPtr& pIB,
+    ResourceFormat ibFormat,
+    Topology topology
+)
+    : mpVertexLayout(pLayout), mpVBs(pVBs), mpIB(pIB), mIbFormat(ibFormat), mTopology(topology)
+{}
 
-    Vao::SharedPtr Vao::create(Topology topology, const VertexLayout::SharedPtr& pLayout, const BufferVec& pVBs, const Buffer::SharedPtr& pIB, ResourceFormat ibFormat)
-    {
-        // TODO: Check number of vertex buffers match with pLayout.
-        checkArgument(!pIB || (ibFormat == ResourceFormat::R16Uint || ibFormat == ResourceFormat::R32Uint), "'ibFormat' must be R16Uint or R32Uint.");
-        SharedPtr pVao = SharedPtr(new Vao(pVBs, pLayout, pIB, ibFormat, topology));
-        return pVao;
-    }
+Vao::SharedPtr Vao::create(
+    Topology topology,
+    const VertexLayout::SharedPtr& pLayout,
+    const BufferVec& pVBs,
+    const Buffer::SharedPtr& pIB,
+    ResourceFormat ibFormat
+)
+{
+    // TODO: Check number of vertex buffers match with pLayout.
+    checkArgument(
+        !pIB || (ibFormat == ResourceFormat::R16Uint || ibFormat == ResourceFormat::R32Uint), "'ibFormat' must be R16Uint or R32Uint."
+    );
+    SharedPtr pVao = SharedPtr(new Vao(pVBs, pLayout, pIB, ibFormat, topology));
+    return pVao;
+}
 
-    Vao::ElementDesc Vao::getElementIndexByLocation(uint32_t elementLocaion) const
-    {
-        ElementDesc desc;
+Vao::ElementDesc Vao::getElementIndexByLocation(uint32_t elementLocaion) const
+{
+    ElementDesc desc;
 
-        for(uint32_t bufId = 0; bufId < getVertexBuffersCount(); ++bufId)
+    for (uint32_t bufId = 0; bufId < getVertexBuffersCount(); ++bufId)
+    {
+        const VertexBufferLayout* pVbLayout = mpVertexLayout->getBufferLayout(bufId).get();
+        FALCOR_ASSERT(pVbLayout);
+
+        for (uint32_t i = 0; i < pVbLayout->getElementCount(); ++i)
         {
-            const VertexBufferLayout* pVbLayout = mpVertexLayout->getBufferLayout(bufId).get();
-            FALCOR_ASSERT(pVbLayout);
-
-            for(uint32_t i = 0; i < pVbLayout->getElementCount(); ++i)
+            if (pVbLayout->getElementShaderLocation(i) == elementLocaion)
             {
-                if(pVbLayout->getElementShaderLocation(i) == elementLocaion)
-                {
-                    desc.vbIndex = bufId;
-                    desc.elementIndex = i;
-                    return desc;
-                }
+                desc.vbIndex = bufId;
+                desc.elementIndex = i;
+                return desc;
             }
         }
-        return desc;
     }
-
-    FALCOR_SCRIPT_BINDING(Vao)
-    {
-        pybind11::class_<Vao, Vao::SharedPtr>(m, "Vao");
-    }
+    return desc;
 }
+
+FALCOR_SCRIPT_BINDING(Vao)
+{
+    pybind11::class_<Vao, Vao::SharedPtr>(m, "Vao");
+}
+} // namespace Falcor

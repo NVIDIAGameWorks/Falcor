@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
  **************************************************************************/
 #include "PBRTDiffuseTransmissionMaterial.h"
 #include "Utils/Scripting/ScriptBindings.h"
+#include "Scene/SceneBuilderAccess.h"
 
 namespace Falcor
 {
@@ -35,13 +36,13 @@ namespace Falcor
         const char kShaderFile[] = "Rendering/Materials/PBRT/PBRTDiffuseTransmissionMaterial.slang";
     }
 
-    PBRTDiffuseTransmissionMaterial::SharedPtr PBRTDiffuseTransmissionMaterial::create(const std::string& name)
+    PBRTDiffuseTransmissionMaterial::SharedPtr PBRTDiffuseTransmissionMaterial::create(std::shared_ptr<Device> pDevice, const std::string& name)
     {
-        return SharedPtr(new PBRTDiffuseTransmissionMaterial(name));
+        return SharedPtr(new PBRTDiffuseTransmissionMaterial(std::move(pDevice), name));
     }
 
-    PBRTDiffuseTransmissionMaterial::PBRTDiffuseTransmissionMaterial(const std::string& name)
-        : BasicMaterial(name, MaterialType::PBRTDiffuseTransmission)
+    PBRTDiffuseTransmissionMaterial::PBRTDiffuseTransmissionMaterial(std::shared_ptr<Device> pDevice, const std::string& name)
+        : BasicMaterial(std::move(pDevice), name, MaterialType::PBRTDiffuseTransmission)
     {
         // Setup additional texture slots.
         mTextureSlotInfo[(uint32_t)TextureSlot::BaseColor] = { "baseColor", TextureChannelFlags::RGBA, true };
@@ -66,6 +67,10 @@ namespace Falcor
         FALCOR_SCRIPT_BINDING_DEPENDENCY(BasicMaterial)
 
         pybind11::class_<PBRTDiffuseTransmissionMaterial, BasicMaterial, PBRTDiffuseTransmissionMaterial::SharedPtr> material(m, "PBRTDiffuseTransmissionMaterial");
-        material.def(pybind11::init(&PBRTDiffuseTransmissionMaterial::create), "name"_a = "");
+        auto create = [] (const std::string& name)
+        {
+            return PBRTDiffuseTransmissionMaterial::create(getActivePythonSceneBuilder().getDevice(), name);
+        };
+        material.def(pybind11::init(create), "name"_a = ""); // PYTHONDEPRECATED
     }
 }

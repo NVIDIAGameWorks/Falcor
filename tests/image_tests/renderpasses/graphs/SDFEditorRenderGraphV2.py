@@ -2,11 +2,6 @@ from falcor import *
 
 def render_graph_DefaultRenderGraph():
     g = RenderGraph('DefaultRenderGraph')
-    loadRenderPassLibrary('AccumulatePass.dll')
-    loadRenderPassLibrary('PathTracer.dll')
-    loadRenderPassLibrary('GBuffer.dll')
-    loadRenderPassLibrary('SDFEditor.dll')
-    loadRenderPassLibrary('ToneMapper.dll')
     GBufferRT = createPass('GBufferRT')
     g.addPass(GBufferRT, 'GBufferRT')
     AccumulatePass = createPass("AccumulatePass", {'enabled': True, 'precisionMode': AccumulatePrecision.Single})

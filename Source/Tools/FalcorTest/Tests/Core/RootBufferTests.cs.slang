@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,7 +28,7 @@
 import Utils.Attributes;
 
 /** Unit tests for binding buffers using root descriptors.
-*/
+ */
 
 cbuffer CB
 {
@@ -49,16 +49,18 @@ ByteAddressBuffer rawBuffer;
 StructuredBuffer<S> structBuffer;
 
 #if USE_UAV
-[root] RWByteAddressBuffer testBuffer;      // Buffer bound to root descriptor (UAV)
+[root]
+RWByteAddressBuffer testBuffer; // Buffer bound to root descriptor (UAV)
 #else
-[root] ByteAddressBuffer testBuffer;        // Buffer bound to root descriptor (SRV)
+[root]
+ByteAddressBuffer testBuffer; // Buffer bound to root descriptor (SRV)
 #endif
 
 RWBuffer<uint> typedBufferUint;
 Buffer<float4> typedBufferFloat4;
 
 [numthreads(256, 1, 1)]
-void main(uint3 threadId : SV_DispatchThreadID)
+void main(uint3 threadId: SV_DispatchThreadID)
 {
     const uint i = threadId.x;
 

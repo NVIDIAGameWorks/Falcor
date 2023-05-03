@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -33,16 +33,16 @@ using namespace Falcor;
 class TestRtProgram : public RenderPass
 {
 public:
+    FALCOR_PLUGIN_CLASS(TestRtProgram, "TestRtProgram", "Test pass for RtProgram.");
+
     using SharedPtr = std::shared_ptr<TestRtProgram>;
 
-    static const Info kInfo;
-
     /** Create a new render pass object.
-        \param[in] pRenderContext The render context.
+        \param[in] pDevice GPU device.
         \param[in] dict Dictionary of serialized parameters.
         \return A new object, or an exception is thrown if creation failed.
     */
-    static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
@@ -56,7 +56,7 @@ public:
     static void registerScriptBindings(pybind11::module& m);
 
 private:
-    TestRtProgram(const Dictionary& dict);
+    TestRtProgram(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     void sceneChanged();
     void addCustomPrimitive();

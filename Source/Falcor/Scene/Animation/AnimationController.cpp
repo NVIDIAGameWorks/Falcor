@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -41,27 +41,28 @@ namespace Falcor
         const std::string kPrevInverseTransposeWorldMatrices = "prevInverseTransposeWorldMatrices";
     }
 
-    AnimationController::AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations)
-        : mpScene(pScene)
+    AnimationController::AnimationController(std::shared_ptr<Device> pDevice, Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations)
+        : mpDevice(std::move(pDevice))
         , mAnimations(animations)
         , mNodesEdited(pScene->mSceneGraph.size())
         , mLocalMatrices(pScene->mSceneGraph.size())
         , mGlobalMatrices(pScene->mSceneGraph.size())
         , mInvTransposeGlobalMatrices(pScene->mSceneGraph.size())
         , mMatricesChanged(pScene->mSceneGraph.size())
+        , mpScene(pScene)
     {
         // Create GPU resources.
         FALCOR_ASSERT(mLocalMatrices.size() <= std::numeric_limits<uint32_t>::max());
 
         if (!mLocalMatrices.empty())
         {
-            mpWorldMatricesBuffer = Buffer::createStructured(sizeof(float4x4), (uint32_t)mLocalMatrices.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+            mpWorldMatricesBuffer = Buffer::createStructured(mpDevice.get(), sizeof(float4x4), (uint32_t)mLocalMatrices.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
             mpWorldMatricesBuffer->setName("AnimationController::mpWorldMatricesBuffer");
-            mpPrevWorldMatricesBuffer = Buffer::createStructured(sizeof(float4x4), (uint32_t)mLocalMatrices.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+            mpPrevWorldMatricesBuffer = Buffer::createStructured(mpDevice.get(), sizeof(float4x4), (uint32_t)mLocalMatrices.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
             mpPrevWorldMatricesBuffer->setName("AnimationController::mpPrevWorldMatricesBuffer");
-            mpInvTransposeWorldMatricesBuffer = Buffer::createStructured(sizeof(float4x4), (uint32_t)mLocalMatrices.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+            mpInvTransposeWorldMatricesBuffer = Buffer::createStructured(mpDevice.get(), sizeof(float4x4), (uint32_t)mLocalMatrices.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
             mpInvTransposeWorldMatricesBuffer->setName("AnimationController::mpInvTransposeWorldMatricesBuffer");
-            mpPrevInvTransposeWorldMatricesBuffer = Buffer::createStructured(sizeof(float4x4), (uint32_t)mLocalMatrices.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+            mpPrevInvTransposeWorldMatricesBuffer = Buffer::createStructured(mpDevice.get(), sizeof(float4x4), (uint32_t)mLocalMatrices.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
             mpPrevInvTransposeWorldMatricesBuffer->setName("AnimationController::mpPrevInvTransposeWorldMatricesBuffer");
         }
 
@@ -78,7 +79,7 @@ namespace Falcor
                 uint32_t staticIndex = skinningVertexData[i].staticIndex;
                 prevVertexData[i].position = staticVertexData[staticIndex].position;
             }
-            mpPrevVertexData = Buffer::createStructured(sizeof(PrevVertexData), prevVertexCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, prevVertexData.data(), false);
+            mpPrevVertexData = Buffer::createStructured(mpDevice.get(), sizeof(PrevVertexData), prevVertexCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, prevVertexData.data(), false);
             mpPrevVertexData->setName("AnimationController::mpPrevVertexData");
         }
 
@@ -91,9 +92,9 @@ namespace Falcor
         }
     }
 
-    AnimationController::UniquePtr AnimationController::create(Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations)
+    AnimationController::UniquePtr AnimationController::create(std::shared_ptr<Device> pDevice, Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations)
     {
-        return UniquePtr(new AnimationController(pScene, staticVertexData, skinningVertexData, prevVertexCount, animations));
+        return UniquePtr(new AnimationController(std::move(pDevice), pScene, staticVertexData, skinningVertexData, prevVertexCount, animations));
     }
 
     void AnimationController::addAnimatedVertexCaches(std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes, const StaticVertexVector& staticVertexData)
@@ -160,7 +161,7 @@ namespace Falcor
             mpPrevVertexData->setBlob(prevVertexData.data(), byteOffset, prevVertexData.size() * sizeof(PrevVertexData));
         }
 
-        mpVertexCache = AnimatedVertexCache::create(mpScene, mpPrevVertexData, std::move(cachedCurves), std::move(cachedMeshes));
+        mpVertexCache = AnimatedVertexCache::create(mpDevice, mpScene, mpPrevVertexData, std::move(cachedCurves), std::move(cachedMeshes));
 
         // Note: It is a workaround to have two pre-infinity behaviors for the cached animation.
         // We need `Cycle` behavior when the length of cached animation is smaller than the length of mesh animation (e.g., tiger forest).
@@ -194,9 +195,9 @@ namespace Falcor
         }
     }
 
-    bool AnimationController::animate(RenderContext* pContext, double currentTime)
+    bool AnimationController::animate(RenderContext* pRenderContext, double currentTime)
     {
-        FALCOR_PROFILE("animate");
+        FALCOR_PROFILE(pRenderContext, "animate");
 
         std::fill(mMatricesChanged.begin(), mMatricesChanged.end(), false);
 
@@ -235,10 +236,10 @@ namespace Falcor
             {
                 FALCOR_ASSERT(mpWorldMatricesBuffer && mpPrevWorldMatricesBuffer);
                 FALCOR_ASSERT(mpInvTransposeWorldMatricesBuffer && mpPrevInvTransposeWorldMatricesBuffer);
-                pContext->copyResource(mpPrevWorldMatricesBuffer.get(), mpWorldMatricesBuffer.get());
-                pContext->copyResource(mpPrevInvTransposeWorldMatricesBuffer.get(), mpInvTransposeWorldMatricesBuffer.get());
+                pRenderContext->copyResource(mpPrevWorldMatricesBuffer.get(), mpWorldMatricesBuffer.get());
+                pRenderContext->copyResource(mpPrevInvTransposeWorldMatricesBuffer.get(), mpInvTransposeWorldMatricesBuffer.get());
                 bindBuffers();
-                executeSkinningPass(pContext, true);
+                executeSkinningPass(pRenderContext, true);
             }
 
             if (mpVertexCache)
@@ -247,9 +248,9 @@ namespace Falcor
                 {
                     // Recompute time based on the cycle length of vertex caches.
                     double vertexCacheTime = (mGlobalAnimationLength == 0) ? currentTime : time;
-                    mpVertexCache->animate(pContext, vertexCacheTime);
+                    mpVertexCache->animate(pRenderContext, vertexCacheTime);
                 }
-                mpVertexCache->copyToPrevVertices(pContext);
+                mpVertexCache->copyToPrevVertices(pRenderContext);
             }
 
             mFirstUpdate = false;
@@ -259,7 +260,7 @@ namespace Falcor
 
         // Perform incremental update.
         // This updates all animated matrices and dynamic vertex data.
-        if (edited || mEnabled && (time != mTime || mTime != mPrevTime))
+        if (edited || (mEnabled && (time != mTime || mTime != mPrevTime)))
         {
             if (edited || hasAnimations())
             {
@@ -271,7 +272,7 @@ namespace Falcor
                 updateWorldMatrices();
                 uploadWorldMatrices();
                 bindBuffers();
-                executeSkinningPass(pContext);
+                executeSkinningPass(pRenderContext);
                 changed = true;
             }
 
@@ -279,7 +280,7 @@ namespace Falcor
             {
                 // Recompute time based on the cycle length of vertex caches.
                 double vertexCacheTime = (mGlobalAnimationLength == 0) ? currentTime : time;
-                mpVertexCache->animate(pContext, vertexCacheTime);
+                mpVertexCache->animate(pRenderContext, vertexCacheTime);
                 changed = true;
             }
 
@@ -368,7 +369,7 @@ namespace Falcor
 
     void AnimationController::bindBuffers()
     {
-        ParameterBlock* pBlock = mpScene->mpSceneBlock.get();
+        ParameterBlock* pBlock = mpScene->getParameterBlock().get();
         pBlock->setBuffer(kWorldMatrices, mpWorldMatricesBuffer);
         pBlock->setBuffer(kInverseTransposeWorldMatrices, mpInvTransposeWorldMatricesBuffer);
         bool usePrev = mEnabled && hasAnimations();
@@ -409,7 +410,7 @@ namespace Falcor
             mInvTransposeSkinningMatrices.resize(mSkinningMatrices.size());
             mMeshBindMatrices.resize(mpScene->mSceneGraph.size());
 
-            mpSkinningPass = ComputePass::create("Scene/Animation/Skinning.slang");
+            mpSkinningPass = ComputePass::create(mpDevice, "Scene/Animation/Skinning.slang");
             auto block = mpSkinningPass->getVars()["gData"];
 
             // Initialize mesh bind transforms
@@ -423,9 +424,9 @@ namespace Falcor
             // Bind vertex data.
             FALCOR_ASSERT(staticVertexData.size() <= std::numeric_limits<uint32_t>::max());
             FALCOR_ASSERT(skinningVertexData.size() <= std::numeric_limits<uint32_t>::max());
-            mpStaticVertexData = Buffer::createStructured(block["staticData"], (uint32_t)staticVertexData.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, staticVertexData.data(), false);
+            mpStaticVertexData = Buffer::createStructured(mpDevice.get(), block["staticData"], (uint32_t)staticVertexData.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, staticVertexData.data(), false);
             mpStaticVertexData->setName("AnimationController::mpStaticVertexData");
-            mpSkinningVertexData = Buffer::createStructured(block["skinningData"], (uint32_t)skinningVertexData.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, skinningVertexData.data(), false);
+            mpSkinningVertexData = Buffer::createStructured(mpDevice.get(), block["skinningData"], (uint32_t)skinningVertexData.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, skinningVertexData.data(), false);
             mpSkinningVertexData->setName("AnimationController::mpSkinningVertexData");
 
             block["staticData"] = mpStaticVertexData;
@@ -435,13 +436,13 @@ namespace Falcor
 
             // Bind transforms.
             FALCOR_ASSERT(mSkinningMatrices.size() < std::numeric_limits<uint32_t>::max());
-            mpMeshBindMatricesBuffer = Buffer::createStructured(sizeof(float4x4), (uint32_t)mSkinningMatrices.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, mMeshBindMatrices.data(), false);
+            mpMeshBindMatricesBuffer = Buffer::createStructured(mpDevice.get(), sizeof(float4x4), (uint32_t)mSkinningMatrices.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, mMeshBindMatrices.data(), false);
             mpMeshBindMatricesBuffer->setName("AnimationController::mpMeshBindMatricesBuffer");
-            mpMeshInvBindMatricesBuffer = Buffer::createStructured(sizeof(float4x4), (uint32_t)mSkinningMatrices.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, meshInvBindMatrices.data(), false);
+            mpMeshInvBindMatricesBuffer = Buffer::createStructured(mpDevice.get(), sizeof(float4x4), (uint32_t)mSkinningMatrices.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, meshInvBindMatrices.data(), false);
             mpMeshInvBindMatricesBuffer->setName("AnimationController::mpMeshInvBindMatricesBuffer");
-            mpSkinningMatricesBuffer = Buffer::createStructured(sizeof(float4x4), (uint32_t)mSkinningMatrices.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+            mpSkinningMatricesBuffer = Buffer::createStructured(mpDevice.get(), sizeof(float4x4), (uint32_t)mSkinningMatrices.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
             mpSkinningMatricesBuffer->setName("AnimationController::mpSkinningMatricesBuffer");
-            mpInvTransposeSkinningMatricesBuffer = Buffer::createStructured(sizeof(float4x4), (uint32_t)mSkinningMatrices.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+            mpInvTransposeSkinningMatricesBuffer = Buffer::createStructured(mpDevice.get(), sizeof(float4x4), (uint32_t)mSkinningMatrices.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
             mpInvTransposeSkinningMatricesBuffer->setName("AnimationController::mpInvTransposeSkinningMatricesBuffer");
 
             block["boneMatrices"].setBuffer(mpSkinningMatricesBuffer);
@@ -453,7 +454,7 @@ namespace Falcor
         }
     }
 
-    void AnimationController::executeSkinningPass(RenderContext* pContext, bool initPrev)
+    void AnimationController::executeSkinningPass(RenderContext* pRenderContext, bool initPrev)
     {
         if (!mpSkinningPass) return;
 
@@ -467,7 +468,7 @@ namespace Falcor
         vars["inverseTransposeWorldMatrices"].setBuffer(mpInvTransposeWorldMatricesBuffer);
         vars["worldMatrices"].setBuffer(mpWorldMatricesBuffer);
         vars["initPrev"] = initPrev;
-        mpSkinningPass->execute(pContext, mSkinningDispatchSize, 1, 1);
+        mpSkinningPass->execute(pRenderContext, mSkinningDispatchSize, 1, 1);
     }
 
     void AnimationController::renderUI(Gui::Widgets& widget)

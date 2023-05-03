@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,69 +29,18 @@
 
 namespace
 {
-    const char kMarkerShaderFile[] = "Samples/Visualization2D/Visualization2d.ps.slang";
-    const char kNormalsShaderFile[] = "Samples/Visualization2D/VoxelNormals.ps.slang";
+const char kMarkerShaderFile[] = "Samples/Visualization2D/Visualization2d.ps.slang";
+const char kNormalsShaderFile[] = "Samples/Visualization2D/VoxelNormals.ps.slang";
 
-    const Gui::DropdownList kModeList =
-    {
-        { (uint32_t)Visualization2D::Scene::MarkerDemo, "Marker demo" },
-        { (uint32_t)Visualization2D::Scene::VoxelNormals, "Voxel normals"},
-    };
-}
+const Gui::DropdownList kModeList = {
+    {(uint32_t)Visualization2D::Scene::MarkerDemo, "Marker demo"},
+    {(uint32_t)Visualization2D::Scene::VoxelNormals, "Voxel normals"},
+};
+} // namespace
 
-void Visualization2D::onGuiRender(Gui* pGui)
-{
-    Gui::Window w(pGui, "Visualization 2D", { 700, 900 }, { 10, 10 });
-    bool changed = w.dropdown("Scene selection", kModeList, reinterpret_cast<uint32_t&>(mSelectedScene));
-    if (changed)
-    {
-        createRenderPass();
-    }
-    bool paused = gpFramework->getGlobalClock().isPaused();
-    changed = w.checkbox("Pause time", paused);
-    if (changed)
-    {
-        if (paused)
-        {
-            gpFramework->getGlobalClock().pause();
-        }
-        else
-        {
-            gpFramework->getGlobalClock().play();
-        }
-    }
+Visualization2D::Visualization2D(const SampleAppConfig& config) : SampleApp(config) {}
 
-    gpFramework->renderGlobalUI(pGui);
-    if (mSelectedScene == Scene::MarkerDemo)
-    {
-        w.text("Left-click and move mouse...");
-    }
-    else if (mSelectedScene == Scene::VoxelNormals)
-    {
-        w.text("Left-click and move mouse in the left boxes to display the normal there.");
-        w.checkbox("Show normal field", mVoxelNormalsGUI.showNormalField, false);
-        w.checkbox("Show boxes", mVoxelNormalsGUI.showBoxes, false);
-        w.checkbox("Show box diagonals", mVoxelNormalsGUI.showBoxDiagonals, false);
-        w.checkbox("Show border lines", mVoxelNormalsGUI.showBorderLines, false);
-        w.checkbox("Show box around point", mVoxelNormalsGUI.showBoxAroundPoint, false);
-    }
-}
-
-void Visualization2D::createRenderPass()
-{
-    switch (mSelectedScene)
-    {
-    case Scene::MarkerDemo:
-        mpMainPass = FullScreenPass::create(kMarkerShaderFile);
-        break;
-    case Scene::VoxelNormals:
-        mpMainPass = FullScreenPass::create(kNormalsShaderFile);
-        break;
-    default:
-        FALCOR_UNREACHABLE();
-        break;
-    }
-}
+Visualization2D::~Visualization2D() {}
 
 void Visualization2D::onLoad(RenderContext* pRenderContext)
 {
@@ -103,7 +52,7 @@ void Visualization2D::onFrameRender(RenderContext* pRenderContext, const Fbo::Sh
     float width = (float)pTargetFbo->getWidth();
     float height = (float)pTargetFbo->getHeight();
     mpMainPass["Visual2DCB"]["iResolution"] = float2(width, height);
-    mpMainPass["Visual2DCB"]["iGlobalTime"] = (float)gpFramework->getGlobalClock().getTime();
+    mpMainPass["Visual2DCB"]["iGlobalTime"] = (float)getGlobalClock().getTime();
     mpMainPass["Visual2DCB"]["iMousePosition"] = mMousePosition;
 
     switch (mSelectedScene)
@@ -125,8 +74,42 @@ void Visualization2D::onFrameRender(RenderContext* pRenderContext, const Fbo::Sh
     mpMainPass->execute(pRenderContext, pTargetFbo);
 }
 
-void Visualization2D::onShutdown()
+void Visualization2D::onGuiRender(Gui* pGui)
 {
+    Gui::Window w(pGui, "Visualization 2D", {700, 900}, {10, 10});
+    bool changed = w.dropdown("Scene selection", kModeList, reinterpret_cast<uint32_t&>(mSelectedScene));
+    if (changed)
+    {
+        createRenderPass();
+    }
+    bool paused = getGlobalClock().isPaused();
+    changed = w.checkbox("Pause time", paused);
+    if (changed)
+    {
+        if (paused)
+        {
+            getGlobalClock().pause();
+        }
+        else
+        {
+            getGlobalClock().play();
+        }
+    }
+
+    renderGlobalUI(pGui);
+    if (mSelectedScene == Scene::MarkerDemo)
+    {
+        w.text("Left-click and move mouse...");
+    }
+    else if (mSelectedScene == Scene::VoxelNormals)
+    {
+        w.text("Left-click and move mouse in the left boxes to display the normal there.");
+        w.checkbox("Show normal field", mVoxelNormalsGUI.showNormalField, false);
+        w.checkbox("Show boxes", mVoxelNormalsGUI.showBoxes, false);
+        w.checkbox("Show box diagonals", mVoxelNormalsGUI.showBoxDiagonals, false);
+        w.checkbox("Show border lines", mVoxelNormalsGUI.showBorderLines, false);
+        w.checkbox("Show box around point", mVoxelNormalsGUI.showBoxAroundPoint, false);
+    }
 }
 
 bool Visualization2D::onKeyEvent(const KeyboardEvent& keyEvent)
@@ -160,25 +143,31 @@ bool Visualization2D::onMouseEvent(const MouseEvent& mouseEvent)
     return bHandled;
 }
 
-void Visualization2D::onHotReload(HotReloadFlags reloaded)
+void Visualization2D::createRenderPass()
 {
-}
-
-void Visualization2D::onResizeSwapChain(uint32_t width, uint32_t height)
-{
+    switch (mSelectedScene)
+    {
+    case Scene::MarkerDemo:
+        mpMainPass = FullScreenPass::create(getDevice(), kMarkerShaderFile);
+        break;
+    case Scene::VoxelNormals:
+        mpMainPass = FullScreenPass::create(getDevice(), kNormalsShaderFile);
+        break;
+    default:
+        FALCOR_UNREACHABLE();
+        break;
+    }
 }
 
 int main(int argc, char** argv)
 {
-    Visualization2D::UniquePtr pRenderer = std::make_unique<Visualization2D>();
-
-    SampleConfig config;
+    SampleAppConfig config;
     config.windowDesc.title = "Falcor 2D Visualization";
     config.windowDesc.resizableWindow = true;
     config.windowDesc.width = 1400;
     config.windowDesc.height = 1000;
-    config.deviceDesc.enableVsync = true;
+    config.windowDesc.enableVSync = true;
 
-    Sample::run(config, pRenderer);
-    return 0;
+    Visualization2D visualization2D(config);
+    return visualization2D.run();
 }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,39 +26,34 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "DLSSPass.h"
-#include "RenderGraph/RenderPassLibrary.h"
-
-const RenderPass::Info DLSSPass::kInfo { "DLSSPass", "DL antialiasing/upscaling." };
 
 namespace
 {
-    const Gui::DropdownList kProfileChoices =
-    {
-        { (uint32_t)DLSSPass::Profile::MaxPerf, "Max Performance" },
-        { (uint32_t)DLSSPass::Profile::Balanced, "Balanced" },
-        { (uint32_t)DLSSPass::Profile::MaxQuality, "Max Quality" }
-    };
-
-    const Gui::DropdownList kMotionVectorScaleChoices =
-    {
-        { (uint32_t)DLSSPass::MotionVectorScale::Absolute, "Absolute" },
-        { (uint32_t)DLSSPass::MotionVectorScale::Relative, "Relative" },
-    };
-
-    const char kColorInput[] = "color";
-    const char kDepthInput[] = "depth";
-    const char kMotionVectorsInput[] = "mvec";
-    const char kOutput[] = "output";
-
-    // Scripting options.
-    const char kEnabled[] = "enabled";
-    const char kOutputSize[] = "outputSize";
-    const char kProfile[] = "profile";
-    const char kMotionVectorScale[] = "motionVectorScale";
-    const char kIsHDR[] = "isHDR";
-    const char kSharpness[] = "sharpness";
-    const char kExposure[] = "exposure";
+const Gui::DropdownList kProfileChoices = {
+    {(uint32_t)DLSSPass::Profile::MaxPerf, "Max Performance"},
+    {(uint32_t)DLSSPass::Profile::Balanced, "Balanced"},
+    {(uint32_t)DLSSPass::Profile::MaxQuality, "Max Quality"},
 };
+
+const Gui::DropdownList kMotionVectorScaleChoices = {
+    {(uint32_t)DLSSPass::MotionVectorScale::Absolute, "Absolute"},
+    {(uint32_t)DLSSPass::MotionVectorScale::Relative, "Relative"},
+};
+
+const char kColorInput[] = "color";
+const char kDepthInput[] = "depth";
+const char kMotionVectorsInput[] = "mvec";
+const char kOutput[] = "output";
+
+// Scripting options.
+const char kEnabled[] = "enabled";
+const char kOutputSize[] = "outputSize";
+const char kProfile[] = "profile";
+const char kMotionVectorScale[] = "motionVectorScale";
+const char kIsHDR[] = "isHDR";
+const char kSharpness[] = "sharpness";
+const char kExposure[] = "exposure";
+}; // namespace
 
 static void registerDLSSPass(pybind11::module& m)
 {
@@ -74,39 +69,43 @@ static void registerDLSSPass(pybind11::module& m)
     motionVectorScale.value("Relative", DLSSPass::MotionVectorScale::Relative);
 }
 
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" FALCOR_API_EXPORT const char* getProjDir()
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
-    return PROJECT_DIR;
-}
-
-extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
-{
-    lib.registerPass(DLSSPass::kInfo, DLSSPass::create);
+    registry.registerClass<RenderPass, DLSSPass>();
     ScriptBindings::registerBinding(registerDLSSPass);
 }
 
-DLSSPass::SharedPtr DLSSPass::create(RenderContext* pRenderContext, const Dictionary& dict)
+DLSSPass::SharedPtr DLSSPass::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
-    return SharedPtr(new DLSSPass(dict));
+    return SharedPtr(new DLSSPass(std::move(pDevice), dict));
 }
 
-DLSSPass::DLSSPass(const Dictionary& dict)
-    : RenderPass(kInfo)
+DLSSPass::DLSSPass(std::shared_ptr<Device> pDevice, const Dictionary& dict) : RenderPass(std::move(pDevice))
 {
     for (const auto& [key, value] : dict)
     {
-        if (key == kEnabled) mEnabled = value;
-        else if (key == kOutputSize) mOutputSizeSelection = value;
-        else if (key == kProfile) mProfile = value;
-        else if (key == kMotionVectorScale) mMotionVectorScale = value;
-        else if (key == kIsHDR) mIsHDR = value;
-        else if (key == kSharpness) mSharpness = value;
-        else if (key == kExposure) { mExposure = value; mExposureUpdated = true; }
-        else logWarning("Unknown field '{}' in a DLSSPass dictionary.", key);
+        if (key == kEnabled)
+            mEnabled = value;
+        else if (key == kOutputSize)
+            mOutputSizeSelection = value;
+        else if (key == kProfile)
+            mProfile = value;
+        else if (key == kMotionVectorScale)
+            mMotionVectorScale = value;
+        else if (key == kIsHDR)
+            mIsHDR = value;
+        else if (key == kSharpness)
+            mSharpness = value;
+        else if (key == kExposure)
+        {
+            mExposure = value;
+            mExposureUpdated = true;
+        }
+        else
+            logWarning("Unknown field '{}' in a DLSSPass dictionary.", key);
     }
 
-    mpExposure = Texture::create2D(1, 1, ResourceFormat::R32Float, 1, 1);
+    mpExposure = Texture::create2D(mpDevice.get(), 1, 1, ResourceFormat::R32Float, 1, 1);
 }
 
 Dictionary DLSSPass::getScriptingDictionary()
@@ -130,7 +129,10 @@ RenderPassReflection DLSSPass::reflect(const CompileData& compileData)
     r.addInput(kColorInput, "Color input").bindFlags(ResourceBindFlags::ShaderResource);
     r.addInput(kDepthInput, "Depth input").bindFlags(ResourceBindFlags::ShaderResource);
     r.addInput(kMotionVectorsInput, "Motion vectors input").bindFlags(ResourceBindFlags::ShaderResource);
-    r.addOutput(kOutput, "Color output").format(ResourceFormat::RGBA32Float).bindFlags(ResourceBindFlags::UnorderedAccess | ResourceBindFlags::RenderTarget).texture2D(sz.x, sz.y);
+    r.addOutput(kOutput, "Color output")
+        .format(ResourceFormat::RGBA32Float)
+        .bindFlags(ResourceBindFlags::UnorderedAccess | ResourceBindFlags::RenderTarget)
+        .texture2D(sz.x, sz.y);
 
     return r;
 }
@@ -142,7 +144,7 @@ void DLSSPass::setScene(RenderContext* pRenderContext, const std::shared_ptr<Sce
 
 void DLSSPass::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    FALCOR_PROFILE("DLSSPass");
+    FALCOR_PROFILE(pRenderContext, "DLSSPass");
 
     executeInternal(pRenderContext, renderData);
 }
@@ -153,11 +155,15 @@ void DLSSPass::renderUI(Gui::Widgets& widget)
 
     // Controls for output size.
     // When output size requirements change, we'll trigger a graph recompile to update the render pass I/O sizes.
-    if (widget.dropdown("Output size", RenderPassHelpers::kIOSizeList, (uint32_t&)mOutputSizeSelection)) requestRecompile();
-    widget.tooltip("Specifies the pass output size.\n"
+    if (widget.dropdown("Output size", RenderPassHelpers::kIOSizeList, (uint32_t&)mOutputSizeSelection))
+        requestRecompile();
+    widget.tooltip(
+        "Specifies the pass output size.\n"
         "'Default' means that the output is sized based on requirements of connected passes.\n"
         "'Fixed' means the output is fixed to the optimal size determined by DLSS.\n"
-        "If the output is of a different size than the DLSS output resolution, the image will be rescaled bilinearly.", true);
+        "If the output is of a different size than the DLSS output resolution, the image will be rescaled bilinearly.",
+        true
+    );
 
     if (mEnabled)
     {
@@ -166,7 +172,8 @@ void DLSSPass::renderUI(Gui::Widgets& widget)
         widget.dropdown("Motion vector scale", kMotionVectorScaleChoices, reinterpret_cast<uint32_t&>(mMotionVectorScale));
         widget.tooltip(
             "Absolute: Motion vectors are provided in absolute screen space length (pixels)\n"
-            "Relative: Motion vectors are provided in relative screen space length (pixels divided by screen width/height).");
+            "Relative: Motion vectors are provided in relative screen space length (pixels divided by screen width/height)."
+        );
 
         mRecreate |= widget.checkbox("HDR", mIsHDR);
         widget.tooltip("Enable if input color is HDR.");
@@ -174,7 +181,8 @@ void DLSSPass::renderUI(Gui::Widgets& widget)
         widget.slider("Sharpness", mSharpness, -1.f, 1.f);
         widget.tooltip("Sharpening value between 0.0 and 1.0.");
 
-        if (widget.var("Exposure", mExposure, -10.f, 10.f, 0.01f)) mExposureUpdated = true;
+        if (widget.var("Exposure", mExposure, -10.f, 10.f, 0.01f))
+            mExposureUpdated = true;
 
         widget.text("Input resolution: " + std::to_string(mInputSize.x) + "x" + std::to_string(mInputSize.y));
         widget.text("DLSS output resolution: " + std::to_string(mDLSSOutputSize.x) + "x" + std::to_string(mDLSSOutputSize.y));
@@ -184,22 +192,32 @@ void DLSSPass::renderUI(Gui::Widgets& widget)
 
 void DLSSPass::initializeDLSS(RenderContext* pRenderContext)
 {
-    if (!mpNGXWrapper) mpNGXWrapper.reset(new NGXWrapper(gpDevice.get(), getExecutableDirectory().c_str()));
+    if (!mpNGXWrapper)
+        mpNGXWrapper.reset(new NGXWrapper(mpDevice.get(), getRuntimeDirectory(), getRuntimeDirectory()));
 
-    Texture* target = nullptr;  // Not needed for D3D12 implementation
+    Texture* target = nullptr; // Not needed for D3D12 implementation
     bool depthInverted = false;
     NVSDK_NGX_PerfQuality_Value perfQuality = NVSDK_NGX_PerfQuality_Value_Balanced;
     switch (mProfile)
     {
-        case Profile::MaxPerf: perfQuality = NVSDK_NGX_PerfQuality_Value_MaxPerf; break;
-        case Profile::Balanced: perfQuality = NVSDK_NGX_PerfQuality_Value_Balanced; break;
-        case Profile::MaxQuality: perfQuality = NVSDK_NGX_PerfQuality_Value_MaxQuality; break;
+    case Profile::MaxPerf:
+        perfQuality = NVSDK_NGX_PerfQuality_Value_MaxPerf;
+        break;
+    case Profile::Balanced:
+        perfQuality = NVSDK_NGX_PerfQuality_Value_Balanced;
+        break;
+    case Profile::MaxQuality:
+        perfQuality = NVSDK_NGX_PerfQuality_Value_MaxQuality;
+        break;
     }
 
     auto optimalSettings = mpNGXWrapper->queryOptimalSettings(mInputSize, perfQuality);
 
     mDLSSOutputSize = uint2(float2(mInputSize) * float2(mInputSize) / float2(optimalSettings.optimalRenderSize));
-    mpOutput = Texture::create2D(mDLSSOutputSize.x, mDLSSOutputSize.y, ResourceFormat::RGBA32Float, 1, 1, nullptr, ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource);
+    mpOutput = Texture::create2D(
+        mpDevice.get(), mDLSSOutputSize.x, mDLSSOutputSize.y, ResourceFormat::RGBA32Float, 1, 1, nullptr,
+        ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource
+    );
 
     mpNGXWrapper->releaseDLSS();
     mpNGXWrapper->initializeDLSS(pRenderContext, mInputSize, mDLSSOutputSize, target, mIsHDR, depthInverted, perfQuality);
@@ -211,8 +229,9 @@ void DLSSPass::executeInternal(RenderContext* pRenderContext, const RenderData& 
     const auto& pOutput = renderData.getTexture(kOutput);
     const auto& pColor = renderData.getTexture(kColorInput);
     FALCOR_ASSERT(pColor && pOutput);
-    mPassOutputSize = { pOutput->getWidth(), pOutput->getHeight() };
-    const uint2 inputSize = { pColor->getWidth(), pColor->getHeight() };
+
+    mPassOutputSize = {pOutput->getWidth(), pOutput->getHeight()};
+    const uint2 inputSize = {pColor->getWidth(), pColor->getHeight()};
 
     if (!mEnabled || !mpScene)
     {
@@ -237,7 +256,8 @@ void DLSSPass::executeInternal(RenderContext* pRenderContext, const RenderData& 
         // If pass output is configured to be fixed to DLSS output, but the sizes don't match,
         // we'll trigger a graph recompile to update the pass I/O size requirements.
         // This causes a one frame delay, but unfortunately we don't know the size until after initializeDLSS().
-        if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed && mPassOutputSize != mDLSSOutputSize) requestRecompile();
+        if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed && mPassOutputSize != mDLSSOutputSize)
+            requestRecompile();
     }
 
     {
@@ -246,13 +266,9 @@ void DLSSPass::executeInternal(RenderContext* pRenderContext, const RenderData& 
         {
             const auto& tex = renderData.getTexture(name);
             if (!tex)
-            {
                 throw RuntimeError("DLSSPass: Missing input '{}'", name);
-            }
             if (tex->getWidth() != mInputSize.x || tex->getHeight() != mInputSize.y)
-            {
                 throw RuntimeError("DLSSPass: Input '{}' has mismatching size. All inputs must be of the same size.", name);
-            }
             return tex;
         };
 
@@ -274,14 +290,16 @@ void DLSSPass::executeInternal(RenderContext* pRenderContext, const RenderData& 
         const auto& camera = mpScene->getCamera();
         float2 jitterOffset = float2(camera->getJitterX(), -camera->getJitterY()) * float2(inputSize);
         float2 motionVectorScale = float2(1.f, 1.f);
-        if (mMotionVectorScale == MotionVectorScale::Relative) motionVectorScale = inputSize;
+        if (mMotionVectorScale == MotionVectorScale::Relative)
+            motionVectorScale = inputSize;
 
-        mpNGXWrapper->evaluateDLSS(pRenderContext, color.get(), output.get(), motionVectors.get(), depth.get(), mpExposure.get(), false, mSharpness, jitterOffset, motionVectorScale);
+        mpNGXWrapper->evaluateDLSS(
+            pRenderContext, color.get(), output.get(), motionVectors.get(), depth.get(), mpExposure.get(), false, mSharpness, jitterOffset,
+            motionVectorScale
+        );
 
         // Resample the upscaled result from DLSS to the pass output if needed.
         if (useInternalBuffer)
-        {
             pRenderContext->blit(mpOutput->getSRV(), pOutput->getRTV());
-        }
     }
 }

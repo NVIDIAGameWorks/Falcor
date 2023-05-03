@@ -2,13 +2,6 @@ from falcor import *
 
 def render_graph_PathTracerAdaptive():
     g = RenderGraph("PathTracerAdaptive")
-    loadRenderPassLibrary("AccumulatePass.dll")
-    loadRenderPassLibrary("GBuffer.dll")
-    loadRenderPassLibrary("PathTracer.dll")
-    loadRenderPassLibrary("ToneMapper.dll")
-    loadRenderPassLibrary("ImageLoader.dll")
-    loadRenderPassLibrary('Utils.dll')
-
     PathTracer = createPass("PathTracer")
     g.addPass(PathTracer, "PathTracer")
     VBufferRT = createPass("VBufferRT", {'samplePattern': SamplePattern.Center, 'sampleCount': 16, 'useAlphaTest': True})

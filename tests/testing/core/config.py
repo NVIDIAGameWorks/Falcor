@@ -24,59 +24,77 @@ IMAGE_EXTENSIONS = ['.png', '.jpg', '.tga', '.bmp', '.pfm', '.exr']
 # Suffix to use for error images.
 ERROR_IMAGE_SUFFIX = '.error.png'
 
-# Path to the bundled cmake
-CMAKE_EXE = "tools/.packman/cmake/bin/cmake.exe"
+# Build configurations.
+BUILD_CONFIGS = {
+    # Temporary build configurations combining a CMake preset and build type.
+    # These should be replaced by parsing CMakePresets.json in the future.
+    'windows-vs2019-Release': {
+        'build_dir': 'build/windows-vs2019/bin/Release'
+    },
+    'windows-vs2019-Debug': {
+        'build_dir': 'build/windows-vs2019/bin/Debug'
+    },
+    'windows-vs2019-ci-Release': {
+        'build_dir': 'build/windows-vs2019-ci/bin/Release'
+    },
+    'windows-vs2019-ci-Debug': {
+        'build_dir': 'build/windows-vs2019-ci/bin/Debug'
+    },
+    'windows-vs2022-Release': {
+        'build_dir': 'build/windows-vs2022/bin/Release'
+    },
+    'windows-vs2022-Debug': {
+        'build_dir': 'build/windows-vs2022/bin/Debug'
+    },
+    'windows-vs2022-ci-Release': {
+        'build_dir': 'build/windows-vs2022-ci/bin/Release'
+    },
+    'windows-vs2022-ci-Debug': {
+        'build_dir': 'build/windows-vs2022-ci/bin/Debug'
+    },
+    'windows-ninja-msvc-Release': {
+        'build_dir': 'build/windows-ninja-msvc/bin/Release'
+    },
+    'windows-ninja-msvc-Debug': {
+        'build_dir': 'build/windows-ninja-msvc/bin/Debug'
+    },
+    'windows-ninja-msvc-ci-Release': {
+        'build_dir': 'build/windows-ninja-msvc-ci/bin/Release'
+    },
+    'windows-ninja-msvc-ci-Debug': {
+        'build_dir': 'build/windows-ninja-msvc-ci/bin/Debug'
+    },
+    'linux-ninja-clang-Release': {
+        'build_dir': 'build/linux-ninja-clang/bin/Release'
+    },
+    'linux-ninja-clang-Debug': {
+        'build_dir': 'build/linux-ninja-clang/bin/Debug'
+    },
+    'linux-ninja-clang-ci-Release': {
+        'build_dir': 'build/linux-ninja-clang-ci/bin/Release'
+    },
+    'linux-ninja-clang-ci-Debug': {
+        'build_dir': 'build/linux-ninja-clang-ci/bin/Debug'
+    },
+}
 
 if os.name == 'nt':
-
-    # Build configurations.
-    BUILD_CONFIGS = {
-        # Temporary build configurations combining a CMake preset and build type.
-        # These should be replaced by parsing CMakePresets.json in the future.
-        'windows-vs2019-d3d12-Release': {
-            'build_dir': 'build/windows-vs2019-d3d12/bin/Release'
-        },
-        'windows-vs2019-d3d12-Debug': {
-            'build_dir': 'build/windows-vs2019-d3d12/bin/Debug'
-        },
-        'windows-vs2019-gfx-d3d12-Release': {
-            'build_dir': 'build/windows-vs2019-gfx-d3d12/bin/Release'
-        },
-        'windows-vs2022-d3d12-Release': {
-            'build_dir': 'build/windows-vs2022-d3d12/bin/Release'
-        },
-        'windows-vs2022-d3d12-Debug': {
-            'build_dir': 'build/windows-vs2022-d3d12/bin/Debug'
-        },
-        'windows-vs2022-gfx-d3d12-Release': {
-            'build_dir': 'build/windows-vs2022-gfx-d3d12/bin/Release'
-        },
-        'windows-ninja-msvc-d3d12-Release': {
-            'build_dir': 'build/windows-ninja-msvc-d3d12/bin/Release'
-        },
-        'windows-ninja-msvc-d3d12-Debug': {
-            'build_dir': 'build/windows-ninja-msvc-d3d12/bin/Debug'
-        },
-        'windows-ninja-msvc-gfx-d3d12-Release': {
-            'build_dir': 'build/windows-ninja-msvc-gfx-d3d12/bin/Release'
-        },
-        'windows-ninja-msvc-gfx-d3d12-Debug': {
-            'build_dir': 'build/windows-ninja-msvc-gfx-d3d12/bin/Debug'
-        },
-        'windows-ninja-msvc-gfx-vk-Release': {
-            'build_dir': 'build/windows-ninja-msvc-gfx-vk/bin/Release'
-        },
-        'windows-ninja-msvc-gfx-vk-Debug': {
-            'build_dir': 'build/windows-ninja-msvc-gfx-vk/bin/Debug'
-        },
-    }
-
-    SOLUTION_FILE="Falcor.sln"
-
     # Executables.
+    CMAKE_EXE = "tools/.packman/cmake/bin/cmake.exe"
     FALCOR_TEST_EXE = 'FalcorTest.exe'
     MOGWAI_EXE = 'Mogwai.exe'
     IMAGE_COMPARE_EXE = 'ImageCompare.exe'
 
+    SUPPORTED_DEVICE_TYPES = ["d3d12", "vulkan"]
+
+elif os.name == 'posix':
+    # Executables.
+    CMAKE_EXE = "tools/.packman/cmake/bin/cmake"
+    FALCOR_TEST_EXE = 'FalcorTest'
+    MOGWAI_EXE = 'Mogwai'
+    IMAGE_COMPARE_EXE = 'ImageCompare'
+
+    SUPPORTED_DEVICE_TYPES = ["vulkan"]
+
 else:
-    raise RuntimeError('Testing is only supported on Windows')
+    raise RuntimeError('Testing is not supported on this platform')

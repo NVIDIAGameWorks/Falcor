@@ -45,7 +45,7 @@ namespace Falcor
         std::filesystem::path generateLogFilePath()
         {
             std::string prefix = getExecutableName();
-            std::filesystem::path directory = getExecutableDirectory();
+            std::filesystem::path directory = getRuntimeDirectory();
             return findAvailableFilename(prefix, directory, "log");
         }
 
@@ -129,8 +129,9 @@ namespace Falcor
             // Write to console.
             if (is_set(sOutputs, OutputFlags::Console))
             {
-                if (level > Logger::Level::Error) std::cout << s;
-                else std::cerr << s;
+                auto& os = level > Logger::Level::Error ? std::cout : std::cerr;
+                os << s;
+                os.flush();
             }
 
             // Write to file.

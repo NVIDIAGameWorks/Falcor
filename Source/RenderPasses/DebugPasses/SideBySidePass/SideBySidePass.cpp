@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,8 +27,6 @@
  **************************************************************************/
 #include "SideBySidePass.h"
 
-const RenderPass::Info SideBySidePass::kInfo { "SideBySidePass", "Allows the user to compare two inputs side-by-side." };
-
 namespace
 {
     const std::string kImageLeftBound = "imageLeftBound";
@@ -37,15 +35,15 @@ namespace
     const std::string kSplitShader = "RenderPasses/DebugPasses/SideBySidePass/SideBySide.ps.slang";
 }
 
-SideBySidePass::SideBySidePass()
-    : ComparisonPass(kInfo)
+SideBySidePass::SideBySidePass(std::shared_ptr<Device> pDevice)
+    : ComparisonPass(std::move(pDevice))
 {
     createProgram();
 }
 
-SideBySidePass::SharedPtr SideBySidePass::create(RenderContext* pRenderContext, const Dictionary& dict)
+SideBySidePass::SharedPtr SideBySidePass::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
-    SharedPtr pPass = SharedPtr(new SideBySidePass());
+    SharedPtr pPass = SharedPtr(new SideBySidePass(std::move(pDevice)));
     for (const auto& [key, value] : dict)
     {
         if (key == kImageLeftBound) pPass->mImageLeftBound = value;
@@ -60,7 +58,7 @@ SideBySidePass::SharedPtr SideBySidePass::create(RenderContext* pRenderContext, 
 void SideBySidePass::createProgram()
 {
     // Create our shader that splits the screen.
-    mpSplitShader = FullScreenPass::create(kSplitShader);
+    mpSplitShader = FullScreenPass::create(mpDevice, kSplitShader);
 }
 
 void SideBySidePass::execute(RenderContext* pRenderContext, const RenderData& renderData)

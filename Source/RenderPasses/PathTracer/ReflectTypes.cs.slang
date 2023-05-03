@@ -43,6 +43,7 @@ StructuredBuffer<ColorType> sampleColor;
 StructuredBuffer<GuideData> sampleGuideData;
 StructuredBuffer<NRDRadiance> sampleNRDRadiance;
 StructuredBuffer<float> sampleNRDHitDist;
+StructuredBuffer<float4> sampleNRDPrimaryHitNeeOnDelta;
 StructuredBuffer<float4> sampleNRDEmission;
 StructuredBuffer<float4> sampleNRDReflectance;
 

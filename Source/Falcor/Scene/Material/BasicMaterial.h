@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -45,7 +45,6 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<BasicMaterial>;
-        using SharedConstPtr = std::shared_ptr<const BasicMaterial>;
 
         /** Render the UI.
             \return True if the material was modified.
@@ -257,7 +256,7 @@ namespace Falcor
         bool operator==(const BasicMaterial& other) const;
 
     protected:
-        BasicMaterial(const std::string& name, MaterialType type);
+        BasicMaterial(std::shared_ptr<Device> pDevice, const std::string& name, MaterialType type);
 
         bool isAlphaSupported() const;
         void prepareDisplacementMapForRendering();

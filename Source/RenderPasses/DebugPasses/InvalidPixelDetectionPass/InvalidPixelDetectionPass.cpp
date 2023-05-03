@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,8 +27,6 @@
  **************************************************************************/
 #include "InvalidPixelDetectionPass.h"
 
-const RenderPass::Info InvalidPixelDetectionPass::kInfo { "InvalidPixelDetectionPass", "Pass that marks all NaN pixels red and Inf pixels green in an image." };
-
 namespace
 {
     const std::string kSrc = "src";
@@ -36,16 +34,16 @@ namespace
     const std::string kFormatWarning = "Non-float format can't represent Inf/NaN values. Expect black output.";
 }
 
-InvalidPixelDetectionPass::InvalidPixelDetectionPass()
-    : RenderPass(kInfo)
+InvalidPixelDetectionPass::InvalidPixelDetectionPass(std::shared_ptr<Device> pDevice)
+    : RenderPass(std::move(pDevice))
 {
-    mpInvalidPixelDetectPass = FullScreenPass::create("RenderPasses/DebugPasses/InvalidPixelDetectionPass/InvalidPixelDetection.ps.slang");
-    mpFbo = Fbo::create();
+    mpInvalidPixelDetectPass = FullScreenPass::create(mpDevice, "RenderPasses/DebugPasses/InvalidPixelDetectionPass/InvalidPixelDetection.ps.slang");
+    mpFbo = Fbo::create(mpDevice.get());
 }
 
-InvalidPixelDetectionPass::SharedPtr InvalidPixelDetectionPass::create(RenderContext* pRenderContext, const Dictionary& dict)
+InvalidPixelDetectionPass::SharedPtr InvalidPixelDetectionPass::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
-    SharedPtr pPass = SharedPtr(new InvalidPixelDetectionPass());
+    SharedPtr pPass = SharedPtr(new InvalidPixelDetectionPass(std::move(pDevice)));
     return pPass;
 }
 

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
  **************************************************************************/
 #include "PBRTCoatedConductorMaterial.h"
 #include "Utils/Scripting/ScriptBindings.h"
+#include "Scene/SceneBuilderAccess.h"
 
 namespace Falcor
 {
@@ -35,13 +36,13 @@ namespace Falcor
         const char kShaderFile[] = "Rendering/Materials/PBRT/PBRTCoatedConductorMaterial.slang";
     }
 
-    PBRTCoatedConductorMaterial::SharedPtr PBRTCoatedConductorMaterial::create(const std::string& name)
+    PBRTCoatedConductorMaterial::SharedPtr PBRTCoatedConductorMaterial::create(std::shared_ptr<Device> pDevice, const std::string& name)
     {
-        return SharedPtr(new PBRTCoatedConductorMaterial(name));
+        return SharedPtr(new PBRTCoatedConductorMaterial(std::move(pDevice), name));
     }
 
-    PBRTCoatedConductorMaterial::PBRTCoatedConductorMaterial(const std::string& name)
-        : BasicMaterial(name, MaterialType::PBRTCoatedConductor)
+    PBRTCoatedConductorMaterial::PBRTCoatedConductorMaterial(std::shared_ptr<Device> pDevice, const std::string& name)
+        : BasicMaterial(std::move(pDevice), name, MaterialType::PBRTCoatedConductor)
     {
         // Setup additional texture slots.
         mTextureSlotInfo[(uint32_t)TextureSlot::BaseColor] = { "baseColor", TextureChannelFlags::RGBA, false };
@@ -89,7 +90,11 @@ namespace Falcor
         FALCOR_SCRIPT_BINDING_DEPENDENCY(BasicMaterial)
 
         pybind11::class_<PBRTCoatedConductorMaterial, BasicMaterial, PBRTCoatedConductorMaterial::SharedPtr> material(m, "PBRTCoatedConductorMaterial");
-        material.def(pybind11::init(&PBRTCoatedConductorMaterial::create), "name"_a = "");
+        auto create = [] (const std::string& name)
+        {
+            return PBRTCoatedConductorMaterial::create(getActivePythonSceneBuilder().getDevice(), name);
+        };
+        material.def(pybind11::init(create), "name"_a = ""); // PYTHONDEPRECATED
 
         material.def_property("roughness", &PBRTCoatedConductorMaterial::getRoughness, &PBRTCoatedConductorMaterial::setRoughness);
     }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -34,13 +34,13 @@ using namespace Falcor;
 class InvalidPixelDetectionPass : public RenderPass
 {
 public:
-    using SharedPtr = std::shared_ptr<InvalidPixelDetectionPass>;
+    FALCOR_PLUGIN_CLASS(InvalidPixelDetectionPass, "InvalidPixelDetectionPass", "Pass that marks all NaN pixels red and Inf pixels green in an image.");
 
-    static const Info kInfo;
+    using SharedPtr = std::shared_ptr<InvalidPixelDetectionPass>;
 
     /** Create a new object
     */
-    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
@@ -48,7 +48,7 @@ public:
     virtual void renderUI(Gui::Widgets& widget) override;
 
 private:
-    InvalidPixelDetectionPass();
+    InvalidPixelDetectionPass(std::shared_ptr<Device> pDevice);
 
     FullScreenPass::SharedPtr mpInvalidPixelDetectPass;
     Fbo::SharedPtr mpFbo;

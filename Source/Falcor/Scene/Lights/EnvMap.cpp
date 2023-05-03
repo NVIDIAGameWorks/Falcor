@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,24 +26,26 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "EnvMap.h"
+#include "Core/API/Device.h"
 #include "Core/Program/ShaderVar.h"
 #include "Utils/Scripting/ScriptBindings.h"
+#include "Scene/SceneBuilderAccess.h"
 #include <glm/gtc/integer.hpp>
 #include <glm/gtx/euler_angles.hpp>
 
 namespace Falcor
 {
-    EnvMap::SharedPtr EnvMap::create(const Texture::SharedPtr& pTexture)
+    EnvMap::SharedPtr EnvMap::create(std::shared_ptr<Device> pDevice, const Texture::SharedPtr& pTexture)
     {
-        return SharedPtr(new EnvMap(pTexture));
+        return SharedPtr(new EnvMap(std::move(pDevice), pTexture));
     }
 
-    EnvMap::SharedPtr EnvMap::createFromFile(const std::filesystem::path& path)
+    EnvMap::SharedPtr EnvMap::createFromFile(std::shared_ptr<Device> pDevice, const std::filesystem::path& path)
     {
         // Load environment map from file. Set it to generate mips and use linear color.
-        auto pTexture = Texture::createFromFile(path, true, false);
+        auto pTexture = Texture::createFromFile(pDevice.get(), path, true, false);
         if (!pTexture) return nullptr;
-        return create(pTexture);
+        return create(std::move(pDevice), pTexture);
     }
 
     void EnvMap::renderUI(Gui::Widgets& widgets)
@@ -108,8 +110,10 @@ namespace Falcor
         return mpEnvMap ? mpEnvMap->getTextureSizeInBytes() : 0;
     }
 
-    EnvMap::EnvMap(const Texture::SharedPtr& pTexture)
+    EnvMap::EnvMap(std::shared_ptr<Device> pDevice, const Texture::SharedPtr& pTexture)
+        : mpDevice(std::move(pDevice))
     {
+        checkArgument(mpDevice != nullptr, "'pDevice' must be a valid device");
         checkArgument(pTexture != nullptr, "'pTexture' must be a valid texture");
 
         mpEnvMap = pTexture;
@@ -119,7 +123,7 @@ namespace Falcor
         Sampler::Desc samplerDesc;
         samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
         samplerDesc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
-        mpEnvSampler = Sampler::create(samplerDesc);
+        mpEnvSampler = Sampler::create(mpDevice.get(), samplerDesc);
     }
 
     FALCOR_SCRIPT_BINDING(EnvMap)
@@ -127,8 +131,11 @@ namespace Falcor
         using namespace pybind11::literals;
 
         pybind11::class_<EnvMap, EnvMap::SharedPtr> envMap(m, "EnvMap");
-        envMap.def(pybind11::init(pybind11::overload_cast<const std::filesystem::path&>(&EnvMap::createFromFile)), "path"_a);
-        envMap.def_static("createFromFile", &EnvMap::createFromFile, "path"_a);
+        auto createFromFile = [](const std::filesystem::path &path) {
+            return EnvMap::createFromFile(getActivePythonSceneBuilder().getDevice(), path);
+        };
+        envMap.def(pybind11::init(createFromFile), "path"_a); // PYTHONDEPRECATED
+        envMap.def_static("createFromFile", createFromFile, "path"_a);
         envMap.def_property_readonly("path", &EnvMap::getPath);
         envMap.def_property("rotation", &EnvMap::getRotation, &EnvMap::setRotation);
         envMap.def_property("intensity", &EnvMap::getIntensity, &EnvMap::setIntensity);

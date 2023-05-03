@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -36,6 +36,7 @@ RWTexture2D<float>  gDepth;
 RWTexture2D<float2> gMotionVector;
 RWTexture2D<float4> gViewW;
 RWTexture2D<uint> gTime;
+RWTexture2D<float> gMask;
 
 #define is_valid(name) (is_valid_##name != 0)
 
@@ -114,6 +115,7 @@ struct VBufferRT
 
         if (is_valid(gDepth))           gDepth[pixel]           = depth;
         if (is_valid(gMotionVector))    gMotionVector[pixel]    = motionVector;
+        if (is_valid(gMask))            gMask[pixel]            = 1.0f;
     }
 
     void writeMiss(uint2 pixel, float3 rayOrigin, float3 rayDir)
@@ -122,6 +124,7 @@ struct VBufferRT
 
         if (is_valid(gDepth))           gDepth[pixel]           = 1.f;
         if (is_valid(gMotionVector))    gMotionVector[pixel]    = {};
+        if (is_valid(gMask))            gMask[pixel]            = 0.0f;
     }
 
     void writeAux(uint2 pixel, const Ray ray)

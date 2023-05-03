@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,7 +31,7 @@ StructuredBuffer<float3> testData;
 RWStructuredBuffer<float3> result;
 
 [numthreads(256, 1, 1)]
-void testLogLuvHDR(uint3 threadId : SV_DispatchThreadID)
+void testLogLuvHDR(uint3 threadId: SV_DispatchThreadID)
 {
     const uint idx = threadId.x;
 

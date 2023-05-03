@@ -37,6 +37,7 @@ static const bool kOutputNRDAdditionalData = OUTPUT_NRD_ADDITIONAL_DATA;
 struct NRDBuffers
 {
     RWStructuredBuffer<NRDRadiance> sampleRadiance;             ///< Output per-sample NRD radiance data. Only valid if kOutputNRDData == true.
+    RWStructuredBuffer<float4>      samplePrimaryHitNEEOnDelta; ///< Output per-sample NEE on paths classified as delta, from delta+diffuse materials. Only valid if kOutputNRDData == true.
     RWStructuredBuffer<float>       sampleHitDist;              ///< Output per-sample NRD hit distance data. Only valid if kOutputNRDData == true.
     RWStructuredBuffer<float4>      sampleEmission;             ///< Output per-sample NRD emission data. Only valid if kOutputNRDData == true.
     RWStructuredBuffer<float4>      sampleReflectance;          ///< Output per-sample NRD reflectance data. Only valid if kOutputNRDData == true.

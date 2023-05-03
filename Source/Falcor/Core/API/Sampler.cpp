@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,120 +27,136 @@
  **************************************************************************/
 #include "Sampler.h"
 #include "Device.h"
+#include "GFXAPI.h"
+#include "NativeHandleTraits.h"
 #include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
 {
-    struct SamplerData
+namespace
+{
+gfx::TextureAddressingMode getGFXAddressMode(Sampler::AddressMode mode)
+{
+    switch (mode)
     {
-        uint32_t objectCount = 0;
-        Sampler::SharedPtr pDefaultSampler;
-    };
-    SamplerData gSamplerData;
-
-    Sampler::Sampler(const Desc& desc) : mDesc(desc)
-    {
-        gSamplerData.objectCount++;
-    }
-
-    Sampler::~Sampler()
-    {
-        gSamplerData.objectCount--;
-        if (gSamplerData.objectCount <= 1) gSamplerData.pDefaultSampler = nullptr;
-#ifdef FALCOR_GFX
-        gpDevice->releaseResource(mApiHandle);
-#endif
-    }
-
-    Sampler::Desc& Sampler::Desc::setFilterMode(Filter minFilter, Filter magFilter, Filter mipFilter)
-    {
-        mMagFilter = magFilter;
-        mMinFilter = minFilter;
-        mMipFilter = mipFilter;
-        return *this;
-    }
-
-    Sampler::Desc& Sampler::Desc::setMaxAnisotropy(uint32_t maxAnisotropy)
-    {
-        mMaxAnisotropy = maxAnisotropy;
-        return *this;
-    }
-
-    Sampler::Desc& Sampler::Desc::setLodParams(float minLod, float maxLod, float lodBias)
-    {
-        mMinLod = minLod;
-        mMaxLod = maxLod;
-        mLodBias = lodBias;
-        return *this;
-    }
-
-    Sampler::Desc& Sampler::Desc::setComparisonMode(ComparisonMode mode)
-    {
-        mComparisonMode = mode;
-        return *this;
-    }
-
-    Sampler::Desc& Sampler::Desc::setReductionMode(ReductionMode mode)
-    {
-        mReductionMode = mode;
-        return *this;
-    }
-
-    Sampler::Desc& Sampler::Desc::setAddressingMode(AddressMode modeU, AddressMode modeV, AddressMode modeW)
-    {
-        mModeU = modeU;
-        mModeV = modeV;
-        mModeW = modeW;
-        return *this;
-    }
-
-    Sampler::Desc& Sampler::Desc::setBorderColor(const float4& borderColor)
-    {
-        mBorderColor = borderColor;
-        return *this;
-    }
-
-    bool Sampler::Desc::operator==(const Sampler::Desc& other) const
-    {
-        if (mMagFilter != other.mMagFilter) return false;
-        if (mMinFilter != other.mMinFilter) return false;
-        if (mMipFilter != other.mMipFilter) return false;
-        if (mMaxAnisotropy != other.mMaxAnisotropy) return false;
-        if (mMaxLod != other.mMaxLod) return false;
-        if (mMinLod != other.mMinLod) return false;
-        if (mLodBias != other.mLodBias) return false;
-        if (mComparisonMode != other.mComparisonMode) return false;
-        if (mReductionMode != other.mReductionMode) return false;
-        if (mModeU != other.mModeU) return false;
-        if (mModeV != other.mModeV) return false;
-        if (mModeW != other.mModeW) return false;
-        if (mBorderColor != other.mBorderColor) return false;
-
-        return true;
-    }
-
-    Sampler::SharedPtr Sampler::getDefault()
-    {
-        if (gSamplerData.pDefaultSampler == nullptr)
-        {
-            gSamplerData.pDefaultSampler = create(Desc());
-        }
-        return gSamplerData.pDefaultSampler;
-    }
-
-    FALCOR_SCRIPT_BINDING(Sampler)
-    {
-        pybind11::class_<Sampler, Sampler::SharedPtr>(m, "Sampler");
-
-        pybind11::enum_<Sampler::Filter> filter(m, "SamplerFilter");
-        filter.value("Linear", Sampler::Filter::Linear);
-        filter.value("Point", Sampler::Filter::Point);
-
-        pybind11::enum_<Sampler::AddressMode> addressMode(m, "AddressMode");
-        addressMode.value("Wrap", Sampler::AddressMode::Wrap);
-        addressMode.value("Mirror", Sampler::AddressMode::Mirror);
-        addressMode.value("Clamp", Sampler::AddressMode::Clamp);
-        addressMode.value("Border", Sampler::AddressMode::Border);
-        addressMode.value("MirrorOnce", Sampler::AddressMode::MirrorOnce);
+    case Sampler::AddressMode::Border:
+        return gfx::TextureAddressingMode::ClampToBorder;
+    case Sampler::AddressMode::Clamp:
+        return gfx::TextureAddressingMode::ClampToEdge;
+    case Sampler::AddressMode::Mirror:
+        return gfx::TextureAddressingMode::MirrorRepeat;
+    case Sampler::AddressMode::MirrorOnce:
+        return gfx::TextureAddressingMode::MirrorOnce;
+    case Sampler::AddressMode::Wrap:
+        return gfx::TextureAddressingMode::Wrap;
+    default:
+        FALCOR_UNREACHABLE();
+        return gfx::TextureAddressingMode::ClampToBorder;
     }
 }
+
+gfx::TextureFilteringMode getGFXFilter(Sampler::Filter filter)
+{
+    switch (filter)
+    {
+    case Sampler::Filter::Linear:
+        return gfx::TextureFilteringMode::Linear;
+    case Sampler::Filter::Point:
+        return gfx::TextureFilteringMode::Point;
+    default:
+        FALCOR_UNREACHABLE();
+        return gfx::TextureFilteringMode::Point;
+    }
+}
+
+gfx::TextureReductionOp getGFXReductionMode(Sampler::ReductionMode mode)
+{
+    switch (mode)
+    {
+    case Falcor::Sampler::ReductionMode::Standard:
+        return gfx::TextureReductionOp::Average;
+    case Falcor::Sampler::ReductionMode::Comparison:
+        return gfx::TextureReductionOp::Comparison;
+    case Falcor::Sampler::ReductionMode::Min:
+        return gfx::TextureReductionOp::Minimum;
+    case Falcor::Sampler::ReductionMode::Max:
+        return gfx::TextureReductionOp::Maximum;
+    default:
+        return gfx::TextureReductionOp::Average;
+        break;
+    }
+}
+} // namespace
+
+gfx::ComparisonFunc getGFXComparisonFunc(ComparisonFunc func);
+
+Sampler::Sampler(std::shared_ptr<Device> pDevice, const Desc& desc) : mpDevice(std::move(pDevice)), mDesc(desc)
+{
+    gfx::ISamplerState::Desc gfxDesc = {};
+    gfxDesc.addressU = getGFXAddressMode(desc.addressModeU);
+    gfxDesc.addressV = getGFXAddressMode(desc.addressModeV);
+    gfxDesc.addressW = getGFXAddressMode(desc.addressModeW);
+
+    static_assert(sizeof(gfxDesc.borderColor) == sizeof(desc.borderColor));
+    std::memcpy(gfxDesc.borderColor, &desc.borderColor, sizeof(desc.borderColor));
+
+    gfxDesc.comparisonFunc = getGFXComparisonFunc(desc.comparisonMode);
+    gfxDesc.magFilter = getGFXFilter(desc.magFilter);
+    gfxDesc.maxAnisotropy = desc.maxAnisotropy;
+    gfxDesc.maxLOD = desc.maxLod;
+    gfxDesc.minFilter = getGFXFilter(desc.minFilter);
+    gfxDesc.minLOD = desc.minLod;
+    gfxDesc.mipFilter = getGFXFilter(desc.mipFilter);
+    gfxDesc.mipLODBias = desc.lodBias;
+    gfxDesc.reductionOp = (desc.comparisonMode != Sampler::ComparisonMode::Disabled) ? gfx::TextureReductionOp::Comparison
+                                                                                     : getGFXReductionMode(desc.reductionMode);
+
+    FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createSamplerState(gfxDesc, mGfxSamplerState.writeRef()));
+}
+
+Sampler::~Sampler()
+{
+    mpDevice->releaseResource(mGfxSamplerState);
+}
+
+Sampler::SharedPtr Sampler::create(Device* pDevice, const Desc& desc)
+{
+    return Sampler::SharedPtr(new Sampler(pDevice->shared_from_this(), desc));
+}
+
+NativeHandle Sampler::getNativeHandle() const
+{
+    gfx::InteropHandle gfxNativeHandle = {};
+    FALCOR_GFX_CALL(mGfxSamplerState->getNativeHandle(&gfxNativeHandle));
+#if FALCOR_HAS_D3D12
+    if (mpDevice->getType() == Device::Type::D3D12)
+        return NativeHandle(D3D12_CPU_DESCRIPTOR_HANDLE{gfxNativeHandle.handleValue});
+#endif
+#if FALCOR_HAS_VULKAN
+    if (mpDevice->getType() == Device::Type::Vulkan)
+        return NativeHandle(reinterpret_cast<VkSampler>(gfxNativeHandle.handleValue));
+#endif
+    return {};
+}
+
+uint32_t Sampler::getApiMaxAnisotropy()
+{
+    return 16;
+}
+
+FALCOR_SCRIPT_BINDING(Sampler)
+{
+    pybind11::class_<Sampler, Sampler::SharedPtr>(m, "Sampler");
+
+    pybind11::enum_<Sampler::Filter> filter(m, "SamplerFilter");
+    filter.value("Linear", Sampler::Filter::Linear);
+    filter.value("Point", Sampler::Filter::Point);
+
+    pybind11::enum_<Sampler::AddressMode> addressMode(m, "AddressMode");
+    addressMode.value("Wrap", Sampler::AddressMode::Wrap);
+    addressMode.value("Mirror", Sampler::AddressMode::Mirror);
+    addressMode.value("Clamp", Sampler::AddressMode::Clamp);
+    addressMode.value("Border", Sampler::AddressMode::Border);
+    addressMode.value("MirrorOnce", Sampler::AddressMode::MirrorOnce);
+}
+} // namespace Falcor

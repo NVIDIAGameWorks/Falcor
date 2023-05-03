@@ -38,7 +38,6 @@
 #include "Utils/Math/MathConstants.slangh"
 
 import Scene.Scene;
-import Scene.ShadingData;
 __exported import Scene.Lights.LightCollection;
 import Utils.Math.MathHelpers;
 import Rendering.Lights.EmissiveLightSamplerInterface;

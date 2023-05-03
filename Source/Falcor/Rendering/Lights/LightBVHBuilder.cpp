@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -229,21 +229,20 @@ namespace Falcor
 {
     static_assert(sizeof(PackedNode) % 16 == 0, "PackedNode size should be a multiple of 16");
 
-    LightBVHBuilder::SharedPtr LightBVHBuilder::create(const Options& options)
+    LightBVHBuilder::LightBVHBuilder(const Options& options) : mOptions(options)
     {
-        return SharedPtr(new LightBVHBuilder(options));
     }
 
-    void LightBVHBuilder::build(LightBVH& bvh)
+    void LightBVHBuilder::build(RenderContext* pRenderContext, LightBVH& bvh)
     {
-        FALCOR_PROFILE("LightBVHBuilder::build()");
+        FALCOR_PROFILE(pRenderContext, "LightBVHBuilder::build()");
 
         bvh.clear();
         FALCOR_ASSERT(!bvh.isValid() && bvh.mNodes.empty());
 
         // Get global list of emissive triangles.
         FALCOR_ASSERT(bvh.mpLightCollection);
-        const auto& triangles = bvh.mpLightCollection->getMeshLightTriangles();
+        const auto& triangles = bvh.mpLightCollection->getMeshLightTriangles(pRenderContext);
         if (triangles.empty()) return;
 
         // Create list of triangles that should be included in BVH.
@@ -356,10 +355,6 @@ namespace Falcor
         }
 
         return optionsChanged;
-    }
-
-    LightBVHBuilder::LightBVHBuilder(const Options& options) : mOptions(options)
-    {
     }
 
     uint32_t LightBVHBuilder::buildInternal(const Options& options, const SplitHeuristicFunction& splitHeuristic, uint64_t bitmask, uint32_t depth, const Range& triangleRange, BuildingData& data)

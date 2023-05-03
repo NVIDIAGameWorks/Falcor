@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -51,12 +51,14 @@ RWTexture2D<float>  gDepth;
 RWTexture2D<float2> gLinearZ;
 RWTexture2D<float4> gMotionVectorW;
 RWTexture2D<float4> gNormalWRoughnessMaterialID;
+RWTexture2D<float4> gGuideNormalW;
 RWTexture2D<float4> gDiffOpacity;
 RWTexture2D<float4> gSpecRough;
 RWTexture2D<float4> gEmissive;
 RWTexture2D<float4> gViewW;
 RWTexture2D<uint>   gTime;
 RWTexture2D<float>  gDisocclusion;
+RWTexture2D<float>  gMask;
 
 #define is_valid(name) (is_valid_##name != 0)
 
@@ -235,7 +237,7 @@ struct GBufferRT
 
         if (kAdjustShadingNormals && (hit.getType() == HitType::Triangle || hit.getType() == HitType::DisplacedTriangle))
         {
-            adjustShadingNormal(sd, v);
+            adjustShadingNormal(sd);
         }
 
         if (hit.getType() != HitType::None && hit.getType() != HitType::Volume)
@@ -253,10 +255,11 @@ struct GBufferRT
             disocclusion = prevPosH.w - curPosH.w;
         }
 
-        // Create BSDF instance.
-        let bsdf = gScene.materials.getBSDF(sd, lod);
+        // Create material instance and query its properties.
+        let mi = gScene.materials.getMaterialInstance(sd, lod);
+        let bsdfProperties = mi.getProperties(sd);
 
-        const GBufferData gbuf = prepareGBufferData(sd, bsdf);
+        const GBufferData gbuf = prepareGBufferData(sd, v, mi, bsdfProperties);
 
         // GBuffer channels
         if (is_valid(gPosW))                gPosW[pixel]                = gbuf.posW;
@@ -270,10 +273,12 @@ struct GBufferRT
 
         // GBufferRT channels
         if (is_valid(gMotionVectorW))       gMotionVectorW[pixel]       = motionVectorW;
+        if (is_valid(gGuideNormalW))        gGuideNormalW[pixel]        = gbuf.guideNormalW;
         if (is_valid(gDiffOpacity))         gDiffOpacity[pixel]         = gbuf.diffuseOpacity;
         if (is_valid(gSpecRough))           gSpecRough[pixel]           = gbuf.specRough;
         if (is_valid(gEmissive))            gEmissive[pixel]            = gbuf.emissive;
         if (is_valid(gDisocclusion))        gDisocclusion[pixel]        = disocclusion;
+        if (is_valid(gMask))                gMask[pixel]                = 1.0f;
 
         if (is_valid(gLinearZ))
         {
@@ -298,14 +303,14 @@ struct GBufferRT
             gDepth[pixel] = curPosH.z / curPosH.w;
         }
 
-        // Output a buffer that packs normal and roughness estimation.
+        // Output a buffer that packs guide normal and roughness estimation.
         if (is_valid(gNormalWRoughnessMaterialID))
         {
-            float3 normal = sd.N;
+            float3 normal = bsdfProperties.guideNormal;
             if (sd.mtl.getMaterialType() == MaterialType::Hair) normal = sd.T;
 
             float2 octNormal = ndir_to_oct_unorm(normal);
-            float roughness = bsdf.getProperties(sd).roughness;
+            float roughness = bsdfProperties.roughness;
             float materialID = 0.f;
             gNormalWRoughnessMaterialID[pixel] = float4(octNormal, roughness, materialID);
         }
@@ -342,6 +347,7 @@ struct GBufferRT
         if (is_valid(gTexC))                        gTexC[pixel]                        = {};
         if (is_valid(gTexGrads))                    gTexGrads[pixel]                    = {};
         if (is_valid(gMotionVector))                gMotionVector[pixel]                = mvec;
+        if (is_valid(gMaterialData))                gMaterialData[pixel]                = {};
 
         // GBufferRT channels
         if (is_valid(gVBuffer))                     gVBuffer[pixel]                     = {};
@@ -349,10 +355,12 @@ struct GBufferRT
         if (is_valid(gLinearZ))                     gLinearZ[pixel]                     = float2(kEnvMapDepth, 0.f);
         if (is_valid(gMotionVectorW))               gMotionVectorW[pixel]               = {};
         if (is_valid(gNormalWRoughnessMaterialID))  gNormalWRoughnessMaterialID[pixel]  = float4(octNormal, roughness, materialID);
+        if (is_valid(gGuideNormalW))                gGuideNormalW[pixel]                = {};
         if (is_valid(gDiffOpacity))                 gDiffOpacity[pixel]                 = {};
         if (is_valid(gSpecRough))                   gSpecRough[pixel]                   = {};
         if (is_valid(gEmissive))                    gEmissive[pixel]                    = {};
         if (is_valid(gDisocclusion))                gDisocclusion[pixel]                = 0.f;
+        if (is_valid(gMask))                        gMask[pixel]                        = 0.0f;
     }
 
     void writeAux(uint2 pixel, const Ray ray)

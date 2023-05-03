@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -34,6 +34,7 @@ __exported import Utils.Sampling.SampleGeneratorInterface;
      - The incident direction (wi) is given.
      - The outgoing direction (wo) is sampled.
 */
+[anyValueSize(36)]
 interface IPhaseFunction
 {
     /** Evaluates the phase function.
@@ -41,7 +42,7 @@ interface IPhaseFunction
         \param[in] wo Outgoing direction.
         \return Returns f_p(wi, wo).
     */
-    float eval(const float3 wi, const float3 wo);
+    float3 eval(const float3 wi, const float3 wo);
 
     /** Samples the phase function.
         \param[in] wi Incident direction.
@@ -51,7 +52,7 @@ interface IPhaseFunction
         \param[in,out] sg Sample generator.
         \return Returns true if successful.
     */
-    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float weight, inout S sg);
+    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, inout S sg);
 
     /** Evaluates the phase function pdf for sampling outgoing direction wo.
         \param[in] wi Incident direction.

@@ -26,9 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "ScriptBindings.h"
+#include "Core/Plugin.h"
 #include "Utils/Scripting/Scripting.h"
 #include "Utils/Math/Float16.h"
 #include "Utils/Math/Matrix/Matrix.h"
+#include <fmt/format.h>
 #include <pybind11/embed.h>
 #include <pybind11/operators.h>
 #include <algorithm>
@@ -88,24 +90,28 @@ namespace Falcor::ScriptBindings
             }
         };
 
-        /** `gDeferredBindings` is declared as pointer so that we can ensure it can be explicitly
-            allocated when registerDeferredBinding() is called. (The C++ static object initialization fiasco.)
-        */
-        std::unique_ptr<std::vector<DeferredBinding>> gDeferredBindings;
+        static std::vector<DeferredBinding>& getDeferredBindings()
+        {
+            static std::vector<DeferredBinding> deferredBindings;
+            return deferredBindings;
+        }
 
-        uint32_t gDeferredBindingID = 0;
+        static std::string getUniqueDeferredBindingName()
+        {
+            static uint32_t id = 0;
+            return fmt::format("_DeferredBinding{}", id++);
+        }
+
+        static pybind11::module sModule;
     }
 
     void registerBinding(RegisterBindingFunc f)
     {
-        if (Scripting::isRunning())
+        if (sModule)
         {
             try
             {
-                auto m = pybind11::module::import("falcor");
-                f(m);
-                // Re-import falcor into default scripting context.
-                Scripting::runScript("from falcor import *");
+                f(sModule);
             }
             catch (const std::exception& e)
             {
@@ -116,26 +122,25 @@ namespace Falcor::ScriptBindings
         }
         else
         {
-            // Create unique name for deferred binding.
-            std::string name = "DeferredBinding" + std::to_string(gDeferredBindingID++);
-            registerDeferredBinding(name, f);
+            registerDeferredBinding(getUniqueDeferredBindingName(), f);
         }
     }
 
     void registerDeferredBinding(const std::string& name, RegisterBindingFunc f)
     {
-        if (!gDeferredBindings) gDeferredBindings.reset(new std::vector<DeferredBinding>());
-        if (std::find_if(gDeferredBindings->begin(), gDeferredBindings->end(), [&name](const DeferredBinding& binding) { return binding.name == name; }) != gDeferredBindings->end())
+        auto& deferredBindings = getDeferredBindings();
+        if (std::find_if(deferredBindings.begin(), deferredBindings.end(), [&name](const DeferredBinding& binding) { return binding.name == name; }) != deferredBindings.end())
         {
             throw RuntimeError("A script binding with the name '{}' already exists!", name);
         }
-        gDeferredBindings->emplace_back(name, f);
+        deferredBindings.emplace_back(name, f);
     }
 
     void resolveDeferredBinding(const std::string &name, pybind11::module& m)
     {
-        auto it = std::find_if(gDeferredBindings->begin(), gDeferredBindings->end(), [&name](const DeferredBinding& binding) { return binding.name == name; });
-        if (it != gDeferredBindings->end()) it->bind(m);
+        auto& deferredBindings = getDeferredBindings();
+        auto it = std::find_if(deferredBindings.begin(), deferredBindings.end(), [&name](const DeferredBinding& binding) { return binding.name == name; });
+        if (it != deferredBindings.end()) it->bind(m);
     }
 
 
@@ -210,12 +215,12 @@ namespace Falcor::ScriptBindings
         vec.def("__str__", str);
 
         vec.def(pybind11::pickle(
-            [length] (const VecT &v) {
+            [&] (const VecT &v) {
                 pybind11::tuple t(length);
                 for (auto i = 0; i < length; ++i) t[i] = v[i];
                 return t;
             },
-            [length] (pybind11::tuple t) {
+            [&] (pybind11::tuple t) {
                 if (t.size() != length) throw RuntimeError("Invalid state!");
                 VecT v;
                 for (auto i = 0; i < length; ++i) v[i] = t[i].cast<ScalarT>();
@@ -244,8 +249,10 @@ namespace Falcor::ScriptBindings
         }
     }
 
-    PYBIND11_EMBEDDED_MODULE(falcor, m)
+    void initModule(pybind11::module& m)
     {
+        using namespace pybind11::literals;
+
         // bool2, bool3, bool4
         addVecType<bool2, false>(m, "bool2");
         addVecType<bool3, false>(m, "bool3");
@@ -272,13 +279,32 @@ namespace Falcor::ScriptBindings
         pybind11::class_<rmcv::mat4>(m, "float4x4");
 
         // float16_t types
+        pybind11::class_<float16_t>(m, "float16_t");
         addVecType<float16_t2, false>(m, "float16_t2");
         addVecType<float16_t3, false>(m, "float16_t3");
         addVecType<float16_t4, false>(m, "float16_t4");
 
-        if (gDeferredBindings)
-        {
-            for (auto& binding : *gDeferredBindings) binding.bind(m);
-        }
+        // ObjectID
+        pybind11::class_<uint32_t>(m, "ObjectID");
+
+        // Plugins.
+        m.def("loadPlugin", [](const std::string& name) {
+            PluginManager::instance().loadPluginByName(name);
+        }, "name"_a);
+
+        // Bind all deferred bindings.
+        for (auto& binding : getDeferredBindings())
+            binding.bind(m);
+        getDeferredBindings().clear();
+
+        // Retain a handle to the module to add new bindings at runtime.
+        sModule = m;
+
+        // Register atexit handler to automatically release the module handle on exit.
+        auto atexit = pybind11::module_::import("atexit");
+        atexit.attr("register")(pybind11::cpp_function([]() {
+            sModule.release();
+        }));
     }
+
 }

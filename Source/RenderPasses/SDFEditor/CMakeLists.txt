@@ -1,4 +1,4 @@
-add_renderpass(SDFEditor)
+add_plugin(SDFEditor)
 
 target_sources(SDFEditor PRIVATE
     GUIPass.ps.slang

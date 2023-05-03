@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -35,16 +35,16 @@ using namespace Falcor;
 class SimplePostFX : public RenderPass
 {
 public:
+    FALCOR_PLUGIN_CLASS(SimplePostFX, "SimplePostFX", "Simple set of post effects.");
+
     using SharedPtr = std::shared_ptr<SimplePostFX>;
 
-    static const Info kInfo;
-
     /** Create a new render pass object.
-        \param[in] pRenderContext The render context.
+        \param[in] pDevice GPU device.
         \param[in] dict Dictionary of serialized parameters.
         \return A new object, or an exception is thrown if creation failed.
     */
-    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
@@ -86,7 +86,7 @@ public:
     void setColorPowerScalar(float v) { mColorPowerScalar = v; }
 
 private:
-    SimplePostFX(const Dictionary& dict);
+    SimplePostFX(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     void preparePostFX(RenderContext* pRenderContext, uint32_t width, uint32_t height);
 

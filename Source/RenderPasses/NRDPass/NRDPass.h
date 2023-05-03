@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,6 +30,7 @@
 #include <Falcor.h>
 #include "Core/API/Shared/D3D12DescriptorSet.h"
 #include "Core/API/Shared/D3D12RootSignature.h"
+#include "Core/API/Shared/D3D12ConstantBufferView.h"
 #include "RenderGraph/RenderPassHelpers.h"
 
 #include <NRD.h>
@@ -39,9 +40,9 @@ using namespace Falcor;
 class NRDPass : public RenderPass
 {
 public:
-    using SharedPtr = std::shared_ptr<NRDPass>;
+    FALCOR_PLUGIN_CLASS(NRDPass, "NRD", "NRD denoiser.");
 
-    static const Info kInfo;
+    using SharedPtr = std::shared_ptr<NRDPass>;
 
     enum class DenoisingMethod : uint32_t
     {
@@ -52,7 +53,7 @@ public:
         SpecularDeltaMv
     };
 
-    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
@@ -62,7 +63,7 @@ public:
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
 
 private:
-    NRDPass(const Dictionary& dict);
+    NRDPass(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     Scene::SharedPtr mpScene;
     uint2 mScreenSize{};
@@ -89,7 +90,7 @@ private:
     nrd::ReblurSettings mReblurSettings = {};
 
     std::vector<Falcor::Sampler::SharedPtr> mpSamplers;
-    std::vector<Falcor::D3D12DescriptorSet::Layout> mCBVSRVUAVdescriptorSetLayouts;
+    std::vector<Falcor::D3D12DescriptorSetLayout> mCBVSRVUAVdescriptorSetLayouts;
     Falcor::D3D12DescriptorSet::SharedPtr mpSamplersDescriptorSet;
     std::vector<Falcor::D3D12RootSignature::SharedPtr> mpRootSignatures;
     std::vector<ComputePass::SharedPtr> mpPasses;
@@ -98,6 +99,7 @@ private:
     std::vector<Falcor::Texture::SharedPtr> mpPermanentTextures;
     std::vector<Falcor::Texture::SharedPtr> mpTransientTextures;
     Falcor::Buffer::SharedPtr mpConstantBuffer;
+    Falcor::D3D12ConstantBufferView::SharedPtr mpCBV;
 
     rmcv::mat4 mPrevViewMatrix;
     rmcv::mat4 mPrevProjMatrix;

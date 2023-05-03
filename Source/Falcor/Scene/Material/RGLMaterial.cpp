@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,10 +28,11 @@
 #include "RGLMaterial.h"
 #include "RGLFile.h"
 #include "RGLCommon.h"
-#include "Core/Renderer.h"
+#include "Core/API/Device.h"
 #include "Utils/Logger.h"
 #include "Utils/Image/ImageIO.h"
 #include "Utils/Scripting/ScriptBindings.h"
+#include "Scene/SceneBuilderAccess.h"
 #include "Rendering/Materials/BSDFIntegrator.h"
 #include <fstream>
 
@@ -49,13 +50,13 @@ namespace Falcor
         const std::string kLoadFile = "load";
     }
 
-    RGLMaterial::SharedPtr RGLMaterial::create(const std::string& name, const std::filesystem::path& path)
+    RGLMaterial::SharedPtr RGLMaterial::create(std::shared_ptr<Device> pDevice, const std::string& name, const std::filesystem::path& path)
     {
-        return SharedPtr(new RGLMaterial(name, path));
+        return SharedPtr(new RGLMaterial(std::move(pDevice), name, path));
     }
 
-    RGLMaterial::RGLMaterial(const std::string& name, const std::filesystem::path& path)
-        : Material(name, MaterialType::RGL)
+    RGLMaterial::RGLMaterial(std::shared_ptr<Device> pDevice, const std::string& name, const std::filesystem::path& path)
+        : Material(std::move(pDevice), name, MaterialType::RGL)
     {
         if (!loadBRDF(path))
         {
@@ -67,9 +68,9 @@ namespace Falcor
         desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Point, Sampler::Filter::Point);
         desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
         desc.setMaxAnisotropy(1);
-        mpSampler = Sampler::create(desc);
+        mpSampler = Sampler::create(mpDevice.get(), desc);
 
-        prepareAlbedoLUT(gpFramework->getRenderContext());
+        prepareAlbedoLUT(mpDevice->getRenderContext());
     }
 
     bool RGLMaterial::renderUI(Gui::Widgets& widget)
@@ -216,18 +217,18 @@ namespace Falcor
         SamplableDistribution4D vndfDist(reinterpret_cast<float*>(vndf->data.get()), vndfSize);
         SamplableDistribution4D lumiDist(reinterpret_cast<float*>(lumi->data.get()), lumiSize);
 
-        mpVNDFMarginalBuf    = Buffer::create(prod3(vndfSize) * 4, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, vndfDist.getMarginal());
-        mpLumiMarginalBuf    = Buffer::create(prod3(lumiSize) * 4, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, lumiDist.getMarginal());
-        mpVNDFConditionalBuf = Buffer::create(prod4(vndfSize) * 4, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, vndfDist.getConditional());
-        mpLumiConditionalBuf = Buffer::create(prod4(lumiSize) * 4, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, lumiDist.getConditional());
+        mpVNDFMarginalBuf    = Buffer::create(mpDevice.get(), prod3(vndfSize) * 4, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, vndfDist.getMarginal());
+        mpLumiMarginalBuf    = Buffer::create(mpDevice.get(), prod3(lumiSize) * 4, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, lumiDist.getMarginal());
+        mpVNDFConditionalBuf = Buffer::create(mpDevice.get(), prod4(vndfSize) * 4, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, vndfDist.getConditional());
+        mpLumiConditionalBuf = Buffer::create(mpDevice.get(), prod4(lumiSize) * 4, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, lumiDist.getConditional());
 
-        mpThetaBuf = Buffer::create(theta->numElems * sizeof(float), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, theta->data.get());
-        mpPhiBuf   = Buffer::create(phi  ->numElems * sizeof(float), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, phi  ->data.get());
-        mpSigmaBuf = Buffer::create(sigma->numElems * sizeof(float), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, sigma->data.get());
-        mpNDFBuf   = Buffer::create(ndf  ->numElems * sizeof(float), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, ndf  ->data.get());
-        mpVNDFBuf  = Buffer::create(vndf ->numElems * sizeof(float), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, vndfDist.getPDF());
-        mpLumiBuf  = Buffer::create(lumi ->numElems * sizeof(float), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, lumiDist.getPDF());
-        mpRGBBuf   = Buffer::create(rgb  ->numElems * sizeof(float), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, rgb  ->data.get());
+        mpThetaBuf = Buffer::create(mpDevice.get(), theta->numElems * sizeof(float), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, theta->data.get());
+        mpPhiBuf   = Buffer::create(mpDevice.get(), phi  ->numElems * sizeof(float), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, phi  ->data.get());
+        mpSigmaBuf = Buffer::create(mpDevice.get(), sigma->numElems * sizeof(float), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, sigma->data.get());
+        mpNDFBuf   = Buffer::create(mpDevice.get(), ndf  ->numElems * sizeof(float), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, ndf  ->data.get());
+        mpVNDFBuf  = Buffer::create(mpDevice.get(), vndf ->numElems * sizeof(float), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, vndfDist.getPDF());
+        mpLumiBuf  = Buffer::create(mpDevice.get(), lumi ->numElems * sizeof(float), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, lumiDist.getPDF());
+        mpRGBBuf   = Buffer::create(mpDevice.get(), rgb  ->numElems * sizeof(float), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, rgb  ->data.get());
 
         markUpdates(Material::UpdateFlags::ResourcesChanged);
 
@@ -245,7 +246,7 @@ namespace Falcor
         {
             // Load 1D texture in non-SRGB format, no mips.
             // If successful, verify dimensions/format/etc. match the expectations.
-            mpAlbedoLUT = Texture::createFromFile(texPath.string(), false, false, ResourceBindFlags::ShaderResource);
+            mpAlbedoLUT = Texture::createFromFile(mpDevice.get(), texPath.string(), false, false, ResourceBindFlags::ShaderResource);
 
             if (mpAlbedoLUT)
             {
@@ -267,7 +268,7 @@ namespace Falcor
         // TODO: Capture texture to DDS is not yet supported. Calling ImageIO directly for now.
         //mpAlbedoLUT->captureToFile(0, 0, texPath.string(), Bitmap::FileFormat::DdsFile, Bitmap::ExportFlags::Uncompressed);
         FALCOR_ASSERT(mpAlbedoLUT);
-        ImageIO::saveToDDS(gpFramework->getRenderContext(), texPath.string(), mpAlbedoLUT, ImageIO::CompressionMode::None, false);
+        ImageIO::saveToDDS(pRenderContext, texPath.string(), mpAlbedoLUT, ImageIO::CompressionMode::None, false);
 
         logInfo("Saved albedo LUT to '{}'.", texPath.string());
     }
@@ -284,20 +285,20 @@ namespace Falcor
 
         // Create and update scene containing the material.
         Scene::SceneData sceneData;
-        sceneData.pMaterials = MaterialSystem::create();
+        sceneData.pMaterials = MaterialSystem::create(mpDevice);
         MaterialID materialID = sceneData.pMaterials->addMaterial(pMaterial);
 
-        Scene::SharedPtr pScene = Scene::create(std::move(sceneData));
+        Scene::SharedPtr pScene = Scene::create(mpDevice, std::move(sceneData));
         pScene->update(pRenderContext, 0.0);
 
         // Create BSDF integrator utility.
-        auto pIntegrator = BSDFIntegrator::create(pRenderContext, pScene);
+        BSDFIntegrator integrator(mpDevice, pScene);
 
         // Integrate BSDF.
         // TODO: Measured BRDFs could potentially be anisotropic.
         // It's unlikely this would affect the albedo significantly, and doing the integration
         // properly would be more trouble than its worth.
-        auto albedos = pIntegrator->integrateIsotropic(pRenderContext, materialID, cosThetas);
+        auto albedos = integrator.integrateIsotropic(pRenderContext, materialID, cosThetas);
 
         // Copy result into format needed for texture creation.
         static_assert(kAlbedoLUTFormat == ResourceFormat::RGBA32Float);
@@ -305,7 +306,7 @@ namespace Falcor
         for (uint32_t i = 0; i < kAlbedoLUTSize; i++) initData[i] = float4(albedos[i], 1.f);
 
         // Create albedo LUT texture.
-        mpAlbedoLUT = Texture::create2D(kAlbedoLUTSize, 1, kAlbedoLUTFormat, 1, 1, initData.data(), ResourceBindFlags::ShaderResource);
+        mpAlbedoLUT = Texture::create2D(mpDevice.get(), kAlbedoLUTSize, 1, kAlbedoLUTFormat, 1, 1, initData.data(), ResourceBindFlags::ShaderResource);
     }
 
     FALCOR_SCRIPT_BINDING(RGLMaterial)
@@ -315,7 +316,11 @@ namespace Falcor
         FALCOR_SCRIPT_BINDING_DEPENDENCY(Material)
 
         pybind11::class_<RGLMaterial, Material, RGLMaterial::SharedPtr> material(m, "RGLMaterial");
-        material.def(pybind11::init(&RGLMaterial::create), "name"_a, "path"_a);
+        auto create = [] (const std::string& name, const std::filesystem::path& path)
+        {
+            return RGLMaterial::create(getActivePythonSceneBuilder().getDevice(), name, path);
+        };
+        material.def(pybind11::init(create), "name"_a, "path"_a); // PYTHONDEPRECATED
         material.def(kLoadFile.c_str(), &RGLMaterial::loadBRDF, "path"_a);
     }
 }

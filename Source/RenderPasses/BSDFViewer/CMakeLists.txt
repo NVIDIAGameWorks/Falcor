@@ -1,4 +1,4 @@
-add_renderpass(BSDFViewer)
+add_plugin(BSDFViewer)
 
 target_sources(BSDFViewer PRIVATE
     BSDFViewer.cpp

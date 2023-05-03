@@ -1,5 +1,5 @@
-def render_frames(m, name, frames=[1], framerate=60, resolution=[1280,720]):
-    m.resizeSwapChain(*resolution)
+def render_frames(m, name, frames=[1], framerate=60, resolution=[640,360]):
+    m.resizeFrameBuffer(*resolution)
     m.ui = False
     m.clock.framerate = framerate
     m.clock.time = 0

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,11 +31,11 @@
 */
 
 // Dummy variables
-RWStructuredBuffer<uint> result; // Dummy variable, not assigned
+RWStructuredBuffer<uint> result;                        // Dummy variable, not assigned
 RaytracingAccelerationStructure gAccelerationStructure; // Dummy variable, not assigned
 
 [numthreads(1, 1, 1)]
-void testTraceRayInlineAPI(uint3 threadID : SV_DispatchThreadID)
+void testTraceRayInlineAPI(uint3 threadID: SV_DispatchThreadID)
 {
     uint i = 0;
 
@@ -55,9 +55,9 @@ void testTraceRayInlineAPI(uint3 threadID : SV_DispatchThreadID)
 
     rayQuery.TraceRayInline(
         gAccelerationStructure,
-        rayFlags,   // OR'd with flags above
-        instanceMask,
-        ray);
+        rayFlags, // OR'd with flags above
+        instanceMask, ray
+    );
 
     // Proceed() below is where behind-the-scenes traversal happens,
     // including the heaviest of any driver inlined code.
@@ -75,10 +75,10 @@ void testTraceRayInlineAPI(uint3 threadID : SV_DispatchThreadID)
         result[i++] = rayQuery.CandidatePrimitiveIndex();
         result[i++] = rayQuery.CandidateObjectRayOrigin().x;
         result[i++] = rayQuery.CandidateObjectRayDirection().x;
-        result[i++] = rayQuery.CandidateObjectToWorld3x4()[0][0];
-        result[i++] = rayQuery.CandidateObjectToWorld4x3()[0][0];
-        result[i++] = rayQuery.CandidateWorldToObject3x4()[0][0];
-        result[i++] = rayQuery.CandidateWorldToObject4x3()[0][0];
+        result[i++] = rayQuery.CandidateObjectToWorld3x4()[0].x;
+        result[i++] = rayQuery.CandidateObjectToWorld4x3()[0].x;
+        result[i++] = rayQuery.CandidateWorldToObject3x4()[0].x;
+        result[i++] = rayQuery.CandidateWorldToObject4x3()[0].x;
 
         // Proceed() returns true when there is a candidate for a hit that requires shader consideration.
         // Call RayQuery::CandidateType() to determine its type.
@@ -120,10 +120,10 @@ void testTraceRayInlineAPI(uint3 threadID : SV_DispatchThreadID)
         result[i++] = rayQuery.CommittedPrimitiveIndex();
         result[i++] = rayQuery.CommittedObjectRayOrigin().x;
         result[i++] = rayQuery.CommittedObjectRayDirection().x;
-        result[i++] = rayQuery.CommittedObjectToWorld3x4()[0][0];
-        result[i++] = rayQuery.CommittedObjectToWorld4x3()[0][0];
-        result[i++] = rayQuery.CommittedWorldToObject3x4()[0][0];
-        result[i++] = rayQuery.CommittedWorldToObject4x3()[0][0];
+        result[i++] = rayQuery.CommittedObjectToWorld3x4()[0].x;
+        result[i++] = rayQuery.CommittedObjectToWorld4x3()[0].x;
+        result[i++] = rayQuery.CommittedWorldToObject3x4()[0].x;
+        result[i++] = rayQuery.CommittedWorldToObject4x3()[0].x;
 
         // Query functions that are only valid for triangle hits.
         result[i++] = rayQuery.CommittedTriangleBarycentrics().x;

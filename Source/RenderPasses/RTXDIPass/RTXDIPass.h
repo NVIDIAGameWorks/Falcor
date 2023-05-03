@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -50,16 +50,16 @@ using namespace Falcor;
 class RTXDIPass : public RenderPass
 {
 public:
+    FALCOR_PLUGIN_CLASS(RTXDIPass, "RTXDIPass", {"Standalone pass for direct lighting using RTXDI."})
+
     using SharedPtr = std::shared_ptr<RTXDIPass>;
 
-    static const Info kInfo;
-
     /** Create a new render pass object.
-        \param[in] pRenderContext The render context.
+        \param[in] pDevice GPU device.
         \param[in] dict Dictionary of serialized parameters.
         \return A new object, or an exception is thrown if creation failed.
     */
-    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
@@ -71,7 +71,7 @@ public:
     virtual bool onMouseEvent(const MouseEvent& mouseEvent) override;
 
 private:
-    RTXDIPass(const Dictionary& dict);
+    RTXDIPass(std::shared_ptr<Device> pDevice, const Dictionary& dict);
     void parseDictionary(const Dictionary& dict);
 
     void prepareSurfaceData(RenderContext* pRenderContext, const Texture::SharedPtr& pVBuffer);

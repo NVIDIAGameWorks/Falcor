@@ -3,7 +3,7 @@ sys.path.append('..')
 from falcor import *
 from helpers import render_frames
 
-exec(open('../../../Source/Mogwai/Data/BSDFViewer.py').read())
+exec(open('../../../scripts/BSDFViewer.py').read())
 
 # arcade
 m.loadScene('Arcade/Arcade.pyscene')

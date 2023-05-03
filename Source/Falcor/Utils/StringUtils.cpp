@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,32 +27,186 @@
  **************************************************************************/
 #include "StringUtils.h"
 
+#include <array>
 #include <string>
 #include <utility>
 
 namespace Falcor
 {
-    std::string formatByteSize(size_t size)
+    bool hasPrefix(const std::string& str, const std::string& prefix, bool caseSensitive)
     {
-        std::array<std::pair<size_t, std::string>, 5> memorySizes =
+        if(str.size() >= prefix.size())
         {
-            std::make_pair(UINT64_C(1), "B"),
-            std::make_pair(UINT64_C(1024), "kB"),
-            std::make_pair(UINT64_C(1048576), "MB"),
-            std::make_pair(UINT64_C(1073741824), "GB"),
-            std::make_pair(UINT64_C(1073741824)*1024, "TB")
-        };
+            if(caseSensitive == false)
+            {
+                std::string s = str;
+                std::string pfx = prefix;
+                std::transform(str.begin(), str.end(), s.begin(), ::tolower);
+                std::transform(prefix.begin(), prefix.end(), pfx.begin(), ::tolower);
+                return s.compare(0, pfx.length(), pfx) == 0;
+            }
+            else
+            {
+                return str.compare(0, prefix.length(), prefix) == 0;
+            }
+        }
+        return false;
+    }
 
-        // We could use some tricks to count zero bits from the left for a non-looped version,
-        // but this is fast enough and obvious enough
-        unsigned chosenSize = 0;
-        for(; chosenSize < memorySizes.size() - 1; ++chosenSize)
+    bool hasSuffix(const std::string& str, const std::string& suffix, bool caseSensitive)
+    {
+        if(str.size() >= suffix.size())
         {
-            if (memorySizes[chosenSize].first < size && size < memorySizes[chosenSize + 1].first)
-                break;
+            std::string s = str.substr(str.length() - suffix.length());
+            if(caseSensitive == false)
+            {
+                std::string sfx = suffix;
+                std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+                std::transform(sfx.begin(), sfx.end(), sfx.begin(), ::tolower);
+                return (sfx == s);
+            }
+            else
+            {
+                return (s == suffix);
+            }
+        }
+        return false;
+    }
+
+    std::vector<std::string> splitString(const std::string& str, const std::string& delim)
+    {
+        std::string s;
+        std::vector<std::string> vec;
+        for(char c : str)
+        {
+            if(delim.find(c) != std::string::npos)
+            {
+                if(s.length())
+                {
+                    vec.push_back(s);
+                    s.clear();
+                }
+            }
+            else
+            {
+                s += c;
+            }
+        }
+        if(s.length())
+        {
+            vec.push_back(s);
+        }
+        return vec;
+    }
+
+    std::string joinStrings(const std::vector<std::string>& strings, const std::string& separator)
+    {
+        std::string result;
+        for(auto it = strings.begin(); it != strings.end(); it++)
+        {
+            result += *it;
+
+            if(it != strings.end() - 1)
+            {
+                result += separator;
+            }
+        }
+        return result;
+    }
+
+    std::string removeLeadingWhitespace(const std::string& str, const char* whitespace)
+    {
+        std::string result(str);
+        result.erase(0, result.find_first_not_of(whitespace));
+        return result;
+    }
+
+    std::string removeTrailingWhitespace(const std::string& str, const char* whitespace)
+    {
+        std::string result(str);
+        result.erase(result.find_last_not_of(whitespace) + 1);
+        return result;
+    }
+
+    std::string removeLeadingTrailingWhitespace(const std::string& str, const char* whitespace)
+    {
+        return removeTrailingWhitespace(removeLeadingWhitespace(str, whitespace), whitespace);
+    }
+
+    std::string replaceCharacters(const std::string& str, const char* characters, const char replacement)
+    {
+        std::string result(str);
+        size_t pos = result.find_first_of(characters);
+        while (pos != std::string::npos)
+        {
+            result[pos] = replacement;
+            pos = result.find_first_of(characters, pos);
+        }
+        return result;
+    }
+
+    std::string padStringToLength(const std::string& str, size_t length, char padding)
+    {
+        std::string result = str;
+        if (result.length() < length) result.resize(length, padding);
+        return result;
+    }
+
+    std::string replaceSubstring(const std::string& input, const std::string& src, const std::string& dst)
+    {
+        std::string res = input;
+        size_t offset = res.find(src);
+        while (offset != std::string::npos)
+        {
+            res.replace(offset, src.length(), dst);
+            offset += dst.length();
+            offset = res.find(src, offset);
+        }
+        return res;
+    }
+
+    bool parseArrayIndex(const std::string& name, std::string& nonArray, uint32_t& index)
+    {
+        size_t dot = name.find_last_of('.');
+        size_t bracket = name.find_last_of('[');
+
+        if(bracket != std::string::npos)
+        {
+            // Ignore cases where the last index is an array of struct index (SomeStruct[1].v should be ignored)
+            if((dot == std::string::npos) || (bracket > dot))
+            {
+                // We know we have an array index. Make sure it's in range
+                std::string indexStr = name.substr(bracket + 1);
+                char* pEndPtr;
+                index = strtol(indexStr.c_str(), &pEndPtr, 0);
+                FALCOR_ASSERT(*pEndPtr == ']');
+                nonArray = name.substr(0, bracket);
+                return true;
+            }
         }
 
-        return fmt::format("{:.3f} {}", double(size) / memorySizes[chosenSize].first, memorySizes[chosenSize].second);
+        return false;
+    }
+
+    void copyStringToBuffer(char* buffer, uint32_t bufferSize, const std::string& s)
+    {
+        const uint32_t length = std::min(bufferSize - 1, (uint32_t)s.length());
+        s.copy(buffer, length);
+        buffer[length] = '\0';
+    }
+
+    std::string formatByteSize(size_t size)
+    {
+        if (size < 1024ull)
+            return fmt::format("{} B", size);
+        else if (size < 1048576ull)
+            return fmt::format("{:.2f} kB", size / 1024.0);
+        else if (size < 1073741824ull)
+            return fmt::format("{:.2f} MB", size / 1048576.0);
+        else if (size < 1099511627776ull)
+            return fmt::format("{:.2f} GB", size / 1073741824.0);
+        else
+            return fmt::format("{:.2f} TB", size / 1099511627776.0);
     }
 
     std::string encodeBase64(const void* data, size_t len)

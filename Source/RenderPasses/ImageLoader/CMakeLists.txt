@@ -1,4 +1,4 @@
-add_renderpass(ImageLoader)
+add_plugin(ImageLoader)
 
 target_sources(ImageLoader PRIVATE
     ImageLoader.cpp

@@ -1,8 +1,6 @@
 from falcor import *
 
 def render_graph_GBufferRT():
-    loadRenderPassLibrary("GBuffer.dll")
-
     g = RenderGraph("GBufferRT")
     g.addPass(createPass("GBufferRT"), "GBufferRT")
 

@@ -4,7 +4,7 @@
 
 # Writing Shaders
 
-Now that we've written a basic render pass and render graph, let's look at writing more complex passes that use shaders. Falcor uses the Slang shading language and compiler, and files should use one of the following extensions: `.slang`, `.slangh`, `.hlsl`, `.hlsli`. For more information on best practices for working with shaders in Falcor, please refer to the *Using Shaders and Data Files* section of the [Getting Started](../Getting-Started.md) page.
+Now that we've written a basic render pass and render graph, let's look at writing more complex passes that use shaders. Falcor uses the Slang shading language and compiler, and files should use one of the following extensions: `.slang`, `.slangh`, `.hlsl`, `.hlsli`. For more information on best practices for working with shaders in Falcor, please refer to the *Using Shaders and Data Files* section of the [Getting Started](../getting-started.md) page.
 
 For this tutorial, we'll create a pass that renders a scene as a wireframe of a particular color.
 
@@ -55,8 +55,7 @@ The constructor should look similar to this:
 ```c++
 WireframePass::WireframePass()
 {
-    mpProgram = GraphicsProgram::createFromFile("RenderPasses/WireframePass/Wireframe.3d.slang", "vsMain", "psMain");
-
+    mpProgram = GraphicsProgram::createFromFile("RenderPasses/Wireframe/Wireframe.3d.slang", "vsMain", "psMain");
     RasterizerState::Desc wireframeDesc;
     wireframeDesc.setFillMode(RasterizerState::FillMode::Wireframe);
     wireframeDesc.setCullMode(RasterizerState::CullMode::None);
@@ -65,6 +64,17 @@ WireframePass::WireframePass()
     mpGraphicsState = GraphicsState::create();
     mpGraphicsState->setProgram(mpProgram);
     mpGraphicsState->setRasterizerState(mpRasterState);
+}
+```
+
+### `reflect()`
+As in the _Implementing a Render Pass_ tutorial, you simply define the output for the wireframe view.
+```
+RenderPassReflection WireframePass::reflect(const CompileData& compileData)
+{
+    RenderPassReflection reflector;
+    reflector.addOutput("output", "Wireframe view texture");
+    return reflector;
 }
 ```
 
@@ -93,38 +103,70 @@ pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentTyp
 mpGraphicsState->setFbo(pTargetFbo);
 ```
 
-#### Setting the Render State
-We need to perform two operations here: indicate that we want to use a custom `RasterizerState` and bind all necessary values to our shader. We can indicate that we're using a custom `RasterizerState` by creating a `Scene::Renderflags` object and setting the flag `Scene::RenderFlags::UserRasterizerState`. Binding shader values is also fairly straightforward as Falcor allows you to set shader values in the `GraphicsVars` object in the same way as you would set values in an array. Our shader requires a single color value, `gColor`, which is located inside the `perFrameCB` constant buffer. This step should look like this:
+#### Binding the shader
+Binding shader values is also fairly straightforward as Falcor allows you to set shader values in the `GraphicsVars` object in the same way as you would set values in a dictionary. Our shader requires a single color value, `gColor`, which is located inside the `perFrameCB` constant buffer. This step should look like this:
 ```c++
-Scene::RenderFlags renderFlags = Scene::RenderFlags::UserRasterizerState;
 mpVars["perFrameCB"]["gColor"] = float4(0, 1, 0, 1);
 ```
 
 #### Rendering a Scene Using the Shader
 With our scene, shader, and both the `GraphicsState` and `RasterizerState` set up, we can finally render our scene at the end of `execute()`. This is done through the `render()` method of `mpScene`, like so:
 ```c++
-mpScene->rasterize(pRenderContext, mpGraphicsState.get(), mpGraphicsVars.get(), renderFlags);
+mpScene->rasterize(pRenderContext, mpGraphicsState.get(), mpVars.get(), mpRasterState, mpRasterState);
 ```
 Your `execute()` function should now look like this, with a check for `mpScene` so we avoid accessing the scene when it isn't set:
 ```c++
 void WireframePass::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    auto pTargetFbo = Fbo::create({ renderData.getTexture("output") });
+    auto pTargetFbo = Fbo::create({renderData.getTexture("output")});
     const float4 clearColor(0, 0, 0, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
     mpGraphicsState->setFbo(pTargetFbo);
 
     if (mpScene)
     {
-        // Set render state
-        Scene::RenderFlags renderFlags = Scene::RenderFlags::UserRasterizerState;
         mpVars["PerFrameCB"]["gColor"] = float4(0, 1, 0, 1);
 
-        mpScene->rasterize(pRenderContext, mpGraphicsState.get(), mpVars.get(), renderFlags);
+        mpScene->rasterize(pRenderContext, mpGraphicsState.get(), mpVars.get(), mpRasterState, mpRasterState);
     }
 }
 ```
 
-Using the Render Graph Editor, create a graph solely containing this pass then launch it in Mogwai. You should see a black screen as there is no scene currently loaded. Load a scene by going to `File -> Load Scene`, and you should now see the wireframe for the scene you selected. We used `media/Arcade/Arcade.pyscene`, which looks like this:
+And you need to create a `CMakeLists.txt` to include the new render pass in the build.
+
+```cmake
+add_renderpass(WireframePass)
+
+target_sources(WireframePass PRIVATE
+    WireframePass.cpp
+    WireframePass.h
+    WireframePass.3d.slang
+)
+target_copy_shaders(WireframePass RenderPasses/WireframePass)
+
+target_source_group(WireframePass "RenderPasses")
+```
+
+Also add a `add_subdirectory(WireframePass)` in the parent directory `CMakeList.txt`.
+
+Using the Render Graph Editor, create a graph solely containing this pass then launch it in Mogwai, or create a python script.
+
+```python
+from falcor import *
+
+def render_graph_WireframePass():
+    g = RenderGraph('WireframePass')
+    loadRenderPassLibrary('WireframePass.dll')
+    Wireframe = createPass('WireframePass')
+    g.addPass(WireframePass, 'WireframePass')
+    g.markOutput('WireframePass.output')
+    return g
+
+WireframePass = render_graph_WireframePass()
+try: m.addGraph(WireframePass)
+except NameError: None
+```
+
+You should see a green screen as there is no scene currently loaded. Load a scene by going to `File -> Load Scene`, and you should now see the wireframe for the scene you selected. We used `media/Arcade/Arcade.pyscene`, which looks like this:
 
 ![WireframePass](./images/wireframe-pass.png)

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -32,9 +32,9 @@ namespace Falcor
 {
     /** This class implements a Lambertian diffuse material, where
         reflectance does not depend on wo.
-        
+
         This class perfectly matches the PBRT "diffuse" material.
-        
+
         Texture channel layout:
 
             BaseColor
@@ -53,12 +53,12 @@ namespace Falcor
         /** Create a new PBRTDiffuse material.
             \param[in] name The material name.
         */
-        static SharedPtr create(const std::string& name = "");
+        static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& name = "");
 
         Program::ShaderModuleList getShaderModules() const override;
         Program::TypeConformanceList getTypeConformances() const override;
 
     protected:
-        PBRTDiffuseMaterial(const std::string& name);
+        PBRTDiffuseMaterial(std::shared_ptr<Device> pDevice, const std::string& name);
     };
 }

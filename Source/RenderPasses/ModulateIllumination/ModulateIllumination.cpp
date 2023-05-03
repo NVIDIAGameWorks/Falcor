@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,10 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "ModulateIllumination.h"
-#include "RenderGraph/RenderPassLibrary.h"
 #include "RenderGraph/RenderPassHelpers.h"
-
-const RenderPass::Info ModulateIllumination::kInfo { "ModulateIllumination", "Modulate illumination pass." };
 
 namespace
 {
@@ -69,26 +66,20 @@ namespace
     const char kOutputSize[] = "outputSize";
 }
 
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" FALCOR_API_EXPORT const char* getProjDir()
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
-    return PROJECT_DIR;
+    registry.registerClass<RenderPass, ModulateIllumination>();
 }
 
-extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
+ModulateIllumination::SharedPtr ModulateIllumination::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
-    lib.registerPass(ModulateIllumination::kInfo, ModulateIllumination::create);
+    return SharedPtr(new ModulateIllumination(std::move(pDevice), dict));
 }
 
-ModulateIllumination::SharedPtr ModulateIllumination::create(RenderContext* pRenderContext, const Dictionary& dict)
+ModulateIllumination::ModulateIllumination(std::shared_ptr<Device> pDevice, const Dictionary& dict)
+    : RenderPass(std::move(pDevice))
 {
-    return SharedPtr(new ModulateIllumination(dict));
-}
-
-ModulateIllumination::ModulateIllumination(const Dictionary& dict)
-    : RenderPass(kInfo)
-{
-    mpModulateIlluminationPass = ComputePass::create(kShaderFile, "main", Program::DefineList(), false);
+    mpModulateIlluminationPass = ComputePass::create(mpDevice, kShaderFile, "main", Program::DefineList(), false);
 
     // Deserialize pass from dictionary.
     for (const auto& [key, value] : dict)
@@ -185,7 +176,7 @@ void ModulateIllumination::execute(RenderContext* pRenderContext, const RenderDa
             Texture::SharedPtr pTexture = renderData.getTexture(desc.name);
             if (pTexture && (mFrameDim.x != pTexture->getWidth() || mFrameDim.y != pTexture->getHeight()))
             {
-                logError("Texture {} has dim {]x{}, not compatible with the FrameDim {}x{}.",
+                logError("Texture {} has dim {}x{}, not compatible with the FrameDim {}x{}.",
                     pTexture->getName(), pTexture->getWidth(), pTexture->getHeight(), mFrameDim.x, mFrameDim.y);
             }
             mpModulateIlluminationPass[desc.texname] = pTexture;

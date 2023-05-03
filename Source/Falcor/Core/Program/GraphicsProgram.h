@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -34,34 +34,47 @@
 
 namespace Falcor
 {
-    /** Graphics program. See ComputeProgram to manage compute programs.
-    */
-    class FALCOR_API GraphicsProgram : public Program
-    {
-    public:
-        using SharedPtr = std::shared_ptr<GraphicsProgram>;
-        using SharedConstPtr = std::shared_ptr<const GraphicsProgram>;
+/**
+ * Graphics program. See ComputeProgram to manage compute programs.
+ */
+class FALCOR_API GraphicsProgram : public Program
+{
+public:
+    using SharedPtr = std::shared_ptr<GraphicsProgram>;
 
-        ~GraphicsProgram() = default;
+    ~GraphicsProgram() = default;
 
-        /** Create a new graphics program.
-            Note that this call merely creates a program object. The actual compilation and link happens at a later time.
-            \param[in] desc Description of the source files and entry points to use.
-            \param[in] programDefines Optional list of macro definitions to set into the program. The macro definitions will be set on all shader stages.
-            \return A new object, or an exception is thrown if creation failed.
-        */
-        static SharedPtr create(const Desc& desc, const Program::DefineList& programDefines = DefineList());
+    /**
+     * Create a new graphics program.
+     * Note that this call merely creates a program object. The actual compilation and link happens at a later time.
+     * @param[in] pDevice GPU device.
+     * @param[in] desc Description of the source files and entry points to use.
+     * @param[in] programDefines Optional list of macro definitions to set into the program. The macro definitions will be set on all shader
+     * stages.
+     * @return A new object, or an exception is thrown if creation failed.
+     */
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Desc& desc, const Program::DefineList& programDefines = DefineList());
 
-        /** Create a new graphics program from file.
-            \param[in] path Graphics program file path.
-            \param[in] vsEntry Vertex shader entry point. If this string is empty (""), it will use a default vertex shader, which transforms and outputs all default vertex attributes.
-            \param[in] psEntry Pixel shader entry point
-            \param[in] programDefines Optional list of macro definitions to set into the program. The macro definitions will be set on all shader stages.
-            \return A new object, or an exception is thrown if creation failed.
-        */
-        static SharedPtr createFromFile(const std::filesystem::path& path, const std::string& vsEntry, const std::string& psEntry, const DefineList& programDefines = DefineList());
+    /**
+     * Create a new graphics program from file.
+     * @param[in] pDevice GPU device.
+     * @param[in] path Graphics program file path.
+     * @param[in] vsEntry Vertex shader entry point. If this string is empty (""), it will use a default vertex shader, which transforms and
+     * outputs all default vertex attributes.
+     * @param[in] psEntry Pixel shader entry point
+     * @param[in] programDefines Optional list of macro definitions to set into the program. The macro definitions will be set on all shader
+     * stages.
+     * @return A new object, or an exception is thrown if creation failed.
+     */
+    static SharedPtr createFromFile(
+        std::shared_ptr<Device> pDevice,
+        const std::filesystem::path& path,
+        const std::string& vsEntry,
+        const std::string& psEntry,
+        const DefineList& programDefines = DefineList()
+    );
 
-    private:
-        GraphicsProgram(const Desc& desc, const Program::DefineList& programDefines);
-    };
-}
+private:
+    GraphicsProgram(std::shared_ptr<Device> pDevice, const Desc& desc, const Program::DefineList& programDefines);
+};
+} // namespace Falcor

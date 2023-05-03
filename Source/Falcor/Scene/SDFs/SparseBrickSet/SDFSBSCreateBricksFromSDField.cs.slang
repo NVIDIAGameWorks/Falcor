@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 
 import Utils.Math.AABB;
 import Utils.Math.FormatConversion;
+import Scene.SDFs.SDFVoxelCommon;
 import Scene.SDFs.SparseBrickSet.BC4Encode;
 
 static const uint kCompressionWidth = 4;
@@ -77,8 +78,10 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV
     uint3 brickGridCoords = virtualBrickCoords * gParamBlock.brickWidthInVoxels;
 
     // Calculate the AABB min and max corners for the brick.
-    float3 brickAABBMin = -0.5f + float3(virtualBrickCoords * gParamBlock.brickWidthInVoxels) / float(gParamBlock.virtualGridWidth);
-    float3 brickAABBMax = min(brickAABBMin + float(gParamBlock.brickWidthInVoxels) / float(gParamBlock.virtualGridWidth), 0.5f);
+    const float oneOverGridWidth = 1.0f / float(gParamBlock.virtualGridWidth);
+    float3 brickAABBMin = -0.5f + float3(virtualBrickCoords * gParamBlock.brickWidthInVoxels) * oneOverGridWidth;
+    float3 brickAABBMax = min(brickAABBMin + float(gParamBlock.brickWidthInVoxels) * oneOverGridWidth, 0.5f);
+
     gParamBlock.brickAABBs[brickID] = AABB(brickAABBMin, brickAABBMax);
 
     // Calculate the min corner of the brick in the brick texture.
@@ -119,9 +122,7 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV
 #else
                         if (all(voxelGridCoords < gParamBlock.virtualGridWidth))
                         {
-                            float cornerDistance = gParamBlock.sdfGrid[voxelGridCoords];
-                            float normalization = 2.0f * gParamBlock.virtualGridWidth / kRootThree;
-                            gParamBlock.bricks[voxelTextureCoords + uint2(bX, bY)] = clamp(cornerDistance* normalization, -1.0f, 1.0f);
+                            gParamBlock.bricks[voxelTextureCoords + uint2(bX, bY)] = gParamBlock.sdfGrid[voxelGridCoords];
                         }
                         else
                         {

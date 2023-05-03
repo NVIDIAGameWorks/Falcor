@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,29 +27,60 @@
  **************************************************************************/
 #include "ComputeStateObject.h"
 #include "Device.h"
+#include "GFXAPI.h"
+#include "NativeHandleTraits.h"
+
+#if FALCOR_HAS_D3D12
+#include "Shared/D3D12RootSignature.h"
+#endif
 
 namespace Falcor
 {
-    bool ComputeStateObject::Desc::operator==(const ComputeStateObject::Desc& other) const
-    {
-        bool b = true;
-        b = b && (mpProgram == other.mpProgram);
-        return b;
-    }
-
-    ComputeStateObject::~ComputeStateObject()
-    {
-        gpDevice->releaseResource(mApiHandle);
-    }
-
-    ComputeStateObject::ComputeStateObject(const Desc& desc)
-        : mDesc(desc)
-    {
-        apiInit();
-    }
-
-    ComputeStateObject::SharedPtr ComputeStateObject::create(const Desc& desc)
-    {
-        return SharedPtr(new ComputeStateObject(desc));
-    }
+bool ComputeStateObject::Desc::operator==(const ComputeStateObject::Desc& other) const
+{
+    bool b = true;
+    b = b && (mpProgram == other.mpProgram);
+    return b;
 }
+
+ComputeStateObject::~ComputeStateObject()
+{
+    mpDevice->releaseResource(mGfxPipelineState);
+}
+
+ComputeStateObject::ComputeStateObject(std::shared_ptr<Device> pDevice, const Desc& desc) : mpDevice(std::move(pDevice)), mDesc(desc)
+{
+    gfx::ComputePipelineStateDesc computePipelineDesc = {};
+    computePipelineDesc.program = mDesc.mpProgram->getGfxProgram();
+#if FALCOR_HAS_D3D12
+    if (mDesc.mpD3D12RootSignatureOverride)
+        mpDevice->requireD3D12();
+    if (mpDevice->getType() == Device::Type::D3D12)
+    {
+        computePipelineDesc.d3d12RootSignatureOverride =
+            mDesc.mpD3D12RootSignatureOverride ? (void*)mDesc.mpD3D12RootSignatureOverride->getApiHandle().GetInterfacePtr() : nullptr;
+    }
+#endif
+    FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createComputePipelineState(computePipelineDesc, mGfxPipelineState.writeRef()));
+}
+
+ComputeStateObject::SharedPtr ComputeStateObject::create(Device* pDevice, const Desc& desc)
+{
+    return SharedPtr(new ComputeStateObject(pDevice->shared_from_this(), desc));
+}
+
+NativeHandle ComputeStateObject::getNativeHandle() const
+{
+    gfx::InteropHandle gfxNativeHandle = {};
+    FALCOR_GFX_CALL(mGfxPipelineState->getNativeHandle(&gfxNativeHandle));
+#if FALCOR_HAS_D3D12
+    if (mpDevice->getType() == Device::Type::D3D12)
+        return NativeHandle(reinterpret_cast<ID3D12PipelineState*>(gfxNativeHandle.handleValue));
+#endif
+#if FALCOR_HAS_VULKAN
+    if (mpDevice->getType() == Device::Type::Vulkan)
+        return NativeHandle(reinterpret_cast<VkPipeline>(gfxNativeHandle.handleValue));
+#endif
+    return {};
+}
+} // namespace Falcor

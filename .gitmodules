@@ -16,6 +16,6 @@
 [submodule "external/glm"]
 	path = external/glm
 	url = https://github.com/g-truc/glm.git
-[submodule "external/tiny-cuda-nn"]
-	path = external/tiny-cuda-nn
-	url = https://github.com/NVlabs/tiny-cuda-nn.git
+[submodule "external/vulkan-headers"]
+	path = external/vulkan-headers
+	url = https://github.com/KhronosGroup/Vulkan-Headers

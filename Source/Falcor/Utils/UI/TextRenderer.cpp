@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -73,7 +73,7 @@ namespace Falcor
             Buffer::SharedPtr pVb;
             RasterPass::SharedPtr pPass;
             Font::UniquePtr pFont;
-        } gTextData;
+        } gTextData; // TODO: REMOVEGLOBAL
 
         void setCbData(const Fbo::SharedPtr& pDstFbo)
         {
@@ -143,7 +143,7 @@ namespace Falcor
     TextRenderer::Flags TextRenderer::getFlags() { return gTextData.flags; }
     void TextRenderer::setFlags(Flags f) { gTextData.flags = f; }
 
-    void TextRenderer::start()
+    void TextRenderer::start(Device* pDevice)
     {
         if (gTextData.init) return;
 
@@ -151,10 +151,10 @@ namespace Falcor
 
         // Create a vertex buffer
         const uint32_t vbSize = (uint32_t)(sizeof(Vertex)*kMaxCharCount*std::size(kVertexPos));
-        gTextData.pVb = Buffer::create(vbSize, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, nullptr);
+        gTextData.pVb = Buffer::create(pDevice, vbSize, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, nullptr);
 
         // Create the RenderState
-        gTextData.pPass = RasterPass::create(kShaderFile, "vsMain", "psMain");
+        gTextData.pPass = RasterPass::create(pDevice->shared_from_this(), kShaderFile, "vsMain", "psMain");
         auto& pState = gTextData.pPass->getState();
         pState->setVao(createVAO(gTextData.pVb));
 
@@ -177,7 +177,7 @@ namespace Falcor
             BlendState::BlendFunc::One,
             BlendState::BlendFunc::One);
         pState->setBlendState(BlendState::create(blendDesc));
-        gTextData.pFont = Font::create();
+        gTextData.pFont = Font::create(pDevice, getRuntimeDirectory() / "data/framework/fonts/dejavu-sans-mono-14");
 
         // Initialize the buffer
         gTextData.pPass["gFontTex"] = gTextData.pFont->getTexture();

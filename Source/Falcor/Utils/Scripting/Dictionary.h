@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 #include <pybind11/pytypes.h>
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <utility>
@@ -45,7 +46,7 @@ namespace Falcor
         class Value
         {
         public:
-            Value(const Container& container, const std::string& name) : mContainer(container), mName(name) {};
+            Value(const Container& container, const std::string_view name) : mName(name), mContainer(container) {};
             Value(const Container& container = {}) : Value(container, std::string()) {}
 
             Value& operator=(const Value& rhs)
@@ -57,6 +58,13 @@ namespace Falcor
 
             template<typename T>
             void operator=(const T& t) { mContainer[mName.c_str()] = t; }
+
+            template<>
+            void operator=(const std::filesystem::path& path)
+            {
+                // Convert path to string. Otherwise it's represented as a Python WindowsPath/PosixPath.
+                *this = path.generic_string();
+            }
 
             template<typename T>
             operator T() const { return mContainer[mName.c_str()].cast<T>(); }
@@ -70,7 +78,7 @@ namespace Falcor
         class IteratorT
         {
         public:
-            IteratorT(ContainerType* pContainer, const pybind11::detail::dict_iterator& it) : mpContainer(pContainer), mIt(it) {}
+            IteratorT(ContainerType* pContainer, const pybind11::detail::dict_iterator& it) : mIt(it), mpContainer(pContainer) {}
 
             bool operator==(const IteratorT& other) const { return other.mIt == mIt; }
             bool operator!=(const IteratorT& other) const { return other.mIt != mIt; }
@@ -95,19 +103,19 @@ namespace Falcor
         using Iterator = IteratorT<Container>;
         using ConstIterator = IteratorT<const Container>;
 
-        Value operator[](const std::string& name) { return Value(mMap, name); }
-        const Value operator[](const std::string& name) const { return Value(mMap, name); }
+        Value operator[](const std::string_view name) { return Value(mMap, name); }
+        const Value operator[](const std::string_view name) const { return Value(mMap, name); }
 
         template<typename T>
-        T get(const std::string_view& name, const T& default) const
+        T get(const std::string_view name, const T& def) const
         {
             if (!mMap.contains(name.data()))
-                return default;
+                return def;
             return mMap[name.data()].cast<T>();
         }
 
         template<typename T>
-        std::optional<T> get(const std::string_view& name) const
+        std::optional<T> get(const std::string_view name) const
         {
             if (!mMap.contains(name.data()))
                 return std::optional<T>();
@@ -116,7 +124,7 @@ namespace Falcor
 
         // Avoid forcing std::string creation if Value would be just temporary
         template<typename T>
-        T get(const std::string_view& name) const
+        T get(const std::string_view name) const
         {
             return mMap[name.data()].cast<T>();
         }

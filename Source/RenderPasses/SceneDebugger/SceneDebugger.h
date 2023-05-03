@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -39,11 +39,11 @@ using namespace Falcor;
 class SceneDebugger : public RenderPass
 {
 public:
+    FALCOR_PLUGIN_CLASS(SceneDebugger, "SceneDebugger", "Scene debugger for identifying asset issues.");
+
     using SharedPtr = std::shared_ptr<SceneDebugger>;
 
-    static const Info kInfo;
-
-    static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
 
     Dictionary getScriptingDictionary() override;
     RenderPassReflection reflect(const CompileData& compileData) override;
@@ -59,7 +59,7 @@ public:
     void setMode(SceneDebuggerMode mode) { mParams.mode = (uint32_t)mode; }
 
 private:
-    SceneDebugger(const Dictionary& dict);
+    SceneDebugger(std::shared_ptr<Device> pDevice, const Dictionary& dict);
     void renderPixelDataUI(Gui::Widgets& widget);
     void initInstanceInfo();
 

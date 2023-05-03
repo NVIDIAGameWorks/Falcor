@@ -1,4 +1,4 @@
-add_renderpass(FLIPPass)
+add_plugin(FLIPPass)
 
 target_sources(FLIPPass PRIVATE
     ComputeLuminance.cs.slang

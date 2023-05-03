@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -39,9 +39,9 @@ namespace Falcor
         const std::string kSDFSVSVoxelizerShaderName = "Scene/SDFs/SparseVoxelSet/SDFSVSVoxelizer.cs.slang";
     }
 
-    SDFSVS::SharedPtr SDFSVS::create()
+    SDFSVS::SharedPtr SDFSVS::create(std::shared_ptr<Device> pDevice)
     {
-        return SharedPtr(new SDFSVS());
+        return SharedPtr(new SDFSVS(std::move(pDevice)));
     }
 
     size_t SDFSVS::getSize() const
@@ -67,21 +67,21 @@ namespace Falcor
         }
         else
         {
-            mpSDFGridTexture = Texture::create3D(mGridWidth + 1, mGridWidth + 1, mGridWidth + 1, ResourceFormat::R8Snorm, 1, mValues.data());
+            mpSDFGridTexture = Texture::create3D(mpDevice.get(), mGridWidth + 1, mGridWidth + 1, mGridWidth + 1, ResourceFormat::R8Snorm, 1, mValues.data());
         }
 
         if (!mpCountSurfaceVoxelsPass)
         {
             Program::Desc desc;
             desc.addShaderLibrary(kSDFCountSurfaceVoxelsShaderName).csEntry("main").setShaderModel("6_5");
-            mpCountSurfaceVoxelsPass = ComputePass::create(desc);
+            mpCountSurfaceVoxelsPass = ComputePass::create(mpDevice, desc);
         }
 
         if (!mpSurfaceVoxelCounter)
         {
             static uint32_t zero = 0;
-            mpSurfaceVoxelCounter = Buffer::create(sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
-            mpSurfaceVoxelCounterStagingBuffer = Buffer::create(sizeof(uint32_t), Resource::BindFlags::None, Buffer::CpuAccess::Read);
+            mpSurfaceVoxelCounter = Buffer::create(mpDevice.get(), sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
+            mpSurfaceVoxelCounterStagingBuffer = Buffer::create(mpDevice.get(), sizeof(uint32_t), Resource::BindFlags::None, Buffer::CpuAccess::Read);
         }
         else
         {
@@ -90,7 +90,7 @@ namespace Falcor
 
         if (!mpReadbackFence)
         {
-            mpReadbackFence = GpuFence::create();
+            mpReadbackFence = GpuFence::create(mpDevice.get());
         }
 
         // Count the number of surface containing voxels in the texture.
@@ -117,12 +117,12 @@ namespace Falcor
         {
             if (!mpVoxelAABBBuffer || mpVoxelAABBBuffer->getElementCount() < mVoxelCount)
             {
-                mpVoxelAABBBuffer = Buffer::createStructured(sizeof(AABB), mVoxelCount);
+                mpVoxelAABBBuffer = Buffer::createStructured(mpDevice.get(), sizeof(AABB), mVoxelCount);
             }
 
             if (!mpVoxelBuffer || mpVoxelBuffer->getElementCount() < mVoxelCount)
             {
-                mpVoxelBuffer = Buffer::createStructured(sizeof(SDFSVSVoxel), mVoxelCount);
+                mpVoxelBuffer = Buffer::createStructured(mpDevice.get(), sizeof(SDFSVSVoxel), mVoxelCount);
             }
         }
 
@@ -132,7 +132,7 @@ namespace Falcor
             {
                 Program::Desc desc;
                 desc.addShaderLibrary(kSDFSVSVoxelizerShaderName).csEntry("main").setShaderModel("6_5");
-                mpSDFSVSVoxelizerPass = ComputePass::create(desc);
+                mpSDFSVSVoxelizerPass = ComputePass::create(mpDevice, desc);
             }
 
             pRenderContext->clearUAVCounter(mpVoxelBuffer, 0);
@@ -164,8 +164,8 @@ namespace Falcor
             throw RuntimeError("SDFSVS::setShaderData() can't be called before calling SDFSVS::createResources()!");
         }
 
-        var["virtualGridLevel"] = bitScanReverse(mGridWidth) + 1;
         var["virtualGridWidth"] = mGridWidth;
+        var["oneDivVirtualGridWidth"] = 1.0f / mGridWidth;
         var["normalizationFactor"] = 0.5f * glm::root_three<float>() / mGridWidth;
 
         var["aabbs"] = mpVoxelAABBBuffer;

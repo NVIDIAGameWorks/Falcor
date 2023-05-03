@@ -30,6 +30,7 @@
 #include "Vector.h"
 #include <glm/detail/type_half.hpp>
 #include <string>
+#include <fmt/format.h>
 
 namespace Falcor
 {
@@ -45,8 +46,31 @@ namespace Falcor
         explicit float16_t(float v) : bits(glm::detail::toFloat16(v)) {}
         explicit operator float() const { return glm::detail::toFloat32(bits); }
 
-        bool operator==(const float16_t& other) const { return bits == other.bits; }
-        bool operator!=(const float16_t& other) const { return bits != other.bits; }
+        bool operator==(const float16_t other) const { return bits == other.bits; }
+        bool operator!=(const float16_t other) const { return bits != other.bits; }
+
+        friend bool operator< (const float16_t lhs, const float16_t rhs) { return float(lhs) < float(rhs); }
+        friend bool operator> (const float16_t lhs, const float16_t rhs) { return rhs < lhs; }
+        friend bool operator<=(const float16_t lhs, const float16_t rhs) { return !(lhs > rhs); }
+        friend bool operator>=(const float16_t lhs, const float16_t rhs) { return !(lhs < rhs); }
+
+        // TODO: Implement math operators in native fp16 precision. For now using fp32.
+        friend float16_t operator+ (const float16_t lhs, const float16_t rhs) { return float16_t((float)lhs + float(rhs)); }
+        friend float16_t operator- (const float16_t lhs, const float16_t rhs) { return float16_t((float)lhs - float(rhs)); }
+        friend float16_t operator* (const float16_t lhs, const float16_t rhs) { return float16_t((float)lhs * float(rhs)); }
+        friend float16_t operator/ (const float16_t lhs, const float16_t rhs) { return float16_t((float)lhs / float(rhs)); }
+
+        float16_t& operator+= (const float16_t rhs) { *this = *this + rhs; return *this; }
+        float16_t& operator-= (const float16_t rhs) { *this = *this - rhs; return *this; }
+        float16_t& operator*= (const float16_t rhs) { *this = *this * rhs; return *this; }
+        float16_t& operator/= (const float16_t rhs) { *this = *this / rhs; return *this; }
+
+        float16_t operator- () const
+        {
+            float16_t h;
+            h.bits = bits ^ 0x8000;
+            return h;
+        }
 
     private:
         glm::detail::hdata bits;
@@ -154,3 +178,14 @@ namespace Falcor
     inline std::string to_string(const float16_t3& v) { return "float16_t3(" + to_string(v.x) + "," + to_string(v.y) + "," + to_string(v.z) + ")"; }
     inline std::string to_string(const float16_t4& v) { return "float16_t4(" + to_string(v.x) + "," + to_string(v.y) + "," + to_string(v.z) + "," + to_string(v.w) + ")"; }
 }
+
+// Formatter for the float16_t.
+template<>
+struct ::fmt::formatter<Falcor::float16_t> : formatter<float>
+{
+    template<typename FormatContext>
+    auto format(Falcor::float16_t value, FormatContext& ctx) const
+    {
+        return formatter<float>::format(float(value), ctx);
+    }
+};

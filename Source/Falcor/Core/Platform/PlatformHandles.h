@@ -29,25 +29,30 @@
 #include "Core/Macros.h"
 
 #if FALCOR_WINDOWS
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
+// Instead of including windows.h and crippling compile time we only
+// include windef.h. We need to define _AMD64_ manually as it is only
+// defined in windows.h (if on x64 architecture). We ensure that we
+// are indeed compiling for x64 first, then define _AMD64_ manually.
+#ifndef _M_AMD64
+#error "Compilation only supported on x64!"
 #endif
-#include <windows.h>
+#define _AMD64_
+#include <windef.h>
 #endif
 
 namespace Falcor
 {
 #if FALCOR_WINDOWS
-    using SharedLibraryHandle = HMODULE;
-    using WindowHandle = HWND;
+using SharedLibraryHandle = HMODULE;
+using WindowHandle = HWND;
 #elif FALCOR_LINUX
-    using SharedLibraryHandle = void*;
-    struct WindowHandle
-    {
-        void* pDisplay;
-        unsigned long window;
-    };
+using SharedLibraryHandle = void*;
+struct WindowHandle
+{
+    void* pDisplay;
+    unsigned long window;
+};
 #else
 #error "Platform not specified!"
 #endif
-}
+} // namespace Falcor

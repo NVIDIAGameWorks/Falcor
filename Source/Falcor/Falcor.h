@@ -29,12 +29,11 @@
 
 // Core
 #include "Core/Macros.h"
+#include "Core/Version.h"
 #include "Core/FalcorConfig.h"
 #include "Core/Assert.h"
 #include "Core/ErrorHandling.h"
 #include "Core/Errors.h"
-#include "Core/HotReloadFlags.h"
-#include "Core/Sample.h"
 
 // Core/Platform
 #include "Core/Platform/OS.h"
@@ -70,9 +69,6 @@
 #include "Core/API/VAO.h"
 #include "Core/API/VertexLayout.h"
 
-// Core/BufferTypes
-#include "Core/BufferTypes/VariablesBufferUI.h"
-
 // Core/Platform
 #include "Core/Platform/OS.h"
 #include "Core/Platform/ProgressBar.h"
@@ -80,7 +76,6 @@
 // Core/Program
 #include "Core/Program/ComputeProgram.h"
 #include "Core/Program/GraphicsProgram.h"
-#include "Core/Program/CUDAProgram.h"
 #include "Core/Program/Program.h"
 #include "Core/Program/ProgramReflection.h"
 #include "Core/Program/ProgramVars.h"
@@ -93,7 +88,6 @@
 
 // Scene
 #include "Scene/Scene.h"
-#include "Scene/Importer.h"
 #include "Scene/Camera/Camera.h"
 #include "Scene/Camera/CameraController.h"
 #include "Scene/Lights/Light.h"
@@ -113,10 +107,12 @@
 #include "Utils/Math/Vector.h"
 #include "Utils/Math/Float16.h"
 #include "Utils/Logger.h"
+#include "Utils/UI/InputTypes.h"
+#include "Utils/Timing/Profiler.h"
 #include "Utils/Scripting/Scripting.h"
 
 #include <fmt/format.h> // TODO C++20: Replace with <format>
-#include <fstd/span.h> // TODO C++20: Replace with <span>
+#include <fstd/span.h>  // TODO C++20: Replace with <span>
 
 #include <memory>
 #include <iostream>

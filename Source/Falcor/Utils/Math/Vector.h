@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,12 +26,21 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+
 #define GLM_FORCE_CTOR_INIT
 #define GLM_ENABLE_EXPERIMENTAL
 #define GLM_FORCE_SWIZZLE
+#ifdef __clang__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-volatile"
+#endif
 #include <glm/glm.hpp>
 #include <glm/gtx/compatibility.hpp>
+#ifdef __clang__
+#pragma GCC diagnostic pop
+#endif
 #include <string>
+#include <fmt/format.h>
 
 namespace Falcor
 {
@@ -68,3 +77,33 @@ namespace Falcor
     inline std::string to_string(const bool3& v) { return "bool3(" + std::to_string(v.x) + "," + std::to_string(v.y) + "," + std::to_string(v.z) + ")"; }
     inline std::string to_string(const bool4& v) { return "bool4(" + std::to_string(v.x) + "," + std::to_string(v.y) + "," + std::to_string(v.z) + "," + std::to_string(v.w) + ")"; }
 }
+
+// We must extend the glm namespace, since otherwise std::less<int2> won't find the operator
+namespace glm
+{
+    template<int TCount, typename T>
+    bool operator<(const ::glm::vec<TCount, T, ::glm::defaultp>& lhs, const ::glm::vec<TCount, T, ::glm::defaultp>& rhs)
+    {
+        for (int i = 0; i < TCount; ++i)
+            if (lhs[i] != rhs[i])
+                return lhs[i] < rhs[i];
+        return false;
+    }
+}
+
+template<int TCount, typename T>
+struct ::fmt::formatter<::glm::vec<TCount, T, ::glm::defaultp>> : formatter<T>
+{
+    template<typename FormatContext>
+    auto format(const ::glm::vec<TCount, T, ::glm::defaultp>& vec, FormatContext& ctx) const
+    {
+        auto out = ctx.out();
+        for (int i = 0; i < TCount; ++i)
+        {
+            out = ::fmt::format_to(out, "{}", (i == 0) ? "{" : ", ");
+            out = formatter<T>::format(vec[i], ctx);
+        }
+        out = ::fmt::format_to(out, "}}");
+        return out;
+    }
+};

@@ -31,7 +31,7 @@
 
 namespace Falcor
 {
-    RenderPassReflection::Field::Field(const std::string& name, const std::string& desc, Visibility v) : mName(name), mVisibility(v), mDesc(desc)
+    RenderPassReflection::Field::Field(const std::string& name, const std::string& desc, Visibility v) : mName(name), mDesc(desc), mVisibility(v)
     {
     }
 

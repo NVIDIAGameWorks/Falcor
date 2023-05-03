@@ -30,39 +30,20 @@
 
 namespace Falcor
 {
-    namespace
+    std::unique_ptr<Importer> Importer::create(std::string extension, const PluginManager& pm)
     {
-        static std::vector<Importer::Desc> sImporters;
-        static std::unordered_map<std::string, Importer::ImportFunction> sImportFunctions;
-        static FileDialogFilterVec sFileExtensionsFilters;
+        for (const auto& [type, info] : pm.getInfos<Importer>())
+            if (std::find(info.extensions.begin(), info.extensions.end(), extension) != info.extensions.end())
+                return pm.createClass<Importer>(type);
+        return nullptr;
     }
 
-    const FileDialogFilterVec& Importer::getFileExtensionFilters()
+    std::vector<std::string> Importer::getSupportedExtensions(const PluginManager& pm)
     {
-        return sFileExtensionsFilters;
-    }
-
-    void Importer::import(const std::filesystem::path& path, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict)
-    {
-        auto ext = getExtensionFromPath(path);
-        auto it = sImportFunctions.find(ext);
-        if (it == sImportFunctions.end())
-        {
-            throw ImporterError(path, "Unknown file extension.");
-        }
-        it->second(path, builder, instances, dict);
-    }
-
-    void Importer::registerImporter(const Desc& desc)
-    {
-        sImporters.push_back(desc);
-
-        for (const auto& ext : desc.extensions)
-        {
-            FALCOR_ASSERT(sImportFunctions.find(ext) == sImportFunctions.end());
-            sImportFunctions[ext] = desc.import;
-            sFileExtensionsFilters.push_back(ext);
-        }
+        std::vector<std::string> extensions;
+        for (const auto& [type, info] : pm.getInfos<Importer>())
+            extensions.insert(extensions.end(), info.extensions.begin(), info.extensions.end());
+        return extensions;
     }
 
     FALCOR_SCRIPT_BINDING(Importer)

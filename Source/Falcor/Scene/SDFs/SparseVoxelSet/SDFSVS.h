@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -44,7 +44,7 @@ namespace Falcor
         /** Create a new, empty SDF sparse voxel set.
             \return SDFSVS object, or nullptr if errors occurred.
         */
-        static SharedPtr create();
+        static SharedPtr create(std::shared_ptr<Device> pDevice);
 
         virtual size_t getSize() const override;
         virtual uint32_t getMaxPrimitiveIDBits() const override;
@@ -61,7 +61,7 @@ namespace Falcor
         virtual void setValuesInternal(const std::vector<float>& cornerValues) override;
 
     private:
-        SDFSVS() = default;
+        SDFSVS(std::shared_ptr<Device> pDevice) : SDFGrid(std::move(pDevice)) {}
 
         // CPU data.
         std::vector<int8_t> mValues;

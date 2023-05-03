@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,7 +29,6 @@
 
 #if FALCOR_HAS_D3D12
 #include <d3d12.h>
-#include <dxgi1_4.h>
 #include <comdef.h>
 #endif
 
@@ -38,55 +37,9 @@
 namespace Falcor
 {
 #if FALCOR_HAS_D3D12
-    FALCOR_MAKE_SMART_COM_PTR(IDXGISwapChain3);
-    FALCOR_MAKE_SMART_COM_PTR(IDXGIDevice);
-    FALCOR_MAKE_SMART_COM_PTR(IDXGIAdapter1);
-    FALCOR_MAKE_SMART_COM_PTR(IDXGIFactory4);
-    FALCOR_MAKE_SMART_COM_PTR(ID3DBlob);
-
-    FALCOR_MAKE_SMART_COM_PTR(ID3D12StateObject);
-    FALCOR_MAKE_SMART_COM_PTR(ID3D12Device);
-    FALCOR_MAKE_SMART_COM_PTR(ID3D12GraphicsCommandList);
-    FALCOR_MAKE_SMART_COM_PTR(ID3D12Debug);
-    FALCOR_MAKE_SMART_COM_PTR(ID3D12CommandQueue);
-    FALCOR_MAKE_SMART_COM_PTR(ID3D12CommandAllocator);
-    FALCOR_MAKE_SMART_COM_PTR(ID3D12DescriptorHeap);
-    FALCOR_MAKE_SMART_COM_PTR(ID3D12Resource);
-    FALCOR_MAKE_SMART_COM_PTR(ID3D12Fence);
-    FALCOR_MAKE_SMART_COM_PTR(ID3D12PipelineState);
-    FALCOR_MAKE_SMART_COM_PTR(ID3D12RootSignature);
-    FALCOR_MAKE_SMART_COM_PTR(ID3D12QueryHeap);
-    FALCOR_MAKE_SMART_COM_PTR(ID3D12CommandSignature);
-
-    using D3D12DeviceHandle = ID3D12DevicePtr;
-    using D3D12GraphicsStateHandle = ID3D12PipelineStatePtr;
-    using D3D12ComputeStateHandle = ID3D12PipelineStatePtr;
-    using D3D12RaytracingStateHandle = ID3D12PipelineStatePtr;
-    using D3D12CommandListHandle = ID3D12GraphicsCommandListPtr;
-    using D3D12CommandQueueHandle = ID3D12CommandQueuePtr;
-    using D3D12DescriptorHeapHandle = ID3D12DescriptorHeapPtr;
-    using D3D12RootSignatureHandle = ID3D12RootSignaturePtr;
-    using D3D12ResourceHandle = ID3D12ResourcePtr;
-    using D3D12FenceHandle = ID3D12FencePtr;
-
-    using D3D12DescriptorCpuHandle = D3D12_CPU_DESCRIPTOR_HANDLE;
-    using D3D12DescriptorGpuHandle = D3D12_GPU_DESCRIPTOR_HANDLE;
-#else
-    using D3D12DeviceHandle = void*;
-    using D3D12GraphicsStateHandle = void*;
-    using D3D12ComputeStateHandle = void*;
-    using D3D12RaytracingStateHandle = void*;
-    using D3D12CommandListHandle = void*;
-    using D3D12CommandQueueHandle = void*;
-    using D3D12DescriptorHeapHandle = void*;
-    using D3D12RootSignatureHandle = void*;
-    using D3D12ResourceHandle = void*;
-    using D3D12FenceHandle = void*;
-
-    using D3D12DescriptorCpuHandle = void*;
-    using D3D12DescriptorGpuHandle = void*;
+FALCOR_MAKE_SMART_COM_PTR(ID3DBlob);
+FALCOR_MAKE_SMART_COM_PTR(ID3D12DescriptorHeap);
+FALCOR_MAKE_SMART_COM_PTR(ID3D12RootSignature);
 #endif
-
-    using D3D12DescriptorSetApiHandle = void*;
 
 } // namespace Falcor

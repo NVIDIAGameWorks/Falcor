@@ -28,24 +28,4 @@
 #include "ProgressBar.h"
 
 namespace Falcor
-{
-    std::weak_ptr<ProgressBar> ProgressBar::spBar;
-
-    ProgressBar::SharedPtr ProgressBar::show(const MessageList& list, uint32_t delayInMs)
-    {
-        SharedPtr pBar = spBar.lock();
-        if (pBar) return pBar;
-
-        pBar = SharedPtr(new ProgressBar());
-        pBar->platformInit(list, delayInMs);
-        spBar = pBar;
-        return pBar;
-    }
-
-    ProgressBar::SharedPtr ProgressBar::show(const char* pMsg, uint32_t delayInMs)
-    {
-        MessageList list;
-        if (pMsg) list.push_back(pMsg);
-        return show(list, delayInMs);
-    }
-}
+{}

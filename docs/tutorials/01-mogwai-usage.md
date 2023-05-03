@@ -23,25 +23,35 @@ Run Mogwai from within Visual Studio (by pressing Ctrl+F5), or from the command 
   OPTIONS:
 
       -h, --help                        Display this help menu.
+      -d[d3d12|vulkan],
+      --device-type=[d3d12|vulkan]      Graphics device type.
+      --list-gpus                       List available GPUs
+      --gpu=[index]                     Select specific GPU to use
+      --headless                        Start without opening a window and
+                                        handling user input.
       -s[path], --script=[path]         Python script file to run.
+      --deferred                        The script is loaded deferred.
       -S[path], --scene=[path]          Scene file (for example, a .pyscene
                                         file) to open.
+      --shadercache=[shadercache]       Path to the GFX shader cache.
       -l[path], --logfile=[path]        File to write log into.
       -v[verbosity],
       --verbosity=[verbosity]           Logging verbosity (0=disabled, 1=fatal
                                         errors, 2=errors, 3=warnings, 4=infos,
                                         5=debugging)
-      --silent                          Starts Mogwai with a minimized window
-                                        and disables mouse/keyboard input as
-                                        well as error message dialogs.
+      --silent                          Start without opening a window and
+                                        handling user input (deprecated: use
+                                        --headless).
       --width=[pixels]                  Initial window width.
       --height=[pixels]                 Initial window height.
       -c, --use-cache                   Use scene cache to improve scene load
                                         times.
       --rebuild-cache                   Rebuild the scene cache.
-      -d, --debug-shaders               Generate shader debug info.
+      --debug-shaders                   Generate shader debug info.
       --enable-debug-layer              Enable debug layer (enabled by default
                                         in Debug build).
+      --precise                         Force all slang programs to run in
+                                        precise mode
 ```
 
 Using `--silent` together with `--script` allows to run Mogwai for rendering in the background.
@@ -53,7 +63,7 @@ If you start it without specifying any options, Mogwai starts with a blank scree
 With Mogwai up and running, we'll proceed to loading something. You can load two kinds of files: scripts (which usually contain some global settings and render graphs) and scenes.
 
 ### Loading a Script (.py)
-Open the load script dialog by either going to `File -> Load Script` or hitting `Ctrl + O`. Navigate to the location of the script you wish to run and select it to load and run it. Alternatively, dragging-and-dropping a script into Mogwai will also work. Note that scripts intended for use with Mogwai must be written in Python. Full scripting documentation can be found [here](../Usage/Scripting.md).
+Open the load script dialog by either going to `File -> Load Script` or hitting `Ctrl + O`. Navigate to the location of the script you wish to run and select it to load and run it. Alternatively, dragging-and-dropping a script into Mogwai will also work. Note that scripts intended for use with Mogwai must be written in Python. Full scripting documentation can be found [here](../usage/scripting.md).
 
 Here, we'll load the Forward Renderer, located at `Source/Mogwai/Data/ForwardRenderer.py`.
 

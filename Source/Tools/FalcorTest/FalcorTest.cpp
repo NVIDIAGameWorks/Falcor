@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,8 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "FalcorTest.h"
+#include "Utils/StringUtils.h"
 #include "Testing/UnitTest.h"
-#include "RenderGraph/RenderPassLibrary.h"
 
 #include <args.hxx>
 
@@ -37,28 +37,15 @@
 
 FALCOR_EXPORT_D3D12_AGILITY_SDK
 
-static std::vector<std::string> librariesWithTests =
-{
-};
+FalcorTest::FalcorTest(const SampleAppConfig& config, const Options& options) : SampleApp(config), mOptions(options) {}
 
-/** Global to hold return code.
-    The instance of FalcorTest is destroyed before leaving Sample::run().
-*/
-static int sReturnCode = 1;
-
-void FalcorTest::onLoad(RenderContext* pRenderContext)
-{
-    // Load all the DLLs so that they can register their tests.
-    for (const auto& lib : librariesWithTests)
-    {
-        RenderPassLibrary::instance().loadLibrary(lib);
-    }
-}
+FalcorTest::~FalcorTest() {}
 
 void FalcorTest::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
-    sReturnCode = runTests(std::cout, pRenderContext, mOptions.filter, mOptions.xmlReportPath, mOptions.repeat);
-    gpFramework->shutdown();
+    int returnCode =
+        runTests(getDevice(), getTargetFbo().get(), mOptions.categoryFlags, mOptions.filter, mOptions.xmlReportPath, mOptions.repeat);
+    shutdown(returnCode);
 }
 
 int main(int argc, char** argv)
@@ -66,10 +53,14 @@ int main(int argc, char** argv)
     args::ArgumentParser parser("Falcor unit tests.");
     parser.helpParams.programName = "FalcorTest";
     args::HelpFlag helpFlag(parser, "help", "Display this help menu.", {'h', "help"});
+    args::ValueFlag<std::string> categoryFlag(parser, "all,cpu,gpu", "Test categories to run (default: all).", {'c', "category"});
+    args::ValueFlag<std::string> deviceTypeFlag(parser, "d3d12|vulkan", "Graphics device type.", {'d', "device-type"});
+    args::Flag listGPUsFlag(parser, "", "List available GPUs", {"list-gpus"});
+    args::ValueFlag<uint32_t> gpuFlag(parser, "index", "Select specific GPU to use", {"gpu"});
     args::ValueFlag<std::string> filterFlag(parser, "filter", "Regular expression for filtering tests to run.", {'f', "filter"});
     args::ValueFlag<std::string> xmlReportFlag(parser, "path", "XML report output file.", {'x', "xml-report"});
     args::ValueFlag<uint32_t> repeatFlag(parser, "N", "Number of times to repeat the test.", {'r', "repeat"});
-    args::Flag enableDebugLayer(parser, "", "Enable debug layer (enabled by default in Debug build).", {"enable-debug-layer"});
+    args::Flag enableDebugLayerFlag(parser, "", "Enable debug layer (enabled by default in Debug build).", {"enable-debug-layer"});
     args::CompletionFlag completionFlag(parser, {"complete"});
 
     try
@@ -99,27 +90,64 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    // Disable logging to console, we don't want to clutter the test runner output with log messages.
-    Logger::setOutputs(Logger::OutputFlags::File | Logger::OutputFlags::DebugWindow);
+    SampleAppConfig config;
+    config.headless = true;
+
+    if (deviceTypeFlag)
+    {
+        if (args::get(deviceTypeFlag) == "d3d12")
+            config.deviceDesc.type = Device::Type::D3D12;
+        else if (args::get(deviceTypeFlag) == "vulkan")
+            config.deviceDesc.type = Device::Type::Vulkan;
+        else
+        {
+            std::cerr << "Invalid device type, use 'd3d12' or 'vulkan'" << std::endl;
+            return 1;
+        }
+    }
+    if (listGPUsFlag)
+    {
+        const auto gpus = Device::getGPUs(config.deviceDesc.type);
+        for (size_t i = 0; i < gpus.size(); ++i)
+            fmt::print("GPU {}: {}\n", i, gpus[i].name);
+        return 0;
+    }
+    if (gpuFlag)
+        config.deviceDesc.gpu = args::get(gpuFlag);
+    if (enableDebugLayerFlag)
+        config.deviceDesc.enableDebugLayer = true;
 
     FalcorTest::Options options;
 
-    if (filterFlag) options.filter = args::get(filterFlag);
-    if (xmlReportFlag) options.xmlReportPath = args::get(xmlReportFlag);
-    if (repeatFlag) options.repeat = args::get(repeatFlag);
+    if (categoryFlag)
+    {
+        options.categoryFlags = UnitTestCategoryFlags::None;
+        std::vector<std::string> tokens = splitString(args::get(categoryFlag), ",");
+        for (const auto& token : tokens)
+        {
+            if (token == "all")
+                options.categoryFlags |= UnitTestCategoryFlags::All;
+            else if (token == "cpu")
+                options.categoryFlags |= UnitTestCategoryFlags::CPU;
+            else if (token == "gpu")
+                options.categoryFlags |= UnitTestCategoryFlags::GPU;
+            else
+            {
+                std::cerr << "Invalid test category '" << token << "'" << std::endl;
+                return 1;
+            }
+        }
+    }
+    if (filterFlag)
+        options.filter = args::get(filterFlag);
+    if (xmlReportFlag)
+        options.xmlReportPath = args::get(xmlReportFlag);
+    if (repeatFlag)
+        options.repeat = args::get(repeatFlag);
 
-    FalcorTest::UniquePtr pRenderer = std::make_unique<FalcorTest>(options);
-    SampleConfig config;
-    config.windowDesc.title = "FalcorTest";
-#ifdef FALCOR_HAS_D3D12
-    config.windowDesc.mode = Window::WindowMode::Minimized;
-#else
-    // Vulkan does not allow creating a swapchain on a minimized window.
-    config.windowDesc.mode = Window::WindowMode::Normal;
-#endif
-    config.windowDesc.resizableWindow = true;
-    config.windowDesc.width = config.windowDesc.height = 2;
-    if (enableDebugLayer) config.deviceDesc.enableDebugLayer = true;
-    Sample::run(config, pRenderer, argc, argv);
-    return sReturnCode;
+    // Disable logging to console, we don't want to clutter the test runner output with log messages.
+    Logger::setOutputs(Logger::OutputFlags::File | Logger::OutputFlags::DebugWindow);
+
+    FalcorTest falcorTest(config, options);
+    return falcorTest.run();
 }

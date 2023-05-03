@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -45,7 +45,7 @@ RWStructuredBuffer<uint> result;
 // Clear kernel.
 // This is necessary for RWStructuredBuffer as we can't use ID3D12CommandList::ClearUnorderedAccessViewUint for structured buffers.
 [numthreads(256, 1, 1)]
-void clearBuffer(uint3 threadId : SV_DispatchThreadID)
+void clearBuffer(uint3 threadId: SV_DispatchThreadID)
 {
     uint i = threadId.x;
 #if TYPE == 0
@@ -56,7 +56,7 @@ void clearBuffer(uint3 threadId : SV_DispatchThreadID)
 }
 
 [numthreads(256, 1, 1)]
-void updateBuffer(uint3 threadId : SV_DispatchThreadID)
+void updateBuffer(uint3 threadId: SV_DispatchThreadID)
 {
     uint i = threadId.x;
 #if TYPE == 0
@@ -69,7 +69,7 @@ void updateBuffer(uint3 threadId : SV_DispatchThreadID)
 }
 
 [numthreads(256, 1, 1)]
-void readBuffer(uint3 threadId : SV_DispatchThreadID)
+void readBuffer(uint3 threadId: SV_DispatchThreadID)
 {
     uint i = threadId.x;
 #if TYPE == 0

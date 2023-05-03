@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -40,20 +40,22 @@ namespace Falcor
         using SharedPtr = ParameterBlockSharedPtr<RasterPass>;
 
         /** Create a new object.
+            \param[in] pDevice GPU devuce.
             \param[in] path Program file path.
             \param[in] vsEntry Vertex shader entry point. If this string is empty (""), it will use a default vertex shader which transforms and outputs all default vertex attributes.
             \param[in] psEntry Pixel shader entry point
             \param[in] programDefines Optional list of macro definitions to set into the program. The macro definitions will be set on all shader stages.
             \return A new object, or throws an exception if creation failed.
         */
-        static SharedPtr create(const std::filesystem::path& path, const std::string& vsEntry, const std::string& psEntry, const Program::DefineList& defines = Program::DefineList());
+        static SharedPtr create(std::shared_ptr<Device> pDevice, const std::filesystem::path& path, const std::string& vsEntry, const std::string& psEntry, const Program::DefineList& defines = Program::DefineList());
 
         /** Create a new object.
+            \param[in] pDevice GPU devuce.
             \param[in] progDesc The program description.
             \param[in] programDefines Optional list of macro definitions to set into the program. The macro definitions will be set on all shader stages.
             \return A new object, or throws an exception if creation failed.
         */
-        static SharedPtr create(const Program::Desc& desc, const Program::DefineList& defines = Program::DefineList());
+        static SharedPtr create(std::shared_ptr<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines = Program::DefineList());
 
         /** Ordered draw call.
             \param[in] vertexCount Number of vertices to draw
@@ -69,6 +71,6 @@ namespace Falcor
         void drawIndexed(RenderContext* pRenderContext, uint32_t indexCount, uint32_t startIndexLocation, int32_t baseVertexLocation);
 
     protected:
-        RasterPass(const Program::Desc& progDesc, const Program::DefineList& programDefines);
+        RasterPass(std::shared_ptr<Device> pDevice, const Program::Desc& progDesc, const Program::DefineList& programDefines);
     };
 }

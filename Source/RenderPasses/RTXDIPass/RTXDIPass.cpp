@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,13 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "RTXDIPass.h"
-#include "RenderGraph/RenderPassLibrary.h"
 #include "RenderGraph/RenderPassHelpers.h"
 #include "RenderGraph/RenderPassStandardFlags.h"
 
 using namespace Falcor;
-
-const RenderPass::Info RTXDIPass::kInfo { "RTXDIPass", "Standalone pass for direct lighting using RTXDI." };
 
 namespace
 {
@@ -66,22 +63,15 @@ namespace
     const char* kOptions = "options";
 }
 
-
-// This is required for DLL and shader hot-reload to function properly
-extern "C" FALCOR_API_EXPORT const char* getProjDir()
-{
-    return PROJECT_DIR;
-}
-
 // What passes does this DLL expose?  Register them here
-extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
-    lib.registerPass(RTXDIPass::kInfo, RTXDIPass::create);
+    registry.registerClass<RenderPass, RTXDIPass>();
 }
 
-RTXDIPass::SharedPtr RTXDIPass::create(RenderContext* pRenderContext, const Dictionary& dict)
+RTXDIPass::SharedPtr RTXDIPass::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
-    return RTXDIPass::SharedPtr(new RTXDIPass(dict));
+    return RTXDIPass::SharedPtr(new RTXDIPass(std::move(pDevice), dict));
 }
 
 RenderPassReflection RTXDIPass::reflect(const CompileData& compileData)
@@ -156,8 +146,8 @@ bool RTXDIPass::onMouseEvent(const MouseEvent& mouseEvent)
     return mpRTXDI ? mpRTXDI->getPixelDebug()->onMouseEvent(mouseEvent) : false;
 }
 
-RTXDIPass::RTXDIPass(const Dictionary& dict)
-    : RenderPass(kInfo)
+RTXDIPass::RTXDIPass(std::shared_ptr<Device> pDevice, const Dictionary& dict)
+    : RenderPass(std::move(pDevice))
 {
     parseDictionary(dict);
 }
@@ -198,7 +188,7 @@ void RTXDIPass::prepareSurfaceData(RenderContext* pRenderContext, const Texture:
     FALCOR_ASSERT(mpRTXDI);
     FALCOR_ASSERT(pVBuffer);
 
-    FALCOR_PROFILE("prepareSurfaceData");
+    FALCOR_PROFILE(pRenderContext, "prepareSurfaceData");
 
     if (!mpPrepareSurfaceDataPass)
     {
@@ -211,7 +201,7 @@ void RTXDIPass::prepareSurfaceData(RenderContext* pRenderContext, const Texture:
         defines.add(mpRTXDI->getDefines());
         defines.add("GBUFFER_ADJUST_SHADING_NORMALS", mGBufferAdjustShadingNormals ? "1" : "0");
 
-        mpPrepareSurfaceDataPass = ComputePass::create(desc, defines, true);
+        mpPrepareSurfaceDataPass = ComputePass::create(mpDevice, desc, defines, true);
     }
 
     mpPrepareSurfaceDataPass->addDefine("GBUFFER_ADJUST_SHADING_NORMALS", mGBufferAdjustShadingNormals ? "1" : "0");
@@ -232,7 +222,7 @@ void RTXDIPass::finalShading(RenderContext* pRenderContext, const Texture::Share
     FALCOR_ASSERT(mpRTXDI);
     FALCOR_ASSERT(pVBuffer);
 
-    FALCOR_PROFILE("finalShading");
+    FALCOR_PROFILE(pRenderContext, "finalShading");
 
     if (!mpFinalShadingPass)
     {
@@ -247,7 +237,7 @@ void RTXDIPass::finalShading(RenderContext* pRenderContext, const Texture::Share
         defines.add("USE_ENV_BACKGROUND", mpScene->useEnvBackground() ? "1" : "0");
         defines.add(getValidResourceDefines(kOutputChannels, renderData));
 
-        mpFinalShadingPass = ComputePass::create(desc, defines, true);
+        mpFinalShadingPass = ComputePass::create(mpDevice, desc, defines, true);
     }
 
     mpFinalShadingPass->addDefine("GBUFFER_ADJUST_SHADING_NORMALS", mGBufferAdjustShadingNormals ? "1" : "0");

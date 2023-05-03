@@ -34,7 +34,7 @@
 
 namespace Falcor
 {
-    /** Framerate calculator
+    /** Helper class for calculating framerate.
     */
     class FALCOR_API FrameRate
     {
@@ -45,7 +45,7 @@ namespace Falcor
             reset();
         }
 
-        /** Resets the FPS
+        /** Resets the FPS.
             After this call it will appear as if the application had just started. Useful in cases a new scene is loaded, since it will display a more accurate FPS.
         */
         void reset()
@@ -64,18 +64,18 @@ namespace Falcor
             mClock.setTime(0).tick();
         }
 
-        /** Get the time in ms it took to render a frame
+        /** Get the time in seconds it took to render a frame.
         */
         double getAverageFrameTime() const
         {
             uint64_t frames = std::min(mFrameCount, kFrameWindow);
-            double elapsedTime = 0;
-            for(uint64_t i = 0; i < frames; i++) elapsedTime += mFrameTimes[i];
-            double time = elapsedTime / double(frames) * 1000;
-            return time;
+            double time = 0;
+            for (uint64_t i = 0; i < frames; i++)
+                time += mFrameTimes[i];
+            return time / double(frames);
         }
 
-        /** Get the time that it took to render the last frame
+        /** Get the time in seconds that it took to render the last frame.
         */
         double getLastFrameTime() const
         {
@@ -86,7 +86,7 @@ namespace Falcor
         */
         uint64_t getFrameCount() const { return mFrameCount; }
 
-        /** Get a message with the FPS
+        /** Get a message with the FPS.
         */
         std::string getMsg(bool vsyncOn = false) const;
 

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,87 +31,91 @@
 // The perfect hash tests are disabled by default as they take a really long time to run.
 // We test a subset of the space instead. The full tests are useful to re-run if the hash is modified.
 // Running the full GPU test may require increasing the TDR delay.
-//#define RUN_PERFECT_HASH_TESTS
+// #define RUN_PERFECT_HASH_TESTS
 
 namespace Falcor
 {
-    namespace
+namespace
+{
+/** Jenkins hash. This should match HashUtils.slang.
+ */
+uint32_t jenkinsHash(uint32_t a)
+{
+    a = (a + 0x7ed55d16) + (a << 12);
+    a = (a ^ 0xc761c23c) ^ (a >> 19);
+    a = (a + 0x165667b1) + (a << 5);
+    a = (a + 0xd3a2646c) ^ (a << 9);
+    a = (a + 0xfd7046c5) + (a << 3);
+    a = (a ^ 0xb55a4f09) ^ (a >> 16);
+    return a;
+}
+} // namespace
+
+GPU_TEST(JenkinsHash_CompareToCPU)
+{
+    Device* pDevice = ctx.getDevice().get();
+
+    // Allocate results buffer (64k dwords).
+    Buffer::SharedPtr pResultBuffer = Buffer::createTyped<uint32_t>(pDevice, 1 << 16, ResourceBindFlags::UnorderedAccess);
+    ctx.getRenderContext()->clearUAV(pResultBuffer->getUAV().get(), uint4(0));
+
+    // Setup and run GPU test.
+    ctx.createProgram("Tests/Utils/HashUtilsTests.cs.slang", "testJenkinsHash");
+    ctx["result"] = pResultBuffer;
+    ctx.runProgram(1 << 16, 1, 1);
+
+    // Verify that the generated hashes match the CPU version.
+    const uint32_t* result = (const uint32_t*)pResultBuffer->map(Buffer::MapType::Read);
+    FALCOR_ASSERT(result);
+    for (uint32_t i = 0; i < pResultBuffer->getElementCount(); i++)
     {
-        /** Jenkins hash. This should match HashUtils.slang.
-        */
-        uint32_t jenkinsHash(uint32_t a)
-        {
-            a = (a + 0x7ed55d16) + (a << 12);
-            a = (a ^ 0xc761c23c) ^ (a >> 19);
-            a = (a + 0x165667b1) + (a << 5);
-            a = (a + 0xd3a2646c) ^ (a << 9);
-            a = (a + 0xfd7046c5) + (a << 3);
-            a = (a ^ 0xb55a4f09) ^ (a >> 16);
-            return a;
-        }
+        EXPECT_EQ(result[i], jenkinsHash(i)) << "i = " << i;
     }
-
-    GPU_TEST(JenkinsHash_CompareToCPU)
-    {
-        // Allocate results buffer (64k dwords).
-        Buffer::SharedPtr pResultBuffer = Buffer::createTyped<uint32_t>(1 << 16, ResourceBindFlags::UnorderedAccess);
-        ctx.getRenderContext()->clearUAV(pResultBuffer->getUAV().get(), uint4(0));
-
-        // Setup and run GPU test.
-        ctx.createProgram("Tests/Utils/HashUtilsTests.cs.slang", "testJenkinsHash");
-        ctx["result"] = pResultBuffer;
-        ctx.runProgram(1 << 16, 1, 1);
-
-        // Verify that the generated hashes match the CPU version.
-        const uint32_t* result = (const uint32_t*)pResultBuffer->map(Buffer::MapType::Read);
-        FALCOR_ASSERT(result);
-        for (uint32_t i = 0; i < pResultBuffer->getElementCount(); i++)
-        {
-            EXPECT_EQ(result[i], jenkinsHash(i)) << "i = " << i;
-        }
-        pResultBuffer->unmap();
-    }
+    pResultBuffer->unmap();
+}
 
 #ifdef RUN_PERFECT_HASH_TESTS
-    CPU_TEST(JenkinsHash_PerfectHashCPU)
+CPU_TEST(JenkinsHash_PerfectHashCPU)
 #else
-    CPU_TEST(JenkinsHash_PerfectHashCPU, "Disabled for performance reasons")
+CPU_TEST(JenkinsHash_PerfectHashCPU, "Disabled for performance reasons")
 #endif
+{
+    std::vector<uint32_t> result(1 << 27, 0);
+    for (uint64_t i = 0; i < (1ull << 32); i++)
     {
-        std::vector<uint32_t> result(1 << 27, 0);
-        for (uint64_t i = 0; i < (1ull << 32); i++)
-        {
-            uint32_t h = jenkinsHash((uint32_t)i);
-            result[h >> 5] |= 1u << (h & 0x1f);
-        }
-        for (size_t i = 0; i < result.size(); i++)
-        {
-            EXPECT_EQ(result[i], 0xffffffff) << "i = " << i;
-        }
+        uint32_t h = jenkinsHash((uint32_t)i);
+        result[h >> 5] |= 1u << (h & 0x1f);
     }
-
-#ifdef RUN_PERFECT_HASH_TESTS
-    GPU_TEST(JenkinsHash_PerfectHashGPU)
-#else
-    GPU_TEST(JenkinsHash_PerfectHashGPU, "Disabled for performance reasons")
-#endif
+    for (size_t i = 0; i < result.size(); i++)
     {
-        // Allocate results buffer (2^27 dwords).
-        Buffer::SharedPtr pResultBuffer = Buffer::createTyped<uint32_t>(1 << 27, ResourceBindFlags::UnorderedAccess);
-        ctx.getRenderContext()->clearUAV(pResultBuffer->getUAV().get(), uint4(0));
-
-        // Setup and run GPU test.
-        ctx.createProgram("Tests/Utils/HashUtilsTests.cs.slang", "testJenkinsHash_PerfectHash");
-        ctx["result"] = pResultBuffer;
-        ctx.runProgram(1 << 16, 1 << 16, 1);
-
-        // Verify that all possible 32-bit hashes has occured (all bits set).
-        const uint32_t* result = (const uint32_t*)pResultBuffer->map(Buffer::MapType::Read);
-        FALCOR_ASSERT(result);
-        for (uint32_t i = 0; i < pResultBuffer->getElementCount(); i++)
-        {
-            EXPECT_EQ(result[i], 0xffffffff) << "i = " << i;
-        }
-        pResultBuffer->unmap();
+        EXPECT_EQ(result[i], 0xffffffff) << "i = " << i;
     }
 }
+
+#ifdef RUN_PERFECT_HASH_TESTS
+GPU_TEST(JenkinsHash_PerfectHashGPU)
+#else
+GPU_TEST(JenkinsHash_PerfectHashGPU, "Disabled for performance reasons")
+#endif
+{
+    Device* pDevice = ctx.getDevice().get();
+
+    // Allocate results buffer (2^27 dwords).
+    Buffer::SharedPtr pResultBuffer = Buffer::createTyped<uint32_t>(pDevice, 1 << 27, ResourceBindFlags::UnorderedAccess);
+    ctx.getRenderContext()->clearUAV(pResultBuffer->getUAV().get(), uint4(0));
+
+    // Setup and run GPU test.
+    ctx.createProgram("Tests/Utils/HashUtilsTests.cs.slang", "testJenkinsHash_PerfectHash");
+    ctx["result"] = pResultBuffer;
+    ctx.runProgram(1 << 16, 1 << 16, 1);
+
+    // Verify that all possible 32-bit hashes has occured (all bits set).
+    const uint32_t* result = (const uint32_t*)pResultBuffer->map(Buffer::MapType::Read);
+    FALCOR_ASSERT(result);
+    for (uint32_t i = 0; i < pResultBuffer->getElementCount(); i++)
+    {
+        EXPECT_EQ(result[i], 0xffffffff) << "i = " << i;
+    }
+    pResultBuffer->unmap();
+}
+} // namespace Falcor

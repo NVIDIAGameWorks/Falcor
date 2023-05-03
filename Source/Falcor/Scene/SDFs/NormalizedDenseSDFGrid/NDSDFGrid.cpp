@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,26 +30,26 @@
 
 namespace Falcor
 {
-    Sampler::SharedPtr NDSDFGrid::spNDSDFGridSampler;
-    Buffer::SharedPtr NDSDFGrid::spNDSDFGridUnitAABBBuffer;
+    Sampler::SharedPtr NDSDFGrid::spNDSDFGridSampler; // TODO: REMOVEGLOBAL
+    Buffer::SharedPtr NDSDFGrid::spNDSDFGridUnitAABBBuffer; // TODO: REMOVEGLOBAL
 
-    NDSDFGrid::SharedPtr NDSDFGrid::create(float normalizationFactor)
+    NDSDFGrid::SharedPtr NDSDFGrid::create(std::shared_ptr<Device> pDevice, float normalizationFactor)
     {
         if (!spNDSDFGridSampler)
         {
             Sampler::Desc sdfGridSamplerDesc;
             sdfGridSamplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
             sdfGridSamplerDesc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
-            spNDSDFGridSampler = Sampler::create(sdfGridSamplerDesc);
+            spNDSDFGridSampler = Sampler::create(pDevice.get(), sdfGridSamplerDesc);
         }
 
         if (!spNDSDFGridUnitAABBBuffer)
         {
             RtAABB unitAABB { float3(-0.5f), float3(0.5f) };
-            spNDSDFGridUnitAABBBuffer = Buffer::create(sizeof(RtAABB), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, &unitAABB);
+            spNDSDFGridUnitAABBBuffer = Buffer::create(pDevice.get(), sizeof(RtAABB), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, &unitAABB);
         }
 
-        return SharedPtr(new NDSDFGrid(normalizationFactor));
+        return SharedPtr(new NDSDFGrid(std::move(pDevice), normalizationFactor));
     }
 
     size_t NDSDFGrid::getSize() const
@@ -95,7 +95,7 @@ namespace Falcor
             }
             else
             {
-                pNDSDFTexture = Texture::create3D(lodWidth, lodWidth, lodWidth, ResourceFormat::R8Snorm, 1, mValues[lod].data());
+                pNDSDFTexture = Texture::create3D(mpDevice.get(), lodWidth, lodWidth, lodWidth, ResourceFormat::R8Snorm, 1, mValues[lod].data());
             }
         }
     }
@@ -172,7 +172,9 @@ namespace Falcor
         return 0.5f * glm::root_three<float>() * mNarrowBandThickness / gridWidth;
     }
 
-    NDSDFGrid::NDSDFGrid(float narrowBandThickness) : mNarrowBandThickness(std::max(narrowBandThickness, 1.0f))
+    NDSDFGrid::NDSDFGrid(std::shared_ptr<Device> pDevice, float narrowBandThickness)
+        : SDFGrid(std::move(pDevice))
+        , mNarrowBandThickness(std::max(narrowBandThickness, 1.0f))
     {
     }
 }

@@ -62,6 +62,26 @@
                 }
             ],
             "visualizerFile": "${workspaceFolder}/Source/Falcor/Falcor.natvis"
+        },
+        {
+            // Launch configuration for Python example.
+            "name": "Python Example",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "windows": {
+                "program": "${config:python.defaultInterpreterPath}"
+            },
+            "args": [ "${workspaceFolder}/scripts/internal/python/simple.py" ],
+            "stopAtEntry": false,
+            "cwd": "${command:cmake.launchTargetDirectory}",
+            "environment": [
+                {
+                    "name": "FALCOR_DEVMODE",
+                    "value": "1"
+                }
+            ],
+            "internalConsoleOptions": "openOnSessionStart",
+            "visualizerFile": "${workspaceFolder}/Source/Falcor/Falcor.natvis"
         }
     ]
 }

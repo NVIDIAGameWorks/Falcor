@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 #include "StandardMaterial.h"
 #include "Utils/Logger.h"
 #include "Utils/Scripting/ScriptBindings.h"
+#include "Scene/SceneBuilderAccess.h"
 
 namespace Falcor
 {
@@ -36,13 +37,13 @@ namespace Falcor
         const char kShaderFile[] = "Rendering/Materials/StandardMaterial.slang";
     }
 
-    StandardMaterial::SharedPtr StandardMaterial::create(const std::string& name, ShadingModel shadingModel)
+    StandardMaterial::SharedPtr StandardMaterial::create(std::shared_ptr<Device> pDevice, const std::string& name, ShadingModel shadingModel)
     {
-        return SharedPtr(new StandardMaterial(name, shadingModel));
+        return SharedPtr(new StandardMaterial(std::move(pDevice), name, shadingModel));
     }
 
-    StandardMaterial::StandardMaterial(const std::string& name, ShadingModel shadingModel)
-        : BasicMaterial(name, MaterialType::Standard)
+    StandardMaterial::StandardMaterial(std::shared_ptr<Device> pDevice, const std::string& name, ShadingModel shadingModel)
+        : BasicMaterial(std::move(pDevice), name, MaterialType::Standard)
     {
         setShadingModel(shadingModel);
         bool specGloss = getShadingModel() == ShadingModel::SpecGloss;
@@ -212,7 +213,11 @@ namespace Falcor
         shadingModel.value("SpecGloss", ShadingModel::SpecGloss);
 
         pybind11::class_<StandardMaterial, BasicMaterial, StandardMaterial::SharedPtr> material(m, "StandardMaterial");
-        material.def(pybind11::init(&StandardMaterial::create), "name"_a = "", "model"_a = ShadingModel::MetalRough);
+        auto create = [] (const std::string& name, ShadingModel shadingModel)
+        {
+            return StandardMaterial::create(getActivePythonSceneBuilder().getDevice(), name, shadingModel);
+        };
+        material.def(pybind11::init(create), "name"_a = "", "model"_a = ShadingModel::MetalRough); // PYTHONDEPRECATED
 
         material.def_property("roughness", &StandardMaterial::getRoughness, &StandardMaterial::setRoughness);
         material.def_property("metallic", &StandardMaterial::getMetallic, &StandardMaterial::setMetallic);

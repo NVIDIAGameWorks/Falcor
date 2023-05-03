@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -44,9 +44,9 @@ namespace Falcor
         const char kReflectPixelDebugTypesFile[] = "Utils/Debug/ReflectPixelDebugTypes.cs.slang";
     }
 
-    PixelDebug::SharedPtr PixelDebug::create(uint32_t logSize)
+    PixelDebug::SharedPtr PixelDebug::create(std::shared_ptr<Device> pDevice, uint32_t logSize)
     {
-        return SharedPtr(new PixelDebug(logSize));
+        return SharedPtr(new PixelDebug(std::move(pDevice), logSize));
     }
 
     void PixelDebug::beginFrame(RenderContext* pRenderContext, const uint2& frameDim)
@@ -70,18 +70,19 @@ namespace Falcor
             if (!mpPixelLog || mpPixelLog->getElementCount() != mLogSize)
             {
                 // Create program for type reflection.
-                if (!mpReflectProgram) mpReflectProgram = ComputeProgram::createFromFile(kReflectPixelDebugTypesFile, "main");
+                if (!mpReflectProgram) mpReflectProgram = ComputeProgram::createFromFile(mpDevice, kReflectPixelDebugTypesFile, "main");
 
                 // Allocate GPU buffers.
-                mpPixelLog = Buffer::createStructured(mpReflectProgram.get(), "gPixelLog", mLogSize);
+                Device* pDevice = pRenderContext->getDevice();
+                mpPixelLog = Buffer::createStructured(pDevice, mpReflectProgram.get(), "gPixelLog", mLogSize);
                 if (mpPixelLog->getStructSize() != sizeof(PixelLogValue)) throw RuntimeError("Struct PixelLogValue size mismatch between CPU/GPU");
 
-                mpAssertLog = Buffer::createStructured(mpReflectProgram.get(), "gAssertLog", mLogSize);
+                mpAssertLog = Buffer::createStructured(pDevice, mpReflectProgram.get(), "gAssertLog", mLogSize);
                 if (mpAssertLog->getStructSize() != sizeof(AssertLogValue)) throw RuntimeError("Struct AssertLogValue size mismatch between CPU/GPU");
 
                 // Allocate staging buffers for readback. These are shared, the data is stored consecutively.
-                mpCounterBuffer = Buffer::create(2 * sizeof(uint32_t), ResourceBindFlags::None, Buffer::CpuAccess::Read);
-                mpDataBuffer = Buffer::create(mpPixelLog->getSize() + mpAssertLog->getSize(), ResourceBindFlags::None, Buffer::CpuAccess::Read);
+                mpCounterBuffer = Buffer::create(pDevice, 2 * sizeof(uint32_t), ResourceBindFlags::None, Buffer::CpuAccess::Read);
+                mpDataBuffer = Buffer::create(pDevice, mpPixelLog->getSize() + mpAssertLog->getSize(), ResourceBindFlags::None, Buffer::CpuAccess::Read);
             }
 
             pRenderContext->clearUAVCounter(mpPixelLog, 0);
@@ -106,7 +107,7 @@ namespace Falcor
             pRenderContext->copyBufferRegion(mpDataBuffer.get(), mpPixelLog->getSize(), mpAssertLog.get(), 0, mpAssertLog->getSize());
 
             // Create fence first time we need it.
-            if (!mpFence) mpFence = GpuFence::create();
+            if (!mpFence) mpFence = GpuFence::create(mpDevice.get());
 
             // Submit command list and insert signal.
             pRenderContext->flush(false);
