@@ -1975,6 +1975,11 @@ namespace ImGui {
         isOpen = true;
     }
 
+    IMGUI_API void Node::updateSlotNames(const char* inputSlotNamesSeparatedBySemicolons, const char* outputSlotNamesSeparatedBySemicolons) {
+        InputsCount = ProcessSlotNamesSeparatedBySemicolons<IMGUINODE_MAX_INPUT_SLOTS>(inputSlotNamesSeparatedBySemicolons, InputNames);
+        OutputsCount = ProcessSlotNamesSeparatedBySemicolons<IMGUINODE_MAX_OUTPUT_SLOTS>(outputSlotNamesSeparatedBySemicolons, OutputNames);
+    }
+
     /*
     bool FieldInfo::copyFrom(const FieldInfo &f) {
         if (!isCompatibleWith(f)) return false;
