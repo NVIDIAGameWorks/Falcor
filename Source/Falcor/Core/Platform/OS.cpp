@@ -113,6 +113,26 @@ namespace Falcor
         return directories;
     }
 
+    static std::filesystem::path gCurrentlyLoadingScriptPath;
+
+    const std::filesystem::path& getCurrentlyLoadingScriptPath() {
+        return gCurrentlyLoadingScriptPath;
+    }
+
+    void setCurrentlyLoadingScriptPath(const std::filesystem::path& in) {
+        gCurrentlyLoadingScriptPath = in;
+    }
+
+    static std::filesystem::path gActiveGraphScriptPath;
+
+    const std::filesystem::path& getActiveGraphScriptPath() {
+        return gActiveGraphScriptPath;
+    }
+
+    void setActiveGraphScriptPath(const std::filesystem::path& in) {
+        gActiveGraphScriptPath = in;
+    }
+
     static std::vector<std::filesystem::path> gDataDirectories = getInitialDataDirectories();
 
     const std::vector<std::filesystem::path>& getDataDirectoriesList()
@@ -171,6 +191,16 @@ namespace Falcor
             }
         }
 
+        if (!getActiveGraphScriptPath().empty())
+        {
+            fullPath = getActiveGraphScriptPath().parent_path() / path;
+            if (std::filesystem::exists(fullPath))
+            {
+                fullPath = std::filesystem::canonical(fullPath);
+                return true;
+            }
+        }
+
         // Search in other paths.
         for (const auto& dir : gDataDirectories)
         {
@@ -198,6 +228,16 @@ namespace Falcor
             if (std::filesystem::exists(path))
             {
                 fullPath = std::filesystem::canonical(path);
+                return true;
+            }
+        }
+
+        if (!getActiveGraphScriptPath().empty())
+        {
+            fullPath = getActiveGraphScriptPath().parent_path() / path;
+            if (std::filesystem::exists(fullPath))
+            {
+                fullPath = std::filesystem::canonical(fullPath);
                 return true;
             }
         }

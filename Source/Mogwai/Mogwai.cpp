@@ -346,6 +346,8 @@ namespace Mogwai
         mActiveGraph = active;
         RenderGraph* pNew = getActiveGraph();
 
+        setActiveGraphScriptPath(pNew->getScriptPath());
+
         if (pOld != pNew)
         {
             for (auto& e : mpExtensions) e->activeGraphChanged(pNew, pOld);
@@ -406,6 +408,13 @@ namespace Mogwai
         // Set input image if it exists.
         data.pGraph = pGraph;
         data.pGraph->setScene(mpScene);
+        data.pGraph->setScriptPath(getCurrentlyLoadingScriptPath());
+
+        if (mGraphs.size() == 1)
+        {
+            setActiveGraphScriptPath(data.pGraph->getScriptPath());
+        }
+
         if (data.pGraph->getOutputCount() != 0)
         {
             data.mainOutput = data.pGraph->getOutputName(0);
@@ -443,9 +452,11 @@ namespace Mogwai
             // Add script directory to search paths (add it to the front to make it highest priority).
             auto directory = path.parent_path();
             addDataDirectory(directory, true);
+            setCurrentlyLoadingScriptPath(path);
 
             Scripting::runScriptFromFile(path);
 
+            setCurrentlyLoadingScriptPath({});
             removeDataDirectory(directory);
         }
         catch (const std::exception& e)

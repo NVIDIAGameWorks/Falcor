@@ -233,6 +233,9 @@ namespace Falcor
         bool compile(RenderContext* pRenderContext, std::string& log);
         bool compile(RenderContext* pRenderContext) { std::string s; return compile(pRenderContext, s); }
 
+        std::filesystem::path getScriptPath() { return mScriptPath; }
+        void setScriptPath(const std::filesystem::path& in) { mScriptPath = in; }
+
     private:
         RenderGraph(const std::string& name);
 
@@ -284,6 +287,8 @@ namespace Falcor
         RenderGraphExe::SharedPtr mpExe;                            ///< Helper for allocating resources and executing the graph.
         RenderGraphCompiler::Dependencies mCompilerDeps;            ///< Data needed by the graph compiler.
         bool mRecompile = false;                                    ///< Set to true to trigger a recompilation after any graph changes (topology/scene/size/passes/etc.)
+
+        std::filesystem::path mScriptPath;
 
         friend class RenderGraphUI;
         friend class RenderGraphExporter;
