@@ -1065,7 +1065,8 @@ namespace Falcor
             RenderPass* pNodeRenderPass = mpRenderGraph->getPass(currentPass.first).get();
             nameString = currentPass.first;
 
-            if (!mpNodeGraphEditor->getAllNodesOfType(currentPassUI.mGuiNodeID, nullptr, false))
+            ImVector<ImGui::Node*> nodesOut;
+            if (!mpNodeGraphEditor->getAllNodesOfType(currentPassUI.mGuiNodeID, &nodesOut, false))
             {
                 float2 nextPosition = mAddedFromDragAndDrop ? mNewNodeStartPosition : getNextNodePosition(mpRenderGraph->getPassIndex(nameString));
 
@@ -1073,6 +1074,13 @@ namespace Falcor
                     nameString, outputsString, inputsString, guiNodeID, pNodeRenderPass,
                     ImVec2(nextPosition.x, nextPosition.y));
                 mAddedFromDragAndDrop = false;
+            }
+            else
+            {
+                for (auto& node : nodesOut)
+                {
+                    node->updateSlotNames(inputsString.c_str(), outputsString.c_str());
+                }
             }
         }
 

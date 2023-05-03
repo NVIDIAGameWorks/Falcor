@@ -268,6 +268,7 @@ namespace ImGui {
         inline int getNumInputSlots() const { return InputsCount; }
         inline int getNumOutputSlots() const { return OutputsCount; }
         inline void setOpen(bool flag) { isOpen = flag; }
+        IMGUI_API void updateSlotNames(const char* inputSlotNamesSeparatedBySemicolons = NULL, const char* outputSlotNamesSeparatedBySemicolons = NULL);
 
     protected:
         FieldInfoVector fields; // I guess you can just skip these at all and implement virtual methods... but it was supposed to be useful...
