@@ -71,7 +71,7 @@ struct SceneDebuggerParams
 
 struct PixelData
 {
-    static const uint kInvalidID = 0xffffffff;
+    static constexpr uint kInvalidID = 0xffffffff;
 
     // Geometry
     uint hitType;

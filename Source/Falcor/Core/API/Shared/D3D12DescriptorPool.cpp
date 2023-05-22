@@ -64,15 +64,14 @@ const D3D12DescriptorPool::ApiHandle& D3D12DescriptorPool::getApiHandle(uint32_t
     return mpApiData->pHeaps[heapIndex]->getApiHandle();
 }
 
-D3D12DescriptorPool::SharedPtr D3D12DescriptorPool::create(Device* pDevice, const Desc& desc, const GpuFence::SharedPtr& pFence)
+ref<D3D12DescriptorPool> D3D12DescriptorPool::create(Device* pDevice, const Desc& desc, ref<GpuFence> pFence)
 {
     FALCOR_ASSERT(pDevice);
     pDevice->requireD3D12();
-    return SharedPtr(new D3D12DescriptorPool(pDevice, desc, pFence));
+    return ref<D3D12DescriptorPool>(new D3D12DescriptorPool(pDevice, desc, pFence));
 }
 
-D3D12DescriptorPool::D3D12DescriptorPool(Device* pDevice, const Desc& desc, const GpuFence::SharedPtr& pFence)
-    : mDesc(desc), mpFence(pFence)
+D3D12DescriptorPool::D3D12DescriptorPool(Device* pDevice, const Desc& desc, ref<GpuFence> pFence) : mDesc(desc), mpFence(pFence)
 {
     // Find out how many heaps we need
     static_assert(D3D12DescriptorPool::kTypeCount == 13, "Unexpected desc count, make sure all desc types are supported");

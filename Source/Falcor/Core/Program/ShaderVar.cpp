@@ -33,7 +33,7 @@ namespace Falcor
 ShaderVar::ShaderVar() : mpBlock(nullptr) {}
 ShaderVar::ShaderVar(const ShaderVar& other) : mpBlock(other.mpBlock), mOffset(other.mOffset) {}
 ShaderVar::ShaderVar(ParameterBlock* pObject, const TypedShaderVarOffset& offset) : mpBlock(pObject), mOffset(offset) {}
-ShaderVar::ShaderVar(ParameterBlock* pObject) : mpBlock(pObject), mOffset(pObject->getElementType().get(), ShaderVarOffset::kZero) {}
+ShaderVar::ShaderVar(ParameterBlock* pObject) : mpBlock(pObject), mOffset(pObject->getElementType(), ShaderVarOffset::kZero) {}
 
 ShaderVar ShaderVar::findMember(const std::string& name) const
 {
@@ -63,7 +63,7 @@ ShaderVar ShaderVar::findMember(const std::string& name) const
         if (auto pMember = pStructType->findMember(name))
         {
             // Need to apply the offsets from member
-            TypedShaderVarOffset newOffset = TypedShaderVarOffset(pMember->getType().get(), mOffset + pMember->getBindLocation());
+            TypedShaderVarOffset newOffset = TypedShaderVarOffset(pMember->getType(), mOffset + pMember->getBindLocation());
             return ShaderVar(mpBlock, newOffset);
         }
     }
@@ -101,7 +101,7 @@ ShaderVar ShaderVar::findMember(uint32_t index) const
             auto pMember = pStructType->getMember(index);
 
             // Need to apply the offsets from member
-            TypedShaderVarOffset newOffset = TypedShaderVarOffset(pMember->getType().get(), mOffset + pMember->getBindLocation());
+            TypedShaderVarOffset newOffset = TypedShaderVarOffset(pMember->getType(), mOffset + pMember->getBindLocation());
             return ShaderVar(mpBlock, newOffset);
         }
     }
@@ -176,7 +176,7 @@ ShaderVar ShaderVar::operator[](size_t index) const
                 mOffset.getResource().getArrayIndex() * elementCount + ResourceShaderVarOffset::ArrayIndex(index)
             );
             TypedShaderVarOffset newOffset =
-                TypedShaderVarOffset(pArrayType->getElementType().get(), ShaderVarOffset(elementUniformLocation, elementResourceLocation));
+                TypedShaderVarOffset(pArrayType->getElementType(), ShaderVarOffset(elementUniformLocation, elementResourceLocation));
             return ShaderVar(mpBlock, newOffset);
         }
     }
@@ -186,7 +186,7 @@ ShaderVar ShaderVar::operator[](size_t index) const
         {
             auto pMember = pStructType->getMember(index);
             // Need to apply the offsets from member
-            TypedShaderVarOffset newOffset = TypedShaderVarOffset(pMember->getType().get(), mOffset + pMember->getBindLocation());
+            TypedShaderVarOffset newOffset = TypedShaderVarOffset(pMember->getType(), mOffset + pMember->getBindLocation());
             return ShaderVar(mpBlock, newOffset);
         }
     }
@@ -195,7 +195,7 @@ ShaderVar ShaderVar::operator[](size_t index) const
     return ShaderVar();
 }
 
-ShaderVar ShaderVar::operator[](TypedShaderVarOffset const& offset) const
+ShaderVar ShaderVar::operator[](const TypedShaderVarOffset& offset) const
 {
     if (!isValid())
         return *this;
@@ -217,10 +217,10 @@ ShaderVar ShaderVar::operator[](TypedShaderVarOffset const& offset) const
         }
     }
 
-    return ShaderVar(mpBlock, TypedShaderVarOffset(offset.getType().get(), mOffset + offset));
+    return ShaderVar(mpBlock, TypedShaderVarOffset(offset.getType(), mOffset + offset));
 }
 
-ShaderVar ShaderVar::operator[](UniformShaderVarOffset const& loc) const
+ShaderVar ShaderVar::operator[](const UniformShaderVarOffset& loc) const
 {
     if (!isValid())
         return *this;
@@ -256,9 +256,8 @@ ShaderVar ShaderVar::operator[](UniformShaderVarOffset const& loc) const
         auto elementIndex = byteOffset / elementStride;
         auto offsetIntoElement = byteOffset % elementStride;
 
-        TypedShaderVarOffset elementOffset = TypedShaderVarOffset(
-            pElementType.get(), ShaderVarOffset(mOffset.getUniform() + elementIndex * elementStride, mOffset.getResource())
-        );
+        TypedShaderVarOffset elementOffset =
+            TypedShaderVarOffset(pElementType, ShaderVarOffset(mOffset.getUniform() + elementIndex * elementStride, mOffset.getResource()));
         ShaderVar elementCursor(mpBlock, elementOffset);
         return elementCursor[UniformShaderVarOffset(offsetIntoElement)];
     }
@@ -282,7 +281,7 @@ ShaderVar ShaderVar::operator[](UniformShaderVarOffset const& loc) const
                 continue;
 
             auto offsetIntoMember = byteOffset - memberByteOffset;
-            TypedShaderVarOffset memberOffset = TypedShaderVarOffset(pMember->getType().get(), mOffset + pMember->getBindLocation());
+            TypedShaderVarOffset memberOffset = TypedShaderVarOffset(pMember->getType(), mOffset + pMember->getBindLocation());
             ShaderVar memberCursor(mpBlock, memberOffset);
             return memberCursor[UniformShaderVarOffset(offsetIntoMember)];
         }
@@ -297,57 +296,57 @@ bool ShaderVar::isValid() const
     return mOffset.isValid();
 }
 
-bool ShaderVar::setTexture(const Texture::SharedPtr& pTexture) const
+bool ShaderVar::setTexture(const ref<Texture>& pTexture) const
 {
     return mpBlock->setTexture(mOffset, pTexture);
 }
 
-bool ShaderVar::setSampler(const Sampler::SharedPtr& pSampler) const
+bool ShaderVar::setSampler(const ref<Sampler>& pSampler) const
 {
     return mpBlock->setSampler(mOffset, pSampler);
 }
 
-bool ShaderVar::setBuffer(const Buffer::SharedPtr& pBuffer) const
+bool ShaderVar::setBuffer(const ref<Buffer>& pBuffer) const
 {
     return mpBlock->setBuffer(mOffset, pBuffer);
 }
 
-bool ShaderVar::setSrv(const ShaderResourceView::SharedPtr& pSrv) const
+bool ShaderVar::setSrv(const ref<ShaderResourceView>& pSrv) const
 {
     return mpBlock->setSrv(mOffset, pSrv);
 }
 
-bool ShaderVar::setUav(const UnorderedAccessView::SharedPtr& pUav) const
+bool ShaderVar::setUav(const ref<UnorderedAccessView>& pUav) const
 {
     return mpBlock->setUav(mOffset, pUav);
 }
 
-bool ShaderVar::setAccelerationStructure(const RtAccelerationStructure::SharedPtr& pAccl) const
+bool ShaderVar::setAccelerationStructure(const ref<RtAccelerationStructure>& pAccl) const
 {
     return mpBlock->setAccelerationStructure(mOffset, pAccl);
 }
 
-bool ShaderVar::setParameterBlock(const std::shared_ptr<ParameterBlock>& pBlock) const
+bool ShaderVar::setParameterBlock(const ref<ParameterBlock>& pBlock) const
 {
     return mpBlock->setParameterBlock(mOffset, pBlock);
 }
 
-bool ShaderVar::setImpl(const Texture::SharedPtr& pTexture) const
+bool ShaderVar::setImpl(const ref<Texture>& pTexture) const
 {
     return mpBlock->setTexture(mOffset, pTexture);
 }
 
-bool ShaderVar::setImpl(const Sampler::SharedPtr& pSampler) const
+bool ShaderVar::setImpl(const ref<Sampler>& pSampler) const
 {
     return mpBlock->setSampler(mOffset, pSampler);
 }
 
-bool ShaderVar::setImpl(const Buffer::SharedPtr& pBuffer) const
+bool ShaderVar::setImpl(const ref<Buffer>& pBuffer) const
 {
     return mpBlock->setBuffer(mOffset, pBuffer);
 }
 
-bool ShaderVar::setImpl(const std::shared_ptr<ParameterBlock>& pBlock) const
+bool ShaderVar::setImpl(const ref<ParameterBlock>& pBlock) const
 {
     return mpBlock->setParameterBlock(mOffset, pBlock);
 }
@@ -372,17 +371,17 @@ bool ShaderVar::setBlob(void const* data, size_t size) const
     return mpBlock->setBlob(mOffset, data, size);
 }
 
-ShaderVar::operator Buffer::SharedPtr() const
+ShaderVar::operator ref<Buffer>() const
 {
     return mpBlock->getBuffer(mOffset);
 }
 
-ShaderVar::operator Texture::SharedPtr() const
+ShaderVar::operator ref<Texture>() const
 {
     return mpBlock->getTexture(mOffset);
 }
 
-ShaderVar::operator Sampler::SharedPtr() const
+ShaderVar::operator ref<Sampler>() const
 {
     return mpBlock->getSampler(mOffset);
 }
@@ -392,37 +391,37 @@ ShaderVar::operator UniformShaderVarOffset() const
     return mOffset.getUniform();
 }
 
-std::shared_ptr<ParameterBlock> ShaderVar::getParameterBlock() const
+ref<ParameterBlock> ShaderVar::getParameterBlock() const
 {
     return mpBlock->getParameterBlock(mOffset);
 }
 
-Buffer::SharedPtr ShaderVar::getBuffer() const
+ref<Buffer> ShaderVar::getBuffer() const
 {
     return mpBlock->getBuffer(mOffset);
 }
 
-Texture::SharedPtr ShaderVar::getTexture() const
+ref<Texture> ShaderVar::getTexture() const
 {
     return mpBlock->getTexture(mOffset);
 }
 
-Sampler::SharedPtr ShaderVar::getSampler() const
+ref<Sampler> ShaderVar::getSampler() const
 {
     return mpBlock->getSampler(mOffset);
 }
 
-ShaderResourceView::SharedPtr ShaderVar::getSrv() const
+ref<ShaderResourceView> ShaderVar::getSrv() const
 {
     return mpBlock->getSrv(mOffset);
 }
 
-UnorderedAccessView::SharedPtr ShaderVar::getUav() const
+ref<UnorderedAccessView> ShaderVar::getUav() const
 {
     return mpBlock->getUav(mOffset);
 }
 
-RtAccelerationStructure::SharedPtr ShaderVar::getAccelerationStructure() const
+ref<RtAccelerationStructure> ShaderVar::getAccelerationStructure() const
 {
     return mpBlock->getAccelerationStructure(mOffset);
 }
@@ -432,7 +431,7 @@ size_t ShaderVar::getByteOffset() const
     return mOffset.getUniform().getByteOffset();
 }
 
-ReflectionType::SharedConstPtr ShaderVar::getType() const
+ref<const ReflectionType> ShaderVar::getType() const
 {
     return mOffset.getType();
 }

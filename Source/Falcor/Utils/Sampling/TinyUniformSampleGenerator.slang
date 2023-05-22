@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,11 +30,12 @@ import Utils.Sampling.Pseudorandom.LCG;
 import Utils.Math.HashUtils;
 import Utils.Math.BitTricks;
 
-/** Tiny uniform random sample generator.
-
-    This generator has only 32 bit state and sub-optimal statistical properties.
-    Do not use for anything critical; correlation artifacts may be prevalent.
-*/
+/**
+ * Tiny uniform random sample generator.
+ *
+ * This generator has only 32 bit state and sub-optimal statistical properties.
+ * Do not use for anything critical; correlation artifacts may be prevalent.
+ */
 public struct TinyUniformSampleGenerator : ISampleGenerator
 {
     struct Padded
@@ -43,18 +44,17 @@ public struct TinyUniformSampleGenerator : ISampleGenerator
         uint3 _pad;
     };
 
-    /** Initializes the sample generator.
-        \param[in] seed Seed value.
-    */
-    __init(uint seed)
-    {
-        this.rng = createLCG(seed);
-    }
+    /**
+     * Initializes the sample generator.
+     * @param[in] seed Seed value.
+     */
+    __init(uint seed) { this.rng = createLCG(seed); }
 
-    /** Initializes the sample generator for a given pixel and sample number.
-        \param[in] pixel Pixel id.
-        \param[in] sampleNumber Sample number.
-    */
+    /**
+     * Initializes the sample generator for a given pixel and sample number.
+     * @param[in] pixel Pixel id.
+     * @param[in] sampleNumber Sample number.
+     */
     __init(uint2 pixel, uint sampleNumber)
     {
         // Use block cipher to generate a pseudorandom initial seed.
@@ -62,12 +62,11 @@ public struct TinyUniformSampleGenerator : ISampleGenerator
         this.rng = createLCG(seed);
     }
 
-    /** Returns the next sample value. This function updates the state.
-    */
-    [mutating] uint next()
-    {
-        return nextRandom(rng);
-    }
+    /**
+     * Returns the next sample value. This function updates the state.
+     */
+    [mutating]
+    uint next() { return nextRandom(rng); }
 
-    LCG rng;    ///< Simple LCG 32-bit pseudorandom number generator.
+    LCG rng; ///< Simple LCG 32-bit pseudorandom number generator.
 };

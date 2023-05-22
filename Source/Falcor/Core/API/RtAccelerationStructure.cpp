@@ -52,7 +52,7 @@ RtAccelerationStructure::Desc& RtAccelerationStructure::Desc::setKind(RtAccelera
     return *this;
 }
 
-RtAccelerationStructure::Desc& RtAccelerationStructure::Desc::setBuffer(Buffer::SharedPtr buffer, uint64_t offset, uint64_t size)
+RtAccelerationStructure::Desc& RtAccelerationStructure::Desc::setBuffer(ref<Buffer> buffer, uint64_t offset, uint64_t size)
 {
     mBuffer = buffer;
     mOffset = offset;
@@ -60,9 +60,9 @@ RtAccelerationStructure::Desc& RtAccelerationStructure::Desc::setBuffer(Buffer::
     return *this;
 }
 
-RtAccelerationStructure::SharedPtr RtAccelerationStructure::create(Device* pDevice, const Desc& desc)
+ref<RtAccelerationStructure> RtAccelerationStructure::create(ref<Device> pDevice, const Desc& desc)
 {
-    return SharedPtr(new RtAccelerationStructure(pDevice->shared_from_this(), desc));
+    return ref<RtAccelerationStructure>(new RtAccelerationStructure(pDevice, desc));
 }
 
 uint64_t RtAccelerationStructure::getGpuAddress()
@@ -70,14 +70,14 @@ uint64_t RtAccelerationStructure::getGpuAddress()
     return mDesc.mBuffer->getGpuAddress() + mDesc.mOffset;
 }
 
-RtInstanceDesc& RtInstanceDesc::setTransform(const rmcv::mat4& matrix)
+RtInstanceDesc& RtInstanceDesc::setTransform(const float4x4& matrix)
 {
     std::memcpy(transform, &matrix, sizeof(transform));
     return *this;
 }
 
-RtAccelerationStructure::RtAccelerationStructure(std::shared_ptr<Device> pDevice, const RtAccelerationStructure::Desc& desc)
-    : mpDevice(std::move(pDevice)), mDesc(desc)
+RtAccelerationStructure::RtAccelerationStructure(ref<Device> pDevice, const RtAccelerationStructure::Desc& desc)
+    : mpDevice(pDevice), mDesc(desc)
 {
     gfx::IAccelerationStructure::CreateDesc createDesc = {};
     createDesc.buffer = mDesc.getBuffer()->getGfxBufferResource();

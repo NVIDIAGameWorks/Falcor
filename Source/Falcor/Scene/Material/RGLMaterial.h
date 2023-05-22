@@ -42,18 +42,13 @@ namespace Falcor
     class FALCOR_API RGLMaterial : public Material
     {
     public:
-        using SharedPtr = std::shared_ptr<RGLMaterial>;
+        static ref<RGLMaterial> create(ref<Device> pDevice, const std::string& name, const std::filesystem::path& path) { return make_ref<RGLMaterial>(pDevice, name, path); }
 
-        /** Create a new RGL material.
-            \param[in] name The material name.
-            \param[in] path Path of BRDF file to load.
-            \return A new object, or throws an exception if creation failed.
-        */
-        static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& name, const std::filesystem::path& path);
+        RGLMaterial(ref<Device> pDevice, const std::string& name, const std::filesystem::path& path);
 
         bool renderUI(Gui::Widgets& widget) override;
         Material::UpdateFlags update(MaterialSystem* pOwner) override;
-        bool isEqual(const Material::SharedPtr& pOther) const override;
+        bool isEqual(const ref<Material>& pOther) const override;
         MaterialDataBlob getDataBlob() const override { return prepareDataBlob(mData); }
         Program::ShaderModuleList getShaderModules() const override;
         Program::TypeConformanceList getTypeConformances() const override;
@@ -63,8 +58,6 @@ namespace Falcor
         bool loadBRDF(const std::filesystem::path& path);
 
     protected:
-        RGLMaterial(std::shared_ptr<Device> pDevice, const std::string& name, const std::filesystem::path& path);
-
         void prepareData(const int dims[3], const std::vector<double>& data);
         void prepareAlbedoLUT(RenderContext* pRenderContext);
         void computeAlbedoLUT(RenderContext* pRenderContext);
@@ -75,20 +68,20 @@ namespace Falcor
 
         bool mBRDFUploaded = false;         ///< True if BRDF data buffers have been uploaded to the material system.
         RGLMaterialData mData;              ///< Material parameters.
-        Buffer::SharedPtr mpThetaBuf;
-        Buffer::SharedPtr mpPhiBuf;
-        Buffer::SharedPtr mpSigmaBuf;
-        Buffer::SharedPtr mpNDFBuf;
-        Buffer::SharedPtr mpVNDFBuf;
-        Buffer::SharedPtr mpLumiBuf;
-        Buffer::SharedPtr mpRGBBuf;
-        Buffer::SharedPtr mpVNDFMarginalBuf;
-        Buffer::SharedPtr mpLumiMarginalBuf;
-        Buffer::SharedPtr mpVNDFConditionalBuf;
-        Buffer::SharedPtr mpLumiConditionalBuf;
-        Texture::SharedPtr mpAlbedoLUT;     ///< Precomputed albedo lookup table.
-        Sampler::SharedPtr mpSampler;       ///< Sampler for accessing BRDF textures.
+        ref<Buffer> mpThetaBuf;
+        ref<Buffer> mpPhiBuf;
+        ref<Buffer> mpSigmaBuf;
+        ref<Buffer> mpNDFBuf;
+        ref<Buffer> mpVNDFBuf;
+        ref<Buffer> mpLumiBuf;
+        ref<Buffer> mpRGBBuf;
+        ref<Buffer> mpVNDFMarginalBuf;
+        ref<Buffer> mpLumiMarginalBuf;
+        ref<Buffer> mpVNDFConditionalBuf;
+        ref<Buffer> mpLumiConditionalBuf;
+        ref<Texture> mpAlbedoLUT;           ///< Precomputed albedo lookup table.
+        ref<Sampler> mpSampler;             ///< Sampler for accessing BRDF textures.
 
-        ComputePass::SharedPtr mBRDFTesting;
+        ref<ComputePass> mBRDFTesting;
     };
 }

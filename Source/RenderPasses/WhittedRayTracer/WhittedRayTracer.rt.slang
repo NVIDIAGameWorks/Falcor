@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -109,6 +109,14 @@ float roughnessToSpread(float roughness)
     return 2.0f * sqrt(sigma2);
 }
 
+/** Returns the shading normal flipped for backfacing hits on double-sided materials.
+    This reproduces the legacy behavior before the conventions were updated.
+*/
+float3 getFlippedShadingNormal(const ShadingData sd)
+{
+    return !sd.frontFacing && sd.mtl.isDoubleSided() ? -sd.frame.N : sd.frame.N;
+}
+
 /** Payload for scatter ray (128B when ray cones are used, 164B when ray diffs are used).
 */
 struct ScatterRayData
@@ -181,8 +189,7 @@ ShadingData loadShadingData(const uint2 pixel, const float3 posW, const float3 r
     v.coneTexLODValue = 0.f;
 
     // Prepare shading data.
-    // Set 'useNormalMap' parameter to false as normal mapping has already been applied when generating the G-buffer.
-    return gScene.materials.prepareShadingData(v, materialID, -rayDir, lod, false);
+    return gScene.materials.prepareShadingData(v, materialID, -rayDir, lod);
 }
 
 /** Helper for computing relatice index of refraction (eta) at a hit.
@@ -253,7 +260,7 @@ float3 evalDirectAnalytic(const ShadingData sd, const IMaterialInstance mi, cons
         bool valid = sampleLight(rayOrigin, gScene.getLight(lightIndex), sg, ls);
 
         // Reject sample if lower hemisphere.
-        if (valid && dot(ls.dir, sd.N) > kMinCosTheta)
+        if (valid && dot(ls.dir, getFlippedShadingNormal(sd)) > kMinCosTheta)
         {
             // Test visibility by tracing a shadow ray.
             bool V = traceShadowRay(rayOrigin, ls.dir, ls.distance);
@@ -433,7 +440,7 @@ void scatterClosestHit(inout ScatterRayData rayData : SV_RayPayload, BuiltInTria
 
         if (eta != 1.0f)
         {
-            if (!refractWithTIR(rayDir, sd.N, eta, refractedRayDir))
+            if (!refractWithTIR(rayDir, getFlippedShadingNormal(sd), eta, refractedRayDir))
             {
                 tir = true;
             }
@@ -460,7 +467,7 @@ void scatterClosestHit(inout ScatterRayData rayData : SV_RayPayload, BuiltInTria
         }
         else // Refraction
         {
-            if (!refractRayCone(rayData.rayCone, rayOrg, rayDir, sd.posW, sd.N, surfaceSpreadAngle, eta, refractedRayDir))
+            if (!refractRayCone(rayData.rayCone, rayOrg, rayDir, sd.posW, getFlippedShadingNormal(sd), surfaceSpreadAngle, eta, refractedRayDir))
             {
                 rayData.rayCone = rayData.rayCone.addToSpreadAngle(surfaceSpreadAngle);
                 tir = true;
@@ -504,9 +511,9 @@ void scatterClosestHit(inout ScatterRayData rayData : SV_RayPayload, BuiltInTria
 
         if (kUseFresnelAsBRDF)
         {
-            rayData.thp *= 1.0f - evalFresnelSchlick(bsdfProperties.specularReflectance, 1.0f, max(0.00001f, dot(sd.N, -rayDir)));
+            rayData.thp *= 1.0f - evalFresnelSchlick(bsdfProperties.specularReflectance, 1.0f, max(0.00001f, dot(getFlippedShadingNormal(sd), -rayDir)));
             // There's convinient 'evalFresnelDielectric' we could use here, but it's somewhat darker (worse for development)
-            //rayData.thp *= 1.0f - evalFresnelDielectric(eta, dot(sd.N, -rayDir));
+            //rayData.thp *= 1.0f - evalFresnelDielectric(eta, dot(getFlippedShadingNormal(sd), -rayDir));
         }
         else
         {
@@ -628,7 +635,7 @@ void rayGen()
                     prepareVerticesForRayDiffs(rayDir, vertices, worldMat, worldInvTransposeMat, barycentrics, edge1, edge2, normals, unnormalizedN, txcoords);
                     computeRayDirectionDifferentials(nonNormalizedRayDir, gScene.camera.data.cameraU, gScene.camera.data.cameraV, launchDim, dDdx, dDdy);
                     RayDiff rd = RayDiff(float3(0.f), float3(0.f), dDdx, dDdy);    // Init ray diff. dOdx = 0 , dOdy = 0, and the directions are from above.
-                    rayDiff = rd.propagate(worldPos.xyz, rayDir, hitT, sd.N);               // Propagate the ray differential to the current hit point.
+                    rayDiff = rd.propagate(worldPos.xyz, rayDir, hitT, getFlippedShadingNormal(sd));               // Propagate the ray differential to the current hit point.
                     computeBarycentricDifferentials(rayDiff, rayDir, edge1, edge2, sd.faceN, dBarydx, dBarydy);
                     computeNormalDifferentials(rayDiff, unnormalizedN, dBarydx, dBarydy, normals, dNdx, dNdy);
                     float3 right = normalize(gScene.camera.computeNonNormalizedRayDirPinhole(launchIndex + uint2(1, 0), launchDim)) - rayDir;
@@ -639,7 +646,7 @@ void rayGen()
                 {
                     float curvature = gScene.computeCurvatureIsotropicFirstHit(triangleHit.instanceID, triangleHit.primitiveIndex, rayDir);
                     float rayConeWidth = hitT * gScreenSpacePixelSpreadAngle;
-                    surfaceSpreadAngle = computeSpreadAngleFromCurvatureIso(curvature, hitT * gScreenSpacePixelSpreadAngle, rayDir, sd.N);
+                    surfaceSpreadAngle = computeSpreadAngleFromCurvatureIso(curvature, hitT * gScreenSpacePixelSpreadAngle, rayDir, getFlippedShadingNormal(sd));
                 }
 
 #if USE_ROUGHNESS_TO_VARIANCE
@@ -664,7 +671,7 @@ void rayGen()
                 else // Refraction
                 {
                     float3 hitPoint = rayOrg + rayDir * hitT;
-                    if (!refractRayCone(rayData.rayCone, rayOrg, rayDir, hitPoint, sd.N, surfaceSpreadAngle, eta, refractedRayDir))
+                    if (!refractRayCone(rayData.rayCone, rayOrg, rayDir, hitPoint, getFlippedShadingNormal(sd), surfaceSpreadAngle, eta, refractedRayDir))
                     {
                         rayData.rayCone = rayData.rayCone.addToSpreadAngle(surfaceSpreadAngle);
                         tir = true;
@@ -717,7 +724,7 @@ void rayGen()
         }
         else // Mip0.
         {
-            if (!refractWithTIR(rayDir, sd.N, eta, refractedRayDir))
+            if (!refractWithTIR(rayDir, getFlippedShadingNormal(sd), eta, refractedRayDir))
             {
                 tir = true;
             }
@@ -726,7 +733,7 @@ void rayGen()
         // Generate scatter ray.
         if (eta == 1.0f || tir)
         {
-            generateReflectionRay(sd, bsdfProperties, rayOriginAtHitPoint, rayDir, sd.N, tir, rayData);
+            generateReflectionRay(sd, bsdfProperties, rayOriginAtHitPoint, rayDir, getFlippedShadingNormal(sd), tir, rayData);
         }
         else
         {
@@ -735,10 +742,10 @@ void rayGen()
 
             if (kUseFresnelAsBRDF)
             {
-                rayData.thp *= 1.0f - evalFresnelSchlick(bsdfProperties.specularReflectance, 1.0f, max(0.00001f, dot(sd.N, -rayDir)));
+                rayData.thp *= 1.0f - evalFresnelSchlick(bsdfProperties.specularReflectance, 1.0f, max(0.00001f, dot(getFlippedShadingNormal(sd), -rayDir)));
 
                 // There's convenient 'evalFresnelDielectric' we could use here, but it's somewhat darker (worse for development)
-                //rayData.thp *= 1.0f - evalFresnelDielectric(eta, dot(sd.N, -rayDir));
+                //rayData.thp *= 1.0f - evalFresnelDielectric(eta, dot(getFlippedShadingNormal(sd), -rayDir));
             }
             else
             {

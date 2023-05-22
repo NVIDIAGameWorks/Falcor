@@ -1,10 +1,11 @@
 #!/bin/sh
 
-export pwd=`pwd`
-export project_dir=$pwd/..
-export python_dir=$project_dir/tools/.packman/python
-export python=$python_dir/bin/python3
-export clang_format=$project_dir/tools/.packman/clang-format/clang-format.exe
+script=$(readlink -f "$0")
+pwd=$(dirname "$script")
+project_dir=$pwd/..
+python_dir=$project_dir/tools/.packman/python
+python=$python_dir/bin/python3
+clang_format=$project_dir/tools/.packman/clang-format/clang-format
 
 if [ ! -f "$python" ] || [ ! -f "$clang_format" ]; then
     $project_dir/setup.sh

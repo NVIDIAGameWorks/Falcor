@@ -27,10 +27,11 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
+#include "Core/Pass/FullScreenPass.h"
+#include "RenderGraph/RenderPass.h"
 #include "SDFEditorTypes.slang"
 #include "Marker2DSet.h"
 #include "SelectionWheel.h"
-#include "RenderGraph/BasePasses/FullScreenPass.h"
 
 using namespace Falcor;
 
@@ -39,21 +40,16 @@ class SDFEditor : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(SDFEditor, "SDFEditor", "Signed distance function (SDF) editor");
 
-    using SharedPtr = std::shared_ptr<SDFEditor>;
+    static ref<SDFEditor> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<SDFEditor>(pDevice, dict); }
 
-    /** Create a new render pass object.
-        \param[in] pDevice GPU device.
-        \param[in] dict Dictionary of serialized parameters.
-        \return A new object, or an exception is thrown if creation failed.
-    */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
+    SDFEditor(ref<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override {}
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(RenderContext* pRenderContext, Gui::Widgets& widget) override;
-    virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
+    virtual void setScene(RenderContext* pRenderContext, const ref<Scene>& pScene) override;
     virtual bool onMouseEvent(const MouseEvent& mouseEvent) override;
     virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override;
 
@@ -96,8 +92,8 @@ private:
         CpuTimer::TimePoint         timeOfReleaseMainGUIKey;
         bool                        fadeAwayGUI = false;
         bool                        drawCurrentModes = true;
-        Marker2DSet::SharedPtr      pMarker2DSet;
-        SelectionWheel::SharedPtr   pSelectionWheel;
+        std::unique_ptr<Marker2DSet>    pMarker2DSet;
+        std::unique_ptr<SelectionWheel> pSelectionWheel;
         float                       currentBlobbing = 0.0f;
         SDF3DShapeType              currentEditingShape = SDF3DShapeType::Sphere;
         SDFOperationType            currentEditingOperator = SDFOperationType::Union;
@@ -113,7 +109,7 @@ private:
     {
         uint32_t instanceID;
         SdfGridID gridID;
-        SDFGrid::SharedPtr pSDFGrid;
+        ref<SDFGrid> pSDFGrid;
         SDF3DPrimitive primitive;
         SDF3DPrimitive symmetryPrimitive;
         uint32_t primitiveID = UINT32_MAX;
@@ -133,10 +129,8 @@ private:
     };
 
 private:
-    SDFEditor(std::shared_ptr<Device> pDevice, const Dictionary& dict);
-
-    void setShaderData(const ShaderVar& var, const Texture::SharedPtr& pInputColor, const Texture::SharedPtr& pVBuffer);
-    void fetchPreviousVBufferAndZBuffer(RenderContext* pRenderContext, Texture::SharedPtr& pVBuffer, Texture::SharedPtr& pDepth);
+    void setShaderData(const ShaderVar& var, const ref<Texture>& pInputColor, const ref<Texture>& pVBuffer);
+    void fetchPreviousVBufferAndZBuffer(RenderContext* pRenderContext, ref<Texture>& pVBuffer, ref<Texture>& pDepth);
 
     // 2D GUI functions.
     void setup2DGUI();
@@ -171,13 +165,13 @@ private:
     void bakePrimitives();
 
 private:
-    Scene::SharedPtr            mpScene = nullptr;                          ///< The current scene.
-    Camera::SharedPtr           mpCamera = nullptr;                         ///< The camera.
-    FullScreenPass::SharedPtr   mpGUIPass = nullptr;                        ///< A full screen pass drawing the 2D GUI.
-    Fbo::SharedPtr              mpFbo = nullptr;                            ///< Frame buffer object.
-    Texture::SharedPtr          mpEditingVBuffer = nullptr;                 ///< A copy of the VBuffer used while moving/adding a primitive.
-    Texture::SharedPtr          mpEditingLinearZBuffer = nullptr;           ///< A copy of the linear Z buffer used while moving/adding a primitive.
-    Buffer::SharedPtr           mpSDFEditingDataBuffer;                     ///< A buffer that contain current Edit data for GUI visualization.
+    ref<Scene>                  mpScene;                    ///< The current scene.
+    ref<Camera>                 mpCamera;                   ///< The camera.
+    ref<FullScreenPass>         mpGUIPass;                  ///< A full screen pass drawing the 2D GUI.
+    ref<Fbo>                    mpFbo;                      ///< Frame buffer object.
+    ref<Texture>                mpEditingVBuffer;           ///< A copy of the VBuffer used while moving/adding a primitive.
+    ref<Texture>                mpEditingLinearZBuffer;     ///< A copy of the linear Z buffer used while moving/adding a primitive.
+    ref<Buffer>                 mpSDFEditingDataBuffer;     ///< A buffer that contain current Edit data for GUI visualization.
 
     struct
     {
@@ -220,14 +214,14 @@ private:
     uint2                       mFrameDim = { 0, 0 };
     UI2D                        mUI2D;
 
-    Buffer::SharedPtr           mpPickingInfo;                  ///< Buffer for reading back picking info from the GPU.
-    Buffer::SharedPtr           mpPickingInfoReadBack;          ///< Staging buffer for reading back picking info from the GPU.
-    GpuFence::SharedPtr         mpReadbackFence;                ///< GPU fence for synchronizing picking info readback.
+    ref<Buffer>                 mpPickingInfo;                  ///< Buffer for reading back picking info from the GPU.
+    ref<Buffer>                 mpPickingInfoReadBack;          ///< Staging buffer for reading back picking info from the GPU.
+    ref<GpuFence>               mpReadbackFence;                ///< GPU fence for synchronizing picking info readback.
     SDFPickingInfo              mPickingInfo;
 
     SDFEditingData              mGPUEditingData;
 
-    Buffer::SharedPtr           mpGridInstanceIDsBuffer;
+    ref<Buffer>                 mpGridInstanceIDsBuffer;
     uint32_t                    mGridInstanceCount = 0;
 
     uint32_t                    mNonBakedPrimitiveCount = 0;

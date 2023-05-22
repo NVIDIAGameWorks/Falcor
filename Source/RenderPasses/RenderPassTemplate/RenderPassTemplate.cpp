@@ -32,10 +32,9 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
     registry.registerClass<RenderPass, RenderPassTemplate>();
 }
 
-RenderPassTemplate::SharedPtr RenderPassTemplate::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
+RenderPassTemplate::RenderPassTemplate(ref<Device> pDevice, const Dictionary& dict)
+    : RenderPass(pDevice)
 {
-    SharedPtr pPass = SharedPtr(new RenderPassTemplate(std::move(pDevice)));
-    return pPass;
 }
 
 Dictionary RenderPassTemplate::getScriptingDictionary()

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,18 +26,19 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 
-/** SplitMix64 pseudorandom number generator.
-
-    This is a fixed-increment version of Java 8's SplittableRandom generator.
-    The period is 2^64 and its state size is 64 bits.
-    It is a very fast generator passing BigCrush. It is recommended for use with
-    other generators like xoroshiro and xorshift to initialize their state arrays.
-    
-    Steele Jr, Guy L., Doug Lea, and Christine H. Flood., "Fast Splittable Pseudorandom Number Generators",
-    ACM SIGPLAN Notices 49.10 (2014): 453-472. http://dx.doi.org/10.1145/2714064.2660195.
-
-    This code requires shader model 6.0 or above for 64-bit integer support.
-*/
+/**
+ * SplitMix64 pseudorandom number generator.
+ *
+ * This is a fixed-increment version of Java 8's SplittableRandom generator.
+ * The period is 2^64 and its state size is 64 bits.
+ * It is a very fast generator passing BigCrush. It is recommended for use with
+ * other generators like xoroshiro and xorshift to initialize their state arrays.
+ *
+ * Steele Jr, Guy L., Doug Lea, and Christine H. Flood., "Fast Splittable Pseudorandom Number Generators",
+ * ACM SIGPLAN Notices 49.10 (2014): 453-472. http://dx.doi.org/10.1145/2714064.2660195.
+ *
+ * This code requires shader model 6.0 or above for 64-bit integer support.
+ */
 
 struct SplitMix64
 {
@@ -49,8 +50,9 @@ uint64_t asuint64(uint lowbits, uint highbits)
     return (uint64_t(highbits) << 32) | uint64_t(lowbits);
 }
 
-/** Generates the next pseudorandom number in the sequence (64 bits).
-*/
+/**
+ * Generates the next pseudorandom number in the sequence (64 bits).
+ */
 uint64_t nextRandom64(inout SplitMix64 rng)
 {
     uint64_t z = (rng.state += 0x9E3779B97F4A7C15ull);
@@ -59,17 +61,19 @@ uint64_t nextRandom64(inout SplitMix64 rng)
     return z ^ (z >> 31);
 }
 
-/** Generates the next pseudorandom number in the sequence (low 32 bits).
-*/
+/**
+ * Generates the next pseudorandom number in the sequence (low 32 bits).
+ */
 uint nextRandom(inout SplitMix64 rng)
 {
     return (uint)nextRandom64(rng);
 }
 
-/** Initialize SplitMix64 pseudorandom number generator.
-    \param[in] s0 Low bits of initial state (seed).
-    \param[in] s1 High bits of initial state (seed).
-*/
+/**
+ * Initialize SplitMix64 pseudorandom number generator.
+ * @param[in] s0 Low bits of initial state (seed).
+ * @param[in] s1 High bits of initial state (seed).
+ */
 SplitMix64 createSplitMix64(uint s0, uint s1)
 {
     SplitMix64 rng;

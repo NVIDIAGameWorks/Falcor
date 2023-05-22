@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,50 +30,50 @@
 
 namespace Falcor
 {
-    /** Provides CPU timer utilities to the application.
-    */
-    class CpuTimer
+/**
+ * Provides CPU timer utilities to the application.
+ */
+class CpuTimer
+{
+public:
+    using TimePoint = std::chrono::time_point<std::chrono::high_resolution_clock>;
+
+    /**
+     * Returns the current time.
+     */
+    static TimePoint getCurrentTimePoint() { return std::chrono::high_resolution_clock::now(); }
+
+    /**
+     * Update the timer.
+     * @return The TimePoint of the last update() call. This value is meaningless on it's own. Call calcDuration() to get the duration that
+     * passed between two TimePoints.
+     */
+    TimePoint update()
     {
-    public:
-        using TimePoint = std::chrono::time_point<std::chrono::high_resolution_clock>;
+        auto now = getCurrentTimePoint();
+        mElapsedTime = now - mCurrentTime;
+        mCurrentTime = now;
+        return mCurrentTime;
+    }
 
-        /** Returns the current time.
-        */
-        static TimePoint getCurrentTimePoint()
-        {
-            return std::chrono::high_resolution_clock::now();
-        }
+    /**
+     * Get the time that passed from the last update() call to the one before that.
+     * @return Elapsed time in seconds.
+     */
+    double delta() const { return mElapsedTime.count(); }
 
-        /** Update the timer.
-            \return The TimePoint of the last update() call. This value is meaningless on it's own. Call calcDuration() to get the duration that passed between two TimePoints.
-        */
-        TimePoint update()
-        {
-            auto now = getCurrentTimePoint();
-            mElapsedTime = now - mCurrentTime;
-            mCurrentTime = now;
-            return mCurrentTime;
-        }
+    /**
+     * Calculate the duration in milliseconds between 2 time points.
+     */
+    static double calcDuration(TimePoint start, TimePoint end)
+    {
+        auto delta = end.time_since_epoch() - start.time_since_epoch();
+        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(delta);
+        return duration.count() * 1.0e-6;
+    }
 
-        /** Get the time that passed from the last update() call to the one before that.
-            \return Elapsed time in seconds.
-        */
-        double delta() const
-        {
-            return mElapsedTime.count();
-        }
-
-        /** Calculate the duration in milliseconds between 2 time points.
-        */
-        static double calcDuration(TimePoint start, TimePoint end)
-        {
-            auto delta = end.time_since_epoch() - start.time_since_epoch();
-            auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(delta);
-            return duration.count() * 1.0e-6;
-        }
-
-    private:
-        TimePoint mCurrentTime;
-        std::chrono::duration<double> mElapsedTime;
-    };
-}
+private:
+    TimePoint mCurrentTime;
+    std::chrono::duration<double> mElapsedTime;
+};
+} // namespace Falcor

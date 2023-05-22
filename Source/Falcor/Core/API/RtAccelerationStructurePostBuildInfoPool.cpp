@@ -33,13 +33,12 @@
 
 namespace Falcor
 {
-RtAccelerationStructurePostBuildInfoPool::SharedPtr RtAccelerationStructurePostBuildInfoPool::create(Device* pDevice, const Desc& desc)
+ref<RtAccelerationStructurePostBuildInfoPool> RtAccelerationStructurePostBuildInfoPool::create(Device* pDevice, const Desc& desc)
 {
-    return SharedPtr(new RtAccelerationStructurePostBuildInfoPool(pDevice->shared_from_this(), desc));
+    return ref<RtAccelerationStructurePostBuildInfoPool>(new RtAccelerationStructurePostBuildInfoPool(pDevice, desc));
 }
 
-RtAccelerationStructurePostBuildInfoPool::RtAccelerationStructurePostBuildInfoPool(std::shared_ptr<Device> pDevice, const Desc& desc)
-    : mDesc(desc)
+RtAccelerationStructurePostBuildInfoPool::RtAccelerationStructurePostBuildInfoPool(Device* pDevice, const Desc& desc) : mDesc(desc)
 {
     gfx::IQueryPool::Desc queryPoolDesc = {};
     queryPoolDesc.count = desc.elementCount;

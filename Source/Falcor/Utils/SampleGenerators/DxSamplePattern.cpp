@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,18 +30,23 @@
 
 namespace Falcor
 {
-    const float2 DxSamplePattern::kPattern[] = { { 1.0f / 16.0f, -3.0f / 16.0f },
-    { -1.0f / 16.0f, 3.0f / 16.0f },
-    { 5.0f / 16.0f, 1.0f / 16.0f },
-    { -3.0f / 16.0f, -5.0f / 16.0f },
-    { -5.0f / 16.0f, 5.0f / 16.0f },
-    { -7.0f / 16.0f, -1.0f / 16.0f },
-    { 3.0f / 16.0f, 7.0f / 16.0f },
-    { 7.0f / 16.0f, -7.0f / 16.0f } };
+const float2 DxSamplePattern::kPattern[] = {
+    // clang-format off
+    { 1.0f / 16.0f, -3.0f / 16.0f},
+    {-1.0f / 16.0f,  3.0f / 16.0f},
+    { 5.0f / 16.0f,  1.0f / 16.0f},
+    {-3.0f / 16.0f, -5.0f / 16.0f},
+    {-5.0f / 16.0f,  5.0f / 16.0f},
+    {-7.0f / 16.0f, -1.0f / 16.0f},
+    { 3.0f / 16.0f,  7.0f / 16.0f},
+    { 7.0f / 16.0f, -7.0f / 16.0f},
+    // clang-format on
+};
 
-    DxSamplePattern::DxSamplePattern(uint32_t sampleCount)
-    {
-        // FIXME: Support other sample counts
-        if (sampleCount != kSampleCount) logWarning("DxSamplePattern() currently requires sampleCount = 8. Using that number.");
-    }
+DxSamplePattern::DxSamplePattern(uint32_t sampleCount)
+{
+    // FIXME: Support other sample counts
+    if (sampleCount != kSampleCount)
+        logWarning("DxSamplePattern() currently requires sampleCount = 8. Using that number.");
 }
+} // namespace Falcor

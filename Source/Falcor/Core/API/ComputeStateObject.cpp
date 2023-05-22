@@ -48,7 +48,7 @@ ComputeStateObject::~ComputeStateObject()
     mpDevice->releaseResource(mGfxPipelineState);
 }
 
-ComputeStateObject::ComputeStateObject(std::shared_ptr<Device> pDevice, const Desc& desc) : mpDevice(std::move(pDevice)), mDesc(desc)
+ComputeStateObject::ComputeStateObject(ref<Device> pDevice, const Desc& desc) : mpDevice(pDevice), mDesc(desc)
 {
     gfx::ComputePipelineStateDesc computePipelineDesc = {};
     computePipelineDesc.program = mDesc.mpProgram->getGfxProgram();
@@ -64,9 +64,9 @@ ComputeStateObject::ComputeStateObject(std::shared_ptr<Device> pDevice, const De
     FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createComputePipelineState(computePipelineDesc, mGfxPipelineState.writeRef()));
 }
 
-ComputeStateObject::SharedPtr ComputeStateObject::create(Device* pDevice, const Desc& desc)
+ref<ComputeStateObject> ComputeStateObject::create(ref<Device> pDevice, const Desc& desc)
 {
-    return SharedPtr(new ComputeStateObject(pDevice->shared_from_this(), desc));
+    return ref<ComputeStateObject>(new ComputeStateObject(pDevice, desc));
 }
 
 NativeHandle ComputeStateObject::getNativeHandle() const

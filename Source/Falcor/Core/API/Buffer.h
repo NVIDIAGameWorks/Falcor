@@ -30,12 +30,84 @@
 #include "Core/Macros.h"
 #include "Resource.h"
 #include "ResourceViews.h"
-#include <memory>
 
 namespace Falcor
 {
 class Program;
 struct ShaderVar;
+
+namespace detail
+{
+/**
+ * Helper for converting host type to resource format for typed buffers.
+ * See list of supported formats for typed UAV loads:
+ * https://docs.microsoft.com/en-us/windows/win32/direct3d12/typed-unordered-access-view-loads
+ */
+template<typename T>
+struct FormatForElementType
+{};
+
+#define CASE(TYPE, FORMAT)                                \
+    template<>                                            \
+    struct FormatForElementType<TYPE>                     \
+    {                                                     \
+        static constexpr ResourceFormat kFormat = FORMAT; \
+    }
+
+// Guaranteed supported formats on D3D12.
+CASE(float, ResourceFormat::R32Float);
+CASE(uint32_t, ResourceFormat::R32Uint);
+CASE(int32_t, ResourceFormat::R32Int);
+
+// Optionally supported formats as a set on D3D12. If one is supported all are supported.
+CASE(float4, ResourceFormat::RGBA32Float);
+CASE(uint4, ResourceFormat::RGBA32Uint);
+CASE(int4, ResourceFormat::RGBA32Int);
+// R16G16B16A16_FLOAT
+// R16G16B16A16_UINT
+// R16G16B16A16_SINT
+// R8G8B8A8_UNORM
+// R8G8B8A8_UINT
+// R8G8B8A8_SINT
+// R16_FLOAT
+CASE(uint16_t, ResourceFormat::R16Uint);
+CASE(int16_t, ResourceFormat::R16Int);
+// R8_UNORM
+CASE(uint8_t, ResourceFormat::R8Uint);
+CASE(int8_t, ResourceFormat::R8Int);
+
+// Optionally and individually supported formats on D3D12. Query for support individually.
+// R16G16B16A16_UNORM
+// R16G16B16A16_SNORM
+CASE(float2, ResourceFormat::RG32Float);
+CASE(uint2, ResourceFormat::RG32Uint);
+CASE(int2, ResourceFormat::RG32Int);
+// R10G10B10A2_UNORM
+// R10G10B10A2_UINT
+// R11G11B10_FLOAT
+// R8G8B8A8_SNORM
+// R16G16_FLOAT
+// R16G16_UNORM
+// R16G16_UINT
+// R16G16_SNORM
+// R16G16_SINT
+// R8G8_UNORM
+// R8G8_UINT
+// R8G8_SNORM
+// 8G8_SINT
+// R16_UNORM
+// R16_SNORM
+// R8_SNORM
+// A8_UNORM
+// B5G6R5_UNORM
+// B5G5R5A1_UNORM
+// B4G4R4A4_UNORM
+
+// Additional formats that may be supported on some hardware.
+CASE(float3, ResourceFormat::RGB32Float);
+
+#undef CASE
+} // namespace detail
 
 /**
  * Low-level buffer object
@@ -44,9 +116,6 @@ struct ShaderVar;
 class FALCOR_API Buffer : public Resource
 {
 public:
-    using SharedPtr = std::shared_ptr<Buffer>;
-    using WeakPtr = std::weak_ptr<Buffer>;
-
     /**
      * Buffer access flags.
      * These flags are hints the driver how the buffer will be used.
@@ -76,8 +145,8 @@ public:
      * @param[in] pInitData Optional parameter. Initial buffer data. Pointed buffer size should be at least 'size' bytes.
      * @return A pointer to a new buffer object, or throws an exception if creation failed.
      */
-    static SharedPtr create(
-        Device* pDevice,
+    static ref<Buffer> create(
+        ref<Device> pDevice,
         size_t size,
         Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess,
         CpuAccess cpuAccess = Buffer::CpuAccess::None,
@@ -93,8 +162,8 @@ public:
      * @param[in] pInitData Optional parameter. Initial buffer data. Pointed buffer should hold at least 'elementCount' elements.
      * @return A pointer to a new buffer object, or throws an exception if creation failed.
      */
-    static SharedPtr createTyped(
-        Device* pDevice,
+    static ref<Buffer> createTyped(
+        ref<Device> pDevice,
         ResourceFormat format,
         uint32_t elementCount,
         Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess,
@@ -111,15 +180,15 @@ public:
      * @return A pointer to a new buffer object, or throws an exception if creation failed.
      */
     template<typename T>
-    static SharedPtr createTyped(
-        Device* pDevice,
+    static ref<Buffer> createTyped(
+        ref<Device> pDevice,
         uint32_t elementCount,
         Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess,
         CpuAccess cpuAccess = Buffer::CpuAccess::None,
         const T* pInitData = nullptr
     )
     {
-        return createTyped(pDevice, FormatForElementType<T>::kFormat, elementCount, bindFlags, cpuAccess, pInitData);
+        return createTyped(pDevice, detail::FormatForElementType<T>::kFormat, elementCount, bindFlags, cpuAccess, pInitData);
     }
 
     /**
@@ -132,8 +201,8 @@ public:
      * @param[in] createCounter True if the associated UAV counter should be created.
      * @return A pointer to a new buffer object, or throws an exception if creation failed.
      */
-    static SharedPtr createStructured(
-        Device* pDevice,
+    static ref<Buffer> createStructured(
+        ref<Device> pDevice,
         uint32_t structSize,
         uint32_t elementCount,
         ResourceBindFlags bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess,
@@ -153,8 +222,8 @@ public:
      * @param[in] createCounter True if the associated UAV counter should be created.
      * @return A pointer to a new buffer object, or throws an exception if creation failed.
      */
-    static SharedPtr createStructured(
-        Device* pDevice,
+    static ref<Buffer> createStructured(
+        ref<Device> pDevice,
         const Program* pProgram,
         const std::string& name,
         uint32_t elementCount,
@@ -174,8 +243,8 @@ public:
      * @param[in] createCounter True if the associated UAV counter should be created.
      * @return A pointer to a new buffer object, or throws an exception if creation failed.
      */
-    static SharedPtr createStructured(
-        Device* pDevice,
+    static ref<Buffer> createStructured(
+        ref<Device> pDevice,
         const ShaderVar& shaderVar,
         uint32_t elementCount,
         ResourceBindFlags bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess,
@@ -184,9 +253,9 @@ public:
         bool createCounter = true
     );
 
-    static SharedPtr aliasResource(
-        Device* pDevice,
-        Buffer::SharedPtr pBaseResource,
+    static ref<Buffer> aliasResource(
+        ref<Device> pDevice,
+        ref<Buffer> pBaseResource,
         GpuAddress offset,
         size_t size,
         Resource::BindFlags bindFlags
@@ -201,8 +270,8 @@ public:
      * allocated on.
      * @return A pointer to a new buffer object, or throws an exception if creation failed.
      */
-    static SharedPtr createFromResource(
-        Device* pDevice,
+    static ref<Buffer> createFromResource(
+        ref<Device> pDevice,
         gfx::IBufferResource* pResource,
         size_t size,
         Resource::BindFlags bindFlags,
@@ -218,8 +287,8 @@ public:
      * allocated on.
      * @return A pointer to a new buffer object, or throws an exception if creation failed.
      */
-    static SharedPtr createFromNativeHandle(
-        Device* pDevice,
+    static ref<Buffer> createFromNativeHandle(
+        ref<Device> pDevice,
         NativeHandle handle,
         size_t size,
         Resource::BindFlags bindFlags,
@@ -235,24 +304,24 @@ public:
      * @param[in] firstElement The first element of the view. For raw buffers, an element is a single float
      * @param[in] elementCount The number of elements to bind
      */
-    ShaderResourceView::SharedPtr getSRV(uint32_t firstElement, uint32_t elementCount = kMaxPossible);
+    ref<ShaderResourceView> getSRV(uint32_t firstElement, uint32_t elementCount = kMaxPossible);
 
     /**
      * Get an unordered access view.
      * @param[in] firstElement The first element of the view. For raw buffers, an element is a single float
      * @param[in] elementCount The number of elements to bind
      */
-    UnorderedAccessView::SharedPtr getUAV(uint32_t firstElement, uint32_t elementCount = kMaxPossible);
+    ref<UnorderedAccessView> getUAV(uint32_t firstElement, uint32_t elementCount = kMaxPossible);
 
     /**
      * Get a shader-resource view for the entire resource
      */
-    virtual ShaderResourceView::SharedPtr getSRV() override;
+    virtual ref<ShaderResourceView> getSRV() override;
 
     /**
      * Get an unordered access view for the entire resource
      */
-    virtual UnorderedAccessView::SharedPtr getUAV() override;
+    virtual ref<UnorderedAccessView> getUAV() override;
 
     /**
      * Get the size of each element in this buffer.
@@ -306,7 +375,7 @@ public:
     /**
      * Get the UAV counter buffer
      */
-    const Buffer::SharedPtr& getUAVCounter() const { return mpUAVCounter; }
+    const ref<Buffer>& getUAVCounter() const { return mpUAVCounter; }
 
     /**
      * Map the buffer.
@@ -345,97 +414,24 @@ public:
     bool isStructured() const { return mStructSize != 0; }
 
     template<typename T>
-    void setElement(uint32_t index, T const& value)
+    void setElement(uint32_t index, const T& value)
     {
         setBlob(&value, sizeof(T) * index, sizeof(T));
     }
 
 protected:
-    Buffer(std::shared_ptr<Device> pDevice, size_t size, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData);
+    Buffer(ref<Device> pDevice, size_t size, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData);
 
     Slang::ComPtr<gfx::IBufferResource> mGfxBufferResource;
 
     CpuAccess mCpuAccess;
     GpuMemoryHeap::Allocation mDynamicData;
-    Buffer::SharedPtr mpStagingResource; // For buffers that have both CPU read flag and can be used by the GPU
-    Resource::SharedPtr mpAliasedResource;
+    ref<Buffer> mpStagingResource; // For buffers that have both CPU read flag and can be used by the GPU
+    ref<Resource> mpAliasedResource;
     uint32_t mElementCount = 0;
     ResourceFormat mFormat = ResourceFormat::Unknown;
     uint32_t mStructSize = 0;
-    Buffer::SharedPtr mpUAVCounter; // For structured-buffers
-
-    mutable void* mCUDAExternalMemory = nullptr;
-    mutable void* mCUDADeviceAddress = nullptr;
-
-    /**
-     * Helper for converting host type to resource format for typed buffers.
-     * See list of supported formats for typed UAV loads:
-     * https://docs.microsoft.com/en-us/windows/win32/direct3d12/typed-unordered-access-view-loads
-     */
-    template<typename T>
-    struct FormatForElementType
-    {};
-
-#define CASE(TYPE, FORMAT)                            \
-    template<>                                        \
-    struct FormatForElementType<TYPE>                 \
-    {                                                 \
-        static const ResourceFormat kFormat = FORMAT; \
-    }
-
-    // Guaranteed supported formats on D3D12.
-    CASE(float, ResourceFormat::R32Float);
-    CASE(uint32_t, ResourceFormat::R32Uint);
-    CASE(int32_t, ResourceFormat::R32Int);
-
-    // Optionally supported formats as a set on D3D12. If one is supported all are supported.
-    CASE(float4, ResourceFormat::RGBA32Float);
-    CASE(uint4, ResourceFormat::RGBA32Uint);
-    CASE(int4, ResourceFormat::RGBA32Int);
-    // R16G16B16A16_FLOAT
-    // R16G16B16A16_UINT
-    // R16G16B16A16_SINT
-    // R8G8B8A8_UNORM
-    // R8G8B8A8_UINT
-    // R8G8B8A8_SINT
-    // R16_FLOAT
-    CASE(uint16_t, ResourceFormat::R16Uint);
-    CASE(int16_t, ResourceFormat::R16Int);
-    // R8_UNORM
-    CASE(uint8_t, ResourceFormat::R8Uint);
-    CASE(int8_t, ResourceFormat::R8Int);
-
-    // Optionally and individually supported formats on D3D12. Query for support individually.
-    // R16G16B16A16_UNORM
-    // R16G16B16A16_SNORM
-    CASE(float2, ResourceFormat::RG32Float);
-    CASE(uint2, ResourceFormat::RG32Uint);
-    CASE(int2, ResourceFormat::RG32Int);
-    // R10G10B10A2_UNORM
-    // R10G10B10A2_UINT
-    // R11G11B10_FLOAT
-    // R8G8B8A8_SNORM
-    // R16G16_FLOAT
-    // R16G16_UNORM
-    // R16G16_UINT
-    // R16G16_SNORM
-    // R16G16_SINT
-    // R8G8_UNORM
-    // R8G8_UINT
-    // R8G8_SNORM
-    // 8G8_SINT
-    // R16_UNORM
-    // R16_SNORM
-    // R8_SNORM
-    // A8_UNORM
-    // B5G6R5_UNORM
-    // B5G5R5A1_UNORM
-    // B4G4R4A4_UNORM
-
-    // Additional formats that may be supported on some hardware.
-    CASE(float3, ResourceFormat::RGB32Float);
-
-#undef CASE
+    ref<Buffer> mpUAVCounter; // For structured-buffers
 };
 
 inline std::string to_string(Buffer::CpuAccess c)

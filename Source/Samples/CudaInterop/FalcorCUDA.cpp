@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,10 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "FalcorCUDA.h"
-#include <cuda.h>
-#include <AccCtrl.h>
-#include <aclapi.h>
 #include "Core/API/Device.h"
+#include <cuda.h>
 
 #define CU_CHECK_SUCCESS(x)                                                          \
     do                                                                               \
@@ -59,64 +57,10 @@ using namespace Falcor;
 
 namespace
 {
-
-class WindowsSecurityAttributes
-{
-protected:
-    SECURITY_ATTRIBUTES mWinSecurityAttributes;
-    PSECURITY_DESCRIPTOR mWinPSecurityDescriptor;
-
-public:
-    WindowsSecurityAttributes()
-    {
-        mWinPSecurityDescriptor = (PSECURITY_DESCRIPTOR)calloc(1, SECURITY_DESCRIPTOR_MIN_LENGTH + 2 * sizeof(void**));
-        FALCOR_ASSERT(mWinPSecurityDescriptor != (PSECURITY_DESCRIPTOR)NULL);
-
-        PSID* ppSID = (PSID*)((PBYTE)mWinPSecurityDescriptor + SECURITY_DESCRIPTOR_MIN_LENGTH);
-        PACL* ppACL = (PACL*)((PBYTE)ppSID + sizeof(PSID*));
-
-        InitializeSecurityDescriptor(mWinPSecurityDescriptor, SECURITY_DESCRIPTOR_REVISION);
-
-        SID_IDENTIFIER_AUTHORITY sidIdentifierAuthority = SECURITY_WORLD_SID_AUTHORITY;
-        AllocateAndInitializeSid(&sidIdentifierAuthority, 1, SECURITY_WORLD_RID, 0, 0, 0, 0, 0, 0, 0, ppSID);
-
-        EXPLICIT_ACCESS explicitAccess;
-        ZeroMemory(&explicitAccess, sizeof(EXPLICIT_ACCESS));
-        explicitAccess.grfAccessPermissions = STANDARD_RIGHTS_ALL | SPECIFIC_RIGHTS_ALL;
-        explicitAccess.grfAccessMode = SET_ACCESS;
-        explicitAccess.grfInheritance = INHERIT_ONLY;
-        explicitAccess.Trustee.TrusteeForm = TRUSTEE_IS_SID;
-        explicitAccess.Trustee.TrusteeType = TRUSTEE_IS_WELL_KNOWN_GROUP;
-        explicitAccess.Trustee.ptstrName = (LPTSTR)*ppSID;
-
-        SetEntriesInAcl(1, &explicitAccess, NULL, ppACL);
-
-        SetSecurityDescriptorDacl(mWinPSecurityDescriptor, TRUE, *ppACL, FALSE);
-
-        mWinSecurityAttributes.nLength = sizeof(mWinSecurityAttributes);
-        mWinSecurityAttributes.lpSecurityDescriptor = mWinPSecurityDescriptor;
-        mWinSecurityAttributes.bInheritHandle = TRUE;
-    }
-
-    ~WindowsSecurityAttributes()
-    {
-        PSID* ppSID = (PSID*)((PBYTE)mWinPSecurityDescriptor + SECURITY_DESCRIPTOR_MIN_LENGTH);
-        PACL* ppACL = (PACL*)((PBYTE)ppSID + sizeof(PSID*));
-
-        if (*ppSID)
-            FreeSid(*ppSID);
-        if (*ppACL)
-            LocalFree(*ppACL);
-        free(mWinPSecurityDescriptor);
-    }
-    SECURITY_ATTRIBUTES* operator&() { return &mWinSecurityAttributes; }
-};
-
 uint32_t gNodeMask;
 CUdevice gCudaDevice;
 CUcontext gCudaContext;
 CUstream gCudaStream;
-
 } // namespace
 
 namespace FalcorCUDA
@@ -153,9 +97,9 @@ bool initCUDA()
     return true;
 }
 
-bool importTextureToMipmappedArray(Falcor::Texture::SharedPtr pTex, cudaMipmappedArray_t& mipmappedArray, uint32_t cudaUsageFlags)
+bool importTextureToMipmappedArray(Falcor::ref<Texture> pTex, cudaMipmappedArray_t& mipmappedArray, uint32_t cudaUsageFlags)
 {
-    HANDLE sharedHandle = pTex->getSharedApiHandle();
+    SharedResourceApiHandle sharedHandle = pTex->getSharedApiHandle();
     if (sharedHandle == NULL)
     {
         reportError("FalcorCUDA::importTextureToMipmappedArray - texture shared handle creation failed");
@@ -192,7 +136,7 @@ bool importTextureToMipmappedArray(Falcor::Texture::SharedPtr pTex, cudaMipmappe
     return true;
 }
 
-cudaSurfaceObject_t mapTextureToSurface(Texture::SharedPtr pTex, uint32_t cudaUsageFlags)
+cudaSurfaceObject_t mapTextureToSurface(ref<Texture> pTex, uint32_t cudaUsageFlags)
 {
     // Create a mipmapped array from the texture
     cudaMipmappedArray_t mipmap;

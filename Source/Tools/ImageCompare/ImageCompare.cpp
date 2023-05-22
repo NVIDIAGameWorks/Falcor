@@ -61,16 +61,16 @@ T clamp(T x, T lo, T hi)
 class Image
 {
 public:
-    using SharedPtr = std::shared_ptr<Image>;
+    Image(uint32_t width, uint32_t height) : mWidth(width), mHeight(height), mData(std::make_unique<float[]>(width * height * 4)) {}
 
     uint32_t getWidth() const { return mWidth; }
     uint32_t getHeight() const { return mHeight; }
     const float* getData() const { return mData.get(); }
     float* getData() { return mData.get(); }
 
-    static SharedPtr create(uint32_t width, uint32_t height) { return SharedPtr(new Image(width, height)); }
+    static std::shared_ptr<Image> create(uint32_t width, uint32_t height) { return std::make_shared<Image>(width, height); }
 
-    static SharedPtr loadFromFile(const std::filesystem::path& path)
+    static std::shared_ptr<Image> loadFromFile(const std::filesystem::path& path)
     {
         FREE_IMAGE_FORMAT fifFormat = FIF_UNKNOWN;
 
@@ -180,8 +180,6 @@ private:
     uint32_t mWidth;
     uint32_t mHeight;
     std::unique_ptr<float[]> mData;
-
-    Image(uint32_t width, uint32_t height) : mWidth(width), mHeight(height), mData(std::make_unique<float[]>(width * height * 4)) {}
 };
 
 struct MSE
@@ -262,7 +260,7 @@ static const std::vector<ErrorMetric> errorMetrics = {
     {"mape", "Mean Absolute Percentage Error", compare<MAPE>},
 };
 
-static Image::SharedPtr generateHeatMap(uint32_t width, uint32_t height, const float* errorMap)
+static std::shared_ptr<Image> generateHeatMap(uint32_t width, uint32_t height, const float* errorMap)
 {
     auto writeColor = [](float t, float* dst)
     {
@@ -312,7 +310,7 @@ static bool compareImages(
         catch (const std::runtime_error& e)
         {
             std::cerr << "Cannot load image from '" << path.string() << "' (Error: " << e.what() << ")." << std::endl;
-            return Image::SharedPtr();
+            return std::shared_ptr<Image>{};
         }
     };
 

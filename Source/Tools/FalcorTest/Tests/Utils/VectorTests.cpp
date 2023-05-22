@@ -66,12 +66,12 @@ CPU_TEST(Vector_Comparison)
     std::random_device rd;
     std::mt19937 g(rd());
     std::shuffle(vec.begin(), vec.end(), g);
-    std::sort(vec.begin(), vec.end());
+    std::sort(vec.begin(), vec.end(), std::less<int2>{});
     for (size_t i = 0; i < vec.size(); ++i)
     {
         for (size_t j = i + 1; j < vec.size(); ++j)
         {
-            EXPECT_LT(vec[i], vec[j]);
+            EXPECT(std::less<int2>{}(vec[i], vec[j]));
         }
     }
 }

@@ -44,7 +44,8 @@ struct DiffuseSpecularBRDF : IBSDF
     float3 specular; ///< Specular albedo.
     float roughness; ///< Roughness (linear).
 
-    /** Initialize using parameters from the Disney parameterization.
+    /**
+     * Initialize using parameters from the Disney parameterization.
      */
     __init(const DiffuseSpecularData params)
     {

@@ -59,7 +59,7 @@ namespace Falcor
 class FALCOR_API MockedD3D12StagingBuffer : public ID3D12Resource
 {
 public:
-    void resize(Device* pDevice, size_t size);
+    void resize(ref<Device> pDevice, size_t size);
 
     size_t getSize() const { return mData.size(); }
     const void* getData() const { return mData.data(); }
@@ -94,8 +94,8 @@ public:
     virtual HRESULT __stdcall GetHeapProperties(D3D12_HEAP_PROPERTIES* pHeapProperties, D3D12_HEAP_FLAGS* pHeapFlags) override;
 
 private:
-    std::vector<uint8_t> mData;    // CPU Buffer.
-    Buffer::SharedPtr mpGpuBuffer; // GPU Buffer.
+    std::vector<uint8_t> mData; // CPU Buffer.
+    ref<Buffer> mpGpuBuffer;    // GPU Buffer.
 };
 } // namespace Falcor
 #endif // FALCOR_HAS_D3D12

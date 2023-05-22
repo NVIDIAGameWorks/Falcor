@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
+#include "RenderGraph/RenderPass.h"
 
 using namespace Falcor;
 
@@ -42,8 +43,6 @@ class Composite : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(Composite, "Composite", "Composite pass.");
 
-    using SharedPtr = std::shared_ptr<Composite>;
-
     /** Composite modes.
     */
     enum class Mode
@@ -52,7 +51,9 @@ public:
         Multiply,
     };
 
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
+    static ref<Composite> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<Composite>(pDevice, dict); }
+
+    Composite(ref<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
@@ -63,8 +64,6 @@ public:
     static void registerBindings(pybind11::module& m);
 
 private:
-    Composite(std::shared_ptr<Device> pDevice, const Dictionary& dict);
-
     Program::DefineList getDefines() const;
 
     uint2                       mFrameDim = { 0, 0 };
@@ -73,5 +72,5 @@ private:
     float                       mScaleB = 1.f;
     ResourceFormat              mOutputFormat = ResourceFormat::RGBA32Float;
 
-    ComputePass::SharedPtr      mCompositePass;
+    ref<ComputePass>            mCompositePass;
 };

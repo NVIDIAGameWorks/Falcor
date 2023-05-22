@@ -67,7 +67,7 @@ class RenderContext;
 class ShaderTablePtr
 {
 public:
-    ShaderTablePtr(std::shared_ptr<Device> pDevice) : mpDevice(std::move(pDevice)) {}
+    ShaderTablePtr(ref<Device> pDevice) : mpDevice(pDevice) {}
 
     gfx::IShaderTable& operator*() { return *mTable; }
 
@@ -82,7 +82,7 @@ public:
     ~ShaderTablePtr() { mpDevice->releaseResource(mTable); }
 
 private:
-    std::shared_ptr<Device> mpDevice;
+    ref<Device> mpDevice;
     Slang::ComPtr<gfx::IShaderTable> mTable;
 };
 } // namespace Falcor

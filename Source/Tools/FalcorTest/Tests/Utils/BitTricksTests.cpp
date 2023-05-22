@@ -48,7 +48,7 @@ uint32_t referenceBitInterleave(uint32_t x, uint32_t y, uint32_t m)
 
 GPU_TEST(BitInterleave)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     const uint32_t tests = 5;
     const uint32_t n = 1 << 16;
@@ -63,7 +63,7 @@ GPU_TEST(BitInterleave)
     for (auto& it : testData)
         it = r();
 
-    Buffer::SharedPtr pTestDataBuffer =
+    ref<Buffer> pTestDataBuffer =
         Buffer::create(pDevice, n * sizeof(uint32_t), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, testData.data());
 
     // Setup and run GPU test.

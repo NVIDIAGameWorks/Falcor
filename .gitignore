@@ -4,8 +4,9 @@
 # Test output folder.
 /tests/data/
 
-# Media folder.
+# Media folders.
 /media
+/media_internal
 
 # Packman folders.
 /external/packman/

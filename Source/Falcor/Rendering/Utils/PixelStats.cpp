@@ -37,15 +37,27 @@ namespace Falcor
     namespace
     {
         const char kComputeRayCountFilename[] = "Rendering/Utils/PixelStats.cs.slang";
+
+        pybind11::dict toPython(const PixelStats::Stats& stats)
+        {
+            pybind11::dict d;
+            d["visibilityRays"] = stats.visibilityRays;
+            d["closestHitRays"] = stats.closestHitRays;
+            d["totalRays"] = stats.totalRays;
+            d["pathVertices"] = stats.pathVertices;
+            d["volumeLookups"] = stats.volumeLookups;
+            d["avgVisibilityRays"] = stats.avgVisibilityRays;
+            d["avgClosestHitRays"] = stats.avgClosestHitRays;
+            d["avgTotalRays"] = stats.avgTotalRays;
+            d["avgPathLength"] = stats.avgPathLength;
+            d["avgPathVertices"] = stats.avgPathVertices;
+            d["avgVolumeLookups"] = stats.avgVolumeLookups;
+            return d;
+        }
     }
 
-    PixelStats::SharedPtr PixelStats::create(std::shared_ptr<Device> pDevice)
-    {
-        return SharedPtr(new PixelStats(pDevice));
-    }
-
-    PixelStats::PixelStats(std::shared_ptr<Device> pDevice)
-        : mpDevice(std::move(pDevice))
+    PixelStats::PixelStats(ref<Device> pDevice)
+        : mpDevice(pDevice)
     {
         mpComputeRayCount = ComputePass::create(mpDevice, kComputeRayCountFilename, "main");
     }
@@ -70,7 +82,7 @@ namespace Falcor
             if (!mpParallelReduction)
             {
                 mpParallelReduction = std::make_unique<ParallelReduction>(mpDevice);
-                mpReductionResult = Buffer::create(mpDevice.get(), (kRayTypeCount + 3) * sizeof(uint4), ResourceBindFlags::None, Buffer::CpuAccess::Read);
+                mpReductionResult = Buffer::create(mpDevice, (kRayTypeCount + 3) * sizeof(uint4), ResourceBindFlags::None, Buffer::CpuAccess::Read);
             }
 
             // Prepare stats buffers.
@@ -78,11 +90,11 @@ namespace Falcor
             {
                 for (uint32_t i = 0; i < kRayTypeCount; i++)
                 {
-                    mpStatsRayCount[i] = Texture::create2D(mpDevice.get(), frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+                    mpStatsRayCount[i] = Texture::create2D(mpDevice, frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
                 }
-                mpStatsPathLength = Texture::create2D(mpDevice.get(), frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
-                mpStatsPathVertexCount = Texture::create2D(mpDevice.get(), frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
-                mpStatsVolumeLookupCount = Texture::create2D(mpDevice.get(), frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+                mpStatsPathLength = Texture::create2D(mpDevice, frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+                mpStatsPathVertexCount = Texture::create2D(mpDevice, frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+                mpStatsVolumeLookupCount = Texture::create2D(mpDevice, frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
             }
 
             for (uint32_t i = 0; i < kRayTypeCount; i++)
@@ -103,7 +115,7 @@ namespace Falcor
         if (mEnabled)
         {
             // Create fence first time we need it.
-            if (!mpFence) mpFence = GpuFence::create(mpDevice.get());
+            if (!mpFence) mpFence = GpuFence::create(mpDevice);
 
             // Sum of the per-pixel counters. The results are copied to a GPU buffer.
             for (uint32_t i = 0; i < kRayTypeCount; i++)
@@ -123,7 +135,7 @@ namespace Falcor
         }
     }
 
-    void PixelStats::prepareProgram(const Program::SharedPtr& pProgram, const ShaderVar& var)
+    void PixelStats::prepareProgram(const ref<Program>& pProgram, const ShaderVar& var)
     {
         FALCOR_ASSERT(mRunning);
 
@@ -196,7 +208,7 @@ namespace Falcor
         return true;
     }
 
-    const Texture::SharedPtr PixelStats::getRayCountTexture(RenderContext* pRenderContext)
+    const ref<Texture> PixelStats::getRayCountTexture(RenderContext* pRenderContext)
     {
         FALCOR_ASSERT(!mRunning);
         if (!mStatsBuffersValid) return nullptr;
@@ -215,7 +227,7 @@ namespace Falcor
         FALCOR_ASSERT(mStatsBuffersValid);
         if (!mpStatsRayCountTotal || mpStatsRayCountTotal->getWidth() != mFrameDim.x || mpStatsRayCountTotal->getHeight() != mFrameDim.y)
         {
-            mpStatsRayCountTotal = Texture::create2D(mpDevice.get(), mFrameDim.x, mFrameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+            mpStatsRayCountTotal = Texture::create2D(mpDevice, mFrameDim.x, mFrameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
         }
 
         auto var = mpComputeRayCount->getRootVar();
@@ -230,19 +242,19 @@ namespace Falcor
         mRayCountTextureValid = true;
     }
 
-    const Texture::SharedPtr PixelStats::getPathLengthTexture() const
+    const ref<Texture> PixelStats::getPathLengthTexture() const
     {
         FALCOR_ASSERT(!mRunning);
         return mStatsBuffersValid ? mpStatsPathLength : nullptr;
     }
 
-    const Texture::SharedPtr PixelStats::getPathVertexCountTexture() const
+    const ref<Texture> PixelStats::getPathVertexCountTexture() const
     {
         FALCOR_ASSERT(!mRunning);
         return mStatsBuffersValid ? mpStatsPathVertexCount : nullptr;
     }
 
-    const Texture::SharedPtr PixelStats::getVolumeLookupCountTexture() const
+    const ref<Texture> PixelStats::getVolumeLookupCountTexture() const
     {
         FALCOR_ASSERT(!mRunning);
         return mStatsBuffersValid ? mpStatsVolumeLookupCount : nullptr;
@@ -287,33 +299,14 @@ namespace Falcor
         }
     }
 
-    pybind11::dict PixelStats::Stats::toPython() const
-    {
-        pybind11::dict d;
-
-        d["visibilityRays"] = visibilityRays;
-        d["closestHitRays"] = closestHitRays;
-        d["totalRays"] = totalRays;
-        d["pathVertices"] = pathVertices;
-        d["volumeLookups"] = volumeLookups;
-        d["avgVisibilityRays"] = avgVisibilityRays;
-        d["avgClosestHitRays"] = avgClosestHitRays;
-        d["avgTotalRays"] = avgTotalRays;
-        d["avgPathLength"] = avgPathLength;
-        d["avgPathVertices"] = avgPathVertices;
-        d["avgVolumeLookups"] = avgVolumeLookups;
-
-        return d;
-    }
-
     FALCOR_SCRIPT_BINDING(PixelStats)
     {
-        pybind11::class_<PixelStats, PixelStats::SharedPtr> pixelStats(m, "PixelStats");
+        pybind11::class_<PixelStats> pixelStats(m, "PixelStats");
         pixelStats.def_property("enabled", &PixelStats::isEnabled, &PixelStats::setEnabled);
         pixelStats.def_property_readonly("stats", [](PixelStats* pPixelStats) {
             PixelStats::Stats stats;
             pPixelStats->getStats(stats);
-            return stats.toPython();
+            return toPython(stats);
         });
     }
 }

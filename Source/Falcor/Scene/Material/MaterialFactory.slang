@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 __exported import Rendering.Materials.IMaterial;
 import Scene.Material.ShadingUtils;
 import Scene.Material.AlphaTest;
+import Utils.Math.ShadingFrame;
 
 /** Extension to add shading and material factory to MaterialSystem.
     Making this an extension avoids a circular dependency on MaterialSystem.
@@ -57,6 +58,7 @@ extension MaterialSystem
         Then the material is queried to create the material instance, in which step
         pattern generation is performed to pre-compute all material parameters.
         This may involve sampling textures, executing procedural functions, etc.
+        This step also computes the final shading frame used by the material instance.
         \param[in] sd Shading data.
         \param[in] lod Method for computing texture level-of-detail, must implement the `ITextureSampler` interface.
         \param[in] hints Optional hints to control the behavior of the material instance. Combination of `MaterialInstanceHints` flags.
@@ -73,22 +75,21 @@ extension MaterialSystem
         \param[in] materialID Material ID at the hit.
         \param[in] viewDir View direction.
         \param[in] lod Method for computing texture level-of-detail, must implement the `ITextureSampler` interface.
-        \param[in] modifyNormal Flag to specify if normal can be modified, for example by normal mapping.
         \return Shading data struct.
     */
-    ShadingData prepareShadingData<L:ITextureSampler>(const VertexData v, const uint materialID, const float3 viewDir, L lod, const bool modifyNormal = true)
+    ShadingData prepareShadingData<L:ITextureSampler>(const VertexData v, const uint materialID, const float3 viewDir, L lod)
     {
         ShadingData sd = {};
 
         sd.posW = v.posW;
         sd.uv = v.texC;
         sd.V = viewDir;
-        sd.N = v.normalW;
 
         // Compute shading frame based on the interpolated normal and given tangent (xyz) and sign (w).
         // We keep around the original tangent for later orthogonalization operations if valid, otherwise the invented tangent.
-        const bool validTangentSpace = computeTangentSpace(sd, v.tangentW);
-        sd.tangentW = validTangentSpace ? v.tangentW : float4(sd.T, 1.f);
+        bool valid;
+        sd.frame = ShadingFrame::createSafe(v.normalW, v.tangentW, valid);
+        sd.tangentW = valid ? v.tangentW : float4(sd.frame.T, 1.f);
 
         // Primitive data
         sd.faceN = v.faceNormalW;
@@ -110,23 +111,6 @@ extension MaterialSystem
 
         // Query material to evaluate opacity.
         sd.opacity = material.evalOpacity(this, v, lod);
-
-        if (modifyNormal)
-        {
-            // Apply normal mapping only if we have a valid tangent space.
-            if (validTangentSpace)
-            {
-                material.modifyTangentSpace(this, lod, sd);
-            }
-
-            // Finalize the normal.
-            // We currently flip the shading normal for back-facing hits on double-sided materials.
-            // This convention will eventually go away when the materials handle double-sidedness internally.
-            if (!sd.frontFacing && sd.mtl.isDoubleSided())
-            {
-                sd.N = -sd.N;
-            }
-        }
 
         return sd;
     }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -56,17 +56,17 @@ namespace Falcor
     {
         mChanges = Changes::None;
         if (mActiveChanged) mChanges |= Changes::Active;
-        if (mPrevData.posW != mData.posW) mChanges |= Changes::Position;
-        if (mPrevData.dirW != mData.dirW) mChanges |= Changes::Direction;
-        if (mPrevData.intensity != mData.intensity) mChanges |= Changes::Intensity;
+        if (any(mPrevData.posW != mData.posW)) mChanges |= Changes::Position;
+        if (any(mPrevData.dirW != mData.dirW)) mChanges |= Changes::Direction;
+        if (any(mPrevData.intensity != mData.intensity)) mChanges |= Changes::Intensity;
         if (mPrevData.openingAngle != mData.openingAngle) mChanges |= Changes::SurfaceArea;
         if (mPrevData.penumbraAngle != mData.penumbraAngle) mChanges |= Changes::SurfaceArea;
         if (mPrevData.cosSubtendedAngle != mData.cosSubtendedAngle) mChanges |= Changes::SurfaceArea;
         if (mPrevData.surfaceArea != mData.surfaceArea) mChanges |= Changes::SurfaceArea;
         if (mPrevData.transMat != mData.transMat) mChanges |= (Changes::Position | Changes::Direction);
 
-        FALCOR_ASSERT(mPrevData.tangent == mData.tangent);
-        FALCOR_ASSERT(mPrevData.bitangent == mData.bitangent);
+        FALCOR_ASSERT(all(mPrevData.tangent == mData.tangent));
+        FALCOR_ASSERT(all(mPrevData.bitangent == mData.bitangent));
 
         mPrevData = mData;
         mActiveChanged = false;
@@ -87,7 +87,7 @@ namespace Falcor
 
     float3 Light::getColorForUI()
     {
-        if ((mUiLightIntensityColor * mUiLightIntensityScale) != mData.intensity)
+        if (any((mUiLightIntensityColor * mUiLightIntensityScale) != mData.intensity))
         {
             float mag = std::max(mData.intensity.x, std::max(mData.intensity.y, mData.intensity.z));
             if (mag <= 1.f)
@@ -113,7 +113,7 @@ namespace Falcor
 
     float Light::getIntensityForUI()
     {
-        if ((mUiLightIntensityColor * mUiLightIntensityScale) != mData.intensity)
+        if (any((mUiLightIntensityColor * mUiLightIntensityScale) != mData.intensity))
         {
             float mag = std::max(mData.intensity.x, std::max(mData.intensity.y, mData.intensity.z));
             if (mag <= 1.f)
@@ -165,11 +165,6 @@ namespace Falcor
 
     // PointLight
 
-    PointLight::SharedPtr PointLight::create(const std::string& name)
-    {
-        return SharedPtr(new PointLight(name));
-    }
-
     PointLight::PointLight(const std::string& name)
         : Light(name, LightType::Point)
     {
@@ -178,7 +173,7 @@ namespace Falcor
 
     void PointLight::setWorldDirection(const float3& dir)
     {
-        if (!(glm::length(dir) > 0.f)) // NaNs propagate
+        if (!(length(dir) > 0.f)) // NaNs propagate
         {
             logWarning("Can't set light direction to zero length vector. Ignoring call.");
             return;
@@ -211,7 +206,7 @@ namespace Falcor
 
     void PointLight::setOpeningAngle(float openingAngle)
     {
-        openingAngle = glm::clamp(openingAngle, 0.f, (float)M_PI);
+        openingAngle = std::clamp(openingAngle, 0.f, (float)M_PI);
         if (openingAngle == mData.openingAngle) return;
 
         mData.openingAngle = openingAngle;
@@ -223,15 +218,15 @@ namespace Falcor
 
     void PointLight::setPenumbraAngle(float angle)
     {
-        angle = glm::clamp(angle, 0.0f, mData.openingAngle);
+        angle = std::clamp(angle, 0.0f, mData.openingAngle);
         if (mData.penumbraAngle == angle) return;
         mData.penumbraAngle = angle;
     }
 
-    void PointLight::updateFromAnimation(const rmcv::mat4& transform)
+    void PointLight::updateFromAnimation(const float4x4& transform)
     {
-        float3 fwd = float3(-transform.getCol(2));
-        float3 pos = float3(transform.getCol(3));
+        float3 fwd = -transform.getCol(2).xyz();
+        float3 pos = transform.getCol(3).xyz();
         setWorldPosition(pos);
         setWorldDirection(fwd);
     }
@@ -242,11 +237,6 @@ namespace Falcor
         : Light(name, LightType::Directional)
     {
         mPrevData = mData;
-    }
-
-    DirectionalLight::SharedPtr DirectionalLight::create(const std::string& name)
-    {
-        return SharedPtr(new DirectionalLight(name));
     }
 
     void DirectionalLight::renderUI(Gui::Widgets& widget)
@@ -261,7 +251,7 @@ namespace Falcor
 
     void DirectionalLight::setWorldDirection(const float3& dir)
     {
-        if (!(glm::length(dir) > 0.f)) // NaNs propagate
+        if (!(length(dir) > 0.f)) // NaNs propagate
         {
             logWarning("Can't set light direction to zero length vector. Ignoring call.");
             return;
@@ -269,18 +259,13 @@ namespace Falcor
         mData.dirW = normalize(dir);
     }
 
-    void DirectionalLight::updateFromAnimation(const rmcv::mat4& transform)
+    void DirectionalLight::updateFromAnimation(const float4x4& transform)
     {
-        float3 fwd = float3(-transform.getCol(2));
+        float3 fwd = -transform.getCol(2).xyz();
         setWorldDirection(fwd);
     }
 
     // DistantLight
-
-    DistantLight::SharedPtr DistantLight::create(const std::string& name)
-    {
-        return SharedPtr(new DistantLight(name));
-    }
 
     DistantLight::DistantLight(const std::string& name)
         : Light(name, LightType::Distant)
@@ -309,14 +294,14 @@ namespace Falcor
 
     void DistantLight::setAngle(float angle)
     {
-        mAngle = glm::clamp(angle, 0.f, (float)M_PI_2);
+        mAngle = std::clamp(angle, 0.f, (float)M_PI_2);
 
         mData.cosSubtendedAngle = std::cos(mAngle);
     }
 
     void DistantLight::setWorldDirection(const float3& dir)
     {
-        if (!(glm::length(dir) > 0.f)) // NaNs propagate
+        if (!(length(dir) > 0.f)) // NaNs propagate
         {
             logWarning("Can't set light direction to zero length vector. Ignoring call.");
             return;
@@ -330,23 +315,23 @@ namespace Falcor
         // Update transformation matrices
         // Assumes that mData.dirW is normalized
         const float3 up(0.f, 0.f, 1.f);
-        float3 vec = glm::cross(up, -mData.dirW);
-        float sinTheta = glm::length(vec);
+        float3 vec = cross(up, -mData.dirW);
+        float sinTheta = length(vec);
         if (sinTheta > 0.f)
         {
-            float cosTheta = glm::dot(up, -mData.dirW);
-            mData.transMat = rmcv::rotate(rmcv::mat4(), std::acos(cosTheta), vec);
+            float cosTheta = dot(up, -mData.dirW);
+            mData.transMat = math::matrixFromRotation(std::acos(cosTheta), vec);
         }
         else
         {
-            mData.transMat = rmcv::mat4(1.f);
+            mData.transMat = float4x4::identity();
         }
-        mData.transMatIT = rmcv::inverse(rmcv::transpose(mData.transMat));
+        mData.transMatIT = inverse(transpose(mData.transMat));
     }
 
-    void DistantLight::updateFromAnimation(const rmcv::mat4& transform)
+    void DistantLight::updateFromAnimation(const float4x4& transform)
     {
-        float3 fwd = float3(-transform.getCol(2));
+        float3 fwd = -transform.getCol(2).xyz();
         setWorldDirection(fwd);
     }
 
@@ -372,57 +357,42 @@ namespace Falcor
     void AnalyticAreaLight::update()
     {
         // Update matrix
-        mData.transMat = mTransformMatrix * rmcv::scale(rmcv::mat4(), mScaling);
-        mData.transMatIT = rmcv::inverse(rmcv::transpose(mData.transMat));
+        mData.transMat = mul(mTransformMatrix, math::matrixFromScaling(mScaling));
+        mData.transMatIT = inverse(transpose(mData.transMat));
     }
 
     // RectLight
-
-    RectLight::SharedPtr RectLight::create(const std::string& name)
-    {
-        return SharedPtr(new RectLight(name));
-    }
 
     void RectLight::update()
     {
         AnalyticAreaLight::update();
 
-        float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
-        float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
+        float rx = length(transformVector(mData.transMat, float3(1.0f, 0.0f, 0.0f)));
+        float ry = length(transformVector(mData.transMat, float3(0.0f, 1.0f, 0.0f)));
         mData.surfaceArea = 4.0f * rx * ry;
     }
 
     // DiscLight
 
-    DiscLight::SharedPtr DiscLight::create(const std::string& name)
-    {
-        return SharedPtr(new DiscLight(name));
-    }
-
     void DiscLight::update()
     {
         AnalyticAreaLight::update();
 
-        float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
-        float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
+        float rx = length(transformVector(mData.transMat, float3(1.0f, 0.0f, 0.0f)));
+        float ry = length(transformVector(mData.transMat, float3(0.0f, 1.0f, 0.0f)));
 
         mData.surfaceArea = (float)M_PI * rx * ry;
     }
 
     // SphereLight
 
-    SphereLight::SharedPtr SphereLight::create(const std::string& name)
-    {
-        return SharedPtr(new SphereLight(name));
-    }
-
     void SphereLight::update()
     {
         AnalyticAreaLight::update();
 
-        float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
-        float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
-        float rz = glm::length(mData.transMat * float4(0.0f, 0.0f, 1.0f, 0.0f));
+        float rx = length(transformVector(mData.transMat, float3(1.0f, 0.0f, 0.0f)));
+        float ry = length(transformVector(mData.transMat, float3(0.0f, 1.0f, 0.0f)));
+        float rz = length(transformVector(mData.transMat, float3(0.0f, 0.0f, 1.0f)));
 
         mData.surfaceArea = 4.0f * (float)M_PI * std::pow(std::pow(rx * ry, 1.6f) + std::pow(ry * rz, 1.6f) + std::pow(rx * rz, 1.6f) / 3.0f, 1.0f / 1.6f);
     }
@@ -434,37 +404,37 @@ namespace Falcor
 
         FALCOR_SCRIPT_BINDING_DEPENDENCY(Animatable)
 
-        pybind11::class_<Light, Animatable, Light::SharedPtr> light(m, "Light");
+        pybind11::class_<Light, Animatable, ref<Light>> light(m, "Light");
         light.def_property("name", &Light::getName, &Light::setName);
         light.def_property("active", &Light::isActive, &Light::setActive);
         light.def_property("animated", &Light::isAnimated, &Light::setIsAnimated);
         light.def_property("intensity", &Light::getIntensity, &Light::setIntensity);
 
-        pybind11::class_<PointLight, Light, PointLight::SharedPtr> pointLight(m, "PointLight");
+        pybind11::class_<PointLight, Light, ref<PointLight>> pointLight(m, "PointLight");
         pointLight.def(pybind11::init(&PointLight::create), "name"_a = "");
         pointLight.def_property("position", &PointLight::getWorldPosition, &PointLight::setWorldPosition);
         pointLight.def_property("direction", &PointLight::getWorldDirection, &PointLight::setWorldDirection);
         pointLight.def_property("openingAngle", &PointLight::getOpeningAngle, &PointLight::setOpeningAngle);
         pointLight.def_property("penumbraAngle", &PointLight::getPenumbraAngle, &PointLight::setPenumbraAngle);
 
-        pybind11::class_<DirectionalLight, Light, DirectionalLight::SharedPtr> directionalLight(m, "DirectionalLight");
+        pybind11::class_<DirectionalLight, Light, ref<DirectionalLight>> directionalLight(m, "DirectionalLight");
         directionalLight.def(pybind11::init(&DirectionalLight::create), "name"_a = "");
         directionalLight.def_property("direction", &DirectionalLight::getWorldDirection, &DirectionalLight::setWorldDirection);
 
-        pybind11::class_<DistantLight, Light, DistantLight::SharedPtr> distantLight(m, "DistantLight");
+        pybind11::class_<DistantLight, Light, ref<DistantLight>> distantLight(m, "DistantLight");
         distantLight.def(pybind11::init(&DistantLight::create), "name"_a = "");
         distantLight.def_property("direction", &DistantLight::getWorldDirection, &DistantLight::setWorldDirection);
         distantLight.def_property("angle", &DistantLight::getAngle, &DistantLight::setAngle);
 
-        pybind11::class_<AnalyticAreaLight, Light, AnalyticAreaLight::SharedPtr> analyticLight(m, "AnalyticAreaLight");
+        pybind11::class_<AnalyticAreaLight, Light, ref<AnalyticAreaLight>> analyticLight(m, "AnalyticAreaLight");
 
-        pybind11::class_<RectLight, AnalyticAreaLight, RectLight::SharedPtr> rectLight(m, "RectLight");
+        pybind11::class_<RectLight, AnalyticAreaLight, ref<RectLight>> rectLight(m, "RectLight");
         rectLight.def(pybind11::init(&RectLight::create), "name"_a = "");
 
-        pybind11::class_<DiscLight, AnalyticAreaLight, DiscLight::SharedPtr> discLight(m, "DiscLight");
+        pybind11::class_<DiscLight, AnalyticAreaLight, ref<DiscLight>> discLight(m, "DiscLight");
         discLight.def(pybind11::init(&DiscLight::create), "name"_a = "");
 
-        pybind11::class_<SphereLight, AnalyticAreaLight, SphereLight::SharedPtr> sphereLight(m, "SphereLight");
+        pybind11::class_<SphereLight, AnalyticAreaLight, ref<SphereLight>> sphereLight(m, "SphereLight");
         sphereLight.def(pybind11::init(&SphereLight::create), "name"_a = "");
    }
 }

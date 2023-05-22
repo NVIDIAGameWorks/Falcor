@@ -28,7 +28,7 @@
 #pragma once
 #include "Falcor.h"
 #include "Core/SampleApp.h"
-#include "RenderGraph/BasePasses/RasterScenePass.h"
+#include "Core/Pass/RasterPass.h"
 
 using namespace Falcor;
 
@@ -40,7 +40,7 @@ public:
 
     void onLoad(RenderContext* pRenderContext) override;
     void onResize(uint32_t width, uint32_t height) override;
-    void onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
+    void onFrameRender(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo) override;
     void onGuiRender(Gui* pGui) override;
     bool onKeyEvent(const KeyboardEvent& keyEvent) override;
     bool onMouseEvent(const MouseEvent& mouseEvent) override;
@@ -48,18 +48,20 @@ public:
 private:
     void loadScene(const std::filesystem::path& path, const Fbo* pTargetFbo);
     void setPerFrameVars(const Fbo* pTargetFbo);
-    void renderRT(RenderContext* pRenderContext, const Fbo* pTargetFbo);
+    void renderRaster(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo);
+    void renderRT(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo);
 
-    RasterScenePass::SharedPtr mpRasterPass;
-    Scene::SharedPtr mpScene;
+    ref<Scene> mpScene;
+    ref<Camera> mpCamera;
 
-    RtProgram::SharedPtr mpRaytraceProgram = nullptr;
-    Camera::SharedPtr mpCamera;
+    ref<RasterPass> mpRasterPass;
+
+    ref<RtProgram> mpRaytraceProgram;
+    ref<RtProgramVars> mpRtVars;
+    ref<Texture> mpRtOut;
 
     bool mRayTrace = true;
     bool mUseDOF = false;
-    RtProgramVars::SharedPtr mpRtVars;
-    Texture::SharedPtr mpRtOut;
 
     uint32_t mSampleIndex = 0xdeadbeef;
 };

@@ -34,36 +34,6 @@
             }
         },
         {
-            "name": "windows-vs2019-base",
-            "description": "Base Visual Studio 2019 configuration.",
-            "hidden": true,
-            "inherits": "windows-base",
-            "generator": "Visual Studio 16 2019",
-            "architecture": {
-                "value": "x64",
-                "strategy": "set"
-            },
-            "toolset": {
-                "value": "host=x86",
-                "strategy": "set"
-            }
-        },
-        {
-            "name": "windows-vs2019",
-            "displayName": "Windows VS2019",
-            "inherits": [
-                "windows-vs2019-base"
-            ]
-        },
-        {
-            "name": "windows-vs2019-ci",
-            "displayName": "Windows VS2019 (CI)",
-            "inherits": [
-                "windows-vs2019-base",
-                "ci"
-            ]
-        },
-        {
             "name": "windows-vs2022-base",
             "description": "Base Visual Studio 2022 configuration.",
             "hidden": true,
@@ -99,12 +69,15 @@
             "hidden": true,
             "inherits": "windows-base",
             "generator": "Ninja Multi-Config",
+            "environment": {
+                "VCToolsVersion": "14.30"
+            },
             "architecture": {
                 "value": "x64",
                 "strategy": "external"
             },
             "toolset": {
-                "value": "host=x86,version=14.29",
+                "value": "host=x86,version=14.3",
                 "strategy": "external"
             },
             "cacheVariables": {
@@ -138,32 +111,59 @@
             "name": "linux-base",
             "description": "Base Linux configuration.",
             "hidden": true,
-            "inherits": "base"
+            "inherits": "base",
+            "generator": "Ninja Multi-Config",
+            "cacheVariables": {
+                "CMAKE_MAKE_PROGRAM": "${sourceDir}/tools/.packman/ninja/ninja"
+            }
         },
         {
-            "name": "linux-ninja-clang-base",
+            "name": "linux-clang-base",
             "description": "Base Linux/Clang configuration.",
             "hidden": true,
             "inherits": "linux-base",
-            "generator": "Ninja Multi-Config",
             "cacheVariables": {
-                "CMAKE_MAKE_PROGRAM": "${sourceDir}/tools/.packman/ninja/ninja",
                 "CMAKE_C_COMPILER": "clang",
                 "CMAKE_CXX_COMPILER": "clang++"
             }
         },
         {
-            "name": "linux-ninja-clang",
-            "displayName": "Linux Ninja/Clang",
+            "name": "linux-clang",
+            "displayName": "Linux/Clang",
             "inherits": [
-                "linux-ninja-clang-base"
+                "linux-clang-base"
             ]
         },
         {
-            "name": "linux-ninja-clang-ci",
-            "displayName": "Linux Ninja/Clang (CI)",
+            "name": "linux-clang-ci",
+            "displayName": "Linux/Clang (CI)",
             "inherits": [
-                "linux-ninja-clang-base",
+                "linux-clang-base",
+                "ci"
+            ]
+        },
+        {
+            "name": "linux-gcc-base",
+            "description": "Base Linux/GCC configuration.",
+            "hidden": true,
+            "inherits": "linux-base",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "gcc",
+                "CMAKE_CXX_COMPILER": "g++"
+            }
+        },
+        {
+            "name": "linux-gcc",
+            "displayName": "Linux/GCC",
+            "inherits": [
+                "linux-gcc-base"
+            ]
+        },
+        {
+            "name": "linux-gcc-ci",
+            "displayName": "Linux/GCC (CI)",
+            "inherits": [
+                "linux-gcc-base",
                 "ci"
             ]
         }
@@ -194,27 +194,51 @@
             "configuration": "Debug"
         },
         {
-            "name": "linux-ninja-clang-release",
+            "name": "linux-clang-release",
             "displayName": "Release",
-            "configurePreset": "linux-ninja-clang",
+            "configurePreset": "linux-clang",
             "configuration": "Release"
         },
         {
-            "name": "linux-ninja-clang-debug",
+            "name": "linux-clang-debug",
             "displayName": "Debug",
-            "configurePreset": "linux-ninja-clang",
+            "configurePreset": "linux-clang",
             "configuration": "Debug"
         },
         {
-            "name": "linux-ninja-clang-ci-release",
+            "name": "linux-clang-ci-release",
             "displayName": "Release",
-            "configurePreset": "linux-ninja-clang-ci",
+            "configurePreset": "linux-clang-ci",
             "configuration": "Release"
         },
         {
-            "name": "linux-ninja-clang-ci-debug",
+            "name": "linux-clang-ci-debug",
             "displayName": "Debug",
-            "configurePreset": "linux-ninja-clang-ci",
+            "configurePreset": "linux-clang-ci",
+            "configuration": "Debug"
+        },
+        {
+            "name": "linux-gcc-release",
+            "displayName": "Release",
+            "configurePreset": "linux-gcc",
+            "configuration": "Release"
+        },
+        {
+            "name": "linux-gcc-debug",
+            "displayName": "Debug",
+            "configurePreset": "linux-gcc",
+            "configuration": "Debug"
+        },
+        {
+            "name": "linux-gcc-ci-release",
+            "displayName": "Release",
+            "configurePreset": "linux-gcc-ci",
+            "configuration": "Release"
+        },
+        {
+            "name": "linux-gcc-ci-debug",
+            "displayName": "Debug",
+            "configurePreset": "linux-gcc-ci",
             "configuration": "Debug"
         }
     ]

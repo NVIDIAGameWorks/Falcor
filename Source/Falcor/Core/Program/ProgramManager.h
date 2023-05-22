@@ -37,7 +37,7 @@ namespace Falcor
 class ProgramManager
 {
 public:
-    ProgramManager(std::weak_ptr<Device> pDevice);
+    ProgramManager(Device* pDevice);
 
     /**
      * Defines flags that should be forcefully disabled or enabled on all shaders.
@@ -60,20 +60,21 @@ public:
     };
 
     Program::Desc applyForcedCompilerFlags(Program::Desc desc) const;
-    void registerProgramForReload(const Program::SharedPtr& pProg);
+    void registerProgramForReload(Program* program);
+    void unregisterProgramForReload(Program* program);
 
-    ProgramVersion::SharedPtr createProgramVersion(const Program& program, std::string& log) const;
+    ref<const ProgramVersion> createProgramVersion(const Program& program, std::string& log) const;
 
-    ProgramKernels::SharedPtr ProgramManager::createProgramKernels(
+    ref<const ProgramKernels> createProgramKernels(
         const Program& program,
         const ProgramVersion& programVersion,
         const ProgramVars& programVars,
         std::string& log
     ) const;
 
-    EntryPointGroupKernels::SharedPtr createEntryPointGroupKernels(
-        const std::vector<Shader::SharedPtr>& shaders,
-        EntryPointBaseReflection::SharedPtr const& pReflector
+    ref<const EntryPointGroupKernels> createEntryPointGroupKernels(
+        const std::vector<ref<Shader>>& shaders,
+        const ref<EntryPointBaseReflection>& pReflector
     ) const;
 
     /**
@@ -127,9 +128,9 @@ public:
 private:
     SlangCompileRequest* createSlangCompileRequest(const Program& program) const;
 
-    std::weak_ptr<Device> mpDevice;
+    Device* mpDevice;
 
-    std::vector<std::weak_ptr<Program>> mLoadedPrograms;
+    std::vector<Program*> mLoadedPrograms;
     mutable CompilationStats mCompilationStats;
 
     Program::DefineList mGlobalDefineList;

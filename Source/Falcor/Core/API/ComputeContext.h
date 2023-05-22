@@ -32,7 +32,6 @@
 #include "LowLevelContextData.h"
 #include "Core/Macros.h"
 #include "Utils/Math/Vector.h"
-#include <memory>
 
 namespace Falcor
 {
@@ -83,7 +82,7 @@ public:
      * @param[in] pBuffer Structured Buffer containing UAV counter
      * @param[in] value Value to clear counter to
      */
-    void clearUAVCounter(const Buffer::SharedPtr& pBuffer, uint32_t value);
+    void clearUAVCounter(const ref<Buffer>& pBuffer, uint32_t value);
 
     /**
      * Submit the command list

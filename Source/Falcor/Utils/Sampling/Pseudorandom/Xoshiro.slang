@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,16 +26,17 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 
-/** Implementation of the xoshiro128** 32-bit all-purpose, rock-solid generator
-    written in 2018 by David Blackman and Sebastiano Vigna (vigna@acm.org).
-    The state is 128 bits and the period (2^128)-1. It has a jump function that
-    allows you to skip ahead 2^64 in the seqeuence.
-
-    Note: The state must be seeded so that it is not everywhere zero.    
-    The recommendation is to initialize the state using SplitMix64.
-
-    See the original public domain code: http://xoshiro.di.unimi.it/xoshiro128starstar.c
-*/
+/**
+ * Implementation of the xoshiro128** 32-bit all-purpose, rock-solid generator
+ * written in 2018 by David Blackman and Sebastiano Vigna (vigna@acm.org).
+ * The state is 128 bits and the period (2^128)-1. It has a jump function that
+ * allows you to skip ahead 2^64 in the seqeuence.
+ *
+ * Note: The state must be seeded so that it is not everywhere zero.
+ * The recommendation is to initialize the state using SplitMix64.
+ *
+ * See the original public domain code: http://xoshiro.di.unimi.it/xoshiro128starstar.c
+ */
 
 struct Xoshiro128StarStar
 {
@@ -47,12 +48,13 @@ uint rotl(const uint x, int k)
     return (x << k) | (x >> (32 - k));
 }
 
-/** Generates the next pseudorandom number in the sequence (32 bits).
-*/
+/**
+ * Generates the next pseudorandom number in the sequence (32 bits).
+ */
 uint nextRandom(inout Xoshiro128StarStar rng)
 {
     const uint32_t result_starstar = rotl(rng.state[0] * 5, 7) * 9;
-	const uint32_t t = rng.state[1] << 9;
+    const uint32_t t = rng.state[1] << 9;
 
     rng.state[2] ^= rng.state[0];
     rng.state[3] ^= rng.state[1];
@@ -62,12 +64,13 @@ uint nextRandom(inout Xoshiro128StarStar rng)
     rng.state[2] ^= t;
     rng.state[3] = rotl(rng.state[3], 11);
 
-	return result_starstar;
+    return result_starstar;
 }
 
-/** Jump function for the generator. It is equivalent to 2^64 calls to nextRandom().
-    It can be used to generate 2^64 non-overlapping subsequences for parallel computations.
-*/
+/**
+ * Jump function for the generator. It is equivalent to 2^64 calls to nextRandom().
+ * It can be used to generate 2^64 non-overlapping subsequences for parallel computations.
+ */
 void jump(inout Xoshiro128StarStar rng)
 {
     static const uint32_t JUMP[] = { 0x8764000b, 0xf542d2d3, 0x6fa035c3, 0x77f2db5b };
@@ -98,11 +101,12 @@ void jump(inout Xoshiro128StarStar rng)
     rng.state[3] = s3;
 }
 
-/** Initialize Xoshiro128StarStar pseudorandom number generator.
-    The initial state should be pseudorandom and must not be zero everywhere.
-    It is recommended to use SplitMix64 for creating the initial state.
-    \param[in] s Array of 4x 32-bit values of initial state (seed).
-*/
+/**
+ * Initialize Xoshiro128StarStar pseudorandom number generator.
+ * The initial state should be pseudorandom and must not be zero everywhere.
+ * It is recommended to use SplitMix64 for creating the initial state.
+ * @param[in] s Array of 4x 32-bit values of initial state (seed).
+ */
 Xoshiro128StarStar createXoshiro128StarStar(uint s[4])
 {
     Xoshiro128StarStar rng;

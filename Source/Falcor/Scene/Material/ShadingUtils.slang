@@ -27,131 +27,12 @@
  **************************************************************************/
 import Rendering.Materials.IBSDF;
 import Scene.ShadingData;
-import Scene.SceneTypes;
 import Scene.Material.MaterialTypes;
-import Utils.Math.MathHelpers;
 import Utils.Color.ColorHelpers;
+__exported import Utils.Math.ShadingFrame;
 
 // If set, the backfacing side in the hemisphere checks is forced to black.
 #define FALCOR_BACKFACE_BLACK 1
-
-/** Shading frame in world space.
-    The vectors TBN form an orthonormal basis.
-*/
-struct ShadingFrame
-{
-    float3 T;   ///< Shading tangent. Normalized.
-    float3 B;   ///< Shading bitangent. Normalized.
-    float3 N;   ///< Shading normal. Normalized.
-
-    __init() {}
-
-    __init(const ShadingData sd)
-    {
-        this.T = sd.T;
-        this.B = sd.B;
-        this.N = sd.N;
-    }
-
-    /** Initialize shading frame from normal and tangent.
-        It is assumed the shading frame can be safely orthonormalized. If in doubt, use `createSafe` instead.
-        \param[in] Normal in world space. Not normalized.
-        \param[in] Target tangent in world space (xyz) and handedness sign (w). Not normalized.
-    */
-    __init(const float3 normalW, const float4 tangentW)
-    {
-        this.N = normalize(normalW);
-        orthonormalize(tangentW);
-    }
-
-    /** Create a shading frame from normal and tangent.
-        If the shading frame cannot be safely orthonormalized, a new tangent is invented based on the normal.
-        \param[in] Normal in world space. Not normalized.
-        \param[in] Target tangent in world space (xyz) and handedness sign (w). Not normalized.
-        \return New shading frame.
-    */
-    static ShadingFrame createSafe(const float3 normalW, const float4 tangentW)
-    {
-        ShadingFrame sf;
-        sf.N = normalize(normalW);
-        sf.orthonormalizeSafe(tangentW);
-        return sf;
-    }
-
-    /** Transform vector from the local shading frame to world space.
-        \param[in] v Vector in local space.
-        \return Vector in world space.
-    */
-    float3 fromLocal(const float3 v)
-    {
-        return T * v.x + B * v.y + N * v.z;
-    }
-
-    /** Transform vector from world space to the local shading frame.
-        \param[in] v Vector in world space.
-        \return Vector in local space.
-    */
-    float3 toLocal(const float3 v)
-    {
-        return float3(dot(v, T), dot(v, B), dot(v, N));
-    }
-
-    /** Returns sign that gets applied to such that B = cross(N, T) * getHandednessSign();
-        \return +1 for right handed, and -1 for left handed frames.
-    */
-    float getHandednessSign()
-    {
-        return dot(cross(N, T), B) >= 0.f ? 1.f : -1.f;
-    }
-
-    /** Orthonormalize the shading frame.
-        Vectors T and B are adjusted to make an orthonormal frame where T lies in the same plane as N and the supplied target tangent.
-        It is assumed that the tangent is nonzero and not parallel to the normal, and that the sign (w) is +-1.0.
-        \param[in] tangentW Target tangent in world space (xyz) and handedness sign (w). Not normalized.
-    */
-    [mutating]
-    void orthonormalize(const float4 tangentW)
-    {
-        T = normalize(tangentW.xyz - N * dot(tangentW.xyz, N));
-        B = cross(N, T) * tangentW.w;
-    }
-
-    /** Orthonormalize the shading frame.
-        Vectors T and B are adjusted to make an orthonormal frame where T lies in the same plane as N and the supplied target tangent.
-        If the shading frame cannot be safely orthonormalized, a new tangent is invented based on the normal.
-        \param[in] tangentW Target tangent in world space (xyz) and handedness sign (w). Not normalized.
-        \return True if a valid tangent space was computed based on the supplied tangent, or false if a tangent space was invented.
-    */
-    [mutating]
-    bool orthonormalizeSafe(const float4 tangentW)
-    {
-        // Check that tangent space exists and can be safely orthonormalized.
-        // Otherwise invent a tanget frame based on the normal.
-        // We check that:
-        //  - Tangent exists, this is indicated by a sign (w) that is +-1.0.
-        //  - It has nonzero length. Zeros can occur due to interpolation or bad assets.
-        //  - It is not parallel to the normal. This can occur due to normal mapping or bad assets.
-        //  - It does not have NaNs. These will propagate and trigger the fallback.
-
-        float NdotT = dot(tangentW.xyz, N);
-        bool nonParallel = abs(NdotT) < 0.9999f;
-        bool nonZero = dot(tangentW.xyz, tangentW.xyz) > 0.f;
-        bool valid = abs(tangentW.w) == 1.0f && nonZero && nonParallel;
-
-        if (valid)
-        {
-            T = normalize(tangentW.xyz - N * NdotT);
-            B = cross(N, T) * tangentW.w;
-        }
-        else
-        {
-            T = perp_stark(N);
-            B = cross(N, T);
-        }
-
-        return valid;
-    }
-};
 
 /** Convert RGB to normal (unnormalized).
 */
@@ -190,20 +71,6 @@ float getMetallic(float3 diffuse, float3 spec)
     return m;
 }
 
-/** Apply normal map.
-    This function perturbs the shading normal using a local normal sampled from a normal map.
-    \param[in,out] sd ShadingData struct that is updated.
-    \param[in] type Normal map type.
-    \param[in] encodedNormal Encoded normal loaded from normal map.
-*/
-void applyNormalMap(inout ShadingData sd, const NormalMapType type, const float3 encodedNormal)
-{
-    ShadingFrame sf = computeShadingFrameFromNormalMap(sd, type, encodedNormal);
-    sd.T = sf.T;
-    sd.B = sf.B;
-    sd.N = sf.N;
-}
-
 /** Compute shading frame at shading point by applying normal mapping.
     This function perturbs the shading normal using a local normal sampled from a normal map.
     \param[in] sd Shading data.
@@ -224,7 +91,7 @@ ShadingFrame computeShadingFrameFromNormalMap(const ShadingData sd, const Normal
         mapN = rgToNormal(encodedNormal.rg);
         break;
     case NormalMapType::None:
-        return ShadingFrame(sd);
+        return sd.frame;
     }
 
     // Note if the normal ends up being parallel to the tangent, the tangent frame cannot be orthonormalized.
@@ -232,34 +99,19 @@ ShadingFrame computeShadingFrameFromNormalMap(const ShadingData sd, const Normal
     // If it occurs we should foremost fix the asset, or if problems persist add a check here.
 
     // Apply the transformation.
-    return ShadingFrame(sd.T * mapN.x + sd.B * mapN.y + sd.N * mapN.z, sd.tangentW);
+    return ShadingFrame(sd.frame.fromLocal(mapN), sd.tangentW);
 }
 
-/** Computes an orthonormal tangent space based on the normal and given tangent.
-    \param[in,out] sd ShadingData struct that is updated.
-    \param[in] tangent Interpolated tangent in world space (xyz) and bitangent sign (w). The tangent is *only* valid when w is +-1.0.
-    \return True if a valid tangent space was computed based on the supplied tangent, or false if a tangent space was invented.
+/** Flip shading normal for backfacing hit on double-sided material.
+    \param[in] sd Shading data.
+    \param[in,out] sf Shading frame that will be modified.
 */
-bool computeTangentSpace(inout ShadingData sd, const float4 tangentW)
+void flipShadingNormal(const ShadingData sd, inout ShadingFrame sf)
 {
-    ShadingFrame sf = ShadingFrame(sd);
-    bool valid = sf.orthonormalizeSafe(tangentW);
-    sd.T = sf.T;
-    sd.B = sf.B;
-    sd.N = sf.N;
-    return valid;
-}
-
-/** Helper function to adjust the shading normal to reduce black pixels due to back-facing view direction.
-    Note: This breaks the reciprocity of the BSDF!
-*/
-void adjustShadingNormal(inout ShadingData sd)
-{
-    ShadingFrame sf = ShadingFrame(sd);
-    adjustShadingNormal(sd, sf);
-    sd.T = sf.T;
-    sd.B = sf.B;
-    sd.N = sf.N;
+    if (!sd.frontFacing && sd.mtl.isDoubleSided())
+    {
+        sf.N = -sf.N;
+    }
 }
 
 /** Adjusts the normal of the supplied shading frame to reduce black pixels due to back-facing view direction.
@@ -269,8 +121,13 @@ void adjustShadingNormal(inout ShadingData sd)
 */
 void adjustShadingNormal(const ShadingData sd, inout ShadingFrame sf)
 {
-    float3 Ng = sd.frontFacing ? sd.faceN : -sd.faceN;
-    float3 Ns = sf.N;
+    // Note: sd.V and Ng below always lie on the same side (as the front-facing flag is computed based on sd.V).
+    // The shading normal sf.N may lie on either side depending on whether we're shading the front or back.
+    // We orient Ns to lie on the same side as sd.V and Ng for the computations below.
+    // The final adjusted normal is oriented to lie on the same side as the original shading normal.
+    float3 Ng = sd.getOrientedFaceNormal();
+    float signN = dot(sf.N, Ng) >= 0.f ? 1.f : -1.f;
+    float3 Ns = signN * sf.N;
 
     // Blend the shading normal towards the geometric normal at grazing angles.
     // This is to avoid the view vector from becoming back-facing.
@@ -279,7 +136,7 @@ void adjustShadingNormal(const ShadingData sd, inout ShadingFrame sf)
     if (cosTheta <= kCosThetaThreshold)
     {
         float t = saturate(cosTheta * (1.f / kCosThetaThreshold));
-        sf = ShadingFrame(lerp(Ng, Ns, t), sd.tangentW);
+        sf = ShadingFrame(signN * lerp(Ng, Ns, t), sd.tangentW);
     }
 }
 
@@ -349,14 +206,16 @@ bool isValidHemisphereTransmission(const ShadingData sd, const ShadingFrame sf, 
     \param[in] wiLocal Incident direction in local space.
     \param[in] woLocal Outgoing direction in local space.
     \param[in] wo Outgoing direction in world space.
+    \param[in] fullSphere If true allow the full sphere of directions, otherwise wi in the lower hemisphere is rejected and back-faces are black.
     \return True if wi/wo represent valid vectors for reflection or transmission.
 */
-bool isValidHemisphereReflectionOrTransmission(const ShadingData sd, const ShadingFrame sf, const float3 wiLocal, const float3 woLocal, const float3 wo)
+bool isValidHemisphereReflectionOrTransmission(const ShadingData sd, const ShadingFrame sf, const float3 wiLocal, const float3 woLocal, const float3 wo, const bool fullSphere = false)
 {
-    const bool isTransmission = woLocal.z < 0.f;
+    const bool isTransmission = wiLocal.z * woLocal.z < 0.f;
 
     // Check that wi/wo are in the upper/lower hemisphere around the shading normal.
-    if (min(wiLocal.z, abs(woLocal.z)) < kMinCosTheta) return false;
+    float cosThetaI = fullSphere ? abs(wiLocal.z) : wiLocal.z;
+    if (min(cosThetaI, abs(woLocal.z)) < kMinCosTheta) return false;
 
     // Check that wi/wo are on the same geometric side.
     bool wiTop = sd.frontFacing; // The flag is computed dot(wi, faceN) >= 0.f.
@@ -372,9 +231,12 @@ bool isValidHemisphereReflectionOrTransmission(const ShadingData sd, const Shadi
     }
 
 #if FALCOR_BACKFACE_BLACK
-    // Additionally check that we're on the same geometric side as the shading normal.
-    bool shadingTop = dot(sf.N, sd.faceN) >= 0.f;
-    if (wiTop != shadingTop) return false;
+    if (!fullSphere)
+    {
+        // Additionally check that we're on the same geometric side as the shading normal.
+        bool shadingTop = dot(sf.N, sd.faceN) >= 0.f;
+        if (wiTop != shadingTop) return false;
+    }
 #endif
 
     return true;

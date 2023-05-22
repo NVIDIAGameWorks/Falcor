@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -178,11 +178,11 @@ LoopSubdivideResult loopSubdivide(uint32_t levels, fstd::span<const float3> posi
     std::vector<SDFace*> faces;
 
     // Allocate vertices and faces.
-    std::unique_ptr<SDVertex[]> verts = std::make_unique<SDVertex[]>(positions.size());
+    std::unique_ptr<SDVertex[]> vertexBuffer = std::make_unique<SDVertex[]>(positions.size());
     for (size_t i = 0; i < positions.size(); ++i)
     {
-        verts[i] = SDVertex(positions[i]);
-        vertices.push_back(&verts[i]);
+        vertexBuffer[i] = SDVertex(positions[i]);
+        vertices.push_back(&vertexBuffer[i]);
     }
     size_t faceCount = indices.size() / 3;
     std::unique_ptr<SDFace[]> fs = std::make_unique<SDFace[]>(faceCount);
@@ -192,15 +192,17 @@ LoopSubdivideResult loopSubdivide(uint32_t levels, fstd::span<const float3> posi
     }
 
     // Set face to vertex pointers.
-    const uint32_t* vp = indices.data();
-    for (size_t i = 0; i < faceCount; ++i, vp += 3)
     {
-        SDFace* f = faces[i];
-        for (uint32_t j = 0; j < 3; ++j)
+        const uint32_t* vp = indices.data();
+        for (size_t i = 0; i < faceCount; ++i, vp += 3)
         {
-            SDVertex* v = vertices[vp[j]];
-            f->v[j] = v;
-            v->startFace = f;
+            SDFace* f = faces[i];
+            for (uint32_t j = 0; j < 3; ++j)
+            {
+                SDVertex* v = vertices[vp[j]];
+                f->v[j] = v;
+                v->startFace = f;
+            }
         }
     }
 
@@ -494,7 +496,7 @@ static float3 weightOneRing(SDVertex* vert, float beta)
     return p;
 }
 
-void SDVertex::oneRing(float3* p)
+void SDVertex::oneRing(float3* p_)
 {
     if (!boundary)
     {
@@ -502,7 +504,7 @@ void SDVertex::oneRing(float3* p)
         SDFace* face = startFace;
         do
         {
-            *p++ = face->nextVert(this)->p;
+            *p_++ = face->nextVert(this)->p;
             face = face->nextFace(this);
         } while (face != startFace);
     }
@@ -515,10 +517,10 @@ void SDVertex::oneRing(float3* p)
         {
             face = f2;
         }
-        *p++ = face->nextVert(this)->p;
+        *p_++ = face->nextVert(this)->p;
         do
         {
-            *p++ = face->prevVert(this)->p;
+            *p_++ = face->prevVert(this)->p;
             face = face->prevFace(this);
         } while (face != nullptr);
     }

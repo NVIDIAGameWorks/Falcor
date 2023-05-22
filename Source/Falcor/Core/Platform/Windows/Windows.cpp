@@ -65,12 +65,6 @@ extern "C"
 
 namespace Falcor
 {
-static HWND gMainWindowHandle; // TODO: REMOVEGLOBAL
-
-void setMainWindowHandle(HWND windowHandle)
-{
-    gMainWindowHandle = windowHandle;
-}
 
 MsgBoxButton msgBox(const std::string& title, const std::string& msg, MsgBoxType type, MsgBoxIcon icon)
 {
@@ -134,7 +128,6 @@ uint32_t msgBox(
         LONG textWidth = 0;
 
         // Query windows for common metrics.
-        HWND hwnd = gMainWindowHandle;
         UINT dpi = GetDpiForSystem();
         NONCLIENTMETRICS metrics;
         metrics.cbSize = sizeof(metrics);
@@ -142,7 +135,7 @@ uint32_t msgBox(
             return textWidth;
 
         // Setup DC with message font.
-        HDC hdc = GetDC(hwnd);
+        HDC hdc = GetDC(NULL);
         HFONT font = CreateFontIndirect(&metrics.lfMessageFont);
         HGDIOBJ oldFont = SelectObject(hdc, font);
 
@@ -157,7 +150,7 @@ uint32_t msgBox(
 
         // Restore DC.
         SelectObject(hdc, oldFont);
-        ReleaseDC(hwnd, hdc);
+        ReleaseDC(NULL, hdc);
         DeleteObject(font);
 
         return textWidth;
@@ -194,7 +187,6 @@ uint32_t msgBox(
     // Set up dialog config
     TASKDIALOGCONFIG config = {};
     config.cbSize = sizeof(TASKDIALOGCONFIG);
-    config.hwndParent = gMainWindowHandle;
     config.dwFlags = TDF_ALLOW_DIALOG_CANCELLATION;
     config.pszWindowTitle = wideTitle.c_str();
     switch (icon)
@@ -565,7 +557,7 @@ void setWindowIcon(const std::filesystem::path& path, WindowHandle windowHandle)
     HANDLE hIcon = LoadImageW(GetModuleHandleW(NULL), path.c_str(), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE | LR_LOADFROMFILE);
     if (!hIcon)
         throw RuntimeError("Failed to load icon from '{}'.", path);
-    HWND hWnd = windowHandle ? windowHandle : GetActiveWindow();
+    HWND hWnd = windowHandle ? static_cast<HWND>(windowHandle) : GetActiveWindow();
     SendMessage(hWnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
 }
 
@@ -942,7 +934,7 @@ SharedLibraryHandle loadSharedLibrary(const std::filesystem::path& path)
  */
 void releaseSharedLibrary(SharedLibraryHandle library)
 {
-    FreeLibrary(library);
+    FreeLibrary(static_cast<HMODULE>(library));
 }
 
 /**
@@ -950,7 +942,7 @@ void releaseSharedLibrary(SharedLibraryHandle library)
  */
 void* getProcAddress(SharedLibraryHandle library, const std::string& funcName)
 {
-    return reinterpret_cast<void*>(GetProcAddress(library, funcName.c_str()));
+    return reinterpret_cast<void*>(GetProcAddress(static_cast<HMODULE>(library), funcName.c_str()));
 }
 
 void OSServices::start()

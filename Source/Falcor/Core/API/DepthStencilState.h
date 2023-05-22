@@ -29,18 +29,16 @@
 #include "Common.h"
 #include "Handles.h"
 #include "Core/Macros.h"
-#include <memory>
+#include "Core/Object.h"
 
 namespace Falcor
 {
 /**
  * Depth-Stencil state
  */
-class FALCOR_API DepthStencilState
+class FALCOR_API DepthStencilState : public Object
 {
 public:
-    using SharedPtr = std::shared_ptr<DepthStencilState>;
-
     /**
      * Used for stencil control.
      */
@@ -180,7 +178,7 @@ public:
      * @param desc Depth-stencil descriptor.
      * @return New object, or throws an exception if an error occurred.
      */
-    static SharedPtr create(const Desc& desc);
+    static ref<DepthStencilState> create(const Desc& desc);
 
     /**
      * Check if depth test is enabled or disabled

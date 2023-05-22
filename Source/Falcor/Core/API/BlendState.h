@@ -28,8 +28,8 @@
 #pragma once
 #include "Handles.h"
 #include "Core/Macros.h"
+#include "Core/Object.h"
 #include "Utils/Math/Vector.h"
-#include <memory>
 #include <vector>
 
 namespace Falcor
@@ -37,11 +37,9 @@ namespace Falcor
 /**
  * Blend state
  */
-class FALCOR_API BlendState
+class FALCOR_API BlendState : public Object
 {
 public:
-    using SharedPtr = std::shared_ptr<BlendState>;
-
     /**
      * Defines how to combine the blend inputs
      */
@@ -185,7 +183,7 @@ public:
      * @param[in] Desc Blend state descriptor.
      * @return A new object, or throws an exception if creation failed.
      */
-    static BlendState::SharedPtr create(const Desc& desc);
+    static ref<BlendState> create(const Desc& desc);
 
     /**
      * Get the constant blend factor color

@@ -31,19 +31,17 @@
 #include "Handles.h"
 #include "NativeHandle.h"
 #include "Core/Macros.h"
+#include "Core/Object.h"
 #include "Utils/Math/Vector.h"
-#include <memory>
 
 namespace Falcor
 {
 /**
  * Abstract the API sampler state object
  */
-class FALCOR_API Sampler
+class FALCOR_API Sampler : public Object
 {
 public:
-    using SharedPtr = std::shared_ptr<Sampler>;
-
     /**
      * Filter mode
      */
@@ -102,24 +100,24 @@ public:
 
         /**
          * Set the filter mode
-         * @param[in] minFilter Filter mode in case of minification.
-         * @param[in] magFilter Filter mode in case of magnification.
-         * @param[in] mipFilter Mip-level sampling mode
+         * @param[in] minFilter_ Filter mode in case of minification.
+         * @param[in] magFilter_ Filter mode in case of magnification.
+         * @param[in] mipFilter_ Mip-level sampling mode
          */
-        Desc& setFilterMode(Filter minFilter, Filter magFilter, Filter mipFilter)
+        Desc& setFilterMode(Filter minFilter_, Filter magFilter_, Filter mipFilter_)
         {
-            this->magFilter = magFilter;
-            this->minFilter = minFilter;
-            this->mipFilter = mipFilter;
+            magFilter = magFilter_;
+            minFilter = minFilter_;
+            mipFilter = mipFilter_;
             return *this;
         }
 
         /**
          * Set the maximum anisotropic filtering value. If MaxAnisotropy > 1, min/mag/mip filter modes are ignored
          */
-        Desc& setMaxAnisotropy(uint32_t maxAnisotropy)
+        Desc& setMaxAnisotropy(uint32_t maxAnisotropy_)
         {
-            this->maxAnisotropy = maxAnisotropy;
+            maxAnisotropy = maxAnisotropy_;
             return *this;
         }
 
@@ -129,11 +127,11 @@ public:
          * @param[in] maxLod Maximum LOD that will be used when sampling
          * @param[in] lodBias Bias to apply to the LOD
          */
-        Desc& setLodParams(float minLod, float maxLod, float lodBias)
+        Desc& setLodParams(float minLod_, float maxLod_, float lodBias_)
         {
-            this->minLod = minLod;
-            this->maxLod = maxLod;
-            this->lodBias = lodBias;
+            minLod = minLod_;
+            maxLod = maxLod_;
+            lodBias = lodBias_;
             return *this;
         }
 
@@ -142,7 +140,7 @@ public:
          */
         Desc& setComparisonMode(ComparisonMode mode)
         {
-            this->comparisonMode = mode;
+            comparisonMode = mode;
             return *this;
         }
 
@@ -151,7 +149,7 @@ public:
          */
         Desc& setReductionMode(ReductionMode mode)
         {
-            this->reductionMode = mode;
+            reductionMode = mode;
             return *this;
         }
 
@@ -163,18 +161,18 @@ public:
          */
         Desc& setAddressingMode(AddressMode modeU, AddressMode modeV, AddressMode modeW)
         {
-            this->addressModeU = modeU;
-            this->addressModeV = modeV;
-            this->addressModeW = modeW;
+            addressModeU = modeU;
+            addressModeV = modeV;
+            addressModeW = modeW;
             return *this;
         }
 
         /**
          * Set the border color. Only applies when the addressing mode is ClampToBorder
          */
-        Desc& setBorderColor(const float4& borderColor)
+        Desc& setBorderColor(const float4& borderColor_)
         {
-            this->borderColor = borderColor;
+            borderColor = borderColor_;
             return *this;
         }
 
@@ -186,7 +184,7 @@ public:
             return magFilter == other.magFilter && minFilter == other.minFilter && mipFilter == other.mipFilter &&
                    maxAnisotropy == other.maxAnisotropy && maxLod == other.maxLod && minLod == other.minLod && lodBias == other.lodBias &&
                    comparisonMode == other.comparisonMode && reductionMode == other.reductionMode && addressModeU == other.addressModeU &&
-                   addressModeV == other.addressModeV && addressModeW == other.addressModeW && borderColor == other.borderColor;
+                   addressModeV == other.addressModeV && addressModeW == other.addressModeW && all(borderColor == other.borderColor);
         }
 
         /**
@@ -195,7 +193,7 @@ public:
         bool operator!=(const Desc& other) const { return !(*this == other); }
     };
 
-    Sampler(std::shared_ptr<Device> pDevice, const Desc& desc);
+    Sampler(ref<Device> pDevice, const Desc& desc);
     ~Sampler();
 
     /**
@@ -203,7 +201,7 @@ public:
      * @param[in] desc Describes sampler settings.
      * @return A new object, or throws an exception if creation failed.
      */
-    static SharedPtr create(Device* pDevice, const Desc& desc);
+    static ref<Sampler> create(ref<Device> pDevice, const Desc& desc);
 
     /**
      * Get the sampler state.
@@ -287,10 +285,14 @@ public:
      */
     const Desc& getDesc() const { return mDesc; }
 
+    void breakStrongReferenceToDevice();
+
 private:
-    std::shared_ptr<Device> mpDevice;
+    BreakableReference<Device> mpDevice;
     Desc mDesc;
     Slang::ComPtr<gfx::ISamplerState> mGfxSamplerState;
     static uint32_t getApiMaxAnisotropy();
+
+    friend class Device;
 };
 } // namespace Falcor

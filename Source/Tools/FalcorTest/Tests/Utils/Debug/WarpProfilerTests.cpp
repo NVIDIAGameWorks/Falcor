@@ -32,7 +32,7 @@ namespace Falcor
 {
 GPU_TEST_D3D12(WarpProfiler)
 {
-    WarpProfiler profiler(ctx.getDevice().get(), 4);
+    WarpProfiler profiler(ctx.getDevice(), 4);
 
     Program::Desc desc;
     desc.addShaderLibrary("Tests/Utils/Debug/WarpProfilerTests.cs.slang").csEntry("main");

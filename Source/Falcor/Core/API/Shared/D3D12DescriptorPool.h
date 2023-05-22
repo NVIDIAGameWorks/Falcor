@@ -28,6 +28,7 @@
 #pragma once
 #include "D3D12Handles.h"
 #include "Core/Macros.h"
+#include "Core/Object.h"
 #include "Core/API/ShaderResourceType.h"
 #include "Core/API/GpuFence.h"
 #include <memory>
@@ -38,10 +39,9 @@ namespace Falcor
 struct DescriptorPoolApiData;
 struct DescriptorSetApiData;
 
-class FALCOR_API D3D12DescriptorPool
+class FALCOR_API D3D12DescriptorPool : public Object
 {
 public:
-    using SharedPtr = std::shared_ptr<D3D12DescriptorPool>;
     using ApiHandle = ID3D12DescriptorHeapPtr;
     using CpuHandle = D3D12_CPU_DESCRIPTOR_HANDLE;
     using GpuHandle = D3D12_GPU_DESCRIPTOR_HANDLE;
@@ -50,7 +50,7 @@ public:
 
     ~D3D12DescriptorPool();
 
-    static const uint32_t kTypeCount = uint32_t(Type::Count);
+    static constexpr uint32_t kTypeCount = uint32_t(Type::Count);
 
     class FALCOR_API Desc
     {
@@ -84,7 +84,7 @@ public:
      * @param[in] pFence Fence object for synchronization.
      * @return A new object, or throws an exception if creation failed.
      */
-    static SharedPtr create(Device* pDevice, const Desc& desc, const GpuFence::SharedPtr& pFence);
+    static ref<D3D12DescriptorPool> create(Device* pDevice, const Desc& desc, ref<GpuFence> pFence);
 
     uint32_t getDescCount(Type type) const { return mDesc.mDescCount[(uint32_t)type]; }
     uint32_t getTotalDescCount() const { return mDesc.mTotalDescCount; }
@@ -95,11 +95,11 @@ public:
 
 private:
     friend class D3D12DescriptorSet;
-    D3D12DescriptorPool(Device* pDevice, const Desc& desc, const GpuFence::SharedPtr& pFence);
+    D3D12DescriptorPool(Device* pDevice, const Desc& desc, ref<GpuFence> pFence);
     void releaseAllocation(std::shared_ptr<DescriptorSetApiData> pData);
     Desc mDesc;
     std::shared_ptr<ApiData> mpApiData;
-    GpuFence::SharedPtr mpFence;
+    ref<GpuFence> mpFence;
 
     struct DeferredRelease
     {

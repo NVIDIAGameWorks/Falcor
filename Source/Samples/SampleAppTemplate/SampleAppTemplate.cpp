@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -59,7 +59,7 @@ void SampleAppTemplate::onResize(uint32_t width, uint32_t height)
     //
 }
 
-void SampleAppTemplate::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
+void SampleAppTemplate::onFrameRender(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo)
 {
     const float4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);

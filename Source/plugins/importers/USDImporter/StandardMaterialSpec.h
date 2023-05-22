@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,8 +31,6 @@
 #include "Scene/Material/Material.h"
 #include "Scene/Material/StandardMaterial.h"
 #include "Utils/Logger.h"
-#define GLM_ENABLE_EXPERIMENTAL
-#include "glm/gtx/hash.hpp"
 
 #include <string>
 
@@ -75,12 +73,12 @@ struct StandardMaterialSpec
 
         bool operator==(const TextureTransform& other) const
         {
-            return scale == other.scale && translate == other.translate && rotate == other.rotate;
+            return all(scale == other.scale) && all(translate == other.translate) && rotate == other.rotate;
         }
 
         bool operator!=(const TextureTransform& other) const
         {
-            return scale != other.scale || translate != other.translate || rotate != other.rotate;
+            return any(scale != other.scale) || any(translate != other.translate) || rotate != other.rotate;
         }
     };
 
@@ -94,8 +92,8 @@ struct StandardMaterialSpec
 
         bool operator==(const ConvertedInput& o) const
         {
-            return texturePath == o.texturePath && texTransform == o.texTransform && textureScale == o.textureScale &&
-                   channels == o.channels && uniformValue == o.uniformValue && loadSRGB == o.loadSRGB;
+            return texturePath == o.texturePath && texTransform == o.texTransform && all(textureScale == o.textureScale) &&
+                   channels == o.channels && all(uniformValue == o.uniformValue) && loadSRGB == o.loadSRGB;
         }
 
         float4 uniformValue = float4(0.f, 0.f, 0.f, 0.f); ///< Uniform value, may only hold a single valid component for
@@ -123,8 +121,8 @@ struct StandardMaterialSpec
         if (!input.isTextured())
             return;
         const Falcor::Transform& newTransform = input.texTransform;
-        if (newTransform.getMatrix() != Falcor::rmcv::identity<Falcor::rmcv::mat4>() &&
-            texTransform.getMatrix() == Falcor::rmcv::identity<Falcor::rmcv::mat4>())
+        if (newTransform.getMatrix() != Falcor::float4x4::identity() &&
+            texTransform.getMatrix() == Falcor::float4x4::identity())
         {
             texTransform = newTransform;
         }

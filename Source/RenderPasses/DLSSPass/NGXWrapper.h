@@ -54,7 +54,7 @@ public:
     };
 
     /// Constructor. Throws an exception if unable to initialize NGX.
-    NGXWrapper(Device* pDevice, const std::filesystem::path& applicationDataPath, const std::filesystem::path& featureSearchPath);
+    NGXWrapper(ref<Device> pDevice, const std::filesystem::path& applicationDataPath, const std::filesystem::path& featureSearchPath);
     ~NGXWrapper();
 
     /// Query optimal DLSS settings for a given resolution and performance/quality profile.
@@ -95,7 +95,7 @@ private:
     void initializeNGX(const std::filesystem::path& applicationDataPath, const std::filesystem::path& featureSearchPath);
     void shutdownNGX();
 
-    Device* mpDevice = nullptr;
+    ref<Device> mpDevice;
     bool mInitialized = false;
 
     NVSDK_NGX_Parameter* mpParameters = nullptr;

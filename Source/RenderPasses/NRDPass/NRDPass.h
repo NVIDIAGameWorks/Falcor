@@ -42,8 +42,6 @@ class NRDPass : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(NRDPass, "NRD", "NRD denoiser.");
 
-    using SharedPtr = std::shared_ptr<NRDPass>;
-
     enum class DenoisingMethod : uint32_t
     {
         RelaxDiffuseSpecular,
@@ -53,19 +51,19 @@ public:
         SpecularDeltaMv
     };
 
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
+    static ref<NRDPass> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<NRDPass>(pDevice, dict); }
+
+    NRDPass(ref<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
-    virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
+    virtual void setScene(RenderContext* pRenderContext, const ref<Scene>& pScene) override;
 
 private:
-    NRDPass(std::shared_ptr<Device> pDevice, const Dictionary& dict);
-
-    Scene::SharedPtr mpScene;
+    ref<Scene> mpScene;
     uint2 mScreenSize{};
     uint32_t mFrameIndex = 0;
     RenderPassHelpers::IOSize  mOutputSizeSelection = RenderPassHelpers::IOSize::Default; ///< Selected output size.
@@ -89,22 +87,22 @@ private:
     nrd::RelaxDiffuseSettings mRelaxDiffuseSettings = {};
     nrd::ReblurSettings mReblurSettings = {};
 
-    std::vector<Falcor::Sampler::SharedPtr> mpSamplers;
-    std::vector<Falcor::D3D12DescriptorSetLayout> mCBVSRVUAVdescriptorSetLayouts;
-    Falcor::D3D12DescriptorSet::SharedPtr mpSamplersDescriptorSet;
-    std::vector<Falcor::D3D12RootSignature::SharedPtr> mpRootSignatures;
-    std::vector<ComputePass::SharedPtr> mpPasses;
-    std::vector<ProgramKernels::SharedConstPtr> mpCachedProgramKernels;
-    std::vector<ComputeStateObject::SharedPtr> mpCSOs;
-    std::vector<Falcor::Texture::SharedPtr> mpPermanentTextures;
-    std::vector<Falcor::Texture::SharedPtr> mpTransientTextures;
-    Falcor::Buffer::SharedPtr mpConstantBuffer;
-    Falcor::D3D12ConstantBufferView::SharedPtr mpCBV;
+    std::vector<ref<Sampler>> mpSamplers;
+    std::vector<D3D12DescriptorSetLayout> mCBVSRVUAVdescriptorSetLayouts;
+    ref<D3D12DescriptorSet> mpSamplersDescriptorSet;
+    std::vector<ref<D3D12RootSignature>> mpRootSignatures;
+    std::vector<ref<ComputePass>> mpPasses;
+    std::vector<ref<const ProgramKernels>> mpCachedProgramKernels;
+    std::vector<ref<ComputeStateObject>> mpCSOs;
+    std::vector<ref<Texture>> mpPermanentTextures;
+    std::vector<ref<Texture>> mpTransientTextures;
+    ref<Buffer> mpConstantBuffer;
+    ref<D3D12ConstantBufferView> mpCBV;
 
-    rmcv::mat4 mPrevViewMatrix;
-    rmcv::mat4 mPrevProjMatrix;
+    float4x4 mPrevViewMatrix;
+    float4x4 mPrevProjMatrix;
 
     // Additional classic Falcor compute pass and resources for packing radiance and hitT for NRD.
-    ComputePass::SharedPtr mpPackRadiancePassRelax;
-    ComputePass::SharedPtr mpPackRadiancePassReblur;
+    ref<ComputePass> mpPackRadiancePassRelax;
+    ref<ComputePass> mpPackRadiancePassReblur;
 };

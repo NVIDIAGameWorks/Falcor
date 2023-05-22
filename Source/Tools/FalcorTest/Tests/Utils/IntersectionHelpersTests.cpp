@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -80,7 +80,7 @@ float3 getRayOrigin(RayOriginLocation loc, float radius, float3 center, float3 h
         {
             x = rOut();
             y = rOut();
-            z = (glm::dot(normal, hit) - normal.x * x - normal.y * y) / normal.z;
+            z = (dot(normal, hit) - normal.x * x - normal.y * y) / normal.z;
             return float3(x, y, z);
         }
 
@@ -89,7 +89,7 @@ float3 getRayOrigin(RayOriginLocation loc, float radius, float3 center, float3 h
             x = rOut();
             y = rOut();
             z = rOut();
-        } while (x * x + y * y + z * z <= radius * radius || glm::dot(normal, float3(x, y, z) - shiftedHit) >= 0);
+        } while (x * x + y * y + z * z <= radius * radius || dot(normal, float3(x, y, z) - shiftedHit) >= 0);
         break;
     case RayOriginLocation::Inside:
         do
@@ -108,24 +108,24 @@ float3 getRayOrigin(RayOriginLocation loc, float radius, float3 center, float3 h
 
 float3 getRayDir(bool hasIntersection, float3 origin, float3 hit, bool normalized)
 {
-    if (hit == origin)
+    if (all(hit == origin))
     {
         std::mt19937 rng;
         auto dist = std::uniform_real_distribution<float>(-5, 5);
         auto r = [&]() -> float { return dist(rng); };
 
         auto dir = float3(r(), r(), r());
-        return (normalized) ? glm::normalize(dir) : dir;
+        return (normalized) ? normalize(dir) : dir;
     }
 
     float3 dir = hit - origin;
     if (hasIntersection)
     {
-        return (normalized) ? glm::normalize(dir) : dir;
+        return (normalized) ? normalize(dir) : dir;
     }
     else
     {
-        return (normalized) ? glm::normalize(-dir) : -dir;
+        return (normalized) ? normalize(-dir) : -dir;
     }
 }
 } // namespace
@@ -145,7 +145,7 @@ GPU_TEST_D3D12(RaySphereIntersection)
     for (int32_t i = 0; i < 12; i++)
     {
         testSphereCenters[i] = float3(r(), r(), r());
-        testSphereRadii[i] = abs(r());
+        testSphereRadii[i] = std::abs(r());
         refIsects[i] = getHitPoint(testSphereRadii[i], testSphereCenters[i]);
         switch (i)
         {
@@ -208,11 +208,11 @@ GPU_TEST_D3D12(RaySphereIntersection)
         default:
             const float eps = 5e-4f;
             EXPECT_EQ(result[i], 1u) << "RaySphereTestCase" << i << ", expected " << 1 << ", got " << result[i];
-            EXPECT(abs(isectLoc[i].x - refIsects[i].x) <= eps * (abs(isectLoc[i].x) + abs(refIsects[i].x) + 1.0f))
+            EXPECT(std::abs(isectLoc[i].x - refIsects[i].x) <= eps * (std::abs(isectLoc[i].x) + std::abs(refIsects[i].x) + 1.0f))
                 << "RaySphereTestCase" << i << ", expected " << refIsects[i].x << ", got " << isectLoc[i].x;
-            EXPECT(abs(isectLoc[i].y - refIsects[i].y) <= eps * (abs(isectLoc[i].y) + abs(refIsects[i].y) + 1.0f))
+            EXPECT(std::abs(isectLoc[i].y - refIsects[i].y) <= eps * (std::abs(isectLoc[i].y) + std::abs(refIsects[i].y) + 1.0f))
                 << "RaySphereTestCase" << i << ", expected " << refIsects[i].y << ", got " << isectLoc[i].y;
-            EXPECT(abs(isectLoc[i].z - refIsects[i].z) <= eps * (abs(isectLoc[i].z) + abs(refIsects[i].z) + 1.0f))
+            EXPECT(std::abs(isectLoc[i].z - refIsects[i].z) <= eps * (std::abs(isectLoc[i].z) + std::abs(refIsects[i].z) + 1.0f))
                 << "RaySphereTestCase" << i << ", expected " << refIsects[i].z << ", got " << isectLoc[i].z;
         }
 

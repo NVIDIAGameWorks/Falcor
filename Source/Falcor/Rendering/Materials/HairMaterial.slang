@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -58,11 +58,16 @@ struct HairMaterial : MaterialBase, IMaterial
         d.betaN = spec.y;
         d.alpha = spec.z;
 
-        return HairMaterialInstance(d);
-    }
+        // Compute final shading frame.
+        // Do not flip the shading normal for backfacing hits. The BSDF handles transmission from both sides.
+        ShadingFrame sf = sd.frame;
+        if (isAdjustShadingNormalEnabled(hints))
+        {
+            adjustShadingNormal(sd, sf);
+        }
 
-    // Normal mapping is not supported by this material.
-    void modifyTangentSpace(const MaterialSystem ms, const ITextureSampler lod, inout ShadingData sd) {}
+        return HairMaterialInstance(sf, d);
+    }
 
     // Alpha testing is not supported by this material.
     float evalOpacity(const MaterialSystem ms, const VertexData v, const ITextureSampler lod) { return 1.f; }

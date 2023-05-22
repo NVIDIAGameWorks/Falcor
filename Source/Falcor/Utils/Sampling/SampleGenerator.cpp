@@ -29,52 +29,54 @@
 
 namespace Falcor
 {
-    static std::map<uint32_t, std::function<SampleGenerator::SharedPtr(std::shared_ptr<Device>)>> sFactory;
-    static Gui::DropdownList sGuiDropdownList;
+static std::map<uint32_t, std::function<ref<SampleGenerator>(ref<Device>)>> sFactory;
+static Gui::DropdownList sGuiDropdownList;
 
-    SampleGenerator::SharedPtr SampleGenerator::create(std::shared_ptr<Device> pDevice, uint32_t type)
+ref<SampleGenerator> SampleGenerator::create(ref<Device> pDevice, uint32_t type)
+{
+    if (auto it = sFactory.find(type); it != sFactory.end())
     {
-        if (auto it = sFactory.find(type); it != sFactory.end())
-        {
-            return it->second(std::move(pDevice));
-        }
-        else
-        {
-            throw ArgumentError("Can't create SampleGenerator. Unknown type");
-        }
+        return it->second(pDevice);
     }
-
-    Shader::DefineList SampleGenerator::getDefines() const
+    else
     {
-        Shader::DefineList defines;
-        defines.add("SAMPLE_GENERATOR_TYPE", std::to_string(mType));
-        return defines;
+        throw ArgumentError("Can't create SampleGenerator. Unknown type");
     }
-
-    const Gui::DropdownList& SampleGenerator::getGuiDropdownList()
-    {
-        return sGuiDropdownList;
-    }
-
-    void SampleGenerator::registerType(uint32_t type, const std::string& name, std::function<SharedPtr(std::shared_ptr<Device>)> createFunc)
-    {
-        sGuiDropdownList.push_back({ type, name });
-        sFactory[type] = createFunc;
-    }
-
-    void SampleGenerator::registerAll()
-    {
-        registerType(SAMPLE_GENERATOR_TINY_UNIFORM, "Tiny uniform (32-bit)", [] (std::shared_ptr<Device> pDevice) { return SharedPtr(new SampleGenerator(std::move(pDevice), SAMPLE_GENERATOR_TINY_UNIFORM)); });
-        registerType(SAMPLE_GENERATOR_UNIFORM, "Uniform (128-bit)", [] (std::shared_ptr<Device> pDevice) { return SharedPtr(new SampleGenerator(std::move(pDevice), SAMPLE_GENERATOR_UNIFORM)); });
-    }
-
-    // Automatically register basic sampler types.
-    static struct RegisterSampleGenerators
-    {
-        RegisterSampleGenerators()
-        {
-            SampleGenerator::registerAll();
-        }
-    }
-    sRegisterSampleGenerators;
 }
+
+Shader::DefineList SampleGenerator::getDefines() const
+{
+    Shader::DefineList defines;
+    defines.add("SAMPLE_GENERATOR_TYPE", std::to_string(mType));
+    return defines;
+}
+
+const Gui::DropdownList& SampleGenerator::getGuiDropdownList()
+{
+    return sGuiDropdownList;
+}
+
+void SampleGenerator::registerType(uint32_t type, const std::string& name, std::function<ref<SampleGenerator>(ref<Device>)> createFunc)
+{
+    sGuiDropdownList.push_back({type, name});
+    sFactory[type] = createFunc;
+}
+
+void SampleGenerator::registerAll()
+{
+    registerType(
+        SAMPLE_GENERATOR_TINY_UNIFORM, "Tiny uniform (32-bit)",
+        [](ref<Device> pDevice) { return ref<SampleGenerator>(new SampleGenerator(pDevice, SAMPLE_GENERATOR_TINY_UNIFORM)); }
+    );
+    registerType(
+        SAMPLE_GENERATOR_UNIFORM, "Uniform (128-bit)",
+        [](ref<Device> pDevice) { return ref<SampleGenerator>(new SampleGenerator(pDevice, SAMPLE_GENERATOR_UNIFORM)); }
+    );
+}
+
+// Automatically register basic sampler types.
+static struct RegisterSampleGenerators
+{
+    RegisterSampleGenerators() { SampleGenerator::registerAll(); }
+} sRegisterSampleGenerators;
+} // namespace Falcor

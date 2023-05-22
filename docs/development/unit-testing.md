@@ -27,26 +27,41 @@ Run the batch file `tests/run_unit_tests.bat` with appropriate settings.
 
 ```
 $ ./run_unit_tests.bat --help
-usage: run_unit_tests.py [-h] [-c CONFIG] [-e ENVIRONMENT] [-f FILTER]
-                         [-x XML_REPORT] [-r REPEAT] [--skip-build]
+usage: run_unit_tests.py [-h] [--environment ENVIRONMENT] [--config CONFIG]
                          [--list-configs]
 
-Utility for running unit tests.
+Frontend for running unit tests. This script helps to run the falcor unit
+tests for different build configurations.
 
 optional arguments:
-  -h, --help            show this help message and exit
-  -c CONFIG, --config CONFIG
-                        Build configuration
-  -e ENVIRONMENT, --environment ENVIRONMENT
-                        Environment
-  -f FILTER, --filter FILTER
-                        Regular expression for filtering tests to run
-  -x XML_REPORT, --xml-report XML_REPORT
-                        XML report output file
-  -r REPEAT, --repeat REPEAT
-                        Number of times to repeat the test.
-  --skip-build          Skip building project before running tests
-  --list-configs        List available build configurations.
+  -h, --help            Show this help message and exit
+  --environment ENVIRONMENT
+                        Environment (default: environment/default.json)
+  --config CONFIG       Build configuration (default: windows-ninja-msvc-
+                        Release)
+  --list-configs        List available build configurations
+
+Additional arguments consumed by FalcorTest.exe:
+
+  FalcorTest {OPTIONS}
+
+    Falcor unit tests.
+
+  OPTIONS:
+
+      -h, --help                        Display this help menu.
+      -c[all,cpu,gpu],
+      --category=[all,cpu,gpu]          Test categories to run (default: all).
+      -d[d3d12|vulkan],
+      --device-type=[d3d12|vulkan]      Graphics device type.
+      --list-gpus                       List available GPUs
+      --gpu=[index]                     Select specific GPU to use
+      -f[filter], --filter=[filter]     Regular expression for filtering tests
+                                        to run.
+      -x[path], --xml-report=[path]     XML report output file.
+      -r[N], --repeat=[N]               Number of times to repeat the test.
+      --enable-debug-layer              Enable debug layer (enabled by default
+                                        in Debug build).
 ```
 
 ### From Visual Studio or the Command Line
@@ -61,8 +76,15 @@ Run the executable `build/<preset name>/bin/[Debug|Release]/FalcorTest.exe`
   OPTIONS:
 
       -h, --help                        Display this help menu.
+      -c[all,cpu,gpu],
+      --category=[all,cpu,gpu]          Test categories to run (default: all).
+      -d[d3d12|vulkan],
+      --device-type=[d3d12|vulkan]      Graphics device type.
+      --list-gpus                       List available GPUs
+      --gpu=[index]                     Select specific GPU to use
       -f[filter], --filter=[filter]     Regular expression for filtering tests
                                         to run.
+      -x[path], --xml-report=[path]     XML report output file.
       -r[N], --repeat=[N]               Number of times to repeat the test.
       --enable-debug-layer              Enable debug layer (enabled by default
                                         in Debug build).

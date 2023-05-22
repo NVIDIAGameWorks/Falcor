@@ -42,7 +42,7 @@ namespace
 
 static void regTAA(pybind11::module& m)
 {
-    pybind11::class_<TAA, RenderPass, TAA::SharedPtr> pass(m, "TAA");
+    pybind11::class_<TAA, RenderPass, ref<TAA>> pass(m, "TAA");
     pass.def_property("alpha", &TAA::getAlpha, &TAA::setAlpha);
     pass.def_property("sigma", &TAA::getColorBoxSigma, &TAA::setColorBoxSigma);
     pass.def_property("antiFlicker", &TAA::getAntiFlicker, &TAA::setAntiFlicker);
@@ -54,27 +54,22 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
     ScriptBindings::registerBinding(regTAA);
 }
 
-TAA::TAA(std::shared_ptr<Device> pDevice)
-    : RenderPass(std::move(pDevice))
+TAA::TAA(ref<Device> pDevice, const Dictionary& dict)
+    : RenderPass(pDevice)
 {
     mpPass = FullScreenPass::create(mpDevice, kShaderFilename);
-    mpFbo = Fbo::create(mpDevice.get());
+    mpFbo = Fbo::create(mpDevice);
     Sampler::Desc samplerDesc;
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-    mpLinearSampler = Sampler::create(mpDevice.get(), samplerDesc);
-}
+    mpLinearSampler = Sampler::create(mpDevice, samplerDesc);
 
-TAA::SharedPtr TAA::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-{
-    SharedPtr pTAA = SharedPtr(new TAA(std::move(pDevice)));
     for (const auto& [key, value] : dict)
     {
-        if (key == kAlpha) pTAA->mControls.alpha = value;
-        else if (key == kColorBoxSigma) pTAA->mControls.colorBoxSigma = value;
-        else if (key == kAntiFlicker) pTAA->mControls.antiFlicker = value;
+        if (key == kAlpha) mControls.alpha = value;
+        else if (key == kColorBoxSigma) mControls.colorBoxSigma = value;
+        else if (key == kAntiFlicker) mControls.antiFlicker = value;
         else logWarning("Unknown field '{}' in a TemporalAA dictionary.", key);
     }
-    return pTAA;
 }
 
 Dictionary TAA::getScriptingDictionary()
@@ -108,13 +103,14 @@ void TAA::execute(RenderContext* pRenderContext, const RenderData& renderData)
     FALCOR_ASSERT((pColorIn->getHeight() == mpPrevColor->getHeight()) && (pColorIn->getHeight() == pMotionVec->getHeight()));
     FALCOR_ASSERT(pColorIn->getSampleCount() == 1 && mpPrevColor->getSampleCount() == 1 && pMotionVec->getSampleCount() == 1);
 
-    mpPass["PerFrameCB"]["gAlpha"] = mControls.alpha;
-    mpPass["PerFrameCB"]["gColorBoxSigma"] = mControls.colorBoxSigma;
-    mpPass["PerFrameCB"]["gAntiFlicker"] = mControls.antiFlicker;
-    mpPass["gTexColor"] = pColorIn;
-    mpPass["gTexMotionVec"] = pMotionVec;
-    mpPass["gTexPrevColor"] = mpPrevColor;
-    mpPass["gSampler"] = mpLinearSampler;
+    auto var = mpPass->getRootVar();
+    var["PerFrameCB"]["gAlpha"] = mControls.alpha;
+    var["PerFrameCB"]["gColorBoxSigma"] = mControls.colorBoxSigma;
+    var["PerFrameCB"]["gAntiFlicker"] = mControls.antiFlicker;
+    var["gTexColor"] = pColorIn;
+    var["gTexMotionVec"] = pMotionVec;
+    var["gTexPrevColor"] = mpPrevColor;
+    var["gSampler"] = mpLinearSampler;
 
     mpPass->execute(pRenderContext, mpFbo);
     pRenderContext->blit(pColorOut->getSRV(), mpPrevColor->getRTV());
@@ -129,7 +125,7 @@ void TAA::allocatePrevColor(const Texture* pColorOut)
     allocate = allocate || (mpPrevColor->getFormat() != pColorOut->getFormat());
     FALCOR_ASSERT(pColorOut->getSampleCount() == 1);
 
-    if (allocate) mpPrevColor = Texture::create2D(mpDevice.get(), pColorOut->getWidth(), pColorOut->getHeight(), pColorOut->getFormat(), 1, 1, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
+    if (allocate) mpPrevColor = Texture::create2D(mpDevice, pColorOut->getWidth(), pColorOut->getHeight(), pColorOut->getFormat(), 1, 1, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
 }
 
 void TAA::renderUI(Gui::Widgets& widget)

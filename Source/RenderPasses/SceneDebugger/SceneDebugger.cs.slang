@@ -198,9 +198,9 @@ struct SceneDebugger
             // ShadingData
             d.posW = sd.posW;
             d.V = sd.V;
-            d.N = sd.N;
-            d.T = sd.T;
-            d.B = sd.B;
+            d.N = sd.frame.N;
+            d.T = sd.frame.T;
+            d.B = sd.frame.B;
             d.uv = sd.uv;
             d.faceN = sd.faceN;
             d.tangentW = sd.tangentW;
@@ -246,11 +246,11 @@ struct SceneDebugger
         case SceneDebuggerMode::FaceNormal:
             return remapVector(sd.faceN);
         case SceneDebuggerMode::ShadingNormal:
-            return remapVector(sd.N);
+            return remapVector(sd.frame.N);
         case SceneDebuggerMode::ShadingTangent:
-            return remapVector(sd.T);
+            return remapVector(sd.frame.T);
         case SceneDebuggerMode::ShadingBitangent:
-            return remapVector(sd.B);
+            return remapVector(sd.frame.B);
         case SceneDebuggerMode::FrontFacingFlag:
         {
             float v = 0.75f * luminance(abs(sd.faceN)) + 0.25f;
@@ -259,7 +259,7 @@ struct SceneDebugger
         case SceneDebuggerMode::BackfacingShadingNormal:
         {
             float v = 0.75f * luminance(abs(sd.faceN)) + 0.25f;
-            bool backFacing = dot(sd.N, sd.V) <= 0.f;
+            bool backFacing = dot(sd.frame.N, sd.V) <= 0.f;
             return backFacing ? float3(z, z, 0) : float3(v, v, v);
         }
         case SceneDebuggerMode::TexCoords:

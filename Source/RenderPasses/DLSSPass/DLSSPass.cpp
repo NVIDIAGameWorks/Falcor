@@ -57,7 +57,7 @@ const char kExposure[] = "exposure";
 
 static void registerDLSSPass(pybind11::module& m)
 {
-    pybind11::class_<DLSSPass, RenderPass, DLSSPass::SharedPtr> pass(m, "DLSSPass");
+    pybind11::class_<DLSSPass, RenderPass, ref<DLSSPass>> pass(m, "DLSSPass");
 
     pybind11::enum_<DLSSPass::Profile> profile(m, "DLSSProfile");
     profile.value("MaxPerf", DLSSPass::Profile::MaxPerf);
@@ -75,12 +75,7 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
     ScriptBindings::registerBinding(registerDLSSPass);
 }
 
-DLSSPass::SharedPtr DLSSPass::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-{
-    return SharedPtr(new DLSSPass(std::move(pDevice), dict));
-}
-
-DLSSPass::DLSSPass(std::shared_ptr<Device> pDevice, const Dictionary& dict) : RenderPass(std::move(pDevice))
+DLSSPass::DLSSPass(ref<Device> pDevice, const Dictionary& dict) : RenderPass(pDevice)
 {
     for (const auto& [key, value] : dict)
     {
@@ -105,7 +100,7 @@ DLSSPass::DLSSPass(std::shared_ptr<Device> pDevice, const Dictionary& dict) : Re
             logWarning("Unknown field '{}' in a DLSSPass dictionary.", key);
     }
 
-    mpExposure = Texture::create2D(mpDevice.get(), 1, 1, ResourceFormat::R32Float, 1, 1);
+    mpExposure = Texture::create2D(mpDevice, 1, 1, ResourceFormat::R32Float, 1, 1);
 }
 
 Dictionary DLSSPass::getScriptingDictionary()
@@ -137,7 +132,7 @@ RenderPassReflection DLSSPass::reflect(const CompileData& compileData)
     return r;
 }
 
-void DLSSPass::setScene(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene)
+void DLSSPass::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
 {
     mpScene = pScene;
 }
@@ -193,7 +188,7 @@ void DLSSPass::renderUI(Gui::Widgets& widget)
 void DLSSPass::initializeDLSS(RenderContext* pRenderContext)
 {
     if (!mpNGXWrapper)
-        mpNGXWrapper.reset(new NGXWrapper(mpDevice.get(), getRuntimeDirectory(), getRuntimeDirectory()));
+        mpNGXWrapper.reset(new NGXWrapper(mpDevice, getRuntimeDirectory(), getRuntimeDirectory()));
 
     Texture* target = nullptr; // Not needed for D3D12 implementation
     bool depthInverted = false;
@@ -215,7 +210,7 @@ void DLSSPass::initializeDLSS(RenderContext* pRenderContext)
 
     mDLSSOutputSize = uint2(float2(mInputSize) * float2(mInputSize) / float2(optimalSettings.optimalRenderSize));
     mpOutput = Texture::create2D(
-        mpDevice.get(), mDLSSOutputSize.x, mDLSSOutputSize.y, ResourceFormat::RGBA32Float, 1, 1, nullptr,
+        mpDevice, mDLSSOutputSize.x, mDLSSOutputSize.y, ResourceFormat::RGBA32Float, 1, 1, nullptr,
         ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource
     );
 
@@ -246,7 +241,7 @@ void DLSSPass::executeInternal(RenderContext* pRenderContext, const RenderData& 
         mExposureUpdated = false;
     }
 
-    if (mRecreate || inputSize != mInputSize)
+    if (mRecreate || any(inputSize != mInputSize))
     {
         mRecreate = false;
         mInputSize = inputSize;
@@ -256,7 +251,7 @@ void DLSSPass::executeInternal(RenderContext* pRenderContext, const RenderData& 
         // If pass output is configured to be fixed to DLSS output, but the sizes don't match,
         // we'll trigger a graph recompile to update the pass I/O size requirements.
         // This causes a one frame delay, but unfortunately we don't know the size until after initializeDLSS().
-        if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed && mPassOutputSize != mDLSSOutputSize)
+        if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed && any(mPassOutputSize != mDLSSOutputSize))
             requestRecompile();
     }
 
@@ -264,7 +259,7 @@ void DLSSPass::executeInternal(RenderContext* pRenderContext, const RenderData& 
         // Fetch inputs and verify their dimensions.
         auto getInput = [=](const std::string& name)
         {
-            const auto& tex = renderData.getTexture(name);
+            auto tex = renderData.getTexture(name);
             if (!tex)
                 throw RuntimeError("DLSSPass: Missing input '{}'", name);
             if (tex->getWidth() != mInputSize.x || tex->getHeight() != mInputSize.y)
@@ -272,19 +267,19 @@ void DLSSPass::executeInternal(RenderContext* pRenderContext, const RenderData& 
             return tex;
         };
 
-        const auto& color = getInput(kColorInput);
-        const auto& depth = getInput(kDepthInput);
-        const auto& motionVectors = getInput(kMotionVectorsInput);
+        auto color = getInput(kColorInput);
+        auto depth = getInput(kDepthInput);
+        auto motionVectors = getInput(kMotionVectorsInput);
 
         // Determine if we can write directly to the render pass output.
         // Otherwise we'll output to an internal buffer and blit to the pass output.
         FALCOR_ASSERT(mpOutput->getWidth() == mDLSSOutputSize.x && mpOutput->getHeight() == mDLSSOutputSize.y);
-        bool useInternalBuffer = (mDLSSOutputSize != mPassOutputSize || pOutput->getFormat() != mpOutput->getFormat());
+        bool useInternalBuffer = (any(mDLSSOutputSize != mPassOutputSize) || pOutput->getFormat() != mpOutput->getFormat());
 
-        const auto& output = useInternalBuffer ? mpOutput : pOutput;
+        auto output = useInternalBuffer ? mpOutput : pOutput;
 
         // In DLSS X-jitter should go left-to-right, Y-jitter should go top-to-bottom.
-        // Falcor is using glm::perspective() that gives coordinate system with
+        // Falcor is using math::perspective() that gives coordinate system with
         // X from -1 to 1, left-to-right, and Y from -1 to 1, bottom-to-top.
         // Therefore, we need to flip the Y-jitter only.
         const auto& camera = mpScene->getCamera();

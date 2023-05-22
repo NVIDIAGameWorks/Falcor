@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 #include "Core/Macros.h"
 #include "Utils/Math/Vector.h"
 #include "Utils/Math/Matrix.h"
+#include "Utils/Math/Quaternion.h"
 
 namespace Falcor
 {
@@ -59,8 +60,8 @@ namespace Falcor
         const float3& getScaling() const { return mScaling; }
         void setScaling(const float3& scaling);
 
-        const glm::quat& getRotation() const { return mRotation; }
-        void setRotation(const glm::quat& rotation);
+        const quatf& getRotation() const { return mRotation; }
+        void setRotation(const quatf& rotation);
 
         float3 getRotationEuler() const;
         void setRotationEuler(const float3& angles);
@@ -73,7 +74,7 @@ namespace Falcor
         CompositionOrder getCompositionOrder() const { return mCompositionOrder; } ;
         void setCompositionOrder(const CompositionOrder& order) { mCompositionOrder = order; mDirty = true; }
 
-        const rmcv::mat4& getMatrix() const;
+        const float4x4& getMatrix() const;
 
         bool operator==(const Transform& other) const;
         bool operator!=(const Transform& other) const { return !((*this) == other); }
@@ -83,11 +84,11 @@ namespace Falcor
     private:
         float3 mTranslation = float3(0.f);
         float3 mScaling = float3(1.f);
-        glm::quat mRotation = glm::identity<glm::quat>();
+        quatf mRotation = quatf::identity();
         CompositionOrder mCompositionOrder = CompositionOrder::Default;
 
         mutable bool mDirty = true;
-        mutable rmcv::mat4 mMatrix;
+        mutable float4x4 mMatrix;
 
         friend class SceneCache;
     };

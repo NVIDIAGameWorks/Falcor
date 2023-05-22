@@ -43,7 +43,7 @@ struct MeshLightData
     uint        triangleCount       = 0;                ///< Number of triangles in mesh light.
     uint        materialID          = kInvalidIndex;    ///< Material ID (index into scene.materials array).
 
-    static const uint kInvalidIndex = 0xffffffff;
+    static constexpr uint kInvalidIndex = 0xffffffff;
 };
 
 END_NAMESPACE_FALCOR

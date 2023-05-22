@@ -35,11 +35,11 @@
 #include "Utils/Math/Common.h"
 #include "Utils/Math/Vector.h"
 #include "Utils/Math/Matrix.h"
-#include "Scene/SceneBuilderAccess.h"
+#include "GlobalState.h"
 
 #ifdef _MSC_VER
 #pragma warning(push)
-#pragma warning(disable : 4146 4244 4267 4275 4996)
+#pragma warning(disable : 4146 4244 4267 4275 4996 4456)
 #endif
 #include <nanovdb/util/IO.h>
 #include <nanovdb/util/GridStats.h>
@@ -76,19 +76,19 @@ namespace Falcor
         }
     }
 
-    Grid::SharedPtr Grid::createSphere(std::shared_ptr<Device> pDevice, float radius, float voxelSize, float blendRange)
+    ref<Grid> Grid::createSphere(ref<Device> pDevice, float radius, float voxelSize, float blendRange)
     {
         auto handle = nanovdb::createFogVolumeSphere<float>(radius, nanovdb::Vec3f(0.f), voxelSize, blendRange);
-        return SharedPtr(new Grid(std::move(pDevice), std::move(handle)));
+        return ref<Grid>(new Grid(pDevice, std::move(handle)));
     }
 
-    Grid::SharedPtr Grid::createBox(std::shared_ptr<Device> pDevice, float width, float height, float depth, float voxelSize, float blendRange)
+    ref<Grid> Grid::createBox(ref<Device> pDevice, float width, float height, float depth, float voxelSize, float blendRange)
     {
         auto handle = nanovdb::createFogVolumeBox<float>(width, height, depth, nanovdb::Vec3f(0.f), voxelSize, blendRange);
-        return SharedPtr(new Grid(std::move(pDevice), std::move(handle)));
+        return ref<Grid>(new Grid(pDevice, std::move(handle)));
     }
 
-    Grid::SharedPtr Grid::createFromFile(std::shared_ptr<Device> pDevice, const std::filesystem::path& path, const std::string& gridname)
+    ref<Grid> Grid::createFromFile(ref<Device> pDevice, const std::filesystem::path& path, const std::string& gridname)
     {
         std::filesystem::path fullPath;
         if (!findFileInDataDirectories(path, fullPath))
@@ -99,11 +99,11 @@ namespace Falcor
 
         if (hasExtension(fullPath, "nvdb"))
         {
-            return createFromNanoVDBFile(std::move(pDevice), fullPath, gridname);
+            return createFromNanoVDBFile(pDevice, fullPath, gridname);
         }
         else if (hasExtension(fullPath, "vdb"))
         {
-            return createFromOpenVDBFile(std::move(pDevice), fullPath, gridname);
+            return createFromOpenVDBFile(pDevice, fullPath, gridname);
         }
         else
         {
@@ -186,24 +186,24 @@ namespace Falcor
         return mGridHandle;
     }
 
-    rmcv::mat4 Grid::getTransform() const
+    float4x4 Grid::getTransform() const
     {
         const auto& gridMap = mGridHandle.gridMetaData()->map();
-        const rmcv::mat3 affine = rmcv::make_mat3(gridMap.mMatF);
+        const float3x3 affine = math::matrixFromCoefficients<float, 3, 3>(gridMap.mMatF);
         const float3 translation = float3(gridMap.mVecF[0], gridMap.mVecF[1], gridMap.mVecF[2]);
-        return rmcv::translate(rmcv::mat4(affine), translation);
+        return math::translate(float4x4(affine), translation);
     }
 
-    rmcv::mat4 Grid::getInvTransform() const
+    float4x4 Grid::getInvTransform() const
     {
         const auto& gridMap = mGridHandle.gridMetaData()->map();
-        const rmcv::mat3 invAffine = rmcv::make_mat3(gridMap.mInvMatF);
+        const float3x3 invAffine = math::matrixFromCoefficients<float, 3, 3>(gridMap.mInvMatF);
         const float3 translation = float3(gridMap.mVecF[0], gridMap.mVecF[1], gridMap.mVecF[2]);
-        return rmcv::translate(rmcv::mat4(invAffine), -translation);
+        return math::translate(float4x4(invAffine), -translation);
     }
 
-    Grid::Grid(std::shared_ptr<Device> pDevice, nanovdb::GridHandle<nanovdb::HostBuffer> gridHandle)
-        : mpDevice(std::move(pDevice))
+    Grid::Grid(ref<Device> pDevice, nanovdb::GridHandle<nanovdb::HostBuffer> gridHandle)
+        : mpDevice(pDevice)
         , mGridHandle(std::move(gridHandle))
         , mpFloatGrid(mGridHandle.grid<float>())
         , mAccessor(mpFloatGrid->getAccessor())
@@ -215,7 +215,7 @@ namespace Falcor
 
         // Keep both NanoVDB and brick textures resident in GPU memory for simplicity for now (~15% increased footprint).
         mpBuffer = Buffer::createStructured(
-            mpDevice.get(),
+            mpDevice,
             sizeof(uint32_t),
             uint32_t(div_round_up(mGridHandle.size(), sizeof(uint32_t))),
             ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource,
@@ -223,10 +223,10 @@ namespace Falcor
             mGridHandle.data()
         );
         using NanoVDBGridConverter = NanoVDBConverterBC4;
-        mBrickedGrid = NanoVDBGridConverter(mpFloatGrid).convert(mpDevice.get());
+        mBrickedGrid = NanoVDBGridConverter(mpFloatGrid).convert(mpDevice);
     }
 
-    Grid::SharedPtr Grid::createFromNanoVDBFile(std::shared_ptr<Device> pDevice, const std::filesystem::path& path, const std::string& gridname)
+    ref<Grid> Grid::createFromNanoVDBFile(ref<Device> pDevice, const std::filesystem::path& path, const std::string& gridname)
     {
         if (!nanovdb::io::hasGrid(path.string(), gridname))
         {
@@ -254,10 +254,10 @@ namespace Falcor
             return nullptr;
         }
 
-        return SharedPtr(new Grid(std::move(pDevice), std::move(handle)));
+        return ref<Grid>(new Grid(pDevice, std::move(handle)));
     }
 
-    Grid::SharedPtr Grid::createFromOpenVDBFile(std::shared_ptr<Device> pDevice, const std::filesystem::path& path, const std::string& gridname)
+    ref<Grid> Grid::createFromOpenVDBFile(ref<Device> pDevice, const std::filesystem::path& path, const std::string& gridname)
     {
         openvdb::initialize();
 
@@ -297,7 +297,7 @@ namespace Falcor
         openvdb::FloatGrid::Ptr floatGrid = openvdb::gridPtrCast<openvdb::FloatGrid>(baseGrid);
         auto handle = nanovdb::openToNanoVDB(floatGrid);
 
-        return SharedPtr(new Grid(std::move(pDevice), std::move(handle)));
+        return ref<Grid>(new Grid(pDevice, std::move(handle)));
     }
 
 
@@ -305,7 +305,7 @@ namespace Falcor
     {
         using namespace pybind11::literals;
 
-        pybind11::class_<Grid, Grid::SharedPtr> grid(m, "Grid");
+        pybind11::class_<Grid, ref<Grid>> grid(m, "Grid");
         grid.def_property_readonly("voxelCount", &Grid::getVoxelCount);
         grid.def_property_readonly("minIndex", &Grid::getMinIndex);
         grid.def_property_readonly("maxIndex", &Grid::getMaxIndex);
@@ -316,19 +316,19 @@ namespace Falcor
 
         auto createSphere = [] (float radius, float voxelSize, float blendRange)
         {
-            return Grid::createSphere(getActivePythonSceneBuilder().getDevice(), radius, voxelSize, blendRange);
+            return Grid::createSphere(accessActivePythonSceneBuilder().getDevice(), radius, voxelSize, blendRange);
         };
         grid.def_static("createSphere", createSphere, "radius"_a, "voxelSize"_a, "blendRange"_a = 3.f); // PYTHONDEPRECATED
 
         auto createBox = [] (float width, float height, float depth, float voxelSize, float blendRange)
         {
-            return Grid::createBox(getActivePythonSceneBuilder().getDevice(), width, height, depth, voxelSize, blendRange);
+            return Grid::createBox(accessActivePythonSceneBuilder().getDevice(), width, height, depth, voxelSize, blendRange);
         };
         grid.def_static("createBox", createBox, "width"_a, "height"_a, "depth"_a, "voxelSize"_a, "blendRange"_a = 3.f); // PYTHONDEPRECATED
 
         auto createFromFile = [] (const std::filesystem::path& path, const std::string& gridname)
         {
-            return Grid::createFromFile(getActivePythonSceneBuilder().getDevice(), path, gridname);
+            return Grid::createFromFile(accessActivePythonSceneBuilder().getDevice(), path, gridname);
         };
         grid.def_static("createFromFile", createFromFile, "path"_a, "gridname"_a); // PYTHONDEPRECATED
     }

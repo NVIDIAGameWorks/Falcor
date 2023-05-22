@@ -40,8 +40,6 @@ namespace Falcor
 class FALCOR_API GraphicsProgram : public Program
 {
 public:
-    using SharedPtr = std::shared_ptr<GraphicsProgram>;
-
     ~GraphicsProgram() = default;
 
     /**
@@ -53,7 +51,7 @@ public:
      * stages.
      * @return A new object, or an exception is thrown if creation failed.
      */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const Desc& desc, const Program::DefineList& programDefines = DefineList());
+    static ref<GraphicsProgram> create(ref<Device> pDevice, const Desc& desc, const Program::DefineList& programDefines = DefineList());
 
     /**
      * Create a new graphics program from file.
@@ -66,8 +64,8 @@ public:
      * stages.
      * @return A new object, or an exception is thrown if creation failed.
      */
-    static SharedPtr createFromFile(
-        std::shared_ptr<Device> pDevice,
+    static ref<GraphicsProgram> createFromFile(
+        ref<Device> pDevice,
         const std::filesystem::path& path,
         const std::string& vsEntry,
         const std::string& psEntry,
@@ -75,6 +73,6 @@ public:
     );
 
 private:
-    GraphicsProgram(std::shared_ptr<Device> pDevice, const Desc& desc, const Program::DefineList& programDefines);
+    GraphicsProgram(ref<Device> pDevice, const Desc& desc, const Program::DefineList& programDefines);
 };
 } // namespace Falcor

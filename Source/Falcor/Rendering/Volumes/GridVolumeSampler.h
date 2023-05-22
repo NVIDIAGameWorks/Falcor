@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,7 +30,6 @@
 #include "Core/Macros.h"
 #include "Utils/UI/Gui.h"
 #include "Scene/Scene.h"
-#include <memory>
 
 namespace Falcor
 {
@@ -43,8 +42,6 @@ namespace Falcor
     class FALCOR_API GridVolumeSampler
     {
     public:
-        using SharedPtr = std::shared_ptr<GridVolumeSampler>;
-
         /** Grid volume sampler configuration options.
         */
         struct Options
@@ -57,14 +54,13 @@ namespace Falcor
             Options() {}
         };
 
-        virtual ~GridVolumeSampler() = default;
-
         /** Create a new object.
             \param[in] pRenderContext A render-context that will be used for processing.
             \param[in] pScene The scene.
             \param[in] options Configuration options.
         */
-        static SharedPtr create(RenderContext* pRenderContext, Scene::SharedPtr pScene, const Options& options = Options());
+        GridVolumeSampler(RenderContext* pRenderContext, ref<Scene> pScene, const Options& options = Options());
+        virtual ~GridVolumeSampler() = default;
 
         /** Get a list of shader defines for using the grid volume sampler.
             \return Returns a list of defines.
@@ -86,9 +82,7 @@ namespace Falcor
         const Options& getOptions() const { return mOptions; }
 
     protected:
-        GridVolumeSampler(RenderContext* pRenderContext, Scene::SharedPtr pScene, const Options& options);
-
-        Scene::SharedPtr        mpScene;            ///< Scene.
+        ref<Scene>              mpScene;            ///< Scene.
 
         Options                 mOptions;
     };

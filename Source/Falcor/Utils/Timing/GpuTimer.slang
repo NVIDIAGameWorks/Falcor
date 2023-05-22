@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,34 +27,36 @@
  **************************************************************************/
 #include "Utils/NVAPI.slangh" // We need this for accessing the global timer.
 
-/** GPU timer based on NVAPI.
-    Uses only the lower 32-bits of the global timer. This should be sufficient to do
-    most measurements but care needs to be taken for handling wrap around.
-*/
+/**
+ * GPU timer based on NVAPI.
+ * Uses only the lower 32-bits of the global timer. This should be sufficient to do
+ * most measurements but care needs to be taken for handling wrap around.
+ */
 struct GpuTimer
 {
     typedef uint TimePoint;
 
-    TimePoint startTime;    ///< Time when timer was last started.
+    TimePoint startTime; ///< Time when timer was last started.
 
-    /** Starts the timer.
-    */
-    [mutating] void start()
-    {
-        startTime = getCurrentTimePoint();
-    }
+    /**
+     * Starts the timer.
+     */
+    [mutating]
+    void start() { startTime = getCurrentTimePoint(); }
 
-    /** Returns the elapsed time since the last call to start().
-        \return Returns the elapsed time.
-    */
+    /**
+     * Returns the elapsed time since the last call to start().
+     * @return Returns the elapsed time.
+     */
     uint getElapsed()
     {
         TimePoint currentTime = getCurrentTimePoint();
         return calcDuration(startTime, currentTime);
     }
 
-    /** Get the current time point.
-    */
+    /**
+     * Get the current time point.
+     */
     static TimePoint getCurrentTimePoint()
     {
 #if FALCOR_NVAPI_AVAILABLE
@@ -64,13 +66,11 @@ struct GpuTimer
 #endif
     }
 
-    /** Compute the duration between two time points accounting for at most one overflow.
-        \param[in] start Start time point
-        \param[in] end End time point
-        \return Returns the duration.
-    */
-    static uint calcDuration(TimePoint start, TimePoint end)
-    {
-        return end - start;
-    }
+    /**
+     * Compute the duration between two time points accounting for at most one overflow.
+     * @param[in] start Start time point
+     * @param[in] end End time point
+     * @return Returns the duration.
+     */
+    static uint calcDuration(TimePoint start, TimePoint end) { return end - start; }
 };

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -66,11 +66,10 @@ void computeDerivativesAtPrimaryTriangleHit(const TriangleHit hit, uint2 pixel, 
     \param[out] materialID Material ID.
     \return VertexData struct.
 */
-VertexData loadVertexData(const HitInfo hit, const float3 rayOrigin, const float3 rayDir, out uint materialID, out bool modifyNormals)
+VertexData loadVertexData(const HitInfo hit, const float3 rayOrigin, const float3 rayDir, out uint materialID)
 {
     VertexData v = {};
     materialID = {};
-    modifyNormals = true;
 
 #if SCENE_HAS_GEOMETRY_TYPE(GEOMETRY_TYPE_TRIANGLE_MESH)
     if (hit.getType() == HitType::Triangle)
@@ -108,38 +107,34 @@ VertexData loadVertexData(const HitInfo hit, const float3 rayOrigin, const float
     return v;
 }
 
-/** Adjust ShadingData
-    \param[in,out] sd Shading data to update.
-    \param[in] hit Hit information.
-    \param[in] isPrimary True if this is the primary hit point.
+/** Determine hints to use when creating the material instance.
 */
-void adjustShadingData(inout ShadingData sd, const HitInfo hit, const bool isPrimary)
+uint getMaterialInstanceHints(const HitInfo hit, const bool isPrimary)
 {
+    uint hints = 0;
     if (hit.getType() == HitType::Triangle || hit.getType() == HitType::DisplacedTriangle)
     {
 #if GBUFFER_ADJUST_SHADING_NORMALS
-        if (kAdjustShadingNormals || isPrimary) adjustShadingNormal(sd);
+        if (kAdjustShadingNormals || isPrimary) hints |= (uint)MaterialInstanceHints::AdjustShadingNormal;
 #else
-        if (kAdjustShadingNormals && !isPrimary) adjustShadingNormal(sd);
+        if (kAdjustShadingNormals && !isPrimary) hints |= (uint)MaterialInstanceHints::AdjustShadingNormal;
 #endif
     }
+    return hints;
 }
 
 /** Setup ShadingData based on loaded vertex/material attributes for a hit point.
     \param[in] hit Hit information.
     \param[in] rayOrigin Ray origin.
     \param[in] rayDir Normalized ray direction.
-    \param[in] isPrimary True if this is the primary hit point.
     \param[in] lod Method for computing texture level-of-detail
     \return ShadingData struct.
 */
-ShadingData loadShadingData(const HitInfo hit, const float3 rayOrigin, const float3 rayDir, const bool isPrimary, const ITextureSampler lod)
+ShadingData loadShadingData(const HitInfo hit, const float3 rayOrigin, const float3 rayDir, const ITextureSampler lod)
 {
     uint materialID = {};
-    bool modifyNormals = true;
 
-    VertexData v = loadVertexData(hit, rayOrigin, rayDir, materialID, modifyNormals);
-    ShadingData sd = gScene.materials.prepareShadingData(v, materialID, -rayDir, lod, modifyNormals);
-    adjustShadingData(sd, hit, isPrimary);
+    VertexData v = loadVertexData(hit, rayOrigin, rayDir, materialID);
+    ShadingData sd = gScene.materials.prepareShadingData(v, materialID, -rayDir, lod);
     return sd;
 }

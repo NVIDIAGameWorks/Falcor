@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -127,10 +127,11 @@ struct PathGenerator
                 if (hitSurface)
                 {
                     let lod = ExplicitLodTextureSampler(0.f);
-                    ShadingData sd = loadShadingData(hit, cameraRay.origin, cameraRay.dir, true, lod);
+                    ShadingData sd = loadShadingData(hit, cameraRay.origin, cameraRay.dir, lod);
 
                     // Create material instance and query its properties.
-                    let mi = gScene.materials.getMaterialInstance(sd, lod);
+                    let hints = getMaterialInstanceHints(hit, true /* primary hit */);
+                    let mi = gScene.materials.getMaterialInstance(sd, lod, hints);
                     let bsdfProperties = mi.getProperties(sd);
 
                     // Check for BSDF lobes that RTXDI can sample.

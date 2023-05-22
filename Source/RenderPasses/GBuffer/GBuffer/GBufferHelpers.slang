@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -60,10 +60,10 @@ GBufferData prepareGBufferData(const ShadingData sd, const VertexData v, const I
 
     // We store the final normal in the G-buffer but pass along the original geometric tangent and its handedness (sign) unmodified.
     // This is needed for correctly orthonormalizing the tangent frame and computing the bitangent in passes that consume the G-buffer data.
-    float bitangentSign = sd.getHandednessSign();
+    float bitangentSign = sd.frame.getHandednessSign();
 
     gbuf.posW           = float4(sd.posW, 1.f);
-    gbuf.normW          = float4(sd.N, 0.f);
+    gbuf.normW          = float4(sd.frame.N, 0.f);
     gbuf.tangentW       = v.tangentW;
     gbuf.faceNormalW    = float4(sd.faceN, 0.f);
     gbuf.guideNormalW   = float4(bsdfProperties.guideNormal, 0.f);

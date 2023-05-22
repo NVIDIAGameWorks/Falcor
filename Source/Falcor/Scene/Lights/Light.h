@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -45,8 +45,6 @@ namespace Falcor
     class FALCOR_API Light : public Animatable
     {
     public:
-        using SharedPtr = std::shared_ptr<Light>;
-
         virtual ~Light() = default;
 
         /** Set the light parameters into a shader variable. To use this you need to include/import 'ShaderCommon' inside your shader.
@@ -115,12 +113,12 @@ namespace Falcor
         */
         Changes getChanges() const { return mChanges; }
 
-        void updateFromAnimation(const rmcv::mat4& transform) override {}
+        void updateFromAnimation(const float4x4& transform) override {}
 
     protected:
         Light(const std::string& name, LightType type);
 
-        static const size_t kDataSize = sizeof(LightData);
+        static constexpr size_t kDataSize = sizeof(LightData);
 
         // UI callbacks for keeping the intensity in-sync.
         float3 getColorForUI();
@@ -148,9 +146,9 @@ namespace Falcor
     class FALCOR_API PointLight : public Light
     {
     public:
-        using SharedPtr = std::shared_ptr<PointLight>;
+        static ref<PointLight> create(const std::string& name = "") { return make_ref<PointLight>(name); }
 
-        static SharedPtr create(const std::string& name = "");
+        PointLight(const std::string& name);
         ~PointLight() = default;
 
         /** Render UI elements for this light.
@@ -196,10 +194,7 @@ namespace Falcor
         */
         float getOpeningAngle() const { return mData.openingAngle; }
 
-        void updateFromAnimation(const rmcv::mat4& transform) override;
-
-    private:
-        PointLight(const std::string& name);
+        void updateFromAnimation(const float4x4& transform) override;
     };
 
 
@@ -208,9 +203,9 @@ namespace Falcor
     class FALCOR_API DirectionalLight : public Light
     {
     public:
-        using SharedPtr = std::shared_ptr<DirectionalLight>;
+        static ref<DirectionalLight> create(const std::string& name = "") { return make_ref<DirectionalLight>(name); }
 
-        static SharedPtr create(const std::string& name = "");
+        DirectionalLight(const std::string& name);
         ~DirectionalLight() = default;
 
         /** Render UI elements for this light.
@@ -234,10 +229,7 @@ namespace Falcor
         */
         float getPower() const override { return 0.f; }
 
-        void updateFromAnimation(const rmcv::mat4& transform) override;
-
-    private:
-        DirectionalLight(const std::string& name);
+        void updateFromAnimation(const float4x4& transform) override;
     };
 
     /** Distant light source.
@@ -246,9 +238,9 @@ namespace Falcor
     class FALCOR_API DistantLight : public Light
     {
     public:
-        using SharedPtr = std::shared_ptr<DistantLight>;
+        static ref<DistantLight> create(const std::string& name = "") { return make_ref<DistantLight>(name); }
 
-        static SharedPtr create(const std::string& name = "");
+        DistantLight(const std::string& name);
         ~DistantLight() = default;
 
         /** Render UI elements for this light.
@@ -277,10 +269,9 @@ namespace Falcor
         */
         float getPower() const override { return 0.f; }
 
-        void updateFromAnimation(const rmcv::mat4& transform) override;
+        void updateFromAnimation(const float4x4& transform) override;
 
     private:
-        DistantLight(const std::string& name);
         void update();
         float mAngle;       ///<< Half-angle subtended by the source.
 
@@ -292,8 +283,6 @@ namespace Falcor
     class FALCOR_API AnalyticAreaLight : public Light
     {
     public:
-        using SharedPtr = std::shared_ptr<AnalyticAreaLight>;
-
         ~AnalyticAreaLight() = default;
 
         /** Set light source scaling
@@ -312,13 +301,13 @@ namespace Falcor
         /** Set transform matrix
             \param[in] mtx object to world space transform matrix
         */
-        void setTransformMatrix(const rmcv::mat4& mtx) { mTransformMatrix = mtx; update();  }
+        void setTransformMatrix(const float4x4& mtx) { mTransformMatrix = mtx; update();  }
 
         /** Get transform matrix
         */
-        rmcv::mat4 getTransformMatrix() const { return mTransformMatrix; }
+        float4x4 getTransformMatrix() const { return mTransformMatrix; }
 
-        void updateFromAnimation(const rmcv::mat4& transform) override { setTransformMatrix(transform); }
+        void updateFromAnimation(const float4x4& transform) override { setTransformMatrix(transform); }
 
     protected:
         AnalyticAreaLight(const std::string& name, LightType type);
@@ -326,7 +315,7 @@ namespace Falcor
         virtual void update();
 
         float3 mScaling;                ///< Scaling, controls the size of the light
-        rmcv::mat4 mTransformMatrix;     ///< Transform matrix minus scaling component
+        float4x4 mTransformMatrix = float4x4::identity(); ///< Transform matrix minus scaling component
 
         friend class SceneCache;
     };
@@ -336,14 +325,12 @@ namespace Falcor
     class FALCOR_API RectLight : public AnalyticAreaLight
     {
     public:
-        using SharedPtr = std::shared_ptr<RectLight>;
+        static ref<RectLight> create(const std::string& name = "") { return make_ref<RectLight>(name); }
 
-        static SharedPtr create(const std::string& name = "");
+        RectLight(const std::string& name) : AnalyticAreaLight(name, LightType::Rect) {}
         ~RectLight() = default;
 
     private:
-        RectLight(const std::string& name) : AnalyticAreaLight(name, LightType::Rect) {}
-
         virtual void update() override;
     };
 
@@ -352,14 +339,12 @@ namespace Falcor
     class FALCOR_API DiscLight : public AnalyticAreaLight
     {
     public:
-        using SharedPtr = std::shared_ptr<DiscLight>;
+        static ref<DiscLight> create(const std::string& name = "") { return make_ref<DiscLight>(name); }
 
-        static SharedPtr create(const std::string& name = "");
+        DiscLight(const std::string& name) : AnalyticAreaLight(name, LightType::Disc) {}
         ~DiscLight() = default;
 
     private:
-        DiscLight(const std::string& name) : AnalyticAreaLight(name, LightType::Disc) {}
-
         virtual void update() override;
     };
 
@@ -368,14 +353,12 @@ namespace Falcor
     class FALCOR_API SphereLight : public AnalyticAreaLight
     {
     public:
-        using SharedPtr = std::shared_ptr<SphereLight>;
+        static ref<SphereLight> create(const std::string& name = "") { return make_ref<SphereLight>(name); }
 
-        static SharedPtr create(const std::string& name = "");
+        SphereLight(const std::string& name) : AnalyticAreaLight(name, LightType::Sphere) {}
         ~SphereLight() = default;
 
     private:
-        SphereLight(const std::string& name) : AnalyticAreaLight(name, LightType::Sphere) {}
-
         virtual void update() override;
     };
 

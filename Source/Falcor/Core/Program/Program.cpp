@@ -28,6 +28,7 @@
 #include "Program.h"
 #include "ProgramManager.h"
 #include "ProgramVars.h"
+#include "Core/ObjectPython.h"
 #include "Core/Platform/OS.h"
 #include "Core/API/Device.h"
 #include "Core/API/ParameterBlock.h"
@@ -96,7 +97,7 @@ Program::Desc& Program::Desc::beginEntryPointGroup(const std::string& entryPoint
     return *this;
 }
 
-Program::Desc& Program::Desc::entryPoint(ShaderType shaderType, std::string const& name)
+Program::Desc& Program::Desc::entryPoint(ShaderType shaderType, const std::string& name)
 {
     checkArgument(!name.empty(), "Missing entry point name.");
 
@@ -182,10 +183,20 @@ Program::Desc& Program::Desc::setShaderModel(const std::string& sm)
     return *this;
 }
 
-Program::Program(std::shared_ptr<Device> pDevice, Desc const& desc, DefineList const& defineList)
-    : mpDevice(std::move(pDevice)), mDesc(desc), mDefineList(defineList), mTypeConformanceList(desc.mTypeConformances)
+Program::Program(ref<Device> pDevice, const Desc& desc, const DefineList& defineList)
+    : mpDevice(pDevice), mDesc(desc), mDefineList(defineList), mTypeConformanceList(desc.mTypeConformances)
 {
+    mpDevice->getProgramManager()->registerProgramForReload(this);
     validateEntryPoints();
+}
+
+Program::~Program()
+{
+    mpDevice->getProgramManager()->unregisterProgramForReload(this);
+
+    // Invalidate program versions.
+    for (auto& version : mProgramVersions)
+        version.second->mpProgram = nullptr;
 }
 
 void Program::validateEntryPoints() const
@@ -202,8 +213,6 @@ void Program::validateEntryPoints() const
         }
     }
 }
-
-Program::~Program() {}
 
 std::string Program::getProgramDescString() const
 {
@@ -383,11 +392,11 @@ bool Program::checkIfFilesChanged()
     return false;
 }
 
-const ProgramVersion::SharedConstPtr& Program::getActiveVersion() const
+const ref<const ProgramVersion>& Program::getActiveVersion() const
 {
     if (mLinkRequired)
     {
-        const auto& it = mProgramVersions.find(mDefineList);
+        const auto& it = mProgramVersions.find(ProgramVersionKey{mDefineList, mTypeConformanceList});
         if (it == mProgramVersions.end())
         {
             // Note that link() updates mActiveProgram only if the operation was successful.
@@ -398,7 +407,7 @@ const ProgramVersion::SharedConstPtr& Program::getActiveVersion() const
             }
             else
             {
-                mProgramVersions[mDefineList] = mpActiveVersion;
+                mProgramVersions[ProgramVersionKey{mDefineList, mTypeConformanceList}] = mpActiveVersion;
             }
         }
         else
@@ -448,8 +457,13 @@ void Program::reset()
     mLinkRequired = true;
 }
 
+void Program::breakStrongReferenceToDevice()
+{
+    mpDevice.breakStrongReference();
+}
+
 FALCOR_SCRIPT_BINDING(Program)
 {
-    pybind11::class_<Program, Program::SharedPtr>(m, "Program");
+    pybind11::class_<Program, ref<Program>>(m, "Program");
 }
 } // namespace Falcor

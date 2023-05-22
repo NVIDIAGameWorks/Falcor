@@ -30,7 +30,7 @@
 #include "Handles.h"
 #include "NativeHandle.h"
 #include "Core/Macros.h"
-#include <memory>
+#include "Core/Object.h"
 #include <optional>
 
 namespace Falcor
@@ -43,19 +43,16 @@ using CommandQueueHandle = gfx::ICommandQueue*;
  * This class can be used to synchronize GPU and CPU execution
  * It's value monotonically increasing - every time a signal is sent, it will change the value first
  */
-class FALCOR_API GpuFence
+class FALCOR_API GpuFence : public Object
 {
 public:
-    using SharedPtr = std::shared_ptr<GpuFence>;
-    using SharedConstPtr = std::shared_ptr<const GpuFence>;
-
     ~GpuFence();
 
     /**
      * Create a new GPU fence.
      * @return A new object, or throws an exception if creation failed.
      */
-    static SharedPtr create(Device* pDevice, bool shared = false);
+    static ref<GpuFence> create(ref<Device> pDevice, bool shared = false);
 
     /**
      * Get the internal API handle
@@ -109,10 +106,12 @@ public:
      */
     SharedResourceApiHandle getSharedApiHandle() const;
 
-private:
-    GpuFence(std::shared_ptr<Device> pDevice, bool shared);
+    void breakStrongReferenceToDevice();
 
-    std::shared_ptr<Device> mpDevice;
+private:
+    GpuFence(ref<Device> pDevice, bool shared);
+
+    BreakableReference<Device> mpDevice;
     Slang::ComPtr<gfx::IFence> mGfxFence;
     uint64_t mCpuValue;
     mutable SharedResourceApiHandle mSharedApiHandle = 0;

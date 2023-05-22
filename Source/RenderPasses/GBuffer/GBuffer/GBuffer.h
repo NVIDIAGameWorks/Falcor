@@ -36,7 +36,7 @@ using namespace Falcor;
 class GBuffer : public GBufferBase
 {
 protected:
-    GBuffer(std::shared_ptr<Device> pDevice);
+    GBuffer(ref<Device> pDevice);
 
     // Constants used in derived classes
     static const ChannelList kGBufferChannels;

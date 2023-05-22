@@ -44,8 +44,6 @@ class ComputeVars;
 class FALCOR_API ComputeProgram : public Program
 {
 public:
-    using SharedPtr = std::shared_ptr<ComputeProgram>;
-
     ~ComputeProgram() = default;
 
     /**
@@ -59,8 +57,8 @@ public:
      * @param[in] shaderModel Optional string describing which shader model to use.
      * @return A new object, or an exception is thrown if creation failed.
      */
-    static SharedPtr createFromFile(
-        std::shared_ptr<Device> pDevice,
+    static ref<ComputeProgram> createFromFile(
+        ref<Device> pDevice,
         const std::filesystem::path& path,
         const std::string& csEntry,
         const DefineList& programDefines = DefineList(),
@@ -76,14 +74,14 @@ public:
      * @param[in] programDefines Optional list of macro definitions to set into the program.
      * @return A new object, or an exception is thrown if creation failed.
      */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const Desc& desc, const DefineList& programDefines = DefineList());
+    static ref<ComputeProgram> create(ref<Device> pDevice, const Desc& desc, const DefineList& programDefines = DefineList());
 
     /**
      * Dispatch the program using the argument values set in `pVars`.
      */
-    virtual void dispatchCompute(ComputeContext* pContext, ComputeVars* pVars, uint3 const& threadGroupCount);
+    virtual void dispatchCompute(ComputeContext* pContext, ComputeVars* pVars, const uint3& threadGroupCount);
 
 protected:
-    ComputeProgram(std::shared_ptr<Device> pDevice, const Desc& desc, const DefineList& programDefines);
+    ComputeProgram(ref<Device> pDevice, const Desc& desc, const DefineList& programDefines);
 };
 } // namespace Falcor

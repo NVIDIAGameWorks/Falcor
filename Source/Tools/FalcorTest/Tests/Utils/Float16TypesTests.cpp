@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Testing/UnitTest.h"
-#include "Utils/Math/Float16.h"
+#include "Utils/Math/ScalarMath.h"
 #include <fstd/bit.h> // TODO C++20: Replace with <bit>
 #include <random>
 
@@ -36,11 +36,11 @@ namespace
 {
 std::mt19937 rng;
 
-template<size_t N>
+template<int N>
 void testVector(CPUUnitTestContext& ctx)
 {
-    using floatN = glm::vec<N, float, glm::defaultp>;
-    using float16_tN = tfloat16_vec<N>;
+    using floatN = ::Falcor::math::vector<float, N>;
+    using float16_tN = ::Falcor::math::vector<float16_t, N>;
 
     std::uniform_real_distribution<float> dist(-65504.f, 65504.f); // Numerical range of float16
     auto u = [&]() { return dist(rng); };
@@ -77,16 +77,16 @@ CPU_TEST(Float16Vector)
     EXPECT_EQ(sizeof(float16_t4), 8);
 
     // Test direct element access.
-    float16_t2 a = float16_t2(1.f, 2.f);
+    float16_t2 a = float16_t2(1.h, 2.h);
     EXPECT_EQ((float)a.x, 1.f);
     EXPECT_EQ((float)a.y, 2.f);
 
-    float16_t3 b = float16_t3(1.f, 2.f, 3.f);
+    float16_t3 b = float16_t3(1.h, 2.h, 3.h);
     EXPECT_EQ((float)b.x, 1.f);
     EXPECT_EQ((float)b.y, 2.f);
     EXPECT_EQ((float)b.z, 3.f);
 
-    float16_t4 c = float16_t4(1.f, 2.f, 3.f, 4.f);
+    float16_t4 c = float16_t4(1.h, 2.h, 3.h, 4.h);
     EXPECT_EQ((float)c.x, 1.f);
     EXPECT_EQ((float)c.y, 2.f);
     EXPECT_EQ((float)c.z, 3.f);

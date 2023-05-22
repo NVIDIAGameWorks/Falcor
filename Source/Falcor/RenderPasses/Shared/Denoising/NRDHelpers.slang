@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -33,8 +33,13 @@ import Scene.Scene;
 import Scene.ShadingData;
 
 /** Get material reflectance based on the metallic value.
-*/
-float3 getMaterialReflectanceForDeltaPaths(const MaterialType materialType, const bool hasDeltaLobes, const ShadingData sd, const BSDFProperties bsdfProperties)
+ */
+float3 getMaterialReflectanceForDeltaPaths(
+    const MaterialType materialType,
+    const bool hasDeltaLobes,
+    const ShadingData sd,
+    const BSDFProperties bsdfProperties
+)
 {
     if (materialType == MaterialType::Standard)
     {
@@ -44,7 +49,8 @@ float3 getMaterialReflectanceForDeltaPaths(const MaterialType materialType, cons
         if (metallic < 1.f)
         {
             // Use sum of reflection/transmission albedo as they are denoised together.
-            const float3 diffuseReflectance = max(kNRDMinReflectance, bsdfProperties.diffuseReflectionAlbedo + bsdfProperties.diffuseTransmissionAlbedo);
+            const float3 diffuseReflectance =
+                max(kNRDMinReflectance, bsdfProperties.diffuseReflectionAlbedo + bsdfProperties.diffuseTransmissionAlbedo);
             return diffuseReflectance;
         }
         // Handle only non-delta specular lobes.
@@ -61,7 +67,8 @@ float3 getMaterialReflectanceForDeltaPaths(const MaterialType materialType, cons
     else if (materialType == MaterialType::Hair)
     {
         // Use sum of reflection/transmission albedo as they are denoised together.
-        const float3 reflectance = max(kNRDMinReflectance, bsdfProperties.diffuseReflectionAlbedo + bsdfProperties.diffuseTransmissionAlbedo);
+        const float3 reflectance =
+            max(kNRDMinReflectance, bsdfProperties.diffuseReflectionAlbedo + bsdfProperties.diffuseTransmissionAlbedo);
         return reflectance;
     }
 
@@ -75,7 +82,7 @@ bool isDeltaReflectionAllowedAlongDeltaTransmissionPath(const ShadingData sd)
     const float insideIoR = gScene.materials.evalIoR(sd.materialID);
 
     const float eta = sd.frontFacing ? (sd.IoR / insideIoR) : (insideIoR / sd.IoR);
-    bool totalInternalReflection = evalFresnelDielectric(eta, sd.toLocal(sd.V).z) == 1.f;
+    bool totalInternalReflection = evalFresnelDielectric(eta, sd.frame.toLocal(sd.V).z) == 1.f;
 
     bool nonTransmissiveMirror = (md.specularTransmission == 0.f) && (metallic == 1.f);
 

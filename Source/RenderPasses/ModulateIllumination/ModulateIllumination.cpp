@@ -71,13 +71,8 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
     registry.registerClass<RenderPass, ModulateIllumination>();
 }
 
-ModulateIllumination::SharedPtr ModulateIllumination::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-{
-    return SharedPtr(new ModulateIllumination(std::move(pDevice), dict));
-}
-
-ModulateIllumination::ModulateIllumination(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-    : RenderPass(std::move(pDevice))
+ModulateIllumination::ModulateIllumination(ref<Device> pDevice, const Dictionary& dict)
+    : RenderPass(pDevice)
 {
     mpModulateIlluminationPass = ComputePass::create(mpDevice, kShaderFile, "main", Program::DefineList(), false);
 
@@ -167,24 +162,25 @@ void ModulateIllumination::execute(RenderContext* pRenderContext, const RenderDa
         mpModulateIlluminationPass->setVars(nullptr);
     }
 
-    mpModulateIlluminationPass["CB"]["frameDim"] = mFrameDim;
+    auto var = mpModulateIlluminationPass->getRootVar();
+    var["CB"]["frameDim"] = mFrameDim;
 
     auto bind = [&](const ChannelDesc& desc)
     {
         if (!desc.texname.empty())
         {
-            Texture::SharedPtr pTexture = renderData.getTexture(desc.name);
+            ref<Texture> pTexture = renderData.getTexture(desc.name);
             if (pTexture && (mFrameDim.x != pTexture->getWidth() || mFrameDim.y != pTexture->getHeight()))
             {
                 logError("Texture {} has dim {}x{}, not compatible with the FrameDim {}x{}.",
                     pTexture->getName(), pTexture->getWidth(), pTexture->getHeight(), mFrameDim.x, mFrameDim.y);
             }
-            mpModulateIlluminationPass[desc.texname] = pTexture;
+            var[desc.texname] = pTexture;
         }
     };
     for (const auto& channel : kInputChannels) bind(channel);
 
-    mpModulateIlluminationPass["gOutput"] = renderData.getTexture(kOutput);
+    var["gOutput"] = renderData.getTexture(kOutput);
 
     mpModulateIlluminationPass->execute(pRenderContext, mFrameDim.x, mFrameDim.y);
 }

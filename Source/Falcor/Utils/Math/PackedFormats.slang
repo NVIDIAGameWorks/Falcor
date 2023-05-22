@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,40 +29,45 @@ import Utils.Math.MathHelpers;
 import Utils.Math.FormatConversion;
 import Utils.Color.ColorHelpers;
 
-/** Encode a normal packed as 2x 8-bit snorms in the octahedral mapping. The high 16 bits are unused.
-*/
+/**
+ * Encode a normal packed as 2x 8-bit snorms in the octahedral mapping. The high 16 bits are unused.
+ */
 uint encodeNormal2x8(float3 normal)
 {
     float2 octNormal = ndir_to_oct_snorm(normal);
     return packSnorm2x8(octNormal);
 }
 
-/** Decode a normal packed as 2x 8-bit snorms in the octahedral mapping.
-*/
+/**
+ * Decode a normal packed as 2x 8-bit snorms in the octahedral mapping.
+ */
 float3 decodeNormal2x8(uint packedNormal)
 {
     float2 octNormal = unpackSnorm2x8(packedNormal);
     return oct_to_ndir_snorm(octNormal);
 }
 
-/** Encode a normal packed as 2x 16-bit snorms in the octahedral mapping.
-*/
+/**
+ * Encode a normal packed as 2x 16-bit snorms in the octahedral mapping.
+ */
 uint encodeNormal2x16(float3 normal)
 {
     float2 octNormal = ndir_to_oct_snorm(normal);
     return packSnorm2x16(octNormal);
 }
 
-/** Decode a normal packed as 2x 16-bit snorms in the octahedral mapping.
-*/
+/**
+ * Decode a normal packed as 2x 16-bit snorms in the octahedral mapping.
+ */
 float3 decodeNormal2x16(uint packedNormal)
 {
     float2 octNormal = unpackSnorm2x16(packedNormal);
     return oct_to_ndir_snorm(octNormal);
 }
 
-/** Encode a normal packed as 3x 16-bit snorms. Note: The high 16 bits of the second dword are unused.
-*/
+/**
+ * Encode a normal packed as 3x 16-bit snorms. Note: The high 16 bits of the second dword are unused.
+ */
 uint2 encodeNormal3x16(float3 normal)
 {
     uint2 packedNormal;
@@ -71,8 +76,9 @@ uint2 encodeNormal3x16(float3 normal)
     return packedNormal;
 }
 
-/** Decode a normal packed as 3x 16-bit snorms. Note: The high 16 bits of the second dword are unused.
-*/
+/**
+ * Decode a normal packed as 3x 16-bit snorms. Note: The high 16 bits of the second dword are unused.
+ */
 float3 decodeNormal3x16(uint2 packedNormal)
 {
     float3 normal;
@@ -81,21 +87,23 @@ float3 decodeNormal3x16(uint2 packedNormal)
     return normalize(normal);
 }
 
-/** Flattens a 3D index into a 1D index in scanline order.
-    \param[in] idx A 3D index.
-    \param[in] width The width of the indexed 3D structure.
-    \param[in] height The height of the indexed 3D structure.
-*/
+/**
+ * Flattens a 3D index into a 1D index in scanline order.
+ * @param[in] idx A 3D index.
+ * @param[in] width The width of the indexed 3D structure.
+ * @param[in] height The height of the indexed 3D structure.
+ */
 uint flatten3D(uint3 idx, uint width, uint height)
 {
     return idx.x + width * (idx.y + height * idx.z);
 }
 
-/** Unflattens a 1D index into a 3D index in scanline order.
-    \param[in] idx A flattened 3D index.
-    \param[in] width The width of the indexed 3D structure.
-    \param[in] height The height of the indexed 3D structure.
-*/
+/**
+ * Unflattens a 1D index into a 3D index in scanline order.
+ * @param[in] idx A flattened 3D index.
+ * @param[in] width The width of the indexed 3D structure.
+ * @param[in] height The height of the indexed 3D structure.
+ */
 uint3 unflatten3D(uint flattenedIdx, uint width, uint height)
 {
     uint3 idx = uint3(width, width * height, 0);
@@ -106,13 +114,14 @@ uint3 unflatten3D(uint flattenedIdx, uint width, uint height)
     return idx;
 }
 
-/** Encode an RGB color into a 32-bit LogLuv HDR format.
-    The supported luminance range is roughly 10^-6..10^6 in 0.17% steps.
-
-    The log-luminance is encoded with 14 bits and chroma with 9 bits each.
-    This was empirically more accurate than using 8 bit chroma.
-    Black (all zeros) is handled exactly.
-*/
+/**
+ * Encode an RGB color into a 32-bit LogLuv HDR format.
+ * The supported luminance range is roughly 10^-6..10^6 in 0.17% steps.
+ *
+ * The log-luminance is encoded with 14 bits and chroma with 9 bits each.
+ * This was empirically more accurate than using 8 bit chroma.
+ * Black (all zeros) is handled exactly.
+ */
 uint encodeLogLuvHDR(float3 color)
 {
     // Convert RGB to XYZ.
@@ -125,7 +134,8 @@ uint encodeLogLuvHDR(float3 color)
 
     // Early out if zero luminance to avoid NaN in chroma computation.
     // Note Le==0 if Y < 9.55e-7. We'll decode that as exactly zero.
-    if (Le == 0) return 0;
+    if (Le == 0)
+        return 0;
 
     // Compute chroma (u,v) values by:
     //  x = X / (X + Y + Z)
@@ -147,14 +157,16 @@ uint encodeLogLuvHDR(float3 color)
     return (Le << 18) | (uve.x << 9) | uve.y;
 }
 
-/** Decode an RGB color stored in a 32-bit LogLuv HDR format.
-    See encodeLogLuvHDR() for details.
-*/
+/**
+ * Decode an RGB color stored in a 32-bit LogLuv HDR format.
+ * See encodeLogLuvHDR() for details.
+ */
 float3 decodeLogLuvHDR(uint packedColor)
 {
     // Decode luminance Y from encoded log-luminance.
     uint Le = packedColor >> 18;
-    if (Le == 0) return float3(0.f);
+    if (Le == 0)
+        return float3(0.f);
 
     float logY = (float(Le) + 0.5f) / 409.6f - 20.f;
     float Y = pow(2.f, logY);

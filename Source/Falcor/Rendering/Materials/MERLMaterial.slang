@@ -41,7 +41,12 @@ struct MERLMaterial : MaterialBase, IMaterial
     MERLMaterialInstance setupMaterialInstance(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints)
     {
         // Compute final shading frame.
-        ShadingFrame sf = ShadingFrame(sd);
+        ShadingFrame sf = sd.frame;
+        flipShadingNormal(sd, sf);
+        if (isAdjustShadingNormalEnabled(hints))
+        {
+            adjustShadingNormal(sd, sf);
+        }
 
         // Evaluate the albedo for the current incident (view) direction.
         float3 albedo = {};
@@ -61,9 +66,6 @@ struct MERLMaterial : MaterialBase, IMaterial
 
         return MERLMaterialInstance(sf, data.bufferID, albedo, data.extraData);
     }
-
-    // Normal mapping is not supported by this material.
-    void modifyTangentSpace(const MaterialSystem ms, const ITextureSampler lod, inout ShadingData sd) {}
 
     // Alpha testing is not supported by this material.
     float evalOpacity(const MaterialSystem ms, const VertexData v, const ITextureSampler lod) { return 1.f; }

@@ -6,52 +6,68 @@
 # $4 -> Slang build configuration
 # $5 -> DLSS directory
 
-ExtDir=$1/external/packman/
-OutDir=$2
+EXT_DIR=$1/external/packman/
+OUT_DIR=$2
 
-IsDebug=false
+IS_DEBUG=false
 if [ "$3" = "Debug" ]; then
-    IsDebug=true
+    IS_DEBUG=true
 fi
-SlangDir=$4
+SLANG_DIR=$4
 
 # Copy externals
-if [ "${IsDebug}" = false ]; then
-    cp -frp ${ExtDir}/deps/lib/*.so* ${OutDir}
+if [ "${IS_DEBUG}" = false ]; then
+    cp -frp ${EXT_DIR}/deps/lib/*.so* ${OUT_DIR}
 else
-    cp -frp ${ExtDir}/deps/debug/lib/*.so* ${OutDir}
-    cp -fp ${ExtDir}/deps/lib/libassimp.so* ${OutDir}
-    cp -fp ${ExtDir}/deps/lib/libtbb.so* ${OutDir}
+    cp -frp ${EXT_DIR}/deps/debug/lib/*.so* ${OUT_DIR}
 fi
 
-cp -fp ${ExtDir}/python/lib/libpython*.so* ${OutDir}
-mkdir -p ${OutDir}/pythondist
-cp -frp ${ExtDir}/python/* ${OutDir}/pythondist
+cp -fp ${EXT_DIR}/python/lib/libpython*.so* ${OUT_DIR}
+mkdir -p ${OUT_DIR}/pythondist
+cp -frp ${EXT_DIR}/python/* ${OUT_DIR}/pythondist
 
 # Copy slang
-cp -f ${ExtDir}/slang/bin/linux-x64/${SlangDir}/lib*.so ${OutDir}
+cp -f ${EXT_DIR}/slang/bin/linux-x64/${SLANG_DIR}/lib*.so ${OUT_DIR}
+
+# Copy CUDA
+CUDA_DIR=${EXT_DIR}/cuda
+if [ -d ${CUDA_DIR} ]; then
+    cp -fp ${CUDA_DIR}/lib64/libcudart.so* ${OUT_DIR}
+    cp -fp ${CUDA_DIR}/lib64/libnvrtc.so* ${OUT_DIR}
+    cp -fp ${CUDA_DIR}/lib64/libcublas.so* ${OUT_DIR}
+    cp -fp ${CUDA_DIR}/lib64/libcurand.so* ${OUT_DIR}
+fi
 
 # Copy RTXDI SDK shaders
-RtxdiSDKDir=${ExtDir}/rtxdi/rtxdi-sdk/include/rtxdi
-RtxdiSDKTargetDir=${OutDir}/shaders/rtxdi
-if [ -d ${RtxdiSDKDir} ]; then
-    mkdir -p ${RtxdiSDKTargetDir}
-    cp ${RtxdiSDKDir}/ResamplingFunctions.hlsli ${RtxdiSDKTargetDir}
-    cp ${RtxdiSDKDir}/Reservoir.hlsli ${RtxdiSDKTargetDir}
-    cp ${RtxdiSDKDir}/RtxdiHelpers.hlsli ${RtxdiSDKTargetDir}
-    cp ${RtxdiSDKDir}/RtxdiMath.hlsli ${RtxdiSDKTargetDir}
-    cp ${RtxdiSDKDir}/RtxdiParameters.h ${RtxdiSDKTargetDir}
-    cp ${RtxdiSDKDir}/RtxdiTypes.h ${RtxdiSDKTargetDir}
+RTXDI_DIR=${EXT_DIR}/rtxdi/rtxdi-sdk/include/rtxdi
+RTXDI_TARGET_DIR=${OUT_DIR}/shaders/rtxdi
+if [ -d ${RTXDI_DIR} ]; then
+    mkdir -p ${RTXDI_TARGET_DIR}
+    cp ${RTXDI_DIR}/ResamplingFunctions.hlsli ${RTXDI_TARGET_DIR}
+    cp ${RTXDI_DIR}/Reservoir.hlsli ${RTXDI_TARGET_DIR}
+    cp ${RTXDI_DIR}/RtxdiHelpers.hlsli ${RTXDI_TARGET_DIR}
+    cp ${RTXDI_DIR}/RtxdiMath.hlsli ${RTXDI_TARGET_DIR}
+    cp ${RTXDI_DIR}/RtxdiParameters.h ${RTXDI_TARGET_DIR}
+    cp ${RTXDI_DIR}/RtxdiTypes.h ${RTXDI_TARGET_DIR}
 fi
 
 # Copy NanoVDB
-NanoVDBDir=${ExtDir}/nanovdb
-NanoVDBTargetDir=${OutDir}/shaders/nanovdb
-if [ -d ${NanoVDBDir} ]; then
-    mkdir -p ${NanoVDBTargetDir}
-    cp ${NanoVDBDir}/include/nanovdb/PNanoVDB.h ${NanoVDBTargetDir}
+NANOVDB_DIR=${EXT_DIR}/nanovdb
+NANOVDB_TARGET_DIR=${OUT_DIR}/shaders/nanovdb
+if [ -d ${NANOVDB_DIR} ]; then
+    mkdir -p ${NANOVDB_TARGET_DIR}
+    cp ${NANOVDB_DIR}/include/nanovdb/PNanoVDB.h ${NANOVDB_TARGET_DIR}
+fi
+
+# Copy USD
+if [ "${IS_DEBUG}" = false ]; then
+    cp -fp ${EXT_DIR}/nv-usd-release/lib/libusd_ms.so ${OUT_DIR}
+    cp -frp ${EXT_DIR}/nv-usd-release/lib/usd ${OUT_DIR}/usd
+else
+    cp -fp ${EXT_DIR}/nv-usd-debug/lib/libusd_ms.so ${OUT_DIR}
+    cp -frp ${EXT_DIR}/nv-usd-debug/lib/usd ${OUT_DIR}/usd
 fi
 
 # Copy NVTT
-cp ${ExtDir}/nvtt/libcudart.so.11.0 ${OutDir}
-cp ${ExtDir}/nvtt/libnvtt.so ${OutDir}
+cp ${EXT_DIR}/nvtt/libcudart.so.11.0 ${OUT_DIR}
+cp ${EXT_DIR}/nvtt/libnvtt.so ${OUT_DIR}

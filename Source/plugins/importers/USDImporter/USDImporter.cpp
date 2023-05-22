@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -33,11 +33,12 @@
 #include "Utils/Settings.h"
 #include "Scene/Importer.h"
 
-#include <glm/gtx/transform.hpp>
+#include <pybind11/pybind11.h>
 
 BEGIN_DISABLE_USD_WARNINGS
 #include <pxr/usd/usd/primRange.h>
 #include <pxr/usd/ar/resolver.h>
+#include <pxr/usd/ar/resolverContextBinder.h>
 #include <pxr/usd/usdGeom/bboxCache.h>
 #include <pxr/usd/usdGeom/camera.h>
 #include <pxr/usd/usdGeom/mesh.h>
@@ -100,8 +101,7 @@ namespace Falcor
                 if (prim.IsInstance() && !ctx.useInstanceProxies)
                 {
                     if (!checkPrim(prim, ctx.builder.getSettings())) continue;
-
-                    const UsdPrim protoPrim(prim.GetMaster());
+                    const UsdPrim protoPrim(prim.GetPrototype());
 
                     if (protoPrim.IsValid())
                     {
@@ -131,8 +131,8 @@ namespace Falcor
 
                     logDebug("Adding mesh '{}'.", primName);
                     ctx.addMesh(prim);
-                    rmcv::mat4 bindXform = ctx.getGeomBindTransform(prim);
-                    ctx.addGeomInstance(primName, prim, rmcv::mat4(1.f), bindXform);
+                    float4x4 bindXform = ctx.getGeomBindTransform(prim);
+                    ctx.addGeomInstance(primName, prim, float4x4::identity(), bindXform);
                 }
                 else if (prim.IsA<UsdGeomBasisCurves>())
                 {
@@ -143,7 +143,7 @@ namespace Falcor
 
                     // TODO: Add support for curve instancing
                     // Now we assume each curve has only one instance.
-                    ctx.addCurveInstance(primName, prim, rmcv::mat4(1.f), ctx.nodeStack.back());
+                    ctx.addCurveInstance(primName, prim, float4x4::identity(), ctx.nodeStack.back());
                 }
                 else if (prim.IsA<UsdSkelRoot>())
                 {
@@ -249,23 +249,25 @@ namespace Falcor
     }
 
     // Convert entries in the USD renderSettings dictionary to their Falcor equivalents, if any.
-    Scene::Metadata createMetadata(UsdStageRefPtr& pStage)
+    void setMetadata(UsdStageRefPtr& pStage, ImporterContext& ctx)
     {
         VtDictionary customLayerDict;
         if (!pStage->GetMetadata(TfToken("customLayerData"), &customLayerDict))
         {
             // Not custom layer metadata
-            return {};
+            return;
         }
 
         if (customLayerDict.find("renderSettings") == customLayerDict.end())
         {
             // No render settings dictionary
-            return {};
+            return;
         }
 
         // Found an OV custom rendering dictionary. Convert relevant parameters to Falcor equivalents.
         // If a param value isn't explicitly set in the renderSettings dictionary, use the default OV/Create value.
+
+        std::optional<uint32_t> refinementLevel;
 
         VtDictionary renderDict = customLayerDict["renderSettings"].Get<VtDictionary>();
         Scene::Metadata meta;
@@ -279,6 +281,7 @@ namespace Falcor
         meta.maxSpecularBounces =     getMetadata(renderDict, "rtx:pathtracing:maxSpecularAndTransmissionBounces",  (uint32_t)6);
         meta.maxTransmissionBounces = getMetadata(renderDict, "rtx:pathtracing:maxSpecularAndTransmissionBounces",  (uint32_t)6);
         meta.maxVolumeBounces =       getMetadata(renderDict, "rtx:pathtracing:maxVolumeBounces",                   (uint32_t)4);
+        refinementLevel =             getMetadata(renderDict, "rtx:hydra:refinementLevel",                          (uint32_t)0);
 
         // Falcor's "0 bounce" includes GBuffer output (i.e, primary visibility), while Create's does not.
         // Further, each Falcor bounce includes NEE, while Create's path tracer's NEE requires an extra bounce.
@@ -293,7 +296,9 @@ namespace Falcor
         meta.maxTransmissionBounces = std::max(meta.maxDiffuseBounces.value(), std::max(2U, meta.maxTransmissionBounces.value()) - 2U);
         meta.maxVolumeBounces = std::max(meta.maxDiffuseBounces.value(), std::max(2U, meta.maxVolumeBounces.value()) - 2U);
 
-        return meta;
+        ctx.defaultRefinementLevel = refinementLevel.value();
+
+        ctx.builder.setMetadata(meta);
     }
 
     std::unique_ptr<Importer> USDImporter::create()
@@ -301,7 +306,7 @@ namespace Falcor
         return std::make_unique<USDImporter>();
     }
 
-    void USDImporter::importScene(const std::filesystem::path& path, SceneBuilder& builder, const Dictionary& dict)
+    void USDImporter::importScene(const std::filesystem::path& path, SceneBuilder& builder, const pybind11::dict& dict)
     {
         if (!path.is_absolute())
             throw ImporterError(path, "Expected absolute path.");
@@ -314,7 +319,9 @@ namespace Falcor
         // Remove the diagnostic delegate from the TfDiagnosticMgr upon return.
         ScopeGuard removeDiagDelegate{ [&]() { TfDiagnosticMgr::GetInstance().RemoveDelegate(&diagnosticDelegate); } };
 
-        ArGetResolver().ConfigureResolverForAsset(path.string());
+        // Create resolver.
+        auto resolverContext = ArGetResolver().CreateDefaultContextForAsset(path.string());
+        ArResolverContextBinder binder(resolverContext);
 
         UsdStageRefPtr pStage = UsdStage::Open(path.string());
         if (!pStage)
@@ -349,8 +356,7 @@ namespace Falcor
             ctx.builder.setCameraSpeed(0.025f * stageDiagonal * ctx.metersPerUnit);
         }
 
-        Scene::Metadata metadata = createMetadata(pStage);
-        ctx.builder.setMetadata(metadata);
+        setMetadata(pStage, ctx);
 
         timeReport.measure("Load scene settings");
 
@@ -359,11 +365,11 @@ namespace Falcor
         {
             // Create prototypes for all prototype prims.
             ctx.pushNodeStack();
-            std::vector<UsdPrim> prototypes(pStage->GetMasters());
-            for (const UsdPrim& rootPrim : prototypes)
+            std::vector<UsdPrim> prototypes(pStage->GetPrototypes());
+            for (const UsdPrim& prim : prototypes)
             {
-                if (!checkPrim(rootPrim, ctx.builder.getSettings())) continue;
-                ctx.createPrototype(rootPrim);
+                if (!checkPrim(prim, ctx.builder.getSettings())) continue;
+                ctx.createPrototype(prim);
             }
             ctx.popNodeStack();
             FALCOR_ASSERT(ctx.getNodeStackDepth() == 0);
@@ -371,10 +377,10 @@ namespace Falcor
 
         // Initialize stage-to-Falcor transformation based on specified stage up and unit scaling which
         // accounts for any differences in scene units and 'up' orientation between the stage and Falcor
-        rmcv::mat4 rootXform = rmcv::scale(float3(ctx.metersPerUnit));
+        float4x4 rootXform = math::matrixFromScaling(float3(ctx.metersPerUnit));
         if (UsdGeomGetStageUpAxis(pStage) == UsdGeomTokens->z)
         {
-            rootXform = rmcv::eulerAngleX(glm::radians(-90.0f)) * rootXform;
+            rootXform = mul(math::matrixFromRotationX(math::radians(-90.0f)), rootXform);
         }
         else
         {
@@ -398,11 +404,11 @@ namespace Falcor
         {
             // No camera specified; attempt to create a reasonable default
             float3 viewDir = normalize(float3(-1.f, -1.f, -1.f));
-            float3 target = toGlm(stageCenter * ctx.metersPerUnit);
+            float3 target = toFalcor(stageCenter * ctx.metersPerUnit);
             float3 pos = target - (viewDir * stageDiagonal * 1.5f * ctx.metersPerUnit);
             float3 up(0.f, 1.f, 0.f);
 
-            Camera::SharedPtr pCamera = Camera::create("Default");
+            ref<Camera> pCamera = Camera::create("Default");
             pCamera->setPosition(pos);
             pCamera->setTarget(target);
             pCamera->setUpVector(up);

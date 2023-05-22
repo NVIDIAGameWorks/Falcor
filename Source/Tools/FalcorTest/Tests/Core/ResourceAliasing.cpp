@@ -29,9 +29,9 @@
 
 namespace Falcor
 {
-GPU_TEST(BufferAliasingRead)
+GPU_TEST(BufferAliasing_Read)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     const size_t N = 32;
 
@@ -43,11 +43,12 @@ GPU_TEST(BufferAliasingRead)
     );
 
     ctx.createProgram("Tests/Core/ResourceAliasing.cs.slang", "testRead", Program::DefineList(), Shader::CompilerFlags::None);
-    ctx.allocateStructuredBuffer("result", N * 2);
+    ctx.allocateStructuredBuffer("result", N * 3);
 
     // Bind buffer to two separate vars to test resource aliasing.
     ctx["bufA1"] = pBuffer;
     ctx["bufA2"] = pBuffer;
+    ctx["bufA3"] = pBuffer;
 
     ctx.runProgram(N, 1, 1);
 
@@ -56,17 +57,18 @@ GPU_TEST(BufferAliasingRead)
     {
         EXPECT_EQ(result[i], (float)i) << "i = " << i;
         EXPECT_EQ(result[i + N], (float)i) << "i = " << i;
+        EXPECT_EQ(result[i + 2 * N], (float)i) << "i = " << i;
     }
     ctx.unmapBuffer("result");
 }
 
-GPU_TEST(BufferAliasingReadWrite)
+GPU_TEST(BufferAliasing_ReadWrite)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     const size_t N = 32;
 
-    std::vector<float> initData(N * 2);
+    std::vector<float> initData(N * 3);
     for (size_t i = 0; i < initData.size(); i++)
         initData[i] = (float)i;
     auto pBuffer = Buffer::create(
@@ -79,6 +81,7 @@ GPU_TEST(BufferAliasingReadWrite)
     // Bind buffer to two separate vars to test resource aliasing.
     ctx["bufB1"] = pBuffer;
     ctx["bufB2"] = pBuffer;
+    ctx["bufB3"] = pBuffer;
 
     ctx.runProgram(N, 1, 1);
 
@@ -87,7 +90,41 @@ GPU_TEST(BufferAliasingReadWrite)
     {
         EXPECT_EQ(result[i], (float)(N - i)) << "i = " << i;
         EXPECT_EQ(result[i + N], (float)(N - i)) << "i = " << i;
+        EXPECT_EQ(result[i + 2 * N], (float)(N - i)) << "i = " << i;
     }
     pBuffer->unmap();
+}
+
+GPU_TEST(BufferAliasing_StructRead, "Disabled because <uint> version fails")
+{
+    ref<Device> pDevice = ctx.getDevice();
+
+    const size_t N = 32;
+
+    std::vector<float> initData(N);
+    for (size_t i = 0; i < initData.size(); i++)
+        initData[i] = (float)i;
+    auto pBuffer = Buffer::createStructured(
+        pDevice, initData.size() * sizeof(float), 1, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, initData.data(), false
+    );
+
+    ctx.createProgram("Tests/Core/ResourceAliasing.cs.slang", "testStructRead", Program::DefineList(), Shader::CompilerFlags::None);
+    ctx.allocateStructuredBuffer("result", N * 3);
+
+    // Bind buffer to three separate vars to test resource aliasing.
+    ctx["bufStruct1"] = pBuffer;
+    ctx["bufStruct2"] = pBuffer;
+    ctx["bufStruct3"] = pBuffer;
+
+    ctx.runProgram(N, 1, 1);
+
+    const float* result = ctx.mapBuffer<const float>("result");
+    for (size_t i = 0; i < N; i++)
+    {
+        EXPECT_EQ(result[i], (float)i) << "i = " << i;
+        EXPECT_EQ(result[i + N], (float)i) << "i = " << i;
+        EXPECT_EQ(result[i + 2 * N], (float)i) << "i = " << i;
+    }
+    ctx.unmapBuffer("result");
 }
 } // namespace Falcor

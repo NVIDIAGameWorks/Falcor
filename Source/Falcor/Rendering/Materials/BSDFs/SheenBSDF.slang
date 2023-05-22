@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,10 +27,8 @@
  **************************************************************************/
 #include "Utils/Math/MathConstants.slangh"
 
-import Rendering.Materials.Fresnel;
-__exported import Rendering.Materials.IBSDF;
 import Utils.Math.MathHelpers;
-import Utils.Color.ColorHelpers;
+__exported import Rendering.Materials.IBSDF;
 
 /**
  * Sheen-only implementation from Estevez and Kulla 2017, "Production Friendly Microfacet Sheen BRDF";

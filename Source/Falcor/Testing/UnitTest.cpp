@@ -191,7 +191,7 @@ inline void writeXmlReport(const std::filesystem::path& path, const std::vector<
     doc.save_file(path.native().c_str());
 }
 
-inline TestResult runTest(const Test& test, std::shared_ptr<Device> pDevice, Fbo* pTargetFbo)
+inline TestResult runTest(const Test& test, ref<Device> pDevice, Fbo* pTargetFbo)
 {
     if (!test.skipMessage.empty())
         return {TestResult::Status::Skipped, {test.skipMessage}};
@@ -263,7 +263,7 @@ inline TestResult runTest(const Test& test, std::shared_ptr<Device> pDevice, Fbo
 }
 
 int32_t runTests(
-    std::shared_ptr<Device> pDevice,
+    ref<Device> pDevice,
     Fbo* pTargetFbo,
     UnitTestCategoryFlags categoryFlags,
     const std::string& testFilter,
@@ -448,7 +448,7 @@ void GPUUnitTestContext::createProgram(const Program::Desc& desc, const Program:
 void GPUUnitTestContext::createVars()
 {
     // Create shader variables.
-    ProgramReflection::SharedConstPtr pReflection = mpProgram->getReflector();
+    ref<const ProgramReflection> pReflection = mpProgram->getReflector();
     mpVars = ComputeVars::create(mpDevice, pReflection);
     FALCOR_ASSERT(mpVars);
 
@@ -461,7 +461,7 @@ void GPUUnitTestContext::createVars()
 void GPUUnitTestContext::allocateStructuredBuffer(const std::string& name, uint32_t nElements, const void* pInitData, size_t initDataSize)
 {
     checkInvariant(mpVars != nullptr, "Program vars not created");
-    mStructuredBuffers[name].pBuffer = Buffer::createStructured(mpDevice.get(), mpProgram.get(), name, nElements);
+    mStructuredBuffers[name].pBuffer = Buffer::createStructured(mpDevice, mpProgram.get(), name, nElements);
     FALCOR_ASSERT(mStructuredBuffers[name].pBuffer);
     if (pInitData)
     {
@@ -485,7 +485,7 @@ void GPUUnitTestContext::runProgram(const uint3& dimensions)
     uint3 groups = div_round_up(dimensions, mThreadGroupSize);
 
     // // Check dispatch dimensions.
-    if (glm::any(glm::greaterThan(groups, mpDevice->getLimits().maxComputeDispatchThreadGroups)))
+    if (any(groups > mpDevice->getLimits().maxComputeDispatchThreadGroups))
     {
         throw ErrorRunningTestException("GPUUnitTestContext::runProgram() - Dispatch dimension exceeds maximum.");
     }

@@ -40,7 +40,7 @@ std::uniform_real_distribution u;
 
 GPU_TEST(CastFloat16)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     ctx.createProgram("Tests/Slang/CastFloat16.cs.slang", "testCastFloat16", Program::DefineList(), Shader::CompilerFlags::None, "6_5");
     ctx.allocateStructuredBuffer("result", kNumElems);

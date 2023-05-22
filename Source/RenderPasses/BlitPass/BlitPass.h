@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
+#include "RenderGraph/RenderPass.h"
 
 using namespace Falcor;
 
@@ -39,11 +40,9 @@ class BlitPass : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(BlitPass, "BlitPass", "Blit a texture into a different texture.");
 
-    using SharedPtr = std::shared_ptr<BlitPass>;
+    static ref<BlitPass> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<BlitPass>(pDevice, dict); }
 
-    /** Create a new object
-    */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
+    BlitPass(ref<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
@@ -55,7 +54,6 @@ public:
     void setFilter(Sampler::Filter filter) { mFilter = filter; }
 
 private:
-    BlitPass(std::shared_ptr<Device> pDevice, const Dictionary& dict);
     void parseDictionary(const Dictionary& dict);
 
     Sampler::Filter mFilter = Sampler::Filter::Linear;

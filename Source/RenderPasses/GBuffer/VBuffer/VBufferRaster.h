@@ -41,24 +41,22 @@ class VBufferRaster : public GBufferBase
 public:
     FALCOR_PLUGIN_CLASS(VBufferRaster, "VBufferRaster", "Rasterized V-buffer generation pass.");
 
-    using SharedPtr = std::shared_ptr<VBufferRaster>;
+    static ref<VBufferRaster> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<VBufferRaster>(pDevice, dict); }
 
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
+    VBufferRaster(ref<Device> pDevice, const Dictionary& dict);
 
     RenderPassReflection reflect(const CompileData& compileData) override;
-    void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
+    void setScene(RenderContext* pRenderContext, const ref<Scene>& pScene) override;
     void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
 
 private:
-    VBufferRaster(std::shared_ptr<Device> pDevice, const Dictionary& dict);
-
     // Internal state
-    Fbo::SharedPtr mpFbo;
+    ref<Fbo> mpFbo;
 
     struct
     {
-        GraphicsState::SharedPtr pState;
-        GraphicsProgram::SharedPtr pProgram;
-        GraphicsVars::SharedPtr pVars;
+        ref<GraphicsState> pState;
+        ref<GraphicsProgram> pProgram;
+        ref<GraphicsVars> pVars;
     } mRaster;
 };

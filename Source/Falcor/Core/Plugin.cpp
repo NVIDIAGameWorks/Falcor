@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -67,7 +67,7 @@ bool PluginManager::loadPlugin(const std::filesystem::path& path)
 
     SharedLibraryHandle library = loadSharedLibrary(path);
     if (library == nullptr)
-        throw RuntimeError("Failed to load plugin library from {}. File is not a shared library.", path);
+        throw RuntimeError("Failed to load plugin library from {}. Cannot load shared library.", path);
 
     using RegisterPluginProc = void (*)(PluginRegistry&);
 
@@ -92,7 +92,7 @@ bool PluginManager::loadPlugin(const std::filesystem::path& path)
 
 bool PluginManager::releasePlugin(const std::filesystem::path& path)
 {
-    std::lock_guard<std::mutex> lock(mLibrariesMutex);
+    std::lock_guard<std::mutex> librariesLock(mLibrariesMutex);
 
     auto libraryIt = mLibraries.find(path);
     if (libraryIt == mLibraries.end())
@@ -106,7 +106,7 @@ bool PluginManager::releasePlugin(const std::filesystem::path& path)
 
     // Delete all the classes that were owned by the library.
     {
-        std::lock_guard<std::mutex> lock(mClassDescsMutex);
+        std::lock_guard<std::mutex> classDescsLock(mClassDescsMutex);
         for (auto it = mClassDescs.begin(); it != mClassDescs.end();)
         {
             if (it->second->library == library)

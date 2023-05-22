@@ -1,8 +1,7 @@
 <project toolsVersion="6.0">
     <!-- Tools -->
     <dependency name="tools_python" linkPath="tools/.packman/python">
-        <package name="python" version="3.7.9-1-${platform}" platforms="windows-x86_64" />
-        <package name="python" version="3.7.9-180.74b501b5-${platform}" platforms="linux-x86_64" />
+        <package name="python" version="3.10.11+nv1-${platform}" platforms="windows-x86_64 linux-x86_64" />
     </dependency>
     <dependency name="tools_cmake" linkPath="tools/.packman/cmake">
         <package name="cmake" version="3.22.1+nv1-${platform}" platforms="windows-x86_64 linux-x86_64" />
@@ -15,24 +14,23 @@
     </dependency>
     <!-- Media -->
     <dependency name="media" linkPath="media">
-        <package name="falcor_media" version="0efe5191" />
+        <package name="falcor_media" version="82e6b55d" />
     </dependency>
     <!-- Libraries -->
     <dependency name="falcor_dependencies" linkPath="external/packman/deps">
-        <package name="falcor_dependencies" version="cdeb2ac0-${platform}" platforms="windows-x86_64 linux-x86_64" />
+        <package name="falcor_dependencies" version="f80dd590-${platform}" platforms="windows-x86_64 linux-x86_64" />
     </dependency>
     <remote name="github-slang-windows" type="https" packageLocation="github.com/shader-slang/slang/releases/download/v${version}/slang-${version}-win64.zip"/>
     <remote name="github-slang-linux" type="https" packageLocation="github.com/shader-slang/slang/releases/download/v${version}/slang-${version}-linux-x86_64.zip"/>
     <dependency name="slang" linkPath="external/packman/slang">
-        <package name="slang" version="0.24.52" remotes="github-slang-windows" platforms="windows-x86_64"/>
-        <package name="slang" version="0.24.52" remotes="github-slang-linux" platforms="linux-x86_64" />
+        <package name="slang" version="0.27.14" remotes="github-slang-windows" platforms="windows-x86_64"/>
+        <package name="slang" version="0.27.14" remotes="github-slang-linux" platforms="linux-x86_64" />
     </dependency>
     <dependency name="pix" linkPath="external/packman/pix">
         <package name="WinPixEventRuntime" version="1.0.190604001" platforms="windows-x86_64" />
     </dependency>
     <dependency name="python" linkPath="external/packman/python">
-        <package name="python" version="3.7.9-1-${platform}" platforms="windows-x86_64" />
-        <package name="python" version="3.7.9-180.74b501b5-${platform}" platforms="linux-x86_64" />
+        <package name="python" version="3.10.11+nv1-${platform}" platforms="windows-x86_64 linux-x86_64" />
     </dependency>
     <dependency name="nanovdb" linkPath="external/packman/nanovdb">
         <package name="nanovdb" version="32.3.3-37-${platform}-release" platforms="windows-x86_64 linux-x86_64" />
@@ -47,10 +45,13 @@
         <package name="nvtt" version="3.1.6-${platform}" platforms="windows-x86_64 linux-x86_64" />
     </dependency>
     <dependency name="nv-usd-release" linkPath="external/packman/nv-usd-release">
-        <package name="nv-usd" version="20.08.nv.1.1.2064.0ffb3647-win64_py37_release-main" platforms="windows-x86_64" />
+        <package name="nv-usd" version="22.11.nv.0.2.424.27f22922-win64_nopy_release-dev_omniverse" platforms="windows-x86_64" />
+        <package name="nv-usd" version="22.11.nv.0.2.424.27f22922-linux64_nopy-centos_release-dev_omniverse" platforms="linux-x86_64" />
+
     </dependency>
     <dependency name="nv-usd-debug" linkPath="external/packman/nv-usd-debug">
-        <package name="nv-usd" version="20.08.nv.1.1.2064.0ffb3647-win64_py37_debug-main" platforms="windows-x86_64" />
+        <package name="nv-usd" version="22.11.nv.0.2.424.27f22922-win64_nopy_debug-dev_omniverse" platforms="windows-x86_64" />
+        <package name="nv-usd" version="22.11.nv.0.2.424.27f22922-linux64_nopy-centos_debug-dev_omniverse" platforms="linux-x86_64" />
     </dependency>
     <dependency name="rtxdi" linkPath="external/packman/rtxdi">
         <package name="rtxdi" version="1.3.0-falcor" platforms="windows-x86_64 linux-x86_64" />
@@ -60,11 +61,5 @@
     </dependency>
     <dependency name="dlss" linkPath="external/packman/dlss">
         <package name="dlss" version="3.1.0" platforms="windows-x86_64 linux-x86_64" />
-    </dependency>
-    <dependency name="opensubdiv-release" linkPath="external/packman/opensubdiv-release">
-        <package name="opensubdiv" version="3.4.3-180.9ef88f5c-windows-x86_64-release" platforms="windows-x86_64" />
-    </dependency>
-    <dependency name="opensubdiv-debug" linkPath="external/packman/opensubdiv-debug">
-        <package name="opensubdiv" version="3.4.3-180.9ef88f5c-windows-x86_64-debug" platforms="windows-x86_64" />
     </dependency>
 </project>

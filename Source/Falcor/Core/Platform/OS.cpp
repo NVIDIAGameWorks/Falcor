@@ -35,7 +35,6 @@
 #include <filesystem>
 #include <fstream>
 #include <mutex>
-#include <sstream>
 #include <regex>
 
 namespace Falcor
@@ -112,7 +111,7 @@ void addDataDirectory(const std::filesystem::path& dir, bool addToFront)
     FALCOR_CHECK_ARG_MSG(!dir.empty(), "Do not add empty directories to search paths");
 
     if (std::find_if(
-            gDataDirectories.begin(), gDataDirectories.end(), [&dir](auto& dataDir) { return std::filesystem::equivalent(dir, dataDir); }
+            gDataDirectories.begin(), gDataDirectories.end(), [&dir](const std::filesystem::path& d) { return isSamePath(dir, d); }
         ) == gDataDirectories.end())
     {
         if (addToFront)
@@ -131,7 +130,7 @@ void removeDataDirectory(const std::filesystem::path& dir)
     FALCOR_CHECK_ARG_MSG(!dir.empty(), "Do not remove empty directories to search paths");
 
     auto it = std::find_if(
-        gDataDirectories.begin(), gDataDirectories.end(), [&dir](auto& dataDir) { return std::filesystem::equivalent(dir, dataDir); }
+        gDataDirectories.begin(), gDataDirectories.end(), [&dir](const std::filesystem::path& d) { return isSamePath(dir, d); }
     );
     if (it != gDataDirectories.end())
     {
@@ -148,6 +147,11 @@ bool isDevelopmentMode()
     }();
 
     return devMode;
+}
+
+bool isSamePath(const std::filesystem::path& lhs, const std::filesystem::path& rhs)
+{
+    return std::filesystem::weakly_canonical(lhs) == std::filesystem::weakly_canonical(rhs);
 }
 
 bool findFileInDataDirectories(const std::filesystem::path& path, std::filesystem::path& fullPath)

@@ -35,7 +35,7 @@ namespace Falcor
 GPU_TEST(RGLAcquisition)
 {
     // Create material.
-    StandardMaterial::SharedPtr pMaterial = StandardMaterial::create(ctx.getDevice(), "testMaterial");
+    ref<StandardMaterial> pMaterial = StandardMaterial::create(ctx.getDevice(), "testMaterial");
     pMaterial->setBaseColor(float4(0.3f, 0.8f, 0.9f, 1.f));
     pMaterial->setMetallic(0.f);
     pMaterial->setRoughness(1.f);
@@ -43,10 +43,10 @@ GPU_TEST(RGLAcquisition)
 
     // Create and update scene containing the material.
     Scene::SceneData sceneData;
-    sceneData.pMaterials = MaterialSystem::create(ctx.getDevice());
+    sceneData.pMaterials = std::make_unique<MaterialSystem>(ctx.getDevice());
     MaterialID materialID = sceneData.pMaterials->addMaterial(pMaterial);
 
-    Scene::SharedPtr pScene = Scene::create(ctx.getDevice(), std::move(sceneData));
+    ref<Scene> pScene = Scene::create(ctx.getDevice(), std::move(sceneData));
     auto updateFlags = pScene->update(ctx.getRenderContext(), 0.0);
 
     // Create acquisition class.

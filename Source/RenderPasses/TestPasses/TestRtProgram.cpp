@@ -45,19 +45,14 @@ namespace
 
 void TestRtProgram::registerScriptBindings(pybind11::module& m)
 {
-    pybind11::class_<TestRtProgram, RenderPass, TestRtProgram::SharedPtr> pass(m, "TestRtProgram");
+    pybind11::class_<TestRtProgram, RenderPass, ref<TestRtProgram>> pass(m, "TestRtProgram");
     pass.def("addCustomPrimitive", &TestRtProgram::addCustomPrimitive);
     pass.def("removeCustomPrimitive", &TestRtProgram::removeCustomPrimitive);
     pass.def("moveCustomPrimitive", &TestRtProgram::moveCustomPrimitive);
 }
 
-TestRtProgram::SharedPtr TestRtProgram::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-{
-    return SharedPtr(new TestRtProgram(std::move(pDevice), dict));
-}
-
-TestRtProgram::TestRtProgram(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-    : RenderPass(std::move(pDevice))
+TestRtProgram::TestRtProgram(ref<Device> pDevice, const Dictionary& dict)
+    : RenderPass(pDevice)
 {
     for (const auto& [key, value] : dict)
     {
@@ -81,7 +76,7 @@ RenderPassReflection TestRtProgram::reflect(const CompileData& compileData)
     return reflector;
 }
 
-void TestRtProgram::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
+void TestRtProgram::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
 {
     mpScene = pScene;
 
@@ -110,7 +105,7 @@ void TestRtProgram::sceneChanged()
     desc.setMaxPayloadSize(kMaxPayloadSizeBytes);
     desc.setMaxAttributeSize(kMaxAttributeSizeBytes);
 
-    RtBindingTable::SharedPtr sbt;
+    ref<RtBindingTable> sbt;
 
     if (mMode == 0)
     {

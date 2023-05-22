@@ -44,7 +44,7 @@ struct DiffuseSpecularData
 #ifdef HOST_CODE
     bool operator== (const DiffuseSpecularData& other) const
     {
-        if (baseColor != other.baseColor) return false;
+        if (any(baseColor != other.baseColor)) return false;
         if (roughness != other.roughness) return false;
         if (specular != other.specular) return false;
         if (metallic != other.metallic) return false;

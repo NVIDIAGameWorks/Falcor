@@ -1,61 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
-    <!-- Falcor ObjectID -->
+    <!-- Object reference -->
+    <Type Name="Falcor::ref&lt;*&gt;">
+        <SmartPointer Usage="Minimal">mPtr</SmartPointer>
+        <DisplayString Condition="mPtr == 0">nullptr</DisplayString>
+        <DisplayString>{(void*)mPtr} refCount={mPtr-&gt;mRefCount} {*mPtr}</DisplayString>
+    </Type>
+    <!-- ObjectID -->
     <Type Name="Falcor::ObjectID&lt;*,*,*&gt;">
         <DisplayString Condition="mID != kInvalidID">{mID}</DisplayString>
         <DisplayString Condition="mID == kInvalidID">InvalidID</DisplayString>
     </Type>
-    <!-- These were adapted from https://github.com/g-truc/glm/blob/master/util/glm.natvis -->
-    <!-- License: https://github.com/g-truc/glm/blob/master/manual.md#section0 -->
-    <Type Name="glm::tvec1&lt;*&gt;">
-        <DisplayString>{x}</DisplayString>
+    <!-- Math types -->
+    <Type Name="Falcor::math::vector&lt;*,1&gt;">
+        <DisplayString>{x,g}</DisplayString>
         <Expand>
             <Item Name="x">x</Item>
         </Expand>
     </Type>
-    <Type Name="glm::tvec2&lt;*&gt;">
-        <DisplayString>{x}, {y}</DisplayString>
-        <Expand>
-            <Item Name="x">x</Item>
-            <Item Name="y">y</Item>
-        </Expand>
-    </Type>
-    <Type Name="glm::tvec3&lt;*&gt;">
-        <DisplayString>{x}, {y}, {z}</DisplayString>
+    <Type Name="Falcor::math::vector&lt;*,2&gt;">
+        <DisplayString>{x,g}, {y,g}</DisplayString>
         <Expand>
             <Item Name="x">x</Item>
             <Item Name="y">y</Item>
-            <Item Name="z">z</Item>
         </Expand>
     </Type>
-    <Type Name="glm::tvec4&lt;*&gt;">
-        <DisplayString>{x}, {y}, {z}, {w}</DisplayString>
+    <Type Name="Falcor::math::vector&lt;*,3&gt;">
+        <DisplayString>{x,g}, {y,g}, {z,g}</DisplayString>
         <Expand>
             <Item Name="x">x</Item>
             <Item Name="y">y</Item>
             <Item Name="z">z</Item>
-            <Item Name="w">w</Item>
         </Expand>
     </Type>
-    <Type Name="glm::tmat4x4&lt;*&gt;">
-        <DisplayString>[{value[0],g}] [{value[1],g}] [{value[2],g}] [{value[3],g}]</DisplayString>
-        <Expand>
-            <Synthetic Name="[col 0]">
-                <DisplayString>[{value[0]}]</DisplayString>
-            </Synthetic>
-            <Synthetic Name="[col 1]">
-                <DisplayString>[{value[1]}]</DisplayString>
-            </Synthetic>
-            <Synthetic Name="[col 2]">
-                <DisplayString>[{value[2]}]</DisplayString>
-            </Synthetic>
-            <Synthetic Name="[col 3]">
-                <DisplayString>[{value[3]}]</DisplayString>
-            </Synthetic>
-        </Expand>
-    </Type>
-    <Type Name="glm::tquat&lt;*&gt;">
-        <DisplayString>({x}, {y}, {z}), {w}</DisplayString>
+    <Type Name="Falcor::math::vector&lt;*,4&gt;">
+        <DisplayString>{x,g}, {y,g}, {z,g}, {w,g}</DisplayString>
         <Expand>
             <Item Name="x">x</Item>
             <Item Name="y">y</Item>
@@ -63,11 +42,58 @@
             <Item Name="w">w</Item>
         </Expand>
     </Type>
-    <Type Name="glm::tdualquat&lt;*&gt;">
-        <DisplayString>(({real.x}, {real.y}, {real.z}), {real.w}), (({dual.x}, {dual.y}, {dual.z}), {dual.w})</DisplayString>
+    <Type Name="Falcor::math::matrix&lt;*,3,3&gt;">
+        <DisplayString>[{mRows[0],g}] [{mRows[1],g}] [{mRows[2],g}]</DisplayString>
         <Expand>
-            <Item Name="real">real</Item>
-            <Item Name="dual">dual</Item>
+            <Synthetic Name="[row 0]">
+                <DisplayString>[{mRows[0]}]</DisplayString>
+            </Synthetic>
+            <Synthetic Name="[row 1]">
+                <DisplayString>[{mRows[1]}]</DisplayString>
+            </Synthetic>
+            <Synthetic Name="[row 2]">
+                <DisplayString>[{mRows[2]}]</DisplayString>
+            </Synthetic>
+        </Expand>
+    </Type>
+    <Type Name="Falcor::math::matrix&lt;*,3,4&gt;">
+        <DisplayString>[{mRows[0],g}] [{mRows[1],g}] [{mRows[2],g}]</DisplayString>
+        <Expand>
+            <Synthetic Name="[row 0]">
+                <DisplayString>[{mRows[0]}]</DisplayString>
+            </Synthetic>
+            <Synthetic Name="[row 1]">
+                <DisplayString>[{mRows[1]}]</DisplayString>
+            </Synthetic>
+            <Synthetic Name="[row 2]">
+                <DisplayString>[{mRows[2]}]</DisplayString>
+            </Synthetic>
+        </Expand>
+    </Type>
+    <Type Name="Falcor::math::matrix&lt;*,4,4&gt;">
+        <DisplayString>[{mRows[0],g}] [{mRows[1],g}] [{mRows[2],g}] [{mRows[3],g}]</DisplayString>
+        <Expand>
+            <Synthetic Name="[row 0]">
+                <DisplayString>[{mRows[0]}]</DisplayString>
+            </Synthetic>
+            <Synthetic Name="[row 1]">
+                <DisplayString>[{mRows[1]}]</DisplayString>
+            </Synthetic>
+            <Synthetic Name="[row 2]">
+                <DisplayString>[{mRows[2]}]</DisplayString>
+            </Synthetic>
+            <Synthetic Name="[row 3]">
+                <DisplayString>[{mRows[3]}]</DisplayString>
+            </Synthetic>
+        </Expand>
+    </Type>
+    <Type Name="Falcor::math::quat&lt;*&gt;">
+        <DisplayString>({x,g}, {y,g}, {z,g}), {w,g}</DisplayString>
+        <Expand>
+            <Item Name="x">x</Item>
+            <Item Name="y">y</Item>
+            <Item Name="z">z</Item>
+            <Item Name="w">w</Item>
         </Expand>
     </Type>
     <!-- These were copied from https://github.com/nlohmann/json/blob/develop/nlohmann_json.natvis -->

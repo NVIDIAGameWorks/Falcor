@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -177,7 +177,7 @@ CPU_TEST(Settings_OptionsTypes)
     {
         options.get("string", int(3));
     }
-    catch (Falcor::SettingsProperties::TypeError err)
+    catch (const Falcor::SettingsProperties::TypeError&)
     {
         wrongTypeString = true;
     }
@@ -188,7 +188,7 @@ CPU_TEST(Settings_OptionsTypes)
     {
         options.get("int", std::string("test"));
     }
-    catch (Falcor::SettingsProperties::TypeError err)
+    catch (const Falcor::SettingsProperties::TypeError&)
     {
         wrongTypeInt = true;
     }
@@ -199,7 +199,7 @@ CPU_TEST(Settings_OptionsTypes)
     {
         options.get("int[2]", float(0.f));
     }
-    catch (Falcor::SettingsProperties::TypeError err)
+    catch (const Falcor::SettingsProperties::TypeError&)
     {
         wrongTypeArray = true;
     }
@@ -208,12 +208,15 @@ CPU_TEST(Settings_OptionsTypes)
 
 CPU_TEST(Settings_OptionsOverride)
 {
-    pybind11::dict pyDict;
-    pyDict["mogwai"] = pybind11::dict();
-    pyDict["mogwai"]["value"] = 17;
-
     Settings settings;
-    settings.addOptions(pyDict);
+
+    {
+        pybind11::dict pyDict;
+        pyDict["mogwai"] = pybind11::dict();
+        pyDict["mogwai"]["value"] = 17;
+        settings.addOptions(pyDict);
+    }
+
     SettingsProperties options = settings.getOptions();
 
     EXPECT_EQ(options.get("mogwai:value", 0), 17);

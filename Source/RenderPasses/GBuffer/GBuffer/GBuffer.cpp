@@ -48,8 +48,8 @@ const ChannelList GBuffer::kGBufferChannels =
     { "mtlData",        "gMaterialData",    "Material data (ID, header)",                        true /* optional */, ResourceFormat::RGBA32Uint  },
 };
 
-GBuffer::GBuffer(std::shared_ptr<Device> pDevice)
-    : GBufferBase(std::move(pDevice))
+GBuffer::GBuffer(ref<Device> pDevice)
+    : GBufferBase(pDevice)
 {
     FALCOR_ASSERT(kGBufferChannels.size() == 8); // The list of primary GBuffer channels should contain 8 entries, corresponding to the 8 render targets.
 }

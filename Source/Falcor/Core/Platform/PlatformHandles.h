@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,23 +28,11 @@
 #pragma once
 #include "Core/Macros.h"
 
-#if FALCOR_WINDOWS
-// Instead of including windows.h and crippling compile time we only
-// include windef.h. We need to define _AMD64_ manually as it is only
-// defined in windows.h (if on x64 architecture). We ensure that we
-// are indeed compiling for x64 first, then define _AMD64_ manually.
-#ifndef _M_AMD64
-#error "Compilation only supported on x64!"
-#endif
-#define _AMD64_
-#include <windef.h>
-#endif
-
 namespace Falcor
 {
 #if FALCOR_WINDOWS
-using SharedLibraryHandle = HMODULE;
-using WindowHandle = HWND;
+using SharedLibraryHandle = void*; // HANDLE
+using WindowHandle = void*;        // HWND
 #elif FALCOR_LINUX
 using SharedLibraryHandle = void*;
 struct WindowHandle

@@ -31,7 +31,7 @@
 #include "Core/API/Buffer.h"
 #include "Core/API/Texture.h"
 #include "Core/API/GpuFence.h"
-#include "RenderGraph/BasePasses/ComputePass.h"
+#include "Core/Pass/ComputePass.h"
 #include "Utils/UI/Gui.h"
 #include "Utils/Algorithm/ParallelReduction.h"
 #include <memory>
@@ -60,16 +60,9 @@ namespace Falcor
             float    avgPathLength = 0.f;
             float    avgPathVertices = 0.f;
             float    avgVolumeLookups = 0.f;
-
-            /** Convert to python dict.
-            */
-            pybind11::dict toPython() const;
         };
 
-        using SharedPtr = std::shared_ptr<PixelStats>;
-        virtual ~PixelStats() = default;
-
-        static SharedPtr create(std::shared_ptr<Device> pDevice);
+        PixelStats(ref<Device> pDevice);
 
         void setEnabled(bool enabled) { mEnabled = enabled; }
         bool isEnabled() const { return mEnabled; }
@@ -80,7 +73,7 @@ namespace Falcor
         /** Perform program specialization and bind resources.
             This call doesn't change any resource declarations in the program.
         */
-        void prepareProgram(const Program::SharedPtr& pProgram, const ShaderVar& var);
+        void prepareProgram(const ref<Program>& pProgram, const ShaderVar& var);
 
         void renderUI(Gui::Widgets& widget);
 
@@ -94,36 +87,35 @@ namespace Falcor
             \param[in] pRenderContext The render context.
             \return Texture in R32Uint format containing per-pixel ray counts, or nullptr if not available.
         */
-        const Texture::SharedPtr getRayCountTexture(RenderContext* pRenderContext);
+        const ref<Texture> getRayCountTexture(RenderContext* pRenderContext);
 
         /** Returns the per-pixel path length texture or nullptr if not available.
             \return Texture in R32Uint format containing per-pixel path length, or nullptr if not available.
         */
-        const Texture::SharedPtr getPathLengthTexture() const;
+        const ref<Texture> getPathLengthTexture() const;
 
         /** Returns the per-pixel path vertex count texture or nullptr if not available.
             \return Texture in R32Uint format containing per-pixel path vertex counts, or nullptr if not available.
         */
-        const Texture::SharedPtr getPathVertexCountTexture() const;
+        const ref<Texture> getPathVertexCountTexture() const;
 
         /** Returns the per-pixel volume lookup count texture or nullptr if not available.
             \return Texture in R32Uint format containing per-pixel volume lookup counts, or nullptr if not available.
         */
-        const Texture::SharedPtr getVolumeLookupCountTexture() const;
+        const ref<Texture> getVolumeLookupCountTexture() const;
 
     protected:
-        PixelStats(std::shared_ptr<Device> pDevice);
         void copyStatsToCPU();
         void computeRayCountTexture(RenderContext* pRenderContext);
 
         static const uint32_t kRayTypeCount = (uint32_t)PixelStatsRayType::Count;
 
-        std::shared_ptr<Device>             mpDevice;
+        ref<Device>                         mpDevice;
 
         // Internal state
         std::unique_ptr<ParallelReduction>  mpParallelReduction;            ///< Helper for parallel reduction on the GPU.
-        Buffer::SharedPtr                   mpReductionResult;              ///< Results buffer for stats readback (CPU mappable).
-        GpuFence::SharedPtr                 mpFence;                        ///< GPU fence for sychronizing readback.
+        ref<Buffer>                         mpReductionResult;              ///< Results buffer for stats readback (CPU mappable).
+        ref<GpuFence>                       mpFence;                        ///< GPU fence for sychronizing readback.
 
         // Configuration
         bool                                mEnabled = false;               ///< Enable pixel statistics.
@@ -138,13 +130,13 @@ namespace Falcor
         bool                                mRayCountTextureValid = false;  ///< True if total ray count texture is valid.
         Stats                               mStats;                         ///< Traversal stats.
 
-        Texture::SharedPtr                  mpStatsRayCount[kRayTypeCount]; ///< Buffers for per-pixel ray count stats.
-        Texture::SharedPtr                  mpStatsRayCountTotal;           ///< Buffer for per-pixel total ray count. Only generated if getRayCountTexture() is called.
-        Texture::SharedPtr                  mpStatsPathLength;              ///< Buffer for per-pixel path length stats.
-        Texture::SharedPtr                  mpStatsPathVertexCount;         ///< Buffer for per-pixel path vertex count.
-        Texture::SharedPtr                  mpStatsVolumeLookupCount;       ///< Buffer for per-pixel volume lookup count.
+        ref<Texture>                        mpStatsRayCount[kRayTypeCount]; ///< Buffers for per-pixel ray count stats.
+        ref<Texture>                        mpStatsRayCountTotal;           ///< Buffer for per-pixel total ray count. Only generated if getRayCountTexture() is called.
+        ref<Texture>                        mpStatsPathLength;              ///< Buffer for per-pixel path length stats.
+        ref<Texture>                        mpStatsPathVertexCount;         ///< Buffer for per-pixel path vertex count.
+        ref<Texture>                        mpStatsVolumeLookupCount;       ///< Buffer for per-pixel volume lookup count.
         bool                                mStatsBuffersValid = false;     ///< True if per-pixel stats buffers contain valid data.
 
-        ComputePass::SharedPtr              mpComputeRayCount;              ///< Pass for computing per-pixel total ray count.
+        ref<ComputePass>                    mpComputeRayCount;              ///< Pass for computing per-pixel total ray count.
     };
 }

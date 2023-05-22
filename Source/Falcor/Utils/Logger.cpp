@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -32,145 +32,160 @@
 
 namespace Falcor
 {
-    namespace
-    {
-        Logger::Level sVerbosity = Logger::Level::Info;
-        Logger::OutputFlags sOutputs = Logger::OutputFlags::Console | Logger::OutputFlags::File | Logger::OutputFlags::DebugWindow;
-        std::filesystem::path sLogFilePath;
+namespace
+{
+Logger::Level sVerbosity = Logger::Level::Info;
+Logger::OutputFlags sOutputs = Logger::OutputFlags::Console | Logger::OutputFlags::File | Logger::OutputFlags::DebugWindow;
+std::filesystem::path sLogFilePath;
 
 #if FALCOR_ENABLE_LOGGER
-        bool sInitialized = false;
-        FILE* sLogFile = nullptr;
+bool sInitialized = false;
+FILE* sLogFile = nullptr;
 
-        std::filesystem::path generateLogFilePath()
-        {
-            std::string prefix = getExecutableName();
-            std::filesystem::path directory = getRuntimeDirectory();
-            return findAvailableFilename(prefix, directory, "log");
-        }
-
-        FILE* openLogFile()
-        {
-            FILE* pFile = nullptr;
-
-            if (sLogFilePath.empty())
-            {
-                sLogFilePath = generateLogFilePath();
-            }
-
-            pFile = std::fopen(sLogFilePath.string().c_str(), "w");
-            if (pFile != nullptr)
-            {
-                // Success
-                return pFile;
-            }
-
-            // If we got here, we couldn't create a log file
-            FALCOR_UNREACHABLE();
-            return pFile;
-        }
-
-        void printToLogFile(const std::string& s)
-        {
-            if (!sInitialized)
-            {
-                sLogFile = openLogFile();
-                sInitialized = true;
-            }
-
-            if (sLogFile)
-            {
-                std::fprintf(sLogFile, "%s", s.c_str());
-                std::fflush(sLogFile);
-            }
-        }
-#endif
-    }
-
-    void Logger::shutdown()
-    {
-#if FALCOR_ENABLE_LOGGER
-        if(sLogFile)
-        {
-            fclose(sLogFile);
-            sLogFile = nullptr;
-            sInitialized = false;
-        }
-#endif
-    }
-
-    const char* getLogLevelString(Logger::Level level)
-    {
-        switch (level)
-        {
-        case Logger::Level::Fatal:
-            return "(Fatal)";
-        case Logger::Level::Error:
-            return "(Error)";
-        case Logger::Level::Warning:
-            return "(Warning)";
-        case Logger::Level::Info:
-            return "(Info)";
-        case Logger::Level::Debug:
-            return "(Debug)";
-        default:
-            FALCOR_UNREACHABLE();
-            return nullptr;
-        }
-    }
-
-    void Logger::log(Level level, const std::string_view msg)
-    {
-#if FALCOR_ENABLE_LOGGER
-        if (level <= sVerbosity)
-        {
-            std::string s = fmt::format("{} {}\n", getLogLevelString(level), msg);
-
-            // Write to console.
-            if (is_set(sOutputs, OutputFlags::Console))
-            {
-                auto& os = level > Logger::Level::Error ? std::cout : std::cerr;
-                os << s;
-                os.flush();
-            }
-
-            // Write to file.
-            if (is_set(sOutputs, OutputFlags::File))
-            {
-                printToLogFile(s);
-            }
-
-            // Write to debug window if debugger is attached.
-            if (is_set(sOutputs, OutputFlags::DebugWindow) && isDebuggerPresent())
-            {
-                printToDebugWindow(s);
-            }
-        }
-#endif
-    }
-
-    bool Logger::setLogFilePath(const std::filesystem::path& path)
-    {
-#if FALCOR_ENABLE_LOGGER
-        if (sLogFile)
-        {
-            return false;
-        }
-        else
-        {
-            sLogFilePath = path;
-            return true;
-        }
-#else
-        return false;
-#endif
-    }
-
-    void Logger::setVerbosity(Level level) { sVerbosity = level; }
-    Logger::Level Logger::getVerbosity() { return sVerbosity; }
-
-    void Logger::setOutputs(OutputFlags outputs) { sOutputs = outputs; }
-    Logger::OutputFlags Logger::getOutputs() { return sOutputs; }
-
-    const std::filesystem::path& Logger::getLogFilePath() { return sLogFilePath; }
+std::filesystem::path generateLogFilePath()
+{
+    std::string prefix = getExecutableName();
+    std::filesystem::path directory = getRuntimeDirectory();
+    return findAvailableFilename(prefix, directory, "log");
 }
+
+FILE* openLogFile()
+{
+    FILE* pFile = nullptr;
+
+    if (sLogFilePath.empty())
+    {
+        sLogFilePath = generateLogFilePath();
+    }
+
+    pFile = std::fopen(sLogFilePath.string().c_str(), "w");
+    if (pFile != nullptr)
+    {
+        // Success
+        return pFile;
+    }
+
+    // If we got here, we couldn't create a log file
+    FALCOR_UNREACHABLE();
+    return pFile;
+}
+
+void printToLogFile(const std::string& s)
+{
+    if (!sInitialized)
+    {
+        sLogFile = openLogFile();
+        sInitialized = true;
+    }
+
+    if (sLogFile)
+    {
+        std::fprintf(sLogFile, "%s", s.c_str());
+        std::fflush(sLogFile);
+    }
+}
+#endif
+} // namespace
+
+void Logger::shutdown()
+{
+#if FALCOR_ENABLE_LOGGER
+    if (sLogFile)
+    {
+        fclose(sLogFile);
+        sLogFile = nullptr;
+        sInitialized = false;
+    }
+#endif
+}
+
+const char* getLogLevelString(Logger::Level level)
+{
+    switch (level)
+    {
+    case Logger::Level::Fatal:
+        return "(Fatal)";
+    case Logger::Level::Error:
+        return "(Error)";
+    case Logger::Level::Warning:
+        return "(Warning)";
+    case Logger::Level::Info:
+        return "(Info)";
+    case Logger::Level::Debug:
+        return "(Debug)";
+    default:
+        FALCOR_UNREACHABLE();
+        return nullptr;
+    }
+}
+
+void Logger::log(Level level, const std::string_view msg)
+{
+#if FALCOR_ENABLE_LOGGER
+    if (level <= sVerbosity)
+    {
+        std::string s = fmt::format("{} {}\n", getLogLevelString(level), msg);
+
+        // Write to console.
+        if (is_set(sOutputs, OutputFlags::Console))
+        {
+            auto& os = level > Logger::Level::Error ? std::cout : std::cerr;
+            os << s;
+            os.flush();
+        }
+
+        // Write to file.
+        if (is_set(sOutputs, OutputFlags::File))
+        {
+            printToLogFile(s);
+        }
+
+        // Write to debug window if debugger is attached.
+        if (is_set(sOutputs, OutputFlags::DebugWindow) && isDebuggerPresent())
+        {
+            printToDebugWindow(s);
+        }
+    }
+#endif
+}
+
+bool Logger::setLogFilePath(const std::filesystem::path& path)
+{
+#if FALCOR_ENABLE_LOGGER
+    if (sLogFile)
+    {
+        return false;
+    }
+    else
+    {
+        sLogFilePath = path;
+        return true;
+    }
+#else
+    return false;
+#endif
+}
+
+void Logger::setVerbosity(Level level)
+{
+    sVerbosity = level;
+}
+Logger::Level Logger::getVerbosity()
+{
+    return sVerbosity;
+}
+
+void Logger::setOutputs(OutputFlags outputs)
+{
+    sOutputs = outputs;
+}
+Logger::OutputFlags Logger::getOutputs()
+{
+    return sOutputs;
+}
+
+const std::filesystem::path& Logger::getLogFilePath()
+{
+    return sLogFilePath;
+}
+} // namespace Falcor

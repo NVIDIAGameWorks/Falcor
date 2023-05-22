@@ -40,9 +40,9 @@ auto dist = std::uniform_int_distribution<uint32_t>(0, 100);
 
 void testRootBufferInStruct(GPUUnitTestContext& ctx, const std::string& shaderModel, bool useUav)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
-    auto r = [&]() -> uint32_t { return dist(rng); };
+    auto nextRandom = [&]() -> uint32_t { return dist(rng); };
 
     Program::DefineList defines = {{"USE_UAV", useUav ? "1" : "0"}};
     Shader::CompilerFlags compilerFlags = Shader::CompilerFlags::None;
@@ -56,14 +56,14 @@ void testRootBufferInStruct(GPUUnitTestContext& ctx, const std::string& shaderMo
     std::vector<uint32_t> buf(kNumElems);
     {
         for (uint32_t i = 0; i < kNumElems; i++)
-            buf[i] = r();
+            buf[i] = nextRandom();
         data["buf"] =
             Buffer::createTyped<uint32_t>(pDevice, kNumElems, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, buf.data());
     }
     std::vector<uint32_t> rwBuf(kNumElems);
     {
         for (uint32_t i = 0; i < kNumElems; i++)
-            rwBuf[i] = r();
+            rwBuf[i] = nextRandom();
         data["rwBuf"] =
             Buffer::createTyped<uint32_t>(pDevice, kNumElems, ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, rwBuf.data());
     }
@@ -72,7 +72,7 @@ void testRootBufferInStruct(GPUUnitTestContext& ctx, const std::string& shaderMo
     std::vector<uint32_t> rootBuf(kNumElems);
     {
         for (uint32_t i = 0; i < kNumElems; i++)
-            rootBuf[i] = r();
+            rootBuf[i] = nextRandom();
 
         auto pRootBuffer = Buffer::createStructured(
             pDevice, data[kRootBufferName], kNumElems, useUav ? ResourceBindFlags::UnorderedAccess : ResourceBindFlags::ShaderResource,
@@ -81,7 +81,7 @@ void testRootBufferInStruct(GPUUnitTestContext& ctx, const std::string& shaderMo
 
         data[kRootBufferName] = pRootBuffer;
 
-        Buffer::SharedPtr pBoundBuffer = data[kRootBufferName];
+        ref<Buffer> pBoundBuffer = data[kRootBufferName];
         EXPECT_EQ(pBoundBuffer, pRootBuffer);
     }
 

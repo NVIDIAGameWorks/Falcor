@@ -34,8 +34,9 @@
 #include "GFXAPI.h"
 #include "Core/State/GraphicsState.h"
 #include "Core/Program/ProgramVars.h"
+#include "Core/Pass/FullScreenPass.h"
 #include "Utils/Logger.h"
-#include "RenderGraph/BasePasses/FullScreenPass.h"
+#include "Utils/Scripting/ScriptBindings.h"
 #include <cstddef> // for offsetof
 
 namespace Falcor
@@ -103,74 +104,6 @@ gfx::PrimitiveTopology getGFXPrimitiveTopology(Vao::Topology topology)
         FALCOR_UNREACHABLE();
         return gfx::PrimitiveTopology::TriangleList;
     }
-}
-
-gfx::IRenderCommandEncoder* drawCallCommon(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars)
-{
-    static GraphicsStateObject* spLastGso = nullptr; // TODO: REMOVEGLOBAL
-
-    // Insert barriers for bound resources.
-    pVars->prepareDescriptorSets(pContext);
-
-    // Insert barriers for render targets.
-    ensureFboAttachmentResourceStates(pContext, pState->getFbo().get());
-
-    // Insert barriers for vertex/index buffers.
-    auto pGso = pState->getGSO(pVars).get();
-    if (pGso != spLastGso)
-    {
-        auto pVao = pState->getVao().get();
-        for (uint32_t i = 0; i < pVao->getVertexBuffersCount(); i++)
-        {
-            auto vertexBuffer = pVao->getVertexBuffer(i).get();
-            pContext->resourceBarrier(vertexBuffer, Resource::State::VertexBuffer);
-        }
-        if (pVao->getIndexBuffer())
-        {
-            auto indexBuffer = pVao->getIndexBuffer().get();
-            pContext->resourceBarrier(indexBuffer, Resource::State::IndexBuffer);
-        }
-    }
-
-    bool isNewEncoder = false;
-    auto encoder = pContext->getLowLevelData()->getRenderCommandEncoder(
-        pGso->getGFXRenderPassLayout(), pState->getFbo() ? pState->getFbo()->getGfxFramebuffer() : nullptr, isNewEncoder
-    );
-
-    FALCOR_GFX_CALL(encoder->bindPipelineWithRootObject(pGso->getGfxPipelineState(), pVars->getShaderObject()));
-
-    if (isNewEncoder || pGso != spLastGso)
-    {
-        spLastGso = pGso;
-        auto pVao = pState->getVao().get();
-        auto pVertexLayout = pVao->getVertexLayout().get();
-        for (uint32_t i = 0; i < pVao->getVertexBuffersCount(); i++)
-        {
-            auto bufferLayout = pVertexLayout->getBufferLayout(i);
-            auto vertexBuffer = pVao->getVertexBuffer(i).get();
-            encoder->setVertexBuffer(
-                i, pVao->getVertexBuffer(i)->getGfxBufferResource(),
-                bufferLayout->getElementOffset(0) + (uint32_t)vertexBuffer->getGpuAddressOffset()
-            );
-        }
-        if (pVao->getIndexBuffer())
-        {
-            auto indexBuffer = pVao->getIndexBuffer().get();
-            encoder->setIndexBuffer(
-                indexBuffer->getGfxBufferResource(), getGFXFormat(pVao->getIndexBufferFormat()),
-                (uint32_t)indexBuffer->getGpuAddressOffset()
-            );
-        }
-        encoder->setPrimitiveTopology(getGFXPrimitiveTopology(pVao->getPrimitiveTopology()));
-        encoder->setViewports(
-            (uint32_t)pState->getViewports().size(), reinterpret_cast<const gfx::Viewport*>(pState->getViewports().data())
-        );
-        encoder->setScissorRects(
-            (uint32_t)pState->getScissors().size(), reinterpret_cast<const gfx::ScissorRect*>(pState->getScissors().data())
-        );
-    }
-
-    return encoder;
 }
 
 gfx::AccelerationStructureCopyMode getGFXAcclerationStructureCopyMode(RenderContext::RtAccelerationStructureCopyMode mode)
@@ -270,8 +203,8 @@ void RenderContext::flush(bool wait)
 }
 
 void RenderContext::blit(
-    const ShaderResourceView::SharedPtr& pSrc,
-    const RenderTargetView::SharedPtr& pDst,
+    const ref<ShaderResourceView>& pSrc,
+    const ref<RenderTargetView>& pDst,
     uint4 srcRect,
     uint4 dstRect,
     Sampler::Filter filter
@@ -287,8 +220,8 @@ void RenderContext::blit(
 }
 
 void RenderContext::blit(
-    const ShaderResourceView::SharedPtr& pSrc,
-    const RenderTargetView::SharedPtr& pDst,
+    const ref<ShaderResourceView>& pSrc,
+    const ref<RenderTargetView>& pDst,
     uint4 srcRect,
     uint4 dstRect,
     Sampler::Filter filter,
@@ -303,13 +236,14 @@ void RenderContext::blit(
     FALCOR_ASSERT(pSrc && pDst);
     auto pSrcResource = pSrc->getResource();
     auto pDstResource = pDst->getResource();
+    FALCOR_ASSERT(pSrcResource && pDstResource);
     if (pSrcResource->getType() == Resource::Type::Buffer || pDstResource->getType() == Resource::Type::Buffer)
     {
         throw ArgumentError("RenderContext::blit does not support buffers");
     }
 
-    const Texture* pSrcTexture = dynamic_cast<const Texture*>(pSrcResource.get());
-    const Texture* pDstTexture = dynamic_cast<const Texture*>(pDstResource.get());
+    const Texture* pSrcTexture = dynamic_cast<const Texture*>(pSrcResource);
+    const Texture* pDstTexture = dynamic_cast<const Texture*>(pDstResource);
     FALCOR_ASSERT(pSrcTexture != nullptr && pDstTexture != nullptr);
 
     // Clamp rectangles to the dimensions of the source/dest views.
@@ -334,8 +268,8 @@ void RenderContext::blit(
     const bool complexBlit =
         !((componentsReduction[0] == Sampler::ReductionMode::Standard) && (componentsReduction[1] == Sampler::ReductionMode::Standard) &&
           (componentsReduction[2] == Sampler::ReductionMode::Standard) && (componentsReduction[3] == Sampler::ReductionMode::Standard) &&
-          (componentsTransform[0] == float4(1.0f, 0.0f, 0.0f, 0.0f)) && (componentsTransform[1] == float4(0.0f, 1.0f, 0.0f, 0.0f)) &&
-          (componentsTransform[2] == float4(0.0f, 0.0f, 1.0f, 0.0f)) && (componentsTransform[3] == float4(0.0f, 0.0f, 0.0f, 1.0f)));
+          all(componentsTransform[0] == float4(1.0f, 0.0f, 0.0f, 0.0f)) && all(componentsTransform[1] == float4(0.0f, 1.0f, 0.0f, 0.0f)) &&
+          all(componentsTransform[2] == float4(0.0f, 0.0f, 1.0f, 0.0f)) && all(componentsTransform[3] == float4(0.0f, 0.0f, 0.0f, 1.0f)));
 
     auto isFullView = [](const auto& view, const Texture* tex)
     {
@@ -353,7 +287,7 @@ void RenderContext::blit(
     // the source/dest must have identical size/format/etc. and the views and rects must cover the full resources.
     if (fullCopy)
     {
-        copyResource(pDstResource.get(), pSrcResource.get());
+        copyResource(pDstResource, pSrcResource);
         return;
     }
 
@@ -391,7 +325,7 @@ void RenderContext::blit(
     {
         FALCOR_ASSERT(sampleCount <= 1);
 
-        Sampler::SharedPtr usedSampler[4];
+        ref<Sampler> usedSampler[4];
         for (uint32_t i = 0; i < 4; i++)
         {
             FALCOR_ASSERT(componentsReduction[i] != Sampler::ReductionMode::Comparison); // Comparison mode not supported.
@@ -412,7 +346,7 @@ void RenderContext::blit(
         // Parameters for complex blit
         for (uint32_t i = 0; i < 4; i++)
         {
-            if (blitCtx.prevComponentsTransform[i] != componentsTransform[i])
+            if (any(blitCtx.prevComponentsTransform[i] != componentsTransform[i]))
             {
                 blitCtx.pBlitParamsBuffer->setVariable(blitCtx.compTransVarOffset[i], componentsTransform[i]);
                 blitCtx.prevComponentsTransform[i] = componentsTransform[i];
@@ -443,19 +377,19 @@ void RenderContext::blit(
     }
 
     // Update buffer/state
-    if (srcRectOffset != blitCtx.prevSrcRectOffset)
+    if (any(srcRectOffset != blitCtx.prevSrcRectOffset))
     {
         blitCtx.pBlitParamsBuffer->setVariable(blitCtx.offsetVarOffset, srcRectOffset);
         blitCtx.prevSrcRectOffset = srcRectOffset;
     }
 
-    if (srcRectScale != blitCtx.prevSrcReftScale)
+    if (any(srcRectScale != blitCtx.prevSrcReftScale))
     {
         blitCtx.pBlitParamsBuffer->setVariable(blitCtx.scaleVarOffset, srcRectScale);
         blitCtx.prevSrcReftScale = srcRectScale;
     }
 
-    Texture::SharedPtr pSharedTex = std::static_pointer_cast<Texture>(pDstResource);
+    ref<Texture> pSharedTex = pDstResource->asTexture();
     blitCtx.pFbo->attachColorTarget(
         pSharedTex, 0, pDst->getViewInfo().mostDetailedMip, pDst->getViewInfo().firstArraySlice, pDst->getViewInfo().arraySize
     );
@@ -464,12 +398,13 @@ void RenderContext::blit(
     blitCtx.pPass->execute(this, blitCtx.pFbo, false);
 
     // Release the resources we bound
+    blitCtx.pFbo->attachColorTarget(nullptr, 0);
     blitCtx.pPass->getVars()->setSrv(blitCtx.texBindLoc, nullptr);
 }
 
 void RenderContext::clearRtv(const RenderTargetView* pRtv, const float4& color)
 {
-    resourceBarrier(pRtv->getResource().get(), Resource::State::RenderTarget);
+    resourceBarrier(pRtv->getResource(), Resource::State::RenderTarget);
     gfx::ClearValue clearValue = {};
     memcpy(clearValue.color.floatValues, &color, sizeof(float) * 4);
     auto encoder = getLowLevelData()->getResourceCommandEncoder();
@@ -479,7 +414,7 @@ void RenderContext::clearRtv(const RenderTargetView* pRtv, const float4& color)
 
 void RenderContext::clearDsv(const DepthStencilView* pDsv, float depth, uint8_t stencil, bool clearDepth, bool clearStencil)
 {
-    resourceBarrier(pDsv->getResource().get(), Resource::State::DepthStencil);
+    resourceBarrier(pDsv->getResource(), Resource::State::DepthStencil);
     gfx::ClearValue clearValue = {};
     clearValue.depthStencil.depth = depth;
     clearValue.depthStencil.stencil = stencil;
@@ -502,14 +437,14 @@ void RenderContext::drawInstanced(
     uint32_t startInstanceLocation
 )
 {
-    auto encoder = drawCallCommon(this, pState, pVars);
+    auto encoder = drawCallCommon(pState, pVars);
     encoder->drawInstanced(vertexCount, instanceCount, startVertexLocation, startInstanceLocation);
     mCommandsPending = true;
 }
 
 void RenderContext::draw(GraphicsState* pState, GraphicsVars* pVars, uint32_t vertexCount, uint32_t startVertexLocation)
 {
-    auto encoder = drawCallCommon(this, pState, pVars);
+    auto encoder = drawCallCommon(pState, pVars);
     encoder->draw(vertexCount, startVertexLocation);
     mCommandsPending = true;
 }
@@ -524,7 +459,7 @@ void RenderContext::drawIndexedInstanced(
     uint32_t startInstanceLocation
 )
 {
-    auto encoder = drawCallCommon(this, pState, pVars);
+    auto encoder = drawCallCommon(pState, pVars);
     encoder->drawIndexedInstanced(indexCount, instanceCount, startIndexLocation, baseVertexLocation, startInstanceLocation);
     mCommandsPending = true;
 }
@@ -537,7 +472,7 @@ void RenderContext::drawIndexed(
     int32_t baseVertexLocation
 )
 {
-    auto encoder = drawCallCommon(this, pState, pVars);
+    auto encoder = drawCallCommon(pState, pVars);
     encoder->drawIndexed(indexCount, startIndexLocation, baseVertexLocation);
     mCommandsPending = true;
 }
@@ -553,7 +488,7 @@ void RenderContext::drawIndirect(
 )
 {
     resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
-    auto encoder = drawCallCommon(this, pState, pVars);
+    auto encoder = drawCallCommon(pState, pVars);
     encoder->drawIndirect(
         maxCommandCount, pArgBuffer->getGfxBufferResource(), argBufferOffset, pCountBuffer ? pCountBuffer->getGfxBufferResource() : nullptr,
         countBufferOffset
@@ -572,7 +507,7 @@ void RenderContext::drawIndexedIndirect(
 )
 {
     resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
-    auto encoder = drawCallCommon(this, pState, pVars);
+    auto encoder = drawCallCommon(pState, pVars);
     encoder->drawIndexedIndirect(
         maxCommandCount, pArgBuffer->getGfxBufferResource(), argBufferOffset, pCountBuffer ? pCountBuffer->getGfxBufferResource() : nullptr,
         countBufferOffset
@@ -593,12 +528,7 @@ void RenderContext::raytrace(RtProgram* pProgram, RtProgramVars* pVars, uint32_t
     mCommandsPending = true;
 }
 
-void RenderContext::resolveSubresource(
-    const Texture::SharedPtr& pSrc,
-    uint32_t srcSubresource,
-    const Texture::SharedPtr& pDst,
-    uint32_t dstSubresource
-)
+void RenderContext::resolveSubresource(const ref<Texture>& pSrc, uint32_t srcSubresource, const ref<Texture>& pDst, uint32_t dstSubresource)
 {
     auto resourceEncoder = getLowLevelData()->getResourceCommandEncoder();
     gfx::SubresourceRange srcRange = {};
@@ -620,7 +550,7 @@ void RenderContext::resolveSubresource(
     mCommandsPending = true;
 }
 
-void RenderContext::resolveResource(const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDst)
+void RenderContext::resolveResource(const ref<Texture>& pSrc, const ref<Texture>& pDst)
 {
     resourceBarrier(pSrc.get(), Resource::State::ResolveSource);
     resourceBarrier(pDst.get(), Resource::State::ResolveDest);
@@ -675,4 +605,90 @@ void RenderContext::copyAccelerationStructure(
     );
     mCommandsPending = true;
 }
+
+gfx::IRenderCommandEncoder* RenderContext::drawCallCommon(GraphicsState* pState, GraphicsVars* pVars)
+{
+    // Insert barriers for bound resources.
+    pVars->prepareDescriptorSets(this);
+
+    // Insert barriers for render targets.
+    ensureFboAttachmentResourceStates(this, pState->getFbo().get());
+
+    // Insert barriers for vertex/index buffers.
+    auto pGso = pState->getGSO(pVars).get();
+    if (pGso != mpLastBoundGraphicsStateObject)
+    {
+        auto pVao = pState->getVao().get();
+        for (uint32_t i = 0; i < pVao->getVertexBuffersCount(); i++)
+        {
+            auto vertexBuffer = pVao->getVertexBuffer(i).get();
+            resourceBarrier(vertexBuffer, Resource::State::VertexBuffer);
+        }
+        if (pVao->getIndexBuffer())
+        {
+            auto indexBuffer = pVao->getIndexBuffer().get();
+            resourceBarrier(indexBuffer, Resource::State::IndexBuffer);
+        }
+    }
+
+    bool isNewEncoder = false;
+    auto encoder = getLowLevelData()->getRenderCommandEncoder(
+        pGso->getGFXRenderPassLayout(), pState->getFbo() ? pState->getFbo()->getGfxFramebuffer() : nullptr, isNewEncoder
+    );
+
+    FALCOR_GFX_CALL(encoder->bindPipelineWithRootObject(pGso->getGfxPipelineState(), pVars->getShaderObject()));
+
+    if (isNewEncoder || pGso != mpLastBoundGraphicsStateObject)
+    {
+        mpLastBoundGraphicsStateObject = pGso;
+        auto pVao = pState->getVao().get();
+        auto pVertexLayout = pVao->getVertexLayout().get();
+        for (uint32_t i = 0; i < pVao->getVertexBuffersCount(); i++)
+        {
+            auto bufferLayout = pVertexLayout->getBufferLayout(i);
+            auto vertexBuffer = pVao->getVertexBuffer(i).get();
+            encoder->setVertexBuffer(
+                i, pVao->getVertexBuffer(i)->getGfxBufferResource(),
+                bufferLayout->getElementOffset(0) + (uint32_t)vertexBuffer->getGpuAddressOffset()
+            );
+        }
+        if (pVao->getIndexBuffer())
+        {
+            auto indexBuffer = pVao->getIndexBuffer().get();
+            encoder->setIndexBuffer(
+                indexBuffer->getGfxBufferResource(), getGFXFormat(pVao->getIndexBufferFormat()),
+                (uint32_t)indexBuffer->getGpuAddressOffset()
+            );
+        }
+        encoder->setPrimitiveTopology(getGFXPrimitiveTopology(pVao->getPrimitiveTopology()));
+        encoder->setViewports(
+            (uint32_t)pState->getViewports().size(), reinterpret_cast<const gfx::Viewport*>(pState->getViewports().data())
+        );
+        encoder->setScissorRects(
+            (uint32_t)pState->getScissors().size(), reinterpret_cast<const gfx::ScissorRect*>(pState->getScissors().data())
+        );
+    }
+
+    return encoder;
+}
+
+FALCOR_SCRIPT_BINDING(CopyContext)
+{
+    pybind11::class_<CopyContext> copyContext(m, "CopyContext");
+}
+
+FALCOR_SCRIPT_BINDING(ComputeContext)
+{
+    FALCOR_SCRIPT_BINDING_DEPENDENCY(CopyContext)
+
+    pybind11::class_<ComputeContext, CopyContext> computeContext(m, "ComputeContext");
+}
+
+FALCOR_SCRIPT_BINDING(RenderContext)
+{
+    FALCOR_SCRIPT_BINDING_DEPENDENCY(ComputeContext)
+
+    pybind11::class_<RenderContext, ComputeContext> renderContext(m, "RenderContext");
+}
+
 } // namespace Falcor

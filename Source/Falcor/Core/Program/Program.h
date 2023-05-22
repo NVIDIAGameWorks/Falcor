@@ -28,6 +28,7 @@
 #pragma once
 #include "ProgramVersion.h"
 #include "Core/Macros.h"
+#include "Core/Object.h"
 #include "Core/API/fwd.h"
 #include "Core/API/Shader.h"
 #include <filesystem>
@@ -45,11 +46,9 @@ namespace Falcor
  * This class manages different versions of the same program. Different versions means same shader files, different macro definitions.
  * This allows simple usage in case different macros are required - for example static vs. animated models.
  */
-class FALCOR_API Program : public std::enable_shared_from_this<Program>
+class FALCOR_API Program : public Object
 {
 public:
-    using SharedPtr = std::shared_ptr<Program>;
-
     using DefineList = Shader::DefineList;
     using ArgumentList = std::vector<std::string>;
     using TypeConformanceList = Shader::TypeConformanceList;
@@ -298,7 +297,7 @@ public:
      * Get the API handle of the active program.
      * @return The active program version, or an exception is thrown on failure.
      */
-    const ProgramVersion::SharedConstPtr& getActiveVersion() const;
+    const ref<const ProgramVersion>& getActiveVersion() const;
 
     /**
      * Adds a macro definition to the program. If the macro already exists, it will be replaced.
@@ -380,7 +379,7 @@ public:
      * Get the program reflection for the active program.
      * @return Program reflection object, or an exception is thrown on failure.
      */
-    const ProgramReflection::SharedPtr& getReflector() const { return getActiveVersion()->getReflector(); }
+    const ref<const ProgramReflection>& getReflector() const { return getActiveVersion()->getReflector(); }
 
     uint32_t getEntryPointGroupCount() const { return uint32_t(mDesc.mGroups.size()); }
     uint32_t getGroupEntryPointCount(uint32_t groupIndex) const { return (uint32_t)mDesc.mGroups[groupIndex].entryPoints.size(); }
@@ -389,17 +388,19 @@ public:
         return mDesc.mGroups[groupIndex].entryPoints[entryPointIndexInGroup];
     }
 
+    void breakStrongReferenceToDevice();
+
 protected:
     friend class ProgramManager;
     friend class ProgramVersion;
     friend class ParameterBlockReflection;
 
-    Program(std::shared_ptr<Device> pDevice, Desc const& desc, DefineList const& programDefines);
+    Program(ref<Device> pDevice, const Desc& desc, const DefineList& programDefines);
 
     void validateEntryPoints() const;
     bool link() const;
 
-    std::shared_ptr<Device> mpDevice;
+    BreakableReference<Device> mpDevice;
 
     // The description used to create this program
     const Desc mDesc;
@@ -407,10 +408,21 @@ protected:
     DefineList mDefineList;
     TypeConformanceList mTypeConformanceList;
 
+    struct ProgramVersionKey
+    {
+        DefineList defineList;
+        TypeConformanceList typeConformanceList;
+
+        bool operator<(const ProgramVersionKey& rhs) const
+        {
+            return std::tie(defineList, typeConformanceList) < std::tie(rhs.defineList, rhs.typeConformanceList);
+        }
+    };
+
     // We are doing lazy compilation, so these are mutable
     mutable bool mLinkRequired = true;
-    mutable std::map<DefineList, ProgramVersion::SharedConstPtr> mProgramVersions;
-    mutable ProgramVersion::SharedConstPtr mpActiveVersion;
+    mutable std::map<ProgramVersionKey, ref<const ProgramVersion>> mProgramVersions;
+    mutable ref<const ProgramVersion> mpActiveVersion;
     void markDirty() { mLinkRequired = true; }
 
     std::string getProgramDescString() const;

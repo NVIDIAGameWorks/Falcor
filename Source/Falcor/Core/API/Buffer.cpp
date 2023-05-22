@@ -31,6 +31,7 @@
 #include "NativeHandleTraits.h"
 #include "Core/Assert.h"
 #include "Core/Errors.h"
+#include "Core/ObjectPython.h"
 #include "Core/Program/Program.h"
 #include "Core/Program/ShaderVar.h"
 #include "Utils/Logger.h"
@@ -44,8 +45,8 @@ namespace Falcor
 // TODO: Replace with include?
 void getGFXResourceState(Resource::BindFlags flags, gfx::ResourceState& defaultState, gfx::ResourceStateSet& allowedStates);
 
-static Buffer::SharedPtr createStructuredFromType(
-    Device* pDevice,
+static ref<Buffer> createStructuredFromType(
+    ref<Device> pDevice,
     const ReflectionType* pType,
     const std::string& varName,
     uint32_t elementCount,
@@ -96,7 +97,7 @@ static void prepareGFXBufferDesc(
 
 // TODO: This is also used in Device
 Slang::ComPtr<gfx::IBufferResource> createBuffer(
-    Device* pDevice,
+    ref<Device> pDevice,
     Buffer::State initState,
     size_t size,
     Buffer::BindFlags bindFlags,
@@ -128,8 +129,8 @@ static size_t getBufferDataAlignment(const Buffer* pBuffer)
     return GFX_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
 }
 
-Buffer::Buffer(std::shared_ptr<Device> pDevice, size_t size, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData)
-    : Resource(std::move(pDevice), Type::Buffer, bindFlags, size), mCpuAccess(cpuAccess)
+Buffer::Buffer(ref<Device> pDevice, size_t size, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData)
+    : Resource(pDevice, Type::Buffer, bindFlags, size), mCpuAccess(cpuAccess)
 {
     checkArgument(size > 0, "Can't create GPU buffer of size zero");
 
@@ -163,14 +164,14 @@ Buffer::Buffer(std::shared_ptr<Device> pDevice, size_t size, BindFlags bindFlags
     else if (mCpuAccess == CpuAccess::Read && mBindFlags == BindFlags::None)
     {
         mState.global = Resource::State::CopyDest;
-        mGfxBufferResource = createBuffer(mpDevice.get(), mState.global, mSize, mBindFlags, mCpuAccess);
+        mGfxBufferResource = createBuffer(mpDevice, mState.global, mSize, mBindFlags, mCpuAccess);
     }
     else
     {
         mState.global = Resource::State::Common;
         if (is_set(mBindFlags, BindFlags::AccelerationStructure))
             mState.global = Resource::State::AccelerationStructure;
-        mGfxBufferResource = createBuffer(mpDevice.get(), mState.global, mSize, mBindFlags, mCpuAccess);
+        mGfxBufferResource = createBuffer(mpDevice, mState.global, mSize, mBindFlags, mCpuAccess);
     }
 
     if (pInitData)
@@ -178,13 +179,13 @@ Buffer::Buffer(std::shared_ptr<Device> pDevice, size_t size, BindFlags bindFlags
     mElementCount = uint32_t(size);
 }
 
-Buffer::SharedPtr Buffer::create(Device* pDevice, size_t size, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData)
+ref<Buffer> Buffer::create(ref<Device> pDevice, size_t size, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData)
 {
-    return SharedPtr(new Buffer(pDevice->shared_from_this(), size, bindFlags, cpuAccess, pInitData));
+    return ref<Buffer>(new Buffer(pDevice, size, bindFlags, cpuAccess, pInitData));
 }
 
-Buffer::SharedPtr Buffer::createTyped(
-    Device* pDevice,
+ref<Buffer> Buffer::createTyped(
+    ref<Device> pDevice,
     ResourceFormat format,
     uint32_t elementCount,
     BindFlags bindFlags,
@@ -193,7 +194,7 @@ Buffer::SharedPtr Buffer::createTyped(
 )
 {
     size_t size = (size_t)elementCount * getFormatBytesPerBlock(format);
-    SharedPtr pBuffer = create(pDevice, size, bindFlags, cpuAccess, pInitData);
+    ref<Buffer> pBuffer = create(pDevice, size, bindFlags, cpuAccess, pInitData);
     FALCOR_ASSERT(pBuffer);
 
     pBuffer->mFormat = format;
@@ -201,8 +202,8 @@ Buffer::SharedPtr Buffer::createTyped(
     return pBuffer;
 }
 
-Buffer::SharedPtr Buffer::createStructured(
-    Device* pDevice,
+ref<Buffer> Buffer::createStructured(
+    ref<Device> pDevice,
     uint32_t structSize,
     uint32_t elementCount,
     ResourceBindFlags bindFlags,
@@ -212,7 +213,7 @@ Buffer::SharedPtr Buffer::createStructured(
 )
 {
     size_t size = (size_t)structSize * elementCount;
-    Buffer::SharedPtr pBuffer = create(pDevice, size, bindFlags, cpuAccess, pInitData);
+    ref<Buffer> pBuffer = create(pDevice, size, bindFlags, cpuAccess, pInitData);
     FALCOR_ASSERT(pBuffer);
 
     pBuffer->mElementCount = elementCount;
@@ -226,8 +227,8 @@ Buffer::SharedPtr Buffer::createStructured(
     return pBuffer;
 }
 
-Buffer::SharedPtr Buffer::createStructured(
-    Device* pDevice,
+ref<Buffer> Buffer::createStructured(
+    ref<Device> pDevice,
     const ShaderVar& shaderVar,
     uint32_t elementCount,
     ResourceBindFlags bindFlags,
@@ -241,8 +242,8 @@ Buffer::SharedPtr Buffer::createStructured(
     );
 }
 
-Buffer::SharedPtr Buffer::createStructured(
-    Device* pDevice,
+ref<Buffer> Buffer::createStructured(
+    ref<Device> pDevice,
     const Program* pProgram,
     const std::string& name,
     uint32_t elementCount,
@@ -261,9 +262,9 @@ Buffer::SharedPtr Buffer::createStructured(
     return createStructuredFromType(pDevice, pVar->getType().get(), name, elementCount, bindFlags, cpuAccess, pInitData, createCounter);
 }
 
-Buffer::SharedPtr Buffer::aliasResource(
-    Device* pDevice,
-    Buffer::SharedPtr pBaseResource,
+ref<Buffer> Buffer::aliasResource(
+    ref<Device> pDevice,
+    ref<Buffer> pBaseResource,
     GpuAddress offset,
     size_t size,
     Resource::BindFlags bindFlags
@@ -286,15 +287,15 @@ Buffer::SharedPtr Buffer::aliasResource(
         );
     }
 
-    SharedPtr pBuffer = create(pDevice, size, bindFlags, CpuAccess::None);
+    ref<Buffer> pBuffer = create(pDevice, size, bindFlags, CpuAccess::None);
     pBuffer->mpAliasedResource = pBaseResource;
     pBuffer->mGfxBufferResource = pBaseResource->mGfxBufferResource;
     pBuffer->mGpuVaOffset = offset;
     return pBuffer;
 }
 
-Buffer::SharedPtr Buffer::createFromResource(
-    Device* pDevice,
+ref<Buffer> Buffer::createFromResource(
+    ref<Device> pDevice,
     gfx::IBufferResource* pResource,
     size_t size,
     Resource::BindFlags bindFlags,
@@ -302,13 +303,13 @@ Buffer::SharedPtr Buffer::createFromResource(
 )
 {
     FALCOR_ASSERT(pResource);
-    Buffer::SharedPtr pBuffer = create(pDevice, size, bindFlags, cpuAccess);
+    ref<Buffer> pBuffer = create(pDevice, size, bindFlags, cpuAccess);
     pBuffer->mGfxBufferResource = pResource;
     return pBuffer;
 }
 
-Buffer::SharedPtr Buffer::createFromNativeHandle(
-    Device* pDevice,
+ref<Buffer> Buffer::createFromNativeHandle(
+    ref<Device> pDevice,
     NativeHandle handle,
     size_t size,
     Resource::BindFlags bindFlags,
@@ -365,58 +366,32 @@ gfx::IResource* Buffer::getGfxResource() const
     return mGfxBufferResource;
 }
 
-template<typename ViewClass>
-using CreateFuncType = std::function<typename ViewClass::SharedPtr(Buffer* pBuffer, uint32_t firstElement, uint32_t elementCount)>;
-
-template<typename ViewClass, typename ViewMapType>
-typename ViewClass::SharedPtr findViewCommon(
-    Buffer* pBuffer,
-    uint32_t firstElement,
-    uint32_t elementCount,
-    ViewMapType& viewMap,
-    CreateFuncType<ViewClass> createFunc
-)
+ref<ShaderResourceView> Buffer::getSRV(uint32_t firstElement, uint32_t elementCount)
 {
     ResourceViewInfo view = ResourceViewInfo(firstElement, elementCount);
 
-    if (viewMap.find(view) == viewMap.end())
-    {
-        viewMap[view] = createFunc(pBuffer, firstElement, elementCount);
-    }
+    if (mSrvs.find(view) == mSrvs.end())
+        mSrvs[view] = ShaderResourceView::create(getDevice().get(), this, firstElement, elementCount);
 
-    return viewMap[view];
+    return mSrvs[view];
 }
 
-ShaderResourceView::SharedPtr Buffer::getSRV(uint32_t firstElement, uint32_t elementCount)
-{
-    auto createFunc = [](Buffer* pBuffer, uint32_t firstElement, uint32_t elementCount)
-    {
-        return ShaderResourceView::create(
-            pBuffer->getDevice().get(), std::static_pointer_cast<Buffer>(pBuffer->shared_from_this()), firstElement, elementCount
-        );
-    };
-
-    return findViewCommon<ShaderResourceView>(this, firstElement, elementCount, mSrvs, createFunc);
-}
-
-ShaderResourceView::SharedPtr Buffer::getSRV()
+ref<ShaderResourceView> Buffer::getSRV()
 {
     return getSRV(0);
 }
 
-UnorderedAccessView::SharedPtr Buffer::getUAV(uint32_t firstElement, uint32_t elementCount)
+ref<UnorderedAccessView> Buffer::getUAV(uint32_t firstElement, uint32_t elementCount)
 {
-    auto createFunc = [](Buffer* pBuffer, uint32_t firstElement, uint32_t elementCount)
-    {
-        return UnorderedAccessView::create(
-            pBuffer->getDevice().get(), std::static_pointer_cast<Buffer>(pBuffer->shared_from_this()), firstElement, elementCount
-        );
-    };
+    ResourceViewInfo view = ResourceViewInfo(firstElement, elementCount);
 
-    return findViewCommon<UnorderedAccessView>(this, firstElement, elementCount, mUavs, createFunc);
+    if (mUavs.find(view) == mUavs.end())
+        mUavs[view] = UnorderedAccessView::create(getDevice().get(), this, firstElement, elementCount);
+
+    return mUavs[view];
 }
 
-UnorderedAccessView::SharedPtr Buffer::getUAV()
+ref<UnorderedAccessView> Buffer::getUAV()
 {
     return getUAV(0);
 }
@@ -492,7 +467,7 @@ void* Buffer::map(MapType type)
             );
             if (mpStagingResource == nullptr)
             {
-                mpStagingResource = Buffer::create(mpDevice.get(), mSize, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
+                mpStagingResource = Buffer::create(mpDevice, mSize, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
             }
 
             // Copy the buffer and flush the pipeline
@@ -552,6 +527,13 @@ uint64_t Buffer::getGpuAddress() const
 
 FALCOR_SCRIPT_BINDING(Buffer)
 {
-    pybind11::class_<Buffer, Buffer::SharedPtr>(m, "Buffer");
+    FALCOR_SCRIPT_BINDING_DEPENDENCY(Resource)
+
+    pybind11::class_<Buffer, Resource, ref<Buffer>> buffer(m, "Buffer");
+
+    pybind11::enum_<Buffer::CpuAccess> cpuAccess(buffer, "CpuAccess");
+    cpuAccess.value("None_", Buffer::CpuAccess::None);
+    cpuAccess.value("Read", Buffer::CpuAccess::Read);
+    cpuAccess.value("Write", Buffer::CpuAccess::Write);
 }
 } // namespace Falcor

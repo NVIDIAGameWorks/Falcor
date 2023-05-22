@@ -76,13 +76,8 @@ void FLIPPass::registerBindings(pybind11::module& m)
     toneMapper.value("Reinhard", FLIPToneMapperType::Reinhard);
 }
 
-FLIPPass::SharedPtr FLIPPass::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-{
-    return SharedPtr(new FLIPPass(std::move(pDevice), dict));
-}
-
-FLIPPass::FLIPPass(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-    : RenderPass(std::move(pDevice))
+FLIPPass::FLIPPass(ref<Device> pDevice, const Dictionary& dict)
+    : RenderPass(pDevice)
 {
     parseDictionary(dict);
 
@@ -276,43 +271,47 @@ void FLIPPass::execute(RenderContext* pRenderContext, const RenderData& renderDa
     uint2 outputResolution = uint2(pReferenceImageInput->getWidth(), pReferenceImageInput->getHeight());
     if (!mpFLIPErrorMapDisplay || !mpExposureMapDisplay || mpFLIPErrorMapDisplay->getWidth() != outputResolution.x || mpFLIPErrorMapDisplay->getHeight() != outputResolution.y)
     {
-        mpFLIPErrorMapDisplay = Texture::create2D(mpDevice.get(), outputResolution.x, outputResolution.y, ResourceFormat::RGBA32Float, 1, 1, nullptr, Resource::BindFlags::UnorderedAccess | Resource::BindFlags::ShaderResource);
-        mpExposureMapDisplay = Texture::create2D(mpDevice.get(), outputResolution.x, outputResolution.y, ResourceFormat::RGBA32Float, 1, 1, nullptr, Resource::BindFlags::UnorderedAccess | Resource::BindFlags::ShaderResource);
+        mpFLIPErrorMapDisplay = Texture::create2D(mpDevice, outputResolution.x, outputResolution.y, ResourceFormat::RGBA32Float, 1, 1, nullptr, Resource::BindFlags::UnorderedAccess | Resource::BindFlags::ShaderResource);
+        mpExposureMapDisplay = Texture::create2D(mpDevice, outputResolution.x, outputResolution.y, ResourceFormat::RGBA32Float, 1, 1, nullptr, Resource::BindFlags::UnorderedAccess | Resource::BindFlags::ShaderResource);
     }
 
     if (!mpLuminance)
     {
-        mpLuminance = Buffer::create(mpDevice.get(), outputResolution.x * outputResolution.y * sizeof(float), ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None);
+        mpLuminance = Buffer::create(mpDevice, outputResolution.x * outputResolution.y * sizeof(float), ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None);
     }
 
-    // Bind resources.
-    mpFLIPPass["gTestImage"] = pTestImageInput;
-    mpFLIPPass["gReferenceImage"] = pReferenceImageInput;
-    mpFLIPPass["gFLIPErrorMap"] = pErrorMapOutput;
-    mpFLIPPass["gFLIPErrorMapDisplay"] = mpFLIPErrorMapDisplay;
-    mpFLIPPass["gExposureMapDisplay"] = mpExposureMapDisplay;
+    {
+        // Bind resources.
+        auto rootVar = mpFLIPPass->getRootVar();
+        rootVar["gTestImage"] = pTestImageInput;
+        rootVar["gReferenceImage"] = pReferenceImageInput;
+        rootVar["gFLIPErrorMap"] = pErrorMapOutput;
+        rootVar["gFLIPErrorMapDisplay"] = mpFLIPErrorMapDisplay;
+        rootVar["gExposureMapDisplay"] = mpExposureMapDisplay;
 
-    // Bind CB settings.
-    auto var = mpFLIPPass["PerFrameCB"];
-    var["gIsHDR"] = mIsHDR;
-    var["gUseMagma"] = mUseMagma;
-    var["gClampInput"] = mUseMagma;
-    var["gResolution"] = outputResolution;
-    var["gMonitorWidthPixels"] = mMonitorWidthPixels;
-    var["gMonitorWidthMeters"] = mMonitorWidthMeters;
-    var["gMonitorDistance"] = mMonitorDistanceMeters;
-    var["gStartExposure"] = mStartExposure;
-    var["gExposureDelta"] = mExposureDelta;
-    var["gNumExposures"] = mNumExposures;
+        // Bind CB settings.
+        auto var = rootVar["PerFrameCB"];
+        var["gIsHDR"] = mIsHDR;
+        var["gUseMagma"] = mUseMagma;
+        var["gClampInput"] = mUseMagma;
+        var["gResolution"] = outputResolution;
+        var["gMonitorWidthPixels"] = mMonitorWidthPixels;
+        var["gMonitorWidthMeters"] = mMonitorWidthMeters;
+        var["gMonitorDistance"] = mMonitorDistanceMeters;
+        var["gStartExposure"] = mStartExposure;
+        var["gExposureDelta"] = mExposureDelta;
+        var["gNumExposures"] = mNumExposures;
+    }
 
     // Do we need to compute parameters for HDR-FLIP?
     if (!mUseCustomExposureParameters && mIsHDR)
     {
         // Bind resources.
-        mpComputeLuminancePass["gInputImage"] = pReferenceImageInput;
-        mpComputeLuminancePass["gOutputLuminance"] = mpLuminance;
+        auto rootVar = mpComputeLuminancePass->getRootVar();
+        rootVar["gInputImage"] = pReferenceImageInput;
+        rootVar["gOutputLuminance"] = mpLuminance;
         // Bind CB settings.
-        mpComputeLuminancePass["PerFrameCB"]["gResolution"] = outputResolution;
+        rootVar["PerFrameCB"]["gResolution"] = outputResolution;
         // Compute luminance of the reference image.
         mpComputeLuminancePass->execute(pRenderContext, uint3(outputResolution.x, outputResolution.y, 1u));
         pRenderContext->flush(true);

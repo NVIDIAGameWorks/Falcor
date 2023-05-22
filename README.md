@@ -30,7 +30,7 @@ Optional:
 Falcor uses the [CMake](https://cmake.org) build system. Additional information on how to use Falcor with CMake is available in the [CMake](docs/development/cmake.md) development documetation page.
 
 ### Visual Studio
-If you are working with Visual Studio, you can setup a native Visual Studio solution by running `setup_vs2019.bat` (or `setup_vs2022.bat`, same process) after cloning this repository. The solution files are written to `build/windows-vs2019` and the binary output is located in `build/windows-vs2019/bin`.
+If you are working with Visual Studio 2022, you can setup a native Visual Studio solution by running `setup_vs2022.bat` after cloning this repository. The solution files are written to `build/windows-vs2022` and the binary output is located in `build/windows-vs2022/bin`.
 
 
 ### Visual Studio Code
@@ -45,10 +45,10 @@ Falcor uses _CMake Presets_ store in `CMakePresets.json` to provide a set of com
 $ cmake --list-presets
 Available configure presets:
 
-  "windows-vs2019"           - Windows VS2019
   "windows-vs2022"           - Windows VS2022
   "windows-ninja-msvc"       - Windows Ninja/MSVC
-  "linux-ninja-clang"        - Linux Ninja/Clang
+  "linux-clang"              - Linux Ninja/Clang
+  "linux-gcc"                - Linux Ninja/GCC
 ```
 
 Use `cmake --preset <preset name>` to generate the build tree for a given preset. The build tree is written to the `build/<preset name>` folder and the binary output files are in `build/<preset name>/bin`.

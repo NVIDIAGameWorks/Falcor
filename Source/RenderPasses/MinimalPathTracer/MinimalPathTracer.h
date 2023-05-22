@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
+#include "RenderGraph/RenderPass.h"
 #include "Utils/Sampling/SampleGenerator.h"
 
 using namespace Falcor;
@@ -45,26 +46,25 @@ class MinimalPathTracer : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(MinimalPathTracer, "MinimalPathTracer", "Minimal path tracer.");
 
-    using SharedPtr = std::shared_ptr<MinimalPathTracer>;
+    static ref<MinimalPathTracer> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<MinimalPathTracer>(pDevice, dict); }
 
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
+    MinimalPathTracer(ref<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
-    virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
+    virtual void setScene(RenderContext* pRenderContext, const ref<Scene>& pScene) override;
     virtual bool onMouseEvent(const MouseEvent& mouseEvent) override { return false; }
     virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
 
 private:
-    MinimalPathTracer(std::shared_ptr<Device> pDevice, const Dictionary& dict);
     void parseDictionary(const Dictionary& dict);
     void prepareVars();
 
     // Internal state
-    Scene::SharedPtr            mpScene;                        ///< Current scene.
-    SampleGenerator::SharedPtr  mpSampleGenerator;              ///< GPU sample generator.
+    ref<Scene>                  mpScene;                        ///< Current scene.
+    ref<SampleGenerator>        mpSampleGenerator;              ///< GPU sample generator.
 
     // Configuration
     uint                        mMaxBounces = 3;                ///< Max number of indirect bounces (0 = none).
@@ -78,8 +78,8 @@ private:
     // Ray tracing program.
     struct
     {
-        RtProgram::SharedPtr pProgram;
-        RtBindingTable::SharedPtr pBindingTable;
-        RtProgramVars::SharedPtr pVars;
+        ref<RtProgram> pProgram;
+        ref<RtBindingTable> pBindingTable;
+        ref<RtProgramVars> pVars;
     } mTracer;
 };

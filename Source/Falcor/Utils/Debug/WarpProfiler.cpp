@@ -33,13 +33,13 @@
 namespace Falcor
 {
 
-WarpProfiler::WarpProfiler(Device* pDevice, const uint32_t binCount) : mBinCount(binCount)
+WarpProfiler::WarpProfiler(ref<Device> pDevice, const uint32_t binCount) : mBinCount(binCount)
 {
     mpFence = GpuFence::create(pDevice);
     uint32_t elemCount = binCount * kWarpSize;
-    mpHistogramBuffer = Buffer::createStructured(pDevice,
-        4, elemCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None,
-        nullptr, false
+    mpHistogramBuffer = Buffer::createStructured(
+        pDevice, 4, elemCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr,
+        false
     );
     mpHistogramStagingBuffer =
         Buffer::createStructured(pDevice, 4, elemCount, ResourceBindFlags::None, Buffer::CpuAccess::Read, nullptr, false);

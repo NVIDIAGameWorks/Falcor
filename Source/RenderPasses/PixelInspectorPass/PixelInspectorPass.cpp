@@ -54,13 +54,8 @@ namespace
     const char kOutputChannel[] = "gPixelDataBuffer";
 }
 
-PixelInspectorPass::SharedPtr PixelInspectorPass::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-{
-    return SharedPtr(new PixelInspectorPass(std::move(pDevice)));
-}
-
-PixelInspectorPass::PixelInspectorPass(std::shared_ptr<Device> pDevice)
-    : RenderPass(std::move(pDevice))
+PixelInspectorPass::PixelInspectorPass(ref<Device> pDevice, const Dictionary& dict)
+    : RenderPass(pDevice)
 {
     for (auto it : kInputChannels)
     {
@@ -93,11 +88,13 @@ void PixelInspectorPass::execute(RenderContext* pRenderContext, const RenderData
     if (!mpVars)
     {
         mpVars = ComputeVars::create(mpDevice, mpProgram->getReflector());
-        mpPixelDataBuffer = Buffer::createStructured(mpDevice.get(), mpProgram.get(), kOutputChannel, 1);
+        mpPixelDataBuffer = Buffer::createStructured(mpDevice, mpProgram.get(), kOutputChannel, 1);
     }
 
+    auto var = mpVars->getRootVar();
+
     // Bind the scene.
-    mpVars["gScene"] = mpScene->getParameterBlock();
+    var["gScene"] = mpScene->getParameterBlock();
 
     if (mpScene->getCamera()->getApertureRadius() > 0.f)
     {
@@ -107,37 +104,37 @@ void PixelInspectorPass::execute(RenderContext* pRenderContext, const RenderData
 
     const float2 cursorPosition = mUseContinuousPicking ? mCursorPosition : mSelectedCursorPosition;
     const uint2 resolution = renderData.getDefaultTextureDims();
-    mSelectedPixel = glm::min((uint2)(cursorPosition * ((float2)resolution)), resolution - 1u);
+    mSelectedPixel = min((uint2)(cursorPosition * ((float2)resolution)), resolution - 1u);
 
     // Fill in the constant buffer.
-    mpVars["PerFrameCB"]["gResolution"] = resolution;
-    mpVars["PerFrameCB"]["gSelectedPixel"] = mSelectedPixel;
+    var["PerFrameCB"]["gResolution"] = resolution;
+    var["PerFrameCB"]["gSelectedPixel"] = mSelectedPixel;
 
     // Bind all input buffers.
     for (auto it : kInputChannels)
     {
         if (mAvailableInputs[it.name])
         {
-            Texture::SharedPtr pSrc = renderData.getTexture(it.name);
-            mpVars[it.texname] = pSrc;
+            ref<Texture> pSrc = renderData.getTexture(it.name);
+            var[it.texname] = pSrc;
 
             // If the texture has a different resolution, we need to scale the sampling coordinates accordingly.
             const uint2 srcResolution = uint2(pSrc->getWidth(), pSrc->getHeight());
-            const bool needsScaling = mScaleInputsToWindow && srcResolution != resolution;
+            const bool needsScaling = mScaleInputsToWindow && any(srcResolution != resolution);
             const uint2 scaledCoord = (uint2)(((float2)(srcResolution * mSelectedPixel)) / ((float2)resolution));
-            mpVars["PerFrameCB"][std::string(it.texname) + "Coord"] = needsScaling ? scaledCoord : mSelectedPixel;
+            var["PerFrameCB"][std::string(it.texname) + "Coord"] = needsScaling ? scaledCoord : mSelectedPixel;
 
-            mIsInputInBounds[it.name] = glm::all(glm::lessThanEqual(mSelectedPixel, srcResolution));
+            mIsInputInBounds[it.name] = all(mSelectedPixel <= srcResolution);
         }
         else
         {
-            mpVars->setTexture(it.texname, nullptr);
+            var[it.texname].setTexture(nullptr);
         }
     }
 
     // Bind the output buffer.
     FALCOR_ASSERT(mpPixelDataBuffer);
-    mpVars[kOutputChannel] = mpPixelDataBuffer;
+    var[kOutputChannel] = mpPixelDataBuffer;
 
     // Run the inspector program.
     pRenderContext->dispatch(mpState.get(), mpVars.get(), { 1u, 1u, 1u });
@@ -326,7 +323,7 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
             {
                 auto instanceData = mpScene->getGeometryInstance(pixelData.instanceID);
                 uint32_t matrixID = instanceData.globalMatrixID;
-                rmcv::mat4 M = mpScene->getAnimationController()->getGlobalMatrices()[matrixID];
+                float4x4 M = mpScene->getAnimationController()->getGlobalMatrices()[matrixID];
 
                 visGroup.text("Transform:");
                 visGroup.matrix("##mat", M);
@@ -346,7 +343,7 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
     }
 }
 
-void PixelInspectorPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
+void PixelInspectorPass::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
 {
     mpScene = pScene;
     mpProgram = nullptr;

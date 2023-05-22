@@ -34,7 +34,6 @@
 BEGIN_DISABLE_USD_WARNINGS
 #include <pxr/usd/usdGeom/xformCommonAPI.h>
 #include <pxr/usd/usdRender/tokens.h>
-#include <pxr/usdImaging/usdImaging/tokens.h>
 #include <pxr/usd/ar/resolver.h>
 #include <pxr/usd/sdf/layerUtils.h>
 END_DISABLE_USD_WARNINGS
@@ -124,7 +123,7 @@ SdfLayerHandle getLayerHandle(const UsdAttribute& attr, const UsdTimeCode& time)
 }
 } // namespace
 
-StandardMaterial::SharedPtr PreviewSurfaceConverter::getCachedMaterial(const UsdShadeShader& shader)
+ref<StandardMaterial> PreviewSurfaceConverter::getCachedMaterial(const UsdShadeShader& shader)
 {
     std::unique_lock lock(mCacheMutex);
 
@@ -158,7 +157,7 @@ StandardMaterial::SharedPtr PreviewSurfaceConverter::getCachedMaterial(const Usd
     return nullptr;
 }
 
-StandardMaterial::SharedPtr PreviewSurfaceConverter::getCachedMaterial(const StandardMaterialSpec& spec)
+ref<StandardMaterial> PreviewSurfaceConverter::getCachedMaterial(const StandardMaterialSpec& spec)
 {
     std::unique_lock lock(mCacheMutex);
 
@@ -192,7 +191,7 @@ StandardMaterial::SharedPtr PreviewSurfaceConverter::getCachedMaterial(const Sta
     return nullptr;
 }
 
-void PreviewSurfaceConverter::cacheMaterial(const UsdShadeShader& shader, StandardMaterial::SharedPtr pMaterial)
+void PreviewSurfaceConverter::cacheMaterial(const UsdShadeShader& shader, ref<StandardMaterial> pMaterial)
 {
     {
         std::unique_lock lock(mCacheMutex);
@@ -207,7 +206,7 @@ void PreviewSurfaceConverter::cacheMaterial(const UsdShadeShader& shader, Standa
     mPrimCacheUpdated.notify_all();
 }
 
-void PreviewSurfaceConverter::cacheMaterial(const StandardMaterialSpec& spec, StandardMaterial::SharedPtr pMaterial)
+void PreviewSurfaceConverter::cacheMaterial(const StandardMaterialSpec& spec, ref<StandardMaterial> pMaterial)
 {
     {
         std::unique_lock lock(mCacheMutex);
@@ -303,7 +302,7 @@ StandardMaterialSpec::ConvertedInput PreviewSurfaceConverter::convertTexture(
     UsdShadeShader shader(prim);
 
     TfToken id = getAttribute(prim.GetAttribute(UsdShadeTokens->infoId), TfToken());
-    if (id != UsdImagingTokens->UsdUVTexture)
+    if (id != TfToken("UsdUVTexture"))
     {
         logWarning("Expected UsdUVTexture node '{}' is not a UsdUVTexture.", prim.GetPath().GetString());
         return ret;
@@ -318,7 +317,7 @@ StandardMaterialSpec::ConvertedInput PreviewSurfaceConverter::convertTexture(
     if (shader.GetInput(biasToken))
     {
         float4 value;
-        if (!getFloat4Value(input, value) || value != float4(0.f, 0.f, 0.f, 0.f))
+        if (!getFloat4Value(input, value) || any(value != float4(0.f, 0.f, 0.f, 0.f)))
         {
             logWarning(
                 "UsdUvTexture node '{}' specifies a non-zero bias, which is not supported.", prim.GetPath().GetString()
@@ -326,8 +325,7 @@ StandardMaterialSpec::ConvertedInput PreviewSurfaceConverter::convertTexture(
         }
     }
 
-    UsdShadeInput scaleInput = shader.GetInput(scaleToken);
-    if (scaleInput)
+    if (UsdShadeInput scaleInput = shader.GetInput(scaleToken); scaleInput)
     {
         if (!getFloat4Value(scaleInput, ret.textureScale))
         {
@@ -335,7 +333,7 @@ StandardMaterialSpec::ConvertedInput PreviewSurfaceConverter::convertTexture(
                 "UsdUvTexture node '{}' specifies value scale of an unsupported type.", prim.GetPath().GetString()
             );
         }
-        else if (!scaleSupported && glm::any(glm::notEqual(ret.textureScale, float4(1.f, 1.f, 1.f, 1.f))))
+        else if (!scaleSupported && any(ret.textureScale != float4(1.f, 1.f, 1.f, 1.f)))
         {
             logWarning(
                 "UsdUvTexture node '{}' specifies a value scale, which is not supported.", prim.GetPath().GetString()
@@ -352,20 +350,16 @@ StandardMaterialSpec::ConvertedInput PreviewSurfaceConverter::convertTexture(
         id = getAttribute(source.GetPrim().GetAttribute(UsdShadeTokens->infoId), TfToken());
         if (id == transform2dToken)
         {
-            UsdPrim prim(source.GetPrim());
-
-            UsdShadeInput scaleInput = source.GetInput(scaleToken);
-            if (scaleInput)
+            if (UsdShadeInput scaleInput = source.GetInput(scaleToken); scaleInput)
             {
-                Falcor::float2 scaleVec;
+                float2 scaleVec;
                 if (getFloat2Value(scaleInput, scaleVec))
                 {
                     ret.texTransform.setScaling(float3(scaleVec.x, scaleVec.y, 1.f));
                 }
             }
 
-            UsdShadeInput rotateInput = source.GetInput(rotationToken);
-            if (rotateInput)
+            if (UsdShadeInput rotateInput = source.GetInput(rotationToken); rotateInput)
             {
                 float degrees;
                 if (rotateInput.Get<float>(&degrees, UsdTimeCode::EarliestTime()))
@@ -374,16 +368,15 @@ StandardMaterialSpec::ConvertedInput PreviewSurfaceConverter::convertTexture(
                 }
             }
 
-            UsdShadeInput translateInput = source.GetInput(translationToken);
-            if (translateInput)
+            if (UsdShadeInput translateInput = source.GetInput(translationToken); translateInput)
             {
-                Falcor::float2 translateVec;
+                float2 translateVec;
                 if (getFloat2Value(translateInput, translateVec))
                 {
                     ret.texTransform.setTranslation(float3(translateVec.x, translateVec.y, 0.f));
                 }
             }
-            ret.texTransform.setCompositionOrder(Falcor::Transform::CompositionOrder::ScaleRotateTranslate);
+            ret.texTransform.setCompositionOrder(Transform::CompositionOrder::ScaleRotateTranslate);
         }
         else if (id != float2PrimvarReaderToken)
         {
@@ -454,13 +447,13 @@ StandardMaterialSpec::ConvertedInput PreviewSurfaceConverter::convertTexture(
     if (fileInput)
     {
         SdfAssetPath path;
-        UsdPrim prim(fileInput.GetPrim());
-        UsdAttribute fileAttrib = prim.GetAttribute(TfToken("inputs:file"));
+        UsdPrim filePrim(fileInput.GetPrim());
+        UsdAttribute fileAttrib = filePrim.GetAttribute(TfToken("inputs:file"));
 
-        TfToken colorSpace = fileAttrib.GetColorSpace();
-        if (colorSpace == sRGBToken)
+        TfToken fileColorSpace = fileAttrib.GetColorSpace();
+        if (fileColorSpace == sRGBToken)
             ret.loadSRGB = true;
-        else if (colorSpace == rawToken)
+        else if (fileColorSpace == rawToken)
             ret.loadSRGB = false;
 
         fileInput.Get<SdfAssetPath>(&path, UsdTimeCode::EarliestTime());
@@ -540,8 +533,8 @@ StandardMaterialSpec::ConvertedInput PreviewSurfaceConverter::convertColor(
     return ret;
 }
 
-PreviewSurfaceConverter::PreviewSurfaceConverter(std::shared_ptr<Device> pDevice)
-    : mpDevice(std::move(pDevice))
+PreviewSurfaceConverter::PreviewSurfaceConverter(ref<Device> pDevice)
+    : mpDevice(pDevice)
 {
     mpSpecTransPass = ComputePass::create(mpDevice, kSpecTransShaderFile, kSpecTransShaderEntry);
 
@@ -555,13 +548,13 @@ PreviewSurfaceConverter::PreviewSurfaceConverter(std::shared_ptr<Device> pDevice
         Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp
     );
 
-    mpSampler = Sampler::create(mpDevice.get(), samplerDesc);
+    mpSampler = Sampler::create(mpDevice, samplerDesc);
 }
 
 // Convert textured opacity to textured specular transparency.
-Texture::SharedPtr PreviewSurfaceConverter::createSpecularTransmissionTexture(
+ref<Texture> PreviewSurfaceConverter::createSpecularTransmissionTexture(
     StandardMaterialSpec::ConvertedInput& opacity,
-    Texture::SharedPtr opacityTexture,
+    ref<Texture> opacityTexture,
     RenderContext* pRenderContext
 )
 {
@@ -579,15 +572,16 @@ Texture::SharedPtr PreviewSurfaceConverter::createSpecularTransmissionTexture(
     }
 
     uint2 resolution(opacityTexture->getWidth(), opacityTexture->getHeight());
-    Texture::SharedPtr pTexture = Texture::create2D(
-        mpDevice.get(), resolution.x, resolution.y, ResourceFormat::RGBA8Unorm, 1, Texture::kMaxPossible, nullptr,
+    ref<Texture> pTexture = Texture::create2D(
+        mpDevice, resolution.x, resolution.y, ResourceFormat::RGBA8Unorm, 1, Texture::kMaxPossible, nullptr,
         Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess | Resource::BindFlags::RenderTarget
     );
 
-    mpSpecTransPass["CB"]["outDim"] = resolution;
-    mpSpecTransPass["CB"]["opacityChannel"] = getChannelIndex(opacity.channels);
-    mpSpecTransPass["opacityTexture"] = opacityTexture;
-    mpSpecTransPass["outputTexture"] = pTexture;
+    auto var = mpSpecTransPass->getRootVar();
+    var["CB"]["outDim"] = resolution;
+    var["CB"]["opacityChannel"] = getChannelIndex(opacity.channels);
+    var["opacityTexture"] = opacityTexture;
+    var["outputTexture"] = pTexture;
 
     mpSpecTransPass->execute(pRenderContext, resolution.x, resolution.y);
 
@@ -600,11 +594,11 @@ Texture::SharedPtr PreviewSurfaceConverter::createSpecularTransmissionTexture(
  * Combine base color and alpha, one or both of which may be textured, into a single texture.
  * If both are textured, they may be of different resolutions.
  */
-Texture::SharedPtr PreviewSurfaceConverter::packBaseColorAlpha(
+ref<Texture> PreviewSurfaceConverter::packBaseColorAlpha(
     StandardMaterialSpec::ConvertedInput& baseColor,
-    Texture::SharedPtr baseColorTexture,
+    ref<Texture> baseColorTexture,
     StandardMaterialSpec::ConvertedInput& opacity,
-    Texture::SharedPtr opacityTexture,
+    ref<Texture> opacityTexture,
     RenderContext* pRenderContext
 )
 {
@@ -627,26 +621,27 @@ Texture::SharedPtr PreviewSurfaceConverter::packBaseColorAlpha(
 
     // sRGB format textures can't be bound as UAVs. Render to an RGBA32Float intermediate texture, and then blit to
     // RGBA8UnormSrgb to preserve precision near zero.
-    Texture::SharedPtr pTexture = Texture::create2D(
-        mpDevice.get(), resolution.x, resolution.y, ResourceFormat::RGBA32Float, 1, 1, nullptr,
+    ref<Texture> pTexture = Texture::create2D(
+        mpDevice, resolution.x, resolution.y, ResourceFormat::RGBA32Float, 1, 1, nullptr,
         Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess
     );
 
-    mpPackAlphaPass["CB"]["opacityChannel"] = opacityTexture ? getChannelIndex(opacity.channels) : -1;
-    mpPackAlphaPass["CB"]["opacityValue"] = opacity.uniformValue.r;
-    mpPackAlphaPass["CB"]["baseColorTextureValid"] = baseColorTexture ? 1 : 0;
-    mpPackAlphaPass["CB"]["baseColorValue"] = baseColor.uniformValue;
-    mpPackAlphaPass["CB"]["outDim"] = resolution;
-    mpPackAlphaPass["opacityTexture"] = opacityTexture;
-    mpPackAlphaPass["baseColorTexture"] = baseColorTexture;
-    mpPackAlphaPass["sampler"] = mpSampler;
-    mpPackAlphaPass["outputTexture"] = pTexture;
+    auto var = mpPackAlphaPass->getRootVar();
+    var["CB"]["opacityChannel"] = opacityTexture ? getChannelIndex(opacity.channels) : -1;
+    var["CB"]["opacityValue"] = opacity.uniformValue.r;
+    var["CB"]["baseColorTextureValid"] = baseColorTexture ? 1 : 0;
+    var["CB"]["baseColorValue"] = baseColor.uniformValue;
+    var["CB"]["outDim"] = resolution;
+    var["opacityTexture"] = opacityTexture;
+    var["baseColorTexture"] = baseColorTexture;
+    var["sampler"] = mpSampler;
+    var["outputTexture"] = pTexture;
 
     mpPackAlphaPass->execute(pRenderContext, resolution.x, resolution.y);
 
     // Create the output mipmapped sRGB texture
-    Texture::SharedPtr pFinal = Texture::create2D(
-        mpDevice.get(), resolution.x, resolution.y, ResourceFormat::RGBA8UnormSrgb, 1, Texture::kMaxPossible, nullptr,
+    ref<Texture> pFinal = Texture::create2D(
+        mpDevice, resolution.x, resolution.y, ResourceFormat::RGBA8UnormSrgb, 1, Texture::kMaxPossible, nullptr,
         Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget
     );
 
@@ -660,11 +655,11 @@ Texture::SharedPtr PreviewSurfaceConverter::packBaseColorAlpha(
 
 // Combine roughness and metallic parameters, one or both of which are textured, into a specular/ORM texture.
 // If both are textured, they may be of different resolutions.
-Texture::SharedPtr PreviewSurfaceConverter::createSpecularTexture(
+ref<Texture> PreviewSurfaceConverter::createSpecularTexture(
     StandardMaterialSpec::ConvertedInput& roughness,
-    Texture::SharedPtr roughnessTexture,
+    ref<Texture> roughnessTexture,
     StandardMaterialSpec::ConvertedInput& metallic,
-    Texture::SharedPtr metallicTexture,
+    ref<Texture> metallicTexture,
     RenderContext* pRenderContext
 )
 {
@@ -690,20 +685,21 @@ Texture::SharedPtr PreviewSurfaceConverter::createSpecularTexture(
     );
     uint2 resolution(width, height);
 
-    Texture::SharedPtr pTexture = Texture::create2D(
-        mpDevice.get(), width, height, ResourceFormat::RGBA8Unorm, 1, Texture::kMaxPossible, nullptr,
+    ref<Texture> pTexture = Texture::create2D(
+        mpDevice, width, height, ResourceFormat::RGBA8Unorm, 1, Texture::kMaxPossible, nullptr,
         Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess | Resource::BindFlags::RenderTarget
     );
 
-    mpSpecularPass["CB"]["roughnessChannel"] = roughnessTexture ? getChannelIndex(roughness.channels) : -1;
-    mpSpecularPass["CB"]["roughnessValue"] = roughness.uniformValue.r;
-    mpSpecularPass["CB"]["metallicChannel"] = metallicTexture ? getChannelIndex(metallic.channels) : -1;
-    mpSpecularPass["CB"]["metallicValue"] = metallic.uniformValue.r;
-    mpSpecularPass["CB"]["outDim"] = resolution;
-    mpSpecularPass["metallicTexture"] = metallicTexture;
-    mpSpecularPass["roughnessTexture"] = roughnessTexture;
-    mpSpecularPass["sampler"] = mpSampler;
-    mpSpecularPass["outputTexture"] = pTexture;
+    auto var = mpSpecularPass->getRootVar();
+    var["CB"]["roughnessChannel"] = roughnessTexture ? getChannelIndex(roughness.channels) : -1;
+    var["CB"]["roughnessValue"] = roughness.uniformValue.r;
+    var["CB"]["metallicChannel"] = metallicTexture ? getChannelIndex(metallic.channels) : -1;
+    var["CB"]["metallicValue"] = metallic.uniformValue.r;
+    var["CB"]["outDim"] = resolution;
+    var["metallicTexture"] = metallicTexture;
+    var["roughnessTexture"] = roughnessTexture;
+    var["sampler"] = mpSampler;
+    var["outputTexture"] = pTexture;
 
     mpSpecularPass->execute(pRenderContext, resolution.x, resolution.y);
 
@@ -712,7 +708,7 @@ Texture::SharedPtr PreviewSurfaceConverter::createSpecularTexture(
     return pTexture;
 }
 
-Texture::SharedPtr PreviewSurfaceConverter::loadTexture(const StandardMaterialSpec::ConvertedInput& ci)
+ref<Texture> PreviewSurfaceConverter::loadTexture(const StandardMaterialSpec::ConvertedInput& ci)
 {
     if (ci.texturePath.empty())
     {
@@ -724,7 +720,7 @@ Texture::SharedPtr PreviewSurfaceConverter::loadTexture(const StandardMaterialSp
         // slow but can run in parallel, from texture creation, which must be single-threaded,
         // as done below.
         std::scoped_lock lock(mMutex);
-        return ImageIO::loadTextureFromDDS(mpDevice.get(), ci.texturePath, ci.loadSRGB);
+        return ImageIO::loadTextureFromDDS(mpDevice, ci.texturePath, ci.loadSRGB);
     }
     else
     {
@@ -741,7 +737,7 @@ Texture::SharedPtr PreviewSurfaceConverter::loadTexture(const StandardMaterialSp
             {
                 std::scoped_lock lock(mMutex);
                 return Texture::create2D(
-                    mpDevice.get(), pBitmap->getWidth(), pBitmap->getHeight(), format, 1, Texture::kMaxPossible, pBitmap->getData()
+                    mpDevice, pBitmap->getWidth(), pBitmap->getHeight(), format, 1, Texture::kMaxPossible, pBitmap->getData()
                 );
             }
         }
@@ -912,7 +908,7 @@ StandardMaterialSpec PreviewSurfaceConverter::createSpec(const std::string& name
     return spec;
 }
 
-Material::SharedPtr PreviewSurfaceConverter::convert(
+ref<Material> PreviewSurfaceConverter::convert(
     const UsdShadeMaterial& material,
     const std::string& primName,
     RenderContext* pRenderContext
@@ -952,7 +948,7 @@ Material::SharedPtr PreviewSurfaceConverter::convert(
     }
 
     TfToken id = getAttribute(shader.GetPrim().GetAttribute(UsdShadeTokens->infoId), TfToken());
-    if (id != UsdImagingTokens->UsdPreviewSurface)
+    if (id != TfToken("UsdPreviewSurface"))
     {
         logDebug(
             "Material '{}' has a surface output node of type '{}', not UsdPreviewSurface.", primName, id.GetString()
@@ -964,7 +960,7 @@ Material::SharedPtr PreviewSurfaceConverter::convert(
 
     // Is there a valid cached instance for this material prim?  If so, simply return it.
     // Note that this call will block if another thread is concurrently converting the same material.
-    StandardMaterial::SharedPtr pMaterial = getCachedMaterial(shader);
+    ref<StandardMaterial> pMaterial = getCachedMaterial(shader);
     if (pMaterial)
     {
         return pMaterial;
@@ -996,20 +992,20 @@ Material::SharedPtr PreviewSurfaceConverter::convert(
     // For now, force all materials to be double-sided.
     pMaterial->setDoubleSided(true);
 
-    Texture::SharedPtr baseColorTexture = loadTexture(spec.baseColor);
-    Texture::SharedPtr opacityTexture = loadTexture(spec.opacity);
-    Texture::SharedPtr roughnessTexture = loadTexture(spec.roughness);
-    Texture::SharedPtr metallicTexture = loadTexture(spec.metallic);
-    Texture::SharedPtr normalTexture = loadTexture(spec.normal);
-    Texture::SharedPtr emissionTexture = loadTexture(spec.emission);
-    Texture::SharedPtr displacementTexture = loadTexture(spec.disp);
+    ref<Texture> baseColorTexture = loadTexture(spec.baseColor);
+    ref<Texture> opacityTexture = loadTexture(spec.opacity);
+    ref<Texture> roughnessTexture = loadTexture(spec.roughness);
+    ref<Texture> metallicTexture = loadTexture(spec.metallic);
+    ref<Texture> normalTexture = loadTexture(spec.normal);
+    ref<Texture> emissionTexture = loadTexture(spec.emission);
+    ref<Texture> displacementTexture = loadTexture(spec.disp);
 
     pMaterial->setIndexOfRefraction(spec.ior);
 
     // If there is either a roughness or metallic texture, convert texture(s) and constant (if any) to an ORM texture.
     if (metallicTexture || roughnessTexture)
     {
-        Texture::SharedPtr pSpecularTex =
+        ref<Texture> pSpecularTex =
             createSpecularTexture(spec.roughness, roughnessTexture, spec.metallic, metallicTexture, pRenderContext);
         pMaterial->setSpecularTexture(pSpecularTex);
     }
@@ -1032,7 +1028,7 @@ Material::SharedPtr PreviewSurfaceConverter::convert(
             }
             else
             {
-                spec.baseColor.uniformValue = float4(spec.baseColor.uniformValue.rgb, spec.opacity.uniformValue.r);
+                spec.baseColor.uniformValue = float4(spec.baseColor.uniformValue.xyz(), spec.opacity.uniformValue.r);
             }
             pMaterial->setAlphaThreshold(spec.opacityThreshold);
         }
@@ -1045,7 +1041,7 @@ Material::SharedPtr PreviewSurfaceConverter::convert(
                 "UsdPreviewSurface '{}' has texture-mapped opacity. Converting to textured specular transmission.",
                 shader.GetPath().GetString()
             );
-            Texture::SharedPtr transmissionTexture =
+            ref<Texture> transmissionTexture =
                 createSpecularTransmissionTexture(spec.opacity, opacityTexture, pRenderContext);
             pMaterial->setTransmissionTexture(transmissionTexture);
             pMaterial->setSpecularTransmission(1.f);
@@ -1083,10 +1079,10 @@ Material::SharedPtr PreviewSurfaceConverter::convert(
     }
     else
     {
-        pMaterial->setEmissiveColor(spec.emission.uniformValue);
+        pMaterial->setEmissiveColor(spec.emission.uniformValue.xyz());
     }
 
-    if (spec.emission.textureScale != glm::float4(1.f, 1.f, 1.f, 1.f))
+    if (any(spec.emission.textureScale != float4(1.f, 1.f, 1.f, 1.f)))
     {
         if (spec.emission.textureScale.x != spec.emission.textureScale.y ||
             spec.emission.textureScale.x != spec.emission.textureScale.z ||
@@ -1106,13 +1102,13 @@ Material::SharedPtr PreviewSurfaceConverter::convert(
         pMaterial->setDisplacementMap(displacementTexture);
     }
 
-    if (spec.texTransform.getMatrix() != Falcor::rmcv::identity<Falcor::rmcv::mat4>())
+    if (spec.texTransform.getMatrix() != float4x4::identity())
     {
         // Compute the inverse of the texture transform, as Falcor assumes
         // the transform applies to the texture, rather than the texture coordinates,
         // as UsdPreviewSurface does.
         FALCOR_ASSERT(
-            spec.texTransform.getCompositionOrder() == Falcor::Transform::CompositionOrder::ScaleRotateTranslate
+            spec.texTransform.getCompositionOrder() == Transform::CompositionOrder::ScaleRotateTranslate
         );
         Transform inv;
         inv.setTranslation(-spec.texTransform.getTranslation());
@@ -1120,7 +1116,7 @@ Material::SharedPtr PreviewSurfaceConverter::convert(
         inv.setScaling(float3(1.f / scale.x, 1.f / scale.y, 1.f));
         float3 rot = spec.texTransform.getRotationEuler();
         inv.setRotationEuler(-rot);
-        inv.setCompositionOrder(Falcor::Transform::CompositionOrder::TranslateRotateScale);
+        inv.setCompositionOrder(Transform::CompositionOrder::TranslateRotateScale);
         pMaterial->setTextureTransform(inv);
     }
 

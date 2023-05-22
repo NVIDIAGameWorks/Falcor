@@ -34,17 +34,11 @@ namespace
     const std::string kFormatWarning = "Non-float format can't represent Inf/NaN values. Expect black output.";
 }
 
-InvalidPixelDetectionPass::InvalidPixelDetectionPass(std::shared_ptr<Device> pDevice)
-    : RenderPass(std::move(pDevice))
+InvalidPixelDetectionPass::InvalidPixelDetectionPass(ref<Device> pDevice, const Dictionary& dict)
+    : RenderPass(pDevice)
 {
     mpInvalidPixelDetectPass = FullScreenPass::create(mpDevice, "RenderPasses/DebugPasses/InvalidPixelDetectionPass/InvalidPixelDetection.ps.slang");
-    mpFbo = Fbo::create(mpDevice.get());
-}
-
-InvalidPixelDetectionPass::SharedPtr InvalidPixelDetectionPass::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-{
-    SharedPtr pPass = SharedPtr(new InvalidPixelDetectionPass(std::move(pDevice)));
-    return pPass;
+    mpFbo = Fbo::create(mpDevice);
 }
 
 RenderPassReflection InvalidPixelDetectionPass::reflect(const CompileData& compileData)
@@ -97,7 +91,7 @@ void InvalidPixelDetectionPass::execute(RenderContext* pRenderContext, const Ren
         }
     }
 
-    mpInvalidPixelDetectPass["gTexture"] = pSrc;
+    mpInvalidPixelDetectPass->getRootVar()["gTexture"] = pSrc;
     mpFbo->attachColorTarget(renderData.getTexture(kDst), 0);
     mpInvalidPixelDetectPass->getState()->setFbo(mpFbo);
     mpInvalidPixelDetectPass->execute(pRenderContext, mpFbo);

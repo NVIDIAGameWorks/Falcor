@@ -47,7 +47,7 @@ void bitonicSortRef(std::vector<uint32_t>& data, const uint32_t chunkSize)
 
 void testGpuSort(GPUUnitTestContext& ctx, BitonicSort& bitonicSort, const uint32_t n, const uint32_t chunkSize)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     // Create a buffer of random data to use as test data.
     std::vector<uint32_t> testData(n);
@@ -55,7 +55,7 @@ void testGpuSort(GPUUnitTestContext& ctx, BitonicSort& bitonicSort, const uint32
     for (auto& it : testData)
         it = r();
 
-    Buffer::SharedPtr pTestDataBuffer =
+    ref<Buffer> pTestDataBuffer =
         Buffer::create(pDevice, n * sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, testData.data());
 
     // Execute sort on the GPU.

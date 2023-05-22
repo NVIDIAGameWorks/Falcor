@@ -34,7 +34,7 @@ namespace
 {
 void runTest2(GPUUnitTestContext& ctx, Program::DefineList defines)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     ctx.createProgram(
         "Tests/Slang/StructuredBufferMatrix.cs.slang", "testStructuredBufferMatrixLoad2", defines, Shader::CompilerFlags::DumpIntermediates,
@@ -70,7 +70,7 @@ void runTest2(GPUUnitTestContext& ctx, Program::DefineList defines)
 
 GPU_TEST(StructuredBufferMatrixLoad1)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     ctx.createProgram(
         "Tests/Slang/StructuredBufferMatrix.cs.slang", "testStructuredBufferMatrixLoad1", Program::DefineList(),

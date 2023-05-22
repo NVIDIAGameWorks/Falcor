@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -250,8 +250,9 @@ float3 evalDirectAnalytic(const ShadingData sd, const IMaterialInstance mi, inou
     const uint lobeTypes = mi.getLobeTypes(sd);
     const bool hasReflection = lobeTypes & uint(LobeType::Reflection);
     const bool hasTransmission = lobeTypes & uint(LobeType::Transmission);
-    if (dot(ls.dir, sd.N) <= kMinCosTheta && !hasTransmission) return float3(0.f);
-    if (dot(ls.dir, sd.N) >= -kMinCosTheta && !hasReflection) return float3(0.f);
+    float NdotL = dot(sd.getOrientedFaceNormal(), ls.dir);
+    if ((NdotL <= kMinCosTheta && !hasTransmission) || (NdotL >= -kMinCosTheta && !hasReflection))
+        return float3(0.f);
 
     // Get origin with offset applied in direction of the geometry normal to avoid self-intersection.
     const float3 origin = computeRayOrigin(sd.posW, dot(sd.faceN, ls.dir) >= 0.f ? sd.faceN : -sd.faceN);
@@ -327,7 +328,7 @@ void handleHit(const HitInfo hit, inout ScatterRayData rayData)
     if (isCurveHit)
     {
         // For curves, we set the new origin at the sphere center.
-        rayOrigin = sd.posW - sd.curveRadius * sd.N;
+        rayOrigin = sd.posW - sd.curveRadius * sd.frame.N;
     }
     else
     {
@@ -398,7 +399,7 @@ float3 tracePath(const uint2 pixel, const uint2 frameDim)
         if (isCurveHit)
         {
             // For curves, we set the new origin at the sphere center.
-            rayOrigin = sd.posW - sd.curveRadius * sd.N;
+            rayOrigin = sd.posW - sd.curveRadius * sd.frame.N;
         }
         else
         {

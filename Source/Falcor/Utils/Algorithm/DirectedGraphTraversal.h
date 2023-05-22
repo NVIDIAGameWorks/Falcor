@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -35,201 +35,206 @@
 
 namespace Falcor
 {
-    class DirectedGraphTraversal
+class DirectedGraphTraversal
+{
+public:
+    enum class Flags
     {
-    public:
-        enum class Flags
-        {
-            None = 0x0,
-            Reverse = 0x1,
-            IgnoreVisited = 0x2,
-        };
+        None = 0x0,
+        Reverse = 0x1,
+        IgnoreVisited = 0x2,
+    };
 
-        DirectedGraphTraversal(const DirectedGraph::SharedPtr pGraph, Flags flags) : mpGraph(pGraph), mFlags(flags)
+    DirectedGraphTraversal(const DirectedGraph& graph, Flags flags) : mGraph(graph), mFlags(flags) {}
+
+protected:
+    virtual ~DirectedGraphTraversal() {}
+
+    const DirectedGraph& mGraph;
+    Flags mFlags;
+    std::vector<bool> mVisited;
+
+    bool reset(uint32_t rootNode)
+    {
+        if (mGraph.doesNodeExist(rootNode) == false)
+            return false;
+
+        if ((uint32_t)mFlags & (uint32_t)Flags::IgnoreVisited)
         {
+            mVisited.assign(mGraph.getCurrentNodeId(), false);
         }
 
-    protected:
-        virtual ~DirectedGraphTraversal() {}
+        return true;
+    }
+};
 
-        typename DirectedGraph::SharedPtr mpGraph;
-        Flags mFlags;
-        std::vector<bool> mVisited;
+FALCOR_ENUM_CLASS_OPERATORS(DirectedGraphTraversal::Flags);
 
-        bool reset(uint32_t rootNode)
+template<typename Args>
+class DirectedGraphTraversalTemplate : public DirectedGraphTraversal
+{
+public:
+    DirectedGraphTraversalTemplate(const DirectedGraph& graph, uint32_t rootNode, Flags flags = Flags::None)
+        : DirectedGraphTraversal(graph, flags)
+    {
+        reset(rootNode);
+    }
+    ~DirectedGraphTraversalTemplate() = default;
+
+    uint32_t traverse()
+    {
+        if (mNodeList.empty())
         {
-            if (mpGraph->doesNodeExist(rootNode) == false) return false;
+            return DirectedGraph::kInvalidID;
+        }
 
-            if ((uint32_t)mFlags & (uint32_t)Flags::IgnoreVisited)
+        uint32_t curNode = Args::getTop(mNodeList);
+        if (is_set(mFlags, Flags::IgnoreVisited))
+        {
+            while (mVisited[curNode])
             {
-                mVisited.assign(mpGraph->getCurrentNodeId(), false);
+                mNodeList.pop();
+                if (mNodeList.empty())
+                {
+                    return DirectedGraph::kInvalidID;
+                }
+                curNode = Args::getTop(mNodeList);
             }
 
+            mVisited[curNode] = true;
+        }
+        mNodeList.pop();
+
+        // Insert all the children
+        const DirectedGraph::Node* pNode = mGraph.getNode(curNode);
+        bool reverse = is_set(mFlags, Flags::Reverse);
+        uint32_t edgeCount = reverse ? pNode->getIncomingEdgeCount() : pNode->getOutgoingEdgeCount();
+
+        for (uint32_t i = 0; i < edgeCount; i++)
+        {
+            uint32_t e = reverse ? pNode->getIncomingEdge(i) : pNode->getOutgoingEdge(i);
+            const DirectedGraph::Edge* pEdge = mGraph.getEdge(e);
+            uint32_t child = reverse ? pEdge->getSourceNode() : pEdge->getDestNode();
+            mNodeList.push(child);
+        }
+
+        return curNode;
+    }
+
+    bool reset(uint32_t rootNode)
+    {
+        bool b = DirectedGraphTraversal::reset(rootNode);
+        mNodeList = decltype(mNodeList)();
+        if (b)
+            mNodeList.push(rootNode);
+        return b;
+    }
+
+private:
+    typename Args::Container mNodeList;
+};
+
+struct DfsArgs
+{
+    using Container = std::stack<uint32_t>;
+    static const std::string getName() { return "DFS"; }
+    static const uint32_t& getTop(const Container& c) { return c.top(); };
+};
+using DirectedGraphDfsTraversal = DirectedGraphTraversalTemplate<DfsArgs>;
+
+struct BfsArgs
+{
+    using Container = std::queue<uint32_t>;
+    static const std::string getName() { return "BFS"; }
+    static const uint32_t& getTop(const Container& c) { return c.front(); };
+};
+using DirectedGraphBfsTraversal = DirectedGraphTraversalTemplate<BfsArgs>;
+
+class DirectedGraphLoopDetector
+{
+public:
+    static bool hasLoop(const DirectedGraph& graph, uint32_t rootNode)
+    {
+        DirectedGraphDfsTraversal dfs(graph, rootNode);
+        // Skip the first node since it's the root
+        uint32_t n = dfs.traverse();
+        while (n != DirectedGraph::kInvalidID)
+        {
+            n = dfs.traverse();
+            if (n == rootNode)
+                return true;
+        }
+
+        return false;
+    }
+};
+
+class DirectedGraphTopologicalSort
+{
+public:
+    static std::vector<uint32_t> sort(const DirectedGraph& graph)
+    {
+        DirectedGraphTopologicalSort ts(graph);
+        for (uint32_t i = 0; i < ts.mGraph.getCurrentNodeId(); i++)
+        {
+            if (ts.mVisited[i] == false && ts.mGraph.getNode(i))
+            {
+                ts.sortInternal(i);
+            }
+        }
+
+        std::vector<uint32_t> result;
+        result.reserve(ts.mStack.size());
+        while (ts.mStack.empty() == false)
+        {
+            result.push_back(ts.mStack.top());
+            ts.mStack.pop();
+        }
+        return result;
+    }
+
+private:
+    DirectedGraphTopologicalSort(const DirectedGraph& graph) : mGraph(graph), mVisited(graph.getCurrentNodeId(), false) {}
+    const DirectedGraph& mGraph;
+    std::stack<uint32_t> mStack;
+    std::vector<bool> mVisited;
+
+    void sortInternal(uint32_t node)
+    {
+        mVisited[node] = true;
+        const DirectedGraph::Node* pNode = mGraph.getNode(node);
+        for (uint32_t e = 0; e < pNode->getOutgoingEdgeCount(); e++)
+        {
+            uint32_t nextNode = mGraph.getEdge(pNode->getOutgoingEdge(e))->getDestNode();
+            if (!mVisited[nextNode])
+            {
+                sortInternal(nextNode);
+            }
+        }
+
+        mStack.push(node);
+    }
+};
+
+namespace DirectedGraphPathDetector
+{
+inline bool hasPath(const DirectedGraph& graph, uint32_t from, uint32_t to)
+{
+    DirectedGraphDfsTraversal dfs(graph, from, DirectedGraphDfsTraversal::Flags::IgnoreVisited);
+    uint32_t node = dfs.traverse();
+    node = dfs.traverse(); // skip the root node
+    while (node != DirectedGraph::kInvalidID)
+    {
+        if (node == to)
             return true;
-        }
-    };
-
-    FALCOR_ENUM_CLASS_OPERATORS(DirectedGraphTraversal::Flags);
-
-    template<typename Args>
-    class DirectedGraphTraversalTemplate : public DirectedGraphTraversal
-    {
-    public:
-        DirectedGraphTraversalTemplate(const DirectedGraph::SharedPtr pGraph, uint32_t rootNode, Flags flags = Flags::None) : DirectedGraphTraversal(pGraph, flags)
-        {
-            reset(rootNode);
-        }
-        ~DirectedGraphTraversalTemplate() = default;
-
-        uint32_t traverse()
-        {
-            if (mNodeList.empty())
-            {
-                return DirectedGraph::kInvalidID;
-            }
-
-            uint32_t curNode = Args::getTop(mNodeList);
-            if (is_set(mFlags, Flags::IgnoreVisited))
-            {
-                while (mVisited[curNode])
-                {
-                    mNodeList.pop();
-                    if (mNodeList.empty())
-                    {
-                        return DirectedGraph::kInvalidID;
-                    }
-                    curNode = Args::getTop(mNodeList);
-                }
-
-                mVisited[curNode] = true;
-            }
-            mNodeList.pop();
-
-            // Insert all the children
-            const DirectedGraph::Node* pNode = mpGraph->getNode(curNode);
-            bool reverse = is_set(mFlags, Flags::Reverse);
-            uint32_t edgeCount = reverse ? pNode->getIncomingEdgeCount() : pNode->getOutgoingEdgeCount();
-
-            for (uint32_t i = 0; i < edgeCount; i++)
-            {
-                uint32_t e = reverse ? pNode->getIncomingEdge(i) : pNode->getOutgoingEdge(i);
-                const DirectedGraph::Edge* pEdge = mpGraph->getEdge(e);
-                uint32_t child = reverse ? pEdge->getSourceNode() : pEdge->getDestNode();
-                mNodeList.push(child);
-            }
-
-            return curNode;
-        }
-
-        bool reset(uint32_t rootNode)
-        {
-            bool b = DirectedGraphTraversal::reset(rootNode);
-            mNodeList = decltype(mNodeList)();
-            if(b) mNodeList.push(rootNode);
-            return b;
-        }
-    private:
-        typename Args::Container mNodeList;
-    };
-
-    struct DfsArgs
-    {
-        using Container = std::stack<uint32_t>;
-        static const std::string getName() { return "DFS"; }
-        static const uint32_t& getTop(const Container& c) { return c.top(); };
-    };
-    using DirectedGraphDfsTraversal = DirectedGraphTraversalTemplate<DfsArgs>;
-
-    struct BfsArgs
-    {
-        using Container = std::queue<uint32_t>;
-        static const std::string getName() { return "BFS"; }
-        static const uint32_t& getTop(const Container& c) { return c.front(); };
-    };
-    using DirectedGraphBfsTraversal = DirectedGraphTraversalTemplate<BfsArgs>;
-
-    class DirectedGraphLoopDetector
-    {
-    public:
-        static bool hasLoop(const DirectedGraph::SharedPtr pGraph, uint32_t rootNode)
-        {
-            DirectedGraphDfsTraversal dfs(pGraph, rootNode);
-            // Skip the first node since it's the root
-            uint32_t n = dfs.traverse();
-            while (n != DirectedGraph::kInvalidID)
-            {
-                n = dfs.traverse();
-                if (n == rootNode) return true;
-            }
-
-            return false;
-        }
-    };
-
-    class DirectedGraphTopologicalSort
-    {
-    public:
-        static std::vector<uint32_t> sort(DirectedGraph* pGraph)
-        {
-            DirectedGraphTopologicalSort ts(pGraph);
-            for (uint32_t i = 0; i < ts.mpGraph->getCurrentNodeId(); i++)
-            {
-                if (ts.mVisited[i] == false && ts.mpGraph->getNode(i))
-                {
-                    ts.sortInternal(i);
-                }
-            }
-
-            std::vector<uint32_t> result;
-            result.reserve(ts.mStack.size());
-            while (ts.mStack.empty() == false)
-            {
-                result.push_back(ts.mStack.top());
-                ts.mStack.pop();
-            }
-            return result;
-        }
-    private:
-        DirectedGraphTopologicalSort(DirectedGraph* pGraph) : mpGraph(pGraph), mVisited(pGraph->getCurrentNodeId(), false) {}
-        DirectedGraph* mpGraph;
-        std::stack<uint32_t> mStack;
-        std::vector<bool> mVisited;
-
-        void sortInternal(uint32_t node)
-        {
-            mVisited[node] = true;
-            const DirectedGraph::Node* pNode = mpGraph->getNode(node);
-            for (uint32_t e = 0; e < pNode->getOutgoingEdgeCount(); e++)
-            {
-                uint32_t nextNode = mpGraph->getEdge(pNode->getOutgoingEdge(e))->getDestNode();
-                if (!mVisited[nextNode])
-                {
-                    sortInternal(nextNode);
-                }
-            }
-
-            mStack.push(node);
-        }
-    };
-
-    namespace DirectedGraphPathDetector
-    {
-        inline bool hasPath(const DirectedGraph::SharedPtr& pGraph, uint32_t from, uint32_t to)
-        {
-            DirectedGraphDfsTraversal dfs(pGraph, from, DirectedGraphDfsTraversal::Flags::IgnoreVisited);
-            uint32_t node = dfs.traverse();
-            node = dfs.traverse(); // skip the root node
-            while (node != DirectedGraph::kInvalidID)
-            {
-                if (node == to) return true;
-                node = dfs.traverse();
-            }
-            return false;
-        }
-
-        inline bool hasCycle(const DirectedGraph::SharedPtr& pGraph, uint32_t root)
-        {
-            return hasPath(pGraph, root, root);
-        }
-    };
+        node = dfs.traverse();
+    }
+    return false;
 }
+
+inline bool hasCycle(const DirectedGraph& graph, uint32_t root)
+{
+    return hasPath(graph, root, root);
+}
+}; // namespace DirectedGraphPathDetector
+} // namespace Falcor

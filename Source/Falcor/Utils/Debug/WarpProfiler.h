@@ -53,7 +53,7 @@ public:
      * @param[in] pDevice GPU device.
      * @param[in] binCount Number of profiling bins.
      */
-    WarpProfiler(Device* pDevice, const uint32_t binCount);
+    WarpProfiler(ref<Device> pDevice, const uint32_t binCount);
 
     /**
      * @brief Binds the profiler data to shader vars.
@@ -93,9 +93,9 @@ public:
 private:
     void readBackData();
 
-    GpuFence::SharedPtr mpFence;
-    Buffer::SharedPtr mpHistogramBuffer;
-    Buffer::SharedPtr mpHistogramStagingBuffer;
+    ref<GpuFence> mpFence;
+    ref<Buffer> mpHistogramBuffer;
+    ref<Buffer> mpHistogramStagingBuffer;
 
     const uint32_t mBinCount;          ///< Number of profiling bins.
     std::vector<uint32_t> mHistograms; ///< Histograms for all profiling bins.

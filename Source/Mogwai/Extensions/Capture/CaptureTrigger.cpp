@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -91,7 +91,7 @@ namespace Mogwai
         else        mGraphRanges.clear();
     }
 
-    void CaptureTrigger::beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
+    void CaptureTrigger::beginFrame(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo)
     {
         RenderGraph* pGraph = mpRenderer->getActiveGraph();
         if (!pGraph) return;
@@ -118,7 +118,7 @@ namespace Mogwai
         }
     }
 
-    void CaptureTrigger::endFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
+    void CaptureTrigger::endFrame(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo)
     {
         if (!mCurrent.pGraph) return;
         uint64_t frameId = mpRenderer->getGlobalClock().getFrame();

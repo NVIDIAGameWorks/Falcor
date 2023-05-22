@@ -38,7 +38,7 @@ namespace
 {
 void testAliasTable(GPUUnitTestContext& ctx, uint32_t N, std::vector<float> specificWeights = {})
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     std::mt19937 rng;
     std::uniform_real_distribution<float> uniform;
@@ -56,16 +56,15 @@ void testAliasTable(GPUUnitTestContext& ctx, uint32_t N, std::vector<float> spec
     }
 
     // Create alias table.
-    auto aliasTable = AliasTable::create(pDevice, weights, rng);
-    EXPECT(aliasTable != nullptr);
+    AliasTable aliasTable(pDevice, weights, rng);
 
     // Compute weight sum.
     double weightSum = 0.0;
     for (const auto& weight : weights)
         weightSum += weight;
 
-    EXPECT_EQ(aliasTable->getCount(), weights.size());
-    EXPECT_EQ(aliasTable->getWeightSum(), weightSum);
+    EXPECT_EQ(aliasTable.getCount(), weights.size());
+    EXPECT_EQ(aliasTable.getWeightSum(), weightSum);
 
     // Test sampling the alias table.
     {
@@ -81,7 +80,7 @@ void testAliasTable(GPUUnitTestContext& ctx, uint32_t N, std::vector<float> spec
         ctx.createProgram("Tests/Sampling/AliasTableTests.cs.slang", "testAliasTableSample");
         ctx.allocateStructuredBuffer("sampleResult", resultCount);
         ctx.allocateStructuredBuffer("random", randomCount, random.data());
-        aliasTable->setShaderData(ctx["CB"]["aliasTable"]);
+        aliasTable.setShaderData(ctx["CB"]["aliasTable"]);
         ctx["CB"]["resultCount"] = resultCount;
         ctx.runProgram(resultCount);
 
@@ -127,7 +126,7 @@ void testAliasTable(GPUUnitTestContext& ctx, uint32_t N, std::vector<float> spec
         // Setup and run GPU test.
         ctx.createProgram("Tests/Sampling/AliasTableTests.cs.slang", "testAliasTableWeight");
         ctx.allocateStructuredBuffer("weightResult", resultCount);
-        aliasTable->setShaderData(ctx["CB"]["aliasTable"]);
+        aliasTable.setShaderData(ctx["CB"]["aliasTable"]);
         ctx["CB"]["resultCount"] = resultCount;
         ctx.runProgram(resultCount);
 

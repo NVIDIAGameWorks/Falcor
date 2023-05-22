@@ -57,24 +57,19 @@ namespace
     const std::string kSplitShader = "RenderPasses/DebugPasses/SplitScreenPass/SplitScreen.ps.slang";
 }
 
-SplitScreenPass::SplitScreenPass(std::shared_ptr<Device> pDevice)
-    : ComparisonPass(std::move(pDevice))
+SplitScreenPass::SplitScreenPass(ref<Device> pDevice, const Dictionary& dict)
+    : ComparisonPass(pDevice)
 {
-    mpArrowTex = Texture::create2D(mpDevice.get(), 16, 16, ResourceFormat::R8Unorm, 1, Texture::kMaxPossible, kArrowArray);
+    mpArrowTex = Texture::create2D(mpDevice, 16, 16, ResourceFormat::R8Unorm, 1, Texture::kMaxPossible, kArrowArray);
     createProgram();
-}
 
-SplitScreenPass::SharedPtr SplitScreenPass::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-{
-    SharedPtr pPass = SharedPtr(new SplitScreenPass(std::move(pDevice)));
     for (const auto& [key, value] : dict)
     {
-        if (!pPass->parseKeyValuePair(key, value))
+        if (!parseKeyValuePair(key, value))
         {
             logWarning("Unknown field '{}' in a SplitScreenPass dictionary.", key);
         }
     }
-    return pPass;
 }
 
 void SplitScreenPass::createProgram()
@@ -85,10 +80,11 @@ void SplitScreenPass::createProgram()
 
 void SplitScreenPass::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    mpSplitShader["GlobalCB"]["gDividerColor"] = mMouseOverDivider ? kColorSelected : kColorUnselected;
-    mpSplitShader["GlobalCB"]["gMousePosition"] = mMousePos;
-    mpSplitShader["GlobalCB"]["gDrawArrows"] = mDrawArrows && mMouseOverDivider;
-    mpSplitShader["gArrowTex"] = mpArrowTex;
+    auto var = mpSplitShader->getRootVar();
+    var["GlobalCB"]["gDividerColor"] = mMouseOverDivider ? kColorSelected : kColorUnselected;
+    var["GlobalCB"]["gMousePosition"] = mMousePos;
+    var["GlobalCB"]["gDrawArrows"] = mDrawArrows && mMouseOverDivider;
+    var["gArrowTex"] = mpArrowTex;
 
     ComparisonPass::execute(pRenderContext, renderData);
 }
@@ -102,7 +98,7 @@ bool SplitScreenPass::onMouseEvent(const MouseEvent& mouseEvent)
     mMousePos = int2(mouseEvent.screenPos.x, mouseEvent.screenPos.y);
 
     // If we're outside the window, stop.
-    mMousePos = glm::clamp(mMousePos, int2(0, 0), int2(pDstFbo->getWidth() - 1, pDstFbo->getHeight() - 1));
+    mMousePos = clamp(mMousePos, int2(0, 0), int2(pDstFbo->getWidth() - 1, pDstFbo->getHeight() - 1));
 
     // Actually process our events
     if (mMouseOverDivider && mouseEvent.type == MouseEvent::Type::ButtonDown && mouseEvent.button == Input::MouseButton::Left)
@@ -129,7 +125,7 @@ bool SplitScreenPass::onMouseEvent(const MouseEvent& mouseEvent)
 
     // Update whether the mouse if over the divider.  To ensure selecting the slider isn't a pain,
     // have a minimum landing size (13 pixels, 2*6+1) that counts as hovering over the slider.
-    mMouseOverDivider = (glm::abs(int32_t(mSplitLoc * pDstFbo->getWidth()) - mMousePos.x) < glm::max(6, int32_t(mDividerSize)));
+    mMouseOverDivider = (std::abs(int32_t(mSplitLoc * pDstFbo->getWidth()) - mMousePos.x) < std::max(6, int32_t(mDividerSize)));
 
     return handled;
 }

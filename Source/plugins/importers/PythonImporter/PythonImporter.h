@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -40,7 +40,7 @@ public:
 
     static std::unique_ptr<Importer> create();
 
-    void importScene(const std::filesystem::path& path, SceneBuilder& builder, const Dictionary& dict) override;
+    void importScene(const std::filesystem::path& path, SceneBuilder& builder, const pybind11::dict& dict) override;
 };
 
 } // namespace Falcor

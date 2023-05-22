@@ -31,7 +31,7 @@ namespace Falcor
 {
 GPU_TEST(UnboundedDescriptorArray, "Unbounded arrays are not yet supported")
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     const uint32_t kTexCount = 4;
 

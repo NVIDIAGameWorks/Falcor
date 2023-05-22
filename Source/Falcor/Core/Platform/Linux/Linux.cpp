@@ -48,7 +48,6 @@
 
 namespace Falcor
 {
-void setMainWindowHandle(WindowHandle windowHandle) {}
 
 MsgBoxButton msgBox(const std::string& title, const std::string& msg, MsgBoxType type, MsgBoxIcon icon)
 {

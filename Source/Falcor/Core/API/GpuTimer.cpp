@@ -33,36 +33,28 @@
 #include "GFXAPI.h"
 
 #include "Core/Assert.h"
+#include "Core/ObjectPython.h"
 #include "Utils/Logger.h"
 #include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
 {
-std::weak_ptr<QueryHeap> GpuTimer::spHeap;
 
-GpuTimer::SharedPtr GpuTimer::create(Device* pDevice)
+ref<GpuTimer> GpuTimer::create(ref<Device> pDevice)
 {
-    return SharedPtr(new GpuTimer(pDevice->shared_from_this()));
+    return ref<GpuTimer>(new GpuTimer(pDevice));
 }
 
-GpuTimer::GpuTimer(std::shared_ptr<Device> pDevice) : mpDevice(std::move(pDevice))
+GpuTimer::GpuTimer(ref<Device> pDevice) : mpDevice(pDevice)
 {
     FALCOR_ASSERT(mpDevice);
 
-    mpResolveBuffer = Buffer::create(mpDevice.get(), sizeof(uint64_t) * 2, Buffer::BindFlags::None, Buffer::CpuAccess::None, nullptr);
-    mpResolveStagingBuffer =
-        Buffer::create(mpDevice.get(), sizeof(uint64_t) * 2, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
+    mpResolveBuffer = Buffer::create(mpDevice, sizeof(uint64_t) * 2, Buffer::BindFlags::None, Buffer::CpuAccess::None, nullptr);
+    mpResolveStagingBuffer = Buffer::create(mpDevice, sizeof(uint64_t) * 2, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
 
     // Create timestamp query heap upon first use.
-    // We're allocating pairs of adjacent queries, so need our own heap to meet this requirement.
-    if (spHeap.expired())
-    {
-        spHeap = mpDevice->createQueryHeap(QueryHeap::Type::Timestamp, 16 * 1024);
-    }
-    auto pHeap = spHeap.lock();
-    FALCOR_ASSERT(pHeap);
-    mStart = pHeap->allocate();
-    mEnd = pHeap->allocate();
+    mStart = mpDevice->getTimestampQueryHeap()->allocate();
+    mEnd = mpDevice->getTimestampQueryHeap()->allocate();
     if (mStart == QueryHeap::kInvalidIndex || mEnd == QueryHeap::kInvalidIndex)
     {
         throw RuntimeError("Can't create GPU timer, no available timestamp queries.");
@@ -72,11 +64,8 @@ GpuTimer::GpuTimer(std::shared_ptr<Device> pDevice) : mpDevice(std::move(pDevice
 
 GpuTimer::~GpuTimer()
 {
-    if (auto pHeap = spHeap.lock(); pHeap)
-    {
-        pHeap->release(mStart);
-        pHeap->release(mEnd);
-    }
+    mpDevice->getTimestampQueryHeap()->release(mStart);
+    mpDevice->getTimestampQueryHeap()->release(mEnd);
 }
 
 void GpuTimer::begin()
@@ -97,7 +86,9 @@ void GpuTimer::begin()
         );
     }
 
-    mpDevice->getRenderContext()->getLowLevelData()->getResourceCommandEncoder()->writeTimestamp(spHeap.lock()->getGfxQueryPool(), mStart);
+    mpDevice->getRenderContext()->getLowLevelData()->getResourceCommandEncoder()->writeTimestamp(
+        mpDevice->getTimestampQueryHeap()->getGfxQueryPool(), mStart
+    );
     mStatus = Status::Begin;
 }
 
@@ -109,7 +100,9 @@ void GpuTimer::end()
         return;
     }
 
-    mpDevice->getRenderContext()->getLowLevelData()->getResourceCommandEncoder()->writeTimestamp(spHeap.lock()->getGfxQueryPool(), mEnd);
+    mpDevice->getRenderContext()->getLowLevelData()->getResourceCommandEncoder()->writeTimestamp(
+        mpDevice->getTimestampQueryHeap()->getGfxQueryPool(), mEnd
+    );
     mStatus = Status::End;
 }
 
@@ -133,7 +126,7 @@ void GpuTimer::resolve()
     // Resolve timestamps into buffer.
     auto encoder = mpDevice->getRenderContext()->getLowLevelData()->getResourceCommandEncoder();
 
-    encoder->resolveQuery(spHeap.lock()->getGfxQueryPool(), mStart, 2, mpResolveBuffer->getGfxBufferResource(), 0);
+    encoder->resolveQuery(mpDevice->getTimestampQueryHeap()->getGfxQueryPool(), mStart, 2, mpResolveBuffer->getGfxBufferResource(), 0);
 
     // Copy resolved timestamps to staging buffer for readback. This inserts the necessary barriers.
     mpDevice->getRenderContext()->copyResource(mpResolveStagingBuffer.get(), mpResolveBuffer.get());
@@ -173,8 +166,13 @@ double GpuTimer::getElapsedTime()
     return mElapsedTime;
 }
 
+void GpuTimer::breakStrongReferenceToDevice()
+{
+    mpDevice.breakStrongReference();
+}
+
 FALCOR_SCRIPT_BINDING(GpuTimer)
 {
-    pybind11::class_<GpuTimer, GpuTimer::SharedPtr>(m, "GpuTimer");
+    pybind11::class_<GpuTimer, ref<GpuTimer>>(m, "GpuTimer");
 }
 } // namespace Falcor

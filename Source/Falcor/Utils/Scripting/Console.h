@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -36,39 +36,42 @@ struct ImGuiInputTextCallbackData;
 
 namespace Falcor
 {
-    class Gui;
+class Gui;
 
-    class FALCOR_API Console
-    {
-    public:
-        /** Clears the console.
-        */
-        void clear();
+class FALCOR_API Console
+{
+public:
+    /**
+     * Clears the console.
+     */
+    void clear();
 
-        /** Renders the console and handles important keyboard input events:
-            - The "`" key is used to open/close the console.
-            - The ESC key is used to close the console if currently open.
-            - The UP/DOWN keys are used to browse through the history.
-            \param[in] pGui GUI.
-            \param[in,out] show Flag to indicate if console is shown.
-        */
-        void render(Gui* pGui, bool& show);
+    /**
+     * Renders the console and handles important keyboard input events:
+     * - The "`" key is used to open/close the console.
+     * - The ESC key is used to close the console if currently open.
+     * - The UP/DOWN keys are used to browse through the history.
+     * @param[in] pGui GUI.
+     * @param[in,out] show Flag to indicate if console is shown.
+     */
+    void render(Gui* pGui, bool& show);
 
-        /** Processes console input. Should be called once at the end of every frame.
-            \return Returns true if some processing occured.
-        */
-        bool flush();
+    /**
+     * Processes console input. Should be called once at the end of every frame.
+     * @return Returns true if some processing occured.
+     */
+    bool flush();
 
-    private:
-        void enterCommand();
-        std::optional<std::string> browseHistory(bool upOrDown);
-        static int inputTextCallback(ImGuiInputTextCallbackData* data);
+private:
+    void enterCommand();
+    std::optional<std::string> browseHistory(bool upOrDown);
+    static int inputTextCallback(ImGuiInputTextCallbackData* data);
 
-        std::string mLog;
-        char mCmdBuffer[2048] = {};
-        std::string mCmdPending;
-        std::vector<std::string> mHistory;
-        int32_t mHistoryIndex = -1;
-        bool mScrollToBottom = true;
-    };
-}
+    std::string mLog;
+    char mCmdBuffer[2048] = {};
+    std::string mCmdPending;
+    std::vector<std::string> mHistory;
+    int32_t mHistoryIndex = -1;
+    bool mScrollToBottom = true;
+};
+} // namespace Falcor

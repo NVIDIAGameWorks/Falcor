@@ -21,11 +21,11 @@ if %IsDebug% EQU 0 (
     robocopy %ExtDir%\deps\bin\ %OutDir% /E /r:0 >nul
 ) else (
     robocopy %ExtDir%\deps\debug\bin\ %OutDir% /E /r:0 >nul
-    robocopy %ExtDir%\deps\bin\ %OutDir% assimp-vc142-mt.* /r:0 >nul
+    robocopy %ExtDir%\deps\bin\ %OutDir% assimp-vc143-mt.* /r:0 >nul
     rem Needed for OpenVDB (debug version links to release version of Half_2.5)
     robocopy %ExtDir%\deps\bin\ %OutDir% Half-2_5.* /r:0 >nul
 )
-robocopy %ExtDir%\python\ %OutDir% python37.dll /r:0 >nul
+robocopy %ExtDir%\python\ %OutDir% python*.dll /r:0 >nul
 robocopy %ExtDir%\python %OutDir%\pythondist /E /r:0 >nul
 robocopy %ExtDir%\slang\bin\windows-x64\%SlangDir% %OutDir% *.dll /r:0 >nul
 robocopy %ExtDir%\pix\bin\x64 %OutDir% WinPixEventRuntime.dll /r:0 >nul

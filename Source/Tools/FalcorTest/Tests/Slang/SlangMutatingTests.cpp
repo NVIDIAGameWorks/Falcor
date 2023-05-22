@@ -31,7 +31,7 @@ namespace Falcor
 {
 GPU_TEST(SlangMutating)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     ctx.createProgram("Tests/Slang/SlangMutatingTests.cs.slang", "main", Program::DefineList(), Shader::CompilerFlags::None, "6_3");
     ctx.allocateStructuredBuffer("result", 1);

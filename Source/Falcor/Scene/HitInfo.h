@@ -47,8 +47,8 @@ namespace Falcor
     class FALCOR_API HitInfo
     {
     public:
-        static const uint32_t kMaxPackedSizeInBytes = 16;
-        static const ResourceFormat kDefaultFormat = ResourceFormat::RGBA32Uint;
+        static constexpr uint32_t kMaxPackedSizeInBytes = 16;
+        static constexpr ResourceFormat kDefaultFormat = ResourceFormat::RGBA32Uint;
 
         HitInfo() = default;
         HitInfo(const Scene& scene, bool useCompression = false) { init(scene, useCompression); }

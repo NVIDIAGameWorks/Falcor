@@ -28,10 +28,10 @@
 __exported import Rendering.Materials.LobeType;
 __exported import Utils.Sampling.SampleGeneratorInterface;
 
-// Minimum cos(theta) for the incident and outgoing vectors.
-// Some BSDF functions are not robust for cos(theta) == 0.0,
-// so using a small epsilon for consistency.
-// TODO: Move into IBSDF if possible
+/// Minimum cos(theta) for the incident and outgoing vectors.
+/// Some BSDF functions are not robust for cos(theta) == 0.0,
+/// so using a small epsilon for consistency.
+/// TODO: Move into IBSDF if possible
 static const float kMinCosTheta = 1e-6f;
 
 /** Low-level interface for BSDF functions.
@@ -47,7 +47,6 @@ static const float kMinCosTheta = 1e-6f;
 
 /** Albedo is split into four components. They have to sum up to 1.0.
 */
-
 struct AlbedoContributions
 {
     float3  reflection;     ///< Energy reflected into upper hemisphere
@@ -135,7 +134,7 @@ interface IBSDF
     */
     bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg);
 
-    /** Evaluates the BSSDF directional pdf for sampling outgoing direction wo.
+    /** Evaluates the directional pdf for sampling outgoing direction wo.
         \param[in] wi Incident direction.
         \param[in] wo Outgoing direction.
         \return Returns the pdf with respect to solid angle for sampling outgoing direction wo (0 for delta events).
@@ -143,15 +142,15 @@ interface IBSDF
     float evalPdf(const float3 wi, const float3 wo);
 
     /** Albedo (hemispherical reflectance) of the BSDF. Relfection+transmission hemisphere should be <= 1.0.
-    \param[in] wi Incident direction.
-    \param[in] lobetype lobe types to be evaluated
-    \return Returns the albedo.
+        \param[in] wi Incident direction.
+        \param[in] lobetype lobe types to be evaluated
+        \return Returns the albedo.
     */
     AlbedoContributions evalAlbedo(const float3 wi, const LobeType lobetype);
 
     /** Information about roughness of the BSDF in (various) forms.
-    \param[in] wi Incident direction.
-    \return Returns the roughness.
+        \param[in] wi Incident direction.
+        \return Returns the roughness.
     */
     RoughnessInformation getRoughnessInformation(const float3 wi);
 }

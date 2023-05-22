@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
+#include "RenderGraph/RenderPass.h"
 #include "RenderGraph/RenderPassHelpers.h"
 
 using namespace Falcor;
@@ -36,11 +37,9 @@ class ImageLoader : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(ImageLoader, "ImageLoader", "Load an image into a texture.");
 
-    using SharedPtr = std::shared_ptr<ImageLoader>;
+    static ref<ImageLoader> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<ImageLoader>(pDevice, dict); }
 
-    /** Create a new object
-    */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
+    ImageLoader(ref<Device> pDevice, const Dictionary& dict);
 
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
@@ -49,15 +48,13 @@ public:
     virtual Dictionary getScriptingDictionary() override;
 
 private:
-    ImageLoader(std::shared_ptr<Device> pDevice, const Dictionary& dict);
-
     bool loadImage(const std::filesystem::path& path);
 
     RenderPassHelpers::IOSize mOutputSizeSelection = RenderPassHelpers::IOSize::Default; ///< Selected output size.
     ResourceFormat mOutputFormat = ResourceFormat::Unknown;     ///< Current output resource format.
     uint2 mOutputSize = {};                                     ///< Current output size in pixels.
 
-    Texture::SharedPtr mpTex;
+    ref<Texture> mpTex;
     std::filesystem::path mImagePath;
     uint32_t mArraySlice = 0;
     uint32_t mMipLevel = 0;

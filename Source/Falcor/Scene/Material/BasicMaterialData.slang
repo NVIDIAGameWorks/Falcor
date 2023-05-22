@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -51,18 +51,18 @@ struct BasicMaterialData
     uint        flags                   = 0;                ///< Material flags and packed sampler IDs. See accessors below.
     float       emissiveFactor          = 1.f;              ///< Multiplication factor for the emissive color to control light intensity. Range [0,inf).
 
-    float16_t4  baseColor               = float16_t4(1.f);  ///< Material base color (RGB) and opacity (A).
-    float16_t4  specular                = float16_t4(0.f);  ///< Material specular channel encoding occlusion (R), roughness (G), metallic (B) in the default MetalRough mode. In SpecGloss mode specular color (RGB) and glossiness (A).
+    float16_t4  baseColor               = float16_t4(1.h);  ///< Material base color (RGB) and opacity (A).
+    float16_t4  specular                = float16_t4(0.h);  ///< Material specular channel encoding occlusion (R), roughness (G), metallic (B) in the default MetalRough mode. In SpecGloss mode specular color (RGB) and glossiness (A).
 
     float3      emissive                = float3(0.f);      ///< Emissive color (RGB).
-    float16_t   specularTransmission    = float16_t(0.f);   ///< Specular transmission. Range [0,1].
-    float16_t3  transmission            = float16_t3(1.f);  ///< Transmission color.
-    float16_t   diffuseTransmission     = float16_t(0.f);   ///< Diffuse transmission. Range [0,1].
+    float16_t   specularTransmission    = 0.h;              ///< Specular transmission. Range [0,1].
+    float16_t3  transmission            = float16_t3(1.h);  ///< Transmission color.
+    float16_t   diffuseTransmission     = 0.h;              ///< Diffuse transmission. Range [0,1].
 
-    float16_t3  volumeScattering        = float16_t3(0.f);  ///< Volume scattering coefficient. Range [0,inf).
-    float16_t   IoR                     = float16_t(1.5f);  ///< Index of refraction. Range [1,inf).
-    float16_t3  volumeAbsorption        = float16_t3(0.f);  ///< Volume absorption coefficient. Range [0,inf).
-    float16_t   volumeAnisotropy        = float16_t(0.f);   ///< Volume phase function anisotropy (g). Range [-1,1].
+    float16_t3  volumeScattering        = float16_t3(0.h);  ///< Volume scattering coefficient. Range [0,inf).
+    float16_t   IoR                     = 1.5h;             ///< Index of refraction. Range [1,inf).
+    float16_t3  volumeAbsorption        = float16_t3(0.h);  ///< Volume absorption coefficient. Range [0,inf).
+    float16_t   volumeAnisotropy        = 0.h;              ///< Volume phase function anisotropy (g). Range [-1,1].
 
     float       displacementScale       = 0.f;              ///< Displacement scale value.
     float       displacementOffset      = 0.f;              ///< Displacement offset value.
@@ -75,15 +75,15 @@ struct BasicMaterialData
     TextureHandle texTransmission;
     TextureHandle texDisplacementMap;
 
-    static const uint kShadingModelBits = 1;
-    static const uint kNormalMapTypeBits = 2;
+    static constexpr uint kShadingModelBits = 1;
+    static constexpr uint kNormalMapTypeBits = 2;
 
-    static const uint kShadingModelOffset = 0;
-    static const uint kNormalMapTypeOffset = kShadingModelOffset + kShadingModelBits;
-    static const uint kMinSamplerIDOffset = kNormalMapTypeOffset + kNormalMapTypeBits;
-    static const uint kMaxSamplerIDOffset = kMinSamplerIDOffset + MaterialHeader::kSamplerIDBits;
+    static constexpr uint kShadingModelOffset = 0;
+    static constexpr uint kNormalMapTypeOffset = kShadingModelOffset + kShadingModelBits;
+    static constexpr uint kMinSamplerIDOffset = kNormalMapTypeOffset + kNormalMapTypeBits;
+    static constexpr uint kMaxSamplerIDOffset = kMinSamplerIDOffset + MaterialHeader::kSamplerIDBits;
 
-    static const uint kTotalFlagsBits = kMaxSamplerIDOffset + MaterialHeader::kSamplerIDBits;
+    static constexpr uint kTotalFlagsBits = kMaxSamplerIDOffset + MaterialHeader::kSamplerIDBits;
 
     /** Set shading model. This is only used for the standard material.
     */

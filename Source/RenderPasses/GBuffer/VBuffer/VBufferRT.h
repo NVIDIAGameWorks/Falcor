@@ -42,17 +42,19 @@ class VBufferRT : public GBufferBase
 public:
     FALCOR_PLUGIN_CLASS(VBufferRT, "VBufferRT", "Ray traced V-buffer generation pass.");
 
-    using SharedPtr = std::shared_ptr<VBufferRT>;
+    static ref<VBufferRT> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<VBufferRT>(pDevice, dict); }
 
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
+    VBufferRT(ref<Device> pDevice, const Dictionary& dict);
 
     RenderPassReflection reflect(const CompileData& compileData) override;
     void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     void renderUI(Gui::Widgets& widget) override;
     Dictionary getScriptingDictionary() override;
-    void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
+    void setScene(RenderContext* pRenderContext, const ref<Scene>& pScene) override;
 
 private:
+    void parseDictionary(const Dictionary& dict) override;
+
     void executeRaytrace(RenderContext* pRenderContext, const RenderData& renderData);
     void executeCompute(RenderContext* pRenderContext, const RenderData& renderData);
 
@@ -60,12 +62,9 @@ private:
     void setShaderData(const ShaderVar& var, const RenderData& renderData);
     void recreatePrograms();
 
-    VBufferRT(std::shared_ptr<Device> pDevice, const Dictionary& dict);
-    void parseDictionary(const Dictionary& dict) override;
-
     // Internal state
     bool mComputeDOF = false;           ///< Flag indicating if depth-of-field is computed for the current frame.
-    SampleGenerator::SharedPtr mpSampleGenerator;
+    ref<SampleGenerator> mpSampleGenerator;
 
     // UI variables
     bool mUseTraceRayInline = false;
@@ -73,9 +72,9 @@ private:
 
     struct
     {
-        RtProgram::SharedPtr pProgram;
-        RtProgramVars::SharedPtr pVars;
+        ref<RtProgram> pProgram;
+        ref<RtProgramVars> pVars;
     } mRaytrace;
 
-    ComputePass::SharedPtr mpComputePass;
+    ref<ComputePass> mpComputePass;
 };

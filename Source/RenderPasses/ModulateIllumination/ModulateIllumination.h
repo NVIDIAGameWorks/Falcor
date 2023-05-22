@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
+#include "RenderGraph/RenderPass.h"
 #include "RenderGraph/RenderPassHelpers.h"
 
 using namespace Falcor;
@@ -36,9 +37,9 @@ class ModulateIllumination : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(ModulateIllumination, "ModulateIllumination", "Modulate illumination pass.");
 
-    using SharedPtr = std::shared_ptr<ModulateIllumination>;
+    static ref<ModulateIllumination> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<ModulateIllumination>(pDevice, dict); }
 
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
+    ModulateIllumination(ref<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
@@ -47,12 +48,10 @@ public:
     virtual void renderUI(Gui::Widgets& widget) override;
 
 private:
-    ModulateIllumination(std::shared_ptr<Device> pDevice, const Dictionary& dict);
-
     uint2                      mFrameDim = { 0, 0 };
     RenderPassHelpers::IOSize  mOutputSizeSelection = RenderPassHelpers::IOSize::Default; ///< Selected output size.
 
-    ComputePass::SharedPtr  mpModulateIlluminationPass;
+    ref<ComputePass>        mpModulateIlluminationPass;
 
     bool                    mUseEmission = true;
     bool                    mUseDiffuseReflectance = true;

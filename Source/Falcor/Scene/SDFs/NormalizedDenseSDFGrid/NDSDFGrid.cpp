@@ -27,36 +27,42 @@
  **************************************************************************/
 #include "NDSDFGrid.h"
 #include "Core/API/RenderContext.h"
+#include "Utils/SharedCache.h"
+#include "Utils/Math/MathConstants.slangh"
 
 namespace Falcor
 {
-    Sampler::SharedPtr NDSDFGrid::spNDSDFGridSampler; // TODO: REMOVEGLOBAL
-    Buffer::SharedPtr NDSDFGrid::spNDSDFGridUnitAABBBuffer; // TODO: REMOVEGLOBAL
-
-    NDSDFGrid::SharedPtr NDSDFGrid::create(std::shared_ptr<Device> pDevice, float normalizationFactor)
+    struct NDSDFGrid::SharedData
     {
-        if (!spNDSDFGridSampler)
+        ref<Sampler> pSampler;
+        ref<Buffer> pUnitAABBBuffer;
+
+        SharedData(ref<Device> pDevice)
         {
             Sampler::Desc sdfGridSamplerDesc;
             sdfGridSamplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
             sdfGridSamplerDesc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
-            spNDSDFGridSampler = Sampler::create(pDevice.get(), sdfGridSamplerDesc);
-        }
+            pSampler = Sampler::create(pDevice, sdfGridSamplerDesc);
 
-        if (!spNDSDFGridUnitAABBBuffer)
-        {
             RtAABB unitAABB { float3(-0.5f), float3(0.5f) };
-            spNDSDFGridUnitAABBBuffer = Buffer::create(pDevice.get(), sizeof(RtAABB), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, &unitAABB);
+            pUnitAABBBuffer = Buffer::create(pDevice, sizeof(RtAABB), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, &unitAABB);
         }
+    };
 
-        return SharedPtr(new NDSDFGrid(std::move(pDevice), normalizationFactor));
+    static SharedCache<NDSDFGrid::SharedData, Device*> sSharedCache;
+
+    NDSDFGrid::NDSDFGrid(ref<Device> pDevice, float narrowBandThickness)
+        : SDFGrid(pDevice)
+        , mNarrowBandThickness(std::max(narrowBandThickness, 1.0f))
+    {
+        mpSharedData = sSharedCache.acquire(mpDevice.get(), [this]() { return std::make_shared<SharedData>(mpDevice); });
     }
 
     size_t NDSDFGrid::getSize() const
     {
-        size_t totalSize = spNDSDFGridUnitAABBBuffer->getSize();
+        size_t totalSize = mpSharedData->pUnitAABBBuffer->getSize();
 
-        for (const Texture::SharedPtr& pNormalizedVolumeTexture : mNDSDFTextures)
+        for (const ref<Texture>& pNormalizedVolumeTexture : mNDSDFTextures)
         {
             totalSize += pNormalizedVolumeTexture->getTextureSizeInBytes();
         }
@@ -88,16 +94,21 @@ namespace Falcor
         {
             uint32_t lodWidth = 1 + (mCoarsestLODGridWidth << lod);
 
-            Texture::SharedPtr& pNDSDFTexture = mNDSDFTextures[lod];
+            ref<Texture>& pNDSDFTexture = mNDSDFTextures[lod];
             if (pNDSDFTexture && pNDSDFTexture->getWidth() == lodWidth)
             {
                 pRenderContext->updateTextureData(pNDSDFTexture.get(), mValues[lod].data());
             }
             else
             {
-                pNDSDFTexture = Texture::create3D(mpDevice.get(), lodWidth, lodWidth, lodWidth, ResourceFormat::R8Snorm, 1, mValues[lod].data());
+                pNDSDFTexture = Texture::create3D(mpDevice, lodWidth, lodWidth, lodWidth, ResourceFormat::R8Snorm, 1, mValues[lod].data());
             }
         }
+    }
+
+    const ref<Buffer>& NDSDFGrid::getAABBBuffer() const
+    {
+        return mpSharedData->pUnitAABBBuffer;
     }
 
     void NDSDFGrid::setShaderData(const ShaderVar& var) const
@@ -107,7 +118,7 @@ namespace Falcor
             throw RuntimeError("NDSDFGrid::setShaderData() can't be called before calling NDSDFGrid::createResources()!");
         }
 
-        var["sampler"] = spNDSDFGridSampler;
+        var["sampler"] = mpSharedData->pSampler;
         var["lodCount"] = uint32_t(mNDSDFTextures.size());
         var["coarsestLODAsLevel"] = bitScanReverse(mCoarsestLODGridWidth);
         var["coarsestLODGridWidth"] = mCoarsestLODGridWidth;
@@ -157,7 +168,7 @@ namespace Falcor
                         uint32_t writeLocation = x + lodWidthInValues * (y + lodWidthInValues * z);
                         uint32_t readLocation = lodReadStride * (x + gridWidthInValues * (y + gridWidthInValues * z));
 
-                        float normalizedValue = glm::clamp(cornerValues[readLocation] / normalizationFactor, -1.0f, 1.0f);
+                        float normalizedValue = std::clamp(cornerValues[readLocation] / normalizationFactor, -1.0f, 1.0f);
 
                         float integerScale = normalizedValue * float(INT8_MAX);
                         lodFormattedValues[writeLocation] = integerScale >= 0.0f ? int8_t(integerScale + 0.5f) : int8_t(integerScale - 0.5f);
@@ -169,12 +180,6 @@ namespace Falcor
 
     float NDSDFGrid::calculateNormalizationFactor(uint32_t gridWidth) const
     {
-        return 0.5f * glm::root_three<float>() * mNarrowBandThickness / gridWidth;
-    }
-
-    NDSDFGrid::NDSDFGrid(std::shared_ptr<Device> pDevice, float narrowBandThickness)
-        : SDFGrid(std::move(pDevice))
-        , mNarrowBandThickness(std::max(narrowBandThickness, 1.0f))
-    {
+        return 0.5f * float(M_SQRT3) * mNarrowBandThickness / gridWidth;
     }
 }

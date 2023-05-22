@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -54,7 +54,7 @@ struct ProgressBar::Window
         thread.join();
     }
 
-    static void threadFunc(ProgressBar::Window* pThis, std::string msg)
+    static void threadFunc(ProgressBar::Window* pThis, std::string msgText)
     {
         // Create the window
         int w = 200;
@@ -65,7 +65,7 @@ struct ProgressBar::Window
             0, PROGRESS_CLASS, nullptr, WS_VISIBLE | PBS_MARQUEE, x, y, w, h, nullptr, nullptr, GetModuleHandle(nullptr), nullptr
         );
 
-        SetWindowTextA(hwnd, msg.c_str());
+        SetWindowTextA(hwnd, msgText.c_str());
         SetForegroundWindow(hwnd);
         setWindowIcon(getRuntimeDirectory() / "data/framework/nvidia.ico", hwnd);
 

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -35,8 +35,8 @@ namespace Mogwai
     public:
         virtual ~CaptureTrigger() {};
 
-        virtual void beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override final;
-        virtual void endFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override final;
+        virtual void beginFrame(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo) override final;
+        virtual void endFrame(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo) override final;
         virtual bool hasWindow() const override { return true; }
         virtual bool isWindowShown() const override { return mShowUI; }
         virtual void toggleWindow() override { mShowUI = !mShowUI; }

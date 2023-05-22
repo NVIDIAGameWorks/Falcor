@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -33,23 +33,23 @@
 
 #ifdef _DEBUG
 
-#define FALCOR_ASSERT(a)                                                                      \
-    if (!(a))                                                                                 \
-    {                                                                                         \
-        std::string str = fmt::format("Assertion failed: {}\n{}:{}", #a, __FILE__, __LINE__); \
-        Falcor::reportFatalError(str);                                                        \
+#define FALCOR_ASSERT(a)                                                                       \
+    if (!(a))                                                                                  \
+    {                                                                                          \
+        std::string str_ = fmt::format("Assertion failed: {}\n{}:{}", #a, __FILE__, __LINE__); \
+        Falcor::reportFatalError(str_);                                                        \
     }
-#define FALCOR_ASSERT_MSG(a, msg)                                                                       \
-    if (!(a))                                                                                           \
-    {                                                                                                   \
-        std::string str = fmt::format("Assertion failed: {} ({})\n{}:{}", #a, msg, __FILE__, __LINE__); \
-        Falcor::reportFatalError(str);                                                                  \
+#define FALCOR_ASSERT_MSG(a, msg)                                                                        \
+    if (!(a))                                                                                            \
+    {                                                                                                    \
+        std::string str_ = fmt::format("Assertion failed: {} ({})\n{}:{}", #a, msg, __FILE__, __LINE__); \
+        Falcor::reportFatalError(str_);                                                                  \
     }
-#define FALCOR_ASSERT_OP(a, b, OP)                                                                                                 \
-    if (!(a OP b))                                                                                                                 \
-    {                                                                                                                              \
-        std::string str = fmt::format("Assertion failed: {} {} {} ({} {} {})\n{}:{}", #a, #OP, #b, a, #OP, b, __FILE__, __LINE__); \
-        Falcor::reportFatalError(str);                                                                                             \
+#define FALCOR_ASSERT_OP(a, b, OP)                                                                                                  \
+    if (!(a OP b))                                                                                                                  \
+    {                                                                                                                               \
+        std::string str_ = fmt::format("Assertion failed: {} {} {} ({} {} {})\n{}:{}", #a, #OP, #b, a, #OP, b, __FILE__, __LINE__); \
+        Falcor::reportFatalError(str_);                                                                                             \
     }
 #define FALCOR_ASSERT_EQ(a, b) FALCOR_ASSERT_OP(a, b, ==)
 #define FALCOR_ASSERT_NE(a, b) FALCOR_ASSERT_OP(a, b, !=)

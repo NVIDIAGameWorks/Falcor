@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -33,17 +33,18 @@ import Utils.Math.MathHelpers;
     Ray tracing
 *******************************************************************/
 
-/** Computes new ray origin based on hit position to avoid self-intersections.
-    The function assumes that the hit position has been computed by barycentric
-    interpolation, and not from the ray t which is less accurate.
-
-    The method is described in Ray Tracing Gems, Chapter 6, "A Fast and Robust
-    Method for Avoiding Self-Intersection" by Carsten Wächter and Nikolaus Binder.
-
-    \param[in] pos Ray hit position.
-    \param[in] normal Face normal of hit surface (normalized). The offset will be in the positive direction.
-    \return Ray origin of the new ray.
-*/
+/**
+ * Computes new ray origin based on hit position to avoid self-intersections.
+ * The function assumes that the hit position has been computed by barycentric
+ * interpolation, and not from the ray t which is less accurate.
+ *
+ * The method is described in Ray Tracing Gems, Chapter 6, "A Fast and Robust
+ * Method for Avoiding Self-Intersection" by Carsten Wächter and Nikolaus Binder.
+ *
+ * @param[in] pos Ray hit position.
+ * @param[in] normal Face normal of hit surface (normalized). The offset will be in the positive direction.
+ * @return Ray origin of the new ray.
+ */
 float3 computeRayOrigin(float3 pos, float3 normal)
 {
 
@@ -53,36 +54,43 @@ float3 computeRayOrigin(float3 pos, float3 normal)
 
     // Per-component integer offset to bit representation of fp32 position.
     int3 iOff = int3(normal * iScale);
-    float3 iPos = asfloat(asint(pos) + (pos < 0.f ? -iOff : iOff));
+    float3 iPos = asfloat(asint(pos) + select(pos < 0.f, -iOff, iOff));
 
     // Select per-component between small fixed offset or above variable offset depending on distance to origin.
     float3 fOff = normal * fScale;
-    return abs(pos) < origin ? pos + fOff : iPos;
+    return select(abs(pos) < origin, pos + fOff, iPos);
 }
-
 
 /*******************************************************************
     Bounding cones
 *******************************************************************/
 
-/** Computes the cosine of the half angle of the minimum bounding cone that encloses an AABB, as seen from a particular viewpoint.
-    We use an optimized algorithm that exploits the symmetry around the plane perpendicular to the central direction.
-
-    \param[in] origin Viewpoint origin.
-    \param[in] aabbMin minimum corner of the AABB.
-    \param[in] aabbMax maximum corner of the AABB.
-    \param[out] coneDir normalized vector defining the cone's axis.
-    \param[out] sinTheta Sine of the angle from the central direction to the cone edge. If the AABB can't be bounded we return 0.
-    \param[out] cosTheta Cosine of the angle from the central direction to the cone edge. If the AABB can't be bounded we return -1 (max cone).
-*/
-void boundBoxSubtendedConeAngleCenter(const float3 origin, const float3 aabbMin, const float3 aabbMax,
-                                      out float3 coneDir, out float sinTheta, out float cosTheta)
+/**
+ * Computes the cosine of the half angle of the minimum bounding cone that encloses an AABB, as seen from a particular viewpoint.
+ * We use an optimized algorithm that exploits the symmetry around the plane perpendicular to the central direction.
+ *
+ * @param[in] origin Viewpoint origin.
+ * @param[in] aabbMin minimum corner of the AABB.
+ * @param[in] aabbMax maximum corner of the AABB.
+ * @param[out] coneDir normalized vector defining the cone's axis.
+ * @param[out] sinTheta Sine of the angle from the central direction to the cone edge. If the AABB can't be bounded we return 0.
+ * @param[out] cosTheta Cosine of the angle from the central direction to the cone edge. If the AABB can't be bounded we return -1 (max
+ * cone).
+ */
+void boundBoxSubtendedConeAngleCenter(
+    const float3 origin,
+    const float3 aabbMin,
+    const float3 aabbMax,
+    out float3 coneDir,
+    out float sinTheta,
+    out float cosTheta
+)
 {
     const float3 center = (aabbMax + aabbMin) * 0.5f;
     const float3 extent = (aabbMax - aabbMin) * 0.5f;
-    const float3 dir = center - origin;         // dir = Central cone direction (unnormalized)
-    const float extSqr = dot(extent, extent);   // extSqr = squared maximum extent
-    const float distSqr = dot(dir, dir);        // distSqr = squared distance to AABB center
+    const float3 dir = center - origin;       // dir = Central cone direction (unnormalized)
+    const float extSqr = dot(extent, extent); // extSqr = squared maximum extent
+    const float distSqr = dot(dir, dir);      // distSqr = squared distance to AABB center
 
     coneDir = normalize(dir);
 
@@ -105,16 +113,17 @@ void boundBoxSubtendedConeAngleCenter(const float3 origin, const float3 aabbMin,
         float d = abs(dot(dir, e[i]));
         float x = distSqr - d;
 
-        // Check if distance is negative, in which case the AABB can't be bounded by a cone and we return a cone that covers the whole sphere (theta = pi).
+        // Check if distance is negative, in which case the AABB can't be bounded by a cone and we return a cone that covers the whole
+        // sphere (theta = pi).
         if (x < 1e-5)
         {
             cosTheta = -1.f;
             sinTheta = 0.f;
-            return;                         // TODO: Look at numerical precision.
+            return; // TODO: Look at numerical precision.
         }
 
         // Compute distance y from the corner to the projection on the central axis (also scaled by |dir|).
-        float y = sqrt(max(0, distSqr * extSqr - d * d));   // TODO: Look at numerical precision. Clamp for now just to be extra safe.
+        float y = sqrt(max(0, distSqr * extSqr - d * d)); // TODO: Look at numerical precision. Clamp for now just to be extra safe.
 
         // Compute hypotenuse of the triangle.
         float z = sqrt(x * x + y * y);
@@ -127,19 +136,26 @@ void boundBoxSubtendedConeAngleCenter(const float3 origin, const float3 aabbMin,
     }
 }
 
-/** Computes the solid angle subtended by an AABB by first computing the
-    average vector to all of its vertices and then finding the maximum
-    angle between that and each of the vectors to its vertices.
-
-    \param[in] origin point from which the solid angle is being comupted.
-    \param[in] aabbMin minimum corner of the AABB.
-    \param[in] aabbMax maximum corner of the AABB.
-    \param[out] coneDir central cone direction (normalized) or null vector if origin is inside the AABB.
-    \param[out] sinTheta sine of the angle.
-    \param[out] cosTheta cosine of the angle.
-*/
-void boundBoxSubtendedConeAngleAverage(float3 origin, float3 aabbMin, float3 aabbMax,
-                                       out float3 coneDir, out float sinTheta, out float cosTheta)
+/**
+ * Computes the solid angle subtended by an AABB by first computing the
+ * average vector to all of its vertices and then finding the maximum
+ * angle between that and each of the vectors to its vertices.
+ *
+ * @param[in] origin point from which the solid angle is being comupted.
+ * @param[in] aabbMin minimum corner of the AABB.
+ * @param[in] aabbMax maximum corner of the AABB.
+ * @param[out] coneDir central cone direction (normalized) or null vector if origin is inside the AABB.
+ * @param[out] sinTheta sine of the angle.
+ * @param[out] cosTheta cosine of the angle.
+ */
+void boundBoxSubtendedConeAngleAverage(
+    float3 origin,
+    float3 aabbMin,
+    float3 aabbMax,
+    out float3 coneDir,
+    out float sinTheta,
+    out float cosTheta
+)
 {
     if (all(origin >= aabbMin && origin <= aabbMax))
     {
@@ -155,9 +171,7 @@ void boundBoxSubtendedConeAngleAverage(float3 origin, float3 aabbMin, float3 aab
     [unroll]
     for (int i = 0; i < 8; ++i)
     {
-        const float3 corner = float3((i & 1) ? aabbMin.x : aabbMax.x,
-                                     (i & 2) ? aabbMin.y : aabbMax.y,
-                                     (i & 4) ? aabbMin.z : aabbMax.z);
+        const float3 corner = float3((i & 1) ? aabbMin.x : aabbMax.x, (i & 2) ? aabbMin.y : aabbMax.y, (i & 4) ? aabbMin.z : aabbMax.z);
         dirSum += normalize(corner - origin);
     }
     coneDir = normalize(dirSum);
@@ -168,23 +182,22 @@ void boundBoxSubtendedConeAngleAverage(float3 origin, float3 aabbMin, float3 aab
     [unroll]
     for (int i = 0; i < 8; ++i)
     {
-        const float3 corner = float3((i & 1) ? aabbMin.x : aabbMax.x,
-                                     (i & 2) ? aabbMin.y : aabbMax.y,
-                                     (i & 4) ? aabbMin.z : aabbMax.z);
+        const float3 corner = float3((i & 1) ? aabbMin.x : aabbMax.x, (i & 2) ? aabbMin.y : aabbMax.y, (i & 4) ? aabbMin.z : aabbMax.z);
         cosTheta = min(cosTheta, dot(normalize(corner - origin), coneDir));
     }
     sinTheta = sqrt(max(0.f, 1.f - cosTheta * cosTheta));
 }
 
-/** Computes the sine and cosine of the angle of the cone that encompasses
-    a sphere of given radius and center subtend as seen from a point at the origin.
-
-    \param[in] center Sphere's center.
-    \param[in] sqrRadius Square of sphere's radius.
-    \param[out] sinTheta Sine of the angle between a vector from the origin to |center| and a
-                vector from the origin that is tangent to the sphere.
-    \param[out] cosTheta Cosine of that angle.
-*/
+/**
+ * Computes the sine and cosine of the angle of the cone that encompasses
+ * a sphere of given radius and center subtend as seen from a point at the origin.
+ *
+ * @param[in] center Sphere's center.
+ * @param[in] sqrRadius Square of sphere's radius.
+ * @param[out] sinTheta Sine of the angle between a vector from the origin to |center| and a
+ * vector from the origin that is tangent to the sphere.
+ * @param[out] cosTheta Cosine of that angle.
+ */
 void boundSphereSubtendedConeAngle(float3 center, float sqrRadius, out float sinTheta, out float cosTheta)
 {
     // Is the point inside the bounding sphere?
@@ -205,17 +218,17 @@ void boundSphereSubtendedConeAngle(float3 center, float sqrRadius, out float sin
     }
 }
 
-
 /*******************************************************************
     Triangle utilities
 *******************************************************************/
 
-/** Computes the squared minimum distance between a point and a triangle.
-    This function is not sensitive to the handedness of the coordinate system.
-    \param[in] vertices Positions of the three vertices.
-    \param[in] p Coordinates of the point.
-    \return Squared minimum distance between p and the triangle.
-*/
+/**
+ * Computes the squared minimum distance between a point and a triangle.
+ * This function is not sensitive to the handedness of the coordinate system.
+ * @param[in] vertices Positions of the three vertices.
+ * @param[in] p Coordinates of the point.
+ * @return Squared minimum distance between p and the triangle.
+ */
 float computeSquaredMinDistanceToTriangle(const float3 vertices[3], const float3 p)
 {
     // Project p onto the plane of the triangle (the result is independent of triangle winding).
@@ -229,7 +242,7 @@ float computeSquaredMinDistanceToTriangle(const float3 vertices[3], const float3
     const float3 edges[3] = {
         normalize(vertices[1] - vertices[0]),
         normalize(vertices[2] - vertices[1]),
-        normalize(vertices[0] - vertices[2])
+        normalize(vertices[0] - vertices[2]),
     };
     float sqrPlanarDistance = FLT_MAX;
     uint insideMask = 0u;
@@ -271,41 +284,36 @@ float computeSquaredMinDistanceToTriangle(const float3 vertices[3], const float3
     return projDistance * projDistance + sqrPlanarDistance;
 }
 
-/** Utility function to classify a point with respect to an axis-aligned plane in 2D.
-    \param[in] p Point.
-    \param[in] axis Axis of clip plane (0=x, 1=y).
-    \param[in] sign Direction of clip plane normal (+1 positive, -1 negative).
-    \param[in] c Location of clip plane along the chosen axis.
-    \param[in] planeThickness Optional plane thickness.
-    \return 1 if point is in front, -1 if behind, or 0 if it lies on the plane.
-*/
-int classifyPointPlane2D(
-    const float2 p,
-    const uint axis,
-    const float sign,
-    const float c,
-    const float planeThickness = 1e-6f)
+/**
+ * Utility function to classify a point with respect to an axis-aligned plane in 2D.
+ * @param[in] p Point.
+ * @param[in] axis Axis of clip plane (0=x, 1=y).
+ * @param[in] sign Direction of clip plane normal (+1 positive, -1 negative).
+ * @param[in] c Location of clip plane along the chosen axis.
+ * @param[in] planeThickness Optional plane thickness.
+ * @return 1 if point is in front, -1 if behind, or 0 if it lies on the plane.
+ */
+int classifyPointPlane2D(const float2 p, const uint axis, const float sign, const float c, const float planeThickness = 1e-6f)
 {
     float d = sign * (p[axis] - c);
-    if (d > planeThickness) return 1;
-    else if (d < -planeThickness) return -1;
-    else return 0;
+    if (d > planeThickness)
+        return 1;
+    else if (d < -planeThickness)
+        return -1;
+    else
+        return 0;
 }
 
-/** Utility function to clip a polygon against an axis-aligned plane in 2D.
-    The input can be at most a hexagon (n=6) as one new vertex may be added.
-    \param[in,out] p Polygon vertices before/after clipping.
-    \param[in,out] n Number of vertices before/after clipping.
-    \param[in] axis Axis of clip plane (0=x, 1=y).
-    \param[in] sign Direction of clip plane normal.
-    \param[in] c Location of clip plane along the chosen axis.
-*/
-void clipPolygonPlane2D(
-    inout float2 p[7],
-    inout uint n,
-    const uint axis,
-    const float sign,
-    const float c)
+/**
+ * Utility function to clip a polygon against an axis-aligned plane in 2D.
+ * The input can be at most a hexagon (n=6) as one new vertex may be added.
+ * @param[in,out] p Polygon vertices before/after clipping.
+ * @param[in,out] n Number of vertices before/after clipping.
+ * @param[in] axis Axis of clip plane (0=x, 1=y).
+ * @param[in] sign Direction of clip plane normal.
+ * @param[in] c Location of clip plane along the chosen axis.
+ */
+void clipPolygonPlane2D(inout float2 p[7], inout uint n, const uint axis, const float sign, const float c)
 {
     if (n <= 1)
     {
@@ -328,7 +336,8 @@ void clipPolygonPlane2D(
 
         if (d2 == 0) // p2 lies on the plane
         {
-            if (d1 != 0) q[k++] = p2;
+            if (d1 != 0)
+                q[k++] = p2;
         }
         else // p2 is on either side
         {
@@ -336,7 +345,8 @@ void clipPolygonPlane2D(
 
             if (d1 == 0) // p1 lies on the plane
             {
-                if (k == 0 || any(q[k - 1] != p1)) q[k++] = p1;
+                if (k == 0 || any(q[k - 1] != p1))
+                    q[k++] = p1;
             }
             else if (d1 != d2) // p1 and p2 are on opposite sides => clip
             {
@@ -344,27 +354,31 @@ void clipPolygonPlane2D(
                 q[k++] = lerp(p2, p1, alpha);
             }
 
-            if (d2 > 0) q[k++] = p2;
+            if (d2 > 0)
+                q[k++] = p2;
         }
 
         p1 = p2;
         d1 = d2;
     }
 
-    if (fullyOnPlane) return;
+    if (fullyOnPlane)
+        return;
 
     n = k;
-    for (uint i = 0; i < k; i++) p[i] = q[i];
+    for (uint i = 0; i < k; i++)
+        p[i] = q[i];
 }
 
-/** Computes the signed area of a triangle clipped to an axis-aligned box in 2D.
-    The area is positive for counter-clockwise winding in the xy-plane, assuming
-    a right-handed Cartesian coordinate system with x-axis right and y-axis up.
-    \param[in] pos Positions of the three vertices.
-    \param[in] minPoint Minimum point of the box.
-    \param[in] maxPoint Maximum point of the box. It is assumed that maxPoint > minPoint.
-    \return Signed area of the triangle clipped to the box.
-*/
+/**
+ * Computes the signed area of a triangle clipped to an axis-aligned box in 2D.
+ * The area is positive for counter-clockwise winding in the xy-plane, assuming
+ * a right-handed Cartesian coordinate system with x-axis right and y-axis up.
+ * @param[in] pos Positions of the three vertices.
+ * @param[in] minPoint Minimum point of the box.
+ * @param[in] maxPoint Maximum point of the box. It is assumed that maxPoint > minPoint.
+ * @return Signed area of the triangle clipped to the box.
+ */
 float computeClippedTriangleArea2D(const float2 pos[3], const float2 minPoint, const float2 maxPoint)
 {
     // Clip triangle to axis-aligned box.
@@ -380,7 +394,8 @@ float computeClippedTriangleArea2D(const float2 pos[3], const float2 minPoint, c
     clipPolygonPlane2D(p, n, 1, +1.f, minPoint.y);
     clipPolygonPlane2D(p, n, 1, -1.f, maxPoint.y);
 
-    if (n < 3) return 0.f;
+    if (n < 3)
+        return 0.f;
 
     // Compute area of convex polygon.
     // The vertices must be specified in order. If counter-clockwise, area is positive.
@@ -398,13 +413,14 @@ float computeClippedTriangleArea2D(const float2 pos[3], const float2 minPoint, c
     Curve uv parameterization
 *******************************************************************/
 
-/** Computes the uv parameters (from 0 to 1) from ray-curve hit position.
-
-    \param[in] hitPos Position of the ray-curve hit point.
-    \param[in] sphereA Sphere (3D position + radius) at one end point.
-    \param[in] sphereB Sphere (3D position + radius) at the other end point.
-    \return UV parameters.
-*/
+/**
+ * Computes the uv parameters (from 0 to 1) from ray-curve hit position.
+ *
+ * @param[in] hitPos Position of the ray-curve hit point.
+ * @param[in] sphereA Sphere (3D position + radius) at one end point.
+ * @param[in] sphereB Sphere (3D position + radius) at the other end point.
+ * @return UV parameters.
+ */
 float2 curveHitPosToUV(const float3 hitPos, const float4 sphereA, const float4 sphereB)
 {
     // Build a reference frame.
@@ -428,15 +444,16 @@ float2 curveHitPosToUV(const float3 hitPos, const float4 sphereA, const float4 s
     return result;
 }
 
-/** Computes the ray-curve hit position and the corresponding sphere center from uv parameters.
-    It is based on this paper: http://www.sci.utah.edu/publications/Han2019a/tubes-final.pdf
-
-    \param[in] uv UV parameters of the hit point.
-    \param[in] sphereA Sphere (3D position + radius) at one end point.
-    \param[in] sphereB Sphere (3D position + radius) at the other end point.
-    \param[out] hitPos Position of the ray-curve hit point.
-    \param[out] sphereCenter Position of the corresponding sphere center (for computing the normal direction).
-*/
+/**
+ * Computes the ray-curve hit position and the corresponding sphere center from uv parameters.
+ * It is based on this paper: http://www.sci.utah.edu/publications/Han2019a/tubes-final.pdf
+ *
+ * @param[in] uv UV parameters of the hit point.
+ * @param[in] sphereA Sphere (3D position + radius) at one end point.
+ * @param[in] sphereB Sphere (3D position + radius) at the other end point.
+ * @param[out] hitPos Position of the ray-curve hit point.
+ * @param[out] sphereCenter Position of the corresponding sphere center (for computing the normal direction).
+ */
 void uvToCurveHitPos(const float2 uv, const float4 sphereA, const float4 sphereB, out float3 hitPos, out float3 sphereCenter)
 {
     // Build a reference frame.
@@ -472,7 +489,6 @@ void uvToCurveHitPos(const float2 uv, const float4 sphereA, const float4 sphereB
         // Case 1: hitPos is on the end cap of sphereA.
         deltaZ = -z;
         radius = sphereA.w;
-
     }
     else if (p1 + z > z2)
     {
@@ -503,24 +519,25 @@ void uvToCurveHitPos(const float2 uv, const float4 sphereA, const float4 sphereB
     sphereCenter = sphereA.xyz + (z + deltaZ) * fwd;
 }
 
-/** Extract scale from a 4x4 transformation matrix.
-    We assume scaling is isotropic; i.e., it keeps the sphere shape after transformation.
-
-    \param[in] xform Transformation matrix.
-    \return Isotropic scaling factor.
-*/
+/**
+ * Extract scale from a 4x4 transformation matrix.
+ * We assume scaling is isotropic; i.e., it keeps the sphere shape after transformation.
+ *
+ * @param[in] xform Transformation matrix.
+ * @return Isotropic scaling factor.
+ */
 float extractScaleFromTransform(const float4x4 xform)
 {
     return sqrt(xform[0][0] * xform[0][0] + xform[0][1] * xform[0][1] + xform[0][2] * xform[0][2]);
 }
 
-
-/** Transform a sphere at curve's end.
-
-    \param[in] sphere Sphere (3D position + radius) at curve's end point.
-    \param[in] worldMat Local-to-world transformation matrix.
-    \return Transformed sphere.
-*/
+/**
+ * Transform a sphere at curve's end.
+ *
+ * @param[in] sphere Sphere (3D position + radius) at curve's end point.
+ * @param[in] worldMat Local-to-world transformation matrix.
+ * @return Transformed sphere.
+ */
 float4 transformSphere(const float4 sphere, const float4x4 worldMat)
 {
     float scaleFactor = extractScaleFromTransform(worldMat);

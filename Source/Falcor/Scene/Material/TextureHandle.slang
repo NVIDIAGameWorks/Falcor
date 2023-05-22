@@ -51,12 +51,12 @@ struct TextureHandle
         Count // Must be last
     };
 
-    static const uint kTextureIDBits = 29;
-    static const uint kModeBits = 2;
-    static const uint kUdimEnabledBits = 1;
+    static constexpr uint kTextureIDBits = 29;
+    static constexpr uint kModeBits = 2;
+    static constexpr uint kUdimEnabledBits = 1;
 
-    static const uint kModeOffset = kTextureIDBits;
-    static const uint kUdimEnabledOffset = kModeOffset + kModeBits;
+    static constexpr uint kModeOffset = kTextureIDBits;
+    static constexpr uint kUdimEnabledOffset = kModeOffset + kModeBits;
 
     /** Set mode.
     */

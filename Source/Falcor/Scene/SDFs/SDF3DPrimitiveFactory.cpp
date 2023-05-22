@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -38,7 +38,7 @@ SDF3DPrimitive SDF3DPrimitiveFactory::initCommon(SDF3DShapeType shapeType, const
     primitive.shapeBlobbing = blobbing;
     primitive.operationSmoothing = operationSmoothing;
     primitive.translation = transform.getTranslation();
-    primitive.invRotationScale = rmcv::inverse(rmcv::mat3(transform.getMatrix()));
+    primitive.invRotationScale = inverse(float3x3(transform.getMatrix()));
     return primitive;
 }
 
@@ -65,7 +65,7 @@ AABB SDF3DPrimitiveFactory::computeAABB(const SDF3DPrimitive& primitive)
     case  SDF3DShapeType::Ellipsoid:
     case  SDF3DShapeType::Box:
     {
-        float3 halfExtents = primitive.shapeData.xyz + float3(rounding);
+        float3 halfExtents = primitive.shapeData + float3(rounding);
         aabb.include(float3(halfExtents.x, halfExtents.y, halfExtents.z));
         aabb.include(float3(-halfExtents.x, halfExtents.y, halfExtents.z));
         aabb.include(float3(halfExtents.x, -halfExtents.y, halfExtents.z));
@@ -123,7 +123,7 @@ AABB SDF3DPrimitiveFactory::computeAABB(const SDF3DPrimitive& primitive)
         throw RuntimeError("SDF Primitive has unknown primitive type");
     }
 
-    rmcv::mat4 translate = rmcv::translate(rmcv::identity<rmcv::mat4>(), primitive.translation);
-    rmcv::mat4 rotScale = rmcv::inverse(rmcv::transpose(primitive.invRotationScale));
-    return aabb.transform(translate * rotScale);
+    float4x4 translate = math::matrixFromTranslation(primitive.translation);
+    float4x4 rotScale = inverse(transpose(primitive.invRotationScale));
+    return aabb.transform(mul(translate, rotScale));
 }

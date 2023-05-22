@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "PBRTCoatedConductorMaterial.h"
 #include "Utils/Scripting/ScriptBindings.h"
-#include "Scene/SceneBuilderAccess.h"
+#include "GlobalState.h"
 
 namespace Falcor
 {
@@ -36,13 +36,8 @@ namespace Falcor
         const char kShaderFile[] = "Rendering/Materials/PBRT/PBRTCoatedConductorMaterial.slang";
     }
 
-    PBRTCoatedConductorMaterial::SharedPtr PBRTCoatedConductorMaterial::create(std::shared_ptr<Device> pDevice, const std::string& name)
-    {
-        return SharedPtr(new PBRTCoatedConductorMaterial(std::move(pDevice), name));
-    }
-
-    PBRTCoatedConductorMaterial::PBRTCoatedConductorMaterial(std::shared_ptr<Device> pDevice, const std::string& name)
-        : BasicMaterial(std::move(pDevice), name, MaterialType::PBRTCoatedConductor)
+    PBRTCoatedConductorMaterial::PBRTCoatedConductorMaterial(ref<Device> pDevice, const std::string& name)
+        : BasicMaterial(pDevice, name, MaterialType::PBRTCoatedConductor)
     {
         // Setup additional texture slots.
         mTextureSlotInfo[(uint32_t)TextureSlot::BaseColor] = { "baseColor", TextureChannelFlags::RGBA, false };
@@ -89,10 +84,10 @@ namespace Falcor
 
         FALCOR_SCRIPT_BINDING_DEPENDENCY(BasicMaterial)
 
-        pybind11::class_<PBRTCoatedConductorMaterial, BasicMaterial, PBRTCoatedConductorMaterial::SharedPtr> material(m, "PBRTCoatedConductorMaterial");
+        pybind11::class_<PBRTCoatedConductorMaterial, BasicMaterial, ref<PBRTCoatedConductorMaterial>> material(m, "PBRTCoatedConductorMaterial");
         auto create = [] (const std::string& name)
         {
-            return PBRTCoatedConductorMaterial::create(getActivePythonSceneBuilder().getDevice(), name);
+            return PBRTCoatedConductorMaterial::create(accessActivePythonSceneBuilder().getDevice(), name);
         };
         material.def(pybind11::init(create), "name"_a = ""); // PYTHONDEPRECATED
 

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,10 +30,10 @@
 // Type defines shared between host and device.
 
 #define FORMAT_TYPE_UNKNOWN 0
-#define FORMAT_TYPE_FLOAT   1
-#define FORMAT_TYPE_SINT    2
-#define FORMAT_TYPE_UINT    3
+#define FORMAT_TYPE_FLOAT 1
+#define FORMAT_TYPE_SINT 2
+#define FORMAT_TYPE_UINT 3
 
-#define REDUCTION_TYPE_UNKNOWN  0
-#define REDUCTION_TYPE_SUM      1
-#define REDUCTION_TYPE_MINMAX   2
+#define REDUCTION_TYPE_UNKNOWN 0
+#define REDUCTION_TYPE_SUM 1
+#define REDUCTION_TYPE_MINMAX 2

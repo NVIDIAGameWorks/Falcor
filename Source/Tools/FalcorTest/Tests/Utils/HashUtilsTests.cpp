@@ -53,10 +53,10 @@ uint32_t jenkinsHash(uint32_t a)
 
 GPU_TEST(JenkinsHash_CompareToCPU)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     // Allocate results buffer (64k dwords).
-    Buffer::SharedPtr pResultBuffer = Buffer::createTyped<uint32_t>(pDevice, 1 << 16, ResourceBindFlags::UnorderedAccess);
+    ref<Buffer> pResultBuffer = Buffer::createTyped<uint32_t>(pDevice, 1 << 16, ResourceBindFlags::UnorderedAccess);
     ctx.getRenderContext()->clearUAV(pResultBuffer->getUAV().get(), uint4(0));
 
     // Setup and run GPU test.
@@ -98,10 +98,10 @@ GPU_TEST(JenkinsHash_PerfectHashGPU)
 GPU_TEST(JenkinsHash_PerfectHashGPU, "Disabled for performance reasons")
 #endif
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     // Allocate results buffer (2^27 dwords).
-    Buffer::SharedPtr pResultBuffer = Buffer::createTyped<uint32_t>(pDevice, 1 << 27, ResourceBindFlags::UnorderedAccess);
+    ref<Buffer> pResultBuffer = Buffer::createTyped<uint32_t>(pDevice, 1 << 27, ResourceBindFlags::UnorderedAccess);
     ctx.getRenderContext()->clearUAV(pResultBuffer->getUAV().get(), uint4(0));
 
     // Setup and run GPU test.

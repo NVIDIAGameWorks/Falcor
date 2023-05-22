@@ -37,8 +37,8 @@ namespace
 
 namespace Falcor
 {
-    LightBVH::LightBVH(std::shared_ptr<Device> pDevice, const LightCollection::SharedConstPtr& pLightCollection)
-        : mpDevice(std::move(pDevice))
+    LightBVH::LightBVH(ref<Device> pDevice, const ref<const LightCollection>& pLightCollection)
+        : mpDevice(pDevice)
         , mpLightCollection(pLightCollection)
     {
         mLeafUpdater = ComputePass::create(mpDevice, kShaderFile, "updateLeafNodes");
@@ -54,7 +54,7 @@ namespace Falcor
 
         // Update all leaf nodes.
         {
-            auto var = mLeafUpdater->getVars()["CB"];
+            auto var = mLeafUpdater->getRootVar()["CB"];
             mpLightCollection->setShaderData(var["gLights"]);
             setShaderData(var["gLightBVH"]);
             var["gNodeIndices"] = mpNodeIndicesBuffer;
@@ -69,7 +69,7 @@ namespace Falcor
 
         // Update all internal nodes.
         {
-            auto var = mInternalUpdater->getVars()["CB"];
+            auto var = mInternalUpdater->getRootVar()["CB"];
             mpLightCollection->setShaderData(var["gLights"]);
             setShaderData(var["gLightBVH"]);
             var["gNodeIndices"] = mpNodeIndicesBuffer;
@@ -262,7 +262,7 @@ namespace Falcor
 
         if (!mpNodeIndicesBuffer || mpNodeIndicesBuffer->getElementCount() < mNodeIndices.size())
         {
-            mpNodeIndicesBuffer = Buffer::createStructured(mpDevice.get(), sizeof(uint32_t), (uint32_t)mNodeIndices.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+            mpNodeIndicesBuffer = Buffer::createStructured(mpDevice, sizeof(uint32_t), (uint32_t)mNodeIndices.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
             mpNodeIndicesBuffer->setName("LightBVH::mpNodeIndicesBuffer");
         }
 
@@ -275,17 +275,17 @@ namespace Falcor
         auto var = mLeafUpdater->getRootVar()["CB"]["gLightBVH"];
         if (!mpBVHNodesBuffer || mpBVHNodesBuffer->getElementCount() < mNodes.size())
         {
-            mpBVHNodesBuffer = Buffer::createStructured(mpDevice.get(), var["nodes"], (uint32_t)mNodes.size(), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+            mpBVHNodesBuffer = Buffer::createStructured(mpDevice, var["nodes"], (uint32_t)mNodes.size(), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
             mpBVHNodesBuffer->setName("LightBVH::mpBVHNodesBuffer");
         }
         if (!mpTriangleIndicesBuffer || mpTriangleIndicesBuffer->getElementCount() < triangleIndices.size())
         {
-            mpTriangleIndicesBuffer = Buffer::createStructured(mpDevice.get(), var["triangleIndices"], (uint32_t)triangleIndices.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+            mpTriangleIndicesBuffer = Buffer::createStructured(mpDevice, var["triangleIndices"], (uint32_t)triangleIndices.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
             mpTriangleIndicesBuffer->setName("LightBVH::mpTriangleIndicesBuffer");
         }
         if (!mpTriangleBitmasksBuffer || mpTriangleBitmasksBuffer->getElementCount() < triangleBitmasks.size())
         {
-            mpTriangleBitmasksBuffer = Buffer::createStructured(mpDevice.get(), var["triangleBitmasks"], (uint32_t)triangleBitmasks.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+            mpTriangleBitmasksBuffer = Buffer::createStructured(mpDevice, var["triangleBitmasks"], (uint32_t)triangleBitmasks.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
             mpTriangleBitmasksBuffer->setName("LightBVH::mpTriangleBitmasksBuffer");
         }
 

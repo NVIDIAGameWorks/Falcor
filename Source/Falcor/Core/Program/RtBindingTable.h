@@ -28,6 +28,7 @@
 #pragma once
 #include "RtProgram.h"
 #include "Core/Macros.h"
+#include "Core/Object.h"
 #include "Scene/SceneIDs.h"
 #include <memory>
 #include <vector>
@@ -44,10 +45,9 @@ namespace Falcor
  * The user is responsible for creating a binding table for use with a particular
  * RtProgram and Scene before creating an RtProgramVars object.
  */
-class FALCOR_API RtBindingTable
+class FALCOR_API RtBindingTable : public Object
 {
 public:
-    using SharedPtr = std::shared_ptr<RtBindingTable>;
     using ShaderID = RtProgram::ShaderID;
 
     /**
@@ -57,7 +57,7 @@ public:
      * @param[in] geometryCount Number of geometries.
      * @return A new object, or throws an exception on error.
      */
-    static SharedPtr create(uint32_t missCount, uint32_t rayTypeCount, uint32_t geometryCount);
+    static ref<RtBindingTable> create(uint32_t missCount, uint32_t rayTypeCount, uint32_t geometryCount);
 
     /**
      * Set the raygen shader ID.

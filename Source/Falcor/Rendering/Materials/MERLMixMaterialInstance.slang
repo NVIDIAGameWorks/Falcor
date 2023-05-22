@@ -152,24 +152,23 @@ struct MERLMixMaterialInstance : IMaterialInstance
         // TODO: Is linear roughness or squared roughness (GGX alpha) best?
         float alpha = fittedBrdf.roughness * fittedBrdf.roughness;
 
-        // Express normal tangent, and bitangent in the smooth interpolated shading frame (sd).
-        ShadingFrame smoothFrame = ShadingFrame(sd);
+        // Express normal tangent, and bitangent in the smooth interpolated shading frame (sd.frame).
 
         ExtraBSDFProperties result = {};
         result.bsdfCount = 2;
         {
-            result.bsdfT[0] = smoothFrame.toLocal(sf.T);
-            result.bsdfB[0] = smoothFrame.toLocal(sf.B);
-            result.bsdfN[0] = smoothFrame.toLocal(sf.N);
+            result.bsdfT[0] = sd.frame.toLocal(sf.T);
+            result.bsdfB[0] = sd.frame.toLocal(sf.B);
+            result.bsdfN[0] = sd.frame.toLocal(sf.N);
             result.bsdfAlbedo[0] = fittedBrdf.diffuse;
             result.bsdfWeight[0] = float3(diffuseWeight);
             result.bsdfRoughness[0] = float2(1.f);
             result.bsdfIndex[0] = float(brdfIndex);
         }
         {
-            result.bsdfT[1] = smoothFrame.toLocal(sf.T);
-            result.bsdfB[1] = smoothFrame.toLocal(sf.B);
-            result.bsdfN[1] = smoothFrame.toLocal(sf.N);
+            result.bsdfT[1] = sd.frame.toLocal(sf.T);
+            result.bsdfB[1] = sd.frame.toLocal(sf.B);
+            result.bsdfN[1] = sd.frame.toLocal(sf.N);
             result.bsdfAlbedo[1] = fittedBrdf.specular;
             result.bsdfWeight[1] = float3(specularWeight);
             result.bsdfRoughness[1] = float2(alpha);

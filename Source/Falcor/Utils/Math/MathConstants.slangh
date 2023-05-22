@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,18 +28,19 @@
 #pragma once
 #include "Utils/HostDeviceShared.slangh"
 
-/** This file contains useful numeric constants for use on the GPU.
-
-    It should be included with #include rather than import, as imported files
-    do not export macro definitions.
-
-    Note the possible differences between declaring constants using static
-    float vs macro definitions. The compiler may treat these differently with
-    respect to what precision is used for compile-time constant propagation.
-    Slang currently uses fp32 for constant propagation. We get higher
-    precision using the pre-evaluated constants below. Ideally, all
-    compile-time constants should be evaluated at fp64 or higher precision.
-*/
+/**
+ * This file contains useful numeric constants for use on the GPU.
+ *
+ * It should be included with #include rather than import, as imported files
+ * do not export macro definitions.
+ *
+ * Note the possible differences between declaring constants using static
+ * float vs macro definitions. The compiler may treat these differently with
+ * respect to what precision is used for compile-time constant propagation.
+ * Slang currently uses fp32 for constant propagation. We get higher
+ * precision using the pre-evaluated constants below. Ideally, all
+ * compile-time constants should be evaluated at fp64 or higher precision.
+ */
 
 #ifdef HOST_CODE
 // @skallweit: We should use a different way to make math constants available on the host.
@@ -48,6 +49,8 @@
 #include <cfloat>
 
 #else
+
+// clang-format off
 
 // Constants from <cmath>
 #define M_E                 2.71828182845904523536  // e
@@ -63,15 +66,6 @@
 #define M_2_SQRTPI          1.12837916709551257390  // 2/sqrt(pi)
 #define M_SQRT2             1.41421356237309504880  // sqrt(2)
 #define M_SQRT1_2           0.707106781186547524401 // 1/sqrt(2)
-
-// Additional constants
-#define M_2PI               6.28318530717958647693  // 2pi
-#define M_4PI               12.5663706143591729539  // 4pi
-#define M_4_PI              1.27323954473516268615  // 4/pi
-#define M_1_2PI             0.159154943091895335769 // 1/2pi
-#define M_1_4PI             0.079577471545947667884 // 1/4pi
-#define M_SQRTPI            1.77245385090551602730  // sqrt(pi)
-#define M_1_SQRT2           0.707106781186547524401 // 1/sqrt(2)
 
 // Numeric limits from <cstdint>
 #define UINT32_MAX          4294967295
@@ -111,6 +105,16 @@
 
 #endif // !HOST_CODE
 
+// Additional constants
+#define M_2PI               6.28318530717958647693  // 2pi
+#define M_4PI               12.5663706143591729539  // 4pi
+#define M_4_PI              1.27323954473516268615  // 4/pi
+#define M_1_2PI             0.159154943091895335769 // 1/2pi
+#define M_1_4PI             0.079577471545947667884 // 1/4pi
+#define M_SQRT3             1.732050807568877293527 // sqrt(3)
+#define M_SQRTPI            1.77245385090551602730  // sqrt(pi)
+#define M_1_SQRT2           0.707106781186547524401 // 1/sqrt(2)
+
 // Numeric limits for half (IEEE754 binary16)
 #define HLF_EPSILON         9.765625e-04F           // smallest such that 1.0+HLF_EPSILON != 1.0
 #define HLF_HAS_SUBNORM     1                       // type does support subnormal numbers
@@ -121,3 +125,5 @@
 #define HLF_MIN_EXP         (-14)                   // min binary exponent
 #define HLF_RADIX           2
 #define HLF_TRUE_MIN        5.960464477539063e-08F  // min positive value
+
+// clang-format on

@@ -50,12 +50,9 @@ namespace Falcor
     class FALCOR_API ClothMaterial : public BasicMaterial
     {
     public:
-        using SharedPtr = std::shared_ptr<ClothMaterial>;
+        static ref<ClothMaterial> create(ref<Device> pDevice, const std::string& name) { return make_ref<ClothMaterial>(pDevice, name); };
 
-        /** Create a new cloth material.
-            \param[in] name The material name.
-        */
-        static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& name = "");
+        ClothMaterial(ref<Device> pDevice, const std::string& name);
 
         Program::ShaderModuleList getShaderModules() const override;
         Program::TypeConformanceList getTypeConformances() const override;
@@ -69,8 +66,6 @@ namespace Falcor
         float getRoughness() const { return (float)mData.specular[1]; }
 
     protected:
-        ClothMaterial(std::shared_ptr<Device> pDevice, const std::string& name);
-
         void renderSpecularUI(Gui::Widgets& widget) override;
     };
 }

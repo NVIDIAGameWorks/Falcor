@@ -37,6 +37,16 @@
 #   define snprintf _snprintf
 #endif //(defined(_MSC_VER) && !defined(snprintf))
 
+#ifdef _MSC_VER
+#   pragma warning (push)
+#   pragma warning (disable: 4456) // declaration of 'xx' hides previous local declaration
+#   pragma warning (disable: 4458) // declaration of 'xx' hides class member
+#   pragma warning (disable: 4706) // assignment within conditional expression
+#endif
+
+#ifdef __GNUC__
+#   pragma GCC diagnostic ignored "-Wmisleading-indentation"
+#endif
 
 namespace ImGui {
 
@@ -3140,5 +3150,6 @@ namespace ImGui {
 
 #endif //IMGUINODEGRAPHEDITOR_NOTESTDEMO
 
-
-
+#ifdef _MSC_VER
+#   pragma warning (pop)
+#endif

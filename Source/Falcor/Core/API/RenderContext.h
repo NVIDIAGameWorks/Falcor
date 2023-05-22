@@ -40,6 +40,7 @@
 
 namespace Falcor
 {
+class GraphicsStateObject;
 class GraphicsState;
 class GraphicsVars;
 
@@ -251,8 +252,8 @@ public:
      * @param[in] dstRect Target rectangle to blit to, specified by [left, up, right, down].
      */
     void blit(
-        const ShaderResourceView::SharedPtr& pSrc,
-        const RenderTargetView::SharedPtr& pDst,
+        const ref<ShaderResourceView>& pSrc,
+        const ref<RenderTargetView>& pDst,
         uint4 srcRect = kMaxRect,
         uint4 dstRect = kMaxRect,
         Sampler::Filter = Sampler::Filter::Linear
@@ -271,8 +272,8 @@ public:
      * @param[in] componentsTransform Linear combination factors of the input components for each output component.
      */
     void blit(
-        const ShaderResourceView::SharedPtr& pSrc,
-        const RenderTargetView::SharedPtr& pDst,
+        const ref<ShaderResourceView>& pSrc,
+        const ref<RenderTargetView>& pDst,
         uint4 srcRect,
         uint4 dstRect,
         Sampler::Filter filter,
@@ -299,17 +300,12 @@ public:
      * Resolve an entire multi-sampled resource. The dst and src resources must have the same dimensions, array-size, mip-count and format.
      * If any of these properties don't match, you'll have to use `resolveSubresource`
      */
-    void resolveResource(const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDst);
+    void resolveResource(const ref<Texture>& pSrc, const ref<Texture>& pDst);
 
     /**
      * Resolve a multi-sampled sub-resource
      */
-    void resolveSubresource(
-        const Texture::SharedPtr& pSrc,
-        uint32_t srcSubresource,
-        const Texture::SharedPtr& pDst,
-        uint32_t dstSubresource
-    );
+    void resolveSubresource(const ref<Texture>& pSrc, uint32_t srcSubresource, const ref<Texture>& pDst, uint32_t dstSubresource);
 
     /**
      * Submit a raytrace command. This function doesn't change the state of the render-context. Graphics/compute vars and state will stay
@@ -334,9 +330,12 @@ public:
 private:
     RenderContext(gfx::ICommandQueue* pQueue);
 
+    gfx::IRenderCommandEncoder* drawCallCommon(GraphicsState* pState, GraphicsVars* pVars);
+
     std::unique_ptr<BlitContext> mpBlitContext;
 
     StateBindFlags mBindFlags = StateBindFlags::All;
+    GraphicsStateObject* mpLastBoundGraphicsStateObject = nullptr;
     GraphicsVars* mpLastBoundGraphicsVars = nullptr;
 };
 

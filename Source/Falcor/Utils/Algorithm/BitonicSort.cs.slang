@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,16 +26,17 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 
-/** In-place bitonic sort of 32-bit values in chunks of N elements.
-
-    The host sets these two defines:
-    CHUNK_SIZE (= N)    chunk size which must be a power-of-two, and
-    GROUP_SIZE          thread group size, must be a power-of-two <= 1024.
-
-    The code uses horizontal instructions to shuffle within the warp when possible,
-    and shared memory to shuffle between warps.
-    Shuffles are not yet available in shader model 6.0+, we therefore rely on NVAPI.
-*/
+/**
+ * In-place bitonic sort of 32-bit values in chunks of N elements.
+ *
+ * The host sets these two defines:
+ * CHUNK_SIZE (= N)    chunk size which must be a power-of-two, and
+ * GROUP_SIZE          thread group size, must be a power-of-two <= 1024.
+ *
+ * The code uses horizontal instructions to shuffle within the warp when possible,
+ * and shared memory to shuffle between warps.
+ * Shuffles are not yet available in shader model 6.0+, we therefore rely on NVAPI.
+ */
 #include "Utils/NVAPI.slangh" // We need this to get shuffle-xor operations.
 
 #if (NV_WARP_SIZE != 32)
@@ -50,47 +51,49 @@
 
 cbuffer CB
 {
-    uint gTotalSize;        ///< Total number of elements.
-    uint gDispatchX;        ///< Number of thread groups in dispatch dimension X.
+    uint gTotalSize; ///< Total number of elements.
+    uint gDispatchX; ///< Number of thread groups in dispatch dimension X.
 };
 
-RWByteAddressBuffer gData;                      ///< The data buffer we're sorting in-place.
+RWByteAddressBuffer gData; ///< The data buffer we're sorting in-place.
 
-groupshared uint gSharedData[GROUP_SIZE * 2];   ///< Temporary working buffer in shared memory.
+groupshared uint gSharedData[GROUP_SIZE * 2]; ///< Temporary working buffer in shared memory.
 
-
-/** Within warp bitonic sort, for iterations {j, j/2, ..., 1}, where j <= 16.
-    \param[in,out] value The current thread's value.
-    \param[in] i Global element index.
-    \param[in] j Start element offset j<=16.
-    \param[in] dir Sorting ascending (true) or descending (false).
-*/
+/**
+ * Within warp bitonic sort, for iterations {j, j/2, ..., 1}, where j <= 16.
+ * @param[in,out] value The current thread's value.
+ * @param[in] i Global element index.
+ * @param[in] j Start element offset j<=16.
+ * @param[in] dir Sorting ascending (true) or descending (false).
+ */
 void bitonicSortInWarp(inout uint value, uint i, uint j, bool dir)
 {
     for (; j > 0; j >>= 1)
     {
         // Get index of sorting partner in chunk
-        uint value_ixj = NvShflXor(value, j);       // Value from current lane ^ j
+        uint value_ixj = NvShflXor(value, j); // Value from current lane ^ j
 
         // Decide whether to swap.
         bool pred = (((i & j) == 0) != dir) == value < value_ixj;
-        if (pred) value = value_ixj;
+        if (pred)
+            value = value_ixj;
     }
 }
 
-/** In-place bitonic sort.
-*/
+/**
+ * In-place bitonic sort.
+ */
 [numthreads(GROUP_SIZE, 1, 1)]
-void main(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex)
+void main(uint3 groupID: SV_GroupID, uint groupIdx: SV_GroupIndex)
 {
-    const uint group = groupID.y * gDispatchX + groupID.x;  // Sequential group index.
-    const uint thid = groupIdx;                             // Local thread index in group (range 0..GROUP_SIZE-1).
+    const uint group = groupID.y * gDispatchX + groupID.x; // Sequential group index.
+    const uint thid = groupIdx;                            // Local thread index in group (range 0..GROUP_SIZE-1).
 
-    const uint globalIdx = group * GROUP_SIZE + thid;       // Global element index in gData
-    const uint globalAddr = globalIdx * 4;                  // Address of current element in gData
+    const uint globalIdx = group * GROUP_SIZE + thid; // Global element index in gData
+    const uint globalAddr = globalIdx * 4;            // Address of current element in gData
 
-    const uint N = CHUNK_SIZE;                              // Number of elements per chunk to sort. Must be a power-of-two.
-    const uint i = globalIdx & (N - 1);                     // i = local index of element in chunk, range [0,N).
+    const uint N = CHUNK_SIZE;          // Number of elements per chunk to sort. Must be a power-of-two.
+    const uint i = globalIdx & (N - 1); // i = local index of element in chunk, range [0,N).
 
     // Load value from memory.
     // Out-of-bounds elements are set to UINT_MAX (-1) to be placed last and allow data that is not a multiple of chunk size.
@@ -101,11 +104,11 @@ void main(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex)
     }
 
     // Major steps for k = {2,4,...,32} are done within warp.
-    for (uint k = 2; k <= min(N,32); k <<= 1)
+    for (uint k = 2; k <= min(N, 32); k <<= 1)
     {
         // Minor steps for iterations j = {16, 8, ..., 1} in warp.
-        const bool dir = ((i & k) == 0);   // Sort ascending (true) or descending (false)
-        uint j = k >> 1;    // j <= 16
+        const bool dir = ((i & k) == 0); // Sort ascending (true) or descending (false)
+        uint j = k >> 1;                 // j <= 16
         bitonicSortInWarp(value, i, j, dir);
     }
 
@@ -117,7 +120,7 @@ void main(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex)
     // Major steps for k = {64,128,...N} are done in shared memory.
     for (uint k = 64; k <= N; k <<= 1)
     {
-        const bool dir = ((i & k) == 0);   // Sort ascending (true) or descending (false)
+        const bool dir = ((i & k) == 0); // Sort ascending (true) or descending (false)
 
         // We ping-pong data in shared memory between adjacent addresses, using offset = {0, 1} to denote which one.
         uint offset = 0;
@@ -130,7 +133,8 @@ void main(uint3 groupID : SV_GroupID, uint groupIdx : SV_GroupIndex)
 
             // Decide whether to swap. See comments in bitonicSortInWarp().
             bool pred = (((i & j) == 0) != dir) == value < value_ixj;
-            if (pred) value = value_ixj;
+            if (pred)
+                value = value_ixj;
 
             // Store result for next minor step (except for last iteration). Write to offset address to avoid race condition.
             if (j > 32)

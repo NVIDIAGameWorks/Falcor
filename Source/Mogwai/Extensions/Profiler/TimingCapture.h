@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -37,7 +37,7 @@ namespace Mogwai
         virtual ~TimingCapture() = default;
         static UniquePtr create(Renderer* pRenderer);
 
-        virtual void beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
+        virtual void beginFrame(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo) override;
         virtual void registerScriptBindings(pybind11::module& m) override;
         virtual std::string getScriptVar() const override;
 

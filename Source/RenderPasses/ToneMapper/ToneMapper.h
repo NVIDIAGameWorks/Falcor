@@ -30,7 +30,7 @@
 #include "ToneMapperParams.slang"
 #include "RenderGraph/RenderPass.h"
 #include "RenderGraph/RenderPassHelpers.h"
-#include "RenderGraph/BasePasses/FullScreenPass.h"
+#include "Core/Pass/FullScreenPass.h"
 
 using namespace Falcor;
 
@@ -41,7 +41,6 @@ public:
         "Tone-map a color-buffer. The resulting buffer is always in the [0, 1] range. The pass supports auto-exposure and eye-adaptation."
     });
 
-    using SharedPtr = std::shared_ptr<ToneMapper>;
     using Operator = ToneMapperOperator;
 
     enum class ExposureMode
@@ -50,13 +49,15 @@ public:
         ShutterPriority,        // Keep shutter constant when modifying EV
     };
 
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
+    static ref<ToneMapper> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<ToneMapper>(pDevice, dict); }
+
+    ToneMapper(ref<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
-    virtual void setScene(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene) override;
+    virtual void setScene(RenderContext* pRenderContext, const ref<Scene>& pScene) override;
 
     // Scripting functions
     void setExposureCompensation(float exposureCompensation);
@@ -88,23 +89,22 @@ public:
     ExposureMode getExposureMode() const { return mExposureMode; }
 
 private:
-    ToneMapper(std::shared_ptr<Device> pDevice, const Dictionary& dict);
     void parseDictionary(const Dictionary& dict);
 
     void createToneMapPass();
     void createLuminancePass();
-    void createLuminanceFbo(const Texture::SharedPtr& pSrc);
+    void createLuminanceFbo(const ref<Texture>& pSrc);
 
     void updateWhiteBalanceTransform();
     void updateColorTransform();
 
     void updateExposureValue();
 
-    FullScreenPass::SharedPtr mpToneMapPass;
-    FullScreenPass::SharedPtr mpLuminancePass;
-    Fbo::SharedPtr mpLuminanceFbo;
-    Sampler::SharedPtr mpPointSampler;
-    Sampler::SharedPtr mpLinearSampler;
+    ref<FullScreenPass> mpToneMapPass;
+    ref<FullScreenPass> mpLuminancePass;
+    ref<Fbo> mpLuminanceFbo;
+    ref<Sampler> mpPointSampler;
+    ref<Sampler> mpLinearSampler;
 
     RenderPassHelpers::IOSize mOutputSizeSelection = RenderPassHelpers::IOSize::Default;    ///< Selected output size.
     ResourceFormat mOutputFormat = ResourceFormat::Unknown;                                 ///< Output format (uses default when set to ResourceFormat::Unknown).
@@ -129,9 +129,9 @@ private:
     float mWhiteScale = 11.2f;          ///< Parameter used in Uc2Hable operator.
 
     // Pre-computed fields based on above settings
-    rmcv::mat3 mWhiteBalanceTransform;    ///< Color balance transform in RGB space.
+    float3x3 mWhiteBalanceTransform;    ///< Color balance transform in RGB space.
     float3 mSourceWhite;                ///< Source illuminant in RGB (the white point to which the image is transformed to conform to).
-    rmcv::mat3 mColorTransform;           ///< Final color transform with exposure value baked in.
+    float3x3 mColorTransform;           ///< Final color transform with exposure value baked in.
 
     bool mRecreateToneMapPass = true;
     bool mUpdateToneMapPass = true;

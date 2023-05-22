@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -68,7 +68,8 @@ struct FinalShading
         if (loadShadingData(pixel, frameDim, gScene.camera, vbuffer, lod, sd))
         {
             // Create material instance and query its properties.
-            let mi = gScene.materials.getMaterialInstance(sd, lod);
+            let hints = getMaterialInstanceHints();
+            let mi = gScene.materials.getMaterialInstance(sd, lod, hints);
             let bsdfProperties = mi.getProperties(sd);
 
             // Get final sample from RTXDI.
@@ -113,7 +114,7 @@ struct FinalShading
 
             // Demodulate diffuse reflectance (albedo) from diffuse color.
             diffuseReflectance = bsdfProperties.diffuseReflectionAlbedo;
-            float3 diffuseFactor = diffuseReflectance <= 0.f ? 0.f : 1.f / diffuseReflectance;
+            float3 diffuseFactor = select(diffuseReflectance <= 0.f, 0.f, 1.f / diffuseReflectance);
             diffuseIllumination = diffuse * diffuseFactor;
 
             // Demodulate preintegrated specular reflectance from specular color.
@@ -121,7 +122,7 @@ struct FinalShading
             float NdotV = saturate(dot(bsdfProperties.guideNormal, sd.V));
             float ggxAlpha = bsdfProperties.roughness * bsdfProperties.roughness;
             specularReflectance = approxSpecularIntegralGGX(bsdfProperties.specularReflectance, ggxAlpha, NdotV);
-            float3 specularFactor = specularReflectance <= 0.f ? 0.f : 1.f / specularReflectance;
+            float3 specularFactor = select(specularReflectance <= 0.f, 0.f, 1.f / specularReflectance);
             specularIllumination = specular * specularFactor;
         }
         else

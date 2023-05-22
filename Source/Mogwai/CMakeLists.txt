@@ -13,8 +13,6 @@ target_sources(Mogwai PRIVATE
     Extensions/Capture/CaptureTrigger.h
     Extensions/Capture/FrameCapture.cpp
     Extensions/Capture/FrameCapture.h
-    Extensions/Capture/VideoCapture.cpp
-    Extensions/Capture/VideoCapture.h
     Extensions/Profiler/TimingCapture.cpp
     Extensions/Profiler/TimingCapture.h
 )

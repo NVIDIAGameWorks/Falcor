@@ -44,14 +44,15 @@ struct MERLMixMaterial : MaterialBase, IMaterial
         let explicitLod = ExplicitLodTextureSampler(0.f);
 
         // Compute final shading frame.
-        // TODO: Both normal mapping and shading normal adjustment should be conditional based on the supplied hints.
-        // The hints are not setup by the renderer yet though, so leaving it always on.
-        ShadingFrame sf = ShadingFrame(sd);
+        ShadingFrame sf = sd.frame;
+        if (isNormalMappingEnabled(hints))
         {
             SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
             float3 encodedNormal = ms.sampleTexture(data.texNormalMap, s, sd.uv, float4(0.f), lod).rgb;
             sf = computeShadingFrameFromNormalMap(sd, data.getNormalMapType(), encodedNormal);
         }
+        flipShadingNormal(sd, sf);
+        if (isAdjustShadingNormalEnabled(hints))
         {
             adjustShadingNormal(sd, sf);
         }
@@ -91,9 +92,6 @@ struct MERLMixMaterial : MaterialBase, IMaterial
 
         return MERLMixMaterialInstance(sf, data.bufferID, byteOffset, albedo, brdfIndex, extraData);
     }
-
-    // Note: Normal mapping is applied inside setupMaterialInstance() to be consistent with MxLayeredMaterial.
-    void modifyTangentSpace(const MaterialSystem ms, const ITextureSampler lod, inout ShadingData sd) {}
 
     // Alpha testing is not supported by this material.
     float evalOpacity(const MaterialSystem ms, const VertexData v, const ITextureSampler lod) { return 1.f; }

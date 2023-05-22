@@ -68,7 +68,7 @@ const uint32_t kSize = 32;
 
 GPU_TEST(ShaderStringInline)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     // Create program with generated code placed inline in the same translation
     // unit as the entry point.

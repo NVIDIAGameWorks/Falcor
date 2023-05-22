@@ -137,7 +137,7 @@ void D3D12DescriptorSet::bindForGraphics(CopyContext* pCtx, const D3D12RootSigna
         mpApiData->pAllocation->getHeap()->getShaderVisible() == false &&
         "DescriptorSet must be created on CPU heap for bind operation in GFX."
     );
-    ComPtr<gfx::ICommandBufferD3D12> commandBufferD3D12;
+    Slang::ComPtr<gfx::ICommandBufferD3D12> commandBufferD3D12;
     pCtx->getLowLevelData()->getGfxCommandBuffer()->queryInterface(
         SlangUUID SLANG_UUID_ICommandBufferD3D12, (void**)commandBufferD3D12.writeRef()
     );
@@ -155,7 +155,7 @@ void D3D12DescriptorSet::bindForCompute(CopyContext* pCtx, const D3D12RootSignat
         mpApiData->pAllocation->getHeap()->getShaderVisible() == false &&
         "DescriptorSet must be created on CPU heap for bind operation in GFX."
     );
-    ComPtr<gfx::ICommandBufferD3D12> commandBufferD3D12;
+    Slang::ComPtr<gfx::ICommandBufferD3D12> commandBufferD3D12;
     pCtx->getLowLevelData()->getGfxCommandBuffer()->queryInterface(
         SlangUUID SLANG_UUID_ICommandBufferD3D12, (void**)commandBufferD3D12.writeRef()
     );
@@ -173,39 +173,35 @@ void D3D12DescriptorSet::setCbv(uint32_t rangeIndex, uint32_t descIndex, D3D12Co
     setCpuHandle(rangeIndex, descIndex, pView->getD3D12CpuHeapHandle());
 }
 
-D3D12DescriptorSet::SharedPtr D3D12DescriptorSet::create(
-    Device* pDevice,
-    const D3D12DescriptorPool::SharedPtr& pPool,
+ref<D3D12DescriptorSet> D3D12DescriptorSet::create(
+    ref<Device> pDevice,
+    ref<D3D12DescriptorPool> pPool,
     const D3D12DescriptorSetLayout& layout
 )
 {
     FALCOR_ASSERT(pDevice);
     pDevice->requireD3D12();
-    return SharedPtr(new D3D12DescriptorSet(pDevice->shared_from_this(), pPool, layout));
+    return ref<D3D12DescriptorSet>(new D3D12DescriptorSet(pDevice, pPool, layout));
 }
 
-D3D12DescriptorSet::SharedPtr D3D12DescriptorSet::create(
-    Device* pDevice,
+ref<D3D12DescriptorSet> D3D12DescriptorSet::create(
+    ref<Device> pDevice,
     const D3D12DescriptorSetLayout& layout,
     D3D12DescriptorSetBindingUsage bindingUsage
 )
 {
     FALCOR_ASSERT(pDevice);
     pDevice->requireD3D12();
-    return SharedPtr(new D3D12DescriptorSet(
-        pDevice->shared_from_this(),
+    return ref<D3D12DescriptorSet>(new D3D12DescriptorSet(
+        pDevice,
         bindingUsage == D3D12DescriptorSetBindingUsage::RootSignatureOffset ? pDevice->getD3D12GpuDescriptorPool()
                                                                             : pDevice->getD3D12CpuDescriptorPool(),
         layout
     ));
 }
 
-D3D12DescriptorSet::D3D12DescriptorSet(
-    std::shared_ptr<Device> pDevice,
-    D3D12DescriptorPool::SharedPtr pPool,
-    const D3D12DescriptorSetLayout& layout
-)
-    : mpDevice(std::move(pDevice)), mLayout(layout), mpPool(pPool)
+D3D12DescriptorSet::D3D12DescriptorSet(ref<Device> pDevice, ref<D3D12DescriptorPool> pPool, const D3D12DescriptorSetLayout& layout)
+    : mpDevice(pDevice), mLayout(layout), mpPool(pPool)
 {
     mpApiData = std::make_shared<DescriptorSetApiData>();
     uint32_t count = 0;

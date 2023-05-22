@@ -28,7 +28,7 @@
 #include "Utils/Math/MathConstants.slangh"
 
 __exported import Rendering.Materials.IMaterialInstance;
-__exported import Rendering.Materials.BxDF;
+__exported import Rendering.Materials.BSDFs.StandardBSDF;
 import Utils.Math.MathHelpers;
 
 /** Implementation of Falcor's standard surface BSDF.
@@ -61,6 +61,8 @@ struct StandardMaterialInstance : IMaterialInstance
         float3 wiLocal = sf.toLocal(sd.V);
         float3 woLocal = sf.toLocal(wo);
 
+        if (!isValidHemisphereReflectionOrTransmission(sd, sf, wiLocal, woLocal, wo)) return float3(0.f);
+
         StandardBSDF bsdf = StandardBSDF(wiLocal, sd.mtl, data);
 
         return bsdf.eval(wiLocal, woLocal, sg);
@@ -68,29 +70,43 @@ struct StandardMaterialInstance : IMaterialInstance
 
     bool sample<S : ISampleGenerator>(const ShadingData sd, inout S sg, out BSDFSample result, bool useImportanceSampling = true)
     {
-        if (!useImportanceSampling) return sampleReference(sd, sg, result);
-
         float3 wiLocal = sf.toLocal(sd.V);
         float3 woLocal = {};
 
-        StandardBSDF bsdf = StandardBSDF(wiLocal, sd.mtl, data);
-
-        bool valid = bsdf.sample(wiLocal, woLocal, result.pdf, result.weight, result.lobeType, sg);
+        if (!useImportanceSampling)
+        {
+            if (!sampleReference(sd, wiLocal, woLocal, result.pdf, result.weight, result.lobeType, sg))
+                return false;
+        }
+        else
+        {
+            StandardBSDF bsdf = StandardBSDF(wiLocal, sd.mtl, data);
+            if (!bsdf.sample(wiLocal, woLocal, result.pdf, result.weight, result.lobeType, sg))
+                return false;
+        }
         result.wo = sf.fromLocal(woLocal);
 
-        return valid;
+        if (!isValidHemisphereReflectionOrTransmission(sd, sf, wiLocal, woLocal, result.wo)) return false;
+
+        return true;
     }
 
     float evalPdf(const ShadingData sd, const float3 wo, bool useImportanceSampling = true)
     {
-        if (!useImportanceSampling) return evalPdfReference(sd, wo);
-
         float3 wiLocal = sf.toLocal(sd.V);
         float3 woLocal = sf.toLocal(wo);
 
-        StandardBSDF bsdf = StandardBSDF(wiLocal, sd.mtl, data);
+        if (!isValidHemisphereReflectionOrTransmission(sd, sf, wiLocal, woLocal, wo)) return 0.f;
 
-        return bsdf.evalPdf(wiLocal, woLocal);
+        if (!useImportanceSampling)
+        {
+            return evalPdfReference(sd, wiLocal, woLocal);
+        }
+        else
+        {
+            StandardBSDF bsdf = StandardBSDF(wiLocal, sd.mtl, data);
+            return bsdf.evalPdf(wiLocal, woLocal);
+        }
     }
 
     BSDFProperties getProperties(const ShadingData sd)
@@ -131,61 +147,61 @@ struct StandardMaterialInstance : IMaterialInstance
     /** Reference implementation that uses cosine-weighted hemisphere sampling.
         This is for testing purposes only.
         \param[in] sd Shading data.
-        \param[in] sg Sample generator.
-        \param[out] result Generated sample. Only valid if true is returned.
+        \param[in] wi Incident direction in local space.
+        \param[out] wo Outgoing direction in local space.
+        \param[out] pdf pdf with respect to solid angle for sampling outgoing direction wo (0 if a delta event is sampled).
+        \param[out] weight Sample weight f(wi, wo) * dot(wo, n) / pdf(wo).
+        \param[out] lobeType Sampled lobeType (see LobeType).
+        \param[in,out] sg Sample generator.
         \return True if a sample was generated, false otherwise.
     */
-    bool sampleReference<S : ISampleGenerator>(const ShadingData sd, inout S sg, out BSDFSample result)
+    bool sampleReference<S : ISampleGenerator>(const ShadingData sd, const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg)
     {
         const bool isTransmissive = (getLobeTypes(sd) & (uint)LobeType::Transmission) != 0;
 
-        float3 wiLocal = sf.toLocal(sd.V);
-        float3 woLocal = sample_cosine_hemisphere_concentric(sampleNext2D(sg), result.pdf); // pdf = cos(theta) / pi
+        wo = sample_cosine_hemisphere_concentric(sampleNext2D(sg), pdf); // pdf = cos(theta) / pi
 
         if (isTransmissive)
         {
             if (sampleNext1D(sg) < 0.5f)
             {
-                woLocal.z = -woLocal.z;
+                wo.z = -wo.z;
             }
-            result.pdf *= 0.5f;
-            if (min(abs(wiLocal.z), abs(woLocal.z)) < kMinCosTheta || result.pdf == 0.f) return false;
+            pdf *= 0.5f;
+            if (min(abs(wi.z), abs(wo.z)) < kMinCosTheta || pdf == 0.f) return false;
         }
         else
         {
-            if (min(wiLocal.z, woLocal.z) < kMinCosTheta || result.pdf == 0.f) return false;
+            if (min(wi.z, wo.z) < kMinCosTheta || pdf == 0.f) return false;
         }
 
-        StandardBSDF bsdf = StandardBSDF(wiLocal, sd.mtl, data);
+        StandardBSDF bsdf = StandardBSDF(wi, sd.mtl, data);
 
-        result.wo = sf.fromLocal(woLocal);
-        result.weight = bsdf.eval(wiLocal, woLocal, sg) / result.pdf;
-        result.lobeType = (uint)(woLocal.z > 0.f ? LobeType::DiffuseReflection : LobeType::DiffuseTransmission);
+        weight = bsdf.eval(wi, wo, sg) / pdf;
+        lobeType = (uint)(wo.z > 0.f ? LobeType::DiffuseReflection : LobeType::DiffuseTransmission);
 
         return true;
     }
 
     /** Evaluates the directional pdf for sampling the given direction using the reference implementation.
         \param[in] sd Shading data.
-        \param[in] wo Outgoing direction.
+        \param[in] wi Incident direction in local space.
+        \param[in] wo Outgoing direction in local space.
         \return PDF with respect to solid angle for sampling direction wo.
     */
-    float evalPdfReference(const ShadingData sd, const float3 wo)
+    float evalPdfReference(const ShadingData sd, const float3 wi, const float3 wo)
     {
         const bool isTransmissive = (getLobeTypes(sd) & (uint)LobeType::Transmission) != 0;
 
-        float3 wiLocal = sf.toLocal(sd.V);
-        float3 woLocal = sf.toLocal(wo);
-
         if (isTransmissive)
         {
-            if (min(abs(wiLocal.z), abs(woLocal.z)) < kMinCosTheta) return 0.f;
-            return 0.5f * woLocal.z * M_1_PI; // pdf = 0.5 * cos(theta) / pi
+            if (min(abs(wi.z), abs(wo.z)) < kMinCosTheta) return 0.f;
+            return 0.5f * wo.z * M_1_PI; // pdf = 0.5 * cos(theta) / pi
         }
         else
         {
-            if (min(wiLocal.z, woLocal.z) < kMinCosTheta) return 0.f;
-            return woLocal.z * M_1_PI; // pdf = cos(theta) / pi
+            if (min(wi.z, wo.z) < kMinCosTheta) return 0.f;
+            return wo.z * M_1_PI; // pdf = cos(theta) / pi
         }
     }
 

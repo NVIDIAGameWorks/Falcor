@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,13 +30,14 @@
 import Utils.SDF.SDF2DPrimitives;
 import Utils.Math.MathHelpers;
 
-/** Compute a 2x3 matrix to be used for scaling, rotating, and translating an SDF primitive. The scale is applied first, then rotation, and finally translation.
-    The inverse is returned, which can then be applied directly to the querying point.
-    \param[in] scale The scale of the transform.
-    \param[in] rotationAngle Rotation angle of the transform.
-    \param[in] translation Translation of the transform.
-    \return Inverse 2x3 transform matrix.
-*/
+/**
+ * Compute a 2x3 matrix to be used for scaling, rotating, and translating an SDF primitive. The scale is applied first, then rotation, and
+ * finally translation. The inverse is returned, which can then be applied directly to the querying point.
+ * @param[in] scale The scale of the transform.
+ * @param[in] rotationAngle Rotation angle of the transform.
+ * @param[in] translation Translation of the transform.
+ * @return Inverse 2x3 transform matrix.
+ */
 float2x3 sdfComputeTransform(float2 scale, float rotationAngle, float2 translation)
 {
     float ca = cos(rotationAngle);
@@ -45,31 +46,33 @@ float2x3 sdfComputeTransform(float2 scale, float rotationAngle, float2 translati
     return inverse(M);
 }
 
-/** Applies a scale, rotation, and translation to a point. See sdfComputeTransform() above.
-    \param[in] p The 2D point to be transformed.
-    \param[in] scale The scale of the transform.
-    \param[in] rotationAngle Rotation angle of the transform.
-    \param[in] translation Translation of the transform.
-    \return Transformed point.
-*/
+/**
+ * Applies a scale, rotation, and translation to a point. See sdfComputeTransform() above.
+ * @param[in] p The 2D point to be transformed.
+ * @param[in] scale The scale of the transform.
+ * @param[in] rotationAngle Rotation angle of the transform.
+ * @param[in] translation Translation of the transform.
+ * @return Transformed point.
+ */
 float2 sdfTransform(float2 p, float2 scale, float rotationAngle, float2 translation)
 {
     float2x3 inverseTransform = sdfComputeTransform(scale, rotationAngle, translation);
     return mul(inverseTransform, float3(p, 1.0f)).xy;
 }
 
-/** Filler function that may be used by signed distance functions. Returns alpha so you can blend as you wish.
-    Based on the JCGT article "Antialiased 2D Grid, Marker, and Arrow Shaders" by Rougier.
-    http://jcgt.org/published/0003/04/01/
-    \param[in] signedDistance The signed distance to the primitive.
-    \param[in] lineWidth Line width.
-    \param[in] antialiasWidth Antialias with.
-    \return Alpha.
-*/
+/**
+ * Filler function that may be used by signed distance functions. Returns alpha so you can blend as you wish.
+ * Based on the JCGT article "Antialiased 2D Grid, Marker, and Arrow Shaders" by Rougier.
+ * http://jcgt.org/published/0003/04/01/
+ * @param[in] signedDistance The signed distance to the primitive.
+ * @param[in] lineWidth Line width.
+ * @param[in] antialiasWidth Antialias with.
+ * @return Alpha.
+ */
 float sdfFilledAlpha(float signedDistance, float lineWidth, float antialiasWidth)
 {
     float borderDistance = abs(signedDistance) - antialiasWidth;
-    float alpha = abs(borderDistance / antialiasWidth);    // 0.0 at the outer border and 1.0 close to full fill
+    float alpha = abs(borderDistance / antialiasWidth); // 0.0 at the outer border and 1.0 close to full fill
     alpha = smoothstep(0.0f, 1.0f, alpha);
 
     if (signedDistance < 0.0f)
@@ -86,32 +89,42 @@ float sdfFilledAlpha(float signedDistance, float lineWidth, float antialiasWidth
     }
 }
 
-/** Filler function that may be used by signed distance functions. Returns color with alpha.
-    \param[in] signedDistance The signed distance to the primitive.
-    \param[in] lineWidth Line width.
-    \param[in] antialiasWidth Antialias with.
-    \param[in] fillColor Color of the primitive.
-    \return Color.
-*/
+/**
+ * Filler function that may be used by signed distance functions. Returns color with alpha.
+ * @param[in] signedDistance The signed distance to the primitive.
+ * @param[in] lineWidth Line width.
+ * @param[in] antialiasWidth Antialias with.
+ * @param[in] fillColor Color of the primitive.
+ * @return Color.
+ */
 float4 sdfFilled(float signedDistance, float lineWidth, float antialiasWidth, float4 fillColor)
 {
     float alpha = sdfFilledAlpha(signedDistance, lineWidth, antialiasWidth);
     return float4(fillColor.rgb, alpha * fillColor.a);
 }
 
-/** Draw function that blends the computed SDF primitive color with the background color. Transforms the primitive prior to evaluation.
-    \param[in] sdf The SDF primitive.
-    \param[in] p The 2D point where the SDF is to be evaluated..
-    \param[in] scale The scale of the transform.
-    \param[in] rotationAngle Rotation angle of the transform.
-    \param[in] translation Translation of the transform.
-    \param[in] primitiveColor The color of the SDF primitive.
-    \param[in] backgroundColor Incoming background color.
-    \param[in] blendRadius Blend radius for antialiasing.
-    \return Color.
-*/
-float4 sdfDraw<SDF : ISDF2D>(const SDF sdf, float2 p, float2 scale, float rotationAngle, float2 translation,
-    float4 primitiveColor, float4 backgroundColor, float blendRadius = 1.f)
+/**
+ * Draw function that blends the computed SDF primitive color with the background color. Transforms the primitive prior to evaluation.
+ * @param[in] sdf The SDF primitive.
+ * @param[in] p The 2D point where the SDF is to be evaluated..
+ * @param[in] scale The scale of the transform.
+ * @param[in] rotationAngle Rotation angle of the transform.
+ * @param[in] translation Translation of the transform.
+ * @param[in] primitiveColor The color of the SDF primitive.
+ * @param[in] backgroundColor Incoming background color.
+ * @param[in] blendRadius Blend radius for antialiasing.
+ * @return Color.
+ */
+float4 sdfDraw<SDF : ISDF2D>(
+    const SDF sdf,
+    float2 p,
+    float2 scale,
+    float rotationAngle,
+    float2 translation,
+    float4 primitiveColor,
+    float4 backgroundColor,
+    float blendRadius = 1.f
+)
 {
     p = sdfTransform(p, scale, rotationAngle, translation);
     float signedDistance = sdf.eval(p);
@@ -119,14 +132,15 @@ float4 sdfDraw<SDF : ISDF2D>(const SDF sdf, float2 p, float2 scale, float rotati
     return lerp(backgroundColor, color, color.a);
 }
 
-/** Draw function that blends the computed SDF primitive color with the background color.
-    \param[in] sdf The SDF primitive.
-    \param[in] p The 2D point where the SDF is to be evaluated..
-    \param[in] primitiveColor The color of the SDF primitive.
-    \param[in] backgroundColor Incoming background color.
-    \param[in] blendRadius Blend radius for antialiasing.
-    \return Color.
-*/
+/**
+ * Draw function that blends the computed SDF primitive color with the background color.
+ * @param[in] sdf The SDF primitive.
+ * @param[in] p The 2D point where the SDF is to be evaluated..
+ * @param[in] primitiveColor The color of the SDF primitive.
+ * @param[in] backgroundColor Incoming background color.
+ * @param[in] blendRadius Blend radius for antialiasing.
+ * @return Color.
+ */
 float4 sdfDraw<SDF : ISDF2D>(const SDF sdf, float2 p, float4 primitiveColor, float4 backgroundColor, float blendRadius = 1.f)
 {
     return sdfDraw(sdf, p, float2(1.0f), 0.0f, float2(0.0f), primitiveColor, backgroundColor, blendRadius);

@@ -5,6 +5,8 @@ target_sources(Falcor PRIVATE
     Falcor.manifest
 
     Falcor.h
+    GlobalState.cpp
+    GlobalState.h
 
     Core/Assert.h
     Core/ErrorHandling.cpp
@@ -14,6 +16,9 @@ target_sources(Falcor PRIVATE
     Core/FalcorConfig.h
     Core/GLFW.h
     Core/HotReloadFlags.h
+    Core/Object.cpp
+    Core/Object.h
+    Core/ObjectPython.h
     Core/Macros.h
     Core/Plugin.cpp
     Core/Plugin.h
@@ -102,6 +107,17 @@ target_sources(Falcor PRIVATE
     Core/API/VertexLayout.cpp
     Core/API/VertexLayout.h
 
+    Core/Pass/BaseGraphicsPass.cpp
+    Core/Pass/BaseGraphicsPass.h
+    Core/Pass/ComputePass.cpp
+    Core/Pass/ComputePass.h
+    Core/Pass/FullScreenPass.cpp
+    Core/Pass/FullScreenPass.gs.slang
+    Core/Pass/FullScreenPass.h
+    Core/Pass/FullScreenPass.vs.slang
+    Core/Pass/RasterPass.cpp
+    Core/Pass/RasterPass.h
+
     Core/Platform/LockFile.cpp
     Core/Platform/LockFile.h
     Core/Platform/MemoryMappedFile.cpp
@@ -164,19 +180,6 @@ target_sources(Falcor PRIVATE
     RenderGraph/ResourceCache.cpp
     RenderGraph/ResourceCache.h
 
-    RenderGraph/BasePasses/BaseGraphicsPass.cpp
-    RenderGraph/BasePasses/BaseGraphicsPass.h
-    RenderGraph/BasePasses/ComputePass.cpp
-    RenderGraph/BasePasses/ComputePass.h
-    RenderGraph/BasePasses/FullScreenPass.cpp
-    RenderGraph/BasePasses/FullScreenPass.gs.slang
-    RenderGraph/BasePasses/FullScreenPass.h
-    RenderGraph/BasePasses/FullScreenPass.vs.slang
-    RenderGraph/BasePasses/RasterPass.cpp
-    RenderGraph/BasePasses/RasterPass.h
-    RenderGraph/BasePasses/RasterScenePass.cpp
-    RenderGraph/BasePasses/RasterScenePass.h
-
     Rendering/Lights/EmissiveLightSampler.cpp
     Rendering/Lights/EmissiveLightSampler.h
     Rendering/Lights/EmissiveLightSampler.slang
@@ -211,7 +214,6 @@ target_sources(Falcor PRIVATE
     Rendering/Materials/BSDFIntegrator.cpp
     Rendering/Materials/BSDFIntegrator.cs.slang
     Rendering/Materials/BSDFIntegrator.h
-    Rendering/Materials/BxDF.slang
     Rendering/Materials/BSDFConfig.slangh
     Rendering/Materials/ClothBRDF.slang
     Rendering/Materials/ClothMaterialInstance.slang
@@ -326,7 +328,6 @@ target_sources(Falcor PRIVATE
     Scene/SceneBlock.slang
     Scene/SceneBuilder.cpp
     Scene/SceneBuilder.h
-    Scene/SceneBuilderAccess.h
     Scene/SceneCache.cpp
     Scene/SceneCache.h
     Scene/SceneDefines.slangh
@@ -530,10 +531,12 @@ target_sources(Falcor PRIVATE
     Utils/NVAPI.slang
     Utils/NVAPI.slangh
     Utils/ObjectID.h
+    Utils/ObjectIDPython.h
     Utils/PathResolving.cpp
     Utils/PathResolving.h
     Utils/Settings.cpp
     Utils/Settings.h
+    Utils/SharedCache.h
     Utils/SlangUtils.slang
     Utils/StringFormatters.h
     Utils/StringUtils.cpp
@@ -602,8 +605,10 @@ target_sources(Falcor PRIVATE
     Utils/Math/Common.h
     Utils/Math/CubicSpline.h
     Utils/Math/FalcorMath.h
+    Utils/Math/Float16.cpp
     Utils/Math/Float16.h
     Utils/Math/FNVHash.h
+    Utils/Math/FormatConversion.h
     Utils/Math/FormatConversion.slang
     Utils/Math/HalfUtils.slang
     Utils/Math/HashUtils.slang
@@ -611,19 +616,27 @@ target_sources(Falcor PRIVATE
     Utils/Math/MathConstants.slangh
     Utils/Math/MathHelpers.h
     Utils/Math/MathHelpers.slang
-    Utils/Math/MatrixUtils.slang
     Utils/Math/Matrix.h
+    Utils/Math/MatrixMath.h
+    Utils/Math/MatrixTypes.h
+    Utils/Math/MatrixUtils.slang
     Utils/Math/PackedFormats.h
     Utils/Math/PackedFormats.slang
+    Utils/Math/Quaternion.h
     Utils/Math/Quaternion.slang
+    Utils/Math/QuaternionMath.h
+    Utils/Math/QuaternionTypes.h
     Utils/Math/Ray.h
     Utils/Math/Ray.slang
     Utils/Math/Rectangle.cpp
     Utils/Math/Rectangle.h
+    Utils/Math/ScalarMath.h
+    Utils/Math/ScalarTypes.h
+    Utils/Math/ShadingFrame.slang
     Utils/Math/SphericalHarmonics.slang
     Utils/Math/Vector.h
-
-    Utils/Math/Matrix/Matrix.h
+    Utils/Math/VectorMath.h
+    Utils/Math/VectorTypes.h
 
     Utils/SampleGenerators/CPUSampleGenerator.h
     Utils/SampleGenerators/DxSamplePattern.cpp
@@ -654,6 +667,8 @@ target_sources(Falcor PRIVATE
     Utils/Scripting/Console.cpp
     Utils/Scripting/Console.h
     Utils/Scripting/Dictionary.h
+    Utils/Scripting/ndarray.cpp
+    Utils/Scripting/ndarray.h
     Utils/Scripting/ScriptBindings.cpp
     Utils/Scripting/ScriptBindings.h
     Utils/Scripting/Scripting.cpp
@@ -694,11 +709,6 @@ target_sources(Falcor PRIVATE
     Utils/UI/TextRenderer.cpp
     Utils/UI/TextRenderer.h
     Utils/UI/TextRenderer.3d.slang
-
-    Utils/Video/VideoEncoder.cpp
-    Utils/Video/VideoEncoder.h
-    Utils/Video/VideoEncoderUI.cpp
-    Utils/Video/VideoEncoderUI.h
 )
 
 
@@ -735,6 +745,13 @@ if(FALCOR_HAS_D3D12)
     )
 endif()
 
+if(FALCOR_HAS_CUDA)
+    target_sources(Falcor PRIVATE
+        Utils/CudaUtils.cpp
+        Utils/CudaUtils.h
+    )
+endif()
+
 target_source_group(Falcor "/")
 
 # ImGui source files
@@ -766,28 +783,54 @@ target_compile_features(Falcor
 target_compile_options(Falcor
     PUBLIC
         # MSVC flags.
-        $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Zi>      # generate debug symbols
-        $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/WX>      # warnings as errors
-        $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/W3>      # increase warning level
-        $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/wd4819>  # The file contains a character that cannot be represented in the current code page (932)
-        $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/w15038>  # data member 'member1' will be initialized after data member 'member2'
-        $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/wd4251>  # 'type' : class 'type1' needs to have dll-interface to be used by clients of class 'type2'
-        $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/wd4244>  # 'conversion' conversion from 'type1' to 'type2', possible loss of data
-        $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/wd4267>  # 'var' : conversion from 'size_t' to 'type', possible loss of data
-        $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/MP>      # enable multi-processor compilation
+        $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:
+            /Zi                             # generate debug symbols
+            /WX                             # warnings as errors
+            /W4                             # increase warning level
+            /wd4251                         # 'type' : class 'type1' needs to have dll-interface to be used by clients of class 'type2'
+            /wd4244                         # 'conversion' conversion from 'type1' to 'type2', possible loss of data
+            /wd4267                         # 'var' : conversion from 'size_t' to 'type', possible loss of data
+            /wd4100                         # unreferenced formal parameter
+            /wd4201                         # nonstandard extension used: nameless struct/union
+            /wd4245                         # conversion from 'type1' to 'type2', signed/unsigned mismatch
+            /wd4189                         # local variable is initialized but not referenced
+            /wd4127                         # conditional expression is constant
+            /wd4701                         # potentially uninitialized local variable 'name' used
+            /wd4703                         # potentially uninitialized local pointer variable 'name' used
+            /wd4324                         # structure was padded due to alignment specifier
+            /wd4505                         # unreferenced local function has been removed
+            /wd4702                         # unreachable code
+            /wd4389                         # signed/unsigned mismatch
+            /wd4459                         # declaration of 'identifier' hides global declaration
+            /wd4268                         # 'identifier' : 'const' static/global data initialized with compiler generated default constructor fills the object with zeros
+            /MP                             # enable multi-processor compilation
+        >
+        # Clang/GCC flags.
+        $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:
+            -fms-extensions                 # enable MS extensions (among other things allow anonymous structs)
+            -fvisibility=hidden             # hide symbols by default
+            -Wall                           # set warning level
+            -Wno-unused-function
+            -Wno-unused-variable
+            -Wno-unused-but-set-variable
+            -Wno-switch
+            -Wno-missing-braces
+            -Wno-invalid-offsetof
+        >
         # Clang flags.
-        $<$<CXX_COMPILER_ID:Clang>:-fms-extensions>     # enable MS extensions (among other things allow glm swizzle to work)
-        $<$<CXX_COMPILER_ID:Clang>:-fvisibility=hidden> # hide symbols by default
-        $<$<CXX_COMPILER_ID:Clang>:-Wall>               # set warning level
-        $<$<CXX_COMPILER_ID:Clang>:-Wno-unused-function>
-        $<$<CXX_COMPILER_ID:Clang>:-Wno-unused-variable>
-        $<$<CXX_COMPILER_ID:Clang>:-Wno-unused-but-set-variable>
-        $<$<CXX_COMPILER_ID:Clang>:-Wno-unused-private-field>
-        $<$<CXX_COMPILER_ID:Clang>:-Wno-switch>
-        $<$<CXX_COMPILER_ID:Clang>:-Wno-missing-braces>
-        $<$<CXX_COMPILER_ID:Clang>:-Wno-braced-scalar-init>
-        $<$<CXX_COMPILER_ID:Clang>:-Wno-invalid-offsetof>
-        $<$<CXX_COMPILER_ID:Clang>:-Wno-self-assign-overloaded>
+        $<$<CXX_COMPILER_ID:Clang>:
+            -Wno-unused-private-field
+            -Wno-braced-scalar-init
+            -Wno-self-assign-overloaded
+        >
+        # GCC flags.
+        $<$<CXX_COMPILER_ID:GNU>:
+            -fpermissive
+            -Wno-sign-compare
+            -Wno-literal-suffix
+            -Wno-class-memaccess
+            -Wno-strict-aliasing
+        >
     PRIVATE
         $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/bigobj>  # big object files
     )
@@ -807,7 +850,6 @@ target_link_options(Falcor
 
 target_compile_definitions(Falcor
     PUBLIC
-        GLM_FORCE_DEPTH_ZERO_TO_ONE
         $<$<CONFIG:Release>:NDEBUG>
         $<$<CONFIG:Debug>:_DEBUG>
         # Windows.
@@ -837,9 +879,16 @@ target_compile_definitions(Falcor
         $<$<PLATFORM_ID:Linux>:IMGUI_API=__attribute__\(\(visibility\("default"\)\)\)>
 )
 
+if(FALCOR_USE_SYSTEM_PYTHON)
+    target_compile_definitions(Falcor
+        PRIVATE
+            FALCOR_PYTHON_EXECUTABLE="${Python_EXECUTABLE}"
+    )
+endif()
+
 target_link_libraries(Falcor
     PUBLIC
-        fmt pybind11::embed glm Vulkan::Headers
+        fmt pybind11::embed Vulkan::Headers
         slang slang-gfx
         imgui imgui_addons
         nanovdb
@@ -849,7 +898,7 @@ target_link_libraries(Falcor
         $<$<BOOL:${FALCOR_HAS_CUDA}>:CUDA::cudart_static>
     PRIVATE
         git_version
-        FreeImage assimp ffmpeg OpenEXR OpenVDB lz4 zlib pugixml
+        FreeImage assimp OpenEXR OpenVDB lz4 zlib pugixml
         glfw mikktspace nvtt
         $<$<BOOL:${FALCOR_HAS_D3D12}>:d3d12>
         $<$<BOOL:${FALCOR_HAS_D3D12_AGILITY_SDK}>:agility-sdk>
@@ -880,29 +929,38 @@ validate_headers(Falcor)
 
 # Falcor python module
 
+# The `falcor` python package is a wrapper around the `falcor_ext` extension module.
+# The reason for this is that as of Python 3.8, we need to use os.add_dll_directory()
+# to add the directory containing the main falcor DLL to the DLL search path.
+# This is not possible to do from within the extension module, so we need to do it
+# from the `falcor` package __init__.py file (which is copied from falcor__init__.py).
+
 pybind11_add_module(FalcorPython FalcorPython.cpp)
 
 target_link_libraries(FalcorPython PRIVATE Falcor)
 
 set_target_properties(FalcorPython PROPERTIES
-    OUTPUT_NAME falcor
+    OUTPUT_NAME falcor_ext
     ARCHIVE_OUTPUT_NAME FalcorPython # Visual Studio generator clashes with the main Falcor library otherwise
-    RUNTIME_OUTPUT_DIRECTORY ${FALCOR_OUTPUT_DIRECTORY}/python
-    LIBRARY_OUTPUT_DIRECTORY ${FALCOR_OUTPUT_DIRECTORY}/python
+    RUNTIME_OUTPUT_DIRECTORY ${FALCOR_OUTPUT_DIRECTORY}/python/falcor
+    LIBRARY_OUTPUT_DIRECTORY ${FALCOR_OUTPUT_DIRECTORY}/python/falcor
 )
+
+# Generate falcor package __init__.py file.
+file(GENERATE OUTPUT ${FALCOR_OUTPUT_DIRECTORY}/python/falcor/__init__.py INPUT ${CMAKE_SOURCE_DIR}/build_scripts/falcor__init__.py)
 
 # Generate python stub files.
 if(FALCOR_WINDOWS)
     add_custom_command(
         TARGET FalcorPython POST_BUILD
-        COMMAND ${FALCOR_OUTPUT_DIRECTORY}/setpath.bat & ${Python_EXECUTABLE} ${CMAKE_SOURCE_DIR}/build_scripts/generate_stubs.py ${FALCOR_OUTPUT_DIRECTORY}/python
-        )
+        COMMAND ${FALCOR_OUTPUT_DIRECTORY}/setpath.bat & ${Python_EXECUTABLE} ${CMAKE_SOURCE_DIR}/build_scripts/generate_stubs.py ${FALCOR_OUTPUT_DIRECTORY}/python || (exit 0)
+    )
 endif()
 if(FALCOR_LINUX)
     add_custom_command(
         TARGET FalcorPython POST_BUILD
         WORKING_DIRECTORY ${FALCOR_OUTPUT_DIRECTORY}
-        COMMAND ${CMAKE_SOURCE_DIR}/build_scripts/wrap_setpath.sh ${Python_EXECUTABLE} ${CMAKE_SOURCE_DIR}/build_scripts/generate_stubs.py ${FALCOR_OUTPUT_DIRECTORY}/python
+        COMMAND ${CMAKE_SOURCE_DIR}/build_scripts/wrap_setpath.sh ${Python_EXECUTABLE} ${CMAKE_SOURCE_DIR}/build_scripts/generate_stubs.py ${FALCOR_OUTPUT_DIRECTORY}/python || (exit 0)
     )
 endif()
 

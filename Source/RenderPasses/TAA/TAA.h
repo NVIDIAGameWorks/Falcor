@@ -27,7 +27,8 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "RenderGraph/BasePasses/FullScreenPass.h"
+#include "Core/Pass/FullScreenPass.h"
+#include "RenderGraph/RenderPass.h"
 
 using namespace Falcor;
 
@@ -38,9 +39,9 @@ class TAA : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(TAA, "TAA", "Temporal Anti-Aliasing.");
 
-    using SharedPtr = std::shared_ptr<TAA>;
+    static ref<TAA> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<TAA>(pDevice, dict); }
 
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
+    TAA(ref<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
@@ -55,12 +56,11 @@ public:
     bool getAntiFlicker() { return mControls.antiFlicker; }
 
 private:
-    TAA(std::shared_ptr<Device> pDevice);
     void allocatePrevColor(const Texture* pColorOut);
 
-    FullScreenPass::SharedPtr mpPass;
-    Fbo::SharedPtr mpFbo;
-    Sampler::SharedPtr mpLinearSampler;
+    ref<FullScreenPass> mpPass;
+    ref<Fbo> mpFbo;
+    ref<Sampler> mpLinearSampler;
 
     struct
     {
@@ -69,5 +69,5 @@ private:
         bool antiFlicker = true;
     } mControls;
 
-    Texture::SharedPtr mpPrevColor;
+    ref<Texture> mpPrevColor;
 };

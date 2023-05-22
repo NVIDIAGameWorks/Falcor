@@ -41,7 +41,7 @@ FalcorTest::FalcorTest(const SampleAppConfig& config, const Options& options) : 
 
 FalcorTest::~FalcorTest() {}
 
-void FalcorTest::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
+void FalcorTest::onFrameRender(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo)
 {
     int returnCode =
         runTests(getDevice(), getTargetFbo().get(), mOptions.categoryFlags, mOptions.filter, mOptions.xmlReportPath, mOptions.repeat);

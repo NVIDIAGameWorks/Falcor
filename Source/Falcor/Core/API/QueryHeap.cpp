@@ -32,12 +32,12 @@
 namespace Falcor
 {
 
-QueryHeap::SharedPtr QueryHeap::create(Device* pDevice, Type type, uint32_t count)
+ref<QueryHeap> QueryHeap::create(ref<Device> pDevice, Type type, uint32_t count)
 {
-    return SharedPtr(new QueryHeap(pDevice->shared_from_this(), type, count));
+    return ref<QueryHeap>(new QueryHeap(pDevice, type, count));
 }
 
-QueryHeap::QueryHeap(std::shared_ptr<Device> pDevice, Type type, uint32_t count) : mCount(count), mType(type)
+QueryHeap::QueryHeap(ref<Device> pDevice, Type type, uint32_t count) : mpDevice(pDevice), mCount(count), mType(type)
 {
     FALCOR_ASSERT(pDevice);
     gfx::IQueryPool::Desc desc = {};
@@ -53,4 +53,10 @@ QueryHeap::QueryHeap(std::shared_ptr<Device> pDevice, Type type, uint32_t count)
     }
     FALCOR_GFX_CALL(pDevice->getGfxDevice()->createQueryPool(desc, mGfxQueryPool.writeRef()));
 }
+
+void QueryHeap::breakStrongReferenceToDevice()
+{
+    mpDevice.breakStrongReference();
+}
+
 } // namespace Falcor

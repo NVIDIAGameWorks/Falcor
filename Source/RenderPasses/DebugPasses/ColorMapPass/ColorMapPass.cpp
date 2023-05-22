@@ -62,8 +62,8 @@ void ColorMapPass::registerScriptBindings(pybind11::module& m)
     colorMap.value("Inferno", ColorMap::Inferno);
 }
 
-ColorMapPass::ColorMapPass(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-    : RenderPass(std::move(pDevice))
+ColorMapPass::ColorMapPass(ref<Device> pDevice, const Dictionary& dict)
+    : RenderPass(pDevice)
 {
     for (const auto& [key, value] : dict)
     {
@@ -75,13 +75,7 @@ ColorMapPass::ColorMapPass(std::shared_ptr<Device> pDevice, const Dictionary& di
         else logWarning("Unknown field '{}' in a ColorMapPass dictionary.", key);
     }
 
-    mpFbo = Fbo::create(mpDevice.get());
-}
-
-ColorMapPass::SharedPtr ColorMapPass::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-{
-    SharedPtr pPass = SharedPtr(new ColorMapPass(std::move(pDevice), dict));
-    return pPass;
+    mpFbo = Fbo::create(mpDevice);
 }
 
 Dictionary ColorMapPass::getScriptingDictionary()
@@ -124,8 +118,8 @@ void ColorMapPass::execute(RenderContext* pRenderContext, const RenderData& rend
 
             // Smoothly shrink the auto range when the the range of the input shrinks.
             double alpha = 0.01;
-            mAutoMinValue = glm::lerp(mAutoMinValue, minValue, alpha);
-            mAutoMaxValue = glm::lerp(mAutoMaxValue, maxValue, alpha);
+            mAutoMinValue = math::lerp(mAutoMinValue, minValue, alpha);
+            mAutoMaxValue = math::lerp(mAutoMaxValue, maxValue, alpha);
 
             mMinValue = (float)mAutoMinValue;
             mMaxValue = (float)mAutoMaxValue;
@@ -168,8 +162,9 @@ void ColorMapPass::execute(RenderContext* pRenderContext, const RenderData& rend
     params.minValue = mMinValue;
     params.maxValue = mMaxValue;
 
-    mpColorMapPass["gTexture"] = inputTexture;
-    mpColorMapPass["StaticCB"]["gParams"].setBlob(params);
+    auto var = mpColorMapPass->getRootVar();
+    var["gTexture"] = inputTexture;
+    var["StaticCB"]["gParams"].setBlob(params);
     mpFbo->attachColorTarget(outputTexture, 0);
     mpColorMapPass->getState()->setFbo(mpFbo);
     mpColorMapPass->execute(pRenderContext, mpFbo);
@@ -184,14 +179,14 @@ void ColorMapPass::renderUI(Gui::Widgets& widget)
     widget.var("Max Value", mMaxValue);
 }
 
-ColorMapPass::AutoRanging::AutoRanging(std::shared_ptr<Device> pDevice)
+ColorMapPass::AutoRanging::AutoRanging(ref<Device> pDevice)
 {
     mpParallelReduction = std::make_unique<ParallelReduction>(pDevice);
-    mpReductionResult = Buffer::create(pDevice.get(), 32, ResourceBindFlags::None, Buffer::CpuAccess::Read);
-    mpFence = GpuFence::create(pDevice.get());
+    mpReductionResult = Buffer::create(pDevice, 32, ResourceBindFlags::None, Buffer::CpuAccess::Read);
+    mpFence = GpuFence::create(pDevice);
 }
 
-std::optional<std::pair<double, double>> ColorMapPass::AutoRanging::getMinMax(RenderContext* pRenderContext, const Texture::SharedPtr& texture, uint32_t channel)
+std::optional<std::pair<double, double>> ColorMapPass::AutoRanging::getMinMax(RenderContext* pRenderContext, const ref<Texture>& texture, uint32_t channel)
 {
     FALCOR_ASSERT(pRenderContext);
     FALCOR_ASSERT(texture);

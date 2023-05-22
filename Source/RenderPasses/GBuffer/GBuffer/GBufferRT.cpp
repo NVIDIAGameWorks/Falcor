@@ -72,9 +72,18 @@ namespace
     };
 };
 
-GBufferRT::SharedPtr GBufferRT::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
+GBufferRT::GBufferRT(ref<Device> pDevice, const Dictionary& dict)
+    : GBuffer(pDevice)
 {
-    return SharedPtr(new GBufferRT(std::move(pDevice), dict));
+    if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1))
+    {
+        throw RuntimeError("GBufferRT: Raytracing Tier 1.1 is not supported by the current device");
+    }
+
+    parseDictionary(dict);
+
+    // Create random engine
+    mpSampleGenerator = SampleGenerator::create(mpDevice, SAMPLE_GENERATOR_DEFAULT);
 }
 
 RenderPassReflection GBufferRT::reflect(const CompileData& compileData)
@@ -96,7 +105,7 @@ void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
 
     // Update frame dimension based on render pass output.
     // In this pass all outputs are optional, so we must first find one that exists.
-    Texture::SharedPtr pOutput;
+    ref<Texture> pOutput;
     auto findOutput = [&](const std::string& name) {
         auto pTex = renderData.getTexture(name);
         if (pTex && !pOutput) pOutput = pTex;
@@ -179,11 +188,24 @@ Dictionary GBufferRT::getScriptingDictionary()
     return dict;
 }
 
-void GBufferRT::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
+void GBufferRT::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
 {
     GBuffer::setScene(pRenderContext, pScene);
 
     recreatePrograms();
+}
+
+void GBufferRT::parseDictionary(const Dictionary& dict)
+{
+    GBuffer::parseDictionary(dict);
+
+    for (const auto& [key, value] : dict)
+    {
+        if (key == kLODMode) mLODMode = value;
+        else if (key == kUseTraceRayInline) mUseTraceRayInline = value;
+        else if (key == kUseDOF) mUseDOF = value;
+        // TODO: Check for unparsed fields, including those parsed in base classes.
+    }
 }
 
 void GBufferRT::recreatePrograms()
@@ -211,7 +233,7 @@ void GBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData&
         desc.setMaxAttributeSize(mpScene->getRaytracingMaxAttributeSize());
         desc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
 
-        RtBindingTable::SharedPtr sbt = RtBindingTable::create(1, 1, mpScene->getGeometryCount());
+        ref<RtBindingTable> sbt = RtBindingTable::create(1, 1, mpScene->getGeometryCount());
         sbt->setRayGen(desc.addRayGen("rayGen"));
         sbt->setMiss(0, desc.addMiss("miss"));
         sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), desc.addHitGroup("closestHit", "anyHit"));
@@ -316,36 +338,9 @@ void GBufferRT::setShaderData(const ShaderVar& var, const RenderData& renderData
     // Bind output channels as UAV buffers.
     auto bind = [&](const ChannelDesc& channel)
     {
-        Texture::SharedPtr pTex = getOutput(renderData, channel.name);
+        ref<Texture> pTex = getOutput(renderData, channel.name);
         var[channel.texname] = pTex;
     };
     for (const auto& channel : kGBufferChannels) bind(channel);
     for (const auto& channel : kGBufferExtraChannels) bind(channel);
-}
-
-GBufferRT::GBufferRT(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-    : GBuffer(std::move(pDevice))
-{
-    if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1))
-    {
-        throw RuntimeError("GBufferRT: Raytracing Tier 1.1 is not supported by the current device");
-    }
-
-    parseDictionary(dict);
-
-    // Create random engine
-    mpSampleGenerator = SampleGenerator::create(mpDevice, SAMPLE_GENERATOR_DEFAULT);
-}
-
-void GBufferRT::parseDictionary(const Dictionary& dict)
-{
-    GBuffer::parseDictionary(dict);
-
-    for (const auto& [key, value] : dict)
-    {
-        if (key == kLODMode) mLODMode = value;
-        else if (key == kUseTraceRayInline) mUseTraceRayInline = value;
-        else if (key == kUseDOF) mUseDOF = value;
-        // TODO: Check for unparsed fields, including those parsed in base classes.
-    }
 }

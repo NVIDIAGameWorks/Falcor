@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,7 +29,6 @@
 #include "EmissiveLightSampler.h"
 #include "Core/Macros.h"
 #include "Scene/Lights/LightCollection.h"
-#include <memory>
 #include <random>
 #include <vector>
 
@@ -43,23 +42,20 @@ namespace Falcor
     class FALCOR_API EmissivePowerSampler : public EmissiveLightSampler
     {
     public:
-        using SharedPtr = std::shared_ptr<EmissivePowerSampler>;
-
         struct AliasTable
         {
             float weightSum;                ///< Total weight of all elements used to create the alias table
             uint32_t N;                     ///< Number of entries in the alias table (and # elements in the buffers)
-            Buffer::SharedPtr fullTable;    ///< A compressed/packed merged table.  Max 2^24 (16 million) entries per table.
+            ref<Buffer> fullTable;          ///< A compressed/packed merged table.  Max 2^24 (16 million) entries per table.
         };
-
-        virtual ~EmissivePowerSampler() = default;
 
         /** Creates a EmissivePowerSampler for a given scene.
             \param[in] pRenderContext The render context.
             \param[in] pScene The scene.
             \param[in] options The options to override the default behavior.
         */
-        static SharedPtr create(RenderContext* pRenderContext, Scene::SharedPtr pScene);
+        EmissivePowerSampler(RenderContext* pRenderContext, ref<Scene> pScene);
+        virtual ~EmissivePowerSampler() = default;
 
         /** Updates the sampler to the current frame.
             \param[in] pRenderContext The render context.
@@ -73,8 +69,6 @@ namespace Falcor
         virtual void setShaderData(const ShaderVar& var) const override;
 
     protected:
-        EmissivePowerSampler(RenderContext* pRenderContext, Scene::SharedPtr pScene);
-
         /** Generate an alias table
             \param[in] weights  The weights we'd like to sample each entry proportional to
             \returns The alias table
@@ -84,7 +78,7 @@ namespace Falcor
         // Internal state
         bool                            mNeedsRebuild = true;   ///< Trigger rebuild on the next call to update(). We should always build on the first call, so the initial value is true.
 
-        LightCollection::SharedConstPtr mpLightCollection;
+        ref<const LightCollection>      mpLightCollection;
 
         std::mt19937                    mAliasTableRng;
         AliasTable                      mTriangleTable;

@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
+#include "RenderGraph/RenderPass.h"
 #include "Utils/Algorithm/ParallelReduction.h"
 #include <fstream>
 
@@ -37,8 +38,6 @@ class ErrorMeasurePass : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(ErrorMeasurePass, "ErrorMeasurePass", "Measures error with respect to a reference image.");
 
-    using SharedPtr = std::shared_ptr<ErrorMeasurePass>;
-
     enum class OutputId
     {
         Source,
@@ -47,7 +46,9 @@ public:
         Count
     };
 
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
+    static ref<ErrorMeasurePass> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<ErrorMeasurePass>(pDevice, dict); }
+
+    ErrorMeasurePass(ref<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
@@ -56,19 +57,17 @@ public:
     virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override;
 
 private:
-    ErrorMeasurePass(std::shared_ptr<Device> pDevice, const Dictionary& dict);
-
     bool init(RenderContext* pRenderContext, const Dictionary& dict);
 
     void loadReference();
-    Texture::SharedPtr getReference(const RenderData& renderData) const;
+    ref<Texture> getReference(const RenderData& renderData) const;
     void openMeasurementsFile();
     void saveMeasurementsToFile();
 
     void runDifferencePass(RenderContext* pRenderContext, const RenderData& renderData);
     void runReductionPasses(RenderContext* pRenderContext, const RenderData& renderData);
 
-    ComputePass::SharedPtr mpErrorMeasurerPass;
+    ref<ComputePass> mpErrorMeasurerPass;
     std::unique_ptr<ParallelReduction> mpParallelReduction;
 
     struct
@@ -82,8 +81,8 @@ private:
     float3                  mRunningError = float3(0.f, 0.f, 0.f);
     float                   mRunningAvgError = -1.f;        ///< A negative value indicates that both running error values are invalid.
 
-    Texture::SharedPtr      mpReferenceTexture;
-    Texture::SharedPtr      mpDifferenceTexture;
+    ref<Texture>            mpReferenceTexture;
+    ref<Texture>            mpDifferenceTexture;
 
     std::ofstream           mMeasurementsFile;
 

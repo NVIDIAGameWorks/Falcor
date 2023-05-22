@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -36,13 +36,14 @@ struct TextureAnalyzer
 
     void clear(const uint index)
     {
-        if (index >= inputDim.x) return;
+        if (index >= inputDim.x)
+            return;
 
         uint offset = resultOffset + index * 64;
-        result.Store4(offset, uint4(0));                        // mask
-        result.Store4(offset + 16, asuint(float4(0)));          // value
-        result.Store4(offset + 32, asuint(float4(FLT_MAX)));    // minValue
-        result.Store4(offset + 48, asuint(float4(0)));          // maxValue
+        result.Store4(offset, uint4(0));                     // mask
+        result.Store4(offset + 16, asuint(float4(0)));       // value
+        result.Store4(offset + 32, asuint(float4(FLT_MAX))); // minValue
+        result.Store4(offset + 48, asuint(float4(0)));       // maxValue
     }
 
     void analyze(const uint2 texel)
@@ -76,10 +77,14 @@ struct TextureAnalyzer
             uint range = 0;
             for (int i = 3; i >= 0; i--)
             {
-                if (val[i] > 0.f) range |= 1;
-                if (val[i] < 0.f) range |= 2;
-                if (isinf(val[i])) range |= 4;
-                if (isnan(val[i])) range |= 8;
+                if (val[i] > 0.f)
+                    range |= 1;
+                if (val[i] < 0.f)
+                    range |= 2;
+                if (isinf(val[i]))
+                    range |= 4;
+                if (isnan(val[i]))
+                    range |= 8;
                 range <<= 4;
             }
 
@@ -91,7 +96,8 @@ struct TextureAnalyzer
             valid = true;
         }
 
-        if (WaveActiveAllTrue(!valid)) return;
+        if (WaveActiveAllTrue(!valid))
+            return;
 
         // Reduce the result across the warp.
         // These instructions are purposely placed outside of control flow.
@@ -102,7 +108,8 @@ struct TextureAnalyzer
         // Let the first lane write out result atomically.
         if (WaveIsFirstLane())
         {
-            if (mask != 0) result.InterlockedOr(resultOffset, mask);
+            if (mask != 0)
+                result.InterlockedOr(resultOffset, mask);
 
             // Clamp to zero since we're using integer atomics.
             minVal = max(minVal, float4(0));
@@ -124,13 +131,13 @@ struct TextureAnalyzer
 ConstantBuffer<TextureAnalyzer> gTextureAnalyzer;
 
 [numthreads(256, 1, 1)]
-void clear(uint3 dispatchThreadId : SV_DispatchThreadID)
+void clear(uint3 dispatchThreadId: SV_DispatchThreadID)
 {
     gTextureAnalyzer.clear(dispatchThreadId.x);
 }
 
 [numthreads(16, 16, 1)]
-void analyze(uint3 dispatchThreadId : SV_DispatchThreadID)
+void analyze(uint3 dispatchThreadId: SV_DispatchThreadID)
 {
     gTextureAnalyzer.analyze(dispatchThreadId.xy);
 }

@@ -53,8 +53,8 @@ public:
 
     private:
         ReadTextureTask() = default;
-        GpuFence::SharedPtr mpFence;
-        Buffer::SharedPtr mpBuffer;
+        ref<GpuFence> mpFence;
+        ref<Buffer> mpBuffer;
         CopyContext* mpContext;
         uint32_t mRowCount;
         uint32_t mRowSize;
@@ -71,7 +71,7 @@ public:
     CopyContext(Device* pDevice, gfx::ICommandQueue* pQueue);
     virtual ~CopyContext();
 
-    Device* getDevice() const;
+    ref<Device> getDevice() const;
 
     Profiler* getProfiler() const;
 

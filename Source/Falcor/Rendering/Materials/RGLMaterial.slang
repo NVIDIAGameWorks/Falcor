@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -43,7 +43,12 @@ struct RGLMaterial : MaterialBase, IMaterial
     RGLMaterialInstance setupMaterialInstance(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints)
     {
         // Compute final shading frame.
-        ShadingFrame sf = ShadingFrame(sd);
+        ShadingFrame sf = sd.frame;
+        flipShadingNormal(sd, sf);
+        if (isAdjustShadingNormalEnabled(hints))
+        {
+            adjustShadingNormal(sd, sf);
+        }
 
         // Evaluate the albedo for the current incident (view) direction.
         float3 albedo = {};
@@ -75,9 +80,6 @@ struct RGLMaterial : MaterialBase, IMaterial
 
         return RGLMaterialInstance(sf, slice, sigmaEval, albedo, data);
     }
-
-    // Normal mapping is not supported by this material.
-    void modifyTangentSpace(const MaterialSystem ms, const ITextureSampler lod, inout ShadingData sd) {}
 
     // Alpha testing is not supported by this material.
     float evalOpacity(const MaterialSystem ms, const VertexData v, const ITextureSampler lod) { return 1.f; }

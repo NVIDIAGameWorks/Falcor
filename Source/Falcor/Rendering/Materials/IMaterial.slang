@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -64,16 +64,6 @@ interface IMaterial
         \return MaterialInstance implementing the `IMaterialInstance` interface.
     */
     MaterialInstance setupMaterialInstance(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints = (uint)MaterialInstanceHints::None);
-
-    /** Modify the tangent space at the given shading point.
-        This function is called by the material system when preparing the `ShadingData` struct.
-        It allows materials to implement normal mapping and other techniques that modify the local surface geometry.
-        Materials that do not need to modify the default tangent frame should leave the shading data unchanged.
-        \param[in] ms Material system. This provides the resources for pattern generation.
-        \param[in] lod Method to use for computing texture level of detail, must implement the `ITextureSampler` interface.
-        \param[in,out] sd Shading data.
-    */
-    void modifyTangentSpace(const MaterialSystem ms, const ITextureSampler lod, inout ShadingData sd);
 
     /** Evaluate opacity at the given shading point.
         \param[in] ms Material system. This provides the resources for opacity evaluation.

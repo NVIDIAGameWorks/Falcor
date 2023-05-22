@@ -222,9 +222,9 @@ gfx::InputSlotClass getGFXInputSlotClass(VertexBufferLayout::InputClass cls)
     }
 }
 
-BlendState::SharedPtr GraphicsStateObject::spDefaultBlendState;
-RasterizerState::SharedPtr GraphicsStateObject::spDefaultRasterizerState;
-DepthStencilState::SharedPtr GraphicsStateObject::spDefaultDepthStencilState;
+ref<BlendState> GraphicsStateObject::spDefaultBlendState;
+ref<RasterizerState> GraphicsStateObject::spDefaultRasterizerState;
+ref<DepthStencilState> GraphicsStateObject::spDefaultDepthStencilState;
 
 bool GraphicsStateObject::Desc::operator==(const GraphicsStateObject::Desc& other) const
 {
@@ -271,7 +271,7 @@ GraphicsStateObject::~GraphicsStateObject()
     mpDevice->releaseResource(mpGFXRenderPassLayout);
 }
 
-GraphicsStateObject::GraphicsStateObject(std::shared_ptr<Device> pDevice, const Desc& desc) : mpDevice(std::move(pDevice)), mDesc(desc)
+GraphicsStateObject::GraphicsStateObject(ref<Device> pDevice, const Desc& desc) : mpDevice(pDevice), mDesc(desc)
 {
     if (spDefaultBlendState == nullptr)
     {
@@ -457,8 +457,14 @@ GraphicsStateObject::GraphicsStateObject(std::shared_ptr<Device> pDevice, const 
     FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createGraphicsPipelineState(gfxDesc, mGfxPipelineState.writeRef()));
 }
 
-GraphicsStateObject::SharedPtr GraphicsStateObject::create(Device* pDevice, const Desc& desc)
+ref<GraphicsStateObject> GraphicsStateObject::create(ref<Device> pDevice, const Desc& desc)
 {
-    return SharedPtr(new GraphicsStateObject(pDevice->shared_from_this(), desc));
+    return ref<GraphicsStateObject>(new GraphicsStateObject(pDevice, desc));
 }
+
+void GraphicsStateObject::breakStrongReferenceToDevice()
+{
+    mpDevice.breakStrongReference();
+}
+
 } // namespace Falcor

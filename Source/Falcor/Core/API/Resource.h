@@ -26,25 +26,25 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "fwd.h"
 #include "Handles.h"
 #include "NativeHandle.h"
 #include "Formats.h"
 #include "ResourceViews.h"
 #include "Core/Macros.h"
-#include <memory>
+#include "Core/Object.h"
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 namespace Falcor
 {
-class Device;
 class Texture;
 class Buffer;
 class ParameterBlock;
 struct ResourceViewInfo;
 
-class FALCOR_API Resource : public std::enable_shared_from_this<Resource>
+class FALCOR_API Resource : public Object
 {
 public:
     using BindFlags = ResourceBindFlags;
@@ -91,16 +91,14 @@ public:
         AccelerationStructure,
     };
 
-    using SharedPtr = std::shared_ptr<Resource>;
-
     /**
      * Default value used in create*() methods
      */
-    static const uint32_t kMaxPossible = RenderTargetView::kMaxPossible;
+    static constexpr uint32_t kMaxPossible = RenderTargetView::kMaxPossible;
 
     virtual ~Resource() = 0;
 
-    const std::shared_ptr<Device>& getDevice() const { return mpDevice; }
+    ref<Device> getDevice() const;
 
     /**
      * Get the bind flags
@@ -178,21 +176,23 @@ public:
      * Get a SRV/UAV for the entire resource.
      * Buffer and Texture have overloads which allow you to create a view into part of the resource
      */
-    virtual ShaderResourceView::SharedPtr getSRV() = 0;
-    virtual UnorderedAccessView::SharedPtr getUAV() = 0;
+    virtual ref<ShaderResourceView> getSRV() = 0;
+    virtual ref<UnorderedAccessView> getUAV() = 0;
 
     /**
      * Conversions to derived classes
      */
-    std::shared_ptr<Texture> asTexture();
-    std::shared_ptr<Buffer> asBuffer();
+    ref<Texture> asTexture();
+    ref<Buffer> asBuffer();
+
+    void breakStrongReferenceToDevice();
 
 protected:
     friend class CopyContext;
 
-    Resource(std::shared_ptr<Device> pDevice, Type type, BindFlags bindFlags, uint64_t size);
+    Resource(ref<Device> pDevice, Type type, BindFlags bindFlags, uint64_t size);
 
-    std::shared_ptr<Device> mpDevice;
+    BreakableReference<Device> mpDevice;
     Type mType;
     BindFlags mBindFlags;
     struct
@@ -210,10 +210,10 @@ protected:
     std::string mName;
     mutable SharedResourceApiHandle mSharedApiHandle = 0;
 
-    mutable std::unordered_map<ResourceViewInfo, ShaderResourceView::SharedPtr, ViewInfoHashFunc> mSrvs;
-    mutable std::unordered_map<ResourceViewInfo, RenderTargetView::SharedPtr, ViewInfoHashFunc> mRtvs;
-    mutable std::unordered_map<ResourceViewInfo, DepthStencilView::SharedPtr, ViewInfoHashFunc> mDsvs;
-    mutable std::unordered_map<ResourceViewInfo, UnorderedAccessView::SharedPtr, ViewInfoHashFunc> mUavs;
+    mutable std::unordered_map<ResourceViewInfo, ref<ShaderResourceView>, ViewInfoHashFunc> mSrvs;
+    mutable std::unordered_map<ResourceViewInfo, ref<RenderTargetView>, ViewInfoHashFunc> mRtvs;
+    mutable std::unordered_map<ResourceViewInfo, ref<DepthStencilView>, ViewInfoHashFunc> mDsvs;
+    mutable std::unordered_map<ResourceViewInfo, ref<UnorderedAccessView>, ViewInfoHashFunc> mUavs;
 };
 
 const std::string FALCOR_API to_string(Resource::Type);

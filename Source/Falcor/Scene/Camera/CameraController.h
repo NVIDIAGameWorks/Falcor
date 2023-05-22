@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -45,8 +45,6 @@ namespace Falcor
     class FALCOR_API CameraController
     {
     public:
-        using SharedPtr = std::shared_ptr<CameraController>;
-
         enum class UpDirection
         {
             XPos, XNeg, YPos, YNeg, ZPos, ZNeg,
@@ -98,11 +96,11 @@ namespace Falcor
         void setCameraBounds(const AABB& aabb) { mBounds = aabb; }
 
     protected:
-        CameraController(const Camera::SharedPtr& pCamera) : mpCamera(pCamera) {}
+        CameraController(const ref<Camera>& pCamera) : mpCamera(pCamera) {}
 
         float3 getUpVector() const;
 
-        Camera::SharedPtr mpCamera = nullptr;
+        ref<Camera> mpCamera;
         UpDirection mUpDirection = UpDirection::YPos;
         float mSpeed = 1;
         AABB mBounds;
@@ -116,12 +114,7 @@ namespace Falcor
     class FALCOR_API OrbiterCameraController : public CameraController
     {
     public:
-        using SharedPtr = std::shared_ptr<OrbiterCameraController>;
-        OrbiterCameraController(const Camera::SharedPtr& pCamera) : CameraController(pCamera) {}
-
-        /** Create a new object
-        */
-        static SharedPtr create(const Camera::SharedPtr& pCamera) { return SharedPtr(new OrbiterCameraController(pCamera)); }
+        OrbiterCameraController(const ref<Camera>& pCamera) : CameraController(pCamera) {}
 
         /** Handle mouse events
         */
@@ -149,7 +142,7 @@ namespace Falcor
         float mCameraDistance;
         bool mbDirty;
 
-        rmcv::mat3 mRotation;
+        float3x3 mRotation = float3x3::identity();
         float3 mLastVector;
         bool mIsLeftButtonDown = false;
         bool mShouldRotate = false;
@@ -169,12 +162,7 @@ namespace Falcor
     class FALCOR_API FirstPersonCameraControllerCommon : public CameraController
     {
     public:
-        FirstPersonCameraControllerCommon(const Camera::SharedPtr& pCamera);
-        using SharedPtr = std::shared_ptr<FirstPersonCameraControllerCommon>;
-
-        /** Create a new object
-        */
-        static SharedPtr create(const Camera::SharedPtr& pCamera) { return SharedPtr(new FirstPersonCameraControllerCommon(pCamera)); }
+        FirstPersonCameraControllerCommon(const ref<Camera>& pCamera);
 
         /** Handle mouse events
         */

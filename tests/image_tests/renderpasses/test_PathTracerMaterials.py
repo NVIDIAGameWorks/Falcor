@@ -14,6 +14,10 @@ render_frames(m, 'default', frames=[1,256])
 m.loadScene('TestScenes/Materials/Materials.pyscene')
 render_frames(m, 'types', frames=[1,256])
 
+# Test for light leaks
+m.loadScene('TestScenes/Materials/LightLeaks.pyscene')
+render_frames(m, 'leaks', frames=[1,256])
+
 # Test alpha testing
 m.loadScene('TestScenes/AlphaTest/AlphaTest.pyscene')
 render_frames(m, 'alpha', frames=[1,64])

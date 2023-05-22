@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -73,7 +73,7 @@ GPU_TEST(WavelengthToXYZ)
         EXPECT_GE(res.z, 0.f);
 
         float3 e = ref - res;
-        maxSqrError = glm::max(maxSqrError, e * e);
+        maxSqrError = max(maxSqrError, e * e);
     }
     ctx.unmapBuffer("result");
 

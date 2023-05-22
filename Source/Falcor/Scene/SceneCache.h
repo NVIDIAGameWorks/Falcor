@@ -73,7 +73,7 @@ namespace Falcor
             \param[in] key Cache key.
             \return Returns the loaded scene data.
         */
-        static Scene::SceneData readCache(std::shared_ptr<Device> pDevice, const Key& key);
+        static Scene::SceneData readCache(ref<Device> pDevice, const Key& key);
 
     private:
         class OutputStream;
@@ -82,41 +82,41 @@ namespace Falcor
         static std::filesystem::path getCachePath(const Key& key);
 
         static void writeSceneData(OutputStream& stream, const Scene::SceneData& sceneData);
-        static Scene::SceneData readSceneData(InputStream& stream, std::shared_ptr<Device> pDevice);
+        static Scene::SceneData readSceneData(InputStream& stream, ref<Device> pDevice);
 
         static void writeMetadata(OutputStream& stream, const Scene::Metadata& metadata);
         static Scene::Metadata readMetadata(InputStream& stream);
 
-        static void writeCamera(OutputStream& stream, const Camera::SharedPtr& pCamera);
-        static Camera::SharedPtr readCamera(InputStream& stream);
+        static void writeCamera(OutputStream& stream, const ref<Camera>& pCamera);
+        static ref<Camera> readCamera(InputStream& stream);
 
-        static void writeLight(OutputStream& stream, const Light::SharedPtr& pLight);
-        static Light::SharedPtr readLight(InputStream& stream);
+        static void writeLight(OutputStream& stream, const ref<Light>& pLight);
+        static ref<Light> readLight(InputStream& stream);
 
-        static void writeMaterials(OutputStream& stream, const MaterialSystem::SharedPtr& pMaterials);
-        static void writeMaterial(OutputStream& stream, const Material::SharedPtr& pMaterial);
-        static void writeBasicMaterial(OutputStream& stream, const BasicMaterial::SharedPtr& pMaterial);
-        static void readMaterials(InputStream& stream, const MaterialSystem::SharedPtr& pMaterials, MaterialTextureLoader& materialTextureLoader, std::shared_ptr<Device> pDevice);
-        static Material::SharedPtr readMaterial(InputStream& stream, MaterialTextureLoader& materialTextureLoader, std::shared_ptr<Device> pDevice);
-        static void readBasicMaterial(InputStream& stream, MaterialTextureLoader& materialTextureLoader, const BasicMaterial::SharedPtr& pMaterial, std::shared_ptr<Device> pDevice);
+        static void writeMaterials(OutputStream& stream, const MaterialSystem& materialSystem);
+        static void writeMaterial(OutputStream& stream, const ref<Material>& pMaterial);
+        static void writeBasicMaterial(OutputStream& stream, const ref<BasicMaterial>& pMaterial);
+        static void readMaterials(InputStream& stream, MaterialSystem& materialSystem, MaterialTextureLoader& materialTextureLoader, ref<Device> pDevice);
+        static ref<Material> readMaterial(InputStream& stream, MaterialTextureLoader& materialTextureLoader, ref<Device> pDevice);
+        static void readBasicMaterial(InputStream& stream, MaterialTextureLoader& materialTextureLoader, const ref<BasicMaterial>& pMaterial, ref<Device> pDevice);
 
-        static void writeSampler(OutputStream& stream, const Sampler::SharedPtr& pSampler);
-        static Sampler::SharedPtr readSampler(InputStream& stream, Device* pDevice);
+        static void writeSampler(OutputStream& stream, const ref<Sampler>& pSampler);
+        static ref<Sampler> readSampler(InputStream& stream, ref<Device> pDevice);
 
-        static void writeGridVolume(OutputStream& stream, const GridVolume::SharedPtr& pVolume, const std::vector<Grid::SharedPtr>& grids);
-        static GridVolume::SharedPtr readGridVolume(InputStream& stream, const std::vector<Grid::SharedPtr>& grids, std::shared_ptr<Device> pDevice);
+        static void writeGridVolume(OutputStream& stream, const ref<GridVolume>& pVolume, const std::vector<ref<Grid>>& grids);
+        static ref<GridVolume> readGridVolume(InputStream& stream, const std::vector<ref<Grid>>& grids, ref<Device> pDevice);
 
-        static void writeGrid(OutputStream& stream, const Grid::SharedPtr& pGrid);
-        static Grid::SharedPtr readGrid(InputStream& stream, std::shared_ptr<Device> pDevice);
+        static void writeGrid(OutputStream& stream, const ref<Grid>& pGrid);
+        static ref<Grid> readGrid(InputStream& stream, ref<Device> pDevice);
 
-        static void writeEnvMap(OutputStream& stream, const EnvMap::SharedPtr& pEnvMap);
-        static EnvMap::SharedPtr readEnvMap(InputStream& stream, std::shared_ptr<Device> pDevice);
+        static void writeEnvMap(OutputStream& stream, const ref<EnvMap>& pEnvMap);
+        static ref<EnvMap> readEnvMap(InputStream& stream, ref<Device> pDevice);
 
         static void writeTransform(OutputStream& stream, const Transform& transform);
         static Transform readTransform(InputStream& stream);
 
-        static void writeAnimation(OutputStream& stream, const Animation::SharedPtr& pAnimation);
-        static Animation::SharedPtr readAnimation(InputStream& stream);
+        static void writeAnimation(OutputStream& stream, const ref<Animation>& pAnimation);
+        static ref<Animation> readAnimation(InputStream& stream);
 
         static void writeMarker(OutputStream& stream, const std::string& id);
         static void readMarker(InputStream& stream, const std::string& id);

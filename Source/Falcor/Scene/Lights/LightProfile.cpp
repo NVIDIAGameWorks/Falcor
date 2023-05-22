@@ -30,7 +30,7 @@
 #include "Core/API/RenderContext.h"
 #include "Utils/Logger.h"
 #include "Utils/Algorithm/ParallelReduction.h"
-#include "RenderGraph/BasePasses/ComputePass.h"
+#include "Core/Pass/ComputePass.h"
 
 #include <filesystem>
 #include <fstream>
@@ -42,7 +42,6 @@ namespace Falcor
         const uint32_t kBakeResolution = 256;
 
         const char kBakeIesProfileFile[] = "Scene/Lights/BakeIesProfile.cs.slang";
-        ComputePass::SharedPtr pBakePass;
 
         const char* kSupportedProfiles[] = {
             "IESNA:LM-63-1986",
@@ -149,11 +148,13 @@ namespace Falcor
             }
 
             numericData.reserve(numWhitespace);
-            while ((line = strtok(NULL, dataDelimiters)))
+            line = strtok(NULL, dataDelimiters);
+            while (line)
             {
                 float value = 0.f;
                 if (sscanf(line, "%f", &value) == 1)
                     numericData.push_back(value);
+                line = strtok(NULL, dataDelimiters);
             }
 
             if (numericData.size() < 16)
@@ -181,13 +182,13 @@ namespace Falcor
     }
 
 
-    LightProfile::LightProfile(std::shared_ptr<Device> pDevice, const std::string& name, const std::vector<float>& rawData)
-        : mpDevice(std::move(pDevice))
+    LightProfile::LightProfile(ref<Device> pDevice, const std::string& name, const std::vector<float>& rawData)
+        : mpDevice(pDevice)
         , mName(name)
         , mRawData(rawData)
     {}
 
-    LightProfile::SharedPtr LightProfile::createFromIesProfile(std::shared_ptr<Device> pDevice, const std::filesystem::path& filename, bool normalize)
+    ref<LightProfile> LightProfile::createFromIesProfile(ref<Device> pDevice, const std::filesystem::path& filename, bool normalize)
     {
         std::filesystem::path fullpath;
         if (!findFileInDataDirectories(filename, fullpath))
@@ -221,19 +222,15 @@ namespace Falcor
 
         std::string name = fullpath.filename().string();
 
-        return SharedPtr(new LightProfile(std::move(pDevice), name, numericData));
+        return ref<LightProfile>(new LightProfile(pDevice, name, numericData));
     }
 
     void LightProfile::bake(RenderContext* pRenderContext)
     {
-        if (!pBakePass)
-        {
-            pBakePass = ComputePass::create(mpDevice, kBakeIesProfileFile, "main");
-        }
-
-        auto pBuffer = Buffer::createTyped<float>(mpDevice.get(), (uint32_t)mRawData.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, mRawData.data());
-        mpTexture = Texture::create2D(mpDevice.get(), kBakeResolution, kBakeResolution, ResourceFormat::R16Float, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
-        auto pFluxTexture = Texture::create2D(mpDevice.get(), kBakeResolution, kBakeResolution, ResourceFormat::R32Float, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+        auto pBakePass = ComputePass::create(mpDevice, kBakeIesProfileFile, "main");
+        auto pBuffer = Buffer::createTyped<float>(mpDevice, (uint32_t)mRawData.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, mRawData.data());
+        mpTexture = Texture::create2D(mpDevice, kBakeResolution, kBakeResolution, ResourceFormat::R16Float, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+        auto pFluxTexture = Texture::create2D(mpDevice, kBakeResolution, kBakeResolution, ResourceFormat::R32Float, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
 
         auto var = pBakePass->getRootVar();
         var["gIesData"] = pBuffer;
@@ -249,7 +246,7 @@ namespace Falcor
 
         Sampler::Desc desc;
         desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-        mpSampler = Sampler::create(mpDevice.get(), desc);
+        mpSampler = Sampler::create(mpDevice, desc);
     }
 
     void LightProfile::setShaderData(const ShaderVar& var) const
@@ -265,7 +262,7 @@ namespace Falcor
         if (mpTexture)
         {
             widget.text("Texture info: " + std::to_string(mpTexture->getWidth()) + "x" + std::to_string(mpTexture->getHeight()) + " (" + to_string(mpTexture->getFormat()) + ")");
-            widget.image("Texture", mpTexture, float2(100.f));
+            widget.image("Texture", mpTexture.get(), float2(100.f));
         }
         widget.text("Flux factor: " + std::to_string(mFluxFactor));
     }

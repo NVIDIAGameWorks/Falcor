@@ -91,12 +91,13 @@ GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 bar
     const float3 viewDir = normalize(gScene.camera.getPosition() - v.posW);
     ShadingData sd = gScene.materials.prepareShadingData(v, vsOut.materialID, viewDir, lod);
 
+    uint hints = 0;
 #if ADJUST_SHADING_NORMALS
-    adjustShadingNormal(sd);
+    hints |= (uint)MaterialInstanceHints::AdjustShadingNormal;
 #endif
 
     // Create material instance and query its properties.
-    let mi = gScene.materials.getMaterialInstance(sd, lod);
+    let mi = gScene.materials.getMaterialInstance(sd, lod, hints);
     let bsdfProperties = mi.getProperties(sd);
 
     const GBufferData gbuf = prepareGBufferData(sd, v, mi, bsdfProperties);

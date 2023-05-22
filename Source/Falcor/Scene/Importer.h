@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,12 +31,13 @@
 #include "Core/Errors.h"
 #include "Core/Plugin.h"
 #include "Core/Platform/OS.h"
-#include "Utils/Scripting/Dictionary.h"
 #include <filesystem>
 #include <functional>
 #include <memory>
 #include <string>
 #include <vector>
+
+#include <pybind11/pytypes.h>
 
 namespace Falcor
 {
@@ -102,7 +103,7 @@ namespace Falcor
             \param[in] dict Optional dictionary.
             Throws an ImporterError if something went wrong.
         */
-        virtual void importScene(const std::filesystem::path& path, SceneBuilder& builder, const Dictionary& dict) = 0;
+        virtual void importScene(const std::filesystem::path& path, SceneBuilder& builder, const pybind11::dict& dict) = 0;
 
         // Importer factory
 

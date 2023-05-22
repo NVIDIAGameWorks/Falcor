@@ -26,10 +26,12 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "fwd.h"
 #include "Device.h"
 #include "Handles.h"
 #include "NativeHandle.h"
 #include "Core/Macros.h"
+#include "Core/Object.h"
 #include "Core/Program/ProgramVersion.h"
 
 namespace Falcor
@@ -38,15 +40,13 @@ namespace Falcor
 class D3D12RootSignature;
 #endif
 
-class FALCOR_API ComputeStateObject
+class FALCOR_API ComputeStateObject : public Object
 {
 public:
-    using SharedPtr = std::shared_ptr<ComputeStateObject>;
-
     class FALCOR_API Desc
     {
     public:
-        Desc& setProgramKernels(const ProgramKernels::SharedConstPtr& pProgram)
+        Desc& setProgramKernels(const ref<const ProgramKernels>& pProgram)
         {
             mpProgram = pProgram;
             return *this;
@@ -58,21 +58,20 @@ public:
          * This function is supported on D3D12 only.
          * @param[in] pRootSignature An overriding D3D12RootSignature object to use in the compute state.
          */
-        Desc& setD3D12RootSignatureOverride(const std::shared_ptr<const D3D12RootSignature>& pRootSignature)
+        Desc& setD3D12RootSignatureOverride(const ref<const D3D12RootSignature>& pRootSignature)
         {
             mpD3D12RootSignatureOverride = pRootSignature;
             return *this;
         }
 #endif
-        const ProgramKernels::SharedConstPtr getProgramKernels() const { return mpProgram; }
-        ProgramVersion::SharedConstPtr getProgramVersion() const { return mpProgram->getProgramVersion(); }
+        ref<const ProgramKernels> getProgramKernels() const { return mpProgram; }
         bool operator==(const Desc& other) const;
 
     private:
         friend class ComputeStateObject;
-        ProgramKernels::SharedConstPtr mpProgram;
+        ref<const ProgramKernels> mpProgram;
 #if FALCOR_HAS_D3D12
-        std::shared_ptr<const D3D12RootSignature> mpD3D12RootSignatureOverride;
+        ref<const D3D12RootSignature> mpD3D12RootSignatureOverride;
 #endif
     };
 
@@ -83,7 +82,7 @@ public:
      * @param[in] desc State object description.
      * @return New object, or throws an exception if creation failed.
      */
-    static SharedPtr create(Device* pDevice, const Desc& desc);
+    static ref<ComputeStateObject> create(ref<Device> pDevice, const Desc& desc);
 
     gfx::IPipelineState* getGfxPipelineState() const { return mGfxPipelineState; }
 
@@ -97,9 +96,9 @@ public:
     const Desc& getDesc() const { return mDesc; }
 
 private:
-    ComputeStateObject(std::shared_ptr<Device> pDevice, const Desc& desc);
+    ComputeStateObject(ref<Device> pDevice, const Desc& desc);
 
-    std::shared_ptr<Device> mpDevice;
+    ref<Device> mpDevice;
     Desc mDesc;
     Slang::ComPtr<gfx::IPipelineState> mGfxPipelineState;
 };

@@ -35,7 +35,6 @@
 #include "Utils/Math/Vector.h"
 #include "Utils/StringFormatters.h"
 
-#include <glm/gtx/io.hpp>
 #include <fmt/format.h>
 #include <fmt/ostream.h>
 
@@ -122,7 +121,7 @@ FALCOR_API void registerGPUTest(
     UnitTestDeviceFlags supportedDevices
 );
 FALCOR_API int32_t runTests(
-    std::shared_ptr<Device> pDevice,
+    ref<Device> pDevice,
     Fbo* pTargetFbo,
     UnitTestCategoryFlags categoryFlags,
     const std::string& testFilterRegexp,
@@ -154,7 +153,7 @@ class FALCOR_API CPUUnitTestContext : public UnitTestContext
 class FALCOR_API GPUUnitTestContext : public UnitTestContext
 {
 public:
-    GPUUnitTestContext(std::shared_ptr<Device> pDevice, Fbo* pTargetFbo) : mpDevice(std::move(pDevice)), mpTargetFbo(pTargetFbo) {}
+    GPUUnitTestContext(ref<Device> pDevice, Fbo* pTargetFbo) : mpDevice(pDevice), mpTargetFbo(pTargetFbo) {}
 
     /**
      * createProgram creates a compute program from the source code at the
@@ -255,7 +254,7 @@ public:
     /**
      * Returns the current Falcor render device.
      */
-    const std::shared_ptr<Device>& getDevice() const { return mpDevice; }
+    const ref<Device>& getDevice() const { return mpDevice; }
 
     /**
      * Returns the current Falcor render context.
@@ -276,16 +275,16 @@ private:
     const void* mapRawRead(const char* bufferName);
 
     // Internal state
-    std::shared_ptr<Device> mpDevice;
+    ref<Device> mpDevice;
     Fbo* mpTargetFbo;
-    ComputeState::SharedPtr mpState;
-    ComputeProgram::SharedPtr mpProgram;
-    ComputeVars::SharedPtr mpVars;
+    ref<ComputeState> mpState;
+    ref<ComputeProgram> mpProgram;
+    ref<ComputeVars> mpVars;
     uint3 mThreadGroupSize = {0, 0, 0};
 
     struct ParameterBuffer
     {
-        Buffer::SharedPtr pBuffer;
+        ref<Buffer> pBuffer;
         bool mapped = false;
     };
     std::map<std::string, ParameterBuffer> mStructuredBuffers;
@@ -393,6 +392,32 @@ inline std::optional<std::string> createBoolMessage(std::string_view valueStr, b
 #define FTEST_TEST_BOOLEAN(valueStr, value, expected, userFailMsg, isAssert) \
     FTEST_MESSAGE(::Falcor::unittest::createBoolMessage(valueStr, value, expected), userFailMsg, isAssert)
 
+struct CmpHelperEQ
+{
+    template<typename TLhs, typename TRhs>
+    static bool compare(const TLhs& lhs, const TRhs& rhs)
+    {
+        if constexpr (std::is_same_v<TLhs, TRhs>)
+            return ::std::equal_to<TLhs>{}(lhs, rhs);
+        else
+            return lhs == rhs;
+    }
+    static const char* asString() { return "=="; }
+};
+
+struct CmpHelperNE
+{
+    template<typename TLhs, typename TRhs>
+    static bool compare(const TLhs& lhs, const TRhs& rhs)
+    {
+        if constexpr (std::is_same_v<TLhs, TRhs>)
+            return ::std::not_equal_to<TLhs>{}(lhs, rhs);
+        else
+            return lhs != rhs;
+    }
+    static const char* asString() { return "!="; }
+};
+
 #define FTEST_COMPARISON_HELPER(opName, op)                   \
     struct CmpHelper##opName                                  \
     {                                                         \
@@ -407,8 +432,6 @@ inline std::optional<std::string> createBoolMessage(std::string_view valueStr, b
         }                                                     \
     }
 
-FTEST_COMPARISON_HELPER(EQ, ==);
-FTEST_COMPARISON_HELPER(NE, !=);
 FTEST_COMPARISON_HELPER(LE, <=);
 FTEST_COMPARISON_HELPER(GE, >=);
 FTEST_COMPARISON_HELPER(LT, <);

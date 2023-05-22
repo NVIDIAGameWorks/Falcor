@@ -27,34 +27,22 @@
  **************************************************************************/
 #include "VAO.h"
 #include "GFXAPI.h"
+#include "Core/ObjectPython.h"
 #include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
 {
-Vao::Vao(
-    const BufferVec& pVBs,
-    const VertexLayout::SharedPtr& pLayout,
-    const Buffer::SharedPtr& pIB,
-    ResourceFormat ibFormat,
-    Topology topology
-)
+Vao::Vao(const BufferVec& pVBs, ref<VertexLayout> pLayout, ref<Buffer> pIB, ResourceFormat ibFormat, Topology topology)
     : mpVertexLayout(pLayout), mpVBs(pVBs), mpIB(pIB), mIbFormat(ibFormat), mTopology(topology)
 {}
 
-Vao::SharedPtr Vao::create(
-    Topology topology,
-    const VertexLayout::SharedPtr& pLayout,
-    const BufferVec& pVBs,
-    const Buffer::SharedPtr& pIB,
-    ResourceFormat ibFormat
-)
+ref<Vao> Vao::create(Topology topology, ref<VertexLayout> pLayout, const BufferVec& pVBs, ref<Buffer> pIB, ResourceFormat ibFormat)
 {
     // TODO: Check number of vertex buffers match with pLayout.
     checkArgument(
         !pIB || (ibFormat == ResourceFormat::R16Uint || ibFormat == ResourceFormat::R32Uint), "'ibFormat' must be R16Uint or R32Uint."
     );
-    SharedPtr pVao = SharedPtr(new Vao(pVBs, pLayout, pIB, ibFormat, topology));
-    return pVao;
+    return ref<Vao>(new Vao(pVBs, pLayout, pIB, ibFormat, topology));
 }
 
 Vao::ElementDesc Vao::getElementIndexByLocation(uint32_t elementLocaion) const
@@ -81,6 +69,6 @@ Vao::ElementDesc Vao::getElementIndexByLocation(uint32_t elementLocaion) const
 
 FALCOR_SCRIPT_BINDING(Vao)
 {
-    pybind11::class_<Vao, Vao::SharedPtr>(m, "Vao");
+    pybind11::class_<Vao, ref<Vao>>(m, "Vao");
 }
 } // namespace Falcor

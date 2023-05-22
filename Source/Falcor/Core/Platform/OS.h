@@ -49,13 +49,6 @@ public:
 };
 
 /**
- * Sets the main window handle.
- * This is used to set the parent window when showing message boxes.
- * @param[in] windowHandle Window handle.
- */
-FALCOR_API void setMainWindowHandle(WindowHandle windowHandle);
-
-/**
  * Adds an icon to the foreground window.
  * @param[in] path Icon file path.
  * @param[in] windowHandle The api handle of the window for which we need to set the icon to. nullptr will apply the icon to the foreground
@@ -151,6 +144,14 @@ FALCOR_API uint32_t msgBox(
     MsgBoxIcon icon = MsgBoxIcon::None,
     uint32_t defaultButtonId = uint32_t(-1)
 );
+
+/**
+ * Compares two paths in their weakly canonical form, returning true if they match.
+ * Operator == on path does a string comparison, ignoring the fact that windows paths are case insensitive.
+ * STL's equivalent comparator throws when either of the paths does not exist.
+ * This complements the two by allowing comparing non-existent paths, but at the same time ignoring case on windows.
+ */
+FALCOR_API bool isSamePath(const std::filesystem::path& lhs, const std::filesystem::path& rhs);
 
 /**
  * Finds a file in one of the data search directories.

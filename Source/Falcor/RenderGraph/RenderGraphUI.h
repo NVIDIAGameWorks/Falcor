@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -38,187 +38,227 @@
 
 namespace Falcor
 {
+class NodeGraphEditorGui;
+class RenderGraphUI;
+class RenderContext;
+
+/**
+ * Class for drawing UI elements for a render pass in the render graph editor.
+ */
+class FALCOR_API RenderPassUI
+{
+public:
+    // wrapper around inserting new pin for a given pass
+    void addUIPin(
+        const std::string& fieldName,
+        uint32_t guiPinID,
+        bool isInput,
+        const std::string& connectedPinName = "",
+        const std::string& connectedNodeName = "",
+        bool isGraphOutput = false
+    );
+    void renderPinUI(const std::string& passName, RenderGraphUI* pGraphUI, uint32_t index = 0, bool input = false);
+
+    friend class RenderGraphUI;
+
+private:
+    class PinUI
+    {
+    public:
+        std::string mPinName;
+        uint32_t mGuiPinID;
+        std::string mConnectedPinName;
+        std::string mConnectedNodeName;
+        bool mIsGraphOutput;
+
+        static void renderFieldInfo(
+            const RenderPassReflection::Field& field,
+            RenderGraphUI* pGraphUI,
+            const std::string& passName,
+            const std::string& fieldName
+        );
+        void renderUI(const RenderPassReflection::Field& field, RenderGraphUI* graphUI, const std::string& passName);
+    };
+
+    std::vector<PinUI> mInputPins;
+    std::unordered_map<std::string, uint32_t> mNameToIndexInput;
+
+    std::vector<PinUI> mOutputPins;
+    std::unordered_map<std::string, uint32_t> mNameToIndexOutput;
+
+    uint32_t mGuiNodeID;
+    RenderPassReflection mReflection;
+};
+
+/**
+ * Class for drawing UI elements for a graph in the render graph editor.
+ */
+class FALCOR_API RenderGraphUI
+{
+public:
+    RenderGraphUI();
+
+    RenderGraphUI(const ref<RenderGraph>& pGraph, const std::string& graphName);
+
+    ~RenderGraphUI();
+
+    /**
+     * Display enter graph in GUI.
+     */
+    void renderUI(RenderContext* pRenderContext, Gui* pGui);
+
+    /**
+     * Clear graph ui for rebuilding node graph
+     */
+    void reset();
+
+    /**
+     * Set ui to rebuild all display data before next render ui
+     */
+    void setToRebuild() { mRebuildDisplayData = true; }
+
+    /**
+     * Writes out all the changes made to the graph
+     */
+    void writeUpdateScriptToFile(RenderContext* pRenderContext, const std::filesystem::path& filePath, float lastFrameTimes);
+
+    /**
+     * function used to add an edge for the internally referenced render graph and update ui data
+     */
+    bool addLink(
+        const std::string& srcPass,
+        const std::string& dstPass,
+        const std::string& srcField,
+        const std::string& dstField,
+        uint32_t& color
+    );
+
+    /**
+     * function used to remove edge referenced graph and update ui data
+     */
+    void removeEdge(const std::string& srcPass, const std::string& dstPass, const std::string& srcField, const std::string& dstField);
+
+    /**
+     * function used to remove pass on referenced graph and update ui data
+     */
+    void removeRenderPass(const std::string& name);
+
+    /**
+     * function used to add a graph output on referenced graph from one string
+     */
+    void addOutput(const std::string& outputParam);
+
+    /**
+     * function used to add a graph output on referenced graph and update ui data
+     */
+    void addOutput(const std::string& outputPass, const std::string& outputField);
+
+    /**
+     * function used to remove graph output on referenced graph and update ui data
+     */
+    void removeOutput(const std::string& outputPass, const std::string& outputField);
+
+    /**
+     * function used to add a new node for a render pass referenced graph and update ui data
+     */
+    void addRenderPass(const std::string& name, const std::string& nodeTypeName);
+
+    /**
+     * Returns the current log from the events in the editor
+     */
+    std::string getCurrentLog() const { return mLogString; }
+
+    /**
+     * Toggle building up delta changes for live preview
+     */
+    void setRecordUpdates(bool recordUpdates);
+
+    /**
+     * Clears the current log
+     */
+    void clearCurrentLog() { mLogString.clear(); }
+
+    /**
+     * Update change for the graph based on script
+     */
+    void updateGraph(RenderContext* pRenderContext);
+
+    /**
+     * Get name of reference graph
+     */
+    std::string getName() { return mRenderGraphName; }
+
+private:
+    // forward declaration. private to avoid initialization outside of implementation file
     class NodeGraphEditorGui;
-    class RenderGraphUI;
-    class RenderContext;
+    class RenderGraphNode;
 
-    /** Class for drawing UI elements for a render pass in the render graph editor.
-    */
-    class FALCOR_API RenderPassUI
-    {
-    public:
+    /**
+     * Updates structure for drawing the GUI graph
+     */
+    void updateDisplayData(RenderContext* pRenderContext);
 
-        // wrapper around inserting new pin for a given pass
-        void addUIPin(const std::string& fieldName, uint32_t guiPinID, bool isInput, const std::string& connectedPinName = "", const std::string& connectedNodeName = "", bool isGraphOutput = false);
-        void renderPinUI(const std::string& passName, RenderGraphUI* pGraphUI, uint32_t index = 0, bool input = false);
+    /**
+     * Updates information about pin connections and graph output.
+     */
+    void updatePins(bool addLinks = true);
 
-        friend class RenderGraphUI;
+    /**
+     * Helper function to calculate position of the next node in execution order
+     */
+    float2 getNextNodePosition(uint32_t nodeID);
 
-    private:
-        class PinUI
-        {
-        public:
+    /**
+     * Renders specialized pop up menu.
+     */
+    void renderPopupMenu();
 
-            std::string mPinName;
-            uint32_t mGuiPinID;
-            std::string mConnectedPinName;
-            std::string mConnectedNodeName;
-            bool mIsGraphOutput;
+    /**
+     * Displays pop-up message if can auto resolve on an edge
+     */
+    bool autoResolveWarning(const std::string& srcString, const std::string& dstString);
 
-            static void renderFieldInfo(const RenderPassReflection::Field& field, RenderGraphUI* pGraphUI, const std::string& passName, const std::string& fieldName);
-            void renderUI(const RenderPassReflection::Field& field, RenderGraphUI* graphUI, const std::string& passName);
-        };
+    /**
+     * String containing the most recent log results from and isValid render graph call
+     */
+    std::string mLogString;
 
-        std::vector<PinUI> mInputPins;
-        std::unordered_map<std::string, uint32_t> mNameToIndexInput;
+    // start with reference of render graph
+    ref<RenderGraph> mpRenderGraph;
 
-        std::vector<PinUI> mOutputPins;
-        std::unordered_map<std::string, uint32_t> mNameToIndexOutput;
+    std::shared_ptr<RenderGraphIR> mpIr;
 
-        uint32_t mGuiNodeID;
-        RenderPassReflection mReflection;
-    };
+    float2 mNewNodeStartPosition{-40.0f, 100.0f};
+    float mMaxNodePositionX = 0.0f;
 
-    /** Class for drawing UI elements for a graph in the render graph editor.
-    */
-    class FALCOR_API RenderGraphUI
-    {
-    public:
-        RenderGraphUI();
+    std::unordered_set<std::string> mAllNodeTypeStrings;
+    std::vector<const char*> mAllNodeTypes;
 
-        RenderGraphUI(const RenderGraph::SharedPtr& pGraph, const std::string& graphName);
+    std::unordered_map<std::string, RenderPassUI> mRenderPassUI;
 
-        ~RenderGraphUI();
+    std::unordered_map<std::string, uint32_t> mInputPinStringToLinkID;
 
-        /** Display enter graph in GUI.
-        */
-        void renderUI(RenderContext* pRenderContext, Gui* pGui);
+    // maps output pin name to input pin ids. Pair first is pin id, second is node id
+    std::unordered_map<std::string, std::vector<std::pair<uint32_t, uint32_t> > > mOutputToInputPins;
 
-        /** Clear graph ui for rebuilding node graph
-        */
-        void reset();
+    // if in external editing mode, building list of commands for changes to send to the other process
+    std::string mUpdateCommands;
+    std::string mLastCommand;
+    bool mRecordUpdates = false;
 
-        /** Set ui to rebuild all display data before next render ui
-        */
-        void setToRebuild() { mRebuildDisplayData = true; }
+    // to avoid attempting to write changes every frame.
+    float mTimeSinceLastUpdate = 0.0f;
+    bool mDisplayDragAndDropPopup = false;
+    bool mAddedFromDragAndDrop = false;
+    std::string mNextPassName = "";
+    std::string mRenderGraphName;
+    bool mDisplayAutoResolvePopup = true;
 
-        /** Writes out all the changes made to the graph
-        */
-        void writeUpdateScriptToFile(RenderContext* pRenderContext, const std::filesystem::path& filePath, float lastFrameTimes);
+    // internal node GUi structure
+    std::shared_ptr<NodeGraphEditorGui> mpNodeGraphEditor;
 
-        /** function used to add an edge for the internally referenced render graph and update ui data
-         */
-        bool addLink(const std::string& srcPass, const std::string& dstPass, const std::string& srcField, const std::string& dstField, uint32_t& color);
-
-        /** function used to remove edge referenced graph and update ui data
-        */
-        void removeEdge(const std::string& srcPass, const std::string& dstPass, const std::string& srcField, const std::string& dstField);
-
-        /** function used to remove pass on referenced graph and update ui data
-        */
-        void removeRenderPass(const std::string& name);
-
-        /** function used to add a graph output on referenced graph from one string
-        */
-        void addOutput(const std::string& outputParam);
-
-        /** function used to add a graph output on referenced graph and update ui data
-        */
-        void addOutput(const std::string& outputPass, const std::string& outputField);
-
-        /** function used to remove graph output on referenced graph and update ui data
-        */
-        void removeOutput(const std::string& outputPass, const std::string& outputField);
-
-        /** function used to add a new node for a render pass referenced graph and update ui data
-        */
-        void addRenderPass(const std::string& name, const std::string& nodeTypeName);
-
-        /** Returns the current log from the events in the editor
-        */
-        std::string getCurrentLog() const { return mLogString; }
-
-        /** Toggle building up delta changes for live preview
-        */
-        void setRecordUpdates(bool recordUpdates);
-
-        /** Clears the current log
-        */
-        void clearCurrentLog() { mLogString.clear();  }
-
-        /** Update change for the graph based on script
-        */
-        void updateGraph(RenderContext* pRenderContext);
-
-        /** Get name of reference graph
-        */
-        std::string getName() { return mRenderGraphName; }
-
-    private:
-        // forward declaration. private to avoid initialization outside of implementation file
-        class NodeGraphEditorGui;
-        class RenderGraphNode;
-
-        /** Updates structure for drawing the GUI graph
-        */
-        void updateDisplayData(RenderContext* pRenderContext);
-
-        /** Updates information about pin connections and graph output.
-        */
-        void updatePins(bool addLinks = true);
-
-        /** Helper function to calculate position of the next node in execution order
-        */
-        float2 getNextNodePosition(uint32_t nodeID);
-
-        /** Renders specialized pop up menu.
-        */
-        void renderPopupMenu();
-
-        /** Displays pop-up message if can auto resolve on an edge
-        */
-        bool autoResolveWarning(const std::string& srcString, const std::string& dstString);
-
-        /** String containing the most recent log results from and isValid render graph call
-        */
-        std::string mLogString;
-
-        // start with reference of render graph
-        RenderGraph::SharedPtr mpRenderGraph;
-
-        RenderGraphIR::SharedPtr mpIr;
-
-        float2 mNewNodeStartPosition{ -40.0f, 100.0f };
-        float mMaxNodePositionX = 0.0f;
-
-        std::unordered_set<std::string> mAllNodeTypeStrings;
-        std::vector<const char*> mAllNodeTypes;
-
-        std::unordered_map <std::string, RenderPassUI> mRenderPassUI;
-
-        std::unordered_map <std::string, uint32_t> mInputPinStringToLinkID;
-
-        // maps output pin name to input pin ids. Pair first is pin id, second is node id
-        std::unordered_map <std::string, std::vector< std::pair<uint32_t, uint32_t > > > mOutputToInputPins;
-
-        // if in external editing mode, building list of commands for changes to send to the other process
-        std::string mUpdateCommands;
-        std::string mLastCommand;
-        bool mRecordUpdates = false;
-
-        // to avoid attempting to write changes every frame.
-        float mTimeSinceLastUpdate = 0.0f;
-        bool mDisplayDragAndDropPopup = false;
-        bool mAddedFromDragAndDrop = false;
-        std::string  mNextPassName = "";
-        std::string mRenderGraphName;
-        bool mDisplayAutoResolvePopup = true;
-
-        // internal node GUi structure
-        std::shared_ptr<NodeGraphEditorGui> mpNodeGraphEditor;
-
-        // Flag to re-traverse the graph and build on of the intermediate data again.
-        bool mRebuildDisplayData = true;
-        bool mShouldUpdate = false;
-    };
-}
+    // Flag to re-traverse the graph and build on of the intermediate data again.
+    bool mRebuildDisplayData = true;
+    bool mShouldUpdate = false;
+};
+} // namespace Falcor

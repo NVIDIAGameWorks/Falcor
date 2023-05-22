@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,7 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 
-/** Attribute for tagging resources that should be bound to a root descriptor.
-*/
+/**
+ * Attribute for tagging resources that should be bound to a root descriptor.
+ */
 [__AttributeUsage(_AttributeTargets.Var)]
-struct rootAttribute {};
+struct rootAttribute
+{};

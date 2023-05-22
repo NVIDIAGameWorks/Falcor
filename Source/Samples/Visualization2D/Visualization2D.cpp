@@ -47,24 +47,25 @@ void Visualization2D::onLoad(RenderContext* pRenderContext)
     createRenderPass();
 }
 
-void Visualization2D::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
+void Visualization2D::onFrameRender(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo)
 {
     float width = (float)pTargetFbo->getWidth();
     float height = (float)pTargetFbo->getHeight();
-    mpMainPass["Visual2DCB"]["iResolution"] = float2(width, height);
-    mpMainPass["Visual2DCB"]["iGlobalTime"] = (float)getGlobalClock().getTime();
-    mpMainPass["Visual2DCB"]["iMousePosition"] = mMousePosition;
+    auto var = mpMainPass->getRootVar();
+    var["Visual2DCB"]["iResolution"] = float2(width, height);
+    var["Visual2DCB"]["iGlobalTime"] = (float)getGlobalClock().getTime();
+    var["Visual2DCB"]["iMousePosition"] = mMousePosition;
 
     switch (mSelectedScene)
     {
     case Scene::MarkerDemo:
         break;
     case Scene::VoxelNormals:
-        mpMainPass["VoxelNormalsCB"]["iShowNormalField"] = mVoxelNormalsGUI.showNormalField;
-        mpMainPass["VoxelNormalsCB"]["iShowBoxes"] = mVoxelNormalsGUI.showBoxes;
-        mpMainPass["VoxelNormalsCB"]["iShowBoxDiagonals"] = mVoxelNormalsGUI.showBoxDiagonals;
-        mpMainPass["VoxelNormalsCB"]["iShowBorderLines"] = mVoxelNormalsGUI.showBorderLines;
-        mpMainPass["VoxelNormalsCB"]["iShowBoxAroundPoint"] = mVoxelNormalsGUI.showBoxAroundPoint;
+        var["VoxelNormalsCB"]["iShowNormalField"] = mVoxelNormalsGUI.showNormalField;
+        var["VoxelNormalsCB"]["iShowBoxes"] = mVoxelNormalsGUI.showBoxes;
+        var["VoxelNormalsCB"]["iShowBoxDiagonals"] = mVoxelNormalsGUI.showBoxDiagonals;
+        var["VoxelNormalsCB"]["iShowBorderLines"] = mVoxelNormalsGUI.showBorderLines;
+        var["VoxelNormalsCB"]["iShowBoxAroundPoint"] = mVoxelNormalsGUI.showBoxAroundPoint;
         break;
     default:
         break;

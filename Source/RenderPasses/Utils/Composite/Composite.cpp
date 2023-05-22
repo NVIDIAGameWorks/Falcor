@@ -48,13 +48,8 @@ namespace
     };
 }
 
-Composite::SharedPtr Composite::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-{
-    return SharedPtr(new Composite(std::move(pDevice), dict));
-}
-
-Composite::Composite(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-    : RenderPass(std::move(pDevice))
+Composite::Composite(ref<Device> pDevice, const Dictionary& dict)
+    : RenderPass(pDevice)
 {
     // Parse dictionary.
     for (const auto& [key, value] : dict)
@@ -107,14 +102,14 @@ void Composite::execute(RenderContext* pRenderContext, const RenderData& renderD
     }
 
     // Bind resources.
-    auto var = mCompositePass["CB"];
-    var["frameDim"] = mFrameDim;
-    var["scaleA"] = mScaleA;
-    var["scaleB"] = mScaleB;
+    auto var = mCompositePass->getRootVar();
+    var["CB"]["frameDim"] = mFrameDim;
+    var["CB"]["scaleA"] = mScaleA;
+    var["CB"]["scaleB"] = mScaleB;
+    var["A"] = renderData.getTexture(kInputA); // Can be nullptr
 
-    mCompositePass["A"] = renderData.getTexture(kInputA); // Can be nullptr
-    mCompositePass["B"] = renderData.getTexture(kInputB); // Can be nullptr
-    mCompositePass["output"] = pOutput;
+    var["B"] = renderData.getTexture(kInputB); // Can be nullptr
+    var["output"] = pOutput;
     mCompositePass->execute(pRenderContext, mFrameDim.x, mFrameDim.y);
 }
 

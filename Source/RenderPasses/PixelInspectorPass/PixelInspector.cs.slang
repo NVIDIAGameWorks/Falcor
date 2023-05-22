@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -104,8 +104,7 @@ bool loadShadingData(const float3 viewDir, const ITextureSampler lod, inout Shad
         v.coneTexLODValue = 0.f;
 
         // Prepare shading data.
-        // Set 'useNormalMap' parameter to false as normal mapping has already been applied when generating the G-buffer.
-        sd = gScene.materials.prepareShadingData(v, materialID, viewDir, lod, false);
+        sd = gScene.materials.prepareShadingData(v, materialID, viewDir, lod);
 
         return true;
     }
@@ -134,9 +133,9 @@ void main(uint3 DTid : SV_DispatchThreadID)
 
         // Store geometry data.
         data.posW = sd.posW;
-        data.normal = sd.N;
-        data.tangent = sd.T;
-        data.bitangent = sd.B;
+        data.normal = sd.frame.N;
+        data.tangent = sd.frame.T;
+        data.bitangent = sd.frame.B;
         data.faceNormal = sd.faceN;
         data.view = sd.V;
         data.texCoord = sd.uv;

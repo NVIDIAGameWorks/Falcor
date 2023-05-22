@@ -54,12 +54,9 @@ namespace Falcor
     class FALCOR_API PBRTCoatedDiffuseMaterial : public BasicMaterial
     {
     public:
-        using SharedPtr = std::shared_ptr<PBRTCoatedDiffuseMaterial>;
+        static ref<PBRTCoatedDiffuseMaterial> create(ref<Device> pDevice, const std::string& name) { return make_ref<PBRTCoatedDiffuseMaterial>(pDevice, name); }
 
-        /** Create a new PBRTCoatedDiffuse material.
-            \param[in] name The material name.
-        */
-        static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& name = "");
+        PBRTCoatedDiffuseMaterial(ref<Device> pDevice, const std::string& name);
 
         Program::ShaderModuleList getShaderModules() const override;
         Program::TypeConformanceList getTypeConformances() const override;
@@ -73,8 +70,6 @@ namespace Falcor
         float2 getRoughness() const { return float2(mData.specular[0], mData.specular[1]); }
 
     protected:
-        PBRTCoatedDiffuseMaterial(std::shared_ptr<Device> pDevice, const std::string& name);
-
         void renderSpecularUI(Gui::Widgets& widget) override;
     };
 }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -35,56 +35,62 @@
 namespace Falcor
 {
 
-/** Accumulates Fowler-Noll-Vo hash for inserted data.
-    To hash multiple items, create one Hash and insert all the items into it if at all possible.
-    This is superior to hashing the items individually and combining the hashes.
+namespace detail
+{
+template<typename T>
+struct FNVHashConstants
+{};
 
-    \tparam T - type of the storage for the hash, either 32 or 64 unsigned integer
+template<>
+struct FNVHashConstants<uint64_t>
+{
+    static constexpr uint64_t kOffsetBasis = UINT64_C(4695981039346656037);
+    static constexpr uint64_t kPrime = UINT64_C(1099511628211);
+};
+
+template<>
+struct FNVHashConstants<uint32_t>
+{
+    static constexpr uint32_t kOffsetBasis = UINT32_C(2166136261);
+    static constexpr uint32_t kPrime = UINT32_C(16777619);
+};
+} // namespace detail
+
+/**
+ * Accumulates Fowler-Noll-Vo hash for inserted data.
+ * To hash multiple items, create one Hash and insert all the items into it if at all possible.
+ * This is superior to hashing the items individually and combining the hashes.
+ *
+ * @tparam T - type of the storage for the hash, either 32 or 64 unsigned integer
  */
 template<typename T>
 class FNVHash
 {
-    template<typename TT>
-    struct ConstantTraits
-    {};
-
-    template<>
-    struct ConstantTraits<uint64_t>
-    {
-        static constexpr uint64_t kOffsetBasis = UINT64_C(4695981039346656037);
-        static constexpr uint64_t kPrime = UINT64_C(1099511628211);
-    };
-
-    template<>
-    struct ConstantTraits<uint32_t>
-    {
-        static constexpr uint32_t kOffsetBasis = UINT32_C(2166136261);
-        static constexpr uint32_t kPrime = UINT32_C(16777619);
-    };
-
 public:
-    static constexpr T kOffsetBasis = ConstantTraits<T>::kOffsetBasis;
-    static constexpr T kPrime = ConstantTraits<T>::kPrime;
+    static constexpr T kOffsetBasis = detail::FNVHashConstants<T>::kOffsetBasis;
+    static constexpr T kPrime = detail::FNVHashConstants<T>::kPrime;
 
-    /** Inserts all data between [begin,end) into the hash.
-        \param[in] begin
-        \param[in] end
+    /**
+     * Inserts all data between [begin,end) into the hash.
+     * @param[in] begin
+     * @param[in] end
      */
     void insert(const void* begin, const void* end)
     {
         FALCOR_ASSERT(begin <= end);
         const uint8_t* srcData8 = reinterpret_cast<const uint8_t*>(begin);
 
-        for(; srcData8 != end; ++srcData8)
+        for (; srcData8 != end; ++srcData8)
         {
             mHash *= kPrime;
             mHash ^= *srcData8;
         }
     }
 
-    /** Inserts all data starting at data and going for size bytes into the hash
-        \param[in] data
-        \param[in] size
+    /**
+     * Inserts all data starting at data and going for size bytes into the hash
+     * @param[in] data
+     * @param[in] size
      */
     void insert(const void* data, size_t size)
     {
@@ -114,6 +120,5 @@ inline uint32_t fnvHashArray32(const void* data, size_t size)
     hash.insert(data, size);
     return hash.get();
 }
-
 
 } // namespace Falcor

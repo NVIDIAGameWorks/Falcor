@@ -27,178 +27,152 @@
  **************************************************************************/
 #include "TextRenderer.h"
 #include "Core/API/RenderContext.h"
-#include "RenderGraph/BasePasses/RasterPass.h"
+#include "Core/Pass/RasterPass.h"
 #include "Utils/UI/Font.h"
 
 namespace Falcor
 {
-    namespace
-    {
-        struct Vertex
-        {
-            float2 screenPos;
-            float2 texCoord;
-        };
+namespace
+{
+struct Vertex
+{
+    float2 screenPos;
+    float2 texCoord;
+};
 
-        const float2 kVertexPos[] =
-        {
-            float2(0, 0),
-            float2(0, 1),
-            float2(1, 0),
+const float2 kVertexPos[] = {
+    float2(0, 0), float2(0, 1), float2(1, 0),
 
-            float2(1, 0),
-            float2(0, 1),
-            float2(1, 1),
-        };
+    float2(1, 0), float2(0, 1), float2(1, 1),
+};
 
-        const uint32_t kMaxCharCount = 1000;
+const uint32_t kMaxCharCount = 1000;
 
-        Vao::SharedPtr createVAO(const Buffer::SharedPtr& pVB)
-        {
-            VertexLayout::SharedPtr pLayout = VertexLayout::create();
-            VertexBufferLayout::SharedPtr pBufLayout = VertexBufferLayout::create();
-            pBufLayout->addElement("POSITION", 0, ResourceFormat::RG32Float, 1, 0);
-            pBufLayout->addElement("TEXCOORD", 8, ResourceFormat::RG32Float, 1, 1);
-            pLayout->addBufferLayout(0, pBufLayout);
-            Vao::BufferVec buffers{ pVB };
+ref<Vao> createVAO(const ref<Buffer>& pVB)
+{
+    ref<VertexLayout> pLayout = VertexLayout::create();
+    ref<VertexBufferLayout> pBufLayout = VertexBufferLayout::create();
+    pBufLayout->addElement("POSITION", 0, ResourceFormat::RG32Float, 1, 0);
+    pBufLayout->addElement("TEXCOORD", 8, ResourceFormat::RG32Float, 1, 1);
+    pLayout->addBufferLayout(0, pBufLayout);
+    Vao::BufferVec buffers{pVB};
 
-            return Vao::create(Vao::Topology::TriangleList, pLayout, buffers);
-        }
-
-        struct TextData
-        {
-            bool init = false;
-            TextRenderer::Flags flags = TextRenderer::Flags::Shadowed;
-            float3 color = float3(1, 1, 1);
-            Buffer::SharedPtr pVb;
-            RasterPass::SharedPtr pPass;
-            Font::UniquePtr pFont;
-        } gTextData; // TODO: REMOVEGLOBAL
-
-        void setCbData(const Fbo::SharedPtr& pDstFbo)
-        {
-            float width = (float)pDstFbo->getWidth();
-            float height = (float)pDstFbo->getHeight();
-
-            // Set the matrix
-            rmcv::mat4 vpTransform;
-            vpTransform[0][0] = 2 / width;
-            vpTransform[1][1] = -2 / height;
-            vpTransform[0][3] = -1;
-            vpTransform[1][3] = 1;
-#ifdef FALCOR_FLIP_Y
-            vpTransform[1][1] *= -1.0f;
-            vpTransform[3][1] *= -1.0f;
-#endif
-            // Update the program variables
-            gTextData.pPass["PerFrameCB"]["gvpTransform"] = vpTransform;
-            gTextData.pPass["PerFrameCB"]["gFontColor"] = gTextData.color;
-        }
-
-        void renderText(RenderContext* pRenderContext, const std::string& text, const Fbo::SharedPtr& pDstFbo, float2 pos)
-        {
-            // Make sure we enough space for the next char
-            FALCOR_ASSERT(text.size() < kMaxCharCount);
-            setCbData(pDstFbo);
-            Vertex* verts = (Vertex*)gTextData.pVb->map(Buffer::MapType::WriteDiscard);
-
-            float startX = pos.x;
-            uint32_t vertexCount = 0; // Not the same as text.size(), since some special characters are ignored
-
-            // Create the vertex-buffer
-            for (const auto& c : text)
-            {
-                if (c == '\n')
-                {
-                    pos.y += gTextData.pFont->getFontHeight();
-                    pos.x = startX;
-                }
-                else if (c == '\t') pos.x += gTextData.pFont->getTabWidth();
-                else if (c == ' ') pos.x += gTextData.pFont->getLettersSpacing();
-                else
-                {
-                    // Regular character
-                    const Font::CharTexCrdDesc& desc = gTextData.pFont->getCharDesc(c);
-                    for (uint32_t i = 0; i < std::size(kVertexPos); i++, vertexCount++)
-                    {
-                        float2 posScale = kVertexPos[i];
-                        float2 charPos = desc.size * posScale;
-                        charPos += pos;
-                        verts[vertexCount].screenPos = charPos;
-                        verts[vertexCount].texCoord = desc.topLeft + desc.size * kVertexPos[i];
-                    }
-                    pos.x += gTextData.pFont->getLettersSpacing();
-                }
-            }
-
-            // Submit
-            gTextData.pVb->unmap();
-            gTextData.pPass->getState()->setFbo(pDstFbo);
-            gTextData.pPass->draw(pRenderContext, vertexCount, 0);
-        }
-    }
-
-    const float3& TextRenderer::getColor() { return gTextData.color; }
-    void TextRenderer::setColor(const float3& color) { gTextData.color = color; }
-    TextRenderer::Flags TextRenderer::getFlags() { return gTextData.flags; }
-    void TextRenderer::setFlags(Flags f) { gTextData.flags = f; }
-
-    void TextRenderer::start(Device* pDevice)
-    {
-        if (gTextData.init) return;
-
-        static const std::string kShaderFile("Utils/UI/TextRenderer.3d.slang");
-
-        // Create a vertex buffer
-        const uint32_t vbSize = (uint32_t)(sizeof(Vertex)*kMaxCharCount*std::size(kVertexPos));
-        gTextData.pVb = Buffer::create(pDevice, vbSize, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, nullptr);
-
-        // Create the RenderState
-        gTextData.pPass = RasterPass::create(pDevice->shared_from_this(), kShaderFile, "vsMain", "psMain");
-        auto& pState = gTextData.pPass->getState();
-        pState->setVao(createVAO(gTextData.pVb));
-
-        // create the depth-state
-        DepthStencilState::Desc dsDesc;
-        dsDesc.setDepthEnabled(false);
-        pState->setDepthStencilState(DepthStencilState::create(dsDesc));
-
-        // Rasterizer state
-        RasterizerState::Desc rsState;
-        rsState.setCullMode(RasterizerState::CullMode::None);
-        pState->setRasterizerState(RasterizerState::create(rsState));
-
-        // Blend state
-        BlendState::Desc blendDesc;
-        blendDesc.setRtBlend(0, true).setRtParams(0, BlendState::BlendOp::Add,
-            BlendState::BlendOp::Add,
-            BlendState::BlendFunc::SrcAlpha,
-            BlendState::BlendFunc::OneMinusSrcAlpha,
-            BlendState::BlendFunc::One,
-            BlendState::BlendFunc::One);
-        pState->setBlendState(BlendState::create(blendDesc));
-        gTextData.pFont = Font::create(pDevice, getRuntimeDirectory() / "data/framework/fonts/dejavu-sans-mono-14");
-
-        // Initialize the buffer
-        gTextData.pPass["gFontTex"] = gTextData.pFont->getTexture();
-
-        gTextData.init = true;
-    }
-
-    void TextRenderer::shutdown()
-    {
-        gTextData = {};
-    }
-
-    void TextRenderer::render(RenderContext* pRenderContext, const std::string& text, const Fbo::SharedPtr& pDstFbo, float2 pos)
-    {
-        if (is_set(gTextData.flags, TextRenderer::Flags::Shadowed))
-        {
-            float3 oldColor = getColor();
-            setColor(float3(0));
-            renderText(pRenderContext, text, pDstFbo, pos + float2(1));
-            setColor(oldColor);
-        }
-        renderText(pRenderContext, text, pDstFbo, pos);
-    }
+    return Vao::create(Vao::Topology::TriangleList, pLayout, buffers);
 }
+
+} // namespace
+
+TextRenderer::TextRenderer(ref<Device> pDevice) : mpDevice(pDevice)
+{
+    // Create a vertex buffer
+    const uint32_t vbSize = (uint32_t)(sizeof(Vertex) * kMaxCharCount * std::size(kVertexPos));
+    mpVb = Buffer::create(mpDevice, vbSize, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, nullptr);
+
+    // Create the RenderState
+    mpPass = RasterPass::create(mpDevice, "Utils/UI/TextRenderer.3d.slang", "vsMain", "psMain");
+    auto& pState = mpPass->getState();
+    pState->setVao(createVAO(mpVb));
+
+    // create the depth-state
+    DepthStencilState::Desc dsDesc;
+    dsDesc.setDepthEnabled(false);
+    pState->setDepthStencilState(DepthStencilState::create(dsDesc));
+
+    // Rasterizer state
+    RasterizerState::Desc rsState;
+    rsState.setCullMode(RasterizerState::CullMode::None);
+    pState->setRasterizerState(RasterizerState::create(rsState));
+
+    // Blend state
+    BlendState::Desc blendDesc;
+    blendDesc.setRtBlend(0, true).setRtParams(
+        0, BlendState::BlendOp::Add, BlendState::BlendOp::Add, BlendState::BlendFunc::SrcAlpha, BlendState::BlendFunc::OneMinusSrcAlpha,
+        BlendState::BlendFunc::One, BlendState::BlendFunc::One
+    );
+    pState->setBlendState(BlendState::create(blendDesc));
+    mpFont = std::make_unique<Font>(mpDevice, getRuntimeDirectory() / "data/framework/fonts/dejavu-sans-mono-14");
+
+    // Initialize the buffer
+    mpPass->getRootVar()["gFontTex"] = mpFont->getTexture();
+}
+
+TextRenderer::~TextRenderer() = default;
+
+void TextRenderer::render(RenderContext* pRenderContext, const std::string& text, const ref<Fbo>& pDstFbo, float2 pos)
+{
+    if (is_set(mFlags, TextRenderer::Flags::Shadowed))
+    {
+        float3 oldColor = getColor();
+        setColor(float3(0));
+        renderText(pRenderContext, text, pDstFbo, pos + float2(1));
+        setColor(oldColor);
+    }
+    renderText(pRenderContext, text, pDstFbo, pos);
+}
+
+void TextRenderer::setCbData(const ref<Fbo>& pDstFbo)
+{
+    float width = (float)pDstFbo->getWidth();
+    float height = (float)pDstFbo->getHeight();
+
+    // Set the matrix
+    float4x4 vpTransform = float4x4::identity();
+    vpTransform[0][0] = 2 / width;
+    vpTransform[1][1] = -2 / height;
+    vpTransform[0][3] = -1;
+    vpTransform[1][3] = 1;
+#ifdef FALCOR_FLIP_Y
+    vpTransform[1][1] *= -1.0f;
+    vpTransform[3][1] *= -1.0f;
+#endif
+    // Update the program variables
+    auto var = mpPass->getRootVar()["PerFrameCB"];
+    var["gvpTransform"] = vpTransform;
+    var["gFontColor"] = mColor;
+}
+
+void TextRenderer::renderText(RenderContext* pRenderContext, const std::string& text, const ref<Fbo>& pDstFbo, float2 pos)
+{
+    // Make sure we enough space for the next char
+    FALCOR_ASSERT(text.size() < kMaxCharCount);
+    setCbData(pDstFbo);
+    Vertex* verts = (Vertex*)mpVb->map(Buffer::MapType::WriteDiscard);
+
+    float startX = pos.x;
+    uint32_t vertexCount = 0; // Not the same as text.size(), since some special characters are ignored
+
+    // Create the vertex-buffer
+    for (const auto& c : text)
+    {
+        if (c == '\n')
+        {
+            pos.y += mpFont->getFontHeight();
+            pos.x = startX;
+        }
+        else if (c == '\t')
+            pos.x += mpFont->getTabWidth();
+        else if (c == ' ')
+            pos.x += mpFont->getLettersSpacing();
+        else
+        {
+            // Regular character
+            const Font::CharTexCrdDesc& desc = mpFont->getCharDesc(c);
+            for (uint32_t i = 0; i < std::size(kVertexPos); i++, vertexCount++)
+            {
+                float2 posScale = kVertexPos[i];
+                float2 charPos = desc.size * posScale;
+                charPos += pos;
+                verts[vertexCount].screenPos = charPos;
+                verts[vertexCount].texCoord = desc.topLeft + desc.size * kVertexPos[i];
+            }
+            pos.x += mpFont->getLettersSpacing();
+        }
+    }
+
+    // Submit
+    mpVb->unmap();
+    mpPass->getState()->setFbo(pDstFbo);
+    mpPass->draw(pRenderContext, vertexCount, 0);
+}
+
+} // namespace Falcor

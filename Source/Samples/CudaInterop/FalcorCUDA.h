@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -47,7 +47,7 @@ bool initCUDA();
  * @param usageFlags The requested flags to be bound to the mipmapped array
  * @return True if successful, false otherwise
  */
-bool importTextureToMipmappedArray(Falcor::Texture::SharedPtr pTex, cudaMipmappedArray_t& mipmappedArray, uint32_t cudaUsageFlags);
+bool importTextureToMipmappedArray(Falcor::ref<Falcor::Texture> pTex, cudaMipmappedArray_t& mipmappedArray, uint32_t cudaUsageFlags);
 
 /**
  * Maps a texture to a surface object which can be read and written within a CUDA kernel.
@@ -58,6 +58,6 @@ bool importTextureToMipmappedArray(Falcor::Texture::SharedPtr pTex, cudaMipmappe
  * surface object
  * @return The surface object that the input texture is bound to
  */
-cudaSurfaceObject_t mapTextureToSurface(Falcor::Texture::SharedPtr pTex, uint32_t usageFlags);
+cudaSurfaceObject_t mapTextureToSurface(Falcor::ref<Falcor::Texture> pTex, uint32_t usageFlags);
 
 }; // namespace FalcorCUDA

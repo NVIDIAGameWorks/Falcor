@@ -26,23 +26,24 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "ComputeState.h"
+#include "Core/ObjectPython.h"
 #include "Core/Program/ProgramVars.h"
 #include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
 {
 
-ComputeState::SharedPtr ComputeState::create(std::shared_ptr<Device> pDevice)
+ref<ComputeState> ComputeState::create(ref<Device> pDevice)
 {
-    return SharedPtr(new ComputeState(std::move(pDevice)));
+    return ref<ComputeState>(new ComputeState(pDevice));
 }
 
-ComputeState::ComputeState(std::shared_ptr<Device> pDevice) : mpDevice(std::move(pDevice))
+ComputeState::ComputeState(ref<Device> pDevice) : mpDevice(pDevice)
 {
-    mpCsoGraph = StateGraph::create();
+    mpCsoGraph = std::make_unique<ComputeStateGraph>();
 }
 
-ComputeStateObject::SharedPtr ComputeState::getCSO(const ComputeVars* pVars)
+ref<ComputeStateObject> ComputeState::getCSO(const ComputeVars* pVars)
 {
     auto pProgramKernels = mpProgram ? mpProgram->getActiveVersion()->getKernels(mpDevice.get(), pVars) : nullptr;
     bool newProgram = (pProgramKernels.get() != mCachedData.pProgramKernels);
@@ -52,13 +53,13 @@ ComputeStateObject::SharedPtr ComputeState::getCSO(const ComputeVars* pVars)
         mpCsoGraph->walk((void*)mCachedData.pProgramKernels);
     }
 
-    ComputeStateObject::SharedPtr pCso = mpCsoGraph->getCurrentNode();
+    ref<ComputeStateObject> pCso = mpCsoGraph->getCurrentNode();
 
     if (pCso == nullptr)
     {
         mDesc.setProgramKernels(pProgramKernels);
 
-        StateGraph::CompareFunc cmpFunc = [&desc = mDesc](ComputeStateObject::SharedPtr pCso) -> bool
+        ComputeStateGraph::CompareFunc cmpFunc = [&desc = mDesc](ref<ComputeStateObject> pCso) -> bool
         { return pCso && (desc == pCso->getDesc()); };
 
         if (mpCsoGraph->scanForMatchingNode(cmpFunc))
@@ -67,7 +68,7 @@ ComputeStateObject::SharedPtr ComputeState::getCSO(const ComputeVars* pVars)
         }
         else
         {
-            pCso = ComputeStateObject::create(mpDevice.get(), mDesc);
+            pCso = ComputeStateObject::create(mpDevice, mDesc);
             mpCsoGraph->setCurrentNodeData(pCso);
         }
     }
@@ -77,6 +78,6 @@ ComputeStateObject::SharedPtr ComputeState::getCSO(const ComputeVars* pVars)
 
 FALCOR_SCRIPT_BINDING(ComputeState)
 {
-    pybind11::class_<ComputeState, ComputeState::SharedPtr>(m, "ComputeState");
+    pybind11::class_<ComputeState, ref<ComputeState>>(m, "ComputeState");
 }
 } // namespace Falcor

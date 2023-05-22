@@ -136,7 +136,7 @@ namespace
         mode.value("Roughness", SceneDebuggerMode::Roughness);
         mode.value("FlatShaded", SceneDebuggerMode::FlatShaded);
 
-        pybind11::class_<SceneDebugger, RenderPass, SceneDebugger::SharedPtr> pass(m, "SceneDebugger");
+        pybind11::class_<SceneDebugger, RenderPass, ref<SceneDebugger>> pass(m, "SceneDebugger");
         pass.def_property(kMode, &SceneDebugger::getMode, &SceneDebugger::setMode);
     }
 }
@@ -147,13 +147,8 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
     Falcor::ScriptBindings::registerBinding(registerBindings);
 }
 
-SceneDebugger::SharedPtr SceneDebugger::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-{
-    return SharedPtr(new SceneDebugger(std::move(pDevice), dict));
-}
-
-SceneDebugger::SceneDebugger(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-    : RenderPass(std::move(pDevice))
+SceneDebugger::SceneDebugger(ref<Device> pDevice, const Dictionary& dict)
+    : RenderPass(pDevice)
 {
     if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1))
     {
@@ -168,7 +163,7 @@ SceneDebugger::SceneDebugger(std::shared_ptr<Device> pDevice, const Dictionary& 
         else logWarning("Unknown field '{}' in a SceneDebugger dictionary.", key);
     }
 
-    mpFence = GpuFence::create(mpDevice.get());
+    mpFence = GpuFence::create(mpDevice);
 }
 
 Dictionary SceneDebugger::getScriptingDictionary()
@@ -192,7 +187,7 @@ void SceneDebugger::compile(RenderContext* pRenderContext, const CompileData& co
     mParams.frameDim = compileData.defaultTexDims;
 }
 
-void SceneDebugger::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
+void SceneDebugger::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
 {
     mpScene = pScene;
     mpMeshToBlasID = nullptr;
@@ -212,7 +207,7 @@ void SceneDebugger::setScene(RenderContext* pRenderContext, const Scene::SharedP
         auto blasIDs = mpScene->getMeshBlasIDs();
         if (!blasIDs.empty())
         {
-            mpMeshToBlasID = Buffer::createStructured(mpDevice.get(), sizeof(uint32_t), (uint32_t)blasIDs.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, blasIDs.data(), false);
+            mpMeshToBlasID = Buffer::createStructured(mpDevice, sizeof(uint32_t), (uint32_t)blasIDs.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, blasIDs.data(), false);
         }
 
         // Create instance metadata.
@@ -222,8 +217,8 @@ void SceneDebugger::setScene(RenderContext* pRenderContext, const Scene::SharedP
         auto var = mpDebugPass->getRootVar()["CB"]["gSceneDebugger"];
         if (!mpPixelData)
         {
-            mpPixelData = Buffer::createStructured(mpDevice.get(), var["pixelData"], 1, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
-            mpPixelDataStaging = Buffer::createStructured(mpDevice.get(), var["pixelData"], 1, ResourceBindFlags::None, Buffer::CpuAccess::Read, nullptr, false);
+            mpPixelData = Buffer::createStructured(mpDevice, var["pixelData"], 1, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+            mpPixelDataStaging = Buffer::createStructured(mpDevice, var["pixelData"], 1, ResourceBindFlags::None, Buffer::CpuAccess::Read, nullptr, false);
         }
         var["pixelData"] = mpPixelData;
         var["meshToBlasID"] = mpMeshToBlasID;
@@ -357,11 +352,13 @@ void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
 
             // Print the list of scene graph nodes affecting this mesh instance.
             std::vector<NodeID> nodes;
-            NodeID nodeID{ instance.globalMatrixID };
-            while (nodeID != NodeID::Invalid())
             {
-                nodes.push_back(nodeID);
-                nodeID = mpScene->getParentNodeID(nodeID);
+                NodeID nodeID{ instance.globalMatrixID };
+                while (nodeID != NodeID::Invalid())
+                {
+                    nodes.push_back(nodeID);
+                    nodeID = mpScene->getParentNodeID(nodeID);
+                }
             }
             FALCOR_ASSERT(!nodes.empty());
 
@@ -370,7 +367,7 @@ void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
             for (auto it = nodes.rbegin(); it != nodes.rend(); it++)
             {
                 auto nodeID = *it;
-                rmcv::mat4 mat = localMatrices[nodeID.get()];
+                float4x4 mat = localMatrices[nodeID.get()];
                 if (auto nodeGroup = widget.group("ID " + to_string(nodeID)); nodeGroup.open())
                 {
                     g.matrix("", mat);
@@ -416,7 +413,7 @@ void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
         // Show SDF grid details.
         if (auto g = widget.group("SDF grid info"); g.open())
         {
-            const SDFGrid::SharedPtr& pSDFGrid = mpScene->getSDFGrid(SdfGridID{ data.geometryID });
+            const ref<SDFGrid>& pSDFGrid = mpScene->getSDFGrid(SdfGridID{ data.geometryID });
             std::string text;
             text += fmt::format("gridWidth: {}\n", pSDFGrid->getGridWidth());
             g.text(text);
@@ -483,7 +480,7 @@ bool SceneDebugger::onMouseEvent(const MouseEvent& mouseEvent)
     if (mouseEvent.type == MouseEvent::Type::ButtonDown && mouseEvent.button == Input::MouseButton::Left)
     {
         float2 cursorPos = mouseEvent.pos * (float2)mParams.frameDim;
-        mParams.selectedPixel = (uint2)glm::clamp(cursorPos, float2(0.f), float2(mParams.frameDim.x - 1, mParams.frameDim.y - 1));
+        mParams.selectedPixel = (uint2)clamp(cursorPos, float2(0.f), float2(mParams.frameDim.x - 1, mParams.frameDim.y - 1));
     }
 
     return false;
@@ -523,5 +520,5 @@ void SceneDebugger::initInstanceInfo()
     }
 
     // Create GPU buffer.
-    mpInstanceInfo = Buffer::createStructured(mpDevice.get(), sizeof(InstanceInfo), (uint32_t)instanceInfo.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, instanceInfo.data(), false);
+    mpInstanceInfo = Buffer::createStructured(mpDevice, sizeof(InstanceInfo), (uint32_t)instanceInfo.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, instanceInfo.data(), false);
 }

@@ -30,7 +30,7 @@
 #include "Core/API/Formats.h"
 #include "Core/API/Sampler.h"
 #include "Core/API/RenderContext.h"
-#include "RenderGraph/BasePasses/ComputePass.h"
+#include "Core/Pass/ComputePass.h"
 
 namespace Falcor::pbrt
 {
@@ -41,14 +41,14 @@ namespace Falcor::pbrt
 class EnvMapConverter
 {
 public:
-    EnvMapConverter(std::shared_ptr<Device> pDevice) : mpDevice(std::move(pDevice))
+    EnvMapConverter(ref<Device> pDevice) : mpDevice(pDevice)
     {
         mpComputePass = ComputePass::create(mpDevice, "plugins/importers/PBRTImporter/EnvMapConverter.cs.slang");
 
         Sampler::Desc desc;
         desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
         desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
-        mpSampler = Sampler::create(mpDevice.get(), desc);
+        mpSampler = Sampler::create(mpDevice, desc);
     }
 
     /**
@@ -58,15 +58,15 @@ public:
      * @param[in] pSrcTexture Source texture with envmap in equal-area octahedral mapping.
      * @return Texture with envmap in lat-long mapping.
      */
-    Texture::SharedPtr convertEqualAreaOctToLatLong(RenderContext* pRenderContext, const Texture::SharedPtr& pSrcTexture) const
+    ref<Texture> convertEqualAreaOctToLatLong(RenderContext* pRenderContext, const ref<Texture>& pSrcTexture) const
     {
         FALCOR_ASSERT(pSrcTexture);
         FALCOR_ASSERT(pSrcTexture->getWidth() == pSrcTexture->getHeight());
 
         uint2 dstDim{pSrcTexture->getWidth() * 2, pSrcTexture->getHeight()};
 
-        Texture::SharedPtr pDstTexture = Texture::create2D(
-            mpDevice.get(), dstDim.x, dstDim.y, ResourceFormat::RGBA32Float, 1, 1, nullptr,
+        ref<Texture> pDstTexture = Texture::create2D(
+            mpDevice, dstDim.x, dstDim.y, ResourceFormat::RGBA32Float, 1, 1, nullptr,
             Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess
         );
 
@@ -81,9 +81,9 @@ public:
     }
 
 private:
-    std::shared_ptr<Device> mpDevice;
-    ComputePass::SharedPtr mpComputePass;
-    Sampler::SharedPtr mpSampler;
+    ref<Device> mpDevice;
+    ref<ComputePass> mpComputePass;
+    ref<Sampler> mpSampler;
 };
 
 } // namespace Falcor::pbrt

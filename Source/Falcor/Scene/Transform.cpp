@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,8 +27,6 @@
  **************************************************************************/
 #include "Transform.h"
 #include "Utils/Scripting/ScriptBindings.h"
-#include <glm/gtc/quaternion.hpp>
-#include <glm/gtx/transform.hpp>
 
 namespace Falcor
 {
@@ -46,7 +44,7 @@ namespace Falcor
         mDirty = true;
     }
 
-    void Transform::setRotation(const glm::quat& rotation)
+    void Transform::setRotation(const quatf& rotation)
     {
         mRotation = rotation;
         mDirty = true;
@@ -54,57 +52,57 @@ namespace Falcor
 
     float3 Transform::getRotationEuler() const
     {
-        return glm::eulerAngles(mRotation);
+        return math::eulerAngles(mRotation);
     }
 
     void Transform::setRotationEuler(const float3& angles)
     {
-        setRotation(glm::quat(angles));
+        setRotation(math::quatFromEulerAngles(angles));
     }
 
     float3 Transform::getRotationEulerDeg() const
     {
-        return glm::degrees(getRotationEuler());
+        return math::degrees(getRotationEuler());
     }
 
     void Transform::setRotationEulerDeg(const float3& angles)
     {
-        setRotationEuler(glm::radians(angles));
+        setRotationEuler(math::radians(angles));
     }
 
     void Transform::lookAt(const float3& position, const float3& target, const float3& up)
     {
         mTranslation = position;
         float3 dir = normalize(target - position);
-        mRotation = glm::quatLookAt(dir, up);
+        mRotation = math::quatFromLookAt(dir, up, math::Handedness::RightHanded);
     }
 
-    const rmcv::mat4& Transform::getMatrix() const
+    const float4x4& Transform::getMatrix() const
     {
         if (mDirty)
         {
-            rmcv::mat4 T = rmcv::translate(mTranslation);
-            rmcv::mat4 R = rmcv::mat4_cast(mRotation);
-            rmcv::mat4 S = rmcv::scale(mScaling);
+            float4x4 T = math::matrixFromTranslation(mTranslation);
+            float4x4 R = math::matrixFromQuat(mRotation);
+            float4x4 S = math::matrixFromScaling(mScaling);
             switch (mCompositionOrder)
             {
              case CompositionOrder::ScaleRotateTranslate:
-                mMatrix = T * R * S;
+                mMatrix = mul(mul(T, R), S);
                 break;
             case CompositionOrder::ScaleTranslateRotate:
-                mMatrix = R * T * S;
+                mMatrix = mul(mul(R, T), S);
                 break;
             case CompositionOrder::RotateScaleTranslate:
-                mMatrix = T * S * R;
+                mMatrix = mul(mul(T, S), R);
                 break;
             case CompositionOrder::RotateTranslateScale:
-                mMatrix = S * T * R;
+                mMatrix = mul(mul(S, T), R);
                 break;
             case CompositionOrder::TranslateRotateScale:
-                mMatrix = S * R * T;
+                mMatrix = mul(mul(S, R), T);
                 break;
             case CompositionOrder::TranslateScaleRotate:
-                mMatrix = R * S * T;
+                mMatrix = mul(mul(R, S), T);
                 break;
             case CompositionOrder::Unknown:
                 throw RuntimeError("Unknown transform composition order.");
@@ -140,9 +138,9 @@ namespace Falcor
 
     bool Transform::operator==(const Transform& other) const
     {
-        if (mTranslation != other.mTranslation) return false;
-        if (mScaling != other.mScaling) return false;
-        if (mRotation != other.mRotation) return false;
+        if (any(mTranslation != other.mTranslation)) return false;
+        if (any(mScaling != other.mScaling)) return false;
+        if (any(mRotation != other.mRotation)) return false;
         return true;
     }
 

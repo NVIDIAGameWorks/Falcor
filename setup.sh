@@ -39,8 +39,4 @@ fi
 echo "Patching NVTT package ..."
 cp -fp ${BASE_DIR}/external/packman/nvtt/libnvtt.so.30106 ${BASE_DIR}/external/packman/nvtt/libnvtt.so
 
-# HACK: Copy libtbb.so from release to debug so we can have a proper import target.
-echo "Patching falcor_deps package ..."
-cp -fp ${BASE_DIR}/external/packman/deps/lib/libtbb.so* ${BASE_DIR}/external/packman/deps/debug/lib
-
 exit 0

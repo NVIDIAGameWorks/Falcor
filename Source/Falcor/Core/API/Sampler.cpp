@@ -29,6 +29,7 @@
 #include "Device.h"
 #include "GFXAPI.h"
 #include "NativeHandleTraits.h"
+#include "Core/ObjectPython.h"
 #include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
@@ -90,7 +91,7 @@ gfx::TextureReductionOp getGFXReductionMode(Sampler::ReductionMode mode)
 
 gfx::ComparisonFunc getGFXComparisonFunc(ComparisonFunc func);
 
-Sampler::Sampler(std::shared_ptr<Device> pDevice, const Desc& desc) : mpDevice(std::move(pDevice)), mDesc(desc)
+Sampler::Sampler(ref<Device> pDevice, const Desc& desc) : mpDevice(pDevice), mDesc(desc)
 {
     gfx::ISamplerState::Desc gfxDesc = {};
     gfxDesc.addressU = getGFXAddressMode(desc.addressModeU);
@@ -119,9 +120,9 @@ Sampler::~Sampler()
     mpDevice->releaseResource(mGfxSamplerState);
 }
 
-Sampler::SharedPtr Sampler::create(Device* pDevice, const Desc& desc)
+ref<Sampler> Sampler::create(ref<Device> pDevice, const Desc& desc)
 {
-    return Sampler::SharedPtr(new Sampler(pDevice->shared_from_this(), desc));
+    return ref<Sampler>(new Sampler(pDevice, desc));
 }
 
 NativeHandle Sampler::getNativeHandle() const
@@ -144,9 +145,14 @@ uint32_t Sampler::getApiMaxAnisotropy()
     return 16;
 }
 
+void Sampler::breakStrongReferenceToDevice()
+{
+    mpDevice.breakStrongReference();
+}
+
 FALCOR_SCRIPT_BINDING(Sampler)
 {
-    pybind11::class_<Sampler, Sampler::SharedPtr>(m, "Sampler");
+    pybind11::class_<Sampler, ref<Sampler>>(m, "Sampler");
 
     pybind11::enum_<Sampler::Filter> filter(m, "SamplerFilter");
     filter.value("Linear", Sampler::Filter::Linear);

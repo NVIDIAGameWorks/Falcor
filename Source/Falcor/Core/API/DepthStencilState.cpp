@@ -27,13 +27,14 @@
  **************************************************************************/
 #include "DepthStencilState.h"
 #include "Core/Assert.h"
+#include "Core/ObjectPython.h"
 #include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
 {
-DepthStencilState::SharedPtr DepthStencilState::create(const Desc& desc)
+ref<DepthStencilState> DepthStencilState::create(const Desc& desc)
 {
-    return SharedPtr(new DepthStencilState(desc));
+    return ref<DepthStencilState>(new DepthStencilState(desc));
 }
 
 DepthStencilState::~DepthStencilState() = default;
@@ -92,6 +93,6 @@ const DepthStencilState::StencilDesc& DepthStencilState::getStencilDesc(Face fac
 
 FALCOR_SCRIPT_BINDING(DepthStencilState)
 {
-    pybind11::class_<DepthStencilState, DepthStencilState::SharedPtr>(m, "DepthStencilState");
+    pybind11::class_<DepthStencilState, ref<DepthStencilState>>(m, "DepthStencilState");
 }
 } // namespace Falcor

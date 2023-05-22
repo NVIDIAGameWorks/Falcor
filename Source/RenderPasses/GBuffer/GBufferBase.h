@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
+#include "RenderGraph/RenderPass.h"
 #include "RenderGraph/RenderPassHelpers.h"
 
 using namespace Falcor;
@@ -47,19 +48,19 @@ public:
     virtual void renderUI(Gui::Widgets& widget) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual Dictionary getScriptingDictionary() override;
-    virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
+    virtual void setScene(RenderContext* pRenderContext, const ref<Scene>& pScene) override;
 
 protected:
-    GBufferBase(std::shared_ptr<Device> pDevice) : RenderPass(std::move(pDevice)) {}
+    GBufferBase(ref<Device> pDevice) : RenderPass(pDevice) {}
     virtual void parseDictionary(const Dictionary& dict);
     virtual void setCullMode(RasterizerState::CullMode mode) { mCullMode = mode; }
     void updateFrameDim(const uint2 frameDim);
     void updateSamplePattern();
-    Texture::SharedPtr getOutput(const RenderData& renderData, const std::string& name) const;
+    ref<Texture> getOutput(const RenderData& renderData, const std::string& name) const;
 
     // Internal state
-    Scene::SharedPtr                mpScene;
-    CPUSampleGenerator::SharedPtr   mpSampleGenerator;                              ///< Sample generator for camera jitter.
+    ref<Scene>                      mpScene;
+    ref<CPUSampleGenerator>         mpSampleGenerator;                              ///< Sample generator for camera jitter.
 
     uint32_t                        mFrameCount = 0;                                ///< Frames rendered since last change of scene. This is used as random seed.
     uint2                           mFrameDim = {};                                 ///< Current frame dimension in pixels. Note this may be different from the window size.

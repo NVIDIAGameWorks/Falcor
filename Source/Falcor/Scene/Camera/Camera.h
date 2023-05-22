@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -35,7 +35,6 @@
 #include "Utils/SampleGenerators/CPUSampleGenerator.h"
 #include "Utils/UI/Gui.h"
 #include "Scene/Animation/Animatable.h"
-#include <memory>
 #include <string>
 
 namespace Falcor
@@ -47,14 +46,12 @@ namespace Falcor
     class FALCOR_API Camera : public Animatable
     {
     public:
-        using SharedPtr = std::shared_ptr<Camera>;
-
         // Default dimensions of full frame cameras and 35mm film
-        static const float kDefaultFrameHeight;
+        static constexpr float kDefaultFrameHeight = 24.f;
 
-        /** Create a new camera object.
-        */
-        static SharedPtr create(const std::string& name = "");
+        static ref<Camera> create(const std::string& name = "") { return make_ref<Camera>(name); }
+
+        Camera(const std::string& name);
         ~Camera() = default;
 
         /** Name the camera.
@@ -177,11 +174,11 @@ namespace Falcor
             \param[in] pGenerator Sample generator. This may be nullptr.
             \param[in] scale Jitter scale. This should normally be 1.0 / frameDim.
         */
-        void setPatternGenerator(const CPUSampleGenerator::SharedPtr& pGenerator, const float2& scale);
+        void setPatternGenerator(const ref<CPUSampleGenerator>& pGenerator, const float2& scale);
 
         /** Get the bound pattern generator
         */
-        const CPUSampleGenerator::SharedPtr& getPatternGenerator() const { return mJitterPattern.pGenerator; }
+        const ref<CPUSampleGenerator>& getPatternGenerator() const { return mJitterPattern.pGenerator; }
 
         /** Set the camera's jitter.
             \param[in] jitterX Subpixel offset along X axis divided by screen width (positive value shifts the image right).
@@ -208,35 +205,35 @@ namespace Falcor
 
         /** Get the view matrix.
         */
-        const rmcv::mat4 getViewMatrix() const;
+        const float4x4 getViewMatrix() const;
 
         /** Get the previous frame view matrix, which possibly includes the previous frame's camera jitter.
         */
-        const rmcv::mat4 getPrevViewMatrix() const;
+        const float4x4 getPrevViewMatrix() const;
 
         /** Get the projection matrix.
         */
-        const rmcv::mat4 getProjMatrix() const;
+        const float4x4 getProjMatrix() const;
 
         /** Get the view-projection matrix.
         */
-        const rmcv::mat4 getViewProjMatrix() const;
+        const float4x4 getViewProjMatrix() const;
 
         /** Get the view-projection matrix, without jittering.
         */
-        const rmcv::mat4 getViewProjMatrixNoJitter() const;
+        const float4x4 getViewProjMatrixNoJitter() const;
 
         /** Get the inverse of the view-projection matrix.
         */
-        const rmcv::mat4 getInvViewProjMatrix() const;
+        const float4x4 getInvViewProjMatrix() const;
 
         /** Set the persistent projection matrix and sets camera to use the persistent matrix instead of calculating the matrix from its other settings.
         */
-        void setProjectionMatrix(const rmcv::mat4& proj);
+        void setProjectionMatrix(const float4x4& proj);
 
         /** Set the persistent view matrix and sets camera to use the persistent matrix instead of calculating the matrix from its other settings.
         */
-        void setViewMatrix(const rmcv::mat4& view);
+        void setViewMatrix(const float4x4& view);
 
         /** Enable or disable usage of persistent projection matrix
             \param[in] persistent whether to set it persistent
@@ -257,7 +254,7 @@ namespace Falcor
         */
         const CameraData& getData() const { calculateCameraParameters(); return mData; }
 
-        void updateFromAnimation(const rmcv::mat4& transform) override;
+        void updateFromAnimation(const float4x4& transform) override;
 
         /** Render the UI
         */
@@ -289,14 +286,13 @@ namespace Falcor
 
         void dumpProperties();
     private:
-        Camera(const std::string& name);
         Changes mChanges = Changes::None;
 
         mutable bool mDirty = true;
         mutable bool mEnablePersistentProjMat = false;
         mutable bool mEnablePersistentViewMat = false;
-        mutable rmcv::mat4 mPersistentProjMat;
-        mutable rmcv::mat4 mPersistentViewMat;
+        mutable float4x4 mPersistentProjMat;
+        mutable float4x4 mPersistentViewMat;
 
         std::string mName;
         bool mPreserveHeight = true;    ///< If true, preserve frame height on change of aspect ratio. Otherwise, preserve width.
@@ -314,7 +310,7 @@ namespace Falcor
 
         struct
         {
-            CPUSampleGenerator::SharedPtr pGenerator;
+            ref<CPUSampleGenerator> pGenerator;
             float2 scale;
         } mJitterPattern;
 

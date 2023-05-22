@@ -33,6 +33,7 @@
 #include "Core/Macros.h"
 #include "Core/Assert.h"
 #include "Core/Errors.h"
+#include "Core/ObjectPython.h"
 #include "Core/Program/Program.h"
 #include "Core/Program/ProgramManager.h"
 #include "Utils/Logger.h"
@@ -67,13 +68,6 @@ static_assert((uint32_t)RayFlags::SkipProceduralPrimitives == 0x200);
 static_assert(getMaxViewportCount() <= 8);
 
 static const uint32_t kTransientHeapConstantBufferSize = 16 * 1024 * 1024;
-
-std::shared_ptr<Device> gpDevice;
-
-std::shared_ptr<Device>& getGlobalDevice()
-{
-    return gpDevice;
-}
 
 class GFXDebugCallBack : public gfx::IDebugCallback
 {
@@ -385,33 +379,7 @@ inline Device::ShaderModel querySupportedShaderModel(gfx::IDevice* pDevice)
     return Device::ShaderModel::Unknown;
 }
 
-Device::Device(const Desc& desc) : mDesc(desc) {}
-Device::~Device()
-{
-    mGfxDevice.setNull();
-
-#if FALCOR_NVAPI_AVAILABLE
-    mpAPIDispatcher.reset();
-#endif
-}
-
-std::shared_ptr<Device> Device::create(const Device::Desc& desc)
-{
-    if (gpDevice)
-    {
-        throw RuntimeError("Falcor only supports a single device.");
-    }
-
-    gpDevice = std::make_shared<Device>(desc);
-    if (!gpDevice->init())
-    {
-        throw RuntimeError("Failed to create device.");
-    }
-
-    return gpDevice;
-}
-
-bool Device::init()
+Device::Device(const Desc& desc) : mDesc(desc)
 {
     // Create a global slang session passed to GFX and used for compiling programs in ProgramManager.
     slang::createGlobalSession(mSlangGlobalSession.writeRef());
@@ -428,19 +396,19 @@ bool Device::init()
         throw RuntimeError("Vulkan device not supported.");
 #endif
 
-    gfx::IDevice::Desc desc = {};
-    desc.deviceType = getGfxDeviceType(mDesc.type);
-    desc.slang.slangGlobalSession = mSlangGlobalSession;
+    gfx::IDevice::Desc gfxDesc = {};
+    gfxDesc.deviceType = getGfxDeviceType(mDesc.type);
+    gfxDesc.slang.slangGlobalSession = mSlangGlobalSession;
 
     // Setup shader cache.
-    desc.shaderCache.maxEntryCount = mDesc.maxShaderCacheEntryCount;
+    gfxDesc.shaderCache.maxEntryCount = mDesc.maxShaderCacheEntryCount;
     if (mDesc.shaderCachePath == "")
     {
-        desc.shaderCache.shaderCachePath = nullptr;
+        gfxDesc.shaderCache.shaderCachePath = nullptr;
     }
     else
     {
-        desc.shaderCache.shaderCachePath = mDesc.shaderCachePath.c_str();
+        gfxDesc.shaderCache.shaderCachePath = mDesc.shaderCachePath.c_str();
         // If the supplied shader cache path does not exist, we will need to create it before creating the device.
         if (std::filesystem::exists(mDesc.shaderCachePath))
         {
@@ -463,15 +431,15 @@ bool Device::init()
     gfx::D3D12ExperimentalFeaturesDesc experimentalFeaturesDesc = {};
     experimentalFeaturesDesc.numFeatures = (uint32_t)mDesc.experimentalFeatures.size();
     experimentalFeaturesDesc.featureIIDs = mDesc.experimentalFeatures.data();
-    if (desc.deviceType == gfx::DeviceType::DirectX12)
+    if (gfxDesc.deviceType == gfx::DeviceType::DirectX12)
         extendedDescs.push_back(&experimentalFeaturesDesc);
 #endif
-    desc.extendedDescCount = extendedDescs.size();
-    desc.extendedDescs = extendedDescs.data();
+    gfxDesc.extendedDescCount = extendedDescs.size();
+    gfxDesc.extendedDescs = extendedDescs.data();
 
 #if FALCOR_NVAPI_AVAILABLE
     mpAPIDispatcher.reset(new PipelineCreationAPIDispatcher());
-    desc.apiCommandDispatcher = static_cast<ISlangUnknown*>(mpAPIDispatcher.get());
+    gfxDesc.apiCommandDispatcher = static_cast<ISlangUnknown*>(mpAPIDispatcher.get());
 #endif
 
     // Setup debug layer.
@@ -490,17 +458,17 @@ bool Device::init()
 
     // Try to create device on specific GPU.
     {
-        desc.adapterLUID = &gpus[mDesc.gpu].luid;
-        if (SLANG_FAILED(gfxCreateDevice(&desc, mGfxDevice.writeRef())))
+        gfxDesc.adapterLUID = &gpus[mDesc.gpu].luid;
+        if (SLANG_FAILED(gfxCreateDevice(&gfxDesc, mGfxDevice.writeRef())))
             logWarning("Failed to create device on GPU {} ({}).", mDesc.gpu, gpus[mDesc.gpu].name);
     }
 
     // Otherwise try create device on any available GPU.
     if (!mGfxDevice)
     {
-        desc.adapterLUID = nullptr;
-        if (SLANG_FAILED(gfxCreateDevice(&desc, mGfxDevice.writeRef())))
-            return false;
+        gfxDesc.adapterLUID = nullptr;
+        if (SLANG_FAILED(gfxCreateDevice(&gfxDesc, mGfxDevice.writeRef())))
+            throw RuntimeError("Failed to create device");
     }
 
     const auto& deviceInfo = mGfxDevice->getDeviceInfo();
@@ -569,17 +537,29 @@ bool Device::init()
         transientHeapDesc.constantBufferDescriptorCount = 1000000;
         transientHeapDesc.accelerationStructureDescriptorCount = 1000000;
         if (SLANG_FAILED(mGfxDevice->createTransientResourceHeap(transientHeapDesc, mpTransientResourceHeaps[i].writeRef())))
-        {
-            return false;
-        }
+            throw RuntimeError("Failed to create transient resource heap");
     }
 
     gfx::ICommandQueue::Desc queueDesc = {};
     queueDesc.type = gfx::ICommandQueue::QueueType::Graphics;
     if (SLANG_FAILED(mGfxDevice->createCommandQueue(queueDesc, mGfxCommandQueue.writeRef())))
-        return false;
+        throw RuntimeError("Failed to create command queue");
 
-    mpFrameFence = GpuFence::create(this);
+    // The Device class contains a bunch of nested resource objects that have strong references to the device.
+    // This is because we want a strong reference to the device when those objects are returned to the user.
+    // However, here it immediately creates cyclic references device->resource->device upon creation of the device.
+    // To break the cycles, we break the strong reference to the device for the resources that it owns.
+
+    // Here, we temporarily increase the refcount of the device, so it won't be destroyed upon breaking the
+    // nested strong references to it.
+    this->incRef();
+
+#if FALCOR_ENABLE_REF_TRACKING
+    this->setEnableRefTracking(true);
+#endif
+
+    mpFrameFence = GpuFence::create(ref<Device>(this));
+    mpFrameFence->breakStrongReferenceToDevice();
 
 #if FALCOR_HAS_D3D12
     if (getType() == Type::D3D12)
@@ -595,24 +575,60 @@ bool Device::init()
     }
 #endif // FALCOR_HAS_D3D12
 
-    mpProgramManager = std::make_unique<ProgramManager>(shared_from_this());
-    mpProfiler = std::make_unique<Profiler>(this);
+    mpProgramManager = std::make_unique<ProgramManager>(this);
 
-    mpDefaultSampler = Sampler::create(this, Sampler::Desc());
+    mpProfiler = std::make_unique<Profiler>(ref<Device>(this));
+    mpProfiler->breakStrongReferenceToDevice();
 
-    mpUploadHeap = GpuMemoryHeap::create(this, GpuMemoryHeap::Type::Upload, 1024 * 1024 * 2, mpFrameFence);
+    mpDefaultSampler = Sampler::create(ref<Device>(this), Sampler::Desc());
+    mpDefaultSampler->breakStrongReferenceToDevice();
+
+    mpUploadHeap = GpuMemoryHeap::create(ref<Device>(this), GpuMemoryHeap::Type::Upload, 1024 * 1024 * 2, mpFrameFence);
+    mpUploadHeap->breakStrongReferenceToDevice();
+
+    mpTimestampQueryHeap = QueryHeap::create(ref<Device>(this), QueryHeap::Type::Timestamp, 1024 * 1024);
+    mpTimestampQueryHeap->breakStrongReferenceToDevice();
+
     mpRenderContext = std::make_unique<RenderContext>(this, mGfxCommandQueue);
-    mpRenderContext->flush(); // This will bind the descriptor heaps.
-    // TODO: Do we need to flush here or should RenderContext::create() bind the descriptor heaps automatically without flush? See #749.
 
-    return true;
+    // TODO: Do we need to flush here or should RenderContext::create() bind the descriptor heaps automatically without flush? See #749.
+    mpRenderContext->flush(); // This will bind the descriptor heaps.
+
+    this->decRef(false);
 }
 
-std::weak_ptr<QueryHeap> Device::createQueryHeap(QueryHeap::Type type, uint32_t count)
+Device::~Device()
 {
-    QueryHeap::SharedPtr pHeap = QueryHeap::create(this, type, count);
-    mTimestampQueryHeaps.push_back(pHeap);
-    return pHeap;
+    mpRenderContext->flush(true);
+
+    mpProfiler.reset();
+
+    // Release all the bound resources. Need to do that before deleting the RenderContext
+    mGfxCommandQueue.setNull();
+    mDeferredReleases = decltype(mDeferredReleases)();
+    mpRenderContext.reset();
+    mpUploadHeap.reset();
+    mpTimestampQueryHeap.reset();
+    for (size_t i = 0; i < kInFlightFrameCount; ++i)
+        mpTransientResourceHeaps[i].setNull();
+
+    mpDefaultSampler.reset();
+    mpFrameFence.reset();
+
+#if FALCOR_HAS_D3D12
+    mpD3D12CpuDescPool.reset();
+    mpD3D12GpuDescPool.reset();
+#endif // FALCOR_HAS_D3D12
+
+    mpProgramManager.reset();
+
+    mDeferredReleases = decltype(mDeferredReleases)();
+
+    mGfxDevice.setNull();
+
+#if FALCOR_NVAPI_AVAILABLE
+    mpAPIDispatcher.reset();
+#endif
 }
 
 void Device::releaseResource(ISlangUnknown* pResource)
@@ -653,32 +669,6 @@ void Device::executeDeferredReleases()
         mpD3D12GpuDescPool->executeDeferredReleases();
     }
 #endif // FALCOR_HAS_D3D12
-}
-
-void Device::cleanup()
-{
-    mpRenderContext->flush(true);
-    // Release all the bound resources. Need to do that before deleting the RenderContext
-    mGfxCommandQueue.setNull();
-    mDeferredReleases = decltype(mDeferredReleases)();
-    mpRenderContext.reset();
-    mpUploadHeap.reset();
-    for (size_t i = 0; i < kInFlightFrameCount; ++i)
-        mpTransientResourceHeaps[i].setNull();
-
-    mpFrameFence.reset();
-    for (auto& heap : mTimestampQueryHeaps)
-        heap.reset();
-
-#if FALCOR_HAS_D3D12
-    mpD3D12CpuDescPool.reset();
-    mpD3D12GpuDescPool.reset();
-#endif // FALCOR_HAS_D3D12
-
-    mpProfiler.reset();
-    mpProgramManager.reset();
-
-    mDeferredReleases = decltype(mDeferredReleases)();
 }
 
 void Device::flushAndSync()
@@ -876,16 +866,62 @@ NativeHandle Device::getNativeHandle(uint32_t index) const
 
 FALCOR_SCRIPT_BINDING(Device)
 {
+    using namespace pybind11::literals;
+
+    FALCOR_SCRIPT_BINDING_DEPENDENCY(Formats)
+    FALCOR_SCRIPT_BINDING_DEPENDENCY(Buffer)
+    FALCOR_SCRIPT_BINDING_DEPENDENCY(Texture)
+    FALCOR_SCRIPT_BINDING_DEPENDENCY(Profiler)
+    FALCOR_SCRIPT_BINDING_DEPENDENCY(RenderContext)
+
+    pybind11::class_<Device, ref<Device>> device(m, "Device");
+
     pybind11::enum_<Device::Type> deviceType(m, "DeviceType");
     deviceType.value("Default", Device::Type::Default);
     deviceType.value("D3D12", Device::Type::D3D12);
     deviceType.value("Vulkan", Device::Type::Vulkan);
 
-    ScriptBindings::SerializableStruct<Device::Desc> deviceDesc(m, "DeviceDesc");
-#define field(f_) field(#f_, &Device::Desc::f_)
-    deviceDesc.field(type);
-    deviceDesc.field(gpu);
-    deviceDesc.field(enableDebugLayer);
-#undef field
+    pybind11::class_<Device::Limits> limits(device, "Limits");
+    limits.def_readonly("max_compute_dispatch_thread_groups", &Device::Limits::maxComputeDispatchThreadGroups);
+    limits.def_readonly("max_shader_visible_samplers", &Device::Limits::maxShaderVisibleSamplers);
+
+    device.def(
+        pybind11::init(
+            [](Device::Type type, uint32_t gpu, bool enable_debug_layer)
+            {
+                Device::Desc desc;
+                desc.type = type;
+                desc.gpu = gpu;
+                desc.enableDebugLayer = enable_debug_layer;
+                return make_ref<Device>(desc);
+            }
+        ),
+        "type"_a = Device::Type::Default, "gpu"_a = 0, "enable_debug_layer"_a = false
+    );
+    device.def(
+        "create_buffer",
+        [](ref<Device> self, size_t size, ResourceBindFlags bind_flags, Buffer::CpuAccess cpu_access)
+        { return Buffer::create(self, size, bind_flags, cpu_access); },
+        "size"_a, "bind_flags"_a = ResourceBindFlags::None, "cpu_access"_a = Buffer::CpuAccess::None
+    );
+    device.def(
+        "create_texture",
+        [](ref<Device> self, uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t array_size,
+           uint32_t mip_levels, ResourceBindFlags bind_flags)
+        {
+            if (depth > 0)
+                return Texture::create3D(self, width, height, depth, format, mip_levels, nullptr, bind_flags);
+            else if (height > 0)
+                return Texture::create2D(self, width, height, format, array_size, mip_levels, nullptr, bind_flags);
+            else
+                return Texture::create1D(self, width, format, array_size, mip_levels, nullptr, bind_flags);
+        },
+        "width"_a, "height"_a = 0, "depth"_a = 0, "format"_a = ResourceFormat::Unknown, "array_size"_a = 1,
+        "mip_levels"_a = uint32_t(Texture::kMaxPossible), "bind_flags"_a = ResourceBindFlags::None
+    );
+
+    device.def_property_readonly("profiler", &Device::getProfiler);
+    device.def_property_readonly("limits", &Device::getLimits);
+    device.def_property_readonly("render_context", &Device::getRenderContext);
 }
 } // namespace Falcor

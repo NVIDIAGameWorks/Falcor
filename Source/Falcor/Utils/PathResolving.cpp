@@ -38,7 +38,6 @@ bool resolveEnvVariables(std::string& str, EnvVarResolver envResolver, std::stri
 {
     FALCOR_ASSERT(envResolver);
 
-    std::string::size_type end = 0;
     std::string::size_type begin = str.find_first_of(beginToken);
     if (begin == std::string::npos)
         return true;
