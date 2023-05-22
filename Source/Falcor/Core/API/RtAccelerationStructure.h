@@ -32,8 +32,9 @@
 #include "Formats.h"
 #include "Buffer.h"
 #include "ResourceViews.h"
-#include "Utils/Math/Matrix/Matrix.h"
+#include "Utils/Math/Matrix.h"
 #include "Core/Macros.h"
+#include "Core/Object.h"
 #include <slang-gfx.h>
 #include <vector>
 #include <cstdint>
@@ -70,11 +71,10 @@ struct RtInstanceDesc
     DeviceAddress accelerationStructure;
 
     /**
-     * Sets the transform matrix using a rmcv::mat4 value.
-     * If this accepted GLM, it would have to transpose, but RMCV is row major so it doesn't
+     * Sets the transform matrix using a float4x4 value.
      * @param[in] matrix A 4x4 matrix to set into transform.
      */
-    RtInstanceDesc& setTransform(const rmcv::mat4& matrix);
+    RtInstanceDesc& setTransform(const float4x4& matrix);
 };
 
 enum class RtAccelerationStructureKind
@@ -178,11 +178,9 @@ struct RtAccelerationStructureBuildInputs
  * of an acceleration structure. It does not own the backing buffer resource, which is similar to
  * a resource view.
  */
-class FALCOR_API RtAccelerationStructure
+class FALCOR_API RtAccelerationStructure : public Object
 {
 public:
-    using SharedPtr = std::shared_ptr<RtAccelerationStructure>;
-
     class FALCOR_API Desc
     {
     public:
@@ -200,9 +198,9 @@ public:
          * @param[in] offset The offset within the buffer for the acceleration structure contents.
          * @param[in] offset The size in bytes to use for the acceleration structure.
          */
-        Desc& setBuffer(Buffer::SharedPtr buffer, uint64_t offset, uint64_t size);
+        Desc& setBuffer(ref<Buffer> buffer, uint64_t offset, uint64_t size);
 
-        Buffer::SharedPtr getBuffer() const { return mBuffer; }
+        ref<Buffer> getBuffer() const { return mBuffer; }
 
         uint64_t getOffset() const { return mOffset; }
 
@@ -212,7 +210,7 @@ public:
 
     protected:
         RtAccelerationStructureKind mKind = RtAccelerationStructureKind::BottomLevel;
-        Buffer::SharedPtr mBuffer = nullptr;
+        ref<Buffer> mBuffer = nullptr;
         uint64_t mOffset = 0;
         uint64_t mSize = 0;
     };
@@ -230,7 +228,7 @@ public:
      * @param[in] desc Describes acceleration structure settings.
      * @return A new object, or throws an exception if creation failed.
      */
-    static SharedPtr create(Device* pDevice, const Desc& desc);
+    static ref<RtAccelerationStructure> create(ref<Device> pDevice, const Desc& desc);
 
     static RtAccelerationStructurePrebuildInfo getPrebuildInfo(Device* pDevice, const RtAccelerationStructureBuildInputs& inputs);
 
@@ -243,9 +241,9 @@ public:
     gfx::IAccelerationStructure* getGfxAccelerationStructure() const { return mGfxAccelerationStructure; }
 
 protected:
-    RtAccelerationStructure(std::shared_ptr<Device> pDevice, const Desc& desc);
+    RtAccelerationStructure(ref<Device> pDevice, const Desc& desc);
 
-    std::shared_ptr<Device> mpDevice;
+    ref<Device> mpDevice;
     Desc mDesc;
 
     Slang::ComPtr<gfx::IAccelerationStructure> mGfxAccelerationStructure;

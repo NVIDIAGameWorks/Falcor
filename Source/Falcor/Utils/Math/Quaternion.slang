@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,9 +27,9 @@
  **************************************************************************/
 #include "Utils/Math/MathConstants.slangh"
 
- /**************************************************************************************************************
-  # All the quaternion code was copied from: https://gist.github.com/mattatz/40a91588d5fb38240403f198a938a593
-  **************************************************************************************************************/
+/**************************************************************************************************************
+ # All the quaternion code was copied from: https://gist.github.com/mattatz/40a91588d5fb38240403f198a938a593
+ **************************************************************************************************************/
 
 #define QUATERNION_IDENTITY float4(0, 0, 0, 1)
 
@@ -37,10 +37,7 @@
 // http://mathworld.wolfram.com/Quaternion.html
 float4 qmul(float4 q1, float4 q2)
 {
-    return float4(
-        q2.xyz * q1.w + q1.xyz * q2.w + cross(q1.xyz, q2.xyz),
-        q1.w * q2.w - dot(q1.xyz, q2.xyz)
-    );
+    return float4(q2.xyz * q1.w + q1.xyz * q2.w + cross(q1.xyz, q2.xyz), q1.w * q2.w - dot(q1.xyz, q2.xyz));
 }
 
 // Vector rotation with a quaternion
@@ -76,10 +73,12 @@ float4 from_to_rotation(float3 v1, float3 v2)
         tmp = normalize(tmp);
         q = rotate_angle_axis(M_PI, tmp);
     }
-    else if (d > 0.999999) {
+    else if (d > 0.999999)
+    {
         q = QUATERNION_IDENTITY;
     }
-    else {
+    else
+    {
         q.xyz = cross(v1, v2);
         q.w = 1 + d;
         q = normalize(q);

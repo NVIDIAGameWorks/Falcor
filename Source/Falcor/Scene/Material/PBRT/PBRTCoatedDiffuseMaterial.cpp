@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "PBRTCoatedDiffuseMaterial.h"
 #include "Utils/Scripting/ScriptBindings.h"
-#include "Scene/SceneBuilderAccess.h"
+#include "GlobalState.h"
 
 namespace Falcor
 {
@@ -36,13 +36,8 @@ namespace Falcor
         const char kShaderFile[] = "Rendering/Materials/PBRT/PBRTCoatedDiffuseMaterial.slang";
     }
 
-    PBRTCoatedDiffuseMaterial::SharedPtr PBRTCoatedDiffuseMaterial::create(std::shared_ptr<Device> pDevice, const std::string& name)
-    {
-        return SharedPtr(new PBRTCoatedDiffuseMaterial(std::move(pDevice), name));
-    }
-
-    PBRTCoatedDiffuseMaterial::PBRTCoatedDiffuseMaterial(std::shared_ptr<Device> pDevice, const std::string& name)
-        : BasicMaterial(std::move(pDevice), name, MaterialType::PBRTCoatedDiffuse)
+    PBRTCoatedDiffuseMaterial::PBRTCoatedDiffuseMaterial(ref<Device> pDevice, const std::string& name)
+        : BasicMaterial(pDevice, name, MaterialType::PBRTCoatedDiffuse)
     {
         // Setup additional texture slots.
         mTextureSlotInfo[(uint32_t)TextureSlot::BaseColor] = { "baseColor", TextureChannelFlags::RGBA, true };
@@ -83,10 +78,10 @@ namespace Falcor
 
         FALCOR_SCRIPT_BINDING_DEPENDENCY(BasicMaterial)
 
-        pybind11::class_<PBRTCoatedDiffuseMaterial, BasicMaterial, PBRTCoatedDiffuseMaterial::SharedPtr> material(m, "PBRTCoatedDiffuseMaterial");
+        pybind11::class_<PBRTCoatedDiffuseMaterial, BasicMaterial, ref<PBRTCoatedDiffuseMaterial>> material(m, "PBRTCoatedDiffuseMaterial");
         auto create = [] (const std::string& name)
         {
-            return PBRTCoatedDiffuseMaterial::create(getActivePythonSceneBuilder().getDevice(), name);
+            return PBRTCoatedDiffuseMaterial::create(accessActivePythonSceneBuilder().getDevice(), name);
         };
         material.def(pybind11::init(create), "name"_a = ""); // PYTHONDEPRECATED
 

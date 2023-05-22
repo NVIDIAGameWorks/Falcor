@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 #pragma once
 #include "Transform.h"
 #include "Core/Macros.h"
+#include "Core/Object.h"
 #include "Utils/Math/Vector.h"
 #include "Utils/Math/Matrix.h"
 #include <filesystem>
@@ -41,11 +42,9 @@ namespace Falcor
         Vertices have position, normal and texture coordinate attributes.
         This class is used as a utility to pass simple geometry to the SceneBuilder.
     */
-    class FALCOR_API TriangleMesh
+    class FALCOR_API TriangleMesh : public Object
     {
     public:
-        using SharedPtr = std::shared_ptr<TriangleMesh>;
-
         struct Vertex
         {
             float3 position;
@@ -59,7 +58,7 @@ namespace Falcor
         /** Creates a triangle mesh.
             \return Returns the triangle mesh.
         */
-        static SharedPtr create();
+        static ref<TriangleMesh> create();
 
         /** Creates a triangle mesh.
             \param[in] vertices Vertex list.
@@ -67,30 +66,30 @@ namespace Falcor
             \param[in] frontFaceCW Triangle winding.
             \return Returns the triangle mesh.
         */
-        static SharedPtr create(const VertexList& vertices, const IndexList& indices, bool frontFaceCW = false);
+        static ref<TriangleMesh> create(const VertexList& vertices, const IndexList& indices, bool frontFaceCW = false);
 
         /** Creates a dummy mesh (single degenerate triangle).
             \return Returns the triangle mesh.
         */
-        static SharedPtr createDummy();
+        static ref<TriangleMesh> createDummy();
 
         /** Creates a quad mesh, centered at the origin with normal pointing in positive Y direction.
             \param[in] size Size of the quad in X and Z.
             \return Returns the triangle mesh.
         */
-        static SharedPtr createQuad(float2 size = float2(1.f));
+        static ref<TriangleMesh> createQuad(float2 size = float2(1.f));
 
         /** Creates a disk mesh, centered at the origin with the normal pointing in positive Y direction.
             \param[in] radius Radius of the disk.
             \return Returns the triangle mesh.
         */
-        static SharedPtr createDisk(float radius, uint32_t segments = 32);
+        static ref<TriangleMesh> createDisk(float radius, uint32_t segments = 32);
 
         /** Creates a cube mesh, centered at the origin.
             \param[in] size Size of the cube in each dimension.
             \return Returns the triangle mesh.
         */
-        static SharedPtr createCube(float3 size = float3(1.f));
+        static ref<TriangleMesh> createCube(float3 size = float3(1.f));
 
         /** Creates a UV sphere mesh, centered at the origin with poles in positive/negative Y direction.
             \param[in] radius Radius of the sphere.
@@ -98,7 +97,7 @@ namespace Falcor
             \param[in] segmentsV Number of segments along meridians.
             \return Returns the triangle mesh.
         */
-        static SharedPtr createSphere(float radius = 0.5f, uint32_t segmentsU = 32, uint32_t segmentsV = 16);
+        static ref<TriangleMesh> createSphere(float radius = 0.5f, uint32_t segmentsU = 32, uint32_t segmentsV = 16);
 
         /** Creates a triangle mesh from a file.
             This is using ASSIMP to support a wide variety of asset formats.
@@ -107,7 +106,7 @@ namespace Falcor
             \param[in] smoothNormals If no normals are defined in the model, generate smooth instead of facet normals.
             \return Returns the triangle mesh or nullptr if the mesh failed to load.
         */
-        static SharedPtr createFromFile(const std::filesystem::path& path, bool smoothNormals = false);
+        static ref<TriangleMesh> createFromFile(const std::filesystem::path& path, bool smoothNormals = false);
 
         /** Get the name of the triangle mesh.
             \return Returns the name.
@@ -166,7 +165,7 @@ namespace Falcor
         /** Applies a transform to the triangle mesh.
             \param[in] transform Transform to apply.
         */
-        void applyTransform(const rmcv::mat4& transform);
+        void applyTransform(const float4x4& transform);
 
     private:
         TriangleMesh();

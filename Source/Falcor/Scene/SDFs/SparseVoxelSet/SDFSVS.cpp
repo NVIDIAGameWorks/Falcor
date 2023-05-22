@@ -29,6 +29,7 @@
 #include "Core/API/Device.h"
 #include "Core/API/RenderContext.h"
 #include "Utils/Math/MathHelpers.h"
+#include "Utils/Math/MathConstants.slangh"
 #include "Scene/SDFs/SDFVoxelTypes.slang"
 
 namespace Falcor
@@ -37,11 +38,6 @@ namespace Falcor
     {
         const std::string kSDFCountSurfaceVoxelsShaderName = "Scene/SDFs/SDFSurfaceVoxelCounter.cs.slang";
         const std::string kSDFSVSVoxelizerShaderName = "Scene/SDFs/SparseVoxelSet/SDFSVSVoxelizer.cs.slang";
-    }
-
-    SDFSVS::SharedPtr SDFSVS::create(std::shared_ptr<Device> pDevice)
-    {
-        return SharedPtr(new SDFSVS(std::move(pDevice)));
     }
 
     size_t SDFSVS::getSize() const
@@ -67,7 +63,7 @@ namespace Falcor
         }
         else
         {
-            mpSDFGridTexture = Texture::create3D(mpDevice.get(), mGridWidth + 1, mGridWidth + 1, mGridWidth + 1, ResourceFormat::R8Snorm, 1, mValues.data());
+            mpSDFGridTexture = Texture::create3D(mpDevice, mGridWidth + 1, mGridWidth + 1, mGridWidth + 1, ResourceFormat::R8Snorm, 1, mValues.data());
         }
 
         if (!mpCountSurfaceVoxelsPass)
@@ -80,8 +76,8 @@ namespace Falcor
         if (!mpSurfaceVoxelCounter)
         {
             static uint32_t zero = 0;
-            mpSurfaceVoxelCounter = Buffer::create(mpDevice.get(), sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
-            mpSurfaceVoxelCounterStagingBuffer = Buffer::create(mpDevice.get(), sizeof(uint32_t), Resource::BindFlags::None, Buffer::CpuAccess::Read);
+            mpSurfaceVoxelCounter = Buffer::create(mpDevice, sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
+            mpSurfaceVoxelCounterStagingBuffer = Buffer::create(mpDevice, sizeof(uint32_t), Resource::BindFlags::None, Buffer::CpuAccess::Read);
         }
         else
         {
@@ -90,14 +86,15 @@ namespace Falcor
 
         if (!mpReadbackFence)
         {
-            mpReadbackFence = GpuFence::create(mpDevice.get());
+            mpReadbackFence = GpuFence::create(mpDevice);
         }
 
         // Count the number of surface containing voxels in the texture.
         {
-            mpCountSurfaceVoxelsPass["CB"]["gGridWidth"] = mGridWidth;
-            mpCountSurfaceVoxelsPass["gSDFGrid"] = mpSDFGridTexture;
-            mpCountSurfaceVoxelsPass["gTotalVoxelCount"] = mpSurfaceVoxelCounter;
+            auto var = mpCountSurfaceVoxelsPass->getRootVar();
+            var["CB"]["gGridWidth"] = mGridWidth;
+            var["gSDFGrid"] = mpSDFGridTexture;
+            var["gTotalVoxelCount"] = mpSurfaceVoxelCounter;
             mpCountSurfaceVoxelsPass->execute(pRenderContext, mGridWidth, mGridWidth, mGridWidth);
 
             // Copy surface containing voxels count to staging buffer.
@@ -117,12 +114,12 @@ namespace Falcor
         {
             if (!mpVoxelAABBBuffer || mpVoxelAABBBuffer->getElementCount() < mVoxelCount)
             {
-                mpVoxelAABBBuffer = Buffer::createStructured(mpDevice.get(), sizeof(AABB), mVoxelCount);
+                mpVoxelAABBBuffer = Buffer::createStructured(mpDevice, sizeof(AABB), mVoxelCount);
             }
 
             if (!mpVoxelBuffer || mpVoxelBuffer->getElementCount() < mVoxelCount)
             {
-                mpVoxelBuffer = Buffer::createStructured(mpDevice.get(), sizeof(SDFSVSVoxel), mVoxelCount);
+                mpVoxelBuffer = Buffer::createStructured(mpDevice, sizeof(SDFSVSVoxel), mVoxelCount);
             }
         }
 
@@ -137,12 +134,13 @@ namespace Falcor
 
             pRenderContext->clearUAVCounter(mpVoxelBuffer, 0);
 
-            mpSDFSVSVoxelizerPass["CB"]["gVirtualGridLevel"] = bitScanReverse(mGridWidth) + 1;
-            mpSDFSVSVoxelizerPass["CB"]["gVirtualGridWidth"] = mGridWidth;
-            mpSDFSVSVoxelizerPass["gSDFGrid"] = mpSDFGridTexture;
+            auto var = mpSDFSVSVoxelizerPass->getRootVar();
+            var["CB"]["gVirtualGridLevel"] = bitScanReverse(mGridWidth) + 1;
+            var["CB"]["gVirtualGridWidth"] = mGridWidth;
+            var["gSDFGrid"] = mpSDFGridTexture;
 
-            mpSDFSVSVoxelizerPass["gVoxelAABBs"] = mpVoxelAABBBuffer;
-            mpSDFSVSVoxelizerPass["gVoxels"] = mpVoxelBuffer;
+            var["gVoxelAABBs"] = mpVoxelAABBBuffer;
+            var["gVoxels"] = mpVoxelBuffer;
 
             mpSDFSVSVoxelizerPass->execute(pRenderContext, mGridWidth, mGridWidth, mGridWidth);
         }
@@ -166,7 +164,7 @@ namespace Falcor
 
         var["virtualGridWidth"] = mGridWidth;
         var["oneDivVirtualGridWidth"] = 1.0f / mGridWidth;
-        var["normalizationFactor"] = 0.5f * glm::root_three<float>() / mGridWidth;
+        var["normalizationFactor"] = 0.5f * float(M_SQRT3) / mGridWidth;
 
         var["aabbs"] = mpVoxelAABBBuffer;
         var["voxels"] = mpVoxelBuffer;
@@ -178,10 +176,10 @@ namespace Falcor
         uint32_t valueCount = gridWidthInValues * gridWidthInValues * gridWidthInValues;
         mValues.resize(valueCount);
 
-        float normalizationMultipler = 2.0f * mGridWidth / glm::root_three<float>();
+        float normalizationMultipler = 2.0f * mGridWidth / float(M_SQRT3);
         for (uint32_t v = 0; v < valueCount; v++)
         {
-            float normalizedValue = glm::clamp(cornerValues[v] * normalizationMultipler, -1.0f, 1.0f);
+            float normalizedValue = std::clamp(cornerValues[v] * normalizationMultipler, -1.0f, 1.0f);
 
             float integerScale = normalizedValue * float(INT8_MAX);
             mValues[v] = integerScale >= 0.0f ? int8_t(integerScale + 0.5f) : int8_t(integerScale - 0.5f);

@@ -28,18 +28,16 @@
 #pragma once
 #include "Handles.h"
 #include "Core/Macros.h"
-#include <memory>
+#include "Core/Object.h"
 
 namespace Falcor
 {
 /**
  * Rasterizer state
  */
-class FALCOR_API RasterizerState
+class FALCOR_API RasterizerState : public Object
 {
 public:
-    using SharedPtr = std::shared_ptr<RasterizerState>;
-
     /**
      * Cull mode
      */
@@ -179,7 +177,7 @@ public:
      * @param[in] desc Rasterizer state descriptor.
      * @return A new object, or throws an exception if creation failed.
      */
-    static SharedPtr create(const Desc& desc);
+    static ref<RasterizerState> create(const Desc& desc);
 
     /**
      * Get the cull mode

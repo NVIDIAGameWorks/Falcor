@@ -29,6 +29,7 @@
 #include "Device.h"
 #include "GFXAPI.h"
 #include "Core/Errors.h"
+#include "Core/ObjectPython.h"
 #include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
@@ -113,8 +114,8 @@ void checkAttachArguments(const Texture* pTexture, uint32_t mipLevel, uint32_t f
     }
 }
 
-Texture::SharedPtr createTexture2D(
-    Device* pDevice,
+ref<Texture> createTexture2D(
+    ref<Device> pDevice,
     uint32_t w,
     uint32_t h,
     ResourceFormat format,
@@ -196,12 +197,12 @@ Fbo::Desc::Desc()
     mColorTargets.resize(Fbo::getMaxColorTargetCount());
 }
 
-Fbo::SharedPtr Fbo::create(Device* pDevice)
+ref<Fbo> Fbo::create(ref<Device> pDevice)
 {
-    return SharedPtr(new Fbo(pDevice->shared_from_this()));
+    return ref<Fbo>(new Fbo(pDevice));
 }
 
-Fbo::SharedPtr Fbo::create(Device* pDevice, const std::vector<Texture::SharedPtr>& colors, const Texture::SharedPtr& pDepth)
+ref<Fbo> Fbo::create(ref<Device> pDevice, const std::vector<ref<Texture>>& colors, const ref<Texture>& pDepth)
 {
     auto pFbo = create(pDevice);
     for (uint32_t i = 0; i < colors.size(); i++)
@@ -216,7 +217,7 @@ Fbo::SharedPtr Fbo::create(Device* pDevice, const std::vector<Texture::SharedPtr
     return pFbo;
 }
 
-Fbo::Fbo(std::shared_ptr<Device> pDevice) : mpDevice(std::move(pDevice))
+Fbo::Fbo(ref<Device> pDevice) : mpDevice(pDevice)
 {
     mColorAttachments.resize(getMaxColorTargetCount());
 }
@@ -305,7 +306,7 @@ void Fbo::initFramebuffer() const
     FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createFramebuffer(desc, mGfxFramebuffer.writeRef()));
 }
 
-RenderTargetView::SharedPtr Fbo::getRenderTargetView(uint32_t rtIndex) const
+ref<RenderTargetView> Fbo::getRenderTargetView(uint32_t rtIndex) const
 {
     auto& rt = mColorAttachments[rtIndex];
     if (rt.pTexture)
@@ -318,13 +319,13 @@ RenderTargetView::SharedPtr Fbo::getRenderTargetView(uint32_t rtIndex) const
         {
             // TODO: mColorAttachments doesn't contain enough information to fully determine the view dimension. Assume 2D for now.
             auto dimension = rt.arraySize > 1 ? RenderTargetView::Dimension::Texture2DArray : RenderTargetView::Dimension::Texture2D;
-            rt.pNullView = RenderTargetView::create(mpDevice.get(), dimension);
+            rt.pNullView = RenderTargetView::create(mpDevice, dimension);
         }
-        return std::static_pointer_cast<RenderTargetView>(rt.pNullView);
+        return static_ref_cast<RenderTargetView>(rt.pNullView);
     }
 }
 
-DepthStencilView::SharedPtr Fbo::getDepthStencilView() const
+ref<DepthStencilView> Fbo::getDepthStencilView() const
 {
     if (mDepthStencil.pTexture)
     {
@@ -337,13 +338,13 @@ DepthStencilView::SharedPtr Fbo::getDepthStencilView() const
             // TODO: mDepthStencil doesn't contain enough information to fully determine the view dimension.  Assume 2D for now.
             auto dimension =
                 mDepthStencil.arraySize > 1 ? DepthStencilView::Dimension::Texture2DArray : DepthStencilView::Dimension::Texture2D;
-            mDepthStencil.pNullView = DepthStencilView::create(mpDevice.get(), dimension);
+            mDepthStencil.pNullView = DepthStencilView::create(mpDevice, dimension);
         }
-        return std::static_pointer_cast<DepthStencilView>(mDepthStencil.pNullView);
+        return static_ref_cast<DepthStencilView>(mDepthStencil.pNullView);
     }
 }
 
-void Fbo::attachDepthStencilTarget(const Texture::SharedPtr& pDepthStencil, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
+void Fbo::attachDepthStencilTarget(const ref<Texture>& pDepthStencil, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
 {
     bool changed = (mDepthStencil.pTexture != pDepthStencil);
     changed |= (mDepthStencil.mipLevel != mipLevel);
@@ -369,13 +370,7 @@ void Fbo::attachDepthStencilTarget(const Texture::SharedPtr& pDepthStencil, uint
     applyDepthAttachment();
 }
 
-void Fbo::attachColorTarget(
-    const Texture::SharedPtr& pTexture,
-    uint32_t rtIndex,
-    uint32_t mipLevel,
-    uint32_t firstArraySlice,
-    uint32_t arraySize
-)
+void Fbo::attachColorTarget(const ref<Texture>& pTexture, uint32_t rtIndex, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
 {
     checkArgument(
         rtIndex < mColorAttachments.size(), "'rtIndex' ({}) is out of range. Only {} color targets are available.", rtIndex,
@@ -474,7 +469,7 @@ void Fbo::calcAndValidateProperties() const
     mpDesc = &(*(getGlobalDescCache().insert(mTempDesc).first));
 }
 
-Texture::SharedPtr Fbo::getColorTexture(uint32_t index) const
+ref<Texture> Fbo::getColorTexture(uint32_t index) const
 {
     checkArgument(
         index < mColorAttachments.size(), "'index' ({}) is out of range. Only {} color slots are available.", index,
@@ -483,7 +478,7 @@ Texture::SharedPtr Fbo::getColorTexture(uint32_t index) const
     return mColorAttachments[index].pTexture;
 }
 
-const Texture::SharedPtr& Fbo::getDepthStencilTexture() const
+const ref<Texture>& Fbo::getDepthStencilTexture() const
 {
     return mDepthStencil.pTexture;
 }
@@ -511,8 +506,8 @@ void Fbo::setSamplePositions(uint32_t samplesPerPixel, uint32_t pixelCount, cons
     }
 }
 
-Fbo::SharedPtr Fbo::create2D(
-    Device* pDevice,
+ref<Fbo> Fbo::create2D(
+    ref<Device> pDevice,
     uint32_t width,
     uint32_t height,
     const Fbo::Desc& fboDesc,
@@ -528,7 +523,7 @@ Fbo::SharedPtr Fbo::create2D(
     checkArgument(mipLevels > 0, "'mipLevels' must not be zero.");
     checkArgument(sampleCount == 1 || mipLevels == 1, "Cannot create multi-sampled texture with more than one mip-level.");
 
-    Fbo::SharedPtr pFbo = create(pDevice);
+    ref<Fbo> pFbo = create(pDevice);
 
     // Create the color targets
     for (uint32_t i = 0; i < Fbo::getMaxColorTargetCount(); i++)
@@ -536,7 +531,7 @@ Fbo::SharedPtr Fbo::create2D(
         if (fboDesc.getColorTargetFormat(i) != ResourceFormat::Unknown)
         {
             Texture::BindFlags flags = getBindFlags(false, fboDesc.isColorTargetUav(i));
-            Texture::SharedPtr pTex =
+            ref<Texture> pTex =
                 createTexture2D(pDevice, width, height, fboDesc.getColorTargetFormat(i), sampleCount, arraySize, mipLevels, flags);
             pFbo->attachColorTarget(pTex, i, 0, 0, kAttachEntireMipLevel);
         }
@@ -545,7 +540,7 @@ Fbo::SharedPtr Fbo::create2D(
     if (fboDesc.getDepthStencilFormat() != ResourceFormat::Unknown)
     {
         Texture::BindFlags flags = getBindFlags(true, fboDesc.isDepthStencilUav());
-        Texture::SharedPtr pDepth =
+        ref<Texture> pDepth =
             createTexture2D(pDevice, width, height, fboDesc.getDepthStencilFormat(), sampleCount, arraySize, mipLevels, flags);
         pFbo->attachDepthStencilTarget(pDepth, 0, 0, kAttachEntireMipLevel);
     }
@@ -553,8 +548,8 @@ Fbo::SharedPtr Fbo::create2D(
     return pFbo;
 }
 
-Fbo::SharedPtr Fbo::createCubemap(
-    Device* pDevice,
+ref<Fbo> Fbo::createCubemap(
+    ref<Device> pDevice,
     uint32_t width,
     uint32_t height,
     const Desc& fboDesc,
@@ -568,7 +563,7 @@ Fbo::SharedPtr Fbo::createCubemap(
     checkArgument(mipLevels > 0, "'mipLevels' must not be zero.");
     checkArgument(fboDesc.getSampleCount() == 1, "Cannot create multi-sampled cube map.");
 
-    Fbo::SharedPtr pFbo = create(pDevice);
+    ref<Fbo> pFbo = create(pDevice);
 
     // Create the color targets
     for (uint32_t i = 0; i < getMaxColorTargetCount(); i++)
@@ -588,15 +583,20 @@ Fbo::SharedPtr Fbo::createCubemap(
     return pFbo;
 }
 
-Fbo::SharedPtr Fbo::create2D(Device* pDevice, uint32_t width, uint32_t height, ResourceFormat color, ResourceFormat depth)
+ref<Fbo> Fbo::create2D(ref<Device> pDevice, uint32_t width, uint32_t height, ResourceFormat color, ResourceFormat depth)
 {
     Desc d;
     d.setColorTarget(0, color).setDepthStencilTarget(depth);
     return create2D(pDevice, width, height, d);
 }
 
+void Fbo::breakStrongReferenceToDevice()
+{
+    mpDevice.breakStrongReference();
+}
+
 FALCOR_SCRIPT_BINDING(Fbo)
 {
-    pybind11::class_<Fbo, Fbo::SharedPtr>(m, "Fbo");
+    pybind11::class_<Fbo, ref<Fbo>>(m, "Fbo");
 }
 } // namespace Falcor

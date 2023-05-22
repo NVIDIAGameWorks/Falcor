@@ -101,4 +101,12 @@ CPU_TEST(FormatByteSize)
     EXPECT_EQ(formatByteSize(10 * TB), "10.00 TB");
 }
 
+CPU_TEST(DecodeURI)
+{
+    EXPECT_EQ(decodeURI("test"), "test");
+    EXPECT_EQ(decodeURI("hello%20world"), "hello world");
+    EXPECT_EQ(decodeURI("hello%20world%21"), "hello world!");
+    EXPECT_EQ(decodeURI("%22hello+world%22"), "\"hello world\"");
+}
+
 } // namespace Falcor

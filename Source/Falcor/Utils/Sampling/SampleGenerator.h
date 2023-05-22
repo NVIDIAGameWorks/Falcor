@@ -28,6 +28,7 @@
 #pragma once
 #include "SampleGeneratorType.slangh"
 #include "Core/Macros.h"
+#include "Core/Object.h"
 #include "Core/API/Shader.h"
 #include "Core/Program/ShaderVar.h"
 #include "Utils/UI/Gui.h"
@@ -36,79 +37,87 @@
 
 namespace Falcor
 {
-    class RenderContext;
+class RenderContext;
 
-    /** Utility class for sample generators on the GPU.
+/**
+ * Utility class for sample generators on the GPU.
+ *
+ * This class has functions for configuring the shader program and
+ * uploading the necessary lookup tables (if needed).
+ * On the GPU, import SampleGenerator.slang in your shader program.
+ */
+class FALCOR_API SampleGenerator : public Object
+{
+public:
+    virtual ~SampleGenerator() = default;
 
-        This class has functions for configuring the shader program and
-        uploading the necessary lookup tables (if needed).
-        On the GPU, import SampleGenerator.slang in your shader program.
-    */
-    class FALCOR_API SampleGenerator
-    {
-    public:
-        using SharedPtr = std::shared_ptr<SampleGenerator>;
+    /**
+     * Factory function for creating a sample generator of the specified type.
+     * @param[in] pDevice GPU device.
+     * @param[in] type The type of sample generator. See SampleGeneratorType.slangh.
+     * @return New object, or throws an exception on error.
+     */
+    static ref<SampleGenerator> create(ref<Device> pDevice, uint32_t type);
 
-        virtual ~SampleGenerator() = default;
+    /**
+     * Get macro definitions for this sample generator.
+     * @return Macro definitions that must be set on the shader program that uses this sampler.
+     */
+    virtual Shader::DefineList getDefines() const;
 
-        /** Factory function for creating a sample generator of the specified type.
-            \param[in] pDevice GPU device.
-            \param[in] type The type of sample generator. See SampleGeneratorType.slangh.
-            \return New object, or throws an exception on error.
-        */
-        static SharedPtr create(std::shared_ptr<Device> pDevice, uint32_t type);
+    /**
+     * Binds the data to a program vars object.
+     * @param[in] pVars ProgramVars of the program to set data into.
+     */
+    virtual void setShaderData(const ShaderVar& var) const {}
 
-        /** Get macro definitions for this sample generator.
-            \return Macro definitions that must be set on the shader program that uses this sampler.
-        */
-        virtual Shader::DefineList getDefines() const;
+    /**
+     * Render the sampler's UI.
+     */
+    virtual void renderUI(Gui::Widgets& widget) {}
 
-        /** Binds the data to a program vars object.
-            \param[in] pVars ProgramVars of the program to set data into.
-        */
-        virtual void setShaderData(ShaderVar const& var) const {}
+    /**
+     * Begin a frame.
+     * This should be called at the beginning of each frame for samplers that do extra setup for each frame.
+     * @param[in] pRenderContext Render context.
+     * @param[in] frameDim Current frame dimension.
+     * @return Returns true if internal state has changed and setShaderData() should be called before using the sampler.
+     */
+    virtual bool beginFrame(RenderContext* pRenderContext, const uint2& frameDim) { return false; }
 
-        /** Render the sampler's UI.
-        */
-        virtual void renderUI(Gui::Widgets& widget) {}
+    /**
+     * End a frame.
+     * This should be called at the end of each frame for samplers that do extra setup for each frame.
+     * @param[in] pRenderContext Render context.
+     * @param[in] pRenderOutput Rendered output.
+     */
+    virtual void endFrame(RenderContext* pRenderContext, const ref<Texture>& pRenderOutput) {}
 
-        /** Begin a frame.
-            This should be called at the beginning of each frame for samplers that do extra setup for each frame.
-            \param[in] pRenderContext Render context.
-            \param[in] frameDim Current frame dimension.
-            \return Returns true if internal state has changed and setShaderData() should be called before using the sampler.
-        */
-        virtual bool beginFrame(RenderContext* pRenderContext, const uint2& frameDim) { return false; }
+    /**
+     * Returns a GUI dropdown list of all available sample generators.
+     */
+    static const Gui::DropdownList& getGuiDropdownList();
 
-        /** End a frame.
-            This should be called at the end of each frame for samplers that do extra setup for each frame.
-            \param[in] pRenderContext Render context.
-            \param[in] pRenderOutput Rendered output.
-        */
-        virtual void endFrame(RenderContext* pRenderContext, const Texture::SharedPtr& pRenderOutput) {}
+    /**
+     * Register a sample generator type.
+     * @param[in] type The type of sample generator. See SampleGeneratorType.slangh.
+     * @param[in] name Descriptive name used in the UI.
+     * @param[in] createFunc Function to create an instance of the sample generator.
+     */
+    static void registerType(uint32_t type, const std::string& name, std::function<ref<SampleGenerator>(ref<Device>)> createFunc);
 
-        /** Returns a GUI dropdown list of all available sample generators.
-        */
-        static const Gui::DropdownList& getGuiDropdownList();
+protected:
+    SampleGenerator(ref<Device> pDevice, uint32_t type) : mpDevice(pDevice), mType(type) {}
 
-        /** Register a sample generator type.
-            \param[in] type The type of sample generator. See SampleGeneratorType.slangh.
-            \param[in] name Descriptive name used in the UI.
-            \param[in] createFunc Function to create an instance of the sample generator.
-        */
-        static void registerType(uint32_t type, const std::string& name, std::function<SharedPtr(std::shared_ptr<Device>)> createFunc);
+    ref<Device> mpDevice;
+    const uint32_t mType; ///< Type of sample generator. See SampleGeneratorType.slangh.
 
-    protected:
-        SampleGenerator(std::shared_ptr<Device> pDevice, uint32_t type) : mpDevice(std::move(pDevice)), mType(type) {}
+private:
+    /**
+     * Register all basic sample generator types.
+     */
+    static void registerAll();
 
-        std::shared_ptr<Device> mpDevice;
-        const uint32_t mType;       ///< Type of sample generator. See SampleGeneratorType.slangh.
-
-    private:
-        /** Register all basic sample generator types.
-        */
-        static void registerAll();
-
-        friend struct RegisterSampleGenerators;
-    };
-}
+    friend struct RegisterSampleGenerators;
+};
+} // namespace Falcor

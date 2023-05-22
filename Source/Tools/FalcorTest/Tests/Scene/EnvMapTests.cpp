@@ -42,19 +42,16 @@ GPU_TEST(EnvMap)
     // Test loading a light probe.
     // This call runs setup code on the GPU to precompute the importance map.
     // If it succeeds, we at least know the code compiles and run.
-    EnvMap::SharedPtr pEnvMap = EnvMap::createFromFile(ctx.getDevice(), kEnvMapFile);
+    ref<EnvMap> pEnvMap = EnvMap::createFromFile(ctx.getDevice(), kEnvMapFile);
     EXPECT_NE(pEnvMap, nullptr);
     if (pEnvMap == nullptr)
         return;
 
-    EnvMapSampler::SharedPtr pEnvMapSampler = EnvMapSampler::create(ctx.getDevice(), pEnvMap);
-    EXPECT_NE(pEnvMapSampler, nullptr);
-    if (pEnvMapSampler == nullptr)
-        return;
+    EnvMapSampler envMapSampler(ctx.getDevice(), pEnvMap);
 
     // Check that the importance map exists and is a square power-of-two
     // texture with a full mip map hierarchy.
-    auto pImportanceMap = pEnvMapSampler->getImportanceMap();
+    auto pImportanceMap = envMapSampler.getImportanceMap();
     EXPECT_NE(pImportanceMap, nullptr);
     if (pImportanceMap == nullptr)
         return;

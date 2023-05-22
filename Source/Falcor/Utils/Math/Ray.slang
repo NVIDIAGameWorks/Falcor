@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,9 +27,10 @@
  **************************************************************************/
 #include "Utils/Math/MathConstants.slangh"
 
-/** Ray type.
-    This has equal layout to DXR RayDesc but adds additional functionality.
-*/
+/**
+ * Ray type.
+ * This has equal layout to DXR RayDesc but adds additional functionality.
+ */
 struct Ray
 {
     float3 origin;
@@ -37,8 +38,9 @@ struct Ray
     float3 dir;
     float tMax;
 
-    /** Initializes a ray.
-    */
+    /**
+     * Initializes a ray.
+     */
     __init(float3 origin, float3 dir, float tMin = 0.f, float tMax = FLT_MAX)
     {
         this.origin = origin;
@@ -47,19 +49,15 @@ struct Ray
         this.tMax = tMax;
     }
 
-    /** Convert to DXR RayDesc.
-    */
-    RayDesc toRayDesc()
-    {
-        return { origin, tMin, dir, tMax };
-    }
+    /**
+     * Convert to DXR RayDesc.
+     */
+    RayDesc toRayDesc() { return { origin, tMin, dir, tMax }; }
 
-    /** Evaluate position on the ray.
-        \param[in] t Ray parameter.
-        \return Returns evaluated position.
-    */
-    float3 eval(float t)
-    {
-        return origin + t * dir;
-    }
+    /**
+     * Evaluate position on the ray.
+     * @param[in] t Ray parameter.
+     * @return Returns evaluated position.
+     */
+    float3 eval(float t) { return origin + t * dir; }
 };

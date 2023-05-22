@@ -27,7 +27,8 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "RenderGraph/BasePasses/FullScreenPass.h"
+#include "Core/Pass/FullScreenPass.h"
+#include "RenderGraph/RenderPass.h"
 
 using namespace Falcor;
 
@@ -36,9 +37,9 @@ class GaussianBlur : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(GaussianBlur, "GaussianBlur", "Gaussian blur.");
 
-    using SharedPtr = std::shared_ptr<GaussianBlur>;
+    static ref<GaussianBlur> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<GaussianBlur>(pDevice, dict); }
 
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
+    GaussianBlur(ref<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
@@ -54,16 +55,15 @@ public:
     static void registerBindings(pybind11::module& m);
 
 private:
-    GaussianBlur(std::shared_ptr<Device> pDevice);
     uint32_t mKernelWidth = 5;
     float mSigma = 2.0f;
     bool mReady = false;
     void createTmpFbo(const Texture* pSrc);
     void updateKernel();
 
-    FullScreenPass::SharedPtr mpHorizontalBlur;
-    FullScreenPass::SharedPtr mpVerticalBlur;
-    Fbo::SharedPtr mpFbo;
-    Fbo::SharedPtr mpTmpFbo;
-    Sampler::SharedPtr mpSampler;
+    ref<FullScreenPass> mpHorizontalBlur;
+    ref<FullScreenPass> mpVerticalBlur;
+    ref<Fbo> mpFbo;
+    ref<Fbo> mpTmpFbo;
+    ref<Sampler> mpSampler;
 };

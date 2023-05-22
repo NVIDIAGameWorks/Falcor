@@ -32,6 +32,7 @@
 #include "GFXAPI.h"
 #include "NativeHandleTraits.h"
 #include "Core/Assert.h"
+#include "Core/ObjectPython.h"
 #include "Utils/Logger.h"
 #include "Utils/StringUtils.h"
 #include "Utils/Scripting/ScriptBindings.h"
@@ -39,8 +40,8 @@
 namespace Falcor
 {
 
-Resource::Resource(std::shared_ptr<Device> pDevice, Type type, BindFlags bindFlags, uint64_t size)
-    : mpDevice(std::move(pDevice)), mType(type), mBindFlags(bindFlags), mSize(size)
+Resource::Resource(ref<Device> pDevice, Type type, BindFlags bindFlags, uint64_t size)
+    : mpDevice(pDevice), mType(type), mBindFlags(bindFlags), mSize(size)
 {}
 
 Resource::~Resource() = default;
@@ -100,12 +101,24 @@ const std::string to_string(Resource::State state)
     return s;
 }
 
+ref<Device> Resource::getDevice() const
+{
+    return mpDevice;
+}
+
 void Resource::invalidateViews() const
 {
-    mSrvs.clear();
-    mUavs.clear();
-    mRtvs.clear();
-    mDsvs.clear();
+    auto invalidateAll = [](auto& vec)
+    {
+        for (const auto& item : vec)
+            item.second->invalidate();
+        vec.clear();
+    };
+
+    invalidateAll(mSrvs);
+    invalidateAll(mUavs);
+    invalidateAll(mRtvs);
+    invalidateAll(mDsvs);
 }
 
 void Resource::setName(const std::string& name)
@@ -114,18 +127,18 @@ void Resource::setName(const std::string& name)
     getGfxResource()->setDebugName(mName.c_str());
 }
 
-std::shared_ptr<Texture> Resource::asTexture()
+ref<Texture> Resource::asTexture()
 {
     // In the past, Falcor relied on undefined behavior checking `this` for nullptr, returning nullptr if `this` was nullptr.
     FALCOR_ASSERT(this);
-    return std::dynamic_pointer_cast<Texture>(shared_from_this());
+    return ref<Texture>(dynamic_cast<Texture*>(this));
 }
 
-std::shared_ptr<Buffer> Resource::asBuffer()
+ref<Buffer> Resource::asBuffer()
 {
     // In the past, Falcor relied on undefined behavior checking `this` for nullptr, returning nullptr if `this` was nullptr.
     FALCOR_ASSERT(this);
-    return std::dynamic_pointer_cast<Buffer>(shared_from_this());
+    return ref<Buffer>(dynamic_cast<Buffer*>(this));
 }
 
 Resource::State Resource::getGlobalState() const
@@ -211,8 +224,13 @@ NativeHandle Resource::getNativeHandle() const
     return {};
 }
 
+void Resource::breakStrongReferenceToDevice()
+{
+    mpDevice.breakStrongReference();
+}
+
 FALCOR_SCRIPT_BINDING(Resource)
 {
-    pybind11::class_<Resource, Resource::SharedPtr>(m, "Resource");
+    pybind11::class_<Resource, ref<Resource>>(m, "Resource");
 }
 } // namespace Falcor

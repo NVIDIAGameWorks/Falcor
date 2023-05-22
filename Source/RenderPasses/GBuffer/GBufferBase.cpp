@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -182,7 +182,7 @@ void GBufferBase::execute(RenderContext* pRenderContext, const RenderData& rende
     dict[Falcor::kRenderPassGBufferAdjustShadingNormals] = mAdjustShadingNormals;
 }
 
-void GBufferBase::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
+void GBufferBase::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
 {
     mpScene = pScene;
     mFrameCount = 0;
@@ -200,7 +200,7 @@ void GBufferBase::setScene(RenderContext* pRenderContext, const Scene::SharedPtr
     }
 }
 
-static CPUSampleGenerator::SharedPtr createSamplePattern(GBufferBase::SamplePattern type, uint32_t sampleCount)
+static ref<CPUSampleGenerator> createSamplePattern(GBufferBase::SamplePattern type, uint32_t sampleCount)
 {
     switch (type)
     {
@@ -234,7 +234,7 @@ void GBufferBase::updateSamplePattern()
     if (mpSampleGenerator) mSampleCount = mpSampleGenerator->getSampleCount();
 }
 
-Texture::SharedPtr GBufferBase::getOutput(const RenderData& renderData, const std::string& name) const
+ref<Texture> GBufferBase::getOutput(const RenderData& renderData, const std::string& name) const
 {
     // This helper fetches the render pass output with the given name and verifies it has the correct size.
     FALCOR_ASSERT(mFrameDim.x > 0 && mFrameDim.y > 0);

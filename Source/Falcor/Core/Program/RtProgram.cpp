@@ -100,15 +100,13 @@ RtProgram::ShaderID RtProgram::Desc::addHitGroup(
     return {mBaseDesc.mActiveGroup};
 }
 
-RtProgram::SharedPtr RtProgram::create(std::shared_ptr<Device> pDevice, Desc desc, const DefineList& programDefines)
+ref<RtProgram> RtProgram::create(ref<Device> pDevice, Desc desc, const DefineList& programDefines)
 {
-    auto pProgram = SharedPtr(new RtProgram(pDevice, desc, programDefines));
-    pDevice->getProgramManager()->registerProgramForReload(pProgram);
-    return pProgram;
+    return ref<RtProgram>(new RtProgram(pDevice, desc, programDefines));
 }
 
-RtProgram::RtProgram(std::shared_ptr<Device> pDevice, const RtProgram::Desc& desc, const DefineList& programDefines)
-    : Program(std::move(pDevice), desc.mBaseDesc, programDefines), mRtDesc(desc)
+RtProgram::RtProgram(ref<Device> pDevice, const RtProgram::Desc& desc, const DefineList& programDefines)
+    : Program(pDevice, desc.mBaseDesc, programDefines), mRtDesc(desc)
 {
     if (desc.mRayGenCount == 0)
     {
@@ -124,14 +122,14 @@ RtProgram::RtProgram(std::shared_ptr<Device> pDevice, const RtProgram::Desc& des
     }
 }
 
-RtStateObject::SharedPtr RtProgram::getRtso(RtProgramVars* pVars)
+ref<RtStateObject> RtProgram::getRtso(RtProgramVars* pVars)
 {
     auto pProgramVersion = getActiveVersion();
-    auto pProgramKernels = pProgramVersion->getKernels(mpDevice.get(), pVars);
+    auto pProgramKernels = pProgramVersion->getKernels(mpDevice, pVars);
 
     mRtsoGraph.walk((void*)pProgramKernels.get());
 
-    RtStateObject::SharedPtr pRtso = mRtsoGraph.getCurrentNode();
+    ref<RtStateObject> pRtso = mRtsoGraph.getCurrentNode();
 
     if (pRtso == nullptr)
     {
@@ -140,7 +138,7 @@ RtStateObject::SharedPtr RtProgram::getRtso(RtProgramVars* pVars)
         desc.setMaxTraceRecursionDepth(mRtDesc.mMaxTraceRecursionDepth);
         desc.setPipelineFlags(mRtDesc.mPipelineFlags);
 
-        StateGraph::CompareFunc cmpFunc = [&desc](RtStateObject::SharedPtr pRtso) -> bool { return pRtso && (desc == pRtso->getDesc()); };
+        StateGraph::CompareFunc cmpFunc = [&desc](ref<RtStateObject> pRtso) -> bool { return pRtso && (desc == pRtso->getDesc()); };
 
         if (mRtsoGraph.scanForMatchingNode(cmpFunc))
         {
@@ -148,7 +146,7 @@ RtStateObject::SharedPtr RtProgram::getRtso(RtProgramVars* pVars)
         }
         else
         {
-            pRtso = RtStateObject::create(mpDevice.get(), desc);
+            pRtso = RtStateObject::create(mpDevice, desc);
             mRtsoGraph.setCurrentNodeData(pRtso);
         }
     }

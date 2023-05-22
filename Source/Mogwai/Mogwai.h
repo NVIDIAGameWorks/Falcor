@@ -51,8 +51,8 @@ namespace Mogwai
         using CreateFunc = UniquePtr(*)(Renderer* pRenderer);
 
         virtual const std::string& getName() const { return mName; }
-        virtual void beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) {};
-        virtual void endFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) {};
+        virtual void beginFrame(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo) {};
+        virtual void endFrame(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo) {};
         virtual bool hasWindow() const { return false; }
         virtual bool isWindowShown() const { return false; }
         virtual void toggleWindow() {}
@@ -96,7 +96,7 @@ namespace Mogwai
 
         void onLoad(RenderContext* pRenderContext) override;
         void onOptionsChange() override;
-        void onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
+        void onFrameRender(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo) override;
         void onResize(uint32_t width, uint32_t height) override;
         bool onKeyEvent(const KeyboardEvent& e) override;
         bool onMouseEvent(const MouseEvent& e) override;
@@ -144,7 +144,7 @@ namespace Mogwai
 
         struct GraphData
         {
-            RenderGraph::SharedPtr pGraph;
+            ref<RenderGraph> pGraph;
             std::string mainOutput;
             bool showAllOutputs = false;
             std::vector<std::string> originalOutputs;
@@ -153,26 +153,26 @@ namespace Mogwai
             Scene::UpdateFlags sceneUpdates = Scene::UpdateFlags::None;
         };
 
-        Scene::SharedPtr mpScene;
+        ref<Scene> mpScene;
 
-        void addGraph(const RenderGraph::SharedPtr& pGraph);
-        void setActiveGraph(const RenderGraph::SharedPtr& pGraph);
-        void removeGraph(const RenderGraph::SharedPtr& pGraph);
+        void addGraph(const ref<RenderGraph>& pGraph);
+        void setActiveGraph(const ref<RenderGraph>& pGraph);
+        void removeGraph(const ref<RenderGraph>& pGraph);
         void removeGraph(const std::string& graphName);
-        RenderGraph::SharedPtr getGraph(const std::string& graphName) const;
-        void initGraph(const RenderGraph::SharedPtr& pGraph, GraphData* pData);
+        ref<RenderGraph> getGraph(const std::string& graphName) const;
+        void initGraph(const ref<RenderGraph>& pGraph, GraphData* pData);
 
         void removeActiveGraph();
         void loadSceneDialog();
         void loadScene(std::filesystem::path path, SceneBuilder::Flags buildFlags = SceneBuilder::Flags::Default);
         void unloadScene();
-        void setScene(const Scene::SharedPtr& pScene);
-        Scene::SharedPtr getScene() const;
+        void setScene(const ref<Scene>& pScene);
+        ref<Scene> getScene() const;
         void executeActiveGraph(RenderContext* pRenderContext);
-        void beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo);
-        void endFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo);
+        void beginFrame(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo);
+        void endFrame(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo);
 
-        std::vector<std::string> getGraphOutputs(const RenderGraph::SharedPtr& pGraph);
+        std::vector<std::string> getGraphOutputs(const ref<RenderGraph>& pGraph);
         void graphOutputsGui(Gui::Widgets& widget);
         bool renderDebugWindow(Gui::Widgets& widget, const Gui::DropdownList& dropdown, DebugWindow& data, const uint2& winSize); // Returns false if the window was closed
         void renderOutputUI(Gui::Widgets& widget, const Gui::DropdownList& dropdown, std::string& selectedOutput);
@@ -186,7 +186,7 @@ namespace Mogwai
 
         std::vector<GraphData> mGraphs;
         uint32_t mActiveGraph = 0;
-        Sampler::SharedPtr mpSampler = nullptr;
+        ref<Sampler> mpSampler = nullptr;
         std::filesystem::path mScriptPath;
 
         // Editor stuff
@@ -196,7 +196,7 @@ namespace Mogwai
         void applyEditorChanges();
         void setActiveGraph(uint32_t active);
 
-        static const size_t kInvalidProcessId = -1; // We use this to know that the editor was launching the viewer
+        static constexpr size_t kInvalidProcessId = -1; // We use this to know that the editor was launching the viewer
         size_t mEditorProcess = 0;
         std::filesystem::path mEditorTempPath;
         std::string mEditorScript;

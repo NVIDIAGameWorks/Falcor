@@ -42,7 +42,9 @@
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
-#include <assimp/pbrmaterial.h>
+#include <assimp/GltfMaterial.h>
+
+#include <pybind11/pybind11.h>
 
 #include <execution>
 #include <fstream>
@@ -54,8 +56,8 @@ namespace
 {
 // Global camera animation interpolation and warping configuration.
 // Assimp does not provide enough information to determine this from data.
-static const Animation::InterpolationMode kCameraInterpolationMode = Animation::InterpolationMode::Linear;
-static const bool kCameraEnableWarping = true;
+const Animation::InterpolationMode kCameraInterpolationMode = Animation::InterpolationMode::Linear;
+const bool kCameraEnableWarping = true;
 
 using BoneMeshMap = std::map<std::string, std::vector<uint32_t>>;
 using MeshInstanceList = std::vector<std::vector<const aiNode*>>;
@@ -67,7 +69,7 @@ using MeshInstanceList = std::vector<std::vector<const aiNode*>>;
  */
 float convertSpecPowerToRoughness(float specPower)
 {
-    return clamp(sqrt(2.0f / (specPower + 2.0f)), 0.f, 1.f);
+    return std::clamp(std::sqrt(2.0f / (specPower + 2.0f)), 0.f, 1.f);
 }
 
 enum class ImportMode
@@ -77,10 +79,10 @@ enum class ImportMode
     GLTF2,
 };
 
-rmcv::mat4 aiCast(const aiMatrix4x4& aiMat)
+float4x4 aiCast(const aiMatrix4x4& aiMat)
 {
-    rmcv::mat4 m{aiMat.a1, aiMat.a2, aiMat.a3, aiMat.a4, aiMat.b1, aiMat.b2, aiMat.b3, aiMat.b4,
-                 aiMat.c1, aiMat.c2, aiMat.c3, aiMat.c4, aiMat.d1, aiMat.d2, aiMat.d3, aiMat.d4};
+    float4x4 m{aiMat.a1, aiMat.a2, aiMat.a3, aiMat.a4, aiMat.b1, aiMat.b2, aiMat.b3, aiMat.b4,
+               aiMat.c1, aiMat.c2, aiMat.c3, aiMat.c4, aiMat.d1, aiMat.d2, aiMat.d3, aiMat.d4};
 
     return m;
 }
@@ -95,9 +97,9 @@ float3 aiCast(const aiVector3D& val)
     return float3(val.x, val.y, val.z);
 }
 
-glm::quat aiCast(const aiQuaternion& q)
+quatf aiCast(const aiQuaternion& q)
 {
-    return glm::quat(q.w, q.x, q.y, q.z);
+    return quatf(q.x, q.y, q.z, q.w);
 }
 
 /**
@@ -149,9 +151,9 @@ public:
     std::filesystem::path path;
     const aiScene* pScene;
     SceneBuilder& builder;
-    std::map<uint32_t, Material::SharedPtr> materialMap;
+    std::map<uint32_t, ref<Material>> materialMap;
     std::map<uint32_t, MeshID> meshMap; // Assimp mesh index to Falcor mesh ID
-    std::map<std::string, rmcv::mat4> localToBindPoseMatrices;
+    std::map<std::string, float4x4> localToBindPoseMatrices;
 
     NodeID getFalcorNodeID(const aiNode* pNode) const { return mAiToFalcorNodeID.at(pNode); }
 
@@ -240,11 +242,11 @@ void createAnimation(ImporterData& data, const aiAnimation* pAiAnim, ImportMode 
         aiNodeAnim* pAiNode = pAiAnim->mChannels[i];
         resetNegativeKeyframeTimes(pAiNode);
 
-        std::vector<Animation::SharedPtr> animations;
-        for (uint32_t i = 0; i < data.getNodeInstanceCount(pAiNode->mNodeName.C_Str()); i++)
+        std::vector<ref<Animation>> animations;
+        for (uint32_t j = 0; j < data.getNodeInstanceCount(pAiNode->mNodeName.C_Str()); j++)
         {
-            Animation::SharedPtr pAnimation = Animation::create(
-                std::string(pAiNode->mNodeName.C_Str()) + "." + std::to_string(i), data.getFalcorNodeID(pAiNode->mNodeName.C_Str(), i),
+            ref<Animation> pAnimation = Animation::create(
+                std::string(pAiNode->mNodeName.C_Str()) + "." + std::to_string(j), data.getFalcorNodeID(pAiNode->mNodeName.C_Str(), j),
                 durationInSeconds
             );
             animations.push_back(pAnimation);
@@ -285,12 +287,43 @@ void createAnimation(ImporterData& data, const aiAnimation* pAiAnim, ImportMode 
     }
 }
 
+/**
+ * The current version of AssImp (5.2.5) has a bug where it creates an invalid
+ * scene graph for animated cameras. The scene graph might look like this:
+ *
+ * - Root
+ *   - Camera_$AssimpFbx$_Translation
+ *     - Camera_$AssimpFbx$_Rotation
+ *       - Camera_$AssimpFbx$_PostRotation
+ *         - Camera_$AssimpFbx$_Scaling
+ *           - Camera
+ *
+ * The animation is attached to the "Camera" leaf-node, but the extra scene
+ * nodes above are not set to identity. This leads to incorrect camera
+ * animation. To fix this, we simply set all the inner nodes to identity.
+ */
+void fixFbxCameraAnimation(ImporterData& data, NodeID cameraNodeID)
+{
+    SceneBuilder::Node& cameraNode = data.builder.getNode(cameraNodeID);
+
+    NodeID nodeID = cameraNode.parent;
+    while (nodeID.isValid())
+    {
+        SceneBuilder::Node& node = data.builder.getNode(nodeID);
+        if (hasPrefix(node.name, cameraNode.name + "_$AssimpFbx$_"))
+            node.transform = float4x4::identity();
+        else
+            break;
+        nodeID = node.parent;
+    }
+}
+
 void createCameras(ImporterData& data, ImportMode importMode)
 {
     for (uint i = 0; i < data.pScene->mNumCameras; i++)
     {
         const aiCamera* pAiCamera = data.pScene->mCameras[i];
-        Camera::SharedPtr pCamera = Camera::create();
+        ref<Camera> pCamera = Camera::create();
         pCamera->setName(pAiCamera->mName.C_Str());
         pCamera->setPosition(aiCast(pAiCamera->mPosition));
         pCamera->setUpVector(aiCast(pAiCamera->mUp));
@@ -309,19 +342,21 @@ void createCameras(ImporterData& data, ImportMode importMode)
 
         if (nodeID != NodeID::Invalid())
         {
-            SceneBuilder::Node n;
-            n.name = "Camera.BaseMatrix";
-            n.parent = nodeID;
-            n.transform = pCamera->getViewMatrix();
-            // GLTF2 already uses -Z view direction convention in Assimp, FBX does not
+            // Create a local transform node for the camera
+            // In GLTF2, the local transform is actually incorrect (contains world space position)
+            // so we use identity transform instead.
+            SceneBuilder::Node node;
+            node.name = pCamera->getName() + ".LocalTransform";
+            node.parent = nodeID;
             if (importMode != ImportMode::GLTF2)
-                n.transform.setCol(2, -n.transform.getCol(2));
-            nodeID = data.builder.addNode(n);
-            pCamera->setNodeID(nodeID);
+                node.transform = pCamera->getViewMatrix();
+            NodeID localNodeID = data.builder.addNode(node);
+            pCamera->setNodeID(localNodeID);
             if (data.builder.isNodeAnimated(nodeID))
             {
                 pCamera->setHasAnimation(true);
                 data.builder.setNodeInterpolationMode(nodeID, kCameraInterpolationMode, kCameraEnableWarping);
+                fixFbxCameraAnimation(data, nodeID);
             }
         }
 
@@ -329,7 +364,7 @@ void createCameras(ImporterData& data, ImportMode importMode)
     }
 }
 
-void addLightCommon(const Light::SharedPtr& pLight, const rmcv::mat4& baseMatrix, ImporterData& data, const aiLight* pAiLight)
+void addLightCommon(const ref<Light>& pLight, const float4x4& baseMatrix, ImporterData& data, const aiLight* pAiLight)
 {
     FALCOR_ASSERT(pAiLight->mColorDiffuse == pAiLight->mColorSpecular);
     pLight->setIntensity(aiCast(pAiLight->mColorSpecular));
@@ -351,17 +386,17 @@ void addLightCommon(const Light::SharedPtr& pLight, const rmcv::mat4& baseMatrix
 
 void createDirLight(ImporterData& data, const aiLight* pAiLight)
 {
-    DirectionalLight::SharedPtr pLight = DirectionalLight::create(pAiLight->mName.C_Str());
+    ref<DirectionalLight> pLight = DirectionalLight::create(pAiLight->mName.C_Str());
     float3 direction = normalize(aiCast(pAiLight->mDirection));
     pLight->setWorldDirection(direction);
-    rmcv::mat4 base;
+    float4x4 base = float4x4::identity();
     base.setCol(2, float4(-direction, 0));
     addLightCommon(pLight, base, data, pAiLight);
 }
 
 void createPointLight(ImporterData& data, const aiLight* pAiLight)
 {
-    PointLight::SharedPtr pLight = PointLight::create(pAiLight->mName.C_Str());
+    ref<PointLight> pLight = PointLight::create(pAiLight->mName.C_Str());
     float3 position = aiCast(pAiLight->mPosition);
     float3 direction = aiCast(pAiLight->mDirection);
     float3 up = aiCast(pAiLight->mUp);
@@ -376,12 +411,12 @@ void createPointLight(ImporterData& data, const aiLight* pAiLight)
     pLight->setPenumbraAngle(pAiLight->mAngleOuterCone - pAiLight->mAngleInnerCone);
 
     float3 right = cross(direction, up);
-    rmcv::mat4 base;
-    // Set it as rows here, really?
-    base.setCol(0, float4(right, 0));
-    base.setCol(1, float4(up, 0));
-    base.setCol(2, float4(-direction, 0));
-    base.setCol(3, float4(position, 1));
+    float4x4 base = matrixFromColumns(
+        float4(right, 0),      // col 0
+        float4(up, 0),         // col 1
+        float4(-direction, 0), // col 2
+        float4(position, 1)    // col 3
+    );
 
     addLightCommon(pLight, base, data, pAiLight);
 }
@@ -440,7 +475,7 @@ void createTangentList(
         float3 B = float3(pAiBitangent[i].x, pAiBitangent[i].y, pAiBitangent[i].z);
         float3 N = float3(pAiNormal[i].x, pAiNormal[i].y, pAiNormal[i].z);
         float sign = dot(cross(N, T), B) >= 0.f ? 1.f : -1.f;
-        tangents[i] = float4(glm::normalize(T), sign);
+        tangents[i] = float4(normalize(T), sign);
     }
 }
 
@@ -678,9 +713,9 @@ void dumpSceneGraphHierarchy(ImporterData& data, const std::filesystem::path& pa
     dotfile.close();
 }
 
-rmcv::mat4 getLocalToBindPoseMatrix(ImporterData& data, const std::string& name)
+float4x4 getLocalToBindPoseMatrix(ImporterData& data, const std::string& name)
 {
-    return isBone(data, name) ? data.localToBindPoseMatrices[name] : rmcv::identity<rmcv::mat4>();
+    return isBone(data, name) ? data.localToBindPoseMatrices[name] : float4x4::identity();
 }
 
 void parseNode(ImporterData& data, const aiNode* pCurrent, bool hasBoneAncestor)
@@ -743,7 +778,7 @@ void loadTextures(
     ImporterData& data,
     const aiMaterial* pAiMaterial,
     const std::filesystem::path& searchPath,
-    const Material::SharedPtr& pMaterial,
+    const ref<Material>& pMaterial,
     ImportMode importMode
 )
 {
@@ -759,6 +794,9 @@ void loadTextures(
         aiString aiPath;
         pAiMaterial->GetTexture(source.aiType, source.aiIndex, &aiPath);
         std::string path(aiPath.data);
+        // In GLTF2, the path is encoded as a URI
+        if (importMode == ImportMode::GLTF2)
+            path = decodeURI(path);
         // Assets may contain windows native paths, replace '\' with '/' to make compatible on Linux.
         std::replace(path.begin(), path.end(), '\\', '/');
         if (path.empty())
@@ -773,7 +811,7 @@ void loadTextures(
     }
 }
 
-Material::SharedPtr createMaterial(
+ref<Material> createMaterial(
     ImporterData& data,
     const aiMaterial* pAiMaterial,
     const std::filesystem::path& searchPath,
@@ -806,7 +844,7 @@ Material::SharedPtr createMaterial(
     }
 
     // Create an instance of the standard material. All materials are assumed to be of this type.
-    StandardMaterial::SharedPtr pMaterial = StandardMaterial::create(data.builder.getDevice(), nameStr, shadingModel);
+    ref<StandardMaterial> pMaterial = StandardMaterial::create(data.builder.getDevice(), nameStr, shadingModel);
 
     // Load textures. Note that loading is affected by the current shading model.
     loadTextures(data, pAiMaterial, searchPath, pMaterial, importMode);
@@ -877,7 +915,7 @@ Material::SharedPtr createMaterial(
     // Handle GLTF2 PBR materials
     if (importMode == ImportMode::GLTF2)
     {
-        if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_BASE_COLOR_FACTOR, color) == AI_SUCCESS)
+        if (pAiMaterial->Get(AI_MATKEY_BASE_COLOR, color) == AI_SUCCESS)
         {
             float4 baseColor = float4(color.r, color.g, color.b, pMaterial->getBaseColor().a);
             pMaterial->setBaseColor(baseColor);
@@ -886,11 +924,11 @@ Material::SharedPtr createMaterial(
         float4 specularParams = pMaterial->getSpecularParams();
 
         float metallic;
-        if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLIC_FACTOR, metallic) == AI_SUCCESS)
+        if (pAiMaterial->Get(AI_MATKEY_METALLIC_FACTOR, metallic) == AI_SUCCESS)
             specularParams.b = metallic;
 
         float roughness;
-        if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_ROUGHNESS_FACTOR, roughness) == AI_SUCCESS)
+        if (pAiMaterial->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughness) == AI_SUCCESS)
             specularParams.g = roughness;
 
         pMaterial->setSpecularParams(specularParams);
@@ -990,6 +1028,66 @@ void validateScene(ImporterData& data)
     validateBones(data);
 }
 
+void dumpAssimpData(ImporterData& data)
+{
+    std::string out;
+
+    out += "Scene graph hierarchy:\n";
+
+    std::function<void(const aiNode*, int)> dumpNode = [&dumpNode, &data, &out](const aiNode* pNode, int indent)
+    {
+        std::string indentStr(indent, ' ');
+        std::string name = pNode->mName.C_Str();
+        std::string type = getNodeType(data, pNode);
+
+        out += fmt::format("{}name: {}\n", indentStr, pNode->mName.C_Str());
+        out += fmt::format("{}transform: {}\n", indentStr, aiCast(pNode->mTransformation));
+
+        for (uint32_t i = 0; i < pNode->mNumChildren; i++)
+            dumpNode(pNode->mChildren[i], indent + 4);
+    };
+    dumpNode(data.pScene->mRootNode, 0);
+
+    out += "Animations:\n";
+
+    const auto dumpAnimation = [&out](const aiAnimation* pAnim)
+    {
+        out += fmt::format("  name: {}\n", pAnim->mName.C_Str());
+        out += fmt::format("  duration: {}\n", pAnim->mDuration);
+        out += fmt::format("  ticks per second: {}\n", pAnim->mTicksPerSecond);
+        out += fmt::format("  channels: {}\n", pAnim->mNumChannels);
+        for (uint32_t i = 0; i < pAnim->mNumChannels; i++)
+        {
+            const aiNodeAnim* pChannel = pAnim->mChannels[i];
+            out += fmt::format("    channel[{}]:\n", i);
+            out += fmt::format("      node name: {}\n", pChannel->mNodeName.C_Str());
+            out += fmt::format("      position keys: {}\n", pChannel->mNumPositionKeys);
+            out += fmt::format("      rotation keys: {}\n", pChannel->mNumRotationKeys);
+            out += fmt::format("      scaling keys: {}\n", pChannel->mNumScalingKeys);
+
+            for (uint32_t j = 0; j < pChannel->mNumPositionKeys; j++)
+                out += fmt::format(
+                    "      position key[{}]: time {}, value {}\n", j, pChannel->mPositionKeys[j].mTime,
+                    aiCast(pChannel->mPositionKeys[j].mValue)
+                );
+            for (uint32_t j = 0; j < pChannel->mNumRotationKeys; j++)
+                out += fmt::format(
+                    "      rotation key[{}]: time {}, value {}\n", j, pChannel->mRotationKeys[j].mTime,
+                    aiCast(pChannel->mRotationKeys[j].mValue)
+                );
+            for (uint32_t j = 0; j < pChannel->mNumScalingKeys; j++)
+                out += fmt::format(
+                    "      scaling key[{}]: time {}, value {}\n", j, pChannel->mScalingKeys[j].mTime,
+                    aiCast(pChannel->mScalingKeys[j].mValue)
+                );
+        }
+    };
+    for (uint32_t i = 0; i < data.pScene->mNumAnimations; i++)
+        dumpAnimation(data.pScene->mAnimations[i]);
+
+    logInfo(out);
+}
+
 } // namespace
 
 std::unique_ptr<Importer> AssimpImporter::create()
@@ -997,7 +1095,7 @@ std::unique_ptr<Importer> AssimpImporter::create()
     return std::make_unique<AssimpImporter>();
 }
 
-void AssimpImporter::importScene(const std::filesystem::path& path, SceneBuilder& builder, const Dictionary& dict)
+void AssimpImporter::importScene(const std::filesystem::path& path, SceneBuilder& builder, const pybind11::dict& dict)
 {
     if (!path.is_absolute())
         throw ImporterError(path, "Expected absolute path.");
@@ -1047,6 +1145,8 @@ void AssimpImporter::importScene(const std::filesystem::path& path, SceneBuilder
         importMode = ImportMode::OBJ;
     if (hasExtension(path, "gltf") || hasExtension(path, "glb"))
         importMode = ImportMode::GLTF2;
+
+    // dumpAssimpData(data);
 
     createAllMaterials(data, searchPath, importMode);
     timeReport.measure("Creating materials");

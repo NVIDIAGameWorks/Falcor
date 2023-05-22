@@ -6,7 +6,7 @@ on:
 
 env:
   CMAKE_EXE: tools\.packman\cmake\bin\cmake.exe
-  CMAKE_BUILD_PRESET: windows-ninja-msvc
+  CMAKE_BUILD_PRESET: windows-ninja-msvc-ci
   CMAKE_BUILD_CONFIG: Release
 
 jobs:
@@ -26,7 +26,7 @@ jobs:
         with:
           arch: x64
           sdk: 10.0.19041.0
-          toolset: 14.29
+          toolset: 14.30
       - name: Build
         run: |
           %CMAKE_EXE% --preset %CMAKE_BUILD_PRESET%

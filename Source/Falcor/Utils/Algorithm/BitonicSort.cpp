@@ -33,60 +33,61 @@
 
 namespace Falcor
 {
-    static const char kShaderFilename[] = "Utils/Algorithm/BitonicSort.cs.slang";
+static const char kShaderFilename[] = "Utils/Algorithm/BitonicSort.cs.slang";
 
-    BitonicSort::BitonicSort(std::shared_ptr<Device> pDevice)
-        : mpDevice(std::move(pDevice))
-    {
+BitonicSort::BitonicSort(ref<Device> pDevice) : mpDevice(pDevice)
+{
 #if !FALCOR_NVAPI_AVAILABLE
-        throw RuntimeError("BitonicSort requires NVAPI. See installation instructions in README.");
+    throw RuntimeError("BitonicSort requires NVAPI. See installation instructions in README.");
 #endif
-        mSort.pState = ComputeState::create(mpDevice);
+    mSort.pState = ComputeState::create(mpDevice);
 
-        // Create shaders
-        Program::DefineList defines;
-        defines.add("CHUNK_SIZE", "256");   // Dummy values just so we can get reflection data. We'll set the actual values in execute().
-        defines.add("GROUP_SIZE", "256");
-        mSort.pProgram = ComputeProgram::createFromFile(mpDevice, kShaderFilename, "main", defines);
-        mSort.pState->setProgram(mSort.pProgram);
-        mSort.pVars = ComputeVars::create(mpDevice, mSort.pProgram.get());
-    }
-
-    bool BitonicSort::execute(RenderContext* pRenderContext, Buffer::SharedPtr pData, uint32_t totalSize, uint32_t chunkSize, uint32_t groupSize)
-    {
-        FALCOR_PROFILE(pRenderContext, "BitonicSort::execute");
-
-        // Validate inputs.
-        FALCOR_ASSERT(pRenderContext);
-        FALCOR_ASSERT(pData);
-        FALCOR_ASSERT(chunkSize >= 1 && chunkSize <= groupSize && isPowerOf2(chunkSize));
-        FALCOR_ASSERT(groupSize >= 1 && groupSize <= 1024 && isPowerOf2(groupSize));
-
-        // Early out if there is nothing to be done.
-        if (totalSize == 0 || chunkSize <= 1) return true;
-
-        // Configure the shader for the specified chunk size.
-        // This will trigger a re-compile if a new chunk size is encountered.
-        mSort.pProgram->addDefine("CHUNK_SIZE", std::to_string(chunkSize));
-        mSort.pProgram->addDefine("GROUP_SIZE", std::to_string(groupSize));
-
-        // Determine dispatch dimensions.
-        const uint32_t numGroups = div_round_up(totalSize, groupSize);
-        const uint32_t groupsX = std::max((uint32_t)sqrt(numGroups), 1u);
-        const uint32_t groupsY = div_round_up(numGroups, groupsX);
-        FALCOR_ASSERT(groupsX * groupsY * groupSize >= totalSize);
-
-        // Constants. The buffer size as a runtime constant as it may be variable and we don't want to recompile each time it changes.
-        mSort.pVars["CB"]["gTotalSize"] = totalSize;
-        mSort.pVars["CB"]["gDispatchX"] = groupsX;
-
-        // Bind the data.
-        bool success = mSort.pVars->setBuffer("gData", pData);
-        FALCOR_ASSERT(success);
-
-        // Execute.
-        pRenderContext->dispatch(mSort.pState.get(), mSort.pVars.get(), {groupsX, groupsY, 1});
-
-        return true;
-    }
+    // Create shaders
+    Program::DefineList defines;
+    defines.add("CHUNK_SIZE", "256"); // Dummy values just so we can get reflection data. We'll set the actual values in execute().
+    defines.add("GROUP_SIZE", "256");
+    mSort.pProgram = ComputeProgram::createFromFile(mpDevice, kShaderFilename, "main", defines);
+    mSort.pState->setProgram(mSort.pProgram);
+    mSort.pVars = ComputeVars::create(mpDevice, mSort.pProgram.get());
 }
+
+bool BitonicSort::execute(RenderContext* pRenderContext, ref<Buffer> pData, uint32_t totalSize, uint32_t chunkSize, uint32_t groupSize)
+{
+    FALCOR_PROFILE(pRenderContext, "BitonicSort::execute");
+
+    // Validate inputs.
+    FALCOR_ASSERT(pRenderContext);
+    FALCOR_ASSERT(pData);
+    FALCOR_ASSERT(chunkSize >= 1 && chunkSize <= groupSize && isPowerOf2(chunkSize));
+    FALCOR_ASSERT(groupSize >= 1 && groupSize <= 1024 && isPowerOf2(groupSize));
+
+    // Early out if there is nothing to be done.
+    if (totalSize == 0 || chunkSize <= 1)
+        return true;
+
+    // Configure the shader for the specified chunk size.
+    // This will trigger a re-compile if a new chunk size is encountered.
+    mSort.pProgram->addDefine("CHUNK_SIZE", std::to_string(chunkSize));
+    mSort.pProgram->addDefine("GROUP_SIZE", std::to_string(groupSize));
+
+    // Determine dispatch dimensions.
+    const uint32_t numGroups = div_round_up(totalSize, groupSize);
+    const uint32_t groupsX = std::max((uint32_t)sqrt(numGroups), 1u);
+    const uint32_t groupsY = div_round_up(numGroups, groupsX);
+    FALCOR_ASSERT(groupsX * groupsY * groupSize >= totalSize);
+
+    // Constants. The buffer size as a runtime constant as it may be variable and we don't want to recompile each time it changes.
+    auto var = mSort.pVars->getRootVar();
+    var["CB"]["gTotalSize"] = totalSize;
+    var["CB"]["gDispatchX"] = groupsX;
+
+    // Bind the data.
+    bool success = mSort.pVars->setBuffer("gData", pData);
+    FALCOR_ASSERT(success);
+
+    // Execute.
+    pRenderContext->dispatch(mSort.pState.get(), mSort.pVars.get(), {groupsX, groupsY, 1});
+
+    return true;
+}
+} // namespace Falcor

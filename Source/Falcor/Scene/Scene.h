@@ -44,6 +44,7 @@
 #include "SDFs/SDFGrid.h"
 
 #include "Core/Macros.h"
+#include "Core/Object.h"
 #include "Core/API/VAO.h"
 #include "Core/API/RtAccelerationStructure.h"
 #include "Utils/Math/AABB.h"
@@ -60,8 +61,6 @@
 #include <string>
 #include <filesystem>
 #include <vector>
-
-#include "Utils/Math/Matrix/Matrix.h"
 
 namespace Falcor
 {
@@ -107,19 +106,18 @@ namespace Falcor
         - "InstanceID() + GeometryIndex()" is used for indexing into GeometryInstanceData.
         - This is wrapped in getGeometryInstanceID() in Raytracing.slang.
     */
-    class FALCOR_API Scene : public std::enable_shared_from_this<Scene>
+    class FALCOR_API Scene : public Object
     {
     public:
-        using SharedPtr = std::shared_ptr<Scene>;
-        using GeometryType = GeometryType;
-        using GeometryTypeFlags = GeometryTypeFlags;
+        using GeometryType = ::Falcor::GeometryType;
+        using GeometryTypeFlags = ::Falcor::GeometryTypeFlags;
 
         using UpDirection = CameraController::UpDirection;
 
-        using UpdateCallback = std::function<void(const Scene::SharedPtr& pScene, double currentTime)>;
+        using UpdateCallback = std::function<void(const ref<Scene>& pScene, double currentTime)>;
 
-        static const uint32_t kMaxBonesPerVertex = 4;
-        static const uint32_t kInvalidAttributeIndex = -1;
+        static constexpr uint32_t kMaxBonesPerVertex = 4;
+        static constexpr uint32_t kInvalidAttributeIndex = -1;
 
         /** Flags indicating if and what was updated in the scene.
         */
@@ -292,12 +290,12 @@ namespace Falcor
         struct Node
         {
             Node() = default;
-            Node(const std::string& n, NodeID p, const rmcv::mat4& t, const rmcv::mat4& mb, const rmcv::mat4& l2b) : name(n), parent(p), transform(t), meshBind(mb), localToBindSpace(l2b) {};
+            Node(const std::string& n, NodeID p, const float4x4& t, const float4x4& mb, const float4x4& l2b) : name(n), parent(p), transform(t), meshBind(mb), localToBindSpace(l2b) {};
             std::string name;
             NodeID parent{ NodeID::Invalid() };
-            rmcv::mat4 transform;         ///< The node's transformation matrix.
-            rmcv::mat4 meshBind;          ///< For skinned meshes. Mesh world space transform at bind time.
-            rmcv::mat4 localToBindSpace;  ///< For bones. Skeleton to bind space transformation. AKA the inverse-bind transform.
+            float4x4 transform;         ///< The node's transformation matrix.
+            float4x4 meshBind;          ///< For skinned meshes. Mesh world space transform at bind time.
+            float4x4 localToBindSpace;  ///< For bones. Skeleton to bind space transformation. AKA the inverse-bind transform.
         };
 
         /** Full set of required data to create a scene object.
@@ -307,17 +305,17 @@ namespace Falcor
         {
             std::filesystem::path path;                             ///< Path of the asset file the scene was loaded from.
             RenderSettings renderSettings;                          ///< Render settings.
-            std::vector<Camera::SharedPtr> cameras;                 ///< List of cameras.
+            std::vector<ref<Camera>> cameras;                       ///< List of cameras.
             uint32_t selectedCamera = 0;                            ///< Index of selected camera.
             float cameraSpeed = 1.f;                                ///< Camera speed.
-            std::vector<Light::SharedPtr> lights;                   ///< List of light sources.
-            MaterialSystem::SharedPtr pMaterials;                   ///< Material system. This holds data and resources for all materials.
-            std::vector<GridVolume::SharedPtr> gridVolumes;         ///< List of grid volumes.
-            std::vector<Grid::SharedPtr> grids;                     ///< List of grids.
-            EnvMap::SharedPtr pEnvMap;                              ///< Environment map.
-            LightProfile::SharedPtr pLightProfile;                  ///< DEMO21: Global light profile.
+            std::vector<ref<Light>> lights;                         ///< List of light sources.
+            std::unique_ptr<MaterialSystem> pMaterials;             ///< Material system. This holds data and resources for all materials.
+            std::vector<ref<GridVolume>> gridVolumes;               ///< List of grid volumes.
+            std::vector<ref<Grid>> grids;                           ///< List of grids.
+            ref<EnvMap> pEnvMap;                                    ///< Environment map.
+            ref<LightProfile> pLightProfile;                        ///< DEMO21: Global light profile.
             std::vector<Node> sceneGraph;                           ///< Scene graph nodes.
-            std::vector<Animation::SharedPtr> animations;           ///< List of animations.
+            std::vector<ref<Animation>> animations;                 ///< List of animations.
             Metadata metadata;                                      ///< Scene meadata.
 
             // Mesh data
@@ -349,7 +347,7 @@ namespace Falcor
             std::vector<CachedCurve> cachedCurves;                  ///< Vertex cache for dynamic (vertex animated) curves.
 
             // SDF grid data
-            std::vector<SDFGrid::SharedPtr> sdfGrids;               ///< List of SDF grids.
+            std::vector<ref<SDFGrid>> sdfGrids;                     ///< List of SDF grids.
             std::vector<SDFGridDesc> sdfGridDesc;                   ///< List of SDF grid descriptors.
             std::vector<GeometryInstanceData> sdfGridInstances;     ///< List of SDG grid instances.
             uint32_t sdfGridMaxLODCount = 0;                        ///< The max LOD count of any SDF grid.
@@ -444,10 +442,6 @@ namespace Falcor
                     lightsMemoryInBytes + envMapMemoryInBytes + emissiveMemoryInBytes +
                     gridVolumeMemoryInBytes + gridMemoryInBytes;
             }
-
-            /** Convert to python dict.
-            */
-            pybind11::dict toPython() const;
         };
 
         /** Return list of file extensions filters for all supported file formats.
@@ -459,18 +453,18 @@ namespace Falcor
             \param[in] path Import the scene from this file path.
             \return Scene object, or throws an ImporterError if import went wrong.
         */
-        static SharedPtr create(std::shared_ptr<Device> pDevice, const std::filesystem::path& path, const Settings& settings = Settings());
+        static ref<Scene> create(ref<Device> pDevice, const std::filesystem::path& path, const Settings& settings = Settings());
 
         /** Create scene from in-memory representation.
             \param[in] pDevice GPU device.
             \param[in] sceneData All scene data.
             \return Scene object or throws on error.
         */
-        static SharedPtr create(std::shared_ptr<Device> pDevice, SceneData&& sceneData);
+        static ref<Scene> create(ref<Device> pDevice, SceneData&& sceneData);
 
         /** Return the associated GPU device.
         */
-        const std::shared_ptr<Device>& getDevice() const { return mpDevice; }
+        const ref<Device>& getDevice() const { return mpDevice; }
 
         /** Get scene defines.
             These defines must be set on all programs that access the scene.
@@ -545,7 +539,7 @@ namespace Falcor
 
         /** Access the scene's currently selected camera to change properties or to use elsewhere.
         */
-        const Camera::SharedPtr& getCamera() { return mCameras[mSelectedCamera]; }
+        const ref<Camera>& getCamera() { return mCameras[mSelectedCamera]; }
 
         /** Get the camera bounds
         */
@@ -557,11 +551,11 @@ namespace Falcor
 
         /** Get a list of all cameras in the scene.
         */
-        const std::vector<Camera::SharedPtr>& getCameras() { return mCameras; };
+        const std::vector<ref<Camera>>& getCameras() { return mCameras; };
 
         /** Select a different camera to use. The camera must already exist in the scene.
         */
-        void setCamera(const Camera::SharedPtr& pCamera);
+        void setCamera(const ref<Camera>& pCamera);
 
         /** Set the currently selected camera's aspect ratio.
         */
@@ -708,7 +702,7 @@ namespace Falcor
             \param[in] geometryID Global geometry ID.
             \return The material or nullptr if geometry has no material.
         */
-        Material::SharedPtr getGeometryMaterial(GlobalGeometryID geometryID) const;
+        ref<Material> getGeometryMaterial(GlobalGeometryID geometryID) const;
 
         /** Get the number of triangle meshes.
         */
@@ -756,7 +750,7 @@ namespace Falcor
 
         /** Get an SDF grid.
         */
-        const SDFGrid::SharedPtr& getSDFGrid(SdfGridID sdfGridID) const { return mSDFGrids[mSDFGridDesc[sdfGridID.get()].sdfGridID.get()]; }
+        const ref<SDFGrid>& getSDFGrid(SdfGridID sdfGridID) const { return mSDFGrids[mSDFGridDesc[sdfGridID.get()].sdfGridID.get()]; }
 
         /** Get the number of SDF grid geometries.
         */
@@ -776,7 +770,7 @@ namespace Falcor
 
         /** Updates a node in the graph.
         */
-        void updateNodeTransform(uint32_t nodeID, const rmcv::mat4& transform);
+        void updateNodeTransform(uint32_t nodeID, const float4x4& transform);
 
         /** Get the number of custom primitives.
         */
@@ -831,11 +825,11 @@ namespace Falcor
 
         /** Get the material system.
         */
-        const MaterialSystem::SharedPtr& getMaterialSystem() const { return mpMaterials; }
+        MaterialSystem& getMaterialSystem() const { return *mpMaterials; }
 
         /** Get a list of all materials in the scene.
         */
-        const std::vector<Material::SharedPtr>& getMaterials() const { return mpMaterials->getMaterials(); }
+        const std::vector<ref<Material>>& getMaterials() const { return mpMaterials->getMaterials(); }
 
         /** Get the total number of materials in the scene.
         */
@@ -847,29 +841,29 @@ namespace Falcor
 
         /** Get a material.
         */
-        const Material::SharedPtr& getMaterial(MaterialID materialID) const { return mpMaterials->getMaterial(materialID); }
+        const ref<Material>& getMaterial(MaterialID materialID) const { return mpMaterials->getMaterial(materialID); }
 
         /** Get a material by name.
         */
-        Material::SharedPtr getMaterialByName(const std::string& name) const { return mpMaterials->getMaterialByName(name); }
+        ref<Material> getMaterialByName(const std::string& name) const { return mpMaterials->getMaterialByName(name); }
 
         /** Add a material.
             \param pMaterial The material.
             \return The ID of the material in the scene.
         */
-        MaterialID addMaterial(const Material::SharedPtr& pMaterial) { return mpMaterials->addMaterial(pMaterial); }
+        MaterialID addMaterial(const ref<Material>& pMaterial) { return mpMaterials->addMaterial(pMaterial); }
 
         /** Get a list of all grid volumes in the scene.
         */
-        const std::vector<GridVolume::SharedPtr>& getGridVolumes() const { return mGridVolumes; }
+        const std::vector<ref<GridVolume>>& getGridVolumes() const { return mGridVolumes; }
 
         /** Get a grid volume.
         */
-        const GridVolume::SharedPtr& getGridVolume(uint32_t gridVolumeID) const { return mGridVolumes[gridVolumeID]; }
+        const ref<GridVolume>& getGridVolume(uint32_t gridVolumeID) const { return mGridVolumes[gridVolumeID]; }
 
         /** Get a grid volume by name.
         */
-        GridVolume::SharedPtr getGridVolumeByName(const std::string& name) const;
+        ref<GridVolume> getGridVolumeByName(const std::string& name) const;
 
         /** Get the hit info requirements.
         */
@@ -889,7 +883,7 @@ namespace Falcor
 
         /** Get a list of all lights in the scene.
         */
-        const std::vector<Light::SharedPtr>& getLights() const { return mLights; };
+        const std::vector<ref<Light>>& getLights() const { return mLights; };
 
         /** Get the number of lights in the scene.
         */
@@ -897,15 +891,15 @@ namespace Falcor
 
         /** Get a light.
         */
-        const Light::SharedPtr& getLight(uint32_t lightID) const { return mLights[lightID]; }
+        const ref<Light>& getLight(uint32_t lightID) const { return mLights[lightID]; }
 
         /** Get a light by name.
         */
-        Light::SharedPtr getLightByName(const std::string& name) const;
+        ref<Light> getLightByName(const std::string& name) const;
 
         /** Get a list of all active lights in the scene.
         */
-        const std::vector<Light::SharedPtr>& getActiveLights() const { return mActiveLights; }
+        const std::vector<ref<Light>>& getActiveLights() const { return mActiveLights; }
 
         /** Get the number of active lights in the scene.
         */
@@ -913,7 +907,7 @@ namespace Falcor
 
         /** Get an active light.
         */
-        const Light::SharedPtr& getActiveLight(uint32_t lightID) const { return mActiveLights[lightID]; }
+        const ref<Light>& getActiveLight(uint32_t lightID) const { return mActiveLights[lightID]; }
 
         /** Get the light collection representing all the mesh lights in the scene.
             The light collection is created lazily on the first call. It needs a render context.
@@ -921,11 +915,11 @@ namespace Falcor
             \param[in] pRenderContext Render context.
             \return Returns the light collection.
         */
-        const LightCollection::SharedPtr& getLightCollection(RenderContext* pRenderContext);
+        const ref<LightCollection>& getLightCollection(RenderContext* pRenderContext);
 
         /** Get the environment map or nullptr if it doesn't exist.
         */
-        const EnvMap::SharedPtr& getEnvMap() const { return mpEnvMap; }
+        const ref<EnvMap>& getEnvMap() const { return mpEnvMap; }
 
         /** Set how the scene's TLASes are updated when raytracing.
             TLASes are REBUILT by default.
@@ -975,7 +969,7 @@ namespace Falcor
             \param[in] pRasterizerStateCW Rasterizer state for meshes with clockwise triangle winding.
             \param[in] pRasterizerStateCCW Rasterizer state for meshes with counter-clockwise triangle winding. Can be the same as for clockwise.
         */
-        void rasterize(RenderContext* pRenderContext, GraphicsState* pState, GraphicsVars* pVars, const RasterizerState::SharedPtr& pRasterizerStateCW, const RasterizerState::SharedPtr& pRasterizerStateCCW);
+        void rasterize(RenderContext* pRenderContext, GraphicsState* pState, GraphicsVars* pVars, const ref<RasterizerState>& pRasterizerStateCW, const ref<RasterizerState>& pRasterizerStateCCW);
 
         /** Get the required raytracing maximum attribute size for this scene.
             Note: This depends on what types of geometry are used in the scene.
@@ -985,7 +979,7 @@ namespace Falcor
 
         /** Render the scene using raytracing.
         */
-        void raytrace(RenderContext* pRenderContext, RtProgram* pProgram, const std::shared_ptr<RtProgramVars>& pVars, uint3 dispatchDims);
+        void raytrace(RenderContext* pRenderContext, RtProgram* pProgram, const ref<RtProgramVars>& pVars, uint3 dispatchDims);
 
         /** Render the UI.
         */
@@ -995,21 +989,21 @@ namespace Falcor
             The default VAO uses 32-bit vertex indices. For meshes with 16-bit indices, use getMeshVao16() instead.
             \return VAO object or nullptr if no meshes using 32-bit indices.
         */
-        const Vao::SharedPtr& getMeshVao() const { return mpMeshVao; }
+        const ref<Vao>& getMeshVao() const { return mpMeshVao; }
 
         /** Get the scene's VAO for 16-bit vertex indices.
             \return VAO object or nullptr if no meshes using 16-bit indices.
         */
-        const Vao::SharedPtr& getMeshVao16() const { return mpMeshVao16Bit; }
+        const ref<Vao>& getMeshVao16() const { return mpMeshVao16Bit; }
 
         /** Get the scene's VAO for curves.
         */
-        const Vao::SharedPtr& getCurveVao() const { return mpCurveVao; }
+        const ref<Vao>& getCurveVao() const { return mpCurveVao; }
 
         /** Set an environment map.
             \param[in] pEnvMap Environment map. Can be nullptr.
         */
-        void setEnvMap(EnvMap::SharedPtr pEnvMap);
+        void setEnvMap(ref<EnvMap> pEnvMap);
 
         /** Load an environment from an image.
             \param[in] path Texture path.
@@ -1043,7 +1037,7 @@ namespace Falcor
 
         /** Get the scene's animations.
         */
-        std::vector<Animation::SharedPtr>& getAnimations() { return mpAnimationController->getAnimations(); }
+        std::vector<ref<Animation>>& getAnimations() { return mpAnimationController->getAnimations(); }
 
         /** Returns true if scene has animation data.
         */
@@ -1071,7 +1065,7 @@ namespace Falcor
 
         /** Get the parameter block with all scene resources.
         */
-        const ParameterBlock::SharedPtr& getParameterBlock() const { return mpSceneBlock; }
+        const ref<ParameterBlock>& getParameterBlock() const { return mpSceneBlock; }
 
         /** Set the scene ray tracing resources into a shader var.
             The acceleration structure is created lazily, which requires the render context.
@@ -1221,15 +1215,15 @@ namespace Falcor
         void updateLightStats();
         void updateGridVolumeStats();
 
-        Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData);
+        Scene(ref<Device> pDevice, SceneData&& sceneData);
 
-        std::shared_ptr<Device> mpDevice;   ///< GPU device the scene resides on.
+        ref<Device> mpDevice; ///< GPU device the scene resides on.
 
         // Scene Geometry
 
         struct DrawArgs
         {
-            Buffer::SharedPtr pBuffer;      ///< Buffer holding the draw-indirect arguments.
+            ref<Buffer> pBuffer;            ///< Buffer holding the draw-indirect arguments.
             uint32_t count = 0;             ///< Number of draws.
             bool ccw = true;                ///< True if counterclockwise triangle winding.
             ResourceFormat ibFormat = ResourceFormat::Unknown;  ///< Index buffer format.
@@ -1243,9 +1237,9 @@ namespace Falcor
         bool mHas16BitIndices = false;                              ///< True if any meshes use 16-bit indices.
         bool mHas32BitIndices = false;                              ///< True if any meshes use 32-bit indices.
 
-        Vao::SharedPtr mpMeshVao;                                   ///< Vertex array object for the global mesh vertex/index buffers.
-        Vao::SharedPtr mpMeshVao16Bit;                              ///< VAO for drawing meshes with 16-bit vertex indices.
-        Vao::SharedPtr mpCurveVao;                                  ///< Vertex array object for the global curve vertex/index buffers.
+        ref<Vao> mpMeshVao;                                         ///< Vertex array object for the global mesh vertex/index buffers.
+        ref<Vao> mpMeshVao16Bit;                                    ///< VAO for drawing meshes with 16-bit vertex indices.
+        ref<Vao> mpCurveVao;                                        ///< Vertex array object for the global curve vertex/index buffers.
         std::vector<DrawArgs> mDrawArgs;                            ///< List of draw arguments for rasterizing the meshes in the scene.
 
         // Triangle meshes
@@ -1262,9 +1256,9 @@ namespace Falcor
             struct DisplacementMeshData { uint32_t AABBOffset = 0; uint32_t AABBCount = 0; };
             std::vector<DisplacementMeshData> meshData;             ///< List of displacement mesh data (reference to AABBs).
             std::vector<DisplacementUpdateTask> updateTasks;        ///< List of displacement AABB update tasks.
-            Buffer::SharedPtr pUpdateTasksBuffer;                   ///< GPU Buffer with list of displacement AABB update tasks.
-            ComputePass::SharedPtr pUpdatePass;                     ///< Comput epass to update displacement AABB data.
-            Buffer::SharedPtr pAABBBuffer;                          ///< GPU Buffer of raw displacement AABB data. Used for acceleration structure creation, and bound to the Scene for access in shaders.
+            ref<Buffer> pUpdateTasksBuffer;                         ///< GPU Buffer with list of displacement AABB update tasks.
+            ref<ComputePass> pUpdatePass;                           ///< Comput epass to update displacement AABB data.
+            ref<Buffer> pAABBBuffer;                                ///< GPU Buffer of raw displacement AABB data. Used for acceleration structure creation, and bound to the Scene for access in shaders.
         } mDisplacement;
 
         // Curves
@@ -1273,7 +1267,7 @@ namespace Falcor
         std::vector<StaticCurveVertexData> mCurveStaticData;        ///< Vertex attributes for all curves.
 
         // SDF grids
-        std::vector<SDFGrid::SharedPtr> mSDFGrids;                  ///< List of SDF grids.
+        std::vector<ref<SDFGrid>> mSDFGrids;                        ///< List of SDF grids.
         std::vector<SDFGridDesc> mSDFGridDesc;                      ///< List of SDF grid descriptors.
         uint32_t mSDFGridMaxLODCount;                               ///< The max LOD count of any SDF grid.
         SDFGridConfig mSDFGridConfig;                               ///< SDF grid configuration.
@@ -1288,21 +1282,21 @@ namespace Falcor
 
         // The following array and buffer records the AABBs of all procedural primitives, including custom primitives, curves, etc.
         std::vector<RtAABB> mRtAABBRaw;                             ///< Raw AABB data (min, max) for all procedural primitives.
-        Buffer::SharedPtr mpRtAABBBuffer;                           ///< GPU Buffer of raw AABB data. Used for acceleration structure creation, and bound to the Scene for access in shaders.
+        ref<Buffer> mpRtAABBBuffer;                                 ///< GPU Buffer of raw AABB data. Used for acceleration structure creation, and bound to the Scene for access in shaders.
 
         // Materials
-        MaterialSystem::SharedPtr mpMaterials;                      ///< Material system. This holds data and resources for all materials.
+        std::unique_ptr<MaterialSystem> mpMaterials;                ///< Material system. This holds data and resources for all materials.
 
         // Lights
-        std::vector<Light::SharedPtr> mLights;                      ///< All analytic lights. Note that not all may be active.
-        std::vector<Light::SharedPtr> mActiveLights;                ///< All active analytic lights.
-        std::vector<GridVolume::SharedPtr> mGridVolumes;            ///< All loaded grid volumes.
-        std::vector<Grid::SharedPtr> mGrids;                        ///< All loaded grids.
-        std::unordered_map<Grid::SharedPtr, SdfGridID> mGridIDs;    ///< Lookup table for grid IDs.
-        LightCollection::SharedPtr mpLightCollection;               ///< Class for managing emissive geometry. This is created lazily upon first use.
-        EnvMap::SharedPtr mpEnvMap;                                 ///< Environment map or nullptr if not loaded.
+        std::vector<ref<Light>> mLights;                            ///< All analytic lights. Note that not all may be active.
+        std::vector<ref<Light>> mActiveLights;                      ///< All active analytic lights.
+        std::vector<ref<GridVolume>> mGridVolumes;                  ///< All loaded grid volumes.
+        std::vector<ref<Grid>> mGrids;                              ///< All loaded grids.
+        std::unordered_map<ref<Grid>, SdfGridID> mGridIDs;          ///< Lookup table for grid IDs.
+        ref<LightCollection> mpLightCollection;                     ///< Class for managing emissive geometry. This is created lazily upon first use.
+        ref<EnvMap> mpEnvMap;                                       ///< Environment map or nullptr if not loaded.
         bool mEnvMapChanged = false;                                ///< Flag indicating that the environment map has changed since last frame.
-        LightProfile::SharedPtr mpLightProfile;                     ///< DEMO21: Global light profile.
+        ref<LightProfile> mpLightProfile;                           ///< DEMO21: Global light profile.
 
         // Scene metadata (CPU only)
         std::vector<AABB> mMeshBBs;                                 ///< Bounding boxes for meshes (not instances) in object space.
@@ -1322,19 +1316,19 @@ namespace Falcor
         UpdateCallback mUpdateCallback;                             ///< Scene update callback.
 
         // Scene block resources
-        Buffer::SharedPtr mpGeometryInstancesBuffer;
-        Buffer::SharedPtr mpMeshesBuffer;
-        Buffer::SharedPtr mpCurvesBuffer;
-        Buffer::SharedPtr mpCustomPrimitivesBuffer;
-        Buffer::SharedPtr mpLightsBuffer;
-        Buffer::SharedPtr mpGridVolumesBuffer;
-        ParameterBlock::SharedPtr mpSceneBlock;
+        ref<Buffer> mpGeometryInstancesBuffer;
+        ref<Buffer> mpMeshesBuffer;
+        ref<Buffer> mpCurvesBuffer;
+        ref<Buffer> mpCustomPrimitivesBuffer;
+        ref<Buffer> mpLightsBuffer;
+        ref<Buffer> mpGridVolumesBuffer;
+        ref<ParameterBlock> mpSceneBlock;
 
         // Camera
         UpDirection mUpDirection = UpDirection::YPos;
         CameraControllerType mCamCtrlType = CameraControllerType::FirstPerson;
-        CameraController::SharedPtr mpCamCtrl;
-        std::vector<Camera::SharedPtr> mCameras;
+        std::unique_ptr<CameraController> mpCamCtrl;
+        std::vector<ref<Camera>> mCameras;
         uint32_t mSelectedCamera = 0;
         float mCameraSpeed = 1.0f;
         bool mCameraSwitched = false;
@@ -1355,28 +1349,28 @@ namespace Falcor
         uint32_t mCurrentViewpoint = 0;
 
         // Rendering
-        std::map<RasterizerState::CullMode, RasterizerState::SharedPtr> mFrontClockwiseRS;
-        std::map<RasterizerState::CullMode, RasterizerState::SharedPtr> mFrontCounterClockwiseRS;
+        std::map<RasterizerState::CullMode, ref<RasterizerState>> mFrontClockwiseRS;
+        std::map<RasterizerState::CullMode, ref<RasterizerState>> mFrontCounterClockwiseRS;
         UpdateFlags mUpdates = UpdateFlags::All;
-        AnimationController::UniquePtr mpAnimationController;
+        std::unique_ptr<AnimationController> mpAnimationController;
 
         // Raytracing data
         UpdateMode mTlasUpdateMode = UpdateMode::Rebuild;   ///< How the TLAS should be updated when there are changes in the scene.
         UpdateMode mBlasUpdateMode = UpdateMode::Refit;     ///< How the BLAS should be updated when there are changes to meshes.
 
-        std::vector<RtInstanceDesc> mInstanceDescs; ///< Shared between TLAS builds to avoid reallocating CPU memory.
+        std::vector<RtInstanceDesc> mInstanceDescs;         ///< Shared between TLAS builds to avoid reallocating CPU memory.
 
         struct TlasData
         {
-            RtAccelerationStructure::SharedPtr pTlasObject;
-            Buffer::SharedPtr pTlasBuffer;
-            Buffer::SharedPtr pInstanceDescs;               ///< Buffer holding instance descs for the TLAS.
+            ref<RtAccelerationStructure> pTlasObject;
+            ref<Buffer> pTlasBuffer;
+            ref<Buffer> pInstanceDescs;                     ///< Buffer holding instance descs for the TLAS.
             UpdateMode updateMode = UpdateMode::Rebuild;    ///< Update mode this TLAS was created with.
         };
 
         std::unordered_map<uint32_t, TlasData> mTlasCache;  ///< Top Level Acceleration Structure for scene data cached per shader ray type count.
                                                             ///< Number of ray types in program affects Shader Table indexing.
-        Buffer::SharedPtr mpTlasScratch;                    ///< Scratch buffer used for TLAS builds. Can be shared as long as instance desc count is the same, which for now it is.
+        ref<Buffer> mpTlasScratch;                          ///< Scratch buffer used for TLAS builds. Can be shared as long as instance desc count is the same, which for now it is.
         RtAccelerationStructurePrebuildInfo mTlasPrebuildInfo; ///< This can be reused as long as the number of instance descs doesn't change.
 
         /** Describes one BLAS.
@@ -1419,15 +1413,15 @@ namespace Falcor
             uint64_t scratchByteSize = 0;                   ///< Maximum scratch data size for all BLASes in the group, including padding.
             uint64_t finalByteSize = 0;                     ///< Size of the final BLASes in the group post-compaction, including padding.
 
-            Buffer::SharedPtr pBlas;                        ///< Buffer containing all final BLASes in the group.
+            ref<Buffer> pBlas;                              ///< Buffer containing all final BLASes in the group.
         };
 
         // BLAS Data is ordered as all mesh BLAS's first, followed by one BLAS containing all AABBs.
-        std::vector<RtAccelerationStructure::SharedPtr> mBlasObjects; ///< BLAS API objects.
+        std::vector<ref<RtAccelerationStructure>> mBlasObjects; ///< BLAS API objects.
         std::vector<BlasData> mBlasData;                    ///< All data related to the scene's BLASes.
         std::vector<BlasGroup> mBlasGroups;                 ///< BLAS group data.
-        Buffer::SharedPtr mpBlasScratch;                    ///< Scratch buffer used for BLAS builds.
-        Buffer::SharedPtr mpBlasStaticWorldMatrices;        ///< Object-to-world transform matrices in row-major format. Only valid for static meshes.
+        ref<Buffer> mpBlasScratch;                          ///< Scratch buffer used for BLAS builds.
+        ref<Buffer> mpBlasStaticWorldMatrices;              ///< Object-to-world transform matrices in row-major format. Only valid for static meshes.
         bool mBlasDataValid = false;                        ///< Flag to indicate if the BLAS data is valid. This will be reset when geometry is changed.
         bool mRebuildBlas = true;                           ///< Flag to indicate BLASes need to be rebuilt.
 

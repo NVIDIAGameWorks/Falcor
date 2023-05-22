@@ -32,19 +32,19 @@
 
 namespace Falcor
 {
-D3D12DescriptorSet::SharedPtr createCbvDescriptor(Device* pDevice, const D3D12_CONSTANT_BUFFER_VIEW_DESC& desc)
+ref<D3D12DescriptorSet> createCbvDescriptor(ref<Device> pDevice, const D3D12_CONSTANT_BUFFER_VIEW_DESC& desc)
 {
     pDevice->requireD3D12();
 
     D3D12DescriptorSetLayout layout;
     layout.addRange(ShaderResourceType::Cbv, 0, 1);
-    D3D12DescriptorSet::SharedPtr handle = D3D12DescriptorSet::create(pDevice, pDevice->getD3D12CpuDescriptorPool(), layout);
+    ref<D3D12DescriptorSet> handle = D3D12DescriptorSet::create(pDevice, pDevice->getD3D12CpuDescriptorPool(), layout);
     pDevice->getNativeHandle().as<ID3D12Device*>()->CreateConstantBufferView(&desc, handle->getCpuHandle(0));
 
     return handle;
 }
 
-D3D12ConstantBufferView::SharedPtr D3D12ConstantBufferView::create(Device* pDevice, Buffer::SharedPtr pBuffer)
+ref<D3D12ConstantBufferView> D3D12ConstantBufferView::create(ref<Device> pDevice, ref<Buffer> pBuffer)
 {
     FALCOR_ASSERT(pDevice);
     pDevice->requireD3D12();
@@ -54,10 +54,10 @@ D3D12ConstantBufferView::SharedPtr D3D12ConstantBufferView::create(Device* pDevi
     desc.BufferLocation = pBuffer->getGpuAddress();
     desc.SizeInBytes = (uint32_t)pBuffer->getSize();
 
-    return SharedPtr(new D3D12ConstantBufferView(pBuffer, createCbvDescriptor(pDevice, desc)));
+    return ref<D3D12ConstantBufferView>(new D3D12ConstantBufferView(pBuffer, createCbvDescriptor(pDevice, desc)));
 }
 
-D3D12ConstantBufferView::SharedPtr D3D12ConstantBufferView::create(Device* pDevice)
+ref<D3D12ConstantBufferView> D3D12ConstantBufferView::create(ref<Device> pDevice)
 {
     FALCOR_ASSERT(pDevice);
     pDevice->requireD3D12();
@@ -68,7 +68,7 @@ D3D12ConstantBufferView::SharedPtr D3D12ConstantBufferView::create(Device* pDevi
 
     // Create a null view.
     D3D12_CONSTANT_BUFFER_VIEW_DESC desc = {};
-    return SharedPtr(new D3D12ConstantBufferView(std::weak_ptr<Buffer>(), createCbvDescriptor(pDevice, desc)));
+    return ref<D3D12ConstantBufferView>(new D3D12ConstantBufferView(nullptr, createCbvDescriptor(pDevice, desc)));
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE D3D12ConstantBufferView::getD3D12CpuHeapHandle() const

@@ -49,9 +49,9 @@ struct S
 
 void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, bool useUav)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
-    auto r = [&]() -> uint32_t { return dist(rng); };
+    auto nextRandom = [&]() -> uint32_t { return dist(rng); };
 
     Program::DefineList defines = {{"USE_UAV", useUav ? "1" : "0"}};
     Shader::CompilerFlags compilerFlags = Shader::CompilerFlags::None;
@@ -67,7 +67,7 @@ void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, boo
     std::vector<uint32_t> rawBuffer(kNumElems);
     {
         for (uint32_t i = 0; i < kNumElems; i++)
-            rawBuffer[i] = r();
+            rawBuffer[i] = nextRandom();
         var["rawBuffer"] = Buffer::create(
             pDevice, kNumElems * sizeof(uint32_t), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, rawBuffer.data()
         );
@@ -76,7 +76,7 @@ void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, boo
     std::vector<S> structBuffer(kNumElems);
     {
         for (uint32_t i = 0; i < kNumElems; i++)
-            structBuffer[i] = {r() + 0.5f, r()};
+            structBuffer[i] = {nextRandom() + 0.5f, nextRandom()};
         var["structBuffer"] = Buffer::createStructured(
             pDevice, var["structBuffer"], kNumElems, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, structBuffer.data()
         );
@@ -85,7 +85,7 @@ void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, boo
     std::vector<uint32_t> typedBufferUint(kNumElems);
     {
         for (uint32_t i = 0; i < kNumElems; i++)
-            typedBufferUint[i] = r();
+            typedBufferUint[i] = nextRandom();
         var["typedBufferUint"] = Buffer::createTyped<uint32_t>(
             pDevice, kNumElems, ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, typedBufferUint.data()
         );
@@ -94,7 +94,7 @@ void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, boo
     std::vector<float4> typedBufferFloat4(kNumElems);
     {
         for (uint32_t i = 0; i < kNumElems; i++)
-            typedBufferFloat4[i] = {r() * 0.25f, r() * 0.5f, r() * 0.75f, r()};
+            typedBufferFloat4[i] = {nextRandom() * 0.25f, nextRandom() * 0.5f, nextRandom() * 0.75f, float(nextRandom())};
         var["typedBufferFloat4"] = Buffer::createTyped<float4>(
             pDevice, kNumElems, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, typedBufferFloat4.data()
         );
@@ -104,14 +104,14 @@ void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, boo
     std::vector<uint32_t> testBuffer(kNumElems);
     {
         for (uint32_t i = 0; i < kNumElems; i++)
-            testBuffer[i] = r();
+            testBuffer[i] = nextRandom();
         auto pTestBuffer = Buffer::create(
             pDevice, kNumElems * sizeof(uint32_t), useUav ? ResourceBindFlags::UnorderedAccess : ResourceBindFlags::ShaderResource,
             Buffer::CpuAccess::None, testBuffer.data()
         );
         var[kRootBufferName] = pTestBuffer;
 
-        Buffer::SharedPtr pBoundBuffer = var[kRootBufferName];
+        ref<Buffer> pBoundBuffer = var[kRootBufferName];
         EXPECT_EQ(pBoundBuffer, pTestBuffer);
     }
 
@@ -140,11 +140,11 @@ void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, boo
 
     // Change the binding of other resources to test that the root buffer stays correctly bound.
     for (uint32_t i = 0; i < kNumElems; i++)
-        rawBuffer[i] = r();
+        rawBuffer[i] = nextRandom();
     var["rawBuffer"] =
         Buffer::create(pDevice, kNumElems * sizeof(uint32_t), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, rawBuffer.data());
     for (uint32_t i = 0; i < kNumElems; i++)
-        typedBufferFloat4[i] = {r() * 0.25f, r() * 0.5f, r() * 0.75f, r()};
+        typedBufferFloat4[i] = {nextRandom() * 0.25f, nextRandom() * 0.5f, nextRandom() * 0.75f, float(nextRandom())};
     var["typedBufferFloat4"] = Buffer::createTyped<float4>(
         pDevice, kNumElems, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, typedBufferFloat4.data()
     );
@@ -156,14 +156,14 @@ void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, boo
     // Test binding a new root buffer.
     {
         for (uint32_t i = 0; i < kNumElems; i++)
-            testBuffer[i] = r();
+            testBuffer[i] = nextRandom();
         auto pTestBuffer = Buffer::create(
             pDevice, kNumElems * sizeof(uint32_t), useUav ? ResourceBindFlags::UnorderedAccess : ResourceBindFlags::ShaderResource,
             Buffer::CpuAccess::None, testBuffer.data()
         );
         var[kRootBufferName] = pTestBuffer;
 
-        Buffer::SharedPtr pBoundBuffer = var[kRootBufferName];
+        ref<Buffer> pBoundBuffer = var[kRootBufferName];
         EXPECT_EQ(pBoundBuffer, pTestBuffer);
     }
 

@@ -34,6 +34,7 @@
 #include "RenderContext.h"
 #include "GpuMemoryHeap.h"
 #include "Core/Macros.h"
+#include "Core/Object.h"
 
 #if FALCOR_HAS_D3D12
 #include <guiddef.h>
@@ -62,7 +63,7 @@ class PipelineCreationAPIDispatcher;
 class ProgramManager;
 class Profiler;
 
-class FALCOR_API Device : public std::enable_shared_from_this<Device>
+class FALCOR_API Device : public Object
 {
 public:
     /**
@@ -144,19 +145,11 @@ public:
     };
 
     /**
-     * Create a new device.
+     * Constructor. Throws an exception if creation failed.
      * @param[in] desc Device configuration descriptor.
-     * @return A pointer to a new device object, or throws an exception if creation failed.
      */
-    static std::shared_ptr<Device> create(const Desc& desc);
-
     Device(const Desc& desc);
     ~Device();
-
-    /**
-     * Acts as the destructor for Device. Some resources use the global device pointer their cleanup.
-     */
-    void cleanup();
 
     ProgramManager* getProgramManager() const { return mpProgramManager.get(); }
 
@@ -220,30 +213,23 @@ public:
     /**
      * Get an object that represents a default sampler.
      */
-    std::shared_ptr<Sampler> getDefaultSampler() const { return mpDefaultSampler; }
-
-    /**
-     * Create a new query heap.
-     * @param[in] type Type of queries.
-     * @param[in] count Number of queries.
-     * @return New query heap.
-     */
-    std::weak_ptr<QueryHeap> createQueryHeap(QueryHeap::Type type, uint32_t count);
+    const ref<Sampler>& getDefaultSampler() const { return mpDefaultSampler; }
 
 #if FALCOR_HAS_D3D12
-    const std::shared_ptr<D3D12DescriptorPool>& getD3D12CpuDescriptorPool() const
+    const ref<D3D12DescriptorPool>& getD3D12CpuDescriptorPool() const
     {
         requireD3D12();
         return mpD3D12CpuDescPool;
     }
-    const std::shared_ptr<D3D12DescriptorPool>& getD3D12GpuDescriptorPool() const
+    const ref<D3D12DescriptorPool>& getD3D12GpuDescriptorPool() const
     {
         requireD3D12();
         return mpD3D12GpuDescPool;
     }
 #endif // FALCOR_HAS_D3D12
 
-    const GpuMemoryHeap::SharedPtr& getUploadHeap() const { return mpUploadHeap; }
+    const ref<GpuMemoryHeap>& getUploadHeap() const { return mpUploadHeap; }
+    const ref<QueryHeap>& getTimestampQueryHeap() const { return mpTimestampQueryHeap; }
     void releaseResource(ISlangUnknown* pResource);
 
     double getGpuTimestampFrequency() const { return mGpuTimestampFrequency; } // ms/tick
@@ -316,7 +302,6 @@ private:
     };
     std::queue<ResourceRelease> mDeferredReleases;
 
-    bool init();
     void executeDeferredReleases();
 
     Desc mDesc;
@@ -326,17 +311,16 @@ private:
     Slang::ComPtr<gfx::ITransientResourceHeap> mpTransientResourceHeaps[kInFlightFrameCount];
     uint32_t mCurrentTransientResourceHeapIndex = 0;
 
-    std::shared_ptr<Sampler> mpDefaultSampler;
-
-    GpuMemoryHeap::SharedPtr mpUploadHeap;
+    ref<Sampler> mpDefaultSampler;
+    ref<GpuMemoryHeap> mpUploadHeap;
+    ref<QueryHeap> mpTimestampQueryHeap;
 #if FALCOR_HAS_D3D12
-    std::shared_ptr<D3D12DescriptorPool> mpD3D12CpuDescPool;
-    std::shared_ptr<D3D12DescriptorPool> mpD3D12GpuDescPool;
+    ref<D3D12DescriptorPool> mpD3D12CpuDescPool;
+    ref<D3D12DescriptorPool> mpD3D12GpuDescPool;
 #endif
-    GpuFence::SharedPtr mpFrameFence;
+    ref<GpuFence> mpFrameFence;
 
     std::unique_ptr<RenderContext> mpRenderContext;
-    std::list<QueryHeap::SharedPtr> mTimestampQueryHeaps;
     double mGpuTimestampFrequency;
 
     Limits mLimits;
@@ -357,10 +341,6 @@ inline constexpr uint32_t getMaxViewportCount()
 {
     return 8;
 }
-
-/// !!! DO NOT USE THIS !!!
-/// This is only available during the migration away from having only a single global GPU device in Falcor.
-FALCOR_API std::shared_ptr<Device>& getGlobalDevice();
 
 FALCOR_ENUM_CLASS_OPERATORS(Device::SupportedFeatures);
 } // namespace Falcor

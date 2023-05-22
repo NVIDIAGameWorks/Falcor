@@ -57,9 +57,18 @@ namespace
     };
 };
 
-VBufferRT::SharedPtr VBufferRT::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
+VBufferRT::VBufferRT(ref<Device> pDevice, const Dictionary& dict)
+    : GBufferBase(pDevice)
 {
-    return SharedPtr(new VBufferRT(std::move(pDevice), dict));
+    if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1))
+    {
+        throw RuntimeError("VBufferRT: Raytracing Tier 1.1 is not supported by the current device");
+    }
+
+    parseDictionary(dict);
+
+    // Create sample generator
+    mpSampleGenerator = SampleGenerator::create(mpDevice, SAMPLE_GENERATOR_DEFAULT);
 }
 
 RenderPassReflection VBufferRT::reflect(const CompileData& compileData)
@@ -138,11 +147,23 @@ Dictionary VBufferRT::getScriptingDictionary()
     return dict;
 }
 
-void VBufferRT::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
+void VBufferRT::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
 {
     GBufferBase::setScene(pRenderContext, pScene);
 
     recreatePrograms();
+}
+
+void VBufferRT::parseDictionary(const Dictionary& dict)
+{
+    GBufferBase::parseDictionary(dict);
+
+    for (const auto& [key, value] : dict)
+    {
+        if (key == kUseTraceRayInline) mUseTraceRayInline = value;
+        else if (key == kUseDOF) mUseDOF = value;
+        // TODO: Check for unparsed fields, including those parsed in base classes.
+    }
 }
 
 void VBufferRT::recreatePrograms()
@@ -170,7 +191,7 @@ void VBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData&
         desc.setMaxAttributeSize(mpScene->getRaytracingMaxAttributeSize());
         desc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
 
-        RtBindingTable::SharedPtr sbt = RtBindingTable::create(1, 1, mpScene->getGeometryCount());
+        ref<RtBindingTable> sbt = RtBindingTable::create(1, 1, mpScene->getGeometryCount());
         sbt->setRayGen(desc.addRayGen("rayGen"));
         sbt->setMiss(0, desc.addMiss("miss"));
         sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), desc.addHitGroup("closestHit", "anyHit"));
@@ -270,34 +291,8 @@ void VBufferRT::setShaderData(const ShaderVar& var, const RenderData& renderData
     // Bind output channels as UAV buffers.
     auto bind = [&](const ChannelDesc& channel)
     {
-        Texture::SharedPtr pTex = getOutput(renderData, channel.name);
+        ref<Texture> pTex = getOutput(renderData, channel.name);
         var[channel.texname] = pTex;
     };
     for (const auto& channel : kVBufferExtraChannels) bind(channel);
-}
-
-VBufferRT::VBufferRT(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-    : GBufferBase(std::move(pDevice))
-{
-    if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1))
-    {
-        throw RuntimeError("VBufferRT: Raytracing Tier 1.1 is not supported by the current device");
-    }
-
-    parseDictionary(dict);
-
-    // Create sample generator
-    mpSampleGenerator = SampleGenerator::create(mpDevice, SAMPLE_GENERATOR_DEFAULT);
-}
-
-void VBufferRT::parseDictionary(const Dictionary& dict)
-{
-    GBufferBase::parseDictionary(dict);
-
-    for (const auto& [key, value] : dict)
-    {
-        if (key == kUseTraceRayInline) mUseTraceRayInline = value;
-        else if (key == kUseDOF) mUseDOF = value;
-        // TODO: Check for unparsed fields, including those parsed in base classes.
-    }
 }

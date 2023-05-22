@@ -31,12 +31,7 @@
 
 namespace Falcor
 {
-D3D12DescriptorHeap::D3D12DescriptorHeap(
-    std::shared_ptr<Device> pDevice,
-    D3D12_DESCRIPTOR_HEAP_TYPE type,
-    uint32_t chunkCount,
-    bool shaderVisible
-)
+D3D12DescriptorHeap::D3D12DescriptorHeap(Device* pDevice, D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t chunkCount, bool shaderVisible)
     : mMaxChunkCount(chunkCount), mType(type), mShaderVisible(shaderVisible)
 {
     ID3D12Device* pD3D12Device = pDevice->getNativeHandle().as<ID3D12Device*>();
@@ -46,7 +41,7 @@ D3D12DescriptorHeap::D3D12DescriptorHeap(
 
 D3D12DescriptorHeap::~D3D12DescriptorHeap() = default;
 
-D3D12DescriptorHeap::SharedPtr D3D12DescriptorHeap::create(
+ref<D3D12DescriptorHeap> D3D12DescriptorHeap::create(
     Device* pDevice,
     D3D12_DESCRIPTOR_HEAP_TYPE type,
     uint32_t descCount,
@@ -58,7 +53,7 @@ D3D12DescriptorHeap::SharedPtr D3D12DescriptorHeap::create(
     ID3D12Device* pD3D12Device = pDevice->getNativeHandle().as<ID3D12Device*>();
 
     uint32_t chunkCount = (descCount + kDescPerChunk - 1) / kDescPerChunk;
-    D3D12DescriptorHeap::SharedPtr pHeap = SharedPtr(new D3D12DescriptorHeap(pDevice->shared_from_this(), type, chunkCount, shaderVisible));
+    ref<D3D12DescriptorHeap> pHeap = ref<D3D12DescriptorHeap>(new D3D12DescriptorHeap(pDevice, type, chunkCount, shaderVisible));
     D3D12_DESCRIPTOR_HEAP_DESC desc = {};
 
     desc.Flags = shaderVisible ? D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE : D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
@@ -110,7 +105,8 @@ D3D12DescriptorHeap::Allocation::SharedPtr D3D12DescriptorHeap::allocateDescript
         return nullptr;
     }
 
-    Allocation::SharedPtr pAlloc = Allocation::create(shared_from_this(), mpCurrentChunk->getCurrentAbsoluteIndex(), count, mpCurrentChunk);
+    Allocation::SharedPtr pAlloc =
+        Allocation::create(ref<D3D12DescriptorHeap>(this), mpCurrentChunk->getCurrentAbsoluteIndex(), count, mpCurrentChunk);
 
     // Update the chunk
     mpCurrentChunk->allocCount++;
@@ -183,7 +179,7 @@ void D3D12DescriptorHeap::releaseChunk(Chunk::SharedPtr pChunk)
 }
 
 D3D12DescriptorHeap::Allocation::SharedPtr D3D12DescriptorHeap::Allocation::create(
-    D3D12DescriptorHeap::SharedPtr pHeap,
+    ref<D3D12DescriptorHeap> pHeap,
     uint32_t baseIndex,
     uint32_t descCount,
     std::shared_ptr<Chunk> pChunk
@@ -193,7 +189,7 @@ D3D12DescriptorHeap::Allocation::SharedPtr D3D12DescriptorHeap::Allocation::crea
 }
 
 D3D12DescriptorHeap::Allocation::Allocation(
-    D3D12DescriptorHeap::SharedPtr pHeap,
+    ref<D3D12DescriptorHeap> pHeap,
     uint32_t baseIndex,
     uint32_t descCount,
     std::shared_ptr<Chunk> pChunk

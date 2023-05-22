@@ -92,7 +92,7 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
 
 void WhittedRayTracer::registerBindings(pybind11::module& m)
 {
-    pybind11::class_<WhittedRayTracer, RenderPass, WhittedRayTracer::SharedPtr> pass(m, "WhittedRayTracer");
+    pybind11::class_<WhittedRayTracer, RenderPass, ref<WhittedRayTracer>> pass(m, "WhittedRayTracer");
 
     pybind11::enum_<RayConeMode> rayConeMode(m, "RayConeMode");
     rayConeMode.value("Combo", RayConeMode::Combo);
@@ -104,13 +104,8 @@ void WhittedRayTracer::registerBindings(pybind11::module& m)
     rayConeFilterMode.value("AnisotropicWhenRefraction", RayFootprintFilterMode::AnisotropicWhenRefraction);
 }
 
-WhittedRayTracer::SharedPtr WhittedRayTracer::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-{
-    return SharedPtr(new WhittedRayTracer(std::move(pDevice), dict));
-}
-
-WhittedRayTracer::WhittedRayTracer(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-    : RenderPass(std::move(pDevice))
+WhittedRayTracer::WhittedRayTracer(ref<Device> pDevice, const Dictionary& dict)
+    : RenderPass(pDevice)
 {
     // Parse dictionary.
     for (const auto& [key, value] : dict)
@@ -225,19 +220,19 @@ void WhittedRayTracer::renderUI(Gui::Widgets& widget)
     dirty |= widget.var("Max bounces", mMaxBounces, 0u, 10u);
     widget.tooltip("Maximum path length for indirect illumination.\n0 = direct only\n1 = one indirect bounce etc.", true);
 
-    uint32_t modeIndex = static_cast<uint32_t>(mTexLODMode);
-    if (widget.dropdown("Texture LOD mode", kTexLODModeList, modeIndex))
+    uint32_t texLODModeIndex = static_cast<uint32_t>(mTexLODMode);
+    if (widget.dropdown("Texture LOD mode", kTexLODModeList, texLODModeIndex))
     {
-        setTexLODMode(TexLODMode(modeIndex));
+        setTexLODMode(TexLODMode(texLODModeIndex));
         dirty = true;
     }
     widget.tooltip("The texture level-of-detail mode to use.");
     if (mTexLODMode == TexLODMode::RayCones)
     {
-        uint32_t modeIndex = static_cast<uint32_t>(mRayConeMode);
-        if (widget.dropdown("Ray cone mode", kRayConeModeList, modeIndex))
+        uint32_t rayConeModeIndex = static_cast<uint32_t>(mRayConeMode);
+        if (widget.dropdown("Ray cone mode", kRayConeModeList, rayConeModeIndex))
         {
-            setRayConeMode(RayConeMode(modeIndex));
+            setRayConeMode(RayConeMode(rayConeModeIndex));
             dirty = true;
         }
         widget.tooltip("The variant of ray cones to use.");
@@ -277,7 +272,7 @@ void WhittedRayTracer::renderUI(Gui::Widgets& widget)
     }
 }
 
-void WhittedRayTracer::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
+void WhittedRayTracer::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
 {
     // Clear data for previous scene.
     // After changing scene, the raytracing program should to be recreated.

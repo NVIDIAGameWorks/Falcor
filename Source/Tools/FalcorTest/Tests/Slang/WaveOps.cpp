@@ -112,7 +112,7 @@ std::vector<float> computeMinMaxResult(const std::vector<float>& data, uint32_t 
 
 void testWaveMinMax(GPUUnitTestContext& ctx, bool conditional)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     Program::DefineList defines = {{"CONDITIONAL", conditional ? "1" : "0"}};
     ctx.createProgram(kShaderFilename, "testWaveMinMax", defines, Shader::CompilerFlags::None, "6_0");
@@ -158,7 +158,7 @@ void testWaveMinMax(GPUUnitTestContext& ctx, bool conditional)
 
 uint32_t queryLaneCount(GPUUnitTestContext& ctx)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     ctx.createProgram(kShaderFilename, "testWaveGetLaneCount", Program::DefineList(), Shader::CompilerFlags::None, "6_0");
 
@@ -186,7 +186,7 @@ GPU_TEST(WaveGetLaneCount)
 // WaveMatch intrinsic is available only on D3D12.
 GPU_TEST_D3D12(WaveMatch)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     ctx.createProgram(kShaderFilename, "testWaveMatch", Program::DefineList(), Shader::CompilerFlags::None, "6_5");
     ctx.allocateStructuredBuffer("result", kNumElems);
@@ -242,7 +242,7 @@ GPU_TEST(WaveMaxSimpleFloat, "Disabled due to compiler issues")
     // Input:  -15,-14, ..., -3, -2, -1, ..., 16
     // Output:  -2, -2, ..., -2, -2, -1, ..., 16
 
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     if (uint32_t laneCount = queryLaneCount(ctx); laneCount != 32)
         throw SkippingTestException("Test assumes warp size 32");
@@ -277,7 +277,7 @@ GPU_TEST(WaveMaxSimpleInt)
     // Input:  -15,-14, ..., -3, -2, -1, ..., 16
     // Output:  -2, -2, ..., -2, -2, -1, ..., 16
 
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     if (uint32_t laneCount = queryLaneCount(ctx); laneCount != 32)
         throw SkippingTestException("Test assumes warp size 32");

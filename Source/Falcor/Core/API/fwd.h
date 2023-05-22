@@ -27,10 +27,13 @@
  **************************************************************************/
 #pragma once
 
+#include "Core/Object.h"
+
 namespace Falcor
 {
 
 class Device;
+
 class CopyContext;
 class ComputeContext;
 class RenderContext;

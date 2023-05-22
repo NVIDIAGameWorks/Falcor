@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -40,13 +40,13 @@ public:
     ~CudaInterop();
 
     void onLoad(RenderContext* pRenderContext) override;
-    void onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
+    void onFrameRender(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo) override;
 
 private:
     uint32_t mWidth;
     uint32_t mHeight;
-    Texture::SharedPtr mpInputTex;
-    Texture::SharedPtr mpOutputTex;
+    ref<Texture> mpInputTex;
+    ref<Texture> mpOutputTex;
     cudaSurfaceObject_t mInputSurf;
     cudaSurfaceObject_t mOutputSurf;
 };

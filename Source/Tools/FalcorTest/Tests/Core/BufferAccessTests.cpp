@@ -35,7 +35,7 @@ const uint32_t elems = 256;
 
 /** Create buffer with the given CPU access and elements initialized to 0,1,2,...
  */
-Buffer::SharedPtr createTestBuffer(Device* pDevice, Buffer::CpuAccess cpuAccess, bool initialize = true)
+ref<Buffer> createTestBuffer(ref<Device> pDevice, Buffer::CpuAccess cpuAccess, bool initialize = true)
 {
     std::vector<uint32_t> initData(elems);
     for (uint32_t i = 0; i < elems; i++)
@@ -50,7 +50,7 @@ Buffer::SharedPtr createTestBuffer(Device* pDevice, Buffer::CpuAccess cpuAccess,
 */
 void testBufferReadback(GPUUnitTestContext& ctx, Buffer::CpuAccess cpuAccess)
 {
-    auto pBuf = createTestBuffer(ctx.getDevice().get(), cpuAccess);
+    auto pBuf = createTestBuffer(ctx.getDevice(), cpuAccess);
 
     // Run program that copies the buffer elements into result buffer.
     ctx.createProgram("Tests/Core/BufferAccessTests.cs.slang", "readback", Program::DefineList(), Shader::CompilerFlags::None);
@@ -72,7 +72,7 @@ void testBufferReadback(GPUUnitTestContext& ctx, Buffer::CpuAccess cpuAccess)
 */
 GPU_TEST(CopyBufferCpuAccessWrite)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     auto pBuf = createTestBuffer(pDevice, Buffer::CpuAccess::Write);
 
@@ -99,7 +99,7 @@ GPU_TEST(CopyBufferCpuAccessWrite)
  */
 GPU_TEST(SetBlobBufferCpuAccessWrite, "Disabled due to issue with SRV/UAVs for resources on the upload heap (#638)")
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     auto pBuf = createTestBuffer(pDevice, Buffer::CpuAccess::Write, false);
 

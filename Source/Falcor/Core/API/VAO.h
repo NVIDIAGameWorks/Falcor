@@ -30,7 +30,7 @@
 #include "Buffer.h"
 #include "Core/Macros.h"
 #include "Core/Assert.h"
-#include <memory>
+#include "Core/Object.h"
 #include <vector>
 
 namespace Falcor
@@ -40,12 +40,9 @@ namespace Falcor
  * layouts corresponding to the number of vertex buffers to be bound. The number of vertex buffers to be bound must match the number
  * described in the layout.
  */
-class FALCOR_API Vao
+class FALCOR_API Vao : public Object
 {
 public:
-    using SharedPtr = std::shared_ptr<Vao>;
-    using WeakPtr = std::weak_ptr<Vao>;
-    using SharedConstPtr = std::shared_ptr<const Vao>;
     ~Vao() = default;
 
     /**
@@ -63,12 +60,12 @@ public:
 
     struct ElementDesc
     {
-        static const uint32_t kInvalidIndex = -1;
+        static constexpr uint32_t kInvalidIndex = -1;
         uint32_t vbIndex = kInvalidIndex;
         uint32_t elementIndex = kInvalidIndex;
     };
 
-    using BufferVec = std::vector<Buffer::SharedPtr>;
+    using BufferVec = std::vector<ref<Buffer>>;
 
     /**
      * Create a new vertex array object.
@@ -79,11 +76,11 @@ public:
      * @param ibFormat The resource format of the index buffer. Can be either R16Uint or R32Uint.
      * @return New object, or throws an exception on error.
      */
-    static SharedPtr create(
+    static ref<Vao> create(
         Topology primTopology,
-        const VertexLayout::SharedPtr& pLayout = nullptr,
+        ref<VertexLayout> pLayout = nullptr,
         const BufferVec& pVBs = BufferVec(),
-        const Buffer::SharedPtr& pIB = nullptr,
+        ref<Buffer> pIB = nullptr,
         ResourceFormat ibFormat = ResourceFormat::Unknown
     );
 
@@ -95,7 +92,7 @@ public:
     /**
      * Get a vertex buffer
      */
-    const Buffer::SharedPtr& getVertexBuffer(uint32_t index) const
+    const ref<Buffer>& getVertexBuffer(uint32_t index) const
     {
         FALCOR_ASSERT(index < (uint32_t)mpVBs.size());
         return mpVBs[index];
@@ -104,7 +101,7 @@ public:
     /**
      * Get a vertex buffer layout
      */
-    const VertexLayout::SharedPtr& getVertexLayout() const { return mpVertexLayout; }
+    const ref<VertexLayout>& getVertexLayout() const { return mpVertexLayout; }
 
     /**
      * Return the vertex buffer index and the element index by its location.
@@ -115,7 +112,7 @@ public:
     /**
      * Get the index buffer
      */
-    const Buffer::SharedPtr& getIndexBuffer() const { return mpIB; }
+    const ref<Buffer>& getIndexBuffer() const { return mpIB; }
 
     /**
      * Get the index buffer format
@@ -131,15 +128,11 @@ protected:
     friend class RenderContext;
 
 private:
-    Vao(const BufferVec& pVBs,
-        const VertexLayout::SharedPtr& pLayout,
-        const Buffer::SharedPtr& pIB,
-        ResourceFormat ibFormat,
-        Topology primTopology);
+    Vao(const BufferVec& pVBs, ref<VertexLayout> pLayout, ref<Buffer> pIB, ResourceFormat ibFormat, Topology primTopology);
 
-    VertexLayout::SharedPtr mpVertexLayout;
+    ref<VertexLayout> mpVertexLayout;
     BufferVec mpVBs;
-    Buffer::SharedPtr mpIB;
+    ref<Buffer> mpIB;
     void* mpPrivateData = nullptr;
     ResourceFormat mIbFormat;
     Topology mTopology;

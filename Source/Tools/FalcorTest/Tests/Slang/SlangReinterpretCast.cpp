@@ -46,7 +46,7 @@ const uint32_t kElems = 128;
 
 GPU_TEST(SlangReinterpretCast)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     ctx.createProgram("Tests/Slang/SlangReinterpretCast.cs.slang", "main", Program::DefineList(), Shader::CompilerFlags::None, "6_5");
     ctx.allocateStructuredBuffer("resultA", kElems);

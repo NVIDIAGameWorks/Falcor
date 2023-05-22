@@ -30,7 +30,7 @@
 
 static void regAccumulatePass(pybind11::module& m)
 {
-    pybind11::class_<AccumulatePass, RenderPass, AccumulatePass::SharedPtr> pass(m, "AccumulatePass");
+    pybind11::class_<AccumulatePass, RenderPass, ref<AccumulatePass>> pass(m, "AccumulatePass");
     pass.def_property("enabled", &AccumulatePass::isEnabled, &AccumulatePass::setEnabled);
     pass.def("reset", &AccumulatePass::reset);
 
@@ -83,13 +83,8 @@ namespace
     };
 }
 
-AccumulatePass::SharedPtr AccumulatePass::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-{
-    return SharedPtr(new AccumulatePass(std::move(pDevice), dict));
-}
-
-AccumulatePass::AccumulatePass(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-    : RenderPass(std::move(pDevice))
+AccumulatePass::AccumulatePass(ref<Device> pDevice, const Dictionary& dict)
+    : RenderPass(pDevice)
 {
     // Deserialize pass from dictionary.
     for (const auto& [key, value] : dict)
@@ -188,15 +183,15 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
     }
 
     // Grab our input/output buffers.
-    Texture::SharedPtr pSrc = renderData.getTexture(kInputChannel);
-    Texture::SharedPtr pDst = renderData.getTexture(kOutputChannel);
+    ref<Texture> pSrc = renderData.getTexture(kInputChannel);
+    ref<Texture> pDst = renderData.getTexture(kOutputChannel);
     FALCOR_ASSERT(pSrc && pDst);
 
     const uint2 resolution = uint2(pSrc->getWidth(), pSrc->getHeight());
     const bool resolutionMatch = pDst->getWidth() == resolution.x && pDst->getHeight() == resolution.y;
 
     // Reset accumulation when resolution changes.
-    if (resolution != mFrameDim)
+    if (any(resolution != mFrameDim))
     {
         mFrameDim = resolution;
         reset();
@@ -233,7 +228,7 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
     }
 }
 
-void AccumulatePass::accumulate(RenderContext* pRenderContext, const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDst)
+void AccumulatePass::accumulate(RenderContext* pRenderContext, const ref<Texture>& pSrc, const ref<Texture>& pDst)
 {
     FALCOR_ASSERT(pSrc && pDst);
     FALCOR_ASSERT(pSrc->getWidth() == mFrameDim.x && pSrc->getHeight() == mFrameDim.y);
@@ -270,18 +265,19 @@ void AccumulatePass::accumulate(RenderContext* pRenderContext, const Texture::Sh
     prepareAccumulation(pRenderContext, mFrameDim.x, mFrameDim.y);
 
     // Set shader parameters.
-    mpVars["PerFrameCB"]["gResolution"] = mFrameDim;
-    mpVars["PerFrameCB"]["gAccumCount"] = mFrameCount;
-    mpVars["PerFrameCB"]["gAccumulate"] = mEnabled;
-    mpVars["PerFrameCB"]["gMovingAverageMode"] = (mMaxFrameCount > 0);
-    mpVars["gCurFrame"] = pSrc;
-    mpVars["gOutputFrame"] = pDst;
+    auto var = mpVars->getRootVar();
+    var["PerFrameCB"]["gResolution"] = mFrameDim;
+    var["PerFrameCB"]["gAccumCount"] = mFrameCount;
+    var["PerFrameCB"]["gAccumulate"] = mEnabled;
+    var["PerFrameCB"]["gMovingAverageMode"] = (mMaxFrameCount > 0);
+    var["gCurFrame"] = pSrc;
+    var["gOutputFrame"] = pDst;
 
     // Bind accumulation buffers. Some of these may be nullptr's.
-    mpVars["gLastFrameSum"] = mpLastFrameSum;
-    mpVars["gLastFrameCorr"] = mpLastFrameCorr;
-    mpVars["gLastFrameSumLo"] = mpLastFrameSumLo;
-    mpVars["gLastFrameSumHi"] = mpLastFrameSumHi;
+    var["gLastFrameSum"] = mpLastFrameSum;
+    var["gLastFrameCorr"] = mpLastFrameCorr;
+    var["gLastFrameSumLo"] = mpLastFrameSumLo;
+    var["gLastFrameSumHi"] = mpLastFrameSumHi;
 
     // Update the frame count.
     // The accumulation limit (mMaxFrameCount) has a special value of 0 (no limit) and is not supported in the SingleCompensated mode.
@@ -351,7 +347,7 @@ void AccumulatePass::renderUI(Gui::Widgets& widget)
     }
 }
 
-void AccumulatePass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
+void AccumulatePass::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
 {
     mpScene = pScene;
 
@@ -383,7 +379,7 @@ void AccumulatePass::prepareAccumulation(RenderContext* pRenderContext, uint32_t
 {
     // Allocate/resize/clear buffers for intermedate data. These are different depending on accumulation mode.
     // Buffers that are not used in the current mode are released.
-    auto prepareBuffer = [&](Texture::SharedPtr& pBuf, ResourceFormat format, bool bufUsed)
+    auto prepareBuffer = [&](ref<Texture>& pBuf, ResourceFormat format, bool bufUsed)
     {
         if (!bufUsed)
         {
@@ -393,7 +389,7 @@ void AccumulatePass::prepareAccumulation(RenderContext* pRenderContext, uint32_t
         // (Re-)create buffer if needed.
         if (!pBuf || pBuf->getWidth() != width || pBuf->getHeight() != height)
         {
-            pBuf = Texture::create2D(mpDevice.get(), width, height, format, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+            pBuf = Texture::create2D(mpDevice, width, height, format, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
             FALCOR_ASSERT(pBuf);
             reset();
         }

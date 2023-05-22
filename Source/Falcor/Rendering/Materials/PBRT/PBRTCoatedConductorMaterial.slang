@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -49,18 +49,21 @@ struct PBRTCoatedConductorMaterial : MaterialBase, IMaterial
         float eta = 1.0f / data.IoR;
 
         // Compute final shading frame.
-        ShadingFrame sf = ShadingFrame(sd);
+        ShadingFrame sf = sd.frame;
+        if (isNormalMappingEnabled(hints))
+        {
+            float3 encodedNormal = ms.sampleTexture(data.texNormalMap, s, sd.uv, float4(0.f), lod).rgb;
+            sf = computeShadingFrameFromNormalMap(sd, data.getNormalMapType(), encodedNormal);
+        }
+        flipShadingNormal(sd, sf);
+        if (isAdjustShadingNormalEnabled(hints))
+        {
+            adjustShadingNormal(sd, sf);
+        }
 
-        PBRTCoatedConductorMaterialInstance brdf = {sf, AnisotropicGGX(roughnesses.rg), AnisotropicGGX(roughnesses.ba), eta, baseColor, transColor, 32};
+        PBRTCoatedConductorMaterialInstance mi = {sf, AnisotropicGGX(roughnesses.rg), AnisotropicGGX(roughnesses.ba), eta, baseColor, transColor, 32};
 
-        return brdf;
-    }
-
-    void modifyTangentSpace(const MaterialSystem ms, const ITextureSampler lod, inout ShadingData sd)
-    {
-        SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
-        float3 encodedNormal = ms.sampleTexture(data.texNormalMap, s, sd.uv, float4(0.f), lod).rgb;
-        applyNormalMap(sd, data.getNormalMapType(), encodedNormal);
+        return mi;
     }
 
     float evalOpacity(const MaterialSystem ms, const VertexData v, const ITextureSampler lod)

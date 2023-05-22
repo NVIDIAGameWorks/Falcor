@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,28 +31,32 @@
 
 namespace Falcor
 {
-    /** Flags to indicate what have changed since last frame.
-        One or more flags can be OR'ed together.
-    */
-    enum class RenderPassRefreshFlags : uint32_t
-    {
-        None                    = 0x0,
-        LightingChanged         = 0x1,      ///< Lighting has changed.
-        RenderOptionsChanged    = 0x2,      ///< Options that affect the rendering have changed.
-    };
+/**
+ * Flags to indicate what have changed since last frame.
+ * One or more flags can be OR'ed together.
+ */
+enum class RenderPassRefreshFlags : uint32_t
+{
+    None = 0x0,
+    LightingChanged = 0x1,      ///< Lighting has changed.
+    RenderOptionsChanged = 0x2, ///< Options that affect the rendering have changed.
+};
 
-    /** The refresh flags above are passed to RenderPass::execute() via a
-        field with this name in the dictionary.
-    */
-    static const char kRenderPassRefreshFlags[] = "_refreshFlags";
+/**
+ * The refresh flags above are passed to RenderPass::execute() via a
+ * field with this name in the dictionary.
+ */
+static const char kRenderPassRefreshFlags[] = "_refreshFlags";
 
-    /** First available preudorandom number generator dimension.
-    */
-    static const char kRenderPassPRNGDimension[] = "_prngDimension";
+/**
+ * First available preudorandom number generator dimension.
+ */
+static const char kRenderPassPRNGDimension[] = "_prngDimension";
 
-    /** Adjust shading normals on primary hits.
-    */
-    static const char kRenderPassGBufferAdjustShadingNormals[] = "_gbufferAdjustShadingNormals";
+/**
+ * Adjust shading normals on primary hits.
+ */
+static const char kRenderPassGBufferAdjustShadingNormals[] = "_gbufferAdjustShadingNormals";
 
-    FALCOR_ENUM_CLASS_OPERATORS(RenderPassRefreshFlags);
-}
+FALCOR_ENUM_CLASS_OPERATORS(RenderPassRefreshFlags);
+} // namespace Falcor

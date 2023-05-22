@@ -29,23 +29,21 @@
 #include "Core/API/Device.h"
 #include "Core/Program/ShaderVar.h"
 #include "Utils/Scripting/ScriptBindings.h"
-#include "Scene/SceneBuilderAccess.h"
-#include <glm/gtc/integer.hpp>
-#include <glm/gtx/euler_angles.hpp>
+#include "GlobalState.h"
 
 namespace Falcor
 {
-    EnvMap::SharedPtr EnvMap::create(std::shared_ptr<Device> pDevice, const Texture::SharedPtr& pTexture)
+    ref<EnvMap> EnvMap::create(ref<Device> pDevice, const ref<Texture>& pTexture)
     {
-        return SharedPtr(new EnvMap(std::move(pDevice), pTexture));
+        return ref<EnvMap>(new EnvMap(pDevice, pTexture));
     }
 
-    EnvMap::SharedPtr EnvMap::createFromFile(std::shared_ptr<Device> pDevice, const std::filesystem::path& path)
+    ref<EnvMap> EnvMap::createFromFile(ref<Device> pDevice, const std::filesystem::path& path)
     {
         // Load environment map from file. Set it to generate mips and use linear color.
-        auto pTexture = Texture::createFromFile(pDevice.get(), path, true, false);
+        auto pTexture = Texture::createFromFile(pDevice, path, true, false);
         if (!pTexture) return nullptr;
-        return create(std::move(pDevice), pTexture);
+        return create(pDevice, pTexture);
     }
 
     void EnvMap::renderUI(Gui::Widgets& widgets)
@@ -59,14 +57,14 @@ namespace Falcor
 
     void EnvMap::setRotation(float3 degreesXYZ)
     {
-        if (degreesXYZ != mRotation)
+        if (any(degreesXYZ != mRotation))
         {
             mRotation = degreesXYZ;
 
-            rmcv::mat4 transform = rmcv::eulerAngleXYZ(glm::radians(mRotation.x), glm::radians(mRotation.y), glm::radians(mRotation.z));
+            float4x4 transform = math::matrixFromRotationXYZ(math::radians(mRotation.x), math::radians(mRotation.y), math::radians(mRotation.z));
 
             mData.transform = transform;
-            mData.invTransform = rmcv::inverse(transform);
+            mData.invTransform = inverse(transform);
         }
     }
 
@@ -98,7 +96,7 @@ namespace Falcor
 
         if (mData.transform != mPrevData.transform) mChanges |= Changes::Transform;
         if (mData.intensity != mPrevData.intensity) mChanges |= Changes::Intensity;
-        if (mData.tint != mPrevData.tint) mChanges |= Changes::Intensity;
+        if (any(mData.tint != mPrevData.tint)) mChanges |= Changes::Intensity;
 
         mPrevData = mData;
 
@@ -110,8 +108,8 @@ namespace Falcor
         return mpEnvMap ? mpEnvMap->getTextureSizeInBytes() : 0;
     }
 
-    EnvMap::EnvMap(std::shared_ptr<Device> pDevice, const Texture::SharedPtr& pTexture)
-        : mpDevice(std::move(pDevice))
+    EnvMap::EnvMap(ref<Device> pDevice, const ref<Texture>& pTexture)
+        : mpDevice(pDevice)
     {
         checkArgument(mpDevice != nullptr, "'pDevice' must be a valid device");
         checkArgument(pTexture != nullptr, "'pTexture' must be a valid texture");
@@ -123,16 +121,16 @@ namespace Falcor
         Sampler::Desc samplerDesc;
         samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
         samplerDesc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
-        mpEnvSampler = Sampler::create(mpDevice.get(), samplerDesc);
+        mpEnvSampler = Sampler::create(mpDevice, samplerDesc);
     }
 
     FALCOR_SCRIPT_BINDING(EnvMap)
     {
         using namespace pybind11::literals;
 
-        pybind11::class_<EnvMap, EnvMap::SharedPtr> envMap(m, "EnvMap");
+        pybind11::class_<EnvMap, ref<EnvMap>> envMap(m, "EnvMap");
         auto createFromFile = [](const std::filesystem::path &path) {
-            return EnvMap::createFromFile(getActivePythonSceneBuilder().getDevice(), path);
+            return EnvMap::createFromFile(accessActivePythonSceneBuilder().getDevice(), path);
         };
         envMap.def(pybind11::init(createFromFile), "path"_a); // PYTHONDEPRECATED
         envMap.def_static("createFromFile", createFromFile, "path"_a);

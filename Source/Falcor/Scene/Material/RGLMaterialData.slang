@@ -62,9 +62,9 @@ struct RGLMaterialData
     TextureHandle texAlbedoLUT = {};///< Texture handle for albedo LUT.
 
     // Maximum resolution allowed for the various lookup tables.
-    static const uint kMaxResolution = 0xffff;
+    static constexpr uint kMaxResolution = 0xffff;
 
-    static const uint kAlbedoLUTSize = 256;
+    static constexpr uint kAlbedoLUTSize = 256;
 };
 
 END_NAMESPACE_FALCOR

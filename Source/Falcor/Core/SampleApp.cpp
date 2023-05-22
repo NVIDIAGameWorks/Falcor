@@ -36,13 +36,13 @@
 #include "Utils/Logger.h"
 #include "Utils/Scripting/Console.h"
 #include "Utils/Scripting/Scripting.h"
+#include "Utils/Scripting/ScriptBindings.h"
 #include "Utils/UI/TextRenderer.h"
 #include "Utils/Settings.h"
 #include "Utils/StringUtils.h"
 
 #include <imgui.h>
 
-#include <sstream>
 #include <fstream>
 
 namespace Falcor
@@ -63,7 +63,7 @@ SampleApp::SampleApp(const SampleAppConfig& config)
         mClock.pause();
 
     // Create GPU device
-    mpDevice = Device::create(config.deviceDesc);
+    mpDevice = make_ref<Device>(config.deviceDesc);
 
     if (!config.headless)
     {
@@ -83,7 +83,7 @@ SampleApp::SampleApp(const SampleAppConfig& config)
         desc.height = mpWindow->getClientAreaSize().y;
         desc.imageCount = 3;
         desc.enableVSync = mVsyncOn;
-        mpSwapchain = std::make_unique<Swapchain>(mpDevice, desc, mpWindow->getApiHandle());
+        mpSwapchain = make_ref<Swapchain>(mpDevice, desc, mpWindow->getApiHandle());
 
         // Show the progress bar (unless window is minimized)
         if (windowDesc.mode != Window::WindowMode::Minimized)
@@ -94,7 +94,7 @@ SampleApp::SampleApp(const SampleAppConfig& config)
 
     // Create target frame buffer
     uint2 fboSize = mpWindow ? mpWindow->getClientAreaSize() : uint2(config.windowDesc.width, config.windowDesc.height);
-    mpTargetFBO = Fbo::create2D(mpDevice.get(), fboSize.x, fboSize.y, config.colorFormat, config.depthFormat);
+    mpTargetFBO = Fbo::create2D(mpDevice, fboSize.x, fboSize.y, config.colorFormat, config.depthFormat);
 
     // Load settings.toml files
     getSettings().addOptions(getRuntimeDirectory() / "settings.json");
@@ -131,36 +131,31 @@ SampleApp::SampleApp(const SampleAppConfig& config)
 
 SampleApp::~SampleApp()
 {
+    mpPausedRenderOutput.reset();
     mpProfilerUI.reset();
-
-    if (mVideoCapture.pVideoCapture)
-        endVideoCapture();
 
     mpDevice->flushAndSync();
 
     // contains Python dictionaries, needs to be terminated before Scripting::shutdown()
     mpSettings.reset();
 
-    Clock::shutdown();
     Threading::shutdown();
     Scripting::shutdown();
     PluginManager::instance().releaseAllPlugins();
-    TextRenderer::shutdown();
     mpGui.reset();
+    mpTextRenderer.reset();
     mpTargetFBO.reset();
     mpPixelZoom.reset();
 
     mpSwapchain.reset();
     mpWindow.reset();
-    mpDevice.reset();
-    if (getGlobalDevice())
-    {
-        getGlobalDevice()->cleanup();
-        getGlobalDevice().reset();
-#ifdef _DEBUG
-        Device::reportLiveObjects();
+#if FALCOR_ENABLE_REF_TRACKING
+    Object::dumpAllRefs();
 #endif
-    }
+    mpDevice.reset();
+#ifdef _DEBUG
+    Device::reportLiveObjects();
+#endif
 
     OSServices::stop();
     Logger::shutdown();
@@ -215,11 +210,7 @@ void SampleApp::handleKeyboardEvent(const KeyboardEvent& keyEvent)
     // Consume system messages first
     if (keyEvent.type == KeyboardEvent::Type::KeyPressed)
     {
-        if (keyEvent.hasModifier(Input::Modifier::Shift) && keyEvent.key == Input::Key::F12)
-        {
-            initVideoCapture();
-        }
-        else if (keyEvent.hasModifier(Input::Modifier::Ctrl))
+        if (keyEvent.hasModifier(Input::Modifier::Ctrl))
         {
             switch (keyEvent.key)
             {
@@ -261,14 +252,7 @@ void SampleApp::handleKeyboardEvent(const KeyboardEvent& keyEvent)
             }
             break;
             case Input::Key::Escape:
-                if (mVideoCapture.pVideoCapture)
-                {
-                    endVideoCapture();
-                }
-                else
-                {
-                    mpWindow->shutdown();
-                }
+                mpWindow->shutdown();
                 break;
             case Input::Key::Pause:
             case Input::Key::Space:
@@ -309,8 +293,6 @@ void SampleApp::handleDroppedFile(const std::filesystem::path& path)
 
 void SampleApp::runInternal()
 {
-    Clock::start(mpDevice.get());
-
     // Load and run
     onLoad(getRenderContext());
 
@@ -353,7 +335,7 @@ bool screenSizeUI(Gui::Widgets& widget, uint2& screenDims)
     {
         for (uint32_t i = 0; i < count; i++)
         {
-            if (screenDims == resolutions[i])
+            if (all(screenDims == resolutions[i]))
                 return i;
         }
         return 0u;
@@ -379,7 +361,6 @@ std::string SampleApp::getKeyboardShortcutsStr()
         "F3 - Capture current camera location\n"
         "F5 - Reload shaders\n"
         "F12 - Capture screenshot\n"
-        "Shift+F12 - Capture video\n"
         "V - Toggle VSync\n"
         "Pause|Space - Pause/resume the global timer\n"
         "Ctrl+Pause|Space - Pause/resume the renderer\n"
@@ -441,8 +422,6 @@ void SampleApp::renderGlobalUI(Gui* pGui)
         controlsGroup.separator();
 
         mCaptureScreen = controlsGroup.button("Screen Capture");
-        if (controlsGroup.button("Video Capture", true))
-            initVideoCapture();
         if (controlsGroup.button("Save Config"))
             saveConfigToFile();
 
@@ -463,11 +442,6 @@ void SampleApp::renderUI()
 
         if (mShowUI)
             onGuiRender(mpGui.get());
-        if (mVideoCapture.displayUI && mVideoCapture.pUI)
-        {
-            Gui::Window w(mpGui.get(), "Video Capture", mVideoCapture.displayUI, {350, 250}, {300, 280});
-            mVideoCapture.pUI->render(w);
-        }
 
         if (pProfiler->isEnabled())
         {
@@ -508,8 +482,6 @@ void SampleApp::renderFrame()
     // Handle clock.
     mClock.tick();
     mFrameRate.newFrame();
-    if (mVideoCapture.fixedTimeDelta)
-        mClock.setTime(mVideoCapture.currentTime);
 
     RenderContext* pRenderContext = mpDevice->getRenderContext();
 
@@ -528,7 +500,7 @@ void SampleApp::renderFrame()
         {
             auto srcTexture = mpTargetFBO->getColorTexture(0);
             mpPausedRenderOutput =
-                Texture::create2D(mpDevice.get(), srcTexture->getWidth(), srcTexture->getHeight(), srcTexture->getFormat(), 1, 1);
+                Texture::create2D(mpDevice, srcTexture->getWidth(), srcTexture->getHeight(), srcTexture->getFormat(), 1, 1);
             pRenderContext->copyResource(mpPausedRenderOutput.get(), srcTexture.get());
         }
         else
@@ -536,12 +508,6 @@ void SampleApp::renderFrame()
             mpPausedRenderOutput = nullptr;
         }
     }
-
-    // Capture video frame before UI is rendered.
-    // Check capture mode here once only, as its value may change after renderUI().
-    bool captureVideoUI = mVideoCapture.pUI && mVideoCapture.pUI->captureUI();
-    if (!captureVideoUI)
-        captureVideoFrame(mpTargetFBO->getColorTexture(0).get());
 
     // Render the UI.
     renderUI();
@@ -553,9 +519,6 @@ void SampleApp::renderFrame()
     mpDevice->getProfiler()->endFrame(pRenderContext);
 #endif
 
-    // Capture video frame after UI is rendered.
-    if (captureVideoUI)
-        captureVideoFrame(mpTargetFBO->getColorTexture(0).get());
     if (mCaptureScreen)
         captureScreen(mpTargetFBO->getColorTexture(0).get());
 
@@ -564,7 +527,7 @@ void SampleApp::renderFrame()
     {
         int imageIndex = mpSwapchain->acquireNextImage();
         FALCOR_ASSERT(imageIndex >= 0 && imageIndex < (int)mpSwapchain->getDesc().imageCount);
-        Texture* pSwapchainImage = mpSwapchain->getImage(imageIndex).get();
+        const Texture* pSwapchainImage = mpSwapchain->getImage(imageIndex).get();
         pRenderContext->copyResource(pSwapchainImage, mpTargetFBO->getColorTexture(0).get());
         pRenderContext->resourceBarrier(pSwapchainImage, Resource::State::Present);
         pRenderContext->flush();
@@ -583,7 +546,7 @@ void SampleApp::resizeTargetFBO(uint32_t width, uint32_t height)
 {
     // Resize target frame buffer.
     auto pPrevFBO = mpTargetFBO;
-    mpTargetFBO = Fbo::create2D(mpDevice.get(), width, height, pPrevFBO->getDesc());
+    mpTargetFBO = Fbo::create2D(mpDevice, width, height, pPrevFBO->getDesc());
     mpDevice->getRenderContext()->blit(pPrevFBO->getColorTexture(0)->getSRV(), mpTargetFBO->getRenderTargetView(0));
 
     // Tell the GUI the swap-chain size changed
@@ -602,7 +565,7 @@ void SampleApp::initUI()
 {
     float scaling = getDisplayScaleFactor();
     mpGui = std::make_unique<Gui>(mpDevice, mpTargetFBO->getWidth(), mpTargetFBO->getHeight(), scaling);
-    TextRenderer::start(mpDevice.get());
+    mpTextRenderer = std::make_unique<TextRenderer>(mpDevice);
 }
 
 void SampleApp::resizeFrameBuffer(uint32_t width, uint32_t height)
@@ -628,81 +591,6 @@ void SampleApp::captureScreen(Texture* pTexture)
     std::filesystem::path directory = getRuntimeDirectory();
     std::filesystem::path path = findAvailableFilename(filename, directory, "png");
     pTexture->captureToFile(0, 0, path);
-}
-
-void SampleApp::initVideoCapture()
-{
-    if (mVideoCapture.pUI == nullptr)
-    {
-        mVideoCapture.pUI = VideoEncoderUI::create([this]() { return startVideoCapture(); }, [this]() { endVideoCapture(); });
-    }
-    mVideoCapture.displayUI = true;
-}
-
-bool SampleApp::startVideoCapture()
-{
-    // Create the Capture Object and Framebuffer.
-    VideoEncoder::Desc desc;
-    desc.flipY = false;
-    desc.codec = mVideoCapture.pUI->getCodec();
-    desc.path = mVideoCapture.pUI->getPath();
-    desc.format = mpTargetFBO->getColorTexture(0)->getFormat();
-    desc.fps = mVideoCapture.pUI->getFPS();
-    desc.height = mpTargetFBO->getHeight();
-    desc.width = mpTargetFBO->getWidth();
-    desc.bitrateMbps = mVideoCapture.pUI->getBitrate();
-    desc.gopSize = mVideoCapture.pUI->getGopSize();
-
-    mVideoCapture.pVideoCapture = VideoEncoder::create(desc);
-    if (!mVideoCapture.pVideoCapture)
-        return false;
-
-    FALCOR_ASSERT(mVideoCapture.pVideoCapture);
-    mVideoCapture.pFrame.resize(desc.width * desc.height * 4);
-    mVideoCapture.fixedTimeDelta = 1 / (double)desc.fps;
-
-    if (mVideoCapture.pUI->useTimeRange())
-    {
-        if (mVideoCapture.pUI->getStartTime() > mVideoCapture.pUI->getEndTime())
-        {
-            mVideoCapture.fixedTimeDelta = -mVideoCapture.fixedTimeDelta;
-        }
-        mVideoCapture.currentTime = mVideoCapture.pUI->getStartTime();
-    }
-    return true;
-}
-
-void SampleApp::endVideoCapture()
-{
-    if (mVideoCapture.pVideoCapture)
-    {
-        mVideoCapture.pVideoCapture->endCapture();
-        mShowUI = true;
-    }
-    mVideoCapture = {};
-}
-
-void SampleApp::captureVideoFrame(Texture* pTexture)
-{
-    if (mVideoCapture.pVideoCapture)
-    {
-        mVideoCapture.pVideoCapture->appendFrame(getRenderContext()->readTextureSubresource(pTexture, 0).data());
-
-        if (mVideoCapture.pUI->useTimeRange())
-        {
-            if (mVideoCapture.fixedTimeDelta >= 0)
-            {
-                if (mVideoCapture.currentTime >= mVideoCapture.pUI->getEndTime())
-                    endVideoCapture();
-            }
-            else if (mVideoCapture.currentTime < mVideoCapture.pUI->getEndTime())
-            {
-                endVideoCapture();
-            }
-        }
-
-        mVideoCapture.currentTime += mVideoCapture.fixedTimeDelta;
-    }
 }
 
 void SampleApp::shutdown(int returnCode)
@@ -737,23 +625,15 @@ void SampleApp::saveConfigToFile()
 
 void SampleApp::startScripting()
 {
-    Scripting::start();
     auto bindFunc = [this](pybind11::module& m) { this->registerScriptBindings(m); };
     ScriptBindings::registerBinding(bindFunc);
+    Scripting::start();
 }
 
 void SampleApp::registerScriptBindings(pybind11::module& m)
 {
     using namespace pybind11::literals;
 
-    ScriptBindings::SerializableStruct<SampleAppConfig> sampleConfig(m, "SampleAppConfig");
-#define field(f_) field(#f_, &SampleAppConfig::f_)
-    sampleConfig.field(windowDesc);
-    sampleConfig.field(deviceDesc);
-    sampleConfig.field(timeScale);
-    sampleConfig.field(pauseTime);
-    sampleConfig.field(showUI);
-#undef field
     auto exit = [this](int32_t errorCode) { this->shutdown(errorCode); };
     m.def("exit", exit, "errorCode"_a = 0);
 

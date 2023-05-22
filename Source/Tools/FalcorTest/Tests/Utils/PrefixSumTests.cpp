@@ -48,7 +48,7 @@ uint32_t prefixSumRef(std::vector<uint32_t>& elems)
 
 void testPrefixSum(GPUUnitTestContext& ctx, PrefixSum& prefixSum, uint32_t numElems)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     // Create a buffer of random data to use as test data.
     // We make sure the total sum fits in 32 bits.
@@ -59,13 +59,13 @@ void testPrefixSum(GPUUnitTestContext& ctx, PrefixSum& prefixSum, uint32_t numEl
     for (auto& it : testData)
         it = r() % maxVal;
 
-    Buffer::SharedPtr pTestDataBuffer = Buffer::create(
+    ref<Buffer> pTestDataBuffer = Buffer::create(
         pDevice, numElems * sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, testData.data()
     );
 
     // Allocate buffer for the total sum on the GPU.
     uint32_t nullValue = 0;
-    Buffer::SharedPtr pSumBuffer = Buffer::create(pDevice, 4, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, &nullValue);
+    ref<Buffer> pSumBuffer = Buffer::create(pDevice, 4, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, &nullValue);
 
     // Execute prefix sum on the GPU.
     uint32_t sum = 0;

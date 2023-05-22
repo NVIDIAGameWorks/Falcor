@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -166,7 +166,7 @@ struct ResolvePass
                     break;
                 case NRDPathType::DeltaReflection:
                     deltaReflectionRadiance += demodulatedRadiance;
-                    diffuseRadiance += primaryHitDiffuseReflectance[pixel].rgb > 0.f ? (neeOnDelta / primaryHitDiffuseReflectance[pixel].rgb) : float3(0.f);
+                    diffuseRadiance += select(primaryHitDiffuseReflectance[pixel].rgb > 0.f, neeOnDelta / primaryHitDiffuseReflectance[pixel].rgb, float3(0.f));
                     break;
                 case NRDPathType::DeltaTransmission:
                     deltaTransmissionRadiance += demodulatedRadiance;

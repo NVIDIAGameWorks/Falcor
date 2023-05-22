@@ -104,7 +104,7 @@ const char kShaderFile[] = "Tests/Sampling/PseudorandomTests.cs.slang";
 const uint32_t kInstances = 256;
 const uint32_t kDimensions = 64;
 
-Buffer::SharedPtr createSeed(Device* pDevice, size_t elements, std::vector<uint32_t>& seed)
+ref<Buffer> createSeed(ref<Device> pDevice, size_t elements, std::vector<uint32_t>& seed)
 {
     // Initialize buffer of random seed data.
     seed.resize(elements);
@@ -113,7 +113,7 @@ Buffer::SharedPtr createSeed(Device* pDevice, size_t elements, std::vector<uint3
         it = rng();
 
     // Upload seeds to the GPU.
-    Buffer::SharedPtr pSeedBuf =
+    ref<Buffer> pSeedBuf =
         Buffer::create(pDevice, seed.size() * sizeof(seed[0]), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, seed.data());
     FALCOR_ASSERT(pSeedBuf);
     return pSeedBuf;
@@ -126,7 +126,7 @@ GPU_TEST(XoshiroPRNG)
 {
     // Create random seed (128 bits per instance).
     std::vector<uint32_t> seed;
-    auto pSeedBuf = createSeed(ctx.getDevice().get(), kInstances * 4, seed);
+    auto pSeedBuf = createSeed(ctx.getDevice(), kInstances * 4, seed);
 
     // Setup and run GPU test.
     ctx.createProgram(kShaderFile, "testXoshiro");
@@ -160,7 +160,7 @@ GPU_TEST(SplitMixPRNG)
 {
     // Create random seed (64 bits per instance).
     std::vector<uint32_t> seed;
-    auto pSeedBuf = createSeed(ctx.getDevice().get(), kInstances * 2, seed);
+    auto pSeedBuf = createSeed(ctx.getDevice(), kInstances * 2, seed);
 
     // Setup and run GPU test. Note it requires SM 6.0 or higher.
     ctx.createProgram(kShaderFile, "testSplitMix", Program::DefineList(), Shader::CompilerFlags::None);
@@ -191,7 +191,7 @@ GPU_TEST(LCGPRNG)
 {
     // Create random seed (32 bits per instance).
     std::vector<uint32_t> seed;
-    auto pSeedBuf = createSeed(ctx.getDevice().get(), kInstances, seed);
+    auto pSeedBuf = createSeed(ctx.getDevice(), kInstances, seed);
 
     // Setup and run GPU test.
     ctx.createProgram(kShaderFile, "testLCG");

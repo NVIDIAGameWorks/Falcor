@@ -233,11 +233,13 @@ struct GBufferRT
         }
 
         // Prepare shading data.
-        ShadingData sd = gScene.materials.prepareShadingData(v, materialID, -rayDir, lod, evalModifyNormal(hit.getType()));
+        ShadingData sd = gScene.materials.prepareShadingData(v, materialID, -rayDir, lod);
 
+        bool modifyNormal = evalModifyNormal(hit.getType());
+        uint hints = !modifyNormal ? (uint)MaterialInstanceHints::DisableNormalMapping : 0;
         if (kAdjustShadingNormals && (hit.getType() == HitType::Triangle || hit.getType() == HitType::DisplacedTriangle))
         {
-            adjustShadingNormal(sd);
+            hints |= (uint)MaterialInstanceHints::AdjustShadingNormal;
         }
 
         if (hit.getType() != HitType::None && hit.getType() != HitType::Volume)
@@ -256,7 +258,7 @@ struct GBufferRT
         }
 
         // Create material instance and query its properties.
-        let mi = gScene.materials.getMaterialInstance(sd, lod);
+        let mi = gScene.materials.getMaterialInstance(sd, lod, hints);
         let bsdfProperties = mi.getProperties(sd);
 
         const GBufferData gbuf = prepareGBufferData(sd, v, mi, bsdfProperties);
@@ -307,7 +309,7 @@ struct GBufferRT
         if (is_valid(gNormalWRoughnessMaterialID))
         {
             float3 normal = bsdfProperties.guideNormal;
-            if (sd.mtl.getMaterialType() == MaterialType::Hair) normal = sd.T;
+            if (sd.mtl.getMaterialType() == MaterialType::Hair) normal = sd.frame.T;
 
             float2 octNormal = ndir_to_oct_unorm(normal);
             float roughness = bsdfProperties.roughness;

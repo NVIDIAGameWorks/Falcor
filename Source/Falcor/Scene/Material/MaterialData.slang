@@ -42,32 +42,32 @@ struct MaterialHeader
 {
     uint2 packedData = {};
 
-    static const uint kMaterialTypeBits = 16;
-    static const uint kNestedPriorityBits = 4;
-    static const uint kLobeTypeBits = 8; // Only 6 bits needed if packing LobeType
-    static const uint kSamplerIDBits = 8;
-    static const uint kAlphaModeBits = 1;
-    static const uint kAlphaThresholdBits = 16; // Using float16_t format
+    static constexpr uint kMaterialTypeBits = 16;
+    static constexpr uint kNestedPriorityBits = 4;
+    static constexpr uint kLobeTypeBits = 8; // Only 6 bits needed if packing LobeType
+    static constexpr uint kSamplerIDBits = 8;
+    static constexpr uint kAlphaModeBits = 1;
+    static constexpr uint kAlphaThresholdBits = 16; // Using float16_t format
 
     // packedData.x bit layout
-    static const uint kMaterialTypeOffset = 0;
-    static const uint kNestedPriorityOffset = kMaterialTypeOffset + kMaterialTypeBits;
-    static const uint kLobeTypeOffset = kNestedPriorityOffset + kNestedPriorityBits;
-    static const uint kDoubleSidedFlagOffset = kLobeTypeOffset + kLobeTypeBits;
-    static const uint kThinSurfaceFlagOffset = kDoubleSidedFlagOffset + 1;
-    static const uint kEmissiveFlagOffset = kThinSurfaceFlagOffset + 1;
-    static const uint kIsBasicMaterialFlagOffset = kEmissiveFlagOffset + 1;
+    static constexpr uint kMaterialTypeOffset = 0;
+    static constexpr uint kNestedPriorityOffset = kMaterialTypeOffset + kMaterialTypeBits;
+    static constexpr uint kLobeTypeOffset = kNestedPriorityOffset + kNestedPriorityBits;
+    static constexpr uint kDoubleSidedFlagOffset = kLobeTypeOffset + kLobeTypeBits;
+    static constexpr uint kThinSurfaceFlagOffset = kDoubleSidedFlagOffset + 1;
+    static constexpr uint kEmissiveFlagOffset = kThinSurfaceFlagOffset + 1;
+    static constexpr uint kIsBasicMaterialFlagOffset = kEmissiveFlagOffset + 1;
 
-    static const uint kTotalHeaderBitsX = kIsBasicMaterialFlagOffset + 1;
+    static constexpr uint kTotalHeaderBitsX = kIsBasicMaterialFlagOffset + 1;
 
     // packedData.y bit layout
-    static const uint kAlphaThresholdOffset = 0;
-    static const uint kAlphaModeOffset = kAlphaThresholdOffset + kAlphaThresholdBits;
-    static const uint kSamplerIDOffset = kAlphaModeOffset + kAlphaModeBits;
-    static const uint kEnableLightProfileOffset = kSamplerIDOffset + kSamplerIDBits;
-    static const uint kDeltaSpecularFlagOffset = kEnableLightProfileOffset + 1;
+    static constexpr uint kAlphaThresholdOffset = 0;
+    static constexpr uint kAlphaModeOffset = kAlphaThresholdOffset + kAlphaThresholdBits;
+    static constexpr uint kSamplerIDOffset = kAlphaModeOffset + kAlphaModeBits;
+    static constexpr uint kEnableLightProfileOffset = kSamplerIDOffset + kSamplerIDBits;
+    static constexpr uint kDeltaSpecularFlagOffset = kEnableLightProfileOffset + 1;
 
-    static const uint kTotalHeaderBitsY = kDeltaSpecularFlagOffset + 1;
+    static constexpr uint kTotalHeaderBitsY = kDeltaSpecularFlagOffset + 1;
 
 
     /** Set material type.

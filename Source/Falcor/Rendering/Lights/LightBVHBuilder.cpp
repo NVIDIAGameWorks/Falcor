@@ -31,6 +31,7 @@
 #include "Utils/Logger.h"
 #include "Utils/Timing/Profiler.h"
 #include "Utils/Scripting/ScriptBindings.h"
+#include "Utils/Math/MathConstants.slangh"
 #include <algorithm>
 
 namespace
@@ -47,7 +48,7 @@ namespace
 
     inline float safeACos(float v)
     {
-        return std::acos(glm::clamp(v, -1.0f, 1.0f));
+        return std::acos(std::clamp(v, -1.0f, 1.0f));
     }
 
     /** Returns sin(a) based on cos(a) for a in [0,pi].
@@ -69,7 +70,7 @@ namespace
         float cosResult = kInvalidCosConeAngle;
         if (cosTheta != kInvalidCosConeAngle && cosOtherTheta != kInvalidCosConeAngle)
         {
-            const float cosDiffTheta = glm::dot(coneDir, otherConeDir);
+            const float cosDiffTheta = dot(coneDir, otherConeDir);
             const float sinDiffTheta = sinFromCos(cosDiffTheta);
             const float sinOtherTheta = sinFromCos(cosOtherTheta);
 
@@ -95,16 +96,16 @@ namespace
     float3 coneUnionOld(float3 aDir, float aCosTheta, float3 bDir, float bCosTheta, float& cosResult)
     {
         float3 dir = aDir + bDir;
-        if (aCosTheta == kInvalidCosConeAngle || bCosTheta == kInvalidCosConeAngle || dir == float3(0.0f))
+        if (aCosTheta == kInvalidCosConeAngle || bCosTheta == kInvalidCosConeAngle || all(dir == float3(0.0f)))
         {
             cosResult = kInvalidCosConeAngle;
             return float3(0.0f);
         }
 
-        dir = glm::normalize(dir);
+        dir = normalize(dir);
 
-        const float aDiff = safeACos(glm::dot(dir, aDir));
-        const float bDiff = safeACos(glm::dot(dir, bDir));
+        const float aDiff = safeACos(dot(dir, aDir));
+        const float bDiff = safeACos(dot(dir, bDir));
         cosResult = std::cos(std::max(aDiff + std::acos(aCosTheta), bDiff + std::acos(bCosTheta)));
         return dir;
     }
@@ -130,9 +131,9 @@ namespace
         }
 
         // TODO: this could be optimized to use fewer trig functions.
-        const float theta = safeACos(glm::dot(aDir, bDir));
+        const float theta = safeACos(dot(aDir, bDir));
         const float aTheta = safeACos(aCosTheta), bTheta = safeACos(bCosTheta);
-        if (std::min(theta + bTheta, glm::pi<float>()) <= aTheta)
+        if (std::min(theta + bTheta, float(M_PI)) <= aTheta)
         {
             // a encloses b and we're done.
             cosResult = aCosTheta;
@@ -142,7 +143,7 @@ namespace
         // Merge the two cones. First compute the spread angle of the cone
         // that will fit all of them.
         float oTheta = (theta + aTheta + bTheta) / 2;
-        if (oTheta > glm::pi<float>())
+        if (oTheta > float(M_PI))
         {
             cosResult = kInvalidCosConeAngle;
             return float3(0.0f);
@@ -151,9 +152,9 @@ namespace
         // Rotate a's axis toward b just enough so that that oTheta covers
         // both cones.
         const float rTheta = oTheta - aTheta;
-        const float3 rDir = glm::cross(aDir, bDir);
+        const float3 rDir = cross(aDir, bDir);
         float3 dir;
-        if (glm::dot(rDir, rDir) < 1e-8)
+        if (dot(rDir, rDir) < 1e-8)
         {
             // The two vectors are effectively pointing in opposite directions.
 
@@ -170,14 +171,14 @@ namespace
             // aTheta) and then be able to use the tighter spread angle
             // oTheta computed before, but it probably doesn't matter much
             // in this (rare) case.
-            oTheta = std::min(glm::pi<float>(), glm::half_pi<float>() + aTheta);
+            oTheta = std::min(float(M_PI), float(M_PI_2) + aTheta);
             cosResult = std::cos(oTheta);
         }
         else
         {
             // Rotate aDir by an angle of rTheta around the axis rDir.
-            const rmcv::mat4 rotationMatrix = rmcv::rotate(rmcv::mat4(), rTheta, rDir);
-            dir = rotationMatrix * float4(aDir, 0);
+            const float4x4 rotationMatrix = math::matrixFromRotation(rTheta, rDir);
+            dir = transformVector(rotationMatrix, aDir);
             cosResult = std::cos(oTheta);
         }
 
@@ -188,7 +189,7 @@ namespace
                                // the two cone vectors and the spread angle
                                // of the given cone is still within the
                                // extent of the result cone.
-                               float cosDelta = glm::dot(d, dir);
+                               float cosDelta = dot(d, dir);
                                float delta = safeACos(cosDelta);
                                bool dInCone = (delta + theta <= oTheta * 1.01f ||
                                                delta + theta <= oTheta + 1e-3f);
@@ -213,7 +214,7 @@ namespace
         {
             return -std::numeric_limits<float>::infinity();
         }
-        const float3 dims = glm::max(float3(epsilon), bb.extent());
+        const float3 dims = max(float3(epsilon), bb.extent());
         return dims.x * dims.y * dims.z;
     }
 
@@ -492,9 +493,9 @@ namespace Falcor
         {
             coneDirectionSum += data.trianglesData[triangleIdx].coneDirection;
         }
-        if (glm::length(coneDirectionSum) >= FLT_MIN)
+        if (length(coneDirectionSum) >= FLT_MIN)
         {
-            coneDirection = glm::normalize(coneDirectionSum);
+            coneDirection = normalize(coneDirectionSum);
             cosTheta = 1.f;
             for (uint32_t triangleIdx = triangleRange.begin; triangleIdx < triangleRange.end; ++triangleIdx)
             {
@@ -666,10 +667,10 @@ namespace Falcor
     */
     static float computeOrientationCost(const float theta_o)
     {
-        float theta_w = std::min(theta_o + glm::half_pi<float>(), glm::pi<float>());
+        float theta_w = std::min(theta_o + float(M_PI_2), float(M_PI));
         float sin_theta_o = std::sin(theta_o);
         float cos_theta_o = std::cos(theta_o);
-        return glm::two_pi<float>() * (1.0f - cos_theta_o) + glm::half_pi<float>() * (2.0f * theta_w * sin_theta_o - std::cos(theta_o - 2.0f * theta_w) - 2.0f * theta_o * sin_theta_o + cos_theta_o);
+        return float(M_2PI) * (1.0f - cos_theta_o) + float(M_PI_2) * (2.0f * theta_w * sin_theta_o - std::cos(theta_o - 2.0f * theta_w) - 2.0f * theta_o * sin_theta_o + cos_theta_o);
     };
 
     /** Evaluates the SAOH cost metric for a node.
@@ -680,7 +681,7 @@ namespace Falcor
     {
         float fluxCost = parameters.usePreintegration ? flux : 1.0f;
         float aabbCost = bounds.valid() ? (parameters.useVolumeOverSA ? aabbVolume(bounds, parameters.volumeEpsilon) : bounds.area()) : 0.f;
-        float theta = cosTheta != kInvalidCosConeAngle ? safeACos(cosTheta) : glm::pi<float>();
+        float theta = cosTheta != kInvalidCosConeAngle ? safeACos(cosTheta) : float(M_PI);
         float orientationCost = parameters.useLightingCones ? computeOrientationCost(theta) : 1.0f;
         float cost = fluxCost * aabbCost * orientationCost;
         FALCOR_ASSERT(cost >= 0.f && !std::isnan(cost) && !std::isinf(cost));
@@ -759,8 +760,8 @@ namespace Falcor
             // TODO: Switch to a more sophisticated algorithm to get narrower cones.
             for (Bin& bin : bins)
             {
-                bin.cosConeAngle = glm::length(bin.coneDirection) < FLT_MIN ? kInvalidCosConeAngle : 1.0f;
-                bin.coneDirection = glm::normalize(bin.coneDirection);
+                bin.cosConeAngle = length(bin.coneDirection) < FLT_MIN ? kInvalidCosConeAngle : 1.0f;
+                bin.coneDirection = normalize(bin.coneDirection);
             }
             for (uint32_t i = triangleRange.begin; i < triangleRange.end; ++i)
             {
@@ -778,10 +779,10 @@ namespace Falcor
 
                 // Compute the bounding cone angle for the union of bins 0..i.
                 float cosTheta = kInvalidCosConeAngle;
-                if (glm::length(total.coneDirection) >= FLT_MIN)
+                if (length(total.coneDirection) >= FLT_MIN)
                 {
                     cosTheta = 1.f;
-                    float3 coneDir = glm::normalize(total.coneDirection);
+                    float3 coneDir = normalize(total.coneDirection);
                     for (std::size_t j = 0; j <= i; ++j)
                     {
                         cosTheta = computeCosConeAngle(coneDir, cosTheta, bins[j].coneDirection, bins[j].cosConeAngle);
@@ -799,10 +800,10 @@ namespace Falcor
 
                 // Compute the bounding cone angle for the union of bins i..n-1.
                 float cosTheta = kInvalidCosConeAngle;
-                if (glm::length(total.coneDirection) >= FLT_MIN)
+                if (length(total.coneDirection) >= FLT_MIN)
                 {
                     cosTheta = 1.f;
-                    float3 coneDir = glm::normalize(total.coneDirection);
+                    float3 coneDir = normalize(total.coneDirection);
                     for (std::size_t j = i; j <= costs.size(); ++j)
                     {
                         cosTheta = computeCosConeAngle(coneDir, cosTheta, bins[j].coneDirection, bins[j].cosConeAngle);

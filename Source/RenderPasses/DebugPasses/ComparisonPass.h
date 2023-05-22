@@ -27,29 +27,30 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "RenderGraph/BasePasses/FullScreenPass.h"
+#include "Core/Pass/FullScreenPass.h"
+#include "RenderGraph/RenderPass.h"
+#include "Utils/UI/TextRenderer.h"
 
 using namespace Falcor;
 
 class ComparisonPass : public RenderPass
 {
 public:
-    using SharedPtr = std::shared_ptr<ComparisonPass>;
-
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
 
 protected:
-    ComparisonPass(std::shared_ptr<Device> pDevice) : RenderPass(std::move(pDevice)) {}
+    ComparisonPass(ref<Device> pDevice);
     virtual void createProgram() = 0;
     bool parseKeyValuePair(const std::string key, const Dictionary::Value val);
 
-    FullScreenPass::SharedPtr mpSplitShader;
-    Texture::SharedPtr pLeftSrcTex;
-    Texture::SharedPtr pRightSrcTex;
-    Fbo::SharedPtr pDstFbo;
+    ref<FullScreenPass> mpSplitShader;
+    ref<Texture> pLeftSrcTex;
+    ref<Texture> pRightSrcTex;
+    ref<Fbo> pDstFbo;
+    std::unique_ptr<TextRenderer> mpTextRenderer;
 
     // Screen parameters
     bool mSwapSides = false; // Is the left input on the left side

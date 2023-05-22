@@ -69,9 +69,19 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
     registry.registerClass<RenderPass, RTXDIPass>();
 }
 
-RTXDIPass::SharedPtr RTXDIPass::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
+RTXDIPass::RTXDIPass(ref<Device> pDevice, const Dictionary& dict)
+    : RenderPass(pDevice)
 {
-    return RTXDIPass::SharedPtr(new RTXDIPass(std::move(pDevice), dict));
+    parseDictionary(dict);
+}
+
+void RTXDIPass::parseDictionary(const Dictionary& dict)
+{
+    for (const auto& [key, value] : dict)
+    {
+        if (key == kOptions) mOptions = value;
+        else logWarning("Unknown field '{}' in RTXDIPass dictionary.", key);
+    }
 }
 
 RenderPassReflection RTXDIPass::reflect(const CompileData& compileData)
@@ -123,7 +133,7 @@ void RTXDIPass::execute(RenderContext* pRenderContext, const RenderData& renderD
     mpRTXDI->endFrame(pRenderContext);
 }
 
-void RTXDIPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
+void RTXDIPass::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
 {
     mpScene = pScene;
     mpRTXDI = nullptr;
@@ -137,28 +147,13 @@ void RTXDIPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& 
             logWarning("RTXDIPass: This render pass only supports triangles. Other types of geometry will be ignored.");
         }
 
-        mpRTXDI = RTXDI::create(mpScene, mOptions);
+        mpRTXDI = std::make_unique<RTXDI>(mpScene, mOptions);
     }
 }
 
 bool RTXDIPass::onMouseEvent(const MouseEvent& mouseEvent)
 {
-    return mpRTXDI ? mpRTXDI->getPixelDebug()->onMouseEvent(mouseEvent) : false;
-}
-
-RTXDIPass::RTXDIPass(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-    : RenderPass(std::move(pDevice))
-{
-    parseDictionary(dict);
-}
-
-void RTXDIPass::parseDictionary(const Dictionary& dict)
-{
-    for (const auto& [key, value] : dict)
-    {
-        if (key == kOptions) mOptions = value;
-        else logWarning("Unknown field '{}' in RTXDIPass dictionary.", key);
-    }
+    return mpRTXDI ? mpRTXDI->getPixelDebug().onMouseEvent(mouseEvent) : false;
 }
 
 Dictionary RTXDIPass::getScriptingDictionary()
@@ -183,7 +178,7 @@ void RTXDIPass::renderUI(Gui::Widgets& widget)
     }
 }
 
-void RTXDIPass::prepareSurfaceData(RenderContext* pRenderContext, const Texture::SharedPtr& pVBuffer)
+void RTXDIPass::prepareSurfaceData(RenderContext* pRenderContext, const ref<Texture>& pVBuffer)
 {
     FALCOR_ASSERT(mpRTXDI);
     FALCOR_ASSERT(pVBuffer);
@@ -206,18 +201,18 @@ void RTXDIPass::prepareSurfaceData(RenderContext* pRenderContext, const Texture:
 
     mpPrepareSurfaceDataPass->addDefine("GBUFFER_ADJUST_SHADING_NORMALS", mGBufferAdjustShadingNormals ? "1" : "0");
 
-    mpPrepareSurfaceDataPass["gScene"] = mpScene->getParameterBlock();
+    auto rootVar = mpPrepareSurfaceDataPass->getRootVar();
+    rootVar["gScene"] = mpScene->getParameterBlock();
+    mpRTXDI->setShaderData(rootVar);
 
-    auto var = mpPrepareSurfaceDataPass["gPrepareSurfaceData"];
-
+    auto var = rootVar["gPrepareSurfaceData"];
     var["vbuffer"] = pVBuffer;
     var["frameDim"] = mFrameDim;
-    mpRTXDI->setShaderData(mpPrepareSurfaceDataPass->getRootVar());
 
     mpPrepareSurfaceDataPass->execute(pRenderContext, mFrameDim.x, mFrameDim.y);
 }
 
-void RTXDIPass::finalShading(RenderContext* pRenderContext, const Texture::SharedPtr& pVBuffer, const RenderData& renderData)
+void RTXDIPass::finalShading(RenderContext* pRenderContext, const ref<Texture>& pVBuffer, const RenderData& renderData)
 {
     FALCOR_ASSERT(mpRTXDI);
     FALCOR_ASSERT(pVBuffer);
@@ -247,20 +242,19 @@ void RTXDIPass::finalShading(RenderContext* pRenderContext, const Texture::Share
     // TODO: This should be moved to a more general mechanism using Slang.
     mpFinalShadingPass->getProgram()->addDefines(getValidResourceDefines(kOutputChannels, renderData));
 
-    mpFinalShadingPass["gScene"] = mpScene->getParameterBlock();
+    auto rootVar = mpFinalShadingPass->getRootVar();
+    rootVar["gScene"] = mpScene->getParameterBlock();
+    mpRTXDI->setShaderData(rootVar);
 
-    auto var = mpFinalShadingPass["gFinalShading"];
-
+    auto var = rootVar["gFinalShading"];
     var["vbuffer"] = pVBuffer;
     var["frameDim"] = mFrameDim;
-    mpRTXDI->setShaderData(mpFinalShadingPass->getRootVar());
 
     // Bind output channels as UAV buffers.
-    var = mpFinalShadingPass->getRootVar();
     auto bind = [&](const ChannelDesc& channel)
     {
-        Texture::SharedPtr pTex = renderData.getTexture(channel.name);
-        var[channel.texname] = pTex;
+        ref<Texture> pTex = renderData.getTexture(channel.name);
+        rootVar[channel.texname] = pTex;
     };
     for (const auto& channel : kOutputChannels) bind(channel);
 

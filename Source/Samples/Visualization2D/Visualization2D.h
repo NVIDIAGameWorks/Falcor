@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,7 +28,7 @@
 #pragma once
 #include "Falcor.h"
 #include "Core/SampleApp.h"
-#include "RenderGraph/BasePasses/FullScreenPass.h"
+#include "Core/Pass/FullScreenPass.h"
 
 using namespace Falcor;
 
@@ -48,7 +48,7 @@ public:
     ~Visualization2D();
 
     void onLoad(RenderContext* pRenderContext) override;
-    void onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
+    void onFrameRender(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo) override;
     void onGuiRender(Gui* pGui) override;
     bool onKeyEvent(const KeyboardEvent& keyEvent) override;
     bool onMouseEvent(const MouseEvent& mouseEvent) override;
@@ -64,7 +64,7 @@ private:
     void createRenderPass();
 
 private:
-    FullScreenPass::SharedPtr mpMainPass;
+    ref<FullScreenPass> mpMainPass;
 
     bool mLeftButtonDown = false;
     float2 mMousePosition = float2(0.2f, 0.1f);

@@ -27,7 +27,8 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "RenderGraph/BasePasses/FullScreenPass.h"
+#include "RenderGraph/RenderPass.h"
+#include "Core/Pass/FullScreenPass.h"
 
 using namespace Falcor;
 
@@ -36,9 +37,9 @@ class SVGFPass : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(SVGFPass, "SVGFPass", "SVGF denoising pass.");
 
-    using SharedPtr = std::shared_ptr<SVGFPass>;
+    static ref<SVGFPass> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<SVGFPass>(pDevice, dict); }
 
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
+    SVGFPass(ref<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
@@ -47,21 +48,19 @@ public:
     virtual void renderUI(Gui::Widgets& widget) override;
 
 private:
-    SVGFPass(std::shared_ptr<Device> pDevice, const Dictionary& dict);
-
     bool init(const Dictionary& dict);
     void allocateFbos(uint2 dim, RenderContext* pRenderContext);
     void clearBuffers(RenderContext* pRenderContext, const RenderData& renderData);
 
-    void computeLinearZAndNormal(RenderContext* pRenderContext, Texture::SharedPtr pLinearZTexture,
-                                 Texture::SharedPtr pWorldNormalTexture);
-    void computeReprojection(RenderContext* pRenderContext, Texture::SharedPtr pAlbedoTexture,
-                             Texture::SharedPtr pColorTexture, Texture::SharedPtr pEmissionTexture,
-                             Texture::SharedPtr pMotionVectorTexture,
-                             Texture::SharedPtr pPositionNormalFwidthTexture,
-                             Texture::SharedPtr pPrevLinearZAndNormalTexture);
+    void computeLinearZAndNormal(RenderContext* pRenderContext, ref<Texture> pLinearZTexture,
+                                 ref<Texture> pWorldNormalTexture);
+    void computeReprojection(RenderContext* pRenderContext, ref<Texture> pAlbedoTexture,
+                             ref<Texture> pColorTexture, ref<Texture> pEmissionTexture,
+                             ref<Texture> pMotionVectorTexture,
+                             ref<Texture> pPositionNormalFwidthTexture,
+                             ref<Texture> pPrevLinearZAndNormalTexture);
     void computeFilteredMoments(RenderContext* pRenderContext);
-    void computeAtrousDecomposition(RenderContext* pRenderContext, Texture::SharedPtr pAlbedoTexture);
+    void computeAtrousDecomposition(RenderContext* pRenderContext, ref<Texture> pAlbedoTexture);
 
     bool mBuffersNeedClear = false;
 
@@ -76,18 +75,18 @@ private:
     float   mMomentsAlpha        = 0.2f;
 
     // SVGF passes
-    FullScreenPass::SharedPtr mpPackLinearZAndNormal;
-    FullScreenPass::SharedPtr mpReprojection;
-    FullScreenPass::SharedPtr mpFilterMoments;
-    FullScreenPass::SharedPtr mpAtrous;
-    FullScreenPass::SharedPtr mpFinalModulate;
+    ref<FullScreenPass> mpPackLinearZAndNormal;
+    ref<FullScreenPass> mpReprojection;
+    ref<FullScreenPass> mpFilterMoments;
+    ref<FullScreenPass> mpAtrous;
+    ref<FullScreenPass> mpFinalModulate;
 
     // Intermediate framebuffers
-    Fbo::SharedPtr mpPingPongFbo[2];
-    Fbo::SharedPtr mpLinearZAndNormalFbo;
-    Fbo::SharedPtr mpFilteredPastFbo;
-    Fbo::SharedPtr mpCurReprojFbo;
-    Fbo::SharedPtr mpPrevReprojFbo;
-    Fbo::SharedPtr mpFilteredIlluminationFbo;
-    Fbo::SharedPtr mpFinalFbo;
+    ref<Fbo> mpPingPongFbo[2];
+    ref<Fbo> mpLinearZAndNormalFbo;
+    ref<Fbo> mpFilteredPastFbo;
+    ref<Fbo> mpCurReprojFbo;
+    ref<Fbo> mpPrevReprojFbo;
+    ref<Fbo> mpFilteredIlluminationFbo;
+    ref<Fbo> mpFinalFbo;
 };

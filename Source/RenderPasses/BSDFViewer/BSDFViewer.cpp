@@ -63,21 +63,16 @@ void BSDFViewer::registerBindings(pybind11::module& m)
     mode.value("Slice", BSDFViewerMode::Slice);
 }
 
-BSDFViewer::SharedPtr BSDFViewer::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-{
-    return SharedPtr(new BSDFViewer(std::move(pDevice), dict));
-}
-
-BSDFViewer::BSDFViewer(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-    : RenderPass(std::move(pDevice))
+BSDFViewer::BSDFViewer(ref<Device> pDevice, const Dictionary& dict)
+    : RenderPass(pDevice)
 {
     parseDictionary(dict);
 
     // Create a high-quality pseudorandom number generator.
     mpSampleGenerator = SampleGenerator::create(mpDevice, SAMPLE_GENERATOR_UNIFORM);
 
-    mpPixelDebug = PixelDebug::create(mpDevice);
-    mpFence = GpuFence::create(mpDevice.get());
+    mpPixelDebug = std::make_unique<PixelDebug>(mpDevice);
+    mpFence = GpuFence::create(mpDevice);
 }
 
 void BSDFViewer::parseDictionary(const Dictionary& dict)
@@ -128,7 +123,7 @@ void BSDFViewer::compile(RenderContext* pRenderContext, const CompileData& compi
     mParams.viewportScale = float2(1.f / extent);
 }
 
-void BSDFViewer::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
+void BSDFViewer::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
 {
     mpScene = pScene;
     mpEnvMap = nullptr;
@@ -152,7 +147,7 @@ void BSDFViewer::setScene(RenderContext* pRenderContext, const Scene::SharedPtr&
 
         // Compile program and bind the scene.
         mpViewerPass->setVars(nullptr); // Trigger vars creation
-        mpViewerPass["gScene"] = mpScene->getParameterBlock();
+        mpViewerPass->getRootVar()["gScene"] = mpScene->getParameterBlock();
 
         // Setup environment map.
         mpEnvMap = mpScene->getEnvMap();
@@ -205,7 +200,7 @@ void BSDFViewer::execute(RenderContext* pRenderContext, const RenderData& render
     else mpViewerPass->removeDefine("SpecularMaskingFunction");
 
     // Setup constants.
-    mParams.cameraViewportScale = std::tan(glm::radians(mParams.cameraFovY / 2.f)) * mParams.cameraDistance;
+    mParams.cameraViewportScale = std::tan(math::radians(mParams.cameraFovY / 2.f)) * mParams.cameraDistance;
     mParams.useEnvMap = mUseEnvMap && mpEnvMap != nullptr;
 
     // Set resources.
@@ -213,8 +208,8 @@ void BSDFViewer::execute(RenderContext* pRenderContext, const RenderData& render
 
     if (!mpPixelDataBuffer)
     {
-        mpPixelDataBuffer = Buffer::createStructured(mpDevice.get(), var["pixelData"], 1, ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
-        mpPixelStagingBuffer = Buffer::createStructured(mpDevice.get(), var["pixelData"], 1, ResourceBindFlags::None, Buffer::CpuAccess::Read, nullptr, false);
+        mpPixelDataBuffer = Buffer::createStructured(mpDevice, var["pixelData"], 1, ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+        mpPixelStagingBuffer = Buffer::createStructured(mpDevice, var["pixelData"], 1, ResourceBindFlags::None, Buffer::CpuAccess::Read, nullptr, false);
     }
 
     var["params"].setBlob(mParams);
@@ -476,7 +471,7 @@ bool BSDFViewer::onMouseEvent(const MouseEvent& mouseEvent)
 {
     if (mouseEvent.type == MouseEvent::Type::ButtonDown && mouseEvent.button == Input::MouseButton::Left)
     {
-        mParams.selectedPixel = glm::clamp((int2)(mouseEvent.pos * (float2)mParams.frameDim), { 0,0 }, (int2)mParams.frameDim - 1);
+        mParams.selectedPixel = clamp((int2)(mouseEvent.pos * (float2)mParams.frameDim), { 0,0 }, (int2)mParams.frameDim - 1);
     }
 
     return mpPixelDebug->onMouseEvent(mouseEvent);

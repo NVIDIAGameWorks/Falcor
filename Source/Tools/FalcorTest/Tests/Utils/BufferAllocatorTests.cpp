@@ -111,7 +111,7 @@ GPU_TEST(BufferAllocatorNoAlign)
     // Validate GPU buffer.
     auto validateGpuBuffer = [&]()
     {
-        Buffer::SharedPtr pBuffer = buf.getGPUBuffer(ctx.getDevice().get());
+        ref<Buffer> pBuffer = buf.getGPUBuffer(ctx.getDevice());
 
         EXPECT(!pBuffer->isStructured());
         EXPECT(!pBuffer->isTyped());
@@ -196,7 +196,7 @@ GPU_TEST(BufferAllocatorAlign)
     }
 
     // Get the GPU buffer. Make sure it's the expected size.
-    Buffer::SharedPtr pBuffer = buf.getGPUBuffer(ctx.getDevice().get());
+    ref<Buffer> pBuffer = buf.getGPUBuffer(ctx.getDevice());
 
     EXPECT(!pBuffer->isStructured());
     EXPECT(!pBuffer->isTyped());
@@ -231,7 +231,7 @@ GPU_TEST(BufferAllocatorStructNoAlign)
 
     // Validate GPU buffer.
     {
-        Buffer::SharedPtr pBuffer = buf.getGPUBuffer(ctx.getDevice().get());
+        ref<Buffer> pBuffer = buf.getGPUBuffer(ctx.getDevice());
 
         EXPECT(pBuffer->isStructured());
         EXPECT(!pBuffer->isTyped());
@@ -300,7 +300,7 @@ GPU_TEST(BufferAllocatorStructAlign)
 
     // Validate GPU buffer.
     {
-        Buffer::SharedPtr pBuffer = buf.getGPUBuffer(ctx.getDevice().get());
+        ref<Buffer> pBuffer = buf.getGPUBuffer(ctx.getDevice());
 
         EXPECT(pBuffer->isStructured());
         EXPECT(!pBuffer->isTyped());

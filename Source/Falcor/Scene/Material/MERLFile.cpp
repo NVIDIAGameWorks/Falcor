@@ -142,7 +142,7 @@ namespace Falcor
         if (nanCount > 0) logWarning("MERL BRDF {} has {} samples with NaN values. Sample set to zero.", mDesc.name, nanCount);
     }
 
-    const std::vector<float4>& MERLFile::prepareAlbedoLUT(const std::shared_ptr<Device>& pDevice)
+    const std::vector<float4>& MERLFile::prepareAlbedoLUT(ref<Device> pDevice)
     {
         if (!mAlbedoLUT.empty())
             return mAlbedoLUT;
@@ -183,7 +183,7 @@ namespace Falcor
         return mAlbedoLUT;
     }
 
-    void MERLFile::computeAlbedoLUT(const std::shared_ptr<Device>& pDevice, const size_t binCount)
+    void MERLFile::computeAlbedoLUT(ref<Device> pDevice, const size_t binCount)
     {
         logInfo("MERLFile: Computing albedo LUT for MERL BRDF '{}'...", mDesc.name);
 
@@ -191,14 +191,14 @@ namespace Falcor
         for (uint32_t i = 0; i < binCount; i++) cosThetas[i] = (float)(i + 1) / binCount;
 
         // Create MERL material based on loaded data.
-        MERLMaterial::SharedPtr pMaterial(new MERLMaterial(pDevice, *this));
+        ref<MERLMaterial> pMaterial = make_ref<MERLMaterial>(pDevice, *this);
 
         // Create and update dummy scene containing the material.
         Scene::SceneData sceneData;
-        sceneData.pMaterials = MaterialSystem::create(pDevice);
+        sceneData.pMaterials = std::make_unique<MaterialSystem>(pDevice);
         MaterialID materialID = sceneData.pMaterials->addMaterial(pMaterial);
 
-        Scene::SharedPtr pScene = Scene::create(pDevice, std::move(sceneData));
+        ref<Scene> pScene = Scene::create(pDevice, std::move(sceneData));
         pScene->update(pDevice->getRenderContext(), 0.0);
 
         // Create BSDF integrator utility.

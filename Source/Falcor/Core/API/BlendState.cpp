@@ -27,13 +27,14 @@
  **************************************************************************/
 #include "BlendState.h"
 #include "FBO.h"
+#include "Core/ObjectPython.h"
 #include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
 {
-BlendState::SharedPtr BlendState::create(const Desc& desc)
+ref<BlendState> BlendState::create(const Desc& desc)
 {
-    return SharedPtr(new BlendState(desc));
+    return ref<BlendState>(new BlendState(desc));
 }
 
 BlendState::Desc::Desc()
@@ -83,6 +84,6 @@ BlendState::Desc& BlendState::Desc::setRenderTargetWriteMask(
 
 FALCOR_SCRIPT_BINDING(BlendState)
 {
-    pybind11::class_<BlendState, BlendState::SharedPtr>(m, "BlendState");
+    pybind11::class_<BlendState, ref<BlendState>>(m, "BlendState");
 }
 } // namespace Falcor

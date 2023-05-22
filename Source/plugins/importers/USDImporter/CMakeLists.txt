@@ -9,13 +9,14 @@ target_sources(USDImporter PRIVATE
     CreateSpecularTransmissionTexture.cs.slang
     ImporterContext.cpp
     ImporterContext.h
+    IndexedVector.h
     PackBaseColorAlpha.cs.slang
     PreviewSurfaceConverter.cpp
     PreviewSurfaceConverter.h
     SampleTexture.slang
     StandardMaterialSpec.h
-    Subdivision.cpp
-    Subdivision.h
+    Tessellation.cpp
+    Tessellation.h
     USDHelpers.h
     USDImporter.cpp
     USDImporter.h

@@ -29,7 +29,7 @@
 #include "Core/API/Device.h"
 #include "Utils/Logger.h"
 #include "Utils/Scripting/ScriptBindings.h"
-#include "Scene/SceneBuilderAccess.h"
+#include "GlobalState.h"
 #include "Scene/Material/MERLFile.h"
 #include "Scene/Material/MaterialSystem.h"
 #include "Scene/Material/DiffuseSpecularUtils.h"
@@ -43,13 +43,8 @@ namespace Falcor
         const char kShaderFile[] = "Rendering/Materials/MERLMaterial.slang";
     }
 
-    MERLMaterial::SharedPtr MERLMaterial::create(std::shared_ptr<Device> pDevice, const std::string& name, const std::filesystem::path& path)
-    {
-        return SharedPtr(new MERLMaterial(std::move(pDevice), name, path));
-    }
-
-    MERLMaterial::MERLMaterial(std::shared_ptr<Device> pDevice, const std::string& name, const std::filesystem::path& path)
-        : Material(std::move(pDevice), name, MaterialType::MERL)
+    MERLMaterial::MERLMaterial(ref<Device> pDevice, const std::string& name, const std::filesystem::path& path)
+        : Material(pDevice, name, MaterialType::MERL)
     {
         std::filesystem::path fullPath;
         if (!findFileInDataDirectories(path, fullPath))
@@ -64,11 +59,11 @@ namespace Falcor
         auto lut = merlFile.prepareAlbedoLUT(mpDevice);
         checkInvariant(!lut.empty() && sizeof(lut[0]) == sizeof(float4), "Expected albedo LUT in float4 format.");
         static_assert(MERLFile::kAlbedoLUTFormat == ResourceFormat::RGBA32Float);
-        mpAlbedoLUT = Texture::create2D(mpDevice.get(), (uint32_t)lut.size(), 1, MERLFile::kAlbedoLUTFormat, 1, 1, lut.data(), ResourceBindFlags::ShaderResource);
+        mpAlbedoLUT = Texture::create2D(mpDevice, (uint32_t)lut.size(), 1, MERLFile::kAlbedoLUTFormat, 1, 1, lut.data(), ResourceBindFlags::ShaderResource);
     }
 
-    MERLMaterial::MERLMaterial(std::shared_ptr<Device> pDevice, const MERLFile& merlFile)
-        : Material(std::move(pDevice), "", MaterialType::MERL)
+    MERLMaterial::MERLMaterial(ref<Device> pDevice, const MERLFile& merlFile)
+        : Material(pDevice, "", MaterialType::MERL)
     {
         init(merlFile);
     }
@@ -82,14 +77,14 @@ namespace Falcor
         // Create GPU buffer.
         const auto& brdf = merlFile.getData();
         checkInvariant(!brdf.empty() && sizeof(brdf[0]) == sizeof(float3), "Expected BRDF data in float3 format.");
-        mpBRDFData = Buffer::create(mpDevice.get(), brdf.size() * sizeof(brdf[0]), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, brdf.data());
+        mpBRDFData = Buffer::create(mpDevice, brdf.size() * sizeof(brdf[0]), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, brdf.data());
 
         // Create sampler for albedo LUT.
         Sampler::Desc desc;
         desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Point, Sampler::Filter::Point);
         desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
         desc.setMaxAnisotropy(1);
-        mpLUTSampler = Sampler::create(mpDevice.get(), desc);
+        mpLUTSampler = Sampler::create(mpDevice, desc);
 
         markUpdates(Material::UpdateFlags::ResourcesChanged);
     }
@@ -139,9 +134,9 @@ namespace Falcor
         return flags;
     }
 
-    bool MERLMaterial::isEqual(const Material::SharedPtr& pOther) const
+    bool MERLMaterial::isEqual(const ref<Material>& pOther) const
     {
-        auto other = std::dynamic_pointer_cast<MERLMaterial>(pOther);
+        auto other = dynamic_ref_cast<MERLMaterial>(pOther);
         if (!other) return false;
 
         if (!isBaseEqual(*other)) return false;
@@ -166,10 +161,10 @@ namespace Falcor
 
         FALCOR_SCRIPT_BINDING_DEPENDENCY(Material)
 
-        pybind11::class_<MERLMaterial, Material, MERLMaterial::SharedPtr> material(m, "MERLMaterial");
+        pybind11::class_<MERLMaterial, Material, ref<MERLMaterial>> material(m, "MERLMaterial");
         auto create = [] (const std::string& name, const std::filesystem::path& path)
         {
-            return MERLMaterial::create(getActivePythonSceneBuilder().getDevice(), name, path);
+            return MERLMaterial::create(accessActivePythonSceneBuilder().getDevice(), name, path);
         };
         material.def(pybind11::init(create), "name"_a, "path"_a); // PYTHONDEPRECATED
     }

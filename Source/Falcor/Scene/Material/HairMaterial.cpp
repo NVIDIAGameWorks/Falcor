@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "HairMaterial.h"
-#include "Scene/SceneBuilderAccess.h"
+#include "GlobalState.h"
 #include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
@@ -36,13 +36,8 @@ namespace Falcor
         const char kShaderFile[] = "Rendering/Materials/HairMaterial.slang";
     }
 
-    HairMaterial::SharedPtr HairMaterial::create(std::shared_ptr<Device> pDevice, const std::string& name)
-    {
-        return SharedPtr(new HairMaterial(std::move(pDevice), name));
-    }
-
-    HairMaterial::HairMaterial(std::shared_ptr<Device> pDevice, const std::string& name)
-        : BasicMaterial(std::move(pDevice), name, MaterialType::Hair)
+    HairMaterial::HairMaterial(ref<Device> pDevice, const std::string& name)
+        : BasicMaterial(pDevice, name, MaterialType::Hair)
     {
         // Setup additional texture slots.
         mTextureSlotInfo[(uint32_t)TextureSlot::BaseColor] = { "baseColor", TextureChannelFlags::RGB, true }; // Note: No alpha support
@@ -69,7 +64,7 @@ namespace Falcor
     float3 HairMaterial::sigmaAFromColor(float3 color, float betaN)
     {
         const float tmp = 5.969f - 0.215f * betaN + 2.532f * betaN * betaN - 10.73f * std::pow(betaN, 3) + 5.574f * std::pow(betaN, 4) + 0.245f * std::pow(betaN, 5);
-        float3 sqrtSigmaA = log(max(color, 1e-4f)) / tmp;
+        float3 sqrtSigmaA = log(max(color, float3(1e-4f))) / tmp;
         return sqrtSigmaA * sqrtSigmaA;
     }
 
@@ -84,10 +79,10 @@ namespace Falcor
         using namespace pybind11::literals;
         FALCOR_SCRIPT_BINDING_DEPENDENCY(BasicMaterial)
 
-        pybind11::class_<HairMaterial, BasicMaterial, HairMaterial::SharedPtr> material(m, "HairMaterial");
+        pybind11::class_<HairMaterial, BasicMaterial, ref<HairMaterial>> material(m, "HairMaterial");
         auto create = [] (const std::string& name)
         {
-            return HairMaterial::create(getActivePythonSceneBuilder().getDevice(), name);
+            return HairMaterial::create(accessActivePythonSceneBuilder().getDevice(), name);
         };
         material.def(pybind11::init(create), "name"_a = ""); // PYTHONDEPRECATED
     }

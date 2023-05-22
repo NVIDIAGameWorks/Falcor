@@ -27,7 +27,6 @@
  **************************************************************************/
 #include "Testing/UnitTest.h"
 #include "Utils/Image/ImageProcessing.h"
-#include "Utils/Math/Float16.h"
 
 namespace Falcor
 {
@@ -55,7 +54,7 @@ void testCopyColorChannel(
     ResourceFormat dstFormat
 )
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     const auto srcChannels = getFormatChannelCount(srcFormat);
     const auto dstChannels = getFormatChannelCount(dstFormat);

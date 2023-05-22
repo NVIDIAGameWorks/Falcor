@@ -78,7 +78,7 @@ GPU_TEST(SlangStructInheritanceReflection, "Not working yet")
 
 GPU_TEST(SlangStructInheritanceLayout)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     ctx.createProgram("Tests/Slang/SlangInheritance.cs.slang", "main", Program::DefineList(), Shader::CompilerFlags::None, "6_5");
     ShaderVar var = ctx.vars().getRootVar();

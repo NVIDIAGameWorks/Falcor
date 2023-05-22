@@ -33,12 +33,12 @@
 namespace Falcor
 {
 
-RtStateObject::SharedPtr RtStateObject::create(Device* pDevice, const Desc& desc)
+ref<RtStateObject> RtStateObject::create(ref<Device> pDevice, const Desc& desc)
 {
-    return SharedPtr(new RtStateObject(pDevice->shared_from_this(), desc));
+    return ref<RtStateObject>(new RtStateObject(pDevice, desc));
 }
 
-RtStateObject::RtStateObject(std::shared_ptr<Device> pDevice, const Desc& desc) : mpDevice(std::move(pDevice)), mDesc(desc)
+RtStateObject::RtStateObject(ref<Device> pDevice, const Desc& desc) : mpDevice(pDevice), mDesc(desc)
 {
     auto pKernels = getKernels();
     gfx::RayTracingPipelineStateDesc rtpDesc = {};
@@ -69,7 +69,7 @@ RtStateObject::RtStateObject(std::shared_ptr<Device> pDevice, const Desc& desc) 
     static_assert((uint32_t)gfx::RayTracingPipelineFlags::SkipTriangles == (uint32_t)RtPipelineFlags::SkipTriangles);
 
     rtpDesc.flags = (gfx::RayTracingPipelineFlags::Enum)mDesc.pipelineFlags;
-    auto rtProgram = std::dynamic_pointer_cast<RtProgram>(mDesc.pKernels->getProgramVersion()->getProgram());
+    auto rtProgram = dynamic_cast<RtProgram*>(mDesc.pKernels->getProgramVersion()->getProgram());
     FALCOR_ASSERT(rtProgram);
     rtpDesc.maxRayPayloadSize = rtProgram->getRtDesc().getMaxPayloadSize();
     rtpDesc.maxAttributeSizeInBytes = rtProgram->getRtDesc().getMaxAttributeSize();

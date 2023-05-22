@@ -29,6 +29,7 @@
 #include "D3D12Handles.h"
 #include "D3D12DescriptorSet.h"
 #include "Core/Macros.h"
+#include "Core/Object.h"
 #include "Core/API/ShaderResourceType.h"
 #include <d3d12.h>
 #include <memory>
@@ -54,13 +55,10 @@ class CopyContext;
  * The get*BaseIndex() functions return the base index of the
  * corresponding root parameter type in the root signature.
  */
-class FALCOR_API D3D12RootSignature
+class FALCOR_API D3D12RootSignature : public Object
 {
 public:
-    using SharedPtr = std::shared_ptr<D3D12RootSignature>;
-    using SharedConstPtr = std::shared_ptr<const D3D12RootSignature>;
     using ApiHandle = ID3D12RootSignaturePtr;
-
     using DescType = ShaderResourceType;
 
     struct RootDescriptorDesc
@@ -111,14 +109,14 @@ public:
      * @param[in] desc Root signature description.
      * @return New object, or throws an exception if creation failed.
      */
-    static SharedPtr create(Device* pDevice, const Desc& desc);
+    static ref<D3D12RootSignature> create(ref<Device> pDevice, const Desc& desc);
 
     /**
      * Create a root signature from program reflection.
      * @param[in] pReflection Reflection object.
      * @return New object, or throws an exception if creation failed.
      */
-    static SharedPtr create(Device* pDevice, const ProgramReflection* pReflection);
+    static ref<D3D12RootSignature> create(ref<Device> pDevice, const ProgramReflection* pReflection);
 
     const ApiHandle& getApiHandle() const { return mApiHandle; }
 
@@ -138,9 +136,9 @@ public:
     const Desc& getDesc() const { return mDesc; }
 
 protected:
-    D3D12RootSignature(std::shared_ptr<Device> pDevice, const Desc& desc);
+    D3D12RootSignature(ref<Device> pDevice, const Desc& desc);
     void createApiHandle(ID3DBlobPtr pSigBlob);
-    std::shared_ptr<Device> mpDevice;
+    ref<Device> mpDevice;
     Desc mDesc;
     ApiHandle mApiHandle;
 

@@ -98,7 +98,19 @@ namespace
 
 static void regToneMapper(pybind11::module& m)
 {
-    pybind11::class_<ToneMapper, RenderPass, ToneMapper::SharedPtr> pass(m, "ToneMapper");
+    pybind11::enum_<ToneMapper::Operator> op(m, "ToneMapOp");
+    op.value("Linear", ToneMapper::Operator::Linear);
+    op.value("Reinhard", ToneMapper::Operator::Reinhard);
+    op.value("ReinhardModified", ToneMapper::Operator::ReinhardModified);
+    op.value("HejiHableAlu", ToneMapper::Operator::HejiHableAlu);
+    op.value("HableUc2", ToneMapper::Operator::HableUc2);
+    op.value("Aces", ToneMapper::Operator::Aces);
+
+    pybind11::enum_<ToneMapper::ExposureMode> exposureMode(m, "ExposureMode");
+    exposureMode.value("AperturePriority", ToneMapper::ExposureMode::AperturePriority);
+    exposureMode.value("ShutterPriority", ToneMapper::ExposureMode::ShutterPriority);
+
+    pybind11::class_<ToneMapper, RenderPass, ref<ToneMapper>> pass(m, "ToneMapper");
     pass.def_property(kExposureCompensation, &ToneMapper::getExposureCompensation, &ToneMapper::setExposureCompensation);
     pass.def_property(kAutoExposure, &ToneMapper::getAutoExposure, &ToneMapper::setAutoExposure);
     pass.def_property(kExposureValue, &ToneMapper::getExposureValue, &ToneMapper::setExposureValue);
@@ -112,18 +124,6 @@ static void regToneMapper(pybind11::module& m)
     pass.def_property(kFNumber, &ToneMapper::getFNumber, &ToneMapper::setFNumber);
     pass.def_property(kShutter, &ToneMapper::getShutter, &ToneMapper::setShutter);
     pass.def_property(kExposureMode, &ToneMapper::getExposureMode, &ToneMapper::setExposureMode);
-
-    pybind11::enum_<ToneMapper::Operator> op(m, "ToneMapOp");
-    op.value("Linear", ToneMapper::Operator::Linear);
-    op.value("Reinhard", ToneMapper::Operator::Reinhard);
-    op.value("ReinhardModified", ToneMapper::Operator::ReinhardModified);
-    op.value("HejiHableAlu", ToneMapper::Operator::HejiHableAlu);
-    op.value("HableUc2", ToneMapper::Operator::HableUc2);
-    op.value("Aces", ToneMapper::Operator::Aces);
-
-    pybind11::enum_<ToneMapper::ExposureMode> exposureMode(m, "ExposureMode");
-    exposureMode.value("AperturePriority", ToneMapper::ExposureMode::AperturePriority);
-    exposureMode.value("ShutterPriority", ToneMapper::ExposureMode::ShutterPriority);
 }
 
 extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
@@ -132,13 +132,8 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
     ScriptBindings::registerBinding(regToneMapper);
 }
 
-ToneMapper::SharedPtr ToneMapper::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-{
-    return ToneMapper::SharedPtr(new ToneMapper(std::move(pDevice), dict));
-}
-
-ToneMapper::ToneMapper(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-    : RenderPass(std::move(pDevice))
+ToneMapper::ToneMapper(ref<Device> pDevice, const Dictionary& dict)
+    : RenderPass(pDevice)
 {
     parseDictionary(dict);
 
@@ -149,9 +144,9 @@ ToneMapper::ToneMapper(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 
     Sampler::Desc samplerDesc;
     samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
-    mpPointSampler = Sampler::create(mpDevice.get(), samplerDesc);
+    mpPointSampler = Sampler::create(mpDevice, samplerDesc);
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point);
-    mpLinearSampler = Sampler::create(mpDevice.get(), samplerDesc);
+    mpLinearSampler = Sampler::create(mpDevice, samplerDesc);
 }
 
 void ToneMapper::parseDictionary(const Dictionary& dict)
@@ -227,7 +222,7 @@ void ToneMapper::execute(RenderContext* pRenderContext, const RenderData& render
         logWarning("ToneMapper pass I/O has different dimensions. The image will be resampled.");
     }
 
-    Fbo::SharedPtr pFbo = Fbo::create(mpDevice.get());
+    ref<Fbo> pFbo = Fbo::create(mpDevice);
     pFbo->attachColorTarget(pDst, 0);
 
     // Run luminance pass if auto exposure is enabled
@@ -235,8 +230,9 @@ void ToneMapper::execute(RenderContext* pRenderContext, const RenderData& render
     {
         createLuminanceFbo(pSrc);
 
-        mpLuminancePass["gColorTex"] = pSrc;
-        mpLuminancePass["gColorSampler"] = mpLinearSampler;
+        auto var = mpLuminancePass->getRootVar();
+        var["gColorTex"] = pSrc;
+        var["gColorSampler"] = mpLinearSampler;
 
         mpLuminancePass->execute(pRenderContext, mpLuminanceFbo);
         mpLuminanceFbo->getColorTexture(0)->generateMips(pRenderContext);
@@ -258,24 +254,25 @@ void ToneMapper::execute(RenderContext* pRenderContext, const RenderData& render
         ToneMapperParams params;
         params.whiteScale = mWhiteScale;
         params.whiteMaxLuminance = mWhiteMaxLuminance;
-        params.colorTransform = static_cast<rmcv::matrix<3,4,float>>(mColorTransform);
+        params.colorTransform = float3x4(mColorTransform);
         mpToneMapPass->getRootVar()["PerImageCB"]["gParams"].setBlob(&params, sizeof(params));
         mUpdateToneMapPass = false;
     }
 
-    mpToneMapPass["gColorTex"] = pSrc;
-    mpToneMapPass["gColorSampler"] = mpPointSampler;
+    auto var = mpToneMapPass->getRootVar();
+    var["gColorTex"] = pSrc;
+    var["gColorSampler"] = mpPointSampler;
 
     if (mAutoExposure)
     {
-        mpToneMapPass["gLuminanceTexSampler"] = mpLinearSampler;
-        mpToneMapPass["gLuminanceTex"] = mpLuminanceFbo->getColorTexture(0);
+        var["gLuminanceTexSampler"] = mpLinearSampler;
+        var["gLuminanceTex"] = mpLuminanceFbo->getColorTexture(0);
     }
 
     mpToneMapPass->execute(pRenderContext, pFbo);
 }
 
-void ToneMapper::createLuminanceFbo(const Texture::SharedPtr& pSrc)
+void ToneMapper::createLuminanceFbo(const ref<Texture>& pSrc)
 {
     bool createFbo = mpLuminanceFbo == nullptr;
     ResourceFormat srcFormat = pSrc->getFormat();
@@ -297,7 +294,7 @@ void ToneMapper::createLuminanceFbo(const Texture::SharedPtr& pSrc)
     {
         Fbo::Desc desc;
         desc.setColorTarget(0, luminanceFormat);
-        mpLuminanceFbo = Fbo::create2D(mpDevice.get(), requiredWidth, requiredHeight, desc, 1, Fbo::kAttachEntireMipLevel);
+        mpLuminanceFbo = Fbo::create2D(mpDevice, requiredWidth, requiredHeight, desc, 1, Fbo::kAttachEntireMipLevel);
     }
 }
 
@@ -392,7 +389,7 @@ void ToneMapper::renderUI(Gui::Widgets& widget)
     }
 }
 
-void ToneMapper::setScene(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene)
+void ToneMapper::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
 {
     if (pScene && mUseSceneMetadata)
     {
@@ -406,7 +403,7 @@ void ToneMapper::setScene(RenderContext* pRenderContext, const std::shared_ptr<S
 
 void ToneMapper::setExposureCompensation(float exposureCompensation)
 {
-    mExposureCompensation = glm::clamp(exposureCompensation, kExposureCompensationMin, kExposureCompensationMax);
+    mExposureCompensation = std::clamp(exposureCompensation, kExposureCompensationMin, kExposureCompensationMax);
     mUpdateToneMapPass = true;
 }
 
@@ -418,19 +415,19 @@ void ToneMapper::setAutoExposure(bool autoExposure)
 
 void ToneMapper::setExposureValue(float exposureValue)
 {
-    mExposureValue = glm::clamp(exposureValue, kExposureValueMin, kExposureValueMax);
+    mExposureValue = std::clamp(exposureValue, kExposureValueMin, kExposureValueMax);
 
     switch (mExposureMode)
     {
     case ExposureMode::AperturePriority:
         // Set shutter based on EV and aperture.
         mShutter = std::pow(2.f, mExposureValue) / (mFNumber * mFNumber);
-        mShutter = glm::clamp(mShutter, kShutterMin, kShutterMax);
+        mShutter = std::clamp(mShutter, kShutterMin, kShutterMax);
         break;
     case ExposureMode::ShutterPriority:
         // Set aperture based on EV and shutter.
         mFNumber = std::sqrt(std::pow(2.f, mExposureValue) / mShutter);
-        mFNumber = glm::clamp(mFNumber, kFNumberMin, kFNumberMax);
+        mFNumber = std::clamp(mFNumber, kFNumberMin, kFNumberMax);
         break;
     default:
         FALCOR_UNREACHABLE();
@@ -443,7 +440,7 @@ void ToneMapper::setExposureValue(float exposureValue)
 
 void ToneMapper::setFilmSpeed(float filmSpeed)
 {
-    mFilmSpeed = glm::clamp(filmSpeed, kFilmSpeedMin, kFilmSpeedMax);
+    mFilmSpeed = std::clamp(filmSpeed, kFilmSpeedMin, kFilmSpeedMax);
     mUpdateToneMapPass = true;
 }
 
@@ -455,7 +452,7 @@ void ToneMapper::setWhiteBalance(bool whiteBalance)
 
 void ToneMapper::setWhitePoint(float whitePoint)
 {
-    mWhitePoint = glm::clamp(whitePoint, kWhitePointMin, kWhitePointMax);
+    mWhitePoint = std::clamp(whitePoint, kWhitePointMin, kWhitePointMax);
     mUpdateToneMapPass = true;
 }
 
@@ -491,14 +488,14 @@ void ToneMapper::setWhiteScale(float whiteScale)
 
 void ToneMapper::setFNumber(float fNumber)
 {
-    mFNumber = glm::clamp(fNumber, kFNumberMin, kFNumberMax);
+    mFNumber = std::clamp(fNumber, kFNumberMin, kFNumberMax);
     updateExposureValue();
     mUpdateToneMapPass = true;
 }
 
 void ToneMapper::setShutter(float shutter)
 {
-    mShutter = glm::clamp(shutter, kShutterMin, kShutterMax);
+    mShutter = std::clamp(shutter, kShutterMin, kShutterMax);
     updateExposureValue();
     mUpdateToneMapPass = true;
 }
@@ -527,9 +524,9 @@ void ToneMapper::createToneMapPass()
 void ToneMapper::updateWhiteBalanceTransform()
 {
     // Calculate color transform for the current white point.
-    mWhiteBalanceTransform = mWhiteBalance ? calculateWhiteBalanceTransformRGB_Rec709(mWhitePoint) : rmcv::identity<rmcv::mat3>();
+    mWhiteBalanceTransform = mWhiteBalance ? calculateWhiteBalanceTransformRGB_Rec709(mWhitePoint) : float3x3::identity();
     // Calculate source illuminant, i.e. the color that transforms to a pure white (1, 1, 1) output at the current color settings.
-    mSourceWhite = rmcv::inverse(mWhiteBalanceTransform) * float3(1, 1, 1);
+    mSourceWhite = mul(inverse(mWhiteBalanceTransform), float3(1, 1, 1));
 }
 
 void ToneMapper::updateColorTransform()

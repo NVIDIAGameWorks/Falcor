@@ -39,17 +39,17 @@ class FullScreenPass;
 
 struct BlitContext
 {
-    std::shared_ptr<FullScreenPass> pPass;
-    Fbo::SharedPtr pFbo;
+    ref<FullScreenPass> pPass;
+    ref<Fbo> pFbo;
 
-    Sampler::SharedPtr pLinearSampler;
-    Sampler::SharedPtr pPointSampler;
-    Sampler::SharedPtr pLinearMinSampler;
-    Sampler::SharedPtr pPointMinSampler;
-    Sampler::SharedPtr pLinearMaxSampler;
-    Sampler::SharedPtr pPointMaxSampler;
+    ref<Sampler> pLinearSampler;
+    ref<Sampler> pPointSampler;
+    ref<Sampler> pLinearMinSampler;
+    ref<Sampler> pPointMinSampler;
+    ref<Sampler> pLinearMaxSampler;
+    ref<Sampler> pPointMaxSampler;
 
-    ParameterBlock::SharedPtr pBlitParamsBuffer;
+    ref<ParameterBlock> pBlitParamsBuffer;
     float2 prevSrcRectOffset = float2(0, 0);
     float2 prevSrcReftScale = float2(0, 0);
 

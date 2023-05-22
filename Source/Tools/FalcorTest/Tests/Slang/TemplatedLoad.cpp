@@ -46,7 +46,7 @@ std::vector<uint16_t> generateData(const size_t n)
 
 void test(GPUUnitTestContext& ctx, const std::string& entryPoint, const size_t n)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     std::vector<uint16_t> elems = generateData(n);
 

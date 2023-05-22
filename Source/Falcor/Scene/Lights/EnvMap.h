@@ -28,6 +28,7 @@
 #pragma once
 #include "EnvMapData.slang"
 #include "Core/Macros.h"
+#include "Core/Object.h"
 #include "Core/API/Texture.h"
 #include "Core/API/Sampler.h"
 #include "Utils/Math/Vector.h"
@@ -42,25 +43,23 @@ namespace Falcor
     /** Environment map based radiance probe.
         Utily class for evaluating radiance stored in an lat-long environment map.
     */
-    class FALCOR_API EnvMap
+    class FALCOR_API EnvMap : public Object
     {
     public:
-        using SharedPtr = std::shared_ptr<EnvMap>;
-
         virtual ~EnvMap() = default;
 
         /** Create a new environment map.
             \param[in] pDevice GPU device.
             \param[in] texture The environment map texture.
         */
-        static SharedPtr create(std::shared_ptr<Device> pDevice, const Texture::SharedPtr& texture);
+        static ref<EnvMap> create(ref<Device> pDevice, const ref<Texture>& texture);
 
         /** Create a new environment map from file.
             \param[in] pDevice GPU device.
             \param[in] path The environment map texture file path.
             \return A new object, or nullptr if the environment map failed to load.
         */
-        static SharedPtr createFromFile(std::shared_ptr<Device> pDevice, const std::filesystem::path& path);
+        static ref<EnvMap> createFromFile(ref<Device> pDevice, const std::filesystem::path& path);
 
         /** Render the GUI.
         */
@@ -68,7 +67,7 @@ namespace Falcor
 
         /** Set rotation angles.
             Rotation is applied as rotation around Z, Y and X axes, in that order.
-            Note that glm::extractEulerAngleXYZ() may be used to extract these angles from
+            Note that math::extractEulerAngleXYZ() may be used to extract these angles from
             a transformation matrix.
             \param[in] degreesXYZ Rotation angles in degrees for XYZ.
         */
@@ -98,8 +97,8 @@ namespace Falcor
         */
         const std::filesystem::path& getPath() const { return mpEnvMap->getSourcePath(); }
 
-        const Texture::SharedPtr& getEnvMap() const { return mpEnvMap; }
-        const Sampler::SharedPtr& getEnvSampler() const { return mpEnvSampler; }
+        const ref<Texture>& getEnvMap() const { return mpEnvMap; }
+        const ref<Sampler>& getEnvSampler() const { return mpEnvSampler; }
 
         /** Bind the environment map to a given shader variable.
             \param[in] var Shader variable.
@@ -126,11 +125,11 @@ namespace Falcor
         uint64_t getMemoryUsageInBytes() const;
 
     protected:
-        EnvMap(std::shared_ptr<Device> pDevice, const Texture::SharedPtr& texture);
+        EnvMap(ref<Device> pDevice, const ref<Texture>& texture);
 
-        std::shared_ptr<Device> mpDevice;
-        Texture::SharedPtr      mpEnvMap;           ///< Loaded environment map (RGB).
-        Sampler::SharedPtr      mpEnvSampler;
+        ref<Device>             mpDevice;
+        ref<Texture>            mpEnvMap;           ///< Loaded environment map (RGB).
+        ref<Sampler>            mpEnvSampler;
 
         EnvMapData              mData;
         EnvMapData              mPrevData;

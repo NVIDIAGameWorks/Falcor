@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,56 +27,28 @@
  **************************************************************************/
 #pragma once
 
-#include <algorithm>
 #include <type_traits>
 
 namespace Falcor
 {
-    /** Clamps a value within a range.
-        \param[in] val Value to clamp
-        \param[in] minVal Low end to clamp to
-        \param[in] maxVal High end to clamp to
-        \return Result
-    */
-    template<typename T>
-    inline T clamp(const T& val, const T& minVal, const T& maxVal)
-    {
-        return std::min(std::max(val, minVal), maxVal);
-    }
-
-    /** Linearly interpolate two values.
-        \param[in] a The first value.
-        \param[in] b The second value.
-        \param[in] t Interpolation weight.
-        \return (1-t) * a + t * b.
-    */
-    template<typename T, typename U>
-    inline typename std::enable_if<std::is_floating_point_v<U>, T>::type lerp(const T& a, const T& b, const U& t)
-    {
-        return (U(1) - t) * a + t * b;
-    }
-
-    /** Returns whether an integer number is a power of two.
-    */
-    template<typename T>
-    constexpr typename std::enable_if<std::is_integral<T>::value, bool>::type isPowerOf2(T a)
-    {
-        return (a & (a - (T)1)) == 0;
-    }
-
-    /** Divide an a by b and round up to the next integer.
-    */
-    template<typename T>
-    constexpr T div_round_up(T a, T b)
-    {
-        return (a + b - T(1)) / b;
-    }
-
-    /** Helper to align an integer value to a given alignment.
-    */
-    template<typename T>
-    constexpr typename std::enable_if<std::is_integral<T>::value, T>::type align_to(T alignment, T value)
-    {
-        return ((value + alignment - T(1)) / alignment) * alignment;
-    }
+/// Returns whether an integer number is a power of two.
+template<typename T>
+constexpr typename std::enable_if<std::is_integral<T>::value, bool>::type isPowerOf2(T a)
+{
+    return (a & (a - (T)1)) == 0;
 }
+
+/// Divide an a by b and round up to the next integer.
+template<typename T>
+constexpr T div_round_up(T a, T b)
+{
+    return (a + b - T(1)) / b;
+}
+
+/// Helper to align an integer value to a given alignment.
+template<typename T>
+constexpr typename std::enable_if<std::is_integral<T>::value, T>::type align_to(T alignment, T value)
+{
+    return ((value + alignment - T(1)) / alignment) * alignment;
+}
+} // namespace Falcor

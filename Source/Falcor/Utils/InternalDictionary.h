@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -34,75 +34,69 @@
 
 namespace Falcor
 {
-    class InternalDictionary
+class InternalDictionary
+{
+public:
+    class Value
     {
     public:
-        class Value
+        Value() = default;
+        Value(std::any& value) : mValue(value){};
+
+        template<typename T>
+        void operator=(const T& t)
         {
-        public:
-            Value() = default;
-            Value(std::any& value) : mValue(value) {};
-
-            template<typename T>
-            void operator=(const T& t) { mValue = t; }
-
-            template<typename T>
-            operator T() const { return std::any_cast<T>(mValue); }
-
-        private:
-            std::any mValue;
-        };
-
-        using Container = std::unordered_map<std::string, Value>;
-
-        using SharedPtr = std::shared_ptr<InternalDictionary>;
-
-        InternalDictionary() = default;
-        InternalDictionary(const InternalDictionary& d) : mContainer(d.mContainer) {}
-
-        /** Create a new dictionary.
-            \return A new object, or throws an exception if creation failed.
-        */
-        static SharedPtr create() { return SharedPtr(new InternalDictionary); }
-
-        Value& operator[](const std::string& key) { return mContainer[key]; }
-        const Value& operator[](const std::string& key) const { return mContainer.at(key); }
-
-        Container::const_iterator begin() const { return mContainer.begin(); }
-        Container::const_iterator end() const { return mContainer.end(); }
-
-        Container::iterator begin() { return mContainer.begin(); }
-        Container::iterator end() { return mContainer.end(); }
-
-        size_t size() const { return mContainer.size(); }
-
-        /** Check if a key exists.
-        */
-        bool keyExists(const std::string& key) const
-        {
-            return mContainer.find(key) != mContainer.end();
+            mValue = t;
         }
 
-        /** Get value by key. Throws an exception if key does not exist.
-        */
         template<typename T>
-        T getValue(const std::string& key)
+        operator T() const
         {
-            auto it = mContainer.find(key);
-            if (it == mContainer.end()) throw ArgumentError("Key '{}' does not exist", key);
-            return it->second;
-        }
-
-        /** Get value by key. Returns the specified default value if key does not exist.
-        */
-        template<typename T>
-        T getValue(const std::string& key, const T& defaultValue)
-        {
-            auto it = mContainer.find(key);
-            return it != mContainer.end() ? it->second : defaultValue;
+            return std::any_cast<T>(mValue);
         }
 
     private:
-        Container mContainer;
+        std::any mValue;
     };
-}
+
+    using Container = std::unordered_map<std::string, Value>;
+
+    InternalDictionary() = default;
+    InternalDictionary(const InternalDictionary& d) : mContainer(d.mContainer) {}
+
+    Value& operator[](const std::string& key) { return mContainer[key]; }
+    const Value& operator[](const std::string& key) const { return mContainer.at(key); }
+
+    Container::const_iterator begin() const { return mContainer.begin(); }
+    Container::const_iterator end() const { return mContainer.end(); }
+
+    Container::iterator begin() { return mContainer.begin(); }
+    Container::iterator end() { return mContainer.end(); }
+
+    size_t size() const { return mContainer.size(); }
+
+    /// Check if a key exists.
+    bool keyExists(const std::string& key) const { return mContainer.find(key) != mContainer.end(); }
+
+    /// Get value by key. Throws an exception if key does not exist.
+    template<typename T>
+    T getValue(const std::string& key)
+    {
+        auto it = mContainer.find(key);
+        if (it == mContainer.end())
+            throw ArgumentError("Key '{}' does not exist", key);
+        return it->second;
+    }
+
+    /// Get value by key. Returns the specified default value if key does not exist.
+    template<typename T>
+    T getValue(const std::string& key, const T& defaultValue)
+    {
+        auto it = mContainer.find(key);
+        return it != mContainer.end() ? it->second : defaultValue;
+    }
+
+private:
+    Container mContainer;
+};
+} // namespace Falcor

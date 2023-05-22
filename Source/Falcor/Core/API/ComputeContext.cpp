@@ -62,7 +62,7 @@ void ComputeContext::dispatchIndirect(ComputeState* pState, ComputeVars* pVars, 
 
 void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const float4& value)
 {
-    resourceBarrier(pUav->getResource().get(), Resource::State::UnorderedAccess);
+    resourceBarrier(pUav->getResource(), Resource::State::UnorderedAccess);
 
     auto resourceEncoder = mpLowLevelData->getResourceCommandEncoder();
     gfx::ClearValue clearValue = {};
@@ -73,7 +73,7 @@ void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const float4& val
 
 void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const uint4& value)
 {
-    resourceBarrier(pUav->getResource().get(), Resource::State::UnorderedAccess);
+    resourceBarrier(pUav->getResource(), Resource::State::UnorderedAccess);
 
     auto resourceEncoder = mpLowLevelData->getResourceCommandEncoder();
     gfx::ClearValue clearValue = {};
@@ -82,7 +82,7 @@ void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const uint4& valu
     mCommandsPending = true;
 }
 
-void ComputeContext::clearUAVCounter(const Buffer::SharedPtr& pBuffer, uint32_t value)
+void ComputeContext::clearUAVCounter(const ref<Buffer>& pBuffer, uint32_t value)
 {
     if (pBuffer->getUAVCounter())
     {

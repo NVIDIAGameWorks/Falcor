@@ -27,7 +27,6 @@
  **************************************************************************/
 #include "Testing/UnitTest.h"
 #include "Utils/Algorithm/ParallelReduction.h"
-#include <glm/detail/type_half.hpp>
 #include <random>
 
 namespace Falcor
@@ -77,16 +76,6 @@ private:
 using snorm8_t = snorm_t<int8_t, 8>;
 using snorm16_t = snorm_t<int16_t, 16>;
 
-// Half-precision floating-point number.
-struct half
-{
-    half(float v) { _val = glm::detail::toFloat16(v); }
-    operator float() { return glm::detail::toFloat32(_val); }
-
-private:
-    glm::detail::hdata _val;
-};
-
 // Quantize and store value. The de-quantized value is returned in 'val'.
 template<typename T>
 void store(void* ptr, size_t idx, float& val)
@@ -99,7 +88,7 @@ void store(void* ptr, size_t idx, float& val)
 template<typename DataType, typename RefType>
 void testReduction(GPUUnitTestContext& ctx, ParallelReduction& reduction, ResourceFormat format, uint32_t width, uint32_t height)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     // Create random test data.
     const uint32_t channels = getFormatChannelCount(format);
@@ -138,7 +127,7 @@ void testReduction(GPUUnitTestContext& ctx, ParallelReduction& reduction, Resour
         {
             value = u() * 200.f - 100.f;
             if (sz == 2)
-                store<half>(ptr, i, value);
+                store<float16_t>(ptr, i, value);
             else if (sz == 4)
                 store<float>(ptr, i, value);
             else
@@ -199,14 +188,13 @@ void testReduction(GPUUnitTestContext& ctx, ParallelReduction& reduction, Resour
     }
 
     // Create a texture with test data.
-    Texture::SharedPtr pTexture = Texture::create2D(pDevice, width, height, format, 1, 1, pInitData.get());
+    ref<Texture> pTexture = Texture::create2D(pDevice, width, height, format, 1, 1, pInitData.get());
 
     // Test Sum operation.
     {
         // Allocate buffer for the result on the GPU.
         DataType nullValue = {};
-        Buffer::SharedPtr pResultBuffer =
-            Buffer::create(pDevice, 16, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, &nullValue);
+        ref<Buffer> pResultBuffer = Buffer::create(pDevice, 16, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, &nullValue);
 
         // Perform reduction operation.
         DataType result;
@@ -250,8 +238,7 @@ void testReduction(GPUUnitTestContext& ctx, ParallelReduction& reduction, Resour
     {
         // Allocate buffer for the result on the GPU.
         DataType nullValues[2] = {{}, {}};
-        Buffer::SharedPtr pResultBuffer =
-            Buffer::create(pDevice, 32, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullValues);
+        ref<Buffer> pResultBuffer = Buffer::create(pDevice, 32, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullValues);
 
         // Perform reduction operation.
         DataType result[2];

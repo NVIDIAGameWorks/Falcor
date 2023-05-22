@@ -36,33 +36,30 @@
 #include "Core/API/RenderContext.h"
 #include "Utils/Logger.h"
 #include "Utils/Math/Common.h"
-#include "Utils/Math/Matrix/Matrix.h"
+#include "Utils/Math/Matrix.h"
 #include "Utils/Scripting/ScriptBindings.h"
-#include "Scene/SceneBuilderAccess.h"
+#include "GlobalState.h"
 #include <nlohmann/json.hpp>
 #include <random>
 #include <fstream>
 
 using json = nlohmann::json;
 
-namespace glm
+namespace Falcor::math
 {
-    void to_json(json& j, const glm::vec3& v)
+    void to_json(json& j, const float3& v)
     {
         j = { v.x, v.y, v.z };
     }
 
-    void from_json(const json& j, glm::vec3& v)
+    void from_json(const json& j, float3& v)
     {
         j[0].get_to(v.x);
         j[1].get_to(v.y);
         j[2].get_to(v.z);
     }
-}
 
-namespace Falcor::rmcv
-{
-    void to_json(json& j, const Falcor::rmcv::mat3& m)
+    void to_json(json& j, const float3x3& m)
     {
         for (uint32_t i = 0; i < 9; ++i)
         {
@@ -70,7 +67,7 @@ namespace Falcor::rmcv
         }
     }
 
-    void from_json(const json& j, Falcor::rmcv::mat3& m)
+    void from_json(const json& j, float3x3& m)
     {
         for (uint32_t i = 0; i < 9; ++i)
         {
@@ -152,7 +149,7 @@ namespace Falcor
         j[kPrimitiveInvRotationScaleJSONKey].get_to(primitive.invRotationScale);
     }
 
-    SDFGrid::SDFGrid(std::shared_ptr<Device> pDevice) : mpDevice(std::move(pDevice)) {}
+    SDFGrid::SDFGrid(ref<Device> pDevice) : mpDevice(pDevice) {}
 
     uint32_t SDFGrid::setPrimitives(const std::vector<SDF3DPrimitive>& primitives, uint32_t gridWidth)
     {
@@ -355,8 +352,8 @@ namespace Falcor
                     // Create a Box.
                     {
                         float3 d = abs(pLocal) - float3(kHalfCheeseExtent);
-                        float outsideDist = glm::length(float3(glm::max(d.x, 0.0f), glm::max(d.y, 0.0f), glm::max(d.z, 0.0f)));
-                        float insideDist = glm::min(glm::max(glm::max(d.x, d.y), d.z), 0.0f);
+                        float outsideDist = length(float3(std::max(d.x, 0.0f), std::max(d.y, 0.0f), std::max(d.z, 0.0f)));
+                        float insideDist = std::min(std::max(std::max(d.x, d.y), d.z), 0.0f);
                         sd = outsideDist + insideDist;
                     }
 
@@ -364,11 +361,11 @@ namespace Falcor
                     for (uint32_t s = 0; s < kHoleCount; s++)
                     {
                         float4 holeData = holes[s];
-                        sd = glm::max(sd, -(glm::length(pLocal - holeData.xyz) - holeData.w));
+                        sd = std::max(sd, -(length(pLocal - holeData.xyz()) - holeData.w));
                     }
 
                     // We don't care about distance further away than the length of the diagonal of the unit cube where the SDF grid is defined.
-                    cornerValues[x + gridWidthInValues * (y + gridWidthInValues * z)] = glm::clamp(sd, -glm::root_three<float>(), glm::root_three<float>());
+                    cornerValues[x + gridWidthInValues * (y + gridWidthInValues * z)] = std::clamp(sd, -float(M_SQRT3), float(M_SQRT3));
                 }
             }
         }
@@ -386,15 +383,16 @@ namespace Falcor
 
         uint32_t gridWidthInValues = mGridWidth + 1;
         uint32_t valueCount = gridWidthInValues * gridWidthInValues * gridWidthInValues;
-        Buffer::SharedPtr pValuesBuffer = Buffer::createTyped<float>(mpDevice.get(), valueCount);
-        Buffer::SharedPtr pValuesStagingBuffer = Buffer::createTyped<float>(mpDevice.get(), valueCount, Resource::BindFlags::None, Buffer::CpuAccess::Read);
-        GpuFence::SharedPtr pFence = GpuFence::create(mpDevice.get());
+        ref<Buffer> pValuesBuffer = Buffer::createTyped<float>(mpDevice, valueCount);
+        ref<Buffer> pValuesStagingBuffer = Buffer::createTyped<float>(mpDevice, valueCount, Resource::BindFlags::None, Buffer::CpuAccess::Read);
+        ref<GpuFence> pFence = GpuFence::create(mpDevice);
 
-        mpEvaluatePrimitivesPass["CB"]["gGridWidth"] = mGridWidth;
-        mpEvaluatePrimitivesPass["CB"]["gPrimitiveCount"] = (uint32_t)mPrimitives.size() - mBakedPrimitiveCount;
-        mpEvaluatePrimitivesPass["gPrimitives"] = mpPrimitivesBuffer;
-        mpEvaluatePrimitivesPass["gOldValues"] = mHasGridRepresentation ? mpSDFGridTexture : nullptr;
-        mpEvaluatePrimitivesPass["gValues"] = pValuesBuffer;
+        auto var = mpEvaluatePrimitivesPass->getRootVar();
+        var["CB"]["gGridWidth"] = mGridWidth;
+        var["CB"]["gPrimitiveCount"] = (uint32_t)mPrimitives.size() - mBakedPrimitiveCount;
+        var["gPrimitives"] = mpPrimitivesBuffer;
+        var["gOldValues"] = mHasGridRepresentation ? mpSDFGridTexture : nullptr;
+        var["gValues"] = pValuesBuffer;
         mpEvaluatePrimitivesPass->execute(pRenderContext, uint3(gridWidthInValues));
         pRenderContext->copyResource(pValuesStagingBuffer.get(), pValuesBuffer.get());
         pRenderContext->flush(false);
@@ -532,14 +530,14 @@ namespace Falcor
                     compressed = pybind11::cast<bool>(value);
                 }
             }
-            return SDFGrid::SharedPtr(SDFSBS::create(getActivePythonSceneBuilder().getDevice(), brickWidth, compressed, defaultGridWidth));
+            return static_ref_cast<SDFGrid>(SDFSBS::create(accessActivePythonSceneBuilder().getDevice(), brickWidth, compressed, defaultGridWidth));
         };
 
-        pybind11::class_<SDFGrid, SDFGrid::SharedPtr> sdfGrid(m, "SDFGrid");
-        sdfGrid.def_static("createNDGrid", [](float narrowBandThickness) { return SDFGrid::SharedPtr(NDSDFGrid::create(getActivePythonSceneBuilder().getDevice(), narrowBandThickness)); }, "narrowBandThickness"_a); // PYTHONDEPRECATED
-        sdfGrid.def_static("createSVS", [](){ return SDFGrid::SharedPtr(SDFSVS::create(getActivePythonSceneBuilder().getDevice())); }); // PYTHONDEPRECATED
+        pybind11::class_<SDFGrid, ref<SDFGrid>> sdfGrid(m, "SDFGrid");
+        sdfGrid.def_static("createNDGrid", [](float narrowBandThickness) { return static_ref_cast<SDFGrid>(NDSDFGrid::create(accessActivePythonSceneBuilder().getDevice(), narrowBandThickness)); }, "narrowBandThickness"_a); // PYTHONDEPRECATED
+        sdfGrid.def_static("createSVS", [](){ return static_ref_cast<SDFGrid>(SDFSVS::create(accessActivePythonSceneBuilder().getDevice())); }); // PYTHONDEPRECATED
         sdfGrid.def_static("createSBS", createSBS); // PYTHONDEPRECATED
-        sdfGrid.def_static("createSVO", [](){ return SDFGrid::SharedPtr(SDFSVO::create(getActivePythonSceneBuilder().getDevice())); }); // PYTHONDEPRECATED
+        sdfGrid.def_static("createSVO", [](){ return static_ref_cast<SDFGrid>(SDFSVO::create(accessActivePythonSceneBuilder().getDevice())); }); // PYTHONDEPRECATED
         sdfGrid.def("loadValuesFromFile", &SDFGrid::loadValuesFromFile, "path"_a);
         sdfGrid.def("loadPrimitivesFromFile", &SDFGrid::loadPrimitivesFromFile, "path"_a, "gridWidth"_a, "dir"_a = "");
         sdfGrid.def("generateCheeseValues", &SDFGrid::generateCheeseValues, "gridWidth"_a, "seed"_a);
@@ -582,7 +580,7 @@ namespace Falcor
         void* pData = (void*)&mPrimitives[mPrimitivesExcludedFromBuffer];
         if (!mpPrimitivesBuffer || mpPrimitivesBuffer->getElementCount() < count)
         {
-            mpPrimitivesBuffer = Buffer::createStructured(mpDevice.get(), sizeof(SDF3DPrimitive), count, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, pData, false);
+            mpPrimitivesBuffer = Buffer::createStructured(mpDevice, sizeof(SDF3DPrimitive), count, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, pData, false);
         }
         else
         {

@@ -32,7 +32,7 @@
 #include "ResourceViews.h"
 #include "Texture.h"
 #include "Core/Macros.h"
-#include <memory>
+#include "Core/Object.h"
 #include <vector>
 #include <unordered_set>
 
@@ -42,11 +42,9 @@ namespace Falcor
  * Low level framebuffer object.
  * This class abstracts the API's framebuffer creation and management.
  */
-class FALCOR_API Fbo
+class FALCOR_API Fbo : public Object
 {
 public:
-    using SharedPtr = std::shared_ptr<Fbo>;
-
     class FALCOR_API Desc
     {
     public:
@@ -142,7 +140,7 @@ public:
     /**
      * Used to tell some functions to attach all array slices of a specific mip-level.
      */
-    static const uint32_t kAttachEntireMipLevel = uint32_t(-1);
+    static constexpr uint32_t kAttachEntireMipLevel = uint32_t(-1);
 
     /**
      * Destructor. Releases the API object
@@ -153,7 +151,7 @@ public:
      * Create a new empty FBO.
      * @return A new object, or throws an exception if creation failed.
      */
-    static SharedPtr create(Device* pDevice);
+    static ref<Fbo> create(ref<Device> pDevice);
 
     /**
      * Create an FBO from a list of textures. It will bind mip 0 and the all of the array slices.
@@ -163,7 +161,7 @@ public:
      * @return A new object. An exception is thrown if creation failed, for example due to texture size mismatch, bind flags issues, illegal
      * formats, etc.
      */
-    static SharedPtr create(Device* pDevice, const std::vector<Texture::SharedPtr>& colors, const Texture::SharedPtr& pDepth = nullptr);
+    static ref<Fbo> create(ref<Device> pDevice, const std::vector<ref<Texture>>& colors, const ref<Texture>& pDepth = nullptr);
 
     /**
      * Create a color-only 2D framebuffer.
@@ -174,8 +172,8 @@ public:
      * @param[in] mipLevels Optional. The number of mip levels to create. You can use Texture#kMaxPossible to create the entire chain.
      * @return A new object. An exception is thrown if creation failed, for example due to invalid parameters.
      */
-    static SharedPtr create2D(
-        Device* pDevice,
+    static ref<Fbo> create2D(
+        ref<Device> pDevice,
         uint32_t width,
         uint32_t height,
         const Desc& fboDesc,
@@ -192,8 +190,8 @@ public:
      * @param[in] mipLevels Optional. The number of mip levels to create. You can use Texture#kMaxPossible to create the entire chain.
      * @return A new object. An exception is thrown if creation failed, for example due to invalid parameters.
      */
-    static SharedPtr createCubemap(
-        Device* pDevice,
+    static ref<Fbo> createCubemap(
+        ref<Device> pDevice,
         uint32_t width,
         uint32_t height,
         const Desc& fboDesc,
@@ -209,8 +207,8 @@ public:
      * @param[in] depth The depth-format. If a depth-buffer is not required, use ResourceFormat::Unknown.
      * @return A new object. An exception is thrown if creation failed, for example due to invalid parameters.
      */
-    static SharedPtr create2D(
-        Device* pDevice,
+    static ref<Fbo> create2D(
+        ref<Device> pDevice,
         uint32_t width,
         uint32_t height,
         ResourceFormat color,
@@ -227,7 +225,7 @@ public:
      * pTexture->getArraySize()]
      */
     void attachDepthStencilTarget(
-        const Texture::SharedPtr& pDepthStencil,
+        const ref<Texture>& pDepthStencil,
         uint32_t mipLevel = 0,
         uint32_t firstArraySlice = 0,
         uint32_t arraySize = kAttachEntireMipLevel
@@ -244,7 +242,7 @@ public:
      * pTexture->getArraySize()]
      */
     void attachColorTarget(
-        const Texture::SharedPtr& pColorTexture,
+        const ref<Texture>& pColorTexture,
         uint32_t rtIndex,
         uint32_t mipLevel = 0,
         uint32_t firstArraySlice = 0,
@@ -264,12 +262,12 @@ public:
     /**
      * Get an attached color texture. If no texture is attached will return nullptr.
      */
-    Texture::SharedPtr getColorTexture(uint32_t index) const;
+    ref<Texture> getColorTexture(uint32_t index) const;
 
     /**
      * Get the attached depth-stencil texture, or nullptr if no texture is attached.
      */
-    const Texture::SharedPtr& getDepthStencilTexture() const;
+    const ref<Texture>& getDepthStencilTexture() const;
 
     /**
      * Get the width of the FBO
@@ -310,12 +308,12 @@ public:
     /**
      * Get a depth-stencil view to the depth-stencil target.
      */
-    DepthStencilView::SharedPtr getDepthStencilView() const;
+    ref<DepthStencilView> getDepthStencilView() const;
 
     /**
      * Get a render target view to a color target.
      */
-    RenderTargetView::SharedPtr getRenderTargetView(uint32_t rtIndex) const;
+    ref<RenderTargetView> getRenderTargetView(uint32_t rtIndex) const;
 
     struct SamplePosition
     {
@@ -344,12 +342,14 @@ public:
 
     struct Attachment
     {
-        Texture::SharedPtr pTexture;
-        ResourceView::SharedPtr pNullView;
+        ref<Texture> pTexture;
+        ref<ResourceView> pNullView;
         uint32_t mipLevel = 0;
         uint32_t arraySize = 1;
         uint32_t firstArraySlice = 0;
     };
+
+    void breakStrongReferenceToDevice();
 
 private:
     void validateAttachment(const Attachment& attachment) const;
@@ -365,9 +365,9 @@ private:
      */
     void finalize() const;
 
-    Fbo(std::shared_ptr<Device> pDevice);
+    Fbo(ref<Device> pDevice);
 
-    std::shared_ptr<Device> mpDevice;
+    mutable BreakableReference<Device> mpDevice;
 
     std::vector<SamplePosition> mSamplePositions;
     uint32_t mSamplePositionsPixelCount = 0;

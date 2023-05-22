@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,14 +26,16 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 
-/** This file contains various hash functions and other utilities
-    for pseudorandom number generation.
-*/
+/**
+ * This file contains various hash functions and other utilities
+ * for pseudorandom number generation.
+ */
 
-/** 32-bit (non-cryptographic) hash function by Robert Jenkins.
-    This is a perfect hash function (no collisions).
-    See https://gist.github.com/badboy/6267743.
-*/
+/**
+ * 32-bit (non-cryptographic) hash function by Robert Jenkins.
+ * This is a perfect hash function (no collisions).
+ * See https://gist.github.com/badboy/6267743.
+ */
 uint jenkinsHash(uint a)
 {
     a = (a + 0x7ed55d16) + (a << 12);
@@ -45,17 +47,18 @@ uint jenkinsHash(uint a)
     return a;
 }
 
-/** Generates a pair of 32-bit pseudorandom numbers based on a pair of 32-bit values.
-
-    The code uses a 64-bit block cipher, the Tiny Encryption Algorithm (TEA) by Wheeler et al., 1994.
-    The 128-bit key is fixed and adapted from here: https://www.ibiblio.org/e-notes/webcl/mc.htm.
-    This function can be useful for seeding other pseudorandom number generators.
-
-    \param[in] v0 The first value (low dword of the block).
-    \param[in] v1 The second value (high dword of the block).
-    \param[in] iterations Number of iterations (the authors recommend 16 at a minimum).
-    \return Two pseudorandom numbers (the block cipher of (v0,v1)).
-*/
+/**
+ * Generates a pair of 32-bit pseudorandom numbers based on a pair of 32-bit values.
+ *
+ * The code uses a 64-bit block cipher, the Tiny Encryption Algorithm (TEA) by Wheeler et al., 1994.
+ * The 128-bit key is fixed and adapted from here: https://www.ibiblio.org/e-notes/webcl/mc.htm.
+ * This function can be useful for seeding other pseudorandom number generators.
+ *
+ * @param[in] v0 The first value (low dword of the block).
+ * @param[in] v1 The second value (high dword of the block).
+ * @param[in] iterations Number of iterations (the authors recommend 16 at a minimum).
+ * @return Two pseudorandom numbers (the block cipher of (v0,v1)).
+ */
 uint2 blockCipherTEA(uint v0, uint v1, uint iterations = 16)
 {
     uint sum = 0;

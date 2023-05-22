@@ -28,22 +28,20 @@
 #pragma once
 #include "Handles.h"
 #include "Core/Macros.h"
+#include "Core/Object.h"
 #include "Core/API/VertexLayout.h"
 #include "Core/API/FBO.h"
 #include "Core/API/RasterizerState.h"
 #include "Core/API/DepthStencilState.h"
 #include "Core/API/BlendState.h"
 #include "Core/Program/ProgramVersion.h"
-#include <memory>
 
 namespace Falcor
 {
-class FALCOR_API GraphicsStateObject
+class FALCOR_API GraphicsStateObject : public Object
 {
 public:
-    using SharedPtr = std::shared_ptr<GraphicsStateObject>;
-
-    static const uint32_t kSampleMaskAll = -1;
+    static constexpr uint32_t kSampleMaskAll = -1;
 
     /**
      * Primitive topology
@@ -60,7 +58,7 @@ public:
     class FALCOR_API Desc
     {
     public:
-        Desc& setVertexLayout(VertexLayout::SharedConstPtr pLayout)
+        Desc& setVertexLayout(ref<const VertexLayout> pLayout)
         {
             mpLayout = pLayout;
             return *this;
@@ -72,25 +70,25 @@ public:
             return *this;
         }
 
-        Desc& setProgramKernels(ProgramKernels::SharedConstPtr pProgram)
+        Desc& setProgramKernels(ref<const ProgramKernels> pProgram)
         {
             mpProgram = pProgram;
             return *this;
         }
 
-        Desc& setBlendState(BlendState::SharedPtr pBlendState)
+        Desc& setBlendState(ref<BlendState> pBlendState)
         {
             mpBlendState = pBlendState;
             return *this;
         }
 
-        Desc& setRasterizerState(RasterizerState::SharedPtr pRasterizerState)
+        Desc& setRasterizerState(ref<RasterizerState> pRasterizerState)
         {
             mpRasterizerState = pRasterizerState;
             return *this;
         }
 
-        Desc& setDepthStencilState(DepthStencilState::SharedPtr pDepthStencilState)
+        Desc& setDepthStencilState(ref<DepthStencilState> pDepthStencilState)
         {
             mpDepthStencilState = pDepthStencilState;
             return *this;
@@ -108,13 +106,12 @@ public:
             return *this;
         }
 
-        BlendState::SharedPtr getBlendState() const { return mpBlendState; }
-        RasterizerState::SharedPtr getRasterizerState() const { return mpRasterizerState; }
-        DepthStencilState::SharedPtr getDepthStencilState() const { return mpDepthStencilState; }
-        ProgramKernels::SharedConstPtr getProgramKernels() const { return mpProgram; }
-        ProgramVersion::SharedConstPtr getProgramVersion() const { return mpProgram->getProgramVersion(); }
+        ref<BlendState> getBlendState() const { return mpBlendState; }
+        ref<RasterizerState> getRasterizerState() const { return mpRasterizerState; }
+        ref<DepthStencilState> getDepthStencilState() const { return mpDepthStencilState; }
+        ref<const ProgramKernels> getProgramKernels() const { return mpProgram; }
         uint32_t getSampleMask() const { return mSampleMask; }
-        VertexLayout::SharedConstPtr getVertexLayout() const { return mpLayout; }
+        ref<const VertexLayout> getVertexLayout() const { return mpLayout; }
         PrimitiveType getPrimitiveType() const { return mPrimType; }
         Fbo::Desc getFboDesc() const { return mFboDesc; }
 
@@ -123,11 +120,11 @@ public:
     private:
         friend class GraphicsStateObject;
         Fbo::Desc mFboDesc;
-        VertexLayout::SharedConstPtr mpLayout;
-        ProgramKernels::SharedConstPtr mpProgram;
-        RasterizerState::SharedPtr mpRasterizerState;
-        DepthStencilState::SharedPtr mpDepthStencilState;
-        BlendState::SharedPtr mpBlendState;
+        ref<const VertexLayout> mpLayout;
+        ref<const ProgramKernels> mpProgram;
+        ref<RasterizerState> mpRasterizerState;
+        ref<DepthStencilState> mpDepthStencilState;
+        ref<BlendState> mpBlendState;
         uint32_t mSampleMask = kSampleMaskAll;
         PrimitiveType mPrimType = PrimitiveType::Undefined;
     };
@@ -139,7 +136,7 @@ public:
      * @param[in] desc State object description.
      * @return New object, or throws an exception if creation failed.
      */
-    static SharedPtr create(Device* pDevice, const Desc& desc);
+    static ref<GraphicsStateObject> create(ref<Device> pDevice, const Desc& desc);
 
     gfx::IPipelineState* getGfxPipelineState() const { return mGfxPipelineState; }
 
@@ -147,10 +144,12 @@ public:
 
     gfx::IRenderPassLayout* getGFXRenderPassLayout() const { return mpGFXRenderPassLayout.get(); }
 
-private:
-    GraphicsStateObject(std::shared_ptr<Device> pDevice, const Desc& desc);
+    void breakStrongReferenceToDevice();
 
-    std::shared_ptr<Device> mpDevice;
+private:
+    GraphicsStateObject(ref<Device> pDevice, const Desc& desc);
+
+    BreakableReference<Device> mpDevice;
     Desc mDesc;
     Slang::ComPtr<gfx::IPipelineState> mGfxPipelineState;
 
@@ -159,8 +158,8 @@ private:
     Slang::ComPtr<gfx::IRenderPassLayout> mpGFXRenderPassLayout;
 
     // Default state objects
-    static BlendState::SharedPtr spDefaultBlendState;               // TODO: REMOVEGLOBAL
-    static RasterizerState::SharedPtr spDefaultRasterizerState;     // TODO: REMOVEGLOBAL
-    static DepthStencilState::SharedPtr spDefaultDepthStencilState; // TODO: REMOVEGLOBAL
+    static ref<BlendState> spDefaultBlendState;               // TODO: REMOVEGLOBAL
+    static ref<RasterizerState> spDefaultRasterizerState;     // TODO: REMOVEGLOBAL
+    static ref<DepthStencilState> spDefaultDepthStencilState; // TODO: REMOVEGLOBAL
 };
 } // namespace Falcor

@@ -46,33 +46,26 @@ namespace Falcor
     class FALCOR_API MERLMixMaterial : public Material
     {
     public:
-        using SharedPtr = std::shared_ptr<MERLMixMaterial>;
+        static ref<MERLMixMaterial> create(ref<Device> pDevice, const std::string& name, const std::vector<std::filesystem::path>& paths) { return make_ref<MERLMixMaterial>(pDevice, name, paths); }
 
-        /** Create a new MERLMix material.
-            \param[in] name The material name.
-            \param[in] paths List of paths of BRDF files to load.
-            \return A new object, or throws an exception if creation failed.
-        */
-        static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& name, const std::vector<std::filesystem::path>& paths);
+        MERLMixMaterial(ref<Device> pDevice, const std::string& name, const std::vector<std::filesystem::path>& paths);
 
         bool renderUI(Gui::Widgets& widget) override;
         Material::UpdateFlags update(MaterialSystem* pOwner) override;
-        bool isEqual(const Material::SharedPtr& pOther) const override;
+        bool isEqual(const ref<Material>& pOther) const override;
         MaterialDataBlob getDataBlob() const override { return prepareDataBlob(mData); }
         Program::ShaderModuleList getShaderModules() const override;
         Program::TypeConformanceList getTypeConformances() const override;
         int getBufferCount() const override { return 1; }
 
-        bool setTexture(const TextureSlot slot, const Texture::SharedPtr& pTexture) override;
-        void setDefaultTextureSampler(const Sampler::SharedPtr& pSampler) override;
-        Sampler::SharedPtr getDefaultTextureSampler() const override { return mpDefaultSampler; }
+        bool setTexture(const TextureSlot slot, const ref<Texture>& pTexture) override;
+        void setDefaultTextureSampler(const ref<Sampler>& pSampler) override;
+        ref<Sampler> getDefaultTextureSampler() const override { return mpDefaultSampler; }
 
-        void setNormalMap(const Texture::SharedPtr& pNormalMap) { setTexture(TextureSlot::Normal, pNormalMap); }
-        Texture::SharedPtr getNormalMap() const { return getTexture(TextureSlot::Normal); }
+        void setNormalMap(const ref<Texture>& pNormalMap) { setTexture(TextureSlot::Normal, pNormalMap); }
+        ref<Texture> getNormalMap() const { return getTexture(TextureSlot::Normal); }
 
     protected:
-        MERLMixMaterial(std::shared_ptr<Device> pDevice, const std::string& name, const std::vector<std::filesystem::path>& paths);
-
         void updateNormalMapType();
         void updateIndexMapType();
 
@@ -92,10 +85,10 @@ namespace Falcor
         std::vector<BRDFDesc> mBRDFs;       ///< List of loaded BRDFs.
 
         MERLMixMaterialData mData;          ///< Material parameters.
-        Buffer::SharedPtr mpBRDFData;       ///< GPU buffer holding all BRDF data as float3 arrays.
-        Texture::SharedPtr mpAlbedoLUT;     ///< Precomputed albedo lookup table.
-        Sampler::SharedPtr mpLUTSampler;    ///< Sampler for accessing the LUT texture.
-        Sampler::SharedPtr mpIndexSampler;  ///< Sampler for accessing the index map.
-        Sampler::SharedPtr mpDefaultSampler;
+        ref<Buffer> mpBRDFData;             ///< GPU buffer holding all BRDF data as float3 arrays.
+        ref<Texture> mpAlbedoLUT;           ///< Precomputed albedo lookup table.
+        ref<Sampler> mpLUTSampler;          ///< Sampler for accessing the LUT texture.
+        ref<Sampler> mpIndexSampler;        ///< Sampler for accessing the index map.
+        ref<Sampler> mpDefaultSampler;
     };
 }

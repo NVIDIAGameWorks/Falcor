@@ -26,19 +26,19 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "fwd.h"
 #include "Handles.h"
 #include "Formats.h"
 #include "Resource.h"
 #include "ResourceViews.h"
 #include "Core/Macros.h"
 #include "Utils/Image/Bitmap.h"
-#include <memory>
 #include <filesystem>
+#include <fstd/span.h>
 
 namespace Falcor
 {
 class Sampler;
-class Device;
 class RenderContext;
 
 /**
@@ -47,9 +47,6 @@ class RenderContext;
 class FALCOR_API Texture : public Resource
 {
 public:
-    using SharedPtr = std::shared_ptr<Texture>;
-    using WeakPtr = std::weak_ptr<Texture>;
-
     ~Texture();
 
     /**
@@ -126,8 +123,8 @@ public:
      * @param[in] bindFlags Texture bind flags. Flags must match the bind flags of the original resource.
      * @return A pointer to a new texture, or throws an exception if creation failed.
      */
-    static SharedPtr createFromResource(
-        Device* pDevice,
+    static ref<Texture> createFromResource(
+        ref<Device> pDevice,
         gfx::ITextureResource* pResource,
         Type type,
         uint32_t width,
@@ -152,8 +149,8 @@ public:
      * @param[in] bindFlags The requested bind flags for the resource.
      * @return A pointer to a new texture, or throws an exception if creation failed.
      */
-    static SharedPtr create1D(
-        Device* pDevice,
+    static ref<Texture> create1D(
+        ref<Device> pDevice,
         uint32_t width,
         ResourceFormat format,
         uint32_t arraySize = 1,
@@ -174,8 +171,8 @@ public:
      * @param[in] bindFlags The requested bind flags for the resource.
      * @return A pointer to a new texture, or throws an exception if creation failed.
      */
-    static SharedPtr create2D(
-        Device* pDevice,
+    static ref<Texture> create2D(
+        ref<Device> pDevice,
         uint32_t width,
         uint32_t height,
         ResourceFormat format,
@@ -198,8 +195,8 @@ public:
      * @param[in] isSparse If true, the texture is created using sparse texture options supported by the API.
      * @return A pointer to a new texture, or throws an exception if creation failed.
      */
-    static SharedPtr create3D(
-        Device* pDevice,
+    static ref<Texture> create3D(
+        ref<Device> pDevice,
         uint32_t width,
         uint32_t height,
         uint32_t depth,
@@ -222,8 +219,8 @@ public:
      * @param[in] bindFlags The requested bind flags for the resource.
      * @return A pointer to a new texture, or throws an exception if creation failed.
      */
-    static SharedPtr createCube(
-        Device* pDevice,
+    static ref<Texture> createCube(
+        ref<Device> pDevice,
         uint32_t width,
         uint32_t height,
         ResourceFormat format,
@@ -243,14 +240,28 @@ public:
      * @param[in] bindFlags The requested bind flags for the resource.
      * @return A pointer to a new texture, or throws an exception if creation failed.
      */
-    static SharedPtr create2DMS(
-        Device* pDevice,
+    static ref<Texture> create2DMS(
+        ref<Device> pDevice,
         uint32_t width,
         uint32_t height,
         ResourceFormat format,
         uint32_t sampleCount,
         uint32_t arraySize = 1,
         BindFlags bindFlags = BindFlags::ShaderResource
+    );
+
+    /**
+     * Create a new texture object with mips specified explicitly from individual files.
+     * @param[in] paths List of full paths of all mips, starting from mip0.
+     * @param[in] loadAsSrgb Load the texture using sRGB format. Only valid for 3 or 4 component textures.
+     * @param[in] bindFlags The bind flags to create the texture with.
+     * @return A new texture, or nullptr if the texture failed to load.
+     */
+    static ref<Texture> createMippedFromFiles(
+        ref<Device> pDevice,
+        fstd::span<const std::filesystem::path> paths,
+        bool loadAsSrgb,
+        Texture::BindFlags bindFlags = BindFlags::ShaderResource
     );
 
     /**
@@ -261,8 +272,8 @@ public:
      * @param[in] bindFlags The bind flags to create the texture with.
      * @return A new texture, or nullptr if the texture failed to load.
      */
-    static SharedPtr createFromFile(
-        Device* pDevice,
+    static ref<Texture> createFromFile(
+        ref<Device> pDevice,
         const std::filesystem::path& path,
         bool generateMipLevels,
         bool loadAsSrgb,
@@ -276,12 +287,12 @@ public:
     /**
      * Get a shader-resource view for the entire resource
      */
-    virtual ShaderResourceView::SharedPtr getSRV() override;
+    virtual ref<ShaderResourceView> getSRV() override;
 
     /**
      * Get an unordered access view for the entire resource
      */
-    virtual UnorderedAccessView::SharedPtr getUAV() override;
+    virtual ref<UnorderedAccessView> getUAV() override;
 
     /**
      * Get a shader-resource view.
@@ -292,7 +303,7 @@ public:
      * @param[in] arraySize The array size. If this is equal to Texture#kMaxPossible, will create a view ranging from firstArraySlice to the
      * texture's array size
      */
-    ShaderResourceView::SharedPtr getSRV(
+    ref<ShaderResourceView> getSRV(
         uint32_t mostDetailedMip,
         uint32_t mipCount = kMaxPossible,
         uint32_t firstArraySlice = 0,
@@ -306,7 +317,7 @@ public:
      * @param[in] arraySize The array size. If this is equal to Texture#kMaxPossible, will create a view ranging from firstArraySlice to the
      * texture's array size
      */
-    RenderTargetView::SharedPtr getRTV(uint32_t mipLevel = 0, uint32_t firstArraySlice = 0, uint32_t arraySize = kMaxPossible);
+    ref<RenderTargetView> getRTV(uint32_t mipLevel = 0, uint32_t firstArraySlice = 0, uint32_t arraySize = kMaxPossible);
 
     /**
      * Get a depth stencil view.
@@ -315,7 +326,7 @@ public:
      * @param[in] arraySize The array size. If this is equal to Texture#kMaxPossible, will create a view ranging from firstArraySlice to the
      * texture's array size
      */
-    DepthStencilView::SharedPtr getDSV(uint32_t mipLevel = 0, uint32_t firstArraySlice = 0, uint32_t arraySize = kMaxPossible);
+    ref<DepthStencilView> getDSV(uint32_t mipLevel = 0, uint32_t firstArraySlice = 0, uint32_t arraySize = kMaxPossible);
 
     /**
      * Get an unordered access view.
@@ -324,7 +335,7 @@ public:
      * @param[in] arraySize The array size. If this is equal to Texture#kMaxPossible, will create a view ranging from firstArraySlice to the
      * texture's array size
      */
-    UnorderedAccessView::SharedPtr getUAV(uint32_t mipLevel, uint32_t firstArraySlice = 0, uint32_t arraySize = kMaxPossible);
+    ref<UnorderedAccessView> getUAV(uint32_t mipLevel, uint32_t firstArraySlice = 0, uint32_t arraySize = kMaxPossible);
 
     /**
      * Capture the texture to an image file.
@@ -333,13 +344,15 @@ public:
      * @param[in] path Path of the file to save.
      * @param[in] fileFormat Destination image file format (e.g., PNG, PFM, etc.)
      * @param[in] exportFlags Save flags, see Bitmap::ExportFlags
+     * @param[in] async Save asynchronously, otherwise the function blocks until the texture is saved.
      */
     void captureToFile(
         uint32_t mipLevel,
         uint32_t arraySlice,
         const std::filesystem::path& path,
         Bitmap::FileFormat format = Bitmap::FileFormat::PngFile,
-        Bitmap::ExportFlags exportFlags = Bitmap::ExportFlags::None
+        Bitmap::ExportFlags exportFlags = Bitmap::ExportFlags::None,
+        bool async = true
     );
 
     /**
@@ -378,7 +391,7 @@ public:
 
 protected:
     Texture(
-        std::shared_ptr<Device> pDevice,
+        ref<Device> pDevice,
         uint32_t width,
         uint32_t height,
         uint32_t depth,

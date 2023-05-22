@@ -30,7 +30,7 @@
 #include "Utils/Logger.h"
 #include "Utils/BufferAllocator.h"
 #include "Utils/Scripting/ScriptBindings.h"
-#include "Scene/SceneBuilderAccess.h"
+#include "GlobalState.h"
 #include "Scene/Material/MERLFile.h"
 #include "Scene/Material/MaterialSystem.h"
 #include "Scene/Material/DiffuseSpecularUtils.h"
@@ -46,12 +46,7 @@ namespace Falcor
         const char kShaderFile[] = "Rendering/Materials/MERLMixMaterial.slang";
     }
 
-    MERLMixMaterial::SharedPtr MERLMixMaterial::create(std::shared_ptr<Device> pDevice, const std::string& name, const std::vector<std::filesystem::path>& paths)
-    {
-        return SharedPtr(new MERLMixMaterial(pDevice, name, paths));
-    }
-
-    MERLMixMaterial::MERLMixMaterial(std::shared_ptr<Device> pDevice, const std::string& name, const std::vector<std::filesystem::path>& paths)
+    MERLMixMaterial::MERLMixMaterial(ref<Device> pDevice, const std::string& name, const std::vector<std::filesystem::path>& paths)
         : Material(pDevice, name, MaterialType::MERLMix)
     {
         checkArgument(!paths.empty(), "MERLMixMaterial: Expected at least one path.");
@@ -106,10 +101,10 @@ namespace Falcor
         }
 
         // Create GPU data buffer.
-        mpBRDFData = buffer.getGPUBuffer(mpDevice.get());
+        mpBRDFData = buffer.getGPUBuffer(mpDevice);
 
         // Create albedo LUT as 2D texture parameterization over (cosTehta, brdfIndex).
-        mpAlbedoLUT = Texture::create2D(mpDevice.get(), MERLMixMaterialData::kAlbedoLUTSize, mData.brdfCount, MERLFile::kAlbedoLUTFormat, 1, 1, albedoLut.data(), ResourceBindFlags::ShaderResource);
+        mpAlbedoLUT = Texture::create2D(mpDevice, MERLMixMaterialData::kAlbedoLUTSize, mData.brdfCount, MERLFile::kAlbedoLUTFormat, 1, 1, albedoLut.data(), ResourceBindFlags::ShaderResource);
 
         // Create sampler for albedo LUT.
         {
@@ -117,7 +112,7 @@ namespace Falcor
             desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Point, Sampler::Filter::Point);
             desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
             desc.setMaxAnisotropy(1);
-            mpLUTSampler = Sampler::create(mpDevice.get(), desc);
+            mpLUTSampler = Sampler::create(mpDevice, desc);
         }
 
         // Create sampler for index map. Using point sampling as indices are not interpolatable.
@@ -126,7 +121,7 @@ namespace Falcor
             desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
             desc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap);
             desc.setMaxAnisotropy(1);
-            mpIndexSampler = Sampler::create(mpDevice.get(), desc);
+            mpIndexSampler = Sampler::create(mpDevice, desc);
         }
 
         updateNormalMapType();
@@ -159,7 +154,7 @@ namespace Falcor
         {
             widget.text("Normal map: " + pTexture->getSourcePath().string());
             widget.text("Texture info: " + std::to_string(pTexture->getWidth()) + "x" + std::to_string(pTexture->getHeight()) + " (" + to_string(pTexture->getFormat()) + ")");
-            widget.image("Normal map", pTexture, float2(100.f));
+            widget.image("Normal map", pTexture.get(), float2(100.f));
             if (widget.button("Remove texture##NormalMap")) setNormalMap(nullptr);
         }
         else
@@ -219,9 +214,9 @@ namespace Falcor
         return flags;
     }
 
-    bool MERLMixMaterial::isEqual(const Material::SharedPtr& pOther) const
+    bool MERLMixMaterial::isEqual(const ref<Material>& pOther) const
     {
-        auto other = std::dynamic_pointer_cast<MERLMixMaterial>(pOther);
+        auto other = dynamic_ref_cast<MERLMixMaterial>(pOther);
         if (!other) return false;
 
         if (!isBaseEqual(*other)) return false;
@@ -250,7 +245,7 @@ namespace Falcor
         return { {{"MERLMixMaterial", "IMaterial"}, (uint32_t)MaterialType::MERLMix} };
     }
 
-    bool MERLMixMaterial::setTexture(const TextureSlot slot, const Texture::SharedPtr& pTexture)
+    bool MERLMixMaterial::setTexture(const TextureSlot slot, const ref<Texture>& pTexture)
     {
         if (!Material::setTexture(slot, pTexture)) return false;
 
@@ -270,7 +265,7 @@ namespace Falcor
         return true;
     }
 
-    void MERLMixMaterial::setDefaultTextureSampler(const Sampler::SharedPtr& pSampler)
+    void MERLMixMaterial::setDefaultTextureSampler(const ref<Sampler>& pSampler)
     {
         if (pSampler != mpDefaultSampler)
         {
@@ -319,10 +314,10 @@ namespace Falcor
 
         FALCOR_SCRIPT_BINDING_DEPENDENCY(Material)
 
-        pybind11::class_<MERLMixMaterial, Material, MERLMixMaterial::SharedPtr> material(m, "MERLMixMaterial");
+        pybind11::class_<MERLMixMaterial, Material, ref<MERLMixMaterial>> material(m, "MERLMixMaterial");
         auto create = [](const std::string& name, const std::vector<std::filesystem::path>& paths)
         {
-            return MERLMixMaterial::create(getActivePythonSceneBuilder().getDevice(), name, paths);
+            return MERLMixMaterial::create(accessActivePythonSceneBuilder().getDevice(), name, paths);
         };
         material.def(pybind11::init(create), "name"_a, "paths"_a); // PYTHONDEPRECATED
     }

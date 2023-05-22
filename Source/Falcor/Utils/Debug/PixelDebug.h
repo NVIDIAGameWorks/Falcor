@@ -38,85 +38,83 @@
 
 namespace Falcor
 {
-    class RenderContext;
+class RenderContext;
 
-    /** Helper class for shader debugging using print() and assert().
+/**
+ * Helper class for shader debugging using print() and assert().
+ *
+ * Host-side integration:
+ * - Create PixelDebug object
+ * - Call beginFrame()/endFrame() before and after executing programs with debugging.
+ * - Call prepareProgram() before launching a program to use debugging.
+ * - Call onMouseEvent() and renderUI() from the respective callbacks in the render pass.
+ *
+ * Runtime usage:
+ * - Import PixelDebug.slang in your shader.
+ * - Use printSetPixel() in the shader to set the current pixel.
+ * - Use print() in the shader to output values for the selected pixel.
+ * All basic types (e.g. bool, int3, float2, uint4) are supported.
+ * - Click the left mouse button (or edit the coords) to select a pixel.
+ * - Use assert() in the shader to test a condition for being true.
+ * All pixels are tested, and failed asserts logged. The coordinates
+ * of asserts that trigger can be used with print() to debug further.
+ *
+ * The shader code is disabled (using macros) when debugging is off.
+ * When enabled, async readback is used but expect a minor perf loss.
+ */
+class FALCOR_API PixelDebug
+{
+public:
+    /**
+     * Constructor. Throws an exception on error.
+     * @param[in] pDevice GPU device.
+     * @param[in] logSize Number of shader print() and assert() statements per frame.
+     */
+    PixelDebug(ref<Device> pDevice, uint32_t logSize = 100);
 
-        Host-side integration:
-         - Create PixelDebug object
-         - Call beginFrame()/endFrame() before and after executing programs with debugging.
-         - Call prepareProgram() before launching a program to use debugging.
-         - Call onMouseEvent() and renderUI() from the respective callbacks in the render pass.
+    void beginFrame(RenderContext* pRenderContext, const uint2& frameDim);
+    void endFrame(RenderContext* pRenderContext);
 
-        Runtime usage:
-         - Import PixelDebug.slang in your shader.
-         - Use printSetPixel() in the shader to set the current pixel.
-         - Use print() in the shader to output values for the selected pixel.
-           All basic types (e.g. bool, int3, float2, uint4) are supported.
-         - Click the left mouse button (or edit the coords) to select a pixel.
-         - Use assert() in the shader to test a condition for being true.
-           All pixels are tested, and failed asserts logged. The coordinates
-           of asserts that trigger can be used with print() to debug further.
+    /**
+     * Perform program specialization and bind resources.
+     * This call doesn't change any resource declarations in the program.
+     */
+    void prepareProgram(const ref<Program>& pProgram, const ShaderVar& var);
 
-        The shader code is disabled (using macros) when debugging is off.
-        When enabled, async readback is used but expect a minor perf loss.
-    */
-    class FALCOR_API PixelDebug
-    {
-    public:
-        using SharedPtr = std::shared_ptr<PixelDebug>;
-        virtual ~PixelDebug() = default;
+    void renderUI(Gui::Widgets& widget) { renderUI(&widget); }
+    void renderUI(Gui::Widgets* widget = nullptr);
+    bool onMouseEvent(const MouseEvent& mouseEvent);
 
-        /** Create debug object.
-            \param[in] pDevice GPU device.
-            \param[in] logSize Number of shader print() and assert() statements per frame.
-            \return New object, or throws an exception on error.
-        */
-        static SharedPtr create(std::shared_ptr<Device> pDevice, uint32_t logSize = 100);
+    void enable() { mEnabled = true; }
 
-        void beginFrame(RenderContext* pRenderContext, const uint2& frameDim);
-        void endFrame(RenderContext* pRenderContext);
+protected:
+    bool copyDataToCPU();
 
-        /** Perform program specialization and bind resources.
-            This call doesn't change any resource declarations in the program.
-        */
-        void prepareProgram(const Program::SharedPtr& pProgram, const ShaderVar& var);
+    // Internal state
+    ref<Device> mpDevice;
+    ref<Program> mpReflectProgram; ///< Program for reflection of types.
+    ref<Buffer> mpPixelLog;        ///< Pixel log on the GPU with UAV counter.
+    ref<Buffer> mpAssertLog;       ///< Assert log on the GPU with UAV counter.
+    ref<Buffer> mpCounterBuffer;   ///< Staging buffer for async readback of UAV counters.
+    ref<Buffer> mpDataBuffer;      ///< Staging buffer for async readback of logged data.
+    ref<GpuFence> mpFence;         ///< GPU fence for sychronizing readback.
 
-        void renderUI(Gui::Widgets& widget) { renderUI(&widget); }
-        void renderUI(Gui::Widgets* widget = nullptr);
-        bool onMouseEvent(const MouseEvent& mouseEvent);
+    // Configuration
+    bool mEnabled = false;         ///< Enable debugging features.
+    uint2 mSelectedPixel = {0, 0}; ///< Currently selected pixel.
 
-        void enable() { mEnabled = true; }
+    // Runtime data
+    uint2 mFrameDim = {0, 0};
 
-    protected:
-        PixelDebug(std::shared_ptr<Device> pDevice, uint32_t logSize) : mpDevice(std::move(pDevice)), mLogSize(logSize) {}
-        bool copyDataToCPU();
+    bool mRunning = false;        ///< True when data collection is running (inbetween begin()/end() calls).
+    bool mWaitingForData = false; ///< True if we are waiting for data to become available on the GPU.
+    bool mDataValid = false;      ///< True if data has been read back and is valid.
 
-        // Internal state
-        std::shared_ptr<Device>     mpDevice;
-        Program::SharedPtr          mpReflectProgram;               ///< Program for reflection of types.
-        Buffer::SharedPtr           mpPixelLog;                     ///< Pixel log on the GPU with UAV counter.
-        Buffer::SharedPtr           mpAssertLog;                    ///< Assert log on the GPU with UAV counter.
-        Buffer::SharedPtr           mpCounterBuffer;                ///< Staging buffer for async readback of UAV counters.
-        Buffer::SharedPtr           mpDataBuffer;                   ///< Staging buffer for async readback of logged data.
-        GpuFence::SharedPtr         mpFence;                        ///< GPU fence for sychronizing readback.
+    std::unordered_map<uint32_t, std::string> mHashToString; ///< Map of string hashes to string values.
 
-        // Configuration
-        bool                        mEnabled = false;               ///< Enable debugging features.
-        uint2                       mSelectedPixel = { 0, 0 };      ///< Currently selected pixel.
+    std::vector<PixelLogValue> mPixelLogData;   ///< Pixel log data read back from the GPU.
+    std::vector<AssertLogValue> mAssertLogData; ///< Assert log data read back from the GPU.
 
-        // Runtime data
-        uint2                       mFrameDim = { 0, 0 };
-
-        bool                        mRunning = false;               ///< True when data collection is running (inbetween begin()/end() calls).
-        bool                        mWaitingForData = false;        ///< True if we are waiting for data to become available on the GPU.
-        bool                        mDataValid = false;             ///< True if data has been read back and is valid.
-
-        std::unordered_map<uint32_t, std::string> mHashToString;    ///< Map of string hashes to string values.
-
-        std::vector<PixelLogValue>  mPixelLogData;                  ///< Pixel log data read back from the GPU.
-        std::vector<AssertLogValue> mAssertLogData;                 ///< Assert log data read back from the GPU.
-
-        const uint32_t              mLogSize = 0;                   ///< Size of the log buffers in elements.
-    };
-}
+    const uint32_t mLogSize = 0; ///< Size of the log buffers in elements.
+};
+} // namespace Falcor

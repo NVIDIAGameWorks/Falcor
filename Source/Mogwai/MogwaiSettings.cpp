@@ -91,7 +91,7 @@ namespace Mogwai
             {
                 for (uint32_t i = 0; i < count; i++)
                 {
-                    if (screenDims == resolutions[i]) return i;
+                    if (all(screenDims == resolutions[i])) return i;
                 }
                 return kCustomIndex;
             };

@@ -12,24 +12,25 @@ target_sources(FalcorTest PRIVATE
     Tests/Core/ConstantBufferTests.cs.slang
     Tests/Core/DDSReadTests.cpp
     Tests/Core/DDSReadTests.cs.slang
-    Tests/Core/ResourceAliasing.cpp
-    Tests/Core/ResourceAliasing.cs.slang
     Tests/Core/LargeBuffer.cpp
     Tests/Core/LargeBuffer.cs.slang
+    Tests/Core/ObjectTests.cpp
     Tests/Core/ParamBlockCB.cpp
     Tests/Core/ParamBlockCB.cs.slang
     Tests/Core/ParamBlockDefinition.slang
     Tests/Core/ParamBlockReflection.cs.slang
     Tests/Core/PluginTests.cpp
+    Tests/Core/ResourceAliasing.cpp
+    Tests/Core/ResourceAliasing.cs.slang
     Tests/Core/RootBufferParamBlockTests.cpp
     Tests/Core/RootBufferParamBlockTests.cs.slang
     Tests/Core/RootBufferStructTests.cpp
     Tests/Core/RootBufferStructTests.cs.slang
     Tests/Core/RootBufferTests.cpp
     Tests/Core/RootBufferTests.cs.slang
+    Tests/Core/TextureLoadTests.cs.slang
     Tests/Core/TextureTests.cpp
     Tests/Core/TextureTests.cs.slang
-    Tests/Core/TextureLoadTests.cs.slang
 
     Tests/DebugPasses/InvalidPixelDetectionTests.cpp
 
@@ -116,6 +117,7 @@ target_sources(FalcorTest PRIVATE
     Tests/Utils/Debug/WarpProfilerTests.cs.slang
 
     Tests/Utils/Image/BitmapTests.cpp
+    Tests/Utils/Image/TextureManagerTests.cpp
 
     Tests/Utils/AABBTests.cpp
     Tests/Utils/AABBTests.cs.slang
@@ -144,6 +146,7 @@ target_sources(FalcorTest PRIVATE
     Tests/Utils/ParallelReductionTests.cpp
     Tests/Utils/PathResolvingTests.cpp
     Tests/Utils/PrefixSumTests.cpp
+    Tests/Utils/QuaternionTests.cpp
     Tests/Utils/RectangleTests.cpp
     Tests/Utils/SettingsTests.cpp
     Tests/Utils/StringUtilsTests.cpp

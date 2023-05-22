@@ -26,7 +26,6 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "OptixDenoiser.h"
-#include "CudaUtils.h"
 
 namespace
 {
@@ -52,7 +51,7 @@ namespace
 
 static void regOptixDenoiser(pybind11::module& m)
 {
-    pybind11::class_<OptixDenoiser_, RenderPass, OptixDenoiser_::SharedPtr> pass(m, "OptixDenoiser");
+    pybind11::class_<OptixDenoiser_, RenderPass, ref<OptixDenoiser_>> pass(m, "OptixDenoiser");
     pass.def_property(kEnabled, &OptixDenoiser_::getEnabled, &OptixDenoiser_::setEnabled);
 
     pybind11::enum_<OptixDenoiserModelKind> model(m, "OptixDenoiserModel");
@@ -68,8 +67,8 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
     ScriptBindings::registerBinding(regOptixDenoiser);
 }
 
-OptixDenoiser_::OptixDenoiser_(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-    : RenderPass(std::move(pDevice))
+OptixDenoiser_::OptixDenoiser_(ref<Device> pDevice, const Dictionary& dict)
+    : RenderPass(pDevice)
 {
     for (const auto& [key, value] : dict)
     {
@@ -88,12 +87,7 @@ OptixDenoiser_::OptixDenoiser_(std::shared_ptr<Device> pDevice, const Dictionary
     mpConvertNormalsToBuf = ComputePass::create(mpDevice, kConvertNormalsToBufFile, "main");
     mpConvertMotionVectors = ComputePass::create(mpDevice, kConvertMotionVecFile, "main");
     mpConvertBufToTex = FullScreenPass::create(mpDevice, kConvertBufToTexFile);
-    mpFbo = Fbo::create(mpDevice.get());
-}
-
-OptixDenoiser_::SharedPtr OptixDenoiser_::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-{
-    return SharedPtr(new OptixDenoiser_(std::move(pDevice), dict));
+    mpFbo = Fbo::create(mpDevice);
 }
 
 Dictionary OptixDenoiser_::getScriptingDictionary()
@@ -120,7 +114,7 @@ RenderPassReflection OptixDenoiser_::reflect(const CompileData& compileData)
     return r;
 }
 
-void OptixDenoiser_::setScene(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene)
+void OptixDenoiser_::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
 {
     mpScene = pScene;
 }
@@ -170,7 +164,7 @@ void OptixDenoiser_::compile(RenderContext* pRenderContext, const CompileData& c
     mDenoiser.tileHeight = newSize.y;
 
     // Reallocate / reszize our staging buffers for transferring data to and from OptiX / CUDA / DXR
-    if (newSize != mBufferSize && newSize.x > 0 && newSize.y > 0)
+    if (any(newSize != mBufferSize) && all(newSize > 0u))
     {
         mBufferSize = newSize;
         reallocateStagingBuffers(pRenderContext);
@@ -249,7 +243,7 @@ void OptixDenoiser_::allocateStagingBuffer(RenderContext* pRenderContext, Intero
     if (interop.devicePtr) freeSharedDevicePtr((void*)interop.devicePtr);
 
     // Create a new DX <-> CUDA shared buffer using the Falcor API to create, then find its CUDA pointer.
-    interop.buffer = Buffer::createTyped(mpDevice.get(), falcorFormat,
+    interop.buffer = Buffer::createTyped(mpDevice, falcorFormat,
         mBufferSize.x * mBufferSize.y,
         Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess | Resource::BindFlags::RenderTarget | Resource::BindFlags::Shared);
     interop.devicePtr = (CUdeviceptr)exportBufferToCudaDevice(interop.buffer);
@@ -301,7 +295,7 @@ void OptixDenoiser_::execute(RenderContext* pRenderContext, const RenderData& re
         }
         if (mHasNormalInput && mDenoiser.options.guideNormal)
         {
-            convertNormalsToBuf(pRenderContext, renderData.getTexture(kNormalInput), mDenoiser.interop.normal.buffer, mBufferSize, rmcv::transpose(rmcv::inverse(mpScene->getCamera()->getViewMatrix())));
+            convertNormalsToBuf(pRenderContext, renderData.getTexture(kNormalInput), mDenoiser.interop.normal.buffer, mBufferSize, transpose(inverse(mpScene->getCamera()->getViewMatrix())));
         }
         if (mHasMotionInput && mDenoiser.modelKind == OptixDenoiserModelKind::OPTIX_DENOISER_MODEL_KIND_TEMPORAL)
         {
@@ -429,7 +423,7 @@ void OptixDenoiser_::renderUI(Gui::Widgets& widget)
 
 // Basically a wrapper to handle null Falcor Buffers gracefully, which couldn't
 // happen in getShareDevicePtr(), due to the bootstrapping that avoids namespace conflicts
-void * OptixDenoiser_::exportBufferToCudaDevice(Buffer::SharedPtr &buf)
+void * OptixDenoiser_::exportBufferToCudaDevice(ref<Buffer> &buf)
 {
     if (buf == nullptr) return nullptr;
     return getSharedDevicePtr(buf->getSharedApiHandle(), (uint32_t)buf->getSize());
@@ -474,40 +468,40 @@ void OptixDenoiser_::setupDenoiser()
         mDenoiser.scratchBuffer.getDevicePtr(), mDenoiser.scratchBuffer.getSize());
 }
 
-void OptixDenoiser_::convertMotionVectors(RenderContext* pRenderContext, const Texture::SharedPtr& tex, const Buffer::SharedPtr& buf, const uint2& size)
+void OptixDenoiser_::convertMotionVectors(RenderContext* pRenderContext, const ref<Texture>& tex, const ref<Buffer>& buf, const uint2& size)
 {
-    auto vars = mpConvertMotionVectors->getVars();
-    vars["GlobalCB"]["gStride"] = size.x;
-    vars["GlobalCB"]["gSize"] = size;
-    vars["gInTex"] = tex;
-    vars["gOutBuf"] = buf;
+    auto var = mpConvertMotionVectors->getRootVar();
+    var["GlobalCB"]["gStride"] = size.x;
+    var["GlobalCB"]["gSize"] = size;
+    var["gInTex"] = tex;
+    var["gOutBuf"] = buf;
     mpConvertMotionVectors->execute(pRenderContext, size.x, size.y);
 }
 
-void OptixDenoiser_::convertTexToBuf(RenderContext* pRenderContext, const Texture::SharedPtr& tex, const Buffer::SharedPtr& buf, const uint2& size)
+void OptixDenoiser_::convertTexToBuf(RenderContext* pRenderContext, const ref<Texture>& tex, const ref<Buffer>& buf, const uint2& size)
 {
-    auto vars = mpConvertTexToBuf->getVars();
-    vars["GlobalCB"]["gStride"] = size.x;
-    vars["gInTex"] = tex;
-    vars["gOutBuf"] = buf;
+    auto var = mpConvertTexToBuf->getRootVar();
+    var["GlobalCB"]["gStride"] = size.x;
+    var["gInTex"] = tex;
+    var["gOutBuf"] = buf;
     mpConvertTexToBuf->execute(pRenderContext, size.x, size.y);
 }
 
-void OptixDenoiser_::convertNormalsToBuf(RenderContext* pRenderContext, const Texture::SharedPtr& tex, const Buffer::SharedPtr& buf, const uint2& size, rmcv::mat4 viewIT)
+void OptixDenoiser_::convertNormalsToBuf(RenderContext* pRenderContext, const ref<Texture>& tex, const ref<Buffer>& buf, const uint2& size, float4x4 viewIT)
 {
-    auto vars = mpConvertNormalsToBuf->getVars();
-    vars["GlobalCB"]["gStride"] = size.x;
-    vars["GlobalCB"]["gViewIT"] = viewIT;
-    vars["gInTex"] = tex;
-    vars["gOutBuf"] = buf;
+    auto var = mpConvertNormalsToBuf->getRootVar();
+    var["GlobalCB"]["gStride"] = size.x;
+    var["GlobalCB"]["gViewIT"] = viewIT;
+    var["gInTex"] = tex;
+    var["gOutBuf"] = buf;
     mpConvertTexToBuf->execute(pRenderContext, size.x, size.y);
 }
 
-void OptixDenoiser_::convertBufToTex(RenderContext* pRenderContext, const Buffer::SharedPtr& buf, const Texture::SharedPtr& tex, const uint2& size)
+void OptixDenoiser_::convertBufToTex(RenderContext* pRenderContext, const ref<Buffer>& buf, const ref<Texture>& tex, const uint2& size)
 {
-    auto vars = mpConvertBufToTex->getVars();
-    vars["GlobalCB"]["gStride"] = size.x;
-    vars["gInBuf"] = buf;
+    auto var = mpConvertBufToTex->getRootVar();
+    var["GlobalCB"]["gStride"] = size.x;
+    var["gInBuf"] = buf;
     mpFbo->attachColorTarget(tex, 0);
     mpConvertBufToTex->execute(pRenderContext, mpFbo);
 }

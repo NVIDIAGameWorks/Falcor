@@ -27,61 +27,73 @@
  **************************************************************************/
 #pragma once
 #include "Core/Macros.h"
+#include "Core/API/fwd.h"
+#include "Core/API/Buffer.h"
 #include "Core/API/FBO.h"
+#include "Core/Pass/RasterPass.h"
 #include "Utils/Math/Vector.h"
 
 namespace Falcor
 {
-    class RenderContext;
+class Font;
 
-    /** Class that renders text into the screen.
-    */
-    class FALCOR_API TextRenderer
+/**
+ * Class that renders text into the screen.
+ */
+class FALCOR_API TextRenderer
+{
+public:
+    enum class Flags
     {
-    public:
-        enum class Flags
-        {
-            None     = 0x0,
-            Shadowed = 0x1
-        };
-
-        /** Initialize the text-renderer
-            This class is not thread-safe!
-        */
-        static void start(Device* pDevice);
-
-        /** End batching. This will cause the render queue to flush and display the message to the screen.
-        */
-        static void shutdown();
-
-        /** Render text
-            \param[in] pRenderContext A render-context which will be used to dispatch the draw
-            \param[in] text The text to draw. It can include newlines, tabs, carriage returns and regular ASCII characters.
-            \param[in] pDstFbo The target FBO
-            \param[in] pos Text position
-        */
-        static void render(RenderContext* pRenderContext, const std::string& text, const Fbo::SharedPtr& pDstFbo, float2 pos);
-
-        /** Returns the color of the text being rendered
-            \return current color The text color
-        */
-        static const float3& getColor();
-
-        /** Set the color of the text being rendered
-            \param[in] color The text color
-        */
-        static void setColor(const float3& color);
-
-        /** Get the active flags
-        */
-        static Flags getFlags();
-
-        /** Set the flags
-        */
-        static void setFlags(Flags f);
-    private:
-        TextRenderer() = default;
+        None = 0x0,
+        Shadowed = 0x1
     };
 
-    FALCOR_ENUM_CLASS_OPERATORS(TextRenderer::Flags);
-}
+    TextRenderer(ref<Device> pDevice);
+    ~TextRenderer();
+
+    /**
+     * Render text
+     * @param[in] pRenderContext A render-context which will be used to dispatch the draw
+     * @param[in] text The text to draw. It can include newlines, tabs, carriage returns and regular ASCII characters.
+     * @param[in] pDstFbo The target FBO
+     * @param[in] pos Text position
+     */
+    void render(RenderContext* pRenderContext, const std::string& text, const ref<Fbo>& pDstFbo, float2 pos);
+
+    /**
+     * Returns the color of the text being rendered
+     * @return current color The text color
+     */
+    const float3& getColor() const { return mColor; }
+
+    /**
+     * Set the color of the text being rendered
+     * @param[in] color The text color
+     */
+    void setColor(const float3& color) { mColor = color; }
+
+    /**
+     * Get the active flags
+     */
+    Flags getFlags() const { return mFlags; }
+
+    /**
+     * Set the flags
+     */
+    void setFlags(Flags flags) { mFlags = flags; }
+
+private:
+    void setCbData(const ref<Fbo>& pDstFbo);
+    void renderText(RenderContext* pRenderContext, const std::string& text, const ref<Fbo>& pDstFbo, float2 pos);
+
+    ref<Device> mpDevice;
+    Flags mFlags = Flags::Shadowed;
+    float3 mColor = float3(1.f);
+    ref<Buffer> mpVb;
+    ref<RasterPass> mpPass;
+    std::unique_ptr<Font> mpFont;
+};
+
+FALCOR_ENUM_CLASS_OPERATORS(TextRenderer::Flags);
+} // namespace Falcor

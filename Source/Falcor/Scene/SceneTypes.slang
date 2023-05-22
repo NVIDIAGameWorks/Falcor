@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -228,6 +228,8 @@ struct PackedStaticVertexData
         position = v.position;
         texCrd = v.texCrd;
 
+        uint3 n = f32tof16(v.normal);
+
         float packedTangentSignCurveRadius = v.tangent.w;
 
         if (v.curveRadius > 0.f)
@@ -236,10 +238,11 @@ struct PackedStaticVertexData
             FALCOR_ASSERT(v.tangent.w != 0.f);
             packedTangentSignCurveRadius *= v.curveRadius;
         }
+        uint t_w = f32tof16(packedTangentSignCurveRadius);
 
-        packedNormalTangentCurveRadius.x = asfloat(glm::packHalf2x16({ v.normal.x, v.normal.y }));
-        packedNormalTangentCurveRadius.y = asfloat(glm::packHalf2x16({ v.normal.z, packedTangentSignCurveRadius }));
-        packedNormalTangentCurveRadius.z = asfloat(encodeNormal2x16(v.tangent.xyz));
+        packedNormalTangentCurveRadius.x = asfloat((n.y << 16) | n.x);
+        packedNormalTangentCurveRadius.y = asfloat((t_w << 16) | n.z);
+        packedNormalTangentCurveRadius.z = asfloat(encodeNormal2x16(v.tangent.xyz()));
     }
 
 #else // !HOST_CODE
@@ -272,11 +275,11 @@ struct PackedStaticVertexData
         v.normal.z = f16tof32(asuint(packedNormalTangentCurveRadius.y) & 0xffff);
         v.normal = normalize(v.normal);
 
-        v.tangent.xyz = decodeNormal2x16(asuint(packedNormalTangentCurveRadius.z));
+        float3 tangent = decodeNormal2x16(asuint(packedNormalTangentCurveRadius.z));
         float packedTangentSignCurveRadius = f16tof32(asuint(packedNormalTangentCurveRadius.y) >> 16);
-        v.tangent.w = sign(packedTangentSignCurveRadius);
+        v.tangent = float4(tangent, sign(packedTangentSignCurveRadius));
 
-        v.curveRadius = abs(packedTangentSignCurveRadius);
+        v.curveRadius = STD_NAMESPACE abs(packedTangentSignCurveRadius);
 
         return v;
     }

@@ -34,7 +34,7 @@
 
 namespace Falcor
 {
-GpuFence::GpuFence(std::shared_ptr<Device> pDevice, bool shared) : mpDevice(std::move(pDevice)), mCpuValue(1)
+GpuFence::GpuFence(ref<Device> pDevice, bool shared) : mpDevice(pDevice), mCpuValue(1)
 {
     FALCOR_ASSERT(mpDevice);
     gfx::IFence::Desc fenceDesc = {};
@@ -44,9 +44,9 @@ GpuFence::GpuFence(std::shared_ptr<Device> pDevice, bool shared) : mpDevice(std:
 
 GpuFence::~GpuFence() = default;
 
-GpuFence::SharedPtr GpuFence::create(Device* pDevice, bool shared)
+ref<GpuFence> GpuFence::create(ref<Device> pDevice, bool shared)
 {
-    return SharedPtr(new GpuFence(pDevice->shared_from_this(), shared));
+    return ref<GpuFence>(new GpuFence(pDevice, shared));
 }
 
 uint64_t GpuFence::gpuSignal(CommandQueueHandle pQueue)
@@ -107,4 +107,10 @@ NativeHandle GpuFence::getNativeHandle() const
 #endif
     return {};
 }
+
+void GpuFence::breakStrongReferenceToDevice()
+{
+    mpDevice.breakStrongReference();
+}
+
 } // namespace Falcor

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,15 +30,16 @@ RWTexture2D<TEXTURE_FORMAT> gDst;
 
 cbuffer CB
 {
-    uint2   viewDim;
-    uint    channelIndex;
+    uint2 viewDim;
+    uint channelIndex;
 };
 
 [numthreads(16, 16, 1)]
-void main(uint3 dispatchThreadId : SV_DispatchThreadID)
+void main(uint3 dispatchThreadId: SV_DispatchThreadID)
 {
     uint2 coord = dispatchThreadId.xy;
-    if (any(coord >= viewDim)) return;
+    if (any(coord >= viewDim))
+        return;
 
     // Copy single color channel from source to all channels of destination.
     gDst[coord] = gSrc[coord][channelIndex];

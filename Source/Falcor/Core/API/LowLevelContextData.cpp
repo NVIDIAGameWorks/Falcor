@@ -36,7 +36,8 @@ namespace Falcor
 {
 LowLevelContextData::LowLevelContextData(Device* pDevice, gfx::ICommandQueue* pQueue) : mpDevice(pDevice), mpGfxCommandQueue(pQueue)
 {
-    mpFence = GpuFence::create(mpDevice);
+    mpFence = GpuFence::create(ref<Device>(mpDevice));
+    mpFence->breakStrongReferenceToDevice();
     FALCOR_ASSERT(mpFence);
 
     openCommandBuffer();

@@ -37,17 +37,17 @@ class SplitScreenPass : public ComparisonPass
 public:
     FALCOR_PLUGIN_CLASS(SplitScreenPass, "SplitScreenPass", "Allows the user to split the screen between two inputs.");
 
-    using SharedPtr = std::shared_ptr<SplitScreenPass>;
+    static ref<SplitScreenPass> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<SplitScreenPass>(pDevice, dict); }
 
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
+    SplitScreenPass(ref<Device> pDevice, const Dictionary& dict);
+
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual bool onMouseEvent(const MouseEvent& mouseEvent) override;
     virtual void renderUI(Gui::Widgets& widget) override;
 
 private:
-    SplitScreenPass(std::shared_ptr<Device> pDevice);
     virtual void createProgram() override;
-    Texture::SharedPtr mpArrowTex; // A texture storing a 16x16 grayscale arrow
+    ref<Texture> mpArrowTex; // A texture storing a 16x16 grayscale arrow
 
     // Mouse parameters
     bool mMouseOverDivider = false; ///< Is the mouse over the divider?

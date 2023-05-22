@@ -40,15 +40,15 @@ GpuMemoryHeap::~GpuMemoryHeap()
     mDeferredReleases = decltype(mDeferredReleases)();
 }
 
-GpuMemoryHeap::GpuMemoryHeap(std::shared_ptr<Device> pDevice, Type type, size_t pageSize, const GpuFence::SharedPtr& pFence)
-    : mpDevice(std::move(pDevice)), mType(type), mpFence(pFence), mPageSize(pageSize)
+GpuMemoryHeap::GpuMemoryHeap(ref<Device> pDevice, Type type, size_t pageSize, ref<GpuFence> pFence)
+    : mpDevice(pDevice), mType(type), mpFence(pFence), mPageSize(pageSize)
 {
     allocateNewPage();
 }
 
-GpuMemoryHeap::SharedPtr GpuMemoryHeap::create(Device* pDevice, Type type, size_t pageSize, const GpuFence::SharedPtr& pFence)
+ref<GpuMemoryHeap> GpuMemoryHeap::create(ref<Device> pDevice, Type type, size_t pageSize, ref<GpuFence> pFence)
 {
-    return SharedPtr(new GpuMemoryHeap(pDevice->shared_from_this(), type, pageSize, pFence));
+    return ref<GpuMemoryHeap>(new GpuMemoryHeap(pDevice, type, pageSize, pFence));
 }
 
 void GpuMemoryHeap::allocateNewPage()
@@ -144,7 +144,7 @@ void GpuMemoryHeap::executeDeferredReleases()
 }
 
 Slang::ComPtr<gfx::IBufferResource> createBuffer(
-    Device* pDevice,
+    ref<Device> pDevice,
     Buffer::State initState,
     size_t size,
     Buffer::BindFlags bindFlags,
@@ -189,10 +189,16 @@ Buffer::State getInitState(GpuMemoryHeap::Type t)
 void GpuMemoryHeap::initBasePageData(BaseData& data, size_t size)
 {
     data.gfxBufferResource = createBuffer(
-        mpDevice.get(), getInitState(mType), size, Buffer::BindFlags::Vertex | Buffer::BindFlags::Index | Buffer::BindFlags::Constant,
+        mpDevice, getInitState(mType), size, Buffer::BindFlags::Vertex | Buffer::BindFlags::Index | Buffer::BindFlags::Constant,
         getCpuAccess(mType)
     );
     data.offset = 0;
     FALCOR_GFX_CALL(data.gfxBufferResource->map(nullptr, (void**)&data.pData));
 }
+
+void GpuMemoryHeap::breakStrongReferenceToDevice()
+{
+    mpDevice.breakStrongReference();
+}
+
 } // namespace Falcor

@@ -61,7 +61,7 @@ std::uniform_int_distribution ui;
 
 GPU_TEST(Inheritance_ManualCreate)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     Program::DefineList defines;
     defines.add("NUM_TESTS", std::to_string(kNumTests));
@@ -113,7 +113,7 @@ GPU_TEST(Inheritance_ManualCreate)
 
 GPU_TEST(Inheritance_ConformanceCreate)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     Program::DefineList defines;
     defines.add("NUM_TESTS", std::to_string(kNumTests));

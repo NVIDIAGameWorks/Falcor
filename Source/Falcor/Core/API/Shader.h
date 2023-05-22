@@ -26,9 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "GFXAPI.h"
+#include "Handles.h"
 #include "Core/Macros.h"
 #include "Core/Assert.h"
+#include "Core/Object.h"
 
 #include <initializer_list>
 #include <memory>
@@ -40,140 +41,6 @@ struct ISlangBlob;
 
 namespace Falcor
 {
-/**
- * Minimal smart pointer for working with COM objects.
- */
-template<typename T>
-struct FALCOR_API ComPtr
-{
-public:
-    /// Type of the smart pointer itself
-    typedef ComPtr ThisType;
-
-    /// Initialize to a null pointer.
-    ComPtr() : mpObject(nullptr) {}
-    ComPtr(std::nullptr_t) : mpObject(nullptr) {}
-
-    /// Release reference to the pointed-to object.
-    ~ComPtr()
-    {
-        if (mpObject)
-            (mpObject)->Release();
-    }
-
-    /// Add a new reference to an existing object.
-    explicit ComPtr(T* pObject) : mpObject(pObject)
-    {
-        if (pObject)
-            (pObject)->AddRef();
-    }
-
-    /// Add a new reference to an existing object.
-    ComPtr(const ThisType& rhs) : mpObject(rhs.mpObject)
-    {
-        if (mpObject)
-            (mpObject)->AddRef();
-    }
-
-    /// Add a new reference to an existing object
-    T* operator=(T* in)
-    {
-        if (in)
-            in->AddRef();
-        if (mpObject)
-            mpObject->Release();
-        mpObject = in;
-        return in;
-    }
-
-    /// Add a new reference to an existing object
-    const ThisType& operator=(const ThisType& rhs)
-    {
-        if (rhs.mpObject)
-            rhs.mpObject->AddRef();
-        if (mpObject)
-            mpObject->Release();
-        mpObject = rhs.mpObject;
-        return *this;
-    }
-
-    /// Transfer ownership of a reference.
-    ComPtr(ThisType&& rhs) : mpObject(rhs.mpObject) { rhs.mpObject = nullptr; }
-
-    /// Transfer ownership of a reference.
-    ComPtr& operator=(ThisType&& rhs)
-    {
-        T* swap = mpObject;
-        mpObject = rhs.mpObject;
-        rhs.mpObject = swap;
-        return *this;
-    }
-
-    /// Clear out object pointer.
-    void setNull()
-    {
-        if (mpObject)
-        {
-            mpObject->Release();
-            mpObject = nullptr;
-        }
-    }
-
-    /// Swap pointers with another reference.
-    void swap(ThisType& rhs)
-    {
-        T* tmp = mpObject;
-        mpObject = rhs.mpObject;
-        rhs.mpObject = tmp;
-    }
-
-    /// Get the underlying object pointer.
-    T* get() const { return mpObject; }
-
-    /// Cast to object pointer type.
-    operator T*() const { return mpObject; }
-
-    /// Access members of underlying object.
-    T* operator->() const { return mpObject; }
-
-    /// Dereference underlying pointer.
-    T& operator*() { return *mpObject; }
-
-    /// Transfer ownership of reference to the caller.
-    T* detach()
-    {
-        T* ptr = mpObject;
-        mpObject = nullptr;
-        return ptr;
-    }
-
-    /// Transfer ownership of reference from the caller.
-    void attach(T* in)
-    {
-        T* old = mpObject;
-        mpObject = in;
-        if (old)
-            old->Release();
-    }
-
-    /// Get a writable reference suitable for use as a function output argument.
-    T** writeRef()
-    {
-        setNull();
-        return &mpObject;
-    }
-
-    /// Get a readable reference suitable for use as a function input argument.
-    T* const* readRef() const { return &mpObject; }
-
-protected:
-    // Disabled: do not take the address of a smart pointer.
-    T** operator&();
-
-    /// The underlying raw object pointer
-    T* mpObject;
-};
-
 /**
  * Falcor shader types
  */
@@ -243,12 +110,10 @@ struct ShaderData;
  * Low-level shader object
  * This class abstracts the API's shader creation and management
  */
-class FALCOR_API Shader
+class FALCOR_API Shader : public Object
 {
 public:
-    using SharedPtr = std::shared_ptr<Shader>;
-
-    typedef ComPtr<ISlangBlob> Blob;
+    typedef Slang::ComPtr<ISlangBlob> Blob;
 
     enum class CompilerFlags
     {
@@ -327,13 +192,13 @@ public:
         std::string mTypeName;
         std::string mInterfaceName;
         TypeConformance() = default;
-        TypeConformance(std::string const& typeName, std::string const& interfaceName) : mTypeName(typeName), mInterfaceName(interfaceName)
+        TypeConformance(const std::string& typeName, const std::string& interfaceName) : mTypeName(typeName), mInterfaceName(interfaceName)
         {}
-        bool operator<(TypeConformance const& other) const
+        bool operator<(const TypeConformance& other) const
         {
             return mTypeName < other.mTypeName || (mTypeName == other.mTypeName && mInterfaceName < other.mInterfaceName);
         }
-        bool operator==(TypeConformance const& other) const
+        bool operator==(const TypeConformance& other) const
         {
             return mTypeName == other.mTypeName && mInterfaceName == other.mInterfaceName;
         }
@@ -409,15 +274,15 @@ public:
      * @param[out] log This string will contain the error log message in case shader compilation failed
      * @return If success, a new shader object, otherwise nullptr
      */
-    static SharedPtr create(
-        ComPtr<slang::IComponentType> linkedSlangEntryPoint,
+    static ref<Shader> create(
+        Slang::ComPtr<slang::IComponentType> linkedSlangEntryPoint,
         ShaderType type,
-        std::string const& entryPointName,
+        const std::string& entryPointName,
         CompilerFlags flags,
         std::string& log
     )
     {
-        SharedPtr pShader = SharedPtr(new Shader(type));
+        ref<Shader> pShader = ref<Shader>(new Shader(type));
         pShader->mEntryPointName = entryPointName;
         return pShader->init(linkedSlangEntryPoint, entryPointName, flags, log) ? pShader : nullptr;
     }
@@ -439,7 +304,7 @@ public:
 protected:
     // API handle depends on the shader Type, so it stored be stored as part of the private data
     bool init(
-        ComPtr<slang::IComponentType> linkedSlangEntryPoint,
+        Slang::ComPtr<slang::IComponentType> linkedSlangEntryPoint,
         const std::string& entryPointName,
         CompilerFlags flags,
         std::string& log

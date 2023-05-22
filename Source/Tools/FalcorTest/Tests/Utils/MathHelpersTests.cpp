@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Testing/UnitTest.h"
+#include "Utils/Math/ScalarMath.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -87,7 +88,7 @@ GPU_TEST(MathHelpers_ErrorFunction)
     for (int32_t i = 0; i < n; ++i)
     {
         float t = i / (float)(n - 1);
-        float x = lerp<float>(-5, 5, t);
+        float x = math::lerp<float>(-5, 5, t);
         input[i] = x;
         ref[i] = std::erf(x);
     }
@@ -117,7 +118,7 @@ GPU_TEST(MathHelpers_InverseErrorFunction)
     for (int32_t i = 0; i < n; ++i)
     {
         float t = i / (float)(n - 1);
-        input[i] = lerp<float>(-1, 1, t);
+        input[i] = math::lerp<float>(-1, 1, t);
     }
 
     ctx.allocateStructuredBuffer("result", n);

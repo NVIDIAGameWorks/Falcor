@@ -28,9 +28,11 @@
 #include "Falcor.h"
 #include "Mogwai.h"
 #include "MogwaiSettings.h"
+#include "GlobalState.h"
 #include "Scene/Importer.h"
 #include "RenderGraph/RenderGraphImportExport.h"
 #include "RenderGraph/RenderPassStandardFlags.h"
+#include "Utils/Scripting/Scripting.h"
 #include "Utils/Timing/TimeReport.h"
 #include "Utils/Settings.h"
 
@@ -62,10 +64,12 @@ namespace Mogwai
         , mOptions(options)
         , mAppData(kAppDataPath)
     {
+        setActivePythonRenderGraphDevice(getDevice());
     }
 
     Renderer::~Renderer()
     {
+        setActivePythonRenderGraphDevice(nullptr);
     }
 
     void Renderer::extend(Extension::CreateFunc func, const std::string& name)
@@ -225,13 +229,13 @@ namespace Mogwai
     bool Renderer::renderDebugWindow(Gui::Widgets& widget, const Gui::DropdownList& dropdown, DebugWindow& data, const uint2& winSize)
     {
         // Get the current output, in case `renderOutputUI()` unmarks it
-        Texture::SharedPtr pTex = std::dynamic_pointer_cast<Texture>(mGraphs[mActiveGraph].pGraph->getOutput(data.currentOutput));
+        ref<Texture> pTex = mGraphs[mActiveGraph].pGraph->getOutput(data.currentOutput)->asTexture();
         std::string label = data.currentOutput + "##" + mGraphs[mActiveGraph].pGraph->getName();
         if (!pTex) { reportError("Invalid output resource. Is not a texture."); }
 
         uint2 debugSize = (uint2)(float2(winSize) * float2(0.4f, 0.55f));
         uint2 debugPos = winSize - debugSize;
-        debugPos -= 10;
+        debugPos -= 10u;
 
         // Display the dropdown
         Gui::Window debugWindow(widget.gui(), data.windowName.c_str(), debugSize, debugPos);
@@ -241,7 +245,7 @@ namespace Mogwai
             renderOutputUI(widget, dropdown, data.currentOutput);
             debugWindow.separator();
 
-            debugWindow.image(label.c_str(), pTex);
+            debugWindow.image(label.c_str(), pTex.get());
             debugWindow.release();
             return true;
         }
@@ -257,7 +261,7 @@ namespace Mogwai
 
     void Renderer::graphOutputsGui(Gui::Widgets& widget)
     {
-        RenderGraph::SharedPtr pGraph = mGraphs[mActiveGraph].pGraph;
+        ref<RenderGraph> pGraph = mGraphs[mActiveGraph].pGraph;
         if (mGraphs[mActiveGraph].debugWindows.size()) mGraphs[mActiveGraph].showAllOutputs = true;
         auto strVec = mGraphs[mActiveGraph].showAllOutputs ? pGraph->getAvailableOutputs() : mGraphs[mActiveGraph].originalOutputs;
         Gui::DropdownList graphOuts = createDropdownFromVec(strVec, mGraphs[mActiveGraph].mainOutput);
@@ -364,7 +368,7 @@ namespace Mogwai
         }
     }
 
-    void Renderer::removeGraph(const RenderGraph::SharedPtr& pGraph)
+    void Renderer::removeGraph(const ref<RenderGraph>& pGraph)
     {
         for (auto& e : mpExtensions) e->removeGraph(pGraph.get());
         size_t i = 0;
@@ -382,7 +386,7 @@ namespace Mogwai
         else reportError("Can't find a graph named '" + graphName + "'. There's nothing to remove.");
     }
 
-    RenderGraph::SharedPtr Renderer::getGraph(const std::string& graphName) const
+    ref<RenderGraph> Renderer::getGraph(const std::string& graphName) const
     {
         for (const auto& g : mGraphs)
         {
@@ -396,7 +400,7 @@ namespace Mogwai
         if (mGraphs.size()) removeGraph(mGraphs[mActiveGraph].pGraph);
     }
 
-    std::vector<std::string> Renderer::getGraphOutputs(const RenderGraph::SharedPtr& pGraph)
+    std::vector<std::string> Renderer::getGraphOutputs(const ref<RenderGraph>& pGraph)
     {
         std::vector<std::string> outputs;
         for (size_t i = 0; i < pGraph->getOutputCount(); i++)
@@ -406,7 +410,7 @@ namespace Mogwai
         return outputs;
     }
 
-    void Renderer::initGraph(const RenderGraph::SharedPtr& pGraph, GraphData* pData)
+    void Renderer::initGraph(const ref<RenderGraph>& pGraph, GraphData* pData)
     {
         if (!pData)
         {
@@ -478,7 +482,7 @@ namespace Mogwai
         }
     }
 
-    void Renderer::addGraph(const RenderGraph::SharedPtr& pGraph)
+    void Renderer::addGraph(const ref<RenderGraph>& pGraph)
     {
         if (pGraph == nullptr)
         {
@@ -500,7 +504,7 @@ namespace Mogwai
         initGraph(pGraph, pGraphData);
     }
 
-    void Renderer::setActiveGraph(const RenderGraph::SharedPtr& pGraph)
+    void Renderer::setActiveGraph(const ref<RenderGraph>& pGraph)
     {
         size_t index = 0;
         for (; index < mGraphs.size(); ++index)
@@ -533,7 +537,7 @@ namespace Mogwai
             try
             {
                 TimeReport timeReport;
-                setScene(SceneBuilder::create(getDevice(), path, getSettings(), buildFlags)->getScene());
+                setScene(SceneBuilder(getDevice(), path, getSettings(), buildFlags).getScene());
                 timeReport.measure("Loading scene (total)");
                 timeReport.printToLog();
                 return;
@@ -550,7 +554,7 @@ namespace Mogwai
         setScene(nullptr);
     }
 
-    void Renderer::setScene(const Scene::SharedPtr& pScene)
+    void Renderer::setScene(const ref<Scene>& pScene)
     {
         mpScene = pScene;
 
@@ -566,9 +570,9 @@ namespace Mogwai
                 Sampler::Desc desc;
                 desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
                 desc.setMaxAnisotropy(8);
-                mpSampler = Sampler::create(getDevice().get(), desc);
+                mpSampler = Sampler::create(getDevice(), desc);
             }
-            mpScene->getMaterialSystem()->setDefaultTextureSampler(mpSampler);
+            mpScene->getMaterialSystem().setDefaultTextureSampler(mpSampler);
         }
 
         for (auto& g : mGraphs)
@@ -579,7 +583,7 @@ namespace Mogwai
         getGlobalClock().setTime(0);
     }
 
-    Scene::SharedPtr Renderer::getScene() const
+    ref<Scene> Renderer::getScene() const
     {
         return mpScene;
     }
@@ -634,21 +638,21 @@ namespace Mogwai
         }
 
         // Execute graph.
-        (*pGraph->getPassesDictionary())[kRenderPassRefreshFlags] = RenderPassRefreshFlags::None;
+        pGraph->getPassesDictionary()[kRenderPassRefreshFlags] = RenderPassRefreshFlags::None;
         pGraph->execute(pRenderContext);
     }
 
-    void Renderer::beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
+    void Renderer::beginFrame(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo)
     {
         for (auto& pe : mpExtensions)  pe->beginFrame(pRenderContext, pTargetFbo);
     }
 
-    void Renderer::endFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
+    void Renderer::endFrame(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo)
     {
         for (auto& pe : mpExtensions) pe->endFrame(pRenderContext, pTargetFbo);
     }
 
-    void Renderer::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
+    void Renderer::onFrameRender(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo)
     {
         if (!mScriptPath.empty())
         {
@@ -693,7 +697,7 @@ namespace Mogwai
             // Blit main graph output to frame buffer.
             if (mGraphs[mActiveGraph].mainOutput.size())
             {
-                Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Texture>(pGraph->getOutput(mGraphs[mActiveGraph].mainOutput));
+                ref<Texture> pOutTex = pGraph->getOutput(mGraphs[mActiveGraph].mainOutput)->asTexture();
                 FALCOR_ASSERT(pOutTex);
                 pRenderContext->blit(pOutTex->getSRV(), pTargetFbo->getRenderTargetView(0));
             }
@@ -718,7 +722,7 @@ namespace Mogwai
 
                 if (mPipedOutput)
                 {
-                    Falcor::Texture::SharedPtr framebufferTexture = pTargetFbo->getColorTexture(0);
+                    Falcor::ref<Texture> framebufferTexture = pTargetFbo->getColorTexture(0);
                     uint32_t subresource = framebufferTexture->getSubresourceIndex(0, 0);
                     std::vector<uint8_t> framebufferData = pRenderContext->readTextureSubresource(framebufferTexture.get(), subresource);
                     fwrite(&framebufferData[0], 4 * pTargetFbo->getWidth() * pTargetFbo->getHeight(), 1, mPipedOutput);
@@ -777,7 +781,7 @@ namespace Mogwai
         for (auto& g : mGraphs)
         {
             g.pGraph->onResize(getTargetFbo().get());
-            Scene::SharedPtr graphScene = g.pGraph->getScene();
+            ref<Scene> graphScene = g.pGraph->getScene();
             if (graphScene) graphScene->setCameraAspectRatio((float)width / (float)height);
         }
         if (mpScene) mpScene->setCameraAspectRatio((float)width / (float)height);

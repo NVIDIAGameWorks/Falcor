@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "PythonImporter.h"
 #include "Scene/Importer.h"
-#include "Scene/SceneBuilderAccess.h"
+#include "GlobalState.h"
 #include "Utils/Scripting/Scripting.h"
 #include <filesystem>
 #include <regex>
@@ -72,8 +72,8 @@ static std::vector<std::filesystem::path> sImportDirectories;
 class ScopedImport
 {
 public:
-    ScopedImport(const std::filesystem::path& path, Settings& settings)
-        : mScopedSettings(settings), mPath(path), mDirectory(path.parent_path())
+    ScopedImport(const std::filesystem::path& path, SceneBuilder& builder)
+        : mScopedSettings(builder.getSettings()), mPath(path), mDirectory(path.parent_path())
     {
         FALCOR_ASSERT(path.is_absolute());
         sImportPaths.emplace(mPath);
@@ -81,6 +81,9 @@ public:
 
         // Add directory to search directories (add it to the front to make it highest priority).
         addDataDirectory(mDirectory, true);
+
+        // Set global scene builder as workaround to support old Python API.
+        setActivePythonSceneBuilder(&builder);
     }
     ~ScopedImport()
     {
@@ -94,6 +97,12 @@ public:
         if (std::find(sImportDirectories.begin(), sImportDirectories.end(), mDirectory) == sImportDirectories.end())
         {
             removeDataDirectory(mDirectory);
+        }
+
+        // Unset global scene builder.
+        if (sImportDirectories.size() == 0)
+        {
+            setActivePythonSceneBuilder(nullptr);
         }
     }
 
@@ -115,7 +124,7 @@ std::unique_ptr<Importer> PythonImporter::create()
     return std::make_unique<PythonImporter>();
 }
 
-void PythonImporter::importScene(const std::filesystem::path& path, SceneBuilder& builder, const Dictionary& dict)
+void PythonImporter::importScene(const std::filesystem::path& path, SceneBuilder& builder, const pybind11::dict& dict)
 {
     if (!path.is_absolute())
         throw ImporterError(path, "Expected absolute path.");
@@ -132,7 +141,7 @@ void PythonImporter::importScene(const std::filesystem::path& path, SceneBuilder
 
     // Keep track of this import and add script directory to data search directories.
     // We use RAII here to make sure the scope is properly removed when throwing an exception.
-    ScopedImport scopedImport(path, builder.getSettings());
+    ScopedImport scopedImport(path, builder);
 
     // Execute script.
     try
@@ -140,9 +149,7 @@ void PythonImporter::importScene(const std::filesystem::path& path, SceneBuilder
         Scripting::Context context;
         context.setObject("sceneBuilder", &builder);
         Scripting::runScript("from falcor import *", context);
-        setActivePythonSceneBuilder(&builder);
         Scripting::runScriptFromFile(path, context);
-        setActivePythonSceneBuilder(nullptr);
     }
     catch (const std::exception& e)
     {

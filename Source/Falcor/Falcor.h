@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -98,18 +98,13 @@
 #include "Scene/Animation/Animation.h"
 #include "Scene/Animation/AnimationController.h"
 
-// @skallweit: This is temporary to allow renderpasses to be compiled unmodified. Needs to be removed.
-#include "RenderGraph/RenderPass.h"
-
 // Utils
 #include "Utils/StringFormatters.h"
 #include "Utils/Math/Common.h"
 #include "Utils/Math/Vector.h"
-#include "Utils/Math/Float16.h"
 #include "Utils/Logger.h"
 #include "Utils/UI/InputTypes.h"
 #include "Utils/Timing/Profiler.h"
-#include "Utils/Scripting/Scripting.h"
 
 #include <fmt/format.h> // TODO C++20: Replace with <format>
 #include <fstd/span.h>  // TODO C++20: Replace with <span>

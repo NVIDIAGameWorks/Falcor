@@ -59,8 +59,6 @@ class RtProgramVars;
 class FALCOR_API RtProgram : public Program
 {
 public:
-    using SharedPtr = std::shared_ptr<RtProgram>;
-
     struct ShaderID
     {
         int32_t groupIndex = -1; ///< Entry point group index.
@@ -356,24 +354,24 @@ public:
      * @param[in] programDefines Optional list of macro definitions to set into the program.
      * @return A new object, or an exception is thrown if creation failed.
      */
-    static RtProgram::SharedPtr create(std::shared_ptr<Device> pDevice, Desc desc, const DefineList& programDefines = DefineList());
+    static ref<RtProgram> create(ref<Device> pDevice, Desc desc, const DefineList& programDefines = DefineList());
 
     /**
      * Get the raytracing state object for this program.
      */
-    RtStateObject::SharedPtr getRtso(RtProgramVars* pVars);
+    ref<RtStateObject> getRtso(RtProgramVars* pVars);
 
-    Desc const& getRtDesc() const { return mRtDesc; }
+    const Desc& getRtDesc() const { return mRtDesc; }
 
 private:
-    RtProgram(RtProgram const&) = delete;
-    RtProgram& operator=(RtProgram const&) = delete;
+    RtProgram(const RtProgram&) = delete;
+    RtProgram& operator=(const RtProgram&) = delete;
 
-    RtProgram(std::shared_ptr<Device> pDevice, const Desc& desc, const DefineList& programDefines);
+    RtProgram(ref<Device> pDevice, const Desc& desc, const DefineList& programDefines);
 
     Desc mRtDesc;
 
-    using StateGraph = Falcor::StateGraph<RtStateObject::SharedPtr, void*>;
+    using StateGraph = Falcor::StateGraph<ref<RtStateObject>, void*>;
     StateGraph mRtsoGraph;
 };
 } // namespace Falcor

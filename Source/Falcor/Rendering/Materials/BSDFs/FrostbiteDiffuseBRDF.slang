@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,14 +28,13 @@
 #include "Utils/Math/MathConstants.slangh"
 
 import Utils.Math.MathHelpers;
-import Utils.Color.ColorHelpers;
 import Rendering.Materials.Fresnel;
 __exported import Rendering.Materials.IBSDF;
 
 /**
  * Frostbites's diffuse reflection.
- *  This is Disney's diffuse BRDF with an ad-hoc normalization factor to ensure energy conservation.
- *  Based on https://seblagarde.files.wordpress.com/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
+ * This is Disney's diffuse BRDF with an ad-hoc normalization factor to ensure energy conservation.
+ * Based on https://seblagarde.files.wordpress.com/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
  */
 struct FrostbiteDiffuseBRDF : IBSDF
 {

@@ -44,15 +44,14 @@ void CudaInterop::onLoad(RenderContext* pRenderContext)
         throw RuntimeError("CUDA driver API initialization failed.");
 
     // Create our input and output textures
-    mpInputTex = Texture::createFromFile(getDevice().get(), kTextureFilename, false, false, ResourceBindFlags::Shared);
+    mpInputTex = Texture::createFromFile(getDevice(), kTextureFilename, false, false, ResourceBindFlags::Shared);
     if (!mpInputTex)
         throw RuntimeError("Failed to load texture '{}'", kTextureFilename);
 
     mWidth = mpInputTex->getWidth();
     mHeight = mpInputTex->getHeight();
     mpOutputTex = Texture::create2D(
-        getDevice().get(), mWidth, mHeight, mpInputTex->getFormat(), 1, 1, nullptr,
-        ResourceBindFlags::Shared | ResourceBindFlags::ShaderResource
+        getDevice(), mWidth, mHeight, mpInputTex->getFormat(), 1, 1, nullptr, ResourceBindFlags::Shared | ResourceBindFlags::ShaderResource
     );
 
     // Define our usage flags and then map the textures to CUDA surfaces. Surface values of 0
@@ -69,7 +68,7 @@ void CudaInterop::onLoad(RenderContext* pRenderContext)
         throw RuntimeError("Output texture to surface mapping failed");
 }
 
-void CudaInterop::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
+void CudaInterop::onFrameRender(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo)
 {
     const Falcor::float4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);

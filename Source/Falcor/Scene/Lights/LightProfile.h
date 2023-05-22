@@ -28,12 +28,12 @@
 #pragma once
 
 #include "Core/Macros.h"
+#include "Core/Object.h"
 #include "Core/API/Texture.h"
 #include "Core/API/Sampler.h"
 #include "Utils/UI/Gui.h"
 
 #include <filesystem>
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -41,12 +41,10 @@ namespace Falcor
 {
     struct ShaderVar;
 
-    class FALCOR_API LightProfile
+    class FALCOR_API LightProfile : public Object
     {
     public:
-        using SharedPtr = std::shared_ptr<LightProfile>;
-
-        static SharedPtr createFromIesProfile(std::shared_ptr<Device> pDevice, const std::filesystem::path& filename, bool normalize);
+        static ref<LightProfile> createFromIesProfile(ref<Device> pDevice, const std::filesystem::path& filename, bool normalize);
 
         void bake(RenderContext* pRenderContext);
 
@@ -59,13 +57,13 @@ namespace Falcor
         void renderUI(Gui::Widgets& widget);
 
     private:
-        LightProfile(std::shared_ptr<Device> pDevice, const std::string& name, const std::vector<float>& rawData);
+        LightProfile(ref<Device> pDevice, const std::string& name, const std::vector<float>& rawData);
 
-        std::shared_ptr<Device> mpDevice;
+        ref<Device> mpDevice;
         std::string mName;
         std::vector<float> mRawData;
-        Texture::SharedPtr mpTexture;
-        Sampler::SharedPtr mpSampler;
+        ref<Texture> mpTexture;
+        ref<Sampler> mpSampler;
         float mFluxFactor = 0.f;
     };
 }

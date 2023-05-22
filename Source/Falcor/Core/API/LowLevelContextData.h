@@ -30,7 +30,6 @@
 #include "Handles.h"
 #include "NativeHandle.h"
 #include "Core/Macros.h"
-#include <memory>
 
 namespace Falcor
 {
@@ -68,7 +67,7 @@ public:
 
     // TODO(@skallweit): This should be removed.
     CommandQueueHandle getCommandQueue() const { return mpGfxCommandQueue; }
-    const GpuFence::SharedPtr& getFence() const { return mpFence; }
+    const ref<GpuFence>& getFence() const { return mpFence; }
 
     void closeCommandBuffer();
     void openCommandBuffer();
@@ -91,7 +90,7 @@ private:
     Device* mpDevice;
     gfx::ICommandQueue* mpGfxCommandQueue;
     Slang::ComPtr<gfx::ICommandBuffer> mGfxCommandBuffer;
-    GpuFence::SharedPtr mpFence;
+    ref<GpuFence> mpFence;
 
     gfx::ICommandBuffer* mpCommandBuffer = nullptr;
     bool mIsCommandBufferOpen = false;

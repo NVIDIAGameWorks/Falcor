@@ -25,13 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Utils/Math/MathConstants.slangh"
-
 __exported import Rendering.Materials.IMaterialInstance;
-__exported import Rendering.Materials.BxDF;
 __exported import Rendering.Materials.AnisotropicGGX;
-import Utils.Color.ColorHelpers;
-import Utils.Math.MathHelpers;
 import Rendering.Materials.Fresnel;
 
 struct PBRTConductorBSDF : IBSDF
@@ -107,20 +102,35 @@ struct PBRTConductorMaterialInstance : IMaterialInstance
 
     float3 eval<S : ISampleGenerator>(const ShadingData sd, const float3 wo, inout S sg)
     {
-        return bsdf.eval(sf.toLocal(sd.V), sf.toLocal(wo), sg);
+        float3 wiLocal = sf.toLocal(sd.V);
+        float3 woLocal = sf.toLocal(wo);
+
+        if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, wo)) return float3(0.f);
+
+        return bsdf.eval(wiLocal, woLocal, sg);
     }
 
     bool sample<S : ISampleGenerator>(const ShadingData sd, inout S sg, out BSDFSample result, bool useImportanceSampling = true)
     {
-        bool valid = bsdf.sample(sf.toLocal(sd.V), result.wo, result.pdf, result.weight, result.lobeType, sg);
+        float3 wiLocal = sf.toLocal(sd.V);
+        float3 woLocal = {};
 
-        result.wo = sf.fromLocal(result.wo);
+        bool valid = bsdf.sample(wiLocal, woLocal, result.pdf, result.weight, result.lobeType, sg);
+        result.wo = sf.fromLocal(woLocal);
+
+        if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, result.wo) || result.pdf == 0.f) return false;
+
         return valid;
     }
 
     float evalPdf(const ShadingData sd, const float3 wo, bool useImportanceSampling = true)
     {
-        return bsdf.evalPdf(sf.toLocal(sd.V), sf.toLocal(wo));
+        float3 wiLocal = sf.toLocal(sd.V);
+        float3 woLocal = sf.toLocal(wo);
+
+        if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, wo)) return 0.f;
+
+        return bsdf.evalPdf(wiLocal, woLocal);
     }
 
     BSDFProperties getProperties(const ShadingData sd)

@@ -32,7 +32,7 @@ namespace Falcor
 {
 GPU_TEST(InvalidPixelDetectionPass)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     float pInitData[8] = {
         std::numeric_limits<float>::quiet_NaN(),
@@ -47,9 +47,9 @@ GPU_TEST(InvalidPixelDetectionPass)
 
     RenderContext* pRenderContext = ctx.getRenderContext();
     Fbo* pTargetFbo = ctx.getTargetFbo();
-    Texture::SharedPtr pInput = Texture::create2D(pDevice, 2, 4, ResourceFormat::R32Float, 1, Resource::kMaxPossible, pInitData);
-    RenderGraph::SharedPtr pGraph = RenderGraph::create(ctx.getDevice(), "Invalid Pixel Detection");
-    RenderPass::SharedPtr pPass = RenderPass::create("InvalidPixelDetectionPass", ctx.getDevice());
+    ref<Texture> pInput = Texture::create2D(pDevice, 2, 4, ResourceFormat::R32Float, 1, Resource::kMaxPossible, pInitData);
+    ref<RenderGraph> pGraph = RenderGraph::create(ctx.getDevice(), "Invalid Pixel Detection");
+    ref<RenderPass> pPass = RenderPass::create("InvalidPixelDetectionPass", ctx.getDevice());
     if (!pPass)
         throw RuntimeError("Could not create render pass 'InvalidPixelDetectionPass'");
     pGraph->addPass(pPass, "InvalidPixelDetectionPass");
@@ -57,7 +57,7 @@ GPU_TEST(InvalidPixelDetectionPass)
     pGraph->markOutput("InvalidPixelDetectionPass.dst");
     pGraph->onResize(pTargetFbo);
     pGraph->execute(pRenderContext);
-    Resource::SharedPtr pOutput = pGraph->getOutput("InvalidPixelDetectionPass.dst");
+    ref<Resource> pOutput = pGraph->getOutput("InvalidPixelDetectionPass.dst");
     std::vector<uint8_t> color = pRenderContext->readTextureSubresource(pOutput->asTexture().get(), 0);
     uint32_t* output = (uint32_t*)color.data();
 

@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
+#include "RenderGraph/RenderPass.h"
 #include "RenderGraph/RenderPassHelpers.h"
 #include "Utils/Sampling/SampleGenerator.h"
 #include "Rendering/Materials/TexLODTypes.slang"  // Using the enum with Mip0, RayCones, etc
@@ -37,21 +38,25 @@ using namespace Falcor;
 /** Whitted ray tracer.
 
     This pass implements the simplest possible Whitted ray tracer.
+
+    The render pass serves as an example and testbed for texture LOD.
+    The scene materials are overridden to add ideal specular reflection
+    and refraction components. Unbiased rendering should not be expected.
 */
 class WhittedRayTracer : public RenderPass
 {
 public:
     FALCOR_PLUGIN_CLASS(WhittedRayTracer, "WhittedRayTracer", "Simple Whitted ray tracer.");
 
-    using SharedPtr = std::shared_ptr<WhittedRayTracer>;
+    static ref<WhittedRayTracer> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<WhittedRayTracer>(pDevice, dict); }
 
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
+    WhittedRayTracer(ref<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
-    virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
+    virtual void setScene(RenderContext* pRenderContext, const ref<Scene>& pScene) override;
     virtual bool onMouseEvent(const MouseEvent& mouseEvent) override { return false; }
     virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
 
@@ -70,14 +75,12 @@ public:
     static void registerBindings(pybind11::module& m);
 
 private:
-    WhittedRayTracer(std::shared_ptr<Device> pDevice, const Dictionary& dict);
-
     void prepareVars();
     void setStaticParams(RtProgram* pProgram) const;
 
     // Internal state
-    Scene::SharedPtr            mpScene;                                    ///< Current scene.
-    SampleGenerator::SharedPtr  mpSampleGenerator;                          ///< GPU sample generator.
+    ref<Scene>                  mpScene;                                    ///< Current scene.
+    ref<SampleGenerator>        mpSampleGenerator;                          ///< GPU sample generator.
 
     uint                        mMaxBounces = 3;                                        ///< Max number of indirect bounces (0 = none).
     TexLODMode                  mTexLODMode = TexLODMode::Mip0;                         ///< Which texture LOD mode to use.
@@ -94,8 +97,8 @@ private:
     // Ray tracing program.
     struct
     {
-        RtProgram::SharedPtr pProgram;
-        RtBindingTable::SharedPtr pBindingTable;
-        RtProgramVars::SharedPtr pVars;
+        ref<RtProgram> pProgram;
+        ref<RtBindingTable> pBindingTable;
+        ref<RtProgramVars> pVars;
     } mTracer;
 };

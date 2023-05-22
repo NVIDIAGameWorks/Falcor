@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Core/API/fwd.h"
 #include "Core/API/Formats.h"
 #include "Utils/Math/Vector.h"
 #include "Scene/Material/DiffuseSpecularData.slang"
@@ -49,7 +50,7 @@ namespace Falcor
             DiffuseSpecularData extraData = {}; ///< Parameters for a best fit BRDF approximation.
         };
 
-        static const ResourceFormat kAlbedoLUTFormat = ResourceFormat::RGBA32Float;
+        static constexpr ResourceFormat kAlbedoLUTFormat = ResourceFormat::RGBA32Float;
 
         MERLFile() = default;
 
@@ -69,14 +70,14 @@ namespace Falcor
             \param[in] pDevice The device.
             \return Albedo lookup table that can be used with `kAlbedoLUTFormat`.
         */
-        const std::vector<float4>& prepareAlbedoLUT(const std::shared_ptr<Device>& pDevice);
+        const std::vector<float4>& prepareAlbedoLUT(ref<Device> pDevice);
 
         const Desc& getDesc() const { return mDesc; }
         const std::vector<float3>& getData() const { return mData; }
 
     private:
         void prepareData(const int dims[3], const std::vector<double>& data);
-        void computeAlbedoLUT(const std::shared_ptr<Device>&, const size_t binCount);
+        void computeAlbedoLUT(ref<Device> pDevice, const size_t binCount);
 
         Desc mDesc;                     ///< BRDF description and sampling parameters.
         std::vector<float3> mData;      ///< BRDF data in RGB float format.

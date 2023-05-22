@@ -27,14 +27,15 @@
  **************************************************************************/
 #include "ComputeProgram.h"
 #include "ProgramManager.h"
+#include "Core/ObjectPython.h"
 #include "Core/API/ComputeContext.h"
 #include "Core/State/ComputeState.h"
 #include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
 {
-ComputeProgram::SharedPtr ComputeProgram::createFromFile(
-    std::shared_ptr<Device> pDevice,
+ref<ComputeProgram> ComputeProgram::createFromFile(
+    ref<Device> pDevice,
     const std::filesystem::path& path,
     const std::string& csEntry,
     const DefineList& programDefines,
@@ -47,29 +48,27 @@ ComputeProgram::SharedPtr ComputeProgram::createFromFile(
         d.setShaderModel(shaderModel);
     d.setCompilerFlags(flags);
     d.csEntry(csEntry);
-    return create(std::move(pDevice), d, programDefines);
+    return create(pDevice, d, programDefines);
 }
 
-ComputeProgram::SharedPtr ComputeProgram::create(std::shared_ptr<Device> pDevice, const Desc& desc, const DefineList& programDefines)
+ref<ComputeProgram> ComputeProgram::create(ref<Device> pDevice, const Desc& desc, const DefineList& programDefines)
 {
-    auto pProgram = SharedPtr(new ComputeProgram(pDevice, desc, programDefines));
-    pDevice->getProgramManager()->registerProgramForReload(pProgram);
-    return pProgram;
+    return ref<ComputeProgram>(new ComputeProgram(pDevice, desc, programDefines));
 }
 
-ComputeProgram::ComputeProgram(std::shared_ptr<Device> pDevice, const Desc& desc, const DefineList& programDefines)
-    : Program(std::move(pDevice), desc, programDefines)
+ComputeProgram::ComputeProgram(ref<Device> pDevice, const Desc& desc, const DefineList& programDefines)
+    : Program(pDevice, desc, programDefines)
 {}
 
-void ComputeProgram::dispatchCompute(ComputeContext* pContext, ComputeVars* pVars, uint3 const& threadGroupCount)
+void ComputeProgram::dispatchCompute(ComputeContext* pContext, ComputeVars* pVars, const uint3& threadGroupCount)
 {
     auto pState = ComputeState::create(mpDevice);
-    pState->setProgram(std::static_pointer_cast<ComputeProgram>(shared_from_this()));
+    pState->setProgram(ref<ComputeProgram>(this));
     pContext->dispatch(pState.get(), pVars, threadGroupCount);
 }
 
 FALCOR_SCRIPT_BINDING(ComputeProgram)
 {
-    pybind11::class_<ComputeProgram, ComputeProgram::SharedPtr>(m, "ComputeProgram");
+    pybind11::class_<ComputeProgram, ref<ComputeProgram>>(m, "ComputeProgram");
 }
 } // namespace Falcor

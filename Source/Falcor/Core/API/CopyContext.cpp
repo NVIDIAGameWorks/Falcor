@@ -51,9 +51,9 @@ CopyContext::CopyContext(Device* pDevice, gfx::ICommandQueue* pQueue) : mpDevice
 
 CopyContext::~CopyContext() = default;
 
-Device* CopyContext::getDevice() const
+ref<Device> CopyContext::getDevice() const
 {
-    return mpDevice;
+    return ref<Device>(mpDevice);
 }
 
 Profiler* CopyContext::getProfiler() const
@@ -212,7 +212,7 @@ void CopyContext::unbindCustomGPUDescriptorPool()
 #if FALCOR_HAS_D3D12
     mpDevice->requireD3D12();
 
-    ComPtr<gfx::ICommandBufferD3D12> d3d12CommandBuffer;
+    Slang::ComPtr<gfx::ICommandBufferD3D12> d3d12CommandBuffer;
     mpLowLevelData->getGfxCommandBuffer()->queryInterface(
         SlangUUID SLANG_UUID_ICommandBufferD3D12, reinterpret_cast<void**>(d3d12CommandBuffer.writeRef())
     );
@@ -231,7 +231,7 @@ void CopyContext::updateTextureSubresources(
 {
     resourceBarrier(pTexture, Resource::State::CopyDest);
 
-    bool copyRegion = (offset != uint3(0)) || (size != uint3(-1));
+    bool copyRegion = any(offset != uint3(0)) || any(size != uint3(-1));
     FALCOR_ASSERT(subresourceCount == 1 || (copyRegion == false));
     uint8_t* dataPtr = (uint8_t*)pData;
     auto resourceEncoder = getLowLevelData()->getResourceCommandEncoder();
@@ -306,7 +306,8 @@ CopyContext::ReadTextureTask::SharedPtr CopyContext::ReadTextureTask::create(
     pCtx->setPendingCommands(true);
 
     // Create a fence and signal
-    pThis->mpFence = GpuFence::create(pCtx->mpDevice);
+    pThis->mpFence = GpuFence::create(pCtx->getDevice());
+    pThis->mpFence->breakStrongReferenceToDevice();
     pCtx->flush(false);
     pThis->mpFence->gpuSignal(pCtx->getLowLevelData()->getCommandQueue());
     pThis->mRowCount = (uint32_t)rowCount;
@@ -516,7 +517,7 @@ void CopyContext::copySubresourceRegion(
 
     gfx::ITextureResource::Extents copySize = {(int)size.x, (int)size.y, (int)size.z};
 
-    if (size.x == glm::uint(-1))
+    if (size.x == uint(-1))
     {
         copySize.width = pSrc->getWidth(srcSubresource.mipLevel) - srcOffset.x;
         copySize.height = pSrc->getHeight(srcSubresource.mipLevel) - srcOffset.y;

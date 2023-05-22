@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,13 +26,15 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 
-/** Utility functions for fp16 math.
-*/
+/**
+ * Utility functions for fp16 math.
+ */
 
-/** Converts a finite fp32 number to fp16, rounding down to the nearest representable number.
-    If the result does not fit in the range of fp16, +-inf is returned, assuming the input was finite.
-    \return Rounded fp16 value in the low 16-bits. The high 16-bits are zero.
-*/
+/**
+ * Converts a finite fp32 number to fp16, rounding down to the nearest representable number.
+ * If the result does not fit in the range of fp16, +-inf is returned, assuming the input was finite.
+ * @return Rounded fp16 value in the low 16-bits. The high 16-bits are zero.
+ */
 uint f32tof16_roundDown(float value)
 {
     uint h = f32tof16(value);
@@ -44,17 +46,21 @@ uint f32tof16_roundDown(float value)
         // res < 0: +1 gives the next smaller
         // res > 0: -1 gives the next smaller
         // res == +-0: next smaller is 0x8001
-        if (res < 0.f) h++;
-        else if (res > 0.f) h--;
-        else h = 0x8001;
+        if (res < 0.f)
+            h++;
+        else if (res > 0.f)
+            h--;
+        else
+            h = 0x8001;
     }
     return h;
 }
 
-/** Converts a finite fp32 number to fp16, rounding up to the nearest representable number.
-    If the result does not fit in the range of fp16, +-inf is returned, assuming the input was finite.
-    \return Rounded fp16 value in the low 16-bits. The high 16-bits are zero.
-*/
+/**
+ * Converts a finite fp32 number to fp16, rounding up to the nearest representable number.
+ * If the result does not fit in the range of fp16, +-inf is returned, assuming the input was finite.
+ * @return Rounded fp16 value in the low 16-bits. The high 16-bits are zero.
+ */
 uint f32tof16_roundUp(float value)
 {
     uint h = f32tof16(value);
@@ -66,9 +72,12 @@ uint f32tof16_roundUp(float value)
         // res < 0: -1 gives the next larger
         // res > 0: +1 gives the next larger
         // res == +-0: next larger is 0x0001
-        if (res < 0.f) h--;
-        else if (res > 0.f) h++;
-        else h = 0x0001;
+        if (res < 0.f)
+            h--;
+        else if (res > 0.f)
+            h++;
+        else
+            h = 0x0001;
     }
     return h;
 }

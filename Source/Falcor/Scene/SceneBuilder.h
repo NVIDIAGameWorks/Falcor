@@ -40,8 +40,9 @@
 #include "Utils/Math/AABB.h"
 #include "Utils/Math/Vector.h"
 #include "Utils/Math/Matrix.h"
-#include "Utils/Scripting/Dictionary.h"
 #include "Utils/Settings.h"
+
+#include <pybind11/pytypes.h>
 
 #include <filesystem>
 #include <memory>
@@ -53,8 +54,6 @@ namespace Falcor
     class FALCOR_API SceneBuilder
     {
     public:
-        using SharedPtr = std::shared_ptr<SceneBuilder>;
-
         /** Flags that control how the scene will be built. They can be combined together.
         */
         enum class Flags
@@ -113,7 +112,7 @@ namespace Falcor
             uint32_t indexCount = 0;                    ///< The number of indices the mesh has.
             const uint32_t* pIndices = nullptr;         ///< Array of indices. The element count must match `indexCount`. This field is required.
             Vao::Topology topology = Vao::Topology::Undefined; ///< The primitive topology of the mesh
-            Material::SharedPtr pMaterial;              ///< The mesh's material. Can't be nullptr.
+            ref<Material> pMaterial;                    ///< The mesh's material. Can't be nullptr.
 
             Attribute<float3> positions;                ///< Array of vertex positions. This field is required.
             Attribute<float3> normals;                  ///< Array of vertex normals. This field is required.
@@ -267,7 +266,7 @@ namespace Falcor
         {
             std::string name;
             Vao::Topology topology = Vao::Topology::Undefined;
-            Material::SharedPtr pMaterial;
+            ref<Material> pMaterial;
             NodeID skeletonNodeId{ NodeID::Invalid() }; ///< Forwarded from Mesh struct.
 
             uint64_t indexCount = 0;            ///< Number of indices, or zero if non-indexed.
@@ -295,7 +294,7 @@ namespace Falcor
             uint32_t vertexCount = 0;                   ///< The number of vertices.
             uint32_t indexCount = 0;                    ///< The number of indices (i.e., tube segments).
             const uint32_t* pIndices = nullptr;         ///< Array of indices. The element count must match `indexCount`. This field is required.
-            Material::SharedPtr pMaterial;              ///< The curve's material. Can't be nullptr.
+            ref<Material> pMaterial;                    ///< The curve's material. Can't be nullptr.
 
             Attribute<float3> positions;                ///< Array of vertex positions. This field is required.
             Attribute<float> radius;                    ///< Array of sphere radius. This field is required.
@@ -310,7 +309,7 @@ namespace Falcor
         {
             std::string name;
             Vao::Topology topology = Vao::Topology::LineStrip;
-            Material::SharedPtr pMaterial;
+            ref<Material> pMaterial;
 
             std::vector<uint32_t> indexData;
             std::vector<StaticCurveVertexData> staticData;
@@ -319,33 +318,35 @@ namespace Falcor
         struct Node
         {
             std::string name;
-            rmcv::mat4 transform;
-            rmcv::mat4 meshBind;          // For skinned meshes. World transform at bind time.
-            rmcv::mat4 localToBindPose;   // For bones. Inverse bind transform.
+            float4x4 transform;
+            float4x4 meshBind;          // For skinned meshes. World transform at bind time.
+            float4x4 localToBindPose;   // For bones. Inverse bind transform.
             NodeID parent{ NodeID::Invalid() };
         };
 
-        /** Create a new object
+        /** Constructor.
         */
-        static SharedPtr create(std::shared_ptr<Device> pDevice, const Settings& settings, Flags flags = Flags::Default);
+        SceneBuilder(ref<Device> pDevice, const Settings& settings, Flags flags = Flags::Default);
 
-        /** Create a new builder and import a scene/model file
-            \return A new object with the imported file already initialized, or throws an ImporterError if importing went wrong.
+        /** Create a new builder and import a scene/model file.
+            Throws an ImporterError if importing went wrong.
         */
-        static SharedPtr create(std::shared_ptr<Device> pDevice, const std::filesystem::path& path, const Settings& settings, Flags flags = Flags::Default);
+        SceneBuilder(ref<Device> pDevice, const std::filesystem::path& path, const Settings& settings, Flags flags = Flags::Default);
+
+        ~SceneBuilder();
 
         /** Import a scene/model file
             \param path The file path to load
             Throws an ImporterError if something went wrong.
         */
-        void import(const std::filesystem::path& path, const Dictionary& dict = Dictionary());
+        void import(const std::filesystem::path& path, const pybind11::dict& dict = pybind11::dict());
 
         /** Get the scene. Make sure to add all the objects before calling this function
             \return nullptr if something went wrong, otherwise a new Scene object
         */
-        Scene::SharedPtr getScene();
+        ref<Scene> getScene();
 
-        const std::shared_ptr<Device>& getDevice() const { return mpDevice; }
+        const ref<Device>& getDevice() const { return mpDevice; }
 
         const Settings& getSettings() const { return mSettings; }
         Settings& getSettings() { return mSettings; }
@@ -392,7 +393,7 @@ namespace Falcor
             \param pMaterial The material to use for the mesh.
             \return The ID of the mesh in the scene.
         */
-        MeshID addTriangleMesh(const TriangleMesh::SharedPtr& pTriangleMesh, const Material::SharedPtr& pMaterial);
+        MeshID addTriangleMesh(const ref<TriangleMesh>& pTriangleMesh, const ref<Material>& pMaterial);
 
         /** Pre-process a mesh into the data format that is used in the global scene buffers.
             Throws an exception if something went wrong.
@@ -461,39 +462,39 @@ namespace Falcor
             \param pMaterial The material to be used by this SDF grid.
             \return The ID of the SDG grid desc in the scene.
         */
-        SdfDescID addSDFGrid(const SDFGrid::SharedPtr& pSDFGrid, const Material::SharedPtr& pMaterial);
+        SdfDescID addSDFGrid(const ref<SDFGrid>& pSDFGrid, const ref<Material>& pMaterial);
 
         // Materials
 
         /** Get the list of materials.
         */
-        const std::vector<Material::SharedPtr>& getMaterials() const { return mSceneData.pMaterials->getMaterials(); }
+        const std::vector<ref<Material>>& getMaterials() const { return mSceneData.pMaterials->getMaterials(); }
 
         /** Get a material by name.
             Note: This returns the first material found with a matching name.
             \param name Material name.
             \return Returns the first material with a matching name or nullptr if none was found.
         */
-        Material::SharedPtr getMaterial(const std::string& name) const { return mSceneData.pMaterials->getMaterialByName(name); }
+        ref<Material> getMaterial(const std::string& name) const { return mSceneData.pMaterials->getMaterialByName(name); }
 
         /** Add a material.
             \param pMaterial The material.
             \return The ID of the material in the scene.
         */
-        MaterialID addMaterial(const Material::SharedPtr& pMaterial);
+        MaterialID addMaterial(const ref<Material>& pMaterial);
 
         /** Replace a material.
             \param pMaterial The material to replace.
             \param pReplacement The material to replace it with.
         */
-        void replaceMaterial(const Material::SharedPtr& pMaterial, const Material::SharedPtr& pReplacement);
+        void replaceMaterial(const ref<Material>& pMaterial, const ref<Material>& pReplacement);
 
         /** Request loading a material texture.
             \param[in] pMaterial Material to load texture into.
             \param[in] slot Slot to load texture into.
             \param[in] path Texture file path.
         */
-        void loadMaterialTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const std::filesystem::path& path);
+        void loadMaterialTexture(const ref<Material>& pMaterial, Material::TextureSlot slot, const std::filesystem::path& path);
 
         /** Wait until all material textures are loaded.
         */
@@ -503,40 +504,40 @@ namespace Falcor
 
         /** Get the list of grid volumes.
         */
-        const std::vector<GridVolume::SharedPtr>& getGridVolumes() const { return mSceneData.gridVolumes; }
+        const std::vector<ref<GridVolume>>& getGridVolumes() const { return mSceneData.gridVolumes; }
 
         /** Get a grid volume by name.
             Note: This returns the first volume found with a matching name.
             \param name Volume name.
             \return Returns the first volume with a matching name or nullptr if none was found.
         */
-        GridVolume::SharedPtr getGridVolume(const std::string& name) const;
+        ref<GridVolume> getGridVolume(const std::string& name) const;
 
         /** Add a grid volume.
             \param pGridVolume The grid volume.
             \param nodeID The node to attach the volume to (optional).
             \return The ID of the volume in the scene.
         */
-        VolumeID addGridVolume(const GridVolume::SharedPtr& pGridVolume, NodeID nodeID = NodeID{ NodeID::Invalid() } );
+        VolumeID addGridVolume(const ref<GridVolume>& pGridVolume, NodeID nodeID = NodeID{ NodeID::Invalid() } );
 
         // Lights
 
         /** Get the list of lights.
         */
-        const std::vector<Light::SharedPtr>& getLights() const { return mSceneData.lights; }
+        const std::vector<ref<Light>>& getLights() const { return mSceneData.lights; }
 
         /** Get a light by name.
             Note: This returns the first light found with a matching name.
             \param name Light name.
             \return Returns the first light with a matching name or nullptr if none was found.
         */
-        Light::SharedPtr getLight(const std::string& name) const;
+        ref<Light> getLight(const std::string& name) const;
 
         /** Add a light source
             \param pLight The light object.
             \return The light ID
         */
-        LightID addLight(const Light::SharedPtr& pLight);
+        LightID addLight(const ref<Light>& pLight);
 
         /** DEMO21: Load global light profile.
         */
@@ -546,33 +547,33 @@ namespace Falcor
 
         /** Get the environment map.
         */
-        const EnvMap::SharedPtr& getEnvMap() const { return mSceneData.pEnvMap; }
+        const ref<EnvMap>& getEnvMap() const { return mSceneData.pEnvMap; }
 
         /** Set the environment map.
             \param[in] pEnvMap Environment map. Can be nullptr.
         */
-        void setEnvMap(EnvMap::SharedPtr pEnvMap) { mSceneData.pEnvMap = pEnvMap; }
+        void setEnvMap(ref<EnvMap> pEnvMap) { mSceneData.pEnvMap = pEnvMap; }
 
         // Cameras
 
         /** Get the list of cameras.
         */
-        const std::vector<Camera::SharedPtr>& getCameras() const { return mSceneData.cameras; }
+        const std::vector<ref<Camera>>& getCameras() const { return mSceneData.cameras; }
 
         /** Add a camera.
             \param pCamera Camera to be added.
             \return The camera ID
         */
-        CameraID addCamera(const Camera::SharedPtr& pCamera);
+        CameraID addCamera(const ref<Camera>& pCamera);
 
         /** Get the selected camera.
         */
-        Camera::SharedPtr getSelectedCamera() const;
+        ref<Camera> getSelectedCamera() const;
 
         /** Set the selected camera.
             \param pCamera Camera to use as selected camera (needs to be added first).
         */
-        void setSelectedCamera(const Camera::SharedPtr& pCamera);
+        void setSelectedCamera(const ref<Camera>& pCamera);
 
         /** Get the camera speed.
         */
@@ -586,12 +587,12 @@ namespace Falcor
 
         /** Get the list of animations.
         */
-        const std::vector<Animation::SharedPtr>& getAnimations() const { return mSceneData.animations; }
+        const std::vector<ref<Animation>>& getAnimations() const { return mSceneData.animations; }
 
         /** Add an animation
             \param pAnimation The animation
         */
-        void addAnimation(const Animation::SharedPtr& pAnimation);
+        void addAnimation(const ref<Animation>& pAnimation);
 
         /** Create an animation for an animatable object.
             \param pAnimatable Animatable object.
@@ -599,7 +600,7 @@ namespace Falcor
             \param duration Duration of the animation in seconds.
             \return Returns a new animation or nullptr if an animation already exists.
         */
-        Animation::SharedPtr createAnimation(Animatable::SharedPtr pAnimatable, const std::string& name, double duration);
+        ref<Animation> createAnimation(ref<Animatable> pAnimatable, const std::string& name, double duration);
 
         // Scene graph
 
@@ -612,6 +613,8 @@ namespace Falcor
             \return The node count.
         */
         uint32_t getNodeCount() const { return uint32_t(mSceneGraph.size()); }
+
+        Node& getNode(NodeID nodeID) { return mSceneGraph[nodeID.get()]; }
 
         /** Add a mesh instance to a node
         */
@@ -635,8 +638,6 @@ namespace Falcor
         void setNodeInterpolationMode(NodeID nodeID, Animation::InterpolationMode interpolationMode, bool enableWarping);
 
     private:
-        SceneBuilder(std::shared_ptr<Device> pDevice, const Settings& settings, Flags buildFlags);
-
         struct InternalNode : Node
         {
             InternalNode() = default;
@@ -729,14 +730,14 @@ namespace Falcor
         using MeshGroupList = std::vector<MeshGroup>;
         using CurveList = std::vector<CurveSpec>;
 
-        std::shared_ptr<Device> mpDevice;
+        ref<Device> mpDevice;
 
         /// Local copy of settings used to create the SceneBuilder. Edits do not propagate to the parent.
         Settings mSettings;
         const Flags mFlags;
 
         Scene::SceneData mSceneData;
-        Scene::SharedPtr mpScene;
+        ref<Scene> mpScene;
         SceneCache::Key mSceneCacheKey;
         bool mWriteSceneCache = false;  ///< True if scene cache should be written after import.
 
@@ -748,7 +749,7 @@ namespace Falcor
         CurveList mCurves;
 
         std::unique_ptr<MaterialTextureLoader> mpMaterialTextureLoader;
-        GpuFence::SharedPtr mpFence;
+        ref<GpuFence> mpFence;
 
         // Helpers
         bool doesNodeHaveAnimation(NodeID nodeID) const;

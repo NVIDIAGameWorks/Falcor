@@ -48,7 +48,7 @@ struct MERLMaterialData
     DiffuseSpecularData extraData = {}; ///< Parameters for a best fit BRDF approximation.
     TextureHandle texAlbedoLUT;         ///< Texture handle for albedo LUT.
 
-    static const uint kAlbedoLUTSize = 256;
+    static constexpr uint kAlbedoLUTSize = 256;
 };
 
 END_NAMESPACE_FALCOR

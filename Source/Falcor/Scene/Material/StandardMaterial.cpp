@@ -28,7 +28,7 @@
 #include "StandardMaterial.h"
 #include "Utils/Logger.h"
 #include "Utils/Scripting/ScriptBindings.h"
-#include "Scene/SceneBuilderAccess.h"
+#include "GlobalState.h"
 
 namespace Falcor
 {
@@ -37,13 +37,8 @@ namespace Falcor
         const char kShaderFile[] = "Rendering/Materials/StandardMaterial.slang";
     }
 
-    StandardMaterial::SharedPtr StandardMaterial::create(std::shared_ptr<Device> pDevice, const std::string& name, ShadingModel shadingModel)
-    {
-        return SharedPtr(new StandardMaterial(std::move(pDevice), name, shadingModel));
-    }
-
-    StandardMaterial::StandardMaterial(std::shared_ptr<Device> pDevice, const std::string& name, ShadingModel shadingModel)
-        : BasicMaterial(std::move(pDevice), name, MaterialType::Standard)
+    StandardMaterial::StandardMaterial(ref<Device> pDevice, const std::string& name, ShadingModel shadingModel)
+        : BasicMaterial(pDevice, name, MaterialType::Standard)
     {
         setShadingModel(shadingModel);
         bool specGloss = getShadingModel() == ShadingModel::SpecGloss;
@@ -72,7 +67,7 @@ namespace Falcor
         {
             widget.text("Emissive color: " + pTexture->getSourcePath().string());
             widget.text("Texture info: " + std::to_string(pTexture->getWidth()) + "x" + std::to_string(pTexture->getHeight()) + " (" + to_string(pTexture->getFormat()) + ")");
-            widget.image("Emissive color", pTexture, float2(100.f));
+            widget.image("Emissive color", pTexture.get(), float2(100.f));
             if (widget.button("Remove texture##Emissive")) setEmissiveTexture(nullptr);
         }
         else
@@ -94,7 +89,7 @@ namespace Falcor
     void StandardMaterial::updateDeltaSpecularFlag()
     {
         // Check if material has no diffuse lobe.
-        bool isNonDiffuse = !hasTextureSlotData(TextureSlot::BaseColor) && float3(getBaseColor()) == float3(0.f) && getDiffuseTransmission() == 0.f;
+        bool isNonDiffuse = !hasTextureSlotData(TextureSlot::BaseColor) && all(getBaseColor().xyz() == float3(0.f)) && getDiffuseTransmission() == 0.f;
 
         // Check if material is fully specular transmissive.
         bool isFullyTransmissive = getSpecularTransmission() >= 1.f;
@@ -184,7 +179,7 @@ namespace Falcor
 
     void StandardMaterial::setEmissiveColor(const float3& color)
     {
-        if (mData.emissive != color)
+        if (any(mData.emissive != color))
         {
             mData.emissive = color;
             markUpdates(UpdateFlags::DataChanged);
@@ -212,10 +207,10 @@ namespace Falcor
         shadingModel.value("MetalRough", ShadingModel::MetalRough);
         shadingModel.value("SpecGloss", ShadingModel::SpecGloss);
 
-        pybind11::class_<StandardMaterial, BasicMaterial, StandardMaterial::SharedPtr> material(m, "StandardMaterial");
+        pybind11::class_<StandardMaterial, BasicMaterial, ref<StandardMaterial>> material(m, "StandardMaterial");
         auto create = [] (const std::string& name, ShadingModel shadingModel)
         {
-            return StandardMaterial::create(getActivePythonSceneBuilder().getDevice(), name, shadingModel);
+            return StandardMaterial::create(accessActivePythonSceneBuilder().getDevice(), name, shadingModel);
         };
         material.def(pybind11::init(create), "name"_a = "", "model"_a = ShadingModel::MetalRough); // PYTHONDEPRECATED
 

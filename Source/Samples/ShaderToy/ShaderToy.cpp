@@ -49,7 +49,7 @@ void ShaderToy::onLoad(RenderContext* pRenderContext)
     // Texture sampler
     Sampler::Desc samplerDesc;
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear).setMaxAnisotropy(8);
-    mpLinearSampler = Sampler::create(getDevice().get(), samplerDesc);
+    mpLinearSampler = Sampler::create(getDevice(), samplerDesc);
 
     // Load shaders
     mpMainPass = FullScreenPass::create(getDevice(), "Samples/ShaderToy/Toy.ps.slang");
@@ -60,13 +60,14 @@ void ShaderToy::onResize(uint32_t width, uint32_t height)
     mAspectRatio = (float(width) / float(height));
 }
 
-void ShaderToy::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
+void ShaderToy::onFrameRender(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo)
 {
     // iResolution
     float width = (float)pTargetFbo->getWidth();
     float height = (float)pTargetFbo->getHeight();
-    mpMainPass["ToyCB"]["iResolution"] = float2(width, height);
-    mpMainPass["ToyCB"]["iGlobalTime"] = (float)getGlobalClock().getTime();
+    auto var = mpMainPass->getRootVar()["ToyCB"];
+    var["iResolution"] = float2(width, height);
+    var["iGlobalTime"] = (float)getGlobalClock().getTime();
 
     // run final pass
     mpMainPass->execute(pRenderContext, pTargetFbo);

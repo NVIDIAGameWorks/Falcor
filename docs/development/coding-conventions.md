@@ -172,13 +172,50 @@ The following table outlines the naming prefixing and casing used:
 | local variables | `camelCase` |
 | macros | `UPPER_SNAKE_CASE` |
 
-In addition `p` prefix is used for pointers. This applies to all kinds of variables, e.g. `mpSomePtr`, `spSomePointer` etc.
-The prefix `p` is not strictly required in self-contained new code.
+In the past a `p` prefix was used for pointers. This applies to all kinds of variables, e.g. `mpSomePtr`, `spSomePointer` etc.
+The prefix `p` should not be used for self-contained new code, but might still be used to conform to old code.
 
 ### Variables
 
 - Names should in general be descriptive of what a variable/parameter/etc. represents.
 - The shorter the scope of a variable, the less important it is for it to have a verbose and descriptive name. Single-letter names are okay for extremely short-lived variables and loop counters, so long as their role is clear in context.
+
+### Name shadowing
+
+- The compiler is configured to error on name shadowing to prevent unexpected behavior and make name replacement more robust.
+- It's good practice to introduce local scopes for reusing the same variable name:
+
+```c++
+void foo()
+{
+    {
+        Program::Desc desc;
+        ...
+        mProgramA = Program::create(desc);
+    }
+
+    {
+        Program::Desc desc;
+        ...
+        mProgramB = Program::create(desc);
+    }
+}
+```
+
+- If function argument names are shadowing struct members, use a trailing underscore (`_`) to avoid shadowing:
+
+```c++
+struct Data
+{
+    int foo;
+    int bar;
+    void set(int foo_, int bar_)
+    {
+        foo = foo_;
+        bar = bar_;
+    }
+}
+```
 
 ### Macros
 
@@ -217,6 +254,7 @@ The prefix `p` is not strictly required in self-contained new code.
     - Use `std::unique_ptr` unless the ownership of an object is truly shared, it is the more efficient smart pointer.
 - Use the `override` specifier on all overridden virtual methods. It helps catch bugs.
 - Avoid using `friend` unless absolutely needed.
+- Use `static constexpr` for class/struct scoped constant values. Previous to C++17, `static const` members have to be initialized out-of-class, with C++17 they can be initialized inline using either `inline static const` or `static constexpr` (which is implicitly `inline`). C++ has an exception to allow `static const` integral types to be initialized in the declaration, but this will result in no global symbol for the constant (unless also defined out-of-class), which in turn leads to hard to understand behavior when referencing such a constant in a different library for example. Some more information can be found here: https://fekir.info/post/linker-error-with-static-member-variable
 
 ### Rules for C++ structs
 

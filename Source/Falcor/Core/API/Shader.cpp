@@ -59,7 +59,12 @@ Shader::Shader(ShaderType type) : mType(type)
 
 Shader::~Shader() {}
 
-bool Shader::init(ComPtr<slang::IComponentType> slangEntryPoint, const std::string& entryPointName, CompilerFlags flags, std::string& log)
+bool Shader::init(
+    Slang::ComPtr<slang::IComponentType> slangEntryPoint,
+    const std::string& entryPointName,
+    CompilerFlags flags,
+    std::string& log
+)
 {
     // In GFX, we do not generate actual shader code at program creation.
     // The actual shader code will only be generated and cached when all specialization arguments

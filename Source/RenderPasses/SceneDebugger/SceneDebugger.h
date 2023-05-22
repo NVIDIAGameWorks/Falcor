@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
+#include "RenderGraph/RenderPass.h"
 #include "Scene/HitInfoType.slang"
 #include "SharedTypes.slang"
 
@@ -41,14 +42,14 @@ class SceneDebugger : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(SceneDebugger, "SceneDebugger", "Scene debugger for identifying asset issues.");
 
-    using SharedPtr = std::shared_ptr<SceneDebugger>;
+    static ref<SceneDebugger> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<SceneDebugger>(pDevice, dict); }
 
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
+    SceneDebugger(ref<Device> pDevice, const Dictionary& dict);
 
     Dictionary getScriptingDictionary() override;
     RenderPassReflection reflect(const CompileData& compileData) override;
     void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
-    void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
+    void setScene(RenderContext* pRenderContext, const ref<Scene>& pScene) override;
     void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     void renderUI(Gui::Widgets& widget) override;
     bool onMouseEvent(const MouseEvent& mouseEvent) override;
@@ -59,18 +60,17 @@ public:
     void setMode(SceneDebuggerMode mode) { mParams.mode = (uint32_t)mode; }
 
 private:
-    SceneDebugger(std::shared_ptr<Device> pDevice, const Dictionary& dict);
     void renderPixelDataUI(Gui::Widgets& widget);
     void initInstanceInfo();
 
     // Internal state
-    Scene::SharedPtr        mpScene;
+    ref<Scene>              mpScene;
     SceneDebuggerParams     mParams;
-    ComputePass::SharedPtr  mpDebugPass;
-    GpuFence::SharedPtr     mpFence;
-    Buffer::SharedPtr       mpPixelData;            ///< Buffer for recording pixel data at the selected pixel.
-    Buffer::SharedPtr       mpPixelDataStaging;     ///< Readback buffer.
-    Buffer::SharedPtr       mpMeshToBlasID;
-    Buffer::SharedPtr       mpInstanceInfo;
+    ref<ComputePass>        mpDebugPass;
+    ref<GpuFence>           mpFence;
+    ref<Buffer>             mpPixelData;            ///< Buffer for recording pixel data at the selected pixel.
+    ref<Buffer>             mpPixelDataStaging;     ///< Readback buffer.
+    ref<Buffer>             mpMeshToBlasID;
+    ref<Buffer>             mpInstanceInfo;
     bool                    mPixelDataAvailable = false;
 };

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -167,7 +167,7 @@ struct BSDFViewer
         SurfaceData data = {};
 
         // Setup Falcor's ShadingData based on the selected scene material and lobes.
-        data.sd = gScene.materials.prepareShadingData(v, params.materialID, viewDir, lod, params.useNormalMapping);
+        data.sd = gScene.materials.prepareShadingData(v, params.materialID, viewDir, lod);
         data.sd.mtl.setActiveLobes(getActiveLobes());
 
         return data;
@@ -230,7 +230,8 @@ struct BSDFViewer
         data.wo = lightDir;
 
         // Create BSDF instance.
-        let mi = gScene.materials.getMaterialInstance(data.sd, lod);
+        uint hints = !params.useNormalMapping ? (uint)MaterialInstanceHints::DisableNormalMapping : 0;
+        let mi = gScene.materials.getMaterialInstance(data.sd, lod, hints);
         data.bsdfProperties = mi.getProperties(data.sd);
 
         // Evaluate BSDF at shading point.
@@ -239,7 +240,7 @@ struct BSDFViewer
         // Remove cosine term if it's disabled in the viewer.
         if (!params.applyNdotL)
         {
-            float NdotL = dot(data.sd.N, data.wo);
+            float NdotL = dot(data.sd.frame.N, data.wo);
             f = NdotL > 0.f ? f / NdotL : float3(0);
         }
 
@@ -262,7 +263,7 @@ struct BSDFViewer
             s.wo = -normalize(params.lightDir);
             s.weight = mi.eval(sd, s.wo, sg);
             s.pdf = 1.f;
-            return dot(sd.N, s.wo) > 0.f;
+            return dot(sd.frame.N, s.wo) > 0.f;
         }
         else
         {
@@ -297,7 +298,8 @@ struct BSDFViewer
         data = prepareShadingData(v, -rayDir, lod);
 
         // Create BSDF instance.
-        let mi = gScene.materials.getMaterialInstance(data.sd, lod);
+        uint hints = !params.useNormalMapping ? (uint)MaterialInstanceHints::DisableNormalMapping : 0;
+        let mi = gScene.materials.getMaterialInstance(data.sd, lod, hints);
         data.bsdfProperties = mi.getProperties(data.sd);
 
         float3 output = 0;
@@ -367,9 +369,9 @@ struct BSDFViewer
             PixelData px = {};
 
             px.texC = data.sd.uv;
-            px.N = data.sd.N;
-            px.T = data.sd.T;
-            px.B = data.sd.B;
+            px.N = data.sd.frame.N;
+            px.T = data.sd.frame.T;
+            px.B = data.sd.frame.B;
             px.wi = data.sd.V;
             px.wo = data.wo;
             px.output = output;

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,20 +26,21 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 
-/** Parallel reduction using shared memory and warp instructions.
-
-    The host sets these defines:
-    - FORMAT_CHANNELS <N>   Number of components in the data (N=1..4).
-    - FORMAT_TYPE <type>    Texture format type. See ParallelReductionType.slangh.
-*/
+/**
+ * Parallel reduction using shared memory and warp instructions.
+ *
+ * The host sets these defines:
+ * - FORMAT_CHANNELS <N>   Number of components in the data (N=1..4).
+ * - FORMAT_TYPE <type>    Texture format type. See ParallelReductionType.slangh.
+ */
 #include "ParallelReductionType.slangh"
 #include "Utils/Math/MathConstants.slangh"
 
 cbuffer PerFrameCB
 {
-    uint2 gResolution;      // Pixel dimensions of input texture.
-    uint2 gNumTiles;        // Number of tiles in input texture.
-    uint gElems;            // Number of elements in input intermediate buffer.
+    uint2 gResolution; // Pixel dimensions of input texture.
+    uint2 gNumTiles;   // Number of tiles in input texture.
+    uint gElems;       // Number of elements in input intermediate buffer.
 };
 
 // Typedef the data format as 'DataType'. The format is specified from the host.
@@ -69,7 +70,6 @@ groupshared DataType gIntermediateCache[32 /* = 1024 / 32 */];
 groupshared DataType gIntermediateCache[64 /* = 1024 / 32 * 2 */];
 #endif
 
-
 DataType loadTexture(uint2 pixelCoords)
 {
     DataType value = gInput[pixelCoords];
@@ -80,14 +80,16 @@ DataType loadTexture(uint2 pixelCoords)
     return value;
 }
 
-/** Performs reduction within a thread group and writes single result to the results buffer at 'dstIdx'.
-*/
+/**
+ * Performs reduction within a thread group and writes single result to the results buffer at 'dstIdx'.
+ */
 void reduceSum(DataType value, uint dstIdx, uint groupThreadIdx)
 {
     // Add all elements within warp. Store result to shared memory.
     {
         value = WaveActiveSum(value);
-        if (WaveIsFirstLane()) gIntermediateCache[groupThreadIdx / 32] = value;
+        if (WaveIsFirstLane())
+            gIntermediateCache[groupThreadIdx / 32] = value;
     }
     GroupMemoryBarrierWithGroupSync();
 
@@ -96,12 +98,14 @@ void reduceSum(DataType value, uint dstIdx, uint groupThreadIdx)
     {
         value = gIntermediateCache[groupThreadIdx];
         value = WaveActiveSum(value);
-        if (groupThreadIdx == 0) gResult[dstIdx] = value;
+        if (groupThreadIdx == 0)
+            gResult[dstIdx] = value;
     }
 }
 
-/** Take the min/max of all elements within a thread group and writes single result to the results buffer at 'dstIdx'.
-*/
+/**
+ * Take the min/max of all elements within a thread group and writes single result to the results buffer at 'dstIdx'.
+ */
 void reduceMinMax(DataType minValue, DataType maxValue, uint dstIdx, uint groupThreadIdx)
 {
     // Add all elements within warp. Store result to shared memory.
@@ -132,7 +136,7 @@ void reduceMinMax(DataType minValue, DataType maxValue, uint dstIdx, uint groupT
 }
 
 [numthreads(32, 32, 1)]
-void initialPass(uint3 globalThreadId : SV_DispatchThreadID, uint groupThreadIdx : SV_GroupIndex, uint3 groupId : SV_GroupID)
+void initialPass(uint3 globalThreadId: SV_DispatchThreadID, uint groupThreadIdx: SV_GroupIndex, uint3 groupId: SV_GroupID)
 {
     const uint2 pixelCoords = globalThreadId.xy;
     const uint tileIdx = groupId.y * gNumTiles.x + groupId.x;
@@ -140,26 +144,29 @@ void initialPass(uint3 globalThreadId : SV_DispatchThreadID, uint groupThreadIdx
 #if REDUCTION_TYPE == REDUCTION_TYPE_SUM
     // Load input from texture in tiles of 32x32 pixels.
     DataType value = 0;
-    if (all(pixelCoords < gResolution)) value = loadTexture(pixelCoords);
+    if (all(pixelCoords < gResolution))
+        value = loadTexture(pixelCoords);
 
     reduceSum(value, tileIdx, groupThreadIdx);
 #elif REDUCTION_TYPE == REDUCTION_TYPE_MINMAX
     // Load input from texture in tiles of 32x32 pixels.
     DataType minValue = kMaxValue;
     DataType maxValue = kMinValue;
-    if (all(pixelCoords < gResolution)) minValue = maxValue = loadTexture(pixelCoords);
+    if (all(pixelCoords < gResolution))
+        minValue = maxValue = loadTexture(pixelCoords);
 
     reduceMinMax(minValue, maxValue, tileIdx, groupThreadIdx);
 #endif
 }
 
 [numthreads(1024, 1, 1)]
-void finalPass(uint3 globalThreadId : SV_DispatchThreadID, uint groupThreadIdx : SV_GroupIndex, uint3 groupId : SV_GroupID)
+void finalPass(uint3 globalThreadId: SV_DispatchThreadID, uint groupThreadIdx: SV_GroupIndex, uint3 groupId: SV_GroupID)
 {
 #if REDUCTION_TYPE == REDUCTION_TYPE_SUM
     // Load input from buffer written in previous pass.
     DataType value = 0;
-    if (globalThreadId.x < gElems) value = gInputBuffer[globalThreadId.x];
+    if (globalThreadId.x < gElems)
+        value = gInputBuffer[globalThreadId.x];
 
     reduceSum(value, groupId.x, groupThreadIdx);
 #elif REDUCTION_TYPE == REDUCTION_TYPE_MINMAX

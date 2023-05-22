@@ -64,9 +64,11 @@
 #pragma once
 
 #include "Falcor.h"
-#include "RenderGraph/BasePasses/FullScreenPass.h"
+#include "Core/Pass/FullScreenPass.h"
+#include "RenderGraph/RenderPass.h"
 
-#include "CudaUtils.h"
+#include "OptixUtils.h"
+#include "Utils/CudaUtils.h"
 
 using namespace Falcor;
 
@@ -76,25 +78,23 @@ class OptixDenoiser_ : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(OptixDenoiser_, "OptixDenoiser", "Apply the OptiX AI Denoiser.");
 
-    using SharedPtr = std::shared_ptr<OptixDenoiser_>;
+    static ref<OptixDenoiser_> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<OptixDenoiser_>(pDevice, dict); }
 
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
+    OptixDenoiser_(ref<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
-    virtual void setScene(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene) override;
+    virtual void setScene(RenderContext* pRenderContext, const ref<Scene>& pScene) override;
 
     // Scripting functions
     bool getEnabled() const { return mEnabled; }
     void setEnabled(bool enabled) { mEnabled = enabled; }
 
 private:
-    OptixDenoiser_(std::shared_ptr<Device> pDevice, const Dictionary& dict);
-
-    Scene::SharedPtr mpScene;
+    ref<Scene> mpScene;
 
     /** Initializes OptiX & CUDA contexts.  Returns true on success (if false, everything else will fail).
     */
@@ -111,10 +111,10 @@ private:
         avoid exposing OptiX interop outside this render pass) so this isn't much slower than a better-designed
         sharing of GPU memory between DX and OptiX.
     */
-    void convertTexToBuf(RenderContext* pRenderContext, const Texture::SharedPtr& tex, const Buffer::SharedPtr& buf, const uint2& size);
-    void convertNormalsToBuf(RenderContext* pRenderContext, const Texture::SharedPtr& tex, const Buffer::SharedPtr& buf, const uint2& size, rmcv::mat4 viewIT);
-    void convertBufToTex(RenderContext* pRenderContext, const Buffer::SharedPtr& buf, const Texture::SharedPtr& tex, const uint2& size);
-    void convertMotionVectors(RenderContext* pRenderContext, const Texture::SharedPtr& tex, const Buffer::SharedPtr& buf, const uint2& size);
+    void convertTexToBuf(RenderContext* pRenderContext, const ref<Texture>& tex, const ref<Buffer>& buf, const uint2& size);
+    void convertNormalsToBuf(RenderContext* pRenderContext, const ref<Texture>& tex, const ref<Buffer>& buf, const uint2& size, float4x4 viewIT);
+    void convertBufToTex(RenderContext* pRenderContext, const ref<Buffer>& buf, const ref<Texture>& tex, const uint2& size);
+    void convertMotionVectors(RenderContext* pRenderContext, const ref<Texture>& tex, const ref<Buffer>& buf, const uint2& size);
 
     // Options and parameters for the Falcor render pass
     bool                        mEnabled = true;            ///< True = using OptiX denoiser, False = pass is a no-op
@@ -138,7 +138,7 @@ private:
     // Structure to encapsulate DX <-> CUDA interop data for a buffer
     struct Interop
     {
-        Buffer::SharedPtr       buffer;                       // Falcor buffer
+        ref<Buffer>             buffer;                       // Falcor buffer
         CUdeviceptr             devicePtr = (CUdeviceptr)0;   // CUDA pointer to buffer
     };
 
@@ -185,11 +185,11 @@ private:
     } mDenoiser;
 
     // Our shaders for converting buffers on input and output from OptiX
-    ComputePass::SharedPtr      mpConvertTexToBuf;
-    ComputePass::SharedPtr      mpConvertNormalsToBuf;
-    ComputePass::SharedPtr      mpConvertMotionVectors;
-    FullScreenPass::SharedPtr   mpConvertBufToTex;
-    Fbo::SharedPtr              mpFbo;
+    ref<ComputePass>            mpConvertTexToBuf;
+    ref<ComputePass>            mpConvertNormalsToBuf;
+    ref<ComputePass>            mpConvertMotionVectors;
+    ref<FullScreenPass>         mpConvertBufToTex;
+    ref<Fbo>                    mpFbo;
 
     /** Allocate a DX <-> CUDA staging buffer
     */
@@ -205,5 +205,5 @@ private:
 
     /** Get a device pointer from a buffer.  This wrapper gracefully handles nullptrs (i.e., if buf == nullptr)
     */
-    void* exportBufferToCudaDevice(Buffer::SharedPtr& buf);
+    void* exportBufferToCudaDevice(ref<Buffer>& buf);
 };

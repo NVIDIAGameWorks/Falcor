@@ -1,5 +1,5 @@
 IMAGE_TEST = {
-    'tolerance': 1e-6
+    'tolerance': 2e-6
 }
 
 # NOTE:

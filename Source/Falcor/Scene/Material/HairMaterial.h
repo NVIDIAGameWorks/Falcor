@@ -48,12 +48,9 @@ namespace Falcor
     class FALCOR_API HairMaterial : public BasicMaterial
     {
     public:
-        using SharedPtr = std::shared_ptr<HairMaterial>;
+        static ref<HairMaterial> create(ref<Device> pDevice, const std::string& name) { return make_ref<HairMaterial>(pDevice, name); };
 
-        /** Create a new hair material.
-            \param[in] name The material name.
-        */
-        static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& name = "");
+        HairMaterial(ref<Device> pDevice, const std::string& name);
 
         Program::ShaderModuleList getShaderModules() const override;
         Program::TypeConformanceList getTypeConformances() const override;
@@ -69,8 +66,5 @@ namespace Falcor
         /** Compute RGB color from sigmaA (inverse of sigmaAFromColor).
         */
         static float3 colorFromSigmaA(float3 sigmaA, float betaN);
-
-    protected:
-        HairMaterial(std::shared_ptr<Device> pDevice, const std::string& name);
     };
 }

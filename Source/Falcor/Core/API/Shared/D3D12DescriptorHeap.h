@@ -28,6 +28,7 @@
 #pragma once
 #include "D3D12Handles.h"
 #include "Core/Assert.h"
+#include "Core/Object.h"
 #include "Core/API/fwd.h"
 #include <d3d12.h>
 #include <memory>
@@ -37,16 +38,15 @@
 
 namespace Falcor
 {
-class D3D12DescriptorHeap : public std::enable_shared_from_this<D3D12DescriptorHeap>
+class D3D12DescriptorHeap : public Object
 {
 public:
-    using SharedPtr = std::shared_ptr<D3D12DescriptorHeap>;
     using ApiHandle = ID3D12DescriptorHeapPtr;
     using CpuHandle = D3D12_CPU_DESCRIPTOR_HANDLE;
     using GpuHandle = D3D12_GPU_DESCRIPTOR_HANDLE;
 
     ~D3D12DescriptorHeap();
-    static const uint32_t kDescPerChunk = 64;
+    static constexpr uint32_t kDescPerChunk = 64;
 
     /**
      * Create a new descriptor heap.
@@ -56,7 +56,7 @@ public:
      * @param[in] shaderVisible True if the descriptor heap should be shader visible.
      * @return A new object, or throws an exception if creation failed.
      */
-    static SharedPtr create(Device* pDevice, D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t descCount, bool shaderVisible = true);
+    static ref<D3D12DescriptorHeap> create(Device* pDevice, D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t descCount, bool shaderVisible = true);
 
     CpuHandle getBaseCpuHandle() const { return mCpuHeapStart; }
     GpuHandle getBaseGpuHandle() const;
@@ -89,14 +89,9 @@ public:
 
     private:
         friend D3D12DescriptorHeap;
-        static SharedPtr create(
-            D3D12DescriptorHeap::SharedPtr pHeap,
-            uint32_t baseIndex,
-            uint32_t descCount,
-            std::shared_ptr<Chunk> pChunk
-        );
-        Allocation(D3D12DescriptorHeap::SharedPtr pHeap, uint32_t baseIndex, uint32_t descCount, std::shared_ptr<Chunk> pChunk);
-        D3D12DescriptorHeap::SharedPtr mpHeap;
+        static SharedPtr create(ref<D3D12DescriptorHeap> pHeap, uint32_t baseIndex, uint32_t descCount, std::shared_ptr<Chunk> pChunk);
+        Allocation(ref<D3D12DescriptorHeap> pHeap, uint32_t baseIndex, uint32_t descCount, std::shared_ptr<Chunk> pChunk);
+        ref<D3D12DescriptorHeap> mpHeap;
         uint32_t mBaseIndex;
         uint32_t mDescCount;
         std::shared_ptr<Chunk> mpChunk;
@@ -111,7 +106,7 @@ public:
 
 private:
     friend Allocation;
-    D3D12DescriptorHeap(std::shared_ptr<Device> pDevice, D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t chunkCount, bool shaderVisible);
+    D3D12DescriptorHeap(Device* pDevice, D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t chunkCount, bool shaderVisible);
 
     CpuHandle getCpuHandle(uint32_t index) const;
     GpuHandle getGpuHandle(uint32_t index) const; // Only valid if heap is shader visible

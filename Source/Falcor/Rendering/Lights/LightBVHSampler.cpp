@@ -30,8 +30,6 @@
 #include "Core/Errors.h"
 #include "Utils/Timing/Profiler.h"
 #include "Utils/Scripting/ScriptBindings.h"
-#include <glm/gtc/constants.hpp>
-#include <glm/gtx/io.hpp>
 #include <algorithm>
 #include <numeric>
 
@@ -45,11 +43,6 @@ namespace Falcor
             { (uint32_t)SolidAngleBoundMethod::BoxToCenter, "Cone around center dir" },
             { (uint32_t)SolidAngleBoundMethod::BoxToAverage, "Cone around average dir" },
         };
-    }
-
-    LightBVHSampler::SharedPtr LightBVHSampler::create(RenderContext* pRenderContext, Scene::SharedPtr pScene, const Options& options)
-    {
-        return SharedPtr(new LightBVHSampler(pRenderContext, pScene, options));
     }
 
     bool LightBVHSampler::update(RenderContext* pRenderContext)
@@ -147,7 +140,7 @@ namespace Falcor
         return optionsChanged;
     }
 
-    LightBVHSampler::LightBVHSampler(RenderContext* pRenderContext, Scene::SharedPtr pScene, const Options& options)
+    LightBVHSampler::LightBVHSampler(RenderContext* pRenderContext, ref<Scene> pScene, const Options& options)
         : EmissiveLightSampler(EmissiveLightSamplerType::LightBVH, pScene)
         , mOptions(options)
     {

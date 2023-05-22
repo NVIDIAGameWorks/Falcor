@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -32,47 +32,53 @@
 
 namespace Falcor
 {
-    template<typename T, typename Enable = void>
-    class NumericRange final {};
+template<typename T, typename Enable = void>
+class NumericRange final
+{};
 
-    /** Numeric range that can be iterated over.
-        Should be replaced with C++20 std::views::iota when available.
-    */
-    template<typename T>
-    class NumericRange<T, typename std::enable_if<std::is_integral<T>::value>::type> final
+/**
+ * Numeric range that can be iterated over.
+ * Should be replaced with C++20 std::views::iota when available.
+ */
+template<typename T>
+class NumericRange<T, typename std::enable_if<std::is_integral<T>::value>::type> final
+{
+public:
+    class Iterator
     {
     public:
-        class Iterator
-        {
-        public:
-            using iterator_category = std::forward_iterator_tag;
-            using value_type = T;
-            using difference_type = T;
-            using pointer = const T*;
-            using reference = T;
+        using iterator_category = std::forward_iterator_tag;
+        using value_type = T;
+        using difference_type = T;
+        using pointer = const T*;
+        using reference = T;
 
-            explicit Iterator(const T& value = T(0)) : mValue(value) {}
-            const Iterator& operator++() { ++mValue; return *this; }
-            bool operator!=(const Iterator& other) const { return other.mValue != mValue; }
-            T operator*() const { return mValue; }
-        private:
-            T mValue;
-        };
-
-        explicit NumericRange(const T& begin, const T& end)
-            : mBegin(begin)
-            , mEnd(end)
+        explicit Iterator(const T& value = T(0)) : mValue(value) {}
+        const Iterator& operator++()
         {
-            if (begin > end) throw ArgumentError("Invalid range");
+            ++mValue;
+            return *this;
         }
-        NumericRange() = delete;
-        NumericRange(const NumericRange&) = delete;
-        NumericRange(NumericRange&& other) = delete;
-
-        Iterator begin() const { return Iterator(mBegin); }
-        Iterator end() const { return Iterator(mEnd); }
+        bool operator!=(const Iterator& other) const { return other.mValue != mValue; }
+        T operator*() const { return mValue; }
 
     private:
-        T mBegin, mEnd;
+        T mValue;
     };
+
+    explicit NumericRange(const T& begin, const T& end) : mBegin(begin), mEnd(end)
+    {
+        if (begin > end)
+            throw ArgumentError("Invalid range");
+    }
+    NumericRange() = delete;
+    NumericRange(const NumericRange&) = delete;
+    NumericRange(NumericRange&& other) = delete;
+
+    Iterator begin() const { return Iterator(mBegin); }
+    Iterator end() const { return Iterator(mEnd); }
+
+private:
+    T mBegin, mEnd;
 };
+}; // namespace Falcor

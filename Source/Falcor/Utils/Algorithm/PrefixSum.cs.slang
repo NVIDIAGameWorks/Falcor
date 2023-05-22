@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,40 +26,47 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 
-/** Parallel prefix sum computed in place using exclusive scan.
-
-    The host sets these defines:
-    GROUP_SIZE <N>      Thread group size, must be a power-of-two <= 1024.
-
-    The implementation is based on G. Blelloch, "Vector Models for Data-Parallel Computing", MIT Press, 1990.
-    See CUDA code: http://http.developer.nvidia.com/GPUGems3/gpugems3_ch39.html
-    See also: http://www.umiacs.umd.edu/~ramani/cmsc828e_gpusci/ScanTalk.pdf
-*/
+/**
+ * Parallel prefix sum computed in place using exclusive scan.
+ *
+ * The host sets these defines:
+ * GROUP_SIZE <N>      Thread group size, must be a power-of-two <= 1024.
+ *
+ * The implementation is based on G. Blelloch, "Vector Models for Data-Parallel Computing", MIT Press, 1990.
+ * See CUDA code: http://http.developer.nvidia.com/GPUGems3/gpugems3_ch39.html
+ * See also: http://www.umiacs.umd.edu/~ramani/cmsc828e_gpusci/ScanTalk.pdf
+ */
 
 cbuffer CB
 {
-    uint gNumGroups;        ///< Number of groups we'll process, each group is 2N elements.
-    uint gTotalNumElems;    ///< Total number of elements. This does not have to be a multiple of the group size.
-    uint gIter;             ///< The current iteration, if there are more elements than 2 * GROUP_SIZE * GROUP_SIZE, the prefix sum will be split into multiple iterations.
+    /// Number of groups we'll process, each group is 2N elements.
+    uint gNumGroups;
+
+    /// Total number of elements. This does not have to be a multiple of the group size.
+    uint gTotalNumElems;
+
+    /// The current iteration, if there are more elements than 2 * GROUP_SIZE * GROUP_SIZE, the prefix sum will be split into multiple
+    /// iterations.
+    uint gIter;
 };
 
-RWByteAddressBuffer gData;                      ///< Data buffer.
-RWByteAddressBuffer gPrefixGroupSums;           ///< One uint per group, each holds the sum of all elements in the group and to the left.
-RWByteAddressBuffer gTotalSum;                  ///< One uint, holds the total sum of a prefix sum iteration.
-ByteAddressBuffer gPrevTotalSum;                ///< One uint, holds the previous total sum of the previous prefix sum iteration.
+RWByteAddressBuffer gData;            ///< Data buffer.
+RWByteAddressBuffer gPrefixGroupSums; ///< One uint per group, each holds the sum of all elements in the group and to the left.
+RWByteAddressBuffer gTotalSum;        ///< One uint, holds the total sum of a prefix sum iteration.
+ByteAddressBuffer gPrevTotalSum;      ///< One uint, holds the previous total sum of the previous prefix sum iteration.
 
-groupshared uint gSharedData[2 * GROUP_SIZE];   ///< Temporary working buffer in shared memory for 2N elements.
+groupshared uint gSharedData[2 * GROUP_SIZE]; ///< Temporary working buffer in shared memory for 2N elements.
 
-
-/** Parallel prefix sum in shared memory over consecutive groups of 2N elements,
-    where N is the thread group size.
-    This shader reads from gData and writes one uint32_t per group to gPrefixGroupSums.
-*/
+/**
+ * Parallel prefix sum in shared memory over consecutive groups of 2N elements,
+ * where N is the thread group size.
+ * This shader reads from gData and writes one uint32_t per group to gPrefixGroupSums.
+ */
 [numthreads(GROUP_SIZE, 1, 1)]
-void groupScan(uint3 groupID : SV_GroupID, uint3 groupThreadID : SV_GroupThreadID)
+void groupScan(uint3 groupID: SV_GroupID, uint3 groupThreadID: SV_GroupThreadID)
 {
-    const uint thid = groupThreadID.x;      // Local thread ID in the range 0..N-1.
-    const uint groupIdx = groupID.x;        // Group index where each group represents 2N elements.
+    const uint thid = groupThreadID.x; // Local thread ID in the range 0..N-1.
+    const uint groupIdx = groupID.x;   // Group index where each group represents 2N elements.
 
     // Load data for group into shared memory. Each thread loads two elements.
     // Interleaved load at consecutive addresses can lead to 2x bank conflicts.
@@ -85,7 +92,7 @@ void groupScan(uint3 groupID : SV_GroupID, uint3 groupThreadID : SV_GroupThreadI
 
             gSharedData[bi] += gSharedData[ai];
         }
-        offset *= 2;    // offset = 1, 2, ... N
+        offset *= 2; // offset = 1, 2, ... N
     }
 
     GroupMemoryBarrierWithGroupSync();
@@ -110,13 +117,14 @@ void groupScan(uint3 groupID : SV_GroupID, uint3 groupThreadID : SV_GroupThreadI
 
     // Zero out top element, this is required for down-sweep phase to work correctly.
     // Only one thread in each group does this.
-    if (thid == 0) gSharedData[2 * GROUP_SIZE - 1] = 0;
+    if (thid == 0)
+        gSharedData[2 * GROUP_SIZE - 1] = 0;
 
     // Down-sweep phase.
     // We do log2(N)+1 iterations for d = 1, 2, 4, ..., N.
     for (uint d = 1; d <= GROUP_SIZE; d *= 2)
     {
-        offset >>= 1;   // offset = N, N/2, ..., 1
+        offset >>= 1; // offset = N, N/2, ..., 1
 
         GroupMemoryBarrierWithGroupSync();
 
@@ -134,23 +142,26 @@ void groupScan(uint3 groupID : SV_GroupID, uint3 groupThreadID : SV_GroupThreadI
     GroupMemoryBarrierWithGroupSync();
 
     // Write results to memory and add prev sum. Lower half first then upper half.
-    if (idx < gTotalNumElems) gData.Store(idx * 4, gSharedData[thid] + prevSum);
-    if ((idx + GROUP_SIZE) < gTotalNumElems) gData.Store((idx + GROUP_SIZE) * 4, gSharedData[thid + GROUP_SIZE] + prevSum);
+    if (idx < gTotalNumElems)
+        gData.Store(idx * 4, gSharedData[thid] + prevSum);
+    if ((idx + GROUP_SIZE) < gTotalNumElems)
+        gData.Store((idx + GROUP_SIZE) * 4, gSharedData[thid + GROUP_SIZE] + prevSum);
 }
 
-/** Pass for finalizing a prefix sum computed over multiple thread groups.
-    Each thread here operates on one element of the data buffer.
-    Note that we're skipping the first N elements as those don't need to be added
-    (their group's prefix sum is zero).
-*/
+/**
+ * Pass for finalizing a prefix sum computed over multiple thread groups.
+ * Each thread here operates on one element of the data buffer.
+ * Note that we're skipping the first N elements as those don't need to be added
+ * (their group's prefix sum is zero).
+ */
 [numthreads(GROUP_SIZE, 1, 1)]
-void finalizeGroups(uint3 groupID : SV_GroupID, uint3 groupThreadID : SV_GroupThreadID)
+void finalizeGroups(uint3 groupID: SV_GroupID, uint3 groupThreadID: SV_GroupThreadID)
 {
-    const uint thid = groupThreadID.x;      // Local thread ID in the range 0..N-1.
-    const uint groupIdx = groupID.x;        // Group index where each group represents N elements (skipping first 2N elements).
+    const uint thid = groupThreadID.x; // Local thread ID in the range 0..N-1.
+    const uint groupIdx = groupID.x;   // Group index where each group represents N elements (skipping first 2N elements).
 
     uint sum = gPrefixGroupSums.Load((groupIdx >> 1) * 4);
-    uint globalIdx = (groupIdx * GROUP_SIZE) + thid + 2 * GROUP_SIZE * (1 + GROUP_SIZE * gIter);  // Skip first 2N elements.
+    uint globalIdx = (groupIdx * GROUP_SIZE) + thid + 2 * GROUP_SIZE * (1 + GROUP_SIZE * gIter); // Skip first 2N elements.
 
     if (globalIdx < gTotalNumElems)
     {

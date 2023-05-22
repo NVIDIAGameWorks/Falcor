@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,11 +28,6 @@
 #include "SelectionWheel.h"
 
 using namespace Falcor;
-
-Falcor::SelectionWheel::SharedPtr Falcor::SelectionWheel::create(Marker2DSet::SharedPtr pMarker2DSet)
-{
-    return SharedPtr(new SelectionWheel(pMarker2DSet));
-}
 
 void Falcor::SelectionWheel::update(const float2& mousePos, const Desc& description)
 {
@@ -153,7 +148,7 @@ float2 Falcor::SelectionWheel::getCenterPositionOfSector(uint32_t groupIndex, ui
     float rotation = getRotationOfSector(groupIndex, sectorIndex);
     float sectorAngle = getAngleOfSectorInGroup(groupIndex);
     float angle = rotation + sectorAngle * 0.5f;
-    float2 dir(glm::cos(angle), glm::sin(angle));
+    float2 dir(std::cos(angle), std::sin(angle));
     return mDescription.position + dir * (mDescription.minRadius + mDescription.maxRadius) * 0.5f;
 }
 
@@ -183,7 +178,7 @@ float Falcor::SelectionWheel::getGroupAngle()
 void Falcor::SelectionWheel::computeMouseAngleAndDirLength(const float2& mousePos, float& mouseAngle, float& dirLength)
 {
     float2 dir = mousePos - mDescription.position;
-    dirLength = glm::length(dir);
+    dirLength = length(dir);
     mouseAngle = std::atan2(dir.y, dir.x);
     if (mouseAngle < 0.f)
         mouseAngle = (float)M_PI * 2.f + mouseAngle;
@@ -202,5 +197,5 @@ void Falcor::SelectionWheel::addCircleSector(float rotation, float angle, const 
 {
     constexpr float kStartOffset = (float)M_PI / 2.f;
     float rotaion = kStartOffset - rotation - angle*0.5f - (marginOnBothSides ? 0.f : margin*0.5f);
-    mpMarker2DSet->addCircleSector(mDescription.position, rotaion, angle - std::fabs(marginOnBothSides ? 2.f * margin : margin), mDescription.minRadius, mDescription.maxRadius, color, borderColor, excludeBorderFlags);
+    mMarker2DSet.addCircleSector(mDescription.position, rotaion, angle - std::fabs(marginOnBothSides ? 2.f * margin : margin), mDescription.minRadius, mDescription.maxRadius, color, borderColor, excludeBorderFlags);
 }

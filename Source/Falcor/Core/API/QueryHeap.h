@@ -30,16 +30,14 @@
 #include "Handles.h"
 #include "Core/Assert.h"
 #include "Core/Macros.h"
+#include "Core/Object.h"
 #include <deque>
-#include <memory>
 
 namespace Falcor
 {
-class FALCOR_API QueryHeap
+class FALCOR_API QueryHeap : public Object
 {
 public:
-    using SharedPtr = std::shared_ptr<QueryHeap>;
-
     enum class Type
     {
         Timestamp,
@@ -47,7 +45,7 @@ public:
         PipelineStats
     };
 
-    static const uint32_t kInvalidIndex = 0xffffffff;
+    static constexpr uint32_t kInvalidIndex = 0xffffffff;
 
     /**
      * Create a new query heap.
@@ -55,7 +53,7 @@ public:
      * @param[in] count Number of queries.
      * @return New object, or throws an exception if creation failed.
      */
-    static SharedPtr create(Device* pDevice, Type type, uint32_t count);
+    static ref<QueryHeap> create(ref<Device> pDevice, Type type, uint32_t count);
 
     gfx::IQueryPool* getGfxQueryPool() const { return mGfxQueryPool; }
     uint32_t getQueryCount() const { return mCount; }
@@ -85,9 +83,12 @@ public:
         mFreeQueries.push_back(entry);
     }
 
-private:
-    QueryHeap(std::shared_ptr<Device> pDevice, Type type, uint32_t count);
+    void breakStrongReferenceToDevice();
 
+private:
+    QueryHeap(ref<Device> pDevice, Type type, uint32_t count);
+
+    BreakableReference<Device> mpDevice;
     Slang::ComPtr<gfx::IQueryPool> mGfxQueryPool;
     uint32_t mCount = 0;
     uint32_t mCurrentObject = 0;

@@ -46,7 +46,7 @@ void testBuffer(GPUUnitTestContext& ctx, uint32_t numElems, uint32_t index = 0, 
 {
     static_assert(type == Type::ByteAddressBuffer || type == Type::TypedBuffer || type == Type::StructuredBuffer);
 
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     numElems = div_round_up(numElems, 256u) * 256u; // Make sure we run full thread groups.
 
@@ -65,7 +65,7 @@ void testBuffer(GPUUnitTestContext& ctx, uint32_t numElems, uint32_t index = 0, 
     ctx.createProgram("Tests/Core/BufferTests.cs.slang", "clearBuffer", defines);
 
     // Create test buffer.
-    Buffer::SharedPtr pBuffer;
+    ref<Buffer> pBuffer;
     if constexpr (type == Type::ByteAddressBuffer)
         pBuffer = Buffer::create(pDevice, numElems * sizeof(uint32_t), ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None);
     else if constexpr (type == Type::TypedBuffer)
@@ -166,7 +166,7 @@ GPU_TEST(BufferUpdate)
     const uint4 a = {1, 2, 3, 4};
     const uint4 b = {5, 6, 7, 8};
 
-    auto pBuffer = Buffer::create(ctx.getDevice().get(), 16);
+    auto pBuffer = Buffer::create(ctx.getDevice(), 16);
 
     pBuffer->setBlob(&a, 0, 16);
 

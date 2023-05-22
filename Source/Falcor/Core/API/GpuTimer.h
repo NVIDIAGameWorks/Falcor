@@ -30,7 +30,7 @@
 #include "QueryHeap.h"
 #include "Buffer.h"
 #include "Core/Macros.h"
-#include <memory>
+#include "Core/Object.h"
 
 namespace Falcor
 {
@@ -38,16 +38,14 @@ namespace Falcor
  * Abstracts GPU timer queries.
  * This class provides mechanism to get elapsed time in milliseconds between a pair of begin()/end() calls.
  */
-class FALCOR_API GpuTimer
+class FALCOR_API GpuTimer : public Object
 {
 public:
-    using SharedPtr = std::shared_ptr<GpuTimer>;
-
     /**
      * Create a new timer object.
      * @return A new object, or throws an exception if creation failed.
      */
-    static SharedPtr create(Device* pDevice);
+    static ref<GpuTimer> create(ref<Device> pDevice);
 
     /**
      * Destroy a new object
@@ -81,8 +79,10 @@ public:
      */
     double getElapsedTime();
 
+    void breakStrongReferenceToDevice();
+
 private:
-    GpuTimer(std::shared_ptr<Device> pDevice);
+    GpuTimer(ref<Device> pDevice);
 
     enum class Status
     {
@@ -91,15 +91,14 @@ private:
         Idle
     };
 
-    static std::weak_ptr<QueryHeap> spHeap; // TODO: REMOVEGLOBAL
-    std::shared_ptr<Device> mpDevice;
+    BreakableReference<Device> mpDevice;
     Status mStatus = Status::Idle;
     uint32_t mStart = 0;
     uint32_t mEnd = 0;
     double mElapsedTime = 0.0;
     bool mDataPending = false; ///< Set to true when resolved timings are available for readback.
 
-    Buffer::SharedPtr mpResolveBuffer;        ///< GPU memory used as destination for resolving timestamp queries.
-    Buffer::SharedPtr mpResolveStagingBuffer; ///< CPU mappable memory for readback of resolved timings.
+    ref<Buffer> mpResolveBuffer;        ///< GPU memory used as destination for resolving timestamp queries.
+    ref<Buffer> mpResolveStagingBuffer; ///< CPU mappable memory for readback of resolved timings.
 };
 } // namespace Falcor

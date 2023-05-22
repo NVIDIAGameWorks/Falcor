@@ -31,7 +31,7 @@
 
 namespace Falcor
 {
-void MockedD3D12StagingBuffer::resize(Device* pDevice, size_t size)
+void MockedD3D12StagingBuffer::resize(ref<Device> pDevice, size_t size)
 {
     mData.resize(size);
     mpGpuBuffer = Buffer::create(

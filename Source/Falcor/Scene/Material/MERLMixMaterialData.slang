@@ -57,11 +57,11 @@ struct MERLMixMaterialData
     TextureHandle texIndexMap;
     TextureHandle texAlbedoLUT;     ///< Texture handle for albedo LUT.
 
-    static const uint kAlbedoLUTSize = 256;
-    static const uint kNormalMapTypeBits = 2;
-    static const uint kNormalMapTypeOffset = 0;
-    static const uint kLUTSamplerIDOffset = kNormalMapTypeOffset + kNormalMapTypeBits;
-    static const uint kIndexSamplerIDOffset = kLUTSamplerIDOffset + MaterialHeader::kSamplerIDBits;
+    static constexpr uint kAlbedoLUTSize = 256;
+    static constexpr uint kNormalMapTypeBits = 2;
+    static constexpr uint kNormalMapTypeOffset = 0;
+    static constexpr uint kLUTSamplerIDOffset = kNormalMapTypeOffset + kNormalMapTypeBits;
+    static constexpr uint kIndexSamplerIDOffset = kLUTSamplerIDOffset + MaterialHeader::kSamplerIDBits;
 
     SETTER_DECL void setNormalMapType(NormalMapType type) { flags = PACK_BITS(kNormalMapTypeBits, kNormalMapTypeOffset, flags, (uint)type); }
     NormalMapType getNormalMapType() CONST_FUNCTION { return NormalMapType(EXTRACT_BITS(kNormalMapTypeBits, kNormalMapTypeOffset, flags)); }

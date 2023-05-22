@@ -106,7 +106,7 @@ void setupSamplingTest(GPUUnitTestContext& ctx, const SamplingTestSpec& spec, co
     FALCOR_ASSERT(!spec.bsdfConfigs.empty());
     FALCOR_ASSERT(spec.sampleCount > spec.threadSampleCount && spec.sampleCount % spec.threadSampleCount == 0);
 
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     uint32_t testCount = (uint32_t)spec.bsdfConfigs.size();
     uint32_t binCount = spec.phiBinCount * spec.cosThetaBinCount;
@@ -140,7 +140,7 @@ void setupSamplingTest(GPUUnitTestContext& ctx, const SamplingTestSpec& spec, co
 
 std::vector<std::vector<double>> tabulateHistogram(GPUUnitTestContext& ctx, const SamplingTestSpec& spec)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     uint32_t testCount = (uint32_t)spec.bsdfConfigs.size();
     uint32_t binCount = spec.phiBinCount * spec.cosThetaBinCount;
@@ -173,7 +173,7 @@ std::vector<std::vector<double>> tabulateHistogram(GPUUnitTestContext& ctx, cons
 
 std::vector<std::vector<double>> tabulatePdf(GPUUnitTestContext& ctx, const SamplingTestSpec& spec)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     uint32_t testCount = (uint32_t)spec.bsdfConfigs.size();
     uint32_t binCount = spec.phiBinCount * spec.cosThetaBinCount;
@@ -206,7 +206,7 @@ std::vector<std::pair<std::vector<double>, std::vector<double>>> tabulateWeightA
     const SamplingTestSpec& spec
 )
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     uint32_t testCount = (uint32_t)spec.bsdfConfigs.size();
     uint32_t binCount = spec.phiBinCount * spec.cosThetaBinCount;
@@ -313,130 +313,6 @@ void testSampling(GPUUnitTestContext& ctx, const SamplingTestSpec& spec)
     }
 }
 } // namespace
-
-/// The OLD, pre-refactor BSDFs (from BxDF.slang), to be deleted
-
-GPU_TEST(TestBsdf_DiffuseReflectionLambert)
-{
-    const float3 perp = normalize(float3(0.f, 0.f, 1.f));
-    const float3 oblique = normalize(float3(0.5f, 0.f, 0.5f));
-    const float3 grazing = normalize(float3(0.f, 1.f, 0.01f));
-
-    testSampling(
-        ctx, {"Rendering.Materials.BxDF",
-              "DiffuseReflectionLambert",
-              "bsdf.albedo = float3(1.f);",
-              {
-                  {"perp", perp, {0.f, 0.f, 0.f, 0.f}},
-                  {"oblique", oblique, {0.f, 0.f, 0.f, 0.f}},
-                  {"grazing", grazing, {0.f, 0.f, 0.f, 0.f}},
-              }}
-    );
-}
-
-GPU_TEST(TestBsdf_DiffuseReflectionDisney)
-{
-    const float3 perp = normalize(float3(0.f, 0.f, 1.f));
-    const float3 oblique = normalize(float3(0.5f, 0.f, 0.5f));
-    const float3 grazing = normalize(float3(0.f, 1.f, 0.01f));
-
-    testSampling(
-        ctx, {"Rendering.Materials.BxDF",
-              "DiffuseReflectionDisney",
-              "bsdf.albedo = float3(1.f); bsdf.roughness = 0.5f;",
-              {
-                  {"perp", perp, {0.f, 0.f, 0.f, 0.f}},
-                  {"oblique", oblique, {0.f, 0.f, 0.f, 0.f}},
-                  {"grazing", grazing, {0.f, 0.f, 0.f, 0.f}},
-              }}
-    );
-}
-
-GPU_TEST(TestBsdf_DiffuseReflectionFrostbite)
-{
-    const float3 perp = normalize(float3(0.f, 0.f, 1.f));
-    const float3 oblique = normalize(float3(0.5f, 0.f, 0.5f));
-    const float3 grazing = normalize(float3(0.f, 1.f, 0.01f));
-
-    testSampling(
-        ctx, {"Rendering.Materials.BxDF",
-              "DiffuseReflectionFrostbite",
-              "bsdf.albedo = float3(1.f); bsdf.roughness = 0.5f;",
-              {
-                  {"perp", perp, {0.f, 0.f, 0.f, 0.f}},
-                  {"oblique", oblique, {0.f, 0.f, 0.f, 0.f}},
-                  {"grazing", grazing, {0.f, 0.f, 0.f, 0.f}},
-              }}
-    );
-}
-
-GPU_TEST(TestBsdf_DiffuseTransmissionLambert)
-{
-    const float3 perp = normalize(float3(0.f, 0.f, 1.f));
-    const float3 oblique = normalize(float3(0.5f, 0.f, 0.5f));
-    const float3 grazing = normalize(float3(0.f, 1.f, 0.01f));
-
-    testSampling(
-        ctx, {"Rendering.Materials.BxDF",
-              "DiffuseTransmissionLambert",
-              "bsdf.albedo = float3(1.f);",
-              {
-                  {"perp", perp, {0.f, 0.f, 0.f, 0.f}},
-                  {"oblique", oblique, {0.f, 0.f, 0.f, 0.f}},
-                  {"grazing", grazing, {0.f, 0.f, 0.f, 0.f}},
-              }}
-    );
-}
-
-GPU_TEST(TestBsdf_SpecularReflectionMicrofacet)
-{
-    const float3 perp = normalize(float3(0.f, 0.f, 1.f));
-    const float3 oblique = normalize(float3(0.5f, 0.f, 0.5f));
-    const float3 grazing = normalize(float3(0.f, 1.f, 0.01f));
-
-    testSampling(
-        ctx, {"Rendering.Materials.BxDF",
-              "SpecularReflectionMicrofacet",
-              "bsdf.albedo = float3(1.f); bsdf.activeLobes = 0xff; bsdf.alpha = params.x;",
-              {
-                  {"smooth_perp", perp, {0.05f, 0.f, 0.f, 0.f}},
-                  {"smooth_oblique", oblique, {0.05f, 0.f, 0.f, 0.f}},
-                  {"smooth_grazing", grazing, {0.05f, 0.f, 0.f, 0.f}},
-                  {"rough_perp", perp, {0.5f, 0.f, 0.f, 0.f}},
-                  {"rough_oblique", oblique, {0.5f, 0.f, 0.f, 0.f}},
-                  {"rough_grazing", grazing, {0.5f, 0.f, 0.f, 0.f}},
-              }}
-    );
-}
-
-GPU_TEST(TestBsdf_SpecularReflectionTransmissionMicrofacet, "Disabled, not passing")
-{
-    const float3 perp = normalize(float3(0.f, 0.f, 1.f));
-    const float3 oblique = normalize(float3(0.5f, 0.f, 0.5f));
-    const float3 grazing = normalize(float3(0.f, 1.f, 0.01f));
-
-    testSampling(
-        ctx, {"Rendering.Materials.BxDF",
-              "SpecularReflectionTransmissionMicrofacet",
-              "bsdf.activeLobes = 0xff; bsdf.transmissionAlbedo = float3(1.f); bsdf.alpha = params.x; bsdf.eta = params.y;",
-              {
-                  {"to_glass_smooth_perp", perp, {0.05f, 0.67f, 0.f, 0.f}},
-                  {"to_glass_smooth_oblique", oblique, {0.05f, 0.67f, 0.f, 0.f}},
-                  {"to_glass_smooth_grazing", grazing, {0.05f, 0.67f, 0.f, 0.f}},
-                  {"to_glass_rough_perp", perp, {0.5f, 0.67f, 0.f, 0.f}},
-                  {"to_glass_rough_oblique", oblique, {0.5f, 0.67f, 0.f, 0.f}},
-                  {"to_glass_rough_grazing", grazing, {0.5f, 0.67f, 0.f, 0.f}},
-                  {"from_glass_smooth_perp", perp, {0.05f, 1.5f, 0.f, 0.f}},
-                  {"from_glass_smooth_oblique", oblique, {0.05f, 1.5f, 0.f, 0.f}},
-                  {"from_glass_smooth_grazing", grazing, {0.05f, 1.5f, 0.f, 0.f}},
-                  {"from_glass_rough_perp", perp, {0.5f, 1.5f, 0.f, 0.f}},
-                  {"from_glass_rough_oblique", oblique, {0.5f, 1.5f, 0.f, 0.f}},
-                  {"from_glass_rough_grazing", grazing, {0.5f, 1.5f, 0.f, 0.f}},
-              }}
-    );
-}
-
-/// The NEW, post-refactor BSDFs
 
 GPU_TEST(TestBsdf_DisneyDiffuseBRDF)
 {
@@ -567,7 +443,7 @@ GPU_TEST(TestBsdf_SpecularMicrofacetBRDF)
     );
 }
 
-GPU_TEST(TestBsdf_SpecularMicrofacetBTDF, "Disabled, not passing")
+GPU_TEST(TestBsdf_SpecularMicrofacetBSDF, "Disabled, not passing")
 {
     const float3 perp = normalize(float3(0.f, 0.f, 1.f));
     const float3 oblique = normalize(float3(0.5f, 0.f, 0.5f));
@@ -575,7 +451,7 @@ GPU_TEST(TestBsdf_SpecularMicrofacetBTDF, "Disabled, not passing")
 
     testSampling(
         ctx, {"Rendering.Materials.BSDFs.SpecularMicrofacet",
-              "SpecularMicrofacetBTDF",
+              "SpecularMicrofacetBSDF",
               "bsdf.activeLobes = 0xff; bsdf.transmissionAlbedo = float3(1.f); bsdf.alpha = params.x; bsdf.eta = params.y;",
               {
                   {"to_glass_smooth_perp", perp, {0.05f, 0.67f, 0.f, 0.f}},

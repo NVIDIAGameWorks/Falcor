@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -173,8 +173,8 @@ std::string BasicScene::toString() const
     auto printNamedEntities = [&](const std::string_view name, auto entities)
     {
         str += fmt::format("{}=[\n", name);
-        for (const auto& [name, entity] : entities)
-            str += fmt::format("{}={}\n", name, entity.toString());
+        for (const auto& [entityName, entity] : entities)
+            str += fmt::format("{}={}\n", entityName, entity.toString());
         str += "]\n";
     };
 
@@ -227,12 +227,12 @@ void BasicSceneBuilder::onColorSpace(const std::string& name, FileLoc loc)
 
 void BasicSceneBuilder::onIdentity(FileLoc loc)
 {
-    mGraphicsState.forActiveTransforms([](auto t) { return rmcv::identity<rmcv::mat4>(); });
+    mGraphicsState.forActiveTransforms([](auto t) { return float4x4::identity(); });
 }
 
 void BasicSceneBuilder::onTranslate(Float dx, Float dy, Float dz, FileLoc loc)
 {
-    mGraphicsState.forActiveTransforms([=](auto t) { return t * rmcv::translate(float3(dx, dy, dz)); });
+    mGraphicsState.forActiveTransforms([=](auto t) { return mul(t, math::matrixFromTranslation(float3(dx, dy, dz))); });
 }
 
 void BasicSceneBuilder::onCoordinateSystem(const std::string& name, FileLoc loc)
@@ -335,7 +335,7 @@ void BasicSceneBuilder::onWorldBegin(FileLoc loc)
     // Reset graphics state.
     for (uint32_t i = 0; i < kMaxTransforms; ++i)
     {
-        mGraphicsState.ctm[i] = rmcv::identity<rmcv::mat4>();
+        mGraphicsState.ctm[i] = float4x4::identity();
     }
     mGraphicsState.activeTransformBits = kAllTransformsBits;
     mNamedCoordinateSystems["world"] = mGraphicsState.ctm;
@@ -483,8 +483,8 @@ void BasicSceneBuilder::onOption(const std::string& name, const std::string& val
 void BasicSceneBuilder::onTransform(Float tr[16], FileLoc loc)
 {
     // The PBRT file-format has matrices for row-vectors (v.M), so needs transpose
-    rmcv::mat4 m = rmcv::transpose(
-        rmcv::mat4({tr[0], tr[1], tr[2], tr[3], tr[4], tr[5], tr[6], tr[7], tr[8], tr[9], tr[10], tr[11], tr[12], tr[13], tr[14], tr[15]})
+    float4x4 m = transpose(
+        float4x4({tr[0], tr[1], tr[2], tr[3], tr[4], tr[5], tr[6], tr[7], tr[8], tr[9], tr[10], tr[11], tr[12], tr[13], tr[14], tr[15]})
     );
 
     mGraphicsState.forActiveTransforms([=](auto t) { return m; });
@@ -493,27 +493,27 @@ void BasicSceneBuilder::onTransform(Float tr[16], FileLoc loc)
 void BasicSceneBuilder::onConcatTransform(Float tr[16], FileLoc loc)
 {
     // The PBRT file-format has matrices for row-vectors (v.M), so needs transpose
-    rmcv::mat4 m = rmcv::transpose(
-        rmcv::mat4({tr[0], tr[1], tr[2], tr[3], tr[4], tr[5], tr[6], tr[7], tr[8], tr[9], tr[10], tr[11], tr[12], tr[13], tr[14], tr[15]})
+    float4x4 m = transpose(
+        float4x4({tr[0], tr[1], tr[2], tr[3], tr[4], tr[5], tr[6], tr[7], tr[8], tr[9], tr[10], tr[11], tr[12], tr[13], tr[14], tr[15]})
     );
 
-    mGraphicsState.forActiveTransforms([=](auto t) { return t * m; });
+    mGraphicsState.forActiveTransforms([=](auto t) { return mul(t, m); });
 }
 
 void BasicSceneBuilder::onRotate(Float angle, Float dx, Float dy, Float dz, FileLoc loc)
 {
-    mGraphicsState.forActiveTransforms([=](auto t) { return t * rmcv::rotate(glm::radians(angle), float3(dx, dy, dz)); });
+    mGraphicsState.forActiveTransforms([=](auto t) { return mul(t, math::matrixFromRotation(math::radians(angle), float3(dx, dy, dz))); });
 }
 
 void BasicSceneBuilder::onScale(Float sx, Float sy, Float sz, FileLoc loc)
 {
-    mGraphicsState.forActiveTransforms([=](auto t) { return t * rmcv::scale(float3(sx, sy, sz)); });
+    mGraphicsState.forActiveTransforms([=](auto t) { return mul(t, math::matrixFromScaling(float3(sx, sy, sz))); });
 }
 
 void BasicSceneBuilder::onLookAt(Float ex, Float ey, Float ez, Float lx, Float ly, Float lz, Float ux, Float uy, Float uz, FileLoc loc)
 {
-    auto lookAt = rmcv::lookAtLH(float3(ex, ey, ez), float3(lx, ly, lz), float3(ux, uy, uz));
-    mGraphicsState.forActiveTransforms([=](auto t) { return t * lookAt; });
+    auto lookAt = math::matrixFromLookAt(float3(ex, ey, ez), float3(lx, ly, lz), float3(ux, uy, uz), math::Handedness::LeftHanded);
+    mGraphicsState.forActiveTransforms([=](auto t) { return mul(t, lookAt); });
 }
 
 void BasicSceneBuilder::onActiveTransformAll(FileLoc loc)

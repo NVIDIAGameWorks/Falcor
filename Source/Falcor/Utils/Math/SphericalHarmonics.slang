@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,26 +27,28 @@
  **************************************************************************/
 import Utils.Math.MathHelpers;
 
-
-/** Get sequential index of SH basis function of degree l>=0 and order m in [-l,l].
-*/
+/**
+ * Get sequential index of SH basis function of degree l>=0 and order m in [-l,l].
+ */
 uint get_SH_index(int l, int m)
 {
     // There are l^2 basis functions of degree 0..l-1. And we add +l to shift order to positive values.
     return (uint)(l * (l + 1) + m);
 }
 
-/** Evaluates the spherical harmonics basis function Y_i at Cartesian coordinate p=(x,y,z) on the unit sphere.
-    \param[in] idx Sequential SH basis function index, where 0 <= idx < 16 (SH degree 3 and lower).
-    \param[in] p Cartesian coordinate p=(x,y,z) on the unit sphere.
-    \return Evaluated SH basis function.
-*/
+/**
+ * Evaluates the spherical harmonics basis function Y_i at Cartesian coordinate p=(x,y,z) on the unit sphere.
+ * @param[in] idx Sequential SH basis function index, where 0 <= idx < 16 (SH degree 3 and lower).
+ * @param[in] p Cartesian coordinate p=(x,y,z) on the unit sphere.
+ * @return Evaluated SH basis function.
+ */
 float eval_SH(uint idx, float3 p)
 {
     // Standard real SH basis. See https://en.wikipedia.org/wiki/Table_of_spherical_harmonics
     // Note that in Appendix A2 of Sloan 2008, "Stupid Spherical Harmonics (SH) Tricks",
     // the signs are reversed for basis functions with odd m. We're not using Sloan's definitions.
     // TODO: More general implementation that supports higher degrees.
+    // clang-format off
     switch (idx)
     {
     // l = 0
@@ -69,16 +71,18 @@ float eval_SH(uint idx, float3 p)
     case 13: return p.x * (5.f * p.z * p.z - 1.f) * sqrt(42.f) / (8.f * M_SQRT_PIf);        // m = 1
     case 14: return p.z * (p.x * p.x - p.y * p.y) * sqrt(105.f) / (4.f * M_SQRT_PIf);       // m = 2
     case 15: return p.x * (p.x * p.x - 3.f * p.y * p.y) * sqrt(70.f) / (8.f * M_SQRT_PIf);  // m = 3
-    }   
+    }
+    // clang-format on
     return 0.f;
 }
 
-/** Evaluates the spherical harmonics basis function Y_l^m at Cartesian coordinate p=(x,y,z) on the unit sphere.
-    \param[in] l SH degree 0 <= l < 3.
-    \param[in] m SH order m in [-l,l].
-    \param[in] p Cartesian coordinate p=(x,y,z) on the unit sphere.
-    \return Evaluated SH basis function.
-*/
+/**
+ * Evaluates the spherical harmonics basis function Y_l^m at Cartesian coordinate p=(x,y,z) on the unit sphere.
+ * @param[in] l SH degree 0 <= l < 3.
+ * @param[in] m SH order m in [-l,l].
+ * @param[in] p Cartesian coordinate p=(x,y,z) on the unit sphere.
+ * @return Evaluated SH basis function.
+ */
 float eval_SH(int l, int m, float3 p)
 {
     return eval_SH(get_SH_index(l, m), p);

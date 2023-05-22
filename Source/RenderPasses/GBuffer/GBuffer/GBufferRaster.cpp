@@ -55,30 +55,8 @@ namespace
     const std::string kDepthName = "depth";
 }
 
-RenderPassReflection GBufferRaster::reflect(const CompileData& compileData)
-{
-    RenderPassReflection reflector;
-    const uint2 sz = RenderPassHelpers::calculateIOSize(mOutputSizeSelection, mFixedOutputSize, compileData.defaultTexDims);
-
-    // Add the required depth output. This always exists.
-    reflector.addOutput(kDepthName, "Depth buffer").format(ResourceFormat::D32Float).bindFlags(Resource::BindFlags::DepthStencil).texture2D(sz.x, sz.y);
-
-    // Add all the other outputs.
-    // The default channels are written as render targets, the rest as UAVs as there is way to assign/pack render targets yet.
-    addRenderPassOutputs(reflector, kGBufferChannels, Resource::BindFlags::RenderTarget, sz);
-    addRenderPassOutputs(reflector, kGBufferExtraChannels, Resource::BindFlags::UnorderedAccess, sz);
-    reflector.getField(kVBufferName)->format(mVBufferFormat);
-
-    return reflector;
-}
-
-GBufferRaster::SharedPtr GBufferRaster::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-{
-    return SharedPtr(new GBufferRaster(std::move(pDevice), dict));
-}
-
-GBufferRaster::GBufferRaster(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-    : GBuffer(std::move(pDevice))
+GBufferRaster::GBufferRaster(ref<Device> pDevice, const Dictionary& dict)
+    : GBuffer(pDevice)
 {
     // Check for required features.
     if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::Barycentrics))
@@ -99,10 +77,27 @@ GBufferRaster::GBufferRaster(std::shared_ptr<Device> pDevice, const Dictionary& 
     // Set depth function
     DepthStencilState::Desc dsDesc;
     dsDesc.setDepthFunc(DepthStencilState::Func::Equal).setDepthWriteMask(false);
-    DepthStencilState::SharedPtr pDsState = DepthStencilState::create(dsDesc);
+    ref<DepthStencilState> pDsState = DepthStencilState::create(dsDesc);
     mGBufferPass.pState->setDepthStencilState(pDsState);
 
-    mpFbo = Fbo::create(mpDevice.get());
+    mpFbo = Fbo::create(mpDevice);
+}
+
+RenderPassReflection GBufferRaster::reflect(const CompileData& compileData)
+{
+    RenderPassReflection reflector;
+    const uint2 sz = RenderPassHelpers::calculateIOSize(mOutputSizeSelection, mFixedOutputSize, compileData.defaultTexDims);
+
+    // Add the required depth output. This always exists.
+    reflector.addOutput(kDepthName, "Depth buffer").format(ResourceFormat::D32Float).bindFlags(Resource::BindFlags::DepthStencil).texture2D(sz.x, sz.y);
+
+    // Add all the other outputs.
+    // The default channels are written as render targets, the rest as UAVs as there is way to assign/pack render targets yet.
+    addRenderPassOutputs(reflector, kGBufferChannels, Resource::BindFlags::RenderTarget, sz);
+    addRenderPassOutputs(reflector, kGBufferExtraChannels, Resource::BindFlags::UnorderedAccess, sz);
+    reflector.getField(kVBufferName)->format(mVBufferFormat);
+
+    return reflector;
 }
 
 void GBufferRaster::compile(RenderContext* pRenderContext, const CompileData& compileData)
@@ -110,7 +105,7 @@ void GBufferRaster::compile(RenderContext* pRenderContext, const CompileData& co
     GBuffer::compile(pRenderContext, compileData);
 }
 
-void GBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
+void GBufferRaster::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
 {
     GBuffer::setScene(pRenderContext, pScene);
 
@@ -172,7 +167,7 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     // Bind primary channels as render targets and clear them.
     for (size_t i = 0; i < kGBufferChannels.size(); ++i)
     {
-        Texture::SharedPtr pTex = getOutput(renderData, kGBufferChannels[i].name);
+        ref<Texture> pTex = getOutput(renderData, kGBufferChannels[i].name);
         mpFbo->attachColorTarget(pTex, uint32_t(i));
     }
     pRenderContext->clearFbo(mpFbo.get(), float4(0), 1.f, 0, FboAttachmentType::Color);
@@ -218,14 +213,16 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
         if (!mGBufferPass.pVars)
             mGBufferPass.pVars = GraphicsVars::create(mpDevice, mGBufferPass.pProgram.get());
 
+        auto var = mGBufferPass.pVars->getRootVar();
+
         // Bind extra channels as UAV buffers.
         for (const auto& channel : kGBufferExtraChannels)
         {
-            Texture::SharedPtr pTex = getOutput(renderData, channel.name);
-            mGBufferPass.pVars[channel.texname] = pTex;
+            ref<Texture> pTex = getOutput(renderData, channel.name);
+            var[channel.texname] = pTex;
         }
 
-        mGBufferPass.pVars["PerFrameCB"]["gFrameDim"] = mFrameDim;
+        var["PerFrameCB"]["gFrameDim"] = mFrameDim;
         mGBufferPass.pState->setFbo(mpFbo); // Sets the viewport
 
         // Rasterize the scene.

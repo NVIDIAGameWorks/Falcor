@@ -33,7 +33,6 @@
 #include "Utils/UI/Gui.h"
 #include "Utils/Scripting/ScriptBindings.h"
 #include "Utils/Scripting/ScriptWriter.h"
-#include <glm/gtc/type_ptr.hpp>
 
 namespace Falcor
 {
@@ -47,17 +46,9 @@ namespace Falcor
 
     static_assert(sizeof(CameraData) % (sizeof(float4)) == 0, "CameraData size should be a multiple of 16");
 
-    // Default dimensions of full frame cameras and 35mm film
-    const float Camera::kDefaultFrameHeight = 24.0f;
-
     Camera::Camera(const std::string& name)
         : mName(name)
     {
-    }
-
-    Camera::SharedPtr Camera::create(const std::string& name)
-    {
-        return SharedPtr(new Camera(name));
     }
 
     Camera::Changes Camera::beginFrame(bool firstFrame)
@@ -80,9 +71,9 @@ namespace Falcor
 
         mChanges = is_set(mChanges, Changes::Movement | Changes::Frustum) ? Changes::History : Changes::None;
 
-        if (mPrevData.posW != mData.posW) mChanges |= Changes::Movement;
-        if (mPrevData.up != mData.up) mChanges |= Changes::Movement;
-        if (mPrevData.target != mData.target) mChanges |= Changes::Movement;
+        if (any(mPrevData.posW != mData.posW)) mChanges |= Changes::Movement;
+        if (any(mPrevData.up != mData.up)) mChanges |= Changes::Movement;
+        if (any(mPrevData.target != mData.target)) mChanges |= Changes::Movement;
 
         if (mPrevData.focalDistance != mData.focalDistance) mChanges    |= Changes::FocalDistance;
         if (mPrevData.apertureRadius != mData.apertureRadius) mChanges  |= Changes::Aperture | Changes::Exposure;
@@ -129,7 +120,7 @@ namespace Falcor
             }
             else
             {
-                mData.viewMat = rmcv::lookAt(mData.posW, mData.target, mData.up);
+                mData.viewMat = math::matrixFromLookAt(mData.posW, mData.target, mData.up, math::Handedness::RightHanded);
             }
 
             // if camera projection is set to be persistent, don't override it.
@@ -141,32 +132,32 @@ namespace Falcor
             {
                 if (fovY != 0.f)
                 {
-                    mData.projMat = rmcv::perspective(fovY, mData.aspectRatio, mData.nearZ, mData.farZ);
+                    mData.projMat = math::perspective(fovY, mData.aspectRatio, mData.nearZ, mData.farZ);
                 }
                 else
                 {
                     // Take the length of look-at vector as half a viewport size
                     const float halfLookAtLength = length(mData.posW - mData.target) * 0.5f;
-                    mData.projMat = rmcv::ortho(-halfLookAtLength, halfLookAtLength, -halfLookAtLength, halfLookAtLength, mData.nearZ, mData.farZ);
+                    mData.projMat = math::ortho(-halfLookAtLength, halfLookAtLength, -halfLookAtLength, halfLookAtLength, mData.nearZ, mData.farZ);
                 }
             }
 
             // Build jitter matrix
             // (jitterX and jitterY are expressed as subpixel quantities divided by the screen resolution
             //  for instance to apply an offset of half pixel along the X axis we set jitterX = 0.5f / Width)
-            rmcv::mat4 jitterMat = rmcv::translate(float3(2.0f * mData.jitterX, 2.0f * mData.jitterY, 0.0f));
+            float4x4 jitterMat = math::matrixFromTranslation(float3(2.0f * mData.jitterX, 2.0f * mData.jitterY, 0.0f));
 
             // Apply jitter matrix to the projection matrix
-            mData.viewProjMatNoJitter = mData.projMat * mData.viewMat;
+            mData.viewProjMatNoJitter = mul(mData.projMat, mData.viewMat);
             mData.projMatNoJitter = mData.projMat;
-            mData.projMat = jitterMat * mData.projMat;
+            mData.projMat = mul(jitterMat, mData.projMat);
 
-            mData.viewProjMat = mData.projMat * mData.viewMat;
-            mData.invViewProj = rmcv::inverse(mData.viewProjMat);
+            mData.viewProjMat = mul(mData.projMat, mData.viewMat);
+            mData.invViewProj = inverse(mData.viewProjMat);
 
             // Extract camera space frustum planes from the VP matrix
             // See: https://fgiesen.wordpress.com/2012/08/31/frustum-planes-from-the-projection-matrix/
-            rmcv::mat4 tempMat = rmcv::transpose(mData.viewProjMat);
+            float4x4 tempMat = transpose(mData.viewProjMat);
             for (int i = 0; i < 6; i++)
             {
                 float4 plane = (i & 1) ? tempMat.getCol(i >> 1) : -tempMat.getCol(i >> 1);
@@ -175,15 +166,15 @@ namespace Falcor
                     plane += tempMat.getCol(3);
                 }
 
-                mFrustumPlanes[i].xyz = float3(plane);
-                mFrustumPlanes[i].sign = glm::sign(mFrustumPlanes[i].xyz);
+                mFrustumPlanes[i].xyz = plane.xyz();
+                mFrustumPlanes[i].sign = math::sign(mFrustumPlanes[i].xyz);
                 mFrustumPlanes[i].negW = -plane.w;
             }
 
             // Ray tracing related vectors
-            mData.cameraW = glm::normalize(mData.target - mData.posW) * mData.focalDistance;
-            mData.cameraU = glm::normalize(glm::cross(mData.cameraW, mData.up));
-            mData.cameraV = glm::normalize(glm::cross(mData.cameraU, mData.cameraW));
+            mData.cameraW = normalize(mData.target - mData.posW) * mData.focalDistance;
+            mData.cameraU = normalize(cross(mData.cameraW, mData.up));
+            mData.cameraV = normalize(cross(mData.cameraU, mData.cameraW));
             const float ulen = mData.focalDistance * std::tan(fovY * 0.5f) * mData.aspectRatio;
             mData.cameraU *= ulen;
             const float vlen = mData.focalDistance * std::tan(fovY * 0.5f);
@@ -193,49 +184,49 @@ namespace Falcor
         }
     }
 
-    const rmcv::mat4 Camera::getViewMatrix() const
+    const float4x4 Camera::getViewMatrix() const
     {
         calculateCameraParameters();
         return mData.viewMat;
     }
 
-    const rmcv::mat4 Camera::getPrevViewMatrix() const
+    const float4x4 Camera::getPrevViewMatrix() const
     {
         return mData.prevViewMat;
     }
 
-    const rmcv::mat4 Camera::getProjMatrix() const
+    const float4x4 Camera::getProjMatrix() const
     {
         calculateCameraParameters();
         return mData.projMat;
     }
 
-    const rmcv::mat4 Camera::getViewProjMatrix() const
+    const float4x4 Camera::getViewProjMatrix() const
     {
         calculateCameraParameters();
         return mData.viewProjMat;
     }
 
-    const rmcv::mat4 Camera::getViewProjMatrixNoJitter() const
+    const float4x4 Camera::getViewProjMatrixNoJitter() const
     {
         calculateCameraParameters();
         return mData.viewProjMatNoJitter;
     }
 
-    const rmcv::mat4 Camera::getInvViewProjMatrix() const
+    const float4x4 Camera::getInvViewProjMatrix() const
     {
         calculateCameraParameters();
         return mData.invViewProj;
     }
 
-    void Camera::setProjectionMatrix(const rmcv::mat4& proj)
+    void Camera::setProjectionMatrix(const float4x4& proj)
     {
         mDirty = true;
         mPersistentProjMat = proj;
         togglePersistentProjectionMatrix(true);
     }
 
-    void Camera::setViewMatrix(const rmcv::mat4& view)
+    void Camera::setViewMatrix(const float4x4& view)
     {
         mDirty = true;
         mPersistentViewMat = view;
@@ -262,7 +253,7 @@ namespace Falcor
         for (int plane = 0; plane < 6; plane++)
         {
             float3 signedHalfExtent = 0.5f * box.extent() * mFrustumPlanes[plane].sign;
-            float dr = glm::dot(box.center() + signedHalfExtent, mFrustumPlanes[plane].xyz);
+            float dr = dot(box.center() + signedHalfExtent, mFrustumPlanes[plane].xyz);
             isInside = isInside && (dr > mFrustumPlanes[plane].negW);
         }
 
@@ -275,7 +266,7 @@ namespace Falcor
         var["data"].setBlob(mData);
     }
 
-    void Camera::setPatternGenerator(const CPUSampleGenerator::SharedPtr& pGenerator, const float2& scale)
+    void Camera::setPatternGenerator(const ref<CPUSampleGenerator>& pGenerator, const float2& scale)
     {
         mJitterPattern.pGenerator = pGenerator;
         mJitterPattern.scale = scale;
@@ -323,20 +314,20 @@ namespace Falcor
         float2 ndc = float2(2.0f, -2.0f) * p + float2(-1.0f, 1.0f);
 
         // Compute the normalized ray direction assuming a pinhole camera.
-        ray.dir = glm::normalize(ndc.x * mData.cameraU + ndc.y * mData.cameraV + mData.cameraW);
+        ray.dir = normalize(ndc.x * mData.cameraU + ndc.y * mData.cameraV + mData.cameraW);
 
-        float invCos = 1.f / glm::dot(glm::normalize(mData.cameraW), ray.dir);
+        float invCos = 1.f / dot(normalize(mData.cameraW), ray.dir);
         ray.tMin = mData.nearZ * invCos;
         ray.tMax = mData.farZ * invCos;
 
         return ray;
     }
 
-    void Camera::updateFromAnimation(const rmcv::mat4& transform)
+    void Camera::updateFromAnimation(const float4x4& transform)
     {
-        float3 up = float3(transform.getCol(1));
-        float3 fwd = float3(-transform.getCol(2));
-        float3 pos = float3(transform.getCol(3));
+        float3 up = transform.getCol(1).xyz();
+        float3 fwd = -transform.getCol(2).xyz();
+        float3 pos = transform.getCol(3).xyz();
         setUpVector(up);
         setPosition(pos);
         setTarget(pos + fwd);
@@ -416,7 +407,7 @@ namespace Falcor
 
         FALCOR_SCRIPT_BINDING_DEPENDENCY(Animatable)
 
-        pybind11::class_<Camera, Animatable, Camera::SharedPtr> camera(m, "Camera");
+        pybind11::class_<Camera, Animatable, ref<Camera>> camera(m, "Camera");
         camera.def_property("name", &Camera::getName, &Camera::setName);
         camera.def_property("aspectRatio", &Camera::getAspectRatio, &Camera::setAspectRatio);
         camera.def_property("focalLength", &Camera::getFocalLength, &Camera::setFocalLength);

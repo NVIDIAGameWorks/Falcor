@@ -57,8 +57,6 @@ namespace Falcor
     class FALCOR_API MaterialSystem
     {
     public:
-        using SharedPtr = std::shared_ptr<MaterialSystem>;
-
         struct MaterialStats
         {
             uint64_t materialTypeCount = 0;             ///< Number of material types.
@@ -72,10 +70,9 @@ namespace Falcor
             uint64_t textureMemoryInBytes = 0;          ///< Total memory in bytes used by the textures.
         };
 
-        /** Create a material system.
-            \return New object, or throws an exception if creation failed.
+        /** Constructor. Throws an exception if creation failed.
         */
-        static SharedPtr create(std::shared_ptr<Device> pDevice);
+        MaterialSystem(ref<Device> pDevice);
 
         /** Render the UI.
         */
@@ -112,18 +109,18 @@ namespace Falcor
 
         /** Get the parameter block with all material resources.
         */
-        const ParameterBlock::SharedPtr& getParameterBlock() const;
+        const ref<ParameterBlock>& getParameterBlock() const;
 
         /** Set a default texture sampler to use for all materials.
         */
-        void setDefaultTextureSampler(const Sampler::SharedPtr& pSampler);
+        void setDefaultTextureSampler(const ref<Sampler>& pSampler);
 
         /** Add a texture sampler.
             If an identical sampler already exists, the sampler is not added and the existing ID returned.
             \param[in] pSampler The sampler.
             \return The ID of the sampler.
         */
-        uint32_t addTextureSampler(const Sampler::SharedPtr& pSampler);
+        uint32_t addTextureSampler(const ref<Sampler>& pSampler);
 
         /** Get the total number of texture samplers.
         */
@@ -131,19 +128,19 @@ namespace Falcor
 
         /** Get a texture sampler by ID.
         */
-        const Sampler::SharedPtr& getTextureSampler(const uint32_t samplerID) const { return mTextureSamplers[samplerID]; }
+        const ref<Sampler>& getTextureSampler(const uint32_t samplerID) const { return mTextureSamplers[samplerID]; }
 
         /** Add a buffer resource to be managed.
             \param[in] pBuffer The buffer.
             \return The ID of the buffer.
         */
-        uint32_t addBuffer(const Buffer::SharedPtr& pBuffer);
+        uint32_t addBuffer(const ref<Buffer>& pBuffer);
 
         /** Replace a previously managed buffer by a new buffer.
             \param[in] id The ID of the buffer.
             \param[in] pBuffer The buffer.
         */
-        void replaceBuffer(uint32_t id, const Buffer::SharedPtr& pBuffer);
+        void replaceBuffer(uint32_t id, const ref<Buffer>& pBuffer);
 
         /** Get the total number of managed buffers.
         */
@@ -154,17 +151,17 @@ namespace Falcor
             \param[in] pMaterial The material.
             \return The ID of the material.
         */
-        MaterialID addMaterial(const Material::SharedPtr& pMaterial);
+        MaterialID addMaterial(const ref<Material>& pMaterial);
 
         /** Replace a material.
             \param pMaterial The material to replace.
             \param pReplacement The material to replace it with.
         */
-        void replaceMaterial(const Material::SharedPtr& pMaterial, const Material::SharedPtr& pReplacement);
+        void replaceMaterial(const ref<Material>& pMaterial, const ref<Material>& pReplacement);
 
         /** Get a list of all materials.
         */
-        const std::vector<Material::SharedPtr>& getMaterials() const { return mMaterials; }
+        const std::vector<ref<Material>>& getMaterials() const { return mMaterials; }
 
         /** Get the total number of materials.
         */
@@ -192,12 +189,12 @@ namespace Falcor
             \param[in] materialID The material ID.
             \return The material, or throws if the material doesn't exist.
         */
-        const Material::SharedPtr& getMaterial(const MaterialID materialID) const;
+        const ref<Material>& getMaterial(const MaterialID materialID) const;
 
         /** Get a material by name.
             \return The material, or nullptr if material doesn't exist.
         */
-        Material::SharedPtr getMaterialByName(const std::string& name) const;
+        ref<Material> getMaterialByName(const std::string& name) const;
 
         /** Remove all duplicate materials.
             \param[in] idMap Vector that holds for each material the ID of the material that replaces it.
@@ -216,22 +213,20 @@ namespace Falcor
 
         /** Get texture manager. This holds all textures.
         */
-        const TextureManager::SharedPtr& getTextureManager() { return mpTextureManager; }
+        TextureManager& getTextureManager() { return *mpTextureManager; }
 
 
     private:
-        MaterialSystem(std::shared_ptr<Device> pDevice);
-
         void updateMetadata();
         void updateUI();
         void createParameterBlock();
         void uploadMaterial(const uint32_t materialID);
 
-        std::shared_ptr<Device> mpDevice;
+        ref<Device> mpDevice;
 
-        std::vector<Material::SharedPtr> mMaterials;                ///< List of all materials.
+        std::vector<ref<Material>> mMaterials;                      ///< List of all materials.
         std::vector<Material::UpdateFlags> mMaterialsUpdateFlags;   ///< List of all material update flags, after the update() calls
-        TextureManager::SharedPtr mpTextureManager;                 ///< Texture manager holding all material textures.
+        std::unique_ptr<TextureManager> mpTextureManager;           ///< Texture manager holding all material textures.
         Program::ShaderModuleList mShaderModules;                   ///< Shader modules for all materials in use.
         std::map<MaterialType, Program::TypeConformanceList> mTypeConformances; ///< Type conformances for each material type in use.
 
@@ -250,12 +245,12 @@ namespace Falcor
         Material::UpdateFlags mMaterialUpdates = Material::UpdateFlags::None; ///< Material updates across all materials since last update.
 
         // GPU resources
-        GpuFence::SharedPtr mpFence;
-        ParameterBlock::SharedPtr mpMaterialsBlock;                 ///< Parameter block for binding all material resources.
-        Buffer::SharedPtr mpMaterialDataBuffer;                     ///< GPU buffer holding all material data.
-        Sampler::SharedPtr mpDefaultTextureSampler;                 ///< Default texture sampler to use for all materials.
-        std::vector<Sampler::SharedPtr> mTextureSamplers;           ///< Texture sampler states. These are indexed by ID in the materials.
-        std::vector<Buffer::SharedPtr> mBuffers;                    ///< Buffers used by the materials. These are indexed by ID in the materials.
+        ref<GpuFence> mpFence;
+        ref<ParameterBlock> mpMaterialsBlock;                       ///< Parameter block for binding all material resources.
+        ref<Buffer> mpMaterialDataBuffer;                           ///< GPU buffer holding all material data.
+        ref<Sampler> mpDefaultTextureSampler;                       ///< Default texture sampler to use for all materials.
+        std::vector<ref<Sampler>> mTextureSamplers;                 ///< Texture sampler states. These are indexed by ID in the materials.
+        std::vector<ref<Buffer>> mBuffers;                          ///< Buffers used by the materials. These are indexed by ID in the materials.
 
         // UI variables
         std::vector<uint32_t> mSortedMaterialIndices;               ///< Indices of materials, sorted alphabetically by case-insensitive name.

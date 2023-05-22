@@ -36,7 +36,7 @@ namespace Falcor
 struct DescriptorPoolApiData
 {
     static constexpr size_t kHeapCount = D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES;
-    D3D12DescriptorHeap::SharedPtr pHeaps[kHeapCount];
+    ref<D3D12DescriptorHeap> pHeaps[kHeapCount];
 };
 
 struct DescriptorSetApiData

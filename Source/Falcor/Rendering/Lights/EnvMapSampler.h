@@ -29,9 +29,8 @@
 #include "Core/Macros.h"
 #include "Core/API/Texture.h"
 #include "Core/API/Sampler.h"
+#include "Core/Pass/ComputePass.h"
 #include "Scene/Lights/EnvMap.h"
-#include "RenderGraph/BasePasses/ComputePass.h"
-#include <memory>
 
 namespace Falcor
 {
@@ -43,37 +42,32 @@ namespace Falcor
     class FALCOR_API EnvMapSampler
     {
     public:
-        using SharedPtr = std::shared_ptr<EnvMapSampler>;
-
-        virtual ~EnvMapSampler() = default;
-
         /** Create a new object.
             \param[in] pDevice GPU device.
             \param[in] pEnvMap The environment map.
         */
-        static SharedPtr create(std::shared_ptr<Device> pDevice, EnvMap::SharedPtr pEnvMap);
+        EnvMapSampler(ref<Device> pDevice, ref<EnvMap> pEnvMap);
+        virtual ~EnvMapSampler() = default;
 
         /** Bind the environment map sampler to a given shader variable.
             \param[in] var Shader variable.
         */
         void setShaderData(const ShaderVar& var) const;
 
-        const EnvMap::SharedPtr& getEnvMap() const { return mpEnvMap; }
+        const ref<EnvMap>& getEnvMap() const { return mpEnvMap; }
 
-        const Texture::SharedPtr& getImportanceMap() const { return mpImportanceMap; }
+        const ref<Texture>& getImportanceMap() const { return mpImportanceMap; }
 
     protected:
-        EnvMapSampler(std::shared_ptr<Device> pDevice, EnvMap::SharedPtr pEnvMap);
-
         bool createImportanceMap(RenderContext* pRenderContext, uint32_t dimension, uint32_t samples);
 
-        std::shared_ptr<Device> mpDevice;
+        ref<Device>       mpDevice;
 
-        EnvMap::SharedPtr       mpEnvMap;           ///< Environment map.
+        ref<EnvMap>       mpEnvMap;                 ///< Environment map.
 
-        ComputePass::SharedPtr  mpSetupPass;        ///< Compute pass for creating the importance map.
+        ref<ComputePass>  mpSetupPass;              ///< Compute pass for creating the importance map.
 
-        Texture::SharedPtr      mpImportanceMap;    ///< Hierarchical importance map (luminance).
-        Sampler::SharedPtr      mpImportanceSampler;
+        ref<Texture>      mpImportanceMap;          ///< Hierarchical importance map (luminance).
+        ref<Sampler>      mpImportanceSampler;
     };
 }

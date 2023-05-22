@@ -37,17 +37,21 @@
 #include "Utils/UI/Gui.h"
 #include "Utils/UI/PixelZoom.h"
 #include "Utils/UI/InputState.h"
-#include "Utils/Video/VideoEncoderUI.h"
-#include "Utils/Scripting/ScriptBindings.h"
 #include "Utils/Scripting/Console.h"
 #include <filesystem>
 #include <memory>
 #include <string>
 #include <vector>
 
+namespace pybind11
+{
+class module_;
+using module = module_;
+} // namespace pybind11
 namespace Falcor
 {
 class Settings;
+class TextRenderer;
 
 /**
  * Sample application configuration.
@@ -103,7 +107,7 @@ public:
     /**
      * Called on each frame render.
      */
-    virtual void onFrameRender(RenderContext* pRenderContext, const std::shared_ptr<Fbo>& pTargetFbo) {}
+    virtual void onFrameRender(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo) {}
 
     /**
      * Called after onFrameRender().
@@ -176,7 +180,7 @@ public:
     /**
      * Get the GPU device for this application.
      */
-    std::shared_ptr<Device> getDevice() const { return mpDevice; }
+    const ref<Device>& getDevice() const { return mpDevice; }
 
     /**
      * Get the render-context for the current frame. This might change each frame.
@@ -186,7 +190,7 @@ public:
     /**
      * Get the current FBO.
      */
-    Fbo::SharedPtr getTargetFbo() const { return mpTargetFBO; }
+    const ref<Fbo>& getTargetFbo() const { return mpTargetFBO; }
 
     /**
      * Get the window.
@@ -197,6 +201,11 @@ public:
      * Get the progress bar.
      */
     ProgressBar& getProgressBar() { return mProgressBar; }
+
+    /**
+     * Get the text renderer.
+     */
+    TextRenderer& getTextRenderer() { return *mpTextRenderer; }
 
     /**
      * Get the console.
@@ -299,10 +308,6 @@ private:
 
     void captureScreen(Texture* pTexture);
 
-    void initVideoCapture();
-    bool startVideoCapture();
-    void endVideoCapture();
-    void captureVideoFrame(Texture* pTexture);
     void renderUI();
 
     void runInternal();
@@ -310,14 +315,15 @@ private:
     void startScripting();
     void registerScriptBindings(pybind11::module& m);
 
-    std::shared_ptr<Device> mpDevice;        ///< GPU device.
-    Window::SharedPtr mpWindow;              ///< Main window (nullptr if headless).
-    std::unique_ptr<Swapchain> mpSwapchain;  ///< Main swapchain (nullptr if headless).
-    Fbo::SharedPtr mpTargetFBO;              ///< FBO available to renderers.
-    Texture::SharedPtr mpPausedRenderOutput; ///< Contains the renderer output during pausing.
+    ref<Device> mpDevice;              ///< GPU device.
+    ref<Window> mpWindow;              ///< Main window (nullptr if headless).
+    ref<Swapchain> mpSwapchain;        ///< Main swapchain (nullptr if headless).
+    ref<Fbo> mpTargetFBO;              ///< FBO available to renderers.
+    ref<Texture> mpPausedRenderOutput; ///< Contains the renderer output during pausing.
 
     ProgressBar mProgressBar;
     std::unique_ptr<Gui> mpGui;
+    std::unique_ptr<TextRenderer> mpTextRenderer;
     InputState mInputState;
     std::unique_ptr<ProfilerUI> mpProfilerUI;
     std::unique_ptr<PixelZoom> mpPixelZoom;
@@ -335,16 +341,6 @@ private:
     bool mCaptureScreen = false;
 
     int mReturnCode = 0;
-
-    struct VideoCaptureData
-    {
-        VideoEncoderUI::UniquePtr pUI;
-        VideoEncoder::UniquePtr pVideoCapture;
-        std::vector<uint8_t> pFrame;
-        double fixedTimeDelta = 0;
-        double currentTime = 0;
-        bool displayUI = false;
-    } mVideoCapture;
 
     SampleApp(const SampleApp&) = delete;
     SampleApp& operator=(const SampleApp&) = delete;

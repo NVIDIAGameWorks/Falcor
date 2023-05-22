@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -35,8 +35,7 @@ namespace Falcor
     class SelectionWheel
     {
     public:
-        using SharedPtr = std::shared_ptr<SelectionWheel>;
-        static const uint32_t kInvalidIndex = -1;
+        static constexpr uint32_t kInvalidIndex = -1;
 
         struct Desc
         {
@@ -50,7 +49,7 @@ namespace Falcor
             float borderWidth;                      ///< Thickness of the border in pixels.
         };
 
-        static SharedPtr create(Marker2DSet::SharedPtr pMarker2DSet);
+        SelectionWheel(Marker2DSet& marker2DSet) : mMarker2DSet(marker2DSet) {}
 
         void update(const float2& mousePos, const Desc& description);
 
@@ -64,8 +63,6 @@ namespace Falcor
         float getGroupAngle();
 
     private:
-        SelectionWheel(Marker2DSet::SharedPtr pMarker2DSet) : mpMarker2DSet(pMarker2DSet) {}
-
         void computeMouseAngleAndDirLength(const float2& mousePos, float& mouseAngle, float& dirLength);
         void computeGroupAndSectorIndexFromAngle(float mouseAngle, uint32_t& groupIndex, uint32_t& sectorIndex);
 
@@ -81,6 +78,6 @@ namespace Falcor
 
     private:
         Desc                    mDescription;
-        Marker2DSet::SharedPtr  mpMarker2DSet;
+        Marker2DSet&            mMarker2DSet;
     };
 }

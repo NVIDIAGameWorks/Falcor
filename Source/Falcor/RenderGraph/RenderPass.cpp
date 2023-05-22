@@ -29,33 +29,33 @@
 
 namespace Falcor
 {
-    RenderData::RenderData(const std::string& passName, const ResourceCache::SharedPtr& pResourceCache, const InternalDictionary::SharedPtr& pDict, const uint2& defaultTexDims, ResourceFormat defaultTexFormat)
-        : mName(passName)
-        , mpResources(pResourceCache)
-        , mpDictionary(pDict)
-        , mDefaultTexDims(defaultTexDims)
-        , mDefaultTexFormat(defaultTexFormat)
-    {
-        if (!mpDictionary) mpDictionary = InternalDictionary::create();
-    }
+RenderData::RenderData(
+    const std::string& passName,
+    ResourceCache& resources,
+    InternalDictionary& dictionary,
+    const uint2& defaultTexDims,
+    ResourceFormat defaultTexFormat
+)
+    : mName(passName), mResources(resources), mDictionary(dictionary), mDefaultTexDims(defaultTexDims), mDefaultTexFormat(defaultTexFormat)
+{}
 
-    const Resource::SharedPtr& RenderData::getResource(const std::string_view name) const
-    {
-        return mpResources->getResource(fmt::format("{}.{}", mName, name));
-    }
-
-    Texture::SharedPtr RenderData::getTexture(const std::string_view name) const
-    {
-        auto pResource = getResource(name);
-        return pResource ? pResource->asTexture() : nullptr;
-    }
-
-    RenderPass::SharedPtr RenderPass::create(std::string_view type, std::shared_ptr<Device> pDevice, const Dictionary& dict, PluginManager& pm)
-    {
-        // Try to load a plugin of the same name, if render pass class is not registered yet.
-        if (!pm.hasClass<RenderPass>(type))
-            pm.loadPluginByName(type);
-
-        return pm.createClass<RenderPass>(type, std::move(pDevice), dict);
-    }
+const ref<Resource>& RenderData::getResource(const std::string_view name) const
+{
+    return mResources.getResource(fmt::format("{}.{}", mName, name));
 }
+
+ref<Texture> RenderData::getTexture(const std::string_view name) const
+{
+    auto pResource = getResource(name);
+    return pResource ? pResource->asTexture() : nullptr;
+}
+
+ref<RenderPass> RenderPass::create(std::string_view type, ref<Device> pDevice, const Dictionary& dict, PluginManager& pm)
+{
+    // Try to load a plugin of the same name, if render pass class is not registered yet.
+    if (!pm.hasClass<RenderPass>(type))
+        pm.loadPluginByName(type);
+
+    return pm.createClass<RenderPass>(type, pDevice, dict);
+}
+} // namespace Falcor

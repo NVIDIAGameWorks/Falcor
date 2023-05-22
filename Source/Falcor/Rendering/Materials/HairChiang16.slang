@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -110,9 +110,9 @@ struct HairChiang16 : IBSDF
         eta = data.eta;
 
         // Compute offset h azimuthally with the unit circle cross section.
-        float3 wiProj = normalize(sd.V - dot(sd.V, sd.T) * sd.T);   // Project wi to the (B, N) plane.
-        float3 wiProjPerp = cross(wiProj, sd.T);
-        h = dot(sd.N, wiProjPerp);
+        float3 wiProj = normalize(sd.V - dot(sd.V, sd.frame.T) * sd.frame.T);   // Project wi to the (B, N) plane.
+        float3 wiProjPerp = cross(wiProj, sd.frame.T);
+        h = dot(sd.frame.N, wiProjPerp);
 
         precompute();
     }

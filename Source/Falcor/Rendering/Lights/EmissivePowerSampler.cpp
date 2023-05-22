@@ -31,11 +31,6 @@
 
 namespace Falcor
 {
-    EmissivePowerSampler::SharedPtr EmissivePowerSampler::create(RenderContext* pRenderContext, Scene::SharedPtr pScene)
-    {
-        return SharedPtr(new EmissivePowerSampler(pRenderContext, pScene));
-    }
-
     bool EmissivePowerSampler::update(RenderContext* pRenderContext)
     {
         FALCOR_PROFILE(pRenderContext, "EmissivePowerSampler::update");
@@ -76,7 +71,7 @@ namespace Falcor
         var["_emissivePower"]["triangleAliasTable"] = mTriangleTable.fullTable;
     }
 
-    EmissivePowerSampler::EmissivePowerSampler(RenderContext* pRenderContext, Scene::SharedPtr pScene)
+    EmissivePowerSampler::EmissivePowerSampler(RenderContext* pRenderContext, ref<Scene> pScene)
         : EmissiveLightSampler(EmissiveLightSamplerType::Power, pScene)
     {
         // Make sure the light collection is created.
@@ -167,7 +162,7 @@ namespace Falcor
         {
             float(sum),
             N,
-            Buffer::createTyped<uint2>(mpScene->getDevice().get(), N),
+            Buffer::createTyped<uint2>(mpScene->getDevice(), N),
         };
 
         result.fullTable->setBlob(&fullTable[0], 0, N * sizeof(uint2));

@@ -5,15 +5,14 @@ endif()
 add_plugin(OptixDenoiser)
 
 target_sources(OptixDenoiser PRIVATE
-    BootstrapUtils.cpp
     ConvertBufToTex.ps.slang
     ConvertMotionVectorInputs.cs.slang
     ConvertNormalsToBuf.cs.slang
     ConvertTexToBuf.cs.slang
-    CudaUtils.cpp
-    CudaUtils.h
     OptixDenoiser.cpp
     OptixDenoiser.h
+    OptixUtils.cpp
+    OptixUtils.h
 )
 
 target_copy_shaders(OptixDenoiser RenderPasses/OptixDenoiser)

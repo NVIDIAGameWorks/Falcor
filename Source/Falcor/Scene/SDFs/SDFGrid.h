@@ -27,10 +27,11 @@
  **************************************************************************/
 #pragma once
 #include "Core/Macros.h"
+#include "Core/Object.h"
 #include "Core/API/Buffer.h"
 #include "Core/API/Texture.h"
+#include "Core/Pass/ComputePass.h"
 #include "Scene/SDFs/SDF3DPrimitiveCommon.slang"
-#include "RenderGraph/BasePasses/ComputePass.h"
 #include <memory>
 #include <vector>
 #include <utility>
@@ -66,11 +67,9 @@ namespace Falcor
             out the AABB buffer constructed by the SDFSVO. This can then be used to intersect rays against the SDFSVO.
             Distances stored in the voxels of the octree are normalized to the range [-1, 1] so that a value of 1 represents half of a voxel diagonal.
     */
-    class FALCOR_API SDFGrid
+    class FALCOR_API SDFGrid : public Object
     {
     public:
-        using SharedPtr = std::shared_ptr<SDFGrid>;
-
         enum class Type
         {
             None = 0,
@@ -91,7 +90,7 @@ namespace Falcor
             All = AABBsChanged | BuffersReallocated,
         };
 
-        SDFGrid(std::shared_ptr<Device> pDevice);
+        SDFGrid(ref<Device> pDevice);
         virtual ~SDFGrid() = default;
 
         /** Set SDF primitives to be used to construct the SDF grid.
@@ -200,7 +199,7 @@ namespace Falcor
 
         /** Returns an AABB buffer that can be used to create an accelerations strucure using this SDF grid.
         */
-        virtual const Buffer::SharedPtr& getAABBBuffer() const = 0;
+        virtual const ref<Buffer>& getAABBBuffer() const = 0;
 
         /** Return the number of AABBs used to create this SDF grid.
         */
@@ -241,7 +240,7 @@ namespace Falcor
 
         void updatePrimitivesBuffer();
 
-        std::shared_ptr<Device> mpDevice;
+        ref<Device>             mpDevice;
 
         std::string             mName;
         uint32_t                mGridWidth = 0;
@@ -251,15 +250,15 @@ namespace Falcor
         std::unordered_map<uint32_t, uint32_t> mPrimitiveIDToIndex;
         uint32_t                mNextPrimitiveID = 0;
         bool                    mPrimitivesDirty = false;           ///< True if the primitives have changed.
-        Buffer::SharedPtr       mpPrimitivesBuffer;                 ///< Holds the primitives that should be rendered.
+        ref<Buffer>             mpPrimitivesBuffer;                 ///< Holds the primitives that should be rendered.
         uint32_t                mPrimitivesExcludedFromBuffer = 0;  ///< Number of primitives to exclude from the primitive buffer.
         uint32_t                mBakedPrimitiveCount = 0;           ///< Number of primitives that will be baked into the value representation.
         bool                    mBakePrimitives = false;            ///< True if the primitives should be baked into the value representation.
         bool                    mHasGridRepresentation = false;     ///< True if a value representation exists.
         bool                    mInitializedWithPrimitives = false; ///< True if the grid was initialized with primitives.
 
-        Texture::SharedPtr      mpSDFGridTexture;                   ///< A texture on the GPU holding the value representation.
-        ComputePass::SharedPtr  mpEvaluatePrimitivesPass;
+        ref<Texture>            mpSDFGridTexture;                   ///< A texture on the GPU holding the value representation.
+        ref<ComputePass>        mpEvaluatePrimitivesPass;
     };
 
     FALCOR_ENUM_CLASS_OPERATORS(SDFGrid::UpdateFlags);

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,11 +26,6 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Utils/Math/Matrix/Matrix.h"
 
-namespace Falcor
-{
-    using float3x3 = rmcv::mat3;
-    using float4x4 = rmcv::mat4;
-    using float3x4 = rmcv::matrix<3,4, float>;
-}
+#include "MatrixTypes.h"
+#include "MatrixMath.h"

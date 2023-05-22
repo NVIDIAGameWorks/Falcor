@@ -30,12 +30,12 @@
 #include "Texture.h"
 #include "Formats.h"
 #include "Core/Macros.h"
+#include "Core/Object.h"
 #include <slang-gfx.h>
-#include <memory>
 
 namespace Falcor
 {
-class FALCOR_API Swapchain
+class FALCOR_API Swapchain : public Object
 {
 public:
     struct Desc
@@ -52,12 +52,12 @@ public:
      * @param desc Swapchain description.
      * @param windowHandle Handle of window to create swapchain for.
      */
-    Swapchain(std::shared_ptr<Device> pDevice, const Desc& desc, WindowHandle windowHandle);
+    Swapchain(ref<Device> pDevice, const Desc& desc, WindowHandle windowHandle);
 
     const Desc& getDesc() const { return mDesc; }
 
     /// Returns the back buffer image at `index`.
-    const Texture::SharedPtr& getImage(uint32_t index) const;
+    const ref<Texture>& getImage(uint32_t index) const;
 
     /// Present the next image in the swapchain.
     void present();
@@ -80,13 +80,11 @@ public:
     gfx::ISwapchain* getGfxSwapchain() const { return mGfxSwapchain; }
 
 private:
-    Swapchain(const Desc& desc, WindowHandle windowHandle);
-
     void prepareImages();
 
-    std::shared_ptr<Device> mpDevice;
+    ref<Device> mpDevice;
     Desc mDesc;
     Slang::ComPtr<gfx::ISwapchain> mGfxSwapchain;
-    std::vector<Texture::SharedPtr> mImages;
+    std::vector<ref<Texture>> mImages;
 };
 } // namespace Falcor

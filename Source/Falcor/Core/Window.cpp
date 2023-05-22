@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 #include "Window.h"
 #include "Macros.h"
 #include "Assert.h"
+#include "ObjectPython.h"
 #include "GLFW.h"
 #include "Platform/OS.h"
 #include "Utils/Logger.h"
@@ -368,53 +369,24 @@ private:
     }
 };
 
-Window::Window(ICallbacks* pCallbacks, const Desc& desc)
+static std::atomic<size_t> sWindowCount;
+
+ref<Window> Window::create(const Desc& desc, ICallbacks* pCallbacks)
+{
+    return ref<Window>(new Window(desc, pCallbacks));
+}
+
+Window::Window(const Desc& desc, ICallbacks* pCallbacks)
     : mDesc(desc), mMouseScale(1.0f / (float)desc.width, 1.0f / (float)desc.height), mpCallbacks(pCallbacks)
-{}
-
-void Window::updateWindowSize()
-{
-    // Actual window size may be clamped to slightly lower than monitor resolution
-    int32_t width, height;
-    glfwGetWindowSize(mpGLFWWindow, &width, &height);
-    setWindowSize(width, height);
-}
-
-void Window::setWindowSize(uint32_t width, uint32_t height)
-{
-    FALCOR_ASSERT(width > 0 && height > 0);
-
-    mDesc.width = width;
-    mDesc.height = height;
-    mMouseScale.x = 1.0f / (float)mDesc.width;
-    mMouseScale.y = 1.0f / (float)mDesc.height;
-}
-
-Window::~Window()
-{
-    glfwDestroyWindow(mpGLFWWindow);
-    glfwTerminate();
-}
-
-void Window::shutdown()
-{
-    glfwSetWindowShouldClose(mpGLFWWindow, 1);
-}
-
-bool Window::shouldClose() const
-{
-    return glfwWindowShouldClose(mpGLFWWindow);
-}
-
-Window::SharedPtr Window::create(const Desc& desc, ICallbacks* pCallbacks)
 {
     // Set error callback
     glfwSetErrorCallback(ApiCallbacks::errorCallback);
 
-    // Init GLFW
-    if (glfwInit() == GLFW_FALSE)
+    // Init GLFW when first window is created.
+    if (sWindowCount.fetch_add(1) == 0)
     {
-        throw RuntimeError("Failed to initialize GLFW.");
+        if (glfwInit() == GLFW_FALSE)
+            throw RuntimeError("Failed to initialize GLFW.");
     }
 
     // Create the window
@@ -443,52 +415,82 @@ Window::SharedPtr Window::create(const Desc& desc, ICallbacks* pCallbacks)
         glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
     }
 
-    GLFWwindow* pGLFWWindow = glfwCreateWindow(w, h, desc.title.c_str(), nullptr, nullptr);
-    if (!pGLFWWindow)
+    mpGLFWWindow = glfwCreateWindow(w, h, desc.title.c_str(), nullptr, nullptr);
+    if (!mpGLFWWindow)
     {
         throw RuntimeError("Failed to create GLFW window.");
     }
 
-    SharedPtr pWindow = SharedPtr(new Window(pCallbacks, desc));
-
     // Init handles
-    pWindow->mpGLFWWindow = pGLFWWindow;
 #if FALCOR_WINDOWS
-    pWindow->mApiHandle = glfwGetWin32Window(pGLFWWindow);
-    FALCOR_ASSERT(pWindow->mApiHandle);
+    mApiHandle = glfwGetWin32Window(mpGLFWWindow);
+    FALCOR_ASSERT(mApiHandle);
 #elif FALCOR_LINUX
-    pWindow->mApiHandle.pDisplay = glfwGetX11Display();
-    pWindow->mApiHandle.window = glfwGetX11Window(pGLFWWindow);
-    FALCOR_ASSERT(pWindow->mApiHandle.pDisplay != nullptr);
+    mApiHandle.pDisplay = glfwGetX11Display();
+    mApiHandle.window = glfwGetX11Window(mpGLFWWindow);
+    FALCOR_ASSERT(mApiHandle.pDisplay != nullptr);
 #endif
-    setMainWindowHandle(pWindow->mApiHandle);
+    updateWindowSize();
 
-    pWindow->updateWindowSize();
-
-    glfwSetWindowUserPointer(pGLFWWindow, pWindow.get());
+    glfwSetWindowUserPointer(mpGLFWWindow, this);
 
     // Set callbacks
-    glfwSetWindowSizeCallback(pGLFWWindow, ApiCallbacks::windowSizeCallback);
-    glfwSetKeyCallback(pGLFWWindow, ApiCallbacks::keyboardCallback);
-    glfwSetMouseButtonCallback(pGLFWWindow, ApiCallbacks::mouseButtonCallback);
-    glfwSetCursorPosCallback(pGLFWWindow, ApiCallbacks::mouseMoveCallback);
-    glfwSetScrollCallback(pGLFWWindow, ApiCallbacks::mouseWheelCallback);
-    glfwSetCharCallback(pGLFWWindow, ApiCallbacks::charInputCallback);
-    glfwSetDropCallback(pGLFWWindow, ApiCallbacks::droppedFileCallback);
+    glfwSetWindowSizeCallback(mpGLFWWindow, ApiCallbacks::windowSizeCallback);
+    glfwSetKeyCallback(mpGLFWWindow, ApiCallbacks::keyboardCallback);
+    glfwSetMouseButtonCallback(mpGLFWWindow, ApiCallbacks::mouseButtonCallback);
+    glfwSetCursorPosCallback(mpGLFWWindow, ApiCallbacks::mouseMoveCallback);
+    glfwSetScrollCallback(mpGLFWWindow, ApiCallbacks::mouseWheelCallback);
+    glfwSetCharCallback(mpGLFWWindow, ApiCallbacks::charInputCallback);
+    glfwSetDropCallback(mpGLFWWindow, ApiCallbacks::droppedFileCallback);
 
     if (desc.mode == WindowMode::Minimized)
     {
         // Iconify and show window to make it available if user clicks on it
-        glfwIconifyWindow(pWindow->mpGLFWWindow);
-        glfwShowWindow(pWindow->mpGLFWWindow);
+        glfwIconifyWindow(mpGLFWWindow);
+        glfwShowWindow(mpGLFWWindow);
     }
     else
     {
-        glfwShowWindow(pWindow->mpGLFWWindow);
-        glfwFocusWindow(pWindow->mpGLFWWindow);
+        glfwShowWindow(mpGLFWWindow);
+        glfwFocusWindow(mpGLFWWindow);
     }
+}
 
-    return pWindow;
+Window::~Window()
+{
+    glfwDestroyWindow(mpGLFWWindow);
+
+    // Shutdown GLFW when last window is destroyed.
+    if (sWindowCount.fetch_sub(1) == 1)
+        glfwTerminate();
+}
+
+void Window::updateWindowSize()
+{
+    // Actual window size may be clamped to slightly lower than monitor resolution
+    int32_t width, height;
+    glfwGetWindowSize(mpGLFWWindow, &width, &height);
+    setWindowSize(width, height);
+}
+
+void Window::setWindowSize(uint32_t width, uint32_t height)
+{
+    FALCOR_ASSERT(width > 0 && height > 0);
+
+    mDesc.width = width;
+    mDesc.height = height;
+    mMouseScale.x = 1.0f / (float)mDesc.width;
+    mMouseScale.y = 1.0f / (float)mDesc.height;
+}
+
+void Window::shutdown()
+{
+    glfwSetWindowShouldClose(mpGLFWWindow, 1);
+}
+
+bool Window::shouldClose() const
+{
+    return glfwWindowShouldClose(mpGLFWWindow);
 }
 
 void Window::resize(uint32_t width, uint32_t height)
@@ -656,21 +658,12 @@ void Window::handleGamepadInput()
 
 FALCOR_SCRIPT_BINDING(Window)
 {
-    pybind11::class_<Window, Window::SharedPtr> window(m, "Window");
+    pybind11::class_<Window, ref<Window>> window(m, "Window");
     window.def("setWindowPos", &Window::setWindowPos);
 
     pybind11::enum_<Window::WindowMode> windowMode(m, "WindowMode");
     windowMode.value("Normal", Window::WindowMode::Normal);
     windowMode.value("Fullscreen", Window::WindowMode::Fullscreen);
     windowMode.value("Minimized", Window::WindowMode::Minimized);
-
-    ScriptBindings::SerializableStruct<Window::Desc> windowDesc(m, "WindowDesc");
-#define field(f_) field(#f_, &Window::Desc::f_)
-    windowDesc.field(width);
-    windowDesc.field(height);
-    windowDesc.field(title);
-    windowDesc.field(mode);
-    windowDesc.field(resizableWindow);
-#undef field
 }
 } // namespace Falcor

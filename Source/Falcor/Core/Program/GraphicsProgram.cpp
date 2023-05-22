@@ -27,24 +27,19 @@
  **************************************************************************/
 #include "GraphicsProgram.h"
 #include "ProgramManager.h"
+#include "Core/ObjectPython.h"
 #include "Core/API/Device.h"
 #include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
 {
-GraphicsProgram::SharedPtr GraphicsProgram::create(
-    std::shared_ptr<Device> pDevice,
-    const Desc& desc,
-    const Program::DefineList& programDefines
-)
+ref<GraphicsProgram> GraphicsProgram::create(ref<Device> pDevice, const Desc& desc, const Program::DefineList& programDefines)
 {
-    auto pProgram = SharedPtr(new GraphicsProgram(pDevice, desc, programDefines));
-    pDevice->getProgramManager()->registerProgramForReload(pProgram);
-    return pProgram;
+    return ref<GraphicsProgram>(new GraphicsProgram(pDevice, desc, programDefines));
 }
 
-GraphicsProgram::SharedPtr GraphicsProgram::createFromFile(
-    std::shared_ptr<Device> pDevice,
+ref<GraphicsProgram> GraphicsProgram::createFromFile(
+    ref<Device> pDevice,
     const std::filesystem::path& path,
     const std::string& vsEntry,
     const std::string& psEntry,
@@ -53,15 +48,15 @@ GraphicsProgram::SharedPtr GraphicsProgram::createFromFile(
 {
     Desc d(path);
     d.vsEntry(vsEntry).psEntry(psEntry);
-    return create(std::move(pDevice), d, programDefines);
+    return create(pDevice, d, programDefines);
 }
 
-GraphicsProgram::GraphicsProgram(std::shared_ptr<Device> pDevice, const Desc& desc, const Program::DefineList& programDefines)
-    : Program(std::move(pDevice), desc, programDefines)
+GraphicsProgram::GraphicsProgram(ref<Device> pDevice, const Desc& desc, const Program::DefineList& programDefines)
+    : Program(pDevice, desc, programDefines)
 {}
 
 FALCOR_SCRIPT_BINDING(GraphicsProgram)
 {
-    pybind11::class_<GraphicsProgram, GraphicsProgram::SharedPtr>(m, "GraphicsProgram");
+    pybind11::class_<GraphicsProgram, ref<GraphicsProgram>>(m, "GraphicsProgram");
 }
 } // namespace Falcor

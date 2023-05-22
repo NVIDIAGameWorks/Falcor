@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,16 +29,17 @@
 
 import Utils.Math.MathHelpers;
 
-/** Ray-sphere intersection.
-    This function implements the standard analytic test with improvements to floating-point precision
-    and returns the closest hit.
-    \param[in] rayOrigin Ray origin.
-    \param[in] rayDir Ray direction (does not have to be normalized).
-    \param[in] center Sphere center.
-    \param[in] radius Sphere radius.
-    \param[out] t Distance to the closest intersection.
-    \return True if the ray intersects the sphere.
-*/
+/**
+ * Ray-sphere intersection.
+ * This function implements the standard analytic test with improvements to floating-point precision
+ * and returns the closest hit.
+ * @param[in] rayOrigin Ray origin.
+ * @param[in] rayDir Ray direction (does not have to be normalized).
+ * @param[in] center Sphere center.
+ * @param[in] radius Sphere radius.
+ * @param[out] t Distance to the closest intersection.
+ * @return True if the ray intersects the sphere.
+ */
 bool intersectRaySphere(const float3 rayOrigin, const float3 rayDir, const float3 sphereCenter, const float sphereRadius, out float t)
 {
     // Implementation is taken from Chapter 7 of Ray-Tracing Gems
@@ -48,7 +49,8 @@ bool intersectRaySphere(const float3 rayOrigin, const float3 rayDir, const float
     float discriminant = sphereRadius * sphereRadius - dot(f + b / a * rayDir, f + b / a * rayDir);
 
     // Negative discriminant means ray missed sphere.
-    if (discriminant < 0.f) return false;
+    if (discriminant < 0.f)
+        return false;
 
     // If b and discriminant are both 0, then the ray's origin lies on the sphere
     if (b == 0 && discriminant == 0)
@@ -65,20 +67,22 @@ bool intersectRaySphere(const float3 rayOrigin, const float3 rayDir, const float
     float t1 = q / a;
 
     float tc = t0 < 0.f ? t1 : t0; // tc is the closest hit we care about
-    if (tc < 0.f) return false;
+    if (tc < 0.f)
+        return false;
 
     t = tc;
     return true;
 }
 
-/** Ray-AABB intersection.
-    \param[in] rayOrigin Ray origin.
-    \param[in] rayDir Ray direction (does not have to be normalized).
-    \param[in] aabbMin AABB minimum.
-    \param[in] aabbMax AABB maximum.
-    \param[out] nearFar Returns intersection interval along ray.
-    \return True if the ray intersects the AABB.
-*/
+/**
+ * Ray-AABB intersection.
+ * @param[in] rayOrigin Ray origin.
+ * @param[in] rayDir Ray direction (does not have to be normalized).
+ * @param[in] aabbMin AABB minimum.
+ * @param[in] aabbMax AABB maximum.
+ * @param[out] nearFar Returns intersection interval along ray.
+ * @return True if the ray intersects the AABB.
+ */
 bool intersectRayAABB(const float3 rayOrigin, const float3 rayDir, const float3 aabbMin, const float3 aabbMax, out float2 nearFar)
 {
     const float3 invDir = 1.f / rayDir;
@@ -90,21 +94,24 @@ bool intersectRayAABB(const float3 rayOrigin, const float3 rayDir, const float3 
     return nearFar.x <= nearFar.y;
 }
 
-/** Ray-Triangle intersection based on "Watertight Ray/Triangle Intersection"
-    Paper link: http://jcgt.org/published/0002/01/05/paper.pdf
-    \param[in] rayOrigin Ray origin.
-    \param[in] rayDir Ray direction (does not have to be normalized).
-    \param[in] vertices Triangle vertices.
-    \param[out] barycentrics Barycentric coordinates.
-    \param[out] t Intersection distance.
-    \return True if the ray intersects the triangle.
-*/
+/**
+ * Ray-Triangle intersection based on "Watertight Ray/Triangle Intersection"
+ * Paper link: http://jcgt.org/published/0002/01/05/paper.pdf
+ * @param[in] rayOrigin Ray origin.
+ * @param[in] rayDir Ray direction (does not have to be normalized).
+ * @param[in] vertices Triangle vertices.
+ * @param[out] barycentrics Barycentric coordinates.
+ * @param[out] t Intersection distance.
+ * @return True if the ray intersects the triangle.
+ */
 bool intersectRayTriangle(const float3 rayOrigin, const float3 rayDir, const float3 vertices[3], out float3 barycentrics, out float t)
 {
     const float3 absDir = abs(rayDir);
     uint axis = 0;
-    if (absDir.y > absDir.x && absDir.y > absDir.z) axis = 1;
-    if (absDir.z > absDir.x && absDir.z > absDir.y) axis = 2;
+    if (absDir.y > absDir.x && absDir.y > absDir.z)
+        axis = 1;
+    if (absDir.z > absDir.x && absDir.z > absDir.y)
+        axis = 2;
 
     uint kz = axis;
     uint kx = (kz + 1) % 3;
@@ -148,10 +155,12 @@ bool intersectRayTriangle(const float3 rayOrigin, const float3 rayDir, const flo
         W = (float)(BxAy - ByAx);
     }
 
-    if ((U < 0.f || V < 0.f || W < 0.f) && (U > 0.f || V > 0.f || W > 0.f)) return false;
+    if ((U < 0.f || V < 0.f || W < 0.f) && (U > 0.f || V > 0.f || W > 0.f))
+        return false;
 
     float det = U + V + W;
-    if (det == 0.f) return false;
+    if (det == 0.f)
+        return false;
 
     const float Az = Sz * A[kz];
     const float Bz = Sz * B[kz];
@@ -165,17 +174,25 @@ bool intersectRayTriangle(const float3 rayOrigin, const float3 rayDir, const flo
     return true;
 }
 
-/** Ray intersection against linear swept sphere based on [Han et al. 2019], Ray Tracing Generalized Tube Primitives: Method and Applications.
-    Paper link: http://www.sci.utah.edu/publications/Han2019a/tubes-final.pdf
-    \param[in] rayOrigin Ray origin position.
-    \param[in] rayDir Unit ray direction vector.
-    \param[in] sphereA Sphere (3D position + radius) at one end point.
-    \param[in] sphereB Sphere at the other end point.
-    \param[in] useSphereJoints Indicating whether we test ray-sphere intersection at curve joints or not.
-    \param[out] result The closest intersection distance t, and a parameter u for linear interpolation (between 0 and 1).
-    \return True if the ray intersects the linear swept sphere segment.
-*/
-bool intersectLinearSweptSphereHan19(float3 rayOrigin, float3 rayDir, float4 sphereA, float4 sphereB, bool useSphereJoints, out float2 result)
+/**
+ * Ray intersection against linear swept sphere based on [Han et al. 2019], Ray Tracing Generalized Tube Primitives: Method and
+ * Applications. Paper link: http://www.sci.utah.edu/publications/Han2019a/tubes-final.pdf
+ * @param[in] rayOrigin Ray origin position.
+ * @param[in] rayDir Unit ray direction vector.
+ * @param[in] sphereA Sphere (3D position + radius) at one end point.
+ * @param[in] sphereB Sphere at the other end point.
+ * @param[in] useSphereJoints Indicating whether we test ray-sphere intersection at curve joints or not.
+ * @param[out] result The closest intersection distance t, and a parameter u for linear interpolation (between 0 and 1).
+ * @return True if the ray intersects the linear swept sphere segment.
+ */
+bool intersectLinearSweptSphereHan19(
+    float3 rayOrigin,
+    float3 rayDir,
+    float4 sphereA,
+    float4 sphereB,
+    bool useSphereJoints,
+    out float2 result
+)
 {
     result = float2(FLT_MAX);
 
@@ -241,12 +258,11 @@ bool intersectLinearSweptSphereHan19(float3 rayOrigin, float3 rayDir, float4 sph
     const float tmp2 = p2 / w;
 
     // Row-major matrix.
-    float4x4 M =
-    {
-        tmp1 * tmp2 * float4(vx, -dot(vx, A)),
-        tmp1 * tmp2 * float4(vy, -dot(vy, A)),
-        tmp1 * float4(vz, -dot(vz, A)),
-        float4(0, 0, 0, 1)
+    float4x4 M = {
+        tmp1 * tmp2 * float4(vx, -dot(vx, A)), // row 0
+        tmp1 * tmp2 * float4(vy, -dot(vy, A)), // row 1
+        tmp1 * float4(vz, -dot(vz, A)),        // row 2
+        float4(0, 0, 0, 1)                     // row 3
     };
 
     const float zCap = z1 * tmp1;

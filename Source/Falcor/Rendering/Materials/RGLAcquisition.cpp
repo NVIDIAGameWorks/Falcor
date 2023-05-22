@@ -66,8 +66,8 @@ namespace Falcor
         const uint kVNDFN = kVNDFSize.x * kVNDFSize.y * kVNDFSize.z * kVNDFSize.w;
     }
 
-    RGLAcquisition::RGLAcquisition(std::shared_ptr<Device> pDevice, const Scene::SharedPtr& pScene)
-        : mpDevice(std::move(pDevice))
+    RGLAcquisition::RGLAcquisition(ref<Device> pDevice, const ref<Scene>& pScene)
+        : mpDevice(pDevice)
         , mpScene(pScene)
     {
         checkArgument(mpDevice != nullptr, "'pDevice' must be a valid device");
@@ -98,7 +98,7 @@ namespace Falcor
         auto createStructured = [&](size_t elemSize, size_t count, const void* srcData = nullptr)
         {
             return Buffer::createStructured(
-                mpDevice.get(),
+                mpDevice,
                 uint32_t(elemSize),
                 uint32_t(count),
                 ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
@@ -131,7 +131,7 @@ namespace Falcor
         CpuTimer timer;
         timer.update();
 
-        auto setupParams = [&](const ComputePass::SharedPtr& pPass)
+        auto setupParams = [&](const ref<ComputePass>& pPass)
         {
             auto var = pPass->getRootVar()[kParameterBlock];
             var["materialID"] = materialID.getSlang();
@@ -155,7 +155,8 @@ namespace Falcor
             var["vndfConditionalBuf"] = mpVNDFCondBuffer;
             var["lumi"] = mpLumiBuffer;
             var["rgb"] = mpRGBBuffer;
-            pPass["gScene"] = mpScene->getParameterBlock();
+
+            pPass->getRootVar()["gScene"] = mpScene->getParameterBlock();
         };
 
         setupParams(mpRetroReflectionPass);

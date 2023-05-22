@@ -96,8 +96,8 @@ namespace Falcor
         }
     }
 
-    AnimatedVertexCache::AnimatedVertexCache(std::shared_ptr<Device> pDevice, Scene* pScene, const Buffer::SharedPtr& pPrevVertexData, std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes)
-        : mpDevice(std::move(pDevice))
+    AnimatedVertexCache::AnimatedVertexCache(ref<Device> pDevice, Scene* pScene, const ref<Buffer>& pPrevVertexData, std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes)
+        : mpDevice(pDevice)
         , mpScene(pScene)
         , mpPrevVertexData(pPrevVertexData)
         , mCachedCurves(cachedCurves)
@@ -138,11 +138,6 @@ namespace Falcor
 
             createMeshVertexUpdatePass();
         }
-    }
-
-    AnimatedVertexCache::UniquePtr AnimatedVertexCache::create(std::shared_ptr<Device> pDevice, Scene* pScene, const Buffer::SharedPtr& pPrevVertexData, std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes)
-    {
-        return UniquePtr(new AnimatedVertexCache(std::move(pDevice), pScene, pPrevVertexData, std::move(cachedCurves), std::move(cachedMeshes)));
     }
 
     bool AnimatedVertexCache::animate(RenderContext* pRenderContext, double time)
@@ -236,12 +231,12 @@ namespace Falcor
         mpCurveVertexBuffers.resize(mCurveKeyframeTimes.size());
         for (uint32_t i = 0; i < mCurveKeyframeTimes.size(); i++)
         {
-            mpCurveVertexBuffers[i] = Buffer::createStructured(mpDevice.get(), sizeof(DynamicCurveVertexData), mCurveVertexCount, vbBindFlags, Buffer::CpuAccess::None, nullptr, false);
+            mpCurveVertexBuffers[i] = Buffer::createStructured(mpDevice, sizeof(DynamicCurveVertexData), mCurveVertexCount, vbBindFlags, Buffer::CpuAccess::None, nullptr, false);
             mpCurveVertexBuffers[i]->setName("AnimatedVertexCache::mpCurveVertexBuffers[" + std::to_string(i) + "]");
         }
 
         // Create buffers for previous vertex positions.
-        mpPrevCurveVertexBuffer = Buffer::createStructured(mpDevice.get(), sizeof(DynamicCurveVertexData), mCurveVertexCount, vbBindFlags, Buffer::CpuAccess::None, nullptr, false);
+        mpPrevCurveVertexBuffer = Buffer::createStructured(mpDevice, sizeof(DynamicCurveVertexData), mCurveVertexCount, vbBindFlags, Buffer::CpuAccess::None, nullptr, false);
         mpPrevCurveVertexBuffer->setName("AnimatedVertexCache::mpPrevCurveVertexBuffer");
 
         // Initialize vertex buffers with cached positions.
@@ -284,7 +279,7 @@ namespace Falcor
 
         // Create curve index buffer.
         vbBindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess;
-        mpCurveIndexBuffer = Buffer::create(mpDevice.get(), sizeof(uint32_t) * mCurveIndexCount, vbBindFlags);
+        mpCurveIndexBuffer = Buffer::create(mpDevice, sizeof(uint32_t) * mCurveIndexCount, vbBindFlags);
         mpCurveIndexBuffer->setName("AnimatedVertexCache::mpCurveIndexBuffer");
 
         // Initialize index buffer.
@@ -338,10 +333,10 @@ namespace Falcor
             mCurvePolyTubeIndexCount += curveMeta.indexCount;
         }
 
-        mpCurvePolyTubeCurveMetadataBuffer = Buffer::createStructured(mpDevice.get(), sizeof(PerCurveMetadata), (uint32_t)curveMetadata.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, curveMetadata.data(), false);
+        mpCurvePolyTubeCurveMetadataBuffer = Buffer::createStructured(mpDevice, sizeof(PerCurveMetadata), (uint32_t)curveMetadata.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, curveMetadata.data(), false);
         mpCurvePolyTubeCurveMetadataBuffer->setName("AnimatedVertexCache::mpCurvePolyTubeCurveMetadataBuffer");
 
-        mpCurvePolyTubeMeshMetadataBuffer = Buffer::createStructured(mpDevice.get(), sizeof(PerMeshMetadata), (uint32_t)meshMetadata.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, meshMetadata.data(), false);
+        mpCurvePolyTubeMeshMetadataBuffer = Buffer::createStructured(mpDevice, sizeof(PerMeshMetadata), (uint32_t)meshMetadata.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, meshMetadata.data(), false);
         mpCurvePolyTubeMeshMetadataBuffer->setName("AnimatedVertexCache::mpCurvePolyTubeMeshMetadataBuffer");
 
         // Create buffers for vertex positions in curve vertex caches.
@@ -349,7 +344,7 @@ namespace Falcor
         mpCurvePolyTubeVertexBuffers.resize(mCurveKeyframeTimes.size());
         for (uint32_t i = 0; i < mCurveKeyframeTimes.size(); i++)
         {
-            mpCurvePolyTubeVertexBuffers[i] = Buffer::createStructured(mpDevice.get(), sizeof(DynamicCurveVertexData), mCurvePolyTubeVertexCount, vbBindFlags, Buffer::CpuAccess::None, nullptr, false);
+            mpCurvePolyTubeVertexBuffers[i] = Buffer::createStructured(mpDevice, sizeof(DynamicCurveVertexData), mCurvePolyTubeVertexCount, vbBindFlags, Buffer::CpuAccess::None, nullptr, false);
             mpCurvePolyTubeVertexBuffers[i]->setName("AnimatedVertexCache::mpCurvePolyTubeVertexBuffers[" + std::to_string(i) + "]");
         }
 
@@ -390,7 +385,7 @@ namespace Falcor
 
         // Create curve strand index buffer.
         vbBindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess;
-        mpCurvePolyTubeStrandIndexBuffer = Buffer::create(mpDevice.get(), sizeof(uint32_t) * mCurvePolyTubeVertexCount, vbBindFlags);
+        mpCurvePolyTubeStrandIndexBuffer = Buffer::create(mpDevice, sizeof(uint32_t) * mCurvePolyTubeVertexCount, vbBindFlags);
         mpCurvePolyTubeStrandIndexBuffer->setName("AnimatedVertexCache::mpCurvePolyTubeStrandIndexBuffer");
 
         // Initialize strand index buffer.
@@ -463,18 +458,18 @@ namespace Falcor
             {
                 auto& data = cache.vertexData[i];
                 size_t index = keyframeOffset + i;
-                mpMeshVertexBuffers[index] = Buffer::createStructured(mpDevice.get(), sizeof(PackedStaticVertexData), (uint32_t)data.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, data.data(), false);
+                mpMeshVertexBuffers[index] = Buffer::createStructured(mpDevice, sizeof(PackedStaticVertexData), (uint32_t)data.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, data.data(), false);
                 mpMeshVertexBuffers[index]->setName("AnimatedVertexCache::mpMeshVertexBuffers[" + std::to_string(index) + "]");
             }
 
             keyframeOffset += (uint32_t)cache.timeSamples.size();
         }
 
-        mpMeshMetadataBuffer = Buffer::createStructured(mpDevice.get(), sizeof(PerMeshMetadata), (uint32_t)meshMetadata.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, meshMetadata.data(), false);
+        mpMeshMetadataBuffer = Buffer::createStructured(mpDevice, sizeof(PerMeshMetadata), (uint32_t)meshMetadata.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, meshMetadata.data(), false);
         mpMeshMetadataBuffer->setName("AnimatedVertexCache::mpMeshMetadataBuffer");
 
         mMeshInterpolationInfo.resize(mCachedMeshes.size());
-        mpMeshInterpolationBuffer = Buffer::createStructured(mpDevice.get(), sizeof(InterpolationInfo), (uint32_t)mMeshInterpolationInfo.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpMeshInterpolationBuffer = Buffer::createStructured(mpDevice, sizeof(InterpolationInfo), (uint32_t)mMeshInterpolationInfo.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
         mpMeshInterpolationBuffer->setName("AnimatedVertexCache::mpMeshInterpolationbuffer");
     }
 
@@ -487,7 +482,7 @@ namespace Falcor
         mpMeshVertexUpdatePass = ComputePass::create(mpDevice, "Scene/Animation/UpdateMeshVertices.slang", "main", defines);
 
         // Bind data
-        auto block = mpMeshVertexUpdatePass->getVars()["gMeshVertexUpdater"];
+        auto block = mpMeshVertexUpdatePass->getRootVar()["gMeshVertexUpdater"];
         auto keyframesVar = block["meshPerKeyframe"];
         for (size_t i = 0; i < mpMeshVertexBuffers.size(); i++) keyframesVar[i]["vertexData"] = mpMeshVertexBuffers[i];
 
@@ -504,7 +499,7 @@ namespace Falcor
         defines.add("CURVE_KEYFRAME_COUNT", std::to_string(mCurveKeyframeTimes.size()));
         mpCurveVertexUpdatePass = ComputePass::create(mpDevice, kUpdateCurveVerticesFilename, "main", defines);
 
-        auto block = mpCurveVertexUpdatePass->getVars()["gCurveVertexUpdater"];
+        auto block = mpCurveVertexUpdatePass->getRootVar()["gCurveVertexUpdater"];
         auto var = block["curvePerKeyframe"];
 
         // Bind curve vertex data.
@@ -517,7 +512,7 @@ namespace Falcor
 
         mpCurveAABBUpdatePass = ComputePass::create(mpDevice, kUpdateCurveAABBsFilename);
 
-        auto block = mpCurveAABBUpdatePass->getVars()["gCurveAABBUpdater"];
+        auto block = mpCurveAABBUpdatePass->getRootVar()["gCurveAABBUpdater"];
         block["curveIndexData"] = mpCurveIndexBuffer;
     }
 
@@ -529,7 +524,7 @@ namespace Falcor
         defines.add("CURVE_KEYFRAME_COUNT", std::to_string(mCurveKeyframeTimes.size()));
         mpCurvePolyTubeVertexUpdatePass = ComputePass::create(mpDevice, kUpdateCurvePolyTubeVerticesFilename, "main", defines);
 
-        auto block = mpCurvePolyTubeVertexUpdatePass->getVars()["gCurvePolyTubeVertexUpdater"];
+        auto block = mpCurvePolyTubeVertexUpdatePass->getRootVar()["gCurvePolyTubeVertexUpdater"];
         block["perCurveData"] = mpCurvePolyTubeCurveMetadataBuffer;
         block["curveStrandIndexData"] = mpCurvePolyTubeStrandIndexBuffer;
 
@@ -555,7 +550,7 @@ namespace Falcor
 
         mpMeshInterpolationBuffer->setBlob(mMeshInterpolationInfo.data(), 0, mpMeshInterpolationBuffer->getSize());
 
-        auto block = mpMeshVertexUpdatePass->getVars()["gMeshVertexUpdater"];
+        auto block = mpMeshVertexUpdatePass->getRootVar()["gMeshVertexUpdater"];
         block["sceneVertexData"] = mpScene->getMeshVao()->getVertexBuffer(Scene::kStaticDataBufferIndex);
         block["copyPrev"] = copyPrev;
 
@@ -568,7 +563,7 @@ namespace Falcor
 
         FALCOR_PROFILE(pRenderContext, "update curve vertices");
 
-        auto block = mpCurveVertexUpdatePass->getVars()["gCurveVertexUpdater"];
+        auto block = mpCurveVertexUpdatePass->getRootVar()["gCurveVertexUpdater"];
         block["keyframeIndices"] = info.keyframeIndices;
         block["t"] = info.t;
         block["copyPrev"] = copyPrev;
@@ -589,7 +584,7 @@ namespace Falcor
 
         FALCOR_PROFILE(pRenderContext, "update curve AABBs");
 
-        auto block = mpCurveAABBUpdatePass->getVars()["gCurveAABBUpdater"];
+        auto block = mpCurveAABBUpdatePass->getRootVar()["gCurveAABBUpdater"];
         block["curveVertices"] = mpScene->mpCurveVao->getVertexBuffer(0);
         block["curveAABBs"].setUav(mpScene->mpRtAABBBuffer->getUAV(0, mCurveIndexCount));
 
@@ -607,7 +602,7 @@ namespace Falcor
 
         FALCOR_PROFILE(pRenderContext, "Update curve poly-tube vertices");
 
-        auto block = mpCurvePolyTubeVertexUpdatePass->getVars()["gCurvePolyTubeVertexUpdater"];
+        auto block = mpCurvePolyTubeVertexUpdatePass->getRootVar()["gCurvePolyTubeVertexUpdater"];
         block["keyframeIndices"] = info.keyframeIndices;
         block["t"] = info.t;
         block["copyPrev"] = copyPrev;

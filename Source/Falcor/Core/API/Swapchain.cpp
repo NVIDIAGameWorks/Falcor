@@ -33,8 +33,7 @@
 namespace Falcor
 {
 
-Swapchain::Swapchain(std::shared_ptr<Device> pDevice, const Desc& desc, WindowHandle windowHandle)
-    : mpDevice(std::move(pDevice)), mDesc(desc)
+Swapchain::Swapchain(ref<Device> pDevice, const Desc& desc, WindowHandle windowHandle) : mpDevice(pDevice), mDesc(desc)
 {
     FALCOR_ASSERT(mpDevice);
 
@@ -60,7 +59,7 @@ Swapchain::Swapchain(std::shared_ptr<Device> pDevice, const Desc& desc, WindowHa
     prepareImages();
 }
 
-const Texture::SharedPtr& Swapchain::getImage(uint32_t index) const
+const ref<Texture>& Swapchain::getImage(uint32_t index) const
 {
     FALCOR_ASSERT(index <= mImages.size());
     return mImages[index];
@@ -104,8 +103,8 @@ void Swapchain::prepareImages()
         Slang::ComPtr<gfx::ITextureResource> resource;
         FALCOR_GFX_CALL(mGfxSwapchain->getImage(i, resource.writeRef()));
         mImages.push_back(Texture::createFromResource(
-            mpDevice.get(), resource, Texture::Type::Texture2D, mDesc.width, mDesc.height, 1, mDesc.format, 1, 1, 1,
-            Resource::State::Undefined, Texture::BindFlags::RenderTarget
+            mpDevice, resource, Texture::Type::Texture2D, mDesc.width, mDesc.height, 1, mDesc.format, 1, 1, 1, Resource::State::Undefined,
+            Texture::BindFlags::RenderTarget
         ));
     }
 }

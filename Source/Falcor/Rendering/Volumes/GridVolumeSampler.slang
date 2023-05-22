@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -126,7 +126,7 @@ struct GridVolumeSampler
     float stepDDA(const float3 rayOrigin, const float3 invRayDir, const float3 pos, const int mip)
     {
         const float dim = 8 << mip;
-        const float3 tofs = invRayDir * (((invRayDir >= 0.f) ? dim + 0.5f : -0.5f) - rayOrigin);
+        const float3 tofs = invRayDir * (select(invRayDir >= 0.f, dim + 0.5f, -0.5f) - rayOrigin);
         const float3 tmax = floor(pos * (1.f / dim)) * dim * invRayDir + tofs;
         return min(tmax.x, min(tmax.y, tmax.z));
     }

@@ -52,11 +52,11 @@ namespace Falcor
 
     bool operator==(const MaterialHeader& lhs, const MaterialHeader& rhs)
     {
-        return lhs.packedData == rhs.packedData;
+        return all(lhs.packedData == rhs.packedData);
     }
 
-    Material::Material(std::shared_ptr<Device> pDevice, const std::string& name, MaterialType type)
-        : mpDevice(std::move(pDevice))
+    Material::Material(ref<Device> pDevice, const std::string& name, MaterialType type)
+        : mpDevice(pDevice)
         , mName(name)
     {
         mHeader.setMaterialType(type);
@@ -157,7 +157,7 @@ namespace Falcor
         return mTextureSlotData[(size_t)slot].pTexture != nullptr;
     }
 
-    bool Material::setTexture(const TextureSlot slot, const Texture::SharedPtr& pTexture)
+    bool Material::setTexture(const TextureSlot slot, const ref<Texture>& pTexture)
     {
         if (!hasTextureSlot(slot))
         {
@@ -174,7 +174,7 @@ namespace Falcor
         return true;
     }
 
-    Texture::SharedPtr Material::getTexture(const TextureSlot slot) const
+    ref<Texture> Material::getTexture(const TextureSlot slot) const
     {
         if (!hasTextureSlot(slot)) return nullptr;
 
@@ -193,7 +193,7 @@ namespace Falcor
         std::filesystem::path fullPath;
         if (findFileInDataDirectories(path, fullPath))
         {
-            auto texture = Texture::createFromFile(mpDevice.get(), fullPath, true, useSrgb && getTextureSlotInfo(slot).srgb);
+            auto texture = Texture::createFromFile(mpDevice, fullPath, true, useSrgb && getTextureSlotInfo(slot).srgb);
             if (texture)
             {
                 setTexture(slot, texture);
@@ -223,12 +223,12 @@ namespace Falcor
         mTextureTransform = textureTransform;
     }
 
-    std::shared_ptr<BasicMaterial> Material::toBasicMaterial()
+    ref<BasicMaterial> Material::toBasicMaterial()
     {
         if (mHeader.isBasicMaterial())
         {
-            FALCOR_ASSERT(std::dynamic_pointer_cast<BasicMaterial>(shared_from_this()));
-            return std::static_pointer_cast<BasicMaterial>(shared_from_this());
+            FALCOR_ASSERT(dynamic_ref_cast<BasicMaterial>(ref<Material>(this)));
+            return static_ref_cast<BasicMaterial>(ref<Material>(this));
         }
         return nullptr;
     }
@@ -242,14 +242,14 @@ namespace Falcor
         if (mUpdateCallback) mUpdateCallback(updates);
     }
 
-    void Material::updateTextureHandle(MaterialSystem* pOwner, const Texture::SharedPtr& pTexture, TextureHandle& handle)
+    void Material::updateTextureHandle(MaterialSystem* pOwner, const ref<Texture>& pTexture, TextureHandle& handle)
     {
         TextureHandle prevHandle = handle;
 
         // Update the given texture handle.
         if (pTexture)
         {
-            auto h = pOwner->getTextureManager()->addTexture(pTexture);
+            auto h = pOwner->getTextureManager().addTexture(pTexture);
             FALCOR_ASSERT(h);
             handle.setTextureID(h.getID());
             handle.setMode(TextureHandle::Mode::Texture);
@@ -269,7 +269,7 @@ namespace Falcor
         updateTextureHandle(pOwner, pTexture, handle);
     };
 
-    void Material::updateDefaultTextureSamplerID(MaterialSystem* pOwner, const Sampler::SharedPtr& pSampler)
+    void Material::updateDefaultTextureSamplerID(MaterialSystem* pOwner, const ref<Sampler>& pSampler)
     {
         const uint32_t samplerID = pOwner->addTextureSampler(pSampler);
 
@@ -306,7 +306,7 @@ namespace Falcor
         return true;
     }
 
-    NormalMapType Material::detectNormalMapType(const Texture::SharedPtr& pNormalMap)
+    NormalMapType Material::detectNormalMapType(const ref<Texture>& pNormalMap)
     {
         NormalMapType type = NormalMapType::None;
         if (pNormalMap != nullptr)
@@ -332,6 +332,7 @@ namespace Falcor
         using namespace pybind11::literals;
 
         FALCOR_SCRIPT_BINDING_DEPENDENCY(Transform)
+        FALCOR_SCRIPT_BINDING_DEPENDENCY(Texture)
 
         pybind11::enum_<MaterialType> materialType(m, "MaterialType");
         materialType.value("Standard", MaterialType::Standard);
@@ -362,7 +363,7 @@ namespace Falcor
 
         // Register Material base class as IMaterial in python to allow deprecated script syntax.
         // TODO: Remove workaround when all scripts have been updated to create derived Material classes.
-        pybind11::class_<Material, Material::SharedPtr> material(m, "IMaterial"); // PYTHONDEPRECATED
+        pybind11::class_<Material, ref<Material>> material(m, "IMaterial"); // PYTHONDEPRECATED
         material.def_property_readonly("type", &Material::getType);
         material.def_property("name", &Material::getName, &Material::setName);
         material.def_property("doubleSided", &Material::isDoubleSided, &Material::setDoubleSided);

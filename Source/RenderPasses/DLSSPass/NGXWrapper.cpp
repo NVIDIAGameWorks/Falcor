@@ -44,11 +44,11 @@
 #include <cstdio>
 #include <cstdarg>
 
-#define THROW_IF_FAILED(call)                                                          \
-    {                                                                                  \
-        NVSDK_NGX_Result result = call;                                                \
-        if (NVSDK_NGX_FAILED(result))                                                  \
-            throw RuntimeError(#call " failed with error {}", resultToString(result)); \
+#define THROW_IF_FAILED(call)                                                           \
+    {                                                                                   \
+        NVSDK_NGX_Result result_ = call;                                                \
+        if (NVSDK_NGX_FAILED(result_))                                                  \
+            throw RuntimeError(#call " failed with error {}", resultToString(result_)); \
     }
 
 namespace Falcor
@@ -88,7 +88,11 @@ VkImageAspectFlags getAspectMaskFromFormat(VkFormat format)
 
 } // namespace
 
-NGXWrapper::NGXWrapper(Device* pDevice, const std::filesystem::path& applicationDataPath, const std::filesystem::path& featureSearchPath)
+NGXWrapper::NGXWrapper(
+    ref<Device> pDevice,
+    const std::filesystem::path& applicationDataPath,
+    const std::filesystem::path& featureSearchPath
+)
     : mpDevice(pDevice)
 {
     initializeNGX(applicationDataPath, featureSearchPath);
@@ -303,7 +307,7 @@ NGXWrapper::OptimalSettings NGXWrapper::queryOptimalSettings(uint2 displaySize, 
     ));
 
     // Depending on what version of DLSS DLL is being used, a sharpness of > 1.f was possible.
-    settings.sharpness = clamp(settings.sharpness, -1.f, 1.f);
+    settings.sharpness = math::clamp(settings.sharpness, -1.f, 1.f);
 
     return settings;
 }

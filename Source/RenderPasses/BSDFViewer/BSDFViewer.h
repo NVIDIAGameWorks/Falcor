@@ -27,10 +27,11 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "BSDFViewerParams.slang"
+#include "RenderGraph/RenderPass.h"
 #include "Utils/Sampling/SampleGenerator.h"
 #include "Utils/Debug/PixelDebug.h"
 #include "Scene/Lights/EnvMap.h"
+#include "BSDFViewerParams.slang"
 
 using namespace Falcor;
 
@@ -39,48 +40,45 @@ class BSDFViewer : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(BSDFViewer, "BSDFViewer", "BSDF inspection utility.");
 
-    using SharedPtr = std::shared_ptr<BSDFViewer>;
+    static ref<BSDFViewer> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<BSDFViewer>(pDevice, dict); }
 
-    /** Create a new object
-    */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
+    BSDFViewer(ref<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
-    virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
+    virtual void setScene(RenderContext* pRenderContext, const ref<Scene>& pScene) override;
     virtual bool onMouseEvent(const MouseEvent& mouseEvent) override;
     virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override;
 
     static void registerBindings(pybind11::module& m);
 
 private:
-    BSDFViewer(std::shared_ptr<Device> pDevice, const Dictionary& dict);
     void parseDictionary(const Dictionary& dict);
     bool loadEnvMap(const std::filesystem::path& path);
     void readPixelData();
 
     // Internal state
-    Scene::SharedPtr                mpScene;                    ///< Loaded scene if any, nullptr otherwise.
-    EnvMap::SharedPtr               mpEnvMap;                   ///< Environment map if loaded, nullptr otherwise.
+    ref<Scene>                      mpScene;                    ///< Loaded scene if any, nullptr otherwise.
+    ref<EnvMap>                     mpEnvMap;                   ///< Environment map if loaded, nullptr otherwise.
     bool                            mUseEnvMap = true;          ///< Use environment map if available.
 
     BSDFViewerParams                mParams;                    ///< Parameters shared with the shaders.
-    SampleGenerator::SharedPtr      mpSampleGenerator;          ///< Random number generator for the integrator.
+    ref<SampleGenerator>            mpSampleGenerator;          ///< Random number generator for the integrator.
     bool                            mOptionsChanged = false;
 
-    GpuFence::SharedPtr             mpFence;                    ///< GPU fence for synchronizing readback.
-    Buffer::SharedPtr               mpPixelDataBuffer;          ///< Buffer for data for the selected pixel.
-    Buffer::SharedPtr               mpPixelStagingBuffer;       ///< Staging buffer for readback of pixel data.
+    ref<GpuFence>                   mpFence;                    ///< GPU fence for synchronizing readback.
+    ref<Buffer>                     mpPixelDataBuffer;          ///< Buffer for data for the selected pixel.
+    ref<Buffer>                     mpPixelStagingBuffer;       ///< Staging buffer for readback of pixel data.
     PixelData                       mPixelData;                 ///< Pixel data for the selected pixel (if valid).
     bool                            mPixelDataValid = false;
     bool                            mPixelDataAvailable = false;
 
-    PixelDebug::SharedPtr           mpPixelDebug;               ///< Utility class for pixel debugging (print in shaders).
+    std::unique_ptr<PixelDebug>     mpPixelDebug;               ///< Utility class for pixel debugging (print in shaders).
 
-    ComputePass::SharedPtr          mpViewerPass;
+    ref<ComputePass>                mpViewerPass;
 
     // UI variables
     Gui::DropdownList               mMaterialList;

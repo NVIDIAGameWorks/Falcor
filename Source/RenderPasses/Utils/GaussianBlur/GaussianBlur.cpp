@@ -41,30 +41,25 @@ namespace
 
 void GaussianBlur::registerBindings(pybind11::module& m)
 {
-    pybind11::class_<GaussianBlur, RenderPass, GaussianBlur::SharedPtr> pass(m, "GaussianBlur");
+    pybind11::class_<GaussianBlur, RenderPass, ref<GaussianBlur>> pass(m, "GaussianBlur");
     pass.def_property(kKernelWidth, &GaussianBlur::getKernelWidth, &GaussianBlur::setKernelWidth);
     pass.def_property(kSigma, &GaussianBlur::getSigma, &GaussianBlur::setSigma);
 }
 
-GaussianBlur::GaussianBlur(std::shared_ptr<Device> pDevice)
-    : RenderPass(std::move(pDevice))
+GaussianBlur::GaussianBlur(ref<Device> pDevice, const Dictionary& dict)
+    : RenderPass(pDevice)
 {
-    mpFbo = Fbo::create(mpDevice.get());
+    mpFbo = Fbo::create(mpDevice);
     Sampler::Desc samplerDesc;
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
-    mpSampler = Sampler::create(mpDevice.get(), samplerDesc);
-}
+    mpSampler = Sampler::create(mpDevice, samplerDesc);
 
-GaussianBlur::SharedPtr GaussianBlur::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-{
-    SharedPtr pBlur = SharedPtr(new GaussianBlur(std::move(pDevice)));
     for (const auto& [key, value] : dict)
     {
-        if (key == kKernelWidth) pBlur->mKernelWidth = value;
-        else if (key == kSigma) pBlur->mSigma = value;
+        if (key == kKernelWidth) mKernelWidth = value;
+        else if (key == kSigma) mSigma = value;
         else logWarning("Unknown field '{}' in a GaussianBlur dictionary.", key);
     }
-    return pBlur;
 }
 
 Dictionary GaussianBlur::getScriptingDictionary()
@@ -136,13 +131,19 @@ void GaussianBlur::execute(RenderContext* pRenderContext, const RenderData& rend
     createTmpFbo(pSrc.get());
 
     // Horizontal pass
-    mpHorizontalBlur["gSampler"] = mpSampler;
-    mpHorizontalBlur["gSrcTex"] = pSrc;
-    mpHorizontalBlur->execute(pRenderContext, mpTmpFbo);
+    {
+        auto var = mpHorizontalBlur->getRootVar();
+        var["gSampler"] = mpSampler;
+        var["gSrcTex"] = pSrc;
+        mpHorizontalBlur->execute(pRenderContext, mpTmpFbo);
+    }
 
     // Vertical pass
-    mpVerticalBlur["gSrcTex"] = mpTmpFbo->getColorTexture(0);
-    mpVerticalBlur->execute(pRenderContext, mpFbo);
+    {
+        auto var = mpVerticalBlur->getRootVar();
+        var["gSrcTex"] = mpTmpFbo->getColorTexture(0);
+        mpVerticalBlur->execute(pRenderContext, mpFbo);
+    }
 }
 
 void GaussianBlur::createTmpFbo(const Texture* pSrc)
@@ -162,7 +163,7 @@ void GaussianBlur::createTmpFbo(const Texture* pSrc)
     {
         Fbo::Desc fboDesc;
         fboDesc.setColorTarget(0, srcFormat);
-        mpTmpFbo = Fbo::create2D(mpDevice.get(), pSrc->getWidth(), pSrc->getHeight(), fboDesc, pSrc->getArraySize());
+        mpTmpFbo = Fbo::create2D(mpDevice, pSrc->getWidth(), pSrc->getHeight(), fboDesc, pSrc->getArraySize());
     }
 }
 
@@ -205,7 +206,7 @@ void GaussianBlur::updateKernel()
         sum += (i == 0) ? weights[i] : 2 * weights[i];
     }
 
-    Buffer::SharedPtr pBuf = Buffer::createTyped<float>(mpDevice.get(), mKernelWidth, Resource::BindFlags::ShaderResource);
+    ref<Buffer> pBuf = Buffer::createTyped<float>(mpDevice, mKernelWidth, Resource::BindFlags::ShaderResource);
 
     for (uint32_t i = 0; i <= center; i++)
     {
@@ -214,5 +215,5 @@ void GaussianBlur::updateKernel()
         pBuf->setElement(center - i, w);
     }
 
-    mpHorizontalBlur["weights"] = pBuf;
+    mpHorizontalBlur->getRootVar()["weights"] = pBuf;
 }

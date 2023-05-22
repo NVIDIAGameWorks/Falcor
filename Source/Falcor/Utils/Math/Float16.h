@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,166 +26,140 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Core/Assert.h"
-#include "Vector.h"
-#include <glm/detail/type_half.hpp>
-#include <string>
-#include <fmt/format.h>
+
+#include "Core/Macros.h"
+
+#include <cstdint>
+#include <limits>
 
 namespace Falcor
 {
-    /** Represents a IEEE 754-2008 compatible binary16 type (half precision).
-        Numbers outside the representable range +-65504 are stored as +-inf.
-    */
-    class float16_t
+namespace math
+{
+
+FALCOR_API uint16_t float32ToFloat16(float value);
+FALCOR_API float float16ToFloat32(uint16_t value);
+
+struct float16_t
+{
+    float16_t() = default;
+
+    float16_t(uint32_t sign, uint32_t exponent, uint32_t fraction)
+        : mBits((sign & 0x01) << 15 | (exponent & 0x1f) << 10 | (fraction & 0x03ff))
+    {}
+
+    explicit float16_t(float value) : mBits(float32ToFloat16(value)) {}
+
+    template<typename T>
+    explicit float16_t(T value) : mBits(float32ToFloat16(static_cast<float>(value)))
+    {}
+
+    operator float() const { return float16ToFloat32(mBits); }
+
+    static constexpr float16_t fromBits(uint16_t bits) { return float16_t(bits, FromBits); }
+    uint16_t toBits() const { return mBits; }
+
+    bool operator==(const float16_t other) const { return mBits == other.mBits; }
+    bool operator!=(const float16_t other) const { return mBits != other.mBits; }
+    bool operator<(const float16_t other) const { return static_cast<float>(*this) < static_cast<float>(other); }
+    bool operator<=(const float16_t other) const { return static_cast<float>(*this) <= static_cast<float>(other); }
+    bool operator>(const float16_t other) const { return static_cast<float>(*this) > static_cast<float>(other); }
+    bool operator>=(const float16_t other) const { return static_cast<float>(*this) >= static_cast<float>(other); }
+
+    float16_t operator+() const { return *this; }
+    float16_t operator-() const { return fromBits(mBits ^ 0x8000); }
+
+    // TODO: Implement math operators in native fp16 precision. For now using fp32.
+    float16_t operator+(const float16_t other) const { return float16_t(static_cast<float>(*this) + static_cast<float>(other)); }
+    float16_t operator-(const float16_t other) const { return float16_t(static_cast<float>(*this) - static_cast<float>(other)); }
+    float16_t operator*(const float16_t other) const { return float16_t(static_cast<float>(*this) * static_cast<float>(other)); }
+    float16_t operator/(const float16_t other) const { return float16_t(static_cast<float>(*this) / static_cast<float>(other)); }
+
+    float16_t operator+=(const float16_t other) { return *this = *this + other; }
+    float16_t operator-=(const float16_t other) { return *this = *this - other; }
+    float16_t operator*=(const float16_t other) { return *this = *this * other; }
+    float16_t operator/=(const float16_t other) { return *this = *this / other; }
+
+    constexpr bool isFinite() const noexcept { return exponent() < 31; }
+    constexpr bool isInf() const noexcept { return exponent() == 31 && mantissa() == 0; }
+    constexpr bool isNan() const noexcept { return exponent() == 31 && mantissa() != 0; }
+    constexpr bool isNormalized() const noexcept { return exponent() > 0 && exponent() < 31; }
+    constexpr bool isDenormalized() const noexcept { return exponent() == 0 && mantissa() != 0; }
+
+private:
+    enum Tag
     {
-    public:
-        float16_t() = default;
-
-        // Float conversion
-        explicit float16_t(float v) : bits(glm::detail::toFloat16(v)) {}
-        explicit operator float() const { return glm::detail::toFloat32(bits); }
-
-        bool operator==(const float16_t other) const { return bits == other.bits; }
-        bool operator!=(const float16_t other) const { return bits != other.bits; }
-
-        friend bool operator< (const float16_t lhs, const float16_t rhs) { return float(lhs) < float(rhs); }
-        friend bool operator> (const float16_t lhs, const float16_t rhs) { return rhs < lhs; }
-        friend bool operator<=(const float16_t lhs, const float16_t rhs) { return !(lhs > rhs); }
-        friend bool operator>=(const float16_t lhs, const float16_t rhs) { return !(lhs < rhs); }
-
-        // TODO: Implement math operators in native fp16 precision. For now using fp32.
-        friend float16_t operator+ (const float16_t lhs, const float16_t rhs) { return float16_t((float)lhs + float(rhs)); }
-        friend float16_t operator- (const float16_t lhs, const float16_t rhs) { return float16_t((float)lhs - float(rhs)); }
-        friend float16_t operator* (const float16_t lhs, const float16_t rhs) { return float16_t((float)lhs * float(rhs)); }
-        friend float16_t operator/ (const float16_t lhs, const float16_t rhs) { return float16_t((float)lhs / float(rhs)); }
-
-        float16_t& operator+= (const float16_t rhs) { *this = *this + rhs; return *this; }
-        float16_t& operator-= (const float16_t rhs) { *this = *this - rhs; return *this; }
-        float16_t& operator*= (const float16_t rhs) { *this = *this * rhs; return *this; }
-        float16_t& operator/= (const float16_t rhs) { *this = *this / rhs; return *this; }
-
-        float16_t operator- () const
-        {
-            float16_t h;
-            h.bits = bits ^ 0x8000;
-            return h;
-        }
-
-    private:
-        glm::detail::hdata bits;
+        FromBits
     };
 
-    inline std::string to_string(const float16_t& v) { return std::to_string((float)v); }
+    constexpr float16_t(uint16_t bits, Tag) : mBits(bits) {}
 
+    constexpr uint16_t mantissa() const noexcept { return mBits & 0x3ff; }
+    constexpr uint16_t exponent() const noexcept { return (mBits >> 10) & 0x001f; }
 
-    // Vector types
+    uint16_t mBits;
+};
 
-    template<size_t N>
-    struct tfloat16_vec
-    {
-    };
+#if FALCOR_MSVC
+#pragma warning(push)
+#pragma warning(disable : 4455) // disable warning about literal suffixes not starting with an underscore
+#elif FALCOR_CLANG
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wuser-defined-literals"
+#endif
 
-    template<>
-    struct tfloat16_vec<2>
-    {
-        using value_type = float16_t;
-
-        float16_t x, y;
-
-        // Constructors
-        tfloat16_vec() = default;
-        tfloat16_vec(const float16_t& v) : x(v), y(v) {}
-        tfloat16_vec(const float16_t& v1, const float16_t& v2) : x(v1), y(v2) {}
-
-        // Float conversion
-        explicit tfloat16_vec(float v) : x(v), y(v) {}
-        explicit tfloat16_vec(const float2& v) : x(v.x), y(v.y) {}
-        explicit tfloat16_vec(float v1, float v2) : x(v1), y(v2) {}
-        explicit operator float2() const { return float2(float(x), float(y)); }
-
-        // Access
-        float16_t& operator[](size_t i) { FALCOR_ASSERT(i < length()); return (&x)[i]; }
-        const float16_t& operator[](size_t i) const { FALCOR_ASSERT(i < length()); return (&x)[i]; }
-
-        bool operator==(const tfloat16_vec& other) const { return x == other.x && y == other.y; }
-        bool operator!=(const tfloat16_vec& other) const { return x != other.x || y != other.y; }
-
-        static constexpr size_t length() { return 2; }
-    };
-
-    template<>
-    struct tfloat16_vec<3>
-    {
-        using value_type = float16_t;
-
-        float16_t x, y, z;
-
-        // Constructors
-        tfloat16_vec() = default;
-        tfloat16_vec(const float16_t& v) : x(v), y(v), z(v) {}
-        tfloat16_vec(const float16_t& v1, const float16_t& v2, const float16_t& v3) : x(v1), y(v2), z(v3) {}
-
-        // Float conversion
-        explicit tfloat16_vec(float v) : x(v), y(v), z(v) {}
-        explicit tfloat16_vec(const float3& v) : x(v.x), y(v.y), z(v.z) {}
-        explicit tfloat16_vec(float v1, float v2, float v3) : x(v1), y(v2), z(v3) {}
-        explicit operator float3() const { return float3(float(x), float(y), float(z)); }
-
-        // Access
-        float16_t& operator[](size_t i) { FALCOR_ASSERT(i < length()); return (&x)[i]; }
-        const float16_t& operator[](size_t i) const { FALCOR_ASSERT(i < length()); return (&x)[i]; }
-
-        bool operator==(const tfloat16_vec& other) const { return x == other.x && y == other.y && z == other.z; }
-        bool operator!=(const tfloat16_vec& other) const { return x != other.x || y != other.y || z != other.z; }
-
-        static constexpr size_t length() { return 3; }
-    };
-
-    template<>
-    struct tfloat16_vec<4>
-    {
-        using value_type = float16_t;
-
-        float16_t x, y, z, w;
-
-        // Constructors
-        tfloat16_vec() = default;
-        tfloat16_vec(const float16_t& v) : x(v), y(v), z(v), w(v) {}
-        tfloat16_vec(const float16_t& v1, const float16_t& v2, const float16_t& v3, const float16_t& v4) : x(v1), y(v2), z(v3), w(v4) {}
-
-        // Float conversion
-        explicit tfloat16_vec(float v) : x(v), y(v), z(v), w(v) {}
-        explicit tfloat16_vec(const float4& v) : x(v.x), y(v.y), z(v.z), w(v.w) {}
-        explicit tfloat16_vec(float v1, float v2, float v3, float v4) : x(v1), y(v2), z(v3), w(v4) {}
-        explicit operator float4() const { return float4(float(x), float(y), float(z), float(w)); }
-
-        // Access
-        float16_t& operator[](size_t i) { FALCOR_ASSERT(i < length()); return (&x)[i]; }
-        const float16_t& operator[](size_t i) const { FALCOR_ASSERT(i < length()); return (&x)[i]; }
-
-        bool operator==(const tfloat16_vec& other) const { return x == other.x && y == other.y && z == other.z && w == other.w; }
-        bool operator!=(const tfloat16_vec& other) const { return x != other.x || y != other.y || z != other.z || w != other.w; }
-
-        static constexpr size_t length() { return 4; }
-    };
-
-    using float16_t2 = tfloat16_vec<2>;
-    using float16_t3 = tfloat16_vec<3>;
-    using float16_t4 = tfloat16_vec<4>;
-
-    inline std::string to_string(const float16_t2& v) { return "float16_t2(" + to_string(v.x) + "," + to_string(v.y) + ")"; }
-    inline std::string to_string(const float16_t3& v) { return "float16_t3(" + to_string(v.x) + "," + to_string(v.y) + "," + to_string(v.z) + ")"; }
-    inline std::string to_string(const float16_t4& v) { return "float16_t4(" + to_string(v.x) + "," + to_string(v.y) + "," + to_string(v.z) + "," + to_string(v.w) + ")"; }
+/// h suffix for "half float" literals.
+inline float16_t operator""h(long double value)
+{
+    return float16_t(static_cast<float>(value));
 }
 
-// Formatter for the float16_t.
-template<>
-struct ::fmt::formatter<Falcor::float16_t> : formatter<float>
+#if FALCOR_MSVC
+#pragma warning(pop)
+#elif FALCOR_CLANG
+#pragma clang diagnostic pop
+#endif
+
+} // namespace math
+} // namespace Falcor
+
+namespace std
 {
-    template<typename FormatContext>
-    auto format(Falcor::float16_t value, FormatContext& ctx) const
-    {
-        return formatter<float>::format(float(value), ctx);
-    }
+
+template<>
+class numeric_limits<Falcor::math::float16_t>
+{
+public:
+    static constexpr bool is_specialized = true;
+    static constexpr Falcor::math::float16_t min() noexcept { return Falcor::math::float16_t::fromBits(0x0200); }
+    static constexpr Falcor::math::float16_t max() noexcept { return Falcor::math::float16_t::fromBits(0x7bff); }
+    static constexpr Falcor::math::float16_t lowest() noexcept { return Falcor::math::float16_t::fromBits(0xfbff); }
+    static constexpr int digits = 11;
+    static constexpr int digits10 = 3;
+    static constexpr bool is_signed = true;
+    static constexpr bool is_integer = false;
+    static constexpr bool is_exact = false;
+    static constexpr int radix = 2;
+    static constexpr Falcor::math::float16_t epsilon() noexcept { return Falcor::math::float16_t::fromBits(0x1200); }
+    static constexpr Falcor::math::float16_t round_error() noexcept { return Falcor::math::float16_t::fromBits(0x3c00); }
+    static constexpr int min_exponent = -13;
+    static constexpr int min_exponent10 = -4;
+    static constexpr int max_exponent = 16;
+    static constexpr int max_exponent10 = 4;
+    static constexpr bool has_infinity = true;
+    static constexpr bool has_quiet_NaN = true;
+    static constexpr bool has_signaling_NaN = true;
+    static constexpr float_denorm_style has_denorm = denorm_absent;
+    static constexpr bool has_denorm_loss = false;
+    static constexpr Falcor::math::float16_t infinity() noexcept { return Falcor::math::float16_t::fromBits(0x7c00); }
+    static constexpr Falcor::math::float16_t quiet_NaN() noexcept { return Falcor::math::float16_t::fromBits(0x7fff); }
+    static constexpr Falcor::math::float16_t signaling_NaN() noexcept { return Falcor::math::float16_t::fromBits(0x7dff); }
+    static constexpr Falcor::math::float16_t denorm_min() noexcept { return Falcor::math::float16_t::fromBits(0); }
+    static constexpr bool is_iec559 = false;
+    static constexpr bool is_bounded = false;
+    static constexpr bool is_modulo = false;
+    static constexpr bool traps = false;
+    static constexpr bool tinyness_before = false;
+    static constexpr float_round_style round_style = round_to_nearest;
 };
+} // namespace std

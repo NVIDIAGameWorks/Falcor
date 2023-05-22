@@ -38,9 +38,9 @@ const uint32_t kMaxMissCount = (1 << 16);
 const uint32_t kMaxRayTypeCount = (1 << 4);
 } // namespace
 
-RtBindingTable::SharedPtr RtBindingTable::create(uint32_t missCount, uint32_t rayTypeCount, uint32_t geometryCount)
+ref<RtBindingTable> RtBindingTable::create(uint32_t missCount, uint32_t rayTypeCount, uint32_t geometryCount)
 {
-    return SharedPtr(new RtBindingTable(missCount, rayTypeCount, geometryCount));
+    return ref<RtBindingTable>(new RtBindingTable(missCount, rayTypeCount, geometryCount));
 }
 
 RtBindingTable::RtBindingTable(uint32_t missCount, uint32_t rayTypeCount, uint32_t geometryCount)

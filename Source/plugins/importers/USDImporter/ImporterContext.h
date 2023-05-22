@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -37,7 +37,6 @@
 #include "Utils/Math/Vector.h"
 #include "Utils/Math/Matrix.h"
 #include "Utils/Timing/TimeReport.h"
-#include "Utils/Scripting/Dictionary.h"
 
 BEGIN_DISABLE_USD_WARNINGS
 #include <pxr/usd/usdGeom/xformCommonAPI.h>
@@ -48,9 +47,8 @@ BEGIN_DISABLE_USD_WARNINGS
 #include <pxr/usd/usdGeom/pointInstancer.h>
 END_DISABLE_USD_WARNINGS
 
-#include <glm/gtx/euler_angles.hpp>
+#include <pybind11/pytypes.h>
 
-#include <execution>
 #include <filesystem>
 #include <limits>
 #include <memory>
@@ -73,8 +71,8 @@ namespace Falcor
     {
         std::string name;                               ///< Instance name.
         UsdPrim prim;                                   ///< Reference to mesh prim.
-        rmcv::mat4 xform;                               ///< Instance world transform
-        rmcv::mat4 bindTransform;                       ///< If mesh is skinned, its bind-time transform.
+        float4x4 xform;                                 ///< Instance world transform
+        float4x4 bindTransform;                         ///< If mesh is skinned, its bind-time transform.
         NodeID parentID;                                ///< SceneBuilder node ID of parent
     };
 
@@ -85,7 +83,7 @@ namespace Falcor
         std::string name;                               ///< Instance name.
         UsdPrim protoPrim;                              ///< Reference to prototype prim.
         NodeID parentID{ NodeID::kInvalidID };          ///< SceneBuilder parent node id.
-        rmcv::mat4 xform = rmcv::mat4(1.f);             ///< Instance transformation.
+        float4x4 xform = float4x4::identity();          ///< Instance transformation.
         std::vector<Animation::Keyframe> keyframes;     ///< Keyframes for animated instance transformation, if any.
     };
 
@@ -123,7 +121,7 @@ namespace Falcor
     */
     struct Curve
     {
-        static const uint32_t kInvalidID = std::numeric_limits<uint32_t>::max();
+        static constexpr uint32_t kInvalidID = std::numeric_limits<uint32_t>::max();
 
         UsdPrim curvePrim;                                          ///< Curve prim.
         CurveTessellationMode tessellationMode;                     ///< Curve tessellation mode.
@@ -161,13 +159,13 @@ namespace Falcor
         {
             SceneBuilder::Node node;
             node.name = prim.GetPath().GetString();
-            node.transform = rmcv::mat4(1.f);
+            node.transform = float4x4::identity();
             node.parent = NodeID::Invalid();
             nodes.push_back(node);
             nodeStack.push_back(NodeID{ 0 });
         }
 
-        void addGeomInstance(const std::string& name, UsdPrim prim, const rmcv::mat4& xform, const rmcv::mat4& bindXform)
+        void addGeomInstance(const std::string& name, UsdPrim prim, const float4x4& xform, const float4x4& bindXform)
         {
             geomInstances.push_back(GeomInstance{name, prim, xform, bindXform, nodeStack.back()});
         }
@@ -187,7 +185,7 @@ namespace Falcor
             {
                 // The node stack should at least contain the root node.
                 FALCOR_ASSERT(nodeStack.size() > 0);
-                rmcv::mat4 localTransform;
+                float4x4 localTransform;
                 bool resets = getLocalTransform(prim, localTransform);
 
                 SceneBuilder::Node node;
@@ -222,7 +220,7 @@ namespace Falcor
 
             // Skeleton Data
             std::vector<SceneBuilder::Node> bones;           ///< Local transforms of each bone
-            std::vector<Animation::SharedPtr> animations;    ///< Animations per bone
+            std::vector<ref<Animation>> animations;          ///< Animations per bone
             NodeID::IntType nodeOffset{ NodeID::kInvalidID };///< Where this skeleton's nodes start in the SceneBuilder
         };
 
@@ -237,15 +235,15 @@ namespace Falcor
     // Importer data and helper functions
     struct ImporterContext
     {
-        ImporterContext(const std::filesystem::path& path, UsdStageRefPtr pStage, SceneBuilder& builder, const Dictionary& dict, TimeReport& timeReport, bool useInstanceProxies = false);
+        ImporterContext(const std::filesystem::path& stagePath, UsdStageRefPtr pStage, SceneBuilder& builder, const pybind11::dict& dict, TimeReport& timeReport, bool useInstanceProxies = false);
 
         // Get pointer to default material for the given prim, based on its type, creating it if it doesn't already exist.
         // Thread-safe.
-        Material::SharedPtr getDefaultMaterial(const UsdPrim& prim);
+        ref<Material> getDefaultMaterial(const UsdPrim& prim);
 
 
         // Return a pointer to the material to use for the given UsdShadeMaterial. Thread-safe.
-        Material::SharedPtr resolveMaterial(const UsdPrim& prim, const UsdShadeMaterial& material, const std::string& primName);
+        ref<Material> resolveMaterial(const UsdPrim& prim, const UsdShadeMaterial& material, const std::string& primName);
 
         // Return the UsdShadeMaterial bound to the given prim
         template <class T>
@@ -257,7 +255,7 @@ namespace Falcor
         // Meshes
         void addMesh(const UsdPrim& prim);
         const Mesh& getMesh(const UsdPrim& meshPrim) { return meshes[geomMap.at(meshPrim)]; }
-        void addGeomInstance(const std::string& name, const UsdPrim& prim, const rmcv::mat4& xform, const rmcv::mat4& bindxform);
+        void addGeomInstance(const std::string& name, const UsdPrim& prim, const float4x4& xform, const float4x4& bindxform);
 
         // Prototypes
         void createPrototype(const UsdPrim& rootPrim);
@@ -275,12 +273,12 @@ namespace Falcor
             }
             return curves[curveMap.at(curvePrim)];
         }
-        void addCurveInstance(const std::string& name, const UsdPrim& curvePrim, const rmcv::mat4& xform, NodeID parentID);
+        void addCurveInstance(const std::string& name, const UsdPrim& curvePrim, const float4x4& xform, NodeID parentID);
         void addCachedCurve(Curve& curve);
 
         // Add USD Objects
         void createEnvMap(const UsdPrim& lightPrim);
-        void addLight(const UsdPrim& lightPrim, Light::SharedPtr pLight, NodeID parentId);
+        void addLight(const UsdPrim& lightPrim, ref<Light> pLight, NodeID parentId);
         void createDistantLight(const UsdPrim& lightPrim);
         void createRectLight(const UsdPrim& lightPrim);
         void createSphereLight(const UsdPrim& lightPrim);
@@ -307,13 +305,13 @@ namespace Falcor
 
             This should only be called once during importer initialization and only when the nodeStack is empty.
         */
-        void setRootXform(const rmcv::mat4& xform);
-        rmcv::mat4 getLocalToWorldXform(const UsdGeomXformable& prim, UsdTimeCode time = UsdTimeCode::EarliestTime());
+        void setRootXform(const float4x4& xform);
+        float4x4 getLocalToWorldXform(const UsdGeomXformable& prim, UsdTimeCode time = UsdTimeCode::EarliestTime());
         size_t getNodeStackDepth() const { return nodeStack.size(); }
         void pushNode(const UsdGeomXformable& prim);
         void popNode() { nodeStack.pop_back(); }
         NodeID getRootNodeID() const { return nodeStack[nodeStackStartDepth.back()]; }
-        rmcv::mat4 getGeomBindTransform(const UsdPrim& usdPrim) const;
+        float4x4 getGeomBindTransform(const UsdPrim& usdPrim) const;
 
         /** Start a new node stack.
 
@@ -337,9 +335,9 @@ namespace Falcor
         */
         void finalize();
 
-        std::filesystem::path path;                                                                  ///< Path of the USD stage being imported.
+        std::filesystem::path stagePath;                                                             ///< Path of the USD stage being imported.
         UsdStageRefPtr pStage;                                                                       ///< USD stage being imported.
-        const Dictionary& dict;                                                                      ///< Input map from material path to material short name.
+        const pybind11::dict& dict;                                                                  ///< Input map from material path to material short name.
         std::map<std::string, std::string> localDict;                                                ///< Local input map from material path to
         TimeReport& timeReport;                                                                      ///< Timer object to use when importing.
         SceneBuilder& builder;                                                                       ///< Scene builder for this import session.
@@ -347,13 +345,14 @@ namespace Falcor
         std::vector<size_t> nodeStackStartDepth;                                                     ///< Stack depth at time of new node stack creation
         float metersPerUnit = .01f;                                                                  ///< Meters per unit scene distance.
         double timeCodesPerSecond = 24.0;                                                            ///< Time code unit scaling for time-sampled data. USD default is 24.
-        rmcv::mat4 rootXform;                                                                          ///< Pseudoroot xform, correcting for world unit scaling and up vector orientation.
+        int defaultRefinementLevel = 0;                                                              ///< Default subdiv refinement level.
+        float4x4 rootXform = float4x4::identity();                                                   ///< Pseudoroot xform, correcting for world unit scaling and up vector orientation.
         NodeID rootXformNodeId{ NodeID::kInvalidID };                                                ///< Get the node ID containing the scene root transform in the builder's scene graph
         bool useInstanceProxies = false;                                                             ///< If true, traverse instances as if they were non-instances (debugging feature).
 
-        std::unordered_map<std::string, Material::SharedPtr> materialMap;                            ///< Created material instances, indexed by material instance name.
-        std::unordered_map<float3, Material::SharedPtr, Float3Hash> defaultMaterialMap;              ///< Default materials, indexed by base color.
-        std::unordered_map<float3, Material::SharedPtr, Float3Hash> defaultCurveMaterialMap;         ///< Default curve materials, indexed by absorption coefficient.
+        std::unordered_map<std::string, ref<Material>> materialMap;                                  ///< Created material instances, indexed by material instance name.
+        std::unordered_map<float3, ref<Material>, Float3Hash> defaultMaterialMap;                    ///< Default materials, indexed by base color.
+        std::unordered_map<float3, ref<Material>, Float3Hash> defaultCurveMaterialMap;               ///< Default curve materials, indexed by absorption coefficient.
         std::mutex materialMutex;                                                                    ///< Mutex to protect access to material maps.
 
         std::vector<Mesh> meshes;                                                                    ///< List of meshes.

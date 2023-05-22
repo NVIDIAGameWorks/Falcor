@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -35,144 +35,151 @@
 
 namespace Falcor
 {
-    /** Container class for logging messages.
-        To enable log messages, make sure FALCOR_ENABLE_LOGGER is set to `1` in FalcorConfig.h.
-        Messages are only printed to the selected outputs if they match the verbosity level.
-    */
-    class FALCOR_API Logger
+/**
+ * Container class for logging messages.
+ * To enable log messages, make sure FALCOR_ENABLE_LOGGER is set to `1` in FalcorConfig.h.
+ * Messages are only printed to the selected outputs if they match the verbosity level.
+ */
+class FALCOR_API Logger
+{
+public:
+    /// Log message severity.
+    enum class Level
     {
-    public:
-        /** Log message severity.
-        */
-        enum class Level
-        {
-            Disabled,   ///< Disable log messages.
-            Fatal,      ///< Fatal messages.
-            Error,      ///< Error messages.
-            Warning,    ///< Warning messages.
-            Info,       ///< Informative messages.
-            Debug,      ///< Debugging messages.
-
-            Count,      ///< Keep this last.
-        };
-
-        /** Log output.
-        */
-        enum class OutputFlags
-        {
-            Console         = 0x2,  ///< Output to console (stdout/stderr).
-            File            = 0x1,  ///< Output to log file.
-            DebugWindow     = 0x4,  ///< Output to debug window (if debugger is attached).
-        };
-
-        /** Shutdown the logger and close the log file.
-        */
-        static void shutdown();
-
-        /** Set the logger verbosity.
-            \param level Log level.
-        */
-        static void setVerbosity(Level level);
-
-        /** Get the logger verbosity.
-            \return Return the log level.
-        */
-        static Level getVerbosity();
-
-        /** Set the logger outputs.
-            \param outputs Log outputs.
-        */
-        static void setOutputs(OutputFlags outputs);
-
-        /** Get the logger outputs.
-            \return Return the log outputs.
-        */
-        static OutputFlags getOutputs();
-
-        /** Set the path of the logfile.
-            Note: This only works if the logfile has not been opened for writing yet.
-            \param[in] path Logfile path
-            \return Returns true if path was set, false otherwise.
-        */
-        static bool setLogFilePath(const std::filesystem::path& path);
-
-        /** Get the path of the logfile.
-            \return Returns the path of the logfile.
-        */
-        static const std::filesystem::path& getLogFilePath();
-
-        /** Check if the logger is enabled.
-        */
-        static constexpr bool enabled() { return FALCOR_ENABLE_LOGGER != 0; }
-
-        /** Log a message.
-            \param[in] level Log level.
-            \param[in] msg Log message.
-        */
-        static void log(Level level, const std::string_view msg);
-
-    private:
-        Logger() = delete;
+        Disabled, ///< Disable log messages.
+        Fatal,    ///< Fatal messages.
+        Error,    ///< Error messages.
+        Warning,  ///< Warning messages.
+        Info,     ///< Informative messages.
+        Debug,    ///< Debugging messages.
+        Count,    ///< Keep this last.
     };
 
-    FALCOR_ENUM_CLASS_OPERATORS(Logger::OutputFlags);
-
-    // We define two types of logging helpers, one taking raw strings,
-    // the other taking formatted strings. We don't want string formatting and
-    // errors being thrown due to missing arguments when passing raw strings.
-
-    inline void logDebug(const std::string_view msg)
+    /// Log output.
+    enum class OutputFlags
     {
-        Logger::log(Logger::Level::Debug, msg);
-    }
+        Console = 0x2,     ///< Output to console (stdout/stderr).
+        File = 0x1,        ///< Output to log file.
+        DebugWindow = 0x4, ///< Output to debug window (if debugger is attached).
+    };
 
-    template<typename... Args>
-    inline void logDebug(fmt::format_string<Args...> format, Args&&... args)
-    {
-        Logger::log(Logger::Level::Debug, fmt::format(format, std::forward<Args>(args)...));
-    }
+    /**
+     * Shutdown the logger and close the log file.
+     */
+    static void shutdown();
 
-    inline void logInfo(const std::string_view msg)
-    {
-        Logger::log(Logger::Level::Info, msg);
-    }
+    /**
+     * Set the logger verbosity.
+     * @param level Log level.
+     */
+    static void setVerbosity(Level level);
 
-    template<typename... Args>
-    inline void logInfo(fmt::format_string<Args...> format, Args&&... args)
-    {
-        Logger::log(Logger::Level::Info, fmt::format(format, std::forward<Args>(args)...));
-    }
+    /**
+     * Get the logger verbosity.
+     * @return Return the log level.
+     */
+    static Level getVerbosity();
 
-    inline void logWarning(const std::string_view msg)
-    {
-        Logger::log(Logger::Level::Warning, msg);
-    }
+    /**
+     * Set the logger outputs.
+     * @param outputs Log outputs.
+     */
+    static void setOutputs(OutputFlags outputs);
 
-    template<typename... Args>
-    inline void logWarning(fmt::format_string<Args...> format, Args&&... args)
-    {
-        Logger::log(Logger::Level::Warning, fmt::format(format, std::forward<Args>(args)...));
-    }
+    /**
+     * Get the logger outputs.
+     * @return Return the log outputs.
+     */
+    static OutputFlags getOutputs();
 
-    inline void logError(const std::string_view msg)
-    {
-        Logger::log(Logger::Level::Error, msg);
-    }
+    /**
+     * Set the path of the logfile.
+     * Note: This only works if the logfile has not been opened for writing yet.
+     * @param[in] path Logfile path
+     * @return Returns true if path was set, false otherwise.
+     */
+    static bool setLogFilePath(const std::filesystem::path& path);
 
-    template<typename... Args>
-    inline void logError(fmt::format_string<Args...> format, Args&&... args)
-    {
-        Logger::log(Logger::Level::Error, fmt::format(format, std::forward<Args>(args)...));
-    }
+    /**
+     * Get the path of the logfile.
+     * @return Returns the path of the logfile.
+     */
+    static const std::filesystem::path& getLogFilePath();
 
-    inline void logFatal(const std::string_view msg)
-    {
-        Logger::log(Logger::Level::Fatal, msg);
-    }
+    /**
+     * Check if the logger is enabled.
+     */
+    static constexpr bool enabled() { return FALCOR_ENABLE_LOGGER != 0; }
 
-    template<typename... Args>
-    inline void logFatal(fmt::format_string<Args...> format, Args&&... args)
-    {
-        Logger::log(Logger::Level::Fatal, fmt::format(format, std::forward<Args>(args)...));
-    }
+    /**
+     * Log a message.
+     * @param[in] level Log level.
+     * @param[in] msg Log message.
+     */
+    static void log(Level level, const std::string_view msg);
+
+private:
+    Logger() = delete;
+};
+
+FALCOR_ENUM_CLASS_OPERATORS(Logger::OutputFlags);
+
+// We define two types of logging helpers, one taking raw strings,
+// the other taking formatted strings. We don't want string formatting and
+// errors being thrown due to missing arguments when passing raw strings.
+
+inline void logDebug(const std::string_view msg)
+{
+    Logger::log(Logger::Level::Debug, msg);
 }
+
+template<typename... Args>
+inline void logDebug(fmt::format_string<Args...> format, Args&&... args)
+{
+    Logger::log(Logger::Level::Debug, fmt::format(format, std::forward<Args>(args)...));
+}
+
+inline void logInfo(const std::string_view msg)
+{
+    Logger::log(Logger::Level::Info, msg);
+}
+
+template<typename... Args>
+inline void logInfo(fmt::format_string<Args...> format, Args&&... args)
+{
+    Logger::log(Logger::Level::Info, fmt::format(format, std::forward<Args>(args)...));
+}
+
+inline void logWarning(const std::string_view msg)
+{
+    Logger::log(Logger::Level::Warning, msg);
+}
+
+template<typename... Args>
+inline void logWarning(fmt::format_string<Args...> format, Args&&... args)
+{
+    Logger::log(Logger::Level::Warning, fmt::format(format, std::forward<Args>(args)...));
+}
+
+inline void logError(const std::string_view msg)
+{
+    Logger::log(Logger::Level::Error, msg);
+}
+
+template<typename... Args>
+inline void logError(fmt::format_string<Args...> format, Args&&... args)
+{
+    Logger::log(Logger::Level::Error, fmt::format(format, std::forward<Args>(args)...));
+}
+
+inline void logFatal(const std::string_view msg)
+{
+    Logger::log(Logger::Level::Fatal, msg);
+}
+
+template<typename... Args>
+inline void logFatal(fmt::format_string<Args...> format, Args&&... args)
+{
+    Logger::log(Logger::Level::Fatal, fmt::format(format, std::forward<Args>(args)...));
+}
+} // namespace Falcor

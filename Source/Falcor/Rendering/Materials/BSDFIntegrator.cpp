@@ -43,8 +43,8 @@ namespace Falcor
         const uint2 kGridSize = { 512, 512 };
     }
 
-    BSDFIntegrator::BSDFIntegrator(std::shared_ptr<Device> pDevice, const Scene::SharedPtr& pScene)
-        : mpDevice(std::move(pDevice))
+    BSDFIntegrator::BSDFIntegrator(ref<Device> pDevice, const ref<Scene>& pScene)
+        : mpDevice(pDevice)
         , mpScene(pScene)
     {
         checkArgument(mpScene != nullptr, "'pDevice' must be a valid device");
@@ -75,7 +75,7 @@ namespace Falcor
         FALCOR_ASSERT(finalGroupSize.x == 256 && finalGroupSize.y == 1 && finalGroupSize.z == 1);
         FALCOR_ASSERT(finalGroupSize.x == mResultCount);
 
-        mpFence = GpuFence::create(mpDevice.get());
+        mpFence = GpuFence::create(mpDevice);
     }
 
     float3 BSDFIntegrator::integrateIsotropic(RenderContext* pRenderContext, const MaterialID materialID, float cosTheta)
@@ -100,7 +100,7 @@ namespace Falcor
 
         if (!mpCosThetaBuffer || mpCosThetaBuffer->getElementCount() < gridCount)
         {
-            mpCosThetaBuffer = Buffer::createStructured(mpDevice.get(), sizeof(float), gridCount, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, cosThetas.data(), false);
+            mpCosThetaBuffer = Buffer::createStructured(mpDevice, sizeof(float), gridCount, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, cosThetas.data(), false);
         }
         else
         {
@@ -111,12 +111,12 @@ namespace Falcor
         uint32_t elemCount = gridCount * mResultCount;
         if (!mpResultBuffer || mpResultBuffer->getElementCount() < elemCount)
         {
-            mpResultBuffer = Buffer::createStructured(mpDevice.get(), sizeof(float3), elemCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+            mpResultBuffer = Buffer::createStructured(mpDevice, sizeof(float3), elemCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
         }
         if (!mpFinalResultBuffer || mpFinalResultBuffer->getElementCount() < gridCount)
         {
-            mpFinalResultBuffer = Buffer::createStructured(mpDevice.get(), sizeof(float3), gridCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
-            mpStagingBuffer = Buffer::createStructured(mpDevice.get(), sizeof(float3), gridCount, ResourceBindFlags::None, Buffer::CpuAccess::Read, nullptr, false);
+            mpFinalResultBuffer = Buffer::createStructured(mpDevice, sizeof(float3), gridCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+            mpStagingBuffer = Buffer::createStructured(mpDevice, sizeof(float3), gridCount, ResourceBindFlags::None, Buffer::CpuAccess::Read, nullptr, false);
         }
 
         // Execute GPU passes.
@@ -153,7 +153,7 @@ namespace Falcor
         var["cosThetas"] = mpCosThetaBuffer;
         var["results"] = mpResultBuffer;
 
-        mpIntegrationPass["gScene"] = mpScene->getParameterBlock();
+        mpIntegrationPass->getRootVar()["gScene"] = mpScene->getParameterBlock();
         mpIntegrationPass->execute(pRenderContext, uint3(kGridSize, gridCount));
     }
 

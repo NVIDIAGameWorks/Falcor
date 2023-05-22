@@ -38,7 +38,7 @@ std::mt19937 r;
  */
 void testCopyRegion(GPUUnitTestContext& ctx, size_t bufferSize)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     std::vector<uint32_t> data(256);
     const size_t testSize = data.size() * sizeof(data[0]);
@@ -93,7 +93,7 @@ void testCopyRegion(GPUUnitTestContext& ctx, size_t bufferSize)
  */
 void testReadRaw(GPUUnitTestContext& ctx, bool useRootDesc, size_t bufferSize)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     Shader::DefineList defines;
     defines.add("USE_ROOT_DESC", useRootDesc ? "1" : "0");
@@ -148,7 +148,7 @@ void testReadRaw(GPUUnitTestContext& ctx, bool useRootDesc, size_t bufferSize)
  */
 void testReadStructured(GPUUnitTestContext& ctx, bool useRootDesc, size_t bufferSize)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     Shader::DefineList defines;
     defines.add("USE_ROOT_DESC", useRootDesc ? "1" : "0");
@@ -205,7 +205,7 @@ void testReadStructured(GPUUnitTestContext& ctx, bool useRootDesc, size_t buffer
  */
 void testReadStructuredUint(GPUUnitTestContext& ctx, bool useRootDesc, size_t bufferSize)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     Shader::DefineList defines;
     defines.add("USE_ROOT_DESC", useRootDesc ? "1" : "0");

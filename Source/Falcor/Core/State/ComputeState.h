@@ -28,6 +28,7 @@
 #pragma once
 #include "StateGraph.h"
 #include "Core/Macros.h"
+#include "Core/Object.h"
 #include "Core/API/ComputeStateObject.h"
 #include "Core/Program/ComputeProgram.h"
 #include <memory>
@@ -41,11 +42,9 @@ class ComputeVars;
  * This class contains the entire state required by a single dispatch call. It's not an immutable object - you can change it dynamically
  * during rendering. The recommended way to use it is to create multiple ComputeState objects (ideally, a single object per program)
  */
-class FALCOR_API ComputeState
+class FALCOR_API ComputeState : public Object
 {
 public:
-    using SharedPtr = std::shared_ptr<ComputeState>;
-
     ~ComputeState() = default;
 
     /**
@@ -53,17 +52,12 @@ public:
      * @param pDevice GPU device.
      * @return A new object, or an exception is thrown if creation failed.
      */
-    static SharedPtr create(std::shared_ptr<Device> pDevice);
-
-    /**
-     * Copy constructor. Useful if you need to make minor changes to an already existing object
-     */
-    SharedPtr operator=(const SharedPtr& other);
+    static ref<ComputeState> create(ref<Device> pDevice);
 
     /**
      * Bind a program to the pipeline
      */
-    ComputeState& setProgram(const ComputeProgram::SharedPtr& pProgram)
+    ComputeState& setProgram(ref<ComputeProgram> pProgram)
     {
         mpProgram = pProgram;
         return *this;
@@ -72,18 +66,18 @@ public:
     /**
      * Get the currently bound program
      */
-    ComputeProgram::SharedPtr getProgram() const { return mpProgram; }
+    ref<ComputeProgram> getProgram() const { return mpProgram; }
 
     /**
      * Get the active compute state object
      */
-    ComputeStateObject::SharedPtr getCSO(const ComputeVars* pVars);
+    ref<ComputeStateObject> getCSO(const ComputeVars* pVars);
 
 private:
-    ComputeState(std::shared_ptr<Device> pDevice);
+    ComputeState(ref<Device> pDevice);
 
-    std::shared_ptr<Device> mpDevice;
-    ComputeProgram::SharedPtr mpProgram;
+    ref<Device> mpDevice;
+    ref<ComputeProgram> mpProgram;
     ComputeStateObject::Desc mDesc;
 
     struct CachedData
@@ -92,7 +86,7 @@ private:
     };
     CachedData mCachedData;
 
-    using StateGraph = StateGraph<ComputeStateObject::SharedPtr, void*>;
-    StateGraph::SharedPtr mpCsoGraph;
+    using ComputeStateGraph = StateGraph<ref<ComputeStateObject>, void*>;
+    std::unique_ptr<ComputeStateGraph> mpCsoGraph;
 };
 } // namespace Falcor

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,6 +30,9 @@
 #include "Utils/PathResolving.h"
 
 #include "Utils/Scripting/ScriptBindings.h"
+
+#include <pybind11/pybind11.h>
+#include <pybind11_json/pybind11_json.hpp>
 
 #include <fstream>
 
@@ -62,6 +65,13 @@ std::vector<std::string> toStrings(const nlohmann::json& value)
 
 } // namespace
 
+void Settings::addOptions(const pybind11::dict& options)
+{
+    auto json = pyjson::to_json(options);
+    merge(getActive().mOptions, json);
+    updateSearchPaths(json);
+}
+
 bool Settings::addOptions(const std::filesystem::path& path)
 {
     if (path.extension() == ".json")
@@ -80,6 +90,16 @@ bool Settings::addOptionsJSON(const std::filesystem::path& path)
     merge(getActive().mOptions, jf);
     updateSearchPaths(jf);
     return true;
+}
+
+void Settings::addFilteredAttributes(const pybind11::dict& attributes)
+{
+    merge(getActive().mFilteredAttributes, pyjson::to_json(attributes));
+}
+
+void Settings::clearFilteredAttributes()
+{
+    getActive().mFilteredAttributes.clear();
 }
 
 void Settings::updateSearchPaths(const nlohmann::json& update)

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -36,8 +36,6 @@
 #include "Parser.h"
 #include "Core/Assert.h"
 #include "Utils/Math/Matrix.h"
-
-#include <glm/gtx/string_cast.hpp>
 
 #include <filesystem>
 #include <map>
@@ -83,18 +81,16 @@ struct MaterialSceneEntity : public SceneEntity
 struct TransformedSceneEntity : public SceneEntity
 {
     TransformedSceneEntity() = default;
-    TransformedSceneEntity(const std::string& name, ParameterDictionary params, FileLoc loc, const rmcv::mat4& transform)
+    TransformedSceneEntity(const std::string& name, ParameterDictionary params, FileLoc loc, const float4x4& transform)
         : SceneEntity(name, params, loc), transform(transform)
     {}
 
     std::string toString() const
     {
-        return fmt::format(
-            "TransformedSceneEntity(name='{}', params={}, transform={})", name, params.toString(), rmcv::to_string(transform)
-        );
+        return fmt::format("TransformedSceneEntity(name='{}', params={}, transform={})", name, params.toString(), to_string(transform));
     }
 
-    rmcv::mat4 transform;
+    float4x4 transform = float4x4::identity();
 };
 
 struct CameraSceneEntity : public TransformedSceneEntity
@@ -104,7 +100,7 @@ struct CameraSceneEntity : public TransformedSceneEntity
         const std::string& name,
         ParameterDictionary params,
         FileLoc loc,
-        const rmcv::mat4& transform,
+        const float4x4& transform,
         const std::string& medium
     )
         : TransformedSceneEntity(name, params, loc, transform), medium(medium)
@@ -113,8 +109,7 @@ struct CameraSceneEntity : public TransformedSceneEntity
     std::string toString() const
     {
         return fmt::format(
-            "CameraSceneEntity(name='{}', params={}, transform={}, medium='{}')", name, params.toString(), rmcv::to_string(transform),
-            medium
+            "CameraSceneEntity(name='{}', params={}, transform={}, medium='{}')", name, params.toString(), to_string(transform), medium
         );
     }
 
@@ -124,20 +119,14 @@ struct CameraSceneEntity : public TransformedSceneEntity
 struct LightSceneEntity : public TransformedSceneEntity
 {
     LightSceneEntity() = default;
-    LightSceneEntity(
-        const std::string& name,
-        ParameterDictionary params,
-        FileLoc loc,
-        const rmcv::mat4& transform,
-        const std::string& medium
-    )
+    LightSceneEntity(const std::string& name, ParameterDictionary params, FileLoc loc, const float4x4& transform, const std::string& medium)
         : TransformedSceneEntity(name, params, loc, transform), medium(medium)
     {}
 
     std::string toString() const
     {
         return fmt::format(
-            "LightSceneEntity(name='{}', params={}, transform={}, medium='{}')", name, params.toString(), rmcv::to_string(transform), medium
+            "LightSceneEntity(name='{}', params={}, transform={}, medium='{}')", name, params.toString(), to_string(transform), medium
         );
     }
 
@@ -147,26 +136,26 @@ struct LightSceneEntity : public TransformedSceneEntity
 struct MediumSceneEntity : public TransformedSceneEntity
 {
     MediumSceneEntity() = default;
-    MediumSceneEntity(const std::string& name, ParameterDictionary params, FileLoc loc, const rmcv::mat4& transform)
+    MediumSceneEntity(const std::string& name, ParameterDictionary params, FileLoc loc, const float4x4& transform)
         : TransformedSceneEntity(name, params, loc, transform)
     {}
 
     std::string toString() const
     {
-        return fmt::format("MediumSceneEntity(name='{}', params={}, transform={})", name, params.toString(), rmcv::to_string(transform));
+        return fmt::format("MediumSceneEntity(name='{}', params={}, transform={})", name, params.toString(), to_string(transform));
     }
 };
 
 struct TextureSceneEntity : public TransformedSceneEntity
 {
     TextureSceneEntity() = default;
-    TextureSceneEntity(const std::string& name, ParameterDictionary params, FileLoc loc, const rmcv::mat4& transform)
+    TextureSceneEntity(const std::string& name, ParameterDictionary params, FileLoc loc, const float4x4& transform)
         : TransformedSceneEntity(name, params, loc, transform)
     {}
 
     std::string toString() const
     {
-        return fmt::format("TextureSceneEntity(name='{}', params={}, transform={})", name, params.toString(), rmcv::to_string(transform));
+        return fmt::format("TextureSceneEntity(name='{}', params={}, transform={})", name, params.toString(), to_string(transform));
     }
 };
 
@@ -177,7 +166,7 @@ struct ShapeSceneEntity : public TransformedSceneEntity
         const std::string& name,
         ParameterDictionary params,
         FileLoc loc,
-        const rmcv::mat4& transform,
+        const float4x4& transform,
         bool reverseOrientation,
         MaterialRef materialRef,
         int lightIndex,
@@ -197,7 +186,7 @@ struct ShapeSceneEntity : public TransformedSceneEntity
         return fmt::format(
             "ShapeSceneEntity(name='{}', params={}, transform={}, reverseOrientation={}, "
             "materialRef={}. lightIndex={}, insideMedium='{}', outsideMedium='{}')",
-            name, params.toString(), rmcv::to_string(transform), reverseOrientation, to_string(materialRef), lightIndex, insideMedium,
+            name, params.toString(), to_string(transform), reverseOrientation, to_string(materialRef), lightIndex, insideMedium,
             outsideMedium
         );
     }
@@ -223,13 +212,13 @@ struct InstanceDefinitionSceneEntity
 struct InstanceSceneEntity
 {
     InstanceSceneEntity() = default;
-    InstanceSceneEntity(const std::string& name, FileLoc loc, const rmcv::mat4& transform) : name(name), loc(loc), transform(transform) {}
+    InstanceSceneEntity(const std::string& name, FileLoc loc, const float4x4& transform) : name(name), loc(loc), transform(transform) {}
 
-    std::string toString() const { return fmt::format("InstanceSceneEntity(name='{}', transform='{}')", name, rmcv::to_string(transform)); }
+    std::string toString() const { return fmt::format("InstanceSceneEntity(name='{}', transform='{}')", name, to_string(transform)); }
 
     std::string name;
     FileLoc loc;
-    rmcv::mat4 transform;
+    float4x4 transform = float4x4::identity();
 };
 
 class BasicScene
@@ -305,16 +294,10 @@ private:
 
 constexpr uint32_t kMaxTransforms = 2;
 
-using Transform = rmcv::mat4;
+using Transform = float4x4;
 
 struct TransformSet
 {
-    TransformSet()
-    {
-        for (uint32_t i = 0; i < kMaxTransforms; ++i)
-            t[i] = rmcv::identity<rmcv::mat4>();
-    }
-
     Transform& operator[](uint32_t i)
     {
         FALCOR_ASSERT(i < kMaxTransforms);
@@ -332,7 +315,7 @@ struct TransformSet
         TransformSet tInv;
         for (uint32_t i = 0; i < kMaxTransforms; ++i)
         {
-            tInv.t[i] = rmcv::inverse(ts.t[i]);
+            tInv.t[i] = inverse(ts.t[i]);
         }
         return tInv;
     }
@@ -348,7 +331,7 @@ struct TransformSet
     }
 
 private:
-    Transform t[kMaxTransforms];
+    Transform t[kMaxTransforms] = {float4x4::identity(), float4x4::identity()};
 };
 
 class BasicSceneBuilder : public ParserTarget
@@ -399,7 +382,7 @@ public:
     void onEndOfFiles() override;
 
 private:
-    rmcv::mat4 getTransform() const { return mGraphicsState.ctm[0]; }
+    float4x4 getTransform() const { return mGraphicsState.ctm[0]; }
 
     static constexpr int kStartTransformBits = 1 << 0;
     static constexpr int kEndTransformBits = 1 << 1;

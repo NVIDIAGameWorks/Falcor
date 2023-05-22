@@ -114,7 +114,21 @@ static_assert(std::size(kFormatDesc) == (size_t)ResourceFormat::BC7UnormSrgb + 1
 
 FALCOR_SCRIPT_BINDING(Formats)
 {
-    // Resource formats
+    pybind11::enum_<ResourceBindFlags> resourceBindFlags(m, "ResourceBindFlags");
+    resourceBindFlags.value("None_", ResourceBindFlags::None);
+    resourceBindFlags.value("Vertex", ResourceBindFlags::Vertex);
+    resourceBindFlags.value("Index", ResourceBindFlags::Index);
+    resourceBindFlags.value("Constant", ResourceBindFlags::Constant);
+    resourceBindFlags.value("StreamOutput", ResourceBindFlags::StreamOutput);
+    resourceBindFlags.value("ShaderResource", ResourceBindFlags::ShaderResource);
+    resourceBindFlags.value("UnorderedAccess", ResourceBindFlags::UnorderedAccess);
+    resourceBindFlags.value("RenderTarget", ResourceBindFlags::RenderTarget);
+    resourceBindFlags.value("DepthStencil", ResourceBindFlags::DepthStencil);
+    resourceBindFlags.value("IndirectArg", ResourceBindFlags::IndirectArg);
+    resourceBindFlags.value("Shared", ResourceBindFlags::Shared);
+    resourceBindFlags.value("AccelerationStructure", ResourceBindFlags::AccelerationStructure);
+    ScriptBindings::addEnumBinaryOperators(resourceBindFlags);
+
     pybind11::enum_<ResourceFormat> resourceFormat(m, "ResourceFormat");
     for (uint32_t i = 0; i < (uint32_t)ResourceFormat::Count; i++)
     {
@@ -123,9 +137,10 @@ FALCOR_SCRIPT_BINDING(Formats)
 
     pybind11::enum_<TextureChannelFlags> textureChannels(m, "TextureChannelFlags");
     // TODO: These generate an "invalid format string" error from Python.
-    // textureChannels.value("Red", TextureChannelFlags::Red);
-    // textureChannels.value("Green", TextureChannelFlags::Green);
-    // textureChannels.value("Blue", TextureChannelFlags::Blue);
+    textureChannels.value("None_", TextureChannelFlags::None);
+    textureChannels.value("Red", TextureChannelFlags::Red);
+    textureChannels.value("Green", TextureChannelFlags::Green);
+    textureChannels.value("Blue", TextureChannelFlags::Blue);
     textureChannels.value("Alpha", TextureChannelFlags::Alpha);
     textureChannels.value("RGB", TextureChannelFlags::RGB);
     textureChannels.value("RGBA", TextureChannelFlags::RGBA);

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,11 +27,10 @@
  **************************************************************************/
 #include "Animation.h"
 #include "AnimationController.h"
+#include "Utils/ObjectIDPython.h"
 #include "Utils/Math/Common.h"
 #include "Utils/Scripting/ScriptBindings.h"
 #include "Scene/Transform.h"
-#include <glm/gtc/quaternion.hpp>
-#include <glm/gtx/transform.hpp>
 
 namespace Falcor
 {
@@ -66,19 +65,19 @@ namespace Falcor
         }
 
         // Bezier hermite slerp
-        glm::quat interpolateHermite(const glm::quat& r0, const glm::quat& r1, const glm::quat& r2, const glm::quat& r3, float t)
+        quatf interpolateHermite(const quatf& r0, const quatf& r1, const quatf& r2, const quatf& r3, float t)
         {
-            glm::quat b0 = r1;
-            glm::quat b1 = r1 + (r2 - r0) * 0.5f / 3.0f;
-            glm::quat b2 = r2 - (r3 - r1) * 0.5f / 3.0f;
-            glm::quat b3 = r2;
+            quatf b0 = r1;
+            quatf b1 = r1 + (r2 - r0) * 0.5f / 3.0f;
+            quatf b2 = r2 - (r3 - r1) * 0.5f / 3.0f;
+            quatf b3 = r2;
 
-            glm::quat q0 = slerp(b0, b1, t);
-            glm::quat q1 = slerp(b1, b2, t);
-            glm::quat q2 = slerp(b2, b3, t);
+            quatf q0 = slerp(b0, b1, t);
+            quatf q1 = slerp(b1, b2, t);
+            quatf q2 = slerp(b2, b3, t);
 
-            glm::quat qq0 = slerp(q0, q1, t);
-            glm::quat qq1 = slerp(q1, q2, t);
+            quatf qq0 = slerp(q0, q1, t);
+            quatf qq1 = slerp(q1, q2, t);
 
             return slerp(qq0, qq1, t);
         }
@@ -90,7 +89,7 @@ namespace Falcor
             result.translation = lerp(k0.translation, k1.translation, t);
             result.scaling = lerp(k0.scaling, k1.scaling, t);
             result.rotation = slerp(k0.rotation, k1.rotation, t);
-            result.time = glm::lerp(k0.time, k1.time, (double)t);
+            result.time = math::lerp(k0.time, k1.time, (double)t);
             return result;
         }
 
@@ -101,14 +100,9 @@ namespace Falcor
             result.translation = interpolateHermite(k0.translation, k1.translation, k2.translation, k3.translation, t);
             result.scaling = lerp(k1.scaling, k2.scaling, t);
             result.rotation = interpolateHermite(k0.rotation, k1.rotation, k2.rotation, k3.rotation, t);
-            result.time = glm::lerp(k1.time, k2.time, (double)t);
+            result.time = math::lerp(k1.time, k2.time, (double)t);
             return result;
         }
-    }
-
-    Animation::SharedPtr Animation::create(const std::string& name, NodeID nodeID, double duration)
-    {
-        return SharedPtr(new Animation(name, nodeID, duration));
     }
 
     Animation::Animation(const std::string& name, NodeID nodeID, double duration)
@@ -117,7 +111,7 @@ namespace Falcor
         , mDuration(duration)
     {}
 
-    rmcv::mat4 Animation::animate(double currentTime)
+    float4x4 Animation::animate(double currentTime)
     {
         // Calculate the sample time.
         double time = currentTime;
@@ -153,10 +147,10 @@ namespace Falcor
             interpolated = interpolate(mInterpolationMode, time);
         }
 
-        rmcv::mat4 T = rmcv::translate(interpolated.translation);
-        rmcv::mat4 R = rmcv::mat4_cast(interpolated.rotation);
-        rmcv::mat4 S = rmcv::scale(interpolated.scaling);
-        rmcv::mat4 transform = T * R * S;
+        float4x4 T = math::matrixFromTranslation(interpolated.translation);
+        float4x4 R = math::matrixFromQuat(interpolated.rotation);
+        float4x4 S = math::matrixFromScaling(interpolated.scaling);
+        float4x4 transform = mul(mul(T, R), S);
 
         return transform;
     }
@@ -166,7 +160,7 @@ namespace Falcor
         FALCOR_ASSERT(!mKeyframes.empty());
 
         // Validate cached frame index.
-        size_t frameIndex = clamp(mCachedFrameIndex, (size_t)0, mKeyframes.size() - 1);
+        size_t frameIndex = std::clamp(mCachedFrameIndex, (size_t)0, mKeyframes.size() - 1);
         if (time < mKeyframes[frameIndex].time) frameIndex = 0;
 
         // Find frame index.
@@ -183,7 +177,7 @@ namespace Falcor
         auto adjacentFrame = [this] (size_t frame, int32_t offset = 1)
         {
             size_t count = mKeyframes.size();
-            return mEnableWarping ? (frame + count + offset) % count : clamp(frame + offset, (size_t)0, count - 1);
+            return mEnableWarping ? (frame + count + offset) % count : std::clamp(frame + offset, (size_t)0, count - 1);
         };
 
         if (mode == InterpolationMode::Linear || mKeyframes.size() < 4)
@@ -196,7 +190,7 @@ namespace Falcor
 
             double segmentDuration = k1.time - k0.time;
             if (mEnableWarping && segmentDuration < 0.0) segmentDuration += mDuration;
-            float t = (float)clamp((segmentDuration > 0.0 ? (time - k0.time) / segmentDuration : 1.0), 0.0, 1.0);
+            float t = (float)std::clamp((segmentDuration > 0.0 ? (time - k0.time) / segmentDuration : 1.0), 0.0, 1.0);
 
             return interpolateLinear(k0, k1, t);
         }
@@ -214,7 +208,7 @@ namespace Falcor
 
             double segmentDuration = k2.time - k1.time;
             if (mEnableWarping && segmentDuration < 0.0) segmentDuration += mDuration;
-            float t = (float)clamp(segmentDuration > 0.0 ? (time - k1.time) / segmentDuration : 1.0, 0.0, 1.0);
+            float t = (float)std::clamp(segmentDuration > 0.0 ? (time - k1.time) / segmentDuration : 1.0, 0.0, 1.0);
 
             return interpolateHermite(k0, k1, k2, k3, t);
         }
@@ -241,7 +235,7 @@ namespace Falcor
         switch (behavior)
         {
         case Behavior::Constant:
-            modifiedTime = clamp(currentTime, firstKeyframeTime, lastKeyframeTime);
+            modifiedTime = std::clamp(currentTime, firstKeyframeTime, lastKeyframeTime);
             break;
         case Behavior::Cycle:
             // Calculate the relative time
@@ -330,7 +324,18 @@ namespace Falcor
 
         FALCOR_SCRIPT_BINDING_DEPENDENCY(Transform)
 
-        pybind11::class_<Animation, Animation::SharedPtr> animation(m, "Animation");
+        pybind11::class_<Animation, ref<Animation>> animation(m, "Animation");
+
+        pybind11::enum_<Animation::InterpolationMode> interpolationMode(animation, "InterpolationMode");
+        interpolationMode.value("Linear", Animation::InterpolationMode::Linear);
+        interpolationMode.value("Hermite", Animation::InterpolationMode::Hermite);
+
+        pybind11::enum_<Animation::Behavior> behavior(animation, "Behavior");
+        behavior.value("Constant", Animation::Behavior::Constant);
+        behavior.value("Linear", Animation::Behavior::Linear);
+        behavior.value("Cycle", Animation::Behavior::Cycle);
+        behavior.value("Oscillate", Animation::Behavior::Oscillate);
+
         animation.def_property_readonly("name", &Animation::getName);
         animation.def_property_readonly("nodeID", &Animation::getNodeID);
         animation.def_property_readonly("duration", &Animation::getDuration);
@@ -343,15 +348,5 @@ namespace Falcor
             Animation::Keyframe keyframe{ time, transform.getTranslation(), transform.getScaling(), transform.getRotation() };
             pAnimation->addKeyframe(keyframe);
         });
-
-        pybind11::enum_<Animation::InterpolationMode> interpolationMode(animation, "InterpolationMode");
-        interpolationMode.value("Linear", Animation::InterpolationMode::Linear);
-        interpolationMode.value("Hermite", Animation::InterpolationMode::Hermite);
-
-        pybind11::enum_<Animation::Behavior> behavior(animation, "Behavior");
-        behavior.value("Constant", Animation::Behavior::Constant);
-        behavior.value("Linear", Animation::Behavior::Linear);
-        behavior.value("Cycle", Animation::Behavior::Cycle);
-        behavior.value("Oscillate", Animation::Behavior::Oscillate);
     }
 }

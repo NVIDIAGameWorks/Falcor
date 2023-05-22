@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -56,13 +56,14 @@ extension PathTracer
         let lod = createTextureSampler(path, isPrimaryHit, isTriangleHit);
 
         // Load shading data. This is a long latency operation.
-        ShadingData sd = loadShadingData(path.hit, path.origin, path.dir, isPrimaryHit, lod);
+        ShadingData sd = loadShadingData(path.hit, path.origin, path.dir, lod);
 
         // Reject false hits in nested dielectrics.
         if (!handleNestedDielectrics(sd, path)) return;
 
         // Create material instance and query its properties.
-        let mi = gScene.materials.getMaterialInstance(sd, lod);
+        let hints = getMaterialInstanceHints(path.hit, isPrimaryHit);
+        let mi = gScene.materials.getMaterialInstance(sd, lod, hints);
         let bsdfProperties = mi.getProperties(sd);
 
         // Query BSDF lobes.
@@ -108,7 +109,7 @@ extension PathTracer
                 const float3 reflectance = getMaterialReflectanceForDeltaPaths(materialType, hasDeltaLobes, sd, bsdfProperties);
                 const float primaryHitDist = path.pdf;
                 const float hitDist = float(path.sceneLength) - primaryHitDist;
-                writeNRDDeltaReflectionGuideBuffers(outputNRD, kUseNRDDemodulation, pixel, reflectance, emission, sd.N, bsdfProperties.roughness, float(path.sceneLength), hitDist);
+                writeNRDDeltaReflectionGuideBuffers(outputNRD, kUseNRDDemodulation, pixel, reflectance, emission, bsdfProperties.guideNormal, bsdfProperties.roughness, float(path.sceneLength), hitDist);
 
                 path.terminate();
                 return;
@@ -164,7 +165,7 @@ extension PathTracer
                 const float3 reflectance = getMaterialReflectanceForDeltaPaths(materialType, hasDeltaLobes, sd, bsdfProperties);
                 const float primaryHitDist = path.pdf;
                 const float hitDist = float(path.sceneLength) - primaryHitDist;
-                writeNRDDeltaReflectionGuideBuffers(outputNRD, kUseNRDDemodulation, pixel, reflectance, emission, sd.N, bsdfProperties.roughness, float(path.sceneLength), hitDist);
+                writeNRDDeltaReflectionGuideBuffers(outputNRD, kUseNRDDemodulation, pixel, reflectance, emission, bsdfProperties.guideNormal, bsdfProperties.roughness, float(path.sceneLength), hitDist);
 
                 path.terminate();
                 return;
@@ -192,13 +193,14 @@ extension PathTracer
         let lod = createTextureSampler(path, isPrimaryHit, isTriangleHit);
 
         // Load shading data. This is a long latency operation.
-        ShadingData sd = loadShadingData(path.hit, path.origin, path.dir, isPrimaryHit, lod);
+        ShadingData sd = loadShadingData(path.hit, path.origin, path.dir, lod);
 
         // Reject false hits in nested dielectrics.
         if (!handleNestedDielectrics(sd, path)) return;
 
         // Create material instance and query its properties.
-        let mi = gScene.materials.getMaterialInstance(sd, lod);
+        let hints = getMaterialInstanceHints(path.hit, isPrimaryHit);
+        let mi = gScene.materials.getMaterialInstance(sd, lod, hints);
         let bsdfProperties = mi.getProperties(sd);
 
         const uint lobeTypes = mi.getLobeTypes(sd);
@@ -243,7 +245,7 @@ extension PathTracer
         if (lastVertex || semiOpaque)
         {
             float3 emission = path.L;
-            writeNRDDeltaTransmissionGuideBuffers(outputNRD, kUseNRDDemodulation, pixel, getMaterialReflectanceForDeltaPaths(materialType, hasDeltaLobes, sd, bsdfProperties), emission, sd.N, bsdfProperties.roughness, float(path.sceneLength), sd.posW);
+            writeNRDDeltaTransmissionGuideBuffers(outputNRD, kUseNRDDemodulation, pixel, getMaterialReflectanceForDeltaPaths(materialType, hasDeltaLobes, sd, bsdfProperties), emission, bsdfProperties.guideNormal, bsdfProperties.roughness, float(path.sceneLength), sd.posW);
 
             path.terminate();
             return;
@@ -268,7 +270,7 @@ extension PathTracer
         if (!valid)
         {
             float3 emission = path.L;
-            writeNRDDeltaTransmissionGuideBuffers(outputNRD, kUseNRDDemodulation, pixel, getMaterialReflectanceForDeltaPaths(materialType, hasDeltaLobes, sd, bsdfProperties), emission, sd.N, bsdfProperties.roughness, float(path.sceneLength), sd.posW);
+            writeNRDDeltaTransmissionGuideBuffers(outputNRD, kUseNRDDemodulation, pixel, getMaterialReflectanceForDeltaPaths(materialType, hasDeltaLobes, sd, bsdfProperties), emission, bsdfProperties.guideNormal, bsdfProperties.roughness, float(path.sceneLength), sd.posW);
 
             path.terminate();
             return;

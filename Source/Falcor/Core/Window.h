@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Macros.h"
+#include "Object.h"
 #include "Platform/PlatformHandles.h"
 #include "Utils/Math/Vector.h"
 #include <memory>
@@ -42,10 +43,9 @@ struct MouseEvent;
 struct GamepadEvent;
 struct GamepadState;
 
-class FALCOR_API Window
+class FALCOR_API Window : public Object
 {
 public:
-    using SharedPtr = std::shared_ptr<Window>;
     using ApiHandle = WindowHandle;
 
     /**
@@ -92,7 +92,7 @@ public:
      * @param[in] pCallbacks User callbacks
      * @return A new object, or throws an exception if creation failed.
      */
-    static SharedPtr create(const Desc& desc, ICallbacks* pCallbacks);
+    static ref<Window> create(const Desc& desc, ICallbacks* pCallbacks);
 
     /**
      * Destructor
@@ -165,7 +165,7 @@ public:
 
 private:
     friend class ApiCallbacks;
-    Window(ICallbacks* pCallbacks, const Desc& desc);
+    Window(const Desc& desc, ICallbacks* pCallbacks);
 
     void updateWindowSize();
     void setWindowSize(uint32_t width, uint32_t height);

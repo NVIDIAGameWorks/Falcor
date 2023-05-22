@@ -104,9 +104,12 @@ include(git_version)
 git_version_setup()
 
 # On Linux, we build with RPATH set to $ORIGIN to make build relocatable.
+# Also, we link with precompiled libraries that are compiled with _GLIBCXX_USE_CXX11_ABI=0,
+# so we need to compile with the same flag to avoid ABI incompatibilities.
 if(FALCOR_LINUX)
     set(CMAKE_INSTALL_RPATH $ORIGIN)
     set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
+    set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0)
 endif()
 
 
@@ -137,7 +140,7 @@ endif()
 # -----------------------------------------------------------------------------
 
 if(FALCOR_USE_SYSTEM_PYTHON)
-    find_package(Python 3.7 EXACT COMPONENTS Interpreter Development REQUIRED)
+    find_package(Python COMPONENTS Interpreter Development REQUIRED)
 else()
     set(Python_ROOT_DIR ${CMAKE_SOURCE_DIR}/external/packman/python)
     find_package(Python COMPONENTS Interpreter Development REQUIRED)
@@ -206,7 +209,6 @@ message(STATUS "FALCOR_HAS_NRD: ${FALCOR_HAS_NRD}")
 message(STATUS "FALCOR_HAS_DLSS: ${FALCOR_HAS_DLSS}")
 message(STATUS "FALCOR_HAS_NV_USD: ${FALCOR_HAS_NV_USD}")
 message(STATUS "FALCOR_HAS_MDL_SDK: ${FALCOR_HAS_MDL_SDK}")
-message(STATUS "FALCOR_HAS_OPENSUBDIV: ${FALCOR_HAS_OPENSUBDIV}")
 message(STATUS "FALCOR_ENABLE_USD: ${FALCOR_ENABLE_USD}")
 
 # -----------------------------------------------------------------------------
@@ -455,6 +457,7 @@ file(GENERATE OUTPUT ${FALCOR_OUTPUT_DIRECTORY}/settings.json CONTENT "{ \"stand
 if(plugin_targets)
     add_dependencies(Mogwai ${plugin_targets})
     add_dependencies(FalcorPython ${plugin_targets})
+    add_dependencies(Mogwai FalcorPython)
 endif()
 
 # Make Mogwai the default startup project in VS.

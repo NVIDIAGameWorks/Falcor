@@ -68,13 +68,12 @@ namespace Falcor
     class FALCOR_API StandardMaterial : public BasicMaterial
     {
     public:
-        using SharedPtr = std::shared_ptr<StandardMaterial>;
+        static ref<StandardMaterial> create(ref<Device> pDevice, const std::string& name = "", ShadingModel shadingModel = ShadingModel::MetalRough)
+        {
+            return make_ref<StandardMaterial>(pDevice, name, shadingModel);
+        }
 
-        /** Create a new standard material.
-            \param[in] name The material name.
-            \param[in] model Shading model.
-        */
-        static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& name = "", ShadingModel shadingModel = ShadingModel::MetalRough);
+        StandardMaterial(ref<Device> pDevice, const std::string& name, ShadingModel shadingModel);
 
         /** Render the UI.
             \return True if the material was modified.
@@ -131,8 +130,6 @@ namespace Falcor
         }
 
     protected:
-        StandardMaterial(std::shared_ptr<Device> pDevice, const std::string& name, ShadingModel shadingModel);
-
         void updateDeltaSpecularFlag() override;
 
         void renderSpecularUI(Gui::Widgets& widget) override;

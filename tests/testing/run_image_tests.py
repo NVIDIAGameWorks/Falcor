@@ -1,5 +1,5 @@
 '''
-Script for running image tests.
+Frontend for running image tests.
 '''
 
 import os
@@ -20,9 +20,8 @@ import signal
 import threading
 from xml.etree import ElementTree as ET
 
-from build_falcor import build_falcor
-
 from core import Environment, helpers, config
+from core.environment import find_most_recent_build_config
 from core.termcolor import colored
 
 print_mutex = multiprocessing.Lock()
@@ -571,22 +570,23 @@ def pull_refs(remote_ref_dir, ref_dir):
     return success
 
 def main():
+    default_config = find_most_recent_build_config()
     default_processes_count = min(config.DEFAULT_PROCESS_COUNT, multiprocessing.cpu_count())
 
-    parser = argparse.ArgumentParser(description="Utility for running image tests.")
-    parser.add_argument('-c', '--config', type=str, action='store', help=f'Build configuration')
-    parser.add_argument('--tolerance', type=float, action='store', help='Override tolerance to be at least this value.', default=config.DEFAULT_TOLERANCE)
-    parser.add_argument('--parallel', type=int, action='store', help='Set the number of Mogwai processes to be used in parallel', default=default_processes_count)
-    parser.add_argument('-e', '--environment', type=str, action='store', help='Environment', default=config.DEFAULT_ENVIRONMENT)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--environment', type=str, action='store', help=f'Environment (default: {config.DEFAULT_ENVIRONMENT})', default=config.DEFAULT_ENVIRONMENT)
+    parser.add_argument('--config', type=str, action='store', help=f'Build configuration (default: {default_config})', default=default_config)
+    parser.add_argument('--list-configs', action='store_true', help='List available build configurations.')
+
     parser.add_argument('-l', '--list', action='store_true', help='List available tests')
     parser.add_argument('-t', '--tags', type=str, action='store', help='Comma separated list of tags for filtering tests to run', default='default')
     parser.add_argument('-f', '--filter', type=str, action='store', help='Regular expression for filtering tests to run')
     parser.add_argument('-x', '--xml-report', type=str, action='store', help='XML report output file')
     parser.add_argument('-b', '--ref-branch', help='Reference branch to compare against (defaults to master branch)', default='master')
     parser.add_argument('--compare-only', action='store_true', help='Compare previous results against references without generating new images')
+    parser.add_argument('--tolerance', type=float, action='store', help='Override tolerance to be at least this value.', default=config.DEFAULT_TOLERANCE)
+    parser.add_argument('--parallel', type=int, action='store', help='Set the number of Mogwai processes to be used in parallel', default=default_processes_count)
     parser.add_argument('--gen-refs', action='store_true', help='Generate reference images instead of running tests')
-    parser.add_argument('--skip-build', action='store_true', help='Skip building project before running')
-    parser.add_argument('--list-configs', action='store_true', help='List available build configurations.')
 
     additional_group = parser.add_argument_group('extended arguments ', 'Additional options used for testing pipelines on TeamCity.')
     additional_group.add_argument('--pull-refs', action='store_true', help='Pull reference images from remote before running tests')
@@ -595,31 +595,29 @@ def main():
 
     args = parser.parse_args()
 
-    # The number of processes on Windows is 61, which should be enough for anything, so just hard coding it capped here
-    args.parallel = min(args.parallel, 61)
-
-    process_controller = ProcessController(args.parallel)
+    # Try to load environment.
+    env = None
+    try:
+        env = Environment(args.environment, args.config)
+    except Exception as e:
+        env_error = e
 
     # List build configurations.
     if args.list_configs:
         print('Available build configurations:\n' + '\n'.join(config.BUILD_CONFIGS.keys()))
         sys.exit(0)
 
-    # Load environment.
-    try:
-        env = Environment(args.environment, args.config)
-    except Exception as e:
-        print(e)
+    # Abort if environment is missing.
+    if env == None:
+        print(f"\nFailed to load environment: {env_error}")
         sys.exit(1)
-
-    # Build before running tests.
-    if not (args.skip_build or args.list):
-        if not build_falcor(env):
-            print('Failed to build')
-            sys.exit(1)
 
     # Collect tests to run.
     tests = collect_tests(env.image_tests_dir, args.filter, args.tags)
+
+    # The number of processes on Windows is 61, which should be enough for anything, so just hard coding it capped here
+    args.parallel = min(args.parallel, 61)
+    process_controller = ProcessController(args.parallel)
 
     if args.list:
         # List available tests.

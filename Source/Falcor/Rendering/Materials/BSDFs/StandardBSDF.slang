@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,11 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Utils/Math/MathConstants.slangh"
-#include "BSDFConfig.slangh"
+#include "Rendering/Materials/BSDFConfig.slangh"
 
 import Scene.Material.MaterialData;
-import Utils.Math.MathHelpers;
 import Utils.Color.ColorHelpers;
 import Rendering.Materials.Fresnel;
 #if DiffuseBrdf == DiffuseBrdfLambert
@@ -52,7 +50,6 @@ __exported import Rendering.Materials.IBSDF;
 // before the clamp was removed for allowing delta events. We continue to use the same threshold.
 static const float kMinGGXAlpha = 0.0064f;
 
-// TODO: Reduce to 52B
 /**
  * BSDF parameters for the standard MaterialInstance.
  * These are needed for initializing a `StandardBSDF` instance.
@@ -70,11 +67,12 @@ struct StandardBSDFData
     float specularTransmission;
 }
 
-/** Mixed BSDF used for the standard material in Falcor.
-
-    This consists of a diffuse and specular BRDF.
-    A specular BSDF is mixed in using the specularTransmission parameter.
-*/
+/**
+ * Mixed BSDF used for the standard material in Falcor.
+ *
+ * This consists of a diffuse and specular BRDF.
+ * A specular BSDF is mixed in using the specularTransmission parameter.
+ */
 struct StandardBSDF : IBSDF
 {
 #if DiffuseBrdf == DiffuseBrdfLambert
@@ -87,7 +85,7 @@ struct StandardBSDF : IBSDF
     LambertDiffuseBTDF diffuseTransmission;
 
     SpecularMicrofacetBRDF specularReflection;
-    SpecularMicrofacetBTDF specularTransmission;
+    SpecularMicrofacetBSDF specularTransmission;
 
     float diffTrans; ///< Mix between diffuse BRDF and diffuse BTDF.
     float specTrans; ///< Mix between dielectric BRDF and specular BSDF.
@@ -97,11 +95,12 @@ struct StandardBSDF : IBSDF
     float pSpecularReflection;   ///< Probability for sampling the specular BRDF.
     float pSpecularTransmission; ///< Probability for sampling the specular BSDF.
 
-    /** Initialize a new instance.
-        \param[in] wi Incident direction in the local frame.
-        \param[in] mtl Material header.
-        \param[in] data BSDF parameters.
-    */
+    /**
+     * Initialize a new instance.
+     * @param[in] wi Incident direction in the local frame.
+     * @param[in] mtl Material header.
+     * @param[in] data BSDF parameters.
+     */
     __init(const float3 wi, const MaterialHeader mtl, const StandardBSDFData data)
     {
         // TODO: Currently specular reflection and transmission lobes are not properly separated.
@@ -172,10 +171,11 @@ struct StandardBSDF : IBSDF
         }
     }
 
-    /** Returns the set of BSDF lobes.
-        \param[in] data BSDF parameters.
-        \return Returns a set of lobes (see LobeType.slang).
-    */
+    /**
+     * Returns the set of BSDF lobes.
+     * @param[in] data BSDF parameters.
+     * @return Returns a set of lobes (see LobeType.slang).
+     */
     static uint getLobeTypes(const StandardBSDFData data)
     {
 #if EnableDeltaBSDF

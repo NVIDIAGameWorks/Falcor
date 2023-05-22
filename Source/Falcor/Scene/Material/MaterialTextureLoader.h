@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -45,7 +45,7 @@ namespace Falcor
     class MaterialTextureLoader
     {
     public:
-        MaterialTextureLoader(const TextureManager::SharedPtr& pTextureManager, bool useSrgb);
+        MaterialTextureLoader(TextureManager& textureManager, bool useSrgb);
         ~MaterialTextureLoader();
 
         /** Request loading a material texture.
@@ -53,20 +53,20 @@ namespace Falcor
             \param[in] slot Slot to load texture into.
             \param[in] path Texture file path.
         */
-        void loadTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const std::filesystem::path& path);
+        void loadTexture(const ref<Material>& pMaterial, Material::TextureSlot slot, const std::filesystem::path& path);
 
     private:
         void assignTextures();
 
         struct TextureAssignment
         {
-            Material::SharedPtr pMaterial;
+            ref<Material> pMaterial;
             Material::TextureSlot textureSlot;
             TextureManager::TextureHandle handle;
         };
 
         bool mUseSrgb;
         std::vector<TextureAssignment> mTextureAssignments;
-        TextureManager::SharedPtr mpTextureManager;
+        TextureManager& mTextureManager;
     };
 }

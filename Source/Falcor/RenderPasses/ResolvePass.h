@@ -33,26 +33,26 @@
 
 namespace Falcor
 {
-    class RenderContext;
-    class Dictionary;
-    class RenderData;
+class RenderContext;
+class Dictionary;
+class RenderData;
 
-    class FALCOR_API ResolvePass : public RenderPass
-    {
-    public:
-        // This pass is not dynamically loaded from a plugin library,
-        // but we still need to provide plugin type and info fields.
-        FALCOR_PLUGIN_CLASS(ResolvePass, "ResolvePass", "Resolve a multi-sampled texture.");
+class FALCOR_API ResolvePass : public RenderPass
+{
+public:
+    // This pass is not dynamically loaded from a plugin library,
+    // but we still need to provide plugin type and info fields.
+    FALCOR_PLUGIN_CLASS(ResolvePass, "ResolvePass", "Resolve a multi-sampled texture.");
 
-        using SharedPtr = std::shared_ptr<ResolvePass>;
+    static ref<ResolvePass> create(ref<Device> pDevice, const Dictionary& dictionary = {}) { return make_ref<ResolvePass>(pDevice); }
 
-        static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dictionary = {});
+    ResolvePass(ref<Device> pDevice);
 
-        void setFormat(ResourceFormat format) { mFormat = format; }
-        virtual RenderPassReflection reflect(const CompileData& compileData) override;
-        virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
-    private:
-        ResolvePass(std::shared_ptr<Device> pDevice);
-        ResourceFormat mFormat = ResourceFormat::Unknown;
-    };
-}
+    void setFormat(ResourceFormat format) { mFormat = format; }
+    virtual RenderPassReflection reflect(const CompileData& compileData) override;
+    virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
+
+private:
+    ResourceFormat mFormat = ResourceFormat::Unknown;
+};
+} // namespace Falcor

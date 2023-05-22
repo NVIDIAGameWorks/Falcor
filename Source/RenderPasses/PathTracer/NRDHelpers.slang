@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -143,7 +143,7 @@ void setNRDSampleReflectance(NRDBuffers outputNRD, const bool useNRDDemodulation
             if (path.isDiffusePrimaryHit())
             {
                 // Use sum of reflection/transmission albedo as they are denoised together.
-                const float3 diffuseReflectance = max(kNRDMinReflectance, bsdfProperties.diffuseReflectionAlbedo + bsdfProperties.specularTransmissionAlbedo);
+                const float3 diffuseReflectance = max(kNRDMinReflectance, bsdfProperties.diffuseReflectionAlbedo + bsdfProperties.diffuseTransmissionAlbedo);
                 outputNRD.sampleReflectance[outSampleIdx] = float4(diffuseReflectance, 1.f);
             }
             else if (path.isSpecularPrimaryHit())

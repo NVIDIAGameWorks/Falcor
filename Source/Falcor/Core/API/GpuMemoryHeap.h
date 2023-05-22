@@ -30,17 +30,15 @@
 #include "Handles.h"
 #include "GpuFence.h"
 #include "Core/Macros.h"
-#include <memory>
+#include "Core/Object.h"
 #include <queue>
 #include <unordered_map>
 
 namespace Falcor
 {
-class FALCOR_API GpuMemoryHeap
+class FALCOR_API GpuMemoryHeap : public Object
 {
 public:
-    using SharedPtr = std::shared_ptr<GpuMemoryHeap>;
-
     enum class Type
     {
         Default,
@@ -60,7 +58,7 @@ public:
         uint64_t pageID = 0;
         uint64_t fenceValue = 0;
 
-        static const uint64_t kMegaPageId = -1;
+        static constexpr uint64_t kMegaPageId = -1;
         bool operator<(const Allocation& other) const { return fenceValue > other.fenceValue; }
     };
 
@@ -73,15 +71,17 @@ public:
      * @param[in] pFence Fence to use for synchronization.
      * @return A new object, or throws an exception if creation failed.
      */
-    static SharedPtr create(Device* pDevice, Type type, size_t pageSize, const GpuFence::SharedPtr& pFence);
+    static ref<GpuMemoryHeap> create(ref<Device> pDevice, Type type, size_t pageSize, ref<GpuFence> pFence);
 
     Allocation allocate(size_t size, size_t alignment = 1);
     void release(Allocation& data);
     size_t getPageSize() const { return mPageSize; }
     void executeDeferredReleases();
 
+    void breakStrongReferenceToDevice();
+
 private:
-    GpuMemoryHeap(std::shared_ptr<Device> pDevice, Type type, size_t pageSize, const GpuFence::SharedPtr& pFence);
+    GpuMemoryHeap(ref<Device> pDevice, Type type, size_t pageSize, ref<GpuFence> pFence);
 
     struct PageData : public BaseData
     {
@@ -91,9 +91,9 @@ private:
         using UniquePtr = std::unique_ptr<PageData>;
     };
 
-    std::shared_ptr<Device> mpDevice;
+    BreakableReference<Device> mpDevice;
     Type mType;
-    GpuFence::SharedPtr mpFence;
+    ref<GpuFence> mpFence;
     size_t mPageSize = 0;
     size_t mCurrentPageId = 0;
     PageData::UniquePtr mpActivePage;

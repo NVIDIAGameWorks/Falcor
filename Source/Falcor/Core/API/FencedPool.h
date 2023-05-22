@@ -30,16 +30,15 @@
 #include "Core/Assert.h"
 #include "Core/Macros.h"
 #include "Core/Errors.h"
+#include "Core/Object.h"
 #include <queue>
-#include <memory>
 
 namespace Falcor
 {
 template<typename ObjectType>
-class FALCOR_API FencedPool
+class FALCOR_API FencedPool : public Object
 {
 public:
-    using SharedPtr = std::shared_ptr<FencedPool<ObjectType>>;
     using NewObjectFuncType = ObjectType (*)(void*);
 
     /**
@@ -49,9 +48,9 @@ public:
      * @param[in] pUserData Optional ptr to user data passed to the object creation function.
      * @return A new object, or throws an exception if creation failed.
      */
-    static SharedPtr create(GpuFence::SharedConstPtr pFence, NewObjectFuncType newFunc, void* pUserData = nullptr)
+    static ref<FencedPool> create(ref<GpuFence> pFence, NewObjectFuncType newFunc, void* pUserData = nullptr)
     {
-        return SharedPtr(new FencedPool(pFence, newFunc, pUserData));
+        return new FencedPool(pFence, newFunc, pUserData);
     }
 
     /**
@@ -82,7 +81,7 @@ public:
     }
 
 private:
-    FencedPool(GpuFence::SharedConstPtr pFence, NewObjectFuncType newFunc, void* pUserData)
+    FencedPool(ref<GpuFence> pFence, NewObjectFuncType newFunc, void* pUserData)
         : mNewObjFunc(newFunc), mpFence(pFence), mpUserData(pUserData)
     {
         FALCOR_ASSERT(pFence && newFunc);
@@ -106,7 +105,7 @@ private:
     ObjectType mActiveObject;
     NewObjectFuncType mNewObjFunc = nullptr;
     std::queue<Data> mQueue;
-    GpuFence::SharedConstPtr mpFence;
+    ref<GpuFence> mpFence;
     void* mpUserData;
 };
 } // namespace Falcor

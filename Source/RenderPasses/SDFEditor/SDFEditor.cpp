@@ -28,9 +28,6 @@
 #include "SDFEditor.h"
 #include "RenderGraph/RenderPassHelpers.h"
 #include "Scene/SDFs/SDF3DPrimitiveFactory.h"
-#include <glm/gtx/string_cast.hpp>
-#include <glm/gtx/matrix_decompose.hpp>
-#include <glm/gtx/rotate_vector.hpp>
 
 namespace
 {
@@ -110,32 +107,26 @@ void SDFEditor::registerBindings(pybind11::module& m)
     // None at the moment.
 }
 
-SDFEditor::SharedPtr SDFEditor::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
+SDFEditor::SDFEditor(ref<Device> pDevice, const Dictionary& dict)
+    : RenderPass(pDevice)
 {
-    SharedPtr pPass = SharedPtr(new SDFEditor(std::move(pDevice), dict));
-    return pPass;
-}
+    mpFbo = Fbo::create(mpDevice);
 
-SDFEditor::SDFEditor(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-    : RenderPass(std::move(pDevice))
-{
-    mpFbo = Fbo::create(mpDevice.get());
+    mpPickingInfo = Buffer::createStructured(mpDevice, sizeof(SDFPickingInfo), 1, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
+    mpPickingInfoReadBack = Buffer::createStructured(mpDevice, sizeof(SDFPickingInfo), 1, Resource::BindFlags::None, Buffer::CpuAccess::Read);
+    mpReadbackFence = GpuFence::create(mpDevice);
 
-    mpPickingInfo = Buffer::createStructured(mpDevice.get(), sizeof(SDFPickingInfo), 1, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
-    mpPickingInfoReadBack = Buffer::createStructured(mpDevice.get(), sizeof(SDFPickingInfo), 1, Resource::BindFlags::None, Buffer::CpuAccess::Read);
-    mpReadbackFence = GpuFence::create(mpDevice.get());
+    mUI2D.pMarker2DSet = std::make_unique<Marker2DSet>(mpDevice, 100);
+    mUI2D.pSelectionWheel = std::make_unique<SelectionWheel>(*mUI2D.pMarker2DSet);
 
-    mUI2D.pMarker2DSet = Marker2DSet::create(mpDevice, 100);
-    mUI2D.pSelectionWheel = SelectionWheel::create(mUI2D.pMarker2DSet);
-
-    mpSDFEditingDataBuffer = Buffer::createStructured(mpDevice.get(), sizeof(SDFEditingData), 1);
+    mpSDFEditingDataBuffer = Buffer::createStructured(mpDevice, sizeof(SDFEditingData), 1);
 
     mUI2D.symmetryPlane.normal = float3(1.0f, 0.0f, 0.0f);
     mUI2D.symmetryPlane.rightVector = float3(0.0f, 0.0f, -1.0f);
     mUI2D.symmetryPlane.color = float4(1.0f, 0.75f, 0.8f, 0.5f);
 }
 
-void SDFEditor::setShaderData(const ShaderVar& var, const Texture::SharedPtr& pInputColor, const Texture::SharedPtr& pVBuffer)
+void SDFEditor::setShaderData(const ShaderVar& var, const ref<Texture>& pInputColor, const ref<Texture>& pVBuffer)
 {
     mGPUEditingData.editing = mEditingKeyDown;
     mGPUEditingData.previewEnabled = mPreviewEnabled;
@@ -149,7 +140,7 @@ void SDFEditor::setShaderData(const ShaderVar& var, const Texture::SharedPtr& pI
     {
         mGridInstanceCount = mpScene->getSDFGridCount(); // This is safe because the SDF Editor only supports SDFGrid type of SBS for now.
         std::vector<uint32_t> instanceIDs = mpScene->getGeometryInstanceIDsByType(Scene::GeometryType::SDFGrid);
-        mpGridInstanceIDsBuffer = Buffer::createStructured(mpDevice.get(), sizeof(uint32_t), mGridInstanceCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, instanceIDs.data(), false);
+        mpGridInstanceIDsBuffer = Buffer::createStructured(mpDevice, sizeof(uint32_t), mGridInstanceCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, instanceIDs.data(), false);
     }
 
     auto rootVar = mpGUIPass->getRootVar();
@@ -173,16 +164,16 @@ void SDFEditor::setShaderData(const ShaderVar& var, const Texture::SharedPtr& pI
     mUI2D.pMarker2DSet->setShaderData(guiPassVar["markerSet"]);
 }
 
-void SDFEditor::fetchPreviousVBufferAndZBuffer(RenderContext* pRenderContext, Texture::SharedPtr& pVBuffer, Texture::SharedPtr& pDepth)
+void SDFEditor::fetchPreviousVBufferAndZBuffer(RenderContext* pRenderContext, ref<Texture>& pVBuffer, ref<Texture>& pDepth)
 {
     if (!mpEditingVBuffer || mpEditingVBuffer->getWidth() != pVBuffer->getWidth() || mpEditingVBuffer->getHeight() != pVBuffer->getHeight())
     {
-        mpEditingVBuffer = Texture::create2D(mpDevice.get(), pVBuffer->getWidth(), pVBuffer->getHeight(), pVBuffer->getFormat(), 1, 1);
+        mpEditingVBuffer = Texture::create2D(mpDevice, pVBuffer->getWidth(), pVBuffer->getHeight(), pVBuffer->getFormat(), 1, 1);
     }
 
     if (!mpEditingLinearZBuffer || mpEditingLinearZBuffer->getWidth() != pDepth->getWidth() || mpEditingLinearZBuffer->getHeight() != pDepth->getHeight())
     {
-        mpEditingLinearZBuffer = Texture::create2D(mpDevice.get(), pDepth->getWidth(), pDepth->getHeight(), ResourceFormat::RG32Float, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+        mpEditingLinearZBuffer = Texture::create2D(mpDevice, pDepth->getWidth(), pDepth->getHeight(), ResourceFormat::RG32Float, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
     }
 
     pRenderContext->copySubresourceRegion(mpEditingVBuffer.get(), 0, pVBuffer.get(), pVBuffer->getSubresourceIndex(0, 0));
@@ -194,7 +185,7 @@ Dictionary SDFEditor::getScriptingDictionary()
     return Dictionary();
 }
 
-void SDFEditor::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
+void SDFEditor::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
 {
     mpScene = pScene;
 
@@ -235,12 +226,12 @@ void SDFEditor::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& 
                 kDefaultTransform);
 
             const AnimationController* pAnimationController = mpScene->getAnimationController();
-            const rmcv::mat4& transform = pAnimationController->getGlobalMatrices()[instance.globalMatrixID];
+            const float4x4& transform = pAnimationController->getGlobalMatrices()[instance.globalMatrixID];
 
             // Update GUI variables
             mUI2D.bbRenderSettings.selectedInstanceID = mCurrentEdit.instanceID;
-            mUI2D.gridPlane.position = transform.getCol(3).xyz;
-            mUI2D.previousGridPlane.position = transform.getCol(3).xyz;
+            mUI2D.gridPlane.position = transform.getCol(3).xyz();
+            mUI2D.previousGridPlane.position = transform.getCol(3).xyz();
 
             updateSymmetryPrimitive();
         }
@@ -290,32 +281,32 @@ void SDFEditor::updateSymmetryPrimitive()
 {
     const AnimationController* pAnimationController = mpScene->getAnimationController();
     const GeometryInstanceData& instance = mpScene->getGeometryInstance(mCurrentEdit.instanceID);
-    rmcv::mat4 invInstanceTransform = rmcv::transpose(pAnimationController->getInvTransposeGlobalMatrices()[instance.globalMatrixID]);
+    float4x4 invInstanceTransform = transpose(pAnimationController->getInvTransposeGlobalMatrices()[instance.globalMatrixID]);
 
     const float3& instanceLocalPrimitivePos = mCurrentEdit.primitive.translation;
-    float3 instanceLocalPlanePosition = (invInstanceTransform * float4(mUI2D.symmetryPlane.position, 1.0f)).xyz;
-    float3 instanceLocalPlaneNormal = glm::normalize(invInstanceTransform * float4(mUI2D.symmetryPlane.normal, 0.0f)).xyz;
-    float3 projInstanceLocalPrimitivePos = (instanceLocalPrimitivePos - glm::dot(instanceLocalPrimitivePos, instanceLocalPlaneNormal) * instanceLocalPlaneNormal);
-    float3 projInstanceLocalPlanePos = glm::dot(instanceLocalPlanePosition, instanceLocalPlaneNormal) * instanceLocalPlaneNormal;
+    float3 instanceLocalPlanePosition = transformPoint(invInstanceTransform, mUI2D.symmetryPlane.position);
+    float3 instanceLocalPlaneNormal = normalize(transformVector(invInstanceTransform, mUI2D.symmetryPlane.normal));
+    float3 projInstanceLocalPrimitivePos = (instanceLocalPrimitivePos - dot(instanceLocalPrimitivePos, instanceLocalPlaneNormal) * instanceLocalPlaneNormal);
+    float3 projInstanceLocalPlanePos = dot(instanceLocalPlanePosition, instanceLocalPlaneNormal) * instanceLocalPlaneNormal;
 
     float3 reflectedInstanceLocalPos;
-    if (glm::length(projInstanceLocalPrimitivePos) > 0.0f)
+    if (length(projInstanceLocalPrimitivePos) > 0.0f)
     {
-        reflectedInstanceLocalPos = glm::reflect(-(instanceLocalPrimitivePos - projInstanceLocalPlanePos), glm::normalize(projInstanceLocalPrimitivePos));
+        reflectedInstanceLocalPos = math::reflect(-(instanceLocalPrimitivePos - projInstanceLocalPlanePos), normalize(projInstanceLocalPrimitivePos));
     }
     else
     {
-        reflectedInstanceLocalPos = glm::length(instanceLocalPrimitivePos - projInstanceLocalPlanePos) * -instanceLocalPlaneNormal;
+        reflectedInstanceLocalPos = length(instanceLocalPrimitivePos - projInstanceLocalPlanePos) * -instanceLocalPlaneNormal;
     }
 
     reflectedInstanceLocalPos += projInstanceLocalPlanePos;
 
-    rmcv::mat3 symmetricPrimitiveTransform = rmcv::mat3(rmcv::inverse(mCurrentEdit.primitive.invRotationScale));
-    symmetricPrimitiveTransform = rmcv::rotate(rmcv::mat4(symmetricPrimitiveTransform), glm::pi<float>(), instanceLocalPlaneNormal);
+    float3x3 symmetricPrimitiveTransform = float3x3(inverse(mCurrentEdit.primitive.invRotationScale));
+    symmetricPrimitiveTransform = math::rotate(float4x4(symmetricPrimitiveTransform), float(M_PI), instanceLocalPlaneNormal);
 
     mCurrentEdit.symmetryPrimitive = mCurrentEdit.primitive;
     mCurrentEdit.symmetryPrimitive.translation = reflectedInstanceLocalPos;
-    mCurrentEdit.symmetryPrimitive.invRotationScale = rmcv::inverse(rmcv::mat3(symmetricPrimitiveTransform));
+    mCurrentEdit.symmetryPrimitive.invRotationScale = inverse(float3x3(symmetricPrimitiveTransform));
 }
 
 void SDFEditor::setupPrimitiveAndOperation(const float2& center, const float markerSize, SDF3DShapeType editingPrimitive, SDFOperationType editingOperator, const float4& color, const float alpha)
@@ -407,7 +398,6 @@ void SDFEditor::rotateGridPlane(const float mouseDiff, const float3& rotationVec
     const float diagonal = length(float2(mFrameDim));
     const float maxAngle = float(M_PI) * 0.05f;
     float angle;
-    rmcv::mat4 rotationMatrix;
 
     if (fromPreviousMouse)
     {
@@ -420,10 +410,10 @@ void SDFEditor::rotateGridPlane(const float mouseDiff, const float3& rotationVec
         const float speedFactor = 2.0f * float(M_PI) * 0.5f / diagonal;
         angle = mouseDiff * speedFactor;
     }
-    rotationMatrix = rmcv::rotate(rmcv::mat4(), angle, rotationVector);
+    float4x4 rotationMatrix = math::rotate(float4x4::identity(), angle, rotationVector);
 
-    outNormal = normalize(float3(rotationMatrix * float4(inNormal, 0)));
-    outRightVector = normalize(float3(rotationMatrix * float4(inRightVector, 0)));
+    outNormal = normalize(transformVector(rotationMatrix, inNormal));
+    outRightVector = normalize(transformVector(rotationMatrix, inRightVector));
 }
 
 void SDFEditor::translateGridPlane(const float mouseDiff, const float3& translationVector, const float3& inPosition, float3& outPosition)
@@ -532,7 +522,7 @@ void SDFEditor::setup2DGUI()
     static constexpr std::array<SDFOperationType, 4> kOperationTypes = { SDFOperationType::SmoothSubtraction, SDFOperationType::Subtraction, SDFOperationType::Union, SDFOperationType::SmoothUnion };
 
     // Check if the user pressed on the different sectors of the wheel.
-    if (isMainGUIKeyDown() && !mUI2D.recordStartingMousePos && mUI2D.startMousePosition != mUI2D.currentMousePosition)
+    if (isMainGUIKeyDown() && !mUI2D.recordStartingMousePos && any(mUI2D.startMousePosition != mUI2D.currentMousePosition))
     {
         uint32_t sectorIndex = UINT32_MAX;
         if (mUI2D.pSelectionWheel->isMouseOnGroup(mUI2D.currentMousePosition, 0, sectorIndex))
@@ -574,19 +564,19 @@ void SDFEditor::handleActions()
 
     const AnimationController* pAnimationController = mpScene->getAnimationController();
     const GeometryInstanceData& instance = mpScene->getGeometryInstance(mCurrentEdit.instanceID);
-    const rmcv::mat4& instanceTransform = pAnimationController->getGlobalMatrices()[instance.globalMatrixID];
+    const float4x4& instanceTransform = pAnimationController->getGlobalMatrices()[instance.globalMatrixID];
     Ray ray = mpScene->getCamera()->computeRayPinhole(uint2(mUI2D.currentMousePosition), mFrameDim, false);
 
     // Rescale grid instance if the grid resolution has changed.
     float resolutionScalingFactor = mCurrentEdit.pSDFGrid->getResolutionScalingFactor();
     if (std::fabs(resolutionScalingFactor - 1.0f) > FLT_EPSILON)
     {
-        glm::vec3 scale;
-        glm::quat rotation;
-        glm::vec3 translation;
-        glm::vec3 skew;
-        glm::vec4 perspective;
-        rmcv::decompose(instanceTransform, scale, rotation, translation, skew, perspective);
+        float3 scale;
+        quatf rotation;
+        float3 translation;
+        float3 skew;
+        float4 perspective;
+        math::decompose(instanceTransform, scale, rotation, translation, skew, perspective);
 
         Transform finalTranform;
         finalTranform.setTranslation(translation);
@@ -605,36 +595,36 @@ void SDFEditor::handleActions()
         {
             mInstanceTransformationEdit.scrollTotal = 0.0f;
 
-            glm::vec3 scale;
-            glm::quat rotation;
-            glm::vec3 translation;
-            glm::vec3 skew;
-            glm::vec4 perspective;
-            rmcv::decompose(instanceTransform, scale, rotation, translation, skew, perspective);
+            float3 scale;
+            quatf rotation;
+            float3 translation;
+            float3 skew;
+            float4 perspective;
+            math::decompose(instanceTransform, scale, rotation, translation, skew, perspective);
 
             mInstanceTransformationEdit.startTransform.setTranslation(translation);
             mInstanceTransformationEdit.startTransform.setRotation(rotation);
             mInstanceTransformationEdit.startTransform.setScaling(scale);
 
             float3 deltaCenter = translation - ray.origin;
-            float3 planeNormal = -glm::normalize(mpScene->getCamera()->getTarget() - mpScene->getCamera()->getPosition());
+            float3 planeNormal = -normalize(mpScene->getCamera()->getTarget() - mpScene->getCamera()->getPosition());
 
-            float startT = glm::dot(deltaCenter, planeNormal) / glm::dot(ray.dir, planeNormal);
+            float startT = dot(deltaCenter, planeNormal) / dot(ray.dir, planeNormal);
             mInstanceTransformationEdit.startPlanePos = ray.origin + ray.dir * startT;
             mInstanceTransformationEdit.startMousePos = mUI2D.currentMousePosition;
 
-            float3 arbitraryVectorNotOrthToPlane = glm::abs(planeNormal.z) < glm::epsilon<float>() ? glm::vec3(0.0f, 0.0f, 1.0f) : glm::vec3(1.0f, 0.0f, 0.0f);
-            mInstanceTransformationEdit.referencePlaneDir = glm::normalize(arbitraryVectorNotOrthToPlane - glm::dot(arbitraryVectorNotOrthToPlane, planeNormal) * planeNormal);
+            float3 arbitraryVectorNotOrthToPlane = std::abs(planeNormal.z) < FLT_EPSILON ? float3(0.0f, 0.0f, 1.0f) : float3(1.0f, 0.0f, 0.0f);
+            mInstanceTransformationEdit.referencePlaneDir = normalize(arbitraryVectorNotOrthToPlane - dot(arbitraryVectorNotOrthToPlane, planeNormal) * planeNormal);
         }
 
         // Transform the instance if the mouse was moved or scroll was used.
-        if ((mUI2D.currentMousePosition != mUI2D.prevMousePosition || mInstanceTransformationEdit.prevScrollTotal != mInstanceTransformationEdit.scrollTotal))
+        if ((any(mUI2D.currentMousePosition != mUI2D.prevMousePosition) || mInstanceTransformationEdit.prevScrollTotal != mInstanceTransformationEdit.scrollTotal))
         {
             const float3& startTranslation = mInstanceTransformationEdit.startTransform.getTranslation();
             float3 deltaCenter = startTranslation - ray.origin;
-            float3 planeNormal = -glm::normalize(mpScene->getCamera()->getTarget() - mpScene->getCamera()->getPosition());
+            float3 planeNormal = -normalize(mpScene->getCamera()->getTarget() - mpScene->getCamera()->getPosition());
 
-            float t = glm::dot(deltaCenter, planeNormal) / glm::dot(ray.dir, planeNormal);
+            float t = dot(deltaCenter, planeNormal) / dot(ray.dir, planeNormal);
 
             Transform finalTranform = mInstanceTransformationEdit.startTransform;
 
@@ -649,15 +639,15 @@ void SDFEditor::handleActions()
             {
                 float3 p = ray.origin + ray.dir * t;
 
-                float3 startPlaneDir = glm::normalize(mInstanceTransformationEdit.startPlanePos - startTranslation);
-                float3 currPlaneDir = glm::normalize(p - startTranslation);
+                float3 startPlaneDir = normalize(mInstanceTransformationEdit.startPlanePos - startTranslation);
+                float3 currPlaneDir = normalize(p - startTranslation);
 
-                float startAngle = glm::atan(glm::dot(planeNormal, glm::cross(startPlaneDir, mInstanceTransformationEdit.referencePlaneDir)), glm::dot(startPlaneDir, mInstanceTransformationEdit.referencePlaneDir));
-                float currentAngle = glm::atan(glm::dot(planeNormal, glm::cross(currPlaneDir, mInstanceTransformationEdit.referencePlaneDir)), glm::dot(currPlaneDir, mInstanceTransformationEdit.referencePlaneDir));
+                float startAngle = std::atan2(dot(planeNormal, cross(startPlaneDir, mInstanceTransformationEdit.referencePlaneDir)), dot(startPlaneDir, mInstanceTransformationEdit.referencePlaneDir));
+                float currentAngle = std::atan2(dot(planeNormal, cross(currPlaneDir, mInstanceTransformationEdit.referencePlaneDir)), dot(currPlaneDir, mInstanceTransformationEdit.referencePlaneDir));
                 float deltaAngle = startAngle - currentAngle;
-                float3 localPlaneNormal = (rmcv::inverse(mInstanceTransformationEdit.startTransform.getMatrix()) * float4(planeNormal, 0.0f)).xyz;
+                float3 localPlaneNormal = normalize(transformVector(inverse(mInstanceTransformationEdit.startTransform.getMatrix()), planeNormal));
 
-                finalTranform.setRotation(glm::rotate(mInstanceTransformationEdit.startTransform.getRotation(), deltaAngle, localPlaneNormal));
+                finalTranform.setRotation(mul(mInstanceTransformationEdit.startTransform.getRotation(), math::quatFromAngleAxis(deltaAngle, localPlaneNormal)));
             }
             // Handle scaling
             else if (mInstanceTransformationEdit.state == TransformationState::Scaling)
@@ -679,37 +669,37 @@ void SDFEditor::handleActions()
         {
             mPrimitiveTransformationEdit.startPrimitive = mCurrentEdit.primitive;
 
-            glm::vec3 instanceScale;
-            glm::quat instanceRotation;
-            glm::vec3 instanceTranslation;
-            glm::vec3 dummySkew;
-            glm::vec4 dummyPerspective;
-            rmcv::decompose(instanceTransform, instanceScale, instanceRotation, instanceTranslation, dummySkew, dummyPerspective);
+            float3 instanceScale;
+            quatf instanceRotation;
+            float3 instanceTranslation;
+            float3 dummySkew;
+            float4 dummyPerspective;
+            math::decompose(instanceTransform, instanceScale, instanceRotation, instanceTranslation, dummySkew, dummyPerspective);
 
             mPrimitiveTransformationEdit.startInstanceTransform.setTranslation(instanceTranslation);
             mPrimitiveTransformationEdit.startInstanceTransform.setRotation(instanceRotation);
             mPrimitiveTransformationEdit.startInstanceTransform.setScaling(instanceScale);
 
-            glm::vec3 primitiveScale;
-            glm::quat primitiveRotation;
-            glm::vec3 dummyTranslation;
-            rmcv::mat4 primitiveTransform = rmcv::inverse(rmcv::transpose(mCurrentEdit.primitive.invRotationScale));
-            rmcv::decompose(primitiveTransform, primitiveScale, primitiveRotation, dummyTranslation, dummySkew, dummyPerspective);
+            float3 primitiveScale;
+            quatf primitiveRotation;
+            float3 dummyTranslation;
+            float4x4 primitiveTransform = inverse(transpose(mCurrentEdit.primitive.invRotationScale));
+            math::decompose(primitiveTransform, primitiveScale, primitiveRotation, dummyTranslation, dummySkew, dummyPerspective);
 
             mPrimitiveTransformationEdit.startPrimitiveTransform.setTranslation(mCurrentEdit.primitive.translation);
             mPrimitiveTransformationEdit.startPrimitiveTransform.setRotation(primitiveRotation);
             mPrimitiveTransformationEdit.startPrimitiveTransform.setScaling(primitiveScale);
 
-            float3 planeOrigin = (mPrimitiveTransformationEdit.startInstanceTransform.getMatrix() * float4(mCurrentEdit.primitive.translation, 1.0f)).xyz;
+            float3 planeOrigin = transformPoint(mPrimitiveTransformationEdit.startInstanceTransform.getMatrix(), mCurrentEdit.primitive.translation);
             float3 deltaCenter = planeOrigin - ray.origin;
-            float3 planeNormal = -glm::normalize(mpScene->getCamera()->getTarget() - mpScene->getCamera()->getPosition());
+            float3 planeNormal = -normalize(mpScene->getCamera()->getTarget() - mpScene->getCamera()->getPosition());
 
-            float startT = glm::dot(deltaCenter, planeNormal) / glm::dot(ray.dir, planeNormal);
+            float startT = dot(deltaCenter, planeNormal) / dot(ray.dir, planeNormal);
             mPrimitiveTransformationEdit.startPlanePos = ray.origin + ray.dir * startT;
             mPrimitiveTransformationEdit.startMousePos = mUI2D.currentMousePosition;
 
-            float3 arbitraryVectorNotOrthToPlane = glm::abs(planeNormal.z) < glm::epsilon<float>() ? glm::vec3(0.0f, 0.0f, 1.0f) : glm::vec3(1.0f, 0.0f, 0.0f);
-            mPrimitiveTransformationEdit.referencePlaneDir = glm::normalize(arbitraryVectorNotOrthToPlane - glm::dot(arbitraryVectorNotOrthToPlane, planeNormal) * planeNormal);
+            float3 arbitraryVectorNotOrthToPlane = std::abs(planeNormal.z) < FLT_EPSILON ? float3(0.0f, 0.0f, 1.0f) : float3(1.0f, 0.0f, 0.0f);
+            mPrimitiveTransformationEdit.referencePlaneDir = normalize(arbitraryVectorNotOrthToPlane - dot(arbitraryVectorNotOrthToPlane, planeNormal) * planeNormal);
         }
         // Update starting position if the state or axis has changed.
         else if (mPrimitiveTransformationEdit.state != mPrimitiveTransformationEdit.prevState || mPrimitiveTransformationEdit.axis != mPrimitiveTransformationEdit.prevAxis)
@@ -721,27 +711,27 @@ void SDFEditor::handleActions()
                 updateSymmetryPrimitive();
             }
 
-            float3 planeOrigin = (mPrimitiveTransformationEdit.startInstanceTransform.getMatrix() * float4(mCurrentEdit.primitive.translation, 1.0f)).xyz;
+            float3 planeOrigin = transformPoint(mPrimitiveTransformationEdit.startInstanceTransform.getMatrix(), mCurrentEdit.primitive.translation);
             float3 deltaCenter = planeOrigin - ray.origin;
-            float3 planeNormal = -glm::normalize(mpScene->getCamera()->getTarget() - mpScene->getCamera()->getPosition());
+            float3 planeNormal = -normalize(mpScene->getCamera()->getTarget() - mpScene->getCamera()->getPosition());
 
-            float startT = glm::dot(deltaCenter, planeNormal) / glm::dot(ray.dir, planeNormal);
+            float startT = dot(deltaCenter, planeNormal) / dot(ray.dir, planeNormal);
             mPrimitiveTransformationEdit.startPlanePos = ray.origin + ray.dir * startT;
             mPrimitiveTransformationEdit.startMousePos = mUI2D.currentMousePosition;
 
-            float3 arbitraryVectorNotOrthToPlane = glm::abs(planeNormal.z) < glm::epsilon<float>() ? glm::vec3(0.0f, 0.0f, 1.0f) : glm::vec3(1.0f, 0.0f, 0.0f);
-            mPrimitiveTransformationEdit.referencePlaneDir = glm::normalize(arbitraryVectorNotOrthToPlane - glm::dot(arbitraryVectorNotOrthToPlane, planeNormal) * planeNormal);
+            float3 arbitraryVectorNotOrthToPlane = std::abs(planeNormal.z) < FLT_EPSILON ? float3(0.0f, 0.0f, 1.0f) : float3(1.0f, 0.0f, 0.0f);
+            mPrimitiveTransformationEdit.referencePlaneDir = normalize(arbitraryVectorNotOrthToPlane - dot(arbitraryVectorNotOrthToPlane, planeNormal) * planeNormal);
         }
 
         // Transform the primitive if the mouse has moved.
-        if (mUI2D.currentMousePosition != mUI2D.prevMousePosition)
+        if (any(mUI2D.currentMousePosition != mUI2D.prevMousePosition))
         {
-            float3 planeOrigin = (mPrimitiveTransformationEdit.startInstanceTransform.getMatrix() * float4(mPrimitiveTransformationEdit.startPrimitiveTransform.getTranslation(), 1.0f)).xyz;
+            float3 planeOrigin = transformPoint(mPrimitiveTransformationEdit.startInstanceTransform.getMatrix(), mPrimitiveTransformationEdit.startPrimitiveTransform.getTranslation());
 
             float3 deltaCenter = planeOrigin - ray.origin;
-            float3 planeNormal = -glm::normalize(mpScene->getCamera()->getTarget() - mpScene->getCamera()->getPosition());
+            float3 planeNormal = -normalize(mpScene->getCamera()->getTarget() - mpScene->getCamera()->getPosition());
 
-            float t = glm::dot(deltaCenter, planeNormal) / glm::dot(ray.dir, planeNormal);
+            float t = dot(deltaCenter, planeNormal) / dot(ray.dir, planeNormal);
 
             Transform finalPrimitiveTransform = mPrimitiveTransformationEdit.startPrimitiveTransform;
 
@@ -752,19 +742,19 @@ void SDFEditor::handleActions()
                 float3 startPlaneDir = mPrimitiveTransformationEdit.startPlanePos - planeOrigin;
                 float3 currPlaneDir = p - planeOrigin;
 
-                if (!glm::all(glm::equal(startPlaneDir, float3(0.0f))) && !glm::all(glm::equal(currPlaneDir, float3(0.0f))))
+                if (!all(startPlaneDir == float3(0.0f)) && !all(currPlaneDir == float3(0.0f)))
                 {
-                    startPlaneDir = glm::normalize(startPlaneDir);
-                    currPlaneDir = glm::normalize(currPlaneDir);
+                    startPlaneDir = normalize(startPlaneDir);
+                    currPlaneDir = normalize(currPlaneDir);
 
-                    float startAngle = glm::atan(glm::dot(planeNormal, glm::cross(startPlaneDir, mPrimitiveTransformationEdit.referencePlaneDir)), glm::dot(startPlaneDir, mPrimitiveTransformationEdit.referencePlaneDir));
-                    float currentAngle = glm::atan(glm::dot(planeNormal, glm::cross(currPlaneDir, mPrimitiveTransformationEdit.referencePlaneDir)), glm::dot(currPlaneDir, mPrimitiveTransformationEdit.referencePlaneDir));
+                    float startAngle = std::atan2(dot(planeNormal, cross(startPlaneDir, mPrimitiveTransformationEdit.referencePlaneDir)), dot(startPlaneDir, mPrimitiveTransformationEdit.referencePlaneDir));
+                    float currentAngle = std::atan2(dot(planeNormal, cross(currPlaneDir, mPrimitiveTransformationEdit.referencePlaneDir)), dot(currPlaneDir, mPrimitiveTransformationEdit.referencePlaneDir));
                     float deltaAngle = currentAngle - startAngle;
-                    float3 localPlaneNormal = (rmcv::inverse(mPrimitiveTransformationEdit.startInstanceTransform.getMatrix()) * float4(planeNormal, 0.0f)).xyz;
+                    float3 localPlaneNormal = normalize(transformVector(inverse(mPrimitiveTransformationEdit.startInstanceTransform.getMatrix()), planeNormal));
 
-                    finalPrimitiveTransform.setRotation(glm::rotate(mPrimitiveTransformationEdit.startPrimitiveTransform.getRotation(), -deltaAngle, localPlaneNormal));
+                    finalPrimitiveTransform.setRotation(mul(mPrimitiveTransformationEdit.startPrimitiveTransform.getRotation(), math::quatFromAngleAxis(-deltaAngle, localPlaneNormal)));
 
-                    mCurrentEdit.primitive.invRotationScale = rmcv::transpose(rmcv::inverse(rmcv::mat3(finalPrimitiveTransform.getMatrix())));
+                    mCurrentEdit.primitive.invRotationScale = transpose(inverse(float3x3(finalPrimitiveTransform.getMatrix())));
                 }
             }
             else if (mPrimitiveTransformationEdit.state == TransformationState::Scaling)
@@ -776,21 +766,21 @@ void SDFEditor::handleActions()
                 scale = std::pow(scale, 100.0f * std::abs(deltaX) / mFrameDim.x);
                 if (mPrimitiveTransformationEdit.axis == SDFEditorAxis::All)
                 {
-                    rmcv::mat3 scaleMatrix(scale);
-                    mCurrentEdit.primitive.invRotationScale = rmcv::transpose(rmcv::inverse(rmcv::mat3(mPrimitiveTransformationEdit.startPrimitiveTransform.getMatrix()) * scaleMatrix));
+                    float3x3 scaleMatrix = matrixFromDiagonal(float3(scale));
+                    mCurrentEdit.primitive.invRotationScale = transpose(inverse(mul(float3x3(mPrimitiveTransformationEdit.startPrimitiveTransform.getMatrix()), scaleMatrix)));
 
                 }
                 else if (mPrimitiveTransformationEdit.axis == SDFEditorAxis::OpSmoothing)
                 {
-                    float finalScaling = glm::clamp(startPrimitive.operationSmoothing * scale, kMinOpSmoothingRadius, kMaxOpSmoothingRadius);
+                    float finalScaling = std::clamp(startPrimitive.operationSmoothing * scale, kMinOpSmoothingRadius, kMaxOpSmoothingRadius);
                     mCurrentEdit.primitive.operationSmoothing = finalScaling;
                 }
                 else
                 {
                     uint32_t axis = uint32_t(mPrimitiveTransformationEdit.axis);
-                    rmcv::mat3 scaleMtx = rmcv::mat3(1.0f);  // Identity matrix
+                    float3x3 scaleMtx = float3x3::identity();
                     scaleMtx[axis][axis] = scale;
-                    mCurrentEdit.primitive.invRotationScale = rmcv::transpose(rmcv::inverse(rmcv::mat3(mPrimitiveTransformationEdit.startPrimitiveTransform.getMatrix()) * scaleMtx));
+                    mCurrentEdit.primitive.invRotationScale = transpose(inverse(mul(float3x3(mPrimitiveTransformationEdit.startPrimitiveTransform.getMatrix()), scaleMtx)));
                 }
             }
 
@@ -855,7 +845,7 @@ void SDFEditor::handleUndo()
             SdfGridID gridID = pair.first;
             const std::vector<uint32_t>& primitiveIDsToRemove = pair.second;
 
-            const SDFGrid::SharedPtr& pSDFGrid = mpScene->getSDFGrid(gridID);
+            const ref<SDFGrid>& pSDFGrid = mpScene->getSDFGrid(gridID);
 
             UndoneSDFEdit undoEdit;
             undoEdit.gridID = gridID;
@@ -877,7 +867,7 @@ void SDFEditor::handleRedo()
     // Redo - Go through the undone SDF edits and put them back into the mPerformedSDFEdits list.
     std::unordered_map<SdfGridID, std::vector<SDF3DPrimitive>> primitivesToAddPerSDF;
 
-    uint32_t editsToRedoCount = glm::min<int32_t>(primitivesAffectedCount, uint32_t(mUndoneSDFEdits.size()));
+    uint32_t editsToRedoCount = std::min(primitivesAffectedCount, uint32_t(mUndoneSDFEdits.size()));
     for (uint32_t i = 0; i < editsToRedoCount; i++)
     {
         UndoneSDFEdit undoneEdit = mUndoneSDFEdits.back();
@@ -1051,7 +1041,7 @@ bool SDFEditor::handlePicking(const float2& currentMousePos, float3& localPos)
 
     const CameraData& cameraData = mpCamera->getData();
     float2 ndc = float2(-1.0f, 1.0f) + float2(2.0f, -2.0f) * (currentMousePos + float2(0.5f, 0.5f)) / float2(mFrameDim);
-    float3 rayDir = glm::normalize(ndc.x * cameraData.cameraU + ndc.y * cameraData.cameraV + cameraData.cameraW);
+    float3 rayDir = normalize(ndc.x * cameraData.cameraU + ndc.y * cameraData.cameraV + cameraData.cameraW);
 
     float3 iSectPosition;
     if (mUI2D.gridPlane.active) // Grid is on, so we pick on the grid.
@@ -1070,8 +1060,8 @@ bool SDFEditor::handlePicking(const float2& currentMousePos, float3& localPos)
 
     const GeometryInstanceData& instance = mpScene->getGeometryInstance(mCurrentEdit.instanceID);
     const AnimationController* pAnimationController = mpScene->getAnimationController();
-    const rmcv::mat4& invTransposeInstanceTransform = pAnimationController->getInvTransposeGlobalMatrices()[instance.globalMatrixID];
-    localPos = (rmcv::transpose(invTransposeInstanceTransform) * float4(iSectPosition, 1.0f)).xyz;
+    const float4x4& invTransposeInstanceTransform = pAnimationController->getInvTransposeGlobalMatrices()[instance.globalMatrixID];
+    localPos = transformPoint(transpose(invTransposeInstanceTransform), iSectPosition);
     return true;
 }
 
@@ -1087,8 +1077,8 @@ void SDFEditor::execute(RenderContext* pRenderContext, const RenderData& renderD
     mpFbo->attachColorTarget(pOutput, 0);
 
     // Make a copy of the vBuffer and the linear z-buffer before editing.
-    Texture::SharedPtr pVBuffer = renderData.getTexture(kInputVBuffer);
-    Texture::SharedPtr pDepth = renderData.getTexture(kInputDepth);
+    ref<Texture> pVBuffer = renderData.getTexture(kInputVBuffer);
+    ref<Texture> pDepth = renderData.getTexture(kInputDepth);
     if (!mEditingKeyDown)
     {
         fetchPreviousVBufferAndZBuffer(pRenderContext, pVBuffer, pDepth);

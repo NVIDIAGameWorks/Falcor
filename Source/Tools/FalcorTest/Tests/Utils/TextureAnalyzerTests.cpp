@@ -122,13 +122,12 @@ const TextureAnalyzer::Result kExpectedResult[] = {
 
 GPU_TEST(TextureAnalyzer)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
-    TextureAnalyzer::SharedPtr pTextureAnalyzer = TextureAnalyzer::create(ctx.getDevice());
-    EXPECT(pTextureAnalyzer != nullptr);
+    TextureAnalyzer textureAnalyzer(pDevice);
 
     // Load test textures.
-    std::vector<Texture::SharedPtr> textures(kNumTests);
+    std::vector<ref<Texture>> textures(kNumTests);
     for (size_t i = 0; i < kNumTests; i++)
     {
         std::string fn = "tests/texture" + std::to_string(i + 1) + (i < kNumPNGs ? ".png" : ".exr");
@@ -144,10 +143,10 @@ GPU_TEST(TextureAnalyzer)
 
     for (size_t i = 0; i < kNumTests; i++)
     {
-        pTextureAnalyzer->analyze(ctx.getRenderContext(), textures[i], 0, 0, pResult, i * kResultSize);
+        textureAnalyzer.analyze(ctx.getRenderContext(), textures[i], 0, 0, pResult, i * kResultSize);
     }
 
-    auto verify = [&ctx](Buffer::SharedPtr pResult)
+    auto verify = [&ctx](ref<Buffer> pResult)
     {
         // Verify results.
         const TextureAnalyzer::Result* result = static_cast<const TextureAnalyzer::Result*>(pResult->map(Buffer::MapType::Read));
@@ -187,7 +186,7 @@ GPU_TEST(TextureAnalyzer)
 
     // Test the array version of the interface.
     ctx.getRenderContext()->clearUAV(pResult->getUAV().get(), uint4(0xbabababa));
-    pTextureAnalyzer->analyze(ctx.getRenderContext(), textures, pResult);
+    textureAnalyzer.analyze(ctx.getRenderContext(), textures, pResult);
 
     verify(pResult);
 }

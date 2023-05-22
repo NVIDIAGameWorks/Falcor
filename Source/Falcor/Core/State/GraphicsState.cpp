@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "GraphicsState.h"
+#include "Core/ObjectPython.h"
 #include "Core/API/Device.h"
 #include "Core/Program/ProgramVars.h"
 #include "Utils/Scripting/ScriptBindings.h"
@@ -50,12 +51,12 @@ static GraphicsStateObject::PrimitiveType topology2Type(Vao::Topology t)
     }
 }
 
-GraphicsState::SharedPtr GraphicsState::create(std::shared_ptr<Device> pDevice)
+ref<GraphicsState> GraphicsState::create(ref<Device> pDevice)
 {
-    return SharedPtr(new GraphicsState(std::move(pDevice)));
+    return ref<GraphicsState>(new GraphicsState(pDevice));
 }
 
-GraphicsState::GraphicsState(std::shared_ptr<Device> pDevice) : mpDevice(std::move(pDevice))
+GraphicsState::GraphicsState(ref<Device> pDevice) : mpDevice(pDevice)
 {
     uint32_t vpCount = getMaxViewportCount();
 
@@ -69,14 +70,14 @@ GraphicsState::GraphicsState(std::shared_ptr<Device> pDevice) : mpDevice(std::mo
         setViewport(i, mViewports[i], true);
     }
 
-    mpGsoGraph = StateGraph::create();
+    mpGsoGraph = std::make_unique<GraphicsStateGraph>();
 }
 
 GraphicsState::~GraphicsState() = default;
 
-GraphicsStateObject::SharedPtr GraphicsState::getGSO(const GraphicsVars* pVars)
+ref<GraphicsStateObject> GraphicsState::getGSO(const GraphicsVars* pVars)
 {
-    auto pProgramKernels = mpProgram ? mpProgram->getActiveVersion()->getKernels(mpDevice.get(), pVars) : nullptr;
+    auto pProgramKernels = mpProgram ? mpProgram->getActiveVersion()->getKernels(mpDevice, pVars) : nullptr;
     bool newProgVersion = pProgramKernels.get() != mCachedData.pProgramKernels;
     if (newProgVersion)
     {
@@ -91,7 +92,7 @@ GraphicsStateObject::SharedPtr GraphicsState::getGSO(const GraphicsVars* pVars)
         mCachedData.pFboDesc = pFboDesc;
     }
 
-    GraphicsStateObject::SharedPtr pGso = mpGsoGraph->getCurrentNode();
+    ref<GraphicsStateObject> pGso = mpGsoGraph->getCurrentNode();
     if (pGso == nullptr)
     {
         mDesc.setProgramKernels(pProgramKernels);
@@ -99,7 +100,7 @@ GraphicsStateObject::SharedPtr GraphicsState::getGSO(const GraphicsVars* pVars)
         mDesc.setVertexLayout(mpVao->getVertexLayout());
         mDesc.setPrimitiveType(topology2Type(mpVao->getPrimitiveTopology()));
 
-        StateGraph::CompareFunc cmpFunc = [&desc = mDesc](GraphicsStateObject::SharedPtr pGso) -> bool
+        GraphicsStateGraph::CompareFunc cmpFunc = [&desc = mDesc](ref<GraphicsStateObject> pGso) -> bool
         { return pGso && (desc == pGso->getDesc()); };
 
         if (mpGsoGraph->scanForMatchingNode(cmpFunc))
@@ -108,14 +109,15 @@ GraphicsStateObject::SharedPtr GraphicsState::getGSO(const GraphicsVars* pVars)
         }
         else
         {
-            pGso = GraphicsStateObject::create(mpDevice.get(), mDesc);
+            pGso = GraphicsStateObject::create(mpDevice, mDesc);
+            pGso->breakStrongReferenceToDevice();
             mpGsoGraph->setCurrentNodeData(pGso);
         }
     }
     return pGso;
 }
 
-GraphicsState& GraphicsState::setFbo(const Fbo::SharedPtr& pFbo, bool setVp0Sc0)
+GraphicsState& GraphicsState::setFbo(const ref<Fbo>& pFbo, bool setVp0Sc0)
 {
     mpFbo = pFbo;
 
@@ -129,7 +131,7 @@ GraphicsState& GraphicsState::setFbo(const Fbo::SharedPtr& pFbo, bool setVp0Sc0)
     return *this;
 }
 
-void GraphicsState::pushFbo(const Fbo::SharedPtr& pFbo, bool setVp0Sc0)
+void GraphicsState::pushFbo(const ref<Fbo>& pFbo, bool setVp0Sc0)
 {
     mFboStack.push(mpFbo);
     setFbo(pFbo, setVp0Sc0);
@@ -143,7 +145,7 @@ void GraphicsState::popFbo(bool setVp0Sc0)
     mFboStack.pop();
 }
 
-GraphicsState& GraphicsState::setVao(const Vao::SharedConstPtr& pVao)
+GraphicsState& GraphicsState::setVao(const ref<Vao>& pVao)
 {
     if (mpVao != pVao)
     {
@@ -153,7 +155,7 @@ GraphicsState& GraphicsState::setVao(const Vao::SharedConstPtr& pVao)
     return *this;
 }
 
-GraphicsState& GraphicsState::setBlendState(BlendState::SharedPtr pBlendState)
+GraphicsState& GraphicsState::setBlendState(ref<BlendState> pBlendState)
 {
     if (mDesc.getBlendState() != pBlendState)
     {
@@ -163,7 +165,7 @@ GraphicsState& GraphicsState::setBlendState(BlendState::SharedPtr pBlendState)
     return *this;
 }
 
-GraphicsState& GraphicsState::setRasterizerState(RasterizerState::SharedPtr pRasterizerState)
+GraphicsState& GraphicsState::setRasterizerState(ref<RasterizerState> pRasterizerState)
 {
     if (mDesc.getRasterizerState() != pRasterizerState)
     {
@@ -183,7 +185,7 @@ GraphicsState& GraphicsState::setSampleMask(uint32_t sampleMask)
     return *this;
 }
 
-GraphicsState& GraphicsState::setDepthStencilState(DepthStencilState::SharedPtr pDepthStencilState)
+GraphicsState& GraphicsState::setDepthStencilState(ref<DepthStencilState> pDepthStencilState)
 {
     if (mDesc.getDepthStencilState() != pDepthStencilState)
     {
@@ -249,8 +251,13 @@ void GraphicsState::setScissors(uint32_t index, const GraphicsState::Scissor& sc
     mScissors[index] = sc;
 }
 
+void GraphicsState::breakStrongReferenceToDevice()
+{
+    mpDevice.breakStrongReference();
+}
+
 FALCOR_SCRIPT_BINDING(GraphicsState)
 {
-    pybind11::class_<GraphicsState, GraphicsState::SharedPtr>(m, "GraphicsState");
+    pybind11::class_<GraphicsState, ref<GraphicsState>>(m, "GraphicsState");
 }
 } // namespace Falcor

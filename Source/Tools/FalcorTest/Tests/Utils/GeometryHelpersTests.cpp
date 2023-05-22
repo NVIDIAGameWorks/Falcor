@@ -28,7 +28,6 @@
 #include "Testing/UnitTest.h"
 #include "Utils/HostDeviceShared.slangh"
 #include "Utils/Math/Common.h"
-#include <glm/gtx/io.hpp>
 #include <random>
 #include <cmath>
 
@@ -81,11 +80,11 @@ struct BBoxTestCase
 
 void runBBoxTestComputeShader(GPUUnitTestContext& ctx, const BBoxTestCase* testCases, int nTests, const char* entrypoint)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
-    Buffer::SharedPtr pOriginBuffer = Buffer::createTyped<float3>(pDevice, nTests);
-    Buffer::SharedPtr pAABBMinBuffer = Buffer::createTyped<float3>(pDevice, nTests);
-    Buffer::SharedPtr pAABBMaxBuffer = Buffer::createTyped<float3>(pDevice, nTests);
+    ref<Buffer> pOriginBuffer = Buffer::createTyped<float3>(pDevice, nTests);
+    ref<Buffer> pAABBMinBuffer = Buffer::createTyped<float3>(pDevice, nTests);
+    ref<Buffer> pAABBMaxBuffer = Buffer::createTyped<float3>(pDevice, nTests);
 
     for (int i = 0; i < nTests; ++i)
     {
@@ -220,7 +219,7 @@ GPU_TEST_D3D12(ComputeRayOrigin)
 
     std::mt19937 rng;
     auto dist = std::uniform_real_distribution<float>(-1.f, 1.f);
-    auto r = [&]() -> float { return dist(rng); };
+    auto nextRandom = [&]() -> float { return dist(rng); };
 
     // Create random test data.
     std::vector<float3> testPositions(nTests);
@@ -228,8 +227,8 @@ GPU_TEST_D3D12(ComputeRayOrigin)
     for (uint32_t i = 0; i < nTests; i++)
     {
         float scale = std::pow(10.f, (float)i / nTests * 60.f - 30.f); // 1e-30..1e30
-        testPositions[i] = float3(r(), r(), r()) * scale;
-        testNormals[i] = glm::normalize(float3(r(), r(), r()));
+        testPositions[i] = float3(nextRandom(), nextRandom(), nextRandom()) * scale;
+        testNormals[i] = normalize(float3(nextRandom(), nextRandom(), nextRandom()));
     }
 
     // Setup and run GPU test.
@@ -275,7 +274,7 @@ GPU_TEST(BoxSubtendedConeAngleAverageRandoms)
 
 GPU_TEST(SphereSubtendedAngle)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     // Generate test data...
     struct TestCase
@@ -296,7 +295,7 @@ GPU_TEST(SphereSubtendedAngle)
     };
     int nTests = sizeof(testCases) / sizeof(testCases[0]);
 
-    Buffer::SharedPtr pTestCaseBuffer = Buffer::createTyped<float4>(pDevice, nTests);
+    ref<Buffer> pTestCaseBuffer = Buffer::createTyped<float4>(pDevice, nTests);
 
     for (int i = 0; i < nTests; ++i)
     {
@@ -341,7 +340,7 @@ GPU_TEST(SphereSubtendedAngle)
 
 GPU_TEST(ComputeClippedTriangleArea2D)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     struct TestCase
     {
@@ -551,12 +550,12 @@ GPU_TEST(ComputeClippedTriangleArea2D)
         for (int j = 0; j < m; j++)
         {
             float v = (j + 0.5f) / m;
-            float y = lerp(b.minPos.y, b.maxPos.y, v);
+            float y = math::lerp(b.minPos.y, b.maxPos.y, v);
 
             for (int k = 0; k < m; k++)
             {
                 float u = (k + 0.5f) / m;
-                float x = lerp(b.minPos.x, b.maxPos.x, u);
+                float x = math::lerp(b.minPos.x, b.maxPos.x, u);
 
                 if (t.isInside(float2(x, y)))
                     hits++;

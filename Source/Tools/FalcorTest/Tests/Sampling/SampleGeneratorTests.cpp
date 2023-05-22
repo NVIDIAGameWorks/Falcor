@@ -73,14 +73,14 @@ double correlation(const float* elems, const size_t numElems, const size_t strid
 void testSampleGenerator(GPUUnitTestContext& ctx, uint32_t type, const double meanError, const double corrThreshold, bool testInstances)
 {
     // Create sample generator.
-    SampleGenerator::SharedPtr pSampleGenerator = SampleGenerator::create(ctx.getDevice(), type);
+    ref<SampleGenerator> pSampleGenerator = SampleGenerator::create(ctx.getDevice(), type);
 
     // Setup GPU test.
     // We defer the creation of the vars until after shader specialization.
     auto defines = pSampleGenerator->getDefines();
     ctx.createProgram(kShaderFile, "test", defines, Shader::CompilerFlags::None, "6_2");
 
-    pSampleGenerator->beginFrame(ctx.getRenderContext(), kDispatchDim.xy);
+    pSampleGenerator->beginFrame(ctx.getRenderContext(), uint2(kDispatchDim.x, kDispatchDim.y));
     pSampleGenerator->setShaderData(ctx.vars().getRootVar());
 
     const size_t numSamples = kDispatchDim.x * kDispatchDim.y * kDispatchDim.z * kDimensions;

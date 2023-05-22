@@ -29,7 +29,7 @@
 #include "Core/Assert.h"
 #include "Core/API/Device.h"
 #include "Core/Program/Program.h"
-#include "RenderGraph/BasePasses/FullScreenPass.h"
+#include "Core/Pass/FullScreenPass.h"
 
 namespace Falcor
 {
@@ -46,8 +46,10 @@ BlitContext::BlitContext(Device* pDevice)
     };
     Program::Desc d;
     d.addShaderLibrary("Core/API/BlitReduction.3d.slang").vsEntry("vsMain").psEntry("psMain");
-    pPass = FullScreenPass::create(pDevice->shared_from_this(), d, defines);
-    pFbo = Fbo::create(pDevice);
+    pPass = FullScreenPass::create(ref<Device>(pDevice), d, defines);
+    pPass->breakStrongReferenceToDevice();
+    pFbo = Fbo::create(ref<Device>(pDevice));
+    pFbo->breakStrongReferenceToDevice();
     FALCOR_ASSERT(pPass && pFbo);
 
     pBlitParamsBuffer = pPass->getVars()->getParameterBlock("BlitParamsCB");
@@ -60,21 +62,27 @@ BlitContext::BlitContext(Device* pDevice)
     desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
     desc.setReductionMode(Sampler::ReductionMode::Standard);
     desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point);
-    pLinearSampler = Sampler::create(pDevice, desc);
+    pLinearSampler = Sampler::create(ref<Device>(pDevice), desc);
+    pLinearSampler->breakStrongReferenceToDevice();
     desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
-    pPointSampler = Sampler::create(pDevice, desc);
+    pPointSampler = Sampler::create(ref<Device>(pDevice), desc);
+    pPointSampler->breakStrongReferenceToDevice();
     // Min reductions.
     desc.setReductionMode(Sampler::ReductionMode::Min);
     desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point);
-    pLinearMinSampler = Sampler::create(pDevice, desc);
+    pLinearMinSampler = Sampler::create(ref<Device>(pDevice), desc);
+    pLinearMinSampler->breakStrongReferenceToDevice();
     desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
-    pPointMinSampler = Sampler::create(pDevice, desc);
+    pPointMinSampler = Sampler::create(ref<Device>(pDevice), desc);
+    pPointMinSampler->breakStrongReferenceToDevice();
     // Max reductions.
     desc.setReductionMode(Sampler::ReductionMode::Max);
     desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point);
-    pLinearMaxSampler = Sampler::create(pDevice, desc);
+    pLinearMaxSampler = Sampler::create(ref<Device>(pDevice), desc);
+    pLinearMaxSampler->breakStrongReferenceToDevice();
     desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
-    pPointMaxSampler = Sampler::create(pDevice, desc);
+    pPointMaxSampler = Sampler::create(ref<Device>(pDevice), desc);
+    pPointMaxSampler->breakStrongReferenceToDevice();
 
     const auto& pDefaultBlockReflection = pPass->getProgram()->getReflector()->getDefaultParameterBlock();
     texBindLoc = pDefaultBlockReflection->getResourceBinding("gTex");

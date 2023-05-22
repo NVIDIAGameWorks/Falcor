@@ -92,7 +92,7 @@ struct SamplingTestSpec
 
 void setupSamplingTest(GPUUnitTestContext& ctx, const SamplingTestSpec& spec, const std::string& csEntry)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     uint32_t testCount = spec.visibleNormals ? (uint32_t)spec.incidentAngles.size() : 1;
 
@@ -126,7 +126,7 @@ void setupSamplingTest(GPUUnitTestContext& ctx, const SamplingTestSpec& spec, co
 
 std::vector<std::vector<double>> tabulateHistogram(GPUUnitTestContext& ctx, const SamplingTestSpec& spec)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     uint32_t testCount = spec.visibleNormals ? (uint32_t)spec.incidentAngles.size() : 1;
     uint32_t binCount = spec.phiBinCount * spec.cosThetaBinCount;
@@ -159,7 +159,7 @@ std::vector<std::vector<double>> tabulateHistogram(GPUUnitTestContext& ctx, cons
 
 std::vector<std::vector<double>> tabulatePdf(GPUUnitTestContext& ctx, const SamplingTestSpec& spec)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     uint32_t testCount = spec.visibleNormals ? (uint32_t)spec.incidentAngles.size() : 1;
     uint32_t binCount = spec.phiBinCount * spec.cosThetaBinCount;

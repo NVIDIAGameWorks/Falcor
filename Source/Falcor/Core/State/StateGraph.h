@@ -27,7 +27,6 @@
  **************************************************************************/
 #pragma once
 #include <functional>
-#include <memory>
 #include <vector>
 #include <unordered_map>
 
@@ -37,20 +36,9 @@ template<typename NodeType, typename EdgeType, typename EdgeHashType = std::hash
 class StateGraph
 {
 public:
-    using SharedPtr = std::shared_ptr<StateGraph>;
-
     using CompareFunc = std::function<bool(const NodeType& data)>;
 
     StateGraph() : mGraph(1) {}
-
-    /**
-     * Create a new state graph.
-     * @return New object, or throws an exception if creation failed.
-     */
-    static SharedPtr create() // #SHADER_VAR remove this
-    {
-        return SharedPtr(new StateGraph());
-    }
 
     bool isEdgeExists(const EdgeType& e) const { return (getEdgeIt(e) != mGraph[mCurrentNode].edges.end()); }
 

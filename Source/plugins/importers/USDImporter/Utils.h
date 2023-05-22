@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -70,28 +70,28 @@ namespace Falcor
         }
     };
 
-    inline float3 toGlm(const GfVec3f& v)
+    inline float3 toFalcor(const GfVec3f& v)
     {
         return float3(v[0], v[1], v[2]);
     }
 
-    inline float3 toGlm(const GfVec3d& v)
+    inline float3 toFalcor(const GfVec3d& v)
     {
         return float3(v[0], v[1], v[2]);
     }
 
-    inline float3 toGlm(const GfVec3h& v)
+    inline float3 toFalcor(const GfVec3h& v)
     {
         return float3(v[0], v[1], v[2]);
     }
 
-    inline rmcv::mat4 toRMCV(const GfMatrix4d& m)
+    inline float4x4 toFalcor(const GfMatrix4d& m)
     {
         // USD uses row-major matrices and row vectors, which are pre-multiplied (v * M) with a matrix to perform a transformation.
-        // Falcor RMCV uses row-major matrices and column vectors, which are post-multiplied (M * v).
+        // Falcor uses row-major matrices and column vectors, which are post-multiplied (M * v).
         // As such, we transpose USD matrices upon import.
         // (Same as for GLM, except we have to write the values actually transposed, rather than using the col-major layout of the constructor)
-        return rmcv::mat4({
+        return float4x4({
             m[0][0], m[1][0], m[2][0], m[3][0],
             m[0][1], m[1][1], m[2][1], m[3][1],
             m[0][2], m[1][2], m[2][2], m[3][2],
@@ -101,20 +101,20 @@ namespace Falcor
 
     inline SceneBuilder::Node makeNode(const std::string& name, NodeID parentId = NodeID::Invalid())
     {
-        return SceneBuilder::Node{name, rmcv::mat4(1.f), rmcv::mat4(1.f), rmcv::mat4(1.f), parentId};
+        return SceneBuilder::Node{name, float4x4::identity(), float4x4::identity(), float4x4::identity(), parentId};
     }
 
-    inline SceneBuilder::Node makeNode(const std::string& name, const rmcv::mat4& xform, const rmcv::mat4& bindTransform, NodeID parentId = NodeID::Invalid())
+    inline SceneBuilder::Node makeNode(const std::string& name, const float4x4& xform, const float4x4& bindTransform, NodeID parentId = NodeID::Invalid())
     {
-        return SceneBuilder::Node{name, xform, bindTransform, rmcv::mat4(1.f), parentId};
+        return SceneBuilder::Node{name, xform, bindTransform, float4x4::identity(), parentId};
     }
 
-    inline bool getLocalTransform(const UsdGeomXformable& xformable, rmcv::mat4& xform)
+    inline bool getLocalTransform(const UsdGeomXformable& xformable, float4x4& xform)
     {
         bool resets = false;
         GfMatrix4d transform;
         xformable.GetLocalTransformation(&transform, &resets, UsdTimeCode::EarliestTime());
-        xform = toRMCV(transform);
+        xform = toFalcor(transform);
 
         return resets;
     }
@@ -130,6 +130,25 @@ namespace Falcor
         }
         return val;
     }
+
+    // Helper function that returns the main attribute if it is authored (non-default),
+    // otherwise it tries to retrieve the fallback attribute and should that fail, the default value.
+    // This is used to provide compatibility, e.g. when the default disk light radius changed from "radius" to "inputs:radius"
+    template <class T>
+    inline T getAuthoredAttribute(const UsdAttribute& mainAttrib, const UsdAttribute& fallbackAttrib, const T& def)
+    {
+        T val = def;
+        if (mainAttrib && mainAttrib.IsAuthored())
+        {
+            mainAttrib.Get(&val, UsdTimeCode::EarliestTime());
+        }
+        else if(fallbackAttrib)
+        {
+            fallbackAttrib.Get(&val, UsdTimeCode::EarliestTime());
+        }
+        return val;
+    }
+
 
     using AttributeFrequency = SceneBuilder::Mesh::AttributeFrequency;
 

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,33 +29,30 @@
 #include "CPUSampleGenerator.h"
 #include "Core/Macros.h"
 #include "Utils/Math/Vector.h"
-#include <memory>
 
 namespace Falcor
 {
-    class FALCOR_API HaltonSamplePattern : public CPUSampleGenerator
-    {
-    public:
-        using SharedPtr = std::shared_ptr<HaltonSamplePattern>;
+class FALCOR_API HaltonSamplePattern : public CPUSampleGenerator
+{
+public:
+    /**
+     * Create Halton sample pattern generator.
+     * @param[in] sampleCount The pattern repeats every 'sampleCount' samples. Zero means no repeating.
+     * @return New object, or throws an exception on error.
+     */
+    static ref<HaltonSamplePattern> create(uint32_t sampleCount = 0) { return make_ref<HaltonSamplePattern>(sampleCount); }
 
-        virtual ~HaltonSamplePattern() = default;
+    HaltonSamplePattern(uint32_t sampleCount);
+    virtual ~HaltonSamplePattern() = default;
 
-        /** Create Halton sample pattern generator.
-            \param[in] sampleCount The pattern repeats every 'sampleCount' samples. Zero means no repeating.
-            \return New object, or throws an exception on error.
-        */
-        static SharedPtr create(uint32_t sampleCount = 0) { return SharedPtr(new HaltonSamplePattern(sampleCount)); }
+    virtual uint32_t getSampleCount() const override { return mSampleCount; }
 
-        virtual uint32_t getSampleCount() const override { return mSampleCount; }
+    virtual void reset(uint32_t startID = 0) override { mCurSample = 0; }
 
-        virtual void reset(uint32_t startID = 0) override { mCurSample = 0; }
+    virtual float2 next() override;
 
-        virtual float2 next() override;
-
-    protected:
-        HaltonSamplePattern(uint32_t sampleCount);
-
-        uint32_t mCurSample = 0;
-        uint32_t mSampleCount;
-    };
-}
+protected:
+    uint32_t mCurSample = 0;
+    uint32_t mSampleCount;
+};
+} // namespace Falcor

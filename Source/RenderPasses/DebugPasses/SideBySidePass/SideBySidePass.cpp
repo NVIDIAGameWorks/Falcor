@@ -35,24 +35,19 @@ namespace
     const std::string kSplitShader = "RenderPasses/DebugPasses/SideBySidePass/SideBySide.ps.slang";
 }
 
-SideBySidePass::SideBySidePass(std::shared_ptr<Device> pDevice)
-    : ComparisonPass(std::move(pDevice))
+SideBySidePass::SideBySidePass(ref<Device> pDevice, const Dictionary& dict)
+    : ComparisonPass(pDevice)
 {
     createProgram();
-}
 
-SideBySidePass::SharedPtr SideBySidePass::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-{
-    SharedPtr pPass = SharedPtr(new SideBySidePass(std::move(pDevice)));
     for (const auto& [key, value] : dict)
     {
-        if (key == kImageLeftBound) pPass->mImageLeftBound = value;
-        else if (!pPass->parseKeyValuePair(key, value))
+        if (key == kImageLeftBound) mImageLeftBound = value;
+        else if (!parseKeyValuePair(key, value))
         {
             logWarning("Unknown field '{}' in a SideBySidePass dictionary.", key);
         }
     }
-    return pPass;
 }
 
 void SideBySidePass::createProgram()
@@ -63,7 +58,7 @@ void SideBySidePass::createProgram()
 
 void SideBySidePass::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    mpSplitShader["GlobalCB"]["gLeftBound"] = mImageLeftBound;
+    mpSplitShader->getRootVar()["GlobalCB"]["gLeftBound"] = mImageLeftBound;
     ComparisonPass::execute(pRenderContext, renderData);
 }
 

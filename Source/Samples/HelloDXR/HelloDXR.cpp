@@ -59,25 +59,28 @@ void HelloDXR::onResize(uint32_t width, uint32_t height)
     }
 
     mpRtOut = Texture::create2D(
-        getDevice().get(), width, height, ResourceFormat::RGBA16Float, 1, 1, nullptr,
+        getDevice(), width, height, ResourceFormat::RGBA16Float, 1, 1, nullptr,
         Resource::BindFlags::UnorderedAccess | Resource::BindFlags::ShaderResource
     );
 }
 
-void HelloDXR::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
+void HelloDXR::onFrameRender(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo)
 {
     pRenderContext->clearFbo(pTargetFbo.get(), kClearColor, 1.0f, 0, FboAttachmentType::All);
 
     if (mpScene)
     {
-        mpScene->update(pRenderContext, getGlobalClock().getTime());
+        Scene::UpdateFlags updates = mpScene->update(pRenderContext, getGlobalClock().getTime());
+        if (is_set(updates, Scene::UpdateFlags::GeometryChanged))
+            throw RuntimeError("This sample does not support scene geometry changes.");
+
         if (mRayTrace)
-            renderRT(pRenderContext, pTargetFbo.get());
+            renderRT(pRenderContext, pTargetFbo);
         else
-            mpRasterPass->renderScene(pRenderContext, pTargetFbo);
+            renderRaster(pRenderContext, pTargetFbo);
     }
 
-    TextRenderer::render(pRenderContext, getFrameRate().getMsg(), pTargetFbo, {20, 20});
+    getTextRenderer().render(pRenderContext, getFrameRate().getMsg(), pTargetFbo, {20, 20});
 }
 
 void HelloDXR::onGuiRender(Gui* pGui)
@@ -145,7 +148,7 @@ void HelloDXR::loadScene(const std::filesystem::path& path, const Fbo* pTargetFb
     rasterProgDesc.addShaderLibrary("Samples/HelloDXR/HelloDXR.3d.slang").vsEntry("vsMain").psEntry("psMain");
     rasterProgDesc.addTypeConformances(typeConformances);
 
-    mpRasterPass = RasterScenePass::create(getDevice(), mpScene, rasterProgDesc, defines);
+    mpRasterPass = RasterPass::create(getDevice(), rasterProgDesc, defines);
 
     // We'll now create a raytracing program. To do that we need to setup two things:
     // - A program description (RtProgram::Desc). This holds all shader entry points, compiler flags, macro defintions,
@@ -168,7 +171,7 @@ void HelloDXR::loadScene(const std::filesystem::path& path, const Fbo* pTargetFb
     rtProgDesc.setMaxPayloadSize(24);        // The largest ray payload struct (PrimaryRayData) is 24 bytes. The payload size
                                              // should be set as small as possible for maximum performance.
 
-    RtBindingTable::SharedPtr sbt = RtBindingTable::create(2, 2, mpScene->getGeometryCount());
+    ref<RtBindingTable> sbt = RtBindingTable::create(2, 2, mpScene->getGeometryCount());
     sbt->setRayGen(rtProgDesc.addRayGen("rayGen"));
     sbt->setMiss(0, rtProgDesc.addMiss("primaryMiss"));
     sbt->setMiss(1, rtProgDesc.addMiss("shadowMiss"));
@@ -183,27 +186,31 @@ void HelloDXR::loadScene(const std::filesystem::path& path, const Fbo* pTargetFb
 
 void HelloDXR::setPerFrameVars(const Fbo* pTargetFbo)
 {
-    auto cb = mpRtVars["PerFrameCB"];
-    cb["invView"] = rmcv::inverse(mpCamera->getViewMatrix());
-    cb["viewportDims"] = float2(pTargetFbo->getWidth(), pTargetFbo->getHeight());
+    auto var = mpRtVars->getRootVar();
+    var["PerFrameCB"]["invView"] = inverse(mpCamera->getViewMatrix());
+    var["PerFrameCB"]["viewportDims"] = float2(pTargetFbo->getWidth(), pTargetFbo->getHeight());
     float fovY = focalLengthToFovY(mpCamera->getFocalLength(), Camera::kDefaultFrameHeight);
-    cb["tanHalfFovY"] = std::tan(fovY * 0.5f);
-    cb["sampleIndex"] = mSampleIndex++;
-    cb["useDOF"] = mUseDOF;
-    mpRtVars["gOutput"] = mpRtOut;
+    var["PerFrameCB"]["tanHalfFovY"] = std::tan(fovY * 0.5f);
+    var["PerFrameCB"]["sampleIndex"] = mSampleIndex++;
+    var["PerFrameCB"]["useDOF"] = mUseDOF;
+    var["gOutput"] = mpRtOut;
 }
 
-void HelloDXR::renderRT(RenderContext* pRenderContext, const Fbo* pTargetFbo)
+void HelloDXR::renderRaster(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo)
 {
+    FALCOR_ASSERT(mpScene);
+    FALCOR_PROFILE(pRenderContext, "renderRaster");
+
+    mpRasterPass->getState()->setFbo(pTargetFbo);
+    mpScene->rasterize(pRenderContext, mpRasterPass->getState().get(), mpRasterPass->getVars().get());
+}
+
+void HelloDXR::renderRT(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo)
+{
+    FALCOR_ASSERT(mpScene);
     FALCOR_PROFILE(pRenderContext, "renderRT");
 
-    FALCOR_ASSERT(mpScene);
-    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged))
-    {
-        throw RuntimeError("This sample does not support scene geometry changes.");
-    }
-
-    setPerFrameVars(pTargetFbo);
+    setPerFrameVars(pTargetFbo.get());
 
     pRenderContext->clearUAV(mpRtOut->getUAV().get(), kClearColor);
     mpScene->raytrace(pRenderContext, mpRaytraceProgram.get(), mpRtVars, uint3(pTargetFbo->getWidth(), pTargetFbo->getHeight(), 1));

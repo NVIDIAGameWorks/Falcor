@@ -44,13 +44,13 @@ namespace Falcor
 // EntryPointGroupKernels
 //
 
-EntryPointGroupKernels::SharedPtr EntryPointGroupKernels::create(
+ref<const EntryPointGroupKernels> EntryPointGroupKernels::create(
     EntryPointGroupKernels::Type type,
     const EntryPointGroupKernels::Shaders& shaders,
     const std::string& exportName
 )
 {
-    return SharedPtr(new EntryPointGroupKernels(type, shaders, exportName));
+    return ref<EntryPointGroupKernels>(new EntryPointGroupKernels(type, shaders, exportName));
 }
 
 EntryPointGroupKernels::EntryPointGroupKernels(Type type, const Shaders& shaders, const std::string& exportName)
@@ -73,25 +73,25 @@ const Shader* EntryPointGroupKernels::getShader(ShaderType type) const
 
 ProgramKernels::ProgramKernels(
     const ProgramVersion* pVersion,
-    const ProgramReflection::SharedPtr& pReflector,
+    const ref<const ProgramReflection>& pReflector,
     const ProgramKernels::UniqueEntryPointGroups& uniqueEntryPointGroups,
     const std::string& name
 )
     : mName(name), mUniqueEntryPointGroups(uniqueEntryPointGroups), mpReflector(pReflector), mpVersion(pVersion)
 {}
 
-ProgramKernels::SharedPtr ProgramKernels::create(
+ref<ProgramKernels> ProgramKernels::create(
     Device* pDevice,
     const ProgramVersion* pVersion,
     slang::IComponentType* pSpecializedSlangGlobalScope,
     const std::vector<slang::IComponentType*>& pTypeConformanceSpecializedEntryPoints,
-    const ProgramReflection::SharedPtr& pReflector,
+    const ref<const ProgramReflection>& pReflector,
     const ProgramKernels::UniqueEntryPointGroups& uniqueEntryPointGroups,
     std::string& log,
     const std::string& name
 )
 {
-    SharedPtr pProgram = SharedPtr(new ProgramKernels(pVersion, pReflector, uniqueEntryPointGroups, name));
+    ref<ProgramKernels> pProgram = ref<ProgramKernels>(new ProgramKernels(pVersion, pReflector, uniqueEntryPointGroups, name));
 
     gfx::IShaderProgram::Desc programDesc = {};
     programDesc.linkingStyle = gfx::IShaderProgram::LinkingStyle::SeparateEntryPointCompilation;
@@ -152,11 +152,6 @@ ProgramKernels::SharedPtr ProgramKernels::create(
     return pProgram;
 }
 
-ProgramVersion::SharedConstPtr ProgramKernels::getProgramVersion() const
-{
-    return mpVersion->shared_from_this();
-}
-
 const Shader* ProgramKernels::getShader(ShaderType type) const
 {
     for (auto& pEntryPointGroup : mUniqueEntryPointGroups)
@@ -168,16 +163,16 @@ const Shader* ProgramKernels::getShader(ShaderType type) const
 }
 
 ProgramVersion::ProgramVersion(Program* pProgram, slang::IComponentType* pSlangGlobalScope)
-    : mpProgram(pProgram->shared_from_this()), mpSlangGlobalScope(pSlangGlobalScope)
+    : mpProgram(pProgram), mpSlangGlobalScope(pSlangGlobalScope)
 {
     FALCOR_ASSERT(pProgram);
 }
 
 void ProgramVersion::init(
     const DefineList& defineList,
-    const ProgramReflection::SharedPtr& pReflector,
+    const ref<const ProgramReflection>& pReflector,
     const std::string& name,
-    std::vector<ComPtr<slang::IComponentType>> const& pSlangEntryPoints
+    const std::vector<Slang::ComPtr<slang::IComponentType>>& pSlangEntryPoints
 )
 {
     FALCOR_ASSERT(pReflector);
@@ -187,12 +182,12 @@ void ProgramVersion::init(
     mpSlangEntryPoints = pSlangEntryPoints;
 }
 
-ProgramVersion::SharedPtr ProgramVersion::createEmpty(Program* pProgram, slang::IComponentType* pSlangGlobalScope)
+ref<ProgramVersion> ProgramVersion::createEmpty(Program* pProgram, slang::IComponentType* pSlangGlobalScope)
 {
-    return SharedPtr(new ProgramVersion(pProgram, pSlangGlobalScope));
+    return ref<ProgramVersion>(new ProgramVersion(pProgram, pSlangGlobalScope));
 }
 
-ProgramKernels::SharedConstPtr ProgramVersion::getKernels(Device* pDevice, ProgramVars const* pVars) const
+ref<const ProgramKernels> ProgramVersion::getKernels(Device* pDevice, ProgramVars const* pVars) const
 {
     // We need are going to look up or create specialized kernels
     // based on how parameters are bound in `pVars`.
@@ -224,14 +219,13 @@ ProgramKernels::SharedConstPtr ProgramVersion::getKernels(Device* pDevice, Progr
         return foundKernels->second;
     }
 
-    auto pProgram = mpProgram.lock();
-    FALCOR_ASSERT(pProgram);
+    FALCOR_ASSERT(mpProgram);
 
     // Loop so that user can trigger recompilation on error
     for (;;)
     {
         std::string log;
-        auto pKernels = pDevice->getProgramManager()->createProgramKernels(*pProgram, *this, *pVars, log);
+        auto pKernels = pDevice->getProgramManager()->createProgramKernels(*mpProgram, *this, *pVars, log);
         if (pKernels)
         {
             // Success

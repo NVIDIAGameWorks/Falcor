@@ -25,9 +25,6 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-__exported import Rendering.Materials.LobeType;
-__exported import Utils.Sampling.SampleGeneratorInterface;
-__exported import Rendering.Materials.BxDF; // For StandardBSDFData
 #include "Utils/HostDeviceShared.slangh" // For bit packing macros
 
 __exported import Scene.ShadingData;
@@ -41,7 +38,19 @@ __exported import Utils.Sampling.SampleGeneratorInterface;
 enum MaterialInstanceHints : uint
 {
     None = 0,
+    DisableNormalMapping = 0x1,     ///< Turn off normal mapping if supported.
+    AdjustShadingNormal = 0x2,      ///< Adjust shading normal to reduce risk of back-facing hits.
 };
+
+bool isNormalMappingEnabled(uint hints)
+{
+    return !(hints & (uint)MaterialInstanceHints::DisableNormalMapping);
+}
+
+bool isAdjustShadingNormalEnabled(uint hints)
+{
+    return hints & (uint)MaterialInstanceHints::AdjustShadingNormal;
+}
 
 /** Describes a BSDF sample.
 */
@@ -139,10 +148,6 @@ interface IMaterialInstance
         \param[in,out] sg Sample generator.
         \return Returns f(wi, wo) * dot(wo, n).
     */
-    // Minimum cos(theta) for the incident and outgoing vectors.
-    // Some BSDF functions are not robust for cos(theta) == 0.0,
-    // so using a small epsilon for consistency.
-    // TODO: Move into IBSDF if possible
     float3 eval<S : ISampleGenerator>(const ShadingData sd, const float3 wo, inout S sg);
 
     /** Samples the material instance.

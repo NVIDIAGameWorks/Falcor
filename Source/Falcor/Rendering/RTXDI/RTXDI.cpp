@@ -94,22 +94,17 @@ namespace Falcor
             if (value < minValue || value > maxValue)
             {
                 logWarning("RTXDI: '{}' is {}. Clamping to [{},{}].", name, value, minValue, maxValue);
-                value = clamp(value, minValue, maxValue);
+                value = std::clamp(value, minValue, maxValue);
             }
         };
     }
 
-    RTXDI::SharedPtr RTXDI::create(const Scene::SharedPtr& pScene, const Options& options)
-    {
-        return SharedPtr(new RTXDI(pScene, options));
-    }
-
-    RTXDI::RTXDI(const Scene::SharedPtr& pScene, const Options& options)
+    RTXDI::RTXDI(const ref<Scene>& pScene, const Options& options)
         : mpScene(pScene)
         , mpDevice(mpScene->getDevice())
         , mOptions(options)
     {
-        mpPixelDebug = PixelDebug::create(mpDevice);
+        mpPixelDebug = std::make_unique<PixelDebug>(mpDevice);
 
         FALCOR_ASSERT(pScene);
         setOptions(options);
@@ -194,7 +189,7 @@ namespace Falcor
         if (mFrameIndex == 0) mPrevCameraData = mpScene->getCamera()->getData();
 
         // Update the screen resolution.
-        if (frameDim != mFrameDim)
+        if (any(frameDim != mFrameDim))
         {
             mFrameDim = frameDim;
             // Resizes require reallocating resources.
@@ -255,7 +250,7 @@ namespace Falcor
 #endif
     }
 
-    void RTXDI::update(RenderContext* pRenderContext, const Texture::SharedPtr& pMotionVectors)
+    void RTXDI::update(RenderContext* pRenderContext, const ref<Texture>& pMotionVectors)
     {
 #if FALCOR_HAS_RTXDI
         FALCOR_PROFILE(pRenderContext, "RTXDI::update");
@@ -303,7 +298,7 @@ namespace Falcor
 
 #if FALCOR_HAS_RTXDI
 
-    void RTXDI::setShaderDataInternal(const ShaderVar& rootVar, const Texture::SharedPtr& pMotionVectors)
+    void RTXDI::setShaderDataInternal(const ShaderVar& rootVar, const ref<Texture>& pMotionVectors)
     {
         auto var = rootVar["gRTXDI"];
 
@@ -411,7 +406,7 @@ namespace Falcor
                 // Create GPU buffer for holding light IDs.
                 if (!mLights.analyticLightIDs.empty() && (!mpAnalyticLightIDBuffer || mpAnalyticLightIDBuffer->getElementCount() < mLights.analyticLightIDs.size()))
                 {
-                    mpAnalyticLightIDBuffer = Buffer::createStructured(mpDevice.get(), sizeof(uint32_t), (uint32_t)mLights.analyticLightIDs.size());
+                    mpAnalyticLightIDBuffer = Buffer::createStructured(mpDevice, sizeof(uint32_t), (uint32_t)mLights.analyticLightIDs.size());
                 }
 
                 // Update GPU buffer.
@@ -436,7 +431,7 @@ namespace Falcor
         // Allocate buffer for light infos.
         if (!mpLightInfoBuffer || mpLightInfoBuffer->getElementCount() < totalLightCount)
         {
-            mpLightInfoBuffer = Buffer::createStructured(mpDevice.get(), mpReflectTypes["lightInfo"], totalLightCount);
+            mpLightInfoBuffer = Buffer::createStructured(mpDevice, mpReflectTypes->getRootVar()["lightInfo"], totalLightCount);
         }
 
         // Allocate local light PDF texture, which RTXDI uses for importance sampling.
@@ -445,7 +440,7 @@ namespace Falcor
             rtxdi::ComputePdfTextureSize(localLightCount, width, height, mipLevels);
             if (!mpLocalLightPdfTexture || mpLocalLightPdfTexture->getWidth() != width || mpLocalLightPdfTexture->getHeight() != height || mpLocalLightPdfTexture->getMipCount() != mipLevels)
             {
-                mpLocalLightPdfTexture = Texture::create2D(mpDevice.get(), width, height,
+                mpLocalLightPdfTexture = Texture::create2D(mpDevice, width, height,
                     ResourceFormat::R16Float, 1, mipLevels, nullptr,
                     Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess | Resource::BindFlags::RenderTarget);
             }
@@ -472,7 +467,7 @@ namespace Falcor
             // Compute launch dimensions.
             uint2 threadCount = { 8192u, div_round_up(totalLightCount, 8192u) };
 
-            auto var = mpUpdateLightsPass["gLightUpdater"];
+            auto var = mpUpdateLightsPass->getRootVar()["gLightUpdater"];
             var["lightInfo"] = mpLightInfoBuffer;
             var["localLightPdf"] = mpLocalLightPdfTexture;
             var["analyticLightIDs"] = mpAnalyticLightIDBuffer;
@@ -485,7 +480,7 @@ namespace Falcor
             var["updateEmissiveLightsFlux"] = mFlags.updateEmissiveLightsFlux;
             var["updateAnalyticLights"] = mFlags.updateAnalyticLights;
             var["updateAnalyticLightsFlux"] = mFlags.updateAnalyticLightsFlux;
-            mpUpdateLightsPass["gScene"] = mpScene->getParameterBlock();
+            mpUpdateLightsPass->getRootVar()["gScene"] = mpScene->getParameterBlock();
             mpUpdateLightsPass->execute(pRenderContext, threadCount.x, threadCount.y);
         }
 
@@ -525,7 +520,7 @@ namespace Falcor
             if (!pLuminanceTexture || pLuminanceTexture->getWidth() != width || pLuminanceTexture->getHeight() != height)
             {
                 pLuminanceTexture = Texture::create2D(
-                    mpDevice.get(), width, height, ResourceFormat::R32Float, 1, 1, nullptr,
+                    mpDevice, width, height, ResourceFormat::R32Float, 1, 1, nullptr,
                     Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess | Resource::BindFlags::RenderTarget);
             }
 
@@ -533,16 +528,16 @@ namespace Falcor
             if (!pPdfTexture || pPdfTexture->getWidth() != width || pPdfTexture->getHeight() != height)
             {
                 pPdfTexture = Texture::create2D(
-                    mpDevice.get(), width, height, ResourceFormat::R32Float, 1, Resource::kMaxPossible, nullptr,
+                    mpDevice, width, height, ResourceFormat::R32Float, 1, Resource::kMaxPossible, nullptr,
                     Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess | Resource::BindFlags::RenderTarget);
             }
 
             // Update env light textures.
-            auto var = mpUpdateEnvLightPass["gEnvLightUpdater"];
+            auto var = mpUpdateEnvLightPass->getRootVar()["gEnvLightUpdater"];
             var["envLightLuminance"] = pLuminanceTexture;
             var["envLightPdf"] = pPdfTexture;
             var["texDim"] = uint2(width, height);
-            mpUpdateEnvLightPass["gScene"] = mpScene->getParameterBlock();
+            mpUpdateEnvLightPass->getRootVar()["gScene"] = mpScene->getParameterBlock();
             mpUpdateEnvLightPass->execute(pRenderContext, width, height);
 
             // Create a mipmap chain for pdf texure.
@@ -622,7 +617,7 @@ namespace Falcor
         return inputID;
     }
 
-    uint32_t RTXDI::temporalResampling(RenderContext* pRenderContext, const Texture::SharedPtr& pMotionVectors,
+    uint32_t RTXDI::temporalResampling(RenderContext* pRenderContext, const ref<Texture>& pMotionVectors,
         uint32_t candidateReservoirID, uint32_t lastFrameReservoirID)
     {
         FALCOR_PROFILE(pRenderContext, "temporalResampling");
@@ -642,7 +637,7 @@ namespace Falcor
         return outputReservoirID;
     }
 
-    uint32_t RTXDI::spatiotemporalResampling(RenderContext* pRenderContext, const Texture::SharedPtr& pMotionVectors,
+    uint32_t RTXDI::spatiotemporalResampling(RenderContext* pRenderContext, const ref<Texture>& pMotionVectors,
         uint32_t candidateReservoirID, uint32_t lastFrameReservoirID)
     {
         FALCOR_PROFILE(pRenderContext, "spatiotemporalResampling");
@@ -685,7 +680,7 @@ namespace Falcor
             desc.setShaderModel(kShaderModel);
             desc.csEntry(entryPoint);
             desc.addTypeConformances(mpScene->getTypeConformances());
-            ComputePass::SharedPtr pPass = ComputePass::create(mpDevice, desc, defines);
+            ref<ComputePass> pPass = ComputePass::create(mpDevice, desc, defines);
             pPass->setVars(nullptr);
             pPass->getRootVar()["gScene"] = mpScene->getParameterBlock();
             return pPass;
@@ -736,7 +731,7 @@ namespace Falcor
         uint32_t lightTileSampleCount = std::max(mpRTXDIContext->GetRisBufferElementCount(), 1u);
         if (!mpLightTileBuffer || mpLightTileBuffer->getElementCount() < lightTileSampleCount)
         {
-            mpLightTileBuffer = Buffer::createTyped(mpDevice.get(), ResourceFormat::RG32Uint, lightTileSampleCount);
+            mpLightTileBuffer = Buffer::createTyped(mpDevice, ResourceFormat::RG32Uint, lightTileSampleCount);
         }
 
         // Allocate buffer for compact light info used to improve coherence for presampled light tiles.
@@ -744,7 +739,7 @@ namespace Falcor
             uint32_t elementCount = lightTileSampleCount * 2;
             if (!mpCompactLightInfoBuffer || mpCompactLightInfoBuffer->getElementCount() < elementCount)
             {
-                mpCompactLightInfoBuffer = Buffer::createStructured(mpDevice.get(), mpReflectTypes["lightInfo"], elementCount);
+                mpCompactLightInfoBuffer = Buffer::createStructured(mpDevice, mpReflectTypes->getRootVar()["lightInfo"], elementCount);
             }
         }
 
@@ -753,7 +748,7 @@ namespace Falcor
             uint32_t elementCount = mpRTXDIContext->GetReservoirBufferElementCount() * kMaxReservoirs;
             if (!mpReservoirBuffer || mpReservoirBuffer->getElementCount() < elementCount)
             {
-                mpReservoirBuffer = Buffer::createStructured(mpDevice.get(), mpReflectTypes["reservoirs"], elementCount);
+                mpReservoirBuffer = Buffer::createStructured(mpDevice, mpReflectTypes->getRootVar()["reservoirs"], elementCount);
             }
         }
 
@@ -762,7 +757,7 @@ namespace Falcor
             uint32_t elementCount = 2 * mFrameDim.x * mFrameDim.y;
             if (!mpSurfaceDataBuffer || mpSurfaceDataBuffer->getElementCount() < elementCount)
             {
-                mpSurfaceDataBuffer = Buffer::createStructured(mpDevice.get(), mpReflectTypes["surfaceData"], elementCount);
+                mpSurfaceDataBuffer = Buffer::createStructured(mpDevice, mpReflectTypes->getRootVar()["surfaceData"], elementCount);
             }
         }
 
@@ -772,7 +767,7 @@ namespace Falcor
             std::vector<uint8_t> offsets(2 * (size_t)mRTXDIContextParams.NeighborOffsetCount);
             mpRTXDIContext->FillNeighborOffsetBuffer(offsets.data());
             mpNeighborOffsetsBuffer = Buffer::createTyped(
-                mpDevice.get(),
+                mpDevice,
                 ResourceFormat::RG8Snorm,
                 mRTXDIContextParams.NeighborOffsetCount,
                 Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess,

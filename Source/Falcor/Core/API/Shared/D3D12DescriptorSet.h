@@ -29,6 +29,7 @@
 #include "D3D12DescriptorSetLayout.h"
 #include "D3D12DescriptorPool.h"
 #include "Core/Macros.h"
+#include "Core/Object.h"
 #include "Core/API/fwd.h"
 #include "Core/API/Shader.h"
 #include <memory>
@@ -51,10 +52,9 @@ enum class D3D12DescriptorSetBindingUsage
     RootSignatureOffset //< The descriptor set will be implicitly bound via a root signature offsets.
 };
 
-class FALCOR_API D3D12DescriptorSet
+class FALCOR_API D3D12DescriptorSet : public Object
 {
 public:
-    using SharedPtr = std::shared_ptr<D3D12DescriptorSet>;
     using Type = ShaderResourceType;
     using CpuHandle = D3D12DescriptorPool::CpuHandle;
     using GpuHandle = D3D12DescriptorPool::GpuHandle;
@@ -69,7 +69,7 @@ public:
      * @param[in] layout The layout.
      * @return A new object, or throws an exception if creation failed.
      */
-    static SharedPtr create(Device* pDevice, const D3D12DescriptorPool::SharedPtr& pPool, const D3D12DescriptorSetLayout& layout);
+    static ref<D3D12DescriptorSet> create(ref<Device> pDevice, ref<D3D12DescriptorPool> pPool, const D3D12DescriptorSetLayout& layout);
 
     /**
      * Create a new descriptor set with a specified binding usage flag.
@@ -82,8 +82,8 @@ public:
      * @param[in] bindingUsage The mechanism that will be used to bind this descriptor set.
      * @return A new object, or throws an exception if creation failed.
      */
-    static SharedPtr create(
-        Device* pDevice,
+    static ref<D3D12DescriptorSet> create(
+        ref<Device> pDevice,
         const D3D12DescriptorSetLayout& layout,
         D3D12DescriptorSetBindingUsage bindingUsage = D3D12DescriptorSetBindingUsage::ExplicitBind
     );
@@ -106,11 +106,11 @@ public:
     void bindForCompute(CopyContext* pCtx, const D3D12RootSignature* pRootSig, uint32_t rootIndex);
 
 private:
-    D3D12DescriptorSet(std::shared_ptr<Device> pDevice, D3D12DescriptorPool::SharedPtr pPool, const D3D12DescriptorSetLayout& layout);
+    D3D12DescriptorSet(ref<Device> pDevice, ref<D3D12DescriptorPool> pPool, const D3D12DescriptorSetLayout& layout);
 
-    std::shared_ptr<Device> mpDevice;
+    ref<Device> mpDevice;
     D3D12DescriptorSetLayout mLayout;
     std::shared_ptr<ApiData> mpApiData;
-    D3D12DescriptorPool::SharedPtr mpPool;
+    ref<D3D12DescriptorPool> mpPool;
 };
 } // namespace Falcor

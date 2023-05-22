@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -33,31 +33,35 @@ import Utils.Math.MathHelpers;
 // However, the code has been bug fixed in several places and extended in some ways + addition of new primitives.
 // http://jcgt.org/published/0003/04/01/
 
-/** Signed distance to unit circle located at the origin.
-*/
+/**
+ * Signed distance to unit circle located at the origin.
+ */
 float sdfCircle(float2 p, float radius)
 {
     return length(p) - radius;
 }
 
-/** Signed distance to unit square.
-*/
+/**
+ * Signed distance to unit square.
+ */
 float sdfSquare(float2 p)
 {
     return max(abs(p.x), abs(p.y)) - 1.0f / 2.0f;
 }
 
-/** Signed distance to diamond.
-*/
-float  sdfDiamond(float2 p)
+/**
+ * Signed distance to diamond.
+ */
+float sdfDiamond(float2 p)
 {
     float x = M_SQRT2 / 2.0f * (p.x - p.y);
     float y = M_SQRT2 / 2.0f * (p.x + p.y);
     return max(abs(x), abs(y)) - 1.0f / (2.0f * M_SQRT2);
 }
 
-/** Signed distance to heart.
-*/
+/**
+ * Signed distance to heart.
+ */
 float sdfHeart(float2 p)
 {
     float x = M_SQRT2 / 2.0f * (p.x - p.y);
@@ -68,8 +72,9 @@ float sdfHeart(float2 p)
     return min(min(r1, r2), r3);
 }
 
-/** Signed distance to chevron.
-*/
+/**
+ * Signed distance to chevron.
+ */
 float sdfChevron(float2 p)
 {
     float x = 1.0f / M_SQRT2 * (p.x - p.y);
@@ -79,8 +84,9 @@ float sdfChevron(float2 p)
     return max(r1, -r2);
 }
 
-/** Signed distance to ring.
-*/
+/**
+ * Signed distance to ring.
+ */
 float sdfRing(float2 p)
 {
     float r1 = length(p) - 1.0f / 2.0f;
@@ -88,8 +94,9 @@ float sdfRing(float2 p)
     return max(r1, -r2);
 }
 
-/** Signed distance to tag.
-*/
+/**
+ * Signed distance to tag.
+ */
 float sdfTag(float2 p)
 {
     float r1 = max(abs(p.x) - 1.0f / 2.0f, abs(p.y) - 1.0f / 6.0f);
@@ -97,8 +104,9 @@ float sdfTag(float2 p)
     return max(r1, 0.75f * r2);
 }
 
-/** Signed distance to cross.
-*/
+/**
+ * Signed distance to cross.
+ */
 float sdfCross(float2 p)
 {
     float x = M_SQRT2 / 2.0f * (p.x - p.y);
@@ -109,8 +117,9 @@ float sdfCross(float2 p)
     return max(min(r1, r2), r3) - 1.0f / 2.0f;
 }
 
-/** Signed distance to asterisk.
-*/
+/**
+ * Signed distance to asterisk.
+ */
 float sdfAsterisk(float2 p)
 {
     float x = M_SQRT2 / 2.0f * (p.x - p.y);
@@ -122,8 +131,9 @@ float sdfAsterisk(float2 p)
     return min(min(r1, r2), min(r3, r4));
 }
 
-/** Signed distance to infinity.
-*/
+/**
+ * Signed distance to infinity.
+ */
 float sdfInfinity(float2 p)
 {
     const float2 c1 = float2(0.2125f, 0.0f);
@@ -135,8 +145,9 @@ float sdfInfinity(float2 p)
     return min(max(r1, -r2), max(r3, -r4));
 }
 
-/** Signed distance to pin.
-*/
+/**
+ * Signed distance to pin.
+ */
 float sdfPin(float2 p)
 {
     float2 c1 = float2(0.0f, -0.15f);
@@ -149,8 +160,9 @@ float sdfPin(float2 p)
     return max(min(r1, max(max(r2, r3), -p.y)), -r4);
 }
 
-/** Signed distance to arrow.
-*/
+/**
+ * Signed distance to arrow.
+ */
 float sdfArrow(float2 p)
 {
     float r1 = abs(p.x) + abs(p.y) - 1.0f / 2.0f;
@@ -159,20 +171,22 @@ float sdfArrow(float2 p)
     return min(r3, max(0.75f * r1, r2));
 }
 
-/** Signed distance to rounded box.
-*/
+/**
+ * Signed distance to rounded box.
+ */
 float sdfRoundedBox(float2 p, float2 halfBoxSides, float radius)
 {
     halfBoxSides -= float2(radius);
     float2 d = abs(p) - halfBoxSides;
     float outsideDist = length(float2(max(d.x, 0.0f), max(d.y, 0.0f))) - radius;
-    float insideDist = min(max(d.x, d.y), 0.0f);           // Smallest negative distance clamed to 0.0.
+    float insideDist = min(max(d.x, d.y), 0.0f); // Smallest negative distance clamed to 0.0.
     return outsideDist + insideDist;
 }
 
-/** Compute the signed distance from an arbitrary triangle.
-*/
-float sdfTriangle(float2 p, float2 p0, float2 p1, float2 p2)   // Expects counterclockwise order of vertices.
+/**
+ * Compute the signed distance from an arbitrary triangle.
+ */
+float sdfTriangle(float2 p, float2 p0, float2 p1, float2 p2) // Expects counterclockwise order of vertices.
 {
     // Edge from p0 to p1.
     float2 N = normalize(p1 - p0);
@@ -192,8 +206,9 @@ float sdfTriangle(float2 p, float2 p0, float2 p1, float2 p2)   // Expects counte
     return distance;
 }
 
-/** Computes the signed distance from a line segment.
-*/
+/**
+ * Computes the signed distance from a line segment.
+ */
 float sdfSegmentDistance(float2 p, float2 p1, float2 p2)
 {
     float2 center = (p1 + p2) * 0.5f;
@@ -205,8 +220,9 @@ float sdfSegmentDistance(float2 p, float2 p1, float2 p2)
     return max(dist1, dist2);
 }
 
-/** Computes the signed distance from rounded line segment.
-*/
+/**
+ * Computes the signed distance from rounded line segment.
+ */
 float sdfRoundedLine(float2 p, float2 p1, float2 p2, float width)
 {
     float2 dir = normalize(p2 - p1) * width * 0.5f;
@@ -216,8 +232,9 @@ float sdfRoundedLine(float2 p, float2 p1, float2 p2, float width)
     return min(min(d1, d2), d3);
 }
 
-/** An arrow than can be used to render (normal) vectors, for example.
-*/
+/**
+ * An arrow than can be used to render (normal) vectors, for example.
+ */
 float sdfVector(float2 p, float2 p1, float2 p2, float width, float arrowHeight)
 {
     float2 dir = p2 - p1;
@@ -230,8 +247,9 @@ float sdfVector(float2 p, float2 p1, float2 p2, float width, float arrowHeight)
     return min(d1, d2);
 }
 
-/** Interface for 2D SDF primitives
-*/
+/**
+ * Interface for 2D SDF primitives
+ */
 interface ISDF2D
 {
     float eval(float2 p);
@@ -246,67 +264,67 @@ struct SDF2DCircle : ISDF2D
 
 struct SDF2DSquare : ISDF2D
 {
-    __init() { }
+    __init() {}
     float eval(float2 p) { return sdfSquare(p); }
 };
 
 struct SDF2DDiamond : ISDF2D
 {
-    __init() { }
+    __init() {}
     float eval(float2 p) { return sdfDiamond(p); }
 };
 
 struct SDF2DHeart : ISDF2D
 {
-    __init() { }
+    __init() {}
     float eval(float2 p) { return sdfHeart(p); }
 };
 
 struct SDF2DChevron : ISDF2D
 {
-    __init() { }
+    __init() {}
     float eval(float2 p) { return sdfChevron(p); }
 };
 
 struct SDF2DRing : ISDF2D
 {
-    __init() { }
+    __init() {}
     float eval(float2 p) { return sdfRing(p); }
 };
 
 struct SDF2DTag : ISDF2D
 {
-    __init() { }
+    __init() {}
     float eval(float2 p) { return sdfTag(p); }
 };
 
 struct SDF2DCross : ISDF2D
 {
-    __init() { }
+    __init() {}
     float eval(float2 p) { return sdfCross(p); }
 };
 
 struct SDF2DAsterisk : ISDF2D
 {
-    __init() { }
+    __init() {}
     float eval(float2 p) { return sdfAsterisk(p); }
 };
 
 struct SDF2DInfinity : ISDF2D
 {
-    __init() { }
+    __init() {}
     float eval(float2 p) { return sdfInfinity(p); }
 };
 
 struct SDF2DPin : ISDF2D
 {
-    __init() { }
+    __init() {}
     float eval(float2 p) { return sdfPin(p); }
 };
 
 struct SDF2DArrow : ISDF2D
 {
-    __init() { }
+    __init() {}
     float eval(float2 p) { return sdfArrow(p); }
 };
 
@@ -325,7 +343,7 @@ struct SDF2DRoundedBox : ISDF2D
 struct SDF2DVector : ISDF2D
 {
     float2 startPoint;
-    float2 endPoint;    // Where the arrow is located.
+    float2 endPoint; // Where the arrow is located.
     float width;
     float arrowHeight;
     __init(float2 startPoint, float2 endPoint, float width, float arrowHeight)

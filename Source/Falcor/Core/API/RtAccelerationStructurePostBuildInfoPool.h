@@ -28,8 +28,8 @@
 #pragma once
 #include "fwd.h"
 #include "Core/Macros.h"
+#include "Core/Object.h"
 #include <slang-gfx.h>
-#include <memory>
 
 namespace Falcor
 {
@@ -40,24 +40,22 @@ enum class RtAccelerationStructurePostBuildInfoQueryType
     CurrentSize,
 };
 
-class FALCOR_API RtAccelerationStructurePostBuildInfoPool
+class FALCOR_API RtAccelerationStructurePostBuildInfoPool : public Object
 {
 public:
-    using SharedPtr = std::shared_ptr<RtAccelerationStructurePostBuildInfoPool>;
-
     struct Desc
     {
         RtAccelerationStructurePostBuildInfoQueryType queryType;
         uint32_t elementCount;
     };
-    static SharedPtr create(Device* pDevice, const Desc& desc);
+    static ref<RtAccelerationStructurePostBuildInfoPool> create(Device* pDevice, const Desc& desc);
     ~RtAccelerationStructurePostBuildInfoPool();
     uint64_t getElement(CopyContext* pContext, uint32_t index);
     void reset(CopyContext* pContext);
     gfx::IQueryPool* getGFXQueryPool() const { return mpGFXQueryPool.get(); }
 
 protected:
-    RtAccelerationStructurePostBuildInfoPool(std::shared_ptr<Device> pDevice, const Desc& desc);
+    RtAccelerationStructurePostBuildInfoPool(Device* pDevice, const Desc& desc);
 
 private:
     Desc mDesc;

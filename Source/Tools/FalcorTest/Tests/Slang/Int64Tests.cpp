@@ -44,7 +44,7 @@ std::mt19937 r;
 
 void test(GPUUnitTestContext& ctx, const std::string& shaderModel, bool useUav)
 {
-    Device* pDevice = ctx.getDevice().get();
+    ref<Device> pDevice = ctx.getDevice();
 
     Program::DefineList defines = {{"USE_UAV", useUav ? "1" : "0"}};
 

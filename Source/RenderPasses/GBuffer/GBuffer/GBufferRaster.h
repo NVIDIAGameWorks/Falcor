@@ -40,34 +40,32 @@ class GBufferRaster : public GBuffer
 public:
     FALCOR_PLUGIN_CLASS(GBufferRaster, "GBufferRaster", "Rasterized G-buffer generation pass.");
 
-    using SharedPtr = std::shared_ptr<GBufferRaster>;
+    static ref<GBufferRaster> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<GBufferRaster>(pDevice, dict); }
 
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
+    GBufferRaster(ref<Device> pDevice, const Dictionary& dict);
 
     RenderPassReflection reflect(const CompileData& compileData) override;
     void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
-    void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
+    void setScene(RenderContext* pRenderContext, const ref<Scene>& pScene) override;
     void onSceneUpdates(RenderContext* pRenderContext, Scene::UpdateFlags sceneUpdates) override;
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
 
 private:
-    GBufferRaster(std::shared_ptr<Device> pDevice, const Dictionary& dict);
-
     // Internal state
-    Fbo::SharedPtr                  mpFbo;
+    ref<Fbo> mpFbo;
 
     struct
     {
-        GraphicsState::SharedPtr pState;
-        GraphicsProgram::SharedPtr pProgram;
-        GraphicsVars::SharedPtr pVars;
+        ref<GraphicsState> pState;
+        ref<GraphicsProgram> pProgram;
+        ref<GraphicsVars> pVars;
     } mDepthPass;
 
     // Rasterization resources
     struct
     {
-        GraphicsState::SharedPtr pState;
-        GraphicsProgram::SharedPtr pProgram;
-        GraphicsVars::SharedPtr pVars;
+        ref<GraphicsState> pState;
+        ref<GraphicsProgram> pProgram;
+        ref<GraphicsVars> pVars;
     } mGBufferPass;
 };

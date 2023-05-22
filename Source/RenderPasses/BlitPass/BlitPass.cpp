@@ -36,7 +36,7 @@ namespace
 
     void regBlitPass(pybind11::module& m)
     {
-        pybind11::class_<BlitPass, RenderPass, BlitPass::SharedPtr> pass(m, "BlitPass");
+        pybind11::class_<BlitPass, RenderPass, ref<BlitPass>> pass(m, "BlitPass");
         pass.def_property(kFilter, &BlitPass::getFilter, &BlitPass::setFilter);
     }
 }
@@ -45,6 +45,12 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
 {
     registry.registerClass<RenderPass, BlitPass>();
     ScriptBindings::registerBinding(regBlitPass);
+}
+
+BlitPass::BlitPass(ref<Device> pDevice, const Dictionary& dict)
+    : RenderPass(pDevice)
+{
+    parseDictionary(dict);
 }
 
 RenderPassReflection BlitPass::reflect(const CompileData& compileData)
@@ -63,17 +69,6 @@ void BlitPass::parseDictionary(const Dictionary& dict)
         if (key == kOutputFormat) mOutputFormat = value;
         else logWarning("Unknown field '{}' in a BlitPass dictionary.", key);
     }
-}
-
-BlitPass::SharedPtr BlitPass::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-{
-    return SharedPtr(new BlitPass(std::move(pDevice), dict));
-}
-
-BlitPass::BlitPass(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-    : RenderPass(std::move(pDevice))
-{
-    parseDictionary(dict);
 }
 
 Dictionary BlitPass::getScriptingDictionary()

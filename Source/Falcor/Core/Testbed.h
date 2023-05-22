@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Window.h"
+#include "Core/Object.h"
 #include "Core/API/Device.h"
 #include "Core/API/Swapchain.h"
 #include "Core/API/Formats.h"
@@ -43,12 +44,9 @@ namespace Falcor
 
 class ProfilerUI;
 
-class Testbed;
-using TestbedSharedPtr = std::shared_ptr<Testbed>;
-
 /// Falcor testbed application class.
 /// This is the main Falcor application available through the Python API.
-class Testbed : private Window::ICallbacks
+class Testbed : public Object, private Window::ICallbacks
 {
 public:
     struct Options
@@ -66,9 +64,9 @@ public:
     Testbed(const Options& options = Options());
     virtual ~Testbed();
 
-    static TestbedSharedPtr create(const Options& options);
+    static ref<Testbed> create(const Options& options);
 
-    const std::shared_ptr<Device>& getDevice() const { return mpDevice; }
+    const ref<Device>& getDevice() const { return mpDevice; }
 
     /// Run the main loop.
     /// This only returns if the application window is closed or the main loop is interrupted by calling interrupt().
@@ -86,11 +84,14 @@ public:
 
     void loadScene(const std::filesystem::path& path);
 
-    Scene::SharedPtr getScene() const;
+    ref<Scene> getScene() const;
     Clock& getClock();
 
-    void setRenderGraph(const RenderGraph::SharedPtr& graph);
-    const RenderGraph::SharedPtr& getRenderGraph() const;
+    ref<RenderGraph> createRenderGraph(const std::string& name = "");
+    ref<RenderGraph> loadRenderGraph(const std::filesystem::path& path);
+
+    void setRenderGraph(const ref<RenderGraph>& graph);
+    const ref<RenderGraph>& getRenderGraph() const;
 
     void captureOutput(std::string filename, uint32_t outputIndex = 0);
 
@@ -112,15 +113,15 @@ private:
 
     void renderUI();
 
-    std::shared_ptr<Device> mpDevice;
-    std::shared_ptr<Window> mpWindow;
-    std::unique_ptr<Swapchain> mpSwapchain;
-    std::shared_ptr<Fbo> mpTargetFBO;
+    ref<Device> mpDevice;
+    ref<Window> mpWindow;
+    ref<Swapchain> mpSwapchain;
+    ref<Fbo> mpTargetFBO;
     std::unique_ptr<Gui> mpGui;
     std::unique_ptr<ProfilerUI> mpProfilerUI;
 
-    Scene::SharedPtr mpScene;
-    RenderGraph::SharedPtr mpRenderGraph;
+    ref<Scene> mpScene;
+    ref<RenderGraph> mpRenderGraph;
 
     std::unique_ptr<ImageProcessing> mpImageProcessing;
 

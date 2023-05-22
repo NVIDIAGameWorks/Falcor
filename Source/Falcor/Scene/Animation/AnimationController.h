@@ -30,8 +30,8 @@
 #include "AnimatedVertexCache.h"
 #include "Core/Macros.h"
 #include "Core/API/Buffer.h"
+#include "Core/Pass/ComputePass.h"
 #include "Utils/Math/Matrix.h"
-#include "RenderGraph/BasePasses/ComputePass.h"
 #include "Scene/SceneTypes.slang"
 #include <memory>
 #include <vector>
@@ -43,18 +43,14 @@ namespace Falcor
     class FALCOR_API AnimationController
     {
     public:
-        using UniquePtr = std::unique_ptr<AnimationController>;
-        using UniqueConstPtr = std::unique_ptr<const AnimationController>;
-        static const uint32_t kInvalidBoneID = -1;
         ~AnimationController() = default;
 
         using StaticVertexVector = std::vector<PackedStaticVertexData>;
         using SkinningVertexVector = std::vector<SkinningVertexData>;
 
-        /** Create a new object.
-            \return A new object, or throws an exception if creation failed.
+        /** Constructor. Throws an exception if creation failed.
         */
-        static UniquePtr create(std::shared_ptr<Device> pDevice, Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations);
+        AnimationController(ref<Device> pDevice, Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<ref<Animation>>& animations);
 
         /** Add animated vertex caches (curves and meshes) to the controller.
         */
@@ -82,7 +78,7 @@ namespace Falcor
 
         /** Returns a list of all animations.
         */
-        std::vector<Animation::SharedPtr>& getAnimations() { return mAnimations; }
+        std::vector<ref<Animation>>& getAnimations() { return mAnimations; }
 
         /** Enable/disable animations.
         */
@@ -135,12 +131,12 @@ namespace Falcor
         /** Get the previous vertex data buffer for dynamic meshes.
             \return Buffer containing the previous vertex data, or nullptr if no dynamic meshes exist.
         */
-        Buffer::SharedPtr getPrevVertexData() const { return mpPrevVertexData; }
+        ref<Buffer> getPrevVertexData() const { return mpPrevVertexData; }
 
         /** Get the previous curve vertex data buffer for dynamic curves.
             \return Buffer containing the previous curve vertex data, or nullptr if no dynamic curves exist.
         */
-        Buffer::SharedPtr getPrevCurveVertexData() const { return mpVertexCache ? mpVertexCache->getPrevCurveVertexData() : nullptr; }
+        ref<Buffer> getPrevCurveVertexData() const { return mpVertexCache ? mpVertexCache->getPrevCurveVertexData() : nullptr; }
 
         /** Get the total GPU memory usage in bytes.
         */
@@ -148,7 +144,6 @@ namespace Falcor
 
     private:
         friend class SceneBuilder;
-        AnimationController(std::shared_ptr<Device> pDevice, Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations);
 
         void initLocalMatrices();
         void updateLocalMatrices(double time);
@@ -160,10 +155,10 @@ namespace Falcor
         void createSkinningPass(const std::vector<PackedStaticVertexData>& staticVertexData, const SkinningVertexVector& skinningVertexData);
         void executeSkinningPass(RenderContext* pRenderContext, bool initPrev = false);
 
-        std::shared_ptr<Device> mpDevice;
+        ref<Device> mpDevice;
 
         // Animation
-        std::vector<Animation::SharedPtr> mAnimations;
+        std::vector<ref<Animation>> mAnimations;
         std::vector<bool> mNodesEdited;
         std::vector<float4x4> mLocalMatrices;
         std::vector<float4x4> mGlobalMatrices;
@@ -180,27 +175,27 @@ namespace Falcor
         double mGlobalAnimationLength = 0;
         Scene* mpScene = nullptr;
 
-        Buffer::SharedPtr mpWorldMatricesBuffer;
-        Buffer::SharedPtr mpPrevWorldMatricesBuffer;
-        Buffer::SharedPtr mpInvTransposeWorldMatricesBuffer;
-        Buffer::SharedPtr mpPrevInvTransposeWorldMatricesBuffer;
+        ref<Buffer> mpWorldMatricesBuffer;
+        ref<Buffer> mpPrevWorldMatricesBuffer;
+        ref<Buffer> mpInvTransposeWorldMatricesBuffer;
+        ref<Buffer> mpPrevInvTransposeWorldMatricesBuffer;
 
         // Skinning
-        ComputePass::SharedPtr mpSkinningPass;
+        ref<ComputePass> mpSkinningPass;
         std::vector<float4x4> mMeshBindMatrices; // Optimization TODO: These are only needed per mesh
         std::vector<float4x4> mSkinningMatrices;
         std::vector<float4x4> mInvTransposeSkinningMatrices;
         uint32_t mSkinningDispatchSize = 0;
 
-        Buffer::SharedPtr mpMeshBindMatricesBuffer;
-        Buffer::SharedPtr mpMeshInvBindMatricesBuffer;
-        Buffer::SharedPtr mpSkinningMatricesBuffer;
-        Buffer::SharedPtr mpInvTransposeSkinningMatricesBuffer;
-        Buffer::SharedPtr mpStaticVertexData;
-        Buffer::SharedPtr mpSkinningVertexData;
-        Buffer::SharedPtr mpPrevVertexData;
+        ref<Buffer> mpMeshBindMatricesBuffer;
+        ref<Buffer> mpMeshInvBindMatricesBuffer;
+        ref<Buffer> mpSkinningMatricesBuffer;
+        ref<Buffer> mpInvTransposeSkinningMatricesBuffer;
+        ref<Buffer> mpStaticVertexData;
+        ref<Buffer> mpSkinningVertexData;
+        ref<Buffer> mpPrevVertexData;
 
         // Animated vertex caches
-        AnimatedVertexCache::UniquePtr mpVertexCache;
+        std::unique_ptr<AnimatedVertexCache> mpVertexCache;
     };
 }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -84,14 +84,14 @@
 #define FALCOR_D3D12_AGILITY_SDK_VERSION 4
 #define FALCOR_D3D12_AGILITY_SDK_PATH ".\\D3D12\\"
 // To enable the D3D12 Agility SDK, this macro needs to be added to the main source file of the executable.
-#define FALCOR_EXPORT_D3D12_AGILITY_SDK                                                         \
-    extern "C"                                                                                  \
-    {                                                                                           \
-        FALCOR_API_EXPORT extern const UINT D3D12SDKVersion = FALCOR_D3D12_AGILITY_SDK_VERSION; \
-    }                                                                                           \
-    extern "C"                                                                                  \
-    {                                                                                           \
-        FALCOR_API_EXPORT extern const char* D3D12SDKPath = FALCOR_D3D12_AGILITY_SDK_PATH;      \
+#define FALCOR_EXPORT_D3D12_AGILITY_SDK                                                                 \
+    extern "C"                                                                                          \
+    {                                                                                                   \
+        FALCOR_API_EXPORT extern const unsigned int D3D12SDKVersion = FALCOR_D3D12_AGILITY_SDK_VERSION; \
+    }                                                                                                   \
+    extern "C"                                                                                          \
+    {                                                                                                   \
+        FALCOR_API_EXPORT extern const char* D3D12SDKPath = FALCOR_D3D12_AGILITY_SDK_PATH;              \
     }
 #else
 #define FALCOR_EXPORT_D3D12_AGILITY_SDK

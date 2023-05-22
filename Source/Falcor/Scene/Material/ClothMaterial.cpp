@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "ClothMaterial.h"
-#include "Scene/SceneBuilderAccess.h"
+#include "GlobalState.h"
 #include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
@@ -36,13 +36,8 @@ namespace Falcor
         const char kShaderFile[] = "Rendering/Materials/ClothMaterial.slang";
     }
 
-    ClothMaterial::SharedPtr ClothMaterial::create(std::shared_ptr<Device> pDevice, const std::string& name)
-    {
-        return SharedPtr(new ClothMaterial(std::move(pDevice), name));
-    }
-
-    ClothMaterial::ClothMaterial(std::shared_ptr<Device> pDevice, const std::string& name)
-        : BasicMaterial(std::move(pDevice), name, MaterialType::Cloth)
+    ClothMaterial::ClothMaterial(ref<Device> pDevice, const std::string& name)
+        : BasicMaterial(pDevice, name, MaterialType::Cloth)
     {
         // Setup additional texture slots.
         mTextureSlotInfo[(uint32_t)TextureSlot::BaseColor] = { "baseColor", TextureChannelFlags::RGBA, true };
@@ -81,10 +76,10 @@ namespace Falcor
 
         FALCOR_SCRIPT_BINDING_DEPENDENCY(BasicMaterial)
 
-        pybind11::class_<ClothMaterial, BasicMaterial, ClothMaterial::SharedPtr> material(m, "ClothMaterial");
+        pybind11::class_<ClothMaterial, BasicMaterial, ref<ClothMaterial>> material(m, "ClothMaterial");
         auto create = [] (const std::string& name)
         {
-            return ClothMaterial::create(getActivePythonSceneBuilder().getDevice(), name);
+            return ClothMaterial::create(accessActivePythonSceneBuilder().getDevice(), name);
         };
         material.def(pybind11::init(create), "name"_a = ""); // PYTHONDEPRECATED
 

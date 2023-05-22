@@ -30,7 +30,7 @@
 #include "USDHelpers.h"
 #include "Core/API/Texture.h"
 #include "Core/API/Sampler.h"
-#include "RenderGraph/BasePasses/ComputePass.h"
+#include "Core/Pass/ComputePass.h"
 #include "Scene/Material/Material.h"
 #include "Scene/Material/StandardMaterial.h"
 #include "StandardMaterialSpec.h"
@@ -56,7 +56,7 @@ public:
     /**
      * Create a new converter, compiling required compute shaders
      */
-    PreviewSurfaceConverter(std::shared_ptr<Device> pDevice);
+    PreviewSurfaceConverter(ref<Device> pDevice);
 
     /**
      * Create a Falcor material from a USD material containing a UsdPreviewSurface shader.
@@ -64,7 +64,7 @@ public:
      * \param primName Name of the primitive to which the material is bound (for warning message reporting only).
      * \return A Falcor material instance representing the UsdPreviewSurface specified in the given material, if any, nullptr otherwise.
      */
-    Material::SharedPtr convert(
+    ref<Material> convert(
         const pxr::UsdShadeMaterial& material,
         const std::string& primName,
         RenderContext* pRenderContext
@@ -72,25 +72,25 @@ public:
 
 private:
     StandardMaterialSpec createSpec(const std::string& name, const UsdShadeShader& shader) const;
-    Texture::SharedPtr loadTexture(const StandardMaterialSpec::ConvertedInput& ci);
+    ref<Texture> loadTexture(const StandardMaterialSpec::ConvertedInput& ci);
 
-    Texture::SharedPtr createSpecularTransmissionTexture(
+    ref<Texture> createSpecularTransmissionTexture(
         StandardMaterialSpec::ConvertedInput& opacity,
-        Texture::SharedPtr opacityTexture,
+        ref<Texture> opacityTexture,
         RenderContext* pRenderContext
     );
-    Texture::SharedPtr packBaseColorAlpha(
+    ref<Texture> packBaseColorAlpha(
         StandardMaterialSpec::ConvertedInput& baseColor,
-        Texture::SharedPtr baseColorTexture,
+        ref<Texture> baseColorTexture,
         StandardMaterialSpec::ConvertedInput& opacity,
-        Texture::SharedPtr opacityTexture,
+        ref<Texture> opacityTexture,
         RenderContext* pRenderContext
     );
-    Texture::SharedPtr createSpecularTexture(
+    ref<Texture> createSpecularTexture(
         StandardMaterialSpec::ConvertedInput& roughness,
-        Texture::SharedPtr roughnessTexture,
+        ref<Texture> roughnessTexture,
         StandardMaterialSpec::ConvertedInput& metallic,
-        Texture::SharedPtr metallicTexture,
+        ref<Texture> metallicTexture,
         RenderContext* pRenderContext
     );
 
@@ -108,27 +108,27 @@ private:
         bool scaleSupported = false
     ) const;
 
-    StandardMaterial::SharedPtr getCachedMaterial(const pxr::UsdShadeShader& shader);
-    StandardMaterial::SharedPtr getCachedMaterial(const StandardMaterialSpec& spec);
+    ref<StandardMaterial> getCachedMaterial(const pxr::UsdShadeShader& shader);
+    ref<StandardMaterial> getCachedMaterial(const StandardMaterialSpec& spec);
 
-    void cacheMaterial(const UsdShadeShader& shader, StandardMaterial::SharedPtr pMaterial);
-    void cacheMaterial(const StandardMaterialSpec& spec, StandardMaterial::SharedPtr pMaterial);
+    void cacheMaterial(const UsdShadeShader& shader, ref<StandardMaterial> pMaterial);
+    void cacheMaterial(const StandardMaterialSpec& spec, ref<StandardMaterial> pMaterial);
 
-    std::shared_ptr<Device> mpDevice;
+    ref<Device> mpDevice;
 
-    ComputePass::SharedPtr mpSpecTransPass; ///< Pass to convert opacity to transparency
-    ComputePass::SharedPtr mpPackAlphaPass; ///< Pass to convert separate RGB and A to RGBA
-    ComputePass::SharedPtr mpSpecularPass;  ///< Pass to create ORM texture
+    ref<ComputePass> mpSpecTransPass; ///< Pass to convert opacity to transparency
+    ref<ComputePass> mpPackAlphaPass; ///< Pass to convert separate RGB and A to RGBA
+    ref<ComputePass> mpSpecularPass;  ///< Pass to create ORM texture
 
-    Sampler::SharedPtr mpSampler; ///< Bilinear clamp sampler
+    ref<Sampler> mpSampler; ///< Bilinear clamp sampler
 
     ///< Map from UsdPreviewSurface-defining UsdShadeShader to Falcor material instance. An entry with a null instance
     ///< indicates in-progress conversion.
-    std::unordered_map<pxr::UsdPrim, StandardMaterial::SharedPtr, UsdObjHash> mPrimMaterialCache;
+    std::unordered_map<pxr::UsdPrim, ref<StandardMaterial>, UsdObjHash> mPrimMaterialCache;
 
     ///< Map from StandardMaterialSpec to Falcor material instance. An entry with a null instance indicates in-progress
     ///< conversion.
-    std::unordered_map<StandardMaterialSpec, StandardMaterial::SharedPtr, SpecHash> mSpecMaterialCache;
+    std::unordered_map<StandardMaterialSpec, ref<StandardMaterial>, SpecHash> mSpecMaterialCache;
 
     std::mutex mMutex; ///< Mutex to ensure serial invocation of calls that are not thread safe (e.g., texture creation
                        ///< and compute program execution).

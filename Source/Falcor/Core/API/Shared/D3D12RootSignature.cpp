@@ -257,7 +257,7 @@ D3D12RootSignature::Desc& D3D12RootSignature::Desc::addRootConstants(uint32_t re
     return *this;
 }
 
-D3D12RootSignature::D3D12RootSignature(std::shared_ptr<Device> pDevice, const Desc& desc) : mpDevice(std::move(pDevice)), mDesc(desc)
+D3D12RootSignature::D3D12RootSignature(ref<Device> pDevice, const Desc& desc) : mpDevice(pDevice), mDesc(desc)
 {
     // Get vector of root parameters
     RootSignatureParams params;
@@ -300,11 +300,11 @@ D3D12RootSignature::D3D12RootSignature(std::shared_ptr<Device> pDevice, const De
 
 D3D12RootSignature::~D3D12RootSignature() {}
 
-D3D12RootSignature::SharedPtr D3D12RootSignature::create(Device* pDevice, const Desc& desc)
+ref<D3D12RootSignature> D3D12RootSignature::create(ref<Device> pDevice, const Desc& desc)
 {
     FALCOR_ASSERT(pDevice);
     pDevice->requireD3D12();
-    return SharedPtr(new D3D12RootSignature(pDevice->shared_from_this(), desc));
+    return ref<D3D12RootSignature>(new D3D12RootSignature(pDevice, desc));
 }
 
 ReflectionResourceType::ShaderAccess getRequiredShaderAccess(D3D12RootSignature::DescType type)
@@ -399,7 +399,7 @@ static void addRootDescriptors(const ParameterBlockReflection* pBlock, D3D12Root
     }
 }
 
-D3D12RootSignature::SharedPtr D3D12RootSignature::create(Device* pDevice, const ProgramReflection* pReflector)
+ref<D3D12RootSignature> D3D12RootSignature::create(ref<Device> pDevice, const ProgramReflection* pReflector)
 {
     FALCOR_ASSERT(pReflector);
     D3D12RootSignature::Desc d;
@@ -437,4 +437,5 @@ void D3D12RootSignature::bindForGraphics(CopyContext* pCtx)
 {
     bindRootSigCommon<true>(pCtx, mApiHandle);
 }
+
 } // namespace Falcor

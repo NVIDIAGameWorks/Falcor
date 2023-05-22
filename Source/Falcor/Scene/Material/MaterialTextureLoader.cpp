@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,9 +30,9 @@
 
 namespace Falcor
 {
-    MaterialTextureLoader::MaterialTextureLoader(const TextureManager::SharedPtr& pTextureManager, bool useSrgb)
+    MaterialTextureLoader::MaterialTextureLoader(TextureManager& textureManager, bool useSrgb)
         : mUseSrgb(useSrgb)
-        , mpTextureManager(pTextureManager)
+        , mTextureManager(textureManager)
     {
     }
 
@@ -41,7 +41,7 @@ namespace Falcor
         assignTextures();
     }
 
-    void MaterialTextureLoader::loadTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const std::filesystem::path& path)
+    void MaterialTextureLoader::loadTexture(const ref<Material>& pMaterial, Material::TextureSlot slot, const std::filesystem::path& path)
     {
         FALCOR_ASSERT(pMaterial);
         if (!pMaterial->hasTextureSlot(slot))
@@ -53,7 +53,7 @@ namespace Falcor
         bool srgb = mUseSrgb && pMaterial->getTextureSlotInfo(slot).srgb;
 
         // Request texture to be loaded.
-        auto handle = mpTextureManager->loadTexture(path, true, srgb);
+        auto handle = mTextureManager.loadTexture(path, true, srgb);
 
         // Store assignment to material for later.
         mTextureAssignments.emplace_back(TextureAssignment{ pMaterial, slot, handle });
@@ -61,12 +61,12 @@ namespace Falcor
 
     void MaterialTextureLoader::assignTextures()
     {
-        mpTextureManager->waitForAllTexturesLoading();
+        mTextureManager.waitForAllTexturesLoading();
 
         // Assign textures to materials.
         for (const auto& assignment : mTextureAssignments)
         {
-            auto pTexture = mpTextureManager->getTexture(assignment.handle);
+            auto pTexture = mTextureManager.getTexture(assignment.handle);
             assignment.pMaterial->setTexture(assignment.textureSlot, pTexture);
         }
     }

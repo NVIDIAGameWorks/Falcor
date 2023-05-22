@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -35,48 +35,53 @@ FALCOR_SCRIPT_BINDING(Rectangle)
 {
     using namespace pybind11::literals;
 
-    pybind11::class_<Rectangle> uvTile(m, "Rectangle");
+    pybind11::class_<Rectangle> rectangle(m, "Rectangle");
 
-    uvTile.def(pybind11::init<>());
-    uvTile.def(pybind11::init<const float2&>(), "p"_a);
-    uvTile.def(pybind11::init<const float2&, const float2&>(), "pmin"_a, "pmax"_a);
+    rectangle.def(pybind11::init<>());
+    rectangle.def(pybind11::init<const float2&>(), "p"_a);
+    rectangle.def(pybind11::init<const float2&, const float2&>(), "min_point"_a, "max_point"_a);
 
-    uvTile.def(
+    rectangle.def(
         "__repr__",
-        [](const Rectangle& uvTile)
+        [](const Rectangle& rectangle)
         {
-            return "uvTile(minPoint=" + std::string(pybind11::repr(pybind11::cast(uvTile.minPoint))) +
-                   ", maxPoint=" + std::string(pybind11::repr(pybind11::cast(uvTile.maxPoint))) + ")";
+            return "Rectangle(min_point=" + std::string(pybind11::repr(pybind11::cast(rectangle.minPoint))) +
+                   ", max_point=" + std::string(pybind11::repr(pybind11::cast(rectangle.maxPoint))) + ")";
         }
     );
-    uvTile.def(
+    rectangle.def(
         "__str__",
-        [](const Rectangle& uvTile)
+        [](const Rectangle& rectangle)
         {
-            return "[" + std::string(pybind11::str(pybind11::cast(uvTile.minPoint))) + ", " +
-                   std::string(pybind11::str(pybind11::cast(uvTile.maxPoint))) + "]";
+            return "[" + std::string(pybind11::str(pybind11::cast(rectangle.minPoint))) + ", " +
+                   std::string(pybind11::str(pybind11::cast(rectangle.maxPoint))) + "]";
         }
     );
 
-    uvTile.def_readwrite("minPoint", &Rectangle::minPoint);
-    uvTile.def_readwrite("maxPoint", &Rectangle::maxPoint);
+    rectangle.def_readwrite("min_point", &Rectangle::minPoint);
+    rectangle.def_readwrite("max_point", &Rectangle::maxPoint);
 
-    uvTile.def_property_readonly("valid", &Rectangle::valid);
-    uvTile.def_property_readonly("center", &Rectangle::center);
-    uvTile.def_property_readonly("extent", &Rectangle::extent);
-    uvTile.def_property_readonly("area", &Rectangle::area);
-    uvTile.def_property_readonly("radius", &Rectangle::radius);
+    rectangle.def_property_readonly("valid", &Rectangle::valid);
+    rectangle.def_property_readonly("center", &Rectangle::center);
+    rectangle.def_property_readonly("extent", &Rectangle::extent);
+    rectangle.def_property_readonly("area", &Rectangle::area);
+    rectangle.def_property_readonly("radius", &Rectangle::radius);
 
-    uvTile.def("invalidate", &Rectangle::invalidate);
-    uvTile.def("include", pybind11::overload_cast<const float2&>(&Rectangle::include), "p"_a);
-    uvTile.def("include", pybind11::overload_cast<const Rectangle&>(&Rectangle::include), "b"_a);
-    uvTile.def("intersection", &Rectangle::intersection);
+    rectangle.def("invalidate", &Rectangle::invalidate);
+    rectangle.def("include", pybind11::overload_cast<const float2&>(&Rectangle::include), "p"_a);
+    rectangle.def("include", pybind11::overload_cast<const Rectangle&>(&Rectangle::include), "b"_a);
+    rectangle.def("intersection", &Rectangle::intersection);
 
-    uvTile.def(pybind11::self == pybind11::self);
-    uvTile.def(pybind11::self != pybind11::self);
-    uvTile.def(pybind11::self | pybind11::self);
-    uvTile.def(pybind11::self |= pybind11::self);
-    uvTile.def(pybind11::self & pybind11::self);
-    uvTile.def(pybind11::self &= pybind11::self);
+    rectangle.def(pybind11::self == pybind11::self);
+    rectangle.def(pybind11::self != pybind11::self);
+    rectangle.def(pybind11::self | pybind11::self);
+    rectangle.def(pybind11::self |= pybind11::self);
+    rectangle.def(pybind11::self & pybind11::self);
+    rectangle.def(pybind11::self &= pybind11::self);
+
+    // PYTHONDEPRECATED BEGIN
+    rectangle.def_readwrite("minPoint", &Rectangle::minPoint);
+    rectangle.def_readwrite("maxPoint", &Rectangle::maxPoint);
+    // PYTHONDEPRECATED END
 }
 } // namespace Falcor

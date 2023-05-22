@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,6 +31,17 @@ __exported import Scene.HitInfo;
 import Scene.Material.ShadingUtils;
 import Utils.Math.MathHelpers;
 
+/** Determine hints to use when creating the material instance.
+*/
+uint getMaterialInstanceHints()
+{
+    uint hints = 0;
+#if GBUFFER_ADJUST_SHADING_NORMALS
+    hints |= (uint)MaterialInstanceHints::AdjustShadingNormal;
+#endif
+    return hints;
+}
+
 /** Helper for setting up the ShadingData struct based on loaded data.
     \param[in] pixel Current pixel coordinates.
     \param[in] frameDim Frame dimensions in pixel.
@@ -58,10 +69,6 @@ bool loadShadingData(const uint2 pixel, const uint2 frameDim, const Camera camer
         const uint materialID = gScene.getMaterialID(triangleHit.instanceID);
         sd = gScene.materials.prepareShadingData(v, materialID, -rayDir, lod);
 
-        // Adjust shading normals if GBuffer pass has flag enabled.
-#if GBUFFER_ADJUST_SHADING_NORMALS
-        adjustShadingNormal(sd);
-#endif
         valid = true;
     }
 

@@ -45,23 +45,8 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
     registry.registerClass<RenderPass, ImageLoader>();
 }
 
-RenderPassReflection ImageLoader::reflect(const CompileData& compileData)
-{
-    RenderPassReflection reflector;
-    uint2 fixedSize = mpTex ? uint2(mpTex->getWidth(), mpTex->getHeight()) : uint2(0);
-    const uint2 sz = RenderPassHelpers::calculateIOSize(mOutputSizeSelection, fixedSize, compileData.defaultTexDims);
-
-    reflector.addOutput(kDst, "Destination texture").format(mOutputFormat).texture2D(sz.x, sz.y);
-    return reflector;
-}
-
-ImageLoader::SharedPtr ImageLoader::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-{
-    return SharedPtr(new ImageLoader(std::move(pDevice), dict));
-}
-
-ImageLoader::ImageLoader(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-    : RenderPass(std::move(pDevice))
+ImageLoader::ImageLoader(ref<Device> pDevice, const Dictionary& dict)
+    : RenderPass(pDevice)
 {
     for (const auto& [key, value] : dict)
     {
@@ -82,6 +67,16 @@ ImageLoader::ImageLoader(std::shared_ptr<Device> pDevice, const Dictionary& dict
             throw RuntimeError("ImageLoader: Failed to load image from '{}'", mImagePath);
         }
     }
+}
+
+RenderPassReflection ImageLoader::reflect(const CompileData& compileData)
+{
+    RenderPassReflection reflector;
+    uint2 fixedSize = mpTex ? uint2(mpTex->getWidth(), mpTex->getHeight()) : uint2(0);
+    const uint2 sz = RenderPassHelpers::calculateIOSize(mOutputSizeSelection, fixedSize, compileData.defaultTexDims);
+
+    reflector.addOutput(kDst, "Destination texture").format(mOutputFormat).texture2D(sz.x, sz.y);
+    return reflector;
 }
 
 Dictionary ImageLoader::getScriptingDictionary()
@@ -144,7 +139,7 @@ void ImageLoader::renderUI(Gui::Widgets& widget)
         if (mpTex->getMipCount() > 1) widget.slider("Mip Level", mMipLevel, 0u, mpTex->getMipCount() - 1);
         if (mpTex->getArraySize() > 1) widget.slider("Array Slice", mArraySlice, 0u, mpTex->getArraySize() - 1);
 
-        widget.image(mImagePath.string().c_str(), mpTex, { 320, 320 });
+        widget.image(mImagePath.string().c_str(), mpTex.get(), { 320, 320 });
         widget.text("Image format: " + to_string(mpTex->getFormat()));
         widget.text("Image size: (" + std::to_string(mpTex->getWidth()) + ", " + std::to_string(mpTex->getHeight()) + ")");
         widget.text("Output format: " + to_string(mOutputFormat));
@@ -180,7 +175,7 @@ bool ImageLoader::loadImage(const std::filesystem::path& path)
     if (findFileInDataDirectories(mImagePath, fullPath))
     {
         mImagePath = fullPath;
-        mpTex = Texture::createFromFile(mpDevice.get(), mImagePath, mGenerateMips, mLoadSRGB);
+        mpTex = Texture::createFromFile(mpDevice, mImagePath, mGenerateMips, mLoadSRGB);
         return mpTex != nullptr;
     }
     else

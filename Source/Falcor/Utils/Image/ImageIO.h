@@ -33,88 +33,96 @@
 
 namespace Falcor
 {
-    class CopyContext;
+class CopyContext;
 
-    class FALCOR_API ImageIO
+class FALCOR_API ImageIO
+{
+public:
+    enum class CompressionMode
     {
-    public:
-        enum class CompressionMode
-        {
-            /** Stores RGB data with 1 bit of alpha.
-                8 bytes per block.
-            */
-            BC1,
+        /// Stores RGB data with 1 bit of alpha.
+        /// 8 bytes per block.
+        BC1,
 
-            /** Stores RGBA data. Combines BC1 for RGB with 4 bits of alpha.
-                16 bytes per block.
-            */
-            BC2,
+        /// Stores RGBA data. Combines BC1 for RGB with 4 bits of alpha.
+        /// 16 bytes per block.
+        BC2,
 
-            /** Stores RGBA data. Combines BC1 for RGB and BC4 for alpha.
-                16 bytes per block.
-            */
-            BC3,
+        /// Stores RGBA data. Combines BC1 for RGB and BC4 for alpha.
+        /// 16 bytes per block.
+        BC3,
 
-            /** Stores a single grayscale channel.
-                8 bytes per block.
-            */
-            BC4,
+        /// Stores a single grayscale channel.
+        /// 8 bytes per block.
+        BC4,
 
-            /** Stores two channels using BC4 for each channel.
-                16 bytes per block.
-            */
-            BC5,
+        /// Stores two channels using BC4 for each channel.
+        /// 16 bytes per block.
+        BC5,
 
-            /** Stores RGB 16-bit floating point data.
-                16 bytes per block.
-            */
-            BC6,
+        /// Stores RGB 16-bit floating point data.
+        /// 16 bytes per block.
+        BC6,
 
-            /** Stores 8-bit RGB or RGBA data.
-                16 bytes per block.
-            */
-            BC7,
+        /// Stores 8-bit RGB or RGBA data.
+        /// 16 bytes per block.
+        BC7,
 
-            /** No compression mode specified.
-            */
-            None
-        };
-
-        /** Load a DDS file to a Bitmap. If the file contains an image array and/or mips, only the first image will be loaded.
-            Throws an exception if the DDS file is malformed.
-            \param[in] path Path of file to load.
-            \return Bitmap object containing image data if loading was successful. Otherwise, nullptr.
-        */
-        static Bitmap::UniqueConstPtr loadBitmapFromDDS(const std::filesystem::path& path); // top down = true
-
-        /** Load a DDS file to a Texture.
-            Throws an exception if the DDS file is malformed.
-            \param[in] path Path of file to load.
-            \param[in] loadAsSrgb If true, convert the image format property to a corresponding sRGB format if available. Image data is not changed.
-            \return Texture object containing image data if loading was successful. Otherwise, nullptr.
-        */
-        static Texture::SharedPtr loadTextureFromDDS(Device* pDevice, const std::filesystem::path& path, bool loadAsSrgb);
-
-        /** Saves a bitmap to a DDS file.
-            Throws an exception if path is invalid or the image cannot be saved.
-            \param[in] path Path to save to.
-            \param[in] bitmap Bitmap object to save.
-            \param[in] mode Block compression mode. By default, will save data as-is and will not decompress if already compressed.
-            \param[in] if true, generate and save full mipmap chain; requires the caller to have initialized COM.
-        */
-        static void saveToDDS(const std::filesystem::path& path, const Bitmap& bitmap, CompressionMode mode = CompressionMode::None, bool generateMips = false);
-
-        /** Saves a Texture to a DDS file. All mips and array images are saved.
-            Throws an exception if the path is invalid or the image cannot be saved.
-
-            TODO: Support exporting single subresource. Options for one or all are probably enough?
-
-            \param[in] pContext Copy context used to read texture data from the GPU.
-            \param[in] path Path to save to.
-            \param[in] pBitmap Bitmap object to save.
-            \param[in] mode Block compression mode. By default, will save data as-is and will not decompress if already compressed.
-            \param[in] if true, generate and save full mipmap chain; requires the caller to have initialized COM.
-        */
-        static void saveToDDS(CopyContext* pContext, const std::filesystem::path& path, const Texture::SharedPtr& pTexture, CompressionMode mode = CompressionMode::None, bool generateMips = false);
+        /// No compression mode specified.
+        None
     };
-}
+
+    /**
+     * Load a DDS file to a Bitmap. If the file contains an image array and/or mips, only the first image will be loaded.
+     * Throws an exception if the DDS file is malformed.
+     * @param[in] path Path of file to load.
+     * @return Bitmap object containing image data if loading was successful. Otherwise, nullptr.
+     */
+    static Bitmap::UniqueConstPtr loadBitmapFromDDS(const std::filesystem::path& path); // top down = true
+
+    /**
+     * Load a DDS file to a Texture.
+     * Throws an exception if the DDS file is malformed.
+     * @param[in] path Path of file to load.
+     * @param[in] loadAsSrgb If true, convert the image format property to a corresponding sRGB format if available. Image data is not
+     * changed.
+     * @return Texture object containing image data if loading was successful. Otherwise, nullptr.
+     */
+    static ref<Texture> loadTextureFromDDS(ref<Device> pDevice, const std::filesystem::path& path, bool loadAsSrgb);
+
+    /**
+     * Saves a bitmap to a DDS file.
+     * Throws an exception if path is invalid or the image cannot be saved.
+     * @param[in] path Path to save to.
+     * @param[in] bitmap Bitmap object to save.
+     * @param[in] mode Block compression mode. By default, will save data as-is and will not decompress if already compressed.
+     * @param[in] if true, generate and save full mipmap chain; requires the caller to have initialized COM.
+     */
+    static void saveToDDS(
+        const std::filesystem::path& path,
+        const Bitmap& bitmap,
+        CompressionMode mode = CompressionMode::None,
+        bool generateMips = false
+    );
+
+    /**
+     * Saves a Texture to a DDS file. All mips and array images are saved.
+     * Throws an exception if the path is invalid or the image cannot be saved.
+     *
+     * TODO: Support exporting single subresource. Options for one or all are probably enough?
+     *
+     * @param[in] pContext Copy context used to read texture data from the GPU.
+     * @param[in] path Path to save to.
+     * @param[in] pBitmap Bitmap object to save.
+     * @param[in] mode Block compression mode. By default, will save data as-is and will not decompress if already compressed.
+     * @param[in] if true, generate and save full mipmap chain; requires the caller to have initialized COM.
+     */
+    static void saveToDDS(
+        CopyContext* pContext,
+        const std::filesystem::path& path,
+        const ref<Texture>& pTexture,
+        CompressionMode mode = CompressionMode::None,
+        bool generateMips = false
+    );
+};
+} // namespace Falcor

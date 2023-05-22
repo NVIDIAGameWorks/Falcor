@@ -52,7 +52,7 @@ void testWhiteFurnace(GPUUnitTestContext& ctx, const std::string& funcName, cons
     }
 
     // Create sample generator.
-    SampleGenerator::SharedPtr pSampleGenerator = SampleGenerator::create(ctx.getDevice(), SAMPLE_GENERATOR_UNIFORM);
+    ref<SampleGenerator> pSampleGenerator = SampleGenerator::create(ctx.getDevice(), SAMPLE_GENERATOR_UNIFORM);
 
     // Setup GPU test.
     auto defines = pSampleGenerator->getDefines();
@@ -107,7 +107,7 @@ GPU_TEST(HairChiang16_PbrtReference)
     }
 
     // Create sample generator.
-    SampleGenerator::SharedPtr pSampleGenerator = SampleGenerator::create(ctx.getDevice(), SAMPLE_GENERATOR_UNIFORM);
+    ref<SampleGenerator> pSampleGenerator = SampleGenerator::create(ctx.getDevice(), SAMPLE_GENERATOR_UNIFORM);
 
     // Setup GPU test.
     auto defines = pSampleGenerator->getDefines();
@@ -165,7 +165,7 @@ GPU_TEST(HairChiang16_ImportanceSamplingWeights)
     }
 
     // Create sample generator.
-    SampleGenerator::SharedPtr pSampleGenerator = SampleGenerator::create(ctx.getDevice(), SAMPLE_GENERATOR_UNIFORM);
+    ref<SampleGenerator> pSampleGenerator = SampleGenerator::create(ctx.getDevice(), SAMPLE_GENERATOR_UNIFORM);
 
     // Setup GPU test.
     auto defines = pSampleGenerator->getDefines();
@@ -215,7 +215,7 @@ GPU_TEST(HairChiang16_SamplingConsistency)
     }
 
     // Create sample generator.
-    SampleGenerator::SharedPtr pSampleGenerator = SampleGenerator::create(ctx.getDevice(), SAMPLE_GENERATOR_UNIFORM);
+    ref<SampleGenerator> pSampleGenerator = SampleGenerator::create(ctx.getDevice(), SAMPLE_GENERATOR_UNIFORM);
 
     // Setup GPU test.
     auto defines = pSampleGenerator->getDefines();

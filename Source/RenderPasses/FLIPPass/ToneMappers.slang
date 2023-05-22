@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -100,7 +100,7 @@ float3 toneMap(float3 col, FLIPToneMapperType toneMapper = FLIPToneMapperType::A
     float3 nom = k0 * colSq + k1 * col + k2;
     float3 denom = k3 * colSq + k4 * col + k5;
 
-    denom = isinf(denom) ? 1.0f : denom; // avoid inf / inf division
+    denom = select(isinf(denom), 1.0f, denom); // avoid inf / inf division
 
     float3 toneMappedCol = nom / denom;
 

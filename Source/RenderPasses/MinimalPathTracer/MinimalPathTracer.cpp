@@ -61,13 +61,8 @@ namespace
     const char kUseImportanceSampling[] = "useImportanceSampling";
 }
 
-MinimalPathTracer::SharedPtr MinimalPathTracer::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-{
-    return SharedPtr(new MinimalPathTracer(std::move(pDevice), dict));
-}
-
-MinimalPathTracer::MinimalPathTracer(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-    : RenderPass(std::move(pDevice))
+MinimalPathTracer::MinimalPathTracer(ref<Device> pDevice, const Dictionary& dict)
+    : RenderPass(pDevice)
 {
     parseDictionary(dict);
 
@@ -214,7 +209,7 @@ void MinimalPathTracer::renderUI(Gui::Widgets& widget)
     }
 }
 
-void MinimalPathTracer::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
+void MinimalPathTracer::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
 {
     // Clear data for previous scene.
     // After changing scene, the raytracing program should to be recreated.

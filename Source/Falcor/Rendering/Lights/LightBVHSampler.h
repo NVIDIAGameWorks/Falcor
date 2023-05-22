@@ -51,9 +51,6 @@ namespace Falcor
     class FALCOR_API LightBVHSampler : public EmissiveLightSampler
     {
     public:
-        using SharedPtr = std::shared_ptr<LightBVHSampler>;
-        using SharedConstPtr = std::shared_ptr<const LightBVHSampler>;
-
         /** LightBVHSampler configuration.
             Note if you change options, please update FALCOR_SCRIPT_BINDING in LightBVHSampler.cpp
         */
@@ -74,14 +71,13 @@ namespace Falcor
             Options() {}
         };
 
-        virtual ~LightBVHSampler() = default;
-
         /** Creates a LightBVHSampler for a given scene.
             \param[in] pRenderContext The render context.
             \param[in] pScene The scene.
             \param[in] options The options to override the default behavior.
         */
-        static SharedPtr create(RenderContext* pRenderContext, Scene::SharedPtr pScene, const Options& options = Options());
+        LightBVHSampler(RenderContext* pRenderContext, ref<Scene> pScene, const Options& options = Options());
+        virtual ~LightBVHSampler() = default;
 
         /** Updates the sampler to the current frame.
             \param[in] pRenderContext The render context.
@@ -109,8 +105,6 @@ namespace Falcor
         const Options& getOptions() const { return mOptions; }
 
     protected:
-        LightBVHSampler(RenderContext* pRenderContext, Scene::SharedPtr pScene, const Options& options);
-
         /// Configuration options.
         Options mOptions;
 

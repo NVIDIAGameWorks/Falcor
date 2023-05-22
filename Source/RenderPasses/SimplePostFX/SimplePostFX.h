@@ -37,21 +37,16 @@ class SimplePostFX : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(SimplePostFX, "SimplePostFX", "Simple set of post effects.");
 
-    using SharedPtr = std::shared_ptr<SimplePostFX>;
+    static ref<SimplePostFX> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<SimplePostFX>(pDevice, dict); }
 
-    /** Create a new render pass object.
-        \param[in] pDevice GPU device.
-        \param[in] dict Dictionary of serialized parameters.
-        \return A new object, or an exception is thrown if creation failed.
-    */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const Dictionary& dict);
+    SimplePostFX(ref<Device> pDevice, const Dictionary& dict);
 
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override {}
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
-    virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override {}
+    virtual void setScene(RenderContext* pRenderContext, const ref<Scene>& pScene) override {}
 
     bool    getEnabled() const { return mEnabled; }
     float   getWipe() const { return mWipe; }
@@ -86,8 +81,6 @@ public:
     void setColorPowerScalar(float v) { mColorPowerScalar = v; }
 
 private:
-    SimplePostFX(std::shared_ptr<Device> pDevice, const Dictionary& dict);
-
     void preparePostFX(RenderContext* pRenderContext, uint32_t width, uint32_t height);
 
     const static int kNumLevels = 8;
@@ -95,12 +88,12 @@ private:
     RenderPassHelpers::IOSize mOutputSizeSelection = RenderPassHelpers::IOSize::Default;    ///< Selected output size.
     uint2 mFixedOutputSize = { 512, 512 };                                                  ///< Output size in pixels when 'Fixed' size is selected.
 
-    ComputePass::SharedPtr      mpDownsamplePass;
-    ComputePass::SharedPtr      mpUpsamplePass;
-    ComputePass::SharedPtr      mpPostFXPass;
+    ref<ComputePass>    mpDownsamplePass;
+    ref<ComputePass>    mpUpsamplePass;
+    ref<ComputePass>    mpPostFXPass;
 
-    Texture::SharedPtr          mpPyramid[kNumLevels + 1];                  ///< Image pyramid, fine to coarse, full res down in steps of 4x (16x area).
-    Sampler::SharedPtr          mpLinearSampler;
+    ref<Texture>        mpPyramid[kNumLevels + 1];                          ///< Image pyramid, fine to coarse, full res down in steps of 4x (16x area).
+    ref<Sampler>        mpLinearSampler;
 
     float   mWipe = 0.f;                                                    ///< Wipe across to see the effect without fx. 0<=all effect, 1>= disabled.
     bool    mEnabled = true;                                                ///< Enable the entire pass.

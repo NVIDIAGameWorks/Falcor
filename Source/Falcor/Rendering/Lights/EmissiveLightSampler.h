@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,7 +30,6 @@
 #include "Core/Macros.h"
 #include "Core/Program/Program.h"
 #include "Scene/Scene.h"
-#include <memory>
 
 namespace Falcor
 {
@@ -45,7 +44,6 @@ namespace Falcor
     class FALCOR_API EmissiveLightSampler
     {
     public:
-        using SharedPtr = std::shared_ptr<EmissiveLightSampler>;
         virtual ~EmissiveLightSampler() = default;
 
         /** Updates the sampler to the current frame.
@@ -74,10 +72,10 @@ namespace Falcor
         EmissiveLightSamplerType getType() const { return mType; }
 
     protected:
-        EmissiveLightSampler(EmissiveLightSamplerType type, Scene::SharedPtr pScene) : mType(type), mpScene(pScene) {}
+        EmissiveLightSampler(EmissiveLightSamplerType type, ref<Scene> pScene) : mType(type), mpScene(pScene) {}
 
         // Internal state
         const EmissiveLightSamplerType mType;       ///< Type of emissive sampler. See EmissiveLightSamplerType.slangh.
-        Scene::SharedPtr mpScene;
+        ref<Scene> mpScene;
     };
 }

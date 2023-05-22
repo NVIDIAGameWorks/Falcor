@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,9 +26,13 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "TestRtProgram.h"
+#include "TestPyTorchPass.h"
 
 extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
     registry.registerClass<RenderPass, TestRtProgram>();
+    registry.registerClass<RenderPass, TestPyTorchPass>();
+
     ScriptBindings::registerBinding(TestRtProgram::registerScriptBindings);
+    ScriptBindings::registerBinding(TestPyTorchPass::registerScriptBindings);
 }

@@ -79,13 +79,8 @@ const Gui::RadioButtonGroup ErrorMeasurePass::sOutputSelectionButtonsSourceOnly 
     { (uint32_t)OutputId::Source, "Source", true }
 };
 
-ErrorMeasurePass::SharedPtr ErrorMeasurePass::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-{
-    return SharedPtr(new ErrorMeasurePass(std::move(pDevice), dict));
-}
-
-ErrorMeasurePass::ErrorMeasurePass(std::shared_ptr<Device> pDevice, const Dictionary& dict)
-    : RenderPass(std::move(pDevice))
+ErrorMeasurePass::ErrorMeasurePass(ref<Device> pDevice, const Dictionary& dict)
+    : RenderPass(pDevice)
 {
     for (const auto& [key, value] : dict)
     {
@@ -140,8 +135,8 @@ RenderPassReflection ErrorMeasurePass::reflect(const CompileData& compileData)
 
 void ErrorMeasurePass::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    Texture::SharedPtr pSourceImageTexture = renderData.getTexture(kInputChannelSourceImage);
-    Texture::SharedPtr pOutputImageTexture = renderData.getTexture(kOutputChannelImage);
+    ref<Texture> pSourceImageTexture = renderData.getTexture(kInputChannelSourceImage);
+    ref<Texture> pOutputImageTexture = renderData.getTexture(kOutputChannelImage);
 
     // Create the texture for the difference image if this is our first
     // time through or if the source image resolution has changed.
@@ -149,14 +144,14 @@ void ErrorMeasurePass::execute(RenderContext* pRenderContext, const RenderData& 
     if (!mpDifferenceTexture || mpDifferenceTexture->getWidth() != width ||
         mpDifferenceTexture->getHeight() != height)
     {
-        mpDifferenceTexture = Texture::create2D(mpDevice.get(), width, height, ResourceFormat::RGBA32Float, 1, 1, nullptr,
+        mpDifferenceTexture = Texture::create2D(mpDevice, width, height, ResourceFormat::RGBA32Float, 1, 1, nullptr,
                                                 Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
         FALCOR_ASSERT(mpDifferenceTexture);
     }
 
     mMeasurements.valid = false;
 
-    Texture::SharedPtr pReference = getReference(renderData);
+    ref<Texture> pReference = getReference(renderData);
     if (!pReference)
     {
         // We don't have a reference image, so just copy the source image to the output.
@@ -188,20 +183,21 @@ void ErrorMeasurePass::execute(RenderContext* pRenderContext, const RenderData& 
 void ErrorMeasurePass::runDifferencePass(RenderContext* pRenderContext, const RenderData& renderData)
 {
     // Bind textures.
-    Texture::SharedPtr pSourceTexture = renderData.getTexture(kInputChannelSourceImage);
-    Texture::SharedPtr pWorldPositionTexture = renderData.getTexture(kInputChannelWorldPosition);
-    mpErrorMeasurerPass["gReference"] = getReference(renderData);
-    mpErrorMeasurerPass["gSource"] = pSourceTexture;
-    mpErrorMeasurerPass["gWorldPosition"] = pWorldPositionTexture;
-    mpErrorMeasurerPass["gResult"] = mpDifferenceTexture;
+    ref<Texture> pSourceTexture = renderData.getTexture(kInputChannelSourceImage);
+    ref<Texture> pWorldPositionTexture = renderData.getTexture(kInputChannelWorldPosition);
+    auto var = mpErrorMeasurerPass->getRootVar();
+    var["gReference"] = getReference(renderData);
+    var["gSource"] = pSourceTexture;
+    var["gWorldPosition"] = pWorldPositionTexture;
+    var["gResult"] = mpDifferenceTexture;
 
     // Set constant buffer parameters.
     const uint2 resolution = uint2(pSourceTexture->getWidth(), pSourceTexture->getHeight());
-    mpErrorMeasurerPass[kConstantBufferName]["gResolution"] = resolution;
+    var[kConstantBufferName]["gResolution"] = resolution;
     // If the world position texture is unbound, then don't do the background pixel check.
-    mpErrorMeasurerPass[kConstantBufferName]["gIgnoreBackground"] = (uint32_t)(mIgnoreBackground && pWorldPositionTexture);
-    mpErrorMeasurerPass[kConstantBufferName]["gComputeDiffSqr"] = (uint32_t)mComputeSquaredDifference;
-    mpErrorMeasurerPass[kConstantBufferName]["gComputeAverage"] = (uint32_t)mComputeAverage;
+    var[kConstantBufferName]["gIgnoreBackground"] = (uint32_t)(mIgnoreBackground && pWorldPositionTexture);
+    var[kConstantBufferName]["gComputeDiffSqr"] = (uint32_t)mComputeSquaredDifference;
+    var[kConstantBufferName]["gComputeAverage"] = (uint32_t)mComputeAverage;
 
     // Run the compute shader.
     mpErrorMeasurerPass->execute(pRenderContext, resolution.x, resolution.y);
@@ -213,7 +209,7 @@ void ErrorMeasurePass::runReductionPasses(RenderContext* pRenderContext, const R
     mpParallelReduction->execute(pRenderContext, mpDifferenceTexture, ParallelReduction::Type::Sum, &error);
 
     const float pixelCountf = static_cast<float>(mpDifferenceTexture->getWidth() * mpDifferenceTexture->getHeight());
-    mMeasurements.error = error / pixelCountf;
+    mMeasurements.error = error.xyz() / pixelCountf;
     mMeasurements.avgError = (mMeasurements.error.x + mMeasurements.error.y + mMeasurements.error.z) / 3.f;
     mMeasurements.valid = true;
 
@@ -350,7 +346,7 @@ void ErrorMeasurePass::loadReference()
     if (mReferenceImagePath.empty()) return;
 
     // TODO: it would be nice to also be able to take the reference image as an input.
-    mpReferenceTexture = Texture::createFromFile(mpDevice.get(), mReferenceImagePath, false /* no MIPs */, false /* linear color */);
+    mpReferenceTexture = Texture::createFromFile(mpDevice, mReferenceImagePath, false /* no MIPs */, false /* linear color */);
     if (!mpReferenceTexture)
     {
         reportError(fmt::format("Failed to load texture from '{}'", mReferenceImagePath));
@@ -361,7 +357,7 @@ void ErrorMeasurePass::loadReference()
     mRunningAvgError = -1.f;   // Mark running error values as invalid.
 }
 
-Texture::SharedPtr ErrorMeasurePass::getReference(const RenderData& renderData) const
+ref<Texture> ErrorMeasurePass::getReference(const RenderData& renderData) const
 {
     return mUseLoadedReference ? mpReferenceTexture : renderData.getTexture(kInputChannelReferenceImage);
 }

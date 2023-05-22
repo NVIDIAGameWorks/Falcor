@@ -32,48 +32,53 @@
 
 namespace Falcor
 {
-    class RenderContext;
-    struct MouseEvent;
-    struct KeyboardEvent;
+class RenderContext;
+struct MouseEvent;
+struct KeyboardEvent;
 
-    /** Magnifies a region of the screen to assist with inspecting details
-    */
-    class PixelZoom
-    {
-    public:
-        /// Constructor. Throws an exception if creation failed.
-        PixelZoom(std::shared_ptr<Device> pDevice, const Fbo* pBackbuffer);
+/**
+ * Magnifies a region of the screen to assist with inspecting details
+ */
+class PixelZoom
+{
+public:
+    /// Constructor. Throws an exception if creation failed.
+    PixelZoom(ref<Device> pDevice, const Fbo* pBackbuffer);
 
-        /** Does zoom operation if mShouldZoom is true (if ctrl+alt pressed this frame)
-            \param pCtx Pointer to the render context
-            \param backbuffer Pointer to the swap chain FBO
-        */
-        void render(RenderContext* pCtx, Fbo* backBuffer);
+    /**
+     * Does zoom operation if mShouldZoom is true (if ctrl+alt pressed this frame)
+     * @param pCtx Pointer to the render context
+     * @param backbuffer Pointer to the swap chain FBO
+     */
+    void render(RenderContext* pCtx, Fbo* backBuffer);
 
-        /** Stores data about mouse needed for zooming
-            \param me the mouse event
-        */
-        bool onMouseEvent(const MouseEvent& me);
+    /**
+     * Stores data about mouse needed for zooming
+     * @param me the mouse event
+     */
+    bool onMouseEvent(const MouseEvent& me);
 
-        /** Checks if it should zoom
-            \param ke Keyboard event
-        */
-        bool onKeyboardEvent(const KeyboardEvent& ke);
+    /**
+     * Checks if it should zoom
+     * @param ke Keyboard event
+     */
+    bool onKeyboardEvent(const KeyboardEvent& ke);
 
-        /** Handle resize events
-        */
-        void onResize(const Fbo* pBackbuffer);
+    /**
+     * Handle resize events
+     */
+    void onResize(const Fbo* pBackbuffer);
 
-    private:
-        std::shared_ptr<Device> mpDevice;
+private:
+    ref<Device> mpDevice;
 
-        int32_t mSrcZoomSize = 5;
-        const uint32_t mDstZoomSize = 200;
-        const uint32_t mZoomCoefficient = 4;
+    int32_t mSrcZoomSize = 5;
+    const uint32_t mDstZoomSize = 200;
+    const uint32_t mZoomCoefficient = 4;
 
-        Fbo::SharedPtr mpSrcBlitFbo;
-        Fbo::SharedPtr mpDstBlitFbo;
-        float2 mMousePos = {};
-        bool mShouldZoom = false;
-    };
-}
+    ref<Fbo> mpSrcBlitFbo;
+    ref<Fbo> mpDstBlitFbo;
+    float2 mMousePos = {};
+    bool mShouldZoom = false;
+};
+} // namespace Falcor
