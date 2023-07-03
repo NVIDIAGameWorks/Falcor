@@ -89,6 +89,8 @@ target_sources(FalcorTest PRIVATE
     Tests/Slang/ShaderStringInline.cs.slang
     Tests/Slang/ShaderStringModule.cs.slang
     Tests/Slang/ShaderStringUtil.slang
+    Tests/Slang/SlangExtension.cpp
+    Tests/Slang/SlangExtension.cs.slang
     Tests/Slang/SlangInheritance.cpp
     Tests/Slang/SlangInheritance.cs.slang
     Tests/Slang/SlangMutatingTests.cpp
