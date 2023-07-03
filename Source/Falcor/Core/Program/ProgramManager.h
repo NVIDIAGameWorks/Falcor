@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Program.h"
+#include "Core/Macros.h"
 #include "Core/API/fwd.h"
 
 #include <memory>
@@ -34,7 +35,7 @@
 namespace Falcor
 {
 
-class ProgramManager
+class FALCOR_API ProgramManager
 {
 public:
     ProgramManager(Device* pDevice);

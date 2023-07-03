@@ -6,16 +6,16 @@ Falcor is a real-time rendering framework supporting DirectX 12 and Vulkan. It a
 
 Features include:
 * Abstracting many common graphics operations, such as shader compilation, model loading, and scene rendering
-* DirectX Raytracing abstraction
-* Render Graph system
-* Python scripting
-* Common rendering effects such as shadows and post-processing effects
+* Raytracing support
+* Python scripting support
+* Render graph system to build modular renderers
+* Common rendering techniques such post-processing effects
 * Unbiased path tracer
-* Integration of various RTX SDKs: DLSS, RTXGI, RTXDI, NRD
+* Integration of various RTX SDKs such as DLSS, RTXDI and NRD
 
 ## Prerequisites
 - Windows 10 version 20H2 (October 2020 Update) or newer, OS build revision .789 or newer
-- Visual Studio 2019
+- Visual Studio 2022
 - [Windows 10 SDK (10.0.19041.0) for Windows 10, version 2004](https://developer.microsoft.com/en-us/windows/downloads/windows-10-sdk/)
 - A GPU which supports DirectX Raytracing, such as the NVIDIA Titan V or GeForce RTX
 - NVIDIA driver 466.11 or newer
@@ -63,6 +63,10 @@ Falcor uses the [Microsoft DirectX 12 Agility SDK](https://devblogs.microsoft.co
 ## NVAPI
 To enable NVAPI support, head over to https://developer.nvidia.com/nvapi and download the latest version of NVAPI (this build is tested against version R520).
 Extract the content of the zip file into `external/packman/` and rename `R520-developer` to `nvapi`.
+
+## NSight Aftermath
+To enable NSight Aftermath support, head over to https://developer.nvidia.com/nsight-aftermath and download the latest version of Aftermath (this build is tested against version 2023.1).
+Extract the content of the zip file into `external/packman/aftermath`.
 
 ## CUDA
 To enable CUDA support, download and install [CUDA 11.6.2](https://developer.nvidia.com/cuda-11-6-2-download-archive) or later and reconfigure the build.

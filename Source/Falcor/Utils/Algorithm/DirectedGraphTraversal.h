@@ -107,6 +107,7 @@ public:
 
         // Insert all the children
         const DirectedGraph::Node* pNode = mGraph.getNode(curNode);
+        FALCOR_ASSERT(pNode);
         bool reverse = is_set(mFlags, Flags::Reverse);
         uint32_t edgeCount = reverse ? pNode->getIncomingEdgeCount() : pNode->getOutgoingEdgeCount();
 
@@ -114,6 +115,7 @@ public:
         {
             uint32_t e = reverse ? pNode->getIncomingEdge(i) : pNode->getOutgoingEdge(i);
             const DirectedGraph::Edge* pEdge = mGraph.getEdge(e);
+            FALCOR_ASSERT(pEdge);
             uint32_t child = reverse ? pEdge->getSourceNode() : pEdge->getDestNode();
             mNodeList.push(child);
         }
@@ -203,6 +205,7 @@ private:
     {
         mVisited[node] = true;
         const DirectedGraph::Node* pNode = mGraph.getNode(node);
+        FALCOR_ASSERT(pNode);
         for (uint32_t e = 0; e < pNode->getOutgoingEdgeCount(); e++)
         {
             uint32_t nextNode = mGraph.getEdge(pNode->getOutgoingEdge(e))->getDestNode();
