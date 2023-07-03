@@ -29,6 +29,7 @@
 
 namespace Falcor
 {
+#if FALCOR_HAS_AFTERMATH
 GPU_TEST(AftermathCatchTDR)
 {
     ref<Device> pDevice = ctx.getDevice();
@@ -53,4 +54,6 @@ GPU_TEST(AftermathCatchTDR)
     // At this point we have lost the device, so submitting another dispatch should terminate the application.
     ctx.runProgram(1024, 1024);
 }
+#endif
+
 } // namespace Falcor
